@@ -35,14 +35,14 @@ Code is split across four files loaded via plain `<script>` tags. Global scope s
 ```
 
 ```
-fog.js (~560 lines)
-  ├── Constants: FOG_SCALE, FOG_BLUR_RADIUS, FOG_OPACITY_DM, FOG_FEATHER_RADIUS, FOG_REVEAL_MS, CLOUD_PASSES
+fog.js (~470 lines)
+  ├── Constants: FOG_SCALE, FOG_BLUR_RADIUS, FOG_OPACITY_DM, FOG_FEATHER_RADIUS, FOG_EDGE_MARGIN, FOG_REVEAL_MS, CLOUD_PASSES
   ├── Runtime override: `fogFeatherRadius` (let, initially = FOG_FEATHER_RADIUS) — overridden by the Feather slider in the DM's advanced Fog panel (0–24 px at fog scale). `getScaledFeatherRadius()` uses this instead of the constant.
   ├── Canvas state: fogDataCanvas, baseFogCanvas, fogBlurCanvas, fogEffectCanvas, cloudCanvas
   ├── Animation state: fogAnimEnabled, fogAnimSpeed, fogAnimOffsets
   ├── Transition state: fogTransPrev, fogTransBlurPrev, fogTransBlendCanvas, fogTransT
   └── Functions: buildRoundedPolyPath, revealCircle, shroudCircle, applyPolygonToFog,
-        rebuildFogFromPolygons, generateCloudTexture, rebuildFogBlur, recompositeCloudEffect,
+        rebuildFogFromPolygons, generateCloudFrames, rebuildFogBlur, recompositeCloudEffect,
         renderFog, fogAnimTick, startFogAnim, stopFogAnim, startFogTransition, fogTransTick
 
 tools.js (~650 lines)
@@ -55,9 +55,9 @@ tools.js (~650 lines)
         closestPointOnSegment, flushBrushOps, drawPolyOutline, drawActivePolyPreview,
         updatePolyContextPanel, toolMouseDown, toolMouseMove, toolMouseUp, toolWindowMouseUp, toolDblClick
 
-sceneStore.js (~130 lines)
-  └── IndexedDB wrapper: initSceneDB, saveScene, loadScene, deleteScene, listScenes,
-        exportScene, importScene. DB name: 'evermist', store: 'scenes'.
+sceneStore.js (~95 lines)
+  └── IndexedDB wrapper: initSceneDB, saveScene, loadScene, deleteScene, listScenes.
+        DB name: 'evermist', store: 'scenes'.
 
 index.html (inline script ~1900 lines)
   ├── State: mapBitmap, mapOffscreen, mapVideo, mapVideoBlob, zoom/panX/panY, polygons, undoStack/redoStack
@@ -87,9 +87,10 @@ index.html (inline script ~1900 lines)
 - Large image handling (Canvas 2D mode): map is decoded once into an `ImageBitmap` (GPU-backed). All subsequent renders use `drawImage` from that bitmap, never from the `Image` object. **In PixiJS mode, `mapBitmap` is NOT created** — `mapOffscreen` canvas is passed directly to `pixiSetMap`. See "PixiJS memory management" section.
 - Viewport culling: pass a source rectangle to `drawImage` — only draw the visible portion of the map.
 - **Player grid rendering**: grid is drawn on `map-canvas` (below fog) in Player view, not on the grid canvas. This ensures fog naturally hides the grid in shrouded areas without compositing artifacts.
-- **Player PixiJS fog — inverted layers**: In Player mode, the stage layer order is SWAPPED — `pixiFogLayer` renders at index 0 (behind map), `pixiMapLayer` at index 1. Fog is the background: unmasked navy fill + cloud TilingSprites + purple tint covering everything seamlessly. The map sprite is masked by an inverted fog blur canvas (reveal mask: opaque where revealed, transparent where shrouded). This eliminates the map-rect boundary seam that is impossible to avoid with fog-on-top. Transitions blend old/new fog blur canvases per frame and invert the blend into the reveal mask. `pixiDestroyFog` restores the original layer order.
-  - **KNOWN BUG (2026-06-22, backlogged):** the seam still appears on **WebM** maps in Player view (JPEG unaffected). Cause: WebM maps use a DOWNSCALED texture canvas (`playerMapTexCanvas`); its edge under LINEAR sampling doesn't align cleanly with the reveal-mask edge. Needs a guided runtime debug session — not yet fixed.
-  - **Mask filter padding (~4px border fix)**: PixiJS v7 lazily creates a `SpriteMaskFilter` with default `padding=4` when you set `.mask`, expanding the filter region 4px and bleeding the reveal-mask edge texel via CLAMP_TO_EDGE → visible border at the map rect. `pixiInitFog` injects a `padding=0` `SpriteMaskFilter` into `pixiMapSprite._mask._filters` immediately after setting `.mask`. `pixiDestroyFog` sets `_mask._filters = null` before releasing — PixiJS pools `MaskData` objects, and a stale filter ref causes WebGL errors on reuse.
+- **Player fog — hybrid Canvas-2D fog-on-top (2026-06-22 rewrite)**: The Player does NOT render fog in PixiJS. PixiJS draws only the unmasked map sprite (bottom layer); the fog is drawn on top by the Canvas-2D `renderFog()` (fog.js) on `#fog-canvas`, which sits above `#pixi-canvas` in the DOM. `renderFog`'s player path fills the entire viewport with navy + cloud in one pass, then punches reveal holes inside the map rect via `destination-in` with `fogBlurCanvas`. Because one continuous fog layer covers the whole viewport (including the map edge), the WebM map-rect boundary seam is structurally impossible. This replaced an earlier inverted-layer PixiJS approach (fog as masked background) that could never fully eliminate the seam.
+  - **`#fog-canvas` must stay visible in the Player.** In PixiJS mode the DM hides its 2D fog-canvas (`if (!isPlayer) fogCanvas.style.display = 'none'`) because the DM's fog is GPU-rendered. The Player keeps it visible at `opacity: 1` — if hidden, `syncSize` skips it (stays 0×0) and `renderFog` paints into nothing, so the map shows fully revealed with only the container background around it.
+  - **Edge-margin fix (FOG_EDGE_MARGIN)**: a reveal reaching the map's outer edge would hard-stop against the solid outside-map fog (a sharp horizontal "seam", glaring over bright map-edge content). `rebuildFogBlur` stamps a thin always-shrouded navy frame (FOG_EDGE_MARGIN fog-scale px, default 2) over the blur mask's outer edge; the blur feathers its inner edge inward so edge-touching reveals fade into the margin. Applied to the display blur mask only — `fogDataCanvas`, undo, and saved scenes are untouched.
+  - **Player WebM texture downscale**: `playerMapTexCanvas` is downscaled to ~2× viewport (≈3840×2305 for a 9746×5850 map) to avoid per-frame GPU TDR (a full-res upload trips Windows GPU-timeout → exit_code=34). Sprite logical dims stay mapW×mapH. The map's magnified-texture edge is irrelevant now — it's covered by opaque fog. JPEG maps use a full-res texture (no downscale).
 
 ## Video map support
 
@@ -103,10 +104,10 @@ Accepts MP4 (H.264) and WebM (VP8/VP9) alongside static images. The `<video>` el
 - **Legacy migration**: `switchScene` detects video scenes with `mapBlob` but no `mapPath` and auto-migrates them to disk on first access (shows progress bar, writes blob to disk, updates IDB record, frees the blob).
 - Scene record has `mapType: 'video'|'image'` field. On load, `switchScene` checks this to decide video vs image path.
 - Player creates its own `<video>` and plays independently — slight frame desync is invisible on dungeon maps. DM sends the `file:///` URL via postMessage; Player loads from the same path.
-- **Player video texture sync (PixiJS)**: In Player mode the map is a masked PixiJS *sprite* (inverted-layer fog), NOT a DOM `<video>` — so the DM's DOM-video compositing path does nothing. The map texture must be refreshed from the video every rendered frame. `finishPlayerVideo` calls `pixiStartVideoTextureSync(fn)` (renderer.js) which adds `fn` to the **PixiJS render ticker** (not `doRender`'s dirty-flag loop, which fires on demand and would leave the video frozen between viewport changes). `fn` draws the current video frame into the downscaled map-texture canvas and calls `pixiUpdateMapTexture()`. `cleanupVideo` calls `pixiStopVideoTextureSync()`. `startVideoLoop` skips `activateVideoDom` for Player (`if (!isPlayer)`) — the DOM video would sit invisibly under the opaque fog layer.
+- **Player video texture sync (PixiJS)**: In Player mode the map is a PixiJS *sprite* (unmasked, with Canvas-2D fog drawn on top — see "Player fog — hybrid"), NOT a DOM `<video>` — so the DM's DOM-video compositing path does nothing. The map texture must be refreshed from the video every rendered frame. `finishPlayerVideo` calls `pixiStartVideoTextureSync(fn)` (renderer.js) which adds `fn` to the **PixiJS render ticker** (not `doRender`'s dirty-flag loop, which fires on demand and would leave the video frozen between viewport changes). `fn` draws the current video frame into the downscaled map-texture canvas and calls `pixiUpdateMapTexture()`. `cleanupVideo` calls `pixiStopVideoTextureSync()`. `startVideoLoop` skips `activateVideoDom` for Player (`if (!isPlayer)`) — the DOM video would sit invisibly under the opaque fog layer.
 - **Player map texture is downscaled** to ~2× viewport before `pixiSetMap`. A full-res frame (e.g. 9746×5850 = 228 MB raw) uploaded to GPU on first render trips Windows TDR (GPU Timeout → `exit_code=34` crash). Sprite logical dims stay full-res; only texture resolution drops. Player follows DM view so the quality loss is invisible.
 - **DM stale `mapCtx` clear**: `activateVideoDom` clears the Canvas 2D `mapCanvas` (DM PixiJS video mode) — otherwise a previous scene's static image persists there and shows through the transparent fog holes ("white space" / "loaded as static").
-- **Auto-fallback: NOT IMPLEMENTED.** The state vars exist (`videoFrameCount`, `videoFrameTimeSum`, `VIDEO_SLOW_THRESHOLD_MS = 40`) and are reset in `startVideoLoop`, but the RAF loop never accumulates frame times or compares against the threshold — it only throttles to `VIDEO_MIN_FRAME_INTERVAL`. The intended behavior (after a 60-frame warmup, if avg >40ms, pause video and fall back to `mapBitmap`/`mapOffscreen`) is a TODO, not shipped. Either implement it or delete the dead vars. Low priority per user.
+- **No perf auto-fallback.** The video RAF loop only throttles to `VIDEO_MIN_FRAME_INTERVAL` (~24fps). There is no avg-frame-time measurement / auto-pause-to-static fallback (the dead `videoFrameCount`/`videoFrameTimeSum`/`VIDEO_SLOW_THRESHOLD_MS` scaffolding for it was removed in the 2026-06-22 cleanup). Not needed in practice; revisit only if a map stutters.
 - **Load gotcha (do not regress):** the `<video>` element MUST be appended to the DOM (hidden) for Chromium to decode at full resolution. The `canplay` handler must self-remove via `video.oncanplay = null` — using `removeEventListener` fails (different mechanism) and once caused hundreds of duplicate scenes. Frame-0 extraction waits for a `seeked` event (seek to 0.001s) with a 2s timeout, and uses `preload='auto'` (`'metadata'` causes black frames on some DA WebMs).
 - `cleanupVideo()` handles all teardown: stops RAF, pauses video, removes from DOM, revokes blob URL (skips revocation for `file://` URLs).
 - Export/import UI was removed; portability is handled via the portable data directory instead.
@@ -120,7 +121,7 @@ Accepts MP4 (H.264) and WebM (VP8/VP9) alongside static images. The `<video>` el
    - Draws `fogDataCanvas` into `fogBlurCanvas` (padded) with `ctx.filter = 'blur(4px)'`. 4px at 1/4 scale ≈ 16px at full res.
 5. `recompositeCloudEffect(offsets)` — cheap per-frame operation during animation:
    - Composites cloud texture over the blur result via 3 passes at different scales/rotations using `source-atop`.
-6. Cloud texture: Perlin turbulence with prime-number grid sizes (7,13,23,37,53) for seamless wrapping. Generated once via `generateCloudTexture(512)`. Dark navy/purple color range.
+6. Cloud texture: Perlin turbulence with prime-number grid sizes for seamless wrapping. Generated as a set of animation frames via `generateCloudFrames(512, CLOUD_FRAME_COUNT)`, cross-faded over time. Dark navy/purple color range.
 7. `renderFog(vp)` blits from `fogEffectCanvas` (cached). During active brushing, falls back to raw `fogDataCanvas` so DM sees live strokes.
 8. DM view: fog CSS opacity 0.55 (see-through). Player view: 1.0 (fully opaque).
 9. Fog color: `#1a1a2e` (dark navy), not pure black.

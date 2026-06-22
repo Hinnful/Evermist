@@ -5,6 +5,9 @@ const FOG_SCALE          = 4;
 const FOG_BLUR_RADIUS    = 8;   // px at 1/4 scale — tuned for ~6000px-wide maps
 const FOG_OPACITY_DM     = 0.55;
 const FOG_FEATHER_RADIUS = 12;  // px at FOG_SCALE — tuned for ~6000px-wide maps
+const FOG_EDGE_MARGIN    = 2;   // px at FOG_SCALE — thin always-shrouded frame at the map's
+                                // outer edge so reveals that reach the boundary fade INTO it
+                                // instead of hard-stopping (the sharp horizontal "seam").
 const FOG_SIZE_REF       = 1500; // fog canvas max dim at reference map size (6000/FOG_SCALE)
 const FOG_REVEAL_MS      = 2500; // player view: dramatic reveal
 const FOG_SHROUD_MS      = 1200; // player view: ~half of reveal — curtain closes noticeably faster
@@ -15,10 +18,6 @@ const CLOUD_PASSES = [
   { scale: 0.61, angle: -0.29, alpha: 0.3, driftX:  7,  driftY: -14, alphaFreq: 0.06, alphaPhase: 3.5 },
 ];
 const CLOUD_FRAME_COUNT   = 16;
-// Extra fog-scale pixels of solid-fog border around the map rect for Player PixiJS.
-// Extending fogEffectCanvas by this margin means the map rect and the surrounding border
-// share one cloud pass and one canvas — no seam is possible at the map rect boundary.
-const FOG_DISPLAY_BORDER  = 256;
 let   cloudFrameSpeed     = 0.35;  // frames per second → full cycle ~46s
 let   cloudWarpRadius     = 0.08;  // small steps → near-identical consecutive frames
 let   cloudWarpStrength   = 0.15;  // gentle warp so crossfade looks like smooth morphing
@@ -30,8 +29,6 @@ let fogDataCanvas = null, fogDataCtx = null; // 1/FOG_SCALE, source of truth
 let baseFogCanvas = null, baseFogCtx = null;
 let fogBlurCanvas = null, fogBlurCtx = null; // scratch for blur pass
 let fogEffectCanvas = null, fogEffectCtx = null; // cached blur+cloud result (map-rect sized; used for transitions)
-let fogEffectExtCanvas = null, fogEffectExtCtx = null; // extended fog canvas for Player PixiJS display (map + FOG_DISPLAY_BORDER border on each side)
-let fogBgEffectCanvas  = null, fogBgEffectCtx  = null; // 512×512 fog tile for TilingSprite (same compositing as map fog — matches colour exactly)
 let cloudCanvas = null, cloudPattern = null;
 
 // ─── Fog Animation ────────────────────────────────────────────────────────────
@@ -60,13 +57,6 @@ let fogTransT           = 0;   // 0→1 during transition
 let fogTransStart       = 0;
 let fogTransRafId       = null;
 let fogTransIsShroud    = false;
-
-// ─── Fog Dissolve (noise-eroded transition) ───────────────────────────────────
-// Each pixel reveals according to its position in a Perlin noise map.
-// Low-noise pixels clear first; high-noise pixels linger longest.
-let dissolveCanvas    = null; // same size as fogDataCanvas; alpha channel = noise dissolve order
-let fogTransScratch   = null; // scratch canvas for dissolve compositing
-let fogTransScratchCtx = null;
 
 // ─── Rounded polygon path ─────────────────────────────────────────────────────
 // Used by both the fog pipeline (applyPolygonToFog) and the cursor drawing
@@ -343,44 +333,6 @@ function generateCloudFrames(size, numFrames) {
 generateCloudFrames._initialized = false;
 generateCloudFrames._genId = 0;
 
-function generateDissolveMap(w, h) {
-  const sizes  = [5, 9, 15, 23, 37];
-  const scales = [1.0, 0.5, 0.25, 0.12, 0.06];
-  const total  = scales.reduce((s, v) => s + v, 0);
-  const grids  = sizes.map(n => {
-    const g = new Float32Array(n * n);
-    for (let i = 0; i < g.length; i++) g[i] = Math.random();
-    return { g, n };
-  });
-
-  function sample(grd, n, u, v) {
-    const fx = ((u * n) % n + n) % n, fy = ((v * n) % n + n) % n;
-    const x0 = fx | 0, y0 = fy | 0;
-    const x1 = (x0 + 1) % n,  y1 = (y0 + 1) % n;
-    const sx = fx - x0, sy = fy - y0;
-    const tx = sx * sx * (3 - 2 * sx), ty = sy * sy * (3 - 2 * sy);
-    return grd[y0*n+x0]*(1-tx)*(1-ty) + grd[y0*n+x1]*tx*(1-ty) +
-           grd[y1*n+x0]*(1-tx)*ty     + grd[y1*n+x1]*tx*ty;
-  }
-
-  dissolveCanvas = document.createElement('canvas');
-  dissolveCanvas.width = w; dissolveCanvas.height = h;
-  const dCtx = dissolveCanvas.getContext('2d');
-  const img = dCtx.createImageData(w, h);
-  const d = img.data;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const u = x / w, v = y / h;
-      let val = 0;
-      for (let i = 0; i < grids.length; i++) val += sample(grids[i].g, grids[i].n, u, v) * scales[i];
-      const idx = (y * w + x) * 4;
-      d[idx] = 0; d[idx+1] = 0; d[idx+2] = 0;
-      d[idx+3] = (val / total * 255) | 0; // alpha encodes dissolve order
-    }
-  }
-  dCtx.putImageData(img, 0, 0);
-}
-
 function rebuildFogBlur() {
   if (!fogDataCanvas) return;
   const w = fogDataCanvas.width, h = fogDataCanvas.height;
@@ -395,35 +347,30 @@ function rebuildFogBlur() {
     fogEffectCanvas.width = w; fogEffectCanvas.height = h;
     fogEffectCtx = fogEffectCanvas.getContext('2d');
   }
-  if (!dissolveCanvas || dissolveCanvas.width !== w || dissolveCanvas.height !== h) {
-    generateDissolveMap(w, h);
-  }
 
   // Blur on a fog-padded canvas so the blur at the map edge samples solid fog
-  // instead of transparency — eliminates the semi-transparent seam at map borders.
-  // Only the border strips are filled; the interior is left transparent so that
-  // revealed areas (transparent pixels in fogDataCanvas) are preserved correctly.
-  // pad = 3× blur radius to cover the full Gaussian tail (3σ rule).
+  // instead of transparency. pad = 3× blur radius to cover the full Gaussian tail (3σ).
   const blur = getScaledBlurRadius();
   const pad  = blur * 3;
   const pw = w + pad * 2, ph = h + pad * 2;
   const padded = document.createElement('canvas');
   padded.width = pw; padded.height = ph;
   const pCtx = padded.getContext('2d');
-  // Clamp-to-edge padding: repeat the fog canvas border pixels into the pad strips.
-  // This keeps the blur at the map edge consistent with the actual fog state — revealed
-  // edges blur to transparent (map shows to edge), shrouded edges blur to opaque navy.
-  // The old navy-constant padding caused a ~4px semi-transparent ring at the map rect
-  // boundary whenever reveals reached the edge (50% navy bleed into the blur kernel).
-  pCtx.drawImage(fogDataCanvas, 0, 0, w, 1,   pad, 0,        w, pad);       // top edge row → top strip
-  pCtx.drawImage(fogDataCanvas, 0, h-1, w, 1,  pad, ph-pad,   w, pad);       // bottom edge row → bottom strip
-  pCtx.drawImage(fogDataCanvas, 0, 0, 1, h,   0,   pad,       pad, h);       // left edge col → left strip
-  pCtx.drawImage(fogDataCanvas, w-1, 0, 1, h,  pw-pad, pad,   pad, h);       // right edge col → right strip
-  pCtx.drawImage(fogDataCanvas, 0, 0, 1, 1,   0,   0,         pad, pad);     // top-left corner
-  pCtx.drawImage(fogDataCanvas, w-1, 0, 1, 1,  pw-pad, 0,     pad, pad);     // top-right corner
-  pCtx.drawImage(fogDataCanvas, 0, h-1, 1, 1,  0,   ph-pad,   pad, pad);     // bottom-left corner
-  pCtx.drawImage(fogDataCanvas, w-1, h-1, 1, 1, pw-pad, ph-pad, pad, pad);   // bottom-right corner
   pCtx.drawImage(fogDataCanvas, pad, pad);                                     // fog data (center)
+
+  // Always-shrouded edge margin: stamp an opaque navy frame over the whole pad border PLUS
+  // the outer FOG_EDGE_MARGIN px of the fog-data center. The blur then feathers the frame's
+  // inner edge inward, so a reveal that reaches the map boundary fades into this margin
+  // instead of hard-stopping against the solid outside-map fog (the sharp horizontal seam).
+  // This frame also serves as the blur's edge padding (fully overwrites the old clamp-to-edge
+  // strips). Applied to the display blur mask only — fogDataCanvas, undo, and saved scenes
+  // are untouched.
+  const m = FOG_EDGE_MARGIN;
+  pCtx.fillStyle = '#1a1a2e';
+  pCtx.fillRect(0,            0,            pw,           pad + m);  // top    (incl. top pad)
+  pCtx.fillRect(0,            ph - pad - m, pw,           pad + m);  // bottom
+  pCtx.fillRect(0,            0,            pad + m,      ph);       // left
+  pCtx.fillRect(pw - pad - m, 0,            pad + m,      ph);       // right
 
   fogBlurCtx.clearRect(0, 0, w, h);
   fogBlurCtx.filter = `blur(${blur}px)`;
@@ -454,12 +401,7 @@ function recompositeCloudEffect(offsets, blurSrc) {
       fogEffectCtx.translate(w / 2, h / 2);
       fogEffectCtx.rotate(p.angle);
       fogEffectCtx.scale(p.scale, p.scale);
-      // In Player PixiJS mode, fogEffectCanvas is only used for transition snapshots.
-      // Shift by -FOG_DISPLAY_BORDER so its cloud phase matches the inner area of fogEffectExtCanvas
-      // (which uses the full extended-canvas center). Without this, a transition snapshot would
-      // show a different cloud pattern from what the user was seeing, causing a pop at transition start.
-      const B = (usePixi && isPlayer) ? FOG_DISPLAY_BORDER : 0;
-      fogEffectCtx.translate(-w / 2 + off.x - B, -h / 2 + off.y - B);
+      fogEffectCtx.translate(-w / 2 + off.x, -h / 2 + off.y);
       fogEffectCtx.fillStyle = cloudPattern;
       const pad = Math.max(w, h);
       fogEffectCtx.fillRect(-pad, -pad, w + pad * 2, h + pad * 2);
@@ -479,122 +421,25 @@ function recompositeCloudEffect(offsets, blurSrc) {
   fogEffectCtx.restore();
 }
 
-// Builds the extended fog blur canvas for Player PixiJS mode.
-// Contains the raw blur data (inner area) + opaque navy border — NO cloud passes.
-// Cloud texture is handled by PixiJS TilingSprites (same approach as DM), masked
-// by this canvas. This eliminates any seam between map-area fog and background fog
-// because the same TilingSprites cover everything uniformly.
-function rebuildFogBlurExt() {
-  var src = fogBlurCanvas;
-  if (!src) return;
-  var fw = src.width, fh = src.height;
-  var B  = FOG_DISPLAY_BORDER;
-  var w  = fw + 2 * B, h = fh + 2 * B;
-
-  if (!fogEffectExtCanvas || fogEffectExtCanvas.width !== w || fogEffectExtCanvas.height !== h) {
-    fogEffectExtCanvas = document.createElement('canvas');
-    fogEffectExtCanvas.width = w; fogEffectExtCanvas.height = h;
-    fogEffectExtCtx = fogEffectExtCanvas.getContext('2d');
-  }
-  var ctx = fogEffectExtCtx;
-
-  ctx.clearRect(0, 0, w, h);
-  ctx.drawImage(src, B, B);
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0,     0,     w,     B);
-  ctx.rect(0,     h - B, w,     B);
-  ctx.rect(0,     B,     B,     h - 2 * B);
-  ctx.rect(w - B, B,     B,     h - 2 * B);
-  ctx.clip();
-  ctx.fillStyle = '#1a1a2e';
-  ctx.fillRect(0, 0, w, h);
-  ctx.restore();
-}
-
 function rebuildFogEffect() {
   rebuildFogBlur();
   if (usePixi && !isPlayer) {
     // DM GPU path: cloud TilingSprites handle cloud display — just upload the new blur canvas
     pixiUpdateFogBlurTexture();
-  } else if (usePixi && isPlayer) {
-    // Player GPU path: fog is behind map; update the reveal mask (inverted fog blur)
-    // so the map sprite shows only in revealed areas.
-    // During a transition, set the mask to the OLD state so the first visible frame
-    // doesn't flash the new state. fogTransTick will blend old→new smoothly.
-    if (fogTransBlurPrev && fogTransRafId) {
-      pixiUpdateRevealMask(fogTransBlurPrev);
-    } else {
-      pixiUpdateRevealMask(fogBlurCanvas);
-    }
   } else {
-    recompositeCloudEffect(fogAnimEnabled ? fogAnimOffsets : null);
+    // Canvas-2D path. The Player's renderFog draws clouds itself (from cloudPattern +
+    // fogAnimOffsets) and never reads fogEffectCanvas, so skip the costly recomposite for
+    // it. A non-PixiJS DM (fallback) does read fogEffectCanvas, so build it there.
+    if (!isPlayer) recompositeCloudEffect(fogAnimEnabled ? fogAnimOffsets : null);
     fogDirty = true;
     scheduleRender();
   }
 }
 
-// Applies the noise-dissolve blend for the DM transition.
-// Each pixel shows either the old state (noise >= t) OR the new state (noise < t) — never both.
-// This avoids the "2-stage" look where prev fog bleeds through as a background behind the dissolve.
-//
-// Two SVG feColorMatrix filters threshold dissolveCanvas.alpha at fogTransT:
-//   #fogThreshold        A_out = clamp(-scale*A_in + scale*t)  → opaque where noise < t  (new state)
-//   #fogThresholdInvert  A_out = clamp( scale*A_in - scale*t)  → opaque where noise >= t (old state)
-function applyDMDissolveTransition(srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH) {
-  const sx = srcX / FOG_SCALE, sy = srcY / FOG_SCALE;
-  const sw = srcW / FOG_SCALE, sh = srcH / FOG_SCALE;
-
-  const threshNorm = document.getElementById('fogThresholdMatrix');
-  const threshInv  = document.getElementById('fogThresholdInvertMatrix');
-
-  if (!fogTransScratch || !dissolveCanvas || !threshNorm || !threshInv) {
-    // Fallback: plain alpha crossfade
-    fogDisplayCtx.globalAlpha = 1 - fogTransT;
-    fogDisplayCtx.drawImage(fogTransPrev, sx, sy, sw, sh, dstX, dstY, dstW, dstH);
-    fogDisplayCtx.globalCompositeOperation = 'lighter';
-    fogDisplayCtx.globalAlpha = fogTransT;
-    fogDisplayCtx.drawImage(fogEffectCanvas, sx, sy, sw, sh, dstX, dstY, dstW, dstH);
-    fogDisplayCtx.globalCompositeOperation = 'source-over';
-    fogDisplayCtx.globalAlpha = 1;
-    return;
-  }
-
-  // Update both filter thresholds once per frame
-  const scale = 120;
-  const t4    = fogTransT.toFixed(4);
-  threshNorm.setAttribute('values',
-    `0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 ${-scale} ${(scale * fogTransT).toFixed(4)}`);
-  threshInv.setAttribute('values',
-    `0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 ${scale} ${(-scale * fogTransT).toFixed(4)}`);
-
-  // 1. Draw prev fog only in undissolved regions (noise >= t)
-  //    a. Draw prev at full opacity
-  fogDisplayCtx.drawImage(fogTransPrev, sx, sy, sw, sh, dstX, dstY, dstW, dstH);
-  //    b. destination-in with inverted mask → clears dissolved pixels from display
-  fogDisplayCtx.save();
-  fogDisplayCtx.globalCompositeOperation = 'destination-in';
-  fogDisplayCtx.filter = 'url(#fogThresholdInvert)';
-  fogDisplayCtx.drawImage(dissolveCanvas, sx, sy, sw, sh, dstX, dstY, dstW, dstH);
-  fogDisplayCtx.filter = 'none';
-  fogDisplayCtx.restore();
-
-  // 2. Draw new fog only in dissolved regions (noise < t) and composite over step 1
-  fogTransScratchCtx.clearRect(0, 0, fogTransScratch.width, fogTransScratch.height);
-  fogTransScratchCtx.drawImage(fogEffectCanvas, 0, 0);
-  fogTransScratchCtx.save();
-  fogTransScratchCtx.globalCompositeOperation = 'destination-in';
-  fogTransScratchCtx.filter = 'url(#fogThreshold)';
-  fogTransScratchCtx.drawImage(dissolveCanvas, 0, 0);
-  fogTransScratchCtx.filter = 'none';
-  fogTransScratchCtx.restore();
-  fogDisplayCtx.drawImage(fogTransScratch, sx, sy, sw, sh, dstX, dstY, dstW, dstH);
-}
-
 function renderFog(vp) {
-  // PixiJS handles fog display for both DM and Player
-  if (usePixi) return;
+  // PixiJS handles fog display for the DM only. The Player uses this Canvas-2D path
+  // (fog-on-top with holes) — see the HYBRID note in renderer.js pixiInitFog.
+  if (usePixi && !isPlayer) return;
 
   const { srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH, cw, ch } = vp;
   fogDisplayCtx.clearRect(0, 0, cw, ch);
@@ -755,12 +600,10 @@ function fogAnimTick(ts) {
         if (usePixi && !isPlayer) {
           // DM GPU path: update TilingSprite drift + upload 512×512 cloud frame
           pixiUpdateFogAnim(fogAnimOffsets, fogAnimAlphas);
-        } else if (usePixi && isPlayer) {
-          // Player GPU path: update TilingSprite drift + upload cloud frame.
-          // Transitions are handled by mask blending in fogTransTick — no snapshot needed.
-          pixiUpdateFogAnim(fogAnimOffsets, fogAnimAlphas);
         } else {
-          if (fogEffectCanvas) recompositeCloudEffect(fogAnimOffsets);
+          // Canvas-2D path. Player draws clouds in renderFog (skip fogEffectCanvas build);
+          // non-PixiJS DM fallback needs it.
+          if (!isPlayer && fogEffectCanvas) recompositeCloudEffect(fogAnimOffsets);
           fogDirty = true;
           scheduleRender();
         }
@@ -782,16 +625,14 @@ function startFogAnim() {
 function stopFogAnim() {
   if (fogAnimRafId) { cancelAnimationFrame(fogAnimRafId); fogAnimRafId = null; }
   for (let i = 0; i < CLOUD_PASSES.length; i++) fogAnimAlphas[i] = CLOUD_PASSES[i].alpha;
-  if (usePixi) {
-    // GPU path: freeze TilingSprite alphas at static values; tilePositions stay as-is
+  if (usePixi && !isPlayer) {
+    // DM GPU path: freeze TilingSprite alphas at static values; tilePositions stay as-is
     pixiUpdateFogAnim(null, fogAnimAlphas);
     return;
   }
-  if (fogEffectCanvas) {
-    recompositeCloudEffect(null); // freeze at no-offset static appearance
-    fogDirty = true;
-    scheduleRender();
-  }
+  if (!isPlayer && fogEffectCanvas) recompositeCloudEffect(null); // freeze (non-PixiJS DM)
+  fogDirty = true;
+  scheduleRender();
 }
 
 // ─── Fog transition ───────────────────────────────────────────────────────────
@@ -807,9 +648,10 @@ function startFogTransition(isShroud = false) {
     fogTransPrev = fogBlurCanvas ? cloneCanvas(fogBlurCanvas) : null;
     pixiSetFogTransition(fogTransPrev, 0);
   } else if (usePixi && isPlayer) {
-    // Player GPU path: transition is handled by blending old and new fog blur canvases
-    // into the reveal mask each frame (in fogTransTick). No transition sprites needed.
-    // fogTransBlurPrev is saved below.
+    // Player (hybrid): fog is Canvas-2D on top. The transition morphs the reveal-hole
+    // shape — renderFog blends fogTransBlurPrev↔fogBlurCanvas via fogTransBlendCanvas each
+    // frame. Only fogTransBlurPrev/fogTransBlendCanvas are needed (saved below); no
+    // fogEffectCanvas snapshot, since the navy+cloud is redrawn fresh every frame.
   } else {
     if (!fogEffectCanvas) return;
     fogTransPrev = cloneCanvas(fogEffectCanvas);
@@ -822,16 +664,6 @@ function startFogTransition(isShroud = false) {
       fogTransBlendCanvas = document.createElement('canvas');
       fogTransBlendCanvas.width  = fogBlurCanvas.width;
       fogTransBlendCanvas.height = fogBlurCanvas.height;
-    }
-  }
-  // Pre-allocate scratch canvas for DM Canvas 2D noise-dissolve compositing.
-  // Guard for null: on Player first load fogEffectCanvas doesn't exist yet.
-  if (fogEffectCanvas) {
-    const fw = fogEffectCanvas.width, fh = fogEffectCanvas.height;
-    if (!fogTransScratch || fogTransScratch.width !== fw || fogTransScratch.height !== fh) {
-      fogTransScratch    = document.createElement('canvas');
-      fogTransScratch.width = fw; fogTransScratch.height = fh;
-      fogTransScratchCtx = fogTransScratch.getContext('2d');
     }
   }
   fogTransT     = 0;
@@ -849,23 +681,9 @@ function fogTransTick(ts) {
   if (usePixi && !isPlayer) {
     // DM: sprite alpha crossfade (fast 800ms, cloud ramp acceptable)
     pixiSetFogTransition(null, fogTransT);
-  } else if (usePixi && isPlayer) {
-    // Player: blend old and new fog blur canvases, invert into reveal mask.
-    // This smoothly transitions the map visibility from old to new state.
-    if (fogTransBlurPrev && fogTransBlendCanvas && fogBlurCanvas) {
-      var bctx = fogTransBlendCanvas.getContext('2d');
-      var bw = fogTransBlendCanvas.width, bh = fogTransBlendCanvas.height;
-      bctx.clearRect(0, 0, bw, bh);
-      bctx.globalAlpha = 1 - fogTransT;
-      bctx.drawImage(fogTransBlurPrev, 0, 0);
-      bctx.globalCompositeOperation = 'lighter';
-      bctx.globalAlpha = fogTransT;
-      bctx.drawImage(fogBlurCanvas, 0, 0);
-      bctx.globalCompositeOperation = 'source-over';
-      bctx.globalAlpha = 1;
-      pixiUpdateRevealMask(fogTransBlendCanvas);
-    }
   } else {
+    // Canvas-2D path (Player fog-on-top, and non-PixiJS DM): renderFog blends
+    // fogTransPrev↔fogBlurCanvas via fogTransBlendCanvas each frame.
     fogDirty = true;
     scheduleRender();
   }
@@ -879,8 +697,6 @@ function fogTransTick(ts) {
     fogTransT        = 0;
     if (usePixi && !isPlayer) {
       pixiEndFogTransition();
-    } else if (usePixi && isPlayer) {
-      pixiUpdateRevealMask(fogBlurCanvas); // final state
     } else {
       fogDirty = true;
       scheduleRender();
