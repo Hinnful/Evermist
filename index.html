@@ -1244,12 +1244,7 @@ let mapVideoUrl  = null;   // blob URL backing mapVideo (revoke on cleanup)
 let videoEnabled = false;  // true while video is actively playing as map source
 let videoRAFId   = null;   // RAF id for video-driven map redraws (fallback)
 let videoRVFCId  = null;   // requestVideoFrameCallback id (preferred)
-let videoFrameCount = 0;
-let videoFrameTimeSum = 0;
 let videoLastRenderTs = 0;
-const VIDEO_WARMUP_FRAMES = 60;
-const VIDEO_MEASURE_FRAMES = 60;
-const VIDEO_SLOW_THRESHOLD_MS = 40;
 const VIDEO_MIN_FRAME_INTERVAL = 1000 / 24;
 let mapWidth = 0, mapHeight = 0;
 let zoom = 1, panX = 0, panY = 0;
@@ -1330,7 +1325,12 @@ fogCanvas.style.opacity = isPlayer ? '1' : String(FOG_OPACITY_DM);
 // ─── PixiJS init ──────────────────────────────────────────────────────────────
 if (usePixi) {
   mapCanvas.style.display = 'none';
-  fogCanvas.style.display = 'none'; // PixiJS renders fog for both DM and Player
+  // Hybrid: the DM's fog is rendered by PixiJS, so its 2D fog-canvas stays hidden.
+  // The Player draws Canvas-2D fog (renderFog) ON TOP of the PixiJS map sprite, so
+  // its fog-canvas must stay visible — otherwise syncSize skips it (display:none),
+  // it never gets sized, and renderFog paints into a 0×0 canvas (map shows fully
+  // revealed with only the container background visible around it).
+  if (!isPlayer) fogCanvas.style.display = 'none';
   initPixiRenderer(container);
   if (isPlayer) {
     // Fill viewport with fog colour outside the map rect via CSS — keeps PixiJS canvas transparent
@@ -1391,7 +1391,7 @@ function loadMapFromFile(file, onMapLoaded) {
 
     if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
     rebuildFogEffect();
-    if (usePixi && !isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight, false); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
+    if (usePixi && !isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
 
     URL.revokeObjectURL(url);
     fitToScreen();
@@ -1533,8 +1533,6 @@ function startVideoLoop() {
   if (!mapVideo) return;
   stopVideoLoop();
   videoEnabled = true;
-  videoFrameCount = 0;
-  videoFrameTimeSum = 0;
   videoLastRenderTs = 0;
   if (!isPlayer) activateVideoDom(mapVideo);
   if (mapVideo.paused || mapVideo.ended) {
@@ -1611,7 +1609,7 @@ function loadVideoFromFile(file, onVideoLoaded) {
 
       if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
       rebuildFogEffect();
-      if (usePixi && !isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight, false); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
+      if (usePixi && !isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
 
       fitToScreen();
       if (!isPlayer) container.style.cursor = 'crosshair';
@@ -2184,7 +2182,7 @@ async function switchScene(id) {
   rebuildFogFromPolygons();
   if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
   rebuildFogEffect();
-  if (usePixi && !isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight, false); pixiFlushTexturePool(); }
+  if (usePixi && !isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); }
 
   undoStack = []; redoStack = [];
   playerMapSent = false;
@@ -3415,9 +3413,6 @@ if (isPlayer) {
               playerMapTexCtx = extractCanvas.getContext('2d');
             }
             pixiSetMap(playerMapTexCanvas, mapWidth, mapHeight);
-            // Do NOT call pixiHideMap() in Player PixiJS mode: the inverted-layer
-            // architecture uses pixiMapSprite (masked by the reveal mask) to show
-            // revealed areas. Hiding it makes reveals invisible.
             // Refresh the map texture from the video every rendered frame, driven by
             // the PixiJS render ticker so it never freezes between viewport changes.
             pixiStartVideoTextureSync(function() {
@@ -3432,9 +3427,8 @@ if (isPlayer) {
           fitToScreen();
           if (playerFollowDM && msg.view) applyView(msg.view);
           loadFog(msg.fogDataUrl, !!msg.sceneChange).then(() => {
-            // Only (re)init fog sprites on first load or scene change.
-            // On fog-only updates the sprites already exist — reiniting destroys the transition sprite immediately.
-            if (usePixi && (msg.sceneChange || (!pixiFogBlurSpr && !pixiFogRevealMaskSpr))) pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight, true, fogEffectCanvas, fogEffectExtCanvas);
+            // Hybrid: Player fog is Canvas-2D (renderFog) on top of the PixiJS map — no
+            // PixiJS fog init. loadFog already ran rebuildFogEffect()+startFogAnim().
             viewportDirty = true;
             scheduleRender();
             video.play().then(() => startVideoLoop()).catch(() => {});
@@ -3467,8 +3461,8 @@ if (isPlayer) {
         fitToScreen();
         if (playerFollowDM && msg.view) applyView(msg.view);
         loadFog(msg.fogDataUrl, !!msg.sceneChange).then(() => {
-          // Only (re)init fog sprites on first load or scene change — fog-only updates preserve the transition sprite.
-          if (usePixi && (msg.sceneChange || (!pixiFogBlurSpr && !pixiFogRevealMaskSpr))) pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight, true, fogEffectCanvas, fogEffectExtCanvas);
+          // Hybrid: Player fog is Canvas-2D (renderFog) on top of the PixiJS map — no
+          // PixiJS fog init. loadFog already ran rebuildFogEffect()+startFogAnim().
           viewportDirty = true;
           scheduleRender();
           revealPlayer();
@@ -3645,23 +3639,5 @@ document.addEventListener('visibilitychange', () => {
 
 if (!isPlayer) initScenes().catch(console.error);
 </script>
-
-<!-- SVG filter used by the fog dissolve transition (Canvas 2D ctx.filter = 'url(#fogThreshold)').
-     The feColorMatrix converts dissolveCanvas alpha (noise order) to a binary threshold mask:
-     A_out = clamp(-scale * A_in + scale * fogTransT) — updated each frame via JS. -->
-<svg style="display:none;position:absolute" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <!-- noise < t → opaque (dissolved pixels → show new state) -->
-    <filter id="fogThreshold" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%">
-      <feColorMatrix id="fogThresholdMatrix" type="matrix"
-        values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -120 0"/>
-    </filter>
-    <!-- noise >= t → opaque (undissolved pixels → show old state) -->
-    <filter id="fogThresholdInvert" color-interpolation-filters="sRGB" x="0%" y="0%" width="100%" height="100%">
-      <feColorMatrix id="fogThresholdInvertMatrix" type="matrix"
-        values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 120 0"/>
-    </filter>
-  </defs>
-</svg>
 </body>
 </html>
