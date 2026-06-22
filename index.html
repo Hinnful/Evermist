@@ -1317,6 +1317,8 @@ const mapCtx         = mapCanvas.getContext('2d');
 const fogDisplayCtx  = fogCanvas.getContext('2d');
 const gridCtx        = gridCanvasEl.getContext('2d');
 const cursorCtx      = cursorCanvas.getContext('2d');
+// Player+PixiJS only — canvas inserted between #pixi-canvas and #fog-canvas so fog hides it.
+let playerGridCanvas = null, playerGridCtx = null;
 const landing        = document.getElementById('landing');
 
 // Fog display canvas uses CSS opacity so the browser GPU-composites it for free.
@@ -1336,6 +1338,13 @@ if (usePixi) {
     // Fill viewport with fog colour outside the map rect via CSS — keeps PixiJS canvas transparent
     // so the video DOM element can show through for video maps.
     container.style.background = '#1a1a2e';
+    // Grid canvas: must sit above #pixi-canvas but below #fog-canvas so fog hides the grid
+    // in shrouded areas. #map-canvas is hidden in PixiJS mode so we need a dedicated layer.
+    playerGridCanvas = document.createElement('canvas');
+    playerGridCanvas.id = 'player-grid-canvas';
+    playerGridCanvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
+    container.insertBefore(playerGridCanvas, fogCanvas);
+    playerGridCtx = playerGridCanvas.getContext('2d');
   }
 }
 
@@ -2261,7 +2270,9 @@ async function moveScene(id, dir) {
 function syncSize() {
   const cw = container.clientWidth;
   const ch = container.clientHeight;
-  for (const c of [mapCanvas, fogCanvas, gridCanvasEl, cursorCanvas]) {
+  const _sizableCanvases = [mapCanvas, fogCanvas, gridCanvasEl, cursorCanvas];
+  if (playerGridCanvas) _sizableCanvases.push(playerGridCanvas);
+  for (const c of _sizableCanvases) {
     if (c.style.display === 'none') continue;
     if (c.width !== cw || c.height !== ch) {
       c.width  = cw;
@@ -2396,6 +2407,13 @@ function renderGrid(vp) {
   drawGridLines(gridCtx, vp);
 }
 
+function renderPlayerGrid(vp) {
+  if (!playerGridCtx) return;
+  playerGridCtx.clearRect(0, 0, vp.cw, vp.ch);
+  if (!gridEnabled) return;
+  drawGridLines(playerGridCtx, vp);
+}
+
 function doRender() {
   renderScheduled = false;
   flushBrushOps();
@@ -2416,6 +2434,7 @@ function doRender() {
   if (viewportDirty) {
     if (usePixi) {
       pixiSetViewport(zoom, panX, panY);
+      if (isPlayer) renderPlayerGrid(vp);
     } else if (!videoDOMActive) {
       renderMap(mapSource, vp);
     } else {
@@ -3246,7 +3265,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
       type: 'fog-update',
       mapWidth, mapHeight, fogDataUrl, view, isShroud, sceneChange, fogChanged,
       sceneName: currentScene ? currentScene.name : null,
-      gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode,
+      gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
     }, '*');
   }
 }
