@@ -1,0 +1,27 @@
+# Dependencies (re-created by `npm install`)
+node_modules/
+
+# Build output
+dist/
+
+# Portable app data (IndexedDB, caches, scenes) — must never be uploaded
+evermist-data/
+
+# Map media — large binaries live on disk, not in git
+*.webm
+*.mp4
+*.mov
+*.mkv
+
+# Stray map images dropped into the project root
+/*.png
+/*.jpg
+/*.jpeg
+
+# Claude Code machine-local settings
+.claude/settings.local.json
+
+# OS / editor cruft
+Thumbs.db
+desktop.ini
+.DS_Store
