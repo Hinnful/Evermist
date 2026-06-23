@@ -2,14 +2,14 @@ name: Build & Release
 
 # Runs when you push a version tag like v1.0.0.
 # Builds Evermist on Windows, macOS, and Linux in parallel,
-# then attaches each installer to a GitHub Release for that tag.
+# then attaches each installer to the GitHub Release for that tag.
 on:
   push:
     tags:
       - 'v*'
 
 permissions:
-  contents: write   # lets the job create the Release and upload files
+  contents: write   # lets the job upload files to the Release
 
 jobs:
   build:
@@ -32,12 +32,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build and publish to the Release
-        run: npx electron-builder --publish always
+      - name: Build the installer
+        run: npx electron-builder --publish never
         env:
-          # GitHub provides this automatically — it lets electron-builder
-          # create the Release and upload the installers.
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # We are not paying for code signing, so tell electron-builder
           # not to look for a signing certificate (otherwise the mac build fails).
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Attach the installer to the Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Each OS uploads only its own installer; the other globs match
+          # nothing on that runner, which is fine.
+          files: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage
