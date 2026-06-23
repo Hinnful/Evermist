@@ -1,12 +1,16 @@
 # Evermist
 
+**English** · [Русский](README.ru.md)
+
 A desktop app for running D&D battle maps on a TV, with **fog of war** you paint live from a second screen.
 
-No accounts, no servers, no subscriptions — everything runs locally on your machine. Point one window at your laptop, the other at the TV your players see, and reveal the dungeon as they explore it.
+[![Latest release](https://img.shields.io/github/v/release/Hinnful/Evermist?label=download&sort=semver)](../../releases/latest)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-7c6fb0)](../../releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-> **What it is not:** a full virtual tabletop. There are no tokens, no initiative tracker, no dice. Evermist does one thing — show a map and hide parts of it — and tries to do it beautifully.
+No accounts, no servers, no subscriptions. Everything runs locally on your machine: point one window at your laptop, the other at the TV your players see, and reveal the dungeon as they explore it.
 
-<!-- TODO: add a screenshot or GIF here. A short clip of painting fog away to reveal a room sells the whole app. -->
+> **What it is *not*:** a full virtual tabletop. There are no tokens, no initiative tracker, no dice. Evermist does one thing — show a map and hide parts of it — and tries to do it beautifully.
 
 ## Features
 
@@ -19,23 +23,40 @@ No accounts, no servers, no subscriptions — everything runs locally on your ma
 
 ## Download
 
-Grab the latest installer for your system from the [**Releases**](../../releases) page:
+Grab the latest installer for your system from the [**Releases**](../../releases/latest) page:
 
-| System | File |
-|--------|------|
-| Windows | `Evermist-<version>.exe` (portable — no install, just run it) |
-| macOS | `Evermist-<version>.dmg` |
-| Linux | `Evermist-<version>.AppImage` |
+| System | File | Notes |
+|--------|------|-------|
+| Windows | `Evermist-<version>.exe` | Portable — no install, just double-click to run |
+| macOS | `Evermist-<version>.dmg` | Universal (Intel & Apple Silicon) |
+| Linux | `Evermist-<version>.AppImage` | Make it executable, then run |
 
 ### First-time open
 
-Evermist is a free app and is **not code-signed**, so your operating system will show a one-time security warning the first time you open it. This is normal for indie software — here's how to get past it:
+Evermist is free and **not code-signed** (signing certificates cost money), so your operating system shows a one-time security warning the first time you open it. This is normal for indie software. Here's how to get past it:
 
-- **Windows:** if you see *"Windows protected your PC"*, click **More info → Run anyway**.
-- **macOS:** if you see *"Evermist can't be opened because Apple cannot check it…"*, **right-click the app → Open**, then click **Open** in the dialog. (Double-clicking won't give you the option the first time.)
-- **Linux:** make the AppImage executable (`chmod +x Evermist-*.AppImage`) or check *Properties → Permissions → Allow executing file as program*, then run it.
+- **Windows:** if you see *“Windows protected your PC”*, click **More info → Run anyway**.
+- **macOS:** if you see *“Evermist can't be opened because Apple cannot check it…”*, **right-click the app → Open**, then click **Open** in the dialog. (Double-clicking won't give you the option the first time.)
+- **Linux:** make the AppImage executable (`chmod +x Evermist-*.AppImage`, or *Properties → Permissions → Allow executing file as program*), then run it.
 
 Your system remembers the choice, so this only happens once.
+
+## Getting started
+
+Once Evermist is open you'll see the **DM window** — this is your control screen, the one your players never see.
+
+1. **Open the Player window.** In the right sidebar, under **Player**, click **Open Window**. A second, button-free window appears. This is what your players see — drag it onto your TV (or second monitor) and click **Fullscreen**.
+2. **Load a map.** Drag a map file (JPG, PNG, MP4, or WebM) straight onto the DM window. It loads as a new scene and starts **fully covered by fog**.
+3. **Reveal the map.** Pick a tool from the top toolbar and uncover where the party can see:
+   - **Brush** — paint fog away freehand (adjust size with `[` and `]`).
+   - **Rectangle / Circle / Polygon** — draw a clean reveal region, ideal for rooms and corridors.
+   - **Reveal / Shroud** — toggle whether a shape *uncovers* or *re-hides* an area (handy for closing a door behind the party).
+   - **Select (V)** — move, reshape, or delete regions you've already drawn.
+4. **Match the grid.** In the right sidebar's **Grid** section, switch between square and hex and adjust the size/offset until it lines up with your map's grid.
+5. **Push it to the TV.** With **Auto** on (under Player), every change you make appears on the Player screen automatically. Prefer manual control? Turn Auto off and hit **Send ▶** (or press `Space`) when you're ready to reveal the next room. **Sync View** snaps the player's camera to match yours.
+6. **Switch maps mid-session.** Open the **Scenes** panel to save several maps and jump between them with a smooth fade — great for moving from the tavern to the dungeon without breaking immersion.
+
+> **Tip:** press `?` in the DM window any time to see the full list of keyboard shortcuts.
 
 ## Running from source
 

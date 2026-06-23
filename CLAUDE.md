@@ -9,9 +9,28 @@ No backend, no VTT features (tokens, initiative). Just: map + fog + grid + two s
 
 ## Running the app
 
-No build step. For the Electron desktop app: `npm start` (requires `npm install` first). Build portable `.exe` with `npm run build`.
+No build step. For the Electron desktop app: `npm start` (requires `npm install` first). Build a local installer with `npm run build` (Windows portable `.exe`), `npm run build:mac` (`.dmg`), or `npm run build:linux` (`AppImage`).
 
 Alternatively, `npx serve .` and open `http://localhost:3000` for browser testing. Player view opens automatically as a second window.
+
+## Distribution & releases
+
+Cross-platform from one push (set up 2026-06-23). Building a Mac `.dmg` cannot be done on Windows locally, so releases are built in the cloud by **GitHub Actions** (`.github/workflows/release.yml`).
+
+**To cut a release:**
+1. Get the changes onto `main` (push directly or via PR-merge).
+2. Bump `version` in `package.json` to match the tag you're about to create (the `version` field names the installer files; the tag triggers the build — keep them in sync).
+3. On GitHub: Releases → Draft a new release → create a new tag `vX.Y.Z` on publish → Publish.
+
+The workflow then builds on `windows-latest`, `macos-latest` (universal `.dmg`, runs on Intel + Apple Silicon), and `ubuntu-latest` in parallel, and attaches `dist/*.{exe,dmg,AppImage}` to that release.
+
+**Pipeline gotchas (do not regress):**
+- **Use `softprops/action-gh-release@v2` to upload, NOT `electron-builder --publish`.** electron-builder's own publisher only uploads to *draft* releases; creating the release as published via the web UI made it silently skip the upload (build still went green, but no installers attached). softprops uploads regardless of draft/published state. The workflow builds with `electron-builder --publish never`, then softprops attaches the files.
+- **Unsigned, by deliberate choice** (no paid certs). `CSC_IDENTITY_AUTO_DISCOVERY=false` is set in the workflow env (and the local Windows `build` script) so electron-builder doesn't hunt for a signing identity — without it the mac build fails. Users get a one-time OS security warning; the README's "First-time open" section explains how to bypass it per platform.
+- Repo Actions settings must allow third-party actions ("Allow all actions") and grant `contents: write` (set in the workflow) for the upload to work.
+- The portable `evermist-data` copyable-folder trick is **Windows-only** (`PORTABLE_EXECUTABLE_DIR`, `main.js`). Mac/Linux fall back to the OS-default per-user data location — the app works, it just isn't a copyable self-contained folder there. Not yet addressed.
+
+First release: `v1.0.0`, all three installers built and verified working (2026-06-23).
 
 ## Tech decisions
 
@@ -20,7 +39,7 @@ Alternatively, `npx serve .` and open `http://localhost:3000` for browser testin
 - Canvas 2D API for all rendering (no WebGL unless Canvas 2D can't handle blur on large images)
 - Single HTML entry point: `index.html` serves both DM view and Player view (`?mode=player`)
 - postMessage for DM → Player sync (works on `file://` in Chrome with the flag above)
-- Electron wrapper for `.exe` packaging — core app is identical to browser version
+- Electron wrapper for desktop packaging (Windows `.exe`, macOS `.dmg`, Linux `AppImage`) — core app is identical to browser version. See "Distribution & releases".
 
 ## Architecture
 
