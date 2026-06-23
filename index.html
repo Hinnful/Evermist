@@ -3274,6 +3274,13 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
 if (isPlayer) {
   fogAnimEnabled = true; // player view always animates
 
+  // Pre-generate the cloud texture now, while the player sits on the idle "waiting
+  // for DM" screen. The first generateCloudFrames() call blocks for ~1–2s; doing it
+  // lazily inside loadFog (on the first fog-update) meant the map had already been
+  // shown by PixiJS, so players briefly saw a fully-revealed, fog-less map until the
+  // texture finished. Paying the cost up-front closes that gap.
+  generateCloudFrames(512, CLOUD_FRAME_COUNT);
+
   if (window.opener) window.opener.postMessage({ type: 'PLAYER_READY' }, '*');
 
   window.addEventListener('resize', () => {
@@ -3338,6 +3345,17 @@ if (isPlayer) {
 
     // Don't reveal yet — keep scene-fade dark until map + fog are fully decoded and render is queued.
     // This prevents players from seeing the old scene or a partially-applied fog during the transition.
+    // First open has no scene-transition 'out' phase to black out the screen, so the map (painted
+    // immediately by PixiJS) would flash fog-less before the Canvas-2D fog is ready. Cover it the same
+    // way a scene switch does — instantly (transition disabled) so the map can't peek during a fade-in.
+    // revealPlayer() removes .dark with the normal 0.5s ease once map+fog have rendered.
+    if (!playerMapSent) {
+      const fade = document.getElementById('scene-fade');
+      fade.style.transition = 'none';
+      fade.classList.add('dark');
+      void fade.offsetWidth;        // force reflow so the instant black "sticks"
+      fade.style.transition = '';   // restore so revealPlayer's removal animates
+    }
     landing.style.display = 'none';
 
     if (msg.view) lastDMView = msg.view;
