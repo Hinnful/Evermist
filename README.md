@@ -59,7 +59,7 @@ When Evermist opens, the **DM window** appears. This is the control panel.
 
 1. **Open the player window.** In the right sidebar, under **Player**, click **Open Window**. A second window appears, no buttons - this is what the players see. Drag it to a TV or second monitor, and click **Fullscreen**.
 2. **Load a map.** Drag a map file (JPG, PNG, MP4, or WebM) straight into the DM window. It loads as a new scene and starts fully covered by fog.
-3. **Open up the map.** Pick a tool from the top toolbar and reveal what the party can see:
+3. **Open up the map.** Pick a tool from the bottom toolbar and reveal what the party can see:
    - **Brush** - wipes fog away by hand (size changes with `[` and `]`).
    - **Rectangle / Circle / Polygon** - draw a clean region, handy for rooms and corridors.
    - **Reveal / Shroud** - sets whether a shape uncovers an area or hides it again (for example, to close a door behind the party).
