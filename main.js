@@ -13,11 +13,43 @@ if (portableDir) {
   app.setPath('userData', path.join(portableDir, 'evermist-data'));
 }
 
+// Window/taskbar icon for `npm start` (dev). In packaged builds the OS uses the
+// icon embedded in the .exe/.app by electron-builder, so a missing file here is
+// harmless — fall back to undefined rather than pointing at a non-existent path.
+const devIcon = path.join(__dirname, 'build', 'icon.png');
+const windowIcon = fs.existsSync(devIcon) ? devIcon : undefined;
+
+function createSplashWindow() {
+  const splash = new BrowserWindow({
+    width: 440,
+    height: 320,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    resizable: false,
+    movable: false,
+    center: true,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    show: false,
+    icon: windowIcon,
+  });
+  splash.setMenu(null);
+  splash.loadFile('splash.html');
+  splash.once('ready-to-show', () => splash.show());
+  return splash;
+}
+
 function createDMWindow() {
+  const splash = createSplashWindow();
+  const splashShownAt = Date.now();
+
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
     title: 'Evermist',
+    icon: windowIcon,
+    show: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -28,6 +60,23 @@ function createDMWindow() {
   win.setMenu(null);
   win.loadFile('index.html');
 
+  // Hand off from splash to the app once the renderer has painted. Keep the splash
+  // up for a brief minimum so it reads as a branded intro rather than a flash, and
+  // cap it so a slow init can never leave the splash hanging.
+  const MIN_SPLASH_MS = 1000;
+  let handedOff = false;
+  const handOff = () => {
+    if (handedOff) return;
+    handedOff = true;
+    const wait = Math.max(0, MIN_SPLASH_MS - (Date.now() - splashShownAt));
+    setTimeout(() => {
+      win.show();
+      if (!splash.isDestroyed()) splash.destroy();
+    }, wait);
+  };
+  win.once('ready-to-show', handOff);
+  setTimeout(handOff, 6000); // safety cap
+
   // Allow window.open() in the renderer to create the player BrowserWindow.
   win.webContents.setWindowOpenHandler(() => ({
     action: 'allow',
@@ -35,6 +84,7 @@ function createDMWindow() {
       width: 1200,
       height: 800,
       title: 'Evermist — Player View',
+      icon: windowIcon,
       menuBarVisible: false,
       webPreferences: {
         nodeIntegration: false,

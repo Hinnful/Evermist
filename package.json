@@ -19,8 +19,10 @@
   "build": {
     "appId": "com.evermist.app",
     "productName": "Evermist",
+    "icon": "build/icon.png",
     "files": [
       "index.html",
+      "splash.html",
       "lib/pixi.min.js",
       "renderer.js",
       "fog.js",
