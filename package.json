@@ -3,9 +3,18 @@
   "version": "1.0.0",
   "description": "D&D fog-of-war map viewer for TV display",
   "main": "main.js",
+  "author": "Hinnful",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hinnful/Evermist.git"
+  },
   "scripts": {
     "start": "electron .",
-    "build": "set WIN_CSC_LINK=&& set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win"
+    "build": "set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "release": "electron-builder --publish always"
   },
   "build": {
     "appId": "com.evermist.app",
@@ -22,6 +31,17 @@
     ],
     "win": {
       "target": "portable"
+    },
+    "mac": {
+      "target": {
+        "target": "dmg",
+        "arch": "universal"
+      },
+      "category": "public.app-category.entertainment"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Game"
     }
   },
   "devDependencies": {
