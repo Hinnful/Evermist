@@ -567,6 +567,7 @@ function toolMouseUp(pos, e) {
   if (isDraggingVertex) {
     isDraggingVertex = false;
     vertexDragOrigVerts = null;
+    stopFogTransition();
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
@@ -578,6 +579,7 @@ function toolMouseUp(pos, e) {
   if (isDraggingEdge) {
     isDraggingEdge = false;
     edgeDragOrigVerts = null;
+    stopFogTransition();
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
@@ -590,6 +592,8 @@ function toolMouseUp(pos, e) {
     isDraggingPolygon = false;
     dragOrigVerts = null;
     if (polygonActuallyMoved) {
+      stopFogTransition();
+      startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
       rebuildFogEffect();
       fogDirty = true;
       scheduleRender();
@@ -660,6 +664,7 @@ function toolWindowMouseUp() {
   if (isDraggingVertex) {
     isDraggingVertex = false;
     vertexDragOrigVerts = null;
+    stopFogTransition();
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
@@ -669,6 +674,7 @@ function toolWindowMouseUp() {
   if (isDraggingEdge) {
     isDraggingEdge = false;
     edgeDragOrigVerts = null;
+    stopFogTransition();
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
@@ -679,6 +685,8 @@ function toolWindowMouseUp() {
     isDraggingPolygon = false;
     dragOrigVerts = null;
     if (polygonActuallyMoved) {
+      stopFogTransition();
+      startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
       rebuildFogEffect();
       fogDirty = true;
       scheduleRender();

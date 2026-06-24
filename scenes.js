@@ -48,6 +48,20 @@ function revealPlayer() {
     document.getElementById('scene-fade').classList.remove('dark')), holdMs);
 }
 
+// Called from the switchScene catch block. Shows the error, then reloads the
+// previously-active scene (once only — isRecovery guards against loops).
+function onSwitchSceneError(prevId, isRecovery, err) {
+  alert('Could not load this scene.\n\n' + (err && err.message ? err.message : 'The map file may be missing or damaged.'));
+  if (prevId && !isRecovery) {
+    setTimeout(() => switchScene(prevId, true).catch(err2 => {
+      console.error('Scene recovery also failed:', err2);
+      renderSceneManager();
+    }), 0);
+  } else {
+    renderSceneManager();
+  }
+}
+
 function scheduleAutoSave() {
   if (!currentScene) return;
   clearTimeout(autoSaveTimer);
