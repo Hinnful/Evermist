@@ -96,7 +96,7 @@ function distPointToSegment(px, py, ax, ay, bx, by) {
 // This lets the DM start a new polygon inside an existing one without accidentally
 // selecting the existing one.
 function findPolygonHandleAt(mapX, mapY) {
-  const hitRadius = 10 / zoom;
+  const hitRadius = Math.min(10 / zoom, 30); // clamp: ≤30 map-units so grab shrinks when very zoomed out
   for (let i = polygons.length - 1; i >= 0; i--) {
     const poly = polygons[i];
     const verts = poly.vertices;
@@ -118,7 +118,7 @@ function getCentroid(verts) {
 }
 
 function findVertexAt(poly, mapX, mapY) {
-  const hitR = 10 / zoom;
+  const hitR = Math.min(10 / zoom, 30); // clamp: matches findPolygonHandleAt
   for (let i = 0; i < poly.vertices.length; i++) {
     if (Math.hypot(mapX - poly.vertices[i].x, mapY - poly.vertices[i].y) < hitR) return i;
   }
@@ -500,11 +500,18 @@ function toolMouseMove(pos, e, screenX, screenY) {
   if (isDraggingVertex && selectedPolygonId != null) {
     const poly = polygons.find(p => p.id === selectedPolygonId);
     if (poly && selectedVertexIndex >= 0 && selectedVertexIndex < poly.vertices.length) {
-      poly.vertices[selectedVertexIndex] = { x: pos.x, y: pos.y };
-      rebuildFogFromPolygons();
+      const n    = poly.vertices.length;
+      const prev = poly.vertices[(selectedVertexIndex - 1 + n) % n];
+      const next = poly.vertices[(selectedVertexIndex + 1) % n];
+      const VERT_EPSILON = 0.5; // map units — prevents coincident/zero-length edges
+      if (Math.hypot(pos.x - prev.x, pos.y - prev.y) >= VERT_EPSILON &&
+          Math.hypot(pos.x - next.x, pos.y - next.y) >= VERT_EPSILON) {
+        poly.vertices[selectedVertexIndex] = { x: pos.x, y: pos.y };
+        rebuildFogFromPolygons();
+        fogDirty = true;
+        scheduleRender();
+      }
       drawCursor(screenX, screenY);
-      fogDirty = true;
-      scheduleRender();
     }
     return;
   }

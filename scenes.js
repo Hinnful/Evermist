@@ -40,6 +40,14 @@ function loadFogFromScene(scene) {
   });
 }
 
+// Remove #scene-fade.dark after enforcing a minimum visible duration (SCENE_FADE_MIN_MS).
+// Defers one RAF frame so PixiJS has rendered the fogged scene before the cover lifts.
+function revealPlayer() {
+  const holdMs = Math.max(0, SCENE_FADE_MIN_MS - (Date.now() - _sceneFadeStart));
+  setTimeout(() => requestAnimationFrame(() =>
+    document.getElementById('scene-fade').classList.remove('dark')), holdMs);
+}
+
 function scheduleAutoSave() {
   if (!currentScene) return;
   clearTimeout(autoSaveTimer);

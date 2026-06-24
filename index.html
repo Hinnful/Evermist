@@ -1020,6 +1020,7 @@
 </style>
 </head>
 <body>
+<script>if (new URLSearchParams(location.search).get('mode') === 'player') document.body.classList.add('player-mode');</script>
 
 <!-- TOOLS WRAPPER (bottom-center, stacks brush panel above toolbar) -->
 <div id="tools-wrapper">
@@ -3304,6 +3305,7 @@ if (isPlayer) {
     if (msg.type === 'scene-transition') {
       if (msg.phase === 'out') {
         document.getElementById('scene-fade').classList.add('dark');
+        _sceneFadeStart = Date.now();
         if (msg.sceneName) {
           const nameEl = document.getElementById('scene-fade-name');
           if (nameEl) nameEl.textContent = msg.sceneName;
@@ -3339,6 +3341,7 @@ if (isPlayer) {
       const fade = document.getElementById('scene-fade');
       fade.style.transition = 'none';
       fade.classList.add('dark');
+      _sceneFadeStart = Date.now();
       void fade.offsetWidth;        // force reflow so the instant black "sticks"
       fade.style.transition = '';   // restore so revealPlayer's removal animates
     }
@@ -3365,9 +3368,7 @@ if (isPlayer) {
       if (nameEl) nameEl.textContent = msg.sceneName;
     }
 
-    // Defer one frame: ensures PixiJS has rendered the fogged scene before the fade lifts.
-    const revealPlayer = () => requestAnimationFrame(() =>
-      document.getElementById('scene-fade').classList.remove('dark'));
+    // revealPlayer() is defined in scenes.js — enforces SCENE_FADE_MIN_MS floor then lifts the cover.
 
     // skipTransition: scene switches must not blend old fog into new — show new state directly.
     const loadFog = (src, skipTransition) => new Promise(resolve => {
@@ -3590,7 +3591,7 @@ document.addEventListener('keydown', e => {
     case 'v': setShape('select'); break;
     case 'n': document.getElementById('btn-snap').click();   break;
     case 'g': document.getElementById('btn-grid').click();   break;
-    case 'a': toggleFogAnim(); break;
+    case 'a': document.getElementById('btn-anim').click(); break;
     case 'f': if (mapOffscreen) { fitToScreen(); viewportDirty = true; scheduleRender(); } break;
     case 'Delete':
       if (shape === 'select' && selectedPolygonId != null && selectedVertexIndex >= 0) {
