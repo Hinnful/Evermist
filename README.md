@@ -10,28 +10,48 @@ An app for D&D: puts maps on a TV and adds **fog of war** that can be wiped away
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-7c6fb0)](../../releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Everything runs locally - one window stays on the laptop, the other goes out to a TV or projector for the players. The dungeon opens up gradually, as the party explores.
+Everything runs locally - one window stays on your laptop, the other goes out to a TV or projector for the players. The dungeon opens up gradually, as the party explores.
 
-> **IMPORTANT: this is not a full VTT.** No tokens, no initiative tracker, no dice. Evermist does one thing - show a map and hide parts of it. But it does that part beautifully.
+> **This is not a full VTT.** No tokens, no initiative tracker, no dice. Evermist does one thing - show a map and hide parts of it. But it does that part beautifully.
 
-## Features
+## What you can do
 
-- **Two screens, in sync.** A DM window and a clean player window (no buttons, no cursor) for the TV.
-- **Living fog of war.** Soft, with animated clouds, not a flat black fill. Wiped away with a brush, or set reveal and hide regions as separate shapes that can be edited later.
-- **Grid.** Type (squares or hexes), size, offset, color, and opacity are all adjustable.
-- **Static and animated maps.** Supports JPG/PNG, or animated MP4/WebM maps (for example, from Dungeon Alchemist).
-- **Scenes.** Save several maps and switch between them mid-game, with a smooth transition.
-- **Big maps.** Runs smoothly even on 10000×6000 maps.
+### Run two screens in sync
 
-## See it in action
+You get a DM window with all the controls, and a clean player window with no buttons and no cursor, just the map. Drag the player window to a TV or projector, hit fullscreen, and your players see only what you want them to.
 
-**Animated maps** - video maps (water, torchlight) play live under the fog.
+Reveal a room on your laptop and it shows up on the TV instantly. Or switch to Manual mode, prep the next reveal in private, and push it with one button when the party walks through the door.
+
+### Wipe away living fog of war
+
+The fog is soft, with slowly drifting clouds, not a flat black fill. You uncover the map however suits the moment:
+
+- **Brush** - wipe fog away by hand as the party moves.
+- **Rectangle, Circle, Polygon** - carve out clean rooms and corridors in one stroke.
+- **Reveal or Shroud** - a shape can uncover an area or hide it again, to close a door behind the party or drop them back into the dark.
+- **Select** - every shape stays editable, so you can move or delete a reveal later.
+
+![Drawing reveal and shroud regions](assets/tools.gif)
+
+### Maps that move
+
+Drop in an animated map (MP4 or WebM, like an export from Dungeon Alchemist) and the water shimmers and the torches flicker, all of it playing live under the fog.
 
 ![Animated map playing under the fog](assets/animated-map.gif)
 
-**Shape tools** - carve out clean rooms with rectangle, circle, and polygon reveals.
+### Match the grid to your map
 
-![Drawing reveal and shroud regions](assets/tools.gif)
+Switch between squares and hexes, then dial in size, offset, color, and opacity until it lines up with the map's own grid.
+
+### Switch scenes mid-game
+
+Save several maps and swap between them on the fly, with a smooth fade. The party leaves the tavern, the screen dissolves, and the dungeon fades in, all without breaking the mood.
+
+### Built for big maps
+
+Even a 10000×6000 map pans and zooms smoothly. Load the detailed stuff and don't think about it.
+
+> **Tip:** press `?` in the DM window any time for the full list of keyboard shortcuts.
 
 ## Download
 
@@ -43,32 +63,17 @@ Grab the latest version from [**Releases**](../../releases/latest):
 | macOS | `Evermist-<version>.dmg` | Universal (Intel and Apple Silicon) |
 | Linux | `Evermist-<version>.AppImage` | Make the file executable, then run |
 
-### First launch
+Evermist is free and not code-signed (signing certificates cost money), so your OS shows a one-time security warning the first time you open it. It's harmless, here's how to get past it.
 
-On first launch the OS shows a one-time security warning. Evermist is free and **not code-signed** - signing certificates cost money.
+<details>
+<summary>Getting past the first-launch warning</summary>
 
 - **Windows:** if "Windows protected your PC" appears, click "More info", then "Run anyway".
 - **macOS:** if "Evermist can't be opened because Apple cannot check it…" appears, right-click the app, choose "Open", then "Open" again in the dialog. (A normal double-click won't offer this the first time.)
 - **Linux:** make the AppImage executable (`chmod +x Evermist-*.AppImage`, or Properties → Permissions → Allow executing file as program), then run it as usual.
 
-The OS remembers the choice, so this only happens once.
-
-## Getting started
-
-When Evermist opens, the **DM window** appears. This is the control panel.
-
-1. **Open the player window.** In the right sidebar, under **Player**, click **Open Window**. A second window appears, no buttons - this is what the players see. Drag it to a TV or second monitor, and click **Fullscreen**.
-2. **Load a map.** Drag a map file (JPG, PNG, MP4, or WebM) straight into the DM window. It loads as a new scene and starts fully covered by fog.
-3. **Open up the map.** Pick a tool from the bottom toolbar and reveal what the party can see:
-   - **Brush** - wipes fog away by hand (size changes with `[` and `]`).
-   - **Rectangle / Circle / Polygon** - draw a clean region, handy for rooms and corridors.
-   - **Reveal / Shroud** - sets whether a shape uncovers an area or hides it again (for example, to close a door behind the party).
-   - **Select (V)** - move, edit, and delete existing regions.
-4. **Set up the grid.** In the **Grid** section on the right, switch the grid type (squares or hexes) and match the size and offset to the map's grid.
-5. **Send it to the TV.** With **Auto** on (Player section), every change shows up on the player screen right away. For manual control - turn Auto off and hit **Send ▶** (or `Space`) when it's time to reveal the next room. The **Sync View** button matches the player's camera to the DM's.
-6. **Switch maps mid-game.** In the **Scenes** panel, save several maps and switch between them with a smooth fade. Handy when the party moves from the tavern to the dungeon without breaking the mood.
-
-> **Tip:** the `?` key in the DM window shows the full list of keyboard shortcuts.
+The OS remembers your choice, so this only happens once.
+</details>
 
 ## Running from source
 
@@ -95,7 +100,7 @@ The map files (`.webm` / `.mp4`) and the app's data folder aren't part of the re
 
 ## Architecture
 
-Curious how the fog rendering or the two-window sync works? The full architecture walkthrough is in [CLAUDE.md](CLAUDE.md).
+Curious how the fog rendering or the two-window sync works? See [ARCHITECTURE.md](ARCHITECTURE.md) for a plain-language walkthrough.
 
 ## License
 
