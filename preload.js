@@ -17,4 +17,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('video-save-progress', handler);
     return () => ipcRenderer.removeListener('video-save-progress', handler);
   },
+
+  showSaveDialog: (opts) => ipcRenderer.invoke('show-save-dialog', opts),
+  showOpenDialog: (opts) => ipcRenderer.invoke('show-open-dialog', opts),
+  createBackupZip: (destPath, scenesData) => ipcRenderer.invoke('create-backup-zip', destPath, scenesData),
+  readBackupManifest: (zipPath) => ipcRenderer.invoke('read-backup-manifest', zipPath),
+  extractBackupScenes: (zipPath, assignments) => ipcRenderer.invoke('extract-backup-scenes', zipPath, assignments),
+  onBackupProgress: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('backup-progress', handler);
+    return () => ipcRenderer.removeListener('backup-progress', handler);
+  },
 });
