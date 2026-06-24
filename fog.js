@@ -34,7 +34,7 @@ let cloudCanvas = null, cloudPattern = null;
 // ─── Fog Animation ────────────────────────────────────────────────────────────
 let fogAnimEnabled = false;
 let fogAnimSpeed   = 1.0;
-let fogAnimRafId   = null;
+// fogAnimRafId lives in state.js (fog RAF lifecycle handle)
 let fogAnimOffsets = CLOUD_PASSES.map(() => ({ x: 0, y: 0 }));
 let fogAnimAlphas  = CLOUD_PASSES.map(p => p.alpha);
 let fogAnimTime    = 0;
@@ -55,7 +55,7 @@ let fogTransBlurNext    = null; // saved new-blur target for Player PixiJS per-f
 let fogTransBlendCanvas = null; // pre-allocated scratch for player blend pass
 let fogTransT           = 0;   // 0→1 during transition
 let fogTransStart       = 0;
-let fogTransRafId       = null;
+// fogTransRafId lives in state.js (fog RAF lifecycle handle)
 let fogTransIsShroud    = false;
 
 // ─── Rounded polygon path ─────────────────────────────────────────────────────
@@ -641,8 +641,16 @@ function stopFogAnim() {
 // (fog appears) because we interpolate the fog-density canvases, not display pixels.
 
 function startFogTransition(isShroud = false) {
-  fogTransIsShroud  = isShroud;
-  fogTransBlurNext  = null; // reset so fogTransTick captures fresh fogBlurCanvas on next tick
+  fogTransIsShroud = isShroud;
+  fogTransBlurNext = null; // reset so fogTransTick captures fresh fogBlurCanvas on next tick
+
+  // If a transition is already running, leave it going. rebuildFogEffect() (called by
+  // the caller right after this) will update fogBlurCanvas to include the new reveal,
+  // and the live RAF naturally picks that up as its new target — no snapshot needed.
+  // This avoids the snap (where the first reveal jumped to completion) without
+  // requiring a canvas blend that breaks due to source-over compositing on fog alpha.
+  if (fogTransRafId !== null) return;
+
   if (usePixi && !isPlayer) {
     // DM GPU path: snapshot blur canvas for sprite crossfade
     fogTransPrev = fogBlurCanvas ? cloneCanvas(fogBlurCanvas) : null;
@@ -702,4 +710,16 @@ function fogTransTick(ts) {
       scheduleRender();
     }
   }
+}
+
+// Abort an in-flight transition and release its snapshot canvases. Mirrors
+// stopFogAnim. Called on scene switch / window close so a crossfade from the
+// outgoing scene can't keep ticking against orphaned snapshots.
+function stopFogTransition() {
+  if (fogTransRafId) { cancelAnimationFrame(fogTransRafId); fogTransRafId = null; }
+  fogTransPrev     = null;
+  fogTransBlurPrev = null;
+  fogTransBlurNext = null;
+  fogTransT        = 0;
+  if (usePixi && !isPlayer) pixiEndFogTransition();
 }
