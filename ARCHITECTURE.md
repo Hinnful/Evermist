@@ -25,12 +25,16 @@ separately and stacked on top.
 
 | File | What it does |
 |------|--------------|
-| `index.html` | The entry point. Holds shared state, the render loop, all the UI wiring, the window-to-window sync, and scene management. (Historically oversized — it's being broken into smaller files over time.) |
+| `index.html` | The entry point. Holds the render loop, most UI wiring, and the window-to-window sync. (Historically oversized — it's being broken into smaller files over time, so the rows below keep growing.) |
 | `renderer.js` | The PixiJS/WebGL wrapper. The GPU drawing path for the map and the DM's fog. |
 | `fog.js` | Everything fog: the canvases that store what's hidden, the blur + cloud-texture math, and the reveal/hide logic. |
 | `tools.js` | The drawing tools — brush, rectangle, circle, polygon — and polygon editing. |
+| `scenes.js` | Scene switching, loading, and the auto-save logic that sits above the database layer. |
+| `viewport.js` | Pan, zoom, and pushing the camera to the player window. |
+| `state.js` | Shared values that several files need (loaded first so they exist before anything reads them). |
+| `backup.js` | The export/restore-to-zip feature (see "Backing up your maps" below). |
 | `sceneStore.js` | Saving and loading scenes to the browser's local database (IndexedDB). |
-| `main.js` / `preload.js` | The Electron shell — creates the windows, handles saving video files to disk. |
+| `main.js` / `preload.js` | The Electron shell — creates the windows, handles saving video files to disk, and reads/writes backup zips. |
 
 ## How the fog works
 
@@ -75,6 +79,21 @@ The DM window is the boss; the Player window just follows.
   with the **Send** button when the party is ready.
 - **Sync View** snaps the player's camera to match the DM's. The player camera
   also smoothly glides (lerps) to new positions rather than jumping.
+
+## Backing up your maps
+
+Everything you make lives in the browser's local database and (for video maps) on
+disk next to the app. That's great for speed but it's tied to one machine, so
+there's a backup feature for moving between PCs or keeping a safe copy.
+
+- **Export** bundles the scenes you pick into a single `.zip` - the fog, the
+  polygons, the thumbnails, and the actual map/video files, all in one place.
+- **Restore** reads that zip back in and merges it into your current library
+  rather than overwriting it. If a name already exists you get a "Name (2)" style
+  rename instead of a clash, so importing the same backup twice is safe.
+
+The zip reading and writing happens in the Electron shell (`main.js`), driven by
+the `backup.js` module on the page.
 
 ## Why it's built this way
 
