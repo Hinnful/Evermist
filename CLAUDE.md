@@ -41,19 +41,41 @@ First release: `v1.0.0`, all three installers built and verified working (2026-0
 - postMessage for DM → Player sync (works on `file://` in Chrome with the flag above)
 - Electron wrapper for desktop packaging (Windows `.exe`, macOS `.dmg`, Linux `AppImage`) — core app is identical to browser version. See "Distribution & releases".
 
+## Code organization (READ BEFORE ADDING ANY FEATURE)
+
+The inline `<script>` in `index.html` is an oversized blob (~2400+ lines) inherited from an earlier era. **It is being actively dissolved, not extended.** Treat it as legacy, not as the home for new work.
+
+Hard rules — these override convenience, and "it's easier to just add it to the inline script" is never a valid reason:
+
+- **Never add new feature logic to the inline script in `index.html`.** A new concern gets a **new `.js` file**. The entry script is for wiring modules together and kicking off init — nothing else, long-term.
+- **Migrate-on-touch.** When you modify a concern that still lives in the inline blob, extract *that concern* (and only that concern) into its own module as the first half of the change, then build the new behavior in the clean module. Do not extract unrelated code in the same change.
+- **Shared mutable state has one home: `state.js`.** Today state is scattered as top-level globals in the inline script. When a feature touches a piece of state, move *that piece* into `state.js` and reference it from there. Grow `state.js` lazily — never attempt to move all globals at once.
+- **No big-bang refactors.** Never schedule or perform a standalone "refactor the blob" pass. The blob shrinks only as a byproduct of normal feature work under the rules above. If a task is purely cosmetic file-shuffling with no feature attached, stop and confirm with the user first.
+- **Target module map** (where extracted concerns should land — create these as needed, don't pre-build empty ones): `state.js` (shared state), `viewport.js` (pan/zoom/sync-view), `grid.js` (grid config + render), `input.js` (mouse/keyboard/drag-drop), `scenes.js` (scene load/switch/transition, above the existing `sceneStore.js` IDB layer), `video.js` (animated-map handling). `fog.js` and `tools.js` already exist — extend them, don't duplicate their concerns elsewhere.
+- **Testability follows from decoupling, not file count.** `fog.js` is already a separate file but is untestable because it reaches into globals defined in the inline script. The win that unlocks fog regression tests is moving fog's state into `state.js` / passing it explicitly — not merely cutting files. Prioritize accordingly when fog work comes up.
+
+Mechanics that constrain all of the above (do not violate): no ES modules (`import`/`export` break on `file://`), plain `<script src>` only, load order matters (declarations must precede use at init), and **every new `.js` file must be added to `package.json` `build.files`** or it won't ship in the Electron package.
+
 ## Architecture
 
-Code is split across four files loaded via plain `<script>` tags. Global scope sharing: `let`/`const` at top level of a non-module script live in the global lexical environment and are accessible to all later scripts. Function bodies are lazily evaluated, so fog.js and tools.js functions can reference variables declared in the inline script (which loads last).
+Code is split across five browser scripts (plus the bundled PixiJS library) loaded via plain `<script>` tags. Global scope sharing: `let`/`const` at top level of a non-module script live in the global lexical environment and are accessible to all later scripts. Function bodies are lazily evaluated, so fog.js and tools.js functions can reference variables declared in the inline script (which loads last).
 
 **Load order** (critical — declarations must precede their use at initialization time):
 ```html
-<script src="fog.js"></script>         <!-- FOG_SCALE, fog canvases, buildRoundedPolyPath, renderFog, etc. -->
-<script src="tools.js"></script>       <!-- tool state, flushBrushOps, toolMouseDown/Move/Up, etc. -->
-<script src="sceneStore.js"></script>  <!-- IndexedDB scene persistence -->
-<script>/* inline */</script>          <!-- shared state, render loop, UI handlers, player sync, scenes, init -->
+<script src="lib/pixi.min.js"></script> <!-- PixiJS (WebGL) vendor library -->
+<script src="renderer.js"></script>      <!-- PixiJS wrapper: pixiSetMap, pixiUpdateMapTexture, GPU fog layers, etc. -->
+<script src="fog.js"></script>           <!-- FOG_SCALE, fog canvases, buildRoundedPolyPath, renderFog, etc. -->
+<script src="tools.js"></script>         <!-- tool state, flushBrushOps, toolMouseDown/Move/Up, etc. -->
+<script src="sceneStore.js"></script>    <!-- IndexedDB scene persistence -->
+<script>/* inline */</script>            <!-- shared state, render loop, UI handlers, player sync, scenes, init -->
 ```
 
 ```
+renderer.js (~400 lines) — PixiJS (WebGL) wrapper; the GPU render path
+  ├── Lifecycle: initPixiRenderer, pixiSetMap, pixiSetViewport, pixiResize, pixiHideMap/pixiShowMap
+  ├── Map texture: pixiUpdateMapTexture, pixiStartVideoTextureSync/pixiStopVideoTextureSync, pixiGetMaxTexSize, pixiClampCanvas, pixiRefreshProxy
+  └── DM GPU fog layers: pixiFogBlur*, pixiFogCloud* (TilingSprites), pixiFogData*/brush sprite, pixiFogTrans* (SpriteMaskFilter compositing)
+
 fog.js (~470 lines)
   ├── Constants: FOG_SCALE, FOG_BLUR_RADIUS, FOG_OPACITY_DM, FOG_FEATHER_RADIUS, FOG_EDGE_MARGIN, FOG_REVEAL_MS, CLOUD_PASSES
   ├── Runtime override: `fogFeatherRadius` (let, initially = FOG_FEATHER_RADIUS) — overridden by the Feather slider in the DM's advanced Fog panel (0–24 px at fog scale). `getScaledFeatherRadius()` uses this instead of the constant.
@@ -78,7 +100,7 @@ sceneStore.js (~95 lines)
   └── IndexedDB wrapper: initSceneDB, saveScene, loadScene, deleteScene, listScenes.
         DB name: 'evermist', store: 'scenes'.
 
-index.html (inline script ~1900 lines)
+index.html (inline script ~2400+ lines — LEGACY BLOB, being dissolved; see "Code organization")
   ├── State: mapBitmap, mapOffscreen, mapVideo, mapVideoBlob, zoom/panX/panY, polygons, undoStack/redoStack
   ├── 4 stacked CSS canvases (map, fog, grid, cursor)
   ├── Dirty flags: viewportDirty, mapDirty, fogDirty, gridDirty
@@ -136,16 +158,16 @@ Accepts MP4 (H.264) and WebM (VP8/VP9) alongside static images. The `<video>` el
 
 1. `fogDataCanvas` (offscreen, 1/4 scale) — the data layer. `#1a1a2e` = hidden, transparent = revealed.
 2. `applyPolygonToFog` reveal pipeline: draw polygon on scratch → blur → cloud erosion (`destination-out`) → **inward clip (`destination-in`)** → `fogDataCtx destination-out` → hard interior clear. The `destination-in` step (added 2026-06-22) clips the blurred scratch back to the polygon shape so the soft edge fades inward only — prevents outward bleed into adjacent rooms. `fogFeatherRadius` controls blur radius (live slider, 0–24).
-4. `rebuildFogBlur()` runs on mouseup / tool completion (not every frame):
+3. `rebuildFogBlur()` runs on mouseup / tool completion (not every frame):
    - Draws `fogDataCanvas` into `fogBlurCanvas` (padded) with `ctx.filter = 'blur(4px)'`. 4px at 1/4 scale ≈ 16px at full res.
-5. `recompositeCloudEffect(offsets)` — cheap per-frame operation during animation:
+4. `recompositeCloudEffect(offsets)` — cheap per-frame operation during animation:
    - Composites cloud texture over the blur result via 3 passes at different scales/rotations using `source-atop`.
-6. Cloud texture: Perlin turbulence with prime-number grid sizes for seamless wrapping. Generated as a set of animation frames via `generateCloudFrames(512, CLOUD_FRAME_COUNT)`, cross-faded over time. Dark navy/purple color range.
-7. `renderFog(vp)` blits from `fogEffectCanvas` (cached). During active brushing, falls back to raw `fogDataCanvas` so DM sees live strokes.
-8. DM view: fog CSS opacity 0.55 (see-through). Player view: 1.0 (fully opaque).
-9. Fog color: `#1a1a2e` (dark navy), not pure black.
-10. **Fog animation**: drifting cloud effect. RAF loop calls `recompositeCloudEffect` each frame without re-blurring. DM toggle via "Animate" button (`btn-anim`) or `A` key. The toggle button now propagates `fogAnimEnabled` to the Player via `syncAnimToPlayer` (fixed 2026-06-22). **KNOWN BUG (2026-06-22, low priority):** the `A` key shortcut for the animate toggle is broken — `toggleFogAnim()` is declared inside the `if (!isPlayer)` block; the top-level `keydown` handler cannot reliably call it via sloppy-mode hoisting. User confirmed they don't use keyboard shortcuts, so this is low priority. Fix: move `toggleFogAnim` to true global scope or delegate the A key to `btn-anim.click()`.
-11. **Fog transition**: 700ms smoothstep crossfade on reveal AND shroud. Uses `lighter` blend mode for linear lerp at 1/4 scale.
+5. Cloud texture: Perlin turbulence with prime-number grid sizes for seamless wrapping. Generated as a set of animation frames via `generateCloudFrames(512, CLOUD_FRAME_COUNT)`, cross-faded over time. Dark navy/purple color range.
+6. `renderFog(vp)` blits from `fogEffectCanvas` (cached). During active brushing, falls back to raw `fogDataCanvas` so DM sees live strokes.
+7. DM view: fog CSS opacity 0.55 (see-through). Player view: 1.0 (fully opaque).
+8. Fog color: `#1a1a2e` (dark navy), not pure black.
+9. **Fog animation**: drifting cloud effect. RAF loop calls `recompositeCloudEffect` each frame without re-blurring. DM toggle via "Animate" button (`btn-anim`) or `A` key. The toggle button now propagates `fogAnimEnabled` to the Player via `syncAnimToPlayer` (fixed 2026-06-22). **KNOWN BUG (2026-06-22, low priority):** the `A` key shortcut for the animate toggle is broken — `toggleFogAnim()` is declared inside the `if (!isPlayer)` block; the top-level `keydown` handler cannot reliably call it via sloppy-mode hoisting. User confirmed they don't use keyboard shortcuts, so this is low priority. Fix: move `toggleFogAnim` to true global scope or delegate the A key to `btn-anim.click()`.
+10. **Fog transition**: 700ms smoothstep crossfade on reveal AND shroud. Uses `lighter` blend mode for linear lerp at 1/4 scale.
 
 ## Fog state architecture
 
