@@ -800,6 +800,130 @@
     flex-shrink: 0;
   }
   body.player-mode #panel-scenes { display: none !important; }
+  #panel-scenes-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .btn-backup {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 5px 6px;
+    border-radius: 8px;
+    border: 1px solid rgba(130, 80, 240, 0.22);
+    background: rgba(40, 20, 80, 0.35);
+    color: #9888c8;
+    cursor: pointer;
+    transition: background 0.14s, color 0.14s;
+    font-family: system-ui, -apple-system, sans-serif;
+    white-space: nowrap;
+  }
+  .btn-backup:hover { background: rgba(80, 45, 160, 0.4); color: #d0c8f8; }
+
+  /* ===== BACKUP EXPORT MODAL ===== */
+  #backup-export-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 500;
+  }
+  #backup-export-anchor {
+    position: fixed; inset: 0;
+    z-index: 501;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  #backup-export-modal {
+    zoom: var(--ui-zoom, 1.2);
+    pointer-events: all;
+    position: static;
+    transform: none;
+    width: min(520px, 90vw);
+    max-height: calc(82vh / var(--ui-zoom, 1.2));
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+  #bem-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 10px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(130,80,240,0.15);
+  }
+  #bem-header h3 { font-size: 15px; font-weight: 600; color: #d0c8f8; margin: 0; }
+  #btn-bem-close {
+    background: none !important; border: none !important;
+    color: #6858b0 !important; font-size: 20px !important;
+    cursor: pointer; padding: 2px 7px !important;
+    border-radius: 6px !important; line-height: 1;
+    transition: color 0.12s, background 0.12s !important; width: auto !important;
+  }
+  #btn-bem-close:hover { color: #d0c8f8 !important; background: rgba(120,80,220,0.25) !important; }
+  #bem-controls {
+    display: flex; gap: 6px;
+    padding: 8px 18px;
+    border-bottom: 1px solid rgba(130,80,240,0.1);
+    flex-shrink: 0;
+  }
+  #bem-controls button {
+    font-size: 11px; padding: 4px 10px;
+    border-radius: 7px; border: 1px solid rgba(130,80,240,0.25);
+    background: rgba(40,25,80,0.5); color: #b0a8d0;
+    cursor: pointer; font-family: system-ui, sans-serif;
+    transition: background 0.12s, color 0.12s;
+  }
+  #bem-controls button:hover { background: rgba(80,50,160,0.4); color: #d0c8f8; }
+  #bem-list {
+    overflow-y: auto; flex: 1;
+    padding: 8px 14px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .bem-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 8px; border-radius: 8px; cursor: pointer;
+    border: 1px solid rgba(130,80,240,0.12);
+    background: rgba(20,12,45,0.5);
+    transition: background 0.12s;
+    user-select: none;
+  }
+  .bem-row:hover { background: rgba(55,28,110,0.45); }
+  .bem-cb { width: 15px; height: 15px; accent-color: #9060e0; cursor: pointer; flex-shrink: 0; }
+  .bem-thumb {
+    width: 48px; height: 27px; object-fit: cover;
+    border-radius: 4px; background: #111; flex-shrink: 0;
+  }
+  .bem-name { font-size: 13px; color: #b0a8d0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #bem-footer {
+    padding: 10px 18px 14px; flex-shrink: 0;
+    border-top: 1px solid rgba(130,80,240,0.15);
+    display: flex; gap: 8px;
+  }
+  #btn-bem-export {
+    flex: 1; font-size: 13px; font-weight: 600;
+    padding: 8px 12px; border-radius: 10px;
+    border: 1px solid rgba(130,80,240,0.45);
+    background: rgba(80,40,180,0.45); color: #d0c8f8;
+    cursor: pointer; font-family: system-ui, sans-serif;
+    transition: background 0.14s;
+  }
+  #btn-bem-export:hover:not(:disabled) { background: rgba(100,55,210,0.6); }
+  #btn-bem-cancel {
+    font-size: 13px; padding: 8px 16px; border-radius: 10px;
+    border: 1px solid rgba(130,80,240,0.25);
+    background: rgba(40,25,80,0.4); color: #a098c8;
+    cursor: pointer; font-family: system-ui, sans-serif;
+    transition: background 0.14s, color 0.14s;
+  }
+  #btn-bem-cancel:hover { background: rgba(70,40,130,0.4); color: #d0c8f8; }
 
   /* Modal button base styles */
   #scene-manager button {
@@ -957,6 +1081,16 @@
     <svg class="rp-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8M12 17v4"/></svg>
     Scenes
   </button>
+  <div id="panel-scenes-actions">
+    <button id="btn-backup-export" class="btn-backup" title="Export selected scenes to a .zip backup">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Export
+    </button>
+    <button id="btn-backup-restore" class="btn-backup" title="Restore scenes from a .zip backup">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Restore
+    </button>
+  </div>
 </div>
 
 <!-- Settings panel -->
@@ -1206,6 +1340,26 @@
 </div>
 </div><!-- /#scene-manager-anchor -->
 
+<!-- BACKUP EXPORT MODAL -->
+<div id="backup-export-backdrop" style="display:none"></div>
+<div id="backup-export-anchor">
+<div id="backup-export-modal" class="glass-panel" style="display:none">
+  <div id="bem-header">
+    <h3>Export Backup</h3>
+    <button id="btn-bem-close">✕</button>
+  </div>
+  <div id="bem-controls">
+    <button id="btn-bem-all">Select all</button>
+    <button id="btn-bem-none">Deselect all</button>
+  </div>
+  <div id="bem-list"></div>
+  <div id="bem-footer">
+    <button id="btn-bem-export">Export 0 scenes</button>
+    <button id="btn-bem-cancel">Cancel</button>
+  </div>
+</div>
+</div><!-- /#backup-export-anchor -->
+
 <input type="file" id="file-input" accept="image/*,video/mp4,video/webm" style="display:none">
 
 <script src="lib/pixi.min.js"></script>
@@ -1214,6 +1368,9 @@
 <script src="fog.js"></script>
 <script src="tools.js"></script>
 <script src="sceneStore.js"></script>
+<script src="scenes.js"></script>
+<script src="viewport.js"></script>
+<script src="backup.js"></script>
 <script>
 'use strict';
 
@@ -1270,7 +1427,7 @@ let nextPolygonId = 1;
 // ─── Undo/Redo ────────────────────────────────────────────────────────────────
 let undoStack = [];
 let redoStack = [];
-const MAX_UNDO = 30;
+const UNDO_MAX_BYTES = 120 * 1024 * 1024; // ~8 entries on a 10k×6k map
 
 // ─── Auto-Sync ────────────────────────────────────────────────────────────────
 let autoSync = false;
@@ -1716,8 +1873,11 @@ function pushUndo() {
     polygons: polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
     nextPolygonId,
   });
-  if (undoStack.length > MAX_UNDO) undoStack.shift();
   redoStack = [];
+  while (undoStack.length > 1 &&
+         undoStack.reduce((s, e) => s + e.baseFog.width * e.baseFog.height * 4, 0) > UNDO_MAX_BYTES) {
+    undoStack.shift();
+  }
 }
 
 function restoreState(snapshot) {
@@ -1814,21 +1974,6 @@ function generateThumbnail(bitmap, w, h) {
   return new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
 }
 
-function scheduleAutoSave() {
-  if (!currentScene) return;
-  clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(doAutoSave, 5000);
-}
-
-function doAutoSave() {
-  if (!currentScene || !baseFogCanvas) return;
-  clearTimeout(autoSaveTimer);
-  currentScene.polygons      = polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) }));
-  currentScene.nextPolygonId = nextPolygonId;
-  currentScene.baseFogPNG    = baseFogCanvas.toDataURL('image/png');
-  currentScene.gridConfig    = captureGridConfig();
-  sceneStore.saveScene(currentScene).catch(console.error);
-}
 
 function renderSceneManager() {
   const ids = new Set(allScenes.map(s => s.id));
@@ -1929,7 +2074,7 @@ async function createNewScene(file) {
       mapWidth, mapHeight,
       polygons:      [],
       nextPolygonId: 1,
-      baseFogPNG:    baseFogCanvas ? baseFogCanvas.toDataURL('image/png') : null,
+      baseFogBlob:   await fogToBlob(),
       gridConfig:    captureGridConfig(),
       thumbnail:     thumb,
       createdAt:     Date.now(),
@@ -1972,7 +2117,7 @@ async function replaceSceneMap(file) {
     currentScene.mapType    = isVid ? 'video' : 'image';
     currentScene.mapWidth   = mapWidth;
     currentScene.mapHeight  = mapHeight;
-    currentScene.baseFogPNG = baseFogCanvas ? baseFogCanvas.toDataURL('image/png') : null;
+    currentScene.baseFogBlob = await fogToBlob();
     const thumb = await generateThumbnail(bitmap, mapWidth, mapHeight);
     currentScene.thumbnail = thumb;
     const meta = allScenes.find(s => s.id === currentScene.id);
@@ -2003,6 +2148,7 @@ async function switchScene(id) {
     const destMeta = allScenes.find(s => s.id === id);
     playerWindow.postMessage({ type: 'scene-transition', phase: 'out', sceneName: destMeta ? destMeta.name : null }, '*');
   }
+  try {
   const scene = await sceneStore.loadScene(id);
   if (myGen !== switchGeneration) return;
   if (!scene) { alert('Scene not found.'); return; }
@@ -2099,29 +2245,7 @@ async function switchScene(id) {
     baseFogCanvas.height = fogDataCanvas.height;
     baseFogCtx = baseFogCanvas.getContext('2d');
 
-    await new Promise(resolve => {
-      if (!scene.baseFogPNG) {
-        fogDataCtx.fillStyle = '#1a1a2e';
-        fogDataCtx.fillRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
-        baseFogCtx.fillStyle = '#1a1a2e';
-        baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
-        return resolve();
-      }
-      const img = new Image();
-      img.onload = () => {
-        fogDataCtx.drawImage(img, 0, 0, fogDataCanvas.width, fogDataCanvas.height);
-        baseFogCtx.drawImage(img, 0, 0, baseFogCanvas.width, baseFogCanvas.height);
-        resolve();
-      };
-      img.onerror = () => {
-        fogDataCtx.fillStyle = '#1a1a2e';
-        fogDataCtx.fillRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
-        baseFogCtx.fillStyle = '#1a1a2e';
-        baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
-        resolve();
-      };
-      img.src = scene.baseFogPNG;
-    });
+    await loadFogFromScene(scene);
     if (myGen !== switchGeneration) return;
   } else {
     // Fog canvases created before bitmap await — only needs mapWidth/mapHeight
@@ -2134,32 +2258,10 @@ async function switchScene(id) {
     baseFogCanvas.height = fogDataCanvas.height;
     baseFogCtx = baseFogCanvas.getContext('2d');
 
-    // Decode map bitmap and fog PNG simultaneously
+    // Decode map bitmap and fog simultaneously
     const [bitmap] = await Promise.all([
       createImageBitmap(scene.mapBlob),
-      new Promise(resolve => {
-        if (!scene.baseFogPNG) {
-          fogDataCtx.fillStyle = '#1a1a2e';
-          fogDataCtx.fillRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
-          baseFogCtx.fillStyle = '#1a1a2e';
-          baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
-          return resolve();
-        }
-        const img = new Image();
-        img.onload = () => {
-          fogDataCtx.drawImage(img, 0, 0, fogDataCanvas.width, fogDataCanvas.height);
-          baseFogCtx.drawImage(img, 0, 0, baseFogCanvas.width, baseFogCanvas.height);
-          resolve();
-        };
-        img.onerror = () => {
-          fogDataCtx.fillStyle = '#1a1a2e';
-          fogDataCtx.fillRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
-          baseFogCtx.fillStyle = '#1a1a2e';
-          baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
-          resolve();
-        };
-        img.src = scene.baseFogPNG;
-      }),
+      loadFogFromScene(scene),
     ]);
     if (myGen !== switchGeneration) { bitmap.close(); return; }
 
@@ -2210,6 +2312,15 @@ async function switchScene(id) {
   renderSceneManager();
   if (mapVideo) mapVideo.play().then(() => startVideoLoop()).catch(() => {});
   if (autoSync) setTimeout(() => sendToPlayer(false, true), 150);
+  } catch (err) {
+    if (myGen !== switchGeneration) return;
+    mapOffscreen = null;
+    fogDataCanvas = null; fogDataCtx = null;
+    baseFogCanvas = null; baseFogCtx = null;
+    cleanupVideo();
+    alert('Could not load this scene - the map file may be missing or damaged.');
+    renderSceneManager();
+  }
 }
 
 function startRenameScene(id) {
@@ -2648,6 +2759,8 @@ if (!isPlayer) {
 
   // Scene manager modal
   document.getElementById('btn-scenes').onclick = () => openSceneManager();
+  document.getElementById('btn-backup-export').onclick = () => openExportModal();
+  document.getElementById('btn-backup-restore').onclick = () => doRestore();
   document.getElementById('btn-sm-close').onclick = () => closeSceneManager();
   document.getElementById('scene-manager-backdrop').onclick = () => closeSceneManager();
   document.getElementById('btn-sm-new').onclick = () => { fileInput.click(); };
@@ -3007,29 +3120,7 @@ if (!isPlayer) {
   wireAnimSlider('anim-warp-str', 'anim-warp-num', ANIM_DEFAULTS.warpStr, v => { cloudWarpStrength = v; }, true);
   wireAnimSlider('anim-warp-rad', 'anim-warp-rad-num', ANIM_DEFAULTS.warpRad, v => { cloudWarpRadius = v; }, true);
 
-  // Wire feather slider (integer, linear)
-  {
-    const featherSlider = document.getElementById('fog-feather');
-    const featherNum    = document.getElementById('fog-feather-num');
-    featherSlider.oninput = function() {
-      fogFeatherRadius = +this.value;
-      featherNum.value = this.value;
-      rebuildFogFromPolygons();
-      rebuildFogEffect();
-      fogDirty = true;
-      scheduleRender();
-    };
-    featherNum.onchange = function() {
-      const v = Math.max(0, Math.min(24, Math.round(+this.value)));
-      this.value = v;
-      featherSlider.value = v;
-      fogFeatherRadius = v;
-      rebuildFogFromPolygons();
-      rebuildFogEffect();
-      fogDirty = true;
-      scheduleRender();
-    };
-  }
+  initFogControls();
 
   // Reset button — resets to current preset (or Default if none)
   document.getElementById('btn-anim-reset').onclick = function() {
@@ -3054,24 +3145,22 @@ if (!isPlayer) {
 
   window.addEventListener('message', e => {
     if (!playerWindow || e.source !== playerWindow) return;
-    if (e.data?.type === 'PLAYER_MODE') {
-      playerFollowMode = e.data.mode === 'follow';
+    const msg = e.data;
+    if (!msg) return;
+    if (msg.type === 'PLAYER_READY' || msg.type === 'need-map') {
+      playerMapSent = false;
+      sendToPlayer();
+      return;
+    }
+    if (msg.type === 'PLAYER_MODE') {
+      playerFollowMode = msg.mode === 'follow';
       updatePlayerModeIndicator();
     }
   });
 
-  let playerReadyHandler = null;
   document.getElementById('btn-player').onclick = () => {
     const url = window.location.href.split('?')[0] + '?mode=player';
     playerWindow = window.open(url, 'evermist-player', 'toolbar=no,menubar=no,scrollbars=no');
-    if (playerReadyHandler) window.removeEventListener('message', playerReadyHandler);
-    playerReadyHandler = (e) => {
-      if (e.source === playerWindow && e.data?.type === 'PLAYER_READY') {
-        playerMapSent = false; // always send full payload on fresh player load/reload
-        sendToPlayer();
-      }
-    };
-    window.addEventListener('message', playerReadyHandler);
   };
 
   document.getElementById('btn-send').onclick = sendToPlayer;
@@ -3160,121 +3249,6 @@ if (!isPlayer) {
   })();
 }
 
-// ─── View sync helpers ────────────────────────────────────────────────────────
-
-// Convert a map-center view {mapCX, mapCY, zoom} to absolute {panX, panY, zoom}
-// for the current canvas size. This makes view sync resolution-independent.
-function resolveView(v) {
-  const { w: vpW, h: vpH } = getViewportSize();
-  return {
-    panX: vpW / 2 - v.mapCX * v.zoom,
-    panY: vpH / 2 - v.mapCY * v.zoom,
-    zoom: v.zoom,
-  };
-}
-
-function applyView(v) {
-  const r = resolveView(v);
-  panX = r.panX; panY = r.panY; zoom = r.zoom;
-}
-
-function startViewLerp(target) {
-  viewLerpFrom   = { panX, panY, zoom };
-  viewLerpTo     = { panX: target.panX, panY: target.panY, zoom: target.zoom };
-  viewLerpStart  = performance.now();
-  viewLerpActive = true;
-  requestAnimationFrame(viewLerpTick);
-}
-
-function viewLerpTick(ts) {
-  if (!viewLerpActive) return;
-  const t    = Math.min((ts - viewLerpStart) / VIEW_LERP_MS, 1);
-  const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-  panX = viewLerpFrom.panX + (viewLerpTo.panX - viewLerpFrom.panX) * ease;
-  panY = viewLerpFrom.panY + (viewLerpTo.panY - viewLerpFrom.panY) * ease;
-  zoom = viewLerpFrom.zoom + (viewLerpTo.zoom - viewLerpFrom.zoom) * ease;
-  viewportDirty = true;
-  scheduleRender();
-  if (t < 1) requestAnimationFrame(viewLerpTick);
-  else viewLerpActive = false;
-}
-
-function notifyDMOfMode() {
-  if (window.opener) {
-    window.opener.postMessage({ type: 'PLAYER_MODE', mode: playerFollowDM ? 'follow' : 'freelook' }, '*');
-  }
-}
-
-function updatePlayerModeIndicator() {
-  const btn = document.getElementById('btn-player');
-  if (!btn) return;
-  btn.classList.toggle('player-following', playerFollowMode);
-  btn.classList.toggle('player-freelook',  !playerFollowMode);
-}
-
-// ─── Sync ─────────────────────────────────────────────────────────────────────
-function sendToPlayer(fogOnly = false, sceneChange = false) {
-  if (!mapOffscreen || !fogDataCanvas || !playerWindow || playerWindow.closed) return;
-
-  // Fog is sent at 1/4 scale (native fogDataCanvas size) — much smaller PNG than upscaling.
-  // The player already upscales it via drawImage.
-  const fogDataUrl = fogDataCanvas.toDataURL('image/png');
-
-  // fogOnly=true (Auto-sync): omit view so the player keeps its current pan/zoom.
-  // fogOnly=false (manual Send/Sync): include view so player follows DM viewport.
-  let view;
-  if (!fogOnly) {
-    const { w: vpW, h: vpH } = getViewportSize();
-    view = {
-      mapCX: (vpW / 2 - panX) / zoom,
-      mapCY: (vpH / 2 - panY) / zoom,
-      zoom,
-    };
-  }
-
-  const isShroud   = fogTransIsShroud;
-  // Only trigger a transition on Player when fog actually changed.
-  // Grid toggles, manual Send, etc. set fogTransRafId=null → fogChanged=false → no refresh flash.
-  const fogChanged = fogTransRafId !== null;
-
-  if (!playerMapSent) {
-    const sendMap = (mapUrl, mapType) => {
-      playerWindow.postMessage({
-        type: 'fog-update',
-        mapUrl, mapType, mapWidth, mapHeight, fogDataUrl, view, isShroud, sceneChange, fogChanged,
-        sceneName: currentScene ? currentScene.name : null,
-        gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
-      }, '*');
-      playerMapSent = true;
-    };
-    if (currentScene && currentScene.mapPath && window.electronAPI) {
-      // Filesystem video: send file:// URL — no blob URL, no memory leak.
-      window.electronAPI.getVideoFilePath(currentScene.id).then(absPath => {
-        if (!absPath || !playerWindow || playerWindow.closed) return;
-        sendMap('file:///' + absPath.replace(/\\/g, '/'), 'video');
-      });
-    } else if (mapVideoBlob) {
-      // Browser fallback: send video blob.
-      sendMap(URL.createObjectURL(mapVideoBlob), 'video');
-    } else if (currentScene && currentScene.mapBlob) {
-      sendMap(URL.createObjectURL(currentScene.mapBlob), 'image');
-    } else if (mapOffscreen) {
-      mapOffscreen.toBlob(blob => {
-        if (!playerWindow || playerWindow.closed) return;
-        sendMap(URL.createObjectURL(blob), 'image');
-      }, 'image/jpeg', 0.9);
-    }
-  } else {
-    // Subsequent sends: fog only — no map re-encode.
-    playerWindow.postMessage({
-      type: 'fog-update',
-      mapWidth, mapHeight, fogDataUrl, view, isShroud, sceneChange, fogChanged,
-      sceneName: currentScene ? currentScene.name : null,
-      gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
-    }, '*');
-  }
-}
-
 // Player: receive messages from DM
 if (isPlayer) {
   fogAnimEnabled = true; // player view always animates
@@ -3287,6 +3261,12 @@ if (isPlayer) {
   generateCloudFrames(512, CLOUD_FRAME_COUNT);
 
   if (window.opener) window.opener.postMessage({ type: 'PLAYER_READY' }, '*');
+
+  // Fallback: if the DM doesn't send the map within 4 s (e.g. PLAYER_READY dropped
+  // or the window was reused without re-clicking "Player View"), ask again.
+  let _needMapTimer = setTimeout(() => {
+    if (!mapOffscreen && window.opener) window.opener.postMessage({ type: 'need-map' }, '*');
+  }, 4000);
 
   window.addEventListener('resize', () => {
     syncSize();
@@ -3347,6 +3327,7 @@ if (isPlayer) {
     }
 
     if (msg.type !== 'fog-update') return;
+    clearTimeout(_needMapTimer);
 
     // Don't reveal yet — keep scene-fade dark until map + fog are fully decoded and render is queued.
     // This prevents players from seeing the old scene or a partially-applied fog during the transition.

@@ -108,6 +108,37 @@ function getScaledFeatherRadius() { return Math.max(1, fogFeatherRadius * getFog
 // ─── Fog data operations ──────────────────────────────────────────────────────
 // All coordinates are in MAP space; fogDataCanvas is at 1/FOG_SCALE.
 
+// Returns a copy of `verts` with each vertex moved inward by `dist` units.
+// Uses the edge-bisector formula so the perpendicular inset is exactly `dist`
+// at every edge (handles both CW and CCW winding via the shoelace sign).
+function insetPolygon(verts, dist) {
+  const n = verts.length;
+  if (n < 3 || dist <= 0) return verts;
+  let area2 = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area2 += verts[i].x * verts[j].y - verts[j].x * verts[i].y;
+  }
+  const sign = area2 > 0 ? 1 : -1; // CW in screen space = positive area
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = verts[(i + n - 1) % n], b = verts[i], c = verts[(i + 1) % n];
+    const e1x = b.x - a.x, e1y = b.y - a.y, l1 = Math.hypot(e1x, e1y) || 1;
+    const e2x = c.x - b.x, e2y = c.y - b.y, l2 = Math.hypot(e2x, e2y) || 1;
+    const nx1 = sign * -e1y / l1, ny1 = sign * e1x / l1;
+    const nx2 = sign * -e2y / l2, ny2 = sign * e2x / l2;
+    const bx = nx1 + nx2, by = ny1 + ny2;
+    const denom = bx * nx1 + by * ny1;
+    if (Math.abs(denom) < 0.01) {
+      out.push({ x: b.x + nx2 * dist, y: b.y + ny2 * dist });
+    } else {
+      const s = dist / denom;
+      out.push({ x: b.x + bx * s, y: b.y + by * s });
+    }
+  }
+  return out;
+}
+
 function revealCircle(mx, my, r) {
   const fx = mx / FOG_SCALE, fy = my / FOG_SCALE, fr = r / FOG_SCALE;
   for (const ctx of [fogDataCtx, baseFogCtx]) {
@@ -200,15 +231,19 @@ function applyPolygonToFog(poly) {
     fogDataCtx.globalCompositeOperation = 'destination-out';
     fogDataCtx.drawImage(scratch, bx, by);
     fogDataCtx.restore();
-    // Cloud erosion affects edges but leaves ~17% residue at the interior.
-    // Hard-clear the polygon interior so the revealed area is fully transparent.
-    fogDataCtx.save();
-    fogDataCtx.beginPath();
-    buildRoundedPolyPath(fogDataCtx, fogScaledVerts, crFog, pvRFog);
-    fogDataCtx.clip();
-    fogDataCtx.clearRect(bb.minX / FOG_SCALE - 1, bb.minY / FOG_SCALE - 1,
-                         (bb.maxX - bb.minX) / FOG_SCALE + 2, (bb.maxY - bb.minY) / FOG_SCALE + 2);
-    fogDataCtx.restore();
+    // Cloud erosion leaves ~17% residue in the interior — hard-clear it.
+    // Clip to an inset polygon (shrunk by feather px) so the feathered edge
+    // band is preserved; only the deep interior gets fully cleared.
+    const insetVerts = insetPolygon(fogScaledVerts, feather);
+    if (insetVerts.length >= 3) {
+      fogDataCtx.save();
+      fogDataCtx.beginPath();
+      buildRoundedPolyPath(fogDataCtx, insetVerts, Math.max(0, crFog - feather), null);
+      fogDataCtx.clip();
+      fogDataCtx.clearRect(bb.minX / FOG_SCALE - 1, bb.minY / FOG_SCALE - 1,
+                           (bb.maxX - bb.minX) / FOG_SCALE + 2, (bb.maxY - bb.minY) / FOG_SCALE + 2);
+      fogDataCtx.restore();
+    }
   }
 }
 
@@ -722,4 +757,31 @@ function stopFogTransition() {
   fogTransBlurNext = null;
   fogTransT        = 0;
   if (usePixi && !isPlayer) pixiEndFogTransition();
+}
+
+// ─── Fog controls UI ─────────────────────────────────────────────────────────
+
+function initFogControls() {
+  const featherSlider = document.getElementById('fog-feather');
+  const featherNum    = document.getElementById('fog-feather-num');
+  featherSlider.oninput = function() {
+    fogFeatherRadius = +this.value;
+    featherNum.value = this.value;
+    rebuildFogFromPolygons();
+    rebuildFogEffect();
+    fogDirty = true;
+    scheduleRender();
+    scheduleAutoSync();
+  };
+  featherNum.onchange = function() {
+    const v = Math.max(0, Math.min(24, Math.round(+this.value)));
+    this.value = v;
+    featherSlider.value = v;
+    fogFeatherRadius = v;
+    rebuildFogFromPolygons();
+    rebuildFogEffect();
+    fogDirty = true;
+    scheduleRender();
+    scheduleAutoSync();
+  };
 }
