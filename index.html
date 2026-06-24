@@ -2135,10 +2135,11 @@ async function replaceSceneMap(file) {
   else loadMapFromFile(file, onLoaded);
 }
 
-async function switchScene(id) {
+async function switchScene(id, _isRecovery = false) {
   if (currentScene && currentScene.id === id) return;
   const myGen = ++switchGeneration;
   if (currentScene) doAutoSave();
+  const prevId = currentScene ? currentScene.id : null;
   currentScene = null;
   cleanupVideo();
   // Abort any in-flight reveal/shroud crossfade from the outgoing scene so its
@@ -2152,7 +2153,7 @@ async function switchScene(id) {
   try {
   const scene = await sceneStore.loadScene(id);
   if (myGen !== switchGeneration) return;
-  if (!scene) { alert('Scene not found.'); return; }
+  if (!scene) throw new Error('Scene not found.');
 
   if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
   mapWidth   = scene.mapWidth;
@@ -2178,12 +2179,12 @@ async function switchScene(id) {
     if (scene.mapPath && window.electronAPI) {
       const absPath = await window.electronAPI.getVideoFilePath(scene.id);
       if (myGen !== switchGeneration) return;
-      if (!absPath) { alert('Video file missing from disk.'); return; }
+      if (!absPath) throw new Error('Video file missing — it may have been moved or deleted.');
       mapVideoUrl = 'file:///' + absPath.replace(/\\/g, '/');
     } else if (scene.mapBlob) {
       mapVideoUrl = URL.createObjectURL(scene.mapBlob);
     } else {
-      alert('Video data not found for this scene.'); return;
+      throw new Error('Video data not found for this scene.');
     }
     const video = document.createElement('video');
     video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'auto';
@@ -2313,14 +2314,14 @@ async function switchScene(id) {
   renderSceneManager();
   if (mapVideo) mapVideo.play().then(() => startVideoLoop()).catch(() => {});
   if (autoSync) setTimeout(() => sendToPlayer(false, true), 150);
+  onSceneLoaded(); // viewport.js: flush pending player resync if Player asked while loading
   } catch (err) {
     if (myGen !== switchGeneration) return;
     mapOffscreen = null;
     fogDataCanvas = null; fogDataCtx = null;
     baseFogCanvas = null; baseFogCtx = null;
     cleanupVideo();
-    alert('Could not load this scene - the map file may be missing or damaged.');
-    renderSceneManager();
+    onSwitchSceneError(prevId, _isRecovery, err); // scenes.js
   }
 }
 
@@ -3149,8 +3150,7 @@ if (!isPlayer) {
     const msg = e.data;
     if (!msg) return;
     if (msg.type === 'PLAYER_READY' || msg.type === 'need-map') {
-      playerMapSent = false;
-      sendToPlayer();
+      onPlayerResyncRequest();
       return;
     }
     if (msg.type === 'PLAYER_MODE') {
@@ -3263,11 +3263,7 @@ if (isPlayer) {
 
   if (window.opener) window.opener.postMessage({ type: 'PLAYER_READY' }, '*');
 
-  // Fallback: if the DM doesn't send the map within 4 s (e.g. PLAYER_READY dropped
-  // or the window was reused without re-clicking "Player View"), ask again.
-  let _needMapTimer = setTimeout(() => {
-    if (!mapOffscreen && window.opener) window.opener.postMessage({ type: 'need-map' }, '*');
-  }, 4000);
+  initPlayerMapRetry(); // viewport.js: send need-map to DM, retry until map received
 
   window.addEventListener('resize', () => {
     syncSize();
@@ -3329,7 +3325,7 @@ if (isPlayer) {
     }
 
     if (msg.type !== 'fog-update') return;
-    clearTimeout(_needMapTimer);
+    // (retry loop in initPlayerMapRetry stops itself when mapOffscreen is set — no timer to clear)
 
     // Don't reveal yet — keep scene-fade dark until map + fog are fully decoded and render is queued.
     // This prevents players from seeing the old scene or a partially-applied fog during the transition.

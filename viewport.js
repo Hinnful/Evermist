@@ -50,6 +50,42 @@ function updatePlayerModeIndicator() {
   btn.classList.toggle('player-freelook',  !playerFollowMode);
 }
 
+// ─── Player map-request protocol ─────────────────────────────────────────────
+
+// Deferred player resync: set when the Player requests the map (PLAYER_READY / need-map)
+// but the DM has no scene loaded yet (e.g. mid-scene-switch on a large video). Once the
+// scene finishes loading, onSceneLoaded() flushes the pending request.
+let _playerResyncPending = false;
+
+// Called once during Player init. Sends need-map to the DM, retrying every 5 s
+// (up to 6 attempts, ~34 s total) until mapOffscreen is populated.
+function initPlayerMapRetry() {
+  let attempts = 0;
+  function tryNeedMap() {
+    if (mapOffscreen || !window.opener || attempts >= 6) return;
+    attempts++;
+    window.opener.postMessage({ type: 'need-map' }, '*');
+    setTimeout(tryNeedMap, 5000);
+  }
+  setTimeout(tryNeedMap, 4000);
+}
+
+// Called by the DM message handler instead of setting playerMapSent inline.
+// Sends immediately if mapOffscreen is ready; defers to onSceneLoaded() if not.
+function onPlayerResyncRequest() {
+  _playerResyncPending = true;
+  playerMapSent = false;
+  sendToPlayer();
+}
+
+// Called at the end of a successful switchScene load.
+// If the Player asked for the map while the scene was loading, send it now.
+function onSceneLoaded() {
+  if (!_playerResyncPending) return;
+  _playerResyncPending = false;
+  sendToPlayer();
+}
+
 function sendToPlayer(fogOnly = false, sceneChange = false) {
   if (!mapOffscreen || !fogDataCanvas || !playerWindow || playerWindow.closed) return;
 
