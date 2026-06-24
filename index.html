@@ -1210,6 +1210,7 @@
 
 <script src="lib/pixi.min.js"></script>
 <script src="renderer.js"></script>
+<script src="state.js"></script>
 <script src="fog.js"></script>
 <script src="tools.js"></script>
 <script src="sceneStore.js"></script>
@@ -1994,6 +1995,10 @@ async function switchScene(id) {
   if (currentScene) doAutoSave();
   currentScene = null;
   cleanupVideo();
+  // Abort any in-flight reveal/shroud crossfade from the outgoing scene so its
+  // tick can't keep running against orphaned snapshot canvases. The drifting
+  // anim loop is persistent + idempotent — leave it running across the switch.
+  stopFogTransition();
   if (!isPlayer && playerWindow && !playerWindow.closed) {
     const destMeta = allScenes.find(s => s.id === id);
     playerWindow.postMessage({ type: 'scene-transition', phase: 'out', sceneName: destMeta ? destMeta.name : null }, '*');
@@ -3349,7 +3354,7 @@ if (isPlayer) {
     // immediately by PixiJS) would flash fog-less before the Canvas-2D fog is ready. Cover it the same
     // way a scene switch does — instantly (transition disabled) so the map can't peek during a fade-in.
     // revealPlayer() removes .dark with the normal 0.5s ease once map+fog have rendered.
-    if (!playerMapSent) {
+    if (msg.mapUrl) {
       const fade = document.getElementById('scene-fade');
       fade.style.transition = 'none';
       fade.classList.add('dark');
@@ -3664,7 +3669,11 @@ window.addEventListener('resize', () => {
 
 syncSize();
 
-window.addEventListener('beforeunload', () => { if (!isPlayer) doAutoSave(); });
+window.addEventListener('beforeunload', () => {
+  if (!isPlayer) doAutoSave();
+  stopFogAnim();
+  stopFogTransition();
+});
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     if (!isPlayer) doAutoSave();

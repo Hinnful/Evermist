@@ -35,11 +35,25 @@ const sceneStore = (() => {
     db = await openDB();
   }
 
-  function getStore(mode) {
-    return db.transaction(STORE_NAME, mode).objectStore(STORE_NAME);
+  function getTx(mode) {
+    const tx    = db.transaction(STORE_NAME, mode);
+    const store = tx.objectStore(STORE_NAME);
+    return { tx, store };
   }
 
-  function idbRequest(req) {
+  // Resolves on tx.oncomplete (durable commit) rather than req.onsuccess.
+  // req.onsuccess fires before the transaction commits; if the tx later aborts
+  // (quota exceeded, disk error) the write is lost but the promise already resolved.
+  function idbWrite(req) {
+    return new Promise((resolve, reject) => {
+      req.onerror              = e => reject(e.target.error);
+      req.transaction.onabort  = e => reject(e.target.error);
+      req.transaction.oncomplete = () => resolve();
+    });
+  }
+
+  // Read requests are fine resolving on onsuccess — reads can't be "lost".
+  function idbRead(req) {
     return new Promise((resolve, reject) => {
       req.onsuccess = e => resolve(e.target.result);
       req.onerror   = e => reject(e.target.error);
@@ -47,15 +61,17 @@ const sceneStore = (() => {
   }
 
   async function saveScene(scene) {
-    await idbRequest(getStore('readwrite').put(scene));
+    const { store } = getTx('readwrite');
+    await idbWrite(store.put(scene));
   }
 
   async function loadScene(id) {
-    return idbRequest(getStore('readonly').get(id));
+    return idbRead(getTx('readonly').store.get(id));
   }
 
   async function deleteScene(id) {
-    await idbRequest(getStore('readwrite').delete(id));
+    const { store } = getTx('readwrite');
+    await idbWrite(store.delete(id));
   }
 
   // Returns only lightweight metadata — never the map blob or full fog PNG.

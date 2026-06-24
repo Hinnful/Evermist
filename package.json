@@ -26,6 +26,7 @@
       "splash.html",
       "lib/pixi.min.js",
       "renderer.js",
+      "state.js",
       "fog.js",
       "tools.js",
       "sceneStore.js",
