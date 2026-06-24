@@ -163,6 +163,8 @@ function shroudCircle(mx, my, r) {
 }
 
 // ─── Polygon fog application ──────────────────────────────────────────────────
+// Scratch canvas reused across calls — resize-on-demand instead of allocating per polygon.
+let _fogScratch = null, _fogScratchCtx = null;
 
 function applyPolygonToFog(poly) {
   if (!fogDataCtx || poly.vertices.length < 3) return;
@@ -188,10 +190,10 @@ function applyPolygonToFog(poly) {
     const by = Math.floor(bb.minY / FOG_SCALE) - pad;
     const bw = Math.ceil((bb.maxX - bb.minX) / FOG_SCALE) + pad * 2;
     const bh = Math.ceil((bb.maxY - bb.minY) / FOG_SCALE) + pad * 2;
-    const scratch = document.createElement('canvas');
-    scratch.width  = Math.max(1, bw);
-    scratch.height = Math.max(1, bh);
-    const sCtx = scratch.getContext('2d');
+    if (!_fogScratch) { _fogScratch = document.createElement('canvas'); _fogScratchCtx = _fogScratch.getContext('2d'); }
+    _fogScratch.width  = Math.max(1, bw);  // resize clears the canvas
+    _fogScratch.height = Math.max(1, bh);
+    const scratch = _fogScratch, sCtx = _fogScratchCtx;
     sCtx.filter = `blur(${feather}px)`;
     sCtx.fillStyle = 'white';
     sCtx.beginPath();
@@ -450,7 +452,7 @@ function recompositeCloudEffect(offsets, blurSrc) {
   // visible glow that makes the boundary look luminous rather than geometric.
   fogEffectCtx.save();
   fogEffectCtx.globalCompositeOperation = 'source-atop';
-  fogEffectCtx.globalAlpha = 0.18;
+  fogEffectCtx.globalAlpha = FOG_TINT_ALPHA;
   fogEffectCtx.fillStyle = '#7050e0';
   fogEffectCtx.fillRect(0, 0, w, h);
   fogEffectCtx.restore();
@@ -590,12 +592,13 @@ function fogAnimTick(ts) {
     // When video is active, throttle expensive fog work to ~15fps
     var skipExpensiveWork = videoEnabled && ts < fogAnimThrottleNext;
 
+    const tile = cloudBlendCanvas ? cloudBlendCanvas.width : 512;
     for (let i = 0; i < CLOUD_PASSES.length; i++) {
       const p = CLOUD_PASSES[i];
       const nx = fogAnimOffsets[i].x + p.driftX * driftScale * dt * fogAnimSpeed;
       const ny = fogAnimOffsets[i].y + p.driftY * driftScale * dt * fogAnimSpeed;
-      fogAnimOffsets[i].x = nx;
-      fogAnimOffsets[i].y = ny;
+      fogAnimOffsets[i].x = ((nx % tile) + tile) % tile;
+      fogAnimOffsets[i].y = ((ny % tile) + tile) % tile;
 
       fogAnimAlphas[i] = p.alpha * (1 + alphaPulseAmp * Math.sin(fogAnimTime * p.alphaFreq + p.alphaPhase));
     }

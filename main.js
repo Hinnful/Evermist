@@ -115,9 +115,12 @@ ipcMain.on('toggle-fullscreen', (event) => {
 
 let mapsDir;
 
+function isSafeId(id) { return typeof id === 'string' && /^[0-9a-zA-Z_-]+$/.test(id); }
+
 // --- Video file storage IPC ---
 
 ipcMain.handle('save-video-file', async (event, sourcePath, sceneId, mimeType) => {
+  if (!isSafeId(sceneId)) throw new Error(`Invalid sceneId: ${sceneId}`);
   const ext = mimeType === 'video/mp4' ? '.mp4' : '.webm';
   const destPath = path.join(mapsDir, sceneId + ext);
   const stat = await fs.promises.stat(sourcePath);
@@ -138,6 +141,7 @@ ipcMain.handle('save-video-file', async (event, sourcePath, sceneId, mimeType) =
 });
 
 ipcMain.handle('save-video-blob', async (event, sceneId, arrayBuffer, mimeType) => {
+  if (!isSafeId(sceneId)) throw new Error(`Invalid sceneId: ${sceneId}`);
   const ext = mimeType === 'video/mp4' ? '.mp4' : '.webm';
   const destPath = path.join(mapsDir, sceneId + ext);
   const buffer = Buffer.from(arrayBuffer);
@@ -159,6 +163,7 @@ ipcMain.handle('save-video-blob', async (event, sceneId, arrayBuffer, mimeType) 
 });
 
 ipcMain.handle('get-video-file-path', async (_event, sceneId) => {
+  if (!isSafeId(sceneId)) return null;
   for (const ext of ['.webm', '.mp4']) {
     const filePath = path.join(mapsDir, sceneId + ext);
     try {
@@ -170,6 +175,7 @@ ipcMain.handle('get-video-file-path', async (_event, sceneId) => {
 });
 
 ipcMain.handle('delete-video-file', async (_event, sceneId) => {
+  if (!isSafeId(sceneId)) return;
   for (const ext of ['.webm', '.mp4']) {
     try { await fs.promises.unlink(path.join(mapsDir, sceneId + ext)); } catch {}
   }
@@ -257,10 +263,9 @@ ipcMain.handle('read-backup-manifest', async (_event, zipPath) => {
 // assignments: [{newId, originalId, mapType, mapExt}]
 // Video maps are written to mapsDir/{newId}.ext; all others returned as ArrayBuffers.
 ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
-  const idRe = /^[0-9a-zA-Z_-]{8,}$/;
   for (const a of assignments) {
-    if (!idRe.test(a.newId))      throw new Error(`Invalid newId: ${a.newId}`);
-    if (!idRe.test(a.originalId)) throw new Error(`Invalid originalId: ${a.originalId}`);
+    if (!isSafeId(a.newId))      throw new Error(`Invalid newId: ${a.newId}`);
+    if (!isSafeId(a.originalId)) throw new Error(`Invalid originalId: ${a.originalId}`);
   }
 
   // Map zip entry path → assignment role

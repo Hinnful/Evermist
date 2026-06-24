@@ -2,6 +2,18 @@
 // Loaded BEFORE fog.js so these globals exist when fog functions reference them.
 // Grow this file on-touch (one concern at a time) — never a big-bang move. See CLAUDE.md.
 
+// ─── Fog display constants ────────────────────────────────────────────────────
+// Purple-blue luminosity tint applied over fog on both render paths (Canvas 2D
+// fog.js:recompositeCloudEffect and PixiJS renderer.js:purpleOverlay). Must stay
+// in state.js so it's declared before both fog.js and renderer.js are evaluated.
+const FOG_TINT_ALPHA = 0.18;
+
+// ─── Scene-fade timing ────────────────────────────────────────────────────────
+// Player-side: minimum time the #scene-fade black must stay visible so even fast
+// cached loads feel deliberate rather than a blink.
+const SCENE_FADE_MIN_MS = 1500;
+let   _sceneFadeStart   = 0; // Date.now() snapshot when .dark was last applied
+
 // ─── Fog RAF lifecycle handles ──────────────────────────────────────────────────
 // requestAnimationFrame ids for the two independent fog loops. Held here (not in
 // fog.js) so teardown — stopFogAnim / stopFogTransition — can be reasoned about as

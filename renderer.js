@@ -253,7 +253,7 @@ function pixiInitFog(fogDataCvs, fogBlurCvs, cloudBlendCvs, mapW, mapH) {
     // Purple-blue luminosity tint — replicates the source-atop purple overlay from Canvas 2D path.
     // Being inside the masked container restricts it to fog-opaque pixels automatically.
     const purpleOverlay = new PIXI.Graphics();
-    purpleOverlay.beginFill(0x7050e0, 0.18);
+    purpleOverlay.beginFill(0x7050e0, FOG_TINT_ALPHA);
     purpleOverlay.drawRect(0, 0, mapW, mapH);
     purpleOverlay.endFill();
     pixiFogCloudContainer.addChild(purpleOverlay);
