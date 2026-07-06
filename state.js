@@ -25,6 +25,18 @@ let displayInfo = null;
 const VIDEO_FPS_DEFAULT       = 24;
 let   videoFrameIntervalMs    = 1000 / VIDEO_FPS_DEFAULT;
 
+// ─── Grid config ────────────────────────────────────────────────────────────
+// All eight are `let` — they are reassigned by UI handlers, applyGridConfig,
+// and the postMessage sync block at runtime.
+let gridEnabled   = false;
+let gridSize      = 70;
+let gridOffsetX   = 0;
+let gridOffsetY   = 0;
+let gridColor     = '#ffffff';
+let gridOpacity   = 0.25;
+let gridMode      = 'square'; // 'square' | 'hex-flat' | 'hex-pointy'
+let gridLineWidth = 1;
+
 // ─── Fog RAF lifecycle handles ──────────────────────────────────────────────────
 // requestAnimationFrame ids for the two independent fog loops. Held here (not in
 // fog.js) so teardown — stopFogAnim / stopFogTransition — can be reasoned about as
