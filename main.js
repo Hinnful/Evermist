@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
@@ -61,6 +61,8 @@ function createDMWindow() {
 
   win.setMenu(null);
   win.loadFile('index.html');
+  dmWin = win;
+  win.once('closed', () => { if (dmWin === win) dmWin = null; });
 
   // Hand off from splash to the app once the renderer has painted. Keep the splash
   // up for a brief minimum so it reads as a branded intro rather than a flash, and
@@ -97,13 +99,49 @@ function createDMWindow() {
   }));
 
   // Remove the native menu bar from the player window; menuBarVisible: false
-  // alone doesn't fully strip it on all platforms.
+  // alone doesn't fully strip it on all platforms. Also track it for display pushes.
   win.webContents.on('did-create-window', (childWin) => {
     childWin.setMenu(null);
+    playerWin = childWin;
+    childWin.once('closed', () => {
+      if (playerWin === childWin) playerWin = null;
+      clearTimeout(_playerMovedTimer);
+    });
+    // Push once the renderer is ready to receive IPC messages.
+    childWin.webContents.once('did-finish-load', () => pushPlayerDisplay());
+    // Re-push when the Player window is moved (debounced — fires after drag settles).
+    childWin.on('move', () => {
+      clearTimeout(_playerMovedTimer);
+      _playerMovedTimer = setTimeout(pushPlayerDisplay, 300);
+    });
   });
 }
 
-// Native fullscreen toggle — no user-gesture requirement, bypasses Chromium's
+// ─── Display detection ────────────────────────────────────────────────────────
+// Track both windows so we can push display info to each.
+let dmWin     = null;
+let playerWin = null;
+let _playerMovedTimer = null;
+
+function getDisplayForWindow(win) {
+  if (!win || win.isDestroyed()) return null;
+  const bounds = win.getBounds();
+  const center = { x: bounds.x + Math.floor(bounds.width / 2), y: bounds.y + Math.floor(bounds.height / 2) };
+  return screen.getDisplayNearestPoint(center);
+}
+
+// Push the Player window's display to both the Player and DM renderers.
+// Both need to know the TV's resolution — DM uses it for map sizing (Task 2).
+function pushPlayerDisplay() {
+  if (!playerWin || playerWin.isDestroyed()) return;
+  if (playerWin.isMinimized()) return;
+  const display = getDisplayForWindow(playerWin);
+  if (!display) return;
+  if (!playerWin.isDestroyed()) playerWin.webContents.send('display-info', display);
+  if (dmWin && !dmWin.isDestroyed()) dmWin.webContents.send('display-info', display);
+}
+
+// ─── Native fullscreen toggle — no user-gesture requirement, bypasses Chromium's
 // activation check that blocks renderer requestFullscreen() on non-focused windows.
 ipcMain.on('set-fullscreen', (event, flag) => {
   BrowserWindow.fromWebContents(event.sender)?.setFullScreen(flag);
@@ -343,6 +381,14 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
 app.whenReady().then(() => {
   mapsDir = path.join(app.getPath('userData'), 'maps');
   fs.mkdirSync(mapsDir, { recursive: true });
+
+  // Re-push display info when the user moves/resizes the Player window or the
+  // OS display configuration changes (resolution, scale factor, plugged-in TV).
+  const onDisplayChange = () => pushPlayerDisplay();
+  screen.on('display-added',   onDisplayChange);
+  screen.on('display-removed', onDisplayChange);
+  screen.on('display-metrics-changed', onDisplayChange);
+
   createDMWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createDMWindow();

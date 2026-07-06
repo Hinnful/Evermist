@@ -14,6 +14,12 @@ const FOG_TINT_ALPHA = 0.18;
 const SCENE_FADE_MIN_MS = 1500;
 let   _sceneFadeStart   = 0; // Date.now() snapshot when .dark was last applied
 
+// ─── Display info ────────────────────────────────────────────────────────────
+// Normalized { w, h, scaleFactor } for the screen the Player window is on.
+// Written by display.js initDisplayDetection() via the IPC push from main.js.
+// null until the first push arrives (typically within ms of window creation).
+let displayInfo = null;
+
 // ─── Fog RAF lifecycle handles ──────────────────────────────────────────────────
 // requestAnimationFrame ids for the two independent fog loops. Held here (not in
 // fog.js) so teardown — stopFogAnim / stopFogTransition — can be reasoned about as

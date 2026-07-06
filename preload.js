@@ -28,4 +28,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('backup-progress', handler);
     return () => ipcRenderer.removeListener('backup-progress', handler);
   },
+
+  onDisplayInfo: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('display-info', handler);
+    return () => ipcRenderer.removeListener('display-info', handler);
+  },
 });

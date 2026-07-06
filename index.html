@@ -1231,6 +1231,7 @@
       <button id="btn-auto-sync" title="Auto-send fog changes">Auto</button>
       <button id="btn-fullscreen-player" title="Toggle player fullscreen">Fullscreen</button>
       <button id="btn-send">Send ▶</button>
+      <div id="display-info-readout" style="font-size:10px;opacity:0.5;color:#c4b5e8;font-family:monospace;letter-spacing:0.03em;margin-top:4px;text-align:center"></div>
     </div>
   </div>
 
@@ -1366,6 +1367,8 @@
 <script src="lib/pixi.min.js"></script>
 <script src="renderer.js"></script>
 <script src="state.js"></script>
+<script src="display.js"></script>
+<script src="video.js"></script>
 <script src="fog.js"></script>
 <script src="tools.js"></script>
 <script src="sceneStore.js"></script>
@@ -1526,7 +1529,7 @@ function loadMapFromFile(file, onMapLoaded) {
 
     if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
     if (usePixi) {
-      pixiSetMap(mapOffscreen, mapWidth, mapHeight);
+      pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
       viewportDirty = true;
       scheduleRender();
       if (onMapLoaded) onMapLoaded(mapOffscreen, file);
@@ -1750,7 +1753,7 @@ function loadVideoFromFile(file, onVideoLoaded) {
       if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
       mapOffscreen = extractCanvas;
       if (usePixi) {
-        pixiSetMap(extractCanvas, vw, vh);
+        pixiSetMap(prepareTextureCanvas(extractCanvas, vw, vh), vw, vh);
         pixiHideMap();
       }
       mapVideo = video;
@@ -2230,7 +2233,7 @@ async function switchScene(id, _isRecovery = false) {
     extractCanvas.getContext('2d').drawImage(video, 0, 0, mapWidth, mapHeight);
     mapOffscreen = extractCanvas;
     if (usePixi) {
-      pixiSetMap(extractCanvas, mapWidth, mapHeight);
+      pixiSetMap(prepareTextureCanvas(extractCanvas, mapWidth, mapHeight), mapWidth, mapHeight);
       pixiHideMap();
     }
     mapVideo = video;
@@ -2272,7 +2275,7 @@ async function switchScene(id, _isRecovery = false) {
     mapOffscreen.height = mapHeight;
     mapOffscreen.getContext('2d').drawImage(bitmap, 0, 0);
     if (usePixi) {
-      pixiSetMap(mapOffscreen, mapWidth, mapHeight);
+      pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
       bitmap.close();
       mapBitmap = null;
     } else {
@@ -3411,21 +3414,11 @@ if (isPlayer) {
           if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
           mapOffscreen = extractCanvas;
           if (usePixi) {
-            // Scale the texture down for Player: a full-res canvas (e.g. 9746×5850 = 228 MB raw)
-            // uploaded to GPU on first render triggers Windows TDR (GPU timeout, exit_code=34).
-            // 2× viewport gives 4K-ish quality — sufficient since Player follows DM view.
-            var _maxSide = Math.max(window.innerWidth || 1920, window.innerHeight || 1080) * 2;
-            if (mapWidth > _maxSide || mapHeight > _maxSide) {
-              var _ts = Math.min(_maxSide / mapWidth, _maxSide / mapHeight);
-              playerMapTexCanvas = document.createElement('canvas');
-              playerMapTexCanvas.width  = Math.round(mapWidth  * _ts);
-              playerMapTexCanvas.height = Math.round(mapHeight * _ts);
-              playerMapTexCtx = playerMapTexCanvas.getContext('2d');
-              playerMapTexCtx.drawImage(extractCanvas, 0, 0, playerMapTexCanvas.width, playerMapTexCanvas.height);
-            } else {
-              playerMapTexCanvas = extractCanvas;
-              playerMapTexCtx = extractCanvas.getContext('2d');
-            }
+            // Size the texture to the detected display (display-aware, TDR-safe).
+            // prepareTextureCanvas reads displayInfo from state.js and falls back to
+            // the old ~2× viewport heuristic when displayInfo is not yet available.
+            playerMapTexCanvas = prepareTextureCanvas(extractCanvas, mapWidth, mapHeight);
+            playerMapTexCtx = playerMapTexCanvas.getContext('2d');
             pixiSetMap(playerMapTexCanvas, mapWidth, mapHeight);
             // Refresh the map texture from the video every rendered frame, driven by
             // the PixiJS render ticker so it never freezes between viewport changes.
@@ -3468,7 +3461,7 @@ if (isPlayer) {
         URL.revokeObjectURL(msg.mapUrl);
         if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
         if (usePixi) {
-          pixiSetMap(mapOffscreen, mapWidth, mapHeight);
+          pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
         } else {
           createImageBitmap(img).then(bmp => { mapBitmap = bmp; });
         }
@@ -3656,6 +3649,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 if (!isPlayer) initScenes().catch(console.error);
+initDisplayDetection();
 </script>
 </body>
 </html>
