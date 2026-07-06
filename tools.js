@@ -368,21 +368,7 @@ function toolMouseDown(raw, e) {
   if (shape === 'poly') {
     const pos = snapVertex(raw.x, raw.y);
     if (!activePolygon) {
-      // Only select/drag when clicking a vertex dot or edge — not the interior.
-      const hit = findPolygonHandleAt(raw.x, raw.y);
-      if (hit) {
-        pushUndo();
-        selectedPolygonId = hit.id;
-        isDraggingPolygon = true;
-        polygonActuallyMoved = false;
-        dragStartMapX = raw.x;
-        dragStartMapY = raw.y;
-        dragOrigVerts = hit.vertices.map(v => ({ x: v.x, y: v.y }));
-        drawCursor(e.clientX - container.getBoundingClientRect().left,
-                   e.clientY - container.getBoundingClientRect().top);
-        return;
-      }
-      // Start new polygon
+      // Start new polygon — Polygon tool never selects/drags existing polygons
       activePolygon = { vertices: [pos], mode: tool };
       selectedPolygonId = null;
     } else {
@@ -447,7 +433,7 @@ function toolMouseDown(raw, e) {
     // 3. Interior hit — select polygon and start whole-poly drag
     const hit = findPolygonAt(raw.x, raw.y);
     if (hit) {
-      if (hit.id !== selectedPolygonId) selectedVertexIndex = -1;
+      if (hit.id !== selectedPolygonId) { selectedVertexIndex = -1; polyCtxRadiusMode = 'all'; }
       pushUndo();
       selectedPolygonId = hit.id;
       isDraggingPolygon = true;
@@ -458,6 +444,7 @@ function toolMouseDown(raw, e) {
     } else {
       selectedPolygonId = null;
       selectedVertexIndex = -1;
+      polyCtxRadiusMode = 'all';
     }
     drawCursor(sx, sy);
     return;

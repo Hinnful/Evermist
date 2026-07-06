@@ -1087,9 +1087,9 @@
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Export
     </button>
-    <button id="btn-backup-restore" class="btn-backup" title="Restore scenes from a .zip backup">
+    <button id="btn-backup-restore" class="btn-backup" title="Import scenes from a .zip backup">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Restore
+      Import
     </button>
   </div>
 </div>
@@ -2809,13 +2809,8 @@ if (!isPlayer) {
   document.getElementById('btn-fill-fog').onclick = () => {
     if (!fogDataCtx) return;
     pushUndo();
-    polygons = []; activePolygon = null; selectedPolygonId = null;
-    fogDataCtx.fillStyle = '#1a1a2e';
-    fogDataCtx.fillRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
-    if (baseFogCtx) {
-      baseFogCtx.fillStyle = '#1a1a2e';
-      baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
-    }
+    activePolygon = null; selectedPolygonId = null;
+    shroudAllFog();
     startFogTransition(true);
     rebuildFogEffect();
     fogDirty = true;
@@ -2825,9 +2820,8 @@ if (!isPlayer) {
   document.getElementById('btn-clear-fog').onclick = () => {
     if (!fogDataCtx) return;
     pushUndo();
-    polygons = []; activePolygon = null; selectedPolygonId = null;
-    fogDataCtx.clearRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
-    if (baseFogCtx) baseFogCtx.clearRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
+    activePolygon = null; selectedPolygonId = null;
+    revealAllFog();
     startFogTransition(false);
     rebuildFogEffect();
     fogDirty = true;

@@ -762,6 +762,24 @@ function stopFogTransition() {
   if (usePixi && !isPlayer) pixiEndFogTransition();
 }
 
+// ─── Reveal All / Shroud All ──────────────────────────────────────────────────
+// Resets only the hand-painted brush layer; polygons are preserved and re-applied.
+
+function revealAllFog() {
+  if (!baseFogCtx) return;
+  baseFogCtx.clearRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
+  if (typeof polygons !== 'undefined') polygons.forEach(p => { p.mode = 'reveal'; });
+  rebuildFogFromPolygons();
+}
+
+function shroudAllFog() {
+  if (!baseFogCtx) return;
+  baseFogCtx.fillStyle = '#1a1a2e';
+  baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
+  if (typeof polygons !== 'undefined') polygons.forEach(p => { p.mode = 'shroud'; });
+  rebuildFogFromPolygons();
+}
+
 // ─── Fog controls UI ─────────────────────────────────────────────────────────
 
 function initFogControls() {
