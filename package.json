@@ -10,6 +10,7 @@
     "url": "https://github.com/Hinnful/Evermist.git"
   },
   "scripts": {
+    "test": "node --test",
     "start": "electron .",
     "build": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
     "build:mac": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac",
