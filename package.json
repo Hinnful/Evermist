@@ -28,6 +28,8 @@
       "lib/pixi.min.js",
       "renderer.js",
       "state.js",
+      "display.js",
+      "video.js",
       "scenes.js",
       "viewport.js",
       "backup.js",

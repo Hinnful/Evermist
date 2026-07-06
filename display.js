@@ -24,13 +24,23 @@ function normalizeDisplayRecord(raw) {
 function initDisplayDetection() {
   if (!window.electronAPI || !window.electronAPI.onDisplayInfo) return;
   window.electronAPI.onDisplayInfo((raw) => {
+    const prev = displayInfo;
     displayInfo = normalizeDisplayRecord(raw);
     updateDisplayReadout();
+    // Only re-texture when the display dimensions genuinely changed — skips
+    // spurious pushes from window minimize (off-screen bounds) and any event
+    // that fires without a real resolution change.
+    const changed = !prev
+      || prev.w !== displayInfo.w
+      || prev.h !== displayInfo.h
+      || prev.scaleFactor !== displayInfo.scaleFactor;
+    if (changed && typeof onDisplayInfoUpdated === 'function') onDisplayInfoUpdated();
   });
 }
 
-// Updates the DM-only readout element. No-ops in Player (element absent).
+// Updates the DM-only readout element. No-ops in Player mode.
 function updateDisplayReadout() {
+  if (typeof isPlayer !== 'undefined' && isPlayer) return;
   const el = document.getElementById('display-info-readout');
   if (!el || !displayInfo) return;
   el.textContent = `${displayInfo.w} × ${displayInfo.h}  @${displayInfo.scaleFactor}x`;
