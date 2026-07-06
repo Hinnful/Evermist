@@ -136,11 +136,145 @@ function onDisplayInfoUpdated() {
   }
 
   pixiSetMap(newTex, mapWidth, mapHeight);
+  // DM with active DOM video: pixiSetMap creates a new sprite with visible=true,
+  // but the map is shown via CSS-composited <video>, not the PixiJS sprite.
+  // Keep the sprite hidden so the static first-frame doesn't flash over the live video.
+  if (typeof videoDOMActive !== 'undefined' && videoDOMActive) pixiHideMap();
   if (typeof viewportDirty !== 'undefined') viewportDirty = true;
   if (typeof scheduleRender === 'function') scheduleRender();
 }
 
+// ─── Video lifecycle — extracted from inline blob ─────────────────────────────
+// All functions below reference inline-blob globals (videoEnabled, mapVideo,
+// videoRVFCId, etc.) lazily — names are resolved at call time, not definition
+// time, so the load-order constraint is safe.
+
+function onVideoStalled() {
+  // Decoder stalled waiting for data — try to re-kick playback.
+  if (!videoEnabled || !mapVideo) return;
+  mapVideo.play().catch(function() {});
+}
+
+function onVideoWaiting() {
+  // Decoder momentarily out of data (less severe than stalled). Same recovery.
+  if (!videoEnabled || !mapVideo) return;
+  mapVideo.play().catch(function() {});
+}
+
+function onVideoPause() {
+  if (!videoEnabled || !mapVideo) return;
+  mapVideo.play().catch(function() {});
+}
+
+function onVideoPlaying() {
+  if (!videoEnabled || !mapVideo) return;
+  if (videoRVFCId == null && videoRAFId == null) scheduleVideoFrame();
+}
+
+function attachVideoListeners(video) {
+  video.addEventListener('pause',   onVideoPause);
+  video.addEventListener('playing', onVideoPlaying);
+  video.addEventListener('stalled', onVideoStalled);
+  video.addEventListener('waiting', onVideoWaiting);
+}
+
+function detachVideoListeners(video) {
+  video.removeEventListener('pause',   onVideoPause);
+  video.removeEventListener('playing', onVideoPlaying);
+  video.removeEventListener('stalled', onVideoStalled);
+  video.removeEventListener('waiting', onVideoWaiting);
+}
+
+function scheduleVideoFrame() {
+  if (!videoEnabled || !mapVideo) return;
+  if (mapVideo.requestVideoFrameCallback) {
+    videoRVFCId = mapVideo.requestVideoFrameCallback(function() {
+      videoRVFCId = null;
+      if (!videoEnabled || !mapVideo) return;
+      var now = performance.now();
+      if (now - videoLastRenderTs >= videoFrameIntervalMs) {
+        videoLastRenderTs = now;
+        mapDirty = true;
+        scheduleRender();
+      }
+      scheduleVideoFrame();
+    });
+  } else {
+    videoRAFId = requestAnimationFrame(function() {
+      videoRAFId = null;
+      if (!videoEnabled || !mapVideo) return;
+      if (!mapVideo.paused && !mapVideo.ended) {
+        var now = performance.now();
+        if (now - videoLastRenderTs >= videoFrameIntervalMs) {
+          videoLastRenderTs = now;
+          mapDirty = true;
+          scheduleRender();
+        }
+      }
+      scheduleVideoFrame();
+    });
+  }
+}
+
+var _videoWatchdogId = null;
+
+function stopVideoWatchdog() {
+  if (_videoWatchdogId) { clearInterval(_videoWatchdogId); _videoWatchdogId = null; }
+}
+
+// Polls every 3 s while video is active. Catches cases where Chromium's
+// background-video optimizer silently pauses or stalls a muted video element
+// (typically fires after ~30 s for elements it deems "not visible"). If the
+// video is paused or readyState has dropped, force a play() and restart the
+// RVFC/RAF loop if it died.
+function startVideoWatchdog() {
+  stopVideoWatchdog();
+  _videoWatchdogId = setInterval(function() {
+    if (!videoEnabled || !mapVideo) return;
+    if (mapVideo.paused || mapVideo.readyState < 3) {
+      mapVideo.play().catch(function() {});
+    }
+    if (videoRVFCId == null && videoRAFId == null) scheduleVideoFrame();
+  }, 3000);
+}
+
+function stopVideoLoop() {
+  stopVideoWatchdog();
+  videoEnabled = false;
+  if (videoRAFId) { cancelAnimationFrame(videoRAFId); videoRAFId = null; }
+  if (videoRVFCId != null && mapVideo && mapVideo.cancelVideoFrameCallback) {
+    mapVideo.cancelVideoFrameCallback(videoRVFCId); videoRVFCId = null;
+  }
+}
+
+function startVideoLoop() {
+  if (!mapVideo) return;
+  stopVideoLoop();
+  videoEnabled = true;
+  videoLastRenderTs = 0;
+  if (!isPlayer) activateVideoDom(mapVideo);
+  if (mapVideo.paused || mapVideo.ended) {
+    mapVideo.play().catch(function() {});
+  }
+  // Start the RVFC/RAF loop immediately. onVideoPlaying cannot start it because
+  // the 'playing' event fires before videoEnabled=true (set above), so the loop
+  // would never run without this explicit kick-off.
+  scheduleVideoFrame();
+  startVideoWatchdog();
+}
+
+// ─── FPS ↔ interval converter ────────────────────────────────────────────────
+// Pure helper: converts a frames-per-second value to milliseconds per frame.
+// Clamps fps to 5–60; falls back to VIDEO_FPS_DEFAULT (24) on invalid input.
+// Used by the FPS dial (index.html) and testable in isolation.
+function fpsToFrameInterval(fps) {
+  var DEFAULT_MS = 1000 / 24; // matches VIDEO_FPS_DEFAULT in state.js
+  if (typeof fps !== 'number' || !isFinite(fps) || fps <= 0) return DEFAULT_MS;
+  var clamped = Math.max(5, Math.min(60, fps));
+  return 1000 / clamped;
+}
+
 // ─── Export guard (Node require for tests; no-op in browser) ─────────────────
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { computeOptimalTextureSize };
+  module.exports = { computeOptimalTextureSize, fpsToFrameInterval };
 }

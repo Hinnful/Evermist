@@ -139,3 +139,12 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
     }, '*');
   }
 }
+
+// Syncs fog-animation and video-frame-rate params to the Player window.
+// pass includeWarp=true when cloud warp params changed (triggers regen on Player).
+function syncAnimToPlayer(includeWarp) {
+  if (!playerWindow || playerWindow.closed) return;
+  const msg = { type: 'anim-params', fogAnimEnabled, fogAnimSpeed, driftScale, cloudFrameSpeed, alphaPulseAmp, videoFrameIntervalMs };
+  if (includeWarp) { msg.cloudWarpStrength = cloudWarpStrength; msg.cloudWarpRadius = cloudWarpRadius; }
+  playerWindow.postMessage(msg, '*');
+}

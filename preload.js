@@ -34,4 +34,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('display-info', handler);
     return () => ipcRenderer.removeListener('display-info', handler);
   },
+
+  // Fires when the OS minimizes or restores this window — visibilitychange does
+  // not fire reliably on Windows minimize, so we use the main-process event instead.
+  onWindowVisibility: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('window-visibility', handler);
+    return () => ipcRenderer.removeListener('window-visibility', handler);
+  },
 });

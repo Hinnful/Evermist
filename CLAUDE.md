@@ -266,3 +266,23 @@ Polygon objects: `{ id, vertices:[{x,y}], mode:'reveal'|'shroud', cornerRadius:0
 **Why they had zero effect:** `FilterSystem.push()` calls `state.destinationFrame.fit(destinationFrame)` which **clamps** the intermediate RT to the current render target (the viewport). Even if `getBounds()` returns 10000×6000, the RT is clamped to ~viewport size (~8–33 MB). Additionally, PixiJS intermediate RTs live in VRAM (GPU process) and are invisible in Electron renderer process RAM. The 3 GB figure was entirely CPU RAM.
 
 The ticker-pause and pool-flush fixes are harmless and correct — keep them. They just aren't the cause of the memory issue.
+
+### Minimize memory "spike" — investigated 2026-07-06 (mostly OS behavior, not a fixable leak)
+
+**Symptom (reported):** minimizing either window pushed Task Manager's total up (~1.5–2 GB → ~2.7 GB for one window, >4 GB for both). Backwards from expectation — minimizing should reclaim memory.
+
+**Investigation method:** instrumented `app.getAppMetrics()` (per-process private/working-set) on `win.on('minimize')`/`'restore'`, plus a 5s interval logger for a true no-minimize baseline, plus a `pixiSetMap` upload counter. All instrumentation was temporary and has been removed.
+
+**What the numbers showed (test map was 19500×11700 = 228 MP — one full-res RGBA copy ≈ 912 MB; note this is far larger than the 10000×6000 assumed elsewhere in this doc):**
+- **GPU texture downscaling works.** The 228 MP map uploads as a ~135 MB texture (7680×4608), not full-res. Only 3 `pixiSetMap` calls during a normal load + open-Player flow — no runaway re-texturing.
+- **The right metric is `privateBytes` (committed), NOT `workingSetSize`.** Working set is resident RAM; it balloons whenever Chromium *touches* paged-out committed memory (exactly what restore does), even with zero new allocation. Summing working set gives a false "growth" signal.
+- **GPU-process committed oscillates ±2.4 GB (≈2.3–4.7 GB) at pure idle**, both windows visible, no interaction. So the GPU "spike" on minimize is within its own idle noise band — not caused by minimize. Combined (Tab+GPU) committed is essentially flat across a minimize/restore cycle once this noise is accounted for.
+- **The Task-Manager number is dominated by a ~5.9 GB committed baseline** that exists with both windows visible; much is paged out while working (Task Manager shows ~3 GB), and minimize/restore forces it resident. This is OS working-set movement, largely benign.
+- **One real signal remains:** the Tab (renderer) retains ~1.5 GB across a cycle (1795 → ~3358 MB private), partially recovering on final restore. Pre-existing (present before any fix). Not root-caused to a single function — NOT a clean leak. See backlog.
+
+**The fix that shipped (kept):** `visibilitychange` does **not** fire on Windows OS-minimize in Electron (confirmed empirically — the handler never logged on minimize). So the main process now sends a `window-visibility` IPC on `minimize`/`restore` (which fire reliably); the renderer mirrors the existing `visibilitychange` behavior — pause the PixiJS ticker + `pixiFlushTexturePool()` on hide, resume on show. This demonstrably helped: with both windows minimized (tickers stopped) the GPU working set dropped to ~127 MB. It does not change the committed baseline — it's correct hygiene, not a cure for the reported number.
+
+**What was ruled out / not attempted:**
+- Not the display-detection re-texture path (the `pushPlayerDisplay` minimize guard + `display.js` changed-only guard were already correct and did not move the spike).
+- The obvious CPU cut — dropping the redundant full-res `mapOffscreen` — is a **known landmine**: a prior attempt (2026-06-19) caused a 90% CPU regression and RAM stayed ~3 GB anyway. Off the table unless done incrementally, one path at a time, with measurement after each. See backlog.
+- **The real amplifier is map size.** At 228 MP every buffer/serialization is ~4× a "normal" map. There is no single-function leak to fix; the honest conclusion is that the minimize number is mostly OS working-set movement made large by the map, plus GPU idle churn.
