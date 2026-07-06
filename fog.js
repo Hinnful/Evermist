@@ -614,23 +614,25 @@ function fogAnimTick(ts) {
         const idxB  = (idxA + 1) % total;
         const blend = wrapped - Math.floor(wrapped);
 
-        const sz = cloudBlendCanvas.width;
-        cloudBlendCtx.globalAlpha = 1;
-        cloudBlendCtx.globalCompositeOperation = 'source-over';
-        cloudBlendCtx.clearRect(0, 0, sz, sz);
-        cloudBlendCtx.globalAlpha = 1 - blend;
-        cloudBlendCtx.drawImage(cloudFrames[idxA], 0, 0);
-        cloudBlendCtx.globalCompositeOperation = 'lighter';
-        cloudBlendCtx.globalAlpha = blend;
-        cloudBlendCtx.drawImage(cloudFrames[idxB], 0, 0);
-        cloudBlendCtx.globalCompositeOperation = 'source-over';
-        cloudBlendCtx.globalAlpha = 1;
+        if (cloudFrames[idxA] && cloudFrames[idxB]) {
+          const sz = cloudBlendCanvas.width;
+          cloudBlendCtx.globalAlpha = 1;
+          cloudBlendCtx.globalCompositeOperation = 'source-over';
+          cloudBlendCtx.clearRect(0, 0, sz, sz);
+          cloudBlendCtx.globalAlpha = 1 - blend;
+          cloudBlendCtx.drawImage(cloudFrames[idxA], 0, 0);
+          cloudBlendCtx.globalCompositeOperation = 'lighter';
+          cloudBlendCtx.globalAlpha = blend;
+          cloudBlendCtx.drawImage(cloudFrames[idxB], 0, 0);
+          cloudBlendCtx.globalCompositeOperation = 'source-over';
+          cloudBlendCtx.globalAlpha = 1;
 
-        // cloudPattern is only needed for the Canvas 2D path (!usePixi).
-        // Player PixiJS uses TilingSprites for cloud but still needs cloudPattern
-        // for transition snapshot recompositing via recompositeCloudEffect.
-        if (!usePixi || isPlayer) {
-          cloudPattern = cloudFrames[0].getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
+          // cloudPattern is only needed for the Canvas 2D path (!usePixi).
+          // Player PixiJS uses TilingSprites for cloud but still needs cloudPattern
+          // for transition snapshot recompositing via recompositeCloudEffect.
+          if (!usePixi || isPlayer) {
+            cloudPattern = cloudFrames[0].getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
+          }
         }
       }
 

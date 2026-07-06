@@ -232,6 +232,17 @@ function startVideoWatchdog() {
   _videoWatchdogId = setInterval(function() {
     if (!videoEnabled || !mapVideo) return;
     if (mapVideo.paused || mapVideo.readyState < 3) {
+      if (!mapVideo.paused && mapVideo.readyState < 3) {
+        // Decoder stalled but not paused — play() alone is a no-op on an already-
+        // playing element. Seek-to-current forces Chromium to restart the decode
+        // pipeline, then cancel the stale RVFC so scheduleVideoFrame re-registers
+        // a fresh one below (the stale callback will never fire on a stalled decoder).
+        mapVideo.currentTime = mapVideo.currentTime;
+        if (mapVideo.requestVideoFrameCallback && videoRVFCId != null) {
+          mapVideo.cancelVideoFrameCallback(videoRVFCId);
+          videoRVFCId = null;
+        }
+      }
       mapVideo.play().catch(function() {});
     }
     if (videoRVFCId == null && videoRAFId == null) scheduleVideoFrame();
@@ -272,6 +283,21 @@ function fpsToFrameInterval(fps) {
   if (typeof fps !== 'number' || !isFinite(fps) || fps <= 0) return DEFAULT_MS;
   var clamped = Math.max(5, Math.min(60, fps));
   return 1000 / clamped;
+}
+
+// ─── Player video element factory ─────────────────────────────────────────────
+// Creates the Player's <video> and inserts it as the first child of container so
+// all canvas siblings (fog last, opacity:1) paint on top via DOM order.
+// Must be a full-container element — a 1×1 px element elsewhere causes Chromium's
+// BackgroundVideoTrackOptimizer to treat the video as occluded and throttle decode
+// (mitigated at the process level by the disable-features flag in main.js, but
+// correct sizing is belt-and-suspenders).
+function createPlayerVideoElement(container) {
+  var video = document.createElement('video');
+  video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'auto';
+  video.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
+  container.insertBefore(video, container.firstChild);
+  return video;
 }
 
 // ─── Export guard (Node require for tests; no-op in browser) ─────────────────
