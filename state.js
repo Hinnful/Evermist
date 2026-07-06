@@ -20,6 +20,11 @@ let   _sceneFadeStart   = 0; // Date.now() snapshot when .dark was last applied
 // null until the first push arrives (typically within ms of window creation).
 let displayInfo = null;
 
+// ─── Video frame-rate cap ────────────────────────────────────────────────────
+// Named default so reverting is one-line. Live value is mutated by the FPS dial.
+const VIDEO_FPS_DEFAULT       = 24;
+let   videoFrameIntervalMs    = 1000 / VIDEO_FPS_DEFAULT;
+
 // ─── Fog RAF lifecycle handles ──────────────────────────────────────────────────
 // requestAnimationFrame ids for the two independent fog loops. Held here (not in
 // fog.js) so teardown — stopFogAnim / stopFogTransition — can be reasoned about as

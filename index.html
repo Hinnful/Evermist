@@ -1213,6 +1213,11 @@
           <input type="range" id="fog-feather" min="0" max="24" value="12" step="1" title="Reveal edge feather radius (px at fog scale)">
           <input type="number" id="fog-feather-num" class="grid-num" min="0" max="24" value="12" step="1" title="Feather radius" style="width:42px">
         </div>
+        <div class="slider-row" style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.08);padding-top:4px">
+          <span class="slider-xy-tag" style="min-width:38px" title="Video map frame-rate cap. Caps upload/CPU cost — does not affect decode. Capped above the source fps has no extra effect.">FPS</span>
+          <input type="range" id="video-fps" min="5" max="60" value="24" step="1" title="Video map frame-rate cap. Caps upload/CPU cost — does not affect decode. Capped above the source fps has no extra effect.">
+          <input type="number" id="video-fps-num" class="grid-num" min="5" max="60" value="24" step="1" title="FPS cap" style="width:42px">
+        </div>
       </div>
     </div>
   </div>
@@ -1407,7 +1412,7 @@ let videoEnabled = false;  // true while video is actively playing as map source
 let videoRAFId   = null;   // RAF id for video-driven map redraws (fallback)
 let videoRVFCId  = null;   // requestVideoFrameCallback id (preferred)
 let videoLastRenderTs = 0;
-const VIDEO_MIN_FRAME_INTERVAL = 1000 / 24;
+
 let mapWidth = 0, mapHeight = 0;
 let zoom = 1, panX = 0, panY = 0;
 let gridEnabled    = false;
@@ -1596,7 +1601,7 @@ function deactivateVideoDom() {
   videoDOMActive = false;
   if (usePixi) pixiShowMap();
   if (mapVideo && mapVideo.parentNode === container) {
-    mapVideo.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;opacity:0';
+    mapVideo.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;';
   }
 }
 
@@ -1608,13 +1613,8 @@ function syncVideoDomTransform() {
 }
 
 // ─── Video map loading ────────────────────────────────────────────────────────
-function stopVideoLoop() {
-  videoEnabled = false;
-  if (videoRAFId) { cancelAnimationFrame(videoRAFId); videoRAFId = null; }
-  if (videoRVFCId != null && mapVideo && mapVideo.cancelVideoFrameCallback) {
-    mapVideo.cancelVideoFrameCallback(videoRVFCId); videoRVFCId = null;
-  }
-}
+// stopVideoLoop / startVideoLoop / scheduleVideoFrame and the video event
+// handlers live in video.js (extracted per migrate-on-touch policy).
 
 function showMapProgress(label) {
   document.getElementById('map-progress-label').textContent = label || 'Saving...';
@@ -1638,8 +1638,7 @@ function cleanupVideo() {
   deactivateVideoDom();
   stopVideoLoop();
   if (mapVideo) {
-    mapVideo.removeEventListener('pause', onVideoPause);
-    mapVideo.removeEventListener('playing', onVideoPlaying);
+    detachVideoListeners(mapVideo);
     mapVideo.pause(); mapVideo.src = '';
     if (mapVideo.parentNode) mapVideo.parentNode.removeChild(mapVideo);
     mapVideo = null;
@@ -1654,62 +1653,6 @@ function cleanupVideo() {
   playerMapTexCtx = null;
 }
 
-function onVideoPause() {
-  if (!videoEnabled || !mapVideo) return;
-  mapVideo.play().catch(() => {});
-}
-
-function onVideoPlaying() {
-  if (!videoEnabled || !mapVideo) return;
-  if (videoRVFCId == null && videoRAFId == null) scheduleVideoFrame();
-}
-
-function attachVideoListeners(video) {
-  video.addEventListener('pause', onVideoPause);
-  video.addEventListener('playing', onVideoPlaying);
-}
-
-function scheduleVideoFrame() {
-  if (!videoEnabled || !mapVideo) return;
-  if (mapVideo.requestVideoFrameCallback) {
-    videoRVFCId = mapVideo.requestVideoFrameCallback(function() {
-      videoRVFCId = null;
-      if (!videoEnabled || !mapVideo) return;
-      var now = performance.now();
-      if (now - videoLastRenderTs >= VIDEO_MIN_FRAME_INTERVAL) {
-        videoLastRenderTs = now;
-        mapDirty = true;
-        scheduleRender();
-      }
-      scheduleVideoFrame();
-    });
-  } else {
-    videoRAFId = requestAnimationFrame(function() {
-      videoRAFId = null;
-      if (!videoEnabled || !mapVideo) return;
-      if (!mapVideo.paused && !mapVideo.ended) {
-        var now = performance.now();
-        if (now - videoLastRenderTs >= VIDEO_MIN_FRAME_INTERVAL) {
-          videoLastRenderTs = now;
-          mapDirty = true;
-          scheduleRender();
-        }
-      }
-      scheduleVideoFrame();
-    });
-  }
-}
-
-function startVideoLoop() {
-  if (!mapVideo) return;
-  stopVideoLoop();
-  videoEnabled = true;
-  videoLastRenderTs = 0;
-  if (!isPlayer) activateVideoDom(mapVideo);
-  if (mapVideo.paused || mapVideo.ended) {
-    mapVideo.play().catch(function() {});
-  }
-}
 
 function loadVideoFromFile(file, onVideoLoaded) {
   if (!file) return;
@@ -1721,7 +1664,7 @@ function loadVideoFromFile(file, onVideoLoaded) {
   video.loop = true;
   video.playsInline = true;
   video.preload = 'auto';
-  video.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;opacity:0';
+  video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;';
   document.body.appendChild(video);
   let settled = false;
   function failLoad(reason) {
@@ -2191,7 +2134,7 @@ async function switchScene(id, _isRecovery = false) {
     }
     const video = document.createElement('video');
     video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'auto';
-    video.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;opacity:0';
+    video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;';
     document.body.appendChild(video);
     await new Promise((resolve, reject) => {
       let settled = false;
@@ -2989,13 +2932,6 @@ if (!isPlayer) {
     drift: 0.5, morphSpeed: 0.20, warpStr: 0.10, warpRad: 0.06, pulse: 0.15
   };
 
-  function syncAnimToPlayer(includeWarp) {
-    if (!playerWindow || playerWindow.closed) return;
-    const msg = { type: 'anim-params', fogAnimEnabled, fogAnimSpeed, driftScale, cloudFrameSpeed, alphaPulseAmp };
-    if (includeWarp) { msg.cloudWarpStrength = cloudWarpStrength; msg.cloudWarpRadius = cloudWarpRadius; }
-    playerWindow.postMessage(msg, '*');
-  }
-
   function regenCloudFrames() {
     generateCloudFrames(512, CLOUD_FRAME_COUNT);
     cloudFramePos = 0;
@@ -3090,6 +3026,25 @@ if (!isPlayer) {
   }
   wireSpeedSlider();
 
+  // Wire FPS cap slider (linear, video-only setting — not a fog-anim param)
+  (function wireFpsSlider() {
+    const slider = document.getElementById('video-fps');
+    const num    = document.getElementById('video-fps-num');
+    slider.oninput = function() {
+      const v = Math.max(5, Math.min(60, +this.value));
+      num.value = v;
+      videoFrameIntervalMs = fpsToFrameInterval(v);
+      syncAnimToPlayer();
+    };
+    num.onchange = function() {
+      const v = Math.max(5, Math.min(60, Math.round(+this.value)));
+      this.value = v;
+      slider.value = v;
+      videoFrameIntervalMs = fpsToFrameInterval(v);
+      syncAnimToPlayer();
+    };
+  })();
+
   // Wire log-scale sliders with bidirectional numeric input
   function wireAnimSlider(sliderId, numId, baseVal, apply, isWarp) {
     const slider = document.getElementById(sliderId);
@@ -3148,6 +3103,7 @@ if (!isPlayer) {
     if (!msg) return;
     if (msg.type === 'PLAYER_READY' || msg.type === 'need-map') {
       onPlayerResyncRequest();
+      syncAnimToPlayer(true);
       return;
     }
     if (msg.type === 'PLAYER_MODE') {
@@ -3288,7 +3244,8 @@ if (isPlayer) {
         cloudFramePos = 0;
         rebuildFogEffect();
       }
-      fogAnimEnabled = msg.fogAnimEnabled ?? fogAnimEnabled;
+      fogAnimEnabled        = msg.fogAnimEnabled        ?? fogAnimEnabled;
+      videoFrameIntervalMs  = msg.videoFrameIntervalMs  ?? videoFrameIntervalMs;
       fogDirty = true;
       scheduleRender();
       if (fogAnimEnabled) startFogAnim(); else stopFogAnim();
@@ -3391,7 +3348,10 @@ if (isPlayer) {
       mapVideoUrl = msg.mapUrl;
       const video = document.createElement('video');
       video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'auto';
-      video.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;opacity:0';
+      // Keep video within the visible viewport (top-left, 1×1) so Chromium does not throttle its
+      // decode pipeline. opacity:0 is also avoided — Chromium's media pipeline treats zero-opacity
+      // elements as "not visible" and can stall muted video decode after ~30 s.
+      video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;';
       document.body.appendChild(video);
       let settled = false;
       video.onerror = () => {
@@ -3422,11 +3382,14 @@ if (isPlayer) {
             pixiSetMap(playerMapTexCanvas, mapWidth, mapHeight);
             // Refresh the map texture from the video every rendered frame, driven by
             // the PixiJS render ticker so it never freezes between viewport changes.
+            var _texVideoTime = -1;
             pixiStartVideoTextureSync(function() {
-              if (mapVideo && playerMapTexCtx && mapVideo.readyState >= 2) {
-                playerMapTexCtx.drawImage(mapVideo, 0, 0, playerMapTexCanvas.width, playerMapTexCanvas.height);
-                pixiUpdateMapTexture();
-              }
+              if (!mapVideo || !playerMapTexCtx || mapVideo.readyState < 2) return;
+              var t = mapVideo.currentTime;
+              if (t === _texVideoTime) return; // same frame — skip redundant GPU upload
+              _texVideoTime = t;
+              playerMapTexCtx.drawImage(mapVideo, 0, 0, playerMapTexCanvas.width, playerMapTexCanvas.height);
+              pixiUpdateMapTexture();
             });
           }
           mapVideo = video;
@@ -3647,6 +3610,20 @@ document.addEventListener('visibilitychange', () => {
     if (pixiApp) pixiApp.ticker.start();
   }
 });
+
+// visibilitychange does not fire on Windows OS-minimize in Electron, so the main
+// process sends this IPC event on minimize/restore instead. Mirrors the same
+// ticker pause/resume so the GPU compositor can idle the window's backing surfaces.
+if (window.electronAPI && window.electronAPI.onWindowVisibility) {
+  window.electronAPI.onWindowVisibility(({ visible }) => {
+    if (!visible) {
+      if (!isPlayer) doAutoSave();
+      if (pixiApp) { pixiApp.ticker.stop(); pixiFlushTexturePool(); }
+    } else {
+      if (pixiApp) pixiApp.ticker.start();
+    }
+  });
+}
 
 if (!isPlayer) initScenes().catch(console.error);
 initDisplayDetection();

@@ -63,7 +63,10 @@ function createDMWindow() {
   win.loadFile('index.html');
   dmWin = win;
   win.once('closed', () => { if (dmWin === win) dmWin = null; });
-
+  // visibilitychange does not fire on Windows OS-minimize, so signal the renderer
+  // here instead — lets it pause the PixiJS ticker / flush the texture pool while hidden.
+  win.on('minimize', () => win.webContents.send('window-visibility', { visible: false }));
+  win.on('restore',  () => win.webContents.send('window-visibility', { visible: true  }));
   // Hand off from splash to the app once the renderer has painted. Keep the splash
   // up for a brief minimum so it reads as a branded intro rather than a flash, and
   // cap it so a slow init can never leave the splash hanging.
@@ -107,6 +110,8 @@ function createDMWindow() {
       if (playerWin === childWin) playerWin = null;
       clearTimeout(_playerMovedTimer);
     });
+    childWin.on('minimize', () => childWin.webContents.send('window-visibility', { visible: false }));
+    childWin.on('restore',  () => childWin.webContents.send('window-visibility', { visible: true  }));
     // Push once the renderer is ready to receive IPC messages.
     childWin.webContents.once('did-finish-load', () => pushPlayerDisplay());
     // Re-push when the Player window is moved (debounced — fires after drag settles).
@@ -390,6 +395,7 @@ app.whenReady().then(() => {
   screen.on('display-metrics-changed', onDisplayChange);
 
   createDMWindow();
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createDMWindow();
   });
