@@ -15,6 +15,11 @@ if (portableDir) {
   app.setPath('userData', path.join(portableDir, 'evermist-data'));
 }
 
+// Prevent Chromium from removing the video track on muted looping videos that its
+// compositor deems "occluded" (covered by canvas layers). Without this flag,
+// readyState drops to 1-2 after ~30 s, causing cyclic 1-3 s video freezes.
+app.commandLine.appendSwitch('disable-features', 'BackgroundVideoTrackOptimization');
+
 // Window/taskbar icon for `npm start` (dev). In packaged builds the OS uses the
 // icon embedded in the .exe/.app by electron-builder, so a missing file here is
 // harmless — fall back to undefined rather than pointing at a non-existent path.

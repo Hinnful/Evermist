@@ -3346,13 +3346,7 @@ if (isPlayer) {
       // Video scene — create a <video> element on Player side
       cleanupVideo();
       mapVideoUrl = msg.mapUrl;
-      const video = document.createElement('video');
-      video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'auto';
-      // Keep video within the visible viewport (top-left, 1×1) so Chromium does not throttle its
-      // decode pipeline. opacity:0 is also avoided — Chromium's media pipeline treats zero-opacity
-      // elements as "not visible" and can stall muted video decode after ~30 s.
-      video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;';
-      document.body.appendChild(video);
+      const video = createPlayerVideoElement(container);
       let settled = false;
       video.onerror = () => {
         if (settled) return;
