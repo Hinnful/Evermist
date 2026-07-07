@@ -43,14 +43,7 @@ function snapVertex(mapX, mapY) {
   };
 }
 
-function getPolyBBox(verts) {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const v of verts) {
-    if (v.x < minX) minX = v.x; if (v.y < minY) minY = v.y;
-    if (v.x > maxX) maxX = v.x; if (v.y > maxY) maxY = v.y;
-  }
-  return { minX, minY, maxX, maxY };
-}
+// getPolyBBox lives in fogGeometry.js (pure geometry kernel, loaded first).
 
 function segmentsIntersect(p1, p2, p3, p4) {
   const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
