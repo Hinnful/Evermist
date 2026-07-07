@@ -460,23 +460,20 @@ function recompositeCloudEffect(offsets, blurSrc) {
 
 function rebuildFogEffect() {
   rebuildFogBlur();
-  if (usePixi && !isPlayer) {
+  if (!isPlayer) {
     // DM GPU path: cloud TilingSprites handle cloud display — just upload the new blur canvas
     pixiUpdateFogBlurTexture();
   } else {
-    // Canvas-2D path. The Player's renderFog draws clouds itself (from cloudPattern +
-    // fogAnimOffsets) and never reads fogEffectCanvas, so skip the costly recomposite for
-    // it. A non-PixiJS DM (fallback) does read fogEffectCanvas, so build it there.
-    if (!isPlayer) recompositeCloudEffect(fogAnimEnabled ? fogAnimOffsets : null);
+    // Player: renderFog draws clouds itself via cloudPattern + fogAnimOffsets
     fogDirty = true;
     scheduleRender();
   }
 }
 
 function renderFog(vp) {
-  // PixiJS handles fog display for the DM only. The Player uses this Canvas-2D path
+  // PixiJS handles fog display for the DM. The Player uses this Canvas-2D path
   // (fog-on-top with holes) — see the HYBRID note in renderer.js pixiInitFog.
-  if (usePixi && !isPlayer) return;
+  if (!isPlayer) return;
 
   const { srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH, cw, ch } = vp;
   fogDisplayCtx.clearRect(0, 0, cw, ch);
@@ -627,23 +624,19 @@ function fogAnimTick(ts) {
           cloudBlendCtx.globalCompositeOperation = 'source-over';
           cloudBlendCtx.globalAlpha = 1;
 
-          // cloudPattern is only needed for the Canvas 2D path (!usePixi).
-          // Player PixiJS uses TilingSprites for cloud but still needs cloudPattern
-          // for transition snapshot recompositing via recompositeCloudEffect.
-          if (!usePixi || isPlayer) {
+          // cloudPattern is needed by the Player's Canvas-2D renderFog and transition recompositing.
+          if (isPlayer) {
             cloudPattern = cloudFrames[0].getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
           }
         }
       }
 
       if (!isDrawing) {
-        if (usePixi && !isPlayer) {
+        if (!isPlayer) {
           // DM GPU path: update TilingSprite drift + upload 512×512 cloud frame
           pixiUpdateFogAnim(fogAnimOffsets, fogAnimAlphas);
         } else {
-          // Canvas-2D path. Player draws clouds in renderFog (skip fogEffectCanvas build);
-          // non-PixiJS DM fallback needs it.
-          if (!isPlayer && fogEffectCanvas) recompositeCloudEffect(fogAnimOffsets);
+          // Player draws clouds in renderFog — just mark fogDirty
           fogDirty = true;
           scheduleRender();
         }
@@ -665,12 +658,11 @@ function startFogAnim() {
 function stopFogAnim() {
   if (fogAnimRafId) { cancelAnimationFrame(fogAnimRafId); fogAnimRafId = null; }
   for (let i = 0; i < CLOUD_PASSES.length; i++) fogAnimAlphas[i] = CLOUD_PASSES[i].alpha;
-  if (usePixi && !isPlayer) {
+  if (!isPlayer) {
     // DM GPU path: freeze TilingSprite alphas at static values; tilePositions stay as-is
     pixiUpdateFogAnim(null, fogAnimAlphas);
     return;
   }
-  if (!isPlayer && fogEffectCanvas) recompositeCloudEffect(null); // freeze (non-PixiJS DM)
   fogDirty = true;
   scheduleRender();
 }
@@ -691,18 +683,15 @@ function startFogTransition(isShroud = false) {
   // requiring a canvas blend that breaks due to source-over compositing on fog alpha.
   if (fogTransRafId !== null) return;
 
-  if (usePixi && !isPlayer) {
+  if (!isPlayer) {
     // DM GPU path: snapshot blur canvas for sprite crossfade
     fogTransPrev = fogBlurCanvas ? cloneCanvas(fogBlurCanvas) : null;
     pixiSetFogTransition(fogTransPrev, 0);
-  } else if (usePixi && isPlayer) {
+  } else {
     // Player (hybrid): fog is Canvas-2D on top. The transition morphs the reveal-hole
     // shape — renderFog blends fogTransBlurPrev↔fogBlurCanvas via fogTransBlendCanvas each
     // frame. Only fogTransBlurPrev/fogTransBlendCanvas are needed (saved below); no
     // fogEffectCanvas snapshot, since the navy+cloud is redrawn fresh every frame.
-  } else {
-    if (!fogEffectCanvas) return;
-    fogTransPrev = cloneCanvas(fogEffectCanvas);
   }
   if (fogBlurCanvas) {
     fogTransBlurPrev = cloneCanvas(fogBlurCanvas);
@@ -726,12 +715,11 @@ function fogTransTick(ts) {
   const t = Math.min((ts - fogTransStart) / duration, 1);
   fogTransT = t * t * (3 - 2 * t); // smoothstep 0→1
 
-  if (usePixi && !isPlayer) {
-    // DM: sprite alpha crossfade (fast 800ms, cloud ramp acceptable)
+  if (!isPlayer) {
+    // DM: sprite alpha crossfade
     pixiSetFogTransition(null, fogTransT);
   } else {
-    // Canvas-2D path (Player fog-on-top, and non-PixiJS DM): renderFog blends
-    // fogTransPrev↔fogBlurCanvas via fogTransBlendCanvas each frame.
+    // Player fog-on-top: renderFog blends fogTransBlurPrev↔fogBlurCanvas via fogTransBlendCanvas
     fogDirty = true;
     scheduleRender();
   }
@@ -743,7 +731,7 @@ function fogTransTick(ts) {
     fogTransPrev     = null;
     fogTransBlurPrev = null;
     fogTransT        = 0;
-    if (usePixi && !isPlayer) {
+    if (!isPlayer) {
       pixiEndFogTransition();
     } else {
       fogDirty = true;
@@ -761,7 +749,7 @@ function stopFogTransition() {
   fogTransBlurPrev = null;
   fogTransBlurNext = null;
   fogTransT        = 0;
-  if (usePixi && !isPlayer) pixiEndFogTransition();
+  if (!isPlayer) pixiEndFogTransition();
 }
 
 // ─── Reveal All / Shroud All ──────────────────────────────────────────────────

@@ -452,7 +452,7 @@ function toolMouseDown(raw, e) {
 
   const pos = raw;
   isDrawing = true;
-  if (usePixi && !isPlayer) pixiSetFogBrushing(true);
+  if (!isPlayer) pixiSetFogBrushing(true);
 
   if (shape === 'brush') {
     pushUndo();
@@ -593,7 +593,7 @@ function toolMouseUp(pos, e) {
 
   if (!isDrawing) return;
   isDrawing = false;
-  if (usePixi && !isPlayer) pixiSetFogBrushing(false);
+  if (!isPlayer) pixiSetFogBrushing(false);
   lastMapX = lastMapY = null;
   if (shape === 'rect') {
     const rw = Math.abs(pos.x - rectStartX), rh = Math.abs(pos.y - rectStartY);
@@ -682,7 +682,7 @@ function toolWindowMouseUp() {
   }
   if (isDrawing) {
     isDrawing = false; lastMapX = lastMapY = null;
-    if (usePixi && !isPlayer) pixiSetFogBrushing(false);
+    if (!isPlayer) pixiSetFogBrushing(false);
     circleCenter = null;
     if (polygons.length > 0) { rebuildFogFromPolygons(); }
     if (fogModifiedThisStroke) {

@@ -13,6 +13,8 @@ No build step. For the Electron desktop app: `npm start` (requires `npm install`
 
 Alternatively, `npx serve .` and open `http://localhost:3000` for browser testing. Player view opens automatically as a second window.
 
+**Tests** use Node's built-in test runner (`node:test`). Run all: `npm test`. Run a single file: `node --test test/grid.test.js`. Test files live in `test/` and only cover pure-function modules that export via `module.exports`.
+
 ## Distribution & releases
 
 Cross-platform from one push (set up 2026-06-23). Building a Mac `.dmg` cannot be done on Windows locally, so releases are built in the cloud by **GitHub Actions** (`.github/workflows/release.yml`).
@@ -36,7 +38,7 @@ First release: `v1.0.0`, all three installers built and verified working (2026-0
 
 - Vanilla JS, no frameworks, no bundler
 - **No ES modules** — plain `<script src="...">` tags only; `import`/`export` break on `file://` protocol
-- Canvas 2D API for all rendering (no WebGL unless Canvas 2D can't handle blur on large images)
+- **PixiJS (WebGL) is the primary render path** for both DM and Player. Canvas 2D is used only for fog compositing (fog.js canvases) and the Player's fog-on-top overlay. There is no Canvas 2D map fallback.
 - Single HTML entry point: `index.html` serves both DM view and Player view (`?mode=player`)
 - postMessage for DM → Player sync (works on `file://` in Chrome with the flag above)
 - Electron wrapper for desktop packaging (Windows `.exe`, macOS `.dmg`, Linux `AppImage`) — core app is identical to browser version. See "Distribution & releases".
@@ -51,23 +53,30 @@ Hard rules — these override convenience, and "it's easier to just add it to th
 - **Migrate-on-touch.** When you modify a concern that still lives in the inline blob, extract *that concern* (and only that concern) into its own module as the first half of the change, then build the new behavior in the clean module. Do not extract unrelated code in the same change.
 - **Shared mutable state has one home: `state.js`.** Today state is scattered as top-level globals in the inline script. When a feature touches a piece of state, move *that piece* into `state.js` and reference it from there. Grow `state.js` lazily — never attempt to move all globals at once.
 - **No big-bang refactors.** Never schedule or perform a standalone "refactor the blob" pass. The blob shrinks only as a byproduct of normal feature work under the rules above. If a task is purely cosmetic file-shuffling with no feature attached, stop and confirm with the user first.
-- **Target module map** (where extracted concerns should land — create these as needed, don't pre-build empty ones): `state.js` (shared state), `viewport.js` (pan/zoom/sync-view), `grid.js` (grid config + render), `input.js` (mouse/keyboard/drag-drop), `scenes.js` (scene load/switch/transition, above the existing `sceneStore.js` IDB layer), `video.js` (animated-map handling). `fog.js` and `tools.js` already exist — extend them, don't duplicate their concerns elsewhere.
+- **Target module map** — extracted modules that already exist: `state.js` (shared state), `viewport.js` (pan/zoom/sync-view), `grid.js` (grid config + render), `scenes.js` (fog persistence + scene fade helpers), `video.js` (animated-map handling), `display.js` (display detection), `backup.js` (zip backup/restore). Still in the inline blob and needing extraction: `input.js` (mouse/keyboard/drag-drop). `fog.js` and `tools.js` already exist — extend them, don't duplicate their concerns elsewhere.
 - **Testability follows from decoupling, not file count.** `fog.js` is already a separate file but is untestable because it reaches into globals defined in the inline script. The win that unlocks fog regression tests is moving fog's state into `state.js` / passing it explicitly — not merely cutting files. Prioritize accordingly when fog work comes up.
 
 Mechanics that constrain all of the above (do not violate): no ES modules (`import`/`export` break on `file://`), plain `<script src>` only, load order matters (declarations must precede use at init), and **every new `.js` file must be added to `package.json` `build.files`** or it won't ship in the Electron package.
 
 ## Architecture
 
-Code is split across five browser scripts (plus the bundled PixiJS library) loaded via plain `<script>` tags. Global scope sharing: `let`/`const` at top level of a non-module script live in the global lexical environment and are accessible to all later scripts. Function bodies are lazily evaluated, so fog.js and tools.js functions can reference variables declared in the inline script (which loads last).
+Code is split across thirteen browser scripts (plus the bundled PixiJS library) loaded via plain `<script>` tags. Global scope sharing: `let`/`const` at top level of a non-module script live in the global lexical environment and are accessible to all later scripts. Function bodies are lazily evaluated, so later-loaded scripts can reference globals declared in the inline script (which loads last).
 
 **Load order** (critical — declarations must precede their use at initialization time):
 ```html
 <script src="lib/pixi.min.js"></script> <!-- PixiJS (WebGL) vendor library -->
 <script src="renderer.js"></script>      <!-- PixiJS wrapper: pixiSetMap, pixiUpdateMapTexture, GPU fog layers, etc. -->
+<script src="state.js"></script>         <!-- shared constants/state needed by multiple modules (FOG_TINT_ALPHA, etc.) -->
+<script src="display.js"></script>       <!-- display detection: normalizeDisplayRecord, initDisplayDetection -->
+<script src="video.js"></script>         <!-- video load/playback: loadVideoFromFile, computeOptimalTextureSize, fpsToFrameInterval -->
 <script src="fog.js"></script>           <!-- FOG_SCALE, fog canvases, buildRoundedPolyPath, renderFog, etc. -->
 <script src="tools.js"></script>         <!-- tool state, flushBrushOps, toolMouseDown/Move/Up, etc. -->
 <script src="sceneStore.js"></script>    <!-- IndexedDB scene persistence -->
-<script>/* inline */</script>            <!-- shared state, render loop, UI handlers, player sync, scenes, init -->
+<script src="scenes.js"></script>        <!-- fog persistence helpers: fogToBlob, loadFogFromScene, autoSaveScene -->
+<script src="viewport.js"></script>      <!-- view sync: resolveView, applyView, startViewLerp, sendToPlayer -->
+<script src="backup.js"></script>        <!-- zip backup export/restore (Electron-only) -->
+<script src="grid.js"></script>          <!-- grid config + render: drawGridLines, renderPlayerGrid, lineWidthForZoom -->
+<script>/* inline */</script>            <!-- render loop, UI handlers, scene management, player sync, init -->
 ```
 
 ```
@@ -75,6 +84,17 @@ renderer.js (~400 lines) — PixiJS (WebGL) wrapper; the GPU render path
   ├── Lifecycle: initPixiRenderer, pixiSetMap, pixiSetViewport, pixiResize, pixiHideMap/pixiShowMap
   ├── Map texture: pixiUpdateMapTexture, pixiStartVideoTextureSync/pixiStopVideoTextureSync, pixiGetMaxTexSize, pixiClampCanvas, pixiRefreshProxy
   └── DM GPU fog layers: pixiFogBlur*, pixiFogCloud* (TilingSprites), pixiFogData*/brush sprite, pixiFogTrans* (SpriteMaskFilter compositing)
+
+state.js (~45 lines) — shared constants/state that must be declared before fog.js and renderer.js
+  └── FOG_TINT_ALPHA, SCENE_FADE_MIN_MS, _sceneFadeStart, displayInfo (Player display record)
+
+display.js (~52 lines) — display detection for optimal Player texture sizing
+  └── normalizeDisplayRecord, initDisplayDetection (IPC listener for 'push-display-info')
+
+video.js (~306 lines) — video map load/playback
+  ├── loadVideoFromFile, startVideoLoop, stopVideoLoop, cleanupVideo, isVideoFile, activateVideoDom
+  ├── computeOptimalTextureSize — pure fn (tested): computes Player texture dims to avoid GPU TDR
+  └── fpsToFrameInterval — pure fn (tested): clamps fps to [5,60], returns ms interval
 
 fog.js (~470 lines)
   ├── Constants: FOG_SCALE, FOG_BLUR_RADIUS, FOG_OPACITY_DM, FOG_FEATHER_RADIUS, FOG_EDGE_MARGIN, FOG_REVEAL_MS, CLOUD_PASSES
@@ -100,25 +120,39 @@ sceneStore.js (~95 lines)
   └── IndexedDB wrapper: initSceneDB, saveScene, loadScene, deleteScene, listScenes.
         DB name: 'evermist', store: 'scenes'.
 
-index.html (inline script ~2400+ lines — LEGACY BLOB, being dissolved; see "Code organization")
-  ├── State: mapBitmap, mapOffscreen, mapVideo, mapVideoBlob, zoom/panX/panY, polygons, undoStack/redoStack
-  ├── 4 stacked CSS canvases (map, fog, grid, cursor)
+scenes.js (~90 lines) — fog persistence + scene-fade helpers (above sceneStore.js)
+  └── fogToBlob, loadFogFromScene, autoSaveScene, sceneFadeApply/sceneFadeClear
+
+viewport.js (~150 lines) — view sync helpers + Player map delivery
+  └── resolveView, applyView, startViewLerp, sendToPlayer, getViewportSize
+
+backup.js (~321 lines) — zip backup export/restore, Electron-only
+  └── exportBackup, importBackup (uses archiver/yauzl via IPC)
+
+grid.js (~145 lines) — grid config + render (pure fns exported via module.exports for tests)
+  ├── State: gridEnabled, gridSize, gridOffsetX/Y, gridColor, gridOpacity, gridMode, gridLineWidth
+  ├── lineWidthForZoom — pure fn (tested): zoom-scaled line width with 0.75px floor
+  ├── drawGridLines — square and hex grid draw on any 2D context
+  ├── renderPlayerGrid — draws grid on playerGridCanvas (see Player grid note below)
+  └── captureGridConfig / applyGridConfig / resetGridConfig
+
+index.html (inline script — LEGACY BLOB, being dissolved; see "Code organization")
+  ├── State: mapOffscreen, mapVideo, zoom/panX/panY, polygons, undoStack/redoStack
+  ├── 4 stacked CSS canvases (map, fog, grid, cursor) + playerGridCanvas (Player only, created at init)
   ├── Dirty flags: viewportDirty, mapDirty, fogDirty, gridDirty
   ├── scheduleRender() → RAF → doRender()
-  │     ├── flushBrushOps()  — from tools.js
-  │     ├── renderMap()      — when viewportDirty OR mapDirty (video frames)
-  │     ├── renderFog()      — from fog.js, only when fogDirty
-  │     └── renderGrid()     — only when gridDirty
-  ├── Video map support: loadVideoFromFile, startVideoLoop, stopVideoLoop, cleanupVideo, isVideoFile
-  │     Video <video> element appended to DOM (hidden) for full-res Chromium decoding.
-  │     RAF loop sets mapDirty each frame. (NOTE: avg-frame-time auto-fallback is NOT implemented — see Video map support.)
+  │     ├── flushBrushOps()      — from tools.js
+  │     ├── pixiSetViewport()    — primary map render (PixiJS)
+  │     ├── renderPlayerGrid()   — Player grid, from grid.js
+  │     ├── renderFog()          — from fog.js, only when fogDirty
+  │     └── renderGrid()         — DM grid overlay, only when gridDirty
   ├── Mouse events: delegate to toolMouseDown/Move/Up from tools.js
   │     (coordinate conversion screen→map stays in index.html event listeners)
   ├── Polygon management: closeActivePolygon, deleteSelectedPolygon, toggleSelectedPolygon
   ├── Undo/redo: pushUndo, restoreState, undo, redo
   ├── Scene management: createNewScene, switchScene, replaceSceneMap, auto-save (5s debounce)
-  ├── Player sync: sendToPlayer, postMessage listener, view lerp, auto/manual toggle
-  └── Toolbar, keyboard shortcuts, save/load, grid drawing, init
+  ├── Player sync: postMessage listener, auto/manual toggle
+  └── Toolbar, keyboard shortcuts, save/load, init
 ```
 
 **Critical rules:**
@@ -127,7 +161,7 @@ index.html (inline script ~2400+ lines — LEGACY BLOB, being dissolved; see "Co
 - Dirty flag separation: brush strokes set `fogDirty` only; pan/zoom set `viewportDirty` (redraws all); video frames set `mapDirty` only. This is the key performance optimization.
 - Large image handling (Canvas 2D mode): map is decoded once into an `ImageBitmap` (GPU-backed). All subsequent renders use `drawImage` from that bitmap, never from the `Image` object. **In PixiJS mode, `mapBitmap` is NOT created** — `mapOffscreen` canvas is passed directly to `pixiSetMap`. See "PixiJS memory management" section.
 - Viewport culling: pass a source rectangle to `drawImage` — only draw the visible portion of the map.
-- **Player grid rendering**: grid is drawn on `map-canvas` (below fog) in Player view, not on the grid canvas. This ensures fog naturally hides the grid in shrouded areas without compositing artifacts.
+- **Player grid rendering**: grid is drawn on `playerGridCanvas` — a canvas dynamically created at init and inserted into the DOM below `#fog-canvas`. `renderPlayerGrid(vp)` in grid.js writes to it. `#map-canvas` is `display:none` in PixiJS mode. The fog layer above naturally hides grid in shrouded areas.
 - **Player fog — hybrid Canvas-2D fog-on-top (2026-06-22 rewrite)**: The Player does NOT render fog in PixiJS. PixiJS draws only the unmasked map sprite (bottom layer); the fog is drawn on top by the Canvas-2D `renderFog()` (fog.js) on `#fog-canvas`, which sits above `#pixi-canvas` in the DOM. `renderFog`'s player path fills the entire viewport with navy + cloud in one pass, then punches reveal holes inside the map rect via `destination-in` with `fogBlurCanvas`. Because one continuous fog layer covers the whole viewport (including the map edge), the WebM map-rect boundary seam is structurally impossible. This replaced an earlier inverted-layer PixiJS approach (fog as masked background) that could never fully eliminate the seam.
   - **`#fog-canvas` must stay visible in the Player.** In PixiJS mode the DM hides its 2D fog-canvas (`if (!isPlayer) fogCanvas.style.display = 'none'`) because the DM's fog is GPU-rendered. The Player keeps it visible at `opacity: 1` — if hidden, `syncSize` skips it (stays 0×0) and `renderFog` paints into nothing, so the map shows fully revealed with only the container background around it.
   - **Edge-margin fix (FOG_EDGE_MARGIN)**: a reveal reaching the map's outer edge would hard-stop against the solid outside-map fog (a sharp horizontal "seam", glaring over bright map-edge content). `rebuildFogBlur` stamps a thin always-shrouded navy frame (FOG_EDGE_MARGIN fog-scale px, default 2) over the blur mask's outer edge; the blur feathers its inner edge inward so edge-touching reveals fade into the margin. Applied to the display blur mask only — `fogDataCanvas`, undo, and saved scenes are untouched.
@@ -240,14 +274,12 @@ Polygon objects: `{ id, vertices:[{x,y}], mode:'reveal'|'shroud', cornerRadius:0
 
 **The fix:** In PixiJS mode, skip `createImageBitmap` entirely. Pass `mapOffscreen` (or the video `extractCanvas`) directly to `pixiSetMap`. For the `switchScene` image path, draw the bitmap to `mapOffscreen` first, then call `bitmap.close()` immediately — never store it in `mapBitmap`.
 
-**Rule: in PixiJS mode, `mapBitmap` is always null.** The five load paths that enforce this:
-1. `loadMapFromFile` — `if (usePixi) { pixiSetMap(mapOffscreen, ...); }` else `createImageBitmap → mapBitmap`
-2. `loadVideoFromFile` `finishLoad` — `pixiSetMap(extractCanvas, ...); pixiHideMap();` (no createImageBitmap)
+**Rule: `mapBitmap` is always null** (there is no Canvas 2D map render path). The five load paths that enforce this:
+1. `loadMapFromFile` — `pixiSetMap(mapOffscreen, ...)` directly; no `createImageBitmap`
+2. `loadVideoFromFile` `finishLoad` — `pixiSetMap(extractCanvas, ...); pixiHideMap();`
 3. `switchScene` image path — draw bitmap → mapOffscreen, `bitmap.close()`, `pixiSetMap(mapOffscreen, ...)`
 4. `switchScene` video path — `pixiSetMap(extractCanvas, ...); pixiHideMap();`
 5. Player image/video paths — same pattern as DM equivalents
-
-`mapBitmap` is still created in Canvas 2D mode (no PixiJS) and used normally by `renderMap`.
 
 ### `sendToPlayer` spike — fixed 2026-06-20
 

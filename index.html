@@ -1401,8 +1401,6 @@ if (isPlayer) {
 // ─── Config ───────────────────────────────────────────────────────────────────
 const ZOOM_FACTOR       = 1.1;
 const POLY_CLOSE_RADIUS = 12;  // screen-px hit area to close polygon on first vertex
-let usePixi = true;
-
 // ─── State ────────────────────────────────────────────────────────────────────
 let mapOffscreen = null;
 let mapBitmap    = null;
@@ -1485,27 +1483,25 @@ const landing        = document.getElementById('landing');
 fogCanvas.style.opacity = isPlayer ? '1' : String(FOG_OPACITY_DM);
 
 // ─── PixiJS init ──────────────────────────────────────────────────────────────
-if (usePixi) {
-  mapCanvas.style.display = 'none';
-  // Hybrid: the DM's fog is rendered by PixiJS, so its 2D fog-canvas stays hidden.
-  // The Player draws Canvas-2D fog (renderFog) ON TOP of the PixiJS map sprite, so
-  // its fog-canvas must stay visible — otherwise syncSize skips it (display:none),
-  // it never gets sized, and renderFog paints into a 0×0 canvas (map shows fully
-  // revealed with only the container background visible around it).
-  if (!isPlayer) fogCanvas.style.display = 'none';
-  initPixiRenderer(container);
-  if (isPlayer) {
-    // Fill viewport with fog colour outside the map rect via CSS — keeps PixiJS canvas transparent
-    // so the video DOM element can show through for video maps.
-    container.style.background = '#1a1a2e';
-    // Grid canvas: must sit above #pixi-canvas but below #fog-canvas so fog hides the grid
-    // in shrouded areas. #map-canvas is hidden in PixiJS mode so we need a dedicated layer.
-    playerGridCanvas = document.createElement('canvas');
-    playerGridCanvas.id = 'player-grid-canvas';
-    playerGridCanvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
-    container.insertBefore(playerGridCanvas, fogCanvas);
-    playerGridCtx = playerGridCanvas.getContext('2d');
-  }
+mapCanvas.style.display = 'none';
+// Hybrid: the DM's fog is rendered by PixiJS, so its 2D fog-canvas stays hidden.
+// The Player draws Canvas-2D fog (renderFog) ON TOP of the PixiJS map sprite, so
+// its fog-canvas must stay visible — otherwise syncSize skips it (display:none),
+// it never gets sized, and renderFog paints into a 0×0 canvas (map shows fully
+// revealed with only the container background visible around it).
+if (!isPlayer) fogCanvas.style.display = 'none';
+initPixiRenderer(container);
+if (isPlayer) {
+  // Fill viewport with fog colour outside the map rect via CSS — keeps PixiJS canvas transparent
+  // so the video DOM element can show through for video maps.
+  container.style.background = '#1a1a2e';
+  // Grid canvas: must sit above #pixi-canvas but below #fog-canvas so fog hides the grid
+  // in shrouded areas. #map-canvas is hidden in PixiJS mode so we need a dedicated layer.
+  playerGridCanvas = document.createElement('canvas');
+  playerGridCanvas.id = 'player-grid-canvas';
+  playerGridCanvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
+  container.insertBefore(playerGridCanvas, fogCanvas);
+  playerGridCtx = playerGridCanvas.getContext('2d');
 }
 
 // ─── Map loading ──────────────────────────────────────────────────────────────
@@ -1526,19 +1522,10 @@ function loadMapFromFile(file, onMapLoaded) {
     mapOffscreen.getContext('2d').drawImage(img, 0, 0);
 
     if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
-    if (usePixi) {
-      pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
-      viewportDirty = true;
-      scheduleRender();
-      if (onMapLoaded) onMapLoaded(mapOffscreen, file);
-    } else {
-      createImageBitmap(img).then(bmp => {
-        mapBitmap = bmp;
-        viewportDirty = true;
-        scheduleRender();
-        if (onMapLoaded) onMapLoaded(bmp, file);
-      });
-    }
+    pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
+    viewportDirty = true;
+    scheduleRender();
+    if (onMapLoaded) onMapLoaded(mapOffscreen, file);
 
     fogDataCanvas = document.createElement('canvas');
     fogDataCanvas.width  = Math.ceil(mapWidth  / FOG_SCALE);
@@ -1560,7 +1547,7 @@ function loadMapFromFile(file, onMapLoaded) {
 
     if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
     rebuildFogEffect();
-    if (usePixi && !isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
+    if (!isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
 
     URL.revokeObjectURL(url);
     fitToScreen();
@@ -1583,7 +1570,7 @@ function activateVideoDom(video) {
   video.style.cssText = 'position:absolute;top:0;left:0;transform-origin:0 0;pointer-events:none;z-index:0;';
   container.insertBefore(video, mapCanvas);
   videoDOMActive = true;
-  if (usePixi && !isPlayer) {
+  if (!isPlayer) {
     pixiHideMap();
     mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
   }
@@ -1592,7 +1579,7 @@ function activateVideoDom(video) {
 
 function deactivateVideoDom() {
   videoDOMActive = false;
-  if (usePixi) pixiShowMap();
+  pixiShowMap();
   if (mapVideo && mapVideo.parentNode === container) {
     mapVideo.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;';
   }
@@ -1641,7 +1628,7 @@ function cleanupVideo() {
     mapVideoUrl = null;
   }
   mapVideoBlob = null;
-  if (usePixi) pixiStopVideoTextureSync();
+  pixiStopVideoTextureSync();
   playerMapTexCanvas = null;
   playerMapTexCtx = null;
 }
@@ -1688,10 +1675,8 @@ function loadVideoFromFile(file, onVideoLoaded) {
 
       if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
       mapOffscreen = extractCanvas;
-      if (usePixi) {
-        pixiSetMap(prepareTextureCanvas(extractCanvas, vw, vh), vw, vh);
-        pixiHideMap();
-      }
+      pixiSetMap(prepareTextureCanvas(extractCanvas, vw, vh), vw, vh);
+      pixiHideMap();
       mapVideo = video;
       attachVideoListeners(video);
       mapVideoBlob = file;
@@ -1716,7 +1701,7 @@ function loadVideoFromFile(file, onVideoLoaded) {
 
       if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
       rebuildFogEffect();
-      if (usePixi && !isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
+      if (!isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
 
       fitToScreen();
       if (!isPlayer) container.style.cursor = 'crosshair';
@@ -2134,10 +2119,8 @@ async function switchScene(id, _isRecovery = false) {
     extractCanvas.width = mapWidth; extractCanvas.height = mapHeight;
     extractCanvas.getContext('2d').drawImage(video, 0, 0, mapWidth, mapHeight);
     mapOffscreen = extractCanvas;
-    if (usePixi) {
-      pixiSetMap(prepareTextureCanvas(extractCanvas, mapWidth, mapHeight), mapWidth, mapHeight);
-      pixiHideMap();
-    }
+    pixiSetMap(prepareTextureCanvas(extractCanvas, mapWidth, mapHeight), mapWidth, mapHeight);
+    pixiHideMap();
     mapVideo = video;
     attachVideoListeners(video);
     mapVideoBlob = scene.mapBlob || null;
@@ -2176,13 +2159,9 @@ async function switchScene(id, _isRecovery = false) {
     mapOffscreen.width  = mapWidth;
     mapOffscreen.height = mapHeight;
     mapOffscreen.getContext('2d').drawImage(bitmap, 0, 0);
-    if (usePixi) {
-      pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
-      bitmap.close();
-      mapBitmap = null;
-    } else {
-      mapBitmap = bitmap;
-    }
+    pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
+    bitmap.close();
+    mapBitmap = null;
   }
 
   // Progressive render (DM only): show map immediately while fog rebuilds below.
@@ -2205,7 +2184,7 @@ async function switchScene(id, _isRecovery = false) {
   rebuildFogFromPolygons();
   if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
   rebuildFogEffect();
-  if (usePixi && !isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); }
+  if (!isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); }
 
   undoStack = []; redoStack = [];
   playerMapSent = false;
@@ -2302,7 +2281,7 @@ function syncSize() {
       c.height = ch;
     }
   }
-  if (usePixi) pixiResize(cw, ch);
+  pixiResize(cw, ch);
 }
 
 // ─── Rendering — split into per-layer functions ───────────────────────────────
@@ -2315,42 +2294,21 @@ function scheduleRender() {
 }
 
 function getViewportSize() {
-  if (usePixi && pixiApp) return { w: pixiApp.renderer.width, h: pixiApp.renderer.height };
+  if (pixiApp) return { w: pixiApp.renderer.width, h: pixiApp.renderer.height };
   return { w: mapCanvas.width, h: mapCanvas.height };
 }
 
 function calcViewport() {
-  const { w: cw, h: ch } = getViewportSize();
-  const srcX = Math.max(0, -panX / zoom);
-  const srcY = Math.max(0, -panY / zoom);
-  const srcW = Math.min(mapWidth  - srcX, cw / zoom);
-  const srcH = Math.min(mapHeight - srcY, ch / zoom);
-  const dstX = Math.max(0, panX);
-  const dstY = Math.max(0, panY);
-  const dstW = srcW * zoom;
-  const dstH = srcH * zoom;
-  return { cw, ch, srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH };
-}
-
-function renderMap(mapSource, vp) {
-  mapCtx.clearRect(0, 0, vp.cw, vp.ch);
-  if (vp.srcW > 0 && vp.srcH > 0) {
-    mapCtx.drawImage(mapSource,
-      vp.srcX, vp.srcY, vp.srcW, vp.srcH,
-      vp.dstX, vp.dstY, vp.dstW, vp.dstH);
-    // In Player view the grid lives on the map canvas so the fog layer above it
-    // naturally masks it — no destination-out compositing needed, no edge artifacts.
-    if (isPlayer && gridEnabled) drawGridLines(mapCtx, vp);
-  }
+  const { w: vpW, h: vpH } = getViewportSize();
+  return calcViewportRect(panX, panY, zoom, mapWidth, mapHeight, vpW, vpH);
 }
 
 function doRender() {
   renderScheduled = false;
   flushBrushOps();
-  if (usePixi && !isPlayer && isDrawing) pixiUpdateFogDataTexture();
+  if (!isPlayer && isDrawing) pixiUpdateFogDataTexture();
 
-  const mapSource = videoDOMActive ? null : (mapBitmap || mapOffscreen);
-  if (!videoDOMActive && !mapSource && !(usePixi && pixiMapSprite)) return;
+  if (!videoDOMActive && !mapOffscreen && !pixiMapSprite) return;
 
   const vp = calcViewport();
   if (!videoDOMActive && vp.srcW <= 0 && vp.srcH <= 0) return;
@@ -2362,27 +2320,15 @@ function doRender() {
   if (isPlayer && gridDirty) viewportDirty = true;
 
   if (viewportDirty) {
-    if (usePixi) {
-      pixiSetViewport(zoom, panX, panY);
-      if (isPlayer) renderPlayerGrid(vp);
-    } else if (!videoDOMActive) {
-      renderMap(mapSource, vp);
-    } else {
-      mapCtx.clearRect(0, 0, vp.cw, vp.ch); if (isPlayer && gridEnabled) drawGridLines(mapCtx, vp);
-    }
+    pixiSetViewport(zoom, panX, panY);
+    if (isPlayer) renderPlayerGrid(vp);
     renderFog(vp);
     renderGrid(vp);
     viewportDirty = fogDirty = gridDirty = mapDirty = false;
   } else {
     if (mapDirty) {
-      if (usePixi) {
-        // Player video texture updates run on the PixiJS render ticker
-        // (pixiStartVideoTextureSync), not here. DM uses a DOM <video> element.
-      } else if (!videoDOMActive) {
-        renderMap(mapSource, vp);
-      } else {
-        mapCtx.clearRect(0, 0, vp.cw, vp.ch); if (isPlayer && gridEnabled) drawGridLines(mapCtx, vp);
-      }
+      // Player video texture updates run on the PixiJS render ticker
+      // (pixiStartVideoTextureSync), not here. DM uses a DOM <video> element.
       mapDirty = false;
     }
     if (fogDirty)  { renderFog(vp); fogDirty = false; }
@@ -2392,10 +2338,6 @@ function doRender() {
 }
 
 // ─── Cursor overlay ───────────────────────────────────────────────────────────
-function toScreen(mapX, mapY) {
-  return { sx: mapX * zoom + panX, sy: mapY * zoom + panY };
-}
-
 function drawCursor(screenX, screenY) {
   cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
   if (!mapOffscreen && !mapVideo) return;
@@ -2464,7 +2406,7 @@ function fitToScreen() {
   zoom = Math.min(cw / mapWidth, ch / mapHeight) * 0.95;
   panX = (cw - mapWidth  * zoom) / 2;
   panY = (ch - mapHeight * zoom) / 2;
-  if (usePixi) pixiSetViewport(zoom, panX, panY);
+  pixiSetViewport(zoom, panX, panY);
 }
 
 // ─── Mouse events (DM only) ────────────────────────────────────────────────────
@@ -2491,7 +2433,7 @@ if (!isPlayer) {
     if (isPanning) {
       panX = panStartPanX + (e.clientX - panStartX);
       panY = panStartPanY + (e.clientY - panStartY);
-      if (usePixi) pixiSetViewport(zoom, panX, panY);
+      pixiSetViewport(zoom, panX, panY);
       drawCursor(lastScreenX, lastScreenY); // redraw with updated pan values
       viewportDirty = true;
       scheduleRender(); return;
@@ -2528,7 +2470,7 @@ if (!isPlayer) {
     panX = mx - (mx - panX) * (newZoom / zoom);
     panY = my - (my - panY) * (newZoom / zoom);
     zoom = newZoom;
-    if (usePixi) pixiSetViewport(zoom, panX, panY);
+    pixiSetViewport(zoom, panX, panY);
     drawCursor(lastScreenX, lastScreenY);
     viewportDirty = true;
     scheduleRender();
@@ -3233,25 +3175,23 @@ if (isPlayer) {
           extractCanvas.getContext('2d').drawImage(video, 0, 0, mapWidth, mapHeight);
           if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
           mapOffscreen = extractCanvas;
-          if (usePixi) {
-            // Size the texture to the detected display (display-aware, TDR-safe).
-            // prepareTextureCanvas reads displayInfo from state.js and falls back to
-            // the old ~2× viewport heuristic when displayInfo is not yet available.
-            playerMapTexCanvas = prepareTextureCanvas(extractCanvas, mapWidth, mapHeight);
-            playerMapTexCtx = playerMapTexCanvas.getContext('2d');
-            pixiSetMap(playerMapTexCanvas, mapWidth, mapHeight);
-            // Refresh the map texture from the video every rendered frame, driven by
-            // the PixiJS render ticker so it never freezes between viewport changes.
-            var _texVideoTime = -1;
-            pixiStartVideoTextureSync(function() {
-              if (!mapVideo || !playerMapTexCtx || mapVideo.readyState < 2) return;
-              var t = mapVideo.currentTime;
-              if (t === _texVideoTime) return; // same frame — skip redundant GPU upload
-              _texVideoTime = t;
-              playerMapTexCtx.drawImage(mapVideo, 0, 0, playerMapTexCanvas.width, playerMapTexCanvas.height);
-              pixiUpdateMapTexture();
-            });
-          }
+          // Size the texture to the detected display (display-aware, TDR-safe).
+          // prepareTextureCanvas reads displayInfo from state.js and falls back to
+          // the old ~2× viewport heuristic when displayInfo is not yet available.
+          playerMapTexCanvas = prepareTextureCanvas(extractCanvas, mapWidth, mapHeight);
+          playerMapTexCtx = playerMapTexCanvas.getContext('2d');
+          pixiSetMap(playerMapTexCanvas, mapWidth, mapHeight);
+          // Refresh the map texture from the video every rendered frame, driven by
+          // the PixiJS render ticker so it never freezes between viewport changes.
+          var _texVideoTime = -1;
+          pixiStartVideoTextureSync(function() {
+            if (!mapVideo || !playerMapTexCtx || mapVideo.readyState < 2) return;
+            var t = mapVideo.currentTime;
+            if (t === _texVideoTime) return; // same frame — skip redundant GPU upload
+            _texVideoTime = t;
+            playerMapTexCtx.drawImage(mapVideo, 0, 0, playerMapTexCanvas.width, playerMapTexCanvas.height);
+            pixiUpdateMapTexture();
+          });
           mapVideo = video;
           attachVideoListeners(video);
           fitToScreen();
@@ -3283,11 +3223,7 @@ if (isPlayer) {
         mapOffscreen.getContext('2d').drawImage(img, 0, 0);
         URL.revokeObjectURL(msg.mapUrl);
         if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
-        if (usePixi) {
-          pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
-        } else {
-          createImageBitmap(img).then(bmp => { mapBitmap = bmp; });
-        }
+        pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
         fitToScreen();
         if (playerFollowDM && msg.view) applyView(msg.view);
         loadFog(msg.fogDataUrl, !!msg.sceneChange).then(() => {
