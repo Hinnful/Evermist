@@ -2736,25 +2736,6 @@ if (!isPlayer) {
   };
   let activePreset = 'default';
 
-  function animLogScale(sliderVal, baseVal) {
-    return baseVal * Math.exp((sliderVal - 500) / 500 * Math.log(50));
-  }
-  function animSliderFromVal(currentVal, baseVal) {
-    if (baseVal === 0 || currentVal === 0) return 0;
-    return 500 + 500 * Math.log(currentVal / baseVal) / Math.log(50);
-  }
-
-  const ANIM_DEFAULTS = {
-    drift: 0.5, morphSpeed: 0.20, warpStr: 0.10, warpRad: 0.06, pulse: 0.15
-  };
-
-  function regenCloudFrames() {
-    generateCloudFrames(512, CLOUD_FRAME_COUNT);
-    cloudFramePos = 0;
-    if (fogEffectCanvas) { recompositeCloudEffect(fogAnimEnabled ? fogAnimOffsets : null); fogDirty = true; scheduleRender(); }
-    syncAnimToPlayer(true);
-  }
-
   function applyAnimPreset(name) {
     const p = ANIM_PRESETS[name];
     if (!p) return;
@@ -2783,23 +2764,6 @@ if (!isPlayer) {
       fogAnimEnabled = true;
       document.getElementById('btn-anim').classList.add('active');
       startFogAnim();
-    }
-  }
-
-  function updateAnimSliders() {
-    document.getElementById('anim-speed').value = Math.round(fogAnimSpeed * 100);
-    document.getElementById('anim-speed-num').value = Math.round(fogAnimSpeed * 100);
-
-    const logSliders = [
-      ['anim-drift', 'anim-drift-num', driftScale, ANIM_DEFAULTS.drift],
-      ['anim-morph-speed', 'anim-morph-num', cloudFrameSpeed, ANIM_DEFAULTS.morphSpeed],
-      ['anim-warp-str', 'anim-warp-num', cloudWarpStrength, ANIM_DEFAULTS.warpStr],
-      ['anim-warp-rad', 'anim-warp-rad-num', cloudWarpRadius, ANIM_DEFAULTS.warpRad],
-      ['anim-alpha-amp', 'anim-alpha-amp-num', alphaPulseAmp, ANIM_DEFAULTS.pulse],
-    ];
-    for (const [sliderId, numId, val, base] of logSliders) {
-      document.getElementById(sliderId).value = Math.round(animSliderFromVal(val, base));
-      document.getElementById(numId).value = val.toFixed(2);
     }
   }
 
@@ -3097,6 +3061,7 @@ if (isPlayer) {
     }
 
     if (msg.type !== 'fog-update') return;
+    if (msg.pickedHex) handleFogColorMessage({ pickedHex: msg.pickedHex, fogTintAlpha: msg.fogTintAlpha });
     // (retry loop in initPlayerMapRetry stops itself when mapOffscreen is set — no timer to clear)
 
     // Don't reveal yet — keep scene-fade dark until map + fog are fully decoded and render is queued.

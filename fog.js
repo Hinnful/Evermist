@@ -765,10 +765,17 @@ function handleFogColorMessage(msg) {
 // Restores fog color + tint from a scene record on the DM side (called from switchScene,
 // after pixiInitFog). Falls back to defaults for scenes that predate fog persistence.
 // Syncs the Fog-panel DOM so the UI matches, then pushes the color to the Player.
+// Runtime defaults for the anim bundle — match fog.js initializer values + force-enabled
+// (init at index.html forces fogAnimEnabled=true). Used when a scene has no anim data.
+const ANIM_RUNTIME_DEFAULTS = {
+  enabled: true, speed: 1.0, drift: 1.0, morph: 0.35,
+  warpStr: 0.15, warpRad: 0.08, pulse: 0.30,
+};
+
 function restoreSceneFogSettings(scene) {
   const fs    = scene.fogSettings;
-  const hex   = (fs && fs.pickedHex)       ? fs.pickedHex  : '#3a3a8c';
-  const alpha = (fs && fs.tintAlpha != null) ? fs.tintAlpha : 0.18;
+  const hex   = (fs && fs.pickedHex)        ? fs.pickedHex  : '#3a3a8c';
+  const alpha = (fs && fs.tintAlpha != null) ? fs.tintAlpha  : 0.18;
   applyFogColor(hex);
   applyFogTintAlpha(alpha);
   const colorEl  = document.getElementById('fog-color');
@@ -777,7 +784,76 @@ function restoreSceneFogSettings(scene) {
   if (colorEl)  colorEl.value  = hex;
   if (sliderEl) sliderEl.value = Math.round(alpha * 100);
   if (numEl)    numEl.value    = Math.round(alpha * 100);
-  syncFogColorToPlayer(hex);
+  // Don't call syncFogColorToPlayer here — the color arrives bundled in the sendToPlayer
+  // fog-update message (pickedHex field). Calling it early sends the new color to the Player
+  // while the scene-fade overlay is still animating (500ms CSS transition), causing the Player
+  // to render the new color over the old scene's fog canvas — the visible flicker.
+
+  // Restore anim params — fall back field-by-field (NaN guard) for missing/corrupt data.
+  const a  = (fs && fs.anim) ? fs.anim : {};
+  const D  = ANIM_RUNTIME_DEFAULTS;
+  const num = (v, def) => (typeof v === 'number' && isFinite(v)) ? v : def;
+
+  const prevWarpStr = cloudWarpStrength;
+  const prevWarpRad = cloudWarpRadius;
+
+  fogAnimEnabled    = (typeof a.enabled === 'boolean') ? a.enabled : D.enabled;
+  fogAnimSpeed      = num(a.speed,   D.speed);
+  driftScale        = num(a.drift,   D.drift);
+  cloudFrameSpeed   = num(a.morph,   D.morph);
+  cloudWarpStrength = num(a.warpStr, D.warpStr);
+  cloudWarpRadius   = num(a.warpRad, D.warpRad);
+  alphaPulseAmp     = num(a.pulse,   D.pulse);
+
+  updateAnimSliders();
+
+  if (cloudWarpStrength !== prevWarpStr || cloudWarpRadius !== prevWarpRad) {
+    regenCloudFrames();
+  } else {
+    syncAnimToPlayer(false);
+  }
+
+  const btnAnim = document.getElementById('btn-anim');
+  if (fogAnimEnabled) {
+    startFogAnim();
+    if (btnAnim) btnAnim.classList.add('active');
+  } else {
+    stopFogAnim();
+    if (btnAnim) btnAnim.classList.remove('active');
+  }
+}
+
+// ─── Anim-panel DOM helpers (moved from inline script; called by restoreSceneFogSettings + wiring) ───
+
+// Midpoint reference values for the log-scale sliders (slider=500 ↔ these values).
+const ANIM_DEFAULTS = {
+  drift: 0.5, morphSpeed: 0.20, warpStr: 0.10, warpRad: 0.06, pulse: 0.15
+};
+
+// Syncs all anim-panel slider + numeric elements to the current live globals.
+function updateAnimSliders() {
+  document.getElementById('anim-speed').value = Math.round(fogAnimSpeed * 100);
+  document.getElementById('anim-speed-num').value = Math.round(fogAnimSpeed * 100);
+
+  const logSliders = [
+    ['anim-drift',       'anim-drift-num',    driftScale,        ANIM_DEFAULTS.drift],
+    ['anim-morph-speed', 'anim-morph-num',    cloudFrameSpeed,   ANIM_DEFAULTS.morphSpeed],
+    ['anim-warp-str',    'anim-warp-num',     cloudWarpStrength, ANIM_DEFAULTS.warpStr],
+    ['anim-warp-rad',    'anim-warp-rad-num', cloudWarpRadius,   ANIM_DEFAULTS.warpRad],
+    ['anim-alpha-amp',   'anim-alpha-amp-num', alphaPulseAmp,    ANIM_DEFAULTS.pulse],
+  ];
+  for (const [sliderId, numId, val, base] of logSliders) {
+    document.getElementById(sliderId).value = Math.round(animSliderFromVal(val, base));
+    document.getElementById(numId).value = val.toFixed(2);
+  }
+}
+
+// Regenerates cloud frames (call after warp params change) and syncs Player.
+function regenCloudFrames() {
+  generateCloudFrames(512, CLOUD_FRAME_COUNT);
+  cloudFramePos = 0;
+  if (fogEffectCanvas) { recompositeCloudEffect(fogAnimEnabled ? fogAnimOffsets : null); fogDirty = true; scheduleRender(); }
+  syncAnimToPlayer(true);
 }
 
 // ─── Fog controls UI ─────────────────────────────────────────────────────────
