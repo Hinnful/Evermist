@@ -134,6 +134,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
         mapUrl, mapType, mapWidth, mapHeight, fogDataUrl, view, isShroud, sceneChange, fogChanged,
         sceneName: currentScene ? currentScene.name : null,
         gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
+        pickedHex: fogPickedHex, fogTintAlpha: FOG_TINT_ALPHA,
       }, '*');
       playerMapSent = true;
     };

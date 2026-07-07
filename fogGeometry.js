@@ -176,6 +176,20 @@ function deriveFogColors(pickedHex) {
   };
 }
 
+// ─── Animation slider math ────────────────────────────────────────────────────
+// Log-scale mapping between a 0-1000 slider position and a physical parameter
+// value. baseVal is the midpoint (slider=500 → baseVal). Range is baseVal/50 …
+// baseVal×50 (50× either direction), matching the fog anim panel sliders.
+function animLogScale(sliderVal, baseVal) {
+  return baseVal * Math.exp((sliderVal - 500) / 500 * Math.log(50));
+}
+
+// Inverse: physical value → slider position. Returns 0 when either arg is 0.
+function animSliderFromVal(currentVal, baseVal) {
+  if (baseVal === 0 || currentVal === 0) return 0;
+  return 500 + 500 * Math.log(currentVal / baseVal) / Math.log(50);
+}
+
 // ─── Node.js export guard (unit tests only) ──────────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -188,5 +202,7 @@ if (typeof module !== 'undefined' && module.exports) {
     pulseAlpha,
     cloudBlendIndices,
     deriveFogColors,
+    animLogScale,
+    animSliderFromVal,
   };
 }

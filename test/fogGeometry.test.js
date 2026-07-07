@@ -10,6 +10,8 @@ const {
   pulseAlpha,
   cloudBlendIndices,
   deriveFogColors,
+  animLogScale,
+  animSliderFromVal,
 } = require('../fogGeometry.js');
 
 // Records path commands so buildRoundedPolyPath can be tested without a real canvas.
@@ -244,5 +246,41 @@ describe('deriveFogColors', () => {
     const { base, tint } = deriveFogColors('#ffffff');
     assert.match(base, /^#[0-9a-f]{6}$/);
     assert.match(tint, /^#[0-9a-f]{6}$/);
+  });
+});
+
+describe('animLogScale / animSliderFromVal', () => {
+  const base = 0.5;
+
+  it('slider=500 maps to baseVal', () => {
+    assert.ok(Math.abs(animLogScale(500, base) - base) < 1e-10);
+  });
+
+  it('slider=0 maps to baseVal/50', () => {
+    const expected = base / 50;
+    assert.ok(Math.abs(animLogScale(0, base) - expected) < 1e-10);
+  });
+
+  it('slider=1000 maps to baseVal*50', () => {
+    const expected = base * 50;
+    assert.ok(Math.abs(animLogScale(1000, base) - expected) < 1e-10);
+  });
+
+  it('animSliderFromVal is the inverse of animLogScale at slider=500', () => {
+    const val = animLogScale(500, base);
+    assert.ok(Math.abs(animSliderFromVal(val, base) - 500) < 1e-8);
+  });
+
+  it('animSliderFromVal is the inverse of animLogScale at slider=250', () => {
+    const val = animLogScale(250, base);
+    assert.ok(Math.abs(animSliderFromVal(val, base) - 250) < 1e-8);
+  });
+
+  it('animSliderFromVal returns 0 when baseVal is 0', () => {
+    assert.strictEqual(animSliderFromVal(0.5, 0), 0);
+  });
+
+  it('animSliderFromVal returns 0 when currentVal is 0', () => {
+    assert.strictEqual(animSliderFromVal(0, base), 0);
   });
 });

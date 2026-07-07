@@ -78,7 +78,19 @@ function doAutoSave() {
     polygons:      polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
     nextPolygonId,
     gridConfig:    captureGridConfig(),
-    fogSettings:   { pickedHex: fogPickedHex, tintAlpha: FOG_TINT_ALPHA },
+    fogSettings:   {
+      pickedHex: fogPickedHex,
+      tintAlpha: FOG_TINT_ALPHA,
+      anim: {
+        enabled:  fogAnimEnabled,
+        speed:    fogAnimSpeed,
+        drift:    driftScale,
+        morph:    cloudFrameSpeed,
+        warpStr:  cloudWarpStrength,
+        warpRad:  cloudWarpRadius,
+        pulse:    alphaPulseAmp,
+      },
+    },
   };
   baseFogCanvas.toBlob(blob => {
     if (!blob || currentScene !== scene) return;
