@@ -252,9 +252,10 @@ function generateCloudFrames(size, numFrames) {
         const v  = turbulence(nx + w1 * cloudWarpStrength, ny + w2 * cloudWarpStrength);
 
         const i = (y * size + x) * 4;
-        d[i]     = (8 + 80 * v) | 0;
-        d[i + 1] = (8 + 80 * v) | 0;
-        d[i + 2] = (20 + 110 * v) | 0;
+        // Neutral grey: R=G=B so the cloud adds brightness texture without
+        // baking in a hue. Fog color comes entirely from fogBaseColor/fogTintColor.
+        const grey = (20 + 110 * v) | 0;
+        d[i] = d[i + 1] = d[i + 2] = grey;
         d[i + 3] = (140 + 115 * v) | 0;
       }
     }
@@ -390,7 +391,7 @@ function recompositeCloudEffect(offsets, blurSrc) {
   fogEffectCtx.save();
   fogEffectCtx.globalCompositeOperation = 'source-atop';
   fogEffectCtx.globalAlpha = FOG_TINT_ALPHA;
-  fogEffectCtx.fillStyle = '#7050e0';
+  fogEffectCtx.fillStyle = fogTintColor;
   fogEffectCtx.fillRect(0, 0, w, h);
   fogEffectCtx.restore();
 }
@@ -422,7 +423,7 @@ function renderFog(vp) {
     // at the map border is impossible — the same pixels back both regions.
 
     // 1. Fill entire display with base fog colour.
-    fogDisplayCtx.fillStyle = '#1a1a2e';
+    fogDisplayCtx.fillStyle = fogBaseColor;
     fogDisplayCtx.fillRect(0, 0, cw, ch);
 
     // 2. Overlay cloud texture across the full display in display-space coords.
@@ -451,7 +452,15 @@ function renderFog(vp) {
       fogDisplayCtx.restore();
     }
 
-    // 3. Punch reveal holes inside the map rect.
+    // 3. Tint glow — source-atop so it only lands on fog pixels, not revealed areas.
+    fogDisplayCtx.save();
+    fogDisplayCtx.globalCompositeOperation = 'source-atop';
+    fogDisplayCtx.globalAlpha = FOG_TINT_ALPHA;
+    fogDisplayCtx.fillStyle = fogTintColor;
+    fogDisplayCtx.fillRect(0, 0, cw, ch);
+    fogDisplayCtx.restore();
+
+    // 4. Punch reveal holes inside the map rect.
     // fogBlurCanvas: alpha=1 where fogged, alpha≈0 where revealed (blur gives
     // smooth feathered edges). destination-in keeps existing pixels proportional
     // to source alpha — retains fog over fogged areas, clears over revealed.
@@ -703,6 +712,55 @@ function shroudAllFog() {
   rebuildFogFromPolygons();
 }
 
+// ─── Live fog color ───────────────────────────────────────────────────────────
+
+// Called by the DM color picker (and Player on receiving fog-color message).
+// pickedHex: the raw picked color from the <input type="color">.
+// Derives base+tint, updates both state vars, and repaints both render paths.
+function applyFogColor(pickedHex) {
+  const { base, tint } = deriveFogColors(pickedHex);
+  fogBaseColor = base;
+  fogTintColor = tint;
+
+  if (!isPlayer) {
+    // DM: PixiJS path — re-fill base rect and tint overlay (live on next PixiJS render tick).
+    // Also recomposite fogEffectCanvas so brush-stroke preview uses the new colors.
+    if (typeof pixiUpdateFogBaseColor === 'function') pixiUpdateFogBaseColor(base);
+    if (typeof pixiUpdateFogTintColor === 'function') pixiUpdateFogTintColor(tint);
+    recompositeCloudEffect(fogAnimOffsets.length ? fogAnimOffsets : null);
+    viewportDirty = true;
+    scheduleRender();
+  } else {
+    // Player: Canvas-2D fog-on-top — fogBaseColor and fogTintColor read at renderFog time.
+    // Also update the container CSS background (outside-map area).
+    const container = document.getElementById('map-container');
+    if (container) container.style.background = base;
+    fogDirty = true;
+    scheduleRender();
+  }
+}
+
+// Updates the tint alpha strength on both render paths.
+function applyFogTintAlpha(alpha) {
+  FOG_TINT_ALPHA = alpha;
+  if (!isPlayer) {
+    if (typeof pixiUpdateFogTintColor === 'function') pixiUpdateFogTintColor(fogTintColor);
+    recompositeCloudEffect(fogAnimOffsets.length ? fogAnimOffsets : null);
+    viewportDirty = true;
+    scheduleRender();
+  } else {
+    fogDirty = true;
+    scheduleRender();
+  }
+}
+
+// Handles the Player-side fog-color postMessage. Extracted from the inline receiver
+// so no new logic lives in index.html.
+function handleFogColorMessage(msg) {
+  if (msg.fogTintAlpha != null) FOG_TINT_ALPHA = msg.fogTintAlpha;
+  applyFogColor(msg.pickedHex);
+}
+
 // ─── Fog controls UI ─────────────────────────────────────────────────────────
 
 function initFogControls() {
@@ -727,5 +785,26 @@ function initFogControls() {
     fogDirty = true;
     scheduleRender();
     scheduleAutoSync();
+  };
+
+  const fogColorPicker   = document.getElementById('fog-color');
+  const tintAlphaSlider  = document.getElementById('fog-tint-alpha');
+  const tintAlphaNum     = document.getElementById('fog-tint-alpha-num');
+
+  fogColorPicker.oninput = function() {
+    applyFogColor(this.value);
+    syncFogColorToPlayer(this.value);
+  };
+  tintAlphaSlider.oninput = function() {
+    const v = parseInt(this.value);
+    tintAlphaNum.value = v;
+    applyFogTintAlpha(v / 100);
+    syncFogColorToPlayer(fogColorPicker.value);
+  };
+  tintAlphaNum.oninput = function() {
+    const v = Math.max(0, Math.min(100, parseInt(this.value) || 0));
+    tintAlphaSlider.value = v;
+    applyFogTintAlpha(v / 100);
+    syncFogColorToPlayer(fogColorPicker.value);
   };
 }

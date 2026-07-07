@@ -6,7 +6,17 @@
 // Purple-blue luminosity tint applied over fog on both render paths (Canvas 2D
 // fog.js:recompositeCloudEffect and PixiJS renderer.js:purpleOverlay). Must stay
 // in state.js so it's declared before both fog.js and renderer.js are evaluated.
-const FOG_TINT_ALPHA = 0.18;
+let FOG_TINT_ALPHA = 0.18;
+
+// Live fog color vars — changed by the DM color picker and synced to Player.
+// fogBaseColor: the solid fill shown on the Player's full display (outside + fogged area).
+// fogTintColor: the glow overlay drawn source-atop on both DM and Player fog.
+// Neither value is baked into fogDataCanvas/baseFogCanvas pixel data — those canvases
+// carry alpha only (#1a1a2e fills are alpha-carrier convention, not display color).
+// Default picks are derived from a single hue (#3a3a8c) via deriveFogColors() so the
+// two-color look matches today's navy base + purple tint as closely as one hue allows.
+let fogBaseColor = '#1a1a2e';
+let fogTintColor = '#7050e0';
 
 // ─── Scene-fade timing ────────────────────────────────────────────────────────
 // Player-side: minimum time the #scene-fade black must stay visible so even fast

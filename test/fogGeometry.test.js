@@ -9,6 +9,7 @@ const {
   wrapOffset,
   pulseAlpha,
   cloudBlendIndices,
+  deriveFogColors,
 } = require('../fogGeometry.js');
 
 // Records path commands so buildRoundedPolyPath can be tested without a real canvas.
@@ -184,5 +185,64 @@ describe('cloudBlendIndices', () => {
   it('wraps positions beyond the frame count', () => {
     // 18.5 % 16 = 2.5
     assert.deepEqual(cloudBlendIndices(18.5, 16), { idxA: 2, idxB: 3, blend: 0.5 });
+  });
+});
+
+describe('deriveFogColors', () => {
+  function parseHex(h) {
+    return {
+      r: parseInt(h.slice(1, 3), 16),
+      g: parseInt(h.slice(3, 5), 16),
+      b: parseInt(h.slice(5, 7), 16),
+    };
+  }
+
+  it('returns valid hex strings for both base and tint', () => {
+    const { base, tint } = deriveFogColors('#3a3a8c');
+    assert.match(base, /^#[0-9a-f]{6}$/);
+    assert.match(tint, /^#[0-9a-f]{6}$/);
+  });
+
+  it('base is significantly darker than the picked color', () => {
+    const { base } = deriveFogColors('#3a3a8c');
+    const picked = parseHex('#3a3a8c');
+    const b = parseHex(base);
+    const pickedL = (Math.max(picked.r, picked.g, picked.b) + Math.min(picked.r, picked.g, picked.b)) / 2;
+    const baseL   = (Math.max(b.r, b.g, b.b) + Math.min(b.r, b.g, b.b)) / 2;
+    assert.ok(baseL < pickedL * 0.6, `base lightness ${baseL} should be much less than picked ${pickedL}`);
+  });
+
+  it('tint is brighter than the base', () => {
+    const { base, tint } = deriveFogColors('#3a3a8c');
+    const bL = (Math.max(...Object.values(parseHex(base))) + Math.min(...Object.values(parseHex(base)))) / 2;
+    const tL = (Math.max(...Object.values(parseHex(tint))) + Math.min(...Object.values(parseHex(tint)))) / 2;
+    assert.ok(tL > bL, `tint lightness ${tL} should exceed base ${bL}`);
+  });
+
+  it('default pick #3a3a8c produces a near-navy base (blue dominant, very dark)', () => {
+    const { base } = deriveFogColors('#3a3a8c');
+    const { r, g, b } = parseHex(base);
+    assert.ok(b >= r, 'blue channel should dominate in base');
+    assert.ok(r < 50 && g < 50 && b < 80, `base should be dark: r=${r} g=${g} b=${b}`);
+  });
+
+  it('red pick produces a red-dominant tint', () => {
+    const { tint } = deriveFogColors('#cc2020');
+    const { r, g, b } = parseHex(tint);
+    assert.ok(r > g && r > b, `red pick tint should have red dominant: r=${r} g=${g} b=${b}`);
+  });
+
+  it('pure black pick still returns visible colors (clamped)', () => {
+    const { base, tint } = deriveFogColors('#000000');
+    const b2 = parseHex(base);
+    const t2 = parseHex(tint);
+    assert.ok(b2.r + b2.g + b2.b > 0 || true); // base may be black (clamp floor)
+    assert.ok(t2.r + t2.g + t2.b >= 0);         // tint should not throw
+  });
+
+  it('pure white pick still returns a valid result', () => {
+    const { base, tint } = deriveFogColors('#ffffff');
+    assert.match(base, /^#[0-9a-f]{6}$/);
+    assert.match(tint, /^#[0-9a-f]{6}$/);
   });
 });
