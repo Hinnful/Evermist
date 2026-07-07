@@ -58,86 +58,23 @@ let fogTransStart       = 0;
 // fogTransRafId lives in state.js (fog RAF lifecycle handle)
 let fogTransIsShroud    = false;
 
-// ─── Rounded polygon path ─────────────────────────────────────────────────────
-// Used by both the fog pipeline (applyPolygonToFog) and the cursor drawing
-// (drawPolyOutline in tools.js). Declared here because fog.js loads first.
-// verts must be in target coordinate space.
-// perVertR: optional array of per-vertex radius overrides (null entries fall back to defaultR).
-// Concave (reflex) vertices are always sharp — prevents inside-out arc deformation.
-function buildRoundedPolyPath(ctx, verts, defaultR, perVertR) {
-  const n = verts.length;
-  const getR = (i) => (perVertR && perVertR[i] != null) ? perVertR[i] : defaultR;
-  if (n < 3) {
-    ctx.moveTo(verts[0].x, verts[0].y);
-    for (let i = 1; i < n; i++) ctx.lineTo(verts[i].x, verts[i].y);
-    ctx.closePath();
-    return;
-  }
-  for (let i = 0; i < n; i++) {
-    const r = getR(i);
-    const prev = verts[(i - 1 + n) % n];
-    const curr = verts[i];
-    const next = verts[(i + 1) % n];
-    const dPrev = Math.hypot(curr.x - prev.x, curr.y - prev.y);
-    const dNext = Math.hypot(next.x - curr.x, next.y - curr.y);
-    if (r <= 0 || dPrev === 0 || dNext === 0) {
-      if (i === 0) ctx.moveTo(curr.x, curr.y); else ctx.lineTo(curr.x, curr.y);
-      continue;
-    }
-    const maxR = Math.min(r, dPrev / 2, dNext / 2);
-    const ex = curr.x + (prev.x - curr.x) / dPrev * maxR;
-    const ey = curr.y + (prev.y - curr.y) / dPrev * maxR;
-    if (i === 0) ctx.moveTo(ex, ey); else ctx.lineTo(ex, ey);
-    ctx.arcTo(curr.x, curr.y, next.x, next.y, maxR);
-  }
-  ctx.closePath();
-}
+// buildRoundedPolyPath lives in fogGeometry.js (pure geometry kernel, loaded first).
 
 // ─── DPI-adaptive radius helpers ──────────────────────────────────────────────
 // Scale blur/feather radii proportionally to fog canvas size so they cover the
-// same fraction of the map regardless of image resolution.
+// same fraction of the map regardless of image resolution. The pure math lives
+// in fogGeometry.js (fogSizeScale / scaledRadius); these wrappers read live state.
 function getFogSizeScale() {
   if (!fogDataCanvas) return 1;
-  const linear = Math.min(1, Math.max(fogDataCanvas.width, fogDataCanvas.height) / FOG_SIZE_REF);
-  return linear * linear;
+  return fogSizeScale(Math.max(fogDataCanvas.width, fogDataCanvas.height), FOG_SIZE_REF);
 }
 let fogFeatherRadius = FOG_FEATHER_RADIUS; // overridable at runtime via UI slider
-function getScaledBlurRadius()    { return Math.max(1, FOG_BLUR_RADIUS  * getFogSizeScale()); }
-function getScaledFeatherRadius() { return Math.max(1, fogFeatherRadius * getFogSizeScale()); }
+function getScaledBlurRadius()    { return scaledRadius(FOG_BLUR_RADIUS,  getFogSizeScale()); }
+function getScaledFeatherRadius() { return scaledRadius(fogFeatherRadius, getFogSizeScale()); }
 
 // ─── Fog data operations ──────────────────────────────────────────────────────
 // All coordinates are in MAP space; fogDataCanvas is at 1/FOG_SCALE.
-
-// Returns a copy of `verts` with each vertex moved inward by `dist` units.
-// Uses the edge-bisector formula so the perpendicular inset is exactly `dist`
-// at every edge (handles both CW and CCW winding via the shoelace sign).
-function insetPolygon(verts, dist) {
-  const n = verts.length;
-  if (n < 3 || dist <= 0) return verts;
-  let area2 = 0;
-  for (let i = 0; i < n; i++) {
-    const j = (i + 1) % n;
-    area2 += verts[i].x * verts[j].y - verts[j].x * verts[i].y;
-  }
-  const sign = area2 > 0 ? 1 : -1; // CW in screen space = positive area
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const a = verts[(i + n - 1) % n], b = verts[i], c = verts[(i + 1) % n];
-    const e1x = b.x - a.x, e1y = b.y - a.y, l1 = Math.hypot(e1x, e1y) || 1;
-    const e2x = c.x - b.x, e2y = c.y - b.y, l2 = Math.hypot(e2x, e2y) || 1;
-    const nx1 = sign * -e1y / l1, ny1 = sign * e1x / l1;
-    const nx2 = sign * -e2y / l2, ny2 = sign * e2x / l2;
-    const bx = nx1 + nx2, by = ny1 + ny2;
-    const denom = bx * nx1 + by * ny1;
-    if (Math.abs(denom) < 0.01) {
-      out.push({ x: b.x + nx2 * dist, y: b.y + ny2 * dist });
-    } else {
-      const s = dist / denom;
-      out.push({ x: b.x + bx * s, y: b.y + by * s });
-    }
-  }
-  return out;
-}
+// insetPolygon lives in fogGeometry.js (pure geometry kernel, loaded first).
 
 function revealCircle(mx, my, r) {
   const fx = mx / FOG_SCALE, fy = my / FOG_SCALE, fr = r / FOG_SCALE;
@@ -594,10 +531,10 @@ function fogAnimTick(ts) {
       const p = CLOUD_PASSES[i];
       const nx = fogAnimOffsets[i].x + p.driftX * driftScale * dt * fogAnimSpeed;
       const ny = fogAnimOffsets[i].y + p.driftY * driftScale * dt * fogAnimSpeed;
-      fogAnimOffsets[i].x = ((nx % tile) + tile) % tile;
-      fogAnimOffsets[i].y = ((ny % tile) + tile) % tile;
+      fogAnimOffsets[i].x = wrapOffset(nx, tile);
+      fogAnimOffsets[i].y = wrapOffset(ny, tile);
 
-      fogAnimAlphas[i] = p.alpha * (1 + alphaPulseAmp * Math.sin(fogAnimTime * p.alphaFreq + p.alphaPhase));
+      fogAnimAlphas[i] = pulseAlpha(p.alpha, alphaPulseAmp, fogAnimTime, p.alphaFreq, p.alphaPhase);
     }
 
     if (!skipExpensiveWork) {
@@ -605,11 +542,7 @@ function fogAnimTick(ts) {
 
       if (cloudFrames.length > 1 && cloudBlendCtx) {
         cloudFramePos += dt * fogAnimSpeed * cloudFrameSpeed;
-        const total = cloudFrames.length;
-        const wrapped = cloudFramePos % total;
-        const idxA  = Math.floor(wrapped) % total;
-        const idxB  = (idxA + 1) % total;
-        const blend = wrapped - Math.floor(wrapped);
+        const { idxA, idxB, blend } = cloudBlendIndices(cloudFramePos, cloudFrames.length);
 
         if (cloudFrames[idxA] && cloudFrames[idxB]) {
           const sz = cloudBlendCanvas.width;

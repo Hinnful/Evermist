@@ -34,6 +34,7 @@
       "viewport.js",
       "backup.js",
       "grid.js",
+      "fogGeometry.js",
       "fog.js",
       "tools.js",
       "sceneStore.js",
