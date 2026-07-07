@@ -1160,6 +1160,11 @@
         <button id="btn-fill-fog" style="flex:1">Shroud All</button>
         <button id="btn-clear-fog" style="flex:1">Reveal All</button>
       </div>
+      <div class="slider-row" style="margin-top:4px">
+        <input type="color" id="fog-color" value="#3a3a8c" title="Fog color">
+        <input type="range" id="fog-tint-alpha" min="0" max="100" value="18" title="Tint strength">
+        <input type="number" id="fog-tint-alpha-num" class="grid-num" min="0" max="100" value="18" title="Tint %" style="width:42px">
+      </div>
       <div class="section-row" style="gap:2px;margin-top:4px">
         <button id="anim-preset-calm" class="grid-mode-btn anim-preset-btn" title="Calm — gentle drift">
           <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 3 C3 2, 5 2, 8 3 C11 4, 13 4, 15 3"/><path d="M1 6 C3 5, 5 5, 8 6 C11 7, 13 7, 15 6"/><path d="M1 9 C3 8, 5 8, 8 9 C11 10, 13 10, 15 9"/></svg>
@@ -3040,6 +3045,8 @@ if (isPlayer) {
   window.addEventListener('message', e => {
     const msg = e.data;
     if (!msg) return;
+
+    if (msg.type === 'fog-color') { handleFogColorMessage(msg); return; }
 
     if (msg.type === 'anim-params') {
       fogAnimSpeed      = msg.fogAnimSpeed      ?? fogAnimSpeed;

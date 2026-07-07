@@ -188,6 +188,8 @@ let pixiFogCloudTex      = null;
 let pixiFogCloudSprs     = [];   // 3 TilingSprites, one per CLOUD_PASSES entry
 let pixiFogCloudContainer = null;
 let pixiFogCloudMaskSpr  = null; // standalone mask sprite (not in display list); shares pixiFogBlurTex
+let pixiFogTintOverlay   = null; // PIXI.Graphics tint rect; re-filled by pixiUpdateFogTintColor()
+let pixiFogBaseColorRect = null; // PIXI.Graphics base-color rect (first child in cloud container)
 
 let pixiFogDataBT     = null;
 let pixiFogDataTex    = null;
@@ -238,6 +240,15 @@ function pixiInitFog(fogDataCvs, fogBlurCvs, cloudBlendCvs, mapW, mapH) {
     pixiFogCloudContainer.mask = pixiFogCloudMaskSpr;
     pixiFogLayer.addChild(pixiFogCloudContainer);
 
+    // Base color rect — first child so it renders beneath clouds and tint.
+    // The container mask clips it to fog-opaque pixels, so it recolors the fog body
+    // without touching baked pixel data in fogBlurCanvas.
+    pixiFogBaseColorRect = new PIXI.Graphics();
+    pixiFogBaseColorRect.beginFill(parseInt(fogBaseColor.slice(1), 16), 1.0);
+    pixiFogBaseColorRect.drawRect(0, 0, mapW, mapH);
+    pixiFogBaseColorRect.endFill();
+    pixiFogCloudContainer.addChild(pixiFogBaseColorRect);
+
     // CLOUD_PASSES is a global from fog.js (loaded before renderer.js)
     pixiFogCloudSprs = CLOUD_PASSES.map(p => {
       const ts = new PIXI.TilingSprite(pixiFogCloudTex, mapW, mapH);
@@ -250,13 +261,14 @@ function pixiInitFog(fogDataCvs, fogBlurCvs, cloudBlendCvs, mapW, mapH) {
       return ts;
     });
 
-    // Purple-blue luminosity tint — replicates the source-atop purple overlay from Canvas 2D path.
+    // Luminosity tint overlay — replicates the source-atop tint from Canvas 2D path.
     // Being inside the masked container restricts it to fog-opaque pixels automatically.
-    const purpleOverlay = new PIXI.Graphics();
-    purpleOverlay.beginFill(0x7050e0, FOG_TINT_ALPHA);
-    purpleOverlay.drawRect(0, 0, mapW, mapH);
-    purpleOverlay.endFill();
-    pixiFogCloudContainer.addChild(purpleOverlay);
+    // Stored in pixiFogTintOverlay so pixiUpdateFogTintColor() can re-fill it live.
+    pixiFogTintOverlay = new PIXI.Graphics();
+    pixiFogTintOverlay.beginFill(parseInt(fogTintColor.slice(1), 16), FOG_TINT_ALPHA);
+    pixiFogTintOverlay.drawRect(0, 0, mapW, mapH);
+    pixiFogTintOverlay.endFill();
+    pixiFogCloudContainer.addChild(pixiFogTintOverlay);
 
     // --- Brush sprite: raw fog data, shown during active brushing only ---
     pixiFogDataSrcCvs = fogDataCvs;
@@ -280,6 +292,27 @@ function pixiUpdateFogBlurTexture() {
   if (!pixiFogBlurBT) return;
   if (pixiFogBlurProxy && pixiFogBlurSrcCvs) pixiRefreshProxy(pixiFogBlurProxy, pixiFogBlurSrcCvs);
   pixiFogBlurBT.update();
+}
+
+// Re-fills the PixiJS base color rect with a new hex color. Called on DM color picker change.
+function pixiUpdateFogBaseColor(hexStr) {
+  if (!pixiFogBaseColorRect) return;
+  const { width: w, height: h } = pixiFogBaseColorRect;
+  pixiFogBaseColorRect.clear();
+  pixiFogBaseColorRect.beginFill(parseInt(hexStr.slice(1), 16), 1.0);
+  pixiFogBaseColorRect.drawRect(0, 0, w, h);
+  pixiFogBaseColorRect.endFill();
+}
+
+// Re-fills the PixiJS tint overlay with a new hex color. Called on DM color picker change.
+// The overlay lives inside pixiFogCloudContainer (masked to fog-opaque pixels automatically).
+function pixiUpdateFogTintColor(hexStr) {
+  if (!pixiFogTintOverlay) return;
+  const { width: w, height: h } = pixiFogTintOverlay;
+  pixiFogTintOverlay.clear();
+  pixiFogTintOverlay.beginFill(parseInt(hexStr.slice(1), 16), FOG_TINT_ALPHA);
+  pixiFogTintOverlay.drawRect(0, 0, w, h);
+  pixiFogTintOverlay.endFill();
 }
 
 // Called every fog animation tick — updates TilingSprite drift + uploads the 512×512 cloud frame.

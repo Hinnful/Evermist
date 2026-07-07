@@ -171,4 +171,11 @@ function syncAnimToPlayer(includeWarp) {
   playerWindow.postMessage(msg, '*');
 }
 
+// Sends the current fog color to the Player window without a full fog re-send.
+// pickedHex: the raw value from the DM's fog-color input (Player derives base+tint itself).
+function syncFogColorToPlayer(pickedHex) {
+  if (!playerWindow || playerWindow.closed) return;
+  playerWindow.postMessage({ type: 'fog-color', pickedHex, fogTintAlpha: FOG_TINT_ALPHA }, '*');
+}
+
 if (typeof module !== 'undefined') module.exports = { calcViewportRect };
