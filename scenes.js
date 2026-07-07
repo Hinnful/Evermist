@@ -78,6 +78,7 @@ function doAutoSave() {
     polygons:      polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
     nextPolygonId,
     gridConfig:    captureGridConfig(),
+    fogSettings:   { pickedHex: fogPickedHex, tintAlpha: FOG_TINT_ALPHA },
   };
   baseFogCanvas.toBlob(blob => {
     if (!blob || currentScene !== scene) return;
@@ -85,6 +86,7 @@ function doAutoSave() {
     scene.nextPolygonId = snap.nextPolygonId;
     scene.baseFogBlob   = blob;
     scene.gridConfig    = snap.gridConfig;
+    scene.fogSettings   = snap.fogSettings;
     sceneStore.saveScene(scene).catch(console.error);
   }, 'image/png');
 }

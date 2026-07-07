@@ -718,6 +718,7 @@ function shroudAllFog() {
 // pickedHex: the raw picked color from the <input type="color">.
 // Derives base+tint, updates both state vars, and repaints both render paths.
 function applyFogColor(pickedHex) {
+  fogPickedHex = pickedHex;
   const { base, tint } = deriveFogColors(pickedHex);
   fogBaseColor = base;
   fogTintColor = tint;
@@ -759,6 +760,24 @@ function applyFogTintAlpha(alpha) {
 function handleFogColorMessage(msg) {
   if (msg.fogTintAlpha != null) FOG_TINT_ALPHA = msg.fogTintAlpha;
   applyFogColor(msg.pickedHex);
+}
+
+// Restores fog color + tint from a scene record on the DM side (called from switchScene,
+// after pixiInitFog). Falls back to defaults for scenes that predate fog persistence.
+// Syncs the Fog-panel DOM so the UI matches, then pushes the color to the Player.
+function restoreSceneFogSettings(scene) {
+  const fs    = scene.fogSettings;
+  const hex   = (fs && fs.pickedHex)       ? fs.pickedHex  : '#3a3a8c';
+  const alpha = (fs && fs.tintAlpha != null) ? fs.tintAlpha : 0.18;
+  applyFogColor(hex);
+  applyFogTintAlpha(alpha);
+  const colorEl  = document.getElementById('fog-color');
+  const sliderEl = document.getElementById('fog-tint-alpha');
+  const numEl    = document.getElementById('fog-tint-alpha-num');
+  if (colorEl)  colorEl.value  = hex;
+  if (sliderEl) sliderEl.value = Math.round(alpha * 100);
+  if (numEl)    numEl.value    = Math.round(alpha * 100);
+  syncFogColorToPlayer(hex);
 }
 
 // ─── Fog controls UI ─────────────────────────────────────────────────────────

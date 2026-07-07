@@ -2192,6 +2192,8 @@ async function switchScene(id, _isRecovery = false) {
   rebuildFogEffect();
   if (!isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); }
 
+  if (!isPlayer) restoreSceneFogSettings(scene); // fog.js
+
   undoStack = []; redoStack = [];
   playerMapSent = false;
   currentScene = scene;
