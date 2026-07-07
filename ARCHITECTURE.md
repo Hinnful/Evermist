@@ -28,12 +28,17 @@ separately and stacked on top.
 | `index.html` | The entry point. Holds the render loop, most UI wiring, and the window-to-window sync. (Historically oversized — it's being broken into smaller files over time, so the rows below keep growing.) |
 | `renderer.js` | The PixiJS/WebGL wrapper. The GPU drawing path for the map and the DM's fog. |
 | `fog.js` | Everything fog: the canvases that store what's hidden, the blur + cloud-texture math, and the reveal/hide logic. |
+| `fogGeometry.js` | The pure fog math — polygon insetting, rounded paths, tint-color derivation, animation timing. Plain functions in, values out, no drawing. It's the part that has unit tests. |
 | `tools.js` | The drawing tools — brush, rectangle, circle, polygon — and polygon editing. |
+| `grid.js` | The grid overlay — squares or hexes, size/offset/color, and line width that scales with zoom. |
 | `scenes.js` | Scene switching, loading, and the auto-save logic that sits above the database layer. |
+| `sceneStore.js` | Saving and loading scenes to the browser's local database (IndexedDB). |
 | `viewport.js` | Pan, zoom, and pushing the camera to the player window. |
+| `video.js` | Animated (video) map support — decoding, the frame loop, and the freeze-watchdog. |
+| `display.js` | Detecting the player screen's real size so the fog and map render at the right resolution. |
 | `state.js` | Shared values that several files need (loaded first so they exist before anything reads them). |
 | `backup.js` | The export/restore-to-zip feature (see "Backing up your maps" below). |
-| `sceneStore.js` | Saving and loading scenes to the browser's local database (IndexedDB). |
+| `toolbar.js` | DM-only UI control wiring: toolbar buttons, brush/grid/fog sliders, fog color picker, animation presets and advanced sliders, polygon context panel, scene/backup modals, player-window controls, section collapse, and the UI-scale slider. |
 | `main.js` / `preload.js` | The Electron shell — creates the windows, handles saving video files to disk, and reads/writes backup zips. |
 
 ## How the fog works
@@ -52,13 +57,20 @@ The fog is the heart of the app, so it's worth understanding.
 
 3. **Making it look like fog, not a stencil.** That hard-edged hidden/revealed map
    is then blurred and overlaid with a drifting **cloud texture** (procedural
-   noise, tinted navy/purple). This is the "living fog" — soft edges and slow
-   motion instead of a flat black cutout.
+   noise). This is the "living fog" — soft edges and slow motion instead of a flat
+   black cutout.
 
-4. **The DM sees through it; players don't.** On the DM screen the fog is
+4. **Any color you want.** The cloud texture itself is neutral grey. The color
+   comes from a base fill plus a glow tint you pick in the Fog panel, so the same
+   fog can be dungeon-navy, blood-red, or swamp-green. Each scene remembers its own
+   color and tint, and the choice rides along through Export/Import. The default
+   reproduces the original navy. Picking a new color recolors everything live,
+   including areas already shrouded, not just the next brush stroke.
+
+5. **The DM sees through it; players don't.** On the DM screen the fog is
    semi-transparent (so you can plan), on the player screen it's fully opaque.
 
-5. **A subtle but important detail:** the DM's fog is drawn on the GPU (PixiJS),
+6. **A subtle but important detail:** the DM's fog is drawn on the GPU (PixiJS),
    but the **player's fog is drawn on top of the map with the regular 2D canvas**.
    This split exists because of a hard-won bug fix — when the player's fog was
    done on the GPU, a faint seam appeared at the edge of animated (video) maps.
