@@ -2,6 +2,28 @@
 // Loaded before the inline script; function bodies reference inline-script globals
 // lazily (resolved at call time, not definition time).
 
+// ─── Pure coordinate helpers ──────────────────────────────────────────────────
+
+// Compute the source/destination rectangles for a pan+zoom viewport.
+// Pure function — takes explicit params so it can be tested without DOM.
+// Returns { cw, ch, srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH }.
+function calcViewportRect(panX, panY, zoom, mapW, mapH, vpW, vpH) {
+  const srcX = Math.max(0, -panX / zoom);
+  const srcY = Math.max(0, -panY / zoom);
+  const srcW = Math.min(mapW - srcX, vpW / zoom);
+  const srcH = Math.min(mapH - srcY, vpH / zoom);
+  const dstX = Math.max(0, panX);
+  const dstY = Math.max(0, panY);
+  const dstW = srcW * zoom;
+  const dstH = srcH * zoom;
+  return { cw: vpW, ch: vpH, srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH };
+}
+
+// Map → screen coordinate conversion. Reads pan/zoom globals lazily.
+function toScreen(mapX, mapY) {
+  return { sx: mapX * zoom + panX, sy: mapY * zoom + panY };
+}
+
 function resolveView(v) {
   const { w: vpW, h: vpH } = getViewportSize();
   return {
@@ -148,3 +170,5 @@ function syncAnimToPlayer(includeWarp) {
   if (includeWarp) { msg.cloudWarpStrength = cloudWarpStrength; msg.cloudWarpRadius = cloudWarpRadius; }
   playerWindow.postMessage(msg, '*');
 }
+
+if (typeof module !== 'undefined') module.exports = { calcViewportRect };

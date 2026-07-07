@@ -121,7 +121,6 @@ function prepareTextureCanvas(masterCanvas, masterW, masterH) {
 // Player to TV. The map was loaded before the TV was known; this re-sizes it
 // the moment the TV's resolution is detected.
 function onDisplayInfoUpdated() {
-  if (typeof usePixi === 'undefined' || !usePixi) return;
   if (typeof mapOffscreen === 'undefined' || !mapOffscreen) return;
   if (typeof mapWidth === 'undefined' || !mapWidth || !mapHeight) return;
 
