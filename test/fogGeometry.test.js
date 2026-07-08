@@ -12,7 +12,7 @@ const {
   deriveFogColors,
   animLogScale,
   animSliderFromVal,
-} = require('../fogGeometry.js');
+} = require('../src/fogGeometry.js');
 
 // Records path commands so buildRoundedPolyPath can be tested without a real canvas.
 function recordingCtx() {

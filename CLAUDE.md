@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. It is a behavioral rulebook — the constraints and conventions you must obey here. For conceptual explanation of how the app works, see [ARCHITECTURE.md](ARCHITECTURE.md).
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository. It is a behavioral rulebook — the constraints and conventions you must obey here. For conceptual explanation of how the app works, see [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## What this is
 
@@ -23,7 +23,7 @@ No backend, no VTT features (tokens, initiative). Just: map + fog + grid + two s
 - Player view (`?mode=player`) must have zero UI — no buttons, no cursor, no overlays.
 - Fog must not be flat black — blur + noise texture is required, not optional.
 - No artificial image size limit; browser canvas max (~16384×16384px) is the only hard ceiling.
-- Every new `.js` file must be added to `package.json` `build.files` for Electron packaging.
+- Browser-runtime modules live in `src/`; a new one is picked up by the `src/**/*.js` glob in `package.json` `build.files` automatically. A new `.js` placed OUTSIDE `src/` still needs an explicit `build.files` entry or it won't ship in the Electron package.
 
 ## Code organization (READ BEFORE ADDING ANY FEATURE)
 
@@ -38,12 +38,14 @@ Hard rules — these override convenience, and "it's easier to just add it to th
 - **Target module map** — extracted modules that already exist: `state.js` (shared state), `viewport.js` (pan/zoom/sync-view), `grid.js` (grid config + render), `scenes.js` (fog persistence + scene fade helpers), `video.js` (animated-map handling), `display.js` (display detection), `backup.js` (zip backup/restore), `fogGeometry.js` (pure fog geometry + math kernel — unit-tested), `toolbar.js` (DM-only UI control wiring — toolbar, sliders, fog color, anim presets, poly context panel, scene/backup modals, player controls, section toggles, UI-scale), `sceneManager.js` (scene CRUD, switchScene, scene-manager UI — initScenes/createNewScene/switchScene/renderSceneManager and friends), `player.js` (player-mode runtime — cloud-texture pre-gen, PLAYER_READY handshake, resize handler, DM message handler, player pan/zoom). Still in the inline blob and needing extraction: `input.js` (mouse/keyboard/drag-drop). `fog.js` and `tools.js` already exist — extend them, don't duplicate their concerns elsewhere.
 - **Testability follows from decoupling, not file count.** Most of `fog.js` — Canvas-2D compositing, the RAF anim/transition loops, the Player fog-on-top path — is not `node:test`-testable no matter how state is injected: its behavior *is* pixel output, and there is no `canvas` dep. So don't chase testability by injecting render state. The pure geometry/math (polygon inset, rounded-path building, DPI-radius scaling, anim offset/alpha/blend arithmetic) lives in `fogGeometry.js`, which takes args and returns values with zero DOM/global reads — that is what's covered by tests. Extend that kernel when new pure fog logic appears; leave the imperative canvas layer calling into it.
 
-Mechanics that constrain all of the above (do not violate): no ES modules (`import`/`export` break on `file://`), plain `<script src>` only, load order matters (declarations must precede use at init), and **every new `.js` file must be added to `package.json` `build.files`** or it won't ship in the Electron package.
+Mechanics that constrain all of the above (do not violate): no ES modules (`import`/`export` break on `file://`), plain `<script src>` only, load order matters (declarations must precede use at init), and a new module belongs in `src/` (shipped via the `src/**/*.js` glob — see Key constraints above for the outside-`src/` exception).
 
-**Load order** (critical — declarations must precede their use at initialization time):
+**Repo layout:** browser-runtime modules live in `src/` and load via `<script src="src/…">` from `index.html`. The Electron shell (`main.js`, `preload.js`), the two HTML entry points (`index.html`, `splash.html`), and `package.json` stay at the repo root. Docs (`ARCHITECTURE.md`, `Fog_animation_approaches.md`) live in `docs/`.
+
+**Load order** (critical — declarations must precede their use at initialization time; all module files are under `src/`):
 ```
-lib/pixi.min.js → renderer.js → state.js → display.js → video.js → fogGeometry.js →
-fog.js → tools.js → sceneStore.js → scenes.js → sceneManager.js → viewport.js → backup.js → grid.js → toolbar.js → player.js →
+lib/pixi.min.js → src/renderer.js → src/state.js → src/display.js → src/video.js → src/fogGeometry.js →
+src/fog.js → src/tools.js → src/sceneStore.js → src/scenes.js → src/sceneManager.js → src/viewport.js → src/backup.js → src/grid.js → src/toolbar.js → src/player.js →
 inline <script> (loads last)
 ```
 
@@ -77,7 +79,7 @@ Building a Mac `.dmg` cannot be done on Windows locally, so releases are built i
 
 ## How things work (see ARCHITECTURE.md)
 
-These are explained conceptually in [ARCHITECTURE.md](ARCHITECTURE.md); read there before touching them, and read the code for exact behavior:
+These are explained conceptually in [ARCHITECTURE.md](docs/ARCHITECTURE.md); read there before touching them, and read the code for exact behavior:
 
 - **Fog** — the data canvas, blur + cloud-texture pipeline, DM-transparent / Player-opaque split, and the Player's Canvas-2D fog-on-top (the seam fix). See ARCHITECTURE.md, "How the fog works".
 - **Two-window sync** — postMessage, map-as-URL delivery, Auto/Manual, Sync View. See ARCHITECTURE.md, "How the two windows stay in sync".

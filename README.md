@@ -100,7 +100,7 @@ The map files (`.webm` / `.mp4`) and the app's data folder aren't part of the re
 
 ## Architecture
 
-Curious how the fog rendering or the two-window sync works? See [ARCHITECTURE.md](ARCHITECTURE.md) for a plain-language walkthrough.
+Curious how the fog rendering or the two-window sync works? See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for a plain-language walkthrough.
 
 ## License
 
