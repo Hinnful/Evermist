@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { computeOptimalTextureSize, fpsToFrameInterval } = require('../video.js');
+const { computeOptimalTextureSize, fpsToFrameInterval } = require('../src/video.js');
 
 // Helpers
 function aspectRatio(w, h) { return w / h; }

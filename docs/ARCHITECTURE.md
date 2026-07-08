@@ -5,7 +5,7 @@ client-side app — no server, no database in the cloud. Everything happens in t
 browser windows running inside an Electron shell.
 
 If you want the exhaustive, every-edge-case version, that lives in
-[CLAUDE.md](CLAUDE.md) (it's written for an AI coding assistant, so it's dense).
+[CLAUDE.md](../CLAUDE.md) (it's written for an AI coding assistant, so it's dense).
 This page covers the two things people actually wonder about: **how the fog is
 drawn** and **how the two windows stay in sync**.
 
@@ -121,4 +121,4 @@ the `backup.js` module on the page.
 ---
 
 Want the deep version — every performance trick, every past bug and why the fix
-is shaped the way it is? See [CLAUDE.md](CLAUDE.md).
+is shaped the way it is? See [CLAUDE.md](../CLAUDE.md).
