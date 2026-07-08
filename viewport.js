@@ -38,6 +38,25 @@ function applyView(v) {
   panX = r.panX; panY = r.panY; zoom = r.zoom;
 }
 
+// ─── Screen ↔ map + fit-to-screen ─────────────────────────────────────────────
+
+function screenToMap(clientX, clientY) {
+  const rect = container.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left - panX) / zoom,
+    y: (clientY - rect.top  - panY) / zoom,
+  };
+}
+
+function fitToScreen() {
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+  zoom = Math.min(cw / mapWidth, ch / mapHeight) * 0.95;
+  panX = (cw - mapWidth  * zoom) / 2;
+  panY = (ch - mapHeight * zoom) / 2;
+  pixiSetViewport(zoom, panX, panY);
+}
+
 function startViewLerp(target) {
   viewLerpFrom  = { panX, panY, zoom };
   viewLerpTo    = { panX: target.panX, panY: target.panY, zoom: target.zoom };
