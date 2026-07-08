@@ -1562,42 +1562,9 @@ function loadMapFromFile(file, onMapLoaded) {
   img.src = url;
 }
 
-// ─── Video DOM compositing ────────────────────────────────────────────────────
-// Instead of drawImage(video) to canvas every frame (which forces a GPU→CPU
-// readback per frame), we insert the <video> element directly into the DOM
-// behind the canvas stack and let the browser's native hardware compositor
-// handle it — the same zero-copy path that VLC/media-players use.
-let videoDOMActive = false;
-
-function activateVideoDom(video) {
-  video.style.cssText = 'position:absolute;top:0;left:0;transform-origin:0 0;pointer-events:none;z-index:0;';
-  container.insertBefore(video, mapCanvas);
-  videoDOMActive = true;
-  if (!isPlayer) {
-    pixiHideMap();
-    mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
-  }
-  syncVideoDomTransform();
-}
-
-function deactivateVideoDom() {
-  videoDOMActive = false;
-  pixiShowMap();
-  if (mapVideo && mapVideo.parentNode === container) {
-    mapVideo.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;';
-  }
-}
-
-function syncVideoDomTransform() {
-  if (!videoDOMActive || !mapVideo) return;
-  mapVideo.style.width  = mapWidth  + 'px';
-  mapVideo.style.height = mapHeight + 'px';
-  mapVideo.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + zoom + ')';
-}
-
-// ─── Video map loading ────────────────────────────────────────────────────────
-// stopVideoLoop / startVideoLoop / scheduleVideoFrame and the video event
-// handlers live in video.js (extracted per migrate-on-touch policy).
+// ─── Video DOM compositing + file loading ────────────────────────────────────
+// videoDOMActive / activateVideoDom / deactivateVideoDom / syncVideoDomTransform /
+// cleanupVideo / loadVideoFromFile / isVideoFile live in video.js.
 
 function showMapProgress(label) {
   document.getElementById('map-progress-label').textContent = label || 'Saving...';
@@ -1615,122 +1582,6 @@ if (window.electronAPI && window.electronAPI.onVideoSaveProgress) {
   window.electronAPI.onVideoSaveProgress(({ written, total }) => {
     updateMapProgress(Math.round((written / total) * 100));
   });
-}
-
-function cleanupVideo() {
-  deactivateVideoDom();
-  stopVideoLoop();
-  if (mapVideo) {
-    detachVideoListeners(mapVideo);
-    mapVideo.pause(); mapVideo.src = '';
-    if (mapVideo.parentNode) mapVideo.parentNode.removeChild(mapVideo);
-    mapVideo = null;
-  }
-  if (mapVideoUrl) {
-    if (mapVideoUrl.startsWith('blob:')) URL.revokeObjectURL(mapVideoUrl);
-    mapVideoUrl = null;
-  }
-  mapVideoBlob = null;
-  pixiStopVideoTextureSync();
-  playerMapTexCanvas = null;
-  playerMapTexCtx = null;
-}
-
-
-function loadVideoFromFile(file, onVideoLoaded) {
-  if (!file) return;
-  cleanupVideo();
-  const url = URL.createObjectURL(file);
-  mapVideoUrl = url;
-  const video = document.createElement('video');
-  video.muted = true;
-  video.loop = true;
-  video.playsInline = true;
-  video.preload = 'auto';
-  video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;';
-  document.body.appendChild(video);
-  let settled = false;
-  function failLoad(reason) {
-    if (settled) return;
-    settled = true;
-    video.onerror = null; video.oncanplay = null;
-    video.pause(); video.src = '';
-    if (video.parentNode) video.parentNode.removeChild(video);
-    cleanupVideo();
-    alert('Failed to load video map.' + (reason ? ' ' + reason : ''));
-  }
-  video.onerror = () => failLoad();
-  video.oncanplay = function() {
-    if (settled) return;
-    settled = true;
-    video.onerror = null; video.oncanplay = null;
-
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    mapWidth  = vw;
-    mapHeight = vh;
-
-    function finishLoad() {
-      // Extract frame 0 as static fallback + thumbnail source
-      const extractCanvas = document.createElement('canvas');
-      extractCanvas.width = vw; extractCanvas.height = vh;
-      extractCanvas.getContext('2d').drawImage(video, 0, 0, vw, vh);
-
-      if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
-      mapOffscreen = extractCanvas;
-      pixiSetMap(prepareTextureCanvas(extractCanvas, vw, vh), vw, vh);
-      pixiHideMap();
-      mapVideo = video;
-      attachVideoListeners(video);
-      mapVideoBlob = file;
-
-      fogDataCanvas = document.createElement('canvas');
-      fogDataCanvas.width  = Math.ceil(mapWidth  / FOG_SCALE);
-      fogDataCanvas.height = Math.ceil(mapHeight / FOG_SCALE);
-      fogDataCtx = fogDataCanvas.getContext('2d');
-      fogDataCtx.fillStyle = '#1a1a2e';
-      fogDataCtx.fillRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
-
-      baseFogCanvas = document.createElement('canvas');
-      baseFogCanvas.width = fogDataCanvas.width;
-      baseFogCanvas.height = fogDataCanvas.height;
-      baseFogCtx = baseFogCanvas.getContext('2d');
-      baseFogCtx.fillStyle = '#1a1a2e';
-      baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
-
-      polygons = []; activePolygon = null; selectedPolygonId = null;
-      nextPolygonId = 1;
-      playerMapSent = false;
-
-      if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
-      rebuildFogEffect();
-      if (!isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
-
-      fitToScreen();
-      if (!isPlayer) container.style.cursor = 'crosshair';
-      landing.style.display = 'none';
-      viewportDirty = true;
-      scheduleRender();
-
-      video.play().then(() => startVideoLoop()).catch(() => {});
-      if (onVideoLoaded) onVideoLoaded(extractCanvas, file);
-    }
-
-    // Seek to near-zero and wait for decoded frame before extracting
-    video.onseeked = function() {
-      video.onseeked = null;
-      finishLoad();
-    };
-    video.currentTime = 0.001;
-    // Fallback if seeked never fires (already at target position)
-    setTimeout(() => { if (video.onseeked) { video.onseeked = null; finishLoad(); } }, 2000);
-  };
-  video.src = url;
-}
-
-function isVideoFile(file) {
-  if (file.type && (file.type.startsWith('video/') || file.type === 'video/mp4' || file.type === 'video/webm')) return true;
-  return /\.(mp4|webm)$/i.test(file.name);
 }
 
 // closeActivePolygon / deleteSelectedPolygon / toggleSelectedPolygon live in tools.js (polygon editing).
