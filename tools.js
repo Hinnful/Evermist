@@ -707,3 +707,55 @@ function toolDblClick(raw, e) {
   scheduleRender();
   drawCursor(lastScreenX, lastScreenY);
 }
+
+// ─── Polygon lifecycle ────────────────────────────────────────────────────────
+
+function closeActivePolygon() {
+  if (!activePolygon || activePolygon.vertices.length < 3) { activePolygon = null; drawCursor(null, null); return; }
+  pushUndo();
+  const poly = {
+    id: nextPolygonId++,
+    vertices: activePolygon.vertices,
+    mode: activePolygon.mode,
+    cornerRadius: 0,
+  };
+  polygons.push(poly);
+  applyPolygonToFog(poly);
+  activePolygon = null;
+  selectedPolygonId = poly.id;
+  drawCursor(null, null);
+  startFogTransition(poly.mode === 'shroud');
+  rebuildFogEffect();
+  fogDirty = true;
+  scheduleRender();
+  scheduleAutoSync();
+}
+
+function deleteSelectedPolygon() {
+  if (selectedPolygonId == null) return;
+  pushUndo();
+  polygons = polygons.filter(p => p.id !== selectedPolygonId);
+  selectedPolygonId = null;
+  selectedVertexIndex = -1;
+  rebuildFogFromPolygons();
+  drawCursor(null, null);
+  startFogTransition();
+  rebuildFogEffect();
+  fogDirty = true;
+  scheduleRender();
+  scheduleAutoSync();
+}
+
+function toggleSelectedPolygon() {
+  const poly = polygons.find(p => p.id === selectedPolygonId);
+  if (!poly) return;
+  pushUndo();
+  poly.mode = poly.mode === 'reveal' ? 'shroud' : 'reveal';
+  rebuildFogFromPolygons();
+  drawCursor(null, null);
+  startFogTransition(poly.mode === 'shroud');
+  rebuildFogEffect();
+  fogDirty = true;
+  scheduleRender();
+  scheduleAutoSync();
+}

@@ -31,7 +31,8 @@ separately and stacked on top.
 | `fogGeometry.js` | The pure fog math — polygon insetting, rounded paths, tint-color derivation, animation timing. Plain functions in, values out, no drawing. It's the part that has unit tests. |
 | `tools.js` | The drawing tools — brush, rectangle, circle, polygon — and polygon editing. |
 | `grid.js` | The grid overlay — squares or hexes, size/offset/color, and line width that scales with zoom. |
-| `scenes.js` | Scene switching, loading, and the auto-save logic that sits above the database layer. |
+| `scenes.js` | Auto-save loop, fog-load helpers, and the error-recovery path that sits above the database layer. |
+| `sceneManager.js` | Scene CRUD and the scene-manager UI — `switchScene`, `createNewScene`, `initScenes`, `renderSceneManager`, rename, delete, and thumbnail generation. |
 | `sceneStore.js` | Saving and loading scenes to the browser's local database (IndexedDB). |
 | `viewport.js` | Pan, zoom, and pushing the camera to the player window. |
 | `video.js` | Animated (video) map support — decoding, the frame loop, and the freeze-watchdog. |
