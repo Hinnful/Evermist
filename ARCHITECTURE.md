@@ -40,6 +40,7 @@ separately and stacked on top.
 | `state.js` | Shared values that several files need (loaded first so they exist before anything reads them). |
 | `backup.js` | The export/restore-to-zip feature (see "Backing up your maps" below). |
 | `toolbar.js` | DM-only UI control wiring: toolbar buttons, brush/grid/fog sliders, fog color picker, animation presets and advanced sliders, polygon context panel, scene/backup modals, player-window controls, section collapse, and the UI-scale slider. |
+| `player.js` | Player-mode runtime: cloud-texture pre-generation, PLAYER_READY handshake, resize listener, DM message handler (map/fog/anim/scene-transition/view-snap/fullscreen), and player pan/zoom. |
 | `main.js` / `preload.js` | The Electron shell — creates the windows, handles saving video files to disk, and reads/writes backup zips. |
 
 ## How the fog works

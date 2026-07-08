@@ -36,6 +36,7 @@
       "backup.js",
       "grid.js",
       "toolbar.js",
+      "player.js",
       "fogGeometry.js",
       "fog.js",
       "tools.js",
