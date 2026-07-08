@@ -60,6 +60,7 @@ function createDMWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      backgroundThrottling: false,
       preload: path.join(__dirname, 'preload.js'),
     },
   });
@@ -101,6 +102,7 @@ function createDMWindow() {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
+        backgroundThrottling: false,
         preload: path.join(__dirname, 'preload.js'),
       },
     },

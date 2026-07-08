@@ -35,7 +35,7 @@ separately and stacked on top.
 | `sceneManager.js` | Scene CRUD and the scene-manager UI — `switchScene`, `createNewScene`, `initScenes`, `renderSceneManager`, rename, delete, and thumbnail generation. |
 | `sceneStore.js` | Saving and loading scenes to the browser's local database (IndexedDB). |
 | `viewport.js` | Pan, zoom, and pushing the camera to the player window. |
-| `video.js` | Animated (video) map support — decoding, the frame loop, and the freeze-watchdog. |
+| `video.js` | Animated (video) map support — file loading, DOM compositing, decoding, the frame loop, and the freeze-watchdog. |
 | `display.js` | Detecting the player screen's real size so the fog and map render at the right resolution. |
 | `state.js` | Shared values that several files need (loaded first so they exist before anything reads them). |
 | `backup.js` | The export/restore-to-zip feature (see "Backing up your maps" below). |

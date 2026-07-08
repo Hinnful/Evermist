@@ -151,22 +151,43 @@ function onDisplayInfoUpdated() {
 function onVideoStalled() {
   // Decoder stalled waiting for data — try to re-kick playback.
   if (!videoEnabled || !mapVideo) return;
+  _diagAppend('event:stalled rs=' + mapVideo.readyState);
   mapVideo.play().catch(function() {});
 }
 
 function onVideoWaiting() {
-  // Decoder momentarily out of data (less severe than stalled). Same recovery.
+  // Buffer temporarily drained (rs=2). Explicitly pause so Chromium's presentation
+  // clock freezes — prevents a catch-up sync-seek when the buffer refills, which
+  // is what causes visible jitter. Poll until rs≥3, then resume.
   if (!videoEnabled || !mapVideo) return;
-  mapVideo.play().catch(function() {});
+  _diagAppend('event:waiting rs=' + mapVideo.readyState);
+  if (!mapVideo.paused) {
+    _bufferingPause = true;
+    mapVideo.pause();
+    var capturedVideo = mapVideo;
+    (function pollBuffer() {
+      if (!_bufferingPause || !videoEnabled || mapVideo !== capturedVideo) return;
+      if (mapVideo.readyState >= 3) {
+        _bufferingPause = false;
+        _diagAppend('buffer refilled rs=' + mapVideo.readyState + ' resuming');
+        mapVideo.play().catch(function() {});
+        return;
+      }
+      setTimeout(pollBuffer, 100);
+    })();
+  }
 }
 
 function onVideoPause() {
   if (!videoEnabled || !mapVideo) return;
+  if (_bufferingPause) return; // our own pause — poll in onVideoWaiting will resume
+  _diagAppend('event:pause rs=' + mapVideo.readyState);
   mapVideo.play().catch(function() {});
 }
 
 function onVideoPlaying() {
   if (!videoEnabled || !mapVideo) return;
+  _diagAppend('event:playing rs=' + mapVideo.readyState);
   if (videoRVFCId == null && videoRAFId == null) scheduleVideoFrame();
 }
 
@@ -216,6 +237,8 @@ function scheduleVideoFrame() {
 }
 
 var _videoWatchdogId = null;
+var _videoLoopStartedAt = 0; // performance.now() timestamp of last startVideoLoop call
+var _bufferingPause = false;  // true while we intentionally paused to freeze the presentation clock
 
 function stopVideoWatchdog() {
   if (_videoWatchdogId) { clearInterval(_videoWatchdogId); _videoWatchdogId = null; }
@@ -230,25 +253,30 @@ function startVideoWatchdog() {
   stopVideoWatchdog();
   _videoWatchdogId = setInterval(function() {
     if (!videoEnabled || !mapVideo) return;
-    if (mapVideo.paused || mapVideo.readyState < 3) {
-      if (!mapVideo.paused && mapVideo.readyState < 3) {
-        // Decoder stalled but not paused — play() alone is a no-op on an already-
-        // playing element. Seek-to-current forces Chromium to restart the decode
-        // pipeline, then cancel the stale RVFC so scheduleVideoFrame re-registers
-        // a fresh one below (the stale callback will never fire on a stalled decoder).
-        mapVideo.currentTime = mapVideo.currentTime;
-        if (mapVideo.requestVideoFrameCallback && videoRVFCId != null) {
-          mapVideo.cancelVideoFrameCallback(videoRVFCId);
-          videoRVFCId = null;
-        }
+    var rs = mapVideo.readyState;
+    var pa = mapVideo.paused;
+    var age = ((performance.now() - _videoLoopStartedAt) / 1000).toFixed(1);
+    _diagAppend('watchdog rs=' + rs + ' paused=' + pa + ' age=' + age + 's');
+    if (pa || rs < 3) {
+      if (!pa && rs < 3) {
+        // rs=2 (HAVE_CURRENT_DATA) while not paused = buffer temporarily drained.
+        // The browser is already refilling (event:waiting fires alongside this).
+        // A seek-kick here interrupts that natural recovery and causes visible jitter —
+        // don't seek. play() below is a no-op on a playing element but harmless.
+        _diagAppend('rs<3 not paused — letting buffer refill (no kick) rs=' + rs);
       }
+      _diagAppend('watchdog play() pa=' + pa + ' rs=' + rs);
       mapVideo.play().catch(function() {});
     }
-    if (videoRVFCId == null && videoRAFId == null) scheduleVideoFrame();
+    if (videoRVFCId == null && videoRAFId == null) {
+      _diagAppend('watchdog restart frame loop');
+      scheduleVideoFrame();
+    }
   }, 3000);
 }
 
 function stopVideoLoop() {
+  _diagAppend('stopVideoLoop');
   stopVideoWatchdog();
   videoEnabled = false;
   if (videoRAFId) { cancelAnimationFrame(videoRAFId); videoRAFId = null; }
@@ -262,6 +290,9 @@ function startVideoLoop() {
   stopVideoLoop();
   videoEnabled = true;
   videoLastRenderTs = 0;
+  _videoLoopStartedAt = performance.now();
+  _bufferingPause = false;
+  _diagAppend('startVideoLoop');
   if (!isPlayer) activateVideoDom(mapVideo);
   if (mapVideo.paused || mapVideo.ended) {
     mapVideo.play().catch(function() {});
@@ -297,6 +328,234 @@ function createPlayerVideoElement(container) {
   video.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
   container.insertBefore(video, container.firstChild);
   return video;
+}
+
+// ─── Video DOM compositing + file loading ────────────────────────────────────
+// Instead of drawImage(video) to canvas every frame (which forces a GPU→CPU
+// readback per frame), we insert the <video> element directly into the DOM
+// behind the canvas stack and let the browser's native hardware compositor
+// handle it — the same zero-copy path that VLC/media-players use.
+let videoDOMActive = false;
+
+function activateVideoDom(video) {
+  _diagAppend('activateVideoDom');
+  video.style.cssText = 'position:absolute;top:0;left:0;transform-origin:0 0;pointer-events:none;z-index:0;';
+  container.insertBefore(video, mapCanvas);
+  videoDOMActive = true;
+  if (!isPlayer) {
+    pixiHideMap();
+    mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+  }
+  syncVideoDomTransform();
+}
+
+function deactivateVideoDom() {
+  _diagAppend('deactivateVideoDom');
+  videoDOMActive = false;
+  pixiShowMap();
+  if (mapVideo && mapVideo.parentNode === container) {
+    mapVideo.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;';
+  }
+}
+
+function syncVideoDomTransform() {
+  if (!videoDOMActive || !mapVideo) return;
+  mapVideo.style.width  = mapWidth  + 'px';
+  mapVideo.style.height = mapHeight + 'px';
+  mapVideo.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + zoom + ')';
+}
+
+function cleanupVideo() {
+  _diagAppend('cleanupVideo');
+  deactivateVideoDom();
+  stopVideoLoop();
+  if (mapVideo) {
+    detachVideoListeners(mapVideo);
+    mapVideo.pause(); mapVideo.src = '';
+    if (mapVideo.parentNode) mapVideo.parentNode.removeChild(mapVideo);
+    mapVideo = null;
+  }
+  if (mapVideoUrl) {
+    if (mapVideoUrl.startsWith('blob:')) URL.revokeObjectURL(mapVideoUrl);
+    mapVideoUrl = null;
+  }
+  mapVideoBlob = null;
+  pixiStopVideoTextureSync();
+  playerMapTexCanvas = null;
+  playerMapTexCtx = null;
+}
+
+
+function loadVideoFromFile(file, onVideoLoaded) {
+  if (!file) return;
+  cleanupVideo();
+  const url = URL.createObjectURL(file);
+  mapVideoUrl = url;
+  const video = document.createElement('video');
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;pointer-events:none;';
+  document.body.appendChild(video);
+  let settled = false;
+  function failLoad(reason) {
+    if (settled) return;
+    settled = true;
+    video.onerror = null; video.oncanplay = null;
+    video.pause(); video.src = '';
+    if (video.parentNode) video.parentNode.removeChild(video);
+    cleanupVideo();
+    alert('Failed to load video map.' + (reason ? ' ' + reason : ''));
+  }
+  video.onerror = () => failLoad();
+  video.oncanplay = function() {
+    if (settled) return;
+    settled = true;
+    video.onerror = null; video.oncanplay = null;
+
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    mapWidth  = vw;
+    mapHeight = vh;
+
+    function finishLoad() {
+      // Extract frame 0 as static fallback + thumbnail source
+      const extractCanvas = document.createElement('canvas');
+      extractCanvas.width = vw; extractCanvas.height = vh;
+      extractCanvas.getContext('2d').drawImage(video, 0, 0, vw, vh);
+
+      if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
+      mapOffscreen = extractCanvas;
+      pixiSetMap(prepareTextureCanvas(extractCanvas, vw, vh), vw, vh);
+      pixiHideMap();
+      mapVideo = video;
+      attachVideoListeners(video);
+      mapVideoBlob = file;
+
+      fogDataCanvas = document.createElement('canvas');
+      fogDataCanvas.width  = Math.ceil(mapWidth  / FOG_SCALE);
+      fogDataCanvas.height = Math.ceil(mapHeight / FOG_SCALE);
+      fogDataCtx = fogDataCanvas.getContext('2d');
+      fogDataCtx.fillStyle = '#1a1a2e';
+      fogDataCtx.fillRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
+
+      baseFogCanvas = document.createElement('canvas');
+      baseFogCanvas.width = fogDataCanvas.width;
+      baseFogCanvas.height = fogDataCanvas.height;
+      baseFogCtx = baseFogCanvas.getContext('2d');
+      baseFogCtx.fillStyle = '#1a1a2e';
+      baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
+
+      polygons = []; activePolygon = null; selectedPolygonId = null;
+      nextPolygonId = 1;
+      playerMapSent = false;
+
+      if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
+      rebuildFogEffect();
+      if (!isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
+
+      fitToScreen();
+      if (!isPlayer) container.style.cursor = 'crosshair';
+      landing.style.display = 'none';
+      viewportDirty = true;
+      scheduleRender();
+
+      video.play().then(() => startVideoLoop()).catch(() => {});
+      if (onVideoLoaded) onVideoLoaded(extractCanvas, file);
+    }
+
+    // Seek to near-zero and wait for decoded frame before extracting
+    video.onseeked = function() {
+      video.onseeked = null;
+      finishLoad();
+    };
+    video.currentTime = 0.001;
+    // Fallback if seeked never fires (already at target position)
+    setTimeout(() => { if (video.onseeked) { video.onseeked = null; finishLoad(); } }, 2000);
+  };
+  video.src = url;
+}
+
+function isVideoFile(file) {
+  if (file.type && (file.type.startsWith('video/') || file.type === 'video/mp4' || file.type === 'video/webm')) return true;
+  return /\.(mp4|webm)$/i.test(file.name);
+}
+
+// ─── Diagnostics (toggle with backtick ` — works in both DM and Player) ──────
+// Remove this section once the jitter root cause is confirmed.
+var _diagActive   = false;
+var _diagEl       = null;
+var _diagInterval = null;
+var _diagLog      = [];   // ring buffer, newest appended last
+var _diagT0       = null; // perf timestamp of first event
+var _diagPrevRS   = -1;   // detect readyState changes between polls
+
+function _diagAppend(msg) {
+  if (!_diagT0) _diagT0 = performance.now();
+  var t = ((performance.now() - _diagT0) / 1000).toFixed(2);
+  _diagLog.push('[+' + t + 's] ' + msg);
+  if (_diagLog.length > 50) _diagLog.shift();
+}
+
+function _diagRender() {
+  if (!_diagEl) return;
+  var mode = (typeof isPlayer !== 'undefined' && isPlayer) ? 'PLAYER' : 'DM';
+  var ve   = (typeof videoEnabled   !== 'undefined') ? videoEnabled   : '?';
+  var vda  = (typeof videoDOMActive !== 'undefined') ? videoDOMActive : '?';
+  var mv   = (typeof mapVideo !== 'undefined') ? mapVideo : null;
+  var rs   = mv ? mv.readyState   : '—';
+  var pa   = mv ? mv.paused       : '—';
+  var ct   = mv ? mv.currentTime.toFixed(3) : '—';
+  var loopAge = _videoLoopStartedAt
+    ? ((performance.now() - _videoLoopStartedAt) / 1000).toFixed(1) + 's' : '—';
+  var rvfc = (typeof videoRVFCId !== 'undefined') ? videoRVFCId : '?';
+  var raf  = (typeof videoRAFId  !== 'undefined') ? videoRAFId  : '?';
+  var wdog = _videoWatchdogId ? 'ON' : 'off';
+
+  // Detect readyState changes between renders
+  if (mv && rs !== _diagPrevRS) {
+    if (_diagPrevRS !== -1) _diagAppend('rs changed ' + _diagPrevRS + '→' + rs);
+    _diagPrevRS = rs;
+  }
+
+  var lines = [
+    '── VIDEO DIAG [' + mode + '] (` to close) ──',
+    've=' + ve + '  vda=' + vda + '  wdog=' + wdog,
+    'rs=' + rs + (rs < 4 && rs !== '—' ? ' ⚠' : '') +
+      '  paused=' + pa + '  ct=' + ct,
+    'loopAge=' + loopAge + '  RVFC=' + rvfc + '  RAF=' + raf,
+    '── Events (newest first) ──',
+  ].concat(_diagLog.slice().reverse());
+
+  _diagEl.textContent = lines.join('\n');
+}
+
+function _diagToggle() {
+  _diagActive = !_diagActive;
+  if (_diagActive) {
+    if (!_diagEl) {
+      _diagEl = document.createElement('div');
+      _diagEl.style.cssText = 'position:fixed;top:10px;right:10px;z-index:99999;' +
+        'background:rgba(0,0,0,0.88);color:#0f0;font-family:monospace;font-size:11px;' +
+        'line-height:1.5;padding:8px 10px;max-height:82vh;overflow-y:auto;' +
+        'pointer-events:none;white-space:pre;border:1px solid #0f0;min-width:280px;';
+      document.body.appendChild(_diagEl);
+    }
+    _diagT0 = null; _diagLog = []; _diagPrevRS = -1;
+    _diagAppend('diag opened');
+    _diagRender();
+    _diagInterval = setInterval(_diagRender, 250);
+  } else {
+    if (_diagInterval) { clearInterval(_diagInterval); _diagInterval = null; }
+    if (_diagEl) { _diagEl.remove(); _diagEl = null; }
+  }
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('keydown', function(e) {
+    if (e.key === '`') _diagToggle();
+  });
 }
 
 // ─── Export guard (Node require for tests; no-op in browser) ─────────────────
