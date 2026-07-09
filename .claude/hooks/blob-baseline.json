@@ -1,0 +1,4 @@
+{
+  "maxLines": 102,
+  "note": "Max allowed non-blank lines in the index.html inline <script>. Auto-ratchets DOWN as the blob shrinks. If a growth is genuine wiring/init (rare, e.g. a new canvas DOM ref), bump this number."
+}
