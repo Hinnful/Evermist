@@ -199,4 +199,13 @@ function syncFogColorToPlayer(pickedHex) {
   playerWindow.postMessage({ type: 'fog-color', pickedHex, fogTintAlpha: FOG_TINT_ALPHA }, '*');
 }
 
+// ─── Auto-Sync helper ─────────────────────────────────────────────────────────
+// Debounces an auto-save + Player fog push after every fog-changing operation.
+function scheduleAutoSync() {
+  scheduleAutoSave();
+  if (!autoSync) return;
+  clearTimeout(autoSyncTimer);
+  autoSyncTimer = setTimeout(() => sendToPlayer(true), 300);
+}
+
 if (typeof module !== 'undefined') module.exports = { calcViewportRect };
