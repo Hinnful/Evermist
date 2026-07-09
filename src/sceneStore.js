@@ -84,8 +84,8 @@ const sceneStore = (() => {
       req.onsuccess = e => {
         const cursor = e.target.result;
         if (!cursor) { resolve(results); return; }
-        const { id, name, thumbnail, sortOrder, createdAt } = cursor.value;
-        results.push({ id, name, thumbnail, sortOrder, createdAt });
+        const { id, name, thumbnail, sortOrder, createdAt, mapType } = cursor.value;
+        results.push({ id, name, thumbnail, sortOrder, createdAt, mapType });
         cursor.continue();
       };
       req.onerror = e => reject(e.target.error);

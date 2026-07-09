@@ -4,6 +4,10 @@
 // pan/zoom. Called once from index.html (player mode only), at the same point the
 // original inline block used to run.
 
+// Bumped on every video-scene load so an async blob read that resolves after a
+// newer scene switch can detect it was superseded and bail out (no orphan <video>).
+var _playerVideoGen = 0;
+
 function initPlayer() {
   fogAnimEnabled = true; // player view always animates
 
@@ -146,66 +150,92 @@ function initPlayer() {
     });
 
     if (msg.mapUrl && msg.mapType === 'video') {
-      // Video scene — create a <video> element on Player side
+      // Video scene — create a <video> element on Player side.
       cleanupVideo();
-      mapVideoUrl = msg.mapUrl;
-      const video = createPlayerVideoElement(container);
-      let settled = false;
-      video.onerror = () => {
-        if (settled) return;
-        settled = true;
-        video.onerror = null; video.oncanplay = null;
-        video.pause(); video.src = '';
-        if (video.parentNode) video.parentNode.removeChild(video);
-        cleanupVideo(); revealPlayer();
-      };
-      video.oncanplay = function() {
-        if (settled) return;
-        settled = true;
-        video.onerror = null; video.oncanplay = null;
 
-        function finishPlayerVideo() {
-          const extractCanvas = document.createElement('canvas');
-          extractCanvas.width = mapWidth; extractCanvas.height = mapHeight;
-          extractCanvas.getContext('2d').drawImage(video, 0, 0, mapWidth, mapHeight);
-          if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
-          mapOffscreen = extractCanvas;
-          // Size the texture to the detected display (display-aware, TDR-safe).
-          // prepareTextureCanvas reads displayInfo from state.js and falls back to
-          // the old ~2× viewport heuristic when displayInfo is not yet available.
-          playerMapTexCanvas = prepareTextureCanvas(extractCanvas, mapWidth, mapHeight);
-          playerMapTexCtx = playerMapTexCanvas.getContext('2d');
-          pixiSetMap(playerMapTexCanvas, mapWidth, mapHeight);
-          // Refresh the map texture from the video every rendered frame, driven by
-          // the PixiJS render ticker so it never freezes between viewport changes.
-          var _texVideoTime = -1;
-          pixiStartVideoTextureSync(function() {
-            if (!mapVideo || !playerMapTexCtx || mapVideo.readyState < 2) return;
-            var t = mapVideo.currentTime;
-            if (t === _texVideoTime) return; // same frame — skip redundant GPU upload
-            _texVideoTime = t;
-            playerMapTexCtx.drawImage(mapVideo, 0, 0, playerMapTexCanvas.width, playerMapTexCanvas.height);
-            pixiUpdateMapTexture();
-          });
-          mapVideo = video;
-          attachVideoListeners(video);
-          fitToScreen();
-          if (playerFollowDM && msg.view) applyView(msg.view);
-          loadFog(msg.fogDataUrl, !!msg.sceneChange).then(() => {
-            // Hybrid: Player fog is Canvas-2D (renderFog) on top of the PixiJS map — no
-            // PixiJS fog init. loadFog already ran rebuildFogEffect()+startFogAnim().
-            viewportDirty = true;
-            scheduleRender();
-            video.play().then(() => startVideoLoop()).catch(() => {});
-            revealPlayer();
-          });
+      // Play from a PRIVATE in-memory copy of the clip, NOT the same file:// path the
+      // DM is already streaming. Two <video> elements reading the same file at once
+      // starve Chromium's media pipeline for it — decode drops to 0 and BOTH windows
+      // stall at readyState 2 (confirmed via diag: DM-only never stalls; the instant
+      // the Player opens, both collapse together). A blob is a separate data source,
+      // so the two never contend. Falls back to the shared file:// URL if the
+      // in-memory read is unavailable or fails.
+      const _gen = ++_playerVideoGen;
+
+      const beginPlayerVideo = (srcUrl) => {
+        if (_gen !== _playerVideoGen) {          // a newer scene switch superseded this
+          if (srcUrl && srcUrl.startsWith('blob:')) URL.revokeObjectURL(srcUrl);
+          return;
         }
+        mapVideoUrl = srcUrl;
+        const video = createPlayerVideoElement(container);
+        let settled = false;
+        video.onerror = () => {
+          if (settled) return;
+          settled = true;
+          video.onerror = null; video.oncanplay = null;
+          video.pause(); video.src = '';
+          if (video.parentNode) video.parentNode.removeChild(video);
+          cleanupVideo(); revealPlayer();
+        };
+        video.oncanplay = function() {
+          if (settled) return;
+          settled = true;
+          video.onerror = null; video.oncanplay = null;
 
-        video.onseeked = function() { video.onseeked = null; finishPlayerVideo(); };
-        video.currentTime = 0.001;
-        setTimeout(() => { if (video.onseeked) { video.onseeked = null; finishPlayerVideo(); } }, 2000);
+          function finishPlayerVideo() {
+            const extractCanvas = document.createElement('canvas');
+            extractCanvas.width = mapWidth; extractCanvas.height = mapHeight;
+            extractCanvas.getContext('2d').drawImage(video, 0, 0, mapWidth, mapHeight);
+            if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
+            mapOffscreen = extractCanvas;
+            // Size the texture to the detected display (display-aware, TDR-safe).
+            // prepareTextureCanvas reads displayInfo from state.js and falls back to
+            // the old ~2× viewport heuristic when displayInfo is not yet available.
+            playerMapTexCanvas = prepareTextureCanvas(extractCanvas, mapWidth, mapHeight);
+            playerMapTexCtx = playerMapTexCanvas.getContext('2d');
+            pixiSetMap(playerMapTexCanvas, mapWidth, mapHeight);
+            // Refresh the map texture from the video every rendered frame, driven by
+            // the PixiJS render ticker so it never freezes between viewport changes.
+            var _texVideoTime = -1;
+            pixiStartVideoTextureSync(function() {
+              if (!mapVideo || !playerMapTexCtx || mapVideo.readyState < 2) return;
+              var t = mapVideo.currentTime;
+              if (t === _texVideoTime) return; // same frame — skip redundant GPU upload
+              _texVideoTime = t;
+              playerMapTexCtx.drawImage(mapVideo, 0, 0, playerMapTexCanvas.width, playerMapTexCanvas.height);
+              pixiUpdateMapTexture();
+            });
+            mapVideo = video;
+            attachVideoListeners(video);
+            fitToScreen();
+            if (playerFollowDM && msg.view) applyView(msg.view);
+            loadFog(msg.fogDataUrl, !!msg.sceneChange).then(() => {
+              // Hybrid: Player fog is Canvas-2D (renderFog) on top of the PixiJS map — no
+              // PixiJS fog init. loadFog already ran rebuildFogEffect()+startFogAnim().
+              viewportDirty = true;
+              scheduleRender();
+              video.play().then(() => startVideoLoop()).catch(() => {});
+              revealPlayer();
+            });
+          }
+
+          video.onseeked = function() { video.onseeked = null; finishPlayerVideo(); };
+          video.currentTime = 0.001;
+          setTimeout(() => { if (video.onseeked) { video.onseeked = null; finishPlayerVideo(); } }, 2000);
+        };
+        video.src = srcUrl;
       };
-      video.src = msg.mapUrl;
+
+      if (window.electronAPI && window.electronAPI.readVideoFile && msg.mapSceneId) {
+        const _mime = /\.mp4(\?|$)/i.test(msg.mapUrl) ? 'video/mp4' : 'video/webm';
+        window.electronAPI.readVideoFile(msg.mapSceneId).then(function(buf) {
+          if (buf) beginPlayerVideo(URL.createObjectURL(new Blob([buf], { type: _mime })));
+          else beginPlayerVideo(msg.mapUrl);   // read failed — fall back to the shared file
+        }).catch(function() { beginPlayerVideo(msg.mapUrl); });
+      } else {
+        beginPlayerVideo(msg.mapUrl);
+      }
     } else if (msg.mapUrl) {
       // Image scene
       cleanupVideo();
@@ -286,4 +316,6 @@ function initPlayer() {
     viewportDirty = true;
     scheduleRender();
   }, { passive: false });
+
+  initStress();
 }

@@ -266,6 +266,7 @@ function startVideoWatchdog() {
         _diagAppend('rs<3 not paused — letting buffer refill (no kick) rs=' + rs);
       }
       _diagAppend('watchdog play() pa=' + pa + ' rs=' + rs);
+      _diagAppend('[STALL-FLUSH] best-effort disk sync point');
       mapVideo.play().catch(function() {});
     }
     if (videoRVFCId == null && videoRAFId == null) {
@@ -483,19 +484,37 @@ function isVideoFile(file) {
 }
 
 // ─── Diagnostics (toggle with backtick ` — works in both DM and Player) ──────
-// Remove this section once the jitter root cause is confirmed.
+// Kept intentionally for future video-stall investigation. Gated: the on-screen
+// overlay only appears on backtick, and the stress rig only runs under ?stress=1.
+// Disk logging (main.js) is always-on during playback but rotated/capped to 3 files.
 var _diagActive   = false;
 var _diagEl       = null;
 var _diagInterval = null;
-var _diagLog      = [];   // ring buffer, newest appended last
+var _diagLog      = [];   // ring buffer, newest appended last; disk log is unbounded
 var _diagT0       = null; // perf timestamp of first event
 var _diagPrevRS   = -1;   // detect readyState changes between polls
+
+// Resolved once on first use. 'dm' or 'player' — used as the mode tag for disk log filenames.
+// Note: _diagT0 resets when the overlay is toggled, so the relative +Ns stamp is NOT monotonic
+// across toggles. The wall-clock field (Date.now) is the reliable ordering key in the disk log.
+function _diagMode() {
+  return (typeof isPlayer !== 'undefined' && isPlayer) ? 'player' : 'dm';
+}
+
+function _diagWriteDisk(relStamp, msg) {
+  if (typeof window === 'undefined' || !window.electronAPI || !window.electronAPI.diagAppendLine) return;
+  var wallMs = Date.now();
+  var line = '[' + wallMs + '] [' + relStamp + '] ' + msg;
+  try { window.electronAPI.diagAppendLine(_diagMode(), line); } catch (_) {}
+}
 
 function _diagAppend(msg) {
   if (!_diagT0) _diagT0 = performance.now();
   var t = ((performance.now() - _diagT0) / 1000).toFixed(2);
-  _diagLog.push('[+' + t + 's] ' + msg);
+  var relStamp = '+' + t + 's';
+  _diagLog.push('[' + relStamp + '] ' + msg);
   if (_diagLog.length > 50) _diagLog.shift();
+  _diagWriteDisk(relStamp, msg);
 }
 
 function _diagRender() {
@@ -552,7 +571,7 @@ function _diagToggle() {
   }
 }
 
-if (typeof document !== 'undefined') {
+if (typeof document !== 'undefined' && !(typeof isPlayer !== 'undefined' && isPlayer)) {
   document.addEventListener('keydown', function(e) {
     if (e.key === '`') _diagToggle();
   });

@@ -1,10 +1,23 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen, powerSaveBlocker } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
 const yauzl = require('yauzl');
+
+// Stress-test mode: activated by `npm run stress` (passes --stress). Inert under
+// plain `npm start` and in the shipped .exe (which never passes the flag).
+const stressMode = process.argv.includes('--stress');
+const stressNoReveals = process.argv.includes('--stress-no-reveals');
+const stressIntervalArg = process.argv.find(a => a.startsWith('--stress-interval='));
+const stressMs = stressIntervalArg
+  ? (v => (isNaN(v) || v <= 0 ? 900000 : v))(parseInt(stressIntervalArg.split('=')[1], 10))
+  : 900000;
+if (stressMode) {
+  const id = powerSaveBlocker.start('prevent-display-sleep');
+  console.log('[stress] powerSaveBlocker started id=' + id + ' interval=' + stressMs + 'ms');
+}
 
 // Portable data: store all Chromium user data (IndexedDB, caches) next to the
 // .exe so the entire folder can be copied between PCs.
@@ -66,7 +79,14 @@ function createDMWindow() {
   });
 
   win.setMenu(null);
-  win.loadFile('index.html');
+  if (stressMode) {
+    const q = { stress: '1' };
+    if (stressMs !== 900000) q.stressMs = String(stressMs);
+    if (stressNoReveals) q.noReveals = '1';
+    win.loadFile('index.html', { query: q });
+  } else {
+    win.loadFile('index.html');
+  }
   dmWin = win;
   win.once('closed', () => { if (dmWin === win) dmWin = null; });
   // visibilitychange does not fire on Windows OS-minimize, so signal the renderer
@@ -224,11 +244,90 @@ ipcMain.handle('get-video-file-path', async (_event, sceneId) => {
   return null;
 });
 
+// Read a scene's video into an ArrayBuffer so the Player can play it from an
+// in-memory blob instead of the same file:// path the DM is already streaming.
+// Two <video> elements reading the same file concurrently starve Chromium's media
+// pipeline for it (decode drops to 0, both windows stall at readyState 2); a private
+// blob per window removes that contention.
+ipcMain.handle('read-video-file', async (_event, sceneId) => {
+  if (!isSafeId(sceneId)) return null;
+  for (const ext of ['.webm', '.mp4']) {
+    const filePath = path.join(mapsDir, sceneId + ext);
+    try {
+      const buf = await fs.promises.readFile(filePath);
+      // Hand back an exact-length ArrayBuffer for structured-clone transfer.
+      return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    } catch {}
+  }
+  return null;
+});
+
 ipcMain.handle('delete-video-file', async (_event, sceneId) => {
   if (!isSafeId(sceneId)) return;
   for (const ext of ['.webm', '.mp4']) {
     try { await fs.promises.unlink(path.join(mapsDir, sceneId + ext)); } catch {}
   }
+});
+
+// --- Diagnostic log IPC ---
+
+let logsDir;
+
+const _diagModeFiles = { dm: 'video-diag-dm.log', player: 'video-diag-player.log' };
+
+// One long-lived append stream per mode. Deliberately NOT appendFileSync: during a
+// video stall both windows emit dozens of diag events/sec, and a synchronous
+// open/write/close on the shared main process for each would back up the event loop
+// and starve the video pipeline — amplifying the very stall we're trying to observe.
+// A buffered WriteStream writes async and keeps the fd open, so logging stays cheap.
+const _diagStreams = {};
+
+function _diagStream(mode) {
+  const filename = _diagModeFiles[mode];
+  if (!filename || !logsDir) return null; // reject unknown modes; silently drop before app.whenReady
+  if (!_diagStreams[mode]) {
+    _diagStreams[mode] = fs.createWriteStream(path.join(logsDir, filename), { flags: 'a' });
+    _diagStreams[mode].on('error', () => {});
+  }
+  return _diagStreams[mode];
+}
+
+// On each launch, retire the previous session's log to a dated archive and keep only
+// the last 3 per mode (2 archives + the fresh current session). The logs write
+// continuously whenever a video plays (watchdog heartbeat every ~3s) regardless of
+// whether the on-screen overlay is open, so in append mode they'd grow without bound.
+// The live session keeps the stable filename (video-diag-<mode>.log); history is dated.
+function _rotateDiagLogs() {
+  if (!logsDir) return;
+  const pad = n => String(n).padStart(2, '0');
+  for (const filename of Object.values(_diagModeFiles)) {
+    const base = filename.replace(/\.log$/, ''); // e.g. 'video-diag-dm'
+    const current = path.join(logsDir, filename);
+    // Archive the previous session's log under a name dated to when it last wrote.
+    try {
+      const stat = fs.statSync(current);
+      if (stat.size > 0) {
+        const m = new Date(stat.mtimeMs);
+        const stamp = `${m.getFullYear()}-${pad(m.getMonth() + 1)}-${pad(m.getDate())}` +
+          `_${pad(m.getHours())}-${pad(m.getMinutes())}-${pad(m.getSeconds())}`;
+        fs.renameSync(current, path.join(logsDir, `${base}-${stamp}.log`));
+      }
+    } catch {} // no current log yet — first run
+    // Prune archives to the newest 2 (dated names sort chronologically).
+    try {
+      const archives = fs.readdirSync(logsDir)
+        .filter(f => f.startsWith(base + '-') && f.endsWith('.log'))
+        .sort();
+      for (const f of archives.slice(0, Math.max(0, archives.length - 2))) {
+        try { fs.unlinkSync(path.join(logsDir, f)); } catch {}
+      }
+    } catch {}
+  }
+}
+
+ipcMain.on('diag-append-line', (_event, mode, line) => {
+  const stream = _diagStream(mode);
+  if (stream) stream.write(line + '\n');
 });
 
 // --- Backup / Restore IPC ---
@@ -393,6 +492,9 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
 app.whenReady().then(() => {
   mapsDir = path.join(app.getPath('userData'), 'maps');
   fs.mkdirSync(mapsDir, { recursive: true });
+  logsDir = path.join(app.getPath('userData'), 'logs');
+  fs.mkdirSync(logsDir, { recursive: true });
+  _rotateDiagLogs();
 
   // Re-push display info when the user moves/resizes the Player window or the
   // OS display configuration changes (resolution, scale factor, plugged-in TV).

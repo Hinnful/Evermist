@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('save-video-blob', sceneId, arrayBuffer, mimeType),
   getVideoFilePath: (sceneId) =>
     ipcRenderer.invoke('get-video-file-path', sceneId),
+  readVideoFile: (sceneId) =>
+    ipcRenderer.invoke('read-video-file', sceneId),
   deleteVideoFile: (sceneId) =>
     ipcRenderer.invoke('delete-video-file', sceneId),
   onVideoSaveProgress: (callback) => {
@@ -42,4 +44,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('window-visibility', handler);
     return () => ipcRenderer.removeListener('window-visibility', handler);
   },
+
+  diagAppendLine: (mode, line) => ipcRenderer.send('diag-append-line', mode, line),
 });

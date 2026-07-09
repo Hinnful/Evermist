@@ -1391,6 +1391,7 @@
 <script src="src/grid.js"></script>
 <script src="src/toolbar.js"></script>
 <script src="src/player.js"></script>
+<script src="src/stress.js"></script>
 <script>
 'use strict';
 
@@ -1957,7 +1958,7 @@ if (window.electronAPI && window.electronAPI.onWindowVisibility) {
   });
 }
 
-if (!isPlayer) initScenes().catch(console.error);
+if (!isPlayer) initScenes().then(() => initStress()).catch(console.error);
 initDisplayDetection();
 </script>
 </body>
