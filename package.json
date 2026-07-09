@@ -1,6 +1,6 @@
 {
   "name": "evermist",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "description": "D&D fog-of-war map viewer for TV display",
   "main": "main.js",
   "author": "Hinnful",
@@ -12,6 +12,8 @@
   "scripts": {
     "test": "node --test",
     "start": "electron .",
+    "stress": "electron . --stress",
+    "stress:control": "electron . --stress --stress-no-reveals",
     "build": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
     "build:mac": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac",
     "build:linux": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux",

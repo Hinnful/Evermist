@@ -378,7 +378,12 @@ function initToolbar() {
   });
 
   document.getElementById('btn-player').onclick = () => {
-    const url = window.location.href.split('?')[0] + '?mode=player';
+    const sp = new URLSearchParams(window.location.search);
+    const stress = sp.get('stress') === '1';
+    const stressMs = sp.get('stressMs');
+    let url = window.location.href.split('?')[0] + '?mode=player';
+    if (stress) url += '&stress=1';
+    if (stressMs) url += '&stressMs=' + encodeURIComponent(stressMs);
     playerWindow = window.open(url, 'evermist-player', 'toolbar=no,menubar=no,scrollbars=no');
   };
 
