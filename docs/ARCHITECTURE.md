@@ -25,22 +25,27 @@ separately and stacked on top.
 
 | File | What it does |
 |------|--------------|
-| `index.html` | The entry point. Holds the render loop, most UI wiring, and the window-to-window sync. (Historically oversized — it's being broken into smaller files over time, so the rows below keep growing.) |
+| `index.html` | The entry point and page markup. The JavaScript here is now just wiring — grab the canvases, start PixiJS, call each module's `init`, and connect the lifecycle events. (It was once a ~2400-line monster; that code now lives in the `src/` files below. A guard hook keeps it from creeping back.) |
 | `renderer.js` | The PixiJS/WebGL wrapper. The GPU drawing path for the map and the DM's fog. |
+| `render.js` | The render loop. Each frame it decides which layers actually changed and redraws only those, keeps the canvases sized to the window, and paints the cursor + polygon-selection overlay. |
 | `fog.js` | Everything fog: the canvases that store what's hidden, the blur + cloud-texture math, and the reveal/hide logic. |
 | `fogGeometry.js` | The pure fog math — polygon insetting, rounded paths, tint-color derivation, animation timing. Plain functions in, values out, no drawing. It's the part that has unit tests. |
 | `tools.js` | The drawing tools — brush, rectangle, circle, polygon — and polygon editing. |
+| `input.js` | The DM's mouse and keyboard: painting with the tools, keyboard shortcuts, and the legend toggle. |
+| `undo.js` | Undo/redo history for fog edits. |
 | `grid.js` | The grid overlay — squares or hexes, size/offset/color, and line width that scales with zoom. |
 | `scenes.js` | Auto-save loop, fog-load helpers, and the error-recovery path that sits above the database layer. |
 | `sceneManager.js` | Scene CRUD and the scene-manager UI — `switchScene`, `createNewScene`, `initScenes`, `renderSceneManager`, rename, delete, and thumbnail generation. |
 | `sceneStore.js` | Saving and loading scenes to the browser's local database (IndexedDB). |
-| `viewport.js` | Pan, zoom, and pushing the camera to the player window. |
+| `mapLoader.js` | Loading a map image into the app and driving the progress bar. Shared by scene-switching and backup restore. |
+| `viewport.js` | Pan, zoom, pushing the camera to the player window, and the auto-sync helper. |
 | `video.js` | Animated (video) map support — file loading, DOM compositing, decoding, the frame loop, and the freeze-watchdog. |
 | `display.js` | Detecting the player screen's real size so the fog and map render at the right resolution. |
 | `state.js` | Shared values that several files need (loaded first so they exist before anything reads them). |
 | `backup.js` | The export/restore-to-zip feature (see "Backing up your maps" below). |
 | `toolbar.js` | DM-only UI control wiring: toolbar buttons, brush/grid/fog sliders, fog color picker, animation presets and advanced sliders, polygon context panel, scene/backup modals, player-window controls, section collapse, and the UI-scale slider. |
 | `player.js` | Player-mode runtime: cloud-texture pre-generation, PLAYER_READY handshake, resize listener, DM message handler (map/fog/anim/scene-transition/view-snap/fullscreen), and player pan/zoom. |
+| `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
 | `main.js` / `preload.js` | The Electron shell — creates the windows, handles saving video files to disk, and reads/writes backup zips. |
 
 ## How the fog works
