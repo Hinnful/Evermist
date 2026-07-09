@@ -56,3 +56,69 @@ let gridLineWidth = 1;
 // explicit lifecycle state. null = loop not running.
 let fogAnimRafId  = null; // drifting cloud animation loop (fogAnimTick)
 let fogTransRafId = null; // reveal/shroud crossfade loop (fogTransTick)
+
+// ─── Migrated from inline blob — map/camera/scene/player-sync/dirty state ────
+// These were top-level declarations in the inline <script>. Moved here so all
+// shared mutable state lives in one place (CLAUDE.md: "Shared mutable state has
+// one home: state.js"). Pure relocation — no renames, no changed initial values.
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+const ZOOM_FACTOR       = 1.1;
+const POLY_CLOSE_RADIUS = 12;  // screen-px hit area to close polygon on first vertex
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let mapOffscreen = null;
+let mapBitmap    = null;
+let mapVideo     = null;   // <video> element for animated maps
+let mapVideoBlob = null;   // original video file Blob for storage/sync
+let mapVideoUrl  = null;   // blob URL backing mapVideo (revoke on cleanup)
+let videoEnabled = false;  // true while video is actively playing as map source
+let videoRAFId   = null;   // RAF id for video-driven map redraws (fallback)
+let videoRVFCId  = null;   // requestVideoFrameCallback id (preferred)
+let videoLastRenderTs = 0;
+
+let mapWidth = 0, mapHeight = 0;
+let zoom = 1, panX = 0, panY = 0;
+let isPanning = false;
+let panStartX, panStartY, panStartPanX, panStartPanY;
+let playerWindow = null;
+let playerMapSent = false;
+let lastScreenX = null, lastScreenY = null;
+
+// ─── Polygon state ────────────────────────────────────────────────────────────
+let polygons = [];          // closed persistent polygons: {id, vertices:[{x,y}], mode}
+let nextPolygonId = 1;
+
+// ─── Auto-Sync ────────────────────────────────────────────────────────────────
+let autoSync = false;
+let autoSyncTimer = null;
+
+// ─── Scene management ─────────────────────────────────────────────────────────
+let currentScene    = null;   // full scene record in memory (includes mapBlob ref)
+let allScenes       = [];     // lightweight list for the sidebar
+let autoSaveTimer   = null;
+let mapLoadMode     = 'auto'; // 'new' = create scene, 'replace' = replace map
+
+// ─── Player Sync State ────────────────────────────────────────────────────────
+let playerFollowMode = true;  // DM side: last known player mode
+let playerFollowDM   = true;  // Player side: whether to mirror DM viewport
+let lastDMView       = null;  // Player side: most recent view received from DM
+let viewLerpActive   = false;
+let viewLerpFrom     = null, viewLerpTo = null, viewLerpStart = 0;
+const VIEW_LERP_MS   = 400;
+
+// Dirty flags — the key to avoiding unnecessary work.
+// viewportDirty: pan/zoom/resize/map-load changed → redraw ALL layers.
+// fogDirty: brush/rect/reveal-all/shroud-all → redraw ONLY the fog layer.
+// gridDirty: grid toggle/size change → redraw ONLY the grid layer.
+let renderScheduled = false;
+let viewportDirty   = false;
+let mapDirty        = false;
+let fogDirty        = false;
+let gridDirty       = false;
+
+// Player-only: the (possibly downscaled) canvas backing the PixiJS map texture for
+// video maps. The Player has no DOM <video> compositing — the map is a masked PixiJS
+// sprite — so each frame we draw the video into this canvas and re-upload the texture.
+let playerMapTexCanvas = null;
+let playerMapTexCtx    = null;
