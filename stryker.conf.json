@@ -1,0 +1,13 @@
+{
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "npm test"
+  },
+  "coverageAnalysis": "off",
+  "reporters": ["clear-text", "progress"],
+  "mutate": [
+    "src/tools.js:48-86",
+    "src/display.js:10-19",
+    "src/video.js:35-69"
+  ]
+}

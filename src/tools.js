@@ -759,3 +759,7 @@ function toggleSelectedPolygon() {
   scheduleRender();
   scheduleAutoSync();
 }
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { pointInPolygon, distPointToSegment, segmentsIntersect };
+}
