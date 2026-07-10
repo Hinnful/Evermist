@@ -9,6 +9,8 @@ const {
   wrapOffset,
   pulseAlpha,
   cloudBlendIndices,
+  sampleWrappedNoise,
+  fogTurbulence,
   deriveFogColors,
   animLogScale,
   animSliderFromVal,
@@ -187,6 +189,115 @@ describe('cloudBlendIndices', () => {
   it('wraps positions beyond the frame count', () => {
     // 18.5 % 16 = 2.5
     assert.deepEqual(cloudBlendIndices(18.5, 16), { idxA: 2, idxB: 3, blend: 0.5 });
+  });
+
+  it('handles negative pos: -0.5 wraps to frame 15 with blend 0.5', () => {
+    const r = cloudBlendIndices(-0.5, 16);
+    assert.equal(r.idxA, 15);
+    assert.equal(r.idxB, 0);
+    assert.ok(Math.abs(r.blend - 0.5) < 1e-9);
+  });
+
+  it('handles negative pos: -16.25 wraps to frame 15 with blend 0.75', () => {
+    const r = cloudBlendIndices(-16.25, 16);
+    assert.equal(r.idxA, 15);
+    assert.equal(r.idxB, 0);
+    assert.ok(Math.abs(r.blend - 0.75) < 1e-9);
+  });
+});
+
+describe('sampleWrappedNoise', () => {
+  // 2×2 grid: [0.0, 1.0, 0.5, 0.5]
+  // layout: row0=[0.0,1.0], row1=[0.5,0.5]
+  const n = 2;
+  const grid = new Float32Array([0.0, 1.0, 0.5, 0.5]);
+
+  it('integer coords return grid cell exactly', () => {
+    assert.ok(Math.abs(sampleWrappedNoise(grid, n, 0, 0) - 0.0) < 1e-9);
+    assert.ok(Math.abs(sampleWrappedNoise(grid, n, 1, 0) - 1.0) < 1e-9);
+    assert.ok(Math.abs(sampleWrappedNoise(grid, n, 0, 1) - 0.5) < 1e-9);
+    assert.ok(Math.abs(sampleWrappedNoise(grid, n, 1, 1) - 0.5) < 1e-9);
+  });
+
+  it('midpoint (0.5, 0) returns smoothstep-blended value between cell (0,0)=0 and (1,0)=1', () => {
+    // At fx=0.5, sx=0.5, tx = 0.5*0.5*(3-1) = 0.5. a=0, b=1. No y blend (sy=0).
+    // result = 0 + (1-0)*0.5 = 0.5
+    assert.ok(Math.abs(sampleWrappedNoise(grid, n, 0.5, 0) - 0.5) < 1e-9);
+  });
+
+  it('wraps at fx=n back to cell 0', () => {
+    assert.ok(Math.abs(sampleWrappedNoise(grid, n, 2, 0) - sampleWrappedNoise(grid, n, 0, 0)) < 1e-9);
+  });
+
+  it('wraps negative fx', () => {
+    assert.ok(Math.abs(sampleWrappedNoise(grid, n, -2, 0) - sampleWrappedNoise(grid, n, 0, 0)) < 1e-9);
+  });
+});
+
+describe('fogTurbulence', () => {
+  it('returns weighted average of layer samples (single layer)', () => {
+    const n = 2;
+    const grid = new Float32Array([0.0, 1.0, 0.5, 0.5]);
+    const layers = [{ grid, n, scale: 1.0 }];
+    // With scale=1 and total=1, result equals sampleWrappedNoise directly
+    const expected = sampleWrappedNoise(grid, n, 0.5 * n, 0 * n);
+    assert.ok(Math.abs(fogTurbulence(layers, 0.5, 0) - expected) < 1e-9);
+  });
+
+  it('blends two layers by scale weight', () => {
+    const n = 2;
+    const grid = new Float32Array([0.0, 1.0, 0.5, 0.5]);
+    const layers = [
+      { grid, n, scale: 1.0 },
+      { grid, n, scale: 1.0 },
+    ];
+    // Same grid, same coords: result equals single-layer sample (scales cancel)
+    const expected = sampleWrappedNoise(grid, n, 0 * n, 0 * n);
+    assert.ok(Math.abs(fogTurbulence(layers, 0, 0) - expected) < 1e-9);
+  });
+});
+
+describe('parseSceneFogSettings', () => {
+  const { parseSceneFogSettings } = require('../src/fogGeometry.js');
+  const DEFAULTS = {
+    hex: '#3a3a8c', alpha: 0.18,
+    anim: { enabled: true, speed: 1.0, drift: 1.0, morph: 0.35, warpStr: 0.15, warpRad: 0.08, pulse: 0.30 },
+  };
+
+  it('missing fogSettings → all defaults', () => {
+    const r = parseSceneFogSettings({}, DEFAULTS);
+    assert.equal(r.hex, '#3a3a8c');
+    assert.equal(r.alpha, 0.18);
+    assert.equal(r.anim.enabled, true);
+    assert.equal(r.anim.speed, 1.0);
+  });
+
+  it('valid fogSettings fields are kept', () => {
+    const r = parseSceneFogSettings({ fogSettings: { pickedHex: '#ff0000', tintAlpha: 0.5 } }, DEFAULTS);
+    assert.equal(r.hex, '#ff0000');
+    assert.equal(r.alpha, 0.5);
+  });
+
+  it('tintAlpha: 0 is kept (falsy but valid)', () => {
+    const r = parseSceneFogSettings({ fogSettings: { tintAlpha: 0 } }, DEFAULTS);
+    assert.equal(r.alpha, 0);
+  });
+
+  it('enabled: false is kept (boolean false)', () => {
+    const r = parseSceneFogSettings({ fogSettings: { anim: { enabled: false } } }, DEFAULTS);
+    assert.equal(r.anim.enabled, false);
+  });
+
+  it('NaN anim field falls back to default, valid neighbor kept', () => {
+    const r = parseSceneFogSettings({ fogSettings: { anim: { speed: NaN, drift: 2.5 } } }, DEFAULTS);
+    assert.equal(r.anim.speed, 1.0);
+    assert.equal(r.anim.drift, 2.5);
+  });
+
+  it('partial anim object — missing fields get defaults', () => {
+    const r = parseSceneFogSettings({ fogSettings: { anim: { morph: 0.5 } } }, DEFAULTS);
+    assert.equal(r.anim.morph, 0.5);
+    assert.equal(r.anim.warpStr, 0.15);
   });
 });
 

@@ -115,7 +115,7 @@ function pulseAlpha(base, amp, time, freq, phase) {
 // Given a fractional frame position and frame count, return the two frame
 // indices to crossfade and the [0,1) blend factor between them.
 function cloudBlendIndices(pos, total) {
-  const wrapped = pos % total;
+  const wrapped = ((pos % total) + total) % total;
   const idxA = Math.floor(wrapped) % total;
   const idxB = (idxA + 1) % total;
   const blend = wrapped - Math.floor(wrapped);
@@ -190,6 +190,58 @@ function animSliderFromVal(currentVal, baseVal) {
   return 500 + 500 * Math.log(currentVal / baseVal) / Math.log(50);
 }
 
+// ─── Cloud noise kernels ──────────────────────────────────────────────────────
+// Bilinear interpolation over a tiling Float32Array grid of size n×n.
+// Wraps on both axes so the texture tiles seamlessly.
+function sampleWrappedNoise(grid, n, fx, fy) {
+  const x = ((fx % n) + n) % n;
+  const y = ((fy % n) + n) % n;
+  const x0 = x | 0, y0 = y | 0;
+  const x1 = (x0 + 1) % n, y1 = (y0 + 1) % n;
+  const sx = x - x0, sy = y - y0;
+  const tx = sx * sx * (3 - 2 * sx), ty = sy * sy * (3 - 2 * sy);
+  const a = grid[y0 * n + x0], b = grid[y0 * n + x1];
+  const c = grid[y1 * n + x0], d = grid[y1 * n + x1];
+  return a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty;
+}
+
+// Multi-octave turbulence over a stack of { grid, n, scale } layers.
+// Pure: layers passed in, no global reads.
+function fogTurbulence(layers, px, py) {
+  let val = 0, total = 0;
+  for (const L of layers) {
+    val += sampleWrappedNoise(L.grid, L.n, px * L.n, py * L.n) * L.scale;
+    total += L.scale;
+  }
+  return val / total;
+}
+
+// ─── Scene fog-settings parser ───────────────────────────────────────────────
+// Pure value-resolution: maps a raw scene record + caller-supplied defaults into
+// a typed settings object. No DOM reads, no global reads, no side effects.
+// defaults shape: { hex, alpha, anim: { enabled, speed, drift, morph, warpStr, warpRad, pulse } }
+function parseSceneFogSettings(scene, defaults) {
+  const fs  = scene && scene.fogSettings;
+  const hex   = (fs && fs.pickedHex)        ? fs.pickedHex  : defaults.hex;
+  const alpha = (fs && fs.tintAlpha != null) ? fs.tintAlpha  : defaults.alpha;
+  const a  = (fs && fs.anim) ? fs.anim : {};
+  const D  = defaults.anim;
+  const num = (v, def) => (typeof v === 'number' && isFinite(v)) ? v : def;
+  return {
+    hex,
+    alpha,
+    anim: {
+      enabled: (typeof a.enabled === 'boolean') ? a.enabled : D.enabled,
+      speed:   num(a.speed,   D.speed),
+      drift:   num(a.drift,   D.drift),
+      morph:   num(a.morph,   D.morph),
+      warpStr: num(a.warpStr, D.warpStr),
+      warpRad: num(a.warpRad, D.warpRad),
+      pulse:   num(a.pulse,   D.pulse),
+    },
+  };
+}
+
 // ─── Node.js export guard (unit tests only) ──────────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -201,6 +253,9 @@ if (typeof module !== 'undefined' && module.exports) {
     wrapOffset,
     pulseAlpha,
     cloudBlendIndices,
+    sampleWrappedNoise,
+    fogTurbulence,
+    parseSceneFogSettings,
     deriveFogColors,
     animLogScale,
     animSliderFromVal,
