@@ -1,6 +1,6 @@
 // grid.js — grid rendering + config serialization.
 // Extracted from the index.html inline blob (migrate-on-touch). See CLAUDE.md.
-// Reads grid state globals from state.js and zoom from the inline blob (lazy eval).
+// Reads grid state globals from state.js; drawGridLines derives scale from the vp it receives.
 
 // ─── Line width ───────────────────────────────────────────────────────────────
 // N map-pixels wide so lines scale with zoom; floor keeps thin lines visible.
@@ -13,7 +13,8 @@ function lineWidthForZoom(base, zoom) {
 // ─── Rendering ───────────────────────────────────────────────────────────────
 // Shared grid-drawing primitive used by both renderGrid (DM) and renderMap (Player).
 function drawGridLines(ctx, vp) {
-  const step = gridSize * zoom;
+  const scale = vp.dstW / vp.srcW;
+  const step = gridSize * scale;
   if (step < 4 || vp.srcW <= 0 || vp.srcH <= 0) return;
   ctx.save();
   ctx.beginPath();
@@ -21,7 +22,7 @@ function drawGridLines(ctx, vp) {
   ctx.clip();
   ctx.strokeStyle = gridColor;
   ctx.globalAlpha = gridOpacity;
-  ctx.lineWidth = lineWidthForZoom(gridLineWidth, zoom);
+  ctx.lineWidth = lineWidthForZoom(gridLineWidth, scale);
 
   if (gridMode === 'square') {
     ctx.beginPath();
@@ -30,11 +31,11 @@ function drawGridLines(ctx, vp) {
     const r0 = Math.floor((vp.srcY - gridOffsetY) / gridSize);
     const r1 = Math.ceil( (vp.srcY - gridOffsetY + vp.srcH) / gridSize);
     for (let c = c0; c <= c1; c++) {
-      const sx = vp.dstX + (gridOffsetX + c * gridSize - vp.srcX) * zoom;
+      const sx = vp.dstX + (gridOffsetX + c * gridSize - vp.srcX) * scale;
       ctx.moveTo(sx, vp.dstY); ctx.lineTo(sx, vp.dstY + vp.dstH);
     }
     for (let r = r0; r <= r1; r++) {
-      const sy = vp.dstY + (gridOffsetY + r * gridSize - vp.srcY) * zoom;
+      const sy = vp.dstY + (gridOffsetY + r * gridSize - vp.srcY) * scale;
       ctx.moveTo(vp.dstX, sy); ctx.lineTo(vp.dstX + vp.dstW, sy);
     }
     ctx.stroke();
@@ -53,8 +54,8 @@ function drawGridLines(ctx, vp) {
         const cy = gridOffsetY + row * hh + (col & 1) * hh / 2;
         for (let k = 0; k < 6; k++) {
           const angle = Math.PI / 3 * k;
-          const px = vp.dstX + (cx + gridSize * Math.cos(angle) - vp.srcX) * zoom;
-          const py = vp.dstY + (cy + gridSize * Math.sin(angle) - vp.srcY) * zoom;
+          const px = vp.dstX + (cx + gridSize * Math.cos(angle) - vp.srcX) * scale;
+          const py = vp.dstY + (cy + gridSize * Math.sin(angle) - vp.srcY) * scale;
           if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
         }
         ctx.closePath();
@@ -76,8 +77,8 @@ function drawGridLines(ctx, vp) {
         const cy = gridOffsetY + row * rowStep;
         for (let k = 0; k < 6; k++) {
           const angle = Math.PI / 3 * k + Math.PI / 6;
-          const px = vp.dstX + (cx + gridSize * Math.cos(angle) - vp.srcX) * zoom;
-          const py = vp.dstY + (cy + gridSize * Math.sin(angle) - vp.srcY) * zoom;
+          const px = vp.dstX + (cx + gridSize * Math.cos(angle) - vp.srcX) * scale;
+          const py = vp.dstY + (cy + gridSize * Math.sin(angle) - vp.srcY) * scale;
           if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
         }
         ctx.closePath();

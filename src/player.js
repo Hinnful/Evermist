@@ -18,12 +18,17 @@ function initPlayer() {
   // texture finished. Paying the cost up-front closes that gap.
   generateCloudFrames(512, CLOUD_FRAME_COUNT);
 
-  if (window.opener) window.opener.postMessage({ type: 'PLAYER_READY' }, '*');
+  if (window.opener) window.opener.postMessage({
+    type: 'PLAYER_READY', screenW: window.innerWidth, screenH: window.innerHeight,
+  }, '*');
 
   initPlayerMapRetry(); // viewport.js: send need-map to DM, retry until map received
 
   window.addEventListener('resize', () => {
     syncSize();
+    if (window.opener) window.opener.postMessage({
+      type: 'PLAYER_SCREEN', screenW: window.innerWidth, screenH: window.innerHeight,
+    }, '*');
     if (mapBitmap || mapOffscreen) {
       if (playerFollowDM && lastDMView) applyView(lastDMView);
       else fitToScreen();
@@ -69,6 +74,8 @@ function initPlayer() {
       }
       return;
     }
+
+    if (msg.type === 'player-lock') { playerInputLocked = msg.locked; return; }
 
     if (msg.type === 'view-snap') {
       playerFollowDM = true;
@@ -273,8 +280,23 @@ function initPlayer() {
   // Player pan/zoom (free-look)
   let playerIsPanning = false;
   let playerPanStartX, playerPanStartY, playerPanStartPanX, playerPanStartPanY;
+  let _playerViewThrottleTs = 0;
+  function _postPlayerView() {
+    const now = performance.now();
+    if (now - _playerViewThrottleTs < 100) return;
+    _playerViewThrottleTs = now;
+    if (!window.opener) return;
+    const { w: vpW, h: vpH } = getViewportSize();
+    window.opener.postMessage({
+      type: 'PLAYER_VIEW',
+      mapCX: (vpW / 2 - panX) / zoom,
+      mapCY: (vpH / 2 - panY) / zoom,
+      zoom,
+    }, '*');
+  }
 
   container.addEventListener('mousedown', e => {
+    if (playerInputLocked) return;
     if (!mapOffscreen) return;
     playerIsPanning = true;
     playerPanStartX = e.clientX; playerPanStartY = e.clientY;
@@ -283,6 +305,7 @@ function initPlayer() {
   });
 
   container.addEventListener('mousemove', e => {
+    if (playerInputLocked) return;
     if (!playerIsPanning || !mapOffscreen) return;
     const dx = e.clientX - playerPanStartX;
     const dy = e.clientY - playerPanStartY;
@@ -292,6 +315,7 @@ function initPlayer() {
     }
     panX = playerPanStartPanX + dx;
     panY = playerPanStartPanY + dy;
+    if (!playerFollowDM) _postPlayerView();
     viewportDirty = true;
     scheduleRender();
   });
@@ -300,6 +324,7 @@ function initPlayer() {
 
   container.addEventListener('wheel', e => {
     e.preventDefault();
+    if (playerInputLocked) return;
     if (!mapOffscreen) return;
     const factor  = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
     const newZoom = Math.max(0.02, Math.min(20, zoom * factor));
@@ -313,6 +338,7 @@ function initPlayer() {
       playerFollowDM = false;
       notifyDMOfMode();
     }
+    _postPlayerView();
     viewportDirty = true;
     scheduleRender();
   }, { passive: false });

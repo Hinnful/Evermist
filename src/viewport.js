@@ -79,9 +79,15 @@ function viewLerpTick(ts) {
 }
 
 function notifyDMOfMode() {
-  if (window.opener) {
-    window.opener.postMessage({ type: 'PLAYER_MODE', mode: playerFollowDM ? 'follow' : 'freelook' }, '*');
+  if (!window.opener) return;
+  const msg = { type: 'PLAYER_MODE', mode: playerFollowDM ? 'follow' : 'freelook' };
+  if (!playerFollowDM) {
+    const { w: vpW, h: vpH } = getViewportSize();
+    msg.mapCX = (vpW / 2 - panX) / zoom;
+    msg.mapCY = (vpH / 2 - panY) / zoom;
+    msg.zoom  = zoom;
   }
+  window.opener.postMessage(msg, '*');
 }
 
 function updatePlayerModeIndicator() {

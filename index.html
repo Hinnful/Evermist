@@ -44,7 +44,7 @@
     flex-direction: column;
     align-items: flex-end;
     justify-content: flex-start;
-    padding: 12px 12px 0 0;
+    padding: 12px 12px 12px 0;
     pointer-events: none;
     gap: 6px;
   }
@@ -56,7 +56,8 @@
     flex-direction: column;
     gap: 0;
     padding: 8px 6px;
-    max-height: calc((100vh - 90px) / var(--ui-zoom, 1.2));
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: visible;
   }
@@ -502,10 +503,6 @@
     color: #fff;
     box-shadow: 0 2px 10px rgba(90, 50, 190, 0.4);
   }
-  /* Player View and Send are secondary — dimmer than Sync/Auto/Fullscreen */
-  #btn-player, #btn-send { color: #7870a0; font-size: 11px; }
-  #btn-player:hover, #btn-send:hover { color: #b0a8d0; }
-
   /* ===== CANVAS LAYERS ===== */
   #canvas-container {
     flex: 1;
@@ -561,14 +558,79 @@
   #poly-ctx-info { font-size: 10px; color: #5848a0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #poly-ctx-del-vertex { padding: 2px 5px; font-size: 10px; color: #c07070; border-color: rgba(200,80,80,0.25); }
 
+  /* ===== MINIMAP PANEL ===== */
+  #minimap-panel {
+    zoom: var(--ui-zoom, 1.2);
+    width: 176px;
+    pointer-events: all;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+    user-select: none;
+    margin-top: auto;
+    flex-shrink: 0;
+  }
+  #minimap-canvas {
+    display: block;
+    border-radius: 4px;
+    border: 1px solid rgba(120,100,200,0.35);
+    cursor: crosshair;
+    background: #0d0d1a;
+    width: 100%;
+    height: auto;
+  }
+  #minimap-panel.minimap-no-map #minimap-canvas { opacity: 0.3; cursor: default; }
+  #btn-minimap-lock {
+    font-size: 11px;
+    padding: 3px 8px;
+    width: 100%;
+    background: rgba(30,20,60,0.5);
+    border: 1px solid rgba(120,100,200,0.2);
+    color: #7060a8;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-align: center;
+  }
+  #btn-minimap-lock:hover { background: rgba(60,40,120,0.6); color: #c0b0f0; }
+  #btn-minimap-lock.active { background: rgba(80,40,150,0.7); color: #e0d0ff; border-color: rgba(160,120,255,0.5); }
+  #minimap-player-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 2px;
+  }
+  #minimap-player-controls button {
+    width: 100%;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: #b8b0d0;
+    cursor: pointer;
+    text-align: left;
+    white-space: nowrap;
+    transition: background 0.14s, color 0.14s, box-shadow 0.14s;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  #minimap-player-controls button:hover { background: rgba(120,72,220,0.2); color: #ddd4f8; }
+  #minimap-player-controls button.active {
+    background: linear-gradient(135deg, #3d6ab0 0%, #6a38aa 100%);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(90,50,190,0.45), inset 0 1px 0 rgba(255,255,255,0.13);
+  }
+  #minimap-player-controls button.player-following { box-shadow: 0 0 0 1px #4d9; }
+  #minimap-player-controls button.player-freelook  { box-shadow: 0 0 0 1px #f84; }
+
   /* ===== PLAYER MODE ===== */
   body.player-mode #sidebar-right-anchor,
-  body.player-mode #tools-wrapper { display: none !important; }
+  body.player-mode #tools-wrapper,
+  body.player-mode #minimap-panel { display: none !important; }
   body.player-mode #canvas-container { cursor: default; }
-
-  /* Player mode state indicators on the button */
-  #btn-player.player-following { box-shadow: 0 0 0 1px #4d9; }
-  #btn-player.player-freelook  { box-shadow: 0 0 0 1px #fa0; }
 
   /* ===== SHORTCUT LEGEND ===== */
   #shortcut-legend {
@@ -1227,24 +1289,22 @@
     </div>
   </div>
 
-  <div class="panel-sep"></div>
 
-  <!-- Player -->
-  <div class="section open" id="section-player">
-    <button class="section-hdr rp-hdr" id="player-section-hdr">
-      <svg class="rp-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-      <span class="rp-lbl">Player</span><span class="chevron">▾</span>
-    </button>
-    <div class="section-body">
-      <button id="btn-player">Open Window</button>
-      <button id="btn-sync-view" title="Push current DM view to player">Sync View</button>
-      <button id="btn-auto-sync" title="Auto-send fog changes">Auto</button>
-      <button id="btn-fullscreen-player" title="Toggle player fullscreen">Fullscreen</button>
-      <button id="btn-send">Send ▶</button>
-      <div id="display-info-readout" style="font-size:10px;opacity:0.5;color:#c4b5e8;font-family:monospace;letter-spacing:0.03em;margin-top:4px;text-align:center"></div>
-    </div>
+</div>
+
+<!-- Minimap + Player controls — anchored to the bottom of the right column -->
+<div id="minimap-panel" class="glass-panel">
+  <canvas id="minimap-canvas" width="176" height="99"></canvas>
+  <button id="btn-minimap-lock" title="Lock minimap — prevent accidental nudge">Lock</button>
+  <div class="panel-sep" style="margin:3px 0"></div>
+  <div id="minimap-player-controls">
+    <button id="btn-player" title="Open Player window">Open Window</button>
+    <button id="btn-sync-view" title="Push current DM view to player">Sync View</button>
+    <button id="btn-auto-sync" title="Auto-send fog changes">Auto</button>
+    <button id="btn-fullscreen-player" title="Toggle player fullscreen">Fullscreen</button>
+    <button id="btn-send">Send ▶</button>
+    <div id="display-info-readout" style="font-size:10px;opacity:0.5;color:#c4b5e8;font-family:monospace;letter-spacing:0.03em;margin-top:4px;text-align:center"></div>
   </div>
-
 </div>
 </div><!-- /#sidebar-right-anchor -->
 
@@ -1395,6 +1455,7 @@
 <script src="src/input.js"></script>
 <script src="src/stress.js"></script>
 <script src="src/render.js"></script>
+<script src="src/minimap.js"></script>
 <script>
 'use strict';
 
@@ -1473,6 +1534,7 @@ if (isPlayer) {
 
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
 if (!isPlayer) initToolbar();
+if (!isPlayer) initMinimap();
 
 // Player runtime (message handler, pan/zoom, init) lives in player.js.
 if (isPlayer) initPlayer();

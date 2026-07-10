@@ -21,6 +21,7 @@ function loadMapFromFile(file, onMapLoaded) {
 
     if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
     pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
+    minimapSeedView();
     viewportDirty = true;
     scheduleRender();
     if (onMapLoaded) onMapLoaded(mapOffscreen, file);

@@ -322,6 +322,7 @@ async function switchScene(id, _isRecovery = false) {
   // fogDataCanvas/baseFogCanvas are already filled so the render pipeline is safe.
   if (!isPlayer) {
     fitToScreen();
+    minimapSeedView();
     viewportDirty = true; gridDirty = true; fogDirty = true;
     scheduleRender();
     landing.style.display = 'none';
