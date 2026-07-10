@@ -207,18 +207,6 @@ function generateCloudFrames(size, numFrames) {
     return g;
   }
 
-  function sampleWrapped(grid, n, fx, fy) {
-    const x = ((fx % n) + n) % n;
-    const y = ((fy % n) + n) % n;
-    const x0 = x | 0, y0 = y | 0;
-    const x1 = (x0 + 1) % n, y1 = (y0 + 1) % n;
-    const sx = x - x0, sy = y - y0;
-    const tx = sx * sx * (3 - 2 * sx), ty = sy * sy * (3 - 2 * sy);
-    const a = grid[y0 * n + x0], b = grid[y0 * n + x1];
-    const c = grid[y1 * n + x0], d = grid[y1 * n + x1];
-    return a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty;
-  }
-
   const layers = [
     { grid: makeGrid(7),  n: 7,  scale: 1.0  },
     { grid: makeGrid(13), n: 13, scale: 0.5  },
@@ -227,14 +215,7 @@ function generateCloudFrames(size, numFrames) {
     { grid: makeGrid(53), n: 53, scale: 0.06 },
   ];
 
-  function turbulence(px, py) {
-    let val = 0, total = 0;
-    for (const L of layers) {
-      val += sampleWrapped(L.grid, L.n, px * L.n, py * L.n) * L.scale;
-      total += L.scale;
-    }
-    return val / total;
-  }
+  function turbulence(px, py) { return fogTurbulence(layers, px, py); }
 
   function renderFrame(cvs, tNorm) {
     const ctx = cvs.getContext('2d');
@@ -773,9 +754,10 @@ const ANIM_RUNTIME_DEFAULTS = {
 };
 
 function restoreSceneFogSettings(scene) {
-  const fs    = scene.fogSettings;
-  const hex   = (fs && fs.pickedHex)        ? fs.pickedHex  : '#3a3a8c';
-  const alpha = (fs && fs.tintAlpha != null) ? fs.tintAlpha  : 0.18;
+  const parsed = parseSceneFogSettings(scene, {
+    hex: '#3a3a8c', alpha: 0.18, anim: ANIM_RUNTIME_DEFAULTS,
+  });
+  const { hex, alpha, anim: an } = parsed;
   applyFogColor(hex);
   applyFogTintAlpha(alpha);
   const colorEl  = document.getElementById('fog-color');
@@ -789,21 +771,16 @@ function restoreSceneFogSettings(scene) {
   // while the scene-fade overlay is still animating (500ms CSS transition), causing the Player
   // to render the new color over the old scene's fog canvas — the visible flicker.
 
-  // Restore anim params — fall back field-by-field (NaN guard) for missing/corrupt data.
-  const a  = (fs && fs.anim) ? fs.anim : {};
-  const D  = ANIM_RUNTIME_DEFAULTS;
-  const num = (v, def) => (typeof v === 'number' && isFinite(v)) ? v : def;
-
   const prevWarpStr = cloudWarpStrength;
   const prevWarpRad = cloudWarpRadius;
 
-  fogAnimEnabled    = (typeof a.enabled === 'boolean') ? a.enabled : D.enabled;
-  fogAnimSpeed      = num(a.speed,   D.speed);
-  driftScale        = num(a.drift,   D.drift);
-  cloudFrameSpeed   = num(a.morph,   D.morph);
-  cloudWarpStrength = num(a.warpStr, D.warpStr);
-  cloudWarpRadius   = num(a.warpRad, D.warpRad);
-  alphaPulseAmp     = num(a.pulse,   D.pulse);
+  fogAnimEnabled    = an.enabled;
+  fogAnimSpeed      = an.speed;
+  driftScale        = an.drift;
+  cloudFrameSpeed   = an.morph;
+  cloudWarpStrength = an.warpStr;
+  cloudWarpRadius   = an.warpRad;
+  alphaPulseAmp     = an.pulse;
 
   updateAnimSliders();
 

@@ -14,6 +14,17 @@ function cloneCanvas(src) {
   return c;
 }
 
+// Pure eviction: trims oldest entries until total byte footprint is within maxBytes,
+// but always keeps at least one entry (length > 1 floor).
+// Entries must have shape { baseFog: { width, height } }.
+function evictUndoStack(stack, maxBytes) {
+  while (stack.length > 1 &&
+         stack.reduce((s, e) => s + e.baseFog.width * e.baseFog.height * 4, 0) > maxBytes) {
+    stack.shift();
+  }
+  return stack;
+}
+
 function pushUndo() {
   if (!baseFogCanvas) return;
   undoStack.push({
@@ -22,10 +33,7 @@ function pushUndo() {
     nextPolygonId,
   });
   redoStack = [];
-  while (undoStack.length > 1 &&
-         undoStack.reduce((s, e) => s + e.baseFog.width * e.baseFog.height * 4, 0) > UNDO_MAX_BYTES) {
-    undoStack.shift();
-  }
+  evictUndoStack(undoStack, UNDO_MAX_BYTES);
 }
 
 function restoreState(snapshot) {
@@ -61,4 +69,9 @@ function redo() {
     nextPolygonId,
   });
   restoreState(redoStack.pop());
+}
+
+// ─── Node.js export guard (unit tests only) ──────────────────────────────────
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { evictUndoStack };
 }

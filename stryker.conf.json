@@ -8,6 +8,11 @@
   "mutate": [
     "src/tools.js:48-86",
     "src/display.js:10-19",
-    "src/video.js:35-69"
+    "src/video.js:35-69",
+    "src/fogGeometry.js:117-123",
+    "src/fogGeometry.js:196-209",
+    "src/fogGeometry.js:210-221",
+    "src/fogGeometry.js:223-244",
+    "src/undo.js:20-27"
   ]
 }
