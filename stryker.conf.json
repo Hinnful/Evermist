@@ -13,6 +13,9 @@
     "src/fogGeometry.js:196-209",
     "src/fogGeometry.js:210-221",
     "src/fogGeometry.js:223-244",
-    "src/undo.js:20-27"
+    "src/undo.js:20-27",
+    "src/backup.js:9-16",
+    "src/backup.js:18-27",
+    "src/sceneManager.js:10-12"
   ]
 }

@@ -105,23 +105,25 @@ function updateBemButton() {
 }
 
 // Wire up static controls once (runs at parse time; DOM elements exist above the scripts)
-document.getElementById('backup-export-backdrop').addEventListener('click', closeExportModal);
-document.getElementById('btn-bem-close').addEventListener('click', closeExportModal);
-document.getElementById('btn-bem-cancel').addEventListener('click', closeExportModal);
-document.getElementById('btn-bem-all').addEventListener('click', () => {
-  document.querySelectorAll('#bem-list .bem-cb').forEach(cb => { cb.checked = true; });
-  updateBemButton();
-});
-document.getElementById('btn-bem-none').addEventListener('click', () => {
-  document.querySelectorAll('#bem-list .bem-cb').forEach(cb => { cb.checked = false; });
-  updateBemButton();
-});
-document.getElementById('btn-bem-export').addEventListener('click', async () => {
-  const ids = [...document.querySelectorAll('#bem-list .bem-cb:checked')].map(cb => cb.value);
-  if (!ids.length) return;
-  closeExportModal();
-  await doExport(ids);
-});
+if (typeof document !== 'undefined') {
+  document.getElementById('backup-export-backdrop').addEventListener('click', closeExportModal);
+  document.getElementById('btn-bem-close').addEventListener('click', closeExportModal);
+  document.getElementById('btn-bem-cancel').addEventListener('click', closeExportModal);
+  document.getElementById('btn-bem-all').addEventListener('click', () => {
+    document.querySelectorAll('#bem-list .bem-cb').forEach(cb => { cb.checked = true; });
+    updateBemButton();
+  });
+  document.getElementById('btn-bem-none').addEventListener('click', () => {
+    document.querySelectorAll('#bem-list .bem-cb').forEach(cb => { cb.checked = false; });
+    updateBemButton();
+  });
+  document.getElementById('btn-bem-export').addEventListener('click', async () => {
+    const ids = [...document.querySelectorAll('#bem-list .bem-cb:checked')].map(cb => cb.value);
+    if (!ids.length) return;
+    closeExportModal();
+    await doExport(ids);
+  });
+}
 
 // ── Export logic ──────────────────────────────────────────────────────────────
 
@@ -321,3 +323,5 @@ async function doRestore() {
     unsubProgress();
   }
 }
+
+if (typeof module !== 'undefined') module.exports = { resolveSceneName, mapExtFromScene };

@@ -423,3 +423,5 @@ async function moveScene(id, dir) {
   }
   renderSceneManager();
 }
+
+if (typeof module !== 'undefined') module.exports = { escHtml };
