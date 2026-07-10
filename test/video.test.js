@@ -24,6 +24,23 @@ describe('computeOptimalTextureSize', () => {
     assert.deepEqual(r, { w: 1920, h: 1080 });
   });
 
+  // ─── scale >= 1 boundary ─────────────────────────────────────────────────
+  // NOTE: the `scale >= 1` vs `scale > 1` mutant is a known-benign survivor.
+  // At scale === 1 both branches return source dims, so output is identical —
+  // cannot be killed by assertion alone.
+
+  it('scale just above 1: source smaller than target → no downscale', () => {
+    // dispW=dispH=1001, cf=1, srcW=srcH=1000 → scale=1.001 → returns source
+    const r = computeOptimalTextureSize(1001, 1001, 1000, 1000, 16384, 1);
+    assert.deepEqual(r, { w: 1000, h: 1000 });
+  });
+
+  it('scale just below 1: source larger than target → downscales', () => {
+    // dispW=dispH=999, cf=1, srcW=srcH=1000 → scale=0.999 → downscaled
+    const r = computeOptimalTextureSize(999, 999, 1000, 1000, 16384, 1);
+    assert.ok(r.w < 1000 && r.h < 1000, `expected downscale, got ${r.w}x${r.h}`);
+  });
+
   // ─── Downscale needed ────────────────────────────────────────────────────
 
   it('downscales a large landscape map for a 1080p display', () => {
