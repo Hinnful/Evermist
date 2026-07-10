@@ -354,12 +354,13 @@ function initToolbar() {
   document.getElementById('btn-sync-view').onclick = () => {
     if (!playerWindow || playerWindow.closed) return;
     const { w: vpW, h: vpH } = getViewportSize();
-    playerWindow.postMessage({
-      type: 'view-snap',
+    const v = {
       mapCX: (vpW / 2 - panX) / zoom,
       mapCY: (vpH / 2 - panY) / zoom,
       zoom,
-    }, '*');
+    };
+    playerWindow.postMessage({ type: 'view-snap', ...v }, '*');
+    minimapSetView(v);
   };
 
   window.addEventListener('message', e => {
@@ -367,13 +368,36 @@ function initToolbar() {
     const msg = e.data;
     if (!msg) return;
     if (msg.type === 'PLAYER_READY' || msg.type === 'need-map') {
+      if (msg.screenW && msg.screenH) {
+        playerScreenW = msg.screenW;
+        playerScreenH = msg.screenH;
+        minimapRefreshAspect();
+      }
       onPlayerResyncRequest();
       syncAnimToPlayer(true);
+      if (playerWindow && !playerWindow.closed) {
+        playerWindow.postMessage({ type: 'player-lock', locked: minimapLocked }, '*');
+      }
+      return;
+    }
+    if (msg.type === 'PLAYER_SCREEN') {
+      if (msg.screenW && msg.screenH) {
+        playerScreenW = msg.screenW;
+        playerScreenH = msg.screenH;
+        minimapRefreshAspect();
+      }
       return;
     }
     if (msg.type === 'PLAYER_MODE') {
       playerFollowMode = msg.mode === 'follow';
       updatePlayerModeIndicator();
+      if (msg.mode === 'freelook' && msg.mapCX != null) {
+        minimapSyncFromPlayer(msg);
+      }
+      return;
+    }
+    if (msg.type === 'PLAYER_VIEW') {
+      minimapSyncFromPlayer(msg);
     }
   });
 
@@ -394,9 +418,6 @@ function initToolbar() {
     if (e.target.closest('#btn-anim')) return;
     document.getElementById('section-fog').classList.toggle('open');
   });
-  document.getElementById('player-section-hdr').onclick = () =>
-    document.getElementById('section-player').classList.toggle('open');
-
   // Polygon context panel
   document.getElementById('poly-ctx-reveal').onclick = () => {
     const poly = polygons.find(p => p.id === selectedPolygonId);

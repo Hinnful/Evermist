@@ -100,8 +100,9 @@ let autoSaveTimer   = null;
 let mapLoadMode     = 'auto'; // 'new' = create scene, 'replace' = replace map
 
 // ─── Player Sync State ────────────────────────────────────────────────────────
-let playerFollowMode = true;  // DM side: last known player mode
-let playerFollowDM   = true;  // Player side: whether to mirror DM viewport
+let playerFollowMode   = true;  // DM side: last known player mode
+let playerFollowDM     = true;  // Player side: whether to mirror DM viewport
+let playerInputLocked  = false; // Player side: lock flag pushed from DM minimap Lock
 let lastDMView       = null;  // Player side: most recent view received from DM
 let viewLerpActive   = false;
 let viewLerpFrom     = null, viewLerpTo = null, viewLerpStart = 0;
@@ -122,3 +123,20 @@ let gridDirty       = false;
 // sprite — so each frame we draw the video into this canvas and re-upload the texture.
 let playerMapTexCanvas = null;
 let playerMapTexCtx    = null;
+
+// ─── Player screen dimensions (DM-side cache) ─────────────────────────────────
+// Reported by the Player window on PLAYER_READY and on every resize. Used by the
+// minimap to size its canvas to the Player's real aspect and compute visible extent.
+// Defaults to a 16:9 fallback until the first report arrives.
+let playerScreenW = 1920;
+let playerScreenH = 1080;
+
+// ─── Minimap state ────────────────────────────────────────────────────────────
+// minimapView: the {mapCX, mapCY, zoom} triple the minimap is showing / driving.
+//   This IS the intended Player camera. Seeded on map load; updated by DM pan/zoom
+//   on the minimap, by "Sync View", and by Player freelook reports.
+// minimapLocked: when true, pointer input on the minimap is ignored.
+// minimapDirty: set true when the minimap needs a redraw; cleared by drawMinimap().
+let minimapView   = { mapCX: 0, mapCY: 0, zoom: 1 };
+let minimapLocked = false;
+let minimapDirty  = false;
