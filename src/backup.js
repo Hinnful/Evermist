@@ -215,7 +215,13 @@ async function doRestore() {
     properties: ['openFile'],
   });
   if (!paths || !paths.length) return;
-  const zipPath = paths[0];
+  await restoreFromZipPath(paths[0]);
+}
+
+// Restore straight from a zip path — used by doRestore (native dialog) and by
+// the scene "+" button when the chosen file is a .zip (auto-detected import).
+async function restoreFromZipPath(zipPath) {
+  if (!window.electronAPI || !zipPath) return;
 
   const unsubProgress = window.electronAPI.onBackupProgress(({ done, total }) => {
     updateMapProgress(Math.round((done / total) * 100));
