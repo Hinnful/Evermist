@@ -4,21 +4,9 @@
 // section toggles, UI-scale slider. Called once from index.html (DM mode only),
 // at the same point the original inline block used to run.
 function initToolbar() {
-  const fileInput = document.getElementById('file-input');
-
-  // Scene manager modal
-  document.getElementById('btn-scenes').onclick = () => openSceneManager();
-  document.getElementById('btn-backup-export').onclick = () => openExportModal();
-  document.getElementById('btn-backup-restore').onclick = () => doRestore();
-  document.getElementById('btn-sm-close').onclick = () => closeSceneManager();
-  document.getElementById('scene-manager-backdrop').onclick = () => closeSceneManager();
-  document.getElementById('btn-sm-new').onclick = () => { fileInput.click(); };
-  fileInput.onchange = e => {
-    const f = e.target.files[0];
-    e.target.value = '';
-    if (!f) return;
-    createNewScene(f);
-  };
+  // Scene manager UI (dropdown, drag-reorder, bulk ops, undo, "+" = new/import)
+  // is wired in sceneManager.js — it owns the scene concern.
+  initSceneManagerUI();
 
   document.addEventListener('dragover', e => e.preventDefault());
   document.addEventListener('drop', e => {

@@ -99,25 +99,6 @@
   .rp-hdr .rp-lbl { flex: 1; }
   .rp-hdr .chevron { margin-left: auto; }
 
-  /* Scenes button accent */
-  #btn-scenes {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    padding: 8px 10px;
-    border-radius: 9px;
-    border: 1px solid rgba(130, 80, 240, 0.28);
-    background: rgba(60, 30, 120, 0.25);
-    color: #c8c0e8;
-    cursor: pointer;
-    width: 100%;
-    transition: background 0.14s, color 0.14s;
-    font-family: system-ui, -apple-system, sans-serif;
-  }
-  #btn-scenes:hover { background: rgba(100, 55, 190, 0.35); color: #e0d8ff; }
 
   /* Player section inner buttons — dimmer for secondary actions */
   #section-player .section-body button { color: #a098c8; }
@@ -708,188 +689,194 @@
     background: rgba(0,0,0,0.35);
   }
 
-  /* ===== SCENE MANAGER MODAL ===== */
-  #scene-manager-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6);
-    z-index: 500;
-  }
-  /* Anchor: fixed, no zoom — avoids Chrome hit-area mismatch */
-  #scene-manager-anchor {
-    position: fixed; inset: 0;
-    z-index: 501;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-  #scene-manager {
+  /* ===== SCENE MANAGER (dropdown, new design system) ===== */
+  @keyframes smDropIn  { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes smToastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @keyframes smUndoTimer { from { width: 100%; } to { width: 0%; } }
+
+  #scene-dd {
+    position: fixed;
+    top: 16px; left: 16px;
+    z-index: 100;
     zoom: var(--ui-zoom, 1.2);
-    pointer-events: all;
-    position: static;
-    transform: none;
-    width: min(720px, 92vw);
-    max-height: calc(82vh / var(--ui-zoom, 1.2));
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    overflow: hidden;
+    width: 208px;
   }
-  #sm-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 18px 10px;
-    flex-shrink: 0;
-    border-bottom: 1px solid rgba(130,80,240,0.15);
-  }
-  #sm-header h3 { font-size: 15px; font-weight: 600; color: #d0c8f8; margin: 0; }
-  #btn-sm-close {
-    background: none !important;
-    border: none !important;
-    color: #6858b0 !important;
-    font-size: 20px !important;
-    cursor: pointer;
-    padding: 2px 7px !important;
-    border-radius: 6px !important;
-    line-height: 1;
-    transition: color 0.12s, background 0.12s !important;
-    width: auto !important;
-  }
-  #btn-sm-close:hover { color: #d0c8f8 !important; background: rgba(120,80,220,0.25) !important; }
-  #sm-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 10px;
-    padding: 14px 18px;
-    overflow-y: auto;
-    flex: 1;
-  }
-  #sm-empty {
-    grid-column: 1 / -1;
-    text-align: center;
-    color: #4a4070;
-    font-size: 13px;
-    padding: 40px 0;
-  }
-  #sm-footer {
-    padding: 10px 18px 14px;
-    flex-shrink: 0;
-    border-top: 1px solid rgba(130,80,240,0.15);
-  }
-  #btn-sm-new { width: 100%; font-size: 13px; }
-  .sm-card {
-    position: relative;
+  body.player-mode #scene-dd,
+  body.player-mode #scene-undo-toast { display: none !important; }
+
+  #scene-dd-trigger-row { display: flex; align-items: center; gap: 4px; }
+  #scene-dd-toggle {
+    flex: 1; height: 29px;
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 10px 0 13px;
+    background: #1a1a1c;
+    border: 1px solid rgba(255,255,255,0.07);
     border-radius: 10px;
-    border: 2px solid rgba(130,80,240,0.2);
-    background: rgba(20,12,45,0.75);
+    color: #d5d8dd;
+    font: 600 13px/1 system-ui, -apple-system, sans-serif;
     cursor: pointer;
-    overflow: hidden;
-    transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+    transition: background .12s, border-color .12s;
   }
-  .sm-card:hover { border-color: rgba(140,90,255,0.5); transform: translateY(-2px); box-shadow: 0 6px 22px rgba(70,30,180,0.3); }
-  .sm-card.active { border-color: rgba(100,160,255,0.8); box-shadow: 0 0 0 1px rgba(100,160,255,0.35), 0 4px 16px rgba(60,120,240,0.2); }
-  .sm-card-thumb-wrap { position: relative; width: 100%; overflow: hidden; border-radius: 8px 8px 0 0; }
-  .sm-card-thumb { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; background: #111; pointer-events: none; }
-  .sm-card-footer { padding: 6px 8px 7px; }
-  .sm-card-name { font-size: 12px; color: #b0a8d0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sm-card.active .sm-card-name { color: #d8d0f8; }
-  .sm-card-name-input {
-    width: 100%;
-    font-size: 12px;
-    background: rgba(40,30,70,0.9);
-    border: 1px solid rgba(130,80,240,0.5);
-    border-radius: 4px;
-    color: #d8d0f8;
-    padding: 2px 4px;
-    box-sizing: border-box;
-    font-family: system-ui, sans-serif;
-    outline: none;
-  }
-  .sm-card-overlay {
-    position: absolute; inset: 0;
+  #scene-dd-toggle:hover { background: #202124; border-color: rgba(255,255,255,0.13); }
+  #scene-dd-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+  #scene-dd-chev { color: #7f858e; flex: none; transition: transform .2s ease; }
+  #scene-dd.open #scene-dd-chev { transform: rotate(180deg); }
+  #scene-dd-add {
+    flex: none; width: 29px; height: 29px;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(20, 10, 50, 0.58);
-    opacity: 0; transition: opacity 0.15s;
-    pointer-events: none;
-  }
-  .sm-card:hover .sm-card-overlay { opacity: 1; }
-  .sm-card.active .sm-card-overlay { background: rgba(30, 70, 180, 0.5); }
-  /* Load button inside overlay (pointer-events:none — card click handles load) */
-  .sm-card-load-btn {
-    background: rgba(255,255,255,0.12) !important;
-    border: 1px solid rgba(255,255,255,0.3) !important;
-    border-radius: 8px !important;
-    color: #fff !important; font-size: 11px !important; font-weight: 700 !important;
-    padding: 6px 18px !important; pointer-events: none;
-    letter-spacing: 0.08em; text-transform: uppercase;
-    font-family: system-ui, sans-serif;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  }
-  .sm-card-overlay-label {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
-    text-transform: uppercase; color: rgba(180, 210, 255, 0.9);
-  }
-  /* Delete — top-right */
-  .sm-card-del {
-    position: absolute; top: 5px; right: 5px;
-    background: rgba(0,0,0,0.55) !important;
-    border: none !important; border-radius: 6px !important;
-    color: #a0a0c0 !important; padding: 4px 5px !important;
-    cursor: pointer; opacity: 0;
-    transition: opacity 0.15s, background 0.12s !important;
-    width: auto !important; line-height: 1;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .sm-card:hover .sm-card-del { opacity: 1; }
-  .sm-card-del:hover { background: rgba(180,40,40,0.75) !important; color: #ff9898 !important; }
-  /* Rename — top-left */
-  .sm-card-rename {
-    position: absolute; top: 5px; left: 5px;
-    background: rgba(0,0,0,0.55) !important;
-    border: none !important; border-radius: 6px !important;
-    color: #a0a0c0 !important; padding: 4px 5px !important;
-    cursor: pointer; opacity: 0;
-    transition: opacity 0.15s, background 0.12s !important;
-    width: auto !important; line-height: 1;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .sm-card:hover .sm-card-rename { opacity: 1; }
-  .sm-card-rename:hover { background: rgba(60,40,160,0.75) !important; color: #d0c8f8 !important; }
-  /* Scenes — its own compact glass panel above the settings sidebar */
-  #panel-scenes {
-    zoom: var(--ui-zoom, 1.2);
-    pointer-events: all;
-    padding: 4px 6px;
-    width: 176px;
-    box-sizing: border-box;
-    flex-shrink: 0;
-  }
-  body.player-mode #panel-scenes { display: none !important; }
-  #panel-scenes-actions {
-    display: flex;
-    gap: 4px;
-    margin-top: 4px;
-  }
-  .btn-backup {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    font-size: 11px;
-    font-weight: 500;
-    padding: 5px 6px;
+    border: 1.5px solid rgba(90,140,235,0.6);
+    background: rgba(70,120,220,0.11);
     border-radius: 8px;
-    border: 1px solid rgba(130, 80, 240, 0.22);
-    background: rgba(40, 20, 80, 0.35);
-    color: #9888c8;
+    color: #8fb6ff;
     cursor: pointer;
-    transition: background 0.14s, color 0.14s;
-    font-family: system-ui, -apple-system, sans-serif;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+    transition: background .12s, border-color .12s;
+  }
+  #scene-dd-add:hover { background: rgba(70,120,220,0.2); border-color: rgba(90,140,235,0.85); }
+
+  #scene-dd-menu {
+    position: absolute;
+    top: calc(100% + 6px); left: 0;
+    width: 208px;
+    background: #1a1a1c;
+    border: 1px solid rgba(255,255,255,0.055);
+    border-radius: 12px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.36);
+    animation: smDropIn .13s ease;
+    display: flex; flex-direction: column;
+    max-height: calc((100vh - 96px) / var(--ui-zoom, 1.2));
+  }
+  #scene-dd-header {
+    height: 40px; flex: none;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 10px;
+  }
+  #scene-dd-count {
+    flex: 1;
+    font: 700 13px/1 system-ui, -apple-system, sans-serif;
+    color: rgba(255,255,255,0.75);
     white-space: nowrap;
   }
-  .btn-backup:hover { background: rgba(80, 45, 160, 0.4); color: #d0c8f8; }
+  #scene-dd.selecting #scene-dd-count { color: rgba(255,255,255,0.9); }
+
+  /* checkbox shared by header + cards */
+  .sm-cb {
+    width: 16px; height: 16px; flex: none;
+    border-radius: 4px;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  .sm-cb.checked, .sm-cb.indeterminate { border-color: rgba(90,140,235,0.6); background: rgba(70,120,220,0.11); }
+
+  .sm-bulk-btn {
+    width: 26px; height: 26px; flex: none;
+    display: none; align-items: center; justify-content: center;
+    border: 1.5px solid transparent; border-radius: 7px;
+    background: transparent; color: #9aa0aa; cursor: pointer;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  #scene-dd.selecting .sm-bulk-btn { display: flex; }
+  #scene-dd-bulk-export:hover { background: rgba(255,255,255,0.05); color: #d5d8dd; border-color: rgba(255,255,255,0.1); }
+  #scene-dd-bulk-delete:hover { background: rgba(200,50,40,0.1); color: rgba(240,100,90,0.85); border-color: rgba(200,70,60,0.2); }
+
+  #sm-list {
+    flex: 1; min-height: 0;
+    overflow-y: auto; overflow-x: hidden;
+    padding: 6px 10px 12px;
+    display: flex; flex-direction: column; gap: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.16) #1a1a1c;
+  }
+  #sm-list::-webkit-scrollbar { width: 8px; }
+  #sm-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.16); border-radius: 4px; }
+  #sm-empty { text-align: center; color: rgba(255,255,255,0.3); font-size: 12px; padding: 22px 0; }
+
+  .sm-card {
+    border-radius: 9px; padding: 1.5px; flex: none;
+    background: rgba(255,255,255,0.055);
+    cursor: pointer;
+    transition: background .15s, opacity .12s;
+  }
+  .sm-card.active, .sm-card.selected { background: rgba(90,140,235,0.65); }
+  .sm-card.dragging { opacity: 0.35; }
+  .sm-thumb {
+    position: relative; overflow: hidden;
+    border-radius: 7.5px; aspect-ratio: 16/9;
+    background: #1b1e28 center/cover no-repeat;
+  }
+  .sm-scrim {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 62%;
+    background: linear-gradient(to top, rgba(0,0,0,0.92), rgba(0,0,0,0.5) 45%, transparent);
+    pointer-events: none;
+  }
+  .sm-card .sm-cb {
+    position: absolute; top: 6px; right: 6px; z-index: 3;
+    opacity: 0;
+    background: rgba(0,0,0,0.35);
+    transition: opacity .12s, background .12s, border-color .12s;
+  }
+  .sm-card:hover .sm-cb,
+  #scene-dd.selecting .sm-card .sm-cb { opacity: 1; }
+  .sm-card .sm-cb.checked { background: rgba(70,120,220,0.55); border-color: rgba(90,140,235,0.75); }
+  .sm-botrow {
+    position: absolute; left: 8px; right: 8px; bottom: 7px; z-index: 2;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .sm-name {
+    flex: 1; min-width: 0;
+    padding: 2px 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    color: #f3f4f6;
+    font: 600 12px/1.2 system-ui, -apple-system, sans-serif;
+    outline: none; cursor: text;
+    text-overflow: ellipsis;
+    transition: background .12s, border-color .12s;
+  }
+  .sm-name:hover { background: rgba(255,255,255,0.1); }
+  .sm-name:focus { background: rgba(0,0,0,0.5); border-color: rgba(90,140,235,0.6); }
+  .sm-card.active .sm-name { color: #8fb6ff; }
+  .sm-trash {
+    width: 22px; height: 22px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.4); border: none; border-radius: 5px;
+    color: #cbced4; cursor: pointer; opacity: 0;
+    transition: opacity .12s, background .12s, color .12s;
+  }
+  .sm-card:hover .sm-trash { opacity: 1; }
+  #scene-dd.selecting .sm-trash { display: none; }
+  .sm-trash:hover { color: rgba(240,110,100,0.98); background: rgba(200,50,40,0.3); }
+
+  /* Undo toast (after delete) */
+  #scene-undo-toast {
+    position: fixed; bottom: 84px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 200; width: 268px;
+    background: #1a1a1c;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+    animation: smToastIn .18s ease;
+  }
+  #scene-undo-toast .undo-body { display: flex; align-items: center; gap: 10px; padding: 11px 12px 10px; }
+  #scene-undo-toast .undo-ico { flex: none; color: rgba(255,255,255,0.3); display: flex; }
+  #scene-undo-toast .undo-msg { flex: 1; font: 400 13px/1.3 system-ui, -apple-system, sans-serif; color: rgba(255,255,255,0.65); }
+  #scene-undo-toast .undo-btn {
+    flex: none; padding: 4px 10px;
+    border: 1.5px solid rgba(90,140,235,0.55);
+    background: rgba(70,120,220,0.1);
+    border-radius: 7px; color: #8fb6ff;
+    font: 600 12px/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer; transition: background .12s;
+  }
+  #scene-undo-toast .undo-btn:hover { background: rgba(70,120,220,0.2); }
+  #scene-undo-toast .undo-track { height: 2px; background: rgba(255,255,255,0.05); }
+  #scene-undo-toast .undo-bar { height: 100%; width: 100%; background: rgba(90,140,235,0.55); }
 
   /* ===== BACKUP EXPORT MODAL ===== */
   #backup-export-backdrop {
@@ -991,21 +978,6 @@
   }
   #btn-bem-cancel:hover { background: rgba(70,40,130,0.4); color: #d0c8f8; }
 
-  /* Modal button base styles */
-  #scene-manager button {
-    font-size: 13px;
-    font-weight: 500;
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid rgba(130, 80, 240, 0.3);
-    background: rgba(40, 25, 80, 0.6);
-    color: #c8c0e8;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.14s, color 0.14s;
-    font-family: system-ui, -apple-system, sans-serif;
-  }
-  #scene-manager button:hover { background: rgba(120, 72, 220, 0.25); color: #ddd4f8; }
 
   /* ===== SCENE FADE (player transition) ===== */
   #scene-fade {
@@ -1145,24 +1117,6 @@
 
 <!-- RIGHT SIDEBAR -->
 <div id="sidebar-right-anchor">
-
-<!-- Scenes button — separate panel above settings -->
-<div id="panel-scenes" class="glass-panel">
-  <button id="btn-scenes" title="Open scene manager">
-    <svg class="rp-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8M12 17v4"/></svg>
-    Scenes
-  </button>
-  <div id="panel-scenes-actions">
-    <button id="btn-backup-export" class="btn-backup" title="Export selected scenes to a .zip backup">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      Export
-    </button>
-    <button id="btn-backup-restore" class="btn-backup" title="Import scenes from a .zip backup">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Import
-    </button>
-  </div>
-</div>
 
 <!-- Settings panel -->
 <div id="sidebar-right" class="glass-panel">
@@ -1391,7 +1345,7 @@
 
 <div id="landing">
   <h2>Evermist</h2>
-  <p>Click <strong>Scenes</strong> in the toolbar to get started</p>
+  <p>Open the <strong>scene menu</strong> (top-left) to get started</p>
 </div>
 
 <div id="scene-fade"><div id="scene-fade-name"></div></div>
@@ -1403,22 +1357,41 @@
   </div>
 </div>
 
-<!-- SCENE MANAGER MODAL -->
-<div id="scene-manager-backdrop" style="display:none"></div>
-<div id="scene-manager-anchor">
-<div id="scene-manager" class="glass-panel" style="display:none">
-  <div id="sm-header">
-    <h3>Scenes</h3>
-    <button id="btn-sm-close">✕</button>
+<!-- SCENE MANAGER — dropdown (DM only) -->
+<div id="scene-dd">
+  <div id="scene-dd-trigger-row">
+    <button id="scene-dd-toggle" title="Scenes">
+      <span id="scene-dd-name">No scene</span>
+      <svg id="scene-dd-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <button id="scene-dd-add" title="New scene — or drop a .zip backup to import">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
   </div>
-  <div id="sm-grid">
-    <div id="sm-empty">No scenes yet — click + New Scene to add one</div>
-  </div>
-  <div id="sm-footer">
-    <button id="btn-sm-new">+ New Scene</button>
+  <div id="scene-dd-menu" style="display:none">
+    <div id="scene-dd-header">
+      <div id="scene-dd-selall" class="sm-cb" title="Select all"></div>
+      <span id="scene-dd-count">0 scenes</span>
+      <button id="scene-dd-bulk-export" class="sm-bulk-btn" title="Export selected">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </button>
+      <button id="scene-dd-bulk-delete" class="sm-bulk-btn" title="Delete selected">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>
+    <div id="sm-list"></div>
   </div>
 </div>
-</div><!-- /#scene-manager-anchor -->
+
+<!-- Undo toast (after scene delete) -->
+<div id="scene-undo-toast" style="display:none">
+  <div class="undo-body">
+    <span class="undo-ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></span>
+    <span class="undo-msg"></span>
+    <button class="undo-btn">Undo</button>
+  </div>
+  <div class="undo-track"><div class="undo-bar"></div></div>
+</div>
 
 <!-- BACKUP EXPORT MODAL -->
 <div id="backup-export-backdrop" style="display:none"></div>
@@ -1440,7 +1413,7 @@
 </div>
 </div><!-- /#backup-export-anchor -->
 
-<input type="file" id="file-input" accept="image/*,video/mp4,video/webm" style="display:none">
+<input type="file" id="file-input" accept="image/*,video/mp4,video/webm,.zip,application/zip" style="display:none">
 
 <script src="lib/pixi.min.js"></script>
 <script src="src/renderer.js"></script>

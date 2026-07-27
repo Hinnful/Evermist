@@ -20,7 +20,113 @@ function generateThumbnail(bitmap, w, h) {
 }
 
 
+// ── Dropdown UI state (module-local; only sceneManager.js touches these) ──────
+let smSelectedIds = new Set();   // ids checked for bulk actions
+let smDragId = null;             // id of the card being dragged
+let smDragEl = null;             // its DOM node (moved directly so the drag survives)
+let smPending = null;            // deferred delete: { items:[{id,index,meta}], ids:[…] }
+let smUndoTimer = null;
+
+// ── Checkbox / trash glyphs (built once, injected by string) ──────────────────
+const SM_CHECK = '<svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="#8fb6ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5l2 2 4-4"/></svg>';
+const SM_DASH  = '<svg width="8" height="2" viewBox="0 0 8 2" fill="none" stroke="#8fb6ff" stroke-width="2" stroke-linecap="round"><line x1="0.5" y1="1" x2="7.5" y2="1"/></svg>';
+const SM_TRASH = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+
+function smIsOpen() {
+  const dd = document.getElementById('scene-dd');
+  return !!dd && dd.classList.contains('open');
+}
+
+function openDropdown() {
+  const dd = document.getElementById('scene-dd');
+  if (!dd) return;
+  if (typeof doAutoSave === 'function') doAutoSave(); // persist current fog before a possible switch
+  dd.classList.add('open');
+  document.getElementById('scene-dd-menu').style.display = '';
+  renderSceneManager();
+}
+
+function closeDropdown() {
+  const dd = document.getElementById('scene-dd');
+  if (!dd) return;
+  dd.classList.remove('open');
+  document.getElementById('scene-dd-menu').style.display = 'none';
+  if (smSelectedIds.size) { smSelectedIds.clear(); renderSceneManager(); }
+}
+
+function toggleDropdown() { smIsOpen() ? closeDropdown() : openDropdown(); }
+
+// Back-compat aliases — scenes.js error-recovery calls these names.
+function openSceneManager() { openDropdown(); }
+function closeSceneManager() { closeDropdown(); }
+
+function initSceneManagerUI() {
+  const dd = document.getElementById('scene-dd');
+  if (!dd) return;
+  const fileInput = document.getElementById('file-input');
+
+  document.getElementById('scene-dd-toggle').onclick = toggleDropdown;
+  document.getElementById('scene-dd-add').onclick = () => fileInput.click();
+
+  // "+" merges New Scene + Import: image/video → new scene, .zip → restore backup.
+  fileInput.onchange = e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const isZip = /\.zip$/i.test(f.name) || f.type === 'application/zip' || f.type === 'application/x-zip-compressed';
+    if (isZip) {
+      if (window.electronAPI && f.path && typeof restoreFromZipPath === 'function') {
+        openDropdown();
+        restoreFromZipPath(f.path);
+      } else {
+        alert('Importing a .zip backup needs the desktop app.');
+      }
+    } else {
+      openDropdown();
+      createNewScene(f);
+    }
+  };
+
+  // Header: select-all checkbox + bulk actions
+  document.getElementById('scene-dd-selall').onclick = () => {
+    if (allScenes.length && smSelectedIds.size === allScenes.length) smSelectedIds.clear();
+    else smSelectedIds = new Set(allScenes.map(s => s.id));
+    renderSceneManager();
+  };
+  document.getElementById('scene-dd-bulk-export').onclick = () => {
+    const ids = [...smSelectedIds];
+    if (ids.length && typeof doExport === 'function') doExport(ids);
+  };
+  document.getElementById('scene-dd-bulk-delete').onclick = () => {
+    if (smSelectedIds.size) deleteScenesWithUndo([...smSelectedIds]);
+  };
+
+  // Undo toast
+  document.querySelector('#scene-undo-toast .undo-btn').onclick = undoDelete;
+
+  // Allow drops in the gaps between cards
+  document.getElementById('sm-list').addEventListener('dragover', e => e.preventDefault());
+
+  // Close on outside click; finalise any pending delete before the window unloads
+  document.addEventListener('mousedown', e => {
+    if (smIsOpen() && !dd.contains(e.target)) closeDropdown();
+  });
+  window.addEventListener('beforeunload', commitPendingDelete);
+}
+
+function updateTriggerName() {
+  const el = document.getElementById('scene-dd-name');
+  if (el) el.textContent = currentScene ? currentScene.name : (allScenes.length ? 'Select a scene' : 'No scenes');
+}
+
 function renderSceneManager() {
+  updateTriggerName();
+
+  const dd   = document.getElementById('scene-dd');
+  const list = document.getElementById('sm-list');
+  if (!dd || !list) return;
+
+  // sync thumbnail blob URLs with the current scene set
   const ids = new Set(allScenes.map(s => s.id));
   for (const [id, url] of thumbURLs) {
     if (!ids.has(id)) { URL.revokeObjectURL(url); thumbURLs.delete(id); }
@@ -28,52 +134,136 @@ function renderSceneManager() {
   for (const s of allScenes) {
     if (!thumbURLs.has(s.id) && s.thumbnail) thumbURLs.set(s.id, URL.createObjectURL(s.thumbnail));
   }
-  const grid = document.getElementById('sm-grid');
-  if (!grid) return;
+
+  const selecting = smSelectedIds.size > 0;
+  dd.classList.toggle('selecting', selecting);
+
+  const countEl = document.getElementById('scene-dd-count');
+  if (countEl) countEl.textContent = selecting
+    ? `${smSelectedIds.size} selected`
+    : `${allScenes.length} scene${allScenes.length === 1 ? '' : 's'}`;
+
+  const selall = document.getElementById('scene-dd-selall');
+  if (selall) {
+    const all = selecting && smSelectedIds.size === allScenes.length;
+    selall.classList.toggle('checked', all);
+    selall.classList.toggle('indeterminate', selecting && !all);
+    selall.innerHTML = all ? SM_CHECK : (selecting ? SM_DASH : '');
+  }
+
+  list.innerHTML = '';
   if (!allScenes.length) {
-    grid.innerHTML = '<div id="sm-empty">No scenes yet — click + New Scene to add one</div>';
+    list.innerHTML = '<div id="sm-empty">No scenes yet — click + to add one</div>';
     return;
   }
-  grid.innerHTML = '';
-  for (const s of allScenes) {
-    const isActive = currentScene && currentScene.id === s.id;
-    const card = document.createElement('div');
-    card.className = 'sm-card' + (isActive ? ' active' : '');
-    card.dataset.id = s.id;
-    const thumbSrc = thumbURLs.get(s.id) || '';
-    const overlayInner = isActive
-      ? '<span class="sm-card-overlay-label">Current</span>'
-      : '<button class="sm-card-load-btn" tabindex="-1">Load</button>';
-    card.innerHTML =
-      '<div class="sm-card-thumb-wrap">' +
-        '<img class="sm-card-thumb" src="' + escHtml(thumbSrc) + '" alt="">' +
-        '<div class="sm-card-overlay">' + overlayInner + '</div>' +
-      '</div>' +
-      '<button class="sm-card-rename" title="Rename scene"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
-      '<button class="sm-card-del" title="Delete scene"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>' +
-      '<div class="sm-card-footer"><div class="sm-card-name"></div></div>';
-    card.querySelector('.sm-card-name').textContent = s.name;
-    card.onclick = e => {
-      if (e.target.closest('.sm-card-del') || e.target.closest('.sm-card-rename')) return;
-      closeSceneManager();
-      switchScene(s.id).catch(err => console.error('switchScene failed:', err));
-    };
-    card.querySelector('.sm-card-rename').onclick = e => { e.stopPropagation(); startRenameScene(s.id); };
-    card.querySelector('.sm-card-del').onclick = e => { e.stopPropagation(); confirmDeleteScene(s.id); };
-    grid.appendChild(card);
-  }
+  for (const s of allScenes) list.appendChild(buildSceneCard(s));
 }
 
-function openSceneManager() {
-  doAutoSave(); // persist current fog state before user might switch
-  document.getElementById('scene-manager-backdrop').style.display = '';
-  document.getElementById('scene-manager').style.display = '';
+function buildSceneCard(s) {
+  const isActive   = currentScene && currentScene.id === s.id;
+  const isSelected = smSelectedIds.has(s.id);
+
+  const card = document.createElement('div');
+  card.className = 'sm-card' + (isActive ? ' active' : '') + (isSelected ? ' selected' : '');
+  card.dataset.id = s.id;
+  card.draggable = true;
+
+  card.innerHTML =
+    '<div class="sm-thumb">' +
+      '<div class="sm-scrim"></div>' +
+      '<div class="sm-cb' + (isSelected ? ' checked' : '') + '">' + (isSelected ? SM_CHECK : '') + '</div>' +
+      '<div class="sm-botrow">' +
+        '<input class="sm-name" spellcheck="false">' +
+        '<button class="sm-trash" title="Delete scene">' + SM_TRASH + '</button>' +
+      '</div>' +
+    '</div>';
+
+  const thumbURL = thumbURLs.get(s.id);
+  if (thumbURL) card.querySelector('.sm-thumb').style.backgroundImage = 'url("' + thumbURL + '")';
+
+  const nameEl = card.querySelector('.sm-name');
+  nameEl.value = s.name;
+
+  // checkbox → toggle selection
+  card.querySelector('.sm-cb').onclick = e => { e.stopPropagation(); toggleSelect(s.id); };
+
+  // trash → delete with undo
+  const trash = card.querySelector('.sm-trash');
+  trash.onmousedown = e => e.stopPropagation();
+  trash.onclick = e => { e.stopPropagation(); deleteScenesWithUndo([s.id]); };
+
+  // inline rename — clicking the name edits it (no rename button)
+  let orig = s.name;
+  nameEl.onmousedown = e => e.stopPropagation();
+  nameEl.onclick     = e => e.stopPropagation();
+  nameEl.onfocus     = () => { orig = s.name; nameEl.select(); };
+  nameEl.oninput     = () => { s.name = nameEl.value; };
+  nameEl.onkeydown   = e => {
+    e.stopPropagation();
+    if (e.key === 'Enter')  { e.preventDefault(); nameEl.blur(); }
+    else if (e.key === 'Escape') { s.name = orig; nameEl.value = orig; nameEl.blur(); }
+  };
+  nameEl.onblur = () => commitSceneName(s, nameEl);
+
+  // card click → select (in selection mode) or switch scene
+  card.onclick = e => {
+    if (e.target.closest('.sm-name') || e.target.closest('.sm-trash') || e.target.closest('.sm-cb')) return;
+    if (smSelectedIds.size > 0) { toggleSelect(s.id); return; }
+    if (!isActive) switchScene(s.id).catch(err => console.error('switchScene failed:', err));
+  };
+
+  // drag to reorder (never starts from the name input)
+  card.ondragstart = e => {
+    if (e.target && e.target.tagName === 'INPUT') { e.preventDefault(); return; }
+    e.dataTransfer.effectAllowed = 'move';
+    smDragId = s.id; smDragEl = card;
+    card.classList.add('dragging');
+  };
+  card.ondragover = e => {
+    e.preventDefault();
+    if (!smDragEl || smDragId === s.id) return;
+    const r = card.getBoundingClientRect();
+    const before = (e.clientY - r.top) < r.height / 2;
+    card.parentNode.insertBefore(smDragEl, before ? card : card.nextSibling);
+  };
+  card.ondragend = () => {
+    if (smDragEl) smDragEl.classList.remove('dragging');
+    commitDragOrder();
+    smDragId = null; smDragEl = null;
+  };
+
+  return card;
+}
+
+function toggleSelect(id) {
+  if (smSelectedIds.has(id)) smSelectedIds.delete(id);
+  else smSelectedIds.add(id);
   renderSceneManager();
 }
 
-function closeSceneManager() {
-  document.getElementById('scene-manager-backdrop').style.display = 'none';
-  document.getElementById('scene-manager').style.display = 'none';
+function commitSceneName(s, input) {
+  const v = (input.value || '').trim() || 'Untitled';
+  s.name = v; input.value = v;
+  if (currentScene && currentScene.id === s.id) currentScene.name = v;
+  sceneStore.loadScene(s.id).then(sc => { if (sc) { sc.name = v; sceneStore.saveScene(sc); } });
+  updateTriggerName();
+}
+
+function commitDragOrder() {
+  const list = document.getElementById('sm-list');
+  if (!list) return;
+  const order = [...list.querySelectorAll('.sm-card')].map(el => el.dataset.id);
+  allScenes.sort((a, b) => order.indexOf(String(a.id)) - order.indexOf(String(b.id)));
+  allScenes.forEach((s, i) => { s.sortOrder = i; });
+  persistSceneOrder();
+}
+
+function persistSceneOrder() {
+  for (const s of allScenes) {
+    sceneStore.loadScene(s.id).then(sc => {
+      if (sc && sc.sortOrder !== s.sortOrder) { sc.sortOrder = s.sortOrder; sceneStore.saveScene(sc); }
+    });
+  }
 }
 
 async function initScenes() {
@@ -366,63 +556,86 @@ async function switchScene(id, _isRecovery = false) {
   }
 }
 
-function startRenameScene(id) {
-  const card = document.querySelector('.sm-card[data-id="' + id + '"]');
-  if (!card) return;
-  const nameEl = card.querySelector('.sm-card-name');
-  const s = allScenes.find(x => x.id === id);
-  if (!s) return;
-  const input = document.createElement('input');
-  input.className = 'sm-card-name-input';
-  input.value = s.name;
-  nameEl.replaceWith(input);
-  input.focus(); input.select();
-  const commit = () => {
-    const newName = input.value.trim() || s.name;
-    s.name = newName;
-    if (currentScene && currentScene.id === id) currentScene.name = newName;
-    sceneStore.loadScene(id).then(sc => { if (sc) { sc.name = newName; sceneStore.saveScene(sc); } });
-    renderSceneManager();
-  };
-  input.onblur = commit;
-  input.onkeydown = e => {
-    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { input.value = s.name; input.blur(); }
-  };
-}
+// ── Delete with undo ──────────────────────────────────────────────────────────
+// The card/bulk trash removes scenes from the list immediately but DEFERS the real
+// IndexedDB deletion ~4s so Undo can cancel it. A new delete finalises the previous
+// one; closing the app finalises via the beforeunload listener in initSceneManagerUI.
+function deleteScenesWithUndo(ids) {
+  const items = ids
+    .map(id => ({ id, index: allScenes.findIndex(s => s.id === id), meta: allScenes.find(s => s.id === id) }))
+    .filter(x => x.index !== -1 && x.meta)
+    .sort((a, b) => a.index - b.index);
+  if (!items.length) return;
 
-async function confirmDeleteScene(id) {
-  const s = allScenes.find(x => x.id === id);
-  if (!confirm('Delete scene "' + (s ? s.name : id) + '"? This cannot be undone.')) return;
-  await sceneStore.deleteScene(id);
-  if (window.electronAPI) {
-    window.electronAPI.deleteVideoFile(id).catch(() => {});
-  }
-  allScenes = allScenes.filter(x => x.id !== id);
-  if (thumbURLs.has(id)) { URL.revokeObjectURL(thumbURLs.get(id)); thumbURLs.delete(id); }
-  if (currentScene && currentScene.id === id) {
-    currentScene = null;
-    cleanupVideo();
-    mapBitmap = null; mapOffscreen = null; mapWidth = 0; mapHeight = 0;
-    polygons = []; nextPolygonId = 1;
-    landing.style.display = '';
-    if (!isPlayer) container.style.cursor = 'default';
-    if (allScenes.length) await switchScene(allScenes[0].id);
-  }
+  commitPendingDelete(); // finalise anything still pending from a previous delete
+
+  const idset = new Set(items.map(x => x.id));
+  allScenes = allScenes.filter(s => !idset.has(s.id));
+  smSelectedIds.clear();
+
+  // If the loaded scene was among those deleted, switch away (data stays in IDB
+  // until the delete is committed, so Undo can still bring it back).
+  if (currentScene && idset.has(currentScene.id)) handleCurrentDeleted();
+
+  smPending = { items, ids: items.map(x => x.id) };
+  showUndoToast(items.length === 1 ? `"${items[0].meta.name}" removed` : `${items.length} scenes removed`);
+  clearTimeout(smUndoTimer);
+  smUndoTimer = setTimeout(commitPendingDelete, 4200);
   renderSceneManager();
 }
 
-async function moveScene(id, dir) {
-  const idx = allScenes.findIndex(s => s.id === id);
-  if (idx < 0) return;
-  const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= allScenes.length) return;
-  [allScenes[idx], allScenes[newIdx]] = [allScenes[newIdx], allScenes[idx]];
+function handleCurrentDeleted() {
+  currentScene = null;
+  cleanupVideo();
+  if (mapBitmap) { try { mapBitmap.close(); } catch (e) {} }
+  mapBitmap = null; mapOffscreen = null; mapWidth = 0; mapHeight = 0;
+  polygons = []; nextPolygonId = 1;
+  landing.style.display = '';
+  if (!isPlayer) container.style.cursor = 'default';
+  localStorage.removeItem('evermist-current-scene-id');
+  if (allScenes.length) switchScene(allScenes[0].id).catch(err => console.error('switchScene failed:', err));
+}
+
+function undoDelete() {
+  if (!smPending) return;
+  clearTimeout(smUndoTimer);
+  for (const it of smPending.items) {
+    allScenes.splice(Math.min(it.index, allScenes.length), 0, it.meta);
+  }
   allScenes.forEach((s, i) => { s.sortOrder = i; });
-  for (const s of allScenes) {
-    sceneStore.loadScene(s.id).then(sc => { if (sc) { sc.sortOrder = s.sortOrder; sceneStore.saveScene(sc); } });
-  }
+  persistSceneOrder();
+  smPending = null;
+  hideUndoToast();
   renderSceneManager();
+}
+
+function commitPendingDelete() {
+  if (!smPending) return;
+  const ids = smPending.ids;
+  smPending = null;
+  clearTimeout(smUndoTimer);
+  hideUndoToast();
+  for (const id of ids) {
+    sceneStore.deleteScene(id).catch(() => {});
+    if (window.electronAPI) window.electronAPI.deleteVideoFile(id).catch(() => {});
+    if (thumbURLs.has(id)) { URL.revokeObjectURL(thumbURLs.get(id)); thumbURLs.delete(id); }
+  }
+}
+
+function showUndoToast(msg) {
+  const t = document.getElementById('scene-undo-toast');
+  if (!t) return;
+  t.querySelector('.undo-msg').textContent = msg;
+  t.style.display = '';
+  const bar = t.querySelector('.undo-bar');
+  bar.style.animation = 'none';
+  void bar.offsetWidth; // reflow so the 4s timer bar restarts on each delete
+  bar.style.animation = 'smUndoTimer 4s linear forwards';
+}
+
+function hideUndoToast() {
+  const t = document.getElementById('scene-undo-toast');
+  if (t) t.style.display = 'none';
 }
 
 if (typeof module !== 'undefined') module.exports = { escHtml };
