@@ -131,17 +131,7 @@
   }
   .btn-group { display: flex; flex-direction: column; gap: 2px; }
 
-  /* Reveal / Shroud — distinct active gradients */
-  .reveal-btn.active {
-    background: linear-gradient(135deg, #1a6a40 0%, #27a85e 100%) !important;
-    color: #fff !important;
-    box-shadow: 0 2px 14px rgba(30, 160, 80, 0.5), inset 0 1px 0 rgba(255,255,255,0.12) !important;
-  }
-  .shroud-btn.active {
-    background: linear-gradient(135deg, #38155a 0%, #7830aa 100%) !important;
-    color: #fff !important;
-    box-shadow: 0 2px 14px rgba(100, 30, 170, 0.55), inset 0 1px 0 rgba(255,255,255,0.08) !important;
-  }
+  /* Reveal / Shroud active styling now lives in .mode-btn.active (new bottom toolbar) */
 
   /* Collapsible sections */
   .section-hdr {
@@ -231,39 +221,7 @@
     min-width: 8px; flex-shrink: 0;
   }
 
-  /* Snap toggle panel (above toolbar, like brush panel) */
-  #panel-snap-bottom {
-    zoom: var(--ui-zoom, 1.2);
-    pointer-events: all;
-    display: none;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 18px;
-  }
-  #panel-snap-bottom .snap-lbl {
-    font-size: 10px; font-weight: 700;
-    color: #7868a8; white-space: nowrap;
-    letter-spacing: 0.1em; text-transform: uppercase;
-  }
-  #panel-snap-bottom .snap-toggle {
-    width: 30px; height: 16px;
-    border-radius: 9px;
-    border: 1px solid rgba(130, 80, 240, 0.3);
-    background: rgba(40, 30, 80, 0.7);
-    cursor: pointer; position: relative; flex-shrink: 0;
-    transition: background 0.18s, border-color 0.18s;
-    padding: 0; outline: none;
-  }
-  #panel-snap-bottom .snap-toggle::after {
-    content: '';
-    position: absolute;
-    width: 12px; height: 12px; border-radius: 50%;
-    background: rgba(130, 80, 240, 0.4);
-    top: 1px; left: 1px;
-    transition: transform 0.18s, background 0.18s;
-  }
-  #panel-snap-bottom .snap-toggle.active { background: rgba(40, 140, 80, 0.35); border-color: rgba(60, 200, 100, 0.55); }
-  #panel-snap-bottom .snap-toggle.active::after { transform: translateX(14px); background: #40d070; }
+  /* (Snap toggle relocated into the main toolbar as a segment button — see .tb-seg-snap) */
 
   /* Grid overhaul controls */
   .grid-num {
@@ -312,10 +270,10 @@
   /* TOP TOOLBAR — replaced by #tools-wrapper at bottom */
   #toolbar-top { display: none !important; }
 
-  /* ===== BOTTOM TOOLBAR ===== */
-  /* Outer wrapper: full-width fixed row, centers children, no zoom (avoids
-     hit-area mismatch that occurs when zoom + transform: translateX(-50%)
-     are combined on a fixed element). */
+  /* ===== BOTTOM TOOLBAR (new design system) ===== */
+  /* Outer wrapper: full-width fixed row, centers children, no zoom on the
+     wrapper itself (avoids hit-area mismatch from zoom + translateX(-50%));
+     zoom lives on the inner bar + sub-panel. */
   #tools-wrapper {
     position: fixed;
     bottom: 16px;
@@ -325,7 +283,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 11px;
     pointer-events: none; /* pass-through; children opt back in */
   }
 
@@ -334,81 +292,127 @@
     pointer-events: all;
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 6px 10px;
+    gap: 7px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    background: #1a1a1c;
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
   }
 
+  /* Tool buttons — Select / Polygon / Rectangle / Circle / Brush */
   .tool-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1.5px solid transparent;
     background: transparent;
-    color: #9080c8;
+    color: #9aa0aa;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.14s, color 0.14s, box-shadow 0.14s;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
     padding: 0;
     flex-shrink: 0;
   }
-  .tool-btn:hover {
-    background: rgba(120, 72, 220, 0.22);
-    color: #ddd4f8;
-  }
+  .tool-btn:hover { background: rgba(255, 255, 255, 0.05); color: #d5d8dd; }
   .tool-btn.active {
-    background: linear-gradient(135deg, #3d6ab0 0%, #6a38aa 100%);
-    color: #fff;
-    box-shadow: 0 3px 14px rgba(90, 50, 190, 0.5), inset 0 1px 0 rgba(255,255,255,0.13);
+    border-color: rgba(90, 140, 235, 0.6);
+    background: rgba(70, 120, 220, 0.11);
+    color: #8fb6ff;
   }
 
-  /* Reveal/Shroud toggle pair */
-  .tool-reveal-shroud {
+  /* Inset segment group (fog modes, snap) */
+  .tb-seg {
     display: flex;
-    gap: 2px;
-    background: rgba(255,255,255,0.04);
-    border-radius: 12px;
-    padding: 2px;
-    border: 1px solid rgba(130,80,240,0.12);
-  }
-
-  .toolbar-divider {
-    width: 1px;
-    height: 26px;
-    background: rgba(140, 90, 255, 0.25);
-    margin: 0 4px;
+    align-items: center;
+    gap: 3px;
+    padding: 4px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.045);
     flex-shrink: 0;
   }
+  .tb-seg-modes { margin-left: 3px; }
 
-  /* Brush size panel (floats above toolbar) */
+  /* Mode / snap buttons — 30px, low-ink */
+  .mode-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: #7f858e;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s, color 0.12s;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .mode-btn:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .mode-btn.active { color: #6ea8ff; }
+  /* Dummy fog mode (Half-shrouded) — present in the design, not yet wired */
+  .mode-btn.mode-dummy { color: #565b62; cursor: default; }
+  .mode-btn.mode-dummy:hover { background: transparent; color: #565b62; }
+
+  /* Brush size sub-panel (floats above the bar when Brush is active) */
   #panel-brush-bottom {
     zoom: var(--ui-zoom, 1.2);
     pointer-events: all;
     display: none;
     align-items: center;
-    gap: 10px;
-    padding: 8px 18px;
-  }
-  #panel-brush-bottom label {
-    font-size: 10px;
-    font-weight: 700;
-    color: #7868a8;
-    white-space: nowrap;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    gap: 11px;
+    height: 34px;
+    padding: 0 8px 0 13px;
+    border-radius: 10px;
+    background: #1a1a1c;
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
   }
   #panel-brush-bottom input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
     width: 120px;
+    height: 16px;
+    background: transparent;
     cursor: pointer;
-    accent-color: #8060e0;
+  }
+  #panel-brush-bottom input[type="range"]::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+  #panel-brush-bottom input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 11px;
+    height: 11px;
+    margin-top: -4px;
+    border-radius: 50%;
+    background: #e6e7e9;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  }
+  #panel-brush-bottom .brush-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
   }
   #panel-brush-bottom .brush-val {
-    font-size: 13px;
-    font-weight: 600;
-    color: #c8c0e8;
-    min-width: 28px;
-    text-align: center;
+    color: #e2e4e8;
+    font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+    min-width: 20px;
+    text-align: right;
+  }
+  #panel-brush-bottom .brush-unit {
+    font: 500 11px/1 system-ui, -apple-system, sans-serif;
+    color: #7f858e;
   }
 
   /* UI SCALE CONTROL — fixed independently so zoom feedback loop can't occur */
@@ -1084,53 +1088,57 @@
 <body>
 <script>if (new URLSearchParams(location.search).get('mode') === 'player') document.body.classList.add('player-mode');</script>
 
-<!-- TOOLS WRAPPER (bottom-center, stacks brush panel above toolbar) -->
+<!-- TOOLS WRAPPER (bottom-center, stacks brush sub-panel above toolbar) -->
 <div id="tools-wrapper">
 
-  <!-- Snap toggle — shown for all non-brush tools -->
-  <div id="panel-snap-bottom" class="glass-panel">
-    <label class="snap-lbl">Snap</label>
-    <button id="btn-snap" class="snap-toggle" title="Snap to grid (N)"></button>
-  </div>
-
-  <!-- Brush size panel — shown only when Brush is active -->
-  <div id="panel-brush-bottom" class="glass-panel">
-    <label>SIZE</label>
+  <!-- Brush size sub-panel — shown only when Brush is active -->
+  <div id="panel-brush-bottom">
     <input type="range" id="brush-size" min="5" max="300" value="40">
-    <span id="brush-size-label" class="brush-val">40</span>
+    <div class="brush-chip">
+      <span id="brush-size-label" class="brush-val">40</span>
+      <span class="brush-unit">px</span>
+    </div>
   </div>
 
   <!-- Main icon toolbar -->
-  <div id="toolbar-bottom" class="glass-panel">
-
-    <!-- Reveal / Shroud toggle -->
-    <div class="tool-reveal-shroud">
-      <button id="btn-reveal" class="tool-btn reveal-btn active" title="Reveal (R)">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
-      </button>
-      <button id="btn-shroud" class="tool-btn shroud-btn" title="Shroud (S)">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24M1 1l22 22"/></svg>
-      </button>
-    </div>
-
-    <div class="toolbar-divider"></div>
+  <div id="toolbar-bottom">
 
     <!-- Tools: Select, Polygon, Rectangle, Circle, Brush -->
     <button id="btn-select" class="tool-btn" title="Select (V)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m4 4 7.07 17 2.51-7.39L21 11.07 4 4z"/></svg>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform:translate(1px,1px)"><path d="M5 3l6.4 15.6 2.1-6.1 6.1-2.1L5 3z"/></svg>
     </button>
     <button id="btn-poly" class="tool-btn" title="Polygon (P)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12,3.5 20,9.5 17,19 7,19 4,9.5"/></svg>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
     </button>
     <button id="btn-rect" class="tool-btn" title="Rectangle (E)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/></svg>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/></svg>
     </button>
     <button id="btn-circle" class="tool-btn" title="Circle (C)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
     </button>
     <button id="btn-brush" class="tool-btn active" title="Brush (B)">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 4.5a2.12 2.12 0 013 3L7 20l-4 1 1-4L16.5 4.5z"/><path d="M15 6l3 3"/></svg>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8.6 8.6-4 1 1-4L15 4z"/><path d="M13.4 5.6l5 5"/></svg>
     </button>
+
+    <!-- Fog mode segment: Revealed / Half-shrouded (DUMMY — not yet wired) / Shrouded -->
+    <div class="tb-seg tb-seg-modes">
+      <button id="btn-reveal" class="mode-btn active" title="Revealed (R)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
+      </button>
+      <button id="btn-half" class="mode-btn mode-dummy" title="Half-shrouded (not yet available)" tabindex="-1">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button id="btn-shroud" class="mode-btn" title="Shroud (S)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+
+    <!-- Snap-to-grid segment -->
+    <div class="tb-seg tb-seg-snap">
+      <button id="btn-snap" class="mode-btn" title="Snap to grid (N)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+      </button>
+    </div>
 
   </div>
 </div>
