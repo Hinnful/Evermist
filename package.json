@@ -1,6 +1,6 @@
 {
   "name": "evermist",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "D&D fog-of-war map viewer for TV display",
   "main": "main.js",
   "author": "Hinnful",
@@ -55,8 +55,8 @@
   "devDependencies": {
     "@stryker-mutator/core": "^9.6.1",
     "cross-env": "^10.1.0",
-    "electron": "^28.0.0",
-    "electron-builder": "^24.0.0",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.0",
     "pixi.js": "^7.4.3"
   }
 }
