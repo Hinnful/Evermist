@@ -35,9 +35,11 @@ function initControlPanel() {
   _cpGridPicker = _cpMakePicker('grid', 'grid-color');
   _cpInitResets();
   _cpInitAdvPanel();
+  _cpInitPlayer();
 
   refreshFogControlUI();
   refreshGridControlUI();
+  refreshPlayerControlUI();
 }
 
 // ─── Colour maths (HSV ⇄ hex) ─────────────────────────────────────────────────
@@ -80,6 +82,7 @@ function _cpInitTabs() {
       _cpUpdateAdvVisibility();
       if (name === 'fog'  && _cpFogPicker)  _cpFogPicker.refresh();
       if (name === 'grid' && _cpGridPicker) _cpGridPicker.refresh();
+      if (name === 'player') refreshPlayerControlUI();
     });
   });
 }
@@ -365,6 +368,88 @@ function _cpPositionAdvPanel() {
   panel.style.top  = (_CP_ANCHOR_PAD / z) + 'px';
 }
 
+// ─── Player tab ───────────────────────────────────────────────────────────────
+// Every visible control is a proxy: it forwards the click to the pre-existing
+// (now hidden) button in #cp-legacy, so the toolbar.js / minimap.js / viewport.js
+// handlers — and the Player-window protocol they drive — are untouched. Nothing
+// here mutates player state; refreshPlayerControlUI() only reads it back.
+function _cpInitPlayer() {
+  const pane = document.getElementById('cp-pane-player');
+  if (!pane) return;
+
+  const proxy = (fromId, toId) => {
+    const el = document.getElementById(fromId);
+    if (!el) return;
+    el.addEventListener('click', () => {
+      const target = document.getElementById(toId);
+      if (target) target.click();
+      refreshPlayerControlUI();
+    });
+  };
+  proxy('cp-player-lock',       'btn-minimap-lock');
+  proxy('cp-player-fullscreen', 'btn-fullscreen-player');
+  proxy('cp-player-syncview',   'btn-sync-view');
+  proxy('cp-player-send',       'btn-send');
+  proxy('cp-player-golive',     'btn-player');
+
+  // Auto / Manual is one legacy toggle behind two segments — only click it when the
+  // pressed segment isn't already the live one, so the toggle can't be flipped away.
+  pane.querySelectorAll('[data-sync]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const legacy = document.getElementById('btn-auto-sync');
+      if (!legacy) return;
+      const wantAuto = btn.dataset.sync === 'auto';
+      if (wantAuto !== legacy.classList.contains('active')) legacy.click();
+      refreshPlayerControlUI();
+    });
+  });
+
+  _cpInitZoom();
+
+  // The Player window can close without telling us (no event on a cross-window close),
+  // so poll while the tab is on screen. Read-only; no-ops when the pane is hidden.
+  setInterval(() => { if (!pane.hidden) refreshPlayerControlUI(); }, 1000);
+}
+
+// Player-zoom stepper — the − / + buttons step by one wheel notch, the field takes a
+// typed percentage. Both go through minimapSetZoom(), which owns the view triple and
+// posts view-snap, so this is the same path as wheel-zooming the minimap.
+function _cpInitZoom() {
+  const field = document.getElementById('cp-zoom-num');
+  const dec = document.getElementById('cp-zoom-dec');
+  const inc = document.getElementById('cp-zoom-inc');
+  if (!field || typeof minimapNudgeZoom !== 'function') return;
+
+  if (dec) dec.addEventListener('click', () => { minimapNudgeZoom(-1); refreshPlayerZoomUI(); });
+  if (inc) inc.addEventListener('click', () => { minimapNudgeZoom(1);  refreshPlayerZoomUI(); });
+
+  const commit = () => {
+    const pct = parseFloat(field.value.replace(/[^0-9.]/g, ''));
+    if (isFinite(pct) && pct > 0) minimapSetZoom(pct / 100);
+    field.blur();
+    refreshPlayerZoomUI();  // snaps the field back to the clamped value
+  };
+  field.addEventListener('change', commit);
+  field.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { commit(); return; }
+    // Arrow keys step like the buttons rather than editing the text.
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      minimapNudgeZoom(e.key === 'ArrowUp' ? 1 : -1);
+      refreshPlayerZoomUI();
+    }
+  });
+}
+
+// Writes the live zoom into the field. Called from minimap.js's _markDirty() so wheel,
+// drag, Sync View and Player free-look all keep it current. Skipped mid-typing.
+function refreshPlayerZoomUI() {
+  const field = document.getElementById('cp-zoom-num');
+  if (!field || typeof minimapGetZoom !== 'function') return;
+  if (document.activeElement === field) return;
+  field.value = String(Math.round(minimapGetZoom() * 100));
+}
+
 // ─── Reflection hooks (called from scene-restore paths) ───────────────────────
 function refreshFogControlUI() {
   if (_cpFogPicker) _cpFogPicker.refresh();
@@ -376,4 +461,46 @@ function refreshGridControlUI() {
   if (_cpGridPicker) _cpGridPicker.refresh();
   _cpSyncFancy(['grid-size', 'grid-thickness']);
   setGridTypeUI();
+}
+
+// Mirrors player state onto the Player tab. Reads only — the legacy buttons remain
+// the source of truth (their .active classes are set by minimap.js / toolbar.js).
+function refreshPlayerControlUI() {
+  const pane = document.getElementById('cp-pane-player');
+  if (!pane) return;
+  const legacyActive = id => {
+    const el = document.getElementById(id);
+    return !!el && el.classList.contains('active');
+  };
+
+  // Lock — closed padlock + blue box when locked; the preview loses its grab cursor.
+  const locked = legacyActive('btn-minimap-lock');
+  const lock = document.getElementById('cp-player-lock');
+  if (lock) {
+    lock.classList.toggle('active', locked);
+    lock.title = locked ? 'Minimap locked — click to unlock' : 'Lock minimap — prevent accidental nudge';
+  }
+  const panel = document.getElementById('minimap-panel');
+  if (panel) panel.classList.toggle('minimap-locked', locked);
+
+  // Auto / Manual — Send is dimmed (still clickable) while Auto makes it redundant.
+  const auto = legacyActive('btn-auto-sync');
+  pane.querySelectorAll('[data-sync]').forEach(b => {
+    b.classList.toggle('active', (b.dataset.sync === 'auto') === auto);
+  });
+  const send = document.getElementById('cp-player-send');
+  if (send) send.classList.toggle('cp-dim', auto);
+
+  // Go-live button — the blue outline + fill is the whole live indicator, and the label
+  // swaps to Close so the toggle is discoverable. No dot: the fill already says it.
+  const live = typeof playerWindow !== 'undefined' && !!playerWindow && !playerWindow.closed;
+  const go = document.getElementById('cp-player-golive');
+  if (go) {
+    go.classList.toggle('live', live);
+    go.title = live ? 'Close the Player window' : 'Open the Player window';
+  }
+  const lbl = document.getElementById('cp-golive-lbl');
+  if (lbl) lbl.textContent = live ? 'Close Window' : 'Open Window';
+
+  refreshPlayerZoomUI();
 }

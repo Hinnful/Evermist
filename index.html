@@ -76,15 +76,17 @@
     background: rgba(0, 0, 0, 0.28);
     border: 1px solid rgba(255, 255, 255, 0.045);
   }
-  .cp-tab {
+  /* .cp-segtab shares the tab look for in-pane segmented controls (e.g. Auto/Manual)
+     without answering to the .cp-tab click handler that switches panes. */
+  .cp-tab, .cp-segtab {
     flex: 1; height: 30px; padding: 0;
     border: 1.5px solid transparent; border-radius: 7px;
     background: transparent; color: #7f858e;
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
     cursor: pointer; transition: background .12s, color .12s, border-color .12s;
   }
-  .cp-tab:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
-  .cp-tab.active {
+  .cp-tab:hover:not(.active), .cp-segtab:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-tab.active, .cp-segtab.active {
     border-color: rgba(90, 140, 235, 0.6);
     background: rgba(70, 120, 220, 0.11);
     color: #8fb6ff;
@@ -199,6 +201,16 @@
   }
   .cp-btn-outline { border: 1.5px solid rgba(255,255,255,0.1); background: transparent; color: #d5d8dd; }
   .cp-btn-outline:hover { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.05); color: #d5d8dd; }
+  /* Button identity: an independent control, outlined + blue-filled when active. Never
+     put one of these inside a .cp-seg / .cp-tabs pill — that black box means "pick one
+     of these", which is the toggle-group identity. */
+  .cp-btn-outline.active {
+    border-color: rgba(90,140,235,0.6);
+    background: rgba(70,120,220,0.11);
+    color: #8fb6ff;
+  }
+  .cp-btn-icon { width: 30px; flex: none; padding: 0; }
+  .cp-dim { opacity: 0.45; }
   .cp-btn-danger { border: 1.5px solid rgba(200,70,60,0.22); background: rgba(200,50,40,0.07); color: rgba(240,100,90,0.85); }
   .cp-btn-danger:hover { border-color: rgba(200,70,60,0.4); background: rgba(200,50,40,0.15); color: rgba(240,100,90,0.95); }
 
@@ -279,12 +291,6 @@
   #section-player .section-body button { color: #a098c8; }
   #section-player .section-body button:hover { color: #ddd4f8; }
 
-  .panel-sep {
-    height: 1px;
-    background: linear-gradient(90deg, transparent 0%, rgba(130, 80, 240, 0.45) 50%, transparent 100%);
-    margin: 7px 2px;
-    flex-shrink: 0;
-  }
   .btn-group { display: flex; flex-direction: column; gap: 2px; }
 
   /* Reveal / Shroud active styling now lives in .mode-btn.active (new bottom toolbar) */
@@ -718,71 +724,111 @@
   #poly-ctx-info { font-size: 10px; color: #5848a0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #poly-ctx-del-vertex { padding: 2px 5px; font-size: 10px; color: #c07070; border-color: rgba(200,80,80,0.25); }
 
-  /* ===== MINIMAP PANEL ===== */
-  /* Player pane hosts the (old-design) minimap + player controls. It lives inside
-     #sidebar-right, which already applies --ui-zoom, so no zoom/frame of its own. */
+  /* ===== PLAYER PANE (minimap preview + window/updates rows) ===== */
+  /* The Player tab lives inside #sidebar-right, which already applies --ui-zoom, so
+     no zoom/frame of its own. Same surface language as the Fog/Grid panes: cp-label
+     headers, inset cp-seg icon boxes, cp-tabs segments, cp-btn footer button. */
+  /* Square frame; the canvas keeps the Player screen's aspect and centres inside it
+     (letterboxed). The canvas must not be squared off — it is a 1:1 mirror of what the
+     Player sees, so stretching it would make the viewport rectangle lie. */
   #minimap-panel {
+    position: relative;
     width: 100%;
-    pointer-events: all;
+    aspect-ratio: 1;
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 3px;
+    align-items: center;
+    justify-content: center;
+    pointer-events: all;
     user-select: none;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: #131417;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 22px 22px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
   }
   #minimap-canvas {
     display: block;
-    border-radius: 4px;
-    border: 1px solid rgba(120,100,200,0.35);
-    cursor: crosshair;
-    background: #0d0d1a;
     width: 100%;
     height: auto;
-  }
-  #minimap-panel.minimap-no-map #minimap-canvas { opacity: 0.3; cursor: default; }
-  #btn-minimap-lock {
-    font-size: 11px;
-    padding: 3px 8px;
-    width: 100%;
-    background: rgba(30,20,60,0.5);
-    border: 1px solid rgba(120,100,200,0.2);
-    color: #7060a8;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    text-align: center;
-  }
-  #btn-minimap-lock:hover { background: rgba(60,40,120,0.6); color: #c0b0f0; }
-  #btn-minimap-lock.active { background: rgba(80,40,150,0.7); color: #e0d0ff; border-color: rgba(160,120,255,0.5); }
-  #minimap-player-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    margin-top: 2px;
-  }
-  #minimap-player-controls button {
-    width: 100%;
-    font-size: 12px;
-    font-weight: 500;
-    padding: 6px 10px;
-    border-radius: 9px;
-    border: none;
     background: transparent;
-    color: #b8b0d0;
-    cursor: pointer;
-    text-align: left;
-    white-space: nowrap;
-    transition: background 0.14s, color 0.14s, box-shadow 0.14s;
-    font-family: system-ui, -apple-system, sans-serif;
+    cursor: grab;
   }
-  #minimap-player-controls button:hover { background: rgba(120,72,220,0.2); color: #ddd4f8; }
-  #minimap-player-controls button.active {
-    background: linear-gradient(135deg, #3d6ab0 0%, #6a38aa 100%);
-    color: #fff;
-    box-shadow: 0 2px 10px rgba(90,50,190,0.45), inset 0 1px 0 rgba(255,255,255,0.13);
+  #minimap-panel.minimap-locked #minimap-canvas,
+  #minimap-panel.minimap-no-map #minimap-canvas { cursor: default; }
+  #minimap-panel.minimap-no-map #minimap-canvas { opacity: 0.3; }
+
+  /* Floating overlay button on the preview (Lock) */
+  .cp-ovbtn {
+    position: absolute; top: 6px; right: 6px;
+    width: 26px; height: 26px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 7px;
+    background: rgba(12,12,14,0.72); color: #9aa0aa;
+    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
   }
-  #minimap-player-controls button.player-following { box-shadow: 0 0 0 1px #4d9; }
-  #minimap-player-controls button.player-freelook  { box-shadow: 0 0 0 1px #f84; }
+  .cp-ovbtn:hover { color: #cdd2da; border-color: rgba(255,255,255,0.16); }
+  .cp-ovbtn.active {
+    border-color: rgba(90,140,235,0.6);
+    background: rgba(70,120,220,0.18);
+    color: #8fb6ff;
+  }
+  .cp-ovbtn .cp-ico-on { display: none; }
+  .cp-ovbtn.active .cp-ico-on { display: block; }
+  .cp-ovbtn.active .cp-ico-off { display: none; }
+
+  /* Row of controls: a flexible group on the left, independent buttons trailing it.
+     Buttons are centred against a taller toggle pill rather than stretched. */
+  .cp-row { display: flex; align-items: center; gap: 6px; }
+  .cp-row .cp-tabs { flex: 1; min-width: 0; }
+  .cp-row .cp-btn-live { flex: 1 1 auto; min-width: 0; }
+
+  /* − / value / + stepper (Player zoom). Styled as a FIELD (light surface + hairline),
+     not a black toggle pill — it holds a value, it isn't a pick-one-of-these group. */
+  .cp-stepper {
+    flex: 1; min-width: 0; height: 30px;
+    display: flex; align-items: center;
+    padding: 0 2px; border-radius: 7px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+  .cp-stepper:focus-within { border-color: rgba(90,140,235,0.6); background: rgba(255,255,255,0.07); }
+  .cp-stepbtn {
+    width: 24px; height: 26px; flex: none; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: none; border-radius: 5px;
+    background: transparent; color: #9aa0aa; cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+  .cp-stepbtn:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-stepval { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 1px; }
+  .cp-stepval input {
+    /* flex-basis:0 + width:0 so old Chromium (Electron 28) shrinks the field rather
+       than falling back to its intrinsic width — same fix as .cp-chip-pre input. */
+    flex: 1 1 0; width: 0; min-width: 0; border: none; background: transparent;
+    text-align: center; color: #e2e4e8;
+    font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  }
+  .cp-stepval input:focus { outline: none; }
+
+  /* Go-live button — outline at rest, blue outline + fill while the Player is open. The
+     blue state is the only live indicator; there is no separate dot. */
+  .cp-btn-live { gap: 7px; border: 1.5px solid rgba(255,255,255,0.1); background: transparent; color: #d5d8dd; }
+  .cp-btn-live:hover { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.05); }
+  .cp-btn-live.live {
+    border-color: rgba(90,140,235,0.6);
+    background: rgba(70,120,220,0.11);
+    color: #8fb6ff;
+  }
+
+  /* Section header carrying a right-aligned muted value (e.g. PREVIEW · 1920×1080) */
+  .cp-labelrow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .cp-hint {
+    font: 500 10px/1.3 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+    color: #6b7078; letter-spacing: 0.03em;
+  }
 
   /* ===== PLAYER MODE ===== */
   body.player-mode #sidebar-right-anchor,
@@ -1430,30 +1476,90 @@
     <button id="cp-grid-reset" class="cp-btn cp-btn-danger">Reset Grid Settings</button>
   </div>
 
-  <!-- ===== PLAYER PANE (existing controls, moved here per "Player = old design") ===== -->
+  <!-- ===== PLAYER PANE ===== -->
+  <!-- Presentational only: every control here proxies a click to its (hidden) legacy
+       button in #cp-legacy, so the toolbar.js / minimap.js / viewport.js wiring is
+       untouched. See _cpInitPlayer() / refreshPlayerControlUI() in controlPanel.js. -->
   <div class="cp-pane" id="cp-pane-player" hidden>
-    <div id="minimap-panel">
-      <canvas id="minimap-canvas" width="176" height="99"></canvas>
-      <button id="btn-minimap-lock" title="Lock minimap — prevent accidental nudge">Lock</button>
-      <div class="panel-sep" style="margin:3px 0"></div>
-      <div id="minimap-player-controls">
-        <button id="btn-player" title="Open Player window">Open Window</button>
-        <button id="btn-sync-view" title="Push current DM view to player">Sync View</button>
-        <button id="btn-auto-sync" title="Auto-send fog changes">Auto</button>
-        <button id="btn-fullscreen-player" title="Toggle player fullscreen">Fullscreen</button>
-        <button id="btn-send">Send ▶</button>
-        <div id="display-info-readout" style="font-size:10px;opacity:0.5;color:#c4b5e8;font-family:monospace;letter-spacing:0.03em;margin-top:4px;text-align:center"></div>
+    <div class="cp-group">
+      <div class="cp-labelrow">
+        <span class="cp-label">Window</span>
+        <span id="display-info-readout" class="cp-hint"></span>
+      </div>
+      <div class="cp-row">
+        <button id="cp-player-golive" class="cp-btn cp-btn-live" title="Open the Player window">
+          <!-- A monitor, not a power symbol. A power glyph's mass is its bottom arc with
+               an empty gap above, so it reads as sitting low however you centre it. This
+               shape has even mass, so its ink centre (y 3.2..11.8, centre 7.5) IS its
+               optical centre, and 7.5 is where the label's cap-height centre falls. -->
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3.2" width="10" height="7" rx="1.2"/><line x1="7" y1="10.2" x2="7" y2="11.8"/><line x1="4.8" y1="11.8" x2="9.2" y2="11.8"/></svg>
+          <span id="cp-golive-lbl">Open Window</span>
+        </button>
+        <button class="cp-btn cp-btn-outline cp-btn-icon" id="cp-player-fullscreen" title="Toggle Player fullscreen">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5 V2 H5.5"/><path d="M8.5 2 H12 V5.5"/><path d="M12 8.5 V12 H8.5"/><path d="M5.5 12 H2 V8.5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="cp-group">
+      <div class="cp-label">Preview</div>
+      <div id="minimap-panel">
+        <canvas id="minimap-canvas" width="176" height="176"></canvas>
+        <button id="cp-player-lock" class="cp-ovbtn" title="Lock minimap — prevent accidental nudge">
+          <svg class="cp-ico-off" width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.3" width="8" height="5.4" rx="1"/><path d="M4.7 6.3 V4.6 a2.3 2.3 0 0 1 4.6 0"/></svg>
+          <svg class="cp-ico-on" width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.3" width="8" height="5.4" rx="1"/><path d="M4.7 6.3 V4.6 a2.3 2.3 0 0 1 4.6 0 V6.3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="cp-group">
+      <div class="cp-label">View</div>
+      <div class="cp-row">
+        <div class="cp-stepper">
+          <button class="cp-stepbtn" id="cp-zoom-dec" title="Zoom out">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="3" y1="7" x2="11" y2="7"/></svg>
+          </button>
+          <span class="cp-stepval">
+            <input id="cp-zoom-num" type="text" inputmode="numeric" spellcheck="false" autocomplete="off" value="100" title="Player zoom">
+            <span class="cp-pct">%</span>
+          </span>
+          <button class="cp-stepbtn" id="cp-zoom-inc" title="Zoom in">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+          </button>
+        </div>
+        <button class="cp-btn cp-btn-outline cp-btn-icon" id="cp-player-syncview" title="Sync view — push the current DM view to the Player">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M2.2 7 a4.8 4.8 0 0 1 8.1 -3.5 L11.8 5"/><polyline points="11.8,1.6 11.8,5 8.4,5"/><path d="M11.8 7 a4.8 4.8 0 0 1 -8.1 3.5 L2.2 9"/><polyline points="2.2,12.4 2.2,9 5.6,9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="cp-group">
+      <div class="cp-label">Updates</div>
+      <div class="cp-row">
+        <div class="cp-tabs" id="cp-sync-row">
+          <button class="cp-segtab" data-sync="auto" title="Auto — send fog changes as you paint">Auto</button>
+          <button class="cp-segtab" data-sync="manual" title="Manual — hold changes until you press Send">Manual</button>
+        </div>
+        <button class="cp-btn cp-btn-outline cp-btn-icon" id="cp-player-send" title="Send to the Player now">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="3.5,2.3 11.8,7 3.5,11.7"/></svg>
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- Hidden legacy controls — the new UI drives these so the existing fog/grid
-       wiring (toolbar.js / fog.js / grid.js) runs unchanged. See controlPanel.js. -->
+  <!-- Hidden legacy controls — the new UI drives these so the existing fog/grid/player
+       wiring (toolbar.js / fog.js / grid.js / minimap.js) runs unchanged. See controlPanel.js. -->
   <div id="cp-legacy" aria-hidden="true">
     <input type="color" id="fog-color" value="#3a3a8c">
     <input type="color" id="grid-color" value="#ffffff">
     <input type="range" id="grid-offset-x" min="0" max="400" value="0">
     <input type="range" id="grid-offset-y" min="0" max="400" value="0">
+    <button id="btn-minimap-lock">Lock</button>
+    <button id="btn-player">Open Window</button>
+    <button id="btn-sync-view">Sync View</button>
+    <button id="btn-auto-sync">Auto</button>
+    <button id="btn-fullscreen-player">Fullscreen</button>
+    <button id="btn-send">Send</button>
     <button id="btn-grid"></button>
     <button id="btn-grid-sq" class="grid-mode-btn active"></button>
     <button id="btn-grid-hflat" class="grid-mode-btn"></button>
