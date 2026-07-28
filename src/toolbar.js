@@ -75,10 +75,6 @@ function initToolbar() {
     gridDirty = true;
     scheduleRender();
   };
-  document.getElementById('section-grid-hdr').addEventListener('click', function(e) {
-    if (e.target.closest('#btn-grid')) return;
-    document.getElementById('section-grid').classList.toggle('open');
-  });
   gridSizeInput.oninput = e => {
     gridSize = parseInt(e.target.value);
     document.getElementById('grid-size-num').value = gridSize;
@@ -401,11 +397,6 @@ function initToolbar() {
 
   document.getElementById('btn-send').onclick = sendToPlayer;
 
-  // Section expand/collapse
-  document.getElementById('fog-section-hdr').addEventListener('click', function(e) {
-    if (e.target.closest('#btn-anim')) return;
-    document.getElementById('section-fog').classList.toggle('open');
-  });
   // Polygon context panel
   document.getElementById('poly-ctx-reveal').onclick = () => {
     const poly = polygons.find(p => p.id === selectedPolygonId);
@@ -480,4 +471,8 @@ function initToolbar() {
     slider.oninput  = () => apply(slider.value);
     slider.onchange = () => localStorage.setItem('evermist-ui-zoom', slider.value);
   })();
+
+  // Tabbed Fog/Grid/Player control-panel UI (drives the wiring above). Runs after
+  // all legacy controls are wired so its buttons can delegate to them.
+  if (typeof initControlPanel === 'function') initControlPanel();
 }

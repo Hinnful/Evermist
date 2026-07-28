@@ -798,6 +798,9 @@ function restoreSceneFogSettings(scene) {
     stopFogAnim();
     if (btnAnim) btnAnim.classList.remove('active');
   }
+
+  // Reflect the restored fog settings into the redesigned control panel.
+  if (typeof refreshFogControlUI === 'function') refreshFogControlUI();
 }
 
 // ─── Anim-panel DOM helpers (moved from inline script; called by restoreSceneFogSettings + wiring) ───
