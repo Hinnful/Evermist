@@ -386,6 +386,14 @@ function initToolbar() {
   });
 
   document.getElementById('btn-player').onclick = () => {
+    // Toggle: a second press closes the Player again. window.open() on an already-open
+    // named window just re-navigates it, so without this the button looked dead.
+    if (playerWindow && !playerWindow.closed) {
+      playerWindow.close();
+      playerWindow = null;
+      if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
+      return;
+    }
     const sp = new URLSearchParams(window.location.search);
     const stress = sp.get('stress') === '1';
     const stressMs = sp.get('stressMs');
