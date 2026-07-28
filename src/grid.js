@@ -136,6 +136,8 @@ function applyGridConfig(cfg) {
     document.querySelectorAll('.grid-mode-btn').forEach(b => b.classList.remove('active'));
     const mk = gridMode === 'square' ? 'sq' : gridMode === 'hex-flat' ? 'hflat' : 'hptop';
     document.getElementById('btn-grid-' + mk).classList.add('active');
+    // Reflect the restored grid settings into the redesigned control panel.
+    if (typeof refreshGridControlUI === 'function') refreshGridControlUI();
   }
   gridDirty = true;
 }

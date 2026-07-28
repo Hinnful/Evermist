@@ -1,0 +1,379 @@
+'use strict';
+// controlPanel.js — DM-only tabbed Fog / Grid / Player control panel UI.
+//
+// This is a UI LAYER over the existing fog/grid wiring, not new logic. Every
+// interactive control drives the pre-existing (now hidden) inputs/buttons whose
+// toolbar.js / fog.js / grid.js handlers are untouched — so fog/grid state
+// mutation, scene persistence and player-sync paths behave exactly as before.
+// The new pieces here are purely presentational mechanics:
+//   • tab switching (Fog / Grid / Player)
+//   • two HSV colour pickers (SV canvas + hue + alpha + hex field) that feed the
+//     hidden <input type="color"> and the tint/opacity sliders
+//   • the animation-mode icon row (Off / Slow / Medium / Fast / Advanced) and the
+//     grid-type icon row (Off / Square / Hex-pointy / Hex-flat)
+//   • fill/knob overlays on the numeric sliders
+//   • the floating Advanced Settings panel (#anim-advanced-panel)
+//
+// Reflection hooks refreshFogControlUI()/refreshGridControlUI() are called from the
+// scene-restore paths (restoreSceneFogSettings, applyGridConfig) so the panel tracks
+// the active scene's fog/grid settings on scene switch.
+//
+// Called once from initToolbar() (DM mode only). See CLAUDE.md.
+
+let _cpFogPicker = null;
+let _cpGridPicker = null;
+
+function initControlPanel() {
+  if (typeof isPlayer !== 'undefined' && isPlayer) return;
+  if (!document.getElementById('sidebar-right')) return;
+
+  _cpInitTabs();
+  _cpInitAnimRow();
+  _cpInitGridTypeRow();
+  _cpInitFancySliders();
+  _cpFogPicker  = _cpMakePicker('fog',  'fog-color');
+  _cpGridPicker = _cpMakePicker('grid', 'grid-color');
+  _cpInitResets();
+  _cpInitAdvPanel();
+
+  refreshFogControlUI();
+  refreshGridControlUI();
+}
+
+// ─── Colour maths (HSV ⇄ hex) ─────────────────────────────────────────────────
+function _cpHexToRgb(hex) {
+  hex = String(hex || '').replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  if (hex.length !== 6) hex = '000000';
+  const n = parseInt(hex, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function _cpRgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) {
+    if (mx === r) h = ((g - b) / d) % 6;
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  return [h, mx ? d / mx : 0, mx];
+}
+function _cpHsvToRgb(h, s, v) {
+  const i = Math.floor(h / 60) % 6, f = h / 60 - Math.floor(h / 60);
+  const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+  return [[v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q]][i]
+    .map(x => Math.round(x * 255));
+}
+function _cpHsvToHex(h, s, v) {
+  return '#' + _cpHsvToRgb(h, s, v).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function _cpInitTabs() {
+  document.querySelectorAll('.cp-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const name = tab.dataset.tab;
+      document.querySelectorAll('.cp-tab').forEach(t => t.classList.toggle('active', t === tab));
+      document.querySelectorAll('.cp-pane').forEach(p => { p.hidden = p.id !== 'cp-pane-' + name; });
+      _cpUpdateAdvVisibility();
+      if (name === 'fog'  && _cpFogPicker)  _cpFogPicker.refresh();
+      if (name === 'grid' && _cpGridPicker) _cpGridPicker.refresh();
+    });
+  });
+}
+
+function _cpActiveTab() {
+  const t = document.querySelector('.cp-tab.active');
+  return t ? t.dataset.tab : 'fog';
+}
+
+// ─── HSV colour picker ────────────────────────────────────────────────────────
+// Drives the hidden `<input type="color">` (colorInputId) by setting its value and
+// dispatching an 'input' event, so the existing colour wiring runs unchanged. The
+// alpha slider / % field are the pre-existing tint/opacity inputs (their own
+// wiring applies the alpha); this only paints the gradient + hex field to match.
+function _cpMakePicker(type, colorInputId) {
+  const root = document.querySelector('.cp-picker[data-picker="' + type + '"]');
+  if (!root) return null;
+  const canvas = root.querySelector('.cp-sv-canvas');
+  const ctx    = canvas.getContext('2d');
+  const cursor = root.querySelector('.cp-sv-cursor');
+  const hueEl  = root.querySelector('.cp-hue');
+  const alphaEl = root.querySelector('.cp-alpha');
+  const swatch = root.querySelector('.cp-swatch');
+  const hexEl  = root.querySelector('.cp-hex');
+  const p = { h: 0, s: 0, v: 0 };
+  let dragging = false;
+  let svBox = null; // canvas on-screen box, captured at drag start (see pick())
+
+  function drawSV() {
+    const w = canvas.width, h = canvas.height;
+    ctx.fillStyle = 'hsl(' + p.h + ',100%,50%)';
+    ctx.fillRect(0, 0, w, h);
+    let g = ctx.createLinearGradient(0, 0, w, 0);
+    g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  }
+  function syncVisual() {
+    drawSV();
+    cursor.style.left = (p.s * 100) + '%';
+    cursor.style.top  = ((1 - p.v) * 100) + '%';
+    if (document.activeElement !== hueEl) hueEl.value = Math.round(p.h);
+    const hex = _cpHsvToHex(p.h, p.s, p.v);
+    swatch.style.background = hex;
+    if (document.activeElement !== hexEl) hexEl.value = hex.slice(1).toUpperCase();
+    if (alphaEl) {
+      // transparent → selected colour, over a checkerboard, so the track reflects the
+      // picked colour (Figma-style) and stays visible even on pure black. The checkerboard
+      // is two offset 45° linear-gradients over the CSS base colour — NOT a conic gradient,
+      // which fringed visible colour at the track edges on Chromium < 128 (Electron 28).
+      const rgb = _cpHexToRgb(hex).join(',');
+      const checker = 'linear-gradient(45deg, #2b2b2b 25%, transparent 25%, transparent 75%, #2b2b2b 75%)';
+      alphaEl.style.backgroundImage =
+        'linear-gradient(to right, rgba(' + rgb + ',0), rgb(' + rgb + ')), ' + checker + ', ' + checker;
+      alphaEl.style.backgroundSize = 'auto, 10px 10px, 10px 10px';
+      alphaEl.style.backgroundPosition = '0 0, 0 0, 5px 5px';
+    }
+  }
+  function commit() {
+    const hex = _cpHsvToHex(p.h, p.s, p.v);
+    const inp = document.getElementById(colorInputId);
+    if (inp) { inp.value = hex; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+    syncVisual();
+  }
+  function pick(e) {
+    // The SV canvas lives under an ancestor CSS `zoom` (#sidebar-right). On Chromium
+    // < 128 (Electron 28 ships Chromium 120) getBoundingClientRect() reports the
+    // *layout* box while pointer clientX/Y are in the zoomed on-screen space, so the
+    // two disagree and the pick snaps to a corner (v→0 = #000000). Rather than trust
+    // gBCR, reconstruct the true on-screen box at drag start from the pointer's own
+    // clientX/Y and offsetX/Y (always the same space) plus offsetWidth × zoom. This is
+    // identical to gBCR on modern Chromium and correct on old Chromium alike.
+    if (e.type === 'mousedown') {
+      const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1;
+      svBox = {
+        left: e.clientX - e.offsetX,
+        top:  e.clientY - e.offsetY,
+        w: (canvas.offsetWidth  || 1) * z,
+        h: (canvas.offsetHeight || 1) * z,
+      };
+    }
+    if (!svBox || !svBox.w) return;
+    p.s = Math.max(0, Math.min(1, (e.clientX - svBox.left) / svBox.w));
+    p.v = Math.max(0, Math.min(1, 1 - (e.clientY - svBox.top) / svBox.h));
+    commit();
+  }
+
+  canvas.addEventListener('mousedown', e => { dragging = true; pick(e); e.preventDefault(); });
+  window.addEventListener('mousemove', e => { if (dragging) pick(e); });
+  window.addEventListener('mouseup',   () => { dragging = false; });
+  hueEl.addEventListener('input', () => { p.h = +hueEl.value; commit(); });
+  hexEl.addEventListener('change', () => {
+    let v = hexEl.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
+    if (v.length === 3) v = v.split('').map(c => c + c).join('');
+    if (v.length === 6) { const hsv = _cpRgbToHsv.apply(null, _cpHexToRgb(v)); p.h = hsv[0]; p.s = hsv[1]; p.v = hsv[2]; commit(); }
+    else syncVisual();
+  });
+  hexEl.addEventListener('keydown', e => { if (e.key === 'Enter') hexEl.blur(); });
+
+  return {
+    refresh() {
+      const inp = document.getElementById(colorInputId);
+      const hsv = _cpRgbToHsv.apply(null, _cpHexToRgb(inp ? inp.value : '#000000'));
+      p.h = hsv[0]; p.s = hsv[1]; p.v = hsv[2];
+      syncVisual();
+    },
+  };
+}
+
+// ─── Animation-mode icon row (Off / Slow / Medium / Fast / Advanced) ──────────
+function _cpInitAnimRow() {
+  const row = document.getElementById('cp-anim-row');
+  if (!row) return;
+  const btnAnim = () => document.getElementById('btn-anim');
+  const btnAdv  = () => document.getElementById('btn-anim-advanced');
+  const closeAdv = () => { if (btnAdv().classList.contains('active')) btnAdv().click(); };
+
+  row.querySelectorAll('[data-anim]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.anim;
+      const animOn = btnAnim().classList.contains('active');
+      if (mode === 'off') { closeAdv(); if (animOn) btnAnim().click(); }
+      else if (mode === 'advanced') { btnAdv().click(); }
+      else { closeAdv(); document.getElementById('anim-preset-' + (mode === 'slow' ? 'calm' : mode === 'medium' ? 'default' : 'fast')).click(); }
+      setAnimModeUI();
+    });
+  });
+}
+
+function setAnimModeUI() {
+  const row = document.getElementById('cp-anim-row');
+  if (!row) return;
+  const animOn = document.getElementById('btn-anim').classList.contains('active');
+  const advOn  = document.getElementById('btn-anim-advanced').classList.contains('active');
+  let active = 'off';
+  if (advOn) active = 'advanced';
+  else if (animOn) {
+    const preset = document.querySelector('.anim-preset-btn.active');
+    if (preset) active = preset.id.endsWith('calm') ? 'slow' : preset.id.endsWith('default') ? 'medium' : 'fast';
+    else active = null; // enabled with custom (non-preset) settings
+  }
+  row.querySelectorAll('[data-anim]').forEach(b => b.classList.toggle('active', b.dataset.anim === active));
+  _cpUpdateAdvVisibility();
+}
+
+// ─── Grid-type icon row (Off / Square / Hex-pointy / Hex-flat) ────────────────
+function _cpInitGridTypeRow() {
+  const row = document.getElementById('cp-gridtype-row');
+  if (!row) return;
+  const TYPE_TO_BTN = { square: 'btn-grid-sq', 'hex-pointy': 'btn-grid-hptop', 'hex-flat': 'btn-grid-hflat' };
+  const btnGrid = () => document.getElementById('btn-grid');
+
+  row.querySelectorAll('[data-gtype]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = btn.dataset.gtype;
+      const gridOn = btnGrid().classList.contains('active');
+      if (t === 'off') { if (gridOn) btnGrid().click(); }
+      else {
+        document.getElementById(TYPE_TO_BTN[t]).click();  // sets gridMode
+        if (!btnGrid().classList.contains('active')) btnGrid().click(); // picking a type turns the grid on
+      }
+      setGridTypeUI();
+    });
+  });
+}
+
+function setGridTypeUI() {
+  const row = document.getElementById('cp-gridtype-row');
+  if (!row) return;
+  const gridOn = document.getElementById('btn-grid').classList.contains('active');
+  let active = 'off';
+  if (gridOn) {
+    const m = document.querySelector('.grid-mode-btn.active');
+    active = !m ? 'square' : m.id.endsWith('sq') ? 'square' : m.id.endsWith('hptop') ? 'hex-pointy' : 'hex-flat';
+  }
+  row.querySelectorAll('[data-gtype]').forEach(b => b.classList.toggle('active', b.dataset.gtype === active));
+}
+
+// ─── Slider fill/knob overlays ────────────────────────────────────────────────
+// The <input type="range"> sits transparent on top of the wrapper; these divs draw
+// the visible track fill + knob. The range keeps its own value + wiring.
+const _CP_FANCY = [
+  ['grid-size', 'grid-size-num'],
+  ['grid-thickness', 'grid-thickness-num'],
+  ['anim-speed', 'anim-speed-num'],
+  ['anim-morph-speed', 'anim-morph-num'],
+  ['anim-drift', 'anim-drift-num'],
+  ['anim-warp-str', 'anim-warp-num'],
+  ['anim-warp-rad', 'anim-warp-rad-num'],
+  ['anim-alpha-amp', 'anim-alpha-amp-num'],
+  ['fog-feather', 'fog-feather-num'],
+];
+
+function _cpFancy(range) {
+  const wrap = range.closest('.cp-slider');
+  if (!wrap) return;
+  const fill = wrap.querySelector('.cp-slider-fill');
+  const knob = wrap.querySelector('.cp-slider-knob');
+  const sync = () => {
+    const min = +range.min || 0, max = +range.max || 100;
+    const pct = max > min ? ((+range.value - min) / (max - min)) * 100 : 0;
+    if (fill) fill.style.width = pct + '%';
+    if (knob) knob.style.left = pct + '%';
+  };
+  range.addEventListener('input', sync);
+  range._cpSync = sync;
+  sync();
+}
+
+function _cpInitFancySliders() {
+  _CP_FANCY.forEach(([rid, nid]) => {
+    const range = document.getElementById(rid);
+    if (!range) return;
+    _cpFancy(range);
+    const num = document.getElementById(nid);
+    if (num) ['input', 'change'].forEach(ev => num.addEventListener(ev, () => range._cpSync && range._cpSync()));
+  });
+}
+
+function _cpSyncFancy(ids) {
+  ids.forEach(id => { const el = document.getElementById(id); if (el && el._cpSync) el._cpSync(); });
+}
+
+// ─── Reset buttons ────────────────────────────────────────────────────────────
+function _cpInitResets() {
+  const gridReset = document.getElementById('cp-grid-reset');
+  if (gridReset) gridReset.addEventListener('click', () => {
+    document.getElementById('btn-grid-reset').click(); // resets grid globals + legacy DOM
+    refreshGridControlUI();
+  });
+
+  // Fog has no single legacy reset — compose one: default colour + tint + feather + Default preset.
+  const fogReset = document.getElementById('cp-fog-reset');
+  if (fogReset) fogReset.addEventListener('click', () => {
+    const fire = (id, val) => { const el = document.getElementById(id); if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); } };
+    fire('fog-color', '#3a3a8c');
+    fire('fog-tint-alpha', 18);
+    fire('fog-feather', 12);
+    document.getElementById('anim-preset-default').click();
+    refreshFogControlUI();
+  });
+}
+
+// ─── Floating Advanced Settings panel ─────────────────────────────────────────
+function _cpInitAdvPanel() {
+  const close = document.getElementById('cp-adv-close');
+  if (close) close.addEventListener('click', () => {
+    if (document.getElementById('btn-anim-advanced').classList.contains('active')) document.getElementById('btn-anim-advanced').click();
+    setAnimModeUI();
+  });
+  window.addEventListener('resize', _cpPositionAdvPanel);
+  const uiScale = document.getElementById('ui-scale');
+  if (uiScale) uiScale.addEventListener('input', _cpPositionAdvPanel);
+}
+
+function _cpUpdateAdvVisibility() {
+  const panel = document.getElementById('anim-advanced-panel');
+  if (!panel) return;
+  const advOn = document.getElementById('btn-anim-advanced').classList.contains('active');
+  const show = advOn && _cpActiveTab() === 'fog';
+  panel.style.display = show ? 'block' : 'none';
+  if (show) { _cpPositionAdvPanel(); _cpSyncFancy(['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp', 'fog-feather']); }
+}
+
+// Place the panel just left of the sidebar, compensating for the panel's own `zoom`.
+// Derived from zoom-independent metrics (window.innerWidth + the sidebar's known CSS
+// width) rather than getBoundingClientRect(), which disagrees with an ancestor CSS
+// `zoom` on Chromium < 128 (Electron 28 = Chromium 120) and threw the panel into
+// mid-screen. innerWidth is unaffected by element `zoom`, so this is engine-agnostic.
+const _CP_SIDEBAR_W = 230; // #sidebar-right CSS width (px)
+const _CP_ANCHOR_PAD = 12; // #sidebar-right-anchor right/top padding (px)
+const _CP_ADV_W = 270;     // #anim-advanced-panel CSS width (px)
+const _CP_ADV_GAP = 8;     // gap between panel and sidebar (px)
+function _cpPositionAdvPanel() {
+  const panel = document.getElementById('anim-advanced-panel');
+  if (!panel || panel.style.display === 'none') return;
+  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1.2;
+  const sidebarLeft = window.innerWidth - _CP_ANCHOR_PAD - _CP_SIDEBAR_W * z;
+  // panel's own `zoom` means its style.left/top are in pre-zoom coordinates → divide by z.
+  panel.style.left = ((sidebarLeft - _CP_ADV_GAP) / z - _CP_ADV_W) + 'px';
+  panel.style.top  = (_CP_ANCHOR_PAD / z) + 'px';
+}
+
+// ─── Reflection hooks (called from scene-restore paths) ───────────────────────
+function refreshFogControlUI() {
+  if (_cpFogPicker) _cpFogPicker.refresh();
+  _cpSyncFancy(['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp', 'fog-feather']);
+  setAnimModeUI();
+}
+
+function refreshGridControlUI() {
+  if (_cpGridPicker) _cpGridPicker.refresh();
+  _cpSyncFancy(['grid-size', 'grid-thickness']);
+  setGridTypeUI();
+}

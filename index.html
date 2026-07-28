@@ -48,45 +48,220 @@
     pointer-events: none;
     gap: 6px;
   }
+  /* ===== CONTROL PANEL (Fog / Grid / Player tabs) — new design system ===== */
   #sidebar-right {
     zoom: var(--ui-zoom, 1.2);
     pointer-events: all;
-    width: 176px;
+    width: 230px;
     display: flex;
     flex-direction: column;
     gap: 0;
-    padding: 8px 6px;
-    flex: 1;
-    min-height: 0;
+    padding: 0;
+    background: #1a1a1c;
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    border-radius: 12px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.36);
+    max-height: calc((100vh - 24px) / var(--ui-zoom, 1.2));
     overflow-y: auto;
     overflow-x: visible;
   }
   #sidebar-right::-webkit-scrollbar { width: 0; }
+  #cp-legacy { display: none; }
 
-  #sidebar-right button {
-    width: 100%;
-    font-size: 12px;
-    font-weight: 500;
-    padding: 7px 10px;
-    border-radius: 9px;
-    border: none;
-    background: transparent;
-    color: #b8b0d0;
-    cursor: pointer;
-    text-align: left;
-    white-space: nowrap;
-    transition: background 0.14s, color 0.14s, box-shadow 0.14s;
-    font-family: system-ui, -apple-system, sans-serif;
+  /* Tabs */
+  .cp-tabwrap { padding: 7px; }
+  .cp-tabs {
+    display: flex; align-items: center; gap: 3px;
+    padding: 4px; border-radius: 10px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.045);
   }
-  #sidebar-right button:hover {
-    background: rgba(120, 72, 220, 0.2);
-    color: #ddd4f8;
+  .cp-tab {
+    flex: 1; height: 30px; padding: 0;
+    border: 1.5px solid transparent; border-radius: 7px;
+    background: transparent; color: #7f858e;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
   }
-  #sidebar-right button.active {
-    background: linear-gradient(135deg, #3d6ab0 0%, #6a38aa 100%);
-    color: #fff;
-    box-shadow: 0 2px 10px rgba(90, 50, 190, 0.45), inset 0 1px 0 rgba(255,255,255,0.13);
+  .cp-tab:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-tab.active {
+    border-color: rgba(90, 140, 235, 0.6);
+    background: rgba(70, 120, 220, 0.11);
+    color: #8fb6ff;
   }
+
+  /* Panes */
+  .cp-pane { padding: 18px 10px; display: flex; flex-direction: column; gap: 22px; }
+  .cp-pane[hidden] { display: none; }
+  .cp-group { display: flex; flex-direction: column; gap: 12px; }
+  .cp-label {
+    font: 600 11px/1 system-ui, -apple-system, sans-serif;
+    color: #b8bdc6; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+
+  /* Icon rows (animation mode / grid type) */
+  .cp-iconrow { display: flex; gap: 2px; }
+  .cp-iconrow.cp-iconrow-gap { gap: 6px; }
+  .cp-iconbtn {
+    flex: 1; aspect-ratio: 1; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid transparent; border-radius: 6px;
+    background: transparent; color: #9aa0aa; cursor: pointer;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .cp-iconbtn:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-iconbtn.active {
+    border-color: rgba(90, 140, 235, 0.6);
+    background: rgba(70, 120, 220, 0.11);
+    color: #8fb6ff;
+  }
+
+  /* Icon rows rendered as an inset segment — match the bottom-toolbar fog-mode group
+     (black rounded box, icon-sized buttons, blue-on-select, no outline). Used by the
+     Grid-type row and the Fog Animation row. */
+  .cp-seg {
+    align-self: flex-start;          /* box width follows its icons, not the full sidebar */
+    gap: 3px; padding: 4px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.045);
+  }
+  .cp-seg .cp-iconbtn {
+    flex: none; aspect-ratio: auto;
+    width: 30px; height: 30px;
+    border: none; border-radius: 7px;
+    color: #7f858e;
+  }
+  .cp-seg .cp-iconbtn:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-seg .cp-iconbtn.active { border: none; background: transparent; color: #6ea8ff; }
+
+  /* HSV colour picker */
+  .cp-picker { display: flex; flex-direction: column; gap: 8px; }
+  .cp-sv { position: relative; border-radius: 6px; overflow: hidden; }
+  .cp-sv-canvas { display: block; width: 100%; height: 130px; cursor: crosshair; }
+  .cp-sv-cursor {
+    position: absolute; left: 0; top: 0;
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid #fff; transform: translate(-50%, -50%); pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.7);
+  }
+  input[type=range].ev-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 10px; border-radius: 5px;
+    outline: none; cursor: pointer; display: block;
+  }
+  input[type=range].ev-slider::-webkit-slider-runnable-track { background: transparent; height: 10px; border-radius: 5px; }
+  input[type=range].ev-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: #e6e7e9; box-shadow: 0 1px 3px rgba(0,0,0,0.6); cursor: grab; margin-top: -2px;
+  }
+  .cp-hue { background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+  /* Opacity/strength track: checkerboard base (the light square) + 1px frame here; the
+     dark checker squares and the transparent→selected-colour overlay are layered on top
+     by controlPanel.js so the track tracks the picked colour. The checkerboard is built
+     from linear-gradients (NOT conic — conic fringed visible colour at the edges on
+     Chromium < 128 / Electron 28). accent-color pinned so no native track tint leaks. */
+  .cp-alpha {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background-color: #4a4a4a;
+    accent-color: transparent;
+  }
+
+  /* Colour field (swatch + hex + alpha%) */
+  .cp-field {
+    display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 10px;
+    border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+  }
+  .cp-swatch { width: 16px; height: 16px; border-radius: 4px; flex: none; border: 1px solid rgba(255,255,255,0.16); }
+  .cp-hash { font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace; color: #7f858e; flex: none; }
+  .cp-hex {
+    flex: 1; min-width: 0; margin-left: -4px; border: none; background: transparent; color: #d5d8dd;
+    font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace; letter-spacing: 0.02em;
+  }
+  .cp-hex:focus { outline: none; }
+  .cp-fdiv { width: 1px; height: 16px; background: rgba(255,255,255,0.08); flex: none; }
+  .cp-alphanum {
+    width: 26px; flex: none; border: none; background: transparent; color: #c4c8ce; text-align: right;
+    font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  }
+  .cp-alphanum:focus { outline: none; }
+  .cp-pct { font: 500 11px/1 system-ui, -apple-system, sans-serif; color: #7c8088; flex: none; }
+
+  /* Buttons */
+  .cp-btnrow { display: flex; gap: 6px; }
+  .cp-btnrow .cp-btn { flex: 1; }
+  .cp-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 100%; height: 30px; padding: 0 12px; border-radius: 7px;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .cp-btn-outline { border: 1.5px solid rgba(255,255,255,0.1); background: transparent; color: #d5d8dd; }
+  .cp-btn-outline:hover { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.05); color: #d5d8dd; }
+  .cp-btn-danger { border: 1.5px solid rgba(200,70,60,0.22); background: rgba(200,50,40,0.07); color: rgba(240,100,90,0.85); }
+  .cp-btn-danger:hover { border-color: rgba(200,70,60,0.4); background: rgba(200,50,40,0.15); color: rgba(240,100,90,0.95); }
+
+  /* Slider rows (grid resolution / line width + advanced sliders) */
+  .cp-slrows { display: flex; flex-direction: column; gap: 10px; }
+  .cp-slrow { display: grid; grid-template-columns: 42px 1fr 46px; align-items: center; column-gap: 12px; }
+  .cp-rowlbl { font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #949aa4; }
+  .cp-slider { position: relative; height: 16px; display: flex; align-items: center; }
+  .cp-slider-track, .cp-slider-fill { position: absolute; top: 50%; transform: translateY(-50%); height: 3px; border-radius: 2px; pointer-events: none; }
+  .cp-slider-track { left: 0; right: 0; background: rgba(255,255,255,0.1); }
+  .cp-slider-fill { left: 0; width: 0; background: rgba(110,168,255,0.85); }
+  .cp-slider-knob {
+    position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%);
+    width: 11px; height: 11px; border-radius: 50%; background: #e6e7e9;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.55); pointer-events: none; z-index: 1;
+  }
+  .cp-slider input[type=range] {
+    position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+    -webkit-appearance: none; appearance: none; background: transparent; opacity: 0; cursor: pointer;
+  }
+
+  /* Number chips */
+  .cp-chip {
+    display: inline-flex; align-items: center; justify-content: center; height: 26px; padding: 0 7px;
+    border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09);
+    color: #e2e4e8; font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  }
+  input.cp-chip-num { width: 46px; text-align: center; }
+  .cp-chip:focus, input.cp-chip:focus { outline: none; border-color: rgba(90,140,235,0.6); background: rgba(255,255,255,0.07); }
+  .cp-chip-pre { flex: 1; height: 30px; gap: 3px; padding: 0 8px; }
+  .cp-chip-prefix { font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #7f858e; flex: none; }
+  .cp-chip-pre input {
+    /* flex-basis:0 + width:0 so old Chromium (Electron 28) shrinks the field instead of
+       falling back to its intrinsic width and overflowing the chip on the right. */
+    flex: 1 1 0; width: 0; min-width: 0; border: none; background: transparent; text-align: right; color: #e2e4e8;
+    font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  }
+  .cp-chip-pre input:focus { outline: none; }
+
+  /* Floating Advanced Settings panel */
+  #anim-advanced-panel {
+    position: fixed; left: 0; top: 0; z-index: 100; width: 270px;
+    zoom: var(--ui-zoom, 1.2);
+    background: #1a1a1c; border: 1px solid rgba(255,255,255,0.055); border-radius: 10px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.36); overflow: hidden; display: none;
+    animation: cpAdvIn .15s ease;
+  }
+  @keyframes cpAdvIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
+  .cp-adv-head {
+    padding: 9px 9px 2px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cp-adv-title { font: 600 12px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd; }
+  .cp-adv-close {
+    width: 22px; height: 22px; flex: none; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: none; background: transparent; color: #9aa0aa; border-radius: 6px; cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+  .cp-adv-close:hover { background: rgba(255,255,255,0.05); color: #d5d8dd; }
+  .cp-adv-body { padding: 8px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .cp-advrow { display: grid; grid-template-columns: 46px 1fr 46px; align-items: center; column-gap: 7px; }
+  .cp-advlbl { font: 400 12px/1 system-ui, -apple-system, sans-serif; color: #9aa0aa; }
 
   /* Section header row: icon + label + chevron */
   .rp-hdr {
@@ -544,18 +719,16 @@
   #poly-ctx-del-vertex { padding: 2px 5px; font-size: 10px; color: #c07070; border-color: rgba(200,80,80,0.25); }
 
   /* ===== MINIMAP PANEL ===== */
+  /* Player pane hosts the (old-design) minimap + player controls. It lives inside
+     #sidebar-right, which already applies --ui-zoom, so no zoom/frame of its own. */
   #minimap-panel {
-    zoom: var(--ui-zoom, 1.2);
-    width: 176px;
+    width: 100%;
     pointer-events: all;
-    padding: 6px;
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 3px;
     user-select: none;
-    margin-top: auto;
-    flex-shrink: 0;
   }
   #minimap-canvas {
     display: block;
@@ -1119,156 +1292,237 @@
 <div id="sidebar-right-anchor">
 
 <!-- Settings panel -->
-<div id="sidebar-right" class="glass-panel">
+<div id="sidebar-right">
 
-  <!-- Grid -->
-  <div class="section open" id="section-grid">
-    <div id="section-grid-hdr" class="section-hdr rp-hdr">
-      <svg class="rp-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-      <span class="rp-lbl">Grid</span>
-      <button id="btn-grid" class="mini-toggle" title="Enable/disable grid (G)"></button>
-      <span class="chevron">▾</span>
-    </div>
-    <div class="section-body">
-      <div class="slider-row">
-        <input type="range" id="grid-size" min="10" max="400" value="70" title="Grid cell size">
-        <input type="number" id="grid-size-num" class="grid-num" min="10" max="400" value="70" title="Cell size (px)">
-      </div>
-      <div class="slider-row">
-        <input type="range" id="grid-offset-x" min="0" max="400" value="0" title="Grid offset X">
-        <input type="number" id="grid-offset-x-num" class="grid-num" min="0" max="400" value="0" title="Offset X (px)">
-        <span class="slider-xy-tag">X</span>
-      </div>
-      <div class="slider-row">
-        <input type="range" id="grid-offset-y" min="0" max="400" value="0" title="Grid offset Y">
-        <input type="number" id="grid-offset-y-num" class="grid-num" min="0" max="400" value="0" title="Offset Y (px)">
-        <span class="slider-xy-tag">Y</span>
-      </div>
-      <div class="slider-row">
-        <input type="range" id="grid-thickness" min="1" max="10" value="1" title="Line thickness">
-        <input type="number" id="grid-thickness-num" class="grid-num" min="1" max="10" value="1" title="Line thickness (px)">
-        <span class="slider-xy-tag" style="min-width:14px">px</span>
-      </div>
-      <div class="section-row" style="gap:2px;margin-top:4px">
-        <button id="btn-grid-sq" class="grid-mode-btn active" title="Square grid">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="1" width="5" height="5" rx="0.5"/><rect x="8" y="1" width="5" height="5" rx="0.5"/><rect x="1" y="8" width="5" height="5" rx="0.5"/><rect x="8" y="8" width="5" height="5" rx="0.5"/></svg>
-        </button>
-        <button id="btn-grid-hflat" class="grid-mode-btn" title="Hex flat-top">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12.5,7 9.75,2.24 4.25,2.24 1.5,7 4.25,11.76 9.75,11.76"/></svg>
-        </button>
-        <button id="btn-grid-hptop" class="grid-mode-btn" title="Hex pointy-top">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="7,1.5 11.76,4.25 11.76,9.75 7,12.5 2.24,9.75 2.24,4.25"/></svg>
-        </button>
-      </div>
-      <div class="slider-row" style="margin-top:2px">
-        <input type="color" id="grid-color" value="#ffffff" title="Grid color">
-        <input type="range" id="grid-opacity" min="0" max="100" value="25" title="Grid opacity">
-        <input type="number" id="grid-opacity-num" class="grid-num" min="0" max="100" value="25" title="Opacity %">
-      </div>
-      <button id="btn-grid-reset" title="Reset grid to defaults">Reset grid</button>
+  <!-- Tab bar -->
+  <div class="cp-tabwrap">
+    <div class="cp-tabs">
+      <button class="cp-tab active" data-tab="fog">Fog</button>
+      <button class="cp-tab" data-tab="grid">Grid</button>
+      <button class="cp-tab" data-tab="player">Player</button>
     </div>
   </div>
 
-  <div class="panel-sep"></div>
-
-  <!-- Fog -->
-  <div class="section open" id="section-fog">
-    <div class="section-hdr rp-hdr" id="fog-section-hdr">
-      <svg class="rp-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
-      <span class="rp-lbl">Fog</span>
-      <button id="btn-anim" class="mini-toggle" title="Toggle fog animation (A)"></button>
-      <span class="chevron">▾</span>
+  <!-- ===== FOG PANE ===== -->
+  <div class="cp-pane" id="cp-pane-fog">
+    <div class="cp-group">
+      <div class="cp-label">Control</div>
+      <div class="cp-btnrow">
+        <button id="btn-clear-fog" class="cp-btn cp-btn-outline">Reveal All</button>
+        <button id="btn-fill-fog" class="cp-btn cp-btn-outline">Shroud All</button>
+      </div>
     </div>
-    <div class="section-body">
-      <div class="section-row" style="gap:4px">
-        <button id="btn-fill-fog" style="flex:1">Shroud All</button>
-        <button id="btn-clear-fog" style="flex:1">Reveal All</button>
-      </div>
-      <div class="slider-row" style="margin-top:4px">
-        <input type="color" id="fog-color" value="#3a3a8c" title="Fog color">
-        <input type="range" id="fog-tint-alpha" min="0" max="100" value="18" title="Tint strength">
-        <input type="number" id="fog-tint-alpha-num" class="grid-num" min="0" max="100" value="18" title="Tint %" style="width:42px">
-      </div>
-      <div class="section-row" style="gap:2px;margin-top:4px">
-        <button id="anim-preset-calm" class="grid-mode-btn anim-preset-btn" title="Calm — gentle drift">
-          <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 3 C3 2, 5 2, 8 3 C11 4, 13 4, 15 3"/><path d="M1 6 C3 5, 5 5, 8 6 C11 7, 13 7, 15 6"/><path d="M1 9 C3 8, 5 8, 8 9 C11 10, 13 10, 15 9"/></svg>
+
+    <div class="cp-group">
+      <div class="cp-label">Animation</div>
+      <div class="cp-iconrow cp-seg" id="cp-anim-row">
+        <button class="cp-iconbtn" data-anim="off" title="Off">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4.5"/><line x1="4.2" y1="4.2" x2="9.8" y2="9.8"/></svg>
         </button>
-        <button id="anim-preset-default" class="grid-mode-btn anim-preset-btn active" title="Default — balanced fog">
-          <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 3 C3 1, 5 1, 8 3 C11 5, 13 5, 15 3"/><path d="M1 6 C3 4, 5 4, 8 6 C11 8, 13 8, 15 6"/><path d="M1 9 C3 7, 5 7, 8 9 C11 11, 13 11, 15 9"/></svg>
+        <button class="cp-iconbtn" data-anim="slow" title="Slow — gentle drift">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 7 C3.5 3.5 6 3.5 7 7 C8 10.5 10.5 10.5 12.5 7"/></svg>
         </button>
-        <button id="anim-preset-fast" class="grid-mode-btn anim-preset-btn" title="Fast — lively fog">
-          <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 4 L4 1 L7 5 L10 1 L13 4 L15 2"/><path d="M1 7 L3 5 L6 8 L9 4 L12 8 L15 6"/><path d="M1 11 L4 8 L7 11 L10 8 L13 11 L15 9"/></svg>
+        <button class="cp-iconbtn" data-anim="medium" title="Medium — balanced fog">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1 5.5 C2 3.5 3.5 3.5 4.5 5.5 C5.5 7.5 7 7.5 8 5.5 C9 3.5 10.5 3.5 11.5 5.5 C12.5 7.5 13 7.5 13.5 5.5"/><path d="M0.5 8.5 C1.5 6.5 3 6.5 4 8.5 C5 10.5 6.5 10.5 7.5 8.5 C8.5 6.5 10 6.5 11 8.5 C12 10.5 13 10.5 13.5 8.5"/></svg>
         </button>
-        <button id="btn-anim-advanced" class="grid-mode-btn" title="Advanced animation settings" style="flex:none;width:28px">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <button class="cp-iconbtn" data-anim="fast" title="Fast — lively fog">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M0.5 4.5 C1.2 3 2.3 3 3 4.5 C3.7 6 4.8 6 5.5 4.5 C6.2 3 7.3 3 8 4.5 C8.7 6 9.8 6 10.5 4.5 C11.2 3 12.3 3 13 4.5"/><path d="M0.5 7 C1.2 5.5 2.3 5.5 3 7 C3.7 8.5 4.8 8.5 5.5 7 C6.2 5.5 7.3 5.5 8 7 C8.7 8.5 9.8 8.5 10.5 7 C11.2 5.5 12.3 5.5 13 7"/><path d="M0.5 9.5 C1.2 8 2.3 8 3 9.5 C3.7 11 4.8 11 5.5 9.5 C6.2 8 7.3 8 8 9.5 C8.7 11 9.8 11 10.5 9.5 C11.2 8 12.3 8 13 9.5"/></svg>
         </button>
-        <button id="btn-anim-reset" class="grid-mode-btn" title="Reset to preset defaults" style="flex:none;width:28px">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        <button class="cp-iconbtn" data-anim="advanced" title="Advanced settings">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><line x1="1.5" y1="4" x2="12.5" y2="4"/><circle cx="8.5" cy="4" r="1.5"/><line x1="1.5" y1="7.5" x2="12.5" y2="7.5"/><circle cx="4.5" cy="7.5" r="1.5"/><line x1="1.5" y1="11" x2="12.5" y2="11"/><circle cx="9.5" cy="11" r="1.5"/></svg>
         </button>
       </div>
-      <div id="anim-advanced-panel" style="display:none;margin-top:2px">
-        <div class="slider-row">
-          <span class="slider-xy-tag" style="min-width:38px">Speed</span>
-          <input type="range" id="anim-speed" min="0" max="300" value="100" title="Overall animation speed multiplier">
-          <input type="number" id="anim-speed-num" class="grid-num" min="0" max="300" value="100" step="1" title="Speed %">
+    </div>
+
+    <div class="cp-group">
+      <div class="cp-label">Custom Color</div>
+      <div class="cp-picker" data-picker="fog">
+        <div class="cp-sv">
+          <canvas class="cp-sv-canvas" width="202" height="130"></canvas>
+          <div class="cp-sv-cursor"></div>
         </div>
-        <div class="slider-row">
-          <span class="slider-xy-tag" style="min-width:38px">Drift</span>
-          <input type="range" id="anim-drift" min="0" max="1000" value="500" title="Drift speed (spatial movement)">
-          <input type="number" id="anim-drift-num" class="grid-num" min="0" max="1000" value="1.00" step="0.01" title="Drift multiplier" style="width:42px">
+        <input type="range" class="ev-slider cp-hue" min="0" max="360" value="0" title="Hue">
+        <input type="range" id="fog-tint-alpha" class="ev-slider cp-alpha" min="0" max="100" value="18" title="Tint strength">
+        <div class="cp-field">
+          <span class="cp-swatch"></span>
+          <span class="cp-hash">#</span>
+          <input class="cp-hex" type="text" spellcheck="false" autocomplete="off" maxlength="7">
+          <span class="cp-fdiv"></span>
+          <input id="fog-tint-alpha-num" class="cp-alphanum" type="text" inputmode="numeric" value="18">
+          <span class="cp-pct">%</span>
         </div>
-        <div class="slider-row">
-          <span class="slider-xy-tag" style="min-width:38px">Morph</span>
-          <input type="range" id="anim-morph-speed" min="0" max="1000" value="500" title="Texture morphing speed">
-          <input type="number" id="anim-morph-num" class="grid-num" min="0" max="1000" value="0.35" step="0.01" title="Morph speed" style="width:42px">
+      </div>
+    </div>
+
+    <button id="cp-fog-reset" class="cp-btn cp-btn-danger">Reset Fog Settings</button>
+  </div>
+
+  <!-- ===== GRID PANE ===== -->
+  <div class="cp-pane" id="cp-pane-grid" hidden>
+    <div class="cp-group">
+      <div class="cp-label">Grid Type</div>
+      <div class="cp-iconrow cp-seg" id="cp-gridtype-row">
+        <button class="cp-iconbtn" data-gtype="off" title="Off">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4.5"/><line x1="4.2" y1="4.2" x2="9.8" y2="9.8"/></svg>
+        </button>
+        <button class="cp-iconbtn" data-gtype="square" title="Square">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="11" height="11" rx="1"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="1.5" y1="9" x2="12.5" y2="9"/><line x1="5.5" y1="1.5" x2="5.5" y2="12.5"/><line x1="9" y1="1.5" x2="9" y2="12.5"/></svg>
+        </button>
+        <button class="cp-iconbtn" data-gtype="hex-pointy" title="Hex — pointy top">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="7,1 12,4 12,10 7,13 2,10 2,4"/></svg>
+        </button>
+        <button class="cp-iconbtn" data-gtype="hex-flat" title="Hex — flat top">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="4,2 10,2 13,7 10,12 4,12 1,7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="cp-group">
+      <div class="cp-label">Grid</div>
+      <div class="cp-slrows">
+        <div class="cp-slrow">
+          <span class="cp-rowlbl">Size</span>
+          <div class="cp-slider">
+            <div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div>
+            <input type="range" id="grid-size" min="10" max="400" value="70" title="Grid cell size">
+          </div>
+          <input type="text" id="grid-size-num" class="cp-chip cp-chip-num" inputmode="numeric" value="70">
         </div>
-        <div class="slider-row">
-          <span class="slider-xy-tag" style="min-width:38px">Warp</span>
-          <input type="range" id="anim-warp-str" min="0" max="1000" value="500" title="Domain warp strength">
-          <input type="number" id="anim-warp-num" class="grid-num" min="0" max="1000" value="0.15" step="0.01" title="Warp strength" style="width:42px">
+        <div class="cp-slrow">
+          <span class="cp-rowlbl">Width</span>
+          <div class="cp-slider">
+            <div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div>
+            <input type="range" id="grid-thickness" min="1" max="10" value="1" title="Line thickness">
+          </div>
+          <input type="text" id="grid-thickness-num" class="cp-chip cp-chip-num" inputmode="numeric" value="1">
         </div>
-        <div class="slider-row">
-          <span class="slider-xy-tag" style="min-width:38px">WarpR</span>
-          <input type="range" id="anim-warp-rad" min="0" max="1000" value="500" title="Warp radius">
-          <input type="number" id="anim-warp-rad-num" class="grid-num" min="0" max="1000" value="0.08" step="0.01" title="Warp radius" style="width:42px">
+      </div>
+    </div>
+
+    <div class="cp-group">
+      <div class="cp-label">Offset</div>
+      <div class="cp-btnrow">
+        <div class="cp-chip cp-chip-pre"><span class="cp-chip-prefix">X</span><input type="text" id="grid-offset-x-num" inputmode="numeric" value="0"></div>
+        <div class="cp-chip cp-chip-pre"><span class="cp-chip-prefix">Y</span><input type="text" id="grid-offset-y-num" inputmode="numeric" value="0"></div>
+      </div>
+    </div>
+
+    <div class="cp-group">
+      <div class="cp-label">Color</div>
+      <div class="cp-picker" data-picker="grid">
+        <div class="cp-sv">
+          <canvas class="cp-sv-canvas" width="202" height="130"></canvas>
+          <div class="cp-sv-cursor"></div>
         </div>
-        <div class="slider-row">
-          <span class="slider-xy-tag" style="min-width:38px">Pulse</span>
-          <input type="range" id="anim-alpha-amp" min="0" max="1000" value="500" title="Alpha pulse amplitude">
-          <input type="number" id="anim-alpha-amp-num" class="grid-num" min="0" max="1000" value="0.30" step="0.01" title="Pulse amplitude" style="width:42px">
+        <input type="range" class="ev-slider cp-hue" min="0" max="360" value="0" title="Hue">
+        <input type="range" id="grid-opacity" class="ev-slider cp-alpha" min="0" max="100" value="25" title="Grid opacity">
+        <div class="cp-field">
+          <span class="cp-swatch"></span>
+          <span class="cp-hash">#</span>
+          <input class="cp-hex" type="text" spellcheck="false" autocomplete="off" maxlength="7">
+          <span class="cp-fdiv"></span>
+          <input id="grid-opacity-num" class="cp-alphanum" type="text" inputmode="numeric" value="25">
+          <span class="cp-pct">%</span>
         </div>
-        <div class="slider-row" style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.08);padding-top:4px">
-          <span class="slider-xy-tag" style="min-width:38px">Feather</span>
-          <input type="range" id="fog-feather" min="0" max="24" value="12" step="1" title="Reveal edge feather radius (px at fog scale)">
-          <input type="number" id="fog-feather-num" class="grid-num" min="0" max="24" value="12" step="1" title="Feather radius" style="width:42px">
-        </div>
-        <div class="slider-row" style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.08);padding-top:4px">
-          <span class="slider-xy-tag" style="min-width:38px" title="Video map frame-rate cap. Caps upload/CPU cost — does not affect decode. Capped above the source fps has no extra effect.">FPS</span>
-          <input type="range" id="video-fps" min="5" max="60" value="24" step="1" title="Video map frame-rate cap. Caps upload/CPU cost — does not affect decode. Capped above the source fps has no extra effect.">
-          <input type="number" id="video-fps-num" class="grid-num" min="5" max="60" value="24" step="1" title="FPS cap" style="width:42px">
-        </div>
+      </div>
+    </div>
+
+    <button id="cp-grid-reset" class="cp-btn cp-btn-danger">Reset Grid Settings</button>
+  </div>
+
+  <!-- ===== PLAYER PANE (existing controls, moved here per "Player = old design") ===== -->
+  <div class="cp-pane" id="cp-pane-player" hidden>
+    <div id="minimap-panel">
+      <canvas id="minimap-canvas" width="176" height="99"></canvas>
+      <button id="btn-minimap-lock" title="Lock minimap — prevent accidental nudge">Lock</button>
+      <div class="panel-sep" style="margin:3px 0"></div>
+      <div id="minimap-player-controls">
+        <button id="btn-player" title="Open Player window">Open Window</button>
+        <button id="btn-sync-view" title="Push current DM view to player">Sync View</button>
+        <button id="btn-auto-sync" title="Auto-send fog changes">Auto</button>
+        <button id="btn-fullscreen-player" title="Toggle player fullscreen">Fullscreen</button>
+        <button id="btn-send">Send ▶</button>
+        <div id="display-info-readout" style="font-size:10px;opacity:0.5;color:#c4b5e8;font-family:monospace;letter-spacing:0.03em;margin-top:4px;text-align:center"></div>
       </div>
     </div>
   </div>
 
-
-</div>
-
-<!-- Minimap + Player controls — anchored to the bottom of the right column -->
-<div id="minimap-panel" class="glass-panel">
-  <canvas id="minimap-canvas" width="176" height="99"></canvas>
-  <button id="btn-minimap-lock" title="Lock minimap — prevent accidental nudge">Lock</button>
-  <div class="panel-sep" style="margin:3px 0"></div>
-  <div id="minimap-player-controls">
-    <button id="btn-player" title="Open Player window">Open Window</button>
-    <button id="btn-sync-view" title="Push current DM view to player">Sync View</button>
-    <button id="btn-auto-sync" title="Auto-send fog changes">Auto</button>
-    <button id="btn-fullscreen-player" title="Toggle player fullscreen">Fullscreen</button>
-    <button id="btn-send">Send ▶</button>
-    <div id="display-info-readout" style="font-size:10px;opacity:0.5;color:#c4b5e8;font-family:monospace;letter-spacing:0.03em;margin-top:4px;text-align:center"></div>
+  <!-- Hidden legacy controls — the new UI drives these so the existing fog/grid
+       wiring (toolbar.js / fog.js / grid.js) runs unchanged. See controlPanel.js. -->
+  <div id="cp-legacy" aria-hidden="true">
+    <input type="color" id="fog-color" value="#3a3a8c">
+    <input type="color" id="grid-color" value="#ffffff">
+    <input type="range" id="grid-offset-x" min="0" max="400" value="0">
+    <input type="range" id="grid-offset-y" min="0" max="400" value="0">
+    <button id="btn-grid"></button>
+    <button id="btn-grid-sq" class="grid-mode-btn active"></button>
+    <button id="btn-grid-hflat" class="grid-mode-btn"></button>
+    <button id="btn-grid-hptop" class="grid-mode-btn"></button>
+    <button id="btn-grid-reset"></button>
+    <button id="btn-anim"></button>
+    <button id="anim-preset-calm" class="anim-preset-btn"></button>
+    <button id="anim-preset-default" class="anim-preset-btn active"></button>
+    <button id="anim-preset-fast" class="anim-preset-btn"></button>
+    <button id="btn-anim-advanced"></button>
+    <button id="btn-anim-reset"></button>
   </div>
+
 </div>
 </div><!-- /#sidebar-right-anchor -->
+
+<!-- ADVANCED FOG SETTINGS — floats to the left of the panel (positioned by controlPanel.js).
+     Holds the real animation sliders; toggled by the Fog tab's "Advanced" button. -->
+<div id="anim-advanced-panel" style="display:none">
+  <div class="cp-adv-head">
+    <span class="cp-adv-title">Advanced Settings</span>
+    <button id="cp-adv-close" class="cp-adv-close" title="Close">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
+    </button>
+  </div>
+  <div class="cp-adv-body">
+    <div class="cp-advrow">
+      <span class="cp-advlbl">Speed</span>
+      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-speed" min="0" max="300" value="100" title="Overall animation speed multiplier"></div>
+      <input type="text" id="anim-speed-num" class="cp-chip cp-chip-num" inputmode="numeric" value="100">
+    </div>
+    <div class="cp-advrow">
+      <span class="cp-advlbl">Morph</span>
+      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-morph-speed" min="0" max="1000" value="500" title="Texture morphing speed"></div>
+      <input type="text" id="anim-morph-num" class="cp-chip cp-chip-num" inputmode="numeric" value="0.35">
+    </div>
+    <div class="cp-advrow">
+      <span class="cp-advlbl">Drift</span>
+      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-drift" min="0" max="1000" value="500" title="Drift speed (spatial movement)"></div>
+      <input type="text" id="anim-drift-num" class="cp-chip cp-chip-num" inputmode="numeric" value="1.00">
+    </div>
+    <div class="cp-advrow">
+      <span class="cp-advlbl">Warp</span>
+      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-warp-str" min="0" max="1000" value="500" title="Domain warp strength"></div>
+      <input type="text" id="anim-warp-num" class="cp-chip cp-chip-num" inputmode="numeric" value="0.15">
+    </div>
+    <div class="cp-advrow">
+      <span class="cp-advlbl">WarpR</span>
+      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-warp-rad" min="0" max="1000" value="500" title="Warp radius"></div>
+      <input type="text" id="anim-warp-rad-num" class="cp-chip cp-chip-num" inputmode="numeric" value="0.08">
+    </div>
+    <div class="cp-advrow">
+      <span class="cp-advlbl">Pulse</span>
+      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-alpha-amp" min="0" max="1000" value="500" title="Alpha pulse amplitude"></div>
+      <input type="text" id="anim-alpha-amp-num" class="cp-chip cp-chip-num" inputmode="numeric" value="0.30">
+    </div>
+    <div class="cp-advrow">
+      <span class="cp-advlbl">Feather</span>
+      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="fog-feather" min="0" max="24" value="12" step="1" title="Reveal edge feather radius (px at fog scale)"></div>
+      <input type="text" id="fog-feather-num" class="cp-chip cp-chip-num" inputmode="numeric" value="12">
+    </div>
+    <!-- FPS cap — retained for logic (video.js reads it) but hidden: dropped from the redesigned panel. -->
+    <div class="cp-advrow" style="display:none">
+      <span class="cp-advlbl">FPS</span>
+      <input type="range" id="video-fps" min="5" max="60" value="24" step="1">
+      <input type="text" id="video-fps-num" value="24">
+    </div>
+  </div>
+</div>
 
 <!-- UI SCALE CONTROL — outside sidebar so it isn't affected by the zoom it controls -->
 <div id="ui-scale-row">
@@ -1437,6 +1691,7 @@
 <script src="src/stress.js"></script>
 <script src="src/render.js"></script>
 <script src="src/minimap.js"></script>
+<script src="src/controlPanel.js"></script>
 <script>
 'use strict';
 
