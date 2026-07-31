@@ -41,14 +41,20 @@ function restoreState(snapshot) {
   baseFogCtx = baseFogCanvas.getContext('2d');
   polygons = snapshot.polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) }));
   nextPolygonId = snapshot.nextPolygonId;
-  selectedPolygonId = null;
-  selectedVertexIndex = -1;
+  // Keep the selection when the room survived the undo — nulling it unconditionally slammed
+  // the room card shut on every Ctrl+Z, mid-read. Only a room that no longer exists in the
+  // restored set (undoing its creation) clears it.
+  if (selectedPolygonId == null || !polygons.some(p => p.id === selectedPolygonId)) {
+    selectedPolygonId = null;
+  }
+  selectedVertexIndex = -1;   // vertex counts can differ across the snapshot
   activePolygon = null;
   rebuildFogFromPolygons();
   rebuildFogEffect();
   fogDirty = true;
   scheduleRender();
   scheduleAutoSync();
+  if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 }
 
 function undo() {

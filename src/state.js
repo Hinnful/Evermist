@@ -86,8 +86,15 @@ let playerMapSent = false;
 let lastScreenX = null, lastScreenY = null;
 
 // ─── Polygon state ────────────────────────────────────────────────────────────
-let polygons = [];          // closed persistent polygons: {id, vertices:[{x,y}], mode}
+// Rooms, in code called polygons: {id, vertices:[{x,y}], mode, name, desc,
+// cornerRadius, cornerRadii}. NEVER reorder this array — rebuildFogFromPolygons() walks
+// it in reverse, so its order is fog compositing precedence.
+let polygons = [];
 let nextPolygonId = 1;
+// Room names drawn on the DM map (roomPanel.js drawRoomLabels, toggled with L). On by
+// default: labels are how the map answers "which room is this?" without a list, and rooms
+// too small on screen to read hide themselves anyway.
+let showRoomLabels = true;
 
 // ─── Auto-Sync ────────────────────────────────────────────────────────────────
 let autoSync = false;

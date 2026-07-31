@@ -81,7 +81,10 @@ function drawCursor(screenX, screenY) {
     const isSel = poly.id === selectedPolygonId;
     drawPolyOutline(poly, isSel, isSel ? selectedVertexIndex : -1);
   }
-  updatePolyContextPanel();
+  // Second pass, so labels paint above every outline rather than under the next room's.
+  // roomPanel.js loads after this file, hence the guards.
+  if (typeof drawRoomLabels === 'function') drawRoomLabels();
+  if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 
   if (activePolygon && activePolygon.vertices.length > 0) {
     drawActivePolyPreview(screenX, screenY);

@@ -119,7 +119,10 @@ function initInput() {
   }
 
   document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT') return;
+    // TEXTAREA as well as INPUT: the room card's description field is a textarea, and a
+    // bare 'r'/'s'/Delete reaching the map shortcuts while the DM types would switch the
+    // paint tool or delete the room. (The card also stops propagation at source.)
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (isPlayer) {
       if (e.key === 'f') {
         if (window.electronAPI) window.electronAPI.toggleFullscreen();
@@ -142,6 +145,10 @@ function initInput() {
       case 'n': document.getElementById('btn-snap').click();   break;
       case 'g': document.getElementById('btn-grid').click();   break;
       case 'a': document.getElementById('btn-anim').click(); break;
+      // Both cases: this switch reads e.key, which is case-sensitive (see 'S' below), so a
+      // bare 'l' branch alone would make Shift+L look dead.
+      case 'l':
+      case 'L': if (typeof toggleRoomLabels === 'function') toggleRoomLabels(); break;
       case 'f': if (mapOffscreen) { fitToScreen(); viewportDirty = true; scheduleRender(); } break;
       case 'Delete':
         if (shape === 'select' && selectedPolygonId != null && selectedVertexIndex >= 0) {
