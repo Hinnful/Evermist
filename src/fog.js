@@ -69,6 +69,11 @@ function getFogSizeScale() {
   return fogSizeScale(Math.max(fogDataCanvas.width, fogDataCanvas.height), FOG_SIZE_REF);
 }
 let fogFeatherRadius = FOG_FEATHER_RADIUS; // overridable at runtime via UI slider
+// How much fog REMAINS in a half-shrouded room, 0 = fully revealed, 1 = fully shrouded.
+// One global value, not per-room and not per-scene: "half" is one state with one density.
+// Persisted in localStorage (see initFogControls) because it is dialled in across sessions.
+let fogHalfAlpha = 0.5;
+const FOG_HALF_ALPHA_KEY = 'evermist.fogHalfAlpha';
 function getScaledBlurRadius()    { return scaledRadius(FOG_BLUR_RADIUS,  getFogSizeScale()); }
 function getScaledFeatherRadius() { return scaledRadius(fogFeatherRadius, getFogSizeScale()); }
 
@@ -119,7 +124,16 @@ function applyPolygonToFog(poly) {
     fogDataCtx.fill();
     fogDataCtx.restore();
   } else {
-    // Feathered reveal: draw polygon blurred on scratch, then destination-out onto fog
+    // Feathered reveal: draw polygon blurred on scratch, then destination-out onto fog.
+    // 'half' rides this same path — it is the SAME erase, just not run to completion, so the
+    // feathered edge and the cloud-eroded raggedness come along for free. No second texture,
+    // no reduced blur. Note this is SUBTRACTIVE: it cannot re-fog ground that is already
+    // clear (a brush reveal, or a reveal polygon at a lower index), which is deliberate —
+    // you can't half-forget the room the party is standing in.
+    const isHalf = poly.mode === 'half';
+    // destination-out is multiplicative (remaining = old × (1 − erase)), so erasing at
+    // 1 − fogHalfAlpha lands a fully-fogged interior on exactly fogHalfAlpha.
+    const eraseAlpha = isHalf ? Math.max(0, Math.min(1, 1 - fogHalfAlpha)) : 1;
     const bb = getPolyBBox(verts);
     const feather = getScaledFeatherRadius();
     const pad = Math.ceil(feather) + 2;
@@ -166,15 +180,31 @@ function applyPolygonToFog(poly) {
     sCtx.fill();
     sCtx.restore();
 
+    // Cloud erosion leaves ~17% residue in the interior. A reveal removes it afterwards with a
+    // hard clearRect on the fog (below), but a PARTIAL erase can't: destination-out multiplies,
+    // so residue left in the MASK reads as blotchy density. So for 'half' the interior is
+    // flattened back to solid white here, on the mask — same inset polygon, so the feathered
+    // edge band (which is the band we want to keep) is untouched. The reveal path keeps its
+    // clearRect instead, so it stays exactly as it was.
+    const insetVerts = insetPolygon(fogScaledVerts, feather);
+    if (isHalf && insetVerts.length >= 3) {
+      sCtx.save();
+      sCtx.beginPath();
+      buildRoundedPolyPath(sCtx, insetVerts.map(v => ({ x: v.x - bx, y: v.y - by })),
+                           Math.max(0, crFog - feather), null);
+      sCtx.fillStyle = 'white';
+      sCtx.fill();
+      sCtx.restore();
+    }
+
     fogDataCtx.save();
     fogDataCtx.globalCompositeOperation = 'destination-out';
+    fogDataCtx.globalAlpha = eraseAlpha;
     fogDataCtx.drawImage(scratch, bx, by);
     fogDataCtx.restore();
-    // Cloud erosion leaves ~17% residue in the interior — hard-clear it.
     // Clip to an inset polygon (shrunk by feather px) so the feathered edge
     // band is preserved; only the deep interior gets fully cleared.
-    const insetVerts = insetPolygon(fogScaledVerts, feather);
-    if (insetVerts.length >= 3) {
+    if (!isHalf && insetVerts.length >= 3) {
       fogDataCtx.save();
       fogDataCtx.beginPath();
       buildRoundedPolyPath(fogDataCtx, insetVerts, Math.max(0, crFog - feather), null);
@@ -864,6 +894,41 @@ function initFogControls() {
     scheduleRender();
     scheduleAutoSync();
   };
+
+  // Half-shroud density. Persisted, unlike Feather above: the DM dials this in across several
+  // sittings before deciding whether half-shroud earns its place, so losing it on restart
+  // would lose the experiment. Global preference, so localStorage — never a scene or a backup.
+  const halfSlider = document.getElementById('fog-half-alpha');
+  const halfNum    = document.getElementById('fog-half-alpha-num');
+  const applyHalf = pct => {
+    fogHalfAlpha = pct / 100;
+    try { localStorage.setItem(FOG_HALF_ALPHA_KEY, String(pct)); } catch (_) {}
+    // Rebuild every time, including mid-drag: watching half rooms change while dragging IS
+    // the point of the slider. Same per-tick cost as Feather, which already does this.
+    rebuildFogFromPolygons();
+    rebuildFogEffect();
+    fogDirty = true;
+    scheduleRender();
+    scheduleAutoSync();
+  };
+  halfSlider.oninput = function() { halfNum.value = this.value; applyHalf(+this.value); };
+  halfNum.onchange = function() {
+    const v = Math.max(0, Math.min(100, Math.round(+this.value) || 0));
+    this.value = v;
+    halfSlider.value = v;
+    applyHalf(v);
+  };
+  // Restore the stored value. A garbage entry parses to NaN and is skipped, leaving the
+  // markup's default of 50 — the same self-healing read as RP_DESC_H_KEY in roomPanel.js.
+  try {
+    const stored = parseInt(localStorage.getItem(FOG_HALF_ALPHA_KEY), 10);
+    if (!isNaN(stored)) {
+      const v = Math.max(0, Math.min(100, stored));
+      halfSlider.value = v;
+      halfNum.value = v;
+      fogHalfAlpha = v / 100;
+    }
+  } catch (_) {}
 
   const fogColorPicker   = document.getElementById('fog-color');
   const tintAlphaSlider  = document.getElementById('fog-tint-alpha');

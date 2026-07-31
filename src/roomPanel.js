@@ -316,12 +316,11 @@ function initRoomPanel() {
     drawCursor(lastScreenX, lastScreenY);
   };
 
-  // ── Fog state — the pill. Half is a visible placeholder until half-shroud renders. ──
+  // ── Fog state — the pill. All three segments are live. ──
   // Keyed on #rp-mode, not on a styling class: the pill borrows stock .cp-tabs/.cp-segtab
   // looks, so it must not depend on a class that a restyle could legitimately remove.
   panel.querySelectorAll('#rp-mode [data-mode]').forEach(btn => {
     btn.onclick = () => {
-      if (btn.dataset.mode === 'half') return;
       const poly = _rpFindPoly(selectedPolygonId);
       if (!poly) return;
       setPolygonMode(poly.id, btn.dataset.mode);
