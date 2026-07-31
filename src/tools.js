@@ -192,11 +192,16 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx) {
   if (verts.length < 2) return;
   cursorCtx.save();
 
+  // Three fog states, three colours. Half sits BETWEEN reveal-green and shroud-purple on the
+  // hue wheel (a cool teal) so the outline reads as "part way", not as a fourth unrelated
+  // thing. Only visible when the room is deselected — a selected room is always gold.
   const edgeColor = isSelected
     ? '#ffd060'
     : poly.mode === 'reveal'
       ? 'rgba(50, 220, 110, 0.8)'
-      : 'rgba(150, 80, 255, 0.8)';
+      : poly.mode === 'half'
+        ? 'rgba(70, 190, 210, 0.8)'
+        : 'rgba(150, 80, 255, 0.8)';
 
   // Build screen-space vertex array
   const sv = verts.map(v => { const s = toScreen(v.x, v.y); return { x: s.sx, y: s.sy }; });
@@ -750,7 +755,10 @@ function toggleSelectedPolygon() {
   const poly = polygons.find(p => p.id === selectedPolygonId);
   if (!poly) return;
   pushUndo();
-  poly.mode = poly.mode === 'reveal' ? 'shroud' : 'reveal';
+  // Three-way cycle, not a toggle. With a third state a two-way toggle is a trap: T on a half
+  // room would send it to shroud with no keyboard route back, so the key would silently be able
+  // to leave a state it can't reach. Order matches the pill: reveal → shroud → half → reveal.
+  poly.mode = poly.mode === 'reveal' ? 'shroud' : poly.mode === 'shroud' ? 'half' : 'reveal';
   rebuildFogFromPolygons();
   drawCursor(null, null);
   startFogTransition(poly.mode === 'shroud');

@@ -775,12 +775,6 @@
   .rp-desc::-webkit-scrollbar { width: 6px; }
   .rp-desc::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
 
-  /* Half ships visibly disabled until half-shroud rendering exists. Same read as
-     #btn-half in the bottom toolbar (.mode-dummy) so the two land as one decision.
-     Scoped under .cp-seg to beat that box's own :hover:not(.active) rule. */
-  .cp-seg .cp-iconbtn.cp-dummy { color: #565b62; cursor: default; }
-  .cp-seg .cp-iconbtn.cp-dummy:hover { background: transparent; color: #565b62; }
-
   /* The one properties row: fog pill left, corner radius pushed to the right edge. The
      wrapper that used to hold the radius field alongside a "v3/8" vertex readout is gone with
      the readout, so the auto margin can live on the field itself again. */
@@ -1723,6 +1717,15 @@
       <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="fog-feather" min="0" max="24" value="12" step="1" title="Reveal edge feather radius (px at fog scale)"></div>
       <input type="text" id="fog-feather-num" class="cp-chip cp-chip-num" inputmode="numeric" value="12">
     </div>
+    <!-- Half density — how much fog REMAINS in a half-shrouded room. Lives here rather than on
+         the Fog tab because it is a fiddly dial, same as Feather above it: one global value the
+         DM sets once and leaves alone, not a per-scene control. Judge it on the PLAYER window —
+         the DM view draws fog at FOG_OPACITY_DM, so 50 reads as ~27% here and 50% on the TV. -->
+    <div class="cp-advrow">
+      <span class="cp-advlbl">Half</span>
+      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="fog-half-alpha" min="0" max="100" value="50" step="1" title="Half-shroud density: how much fog remains (0 = revealed, 100 = shrouded)"></div>
+      <input type="text" id="fog-half-alpha-num" class="cp-chip cp-chip-num" inputmode="numeric" value="50">
+    </div>
     <!-- FPS cap — retained for logic (video.js reads it) but hidden: dropped from the redesigned panel. -->
     <div class="cp-advrow" style="display:none">
       <span class="cp-advlbl">FPS</span>
@@ -1838,7 +1841,7 @@
           <button class="cp-iconbtn" data-mode="reveal" title="Revealed — the party can see this room">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
           </button>
-          <button class="cp-iconbtn cp-dummy" data-mode="half" title="Half-shrouded — not yet available" tabindex="-1">
+          <button class="cp-iconbtn" data-mode="half" title="Half-shrouded - explored, but the party isn't there now">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
           </button>
           <button class="cp-iconbtn" data-mode="shroud" title="Shrouded — hidden behind fog">

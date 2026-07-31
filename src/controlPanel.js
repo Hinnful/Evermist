@@ -276,6 +276,7 @@ const _CP_FANCY = [
   ['anim-warp-rad', 'anim-warp-rad-num'],
   ['anim-alpha-amp', 'anim-alpha-amp-num'],
   ['fog-feather', 'fog-feather-num'],
+  ['fog-half-alpha', 'fog-half-alpha-num'],
 ];
 
 function _cpFancy(range) {
@@ -323,6 +324,9 @@ function _cpInitResets() {
     fire('fog-color', '#3a3a8c');
     fire('fog-tint-alpha', 18);
     fire('fog-feather', 12);
+    // fog-half-alpha is deliberately NOT reset here. It is the only dial in this panel that
+    // PERSISTS, so resetting it wouldn't just restore a default — it would overwrite a value
+    // the DM spent a session at the table dialling in. Not this button's job.
     document.getElementById('anim-preset-default').click();
     refreshFogControlUI();
   });
@@ -346,7 +350,7 @@ function _cpUpdateAdvVisibility() {
   const advOn = document.getElementById('btn-anim-advanced').classList.contains('active');
   const show = advOn && _cpActiveTab() === 'fog';
   panel.style.display = show ? 'block' : 'none';
-  if (show) { _cpPositionAdvPanel(); _cpSyncFancy(['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp', 'fog-feather']); }
+  if (show) { _cpPositionAdvPanel(); _cpSyncFancy(['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp', 'fog-feather', 'fog-half-alpha']); }
 }
 
 // Place the panel just left of the sidebar, compensating for the panel's own `zoom`.
@@ -453,7 +457,7 @@ function refreshPlayerZoomUI() {
 // ─── Reflection hooks (called from scene-restore paths) ───────────────────────
 function refreshFogControlUI() {
   if (_cpFogPicker) _cpFogPicker.refresh();
-  _cpSyncFancy(['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp', 'fog-feather']);
+  _cpSyncFancy(['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp', 'fog-feather', 'fog-half-alpha']);
   setAnimModeUI();
 }
 
