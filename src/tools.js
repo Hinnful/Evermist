@@ -22,8 +22,10 @@ let dragOrigVerts = null;   // snapshot of vertices at drag start
 let snapToGrid = false;
 
 // ─── Vertex / edge editing state ──────────────────────────────────────────────
-let selectedVertexIndex = -1;   // -1 = no vertex selected
-let polyCtxRadiusMode = 'all';  // 'all' | 'vertex'
+// -1 = no vertex selected. Also the room card's radius target: roomPanel.js derives
+// "this corner vs all corners" straight from this, so there is no separate mode flag to keep
+// in step with it (there used to be — a `roomRadiusMode` in state.js and a toggle button).
+let selectedVertexIndex = -1;
 let isDraggingVertex = false;
 let vertexDragOrigVerts = null;
 let isDraggingEdge = false;
@@ -301,56 +303,8 @@ function drawActivePolyPreview(screenX, screenY) {
   cursorCtx.restore();
 }
 
-function updatePolyContextPanel() {
-  const panel = document.getElementById('panel-poly-ctx');
-  if (!panel) return;
-  const poly = polygons.find(p => p.id === selectedPolygonId);
-  if (!poly || shape !== 'select') { panel.style.display = 'none'; return; }
-  panel.style.display = 'block';
-
-  // Position above the polygon centroid (flip below if too close to top)
-  const c = getCentroid(poly.vertices);
-  const { sx, sy } = toScreen(c.x, c.y);
-  const uiZoom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1.2;
-  const PW = 152 * uiZoom, PH = 72 * uiZoom;
-  const left = Math.max(4, Math.min(window.innerWidth - PW - 4, sx - PW / 2));
-  const aboveY = sy - PH - 24;
-  const top    = aboveY < 8 ? sy + 20 : aboveY;
-  panel.style.left = left + 'px';
-  panel.style.top  = top  + 'px';
-
-  // Mode radio buttons — highlight the current mode
-  const revBtn = document.getElementById('poly-ctx-reveal');
-  const shrBtn = document.getElementById('poly-ctx-shroud');
-  if (revBtn) revBtn.classList.toggle('pctx-active', poly.mode === 'reveal');
-  if (shrBtn) shrBtn.classList.toggle('pctx-active', poly.mode === 'shroud');
-
-  // Radius slider — shows per-vertex value in vertex mode, else global
-  const radiusInput = document.getElementById('poly-ctx-radius');
-  const radiusVal   = document.getElementById('poly-ctx-radius-val');
-  const rmodeBtn    = document.getElementById('poly-ctx-rmode');
-  let currentR;
-  if (polyCtxRadiusMode === 'vertex' && selectedVertexIndex >= 0 && poly.cornerRadii) {
-    currentR = poly.cornerRadii[selectedVertexIndex] != null ? poly.cornerRadii[selectedVertexIndex] : (poly.cornerRadius || 0);
-  } else {
-    currentR = poly.cornerRadius || 0;
-  }
-  if (radiusInput && radiusInput !== document.activeElement) radiusInput.value = currentR;
-  if (radiusVal) radiusVal.textContent = currentR;
-  if (rmodeBtn) rmodeBtn.classList.toggle('pctx-vtx', polyCtxRadiusMode === 'vertex');
-
-  // Vertex row — show when a vertex is selected
-  const vrow = document.getElementById('pctx-vrow');
-  const info = document.getElementById('poly-ctx-info');
-  const delVBtn = document.getElementById('poly-ctx-del-vertex');
-  if (selectedVertexIndex >= 0) {
-    if (vrow) vrow.style.display = 'flex';
-    if (info) info.textContent = 'v' + (selectedVertexIndex + 1) + ' / ' + poly.vertices.length;
-    if (delVBtn) delVBtn.style.display = poly.vertices.length > 3 ? '' : 'none';
-  } else {
-    if (vrow) vrow.style.display = 'none';
-  }
-}
+// The selected room's card — markup, wiring, positioning and the map labels — lives in
+// roomPanel.js (refreshRoomPanel), called from drawCursor().
 
 // ─── Tool mouse handlers ──────────────────────────────────────────────────────
 // Called from index.html event listeners with pre-converted map coordinates.
@@ -426,7 +380,7 @@ function toolMouseDown(raw, e) {
     // 3. Interior hit — select polygon and start whole-poly drag
     const hit = findPolygonAt(raw.x, raw.y);
     if (hit) {
-      if (hit.id !== selectedPolygonId) { selectedVertexIndex = -1; polyCtxRadiusMode = 'all'; }
+      if (hit.id !== selectedPolygonId) { selectedVertexIndex = -1; }
       pushUndo();
       selectedPolygonId = hit.id;
       isDraggingPolygon = true;
@@ -437,7 +391,6 @@ function toolMouseDown(raw, e) {
     } else {
       selectedPolygonId = null;
       selectedVertexIndex = -1;
-      polyCtxRadiusMode = 'all';
     }
     drawCursor(sx, sy);
     return;
@@ -595,11 +548,13 @@ function toolMouseUp(pos, e) {
       fogModifiedThisStroke = true;
       const x1 = Math.min(rectStartX, pos.x), y1 = Math.min(rectStartY, pos.y);
       const x2 = Math.max(rectStartX, pos.x), y2 = Math.max(rectStartY, pos.y);
+      const pid  = nextPolygonId++;
       const poly = {
-        id: nextPolygonId++,
+        id: pid,
         vertices: [{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2}],
         mode: tool,
         cornerRadius: 0,
+        name: 'Room ' + pid,
       };
       polygons.push(poly);
       selectedPolygonId = poly.id;
@@ -620,7 +575,9 @@ function toolMouseUp(pos, e) {
           y: circleCenter.y + Math.sin(angle) * radius,
         });
       }
-      const poly = { id: nextPolygonId++, vertices: verts, mode: tool, cornerRadius: 0 };
+      const pid  = nextPolygonId++;
+      const poly = { id: pid, vertices: verts, mode: tool, cornerRadius: 0,
+                     name: 'Room ' + pid };
       polygons.push(poly);
       selectedPolygonId = poly.id;
     }
@@ -713,11 +670,13 @@ function toolDblClick(raw, e) {
 function closeActivePolygon() {
   if (!activePolygon || activePolygon.vertices.length < 3) { activePolygon = null; drawCursor(null, null); return; }
   pushUndo();
+  const pid  = nextPolygonId++;
   const poly = {
-    id: nextPolygonId++,
+    id: pid,
     vertices: activePolygon.vertices,
     mode: activePolygon.mode,
     cornerRadius: 0,
+    name: 'Room ' + pid,
   };
   polygons.push(poly);
   applyPolygonToFog(poly);
@@ -731,12 +690,13 @@ function closeActivePolygon() {
   scheduleAutoSync();
 }
 
-function deleteSelectedPolygon() {
-  if (selectedPolygonId == null) return;
+// startFogTransition() takes no argument here — the polygon is already gone, so there's
+// no surviving mode to crossfade towards.
+function deletePolygonById(id) {
+  if (id == null) return;
   pushUndo();
-  polygons = polygons.filter(p => p.id !== selectedPolygonId);
-  selectedPolygonId = null;
-  selectedVertexIndex = -1;
+  polygons = polygons.filter(p => p.id !== id);
+  if (selectedPolygonId === id) { selectedPolygonId = null; selectedVertexIndex = -1; }
   rebuildFogFromPolygons();
   drawCursor(null, null);
   startFogTransition();
@@ -744,6 +704,46 @@ function deleteSelectedPolygon() {
   fogDirty = true;
   scheduleRender();
   scheduleAutoSync();
+}
+
+function deleteSelectedPolygon() {
+  deletePolygonById(selectedPolygonId);
+}
+
+// Set one polygon's fog mode by id — the room card's fog pill names the room it acts on,
+// so it doesn't use the selection-keyed toggle below. Mode-agnostic on purpose: chunk 3
+// adds 'half' and only needs the crossfade argument revisited.
+// Sequence matches toggleSelectedPolygon(); scheduleAutoSync() is what reaches the TV
+// (and persists — it calls scheduleAutoSave internally). Deliberately does NOT refresh the
+// whole card: a rebuild would steal focus from the name/description fields mid-edit, so
+// the card updates its pill in place instead.
+function setPolygonMode(id, mode) {
+  const poly = polygons.find(p => p.id === id);
+  if (!poly || poly.mode === mode) return;
+  pushUndo();
+  poly.mode = mode;
+  rebuildFogFromPolygons();
+  drawCursor(null, null);
+  startFogTransition(mode === 'shroud');
+  rebuildFogEffect();
+  fogDirty = true;
+  scheduleRender();
+  scheduleAutoSync();
+}
+
+// Select a polygon and glide the DM camera to its centroid. DM-ONLY — it must not write
+// minimapView or post a view-snap, or looking a room up would drag what the players are
+// watching. Zoom is left alone; only the centre moves.
+// startViewLerp() wants {panX,panY,zoom}, so the centroid goes through resolveView()
+// first — handing it {mapCX,mapCY} directly yields NaN pan and a blank viewport.
+function jumpToPolygon(id) {
+  const poly = polygons.find(p => p.id === id);
+  if (!poly || !poly.vertices.length) return;
+  if (selectedPolygonId !== id) selectedVertexIndex = -1;
+  selectedPolygonId = id;
+  const c = getCentroid(poly.vertices);
+  startViewLerp(resolveView({ mapCX: c.x, mapCY: c.y, zoom }));
+  drawCursor(null, null);   // repaint outlines so the new selection reads immediately
 }
 
 function toggleSelectedPolygon() {

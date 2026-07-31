@@ -519,7 +519,9 @@ async function switchScene(id, _isRecovery = false) {
     container.style.cursor = 'crosshair';
   }
 
-  polygons      = (scene.polygons || []).map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) }));
+  // normalizeRoomFields backfills `name` on scenes saved before rooms had names
+  // (roomPanel.js). Both spreads are additive — a field whitelist here would drop cornerRadii.
+  polygons      = normalizeRoomFields(scene.polygons || []).map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) }));
   nextPolygonId = scene.nextPolygonId || 1;
   selectedPolygonId   = null;
   selectedVertexIndex = -1;
@@ -543,6 +545,10 @@ async function switchScene(id, _isRecovery = false) {
   viewportDirty = true; gridDirty = true; fogDirty = true;
   scheduleRender();
   renderSceneManager();
+  // Selection was cleared above, so close the room card rather than leaving it floating
+  // over the new scene with the previous scene's room in it.
+  if (typeof resetRoomLabelCache === 'function') resetRoomLabelCache();
+  if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
   if (mapVideo) mapVideo.play().then(() => startVideoLoop()).catch(() => {});
   if (autoSync) setTimeout(() => sendToPlayer(false, true), 150);
   onSceneLoaded(); // viewport.js: flush pending player resync if Player asked while loading
@@ -590,6 +596,9 @@ function handleCurrentDeleted() {
   if (mapBitmap) { try { mapBitmap.close(); } catch (e) {} }
   mapBitmap = null; mapOffscreen = null; mapWidth = 0; mapHeight = 0;
   polygons = []; nextPolygonId = 1;
+  selectedPolygonId = null; selectedVertexIndex = -1;
+  if (typeof resetRoomLabelCache === 'function') resetRoomLabelCache();
+  if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
   landing.style.display = '';
   if (!isPlayer) container.style.cursor = 'default';
   localStorage.removeItem('evermist-current-scene-id');

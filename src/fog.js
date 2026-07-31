@@ -683,6 +683,8 @@ function revealAllFog() {
   baseFogCtx.clearRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
   if (typeof polygons !== 'undefined') polygons.forEach(p => { p.mode = 'reveal'; });
   rebuildFogFromPolygons();
+  // The room card's fog pill would otherwise be lying about the fog until the next repaint.
+  if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 }
 
 function shroudAllFog() {
@@ -691,6 +693,7 @@ function shroudAllFog() {
   baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
   if (typeof polygons !== 'undefined') polygons.forEach(p => { p.mode = 'shroud'; });
   rebuildFogFromPolygons();
+  if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 }
 
 // ─── Live fog color ───────────────────────────────────────────────────────────

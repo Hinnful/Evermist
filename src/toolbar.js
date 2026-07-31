@@ -405,68 +405,8 @@ function initToolbar() {
 
   document.getElementById('btn-send').onclick = sendToPlayer;
 
-  // Polygon context panel
-  document.getElementById('poly-ctx-reveal').onclick = () => {
-    const poly = polygons.find(p => p.id === selectedPolygonId);
-    if (poly && poly.mode !== 'reveal') toggleSelectedPolygon();
-  };
-  document.getElementById('poly-ctx-shroud').onclick = () => {
-    const poly = polygons.find(p => p.id === selectedPolygonId);
-    if (poly && poly.mode !== 'shroud') toggleSelectedPolygon();
-  };
-  document.getElementById('poly-ctx-delete').onclick = () => {
-    if (selectedPolygonId != null) deleteSelectedPolygon();
-  };
-  document.getElementById('poly-ctx-rmode').onclick = () => {
-    const poly = polygons.find(p => p.id === selectedPolygonId);
-    if (!poly) return;
-    if (polyCtxRadiusMode === 'all') {
-      polyCtxRadiusMode = 'vertex';
-      if (!poly.cornerRadii) poly.cornerRadii = new Array(poly.vertices.length).fill(null);
-    } else {
-      polyCtxRadiusMode = 'all';
-    }
-    drawCursor(lastScreenX, lastScreenY);
-  };
-  document.getElementById('poly-ctx-del-vertex').onclick = () => {
-    const poly = polygons.find(p => p.id === selectedPolygonId);
-    if (!poly || selectedVertexIndex < 0 || poly.vertices.length <= 3) return;
-    pushUndo();
-    poly.vertices.splice(selectedVertexIndex, 1);
-    if (poly.cornerRadii) poly.cornerRadii.splice(selectedVertexIndex, 1);
-    selectedVertexIndex = -1;
-    rebuildFogFromPolygons();
-    startFogTransition();
-    rebuildFogEffect();
-    fogDirty = true;
-    scheduleRender();
-    scheduleAutoSync();
-    drawCursor(lastScreenX, lastScreenY);
-  };
-  (() => {
-    let radiusUndoPushed = false;
-    const radiusInput = document.getElementById('poly-ctx-radius');
-    const radiusVal   = document.getElementById('poly-ctx-radius-val');
-    radiusInput.addEventListener('mousedown', () => { radiusUndoPushed = false; });
-    radiusInput.oninput = function() {
-      const poly = polygons.find(p => p.id === selectedPolygonId);
-      if (!poly) return;
-      if (!radiusUndoPushed) { pushUndo(); radiusUndoPushed = true; }
-      const val = parseInt(this.value);
-      radiusVal.textContent = val;
-      if (polyCtxRadiusMode === 'vertex' && selectedVertexIndex >= 0 && poly.cornerRadii) {
-        poly.cornerRadii[selectedVertexIndex] = val;
-      } else {
-        poly.cornerRadius = val;
-      }
-      rebuildFogFromPolygons();
-      rebuildFogEffect();
-      fogDirty = true;
-      scheduleRender();
-      drawCursor(lastScreenX, lastScreenY);
-    };
-    radiusInput.addEventListener('change', () => { radiusUndoPushed = false; scheduleAutoSync(); });
-  })();
+  // The selected room's card (name, description, fog pill, corners, delete) → roomPanel.js.
+  if (typeof initRoomPanel === 'function') initRoomPanel();
 
   updateContextPanels(); // init: brush is default tool, show panel immediately
 

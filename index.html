@@ -683,46 +683,148 @@
     pointer-events: none;
   }
 
-  /* ===== POLYGON CONTEXT PANEL ===== */
-  #panel-poly-ctx {
-    position: fixed;
-    z-index: 150;
-    padding: 7px 10px;
-    pointer-events: auto;
-    display: none;
+  /* ===== ROOM CARD (floats near the selected room) ===== */
+  /* The map stays the interaction surface; this card is where a room's CONTENT lives —
+     the name and the description the DM writes during prep and scans at the table.
+     The shell is #anim-advanced-panel's, deliberately: that is the app's floating-panel
+     pattern (flat #1a1a1c, hairline border, 10px radius, cp-adv head/body, cpAdvIn). The
+     old .glass-panel purple/16px look belongs to the pre-redesign UI and is not used here.
+     Everything inside is a stock cp-* control at its stock height — nothing bespoke. */
+  #panel-room {
+    position: fixed; left: 0; top: 0; z-index: 150;
+    display: none;                /* refreshRoomPanel() switches this to block */
     zoom: var(--ui-zoom, 1.2);
-    width: 152px;
-    box-sizing: border-box;
+    width: 270px;
+    background: #1a1a1c; border: 1px solid rgba(255,255,255,0.055); border-radius: 10px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.36); overflow: hidden;
+    pointer-events: auto;
+    animation: cpAdvIn .15s ease;
   }
-  .pctx-r1, .pctx-r2, .pctx-r3 { display: flex; align-items: center; gap: 4px; }
-  .pctx-r2 { margin-top: 6px; }
-  .pctx-r3 { margin-top: 4px; }
-  .pctx-gap { flex: 1; }
-  #panel-poly-ctx button {
-    background: rgba(60, 40, 110, 0.35);
-    border: 1px solid rgba(130, 80, 240, 0.2);
-    border-radius: 6px;
-    color: #9080c8;
-    font-size: 12px;
-    padding: 3px 7px;
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
-    font-family: system-ui, sans-serif;
-    line-height: 1.2;
-    white-space: nowrap;
+
+  /* Title bar = the drag handle (roomPanel.js wires the mousedown), and a bar with NO TITLE:
+     a grip on the left, Close on the right. cursor: move and user-select: none are what make it
+     read and behave as one, and they are the only reason this isn't just .cp-adv-head —
+     dragging a bar that highlights its own text feels broken.
+     Close sits in this flex row, which is where a close belongs and is no longer a cost: the
+     row it shares is the bar's, not the name field's, so the field below still spans the full
+     14px-to-14px content width. */
+  .rp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 9px 3px 14px;
+    cursor: move; user-select: none;
   }
-  #panel-poly-ctx button:hover { background: rgba(100, 60, 200, 0.3); color: #d0c8f8; border-color: rgba(160, 100, 255, 0.4); }
-  #poly-ctx-reveal.pctx-active { background: linear-gradient(135deg,#1a5a35,#1e8848); border-color: #27a85e; color: #a8f0c0; }
-  #poly-ctx-shroud.pctx-active { background: linear-gradient(135deg,#2a0d42,#5a1e88); border-color: #7830aa; color: #d0a8f8; }
-  #poly-ctx-delete { padding: 3px 6px; color: #c07070; border-color: rgba(200,80,80,0.25); }
-  #poly-ctx-delete:hover { background: rgba(180,40,40,0.3); color: #ff9898; border-color: rgba(220,80,80,0.5); }
-  #poly-ctx-rmode { padding: 3px 5px; font-size: 11px; }
-  #poly-ctx-rmode.pctx-vtx { background: rgba(80,50,180,0.4); color: #b0a0f0; border-color: rgba(150,100,240,0.4); }
-  .pctx-ico { font-size: 11px; color: #5a4888; flex-shrink: 0; }
-  #panel-poly-ctx input[type="range"] { flex: 1; min-width: 0; cursor: pointer; accent-color: #7050d0; }
-  #poly-ctx-radius-val { font-size: 11px; color: #9080c8; min-width: 20px; text-align: right; flex-shrink: 0; }
-  #poly-ctx-info { font-size: 10px; color: #5848a0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #poly-ctx-del-vertex { padding: 2px 5px; font-size: 10px; color: #c07070; border-color: rgba(200,80,80,0.25); }
+  #rp-close { cursor: pointer; }
+
+  /* The grip that replaced the bar's title text. Muted at rest so it reads as an affordance
+     rather than content, and it BRIGHTENS ON HOVER OF THE WHOLE BAR — not of itself — because
+     the whole bar is the drag target and the grip is only where it says so. Six dots is small
+     enough to sit on the 14px content column without competing with the name field below it. */
+  .rp-grip { flex: none; color: #4a4f57; transition: color .12s; }
+  .rp-head:hover .rp-grip { color: #7f858e; }
+
+  /* THE NAME IS JUST A FIELD — same box, same 10px text inset as .rp-desc below it. This is
+     the resolution of a problem three earlier passes each half-solved, and the trap is worth
+     spelling out: the old comment here reasoned that a field's glyphs would sit at 24px while
+     "everything else in the card starts at 14px", and stripped the box to a bare underline to
+     drag the glyphs onto 14. But the description is ALSO a field with 10px padding — its own
+     glyphs are at 24px too. The 14px column is where BOXES start; 24px is where TEXT starts.
+     Matching the description's box gives both, so the name lands on both columns at once and
+     needs no underline, no icon, and no compromise between its rest and focus states.
+     Height is 32px = .cp-field's, not the description's line-height, so it reads as the peer
+     of every other single-line field in the app. */
+  .rp-name {
+    width: 100%; box-sizing: border-box; height: 32px;
+    padding: 0 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 8px;
+    color: #d5d8dd; font: 600 13px/1 system-ui, -apple-system, sans-serif;
+    outline: none; cursor: text; text-overflow: ellipsis;
+    transition: background .12s, border-color .12s;
+  }
+  .rp-name:hover { border-color: rgba(255,255,255,0.13); }
+  .rp-name:focus { background: rgba(255,255,255,0.07); border-color: rgba(90,140,235,0.6); }
+  .rp-name::placeholder { color: #6b7078; font-weight: 500; }
+
+  /* Name + description are one block — what the room IS — so they sit tighter to each other
+     than to the properties below (8px against the body's 17px). */
+  .rp-ident { gap: 8px; }
+
+  /* One description field, always editable — no read mode, no edit mode. Same surface as
+     .cp-field / .cp-chip. This is the card's MAIN action, so it gets the height to match:
+     ~11 lines visible at rest, which is two paragraphs of prep read at the table without
+     scrolling.
+     RESIZABLE, vertical only. The height is a VIEWING preference, not room data: it is
+     remembered in localStorage for the whole card (roomPanel.js) and deliberately never
+     written into a scene or a backup, because "how tall I like this box" does not belong to
+     any one room. Horizontal resize is off — the card is a fixed 270px column and a wider
+     textarea would simply overflow it. max-height is what stops a drag from growing the card
+     until it swallows the room it describes; the internal scroll takes over past it. */
+  .rp-desc {
+    width: 100%; box-sizing: border-box;
+    min-height: 120px; max-height: 620px; height: 214px; resize: vertical;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 8px;
+    color: #d5d8dd; font: 400 12px/1.5 system-ui, -apple-system, sans-serif;
+    outline: none; overflow-y: auto;
+    transition: background .12s, border-color .12s;
+  }
+  .rp-desc:hover { border-color: rgba(255,255,255,0.13); }
+  .rp-desc:focus { background: rgba(255,255,255,0.07); border-color: rgba(90,140,235,0.6); }
+  .rp-desc::placeholder { color: #6b7078; }
+  .rp-desc::-webkit-scrollbar { width: 6px; }
+  .rp-desc::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
+
+  /* Half ships visibly disabled until half-shroud rendering exists. Same read as
+     #btn-half in the bottom toolbar (.mode-dummy) so the two land as one decision.
+     Scoped under .cp-seg to beat that box's own :hover:not(.active) rule. */
+  .cp-seg .cp-iconbtn.cp-dummy { color: #565b62; cursor: default; }
+  .cp-seg .cp-iconbtn.cp-dummy:hover { background: transparent; color: #565b62; }
+
+  /* The one properties row: fog pill left, corner radius pushed to the right edge. The
+     wrapper that used to hold the radius field alongside a "v3/8" vertex readout is gone with
+     the readout, so the auto margin can live on the field itself again. */
+  .rp-row { display: flex; align-items: center; gap: 7px; }
+  .rp-row .cp-seg { align-self: center; }   /* beat .cp-seg's own align-self: flex-start */
+
+  /* Corner radius: a stock .cp-chip-pre (the app's icon/prefix-inside-a-field chip) at a
+     fixed width, so the digits don't move the field as they grow. Two things it fixes: the
+     old chip was 26px tall next to a 30px button, which is the mismatch that read as sloppy
+     — .cp-chip-pre is 30px, the same as the fog pill's segments — and the separate toggle it
+     sat beside is gone, its whole job now done by the glyph inside this field.
+     Four corner brackets = every corner; one rounded L = just the selected vertex, and it
+     goes blue because that state is temporary and worth noticing. */
+  .rp-radius {
+    flex: none; width: 64px; gap: 5px; margin-left: auto; color: #7f858e;
+    transition: color .12s, background .12s, border-color .12s;
+  }
+  .rp-radius:focus-within { border-color: rgba(90,140,235,0.6); background: rgba(255,255,255,0.07); }
+  .rp-radius input { text-align: left; }
+  .rp-radius-ico { flex: none; }
+  .rp-radius .rp-ico-one { display: none; }
+  .rp-radius.rp-per-vertex { color: #6ea8ff; }
+  .rp-radius.rp-per-vertex .rp-ico-one { display: block; }
+  .rp-radius.rp-per-vertex .rp-ico-all { display: none; }
+
+  .rp-del { gap: 7px; }   /* icon-to-label spacing; width/height come from stock .cp-btn */
+
+  /* Body rhythm. This block has been three shapes: a flat stack of five unrelated controls,
+     then two .cp-label-headed groups, now one unlabelled row. Each pass traded chrome for
+     description height, which is the only thing in the card that is ever short of room. The
+     card is three blocks separated by the 17px body gap: the description, the properties,
+     and the destructive action behind its hairline. */
+  #panel-room .cp-adv-body { gap: 17px; }
+  .rp-props { gap: 8px; }
+
+  /* Delete's footer: a hairline in the panel's own border colour, and the button below it at
+     the app's standard full width. The narrow right-aligned variant this replaces was trying
+     to fix "a destructive action reads as the card's primary action" with SIZE, which cost it
+     the shape every other button in the app has. The hairline is what actually fixes it — the
+     button is outside the content stack, so it isn't the end of the form, it's a footer. */
+  .rp-foot {
+    margin-top: 1px; padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.055);
+  }
 
   /* ===== PLAYER PANE (minimap preview + window/updates rows) ===== */
   /* The Player tab lives inside #sidebar-right, which already applies --ui-zoom, so
@@ -1666,6 +1768,7 @@
       <div class="legend-row"><kbd>G</kbd> Grid toggle</div>
       <div class="legend-row"><kbd>A</kbd> Fog animation</div>
       <div class="legend-row"><kbd>T</kbd> Toggle polygon mode</div>
+      <div class="legend-row"><kbd>L</kbd> Room name labels</div>
       <div class="legend-row"><kbd>Del</kbd> Delete polygon / vertex</div>
       <div class="legend-row"><kbd>Esc</kbd> Deselect vertex / polygon</div>
       <div class="legend-row"><kbd>Dbl</kbd> Click edge → insert vertex</div>
@@ -1676,23 +1779,106 @@
   </div>
 </div>
 
-<!-- POLYGON CONTEXT PANEL (floats near selected polygon, DM only) -->
-<div id="panel-poly-ctx" class="glass-panel">
-  <div class="pctx-r1">
-    <button id="poly-ctx-reveal" title="Reveal mode">◯</button>
-    <button id="poly-ctx-shroud" title="Shroud mode">◉</button>
-    <div class="pctx-gap"></div>
-    <button id="poly-ctx-delete" title="Delete polygon"><svg width="11" height="13" viewBox="0 0 11 13" fill="none" style="vertical-align:middle;display:inline-block"><path d="M1 3.5h9M3.5 3.5V2a.5.5 0 01.5-.5h3a.5.5 0 01.5.5v1.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/><rect x="1.5" y="3.5" width="8" height="8" rx="1" stroke="currentColor" stroke-width="1.1"/><line x1="4" y1="6" x2="4" y2="10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/><line x1="7" y1="6" x2="7" y2="10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg></button>
+<!-- ROOM CARD (floats near the selected room, DM only) -->
+<!-- Always identical: no modes, nothing that appears or disappears with the active tool.
+     Built + positioned by roomPanel.js — see refreshRoomPanel(). -->
+<!-- Same shell as #anim-advanced-panel: the app's one floating-panel pattern. Title bar +
+     .cp-adv-body, .cp-seg icon segment, .cp-btn actions — no bespoke surfaces. A titleless
+     drag bar (grip + Close), then three blocks: what the room IS (the name field + the
+     description, one column of identical fields), its properties (fog state + corner radius,
+     one unlabelled row), and — off on its own behind a hairline — the destructive action. -->
+<div id="panel-room">
+  <!-- Drag bar. It earns its ~27px three times over: it is where Close lives (out from on top
+       of the name field, which it used to overlap), it is the DRAG HANDLE, and it lets the name
+       below be a plain field with nothing floating over it. Double-click snaps the card back to
+       the room it belongs to. It carries no title — see the grip comment below. -->
+  <div class="rp-head" id="rp-head" title="Drag to move, double-click to snap back to the room">
+    <!-- A GRIP, not a title. The bar used to read "ROOM" and the field right below it reads
+         "Room name" — the same word twice, and pure noise the moment the room is called
+         anything. There is nothing else for a title here to say either: this card only ever
+         shows a room. So the bar says what it IS instead of what it contains — six dots that
+         mean "drag me", which is the one thing about this bar a DM needs told. -->
+    <svg class="rp-grip" width="12" height="8" viewBox="0 0 12 8" fill="currentColor">
+      <circle cx="1.5" cy="1.5" r="1.1"/><circle cx="6" cy="1.5" r="1.1"/><circle cx="10.5" cy="1.5" r="1.1"/>
+      <circle cx="1.5" cy="6.5" r="1.1"/><circle cx="6" cy="6.5" r="1.1"/><circle cx="10.5" cy="6.5" r="1.1"/>
+    </svg>
+    <button id="rp-close" class="cp-adv-close" title="Close">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
+    </button>
   </div>
-  <div class="pctx-r2">
-    <span class="pctx-ico" title="Corner radius">▢</span>
-    <input type="range" id="poly-ctx-radius" min="0" max="300" value="0">
-    <span id="poly-ctx-radius-val">0</span>
-    <button id="poly-ctx-rmode" title="All corners / selected vertex">∀</button>
-  </div>
-  <div class="pctx-r3" id="pctx-vrow" style="display:none">
-    <span id="poly-ctx-info"></span>
-    <button id="poly-ctx-del-vertex" title="Delete vertex (Del)">✕v</button>
+  <div class="cp-adv-body">
+    <!-- What the room IS: two fields with the SAME box and the SAME 10px text inset, so both
+         boxes sit on the 14px column and both texts sit on the 24px column. That is the whole
+         answer to the name field's long-running alignment problem — see .rp-name in the CSS.
+         No .cp-label above either: the title bar says what this card is and the placeholders
+         carry the rest. -->
+    <div class="cp-group rp-ident">
+      <input id="rp-name" class="rp-name" type="text" spellcheck="false" autocomplete="off"
+             maxlength="60" placeholder="Room name">
+      <textarea id="rp-desc" class="rp-desc" spellcheck="false"
+                placeholder="What's in here, what the party sees, what's hidden…"></textarea>
+    </div>
+
+    <!-- Properties — ONE row, no labels. This was four rows once (two .cp-label headers, a
+         slider row, a fog row); every pixel it gave up went to the description above, which
+         is the control the DM actually uses at the table. What's left is the three things a
+         room has beyond its text: fog state, corner radius, and which corners that radius
+         applies to. The corner radius SLIDER is deliberately gone — the number field plus
+         ↑/↓ stepping (roomPanel.js) covers both "set it to 40" and "nudge it", and the
+         slider was costing a whole row to do the second of those. Everything here carries a
+         title tooltip, since the labels that used to name them are gone.
+         Fog stays a .cp-seg black inset box = "pick one of these", selected icon bare+blue:
+         same icon-segment pattern as #cp-anim-row, and the same three glyphs as the bottom
+         toolbar's fog-mode group — outline / half-filled / filled circle — in the toolbar's
+         order (Reveal → Shroud), so muscle memory carries between the two surfaces.
+         data-mode values are the contract roomPanel.js keys on: do not rename. -->
+    <div class="cp-group rp-props">
+      <div class="rp-row">
+        <div class="cp-iconrow cp-seg" id="rp-mode">
+          <button class="cp-iconbtn" data-mode="reveal" title="Revealed — the party can see this room">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
+          </button>
+          <button class="cp-iconbtn cp-dummy" data-mode="half" title="Half-shrouded — not yet available" tabindex="-1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
+          </button>
+          <button class="cp-iconbtn" data-mode="shroud" title="Shrouded — hidden behind fog">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" fill="currentColor" stroke="none"/></svg>
+          </button>
+        </div>
+
+        <!-- Corner radius, pushed to the row's right edge. There is NO all-corners/one-corner
+             toggle: the field switches target by itself — select a vertex on the map and it
+             edits that corner, deselect and it edits all four — and the ICON INSIDE THE FIELD
+             is how it says which. A toggle would have been a second control for a decision the
+             selection already made. Both glyphs ship; refreshRoomPanel() flips .rp-per-vertex.
+             There is also no "v3/8" vertex readout beside it any more: it named a fact the map
+             was already showing (the selected handle is highlighted) in a notation nobody
+             asked for, and the icon here covers the one thing it was really reporting — which
+             corners this number is about. -->
+        <div class="cp-chip cp-chip-pre rp-radius" id="rp-radius-field">
+          <svg class="rp-radius-ico rp-ico-all" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+            <path d="M2 6V4.5A2.5 2.5 0 014.5 2H6"/><path d="M10 2h1.5A2.5 2.5 0 0114 4.5V6"/>
+            <path d="M14 10v1.5a2.5 2.5 0 01-2.5 2.5H10"/><path d="M6 14H4.5A2.5 2.5 0 012 11.5V10"/>
+          </svg>
+          <svg class="rp-radius-ico rp-ico-one" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+            <path d="M2.5 14V6.5A4 4 0 016.5 2.5H14"/>
+          </svg>
+          <input type="text" id="rp-radius-num" inputmode="numeric" value="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete is an independent destructive action, so it's a .cp-btn — never in a pill —
+         and it takes the app's standard full-width button shape rather than a bespoke
+         text-width one. What keeps it from reading as the card's primary action is the
+         HAIRLINE, not a narrower box: it sits in its own footer, outside the content stack,
+         which is the same separation a destructive row gets everywhere else in the app. -->
+    <div class="rp-foot">
+      <button id="rp-delete" class="cp-btn cp-btn-danger rp-del">
+        <svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Delete Room
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1798,6 +1984,7 @@
 <script src="src/render.js"></script>
 <script src="src/minimap.js"></script>
 <script src="src/controlPanel.js"></script>
+<script src="src/roomPanel.js"></script>
 <script>
 'use strict';
 
