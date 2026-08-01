@@ -337,14 +337,19 @@ function initToolbar() {
 
   document.getElementById('btn-sync-view').onclick = () => {
     if (!playerWindow || playerWindow.closed) return;
-    const { w: vpW, h: vpH } = getViewportSize();
-    const v = {
-      mapCX: (vpW / 2 - panX) / zoom,
-      mapCY: (vpH / 2 - panY) / zoom,
-      zoom,
-    };
+    // Send the REGION the DM can read, not the DM's zoom — the Player refits it to its
+    // own canvas so a bigger TV shows the same map, not more of it. Same helper as a
+    // manual Send, so the two can't frame the TV differently.
+    const v = dmVisibleRegion();
     playerWindow.postMessage({ type: 'view-snap', ...v }, '*');
-    minimapSetView(v);
+    // minimapView.zoom is ALWAYS in Player-canvas terms (minimap.js:_visibleExtent /
+    // _frameExtent divide playerScreenW/H by it), so convert before handing it over —
+    // passing the DM's own zoom here is what used to leave the dotted TV frame wrong
+    // until the next drag or free-look report. playerScreenW/H come from the Player's
+    // window.innerWidth/Height, which is exactly its render size (player mode fills the
+    // window and PixiJS runs at resolution 1), so this frame is exact, not approximate.
+    const playerZoom = zoomToFitRegion(v.viewW, v.viewH, playerScreenW, playerScreenH);
+    minimapSetView({ mapCX: v.mapCX, mapCY: v.mapCY, zoom: playerZoom ?? v.zoom });
   };
 
   window.addEventListener('message', e => {
