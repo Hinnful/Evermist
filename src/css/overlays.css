@@ -100,6 +100,97 @@
   #btn-bem-cancel:hover { background: rgba(70,40,130,0.4); color: #d0c8f8; }
 
 
+  /* ===== MODULE TEXT IMPORT MODAL ===== */
+  /* The app's floating-panel look, not the backup modal's .glass-panel one: flat #1a1a1c, the
+     same hairline border and 10px radius as the room card and #anim-advanced-panel, and stock
+     .cp-* controls inside. It keeps only two things from the old modal shell, because both are
+     structural rather than decorative — the backdrop + centring anchor (this wants the screen's
+     attention for the few seconds it exists), and the `zoom` + max-height dance that keeps a
+     panel inside the viewport at any --ui-zoom.
+     WIDTH IS 320px, close to the room card's 270. It was 560 when the body held a paste box; a
+     list of "К12. Часовня" rows needs nothing like that, and a narrow panel reads as the same
+     family of thing as the card the dropdown that opens it lives in. */
+  #mt-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 502;
+  }
+  #mt-anchor {
+    position: fixed; inset: 0;
+    z-index: 503;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  #mt-modal {
+    zoom: var(--ui-zoom, 1.2);
+    pointer-events: all;
+    width: min(320px, 92vw);
+    max-height: calc(86vh / var(--ui-zoom, 1.2));
+    display: flex; flex-direction: column;
+    background: #1a1a1c; border: 1px solid rgba(255,255,255,0.055); border-radius: 10px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.36);
+    overflow: hidden; outline: none;
+    animation: cpAdvIn .15s ease;
+  }
+
+  /* The body scrolls, the footer does not — that is why Remove is a SIBLING of this rather than
+     the last child of it. On a short screen a scrolled-away destructive button is the one thing
+     that would look identical to "the panel is broken". */
+  #mt-body { flex: 1; overflow-y: auto; padding-bottom: 12px; }
+  /* A VISIBLE scrollbar, unlike #sidebar-right's hidden one. The body only scrolls on a short
+     window, which is precisely when the DM has no other cue that there is more panel below. */
+  #mt-body::-webkit-scrollbar { width: 6px; }
+  #mt-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
+
+  #btn-mt-file { gap: 7px; }
+
+  /* One line of state. Wraps, because the error messages are sentences — this is the only place
+     the parser explains itself and it does it when something has actually gone wrong. */
+  .mt-status {
+    font: 400 11px/1.45 system-ui, -apple-system, sans-serif;
+    color: #9aa0aa;
+  }
+  .mt-status.mt-err { color: rgba(240,140,120,0.9); }
+
+  /* What is loaded, room by room. Scrolls internally rather than growing the panel, so an
+     88-room chapter cannot push Remove off the bottom of the screen. */
+  .mt-list {
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 8px;
+    background: rgba(255,255,255,0.025);
+    max-height: 240px; overflow-y: auto; padding: 4px;
+  }
+  .mt-list::-webkit-scrollbar { width: 6px; }
+  .mt-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
+  .mt-row {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 4px 6px; border-radius: 6px;
+    font: 500 12px/1.3 system-ui, -apple-system, sans-serif; color: #d5d8dd;
+  }
+  /* Tabular digits so the keys form a column and the names line up beside them — the same
+     treatment as .rp-mt-num in the dropdown this list backs, and for the same reason: eighty
+     rooms are scanned by number as much as by name. */
+  .mt-num {
+    flex: none; min-width: 26px; text-align: right;
+    color: #7f858e; font-variant-numeric: tabular-nums;
+  }
+  .mt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* A CHARACTER COUNT, not a snippet of the text. It is the number that tells the DM whether a
+     room came through with its description or came through empty, which is what a bad parse
+     actually produces — a snippet would just look plausible for all of them. */
+  .mt-chars { flex: none; font: 400 10px/1.4 system-ui, -apple-system, sans-serif; color: #6b7078; font-variant-numeric: tabular-nums; }
+  .mt-chars.mt-empty { color: rgba(240,140,120,0.75); }
+
+  /* Same footer separation as the room card's .rp-foot — a hairline in the panel's own border
+     colour, with the destructive action at full width below it. Its own horizontal padding
+     because it sits outside #mt-body. */
+  .mt-foot {
+    flex: none; padding: 12px 14px 14px;
+    border-top: 1px solid rgba(255,255,255,0.055);
+  }
+  .mt-del { gap: 7px; }
+
   /* ===== SCENE FADE (player transition) ===== */
   #scene-fade {
     position: fixed;
