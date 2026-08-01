@@ -1,0 +1,382 @@
+/* controlPanel.css — the Fog / Grid / Player control panel. #sidebar-right lives here; its anchor #sidebar-right-anchor is in base.css. Defines @keyframes cpAdvIn, which roomCard.css also uses, so this must load before roomCard.css. */
+  /* ===== CONTROL PANEL (Fog / Grid / Player tabs) — new design system ===== */
+  #sidebar-right {
+    zoom: var(--ui-zoom, 1.2);
+    pointer-events: all;
+    width: 230px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    background: #1a1a1c;
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    border-radius: 12px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.36);
+    max-height: calc((100vh - 24px) / var(--ui-zoom, 1.2));
+    overflow-y: auto;
+    overflow-x: visible;
+  }
+  #sidebar-right::-webkit-scrollbar { width: 0; }
+  #cp-legacy { display: none; }
+
+  /* Tabs */
+  .cp-tabwrap { padding: 7px; }
+  .cp-tabs {
+    display: flex; align-items: center; gap: 3px;
+    padding: 4px; border-radius: 10px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.045);
+  }
+  /* .cp-segtab shares the tab look for in-pane segmented controls (e.g. Auto/Manual)
+     without answering to the .cp-tab click handler that switches panes. */
+  .cp-tab, .cp-segtab {
+    flex: 1; height: 30px; padding: 0;
+    border: 1.5px solid transparent; border-radius: 7px;
+    background: transparent; color: #7f858e;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+  }
+  .cp-tab:hover:not(.active), .cp-segtab:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-tab.active, .cp-segtab.active {
+    border-color: rgba(90, 140, 235, 0.6);
+    background: rgba(70, 120, 220, 0.11);
+    color: #8fb6ff;
+  }
+
+  /* Panes */
+  .cp-pane { padding: 18px 10px; display: flex; flex-direction: column; gap: 22px; }
+  .cp-pane[hidden] { display: none; }
+  .cp-group { display: flex; flex-direction: column; gap: 12px; }
+  .cp-label {
+    font: 600 11px/1 system-ui, -apple-system, sans-serif;
+    color: #b8bdc6; letter-spacing: 0.05em; text-transform: uppercase;
+  }
+
+  /* Icon rows (animation mode / grid type) */
+  .cp-iconrow { display: flex; gap: 2px; }
+  .cp-iconrow.cp-iconrow-gap { gap: 6px; }
+  .cp-iconbtn {
+    flex: 1; aspect-ratio: 1; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid transparent; border-radius: 6px;
+    background: transparent; color: #9aa0aa; cursor: pointer;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .cp-iconbtn:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-iconbtn.active {
+    border-color: rgba(90, 140, 235, 0.6);
+    background: rgba(70, 120, 220, 0.11);
+    color: #8fb6ff;
+  }
+
+  /* Icon rows rendered as an inset segment — match the bottom-toolbar fog-mode group
+     (black rounded box, icon-sized buttons, blue-on-select, no outline). Used by the
+     Grid-type row and the Fog Animation row. */
+  .cp-seg {
+    align-self: flex-start;          /* box width follows its icons, not the full sidebar */
+    gap: 3px; padding: 4px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(255, 255, 255, 0.045);
+  }
+  .cp-seg .cp-iconbtn {
+    flex: none; aspect-ratio: auto;
+    width: 30px; height: 30px;
+    border: none; border-radius: 7px;
+    color: #7f858e;
+  }
+  .cp-seg .cp-iconbtn:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-seg .cp-iconbtn.active { border: none; background: transparent; color: #6ea8ff; }
+
+  /* HSV colour picker */
+  .cp-picker { display: flex; flex-direction: column; gap: 8px; }
+  .cp-sv { position: relative; border-radius: 6px; overflow: hidden; }
+  .cp-sv-canvas { display: block; width: 100%; height: 130px; cursor: crosshair; }
+  .cp-sv-cursor {
+    position: absolute; left: 0; top: 0;
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid #fff; transform: translate(-50%, -50%); pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.7);
+  }
+  input[type=range].ev-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 10px; border-radius: 5px;
+    outline: none; cursor: pointer; display: block;
+  }
+  input[type=range].ev-slider::-webkit-slider-runnable-track { background: transparent; height: 10px; border-radius: 5px; }
+  input[type=range].ev-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: #e6e7e9; box-shadow: 0 1px 3px rgba(0,0,0,0.6); cursor: grab; margin-top: -2px;
+  }
+  .cp-hue { background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+  /* Opacity/strength track: checkerboard base (the light square) + 1px frame here; the
+     dark checker squares and the transparent→selected-colour overlay are layered on top
+     by controlPanel.js so the track tracks the picked colour. The checkerboard is built
+     from linear-gradients (NOT conic — conic fringed visible colour at the edges on
+     Chromium < 128 / Electron 28). accent-color pinned so no native track tint leaks. */
+  .cp-alpha {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background-color: #4a4a4a;
+    accent-color: transparent;
+  }
+
+  /* Colour field (swatch + hex + alpha%) */
+  .cp-field {
+    display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 10px;
+    border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+  }
+  .cp-swatch { width: 16px; height: 16px; border-radius: 4px; flex: none; border: 1px solid rgba(255,255,255,0.16); }
+  .cp-hash { font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace; color: #7f858e; flex: none; }
+  .cp-hex {
+    flex: 1; min-width: 0; margin-left: -4px; border: none; background: transparent; color: #d5d8dd;
+    font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace; letter-spacing: 0.02em;
+  }
+  .cp-hex:focus { outline: none; }
+  .cp-fdiv { width: 1px; height: 16px; background: rgba(255,255,255,0.08); flex: none; }
+  .cp-alphanum {
+    width: 26px; flex: none; border: none; background: transparent; color: #c4c8ce; text-align: right;
+    font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  }
+  .cp-alphanum:focus { outline: none; }
+  .cp-pct { font: 500 11px/1 system-ui, -apple-system, sans-serif; color: #7c8088; flex: none; }
+
+  /* Buttons */
+  .cp-btnrow { display: flex; gap: 6px; }
+  .cp-btnrow .cp-btn { flex: 1; }
+  .cp-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 100%; height: 30px; padding: 0 12px; border-radius: 7px;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .cp-btn-outline { border: 1.5px solid rgba(255,255,255,0.1); background: transparent; color: #d5d8dd; }
+  .cp-btn-outline:hover { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.05); color: #d5d8dd; }
+  /* Button identity: an independent control, outlined + blue-filled when active. Never
+     put one of these inside a .cp-seg / .cp-tabs pill — that black box means "pick one
+     of these", which is the toggle-group identity. */
+  .cp-btn-outline.active {
+    border-color: rgba(90,140,235,0.6);
+    background: rgba(70,120,220,0.11);
+    color: #8fb6ff;
+  }
+  .cp-btn-icon { width: 30px; flex: none; padding: 0; }
+  .cp-dim { opacity: 0.45; }
+  .cp-btn-danger { border: 1.5px solid rgba(200,70,60,0.22); background: rgba(200,50,40,0.07); color: rgba(240,100,90,0.85); }
+  .cp-btn-danger:hover { border-color: rgba(200,70,60,0.4); background: rgba(200,50,40,0.15); color: rgba(240,100,90,0.95); }
+
+  /* Slider rows (grid resolution / line width + advanced sliders) */
+  .cp-slrows { display: flex; flex-direction: column; gap: 10px; }
+  .cp-slrow { display: grid; grid-template-columns: 42px 1fr 46px; align-items: center; column-gap: 12px; }
+  .cp-rowlbl { font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #949aa4; }
+  .cp-slider { position: relative; height: 16px; display: flex; align-items: center; }
+  .cp-slider-track, .cp-slider-fill { position: absolute; top: 50%; transform: translateY(-50%); height: 3px; border-radius: 2px; pointer-events: none; }
+  .cp-slider-track { left: 0; right: 0; background: rgba(255,255,255,0.1); }
+  .cp-slider-fill { left: 0; width: 0; background: rgba(110,168,255,0.85); }
+  .cp-slider-knob {
+    position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%);
+    width: 11px; height: 11px; border-radius: 50%; background: #e6e7e9;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.55); pointer-events: none; z-index: 1;
+  }
+  .cp-slider input[type=range] {
+    position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+    -webkit-appearance: none; appearance: none; background: transparent; opacity: 0; cursor: pointer;
+  }
+
+  /* Number chips */
+  .cp-chip {
+    display: inline-flex; align-items: center; justify-content: center; height: 26px; padding: 0 7px;
+    border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09);
+    color: #e2e4e8; font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  }
+  input.cp-chip-num { width: 46px; text-align: center; }
+  .cp-chip:focus, input.cp-chip:focus { outline: none; border-color: rgba(90,140,235,0.6); background: rgba(255,255,255,0.07); }
+  .cp-chip-pre { flex: 1; height: 30px; gap: 3px; padding: 0 8px; }
+  .cp-chip-prefix { font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #7f858e; flex: none; }
+  .cp-chip-pre input {
+    /* flex-basis:0 + width:0 so old Chromium (Electron 28) shrinks the field instead of
+       falling back to its intrinsic width and overflowing the chip on the right. */
+    flex: 1 1 0; width: 0; min-width: 0; border: none; background: transparent; text-align: right; color: #e2e4e8;
+    font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+  }
+  .cp-chip-pre input:focus { outline: none; }
+
+  /* Floating Advanced Settings panel */
+  #anim-advanced-panel {
+    position: fixed; left: 0; top: 0; z-index: 100; width: 270px;
+    zoom: var(--ui-zoom, 1.2);
+    background: #1a1a1c; border: 1px solid rgba(255,255,255,0.055); border-radius: 10px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.36); overflow: hidden; display: none;
+    animation: cpAdvIn .15s ease;
+  }
+  @keyframes cpAdvIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
+  .cp-adv-head {
+    padding: 9px 9px 2px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cp-adv-title { font: 600 12px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd; }
+  .cp-adv-close {
+    width: 22px; height: 22px; flex: none; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: none; background: transparent; color: #9aa0aa; border-radius: 6px; cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+  .cp-adv-close:hover { background: rgba(255,255,255,0.05); color: #d5d8dd; }
+  .cp-adv-body { padding: 8px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .cp-advrow { display: grid; grid-template-columns: 46px 1fr 46px; align-items: center; column-gap: 7px; }
+  .cp-advlbl { font: 400 12px/1 system-ui, -apple-system, sans-serif; color: #9aa0aa; }
+
+  /* Section header row: icon + label + chevron */
+  .rp-hdr {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-start !important;
+  }
+  .rp-hdr .rp-ico { flex-shrink: 0; opacity: 0.65; }
+  .rp-hdr .rp-lbl { flex: 1; }
+  .rp-hdr .chevron { margin-left: auto; }
+
+
+  /* Player section inner buttons — dimmer for secondary actions */
+  #section-player .section-body button { color: #a098c8; }
+  #section-player .section-body button:hover { color: #ddd4f8; }
+
+  .btn-group { display: flex; flex-direction: column; gap: 2px; }
+
+  /* Reveal / Shroud active styling now lives in .mode-btn.active (new bottom toolbar) */
+
+  /* Collapsible sections */
+  .section-hdr {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.14s !important;
+  }
+  .section-body {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    padding-right: 10px; /* room for range thumb that overflows track */
+  }
+  .section.open .section-body { max-height: 420px; opacity: 1; }
+  .chevron {
+    display: inline-block;
+    transition: transform 0.2s ease;
+    font-size: 10px;
+    opacity: 0.4;
+    margin-left: 4px;
+  }
+  .section.open .chevron { transform: rotate(180deg); opacity: 0.7; }
+  .section-body button { margin-top: 2px; }
+
+  /* Grid section header as div — mimics the button hover behaviour */
+  #section-grid-hdr {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.14s, color 0.14s;
+    color: #b8b0d0;
+    font-size: 12px;
+    font-weight: 500;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  #section-grid-hdr:hover { background: rgba(120, 72, 220, 0.2); color: #ddd4f8; }
+
+  /* Section header labels — bigger and bolder */
+  .section-hdr .rp-lbl,
+  #section-grid-hdr .rp-lbl { font-size: 13px; font-weight: 600; color: #c0b8e0; }
+
+  /* Mini pill toggle (grid on/off inside header) */
+  .mini-toggle {
+    width: 30px; height: 16px;
+    border-radius: 9px;
+    border: 1px solid rgba(130, 80, 240, 0.3);
+    background: rgba(40, 30, 80, 0.7);
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.18s, border-color 0.18s;
+    padding: 0;
+    outline: none;
+  }
+  .mini-toggle::after {
+    content: '';
+    position: absolute;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: rgba(130, 80, 240, 0.4);
+    top: 1px; left: 1px;
+    transition: transform 0.18s, background 0.18s;
+  }
+  .mini-toggle.active { background: rgba(40, 140, 80, 0.35); border-color: rgba(60, 200, 100, 0.55); }
+  .mini-toggle.active::after { transform: translateX(14px); background: #40d070; }
+  /* Override the general #sidebar-right button sizing for the mini toggle */
+  #sidebar-right .mini-toggle {
+    width: 30px !important;
+    padding: 0 !important;
+    text-align: center !important;
+    font-size: 0 !important;
+    white-space: normal !important;
+    background: rgba(40, 30, 80, 0.7) !important;
+  }
+  #sidebar-right .mini-toggle.active { background: rgba(40, 140, 80, 0.35) !important; }
+
+  /* XY axis tag shown to the right of offset slider value */
+  .slider-xy-tag {
+    font-size: 8px; font-weight: 800;
+    color: rgba(150, 100, 255, 0.4);
+    min-width: 8px; flex-shrink: 0;
+  }
+
+  /* (Snap toggle relocated into the main toolbar as a segment button — see .tb-seg-snap) */
+
+  /* Grid overhaul controls */
+  .grid-num {
+    width: 36px; font-size: 11px;
+    background: rgba(40,30,70,0.6);
+    border: 1px solid rgba(130,80,240,0.25); border-radius: 4px;
+    color: #c8c0e8; padding: 1px 3px; text-align: right;
+    -moz-appearance: textfield; flex-shrink: 0;
+  }
+  .grid-num::-webkit-inner-spin-button,
+  .grid-num::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .grid-offset-lbl { font-size: 10px; color: #6858b0; min-width: 12px; flex-shrink: 0; }
+  .grid-offset-val { font-size: 11px; color: #9080c0; min-width: 22px; text-align: right; flex-shrink: 0; }
+  .grid-mode-btn { flex: 1; padding: 6px 2px !important; display: flex !important; align-items: center; justify-content: center; font-size: 10px; }
+  .grid-mode-btn.active {
+    background: linear-gradient(135deg, #3d6ab0 0%, #6a38aa 100%) !important;
+    color: #fff !important;
+    box-shadow: 0 2px 8px rgba(90,50,190,0.4) !important;
+  }
+  #grid-color {
+    width: 22px; height: 22px; padding: 0; border: none;
+    background: none; cursor: pointer; border-radius: 4px; flex-shrink: 0;
+  }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 2px;
+  }
+  .slider-row input[type="range"] { flex: 1; min-width: 0; cursor: pointer; accent-color: #8060e0; }
+  .section-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .section-row input[type="range"] { flex: 1; min-width: 0; cursor: pointer; accent-color: #8060e0; }
+  .section-row button {
+    flex: none !important;
+    width: auto !important;
+    padding: 5px 8px !important;
+    font-size: 12px !important;
+  }
+
