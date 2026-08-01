@@ -77,6 +77,10 @@ function _postSnapThrottled() {
   requestAnimationFrame(() => {
     _snapPending = false;
     if (playerWindow && !playerWindow.closed) {
+      // No viewW/viewH here on purpose: minimapView.zoom is already in Player-canvas
+      // terms, so resolveView's plain-zoom fallback replays it exactly. Sending a region
+      // is only needed when the zoom was measured on the DM's canvas (the Sync View
+      // button) — deriving one here would just round-trip through the same number.
       playerWindow.postMessage({ type: 'view-snap', ...minimapView }, '*');
     }
   });
