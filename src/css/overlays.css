@@ -1,0 +1,178 @@
+/* overlays.css — full-screen overlays: backup export modal, scene fade, map progress, landing. Loads last. */
+  /* ===== BACKUP EXPORT MODAL ===== */
+  #backup-export-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 500;
+  }
+  #backup-export-anchor {
+    position: fixed; inset: 0;
+    z-index: 501;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  #backup-export-modal {
+    zoom: var(--ui-zoom, 1.2);
+    pointer-events: all;
+    position: static;
+    transform: none;
+    width: min(520px, 90vw);
+    max-height: calc(82vh / var(--ui-zoom, 1.2));
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+  }
+  #bem-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 10px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(130,80,240,0.15);
+  }
+  #bem-header h3 { font-size: 15px; font-weight: 600; color: #d0c8f8; margin: 0; }
+  #btn-bem-close {
+    background: none !important; border: none !important;
+    color: #6858b0 !important; font-size: 20px !important;
+    cursor: pointer; padding: 2px 7px !important;
+    border-radius: 6px !important; line-height: 1;
+    transition: color 0.12s, background 0.12s !important; width: auto !important;
+  }
+  #btn-bem-close:hover { color: #d0c8f8 !important; background: rgba(120,80,220,0.25) !important; }
+  #bem-controls {
+    display: flex; gap: 6px;
+    padding: 8px 18px;
+    border-bottom: 1px solid rgba(130,80,240,0.1);
+    flex-shrink: 0;
+  }
+  #bem-controls button {
+    font-size: 11px; padding: 4px 10px;
+    border-radius: 7px; border: 1px solid rgba(130,80,240,0.25);
+    background: rgba(40,25,80,0.5); color: #b0a8d0;
+    cursor: pointer; font-family: system-ui, sans-serif;
+    transition: background 0.12s, color 0.12s;
+  }
+  #bem-controls button:hover { background: rgba(80,50,160,0.4); color: #d0c8f8; }
+  #bem-list {
+    overflow-y: auto; flex: 1;
+    padding: 8px 14px;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .bem-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 8px; border-radius: 8px; cursor: pointer;
+    border: 1px solid rgba(130,80,240,0.12);
+    background: rgba(20,12,45,0.5);
+    transition: background 0.12s;
+    user-select: none;
+  }
+  .bem-row:hover { background: rgba(55,28,110,0.45); }
+  .bem-cb { width: 15px; height: 15px; accent-color: #9060e0; cursor: pointer; flex-shrink: 0; }
+  .bem-thumb {
+    width: 48px; height: 27px; object-fit: cover;
+    border-radius: 4px; background: #111; flex-shrink: 0;
+  }
+  .bem-name { font-size: 13px; color: #b0a8d0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #bem-footer {
+    padding: 10px 18px 14px; flex-shrink: 0;
+    border-top: 1px solid rgba(130,80,240,0.15);
+    display: flex; gap: 8px;
+  }
+  #btn-bem-export {
+    flex: 1; font-size: 13px; font-weight: 600;
+    padding: 8px 12px; border-radius: 10px;
+    border: 1px solid rgba(130,80,240,0.45);
+    background: rgba(80,40,180,0.45); color: #d0c8f8;
+    cursor: pointer; font-family: system-ui, sans-serif;
+    transition: background 0.14s;
+  }
+  #btn-bem-export:hover:not(:disabled) { background: rgba(100,55,210,0.6); }
+  #btn-bem-cancel {
+    font-size: 13px; padding: 8px 16px; border-radius: 10px;
+    border: 1px solid rgba(130,80,240,0.25);
+    background: rgba(40,25,80,0.4); color: #a098c8;
+    cursor: pointer; font-family: system-ui, sans-serif;
+    transition: background 0.14s, color 0.14s;
+  }
+  #btn-bem-cancel:hover { background: rgba(70,40,130,0.4); color: #d0c8f8; }
+
+
+  /* ===== SCENE FADE (player transition) ===== */
+  #scene-fade {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #scene-fade.dark { opacity: 1; }
+  #scene-fade-name {
+    color: #a090d0;
+    font-size: 1.8rem;
+    font-weight: 300;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.4s ease 0.2s;
+    text-align: center;
+    pointer-events: none;
+  }
+  #scene-fade.dark #scene-fade-name { opacity: 1; }
+
+  /* ===== MAP PROGRESS OVERLAY ===== */
+  #map-progress {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+  }
+  #map-progress-label {
+    color: #d0c8e8;
+    font-size: 15px;
+    font-family: system-ui, -apple-system, sans-serif;
+    letter-spacing: 0.3px;
+  }
+  #map-progress-track {
+    width: 320px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(150, 100, 255, 0.15);
+  }
+  #map-progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #6a38aa, #3d6ab0);
+    border-radius: 4px;
+    transition: width 0.12s ease-out;
+  }
+
+  /* ===== LANDING ===== */
+  #landing {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: #888;
+    pointer-events: none;
+  }
+  #landing h2 { font-size: 22px; color: #666; font-weight: 400; }
+  #landing p  { font-size: 14px; }
+

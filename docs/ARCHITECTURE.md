@@ -25,7 +25,8 @@ separately and stacked on top.
 
 | File | What it does |
 |------|--------------|
-| `index.html` | The entry point and page markup. The JavaScript here is now just wiring — grab the canvases, start PixiJS, call each module's `init`, and connect the lifecycle events. (It was once a ~2400-line monster; that code now lives in the `src/` files below. A guard hook keeps it from creeping back.) |
+| `index.html` | The entry point and page markup, and nothing else. The JavaScript here is just wiring — grab the canvases, start PixiJS, call each module's `init`, and connect the lifecycle events — and the styling is eight `<link>` tags. (It was once a ~2400-line script plus a ~1370-line stylesheet; both now live in the files below. A guard hook keeps either from creeping back.) |
+| `src/css/*.css` | All of the app's styling, split by the part of the screen it dresses: `base.css` (page reset, floating-panel shell, canvas layers, player mode), `controlPanel.css`, `toolbar.css`, `roomCard.css`, `playerPane.css`, `legend.css`, `sceneManager.css`, `overlays.css` (modals, scene fade, progress bar, landing). They load in that order and it matters: CSS is one shared cascade, so a later file can override an earlier one. `base.css` goes first because it defines `--ui-zoom`; `controlPanel.css` must precede `roomCard.css`, which borrows its `cpAdvIn` animation. |
 | `renderer.js` | The PixiJS/WebGL wrapper. The GPU drawing path for the map and the DM's fog. |
 | `render.js` | The render loop. Each frame it decides which layers actually changed and redraws only those, keeps the canvases sized to the window, and paints the cursor + polygon-selection overlay. |
 | `fog.js` | Everything fog: the canvases that store what's hidden, the blur + cloud-texture math, and the reveal/hide logic. |

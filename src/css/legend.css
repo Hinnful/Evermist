@@ -1,0 +1,73 @@
+/* legend.css — the shortcut legend overlay. */
+  /* ===== SHORTCUT LEGEND ===== */
+  #shortcut-legend {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 300;
+    padding: 20px 24px 18px;
+    min-width: 400px;
+    pointer-events: auto;
+  }
+  #shortcut-legend .legend-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #d0c8f0;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #shortcut-legend .legend-hint {
+    font-size: 11px;
+    color: #5850a0;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    text-transform: none;
+  }
+  #shortcut-legend .legend-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 28px;
+  }
+  #shortcut-legend .legend-cat {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6858b0;
+    margin: 12px 0 5px;
+  }
+  #shortcut-legend .legend-cat:first-child { margin-top: 0; }
+  #shortcut-legend .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #a8a0c8;
+    padding: 2px 0;
+  }
+  #shortcut-legend kbd {
+    display: inline-block;
+    background: rgba(100, 80, 200, 0.22);
+    border: 1px solid rgba(140, 110, 240, 0.32);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-family: system-ui, sans-serif;
+    color: #c0b8e8;
+    min-width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  #legend-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 299;
+    background: rgba(0,0,0,0.35);
+  }
+

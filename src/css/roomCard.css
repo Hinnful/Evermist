@@ -1,0 +1,138 @@
+/* roomCard.css — the room card that floats near the selected room. Animates with @keyframes cpAdvIn, defined once in controlPanel.css (which loads before this). */
+  /* ===== ROOM CARD (floats near the selected room) ===== */
+  /* The map stays the interaction surface; this card is where a room's CONTENT lives —
+     the name and the description the DM writes during prep and scans at the table.
+     The shell is #anim-advanced-panel's, deliberately: that is the app's floating-panel
+     pattern (flat #1a1a1c, hairline border, 10px radius, cp-adv head/body, cpAdvIn). The
+     old .glass-panel purple/16px look belongs to the pre-redesign UI and is not used here.
+     Everything inside is a stock cp-* control at its stock height — nothing bespoke. */
+  #panel-room {
+    position: fixed; left: 0; top: 0; z-index: 150;
+    display: none;                /* refreshRoomPanel() switches this to block */
+    zoom: var(--ui-zoom, 1.2);
+    width: 270px;
+    background: #1a1a1c; border: 1px solid rgba(255,255,255,0.055); border-radius: 10px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.36); overflow: hidden;
+    pointer-events: auto;
+    animation: cpAdvIn .15s ease;
+  }
+
+  /* Title bar = the drag handle (roomPanel.js wires the mousedown), and a bar with NO TITLE:
+     a grip on the left, Close on the right. cursor: move and user-select: none are what make it
+     read and behave as one, and they are the only reason this isn't just .cp-adv-head —
+     dragging a bar that highlights its own text feels broken.
+     Close sits in this flex row, which is where a close belongs and is no longer a cost: the
+     row it shares is the bar's, not the name field's, so the field below still spans the full
+     14px-to-14px content width. */
+  .rp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 9px 3px 14px;
+    cursor: move; user-select: none;
+  }
+  #rp-close { cursor: pointer; }
+
+  /* The grip that replaced the bar's title text. Muted at rest so it reads as an affordance
+     rather than content, and it BRIGHTENS ON HOVER OF THE WHOLE BAR — not of itself — because
+     the whole bar is the drag target and the grip is only where it says so. Six dots is small
+     enough to sit on the 14px content column without competing with the name field below it. */
+  .rp-grip { flex: none; color: #4a4f57; transition: color .12s; }
+  .rp-head:hover .rp-grip { color: #7f858e; }
+
+  /* THE NAME IS JUST A FIELD — same box, same 10px text inset as .rp-desc below it. This is
+     the resolution of a problem three earlier passes each half-solved, and the trap is worth
+     spelling out: the old comment here reasoned that a field's glyphs would sit at 24px while
+     "everything else in the card starts at 14px", and stripped the box to a bare underline to
+     drag the glyphs onto 14. But the description is ALSO a field with 10px padding — its own
+     glyphs are at 24px too. The 14px column is where BOXES start; 24px is where TEXT starts.
+     Matching the description's box gives both, so the name lands on both columns at once and
+     needs no underline, no icon, and no compromise between its rest and focus states.
+     Height is 32px = .cp-field's, not the description's line-height, so it reads as the peer
+     of every other single-line field in the app. */
+  .rp-name {
+    width: 100%; box-sizing: border-box; height: 32px;
+    padding: 0 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 8px;
+    color: #d5d8dd; font: 600 13px/1 system-ui, -apple-system, sans-serif;
+    outline: none; cursor: text; text-overflow: ellipsis;
+    transition: background .12s, border-color .12s;
+  }
+  .rp-name:hover { border-color: rgba(255,255,255,0.13); }
+  .rp-name:focus { background: rgba(255,255,255,0.07); border-color: rgba(90,140,235,0.6); }
+  .rp-name::placeholder { color: #6b7078; font-weight: 500; }
+
+  /* Name + description are one block — what the room IS — so they sit tighter to each other
+     than to the properties below (8px against the body's 17px). */
+  .rp-ident { gap: 8px; }
+
+  /* One description field, always editable — no read mode, no edit mode. Same surface as
+     .cp-field / .cp-chip. This is the card's MAIN action, so it gets the height to match:
+     ~11 lines visible at rest, which is two paragraphs of prep read at the table without
+     scrolling.
+     RESIZABLE, vertical only. The height is a VIEWING preference, not room data: it is
+     remembered in localStorage for the whole card (roomPanel.js) and deliberately never
+     written into a scene or a backup, because "how tall I like this box" does not belong to
+     any one room. Horizontal resize is off — the card is a fixed 270px column and a wider
+     textarea would simply overflow it. max-height is what stops a drag from growing the card
+     until it swallows the room it describes; the internal scroll takes over past it. */
+  .rp-desc {
+    width: 100%; box-sizing: border-box;
+    min-height: 120px; max-height: 620px; height: 214px; resize: vertical;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07); border-radius: 8px;
+    color: #d5d8dd; font: 400 12px/1.5 system-ui, -apple-system, sans-serif;
+    outline: none; overflow-y: auto;
+    transition: background .12s, border-color .12s;
+  }
+  .rp-desc:hover { border-color: rgba(255,255,255,0.13); }
+  .rp-desc:focus { background: rgba(255,255,255,0.07); border-color: rgba(90,140,235,0.6); }
+  .rp-desc::placeholder { color: #6b7078; }
+  .rp-desc::-webkit-scrollbar { width: 6px; }
+  .rp-desc::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
+
+  /* The one properties row: fog pill left, corner radius pushed to the right edge. The
+     wrapper that used to hold the radius field alongside a "v3/8" vertex readout is gone with
+     the readout, so the auto margin can live on the field itself again. */
+  .rp-row { display: flex; align-items: center; gap: 7px; }
+  .rp-row .cp-seg { align-self: center; }   /* beat .cp-seg's own align-self: flex-start */
+
+  /* Corner radius: a stock .cp-chip-pre (the app's icon/prefix-inside-a-field chip) at a
+     fixed width, so the digits don't move the field as they grow. Two things it fixes: the
+     old chip was 26px tall next to a 30px button, which is the mismatch that read as sloppy
+     — .cp-chip-pre is 30px, the same as the fog pill's segments — and the separate toggle it
+     sat beside is gone, its whole job now done by the glyph inside this field.
+     Four corner brackets = every corner; one rounded L = just the selected vertex, and it
+     goes blue because that state is temporary and worth noticing. */
+  .rp-radius {
+    flex: none; width: 64px; gap: 5px; margin-left: auto; color: #7f858e;
+    transition: color .12s, background .12s, border-color .12s;
+  }
+  .rp-radius:focus-within { border-color: rgba(90,140,235,0.6); background: rgba(255,255,255,0.07); }
+  .rp-radius input { text-align: left; }
+  .rp-radius-ico { flex: none; }
+  .rp-radius .rp-ico-one { display: none; }
+  .rp-radius.rp-per-vertex { color: #6ea8ff; }
+  .rp-radius.rp-per-vertex .rp-ico-one { display: block; }
+  .rp-radius.rp-per-vertex .rp-ico-all { display: none; }
+
+  .rp-del { gap: 7px; }   /* icon-to-label spacing; width/height come from stock .cp-btn */
+
+  /* Body rhythm. This block has been three shapes: a flat stack of five unrelated controls,
+     then two .cp-label-headed groups, now one unlabelled row. Each pass traded chrome for
+     description height, which is the only thing in the card that is ever short of room. The
+     card is three blocks separated by the 17px body gap: the description, the properties,
+     and the destructive action behind its hairline. */
+  #panel-room .cp-adv-body { gap: 17px; }
+  .rp-props { gap: 8px; }
+
+  /* Delete's footer: a hairline in the panel's own border colour, and the button below it at
+     the app's standard full width. The narrow right-aligned variant this replaces was trying
+     to fix "a destructive action reads as the card's primary action" with SIZE, which cost it
+     the shape every other button in the app has. The hairline is what actually fixes it — the
+     button is outside the content stack, so it isn't the end of the form, it's a footer. */
+  .rp-foot {
+    margin-top: 1px; padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.055);
+  }
+
