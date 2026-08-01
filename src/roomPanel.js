@@ -21,7 +21,20 @@
 // Called once from initToolbar() (DM mode only). See CLAUDE.md.
 
 const ROOM_NAME_MAX = 60;     // cap so a pasted essay can't wreck the card header
-const ROOM_DESC_MAX = 2000;   // generous — a room's worth of prep notes, not a chapter
+// Was 2000, which was sized for hand-typed prep. A description imported from a published module
+// is not hand-typed: a single keyed location in a big dungeon routinely runs past 2000
+// characters, and the old cap silently truncated it mid-sentence on the way in.
+//
+// 20000, not the 8000 this was first raised to, and the reasoning is worth keeping because
+// truncation here is SILENT — sanitizeRoomDesc() just slices, so the DM gets a description that
+// stops mid-sentence with nothing to say why. The cap's actual job is to stop a whole chapter
+// landing in one room when the parser fails to find headings, and that failure produces ONE entry
+// of several hundred thousand characters. The legitimate population is different by orders of
+// magnitude: rooms average ~3K, and the worst case is a room that absorbed a sidebar (documented
+// in moduleText.js, roughly one in thirteen) at maybe 10K. 8000 sat inside that legitimate tail
+// and would have quietly eaten the end of exactly those rooms; 20000 sits in the gap between the
+// two populations and still catches the pathological case.
+const ROOM_DESC_MAX = 20000;
 
 // ─── Pure helpers (unit-tested — keep DOM-free) ───────────────────────────────
 
@@ -277,9 +290,59 @@ function _rpCommitFields() {
   _rpCommitDesc();
 }
 
+// Fill this room's name AND description from one module-text entry (moduleText.js). Called when
+// the DM picks an entry from the name field's dropdown.
+//
+// ONE pushUndo() for the pair, deliberately — not one per field. A pick is a single act to the
+// DM, so a single Ctrl+Z has to reverse it; two entries would mean undoing a pick leaves the
+// name from the module sitting above the description it no longer matches.
+//
+// The description is never silently replaced. An empty one, or one that already matches, needs
+// no question; anything else the DM wrote themselves gets asked about, and a refusal fills only
+// the name. This is prep that took them an evening — a mispick must not be able to eat it.
+function applyModuleEntryToRoom(entry) {
+  const poly = _rpFindPoly(selectedPolygonId);
+  if (!poly || !entry) return false;
+
+  const nextName = sanitizeRoomName(entry.title, 'Room ' + poly.id);
+  const nextDesc = sanitizeRoomDesc(entry.body);
+  const curDesc  = poly.desc == null ? '' : poly.desc;
+
+  let writeDesc = nextDesc !== curDesc;
+  if (writeDesc && curDesc && !confirm(
+      'This room already has a description. Replace it with the module text?\n\n' +
+      'Cancel fills only the name and leaves your description alone.')) {
+    writeDesc = false;
+  }
+  const writeName = nextName !== poly.name;
+  if (!writeName && !writeDesc) return true;   // nothing to do, but the pick still counts
+
+  pushUndo();
+  if (writeName) { poly.name = nextName; _rpInvalidateLabel(poly.id); }
+  if (writeDesc) poly.desc = nextDesc;
+  scheduleAutoSave();   // nothing else writes scene.polygons — without this it's lost on reload
+
+  // Push the values into the fields NOW. The blur that follows a pick would otherwise commit
+  // whatever the inputs still held and add a second undo entry; seeing its own value, it no-ops.
+  // dataset.orig moves with them for the same reason in the other direction: Escape reverts an
+  // edit, and it must not be able to revert past a pick.
+  const nameEl = _rpEl('rp-name'), descEl = _rpEl('rp-desc');
+  if (nameEl) { nameEl.value = poly.name; nameEl.dataset.orig = poly.name; }
+  if (descEl && writeDesc) { descEl.value = poly.desc; descEl.dataset.orig = poly.desc; }
+  _rpFieldPid = poly.id;
+
+  drawCursor(lastScreenX, lastScreenY);   // repaints the map label under its new name
+  return true;
+}
+
 // Wire one text field: commit on blur, revert on Escape, and — critically — swallow
 // keydown so the global map shortcuts (input.js) don't fire while the DM types. Without
 // it, typing a description switches the paint tool and can delete the room.
+//
+// opts.onKeyDown gets first refusal on the key and returns true when it consumed it. That is
+// how the name field's module-text dropdown takes Enter (pick the highlighted entry) and
+// Escape (close the list) without the field's own handlers also firing — same element, so
+// stopPropagation between two listeners could not have done it.
 function _rpWireField(el, opts) {
   const commit = opts.commit;
   el.addEventListener('focus', () => { el.dataset.orig = el.value; });
@@ -287,6 +350,7 @@ function _rpWireField(el, opts) {
   el.addEventListener('mousedown', e => e.stopPropagation());
   el.addEventListener('keydown', e => {
     e.stopPropagation();
+    if (opts.onKeyDown && opts.onKeyDown(e)) return;
     if (e.key === 'Enter' && opts.enterCommits) { e.preventDefault(); el.blur(); }
     else if (e.key === 'Escape') { el.value = el.dataset.orig || ''; el.blur(); }
   });
@@ -302,8 +366,17 @@ function initRoomPanel() {
 
   // Enter commits the name (a room name is one line); in the description Enter inserts a
   // newline, because line breaks are how the DM structures prep notes.
-  _rpWireField(_rpEl('rp-name'), { commit: _rpCommitName, enterCommits: true });
+  _rpWireField(_rpEl('rp-name'), {
+    commit: _rpCommitName, enterCommits: true,
+    // The module-text dropdown claims ↑/↓ and, when a row is highlighted, Enter and Escape.
+    // Everything it doesn't claim falls through, so the field types exactly as it always did.
+    onKeyDown: typeof mtNameKeyDown === 'function' ? mtNameKeyDown : null,
+  });
   _rpWireField(_rpEl('rp-desc'), { commit: _rpCommitDesc, enterCommits: false });
+
+  // The published module's locations, offered inside the name field → moduleText.js. Last of
+  // the field wiring, so the dropdown it builds is appended after the fields exist.
+  if (typeof initModuleText === 'function') initModuleText(_rpEl('rp-name'));
 
   _rpInitDrag(panel, _rpEl('rp-head'));
   _rpApplyDescHeight(_rpEl('rp-desc'));
@@ -412,6 +485,9 @@ function refreshRoomPanel() {
   const poly = _rpFindPoly(selectedPolygonId);
   if (!poly) {
     if (_rpFieldPid != null) { _rpCommitFields(); _rpFieldPid = null; }
+    // The module-text list lives inside the card, so hiding the card has to close it — otherwise
+    // it reappears, still open and still filtered by the last room's name, on the next selection.
+    if (typeof mtCloseDropdown === 'function') mtCloseDropdown();
     panel.style.display = 'none';
     // A dragged-to position lives as long as the card does. Closing it is the DM saying they
     // are done with this card, so the next one opens beside its room rather than wherever the
@@ -425,6 +501,9 @@ function refreshRoomPanel() {
   // unchanged value and no-ops.)
   const sameRoom = _rpFieldPid === poly.id;
   if (!sameRoom && _rpFieldPid != null) _rpCommitFields();
+  // A dropdown left open across a room change would be filtered by the previous room's name and
+  // would pick into the new one — close it and let the next focus reopen it clean.
+  if (!sameRoom && typeof mtCloseDropdown === 'function') mtCloseDropdown();
 
   panel.style.display = 'block';
 

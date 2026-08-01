@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, screen, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen, powerSaveBlocker, utilityProcess } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
@@ -329,6 +329,60 @@ ipcMain.on('diag-append-line', (_event, mode, line) => {
   const stream = _diagStream(mode);
   if (stream) stream.write(line + '\n');
 });
+
+// --- Module text: PDF → plain text IPC ---
+//
+// A published campaign module ships as a PDF, so the app converts it rather than asking the DM to
+// export and "prepare" a file first. The bytes come over IPC rather than a path, because Electron
+// removed File.path in v32 and this app is on 43.
+//
+// THE PARSE DOES NOT RUN IN THIS PROCESS. A module is a file from somewhere else and pdf.js is a
+// large parser for a format built to carry embedded programs, so it runs in a utilityProcess that
+// is forked per import and killed as soon as it answers — see src/pdfExtract.js for what that does
+// and does not buy. It also cannot run in the renderer: pdfjs-dist is ESM-only and browser-side
+// `import` breaks on file:// (CLAUDE.md), and the renderer stays ES-module-free.
+//
+// Measured on a real 255-page module: ~1.4s and ~950KB of text, which is why there is no progress
+// bar. The renderer shows a "Reading PDF…" state and that is enough.
+
+// The one place that knows the asar rewrite: pdfjs-dist is unpacked (package.json asarUnpack)
+// because ESM resolves through real filesystem paths and does not go through Electron's asar
+// redirect. The child is handed the resolved directory rather than working it out itself.
+const PDFJS_BUILD_DIR = path.join(
+  __dirname.replace('app.asar', 'app.asar.unpacked'),
+  'node_modules', 'pdfjs-dist', 'legacy', 'build',
+);
+
+// Generous by two orders of magnitude against the 1.4s measurement. This is not a performance
+// budget, it is the backstop for a file crafted or corrupted into making the parser never return.
+const PDF_EXTRACT_TIMEOUT_MS = 120000;
+
+ipcMain.handle('extract-pdf-text', (_event, arrayBuffer) => new Promise(resolve => {
+  const child = utilityProcess.fork(path.join(__dirname, 'src', 'pdfExtract.js'));
+  let settled = false;
+  const finish = (res) => {
+    if (settled) return;      // whichever of message / exit / timeout lands first wins
+    settled = true;
+    clearTimeout(timer);
+    try { child.kill(); } catch (_) {}
+    resolve(res);
+  };
+  const timer = setTimeout(
+    () => finish({ ok: false, error: 'Reading the PDF took too long, so it was stopped.' }),
+    PDF_EXTRACT_TIMEOUT_MS,
+  );
+
+  // Posting on 'spawn', not immediately: the child has to be up before it can hold a listener.
+  child.on('spawn', () => child.postMessage({
+    bytes: new Uint8Array(arrayBuffer), buildDir: PDFJS_BUILD_DIR,
+  }));
+  child.on('message', finish);
+  // A parser that dies on a malformed file exits without replying. Without this the renderer waits
+  // out the full timeout and then blames the clock for what was really a crash.
+  child.on('exit', code => finish({
+    ok: false, error: 'The PDF reader stopped unexpectedly (exit code ' + code + ').',
+  }));
+}));
 
 // --- Backup / Restore IPC ---
 

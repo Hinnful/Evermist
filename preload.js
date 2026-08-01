@@ -20,6 +20,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('video-save-progress', handler);
   },
 
+  // A campaign module ships as a PDF, so the app converts it. Main-process only, because
+  // pdfjs-dist is ESM-only and browser-side `import` breaks on file:// — see main.js.
+  extractPdfText: (arrayBuffer) => ipcRenderer.invoke('extract-pdf-text', arrayBuffer),
+
   showSaveDialog: (opts) => ipcRenderer.invoke('show-save-dialog', opts),
   showOpenDialog: (opts) => ipcRenderer.invoke('show-open-dialog', opts),
   createBackupZip: (destPath, scenesData) => ipcRenderer.invoke('create-backup-zip', destPath, scenesData),

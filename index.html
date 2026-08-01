@@ -602,6 +602,65 @@
 </div>
 </div><!-- /#backup-export-anchor -->
 
+<!-- MODULE TEXT IMPORT MODAL (DM only) -->
+<!-- Load the published module once, and every room's name field becomes a searchable list of its
+     locations. Shell is the app's floating-panel pattern (#anim-advanced-panel / the room card):
+     flat #1a1a1c, hairline border, .cp-adv-head + .cp-adv-body, stock .cp-btn actions. The old
+     .glass-panel purple modal look belongs to the pre-redesign UI and is not used here.
+     THREE CONTROLS, and that is the whole panel: Choose file, Remove, Close. What used to sit here
+     as well — a paste textarea, a Preview button and a paragraph explaining numbered headings — is
+     gone on purpose. Nobody pastes 300 pages into a 320px box; the file picker already parses on
+     choose, so a separate Preview step was a button that re-read an empty textarea; and the DM is
+     not going to re-typeset their book to suit the parser, so telling them its rules bought
+     nothing. What replaced all of it is the LIST BELOW, which now shows what is actually loaded
+     rather than only what was just pasted — the one thing the old Preview never did.
+     Wired by moduleText.js. -->
+<div id="mt-backdrop" style="display:none"></div>
+<div id="mt-anchor">
+<div id="mt-modal" style="display:none" tabindex="-1">
+  <div class="cp-adv-head">
+    <span class="cp-adv-title">Module Text</span>
+    <!-- Close. The ✕ is it — same control, same place as the room card's and the advanced
+         panel's, so there is no second Cancel button restating it in a footer. -->
+    <button id="btn-mt-close" class="cp-adv-close" title="Close">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
+    </button>
+  </div>
+  <div class="cp-adv-body" id="mt-body">
+    <!-- The one action. Its label switches to "Choose another file…" once something is loaded,
+         because at that point the action is a replacement and saying so is free. -->
+    <button id="btn-mt-file" class="cp-btn cp-btn-outline">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/></svg>
+      <span id="mt-file-label">Choose file…</span>
+    </button>
+
+    <!-- One line of state: what is loaded, or what went wrong. Errors turn it red and are the
+         only place the parser explains itself, which is where an explanation is actually wanted. -->
+    <div id="mt-status" class="mt-status"></div>
+
+    <!-- What is loaded, room by room. Not a preview awaiting a confirm — the import is already
+         saved by the time this renders, and it renders on open too. The char count per row is
+         what says whether a room came through with its description or came through empty, which
+         is the failure a bad parse actually produces. -->
+    <div id="mt-list" class="mt-list" style="display:none"></div>
+  </div>
+  <!-- Remove sits behind a hairline, outside the scrolling body — the same footer separation
+       every destructive action in the app gets (see .rp-foot). Hidden when nothing is loaded. -->
+  <div class="mt-foot" id="mt-foot" style="display:none">
+    <button id="btn-mt-remove" class="cp-btn cp-btn-danger mt-del">
+      <svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      Remove Module Text
+    </button>
+  </div>
+</div>
+</div><!-- /#mt-anchor -->
+
+<!-- Its own file input, NOT #file-input below: that one belongs to the map loader and accepts
+     images, video and .zip. Sharing it would be a silent way to feed a .webm to the parser.
+     .pdf is first in the list because that is what a published module actually ships as — the app
+     converts it (main.js, via pdfjs-dist) rather than asking the DM to export text first. -->
+<input type="file" id="mt-file-input" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" style="display:none">
+
 <input type="file" id="file-input" accept="image/*,video/mp4,video/webm,.zip,application/zip" style="display:none">
 
 <script src="lib/pixi.min.js"></script>
@@ -627,6 +686,7 @@
 <script src="src/render.js"></script>
 <script src="src/minimap.js"></script>
 <script src="src/controlPanel.js"></script>
+<script src="src/moduleText.js"></script>
 <script src="src/roomPanel.js"></script>
 <script>
 'use strict';
