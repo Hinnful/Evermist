@@ -30,6 +30,22 @@ function initPixiRenderer(containerEl) {
     view: document.createElement('canvas'),
   });
 
+  // The ticker auto-starts (autoStart defaults true) and is what presents the stage —
+  // nothing calls pixiApp.render() explicitly. It carries the app's frame cap, and it
+  // is the ONLY clock: the dirty-flag loop rides it too (see below), so both advance
+  // together. Capping the two loops independently was measured and rejected — same
+  // interval, different phase, 33ms p90 of Canvas-2D-vs-map slip during a pan.
+  pixiApp.ticker.maxFPS = APP_MAX_FPS;
+
+  // Drive render.js's dirty-flag loop from this ticker at a priority ABOVE PixiJS's
+  // own render (PIXI.Application registers that at UPDATE_PRIORITY.LOW). doRender
+  // therefore paints the Canvas-2D layers and sets the stage viewport in the same tick
+  // that presents them — the registration fix. Re-added on every renderer creation,
+  // since destroyPixiRenderer() takes the ticker's callbacks with it.
+  if (typeof pumpDirtyRender === 'function') {
+    pixiApp.ticker.add(pumpDirtyRender, null, PIXI.UPDATE_PRIORITY.HIGH);
+  }
+
   const canvas = pixiApp.view;
   canvas.id = 'pixi-canvas';
   canvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
@@ -318,7 +334,11 @@ function pixiUpdateFogTintColor(hexStr) {
 // Called every fog animation tick — updates TilingSprite drift + uploads the 512×512 cloud frame.
 // offsets: array of {x,y} per pass (null entries keep current tilePosition)
 // alphas:  array of alpha values per pass (null entries keep current alpha)
-function pixiUpdateFogAnim(offsets, alphas) {
+// cloudChanged: true only when the caller actually repainted cloudBlendCanvas. The
+//   upload is the expensive part, so it is skipped otherwise — fog.js throttles the
+//   blend rebuild, and stopFogAnim() calls this for an alpha-only change that needs
+//   no upload at all. Same null-sentinel spirit as the two arguments above.
+function pixiUpdateFogAnim(offsets, alphas, cloudChanged) {
   if (!pixiFogCloudSprs.length) return;
   for (let i = 0; i < pixiFogCloudSprs.length; i++) {
     const spr = pixiFogCloudSprs[i];
@@ -328,7 +348,7 @@ function pixiUpdateFogAnim(offsets, alphas) {
     }
     if (alphas && alphas[i] != null) spr.alpha = alphas[i];
   }
-  if (pixiFogCloudBT) pixiFogCloudBT.update();
+  if (cloudChanged && pixiFogCloudBT) pixiFogCloudBT.update();
 }
 
 function pixiUpdateFogDataTexture() {

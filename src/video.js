@@ -305,17 +305,6 @@ function startVideoLoop() {
   startVideoWatchdog();
 }
 
-// ─── FPS ↔ interval converter ────────────────────────────────────────────────
-// Pure helper: converts a frames-per-second value to milliseconds per frame.
-// Clamps fps to 5–60; falls back to VIDEO_FPS_DEFAULT (24) on invalid input.
-// Used by the FPS dial (index.html) and testable in isolation.
-function fpsToFrameInterval(fps) {
-  var DEFAULT_MS = 1000 / 24; // matches VIDEO_FPS_DEFAULT in state.js
-  if (typeof fps !== 'number' || !isFinite(fps) || fps <= 0) return DEFAULT_MS;
-  var clamped = Math.max(5, Math.min(60, fps));
-  return 1000 / clamped;
-}
-
 // ─── Player video element factory ─────────────────────────────────────────────
 // Creates the Player's <video> and inserts it as the first child of container so
 // all canvas siblings (fog last, opacity:1) paint on top via DOM order.
@@ -579,5 +568,5 @@ if (typeof document !== 'undefined' && !(typeof isPlayer !== 'undefined' && isPl
 
 // ─── Export guard (Node require for tests; no-op in browser) ─────────────────
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { computeOptimalTextureSize, fpsToFrameInterval };
+  module.exports = { computeOptimalTextureSize };
 }

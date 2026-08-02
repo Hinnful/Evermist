@@ -34,9 +34,30 @@ let   _sceneFadeStart   = 0; // Date.now() snapshot when .dark was last applied
 let displayInfo = null;
 
 // ─── Video frame-rate cap ────────────────────────────────────────────────────
-// Named default so reverting is one-line. Live value is mutated by the FPS dial.
+// Fixed: video.js throttles the frame pump to this interval. It used to be driven by
+// an FPS dial in the advanced panel; that control was dropped from the redesigned UI,
+// left hidden and unreachable, and has now been removed along with its wiring, its
+// fps→interval helper and its DM→Player sync field. Both windows derive the same
+// value from this constant, so there is nothing left to sync.
 const VIDEO_FPS_DEFAULT       = 24;
-let   videoFrameIntervalMs    = 1000 / VIDEO_FPS_DEFAULT;
+const videoFrameIntervalMs    = 1000 / VIDEO_FPS_DEFAULT;
+
+// ─── App frame-rate cap ──────────────────────────────────────────────────────
+// A tabletop map display does not need display-refresh rendering: the fog drifts
+// slowly and the TV is watched from across a room, so 30fps looks identical and
+// costs a fraction of the CPU. On a high-refresh monitor the dirty-flag loop ran
+// at ~180fps, which is 6x the work for no visible gain.
+//
+// ONE clock, not two. The cap is applied to the PixiJS ticker, and render.js's
+// dirty-flag loop rides that same ticker (at a higher priority, so it paints just
+// before the present). Capping the two loops independently was measured and
+// rejected: same interval, different phase, so the Canvas-2D layers led the map by
+// up to a full frame. Do not add a second throttle in render.js.
+//
+// Internal constant by design — deliberately no UI control, no sync field, and
+// not persisted. Do not lower below 30: slow water/fire on video maps break up.
+const APP_MAX_FPS   = 30;
+const APP_FRAME_MS  = 1000 / APP_MAX_FPS;
 
 // ─── Grid config ────────────────────────────────────────────────────────────
 // All eight are `let` — they are reassigned by UI handlers, applyGridConfig,

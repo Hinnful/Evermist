@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { computeOptimalTextureSize, fpsToFrameInterval } = require('../src/video.js');
+const { computeOptimalTextureSize } = require('../src/video.js');
 
 // Helpers
 function aspectRatio(w, h) { return w / h; }
@@ -154,34 +154,3 @@ describe('computeOptimalTextureSize', () => {
 
 });
 
-describe('fpsToFrameInterval', () => {
-
-  it('converts 24 fps to ~41.67 ms', () => {
-    assert.ok(Math.abs(fpsToFrameInterval(24) - 1000 / 24) < 0.01);
-  });
-
-  it('converts 60 fps to ~16.67 ms', () => {
-    assert.ok(Math.abs(fpsToFrameInterval(60) - 1000 / 60) < 0.01);
-  });
-
-  it('clamps below minimum: fps=2 → interval for fps=5', () => {
-    assert.ok(Math.abs(fpsToFrameInterval(2) - 1000 / 5) < 0.01);
-  });
-
-  it('clamps above maximum: fps=120 → interval for fps=60', () => {
-    assert.ok(Math.abs(fpsToFrameInterval(120) - 1000 / 60) < 0.01);
-  });
-
-  it('returns 24-fps interval for undefined input', () => {
-    assert.ok(Math.abs(fpsToFrameInterval(undefined) - 1000 / 24) < 0.01);
-  });
-
-  it('returns 24-fps interval for NaN input', () => {
-    assert.ok(Math.abs(fpsToFrameInterval(NaN) - 1000 / 24) < 0.01);
-  });
-
-  it('returns 24-fps interval for zero input', () => {
-    assert.ok(Math.abs(fpsToFrameInterval(0) - 1000 / 24) < 0.01);
-  });
-
-});

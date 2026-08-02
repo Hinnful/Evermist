@@ -1,6 +1,16 @@
 'use strict';
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Electron 32 removed File.path. webUtils.getPathForFile is the supported
+  // replacement and MUST be called here in the preload — it is not available to the
+  // renderer under contextIsolation. Returns null for a File with no path on disk
+  // (one built in-page rather than picked or dropped), so callers can fall back to
+  // sending bytes. Without this, saveVideoFile(file.path, …) rejected with
+  // ERR_INVALID_ARG_TYPE and stranded the "Saving video map…" overlay forever.
+  getPathForFile: (file) => {
+    try { return webUtils.getPathForFile(file) || null; } catch (_) { return null; }
+  },
+
   setFullScreen: (flag) => ipcRenderer.send('set-fullscreen', flag),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
 

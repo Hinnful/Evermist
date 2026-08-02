@@ -56,7 +56,6 @@ function initPlayer() {
         rebuildFogEffect();
       }
       fogAnimEnabled        = msg.fogAnimEnabled        ?? fogAnimEnabled;
-      videoFrameIntervalMs  = msg.videoFrameIntervalMs  ?? videoFrameIntervalMs;
       fogDirty = true;
       scheduleRender();
       if (fogAnimEnabled) startFogAnim(); else stopFogAnim();

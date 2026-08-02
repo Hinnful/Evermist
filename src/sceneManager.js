@@ -75,9 +75,16 @@ function initSceneManagerUI() {
     if (!f) return;
     const isZip = /\.zip$/i.test(f.name) || f.type === 'application/zip' || f.type === 'application/x-zip-compressed';
     if (isZip) {
-      if (window.electronAPI && f.path && typeof restoreFromZipPath === 'function') {
+      // Electron 32 removed File.path, so this used to be undefined in the desktop
+      // app and fell through to the "needs the desktop app" alert while running IN
+      // the desktop app. There is no bytes fallback here: restoreFromZipPath needs a
+      // real path because main reads the archive off disk.
+      const zipPath = (window.electronAPI && window.electronAPI.getPathForFile)
+        ? window.electronAPI.getPathForFile(f)
+        : null;
+      if (zipPath && typeof restoreFromZipPath === 'function') {
         openDropdown();
-        restoreFromZipPath(f.path);
+        restoreFromZipPath(zipPath);
       } else {
         alert('Importing a .zip backup needs the desktop app.');
       }
@@ -294,10 +301,17 @@ async function createNewScene(file) {
     if (isVid && window.electronAPI) {
       showMapProgress('Saving video map…');
       const mimeType = file.type || (file.name.endsWith('.mp4') ? 'video/mp4' : 'video/webm');
-      const ext = mimeType === 'video/mp4' ? '.mp4' : '.webm';
-      await window.electronAPI.saveVideoFile(file.path, id, mimeType);
+      try {
+        mapPath = await persistVideoMap(file, id, mimeType);
+      } catch (err) {
+        // Never leave the progress overlay up: an unhandled rejection here is exactly
+        // what made a failed save look like a permanent "Saving video map…" hang.
+        // Falling back to the legacy in-IndexedDB blob keeps the import working; the
+        // lazy migration in switchScene retries moving it to disk later.
+        console.error('[createNewScene] saving video map to disk failed', err);
+        mapBlob = mapVideoBlob;
+      }
       hideMapProgress();
-      mapPath = 'maps/' + id + ext;
     } else {
       mapBlob = isVid ? mapVideoBlob : blob;
     }
@@ -328,6 +342,27 @@ async function createNewScene(file) {
   else loadMapFromFile(file, onLoaded);
 }
 
+// Writes a picked video map into userData/maps and returns its relative mapPath.
+//
+// Two routes, because Electron 32 removed File.path: prefer a real filesystem path
+// (webUtils via preload) so main can STREAM the copy with progress and no large
+// allocation; fall back to shipping the bytes for a File that has no path on disk.
+// Both main-process handlers already existed — only the renderer was still asking
+// for the removed File.path, which rejected and hung the import.
+async function persistVideoMap(file, sceneId, mimeType) {
+  const ext = mimeType === 'video/mp4' ? '.mp4' : '.webm';
+  const srcPath = window.electronAPI.getPathForFile
+    ? window.electronAPI.getPathForFile(file)
+    : null;
+  if (srcPath) {
+    await window.electronAPI.saveVideoFile(srcPath, sceneId, mimeType);
+  } else {
+    const ab = await file.arrayBuffer();
+    await window.electronAPI.saveVideoBlob(sceneId, ab, mimeType);
+  }
+  return 'maps/' + sceneId + ext;
+}
+
 async function replaceSceneMap(file) {
   if (!currentScene) { createNewScene(file); return; }
   cleanupVideo();
@@ -340,11 +375,15 @@ async function replaceSceneMap(file) {
       }
       showMapProgress('Saving video map…');
       const mimeType = file.type || (file.name.endsWith('.mp4') ? 'video/mp4' : 'video/webm');
-      const ext = mimeType === 'video/mp4' ? '.mp4' : '.webm';
-      await window.electronAPI.saveVideoFile(file.path, currentScene.id, mimeType);
+      try {
+        currentScene.mapPath = await persistVideoMap(file, currentScene.id, mimeType);
+        currentScene.mapBlob = undefined;
+      } catch (err) {
+        console.error('[replaceSceneMap] saving video map to disk failed', err);
+        currentScene.mapPath = undefined;
+        currentScene.mapBlob = mapVideoBlob;
+      }
       hideMapProgress();
-      currentScene.mapPath = 'maps/' + currentScene.id + ext;
-      currentScene.mapBlob = undefined;
     } else {
       currentScene.mapBlob = isVid ? mapVideoBlob : blob;
       currentScene.mapPath = undefined;

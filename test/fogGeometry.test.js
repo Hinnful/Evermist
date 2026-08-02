@@ -9,6 +9,8 @@ const {
   wrapOffset,
   pulseAlpha,
   cloudBlendIndices,
+  shouldRebuildCloudBlend,
+  cloudBlendElapsedSec,
   sampleWrappedNoise,
   fogTurbulence,
   deriveFogColors,
@@ -203,6 +205,57 @@ describe('cloudBlendIndices', () => {
     assert.equal(r.idxA, 15);
     assert.equal(r.idxB, 0);
     assert.ok(Math.abs(r.blend - 0.75) < 1e-9);
+  });
+});
+
+describe('shouldRebuildCloudBlend', () => {
+  it('holds off until the scheduled time', () => {
+    assert.equal(shouldRebuildCloudBlend(1050, 1100), false);
+  });
+
+  it('fires exactly at the scheduled time', () => {
+    assert.equal(shouldRebuildCloudBlend(1100, 1100), true);
+  });
+
+  it('fires when the scheduled time has passed', () => {
+    assert.equal(shouldRebuildCloudBlend(1234, 1100), true);
+  });
+
+  it('fires on the first tick, when nothing has been scheduled yet', () => {
+    assert.equal(shouldRebuildCloudBlend(16.7, 0), true);
+  });
+});
+
+describe('cloudBlendElapsedSec', () => {
+  it('returns real elapsed seconds, not one tick', () => {
+    // A 100ms throttle on a 180Hz display skips ~17 ticks; the morph must still
+    // advance by the full 0.1s or it would run ~18x slow.
+    assert.ok(Math.abs(cloudBlendElapsedSec(1100, 1000, 0.1) - 0.1) < 1e-9);
+  });
+
+  it('returns 0 on the first rebuild, when there is no previous timestamp', () => {
+    assert.equal(cloudBlendElapsedSec(5000, 0, 0.1), 0);
+  });
+
+  it('clamps a long stall so the morph cannot jump forward', () => {
+    // e.g. window hidden for 30s, or a scene switch
+    assert.equal(cloudBlendElapsedSec(31000, 1000, 0.1), 0.1);
+  });
+
+  it('never returns a negative span if timestamps go backwards', () => {
+    assert.equal(cloudBlendElapsedSec(900, 1000, 0.1), 0);
+  });
+
+  it('matches an every-tick rebuild over the same wall-clock span', () => {
+    // 6 rebuilds of 100ms must advance the morph as far as 0.6s of ticking.
+    let total = 0;
+    let last = 1000;
+    for (let i = 1; i <= 6; i++) {
+      const ts = 1000 + i * 100;
+      total += cloudBlendElapsedSec(ts, last, 0.1);
+      last = ts;
+    }
+    assert.ok(Math.abs(total - 0.6) < 1e-9);
   });
 });
 
