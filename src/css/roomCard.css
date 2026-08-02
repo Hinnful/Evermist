@@ -109,9 +109,12 @@
   }
   .rp-mt-opt:hover, .rp-mt-opt.active { background: rgba(90,140,235,0.22); }
   /* Tabular digits so the numbers form a column and the names line up beside them — a list of
-     eighty rooms is scanned by number as much as by name. */
+     eighty rooms is scanned by number as much as by name. The floor is sized for the WIDEST key
+     the parser produces, a prefixed number with a sub-location letter ("N6А."), because the
+     column only holds while every key fits it: right-aligned text keeps its own right edge, but
+     a key wider than the floor widens its box and shoves that one row's name out of line. */
   .rp-mt-num {
-    flex: none; min-width: 22px; text-align: right;
+    flex: none; min-width: 34px; text-align: right;
     color: #7f858e; font-variant-numeric: tabular-nums;
   }
   .rp-mt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

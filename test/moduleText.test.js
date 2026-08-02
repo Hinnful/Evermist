@@ -77,6 +77,34 @@ const WITH_SIDEBAR = [
   'Зал поднимается на две высоты.',
 ].join('\n');
 
+// A building whose rooms are keyed by LETTER under one number — the shape the town chapters use
+// constantly, and the shape that used to arrive as one enormous entry. The letters mix alphabets
+// on purpose (А В Е are Cyrillic, D is Latin), and the parent's own text carries a lowercase
+// cross-reference to one of them, which must not become a heading of its own.
+const WITH_SUBS = [
+  '5. Ратуша',
+  'Ставни закрыты, и над дверью висит герб.',
+  '',
+  '6. Лавка гробовщика',
+  'Двери заперты изнутри. Хозяин говорит, где',
+  'лежат кости (наверху, в спальне, область 6е).',
+  '',
+  '6А. Склад гробов',
+  'Тринадцать гробов стоят вдоль стены.',
+  '',
+  '6В. Мастерская',
+  'Три верстака у западной стены.',
+  '',
+  '6D. Кухня',
+  'Квадратный стол и полки с провизией.',
+  '',
+  '6Е. Спальня',
+  'Койка, книжная полка и гардероб.',
+  '',
+  '7. Каретный двор',
+  'Пусто, если не считать сломанной телеги.',
+].join('\n');
+
 // A numbered list inside body prose. It restarts at 1 after room 12, so it cannot extend the
 // room sequence — which is the only signal that tells it apart from a heading.
 const WITH_LIST = [
@@ -122,16 +150,16 @@ describe('mtSplitLines', () => {
 
 describe('mtHeadingCandidate', () => {
   test('accepts a Cyrillic heading — \\p{Lu}, not [A-Z]', () => {
-    assert.deepEqual(mtHeadingCandidate('2. Главный холл'), { prefix: '', num: 2, name: 'Главный холл' });
+    assert.deepEqual(mtHeadingCandidate('2. Главный холл'), { prefix: '', num: 2, letter: '', name: 'Главный холл' });
   });
 
   test('accepts a Latin heading too', () => {
-    assert.deepEqual(mtHeadingCandidate('12. Chapel'), { prefix: '', num: 12, name: 'Chapel' });
+    assert.deepEqual(mtHeadingCandidate('12. Chapel'), { prefix: '', num: 12, letter: '', name: 'Chapel' });
   });
 
   test('accepts a single CAPITAL PREFIX on the number — Castle Ravenloft keys К1-К88', () => {
-    assert.deepEqual(mtHeadingCandidate('К12. Часовня'), { prefix: 'К', num: 12, name: 'Часовня' });
-    assert.deepEqual(mtHeadingCandidate('K12. Chapel'),   { prefix: 'K', num: 12, name: 'Chapel' });
+    assert.deepEqual(mtHeadingCandidate('К12. Часовня'), { prefix: 'К', num: 12, letter: '', name: 'Часовня' });
+    assert.deepEqual(mtHeadingCandidate('K12. Chapel'),   { prefix: 'K', num: 12, letter: '', name: 'Chapel' });
   });
 
   test('the prefix must touch the digits — "В 1. Комнате" is prose, not a key', () => {
@@ -148,7 +176,7 @@ describe('mtHeadingCandidate', () => {
     // "К48. Лестница." are real rooms — so the period is stripped and the line kept. What guards a
     // period-terminated LIST item is the context and sequence passes, not this shape test.
     assert.deepEqual(mtHeadingCandidate('К43. Ванная комната.'),
-                     { prefix: 'К', num: 43, name: 'Ванная комната' });
+                     { prefix: 'К', num: 43, letter: '', name: 'Ванная комната' });
   });
 
   test('still rejects a line ending mid-clause, or shouting', () => {
@@ -161,8 +189,24 @@ describe('mtHeadingCandidate', () => {
     // "К3. двор прислуги" is a real room whose name lost its capital in typesetting. The prefix is
     // what makes it safe to accept — a numbered list in prose never carries one.
     assert.deepEqual(mtHeadingCandidate('К3. двор прислуги'),
-                     { prefix: 'К', num: 3, name: 'двор прислуги' });
+                     { prefix: 'К', num: 3, letter: '', name: 'двор прислуги' });
     assert.equal(mtHeadingCandidate('3. двор прислуги'), null);
+  });
+
+  test('accepts a SUB-LOCATION letter — "N6А. Склад гробов" is a room inside N6', () => {
+    // The letters in this shop come out of the book in two alphabets at once: Cyrillic А, В, С, Е
+    // beside Latin D and F. Read exactly as written — the fold is for sequencing only.
+    assert.deepEqual(mtHeadingCandidate('N6А. Склад гробов'),
+                     { prefix: 'N', num: 6, letter: 'А', name: 'Склад гробов' });
+    assert.deepEqual(mtHeadingCandidate('N6D. Кухня'),
+                     { prefix: 'N', num: 6, letter: 'D', name: 'Кухня' });
+  });
+
+  test('a PREFIXED sub-letter may be lowercase — the English original keys "N6e."', () => {
+    assert.deepEqual(mtHeadingCandidate("N6e. Henrik's Bedroom"),
+                     { prefix: 'N', num: 6, letter: 'e', name: "Henrik's Bedroom" });
+    // A bare number gets no such licence: it is weak evidence to begin with.
+    assert.equal(mtHeadingCandidate('6e. Henrik\'s Bedroom'), null);
   });
 
   test('rejects two sentences sharing a line', () => {
@@ -335,6 +379,48 @@ describe('mtPickHeadings', () => {
     const k = (prefix, num, i) => ({ prefix, num, name: 'n', i });
     const got = mtPickHeadings([k('К', 11, 0), k('К', 12, 1), k('К', 1, 2), k('К', 13, 3)]);
     assert.deepEqual(got.map(g => g.num), [11, 12, 13]);
+  });
+
+  // ── sub-locations ──
+  const s = (num, letter, i) => ({ prefix: 'N', num, letter, name: 'n', i });
+  const key = g => 'N' + g.num + (g.letter || '');
+
+  test('sub-locations ride along under their parent, in mixed alphabets', () => {
+    // The undertaker's shop: N6 plus six rooms keyed Cyrillic А В С Е and Latin D F. No ordinal
+    // survives that mix, so the test is uniqueness — every letter is its own room.
+    const got = mtPickHeadings([s(6, '', 0), s(6, 'А', 1), s(6, 'В', 2), s(6, 'С', 3),
+                                s(6, 'D', 4), s(6, 'Е', 5), s(6, 'F', 6), s(7, '', 7)]);
+    assert.deepEqual(got.map(key), ['N6', 'N6А', 'N6В', 'N6С', 'N6D', 'N6Е', 'N6F', 'N7']);
+  });
+
+  test('letters need not be in order, and a Cyrillic-keyed shop is not folded onto Latin', () => {
+    // А Б В through the homoglyph fold lands as A, Б, B — an ordinal would read В as a restart
+    // below Б and drop the room. Out-of-order letters likewise: nothing here is a sequence.
+    const got = mtPickHeadings([s(2, '', 0), s(2, 'А', 1), s(2, 'Б', 2), s(2, 'В', 3), s(2, 'Г', 4)]);
+    assert.deepEqual(got.map(key), ['N2', 'N2А', 'N2Б', 'N2В', 'N2Г']);
+    assert.deepEqual(mtPickHeadings([s(3, '', 0), s(3, 'C', 1), s(3, 'A', 2)]).map(key),
+                     ['N3', 'N3C', 'N3A']);
+  });
+
+  test('the same letter twice under one parent is a cross-reference, not a second room', () => {
+    // "N6e" and "N6Е" are the same room written two ways — case and homoglyph both fold.
+    const got = mtPickHeadings([s(6, '', 0), s(6, 'Е', 1), s(6, 'e', 2), s(6, 'E', 3), s(6, 'F', 4)]);
+    assert.deepEqual(got.map(key), ['N6', 'N6Е', 'N6F']);
+  });
+
+  test('a sub numbered BELOW the current room is body text — "(см. область N6e)"', () => {
+    const got = mtPickHeadings([s(6, '', 0), s(7, '', 1), s(8, '', 2), s(6, 'e', 3), s(8, 'A', 4)]);
+    assert.deepEqual(got.map(key), ['N6', 'N7', 'N8', 'N8A']);
+  });
+
+  test('a sub OPENS its parent number when the parent heading was lost in extraction', () => {
+    const got = mtPickHeadings([s(1, '', 0), s(2, 'A', 1), s(2, 'B', 2), s(3, '', 3)]);
+    assert.deepEqual(got.map(key), ['N1', 'N2A', 'N2B', 'N3']);
+  });
+
+  test('a sub taking a forward JUMP still loses to the successor just ahead', () => {
+    const got = mtPickHeadings([s(1, '', 0), s(7, 'A', 1), s(2, '', 2), s(3, '', 3)]);
+    assert.deepEqual(got.map(key), ['N1', 'N2', 'N3']);
   });
 });
 
@@ -598,10 +684,26 @@ describe('parseModuleText', () => {
   });
 
   test('CYRILLIC sub-location references pass through untouched', () => {
-    // А and В here are Cyrillic. They are not parsed in v1 — the requirement is only that
-    // they do not break anything and reach the DM's description intact.
+    // А and В here are Cyrillic, and they sit MID-LINE — a reference to a room, not a heading of
+    // one. The requirement is that they reach the DM's description intact.
     const kitchen = parseModuleText(SAMPLE).entries[2];
     assert.match(kitchen.body, /3А из холла и 3В из кладовой/);
+  });
+
+  test('a building with lettered rooms splits into the building plus each room', () => {
+    // This used to come back as ONE entry holding the whole shop, which the DM then had to split
+    // by hand across five polygons — the single most common shape in the town chapters.
+    const { entries } = parseModuleText(WITH_SUBS);
+    assert.deepEqual(entries.map(e => e.num), ['5', '6', '6А', '6В', '6D', '6Е', '7']);
+    assert.equal(entries[2].name, 'Склад гробов');
+    assert.match(entries[5].body, /гардероб/);
+  });
+
+  test('the building keeps its OWN text, and its cross-reference stays in it', () => {
+    const shop = parseModuleText(WITH_SUBS).entries[1];
+    assert.match(shop.body, /Двери заперты изнутри/);
+    assert.match(shop.body, /область 6е/);
+    assert.doesNotMatch(shop.body, /Тринадцать гробов/);   // that belongs to 6А now
   });
 
   test('a numbered list in body prose is not mistaken for a heading', () => {

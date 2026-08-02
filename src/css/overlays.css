@@ -172,7 +172,7 @@
      treatment as .rp-mt-num in the dropdown this list backs, and for the same reason: eighty
      rooms are scanned by number as much as by name. */
   .mt-num {
-    flex: none; min-width: 26px; text-align: right;
+    flex: none; min-width: 38px; text-align: right;
     color: #7f858e; font-variant-numeric: tabular-nums;
   }
   .mt-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -190,6 +190,43 @@
     border-top: 1px solid rgba(255,255,255,0.055);
   }
   .mt-del { gap: 7px; }
+
+  /* ===== CONFIRM DIALOG (confirmDialog.js) ===== */
+  /* The app's replacement for the native confirm(), which cannot be used anywhere in this app —
+     it leaves the room card's fields focused-but-uncaretable afterwards. See confirmDialog.js.
+     Same shell as #mt-modal above, deliberately: flat #1a1a1c, hairline border, cp-adv-head +
+     cp-adv-body, and the `zoom` + max-height pair that holds a panel inside the viewport at any
+     --ui-zoom. It sits ABOVE that panel's 502/503, because the import panel's own Remove asks a
+     question through this. */
+  #cd-anchor {
+    position: fixed; inset: 0; z-index: 620;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #cd-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.55); }
+  #cd-modal {
+    position: relative;
+    zoom: var(--ui-zoom, 1.2);
+    width: min(300px, 90vw);
+    max-height: calc(86vh / var(--ui-zoom, 1.2));
+    display: flex; flex-direction: column;
+    background: #1a1a1c; border: 1px solid rgba(255,255,255,0.055); border-radius: 10px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.36);
+    overflow: hidden; outline: none;
+    animation: cpAdvIn .15s ease;
+  }
+  /* Sentences, so it wraps and reads at prose line-height rather than at control line-height. */
+  .cd-msg {
+    font: 400 12px/1.5 system-ui, -apple-system, sans-serif;
+    color: #9aa0aa;
+  }
+  /* Two buttons on one row, equal width, behind the same hairline every footer in the app uses.
+     Cancel is FIRST — it is the one that changes nothing, and it is the one that holds focus. */
+  .cd-foot {
+    flex: none; display: flex; gap: 8px; padding: 12px 14px 14px;
+    border-top: 1px solid rgba(255,255,255,0.055);
+  }
+  .cd-foot .cp-btn { flex: 1; }
+  .cd-foot .cp-btn:focus-visible { border-color: rgba(90,140,235,0.6); outline: none; }
 
   /* ===== SCENE FADE (player transition) ===== */
   #scene-fade {
