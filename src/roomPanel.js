@@ -295,11 +295,20 @@ function _rpCommitFields() {
 //
 // ONE pushUndo() for the pair, deliberately — not one per field. A pick is a single act to the
 // DM, so a single Ctrl+Z has to reverse it; two entries would mean undoing a pick leaves the
-// name from the module sitting above the description it no longer matches.
+// name from the module sitting above the description it no longer matches. It is pushed LAZILY,
+// on the first write that actually happens, so declining the question below cannot leave a
+// Ctrl+Z that reverses nothing.
 //
 // The description is never silently replaced. An empty one, or one that already matches, needs
 // no question; anything else the DM wrote themselves gets asked about, and a refusal fills only
 // the name. This is prep that took them an evening — a mispick must not be able to eat it.
+//
+// THE QUESTION IS ASYNCHRONOUS (confirmDialog), and the split that follows from it is the point:
+// the NAME is written up front, synchronously, and only the description waits for the answer.
+// Two reasons, both load-bearing. Opening the dialog moves focus, which blurs the name field and
+// runs its commit — with the new name already in the field that commit no-ops, and without it
+// the commit would write the OLD text back over the pick. And the name is not what the question
+// is about, so a DM who answers "keep mine" should still see the rename they asked for.
 function applyModuleEntryToRoom(entry) {
   const poly = _rpFindPoly(selectedPolygonId);
   if (!poly || !entry) return false;
@@ -307,32 +316,58 @@ function applyModuleEntryToRoom(entry) {
   const nextName = sanitizeRoomName(entry.title, 'Room ' + poly.id);
   const nextDesc = sanitizeRoomDesc(entry.body);
   const curDesc  = poly.desc == null ? '' : poly.desc;
+  const writeName  = nextName !== poly.name;
+  const descDiffers = nextDesc !== curDesc;
+  if (!writeName && !descDiffers) return true;   // nothing to do, but the pick still counts
 
-  let writeDesc = nextDesc !== curDesc;
-  if (writeDesc && curDesc && !confirm(
-      'This room already has a description. Replace it with the module text?\n\n' +
-      'Cancel fills only the name and leaves your description alone.')) {
-    writeDesc = false;
+  let pushed = false;
+  const undoOnce = () => { if (!pushed) { pushed = true; pushUndo(); } };
+
+  if (writeName) {
+    undoOnce();
+    poly.name = nextName;
+    _rpInvalidateLabel(poly.id);
   }
-  const writeName = nextName !== poly.name;
-  if (!writeName && !writeDesc) return true;   // nothing to do, but the pick still counts
+  const ask = descDiffers && !!curDesc;
+  if (descDiffers && !ask) { undoOnce(); poly.desc = nextDesc; }
+  _rpSyncEntryFields(poly);
 
-  pushUndo();
-  if (writeName) { poly.name = nextName; _rpInvalidateLabel(poly.id); }
-  if (writeDesc) poly.desc = nextDesc;
-  scheduleAutoSave();   // nothing else writes scene.polygons — without this it's lost on reload
+  if (ask) {
+    confirmDialog({
+      title: 'Replace description?',
+      message: 'This room already has a description. Replacing it with the module text ' +
+               'overwrites what you wrote. Keeping yours still applies the name.',
+      confirmLabel: 'Replace',
+      cancelLabel: 'Keep mine',
+      danger: true,
+      onConfirm: () => {
+        // Re-resolve rather than closing over the object: the DM can select another room, or
+        // switch scenes, while the question is on screen.
+        const p = _rpFindPoly(poly.id);
+        if (!p) return;
+        undoOnce();
+        p.desc = nextDesc;
+        _rpSyncEntryFields(p);
+      },
+    });
+  }
+  return true;
+}
 
-  // Push the values into the fields NOW. The blur that follows a pick would otherwise commit
-  // whatever the inputs still held and add a second undo entry; seeing its own value, it no-ops.
-  // dataset.orig moves with them for the same reason in the other direction: Escape reverts an
-  // edit, and it must not be able to revert past a pick.
+// Push a room's name and description back into the card's fields, and repaint the map label.
+//
+// dataset.orig moves with the values, because Escape reverts a field to it — an edit must not be
+// able to revert past a pick. scheduleAutoSave because nothing else writes scene.polygons.
+function _rpSyncEntryFields(poly) {
+  scheduleAutoSave();
   const nameEl = _rpEl('rp-name'), descEl = _rpEl('rp-desc');
   if (nameEl) { nameEl.value = poly.name; nameEl.dataset.orig = poly.name; }
-  if (descEl && writeDesc) { descEl.value = poly.desc; descEl.dataset.orig = poly.desc; }
+  if (descEl) {
+    const d = poly.desc == null ? '' : poly.desc;
+    descEl.value = d; descEl.dataset.orig = d;
+  }
   _rpFieldPid = poly.id;
-
   drawCursor(lastScreenX, lastScreenY);   // repaints the map label under its new name
-  return true;
 }
 
 // Wire one text field: commit on blur, revert on Escape, and — critically — swallow

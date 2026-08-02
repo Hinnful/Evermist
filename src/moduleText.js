@@ -61,10 +61,9 @@ function mtSplitLines(raw) {
 // space, then a capitalised short name with no trailing sentence punctuation.
 //
 // \p{Lu} rather than [A-Z] is the whole reason this works on a translation: a Cyrillic
-// capital is a capital, and the sample this was built against is Russian. (Related trap, for
-// whoever extends this: sub-location references in the same book use CYRILLIC А and В, which
-// are visually identical to Latin A and B. v1 does not parse them, but never reach for
-// [A-Z] here.)
+// capital is a capital, and the sample this was built against is Russian. Never reach for
+// [A-Z] here — the sub-location suffixes below are the sharpest case, since one shop's six
+// rooms come out of the book as Cyrillic А, В, С, Е mixed with Latin D and F.
 //
 // The number may carry a SINGLE CAPITAL PREFIX: "К12. Часовня". That is how a big module keys a
 // named area — the Death House appendix numbers its rooms 1-13, but Castle Ravenloft keys its
@@ -75,12 +74,20 @@ function mtSplitLines(raw) {
 // This is a SHAPE test only — it says nothing about whether the line is really a heading.
 // mtPickHeadings() decides that; see its comment.
 //
+// The number may also carry a SINGLE TRAILING LETTER — a SUB-LOCATION. "N6. Лавка гробовщика" is
+// an undertaker's shop, and "N6А. Склад гробов" through "N6F. Гнездо вампиров" are the six rooms
+// inside it, each with its own read-aloud text and its own polygon on the map. Without this the
+// whole shop arrives as one N6 entry the DM has to split by hand, which is the most common shape
+// in the town chapters — a building gets one number and its rooms get letters.
+//
 // TWO patterns, because a prefixed key is itself strong evidence of a heading — a numbered list in
-// prose never carries one. So a PREFIXED heading is allowed a lowercase name where a bare-numbered
-// one is not. The real book needs that: "К3. двор прислуги" is a genuine room whose name lost its
-// capital in typesetting, and demanding \p{Lu} of everything dropped it.
-const MT_HEADING_RE      = /^(\p{Lu})(\d{1,3})\.[ ](\p{L}.*)$/u;
-const MT_HEADING_RE_BARE = /^()(\d{1,3})\.[ ](\p{Lu}.*)$/u;
+// prose never carries one. So a PREFIXED heading is allowed a lowercase name, and a lowercase
+// sub-letter, where a bare-numbered one is not. The real book needs the first: "К3. двор прислуги"
+// is a genuine room whose name lost its capital in typesetting, and demanding \p{Lu} of everything
+// dropped it. The second is for the books that key sub-locations "N6e." rather than "N6Е." — the
+// English original of this very module does.
+const MT_HEADING_RE      = /^(\p{Lu})(\d{1,3})(\p{L})?\.[ ](\p{L}.*)$/u;
+const MT_HEADING_RE_BARE = /^()(\d{1,3})(\p{Lu})?\.[ ](\p{Lu}.*)$/u;
 
 function mtHeadingCandidate(line) {
   const s = String(line == null ? '' : line);
@@ -90,11 +97,11 @@ function mtHeadingCandidate(line) {
   // thirteen headings, which made "ends with a period, so it is a sentence" look safe — the full
   // book falsifies it ("К43. Ванная комната.", "К48. Лестница."), and rejecting those lost real
   // rooms. What still disqualifies a line is ending mid-clause, or carrying two sentences.
-  const name = m[3].trim().replace(/\.$/, '').trim();
+  const name = m[4].trim().replace(/\.$/, '').trim();
   if (!name || name.length > MT_HEADING_MAX_NAME) return null;
   if (/[,;:!?]$/.test(name)) return null;    // ends mid-clause, so it is prose
   if (/\.[ ]/.test(name)) return null;       // two sentences sharing a line
-  return { prefix: m[1], num: parseInt(m[2], 10), name };
+  return { prefix: m[1], num: parseInt(m[2], 10), letter: m[3] || '', name };
 }
 
 // Every shape-matching line, MINUS the ones local context exposes as list items.
@@ -127,11 +134,11 @@ function mtHeadingCandidates(lines) {
     while (prev >= 0 && !lines[prev]) prev--;      // skip blanks to the last line with text
     const introduced = prev >= 0 && /:$/.test(lines[prev]);
     const above = i > 0 ? mtHeadingCandidate(lines[i - 1]) : null;
-    const continues = !!(above && isList[i - 1] &&
-                         above.prefix === c.prefix && above.num === c.num - 1);
+    const continues = !!(above && isList[i - 1] && above.prefix === c.prefix &&
+                         above.letter === c.letter && above.num === c.num - 1);
 
     if (introduced || continues) { isList[i] = true; continue; }
-    out.push({ prefix: c.prefix, num: c.num, name: c.name, i });
+    out.push({ prefix: c.prefix, num: c.num, letter: c.letter, name: c.name, i });
   }
   return out;
 }
@@ -161,13 +168,57 @@ function mtHeadingCandidates(lines) {
 // candidates away at most.
 const MT_SUCCESSOR_LOOKAHEAD = 5;
 
+// Is the sequence's immediate successor sitting just ahead of candidate `i`? See the call site.
+function mtSuccessorAhead(list, i, p, want) {
+  for (let j = i + 1, seen = 0; j < list.length && seen < MT_SUCCESSOR_LOOKAHEAD; j++) {
+    if (mtCanonPrefix(list[j].prefix) !== p) continue;
+    seen++;
+    if (list[j].num === want) return true;
+  }
+  return false;
+}
+
 function mtPickHeadings(cands) {
   const list = Array.isArray(cands) ? cands : [];
   const out = [];
   const last = new Map();
+  const subs = new Map();                            // "prefix#number" → the letters already taken
   list.forEach((c, i) => {
     const p = mtCanonPrefix(c.prefix);
     const prev = last.has(p) ? last.get(p) : 0;
+
+    // A SUB-LOCATION ("N6А") sequences on its LETTER, under its parent number, and the test is
+    // "this letter is not taken yet" rather than "this letter comes after the last one".
+    //
+    // Ordering was tried first and it cannot be made to work: the letters arrive in mixed
+    // alphabets (Cyrillic А, В, С, Е next to Latin D and F in one six-room shop), so any ordinal
+    // has to pick a scale, and a book keyed purely Cyrillic А, Б, В then folds А and В onto the
+    // Latin scale while Б stays on the Cyrillic one — В lands BELOW Б and the room vanishes.
+    // Uniqueness needs no scale, and the false positive ordering defends against does not exist
+    // here anyway: the thing that fools a NUMBER is a numbered list in prose, and a lettered list
+    // is written "а)", never "N6а.".
+    //
+    // The parent is what bounds it instead. A sub may sit on the number the sequence has ALREADY
+    // reached (the ordinary case — the rooms follow their building), or open a number the sequence
+    // is ready to advance to (the parent heading was lost in extraction, so its first room opens
+    // it). A sub numbered BELOW the current room is a cross-reference in body text — "(на верхнем
+    // этаже, в гардеробе спальни, область N6e)" is in this very sample — and never a heading.
+    if (c.letter) {
+      if (c.num < prev) return;
+      if (c.num > prev) {
+        if (prev > 0 && c.num > prev + 1 && mtSuccessorAhead(list, i, p, prev + 1)) return;
+        last.set(p, c.num);
+      }
+      const key = p + '#' + c.num;
+      let taken = subs.get(key);
+      if (!taken) { taken = new Set(); subs.set(key, taken); }
+      const L = mtCanonLetter(c.letter);
+      if (taken.has(L)) return;
+      taken.add(L);
+      out.push(c);
+      return;
+    }
+
     if (c.num <= prev) return;                       // a restart is never a heading
 
     // PREFER THE IMMEDIATE SUCCESSOR, but only once the sequence has STARTED (prev > 0). A
@@ -181,13 +232,7 @@ function mtPickHeadings(cands) {
     // candidate it means "prefer whatever starts at 1", so a numbered list ahead of rooms keyed from
     // 11 beat the rooms and the chapter was lost. Before the sequence exists there is nothing to
     // continue, so the first candidate is simply taken.
-    if (prev > 0 && c.num > prev + 1) {
-      for (let j = i + 1, seen = 0; j < list.length && seen < MT_SUCCESSOR_LOOKAHEAD; j++) {
-        if (mtCanonPrefix(list[j].prefix) !== p) continue;
-        seen++;
-        if (list[j].num === prev + 1) return;        // the real next room is just ahead — skip this
-      }
-    }
+    if (prev > 0 && c.num > prev + 1 && mtSuccessorAhead(list, i, p, prev + 1)) return;
     last.set(p, c.num);
     out.push(c);
   });
@@ -202,6 +247,12 @@ const MT_HOMOGLYPHS = { 'А':'A','В':'B','Е':'E','К':'K','М':'M','Н':'H','�
 function mtCanonPrefix(prefix) {
   const p = String(prefix == null ? '' : prefix);
   return MT_HOMOGLYPHS[p] || p;
+}
+
+// Same fold for a SUB-LOCATION's letter, plus a case fold on top: a prefix is always a capital by
+// the pattern, but a sub-letter may be written either way, and "N6e" and "N6Е" are the same room.
+function mtCanonLetter(letter) {
+  return mtCanonPrefix(String(letter == null ? '' : letter).toUpperCase());
 }
 
 // Split a line into the page number a PDF extractor stuck on it and the text that remains.
@@ -386,11 +437,13 @@ function parseModuleText(raw) {
   // wrap width from three lines and get a meaningless one.
   const wrap = mtWrapWidth(lines);
   const entries = heads.map((h, k) => ({
-    // `num` carries the prefix: it is the key the DM says out loud ("К12"), it is what the search
-    // box matches, and it is what the map label reads.
-    num:   (h.prefix || '') + h.num,
+    // `num` carries the prefix and the sub-letter: it is the key the DM says out loud ("К12",
+    // "N6А"), it is what the search box matches, and it is what the map label reads. Both are
+    // written EXACTLY as the book has them — the homoglyph fold above is for sequencing only, so
+    // a room the page calls "N6С" never turns into "N6C" on the map.
+    num:   (h.prefix || '') + h.num + (h.letter || ''),
     name:  h.name,
-    title: (h.prefix || '') + h.num + '. ' + h.name,
+    title: (h.prefix || '') + h.num + (h.letter || '') + '. ' + h.name,
     body:  mtReflow(lines.slice(h.i + 1, k + 1 < heads.length ? heads[k + 1].i : lines.length), wrap),
   }));
   // { entries } rather than a bare array, so a future field has somewhere to go. It used to also
@@ -796,10 +849,22 @@ function _mtInitModal() {
   // Removing does NOT close the panel: the DM stays looking at the empty state, which is the
   // confirmation that it worked. Closing on success would leave them wondering.
   _mtEl('btn-mt-remove').addEventListener('click', () => {
-    if (!confirm('Remove the loaded module text? Room names and descriptions already written stay as they are.')) return;
-    mtClearStored();
-    _mtEl('mt-file-input').value = '';
-    _mtRenderModal();
+    // confirmDialog, never the native confirm() — see the header of confirmDialog.js. This one
+    // is raised from inside a panel rather than from the room card, but the broken input state a
+    // native dialog leaves behind is the page's, not the caller's.
+    confirmDialog({
+      title: 'Remove module text?',
+      message: 'The locations Evermist parsed are discarded. Room names and descriptions ' +
+               'already written to the map stay as they are.',
+      confirmLabel: 'Remove',
+      cancelLabel: 'Cancel',
+      danger: true,
+      onConfirm: () => {
+        mtClearStored();
+        _mtEl('mt-file-input').value = '';
+        _mtRenderModal();
+      },
+    });
   });
 }
 
@@ -837,11 +902,22 @@ function _mtBuildDropdown(identEl) {
     '<div class="rp-mt-foot"><button type="button" id="rp-mt-load"></button></div>';
   identEl.appendChild(dd);
 
-  // mousedown, not click: the pointer going down inside the dropdown would otherwise blur the
-  // name field first, which closes the list out from under the click. preventDefault keeps
-  // focus where it is.
-  dd.addEventListener('mousedown', e => {
-    e.preventDefault();
+  // TWO listeners, and the split between them is load-bearing.
+  //
+  // mousedown only PREVENTS THE DEFAULT. The pointer going down inside the list would otherwise
+  // blur the name field, which closes the list out from under the pointer before it comes back
+  // up; preventDefault keeps focus where it is, and the list with it.
+  //
+  // The act itself waits for CLICK, one event later, and that is what keeps a modal dialog out
+  // of the middle of a mouse gesture. Picking an entry can raise the "replace your description?"
+  // confirm (roomPanel), and a native dialog opened from mousedown blocks the page before the
+  // matching mouseup is delivered: the browser is left believing the button is still down, and
+  // the next click on the name field reads as a continuation of that gesture rather than a fresh
+  // one, so the caret never lands and the field looks dead. It took two picks in a row to see —
+  // the first has no description to replace, so it raises no dialog and never broke. By click
+  // time the mousedown/mouseup pair is complete and the dialog can block for as long as it likes.
+  dd.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
+  dd.addEventListener('click', e => {
     e.stopPropagation();
     const load = e.target.closest('#rp-mt-load');
     if (load) { mtCloseDropdown(); openModuleTextModal(); return; }
@@ -1004,7 +1080,8 @@ function initModuleText(nameEl) {
 // ─── Node.js export guard (unit tests only) ──────────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    mtSplitLines, mtHeadingCandidate, mtHeadingCandidates, mtCanonPrefix, mtPickHeadings,
+    mtSplitLines, mtHeadingCandidate, mtHeadingCandidates, mtCanonPrefix, mtCanonLetter,
+    mtPickHeadings,
     mtFurniturePart, mtDropFurniture,
     mtWrapWidth, mtEndsParagraph, mtReflow,
     parseModuleText, mtFold, mtFilterEntries, mtPlacedTitles, mtProgress,
