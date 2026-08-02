@@ -46,6 +46,7 @@ function initInput() {
         isPanning = true;
         panStartX = e.clientX; panStartY = e.clientY;
         panStartPanX = panX;   panStartPanY = panY;
+        boostRender(); // so the first frame of the drag is already at full rate
         e.preventDefault(); return;
       }
       if (e.button !== 0) return;
@@ -58,15 +59,23 @@ function initInput() {
       const rect = container.getBoundingClientRect();
       lastScreenX = e.clientX - rect.left;
       lastScreenY = e.clientY - rect.top;
-      drawCursor(lastScreenX, lastScreenY);
+      // Panning is checked BEFORE the hover repaint, and hands the overlay to the
+      // render clock rather than painting it here. Both matter: the hover paint used
+      // to run first and so fired on every pan event too, with the pre-move pan values
+      // baked in, and the pan branch then repainted the whole overlay a second time.
+      // Two full overlay repaints per mouse event, off-clock, is what made the room
+      // outlines slide against the map they sit on. Hover keeps its inline paint so the
+      // brush ring still tracks the pointer at full rate.
       if (isPanning) {
         panX = panStartPanX + (e.clientX - panStartX);
         panY = panStartPanY + (e.clientY - panStartY);
         pixiSetViewport(zoom, panX, panY);
-        drawCursor(lastScreenX, lastScreenY); // redraw with updated pan values
         viewportDirty = true;
-        scheduleRender(); return;
+        boostRender();                            // re-arms the deadline each event
+        scheduleCursor(lastScreenX, lastScreenY); // schedules the render too
+        return;
       }
+      drawCursor(lastScreenX, lastScreenY);
       const pos = screenToMap(e.clientX, e.clientY);
       toolMouseMove(pos, e, lastScreenX, lastScreenY);
     });
@@ -100,9 +109,9 @@ function initInput() {
       panY = my - (my - panY) * (newZoom / zoom);
       zoom = newZoom;
       pixiSetViewport(zoom, panX, panY);
-      drawCursor(lastScreenX, lastScreenY);
       viewportDirty = true;
-      scheduleRender();
+      boostRender();                            // a wheel zoom has no end event —
+      scheduleCursor(lastScreenX, lastScreenY); // the deadline is what ends it
     }, { passive: false });
 
     container.addEventListener('contextmenu', e => e.preventDefault());

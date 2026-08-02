@@ -59,6 +59,26 @@ const videoFrameIntervalMs    = 1000 / VIDEO_FPS_DEFAULT;
 const APP_MAX_FPS   = 30;
 const APP_FRAME_MS  = 1000 / APP_MAX_FPS;
 
+// ─── Render boost (DM viewport gestures) ─────────────────────────────────────
+// The cap above is sized for IDLE, which is where it earns its keep: fog animation
+// loops the whole session whether the DM touches anything or not. A pan is a two-
+// second burst, and at 30fps on a high-refresh display it reads as heavy — the map
+// sits a frame and a half behind the hand. So a gesture lifts the cap for its
+// duration and the loop drops back the moment it stops.
+//
+// EXPRESSED AS A DEADLINE, NOT AN ON/OFF PAIR — this is the whole safety argument,
+// so do not "simplify" it into boost-on-mousedown / restore-on-mouseup. A pair has
+// to catch every way a gesture can end (mouseup, mouseleave, alt released mid-drag,
+// window blur, and a wheel zoom, which has no end event at all), and a single missed
+// path leaves the renderer uncapped for the rest of the session. That fails silently:
+// nothing looks wrong, the idle CPU saving is just gone. With a deadline the loop
+// re-caps itself, so a missed event costs RENDER_BOOST_MS and not the session.
+//
+// The window is long enough to bridge the gap between two mouse events at any sane
+// rate, so a steady drag stays boosted without re-triggering visibly.
+const RENDER_BOOST_MS = 250;
+let renderBoostUntil  = 0;   // performance.now() timestamp; 0 = not boosted
+
 // ─── Grid config ────────────────────────────────────────────────────────────
 // All eight are `let` — they are reassigned by UI handlers, applyGridConfig,
 // and the postMessage sync block at runtime.
@@ -140,11 +160,15 @@ const VIEW_LERP_MS   = 400;
 // viewportDirty: pan/zoom/resize/map-load changed → redraw ALL layers.
 // fogDirty: brush/rect/reveal-all/shroud-all → redraw ONLY the fog layer.
 // gridDirty: grid toggle/size change → redraw ONLY the grid layer.
+// cursorDirty: the Canvas-2D overlay (room outlines, labels, cursor shape) needs a
+//   repaint. Only the viewport gestures use it — see scheduleCursor() in render.js
+//   for why they must not call drawCursor() straight from the event handler.
 let renderScheduled = false;
 let viewportDirty   = false;
 let mapDirty        = false;
 let fogDirty        = false;
 let gridDirty       = false;
+let cursorDirty     = false;
 
 // Player-only: the (possibly downscaled) canvas backing the PixiJS map texture for
 // video maps. The Player has no DOM <video> compositing — the map is a masked PixiJS

@@ -46,8 +46,30 @@ function scheduleRender() {
   }
 }
 
+// ─── Render boost ─────────────────────────────────────────────────────────────
+// Lift the frame cap for the length of a DM viewport gesture. See the deadline
+// rationale in state.js — the contract here is that boostRender() may be called as
+// often as the gesture likes and nothing has to call a matching stop.
+//
+// DM-only on purpose. The Player runs a TV, where the sync path and not the frame
+// rate is the limit, and a boost there would only heat the machine. If Player
+// freelook ever wants this, drop the guard deliberately rather than by accident.
+function boostRender() {
+  if (isPlayer) return;
+  renderBoostUntil = performance.now() + RENDER_BOOST_MS;
+  if (pixiApp) pixiApp.ticker.maxFPS = 0; // 0 = uncapped (PixiJS Ticker.maxFPS setter)
+}
+
+function endRenderBoost() {
+  renderBoostUntil = 0;
+  if (pixiApp) pixiApp.ticker.maxFPS = APP_MAX_FPS;
+}
+
 // Called by the PixiJS ticker every allowed frame, just before the stage is presented.
+// The ticker runs every frame regardless of whether anything is dirty, so this is a
+// reliable place to notice an expired boost — there is no timer to leak.
 function pumpDirtyRender() {
+  if (renderBoostUntil && performance.now() >= renderBoostUntil) endRenderBoost();
   if (renderScheduled) doRender(); // doRender clears renderScheduled
 }
 
@@ -60,6 +82,28 @@ function _rafFallbackTick(ts) {
   }
   _lastRenderTs = ts;
   doRender();
+}
+
+// Request an overlay repaint on the shared clock instead of painting inline.
+//
+// THE VIEWPORT GESTURES MUST USE THIS, NOT drawCursor() DIRECTLY. A pan handler runs
+// once per mouse event — on a 180Hz display that is ~180 times a second, while every
+// other layer is capped at APP_MAX_FPS. Painting the overlay inline therefore put the
+// room outlines, labels and room card on a different clock from the map and fog they
+// sit on, which is the whole point of riding the ticker (see the note above). It also
+// made the overlay the most expensive thing on the main thread during a drag — it walks
+// every polygon, lays out every label and repositions the room card — so it delayed the
+// very rAF callbacks the capped layers depend on, and they arrived late and unevenly.
+//
+// The non-gesture callers (tools.js, roomPanel.js) still call drawCursor() directly and
+// should: they fire on discrete edits, not per mouse event, and want the repaint now.
+let _cursorX = null, _cursorY = null;
+
+function scheduleCursor(screenX, screenY) {
+  _cursorX = screenX;
+  _cursorY = screenY;
+  cursorDirty = true;
+  scheduleRender();
 }
 
 function getViewportSize() {
@@ -76,6 +120,11 @@ function doRender() {
   renderScheduled = false;
   flushBrushOps();
   if (!isPlayer && isDrawing) pixiUpdateFogDataTexture();
+
+  // Ahead of the early returns below so the flag always clears — drawCursor() guards
+  // the no-map case itself. Position within the tick is free: the 2D overlay and the
+  // WebGL present land in the same compositor frame either way.
+  if (cursorDirty) drawCursor(_cursorX, _cursorY);
 
   if (!videoDOMActive && !mapOffscreen && !pixiMapSprite) return;
 
@@ -111,6 +160,13 @@ function doRender() {
 
 // ─── Cursor overlay ───────────────────────────────────────────────────────────
 function drawCursor(screenX, screenY) {
+  // Any direct paint satisfies a pending scheduleCursor(), so a discrete caller can
+  // never be undone by a stale scheduled repaint arriving a tick later — mouseleave
+  // clearing the brush ring is the case that needs this.
+  cursorDirty = false;
+  _cursorX = screenX;
+  _cursorY = screenY;
+
   cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
   if (!mapOffscreen && !mapVideo) return;
 
