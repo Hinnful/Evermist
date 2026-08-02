@@ -1,0 +1,550 @@
+# Decisions
+
+The ledger of settled calls: what was tried, what was rejected, what was reverted, and
+why. This is a **lookup table, not a reading document** - nobody needs it in context to
+work. Open it when you are about to change something and want to know whether it was
+already decided.
+
+Rules live in [CLAUDE.md](../CLAUDE.md). How the app works lives in
+[ARCHITECTURE.md](ARCHITECTURE.md). This file holds the reasoning those two deliberately
+leave out.
+
+**Status tags:** `SETTLED` (this is the shape, don't redesign it) · `REJECTED` (built or
+proposed, then killed) · `REVERTED` (shipped, then taken back out) · `PARKED` (wanted,
+deferred) · `WON'T FIX` (real, deliberately not fixed).
+
+**Adding an entry:** one heading, a status, and at most a short paragraph. If an entry needs
+more than that, the excess belongs in the commit message.
+
+**Write about the DECISION, never about the people.** This file is public. No "the user", no
+"he/she said", no "I recommended", no quoted remarks from a chat log. Those read as leaked
+internal notes about a named person, and the attribution carries no information anyway: what
+a future reader needs is what was decided and why it held, not who said it. Write
+"rejected on product grounds: …", not "he rejected it because …". Where a decision came from
+someone's judgement rather than a measurement, say that impersonally ("judged not worth the
+cost") and move on.
+
+---
+
+## Rendering and fog
+
+### Player fog is Canvas-2D on top, DM fog is PixiJS · `SETTLED`
+The two views deliberately use different fog paths. Every PixiJS approach to the Player
+fog left a faint seam at the edge of animated maps; drawing one continuous 2D layer over
+the whole Player window makes the seam geometrically impossible. The split is
+architectural, not a stopgap. Do not unify the paths.
+
+### Testing fog's render/compositing layer · `REJECTED`
+`renderFog`, `rebuildFogBlur`, `recompositeCloudEffect`, the RAF loops and the Player seam
+path are not `node:test`-testable no matter how state is injected, because their behaviour
+*is* canvas pixel output and there is no `canvas` dependency. node-canvas does not
+faithfully implement `ctx.filter='blur()'`, so feather and blur would not reproduce either.
+Pure math goes in `fogGeometry.js` and gets tested there; the imperative layer stays
+untested. Do not chase testability by injecting render state.
+
+### Half-shroud is subtractive, and cannot re-fog cleared ground · `SETTLED`
+A Half room overlapping already-revealed ground shows no change in the overlap, because a
+subtractive erase cannot dim fog that is already gone. The rejected alternative
+(reveal-then-repaint) would have re-fogged it. Deliberate: you can't half-forget the room
+the party is standing in.
+
+### Half-shroud rollback needs a data sweep, not just a revert · `SETTLED`
+`mode: 'half'` is written into IndexedDB scenes and backup zips. If the branch is ever
+reverted, saved half rooms fall into the reveal `else` and render as **full reveals**, the
+most permissive possible failure for a fog tool. A revert must also sweep saved polygons
+`'half'` → `'shroud'`. Fail closed.
+
+### `fogHalfAlpha` is absent from Fog Reset · `SETTLED`
+It is the only dial in that panel that persists across sessions, so resetting it would
+discard a value dialled in over a session.
+
+### DM cloud pattern is frozen at frame 0 · `WON'T FIX` (until someone sees it)
+`cloudPattern` is built once and never refreshed; only the Player rebuilds it per tick. A
+`CanvasPattern` is a snapshot (verified empirically in Electron 43), so every DM
+reveal/shroud crossfade composites a stale frame-0 cloud. DM only, visible only during a
+transition, roughly a one-line fix. Nobody has reported seeing it.
+
+### Cloud morph runs ~12× slow during video playback · `WON'T FIX` (needs a verdict first)
+`cloudFramePos += dt` uses the per-tick `dt` even when the video throttle skipped ticks.
+Preserved deliberately through the 1.6.1 perf batch, because fixing it speeds the morph up
+~12× on animated maps, which is a fog-appearance change.
+
+### Fog "named theme library" · `REJECTED`
+Save/apply named fog themes was descoped out of the fog-colour epic. Distinct from
+per-preset fog identities, which are parked separately.
+
+### Video loop seam · `WON'T FIX`
+The seam is in the source Dungeon Alchemist export (last frame ≠ first frame); the app just
+plays the file. Every in-app fix (double-buffer crossfade, freeze-bridge) either doubles
+decode cost or hitches on moving water. A "how to export a clean loop from DA" note serves
+better than app code.
+
+---
+
+## The render loop
+
+### The dirty-flag loop rides the PixiJS ticker, on one clock · `SETTLED`
+Capping the two loops independently at the same interval was built, measured and rejected:
+same interval, different phase, so the Canvas-2D layers led the WebGL map. Measured
+viewport-set→present latency during a scripted pan, p90: 5.5ms uncapped, 33.2ms with two
+independent caps, roughly 36px of grid sliding against the map. Capping only `doRender`
+preserved registration but won nothing, because the entire saving is the ticker.
+
+The resolution: `doRender` is registered on the PixiJS ticker at `UPDATE_PRIORITY.HIGH`
+(above Application's own render at LOW) and the cap lives on `ticker.maxFPS`. p90 dropped
+to 0.5ms, tighter than the app has ever been. An rAF fallback covers `pixiApp === null`.
+
+**Do not "simplify" this back into a self-scheduling rAF loop with its own throttle.** A
+throttle on top of a throttle is exactly the phase bug this replaced.
+
+### Frame cap is 30fps, not 15 · `SETTLED`
+15 is where slow water and fire on video maps start to look wrong. No user-facing control:
+the FPS slider was deleted deliberately (see below).
+
+### CanvasPattern caching · `REJECTED` (the premise was wrong)
+The backlog carried "cache the cloud pattern" as a perf idea. Tested in Electron 43: a
+pattern made before a redraw still reads the old pixels, so the per-tick rebuild is
+required rather than wasteful.
+
+### Dropping the redundant full-res `mapOffscreen` · `REVERTED` — landmine
+A 2026-06-19 attempt caused a 90% CPU regression and RAM stayed around 3GB. Only revisit
+incrementally, one path at a time, measuring after each. High risk to the TV-critical
+Player path.
+
+### CPU is not the perf problem; memory is · `SETTLED`
+The 1.6.1 batch cut renderer CPU roughly 7× and it solved nothing anyone could feel. It was
+kept anyway, as a benefit to lower-end machines. **The next perf thread is memory, and it is
+unmeasured.** Do not open another CPU-reduction batch.
+
+### Cross-run CPU comparison on this machine is worthless · `SETTLED` (method)
+The same configuration measured 9.3% and 24.1% minutes apart. Every trustworthy figure
+must come from sampling twice inside one running instance and flipping the behaviour at
+runtime in between. Two more traps: an occluded window reads as **zero** (the ticker stops
+on `visibilitychange` and Chromium won't run rAF for a hidden surface), and a small test
+window understates the Player, because `renderFog` cost scales with pixel area.
+
+### Minimize memory "spike" · `SETTLED` — investigated and closed
+Mostly benign OS working-set movement. The fix that shipped pauses the PixiJS ticker and
+flushes the texture pool on minimize.
+
+---
+
+## Rooms and the room card
+
+### The room LIST · `REJECTED`
+A full Rooms tab with a vertical room list (rows, `listOrder`, drag-reorder, 3-state pill,
+click-to-jump, hover-to-outline) was built and then rejected on UX grounds: **the map is
+the better interface**, because it is the biggest target on screen and it shows an actual
+room instead of a room's name. Killed with it: `listOrder`, drag-reorder, pin/dock for the
+card, search over descriptions, read-mode vs edit-mode, per-room thumbnails.
+
+### Card position and description height are user-controlled, not computed · `SETTLED`
+The card floats over the map, so it will sometimes cover the very handles the DM selected
+the room by, and no placement rule wins that in general. So the DM drags it. Don't replace
+the drag with a cleverer auto-placement heuristic.
+
+### A `ResizeObserver` on the description · `REVERTED`
+Everything ugly about it followed from it firing continuously: a debounce, a 0×0 guard, and
+a real bug where re-clamping every tick slid the card up under the pointer during a
+downward resize drag. Replaced by a `mouseup` listener. **The transferable lesson: when a
+mechanism's own chattiness is generating its guards, the mechanism is wrong.**
+
+### `RP_DESC_H_MIN` / `RP_DESC_H_MAX` JS constants · `REVERTED`
+CSS `min-height`/`max-height` already clamp anything written to `style.height` (verified:
+9999→620, 1→120), so they guarded nothing and needed a "keep in step with the CSS" note.
+The note was the tell.
+
+### A title on the drag bar · `REJECTED`
+It briefly read "ROOM", directly above a field placeholdered "Room name": the same word
+twice, and noise the moment the room is actually named. There is nothing else a title here
+could say, because the card only ever shows a room. The six-dot grip advertises what the
+bar *is* instead.
+
+### The name field's alignment · `SETTLED` after three half-solutions
+The trap: the 14px column is where **boxes** start and 24px is where **text** starts, and
+the description is itself a 10px-padded field, so matching its box puts the name on both
+columns at once. Earlier passes read "everything starts at 14px" as being about text and
+stripped the name to a bare underline, buying a clean rest state at the cost of the focus
+state. Verified by measurement: name, description, fog pill and Delete all share
+left=75.4 w=288.4.
+
+### The screen-px → pre-zoom-px mapping is affine · `SETTLED`
+Two earlier versions got this wrong. Assigning screen px raw drifted the card ~20% off the
+room; dividing by the slope alone left a constant ~8px offset that automatic placement hid
+but a drag exposes as a jump on grab. Both the slope and the ~9.6px horizontal origin are
+derived from measurement.
+
+### A `roomRadiusMode` toggle · `REVERTED`
+A flag in `state.js` plus a toggle button, both removed: it was a control for a decision the
+selection had already made, and two things to keep in sync. The radius field derives its
+target from `selectedVertexIndex` and swaps its own glyph to say which.
+
+### The `v3/8` vertex readout · `REVERTED`
+It reported what the map already shows by highlighting the selected handle, in a notation
+opaque enough that nobody wanted to admit not knowing what it meant.
+
+### A second properties row, a label column, a leading icon on the name · `REJECTED`
+All three cost height, and the description is the card's scarcest resource.
+
+### A destructive button should keep the standard shape · `SETTLED`
+Delete is a full-width `.cp-btn` with `.cp-btn-danger` behind a hairline footer. The
+hairline is what stops it reading as the primary action. Shrinking it to signal danger only
+costs it the shape every other button in the app has.
+
+### Room notes are DM-only for free · `SETTLED`
+Polygons never cross to the Player (fog crosses as pixels, `initScenes()` is DM-gated), so
+there is no channel to strip and no guard needed. Area markers, when built, will not get
+this for free.
+
+---
+
+## Module text import
+
+### An LLM in the loop · `REJECTED`
+Parse or match in a chat, import the result. Killed on product grounds: it would make the app
+infrastructure for one particular campaign rather than a standalone feature anybody can use.
+**The test to apply to anything in this area: does a stranger who downloads the `.exe` get
+value with nothing else installed?**
+
+### A notes scratch pad in the app · `REJECTED`
+It competes with Notion and loses (tables, initiative tracking, folders, embedded links).
+Notion stays. Evermist's room note is the five seconds when the party opens a door. That
+boundary is what keeps the feature small.
+
+### Auto-assigning entries in click order (a queue) · `REJECTED`
+Killed by the real text: sub-locations mean one heading covers several polygons, so it
+desyncs within a few rooms. The DM picking is the irreducible step, because only they know
+which blob on the map is K12.
+
+### Importing a DM's own Notion prep notes · `REJECTED`
+They are unstructured and often do not exist. The bulk input is the module, which is highly
+structured; the homebrew delta gets typed over the top in the card.
+
+### The paste textarea, the Preview button, the explanatory paragraph · `REJECTED`
+All three cut from the import panel. Preview was actively broken-looking: it re-parsed the
+*textarea*, so with a file loaded it answered "paste some text first". A module is a file,
+choosing one already parses it, and the parser's rules are not something a DM can act on.
+
+### PDF support · `SETTLED` — the recommendation against it was wrong
+Recommended against on the grounds that it bought only ~3 extra rooms over exporting a `.txt`
+by hand. That measured the wrong thing: campaign modules ship as PDFs, and the cost was never
+the rooms, it was making someone prepare a file at all. **The lesson: when the recommendation
+is "have the user do a manual step", weigh the step, not the output delta.**
+
+### pdf.js runs in a `utilityProcess`, not the main process · `SETTLED`
+A module is an untrusted file and pdf.js is a large parser; in the main process it would sit
+beside the filesystem helpers, dialogs, window handles and every renderer channel. What the
+move buys: no Electron APIs, no renderer channel, crash and hang isolation, no state across
+imports. What it honestly does not buy: it is still a Node process, so `fs` exists. Full
+isolation needs a sandboxed renderer plus a custom protocol to load ESM from, which is a
+bigger change to the `file://` architecture than the residual risk justifies.
+
+### Storage is localStorage, not IndexedDB · `SETTLED`
+`sceneStore.js` is one store keyed by scene id at `DB_VERSION 1`, so a campaign-level store
+would need a version bump plus an upgrade path on the database holding the user's maps, to
+buy nothing for a few hundred KB. Measured headroom is 2.3×, not the 10× an early comment
+claimed; the real guard is `mtStore`'s try/catch.
+
+### A sidebar classifier · `REJECTED`
+A page of general rules between two headings is absorbed into the preceding room and the DM
+deletes it (roughly 1 room in 13). Every signal is either language-specific or
+indistinguishable from a long description, and a false positive silently loses real prep. A
+test pins the behaviour rather than endorsing it.
+
+### Synthetic fixtures validated the wrong parser twice · `SETTLED` (method)
+Both serious parser bugs passed 77 green synthetic tests and died within seconds of touching
+real text, and one synthetic fixture actively made a **correct** threshold look wrong (it
+put paragraph-final lines at 41-44 chars; real ones run 15-30). Synthetic fixtures remain
+right for the repo, because copyrighted text must not be committed, but **they prove only
+the shapes already known. Get real input before believing a text parser.**
+
+### A single false heading is catastrophic, not cosmetic · `SETTLED`
+One cross-reference inside room К1's text cost К2-К6 plus К7's name: six rooms for one line.
+That is why the sequence prefers its immediate successor over a forward jump, and why that
+fix had to be gated on `prev > 0` after it regressed the numbered-list guard.
+
+### The parser regression guard · `PARKED`
+All test fixtures are synthetic, so nothing checks the thresholds that were tuned against a
+real book. Change any one and every test still passes while every room silently arrives as a
+wall of text. Deferred on the grounds that a gap with no risk attached can wait, which holds
+while the parser sits still. **The trigger that changes that: if anyone retunes a threshold,
+this guard lands in the same session**, because without it the retune is unverifiable. The
+cheap fix carries no copyright risk: commit the **fingerprint** (line-length array, ordered
+heading keys, per-entry body lengths), which is a statistics table rather than the work.
+
+---
+
+## Player sync and the minimap
+
+### A view crosses the wire as a region, not a zoom · `SETTLED`
+Syncing centre plus zoom across two different-sized canvases meant a bigger TV showed *more
+map* rather than the same map. Now `mapCX`/`mapCY` plus `viewW`/`viewH` in map units, and
+the Player refits to its own canvas. Matching aspects land exact edge to edge; mismatched
+aspects fit rather than crop, so the players can never see less than the DM. `zoom` still
+rides along as the fallback for a view with no region, which is what the minimap's own snaps
+use.
+
+This was never "drift". Do not reopen a drift investigation without a genuinely new repro.
+
+### No `devicePixelRatio` term belongs in the handshake · `SETTLED` (measured)
+On the Player, `window.innerWidth/Height` equals `getViewportSize()` exactly, at
+devicePixelRatio 1 and 1.5, because player mode hides all chrome and PixiJS runs at
+`resolution: 1`.
+
+### Trimming the region by the control panel's width · `REVERTED`
+Roughly 288 screen px of the DM's viewport is map hidden behind the fixed control panel, so
+during zoomed-in play the players get a strip the DM cannot see. The geometrically correct
+fix (subtract the panel width from the region) was built and rejected on feel: it crops the
+TV to the DM's readable area, so content that used to reach the players stops reaching them.
+A real answer needs a different shape, such as making the panel collapsible or translucent so
+the DM's readable area and the canvas agree. There is a comment in `dmVisibleRegion()`
+saying not to re-add the trim.
+
+### The minimap is overview+frame, not a pure mirror · `SETTLED` — a deliberate reversal
+The old rule was "mirror flavour, shows ONLY the live zoomed slice". Reversed on purpose: a
+square frame was a lie under the pure-mirror rule, and the padding shows what is about to
+come into view while giving a bigger drag target. Do not "restore the mirror".
+
+### TV frame is dotted lines only · `SETTLED`
+An earlier pass dimmed everything outside the frame and stroked it solid. Both were rejected
+as obstructing the map.
+
+### Minimap zoom pivots about the view centre, never the cursor · `SETTLED`
+Cursor-pivot zoom cannot change zoom without shifting `mapCX/mapCY`, so zooming off-centre
+also panned what the players were watching. Cursor-pivot is still correct on the DM's own
+canvas: different surface, different rule.
+
+### The minimap is not evidence of what the players see · `SETTLED` (method)
+It is a square canvas that deliberately shows more map than the TV does; the real TV is only
+the band between the two dotted lines, which at a 16:9 Player is roughly a third of the
+preview's height. That padding was once read as the Player's own dead space and a sync bug
+was reported from it, costing most of a session. The complaint underneath was real and the
+evidence was not. Answer "judge it on the TV, or ask me to measure it" every time.
+
+### Lock blocks accidental movement, not deliberate driving · `SETTLED`
+Sync View intentionally still moves a locked Player. Lock only disables the Player's own
+input and the DM's own minimap drag/wheel.
+
+### Minimap fog is a cheap approximation · `SETTLED`
+Blur plus tint so fog reads like fog. Do not replicate the cloud pipeline. Video maps mirror
+as a frozen frame.
+
+### Sync MODE (continuous follow) · `PARKED`
+Considered as a mode rather than a button, then dropped: in practice sync barely gets used at
+all. The button stays; the job is making the existing one work.
+
+### Player resilience (recovering a stale or blank Player map) · `PARKED`
+Irrelevant unless these errors become frequent. Nobody debugs mid-session, so a recovery path
+for a rare failure buys nothing. Don't pick this up without a real recurring failure.
+
+---
+
+## UI and the control panel
+
+### Player view has essentially no interface · `SETTLED`
+An epic step called "Player view redesign" was wrong and was shrunk. `body.player-mode`
+hides the sidebar, toolbar, minimap, scene dropdown, UI-scale row and the cursor. Exactly
+three surfaces reach the TV: the scene transition fade plus scene name, the map loading bar,
+and the landing/empty state. Keep them precisely because they are the only part of the app
+the players ever see.
+
+### The FPS slider · `REVERTED` — deleted outright
+It was a hidden `display:none` row, unreachable since the control-panel redesign, so it was
+removed rather than restored. Deleted: the markup, the wiring, `fpsToFrameInterval` and its 7
+tests, and the `videoFrameIntervalMs` field from the DM→Player `anim-params` message.
+**`videoFrameIntervalMs` itself survives as a `const` = 1000/24 and is live** - `video.js`
+throttles the frame pump on it every frame.
+
+### The video codec hint · `REJECTED`
+Carried for months without ever being wanted.
+
+### Manual resolution slider · `REJECTED`
+Irrelevant for images, and the display epic auto-downscales video textures.
+
+### Switching UI scaling off CSS `zoom` · `PARKED`
+Moving to `transform: scale` or rem-based units would retire a bug class at the root, but the
+Electron 43 bump already did that job. Don't take on the refactor without a new reason.
+
+---
+
+## Storage, packaging and the shell
+
+### `File.path` is gone and must never come back · `SETTLED`
+Electron 32 removed it. The renderer was still passing `file.path` to `saveVideoFile`, so
+main got `undefined`, `fs.stat` threw, and because the `await` had no try/catch the rejection
+stranded the progress overlay forever. Broken in every release from 1.4.4 through 1.6.0, and
+unnoticed because existing video scenes load from disk and never touch it. The same removal
+silently broke zip restore, which alerted "needs the desktop app" while running in the
+desktop app. Use `webUtils.getPathForFile`, called in the **preload**, not the renderer.
+
+**A failed save must never leave the progress overlay up.** The hang was worse than the
+failure.
+
+### `npm start` cannot see the packaging bug class · `SETTLED`
+Dev was green while the built `.exe` died on "Setting up fake worker failed": pdf.js derives
+its fake-worker path from `GlobalWorkerOptions.workerSrc`, and left unset it guesses the
+non-minified worker, which the build filter did not ship. Two more of the same family: ESM
+does not go through Electron's asar redirect, and pdfjs-dist drags a 37MB optional native
+canvas binding that text extraction never touches. **The check that catches all of it:
+`npx electron-builder --win --dir`, then run the real `.exe`.**
+
+### Backwards-compat migration layer · `REJECTED`
+Export/Import already covers cross-release transfer. The guard that replaces it: don't break
+Export/Import.
+
+### GPU-direct video texture (epic task 3) · `REJECTED`
+Display-sizing is a prerequisite of that path, not a benefit; once the source is
+display-sized, the simple path is already cheap. It also drops high-res DA exports and
+re-trips TDR. Only revisit if a measured video frame-time problem survives display-sizing.
+
+### Proxy auto-shrink-on-import · `PARKED`
+Needs a bundled video encoder: weight, licensing, and a slow "preparing your map" wait. Only
+if zero-prep "any uber-map just works" becomes a real goal.
+
+### Single-load on scene creation · `WON'T FIX` (noted)
+Drop/replace loads the map twice. Rerouting through `switchScene` exists because the direct
+path produced broken PixiJS fog and video. It works, it is just wasteful, and changing it
+carries regression risk.
+
+### Releases are unsigned, and upload via `softprops`, not electron-builder · `SETTLED`
+electron-builder's own publisher only uploads to *draft* releases, so creating the release as
+published via the web UI made it silently skip the upload: the build went green with no
+installers attached. Unsigned is a deliberate cost choice; `CSC_IDENTITY_AUTO_DISCOVERY=false`
+is required or the mac build fails hunting for an identity.
+
+---
+
+## Video
+
+### The rs=2 stall fix · `SETTLED` — keep every piece
+The Player plays from its **own** in-memory blob, not the shared `file://` clip both windows
+read concurrently. Keep: the `disable-features BackgroundVideoTrackOptimization` switch,
+`backgroundThrottling:false` on both windows, the `onVideoWaiting` pause-poll-until-rs≥3
+resume, the RVFC loop in `startVideoLoop`, and the Player texture-sync dedup on
+`currentTime`. The diagnostics (on-screen overlay, stress rig, rotated disk logs) are
+permanent, not temporary. Fallback if it ever recurs: throttle the Player's per-frame
+`drawImage(video)`.
+
+### The ~30s jitter · `SETTLED`
+Root cause was Chromium's `BackgroundVideoTrackOptimization` dropping tracks on "occluded"
+muted loops. The `disable-features` switch above is the fix. **Unverified across the
+Chromium 120 → 150 bump**: if the feature was renamed the switch silently becomes a no-op and
+looping videos freeze again with no error, which a general smoke test would not catch.
+
+### The old Canvas-2D grid path · `SETTLED` — deleted
+Only `renderPlayerGrid(vp)` on `playerGridCanvas` is the live Player grid path. Don't
+resurrect `drawGridLines(mapCtx)`.
+
+---
+
+## Scope boundaries
+
+### Map layers · `PARKED`
+It amounts to batching three or four maps together as a folder, which is minimal value in
+actual play or prep.
+
+### Distinctive fog identities · `PARKED` to 2.0.0
+Agreed to be the most interesting idea in its batch and too big for now. The shape when it
+lands: "bloody / icy / acidic / rusty" are not tint values, they are combinations of knobs
+the cloud engine already has (cell size, warp radius, warp strength, anim speed, base and
+tint colour, opacity).
+
+### Area markers are areas, not creatures · `SETTLED` (scope call)
+Difficult terrain, persistent damage zones, light radius, Wall of Fire. No identity, no turn
+order, no mini that moves each round, so this does **not** cross the VTT line the app
+refuses to cross. It reuses the existing polygon tools, the Select tool and the card. The one
+genuinely new piece of work: these must cross to the Player, and that channel deliberately
+does not exist today.
+
+### Auto-polygons: prefer missing a room over producing a bad one · `SETTLED` (design)
+A skipped room costs exactly what today costs. A slightly-wrong one costs **more** than
+today, because fixing someone else's shape is slower than drawing your own. Tune toward
+refusing rather than guessing.
+
+Two more calls from the same design pass. **Do not look for walls at all** - grow outward
+from the clicked pixel until the surface stops resembling it, because DA walls can be dark,
+light, grass, snowy or cave stone and any "walls are dark lines" approach is dead on arrival.
+And **invert the "do magic" button**: pressing it creates nothing, it lights up candidate
+outlines that become real on click, so there is no cleanup cost and bad input is free.
+
+### The VTT line · `SETTLED`
+No tokens, no initiative, no character sheets. Map, fog, grid, two screens.
+
+---
+
+## Process and docs
+
+### Rules about rules don't work here; hooks do · `SETTLED`
+Two rules lived in CLAUDE.md: "don't grow the inline blob" and "don't write history in this
+file". The one with a `PostToolUse` hook held for months. The one without it failed
+completely. Every structural rule about this repo's files should ask whether it can be a
+hook.
+
+### Why the "no history in CLAUDE.md" rule failed · `SETTLED` — this file is the fix
+Three causes, and the third is the one that mattered. **The rule's destinations didn't
+work**: it sent post-mortems to commit messages, but a fresh session never reads `git log`,
+so "put it in the commit" read as "throw it away". **A rule without its reason gets
+simplified away**, so reasons got smuggled back in as narrative - right instinct, wrong
+container. **Nobody owned the file's total size**, because appending a section is always
+locally cheap.
+
+### Three docs, and only one of them is pushed · `SETTLED`
+`CLAUDE.md` loads into every session automatically, so its size is a running tax and it gets a
+shrink-only guard. `ARCHITECTURE.md` and `DECISIONS.md` are read on demand, so their size
+barely matters and their *findability* is everything.
+
+The trap that follows: a pointer is not a trigger. Links from CLAUDE.md to the other two only
+fire if someone is already reading that exact section, which is why `ARCHITECTURE.md` drifted
+seven modules stale without anyone noticing. The fix is not another rule — it is that `/wrap`
+now files into all three and `/brief` reads the ledger as a rejection filter. **A doc with no
+reader and no writer in the actual workflow will rot, however well written.**
+
+### Grinding CLAUDE.md down to a byte target · `REJECTED`
+The split targeted "under 16KB" and landed at 23.7KB. The estimate was wrong, not the
+execution: the rule density in the one oversized section was higher than guessed. Getting to
+16KB would mean deleting real rules to hit a number. The distribution was the actual problem
+and it is fixed — one section was 80.7% of the file, and now the largest is 28%.
+
+### Comment density as a target, applied per file · `REJECTED`
+The codebase-wide figure is the meaningful one, and the trim took `src/` from 22.6% to 19.3%.
+Per-file targets are a bad instrument: `state.js` is 70 lines of one-line declarations, so its
+43% is almost entirely load-bearing trap warnings rather than padding, and a parser needs a
+reason attached to each rule or someone simplifies it away. Do not "finish the job."
+
+### Verifying a comment-only change with the test suite alone · `REJECTED`
+Strip comments and blank lines from HEAD and the working copy, then diff the pure code, per
+file. It caught two things 375 green tests did not: two declarations quietly reordered while
+regrouping, and a **real functional regression** where retyping a line turned a literal
+non-breaking space inside a character class into an ordinary space. The two versions are
+visually identical. Reuse this for any comment-only pass, and treat invisible characters in
+source as something a comment must warn about.
+
+### Manual test checklists in `/handoff` and `/wrap` · `REJECTED`
+The app can't be agent-driven (Electron on `file://`, runs on the TV, fog is pixel output),
+so automated verification tops out at `npm test` on pure modules and everything visual comes
+down to looking at the TV. Checklists went unread. Don't reintroduce them.
+
+### Auto-running `/redteam` inside `/handoff` · `REJECTED`
+Slow, expensive, and mostly grading a *spec* against criteria that don't apply to an offline
+single-user app. Replaced by a mandatory verdict line with a reason. The standalone run on a
+**diff** is where the value is.
+
+### Piecemeal README updates · `PARKED` to 2.0.0
+The docs get one consolidated rewrite rather than a paragraph per feature.
+
+---
+
+## Corrections worth keeping
+
+Three times the reasoning was wrong in a way that would repeat. Each is here so it doesn't.
+
+**"It's a big refactor."** Said about the comment trim. It conflated *deleting reasons* with
+*trimming verbosity*. Different operations: the second is comment-only edits with no code
+change, and the test suite catches the one real risk.
+
+**"PDF support isn't worth it."** Measured the wrong thing - the cost was never the extra
+rooms, it was the DM having to prepare a file at all.
+
+**"The whole-book numbers."** "301 locations, 88/88 castle" was measured by the parser *before*
+sub-locations landed. The current parser finds strictly more and nobody has re-run it. Don't
+quote those figures as current.
