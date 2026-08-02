@@ -1,36 +1,31 @@
 'use strict';
 // pdfLayout.js — turning a PDF page's positioned text back into lines, in reading order.
 //
-// WHY THIS EXISTS. A published module ships as a PDF, so asking the DM to export a .txt first is
-// friction the app should absorb — a campaign module is not something you "prepare". But a PDF has
-// no lines and no paragraphs: it has glyph runs at coordinates. Recovering the text is not the hard
-// part (pdf.js does that); recovering the READING ORDER of a two-column book with sidebars and
-// spanning headings is. That reconstruction is this file, and it is pure so it can be tested.
+// A PDF has no lines and no paragraphs, only glyph runs at coordinates. pdf.js recovers the
+// text; recovering the READING ORDER of a two-column book with sidebars and spanning
+// headings is this file. Pure, so it can be tested.
 //
-// NOT a browser-runtime module despite living in src/ — main.js requires it, because pdfjs-dist is
-// ESM-only and browser-side `import` breaks on file://. It sits here to ride the src/**/*.js build
-// glob and the node:test convention, and it is deliberately dependency-free so either side can
-// require it. There is no <script src> tag for it.
+// Not browser code despite living in src/ — main.js requires it, and there is no <script>
+// tag. It sits here for the build glob and the node:test convention, and stays
+// dependency-free so either side can require it.
 //
-// THE MISTAKE TO NOT REPEAT: group items into lines FIRST and split columns after. On a two-column
-// page the left and right lines share a baseline, so grouping by y merges them into one line of
-// roughly double the width — every body line then looks like it spans the page, the column split
-// never fires, and the output is the two columns interleaved sentence by sentence. Measured on the
-// real book: that order gives a 96-character median line where the correct order gives 51.
-// Columns first. Always.
+// THE MISTAKE TO NOT REPEAT: columns first, lines second. On a two-column page the left and
+// right lines share a baseline, so grouping by y merges them into one double-width line;
+// the column split then never fires and the output is the two columns interleaved sentence
+// by sentence. Measured on the real book: 96-character median line the wrong way, 51 the
+// right way.
 
-// Vertical tolerance for "same line", in PDF points. Generous enough for the sub-pixel baseline
-// jitter a typesetter leaves behind, tight enough not to merge consecutive lines (~12pt apart).
+// "Same line" tolerance in PDF points: loose enough for typesetter baseline jitter, tight
+// enough not to merge consecutive lines (~12pt apart).
 const PL_LINE_TOL = 3;
 
-// How far past the page's midline a run must reach before it counts as SPANNING both columns
-// rather than belonging to one. A column's own text stops well short of the gutter, so this only
-// needs to exceed the raggedness of a justified right edge.
+// How far past the midline a run must reach to count as SPANNING both columns. A column's
+// own text stops well short of the gutter, so this only has to exceed a justified edge's
+// raggedness.
 const PL_SPAN_MARGIN = 40;
 
-// Group text runs that share a baseline into one line. Safe ONLY within a single column — see the
-// header. `items` are {str, x, y, w}; the result carries the line's own extent so the caller can
-// ask where on the page it sits.
+// Group runs sharing a baseline into one line. Safe ONLY within a single column.
+// `items` are {str, x, y, w}; the result carries the line's extent.
 function plGroupLines(items, tol) {
   const t = tol == null ? PL_LINE_TOL : tol;
   const sorted = (Array.isArray(items) ? items : [])
@@ -46,7 +41,7 @@ function plGroupLines(items, tol) {
   }
   return lines.map(l => {
     l.items.sort((a, b) => a.x - b.x);
-    // Runs are joined with no separator: a PDF splits a word across runs at every kerning or style
+    // Joined with NO separator: a PDF splits a word across runs at every kerning or style
     // change, so inserting spaces would break words apart. The runs carry their own spaces.
     const text = l.items.map(i => String(i.str)).join('').replace(/\s+/g, ' ').trim();
     return {
@@ -58,8 +53,7 @@ function plGroupLines(items, tol) {
   }).filter(l => l.text);
 }
 
-// Which of the page's three buckets a run belongs to: the left column, the right column, or
-// spanning both. A run that starts left of the gutter and ends well right of it spans.
+// Left column, right column, or spanning both.
 function plClassify(item, pageWidth, spanMargin) {
   const m = spanMargin == null ? PL_SPAN_MARGIN : spanMargin;
   const mid = pageWidth / 2;
@@ -70,11 +64,10 @@ function plClassify(item, pageWidth, spanMargin) {
 
 // One page's runs → its lines, in reading order.
 //
-// Spanning lines (a chapter heading, a wide table, a full-width illustration caption) cut the page
-// into BANDS. Within a band the left column is read top-to-bottom before the right, which is what
-// a human does; across bands the spanning line separates them. Without the banding, a heading
-// halfway down the page would be read after both full columns, landing its rooms under the wrong
-// heading.
+// Spanning lines (a chapter heading, a wide table, a caption) cut the page into BANDS.
+// Within a band the left column is read before the right, as a human does. Without the
+// banding, a heading halfway down the page would be read after both full columns, landing
+// its rooms under the wrong heading.
 function plPageLines(page, opts) {
   const o = opts || {};
   const width = (page && page.width) || 0;
@@ -88,8 +81,7 @@ function plPageLines(page, opts) {
   const right = plGroupLines(buckets.right, o.lineTol);
   const span  = plGroupLines(buckets.span,  o.lineTol);
 
-  // Bands run downward, so band boundaries are descending y values. A line belongs to the band
-  // whose top it is below and whose bottom it is above.
+  // Bands run downward, so boundaries are descending y values.
   const out = [];
   let top = Infinity;
   for (const boundary of [...span.map(s => s.y), -Infinity]) {
@@ -103,17 +95,16 @@ function plPageLines(page, opts) {
   return out;
 }
 
-// Every page's lines, concatenated into the one text blob the module parser consumes.
-// Page furniture is left in on purpose: moduleText.js already identifies and removes it, and it
-// does so better than a coordinate-based guess would — a running header is not reliably at a fixed
-// position, but it IS reliably the same text with a different page number attached.
+// Every page's lines, concatenated into the blob the module parser consumes. Page furniture
+// is left in on purpose: moduleText.js identifies it better than coordinates can, because a
+// running header is not reliably positioned but IS reliably the same text with a different
+// number attached.
 function plDocumentText(pages, opts) {
   return (Array.isArray(pages) ? pages : [])
     .map(p => plPageLines(p, opts).join('\n'))
     .join('\n');
 }
 
-// ─── Node.js export guard (main.js + unit tests) ─────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     plGroupLines, plClassify, plPageLines, plDocumentText,

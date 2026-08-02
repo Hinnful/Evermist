@@ -1,87 +1,53 @@
-// state.js — shared mutable state, extracted lazily from the inline blob.
-// Loaded BEFORE fog.js so these globals exist when fog functions reference them.
-// Grow this file on-touch (one concern at a time) — never a big-bang move. See CLAUDE.md.
+// state.js — shared mutable state. Loaded before fog.js so these globals exist when
+// fog functions reference them. Grow on-touch, one concern at a time. See CLAUDE.md.
 
-// ─── Fog display constants ────────────────────────────────────────────────────
-// Purple-blue luminosity tint applied over fog on both render paths (Canvas 2D
-// fog.js:recompositeCloudEffect and PixiJS renderer.js:purpleOverlay). Must stay
-// in state.js so it's declared before both fog.js and renderer.js are evaluated.
+// ─── Fog display constants ───────────────────────────────────────────────────
+// Must be declared here: both fog.js and renderer.js read it at evaluation time.
 let FOG_TINT_ALPHA = 0.18;
 
-// Live fog color vars — changed by the DM color picker and synced to Player.
-// fogPickedHex: the raw picked color from the #fog-color input. Stored here so
-//   save/restore never has to read the DOM. Set by applyFogColor() in fog.js.
-// fogBaseColor: the solid fill shown on the Player's full display (outside + fogged area).
-// fogTintColor: the glow overlay drawn source-atop on both DM and Player fog.
-// Neither value is baked into fogDataCanvas/baseFogCanvas pixel data — those canvases
-// carry alpha only (#1a1a2e fills are alpha-carrier convention, not display color).
-// Default picks are derived from a single hue (#3a3a8c) via deriveFogColors() so the
-// two-color look matches today's navy base + purple tint as closely as one hue allows.
+// Live fog colours, set by applyFogColor() in fog.js and synced to the Player.
+// Not baked into fogDataCanvas/baseFogCanvas — those carry alpha only, and their
+// #1a1a2e fills are an alpha-carrier convention rather than a display colour.
 let fogPickedHex = '#3a3a8c';
-let fogBaseColor = '#1a1a2e';
-let fogTintColor = '#7050e0';
+let fogBaseColor = '#1a1a2e';   // solid fill on the Player's full display
+let fogTintColor = '#7050e0';   // glow drawn source-atop on both views
 
-// ─── Scene-fade timing ────────────────────────────────────────────────────────
-// Player-side: minimum time the #scene-fade black must stay visible so even fast
-// cached loads feel deliberate rather than a blink.
+// ─── Scene-fade timing ───────────────────────────────────────────────────────
+// Minimum time #scene-fade stays dark, so a fast cached load doesn't blink.
 const SCENE_FADE_MIN_MS = 1500;
-let   _sceneFadeStart   = 0; // Date.now() snapshot when .dark was last applied
+let   _sceneFadeStart   = 0;
 
 // ─── Display info ────────────────────────────────────────────────────────────
-// Normalized { w, h, scaleFactor } for the screen the Player window is on.
-// Written by display.js initDisplayDetection() via the IPC push from main.js.
-// null until the first push arrives (typically within ms of window creation).
+// Normalized { w, h, scaleFactor } for the Player's screen, pushed from main.js via
+// display.js. null until the first push arrives.
 let displayInfo = null;
 
 // ─── Video frame-rate cap ────────────────────────────────────────────────────
-// Fixed: video.js throttles the frame pump to this interval. It used to be driven by
-// an FPS dial in the advanced panel; that control was dropped from the redesigned UI,
-// left hidden and unreachable, and has now been removed along with its wiring, its
-// fps→interval helper and its DM→Player sync field. Both windows derive the same
-// value from this constant, so there is nothing left to sync.
+// Live: video.js throttles the frame pump on this every frame. Not FPS-slider
+// leftover — that control and its sync field were removed, this was kept.
 const VIDEO_FPS_DEFAULT       = 24;
 const videoFrameIntervalMs    = 1000 / VIDEO_FPS_DEFAULT;
 
 // ─── App frame-rate cap ──────────────────────────────────────────────────────
-// A tabletop map display does not need display-refresh rendering: the fog drifts
-// slowly and the TV is watched from across a room, so 30fps looks identical and
-// costs a fraction of the CPU. On a high-refresh monitor the dirty-flag loop ran
-// at ~180fps, which is 6x the work for no visible gain.
-//
-// ONE clock, not two. The cap is applied to the PixiJS ticker, and render.js's
-// dirty-flag loop rides that same ticker (at a higher priority, so it paints just
-// before the present). Capping the two loops independently was measured and
-// rejected: same interval, different phase, so the Canvas-2D layers led the map by
-// up to a full frame. Do not add a second throttle in render.js.
-//
-// Internal constant by design — deliberately no UI control, no sync field, and
-// not persisted. Do not lower below 30: slow water/fire on video maps break up.
+// ONE clock, not two: this caps the PixiJS ticker, and render.js's dirty-flag loop
+// rides that same ticker. Capping both independently was measured and rejected (same
+// interval, different phase, so the Canvas-2D layers led the map). Do not add a second
+// throttle in render.js. Do not lower below 30: slow water and fire on video maps start
+// to break up. Deliberately no UI control and not persisted.
 const APP_MAX_FPS   = 30;
 const APP_FRAME_MS  = 1000 / APP_MAX_FPS;
 
 // ─── Render boost (DM viewport gestures) ─────────────────────────────────────
-// The cap above is sized for IDLE, which is where it earns its keep: fog animation
-// loops the whole session whether the DM touches anything or not. A pan is a two-
-// second burst, and at 30fps on a high-refresh display it reads as heavy — the map
-// sits a frame and a half behind the hand. So a gesture lifts the cap for its
-// duration and the loop drops back the moment it stops.
+// A gesture lifts the cap for its duration, since 30fps reads as heavy mid-pan.
 //
-// EXPRESSED AS A DEADLINE, NOT AN ON/OFF PAIR — this is the whole safety argument,
-// so do not "simplify" it into boost-on-mousedown / restore-on-mouseup. A pair has
-// to catch every way a gesture can end (mouseup, mouseleave, alt released mid-drag,
-// window blur, and a wheel zoom, which has no end event at all), and a single missed
-// path leaves the renderer uncapped for the rest of the session. That fails silently:
-// nothing looks wrong, the idle CPU saving is just gone. With a deadline the loop
-// re-caps itself, so a missed event costs RENDER_BOOST_MS and not the session.
-//
-// The window is long enough to bridge the gap between two mouse events at any sane
-// rate, so a steady drag stays boosted without re-triggering visibly.
+// EXPRESSED AS A DEADLINE, NOT AN ON/OFF PAIR — do not "simplify" it into
+// boost-on-mousedown / restore-on-mouseup. A pair must catch every way a gesture can
+// end, and one missed path leaves the renderer uncapped for the rest of the session
+// with nothing looking wrong. A deadline re-caps itself.
 const RENDER_BOOST_MS = 250;
 let renderBoostUntil  = 0;   // performance.now() timestamp; 0 = not boosted
 
-// ─── Grid config ────────────────────────────────────────────────────────────
-// All eight are `let` — they are reassigned by UI handlers, applyGridConfig,
-// and the postMessage sync block at runtime.
+// ─── Grid config ─────────────────────────────────────────────────────────────
 let gridEnabled   = false;
 let gridSize      = 70;
 let gridOffsetX   = 0;
@@ -91,23 +57,16 @@ let gridOpacity   = 0.25;
 let gridMode      = 'square'; // 'square' | 'hex-flat' | 'hex-pointy'
 let gridLineWidth = 1;
 
-// ─── Fog RAF lifecycle handles ──────────────────────────────────────────────────
-// requestAnimationFrame ids for the two independent fog loops. Held here (not in
-// fog.js) so teardown — stopFogAnim / stopFogTransition — can be reasoned about as
-// explicit lifecycle state. null = loop not running.
+// ─── Fog RAF lifecycle handles ───────────────────────────────────────────────
+// Held here rather than in fog.js so teardown is explicit lifecycle state.
 let fogAnimRafId  = null; // drifting cloud animation loop (fogAnimTick)
 let fogTransRafId = null; // reveal/shroud crossfade loop (fogTransTick)
 
-// ─── Migrated from inline blob — map/camera/scene/player-sync/dirty state ────
-// These were top-level declarations in the inline <script>. Moved here so all
-// shared mutable state lives in one place (CLAUDE.md: "Shared mutable state has
-// one home: state.js"). Pure relocation — no renames, no changed initial values.
-
-// ─── Config ───────────────────────────────────────────────────────────────────
+// ─── Config ──────────────────────────────────────────────────────────────────
 const ZOOM_FACTOR       = 1.1;
 const POLY_CLOSE_RADIUS = 12;  // screen-px hit area to close polygon on first vertex
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// ─── Map / camera ────────────────────────────────────────────────────────────
 let mapOffscreen = null;
 let mapBitmap    = null;
 let mapVideo     = null;   // <video> element for animated maps
@@ -126,43 +85,38 @@ let playerWindow = null;
 let playerMapSent = false;
 let lastScreenX = null, lastScreenY = null;
 
-// ─── Polygon state ────────────────────────────────────────────────────────────
-// Rooms, in code called polygons: {id, vertices:[{x,y}], mode, name, desc,
-// cornerRadius, cornerRadii}. NEVER reorder this array — rebuildFogFromPolygons() walks
-// it in reverse, so its order is fog compositing precedence.
+// ─── Rooms (called polygons in code) ─────────────────────────────────────────
+// {id, vertices:[{x,y}], mode, name, desc, cornerRadius, cornerRadii}.
+// NEVER reorder this array — rebuildFogFromPolygons() walks it in reverse, so its order
+// IS fog compositing precedence.
 let polygons = [];
 let nextPolygonId = 1;
-// Room names drawn on the DM map (roomPanel.js drawRoomLabels, toggled with L). On by
-// default: labels are how the map answers "which room is this?" without a list, and rooms
-// too small on screen to read hide themselves anyway.
-let showRoomLabels = true;
+let showRoomLabels = true;   // roomPanel.js drawRoomLabels, toggled with L
 
-// ─── Auto-Sync ────────────────────────────────────────────────────────────────
+// ─── Auto-Sync ───────────────────────────────────────────────────────────────
 let autoSync = false;
 let autoSyncTimer = null;
 
-// ─── Scene management ─────────────────────────────────────────────────────────
+// ─── Scene management ────────────────────────────────────────────────────────
 let currentScene    = null;   // full scene record in memory (includes mapBlob ref)
 let allScenes       = [];     // lightweight list for the sidebar
 let autoSaveTimer   = null;
 let mapLoadMode     = 'auto'; // 'new' = create scene, 'replace' = replace map
 
-// ─── Player Sync State ────────────────────────────────────────────────────────
+// ─── Player sync state ───────────────────────────────────────────────────────
 let playerFollowMode   = true;  // DM side: last known player mode
 let playerFollowDM     = true;  // Player side: whether to mirror DM viewport
 let playerInputLocked  = false; // Player side: lock flag pushed from DM minimap Lock
-let lastDMView       = null;  // Player side: most recent view received from DM
+let lastDMView       = null;    // Player side: most recent view received from DM
 let viewLerpActive   = false;
 let viewLerpFrom     = null, viewLerpTo = null, viewLerpStart = 0;
 const VIEW_LERP_MS   = 400;
 
-// Dirty flags — the key to avoiding unnecessary work.
-// viewportDirty: pan/zoom/resize/map-load changed → redraw ALL layers.
-// fogDirty: brush/rect/reveal-all/shroud-all → redraw ONLY the fog layer.
-// gridDirty: grid toggle/size change → redraw ONLY the grid layer.
-// cursorDirty: the Canvas-2D overlay (room outlines, labels, cursor shape) needs a
-//   repaint. Only the viewport gestures use it — see scheduleCursor() in render.js
-//   for why they must not call drawCursor() straight from the event handler.
+// ─── Dirty flags ─────────────────────────────────────────────────────────────
+// viewportDirty redraws all layers; fogDirty/gridDirty redraw only their own.
+// cursorDirty is the 2D overlay (room outlines, labels, cursor shape) — only the
+// viewport gestures set it, see scheduleCursor() in render.js for why they must not call
+// drawCursor() straight from the event handler.
 let renderScheduled = false;
 let viewportDirty   = false;
 let mapDirty        = false;
@@ -170,25 +124,20 @@ let fogDirty        = false;
 let gridDirty       = false;
 let cursorDirty     = false;
 
-// Player-only: the (possibly downscaled) canvas backing the PixiJS map texture for
-// video maps. The Player has no DOM <video> compositing — the map is a masked PixiJS
-// sprite — so each frame we draw the video into this canvas and re-upload the texture.
+// Player-only canvas backing the PixiJS map texture for video maps. The Player has no DOM
+// <video> compositing, so each frame draws the video here and re-uploads the texture.
 let playerMapTexCanvas = null;
 let playerMapTexCtx    = null;
 
-// ─── Player screen dimensions (DM-side cache) ─────────────────────────────────
-// Reported by the Player window on PLAYER_READY and on every resize. Used by the
-// minimap to size its canvas to the Player's real aspect and compute visible extent.
-// Defaults to a 16:9 fallback until the first report arrives.
+// ─── Player screen dimensions (DM-side cache) ────────────────────────────────
+// Reported on PLAYER_READY and every resize; the minimap sizes itself from these.
+// 16:9 fallback until the first report arrives.
 let playerScreenW = 1920;
 let playerScreenH = 1080;
 
-// ─── Minimap state ────────────────────────────────────────────────────────────
-// minimapView: the {mapCX, mapCY, zoom} triple the minimap is showing / driving.
-//   This IS the intended Player camera. Seeded on map load; updated by DM pan/zoom
-//   on the minimap, by "Sync View", and by Player freelook reports.
-// minimapLocked: when true, pointer input on the minimap is ignored.
-// minimapDirty: set true when the minimap needs a redraw; cleared by drawMinimap().
+// ─── Minimap state ───────────────────────────────────────────────────────────
+// minimapView IS the intended Player camera: seeded on map load, updated by drag on the
+// minimap, by Sync View, and by Player freelook reports.
 let minimapView   = { mapCX: 0, mapCY: 0, zoom: 1 };
 let minimapLocked = false;
 let minimapDirty  = false;
