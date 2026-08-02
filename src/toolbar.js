@@ -275,25 +275,6 @@ function initToolbar() {
   }
   wireSpeedSlider();
 
-  // Wire FPS cap slider (linear, video-only setting — not a fog-anim param)
-  (function wireFpsSlider() {
-    const slider = document.getElementById('video-fps');
-    const num    = document.getElementById('video-fps-num');
-    slider.oninput = function() {
-      const v = Math.max(5, Math.min(60, +this.value));
-      num.value = v;
-      videoFrameIntervalMs = fpsToFrameInterval(v);
-      syncAnimToPlayer();
-    };
-    num.onchange = function() {
-      const v = Math.max(5, Math.min(60, Math.round(+this.value)));
-      this.value = v;
-      slider.value = v;
-      videoFrameIntervalMs = fpsToFrameInterval(v);
-      syncAnimToPlayer();
-    };
-  })();
-
   // Wire log-scale sliders with bidirectional numeric input
   function wireAnimSlider(sliderId, numId, baseVal, apply, isWarp) {
     const slider = document.getElementById(sliderId);

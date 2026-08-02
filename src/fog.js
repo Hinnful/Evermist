@@ -536,6 +536,14 @@ function renderFog(vp) {
 let fogAnimThrottleNext = 0;
 const FOG_ANIM_VIDEO_INTERVAL = 66; // ~15fps fog updates when video is active
 
+// Cloud crossfade rebuild rate. With CLOUD_FRAME_COUNT frames at cloudFrameSpeed the
+// blend advances a few thousandths of a frame per tick, so rebuilding the 512×512
+// canvas every tick paints a picture indistinguishable from the last one. Tunable:
+// raise the rate (lower the number) if the morph ever reads as steppy.
+const FOG_CLOUD_BLEND_INTERVAL = 100; // ms → ~10Hz
+let cloudBlendNext   = 0;
+let cloudBlendLastTs = 0;
+
 function fogAnimTick(ts) {
   if (!fogAnimEnabled) { fogAnimRafId = null; return; }
   try {
@@ -560,11 +568,27 @@ function fogAnimTick(ts) {
     if (!skipExpensiveWork) {
       if (videoEnabled) fogAnimThrottleNext = ts + FOG_ANIM_VIDEO_INTERVAL;
 
-      if (cloudFrames.length > 1 && cloudBlendCtx) {
-        cloudFramePos += dt * fogAnimSpeed * cloudFrameSpeed;
+      // Composition with the video throttle above: when video is active that gate
+      // already governs, and its per-tick dt is what makes the morph run slow there.
+      // That slow morph is today's on-screen behaviour, so the video path keeps its
+      // timing untouched and this gate applies only when no video is playing —
+      // preserving appearance outranks making the two gates uniform.
+      const rebuildBlend = videoEnabled || shouldRebuildCloudBlend(ts, cloudBlendNext);
+      // Set only where the blend canvas is actually repainted, so the DM's GPU upload
+      // below can be skipped on the ticks that changed nothing.
+      let blendChanged = false;
+
+      if (rebuildBlend && cloudFrames.length > 1 && cloudBlendCtx) {
+        // Advance by real elapsed time so a 10Hz rebuild morphs at exactly the rate
+        // an every-tick rebuild did. During video, keep the per-tick dt (see above).
+        const morphSec = videoEnabled ? dt : cloudBlendElapsedSec(ts, cloudBlendLastTs, 0.1);
+        cloudBlendLastTs = ts;
+        cloudBlendNext   = ts + FOG_CLOUD_BLEND_INTERVAL;
+        cloudFramePos += morphSec * fogAnimSpeed * cloudFrameSpeed;
         const { idxA, idxB, blend } = cloudBlendIndices(cloudFramePos, cloudFrames.length);
 
         if (cloudFrames[idxA] && cloudFrames[idxB]) {
+          blendChanged = true;
           const sz = cloudBlendCanvas.width;
           cloudBlendCtx.globalAlpha = 1;
           cloudBlendCtx.globalCompositeOperation = 'source-over';
@@ -586,8 +610,10 @@ function fogAnimTick(ts) {
 
       if (!isDrawing) {
         if (!isPlayer) {
-          // DM GPU path: update TilingSprite drift + upload 512×512 cloud frame
-          pixiUpdateFogAnim(fogAnimOffsets, fogAnimAlphas);
+          // DM GPU path: update TilingSprite drift every tick (cheap, and what makes
+          // the clouds drift), but re-upload the 512×512 cloud texture only on the
+          // ticks where the blend canvas was actually repainted.
+          pixiUpdateFogAnim(fogAnimOffsets, fogAnimAlphas, blendChanged);
         } else {
           // Player draws clouds in renderFog — just mark fogDirty
           fogDirty = true;

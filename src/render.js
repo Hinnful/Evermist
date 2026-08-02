@@ -18,11 +18,48 @@ function syncSize() {
 
 // ─── Rendering — split into per-layer functions ───────────────────────────────
 
+// This loop RIDES THE PIXIJS TICKER rather than its own requestAnimationFrame —
+// pumpDirtyRender is registered in renderer.js:initPixiRenderer at a priority above
+// PixiJS's own render. That is not a tidiness choice, it is what makes the frame cap
+// safe.
+//
+// doRender paints the Canvas-2D layers (grid, Player fog-on-top, cursor overlay) AND
+// sets the Pixi stage viewport; the WebGL map only appears at the next present. Two
+// independently-throttled loops hold the same interval but not the same phase, so the
+// 2D layers ended up leading the map by most of a frame — measured at 33ms p90 during
+// a pan, about 36px of grid sliding against the map. Sharing one clock, with doRender
+// running immediately before the present in the SAME tick, drops that to ~0.
+//
+// The cap itself therefore lives on the ticker (APP_MAX_FPS, state.js). Do not
+// reintroduce a second gate here: a throttle on top of a throttle is exactly the
+// phase problem this replaced.
+let _lastRenderTs   = -Infinity;
+let _rafFallbackId  = null;
+
 function scheduleRender() {
-  if (!renderScheduled) {
-    renderScheduled = true;
-    requestAnimationFrame(doRender);
+  if (renderScheduled) return;
+  renderScheduled = true;
+  // No ticker to ride yet (pre-init) or the renderer was torn down — fall back to rAF
+  // so an early render is never silently dropped.
+  if (!pixiApp && _rafFallbackId == null) {
+    _rafFallbackId = requestAnimationFrame(_rafFallbackTick);
   }
+}
+
+// Called by the PixiJS ticker every allowed frame, just before the stage is presented.
+function pumpDirtyRender() {
+  if (renderScheduled) doRender(); // doRender clears renderScheduled
+}
+
+function _rafFallbackTick(ts) {
+  _rafFallbackId = null;
+  if (pixiApp) return;                 // ticker has taken over; it will pick this up
+  if (ts - _lastRenderTs < APP_FRAME_MS) {
+    _rafFallbackId = requestAnimationFrame(_rafFallbackTick); // defer, never drop
+    return;
+  }
+  _lastRenderTs = ts;
+  doRender();
 }
 
 function getViewportSize() {

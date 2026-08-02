@@ -242,7 +242,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
 // pass includeWarp=true when cloud warp params changed (triggers regen on Player).
 function syncAnimToPlayer(includeWarp) {
   if (!playerWindow || playerWindow.closed) return;
-  const msg = { type: 'anim-params', fogAnimEnabled, fogAnimSpeed, driftScale, cloudFrameSpeed, alphaPulseAmp, videoFrameIntervalMs };
+  const msg = { type: 'anim-params', fogAnimEnabled, fogAnimSpeed, driftScale, cloudFrameSpeed, alphaPulseAmp };
   if (includeWarp) { msg.cloudWarpStrength = cloudWarpStrength; msg.cloudWarpRadius = cloudWarpRadius; }
   playerWindow.postMessage(msg, '*');
 }

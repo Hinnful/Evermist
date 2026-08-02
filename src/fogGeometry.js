@@ -112,6 +112,27 @@ function pulseAlpha(base, amp, time, freq, phase) {
   return base * (1 + amp * Math.sin(time * freq + phase));
 }
 
+// ─── Cloud blend rebuild throttle ─────────────────────────────────────────────
+// The 512×512 crossfade canvas is rebuilt with two drawImage calls plus a
+// 'lighter' composite. At display refresh the blend advances a tiny fraction of a
+// frame per tick, so rebuilding every tick is invisible work. These two helpers
+// are the gate: when to rebuild, and how far to advance the morph when we do.
+
+// True once the scheduled rebuild time has arrived.
+function shouldRebuildCloudBlend(ts, nextTs) {
+  return ts >= nextTs;
+}
+
+// Seconds of morph to apply for this rebuild — the time actually elapsed since the
+// previous one, NOT one tick's dt. Advancing by a tick's dt while skipping ticks
+// would slow the morph in proportion to the throttle. Clamped so a long stall
+// (hidden window, scene switch) cannot jump the morph forward; returns 0 on the
+// first rebuild, when there is no previous timestamp to measure from.
+function cloudBlendElapsedSec(ts, lastTs, maxSec) {
+  if (!lastTs) return 0;
+  return Math.min(Math.max(0, (ts - lastTs) / 1000), maxSec);
+}
+
 // Given a fractional frame position and frame count, return the two frame
 // indices to crossfade and the [0,1) blend factor between them.
 function cloudBlendIndices(pos, total) {
@@ -253,6 +274,8 @@ if (typeof module !== 'undefined' && module.exports) {
     wrapOffset,
     pulseAlpha,
     cloudBlendIndices,
+    shouldRebuildCloudBlend,
+    cloudBlendElapsedSec,
     sampleWrappedNoise,
     fogTurbulence,
     parseSceneFogSettings,
