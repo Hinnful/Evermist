@@ -72,7 +72,9 @@ The fog is the heart of the app, so it's worth understanding.
 
 3. **Making it look like fog rather than a stencil.** That hard-edged map is blurred and
    overlaid with a drifting **cloud texture** (procedural noise). This is the "living fog":
-   soft edges and slow motion instead of a flat black cutout.
+   soft edges and slow motion instead of a flat black cutout. The texture doesn't only slide
+   across the screen, it also slowly changes shape, which is what stops the fog reading as one
+   repeating pattern on a conveyor belt.
 
 4. **Any colour you want.** The cloud texture itself is neutral grey. The colour comes from
    a base fill plus a glow tint picked in the Fog panel, so the same fog can be
