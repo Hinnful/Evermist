@@ -34,6 +34,25 @@ fog left a faint seam at the edge of animated maps; drawing one continuous 2D la
 the whole Player window makes the seam geometrically impossible. The split is
 architectural, not a stopgap. Do not unify the paths.
 
+### Fog animates by cycling pre-rendered warped frames · `SETTLED`
+The cloud texture is generated once at startup as a set of 512² domain-warped noise frames,
+then crossfaded at runtime while the cloud passes keep drifting spatially. The drift supplies
+movement and the frame morph supplies organic evolution; neither looks right alone. Sampling a
+3D noise field per pixel per frame is the better-looking approach and is far too slow in JS at
+full resolution, so pre-rendering moves that cost to startup, a few hundred ms for roughly
+10MB of canvases. Plain texture-sheet cycling without warping, and per-tile UV perturbation,
+were both considered and neither is needed while frame cycling holds up. The warping follows
+Inigo Quilez's domain-warping technique: https://iquilezles.org/articles/warp/
+
+### Oscillating drift, breathing and rotation · `REJECTED`
+Modulating drift velocity with sine waves, pulsing scale or alpha, and slowly rotating the
+cloud passes were built and all look wrong. A rigid transform applied to a full-screen texture
+reads as a whirlpool or as seasickness rather than as weather, and rotation is the worst of the
+three: the whole layer visibly spins even at 0.008 rad/s. **A global rigid-body transform
+cannot approximate atmospheric motion - organic movement needs per-pixel deformation**, which
+is what the warped frame cycling above already provides. Do not re-propose making the fog
+breathe, pulse or rotate.
+
 ### Testing fog's render/compositing layer · `REJECTED`
 `renderFog`, `rebuildFogBlur`, `recompositeCloudEffect`, the RAF loops and the Player seam
 path are not `node:test`-testable no matter how state is injected, because their behaviour
@@ -314,12 +333,12 @@ Cursor-pivot zoom cannot change zoom without shifting `mapCX/mapCY`, so zooming 
 also panned what the players were watching. Cursor-pivot is still correct on the DM's own
 canvas: different surface, different rule.
 
-### The minimap is not evidence of what the players see · `SETTLED` (method)
+### The minimap is not a measurement of the Player's view · `SETTLED` (method)
 It is a square canvas that deliberately shows more map than the TV does; the real TV is only
 the band between the two dotted lines, which at a 16:9 Player is roughly a third of the
-preview's height. That padding was once read as the Player's own dead space and a sync bug
-was reported from it, costing most of a session. The complaint underneath was real and the
-evidence was not. Answer "judge it on the TV, or ask me to measure it" every time.
+preview's height. So the preview is the wrong instrument for judging sync fidelity - read the
+Player's own viewport for numbers, or judge it on the TV itself. The square-plus-dotted-frame
+shape is a deliberate reversal and is not the thing to change.
 
 ### Lock blocks accidental movement, not deliberate driving · `SETTLED`
 Sync View intentionally still moves a locked Player. Lock only disables the Player's own
