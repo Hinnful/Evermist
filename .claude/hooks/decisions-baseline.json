@@ -1,0 +1,17 @@
+{
+  "config": {
+    "softMaxBytes": 90000,
+    "reWarnEveryBytes": 20000,
+    "maxSectionShare": 0.4,
+    "sectionRuleMinBytes": 40000,
+    "maxEntryLines": 14
+  },
+  "note": "Thresholds for the DECISIONS.md growth notice. This file is a ledger and is MEANT to grow, so nothing here blocks an addition. \"warned\" records what has already been reported so a notice fires once and never nags; clear an entry from it to hear about that subject again.",
+  "files": {
+    "docs/DECISIONS.md": {
+      "warnedBytes": 0,
+      "sections": [],
+      "entries": []
+    }
+  }
+}

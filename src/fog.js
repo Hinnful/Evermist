@@ -125,15 +125,12 @@ function applyPolygonToFog(poly) {
     fogDataCtx.restore();
   } else {
     // Feathered reveal: draw polygon blurred on scratch, then destination-out onto fog.
-    // 'half' rides this same path — it is the SAME erase, just not run to completion, so the
-    // feathered edge and the cloud-eroded raggedness come along for free. No second texture,
-    // no reduced blur. Note this is SUBTRACTIVE: it cannot re-fog ground that is already
-    // clear (a brush reveal, or a reveal polygon at a lower index), which is deliberate —
-    // you can't half-forget the room the party is standing in.
+    // 'half' rides this same mask, so the feathered edge and the cloud-eroded raggedness come
+    // along for free. It then differs in ONE way: the erase runs to completion like a reveal
+    // and half-density fog is painted back through the same mask (see below), which makes the
+    // state ABSOLUTE — a half room lands on exactly fogHalfAlpha whatever was underneath.
     const isHalf = poly.mode === 'half';
-    // destination-out is multiplicative (remaining = old × (1 − erase)), so erasing at
-    // 1 − fogHalfAlpha lands a fully-fogged interior on exactly fogHalfAlpha.
-    const eraseAlpha = isHalf ? Math.max(0, Math.min(1, 1 - fogHalfAlpha)) : 1;
+    const halfAlpha = Math.max(0, Math.min(1, fogHalfAlpha));
     const bb = getPolyBBox(verts);
     const feather = getScaledFeatherRadius();
     const pad = Math.ceil(feather) + 2;
@@ -181,11 +178,11 @@ function applyPolygonToFog(poly) {
     sCtx.restore();
 
     // Cloud erosion leaves ~17% residue in the interior. A reveal removes it afterwards with a
-    // hard clearRect on the fog (below), but a PARTIAL erase can't: destination-out multiplies,
-    // so residue left in the MASK reads as blotchy density. So for 'half' the interior is
-    // flattened back to solid white here, on the mask — same inset polygon, so the feathered
-    // edge band (which is the band we want to keep) is untouched. The reveal path keeps its
-    // clearRect instead, so it stays exactly as it was.
+    // hard clearRect on the fog (below); half repaints through this mask instead, so residue
+    // left in the MASK would read as blotchy density. So for 'half' the interior is flattened
+    // back to solid white here, on the mask — same inset polygon, so the feathered edge band
+    // (which is the band we want to keep) is untouched. The reveal path keeps its clearRect
+    // instead, so it stays exactly as it was.
     const insetVerts = insetPolygon(fogScaledVerts, feather);
     if (isHalf && insetVerts.length >= 3) {
       sCtx.save();
@@ -199,9 +196,28 @@ function applyPolygonToFog(poly) {
 
     fogDataCtx.save();
     fogDataCtx.globalCompositeOperation = 'destination-out';
-    fogDataCtx.globalAlpha = eraseAlpha;
+    fogDataCtx.globalAlpha = 1;
     fogDataCtx.drawImage(scratch, bx, by);
     fogDataCtx.restore();
+
+    // Half: paint fog back through the same mask at fogHalfAlpha. Erase-then-repaint, not a
+    // partial erase — destination-out only ever multiplies, so a partial erase could not touch
+    // ground a brush stroke or a lower-index reveal had already cleared, which is exactly the
+    // room the party has just left. Repainting SETS the density, so the state is absolute.
+    // With mask m the result is (1 − m) × old + fogHalfAlpha × m: interior lands on
+    // fogHalfAlpha, the feathered band ramps from the surrounding fog down to it.
+    if (isHalf) {
+      sCtx.save();
+      sCtx.globalCompositeOperation = 'source-in';   // recolour the mask, keep its alpha
+      sCtx.fillStyle = '#1a1a2e';
+      sCtx.fillRect(0, 0, scratch.width, scratch.height);
+      sCtx.restore();
+      fogDataCtx.save();
+      fogDataCtx.globalAlpha = halfAlpha;
+      fogDataCtx.drawImage(scratch, bx, by);
+      fogDataCtx.restore();
+    }
+
     // Clip to an inset polygon (shrunk by feather px) so the feathered edge
     // band is preserved; only the deep interior gets fully cleared.
     if (!isHalf && insetVerts.length >= 3) {
