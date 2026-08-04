@@ -5,8 +5,8 @@ one clause of reason at most.
 
 - How the app works → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Why a thing is shaped the way it is, and what was already tried → [docs/DECISIONS.md](docs/DECISIONS.md)
-- **A size-guard hook enforces this file's shape: it may shrink, it may not grow.** If you
-  are about to add a paragraph here, it belongs in one of the two files above.
+- **A size-guard hook enforces this file's shape: it may shrink, it may not grow.** A
+  paragraph you are about to add here belongs in one of the two files above.
 
 ## What this is
 
@@ -188,15 +188,14 @@ then the corner-radius field pushed right), and Delete at full width behind a ha
 
 ## Half-shroud
 
-`poly.mode === 'half'` rides the reveal path in `applyPolygonToFog` at
-`globalAlpha = 1 - fogHalfAlpha`. One branch, and it is **subtractive**.
+`poly.mode === 'half'` rides the reveal path in `applyPolygonToFog`, erasing to completion,
+then repaints fog at `fogHalfAlpha` through the same mask. **Absolute, not subtractive:** a
+partial erase can't re-fog ground already clear, i.e. the room the party just left.
 
 - **Flatten the interior on the SCRATCH MASK, not on the fog.** A reveal clears
-  cloud-erosion residue with a hard `clearRect`; a partial erase can't, because
-  `destination-out` multiplies and the residue reads as blotchy density. Flattening the
-  inset region to white on `_fogScratch` fixes it and keeps the feathered edge band.
-- **It cannot re-fog already-clear ground.** A Half room overlapping a reveal shows no
-  change in the overlap. Deliberate.
+  cloud-erosion residue with a hard `clearRect`; the repaint can't, and residue in the mask
+  reads as blotchy density. Flattening the inset region to white on `_fogScratch` fixes it
+  and keeps the feathered edge band.
 - `fogHalfAlpha` is ONE global `localStorage` value (`FOG_HALF_ALPHA_KEY`), never per-room,
   never in a scene or backup, and deliberately absent from Fog Reset.
 - The Player needs nothing new: the stencil crosses as a PNG and partial alpha propagates
@@ -337,36 +336,35 @@ decode.
   one. Tests live in `test/`.
 - **Only pure-function modules that export via `module.exports`.** Don't write tests against
   DOM-coupled code.
-- **Testability follows from decoupling, not file count.** Don't chase testability by
-  injecting render state into `fog.js`; its behavior is pixel output. Extend the
-  `fogGeometry.js` kernel when new pure fog logic appears and leave the imperative canvas
-  layer calling into it.
+- **Testability follows from decoupling, not file count.** Don't inject render state into
+  `fog.js`; its behavior is pixel output. New pure fog logic extends the `fogGeometry.js`
+  kernel, and the imperative canvas layer calls into it.
 - Deliberately untested, don't add tests here: `render.js`, `scenes.js`, `state.js`,
   `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
   `stress.js`.
 
 ## Guard hooks
 
-Two `PostToolUse` hooks in `.claude/settings.json`, both fail-open so a bug in one never
-wedges editing. Each feeds its reason back so you fix it in the same turn.
+Three `PostToolUse` hooks in `.claude/settings.json`, all fail-open so a bug in one never
+wedges editing. Each feeds its reason back so you fix it that turn; baselines sit beside them.
 
-**`guard-blob.js`** (on `index.html`):
-1. The inline `<script>` only ever shrinks, measured in non-blank lines and ratcheting down.
-   If you trip it, move the added JS into a `src/` module. Only if the growth is genuinely
-   wiring/init raise `maxLines` in `.claude/hooks/blob-baseline.json`.
-2. No `<style>` before `<body>`. Scoped to the pre-`<body>` region because the body is full
-   of inline SVG, which may legally carry its own `<style>`.
+**`guard-blob.js`** (`index.html`): the inline `<script>` only ever shrinks, in non-blank
+lines, ratcheting down - move added JS into a `src/` module; raise `maxLines` in
+`blob-baseline.json` only for genuine wiring/init. Also bans `<style>` before `<body>`,
+scoped there because inline SVG in the body may carry its own.
 
-**`guard-claudemd.js`** (on this file): same ratchet, measured in bytes, baseline in
-`.claude/hooks/claudemd-baseline.json`. If you trip it, the content belongs in
-ARCHITECTURE.md or DECISIONS.md. Raise the baseline only for a genuinely new rule that
-cannot be stated in the space freed by tightening an existing one.
+**`guard-claudemd.js`** (this file): same ratchet in bytes, `claudemd-baseline.json`. Raise the
+baseline only for a rule that won't fit in the space freed by tightening an existing one.
+
+**`guard-decisions.js`** (`docs/DECISIONS.md`, `docs/decisions/*.md`): a NOTICE, not a ratchet
+- that ledger is MEANT to grow, so nothing it reports is a reason to revert an entry. It fires
+once per subject on size, section share and entry length, and explains itself when it does.
+Thresholds in `decisions-baseline.json`.
 
 ## Conventions
 
-- **No dated fix logs, changelog entries, or narrative debugging history in this file.**
-  Rules only. Reasoning goes to `docs/DECISIONS.md`, explanation to `docs/ARCHITECTURE.md`,
-  and process narrative goes nowhere.
+- **No dated fix logs, changelog entries, or narrative debugging history here.** Rules only;
+  the two destinations are at the top of this file, and process narrative goes nowhere.
 - Code comments: keep the rule, one clause of why, and any warning about a specific trap.
   Cut named examples that disambiguate nothing, "an earlier version was tried", measurement
   dates and counts, restatements of the code, and anything duplicating this file.

@@ -61,11 +61,20 @@ faithfully implement `ctx.filter='blur()'`, so feather and blur would not reprod
 Pure math goes in `fogGeometry.js` and gets tested there; the imperative layer stays
 untested. Do not chase testability by injecting render state.
 
-### Half-shroud is subtractive, and cannot re-fog cleared ground · `SETTLED`
-A Half room overlapping already-revealed ground shows no change in the overlap, because a
-subtractive erase cannot dim fog that is already gone. The rejected alternative
-(reveal-then-repaint) would have re-fogged it. Deliberate: you can't half-forget the room
-the party is standing in.
+### Half-shroud is absolute: erase to completion, then repaint · `SETTLED` (reversed 2026-08-04)
+Originally the Half erase was partial (`destination-out` at `1 - fogHalfAlpha`) on the
+theory that you can't half-forget the room the party is standing in, and reveal-then-repaint
+was rejected for being able to re-fog cleared ground. That got the case backwards. At the
+table the room a Half marker is *for* is the one the party has already been in, so its
+ground is already clear - from a brush stroke, a Reveal All, or the room's own earlier
+Reveal. `destination-out` only ever multiplies, so on clear ground a partial erase is a
+no-op: marking the room Half changed nothing on screen and the density slider looked dead at
+every value. Now the erase runs to completion like a reveal and fog is repainted at
+`fogHalfAlpha` through the same mask, so the room lands on exactly that density whatever was
+underneath. With mask `m` the result is `(1 - m) × old + fogHalfAlpha × m`, so the feathered
+band still ramps from the surrounding fog down to the interior. The old "no change in the
+overlap" behaviour is gone on purpose; a Half room now dims cleared ground, which is the
+whole point of the state.
 
 ### Half-shroud rollback needs a data sweep, not just a revert · `SETTLED`
 `mode: 'half'` is written into IndexedDB scenes and backup zips. If the branch is ever
@@ -214,6 +223,13 @@ costs it the shape every other button in the app has.
 Polygons never cross to the Player (fog crosses as pixels, `initScenes()` is DM-gated), so
 there is no channel to strip and no guard needed. Area markers, when built, will not get
 this for free.
+
+### The card shows everything, and the description is load-bearing · `SETTLED`
+Whether the description is actually wanted on screen, or whether a room name alone would do,
+was an open question that sized half of module text import. Answered: the full card - name,
+description and fog controls together - is the point. The description half of the import
+feature is therefore load-bearing, and the confirm-before-overwrite machinery is correctly
+scoped rather than over-built.
 
 ---
 
@@ -468,12 +484,19 @@ lands: "bloody / icy / acidic / rusty" are not tint values, they are combination
 the cloud engine already has (cell size, warp radius, warp strength, anim speed, base and
 tint colour, opacity).
 
-### Area markers are areas, not creatures · `SETTLED` (scope call)
+### Map effects are areas, not creatures · `SETTLED` (scope call)
 Difficult terrain, persistent damage zones, light radius, Wall of Fire. No identity, no turn
 order, no mini that moves each round, so this does **not** cross the VTT line the app
 refuses to cross. It reuses the existing polygon tools, the Select tool and the card. The one
 genuinely new piece of work: these must cross to the Player, and that channel deliberately
 does not exist today.
+
+**Call them effects, never tokens** - in code, docs and UI. The word drags the conversation
+back to creature markers every time anyone returns to it, and the creature question is
+already settled. They also get **their own array**, never mixed into `polygons`, whose order
+is fog compositing precedence; only the drawing and hit-testing code is shared. Rendering
+them *under* the fog on both screens means an effect in an unexplored room stays hidden for
+free, and what crosses to the Player is a shape descriptor rather than pixels.
 
 ### Auto-polygons: prefer missing a room over producing a bad one · `SETTLED` (design)
 A skipped room costs exactly what today costs. A slightly-wrong one costs **more** than
@@ -486,8 +509,96 @@ light, grass, snowy or cave stone and any "walls are dark lines" approach is dea
 And **invert the "do magic" button**: pressing it creates nothing, it lights up candidate
 outlines that become real on click, so there is no cleanup cost and bad input is free.
 
+The refusal principle still governs everything; the pixel-tracing design around it is **demoted
+to the fallback** for bare-image maps, superseded by the next entry.
+
+### Auto-polygons read the map's own floor plan, not pixels · `SETTLED` (design)
+Dungeon Alchemist exports Universal VTT (`.dd2vtt`) beside the map: wall segments, doors and
+windows, light sources and the grid calibration, as vector data in grid-square units. Every
+hard problem in pixel tracing is simply absent - no doorway leaks, no furniture holes, no
+tolerance dial, no ragged vertices along a curve. It calibrates the grid for free, and alignment
+with the paired video is exact (`map_size × pixels_per_grid` equals the video's own pixel size,
+uniform scale 1.0).
+
+Walls arrive as loose two-point segments with gaps at the openings, and the portals fill those
+gaps exactly, sharing endpoints. **Walls unioned with portals is a closed floor plan; walls
+alone are not.** Derivation is then five pure-geometry steps: union walls with portals, split
+edges at T-junctions, walk the planar faces, drop collinear vertices, discard boundary faces by
+winding, and scale by `pixels_per_grid`.
+
+### The UVTT derivation's two silent traps · `SETTLED`
+**Classify faces by winding direction, never by area.** Interior faces wind one way and
+boundaries the other. Size looks like a usable signal right up until a map holds two detached
+buildings, and then the smaller building's own boundary outranks a real room by area. Fails
+silently, and only on multi-building maps.
+
+**Never read `objects_line_of_sight`.** It is a vision-blocking list - columns, boulders, tall
+crates - so unioning it in turns every pillar into a closed loop inside a real room, and the
+face walk reports the hall as a ring plus a fake little room. Ordinary furniture never appears
+there anyway: a fully furnished test room produced an absent field.
+
+### An open wall loses its room, and the import says where · `SETTLED`
+A missing wall segment does not distort a room, it deletes it: the gap joins the interior to
+the outside and the two merge into one face. A four-room map with one broken room yields three
+rooms and no error.
+
+Auto-closing gaps was rejected, because it invents geometry the map never had and a
+confidently wrong room costs more than a missing one. Silence was the wrong other option
+though. The arrangement knows every open wall end exactly, so the import **reports each one's
+map coordinates and the gap width**, and the missing room gets drawn by hand in seconds with
+no hunting for what went wrong.
+
+### No automatic cave subdivision, ever · `SETTLED` (scope call)
+Where one cave ends and the next begins is judged by eye, and the same map divided twice by
+the same person comes out differently. There is no ground truth for code to approximate, so
+any shipped answer would replace a judgement call with an arbitrary one, and editing a
+machine's arbitrary shape is slower than drawing your own.
+
+A cave's outer boundary is not ambiguous, so if the rock exports as walls the face walk
+already returns one coarse polygon for the system, which is useful as an edge-accurate
+boundary to draw inside. **No special case in either direction**: detecting and filtering
+caves out is more work than letting the polygon appear, and deleting one is instant.
+
+### Owlbear Rodeo's automatic fogging is not a template · `REJECTED` (as a model)
+Their "Forecast" feature is a server-side computer vision pipeline gated to their top paid
+tier, which an offline `file://` app cannot replicate at any effort. Worth knowing for a
+second reason: with cloud compute and a purpose-built pipeline they still ship Slice, Trim and
+Join to correct its output. Any local pixel approach should expect to need correction tools
+too, which is a further argument for reading vector data instead.
+
+### Map effects are materials, not spells · `SETTLED` (design)
+The combinatorics rule out a per-spell library: a wall of fire is any length at any angle, and
+one spell of hundreds. What an asset supplies is the **material** - one seamless ice texture
+serves every wall of ice at every size, and about ten materials cover the whole list. Sizes
+are drawn or typed and a preset carries only a default. Naming by material rather than by
+spell also keeps the app from becoming a rules database that goes stale.
+
+**The mask sells it, not the texture.** A mediocre material with a feathered noisy edge and
+the right blend mode reads as convincing; a beautiful one with a hard border reads as a bug.
+The work is done by the feathered edge, per-preset blending (emissive materials add light to
+the floor beneath, solid ones cover it) and a glow that overspills the shape. Build those with
+ONE placeholder material and judge it before sourcing the rest: the look is unbounded work and
+the pipeline is not.
+
+### The target is prep time, not mid-session time · `SETTLED` (scope call)
+The app exists to make preparing maps fast. Mid-session is deliberately prep-free: that is when
+the game gets run, not authored. Rooms only get drawn during play when prep was skipped
+entirely, and prep gets skipped when the tools make it slow, so on-the-fly drawing is a symptom
+rather than the workflow to optimise. **Do not propose in-play authoring aids**, and do not
+read the habit of drawing mid-session as evidence that prep is fine.
+
 ### The VTT line · `SETTLED`
 No tokens, no initiative, no character sheets. Map, fog, grid, two screens.
+
+**The test that decides new cases: could a physical object at the table do this job better?**
+If yes, it doesn't ship. Minis, initiative trackers and dice all lose to their physical
+counterparts, and finding, printing and painting a mini is part of the hobby rather than a
+chore to automate away. Digital tokens exist only because online play has no alternative.
+
+Effects pass the same test in reverse: no physical object covers them. A wall of fire is any
+length at any angle and one spell of hundreds, so a pencil on the map is a stand-in rather than
+a better option. **Combinatorial explosion is what qualifies an exception**, not merely being
+an effect.
 
 ---
 
@@ -517,6 +628,16 @@ fire if someone is already reading that exact section, which is why `ARCHITECTUR
 seven modules stale without anyone noticing. The fix is not another rule — it is that `/wrap`
 now files into all three and `/brief` reads the ledger as a rejection filter. **A doc with no
 reader and no writer in the actual workflow will rot, however well written.**
+
+### DECISIONS.md is guarded by a NOTICE, not a ratchet · `SETTLED`
+This ledger is meant to grow, so its guard never blocks an addition and says so in every
+message it prints. It fires once per subject on total size, on any `##` section passing 40% of
+the file, and on any `###` entry passing 14 lines. The first two call for splitting a section
+out to `docs/decisions/<topic>.md` behind a pointer, which is scheduled work rather than a
+mid-turn edit; the third is fixed on the spot. **One-file-per-decision, the usual ADR layout,
+was rejected**: it optimises for many readers browsing a directory over years, while this file
+is read whole. The per-entry budget is the real size control, because ledgers bloat by entries
+growing into stories rather than by accumulating decisions.
 
 ### Grinding CLAUDE.md down to a byte target · `REJECTED`
 The split targeted "under 16KB" and landed at 23.7KB. The estimate was wrong, not the
@@ -551,11 +672,20 @@ single-user app. Replaced by a mandatory verdict line with a reason. The standal
 ### Piecemeal README updates · `PARKED` to 2.0.0
 The docs get one consolidated rewrite rather than a paragraph per feature.
 
+### 2.0.0 means "polished and finished", not "prep automation done" · `SETTLED`
+The milestone was originally tied to finishing the core of prep automation, and was
+deliberately redefined. A major version should mark a state that can actually be shipped and
+celebrated, and auto-polygons is an explicit hypothesis test that may fail, which is a bad
+thing to hang a major bump on. 2.0.0 is therefore the UI polish batch plus the accumulated bug
+fixes, carrying the consolidated README rewrite. One sequencing consequence: the README is
+docs-only and cannot carry a bump, so it must ride in the same release as the code change that
+does.
+
 ---
 
 ## Corrections worth keeping
 
-Three times the reasoning was wrong in a way that would repeat. Each is here so it doesn't.
+Reasoning that turned out wrong in a way that would repeat. Each is here so it doesn't.
 
 **"It's a big refactor."** Said about the comment trim. It conflated *deleting reasons* with
 *trimming verbosity*. Different operations: the second is comment-only edits with no code
@@ -567,3 +697,12 @@ rooms, it was the DM having to prepare a file at all.
 **"The whole-book numbers."** "301 locations, 88/88 castle" was measured by the parser *before*
 sub-locations landed. The current parser finds strictly more and nobody has re-run it. Don't
 quote those figures as current.
+
+**"Universal VTT carries a still image."** True of the format's own specification and false of
+the tool: Dungeon Alchemist's UniversalVTT export offers video file types, writes the video as
+a sibling file and leaves `image` an empty string. Reading a spec is not checking what the
+exporter does.
+
+**"Loose wall segments mean face-finding is several evenings."** Judged before the portals were
+unioned in. Walls plus portals close the plan, and the derivation took one pass. A partial read
+of a data file is not a basis for an estimate.

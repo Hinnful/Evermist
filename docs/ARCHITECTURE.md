@@ -86,10 +86,10 @@ The fog is the heart of the app, so it's worth understanding.
    so you can plan. On the Player screen it's fully opaque. This matters when judging any
    fog setting by eye: the DM window shows roughly half the density the TV does.
 
-6. **A third state: half-shroud.** A room can be marked Half, which erases the fog
-   partially instead of fully. Because it works by *subtracting* fog, it can't re-fog
-   ground that's already clear, so a Half room overlapping a revealed area shows no change
-   in the overlap. That's deliberate.
+6. **A third state: half-shroud.** A room can be marked Half, which leaves it at partial
+   fog density instead of clearing it. It's an absolute setting, not a partial erase: the
+   room lands on the Half density whatever was there before, so marking a room the party
+   has already walked through does dim it back down.
 
 7. **The two windows draw fog differently, and that's on purpose.** The DM's fog is drawn
    on the GPU with PixiJS. The **Player's fog is drawn on top of the map with the regular
