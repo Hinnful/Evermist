@@ -11,6 +11,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     try { return webUtils.getPathForFile(file) || null; } catch (_) { return null; }
   },
 
+  // A Dungeon Alchemist map ships with its floor plan as a sibling file. Main resolves the
+  // sibling from the map's own path; there is deliberately no way to ask it for an
+  // arbitrary path. Resolves to { name, text } or null.
+  findFloorPlan: (mapPath) => ipcRenderer.invoke('find-floor-plan', mapPath),
+
   setFullScreen: (flag) => ipcRenderer.send('set-fullscreen', flag),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
 

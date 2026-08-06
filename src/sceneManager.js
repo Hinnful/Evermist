@@ -316,11 +316,17 @@ async function createNewScene(file) {
       mapBlob = isVid ? mapVideoBlob : blob;
     }
 
+    // The floor plan has to be captured HERE, in the same pass that creates the scene:
+    // persistVideoMap has just copied the map into userData/maps, so from now on it no
+    // longer sits beside its .dd2vtt and a later disk lookup would find nothing.
+    const floorPlan = typeof findPlanForFile === 'function' ? await findPlanForFile(file) : null;
+
     const scene = {
       id, name,
       mapBlob, mapPath,
       mapType:       isVid ? 'video' : 'image',
       mapWidth, mapHeight,
+      floorPlan,
       polygons:      [],
       nextPolygonId: 1,
       baseFogBlob:   await fogToBlob(),
@@ -337,6 +343,9 @@ async function createNewScene(file) {
     // shroud has no effect, video frozen). switchScene() rebuilds everything correctly.
     currentScene = null;
     await switchScene(id);
+    // Asked only once the map is actually on screen, so the DM is deciding about something
+    // they can see. Cancel means "later" — the Fog tab's Draw Rooms is the second chance.
+    if (typeof offerStoredFloorPlan === 'function') offerStoredFloorPlan();
   };
   if (isVid) loadVideoFromFile(file, onLoaded);
   else loadMapFromFile(file, onLoaded);
@@ -588,6 +597,9 @@ async function switchScene(id, _isRecovery = false) {
   // over the new scene with the previous scene's room in it.
   if (typeof resetRoomLabelCache === 'function') resetRoomLabelCache();
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
+  // Draw Rooms belongs to the scene, not the session: it enables only where this
+  // particular map came with a floor plan.
+  if (typeof refreshFloorPlanUI === 'function') refreshFloorPlanUI();
   if (mapVideo) mapVideo.play().then(() => startVideoLoop()).catch(() => {});
   if (autoSync) setTimeout(() => sendToPlayer(false, true), 150);
   onSceneLoaded(); // viewport.js: flush pending player resync if Player asked while loading

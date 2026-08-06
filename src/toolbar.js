@@ -12,7 +12,15 @@ function initToolbar() {
   document.addEventListener('drop', e => {
     e.preventDefault();
     const f = e.dataTransfer.files[0];
-    if (f && (f.type.startsWith('image/') || f.type.startsWith('video/') || /\.(jpe?g|png|gif|bmp|webp|svg|mp4|webm)$/i.test(f.name))) createNewScene(f);
+    if (!f) return;
+    // A floor plan dropped on its own attaches to the open scene, for the case where it got
+    // separated from its map. Nothing to attach it to means nothing happens.
+    if (/\.dd2vtt$/i.test(f.name)) {
+      f.text().then(text => attachPlanText(text).then(ok => { if (ok) offerStoredFloorPlan(); }))
+        .catch(() => {});
+      return;
+    }
+    if (f.type.startsWith('image/') || f.type.startsWith('video/') || /\.(jpe?g|png|gif|bmp|webp|svg|mp4|webm)$/i.test(f.name)) createNewScene(f);
   });
 
   document.getElementById('btn-reveal').onclick = function() {
@@ -63,6 +71,10 @@ function initToolbar() {
     scheduleRender();
     scheduleAutoSync();
   };
+
+  // Draws the rooms from the floor plan the map came with. Enabled only where this scene
+  // has one; refreshFloorPlanButton() owns that, on every scene switch.
+  document.getElementById('btn-floorplan').onclick = () => drawStoredFloorPlan();
 
   // Grid
   const gridBtn       = document.getElementById('btn-grid');

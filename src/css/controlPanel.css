@@ -160,6 +160,12 @@
     background: rgba(70,120,220,0.11);
     color: #8fb6ff;
   }
+  /* A .cp-btn can now be genuinely unavailable (Draw Rooms, on a map with no floor plan),
+     so it has to LOOK unavailable — an ordinary-looking button that does nothing on click
+     reads as a broken button. Hover is suppressed for the same reason. */
+  #btn-floorplan { gap: 7px; }   /* icon-to-label spacing; the rest comes from stock .cp-btn */
+  .cp-btn:disabled { opacity: 0.45; cursor: default; }
+  .cp-btn:disabled:hover { border-color: rgba(255,255,255,0.1); background: transparent; }
   .cp-btn-icon { width: 30px; flex: none; padding: 0; }
   .cp-dim { opacity: 0.45; }
   .cp-btn-danger { border: 1.5px solid rgba(200,70,60,0.22); background: rgba(200,50,40,0.07); color: rgba(240,100,90,0.85); }
