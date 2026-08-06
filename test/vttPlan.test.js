@@ -9,11 +9,13 @@ const {
   vttWalkFaces,
   vttCleanRing,
   vttSignedArea,
+  vttDoorlessWalls,
   vttDerivePlan,
   VTT_NODE_SNAP,
   VTT_COLLINEAR_EPS,
   VTT_MIN_FACE_AREA,
   VTT_CLOSE_GAP_MAX,
+  VTT_CLOSE_PAIR_MAX,
   VTT_OPEN_WALL_MAX_GAP,
   VTT_ROW_BUCKET,
 } = require('../src/vttPlan.js');
@@ -159,6 +161,161 @@ describe('vttPlan — the real export', () => {
   });
 });
 
+// ⚠ THE SECOND REAL EXPORT, and the one that broke the feature. A cave complex with
+// buildings standing inside it: continuous cavern, three freestanding rock formations, and
+// rooms that open onto the cave with no wall between. Its `image` is blanked — the export
+// embeds a 9MB base64 JPEG that nothing here reads.
+const CAVE = path.join(__dirname, 'fixtures', 'cave-map.dd2vtt');
+const caveRaw = fs.readFileSync(CAVE, 'utf8');
+const cave = () => JSON.parse(caveRaw);
+
+describe('vttPlan — the cave export', () => {
+  it('reads a much larger plan than the interior map', () => {
+    const j = cave();
+    assert.equal(j.format, 0.2);
+    assert.deepEqual(j.resolution.map_size, { x: 65, y: 39 });
+    assert.equal(j.resolution.pixels_per_grid, 150);
+    assert.equal(j.line_of_sight.length, 351);
+    assert.equal(j.portals.length, 25);
+    assert.equal(j.objects_line_of_sight, undefined);
+  });
+
+  it('draws only the buildings, and nothing false', () => {
+    const { rooms, refusedSolid } = vttDerivePlan(cave());
+    // Thirteen building interiors, hand-checked against the render. The cavern and the
+    // three rock formations are gone.
+    assert.equal(rooms.length, 13);
+    assert.equal(refusedSolid, 4);
+  });
+
+  // ⚠ THE TWO ROOMS THAT FRONT ONTO THE CAVE. Both have one whole side open to the cavern —
+  // 18 ft and 22 ft — and both were lost until wall stubs stopped bridging into rock. Their
+  // ends are 3.7 and 4.3 squares apart, so they also need the wider mutual-pair reach.
+  it('closes the rooms whose open side faces the cave', () => {
+    const sq = r => area(r) / (150 * 150);
+    const rooms = vttDerivePlan(cave()).rooms;
+    assert.ok(rooms.some(r => Math.abs(sq(r) - 80.4) < 0.5), 'the crypt');
+    assert.ok(rooms.some(r => Math.abs(sq(r) - 61.2) < 0.5), 'the store room');
+    // Both arrive chamfered across the mouth rather than as a ragged outline.
+    for (const r of rooms) assert.ok(r.length <= 40);
+  });
+
+  it('the cavern itself never becomes a room', () => {
+    const { rooms } = vttDerivePlan(cave());
+    const sq = r => area(r) / (150 * 150);
+    // The cavern measured 1636 squares — 64% of the map — and wrapped around every
+    // building inside it, so revealing it revealed them too. The largest real room is 103.
+    assert.ok(Math.max(...rooms.map(sq)) < 150, 'nothing map-sized survives');
+    for (const r of rooms) assert.ok(bbox(r).x1 - bbox(r).x0 < 65 * 150 * 0.5);
+  });
+
+  it('the filter is what removes them, not the rest of the kernel', () => {
+    // Pins the cost of the rule in both directions: turn it off and the six bad faces are
+    // straight back, which is what shipped in 1.7.0 and what "went to hell" on this map.
+    const off = vttDerivePlan(cave(), { keepDoorless: true });
+    assert.equal(off.rooms.length, 16);
+    assert.ok(off.rooms.some(r => area(r) / (150 * 150) > 1000), 'the cavern is one of them');
+  });
+});
+
+describe('vttPlan — doorless walls are solid', () => {
+  it('finds them on the cave map and none at all on the interior map', () => {
+    assert.equal(vttDoorlessWalls(plan()).length, 0);
+    assert.ok(vttDoorlessWalls(cave()).length > 0);
+    // Which is why the interior map's result is untouched by the whole rule.
+    assert.equal(vttDerivePlan(plan()).rooms.length, 3);
+    assert.equal(vttDerivePlan(plan()).refusedSolid, 0);
+  });
+
+  // A closed box standing on its own, with no way in. On a cave map this is a rock.
+  function sealedBox(x, y) {
+    return [
+      [{ x: x, y: y }, { x: x + 2, y: y }], [{ x: x + 2, y: y }, { x: x + 2, y: y + 2 }],
+      [{ x: x + 2, y: y + 2 }, { x: x, y: y + 2 }], [{ x: x, y: y + 2 }, { x: x, y: y }],
+    ];
+  }
+  const bare = walls => ({
+    resolution: { map_origin: { x: 0, y: 0 }, map_size: { x: 12, y: 12 }, pixels_per_grid: 100 },
+    line_of_sight: walls, portals: [],
+  });
+
+  it('a sealed structure touching nothing is refused', () => {
+    const r = vttDerivePlan(bare(sealedBox(2, 2)));
+    assert.equal(r.rooms.length, 0);
+    assert.equal(r.refusedSolid, 1);
+  });
+
+  it('one door anywhere on the run spares all of it', () => {
+    const p = bare([
+      [{ x: 2, y: 2 }, { x: 3, y: 2 }], [{ x: 3.5, y: 2 }, { x: 4, y: 2 }],
+      [{ x: 4, y: 2 }, { x: 4, y: 4 }], [{ x: 4, y: 4 }, { x: 2, y: 4 }],
+      [{ x: 2, y: 4 }, { x: 2, y: 2 }],
+    ]);
+    p.portals = [{ bounds: [{ x: 3, y: 2 }, { x: 3.5, y: 2 }] }];
+    assert.equal(vttDerivePlan(p).rooms.length, 1);
+  });
+
+  // ⚠ THE ATTIC QUESTION. A cellar with a teleport circle, a prison cell, a windowless
+  // vault: none of them has a door of its own, and all of them are kept — because the rule
+  // judges a whole connected run of walls, and these share their building's walls and so
+  // its doors. Only a structure isolated from everything else is refused.
+  it('a sealed room built against a doored building is kept', () => {
+    const p = bare([
+      [{ x: 1, y: 1 }, { x: 6, y: 1 }], [{ x: 6, y: 1 }, { x: 6, y: 6 }],
+      [{ x: 6, y: 6 }, { x: 1, y: 6 }], [{ x: 1, y: 6 }, { x: 1, y: 1 }],
+      // The vault: three walls, the fourth being the building's own left wall.
+      [{ x: 1, y: 2 }, { x: 3, y: 2 }], [{ x: 3, y: 2 }, { x: 3, y: 4 }],
+      [{ x: 3, y: 4 }, { x: 1, y: 4 }],
+    ]);
+    p.portals = [{ bounds: [{ x: 3, y: 1 }, { x: 4, y: 1 }] }];   // the front door
+    const { rooms, refusedSolid } = vttDerivePlan(p);
+    assert.equal(refusedSolid, 0);
+    assert.equal(rooms.length, 2, 'the vault and the rest of the building');
+    assert.ok(rooms.some(r => Math.round(area(r)) === 2 * 2 * 100 * 100), 'the vault survives');
+  });
+
+  // ⚠ A ROCK MUST NOT STEAL A WALL STUB. A room open on one side, with a rock formation
+  // sitting nearer to each stub than the stub's real partner across the opening. Bridging
+  // into the rock glues the wall to it, achieves nothing, and consumes the end — so the two
+  // ends never find each other and the room is lost into the cave.
+  it('a wall stub never bridges into rock', () => {
+    const walls = [
+      [{ x: 4, y: 2 }, { x: 8, y: 2 }], [{ x: 8, y: 2 }, { x: 8, y: 6 }],
+      [{ x: 8, y: 6 }, { x: 4, y: 6 }],
+      [{ x: 4, y: 6 }, { x: 4, y: 5 }], [{ x: 4, y: 2 }, { x: 4, y: 3 }],   // a 2-square mouth
+      ...sealedBox(1, 2.5),                                                 // rock, 1 square off
+    ];
+    const p = { ...bare(walls), portals: [{ bounds: [{ x: 6, y: 2 }, { x: 7, y: 2 }] }] };
+    const { rooms, refusedSolid } = vttDerivePlan(p);
+    assert.equal(refusedSolid, 1, 'the rock is refused');
+    assert.equal(rooms.length, 1, 'and the room it would have stolen from survives');
+    assert.ok(area(rooms[0]) / (100 * 100) > 14, 'as the whole room, not a fragment');
+  });
+
+  it('a mutual pair of ends reaches further than a stub reaching for a wall', () => {
+    // 4 squares apart: past VTT_CLOSE_GAP_MAX, inside VTT_CLOSE_PAIR_MAX.
+    const p = bare([
+      [{ x: 1, y: 1 }, { x: 2, y: 1 }], [{ x: 6, y: 1 }, { x: 7, y: 1 }],
+      [{ x: 7, y: 1 }, { x: 7, y: 5 }], [{ x: 7, y: 5 }, { x: 1, y: 5 }],
+      [{ x: 1, y: 5 }, { x: 1, y: 1 }],
+    ]);
+    p.portals = [{ bounds: [{ x: 3, y: 5 }, { x: 4, y: 5 }] }];
+    assert.equal(vttDerivePlan(p).rooms.length, 1, 'the pair bridges');
+    // Tightening the base ceiling tightens the pair with it, so "closing off" means off.
+    assert.equal(vttDerivePlan(p, { closeGapMax: 0 }).rooms.length, 0);
+  });
+
+  // The accepted cost, stated as a test so nobody has to rediscover it. A whole floor that
+  // is one sealed room comes back empty rather than wrong.
+  it('a building with no door at all comes back empty', () => {
+    const p = bare([
+      [{ x: 1, y: 1 }, { x: 6, y: 1 }], [{ x: 6, y: 1 }, { x: 6, y: 6 }],
+      [{ x: 6, y: 6 }, { x: 1, y: 6 }], [{ x: 1, y: 6 }, { x: 1, y: 1 }],
+    ]);
+    assert.deepEqual(vttDerivePlan(p).rooms, []);
+  });
+});
+
 describe('vttPlan — the map_origin term', () => {
   it('subtracts a non-zero origin before scaling', () => {
     const base = vttDerivePlan(plan());
@@ -206,6 +363,21 @@ function twoRoomPlan() {
   };
 }
 
+// A 2x1 detached outbuilding with its top-left corner at (x, y), and the door that makes it
+// a building rather than a lump of rock. ⚠ THE DOOR IS LOAD-BEARING IN THESE TESTS: a wall
+// run that closes on itself with no portal anywhere is refused as solid, so a doorless shed
+// would never reach the assertion it is standing in for.
+function shedWalls(x, y) {
+  return [
+    [{ x: x, y: y }, { x: x + 1, y: y }], [{ x: x + 1.5, y: y }, { x: x + 2, y: y }],
+    [{ x: x + 2, y: y }, { x: x + 2, y: y + 1 }],
+    [{ x: x + 2, y: y + 1 }, { x: x, y: y + 1 }], [{ x: x, y: y + 1 }, { x: x, y: y }],
+  ];
+}
+function shedDoor(x, y) {
+  return { bounds: [{ x: x + 1, y: y }, { x: x + 1.5, y: y }] };
+}
+
 describe('vttPlan — synthetic edge cases', () => {
   it('two rooms sharing a wall, ordered left to right', () => {
     const { rooms, boundaries, openWalls } = vttDerivePlan(twoRoomPlan());
@@ -249,13 +421,19 @@ describe('vttPlan — synthetic edge cases', () => {
   it('a gap too wide to bridge is left alone', () => {
     const p = twoRoomPlan();
     p.line_of_sight.splice(4, 1);              // no divider, so nothing else to bridge to
-    p.line_of_sight[0] = [{ x: 1, y: 1 }, { x: 2, y: 1 }];
-    p.line_of_sight.push([{ x: 6, y: 1 }, { x: 7, y: 1 }]);   // a 4-square hole
+    // Deepened, so the far wall is not the nearest thing to either end and the two ends are
+    // each other's partner — the case the pair ceiling governs.
+    p.line_of_sight[1] = [{ x: 7, y: 1 }, { x: 7, y: 9 }];
+    p.line_of_sight[2] = [{ x: 7, y: 9 }, { x: 1, y: 9 }];
+    p.line_of_sight[3] = [{ x: 1, y: 9 }, { x: 1, y: 1 }];
+    p.line_of_sight[0] = [{ x: 1, y: 1 }, { x: 1.2, y: 1 }];
+    // A 5.6-square hole: past even the reach a mutual pair of ends is allowed.
+    p.line_of_sight.push([{ x: 6.8, y: 1 }, { x: 7, y: 1 }]);
     const { rooms, closedGaps, openWalls } = vttDerivePlan(p);
     assert.deepEqual(closedGaps, []);
     assert.equal(rooms.length, 0, 'refusing the room is the right failure');
     assert.equal(openWalls.length, 1);
-    assert.equal(openWalls[0].gapPx, 400);
+    assert.equal(openWalls[0].gapPx, 560);
   });
 
   it('a corner short of its join is chamfered, not slivered', () => {
@@ -295,10 +473,8 @@ describe('vttPlan — synthetic edge cases', () => {
 
   it('a detached second building keeps its own boundary', () => {
     const p = twoRoomPlan();
-    p.line_of_sight.push(
-      [{ x: 10, y: 1 }, { x: 12, y: 1 }], [{ x: 12, y: 1 }, { x: 12, y: 2 }],
-      [{ x: 12, y: 2 }, { x: 10, y: 2 }], [{ x: 10, y: 2 }, { x: 10, y: 1 }],
-    );
+    p.line_of_sight.push(...shedWalls(10, 1));
+    p.portals.push(shedDoor(10, 1));
     const { rooms, boundaries } = vttDerivePlan(p);
     assert.equal(rooms.length, 3);
     assert.equal(boundaries.length, 2);
@@ -364,11 +540,15 @@ describe('vttPlan — the tolerances', () => {
     assert.equal(VTT_COLLINEAR_EPS, 0.002);
     assert.equal(VTT_MIN_FACE_AREA, 0.9);
     assert.equal(VTT_CLOSE_GAP_MAX, 2.5);
-    assert.equal(VTT_OPEN_WALL_MAX_GAP, 4);
+    assert.equal(VTT_CLOSE_PAIR_MAX, 5);
+    assert.equal(VTT_OPEN_WALL_MAX_GAP, 6);
     assert.equal(VTT_ROW_BUCKET, 2);
-    // The report ceiling must stay above what closing bridges, or there is never anything
-    // left for it to describe.
-    assert.ok(VTT_OPEN_WALL_MAX_GAP > VTT_CLOSE_GAP_MAX);
+    // A mutual pair of ends is better evidence than a stub reaching for a wall, so it is
+    // allowed to reach further — never less far.
+    assert.ok(VTT_CLOSE_PAIR_MAX > VTT_CLOSE_GAP_MAX);
+    // The report ceiling must stay above the WIDEST thing closing bridges, or there is
+    // never anything left for it to describe.
+    assert.ok(VTT_OPEN_WALL_MAX_GAP > VTT_CLOSE_PAIR_MAX);
   });
 
   it('the node snap closes endpoints that miss each other', () => {
@@ -438,10 +618,8 @@ describe('vttPlan — the tolerances', () => {
   it('the row bucket groups rooms into rows', () => {
     const p = twoRoomPlan();
     // A third room below and to the left of the other two.
-    p.line_of_sight.push(
-      [{ x: 1, y: 8 }, { x: 3, y: 8 }], [{ x: 3, y: 8 }, { x: 3, y: 10 }],
-      [{ x: 3, y: 10 }, { x: 1, y: 10 }], [{ x: 1, y: 10 }, { x: 1, y: 8 }],
-    );
+    p.line_of_sight.push(...shedWalls(1, 8));
+    p.portals.push(shedDoor(1, 8));
     const first = r => bbox(r).y0;
     const rooms = vttDerivePlan(p).rooms;
     assert.equal(rooms.length, 3);

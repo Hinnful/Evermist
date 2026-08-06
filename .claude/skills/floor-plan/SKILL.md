@@ -58,8 +58,23 @@ the app produces rooms, they are just wrong.
   the edge list and the projected foot need the neighbour exclusion.
 - **Nothing can close a wall that is simply absent**, only a gap between two ends. A room
   missing a whole wall stays refused, and that is correct.
-- **No cave subdivision, in either direction.** There is no ground truth for where one cave
-  ends, so don't subdivide, and don't detect and filter caves out either.
+- **No cave subdivision.** There is no ground truth for where one cave ends. Per-chamber
+  rooms are the split tool's job, not detection's - the cavern outline is already accurate.
+- **A doorless wall loop is solid, and its faces are refused.** A run of walls that closes
+  on itself with no portal anywhere is rock, not a room. Two things make it safe and both
+  must stay: it is judged on the WHOLE connected run, so a windowless cellar keeps its
+  building's doors, and it is computed BEFORE the portals are unioned in, because
+  afterwards every chain is a loop. T-split the wall-only graph first, or a door in one
+  wall leaves the other three looking like an untouched ring and the building is refused.
+  A floor that is one sealed room comes back empty; that is the accepted cost.
+- **A wall stub must never bridge into a doorless wall.** Compute them BEFORE closing and
+  pass them to `vttLooseEnds` as targets to skip. Otherwise both ends of a room's open side
+  bridge into the nearer rock, which glues the wall to the cave, closes nothing, and spends
+  the ends so they never find each other - the room is then silently lost into the cavern.
+- **A mutual pair of loose ends reaches `VTT_CLOSE_PAIR_MAX`, a stub reaches
+  `VTT_CLOSE_GAP_MAX`.** Both ends picking each other is far better evidence than a stub
+  projecting onto a wall's mid-span. Tightening the base ceiling must tighten the pair
+  ceiling with it, or `closeGapMax: 0` stops meaning "no closing".
 - **No door or window rendering.** Portals carry no type field, so doors and windows are
   indistinguishable, and secret doors would hand the players a map of every hidden passage.
 - **No room naming from module text.** Nothing in the file to match on. Rooms arrive as

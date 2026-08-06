@@ -32,6 +32,8 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `state.js` | Shared values that several files need. Loaded first so they exist before anything reads them. |
 | `fog.js` | Everything fog: the canvases that store what's hidden, the blur and cloud-texture math, and the reveal/hide logic. |
 | `fogGeometry.js` | The pure fog math: polygon insetting, rounded paths, tint-colour derivation, animation timing. Plain functions in, values out, no drawing. Unit-tested. |
+| `vttPlan.js` | Turns a Universal VTT floor plan's wall segments into room polygons. Pure geometry, no dependencies, unit-tested. |
+| `floorPlan.js` | The app side of that: finding the plan beside the map, the offer notice, and drawing the rooms. |
 | `tools.js` | The drawing tools (brush, rectangle, circle, polygon) and polygon editing. |
 | `input.js` | The DM's mouse and keyboard: painting with the tools, keyboard shortcuts, the legend toggle. |
 | `undo.js` | Undo/redo history for fog edits. |
@@ -54,7 +56,7 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `confirmDialog.js` | The app's own yes/no dialog. The only sanctioned confirmation, because native `confirm()` breaks the page. |
 | `player.js` | Player-mode runtime: cloud-texture pre-generation, the handshake, the resize listener, the DM message handler, Player pan/zoom. |
 | `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
-| `main.js` / `preload.js` | The Electron shell. Creates the windows, saves video files to disk, reads and writes backup zips, forks the PDF parser. |
+| `main.js` / `preload.js` | The Electron shell. Creates the windows, saves video files to disk, reads and writes backup zips, forks the PDF parser, finds a map's floor plan. |
 
 ## How the fog works
 
@@ -178,6 +180,49 @@ preference, because a box's height belongs to your screen rather than to a room.
 Room names are also drawn on the DM map itself, sized relative to zoom and placed inside the
 room's outline rather than at its bounding box corner, which is what makes circles and
 heavily-rounded rectangles work without special cases. `L` toggles them.
+
+### Drawing the rooms from the map's own floor plan
+
+Dungeon Alchemist writes a `.dd2vtt` floor plan beside every map it exports: wall segments,
+doors and windows, light sources, and the grid calibration, all as vector data. So the rooms
+don't have to be traced by hand or guessed at from pixels - they're already in a file.
+
+Dropping a map asks the Electron shell whether a plan sits beside it. If one does it's stored
+on the scene there and then, because the map is about to be copied into the app's own folder
+and will no longer have a sibling to find. A notice appears with the room count, and Draw
+Rooms in the Fog tab stays available for later.
+
+The geometry is five steps and lives in `vttPlan.js`, entirely separate from the app. Wall
+segments are unioned with the portals that fill their gaps, because walls alone have a hole at
+every opening and are not a closed plan. Edges are split where one wall meets another
+mid-span. Then the enclosed faces are walked, and each is classified by which direction it
+winds: one way is a room, the other is the outline of the whole building.
+
+Two properties are deliberate. **Coordinates are grid squares, not pixels**, so every
+tolerance is resolution-independent. And a room whose wall has a gap gets bridged only if the
+two loose ends are each other's nearest feature and close enough to be no coincidence;
+anything wider is refused rather than invented, because a confidently wrong room costs more
+than a missing one. Two ends that pick each other are allowed to reach twice as far as a
+single end reaching for a wall, since they are far better evidence of a wall that was once
+whole.
+
+**Cave maps need one more idea: telling a room from solid rock.** A cave is drawn with walls
+exactly like a building, so a boulder standing in a cavern encloses a face and looks like a
+small room, while the cavern itself encloses a huge one that wraps around every building
+inside it. The signal that separates them is the doorway. A real room always reaches
+somewhere, so its walls arrive as an open chain that closes only once the doorways are filled
+in; a rock closes on itself with no door anywhere. Anything bounded by a doorless wall is
+refused, which drops the cavern and the rocks together with no size limit to tune.
+
+That test is also applied *before* gaps are bridged, because rock must never be a target. A
+room whose whole side opens onto a cave has a loose wall end at each side of the mouth, and
+the nearest thing to each is the cave wall a few feet away, not its real partner across the
+opening. Left alone, both ends glue themselves to the cave, close nothing, and the room is
+swallowed into the cavern.
+
+What a cave map cannot give is the cave's own chambers. They are one continuous space with no
+wall between them, so nothing in the file says where one ends. Splitting the cavern polygon by
+hand is the intended route.
 
 ## Reading a published module
 

@@ -280,6 +280,13 @@ would need a version bump plus an upgrade path on the database holding the user'
 buy nothing for a few hundred KB. Measured headroom is 2.3×, not the 10× an early comment
 claimed; the real guard is `mtStore`'s try/catch.
 
+### Module text is campaign-level, and belongs in the backup anyway · `SETTLED` (2026-08-06)
+Imported entries live in `localStorage`, deliberately outside any scene, because one book serves
+every map in a campaign. The corollary drawn at the time - that they therefore stay out of the
+export zip - does not follow. A zip is the only way a campaign moves between machines, and the
+moment a missing room description gets noticed is at the table rather than during prep. Room
+notes already survive the round trip; the source they were filled from should too.
+
 ### A sidebar classifier · `REJECTED`
 A page of general rules between two headings is absorbed into the preceding room and the DM
 deletes it (roughly 1 room in 13). Every signal is either language-specific or
@@ -441,6 +448,14 @@ Drop/replace loads the map twice. Rerouting through `switchScene` exists because
 path produced broken PixiJS fog and video. It works, it is just wasteful, and changing it
 carries regression risk.
 
+### The portable `evermist-data` folder moves to a per-user location · `SETTLED` (2026-08-06)
+The Windows portable build writes its data beside the `.exe` so the whole folder can be copied
+to another machine. In practice that never happens: transfer goes through Export to a zip,
+which is the supported path and the only one that survives a version change. What the folder
+does do is sit next to the app in plain sight, looking like clutter a user might delete or be
+alarmed by. The copyable-folder benefit is theoretical and the cost is visible on every
+desktop, so the data moves to the OS per-user location mac and Linux already use.
+
 ### Releases are unsigned, and upload via `softprops`, not electron-builder · `SETTLED`
 electron-builder's own publisher only uploads to *draft* releases, so creating the release as
 published via the web UI made it silently skip the upload: the build went green with no
@@ -474,9 +489,15 @@ resurrect `drawGridLines(mapCtx)`.
 
 ## Scope boundaries
 
-### Map layers · `PARKED`
-It amounts to batching three or four maps together as a folder, which is minimal value in
-actual play or prep.
+### Scene folders · `SETTLED` — the "map layers" parking is reversed (2026-08-06)
+Parked once as "batching three or four maps together as a folder, minimal value in actual play
+or prep". That measured the wrong thing. The value is not the grouping, it is **navigating a
+scene list that has outgrown its container**: sixteen scenes running in parallel, in a thin
+vertical strip, with names truncated so picking one is guesswork. A multi-storey building is
+simply the case that produces sixteen scenes.
+
+So this is a list-navigation problem wearing a layers costume, and the work is drag-and-drop
+into folders with no change to what a scene is.
 
 ### Distinctive fog identities · `PARKED` to 2.0.0
 Agreed to be the most interesting idea in its batch and too big for now. The shape when it
@@ -537,16 +558,19 @@ crates - so unioning it in turns every pillar into a closed loop inside a real r
 face walk reports the hall as a ring plus a fake little room. Ordinary furniture never appears
 there anyway: a fully furnished test room produced an absent field.
 
-### An open wall loses its room, and the import says where · `SETTLED`
+### An open wall loses its room · `SETTLED` (both halves reversed 2026-08-06)
 A missing wall segment does not distort a room, it deletes it: the gap joins the interior to
-the outside and the two merge into one face. A four-room map with one broken room yields three
-rooms and no error.
+the outside and the two merge into one face.
 
-Auto-closing gaps was rejected, because it invents geometry the map never had and a
-confidently wrong room costs more than a missing one. Silence was the wrong other option
-though. The arrangement knows every open wall end exactly, so the import **reports each one's
-map coordinates and the gap width**, and the missing room gets drawn by hand in seconds with
-no hunting for what went wrong.
+**Auto-closing gaps was rejected, then shipped bounded.** An archway with no door still bounds
+a room worth shrouding, so refusing every gap failed the common case to guard a rare one. Three
+things keep it safe: the bridge is a straight line between two points the file already
+contains, two ends join only when each is the other's nearest feature, and a minimum face area
+refuses the sliver a corner bridge chips off. Wider gaps are still refused, and nothing can
+close a wall that is simply absent.
+
+**Reporting each gap's coordinates was built, then cut from the UI** - unreadable as text, and
+an edge case placed in front of every successful import. `openWalls` still computes.
 
 ### No automatic cave subdivision, ever · `SETTLED` (scope call)
 Where one cave ends and the next begins is judged by eye, and the same map divided twice by
@@ -554,10 +578,44 @@ the same person comes out differently. There is no ground truth for code to appr
 any shipped answer would replace a judgement call with an arbitrary one, and editing a
 machine's arbitrary shape is slower than drawing your own.
 
-A cave's outer boundary is not ambiguous, so if the rock exports as walls the face walk
-already returns one coarse polygon for the system, which is useful as an edge-accurate
-boundary to draw inside. **No special case in either direction**: detecting and filtering
-caves out is more work than letting the polygon appear, and deleting one is instant.
+**The "let the coarse boundary appear" half is REVERSED, 2026-08-06.** It read as a free
+consolation prize: no subdivision, but at least an edge-accurate outline to draw inside. On a
+real mixed caves-and-rooms map that outline is one polygon spanning nearly the whole map with
+the genuine rooms sitting inside it, which under reverse-order fog compositing is worse than
+nothing. How it is refused is the next entry. Subdivision itself stays refused, but the route
+to per-chamber rooms is now the **split/scissors tool** rather than detection — the outline is
+edge-accurate, so two cuts across the narrow necks give geometry that is already right. That
+promotes split over merge in the polygon-editing work.
+
+### A doorless wall loop is solid, not a room · `SETTLED` (kernel rule)
+A wall run that closes on itself carrying no portal anywhere does not bound a room: it is a
+rock formation or the cave's own shell. Every real room reaches somewhere through a doorway,
+so its walls arrive as an OPEN chain that closes only once the portals are unioned in. On the
+cave export the false rooms scored 100%, 100% and 84% of their outline in doorless wall and
+every real room scored exactly zero — so the test is "any at all", with no threshold to tune.
+That is the point: a blind area threshold is the instrument the winding-not-area trap already
+punished once.
+
+Two properties keep it safe. It judges **a whole connected run of walls, not one room**, so a
+windowless cellar or a prison cell keeps its building's doors; only a structure isolated from
+everything else is refused. And it runs **before the portals are unioned in**, since afterwards
+every chain is a loop and the distinction is gone. Accepted cost: a floor that is one sealed
+room, an attic reached by a hatch, comes back empty rather than wrong. That is the trade asked
+for — *"confidently correct… or not give me polygons at all."*
+
+### A wall stub never bridges into solid, and a mutual pair reaches further · `SETTLED`
+A room whose whole side is open to a cave was lost, and gap closing looked innocent. Both
+ends of the opening bridged sideways into the rock a few feet away — nearer than each other —
+which glues the wall to the cave, achieves nothing, and consumes the end so the real partner
+is never found. 8 of 10 bridges on the cave map were that mistake, and raising the reach
+could not fix it because the ends were already spent.
+
+So the doorless walls are computed BEFORE closing and excluded as targets. Once nothing solid
+can steal an end, the two sides of an opening find each other — at 3.7 and 4.3 squares, past
+the 2.5 a stub is allowed. Hence a second, wider ceiling for a MUTUAL PAIR only, where both
+ends pick each other: far better evidence than a stub projecting onto some wall's mid-span,
+which keeps the tight one. Tightening the base ceiling tightens both, so "closing off" still
+means off. Result on the cave map: 13 rooms, all real, none false.
 
 ### Owlbear Rodeo's automatic fogging is not a template · `REJECTED` (as a model)
 Their "Forecast" feature is a server-side computer vision pipeline gated to their top paid
@@ -586,6 +644,13 @@ the game gets run, not authored. Rooms only get drawn during play when prep was 
 entirely, and prep gets skipped when the tools make it slow, so on-the-fly drawing is a symptom
 rather than the workflow to optimise. **Do not propose in-play authoring aids**, and do not
 read the habit of drawing mid-session as evidence that prep is fine.
+
+### Evermist is a prep tool that also runs the game · `SETTLED` (positioning)
+"Run cool maps on a TV" described the app until prep automation landed. With a map, its floor
+plan and the module's text, preparing a session is now most of the way to automatic, and each
+of the three is useful alone: hand-drawn rooms still auto-populate from module text, and a
+floor plan still draws rooms with no module. The framing for 2.0.0 is **prep efficiently, run
+beautifully**. A positioning call, not a scope expansion - the VTT line below is unchanged.
 
 ### The VTT line · `SETTLED`
 No tokens, no initiative, no character sheets. Map, fog, grid, two screens.
