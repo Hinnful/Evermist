@@ -161,6 +161,13 @@ channel to strip and no risk of leaking a room's notes to the TV.
 **Selecting a room is the Select tool's job alone.** The other tools keep drawing new rooms
 when you click, including ones that overlap or nest inside existing ones.
 
+Two toggles at the right-hand end of the toolbar help the drawing land where you meant. **Snap
+to grid** pulls each corner onto the nearest grid intersection. **Straighten walls** pulls a
+corner level with the one before it when it's already nearly level, so a wall comes out square
+without a steady hand - it's an alignment nudge, not a lock, so a wall you genuinely want
+diagonal stays diagonal. It works while dragging a corner of a finished room too. Neither
+setting is saved; both are off when the app starts.
+
 **Array order is fog compositing order.** The fog rebuild walks the room list in reverse, so
 reordering the list silently changes what the fog looks like wherever shapes overlap. There
 is no separate display order, and no room list UI to need one.
@@ -169,13 +176,18 @@ is no separate display order, and no room list UI to need one.
 
 Select a room and a floating card appears with its name, description, fog mode, and corner
 radius. It stays open when you switch tools, so you can read a description while painting
-fog.
+fog. **Drawing a room doesn't open it** - a new room is created with nothing selected, so the
+card can't cover the map while you draw the next one. Naming is a second pass with Select.
 
-Two things about it are load-bearing rather than polish. The card **floats over the map**, so
-it will sometimes cover the very handles you selected the room by, and no automatic
-placement rule wins that in general. So you drag it, and double-clicking its bar snaps it
-back. And the description box is **resizable**, with its height remembered as one global
-preference, because a box's height belongs to your screen rather than to a room.
+Two things about it are load-bearing rather than polish. The card **floats over the map** and
+places itself clear of the whole room, not just its centre: the first of above, below, right
+or left that the room's outline leaves free. It holds still while you drag a vertex or an
+edge, so it can't hop sides mid-edit, and re-places once when you let go. If a room leaves no
+gap big enough anywhere, the card hugs the viewport edge furthest from it - you can always
+drag it, and double-clicking its bar sends it back. And the description box is **resizable**,
+with its height remembered as one global preference, because a box's height belongs to your
+screen rather than to a room. That height is also what decides whether a big room has room
+for the card beside it.
 
 Room names are also drawn on the DM map itself, sized relative to zoom and placed inside the
 room's outline rather than at its bounding box corner, which is what makes circles and

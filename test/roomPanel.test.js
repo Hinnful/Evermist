@@ -149,91 +149,139 @@ describe('sanitizeRoomDesc', () => {
 describe('clampPanelPosition', () => {
   // 260x300 card in a 1000x800 viewport unless stated otherwise.
   const W = 260, H = 300, VW = 1000, VH = 800;
+  // A room box around a centre point. `at` is the degenerate zero-size case.
+  const box = (cx, cy, w, h) => ({ left: cx - w / 2, top: cy - h / 2, right: cx + w / 2, bottom: cy + h / 2 });
+  const at  = (cx, cy) => box(cx, cy, 0, 0);
 
-  test('sits above the anchor, horizontally centred on it, when there is room', () => {
-    const p = clampPanelPosition(500, 600, W, H, VW, VH);
+  test('sits above the room, horizontally centred on it, when there is room', () => {
+    const p = clampPanelPosition(at(500, 600), W, H, VW, VH);
     assert.equal(p.placement, 'above');
     assert.equal(p.left + W / 2, 500);        // centred on the room
-    assert.equal(p.top + H, 600 - 22);        // one gap below the centroid
+    assert.equal(p.top + H, 600 - 22);        // one gap above the room's top edge
   });
 
   test('flips below when the card would run off the top', () => {
-    const p = clampPanelPosition(500, 100, W, H, VW, VH);
+    const p = clampPanelPosition(at(500, 100), W, H, VW, VH);
     assert.equal(p.placement, 'below');
     assert.equal(p.top, 100 + 22);
     assert.ok(p.top + H <= VH - 8);
   });
 
-  test('falls back beside the anchor when neither above nor below fits', () => {
+  test('falls back beside the room when neither above nor below fits', () => {
     // A viewport barely taller than the card leaves no vertical slot.
-    const p = clampPanelPosition(400, 180, W, H, VW, 340);
+    const p = clampPanelPosition(at(400, 180), W, H, VW, 340);
     assert.equal(p.placement, 'right');
     assert.equal(p.left, 400 + 22);
     assert.ok(p.top >= 8 && p.top + H <= 340 - 8);   // vertically clamped, not clipped
   });
 
   test('the side fallback goes left when the right side would overflow', () => {
-    const p = clampPanelPosition(900, 180, W, H, VW, 340);
+    const p = clampPanelPosition(at(900, 180), W, H, VW, 340);
     assert.equal(p.placement, 'left');
     assert.equal(p.left, 900 - 22 - W);
   });
 
   test('clamps against the left viewport edge', () => {
-    const p = clampPanelPosition(10, 600, W, H, VW, VH);
+    const p = clampPanelPosition(at(10, 600), W, H, VW, VH);
     assert.equal(p.left, 8);
   });
 
   test('clamps against the right viewport edge', () => {
-    const p = clampPanelPosition(990, 600, W, H, VW, VH);
+    const p = clampPanelPosition(at(990, 600), W, H, VW, VH);
     assert.equal(p.left, VW - W - 8);
   });
 
   test('a card wider than the viewport pins to the left edge, never off-screen', () => {
-    const p = clampPanelPosition(150, 600, 400, H, 300, VH);
+    const p = clampPanelPosition(at(150, 600), 400, H, 300, VH);
     assert.equal(p.left, 8);
   });
 
   test('never returns a negative left even in the left-side fallback', () => {
-    const p = clampPanelPosition(30, 180, W, H, 320, 340);
+    const p = clampPanelPosition(at(30, 180), W, H, 320, 340);
     assert.ok(p.left >= 8);
   });
 
-  // The side fallback is the only branch that reads anchorX straight through, so it is the
-  // one that can follow a panned-away room off the screen. Both directions, both axes.
+  // The side fallback is the only branch that reads the room's own x straight through, so it is
+  // the one that can follow a panned-away room off the screen. Both directions, both axes.
   test('the side fallback stays on screen when the room is panned off the left edge', () => {
-    const p = clampPanelPosition(-500, 180, W, H, VW, 340);
+    const p = clampPanelPosition(at(-500, 180), W, H, VW, 340);
     assert.ok(p.left >= 8, 'left edge must stay inside the viewport, got ' + p.left);
     assert.ok(p.left + W <= VW - 8);
   });
 
   test('the side fallback stays on screen when the room is panned off the right edge', () => {
-    const p = clampPanelPosition(VW + 500, 180, W, H, VW, 340);
+    const p = clampPanelPosition(at(VW + 500, 180), W, H, VW, 340);
     assert.ok(p.left + W <= VW - 8, 'right edge must stay inside the viewport, got ' + p.left);
     assert.ok(p.left >= 8);
   });
 
   test('stays on screen when the room has been panned below the viewport', () => {
-    // The anchor is a point on the MAP, so zooming in or panning can put it far off-screen.
-    // "Above an anchor 3000px below the fold" would itself be off-screen.
-    const p = clampPanelPosition(500, 3000, W, H, VW, VH);
+    // The box comes from MAP coordinates, so zooming in or panning can put it far off-screen.
+    // "Above a room 3000px below the fold" would itself be off-screen.
+    const p = clampPanelPosition(at(500, 3000), W, H, VW, VH);
     assert.ok(p.top + H <= VH - 8, 'bottom edge must stay inside the viewport');
     assert.ok(p.top >= 8);
   });
 
   test('stays on screen when the room has been panned above the viewport', () => {
-    const p = clampPanelPosition(500, -2000, W, H, VW, VH);
+    const p = clampPanelPosition(at(500, -2000), W, H, VW, VH);
     assert.ok(p.top >= 8, 'top edge must stay inside the viewport');
     assert.ok(p.top + H <= VH - 8);
   });
 
   test('a card taller than the viewport pins to the top edge, never negative', () => {
-    const p = clampPanelPosition(500, 3000, W, 900, VW, VH);
+    const p = clampPanelPosition(at(500, 3000), W, 900, VW, VH);
     assert.equal(p.top, 8);
   });
 
   test('gap and margin are overridable', () => {
-    const p = clampPanelPosition(500, 600, W, H, VW, VH, 0, 0);
+    const p = clampPanelPosition(at(500, 600), W, H, VW, VH, 0, 0);
     assert.equal(p.top + H, 600);
+  });
+
+  // ── Clearing the room, not just its centre ──────────────────────────────────
+  // The whole point of taking a box: a room wide enough to reach past the card must not have
+  // the card land inside it.
+
+  test('clears a big room entirely rather than sitting on its centre', () => {
+    // 600x300 room, top edge at y=350. Anchoring on the centre (y=500) would put the card at
+    // 500-22-300 = 178, whose bottom edge (478) lands INSIDE the room.
+    const room = box(500, 500, 600, 300);
+    const p = clampPanelPosition(room, W, H, VW, VH);
+    assert.equal(p.placement, 'above');
+    assert.ok(p.top + H <= room.top, 'card bottom must clear the room top, got ' + (p.top + H));
+  });
+
+  test('goes below when a room hugs the top of the viewport', () => {
+    const room = box(500, 200, 600, 340);   // top edge at y=30, no room above
+    const p = clampPanelPosition(room, W, H, VW, VH);
+    assert.equal(p.placement, 'below');
+    assert.ok(p.top >= room.bottom, 'card top must clear the room bottom');
+  });
+
+  test('goes beside a room that is tall but narrow', () => {
+    const room = box(200, 400, 120, 780);   // spans the full height, leaves width to the right
+    const p = clampPanelPosition(room, W, H, VW, VH);
+    assert.equal(p.placement, 'right');
+    assert.ok(p.left >= room.right, 'card left must clear the room right edge');
+  });
+
+  test('a room leaving no clear slot takes the roomiest side', () => {
+    // Zoomed right in: the room overruns the viewport left, right and top, and the space below
+    // it is too short for the card. Nothing is fully clear, so below wins on space.
+    const room = { left: -200, top: -100, right: VW + 200, bottom: 500 };
+    const p = clampPanelPosition(room, W, H, VW, VH);
+    assert.equal(p.placement, 'below');
+    assert.equal(p.top, VH - H - 8);          // pinned to the bottom edge, furthest from the room
+    assert.ok(p.top >= 8);
+  });
+
+  test('the last-resort placement is still fully on screen', () => {
+    // Room bigger than the viewport in every direction — no side has any clear space.
+    const room = { left: -500, top: -500, right: VW + 500, bottom: VH + 500 };
+    const p = clampPanelPosition(room, W, H, VW, VH);
+    assert.ok(p.left >= 8 && p.left + W <= VW - 8);
+    assert.ok(p.top >= 8 && p.top + H <= VH - 8);
   });
 });
 

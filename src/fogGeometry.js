@@ -87,6 +87,30 @@ function insetPolygon(verts, dist) {
   return out;
 }
 
+// ─── Axis alignment snap ──────────────────────────────────────────────────────
+// Nudges `pt` onto a reference point's exact x or y when it is already within `thresh`
+// of sharing one, which straightens a nearly-straight wall. An ALIGNMENT snap, not a
+// movement constraint: off-axis points are returned untouched, so the cursor is never
+// clamped to a track.
+// refs: array of reference points (the previous vertex when drawing, both ring
+// neighbours when dragging). thresh is in the same units as the points — callers in
+// screen-px terms must divide by zoom first.
+// Only the closer of x and y snaps, so a near-45° segment can't flip between axes.
+function snapToAxis(pt, refs, thresh) {
+  if (!(thresh > 0) || !refs || !refs.length) return { x: pt.x, y: pt.y };
+  let bestDev = thresh, bestAxis = null, bestVal = 0;
+  for (const r of refs) {
+    if (!r) continue;
+    const dx = Math.abs(pt.x - r.x);
+    if (dx < bestDev) { bestDev = dx; bestAxis = 'x'; bestVal = r.x; }
+    const dy = Math.abs(pt.y - r.y);
+    if (dy < bestDev) { bestDev = dy; bestAxis = 'y'; bestVal = r.y; }
+  }
+  if (bestAxis === 'x') return { x: bestVal, y: pt.y };
+  if (bestAxis === 'y') return { x: pt.x, y: bestVal };
+  return { x: pt.x, y: pt.y };
+}
+
 // ─── DPI-adaptive radius math ──────────────────────────────────────────────────
 // Scale blur/feather radii proportionally to fog canvas size so they cover the
 // same fraction of the map regardless of image resolution. `maxDim` is the fog
@@ -269,6 +293,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getPolyBBox,
     buildRoundedPolyPath,
     insetPolygon,
+    snapToAxis,
     fogSizeScale,
     scaledRadius,
     wrapOffset,

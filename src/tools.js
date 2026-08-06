@@ -20,6 +20,9 @@ let isDraggingPolygon = false;
 let dragStartMapX = 0, dragStartMapY = 0;
 let dragOrigVerts = null;   // snapshot of vertices at drag start
 let snapToGrid = false;
+// Straighten-walls toggle. Runtime-only, like snapToGrid — never per scene, never in a backup.
+let axisLock = false;
+const AXIS_LOCK_PX = 12;   // screen px of slack before the snap lets go
 
 // ─── Vertex / edge editing state ──────────────────────────────────────────────
 // -1 = no vertex selected. Also the room card's radius target: roomPanel.js derives
@@ -43,6 +46,15 @@ function snapVertex(mapX, mapY) {
     x: Math.round((mapX - gridOffsetX) / gridSize) * gridSize + gridOffsetX,
     y: Math.round((mapY - gridOffsetY) / gridSize) * gridSize + gridOffsetY,
   };
+}
+
+// Straighten the point being placed against the vertex just placed. The threshold is
+// SCREEN px divided by zoom, so the slack feels identical at every zoom level (same
+// conversion as POLY_CLOSE_RADIUS and the handle hit tests).
+function axisLockDraw(pos) {
+  if (!axisLock || !activePolygon || !activePolygon.vertices.length) return pos;
+  const prev = activePolygon.vertices[activePolygon.vertices.length - 1];
+  return snapToAxis(pos, [prev], AXIS_LOCK_PX / zoom);
 }
 
 // getPolyBBox lives in fogGeometry.js (pure geometry kernel, loaded first).
@@ -264,13 +276,22 @@ function drawActivePolyPreview(screenX, screenY) {
   // Dashed preview edge to cursor
   if (screenX != null) {
     const last = toScreen(verts[verts.length - 1].x, verts[verts.length - 1].y);
+    let tipX = screenX, tipY = screenY;
+    // With axis-lock on, preview where the click will actually land so the wall doesn't
+    // jump on release. Runs the same chain as toolMouseDown. Gated on axisLock so
+    // grid-snap-only drawing keeps its existing free-cursor preview.
+    if (axisLock) {
+      const m = axisLockDraw(snapVertex((screenX - panX) / zoom, (screenY - panY) / zoom));
+      const s = toScreen(m.x, m.y);
+      tipX = s.sx; tipY = s.sy;
+    }
     cursorCtx.strokeStyle = 'rgba(255,255,255,0.55)';
     cursorCtx.lineWidth   = 1.5;
     cursorCtx.setLineDash([6, 5]);
     cursorCtx.shadowBlur  = 0;
     cursorCtx.beginPath();
     cursorCtx.moveTo(last.sx, last.sy);
-    cursorCtx.lineTo(screenX, screenY);
+    cursorCtx.lineTo(tipX, tipY);
     cursorCtx.stroke();
   }
 
@@ -318,12 +339,15 @@ function drawActivePolyPreview(screenX, screenY) {
 
 function toolMouseDown(raw, e) {
   if (shape === 'poly') {
-    const pos = snapVertex(raw.x, raw.y);
+    let pos = snapVertex(raw.x, raw.y);
     if (!activePolygon) {
       // Start new polygon — Polygon tool never selects/drags existing polygons
       activePolygon = { vertices: [pos], mode: tool };
       selectedPolygonId = null;
     } else {
+      // Grid snap first, then straighten — if the grid already landed the point on an
+      // aligned coordinate, the axis snap is a no-op.
+      pos = axisLockDraw(pos);
       // Close by first-vertex proximity (12 screen px hit area)
       if (activePolygon.vertices.length >= 3) {
         const first = activePolygon.vertices[0];
@@ -441,10 +465,12 @@ function toolMouseMove(pos, e, screenX, screenY) {
       const n    = poly.vertices.length;
       const prev = poly.vertices[(selectedVertexIndex - 1 + n) % n];
       const next = poly.vertices[(selectedVertexIndex + 1) % n];
+      // Straighten against BOTH ring neighbours, so either adjoining wall can go square.
+      const p = axisLock ? snapToAxis(pos, [prev, next], AXIS_LOCK_PX / zoom) : pos;
       const VERT_EPSILON = 0.5; // map units — prevents coincident/zero-length edges
-      if (Math.hypot(pos.x - prev.x, pos.y - prev.y) >= VERT_EPSILON &&
-          Math.hypot(pos.x - next.x, pos.y - next.y) >= VERT_EPSILON) {
-        poly.vertices[selectedVertexIndex] = { x: pos.x, y: pos.y };
+      if (Math.hypot(p.x - prev.x, p.y - prev.y) >= VERT_EPSILON &&
+          Math.hypot(p.x - next.x, p.y - next.y) >= VERT_EPSILON) {
+        poly.vertices[selectedVertexIndex] = { x: p.x, y: p.y };
         rebuildFogFromPolygons();
         fogDirty = true;
         scheduleRender();
@@ -509,6 +535,7 @@ function toolMouseUp(pos, e) {
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
+    drawCursor(lastScreenX, lastScreenY);   // re-place the room card against the reshaped room
     scheduleRender();
     scheduleAutoSync();
     return;
@@ -521,6 +548,7 @@ function toolMouseUp(pos, e) {
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
+    drawCursor(lastScreenX, lastScreenY);   // re-place the room card against the reshaped room
     scheduleRender();
     scheduleAutoSync();
     return;
@@ -562,7 +590,11 @@ function toolMouseUp(pos, e) {
         name: 'Room ' + pid,
       };
       polygons.push(poly);
-      selectedPolygonId = poly.id;
+      // Deliberately NOT selected. Drawing a room must leave the room card closed so it
+      // can't cover the map while the DM draws the next one; naming is a second pass with
+      // the Select tool. Same as floorPlan.js does for auto-generated rooms.
+      selectedPolygonId = null;
+      selectedVertexIndex = -1;
     }
     drawCursor(null, null);
   }
@@ -584,7 +616,8 @@ function toolMouseUp(pos, e) {
       const poly = { id: pid, vertices: verts, mode: tool, cornerRadius: 0,
                      name: 'Room ' + pid };
       polygons.push(poly);
-      selectedPolygonId = poly.id;
+      selectedPolygonId = null;
+      selectedVertexIndex = -1;
     }
     circleCenter = null;
     drawCursor(null, null);
@@ -610,6 +643,7 @@ function toolWindowMouseUp() {
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
+    drawCursor(lastScreenX, lastScreenY);   // re-place the room card against the reshaped room
     scheduleRender();
     scheduleAutoSync();
   }
@@ -620,6 +654,7 @@ function toolWindowMouseUp() {
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
+    drawCursor(lastScreenX, lastScreenY);   // re-place the room card against the reshaped room
     scheduleRender();
     scheduleAutoSync();
   }
@@ -686,7 +721,8 @@ function closeActivePolygon() {
   polygons.push(poly);
   applyPolygonToFog(poly);
   activePolygon = null;
-  selectedPolygonId = poly.id;
+  selectedPolygonId = null;
+  selectedVertexIndex = -1;
   drawCursor(null, null);
   startFogTransition(poly.mode === 'shroud');
   rebuildFogEffect();

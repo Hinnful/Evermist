@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/toolbar.js, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, control-panel buttons, pills, segmented controls, or destructive-button styling. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/toolbar.js, src/css/toolbar.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, control-panel buttons, pills, segmented controls, or destructive-button styling. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -27,6 +27,12 @@ then the corner-radius field pushed right), and Delete at full width behind a ha
   mapping is **affine**: a slope plus a constant origin, both derived from measurement.
   Never reintroduce a bare `/ uiZoom`.
 - Card position (`_rpManualPos`) is screen px, re-clamped every reposition, cleared on close.
+- **`clampPanelPosition` takes the room's screen BOUNDING BOX, never its centroid**, and the
+  card must clear the whole outline. Anchoring on a point is what let a big room swallow the
+  card. Automatic placement is **frozen for the length of a vertex or edge drag** (`_rpAutoPos`)
+  or the card flips sides mid-edit; the four drag-release paths in `tools.js` each repaint so it
+  re-places once on mouseup. **Visibility is still selection-only** — creating a room leaves
+  nothing selected, which is what keeps the card shut while drawing, so don't add a tool check.
 - Description height is ONE global `localStorage` preference (`RP_DESC_H_KEY`), saved on
   **mouseup**, never per-room and never in a scene or backup. **CSS owns the bounds** via
   `.rp-desc`'s own min/max-height; don't add JS range constants.
@@ -59,6 +65,20 @@ partial erase can't re-fog ground already clear, i.e. the room the party just le
   reach this state.
 - **Reverting this feature requires a data sweep**, not just a code revert. See DECISIONS.md.
 
+
+## Bottom-toolbar button identity
+
+Three signals, and they must not blur into each other:
+
+- A dark inset pill (`.tb-seg`) means **pick exactly one** of the buttons inside it. Only the
+  fog-mode group qualifies. The picked one goes bare blue (`.mode-btn.active`).
+- An **independent on/off switch is a bare `.tb-toggle`** behind a `.tb-div` hairline, outlined
+  blue + faint blue fill when on. Snap-to-grid and straighten-walls are these. **Never put a
+  toggle inside a pill** — one alone reads as harmless, and a second one makes the pill a lie.
+- The tool row (`.tool-btn`) is pick-one *and* wears the outlined blue box. That collision is
+  deliberate: the tool picker is unique in the app and is meant to look unlike everything to
+  its right. Position and the hairline carry the distinction, so don't "fix" it by restyling
+  either side.
 
 ## Control-panel button identity
 
