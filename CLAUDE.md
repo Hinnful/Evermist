@@ -5,8 +5,12 @@ one clause of reason at most.
 
 - How the app works → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Why a thing is shaped the way it is, and what was already tried → [docs/DECISIONS.md](docs/DECISIONS.md)
+- A rule that applies only inside one folder → that folder's own `CLAUDE.md`.
+- A rule cluster that applies only to a few named files → a skill in `.claude/skills/`.
+  `guard-skill-hint.js` fires on an edit to an owning file and names the skill; the pointers
+  below are documentation, not the trigger.
 - **A size-guard hook enforces this file's shape: it may shrink, it may not grow.** A
-  paragraph you are about to add here belongs in one of the two files above.
+  paragraph you are about to add here belongs in one of the destinations above.
 
 ## What this is
 
@@ -64,6 +68,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, `getViewportSize`/`calcViewport`, `drawCursor` |
 | `fog.js` | Fog canvases, blur + cloud pipeline, reveal/hide, transitions |
 | `fogGeometry.js` | Pure fog geometry + math kernel. Unit-tested |
+| `vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Unit-tested, dependency-free |
 | `tools.js` | Drawing tools + polygon editing |
 | `input.js` | DM mouse/wheel/keyboard, shape helpers, legend toggle. **Drag-drop is in toolbar.js, not here** |
 | `undo.js` | Undo/redo for fog edits |
@@ -84,6 +89,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `pdfLayout.js` | Pure PDF reading-order kernel. Unit-tested, dependency-free |
 | `pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `confirmDialog.js` | The app's only sanctioned confirmation dialog |
+| `floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
 | `player.js` | Player-mode runtime |
 | `stress.js` | `?stress=1` harness |
 
@@ -93,35 +99,27 @@ Declarations must precede use at init time. All files under `src/`:
 
 ```
 lib/pixi.min.js → renderer.js → state.js → display.js → video.js → fogGeometry.js →
-fog.js → tools.js → mapLoader.js → undo.js → sceneStore.js → scenes.js → sceneManager.js →
-viewport.js → backup.js → grid.js → toolbar.js → player.js → input.js → stress.js →
-render.js → minimap.js → controlPanel.js → confirmDialog.js → moduleText.js → roomPanel.js →
-inline <script> (last)
+vttPlan.js → fog.js → tools.js → mapLoader.js → undo.js → sceneStore.js → scenes.js →
+sceneManager.js → viewport.js → backup.js → grid.js → toolbar.js → player.js → input.js →
+stress.js → render.js → minimap.js → controlPanel.js → confirmDialog.js → floorPlan.js →
+moduleText.js → roomPanel.js → inline <script> (last)
 ```
 
 ### Repo layout
 
 Browser modules in `src/`, stylesheets in `src/css/`. The Electron shell (`main.js`,
 `preload.js`), both HTML entry points, and `package.json` stay at the repo root. Docs in
-`docs/`; project settings and hooks in `.claude/`. `tools/` is outside the build glob and
-must stay that way.
+`docs/`; project settings, hooks and skills in `.claude/`, skills as
+`.claude/skills/<slug>/SKILL.md`. `tools/` is outside the build glob and must stay that way.
 
-## CSS
+### Rules kept outside this file
 
-Eight files in `src/css/`, split by screen region: `base.css`, `controlPanel.css`,
-`toolbar.css`, `roomCard.css`, `playerPane.css`, `legend.css`, `sceneManager.css`,
-`overlays.css`.
-
-- **`index.html` has no `<style>` block.** A guard hook blocks one in the head.
-- **The `<link>` order in `index.html` IS the cascade.** `base.css` first (it defines
-  `--ui-zoom`), `overlays.css` last, and `controlPanel.css` before `roomCard.css` because it
-  defines `@keyframes cpAdvIn`, which must stay defined exactly once.
-- **No `player-mode.css`.** The `body.player-mode` overrides deliberately sit next to what
-  they override, in `toolbar.css` and `sceneManager.css`.
-- No `@import`, no preprocessor, no runtime style injection.
-- Don't add scoping schemes or cascade layers. Separate files bought findability and small
-  diffs, not encapsulation; CSS is one global cascade regardless of file count.
-- `splash.html` keeps its own inline `<style>`. It shares no rules with the app.
+- Stylesheets and the `src/css/` cascade → `src/css/CLAUDE.md`, loaded when you touch a file
+  in that folder.
+- Room card, room labels, half-shroud, control-panel button identity → the `dm-ui` skill.
+- Module text, parser rules, file loading, PDFs, packaging traps, import panel → the
+  `module-text` skill.
+- UVTT coordinates, winding-not-area, what the room import refuses → the `floor-plan` skill.
 
 ## Dialogs
 
@@ -153,173 +151,6 @@ message-only variant of `confirmDialog`.
 4. Rooms never reach the Player, so room notes are DM-only for free. No stripping guard
    needed.
 
-## Room card (`roomPanel.js`)
-
-Layout, top to bottom: a **titleless drag bar** (six-dot grip + Close), the name field, the
-description textarea, ONE unlabelled properties row (the Reveal/Half/Shroud `.cp-seg` pill,
-then the corner-radius field pushed right), and Delete at full width behind a hairline.
-
-- **Visibility is gated on selection only, never on the active tool**, so the card survives
-  tool switches.
-- **The description is the card's scarcest resource.** Don't add a label column or a second
-  properties row without taking the height from somewhere other than the textarea.
-- **No title on the drag bar, no underline or leading icon on the name field, no vertex
-  readout, no radius-mode toggle.** Each was built and removed; see DECISIONS.md.
-- **The name is just a FIELD**, with the same box and 10px text inset as the description.
-  The 14px column is where *boxes* start, 24px is where *text* starts. Read the CSS comment
-  on `.rp-name` before restyling it.
-- **`_rpScreenToStyle()` is the only correct screen-px → pre-zoom-px conversion.** The
-  mapping is **affine**: a slope plus a constant origin, both derived from measurement.
-  Never reintroduce a bare `/ uiZoom`.
-- Card position (`_rpManualPos`) is screen px, re-clamped every reposition, cleared on close.
-- Description height is ONE global `localStorage` preference (`RP_DESC_H_KEY`), saved on
-  **mouseup**, never per-room and never in a scene or backup. **CSS owns the bounds** via
-  `.rp-desc`'s own min/max-height; don't add JS range constants.
-- The radius field's target derives from `selectedVertexIndex` and is never stored.
-- `refreshRoomPanel()` is the reflection hook. Called from `drawCursor()` and the paths that
-  rewrite modes or reset polygons wholesale. **Not** from `setPolygonMode()`, which updates
-  the pill in place so a rebuild can't steal field focus mid-edit.
-- Room labels: `roomLabelFontPx(zoom)` is screen px and **clamped at both ends**. Placement
-  is top-left INSIDE the room via `fitLabelBox()`, which scanline-samples in MAP units so the
-  cached anchor is pan-independent. `_rpLabelCache` clears per scene.
-- Pure kernel (unit-tested): `normalizeRoomFields`, `sanitizeRoomName`, `sanitizeRoomDesc`,
-  `clampPanelPosition`, `ellipsizeToWidth`, `roomLabelFontPx`, `polygonRowSpans`,
-  `cornerInsetAt`, `fitLabelBox`.
-
-## Half-shroud
-
-`poly.mode === 'half'` rides the reveal path in `applyPolygonToFog`, erasing to completion,
-then repaints fog at `fogHalfAlpha` through the same mask. **Absolute, not subtractive:** a
-partial erase can't re-fog ground already clear, i.e. the room the party just left.
-
-- **Flatten the interior on the SCRATCH MASK, not on the fog.** A reveal clears
-  cloud-erosion residue with a hard `clearRect`; the repaint can't, and residue in the mask
-  reads as blotchy density. Flattening the inset region to white on `_fogScratch` fixes it
-  and keeps the feathered edge band.
-- `fogHalfAlpha` is ONE global `localStorage` value (`FOG_HALF_ALPHA_KEY`), never per-room,
-  never in a scene or backup, and deliberately absent from Fog Reset.
-- The Player needs nothing new: the stencil crosses as a PNG and partial alpha propagates
-  for free.
-- The toolbar's `#btn-half` brush is deliberately unwired. Only the card's pill and `T`
-  reach this state.
-- **Reverting this feature requires a data sweep**, not just a code revert. See DECISIONS.md.
-
-## Module text (`moduleText.js`)
-
-`initModuleText()` is called from `initRoomPanel()`. The room-field write stays in
-`roomPanel.js` (`applyModuleEntryToRoom`), because that module owns the room.
-
-- Scope is **campaign-level**: `localStorage` (`evermist.moduleText`), never a scene or a
-  backup. Don't move it into `sceneStore.js`, which is keyed by scene id and would need a
-  `DB_VERSION` bump.
-- Store **parsed entries only**, never the raw file.
-- **No auto-assign, no queue, no "fill all rooms."** Sub-locations mean one heading serves
-  several polygons, so any 1:1 mapping desyncs.
-- **No LLM and no network, ever.**
-- `ROOM_DESC_MAX` is **20000**. Truncation is silent, so don't lower it without making it
-  visible.
-- Don't commit copyrighted module text. Test fixtures are **synthetic**.
-
-### Parser rules - each one exists because a real book broke the previous version
-
-- Match headings on `\p{Lu}`, never `[A-Z]`. The verified source is Russian and its
-  sub-location letters are Cyrillic homoglyphs of Latin ones.
-- A heading number may carry **one capital prefix** (`К12.`), part of the room's key. The
-  prefix must touch the digits, so "В 1. Комнате" stays prose.
-- A **prefixed** heading may have a lowercase name; a bare-numbered one may not. Same
-  licence for a lowercase sub-letter (`N6e.`).
-- A heading number may carry **one trailing letter**, a sub-location (`N6А.`), part of the
-  key and displayed as written. Without it a whole building arrives as one entry.
-- **Sub-locations sequence on UNIQUENESS of the letter under the parent number, never on
-  letter order.** No ordinal survives the real data. The parent is the bound instead: a sub
-  may sit on the current number or open the next one, but a sub numbered *below* the current
-  room is a cross-reference and is dropped.
-- A **single trailing period** is stripped. What disqualifies a line is ending mid-clause or
-  carrying two sentences.
-- Heading selection is **greedy numeric continuation per prefix**. Not
-  longest-increasing-subsequence (a numbered list forms a longer chain and wins), and not one
-  shared counter (it rejects the next chapter's low numbers).
-- The sequence **prefers its immediate successor over a forward jump**
-  (`MT_SUCCESSOR_LOOKAHEAD`), because a cross-reference is shaped exactly like a heading. It
-  must NOT apply before the sequence has started (`prev > 0`). A test pins this.
-- Homoglyph prefixes are **canonicalised for sequencing only, never for display**
-  (`mtCanonPrefix`).
-- Page furniture is identified by **"the same text with a DIFFERENT number attached"**, never
-  by a repeat count, which would delete legitimate recurring sub-headings. A line with no
-  number attached is untouchable. Digits fused against a capital condemn that key outright.
-- **Paragraph recovery is load-bearing** (`mtEndsParagraph`). A real extraction has no blank
-  lines at all. It fires on a short line followed by a capital and must NOT require a full
-  stop. Its threshold hangs off `mtWrapWidth`, the **p90** of line lengths, because the wrap
-  margin lives at the top of the distribution.
-- **Tune thresholds against real text, never a synthetic fixture.**
-- Two unprefixed chapters in one file collide. Guidance is one chapter at a time.
-- **`parseModuleText` does not detect sidebars.** Don't add a classifier. A test pins the
-  behaviour rather than endorsing it.
-
-### File loading
-
-Decode UTF-8 first and Windows-1251 second, both with `fatal: true`: a CP1251 file decodes
-as UTF-8 into replacement characters rather than an error, so the order is the safeguard.
-`_mtBinaryKind` names any other container format instead of parsing its bytes as prose.
-
-### PDFs
-
-`_mtIsPdf` checks raw magic bytes in the first KB and routes to the converter before any
-decode.
-
-- **The parse runs in a `utilityProcess`** (`src/pdfExtract.js`), forked per import and
-  killed on reply, with a `PDF_EXTRACT_TIMEOUT_MS` backstop. Do not move it back into the
-  main process. It can't go in the renderer either: pdfjs-dist is ESM-only.
-- main.js resolves the pdfjs directory and hands it to the child. It is the only place that
-  knows the asar rewrite. Handle all three of `message`, `exit` and the timeout.
-- **Bytes cross as an ArrayBuffer, never a path.** Electron removed `File.path` in v32.
-- Keep `pdfLayout.js` dependency-free.
-- **COLUMNS FIRST, THEN LINES.** A two-column page's left and right lines share a baseline,
-  so grouping by `y` first interleaves the columns sentence by sentence. Spanning lines cut
-  the page into bands, which keeps a mid-page heading with its rooms.
-- Leave page furniture in for `moduleText.js`; it identifies it better than coordinates can.
-
-### Packaging traps - only a BUILT `.exe` shows these
-
-- pdfjs-dist must be in `asarUnpack`; ESM resolves through real filesystem paths.
-  `pdfExtract.js` does not need it (`utilityProcess.fork` resolves an asar-packed entry).
-- **Set `GlobalWorkerOptions.workerSrc`.** With no `Worker` global, pdf.js builds a fake
-  worker from it; unset, it guesses a file that isn't shipped.
-- `build.files` ships only `pdf.min.mjs`, `pdf.worker.min.mjs` and the package's
-  `package.json`, and excludes `@napi-rs/**`.
-- **Re-run `npx electron-builder --win --dir` and exercise a real PDF whenever this path is
-  touched.**
-
-### Import panel - three controls: Choose file, Remove, Close. Do not add a fourth.
-
-- No paste box, no Preview button, no explanatory paragraph. Errors explain themselves in
-  the status line.
-- **Importing happens on choose**, no confirm step. Three things keep that safe and all
-  three must stay: an empty parse never writes, the panel lists what is loaded every time it
-  opens, and Remove is present.
-- **Clear `#mt-file-input.value` before opening the dialog.** A file input fires no `change`
-  for the same file twice, so a repeat pick is silently dead without this.
-- Shell is the app's floating-panel pattern at 320px (flat `#1a1a1c`, hairline border,
-  `.cp-adv-head`/`.cp-adv-body`, stock `.cp-btn`), not the backup modal's `.glass-panel`.
-  Keep the backdrop, the centring anchor, and the `zoom` + max-height rule.
-- Remove sits **outside the scrolling body** behind a hairline (`.mt-foot`).
-- The dropdown's **footer row is the only entry point**, and the dropdown sits inside the
-  card in `.rp-ident` so `--ui-zoom` applies for free.
-- **The dropdown acts on `click`; its `mousedown` only calls `preventDefault`.** That
-  preventDefault stops the pointer blurring the name field and closing the list; acting one
-  event later keeps a dialog out of the middle of a mouse gesture.
-
-## Control-panel button identity
-
-- A black inset pill (`.cp-tabs` / `.cp-seg`) means *pick one of these*. The selected option
-  goes bare/blue inside it.
-- An independent action or toggle is a `.cp-btn`: outlined at rest, outlined + blue-filled
-  when `.active`. Never put one inside a pill.
-- Value fields (`.cp-field`, `.cp-stepper`) use the light surface, not the black pill.
-- A **destructive** action keeps the ordinary full-width `.cp-btn` shape plus
-  `.cp-btn-danger` and a hairline footer (`.rp-foot`). The hairline is what stops it reading
-  as the primary action. Don't shrink it to signal danger.
-
 ## The render loop
 
 - **`doRender` rides the PixiJS ticker** (`pumpDirtyRender`, registered in
@@ -345,21 +176,10 @@ decode.
 
 ## Guard hooks
 
-Three `PostToolUse` hooks in `.claude/settings.json`, all fail-open so a bug in one never
-wedges editing. Each feeds its reason back so you fix it that turn; baselines sit beside them.
-
-**`guard-blob.js`** (`index.html`): the inline `<script>` only ever shrinks, in non-blank
-lines, ratcheting down - move added JS into a `src/` module; raise `maxLines` in
-`blob-baseline.json` only for genuine wiring/init. Also bans `<style>` before `<body>`,
-scoped there because inline SVG in the body may carry its own.
-
-**`guard-claudemd.js`** (this file): same ratchet in bytes, `claudemd-baseline.json`. Raise the
-baseline only for a rule that won't fit in the space freed by tightening an existing one.
-
-**`guard-decisions.js`** (`docs/DECISIONS.md`, `docs/decisions/*.md`): a NOTICE, not a ratchet
-- that ledger is MEANT to grow, so nothing it reports is a reason to revert an entry. It fires
-once per subject on size, section share and entry length, and explains itself when it does.
-Thresholds in `decisions-baseline.json`.
+Four fail-open hooks in `.claude/settings.json`; baselines beside them in `.claude/hooks/`.
+`guard-blob.js` (`index.html`), `guard-claudemd.js` (this file) and `guard-decisions.js`
+(`docs/DECISIONS.md`) are `PostToolUse` size guards that explain themselves and their own fix
+when they fire. `PreToolUse` `guard-skill-hint.js` names the skill that owns a file you edit.
 
 ## Conventions
 

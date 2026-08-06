@@ -645,6 +645,20 @@ execution: the rule density in the one oversized section was higher than guessed
 16KB would mean deleting real rules to hit a number. The distribution was the actual problem
 and it is fixed — one section was 80.7% of the file, and now the largest is 28%.
 
+### CLAUDE.md shrank by relocation, not deletion · `SETTLED` — the byte rejection above stands
+402 lines to 219, 23.7KB to 12.2KB, nothing removed; a script asserted every non-blank old line
+still lands in exactly one destination. The rejection above holds, because no rule was deleted
+and no number was targeted. What changed is that two containers now exist: a child `CLAUDE.md`
+in `src/css/`, loaded only when a stylesheet is touched, and two skills (`module-text`, `dm-ui`)
+whose bodies load on invocation.
+**The judgement that mattered was refusing to move rules that can't be triggered by filename.**
+"Rooms are polygons" governs `polygons` across 16 modules, so a skill keyed on room editing would
+miss the session editing `sceneManager.js`, and the penalty is silent data loss in every saved
+scene. Dialogs, Testing, the render loop and Distribution stayed on the same test. Half-shroud
+moved into `dm-ui`, but its trigger list carries `fog.js`, where its rules actually bind.
+The trigger is `guard-skill-hint.js`, a `PreToolUse` hook mapping filename to skill; the pointers
+left in CLAUDE.md are documentation, since a pointer is still not a trigger.
+
 ### Comment density as a target, applied per file · `REJECTED`
 The codebase-wide figure is the meaningful one, and the trim took `src/` from 22.6% to 19.3%.
 Per-file targets are a bad instrument: `state.js` is 70 lines of one-line declarations, so its

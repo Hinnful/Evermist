@@ -95,6 +95,20 @@
       </div>
     </div>
 
+    <!-- Its own group, not a third button beside the fog pair: Reveal/Shroud All paint fog,
+         this one creates rooms, and three identical outlines in a row said they were the
+         same kind of thing. The icon is the Polygon tool's, so the button reads as room
+         work at a glance. -->
+    <div class="cp-group">
+      <div class="cp-label">Rooms</div>
+      <div class="cp-btnrow">
+        <button id="btn-floorplan" class="cp-btn cp-btn-outline" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
+          Draw Rooms
+        </button>
+      </div>
+    </div>
+
     <div class="cp-group">
       <div class="cp-label">Animation</div>
       <div class="cp-iconrow cp-seg" id="cp-anim-row">
@@ -663,6 +677,7 @@
 <script src="src/display.js"></script>
 <script src="src/video.js"></script>
 <script src="src/fogGeometry.js"></script>
+<script src="src/vttPlan.js"></script>
 <script src="src/fog.js"></script>
 <script src="src/tools.js"></script>
 <script src="src/mapLoader.js"></script>
@@ -681,6 +696,7 @@
 <script src="src/minimap.js"></script>
 <script src="src/controlPanel.js"></script>
 <script src="src/confirmDialog.js"></script>
+<script src="src/floorPlan.js"></script>
 <script src="src/moduleText.js"></script>
 <script src="src/roomPanel.js"></script>
 <script>

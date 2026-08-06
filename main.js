@@ -269,6 +269,28 @@ ipcMain.handle('delete-video-file', async (_event, sceneId) => {
   }
 });
 
+// --- Floor plan sibling lookup ---
+
+// Dungeon Alchemist writes a `.dd2vtt` floor plan beside the map it exports, so the
+// renderer only has to ask "did this map come with one?".
+//
+// DELIBERATELY NARROW: main derives the sibling path itself and reads nothing else. A
+// general "read this path" bridge is a far larger surface than one sibling lookup needs,
+// and a floor plan is untrusted input. Returns null on ANY failure, because no plan and an
+// unreadable plan must behave identically — a rejection here would strand the import.
+ipcMain.handle('find-floor-plan', async (_event, mapPath) => {
+  try {
+    if (typeof mapPath !== 'string' || !mapPath) return null;
+    const planPath = path.join(
+      path.dirname(mapPath),
+      path.basename(mapPath, path.extname(mapPath)) + '.dd2vtt'
+    );
+    return { name: path.basename(planPath), text: await fs.promises.readFile(planPath, 'utf8') };
+  } catch {
+    return null;
+  }
+});
+
 // --- Diagnostic log IPC ---
 
 let logsDir;
