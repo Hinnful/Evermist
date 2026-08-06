@@ -147,39 +147,66 @@ const RP_MARGIN = 8;    // keep the card at least this far off every viewport ed
 // double-clicked. A card that re-anchored itself would land back on the handles every time.
 let _rpManualPos = null;
 
+// Last automatic placement, keyed to the room it was computed for. Held still while a vertex or
+// edge drag is in flight: those reshape the room under the pointer, so recomputing every frame
+// would make the card flip sides mid-edit. It re-places once, on release.
+let _rpAutoPos = null;
+
+function _rpAutoFrozen(pid) {
+  if (!_rpAutoPos || _rpAutoPos.pid !== pid) return false;
+  return (typeof isDraggingVertex !== 'undefined' && isDraggingVertex) ||
+         (typeof isDraggingEdge   !== 'undefined' && isDraggingEdge);
+}
+
 // Description height: ONE preference for the card, not per room, because "how tall I like this
 // box" is about the DM's screen. localStorage, so never in a scene or backup. No MIN/MAX
 // constants beside it — .rp-desc's CSS already clamps anything written to style.height, so a JS
 // range check would guard nothing and could disagree with the CSS.
 const RP_DESC_H_KEY = 'evermist.roomDescHeight';
 
-// Where to put the card, ALL SCREEN PIXELS. Preference: above the centroid, then below, then
-// beside. The side fallback matters because a card too tall for either vertical slot is exactly
-// the case the old above/below-only logic left clipped off the top.
-function clampPanelPosition(anchorX, anchorY, pw, ph, vw, vh, gap, margin) {
+// Where to put the card, ALL SCREEN PIXELS. `room` is the selected room's screen bounding box
+// ({left, top, right, bottom}), NOT its centroid: the card has to clear the whole room, or a
+// room bigger than the gap swallows the card the DM is trying to edit through.
+// Preference: above the room, then below, then right, then left.
+function clampPanelPosition(room, pw, ph, vw, vh, gap, margin) {
   const g = gap    == null ? RP_GAP    : gap;
   const m = margin == null ? RP_MARGIN : margin;
 
-  // Math.max wraps Math.min so a card wider than the viewport pins to the left edge rather than
-  // being pushed off it.
-  const left = Math.max(m, Math.min(vw - pw - m, anchorX - pw / 2));
-  // Not redundant with the branches below: the anchor is a point on the MAP, so panning can put
-  // it far off-screen, and "above an anchor 3000px below the fold" is itself off-screen. A
+  // Math.max wraps Math.min so a card bigger than the viewport pins to the top/left edge
+  // rather than being pushed off it.
+  const clampX = l => Math.max(m, Math.min(vw - pw - m, l));
+  // Not redundant with the branches below: the box comes from MAP coordinates, so panning can
+  // put it far off-screen, and "above a room 3000px below the fold" is itself off-screen. A
   // selected room's card must stay readable when the room has scrolled out of view.
-  const clampTop = t => Math.max(m, Math.min(vh - ph - m, t));
+  const clampY = t => Math.max(m, Math.min(vh - ph - m, t));
 
-  const above = anchorY - g - ph;
-  if (above >= m) return { left, top: clampTop(above), placement: 'above' };
+  const left = clampX((room.left + room.right) / 2 - pw / 2);   // centred on the room
+  const top  = clampY((room.top + room.bottom) / 2 - ph / 2);
 
-  const below = anchorY + g;
-  if (below + ph <= vh - m) return { left, top: clampTop(below), placement: 'below' };
+  const above = room.top - g - ph;
+  if (above >= m) return { left, top: clampY(above), placement: 'above' };
 
-  // Neither slot fits: sit beside the room, right first. Both sides take the same clamp as
-  // above, for the same off-screen-anchor reason.
-  const clampLeft = l => Math.max(m, Math.min(vw - pw - m, l));
-  const top = clampTop(anchorY - ph / 2);
-  if (anchorX + g + pw <= vw - m) return { left: clampLeft(anchorX + g), top, placement: 'right' };
-  return { left: clampLeft(anchorX - g - pw), top, placement: 'left' };
+  const below = room.bottom + g;
+  if (below + ph <= vh - m) return { left, top: clampY(below), placement: 'below' };
+
+  const right = room.right + g;
+  if (right + pw <= vw - m) return { left: clampX(right), top, placement: 'right' };
+
+  const beside = room.left - g - pw;
+  if (beside >= m) return { left: clampX(beside), top, placement: 'left' };
+
+  // The room reaches every edge, so no placement is fully clear of it — zoomed right into one
+  // room is the ordinary case. Pin the card to whichever viewport edge has the most space
+  // between it and the room, so the card covers as little of the room as it can.
+  const slots = [
+    { placement: 'above', space: room.top - m,          left,              top: m },
+    { placement: 'below', space: vh - m - room.bottom,  left,              top: vh - ph - m },
+    { placement: 'right', space: vw - m - room.right,   left: vw - pw - m, top },
+    { placement: 'left',  space: room.left - m,         left: m,           top },
+  ];
+  let best = slots[0];
+  for (const s of slots) if (s.space > best.space) best = s;
+  return { left: clampX(best.left), top: clampY(best.top), placement: best.placement };
 }
 
 // ─── Card UI ──────────────────────────────────────────────────────────────────
@@ -445,6 +472,7 @@ function refreshRoomPanel() {
     // Closing is the DM saying they're done with this card, so the next one opens beside its
     // room rather than wherever the last was parked.
     _rpManualPos = null;
+    _rpAutoPos = null;
     return;
   }
 
@@ -509,11 +537,16 @@ function _rpPositionPanel(panel, poly) {
     // taller after placement, either of which could put a stored position off-screen.
     left = Math.max(RP_MARGIN, Math.min(window.innerWidth  - r.width  - RP_MARGIN, _rpManualPos.left));
     top  = Math.max(RP_MARGIN, Math.min(window.innerHeight - r.height - RP_MARGIN, _rpManualPos.top));
+  } else if (_rpAutoFrozen(poly.id)) {
+    left = _rpAutoPos.left; top = _rpAutoPos.top;
   } else {
-    const c = getCentroid(poly.vertices);
-    const { sx, sy } = toScreen(c.x, c.y);
-    const pos = clampPanelPosition(sx, sy, r.width, r.height, window.innerWidth, window.innerHeight);
+    const bb = getPolyBBox(poly.vertices);
+    const a  = toScreen(bb.minX, bb.minY);
+    const b  = toScreen(bb.maxX, bb.maxY);
+    const pos = clampPanelPosition({ left: a.sx, top: a.sy, right: b.sx, bottom: b.sy },
+                                   r.width, r.height, window.innerWidth, window.innerHeight);
     left = pos.left; top = pos.top;
+    _rpAutoPos = { pid: poly.id, left, top };
   }
   const st = _rpScreenToStyle(panel, left, top);
   panel.style.left = st.left + 'px';

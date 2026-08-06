@@ -27,6 +27,7 @@ const OWNERS = {
   'roompanel.js': 'dm-ui',
   'controlpanel.js': 'dm-ui',
   'toolbar.js': 'dm-ui',
+  'toolbar.css': 'dm-ui',
   'fog.js': 'dm-ui',
   'moduletext.js': 'module-text',
   'pdflayout.js': 'module-text',
@@ -38,7 +39,7 @@ const OWNERS = {
 
 const BLURB = {
   'dm-ui':
-    'room card layout, room labels, half-shroud, and control-panel button identity',
+    'room card layout and placement, room labels, half-shroud, and toolbar/control-panel button identity',
   'module-text':
     'module parsing, the heading/sub-location rules, PDF extraction, packaging traps, and the import panel',
   'floor-plan':

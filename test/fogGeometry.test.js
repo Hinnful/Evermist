@@ -4,6 +4,7 @@ const {
   getPolyBBox,
   buildRoundedPolyPath,
   insetPolygon,
+  snapToAxis,
   fogSizeScale,
   scaledRadius,
   wrapOffset,
@@ -446,5 +447,42 @@ describe('animLogScale / animSliderFromVal', () => {
 
   it('animSliderFromVal returns 0 when currentVal is 0', () => {
     assert.strictEqual(animSliderFromVal(0, base), 0);
+  });
+});
+
+describe('snapToAxis', () => {
+  const ref = { x: 100, y: 100 };
+
+  it('leaves an off-axis point untouched', () => {
+    assert.deepStrictEqual(snapToAxis({ x: 140, y: 160 }, [ref], 10), { x: 140, y: 160 });
+  });
+
+  it('snaps x when the point is nearly level vertically', () => {
+    assert.deepStrictEqual(snapToAxis({ x: 103, y: 300 }, [ref], 10), { x: 100, y: 300 });
+  });
+
+  it('snaps y when the point is nearly level horizontally', () => {
+    assert.deepStrictEqual(snapToAxis({ x: 300, y: 96 }, [ref], 10), { x: 300, y: 100 });
+  });
+
+  it('snaps only the smaller deviation when both axes are in range', () => {
+    // dx = 6, dy = 2 → y wins, x is left alone.
+    assert.deepStrictEqual(snapToAxis({ x: 106, y: 98 }, [ref], 10), { x: 106, y: 100 });
+  });
+
+  it('picks the nearest axis across multiple references', () => {
+    const a = { x: 0, y: 50 }, b = { x: 200, y: 0 };
+    // dy to a = 7, dx to b = 3 → b's x wins.
+    assert.deepStrictEqual(snapToAxis({ x: 197, y: 57 }, [a, b], 10), { x: 200, y: 57 });
+  });
+
+  it('is a no-op at exactly the threshold', () => {
+    assert.deepStrictEqual(snapToAxis({ x: 110, y: 300 }, [ref], 10), { x: 110, y: 300 });
+  });
+
+  it('is a no-op with a zero threshold, no refs, or null entries', () => {
+    assert.deepStrictEqual(snapToAxis({ x: 100.5, y: 300 }, [ref], 0), { x: 100.5, y: 300 });
+    assert.deepStrictEqual(snapToAxis({ x: 100.5, y: 300 }, [], 10), { x: 100.5, y: 300 });
+    assert.deepStrictEqual(snapToAxis({ x: 100.5, y: 300 }, [null], 10), { x: 100.5, y: 300 });
   });
 });

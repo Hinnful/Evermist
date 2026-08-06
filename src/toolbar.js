@@ -41,6 +41,10 @@ function initToolbar() {
     snapToGrid = !snapToGrid;
     this.classList.toggle('active', snapToGrid);
   };
+  document.getElementById('btn-axislock').onclick = function() {
+    axisLock = !axisLock;
+    this.classList.toggle('active', axisLock);
+  };
 
   const brushSizeInput = document.getElementById('brush-size');
   const brushSizeLabel = document.getElementById('brush-size-label');

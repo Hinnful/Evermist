@@ -55,7 +55,8 @@
     color: #8fb6ff;
   }
 
-  /* Inset segment group (fog modes, snap) */
+  /* Inset segment group — a dark pill means PICK EXACTLY ONE of the buttons inside it.
+     Fog modes only. An independent toggle goes in a .tb-toggle, never in here. */
   .tb-seg {
     display: flex;
     align-items: center;
@@ -67,8 +68,44 @@
     flex-shrink: 0;
   }
   .tb-seg-modes { margin-left: 3px; }
+  /* .tb-seg-snap is gone — snap to grid moved out of the pill and became a .tb-toggle. */
 
-  /* Mode / snap buttons — 30px, low-ink */
+  /* Hairline separating the fog-mode pill from the independent switches after it. */
+  .tb-div {
+    width: 1px;
+    height: 22px;
+    margin: 0 2px;
+    background: rgba(255, 255, 255, 0.075);
+    flex-shrink: 0;
+  }
+
+  /* Independent on/off switches — snap to grid, straighten walls. Each is unrelated to the
+     other, so they sit bare on the bar rather than in a pill. On = the outlined blue box,
+     the toolbar's one "this is live" signal. The tool row borrows the same box for the
+     current tool; position and the hairline are what keep the two readings apart. */
+  .tb-toggle {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1.5px solid transparent;
+    background: transparent;
+    color: #7f858e;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .tb-toggle:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .tb-toggle.active {
+    border-color: rgba(90, 140, 235, 0.6);
+    background: rgba(70, 120, 220, 0.11);
+    color: #8fb6ff;
+  }
+
+  /* Mode buttons (fog modes) — 30px, low-ink, bare blue when picked */
   .mode-btn {
     width: 30px;
     height: 30px;

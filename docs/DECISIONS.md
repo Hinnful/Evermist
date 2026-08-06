@@ -167,9 +167,56 @@ room instead of a room's name. Killed with it: `listOrder`, drag-reorder, pin/do
 card, search over descriptions, read-mode vs edit-mode, per-room thumbnails.
 
 ### Card position and description height are user-controlled, not computed · `SETTLED`
-The card floats over the map, so it will sometimes cover the very handles the DM selected
-the room by, and no placement rule wins that in general. So the DM drags it. Don't replace
-the drag with a cleverer auto-placement heuristic.
+The card floats over the map, so the DM drags it and double-clicks the bar to send it back.
+The description height is one global preference, because a box's height belongs to a screen
+rather than to a room. **Partially reversed 2026-08-06 — see the entry below: automatic
+placement now clears the room's whole outline, so it is no longer true that no placement
+rule is worth having. The drag stays; it is the escape hatch, not the only mechanism.**
+
+### Automatic placement clears the room's whole box, not its centre · `SETTLED` (2026-08-06)
+The card used to be anchored 22px off the room's **centroid**, so any room bigger than the
+card swallowed it, and selecting a room to edit it covered the thing being edited.
+`clampPanelPosition` now takes the room's screen **bounding box** and takes the first side
+fully clear of it: above, below, right, left.
+
+Two consequences that are not optional. Placement is recomputed on every repaint, so a
+vertex or edge drag reshaping the room under the pointer made the card flip sides mid-edit;
+it is now **held still for the length of such a drag** and re-placed once on release. That
+release re-place also had to be added to all four drag-release paths in `tools.js` — without
+it the card only caught up on the next pointer move.
+
+**The residual case is arithmetic, not a bug.** If no side has a clear band as large as the
+card, no placement can be fully outside the room; the fallback pins the card to the viewport
+edge furthest from the room. Card height is the lever, and most of it is the DM's own saved
+description height.
+
+### Drawing a room does not select it · `SETTLED` (2026-08-06)
+Finishing a rectangle, circle or polygon used to set `selectedPolygonId`, which opened the
+room card over the map exactly as the next room was about to be drawn. Rooms are now created
+unselected, matching what floor-plan import already did, and naming becomes a deliberate
+second pass with the Select tool.
+
+**Not done by gating the card on the active tool** — visibility stays keyed to selection
+alone so the card survives tool switches. Also rejected as answers to the same complaint: a
+delay before the card opens, and a collapsed card state. Both add a mechanism to soften a
+behaviour that simply should not happen. The fog crossfade direction was checked and does not
+depend on the selection: the creation paths read `tool` / `poly.mode`, and the paths that read
+`selectedPolygonId` are all drag paths that only run in Select mode.
+
+### Axis-lock is an alignment snap, not a pointer constraint · `SETTLED` (2026-08-06)
+The straighten-walls toggle does **not** clamp mouse movement to a horizontal or vertical
+track. It snaps a point onto a reference point's exact x or y when it is already within a
+threshold of sharing one, and leaves genuinely diagonal segments alone. The goal is
+straightening a nearly-straight wall without a steady hand, which an alignment snap does and
+a movement lock does not — a lock also makes a deliberate diagonal impossible to draw.
+
+Details that matter: the threshold is SCREEN px divided by `zoom`, so the slack feels the
+same at every zoom; only the axis with the smaller deviation snaps, so a near-45° segment
+cannot flip unpredictably between them; drawing references the previous vertex, a vertex drag
+references both ring neighbours. Grid snap runs first and axis-lock layers on top, so on an
+aligned grid coordinate it is a no-op. Whole-polygon and edge drags are deliberately excluded
+— neither changes any wall's angle. Runtime-only state, like `snapToGrid`: not per scene,
+not in a backup.
 
 ### A `ResizeObserver` on the description · `REVERTED`
 Everything ugly about it followed from it firing continuously: a debounce, a 0×0 guard, and
@@ -389,6 +436,30 @@ hides the sidebar, toolbar, minimap, scene dropdown, UI-scale row and the cursor
 three surfaces reach the TV: the scene transition fade plus scene name, the map loading bar,
 and the landing/empty state. Keep them precisely because they are the only part of the app
 the players ever see.
+
+### A dark toolbar pill means pick exactly one · `SETTLED` (2026-08-06)
+Snap-to-grid shipped alone inside a `.tb-seg` pill, which read as harmless because a group of
+one has nothing to be picked between. Adding a second independent toggle beside it made the
+pill say something false. Both toggles left the pill and became bare `.tb-toggle` buttons
+behind a hairline, outlined blue when on.
+
+The toolbar now carries three signals: a dark pill is pick-one, an outlined blue box is a
+switch that is on, and the tool row wears that same outlined box while also being pick-one.
+**The collision is deliberate and must not be "fixed"** — the tool picker is the one control
+of its kind in the app and is meant to look unlike everything to its right. Position and the
+hairline carry the distinction. Rules are in the `dm-ui` skill.
+
+### The alpha slider's 1px edge fringe was `background-origin` · `SETTLED` (2026-08-06)
+The opacity track painted a 1px column of the fully opaque colour on its left edge and of the
+bare base grey on its right. Cause: `background-origin` defaulted to `padding-box` while
+`background-clip` was `border-box`, so the gradient tile was 1px narrower than the visible
+track and `background-repeat` wrapped it into the border ring. Fixed with
+`background-origin: border-box` on `.ev-slider`.
+
+Worth recording because of how it hid: the fog and hue tracks have the identical flaw and
+neither shows it — fog's picked colour is dark against a dark checkerboard, and the hue
+gradient starts and ends on the same red. **A colour-dependent rendering artefact is not a
+colour bug**; the one visible instance was the only evidence three sliders were wrong.
 
 ### The FPS slider · `REVERTED` — deleted outright
 It was a hidden `display:none` row, unreachable since the control-panel redesign, so it was
