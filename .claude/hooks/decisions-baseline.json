@@ -11,7 +11,9 @@
     "docs/DECISIONS.md": {
       "warnedBytes": 0,
       "sections": [],
-      "entries": []
+      "entries": [
+        "No automatic cave subdivision, ever · `SETTLED` (scope call)"
+      ]
     }
   }
 }

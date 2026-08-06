@@ -40,12 +40,20 @@ const VTT_MIN_FACE_AREA = 0.9;
 // the two ends are too far apart to be confident they were ever meant to meet.
 const VTT_CLOSE_GAP_MAX = 2.5;
 
+// The same reach for a MUTUAL PAIR of loose ends, which is much better evidence: two ends
+// that each pick the other as their nearest feature were almost certainly one wall. A stub
+// projecting onto some wall's mid-span is a guess by comparison, so it keeps the tighter
+// ceiling above. 5 squares is 25 ft — the open side of a room that fronts onto a cave,
+// which is the case this exists for. A room only loses its ends to each other once nothing
+// solid is allowed to steal them; see vttLooseEnds.
+const VTT_CLOSE_PAIR_MAX = 5;
+
 // Reporting ceiling for the gaps closing could NOT bridge. Must stay above
-// VTT_CLOSE_GAP_MAX or there is nothing left for it to describe, and low enough that a
-// decorative wall standing in open ground is not reported as a broken room. Past a certain
-// distance the two are genuinely indistinguishable, so this only claims "close enough to
-// have been meant to meet".
-const VTT_OPEN_WALL_MAX_GAP = 4;
+// VTT_CLOSE_PAIR_MAX, the widest thing closing reaches, or there is nothing left for it to
+// describe. Low enough that a decorative wall standing in open ground is not reported as a
+// broken room. Past a certain distance the two are genuinely indistinguishable, so this only
+// claims "close enough to have been meant to meet".
+const VTT_OPEN_WALL_MAX_GAP = 6;
 
 // Room centroids within this vertical distance are one row, for the left-to-right
 // numbering. Roughly two rooms' worth of slack, so a corridor's rooms don't split rows.
@@ -258,7 +266,20 @@ function vttCentroid(ring) {
 // Every degree-1 node paired with the nearest thing that is not its own wall. Excluding its
 // own wall is not optional: a freestanding wall's two ends are each other's nearest node, so
 // the wall would measure itself and report as a gap of its own length.
-function vttLooseEnds(nodes, pairs) {
+//
+// ⚠ `avoid` IS WHY A ROOM FRONTING ONTO A CAVE CAN CLOSE AT ALL. Pass the doorless walls and
+// nothing solid can be a target. Without it, both ends of such a room's open side bridge
+// sideways into the rock a few feet away — nearer than each other — which glues the stubs to
+// the cave and achieves nothing, while consuming the ends so the real partner is never found.
+// The room then merges into the cavern and is silently lost. On the cave map 8 of 10 bridges
+// were that mistake.
+function vttLooseEnds(nodes, pairs, avoid) {
+  const solid = (p) => !!avoid && avoid.length > 0 &&
+    avoid.some(([a, b]) => vttProjectToSegment(p, a, b).dist <= VTT_NODE_SNAP);
+  const nodeSolid = nodes.map(solid);
+  const edgeSolid = pairs.map(([ia, ib]) => solid({
+    x: (nodes[ia].x + nodes[ib].x) / 2, y: (nodes[ia].y + nodes[ib].y) / 2,
+  }));
   const deg = nodes.map(() => 0);
   const incident = nodes.map(() => []);
   const linked = nodes.map(() => new Set());
@@ -273,12 +294,12 @@ function vttLooseEnds(nodes, pairs) {
     if (deg[id] !== 1) continue;
     let best = Infinity, bestNode = -1, bestPoint = null;
     for (let other = 0; other < nodes.length; other++) {
-      if (other === id || linked[id].has(other)) continue;
+      if (other === id || linked[id].has(other) || nodeSolid[other]) continue;
       const d = Math.hypot(nodes[id].x - nodes[other].x, nodes[id].y - nodes[other].y);
       if (d < best) { best = d; bestNode = other; bestPoint = null; }
     }
     for (let e = 0; e < pairs.length; e++) {
-      if (incident[id].includes(e)) continue;
+      if (incident[id].includes(e) || edgeSolid[e]) continue;
       const [ia, ib] = pairs[e];
       const pr = vttProjectToSegment(nodes[id], nodes[ia], nodes[ib]);
       if (pr.dist >= best) continue;   // strict, so a tie with a node keeps the node
@@ -312,16 +333,23 @@ function vttLooseEnds(nodes, pairs) {
 // far it will reach. Two loose ends are joined only when they are each other's nearest
 // feature, so a stub whose neighbour is looking elsewhere is left alone. Anything it gets
 // wrong, one Ctrl+Z removes, because the whole import is a single undo step.
-function vttCloseGaps(nodes, pairs, maxGap, snap) {
+function vttCloseGaps(nodes, pairs, maxGap, snap, avoid, pairGap) {
   const max = maxGap == null ? VTT_CLOSE_GAP_MAX : maxGap;
+  // Tightening the ceiling tightens BOTH: the pair bonus is part of the default posture, so
+  // `closeGapMax: 0` still means no closing at all rather than no closing except pairs.
+  const pairMax = pairGap != null ? pairGap
+    : (max >= VTT_CLOSE_GAP_MAX ? VTT_CLOSE_PAIR_MAX : max);
   const sn = snap == null ? VTT_NODE_SNAP : snap;
-  const { ends, deg } = vttLooseEnds(nodes, pairs);
+  const { ends, deg } = vttLooseEnds(nodes, pairs, avoid);
   const byId = new Map(ends.map(e => [e.id, e]));
   const used = new Set();
   const added = [], closed = [];
 
   for (const e of ends) {
-    if (used.has(e.id) || !(e.dist <= max)) continue;
+    // A mutual pair of loose ends reaches further than a stub reaching for a wall, because
+    // it is far better evidence that the two were once joined.
+    const mutualPair = e.node >= 0 && deg[e.node] === 1;
+    if (used.has(e.id) || !(e.dist <= (mutualPair ? pairMax : max))) continue;
     let target;
     if (e.node >= 0) {
       if (deg[e.node] === 1) {
@@ -365,9 +393,9 @@ function vttCloseGaps(nodes, pairs, maxGap, snap) {
 // the midpoint of a mutual pair so the count matches the number of gaps rather than doubling
 // it. Nothing surfaces this in the UI — the import says the room count and a gap is an edge
 // case — but the coordinates are exact and cost nothing to carry.
-function vttFindOpenWalls(nodes, pairs, maxGap) {
+function vttFindOpenWalls(nodes, pairs, maxGap, avoid) {
   const max = maxGap == null ? VTT_OPEN_WALL_MAX_GAP : maxGap;
-  const { ends, deg } = vttLooseEnds(nodes, pairs);
+  const { ends, deg } = vttLooseEnds(nodes, pairs, avoid);
   const byId = new Map(ends.map(e => [e.id, e]));
   const done = new Set();
   const out = [];
@@ -385,13 +413,105 @@ function vttFindOpenWalls(nodes, pairs, maxGap) {
   return out;
 }
 
+// ─── Doorless wall loops ──────────────────────────────────────────────────────
+// A run of walls that closes on itself and carries NO portal anywhere along it does not
+// bound a room. It is solid: a rock formation standing in a cave, or the cave's own outer
+// shell. Every real room reaches its neighbours or the outside through a doorway, so its
+// walls come out of the file as an OPEN chain that only becomes a loop once the portals
+// are unioned in.
+//
+// Measured on a cave map: the false rooms scored 100%, 100% and 84% of their outline in
+// doorless wall, every real room scored exactly zero, and an interior map has no doorless
+// loop at all. So the test is "any at all", with no threshold to tune.
+//
+// ⚠ IT IS A PROPERTY OF THE WHOLE CONNECTED RUN, NOT OF ONE ROOM, and that is what makes
+// it safe. A sealed vault inside a house is joined to the house's walls at the corners, so
+// it shares their doors and is kept. Only a doorless structure touching nothing else on
+// the map is refused. A whole floor that is a single sealed room would come back empty —
+// the accepted cost, because a missing room is cheaper than a wrong one.
+function vttDoorlessWalls(plan, snap) {
+  const s = snap == null ? VTT_NODE_SNAP : snap;
+  const wallEdges = [];
+  for (const wall of ((plan && plan.line_of_sight) || [])) {
+    if (!Array.isArray(wall)) continue;
+    for (let i = 0; i + 1 < wall.length; i++) {
+      const a = wall[i], b = wall[i + 1];
+      if (!a || !b || !isFinite(a.x) || !isFinite(a.y) || !isFinite(b.x) || !isFinite(b.y)) continue;
+      wallEdges.push([{ x: a.x, y: a.y }, { x: b.x, y: b.y }]);
+    }
+  }
+  if (!wallEdges.length) return [];
+
+  // ⚠ WALLS ONLY. Union the portals in first and every chain closes into a loop, so the
+  // distinction this whole function rests on disappears.
+  //
+  // The T-split is not optional either. Without it a doorway in one wall of a building
+  // leaves the OTHER walls looking like an untouched closed ring, and the whole building
+  // is refused as solid. Splitting joins every wall that meets another into one run, so a
+  // door anywhere on the structure spares all of it.
+  const built = vttBuildNodes(wallEdges, s);
+  const nodes = built.nodes;
+  const pairs = vttSplitAtJunctions(nodes, built.pairs, s);
+  const adj = nodes.map(() => []);
+  for (const [ia, ib] of pairs) { adj[ia].push(ib); adj[ib].push(ia); }
+
+  const comp = new Array(nodes.length).fill(-1);
+  let nc = 0;
+  for (let i = 0; i < nodes.length; i++) {
+    if (comp[i] >= 0 || !adj[i].length) continue;
+    const stack = [i];
+    comp[i] = nc;
+    while (stack.length) {
+      const v = stack.pop();
+      for (const n of adj[v]) if (comp[n] < 0) { comp[n] = nc; stack.push(n); }
+    }
+    nc++;
+  }
+
+  const doors = [];
+  for (const p of ((plan && plan.portals) || [])) {
+    if (!p || !Array.isArray(p.bounds)) continue;
+    for (const b of p.bounds) if (b && isFinite(b.x) && isFinite(b.y)) doors.push(b);
+  }
+
+  // Spared if any node is loose or a junction (so the run is not a clean loop), or if a
+  // portal ends on it.
+  const spared = new Set();
+  for (let i = 0; i < nodes.length; i++) {
+    if (comp[i] < 0) continue;
+    if (adj[i].length !== 2) { spared.add(comp[i]); continue; }
+    for (const d of doors) {
+      if (Math.hypot(d.x - nodes[i].x, d.y - nodes[i].y) <= s) { spared.add(comp[i]); break; }
+    }
+  }
+
+  const out = [];
+  for (const [ia, ib] of pairs) if (!spared.has(comp[ia])) out.push([nodes[ia], nodes[ib]]);
+  return out;
+}
+
+// Does any edge of this ring run along a doorless wall? Tested at each edge's midpoint
+// against the whole segment rather than endpoint to endpoint, so a T-junction split
+// partway along a doorless wall still matches.
+function vttRingOnDoorlessWall(ring, walls, tol) {
+  if (!walls || !walls.length) return false;
+  const t = tol == null ? VTT_NODE_SNAP : tol;
+  for (let i = 0; i < ring.length; i++) {
+    const p = ring[i], q = ring[(i + 1) % ring.length];
+    if (Math.hypot(q.x - p.x, q.y - p.y) < 1e-9) continue;
+    const m = { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
+    for (const [a, b] of walls) if (vttProjectToSegment(m, a, b).dist <= t) return true;
+  }
+  return false;
+}
+
 // ─── The derivation ───────────────────────────────────────────────────────────
 // A plan that yields nothing returns empty arrays rather than throwing: callers must be
 // able to ask "how many rooms?" and get zero. Malformed JSON is the CALLER's problem —
 // this kernel takes an already-parsed object.
 function vttDerivePlan(plan, opts) {
   const o = opts || {};
-  const empty = { rooms: [], boundaries: [], closedGaps: [], openWalls: [] };
+  const empty = { rooms: [], boundaries: [], closedGaps: [], openWalls: [], refusedSolid: 0 };
   if (!plan || typeof plan !== 'object') return empty;
 
   const res = plan.resolution || {};
@@ -407,11 +527,14 @@ function vttDerivePlan(plan, opts) {
   if (!edges.length) return empty;
 
   const { nodes, pairs: rawPairs } = vttBuildNodes(edges, snap);
+  // ⚠ THE DOORLESS WALLS ARE NEEDED BEFORE CLOSING, not just after it. They are what a wall
+  // stub must not bridge into, and a bridge into rock costs the room it belonged to.
+  const doorless = o.keepDoorless ? [] : vttDoorlessWalls(plan, snap);
   // Split, close, then split again. The second pass is what attaches a bridge that landed
   // mid-wall: closing can add a node in an edge's interior, and a junction the graph does not
   // know about is one the face walk cannot turn at.
   const split = vttSplitAtJunctions(nodes, rawPairs, snap);
-  const bridged = vttCloseGaps(nodes, split, o.closeGapMax, snap);
+  const bridged = vttCloseGaps(nodes, split, o.closeGapMax, snap, doorless, o.closePairMax);
   const pairs = bridged.closed.length
     ? vttSplitAtJunctions(nodes, bridged.pairs, snap)
     : bridged.pairs;
@@ -419,11 +542,19 @@ function vttDerivePlan(plan, opts) {
 
   const minArea = o.minFaceArea == null ? VTT_MIN_FACE_AREA : o.minFaceArea;
   const rooms = [], boundaries = [];
+  let refusedSolid = 0;
   for (const face of vttWalkFaces(nodes, pairs)) {
-    const ring = vttCleanRing(face.map(i => nodes[i]), o.collinearEps, snap);
+    const raw = face.map(i => nodes[i]);
+    const ring = vttCleanRing(raw, o.collinearEps, snap);
     if (ring.length < 3) continue;
     const area = vttSignedArea(ring);
     if (Math.abs(area) < minArea) continue;
+    // ⚠ TESTED ON THE UNCLEANED RING. Cleaning merges collinear pieces, so one edge of the
+    // tidy ring can span both doorless and ordinary wall and land its midpoint on either.
+    if (vttRingOnDoorlessWall(raw, doorless, snap)) {
+      if (area > 0) refusedSolid++;
+      continue;
+    }
     // WINDING, NEVER AREA. Interior faces come out of the clockwise-turn walk with
     // positive shoelace area and each island's outer boundary with negative. Size looks
     // like a usable signal right up until a map holds two detached buildings, and then the
@@ -456,7 +587,8 @@ function vttDerivePlan(plan, opts) {
     rooms: orderedRooms.map(r => r.map(toPx)),
     boundaries: boundaries.map(r => r.map(toPx)),
     closedGaps: bridged.closed.map(toReport),
-    openWalls: vttFindOpenWalls(nodes, pairs, o.openWallMaxGap).map(toReport),
+    openWalls: vttFindOpenWalls(nodes, pairs, o.openWallMaxGap, doorless).map(toReport),
+    refusedSolid,
   };
 }
 
@@ -464,8 +596,9 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     vttCollectEdges, vttBuildNodes, vttSplitAtJunctions, vttWalkFaces,
     vttCleanRing, vttSignedArea, vttProjectToSegment,
-    vttLooseEnds, vttCloseGaps, vttFindOpenWalls, vttDerivePlan,
+    vttLooseEnds, vttCloseGaps, vttFindOpenWalls,
+    vttDoorlessWalls, vttRingOnDoorlessWall, vttDerivePlan,
     VTT_NODE_SNAP, VTT_COLLINEAR_EPS, VTT_MIN_FACE_AREA,
-    VTT_CLOSE_GAP_MAX, VTT_OPEN_WALL_MAX_GAP, VTT_ROW_BUCKET,
+    VTT_CLOSE_GAP_MAX, VTT_CLOSE_PAIR_MAX, VTT_OPEN_WALL_MAX_GAP, VTT_ROW_BUCKET,
   };
 }
