@@ -107,6 +107,23 @@ function pixiSetMap(imageBitmap, width, height) {
   pixiMapLayer.addChild(pixiMapSprite);
 }
 
+// Place the map sprite on a MAP-SPACE rectangle instead of the whole map.
+//
+// The Player's animated-map texture is viewport-sized and carries only the region the
+// camera is over (video.js), so the sprite has to travel with the camera rather than sit
+// at 0,0 spanning the map. Pan and zoom still come from the stage transform, so screen
+// registration is unchanged — which is what keeps the Canvas-2D fog above it lined up,
+// since that hole is computed from calcViewport() and never looks at this sprite.
+//
+// Reaching into pixiMapSprite from player.js would work and is exactly what this exists
+// to prevent: the Pixi wrapper stays the only file that touches sprite internals.
+function pixiSetMapRegion(x, y, w, h) {
+  if (!pixiMapSprite) return;
+  pixiMapSprite.position.set(x, y);
+  pixiMapSprite.width  = w;
+  pixiMapSprite.height = h;
+}
+
 function pixiSetViewport(z, px, py) {
   if (!pixiApp) return;
   pixiApp.stage.position.set(px, py);

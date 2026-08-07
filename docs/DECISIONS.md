@@ -105,7 +105,12 @@ per-preset fog identities, which are parked separately.
 The seam is in the source Dungeon Alchemist export (last frame ≠ first frame); the app just
 plays the file. Every in-app fix (double-buffer crossfade, freeze-bridge) either doubles
 decode cost or hitches on moving water. A "how to export a clean loop from DA" note serves
-better than app code.
+better than app code, and the whole thing evaporates if the DA team fixes the export.
+
+The measured shape, so it isn't rediscovered: at each wrap `onVideoWaiting` pauses until
+readyState recovers - 0.56-1.03s on the Player, 0.20-0.22s on the DM. The two windows wrap at
+different moments because each plays its own copy, which is the point of that split. Judged
+not worth chasing against a source-side cause that is expected to go away.
 
 ---
 
@@ -141,8 +146,42 @@ Player path.
 
 ### CPU is not the perf problem; memory is · `SETTLED`
 The 1.6.1 batch cut renderer CPU roughly 7× and it solved nothing anyone could feel. It was
-kept anyway, as a benefit to lower-end machines. **The next perf thread is memory, and it is
-unmeasured.** Do not open another CPU-reduction batch.
+kept anyway, as a benefit to lower-end machines. Do not open another CPU-reduction batch.
+Memory was measured on 2026-08-07; see below.
+
+### What one map actually costs · `SETTLED` (measured 2026-08-07)
+Measured with `src/memProbe.js` (`?memprobe=1`) on a 2560×1392 panel, no TV attached.
+Working set across all processes, DM plus Player: **a 9750×5850 image map ≈ 3.0 GB; a
+12900×11700 animated map ≈ 16.6 GB**, GPU process peaking at 10.4 GB.
+
+Deliberate allocations are only ~918 MB and ~2.25 GB of those. The rest is Chromium's
+multiplier, and its shape is the finding: **accelerated canvas backing stores are charged
+to the GPU process and carry a CPU copy plus a GPU copy**, so a megabyte not allocated saves
+about three. Two costs dominate and neither is fog: **the Player redraws and re-uploads the
+whole map texture every frame** on an animated map (the difference between 7.5 GB for the DM
+alone and 16.6 GB for both windows), and **two independent video decoders**, which on an
+ordinary 4320×2592 map are ~92% of the total. The PixiJS RenderTexture pool measured empty
+in every sample.
+
+### Coverage is per-view: the Player gets less zoom headroom than the DM · `UNDECIDED`
+`PLAYER_COVERAGE_FACTOR = 2` against the DM's 3 (`video.js`). Coverage is zoom headroom, and
+area scales with its square, so the Player's texture — and on animated maps its per-frame
+GPU upload — more than halves on an oversized map: 204 MB → 91 MB on the 12900 map, 459 MB →
+204 MB on a 4K TV. 2 rather than a tighter value on purpose, so any map at or under twice the
+Player's screen keeps every source pixel and nothing about an ordinary map changes; verified
+byte-identical on a 4320×2592 map before and after.
+
+**Awaiting a verdict at the table.** The cost is that the Player softens past 2× fit-to-screen
+zoom instead of 3×, and zooming into the Player view does happen. On an ordinary map the
+change saves nothing measurable, so if the softening is visible the trade is not worth it and
+the constant goes back to 3.
+
+### Sizing the DM's map texture off the DM's own window · `REJECTED`
+Proposed on the grounds that the DM inherits the Player's display record and so carries a
+texture sized for the TV rather than for its own much smaller window. Measuring it killed
+the idea: 3× a 1384 px window is 4152 px, which against a 9750 px master goes soft at zoom
+0.43 instead of 0.79. The DM is where rooms are drawn at high zoom, so the TV-derived figure
+is load-bearing there even though it looks accidental.
 
 ### Cross-run CPU comparison on this machine is worthless · `SETTLED` (method)
 The same configuration measured 9.3% and 24.1% minutes apart. Every trustworthy figure
@@ -151,9 +190,19 @@ runtime in between. Two more traps: an occluded window reads as **zero** (the ti
 on `visibilitychange` and Chromium won't run rAF for a hidden surface), and a small test
 window understates the Player, because `renderFog` cost scales with pixel area.
 
-### Minimize memory "spike" · `SETTLED` — investigated and closed
-Mostly benign OS working-set movement. The fix that shipped pauses the PixiJS ticker and
-flushes the texture pool on minimize.
+### Minimize memory "spike" · `REOPENED` 2026-08-07 — the earlier close was image-only
+Previously closed as benign working-set movement, with a fix that pauses the PixiJS ticker
+and flushes the texture pool. Two corrections from measurement:
+
+**The texture-pool flush is dead code.** The pool reads empty in every sample, and stubbing
+`pixiFlushTexturePool()` out leaves the minimize behaviour identical. Stubbing `doAutoSave()`
+does too, so neither shipped suspect drives anything.
+
+**The direction depends on the map type**, which is why an image-map investigation closed it
+wrongly. On an image map minimizing dropped ~470 MB; on an animated map the reading rose
+~2.9 GB and did not return on restore. Both sit inside a noise band that is ±470 MB on the
+image path and ±3 GB on the video path, so a single observation attributes nothing — but peak
+working set only ever ratchets up. Do not re-close this from image-map data.
 
 ---
 
@@ -551,6 +600,65 @@ Root cause was Chromium's `BackgroundVideoTrackOptimization` dropping tracks on 
 muted loops. The `disable-features` switch above is the fix. **Unverified across the
 Chromium 120 → 150 bump**: if the feature was renamed the switch silently becomes a no-op and
 looping videos freeze again with no error, which a general smoke test would not catch.
+
+### The Player's map texture is viewport-sized · `SETTLED` (2026-08-07)
+The Player's animated-map texture was the size of the display-scaled map and was re-uploaded
+to the GPU every frame. It is now the viewport plus a 32px margin, carrying only the region
+under the camera at one texel per screen pixel: **90.7 MB to 3.9 MB** on the 12900x11700 map
+(one instance, 20s apart), resident and per-frame alike. `USE_REGION_TEXTURE` reverts it.
+
+**The region is the viewport grown by a margin, NOT `visibleMapRegion()`**, which shrinks as
+you pan to an edge and would change the texel-per-pixel ratio with the camera. The
+un-intersected rect makes the sprite land on the SAME screen rect at every pan and zoom, so
+no sub-pixel drift can open a rim between the map and the Canvas-2D fog above it.
+
+**`bleedRegionEdges` replaces the clamp a full-map texture got for free**, and must read the
+VIDEO: a canvas drawn onto itself forces a readback, measured at 0.185 ms/frame.
+**`onDisplayInfoUpdated` must not fall through here** - it rebuilds a full-map sprite at 0,0.
+`PLAYER_COVERAGE_FACTOR` no longer reaches animated maps; it still governs image maps.
+
+### Frame timing for the two Player texture paths · `SETTLED` (method + result)
+`USE_REGION_TEXTURE` flips at runtime and `npm run memprobe:no-region` starts on the other
+side, so the comparison runs inside one instance in both orders. Clean run, same map both
+windows: region 351 frames / 0.370 ms, full-map 337 / 0.320 ms. No smoothness difference.
+
+**ms/frame measures the wrong half**: the timer wraps the canvas draw and
+`pixiUpdateMapTexture()`, which only marks the texture dirty, so the GPU upload it schedules
+falls outside it. Frames delivered in a wall-clock window is the metric. **A flip that races
+the DM's scene sequence measures a different map per window** and three runs were void for
+exactly that. Distrust any result whose two lines do not print the same `map=`.
+
+### Three allocations nothing read · `SETTLED` (2026-08-07)
+- `fogTransBlendCanvas` and `fogTransBlurPrev` are read only by the Player's `renderFog`,
+  which returns early for the DM. Now inside the `isPlayer` branch of `startFogTransition`;
+  36 MB each off the DM on the 12900 map.
+- `rebuildFogBlur`'s padded canvas is cached on dimensions as `_fogPadded` and cleared on
+  reuse, since the `drawImage` into it is source-over. **Not** `_fogScratch`: assigning
+  `.width` reallocates, so sharing one canvas between two resizing callers saves nothing.
+- `pixiFlushTexturePool()` on minimize was dead. Its calls after `pixiInitFog` stay.
+
+### `UNDO_MAX_BYTES` is one budget for both stacks · `SETTLED`
+`redoStack` had no cap, so the pair could reach ~218 MB against a 120 MB budget. Capping each
+stack separately would allow 240 MB and fix nothing, so `evictUndoPair` trims them together,
+**redo first** - it is empty during ordinary drawing, so undo depth is untouched in the case
+that matters. Redo keeps a one-entry floor: `redo()` checks the length, then pushes and
+evicts before popping, so a stack that eviction could empty would pop `undefined`.
+
+### Streaming the Player's video over a private scheme · `REJECTED` - built, measured, removed
+Would have dropped the 280 MB Blob the Player pins for the session, by serving the same file
+over `evermist-video://map/<sceneId>`. Built and working: no canvas taint, correct 206/Range,
+no return of the rs=2 stall, fine inside the asar. Removed rather than parked, because a
+privileged scheme handler that nothing reaches is live surface for zero benefit, and the Blob
+path is a SETTLED stall fix that any replacement has to beat rather than merely match.
+
+It did not beat it. The Player pauses ~0.8s at every loop wrap on both sources, and the
+streaming numbers (0.97-1.03s) sat inside the Blob's spread (0.56-0.99s) - no win to show for
+the surface. Retrieve from git history if revisited.
+
+**Traps already paid for, and none announces itself.** `registerSchemesAsPrivileged` must run
+at module scope with `secure`+`corsEnabled`, alongside `crossOrigin='anonymous'` and an ACAO
+header, or the canvas taints and the map renders BLACK rather than slow. Responses must be
+cacheable. The id goes in the pathname, never the host, which lowercases.
 
 ### The old Canvas-2D grid path · `SETTLED` — deleted
 Only `renderPlayerGrid(vp)` on `playerGridCanvas` is the live Player grid path. Don't

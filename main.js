@@ -10,6 +10,15 @@ const yauzl = require('yauzl');
 // plain `npm start` and in the shipped .exe (which never passes the flag).
 const stressMode = process.argv.includes('--stress');
 const stressNoReveals = process.argv.includes('--stress-no-reveals');
+// Memory-footprint probe: activated by `npm run memprobe` (passes --memprobe). Inert under
+// plain `npm start` and in the shipped .exe, which never passes the flag.
+const memProbeMode    = process.argv.includes('--memprobe');
+// Stub levers that attribute the minimize memory movement — each disables one suspect.
+const memProbeNoFlush = process.argv.includes('--memprobe-no-flush');
+const memProbeNoSave  = process.argv.includes('--memprobe-no-save');
+// Measure against the smallest video map rather than the largest, for a before/after
+// comparison that does not tie the machine up.
+const memProbeSmall   = process.argv.includes('--memprobe-small');
 const stressIntervalArg = process.argv.find(a => a.startsWith('--stress-interval='));
 const stressMs = stressIntervalArg
   ? (v => (isNaN(v) || v <= 0 ? 900000 : v))(parseInt(stressIntervalArg.split('=')[1], 10))
@@ -79,14 +88,20 @@ function createDMWindow() {
   });
 
   win.setMenu(null);
+  const q = {};
   if (stressMode) {
-    const q = { stress: '1' };
+    q.stress = '1';
     if (stressMs !== 900000) q.stressMs = String(stressMs);
     if (stressNoReveals) q.noReveals = '1';
-    win.loadFile('index.html', { query: q });
-  } else {
-    win.loadFile('index.html');
   }
+  if (memProbeMode) {
+    q.memprobe = '1';
+    if (memProbeNoFlush) q.memprobeNoFlush = '1';
+    if (memProbeNoSave)  q.memprobeNoSave  = '1';
+    if (memProbeSmall)   q.memprobeSmall   = '1';
+  }
+  if (Object.keys(q).length) win.loadFile('index.html', { query: q });
+  else win.loadFile('index.html');
   dmWin = win;
   win.once('closed', () => { if (dmWin === win) dmWin = null; });
   // visibilitychange does not fire on Windows OS-minimize, so signal the renderer
@@ -262,6 +277,24 @@ ipcMain.handle('read-video-file', async (_event, sceneId) => {
   return null;
 });
 
+// Lists the video maps present on disk with their sizes, so the memory probe can pick the
+// largest one to measure. Read-only, and it never leaves mapsDir.
+ipcMain.handle('list-map-files', async () => {
+  try {
+    const names = await fs.promises.readdir(mapsDir);
+    const out = [];
+    for (const n of names) {
+      const m = n.match(/^([0-9a-zA-Z_-]+)\.(webm|mp4)$/);
+      if (!m) continue;
+      try {
+        const st = await fs.promises.stat(path.join(mapsDir, n));
+        if (st.isFile()) out.push({ id: m[1], ext: m[2], size: st.size });
+      } catch {}
+    }
+    return out;
+  } catch { return []; }
+});
+
 ipcMain.handle('delete-video-file', async (_event, sceneId) => {
   if (!isSafeId(sceneId)) return;
   for (const ext of ['.webm', '.mp4']) {
@@ -350,6 +383,27 @@ function _rotateDiagLogs() {
 ipcMain.on('diag-append-line', (_event, mode, line) => {
   const stream = _diagStream(mode);
   if (stream) stream.write(line + '\n');
+});
+
+// --- Memory probe: per-process working set (src/memProbe.js, ?memprobe=1) ---
+//
+// getAppMetrics() is the only reading that covers what actually costs memory here. A
+// renderer's performance.memory reports the JS heap alone, and every large allocation in
+// this app — canvas backing stores, GPU textures, the video decoder — is native memory
+// outside it. workingSetSize is also the number Task Manager shows, so it is the one that
+// matches what a user reports.
+ipcMain.handle('mem-metrics', () => {
+  try {
+    return app.getAppMetrics().map(m => ({
+      pid:  m.pid,
+      type: m.type,
+      name: m.name || '',
+      // Kilobytes, as Electron reports them. The renderer converts.
+      workingSetKB: m.memory ? m.memory.workingSetSize : 0,
+      peakWorkingSetKB: m.memory ? (m.memory.peakWorkingSetSize || 0) : 0,
+      cpuPercent: m.cpu ? m.cpu.percentCPUUsage : 0,
+    }));
+  } catch (_) { return []; }
 });
 
 // --- Module text: PDF → plain text IPC ---

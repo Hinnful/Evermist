@@ -32,6 +32,9 @@ function initPlayer() {
     if (mapBitmap || mapOffscreen) {
       if (playerFollowDM && lastDMView) applyView(lastDMView);
       else fitToScreen();
+      // The animated-map texture is sized from the viewport, so this is the one event
+      // that has to reallocate it. Pan and zoom must not, and do not.
+      if (mapVideo) initPlayerMapRegionTexture();
       viewportDirty = true;
       scheduleRender();
     }
@@ -195,27 +198,30 @@ function initPlayer() {
             extractCanvas.getContext('2d').drawImage(video, 0, 0, mapWidth, mapHeight);
             if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
             mapOffscreen = extractCanvas;
-            // Size the texture to the detected display (display-aware, TDR-safe).
-            // prepareTextureCanvas reads displayInfo from state.js and falls back to
-            // the old ~2× viewport heuristic when displayInfo is not yet available.
-            playerMapTexCanvas = prepareTextureCanvas(extractCanvas, mapWidth, mapHeight);
-            playerMapTexCtx = playerMapTexCanvas.getContext('2d');
-            pixiSetMap(playerMapTexCanvas, mapWidth, mapHeight);
-            // Refresh the map texture from the video every rendered frame, driven by
-            // the PixiJS render ticker so it never freezes between viewport changes.
-            var _texVideoTime = -1;
+            // mapVideo has to be live before the texture is built: both
+            // initPlayerMapRegionTexture and the sync tick read it.
+            mapVideo = video;
+            // Refresh from the video every rendered frame, driven by the PixiJS render
+            // ticker so it never freezes between viewport changes.
+            var _texVideoTime = -1, _texPanX = NaN, _texPanY = NaN, _texZoom = NaN;
             pixiStartVideoTextureSync(function() {
               if (!mapVideo || !playerMapTexCtx || mapVideo.readyState < 2) return;
               var t = mapVideo.currentTime;
-              if (t === _texVideoTime) return; // same frame — skip redundant GPU upload
-              _texVideoTime = t;
-              playerMapTexCtx.drawImage(mapVideo, 0, 0, playerMapTexCanvas.width, playerMapTexCanvas.height);
-              pixiUpdateMapTexture();
+              // Pan and zoom join the dedup key now that the texture holds a region:
+              // on a paused video the frame never advances, and without this the map
+              // would go stale under a moving camera.
+              if (t === _texVideoTime && panX === _texPanX && panY === _texPanY && zoom === _texZoom) return;
+              _texVideoTime = t; _texPanX = panX; _texPanY = panY; _texZoom = zoom;
+              refreshPlayerMapRegion();
             });
-            mapVideo = video;
             attachVideoListeners(video);
             fitToScreen();
             if (playerFollowDM && msg.view) applyView(msg.view);
+            // After the camera is settled, so the first texture already holds the region
+            // the players will actually see. Viewport-sized (video.js), not map-sized:
+            // 13.6 MB on a 4320 map and on a 12900 one alike, and that figure is also
+            // the per-frame GPU upload.
+            initPlayerMapRegionTexture();
             loadFog(msg.fogDataUrl, !!msg.sceneChange).then(() => {
               // Hybrid: Player fog is Canvas-2D (renderFog) on top of the PixiJS map — no
               // PixiJS fog init. loadFog already ran rebuildFogEffect()+startFogAnim().
@@ -343,4 +349,5 @@ function initPlayer() {
   }, { passive: false });
 
   initStress();
+  initMemProbe();
 }

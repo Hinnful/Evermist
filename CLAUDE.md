@@ -33,13 +33,13 @@ war. No backend, no VTT features (tokens, initiative). Map + fog + grid + two sc
 
 ## What ships in the build
 
-`package.json` `build.files` has exactly two globs: `src/**/*.js` and `src/css/**/*.css`.
+`package.json` `build.files` lists each shipped path. Only two entries are globs:
+`src/**/*.js` and `src/css/**/*.css`; the rest name one file each.
 
-- A new `.js` in `src/` or a new `.css` in `src/css/` ships automatically.
-- Anything OUTSIDE those two paths needs an explicit `build.files` entry.
-- A runtime npm dependency is a third case: `build.files` carries per-package include and
-  exclude rules (see the pdfjs-dist entries), and anything loaded as ESM additionally needs
-  `asarUnpack`.
+- A new `.js` in `src/` or `.css` in `src/css/` ships automatically. Anything else needs its
+  own entry.
+- A runtime npm dependency also needs per-package include/exclude rules (see pdfjs-dist),
+  and anything loaded as ESM needs `asarUnpack` too.
 - **This whole class of bug is invisible to `npm start`, and the packaged app fails
   silently** (a missing stylesheet just renders unstyled). Verify with
   `npx electron-builder --win --dir` and run the real `.exe`.
@@ -92,6 +92,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
 | `player.js` | Player-mode runtime |
 | `stress.js` | `?stress=1` harness |
+| `memProbe.js` | `?memprobe=1` memory-footprint probe |
 
 ### Load order
 
@@ -101,8 +102,8 @@ Declarations must precede use at init time. All files under `src/`:
 lib/pixi.min.js → renderer.js → state.js → display.js → video.js → fogGeometry.js →
 vttPlan.js → fog.js → tools.js → mapLoader.js → undo.js → sceneStore.js → scenes.js →
 sceneManager.js → viewport.js → backup.js → grid.js → toolbar.js → player.js → input.js →
-stress.js → render.js → minimap.js → controlPanel.js → confirmDialog.js → floorPlan.js →
-moduleText.js → roomPanel.js → inline <script> (last)
+stress.js → memProbe.js → render.js → minimap.js → controlPanel.js → confirmDialog.js →
+floorPlan.js → moduleText.js → roomPanel.js → inline <script> (last)
 ```
 
 ### Repo layout
@@ -134,9 +135,8 @@ to write on `if (confirm(…))` must split into "what happens regardless" and "w
 yes". See `applyModuleEntryToRoom`: it writes the name up front, because the dialog's focus
 change blurs the name field and runs its commit, which must find the new value already there.
 
-⚠️ 8 `alert()` calls still ship (in `backup.js`, `scenes.js`, `video.js`, `mapLoader.js`,
-`sceneManager.js`). The codebase violates this rule today; sweeping them needs a
-message-only variant of `confirmDialog`.
+⚠️ 8 `alert()` calls still ship (`backup.js`, `scenes.js`, `video.js`, `mapLoader.js`,
+`sceneManager.js`). Sweeping them needs a message-only `confirmDialog` variant.
 
 ## Rooms are polygons
 
@@ -169,7 +169,7 @@ message-only variant of `confirmDialog`.
   DOM-coupled code.
 - **Testability follows from decoupling, not file count.** Don't inject render state into
   `fog.js`; its behavior is pixel output. New pure fog logic extends the `fogGeometry.js`
-  kernel, and the imperative canvas layer calls into it.
+  kernel, which the canvas layer calls into.
 - Deliberately untested, don't add tests here: `render.js`, `scenes.js`, `state.js`,
   `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
   `stress.js`.
@@ -199,8 +199,8 @@ opens as a second window.
 ## Distribution and releases
 
 Releases are built by **GitHub Actions** (`.github/workflows/release.yml`) on
-`windows-latest`, `macos-latest` (universal `.dmg`) and `ubuntu-latest` in parallel, which
-is required because a Mac `.dmg` cannot be built on Windows.
+`windows-latest`, `macos-latest` (universal `.dmg`) and `ubuntu-latest` in parallel,
+because a Mac `.dmg` cannot be built on Windows.
 
 **When to bump the version.** A bump means "a new app users can install", so bump **only
 when a change touches the shipped app** (anything in `build.files`). Patch for normal
