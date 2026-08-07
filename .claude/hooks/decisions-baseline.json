@@ -12,7 +12,9 @@
       "warnedBytes": 0,
       "sections": [],
       "entries": [
-        "No automatic cave subdivision, ever · `SETTLED` (scope call)"
+        "No automatic cave subdivision, ever · `SETTLED` (scope call)",
+        "What one map actually costs · `SETTLED` (measured 2026-08-07)",
+        "The Player's map texture is viewport-sized · `SETTLED` (2026-08-07)"
       ]
     }
   }

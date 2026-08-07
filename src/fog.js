@@ -335,6 +335,9 @@ function generateCloudFrames(size, numFrames) {
 generateCloudFrames._initialized = false;
 generateCloudFrames._genId = 0;
 
+// Padded blur source, reused across calls — see the sizing note inside rebuildFogBlur.
+let _fogPadded = null, _fogPaddedCtx = null;
+
 function rebuildFogBlur() {
   if (!fogDataCanvas) return;
   const w = fogDataCanvas.width, h = fogDataCanvas.height;
@@ -355,9 +358,20 @@ function rebuildFogBlur() {
   const blur = getScaledBlurRadius();
   const pad  = blur * 3;
   const pw = w + pad * 2, ph = h + pad * 2;
-  const padded = document.createElement('canvas');
-  padded.width = pw; padded.height = ph;
-  const pCtx = padded.getContext('2d');
+  // Cached on dimensions, like fogBlurCanvas above: this runs on every reveal and a fresh
+  // map-sized canvas each time is the single largest churn on the fog path. A reused canvas
+  // must be cleared first — the drawImage below is source-over and would composite onto the
+  // previous reveal's pixels. Deliberately NOT _fogScratch: applyPolygonToFog resizes that
+  // per polygon, and two callers resizing one canvas saves nothing, since assigning .width
+  // reallocates the backing store anyway.
+  if (!_fogPadded || _fogPadded.width !== pw || _fogPadded.height !== ph) {
+    _fogPadded = document.createElement('canvas');
+    _fogPadded.width = pw; _fogPadded.height = ph;
+    _fogPaddedCtx = _fogPadded.getContext('2d');
+  } else {
+    _fogPaddedCtx.clearRect(0, 0, pw, ph);
+  }
+  const padded = _fogPadded, pCtx = _fogPaddedCtx;
   pCtx.drawImage(fogDataCanvas, pad, pad);                                     // fog data (center)
 
   // Always-shrouded edge margin: stamp an opaque navy frame over the whole pad border PLUS
@@ -682,13 +696,12 @@ function startFogTransition(isShroud = false) {
     // DM GPU path: snapshot blur canvas for sprite crossfade
     fogTransPrev = fogBlurCanvas ? cloneCanvas(fogBlurCanvas) : null;
     pixiSetFogTransition(fogTransPrev, 0);
-  } else {
+  } else if (fogBlurCanvas) {
     // Player (hybrid): fog is Canvas-2D on top. The transition morphs the reveal-hole
     // shape — renderFog blends fogTransBlurPrev↔fogBlurCanvas via fogTransBlendCanvas each
-    // frame. Only fogTransBlurPrev/fogTransBlendCanvas are needed (saved below); no
-    // fogEffectCanvas snapshot, since the navy+cloud is redrawn fresh every frame.
-  }
-  if (fogBlurCanvas) {
+    // frame. No fogEffectCanvas snapshot, since the navy+cloud is redrawn fresh every frame.
+    // Player-only: renderFog returns early for the DM, so on the DM path both canvases
+    // below are map-sized allocations nothing ever reads.
     fogTransBlurPrev = cloneCanvas(fogBlurCanvas);
     if (!fogTransBlendCanvas ||
         fogTransBlendCanvas.width  !== fogBlurCanvas.width ||

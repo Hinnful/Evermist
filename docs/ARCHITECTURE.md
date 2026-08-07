@@ -56,6 +56,7 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `confirmDialog.js` | The app's own yes/no dialog. The only sanctioned confirmation, because native `confirm()` breaks the page. |
 | `player.js` | Player-mode runtime: cloud-texture pre-generation, the handshake, the resize listener, the DM message handler, Player pan/zoom. |
 | `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
+| `memProbe.js` | A hidden memory probe: counts what one loaded map costs and writes it to the diagnostics log. Dormant unless the page is opened with `?memprobe=1`. |
 | `main.js` / `preload.js` | The Electron shell. Creates the windows, saves video files to disk, reads and writes backup zips, forks the PDF parser, finds a map's floor plan. |
 
 ## How the fog works
@@ -137,6 +138,34 @@ map* than the DM sees, rather than the same map bigger. So the DM sends the rect
 the map he's looking at, in map units, and the Player fits that rectangle to its own screen.
 Matching screen shapes land exactly edge to edge. Mismatched ones fit rather than crop, so
 the players can never see less than the DM intended.
+
+### What the Player keeps in memory
+
+The Player doesn't hold a copy of the whole map to draw from. It holds one screen's worth.
+
+This matters on animated maps. The Player has to redraw its map picture from the video and
+hand it to the graphics card on every frame, so the size of that picture is a cost thirty
+times a second, not just a cost once. When it was the size of the map, his largest animated
+map meant pushing 91MB to the card on every frame. Now it's the size of the Player's own
+screen plus a small margin, holding only the patch of map the camera is over, at one picture
+pixel per screen pixel. That's about 15MB on a 1440p TV whatever the map's resolution, and
+the same figure is what crosses to the card each frame.
+
+The patch is recomputed every frame from the camera, so it can't go stale, and it's always
+sized so one pixel lands on one pixel. The map stays as sharp when you zoom in as it was
+before.
+
+The piece that makes it safe: the patch always lands on exactly the same rectangle of the
+screen, whatever the pan and zoom. The fog is drawn separately on top, in screen
+coordinates, so anything that shifted the map by a fraction of a pixel against the fog would
+show up as a bright or dark rim along the map's edge. Holding that rectangle still is what
+prevents it.
+
+The clip itself is still loaded the expensive way. The Player can't read the same file the DM
+window is reading, because two video players on one file starve each other and both freeze, so
+it loads a whole private copy of the clip into memory - 280MB on the largest map. A streaming
+replacement was built and measured, and it saved the memory without making anything faster, so
+it was taken back out.
 
 ### The minimap
 

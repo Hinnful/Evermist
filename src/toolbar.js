@@ -402,6 +402,9 @@ function initToolbar() {
     let url = window.location.href.split('?')[0] + '?mode=player';
     if (stress) url += '&stress=1';
     if (stressMs) url += '&stressMs=' + encodeURIComponent(stressMs);
+    // The Player is a second process with its own copy of every map and fog canvas, so
+    // the probe has to run there too or half the footprint is invisible.
+    if (sp.get('memprobe') === '1') url += '&memprobe=1';
     playerWindow = window.open(url, 'evermist-player', 'toolbar=no,menubar=no,scrollbars=no');
   };
 

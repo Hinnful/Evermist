@@ -695,6 +695,7 @@
 <script src="src/player.js"></script>
 <script src="src/input.js"></script>
 <script src="src/stress.js"></script>
+<script src="src/memProbe.js"></script>
 <script src="src/render.js"></script>
 <script src="src/minimap.js"></script>
 <script src="src/controlPanel.js"></script>
@@ -819,14 +820,14 @@ if (window.electronAPI && window.electronAPI.onWindowVisibility) {
   window.electronAPI.onWindowVisibility(({ visible }) => {
     if (!visible) {
       if (!isPlayer) doAutoSave();
-      if (pixiApp) { pixiApp.ticker.stop(); pixiFlushTexturePool(); }
+      if (pixiApp) pixiApp.ticker.stop();
     } else {
       if (pixiApp) pixiApp.ticker.start();
     }
   });
 }
 
-if (!isPlayer) initScenes().then(() => initStress()).catch(console.error);
+if (!isPlayer) initScenes().then(() => { initStress(); initMemProbe(); }).catch(console.error);
 initDisplayDetection();
 </script>
 </body>

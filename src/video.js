@@ -9,12 +9,28 @@
 // line — no need to touch six call sites.
 var USE_DISPLAY_SIZING = true;
 
-// ─── Design constant ─────────────────────────────────────────────────────────
-// "~1/3 of the map fills the screen at normal play zoom."
-// targetLong = max(dispW, dispH) * COVERAGE_FACTOR → enough real map pixels so
-// that 1/3 of the map displayed at 1:1 exactly fills the panel's long axis.
-// e.g. 1080p: 1920 × 3 = 5760 px; 4K: 3840 × 3 = 11520 px.
-var COVERAGE_FACTOR = 3;
+// ─── Design constants ────────────────────────────────────────────────────────
+// targetLong = max(dispW, dispH) * coverage → how many real map pixels the texture
+// carries along its long axis. Coverage IS zoom headroom: 3 means "1/3 of the map fills
+// the screen at 1:1", so the view stays crisp up to 3× the fit-to-screen zoom.
+//
+// The two views get different headroom because they are used differently:
+//   DM     — zooms in to draw rooms, so it keeps the full 3×.
+//   Player — shows the whole map at the table, and its texture is redrawn from the video
+//            and re-uploaded to the GPU every frame on an animated map, so the area is a
+//            per-frame cost and not just a resident one.
+//
+// 2 rather than a tighter 1.5, deliberately: a map at or under 2× the Player's screen is
+// then left at its own resolution and nothing about it changes, which covers the ordinary
+// map. The saving is meant to land on the oversized export, where it more than halves both
+// the texture and the per-frame upload.
+var COVERAGE_FACTOR        = 3;
+var PLAYER_COVERAGE_FACTOR = 2;
+
+// Pure: zoom headroom for this view. Exported for tests.
+function coverageFactorFor(isPlayerView) {
+  return isPlayerView ? PLAYER_COVERAGE_FACTOR : COVERAGE_FACTOR;
+}
 
 // ─── Pure sizing function ─────────────────────────────────────────────────────
 // Returns { w, h } — optimal texture dimensions for a pixiSetMap call.
@@ -84,8 +100,9 @@ function prepareTextureCanvas(masterCanvas, masterW, masterH) {
 
     var maxTex = (typeof pixiGetMaxTexSize === 'function')
       ? pixiGetMaxTexSize() : 4096;
+    var cf = coverageFactorFor(typeof isPlayer !== 'undefined' && isPlayer);
     var sized = computeOptimalTextureSize(
-      displayInfo.w, displayInfo.h, masterW, masterH, maxTex, COVERAGE_FACTOR);
+      displayInfo.w, displayInfo.h, masterW, masterH, maxTex, cf);
     targetW = sized.w;
     targetH = sized.h;
 
@@ -111,6 +128,130 @@ function prepareTextureCanvas(masterCanvas, masterW, masterH) {
   return tex;
 }
 
+// ─── Player animated map: a viewport-sized region texture ────────────────────
+// The Player used to hold a texture the size of the whole (display-scaled) map and redraw
+// ALL of it from the video every frame — 90.7 MB resident and 90.7 MB of GPU upload thirty
+// times a second on the 12900×11700 map. A texture sized to the Player's own screen is
+// ~15 MB on a 2560×1392 TV whatever the map's resolution, and it is resolution-correct at
+// every zoom by construction, because it carries one texel per screen pixel.
+//
+// The texture covers the viewport GROWN BY A MARGIN, converted to map units — deliberately
+// not visibleMapRegion(), which is the viewport intersected with the map and therefore
+// shrinks as you pan to an edge. A shrinking region drawn into a fixed canvas would change
+// the texel-per-pixel ratio with the camera. This one holds it constant, and gives a second
+// property worth more: the sprite it feeds always lands on exactly the same screen
+// rectangle, so pan and zoom introduce no sub-pixel drift between the map and the fog.
+//
+// The margin is insurance for the screen border — float error and a resize handler that
+// runs a frame late — not headroom for panning; the region is recomputed every frame.
+var PLAYER_REGION_MARGIN = 32;
+
+// Pure: the map-space rectangle a texW×texH texture covers. Exported for tests.
+function mapRegionForTexture(panX, panY, zoom, texW, texH, vpW, vpH) {
+  var w = texW / zoom, h = texH / zoom;
+  return {
+    x: (vpW / 2 - panX) / zoom - w / 2,
+    y: (vpH / 2 - panY) / zoom - h / 2,
+    w: w, h: h,
+  };
+}
+
+// Pure: clamp a map-space region to the map and give the matching destination rect inside
+// the texture canvas, so drawImage is never handed a source rect outside the video frame.
+// `clear` reports that the region overhangs the map, i.e. the canvas has pixels the draw
+// will not cover, which would otherwise keep the previous frame's content.
+// Returns null when the region misses the map entirely.
+function clampRegionToMap(r, mapW, mapH, zoom) {
+  var sx = Math.max(0, r.x), sy = Math.max(0, r.y);
+  var sw = Math.min(mapW, r.x + r.w) - sx;
+  var sh = Math.min(mapH, r.y + r.h) - sy;
+  if (!(sw > 0) || !(sh > 0)) return null;
+  return {
+    sx: sx, sy: sy, sw: sw, sh: sh,
+    dx: (sx - r.x) * zoom, dy: (sy - r.y) * zoom,
+    dw: sw * zoom,         dh: sh * zoom,
+    clear: sw < r.w || sh < r.h,
+  };
+}
+
+// Allocate the region canvas from the viewport, once. Called at video load, on window
+// resize and on a display change — never per frame, and never on pan or zoom, which is
+// the whole point: the allocation is fixed and only its CONTENT follows the camera.
+function ensurePlayerRegionCanvas() {
+  var vp = getViewportSize();
+  var texW = Math.max(1, Math.round(vp.w) + PLAYER_REGION_MARGIN * 2);
+  var texH = Math.max(1, Math.round(vp.h) + PLAYER_REGION_MARGIN * 2);
+  if (playerMapTexCanvas &&
+      playerMapTexCanvas.width === texW && playerMapTexCanvas.height === texH) return;
+  playerMapTexCanvas = document.createElement('canvas');
+  playerMapTexCanvas.width  = texW;
+  playerMapTexCanvas.height = texH;
+  playerMapTexCtx = playerMapTexCanvas.getContext('2d');
+}
+
+var _playerRegionBound = null;   // the canvas pixiSetMap was last handed
+
+// Point PixiJS at the region canvas. pixiSetMap is given the CANVAS dimensions rather than
+// the map's, so its MAX_TEXTURE_SIZE clamp can never fire on a viewport-sized canvas and
+// rescale it; pixiSetMapRegion then puts the sprite where the region actually is.
+function initPlayerMapRegionTexture() {
+  if (!mapVideo || !mapWidth || !mapHeight) return;
+  ensurePlayerRegionCanvas();
+  // pixiSetMap destroys and rebuilds the sprite and its GPU texture, and displayInfo can
+  // fire repeatedly for one physical change — only rebind when the canvas is actually new.
+  if (_playerRegionBound !== playerMapTexCanvas) {
+    pixiSetMap(playerMapTexCanvas, playerMapTexCanvas.width, playerMapTexCanvas.height);
+    _playerRegionBound = playerMapTexCanvas;
+  }
+  refreshPlayerMapRegion();
+  viewportDirty = true;
+  scheduleRender();
+}
+
+// Restore the clamp the region texture gives up. The old full-map texture ENDED at the map
+// edge, so the GPU clamped there and the boundary was hard. A region texture puts that edge
+// inside the canvas with transparent pixels beyond it, and LINEAR sampling fades the
+// outermost pixel toward nothing — a dark rim along the map border, which is the one thing
+// the hybrid fog architecture cannot tolerate. Stretching the edge row and column one pixel
+// outward gives the sampler real content to blend with, the same as clamping would.
+//
+// Only runs when the region overhangs the map, i.e. zoomed out or panned against an edge.
+// FOG_EDGE_MARGIN hides this band at play zoom, but only ~2 screen px at fit-to-screen —
+// too thin to rely on.
+//
+// It reads the VIDEO, not the canvas: drawing a canvas onto itself forces a readback of its
+// backing store, measured at 0.185 ms/frame, which is more than the draw it protects. The
+// video is already this frame's source, so re-reading a strip of it is nearly free.
+function bleedRegionEdges(ctx, video, c, zoom) {
+  if (!(c.dw >= 1) || !(c.dh >= 1) || !(zoom > 0)) return;
+  var sp = 1 / zoom;                       // one destination pixel, in map units
+  if (!(c.sw > sp) || !(c.sh > sp)) return;
+  ctx.drawImage(video, c.sx, c.sy,               c.sw, sp,   c.dx,        c.dy - 1,    c.dw, 1);
+  ctx.drawImage(video, c.sx, c.sy + c.sh - sp,   c.sw, sp,   c.dx,        c.dy + c.dh, c.dw, 1);
+  ctx.drawImage(video, c.sx, c.sy,               sp,   c.sh, c.dx - 1,    c.dy,        1,    c.dh);
+  ctx.drawImage(video, c.sx + c.sw - sp, c.sy,   sp,   c.sh, c.dx + c.dw, c.dy,        1,    c.dh);
+}
+
+// One frame: pull the visible region out of the video and place the sprite over it.
+function refreshPlayerMapRegion() {
+  if (!mapVideo || !playerMapTexCtx || !playerMapTexCanvas) return;
+  var texW = playerMapTexCanvas.width, texH = playerMapTexCanvas.height;
+  var vp = getViewportSize();
+  var r = mapRegionForTexture(panX, panY, zoom, texW, texH, vp.w, vp.h);
+  var c = clampRegionToMap(r, mapWidth, mapHeight, zoom);
+  if (!c) {
+    playerMapTexCtx.clearRect(0, 0, texW, texH);
+  } else {
+    // Conditional, not unconditional: this is the per-frame TV path, and once the map
+    // fills the viewport the draw covers every pixel on its own.
+    if (c.clear) playerMapTexCtx.clearRect(0, 0, texW, texH);
+    playerMapTexCtx.drawImage(mapVideo, c.sx, c.sy, c.sw, c.sh, c.dx, c.dy, c.dw, c.dh);
+    if (c.clear) bleedRegionEdges(playerMapTexCtx, mapVideo, c, zoom);
+  }
+  pixiSetMapRegion(r.x, r.y, r.w, r.h);
+  pixiUpdateMapTexture();
+}
+
 // ─── Re-texture on display change ────────────────────────────────────────────
 // Called by display.js whenever displayInfo is updated (Player window opened,
 // moved to a different screen, or display config changed). Re-runs sizing against
@@ -124,15 +265,18 @@ function onDisplayInfoUpdated() {
   if (typeof mapOffscreen === 'undefined' || !mapOffscreen) return;
   if (typeof mapWidth === 'undefined' || !mapWidth || !mapHeight) return;
 
-  var newTex = prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight);
-
-  // Player video: also update the per-frame texture canvas so the PixiJS ticker
-  // sync loop draws at the new dimensions on its next tick.
+  // Player animated map: the texture is sized from the Player's own viewport, so a display
+  // change has no sizing to redo. Re-point PixiJS at the region canvas and stop.
+  // Falling through would destroy the region sprite and rebuild a full-map one at 0,0 —
+  // silently undoing this on the exact workflow this function exists for
+  // ("connect TV → open Player → slide Player to TV").
   if (typeof isPlayer !== 'undefined' && isPlayer
       && typeof mapVideo !== 'undefined' && mapVideo) {
-    playerMapTexCanvas = newTex;
-    playerMapTexCtx = newTex.getContext('2d');
+    initPlayerMapRegionTexture();
+    return;
   }
+
+  var newTex = prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight);
 
   pixiSetMap(newTex, mapWidth, mapHeight);
   // DM with active DOM video: pixiSetMap creates a new sprite with visible=true,
@@ -373,6 +517,7 @@ function cleanupVideo() {
   pixiStopVideoTextureSync();
   playerMapTexCanvas = null;
   playerMapTexCtx = null;
+  _playerRegionBound = null;
 }
 
 
@@ -568,5 +713,8 @@ if (typeof document !== 'undefined' && !(typeof isPlayer !== 'undefined' && isPl
 
 // ─── Export guard (Node require for tests; no-op in browser) ─────────────────
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { computeOptimalTextureSize };
+  module.exports = {
+    computeOptimalTextureSize, coverageFactorFor,
+    mapRegionForTexture, clampRegionToMap,
+  };
 }
