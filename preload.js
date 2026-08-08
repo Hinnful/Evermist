@@ -40,8 +40,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   extractPdfText: (arrayBuffer) => ipcRenderer.invoke('extract-pdf-text', arrayBuffer),
 
   showSaveDialog: (opts) => ipcRenderer.invoke('show-save-dialog', opts),
-  createBackupZip: (destPath, scenesData) => ipcRenderer.invoke('create-backup-zip', destPath, scenesData),
+  createBackupZip: (destPath, scenesData, moduleText) => ipcRenderer.invoke('create-backup-zip', destPath, scenesData, moduleText),
   readBackupManifest: (zipPath) => ipcRenderer.invoke('read-backup-manifest', zipPath),
+  // Resolves null when the zip carries no module text, which is every backup written before it shipped.
+  readBackupModuleText: (zipPath) => ipcRenderer.invoke('read-backup-module-text', zipPath),
   extractBackupScenes: (zipPath, assignments) => ipcRenderer.invoke('extract-backup-scenes', zipPath, assignments),
   onBackupProgress: (callback) => {
     const handler = (_event, data) => callback(data);

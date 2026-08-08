@@ -111,7 +111,11 @@ async function doExport(selectedIds) {
 
     if (!scenesData.length) { hideMapProgress(); return; }
 
-    await window.electronAPI.createBackupZip(destPath, scenesData);
+    // The module text is CAMPAIGN-level, so it goes in once at the zip root, not per scene. Null
+    // when nothing is loaded, and the zip then looks exactly as it always did.
+    const moduleTextJson = typeof mtBackupPayload === 'function' ? mtBackupPayload() : null;
+
+    await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson);
     hideMapProgress();
   } catch (err) {
     hideMapProgress();
@@ -126,6 +130,50 @@ async function doExport(selectedIds) {
 }
 
 // ── Restore logic ─────────────────────────────────────────────────────────────
+
+// Adopt the campaign's module text out of a restored zip. Runs only AFTER every scene is saved and
+// the progress bar is down, for two reasons: a dialog must never open on top of the progress bar,
+// and a module-text problem must never be able to strand a half-restore. Nothing in here throws.
+async function adoptModuleTextFromZip(zipPath) {
+  let json = null;
+  try {
+    json = await window.electronAPI.readBackupModuleText(zipPath);
+  } catch (err) {
+    console.error('Reading module text from backup failed:', err);
+    return;
+  }
+  // No entry is the NORMAL case, and the only correct response is to do nothing: that is every
+  // backup written before module text shipped.
+  if (!json) return;
+  if (typeof mtRestorePayload !== 'function') return;
+
+  const incoming = typeof mtDeserialize === 'function' ? mtDeserialize(json) : null;
+  const incomingName = (incoming && incoming.sourceName) || 'the module text in this backup';
+  const current = typeof mtLoadedSourceName === 'function' ? mtLoadedSourceName() : null;
+
+  const adopt = () => {
+    const st = mtRestorePayload(json);
+    if (st.ok) return;
+    // The scenes are already saved, so this is a footnote and not a failure.
+    messageDialog({
+      title: 'Module text not restored',
+      message: 'The scenes came back, but the module text did not.\n\n' + st.error,
+    });
+  };
+
+  if (!current) { adopt(); return; }
+
+  // Replace or keep, nothing in between - so name both books and let the DM choose.
+  confirmDialog({
+    title: 'Replace the module text?',
+    message: 'This backup carries “' + incomingName + '”, and “' + current + '” is loaded now. ' +
+             'Evermist holds one module at a time, so one of them goes.\n\nRoom names and ' +
+             'descriptions already written to your maps stay as they are either way.',
+    confirmLabel: 'Use the backup’s',
+    cancelLabel: 'Keep what I have',
+    onConfirm: adopt,
+  });
+}
 
 // Restore straight from a zip path — the scene "+" button's only route in, taken when the
 // chosen file turns out to be a .zip.
@@ -236,6 +284,10 @@ async function restoreFromZipPath(zipPath) {
     if (typeof renderSceneManager === 'function') renderSceneManager();
 
     hideMapProgress();
+
+    // Last, and deliberately: the scenes are safe by this point and the progress bar is gone, so
+    // this can ask a question or report a storage failure without either being in the way.
+    await adoptModuleTextFromZip(zipPath);
   } catch (err) {
     hideMapProgress();
     console.error('Restore failed:', err);

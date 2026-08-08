@@ -527,6 +527,30 @@ Irrelevant for images, and the display epic auto-downscales video textures.
 Moving to `transform: scale` or rem-based units would retire a bug class at the root, but the
 Electron 43 bump already did that job. Don't take on the refactor without a new reason.
 
+### Errors go through the app's own one-button dialog · `SETTLED` (2026-08-08)
+Eight native `alert()` calls shipped on error paths against CLAUDE.md's outright ban. They are
+gone, replaced by `messageDialog()` in `confirmDialog.js` - the same `#cd-modal` as the yes/no
+dialog with Cancel hidden by a `cd-solo` class, the single button taking focus, and Escape plus
+the backdrop still dismissing. The cost being paid off here was never cosmetic: a native popup is
+a separate OS window, so closing one left the page's focus desynced and a later click into the
+room name field placed no caret.
+
+A modal, **not** the existing non-modal notice pattern. `#scene-undo-toast` and the floor-plan
+notice are deliberately non-modal because they carry good news that can be ignored, and an error
+cannot. One behaviour followed from answering asynchronously: a failed scene load now starts its
+recovery immediately rather than waiting to be dismissed, so walking away from the message cannot
+strand a broken scene on screen.
+
+### The backup export modal and the native restore picker · `REVERTED` — deleted as unreachable (2026-08-08)
+Both were superseded by the scene dropdown, and neither had a caller left. Selecting scenes in the
+dropdown and pressing bulk export calls `doExport` directly, so the modal's checkbox list,
+thumbnails and select-all controls had no way to open; the "+" button noticing a `.zip` calls
+`restoreFromZipPath` directly, so `doRestore`'s file picker was stranded the same way. Deleted:
+`openExportModal`/`closeExportModal`/`updateBemButton` with their parse-time wiring, the
+`#backup-export-*` markup, the `#bem-*` CSS, `doRestore`, and the orphaned `show-open-dialog` IPC
+on both sides of the preload. Export and restore themselves are untouched. **Do not rebuild either
+as a missing feature** - the dropdown is the entry point for both.
+
 ---
 
 ## Storage, packaging and the shell
