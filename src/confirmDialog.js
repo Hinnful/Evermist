@@ -28,10 +28,34 @@ function confirmDialog(opts) {
   _cdOnConfirm = typeof o.onConfirm === 'function' ? o.onConfirm : null;
   _cdOnCancel  = typeof o.onCancel  === 'function' ? o.onCancel  : null;
 
+  _cdRoot.classList.remove('cd-solo');
   _cdRoot.style.display = 'flex';
   // CANCEL takes focus, not confirm. Enter is the reflex key for dismissing things, so
   // the reflex answer must be the one that changes nothing.
   _cdEl('cd-cancel').focus();
+}
+
+// A statement, not a question: one button, no danger colouring. Errors come through here,
+// because a native alert() breaks focus exactly the way a native confirm() does. Escape and
+// the backdrop dismiss it too, so every exit runs onClose.
+//
+// opts: { title, message, buttonLabel, onClose }
+function messageDialog(opts) {
+  const o = opts || {};
+  _cdBuild();
+  _cdEl('cd-title').textContent = o.title   || 'Something went wrong';
+  _cdEl('cd-msg').textContent   = o.message || '';
+  _cdEl('cd-ok').textContent    = o.buttonLabel || 'OK';
+  _cdEl('cd-ok').className      = 'cp-btn cp-btn-outline';
+  // Both slots hold the same handler: with nothing to decline, every way out is the same way out.
+  const fn = typeof o.onClose === 'function' ? o.onClose : null;
+  _cdOnConfirm = _cdOnCancel = fn;
+
+  _cdRoot.classList.add('cd-solo');
+  _cdRoot.style.display = 'flex';
+  // The only button takes focus. Cancel's reasoning — reflex Enter must change nothing —
+  // has nothing to guard against here.
+  _cdEl('cd-ok').focus();
 }
 
 function _cdClose(confirmed) {
@@ -77,5 +101,5 @@ function _cdBuild() {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { confirmDialog };
+  module.exports = { confirmDialog, messageDialog };
 }

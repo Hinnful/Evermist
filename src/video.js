@@ -541,7 +541,11 @@ function loadVideoFromFile(file, onVideoLoaded) {
     video.pause(); video.src = '';
     if (video.parentNode) video.parentNode.removeChild(video);
     cleanupVideo();
-    alert('Failed to load video map.' + (reason ? ' ' + reason : ''));
+    messageDialog({
+      title: 'Animated map would not play',
+      message: 'Evermist could not read this video. WebM and MP4 are the safe choices.'
+             + (reason ? '\n\n' + reason : ''),
+    });
   }
   video.onerror = () => failLoad();
   video.oncanplay = function() {

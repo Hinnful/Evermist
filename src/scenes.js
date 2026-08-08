@@ -50,9 +50,16 @@ function revealPlayer() {
 
 // Called from the switchScene catch block. Shows the error, then reloads the
 // previously-active scene (once only — isRecovery guards against loops).
+// The recovery does NOT wait on the dialog: messageDialog answers asynchronously, so a DM
+// who never dismisses it would otherwise be stranded on a broken scene.
 function onSwitchSceneError(prevId, isRecovery, err) {
-  alert('Could not load this scene.\n\n' + (err && err.message ? err.message : 'The map file may be missing or damaged.'));
-  if (prevId && !isRecovery) {
+  const willRecover = prevId && !isRecovery;
+  messageDialog({
+    title: 'Scene would not load',
+    message: (err && err.message ? err.message : 'The map file is missing or damaged.')
+           + (willRecover ? '\n\nEvermist is going back to the last scene that worked.' : ''),
+  });
+  if (willRecover) {
     setTimeout(() => switchScene(prevId, true).catch(err2 => {
       console.error('Scene recovery also failed:', err2);
       renderSceneManager();

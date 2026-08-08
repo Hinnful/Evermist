@@ -503,8 +503,8 @@ function mtStore(entries, sourceName) {
   try {
     localStorage.setItem(MT_KEY, json);
   } catch (err) {
-    return { ok: false, error: 'Could not save the module text — browser storage is full. ' +
-      'Free some space or import a smaller chapter. (' + (err && err.name ? err.name : 'error') + ')' };
+    return { ok: false, error: 'Browser storage is full, so nothing was saved. Free some space ' +
+      'or import a smaller chapter. (' + (err && err.name ? err.name : 'error') + ')' };
   }
   mtEntries = entries;
   mtSourceName = sourceName;
@@ -865,7 +865,7 @@ function _mtRender() {
   if (mtEntries.length && !_mtShown.length) {
     const none = document.createElement('div');
     none.className = 'rp-mt-none';
-    none.textContent = 'No match — press Enter to keep what you typed';
+    none.textContent = 'No match. Press Enter to keep what you typed';
     list.appendChild(none);
   }
 

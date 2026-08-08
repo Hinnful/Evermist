@@ -9,7 +9,14 @@ function loadMapFromFile(file, onMapLoaded) {
   cleanupVideo();
   const url = URL.createObjectURL(file);
   const img = new Image();
-  img.onerror = () => { URL.revokeObjectURL(url); hideMapProgress(); alert('Failed to load map image.'); };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    hideMapProgress();
+    messageDialog({
+      title: 'Map would not open',
+      message: 'Evermist could not read this image. It may be damaged, or saved in a format the app does not handle.',
+    });
+  };
   img.onload = () => {
     mapWidth  = img.naturalWidth;
     mapHeight = img.naturalHeight;

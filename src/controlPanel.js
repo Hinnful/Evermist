@@ -482,7 +482,9 @@ function refreshPlayerControlUI() {
   const lock = document.getElementById('cp-player-lock');
   if (lock) {
     lock.classList.toggle('active', locked);
-    lock.title = locked ? 'Minimap locked — click to unlock' : 'Lock minimap — prevent accidental nudge';
+    lock.title = locked
+      ? 'Minimap locked. Click to unlock'
+      : "Lock the minimap so a stray drag can't move the view";
   }
   const panel = document.getElementById('minimap-panel');
   if (panel) panel.classList.toggle('minimap-locked', locked);

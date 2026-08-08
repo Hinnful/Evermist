@@ -38,95 +38,9 @@ async function dataURLToArrayBuffer(dataURL) {
   } catch { return null; }
 }
 
-// ── Export modal ──────────────────────────────────────────────────────────────
-
-const _bemThumbURLs = new Map();
-
-function openExportModal() {
-  if (!window.electronAPI) return;
-  const scenes = typeof allScenes !== 'undefined' ? allScenes : [];
-  if (!scenes.length) { alert('No scenes to export.'); return; }
-
-  const list = document.getElementById('bem-list');
-  list.innerHTML = '';
-  _bemThumbURLs.forEach(u => URL.revokeObjectURL(u));
-  _bemThumbURLs.clear();
-
-  scenes.forEach(s => {
-    const row = document.createElement('label');
-    row.className = 'bem-row';
-
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    cb.className = 'bem-cb';
-    cb.value = s.id;
-    cb.checked = true;
-    cb.addEventListener('change', updateBemButton);
-
-    const thumb = document.createElement('img');
-    thumb.className = 'bem-thumb';
-    thumb.alt = '';
-    if (s.thumbnail) {
-      const url = URL.createObjectURL(s.thumbnail);
-      _bemThumbURLs.set(s.id, url);
-      thumb.src = url;
-    }
-
-    const name = document.createElement('span');
-    name.className = 'bem-name';
-    name.textContent = s.name || 'Unnamed';
-
-    row.appendChild(cb);
-    row.appendChild(thumb);
-    row.appendChild(name);
-    list.appendChild(row);
-  });
-
-  updateBemButton();
-
-  document.getElementById('backup-export-backdrop').style.display = '';
-  document.getElementById('backup-export-modal').style.display = '';
-}
-
-function closeExportModal() {
-  _bemThumbURLs.forEach(u => URL.revokeObjectURL(u));
-  _bemThumbURLs.clear();
-  document.getElementById('backup-export-backdrop').style.display = 'none';
-  document.getElementById('backup-export-modal').style.display = 'none';
-}
-
-function updateBemButton() {
-  const n = document.querySelectorAll('#bem-list .bem-cb:checked').length;
-  const btn = document.getElementById('btn-bem-export');
-  if (!btn) return;
-  btn.textContent = `Export ${n} scene${n === 1 ? '' : 's'}`;
-  btn.disabled = n === 0;
-  btn.style.opacity = n === 0 ? '0.5' : '1';
-}
-
-// Wire up static controls once (runs at parse time; DOM elements exist above the scripts)
-if (typeof document !== 'undefined') {
-  document.getElementById('backup-export-backdrop').addEventListener('click', closeExportModal);
-  document.getElementById('btn-bem-close').addEventListener('click', closeExportModal);
-  document.getElementById('btn-bem-cancel').addEventListener('click', closeExportModal);
-  document.getElementById('btn-bem-all').addEventListener('click', () => {
-    document.querySelectorAll('#bem-list .bem-cb').forEach(cb => { cb.checked = true; });
-    updateBemButton();
-  });
-  document.getElementById('btn-bem-none').addEventListener('click', () => {
-    document.querySelectorAll('#bem-list .bem-cb').forEach(cb => { cb.checked = false; });
-    updateBemButton();
-  });
-  document.getElementById('btn-bem-export').addEventListener('click', async () => {
-    const ids = [...document.querySelectorAll('#bem-list .bem-cb:checked')].map(cb => cb.value);
-    if (!ids.length) return;
-    closeExportModal();
-    await doExport(ids);
-  });
-}
-
 // ── Export logic ──────────────────────────────────────────────────────────────
 
+// Scene SELECTION is the scene dropdown's job: it passes the checked ids straight in.
 async function doExport(selectedIds) {
   if (!window.electronAPI) return;
 
@@ -202,7 +116,10 @@ async function doExport(selectedIds) {
   } catch (err) {
     hideMapProgress();
     console.error('Export failed:', err);
-    alert('Export failed: ' + (err.message || err));
+    messageDialog({
+      title: 'Export failed',
+      message: 'The backup file is incomplete, so delete it and try again.\n\n' + (err.message || err),
+    });
   } finally {
     unsubProgress();
   }
@@ -210,20 +127,8 @@ async function doExport(selectedIds) {
 
 // ── Restore logic ─────────────────────────────────────────────────────────────
 
-async function doRestore() {
-  if (!window.electronAPI) return;
-
-  const paths = await window.electronAPI.showOpenDialog({
-    title: 'Restore from Backup',
-    filters: [{ name: 'Evermist Backup', extensions: ['zip'] }],
-    properties: ['openFile'],
-  });
-  if (!paths || !paths.length) return;
-  await restoreFromZipPath(paths[0]);
-}
-
-// Restore straight from a zip path — used by doRestore (native dialog) and by
-// the scene "+" button when the chosen file is a .zip (auto-detected import).
+// Restore straight from a zip path — the scene "+" button's only route in, taken when the
+// chosen file turns out to be a .zip.
 async function restoreFromZipPath(zipPath) {
   if (!window.electronAPI || !zipPath) return;
 
@@ -236,7 +141,10 @@ async function restoreFromZipPath(zipPath) {
     const manifest = await window.electronAPI.readBackupManifest(zipPath);
     if (!Array.isArray(manifest) || !manifest.length) {
       hideMapProgress();
-      alert('Backup is empty or invalid.');
+      messageDialog({
+        title: 'Nothing in this backup',
+        message: 'The file holds no scenes, or it did not come from Evermist.',
+      });
       return;
     }
 
@@ -331,7 +239,10 @@ async function restoreFromZipPath(zipPath) {
   } catch (err) {
     hideMapProgress();
     console.error('Restore failed:', err);
-    alert('Restore failed: ' + (err.message || err));
+    messageDialog({
+      title: 'Restore failed',
+      message: 'Evermist stopped partway through the backup, so some scenes are missing.\n\n' + (err.message || err),
+    });
   } finally {
     unsubProgress();
   }

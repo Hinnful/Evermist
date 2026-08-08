@@ -507,8 +507,8 @@ function refreshRoomPanel() {
   const rfield = _rpEl('rp-radius-field');
   rfield.classList.toggle('rp-per-vertex', perVertex);
   rfield.title = perVertex
-    ? 'Corner radius for the selected vertex — ↑/↓ to step, Shift for 10. Esc deselects it to edit every corner; Del removes it.'
-    : 'Corner radius, every corner — ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.';
+    ? 'Corner radius for the selected corner. ↑/↓ to step, Shift for 10. Esc goes back to every corner, Del removes the vertex.'
+    : 'Corner radius for every corner. ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.';
 
   _rpPositionPanel(panel, poly);
 }
