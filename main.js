@@ -470,7 +470,9 @@ ipcMain.handle('show-save-dialog', async (event, opts) => {
 
 // scenesData: [{id, mapType, mapExt, metadata, mapBuffer (ArrayBuffer|null), fogBuffer, thumbBuffer}]
 // Video maps are read from mapsDir by id; image/fog/thumb come as ArrayBuffers.
-ipcMain.handle('create-backup-zip', async (event, destPath, scenesData) => {
+// moduleText: the renderer's serialised module text, or null — campaign-level, so it lands at the
+// zip root beside manifest.json rather than under scenes/.
+ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText) => {
   // Pre-check which video files actually exist on disk
   for (const s of scenesData) {
     if (s.mapType === 'video') {
@@ -488,6 +490,7 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData) => {
     archive.pipe(out);
 
     archive.append(JSON.stringify(scenesData.map(s => s.metadata), null, 2), { name: 'manifest.json' });
+    if (moduleText) archive.append(moduleText, { name: 'moduleText.json' });
 
     scenesData.forEach((s, idx) => {
       const base = `scenes/${s.id}`;
@@ -528,6 +531,34 @@ ipcMain.handle('read-backup-manifest', async (_event, zipPath) => {
         }
       });
       zipfile.on('end', () => { zipfile.close(); reject(new Error('manifest.json not found in zip')); });
+      zipfile.on('error', reject);
+    });
+  });
+});
+
+// Returns moduleText.json from the zip as a RAW STRING for the renderer to deserialise, or null.
+//
+// Absence RESOLVES NULL rather than rejecting, unlike the manifest above: no module text is the
+// normal case, since it is every zip written before module text shipped.
+ipcMain.handle('read-backup-module-text', async (_event, zipPath) => {
+  return new Promise((resolve, reject) => {
+    yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
+      if (err) return reject(err);
+      zipfile.readEntry();
+      zipfile.on('entry', entry => {
+        if (entry.fileName === 'moduleText.json') {
+          zipfile.openReadStream(entry, (err2, rs) => {
+            if (err2) { zipfile.close(); return reject(err2); }
+            const chunks = [];
+            rs.on('data', c => chunks.push(c));
+            rs.on('end', () => { zipfile.close(); resolve(Buffer.concat(chunks).toString('utf8')); });
+            rs.on('error', e => { zipfile.close(); reject(e); });
+          });
+        } else {
+          zipfile.readEntry();
+        }
+      });
+      zipfile.on('end', () => { zipfile.close(); resolve(null); });
       zipfile.on('error', reject);
     });
   });

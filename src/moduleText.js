@@ -517,6 +517,43 @@ function mtClearStored() {
   mtSourceName = '';
 }
 
+// ─── The backup bridge ────────────────────────────────────────────────────────
+//
+// The book is CAMPAIGN-level, so it rides in the backup zip as one entry at the root, never as
+// per-scene metadata — that would store the whole book once per scene and re-import it N times on
+// restore. These three functions are the whole contract: backup.js never learns the serialised
+// format and never touches MT_KEY.
+
+// Exactly what mtStore() writes, or null when nothing is loaded. An absent entry in the zip is the
+// signal "this backup carries no module text", which is every zip written before this existed.
+function mtBackupPayload() {
+  if (!mtEntries.length) return null;
+  return mtSerialize(mtEntries, mtSourceName);
+}
+
+// What is loaded right now, for a caller that has to ask before replacing it. Null means nothing
+// is loaded, i.e. a restored book can be adopted without asking.
+function mtLoadedSourceName() {
+  return mtEntries.length ? (mtSourceName || 'Module text') : null;
+}
+
+// Adopt a payload read out of a backup. Returns { ok, error } like mtStore, because a full storage
+// quota is a normal outcome and the caller has to say something useful about it.
+//
+// Replace or keep, never merge: two books share no key space, so a merged one would be neither.
+function mtRestorePayload(json) {
+  const got = mtDeserialize(json);
+  if (!got || !got.entries.length) {
+    return { ok: false, error: 'The module text in that backup could not be read.' };
+  }
+  const st = mtStore(got.entries, got.sourceName || 'Module text');
+  if (!st.ok) return st;
+  // The same refresh an import does, so the panel and the name-field dropdown show the new book
+  // without a reload.
+  _mtRenderModal();
+  return { ok: true };
+}
+
 // Names of every room in the CURRENT scene — the input to the placed count. Reads the global
 // `polygons`, so it is the boundary between the pure kernel above and the app.
 function mtCurrentRoomNames() {

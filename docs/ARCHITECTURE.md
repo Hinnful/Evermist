@@ -47,13 +47,13 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `video.js` | Animated (video) map support: file loading, DOM compositing, decoding, the frame loop, the freeze watchdog. |
 | `display.js` | Detecting the Player screen's real size so the fog and map render at the right resolution. |
 | `backup.js` | The export/restore-to-zip feature. |
-| `toolbar.js` | DM-only UI control wiring: toolbar buttons, sliders, fog colour picker, animation presets, scene and backup modals, Player controls, the UI-scale slider. |
+| `toolbar.js` | DM-only UI control wiring: toolbar buttons, sliders, fog colour picker, animation presets, the scene dropdown, Player controls, the UI-scale slider. |
 | `controlPanel.js` | The tabbed Fog/Grid/Player control panel. A presentational layer over the older hidden controls. |
 | `roomPanel.js` | The room card and the room name labels drawn on the DM map. |
 | `moduleText.js` | Importing a published module's text and turning the room name field into a searchable dropdown over it. |
 | `pdfLayout.js` | Turning a PDF's scattered text fragments back into reading order. Pure functions, unit-tested, no dependencies. |
 | `pdfExtract.js` | Runs pdf.js in an isolated child process. No `<script>` tag: this one never loads in the browser. |
-| `confirmDialog.js` | The app's own yes/no dialog. The only sanctioned confirmation, because native `confirm()` breaks the page. |
+| `confirmDialog.js` | The app's own dialogs: a yes/no question, and a one-button message for errors. The only sanctioned pair, because a native `confirm()` or `alert()` breaks the page's focus. |
 | `player.js` | Player-mode runtime: cloud-texture pre-generation, the handshake, the resize listener, the DM message handler, Player pan/zoom. |
 | `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
 | `memProbe.js` | A hidden memory probe: counts what one loaded map costs and writes it to the diagnostics log. Dormant unless the page is opened with `?memprobe=1`. |
