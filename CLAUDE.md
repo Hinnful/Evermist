@@ -135,8 +135,8 @@ to write on `if (confirm(…))` must split into "what happens regardless" and "w
 yes". See `applyModuleEntryToRoom`: it writes the name up front, because the dialog's focus
 change blurs the name field and runs its commit, which must find the new value already there.
 
-⚠️ 8 `alert()` calls still ship (`backup.js`, `scenes.js`, `video.js`, `mapLoader.js`,
-`sceneManager.js`). Sweeping them needs a message-only `confirmDialog` variant.
+`messageDialog` is the same file's one-button variant, for a statement that needs no answer.
+Every error goes through it; no `alert()` ships.
 
 ## Rooms are polygons
 

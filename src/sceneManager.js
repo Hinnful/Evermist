@@ -86,7 +86,10 @@ function initSceneManagerUI() {
         openDropdown();
         restoreFromZipPath(zipPath);
       } else {
-        alert('Importing a .zip backup needs the desktop app.');
+        messageDialog({
+          title: 'Backups need the desktop app',
+          message: 'Restoring a .zip reads it straight off disk, which the browser will not allow. Open Evermist as the app to import this.',
+        });
       }
     } else {
       openDropdown();
@@ -160,7 +163,7 @@ function renderSceneManager() {
 
   list.innerHTML = '';
   if (!allScenes.length) {
-    list.innerHTML = '<div id="sm-empty">No scenes yet — click + to add one</div>';
+    list.innerHTML = '<div id="sm-empty">No scenes yet. Click + to add one</div>';
     return;
   }
   for (const s of allScenes) list.appendChild(buildSceneCard(s));
@@ -299,7 +302,7 @@ async function createNewScene(file) {
     let mapBlob = undefined;
     let mapPath = undefined;
     if (isVid && window.electronAPI) {
-      showMapProgress('Saving video map…');
+      showMapProgress('Saving animated map…');
       const mimeType = file.type || (file.name.endsWith('.mp4') ? 'video/mp4' : 'video/webm');
       try {
         mapPath = await persistVideoMap(file, id, mimeType);
@@ -382,7 +385,7 @@ async function replaceSceneMap(file) {
       if (currentScene.mapPath) {
         window.electronAPI.deleteVideoFile(currentScene.id).catch(() => {});
       }
-      showMapProgress('Saving video map…');
+      showMapProgress('Saving animated map…');
       const mimeType = file.type || (file.name.endsWith('.mp4') ? 'video/mp4' : 'video/webm');
       try {
         currentScene.mapPath = await persistVideoMap(file, currentScene.id, mimeType);
@@ -443,7 +446,7 @@ async function switchScene(id, _isRecovery = false) {
 
   // Lazy migration: move legacy IDB video blob to filesystem on first access
   if (scene.mapType === 'video' && scene.mapBlob && !scene.mapPath && window.electronAPI) {
-    showMapProgress('Migrating video to disk…');
+    showMapProgress('Moving the animated map to disk…');
     const ab = await scene.mapBlob.arrayBuffer();
     if (myGen !== switchGeneration) return;
     const mime = scene.mapBlob.type || 'video/webm';
@@ -461,7 +464,7 @@ async function switchScene(id, _isRecovery = false) {
     if (scene.mapPath && window.electronAPI) {
       const absPath = await window.electronAPI.getVideoFilePath(scene.id);
       if (myGen !== switchGeneration) return;
-      if (!absPath) throw new Error('Video file missing — it may have been moved or deleted.');
+      if (!absPath) throw new Error('The video file is missing. It may have been moved or deleted.');
       mapVideoUrl = 'file:///' + absPath.replace(/\\/g, '/');
     } else if (scene.mapBlob) {
       mapVideoUrl = URL.createObjectURL(scene.mapBlob);

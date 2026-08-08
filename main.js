@@ -468,12 +468,6 @@ ipcMain.handle('show-save-dialog', async (event, opts) => {
   return canceled ? null : filePath;
 });
 
-ipcMain.handle('show-open-dialog', async (event, opts) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  const { canceled, filePaths } = await dialog.showOpenDialog(win, opts || {});
-  return canceled ? null : filePaths;
-});
-
 // scenesData: [{id, mapType, mapExt, metadata, mapBuffer (ArrayBuffer|null), fogBuffer, thumbBuffer}]
 // Video maps are read from mapsDir by id; image/fog/thumb come as ArrayBuffers.
 ipcMain.handle('create-backup-zip', async (event, destPath, scenesData) => {
