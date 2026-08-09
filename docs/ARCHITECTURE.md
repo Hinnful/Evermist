@@ -25,8 +25,8 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 
 | File | What it does |
 |------|--------------|
-| `index.html` | The entry point and page markup, and nothing else. The JavaScript here is just wiring: grab the canvases, start PixiJS, call each module's `init`, connect the lifecycle events. The styling is eight `<link>` tags. It was once a ~2400-line script plus a ~1370-line stylesheet, and a guard hook keeps either from creeping back. |
-| `src/css/*.css` | All of the app's styling, split by the part of the screen it dresses: `base.css` (page reset, floating-panel shell, canvas layers, player mode), then `controlPanel.css`, `toolbar.css`, `roomCard.css`, `playerPane.css`, `legend.css`, `sceneManager.css`, `overlays.css`. They load in that order and it matters, because CSS is one shared cascade. |
+| `index.html` | The entry point and page markup, and nothing else. The JavaScript here is just wiring: grab the canvases, start PixiJS, call each module's `init`, connect the lifecycle events. The styling is nine `<link>` tags. It was once a ~2400-line script plus a ~1370-line stylesheet, and a guard hook keeps either from creeping back. |
+| `src/css/*.css` | All of the app's styling, split by the part of the screen it dresses: `base.css` (page reset, floating-panel shell, canvas layers, player mode), then `controlPanel.css`, `toolbar.css`, `roomCard.css`, `playerPane.css`, `legend.css`, `sceneManager.css`, `about.css`, `overlays.css`. They load in that order and it matters, because CSS is one shared cascade. |
 | `renderer.js` | The PixiJS/WebGL wrapper. The GPU drawing path for the map and the DM's fog. |
 | `render.js` | The render loop. Each frame it decides which layers actually changed and redraws only those, keeps the canvases sized to the window, and paints the cursor and polygon-selection overlay. |
 | `state.js` | Shared values that several files need. Loaded first so they exist before anything reads them. |
@@ -54,10 +54,11 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `pdfLayout.js` | Turning a PDF's scattered text fragments back into reading order. Pure functions, unit-tested, no dependencies. |
 | `pdfExtract.js` | Runs pdf.js in an isolated child process. No `<script>` tag: this one never loads in the browser. |
 | `confirmDialog.js` | The app's own dialogs: a yes/no question, and a one-button message for errors. The only sanctioned pair, because a native `confirm()` or `alert()` breaks the page's focus. |
+| `about.js` | The About box: the app mark, the tagline, the version number and the repo address. Builds its own markup rather than adding any to `index.html`, and opens from a button next to the shortcut legend. DM only. |
 | `player.js` | Player-mode runtime: cloud-texture pre-generation, the handshake, the resize listener, the DM message handler, Player pan/zoom. |
 | `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
 | `memProbe.js` | A hidden memory probe: counts what one loaded map costs and writes it to the diagnostics log. Dormant unless the page is opened with `?memprobe=1`. |
-| `main.js` / `preload.js` | The Electron shell. Creates the windows, saves video files to disk, reads and writes backup zips, forks the PDF parser, finds a map's floor plan. |
+| `main.js` / `preload.js` | The Electron shell. Creates the windows, saves video files to disk, reads and writes backup zips, forks the PDF parser, finds a map's floor plan, and reports the app's own version number. |
 
 ## How the fog works
 

@@ -24,11 +24,14 @@ describe('normalizeDisplayRecord — scaleFactor', () => {
     const result = normalizeDisplayRecord({ workAreaSize: { width: 1920, height: 1080 }, scaleFactor: null });
     assert.equal(result.scaleFactor, 1);
   });
-  // KNOWN GAP: NaN is typeof 'number' so it passes the guard and flows through as-is.
-  // Fix requires adding isFinite() check — deferred to a version-bump session.
-  test('NaN scaleFactor passes through (current behavior — known gap)', () => {
+  // NaN and Infinity are both typeof 'number', so the guard is isFinite, not typeof.
+  test('NaN scaleFactor falls back to 1', () => {
     const result = normalizeDisplayRecord({ workAreaSize: { width: 1920, height: 1080 }, scaleFactor: NaN });
-    assert.ok(Number.isNaN(result.scaleFactor), 'expected NaN to pass through');
+    assert.equal(result.scaleFactor, 1);
+  });
+  test('Infinite scaleFactor falls back to 1', () => {
+    const result = normalizeDisplayRecord({ workAreaSize: { width: 1920, height: 1080 }, scaleFactor: Infinity });
+    assert.equal(result.scaleFactor, 1);
   });
 });
 

@@ -500,6 +500,19 @@ function refreshPlayerControlUI() {
   // Go-live button — the blue outline + fill is the whole live indicator, and the label
   // swaps to Close so the toggle is discoverable. No dot: the fill already says it.
   const live = typeof playerWindow !== 'undefined' && !!playerWindow && !playerWindow.closed;
+
+  // Fullscreen — a toggle, so it wears the on/off box like the others. The state comes from
+  // the Player relaying what main.js reports; a closed Player is never fullscreen, whatever
+  // the last report said.
+  const fullscreen = live && typeof playerIsFullscreen !== 'undefined' && playerIsFullscreen;
+  const fs = document.getElementById('cp-player-fullscreen');
+  if (fs) {
+    fs.classList.toggle('active', fullscreen);
+    fs.title = fullscreen
+      ? 'Player window is fullscreen. Click to leave'
+      : 'Fullscreen the Player window';
+  }
+
   const go = document.getElementById('cp-player-golive');
   if (go) {
     go.classList.toggle('live', live);

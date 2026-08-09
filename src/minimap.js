@@ -29,6 +29,11 @@ let _canvas  = null;
 let _ctx     = null;
 let _inited  = false;
 
+// Scratch canvas for the fog composite, reused across redraws — allocating one per frame
+// churned a canvas on every minimap repaint. Resized only when the preview's size changes.
+let _mmFogScratch    = null;
+let _mmFogScratchCtx = null;
+
 // Pointer drag tracking
 let _isDragging    = false;
 let _dragPointerId = null;
@@ -185,11 +190,23 @@ function drawMinimap() {
     const fSrcW = side / FOG_SCALE;
     const fSrcH = side / FOG_SCALE;
 
-    // Draw the blur mask into an offscreen scratch so we can composite.
-    const scratch = document.createElement('canvas');
-    scratch.width  = mW;
-    scratch.height = mH;
-    const sc = scratch.getContext('2d');
+    // Draw the blur mask into the reused offscreen scratch so we can composite.
+    if (!_mmFogScratch) {
+      _mmFogScratch = document.createElement('canvas');
+    }
+    if (_mmFogScratch.width !== mW || _mmFogScratch.height !== mH) {
+      _mmFogScratch.width  = mW;
+      _mmFogScratch.height = mH;
+      _mmFogScratchCtx = null; // a resize resets the context state anyway
+    }
+    if (!_mmFogScratchCtx) _mmFogScratchCtx = _mmFogScratch.getContext('2d');
+    const sc = _mmFogScratchCtx;
+    // MUST reset on EVERY reuse, not just after a resize: this function exits with
+    // source-atop + alpha 0.35 still set, and the steady state is no resize — so without
+    // this the next frame's mask draw would land tinted and clipped over the last one.
+    sc.globalCompositeOperation = 'source-over';
+    sc.globalAlpha = 1;
+    sc.clearRect(0, 0, mW, mH);
     sc.filter = 'blur(3px)';
     sc.drawImage(fogBlurCanvas, fSrcX, fSrcY, fSrcW, fSrcH, 0, 0, mW, mH);
     sc.filter = 'none';
@@ -198,20 +215,19 @@ function drawMinimap() {
     _ctx.save();
     _ctx.globalAlpha = 0.92;
     // First: paint fog base color clipped to the blurred mask shape.
-    const sc2 = scratch.getContext('2d');
-    sc2.globalCompositeOperation = 'source-in';
-    sc2.fillStyle = fogBaseColor;
-    sc2.fillRect(0, 0, mW, mH);
+    sc.globalCompositeOperation = 'source-in';
+    sc.fillStyle = fogBaseColor;
+    sc.fillRect(0, 0, mW, mH);
     // Tint pass, also clipped to the mask. MUST be source-atop, not source-over: a
     // full-canvas fillRect with source-over ignores the mask and washes fogTintColor
     // over the whole preview, veiling revealed map (a pure-white map rendered as
     // (209,199,245) with zero fog painted). source-atop keeps the mask's alpha.
-    sc2.globalCompositeOperation = 'source-atop';
-    sc2.globalAlpha = 0.35;
-    sc2.fillStyle = fogTintColor;
-    sc2.fillRect(0, 0, mW, mH);
+    sc.globalCompositeOperation = 'source-atop';
+    sc.globalAlpha = 0.35;
+    sc.fillStyle = fogTintColor;
+    sc.fillRect(0, 0, mW, mH);
 
-    _ctx.drawImage(scratch, 0, 0);
+    _ctx.drawImage(_mmFogScratch, 0, 0);
     _ctx.restore();
   }
 

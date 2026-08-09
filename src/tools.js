@@ -530,11 +530,14 @@ function toolMouseMove(pos, e, screenX, screenY) {
   }
 }
 
+// Every drag release below starts a fog transition WITHOUT stopping the running one first.
+// stopFogTransition() ends a crossfade by jumping it to its finished state, so releasing a
+// second drag while the first was still fading snapped the fog. startFogTransition() already
+// handles the overlap: it leaves the live fade running and rebuildFogEffect() re-targets it.
 function toolMouseUp(pos, e) {
   if (isDraggingVertex) {
     isDraggingVertex = false;
     vertexDragOrigVerts = null;
-    stopFogTransition();
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
@@ -547,7 +550,6 @@ function toolMouseUp(pos, e) {
   if (isDraggingEdge) {
     isDraggingEdge = false;
     edgeDragOrigVerts = null;
-    stopFogTransition();
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
@@ -561,7 +563,6 @@ function toolMouseUp(pos, e) {
     isDraggingPolygon = false;
     dragOrigVerts = null;
     if (polygonActuallyMoved) {
-      stopFogTransition();
       startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
       rebuildFogEffect();
       fogDirty = true;
@@ -638,11 +639,12 @@ function toolMouseUp(pos, e) {
   scheduleRender();
 }
 
+// Catches a drag released outside the canvas. Same three releases as toolMouseUp, and the
+// same rule about not stopping a running transition first.
 function toolWindowMouseUp() {
   if (isDraggingVertex) {
     isDraggingVertex = false;
     vertexDragOrigVerts = null;
-    stopFogTransition();
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
@@ -653,7 +655,6 @@ function toolWindowMouseUp() {
   if (isDraggingEdge) {
     isDraggingEdge = false;
     edgeDragOrigVerts = null;
-    stopFogTransition();
     startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
     rebuildFogEffect();
     fogDirty = true;
@@ -665,7 +666,6 @@ function toolWindowMouseUp() {
     isDraggingPolygon = false;
     dragOrigVerts = null;
     if (polygonActuallyMoved) {
-      stopFogTransition();
       startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
       rebuildFogEffect();
       fogDirty = true;

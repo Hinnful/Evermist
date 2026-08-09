@@ -120,6 +120,11 @@ function createDMWindow() {
     setTimeout(() => {
       win.show();
       if (!splash.isDestroyed()) splash.destroy();
+      // The splash is alwaysOnTop and owns the OS focus right up to its destruction, so
+      // show() alone can leave the app visible but not focused — the first click is spent
+      // activating the window and every key before it goes nowhere. Claim focus once the
+      // splash is gone and nothing is left to compete for it.
+      win.focus();
     }, wait);
   };
   win.once('ready-to-show', handOff);
@@ -154,8 +159,25 @@ function createDMWindow() {
     });
     childWin.on('minimize', () => childWin.webContents.send('window-visibility', { visible: false }));
     childWin.on('restore',  () => childWin.webContents.send('window-visibility', { visible: true  }));
-    // Push once the renderer is ready to receive IPC messages.
-    childWin.webContents.once('did-finish-load', () => pushPlayerDisplay());
+    // Fullscreen here is NATIVE window fullscreen, so the renderer sees no
+    // fullscreenchange and document.fullscreenElement stays null — the state only exists
+    // in this process. Report it, or the DM's fullscreen button can never show whether it
+    // is on. Sent on load too, so the DM starts with the true value rather than a guess.
+    // TAKE THE STATE FROM THE EVENT, NEVER FROM isFullScreen() INSIDE THE HANDLER. On
+    // Windows the flag still holds the OLD value while the event runs, so reading it there
+    // reports every change backwards — the button lights up exactly when it shouldn't.
+    const sendFullScreenState = (fullScreen) => {
+      if (childWin.isDestroyed()) return;
+      childWin.webContents.send('fullscreen-state', { fullScreen });
+    };
+    childWin.on('enter-full-screen', () => sendFullScreenState(true));
+    childWin.on('leave-full-screen', () => sendFullScreenState(false));
+    // Push once the renderer is ready to receive IPC messages. Reading the flag IS correct
+    // here: no transition is in flight, so it holds the settled value.
+    childWin.webContents.once('did-finish-load', () => {
+      pushPlayerDisplay();
+      sendFullScreenState(childWin.isFullScreen());
+    });
     // Re-push when the Player window is moved (debounced — fires after drag settles).
     childWin.on('move', () => {
       clearTimeout(_playerMovedTimer);

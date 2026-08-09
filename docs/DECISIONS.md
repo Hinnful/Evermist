@@ -137,6 +137,34 @@ pasted on however it is styled, and a name on the TV also forces map names to be
 spoilers. The name is no longer sent to the Player at all. If it ever returns, it needs its own
 moment rather than a layer over the fog.
 
+### Every drawing preview reads `POLY_EDGE_COLORS` · `SETTLED` (2026-08-09)
+1.7.7 gave the polygon tool the shared outline table but left `drawCursor` colouring the brush,
+rectangle and circle from its own list, so a rectangle dragged in Shroud previewed blue and
+snapped to purple on release - the same hue-jump that table was created to end. All four tools
+now read the table, as does the polygon's rubber-band segment to the cursor (mode colour at
+0.6 alpha, so an un-placed edge still reads as provisional), and the close-target halo now uses
+`POLY_EDGE_SELECTED` instead of a second, slightly different gold. **The brush and circle centre
+dots stay white deliberately** - they mark where the stroke lands rather than outlining a room,
+so they have to hold against every map. The rule this generalises: anything that previews a room
+takes the room's colour; anything that marks a position does not.
+
+### The About box shows the repo as text, not a link · `SETTLED` (2026-08-09)
+The app gained an About box in 1.7.8 (`src/about.js`, opened from a button beside the shortcut
+legend, absent from the Player view because its whole row is). It shows the mark, the wordmark,
+the tagline, the version and the repo address. **The repo is plain text on purpose:** opening a
+URL from Electron needs `shell.openExternal` and another IPC channel, and a link that looks
+clickable and does nothing is worse than no link. **The version must never be a literal** - it
+arrives from `app.getVersion()` over an `app-version` IPC, so it cannot go stale at the next
+bump; served from a plain browser with no `electronAPI`, the line hides itself rather than
+printing a placeholder. The box builds its own markup at init, because `index.html`'s inline
+script is under a shrink-only guard and is wiring only.
+
+### The splash tagline names prep, not fog · `SETTLED` (2026-08-09)
+"FOG OF WAR FOR THE TABLETOP" described the old positioning and became wrong once the app's
+pitch moved to prep. It now reads "PREPARE LESS, PLAY BETTER". This is the same reframe the
+README rewrite carries, so the two must not drift: the app is a prep tool that also runs
+beautiful maps, and the splash is the first place that claim is made.
+
 ### Video loop seam · `WON'T FIX`
 The seam is in the source Dungeon Alchemist export (last frame ≠ first frame); the app just
 plays the file. Every in-app fix (double-buffer crossfade, freeze-bridge) either doubles
@@ -199,7 +227,7 @@ alone and 16.6 GB for both windows), and **two independent video decoders**, whi
 ordinary 4320×2592 map are ~92% of the total. The PixiJS RenderTexture pool measured empty
 in every sample.
 
-### Coverage is per-view: the Player gets less zoom headroom than the DM · `UNDECIDED`
+### Coverage is per-view: the Player gets less zoom headroom than the DM · `SETTLED` (2026-08-09)
 `PLAYER_COVERAGE_FACTOR = 2` against the DM's 3 (`video.js`). Coverage is zoom headroom, and
 area scales with its square, so the Player's texture — and on animated maps its per-frame
 GPU upload — more than halves on an oversized map: 204 MB → 91 MB on the 12900 map, 459 MB →
@@ -207,10 +235,10 @@ GPU upload — more than halves on an oversized map: 204 MB → 91 MB on the 129
 Player's screen keeps every source pixel and nothing about an ordinary map changes; verified
 byte-identical on a 4320×2592 map before and after.
 
-**Awaiting a verdict at the table.** The cost is that the Player softens past 2× fit-to-screen
-zoom instead of 3×, and zooming into the Player view does happen. On an ordinary map the
-change saves nothing measurable, so if the softening is visible the trade is not worth it and
-the constant goes back to 3.
+**Confirmed at the table, 2026-08-09: the softening is not visible.** The cost of the change
+was that the Player softens past 2× fit-to-screen zoom instead of 3×, and zooming into the
+Player view does happen; two table sessions on the shipped value found nothing to see. The
+constant stays at 2 and the question is closed.
 
 ### Sizing the DM's map texture off the DM's own window · `REJECTED`
 Proposed on the grounds that the DM inherits the Player's display record and so carries a
@@ -665,9 +693,14 @@ permanent, not temporary. Fallback if it ever recurs: throttle the Player's per-
 
 ### The ~30s jitter · `SETTLED`
 Root cause was Chromium's `BackgroundVideoTrackOptimization` dropping tracks on "occluded"
-muted loops. The `disable-features` switch above is the fix. **Unverified across the
-Chromium 120 → 150 bump**: if the feature was renamed the switch silently becomes a no-op and
-looping videos freeze again with no error, which a general smoke test would not catch.
+muted loops. The `disable-features` switch above is the fix.
+
+**The "unverified across the Chromium 120 → 150 bump" worry is retired, 2026-08-09.** It held
+that a renamed feature would silently turn the switch into a no-op, and it carried a soak test
+to prove otherwise. Two full table sessions after the bump ran clean, so the switch is doing its
+job. The related rs=2 stall is **not a version regression either** - it occurred on 120, occurs
+on 140, and occurs in between, so any future freeze is new evidence rather than this cause
+recurring, and should be diagnosed from scratch.
 
 ### The Player's map texture is viewport-sized · `SETTLED` (2026-08-07)
 The Player's animated-map texture was the size of the display-scaled map and was re-uploaded

@@ -67,19 +67,11 @@
   .tb-seg-modes { margin-left: 3px; }
   /* .tb-seg-snap is gone — snap to grid moved out of the pill and became a .tb-toggle. */
 
-  /* Hairline separating the fog-mode pill from the independent switches after it. */
-  .tb-div {
-    width: 1px;
-    height: 22px;
-    margin: 0 2px;
-    background: rgba(255, 255, 255, 0.075);
-    flex-shrink: 0;
-  }
-
   /* Independent on/off switches — snap to grid, straighten walls. Each is unrelated to the
      other, so they sit bare on the bar rather than in a pill. On = the outlined blue box,
      the toolbar's one "this is live" signal. The tool row borrows the same box for the
-     current tool; position and the hairline are what keep the two readings apart. */
+     current tool; the gap between the groups is what keeps the two readings apart — a
+     hairline sat there and read as a scratch on the real monitor. */
   .tb-toggle {
     width: 30px;
     height: 30px;
@@ -95,6 +87,9 @@
     padding: 0;
     flex-shrink: 0;
   }
+  /* The switches keep the wider gap the deleted hairline used to occupy, so they still read
+     as their own group rather than as more of the fog pill. */
+  #btn-snap { margin-left: 12px; }
   .tb-toggle:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
   .tb-toggle.active {
     border-color: rgba(90, 140, 235, 0.6);
