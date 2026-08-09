@@ -401,6 +401,11 @@ function initToolbar() {
       }
       return;
     }
+    if (msg.type === 'PLAYER_FULLSCREEN') {
+      playerIsFullscreen = !!msg.fullScreen;
+      if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
+      return;
+    }
     if (msg.type === 'PLAYER_VIEW') {
       minimapSyncFromPlayer(msg);
     }

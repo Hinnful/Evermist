@@ -175,9 +175,9 @@ Every error goes through it; no `alert()` ships.
 
 ## Guard hooks
 
-Four fail-open hooks in `.claude/settings.json`; baselines beside them in `.claude/hooks/`.
-`guard-blob.js` (`index.html`), `guard-claudemd.js` (this file) and `guard-decisions.js`
-(`docs/DECISIONS.md`) are `PostToolUse` size guards that explain their own fix when they
+Five fail-open hooks in `.claude/settings.json`; baselines beside them in `.claude/hooks/`.
+`guard-blob.js` (`index.html`), `guard-claudemd.js` (this file), `guard-decisions.js` and
+`guard-backlog.js` are `PostToolUse` guards that explain their own fix when they
 fire. `PreToolUse` `guard-skill-hint.js` names the skill that owns a file you edit.
 
 ## Conventions

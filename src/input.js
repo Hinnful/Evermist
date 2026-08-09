@@ -43,6 +43,14 @@ function toggleLegend() {
 function initInput() {
   if (!isPlayer) {
     container.addEventListener('mousedown', (e) => {
+      // Hand focus back to the map. The canvas is not focusable, so a click on it does not
+      // blur anything by itself: after typing in the room card that field keeps focus for
+      // the rest of the session, and every later Ctrl+Z goes to its text history instead of
+      // the fog. The field's own blur commit is what we want here anyway.
+      const focused = document.activeElement;
+      if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) {
+        focused.blur();
+      }
       if (!mapOffscreen) return;
       if (e.button === 1 || (e.button === 0 && e.altKey)) {
         isPanning = true;

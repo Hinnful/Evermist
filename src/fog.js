@@ -611,6 +611,11 @@ const FOG_ANIM_VIDEO_INTERVAL = 66; // ~15fps fog updates when video is active
 // canvas every tick paints a picture indistinguishable from the last one. Tunable:
 // raise the rate (lower the number) if the morph ever reads as steppy.
 const FOG_CLOUD_BLEND_INTERVAL = 100; // ms → ~10Hz
+// Stall clamp for the morph step. MUST stay above the longest ordinary gap between
+// rebuilds, or it silently slows the morph instead of only catching stalls: with video
+// active the 66ms frame throttle pushes the next eligible tick past 100ms, so a clamp at
+// the interval itself would dock every single step.
+const FOG_CLOUD_BLEND_MAX_STEP = 0.25; // seconds
 let cloudBlendNext   = 0;
 let cloudBlendLastTs = 0;
 
@@ -638,20 +643,20 @@ function fogAnimTick(ts) {
     if (!skipExpensiveWork) {
       if (videoEnabled) fogAnimThrottleNext = ts + FOG_ANIM_VIDEO_INTERVAL;
 
-      // Composition with the video throttle above: when video is active that gate
-      // already governs, and its per-tick dt is what makes the morph run slow there.
-      // That slow morph is today's on-screen behaviour, so the video path keeps its
-      // timing untouched and this gate applies only when no video is playing —
-      // preserving appearance outranks making the two gates uniform.
-      const rebuildBlend = videoEnabled || shouldRebuildCloudBlend(ts, cloudBlendNext);
+      // One gate and one clock for both paths. The video throttle above only decides
+      // WHICH ticks get here; how far the morph advances comes from the real elapsed
+      // time below, so the clouds morph at the same rate on an animated map as on a
+      // still one. Feeding this the per-tick dt instead is what used to make the morph
+      // crawl whenever the video throttle skipped ticks.
+      const rebuildBlend = shouldRebuildCloudBlend(ts, cloudBlendNext);
       // Set only where the blend canvas is actually repainted, so the DM's GPU upload
       // below can be skipped on the ticks that changed nothing.
       let blendChanged = false;
 
       if (rebuildBlend && cloudFrames.length > 1 && cloudBlendCtx) {
-        // Advance by real elapsed time so a 10Hz rebuild morphs at exactly the rate
-        // an every-tick rebuild did. During video, keep the per-tick dt (see above).
-        const morphSec = videoEnabled ? dt : cloudBlendElapsedSec(ts, cloudBlendLastTs, 0.1);
+        // Advance by real elapsed time so a throttled rebuild morphs at exactly the rate
+        // an every-tick rebuild did, whatever the throttle is.
+        const morphSec = cloudBlendElapsedSec(ts, cloudBlendLastTs, FOG_CLOUD_BLEND_MAX_STEP);
         cloudBlendLastTs = ts;
         cloudBlendNext   = ts + FOG_CLOUD_BLEND_INTERVAL;
         cloudFramePos += morphSec * fogAnimSpeed * cloudFrameSpeed;

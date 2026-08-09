@@ -24,6 +24,17 @@ function initPlayer() {
 
   initPlayerMapRetry(); // viewport.js: send need-map to DM, retry until map received
 
+  // Relay this window's fullscreen state to the DM. It is native window fullscreen, driven
+  // from main.js, so this window has nothing to read it from either — main pushes it here.
+  if (window.electronAPI && window.electronAPI.onFullscreenState) {
+    window.electronAPI.onFullscreenState((data) => {
+      if (!window.opener) return;
+      window.opener.postMessage({
+        type: 'PLAYER_FULLSCREEN', fullScreen: !!(data && data.fullScreen),
+      }, '*');
+    });
+  }
+
   window.addEventListener('resize', () => {
     syncSize();
     if (window.opener) window.opener.postMessage({

@@ -170,6 +170,10 @@ let playerMapTexCtx    = null;
 let playerScreenW = 1920;
 let playerScreenH = 1080;
 
+// Whether the Player window is natively fullscreen. Reported by the Player, which gets it
+// from main.js — native fullscreen fires no DOM event, so nothing else can tell.
+let playerIsFullscreen = false;
+
 // ─── Minimap state ───────────────────────────────────────────────────────────
 // minimapView IS the intended Player camera: seeded on map load, updated by drag on the
 // minimap, by Sync View, and by Player freelook reports.

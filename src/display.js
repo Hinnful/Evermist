@@ -14,7 +14,9 @@ function normalizeDisplayRecord(raw) {
   return {
     w:           src.width  || 0,
     h:           src.height || 0,
-    scaleFactor: (raw && typeof raw.scaleFactor === 'number') ? raw.scaleFactor : 1,
+    // isFinite, not typeof: NaN and Infinity are both numbers, and either one reaches the
+    // readout and the re-texture comparison as a value nothing can recover from.
+    scaleFactor: (raw && Number.isFinite(raw.scaleFactor)) ? raw.scaleFactor : 1,
   };
 }
 
