@@ -1,0 +1,83 @@
+/* about.css — the About box and the button that opens it. */
+  /* ===== ABOUT BOX ===== */
+  /* Same floating-panel surface as #shortcut-legend and #sidebar-right: flat #1a1a1c,
+     hairline border, 12px radius, same drop shadow. The mark carries the purple; the box
+     around it does not, or the app would have two panel surfaces. */
+  #about-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 300;
+    padding: 28px 34px 22px;
+    min-width: 260px;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #1a1a1c;
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    border-radius: 12px;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.36);
+    text-align: center;
+  }
+  #about-panel .about-mark {
+    width: 96px;
+    height: 96px;
+    filter: drop-shadow(0 6px 22px rgba(110, 80, 200, 0.35));
+  }
+  /* The splash's letter-spacing, scaled down. The trailing space the tracking adds after the
+     last letter is paid back with margin-left, so the wordmark stays optically centred. */
+  #about-panel .about-wordmark {
+    margin-top: 14px;
+    margin-left: 0.36em;
+    font: 300 22px/1 system-ui, -apple-system, sans-serif;
+    letter-spacing: 0.36em;
+    color: #e6e7e9;
+  }
+  #about-panel .about-tagline {
+    margin-top: 8px;
+    font: 400 11px/1 system-ui, -apple-system, sans-serif;
+    letter-spacing: 0.12em;
+    color: #7f858e;
+  }
+  /* A version is a value, so it takes the same numeric stack every number in the app sits in. */
+  #about-panel .about-version {
+    margin-top: 18px;
+    font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+    color: #d5d8dd;
+  }
+  /* Plain text, deliberately not a link: opening a URL from Electron needs another IPC, and
+     a link that does nothing is worse than no link. */
+  #about-panel .about-repo {
+    margin-top: 6px;
+    font: 400 11px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
+    color: #7f858e;
+    user-select: text;
+  }
+  #about-panel .about-hint {
+    margin-top: 16px;
+    font: 400 11px/1 system-ui, -apple-system, sans-serif;
+    color: #6b7079;
+  }
+  #about-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 299;
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  /* The bare 22px icon button #btn-legend already is, so the two entry points in
+     #ui-scale-row read as one pair rather than a button and a decoration. */
+  #btn-about {
+    width: 22px; height: 22px;
+    flex-shrink: 0; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: none; border-radius: 6px;
+    background: transparent;
+    color: #9aa0aa;
+    font: 600 12px/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+  }
+  #btn-about:hover { background: rgba(255, 255, 255, 0.05); color: #d5d8dd; }

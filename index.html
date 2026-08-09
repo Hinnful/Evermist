@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="src/css/playerPane.css">
 <link rel="stylesheet" href="src/css/legend.css">
 <link rel="stylesheet" href="src/css/sceneManager.css">
+<link rel="stylesheet" href="src/css/about.css">
 <link rel="stylesheet" href="src/css/overlays.css">
 </head>
 <body>
@@ -390,6 +391,7 @@
 <!-- UI SCALE CONTROL — outside sidebar so it isn't affected by the zoom it controls -->
 <div id="ui-scale-row">
   <button id="btn-legend" title="Keyboard shortcuts (?)">?</button>
+  <button id="btn-about" title="About Evermist">i</button>
   <span>⚙ Scale</span>
   <input type="range" id="ui-scale" min="75" max="175" value="120" title="UI scale">
 </div>
@@ -684,6 +686,7 @@
 <script src="src/floorPlan.js"></script>
 <script src="src/moduleText.js"></script>
 <script src="src/roomPanel.js"></script>
+<script src="src/about.js"></script>
 <script>
 'use strict';
 
@@ -769,6 +772,7 @@ if (isPlayer) initPlayer();
 
 // Mouse events, keyboard shortcuts, shape helpers, and legend → input.js.
 initInput();
+if (!isPlayer) initAbout();   // About box (mark, version, repo) → about.js, builds its own DOM
 
 window.addEventListener('resize', () => {
   syncSize();

@@ -94,7 +94,17 @@ The fog is the heart of the app, so it's worth understanding.
    room lands on the Half density whatever was there before, so marking a room the party
    has already walked through does dim it back down.
 
-7. **The two windows draw fog differently, and that's on purpose.** The DM's fog is drawn
+7. **The fog is also what covers a scene switch.** Changing scenes on the TV isn't a screen
+   fading to black and back. The fog closes over the map the party is looking at, holds while
+   the next map loads, then clears off the new one - about seven seconds end to end. While it
+   is fully closed nothing is revealed at all, which is what lets the map underneath change
+   size, shape and camera without anything showing. Two things ride the closing half so they
+   never happen in open view: the new scene's fog colour, which crosses while the fog thickens,
+   and the cloud texture, which holds its size and position across the swap instead of
+   resizing to the new map. Nothing is written on screen during a switch - the scene's name was
+   shown there for a while and was taken back out.
+
+8. **The two windows draw fog differently, and that's on purpose.** The DM's fog is drawn
    on the GPU with PixiJS. The **Player's fog is drawn on top of the map with the regular
    2D canvas.** When the Player's fog was done on the GPU, a faint seam appeared at the
    edge of animated maps. Drawing one continuous layer over the whole window makes the seam

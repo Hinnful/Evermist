@@ -38,8 +38,8 @@ war. No backend, no VTT features (tokens, initiative). Map + fog + grid + two sc
 
 - A new `.js` in `src/` or `.css` in `src/css/` ships automatically. Anything else needs its
   own entry.
-- A runtime npm dependency also needs per-package include/exclude rules (see pdfjs-dist),
-  and anything loaded as ESM needs `asarUnpack` too.
+- A runtime npm dependency needs per-package include/exclude rules (see pdfjs-dist); ESM
+  also needs `asarUnpack`.
 - **This whole class of bug is invisible to `npm start`, and the packaged app fails
   silently** (a missing stylesheet just renders unstyled). Verify with
   `npx electron-builder --win --dir` and run the real `.exe`.
@@ -51,8 +51,8 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 - **Never add feature logic to the inline `<script>` in `index.html`.** It is wiring and
   init only: DOM/canvas refs, PixiJS init, module `init` calls, lifecycle listeners. A new
   concern gets a new `.js` file in `src/`.
-- **Migrate-on-touch.** If you modify a concern that still lives in the blob, extract *that
-  concern only* into its own module first, then build the new behavior there.
+- **Migrate-on-touch.** Modifying a concern still in the blob? Extract *that concern only*
+  into its own module first, then build the new behavior there.
 - **Shared mutable state has one home: `state.js`.** Move a piece there when a feature
   touches it. Grow it lazily; never move all globals at once.
 - **No big-bang refactors.** The blob shrinks as a byproduct of feature work. If a task is
@@ -89,6 +89,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `pdfLayout.js` | Pure PDF reading-order kernel. Unit-tested, dependency-free |
 | `pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `confirmDialog.js` | The app's only sanctioned confirmation dialog |
+| `about.js` | The About box: mark, version, repo |
 | `floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
 | `player.js` | Player-mode runtime |
 | `stress.js` | `?stress=1` harness |
@@ -103,15 +104,15 @@ lib/pixi.min.js → renderer.js → state.js → display.js → video.js → fog
 vttPlan.js → fog.js → tools.js → mapLoader.js → undo.js → sceneStore.js → scenes.js →
 sceneManager.js → viewport.js → backup.js → grid.js → toolbar.js → player.js → input.js →
 stress.js → memProbe.js → render.js → minimap.js → controlPanel.js → confirmDialog.js →
-floorPlan.js → moduleText.js → roomPanel.js → inline <script> (last)
+floorPlan.js → moduleText.js → roomPanel.js → about.js → inline <script> (last)
 ```
 
 ### Repo layout
 
 Browser modules in `src/`, stylesheets in `src/css/`. The Electron shell (`main.js`,
 `preload.js`), both HTML entry points, and `package.json` stay at the repo root. Docs in
-`docs/`; project settings, hooks and skills in `.claude/`, skills as
-`.claude/skills/<slug>/SKILL.md`. `tools/` is outside the build glob and must stay that way.
+`docs/`; settings, hooks and skills in `.claude/`, skills as `.claude/skills/<slug>/SKILL.md`.
+`tools/` is outside the build glob and must stay that way.
 
 ### Rules kept outside this file
 
@@ -125,15 +126,13 @@ Browser modules in `src/`, stylesheets in `src/css/`. The Electron shell (`main.
 ## Dialogs
 
 **NEVER call `confirm()` or `alert()`. Use `confirmDialog` (`confirmDialog.js`).** A native
-dialog is a separate OS window, and closing one leaves the page's focus desynced: the field
-that was focused stays `document.activeElement` while the caret machinery lets go, so
-clicking it places no caret and fires no `focus` event. Nothing inside the page can repair
-it.
+dialog is a separate OS window, and closing one desyncs the page's focus beyond any in-page
+repair.
 
 `confirmDialog` answers **asynchronously** via `onConfirm`/`onCancel`, so a caller that used
 to write on `if (confirm(…))` must split into "what happens regardless" and "what happens on
-yes". See `applyModuleEntryToRoom`: it writes the name up front, because the dialog's focus
-change blurs the name field and runs its commit, which must find the new value already there.
+yes" - see `applyModuleEntryToRoom`, which writes the name up front because the dialog's
+focus change blurs that field and runs its commit.
 
 `messageDialog` is the same file's one-button variant, for a statement that needs no answer.
 Every error goes through it; no `alert()` ships.
@@ -178,13 +177,13 @@ Every error goes through it; no `alert()` ships.
 
 Four fail-open hooks in `.claude/settings.json`; baselines beside them in `.claude/hooks/`.
 `guard-blob.js` (`index.html`), `guard-claudemd.js` (this file) and `guard-decisions.js`
-(`docs/DECISIONS.md`) are `PostToolUse` size guards that explain themselves and their own fix
-when they fire. `PreToolUse` `guard-skill-hint.js` names the skill that owns a file you edit.
+(`docs/DECISIONS.md`) are `PostToolUse` size guards that explain their own fix when they
+fire. `PreToolUse` `guard-skill-hint.js` names the skill that owns a file you edit.
 
 ## Conventions
 
-- **No dated fix logs, changelog entries, or narrative debugging history here.** Rules only;
-  the two destinations are at the top of this file, and process narrative goes nowhere.
+- **No dated fix logs, changelog entries, or debugging narrative here.** Rules only; the two
+  destinations are at the top of this file, and process narrative goes nowhere.
 - Code comments: keep the rule, one clause of why, and any warning about a specific trap.
   Cut named examples that disambiguate nothing, "an earlier version was tried", measurement
   dates and counts, restatements of the code, and anything duplicating this file.
@@ -192,9 +191,8 @@ when they fire. `PreToolUse` `guard-skill-hint.js` names the skill that owns a f
 ## Running the app
 
 No build step. `npm start` for the Electron app (after `npm install`). Local installers:
-`npm run build` (Windows `.exe`), `npm run build:mac` (`.dmg`), `npm run build:linux`
-(`AppImage`). Alternatively `npx serve .` and open `http://localhost:3000`; the Player view
-opens as a second window.
+`npm run build` (Windows `.exe`), `build:mac` (`.dmg`), `build:linux` (`AppImage`). Or
+`npx serve .` on `http://localhost:3000`; the Player view opens as a second window.
 
 ## Distribution and releases
 
