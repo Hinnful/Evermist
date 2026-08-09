@@ -185,11 +185,10 @@ function drawCursor(screenX, screenY) {
   }
 
   if (screenX == null) return;
-  const color = tool === 'reveal'
-    ? 'rgba(255,255,255,0.8)'
-    : tool === 'half'
-      ? POLY_EDGE_COLORS.half   // the teal a half room's outline is drawn in
-      : 'rgba(100,160,255,0.8)';
+  // Same table the polygon paths read, so a brush/rect/circle preview is already the colour
+  // the room it makes will be outlined in. The centre dots below stay white on purpose:
+  // they mark where the stroke lands, so they must read against every map.
+  const color = POLY_EDGE_COLORS[tool] || POLY_EDGE_COLORS.shroud;
   cursorCtx.save();
   cursorCtx.strokeStyle = color;
   cursorCtx.lineWidth = 1.5;

@@ -101,6 +101,42 @@ Preserved deliberately through the 1.6.1 perf batch, because fixing it speeds th
 Save/apply named fog themes was descoped out of the fog-colour epic. Distinct from
 per-preset fog identities, which are parked separately.
 
+### A scene switch is covered by the fog itself · `SETTLED` (2026-08-09)
+The Player's switch used to be a black DOM layer fading in and out. It is now the fog: it
+closes over the outgoing map, holds fully shrouded while the new map decodes, then clears off
+it, roughly 2.25s / 1.4s / 3.35s. Fully covered, `renderFog` punches no reveal holes at all,
+which is what makes the cover immune to the map changing size and camera underneath it. The
+DM holds the scene payload back until the close has had its time, or the swap happens under a
+half-closed cover. `#scene-fade` survives only as the flat blind for the session's first map,
+before any fog canvas exists to cover with, plus a `.dark` marker meaning "switch in progress".
+
+### The cloud transform is re-anchored across a switch, never animated across · `SETTLED` (2026-08-09)
+The cloud texture is anchored to the map, so a swap changes its scale and origin in one frame.
+Two ways of crossing that gap were built and removed: easing the transform reads as the whole
+fog zooming, because two maps fitted to one screen can differ several-fold in zoom, and
+cross-fading two cloud bitmaps dissolves one cloud scale into another, which reads as a wash.
+What ships removes the gap instead - the transform is pinned for the length of the switch and
+the incoming scene is re-anchored onto it (`fogCloudAdj`, a scale multiplier plus offsets).
+The cost is that cloud size no longer tracks each map's fit-zoom; it carries forward, which is
+the more consistent look. Pan and zoom inside a scene still scale the clouds.
+
+### Fog colour crosses during the close, never the reveal · `SETTLED` (2026-08-09)
+Fog colour is per scene, so mismatched scenes swapped the whole screen from one colour to the
+other in one frame, at the moment the colour was the entire picture. The destination is now
+sent as soon as the scene record is read and eased into over what is left of the close.
+**This is the pattern for any future per-scene fog appearance:** the close is the only part of
+a switch where fog appearance can change unwatched, because the fog is thickening and covers
+its own transition. Anything that changes the cloud texture during the open reveal will read
+as a wash, the same failure the transform ease had.
+
+### The scene name on the Player transition · `REVERTED` (2026-08-09)
+The switch showed the destination scene's name over the fog. Three treatments were built - a
+feathered dark scrim behind it, a glyph-scale halo, and heavy text fitted to the screen width -
+and the surface was cut instead, on product grounds: text over drifting weather reads as
+pasted on however it is styled, and a name on the TV also forces map names to be written around
+spoilers. The name is no longer sent to the Player at all. If it ever returns, it needs its own
+moment rather than a layer over the fog.
+
 ### Video loop seam · `WON'T FIX`
 The seam is in the source Dungeon Alchemist export (last frame ≠ first frame); the app just
 plays the file. Every in-app fix (double-buffer crossfade, freeze-bridge) either doubles

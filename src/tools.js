@@ -283,7 +283,11 @@ function drawActivePolyPreview(screenX, screenY) {
       const s = toScreen(m.x, m.y);
       tipX = s.sx; tipY = s.sy;
     }
-    cursorCtx.strokeStyle = 'rgba(255,255,255,0.55)';
+    // Mode colour, faded, so an un-placed segment reads as provisional without becoming a
+    // different colour from the placed edges beside it. globalAlpha rather than a second
+    // colour string, so this can never drift from the table.
+    cursorCtx.strokeStyle = edgeColor;
+    cursorCtx.globalAlpha = 0.6;
     cursorCtx.lineWidth   = 1.5;
     cursorCtx.setLineDash([6, 5]);
     cursorCtx.shadowBlur  = 0;
@@ -291,15 +295,16 @@ function drawActivePolyPreview(screenX, screenY) {
     cursorCtx.moveTo(last.sx, last.sy);
     cursorCtx.lineTo(tipX, tipY);
     cursorCtx.stroke();
+    cursorCtx.globalAlpha = 1;
   }
 
   // Close-target halo (first vertex, gold glow when >=3 verts)
   if (verts.length >= 3) {
     const { sx, sy } = toScreen(verts[0].x, verts[0].y);
     cursorCtx.setLineDash([4, 3]);
-    cursorCtx.strokeStyle = 'rgba(255,210,40,0.85)';
+    cursorCtx.strokeStyle = POLY_EDGE_SELECTED;
     cursorCtx.lineWidth   = 2;
-    cursorCtx.shadowColor = '#ffd028';
+    cursorCtx.shadowColor = POLY_EDGE_SELECTED;
     cursorCtx.shadowBlur  = 14;
     cursorCtx.beginPath();
     cursorCtx.arc(sx, sy, POLY_CLOSE_RADIUS, 0, Math.PI * 2);

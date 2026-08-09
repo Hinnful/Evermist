@@ -385,6 +385,10 @@ ipcMain.on('diag-append-line', (_event, mode, line) => {
   if (stream) stream.write(line + '\n');
 });
 
+// The About box's version line. Reads package.json via Electron, so a version bump can
+// never leave a stale number hardcoded in the renderer.
+ipcMain.handle('app-version', () => app.getVersion());
+
 // --- Memory probe: per-process working set (src/memProbe.js, ?memprobe=1) ---
 //
 // getAppMetrics() is the only reading that covers what actually costs memory here. A
