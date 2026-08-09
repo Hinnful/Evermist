@@ -67,12 +67,28 @@ function initPlayer() {
 
     if (msg.type === 'scene-transition') {
       if (msg.phase === 'out') {
-        document.getElementById('scene-fade').classList.add('dark');
-        _sceneFadeStart = Date.now();
-        if (msg.sceneName) {
-          const nameEl = document.getElementById('scene-fade-name');
-          if (nameEl) nameEl.textContent = msg.sceneName;
+        const fade = document.getElementById('scene-fade');
+        // Marks the switch as landed: .dark is what the rest of the file reads to tell an
+        // ordinary fog update from a switch in progress, and the stamp starts the hold at
+        // full fog (SCENE_FADE_MIN_MS). Both belong to the moment the cover completes, not
+        // to the start of the close.
+        const covered = () => {
+          fade.classList.add('dark');
+          _sceneFadeStart = Date.now();
+        };
+        // Close the fog over the outgoing map. Only when there is no fog to close (nothing
+        // loaded yet) does the flat blind stand in, and then there is nothing to wait for.
+        if (closeFogOverMap(covered)) {
+          fade.classList.remove('blind');
+        } else {
+          fade.classList.add('blind');
+          snapFogCover(1);
+          covered();
         }
+      } else if (msg.phase === 'tint') {
+        // The incoming scene's fog colour, sent ahead of its map. Eased into over what is
+        // left of the close, so the colour change happens inside thickening fog.
+        startFogColorEase(msg.pickedHex);
       }
       return;
     }
@@ -103,17 +119,28 @@ function initPlayer() {
     // immediately by PixiJS) would flash fog-less before the Canvas-2D fog is ready. Cover it the same
     // way a scene switch does — instantly (transition disabled) so the map can't peek during a fade-in.
     // revealPlayer() removes .dark with the normal 0.5s ease once map+fog have rendered.
-    if (msg.mapUrl) {
+    if (msg.mapUrl && fogCoverT < 1) {
+      // The DM holds this payload back until the close has had its time (sceneManager.js), so
+      // normally the cover has already landed and this does nothing. If it hasn't — timing
+      // jitter, or a first open, which has no 'out' phase at all — finish the cover NOW:
+      // everything below rewrites the map size and camera, and applying that under a
+      // half-closed cover is exactly the visible swap the cover exists to hide.
       const fade = document.getElementById('scene-fade');
       fade.style.transition = 'none';
+      fade.classList.toggle('blind', !(fogDataCanvas && cloudPattern));
+      snapFogCover(1);              // also cancels the close, so the hold is stamped here
       fade.classList.add('dark');
       _sceneFadeStart = Date.now();
-      void fade.offsetWidth;        // force reflow so the instant black "sticks"
+      void fade.offsetWidth;        // force reflow so the instant cover "sticks"
       fade.style.transition = '';   // restore so revealPlayer's removal animates
     }
     landing.style.display = 'none';
 
     if (msg.view) lastDMView = msg.view;
+
+    // Freeze the fog BEFORE anything the cloud transform reads changes. mapWidth is the first
+    // of them; fitToScreen's camera and the new fogDataCanvas follow further down.
+    if (msg.mapUrl && fogCoverT >= 1) freezeCloudTransform();
 
     mapWidth  = msg.mapWidth;
     mapHeight = msg.mapHeight;
@@ -127,11 +154,6 @@ function initPlayer() {
       gridMode      = msg.gridMode      || gridMode;
       gridLineWidth = msg.gridLineWidth ?? gridLineWidth;
       gridDirty   = true;
-    }
-
-    if (msg.sceneName) {
-      const nameEl = document.getElementById('scene-fade-name');
-      if (nameEl) nameEl.textContent = msg.sceneName;
     }
 
     // revealPlayer() is defined in scenes.js — enforces SCENE_FADE_MIN_MS floor then lifts the cover.
@@ -152,7 +174,18 @@ function initPlayer() {
         if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
         if (!skipTransition && msg.fogChanged) startFogTransition(!!msg.isShroud);
         rebuildFogEffect();
+        // Now that this scene HAS a cloud pattern, the flat blind can hand over to real fog —
+        // that is what gets the session's first map onto fog instead of navy. The cover is
+        // already at 1, so this is a swap of what is drawing it, not a change of state.
+        // GATED ON A TRANSITION BEING UP (.dark): every ordinary fog update from the DM lands
+        // here too, and touching the cover on those would blank the players' screen mid-game.
+        const fadeEl = document.getElementById('scene-fade');
+        if (fadeEl.classList.contains('dark') && fogDataCanvas && cloudPattern) {
+          fadeEl.classList.remove('blind');
+        }
         startFogAnim();
+        // The cloud transform stays PINNED here. It is re-anchored onto the new scene at the
+        // end of the hold at full fog, one frame before the reveal — see openFogFromCover().
         resolve();
       };
       img.src = src;

@@ -221,6 +221,22 @@ function deriveFogColors(pickedHex) {
   };
 }
 
+// lerpHex(fromHex, toHex, t) → '#rrggbb' t of the way between the two.
+// Interpolates the PICKED colour in RGB, leaving deriveFogColors to produce base+tint from
+// each step. Going through HSL instead would swing the hue the long way round the wheel on
+// some pairs, which is a rainbow wipe rather than one fog colour becoming another.
+function lerpHex(fromHex, toHex, t) {
+  const k = t < 0 ? 0 : t > 1 ? 1 : t;
+  const to2 = v => Math.round(v).toString(16).padStart(2, '0');
+  let out = '#';
+  for (let i = 1; i < 7; i += 2) {
+    const a = parseInt(fromHex.slice(i, i + 2), 16);
+    const b = parseInt(toHex.slice(i, i + 2), 16);
+    out += to2(a + (b - a) * k);
+  }
+  return out;
+}
+
 // ─── Animation slider math ────────────────────────────────────────────────────
 // Log-scale mapping between a 0-1000 slider position and a physical parameter
 // value. baseVal is the midpoint (slider=500 → baseVal). Range is baseVal/50 …
@@ -305,6 +321,7 @@ if (typeof module !== 'undefined' && module.exports) {
     fogTurbulence,
     parseSceneFogSettings,
     deriveFogColors,
+    lerpHex,
     animLogScale,
     animSliderFromVal,
   };

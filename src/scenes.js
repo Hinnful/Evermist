@@ -40,12 +40,20 @@ function loadFogFromScene(scene) {
   });
 }
 
-// Remove #scene-fade.dark after enforcing a minimum visible duration (SCENE_FADE_MIN_MS).
-// Defers one RAF frame so PixiJS has rendered the fogged scene before the cover lifts.
+// End the switch: clear the fog off the new map, once it has sat fully closed for
+// SCENE_FADE_MIN_MS. Defers one RAF frame so PixiJS has rendered the fogged scene before
+// anything starts clearing.
+// What the players watch is openFogFromCover() — the fog itself thinning off the map over
+// FOG_SCENE_UNCOVER_MS, mirroring the close that started the switch. The two class removals
+// are bookkeeping: .dark is the "switch in progress" marker and .blind the first-map fill.
 function revealPlayer() {
   const holdMs = Math.max(0, SCENE_FADE_MIN_MS - (Date.now() - _sceneFadeStart));
-  setTimeout(() => requestAnimationFrame(() =>
-    document.getElementById('scene-fade').classList.remove('dark')), holdMs);
+  setTimeout(() => requestAnimationFrame(() => {
+    const fade = document.getElementById('scene-fade');
+    fade.classList.remove('dark');
+    fade.classList.remove('blind');
+    openFogFromCover();
+  }), holdMs);
 }
 
 // Called from the switchScene catch block. Shows the error, then reloads the

@@ -284,8 +284,9 @@ Some things this deliberately doesn't do:
 - **It never talks to a network or an LLM.** The app has to keep working offline from a
   local file, and a stranger who downloads the `.exe` has to get the full value with nothing
   else installed.
-- **The parsed text is campaign-level.** It lives in `localStorage`, not inside a scene and
-  not inside a backup zip.
+- **The parsed text is campaign-level.** It lives in `localStorage` rather than inside a
+  scene, because one book serves every map in a campaign. It does ride in a backup zip, as
+  one entry for the whole campaign rather than a copy per scene.
 
 **PDFs get parsed in a separate isolated process.** A module is an untrusted file and pdf.js
 is a large parser, so it runs somewhere with no access to the filesystem helpers, the
@@ -303,12 +304,19 @@ to the app. That's fast but tied to one machine, so there's a backup feature for
 between PCs.
 
 - **Export** bundles the scenes you pick into a single `.zip`: the fog, the polygons, the
-  thumbnails, and the actual map and video files.
+  thumbnails, and the actual map and video files. The imported module text goes in too, once
+  for the whole campaign rather than once per scene.
 - **Restore** reads that zip back and merges it into your current library rather than
   overwriting. If a name already exists you get a "Name (2)" style rename, so importing the
   same backup twice is safe.
+- **The module text is adopted last**, after every scene is safely saved. If a module is
+  already loaded, the app asks which one to keep and names both; if there is no room left in
+  storage for it, the scenes still restore and the app says the text didn't. A zip written
+  before this existed carries no module text and restores exactly as it always did.
 
 The zip reading and writing happens in the Electron shell, driven by `backup.js` on the page.
+`moduleText.js` owns the module-text format at both ends: `backup.js` asks it for a payload
+and hands one back, and never touches storage itself.
 
 ## Why it's built this way
 

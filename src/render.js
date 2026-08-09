@@ -185,7 +185,11 @@ function drawCursor(screenX, screenY) {
   }
 
   if (screenX == null) return;
-  const color = tool === 'reveal' ? 'rgba(255,255,255,0.8)' : 'rgba(100,160,255,0.8)';
+  const color = tool === 'reveal'
+    ? 'rgba(255,255,255,0.8)'
+    : tool === 'half'
+      ? POLY_EDGE_COLORS.half   // the teal a half room's outline is drawn in
+      : 'rgba(100,160,255,0.8)';
   cursorCtx.save();
   cursorCtx.strokeStyle = color;
   cursorCtx.lineWidth = 1.5;

@@ -4,7 +4,7 @@
      the name and the description the DM writes during prep and scans at the table.
      The shell is #anim-advanced-panel's, deliberately: that is the app's floating-panel
      pattern (flat #1a1a1c, hairline border, 10px radius, cp-adv head/body, cpAdvIn). The
-     old .glass-panel purple/16px look belongs to the pre-redesign UI and is not used here.
+     purple .glass-panel/16px look belonged to the pre-redesign UI and no longer exists.
      Everything inside is a stock cp-* control at its stock height — nothing bespoke. */
   #panel-room {
     position: fixed; left: 0; top: 0; z-index: 150;

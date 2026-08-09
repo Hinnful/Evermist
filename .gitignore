@@ -4,6 +4,9 @@ node_modules/
 # Build output
 dist/
 
+# Frame captures from tools/capture-transition.js — regenerate, never commit
+.capture/
+
 # Portable app data (IndexedDB, caches, scenes) — must never be uploaded
 evermist-data/
 

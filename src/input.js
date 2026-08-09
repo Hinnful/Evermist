@@ -24,6 +24,8 @@ function setShape(s) {
   });
   if (s !== 'poly') activePolygon = null;
   if (s !== 'select') selectedVertexIndex = -1;
+  refreshHalfAvailability(); // half is shape-tools only; the brush can't paint it
+
   circleCenter = null;
   container.style.cursor = s === 'select' ? 'default' : 'crosshair';
   drawCursor(lastScreenX, lastScreenY);

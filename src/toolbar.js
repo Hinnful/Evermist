@@ -3,6 +3,29 @@
 // anim presets, poly context panel, scene/backup modals, player controls,
 // section toggles, UI-scale slider. Called once from index.html (DM mode only),
 // at the same point the original inline block used to run.
+// ─── Fog paint direction ──────────────────────────────────────────────────────
+// The fog-mode segment is pick-exactly-one, so ONE helper owns both `tool` and the
+// highlight. Three handlers each poking the other two is where that drifts out of sync.
+function setPaintDirection(dir) {
+  tool = dir;
+  ['reveal', 'half', 'shroud'].forEach(d => {
+    const el = document.getElementById('btn-' + d);
+    if (el) el.classList.toggle('active', d === dir);
+  });
+}
+
+// Half is shape-tools only: the brush paints straight into a cleared-or-opaque fog canvas
+// with no third value. While the brush is picked the button is disabled, and a live half
+// direction falls back to shroud — more fog is the safer accident, and the highlight
+// moving to Shrouded is what tells the DM it happened. Called from setShape().
+function refreshHalfAvailability() {
+  const btn = document.getElementById('btn-half');
+  if (!btn) return;
+  const brushPicked = shape === 'brush';
+  btn.disabled = brushPicked;
+  if (brushPicked && tool === 'half') setPaintDirection('shroud');
+}
+
 function initToolbar() {
   // Scene manager UI (dropdown, drag-reorder, bulk ops, undo, "+" = new/import)
   // is wired in sceneManager.js — it owns the scene concern.
@@ -23,20 +46,16 @@ function initToolbar() {
     if (f.type.startsWith('image/') || f.type.startsWith('video/') || /\.(jpe?g|png|gif|bmp|webp|svg|mp4|webm)$/i.test(f.name)) createNewScene(f);
   });
 
-  document.getElementById('btn-reveal').onclick = function() {
-    tool = 'reveal'; this.classList.add('active');
-    document.getElementById('btn-shroud').classList.remove('active');
-  };
-  document.getElementById('btn-shroud').onclick = function() {
-    tool = 'shroud'; this.classList.add('active');
-    document.getElementById('btn-reveal').classList.remove('active');
-  };
+  document.getElementById('btn-reveal').onclick = () => setPaintDirection('reveal');
+  document.getElementById('btn-half').onclick   = () => setPaintDirection('half');
+  document.getElementById('btn-shroud').onclick = () => setPaintDirection('shroud');
   document.getElementById('btn-brush').onclick  = () => setShape('brush');
   document.getElementById('btn-rect').onclick   = () => setShape('rect');
   document.getElementById('btn-poly').onclick   = () => setShape('poly');
   document.getElementById('btn-circle').onclick = () => setShape('circle');
   document.getElementById('btn-select').onclick = () => setShape('select');
   document.getElementById('btn-legend').onclick = () => toggleLegend();
+  refreshHalfAvailability(); // brush is the tool at load, so half starts disabled
   document.getElementById('btn-snap').onclick = function() {
     snapToGrid = !snapToGrid;
     this.classList.toggle('active', snapToGrid);
