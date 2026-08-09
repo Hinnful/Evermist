@@ -61,8 +61,10 @@ partial erase can't re-fog ground already clear, i.e. the room the party just le
   never in a scene or backup, and deliberately absent from Fog Reset.
 - The Player needs nothing new: the stencil crosses as a PNG and partial alpha propagates
   for free.
-- The toolbar's `#btn-half` brush is deliberately unwired. Only the card's pill and `T`
-  reach this state.
+- **Half is a shape-tools-only paint direction.** The brush paints into a cleared-or-opaque
+  fog canvas with no third value, so `#btn-half` disables while the brush is picked and a
+  live `tool === 'half'` falls back to `'shroud'` — the highlight moving is the DM's only
+  signal, so never make that fallback silent. Reached from the toolbar, the card's pill or `T`.
 - **Reverting this feature requires a data sweep**, not just a code revert. See DECISIONS.md.
 
 

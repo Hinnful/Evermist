@@ -13,8 +13,11 @@ let fogBaseColor = '#1a1a2e';   // solid fill on the Player's full display
 let fogTintColor = '#7050e0';   // glow drawn source-atop on both views
 
 // ─── Scene-fade timing ───────────────────────────────────────────────────────
-// Minimum time #scene-fade stays dark, so a fast cached load doesn't blink.
-const SCENE_FADE_MIN_MS = 1500;
+// How long the fog sits fully closed before it starts clearing — the beat in the middle of a
+// switch, and the floor that stops a fast cached load from blinking. Measured from the moment
+// the cover lands, not from the start of the switch: the closing fog is its own beat and is
+// timed by FOG_SCENE_COVER_MS. Close + this + FOG_SCENE_UNCOVER_MS is the whole switch.
+const SCENE_FADE_MIN_MS = 1400;
 let   _sceneFadeStart   = 0;
 
 // ─── Display info ────────────────────────────────────────────────────────────
@@ -61,10 +64,42 @@ let gridLineWidth = 1;
 // Held here rather than in fog.js so teardown is explicit lifecycle state.
 let fogAnimRafId  = null; // drifting cloud animation loop (fogAnimTick)
 let fogTransRafId = null; // reveal/shroud crossfade loop (fogTransTick)
+// Player scene-switch cover. 0 = the scene's own fog, 1 = the whole surface fogged; the value
+// between is the fog closing or clearing. renderFog lifts the reveal mask's alpha by this, and
+// short-circuits to "punch no holes at all" at 1 — which is what makes a FULL cover immune to
+// the map changing size underneath it mid-switch.
+let fogCoverT     = 0;
+let fogCoverRafId = null;
+let fogCoverFrom  = 0, fogCoverTo = 0, fogCoverStart = 0, fogCoverDur = 0;
+let fogCoverDone  = null;   // one-shot callback fired when an animation lands
+// Cloud-texture transform across a scene swap. The texture is anchored to the MAP, so the
+// instant mapWidth/zoom/pan change together it jumps to a new scale and origin. fogCloudLast
+// banks the drawn transform every frame; fogCloudHold pins it there for the length of the
+// switch; fogCloudAdj then re-anchors the incoming scene ONTO that held transform, so the
+// texture never has a scale or origin change to travel across. hw/hh null = use the scene's own.
+let fogCloudLast = null;
+let fogCloudHold = null;
+let fogCloudAdj  = { k: 1, dx: 0, dy: 0, hw: null, hh: null };
+// DM side: when the Player was told to start closing, so the scene payload can be held back
+// until that close has finished. 0 = no Player, send immediately.
+let _sceneOutPostedAt = 0;
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const ZOOM_FACTOR       = 1.1;
 const POLY_CLOSE_RADIUS = 12;  // screen-px hit area to close polygon on first vertex
+
+// Room outline colours, one per fog state. ONE table, because the room being drawn and the
+// room once it is saved must be the same colour — two lists drifted apart and a polygon
+// changed hue the instant it closed. Half is a cool teal that sits BETWEEN reveal-green and
+// shroud-purple on the hue wheel, so it reads as "part way" rather than a fourth unrelated
+// state; keep that relationship if these are ever retuned.
+// Read by drawPolyOutline + drawActivePolyPreview (tools.js) and drawCursor (render.js).
+const POLY_EDGE_COLORS = {
+  reveal: 'rgba(50, 220, 110, 0.8)',
+  half:   'rgba(70, 190, 210, 0.8)',
+  shroud: 'rgba(150, 80, 255, 0.8)',
+};
+const POLY_EDGE_SELECTED = '#ffd060';
 
 // ─── Map / camera ────────────────────────────────────────────────────────────
 let mapOffscreen = null;

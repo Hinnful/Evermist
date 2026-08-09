@@ -204,16 +204,12 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx) {
   if (verts.length < 2) return;
   cursorCtx.save();
 
-  // Three fog states, three colours. Half sits BETWEEN reveal-green and shroud-purple on the
-  // hue wheel (a cool teal) so the outline reads as "part way", not as a fourth unrelated
-  // thing. Only visible when the room is deselected — a selected room is always gold.
+  // Three fog states, three colours — the shared POLY_EDGE_COLORS table in state.js, so the
+  // room being drawn and the room once it is saved are the same colour. Mode colour is only
+  // visible when the room is deselected; a selected room is always gold.
   const edgeColor = isSelected
-    ? '#ffd060'
-    : poly.mode === 'reveal'
-      ? 'rgba(50, 220, 110, 0.8)'
-      : poly.mode === 'half'
-        ? 'rgba(70, 190, 210, 0.8)'
-        : 'rgba(150, 80, 255, 0.8)';
+    ? POLY_EDGE_SELECTED
+    : (POLY_EDGE_COLORS[poly.mode] || POLY_EDGE_COLORS.shroud);
 
   // Build screen-space vertex array
   const sv = verts.map(v => { const s = toScreen(v.x, v.y); return { x: s.sx, y: s.sy }; });
@@ -240,7 +236,7 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx) {
     cursorCtx.shadowBlur  = isSelVert ? 14 : 6;
     cursorCtx.beginPath();
     cursorCtx.arc(x, y, r, 0, Math.PI * 2);
-    cursorCtx.fillStyle = isSelVert ? '#ffffff' : (isSelected ? '#ffd060' : 'rgba(255,255,255,0.9)');
+    cursorCtx.fillStyle = isSelVert ? '#ffffff' : (isSelected ? POLY_EDGE_SELECTED : 'rgba(255,255,255,0.9)');
     cursorCtx.fill();
     cursorCtx.shadowBlur  = 0;
     cursorCtx.strokeStyle = isSelVert ? '#4080ff' : (isSelected ? 'rgba(255,255,255,0.5)' : edgeColor);
@@ -255,7 +251,9 @@ function drawActivePolyPreview(screenX, screenY) {
   const verts = activePolygon.vertices;
   if (verts.length === 0) return;
   const mode = activePolygon.mode || tool;
-  const edgeColor = mode === 'reveal' ? 'rgba(50,220,110,0.9)' : 'rgba(160,90,255,0.9)';
+  // Same table drawPolyOutline reads, so closing the polygon changes only the line's WEIGHT
+  // (2px solid in progress → 1.5px dashed once saved), never its colour.
+  const edgeColor = POLY_EDGE_COLORS[mode] || POLY_EDGE_COLORS.shroud;
   cursorCtx.save();
 
   // Placed edges (solid, glowing)
@@ -770,21 +768,6 @@ function setPolygonMode(id, mode) {
   fogDirty = true;
   scheduleRender();
   scheduleAutoSync();
-}
-
-// Select a polygon and glide the DM camera to its centroid. DM-ONLY — it must not write
-// minimapView or post a view-snap, or looking a room up would drag what the players are
-// watching. Zoom is left alone; only the centre moves.
-// startViewLerp() wants {panX,panY,zoom}, so the centroid goes through resolveView()
-// first — handing it {mapCX,mapCY} directly yields NaN pan and a blank viewport.
-function jumpToPolygon(id) {
-  const poly = polygons.find(p => p.id === id);
-  if (!poly || !poly.vertices.length) return;
-  if (selectedPolygonId !== id) selectedVertexIndex = -1;
-  selectedPolygonId = id;
-  const c = getCentroid(poly.vertices);
-  startViewLerp(resolveView({ mapCX: c.x, mapCY: c.y, zoom }));
-  drawCursor(null, null);   // repaint outlines so the new selection reads immediately
 }
 
 function toggleSelectedPolygon() {

@@ -13,9 +13,11 @@ real book or a real build broke the previous version. They are constraints, not 
 `initModuleText()` is called from `initRoomPanel()`. The room-field write stays in
 `roomPanel.js` (`applyModuleEntryToRoom`), because that module owns the room.
 
-- Scope is **campaign-level**: `localStorage` (`evermist.moduleText`), never a scene or a
-  backup. Don't move it into `sceneStore.js`, which is keyed by scene id and would need a
-  `DB_VERSION` bump.
+- Scope is **campaign-level**: `localStorage` (`evermist.moduleText`), never a scene. Don't move
+  it into `sceneStore.js`, which is keyed by scene id and would need a `DB_VERSION` bump.
+- It DOES ride in the backup zip, as **one entry at the zip root**, never per-scene metadata.
+  `mtBackupPayload` / `mtRestorePayload` are the whole contract; `backup.js` must never learn the
+  serialised format or touch `MT_KEY`. A zip without the entry must restore exactly as before.
 - Store **parsed entries only**, never the raw file.
 - **No auto-assign, no queue, no "fill all rooms."** Sub-locations mean one heading serves
   several polygons, so any 1:1 mapping desyncs.

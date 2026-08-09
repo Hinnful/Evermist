@@ -35,19 +35,22 @@
   #minimap-panel.minimap-no-map #minimap-canvas { cursor: default; }
   #minimap-panel.minimap-no-map #minimap-canvas { opacity: 0.3; }
 
-  /* Floating overlay button on the preview (Lock) */
+  /* Floating overlay button on the preview (Lock). OPAQUE on the app's panel surface, not a
+     scrim: at 0.72 alpha it took the colour of whatever map was under it and vanished against
+     a dark one. It floats over a picture, so it has to bring its own background. */
   .cp-ovbtn {
     position: absolute; top: 6px; right: 6px;
     width: 26px; height: 26px; padding: 0;
     display: flex; align-items: center; justify-content: center;
-    border: 1px solid rgba(255,255,255,0.08); border-radius: 7px;
-    background: rgba(12,12,14,0.72); color: #9aa0aa;
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 7px;
+    background: #1a1a1c; color: #9aa0aa;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.45);
     cursor: pointer; transition: background .12s, color .12s, border-color .12s;
   }
-  .cp-ovbtn:hover { color: #cdd2da; border-color: rgba(255,255,255,0.16); }
+  .cp-ovbtn:hover { color: #cdd2da; border-color: rgba(255,255,255,0.2); }
   .cp-ovbtn.active {
     border-color: rgba(90,140,235,0.6);
-    background: rgba(70,120,220,0.18);
+    background: linear-gradient(rgba(70,120,220,0.22), rgba(70,120,220,0.22)), #1a1a1c;
     color: #8fb6ff;
   }
   .cp-ovbtn .cp-ico-on { display: none; }

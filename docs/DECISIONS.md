@@ -376,12 +376,20 @@ would need a version bump plus an upgrade path on the database holding the user'
 buy nothing for a few hundred KB. Measured headroom is 2.3×, not the 10× an early comment
 claimed; the real guard is `mtStore`'s try/catch.
 
-### Module text is campaign-level, and belongs in the backup anyway · `SETTLED` (2026-08-06)
+### Module text is campaign-level, and belongs in the backup anyway · `SHIPPED` 1.7.6 (2026-08-08)
 Imported entries live in `localStorage`, deliberately outside any scene, because one book serves
 every map in a campaign. The corollary drawn at the time - that they therefore stay out of the
 export zip - does not follow. A zip is the only way a campaign moves between machines, and the
 moment a missing room description gets noticed is at the table rather than during prep. Room
 notes already survive the round trip; the source they were filled from should too.
+
+Three shape calls settled while building it. **One entry at the zip ROOT, `moduleText.json`
+beside `manifest.json`** - per-scene metadata would store the whole book once per scene and
+re-import it N times on restore. **Replace or keep, never merge**: two books share no key space,
+so a merged one would be neither. **Adopted after the scene loop and after the progress bar is
+down**, so a question never opens on top of the bar and a storage failure cannot strand a
+half-restore. Absence of the entry is the normal case, not an error - it is every zip written
+before this - so the reader IPC resolves null where the manifest reader rejects.
 
 ### A sidebar classifier · `REJECTED`
 A page of general rules between two headings is absorbed into the preceding room and the DM

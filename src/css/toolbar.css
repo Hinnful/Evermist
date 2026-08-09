@@ -1,7 +1,4 @@
-/* toolbar.css — the bottom toolbar and its sub-panels (plus the one surviving rule that hides the old top toolbar). */
-  /* TOP TOOLBAR — replaced by #tools-wrapper at bottom */
-  #toolbar-top { display: none !important; }
-
+/* toolbar.css — the bottom toolbar, its brush sub-panel, and the UI-scale strip. */
   /* ===== BOTTOM TOOLBAR (new design system) ===== */
   /* Outer wrapper: full-width fixed row, centers children, no zoom on the
      wrapper itself (avoids hit-area mismatch from zoom + translateX(-50%));
@@ -123,9 +120,9 @@
   }
   .mode-btn:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
   .mode-btn.active { color: #6ea8ff; }
-  /* Dummy fog mode (Half-shrouded) — present in the design, not yet wired */
-  .mode-btn.mode-dummy { color: #565b62; cursor: default; }
-  .mode-btn.mode-dummy:hover { background: transparent; color: #565b62; }
+  /* Unavailable fog mode — Half-shrouded while the brush is picked, which can't paint it */
+  .mode-btn:disabled { color: #565b62; cursor: default; }
+  .mode-btn:disabled:hover { background: transparent; color: #565b62; }
 
   /* Brush size sub-panel (floats above the bar when Brush is active) */
   #panel-brush-bottom {
@@ -184,7 +181,9 @@
     color: #7f858e;
   }
 
-  /* UI SCALE CONTROL — fixed independently so zoom feedback loop can't occur */
+  /* UI SCALE CONTROL — fixed independently so zoom feedback loop can't occur.
+     Same surface as #toolbar-bottom and #panel-brush-bottom: this strip shares the screen's
+     bottom edge with that bar, so the bar is the thing it should look like. */
   #ui-scale-row {
     position: fixed;
     left: 12px;
@@ -195,84 +194,57 @@
     gap: 8px;
     padding: 6px 12px 6px 8px;
     border-radius: 10px;
-    background: rgba(18, 12, 32, 0.82);
-    border: 1px solid rgba(130, 80, 240, 0.22);
+    background: #1a1a1c;
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
   }
   body.player-mode #ui-scale-row { display: none !important; }
-  #ui-scale-row span { font-size: 11px; color: #a090c0; white-space: nowrap; }
-  #ui-scale-row input[type="range"] { width: 80px; cursor: pointer; accent-color: #8060e0; }
+  #ui-scale-row span {
+    font: 500 11px/1 system-ui, -apple-system, sans-serif;
+    color: #7f858e;
+    white-space: nowrap;
+  }
+  /* The brush slider's track and thumb, so the app has one range control rather than two. */
+  #ui-scale-row input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 80px;
+    height: 16px;
+    background: transparent;
+    cursor: pointer;
+  }
+  #ui-scale-row input[type="range"]::-webkit-slider-runnable-track {
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+  #ui-scale-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 11px;
+    height: 11px;
+    margin-top: -4px;
+    border-radius: 50%;
+    background: #e6e7e9;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  }
+  /* An independent action, so it sits bare — the same 22px transparent icon button as the
+     room card's and the advanced panel's close (.cp-adv-close). The purple bordered disc it
+     used to be was the only circular button in the app. */
   #btn-legend {
     width: 22px; height: 22px;
-    border-radius: 50%;
-    border: 1px solid rgba(140, 110, 240, 0.45);
-    background: rgba(80, 60, 160, 0.35);
-    color: #c0b8e8;
-    font-size: 12px; font-weight: 700;
-    cursor: pointer; padding: 0; flex-shrink: 0;
-    transition: background 0.14s, color 0.14s;
-    font-family: system-ui, sans-serif;
-    line-height: 1;
-  }
-  #btn-legend:hover { background: rgba(120, 80, 210, 0.55); color: #fff; }
-
-  /* BRUSH SIZE PANEL (bottom-left, context) */
-  #panel-brush {
-    position: fixed;
-    left: 12px;
-    bottom: 16px;
-    z-index: 100;
-    display: none;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 16px;
-    zoom: var(--ui-zoom, 1.2);
-  }
-  #panel-brush label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #9080b8;
-    white-space: nowrap;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-  }
-  #panel-brush input[type="range"] { width: 110px; cursor: pointer; accent-color: #8060e0; }
-  #brush-size-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #c8c0e8;
-    min-width: 28px;
-    text-align: center;
-  }
-
-  /* PLAYER PANEL (bottom-right) */
-  #panel-player {
-    position: fixed;
-    right: 12px;
-    bottom: 16px;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    padding: 7px 10px;
-    zoom: var(--ui-zoom, 1.2);
-  }
-  #panel-player button {
-    font-size: 12px;
-    font-weight: 500;
-    padding: 7px 11px;
-    border-radius: 8px;
-    border: none;
+    flex-shrink: 0; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: none; border-radius: 6px;
     background: transparent;
-    color: #b8b0d0;
+    color: #9aa0aa;
+    font: 600 12px/1 system-ui, -apple-system, sans-serif;
     cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.14s, color 0.14s;
-    font-family: system-ui, -apple-system, sans-serif;
-    letter-spacing: 0.01em;
+    transition: background 0.12s, color 0.12s;
   }
-  #panel-player button:hover { background: rgba(120, 72, 220, 0.2); color: #ddd4f8; }
-  #panel-player button.active {
-    background: linear-gradient(135deg, #3d6ab0 0%, #6a38aa 100%);
-    color: #fff;
-    box-shadow: 0 2px 10px rgba(90, 50, 190, 0.4);
-  }
+  #btn-legend:hover { background: rgba(255, 255, 255, 0.05); color: #d5d8dd; }
+
+  /* The bottom-left #panel-brush and bottom-right #panel-player that used to sit here are
+     gone with their markup — the brush slider moved into #panel-brush-bottom above the
+     toolbar, and the player controls into the sidebar's Player tab. The brush READOUT is
+     styled by .brush-val, not by an id rule. */

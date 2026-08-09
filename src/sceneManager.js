@@ -432,13 +432,21 @@ async function switchScene(id, _isRecovery = false) {
   // anim loop is persistent + idempotent — leave it running across the switch.
   stopFogTransition();
   if (!isPlayer && playerWindow && !playerWindow.closed) {
-    const destMeta = allScenes.find(s => s.id === id);
-    playerWindow.postMessage({ type: 'scene-transition', phase: 'out', sceneName: destMeta ? destMeta.name : null }, '*');
+    playerWindow.postMessage({ type: 'scene-transition', phase: 'out' }, '*');
+    _sceneOutPostedAt = Date.now();
   }
   try {
   const scene = await sceneStore.loadScene(id);
   if (myGen !== switchGeneration) return;
   if (!scene) throw new Error('Scene not found.');
+
+  // Send the destination fog colour AS SOON AS IT IS KNOWN, so the Player can arrive at it
+  // while the fog is still closing. This has to beat applyFogSettingsFromScene further down,
+  // which pushes the same colour as an ordinary live change and would land it in one frame.
+  if (!isPlayer && playerWindow && !playerWindow.closed) {
+    const destHex = scene.fogSettings && scene.fogSettings.pickedHex;
+    if (destHex) playerWindow.postMessage({ type: 'scene-transition', phase: 'tint', pickedHex: destHex }, '*');
+  }
 
   if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
   mapWidth   = scene.mapWidth;
@@ -604,7 +612,16 @@ async function switchScene(id, _isRecovery = false) {
   // particular map came with a floor plan.
   if (typeof refreshFloorPlanUI === 'function') refreshFloorPlanUI();
   if (mapVideo) mapVideo.play().then(() => startVideoLoop()).catch(() => {});
-  if (autoSync) setTimeout(() => sendToPlayer(false, true), 150);
+  // HOLD THE PAYLOAD until the Player's fog has finished closing over the outgoing map. The
+  // Player rewrites its map size and camera the moment this lands, and doing that under a
+  // half-closed cover shows the swap the cover exists to hide. A cached scene loads in well
+  // under the close, so without this the race is the common case, not the rare one.
+  if (autoSync) {
+    const closedIn = _sceneOutPostedAt
+      ? Math.max(0, FOG_SCENE_COVER_MS - (Date.now() - _sceneOutPostedAt))
+      : 0;
+    setTimeout(() => sendToPlayer(false, true), Math.max(150, closedIn));
+  }
   onSceneLoaded(); // viewport.js: flush pending player resync if Player asked while loading
   } catch (err) {
     if (myGen !== switchGeneration) return;

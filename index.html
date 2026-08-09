@@ -47,12 +47,13 @@
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8.6 8.6-4 1 1-4L15 4z"/><path d="M13.4 5.6l5 5"/></svg>
     </button>
 
-    <!-- Fog mode segment: Revealed / Half-shrouded (DUMMY — not yet wired) / Shrouded -->
+    <!-- Fog mode segment: Revealed / Half-shrouded / Shrouded. Half is shape-tools only —
+         input.js disables it while the brush is picked. -->
     <div class="tb-seg tb-seg-modes">
       <button id="btn-reveal" class="mode-btn active" title="Revealed (R)">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
       </button>
-      <button id="btn-half" class="mode-btn mode-dummy" title="Half-shrouded (not yet available)" tabindex="-1">
+      <button id="btn-half" class="mode-btn" title="Half-shrouded - explored, but the party isn't there now">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
       </button>
       <button id="btn-shroud" class="mode-btn" title="Shrouded (S)">
@@ -395,7 +396,7 @@
 
 <!-- SHORTCUT LEGEND (DM only) -->
 <div id="legend-backdrop" style="display:none"></div>
-<div id="shortcut-legend" class="glass-panel" style="display:none">
+<div id="shortcut-legend" style="display:none">
   <div class="legend-title">
     <span>Keyboard Shortcuts</span>
     <span class="legend-hint">? or Esc to close</span>
@@ -548,7 +549,7 @@
   <p>Open the <strong>scene menu</strong> (top-left) to get started</p>
 </div>
 
-<div id="scene-fade"><div id="scene-fade-name"></div></div>
+<div id="scene-fade"></div>
 
 <div id="map-progress">
   <div id="map-progress-label">Saving animated map…</div>
@@ -597,7 +598,7 @@
 <!-- Load the published module once, and every room's name field becomes a searchable list of its
      locations. Shell is the app's floating-panel pattern (#anim-advanced-panel / the room card):
      flat #1a1a1c, hairline border, .cp-adv-head + .cp-adv-body, stock .cp-btn actions. The old
-     .glass-panel purple modal look belongs to the pre-redesign UI and is not used here.
+     purple .glass-panel modal look belonged to the pre-redesign UI and no longer exists.
      THREE CONTROLS, and that is the whole panel: Choose file, Remove, Close. What used to sit here
      as well — a paste textarea, a Preview button and a paragraph explaining numbered headings — is
      gone on purpose. Nobody pastes 300 pages into a 320px box; the file picker already parses on

@@ -15,6 +15,7 @@ const {
   sampleWrappedNoise,
   fogTurbulence,
   deriveFogColors,
+  lerpHex,
   animLogScale,
   animSliderFromVal,
 } = require('../src/fogGeometry.js');
@@ -411,6 +412,28 @@ describe('deriveFogColors', () => {
     const { base, tint } = deriveFogColors('#ffffff');
     assert.match(base, /^#[0-9a-f]{6}$/);
     assert.match(tint, /^#[0-9a-f]{6}$/);
+  });
+});
+
+describe('lerpHex', () => {
+  it('the ends are the two colours themselves', () => {
+    assert.equal(lerpHex('#3a3a8c', '#cc2020', 0), '#3a3a8c');
+    assert.equal(lerpHex('#3a3a8c', '#cc2020', 1), '#cc2020');
+  });
+
+  it('the midpoint is halfway on every channel', () => {
+    assert.equal(lerpHex('#000000', '#ffffff', 0.5), '#808080');
+  });
+
+  it('t outside 0..1 clamps, so a late frame cannot overshoot the destination', () => {
+    assert.equal(lerpHex('#000000', '#ffffff', 1.4), '#ffffff');
+    assert.equal(lerpHex('#000000', '#ffffff', -0.2), '#000000');
+  });
+
+  it('every step is a valid 6-digit hex — it is written straight into a fillStyle', () => {
+    for (let i = 0; i <= 10; i++) {
+      assert.match(lerpHex('#0a0f04', '#ffeedd', i / 10), /^#[0-9a-f]{6}$/);
+    }
   });
 });
 

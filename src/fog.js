@@ -471,12 +471,25 @@ function renderFog(vp) {
     if (cloudPattern && fogDataCanvas) {
       fogDisplayCtx.save();
       fogDisplayCtx.globalCompositeOperation = 'source-atop';
-      const s   = zoom * FOG_SCALE;
-      const cx  = mapWidth  / 2 * zoom + panX;
-      const cy  = mapHeight / 2 * zoom + panY;
-      const hw  = fogDataCanvas.width  / 2;
-      const hh  = fogDataCanvas.height / 2;
-      const bigR = Math.ceil(Math.max(cw, ch) / s) + fogDataCanvas.width;
+      // Every term is derived from the map, so a scene swap changes all of them at once.
+      // fogCloudAdj re-anchors the incoming scene onto the transform the outgoing one was
+      // last drawn at (rebaseCloudTransform), which is why the swap has no scale change left
+      // to travel across.
+      let s   = zoom * FOG_SCALE * fogCloudAdj.k;
+      let cx  = mapWidth  / 2 * zoom + panX + fogCloudAdj.dx;
+      let cy  = mapHeight / 2 * zoom + panY + fogCloudAdj.dy;
+      let hw  = fogCloudAdj.hw != null ? fogCloudAdj.hw : fogDataCanvas.width  / 2;
+      let hh  = fogCloudAdj.hh != null ? fogCloudAdj.hh : fogDataCanvas.height / 2;
+      // Pinned for the length of a switch, so the map can change size and camera under the
+      // closed cover with the clouds not moving at all.
+      if (fogCloudHold) {
+        s = fogCloudHold.s; cx = fogCloudHold.cx; cy = fogCloudHold.cy;
+        hw = fogCloudHold.hw; hh = fogCloudHold.hh;
+      }
+      // The transform AS DRAWN, banked every frame so freezeCloudTransform() has something
+      // exact to pin and rebaseCloudTransform() something exact to match.
+      fogCloudLast = { s: s, cx: cx, cy: cy, hw: hw, hh: hh };
+      const bigR = Math.ceil(Math.max(cw, ch) / s) + hw * 2;
       for (let i = 0; i < CLOUD_PASSES.length; i++) {
         const p   = CLOUD_PASSES[i];
         const off = fogAnimOffsets[i];
@@ -487,7 +500,7 @@ function renderFog(vp) {
         fogDisplayCtx.scale(s * p.scale, s * p.scale);
         fogDisplayCtx.translate(-hw + off.x, -hh + off.y);
         fogDisplayCtx.fillStyle = cloudPattern;
-        fogDisplayCtx.fillRect(-bigR, -bigR, 2 * bigR + fogDataCanvas.width, 2 * bigR + fogDataCanvas.height);
+        fogDisplayCtx.fillRect(-bigR, -bigR, 2 * bigR + hw * 2, 2 * bigR + hh * 2);
         fogDisplayCtx.restore();
       }
       fogDisplayCtx.restore();
@@ -509,15 +522,41 @@ function renderFog(vp) {
     // (drawn in steps 1-2) is untouched.
     // Build blended mask if a fog transition is active (lerps prev↔new fogBlurCanvas).
     // 'lighter' (additive) blend gives exact prev*(1-t) + new*t with no alpha bleed.
+    // Scene-switch cover (fogCoverT, state.js). FULLY covered punches NOTHING — skipping the
+    // step entirely is what makes the cover immune to the map changing size underneath it,
+    // which it does mid-switch. Partway, the real mask's alpha is lifted toward opaque by an
+    // additive fill, so the fog closes over the map smoothly instead of snapping.
     let maskCanvas = fogBlurCanvas;
-    if (fogTransBlurPrev && fogTransBlendCanvas && fogBlurCanvas) {
+    if (fogCoverT >= 1) {
+      maskCanvas = null;
+    } else if ((fogTransBlurPrev || fogCoverT > 0) && fogBlurCanvas) {
+      if (!fogTransBlendCanvas ||
+          fogTransBlendCanvas.width  !== fogBlurCanvas.width ||
+          fogTransBlendCanvas.height !== fogBlurCanvas.height) {
+        fogTransBlendCanvas = document.createElement('canvas');
+        fogTransBlendCanvas.width  = fogBlurCanvas.width;
+        fogTransBlendCanvas.height = fogBlurCanvas.height;
+      }
       const bctx = fogTransBlendCanvas.getContext('2d');
-      bctx.clearRect(0, 0, fogTransBlendCanvas.width, fogTransBlendCanvas.height);
-      bctx.globalAlpha = 1 - fogTransT;
-      bctx.drawImage(fogTransBlurPrev, 0, 0);
-      bctx.globalCompositeOperation = 'lighter';
-      bctx.globalAlpha = fogTransT;
-      bctx.drawImage(fogBlurCanvas, 0, 0);
+      const bw = fogTransBlendCanvas.width, bh = fogTransBlendCanvas.height;
+      bctx.clearRect(0, 0, bw, bh);
+      if (fogTransBlurPrev) {
+        bctx.globalAlpha = 1 - fogTransT;
+        bctx.drawImage(fogTransBlurPrev, 0, 0);
+        bctx.globalCompositeOperation = 'lighter';
+        bctx.globalAlpha = fogTransT;
+        bctx.drawImage(fogBlurCanvas, 0, 0);
+      } else {
+        bctx.globalAlpha = 1;
+        bctx.drawImage(fogBlurCanvas, 0, 0);
+        bctx.globalCompositeOperation = 'lighter';
+      }
+      if (fogCoverT > 0) {
+        // 'lighter' adds alpha, so this raises every pixel toward fully fogged.
+        bctx.globalAlpha = fogCoverT;
+        bctx.fillStyle = '#000';
+        bctx.fillRect(0, 0, bw, bh);
+      }
       bctx.globalCompositeOperation = 'source-over';
       bctx.globalAlpha = 1;
       maskCanvas = fogTransBlendCanvas;
@@ -536,6 +575,7 @@ function renderFog(vp) {
         ix, iy, iw, ih);
       fogDisplayCtx.restore();
     }
+
     return;
   }
 
@@ -760,6 +800,168 @@ function stopFogTransition() {
   if (!isPlayer) pixiEndFogTransition();
 }
 
+// ─── Scene-switch cover ───────────────────────────────────────────────────────
+// A scene switch is covered by THE FOG ITSELF for its whole length, not by a DOM layer: the
+// fog closes over the OLD map the moment the switch starts, the new map is swapped in behind
+// it, and then the ordinary reveal clears it over FOG_REVEAL_MS. Two calls because the cover
+// and the reveal happen at different moments — the fog has to sit at full shroud for however
+// long the map takes to decode, and only then start clearing.
+// COVER EARLY, at the transition's 'out' phase, not when the new fog finishes loading. Waiting
+// leaves the flat blindfold on screen for the whole decode, which is a navy screen with the
+// fog arriving after it — the fog has to be what the players are looking at the entire time.
+// Player only; the DM's fog is a PixiJS sprite crossfade and is not covered.
+//
+// Both work by feeding the ordinary transition a "previous" mask that is opaque everywhere.
+// renderFog reads that mask for ALPHA ONLY (destination-in), so an opaque fill of any colour
+// means "fogged here", and lerping it into the scene's real fogBlurCanvas IS the reveal.
+
+// Close + name hold (SCENE_FADE_MIN_MS) + clear is the whole switch, ~7s. Slow on purpose:
+// this is the one beat the players watch instead of a map, so it is paced to be looked at.
+const FOG_SCENE_COVER_MS   = 2250; // fog closes over the outgoing map
+const FOG_SCENE_UNCOVER_MS = 3350; // fog clears off the incoming one
+
+// THE CLOUD TEXTURE IS ANCHORED TO THE MAP — its scale and origin come from mapWidth, zoom and
+// pan (see the transform in renderFog). A scene swap changes every one of those in a single
+// frame, so the texture would jump to a new scale and origin; under an opaque cover that jump
+// is the only thing on screen, and it reads as the fog resetting.
+// THE JUMP IS REMOVED, NOT ANIMATED ACROSS. Two maps fitted to the same screen sit at
+// different zooms, so the scale change between them can be several-fold; eased over the
+// reveal it reads as the whole fog zooming, and cross-fading the two bitmaps instead just
+// dissolves one cloud scale into another, which reads as a wash. Both were built and removed.
+// Instead the texture is PINNED for the length of the switch and the incoming scene is then
+// re-anchored onto that same pinned transform, so there is nothing left to travel across.
+// The cost is that cloud size no longer tracks each map's fit-zoom — it carries forward, which
+// is the more consistent look anyway: the same weather in front of the screen on every map.
+// Pan and zoom inside a scene still scale the clouds, because the adjustment is a multiplier.
+function freezeCloudTransform() {
+  if (!isPlayer || !fogCloudLast) return;
+  fogCloudHold = fogCloudLast;
+}
+
+// Adopt the pinned transform as the new scene's own. By construction the next frame draws
+// exactly what the pinned one was drawing, so releasing the pin changes nothing on screen.
+function rebaseCloudTransform() {
+  if (!fogCloudHold) return;
+  const held = fogCloudHold;
+  fogCloudHold = null;
+  const rawS = zoom * FOG_SCALE;
+  if (!(rawS > 0)) return;   // no camera yet — leave the previous anchor in place
+  fogCloudAdj = {
+    k:  held.s / rawS,
+    dx: held.cx - (mapWidth  / 2 * zoom + panX),
+    dy: held.cy - (mapHeight / 2 * zoom + panY),
+    hw: held.hw,
+    hh: held.hh,
+  };
+  fogDirty = true;
+  scheduleRender();
+}
+
+function animateFogCover(to, durationMs, onDone) {
+  fogCoverFrom  = fogCoverT;
+  fogCoverTo    = to;
+  fogCoverDur   = durationMs;
+  fogCoverStart = performance.now();
+  fogCoverDone  = onDone || null;
+  if (!fogCoverRafId) fogCoverRafId = requestAnimationFrame(fogCoverTick);
+}
+
+function fogCoverTick(ts) {
+  const raw = fogCoverDur > 0 ? Math.min((ts - fogCoverStart) / fogCoverDur, 1) : 1;
+  const e   = raw * raw * (3 - 2 * raw);   // smoothstep, same easing as fogTransTick
+  fogCoverT = fogCoverFrom + (fogCoverTo - fogCoverFrom) * e;
+  fogDirty  = true;
+  scheduleRender();
+  if (raw < 1) { fogCoverRafId = requestAnimationFrame(fogCoverTick); return; }
+  fogCoverRafId = null;
+  fogCoverT     = fogCoverTo;
+  const cb = fogCoverDone; fogCoverDone = null;
+  if (cb) cb();
+}
+
+// True while the fog is actively closing — the window in which the incoming scene must not
+// be applied, because its map size and camera would change under a half-drawn cover.
+function fogIsClosing() {
+  return fogCoverRafId !== null && fogCoverTo >= 1;
+}
+
+// Close the fog over the outgoing map. Returns false when there is nothing to draw fog WITH
+// (the session's first map, before any cloud pattern exists); only then does the caller fall
+// back to the flat blind. onCovered fires when the map is completely hidden — that is the
+// moment the scene name is allowed to appear.
+function closeFogOverMap(onCovered) {
+  if (!isPlayer || !fogDataCanvas || !cloudPattern) return false;
+  // The cover has to keep drifting to read as fog and not as a navy fill. No-op if the loop
+  // is already up, so this only matters when the switch begins with the animation idle.
+  startFogAnim();
+  animateFogCover(1, FOG_SCENE_COVER_MS, onCovered);
+  return true;
+}
+
+// Skip straight to fully covered. The safety net for a scene payload that arrives while the
+// fog is still closing: finishing the cover early is a small ugliness, showing the swap
+// through a half-closed cover is a broken one.
+function snapFogCover(v) {
+  if (fogCoverRafId) { cancelAnimationFrame(fogCoverRafId); fogCoverRafId = null; }
+  fogCoverDone = null;
+  fogCoverT = v;
+  fogDirty = true;
+  scheduleRender();
+}
+
+// Clear the fog off the new map. Mirrors the close, so the switch is one movement out and
+// back rather than two unrelated effects.
+function openFogFromCover() {
+  if (!isPlayer || fogCoverT <= 0) return;
+  // Every path that ends a switch reaches here, including a map that failed to load, so the
+  // pin can never be left held forever.
+  rebaseCloudTransform();
+  animateFogCover(0, FOG_SCENE_UNCOVER_MS, null);
+}
+
+// ─── Fog colour across a switch ───────────────────────────────────────────────
+// Fog colour is per scene, so two scenes that disagree used to swap the whole screen from one
+// colour to the other in a single frame — the incoming scene lands while the cover is fully
+// closed, which is precisely when the colour IS the entire picture.
+// EASED OVER THE CLOSE, NOT THE REVEAL. The fog reaches the new colour while it is thickening,
+// so the hold and the whole reveal are already in it and nothing changes in open view. The DM
+// sends the destination the moment it has read the scene record (sceneManager.js), normally
+// well inside the close; a late one eases over whatever is left, floored so it is never a snap.
+let fogColorFromHex = null, fogColorToHex = null;
+let fogColorStart = 0, fogColorDur = 0, fogColorRafId = null;
+const FOG_COLOR_EASE_MIN_MS = 700;
+
+// How much of the close is still to run. 0 once the cover has landed.
+function fogCloseRemainingMs() {
+  if (fogCoverRafId === null || fogCoverTo < 1) return 0;
+  return Math.max(0, fogCoverStart + fogCoverDur - performance.now());
+}
+
+function startFogColorEase(toHex) {
+  if (!isPlayer || !toHex || toHex === fogPickedHex) return;
+  fogColorFromHex = fogPickedHex;
+  fogColorToHex   = toHex;
+  fogColorStart   = performance.now();
+  fogColorDur     = Math.max(FOG_COLOR_EASE_MIN_MS, fogCloseRemainingMs());
+  if (!fogColorRafId) fogColorRafId = requestAnimationFrame(fogColorTick);
+}
+
+function fogColorTick(ts) {
+  const raw = Math.min((ts - fogColorStart) / fogColorDur, 1);
+  const e   = raw * raw * (3 - 2 * raw);   // smoothstep, same easing as the cover
+  applyFogColor(lerpHex(fogColorFromHex, fogColorToHex, e));
+  if (raw < 1) { fogColorRafId = requestAnimationFrame(fogColorTick); return; }
+  fogColorRafId = null;
+  endFogColorEase();
+}
+
+// Land on the destination exactly, and give up ownership of the colour.
+function endFogColorEase() {
+  if (fogColorRafId) { cancelAnimationFrame(fogColorRafId); fogColorRafId = null; }
+  if (fogColorToHex) applyFogColor(fogColorToHex);
+  fogColorFromHex = fogColorToHex = null;
+}
+
 // ─── Reveal All / Shroud All ──────────────────────────────────────────────────
 // Resets only the hand-painted brush layer; polygons are preserved and re-applied.
 
@@ -828,6 +1030,11 @@ function applyFogTintAlpha(alpha) {
 // so no new logic lives in index.html.
 function handleFogColorMessage(msg) {
   if (msg.fogTintAlpha != null) FOG_TINT_ALPHA = msg.fogTintAlpha;
+  // A switch's colour ease OWNS the colour until it lands. The DM restores the incoming
+  // scene's fog settings partway through the close and pushes that colour down here, and
+  // applying it would snap in one frame to the destination the ease is already crossing to.
+  // Retarget rather than ignore, so a colour picked DURING a switch still arrives.
+  if (fogColorToHex) { fogColorToHex = msg.pickedHex; return; }
   applyFogColor(msg.pickedHex);
 }
 
