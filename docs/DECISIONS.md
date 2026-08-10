@@ -92,10 +92,28 @@ discard a value dialled in over a session.
 reveal/shroud crossfade composites a stale frame-0 cloud. DM only, visible only during a
 transition, roughly a one-line fix. Nobody has reported seeing it.
 
-### Cloud morph runs ~12× slow during video playback · `WON'T FIX` (needs a verdict first)
-`cloudFramePos += dt` uses the per-tick `dt` even when the video throttle skipped ticks.
-Preserved deliberately through the 1.6.1 perf batch, because fixing it speeds the morph up
-~12× on animated maps, which is a fog-appearance change.
+### Cloud morph advances by real elapsed time on both paths · `SETTLED` (reversed 2026-08-09)
+The video path fed `cloudFramePos` the per-tick `dt` while the frame throttle was skipping
+ticks, so fog over an animated map morphed at a fraction of its rate on a still one. Carried as
+`WON'T FIX` on the grounds that preserving the appearance outranked uniformity; that call is
+reversed and both paths now share one rebuild gate and one clock. **The measured gain is ~4×,
+not the ~12× long recorded** — `dt` is one rAF interval (~16.7ms) against a 66ms video gate.
+
+**The stall clamp must exceed the longest ordinary gap between rebuilds**, or it silently
+throttles the morph instead of only catching stalls. At 0.1s it was shorter than the ~132ms the
+video throttle produces and docked every step; it is now 0.25s and named.
+
+### A drag release must not stop the running fog transition · `SETTLED` (2026-08-09)
+`stopFogTransition()` ends a crossfade by jumping it to its finished state, so the six drag
+releases in `tools.js` calling it before starting the next transition made a quick second drag
+snap. They no longer do: `startFogTransition()` already handles an overlapping call by leaving
+the live fade running, and the following `rebuildFogEffect()` re-targets it. `stopFogTransition`
+stays where a transition must genuinely be abandoned — scene switch and window close.
+
+**This did NOT fix the reported snap**, which still reproduces. Two theories are now spent: the
+older "call `startFogTransition()` after the final rebuild" was already in the code, and this
+one was correct in itself but is not the cause. The change is kept on its own merits. A third
+attempt starts from a fresh diagnosis, not from either.
 
 ### Fog "named theme library" · `REJECTED`
 Save/apply named fog themes was descoped out of the fog-colour epic. Distinct from
@@ -567,8 +585,13 @@ behind a hairline, outlined blue when on.
 The toolbar now carries three signals: a dark pill is pick-one, an outlined blue box is a
 switch that is on, and the tool row wears that same outlined box while also being pick-one.
 **The collision is deliberate and must not be "fixed"** — the tool picker is the one control
-of its kind in the app and is meant to look unlike everything to its right. Position and the
-hairline carry the distinction. Rules are in the `dm-ui` skill.
+of its kind in the app and is meant to look unlike everything to its right. Rules are in the
+`dm-ui` skill.
+
+**The hairline is gone, and position alone carries the distinction · `REVERTED` (2026-08-09).**
+The 1px `.tb-div` read as a scratch on the real monitor, which no amount of correctness in the
+grouping argument survives. The gap it occupied is preserved as a margin on the first switch, so
+the switches still read as their own group. **Don't reintroduce a divider on this bar.**
 
 ### The alpha slider's 1px edge fringe was `background-origin` · `SETTLED` (2026-08-06)
 The opacity track painted a 1px column of the fully opaque colour on its left edge and of the
@@ -594,6 +617,27 @@ Carried for months without ever being wanted.
 
 ### Manual resolution slider · `REJECTED`
 Irrelevant for images, and the display epic auto-downscales video textures.
+
+### A click on the map takes focus off the room card · `SETTLED` (2026-08-09)
+The map canvas is not focusable, so clicking it blurred nothing: once the DM typed in the room
+card's name or description, that field held focus for the rest of the session and every later
+Ctrl+Z reached its text history instead of the fog's undo. A mousedown on the map now blurs an
+`INPUT`/`TEXTAREA`, which also runs the field's ordinary commit.
+
+**The split is deliberate and was not changed:** while the caret is in a field, Ctrl+Z is that
+field's text undo; on the map it is the fog's. Making Ctrl+Z always undo fog was considered and
+rejected — it would make a room description uneditable in practice.
+
+### The Player's fullscreen state comes from the event, never from `isFullScreen()` · `SETTLED` (2026-08-09)
+Fullscreen on the Player window is native window fullscreen driven from `main.js`, so the
+renderer sees no `fullscreenchange` and `document.fullscreenElement` stays null — the state
+exists only in the main process and has to be pushed to the DM to be shown.
+
+**On Windows, `win.isFullScreen()` still returns the OLD value inside the window's own
+`enter-full-screen` / `leave-full-screen` handler** (verified against Electron 43). Reading it
+there reports every change backwards and the button lights up exactly when it shouldn't. Take
+the state from which event fired. Reading the flag is correct only where no transition is in
+flight, such as the initial push on `did-finish-load`.
 
 ### Switching UI scaling off CSS `zoom` · `PARKED`
 Moving to `transform: scale` or rem-based units would retire a bug class at the root, but the
@@ -737,6 +781,11 @@ exactly that. Distrust any result whose two lines do not print the same `map=`.
   reuse, since the `drawImage` into it is source-over. **Not** `_fogScratch`: assigning
   `.width` reallocates, so sharing one canvas between two resizing callers saves nothing.
 - `pixiFlushTexturePool()` on minimize was dead. Its calls after `pixiInitFog` stay.
+- The minimap's fog-composite scratch is the same pattern, added 2026-08-09: cached on the
+  preview's dimensions instead of allocated per redraw. **Its reset must run on every reuse,
+  not only after a resize** — the composite exits with `source-atop` and alpha 0.35 still set,
+  and "no resize" is the steady state, so a resize-only reset would make the dirty path the
+  normal one.
 
 ### `UNDO_MAX_BYTES` is one budget for both stacks · `SETTLED`
 `redoStack` had no cap, so the pair could reach ~218 MB against a 120 MB budget. Capping each
@@ -1065,3 +1114,8 @@ exporter does.
 **"Loose wall segments mean face-finding is several evenings."** Judged before the portals were
 unioned in. Walls plus portals close the plan, and the derivation took one pass. A partial read
 of a data file is not a basis for an estimate.
+
+**"Brush radius is applied in map-space, so 40px isn't 40 screen px."** Carried as an open bug
+for months and false on inspection: both places that turn the slider value into a fog radius
+divide by `zoom`, and the cursor ring is drawn in screen px to match. `brushSize` has no third
+reader. A bug filed from reasoning rather than a repro can outlive the code it described.
