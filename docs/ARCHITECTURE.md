@@ -142,6 +142,11 @@ The DM window is the boss. The Player window follows.
   the party is ready.
 - **Sync View** snaps the Player's camera to match the DM's. The Player camera glides to
   new positions rather than jumping.
+- The Player reports a few things back, so DM controls can show what is actually true rather
+  than what was last asked for: its screen size, whether it has been panned away from the
+  DM's camera, and whether it is fullscreen. Fullscreen is the odd one - it is the window
+  going fullscreen rather than the page, so only the app shell can see it, and it travels
+  shell → Player → DM.
 
 **The camera crosses the wire as a region, not a zoom level.** This is the part worth
 understanding. If the DM sent "centre here, at 1.4× zoom", a bigger TV would show *more
