@@ -3,14 +3,16 @@
 Behavioral rulebook for this repo: the constraints you must obey. Rules only, imperative,
 one clause of reason at most.
 
-- How the app works → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- Why a thing is shaped the way it is, and what was already tried → [docs/DECISIONS.md](docs/DECISIONS.md)
-- A rule that applies only inside one folder → that folder's own `CLAUDE.md`.
-- A rule cluster that applies only to a few named files → a skill in `.claude/skills/`.
-  `guard-skill-hint.js` fires on an edit to an owning file and names the skill; the pointers
-  below are documentation, not the trigger.
-- **A size-guard hook enforces this file's shape: it may shrink, it may not grow.** A
-  paragraph you are about to add here belongs in one of the destinations above.
+**Every doc answers one question; the mood it is written in proves it.** This one answers
+*what must I never do?* A paragraph that doesn't belongs elsewhere:
+
+- How does it work? Present tense → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Why this shape, what was tried? Past tense → [docs/DECISIONS.md](docs/DECISIONS.md)
+- What is it for, what will it never do? → [docs/PRODUCT.md](docs/PRODUCT.md)
+- Scoped to one folder → that folder's own `CLAUDE.md`. To a few named files → a skill in
+  `.claude/skills/`; `guard-skill-hint.js` fires on an edit and names it.
+
+**Every one has a guard hook.** This file may shrink, never grow.
 
 ## What this is
 
@@ -63,7 +65,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 
 | Module | Owns |
 |---|---|
-| `state.js` | Shared state: fog display constants, grid config, fog RAF handles, map/camera/pan-zoom/polygon/scene/auto-sync/player-sync/dirty flags |
+| `state.js` | Shared state: fog constants, grid config, fog RAF handles, map/camera/pan-zoom/polygon/scene/sync/dirty flags |
 | `renderer.js` | PixiJS/WebGL wrapper; map + DM fog GPU path |
 | `render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, `getViewportSize`/`calcViewport`, `drawCursor` |
 | `fog.js` | Fog canvases, blur + cloud pipeline, reveal/hide, transitions |
@@ -76,7 +78,8 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `scenes.js` | Fog persistence + scene fade helpers |
 | `sceneManager.js` | Scene CRUD, `switchScene`, scene-manager UI |
 | `sceneStore.js` | IndexedDB read/write |
-| `mapLoader.js` | Image-map loading + the shared progress-bar helpers used by backup.js and sceneManager.js |
+| `mapLoader.js` | Image-map loading + the shared progress-bar helpers |
+| `mapConvert.js` | Import-time animated-map shrink. `fitInsideBox` unit-tested |
 | `viewport.js` | Pan/zoom, Sync View, Player map delivery, `scheduleAutoSync`, `dmVisibleRegion` |
 | `minimap.js` | Minimap render + drag/zoom remote, view sync both ways, `minimapGetZoom`/`SetZoom`/`NudgeZoom` |
 | `video.js` | Animated-map handling |
@@ -97,14 +100,14 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 
 ### Load order
 
-Declarations must precede use at init time. All files under `src/`:
+Declarations must precede use at init time. All under `src/`:
 
 ```
 lib/pixi.min.js → renderer.js → state.js → display.js → video.js → fogGeometry.js →
-vttPlan.js → fog.js → tools.js → mapLoader.js → undo.js → sceneStore.js → scenes.js →
-sceneManager.js → viewport.js → backup.js → grid.js → toolbar.js → player.js → input.js →
-stress.js → memProbe.js → render.js → minimap.js → controlPanel.js → confirmDialog.js →
-floorPlan.js → moduleText.js → roomPanel.js → about.js → inline <script> (last)
+vttPlan.js → fog.js → tools.js → mapLoader.js → mapConvert.js → undo.js → sceneStore.js →
+scenes.js → sceneManager.js → viewport.js → backup.js → grid.js → toolbar.js → player.js →
+input.js → stress.js → memProbe.js → render.js → minimap.js → controlPanel.js →
+confirmDialog.js → floorPlan.js → moduleText.js → roomPanel.js → about.js → inline <script>
 ```
 
 ### Repo layout
@@ -147,8 +150,7 @@ Every error goes through it; no `alert()` ships.
 3. **The map is the interaction surface.** Selecting a room is the Select tool's job alone.
    Rectangle/Circle/Polygon clicks must keep drawing new rooms, including overlapping and
    nested ones.
-4. Rooms never reach the Player, so room notes are DM-only for free. No stripping guard
-   needed.
+4. Rooms never reach the Player, so room notes are DM-only for free; no stripping guard.
 
 ## The render loop
 
@@ -157,8 +159,8 @@ Every error goes through it; no `alert()` ships.
   An rAF fallback covers `pixiApp === null`.
 - **Do not "simplify" this into a self-scheduling rAF loop with its own throttle.** A
   throttle on top of a throttle is the phase bug this replaced.
-- `videoFrameIntervalMs` is a `const` in `state.js` and `video.js` throttles the frame pump
-  on it every frame. It is live; don't delete it as leftover FPS-slider code.
+- `videoFrameIntervalMs` (`state.js`) throttles `video.js`'s frame pump every frame. It is
+  live; don't delete it as leftover FPS-slider code.
 
 ## Testing
 
@@ -175,15 +177,14 @@ Every error goes through it; no `alert()` ships.
 
 ## Guard hooks
 
-Five fail-open hooks in `.claude/settings.json`; baselines beside them in `.claude/hooks/`.
-`guard-blob.js` (`index.html`), `guard-claudemd.js` (this file), `guard-decisions.js` and
-`guard-backlog.js` are `PostToolUse` guards that explain their own fix when they
-fire. `PreToolUse` `guard-skill-hint.js` names the skill that owns a file you edit.
+Six fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file has
+one**, and each explains its own fix when it fires. `guard-skill-hint.js` is the `PreToolUse`
+one: it names the skill owning a file you edit.
 
 ## Conventions
 
-- **No dated fix logs, changelog entries, or debugging narrative here.** Rules only; the two
-  destinations are at the top of this file, and process narrative goes nowhere.
+- **No dated fix logs, changelog entries, or debugging narrative here.** Rules only;
+  destinations are at the top, and process narrative goes nowhere.
 - Code comments: keep the rule, one clause of why, and any warning about a specific trap.
   Cut named examples that disambiguate nothing, "an earlier version was tried", measurement
   dates and counts, restatements of the code, and anything duplicating this file.

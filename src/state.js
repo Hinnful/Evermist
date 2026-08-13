@@ -26,10 +26,24 @@ let   _sceneFadeStart   = 0;
 let displayInfo = null;
 
 // ─── Video frame-rate cap ────────────────────────────────────────────────────
-// Live: video.js throttles the frame pump on this every frame. Not FPS-slider
-// leftover — that control and its sync field were removed, this was kept.
+// Live: video.js throttles its per-frame video loop on this. NOT a map redraw rate — neither
+// view draws its map from that loop (the DM composites a DOM <video>, the Player's texture rides
+// the PixiJS ticker). What it paces is doRender's syncVideoDomTransform on the DM, and the loop
+// itself is the stall watchdog's liveness signal.
 const VIDEO_FPS_DEFAULT       = 24;
 const videoFrameIntervalMs    = 1000 / VIDEO_FPS_DEFAULT;
+
+// ─── Animated-map import box ─────────────────────────────────────────────────
+// An oversized animated map is re-encoded to fit this box at import (mapConvert.js). 3840×2160
+// is 2× the club TV's 1080p and under the 4096 ceiling where hardware VP9/H.264 decode stops
+// on integrated graphics — two decoders live at once (DM + Player), and they are the memory
+// problem, not the CPU one.
+//
+// The bitrate is a one-line tunable. 15 Mbps inside the box is ~0.073 bits per pixel against
+// the sources' ~0.051, so quality per pixel improves even after H.264's deficit against VP9.
+const MAP_BOX_W = 3840;
+const MAP_BOX_H = 2160;
+const MAP_CONVERT_BITRATE = 15000000;
 
 // ─── App frame-rate cap ──────────────────────────────────────────────────────
 // ONE clock, not two: this caps the PixiJS ticker, and render.js's dirty-flag loop
@@ -108,8 +122,7 @@ let mapVideo     = null;   // <video> element for animated maps
 let mapVideoBlob = null;   // original video file Blob for storage/sync
 let mapVideoUrl  = null;   // blob URL backing mapVideo (revoke on cleanup)
 let videoEnabled = false;  // true while video is actively playing as map source
-let videoRAFId   = null;   // RAF id for video-driven map redraws (fallback)
-let videoRVFCId  = null;   // requestVideoFrameCallback id (preferred)
+let videoRVFCId  = null;   // requestVideoFrameCallback id; the only frame-loop handle
 let videoLastRenderTs = 0;
 
 let mapWidth = 0, mapHeight = 0;
@@ -154,7 +167,6 @@ const VIEW_LERP_MS   = 400;
 // drawCursor() straight from the event handler.
 let renderScheduled = false;
 let viewportDirty   = false;
-let mapDirty        = false;
 let fogDirty        = false;
 let gridDirty       = false;
 let cursorDirty     = false;

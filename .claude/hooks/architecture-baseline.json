@@ -1,0 +1,6 @@
+{
+  "note": "Per-subject state for the ARCHITECTURE.md drift guard, so each notice fires once and never nags. Clear \"reported\" to hear about everything again.",
+  "reported": [
+    "missing:mapconvert.js"
+  ]
+}

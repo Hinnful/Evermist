@@ -4,11 +4,6 @@
 // Loaded after state.js (reads displayInfo) and before the inline blob.
 // Extracted from the blob per CLAUDE.md migrate-on-touch policy.
 
-// ─── Rollback lever ──────────────────────────────────────────────────────────
-// Set false to revert every call site to the old ~2× viewport heuristic in one
-// line — no need to touch six call sites.
-var USE_DISPLAY_SIZING = true;
-
 // ─── Design constants ────────────────────────────────────────────────────────
 // targetLong = max(dispW, dispH) * coverage → how many real map pixels the texture
 // carries along its long axis. Coverage IS zoom headroom: 3 means "1/3 of the map fills
@@ -94,8 +89,7 @@ function computeOptimalTextureSize(dispW, dispH, srcW, srcH, maxTex, coverageFac
 function prepareTextureCanvas(masterCanvas, masterW, masterH) {
   var targetW, targetH;
 
-  if (USE_DISPLAY_SIZING
-      && typeof displayInfo !== 'undefined' && displayInfo
+  if (typeof displayInfo !== 'undefined' && displayInfo
       && displayInfo.w && displayInfo.h) {
 
     var maxTex = (typeof pixiGetMaxTexSize === 'function')
@@ -107,8 +101,11 @@ function prepareTextureCanvas(masterCanvas, masterW, masterH) {
     targetH = sized.h;
 
   } else {
-    // Fallback: reproduce old ~2× viewport heuristic so USE_DISPLAY_SIZING=false
-    // reverts each call site exactly to its prior behaviour.
+    // ⚠ NOT DEAD, AND NOT A ROLLBACK LEVER. displayInfo is null until main.js pushes it, so a
+    // map loaded in the first moments of a session lands here — the old ~2× viewport heuristic
+    // is the only sizing available before the Player's screen is known. computeOptimalTextureSize
+    // would return the source size untouched in that case, which is a far larger texture.
+    // onDisplayInfoUpdated re-sizes it properly the moment the display is reported.
     var _maxSide = Math.max(
       (typeof innerWidth  !== 'undefined' ? innerWidth  : 1920),
       (typeof innerHeight !== 'undefined' ? innerHeight : 1080)
@@ -252,6 +249,24 @@ function refreshPlayerMapRegion() {
   pixiUpdateMapTexture();
 }
 
+// ─── Binding an animated map's frame-0 texture ───────────────────────────────
+// The two views need OPPOSITE things here, which is why this is one function and not an
+// inlined pair of calls at three call sites.
+//
+// DM: the map is a CSS-composited DOM <video>, and the PixiJS sprite is hidden the instant it
+// is created — `pixiHideMap` only sets visible=false, so the texture stayed on the GPU for the
+// whole scene. The only path that could show it again (`deactivateVideoDom`) runs from
+// `cleanupVideo`, i.e. during teardown, so it never drew. Clear the layer instead.
+//
+// Player: the sprite IS how the map is drawn, so it keeps one. This first texture is superseded
+// by the viewport-sized region texture a moment later, and that ordering is load-bearing — see
+// `initPlayerMapRegionTexture` and the warning in `onDisplayInfoUpdated`.
+function bindVideoFrameTexture(frameCanvas, w, h) {
+  if (typeof isPlayer !== 'undefined' && !isPlayer) { pixiClearMap(); return; }
+  pixiSetMap(prepareTextureCanvas(frameCanvas, w, h), w, h);
+  pixiHideMap();
+}
+
 // ─── Re-texture on display change ────────────────────────────────────────────
 // Called by display.js whenever displayInfo is updated (Player window opened,
 // moved to a different screen, or display config changed). Re-runs sizing against
@@ -276,13 +291,17 @@ function onDisplayInfoUpdated() {
     return;
   }
 
-  var newTex = prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight);
+  // DM animated map: there is no sizing to redo either, because the map is the DOM <video> and
+  // this view holds no map sprite at all (bindVideoFrameTexture). Clearing rather than falling
+  // through is what stops a display change re-uploading the texture that was just removed.
+  if (typeof mapVideo !== 'undefined' && mapVideo) {
+    pixiClearMap();
+    if (typeof viewportDirty !== 'undefined') viewportDirty = true;
+    if (typeof scheduleRender === 'function') scheduleRender();
+    return;
+  }
 
-  pixiSetMap(newTex, mapWidth, mapHeight);
-  // DM with active DOM video: pixiSetMap creates a new sprite with visible=true,
-  // but the map is shown via CSS-composited <video>, not the PixiJS sprite.
-  // Keep the sprite hidden so the static first-frame doesn't flash over the live video.
-  if (typeof videoDOMActive !== 'undefined' && videoDOMActive) pixiHideMap();
+  pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
   if (typeof viewportDirty !== 'undefined') viewportDirty = true;
   if (typeof scheduleRender === 'function') scheduleRender();
 }
@@ -332,7 +351,7 @@ function onVideoPause() {
 function onVideoPlaying() {
   if (!videoEnabled || !mapVideo) return;
   _diagAppend('event:playing rs=' + mapVideo.readyState);
-  if (videoRVFCId == null && videoRAFId == null) scheduleVideoFrame();
+  if (videoRVFCId == null) scheduleVideoFrame();
 }
 
 function attachVideoListeners(video) {
@@ -349,35 +368,29 @@ function detachVideoListeners(video) {
   video.removeEventListener('waiting', onVideoWaiting);
 }
 
+// The per-frame loop. NEITHER VIEW DRAWS ITS MAP FROM HERE: the DM's map is the composited DOM
+// <video>, and the Player's texture rides the PixiJS ticker (pixiStartVideoTextureSync). What the
+// scheduleRender below is actually for is `syncVideoDomTransform`, which doRender runs whenever
+// videoDOMActive — and videoFrameIntervalMs is what keeps that to 24 a second.
+//
+// The loop is also the watchdog's liveness signal: a null id is how a dead pump is noticed and
+// restarted. It is part of the rs=2 stall fix and DECISIONS.md keeps every piece of that.
+//
+// No requestAnimationFrame fallback: requestVideoFrameCallback has been on HTMLVideoElement in
+// every engine this app can run on for years, and the fallback's own guards had drifted out of
+// step with this branch's.
 function scheduleVideoFrame() {
   if (!videoEnabled || !mapVideo) return;
-  if (mapVideo.requestVideoFrameCallback) {
-    videoRVFCId = mapVideo.requestVideoFrameCallback(function() {
-      videoRVFCId = null;
-      if (!videoEnabled || !mapVideo) return;
-      var now = performance.now();
-      if (now - videoLastRenderTs >= videoFrameIntervalMs) {
-        videoLastRenderTs = now;
-        mapDirty = true;
-        scheduleRender();
-      }
-      scheduleVideoFrame();
-    });
-  } else {
-    videoRAFId = requestAnimationFrame(function() {
-      videoRAFId = null;
-      if (!videoEnabled || !mapVideo) return;
-      if (!mapVideo.paused && !mapVideo.ended) {
-        var now = performance.now();
-        if (now - videoLastRenderTs >= videoFrameIntervalMs) {
-          videoLastRenderTs = now;
-          mapDirty = true;
-          scheduleRender();
-        }
-      }
-      scheduleVideoFrame();
-    });
-  }
+  videoRVFCId = mapVideo.requestVideoFrameCallback(function() {
+    videoRVFCId = null;
+    if (!videoEnabled || !mapVideo) return;
+    var now = performance.now();
+    if (now - videoLastRenderTs >= videoFrameIntervalMs) {
+      videoLastRenderTs = now;
+      scheduleRender();
+    }
+    scheduleVideoFrame();
+  });
 }
 
 var _videoWatchdogId = null;
@@ -413,7 +426,7 @@ function startVideoWatchdog() {
       _diagAppend('[STALL-FLUSH] best-effort disk sync point');
       mapVideo.play().catch(function() {});
     }
-    if (videoRVFCId == null && videoRAFId == null) {
+    if (videoRVFCId == null) {
       _diagAppend('watchdog restart frame loop');
       scheduleVideoFrame();
     }
@@ -424,7 +437,6 @@ function stopVideoLoop() {
   _diagAppend('stopVideoLoop');
   stopVideoWatchdog();
   videoEnabled = false;
-  if (videoRAFId) { cancelAnimationFrame(videoRAFId); videoRAFId = null; }
   if (videoRVFCId != null && mapVideo && mapVideo.cancelVideoFrameCallback) {
     mapVideo.cancelVideoFrameCallback(videoRVFCId); videoRVFCId = null;
   }
@@ -566,8 +578,7 @@ function loadVideoFromFile(file, onVideoLoaded) {
 
       if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
       mapOffscreen = extractCanvas;
-      pixiSetMap(prepareTextureCanvas(extractCanvas, vw, vh), vw, vh);
-      pixiHideMap();
+      bindVideoFrameTexture(extractCanvas, vw, vh);
       mapVideo = video;
       attachVideoListeners(video);
       mapVideoBlob = file;
@@ -667,7 +678,6 @@ function _diagRender() {
   var loopAge = _videoLoopStartedAt
     ? ((performance.now() - _videoLoopStartedAt) / 1000).toFixed(1) + 's' : '—';
   var rvfc = (typeof videoRVFCId !== 'undefined') ? videoRVFCId : '?';
-  var raf  = (typeof videoRAFId  !== 'undefined') ? videoRAFId  : '?';
   var wdog = _videoWatchdogId ? 'ON' : 'off';
 
   // Detect readyState changes between renders
@@ -681,7 +691,7 @@ function _diagRender() {
     've=' + ve + '  vda=' + vda + '  wdog=' + wdog,
     'rs=' + rs + (rs < 4 && rs !== '—' ? ' ⚠' : '') +
       '  paused=' + pa + '  ct=' + ct,
-    'loopAge=' + loopAge + '  RVFC=' + rvfc + '  RAF=' + raf,
+    'loopAge=' + loopAge + '  RVFC=' + rvfc,
     '── Events (newest first) ──',
   ].concat(_diagLog.slice().reverse());
 

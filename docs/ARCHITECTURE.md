@@ -4,11 +4,13 @@ A plain-language tour of how Evermist works, for anyone reading the code. It's a
 client-side app with no server and no cloud database. Everything happens in two browser
 windows running inside an Electron shell.
 
-**Where to look for what.** This page explains how the app works and why it's shaped the
-way it is. [CLAUDE.md](../CLAUDE.md) is the rulebook: the constraints you must obey when
-changing something, written terse for an AI assistant. [DECISIONS.md](DECISIONS.md) is the
-ledger of settled calls, including everything that was tried and rejected. If you're about
-to redesign something, check there first.
+**Where to look for what.** This page explains how the app works, in the present tense, and
+nothing else. [CLAUDE.md](../CLAUDE.md) is the rulebook: the constraints you must obey when
+changing something. [DECISIONS.md](DECISIONS.md) is the ledger of settled calls, including
+everything that was tried and rejected - check there first if you're about to redesign
+something. [PRODUCT.md](PRODUCT.md) says what the app is for and what it will never do.
+
+A sentence here that explains *why* belongs in one of those. This page says what is.
 
 ## The big picture
 
@@ -42,6 +44,7 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `sceneManager.js` | Scene CRUD and the scene-manager UI: `switchScene`, `createNewScene`, rename, delete, thumbnails. |
 | `sceneStore.js` | Saving and loading scenes to the browser's local database (IndexedDB). |
 | `mapLoader.js` | Loading a map image into the app and driving the progress bar. Shared by scene-switching and backup restore. |
+| `mapConvert.js` | Asking whether to shrink an oversized animated map at import, and re-encoding it if the answer is yes. Pure box-fitting maths plus the recorder that drives it. |
 | `viewport.js` | Pan, zoom, pushing the camera to the Player window, and the auto-sync helper. |
 | `minimap.js` | The DM's live preview of the Player camera, and the remote control that drives it. |
 | `video.js` | Animated (video) map support: file loading, DOM compositing, decoding, the frame loop, the freeze watchdog. |
@@ -59,6 +62,33 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
 | `memProbe.js` | A hidden memory probe: counts what one loaded map costs and writes it to the diagnostics log. Dormant unless the page is opened with `?memprobe=1`. |
 | `main.js` / `preload.js` | The Electron shell. Creates the windows, saves video files to disk, reads and writes backup zips, forks the PDF parser, finds a map's floor plan, and reports the app's own version number. |
+
+## Bringing an animated map in
+
+A still map arrives, gets decoded, and that's the end of it. An animated map is a different
+proposition: it costs a video decoder in every window that shows it, for as long as the scene is
+open, and that is comfortably the heaviest thing the app does. A Dungeon Alchemist export runs
+13 to 20 megapixels, several times what any table television can show.
+
+So there's a **Compression** switch at the bottom of the scene list. With it on, any animated map
+larger than 3840×2160 is re-encoded on import to fit that box - twice a 1080p TV, and under the
+4096-pixel ceiling where a laptop's built-in graphics stop decoding video in hardware and fall
+back to the processor. A map already inside the box is stored exactly as it arrived.
+
+It is off until switched on, and it replaces what the app stores rather than keeping both. The
+cost is time: re-encoding runs at the speed the map plays, so a thirty-second map takes about
+thirty-five seconds behind a progress bar that says what it's doing. Everything about the
+conversion happens in the browser engine the app is already built on - nothing is bundled for it.
+
+Two things it deliberately won't do. It won't touch maps already saved, or maps restored from a
+backup zip, because their rooms are recorded in the old map's pixel space and would end up in the
+wrong place. And it never asks per map: the machine doing the importing is usually not the
+machine that has to play the result, so a question at import is asked of the wrong computer.
+
+**What the DM window keeps for an animated map is nothing.** The map is the video element itself,
+handed to the browser's own compositor - the same path a media player uses, with no copying per
+frame. The graphics layer holds no picture of the map at all on that side, which is the
+counterpart to the Player's one-screen patch described below.
 
 ## How the fog works
 
@@ -151,7 +181,7 @@ The DM window is the boss. The Player window follows.
 **The camera crosses the wire as a region, not a zoom level.** This is the part worth
 understanding. If the DM sent "centre here, at 1.4× zoom", a bigger TV would show *more
 map* than the DM sees, rather than the same map bigger. So the DM sends the rectangle of
-the map he's looking at, in map units, and the Player fits that rectangle to its own screen.
+map it is looking at, in map units, and the Player fits that rectangle to its own screen.
 Matching screen shapes land exactly edge to edge. Mismatched ones fit rather than crop, so
 the players can never see less than the DM intended.
 
@@ -161,8 +191,8 @@ The Player doesn't hold a copy of the whole map to draw from. It holds one scree
 
 This matters on animated maps. The Player has to redraw its map picture from the video and
 hand it to the graphics card on every frame, so the size of that picture is a cost thirty
-times a second, not just a cost once. When it was the size of the map, his largest animated
-map meant pushing 91MB to the card on every frame. Now it's the size of the Player's own
+times a second, not just a cost once. Sized to the whole map, a large animated map meant
+pushing 91MB to the card on every frame. Now it's the size of the Player's own
 screen plus a small margin, holding only the patch of map the camera is over, at one picture
 pixel per screen pixel. That's about 15MB on a 1440p TV whatever the map's resolution, and
 the same figure is what crosses to the card each frame.
@@ -244,10 +274,17 @@ Dungeon Alchemist writes a `.dd2vtt` floor plan beside every map it exports: wal
 doors and windows, light sources, and the grid calibration, all as vector data. So the rooms
 don't have to be traced by hand or guessed at from pixels - they're already in a file.
 
-Dropping a map asks the Electron shell whether a plan sits beside it. If one does it's stored
-on the scene there and then, because the map is about to be copied into the app's own folder
-and will no longer have a sibling to find. A notice appears with the room count, and Draw
-Rooms in the Fog tab stays available for later.
+Dropping a map asks the Electron shell whether a plan sits beside it. That question is asked
+**first, before anything else touches the file**, for two reasons: the map is about to be copied
+into the app's own folder and will no longer have a sibling to find, and if the map gets
+compressed on the way in, the file that arrives at the far end was built in memory and has no
+place on disk to look beside at all. A notice then appears with the room count, and Draw Rooms
+in the Fog tab stays available for later.
+
+The plan's coordinates are in the pixel space of the export it was written beside, so the rooms
+are scaled onto whatever size the map actually is before they're drawn. Without that step a
+compressed map would get rooms half again too large - correctly shaped, sitting in the wrong
+place, with nothing to indicate anything went wrong.
 
 The geometry is five steps and lives in `vttPlan.js`, entirely separate from the app. Wall
 segments are unioned with the portals that fill their gaps, because walls alone have a hole at
@@ -334,19 +371,16 @@ The zip reading and writing happens in the Electron shell, driven by `backup.js`
 `moduleText.js` owns the module-text format at both ends: `backup.js` asks it for a payload
 and hands one back, and never touches storage itself.
 
-## Why it's built this way
+## How it's put together
 
-- **No frameworks, no build step.** Plain JavaScript loaded with `<script>` tags. This keeps
-  it simple to run and means it works straight off the local filesystem (`file://`), which
-  matters for an offline desktop app. It's also the reason ES modules are banned:
-  `import`/`export` don't work on `file://`.
+- **Plain JavaScript in `<script>` tags.** No framework, no bundler, no build step, and no ES
+  modules. The app runs straight off the local filesystem.
 - **Separate canvases for map, fog, grid, and cursor.** Each is its own layer the GPU stacks
   together, so painting fog doesn't force the expensive map to redraw.
-- **The code lives in `src/`, and `index.html` is only wiring.** The entry script was once a
-  2400-line blob. A guard hook now blocks any edit that grows it, which is the only reason
-  the rule has held.
+- **The code lives in `src/`, and `index.html` is only wiring.** A guard hook blocks any edit
+  that grows the inline script.
 
 ---
 
-Want the rules for changing any of this? [CLAUDE.md](../CLAUDE.md). Want to know whether an
-idea was already tried? [DECISIONS.md](DECISIONS.md).
+Rules for changing any of this: [CLAUDE.md](../CLAUDE.md). Whether an idea was already tried:
+[DECISIONS.md](DECISIONS.md). Whether it belongs in the app at all: [PRODUCT.md](PRODUCT.md).

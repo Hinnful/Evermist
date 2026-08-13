@@ -204,12 +204,11 @@ function _startStallDetector() {
     var ve  = (typeof videoEnabled !== 'undefined') ? videoEnabled : false;
     var mv  = (typeof mapVideo !== 'undefined') ? mapVideo : null;
     var bp  = (typeof _bufferingPause !== 'undefined') ? _bufferingPause : false;
-    var raf = (typeof videoRAFId !== 'undefined') ? videoRAFId : null;
     var rvc = (typeof videoRVFCId !== 'undefined') ? videoRVFCId : null;
 
     if (!ve) { _stressStallSince = null; return; } // video not active
 
-    var frameLoopDead = (raf == null && rvc == null);
+    var frameLoopDead = (rvc == null);
     var readyStall    = mv && mv.readyState < 3 && !mv.paused && !bp;
 
     if (readyStall || frameLoopDead) {

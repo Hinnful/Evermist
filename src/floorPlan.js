@@ -61,10 +61,17 @@ function applyPlanToScene(derived) {
   activePolygon = null;
   selectedPolygonId = null;
 
+  // ⚠ THE KERNEL'S COORDINATES ARE IN THE EXPORT'S PIXEL SPACE, NOT THIS MAP'S. There is no
+  // map-width term in vttPlan.js — it multiplies grid squares by the plan's own
+  // pixels_per_grid — so an animated map that was shrunk at import (mapConvert.js) would get
+  // every room 1.6× too large. Scaling here fixes the import path and the attach-a-plan-later
+  // path with one rule, and self-corrects any resolution mismatch rather than only ours.
+  const rooms = vttScaleRooms(derived.rooms, mapWidth, derived.srcW);
+
   // Numbered from 1 in the kernel's spatial order, so the names read down the map. Same
   // shape the drawing tools produce, or the room card and the fog rebuild would not
   // recognise them.
-  polygons = derived.rooms.map((verts, i) => ({
+  polygons = rooms.map((verts, i) => ({
     id: i + 1,
     vertices: verts.map(v => ({ x: v.x, y: v.y })),
     // A freshly prepped map starts hidden. Rooms get revealed at the table, not now.

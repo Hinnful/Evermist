@@ -5,13 +5,15 @@ why. This is a **lookup table, not a reading document** - nobody needs it in con
 work. Open it when you are about to change something and want to know whether it was
 already decided.
 
-Rules live in [CLAUDE.md](../CLAUDE.md). How the app works lives in
-[ARCHITECTURE.md](ARCHITECTURE.md). This file holds the reasoning those two deliberately
-leave out.
+This file is written in the **past tense**: what was built, what was tried, what was rejected.
+Rules live in [CLAUDE.md](../CLAUDE.md), how the app works in
+[ARCHITECTURE.md](ARCHITECTURE.md), and what the product is and will never be in
+[PRODUCT.md](PRODUCT.md). A scope call or a positioning statement belongs there, not here.
 
 **Status tags:** `SETTLED` (this is the shape, don't redesign it) · `REJECTED` (built or
 proposed, then killed) · `REVERTED` (shipped, then taken back out) · `PARKED` (wanted,
-deferred) · `WON'T FIX` (real, deliberately not fixed).
+deferred) · `WON'T FIX` (real, deliberately not fixed) · `SHIPPED` (landed in a named
+version) · `REOPENED` (closed once, now live again). A guard rejects an entry with no tag.
 
 **Adding an entry:** one heading, a status, and at most a short paragraph. If an entry needs
 more than that, the excess belongs in the commit message.
@@ -671,6 +673,16 @@ as a missing feature** - the dropdown is the entry point for both.
 
 ## Storage, packaging and the shell
 
+### No frameworks, no bundler, no build step · `SETTLED`
+Plain JavaScript in `<script>` tags, because the app has to run straight off the local
+filesystem. That single requirement is also why ES modules are banned: `import`/`export` do not
+work on `file://`. A build step would buy nothing an offline single-page app needs, and it would
+put a compile between an edit and seeing the result on the TV.
+
+The corollary that needed a hook rather than a rule: the entry script was once a 2400-line blob,
+and `guard-blob.js` blocking any edit that grows it is the only reason the code now lives in
+`src/`.
+
 ### `File.path` is gone and must never come back · `SETTLED`
 Electron 32 removed it. The renderer was still passing `file.path` to `saveVideoFile`, so
 main got `undefined`, `fs.stat` threw, and because the `await` had no try/catch the rejection
@@ -699,9 +711,63 @@ Display-sizing is a prerequisite of that path, not a benefit; once the source is
 display-sized, the simple path is already cheap. It also drops high-res DA exports and
 re-trips TDR. Only revisit if a measured video frame-time problem survives display-sizing.
 
-### Proxy auto-shrink-on-import · `PARKED`
-Needs a bundled video encoder: weight, licensing, and a slow "preparing your map" wait. Only
-if zero-prep "any uber-map just works" becomes a real goal.
+### Proxy auto-shrink-on-import · `REOPENED` → `SETTLED` (2026-08-13)
+Parked on three costs: a bundled encoder's weight, its licensing, and a slow "preparing your
+map" wait. **Two of the three were wrong.** `MediaRecorder` is already in Chromium and emits a
+playable MP4 with no muxer to write, so nothing is bundled and nothing is licensed. The third
+cost is real and was accepted: conversion runs at realtime, measured at 34.4s for a 30s
+6150×2850 export.
+Binding details. The codec string must be H.264 **High 5.1 or 5.2** (`avc1.640033` /
+`avc1.640034`) - a lower level caps resolution below the box and `MediaRecorder` rejects it
+outright, and there is no hardware VP9 encoder to use instead. Frames are paced at
+`playbackRate = 1` through `requestVideoFrameCallback` and `captureStream(0)` +
+`requestFrame()`: faster-than-realtime harvesting drops most frames and writes wrong duration
+metadata, which on a looping map is wrong playback speed. Measured output drift, paced: 0.5%.
+A source recorded BY `MediaRecorder` as WebM has no reliable duration of its own and cannot be
+used to check this - the first attempt to measure it reported 1.6s for six seconds of wall clock.
+
+### Compression is a setting, not a per-import question · `SETTLED` (2026-08-13)
+Three shapes were built. An automatic shrink with a toggle went first and was rejected: the box
+is a guess about hardware, and on a strong machine the re-encode is a one-way loss for nothing.
+A `confirmDialog` per import replaced it, then remembered the answer for the rest of the app
+run - **rejected as the worst of both**, because an answer the app remembers is a setting
+however it was obtained, and it reads as a question while behaving as hidden state. The shape
+that held: one persistent switch, applied silently to every import, **off by default** so
+nothing destructive happens until it is asked for. Arming it explains itself once per run
+through `messageDialog` - a statement, not a question.
+Two traps for anything else built on this path. `#map-progress` sits at z-index 10000 and
+`confirmDialog` at 620, so an overlay raised before a dialog buries it and the app looks hung
+with no way to answer; the progress bar therefore goes up from `onStart`, after the decision.
+And a map already inside the box must not be re-encoded at all - it costs a generation of
+quality and a realtime wait for no memory saved.
+
+### Auto-drawn rooms scale onto the loaded map · `SETTLED` (2026-08-13)
+`vttPlan.js` multiplies grid squares by the plan's own `pixels_per_grid` and has no map-width
+term anywhere, so its coordinates are in the pixel space of the export the plan was written
+beside. Invisible while the map on screen IS that export, and wrong the moment it is not: a
+6150→3840 shrink put every room 1.6× too large.
+Fixed self-correctingly rather than by threading a stored factor. `vttDerivePlan` additionally
+returns the plan's own declared pixel size (`resolution.map_size` × `pixels_per_grid`), and
+`applyPlanToScene` scales by `mapWidth / srcW` through `vttScaleRooms`. That fixes the import
+path and the attach-a-plan-later path with one rule, and corrects any resolution mismatch
+rather than only this one. The scale is **uniform and positive on width alone**: winding is what
+classifies a face as a room and a uniform positive scale cannot flip it, while scaling the axes
+independently would shear a plan whose aspect disagrees - a wrong answer that still looks right.
+An absent `map_size` yields 0 and scales by 1, so a plan beside its own export is untouched.
+
+### The DM holds no map sprite for an animated map · `SETTLED` (2026-08-13)
+`pixiHideMap` only sets `visible = false`, so the frame-0 texture built for an animated map
+stayed resident on the GPU for the whole scene - and the DM's map is a CSS-composited DOM
+`<video>`, so it never drew. The only path that could re-show it runs from `cleanupVideo`, i.e.
+during teardown. Roughly 60MB on a 6150-wide map, 27MB once compression shrinks it.
+`bindVideoFrameTexture` now calls `pixiClearMap` on the DM and keeps the Player's sprite, which
+IS how that view draws. **Clearing is not the same as skipping the upload:** still → animated
+has to destroy the outgoing sprite, or the previous map stays on the layer under the video.
+Removed alongside it: `mapDirty`, written in two places and consumed by none, and the
+`requestVideoFrameCallback` rAF fallback, unreachable on any engine this app runs on.
+**`USE_DISPLAY_SIZING`'s else branch was NOT dead and stays.** It reads as a rollback path but
+it is the only sizing available before `displayInfo` arrives, which is every startup; without
+it an early-loaded map gets a full-resolution texture. Only the always-true lever was removed.
 
 ### Single-load on scene creation · `WON'T FIX` (noted)
 Drop/replace loads the map twice. Rerouting through `switchScene` exists because the direct
@@ -725,6 +791,21 @@ is required or the mac build fails hunting for an identity.
 ---
 
 ## Video
+
+### One test rig, not a new one per session · `SETTLED` (2026-08-13)
+The app-driving harness had been written and thrown away four times, because each build solved
+one question and then read as disposable. The survivors now live in `tools/rig/` as one place to
+extend: `smoke.js` boots the real `index.html` and asserts on the live page, `shot.js` crops a
+screenshot to any CSS selector. Deleted with the rest of the fourth attempt:
+`capture-transition.js` and `analyse-capture.js`, whose subject shipped in 1.7.7.
+Three traps are encoded in those two files rather than in this entry, and all three cost a
+debugging round: `backgroundThrottling` must be false or Chromium suspends rAF on an occluded
+window and the harness hangs silently; an element inside `display:none` has zero-sized rects, so
+a spacing assertion against it passes by accident; and Electron's own CSP warning arrives as a
+console error that is not the app's.
+**The ceiling on this shape:** a harness with its own main process has none of the app's IPC
+handlers, so anything touching disk fails on a missing handler. Reaching those paths needs the
+real main process, which is what the CDP rig in the backlog is for.
 
 ### The rs=2 stall fix · `SETTLED` — keep every piece
 The Player plays from its **own** in-memory blob, not the shared `file://` clip both windows
@@ -763,9 +844,14 @@ VIDEO: a canvas drawn onto itself forces a readback, measured at 0.185 ms/frame.
 `PLAYER_COVERAGE_FACTOR` no longer reaches animated maps; it still governs image maps.
 
 ### Frame timing for the two Player texture paths · `SETTLED` (method + result)
-`USE_REGION_TEXTURE` flips at runtime and `npm run memprobe:no-region` starts on the other
-side, so the comparison runs inside one instance in both orders. Clean run, same map both
-windows: region 351 frames / 0.370 ms, full-map 337 / 0.320 ms. No smoothness difference.
+**The lever this was measured with no longer exists** (noted 2026-08-13): `USE_REGION_TEXTURE`
+and `npm run memprobe:no-region` are both gone from the code, so the A/B below cannot be re-run
+as written. Rebuilding a runtime flip is the prerequisite for re-measuring it.
+The method was: flip at runtime and start on the other side, so the comparison runs inside one
+instance in both orders. Clean run, same map both windows: region 351 frames / 0.370 ms,
+full-map 337 / 0.320 ms. No smoothness difference. **The region texture's win is memory, not
+frame time**, and import-time compression narrowed even that - the full-map alternative on a
+boxed map is ~27MB against the region's ~15MB, where it was 91MB against 15MB when this landed.
 
 **ms/frame measures the wrong half**: the timer wraps the canvas draw and
 `pixiUpdateMapTexture()`, which only marks the texture dirty, so the GPU upload it schedules
@@ -816,51 +902,7 @@ resurrect `drawGridLines(mapCtx)`.
 
 ---
 
-## Scope boundaries
-
-### Scene folders · `SETTLED` — the "map layers" parking is reversed (2026-08-06)
-Parked once as "batching three or four maps together as a folder, minimal value in actual play
-or prep". That measured the wrong thing. The value is not the grouping, it is **navigating a
-scene list that has outgrown its container**: sixteen scenes running in parallel, in a thin
-vertical strip, with names truncated so picking one is guesswork. A multi-storey building is
-simply the case that produces sixteen scenes.
-
-So this is a list-navigation problem wearing a layers costume, and the work is drag-and-drop
-into folders with no change to what a scene is.
-
-### Distinctive fog identities · `PARKED` to 2.0.0
-Agreed to be the most interesting idea in its batch and too big for now. The shape when it
-lands: "bloody / icy / acidic / rusty" are not tint values, they are combinations of knobs
-the cloud engine already has (cell size, warp radius, warp strength, anim speed, base and
-tint colour, opacity).
-
-### Map effects are areas, not creatures · `SETTLED` (scope call)
-Difficult terrain, persistent damage zones, light radius, Wall of Fire. No identity, no turn
-order, no mini that moves each round, so this does **not** cross the VTT line the app
-refuses to cross. It reuses the existing polygon tools, the Select tool and the card. The one
-genuinely new piece of work: these must cross to the Player, and that channel deliberately
-does not exist today.
-
-**Call them effects, never tokens** - in code, docs and UI. The word drags the conversation
-back to creature markers every time anyone returns to it, and the creature question is
-already settled. They also get **their own array**, never mixed into `polygons`, whose order
-is fog compositing precedence; only the drawing and hit-testing code is shared. Rendering
-them *under* the fog on both screens means an effect in an unexplored room stays hidden for
-free, and what crosses to the Player is a shape descriptor rather than pixels.
-
-### Auto-polygons: prefer missing a room over producing a bad one · `SETTLED` (design)
-A skipped room costs exactly what today costs. A slightly-wrong one costs **more** than
-today, because fixing someone else's shape is slower than drawing your own. Tune toward
-refusing rather than guessing.
-
-Two more calls from the same design pass. **Do not look for walls at all** - grow outward
-from the clicked pixel until the surface stops resembling it, because DA walls can be dark,
-light, grass, snowy or cave stone and any "walls are dark lines" approach is dead on arrival.
-And **invert the "do magic" button**: pressing it creates nothing, it lights up candidate
-outlines that become real on click, so there is no cleanup cost and bad input is free.
-
-The refusal principle still governs everything; the pixel-tracing design around it is **demoted
-to the fallback** for bare-image maps, superseded by the next entry.
+## Floor-plan derivation
 
 ### Auto-polygons read the map's own floor plan, not pixels · `SETTLED` (design)
 Dungeon Alchemist exports Universal VTT (`.dd2vtt`) beside the map: wall segments, doors and
@@ -901,21 +943,6 @@ close a wall that is simply absent.
 **Reporting each gap's coordinates was built, then cut from the UI** - unreadable as text, and
 an edge case placed in front of every successful import. `openWalls` still computes.
 
-### No automatic cave subdivision, ever · `SETTLED` (scope call)
-Where one cave ends and the next begins is judged by eye, and the same map divided twice by
-the same person comes out differently. There is no ground truth for code to approximate, so
-any shipped answer would replace a judgement call with an arbitrary one, and editing a
-machine's arbitrary shape is slower than drawing your own.
-
-**The "let the coarse boundary appear" half is REVERSED, 2026-08-06.** It read as a free
-consolation prize: no subdivision, but at least an edge-accurate outline to draw inside. On a
-real mixed caves-and-rooms map that outline is one polygon spanning nearly the whole map with
-the genuine rooms sitting inside it, which under reverse-order fog compositing is worse than
-nothing. How it is refused is the next entry. Subdivision itself stays refused, but the route
-to per-chamber rooms is now the **split/scissors tool** rather than detection — the outline is
-edge-accurate, so two cuts across the narrow necks give geometry that is already right. That
-promotes split over merge in the polygon-editing work.
-
 ### A doorless wall loop is solid, not a room · `SETTLED` (kernel rule)
 A wall run that closes on itself carrying no portal anywhere does not bound a room: it is a
 rock formation or the cave's own shell. Every real room reaches somewhere through a doorway,
@@ -929,8 +956,8 @@ Two properties keep it safe. It judges **a whole connected run of walls, not one
 windowless cellar or a prison cell keeps its building's doors; only a structure isolated from
 everything else is refused. And it runs **before the portals are unioned in**, since afterwards
 every chain is a loop and the distinction is gone. Accepted cost: a floor that is one sealed
-room, an attic reached by a hatch, comes back empty rather than wrong. That is the trade asked
-for — *"confidently correct… or not give me polygons at all."*
+room, an attic reached by a hatch, comes back empty rather than wrong. That trade is deliberate:
+confidently correct, or no polygons at all.
 
 ### A wall stub never bridges into solid, and a mutual pair reaches further · `SETTLED`
 A room whose whole side is open to a cave was lost, and gap closing looked innocent. Both
@@ -953,50 +980,9 @@ second reason: with cloud compute and a purpose-built pipeline they still ship S
 Join to correct its output. Any local pixel approach should expect to need correction tools
 too, which is a further argument for reading vector data instead.
 
-### Map effects are materials, not spells · `SETTLED` (design)
-The combinatorics rule out a per-spell library: a wall of fire is any length at any angle, and
-one spell of hundreds. What an asset supplies is the **material** - one seamless ice texture
-serves every wall of ice at every size, and about ten materials cover the whole list. Sizes
-are drawn or typed and a preset carries only a default. Naming by material rather than by
-spell also keeps the app from becoming a rules database that goes stale.
-
-**The mask sells it, not the texture.** A mediocre material with a feathered noisy edge and
-the right blend mode reads as convincing; a beautiful one with a hard border reads as a bug.
-The work is done by the feathered edge, per-preset blending (emissive materials add light to
-the floor beneath, solid ones cover it) and a glow that overspills the shape. Build those with
-ONE placeholder material and judge it before sourcing the rest: the look is unbounded work and
-the pipeline is not.
-
-### The target is prep time, not mid-session time · `SETTLED` (scope call)
-The app exists to make preparing maps fast. Mid-session is deliberately prep-free: that is when
-the game gets run, not authored. Rooms only get drawn during play when prep was skipped
-entirely, and prep gets skipped when the tools make it slow, so on-the-fly drawing is a symptom
-rather than the workflow to optimise. **Do not propose in-play authoring aids**, and do not
-read the habit of drawing mid-session as evidence that prep is fine.
-
-### Evermist is a prep tool that also runs the game · `SETTLED` (positioning)
-"Run cool maps on a TV" described the app until prep automation landed. With a map, its floor
-plan and the module's text, preparing a session is now most of the way to automatic, and each
-of the three is useful alone: hand-drawn rooms still auto-populate from module text, and a
-floor plan still draws rooms with no module. The framing for 2.0.0 is **prep efficiently, run
-beautifully**. A positioning call, not a scope expansion - the VTT line below is unchanged.
-
-### The VTT line · `SETTLED`
-No tokens, no initiative, no character sheets. Map, fog, grid, two screens.
-
-**The test that decides new cases: could a physical object at the table do this job better?**
-If yes, it doesn't ship. Minis, initiative trackers and dice all lose to their physical
-counterparts, and finding, printing and painting a mini is part of the hobby rather than a
-chore to automate away. Digital tokens exist only because online play has no alternative.
-
-Effects pass the same test in reverse: no physical object covers them. A wall of fire is any
-length at any angle and one spell of hundreds, so a pencil on the map is a stand-in rather than
-a better option. **Combinatorial explosion is what qualifies an exception**, not merely being
-an effect.
-
 ---
 
-## Process and docs
+## Docs, rules and guards
 
 ### Rules about rules don't work here; hooks do · `SETTLED`
 Two rules lived in CLAUDE.md: "don't grow the inline blob" and "don't write history in this
@@ -1012,15 +998,39 @@ simplified away**, so reasons got smuggled back in as narrative - right instinct
 container. **Nobody owned the file's total size**, because appending a section is always
 locally cheap.
 
-### Three docs, and only one of them is pushed · `SETTLED`
-`CLAUDE.md` loads into every session automatically, so its size is a running tax and it gets a
-shrink-only guard. `ARCHITECTURE.md` and `DECISIONS.md` are read on demand, so their size
-barely matters and their *findability* is everything.
+### One question per doc, and the mood proves it · `SETTLED`
+Splitting the docs by *subject* failed, because subject is always arguable and a paragraph
+about product positioning has a plausible claim on three files at once. The criterion that
+holds is one question per file, each with a grammatical mood only that file may use: rules are
+imperative, `ARCHITECTURE.md` is present indicative, this file is past tense, `PRODUCT.md` is
+declarative intent. A past-tense sentence in `CLAUDE.md` is a rule leaking its history; an
+imperative here is a rule that escaped the rulebook. The test is answerable without judgement,
+which is why it survives contact with an ambiguous paragraph.
 
-The trap that follows: a pointer is not a trigger. Links from CLAUDE.md to the other two only
-fire if someone is already reading that exact section, which is why `ARCHITECTURE.md` drifted
-seven modules stale without anyone noticing. The fix is not another rule — it is that `/wrap`
-now files into all three and `/brief` reads the ledger as a rejection filter. **A doc with no
+`CLAUDE.md` also carries a size cost the others don't: it loads into every session, so it is
+shrink-only. The rest are read on demand, where *findability* is everything.
+
+### Two module lists, on purpose · `SETTLED`
+`CLAUDE.md` carries a terse module map and `ARCHITECTURE.md` carries a plain-language table of
+the same files. Deleting either looks like an easy win and is not. The rule "extend the module
+that owns the concern, don't duplicate it" is unusable without a map already in context, and
+`CLAUDE.md` is the only file guaranteed to be there; the prose table is for a reader who needs
+to know what a file does before opening it. `guard-architecture.js` checks both against `src/`
+on every module write, so the duplication cannot drift.
+
+### The command ledger is private, the docs ledger is public · `SETTLED`
+Entries about the private slash commands moved to a memory file rather than staying in the repo,
+because they are unreadable without the commands: "auto-running `/redteam` inside `/handoff` was
+rejected" means nothing to someone who has neither. Decisions about **this repo's** docs, rules
+and guard hooks stayed here, since anyone editing the repo needs them and they name nobody. The
+test is the one the docs criterion already uses: useful to someone working on the project, or
+only to whoever owns the tooling.
+
+### A pointer is not a trigger · `SETTLED`
+Links from `CLAUDE.md` to another doc only fire if someone is already reading that exact
+section, which is how `ARCHITECTURE.md` drifted seven modules stale without anyone noticing.
+The fix was not another rule: every doc now has a guard hook that fires on a write, `/wrap`
+files into all of them, and `/brief` reads the ledger as a rejection filter. **A doc with no
 reader and no writer in the actual workflow will rot, however well written.**
 
 ### DECISIONS.md is guarded by a NOTICE, not a ratchet · `SETTLED`
@@ -1066,28 +1076,6 @@ regrouping, and a **real functional regression** where retyping a line turned a 
 non-breaking space inside a character class into an ordinary space. The two versions are
 visually identical. Reuse this for any comment-only pass, and treat invisible characters in
 source as something a comment must warn about.
-
-### Manual test checklists in `/handoff` and `/wrap` · `REJECTED`
-The app can't be agent-driven (Electron on `file://`, runs on the TV, fog is pixel output),
-so automated verification tops out at `npm test` on pure modules and everything visual comes
-down to looking at the TV. Checklists went unread. Don't reintroduce them.
-
-### Auto-running `/redteam` inside `/handoff` · `REJECTED`
-Slow, expensive, and mostly grading a *spec* against criteria that don't apply to an offline
-single-user app. Replaced by a mandatory verdict line with a reason. The standalone run on a
-**diff** is where the value is.
-
-### Piecemeal README updates · `PARKED` to 2.0.0
-The docs get one consolidated rewrite rather than a paragraph per feature.
-
-### 2.0.0 means "polished and finished", not "prep automation done" · `SETTLED`
-The milestone was originally tied to finishing the core of prep automation, and was
-deliberately redefined. A major version should mark a state that can actually be shipped and
-celebrated, and auto-polygons is an explicit hypothesis test that may fail, which is a bad
-thing to hang a major bump on. 2.0.0 is therefore the UI polish batch plus the accumulated bug
-fixes, carrying the consolidated README rewrite. One sequencing consequence: the README is
-docs-only and cannot carry a bump, so it must ride in the same release as the code change that
-does.
 
 ---
 

@@ -107,6 +107,24 @@ function pixiSetMap(imageBitmap, width, height) {
   pixiMapLayer.addChild(pixiMapSprite);
 }
 
+// Drop the map sprite and its GPU texture without uploading a replacement.
+//
+// For the DM's ANIMATED maps, where the map is a CSS-composited <video> and the sprite would be
+// created and then hidden forever. pixiHideMap only sets visible=false, so the texture stayed
+// resident — tens of MB of GPU memory for a sprite whose only re-show path runs during teardown.
+//
+// ⚠ CLEARING IS NOT THE SAME AS SKIPPING pixiSetMap. Switching from an image map to a video map
+// has to destroy the outgoing sprite, or the previous map stays on the layer underneath the video.
+function pixiClearMap() {
+  if (!pixiApp) return;
+  if (pixiMapTexture) { pixiMapTexture.destroy(true); pixiMapTexture = null; }
+  if (pixiMapSprite) {
+    pixiMapLayer.removeChild(pixiMapSprite);
+    pixiMapSprite.destroy();
+    pixiMapSprite = null;
+  }
+}
+
 // Place the map sprite on a MAP-SPACE rectangle instead of the whole map.
 //
 // The Player's animated-map texture is viewport-sized and carries only the region the

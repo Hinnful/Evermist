@@ -511,7 +511,8 @@ function vttRingOnDoorlessWall(ring, walls, tol) {
 // this kernel takes an already-parsed object.
 function vttDerivePlan(plan, opts) {
   const o = opts || {};
-  const empty = { rooms: [], boundaries: [], closedGaps: [], openWalls: [], refusedSolid: 0 };
+  const empty = { rooms: [], boundaries: [], closedGaps: [], openWalls: [], refusedSolid: 0,
+                  srcW: 0, srcH: 0 };
   if (!plan || typeof plan !== 'object') return empty;
 
   const res = plan.resolution || {};
@@ -589,7 +590,38 @@ function vttDerivePlan(plan, opts) {
     closedGaps: bridged.closed.map(toReport),
     openWalls: vttFindOpenWalls(nodes, pairs, o.openWallMaxGap, doorless).map(toReport),
     refusedSolid,
+    // The pixel size the plan believes its own map is. map_size is in grid squares, so
+    // × pixels_per_grid IS the sibling export's resolution at uniform scale 1.0 — and every
+    // coordinate above is in that space, with no map-width term anywhere in this kernel. A
+    // caller whose map is a DIFFERENT size (a shrunk animated map) has to scale by its own
+    // width over this. 0 where the field is absent; callers read that as unknown and scale
+    // by 1, which is what a plan and its own untouched export need.
+    srcW: pxSize(res.map_size && res.map_size.x, ppg),
+    srcH: pxSize(res.map_size && res.map_size.y, ppg),
   };
+}
+
+// One axis of the plan's declared pixel size, or 0 when the file does not say.
+function pxSize(gridSpan, ppg) {
+  const n = Number(gridSpan);
+  return isFinite(n) && n > 0 ? n * ppg : 0;
+}
+
+// Re-scales derived rings from the plan's own pixel space into the loaded map's. The two
+// differ whenever the map on screen is not the export the plan was written beside — an
+// animated map shrunk at import is the case that made this necessary, and every room came
+// out 1.6× too large without it.
+//
+// UNIFORM and POSITIVE, on width alone. Winding is what classifies a face as a room, and a
+// uniform positive scale cannot flip it; scaling the two axes independently would also shear
+// a plan whose aspect disagrees, which is a wrong answer that still looks plausible.
+// Unknown or unusable srcW means scale 1, so a plan beside its own export is untouched.
+function vttScaleRooms(rooms, mapWidth, srcW) {
+  const list = Array.isArray(rooms) ? rooms : [];
+  const mw = Number(mapWidth), sw = Number(srcW);
+  const k = (isFinite(mw) && mw > 0 && isFinite(sw) && sw > 0) ? mw / sw : 1;
+  if (k === 1) return list.map(r => r.map(p => ({ x: p.x, y: p.y })));
+  return list.map(r => r.map(p => ({ x: p.x * k, y: p.y * k })));
 }
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -597,7 +629,7 @@ if (typeof module !== 'undefined' && module.exports) {
     vttCollectEdges, vttBuildNodes, vttSplitAtJunctions, vttWalkFaces,
     vttCleanRing, vttSignedArea, vttProjectToSegment,
     vttLooseEnds, vttCloseGaps, vttFindOpenWalls,
-    vttDoorlessWalls, vttRingOnDoorlessWall, vttDerivePlan,
+    vttDoorlessWalls, vttRingOnDoorlessWall, vttDerivePlan, vttScaleRooms,
     VTT_NODE_SNAP, VTT_COLLINEAR_EPS, VTT_MIN_FACE_AREA,
     VTT_CLOSE_GAP_MAX, VTT_CLOSE_PAIR_MAX, VTT_OPEN_WALL_MAX_GAP, VTT_ROW_BUCKET,
   };
