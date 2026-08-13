@@ -371,6 +371,38 @@ The zip reading and writing happens in the Electron shell, driven by `backup.js`
 `moduleText.js` owns the module-text format at both ends: `backup.js` asks it for a payload
 and hands one back, and never touches storage itself.
 
+## How the app tests itself
+
+Two things, answering different questions.
+
+**The unit tests** (`npm test`) cover arithmetic and geometry: fitting a map inside a box,
+insetting a polygon, turning a floor plan's walls into rooms, putting a PDF's text back in
+reading order. Plain functions, values in and values out. Nothing that touches the screen.
+
+**The rig** (`npm run rig`) covers everything the running app has to be looked at to know.
+It starts the real app the way you do, waits for it to finish loading, then drives it from the
+outside over the Chrome DevTools Protocol: import a map, flip a switch, open the Player window,
+reveal an area. Then it reads back what actually happened and prints one line, PASS or FAIL.
+About ten seconds start to finish.
+
+Driving the app's *own* Electron shell is the point. An earlier harness stood up a second shell
+of its own, which meant none of the file-handling existed and half the app died on a missing
+handler the moment it touched disk. It also could not see the Player window at all, so the
+app's central promise, that what the DM reveals is what the table sees, had never been checked
+by anything but a person.
+
+- Each run gets a throwaway copy of the app's storage under the system temp folder, so a test
+  can import maps and restore backups without ever touching your real library.
+- The test maps are drawn and recorded by the app itself at the start of a run, so nothing
+  binary is stored in the project and no real map has to be pointed at.
+- Screenshots, generated maps and the throwaway storage all stay out of the project folder.
+- `tools/` ships in the repository but not inside the installer, so none of this reaches you.
+
+Three tiers: a **smoke** set that always runs, one **acceptance** file per feature whose pass
+criteria are written in plain English at the top of the file, and the **regression** pass,
+which is every acceptance file together. A criterion that can only be judged by eye stays in
+the file and is reported as unchecked rather than quietly dropped.
+
 ## How it's put together
 
 - **Plain JavaScript in `<script>` tags.** No framework, no bundler, no build step, and no ES

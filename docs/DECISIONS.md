@@ -792,21 +792,6 @@ is required or the mac build fails hunting for an identity.
 
 ## Video
 
-### One test rig, not a new one per session · `SETTLED` (2026-08-13)
-The app-driving harness had been written and thrown away four times, because each build solved
-one question and then read as disposable. The survivors now live in `tools/rig/` as one place to
-extend: `smoke.js` boots the real `index.html` and asserts on the live page, `shot.js` crops a
-screenshot to any CSS selector. Deleted with the rest of the fourth attempt:
-`capture-transition.js` and `analyse-capture.js`, whose subject shipped in 1.7.7.
-Three traps are encoded in those two files rather than in this entry, and all three cost a
-debugging round: `backgroundThrottling` must be false or Chromium suspends rAF on an occluded
-window and the harness hangs silently; an element inside `display:none` has zero-sized rects, so
-a spacing assertion against it passes by accident; and Electron's own CSP warning arrives as a
-console error that is not the app's.
-**The ceiling on this shape:** a harness with its own main process has none of the app's IPC
-handlers, so anything touching disk fails on a missing handler. Reaching those paths needs the
-real main process, which is what the CDP rig in the backlog is for.
-
 ### The rs=2 stall fix · `SETTLED` — keep every piece
 The Player plays from its **own** in-memory blob, not the shared `file://` clip both windows
 read concurrently. Keep: the `disable-features BackgroundVideoTrackOptimization` switch,
@@ -983,6 +968,55 @@ too, which is a further argument for reading vector data instead.
 ---
 
 ## Docs, rules and guards
+
+### The Player keeps its mouse cursor · `SETTLED` (2026-08-14)
+CLAUDE.md read "no buttons, no cursor, no overlays" while `base.css` has set `cursor: default`
+on the Player's canvas since 1.5.2, and the rig surfaced the contradiction. The CSS is right:
+the DM drags the Player's view by hand on the TV constantly, and that needs a cursor you can
+see. The rule was wrong, so the rule changed. **Removing working behaviour always loses against
+keeping it** - that is the general call this settled, not just this line.
+
+### The test rig drives the app's own shell · `SETTLED` (2026-08-14)
+The app-driving harness had been written and thrown away four times, because each build solved
+one question and then read as disposable. Every one of them stood up its **own** Electron main
+process, which meant none of the app's IPC handlers existed: saving a map, restoring a zip and
+the floor-plan lookup all died on a missing handler, and the Player window was invisible to the
+harness entirely. `tools/rig/` replaces that with a driver attaching to `electron .` over
+`--remote-debugging-port` with an isolated `--user-data-dir`. Boot to verdict is ~10s, which is
+what makes it usable during debugging rather than only at the end.
+Zero dependencies, because Node's global `fetch` and `WebSocket` are the whole CDP client.
+**The Player window has to be put fullscreen to be measurable at all.** It opens inside the DM's
+rectangle, so Chromium marks it hidden and stops giving it frames: `requestAnimationFrame` never
+fires, the scene cover never lifts, and the run times out on a symptom that looks like a fog bug.
+`backgroundThrottling: false`, `Page.bringToFront`, `focus()` and moving the DM aside all fail to
+clear it. Fullscreen through the app's own IPC does, and that is the Player's real state on a TV.
+Traps live in the `rig` skill, not here.
+
+### Rejected while building the rig · `REJECTED`
+**Driving the built `.exe` by default.** A build per run is minutes and the rig would stop
+being used. It is `--exe <path>`, for the packaging bug class `npm start` cannot see.
+**A test hook inside the app.** Everything the rig needs is already reachable as a bare global,
+and a hook would ship in the build, which is what `--stress` and `--memprobe` already cost.
+**Stubbing an IPC method to drive the export past its native save dialog.** `window.electronAPI`
+is non-writable and non-configurable; the property cannot be replaced. The round trip mirrors
+the export payload and runs the real restore, and export changes keep a hand test.
+**One app instance shared by all scenarios.** Scenarios import maps and restore backups, so a
+file's result would depend on which ones ran before it. One throwaway instance each.
+**An `--offscreen` flag that moved the windows out of the way.** Electron does not expose the CDP
+`Browser` domain, so there is no way to move an OS window from the protocol at all. It shipped
+broken for an hour because it was never run; the flag is gone.
+
+### The rig's rules go in a skill, not a folder `CLAUDE.md` · `SETTLED` (2026-08-14)
+A folder's `CLAUDE.md` loads when a file *in that folder* is edited, which is the moment you are
+working on the rig and precisely not the moment you need telling to run it. That is the same
+failure `guard-skill-hint.js` already exists to fix: a pointer only fires if someone is already
+reading that section. The `rig` skill is findable by description from any file, and the hook now
+matches on path (`tools/rig/`) rather than basename, because a scenario file can be called
+anything and the orphan check only scans the app's own directories.
+The split: the rule about *when* to run it is in CLAUDE.md, since only a rule earns space there;
+how to drive it and its traps are in the skill; what it is and how it works is in
+ARCHITECTURE.md. Raising the CLAUDE.md byte cap for those two lines was the sanctioned path, not
+a workaround.
 
 ### Rules about rules don't work here; hooks do · `SETTLED`
 Two rules lived in CLAUDE.md: "don't grow the inline blob" and "don't write history in this
