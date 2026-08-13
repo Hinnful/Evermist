@@ -4,8 +4,9 @@ node_modules/
 # Build output
 dist/
 
-# Frame captures from tools/capture-transition.js — regenerate, never commit
-.capture/
+# Test-rig output (screenshots, generated maps, the isolated profile) — regenerate, never
+# commit. It normally lives in the OS temp dir; this covers a --out pointed in here anyway.
+.rig/
 
 # Portable app data (IndexedDB, caches, scenes) — must never be uploaded
 evermist-data/

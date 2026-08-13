@@ -37,7 +37,12 @@ const OWNERS = {
   'floorplan.js': 'floor-plan',
 };
 
+// Matched on PATH, not basename: a scenario file can be called anything, and the
+// orphan check below only scans the app's own directories.
+const PATH_OWNERS = [{ re: /(^|\/)tools\/rig\//, slug: 'rig' }];
+
 const BLURB = {
+  rig: 'when to run the rig and when not to, how to write a scenario, and the traps that make one silently pass',
   'dm-ui':
     'room card layout and placement, room labels, half-shroud, and toolbar/control-panel button identity',
   'module-text':
@@ -136,8 +141,10 @@ function main() {
   const orphans = orphanNotice(marker);
   if (orphans) messages.push(orphans);
 
-  const base = path.basename(String(fp).replace(/\\/g, '/')).toLowerCase();
-  const slug = OWNERS[base];
+  const posix = String(fp).replace(/\\/g, '/');
+  const base = path.basename(posix).toLowerCase();
+  const byPath = PATH_OWNERS.find((p) => p.re.test(posix));
+  const slug = OWNERS[base] || (byPath && byPath.slug);
   if (slug && !alreadyFired(marker, slug)) {
     markFired(marker, slug);
     messages.push(

@@ -28,7 +28,7 @@ war. No backend, no VTT features (tokens, initiative). Map + fog + grid + two sc
 - One HTML entry point: `index.html` serves both DM and Player (`?mode=player`).
 - postMessage for DM → Player sync.
 - Must work offline from `file://`.
-- Player view must have **zero UI**: no buttons, no cursor, no overlays.
+- Player view has **zero UI**: no buttons, no overlays. Keep the cursor.
 - Fog must never be flat black. Blur + noise texture is required.
 - Images up to 30MB / 10000×6000px. Never block the main thread on load; decode into an
   offscreen canvas asynchronously. No artificial size limit beyond the browser's ~16384px.
@@ -125,6 +125,7 @@ Browser modules in `src/`, stylesheets in `src/css/`. The Electron shell (`main.
 - Module text, parser rules, file loading, PDFs, packaging traps, import panel → the
   `module-text` skill.
 - UVTT coordinates, winding-not-area, what the room import refuses → the `floor-plan` skill.
+- Driving the test rig, writing a scenario, its traps → the `rig` skill.
 
 ## Dialogs
 
@@ -174,6 +175,12 @@ Every error goes through it; no `alert()` ships.
 - Deliberately untested, don't add tests here: `render.js`, `scenes.js`, `state.js`,
   `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
   `stress.js`.
+- **`npm run rig` drives the real app and both windows, ~10s to a verdict.** Reproduce a
+  reported bug with it before fixing, watch a feature work while building, and run it before
+  handing over a change to shipped code; red smoke blocks handover.
+- **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance at the
+  table are theirs; correctness is yours. Backup, export and restore are the one exception and
+  always get their hand test: the export's save dialog is native and cannot be driven.
 
 ## Guard hooks
 
