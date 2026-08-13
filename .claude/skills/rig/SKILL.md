@@ -48,6 +48,13 @@ npm run rig -- --offscreen               move the windows out of sight
 One app instance per scenario, each on a throwaway profile under the OS temp dir. `--exe` is
 never the default: a build per run is minutes, and a rig that slow stops being used.
 
+**Point `--exe` at `dist/win-unpacked/Evermist.exe`, never at the portable `dist/Evermist.exe`.**
+The portable build calls `app.setPath('userData', …)` from `PORTABLE_EXECUTABLE_DIR`, which
+overrides `--user-data-dir` completely, so the rig lands in the real library beside that `.exe`
+and a run damages actual maps. The rig refuses to start when the library it opens already holds
+scenes; do not weaken that check. The unpacked build honours the flag and covers the same
+packaging bugs, because it is what the portable `.exe` unpacks to.
+
 ## Writing a scenario
 
 `scenarios/smoke.js` is the fast always-run set. `scenarios/acceptance/*.js` is one file per

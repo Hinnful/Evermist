@@ -993,18 +993,15 @@ clear it. Fullscreen through the app's own IPC does, and that is the Player's re
 Traps live in the `rig` skill, not here.
 
 ### Rejected while building the rig · `REJECTED`
-**Driving the built `.exe` by default.** A build per run is minutes and the rig would stop
-being used. It is `--exe <path>`, for the packaging bug class `npm start` cannot see.
-**A test hook inside the app.** Everything the rig needs is already reachable as a bare global,
-and a hook would ship in the build, which is what `--stress` and `--memprobe` already cost.
-**Stubbing an IPC method to drive the export past its native save dialog.** `window.electronAPI`
-is non-writable and non-configurable; the property cannot be replaced. The round trip mirrors
-the export payload and runs the real restore, and export changes keep a hand test.
-**One app instance shared by all scenarios.** Scenarios import maps and restore backups, so a
-file's result would depend on which ones ran before it. One throwaway instance each.
-**An `--offscreen` flag that moved the windows out of the way.** Electron does not expose the CDP
-`Browser` domain, so there is no way to move an OS window from the protocol at all. It shipped
-broken for an hour because it was never run; the flag is gone.
+**Driving the built `.exe` by default** - minutes per run, so the rig stops being used. `--exe`.
+**A test hook inside the app** - it would ship, which is what `--stress` already costs.
+**Stubbing an IPC method past the export's native save dialog** - `window.electronAPI` is
+non-writable and non-configurable. The round trip mirrors the payload and keeps a hand test.
+**One app instance for all scenarios** - imports and restores make each file depend on the last.
+**An `--offscreen` flag** - Electron exposes no CDP `Browser` domain, so no window can be moved.
+**Trusting `--user-data-dir` to isolate `--exe`** - the portable build overrides it from
+`PORTABLE_EXECUTABLE_DIR` and a run damaged the real library beside it. The rig now refuses a
+library that is not empty, and `--exe` belongs on `dist/win-unpacked/Evermist.exe`.
 
 ### The rig's rules go in a skill, not a folder `CLAUDE.md` · `SETTLED` (2026-08-14)
 A folder's `CLAUDE.md` loads when a file *in that folder* is edited, which is the moment you are
