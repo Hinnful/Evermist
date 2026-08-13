@@ -172,6 +172,29 @@ async function startInstance(args, profileDir) {
   await dm.watch();
   await dm.waitFor(DM_READY, 90000, 'the DM init chain');
 
+  // ⚠ REFUSE TO RUN AGAINST A LIBRARY THAT ALREADY HAS SCENES IN IT. Scenarios import maps,
+  // switch scenes (which autosaves the outgoing one) and restore backups, so a rig run on real
+  // data damages it. The isolated --user-data-dir normally guarantees an empty library, but the
+  // portable build calls app.setPath('userData', …) from PORTABLE_EXECUTABLE_DIR and overrides
+  // the flag entirely — so with `--exe dist/Evermist.exe` the rig lands in the library beside
+  // that .exe. An empty library is the observable proof that isolation held; check it, do not
+  // assume it.
+  // Retried, because the scene database comes up inside initScenes and can still be null when
+  // the control panel (the DM_READY signal) has already been built.
+  const existing = await dm.evaluate(`(async () => {
+    for (let i = 0; i < 75; i++) {
+      try { return (await sceneStore.listScenes()).length; }
+      catch (_) { await new Promise(r => setTimeout(r, 200)); }
+    }
+    throw new Error('the scene database never came up');
+  })()`, 60000);
+  if (existing > 0) {
+    throw new Error('the app opened a library that already holds ' + existing + ' scenes, so the ' +
+      'isolated profile did not take and a run would damage real maps. A portable build ignores ' +
+      '--user-data-dir and keeps its data beside the .exe; point --exe at dist/win-unpacked/' +
+      'Evermist.exe instead, which honours it.');
+  }
+
   return { proc, port, browser, dm, dmTargetId: dmTarget.id, player: null };
 }
 
