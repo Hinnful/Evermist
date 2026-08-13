@@ -582,6 +582,15 @@
       </button>
     </div>
     <div id="sm-list"></div>
+    <!-- Below the list, behind a hairline: this governs what happens when a map is ADDED, so it
+         belongs to the dropdown rather than to the Fog/Grid/Player panel, and it must sit outside
+         #sm-list or it would scroll away with the scenes. -->
+    <div id="scene-dd-foot">
+      <label id="sm-compress" class="sm-switch" title="Animated maps bigger than 3840×2160 are re-encoded to fit that size on import. Improves performance on low-end machines.">
+        <span class="sm-switch-lbl">Compression</span>
+        <span class="sm-switch-track"><span class="sm-switch-knob"></span></span>
+      </label>
+    </div>
   </div>
 </div>
 
@@ -666,6 +675,7 @@
 <script src="src/fog.js"></script>
 <script src="src/tools.js"></script>
 <script src="src/mapLoader.js"></script>
+<script src="src/mapConvert.js"></script>
 <script src="src/undo.js"></script>
 <script src="src/sceneStore.js"></script>
 <script src="src/scenes.js"></script>

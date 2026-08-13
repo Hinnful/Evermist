@@ -114,6 +114,75 @@
     font: 400 12px/1.4 system-ui, -apple-system, sans-serif; color: #6b7078;
   }
 
+  /* ===== DROPDOWN FOOTER — settings that govern ADDING a map ===== */
+  /* A hairline is what stops the footer reading as another list row, the same job it does in the
+     room card. flex: none so the scene list keeps all the remaining height. */
+  /* 10px of space on every side of the switch, and 10px is also #sm-list's own side padding, so
+     the switch sits on the same left and right margins as the scene cards above it.
+     ⚠ TOP IS 9, NOT 10, AND THAT IS THE EVEN VALUE. The hairline is a visible line and the eye
+     measures the gap from it, so the border's own pixel is part of the space above — 9 + 1 is
+     what makes the top read the same as the other three. */
+  #scene-dd-foot {
+    flex: none;
+    padding: 9px 10px 10px;
+    border-top: 1px solid rgba(255,255,255,0.055);
+  }
+
+  /* ===== .sm-switch — the app's switch, invented here =====
+     A SWITCH, not a .cp-btn. The control-panel rule (an independent toggle is an outlined button
+     that fills blue) governs the Fog/Grid/Player panes; this surface speaks in rows, and a filled
+     button here reads as an action to press rather than a state to set.
+
+     The colours are the app's existing toggle vocabulary, not new ones: the off track is the same
+     black inset as .cp-tabs, and on is the blue pair every .active control already uses.
+
+     ⚠ NEITHER AXIS MAY BE POSITIONED AGAINST THE NOMINAL BORDER WIDTH. #scene-dd carries
+     zoom: 1.2, and under it a 1.5px border resolves to 0.83px while a 1.5px offset stays 1.5px —
+     so `top: 1.5px` put the knob 1.6px high, which is visible at this size. Vertical centring is
+     therefore `top: 50%` + translateY, and the travel is `calc(100% - …)` where 100% is the
+     padding box the real border already produced. Both make the browser do the sum. */
+  .sm-switch {
+    display: flex; align-items: center; gap: 9px;
+    cursor: pointer; user-select: none;
+  }
+  .sm-switch-lbl {
+    flex: 1; min-width: 0;
+    font: 500 12px/1.25 system-ui, -apple-system, sans-serif;
+    color: #9aa0aa;
+    transition: color .14s;
+  }
+  .sm-switch:hover .sm-switch-lbl { color: #cdd2da; }
+  .sm-switch.on .sm-switch-lbl { color: #d5d8dd; }
+
+  .sm-switch-track {
+    flex: none; position: relative;
+    width: 32px; height: 18px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.28);
+    border: 1.5px solid rgba(255,255,255,0.1);
+    transition: background .16s, border-color .16s;
+  }
+  .sm-switch:hover .sm-switch-track { border-color: rgba(255,255,255,0.18); }
+  .sm-switch.on .sm-switch-track {
+    background: rgba(70,120,220,0.3);
+    border-color: rgba(90,140,235,0.75);
+  }
+  .sm-switch.on:hover .sm-switch-track { border-color: rgba(90,140,235,0.95); }
+
+  .sm-switch-knob {
+    position: absolute;
+    top: 50%; left: 2px;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: #7f858e;
+    transform: translateY(-50%);
+    /* `left`, not a transform: translateY already owns transform for the centring, and a
+       transform distance cannot be expressed against the track's width. */
+    transition: left .16s cubic-bezier(.3, .85, .35, 1), background .16s;
+  }
+  .sm-switch:hover .sm-switch-knob { background: #9aa0aa; }
+  .sm-switch.on .sm-switch-knob { left: calc(100% - 13px); background: #8fb6ff; }
+
   .sm-card {
     border-radius: 9px; padding: 1.5px; flex: none;
     background: rgba(255,255,255,0.055);

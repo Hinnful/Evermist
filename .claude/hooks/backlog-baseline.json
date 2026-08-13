@@ -5,5 +5,5 @@
     "headBodyLines": 2
   },
   "note": "Thresholds for the backlog hygiene guard. The backlog holds OPEN items only; anything closed belongs in docs/DECISIONS.md or nowhere. \"warnedLines\" records the size already reported so the notice fires once and never nags; clear it to hear about size again.",
-  "warnedLines": 0
+  "warnedLines": 471
 }

@@ -11,6 +11,7 @@ const {
   vttSignedArea,
   vttDoorlessWalls,
   vttDerivePlan,
+  vttScaleRooms,
   VTT_NODE_SNAP,
   VTT_COLLINEAR_EPS,
   VTT_MIN_FACE_AREA,
@@ -377,6 +378,104 @@ function shedWalls(x, y) {
 function shedDoor(x, y) {
   return { bounds: [{ x: x + 1, y: y }, { x: x + 1.5, y: y }] };
 }
+
+// ⚠ THE KERNEL HAS NO MAP-WIDTH TERM: coordinates come out in the pixel space of the export
+// the plan was written beside. That is invisible while the map on screen IS that export, and
+// wrong the moment it is not — an animated map shrunk at import puts every room 1.6x too
+// large. srcW/srcH are what let the app side correct it, and they self-correct any resolution
+// mismatch rather than only that one.
+describe('vttPlan — the map the plan believes it has', () => {
+  it('reports the real export size, matching its sibling .webm exactly', () => {
+    const d = vttDerivePlan(plan());
+    // 21x14 squares at 150 px/grid.
+    assert.equal(d.srcW, 3150);
+    assert.equal(d.srcH, 2100);
+  });
+
+  it('every room lands inside the size it reports', () => {
+    const d = vttDerivePlan(plan());
+    for (const room of d.rooms) for (const p of room) {
+      assert.ok(p.x >= 0 && p.x <= d.srcW, `x ${p.x} outside 0..${d.srcW}`);
+      assert.ok(p.y >= 0 && p.y <= d.srcH, `y ${p.y} outside 0..${d.srcH}`);
+    }
+  });
+
+  it('reports zero rather than guessing when the file omits map_size', () => {
+    const p = plan();
+    delete p.resolution.map_size;
+    const d = vttDerivePlan(p);
+    assert.equal(d.srcW, 0);
+    assert.equal(d.srcH, 0);
+    // And the rooms are still derived — an absent size is not a reason to refuse a plan.
+    assert.ok(d.rooms.length > 0);
+  });
+
+  it('reports zero for a nonsense map_size', () => {
+    for (const ms of [{ x: 0, y: 0 }, { x: -21, y: 14 }, { x: 'wide', y: 14 }, {}]) {
+      const p = plan();
+      p.resolution.map_size = ms;
+      const d = vttDerivePlan(p);
+      assert.ok(d.srcW === 0 || d.srcH === 0, JSON.stringify(ms) + ' claimed a size');
+    }
+  });
+
+  it('carries the fields even on a plan that yields nothing', () => {
+    const d = vttDerivePlan({});
+    assert.equal(d.srcW, 0);
+    assert.equal(d.srcH, 0);
+  });
+});
+
+describe('vttScaleRooms', () => {
+  const square = [[{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }]];
+
+  it('shrinks a plan onto a map that was converted smaller', () => {
+    // The real case: a 6150-wide export shrunk to 3840 on import.
+    const [r] = vttScaleRooms(square, 3840, 6150);
+    const k = 3840 / 6150;
+    assert.ok(Math.abs(r[1].x - 100 * k) < 1e-9);
+    assert.ok(Math.abs(r[2].y - 100 * k) < 1e-9);
+  });
+
+  it('leaves a plan beside its own untouched export exactly alone', () => {
+    assert.deepEqual(vttScaleRooms(square, 3150, 3150), square);
+  });
+
+  it('scales by 1 when the plan does not declare a size', () => {
+    assert.deepEqual(vttScaleRooms(square, 3840, 0), square);
+    assert.deepEqual(vttScaleRooms(square, 3840, undefined), square);
+    assert.deepEqual(vttScaleRooms(square, 0, 6150), square);
+  });
+
+  it('returns copies, never the caller\'s own vertex objects', () => {
+    const out = vttScaleRooms(square, 3150, 3150);
+    out[0][0].x = 999;
+    assert.equal(square[0][0].x, 0, 'the input was mutated');
+  });
+
+  // WINDING IS WHAT CLASSIFIES A FACE AS A ROOM. A uniform positive scale cannot flip it,
+  // which is the whole reason the correction is allowed to happen after classification.
+  it('preserves winding, so a room stays a room', () => {
+    const before = vttSignedArea(square[0]);
+    const after  = vttSignedArea(vttScaleRooms(square, 3840, 6150)[0]);
+    assert.equal(Math.sign(before), Math.sign(after));
+  });
+
+  it('scales a real plan onto a shrunk map without distorting it', () => {
+    const d = vttDerivePlan(plan());
+    const scaled = vttScaleRooms(d.rooms, 1575, d.srcW);   // half size
+    for (let i = 0; i < d.rooms.length; i++) {
+      // Area goes as the square of the scale, and the shape is otherwise identical.
+      assert.ok(Math.abs(area(scaled[i]) / area(d.rooms[i]) - 0.25) < 1e-6);
+      assert.equal(scaled[i].length, d.rooms[i].length);
+    }
+  });
+
+  it('handles an empty or absent room list', () => {
+    assert.deepEqual(vttScaleRooms([], 3840, 6150), []);
+    assert.deepEqual(vttScaleRooms(null, 3840, 6150), []);
+  });
+});
 
 describe('vttPlan — synthetic edge cases', () => {
   it('two rooms sharing a wall, ordered left to right', () => {

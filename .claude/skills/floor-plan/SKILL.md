@@ -91,6 +91,16 @@ the app produces rooms, they are just wrong.
   map into `userData/maps`, so afterwards it no longer sits beside its `.dd2vtt` and a later
   disk lookup finds nothing. Both `backup.js` field whitelists must carry `floorPlan` or
   export silently drops it.
+- **Look the plan up FIRST, from the file the DM actually picked** - before anything in the
+  import path replaces it. `findPlanForFile` needs `getPathForFile`, and a File built in-page
+  has no path, so a map that gets compressed on the way in (`mapConvert.js`) arrives with
+  nowhere to look beside. Convert first and the plan is lost with no notice and no Draw Rooms
+  button, on exactly the oversized exports that ship a `.dd2vtt`. This rule lives in
+  `sceneManager.js`, which no skill trigger maps - the call site carries it as a comment.
+- **Scale the derived rooms onto the loaded map**, never straight into `polygons`. The kernel's
+  coordinates are in the plan's OWN pixel space (`srcW`/`srcH`), so a map that is not the export
+  the plan was written beside needs `vttScaleRooms`. Uniform, positive, on width alone: winding
+  classifies a face as a room, and scaling the axes apart would shear a mismatched plan.
 - Importing is **wipe-and-rebuild**, so it runs the full wholesale-polygon chain: `pushUndo`,
   null `activePolygon` and `selectedPolygonId`, then rebuild fog and `refreshRoomPanel()`.
   Without the selection reset the room card stays open on a room that no longer exists.

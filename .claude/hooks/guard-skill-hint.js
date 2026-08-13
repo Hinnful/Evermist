@@ -85,28 +85,74 @@ function markFired(file, slug) {
   }
 }
 
+/*
+ * Every basename this repo actually holds, lowercased. A rename that lands a
+ * governed concern on a new filename silently orphans its skill: the map below stops
+ * matching, the hint stops firing, and the rules quietly cease to exist. Nothing
+ * else in the repo catches that, so the check runs on EVERY edit rather than only on
+ * a name already in the map.
+ */
+function repoBasenames() {
+  const root = path.join(__dirname, '..', '..');
+  const dirs = [root, path.join(root, 'src'), path.join(root, 'src', 'css')];
+  const names = new Set();
+  for (const d of dirs) {
+    try {
+      for (const f of fs.readdirSync(d)) names.add(f.toLowerCase());
+    } catch {
+      /* missing dir -> nothing to add */
+    }
+  }
+  return names;
+}
+
+function orphanNotice(marker) {
+  if (alreadyFired(marker, '__orphans__')) return null;
+  const present = repoBasenames();
+  if (present.size === 0) return null; // could not read the repo -> stay quiet
+
+  const missing = Object.keys(OWNERS).filter((b) => !present.has(b));
+  if (missing.length === 0) return null;
+
+  markFired(marker, '__orphans__');
+  return (
+    'SKILL TRIGGER MAP IS STALE: guard-skill-hint.js maps ' +
+    missing.map((m) => m + ' -> ' + OWNERS[m]).join(', ') +
+    ', and no such file exists. A skill whose trigger never fires is a rule that ' +
+    'silently does not exist. Update OWNERS here and the trigger filenames in that ' +
+    "skill's `description` together - the description is what makes the skill " +
+    'findable when the hook does not fire.'
+  );
+}
+
 function main() {
   const payload = readStdin();
   const fp = payload && payload.tool_input && payload.tool_input.file_path;
   if (!fp) process.exit(0);
 
+  const marker = markerPath(payload.session_id);
+  const messages = [];
+
+  const orphans = orphanNotice(marker);
+  if (orphans) messages.push(orphans);
+
   const base = path.basename(String(fp).replace(/\\/g, '/')).toLowerCase();
   const slug = OWNERS[base];
-  if (!slug) process.exit(0);
+  if (slug && !alreadyFired(marker, slug)) {
+    markFired(marker, slug);
+    messages.push(
+      'SKILL HINT: ' +
+        path.basename(String(fp).replace(/\\/g, '/')) +
+        ' is governed by rules that live in the `' +
+        slug +
+        '` skill, not in CLAUDE.md. Load it with the Skill tool before editing - it ' +
+        'carries the binding rules for ' +
+        (BLURB[slug] || 'this file') +
+        '. If you have already read it this session, ignore this.'
+    );
+  }
 
-  const marker = markerPath(payload.session_id);
-  if (alreadyFired(marker, slug)) process.exit(0);
-  markFired(marker, slug);
-
-  const msg =
-    'SKILL HINT: ' +
-    path.basename(String(fp).replace(/\\/g, '/')) +
-    ' is governed by rules that live in the `' +
-    slug +
-    '` skill, not in CLAUDE.md. Load it with the Skill tool before editing - it ' +
-    'carries the binding rules for ' +
-    (BLURB[slug] || 'this file') +
-    '. If you have already read it this session, ignore this.';
+  if (messages.length === 0) process.exit(0);
 
   // stderr reaches the transcript on a non-blocking error path; stdout is what the
   // model actually sees. Only the JSON is authoritative.
@@ -115,7 +161,7 @@ function main() {
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
         permissionDecision: 'defer',
-        additionalContext: msg,
+        additionalContext: messages.join('\n\n'),
       },
     })
   );

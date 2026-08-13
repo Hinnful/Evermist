@@ -142,14 +142,9 @@ function doRender() {
     if (isPlayer) renderPlayerGrid(vp);
     renderFog(vp);
     renderGrid(vp);
-    viewportDirty = fogDirty = gridDirty = mapDirty = false;
+    viewportDirty = fogDirty = gridDirty = false;
     if (!isPlayer) minimapDirty = true;
   } else {
-    if (mapDirty) {
-      // Player video texture updates run on the PixiJS render ticker
-      // (pixiStartVideoTextureSync), not here. DM uses a DOM <video> element.
-      mapDirty = false;
-    }
     if (fogDirty)  { renderFog(vp); fogDirty = false; if (!isPlayer) minimapDirty = true; }
     if (gridDirty) { renderGrid(vp); gridDirty = false; if (!isPlayer) minimapDirty = true; }
   }

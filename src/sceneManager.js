@@ -114,6 +114,16 @@ function initSceneManagerUI() {
   // Undo toast
   document.querySelector('#scene-undo-toast .undo-btn').onclick = undoDelete;
 
+  // Footer: the compress-on-import setting. mapConvert.js owns the state, the persistence and
+  // the one-per-run explainer, so this only flips it and paints the result.
+  const compress = document.getElementById('sm-compress');
+  if (compress && typeof compressBigVideosEnabled === 'function') {
+    const paint = on => compress.classList.toggle('on', on);
+    // A label wrapping no input, so the click is ours and needs no preventDefault.
+    compress.addEventListener('click', () => paint(toggleCompressBigVideos()));
+    paint(compressBigVideosEnabled());
+  }
+
   // Allow drops in the gaps between cards
   document.getElementById('sm-list').addEventListener('dragover', e => e.preventDefault());
 
@@ -287,12 +297,34 @@ async function initScenes() {
 }
 
 async function createNewScene(file) {
-  if (!isVideoFile(file)) showMapProgress('Loading map…');
+  const isVid = isVideoFile(file);
+  const name = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim() || 'New Scene';
+
+  // ⚠ THE FLOOR PLAN IS RESOLVED FIRST, FROM THE FILE THE DM ACTUALLY PICKED. findPlanForFile
+  // needs getPathForFile, and a File built in-page has no path on disk — so converting first
+  // loses the plan silently, with no notice and no Draw Rooms button, on exactly the oversized
+  // exports that ship a .dd2vtt.
+  const floorPlan = typeof findPlanForFile === 'function' ? await findPlanForFile(file) : null;
+
+  // Then shrink it, if the setting in the scene dropdown is on. No confirmation: it is a
+  // setting, and a setting that asks every time is a question wearing the wrong clothes.
+  // The overlay is raised from onStart rather than here, so a map that already fits the box
+  // never flashes a progress bar.
+  let shrunk = null;
+  if (isVid && typeof convertVideoForImport === 'function' && compressBigVideosEnabled()) {
+    shrunk = await convertVideoForImport(file, {
+      onStart: () => showMapProgress('Shrinking the animated map…'),
+      onProgress: updateMapProgress,
+    });
+    if (shrunk.converted) file = shrunk.file;
+    else shrunk = null;
+    hideMapProgress();
+  }
+
+  if (!isVid) showMapProgress('Loading map…');
   if (currentScene) doAutoSave();
   cleanupVideo();
-  const name = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim() || 'New Scene';
   const maxOrder = allScenes.length > 0 ? Math.max(...allScenes.map(s => s.sortOrder ?? 0)) : -1;
-  const isVid = isVideoFile(file);
   const onLoaded = async (bitmap, blob) => {
     const thumb = await generateThumbnail(bitmap, mapWidth, mapHeight);
     const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -302,7 +334,11 @@ async function createNewScene(file) {
     let mapBlob = undefined;
     let mapPath = undefined;
     if (isVid && window.electronAPI) {
-      showMapProgress('Saving animated map…');
+      // A statement of what happened, carried on the label of the longest step that follows it,
+      // so it is on screen long enough to read. Never a dialog: nothing here needs an answer.
+      showMapProgress(shrunk
+        ? 'Saving — shrunk ' + shrunk.srcW + '×' + shrunk.srcH + ' to ' + shrunk.outW + '×' + shrunk.outH
+        : 'Saving animated map…');
       const mimeType = file.type || (file.name.endsWith('.mp4') ? 'video/mp4' : 'video/webm');
       try {
         mapPath = await persistVideoMap(file, id, mimeType);
@@ -319,11 +355,9 @@ async function createNewScene(file) {
       mapBlob = isVid ? mapVideoBlob : blob;
     }
 
-    // The floor plan has to be captured HERE, in the same pass that creates the scene:
-    // persistVideoMap has just copied the map into userData/maps, so from now on it no
-    // longer sits beside its .dd2vtt and a later disk lookup would find nothing.
-    const floorPlan = typeof findPlanForFile === 'function' ? await findPlanForFile(file) : null;
-
+    // floorPlan was captured at the top of createNewScene, before conversion. It could not be
+    // read here in any case: persistVideoMap has just copied the map into userData/maps, so it
+    // no longer sits beside its .dd2vtt and a disk lookup would find nothing.
     const scene = {
       id, name,
       mapBlob, mapPath,
@@ -377,15 +411,35 @@ async function persistVideoMap(file, sceneId, mimeType) {
 
 async function replaceSceneMap(file) {
   if (!currentScene) { createNewScene(file); return; }
-  cleanupVideo();
   const isVid = isVideoFile(file);
+
+  // ⚠ NEVER SHRINK ONTO A SCENE THAT ALREADY HAS ROOMS. This function rewrites mapWidth and
+  // mapHeight but never touches currentScene.polygons, and switchScene restores their vertices
+  // verbatim, so a shrink would move every room by the scale factor. The fog survives, because
+  // loadFogFromScene stretches it — which would leave the rooms as the only casualty and an
+  // easy one to miss. A room-free scene has nothing to shift, so it converts normally.
+  const hasRooms = Array.isArray(currentScene.polygons) && currentScene.polygons.length > 0;
+  let shrunk = null;
+  if (isVid && !hasRooms && typeof convertVideoForImport === 'function' && compressBigVideosEnabled()) {
+    shrunk = await convertVideoForImport(file, {
+      onStart: () => showMapProgress('Shrinking the animated map…'),
+      onProgress: updateMapProgress,
+    });
+    if (shrunk.converted) file = shrunk.file;
+    else shrunk = null;
+    hideMapProgress();
+  }
+
+  cleanupVideo();
   const onLoaded = async (bitmap, blob) => {
     if (isVid && window.electronAPI) {
       // Delete old video file if this scene had one
       if (currentScene.mapPath) {
         window.electronAPI.deleteVideoFile(currentScene.id).catch(() => {});
       }
-      showMapProgress('Saving animated map…');
+      showMapProgress(shrunk
+        ? 'Saving — shrunk ' + shrunk.srcW + '×' + shrunk.srcH + ' to ' + shrunk.outW + '×' + shrunk.outH
+        : 'Saving animated map…');
       const mimeType = file.type || (file.name.endsWith('.mp4') ? 'video/mp4' : 'video/webm');
       try {
         currentScene.mapPath = await persistVideoMap(file, currentScene.id, mimeType);
@@ -522,8 +576,7 @@ async function switchScene(id, _isRecovery = false) {
     extractCanvas.width = mapWidth; extractCanvas.height = mapHeight;
     extractCanvas.getContext('2d').drawImage(video, 0, 0, mapWidth, mapHeight);
     mapOffscreen = extractCanvas;
-    pixiSetMap(prepareTextureCanvas(extractCanvas, mapWidth, mapHeight), mapWidth, mapHeight);
-    pixiHideMap();
+    bindVideoFrameTexture(extractCanvas, mapWidth, mapHeight);
     mapVideo = video;
     attachVideoListeners(video);
     mapVideoBlob = scene.mapBlob || null;

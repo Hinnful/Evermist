@@ -25,7 +25,11 @@
           },
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-decisions.js\""
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-architecture.js\""
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-ledger.js\""
           },
           {
             "type": "command",
