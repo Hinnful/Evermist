@@ -42,8 +42,12 @@ npm run rig -- regression                every acceptance scenario
 npm run rig -- fog-reaches-the-player    one by name
 npm run rig -- --exe "dist/Evermist.exe" a built installer, for packaging bugs npm start cannot see
 npm run rig -- --shot "#sel" --shot-setup "openDropdown()"   a cropped screenshot
-npm run rig -- --offscreen               move the windows out of sight
+npm run rig -- name-one name-two         several by name, in that order
 ```
+
+That is every flag there is, and an unrecognised one stops the run rather than being ignored.
+**There is no way to move the windows out of the way** - Electron exposes no CDP `Browser`
+domain, so a run owns the screen while it lasts.
 
 One app instance per scenario, each on a throwaway profile under the OS temp dir. `--exe` is
 never the default: a build per run is minutes, and a rig that slow stops being used.
@@ -101,19 +105,33 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
   `backgroundThrottling: false`, not `Page.bringToFront`, not `focus()`, not moving the DM aside.
   `rig.player()` puts the Player fullscreen through the app's own IPC, which is its real state at
   the table anyway. A fullscreen Player then covers the DM, so a scenario needing both windows
-  painting at once has to interleave them.
+  painting at once has to interleave them. The DM keeps running its handlers and timers while
+  covered, so anything that needs no frame - a control's handler, `sendToPlayer` - still works.
+- **About one run in three the Player comes up invisible and cannot be coaxed out of it.** Cause
+  unknown. Asking again does nothing (`setFullScreen(true)` on a window already flagged fullscreen
+  fires no event and does not re-raise); dropping out and back in fails too, after nine transitions.
+  `rig.player()` therefore CLOSES it through the DM's own button and opens a fresh one, and says so
+  in the notes. If you see "came up invisible and was reopened", nothing is wrong with the app.
+  Do not replace that recovery with more retries on the same window - that was tried.
 - **Electron does not expose the CDP `Browser` domain.** `Browser.getWindowForTarget` answers
   "wasn't found", so there is no moving or resizing an OS window from the protocol.
 - **An element inside `display:none` has zero-sized rects**, so a spacing or centring assertion
   against it passes by accident. Reveal it first.
 - **Both windows must stay visible and unminimized.** An OS-minimize makes `main.js` send
   `window-visibility`, which pauses the PixiJS ticker: the window renders nothing and every
-  measurement reads zero. `--offscreen` moves them instead, which does not fire `minimize`.
-- **`window.electronAPI` is non-writable and non-configurable**, so no IPC method can be stubbed.
-  Anything behind a native dialog is unreachable; go round it, not through.
+  measurement reads zero. There is no flag that moves them aside, so leave the screen alone
+  while a run is going.
+- **`window.electronAPI` is non-writable and non-configurable, and so are its methods** - a
+  `contextBridge` object cannot be stubbed at all, not even one function on it. Anything behind a
+  native dialog is unreachable; go round it, not through. In particular `getPathForFile` always
+  answers `null` for a `File` built in-page, so nothing that needs a real path on disk can be
+  driven: mark it `rig.byEye`.
 - **`DOM.setFileInputFiles` does not populate a file input in an Electron renderer.** It reports
-  success and leaves `files.length` at 0. Import through the app's own `createNewScene` with a
-  `File` built in-page.
+  success and leaves `files.length` at 0. Two ways round it, and they test different things:
+  hand the app's own `createNewScene` a `File` built in-page to exercise the import, or assign a
+  real `FileList` with `input.files = new DataTransfer().files` (and dispatch `change`) to
+  exercise the **picker's own handler**. A `DragEvent` built round the same `DataTransfer` drives
+  the real window drop handler the same way.
 - **An ancestor `zoom` is folded into `getBoundingClientRect`** in this Chromium, so its numbers
   match a screenshot's coordinates directly. Do not multiply by the zoom yourself.
 - **Electron's own security warning arrives as a console error** and is not the app's. `cdp.js`

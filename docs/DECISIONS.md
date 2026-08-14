@@ -1068,6 +1068,61 @@ how to drive it and its traps are in the skill; what it is and how it works is i
 ARCHITECTURE.md. Raising the CLAUDE.md byte cap for those two lines was the sanctioned path, not
 a workaround.
 
+### A `src/` edit with no scenario is hinted, never blocked · `SETTLED` (2026-08-14)
+`guard-scenario.js` fires `PostToolUse` on an edit under `src/` when nothing under
+`tools/rig/scenarios/` has moved in the working tree, and hands back one line. It is the sixth
+guard and the only one that does not exit 2, which was the whole design question. **A hard block
+on every `src/` edit gets the hook commented out inside a week, and then the rule is gone
+permanently** - most edits genuinely need no new scenario (a fix an existing file already covers,
+a comment, a mutation check being restored), so a refusal would be wrong more often than right.
+Once per session, keyed on the `session_id` the payload carries, with the marker under the OS
+temp dir because rig output never enters the working tree. No baseline file, unlike the other
+five: this is a state check against the working tree, not a ratchet against a number.
+The rule it enforces was already in CLAUDE.md and was already being missed, which is the same
+"a pointer is not a trigger" failure recorded above.
+
+### The mutation ranges were pointed at untestable code · `SETTLED` (2026-08-14)
+Two of the three recorded mutation-survivor clusters were still open, and one of them was partly
+an artefact of the config. `stryker.conf.json` mutated `src/tools.js:48-86`, which covers
+`axisLockDraw` - not exported, and reading module globals no unit test can supply, so 11 of its
+38 survivors were permanently unkillable - while excluding `distPointToSegment`, which *is*
+exported and tested. The range now names the three exported kernels.
+The real cause of the rest was the shape of the fixtures, not missing tests: every
+`segmentsIntersect` and `distPointToSegment` case put a segment endpoint on the **origin**, where
+`p2.x - p1.x` and `p2.x + p1.x` are the same number, and used symmetric geometry, where `t` and
+`u` are both 0.5 and each parameter can be computed from the other's formula unnoticed. Every
+`computeOptimalTextureSize` guard case zeroed **both** axes at once, the one shape that cannot
+tell `||` from `&&`. Off-origin, oblique, asymmetric and one-axis-zero cases took the two files
+from 59% and 64% to 97% and 96%. The `scaleFactor: NaN` gap recorded earlier is confirmed closed.
+
+### Fog-colour derivation is left uncovered · `PARKED` (2026-08-14)
+`fogGeometry.js` sits at 58% with 32 survivors, all in `_hslToHex`'s hue-branch chain and
+`deriveFogColors`' clamps - a fourth cluster nobody had filed. It is deliberately not closed
+here. Killing them needs a decided table of expected output colours across the hue wheel, and a
+wrong expectation baked into a test is worse than no test: it pins whatever the code does today
+as correct, which is exactly the trap that makes a green suite meaningless. Closing it is a
+session with the colours on screen, not an afternoon of arithmetic.
+Seven survivors elsewhere are provably **equivalent mutants** and no test can kill them: two in
+`backup.js` where both mutant strings produce the same return value, two on the `segmentsIntersect`
+determinant guard where a parallel input fails the range test anyway, two on the texture cap where
+the clamp factor is exactly 1, and one asking what a point exactly *on* a polygon edge should mean.
+
+### The Player sometimes comes up invisible, and is reopened rather than coaxed · `SETTLED` (2026-08-14)
+Roughly one rig run in three, the Player window opens, reports `document.hidden`, and never
+becomes visible - so every measurement reads zero and the run fails on whichever Player scenario
+went first. **The cause is still unknown and this entry does not claim otherwise.** What is known:
+it predates the scenarios added around it, it does not depend on which scenario runs before it, and
+it is not the display sleeping (this machine is a desktop on AC with the video timeout disabled -
+checked, not assumed).
+Two things were tried and neither is sufficient. Asking again does nothing at all, because
+`setFullScreen(true)` on a window Electron already flags as fullscreen fires no event and does not
+re-raise. Dropping out of fullscreen and back in, which Electron cannot ignore, still failed after
+nine transitions over 45s. So the window is not coaxable once it lands in that state.
+The recovery is to stop trying: press the DM's Player button to close it, wait for the target to
+go, and open a fresh one, which cannot inherit the state. That path is exercised by forcing it, not
+merely written. Chasing the root cause is worth a session with a window-state tool, not more
+guesses from inside the page.
+
 ### Rules about rules don't work here; hooks do · `SETTLED`
 Two rules lived in CLAUDE.md: "don't grow the inline blob" and "don't write history in this
 file". The one with a `PostToolUse` hook held for months. The one without it failed

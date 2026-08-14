@@ -10,9 +10,12 @@
  * the file about to be edited to the skill that owns its rules, and hands Claude a
  * line saying to load it.
  *
- * Non-blocking by design: `additionalContext` reaches the model on the next request
- * without denying the tool call, so a bad match costs one line, never a wedged edit.
- * Fires once per skill per session; the marker is keyed by session_id.
+ * Non-blocking by design: `additionalContext` alone reaches the model on the next
+ * request without denying the tool call, so a bad match costs one line, never a wedged
+ * edit. Fires once per skill per session; the marker is keyed by session_id.
+ *
+ * NEVER add `permissionDecision` here. The only accepted values are allow/deny/ask;
+ * anything else parks the tool call unrun and ends the turn mid-edit.
  *
  * Fail-open by design - any internal error exits 0 silently.
  */
@@ -38,8 +41,14 @@ const OWNERS = {
 };
 
 // Matched on PATH, not basename: a scenario file can be called anything, and the
-// orphan check below only scans the app's own directories.
-const PATH_OWNERS = [{ re: /(^|\/)tools\/rig\//, slug: 'rig' }];
+// orphan check below only scans the app's own directories. guard-scenario.js is here
+// rather than in OWNERS for that second reason - it decides when a scenario is
+// required, which is the rig's concern, but it lives in .claude/hooks/ and a basename
+// entry would report itself as a stale trigger map forever.
+const PATH_OWNERS = [
+  { re: /(^|\/)tools\/rig\//, slug: 'rig' },
+  { re: /(^|\/)guard-scenario\.js$/, slug: 'rig' },
+];
 
 const BLURB = {
   rig: 'when to run the rig and when not to, how to write a scenario, and the traps that make one silently pass',
@@ -167,7 +176,6 @@ function main() {
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
-        permissionDecision: 'defer',
         additionalContext: messages.join('\n\n'),
       },
     })
