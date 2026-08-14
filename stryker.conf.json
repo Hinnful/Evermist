@@ -6,7 +6,8 @@
   "coverageAnalysis": "off",
   "reporters": ["clear-text", "progress"],
   "mutate": [
-    "src/tools.js:48-86",
+    "src/tools.js:62-85",
+    "src/tools.js:94-100",
     "src/display.js:10-19",
     "src/video.js:35-69",
     "src/fogGeometry.js:117-123",

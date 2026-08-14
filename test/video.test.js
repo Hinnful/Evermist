@@ -195,6 +195,99 @@ describe('computeOptimalTextureSize', () => {
     assert.deepEqual(r, rInf);
   });
 
+  // ─── One axis zero, not both ─────────────────────────────────────────────
+  // ⚠ EVERY GUARD CASE ABOVE ZEROES BOTH AXES AT ONCE, which is the one shape that cannot tell
+  // `||` from `&&`: with 0 and 0 both readings of the condition are true. A half-formed record
+  // — one dimension read, the other still 0 — is also the real one, since that is what a
+  // display push or a decode looks like partway through.
+
+  it('a source with only its height zero returns unchanged, not downscaled', () => {
+    // Big enough that falling past the guard would resize the width to 1920.
+    const r = computeOptimalTextureSize(1920, 1080, 5000, 0, 16384, 1);
+    assert.deepEqual(r, { w: 5000, h: 0 });
+  });
+
+  it('a source with only its width zero returns unchanged, not downscaled', () => {
+    const r = computeOptimalTextureSize(1920, 1080, 0, 5000, 16384, 1);
+    assert.deepEqual(r, { w: 0, h: 5000 });
+  });
+
+  it('a display with only its height zero returns source dims', () => {
+    const r = computeOptimalTextureSize(1920, 0, 9746, 5850, 16384, 3);
+    assert.deepEqual(r, { w: 9746, h: 5850 });
+  });
+
+  it('a display with only its width zero returns source dims', () => {
+    const r = computeOptimalTextureSize(0, 1080, 9746, 5850, 16384, 3);
+    assert.deepEqual(r, { w: 9746, h: 5850 });
+  });
+
+  // ─── The two `> 0` guards, at zero and below ─────────────────────────────
+
+  it('a zero coverage factor falls back to the default rather than collapsing the texture', () => {
+    // Taking 0 as valid makes targetLong 0, so scale is 0 and the texture comes out 0x0.
+    const r = computeOptimalTextureSize(1920, 1080, 9746, 5850, 16384, 0);
+    const withDefault = computeOptimalTextureSize(1920, 1080, 9746, 5850, 16384, 3);
+    assert.deepEqual(r, withDefault);
+    assert.ok(r.w > 0 && r.h > 0, `expected a real texture, got ${r.w}x${r.h}`);
+  });
+
+  it('a negative coverage factor falls back to the default', () => {
+    const r = computeOptimalTextureSize(1920, 1080, 9746, 5850, 16384, -2);
+    assert.deepEqual(r, computeOptimalTextureSize(1920, 1080, 9746, 5850, 16384, 3));
+  });
+
+  it('a zero maxTex means no cap, not a cap of zero', () => {
+    const r = computeOptimalTextureSize(1920, 1080, 9746, 5850, 0, 3);
+    assert.deepEqual(r, computeOptimalTextureSize(1920, 1080, 9746, 5850, Infinity, 3));
+    assert.ok(r.w > 0 && r.h > 0, `expected a real texture, got ${r.w}x${r.h}`);
+  });
+
+  it('a negative maxTex means no cap', () => {
+    const r = computeOptimalTextureSize(1920, 1080, 9746, 5850, -1, 3);
+    assert.deepEqual(r, computeOptimalTextureSize(1920, 1080, 9746, 5850, Infinity, 3));
+  });
+
+  // Both guards test the TYPE as well as the sign, and a string of digits is the shape that
+  // slips past a sign check alone: '5' > 0 is true, and the arithmetic downstream coerces it
+  // silently rather than throwing.
+  it('a numeric string coverage factor is refused, not coerced', () => {
+    const r = computeOptimalTextureSize(1920, 1080, 9746, 5850, 16384, '5');
+    assert.deepEqual(r, computeOptimalTextureSize(1920, 1080, 9746, 5850, 16384, 3));
+  });
+
+  it('a numeric string maxTex is refused, not coerced', () => {
+    const r = computeOptimalTextureSize(1920, 1080, 9746, 5850, '2048', 3);
+    assert.deepEqual(r, computeOptimalTextureSize(1920, 1080, 9746, 5850, Infinity, 3));
+  });
+
+  // ─── scale exactly 1, where the cap would otherwise bite ─────────────────
+  // The note above says `scale >= 1` vs `scale > 1` cannot be told apart. It can, but only
+  // where taking the long way round would then hit the clamp: returning source dims skips the
+  // cap entirely, which is the behaviour that matters when a map is exactly display-sized.
+
+  it('scale of exactly 1 returns source dims even when they exceed maxTex', () => {
+    // 1000x1000 display, cf=1 → target 1000. Source long side 1000 → scale exactly 1.
+    const r = computeOptimalTextureSize(1000, 1000, 1000, 500, 800, 1);
+    assert.deepEqual(r, { w: 1000, h: 500 });
+  });
+
+  // ─── The cap, with one axis over it and one under ────────────────────────
+  // Either axis over the cap has to trigger the clamp on its own; a check that needs both
+  // lets a wide map through at full width.
+
+  it('clamps when only the width is over maxTex', () => {
+    // 1000x1000 display, cf=1, source 4000x1000 → scale 0.25 → 1000x250, cap 500.
+    const r = computeOptimalTextureSize(1000, 1000, 4000, 1000, 500, 1);
+    assert.deepEqual(r, { w: 500, h: 125 });
+  });
+
+  it('clamps when only the height is over maxTex', () => {
+    // The same map stood on end: 250x1000 against a cap of 500.
+    const r = computeOptimalTextureSize(1000, 1000, 1000, 4000, 500, 1);
+    assert.deepEqual(r, { w: 125, h: 500 });
+  });
+
   // ─── 4K display ──────────────────────────────────────────────────────────
 
   it('does not downscale a 9746×5850 source on a 4K display (source fits within target)', () => {

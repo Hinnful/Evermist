@@ -206,13 +206,50 @@ async function startInstance(args, profileDir) {
 // stays shut and the run times out somewhere unrelated. Neither `backgroundThrottling: false`,
 // `Page.bringToFront`, `focus()` nor moving the DM aside clears it. Fullscreen does, and it is
 // the Player's real state at the table anyway.
-async function showPlayer(session) {
-  await session.evaluate('window.electronAPI.setFullScreen(true); 0');
-  await session.send('Page.bringToFront');
-  // Named plainly, so a display that is asleep does not read as a fog bug.
-  await session.waitFor('!document.hidden', 20000,
-    'the Player window to become visible — while it is hidden it renders nothing and every ' +
-    'measurement reads zero');
+// ⚠ ASKING AGAIN IS NOT ENOUGH — IT HAS TO BE A REAL TRANSITION. `setFullScreen(true)` on a
+// window Electron already flags as fullscreen does nothing at all: no enter-full-screen event, no
+// re-raise. So a Player that came up fullscreen-but-occluded stays occluded however many times it
+// is asked, which is exactly what "ten requests, still hidden" looked like. Every retry after the
+// first therefore drops OUT of fullscreen and goes back in, which Electron cannot ignore.
+//
+// `Page.bringToFront` is kept because it costs nothing, but it cannot raise a separate OS window:
+// Electron does not expose the CDP Browser domain (cdp.js), so there is no other lever here.
+async function showPlayer(session, budgetMs) {
+  const deadline = Date.now() + budgetMs;
+  let asked = 0;
+  for (;;) {
+    if (asked > 0) {
+      await session.evaluate('window.electronAPI.setFullScreen(false); 0');
+      await cdp.sleep(500);
+    }
+    await session.evaluate('window.electronAPI.setFullScreen(true); 0');
+    await session.send('Page.bringToFront');
+    asked++;
+    try {
+      // Short per-attempt wait, so a dropped request is retried rather than sat out.
+      await session.waitFor('!document.hidden', 5000, 'the Player window to become visible');
+      return asked;
+    } catch (_) {
+      // Named plainly, so a display that is asleep does not read as a fog bug.
+      if (Date.now() > deadline) {
+        // What the window itself says, so the failure names a cause instead of a symptom.
+        let diag = '';
+        try {
+          diag = JSON.stringify(await session.evaluate(`({
+            visibility: document.visibilityState, hidden: document.hidden,
+            outer: window.outerWidth + 'x' + window.outerHeight,
+            inner: window.innerWidth + 'x' + window.innerHeight,
+            screen: screen.width + 'x' + screen.height,
+            avail: screen.availWidth + 'x' + screen.availHeight,
+            devicePixelRatio, focus: document.hasFocus(),
+          })`));
+        } catch (e) { diag = 'could not be read: ' + e.message; }
+        throw new Error('the Player window never became visible after ' + asked + ' fullscreen ' +
+          'transitions — while it is hidden it renders nothing and every measurement reads zero. ' +
+          'The window reports ' + diag);
+      }
+    }
+  }
 }
 
 function makeRig(inst, dirs, tally) {
@@ -239,16 +276,55 @@ function makeRig(inst, dirs, tally) {
 
     // The Player window, attached the first time a scenario asks for it. Opening it is the DM's
     // own button, so this is the app's real path and not a second window the rig conjured.
+    //
+    // ⚠ ROUGHLY ONE RUN IN THREE, THE PLAYER COMES UP AND NEVER BECOMES VISIBLE, and no amount of
+    // asking that window to go fullscreen clears it. So the second attempt does not ask again — it
+    // presses the DM's Player button to CLOSE the window (the button toggles), waits for the target
+    // to go, and opens a fresh one. A new window cannot inherit the broken one's state, which
+    // toggling fullscreen on the old one demonstrably could not fix.
+    // Not a diagnosis: the cause is still open, and this is recovery rather than a fix.
     async player() {
       if (inst.player) return inst.player;
-      const already = (await cdp.listTargets(inst.port)).some(t => t.url.includes('mode=player'));
-      if (!already) await inst.dm.evaluate('document.getElementById("btn-player").click(); 0');
-      const target = await cdp.waitForTarget(inst.port, t => t.url.includes('mode=player'), 30000,
-                                             'the Player window');
-      const session = await cdp.connect(target.webSocketDebuggerUrl, 'player');
-      await session.watch();
-      await session.waitFor(PLAYER_READY, 30000, 'the Player runtime');
-      await showPlayer(session);
+
+      const openOne = async () => {
+        const already = (await cdp.listTargets(inst.port)).some(t => t.url.includes('mode=player'));
+        if (!already) await inst.dm.evaluate('document.getElementById("btn-player").click(); 0');
+        const target = await cdp.waitForTarget(inst.port, t => t.url.includes('mode=player'), 30000,
+                                               'the Player window');
+        const session = await cdp.connect(target.webSocketDebuggerUrl, 'player');
+        await session.watch();
+        await session.waitFor(PLAYER_READY, 30000, 'the Player runtime');
+        return session;
+      };
+
+      const closeOne = async session => {
+        session.close();
+        await inst.dm.evaluate('(() => { const b = document.getElementById("btn-player");' +
+          ' if (playerWindow && !playerWindow.closed) b.click(); return 0; })()');
+        try {
+          await cdp.waitForTarget(inst.port, t => !t.url.includes('mode=player'), 1, 'x');
+        } catch (_) { /* the poll below is the real wait */ }
+        const gone = Date.now() + 10000;
+        while (Date.now() < gone) {
+          const still = (await cdp.listTargets(inst.port)).some(t => t.url.includes('mode=player'));
+          if (!still) break;
+          await cdp.sleep(200);
+        }
+      };
+
+      // First attempt gets the short budget, so a stuck window is abandoned quickly rather than
+      // burning the whole timeout on transitions that cannot work.
+      let session = await openOne();
+      try {
+        const asked = await showPlayer(session, 12000);
+        if (asked > 1) tally.notes.push('  the Player needed ' + asked + ' fullscreen transitions');
+      } catch (first) {
+        tally.notes.push('  the Player came up invisible and was reopened — ' + first.message);
+        await closeOne(session);
+        session = await openOne();
+        const asked = await showPlayer(session, 30000);
+        tally.notes.push('  the reopened Player took ' + asked + ' fullscreen transition(s)');
+      }
       inst.player = session;
       return session;
     },

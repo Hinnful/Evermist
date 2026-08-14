@@ -431,6 +431,13 @@ criteria are written in plain English at the top of the file, and the **regressi
 which is every acceptance file together. A criterion that can only be judged by eye stays in
 the file and is reported as unchecked rather than quietly dropped.
 
+Two things keep the rig from being a tool nobody remembers. Editing anything the app ships now
+raises a one-line reminder if no scenario moved with it, which is a hint and not a refusal -
+plenty of changes genuinely need no new scenario. And a scenario is only believed once it has
+been made to **fail**: the code under it is deliberately broken, the failure is read to check it
+names the right thing, and the code goes back. One written after the code it covers has only
+ever seen a pass, which is not the same as working.
+
 ## How it's put together
 
 - **Plain JavaScript in `<script>` tags.** No framework, no bundler, no build step, and no ES
