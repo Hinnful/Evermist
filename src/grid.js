@@ -105,6 +105,26 @@ function renderPlayerGrid(vp) {
   drawGridLines(playerGridCtx, vp);
 }
 
+// ─── Committing a change ──────────────────────────────────────────────────────
+// EVERY grid control goes through this, including the on/off toggle and Reset. The grid
+// belongs to the scene, so a change has to reach the Player AND the store; scheduleAutoSync
+// (viewport.js) debounces both, since it calls scheduleAutoSave itself. Reset called neither,
+// which is why a reset grid came back at the old size on the next scene switch.
+function commitGridChange() {
+  gridDirty = true;
+  scheduleRender();
+  scheduleAutoSync();
+}
+
+// The grid a freshly imported map starts with. The DM's LOOK carries over — colour, opacity,
+// thickness, grid type, on/off — because that is a preference, not a property of the map. The
+// FIT does not: cell size and offset describe whatever map was on screen a moment ago, and
+// inheriting them is what made the grid look shared between scenes. Where the map came with a
+// floor plan, floorPlan.js overwrites cellSize with the size the plan implies.
+function freshGridConfig() {
+  return { ...captureGridConfig(), cellSize: GRID_DEFAULT_SIZE, offsetX: 0, offsetY: 0 };
+}
+
 // ─── Config serialization ─────────────────────────────────────────────────────
 function captureGridConfig() {
   return { enabled: gridEnabled, cellSize: gridSize, offsetX: gridOffsetX, offsetY: gridOffsetY, color: gridColor, opacity: gridOpacity, mode: gridMode, lineWidth: gridLineWidth };

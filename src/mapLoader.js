@@ -3,19 +3,33 @@
 // (showMapProgress / updateMapProgress / hideMapProgress) used by backup.js and sceneManager.js.
 // Video loading lives in video.js; render helpers (scheduleRender, fitToScreen) stay in the inline script.
 
-function loadMapFromFile(file, onMapLoaded) {
-  if (!file) return;
-  if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|bmp|webp|svg)$/i.test(file.name)) return;
+// ⚠ EVERY EXIT ANSWERS. onMapLoaded fires on success; onFail fires on ALL FOUR ways this can
+// end badly, including the two that used to return silently. An import loop awaits one of the two
+// callbacks, so a silent return leaves it waiting forever with the progress overlay up.
+//
+// Passing onFail also hands the REPORTING to the caller — it knows whether this file is one of
+// ten, and two dialogs for one bad map is worse than one. Without it, this shows its own dialog
+// exactly as it always did (replaceSceneMap's path).
+function loadMapFromFile(file, onMapLoaded, onFail) {
+  const fail = reason => {
+    hideMapProgress();
+    if (onFail) onFail(reason);
+    else messageDialog({
+      title: 'Map would not open',
+      message: 'Evermist could not read this image. It may be damaged, or saved in a format the app does not handle.',
+    });
+  };
+  if (!file) { fail('is not a file Evermist can read.'); return; }
+  if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|bmp|webp|svg)$/i.test(file.name)) {
+    fail('is not an image or an animated map.');
+    return;
+  }
   cleanupVideo();
   const url = URL.createObjectURL(file);
   const img = new Image();
   img.onerror = () => {
     URL.revokeObjectURL(url);
-    hideMapProgress();
-    messageDialog({
-      title: 'Map would not open',
-      message: 'Evermist could not read this image. It may be damaged, or saved in a format the app does not handle.',
-    });
+    fail('could not be read. It may be damaged, or saved in a format the app does not handle.');
   };
   img.onload = () => {
     mapWidth  = img.naturalWidth;
@@ -65,8 +79,16 @@ function loadMapFromFile(file, onMapLoaded) {
   img.src = url;
 }
 
+// A batch import sets this to "Map 3 of 10 - Watcherhouse" and every stage label that follows
+// carries it, so the DM can see where the run is without the loop having to hold the overlay up
+// across ten maps — each map still raises and lowers its own, which is what keeps the overlay from
+// ever sitting above a dialog.
+let _mapProgressPrefix = '';
+function setMapProgressPrefix(prefix) { _mapProgressPrefix = prefix || ''; }
+
 function showMapProgress(label) {
-  document.getElementById('map-progress-label').textContent = label || 'Saving...';
+  document.getElementById('map-progress-label').textContent =
+    (_mapProgressPrefix ? _mapProgressPrefix + ' - ' : '') + (label || 'Saving...');
   document.getElementById('map-progress-bar').style.width = '0%';
   document.getElementById('map-progress').style.display = 'flex';
 }

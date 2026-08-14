@@ -533,8 +533,18 @@ function cleanupVideo() {
 }
 
 
-function loadVideoFromFile(file, onVideoLoaded) {
-  if (!file) return;
+// ⚠ EVERY EXIT ANSWERS — see the same rule on loadMapFromFile. onFail covers the silent
+// falsy-file return as well as a decode failure, and taking it means the CALLER reports the
+// failure; without it this shows its own dialog exactly as it always did.
+function loadVideoFromFile(file, onVideoLoaded, onFail) {
+  const bail = reason => {
+    if (onFail) onFail(reason);
+    else messageDialog({
+      title: 'Animated map would not play',
+      message: 'Evermist could not read this video. WebM and MP4 are the safe choices.',
+    });
+  };
+  if (!file) { bail('is not a file Evermist can read.'); return; }
   cleanupVideo();
   const url = URL.createObjectURL(file);
   mapVideoUrl = url;
@@ -553,11 +563,7 @@ function loadVideoFromFile(file, onVideoLoaded) {
     video.pause(); video.src = '';
     if (video.parentNode) video.parentNode.removeChild(video);
     cleanupVideo();
-    messageDialog({
-      title: 'Animated map would not play',
-      message: 'Evermist could not read this video. WebM and MP4 are the safe choices.'
-             + (reason ? '\n\n' + reason : ''),
-    });
+    bail('could not be played. WebM and MP4 are the safe choices.' + (reason ? ' ' + reason : ''));
   }
   video.onerror = () => failLoad();
   video.oncanplay = function() {

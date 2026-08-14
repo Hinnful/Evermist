@@ -65,8 +65,11 @@ const RENDER_BOOST_MS = 250;
 let renderBoostUntil  = 0;   // performance.now() timestamp; 0 = not boosted
 
 // ─── Grid config ─────────────────────────────────────────────────────────────
+// The default cell size is also what Reset lands on and what a fresh import starts at
+// (grid.js freshGridConfig), so it is one constant rather than three copies of 70.
+const GRID_DEFAULT_SIZE = 70;
 let gridEnabled   = false;
-let gridSize      = 70;
+let gridSize      = GRID_DEFAULT_SIZE;
 let gridOffsetX   = 0;
 let gridOffsetY   = 0;
 let gridColor     = '#ffffff';

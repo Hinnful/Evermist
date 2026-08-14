@@ -423,6 +423,42 @@ describe('vttPlan — the map the plan believes it has', () => {
     const d = vttDerivePlan({});
     assert.equal(d.srcW, 0);
     assert.equal(d.srcH, 0);
+    assert.equal(d.squaresX, 0);
+    assert.equal(d.squaresY, 0);
+    assert.equal(d.gridPx, 0);
+  });
+
+  // THE GRID SIZE THE IMPORT SETS COMES OUT OF THESE TWO. "Pixels across divided by squares
+  // across" is what makes it self-correcting: a shrunk map divides the same square count into
+  // fewer pixels and gets a smaller cell, where reading pixels_per_grid straight off the file
+  // would hand it the untouched export's number and put the grid out of step with the map.
+  it('reports its size in grid squares and its own pixels per square', () => {
+    const d = vttDerivePlan(plan());
+    assert.equal(d.squaresX, 21);
+    assert.equal(d.squaresY, 14);
+    assert.equal(d.gridPx, 150);
+    // Beside its own export the two routes agree; on a shrunk map only the division does.
+    assert.equal(d.srcW / d.squaresX, d.gridPx);
+    assert.equal(3840 / d.squaresX, 3840 / 21);
+  });
+
+  it('reports zero squares rather than guessing when the file omits map_size', () => {
+    const p = plan();
+    delete p.resolution.map_size;
+    const d = vttDerivePlan(p);
+    assert.equal(d.squaresX, 0);
+    assert.equal(d.squaresY, 0);
+    // pixels_per_grid is still there, which is the only fallback a caller has left.
+    assert.equal(d.gridPx, 150);
+  });
+
+  it('reports zero squares for a nonsense map_size', () => {
+    for (const ms of [{ x: 0, y: 0 }, { x: -21, y: 14 }, { x: 'wide', y: 14 }, {}]) {
+      const p = plan();
+      p.resolution.map_size = ms;
+      const d = vttDerivePlan(p);
+      assert.ok(d.squaresX === 0 || d.squaresY === 0, JSON.stringify(ms) + ' claimed a square count');
+    }
   });
 });
 

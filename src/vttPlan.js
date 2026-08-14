@@ -512,7 +512,7 @@ function vttRingOnDoorlessWall(ring, walls, tol) {
 function vttDerivePlan(plan, opts) {
   const o = opts || {};
   const empty = { rooms: [], boundaries: [], closedGaps: [], openWalls: [], refusedSolid: 0,
-                  srcW: 0, srcH: 0 };
+                  srcW: 0, srcH: 0, squaresX: 0, squaresY: 0, gridPx: 0 };
   if (!plan || typeof plan !== 'object') return empty;
 
   const res = plan.resolution || {};
@@ -598,7 +598,20 @@ function vttDerivePlan(plan, opts) {
     // by 1, which is what a plan and its own untouched export need.
     srcW: pxSize(res.map_size && res.map_size.x, ppg),
     srcH: pxSize(res.map_size && res.map_size.y, ppg),
+    // How many grid squares wide and tall the plan says its map is, and how many pixels it puts
+    // in one square. With the loaded map's own width these are what let the import set Grid Size
+    // from the plan instead of asking the DM for a DPI: pixels across divided by squares across.
+    // 0 where the file does not say; a caller reads that as unknown.
+    squaresX: gridSpan(res.map_size && res.map_size.x),
+    squaresY: gridSpan(res.map_size && res.map_size.y),
+    gridPx: ppg,
   };
+}
+
+// One axis of the plan's declared size in grid squares, or 0 when the file does not say.
+function gridSpan(span) {
+  const n = Number(span);
+  return isFinite(n) && n > 0 ? n : 0;
 }
 
 // One axis of the plan's declared pixel size, or 0 when the file does not say.
