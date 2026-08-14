@@ -34,16 +34,21 @@ function initToolbar() {
   document.addEventListener('dragover', e => e.preventDefault());
   document.addEventListener('drop', e => {
     e.preventDefault();
-    const f = e.dataTransfer.files[0];
-    if (!f) return;
-    // A floor plan dropped on its own attaches to the open scene, for the case where it got
+    const dropped = Array.from(e.dataTransfer.files || []);
+    if (!dropped.length) return;
+    // A floor plan dropped ON ITS OWN attaches to the open scene, for the case where it got
     // separated from its map. Nothing to attach it to means nothing happens.
-    if (/\.dd2vtt$/i.test(f.name)) {
-      f.text().then(text => attachPlanText(text).then(ok => { if (ok) offerStoredFloorPlan(); }))
+    const plans = dropped.filter(f => /\.dd2vtt$/i.test(f.name));
+    const maps  = dropped.filter(f => !/\.dd2vtt$/i.test(f.name));
+    if (plans.length && !maps.length) {
+      plans[0].text().then(text => attachPlanText(text).then(ok => { if (ok) offerStoredFloorPlan(); }))
         .catch(() => {});
       return;
     }
-    if (f.type.startsWith('image/') || f.type.startsWith('video/') || /\.(jpe?g|png|gif|bmp|webp|svg|mp4|webm)$/i.test(f.name)) createNewScene(f);
+    // A plan dropped alongside its map needs nothing: the import finds it on disk beside the
+    // map's own path, so it is dropped from the list rather than reported as a failure.
+    // The loop and the filtering are sceneManager's — this hands over and gets out of the way.
+    if (maps.some(isImportableMapFile) || maps.length > 1) importMapFiles(maps);
   });
 
   document.getElementById('btn-reveal').onclick = () => setPaintDirection('reveal');
@@ -102,98 +107,87 @@ function initToolbar() {
   // Grid
   const gridBtn       = document.getElementById('btn-grid');
   const gridSizeInput = document.getElementById('grid-size');
+  // ⚠ EVERY HANDLER BELOW ENDS IN commitGridChange() (grid.js) — render, Player push and scene
+  // save in one call. A grid control that ends any other way is one whose value does not survive
+  // the next scene switch.
   gridBtn.onclick = function(e) {
     e.stopPropagation();
     gridEnabled = !gridEnabled;
     this.classList.toggle('active', gridEnabled);
-    scheduleAutoSync();
-    gridDirty = true;
-    scheduleRender();
+    commitGridChange();
   };
   gridSizeInput.oninput = e => {
     gridSize = parseInt(e.target.value);
     document.getElementById('grid-size-num').value = gridSize;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   document.getElementById('grid-size-num').oninput = e => {
     const v = Math.max(10, Math.min(400, parseInt(e.target.value) || 10));
     gridSize = v; gridSizeInput.value = v;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   document.getElementById('grid-offset-x').oninput = e => {
     gridOffsetX = parseInt(e.target.value);
     document.getElementById('grid-offset-x-num').value = gridOffsetX;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   document.getElementById('grid-offset-x-num').oninput = e => {
     const v = Math.max(0, Math.min(400, parseInt(e.target.value) || 0));
     gridOffsetX = v; document.getElementById('grid-offset-x').value = v;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   document.getElementById('grid-offset-y').oninput = e => {
     gridOffsetY = parseInt(e.target.value);
     document.getElementById('grid-offset-y-num').value = gridOffsetY;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   document.getElementById('grid-offset-y-num').oninput = e => {
     const v = Math.max(0, Math.min(400, parseInt(e.target.value) || 0));
     gridOffsetY = v; document.getElementById('grid-offset-y').value = v;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   (['sq', 'hflat', 'hptop']).forEach(m => {
     document.getElementById('btn-grid-' + m).onclick = () => {
       gridMode = m === 'sq' ? 'square' : m === 'hflat' ? 'hex-flat' : 'hex-pointy';
       document.querySelectorAll('.grid-mode-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('btn-grid-' + m).classList.add('active');
-      if (gridEnabled) { gridDirty = true; scheduleRender(); }
-      scheduleAutoSync();
+      commitGridChange();
     };
   });
   document.getElementById('grid-color').oninput = e => {
     gridColor = e.target.value;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   document.getElementById('grid-opacity').oninput = e => {
     gridOpacity = parseInt(e.target.value) / 100;
     document.getElementById('grid-opacity-num').value = e.target.value;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   document.getElementById('grid-opacity-num').oninput = e => {
     const v = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
     gridOpacity = v / 100; document.getElementById('grid-opacity').value = v;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   document.getElementById('grid-thickness').oninput = e => {
     gridLineWidth = parseInt(e.target.value);
     document.getElementById('grid-thickness-num').value = gridLineWidth;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   document.getElementById('grid-thickness-num').oninput = e => {
     const v = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
     gridLineWidth = v; document.getElementById('grid-thickness').value = v;
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
-    scheduleAutoSync();
+    commitGridChange();
   };
   document.getElementById('btn-grid-reset').onclick = () => {
-    gridSize      = 70;
+    gridSize      = GRID_DEFAULT_SIZE;
     gridOffsetX   = 0;
     gridOffsetY   = 0;
     gridColor     = '#ffffff';
     gridOpacity   = 0.25;
     gridMode      = 'square';
     gridLineWidth = 1;
-    document.getElementById('grid-size').value          = 70;
-    document.getElementById('grid-size-num').value      = 70;
+    document.getElementById('grid-size').value          = GRID_DEFAULT_SIZE;
+    document.getElementById('grid-size-num').value      = GRID_DEFAULT_SIZE;
     document.getElementById('grid-offset-x').value      = 0;
     document.getElementById('grid-offset-x-num').value  = 0;
     document.getElementById('grid-offset-y').value      = 0;
@@ -205,7 +199,7 @@ function initToolbar() {
     document.getElementById('grid-thickness-num').value = 1;
     document.querySelectorAll('.grid-mode-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('btn-grid-sq').classList.add('active');
-    if (gridEnabled) { gridDirty = true; scheduleRender(); }
+    commitGridChange();
   };
 
   function setAutoSync(enabled) {

@@ -63,6 +63,11 @@ feature, and running them all together is the regression pass.
 **An acceptance file's criteria ARE its header.** Plain-language lines at the top, each with its
 check directly beneath, in the same order. There is no separate criteria document.
 
+**A scenario that has never been red has proven nothing.** Written before the fix, run it against
+the unfixed code and confirm it fails on the right line. Written after, break the thing it covers,
+confirm the FAIL names it, then put it back. A check that passes for some reason other than the
+code under it looks identical to one that works.
+
 A file exports one async function taking `rig`:
 
 - `rig.check(condition, message)` — the message reads as the failure, since it is what lands in
@@ -81,6 +86,10 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
 - **Evaluate with bare identifiers, never `window.x`.** The app's scripts are plain `<script>`
   tags using top-level `let`/`const`, which are not properties of `window`: `window.pixiApp` is
   undefined while `pixiApp` is an object.
+- **`waitFor` takes a SYNCHRONOUS expression only.** It wraps what it is handed in `!!(…)`, so an
+  async arrow's promise is truthy on the first poll and the wait returns instantly, having looked
+  at nothing. Anything that must read IndexedDB gets a bounded poll loop written in the scenario,
+  in Node, not a `waitFor`.
 - **Poll, never sleep.** A fixed wait is either a lie or a waste, and it is the difference
   between a rig that takes ten seconds and one nobody runs.
 - **Wait out the scene cover before reading painted fog.** A fresh map arrives under a full-fog

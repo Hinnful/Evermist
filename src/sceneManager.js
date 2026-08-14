@@ -68,33 +68,15 @@ function initSceneManagerUI() {
   document.getElementById('scene-dd-toggle').onclick = toggleDropdown;
   document.getElementById('scene-dd-add').onclick = () => fileInput.click();
 
-  // "+" merges New Scene + Import: image/video → new scene, .zip → restore backup.
+  // "+" merges New Scene + Import: images/videos → new scenes, a lone .zip → restore backup.
+  // Many files at once are fine; importMapFiles runs them one after another.
   fileInput.onchange = e => {
-    const f = e.target.files[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!f) return;
-    const isZip = /\.zip$/i.test(f.name) || f.type === 'application/zip' || f.type === 'application/x-zip-compressed';
-    if (isZip) {
-      // Electron 32 removed File.path, so this used to be undefined in the desktop
-      // app and fell through to the "needs the desktop app" alert while running IN
-      // the desktop app. There is no bytes fallback here: restoreFromZipPath needs a
-      // real path because main reads the archive off disk.
-      const zipPath = (window.electronAPI && window.electronAPI.getPathForFile)
-        ? window.electronAPI.getPathForFile(f)
-        : null;
-      if (zipPath && typeof restoreFromZipPath === 'function') {
-        openDropdown();
-        restoreFromZipPath(zipPath);
-      } else {
-        messageDialog({
-          title: 'Backups need the desktop app',
-          message: 'Restoring a .zip reads it straight off disk, which the browser will not allow. Open Evermist as the app to import this.',
-        });
-      }
-    } else {
-      openDropdown();
-      createNewScene(f);
-    }
+    if (!files.length) return;
+    openDropdown();
+    if (files.length === 1 && isZipFile(files[0])) { restorePickedZip(files[0]); return; }
+    importMapFiles(files);
   };
 
   // Header: select-all checkbox + bulk actions
@@ -296,9 +278,131 @@ async function initScenes() {
   if (lastId && allScenes.find(s => s.id === lastId)) await switchScene(lastId);
 }
 
-async function createNewScene(file) {
+// Restores a picked backup. Electron 32 removed File.path, so the real path comes from the
+// preload bridge; there is no bytes fallback, because main reads the archive off disk.
+function restorePickedZip(f) {
+  const zipPath = (window.electronAPI && window.electronAPI.getPathForFile)
+    ? window.electronAPI.getPathForFile(f)
+    : null;
+  if (zipPath && typeof restoreFromZipPath === 'function') {
+    restoreFromZipPath(zipPath);
+  } else {
+    messageDialog({
+      title: 'Backups need the desktop app',
+      message: 'Restoring a .zip reads it straight off disk, which the browser will not allow. Open Evermist as the app to import this.',
+    });
+  }
+}
+
+// ─── Importing maps ───────────────────────────────────────────────────────────
+// The "+" picker and a drop on the window both land in importMapFiles. THE LOOP LIVES HERE,
+// in the module that owns scene creation — never a second one in toolbar.js.
+
+// What either route accepts, tested the same way for both so the picker and a drop can never
+// disagree about what is importable.
+const MAP_FILE_RE = /\.(jpe?g|png|gif|bmp|webp|svg|mp4|webm)$/i;
+
+function isImportableMapFile(f) {
+  return !!f && (MAP_FILE_RE.test(f.name) ||
+                 !!(f.type && (f.type.startsWith('image/') || f.type.startsWith('video/'))));
+}
+
+function isZipFile(f) {
+  return !!f && (/\.zip$/i.test(f.name) || f.type === 'application/zip' ||
+                 f.type === 'application/x-zip-compressed');
+}
+
+// Imports every file, STRICTLY ONE AFTER ANOTHER. Ten maps, walk away, come back done.
+//
+// Nothing appears at the end of a clean run. A run with failures ends in ONE dialog naming
+// exactly what did not make it, and each map's own dialog is suppressed while a batch is on, so
+// one bad file cannot stop an unattended run to ask about itself.
+async function importMapFiles(files) {
+  const list = Array.from(files || []);
+  if (!list.length) return;
+  const batch = list.length > 1;
+
+  // ⚠ A ZIP IN A CROWD IMPORTS NOTHING. Restoring appends scenes and carries the module text, of
+  // which the app holds one — so it is a blocking question in the middle of a run nobody is
+  // watching. On its own it still restores, through the caller.
+  const zip = list.find(isZipFile);
+  if (zip) {
+    messageDialog({
+      title: 'Import the backup on its own',
+      message: '“' + zip.name + '” is a backup, and restoring one is its own job. Import it by ' +
+               'itself, then come back for the maps.',
+    });
+    return;
+  }
+
+  // Filtered UP FRONT, before anything loads: the picker does no type filtering of its own, so
+  // without this an unimportable file reaches createNewScene and reports from inside the run.
+  const failures = [];
+  const queue = [];
+  for (const f of list) {
+    if (isImportableMapFile(f)) queue.push(f);
+    else failures.push('“' + f.name + '” is not an image or an animated map.');
+  }
+
+  const ids = [];
+  try {
+    for (let i = 0; i < queue.length; i++) {
+      const f = queue[i];
+      if (batch) {
+        setMapProgressPrefix('Map ' + (i + 1) + ' of ' + queue.length + ' - ' + sceneNameForFile(f));
+        showMapProgress('Reading the map…');
+      }
+      // ⚠ THE ORIGINALLY PICKED File, STRAIGHT THROUGH. findPlanForFile needs its path on disk,
+      // so a File rebuilt on the way here arrives with no floor plan — see createNewScene.
+      // Caught per file, so one map that throws on its way in costs that map and not the run.
+      let r = null;
+      try { r = await createNewScene(f, { quiet: batch }); }
+      catch (err) { console.error('[importMapFiles] import threw', err); }
+      if (r && r.ok) ids.push(r.id);
+      else failures.push('“' + f.name + '” ' + ((r && r.reason) || 'would not open.'));
+    }
+  } finally {
+    setMapProgressPrefix('');
+    hideMapProgress();
+  }
+
+  // A single import lands on its map, exactly as it always has. A batch lands on the FIRST of
+  // the batch, and that is the one map whose floor plan gets offered.
+  if (batch && ids.length) {
+    if (ids.length > 1) await switchScene(ids[0]).catch(err => console.error('switchScene failed:', err));
+    if (typeof offerStoredFloorPlan === 'function') offerStoredFloorPlan();
+  }
+
+  // ⚠ THE OVERLAY IS z-index 10000 AND THE DIALOG ANCHOR IS 620, so a dialog raised under it is
+  // invisible. It is already down (the finally above) and this is the last thing to run.
+  if (batch && failures.length) {
+    messageDialog({
+      title: failures.length === 1 ? 'One map did not make it' : failures.length + ' maps did not make it',
+      message: failures.join('\n'),
+    });
+  }
+}
+
+// The scene name a file will get, so a batch's progress label and the scene it creates agree.
+function sceneNameForFile(file) {
+  return file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim() || 'New Scene';
+}
+
+// Resolves { ok, id, name, reason } once the map is either on screen or refused — NEVER BEFORE,
+// and never not at all. That is what lets importMapFiles run a batch strictly one at a time: the
+// loaders are callback-based, so without this the second import would start while the first was
+// still in cleanupVideo.
+//
+// ⚠ SETTLE ON EVERY FAILURE EXIT. There are four — loadVideoFromFile's falsy-file return,
+// loadMapFromFile's unmatched-type return, and each loader's decode failure — plus anything the
+// save path itself throws. Miss one and a single bad file hangs the whole batch on a promise that
+// never settles, with the progress overlay up.
+//
+// opts.quiet: a batch is doing the reporting, so no dialog and no floor-plan notice from here.
+async function createNewScene(file, opts) {
+  const o = opts || {};
   const isVid = isVideoFile(file);
-  const name = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim() || 'New Scene';
+  const name = sceneNameForFile(file);
 
   // ⚠ THE FLOOR PLAN IS RESOLVED FIRST, FROM THE FILE THE DM ACTUALLY PICKED. findPlanForFile
   // needs getPathForFile, and a File built in-page has no path on disk — so converting first
@@ -325,7 +429,25 @@ async function createNewScene(file) {
   if (currentScene) doAutoSave();
   cleanupVideo();
   const maxOrder = allScenes.length > 0 ? Math.max(...allScenes.map(s => s.sortOrder ?? 0)) : -1;
+
+  // One deferred, settled by whichever of the paths below gets there first.
+  let settle = null;
+  const settled = new Promise(r => { settle = r; });
+  const finish = result => {
+    if (!settle) return;
+    const answer = settle; settle = null;
+    if (!result.ok) {
+      hideMapProgress();
+      if (!o.quiet) messageDialog({
+        title: isVid ? 'Animated map would not play' : 'Map would not open',
+        message: '“' + file.name + '” ' + result.reason,
+      });
+    }
+    answer(result);
+  };
+
   const onLoaded = async (bitmap, blob) => {
+   try {
     const thumb = await generateThumbnail(bitmap, mapWidth, mapHeight);
     const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
       ? crypto.randomUUID()
@@ -367,7 +489,10 @@ async function createNewScene(file) {
       polygons:      [],
       nextPolygonId: 1,
       baseFogBlob:   await fogToBlob(),
-      gridConfig:    captureGridConfig(),
+      // NOT captureGridConfig(): the live cell size and offset belong to the map that was on
+      // screen a moment ago, and inheriting them is what made the grid look shared between
+      // scenes. freshGridConfig (grid.js) keeps the look and resets the fit.
+      gridConfig:    freshGridConfig(),
       thumbnail:     thumb,
       createdAt:     Date.now(),
       sortOrder:     maxOrder + 1,
@@ -380,12 +505,26 @@ async function createNewScene(file) {
     // shroud has no effect, video frozen). switchScene() rebuilds everything correctly.
     currentScene = null;
     await switchScene(id);
+    // AFTER the switch, never before: mapWidth is not known until the map has loaded, and
+    // switchScene applies the scene's stored gridConfig on its way in. Only the import runs
+    // this — Draw Rooms pressed later must leave a hand-tuned grid alone (floorPlan.js).
+    if (typeof applyPlanGridSize === 'function') applyPlanGridSize();
     // Asked only once the map is actually on screen, so the DM is deciding about something
     // they can see. Cancel means "later" — the Fog tab's Draw Rooms is the second chance.
-    if (typeof offerStoredFloorPlan === 'function') offerStoredFloorPlan();
+    // Suppressed during a batch: nine notices would flicker past and be discarded, so the
+    // loop shows one for the map the DM lands on.
+    if (!o.quiet && typeof offerStoredFloorPlan === 'function') offerStoredFloorPlan();
+    finish({ ok: true, id, name });
+   } catch (err) {
+    // The fifth way this ends: the save path itself throwing. Left unhandled that is an
+    // unsettled promise with the overlay up, which is a hang rather than a failure.
+    console.error('[createNewScene] import failed', err);
+    finish({ ok: false, name, reason: 'could not be saved. ' + (err && err.message ? err.message : '') });
+   }
   };
-  if (isVid) loadVideoFromFile(file, onLoaded);
-  else loadMapFromFile(file, onLoaded);
+  if (isVid) loadVideoFromFile(file, onLoaded, reason => finish({ ok: false, name, reason }));
+  else loadMapFromFile(file, onLoaded, reason => finish({ ok: false, name, reason }));
+  return settled;
 }
 
 // Writes a picked video map into userData/maps and returns its relative mapPath.

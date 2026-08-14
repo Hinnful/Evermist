@@ -663,7 +663,9 @@
      converts it (main.js, via pdfjs-dist) rather than asking the DM to export text first. -->
 <input type="file" id="mt-file-input" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" style="display:none">
 
-<input type="file" id="file-input" accept="image/*,video/mp4,video/webm,.zip,application/zip" style="display:none">
+<!-- multiple: pick a folder's worth of maps in one go. A lone .zip still restores a backup; one
+     inside a multi-file selection is refused (sceneManager.js importMapFiles). -->
+<input type="file" id="file-input" multiple accept="image/*,video/mp4,video/webm,.zip,application/zip" style="display:none">
 
 <script src="lib/pixi.min.js"></script>
 <script src="src/renderer.js"></script>

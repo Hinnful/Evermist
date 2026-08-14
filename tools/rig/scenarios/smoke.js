@@ -165,8 +165,9 @@ module.exports = async function smoke(rig) {
 
   const importFixture = async (fixture, readyExpr, timeoutMs) => {
     const expr = await rig.fixtures.asFileExpr(dm, fixture);
-    // createNewScene RESOLVES BEFORE THE MAP IS LOADED for a video: it hands off to
-    // loadVideoFromFile(file, onLoaded) and returns. Poll for the scene, never sleep at it.
+    // createNewScene now settles only once the map is on screen or refused, so a batch can run
+    // one map at a time — but the poll stays: it names the state this block needs, and it is
+    // what turns a refused import into a timeout that says which fixture.
     await dm.evaluate('createNewScene(' + expr + ')', timeoutMs);
     await dm.waitFor(readyExpr, timeoutMs, 'the import of ' + fixture.name);
   };

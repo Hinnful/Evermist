@@ -755,6 +755,34 @@ classifies a face as a room and a uniform positive scale cannot flip it, while s
 independently would shear a plan whose aspect disagrees - a wrong answer that still looks right.
 An absent `map_size` yields 0 and scales by 1, so a plan beside its own export is untouched.
 
+### The grid belongs to the scene, and an import inherits its look but not its fit · `SETTLED` (2026-08-14)
+Reported as "grid settings are shared between the scenes". Two mechanisms, and only the second was
+what the report described. Every grid slider already persisted, because `scheduleAutoSync` calls
+`scheduleAutoSave` itself - but **Grid Reset called neither**, so a reset came back at the old
+size on the next switch and never reached the Player at all. Every grid control now ends in one
+`commitGridChange()` (`grid.js`): render, Player push, scene save. A control that ends any other
+way is one whose value does not survive a switch.
+The second was `createNewScene` capturing the live grid, so ten imports in a row all inherited
+whatever was on screen. Both extremes were rejected: inheriting everything IS the reported bug,
+and resetting everything discards a look dialled in over a session. The split that held is
+**look versus fit** - colour, opacity, thickness, type and on/off carry over because they are
+preferences; cell size and offset reset, because they describe the map that just left the screen.
+
+### Importing a folder of maps is one sequential loop that owns its own reporting · `SETTLED` (2026-08-14)
+The loop lives in `sceneManager.js` (`importMapFiles`), never a second one in the drop handler.
+The trap that makes this bigger than it looks: `createNewScene` used to return before the map had
+loaded, because both loaders are callback-based, so a naive `await` in a loop started the second
+import mid-`cleanupVideo`. It now resolves from inside `onLoaded` **and settles on every failure
+exit** - five of them, counting the two that used to return silently and anything the save path
+throws. Missing one hangs the whole batch on a promise that never settles, with the progress
+overlay up, which is worse than the failure.
+Reporting is the batch's, not each map's: passing a failure callback to `loadMapFromFile` /
+`loadVideoFromFile` suppresses their own dialog, so an unattended run cannot stop to ask about one
+bad file. Failures arrive as one summary **after** the overlay is down (z-index 10000 against the
+dialog's 620). Each map still raises and lowers its own overlay, carrying a batch label prefix, so
+the overlay is never held up across a run. A `.zip` alone still restores; one inside a
+multi-file selection imports nothing and is named, because restore appends and asks questions.
+
 ### The DM holds no map sprite for an animated map · `SETTLED` (2026-08-13)
 `pixiHideMap` only sets `visible = false`, so the frame-0 texture built for an animated map
 stayed resident on the GPU for the whole scene - and the DM's map is a CSS-composited DOM
@@ -958,6 +986,21 @@ ends pick each other: far better evidence than a stub projecting onto some wall'
 which keeps the tight one. Tightening the base ceiling tightens both, so "closing off" still
 means off. Result on the cave map: 13 rooms, all real, none false.
 
+### Grid Size comes from the plan at import, size only · `SETTLED` (2026-08-14)
+A Dungeon Alchemist export used to mean typing its DPI into Grid Size, and a compressed map broke
+that trick: the right size became 150 × 3840/srcW, which nothing on screen could tell you.
+Derived instead as **pixels across divided by squares across** (`mapWidth / squaresX`), not from
+the plan's own `pixels_per_grid`. The division self-corrects any resolution mismatch, the same rule
+`vttScaleRooms` already uses for the rooms; reading the file's own number would hand back the
+untouched export's value and put the grid out of step with the map on screen. `vttDerivePlan` gained
+`squaresX`/`squaresY`/`gridPx` additively; the clamp to the control's 10–400 range and the writing
+of both slider and chip live in `floorPlan.js`.
+**The import path only, never `applyPlanToScene`.** Draw Rooms runs that function again at any
+later point, and a hand-tuned grid has to survive it - auto on first load, the DM's value wins
+forever after. **Size, not offset:** `map_origin` means a correctly-sized grid can still sit out of
+phase, and deriving the offset too was judged the wrong trade against a manual nudge. A map with no
+plan gets nothing, and no hint about the shrink factor either; both accepted, not gaps.
+
 ### Owlbear Rodeo's automatic fogging is not a template · `REJECTED` (as a model)
 Their "Forecast" feature is a server-side computer vision pipeline gated to their top paid
 tier, which an offline `file://` app cannot replicate at any effort. Worth knowing for a
@@ -1002,6 +1045,16 @@ non-writable and non-configurable. The round trip mirrors the payload and keeps 
 **Trusting `--user-data-dir` to isolate `--exe`** - the portable build overrides it from
 `PORTABLE_EXECUTABLE_DIR` and a run damaged the real library beside it. The rig now refuses a
 library that is not empty, and `--exe` belongs on `dist/win-unpacked/Evermist.exe`.
+
+### A new acceptance scenario is proven by making it fail · `SETTLED` (2026-08-14)
+A scenario written after the code it checks has never been red, so it has demonstrated nothing.
+Three of the grid/bulk-import scenarios were therefore mutation-checked: the plan-derived grid moved
+before the scene switch (caught), per-map dialogs left on during a batch (caught by the
+overlay-versus-dialog check), and the failure route removed from a loader (caught, as the timeout it
+would be at the table). The fourth mutation exposed a **weak check** rather than a bug: removing the
+batch loop's own `hideMapProgress()` changed nothing, because each map's import already lowers the
+overlay. That line stays as defence, but it is not covered, and a check that passes for a reason
+other than the code under it is worth knowing about before it is trusted.
 
 ### The rig's rules go in a skill, not a folder `CLAUDE.md` · `SETTLED` (2026-08-14)
 A folder's `CLAUDE.md` loads when a file *in that folder* is edited, which is the moment you are

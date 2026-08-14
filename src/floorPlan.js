@@ -90,6 +90,51 @@ function applyPlanToScene(derived) {
   doAutoSave();
 }
 
+// ─── Grid size from the plan ──────────────────────────────────────────────────
+
+// The grid the control can actually hold: #grid-size is a 10–400 range, and a value outside it
+// leaves the slider and the global disagreeing.
+const FP_GRID_MIN = 10;
+const FP_GRID_MAX = 400;
+
+// The cell size this plan implies for the map that is actually loaded: PIXELS ACROSS DIVIDED BY
+// SQUARES ACROSS. That self-corrects a resolution mismatch — a map shrunk at import divides the
+// same square count into fewer pixels — where reading pixels_per_grid straight off the file would
+// hand back the untouched export's number and put the grid out of step with the map. The plan's
+// own pixels_per_grid is only the fallback for a file that omits map_size. null where neither is
+// usable, which is also what a map with no plan gets.
+function planGridSize(planText, mapW) {
+  const derived = describePlan(planText);
+  if (!derived) return null;
+  const w = Number(mapW);
+  const raw = (derived.squaresX > 0 && isFinite(w) && w > 0)
+    ? w / derived.squaresX
+    : derived.gridPx;
+  if (!isFinite(raw) || raw <= 0) return null;
+  return Math.max(FP_GRID_MIN, Math.min(FP_GRID_MAX, Math.round(raw)));
+}
+
+// ⚠ IMPORT PATH ONLY. Draw Rooms runs applyPlanToScene on the same plan at any later point, and
+// a grid the DM has hand-tuned must survive that — so the derivation lives here and is called
+// once, from the import, and never from applyPlanToScene. Auto on first load; the DM's value
+// wins forever after.
+//
+// SIZE ONLY, NOT OFFSET. vttPlan.js reads map_origin, so a correctly-sized grid can still land
+// out of phase on a plan with a non-zero origin. Grid offset stays a manual nudge.
+function applyPlanGridSize() {
+  if (!currentScene) return null;
+  const size = planGridSize(currentScene.floorPlan, mapWidth);
+  if (size == null || size === gridSize) return null;
+  // Through applyGridConfig so the slider, the number chip and the control panel's own fill all
+  // move with the global; writing gridSize alone leaves the UI reading the old number.
+  applyGridConfig({ ...captureGridConfig(), cellSize: size });
+  commitGridChange();
+  // Committed now rather than left on the 5s debounce: this is the one grid change the DM did
+  // not make, and losing it to a close-during-import would look like the feature never ran.
+  doAutoSave();
+  return size;
+}
+
 // ─── The offer ────────────────────────────────────────────────────────────────
 
 function _fpRoomWord(n) { return n === 1 ? '1 room' : n + ' rooms'; }

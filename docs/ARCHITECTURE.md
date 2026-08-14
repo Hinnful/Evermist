@@ -35,15 +35,15 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `fog.js` | Everything fog: the canvases that store what's hidden, the blur and cloud-texture math, and the reveal/hide logic. |
 | `fogGeometry.js` | The pure fog math: polygon insetting, rounded paths, tint-colour derivation, animation timing. Plain functions in, values out, no drawing. Unit-tested. |
 | `vttPlan.js` | Turns a Universal VTT floor plan's wall segments into room polygons. Pure geometry, no dependencies, unit-tested. |
-| `floorPlan.js` | The app side of that: finding the plan beside the map, the offer notice, and drawing the rooms. |
+| `floorPlan.js` | The app side of that: finding the plan beside the map, the offer notice, setting Grid Size from the plan at import, and drawing the rooms. |
 | `tools.js` | The drawing tools (brush, rectangle, circle, polygon) and polygon editing. |
 | `input.js` | The DM's mouse and keyboard: painting with the tools, keyboard shortcuts, the legend toggle. |
 | `undo.js` | Undo/redo history for fog edits. |
-| `grid.js` | The grid overlay: squares or hexes, size/offset/colour, and line width that scales with zoom. |
+| `grid.js` | The grid overlay: squares or hexes, size/offset/colour, and line width that scales with zoom. Also the one place a grid change is committed from - redraw, push to the Player, save onto the scene - and what grid a freshly imported map starts with. |
 | `scenes.js` | Auto-save loop, fog-load helpers, and the error-recovery path above the database layer. |
-| `sceneManager.js` | Scene CRUD and the scene-manager UI: `switchScene`, `createNewScene`, rename, delete, thumbnails. |
+| `sceneManager.js` | Scene CRUD and the scene-manager UI: `switchScene`, `createNewScene`, rename, delete, thumbnails, and the loop that imports a whole selection of maps one at a time. |
 | `sceneStore.js` | Saving and loading scenes to the browser's local database (IndexedDB). |
-| `mapLoader.js` | Loading a map image into the app and driving the progress bar. Shared by scene-switching and backup restore. |
+| `mapLoader.js` | Loading a map image into the app and driving the progress bar, including the batch label a multi-map import puts on it. Shared by scene-switching and backup restore. |
 | `mapConvert.js` | Asking whether to shrink an oversized animated map at import, and re-encoding it if the answer is yes. Pure box-fitting maths plus the recorder that drives it. |
 | `viewport.js` | Pan, zoom, pushing the camera to the Player window, and the auto-sync helper. |
 | `minimap.js` | The DM's live preview of the Player camera, and the remote control that drives it. |
@@ -89,6 +89,26 @@ machine that has to play the result, so a question at import is asked of the wro
 handed to the browser's own compositor - the same path a media player uses, with no copying per
 frame. The graphics layer holds no picture of the map at all on that side, which is the
 counterpart to the Player's one-screen patch described below.
+
+## Bringing in a folder of maps
+
+Select ten maps in the file dialog, or drag them onto the window together, and they import one
+after another - never overlapping, because two maps decoding at once is how a video import lands
+on top of the one still being saved. The progress bar says which map of how many is going through
+and names it, over the top of whatever that map is doing at the time.
+
+You land on the first map of the batch, not the last, so a run of ten leaves you where you started
+reading rather than at the far end. A clean run ends silently. A run with a casualty ends in one
+message naming exactly what did not make it, and nothing interrupts mid-run to ask about a single
+bad file - the alternative is an unattended import stopping on map three and waiting all evening.
+One unreadable map costs that map and nothing else.
+
+Close the app halfway through and the maps that finished are there. The rest simply never existed.
+
+A backup zip is the exception: on its own it still restores the library, but one sitting inside a
+multi-file selection imports nothing at all and says why. Restoring adds to the library rather than
+replacing it and carries the module text, of which the app holds one - so it is a question, and a
+question in the middle of a run nobody is watching is the thing this feature exists to avoid.
 
 ## How the fog works
 
@@ -285,6 +305,14 @@ The plan's coordinates are in the pixel space of the export it was written besid
 are scaled onto whatever size the map actually is before they're drawn. Without that step a
 compressed map would get rooms half again too large - correctly shaped, sitting in the wrong
 place, with nothing to indicate anything went wrong.
+
+**The plan also sets Grid Size**, which used to mean typing the export's DPI in by hand and
+guessing after a map had been compressed. The plan says how many squares wide the map is, the map
+says how many pixels wide it is, and dividing one by the other is the answer - which stays right
+whatever happened to the map's resolution on the way in. It happens once, when the map first
+arrives; pressing Draw Rooms later never moves a grid that has been adjusted since. Grid offset is
+still yours to nudge, because a plan can declare its own origin and a correctly-sized grid can
+still sit half a square out of phase.
 
 The geometry is five steps and lives in `vttPlan.js`, entirely separate from the app. Wall
 segments are unioned with the portals that fill their gaps, because walls alone have a hole at
