@@ -153,6 +153,67 @@ function findUntagged(entries, tags) {
   return entries.filter((e) => !tags.some((t) => e.heading.indexOf('`' + t + '`') !== -1));
 }
 
+/*
+ * Past-tense narrative in a file that is supposed to be imperative present tense.
+ *
+ * The markers are deliberately few and high-signal. Broader ones were considered and
+ * left out because they have honest uses in a rule: "no longer" and "previously" both
+ * describe current behaviour, and "used to" appears inside a live migration rule.
+ * A guard that cries wolf gets ignored, which costs more than the cases it catches.
+ */
+const NARRATIVE_RE =
+  /\d{4}-\d{2}-\d{2}|\b(?:originally|an earlier version|(?:was|were)\s+(?:rejected|tried))\b/i;
+
+/*
+ * Scans "##" sections only, skipping any named in skipSections and any fenced block.
+ *
+ * Content before the first "##" is skipped for the same reason guard-ledger skips a
+ * ledger preamble: that is where a file states which mood belongs where, and it has to
+ * quote past-tense phrasing to route it away. A fence is code, not prose.
+ *
+ * Lines are tested singly AND joined with the line after, because these files are hard
+ * wrapped at ~90 chars and a three-word marker straddles a break often enough to matter.
+ * The reported line is where the marker starts.
+ */
+function findNarrative(text, skipSections) {
+  const skip = (skipSections || []).map((s) => s.toLowerCase());
+  const lines = text.split(/\r?\n/);
+  const hits = [];
+  let inSection = false;
+  let fenced = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (/^```/.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+
+    if (/^##\s+/.test(line)) {
+      inSection = skip.indexOf(line.replace(/^##\s+/, '').trim().toLowerCase()) === -1;
+      continue;
+    }
+    if (!inSection) continue;
+
+    const own = line.match(NARRATIVE_RE);
+    if (own) {
+      hits.push({ line: i + 1, marker: own[0], text: line.trim() });
+      continue;
+    }
+
+    // Nothing on this line, so try the wrap. The join is only reported when the NEXT
+    // line is clean on its own - otherwise the marker sits wholly on that line and
+    // reporting here would name the wrong one and count it twice.
+    const next = lines[i + 1] === undefined || /^(?:#{2,3}\s+|```)/.test(lines[i + 1]) ? '' : lines[i + 1];
+    if (!next || NARRATIVE_RE.test(next)) continue;
+    const m = (line + ' ' + next).match(NARRATIVE_RE);
+    if (m) hits.push({ line: i + 1, marker: m[0], text: line.trim() });
+  }
+  return hits;
+}
+
 module.exports = {
   ROOT,
   readStdin,
@@ -164,4 +225,5 @@ module.exports = {
   findPersonRefs,
   findPersonRefsInText,
   findUntagged,
+  findNarrative,
 };
