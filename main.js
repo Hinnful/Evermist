@@ -13,6 +13,9 @@ const stressNoReveals = process.argv.includes('--stress-no-reveals');
 // Memory-footprint probe: activated by `npm run memprobe` (passes --memprobe). Inert under
 // plain `npm start` and in the shipped .exe, which never passes the flag.
 const memProbeMode    = process.argv.includes('--memprobe');
+// Burning-ground look prototype: activated by `npm run fire` (passes --fire). Dev-only;
+// the harness lives in tools/ and never ships.
+const fireProtoMode   = process.argv.includes('--fire');
 // Stub levers that attribute the minimize memory movement — each disables one suspect.
 const memProbeNoFlush = process.argv.includes('--memprobe-no-flush');
 const memProbeNoSave  = process.argv.includes('--memprobe-no-save');
@@ -100,6 +103,7 @@ function createDMWindow() {
     if (memProbeNoSave)  q.memprobeNoSave  = '1';
     if (memProbeSmall)   q.memprobeSmall   = '1';
   }
+  if (fireProtoMode) q.fire = '1';
   if (Object.keys(q).length) win.loadFile('index.html', { query: q });
   else win.loadFile('index.html');
   dmWin = win;

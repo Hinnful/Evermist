@@ -33,13 +33,14 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `render.js` | The render loop. Each frame it decides which layers actually changed and redraws only those, keeps the canvases sized to the window, and paints the cursor and polygon-selection overlay. |
 | `state.js` | Shared values that several files need. Loaded first so they exist before anything reads them. |
 | `fog.js` | Everything fog: the canvases that store what's hidden, the blur and cloud-texture math, and the reveal/hide logic. |
-| `fogGeometry.js` | The pure fog math: polygon insetting, rounded paths, tint-colour derivation, animation timing. Plain functions in, values out, no drawing. Unit-tested. |
+| `fogGeometry.js` | The pure fog math: polygon insetting, rounded paths, cone vertices, tint-colour derivation, animation timing. Plain functions in, values out, no drawing. Unit-tested. |
 | `vttPlan.js` | Turns a Universal VTT floor plan's wall segments into room polygons. Pure geometry, no dependencies, unit-tested. |
 | `floorPlan.js` | The app side of that: finding the plan beside the map, the offer notice, setting Grid Size from the plan at import, and drawing the rooms. |
-| `tools.js` | The drawing tools (brush, rectangle, circle, polygon) and polygon editing. |
+| `tools.js` | The drawing tools (brush, rectangle, circle, cone, polygon) and polygon editing. The cone is drawn apex-first - press at the point of origin, drag towards where it points - and commits as an ordinary polygon with a shallow arc on its far edge, so nothing downstream knows a cone from any other shape. |
 | `input.js` | The DM's mouse and keyboard: painting with the tools, keyboard shortcuts, the legend toggle. |
 | `undo.js` | Undo/redo history for fog edits. |
-| `grid.js` | The grid overlay: squares or hexes, size/offset/colour, and line width that scales with zoom. Also the one place a grid change is committed from - redraw, push to the Player, save onto the scene - and what grid a freshly imported map starts with. |
+| `effects.js` | Map effects - burning ground, and the materials to come. Each is a polygon carrying a material name, drawn under the fog on both screens as a flaming border: the outline burns inward with dissolving tongues over a faint fill, with sparks, smoke and haze. Rendered by a fragment shader over the polygon's own distance field, in two PixiJS meshes per effect - an additive pass for the light (fire, fill, sparks) and a normal-blend pass for the darkening (smoke, haze). Owns the `effects` array's model, that render path, and the material swatches the toolbar picker paints itself with. (The ember relight of the map grid inside a zone lives in `grid.js`.) |
+| `grid.js` | The grid overlay: squares or hexes, size/offset/colour, and line width that scales with zoom. Also the one place a grid change is committed from - redraw, push to the Player, save onto the scene - and what grid a freshly imported map starts with. Relights the grid in ember inside each effect zone (`drawEffectGridGlow`), because the map grid draws on a canvas above the effect layer. |
 | `scenes.js` | Auto-save loop, fog-load helpers, and the error-recovery path above the database layer. |
 | `sceneManager.js` | Scene CRUD and the scene-manager UI: `switchScene`, `createNewScene`, rename, delete, thumbnails, and the loop that imports a whole selection of maps one at a time. |
 | `sceneStore.js` | Saving and loading scenes to the browser's local database (IndexedDB). |

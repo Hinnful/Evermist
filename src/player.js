@@ -106,6 +106,7 @@ function initPlayer() {
 
     if (msg.type === 'player-lock') { playerInputLocked = msg.locked; return; }
 
+
     if (msg.type === 'view-snap') {
       playerFollowDM = true;
       notifyDMOfMode();
@@ -155,6 +156,10 @@ function initPlayer() {
 
     mapWidth  = msg.mapWidth;
     mapHeight = msg.mapHeight;
+    // Effects arrive as the polygon records themselves — the array IS the wire format, so there
+    // is nothing to convert. An empty list is meaningful (a scene switch sends one), hence the
+    // undefined check rather than a truthiness one.
+    if (msg.effects !== undefined) setEffects(msg.effects);
     if (msg.gridEnabled !== undefined) {
       gridEnabled   = msg.gridEnabled;
       gridSize      = msg.gridSize      || gridSize;

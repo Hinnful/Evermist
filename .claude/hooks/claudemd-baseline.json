@@ -1,4 +1,4 @@
 {
-  "maxBytes": 12585,
+  "maxBytes": 12940,
   "note": "Max bytes for CLAUDE.md, measured with line endings normalised to LF. Auto-ratchets DOWN as the file shrinks; raising it is a deliberate act, not a failure. Raise it for a genuinely new RULE that will not fit in the space freed by tightening or relocating an existing one - never drop a real rule to get under the number. Explanation of how something works belongs in docs/ARCHITECTURE.md, reasoning in docs/DECISIONS.md, and a rule that binds to named files in a skill."
 }

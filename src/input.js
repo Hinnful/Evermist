@@ -8,17 +8,25 @@
 
 let legendVisible = false;
 
+// The context row above the toolbar. ONE function owns every visibility decision in it, and it
+// is called from both setShape and setPlaceMode — the row answers to the tool AND the placement
+// mode, and more than one group can be up at once (fog trio plus brush size).
+// Fog state is a ROOM's property, so the trio has nothing to say in Effects mode; the material
+// picker takes its place there.
 function updateContextPanels() {
-  const brushPanel = document.getElementById('panel-brush-bottom');
-  const snapPanel  = document.getElementById('panel-snap-bottom');
-  if (brushPanel) brushPanel.style.display = shape === 'brush' ? 'flex' : 'none';
-  if (snapPanel)  snapPanel.style.display  = shape !== 'brush' ? 'flex' : 'none';
+  const show = (id, on) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = on ? 'flex' : 'none';
+  };
+  show('ctx-rooms',   placeMode !== 'effects');
+  show('ctx-effects', placeMode === 'effects');
+  show('panel-brush-bottom', shape === 'brush');
 }
 
 function setShape(s) {
   if (isPlayer) return;
   shape = s;
-  ['brush', 'rect', 'poly', 'circle', 'select'].forEach(sh => {
+  ['brush', 'rect', 'poly', 'circle', 'cone', 'select'].forEach(sh => {
     const el = document.getElementById('btn-' + sh);
     if (el) el.classList.toggle('active', sh === s);
   });
@@ -27,6 +35,7 @@ function setShape(s) {
   refreshHalfAvailability(); // half is shape-tools only; the brush can't paint it
 
   circleCenter = null;
+  coneApex = null;
   container.style.cursor = s === 'select' ? 'default' : 'crosshair';
   drawCursor(lastScreenX, lastScreenY);
   updateContextPanels();
@@ -160,6 +169,8 @@ function initInput() {
       case 'e': setShape('rect');   break;
       case 'p': setShape('poly');   break;
       case 'c': setShape('circle'); break;
+      // O for cOne — C belongs to Circle, and no better letter is free.
+      case 'o': setShape('cone');   break;
       case 'v': setShape('select'); break;
       case 'n': document.getElementById('btn-snap').click();   break;
       case 'g': document.getElementById('btn-grid').click();   break;
@@ -171,18 +182,16 @@ function initInput() {
       case 'f': if (mapOffscreen) { fitToScreen(); viewportDirty = true; scheduleRender(); } break;
       case 'Delete':
         if (shape === 'select' && selectedPolygonId != null && selectedVertexIndex >= 0) {
-          const poly = polygons.find(p => p.id === selectedPolygonId);
+          const poly = findActiveShape();
           if (poly && poly.vertices.length > 3) {
             pushUndo();
             poly.vertices.splice(selectedVertexIndex, 1);
             if (poly.cornerRadii) poly.cornerRadii.splice(selectedVertexIndex, 1);
             selectedVertexIndex = -1;
-            rebuildFogFromPolygons();
-            startFogTransition();
-            rebuildFogEffect();
+            shapeGeometryChanged();
+            persistShapeEdit();
             fogDirty = true;
             scheduleRender();
-            scheduleAutoSync();
             drawCursor(lastScreenX, lastScreenY);
           }
         } else if (selectedPolygonId != null) {

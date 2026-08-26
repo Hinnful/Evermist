@@ -168,6 +168,15 @@ function _mpPixiTextures() {
   if (typeof pixiFogCloudBT !== 'undefined') add('fogCloud', pixiFogCloudBT);
   if (typeof pixiFogTransBT !== 'undefined') add('fogTrans', pixiFogTransBT);
 
+  // Map-effect material masks. Listed per cached entry rather than per effect ON PURPOSE:
+  // the whole memory claim of that feature is that a hundred fires cost the same as one, and
+  // a probe that counted per instance could not tell you whether that still held.
+  if (typeof _effectTexCache !== 'undefined' && _effectTexCache) {
+    _effectTexCache.forEach(function(tex, key) {
+      if (tex && tex.baseTexture) add('effect:' + key, tex.baseTexture);
+    });
+  }
+
   // The renderer's RenderTexture pool — the sprite mask allocates here, and it is what
   // pixiFlushTexturePool() releases on minimize.
   var pool = { count: 0, bytes: 0 };
@@ -213,6 +222,7 @@ function _mpContext() {
     // zero, and gating here would block the very sample the minimize test needs.
     hidden:   document.hidden,
     polygons: (typeof polygons !== 'undefined' && polygons) ? polygons.length : 0,
+    effects:  (typeof effects  !== 'undefined' && effects)  ? effects.length  : 0,
     zoom:     (typeof zoom !== 'undefined') ? Number(zoom).toFixed(3) : '—',
   };
 }
@@ -233,7 +243,8 @@ function _mpSample(label) {
   var head = 'MEMPROBE#' + n + ' [' + label + '] ' + ctx.mode +
     ' scene="' + ctx.scene + '" ' + ctx.mapType + ' ' + ctx.mapW + 'x' + ctx.mapH +
     ' disp=' + ctx.display + ' maxTex=' + ctx.maxTex + ' tex=' + ctx.texture +
-    ' hidden=' + ctx.hidden + ' polys=' + ctx.polygons + ' zoom=' + ctx.zoom;
+    ' hidden=' + ctx.hidden + ' polys=' + ctx.polygons + ' effects=' + ctx.effects +
+    ' zoom=' + ctx.zoom;
   _mpLog(head);
 
   inv.forEach(function(i) {

@@ -92,6 +92,10 @@ function doAutoSave() {
   const snap = {
     polygons:      polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
     nextPolygonId,
+    // Effects belong to the scene the same way rooms do. Additive spread, never a field
+    // whitelist: one would drop cornerRadii from every saved effect on the next load.
+    effects:       effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
+    nextEffectId,
     gridConfig:    captureGridConfig(),
     fogSettings:   {
       pickedHex: fogPickedHex,
@@ -111,6 +115,8 @@ function doAutoSave() {
     if (!blob || currentScene !== scene) return;
     scene.polygons      = snap.polygons;
     scene.nextPolygonId = snap.nextPolygonId;
+    scene.effects       = snap.effects;
+    scene.nextEffectId  = snap.nextEffectId;
     scene.baseFogBlob   = blob;
     scene.gridConfig    = snap.gridConfig;
     scene.fogSettings   = snap.fogSettings;

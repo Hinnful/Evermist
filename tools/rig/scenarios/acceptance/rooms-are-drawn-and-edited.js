@@ -1,7 +1,9 @@
 'use strict';
 
-// rooms-are-drawn-and-edited.js — the room tools exactly as they work today, pinned before a
-// second placement mode goes into tools.js. Every check drives the app's own mouse handlers
+// rooms-are-drawn-and-edited.js — the room tools exactly as they work today. It was written to
+// pin them before a second placement mode went into tools.js; that mode was built and later
+// removed, and this outlived it as the cover the room tools had always been missing.
+// Every check drives the app's own mouse handlers
 // (input.js → tools.js) with synthetic events, so nothing here can pass through a path the DM
 // never takes.
 //

@@ -87,16 +87,16 @@ walls can be dark, light, grass, snowy or cave stone, so any "walls are dark lin
 dead on arrival. And the button is **inverted**: pressing it creates nothing, it lights up
 candidate outlines that become real on click, so bad input is free.
 
-### Map effects are materials, not spells · `SETTLED` (design)
-The combinatorics rule out a per-spell library: a wall of fire is any length at any angle, and
-one spell of hundreds. What an asset supplies is the **material** - one seamless ice texture
-serves every wall of ice at every size, and about ten materials cover the whole list. Sizes are
-drawn or typed and a preset carries only a default. Naming by material rather than by spell
-also keeps the app from becoming a rules database that goes stale.
-
-**The mask sells it, not the texture.** A mediocre material with a feathered noisy edge and the
-right blend mode reads as convincing; a beautiful one with a hard border reads as a bug. Build
-that with ONE placeholder material and judge it before sourcing the rest.
+### Map effects indicate an area, they are not rendered art · `SETTLED` (design)
+An effect marks WHERE an area effect sits so combat stays legible; it is a tool, not a beautiful
+VFX. It is drawn as a flaming border - the shape's outline burning inward with dissolving tongues,
+over a faint fill, with sparks and smoke, and the map grid relit inside the zone so covered squares
+stay countable. Clipped to the true shape so a circle stays a circle. Typed by material (fire, acid,
+...), never per-spell: the combinatorics rule out a spell library, about a dozen types cover the
+list, and size is drawn or typed. No metrics on the shape - no rounds, damage or duration, just the
+area. Whole-room fill is out of scope: rare in play, and easier to paint into the map in Dungeon
+Alchemist. Two looks were tried and dropped before this one - a filled seamless "material" per type,
+and a lit interior grid - see DECISIONS.
 
 ### Scene folders are list navigation, not map layers · `SETTLED`
 Parked once as "batching three or four maps together", which measured the wrong thing. The

@@ -42,5 +42,10 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "deny": [
+      "mcp__claude-in-chrome"
+    ]
   }
 }

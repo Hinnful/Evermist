@@ -15,7 +15,8 @@
         "No automatic cave subdivision, ever · `SETTLED` (scope call)",
         "What one map actually costs · `SETTLED` (measured 2026-08-07)",
         "The Player's map texture is viewport-sized · `SETTLED` (2026-08-07)",
-        "Rejected while building the rig · `REJECTED`"
+        "Rejected while building the rig · `REJECTED`",
+        "Map effects were built, shipped and then removed · `REVERTED` (2026-08-21)"
       ],
       "untagged": [],
       "persons": []

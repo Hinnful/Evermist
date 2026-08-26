@@ -94,6 +94,8 @@ async function doExport(selectedIds) {
           mapExt,
           polygons:      scene.polygons || [],
           nextPolygonId: scene.nextPolygonId || 1,
+          effects:       scene.effects || [],
+          nextEffectId:  scene.nextEffectId || 1,
           // This list is a WHITELIST: a field missing from it is silently dropped on
           // export. The floor plan has to survive, or a restored scene loses its
           // Draw Rooms button with nothing to explain why.
@@ -261,6 +263,10 @@ async function restoreFromZipPath(zipPath) {
         mapPath,
         polygons:      entry.polygons      || [],
         nextPolygonId: entry.nextPolygonId || 1,
+        // Absent in every zip written before effects existed, which restores as a scene with
+        // none — the same shape a scene that never had one has.
+        effects:       entry.effects       || [],
+        nextEffectId:  entry.nextEffectId  || 1,
         // Absent in every zip written before floor plans existed, which is exactly the
         // no-plan case: the button stays disabled and nothing else changes.
         floorPlan:     entry.floorPlan,

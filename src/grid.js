@@ -12,7 +12,9 @@ function lineWidthForZoom(base, zoom) {
 
 // ─── Rendering ───────────────────────────────────────────────────────────────
 // Shared grid-drawing primitive used by both renderGrid (DM) and renderMap (Player).
-function drawGridLines(ctx, vp) {
+// `style` overrides colour/alpha/width for the ember relight inside effect zones; omitted, the
+// grid draws in its own configured colour.
+function drawGridLines(ctx, vp, style) {
   const scale = vp.dstW / vp.srcW;
   const step = gridSize * scale;
   if (step < 4 || vp.srcW <= 0 || vp.srcH <= 0) return;
@@ -20,9 +22,9 @@ function drawGridLines(ctx, vp) {
   ctx.beginPath();
   ctx.rect(vp.dstX, vp.dstY, vp.dstW, vp.dstH);
   ctx.clip();
-  ctx.strokeStyle = gridColor;
-  ctx.globalAlpha = gridOpacity;
-  ctx.lineWidth = lineWidthForZoom(gridLineWidth, scale);
+  ctx.strokeStyle = (style && style.color) || gridColor;
+  ctx.globalAlpha = style && style.alpha != null ? style.alpha : gridOpacity;
+  ctx.lineWidth = lineWidthForZoom(gridLineWidth, scale) * (style && style.widthMul || 1);
 
   if (gridMode === 'square') {
     ctx.beginPath();
@@ -96,6 +98,32 @@ function renderGrid(vp) {
   // so the fog layer above it naturally hides it in shrouded areas.
   if (isPlayer || !gridEnabled) return;
   drawGridLines(gridCtx, vp);
+  drawEffectGridGlow(gridCtx, vp);
+}
+
+// Relight the grid in ember where it falls inside an effect zone, so the squares a hazard covers
+// are countable. It has to live HERE, over the same canvas as the grid: the effect's own fire is
+// a PixiJS layer below this canvas, so anything it drew would sit under these grid lines. Only the
+// square grid is relit — a hex grid keeps its own colour (matches effects.js).
+const EFFECT_GRID_EMBER = '#ff9a3c';
+function drawEffectGridGlow(ctx, vp) {
+  if (typeof effects === 'undefined' || !effects.length || gridMode !== 'square') return;
+  const scale = vp.dstW / vp.srcW;
+  for (const e of effects) {
+    if (!e.vertices || e.vertices.length < 3) continue;
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i < e.vertices.length; i++) {
+      const sx = vp.dstX + (e.vertices[i].x - vp.srcX) * scale;
+      const sy = vp.dstY + (e.vertices[i].y - vp.srcY) * scale;
+      if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+    }
+    ctx.closePath();
+    ctx.clip();
+    const emberAlpha = (typeof FX_LOOK !== 'undefined') ? FX_LOOK.gridGlow : 0.6;
+    drawGridLines(ctx, vp, { color: EFFECT_GRID_EMBER, alpha: emberAlpha, widthMul: 1.8 });
+    ctx.restore();
+  }
 }
 
 function renderPlayerGrid(vp) {
@@ -103,6 +131,7 @@ function renderPlayerGrid(vp) {
   playerGridCtx.clearRect(0, 0, vp.cw, vp.ch);
   if (!gridEnabled) return;
   drawGridLines(playerGridCtx, vp);
+  drawEffectGridGlow(playerGridCtx, vp);
 }
 
 // ─── Committing a change ──────────────────────────────────────────────────────

@@ -10,10 +10,11 @@ let pixiMapSprite  = null;
 let pixiMapTexture = null;
 
 // Layer containers
-let pixiMapLayer   = null;
-let pixiFogLayer   = null;
-let pixiGridLayer  = null;
-let pixiToolLayer  = null;
+let pixiMapLayer     = null;
+let pixiEffectsLayer = null;
+let pixiFogLayer     = null;
+let pixiGridLayer    = null;
+let pixiToolLayer    = null;
 
 function initPixiRenderer(containerEl) {
   if (pixiApp) destroyPixiRenderer();
@@ -58,13 +59,18 @@ function initPixiRenderer(containerEl) {
     containerEl.appendChild(canvas);
   }
 
-  // Layer hierarchy
-  pixiMapLayer  = new PIXI.Container();
-  pixiFogLayer  = new PIXI.Container();
-  pixiGridLayer = new PIXI.Container();
-  pixiToolLayer = new PIXI.Container();
+  // Layer hierarchy. The effects layer sits ABOVE the map and BELOW the fog on purpose, and
+  // that ordering is the whole reason an effect in an unexplored room is hidden on both
+  // screens without any stripping guard — on the DM the fog is the layer above it, and on the
+  // Player the Canvas-2D #fog-canvas covers this whole canvas. effects.js fills it.
+  pixiMapLayer     = new PIXI.Container();
+  pixiEffectsLayer = new PIXI.Container();
+  pixiFogLayer     = new PIXI.Container();
+  pixiGridLayer    = new PIXI.Container();
+  pixiToolLayer    = new PIXI.Container();
 
   pixiApp.stage.addChild(pixiMapLayer);
+  pixiApp.stage.addChild(pixiEffectsLayer);
   pixiApp.stage.addChild(pixiFogLayer);
   pixiApp.stage.addChild(pixiGridLayer);
   pixiApp.stage.addChild(pixiToolLayer);
@@ -478,11 +484,12 @@ function destroyPixiRenderer() {
     pixiMapTexture.destroy(true);
     pixiMapTexture = null;
   }
-  pixiMapSprite  = null;
-  pixiMapLayer   = null;
-  pixiFogLayer   = null;
-  pixiGridLayer  = null;
-  pixiToolLayer  = null;
+  pixiMapSprite    = null;
+  pixiMapLayer     = null;
+  pixiEffectsLayer = null;
+  pixiFogLayer     = null;
+  pixiGridLayer    = null;
+  pixiToolLayer    = null;
   if (pixiApp) {
     pixiApp.destroy(true, { children: true, texture: true, baseTexture: true });
     pixiApp = null;

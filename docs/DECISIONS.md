@@ -1216,6 +1216,84 @@ non-breaking space inside a character class into an ordinary space. The two vers
 visually identical. Reuse this for any comment-only pass, and treat invisible characters in
 source as something a comment must warn about.
 
+### Map effects were built, shipped and then removed · `REVERTED` (2026-08-21)
+
+Drawable areas of burning ground - a polygon carrying a material, persisted like a room - shipped
+as 2.2.1 and were removed whole: the commit was dropped and the app returned to 2.2.0. The
+mechanics worked. Removed on product grounds, and the cause was the process, not the code:
+developing the look by eye took many rounds, each fixing a real defect and exposing another, and
+it never converged. Recoverable from the dropped commit in git.
+
+Three findings are worth not re-deriving:
+- **An effect texture with no alpha channel paints a black rectangle** wherever any compositing
+  step draws it normally instead of adding it - a filter that fails to apply is enough. Additive
+  artwork needs real transparency, not black where it means "nothing".
+- **A looping flipbook cannot hold one-way motion.** Every displacement inside it must return by
+  the last frame, so it reads as travelling out and back. One-way motion belongs where time is
+  unbounded: the draw path, not the sheet.
+- **Layers sharing one frame clock give the whole composite a single visible cycle**, however
+  well each layer behaves on its own. Independent rates hide the loop; nothing in the art can.
+
+### Map effects reopened as grid-fire indication · `REOPENED` (2026-08-22)
+
+After the removal above, effects were reframed from rendered fire to INDICATION and are being
+rebuilt on that basis. Rendering is a fiery grid - the shape's border and the interior grid lines
+lit, clipped to the true outline so a circle stays a circle - not a filled texture. Procedural, no
+assets, ships, and stays legible when zones overlap or seen across a room on a TV.
+Readymade fills were tried and rejected; do not retry:
+- Photoreal fire CLIPS (Jinker's JAA) look right at native size, smear when stretched to a room,
+  and carry no licence to ship.
+- Seamless MAGMA surfaces fill any shape but were rejected on look and ran heavy.
+- Baking a custom fire surface had no reference to measure and never converged.
+Prototype lives in `tools/fire-proto` (gitignored, `?fire=1`); no shipped module yet.
+
+### Map effects settled as a flaming border, rendered in two passes · `SETTLED` (2026-08-25)
+
+The grid-fire idea above gave way to a flaming BORDER chosen by eye: the outline burns INWARD from
+the edge with tongues that dissolve to embers, over a faint interior fill, with sparks, smoke and
+haze. Grid-fire's lit interior grid survives only as an ember RELIGHT of the map grid inside the zone.
+Three shape calls that a future session would otherwise re-derive:
+- **The fire is a fragment shader over each polygon's own signed-distance field** (`effects.js`), not
+  a tiled texture and not stroked lines - so it works on any drawn shape and rounds with the corners.
+- **Two PixiJS meshes per effect: an ADD pass and a NORMAL pass.** Fire/fill/sparks emit light (ADD);
+  smoke/haze DARKEN the map, which addition cannot do. One blend mode cannot be both, and a single
+  NORMAL mesh was tried and dimmed the approved border - rejected.
+- **The ember grid relight lives in `grid.js`, not the effect shader.** The map grid is a Canvas-2D
+  layer above the effect layer, so an ember grid drawn in the effect sits under it and never shows.
+Also corrected here: effect sync rides the Auto/Manual gate like fog; the removed 2.2.1 build
+force-pushed effects to the Player even in Manual.
+
+### The Cone tool draws a D&D cone, apex-first, at a fixed 53.13° · `SETTLED` (2026-08-26)
+
+A cone is dragged from its POINT OF ORIGIN outwards: the press sets the apex, the drag sets
+direction and length. That is what every table tool does, and it matches how a spell is
+described - from the caster, that way, that far.
+
+**The spread is not adjustable, and should not become adjustable without the DM asking.** A D&D
+cone is as wide at its far end as it is long, which fixes the half-angle at atan(0.5) and the
+apex angle at 53.13°. Foundry defaults to it, Roll20 calls it "lock width to height". A cone here
+that opened wider or narrower would measure a different area than the players' own rulers, which
+is the one thing an indication tool must not do. A DM who wants a 90° breath or a narrow jet
+draws it with the Polygon tool.
+
+**The far edge bows outward slightly.** The rule makes width grow in step with distance, which is
+a triangle, and a bare triangle read as a paper cut-out rather than as something spreading. So the
+far edge is a shallow arc through the two corners - `CONE_BULGE`, 8% of the length.
+
+**The two corners do not move when the bulge changes**, which is what lets width-equals-length
+hold exactly at any bulge. What the bow costs is reach: the arc's middle stands 8% past where the
+drag ended, a fraction of a grid square at table sizes. Set `CONE_BULGE` to 0 for the exact
+triangle. Every measurement is taken between the FIRST and LAST vertex, never v[1] and v[2] -
+everything between them is arc.
+
+A cone commits as ordinary vertices and needs no editing path of its own: Select, vertex drag,
+corner rounding and Delete all already work on it, and it serves as a room or an effect from the
+same gesture.
+
+Straighten walls rounds the direction to 15° while a cone is being dragged; it had nothing to say
+during that drag before. The geometry is a pure function in `fogGeometry.js` (`coneVertices`),
+unit-tested, so the width-equals-length rule is checked by arithmetic rather than by eye.
+
 ---
 
 ## Corrections worth keeping

@@ -11,14 +11,20 @@ first, not last.
 
 ## When to run it
 
-**Whenever a question has a definite right answer you cannot read off the code.** Did the map
-reach disk. Did the reveal reach the Player. Did switching scenes leave the old map underneath.
-Is the panel where it should be. Anything spanning both windows.
+**The rig is a last resort, not a development tool.** Reading and editing code is faster, so
+reach for the rig only when code cannot answer the question. Three cases qualify:
 
-- **Reproduce a reported bug before fixing it.** Drive the DM's own repro steps in a scenario and
-  confirm the failure, rather than reasoning from the description.
-- **While building a feature**, to see the thing work at each step.
-- **Before handing over any change to shipped code.** A red smoke set blocks handover.
+- **Checking an end result.** The chunk is built and you need to know it works.
+- **Seeing what code cannot show.** Did the map reach disk. Did the reveal reach the Player.
+  Did switching scenes leave the old map underneath. Anything spanning both windows.
+- **Finding a bug nothing else catches.** Reading the code failed, so drive the DM's own repro
+  steps in a scenario and watch the failure happen.
+
+**Do not run it to watch work in progress.** Development changes the code constantly and each
+run costs real time, so a pass between edits buys nothing.
+
+**A regression pass belongs to finished work.** `/wrap` runs `npm run rig -- regression` once a
+chunk is done and blocks on red. Do not run the set yourself while still building.
 
 **Never ask the DM to hand-verify what the rig can check.** They run the `.exe` on a TV; asking
 them to re-test correctness is asking them to do your job.

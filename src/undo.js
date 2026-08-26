@@ -44,6 +44,11 @@ function pushUndo() {
     baseFog: cloneCanvas(baseFogCanvas),
     polygons: polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
     nextPolygonId,
+    // Effects ride the same history: they are edited with the same tools, so a Ctrl+Z that
+    // reversed a room drag but not an effect drag would depend on which mode you were in.
+    // Both spreads are additive — a field whitelist here would drop cornerRadii.
+    effects: effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
+    nextEffectId,
   });
   redoStack = [];
   evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);
@@ -54,10 +59,17 @@ function restoreState(snapshot) {
   baseFogCtx = baseFogCanvas.getContext('2d');
   polygons = snapshot.polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) }));
   nextPolygonId = snapshot.nextPolygonId;
-  // Keep the selection when the room survived the undo — nulling it unconditionally slammed
-  // the room card shut on every Ctrl+Z, mid-read. Only a room that no longer exists in the
-  // restored set (undoing its creation) clears it.
-  if (selectedPolygonId == null || !polygons.some(p => p.id === selectedPolygonId)) {
+  // Snapshots taken before effects existed carry neither field, so an undo across that point
+  // must leave the live ones alone rather than emptying them.
+  if (snapshot.effects) {
+    setEffects(snapshot.effects);
+    nextEffectId = snapshot.nextEffectId || nextEffectId;
+  }
+  // Keep the selection when the shape survived the undo — nulling it unconditionally slammed
+  // the room card shut on every Ctrl+Z, mid-read. Only a shape that no longer exists in the
+  // restored set (undoing its creation) clears it. Checked against the list the placement mode
+  // names, which is the same list the selection came from.
+  if (selectedPolygonId == null || !activeShapeList().some(s => s.id === selectedPolygonId)) {
     selectedPolygonId = null;
   }
   selectedVertexIndex = -1;   // vertex counts can differ across the snapshot
@@ -66,7 +78,7 @@ function restoreState(snapshot) {
   rebuildFogEffect();
   fogDirty = true;
   scheduleRender();
-  scheduleAutoSync();
+  scheduleAutoSync();   // carries fog and effects together, on the Auto/Manual gate
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 }
 
@@ -76,6 +88,11 @@ function undo() {
     baseFog: cloneCanvas(baseFogCanvas),
     polygons: polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
     nextPolygonId,
+    // Effects ride the same history: they are edited with the same tools, so a Ctrl+Z that
+    // reversed a room drag but not an effect drag would depend on which mode you were in.
+    // Both spreads are additive — a field whitelist here would drop cornerRadii.
+    effects: effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
+    nextEffectId,
   });
   evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);
   restoreState(undoStack.pop());
@@ -87,6 +104,11 @@ function redo() {
     baseFog: cloneCanvas(baseFogCanvas),
     polygons: polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
     nextPolygonId,
+    // Effects ride the same history: they are edited with the same tools, so a Ctrl+Z that
+    // reversed a room drag but not an effect drag would depend on which mode you were in.
+    // Both spreads are additive — a field whitelist here would drop cornerRadii.
+    effects: effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
+    nextEffectId,
   });
   evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);
   restoreState(redoStack.pop());

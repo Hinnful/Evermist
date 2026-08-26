@@ -10,6 +10,12 @@ let fogModifiedThisStroke = false;
 let lastMapX, lastMapY;
 let rectStartX, rectStartY;
 let circleCenter = null;
+// The cone's point of origin, held for the length of the drag. Same lifetime as circleCenter:
+// set on mousedown, cleared on every release path including the one outside the canvas.
+let coneApex = null;
+// Direction snap for a cone, in degrees, when straighten-walls is on. 15 is what table tools
+// settled on: eight compass points plus the halves between them.
+const CONE_SNAP_DEG = 15;
 
 // ─── Polygon tool state ───────────────────────────────────────────────────────
 let activePolygon = null;   // polygon currently being drawn
@@ -36,6 +42,86 @@ let edgeDragIndex = -1;         // index of first vertex of dragged edge
 let edgeDragOrigVerts = null;
 let edgeDragStartMapX = 0, edgeDragStartMapY = 0;
 let polygonActuallyMoved = false;
+
+// ─── Which shapes the tools act on ────────────────────────────────────────────
+// A ROOM AND AN EFFECT ARE THE SAME OBJECT: {id, vertices, cornerRadius, cornerRadii, name},
+// carrying a fog `mode` or a `material`. They live in two arrays only because polygons order
+// IS fog compositing precedence, so an effect in that list would silently change how fog
+// resolves around it.
+//
+// The placement mode decides which array every tool reads and writes. That is what makes a
+// click unambiguous over a fire drawn inside a room, which is the normal case rather than the
+// edge one. setPlaceMode() clears the selection, so an id here always resolves in one list.
+function activeShapeList() { return placeMode === 'effects' ? effects : polygons; }
+
+function findActiveShape() {
+  return selectedPolygonId == null ? null
+       : activeShapeList().find(s => s.id === selectedPolygonId) || null;
+}
+
+// Live feedback mid-drag. A room's geometry IS the fog stencil, so it rebuilds; an effect only
+// has to tell its own render path, and must never touch the fog.
+function shapeGeometryChanged() {
+  if (placeMode === 'effects') { effectsChanged(); return; }
+  rebuildFogFromPolygons();
+}
+
+// THE ONE RELEASE PATH for a room or effect drag. toolMouseUp and toolWindowMouseUp were
+// already line-for-line copies of each other; adding a second kind of shape to both copies is
+// how this file breaks, so the body lives here once and both call it.
+//
+// Same rule as before about transitions: this does NOT stop a running crossfade first.
+// startFogTransition() leaves the live fade running and rebuildFogEffect() re-targets it.
+function commitShapeDrag() {
+  if (placeMode === 'effects') {
+    effectsChanged();
+    scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog reveal does
+    scheduleAutoSave();
+    scheduleRender();
+    return;
+  }
+  startFogTransition(findActiveShape()?.mode === 'shroud');
+  rebuildFogEffect();
+  fogDirty = true;
+  scheduleRender();
+  scheduleAutoSync();
+}
+
+// After an edit that changed geometry but NOT a fog mode - inserting a vertex, deleting one.
+// Deliberately does not start a crossfade: there is no mode to fade towards, and adding one
+// would make a corner edit flash the whole map.
+function persistShapeEdit() {
+  if (placeMode === 'effects') {
+    scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog reveal does
+    scheduleAutoSave();
+    return;
+  }
+  rebuildFogEffect();
+  scheduleAutoSync();
+}
+
+// A freshly drawn rectangle, circle or polygon, landed in whichever list the mode names. The
+// two records differ only in what they carry - a room a fog `mode`, an effect a `material`.
+// Vertices, corner radii and name are the same fields, which is what lets ONE set of editing
+// paths serve both.
+function commitDrawnShape(verts) {
+  let shape;
+  if (placeMode === 'effects') {
+    shape = addEffect(verts);
+  } else {
+    pushUndo();
+    fogModifiedThisStroke = true;
+    const pid = nextPolygonId++;
+    shape = { id: pid, vertices: verts, mode: tool, cornerRadius: 0, name: 'Room ' + pid };
+    polygons.push(shape);
+  }
+  // Deliberately NOT selected. Drawing must leave the card closed so it can't cover the map
+  // while the DM draws the next one; naming is a second pass with the Select tool. Same as
+  // floorPlan.js does for auto-generated rooms.
+  selectedPolygonId = null;
+  selectedVertexIndex = -1;
+  return shape;
+}
 
 // ─── Polygon helpers ──────────────────────────────────────────────────────────
 
@@ -85,8 +171,9 @@ function pointInPolygon(px, py, verts) {
 }
 
 function findPolygonAt(mapX, mapY) {
-  for (let i = polygons.length - 1; i >= 0; i--) {
-    if (pointInPolygon(mapX, mapY, polygons[i].vertices)) return polygons[i];
+  const list = activeShapeList();
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (pointInPolygon(mapX, mapY, list[i].vertices)) return list[i];
   }
   return null;
 }
@@ -104,8 +191,9 @@ function distPointToSegment(px, py, ax, ay, bx, by) {
 // selecting the existing one.
 function findPolygonHandleAt(mapX, mapY) {
   const hitRadius = Math.min(10 / zoom, 30); // clamp: ≤30 map-units so grab shrinks when very zoomed out
-  for (let i = polygons.length - 1; i >= 0; i--) {
-    const poly = polygons[i];
+  const list = activeShapeList();
+  for (let i = list.length - 1; i >= 0; i--) {
+    const poly = list[i];
     const verts = poly.vertices;
     for (const v of verts) {
       if (Math.hypot(mapX - v.x, mapY - v.y) < hitRadius) return poly;
@@ -199,17 +287,26 @@ function flushBrushOps() {
 
 // ─── Cursor / outline drawing ─────────────────────────────────────────────────
 
-function drawPolyOutline(poly, isSelected, selectedVertIdx) {
+// `dimmed` is the list the placement mode does NOT name — rooms while drawing effects, and vice
+// versa. It keeps a faint outline so the DM can see where a shape sits, and loses its vertex
+// dots, which are handles: a handle you cannot grab is the one piece of chrome that lies.
+function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   const verts = poly.vertices;
   if (verts.length < 2) return;
   cursorCtx.save();
+  // 0.3 was tried and disappeared entirely over the darker half of a map — "faint" has to stay
+  // above "gone" on ground the DM did not choose.
+  if (dimmed) cursorCtx.globalAlpha = 0.45;
 
   // Three fog states, three colours — the shared POLY_EDGE_COLORS table in state.js, so the
   // room being drawn and the room once it is saved are the same colour. Mode colour is only
   // visible when the room is deselected; a selected room is always gold.
+  // `material` is what tells an effect from a room. An effect gets its own colour family so it
+  // can never read as a fourth fog state.
   const edgeColor = isSelected
     ? POLY_EDGE_SELECTED
-    : (POLY_EDGE_COLORS[poly.mode] || POLY_EDGE_COLORS.shroud);
+    : (poly.material ? EFFECT_EDGE_COLOR
+                     : (POLY_EDGE_COLORS[poly.mode] || POLY_EDGE_COLORS.shroud));
 
   // Build screen-space vertex array
   const sv = verts.map(v => { const s = toScreen(v.x, v.y); return { x: s.sx, y: s.sy }; });
@@ -225,6 +322,8 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx) {
   const pvR = poly.cornerRadii ? poly.cornerRadii.map(rv => (rv != null ? rv : (poly.cornerRadius || 0)) * zoom) : null;
   buildRoundedPolyPath(cursorCtx, sv, cr, pvR);
   cursorCtx.stroke();
+
+  if (dimmed) { cursorCtx.restore(); return; }
 
   // Vertex dots — always at actual vertex positions regardless of corner rounding
   cursorCtx.setLineDash([]);
@@ -251,9 +350,11 @@ function drawActivePolyPreview(screenX, screenY) {
   const verts = activePolygon.vertices;
   if (verts.length === 0) return;
   const mode = activePolygon.mode || tool;
-  // Same table drawPolyOutline reads, so closing the polygon changes only the line's WEIGHT
+  // Same colours drawPolyOutline reads, so closing the polygon changes only the line's WEIGHT
   // (2px solid in progress → 1.5px dashed once saved), never its colour.
-  const edgeColor = POLY_EDGE_COLORS[mode] || POLY_EDGE_COLORS.shroud;
+  const edgeColor = placeMode === 'effects'
+    ? EFFECT_EDGE_COLOR
+    : (POLY_EDGE_COLORS[mode] || POLY_EDGE_COLORS.shroud);
   cursorCtx.save();
 
   // Placed edges (solid, glowing)
@@ -382,7 +483,7 @@ function toolMouseDown(raw, e) {
     const sx = e.clientX - r.left, sy = e.clientY - r.top;
 
     if (selectedPolygonId != null) {
-      const selPoly = polygons.find(p => p.id === selectedPolygonId);
+      const selPoly = findActiveShape();
       if (selPoly) {
         // 1. Vertex hit
         const vi = findVertexAt(selPoly, raw.x, raw.y);
@@ -444,6 +545,11 @@ function toolMouseDown(raw, e) {
   } else if (shape === 'circle') {
     fogModifiedThisStroke = false;
     circleCenter = { x: pos.x, y: pos.y };
+  } else if (shape === 'cone') {
+    fogModifiedThisStroke = false;
+    // The APEX is what snaps to the grid — it is the spell's point of origin, and the far end
+    // is wherever the length lands. Snapping both would fight the fixed spread.
+    coneApex = { x: pos.x, y: pos.y };
   } else {
     fogModifiedThisStroke = false;
     rectStartX = pos.x; rectStartY = pos.y;
@@ -452,7 +558,7 @@ function toolMouseDown(raw, e) {
 
 function toolMouseMove(pos, e, screenX, screenY) {
   if (shape === 'select' && !isDraggingPolygon && !isDraggingVertex && !isDraggingEdge) {
-    const selPoly = selectedPolygonId != null ? polygons.find(p => p.id === selectedPolygonId) : null;
+    const selPoly = findActiveShape();
     if (selPoly) {
       if (findVertexAt(selPoly, pos.x, pos.y) >= 0) container.style.cursor = 'pointer';
       else if (findEdgeAt(selPoly, pos.x, pos.y) >= 0) container.style.cursor = 'grab';
@@ -463,7 +569,7 @@ function toolMouseMove(pos, e, screenX, screenY) {
   }
 
   if (isDraggingVertex && selectedPolygonId != null) {
-    const poly = polygons.find(p => p.id === selectedPolygonId);
+    const poly = findActiveShape();
     if (poly && selectedVertexIndex >= 0 && selectedVertexIndex < poly.vertices.length) {
       const n    = poly.vertices.length;
       const prev = poly.vertices[(selectedVertexIndex - 1 + n) % n];
@@ -474,7 +580,7 @@ function toolMouseMove(pos, e, screenX, screenY) {
       if (Math.hypot(p.x - prev.x, p.y - prev.y) >= VERT_EPSILON &&
           Math.hypot(p.x - next.x, p.y - next.y) >= VERT_EPSILON) {
         poly.vertices[selectedVertexIndex] = { x: p.x, y: p.y };
-        rebuildFogFromPolygons();
+        shapeGeometryChanged();
         fogDirty = true;
         scheduleRender();
       }
@@ -484,7 +590,7 @@ function toolMouseMove(pos, e, screenX, screenY) {
   }
 
   if (isDraggingEdge && selectedPolygonId != null) {
-    const poly = polygons.find(p => p.id === selectedPolygonId);
+    const poly = findActiveShape();
     if (poly && edgeDragOrigVerts) {
       const n = poly.vertices.length;
       const a = edgeDragOrigVerts[edgeDragIndex];
@@ -497,7 +603,7 @@ function toolMouseMove(pos, e, screenX, screenY) {
         poly.vertices[edgeDragIndex]           = { x: a.x + nx * proj, y: a.y + ny * proj };
         poly.vertices[(edgeDragIndex + 1) % n] = { x: b.x + nx * proj, y: b.y + ny * proj };
       }
-      rebuildFogFromPolygons();
+      shapeGeometryChanged();
       drawCursor(screenX, screenY);
       fogDirty = true;
       scheduleRender();
@@ -508,11 +614,11 @@ function toolMouseMove(pos, e, screenX, screenY) {
   if (isDraggingPolygon && selectedPolygonId != null) {
     const dx = pos.x - dragStartMapX;
     const dy = pos.y - dragStartMapY;
-    const poly = polygons.find(p => p.id === selectedPolygonId);
+    const poly = findActiveShape();
     if (poly) {
       poly.vertices = dragOrigVerts.map(v => ({ x: v.x + dx, y: v.y + dy }));
       polygonActuallyMoved = true;
-      rebuildFogFromPolygons();
+      shapeGeometryChanged();
       fogDirty = true;
       scheduleRender();
     }
@@ -530,45 +636,29 @@ function toolMouseMove(pos, e, screenX, screenY) {
   }
 }
 
-// Every drag release below starts a fog transition WITHOUT stopping the running one first.
-// stopFogTransition() ends a crossfade by jumping it to its finished state, so releasing a
-// second drag while the first was still fading snapped the fog. startFogTransition() already
-// handles the overlap: it leaves the live fade running and rebuildFogEffect() re-targets it.
+// The drag releases below go through commitShapeDrag(), which is shared with
+// toolWindowMouseUp() — see the note on it about why it is one function.
 function toolMouseUp(pos, e) {
   if (isDraggingVertex) {
     isDraggingVertex = false;
     vertexDragOrigVerts = null;
-    startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
-    rebuildFogEffect();
-    fogDirty = true;
-    drawCursor(lastScreenX, lastScreenY);   // re-place the room card against the reshaped room
-    scheduleRender();
-    scheduleAutoSync();
+    commitShapeDrag();
+    drawCursor(lastScreenX, lastScreenY);   // re-place the card against the reshaped shape
     return;
   }
 
   if (isDraggingEdge) {
     isDraggingEdge = false;
     edgeDragOrigVerts = null;
-    startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
-    rebuildFogEffect();
-    fogDirty = true;
-    drawCursor(lastScreenX, lastScreenY);   // re-place the room card against the reshaped room
-    scheduleRender();
-    scheduleAutoSync();
+    commitShapeDrag();
+    drawCursor(lastScreenX, lastScreenY);   // re-place the card against the reshaped shape
     return;
   }
 
   if (isDraggingPolygon) {
     isDraggingPolygon = false;
     dragOrigVerts = null;
-    if (polygonActuallyMoved) {
-      startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
-      rebuildFogEffect();
-      fogDirty = true;
-      scheduleRender();
-      scheduleAutoSync();
-    }
+    if (polygonActuallyMoved) commitShapeDrag();
     return;
   }
 
@@ -581,32 +671,23 @@ function toolMouseUp(pos, e) {
   if (shape === 'rect') {
     const rw = Math.abs(pos.x - rectStartX), rh = Math.abs(pos.y - rectStartY);
     if (rw > 2 && rh > 2) {
-      pushUndo();
-      fogModifiedThisStroke = true;
       const x1 = Math.min(rectStartX, pos.x), y1 = Math.min(rectStartY, pos.y);
       const x2 = Math.max(rectStartX, pos.x), y2 = Math.max(rectStartY, pos.y);
-      const pid  = nextPolygonId++;
-      const poly = {
-        id: pid,
-        vertices: [{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2}],
-        mode: tool,
-        cornerRadius: 0,
-        name: 'Room ' + pid,
-      };
-      polygons.push(poly);
-      // Deliberately NOT selected. Drawing a room must leave the room card closed so it
-      // can't cover the map while the DM draws the next one; naming is a second pass with
-      // the Select tool. Same as floorPlan.js does for auto-generated rooms.
-      selectedPolygonId = null;
-      selectedVertexIndex = -1;
+      commitDrawnShape([{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2}]);
     }
+    drawCursor(null, null);
+  }
+  if (shape === 'cone' && coneApex) {
+    const verts = coneVertices(coneApex, pos, axisLock ? CONE_SNAP_DEG : 0);
+    // The same 2px floor the other shapes use, so a click that was meant as a deselect does
+    // not leave a sliver of a cone behind.
+    if (verts && Math.hypot(pos.x - coneApex.x, pos.y - coneApex.y) > 2) commitDrawnShape(verts);
+    coneApex = null;
     drawCursor(null, null);
   }
   if (shape === 'circle' && circleCenter) {
     const radius = Math.hypot(pos.x - circleCenter.x, pos.y - circleCenter.y);
     if (radius > 2) {
-      pushUndo();
-      fogModifiedThisStroke = true;
       const SEGS = 32;
       const verts = [];
       for (let i = 0; i < SEGS; i++) {
@@ -616,17 +697,13 @@ function toolMouseUp(pos, e) {
           y: circleCenter.y + Math.sin(angle) * radius,
         });
       }
-      const pid  = nextPolygonId++;
-      const poly = { id: pid, vertices: verts, mode: tool, cornerRadius: 0,
-                     name: 'Room ' + pid };
-      polygons.push(poly);
-      selectedPolygonId = null;
-      selectedVertexIndex = -1;
+      commitDrawnShape(verts);
     }
     circleCenter = null;
     drawCursor(null, null);
   }
-  if (polygons.length > 0) {
+  // Gated on the stroke having touched fog, so drawing an effect never rebuilds the stencil.
+  if (fogModifiedThisStroke && polygons.length > 0) {
     rebuildFogFromPolygons();
   }
   if (fogModifiedThisStroke) {
@@ -639,45 +716,32 @@ function toolMouseUp(pos, e) {
   scheduleRender();
 }
 
-// Catches a drag released outside the canvas. Same three releases as toolMouseUp, and the
-// same rule about not stopping a running transition first.
+// Catches a drag released outside the canvas. Same three releases as toolMouseUp, through the
+// same commitShapeDrag().
 function toolWindowMouseUp() {
   if (isDraggingVertex) {
     isDraggingVertex = false;
     vertexDragOrigVerts = null;
-    startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
-    rebuildFogEffect();
-    fogDirty = true;
-    drawCursor(lastScreenX, lastScreenY);   // re-place the room card against the reshaped room
-    scheduleRender();
-    scheduleAutoSync();
+    commitShapeDrag();
+    drawCursor(lastScreenX, lastScreenY);   // re-place the card against the reshaped shape
   }
   if (isDraggingEdge) {
     isDraggingEdge = false;
     edgeDragOrigVerts = null;
-    startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
-    rebuildFogEffect();
-    fogDirty = true;
-    drawCursor(lastScreenX, lastScreenY);   // re-place the room card against the reshaped room
-    scheduleRender();
-    scheduleAutoSync();
+    commitShapeDrag();
+    drawCursor(lastScreenX, lastScreenY);   // re-place the card against the reshaped shape
   }
   if (isDraggingPolygon) {
     isDraggingPolygon = false;
     dragOrigVerts = null;
-    if (polygonActuallyMoved) {
-      startFogTransition(polygons.find(p => p.id === selectedPolygonId)?.mode === 'shroud');
-      rebuildFogEffect();
-      fogDirty = true;
-      scheduleRender();
-      scheduleAutoSync();
-    }
+    if (polygonActuallyMoved) commitShapeDrag();
   }
   if (isDrawing) {
     isDrawing = false; lastMapX = lastMapY = null;
     if (!isPlayer) pixiSetFogBrushing(false);
     circleCenter = null;
-    if (polygons.length > 0) { rebuildFogFromPolygons(); }
+    coneApex = null;
+    if (fogModifiedThisStroke && polygons.length > 0) { rebuildFogFromPolygons(); }
     if (fogModifiedThisStroke) {
       startFogTransition(tool === 'shroud');
       rebuildFogEffect();
@@ -690,7 +754,7 @@ function toolWindowMouseUp() {
 }
 
 function toolDblClick(raw, e) {
-  const poly = polygons.find(p => p.id === selectedPolygonId);
+  const poly = findActiveShape();
   if (!poly) return;
   if (findVertexAt(poly, raw.x, raw.y) >= 0) return; // don't insert on existing vertex
   const ei = findEdgeAt(poly, raw.x, raw.y);
@@ -701,8 +765,8 @@ function toolDblClick(raw, e) {
   poly.vertices.splice(ei + 1, 0, pt);
   if (poly.cornerRadii) poly.cornerRadii.splice(ei + 1, 0, null);
   selectedVertexIndex = ei + 1;
-  rebuildFogFromPolygons();
-  rebuildFogEffect();
+  shapeGeometryChanged();
+  persistShapeEdit();
   fogDirty = true;
   scheduleRender();
   drawCursor(lastScreenX, lastScreenY);
@@ -712,22 +776,19 @@ function toolDblClick(raw, e) {
 
 function closeActivePolygon() {
   if (!activePolygon || activePolygon.vertices.length < 3) { activePolygon = null; drawCursor(null, null); return; }
-  pushUndo();
-  const pid  = nextPolygonId++;
-  const poly = {
-    id: pid,
-    vertices: activePolygon.vertices,
-    mode: activePolygon.mode,
-    cornerRadius: 0,
-    name: 'Room ' + pid,
-  };
-  polygons.push(poly);
-  applyPolygonToFog(poly);
+  const verts = activePolygon.vertices;
+  const mode  = activePolygon.mode;
   activePolygon = null;
-  selectedPolygonId = null;
-  selectedVertexIndex = -1;
+  const shape = commitDrawnShape(verts);
   drawCursor(null, null);
-  startFogTransition(poly.mode === 'shroud');
+  // The polygon tool paints its own fog below rather than going through toolMouseUp's block,
+  // so the flag that block reads must not be left set for the next release to act on.
+  fogModifiedThisStroke = false;
+  if (placeMode === 'effects') { fogDirty = true; scheduleRender(); return; }
+  // applyPolygonToFog paints just this room rather than rebuilding the whole stencil, which is
+  // why the polygon tool does not share the rectangle path's rebuild.
+  applyPolygonToFog(shape);
+  startFogTransition(mode === 'shroud');
   rebuildFogEffect();
   fogDirty = true;
   scheduleRender();
@@ -739,6 +800,16 @@ function closeActivePolygon() {
 function deletePolygonById(id) {
   if (id == null) return;
   pushUndo();
+  if (placeMode === 'effects') {
+    effects = effects.filter(e => e.id !== id);
+    if (selectedPolygonId === id) { selectedPolygonId = null; selectedVertexIndex = -1; }
+    effectsChanged();
+    drawCursor(null, null);
+    scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog edit does
+    scheduleAutoSave();
+    scheduleRender();
+    return;
+  }
   polygons = polygons.filter(p => p.id !== id);
   if (selectedPolygonId === id) { selectedPolygonId = null; selectedVertexIndex = -1; }
   rebuildFogFromPolygons();
@@ -761,7 +832,11 @@ function deleteSelectedPolygon() {
 // (and persists — it calls scheduleAutoSave internally). Deliberately does NOT refresh the
 // whole card: a rebuild would steal focus from the name/description fields mid-edit, so
 // the card updates its pill in place instead.
+// Fog states belong to rooms. An effect has a material instead, so both this and the T-key
+// cycle below refuse in Effects mode rather than resolving an effect's id against `polygons`
+// and toggling whichever room happens to share the number.
 function setPolygonMode(id, mode) {
+  if (placeMode === 'effects') return;
   const poly = polygons.find(p => p.id === id);
   if (!poly || poly.mode === mode) return;
   pushUndo();
@@ -776,6 +851,7 @@ function setPolygonMode(id, mode) {
 }
 
 function toggleSelectedPolygon() {
+  if (placeMode === 'effects') return;
   const poly = polygons.find(p => p.id === selectedPolygonId);
   if (!poly) return;
   pushUndo();

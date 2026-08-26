@@ -207,6 +207,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
         type: 'fog-update',
         mapUrl, mapType, mapWidth, mapHeight, fogDataUrl, view, isShroud, sceneChange, fogChanged,
         mapSceneId: currentScene ? currentScene.id : null,
+        effects,
         gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
         pickedHex: fogPickedHex, fogTintAlpha: FOG_TINT_ALPHA,
       }, '*');
@@ -228,9 +229,12 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
       }, 'image/jpeg', 0.9);
     }
   } else {
+    // Effects ride along as SHAPE DESCRIPTORS PLUS A MATERIAL NAME, never as pixels — the same
+    // precedent the grid config set. The Player paints the material itself from the same
+    // seeded masks, so a 40-metre wall of fire costs the wire a few dozen bytes.
     playerWindow.postMessage({
       type: 'fog-update',
-      mapWidth, mapHeight, fogDataUrl, view, isShroud, sceneChange, fogChanged,
+      mapWidth, mapHeight, fogDataUrl, view, isShroud, sceneChange, fogChanged, effects,
       gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
     }, '*');
   }

@@ -74,6 +74,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `tools.js` | Drawing tools + polygon editing |
 | `input.js` | DM mouse/wheel/keyboard, shape helpers, legend toggle. **Drag-drop is in toolbar.js, not here** |
 | `undo.js` | Undo/redo for fog edits |
+| `effects.js` | Map effects: the `effects` array's model, grid-fire render, material swatches |
 | `grid.js` | Grid config + render |
 | `scenes.js` | Fog persistence + scene fade helpers |
 | `sceneManager.js` | Scene CRUD, `switchScene`, scene-manager UI |
@@ -105,8 +106,8 @@ Declarations must precede use at init time. All under `src/`:
 ```
 lib/pixi.min.js → renderer.js → state.js → display.js → video.js → fogGeometry.js →
 vttPlan.js → fog.js → tools.js → mapLoader.js → mapConvert.js → undo.js → sceneStore.js →
-scenes.js → sceneManager.js → viewport.js → backup.js → grid.js → toolbar.js → player.js →
-input.js → stress.js → memProbe.js → render.js → minimap.js → controlPanel.js →
+scenes.js → sceneManager.js → viewport.js → backup.js → grid.js → effects.js → toolbar.js →
+player.js → input.js → stress.js → memProbe.js → render.js → minimap.js → controlPanel.js →
 confirmDialog.js → floorPlan.js → moduleText.js → roomPanel.js → about.js → inline <script>
 ```
 
@@ -152,6 +153,9 @@ Every error goes through it; no `alert()` ships.
    Rectangle/Circle/Polygon clicks must keep drawing new rooms, including overlapping and
    nested ones.
 4. Rooms never reach the Player, so room notes are DM-only for free; no stripping guard.
+5. **Map effects live in `effects`, never in `polygons`** (`effects.js`), and are called
+   effects, never tokens. They are the same record with a `material` where a room has a fog
+   `mode`, and persist alongside rooms - scene, backup, undo.
 
 ## The render loop
 
@@ -175,9 +179,9 @@ Every error goes through it; no `alert()` ships.
 - Deliberately untested, don't add tests here: `render.js`, `scenes.js`, `state.js`,
   `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
   `stress.js`.
-- **`npm run rig` drives the real app and both windows, ~10s to a verdict.** Reproduce a
-  reported bug with it before fixing, watch a feature work while building, and run it before
-  handing over a change to shipped code; red smoke blocks handover.
+- **The rig is a last resort, not a development tool** - reading code is faster. Use it for
+  an end result, what code cannot show, or a bug code cannot find. `/wrap` runs the
+  regression pass on finished work and blocks on red.
 - **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance at the
   table are theirs; correctness is yours. Backup, export and restore are the one exception and
   always get their hand test: the export's save dialog is native and cannot be driven.
@@ -199,8 +203,8 @@ one: it names the skill owning a file you edit.
 ## Running the app
 
 No build step. `npm start` for the Electron app (after `npm install`). Local installers:
-`npm run build` (Windows `.exe`), `build:mac` (`.dmg`), `build:linux` (`AppImage`). Or
-`npx serve .` on `http://localhost:3000`; the Player view opens as a second window.
+`npm run build` (Windows `.exe`), `build:mac` (`.dmg`), `build:linux` (`AppImage`).
+**The DM runs `npm start` and the `.exe`. Never open or suggest Chrome.**
 
 ## Distribution and releases
 
