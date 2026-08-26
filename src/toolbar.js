@@ -26,6 +26,84 @@ function refreshHalfAvailability() {
   if (brushPicked && tool === 'half') setPaintDirection('shroud');
 }
 
+// ─── Placement mode ───────────────────────────────────────────────────────────
+// Which array the next rectangle or circle lands in. Same shape as setPaintDirection: the pill
+// is pick-exactly-one, so ONE helper owns both the value and the highlight.
+function setPlaceMode(m) {
+  if (placeMode !== m) {
+    // ⚠ THE SELECTION IS SCOPED TO THE MODE. Rooms and effects number themselves separately,
+    // so an id left over from the other list would resolve against whichever shape happens to
+    // share the number - and the DM would drag a room they cannot see they selected.
+    selectedPolygonId = null;
+    selectedVertexIndex = -1;
+    activePolygon = null;
+  }
+  placeMode = m;
+  ['rooms', 'effects'].forEach(k => {
+    const el = document.getElementById('btn-place-' + k);
+    if (el) el.classList.toggle('active', k === m);
+  });
+  // The BRUSH is the only tool with no meaning here: it paints fog straight into the stencil,
+  // and an effect has none. Everything else works in either mode - the shape tools draw into
+  // whichever array the mode names, and Select edits it. ⚠ Do not widen this to "anything but
+  // rect and circle": that kicks the DM off Select every time they change mode, and Select is
+  // the tool this app is actually used with.
+  if (m === 'effects' && shape === 'brush') setShape('rect');
+  refreshBrushAvailability();
+  // The row above the bar is mode-driven too: the fog trio belongs to rooms, the material
+  // picker and corner radius to effects.
+  updateContextPanels();
+  drawCursor(lastScreenX, lastScreenY);   // the shape preview takes the mode's colour
+}
+
+// Same shape as refreshHalfAvailability, and for the same reason: a control that cannot do
+// anything here is greyed rather than left live and silently ignored. setShape() above has
+// already moved the DM off the brush, so the highlight says where they landed.
+function refreshBrushAvailability() {
+  const btn = document.getElementById('btn-brush');
+  if (btn) btn.disabled = placeMode === 'effects';
+}
+
+// ─── Materials ────────────────────────────────────────────────────────────────
+// What the next effect is made of. Pick-exactly-one like the fog trio, so ONE helper owns both
+// the value and the highlight.
+//
+// Picking a material with an effect SELECTED changes that effect, which is the only way to
+// restyle one now that the card no longer opens for effects. The write is the full edit path -
+// undo entry, repaint, push to the Player, save - because a material change is a real edit to a
+// stored shape, not a toolbar preference.
+//
+// Reads the row's markup, so adding a material is one button in index.html plus one entry in
+// EFFECT_MATERIALS and nothing here.
+//
+// The button carries a PLAIN SVG GLYPH like every other button on this bar. effects.js used to
+// paint a small canvas with the real material instead - the reasoning being that an icon of fire
+// is a drawing of the thing rather than the thing - and it drew a rounded box, inside the
+// button's own selected box, inside the row's pill. Three nested boxes, and it was rejected on
+// sight. Do not bring the painted swatch back; tell a second material apart by its glyph.
+function initMaterialPicker() {
+  document.querySelectorAll('#material-row [data-material]').forEach(btn => {
+    btn.onclick = () => setMaterial(btn.dataset.material);
+  });
+  setMaterial(currentMaterial);   // the highlight starts where the value does
+}
+
+function setMaterial(m) {
+  if (isPlayer || !EFFECT_MATERIALS[m]) return;
+  currentMaterial = m;
+  document.querySelectorAll('#material-row [data-material]').forEach(b =>
+    b.classList.toggle('active', b.dataset.material === m));
+
+  if (placeMode !== 'effects' || selectedPolygonId == null) return;
+  const e = effects.find(x => x.id === selectedPolygonId);
+  if (!e || e.material === m) return;
+  pushUndo();
+  e.material = m;
+  effectsChanged();
+  scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog edit does
+  scheduleAutoSave();
+}
+
 function initToolbar() {
   // Scene manager UI (dropdown, drag-reorder, bulk ops, undo, "+" = new/import)
   // is wired in sceneManager.js — it owns the scene concern.
@@ -58,9 +136,14 @@ function initToolbar() {
   document.getElementById('btn-rect').onclick   = () => setShape('rect');
   document.getElementById('btn-poly').onclick   = () => setShape('poly');
   document.getElementById('btn-circle').onclick = () => setShape('circle');
+  document.getElementById('btn-cone').onclick   = () => setShape('cone');
   document.getElementById('btn-select').onclick = () => setShape('select');
+  document.getElementById('btn-place-rooms').onclick   = () => setPlaceMode('rooms');
+  document.getElementById('btn-place-effects').onclick = () => setPlaceMode('effects');
   document.getElementById('btn-legend').onclick = () => toggleLegend();
-  refreshHalfAvailability(); // brush is the tool at load, so half starts disabled
+  initMaterialPicker();
+  refreshHalfAvailability();  // brush is the tool at load, so half starts disabled
+  refreshBrushAvailability();
   document.getElementById('btn-snap').onclick = function() {
     snapToGrid = !snapToGrid;
     this.classList.toggle('active', snapToGrid);

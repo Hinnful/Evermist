@@ -70,6 +70,10 @@ function endRenderBoost() {
 // reliable place to notice an expired boost — there is no timer to leak.
 function pumpDirtyRender() {
   if (renderBoostUntil && performance.now() >= renderBoostUntil) endRenderBoost();
+  // Map effects animate continuously, so they ride the ticker rather than the dirty flags —
+  // the stage is presented every tick anyway, and pumpEffects returns on a Map size check when
+  // nothing is placed. effects.js.
+  pumpEffects();
   if (renderScheduled) doRender(); // doRender clears renderScheduled
 }
 
@@ -165,9 +169,21 @@ function drawCursor(screenX, screenY) {
   cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
   if (!mapOffscreen && !mapVideo) return;
 
+  // BOTH lists are outlined, so the DM can see a fire while drawing the room around it, but
+  // only the list the placement mode names can be SELECTED — which is what makes a click over
+  // a fire drawn inside a room unambiguous rather than a priority guess. The other list is
+  // DIMMED to match: it is still visible, it just stops offering handles it would refuse.
+  const roomsLive = placeMode !== 'effects';
   for (const poly of polygons) {
-    const isSel = poly.id === selectedPolygonId;
-    drawPolyOutline(poly, isSel, isSel ? selectedVertexIndex : -1);
+    const isSel = roomsLive && poly.id === selectedPolygonId;
+    drawPolyOutline(poly, isSel, isSel ? selectedVertexIndex : -1, !roomsLive);
+  }
+  // Player-side guard: effects DO cross to the Player, and its view carries no editing chrome.
+  if (!isPlayer) {
+    for (const e of effects) {
+      const isSel = !roomsLive && e.id === selectedPolygonId;
+      drawPolyOutline(e, isSel, isSel ? selectedVertexIndex : -1, roomsLive);
+    }
   }
   // Second pass, so labels paint above every outline rather than under the next room's.
   // roomPanel.js loads after this file, hence the guards.
@@ -183,7 +199,13 @@ function drawCursor(screenX, screenY) {
   // Same table the polygon paths read, so a brush/rect/circle preview is already the colour
   // the room it makes will be outlined in. The centre dots below stay white on purpose:
   // they mark where the stroke lands, so they must read against every map.
-  const color = POLY_EDGE_COLORS[tool] || POLY_EDGE_COLORS.shroud;
+  // In Effects mode the shape tools draw into a different array entirely, so the preview stops
+  // wearing a fog colour — otherwise the only thing saying where the next drag lands is a
+  // toolbar button the DM is not looking at while they draw. effects.js owns the colour.
+  const drawingEffect = placeMode === 'effects' &&
+                       (shape === 'rect' || shape === 'circle' || shape === 'cone');
+  const color = drawingEffect ? EFFECT_EDGE_COLOR
+                              : (POLY_EDGE_COLORS[tool] || POLY_EDGE_COLORS.shroud);
   cursorCtx.save();
   cursorCtx.strokeStyle = color;
   cursorCtx.lineWidth = 1.5;
@@ -203,6 +225,26 @@ function drawCursor(screenX, screenY) {
     const sx = rectStartX * zoom + panX;
     const sy = rectStartY * zoom + panY;
     cursorCtx.strokeRect(sx, sy, screenX - sx, screenY - sy);
+  } else if (shape === 'cone' && isDrawing && coneApex != null) {
+    // Previewed from the SNAPPED direction, not the raw cursor, so what the DM sees while
+    // dragging is the triangle they are about to get.
+    const tip = { x: (screenX - panX) / zoom, y: (screenY - panY) / zoom };
+    const v = coneVertices(coneApex, tip, axisLock ? CONE_SNAP_DEG : 0);
+    if (v) {
+      cursorCtx.beginPath();
+      v.forEach((pt, i) => {
+        const x = pt.x * zoom + panX, y = pt.y * zoom + panY;
+        if (i === 0) cursorCtx.moveTo(x, y); else cursorCtx.lineTo(x, y);
+      });
+      cursorCtx.closePath();
+      cursorCtx.stroke();
+      cursorCtx.setLineDash([]);
+      // The apex dot marks the point of origin, which is the thing the DM is aiming from.
+      cursorCtx.fillStyle = 'rgba(255,255,255,0.6)';
+      cursorCtx.beginPath();
+      cursorCtx.arc(coneApex.x * zoom + panX, coneApex.y * zoom + panY, 2.5, 0, Math.PI * 2);
+      cursorCtx.fill();
+    }
   } else if (shape === 'circle' && isDrawing && circleCenter != null) {
     const cx = circleCenter.x * zoom + panX;
     const cy = circleCenter.y * zoom + panY;

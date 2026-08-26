@@ -63,6 +63,7 @@ function loadMapFromFile(file, onMapLoaded, onFail) {
 
     polygons = []; activePolygon = null; selectedPolygonId = null;
     nextPolygonId = 1;
+    clearEffects(); nextEffectId = 1;
     playerMapSent = false;
 
     if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);

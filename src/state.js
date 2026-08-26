@@ -144,6 +144,29 @@ let polygons = [];
 let nextPolygonId = 1;
 let showRoomLabels = true;   // roomPanel.js drawRoomLabels, toggled with L
 
+// ─── Map effects ─────────────────────────────────────────────────────────────
+// {id, vertices, material, cornerRadius, cornerRadii, name} — the SAME record a room has, with a
+// `material` where a room carries a fog `mode`. There is no `kind` field: which tool drew it
+// survives only as the vertex count. A SEPARATE array from polygons, never
+// merged into it: polygons order IS fog compositing precedence (rebuildFogFromPolygons walks
+// it in reverse), so an effect sitting in that list would silently change how fog resolves for
+// the rooms around it with nothing on screen to explain it.
+//
+// Persisted alongside rooms: an autosave snapshot, a scene field and a backup entry each carry
+// the array, and it rides the undo history too. Cleared by switchScene, so a fire never follows
+// the DM onto the next map.
+let effects = [];
+let nextEffectId = 1;
+
+// Which array a newly drawn rectangle or circle lands in: 'rooms' | 'effects'. A room and an
+// effect are the same gesture with a different payload, so the shape tools are shared and only
+// the destination switches. Runtime-only, like snapToGrid.
+let placeMode = 'rooms';
+
+// What a newly drawn effect is made of, and what the material picker in the context row has lit.
+// A key into EFFECT_MATERIALS (effects.js). Runtime-only, like placeMode.
+let currentMaterial = 'fire';
+
 // ─── Auto-Sync ───────────────────────────────────────────────────────────────
 let autoSync = false;
 let autoSyncTimer = null;

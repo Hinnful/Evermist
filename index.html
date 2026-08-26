@@ -16,17 +16,80 @@
 <body>
 <script>if (new URLSearchParams(location.search).get('mode') === 'player') document.body.classList.add('player-mode');</script>
 
-<!-- TOOLS WRAPPER (bottom-center, stacks brush sub-panel above toolbar) -->
+<!-- TOOLS WRAPPER (bottom-center, stacks the context row above the toolbar) -->
 <div id="tools-wrapper">
 
-  <!-- Brush size sub-panel — shown only when Brush is active -->
-  <div id="panel-brush-bottom">
-    <input type="range" id="brush-size" min="5" max="300" value="40">
-    <div class="brush-chip">
-      <span id="brush-size-label" class="brush-val">40</span>
-      <span class="brush-unit">px</span>
+  <!-- CONTEXT ROW — what the toolbar below is currently set to. ONE pill, whatever is in it:
+       the fog trio in Rooms mode, the material picker and corner radius in Effects mode, brush
+       size alongside either. Its occupants change with the placement mode and the tool, and more
+       than one can be up at once. input.js's updateContextPanels() owns every visibility
+       decision here; nothing in this row hides itself.
+       ⚠ THE GROUPS INSIDE CARRY NO PILL OF THEIR OWN. A pill inside a pill was what shipped
+       first, and the two rounded boxes at different heights read as a mistake. The row IS the
+       pick-exactly-one pill; every button that can appear in it belongs to one such group, so
+       nothing here needs a second one. -->
+  <div id="context-row">
+
+    <!-- Rooms mode: the fog state a newly drawn room gets. Half is shape-tools only —
+         input.js disables it while the brush is picked. -->
+    <div class="tb-group" id="ctx-rooms">
+      <button id="btn-reveal" class="mode-btn active" title="Revealed (R)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
+      </button>
+      <button id="btn-half" class="mode-btn" title="Half-shrouded - explored, but the party isn't there now">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button id="btn-shroud" class="mode-btn" title="Shrouded (S)">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" fill="currentColor" stroke="none"/></svg>
+      </button>
     </div>
+
+    <!-- Effects mode: what the next effect is made of, and the corners of the selected one.
+         The material buttons are pick-exactly-one, the same grammar AND the same look as the
+         fog trio they stand in for: a plain glyph that goes blue when picked, no box of its own.
+         A canvas painted with the real material was tried here and rejected - it drew a rounded
+         box, inside the button's selected box, inside the row's pill.
+         The glyph is a WIDE LOW FLAME ON THE GROUND. The ground line is what separates it from
+         the tall narrow flame on the Rooms/Effects switch below - both go blue at once
+         whenever Effects mode is on, so they must not be the same shape. An angular crest
+         read as a mountain range and three thin licks read as heat haze; neither shipped.
+         ⚠ FIRE IS THE ONLY MATERIAL, and a button here is not enough to add a second: the
+         shader's colour ramp is hardcoded orange, so a second material would paint orange fire
+         whatever it claimed to be. See the warning on EFFECT_MATERIALS. toolbar.js reads
+         data-material and needs no edit once that is fixed.
+         The radius field is here because an effect has no card to carry it. -->
+    <div class="tb-group" id="ctx-effects">
+      <div class="tb-group" id="material-row">
+        <button class="mode-btn mat-btn active" data-material="fire" title="Fire - burning ground">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 18.6c-2.6-1.5-3.2-4.4-1.4-6.4.3 1 .9 1.6 1.7 1.9-1-2.6.3-5.2 3-6.9-.5 2.4.2 3.7 1.7 5 1.2 1 2 2 2 3.4a4.6 4.6 0 01-2.6 3"/><path d="M3.5 20.6h17"/></svg>
+        </button>
+      </div>
+      <div class="cp-chip cp-chip-pre rp-radius" id="fx-radius-field">
+        <svg class="rp-radius-ico rp-ico-all" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+          <path d="M2 6V4.5A2.5 2.5 0 014.5 2H6"/><path d="M10 2h1.5A2.5 2.5 0 0114 4.5V6"/>
+          <path d="M14 10v1.5a2.5 2.5 0 01-2.5 2.5H10"/><path d="M6 14H4.5A2.5 2.5 0 012 11.5V10"/>
+        </svg>
+        <svg class="rp-radius-ico rp-ico-one" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+          <path d="M2.5 14V6.5A4 4 0 016.5 2.5H14"/>
+        </svg>
+        <input type="text" id="fx-radius-num" inputmode="numeric" value="0">
+      </div>
+    </div>
+
+    <!-- Brush size — shown only when Brush is active, in the same pill as whatever else is up -->
+    <div class="tb-group" id="panel-brush-bottom">
+      <input type="range" id="brush-size" min="5" max="300" value="40">
+      <div class="brush-chip">
+        <span id="brush-size-label" class="brush-val">40</span>
+        <span class="brush-unit">px</span>
+      </div>
+    </div>
+
   </div>
+
+  <!-- The bar itself and the placement switch, side by side. Two pills, not one: the switch
+       governs the whole bar rather than being one more group on it. -->
+  <div id="bar-row">
 
   <!-- Main icon toolbar -->
   <div id="toolbar-bottom">
@@ -44,32 +107,39 @@
     <button id="btn-circle" class="tool-btn" title="Circle (C)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
     </button>
+    <button id="btn-cone" class="tool-btn" title="Cone (O) - drag from the point of origin">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l14 7-14 7z"/><circle cx="5" cy="4" r="1.6" fill="currentColor" stroke="none"/></svg>
+    </button>
     <button id="btn-brush" class="tool-btn active" title="Brush (B)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8.6 8.6-4 1 1-4L15 4z"/><path d="M13.4 5.6l5 5"/></svg>
     </button>
 
-    <!-- Fog mode segment: Revealed / Half-shrouded / Shrouded. Half is shape-tools only —
-         input.js disables it while the brush is picked. -->
-    <div class="tb-seg tb-seg-modes">
-      <button id="btn-reveal" class="mode-btn active" title="Revealed (R)">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
-      </button>
-      <button id="btn-half" class="mode-btn" title="Half-shrouded - explored, but the party isn't there now">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
-      </button>
-      <button id="btn-shroud" class="mode-btn" title="Shrouded (S)">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" fill="currentColor" stroke="none"/></svg>
-      </button>
-    </div>
-
-    <!-- Independent switches: snap to grid, straighten walls. Bare .tb-toggle buttons set off
-         by the gap, NOT inside a .tb-seg pill — a pill means pick exactly one of these. -->
+    <!-- Independent switches: snap to grid, straighten walls. Both work in either mode, so they
+         stay here. Bare .tb-toggle buttons set off by the gap, never gathered into a pill — a
+         pill means pick exactly one of these. -->
     <button id="btn-snap" class="tb-toggle" title="Snap to grid (N)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
     </button>
     <button id="btn-axislock" class="tb-toggle" title="Straighten walls while drawing and editing">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V6h13"/><circle cx="5" cy="19" r="1.7" fill="currentColor" stroke="none"/><circle cx="5" cy="6" r="1.7" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="1.7" fill="currentColor" stroke="none"/></svg>
     </button>
+
+  </div>
+
+  <!-- Placement switch: which array the next shape lands in. ITS OWN PILL, outside the toolbar,
+       because it governs everything on that bar rather than being one more group on it — the
+       tools draw into whichever array it names and the context row above changes to suit. It
+       shipped inside the bar behind a wide gap first, and read as just another segment. A room
+       and an effect are the same gesture with a different payload, so there is no second
+       toolbar. -->
+  <div id="place-pill">
+      <button id="btn-place-rooms" class="mode-btn active" title="Draw rooms">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button id="btn-place-effects" class="mode-btn" title="Draw effects - burning ground">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 3c.6 3-1.2 4.3-2.7 5.8C8.1 10.5 7 12 7 14.2A5 5 0 0017 14.4c0-2.6-1.6-4.2-2.6-5.6-.5.9-1.2 1.4-2 1.7.9-2.6.6-5.4.1-7.5z"/></svg>
+      </button>
+  </div>
 
   </div>
 </div>
@@ -409,6 +479,7 @@
       <div class="legend-row"><kbd>E</kbd> Rectangle</div>
       <div class="legend-row"><kbd>P</kbd> Polygon</div>
       <div class="legend-row"><kbd>C</kbd> Circle</div>
+      <div class="legend-row"><kbd>O</kbd> Cone</div>
       <div class="legend-row"><kbd>V</kbd> Select / Move</div>
       <div class="legend-row"><kbd>R</kbd> Reveal</div>
       <div class="legend-row"><kbd>S</kbd> Shroud</div>
@@ -685,6 +756,7 @@
 <script src="src/viewport.js"></script>
 <script src="src/backup.js"></script>
 <script src="src/grid.js"></script>
+<script src="src/effects.js"></script>
 <script src="src/toolbar.js"></script>
 <script src="src/player.js"></script>
 <script src="src/input.js"></script>
@@ -698,6 +770,9 @@
 <script src="src/moduleText.js"></script>
 <script src="src/roomPanel.js"></script>
 <script src="src/about.js"></script>
+<!-- Throwaway burning-ground look prototype (tools/, dev-only, ?fire=1). Not shipped; the
+     init call below is guarded so a build without this file is unaffected. -->
+<script src="tools/fire-proto/fireProto.js"></script>
 <script>
 'use strict';
 
@@ -823,7 +898,7 @@ if (window.electronAPI && window.electronAPI.onWindowVisibility) {
   });
 }
 
-if (!isPlayer) initScenes().then(() => { initStress(); initMemProbe(); }).catch(console.error);
+if (!isPlayer) initScenes().then(() => { initStress(); initMemProbe(); if (typeof initFireProto === 'function') initFireProto(); }).catch(console.error);
 initDisplayDetection();
 </script>
 </body>

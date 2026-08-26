@@ -72,11 +72,19 @@ partial erase can't re-fog ground already clear, i.e. the room the party just le
 
 Three signals, and they must not blur into each other:
 
-- A dark inset pill (`.tb-seg`) means **pick exactly one** of the buttons inside it. Only the
-  fog-mode group qualifies. The picked one goes bare blue (`.mode-btn.active`).
-- An **independent on/off switch is a bare `.tb-toggle`** set off by a wider gap, outlined
-  blue + faint blue fill when on. Snap-to-grid and straighten-walls are these. **Never put a
-  toggle inside a pill** — one alone reads as harmless, and a second one makes the pill a lie.
+- **A pick-exactly-one group gets its OWN pill**, floating beside or above the bar with the
+  bar's own surface: `#context-row` (fog trio, or materials + radius, plus brush size) and
+  `#place-pill` (Rooms vs Effects). The picked one goes bare blue (`.mode-btn.active`).
+- **Never nest a pill inside a pill.** Each of those groups once carried its own rounded box
+  inside a larger one, and two rounded boxes at different heights read as a mistake. A group
+  inside a pill is a bare `.tb-group`: no background, no border, no radius. The old inset
+  `.tb-seg` is deleted; do not bring it back.
+- **Every standalone pill is the same height as `#toolbar-bottom`.** The bar is 4px padding on
+  34px buttons; a pill of 30px buttons therefore takes 6px. Check it after any padding change.
+- An **independent on/off switch is a bare `.tb-toggle`** on the bar, set off by a wider gap,
+  outlined blue + faint blue fill when on. Snap-to-grid and straighten-walls are these.
+  **Never gather toggles into a pill** — one alone reads as harmless, and a second one makes
+  the pill a lie.
 - The tool row (`.tool-btn`) is pick-one *and* wears the outlined blue box. That collision is
   deliberate: the tool picker is unique in the app and is meant to look unlike everything to
   its right. Position alone carries the distinction, so don't "fix" it by restyling either

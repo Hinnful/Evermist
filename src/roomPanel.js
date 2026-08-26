@@ -226,17 +226,35 @@ function resetRoomLabelCache() { _rpLabelCache.clear(); }
 
 function _rpEl(id) { return document.getElementById(id); }
 
+// Resolves against whichever list the placement mode names, because that is the list the
+// selection came from (tools.js activeShapeList). The corner-radius field therefore serves a
+// room and an effect through one helper.
 function _rpFindPoly(id) {
-  return id == null ? null : polygons.find(p => p.id === id);
+  return id == null ? null : activeShapeList().find(s => s.id === id) || null;
+}
+
+// ⚠ THE CARD'S OWN FIELDS RESOLVE AGAINST `polygons`, NOT the active list. The card holds a ROOM
+// and only a room, and the one thing that closes it on a live edit is the placement mode
+// changing — at which point the active list is the OTHER one. Rooms and effects number
+// themselves separately, so the outgoing room's id resolves against an effect that happens to
+// share it, and the name being committed lands on a fire instead of being saved.
+function _rpFindRoom(id) {
+  return id == null ? null : polygons.find(p => p.id === id) || null;
+}
+
+// A room defaults to "Room 4", an effect to "Fire 4". `material` is the discriminator
+// everywhere; there is no type field to keep in step with it.
+function _rpFallbackName(poly) {
+  return (poly.material ? 'Fire ' : 'Room ') + poly.id;
 }
 
 // pushUndo() runs BEFORE the write and only on a real change, so one Ctrl+Z reverts one whole
 // edit rather than one keystroke, and focusing a field costs nothing.
 function _rpCommitName() {
   const el = _rpEl('rp-name');
-  const poly = _rpFindPoly(_rpFieldPid);
+  const poly = _rpFindRoom(_rpFieldPid);
   if (!el || !poly) return;
-  const v = sanitizeRoomName(el.value, 'Room ' + poly.id);
+  const v = sanitizeRoomName(el.value, _rpFallbackName(poly));
   el.value = v;
   if (v === poly.name) return;
   pushUndo();
@@ -248,7 +266,7 @@ function _rpCommitName() {
 
 function _rpCommitDesc() {
   const el = _rpEl('rp-desc');
-  const poly = _rpFindPoly(_rpFieldPid);
+  const poly = _rpFindRoom(_rpFieldPid);
   if (!el || !poly) return;
   const v = sanitizeRoomDesc(el.value);
   el.value = v;
@@ -278,7 +296,7 @@ function applyModuleEntryToRoom(entry) {
   const poly = _rpFindPoly(selectedPolygonId);
   if (!poly || !entry) return false;
 
-  const nextName = sanitizeRoomName(entry.title, 'Room ' + poly.id);
+  const nextName = sanitizeRoomName(entry.title, _rpFallbackName(poly));
   const nextDesc = sanitizeRoomDesc(entry.body);
   const curDesc  = poly.desc == null ? '' : poly.desc;
   const writeName  = nextName !== poly.name;
@@ -397,59 +415,94 @@ function initRoomPanel() {
     if (selectedPolygonId != null) deleteSelectedPolygon();
   };
 
-  // Corner radius: ONE number field, no slider and no all-corners toggle. ↑/↓ covers the
-  // nudging a slider bought, and the row it cost went to description height. Del already
-  // removes a vertex via input.js, through the same undo path a button would have used.
-  (() => {
-    let radiusUndoPushed = false;
-    const num = _rpEl('rp-radius-num');
-    const clampR = v => Math.max(0, Math.min(300, v));
-
-    const apply = v => {
-      const poly = _rpFindPoly(selectedPolygonId);
-      if (!poly) return;
-      // One undo per editing session, not per keystroke: typing "150" is one Ctrl+Z. The flag
-      // resets on focus/blur so the next edit gets its own entry.
-      if (!radiusUndoPushed) { pushUndo(); radiusUndoPushed = true; }
-      // Target follows the selection, no mode flag. cornerRadii is created lazily and padded to
-      // the vertex count, because a polygon can gain vertices after the array exists.
-      const vi = selectedVertexIndex;
-      if (vi >= 0 && vi < poly.vertices.length) {
-        if (!poly.cornerRadii) poly.cornerRadii = new Array(poly.vertices.length).fill(null);
-        while (poly.cornerRadii.length < poly.vertices.length) poly.cornerRadii.push(null);
-        poly.cornerRadii[vi] = v;
-      } else {
-        poly.cornerRadius = v;
-      }
-      rebuildFogFromPolygons();
-      rebuildFogEffect();
-      fogDirty = true;
-      scheduleRender();
-      scheduleAutoSync();
-      drawCursor(lastScreenX, lastScreenY);
-    };
-
-    num.addEventListener('focus', () => { radiusUndoPushed = false; });
-    // Normalise on the way out: mid-edit the field is left alone so typing isn't fought, which
-    // means it can be sitting on '' or '007' when focus leaves.
-    num.addEventListener('blur', () => {
-      radiusUndoPushed = false;
-      num.value = clampR(parseInt(num.value) || 0);
-    });
-    num.addEventListener('keydown', e => {
-      e.stopPropagation();   // keep the map shortcuts out of a field being typed in
-      const dir = e.key === 'ArrowUp' ? 1 : e.key === 'ArrowDown' ? -1 : 0;
-      if (!dir) return;
-      e.preventDefault();
-      const v = clampR((parseInt(num.value) || 0) + dir * (e.shiftKey ? 10 : 1));
-      num.value = v;
-      apply(v);
-    });
-    num.oninput = e => apply(clampR(parseInt(e.target.value) || 0));
-  })();
+  // Corner radius. TWO fields, one behaviour: the card's, for a room, and the Effects context
+  // row's, for an effect — which has no card to put it in. Wired from one helper so the
+  // per-vertex targeting can never drift between them.
+  _rpWireRadiusField('rp-radius-num');
+  _rpWireRadiusField('fx-radius-num');
 }
 
+// Corner radius: ONE number field, no slider and no all-corners toggle. ↑/↓ covers the
+// nudging a slider bought, and the row it cost went to description height. Del already
+// removes a vertex via input.js, through the same undo path a button would have used.
+function _rpWireRadiusField(numId) {
+  let radiusUndoPushed = false;
+  const num = _rpEl(numId);
+  if (!num) return;
+  const clampR = v => Math.max(0, Math.min(300, v));
+
+  const apply = v => {
+    const poly = _rpFindPoly(selectedPolygonId);
+    if (!poly) return;
+    // One undo per editing session, not per keystroke: typing "150" is one Ctrl+Z. The flag
+    // resets on focus/blur so the next edit gets its own entry.
+    if (!radiusUndoPushed) { pushUndo(); radiusUndoPushed = true; }
+    // Target follows the selection, no mode flag. cornerRadii is created lazily and padded to
+    // the vertex count, because a polygon can gain vertices after the array exists.
+    const vi = selectedVertexIndex;
+    if (vi >= 0 && vi < poly.vertices.length) {
+      if (!poly.cornerRadii) poly.cornerRadii = new Array(poly.vertices.length).fill(null);
+      while (poly.cornerRadii.length < poly.vertices.length) poly.cornerRadii.push(null);
+      poly.cornerRadii[vi] = v;
+    } else {
+      poly.cornerRadius = v;
+    }
+    // A room's corners reshape the fog stencil; an effect's reshape only its own fill. Both
+    // paths live in tools.js so neither field has to know which it is holding.
+    shapeGeometryChanged();
+    persistShapeEdit();
+    fogDirty = true;
+    scheduleRender();
+    drawCursor(lastScreenX, lastScreenY);
+  };
+
+  num.addEventListener('focus', () => { radiusUndoPushed = false; });
+  // Normalise on the way out: mid-edit the field is left alone so typing isn't fought, which
+  // means it can be sitting on '' or '007' when focus leaves.
+  num.addEventListener('blur', () => {
+    radiusUndoPushed = false;
+    num.value = clampR(parseInt(num.value) || 0);
+  });
+  num.addEventListener('keydown', e => {
+    e.stopPropagation();   // keep the map shortcuts out of a field being typed in
+    const dir = e.key === 'ArrowUp' ? 1 : e.key === 'ArrowDown' ? -1 : 0;
+    if (!dir) return;
+    e.preventDefault();
+    const v = clampR((parseInt(num.value) || 0) + dir * (e.shiftKey ? 10 : 1));
+    num.value = v;
+    apply(v);
+  });
+  num.oninput = e => apply(clampR(parseInt(e.target.value) || 0));
+}
+
+// Which corner(s) the radius targets is DERIVED from the selection, never stored, and the field
+// says which by swapping its own glyph — so there is no toggle to keep in sync and no way for
+// icon and write target to disagree. Shared by the card's field and the Effects row's.
+// A null poly means nothing is selected: the Effects row stays on screen either way, so its
+// field is greyed rather than left looking live over a shape that isn't there.
+function _rpSyncRadiusField(fieldId, numId, poly) {
+  const field = _rpEl(fieldId);
+  const num   = _rpEl(numId);
+  if (!field || !num) return;
+  num.disabled = !poly;
+  const perVertex = !!poly && selectedVertexIndex >= 0 && selectedVertexIndex < poly.vertices.length;
+  const override  = perVertex && poly.cornerRadii ? poly.cornerRadii[selectedVertexIndex] : null;
+  const currentR  = !poly ? 0 : (override != null ? override : (poly.cornerRadius || 0));
+  if (num !== document.activeElement) num.value = currentR;
+
+  field.classList.toggle('rp-per-vertex', perVertex);
+  field.title = perVertex
+    ? 'Corner radius for the selected corner. ↑/↓ to step, Shift for 10. Esc goes back to every corner, Del removes the vertex.'
+    : 'Corner radius for every corner. ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.';
+}
+
+// An effect has a material where a room has a fog state, so the pill has nothing to show and is
+// hidden rather than left sitting there with no segment lit. The row's other occupant, the
+// corner-radius field, keeps its place.
 function _rpSyncModePill(poly) {
+  const pill = _rpEl('rp-mode');
+  if (pill) pill.style.display = poly.material ? 'none' : '';
+  if (poly.material) return;
   document.querySelectorAll('#rp-mode [data-mode]').forEach(b =>
     b.classList.toggle('active', b.dataset.mode === poly.mode));
 }
@@ -463,7 +516,16 @@ function refreshRoomPanel() {
   if (!panel) return;
 
   const poly = _rpFindPoly(selectedPolygonId);
-  if (!poly) {
+
+  // The Effects row's radius field is this card's twin for a shape that has no card, so it
+  // reflects the selection on every repaint the same way the card's does.
+  _rpSyncRadiusField('fx-radius-field', 'fx-radius-num', poly && poly.material ? poly : null);
+
+  // ⚠ AN EFFECT GETS NO CARD. The card is name, description and module text, and an effect has
+  // none of the three — selecting one shows its handles and nothing else. It leaves by the SAME
+  // path as a deselect, because a card that vanishes without committing loses the last thing
+  // typed into a real room.
+  if (!poly || poly.material) {
     if (_rpFieldPid != null) { _rpCommitFields(); _rpFieldPid = null; }
     // The dropdown lives inside the card, so hiding the card must close it, or it reappears
     // still filtered by the last room's name.
@@ -489,26 +551,13 @@ function refreshRoomPanel() {
   const nameEl = _rpEl('rp-name');
   const descEl = _rpEl('rp-desc');
   // Never clobber a field being typed in.
-  if (!sameRoom || nameEl !== document.activeElement) nameEl.value = poly.name != null ? poly.name : ('Room ' + poly.id);
+  if (!sameRoom || nameEl !== document.activeElement) nameEl.value = poly.name != null ? poly.name : _rpFallbackName(poly);
   if (!sameRoom || descEl !== document.activeElement) descEl.value = poly.desc != null ? poly.desc : '';
   _rpFieldPid = poly.id;
 
   _rpSyncModePill(poly);
 
-  // Which corner(s) the radius targets is DERIVED from the selection, never stored, and the
-  // field says which by swapping its own glyph — so there is no toggle to keep in sync and no
-  // way for icon and write target to disagree.
-  const num       = _rpEl('rp-radius-num');
-  const perVertex = selectedVertexIndex >= 0 && selectedVertexIndex < poly.vertices.length;
-  const override  = perVertex && poly.cornerRadii ? poly.cornerRadii[selectedVertexIndex] : null;
-  const currentR  = override != null ? override : (poly.cornerRadius || 0);
-  if (num !== document.activeElement) num.value = currentR;
-
-  const rfield = _rpEl('rp-radius-field');
-  rfield.classList.toggle('rp-per-vertex', perVertex);
-  rfield.title = perVertex
-    ? 'Corner radius for the selected corner. ↑/↓ to step, Shift for 10. Esc goes back to every corner, Del removes the vertex.'
-    : 'Corner radius for every corner. ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.';
+  _rpSyncRadiusField('rp-radius-field', 'rp-radius-num', poly);
 
   _rpPositionPanel(panel, poly);
 }
@@ -647,6 +696,9 @@ function _rpLabelFont(px) {
 
 function drawRoomLabels() {
   if (typeof isPlayer !== 'undefined' && isPlayer) return;
+  // A room name over a fire the DM is drawing is chrome for a shape they cannot touch, and it is
+  // the loudest thing on the map. The dimmed outline is all the inactive list keeps.
+  if (placeMode === 'effects') return;
   if (!showRoomLabels || !polygons.length || !cursorCtx) return;
 
   const ctx = cursorCtx;

@@ -3,7 +3,7 @@
 // ─── IndexedDB scene storage ───────────────────────────────────────────────────
 // One object store 'scenes' keyed by id. Full scene record:
 //   { id, name, mapBlob, mapWidth, mapHeight, polygons, nextPolygonId,
-//     baseFogPNG, gridConfig, thumbnail, createdAt, sortOrder }
+//     effects, nextEffectId, baseFogPNG, gridConfig, thumbnail, createdAt, sortOrder }
 //
 // listScenes() uses a cursor and returns only lightweight metadata so the heavy
 // map Blobs (up to 50 MB each) are never pulled into JS heap during listing.

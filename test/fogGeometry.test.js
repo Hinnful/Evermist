@@ -5,6 +5,8 @@ const {
   buildRoundedPolyPath,
   insetPolygon,
   snapToAxis,
+  coneVertices,
+  CONE_BULGE,
   fogSizeScale,
   scaledRadius,
   wrapOffset,
@@ -507,5 +509,100 @@ describe('snapToAxis', () => {
     assert.deepStrictEqual(snapToAxis({ x: 100.5, y: 300 }, [ref], 0), { x: 100.5, y: 300 });
     assert.deepStrictEqual(snapToAxis({ x: 100.5, y: 300 }, [], 10), { x: 100.5, y: 300 });
     assert.deepStrictEqual(snapToAxis({ x: 100.5, y: 300 }, [null], 10), { x: 100.5, y: 300 });
+  });
+});
+
+describe('coneVertices', () => {
+  const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, a + ' vs ' + b);
+  // ⚠ THE CORNERS ARE THE FIRST AND LAST VERTEX, not v[1] and v[2]. The far edge is an arc, so
+  // everything between them is arc, and a check reading v[2] measures a chord of the bulge.
+  const corners = v => [v[1], v[v.length - 1]];
+  const width = v => { const [a, b] = corners(v); return Math.hypot(a.x - b.x, a.y - b.y); };
+  const midFar = v => { const [a, b] = corners(v); return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; };
+
+  it('puts the apex first and the two corners at either end of the list', () => {
+    const v = coneVertices({ x: 10, y: 20 }, { x: 110, y: 20 }, 0);
+    assert.deepStrictEqual(v[0], { x: 10, y: 20 });
+    assert.ok(v.length > 3, 'the far edge is an arc, so there is more than one point on it');
+    const [a, b] = corners(v);
+    near(a.y - 20, 50);    // +half-width
+    near(b.y - 20, -50);   // -half-width
+  });
+
+  // The rule the whole shape exists to honour: a cone is as wide at its far end as it is long.
+  // The bulge must not touch it — that is why the corners are fixed and only the edge bows.
+  it('makes the far end exactly as wide as the cone is long', () => {
+    for (const tip of [{ x: 100, y: 0 }, { x: 0, y: -250 }, { x: -60, y: 80 }]) {
+      const v = coneVertices({ x: 0, y: 0 }, tip, 0);
+      near(width(v), Math.hypot(tip.x, tip.y));
+    }
+  });
+
+  it('opens 53.13 degrees at the apex whatever way it points', () => {
+    const apexAngle = v => {
+      const [c1, c2] = corners(v);
+      const a = Math.atan2(c1.y - v[0].y, c1.x - v[0].x);
+      const b = Math.atan2(c2.y - v[0].y, c2.x - v[0].x);
+      let d = Math.abs(a - b);
+      if (d > Math.PI) d = 2 * Math.PI - d;
+      return d * 180 / Math.PI;
+    };
+    for (const tip of [{ x: 70, y: 0 }, { x: -30, y: -40 }, { x: 5, y: 900 }]) {
+      near(apexAngle(coneVertices({ x: 0, y: 0 }, tip, 0)), 53.13010235415598, 1e-9);
+    }
+  });
+
+  it('keeps the length the drag asked for, measured to the corners', () => {
+    const v = coneVertices({ x: 0, y: 0 }, { x: 30, y: 40 }, 0);
+    const m = midFar(v);
+    near(Math.hypot(m.x, m.y), 50);
+  });
+
+  it('bows the far edge outward, by the bulge fraction and no more', () => {
+    const v = coneVertices({ x: 0, y: 0 }, { x: 400, y: 0 }, 0);
+    const arc = v.slice(1);
+    const nose = arc[(arc.length - 1) / 2];
+    near(nose.y, 0);                               // the middle of the arc sits on the axis
+    near(nose.x, 400 * (1 + CONE_BULGE));          // and stands out by exactly the bulge
+    // Every arc point reaches at least the flat edge and never past the middle.
+    for (const p of arc) {
+      assert.ok(p.x >= 400 - 1e-9, 'an arc point fell short of the far edge: ' + p.x);
+      assert.ok(p.x <= nose.x + 1e-9, 'an arc point overshot the middle: ' + p.x);
+    }
+  });
+
+  it('curves the same way round whatever direction it points', () => {
+    // Signed area keeps its sign, so fog fill and the effects shader see one winding convention.
+    const area = v => {
+      let a = 0;
+      for (let i = 0; i < v.length; i++) {
+        const p = v[i], q = v[(i + 1) % v.length];
+        a += p.x * q.y - q.x * p.y;
+      }
+      return a / 2;
+    };
+    const signs = [{ x: 100, y: 0 }, { x: 0, y: 100 }, { x: -100, y: 0 }, { x: 0, y: -100 }]
+      .map(tip => Math.sign(area(coneVertices({ x: 0, y: 0 }, tip, 0))));
+    assert.deepStrictEqual(signs, [signs[0], signs[0], signs[0], signs[0]]);
+  });
+
+  it('rounds the direction to the snap step', () => {
+    // 20 degrees, snapped to 15, must come out pointing at exactly 15.
+    const r = 20 * Math.PI / 180;
+    const v = coneVertices({ x: 0, y: 0 }, { x: Math.cos(r) * 100, y: Math.sin(r) * 100 }, 15);
+    const m = midFar(v);
+    near(Math.atan2(m.y, m.x) * 180 / Math.PI, 15, 1e-9);
+    near(Math.hypot(m.x, m.y), 100);   // snapping the angle must not change the length
+  });
+
+  it('leaves the direction alone with no snap step', () => {
+    const r = 20 * Math.PI / 180;
+    const v = coneVertices({ x: 0, y: 0 }, { x: Math.cos(r) * 100, y: Math.sin(r) * 100 }, 0);
+    const m = midFar(v);
+    near(Math.atan2(m.y, m.x) * 180 / Math.PI, 20, 1e-9);
+  });
+
+  it('refuses a zero-length drag rather than returning a degenerate shape', () => {
+    assert.strictEqual(coneVertices({ x: 7, y: 7 }, { x: 7, y: 7 }, 0), null);
   });
 });

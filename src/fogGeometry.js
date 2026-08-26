@@ -111,6 +111,64 @@ function snapToAxis(pt, refs, thresh) {
   return { x: pt.x, y: pt.y };
 }
 
+// ─── Cone ──────────────────────────────────────────────────────────────────────
+// A cone is drawn apex-first: press at the point of origin, drag towards where it points.
+// The drag sets DIRECTION and LENGTH; the spread is fixed.
+//
+// ⚠ THE SPREAD IS NOT A FREE PARAMETER. A D&D cone is as wide at its far end as it is long,
+// which fixes the half-angle at atan(0.5) and the apex angle at 53.13°. Every table tool draws
+// it that way, so a cone here that opened wider or narrower would measure a different area than
+// the players' own rulers. Do not turn this into a slider without the DM asking for one.
+//
+// THE FAR EDGE BOWS OUTWARD SLIGHTLY. The rule makes width grow in step with distance, which is
+// a triangle, and a bare triangle read as a paper cut-out rather than as something spreading. So
+// the far edge is a shallow circular arc through the two corners.
+//
+// ⚠ THE TWO CORNERS DO NOT MOVE when the bulge changes, so width-still-equals-length holds
+// exactly however CONE_BULGE is set — and every measurement is taken between the FIRST and LAST
+// vertex, never between v[1] and v[2]. What the bulge does cost is reach: the arc's midpoint
+// stands CONE_BULGE beyond the drag, a fraction of a grid square at table sizes. Keep it small
+// for that reason, and set it to 0 to get the exact triangle back.
+//
+// snapDeg > 0 rounds the direction to that many degrees — the straighten-walls toggle, which
+// otherwise has nothing to say while a cone is being dragged.
+const CONE_HALF_SPREAD = 0.5;   // half-width at the far end, as a fraction of the length
+const CONE_BULGE = 0.08;        // how far the arc's middle stands past the far edge, ditto
+const CONE_ARC_SEGS = 8;        // enough for a shallow arc; the whole shape stays hand-editable
+
+function coneVertices(apex, tip, snapDeg) {
+  const dx = tip.x - apex.x, dy = tip.y - apex.y;
+  const len = Math.hypot(dx, dy);
+  if (!(len > 0)) return null;
+  let ang = Math.atan2(dy, dx);
+  if (snapDeg > 0) {
+    const step = snapDeg * Math.PI / 180;
+    ang = Math.round(ang / step) * step;
+  }
+  const ux = Math.cos(ang), uy = Math.sin(ang);
+  const h = len * CONE_HALF_SPREAD;               // half-width at the far end
+  // Local frame: along the axis, then perpendicular. Building the arc here rather than in map
+  // coordinates keeps the circle maths one-dimensional.
+  const toMap = (a, b) => ({ x: apex.x + ux * a - uy * b, y: apex.y + uy * a + ux * b });
+  const s = len * CONE_BULGE;
+  if (!(s > 0)) return [toMap(0, 0), toMap(len, h), toMap(len, -h)];
+
+  // The circle through (len, +h), (len + s, 0) and (len, -h). Its centre sits on the axis, well
+  // behind the apex for a shallow bulge, which is why the arc reads as a gentle bow and not as a
+  // pizza slice.
+  const cx = len + s / 2 - (h * h) / (2 * s);
+  const r = len + s - cx;
+  const half = Math.asin(Math.min(1, h / r));     // half the arc's own angle, from the centre
+  const out = [toMap(0, 0)];
+  // Walked from +h to -h, so the arc runs the same way round as the triangle's corners did and
+  // the winding is unchanged. First and last vertex are still the two corners.
+  for (let i = 0; i <= CONE_ARC_SEGS; i++) {
+    const t = half - (2 * half) * (i / CONE_ARC_SEGS);
+    out.push(toMap(cx + Math.cos(t) * r, Math.sin(t) * r));
+  }
+  return out;
+}
+
 // ─── DPI-adaptive radius math ──────────────────────────────────────────────────
 // Scale blur/feather radii proportionally to fog canvas size so they cover the
 // same fraction of the map regardless of image resolution. `maxDim` is the fog
@@ -310,6 +368,9 @@ if (typeof module !== 'undefined' && module.exports) {
     buildRoundedPolyPath,
     insetPolygon,
     snapToAxis,
+    coneVertices,
+    CONE_HALF_SPREAD,
+    CONE_BULGE,
     fogSizeScale,
     scaledRadius,
     wrapOffset,

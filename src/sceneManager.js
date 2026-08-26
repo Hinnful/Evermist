@@ -777,6 +777,11 @@ async function switchScene(id, _isRecovery = false) {
   selectedPolygonId   = null;
   selectedVertexIndex = -1;
   activePolygon = null;
+  // Same additive spread the rooms above take, for the same reason: a field whitelist here
+  // would drop cornerRadii from every saved effect on load. A scene saved before effects
+  // existed carries none, which clears the outgoing scene's rather than inheriting them.
+  setEffects(scene.effects || []);
+  nextEffectId = scene.nextEffectId || 1;
   if (scene.gridConfig) applyGridConfig(scene.gridConfig);
 
   rebuildFogFromPolygons();
@@ -859,6 +864,7 @@ function handleCurrentDeleted() {
   if (mapBitmap) { try { mapBitmap.close(); } catch (e) {} }
   mapBitmap = null; mapOffscreen = null; mapWidth = 0; mapHeight = 0;
   polygons = []; nextPolygonId = 1;
+  clearEffects(); nextEffectId = 1;
   selectedPolygonId = null; selectedVertexIndex = -1;
   if (typeof resetRoomLabelCache === 'function') resetRoomLabelCache();
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();

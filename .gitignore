@@ -25,7 +25,16 @@ evermist-data/
 # Claude Code machine-local settings
 .claude/settings.local.json
 
+# Private slash commands (his own workflow; not for anyone who clones this)
+.claude/commands/
+
+# Private working files - the backlog quotes him by name; OneDrive syncs them, git must not
+.claude/private/
+
 # OS / editor cruft
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Fire look prototype (throwaway harness + recovered/downloaded assets)
+tools/fire-proto/

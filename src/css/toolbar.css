@@ -51,21 +51,90 @@
     background: rgba(70, 120, 220, 0.11);
     color: #8fb6ff;
   }
+  /* Unavailable tool — the Brush in Effects mode, which paints fog and an effect has none.
+     Same grey as a disabled .mode-btn, so "can't do that here" reads the same on both rows. */
+  .tool-btn:disabled { color: #565b62; cursor: default; }
+  .tool-btn:disabled:hover { background: transparent; color: #565b62; }
 
-  /* Inset segment group — a dark pill means PICK EXACTLY ONE of the buttons inside it.
-     Fog modes only. An independent toggle goes in a .tb-toggle, never in here. */
-  .tb-seg {
+  /* ===== CONTEXT ROW (above the toolbar) ===== */
+  /* What the bar below is currently set to: the fog trio in Rooms mode, the material picker and
+     corner radius in Effects mode, brush size alongside either.
+     ⚠ ONE PILL, AND THE GROUPS INSIDE GET NO SURFACE OF THEIR OWN. Each group used to carry its
+     own rounded box inside this row, which put a pill inside a pill at two different heights.
+     The row is the pill; the padding here and the 30px buttons in it are what make it exactly as
+     tall as #toolbar-bottom. Same surface as the bar, so the two read as one control area.
+     It never renders empty — updateContextPanels always shows the fog trio or the materials —
+     so there is no hide-when-empty rule to keep in sync. */
+  #context-row {
+    zoom: var(--ui-zoom, 1.2);
+    pointer-events: all;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    background: #1a1a1c;
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+  }
+  /* A group of related controls sitting bare in the row. Carries no background, border or
+     radius on purpose; see the warning above. */
+  .tb-group {
     display: flex;
     align-items: center;
     gap: 3px;
-    padding: 4px;
-    border-radius: 10px;
-    background: rgba(0, 0, 0, 0.28);
-    border: 1px solid rgba(255, 255, 255, 0.045);
-    flex-shrink: 0;
   }
-  .tb-seg-modes { margin-left: 3px; }
-  /* .tb-seg-snap is gone — snap to grid moved out of the pill and became a .tb-toggle. */
+  /* ⚠ ONLY THESE THREE HIDE THEMSELVES, and only until init. updateContextPanels() writes an
+     inline display on exactly this list; a group not on it — #material-row — must not start
+     hidden, because nothing will ever turn it back on. */
+  #ctx-rooms, #ctx-effects, #panel-brush-bottom { display: none; }
+  /* Brush size is a second group in the same pill, so it needs the wider gap to read as its own
+     thing rather than as more of the trio beside it. */
+  #panel-brush-bottom { gap: 11px; margin-left: 4px; }
+  /* The material swatches and the radius field are two groups too, hence the row's own gap
+     between them; the swatches keep the tight button spacing inside. */
+  #ctx-effects { gap: 10px; }
+
+  /* A material button is a stock .mode-btn with a plain SVG glyph, exactly like the fog trio it
+     stands in for: grey at rest, bare blue when picked, no box of its own. It used to hold a
+     canvas painted with the real material, which drew a rounded box inside the button inside the
+     row's pill - three nested boxes. No .mat-btn styling of its own is needed or wanted. */
+
+  /* The corner-radius field rides the Effects row because an effect has no card to carry it.
+     Stock .cp-chip-pre + .rp-radius from the room card, so the two fields are one control in two
+     places. Its margin-left:auto would push it off the end of a flex row it does not fill. */
+  #fx-radius-field { margin-left: 0; }
+  #fx-radius-num:disabled { color: #565b62; }
+
+  /* ===== THE BAR AND THE PLACEMENT SWITCH, SIDE BY SIDE ===== */
+  /* Layout only: no surface and no zoom, because both children carry their own and a zoom on
+     the row as well would compound. */
+  #bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;   /* pass-through; the two pills opt back in */
+  }
+  /* Rooms vs Effects. ITS OWN PILL beside the bar, not a segment on it — it governs every tool
+     to its left, and inside the bar behind a wide gap it read as just another group.
+     Padding 6px against 30px buttons matches #toolbar-bottom's 4px against 34px, so the two
+     pills are the same height. */
+  #place-pill {
+    zoom: var(--ui-zoom, 1.2);
+    pointer-events: all;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 6px;
+    border-radius: 12px;
+    background: #1a1a1c;
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+  }
+  /* .tb-seg is gone. The dark inset pill it drew was the pick-exactly-one signal while those
+     groups lived INSIDE the bar; now each such group is its own standalone pill (#context-row,
+     #place-pill) and the surface is the bar's. An independent on/off switch is still never
+     gathered into a pill — it stays a bare .tb-toggle. */
 
   /* Independent on/off switches — snap to grid, straighten walls. Each is unrelated to the
      other, so they sit bare on the bar rather than in a pill. On = the outlined blue box,
@@ -119,20 +188,8 @@
   .mode-btn:disabled { color: #565b62; cursor: default; }
   .mode-btn:disabled:hover { background: transparent; color: #565b62; }
 
-  /* Brush size sub-panel (floats above the bar when Brush is active) */
-  #panel-brush-bottom {
-    zoom: var(--ui-zoom, 1.2);
-    pointer-events: all;
-    display: none;
-    align-items: center;
-    gap: 11px;
-    height: 34px;
-    padding: 0 8px 0 13px;
-    border-radius: 10px;
-    background: #1a1a1c;
-    border: 1px solid rgba(255, 255, 255, 0.055);
-    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
-  }
+  /* Brush size — a group inside #context-row, shown when the Brush is picked. Its surface,
+     zoom and shadow belong to that pill now; only the slider's own styling lives here. */
   #panel-brush-bottom input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
