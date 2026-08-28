@@ -509,7 +509,10 @@ function initToolbar() {
     playerWindow = window.open(url, 'evermist-player', 'toolbar=no,menubar=no,scrollbars=no');
   };
 
-  document.getElementById('btn-send').onclick = sendToPlayer;
+  // WRAPPED, never assigned bare. A bare handler is called with the click event, which lands
+  // in sendToPlayer's first parameter (fogOnly) and is truthy — so the button sent fog and
+  // dropped the view, while Space and Shift+S sent both. The two must not disagree.
+  document.getElementById('btn-send').onclick = () => sendToPlayer();
 
   // The selected room's card (name, description, fog pill, corners, delete) → roomPanel.js.
   if (typeof initRoomPanel === 'function') initRoomPanel();

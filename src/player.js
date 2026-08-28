@@ -179,7 +179,11 @@ function initPlayer() {
       const img = new Image();
       img.onerror = () => resolve();
       img.onload = () => {
-        if (!fogDataCanvas || fogDataCanvas.width !== Math.ceil(mapWidth / FOG_SCALE)) {
+        // BOTH dimensions, never the width alone: two maps can share a width and differ in
+        // height, and the kept canvas then squashes the incoming mask into the old aspect.
+        if (!fogDataCanvas ||
+            fogDataCanvas.width  !== Math.ceil(mapWidth  / FOG_SCALE) ||
+            fogDataCanvas.height !== Math.ceil(mapHeight / FOG_SCALE)) {
           fogDataCanvas = document.createElement('canvas');
           fogDataCanvas.width  = Math.ceil(mapWidth  / FOG_SCALE);
           fogDataCanvas.height = Math.ceil(mapHeight / FOG_SCALE);
@@ -291,8 +295,16 @@ function initPlayer() {
       if (window.electronAPI && window.electronAPI.readVideoFile && msg.mapSceneId) {
         const _mime = /\.mp4(\?|$)/i.test(msg.mapUrl) ? 'video/mp4' : 'video/webm';
         window.electronAPI.readVideoFile(msg.mapSceneId).then(function(buf) {
-          if (buf) beginPlayerVideo(URL.createObjectURL(new Blob([buf], { type: _mime })));
-          else beginPlayerVideo(msg.mapUrl);   // read failed — fall back to the shared file
+          if (buf) {
+            // The DM's own URL goes UNUSED on this path, and for a legacy scene whose clip
+            // never reached disk it is a blob: URL holding the whole video. Nothing else
+            // releases it, so it is released here — the same revoke the image branch below
+            // already does, at the one moment the Player knows it will not be read.
+            if (/^blob:/.test(msg.mapUrl)) URL.revokeObjectURL(msg.mapUrl);
+            beginPlayerVideo(URL.createObjectURL(new Blob([buf], { type: _mime })));
+          } else {
+            beginPlayerVideo(msg.mapUrl);   // read failed — fall back to the shared file
+          }
         }).catch(function() { beginPlayerVideo(msg.mapUrl); });
       } else {
         beginPlayerVideo(msg.mapUrl);

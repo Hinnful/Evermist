@@ -23,8 +23,9 @@ reach for the rig only when code cannot answer the question. Three cases qualify
 **Do not run it to watch work in progress.** Development changes the code constantly and each
 run costs real time, so a pass between edits buys nothing.
 
-**A regression pass belongs to finished work.** `/wrap` runs `npm run rig -- regression` once a
-chunk is done and blocks on red. Do not run the set yourself while still building.
+**A regression pass belongs to `/commit`, not to `/wrap`.** `/commit` Step 2 runs
+`npm run rig -- regression` and blocks on red, because the DM commits and pushes before he
+wraps. Do not run the set yourself while still building.
 
 **Never ask the DM to hand-verify what the rig can check.** They run the `.exe` on a TV; asking
 them to re-test correctness is asking them to do your job.

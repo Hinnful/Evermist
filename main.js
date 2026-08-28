@@ -13,9 +13,6 @@ const stressNoReveals = process.argv.includes('--stress-no-reveals');
 // Memory-footprint probe: activated by `npm run memprobe` (passes --memprobe). Inert under
 // plain `npm start` and in the shipped .exe, which never passes the flag.
 const memProbeMode    = process.argv.includes('--memprobe');
-// Burning-ground look prototype: activated by `npm run fire` (passes --fire). Dev-only;
-// the harness lives in tools/ and never ships.
-const fireProtoMode   = process.argv.includes('--fire');
 // Stub levers that attribute the minimize memory movement — each disables one suspect.
 const memProbeNoFlush = process.argv.includes('--memprobe-no-flush');
 const memProbeNoSave  = process.argv.includes('--memprobe-no-save');
@@ -103,7 +100,6 @@ function createDMWindow() {
     if (memProbeNoSave)  q.memprobeNoSave  = '1';
     if (memProbeSmall)   q.memprobeSmall   = '1';
   }
-  if (fireProtoMode) q.fire = '1';
   if (Object.keys(q).length) win.loadFile('index.html', { query: q });
   else win.loadFile('index.html');
   dmWin = win;
@@ -666,7 +662,18 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
         });
       });
 
-      zipfile.on('end', () => { zipfile.close(); resolve(); });
+      // A FINAL 100%. pending[] is seeded with all three parts, but a zip need not carry
+      // every one — a scene saved before thumbnails existed, or a video whose file was
+      // already missing at export. Such a scene never empties its list, so markDone()
+      // never counts it and the bar stops short of a restore that in fact finished.
+      zipfile.on('end', () => {
+        zipfile.close();
+        if (doneScenes < assignments.length) {
+          event.sender.send('backup-progress',
+            { done: assignments.length, total: assignments.length, phase: 'restore' });
+        }
+        resolve();
+      });
       zipfile.on('error', reject);
     });
   });

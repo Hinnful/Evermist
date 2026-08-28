@@ -7,6 +7,29 @@
 
 let _cdRoot = null, _cdOnConfirm = null, _cdOnCancel = null;
 
+// ONE DIALOG AT A TIME, AND NONE IS DROPPED. Both entry points below used to write straight
+// over _cdOnConfirm/_cdOnCancel, so a second dialog raised while one was up left the first
+// caller waiting for an answer that could never arrive — a restore asking whether to adopt
+// the backup's module text simply never heard back. The extra one now waits its turn.
+let _cdOpen = false;
+const _cdQueue = [];
+
+// Show now, or line up behind whatever is on screen.
+function _cdRequest(kind, o) {
+  if (_cdOpen) { _cdQueue.push({ kind: kind, o: o }); return; }
+  _cdShow(kind, o);
+}
+
+function _cdDrain() {
+  const next = _cdQueue.shift();
+  if (next) _cdShow(next.kind, next.o);
+}
+
+function _cdShow(kind, o) {
+  _cdOpen = true;
+  if (kind === 'message') _cdShowMessage(o); else _cdShowConfirm(o);
+}
+
 function _cdEl(id) { return document.getElementById(id); }
 
 // ANSWERS ASYNCHRONOUSLY — the one thing callers must design around. This returns
@@ -15,8 +38,9 @@ function _cdEl(id) { return document.getElementById(id); }
 // yes". See applyModuleEntryToRoom.
 //
 // opts: { title, message, confirmLabel, cancelLabel, danger, onConfirm, onCancel }
-function confirmDialog(opts) {
-  const o = opts || {};
+function confirmDialog(opts) { _cdRequest('confirm', opts || {}); }
+
+function _cdShowConfirm(o) {
   _cdBuild();
   _cdEl('cd-title').textContent   = o.title   || 'Are you sure?';
   _cdEl('cd-msg').textContent     = o.message || '';
@@ -40,8 +64,9 @@ function confirmDialog(opts) {
 // the backdrop dismiss it too, so every exit runs onClose.
 //
 // opts: { title, message, buttonLabel, onClose }
-function messageDialog(opts) {
-  const o = opts || {};
+function messageDialog(opts) { _cdRequest('message', opts || {}); }
+
+function _cdShowMessage(o) {
   _cdBuild();
   _cdEl('cd-title').textContent = o.title   || 'Something went wrong';
   _cdEl('cd-msg').textContent   = o.message || '';
@@ -61,11 +86,16 @@ function messageDialog(opts) {
 function _cdClose(confirmed) {
   if (!_cdRoot) return;
   _cdRoot.style.display = 'none';
+  _cdOpen = false;
   const fn = confirmed ? _cdOnConfirm : _cdOnCancel;
   _cdOnConfirm = _cdOnCancel = null;
   // Focus is deliberately NOT restored: putting it back would reopen the module-text
   // dropdown on top of the answer the DM just gave.
   if (fn) fn();
+  // The answer runs FIRST, and it may raise its own dialog — an adopt that fails reports
+  // it. That one is already on screen by now, so only hand over to the queue when nothing
+  // took the slot; its own close drains the rest.
+  if (!_cdOpen) _cdDrain();
 }
 
 function _cdBuild() {

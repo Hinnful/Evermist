@@ -770,9 +770,6 @@
 <script src="src/moduleText.js"></script>
 <script src="src/roomPanel.js"></script>
 <script src="src/about.js"></script>
-<!-- Throwaway burning-ground look prototype (tools/, dev-only, ?fire=1). Not shipped; the
-     init call below is guarded so a build without this file is unaffected. -->
-<script src="tools/fire-proto/fireProto.js"></script>
 <script>
 'use strict';
 
@@ -898,7 +895,7 @@ if (window.electronAPI && window.electronAPI.onWindowVisibility) {
   });
 }
 
-if (!isPlayer) initScenes().then(() => { initStress(); initMemProbe(); if (typeof initFireProto === 'function') initFireProto(); }).catch(console.error);
+if (!isPlayer) initScenes().then(() => { initStress(); initMemProbe(); }).catch(console.error);
 initDisplayDetection();
 </script>
 </body>

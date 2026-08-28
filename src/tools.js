@@ -43,6 +43,18 @@ let edgeDragOrigVerts = null;
 let edgeDragStartMapX = 0, edgeDragStartMapY = 0;
 let polygonActuallyMoved = false;
 
+// ─── Undo for a drag ──────────────────────────────────────────────────────────
+// PUSHED ON THE FIRST MOVEMENT, never on mousedown. Selecting a room is a click that moves
+// nothing, so pushing at mousedown spent one Ctrl+Z and one full fog-canvas clone on every
+// selection — an undo the DM presses and nothing happens.
+//
+// The snapshot is still pre-drag: mousedown only records dragOrigVerts and writes no
+// geometry, so the first mousemove is the last moment the old shape is still live.
+// armDragUndo() at mousedown, pushDragUndo() immediately before the first write.
+let _dragUndoPushed = false;
+function armDragUndo()  { _dragUndoPushed = false; }
+function pushDragUndo() { if (!_dragUndoPushed) { _dragUndoPushed = true; pushUndo(); } }
+
 // ─── Which shapes the tools act on ────────────────────────────────────────────
 // A ROOM AND AN EFFECT ARE THE SAME OBJECT: {id, vertices, cornerRadius, cornerRadii, name},
 // carrying a fog `mode` or a `material`. They live in two arrays only because polygons order
@@ -488,7 +500,7 @@ function toolMouseDown(raw, e) {
         // 1. Vertex hit
         const vi = findVertexAt(selPoly, raw.x, raw.y);
         if (vi >= 0) {
-          pushUndo();
+          armDragUndo();
           selectedVertexIndex = vi;
           isDraggingVertex = true;
           vertexDragOrigVerts = selPoly.vertices.map(v => ({ x: v.x, y: v.y }));
@@ -498,7 +510,7 @@ function toolMouseDown(raw, e) {
         // 2. Edge hit
         const ei = findEdgeAt(selPoly, raw.x, raw.y);
         if (ei >= 0) {
-          pushUndo();
+          armDragUndo();
           isDraggingEdge = true;
           edgeDragIndex = ei;
           edgeDragStartMapX = raw.x;
@@ -514,7 +526,7 @@ function toolMouseDown(raw, e) {
     const hit = findPolygonAt(raw.x, raw.y);
     if (hit) {
       if (hit.id !== selectedPolygonId) { selectedVertexIndex = -1; }
-      pushUndo();
+      armDragUndo();
       selectedPolygonId = hit.id;
       isDraggingPolygon = true;
       polygonActuallyMoved = false;
@@ -579,6 +591,7 @@ function toolMouseMove(pos, e, screenX, screenY) {
       const VERT_EPSILON = 0.5; // map units — prevents coincident/zero-length edges
       if (Math.hypot(p.x - prev.x, p.y - prev.y) >= VERT_EPSILON &&
           Math.hypot(p.x - next.x, p.y - next.y) >= VERT_EPSILON) {
+        pushDragUndo();
         poly.vertices[selectedVertexIndex] = { x: p.x, y: p.y };
         shapeGeometryChanged();
         fogDirty = true;
@@ -600,6 +613,7 @@ function toolMouseMove(pos, e, screenX, screenY) {
       if (len > 0) {
         const nx = -edy / len, ny = edx / len;
         const proj = (pos.x - edgeDragStartMapX) * nx + (pos.y - edgeDragStartMapY) * ny;
+        pushDragUndo();
         poly.vertices[edgeDragIndex]           = { x: a.x + nx * proj, y: a.y + ny * proj };
         poly.vertices[(edgeDragIndex + 1) % n] = { x: b.x + nx * proj, y: b.y + ny * proj };
       }
@@ -616,6 +630,7 @@ function toolMouseMove(pos, e, screenX, screenY) {
     const dy = pos.y - dragStartMapY;
     const poly = findActiveShape();
     if (poly) {
+      pushDragUndo();
       poly.vertices = dragOrigVerts.map(v => ({ x: v.x + dx, y: v.y + dy }));
       polygonActuallyMoved = true;
       shapeGeometryChanged();
