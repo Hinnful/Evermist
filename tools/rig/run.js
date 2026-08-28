@@ -7,7 +7,7 @@
 //   npm run rig -- regression          every acceptance scenario
 //   npm run rig -- fog-reaches-the-player
 //   npm run rig -- --exe "dist/Evermist.exe"          drive a built installer instead
-//   npm run rig -- --shot "#scene-dd-foot" --shot-setup "openDropdown()"
+//   npm run rig -- --shot "#sm-panel" --shot-setup "openDropdown()"
 //
 // When to run it, when not to, how to write a scenario, and the traps: the `rig` skill.
 // What it is and how the pieces fit: docs/ARCHITECTURE.md.

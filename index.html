@@ -630,38 +630,59 @@
   </div>
 </div>
 
-<!-- SCENE MANAGER — dropdown (DM only) -->
+<!-- SCENE MANAGER — the library trigger (DM only). One button: it names the open scene and
+     opens the library. Adding maps lives inside the library, so there is no second + out here. -->
 <div id="scene-dd">
-  <div id="scene-dd-trigger-row">
-    <button id="scene-dd-toggle" title="Scenes">
-      <span id="scene-dd-name">No scene</span>
-      <svg id="scene-dd-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-    </button>
-    <button id="scene-dd-add" title="New scene, or drop a .zip backup here to import">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
-  </div>
-  <div id="scene-dd-menu" style="display:none">
-    <div id="scene-dd-header">
-      <div id="scene-dd-selall" class="sm-cb" title="Select all"></div>
-      <span id="scene-dd-count">0 scenes</span>
-      <button id="scene-dd-bulk-export" class="sm-bulk-btn" title="Export selected">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      </button>
-      <button id="scene-dd-bulk-delete" class="sm-bulk-btn" title="Delete selected">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-      </button>
-    </div>
-    <div id="sm-list"></div>
-    <!-- Below the list, behind a hairline: this governs what happens when a map is ADDED, so it
-         belongs to the dropdown rather than to the Fog/Grid/Player panel, and it must sit outside
-         #sm-list or it would scroll away with the scenes. -->
-    <div id="scene-dd-foot">
+  <button id="scene-dd-toggle" title="Scenes">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>
+    <span id="scene-dd-name">No scene</span>
+  </button>
+</div>
+
+<!-- SCENE LIBRARY POPUP (DM only) — opened by #scene-dd-toggle, wired by sceneManager.js.
+     It sits OUTSIDE #scene-dd on purpose: #scene-dd carries zoom, and a fixed full-screen veil
+     inside a zoomed element resolves its own inset against the scaled coordinate space. -->
+<div id="sm-modal" style="display:none">
+  <div id="sm-panel">
+    <div id="sm-head">
+      <span id="sm-title">Scenes</span>
+      <span id="sm-count">0</span>
+      <span class="sm-head-div"></span>
+      <!-- Compression is a standing setting, not an action, so it sits with the title. What
+           is left on the right reads as one sequence: find, then add a group, then add maps. -->
       <label id="sm-compress" class="sm-switch" title="Animated maps bigger than 3840×2160 are re-encoded to fit that size on import. Improves performance on low-end machines.">
         <span class="sm-switch-lbl">Compression</span>
         <span class="sm-switch-track"><span class="sm-switch-knob"></span></span>
       </label>
+      <span class="sm-head-sp"></span>
+      <label class="sm-field">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+        <input id="sm-search" placeholder="Find a scene" spellcheck="false" autocomplete="off">
+      </label>
+      <!-- Labels, no glyphs. These two sit side by side and do the same kind of thing, so one
+           wearing an icon and the other not would read as a difference that is not there. -->
+      <button id="sm-new-group" class="sm-hbtn" title="Make a new group">New group</button>
+      <button id="sm-add" class="sm-hbtn primary" title="Add maps, or pick a .zip backup to restore">Add maps</button>
+      <!-- Borderless, like .cp-adv-close on the Fog advanced panel. A close is not an action
+           you weigh, so it does not wear an outline. -->
+      <button id="sm-close" class="sm-bare" title="Close (Esc)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
+
+    <!-- Material's contextual action bar: it REPLACES the header while anything is selected. -->
+    <div id="sm-actionbar">
+      <button id="sm-sel-clear" class="sm-bare" title="Cancel selection (Esc)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <span id="sm-sel-count">0 selected</span>
+      <button id="sm-sel-all" class="sm-hbtn">Select all</button>
+      <button id="sm-sel-group" class="sm-hbtn">Move to…</button>
+      <button id="sm-sel-export" class="sm-hbtn">Export</button>
+      <button id="sm-sel-delete" class="sm-hbtn danger">Delete</button>
+    </div>
+
+    <div id="sm-list"></div>
   </div>
 </div>
 
@@ -750,6 +771,7 @@
 <script src="src/mapLoader.js"></script>
 <script src="src/mapConvert.js"></script>
 <script src="src/undo.js"></script>
+<script src="src/sceneGroups.js"></script>
 <script src="src/sceneStore.js"></script>
 <script src="src/scenes.js"></script>
 <script src="src/sceneManager.js"></script>

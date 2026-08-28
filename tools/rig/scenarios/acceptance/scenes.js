@@ -246,9 +246,14 @@ module.exports = async function scenesFeature(rig) {
   const dragged = await dm.evaluate(`(() => {
     const list = document.getElementById('sm-list');
     if (!list) return { err: 'the scene list is not in the DOM' };
-    const cards = [...list.querySelectorAll('.sm-card')];
+    // ⚠ THE GRID, NOT THE LIST. Cards live inside a .sm-grid inside a .sm-group section, and
+    // commitDragOrder walks the sections — a card reparented to #sm-list itself is invisible
+    // to it, so the reorder silently loses that scene instead of failing.
+    const grid = list.querySelector('.sm-grid');
+    if (!grid) return { err: 'no scene grid rendered' };
+    const cards = [...grid.querySelectorAll('.sm-card')];
     if (cards.length < 3) return { err: 'only ' + cards.length + ' cards rendered' };
-    list.insertBefore(cards[cards.length - 1], cards[0]);   // last card to the front
+    grid.insertBefore(cards[cards.length - 1], cards[0]);   // last card to the front
     commitDragOrder();
     return { order: allScenes.map(s => s.name), sortOrders: allScenes.map(s => s.sortOrder) };
   })()`);

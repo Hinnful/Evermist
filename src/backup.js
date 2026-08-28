@@ -87,6 +87,7 @@ async function doExport(selectedIds) {
         metadata: {
           id:            scene.id,
           name:          scene.name,
+          group:         scene.group || '',
           mapType:       scene.mapType || 'image',
           mapWidth:      scene.mapWidth,
           mapHeight:     scene.mapHeight,
@@ -256,6 +257,8 @@ async function restoreFromZipPath(zipPath) {
       const scene = {
         id:            newId,
         name:          resolvedName,
+        // Absent in every zip written before groups existed, which restores as Ungrouped.
+        group:         entry.group || '',
         mapType:       entry.mapType  || 'image',
         mapWidth:      entry.mapWidth  || 0,
         mapHeight:     entry.mapHeight || 0,
@@ -279,7 +282,7 @@ async function restoreFromZipPath(zipPath) {
       };
 
       await sceneStore.saveScene(scene);
-      newSceneMeta.push({ id: newId, name: resolvedName, thumbnail: thumbBlob, sortOrder, createdAt: scene.createdAt });
+      newSceneMeta.push({ id: newId, name: resolvedName, group: scene.group, thumbnail: thumbBlob, sortOrder, createdAt: scene.createdAt, mapType: scene.mapType });
       updateMapProgress(Math.round(((i + 1) / assignments.length) * 100));
     }
 

@@ -26,32 +26,42 @@ let smDragId = null;             // id of the card being dragged
 let smDragEl = null;             // its DOM node (moved directly so the drag survives)
 let smPending = null;            // deferred delete: { items:[{id,index,meta}], ids:[…] }
 let smUndoTimer = null;
+let smSearch = '';              // what the find field holds, cleared when the library closes
+let smGroupMenuEl = null;        // the open move-to-group popover, if any
 
 // ── Checkbox / trash glyphs (built once, injected by string) ──────────────────
 const SM_CHECK = '<svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="#8fb6ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5l2 2 4-4"/></svg>';
 const SM_DASH  = '<svg width="8" height="2" viewBox="0 0 8 2" fill="none" stroke="#8fb6ff" stroke-width="2" stroke-linecap="round"><line x1="0.5" y1="1" x2="7.5" y2="1"/></svg>';
+const SM_PEN   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.1 2.1 0 00-3-3L5 17z"/></svg>';
 const SM_TRASH = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
 
 function smIsOpen() {
-  const dd = document.getElementById('scene-dd');
-  return !!dd && dd.classList.contains('open');
+  const m = document.getElementById('sm-modal');
+  return !!m && m.style.display !== 'none';
 }
 
 function openDropdown() {
-  const dd = document.getElementById('scene-dd');
-  if (!dd) return;
+  const m = document.getElementById('sm-modal');
+  if (!m) return;
   if (typeof doAutoSave === 'function') doAutoSave(); // persist current fog before a possible switch
-  dd.classList.add('open');
-  document.getElementById('scene-dd-menu').style.display = '';
+  m.style.display = '';
+  const dd = document.getElementById('scene-dd');
+  if (dd) dd.classList.add('open');
   renderSceneManager();
+  const q = document.getElementById('sm-search');
+  if (q) { q.value = smSearch; q.focus(); }
 }
 
 function closeDropdown() {
+  const m = document.getElementById('sm-modal');
+  if (!m) return;
+  m.style.display = 'none';
   const dd = document.getElementById('scene-dd');
-  if (!dd) return;
-  dd.classList.remove('open');
-  document.getElementById('scene-dd-menu').style.display = 'none';
+  if (dd) dd.classList.remove('open');
+  smSearch = '';
+  smCloseGroupMenu();
   if (smSelectedIds.size) { smSelectedIds.clear(); renderSceneManager(); }
+  document.body.classList.remove('sm-selecting');
 }
 
 function toggleDropdown() { smIsOpen() ? closeDropdown() : openDropdown(); }
@@ -61,12 +71,15 @@ function openSceneManager() { openDropdown(); }
 function closeSceneManager() { closeDropdown(); }
 
 function initSceneManagerUI() {
-  const dd = document.getElementById('scene-dd');
-  if (!dd) return;
+  const modal = document.getElementById('sm-modal');
+  if (!modal) return;
   const fileInput = document.getElementById('file-input');
 
+  loadGroupPrefs();
+
   document.getElementById('scene-dd-toggle').onclick = toggleDropdown;
-  document.getElementById('scene-dd-add').onclick = () => fileInput.click();
+  document.getElementById('sm-add').onclick = () => fileInput.click();
+  document.getElementById('sm-close').onclick = closeDropdown;
 
   // "+" merges New Scene + Import: images/videos → new scenes, a lone .zip → restore backup.
   // Many files at once are fine; importMapFiles runs them one after another.
@@ -79,18 +92,40 @@ function initSceneManagerUI() {
     importMapFiles(files);
   };
 
-  // Header: select-all checkbox + bulk actions
-  document.getElementById('scene-dd-selall').onclick = () => {
-    if (allScenes.length && smSelectedIds.size === allScenes.length) smSelectedIds.clear();
-    else smSelectedIds = new Set(allScenes.map(s => s.id));
+  // Search. stopPropagation because input.js reads bare letters as tool shortcuts.
+  const q = document.getElementById('sm-search');
+  q.oninput = () => { smSearch = q.value; renderSceneManager(); };
+  q.onkeydown = e => {
+    e.stopPropagation();
+    if (e.key === 'Escape') { e.preventDefault(); q.value = ''; smSearch = ''; renderSceneManager(); }
+  };
+
+  document.getElementById('sm-new-group').onclick = () => {
+    const name = addGroup('New group');
+    renderSceneManager();
+    const el = document.querySelector('.sm-group[data-group="' + cssEscapeAttr(name) + '"] .sm-group-name');
+    if (el) { el.focus(); el.select(); }
+  };
+
+  // ── contextual action bar ──
+  document.getElementById('sm-sel-clear').onclick = () => { smSelectedIds.clear(); renderSceneManager(); };
+  document.getElementById('sm-sel-all').onclick = () => {
+    const shown = smVisibleScenes();
+    if (shown.length && shown.every(s => smSelectedIds.has(s.id))) smSelectedIds.clear();
+    else shown.forEach(s => smSelectedIds.add(s.id));
     renderSceneManager();
   };
-  document.getElementById('scene-dd-bulk-export').onclick = () => {
+  document.getElementById('sm-sel-export').onclick = () => {
     const ids = [...smSelectedIds];
     if (ids.length && typeof doExport === 'function') doExport(ids);
   };
-  document.getElementById('scene-dd-bulk-delete').onclick = () => {
+  document.getElementById('sm-sel-delete').onclick = () => {
     if (smSelectedIds.size) deleteScenesWithUndo([...smSelectedIds]);
+  };
+  document.getElementById('sm-sel-group').onclick = e => {
+    e.stopPropagation();
+    if (smGroupMenuEl) { smCloseGroupMenu(); return; }
+    smOpenGroupMenu(e.currentTarget);
   };
 
   // Undo toast
@@ -109,24 +144,117 @@ function initSceneManagerUI() {
   // Allow drops in the gaps between cards
   document.getElementById('sm-list').addEventListener('dragover', e => e.preventDefault());
 
-  // Close on outside click; finalise any pending delete before the window unloads
+  // Click the veil to close; anything inside the panel is the panel's own business.
+  modal.addEventListener('mousedown', e => { if (e.target === modal) closeDropdown(); });
+  // ⚠ CONTAINMENT, NOT stopPropagation. This listener is on the capture phase, which runs
+  // top-down, so it fires before the menu's own handler could stop anything.
   document.addEventListener('mousedown', e => {
-    if (smIsOpen() && !dd.contains(e.target)) closeDropdown();
+    if (!smGroupMenuEl) return;
+    if (smGroupMenuEl.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('#sm-sel-group')) return; // that button toggles it
+    smCloseGroupMenu();
+  }, true);
+
+  // Escape: drop a selection first, close the library second. Two presses, never one that
+  // does both, or cancelling a mis-click also throws away the panel.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !smIsOpen()) return;
+    if (smGroupMenuEl) { smCloseGroupMenu(); return; }
+    if (smSelectedIds.size) { smSelectedIds.clear(); renderSceneManager(); return; }
+    closeDropdown();
   });
+
   window.addEventListener('beforeunload', commitPendingDelete);
 }
+
+function cssEscapeAttr(s) { return String(s).replace(/["\\]/g, '\\$&'); }
 
 function updateTriggerName() {
   const el = document.getElementById('scene-dd-name');
   if (el) el.textContent = currentScene ? currentScene.name : (allScenes.length ? 'Select a scene' : 'No scenes');
 }
 
+// Scenes the search currently shows. Bulk actions act on these and never on the whole
+// library, so "Select all" under a filter means what it says.
+function smVisibleScenes() {
+  const q = smSearch.trim().toLowerCase();
+  if (!q) return allScenes.slice();
+  return allScenes.filter(s => String(s.name || '').toLowerCase().includes(q));
+}
+
+// ── Move-to-group menu (bulk) ────────────────────────────────────────────────
+function smCloseGroupMenu() {
+  if (smGroupMenuEl) { smGroupMenuEl.remove(); smGroupMenuEl = null; }
+}
+
+function smOpenGroupMenu(anchor) {
+  smCloseGroupMenu();
+  const panel = document.getElementById('sm-panel');
+  if (!panel) return;
+
+  // Ungrouped IS a group row. "Remove from group" said the same thing a second way.
+  const rows = [{ label: 'Ungrouped', group: '' }]
+    .concat(knownGroupNames().map(n => ({ label: n, group: n })));
+  rows.push({ sep: true });
+  rows.push({ label: 'New group…', group: null, fresh: true });
+
+  const menu = document.createElement('div');
+  menu.className = 'sm-menu';
+  menu.innerHTML = rows.map((r, i) => r.sep
+    ? '<div class="sm-menu-sep"></div>'
+    : '<button class="sm-menu-row" data-i="' + i + '">' + escHtml(r.label) + '</button>'
+  ).join('');
+
+  // ⚠ ANCHOR THE RIGHT EDGE, NOT THE LEFT. The button sits near the panel's right edge and
+  // #sm-panel is overflow: hidden, so a left-anchored menu wider than the button is clipped.
+  //
+  // The panel carries the zoom and the menu is its child, so the rect the browser reports is
+  // in screen px while the offset written back is in pre-zoom px. Divide by the ratio the
+  // anchor itself proves, rather than reading --ui-zoom and hoping it is current.
+  const a = anchor.getBoundingClientRect();
+  const p = panel.getBoundingClientRect();
+  const z = anchor.offsetHeight ? (a.height / anchor.offsetHeight) : 1;
+  menu.style.top   = ((a.bottom - p.top) / z + 6) + 'px';
+  menu.style.right = ((p.right - a.right) / z) + 'px';
+
+  menu.addEventListener('mousedown', e => e.stopPropagation());
+  menu.onclick = e => {
+    const btn = e.target.closest('.sm-menu-row');
+    if (!btn) return;
+    const row = rows[+btn.dataset.i];
+    const target = row.fresh ? addGroup('New group') : row.group;
+    const ids = [...smSelectedIds];
+    smCloseGroupMenu();
+    smSelectedIds.clear();   // the move is what the selection was gathered for
+    smAssignGroup(ids, target);
+  };
+
+  panel.appendChild(menu);
+  smGroupMenuEl = menu;
+}
+
+// Writes a group onto scenes, in memory and in the store. The in-memory record moves too,
+// for the same reason persistSceneOrder does it: doAutoSave writes currentScene wholesale.
+function smAssignGroup(ids, group) {
+  const g = sanitizeGroupName(group);
+  for (const id of ids) {
+    const s = allScenes.find(x => x.id === id);
+    if (!s || sanitizeGroupName(s.group) === g) continue;
+    s.group = g;
+    if (currentScene && currentScene.id === id) currentScene.group = g;
+    sceneStore.updateScene(id, sc => { sc.group = g; }).catch(console.error);
+  }
+  // ⚠ THE SELECTION IS NOT THIS FUNCTION'S TO CLEAR. A group rename comes through here too,
+  // and clearing here threw away ticks the DM was still gathering. The bulk menu clears its
+  // own selection, because there the move IS the action the selection was for.
+  renderSceneManager();
+}
+
 function renderSceneManager() {
   updateTriggerName();
 
-  const dd   = document.getElementById('scene-dd');
   const list = document.getElementById('sm-list');
-  if (!dd || !list) return;
+  if (!list) return;
 
   // sync thumbnail blob URLs with the current scene set
   const ids = new Set(allScenes.map(s => s.id));
@@ -138,27 +266,191 @@ function renderSceneManager() {
   }
 
   const selecting = smSelectedIds.size > 0;
-  dd.classList.toggle('selecting', selecting);
+  document.body.classList.toggle('sm-selecting', selecting);
+  const selCount = document.getElementById('sm-sel-count');
+  if (selCount) selCount.textContent = smSelectedIds.size + ' selected';
 
-  const countEl = document.getElementById('scene-dd-count');
-  if (countEl) countEl.textContent = selecting
-    ? `${smSelectedIds.size} selected`
-    : `${allScenes.length} scene${allScenes.length === 1 ? '' : 's'}`;
-
-  const selall = document.getElementById('scene-dd-selall');
-  if (selall) {
-    const all = selecting && smSelectedIds.size === allScenes.length;
-    selall.classList.toggle('checked', all);
-    selall.classList.toggle('indeterminate', selecting && !all);
-    selall.innerHTML = all ? SM_CHECK : (selecting ? SM_DASH : '');
-  }
+  const shown = smVisibleScenes();
+  const q = smSearch.trim();
+  const countEl = document.getElementById('sm-count');
+  if (countEl) countEl.textContent = q ? shown.length + ' / ' + allScenes.length : String(allScenes.length);
 
   list.innerHTML = '';
   if (!allScenes.length) {
-    list.innerHTML = '<div id="sm-empty">No scenes yet. Click + to add one</div>';
+    list.innerHTML = '<div id="sm-empty">No scenes yet. Add a map to start.</div>';
     return;
   }
-  for (const s of allScenes) list.appendChild(buildSceneCard(s));
+  if (!shown.length) {
+    list.innerHTML = '<div id="sm-empty">No scene matches “' + escHtml(q) + '”.</div>';
+    return;
+  }
+
+  // Searching flattens the library on purpose: a group must never be able to hide a map
+  // from a search, and a heading over a single match is noise.
+  if (q) {
+    const grid = document.createElement('div');
+    grid.className = 'sm-grid';
+    for (const s of shown) grid.appendChild(buildSceneCard(s));
+    list.appendChild(grid);
+    smSizeNameFields(list);
+    return;
+  }
+
+  for (const sec of sceneGroupSections(allScenes)) list.appendChild(buildGroupSection(sec));
+  smSizeNameFields(list);
+}
+
+// ⚠ AN INPUT DOES NOT SHRINK TO ITS TEXT. It takes a default width of about twenty
+// characters whatever it holds, which parked a group's count that far from its name. So the
+// text is measured and the width written back; the same measurement runs while typing.
+// ⚠ THE MEASURING CONTEXT IS LAZY. This file is require()d by its own unit test, where
+// there is no document, so building a canvas at module scope breaks the test run.
+let _smTextMeasure = null;
+const SM_GROUP_FONT = '600 13px system-ui, -apple-system, sans-serif';
+function smFitGroupName(el) {
+  if (!_smTextMeasure) _smTextMeasure = document.createElement('canvas').getContext('2d');
+  _smTextMeasure.font = SM_GROUP_FONT;
+  const w = _smTextMeasure.measureText(el.value || '').width;
+  el.style.width = Math.min(300, Math.max(48, Math.ceil(w) + 16)) + 'px';
+}
+
+// A textarea has no intrinsic height and a name may run to three lines. Measured after
+// insertion, because scrollHeight is 0 on a node that is not in the document yet.
+function smSizeName(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+function smSizeNameFields(root) {
+  for (const el of root.querySelectorAll('.sm-name')) smSizeName(el);
+  for (const el of root.querySelectorAll('input.sm-group-name')) smFitGroupName(el);
+}
+
+function buildGroupSection(sec) {
+  const wrap = document.createElement('div');
+  wrap.className = 'sm-group' + (isGroupShut(sec.name) ? ' shut' : '');
+  wrap.dataset.group = sec.name;
+
+  const head = document.createElement('div');
+  head.className = 'sm-group-head';
+  head.innerHTML =
+    '<svg class="sm-group-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>' +
+    (sec.ungrouped
+      ? '<span class="sm-group-name">Ungrouped</span>'
+      : '<input class="sm-group-name" spellcheck="false" title="Click to rename this group">') +
+    '<span class="sm-group-n">' + sec.scenes.length + '</span>' +
+    '<span class="sm-group-sp"></span>' +
+    // The name field alone was the rename, and nobody found it. The pencil is the
+    // affordance; it just puts the caret in that field.
+    (sec.ungrouped ? '' :
+      '<button class="sm-bare sm-group-ren" title="Rename this group">' + SM_PEN + '</button>' +
+      '<button class="sm-bare danger sm-group-del" title="Delete this group">' + SM_TRASH + '</button>');
+
+  // The chevron, the count and the empty space collapse. The NAME does not — it is the
+  // rename field, and a click that both renamed and collapsed would do neither cleanly.
+  head.onclick = e => {
+    if (e.target.closest('.sm-group-name') || e.target.closest('.sm-bare')) return;
+    // Ungrouped collapses too. It carries no rename and no delete, but it is a heading over
+    // a pile of cards like any other, so refusing to fold it away is an arbitrary exception.
+    toggleGroupShut(sec.name);
+    renderSceneManager();
+  };
+
+  if (!sec.ungrouped) {
+    const nameEl = head.querySelector('input.sm-group-name');
+    nameEl.value = sec.name;
+    let orig = sec.name;
+    smFitGroupName(nameEl);
+    nameEl.oninput = () => smFitGroupName(nameEl);
+    nameEl.onfocus = () => { orig = sec.name; nameEl.select(); };
+    nameEl.onkeydown = e => {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); }
+      else if (e.key === 'Escape') { e.preventDefault(); nameEl.value = orig; nameEl.blur(); }
+    };
+    nameEl.onblur = () => {
+      const next = sanitizeGroupName(nameEl.value);
+      if (!next || next === sec.name) { nameEl.value = sec.name; return; }
+      const apply = () => {
+        const final = renameGroupInOrder(sec.name, next);
+        smAssignGroup(sec.scenes.map(s => s.id), final);
+      };
+      // Typing a name another group already wears MERGES the two, and merging cannot be
+      // undone — the old heading is gone from every scene that wore it. So it is a question.
+      if (!knownGroupNames().some(n => n !== sec.name && n === next)) { apply(); return; }
+      confirmDialog({
+        title: 'Merge these groups?',
+        message: '“' + next + '” already exists. Both groups end up under that one heading, ' +
+                 'and “' + sec.name + '” goes away. No map is deleted, and the merge has no undo.',
+        confirmLabel: 'Merge',
+        onConfirm: apply,
+        onCancel: () => { nameEl.value = sec.name; },
+      });
+    };
+
+    head.querySelector('.sm-group-ren').onclick = e => {
+      e.stopPropagation();
+      nameEl.focus(); nameEl.select();
+    };
+    head.querySelector('.sm-group-del').onclick = e => {
+      e.stopPropagation();
+      deleteGroup(sec);
+    };
+  }
+
+  wrap.appendChild(head);
+
+  const grid = document.createElement('div');
+  grid.className = 'sm-grid';
+  if (sec.scenes.length) {
+    for (const s of sec.scenes) grid.appendChild(buildSceneCard(s));
+  } else {
+    const hole = document.createElement('div');
+    hole.className = 'sm-group-empty';
+    hole.textContent = 'Drag scenes here';
+    grid.appendChild(hole);
+  }
+  wrap.appendChild(grid);
+
+  // Dropping anywhere in the section files the dragged scene under this heading.
+  wrap.addEventListener('dragover', e => {
+    if (!smDragEl) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    wrap.classList.add('drop');
+    // An empty section holds no card to insert against, so the grid itself takes the node.
+    if (!grid.contains(smDragEl) && !grid.querySelector('.sm-card')) grid.appendChild(smDragEl);
+  });
+  wrap.addEventListener('dragleave', e => {
+    if (!wrap.contains(e.relatedTarget)) wrap.classList.remove('drop');
+  });
+  wrap.addEventListener('drop', e => {
+    e.preventDefault();
+    wrap.classList.remove('drop');
+    if (smDragEl && !grid.contains(smDragEl)) grid.appendChild(smDragEl);
+  });
+
+  return wrap;
+}
+
+// Deletes the heading, never the maps. Everything filed under it falls back to Ungrouped,
+// which is why an empty group goes without a question and a full one asks.
+function deleteGroup(sec) {
+  const finish = () => {
+    forgetGroup(sec.name);
+    smAssignGroup(sec.scenes.map(s => s.id), '');
+    renderSceneManager();
+  };
+  if (!sec.scenes.length) { finish(); return; }
+  confirmDialog({
+    title: 'Delete this group?',
+    message: '“' + sec.name + '” holds ' + sec.scenes.length + ' scene' +
+             (sec.scenes.length === 1 ? '' : 's') +
+             '. The group goes away and they move to Ungrouped. No map is deleted.',
+    confirmLabel: 'Delete group',
+    danger: true,
+    onConfirm: finish,
+  });
 }
 
 function buildSceneCard(s) {
@@ -168,17 +460,20 @@ function buildSceneCard(s) {
   const card = document.createElement('div');
   card.className = 'sm-card' + (isActive ? ' active' : '') + (isSelected ? ' selected' : '');
   card.dataset.id = s.id;
-  card.draggable = true;
+  // ⚠ NOT DRAGGABLE UNDER A SEARCH. A filtered list holds part of the library, and an order
+  // read back off it renumbers scenes that were never on screen — see commitDragOrder.
+  card.draggable = !smSearch.trim();
 
   card.innerHTML =
-    '<div class="sm-thumb">' +
+    '<div class="sm-frame"><div class="sm-thumb">' +
       '<div class="sm-scrim"></div>' +
+      (isActive ? '<span class="sm-badge"><i></i>Live</span>' : '') +
       '<div class="sm-cb' + (isSelected ? ' checked' : '') + '">' + (isSelected ? SM_CHECK : '') + '</div>' +
       '<div class="sm-botrow">' +
-        '<input class="sm-name" spellcheck="false">' +
+        '<textarea class="sm-name" rows="1" spellcheck="false"></textarea>' +
         '<button class="sm-trash" title="Delete scene">' + SM_TRASH + '</button>' +
       '</div>' +
-    '</div>';
+    '</div></div>';
 
   const thumbURL = thumbURLs.get(s.id);
   if (thumbURL) card.querySelector('.sm-thumb').style.backgroundImage = 'url("' + thumbURL + '")';
@@ -199,13 +494,18 @@ function buildSceneCard(s) {
   nameEl.onmousedown = e => e.stopPropagation();
   nameEl.onclick     = e => e.stopPropagation();
   nameEl.onfocus     = () => { orig = s.name; nameEl.select(); };
-  nameEl.oninput     = () => { s.name = nameEl.value; };
+  nameEl.oninput     = () => { s.name = nameEl.value; smSizeName(nameEl); };
   nameEl.onkeydown   = e => {
     e.stopPropagation();
+    // Enter commits rather than inserting the newline a textarea would otherwise take.
     if (e.key === 'Enter')  { e.preventDefault(); nameEl.blur(); }
     else if (e.key === 'Escape') { s.name = orig; nameEl.value = orig; nameEl.blur(); }
   };
-  nameEl.onblur = () => commitSceneName(s, nameEl);
+  // ⚠ RESIZE THE FIELD HERE, AND NEVER RE-RENDER THE LIST ON A BLUR. A blur is caused by the
+  // mousedown of the click that follows it, so rebuilding #sm-list here detaches the node that
+  // mousedown landed on; mouseup then lands on a fresh one and no click event ever fires —
+  // editing a name and then pressing that card's delete did nothing at all.
+  nameEl.onblur = () => { commitSceneName(s, nameEl); smSizeName(nameEl); };
 
   // card click → select (in selection mode) or switch scene
   card.onclick = e => {
@@ -214,9 +514,9 @@ function buildSceneCard(s) {
     if (!isActive) switchScene(s.id).catch(err => console.error('switchScene failed:', err));
   };
 
-  // drag to reorder (never starts from the name input)
+  // drag to reorder, and to refile (never starts from the name field)
   card.ondragstart = e => {
-    if (e.target && e.target.tagName === 'INPUT') { e.preventDefault(); return; }
+    if (e.target && e.target.tagName === 'TEXTAREA') { e.preventDefault(); return; }
     e.dataTransfer.effectAllowed = 'move';
     smDragId = s.id; smDragEl = card;
     card.classList.add('dragging');
@@ -224,12 +524,16 @@ function buildSceneCard(s) {
   card.ondragover = e => {
     e.preventDefault();
     if (!smDragEl || smDragId === s.id) return;
+    // A grid, so the insert side is HORIZONTAL. The old vertical test belonged to a single
+    // column; in a grid it puts a card at the end of the row above whenever the pointer is
+    // in the top half of a card one row down.
     const r = card.getBoundingClientRect();
-    const before = (e.clientY - r.top) < r.height / 2;
+    const before = (e.clientX - r.left) < r.width / 2;
     card.parentNode.insertBefore(smDragEl, before ? card : card.nextSibling);
   };
   card.ondragend = () => {
     if (smDragEl) smDragEl.classList.remove('dragging');
+    document.querySelectorAll('.sm-group.drop').forEach(g => g.classList.remove('drop'));
     commitDragOrder();
     smDragId = null; smDragEl = null;
   };
@@ -244,7 +548,7 @@ function toggleSelect(id) {
 }
 
 function commitSceneName(s, input) {
-  const v = (input.value || '').trim() || 'Untitled';
+  const v = (input.value || '').replace(/\s+/g, ' ').trim() || 'Untitled';
   s.name = v; input.value = v;
   if (currentScene && currentScene.id === s.id) currentScene.name = v;
   // updateScene, never load-then-save: the two are separate transactions and doAutoSave()
@@ -253,25 +557,46 @@ function commitSceneName(s, input) {
   updateTriggerName();
 }
 
+// Reads BOTH facts back out of the DOM at once: the section a card ended up in is its group,
+// and the order across every section is the sort order. Splitting them would need the drop
+// target threaded through the drag, which the browser does not hand over.
 function commitDragOrder() {
   const list = document.getElementById('sm-list');
   if (!list) return;
-  const order = [...list.querySelectorAll('.sm-card')].map(el => el.dataset.id);
+  const order = [];
+  const groupOf = {};
+  for (const sec of list.querySelectorAll('.sm-group')) {
+    const g = sanitizeGroupName(sec.dataset.group);
+    for (const el of sec.querySelectorAll('.sm-card')) { order.push(el.dataset.id); groupOf[el.dataset.id] = g; }
+  }
+  // ⚠ REFUSE A PARTIAL VIEW, NEVER RENUMBER FROM ONE. order.indexOf answers -1 for a scene
+  // the DOM does not hold, which sorts every hidden scene to the FRONT and then writes that
+  // order to the store — a reorder the DM never made, of maps they could not see. A search
+  // flattens the list into one grid with no sections, which is exactly that case; cards are
+  // not draggable while one is active, and this is the backstop if that ever slips.
+  if (order.length !== allScenes.length) return;
+
   allScenes.sort((a, b) => order.indexOf(String(a.id)) - order.indexOf(String(b.id)));
-  allScenes.forEach((s, i) => { s.sortOrder = i; });
+  allScenes.forEach((s, i) => {
+    s.sortOrder = i;
+    if (Object.prototype.hasOwnProperty.call(groupOf, s.id)) s.group = groupOf[s.id];
+  });
   persistSceneOrder();
+  renderSceneManager();
 }
 
 function persistSceneOrder() {
   for (const s of allScenes) {
+    const g = sanitizeGroupName(s.group);
     // The IN-MEMORY record moves too. doAutoSave() writes currentScene wholesale, so a
     // sortOrder written only to the store is reverted by the next autosave — the reorder
     // survives until the DM reveals something, then quietly undoes itself.
-    if (currentScene && currentScene.id === s.id) currentScene.sortOrder = s.sortOrder;
-    // One transaction per scene, and no write at all where the order is already right.
+    if (currentScene && currentScene.id === s.id) { currentScene.sortOrder = s.sortOrder; currentScene.group = g; }
+    // One transaction per scene, and no write at all where the record is already right.
     sceneStore.updateScene(s.id, sc => {
-      if (sc.sortOrder === s.sortOrder) return false;
+      if (sc.sortOrder === s.sortOrder && sanitizeGroupName(sc.group) === g) return false;
       sc.sortOrder = s.sortOrder;
+      sc.group = g;
     }).catch(console.error);
   }
 }
@@ -490,6 +815,7 @@ async function createNewScene(file, opts) {
     // no longer sits beside its .dd2vtt and a disk lookup would find nothing.
     const scene = {
       id, name,
+      group:         '',   // a new map is Ungrouped; the DM files it, never the import
       mapBlob, mapPath,
       mapType:       isVid ? 'video' : 'image',
       mapWidth, mapHeight,
@@ -505,7 +831,7 @@ async function createNewScene(file, opts) {
       createdAt:     Date.now(),
       sortOrder:     maxOrder + 1,
     };
-    allScenes.push({ id, name, thumbnail: thumb, sortOrder: scene.sortOrder, createdAt: scene.createdAt });
+    allScenes.push({ id, name, group: '', thumbnail: thumb, sortOrder: scene.sortOrder, createdAt: scene.createdAt, mapType: scene.mapType });
     await sceneStore.saveScene(scene);
     hideMapProgress();
     // Reload through the proven scene-switch path. The direct drop-load path leaves the
