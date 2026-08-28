@@ -8,13 +8,17 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
 //
 //   A. Every drawing tool is on the bar, answers to its key, and makes one shape.
-//        brush · rectangle · polygon · circle · cone
+//        brush · rectangle · polygon · circle · cone, the cone measured rather than counted
+//        because its geometry IS the tool: apex where the press landed, as wide at the far end
+//        as it is long, 53.13° at the point, and a shallow bow on the far edge.
 //   B. The polygon tool closes the way the DM closes it.
 //        clicking the first vertex · crossing an earlier line · and it keeps only the loop
 //   C. A polygon that is not a shape yet is thrown away rather than committed.
 //        under three vertices · Escape · switching tool mid-draw
 //   D. The two drawing aids place vertices where the DM aimed.
-//        snap to grid · straighten walls · and the order the two run in
+//        snap to grid, and that it does nothing on a hex grid · straighten walls, and that it
+//        leaves a wall nowhere near an axis alone · straighten rounding a cone to 15° without
+//        changing how far it reaches
 //   E. Every fog mode reaches the ground it covers, and half is absolute.
 //   F. Half is not offered where it has no meaning, and neither is the brush.
 //   G. A drawn shape leaves the DM ready to draw the next one.
@@ -32,6 +36,11 @@
 // ⚠ THE MAP STARTS FULLY FOGGED, so a shroud shape over untouched ground changes nothing and
 // its check passes without the app doing anything. Ground is revealed first wherever a shroud
 // or half shape is about to be measured.
+//
+// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
+// ever uses, so a suite running on still PNGs proved the app worked in a case that never
+// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
+// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
 const MAP_W = 2400, MAP_H = 1500;
 
@@ -103,10 +112,10 @@ const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
 module.exports = async function drawing(rig) {
   const dm = rig.dm;
 
-  const still = await rig.fixtures.stillMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H, name: 'rig-drawing.png' });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, still)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "image" && mapWidth === ' + MAP_W,
+  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
+    { w: MAP_W, h: MAP_H });
+  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
+  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
                    120000, 'the map to load on the DM');
   await dm.evaluate(HELPERS);
 

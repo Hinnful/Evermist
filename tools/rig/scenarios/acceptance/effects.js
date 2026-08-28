@@ -30,6 +30,11 @@
 // ⚠ ONLY ONE MATERIAL EXISTS TODAY. The fire ramp is hardcoded, so a second material would
 // paint orange whatever its button claimed, and the picker holds one entry on purpose. The
 // checks below are written against that; a second material makes C and the picker worth more.
+//
+// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
+// ever uses, so a suite running on still PNGs proved the app worked in a case that never
+// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
+// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
 const path = require('path');
 
@@ -54,8 +59,14 @@ globalThis.__rigKey = (k) => document.dispatchEvent(
   new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
 globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
   Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
-// Brightest red in a map-space box, reading the EFFECT LAYER ALONE: the map sprite is hidden
-// for the read, so a bright patch of map underneath cannot stand in for a flame.
+// Brightest red in a map-space box, reading the EFFECT LAYER ALONE, so a bright patch of map
+// underneath cannot stand in for a flame.
+//
+// ⚠ TWO DIFFERENT THINGS KEEP THIS READ CLEAN, and only one of them is doing any work today.
+// On an ANIMATED map — which is what this file imports — there is no PixiJS map sprite at all:
+// the map is a DOM <video> outside the stage, so the extract cannot see it and pixiHideMap() is a
+// no-op. The hide/show pair is kept because it is the ONLY thing standing between this read and
+// the map on a STILL one, and a scenario here may yet want a still map. Do not delete it as dead.
 globalThis.__rigMaxRed = (mx1, my1, mx2, my2) => {
   const w = pixiApp.renderer.width, h = pixiApp.renderer.height;
   const rt = PIXI.RenderTexture.create({ width: w, height: h });
@@ -87,10 +98,10 @@ module.exports = async function effectsFeature(rig) {
     return best;
   };
 
-  const still = await rig.fixtures.stillMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H, name: 'rig-effects.png' });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, still)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "image" && mapWidth === ' + MAP_W,
+  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
+    { w: MAP_W, h: MAP_H });
+  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
+  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
                    120000, 'the map to load on the DM');
   await dm.waitFor('!!mapOffscreen', 60000, 'the DM map surface');
   await dm.evaluate(HELPERS);
@@ -282,9 +293,9 @@ module.exports = async function effectsFeature(rig) {
   // Rooms are prep; effects are placed DURING play and persist, which is the point of them.
   const beforeSwitch = await dm.evaluate('effects.length');
   const sceneOne = await dm.evaluate('currentScene.id');
-  const still2 = await rig.fixtures.stillMap(dm, rig.fixtureDir,
-    { w: 1600, h: 1000, name: 'rig-effects-two.png' });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, still2)) + ')', 120000);
+  const map2 = await rig.fixtures.tableMap(dm, rig.fixtureDir,
+    { w: 1600, h: 1000 });
+  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map2)) + ')', 120000);
   await dm.waitFor('currentScene && mapWidth === 1600', 120000, 'the second map');
   rig.check(await dm.evaluate('effects.length') === 0,
             'the first scene\'s effects followed the DM onto a different map');

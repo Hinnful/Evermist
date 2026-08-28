@@ -244,6 +244,51 @@ module.exports = async function smoke(rig) {
   rig.check(!v2.sprite, "the outgoing still map's sprite survived under the video");
   rig.check(v2.playing, 'the animated map did not resume on the second switch');
 
+  // ── The animated map PLAYS ON THE TV, not just on the DM ──────────────────
+  //
+  // The DM hands the video to the browser's compositor; the PLAYER cannot. It redraws its map
+  // picture from the video into a canvas every frame and re-uploads it to the GPU
+  // (pixiUpdateMapTexture). Break that pump and the TV shows one frozen frame of a map that is
+  // playing perfectly on the DM's own screen, which is invisible to every check above.
+  //
+  // ⚠ THE FOG IS NOT IN THE PixiJS STAGE ON THE PLAYER. It is a Canvas-2D layer on top, so
+  // extracting the stage gives the map picture alone and a fully shrouded map still reads.
+  const player = await rig.player();
+  await player.waitFor('!!mapOffscreen && !!pixiApp', 60000, 'the Player to receive the map');
+  const stageSum = () => player.evaluate(`(() => {
+    const w = pixiApp.renderer.width, h = pixiApp.renderer.height;
+    const rt = PIXI.RenderTexture.create({ width: w, height: h });
+    pixiApp.renderer.render(pixiApp.stage, { renderTexture: rt, clear: true });
+    const px = pixiApp.renderer.extract.pixels(rt);
+    rt.destroy(true);
+    // Sparse sum: enough of the picture to move when the picture moves, cheap enough to take
+    // twice inside one second.
+    let sum = 0;
+    for (let i = 0; i < px.length; i += 4 * 89) sum += px[i] + px[i + 1] + px[i + 2];
+    return sum;
+  })()`);
+  // ⚠ POLLED TO A DEADLINE, NEVER TWO SAMPLES. Two readings a fixed gap apart can land on the
+  // same frame for reasons that are not a bug — a `stalled` event, a decoder hiccup, the OS
+  // throttling an off-screen window for one moment. This gate runs on every commit, so a flake
+  // here stops work on a working app. A picture that changes ONCE inside the window is proof; only
+  // one that never changes is a failure.
+  const first = await stageSum();
+  let moved = null, samples = 1;
+  const deadline = Date.now() + 6000;
+  while (Date.now() < deadline) {
+    await rig.sleep(250);
+    samples++;
+    const now = await stageSum();
+    if (now !== first) { moved = now; break; }
+  }
+  rig.note('the Player map picture: ' + first + ' then ' + (moved == null ? 'unchanged' : moved) +
+           ' over ' + samples + ' samples');
+  rig.check(first > 0,
+            'the Player is painting nothing at all, so the check below means nothing: ' + first);
+  rig.check(moved !== null,
+            'the animated map is frozen on the TV: the map picture never changed over ' + samples +
+            ' samples in six seconds (' + first + '), while the DM plays it normally');
+
   // ── Block 4: a backup zip round trip, through the real archiver and yauzl ──
   const zipPath = path.join(rig.outDir, 'roundtrip.zip');
   const exported = await dm.evaluate(`(async () => {

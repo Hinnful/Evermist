@@ -10,7 +10,8 @@
 //   A. The Select tool picks a room, and picks the right one.
 //        clicking inside · clicking empty map · overlapping rooms · the vertex/edge/body order
 //   B. Every geometry edit changes the room it was aimed at, and only that one.
-//        move the body · drag a vertex · drag an edge · delete a vertex
+//        move the body · drag a vertex · drag an edge · delete a vertex, and be refused the
+//        deletion that would take a room below three corners
 //   C. An edit that starts on the map finishes wherever the mouse ends up.
 //   D. Editing does not spend undo the DM has not earned, and undo puts the room back.
 //   E. A room's fog mode can be changed after the fact, and it cycles rather than toggles.
@@ -30,6 +31,11 @@
 // ⚠ CLIENT COORDINATES ARE INTEGERS. MouseEvent.clientX/Y truncate, so a map coordinate makes
 // the round trip with up to 1/zoom of error. Geometric checks here carry a tolerance derived
 // from the live zoom; a run failing by half a unit is telling you about the tolerance.
+//
+// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
+// ever uses, so a suite running on still PNGs proved the app worked in a case that never
+// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
+// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
 const MAP_W = 2400, MAP_H = 1500;
 const CLEAR = { x: 1200, y: 700, r: 900 };     // the clearing everything is edited inside
@@ -77,10 +83,10 @@ const SETTLE = 'rebuildFogFromPolygons(); rebuildFogEffect(); fogDirty = true;' 
 module.exports = async function editing(rig) {
   const dm = rig.dm;
 
-  const still = await rig.fixtures.stillMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H, name: 'rig-editing.png' });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, still)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "image" && mapWidth === ' + MAP_W,
+  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
+    { w: MAP_W, h: MAP_H });
+  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
+  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
                    120000, 'the map to load on the DM');
   await dm.evaluate(HELPERS);
   await dm.evaluate('revealCircle(' + CLEAR.x + ',' + CLEAR.y + ',' + CLEAR.r + ');' +

@@ -1401,3 +1401,40 @@ of a data file is not a basis for an estimate.
 for months and false on inspection: both places that turn the slider value into a fog radius
 divide by `zoom`, and the cursor ring is drawn in screen px to match. `brushSize` has no third
 reader. A bug filed from reasoning rather than a repro can outlive the code it described.
+
+### The Player window came up invisible because Windows called it occluded · `SETTLED` (2026-08-28)
+A long-running fault where the rig's Player window reported itself hidden and rendered nothing.
+It looked intermittent, then sat at 100% for whole sittings, and no amount of asking the window
+to go fullscreen cleared it. The cause was Windows reporting the window covered, at which point
+Chromium stops painting it and the page reports `document.hidden`. Working on the machine during
+a run produced it, which is why it appeared to come and go. Three Chromium switches at launch
+turn occlusion handling off, and a run now survives being held at the back of the z-order for its
+whole length. Proven both directions: remove the switches and the exact old error returns.
+Fullscreen was only ever a workaround for this, so the Player is windowed now.
+
+### The rig runs off the screen, and four pieces hold that up · `SETTLED` (2026-08-28)
+A run used to own the machine. It now parks every window the app opens at -9000,-9000 through a
+PowerShell helper, moving them while still hidden so none ever appears. Four pieces depend on one
+another and must not be separated: the occlusion switches keep a parked window painting; not
+asking for fullscreen is what allows parking at all; parking hidden windows is what removes the
+flash; and a device-metrics override gives the Player the real display size its rendering depends
+on without putting the window back on screen. Focus still moves to the app on launch, which is
+the app calling `focus()` on itself; changing that would be an app change made to serve a test.
+
+### An acceptance scenario covers one feature and ends at the Player · `SETTLED` (2026-08-28)
+Scenario files had grown one per bug fixed or feature shipped, which left the set arbitrary: one
+file asked "does rounding work on fire", another "does everything work". They are now one file
+per feature, opening with the feature's goal in a sentence, covering every success state it has
+including the edge ones, and finishing at the Player window. The many combinations a feature
+allows are swept on the DM; the Player is checked once per distinct OUTCOME, because everything
+crosses in one `fog-update` message and checking each combination there proves the same delivery
+repeatedly. Rooms never cross, so a Player check reads the fog a room paints, never a room.
+
+### Two Electron startup messages are filtered, and only a preload check makes that safe · `SETTLED` (2026-08-28)
+Electron's sandboxed-renderer bootstrap failed about one boot in thirty and ended runs on the
+rig's own noise. The splash window takes Electron's defaults - sandboxed, no preload - and is
+destroyed as soon as the DM paints, so its bootstrap can be cut off midway. Filtering those two
+messages alone would be unsafe: a real preload failure logs the same words, and the app degrades
+quietly rather than failing, so a run would go green with no disk access at all. Both windows are
+therefore checked directly for `electronAPI` on every boot. Delete either check and the two
+filter terms have to come out with it.
