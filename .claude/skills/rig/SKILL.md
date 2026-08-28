@@ -48,7 +48,7 @@ them to re-test correctness is asking them to do your job.
 ```
 npm run rig                              the smoke set
 npm run rig -- regression                every acceptance scenario
-npm run rig -- fog-reaches-the-player    one by name
+npm run rig -- fog                       one by name
 npm run rig -- --exe "dist/Evermist.exe" a built installer, for packaging bugs npm start cannot see
 npm run rig -- --shot "#sel" --shot-setup "openDropdown()"   a cropped screenshot
 npm run rig -- name-one name-two         several by name, in that order
@@ -95,6 +95,12 @@ A file exports one async function taking `rig`:
 - `rig.dm` / `await rig.player()` — the two windows. Asking for the Player clicks the DM's own
   button; nothing conjures a second window.
 - `rig.fixtures` — maps generated at runtime, cached on disk, never committed.
+  **`tableMap` is the map an acceptance scenario imports, and it is ANIMATED.** Animated is
+  the only kind the DM ever uses, so a suite on still PNGs proved the app worked in a case
+  that never happens. It records one second, caches by size for the whole run, and stays
+  inside the shrink box so no scenario pays for a re-encode. `stillMap` is still there and
+  `smoke.js` is the one file that wants both — its block 2 holds the animated render path
+  against the still one.
 
 ## Traps
 

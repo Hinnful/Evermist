@@ -108,6 +108,39 @@ async function animatedMap(session, outDir, opts) {
     })()`));
 }
 
+
+// ─── The map every acceptance scenario imports ───────────────────────────────
+// ANIMATED, BECAUSE ANIMATED IS THE ONLY KIND THE DM EVER USES. Every acceptance scenario used to
+// generate a still PNG, so the whole suite proved the app worked in a case that never happens and
+// said nothing about the one that always does. The two paths genuinely differ: an animated map is
+// a composited DOM <video> on the DM rather than a GPU texture, the Player redraws its picture
+// from the video every frame, fog composites over a moving image, and pan and zoom move the video
+// with a CSS transform instead of the PixiJS camera.
+//
+// Deliberately SMALLER than MAP_BOX_W/H, so an import does not trigger the shrink. Exercising the
+// shrink is smoke.js's job and it costs a real-time re-encode; every scenario paying for that
+// would make the suite slow enough to stop being run.
+//
+// One second, and cached on disk per size for the whole run: a scenario that wants the same size
+// as another pays nothing. `seconds` is real recording time, so it stays at the floor.
+//
+// A caller that needs a STILL map asks for one explicitly (stillMap), and smoke.js does — block 2
+// there holds the animated render path against the still one, which needs both.
+// Every recording option is a DEFAULT here, not a fixed value: a caller that wants a longer clip
+// says so and gets one. Forcing them silently meant a scenario could ask for four seconds, get
+// one, and read the mismatch as an app bug.
+//
+// The cache key is the SIZE, so two scenarios at the same size share one recording. A caller that
+// overrides a recording option must name its own fixture too, or it would collide with the shared
+// one and get whichever was recorded first.
+async function tableMap(session, outDir, opts) {
+  const o = Object.assign({ w: 1600, h: 1000, seconds: 1, fps: 15, bitrate: 1500000 }, opts || {});
+  return animatedMap(session, outDir, {
+    w: o.w, h: o.h, seconds: o.seconds, fps: o.fps, bitrate: o.bitrate,
+    name: o.name || ('rig-table-' + o.w + 'x' + o.h + '.mp4'),
+  });
+}
+
 // ─── Handing a fixture to the app ────────────────────────────────────────────
 // Pushes the bytes into the page and leaves `__rigMakeFile()` behind, which builds the File the
 // app's own createNewScene takes. Returns the expression that calls it.
@@ -123,4 +156,4 @@ async function asFileExpr(session, fixture) {
   return '__rigMakeFile()';
 }
 
-module.exports = { stillMap, animatedMap, asFileExpr, REC_MIME };
+module.exports = { stillMap, animatedMap, tableMap, asFileExpr, REC_MIME };

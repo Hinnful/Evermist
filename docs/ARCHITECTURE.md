@@ -424,13 +424,30 @@ by anything but a person.
   can import maps and restore backups without ever touching your real library.
 - The test maps are drawn and recorded by the app itself at the start of a run, so nothing
   binary is stored in the project and no real map has to be pointed at.
+- Every acceptance scenario runs on an **animated** map, because that is the only kind you
+  use. The suite used to run on still images, which meant it proved the app worked in a
+  case that never happens and said nothing about the one that always does. The two are
+  genuinely different inside: your window hands the video to the browser to draw, the
+  Player has to repaint its picture from it every frame, fog lies over a moving image,
+  and panning moves the video rather than the graphics layer. A clip is recorded once
+  per run and shared, so covering the real case costs seconds, not minutes.
 - Screenshots, generated maps and the throwaway storage all stay out of the project folder.
 - `tools/` ships in the repository but not inside the installer, so none of this reaches you.
+- A run no longer takes the machine. Both windows are parked off the side of the screen and
+  keep drawing there, so you can carry on working while one is going. `--visible` leaves them
+  on screen when you want to watch.
 
 Three tiers: a **smoke** set that always runs, one **acceptance** file per feature whose pass
 criteria are written in plain English at the top of the file, and the **regression** pass,
 which is every acceptance file together. A criterion that can only be judged by eye stays in
 the file and is reported as unchecked rather than quietly dropped.
+
+An acceptance file covers one whole feature and ends at the Player window. It opens with the
+feature's goal in a sentence - "the DM draws a shape with any tool, in any fog mode, and the
+players see the result" - and every check either serves that sentence or does not belong. The
+many combinations a feature allows are swept on the DM, where they are cheap; the Player is
+then checked once per distinct outcome, because everything crosses to it through one message
+and checking each combination there would prove the same delivery over and over.
 
 Two things keep the rig from being a tool nobody remembers. Editing anything the app ships now
 raises a one-line reminder if no scenario moved with it, which is a hint and not a refusal -

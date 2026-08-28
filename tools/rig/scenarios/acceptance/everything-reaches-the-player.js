@@ -28,6 +28,11 @@
 //
 // ⚠ WAIT OUT THE SCENE COVER BEFORE READING PAINTED FOG (fogCoverT). A fresh map arrives under a
 // full-fog cover that punches nothing, so every sample reads opaque no matter what was revealed.
+//
+// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
+// ever uses, so a suite running on still PNGs proved the app worked in a case that never
+// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
+// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
 const MAP_W = 2000, MAP_H = 1200;          // scene one
 const MAP2_W = 1600, MAP2_H = 1000;        // scene two, a different size so a switch is visible
@@ -73,19 +78,19 @@ window.addEventListener('message', e => {
 module.exports = async function everythingReachesThePlayer(rig) {
   const dm = rig.dm;
 
-  const still = await rig.fixtures.stillMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H, name: 'rig-reach-one.png' });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, still)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "image" && mapWidth === ' + MAP_W,
+  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
+    { w: MAP_W, h: MAP_H });
+  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
+  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
                    120000, 'the first map to load on the DM');
   await dm.evaluate(HELPERS);
   const sceneOne = await dm.evaluate('currentScene.id');
 
   // BOTH SCENES EXIST BEFORE THE PLAYER OPENS. See the warning on D: an import made while the
   // Player is open clears the map request it made on opening, and E cannot then measure anything.
-  const still2 = await rig.fixtures.stillMap(dm, rig.fixtureDir,
-    { w: MAP2_W, h: MAP2_H, name: 'rig-reach-two.png' });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, still2)) + ')', 120000);
+  const map2 = await rig.fixtures.tableMap(dm, rig.fixtureDir,
+    { w: MAP2_W, h: MAP2_H });
+  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map2)) + ')', 120000);
   await dm.waitFor('currentScene && mapWidth === ' + MAP2_W, 120000, 'the second map on the DM');
   const sceneTwo = await dm.evaluate('currentScene.id');
   await dm.evaluate('switchScene("' + sceneOne + '"); 0', 120000);
