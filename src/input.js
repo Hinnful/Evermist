@@ -106,9 +106,20 @@ function initInput() {
     });
 
     container.addEventListener('mouseleave', () => {
+      // The brush ring goes: the cursor is no longer over the map.
       drawCursor(null, null);
-      if (isPanning) isPanning = false;
-      if (isDrawing) { isDrawing = false; lastMapX = lastMapY = null; }
+      // ⚠ NEITHER A STROKE NOR A PAN ENDS HERE, and lastMapX/lastMapY are kept so a drag that
+      // leaves the map and comes back is one continuous stroke. A drag follows the mouse
+      // BUTTON, not the pointer's position over chrome — and the bottom toolbar floats over
+      // the map, so every stroke along the lower edge crosses it.
+      //
+      // Clearing isDrawing here also skipped the ENTIRE release path, because
+      // toolWindowMouseUp() is gated on that flag: the fog display stayed stuck in brushing
+      // mode, and the reveal never reached the Player or the scene save.
+      //
+      // The window mouseup owns every release — a stroke, a shape and a pan alike. Clearing
+      // isPanning here cost nothing but the gesture, and it made the pan disagree with the
+      // brush about what leaving the map means.
     });
 
     window.addEventListener('mouseup', () => {
@@ -221,7 +232,17 @@ function initInput() {
                 document.getElementById('brush-size').value = brushSize;
                 document.getElementById('brush-size-label').textContent = brushSize; break;
       case 'S': if (!autoSync) { e.preventDefault(); sendToPlayer(); } break;
-      case ' ': e.preventDefault(); sendToPlayer(); break;
+      // Space is the live Send at the table, so it must mean one thing wherever focus sits.
+      // A toolbar button KEEPS focus after a click, and Space on a focused button presses it
+      // again — so hand focus back to the map first. That stops the second press and stops
+      // the key depending on which control was touched last.
+      case ' ':
+        e.preventDefault();
+        if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+          document.activeElement.blur();
+        }
+        sendToPlayer();
+        break;
       case '?': if (!isPlayer) toggleLegend(); break;
     }
   });

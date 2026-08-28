@@ -655,7 +655,7 @@ function _mtDecode(buf) {
 function _mtIsPdf(buf) {
   if (!buf || !buf.byteLength) return false;
   const head = new Uint8Array(buf, 0, Math.min(1024, buf.byteLength));
-  for (let i = 0; i + 4 < head.length; i++) {
+  for (let i = 0; i + 3 < head.length; i++) {
     if (head[i] === 0x25 && head[i + 1] === 0x50 && head[i + 2] === 0x44 && head[i + 3] === 0x46) return true;
   }
   return false;

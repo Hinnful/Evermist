@@ -656,7 +656,16 @@ function _rpApplyDescHeight(el) {
 // pointer. The listener is on window because a resize drag can release anywhere.
 function _rpWatchDescHeight(el, panel) {
   let last = el.offsetHeight;
+  // ARMED BY A MOUSEDOWN ON THE TEXTAREA, because the listener below has to live on window
+  // and therefore ran on EVERY mouse release in the app — the end of every brush stroke and
+  // every pan included. offsetHeight forces a synchronous layout, so those gestures each
+  // paid for a measurement of a card they never touched. The resize handle belongs to the
+  // textarea, so a resize drag always starts with a mousedown here.
+  let armed = false;
+  el.addEventListener('mousedown', () => { armed = true; });
   window.addEventListener('mouseup', () => {
+    if (!armed) return;
+    armed = false;
     // offsetHeight, NOT getBoundingClientRect().height: the card carries zoom:var(--ui-zoom),
     // so the rect is screen px while style.height is written in pre-zoom layout px. Storing the
     // rect would grow the box by the UI scale on every reload.

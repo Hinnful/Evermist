@@ -168,15 +168,6 @@ function _mpPixiTextures() {
   if (typeof pixiFogCloudBT !== 'undefined') add('fogCloud', pixiFogCloudBT);
   if (typeof pixiFogTransBT !== 'undefined') add('fogTrans', pixiFogTransBT);
 
-  // Map-effect material masks. Listed per cached entry rather than per effect ON PURPOSE:
-  // the whole memory claim of that feature is that a hundred fires cost the same as one, and
-  // a probe that counted per instance could not tell you whether that still held.
-  if (typeof _effectTexCache !== 'undefined' && _effectTexCache) {
-    _effectTexCache.forEach(function(tex, key) {
-      if (tex && tex.baseTexture) add('effect:' + key, tex.baseTexture);
-    });
-  }
-
   // The renderer's RenderTexture pool — the sprite mask allocates here, and it is what
   // pixiFlushTexturePool() releases on minimize.
   var pool = { count: 0, bytes: 0 };

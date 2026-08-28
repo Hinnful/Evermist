@@ -638,7 +638,7 @@ function isVideoFile(file) {
   return /\.(mp4|webm)$/i.test(file.name);
 }
 
-// ─── Diagnostics (toggle with backtick ` — works in both DM and Player) ──────
+// ─── Diagnostics (DM toggles with backtick `; the Player's is opened by the rig) ──
 // Kept intentionally for future video-stall investigation. Gated: the on-screen
 // overlay only appears on backtick, and the stress rig only runs under ?stress=1.
 // Disk logging (main.js) is always-on during playback but rotated/capped to 3 files.
@@ -727,6 +727,9 @@ function _diagToggle() {
 
 if (typeof document !== 'undefined' && !(typeof isPlayer !== 'undefined' && isPlayer)) {
   document.addEventListener('keydown', function(e) {
+    // The same field guard input.js carries: a backtick typed into a room name or
+    // description belongs in the field, not on the diagnostics overlay.
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
     if (e.key === '`') _diagToggle();
   });
 }

@@ -567,6 +567,17 @@ all. The button stays; the job is making the existing one work.
 Irrelevant unless these errors become frequent. Nobody debugs mid-session, so a recovery path
 for a rare failure buys nothing. Don't pick this up without a real recurring failure.
 
+### Send means the same thing from the button and from the key · `SETTLED` (2026-08-26)
+`sendToPlayer(fogOnly, sceneChange)` was wired as `btn-send.onclick = sendToPlayer`, so the
+click event arrived as `fogOnly` and was truthy. The button therefore sent fog and dropped the
+view, while Space and Shift+S sent both — one control, two behaviours, and nothing on screen
+to say which was which. A handler for a function that takes arguments is now always wrapped.
+
+Space also has to mean Send wherever focus sits. A toolbar button keeps focus after a click,
+and Space on a focused button presses it again, so the key handler hands focus back to the map
+first. Letting the focused button win was rejected: it makes the app's most-used key depend on
+which control was touched last, with nothing visible saying so.
+
 ---
 
 ## UI and the control panel
@@ -668,6 +679,28 @@ thumbnails and select-all controls had no way to open; the "+" button noticing a
 `#backup-export-*` markup, the `#bem-*` CSS, `doRestore`, and the orphaned `show-open-dialog` IPC
 on both sides of the preload. Export and restore themselves are untouched. **Do not rebuild either
 as a missing feature** - the dropdown is the entry point for both.
+
+### A drag follows the mouse BUTTON, not the pointer over chrome · `SETTLED` (2026-08-26)
+`mouseleave` on `#canvas-container` used to clear `isDrawing` and `isPanning`. The bottom
+toolbar is `position: fixed` over that container, so every brush stroke along the lower edge
+crossed it and ended there. Worse, `toolWindowMouseUp()` is gated on `isDrawing`, so the whole
+release path was skipped: the DM's fog stayed stuck showing the raw stencil, and the reveal
+reached neither the Player nor the scene save.
+
+The handler now only clears the brush ring, and the window `mouseup` owns every release. Ending
+the stroke at the edge instead was considered and rejected — it saves the pixels but still cuts
+a normal gesture short. `lastMapX`/`lastMapY` survive the crossing on purpose, so leaving the
+map and coming back is one continuous stroke.
+
+### One dialog at a time, and none is dropped · `SETTLED` (2026-08-26)
+`confirmDialog` and `messageDialog` share one pair of callback slots, and both used to write
+straight over them. A second dialog raised while one was up left the first caller waiting for
+an answer that could never arrive — a restore asking whether to adopt the backup's module text
+simply never heard back.
+
+A second request now queues and appears once the first is answered. Letting the newest replace
+the first and treating the first as declined was rejected: it answers a question the DM never
+saw, and the answer it invents is silently "no".
 
 ---
 
@@ -1245,7 +1278,7 @@ Readymade fills were tried and rejected; do not retry:
   and carry no licence to ship.
 - Seamless MAGMA surfaces fill any shape but were rejected on look and ran heavy.
 - Baking a custom fire surface had no reference to measure and never converged.
-Prototype lives in `tools/fire-proto` (gitignored, `?fire=1`); no shipped module yet.
+Prototyped in a throwaway harness under `tools/`, since removed along with its wiring.
 
 ### Map effects settled as a flaming border, rendered in two passes · `SETTLED` (2026-08-25)
 
@@ -1265,34 +1298,78 @@ force-pushed effects to the Player even in Manual.
 
 ### The Cone tool draws a D&D cone, apex-first, at a fixed 53.13° · `SETTLED` (2026-08-26)
 
-A cone is dragged from its POINT OF ORIGIN outwards: the press sets the apex, the drag sets
-direction and length. That is what every table tool does, and it matches how a spell is
-described - from the caster, that way, that far.
+Dragged from its point of origin: the press sets the apex, the drag sets direction and length.
+Straighten walls rounds that direction to 15°.
 
-**The spread is not adjustable, and should not become adjustable without the DM asking.** A D&D
-cone is as wide at its far end as it is long, which fixes the half-angle at atan(0.5) and the
-apex angle at 53.13°. Foundry defaults to it, Roll20 calls it "lock width to height". A cone here
-that opened wider or narrower would measure a different area than the players' own rulers, which
-is the one thing an indication tool must not do. A DM who wants a 90° breath or a narrow jet
-draws it with the Polygon tool.
+**The spread is fixed and should not become a slider without a request.** A D&D cone is as wide at
+its far end as it is long, which fixes the apex angle at 53.13° - Foundry's default, Roll20's
+"lock width to height". Any other spread measures a different area than the players' own rulers,
+which is the one thing an indication tool must not do. A 90° breath is the Polygon tool's job.
 
-**The far edge bows outward slightly.** The rule makes width grow in step with distance, which is
-a triangle, and a bare triangle read as a paper cut-out rather than as something spreading. So the
-far edge is a shallow arc through the two corners - `CONE_BULGE`, 8% of the length.
+**The far edge bows out 8% of the length (`CONE_BULGE`); a bare triangle read as a paper cut-out.**
+The two corners do not move when the bulge changes, so width-equals-length holds at any bulge, and
+every measurement is taken between the FIRST and LAST vertex - everything between them is arc. The
+bow costs reach: the arc's middle stands 8% past where the drag ended. Set it to 0 for the triangle.
 
-**The two corners do not move when the bulge changes**, which is what lets width-equals-length
-hold exactly at any bulge. What the bow costs is reach: the arc's middle stands 8% past where the
-drag ended, a fraction of a grid square at table sizes. Set `CONE_BULGE` to 0 for the exact
-triangle. Every measurement is taken between the FIRST and LAST vertex, never v[1] and v[2] -
-everything between them is arc.
+A cone commits as ordinary vertices and needs no editing path of its own. `coneVertices` in
+`fogGeometry.js` is pure and unit-tested, so the width rule is checked by arithmetic.
 
-A cone commits as ordinary vertices and needs no editing path of its own: Select, vertex drag,
-corner rounding and Delete all already work on it, and it serves as a room or an effect from the
-same gesture.
+### A pick-one group gets its own pill, not an inset one inside the bar · `SETTLED` (2026-08-26)
 
-Straighten walls rounds the direction to 15° while a cone is being dragged; it had nothing to say
-during that drag before. The geometry is a pure function in `fogGeometry.js` (`coneVertices`),
-unit-tested, so the width-equals-length rule is checked by arithmetic rather than by eye.
+The toolbar's "pick exactly one of these" signal used to be a dark inset pill (`.tb-seg`) drawn
+inside `#toolbar-bottom`. With the fog trio moved to a row above the bar and a Rooms/Effects switch
+added, that put a rounded box inside a rounded box at two different heights, which reads as a
+mistake rather than as a grouping. Rejected on sight.
+
+The signal is now a STANDALONE pill wearing the bar's own surface: `#context-row` above the bar,
+`#place-pill` beside it. A group inside one of those is a bare `.tb-group` with no background,
+border or radius. `.tb-seg` is deleted; do not reintroduce it.
+
+Every standalone pill matches `#toolbar-bottom`'s height - 4px padding on 34px buttons there, 6px
+on 30px buttons elsewhere. The placement switch sits outside the bar because it governs every tool
+on it; inside, behind a wide gap, it read as one more segment.
+
+### The effect look was tuned through a temporary panel, then baked · `SETTLED` (2026-08-26)
+
+The fire's height, liveliness, fill, sparks, smoke, haze and grid glow were settled by putting a
+dev slider panel in the DM window, tuning on a real map, and reading the numbers off it. The panel
+and everything built to serve it are gone: the sliders, the cross-window message that pushed live
+values to the Player, and the per-frame uniform writes that fed them.
+
+`FX_LOOK` in `effects.js` is now a fixed set of numbers with no UI over it. Change one only on a
+fresh look call. Two findings from that tuning are worth keeping: haze gated to a band near the
+outline reads as a second smoke ring rather than as air over the area, so it covers the whole
+interior; and a look value edited on the DM reached nothing, because each window holds its own copy.
+
+### The material picker is a glyph, not a painted swatch · `SETTLED` (2026-08-26)
+
+The picker button was painted with a canvas showing the real material - a rounded box burning at
+its own edge - on the reasoning that an icon OF fire is a drawing of the thing rather than the
+thing. It drew a box, inside the button's own selected box, inside the row's pill. Three nested
+boxes, rejected twice. The button is now a plain SVG glyph like every other button on that bar.
+
+The glyph is a wide low flame on a ground line. A tall flame alone read as the same icon as the
+Rooms/Effects switch beside it, and both go blue at once in Effects mode; an angular crest read as
+a mountain range.
+
+`acid` was removed at the same time. `fireRamp` is hardcoded orange and reads only the material's
+`warm`, so a green swatch shipped a button that painted orange fire. A second material needs the
+ramp to read the material's own colours first; until then the picker can only lie.
+
+### Map effects: what was offered alongside them and dropped · `REJECTED` (2026-08-26)
+
+Three things came up while the effects feature was being finished, and each was refused rather than
+deferred. Recorded so none of them is proposed again as an obvious gap.
+
+- **A Line shape.** Offered next to the Cone, which shipped. Not wanted.
+- **A "clear all effects" control.** Refused on how the feature is actually used: one or two effects
+  are on the map at a time, so hunting and deleting each is not a burden worth a button.
+- **Effect render cost on a TV.** Raised as an unproven risk - two shader meshes per effect, a
+  64-step distance loop per pixel. Judged fine in real use at the table. Do not refile it as a risk
+  without a fresh report of stutter.
+
+Also settled at the same time: the fire's spark colour and similar look details are not tracked as
+work. Visual polish on a settled look has no end, so it happens only on a specific request.
 
 ---
 

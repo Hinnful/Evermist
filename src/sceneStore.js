@@ -69,6 +69,31 @@ const sceneStore = (() => {
     return idbRead(getTx('readonly').store.get(id));
   }
 
+  // Read-modify-write of ONE stored scene, inside ONE readwrite transaction.
+  //
+  // ⚠ NEVER load-then-save FOR THIS. The two are separate transactions, so doAutoSave() can
+  // land between them — it puts the whole in-memory currentScene, and the save half of the
+  // pair then writes the record read before it and takes the fog with it. A rename or a
+  // reorder during a game silently reverted the last reveal.
+  //
+  // saveScene() stays right for the scene the app HOLDS; this is for touching one field of
+  // a scene it does not. `mutate` edits the stored record in place; returning false skips
+  // the put, so an unchanged record costs no write. A scene deleted meanwhile is a no-op.
+  function updateScene(id, mutate) {
+    return new Promise((resolve, reject) => {
+      const { tx, store } = getTx('readwrite');
+      const req = store.get(id);
+      req.onerror = e => reject(e.target.error);
+      req.onsuccess = e => {
+        const rec = e.target.result;
+        if (!rec) return;
+        if (mutate(rec) !== false) store.put(rec);
+      };
+      tx.oncomplete = () => resolve();
+      tx.onabort    = e => reject(e.target.error);
+    });
+  }
+
   async function deleteScene(id) {
     const { store } = getTx('readwrite');
     await idbWrite(store.delete(id));
@@ -92,5 +117,5 @@ const sceneStore = (() => {
     });
   }
 
-  return { initSceneDB, saveScene, loadScene, deleteScene, listScenes };
+  return { initSceneDB, saveScene, updateScene, loadScene, deleteScene, listScenes };
 })();

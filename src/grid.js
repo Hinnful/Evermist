@@ -112,13 +112,19 @@ function drawEffectGridGlow(ctx, vp) {
   for (const e of effects) {
     if (!e.vertices || e.vertices.length < 3) continue;
     ctx.save();
+    // Clipped to the ROUNDED outline, the same shape the fire itself is drawn from
+    // (effects.js _roundedPolyPoints). Clipping to the raw vertices left square ember
+    // corners on a rounded effect, so the grid and the fire disagreed about the shape.
+    const sv = e.vertices.map(v => ({
+      x: vp.dstX + (v.x - vp.srcX) * scale,
+      y: vp.dstY + (v.y - vp.srcY) * scale,
+    }));
+    const cr  = (e.cornerRadius || 0) * scale;
+    const pvR = e.cornerRadii
+      ? e.cornerRadii.map(rv => (rv != null ? rv : (e.cornerRadius || 0)) * scale)
+      : null;
     ctx.beginPath();
-    for (let i = 0; i < e.vertices.length; i++) {
-      const sx = vp.dstX + (e.vertices[i].x - vp.srcX) * scale;
-      const sy = vp.dstY + (e.vertices[i].y - vp.srcY) * scale;
-      if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
-    }
-    ctx.closePath();
+    buildRoundedPolyPath(ctx, sv, cr, pvR);
     ctx.clip();
     const emberAlpha = (typeof FX_LOOK !== 'undefined') ? FX_LOOK.gridGlow : 0.6;
     drawGridLines(ctx, vp, { color: EFFECT_GRID_EMBER, alpha: emberAlpha, widthMul: 1.8 });

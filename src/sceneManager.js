@@ -247,7 +247,9 @@ function commitSceneName(s, input) {
   const v = (input.value || '').trim() || 'Untitled';
   s.name = v; input.value = v;
   if (currentScene && currentScene.id === s.id) currentScene.name = v;
-  sceneStore.loadScene(s.id).then(sc => { if (sc) { sc.name = v; sceneStore.saveScene(sc); } });
+  // updateScene, never load-then-save: the two are separate transactions and doAutoSave()
+  // fits between them, so the save half would write back the record read before it.
+  sceneStore.updateScene(s.id, sc => { sc.name = v; }).catch(console.error);
   updateTriggerName();
 }
 
@@ -262,9 +264,15 @@ function commitDragOrder() {
 
 function persistSceneOrder() {
   for (const s of allScenes) {
-    sceneStore.loadScene(s.id).then(sc => {
-      if (sc && sc.sortOrder !== s.sortOrder) { sc.sortOrder = s.sortOrder; sceneStore.saveScene(sc); }
-    });
+    // The IN-MEMORY record moves too. doAutoSave() writes currentScene wholesale, so a
+    // sortOrder written only to the store is reverted by the next autosave — the reorder
+    // survives until the DM reveals something, then quietly undoes itself.
+    if (currentScene && currentScene.id === s.id) currentScene.sortOrder = s.sortOrder;
+    // One transaction per scene, and no write at all where the order is already right.
+    sceneStore.updateScene(s.id, sc => {
+      if (sc.sortOrder === s.sortOrder) return false;
+      sc.sortOrder = s.sortOrder;
+    }).catch(console.error);
   }
 }
 
@@ -552,14 +560,18 @@ async function replaceSceneMap(file) {
   if (!currentScene) { createNewScene(file); return; }
   const isVid = isVideoFile(file);
 
-  // ⚠ NEVER SHRINK ONTO A SCENE THAT ALREADY HAS ROOMS. This function rewrites mapWidth and
-  // mapHeight but never touches currentScene.polygons, and switchScene restores their vertices
-  // verbatim, so a shrink would move every room by the scale factor. The fog survives, because
-  // loadFogFromScene stretches it — which would leave the rooms as the only casualty and an
-  // easy one to miss. A room-free scene has nothing to shift, so it converts normally.
-  const hasRooms = Array.isArray(currentScene.polygons) && currentScene.polygons.length > 0;
+  // ⚠ NEVER SHRINK ONTO A SCENE THAT ALREADY HAS SHAPES. This function rewrites mapWidth and
+  // mapHeight but never touches currentScene.polygons or currentScene.effects, and switchScene
+  // restores their vertices verbatim, so a shrink would move every one of them by the scale
+  // factor — a silent displacement, not an error.
+  //
+  // EFFECTS COUNT, NOT JUST ROOMS. An effect is the same record with a material where a room
+  // has a fog mode (effects.js), so its vertices are map-space too. Checking rooms alone left
+  // a scene carrying only fires free to convert and move every fire.
+  const hasShapes = (Array.isArray(currentScene.polygons) && currentScene.polygons.length > 0) ||
+                    (Array.isArray(currentScene.effects)  && currentScene.effects.length  > 0);
   let shrunk = null;
-  if (isVid && !hasRooms && typeof convertVideoForImport === 'function' && compressBigVideosEnabled()) {
+  if (isVid && !hasShapes && typeof convertVideoForImport === 'function' && compressBigVideosEnabled()) {
     shrunk = await convertVideoForImport(file, {
       onStart: () => showMapProgress('Shrinking the animated map…'),
       onProgress: updateMapProgress,
