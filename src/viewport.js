@@ -169,8 +169,26 @@ function initPlayerMapRetry() {
   setTimeout(tryNeedMap, 4000);
 }
 
+// The one condition under which a push can go out at all. Shared with sendToPlayer's own guard.
+function canSendToPlayer() {
+  return !!(mapOffscreen && fogDataCanvas && playerWindow && !playerWindow.closed);
+}
+
 // Called by the DM message handler instead of setting playerMapSent inline.
 // Sends immediately if mapOffscreen is ready; defers to onSceneLoaded() if not.
+//
+// ⚠ THE FLAG MEANS "ASKED AND NOT YET SERVED", AND ONLY A REAL DELIVERY CLEARS IT — sendMap()
+// does that, at the moment the payload goes out. Two wrong versions of this cost real bugs:
+//
+// Clearing it in onSceneLoaded left it clear after a flush that delivered nothing, and clearing
+// it never left it SET after a send that had gone out — so the next scene switch flushed a
+// second push on top of the one switchScene already schedules. That extra push is synchronous at
+// the end of the switch while the scheduled one waits out the Player's cover, so it landed
+// mid-cover and the TV could show the swap the cover exists to hide.
+//
+// Clearing it up front on "a send is possible" lost the deferred retry instead. The first send is
+// ASYNCHRONOUS for a video scene: getVideoFilePath resolves, and its callback returns without
+// sending when the clip is not on disk. Nothing was delivered and nothing was left to retry.
 function onPlayerResyncRequest() {
   _playerResyncPending = true;
   playerMapSent = false;
@@ -179,14 +197,16 @@ function onPlayerResyncRequest() {
 
 // Called at the end of a successful switchScene load.
 // If the Player asked for the map while the scene was loading, send it now.
+// ⚠ DOES NOT CLEAR THE FLAG. sendMap() clears it when the payload actually goes out, so a flush
+// that delivers nothing — no Player window yet, or a video whose clip is missing — leaves the
+// request standing for the next scene load to serve.
 function onSceneLoaded() {
   if (!_playerResyncPending) return;
-  _playerResyncPending = false;
   sendToPlayer();
 }
 
 function sendToPlayer(fogOnly = false, sceneChange = false) {
-  if (!mapOffscreen || !fogDataCanvas || !playerWindow || playerWindow.closed) return;
+  if (!canSendToPlayer()) return;
 
   // Fog sent at 1/4 scale (native fogDataCanvas size) — much smaller than upscaling.
   const fogDataUrl = fogDataCanvas.toDataURL('image/png');
@@ -212,6 +232,9 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
         pickedHex: fogPickedHex, fogTintAlpha: FOG_TINT_ALPHA,
       }, '*');
       playerMapSent = true;
+      // THE ONE PLACE A FIRST DELIVERY ACTUALLY HAPPENS, so it is the one place the Player's
+      // outstanding request is answered. Every branch above this can bail without sending.
+      _playerResyncPending = false;
     };
     if (currentScene && currentScene.mapPath && window.electronAPI) {
       window.electronAPI.getVideoFilePath(currentScene.id).then(absPath => {

@@ -20,7 +20,19 @@ const fs = require('fs');
 // Do not widen this: everything else a renderer logs at error level is the app's and should fail
 // the run. (The seed also had to swallow `app-version`, because a harness with its own main
 // process has no IPC handlers. The real main process registers it, so that term is gone.)
-const NOISE = /Electron Security Warning|electronjs\.org|unsafe-eval|unnecessary security|Content Security|once the app is packaged|This warning will not show up/;
+//
+// The last two terms are Electron's sandboxed-renderer bootstrap failing, which fired on
+// unmodified code about one boot in thirty and cost a full re-run each time. The splash window
+// takes Electron's defaults — sandboxed, no preload — and main.js destroys it as soon as the DM
+// paints, so its bootstrap can be cut off midway; `binding.startupData` is null exactly there.
+// It is not the app's preload: every run measured has window.electronAPI present with all its
+// methods, which is why assertPreloadRan() below exists.
+//
+// ⚠ NEVER FILTER THESE TWO ALONE. A real preload failure logs the same words, and swallowing it
+// would leave the app running with no IPC and the rig calling that green. The pair is only safe
+// because run.js asserts the preload ran on every boot; delete that assertion and these two
+// terms have to come out with it.
+const NOISE = /Electron Security Warning|electronjs\.org|unsafe-eval|unnecessary security|Content Security|once the app is packaged|This warning will not show up|sandboxed_renderer\.bundle\.js script failed to run|Cannot destructure property 'preloadScripts' of 'binding\.startupData'/;
 
 // Big payloads (a PNG data URL, a recorded clip) move in slices rather than one giant
 // Runtime.evaluate result. One 1 MB slice per round trip keeps every CDP frame small.

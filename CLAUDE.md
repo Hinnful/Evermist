@@ -180,8 +180,8 @@ Every error goes through it; no `alert()` ships.
   `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
   `stress.js`.
 - **The rig is a last resort, not a development tool** - reading code is faster. Use it for
-  an end result, what code cannot show, or a bug code cannot find. `/commit` runs the
-  regression pass before the notes and blocks on red.
+  an end result, what code cannot show, or a bug code cannot find. `/commit` smoke-tests the
+  diff; `/release` runs the full set. Both block on red.
 - **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance at the
   table are theirs; correctness is yours. Backup, export and restore are the one exception and
   always get their hand test: the export's save dialog is native and cannot be driven.
