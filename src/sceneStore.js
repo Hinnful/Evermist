@@ -2,7 +2,7 @@
 
 // ─── IndexedDB scene storage ───────────────────────────────────────────────────
 // One object store 'scenes' keyed by id. Full scene record:
-//   { id, name, mapBlob, mapWidth, mapHeight, polygons, nextPolygonId,
+//   { id, name, group, mapBlob, mapWidth, mapHeight, polygons, nextPolygonId,
 //     effects, nextEffectId, baseFogPNG, gridConfig, thumbnail, createdAt, sortOrder }
 //
 // listScenes() uses a cursor and returns only lightweight metadata so the heavy
@@ -109,8 +109,8 @@ const sceneStore = (() => {
       req.onsuccess = e => {
         const cursor = e.target.result;
         if (!cursor) { resolve(results); return; }
-        const { id, name, thumbnail, sortOrder, createdAt, mapType } = cursor.value;
-        results.push({ id, name, thumbnail, sortOrder, createdAt, mapType });
+        const { id, name, group, thumbnail, sortOrder, createdAt, mapType } = cursor.value;
+        results.push({ id, name, group: group || '', thumbnail, sortOrder, createdAt, mapType });
         cursor.continue();
       };
       req.onerror = e => reject(e.target.error);

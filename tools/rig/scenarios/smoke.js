@@ -56,10 +56,10 @@ module.exports = async function smoke(rig) {
 
     // ─── Where the switch lives ────────────────────────────────────────────
     const sw = document.getElementById('sm-compress');
-    if (!sw) fails.push('#sm-compress missing from the scene dropdown');
-    if (sw && !sw.closest('#scene-dd')) fails.push('the switch is not in the scene dropdown');
+    if (!sw) fails.push('#sm-compress missing from the scene library');
+    if (sw && !sw.closest('#sm-panel')) fails.push('the switch is not in the scene library popup');
     if (sw && sw.closest('#sm-list')) fails.push('the switch is inside the scrolling scene list');
-    if (sw && !sw.closest('#scene-dd-foot')) fails.push('the switch is not in the dropdown footer');
+    if (sw && !sw.closest('#sm-head')) fails.push('the switch is not in the library header');
     const label = sw ? sw.querySelector('.sm-switch-lbl').textContent.trim() : null;
     const tip = sw ? (sw.getAttribute('title') || '') : '';
     if (tip.indexOf('3840') === -1) fails.push('the tooltip does not say what size it fits');
@@ -106,16 +106,30 @@ module.exports = async function smoke(rig) {
     if (Math.abs(above - below) > 0.4) fails.push('knob off centre: ' + above.toFixed(2) + ' above, ' + below.toFixed(2) + ' below');
     if (right < 0.5) fails.push('the on-state knob overshoots its track: ' + right.toFixed(2) + 'px clearance');
 
-    // And the ring of space around the switch has to be even on all three outer sides.
-    const ft = document.getElementById('scene-dd-foot').getBoundingClientRect();
+    // The switch shares the header row with the buttons, so it sits on their centre line. It
+    // is a standing SETTING, not an action, so it leads the row: the run of controls after it
+    // has to read find → new group → add maps, in that order and nothing between them.
+    const addBtn = document.getElementById('sm-add').getBoundingClientRect();
+    const swBox = sw.getBoundingClientRect();
+    const order = [
+      ['compression', swBox.x],
+      ['find', document.getElementById('sm-search').getBoundingClientRect().x],
+      ['new group', document.getElementById('sm-new-group').getBoundingClientRect().x],
+      ['add maps', addBtn.x],
+    ];
     const gaps = {
-      top: tr.y - ft.y,
-      bottom: (ft.y + ft.height) - (tr.y + tr.height),
-      right: (ft.x + ft.width) - (tr.x + tr.width),
+      drift: (swBox.y + swBox.height / 2) - (addBtn.y + addBtn.height / 2),
+      reads: order.map(o => o[0]).join(' → '),
     };
-    const spread = Math.max(gaps.top, gaps.bottom, gaps.right) - Math.min(gaps.top, gaps.bottom, gaps.right);
-    if (spread > 0.6) fails.push('uneven padding around the switch: top ' + gaps.top.toFixed(2) +
-      ', bottom ' + gaps.bottom.toFixed(2) + ', right ' + gaps.right.toFixed(2));
+    if (Math.abs(gaps.drift) > 0.6) fails.push('the switch is off the header centre line by ' + gaps.drift.toFixed(2) + 'px');
+    for (let i = 1; i < order.length; i++) {
+      if (order[i][1] <= order[i - 1][1]) {
+        fails.push('the header reads out of order: ' + order[i][0] + ' is not to the right of ' + order[i - 1][0]);
+      }
+    }
+    // Labels or glyphs, never one of each on two buttons doing the same kind of thing.
+    if (document.querySelectorAll('#sm-add svg, #sm-new-group svg').length)
+      fails.push('New group and Add maps carry both an icon and a label');
 
     document.getElementById('cd-ok').click();
     await new Promise(r => setTimeout(r, 60));
@@ -137,15 +151,14 @@ module.exports = async function smoke(rig) {
     closeDropdown();
     return { fails, shrink, label, tip, dlg, onAfterFirst, offAgain, onAgain, explainedTwice,
              knob: { above: +above.toFixed(2), below: +below.toFixed(2), right: +right.toFixed(2) },
-             gaps: { top: +gaps.top.toFixed(2), bottom: +gaps.bottom.toFixed(2), right: +gaps.right.toFixed(2) } };
+             gaps: { drift: +gaps.drift.toFixed(2), reads: gaps.reads } };
   })()`);
 
   for (const f of result.fails) rig.check(false, f);
   rig.check(result.fails.length === 0, 'the compression block reported ' + result.fails.length + ' failures');
   rig.note('knob inside its track — above ' + result.knob.above + ', below ' + result.knob.below +
            ', right clearance ' + result.knob.right);
-  rig.note('switch to footer edges — top ' + result.gaps.top + ', bottom ' + result.gaps.bottom +
-           ', right ' + result.gaps.right);
+  rig.note('header reads ' + result.gaps.reads + ' — switch centre-line drift ' + result.gaps.drift);
   rig.note('switch label: ' + JSON.stringify(result.label) + '   tooltip: ' + JSON.stringify(result.tip));
   rig.note('explainer: ' + JSON.stringify(result.dlg.title) + '  button=' + JSON.stringify(result.dlg.button) +
            '  ' + result.dlg.msg.length + ' chars, statement=' + result.dlg.solo);

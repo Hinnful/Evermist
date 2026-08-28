@@ -65,31 +65,32 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 
 | Module | Owns |
 |---|---|
-| `state.js` | Shared state: fog constants, grid config, fog RAF handles, map/camera/pan-zoom/polygon/scene/sync/dirty flags |
+| `state.js` | Shared state: fog constants, grid config, fog RAF handles, map/camera/polygon/scene/sync/dirty flags |
 | `renderer.js` | PixiJS/WebGL wrapper; map + DM fog GPU path |
-| `render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, `getViewportSize`/`calcViewport`, `drawCursor` |
+| `render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, viewport sizing, `drawCursor` |
 | `fog.js` | Fog canvases, blur + cloud pipeline, reveal/hide, transitions |
 | `fogGeometry.js` | Pure fog geometry + math kernel. Unit-tested |
 | `vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Unit-tested, dependency-free |
 | `tools.js` | Drawing tools + polygon editing |
 | `input.js` | DM mouse/wheel/keyboard, shape helpers, legend toggle. **Drag-drop is in toolbar.js, not here** |
 | `undo.js` | Undo/redo for fog edits |
-| `effects.js` | Map effects: the `effects` array's model and its flaming-border render path |
+| `effects.js` | Map effects: the `effects` array's model and its render path |
 | `grid.js` | Grid config + render |
 | `scenes.js` | Fog persistence + scene fade helpers |
 | `sceneManager.js` | Scene CRUD, `switchScene`, scene-manager UI |
+| `sceneGroups.js` | Group names on scenes; heading order + collapse. Tested |
 | `sceneStore.js` | IndexedDB read/write |
-| `mapLoader.js` | Image-map loading + the shared progress-bar helpers |
+| `mapLoader.js` | Image-map loading + progress-bar helpers |
 | `mapConvert.js` | Import-time animated-map shrink. `fitInsideBox` unit-tested |
 | `viewport.js` | Pan/zoom, Sync View, Player map delivery, `scheduleAutoSync`, `dmVisibleRegion` |
-| `minimap.js` | Minimap render + drag/zoom remote, view sync both ways, `minimapGetZoom`/`SetZoom`/`NudgeZoom` |
+| `minimap.js` | Minimap render + drag/zoom remote, view sync both ways, zoom get/set/nudge |
 | `video.js` | Animated-map handling |
 | `display.js` | Display detection |
 | `backup.js` | Zip backup/restore |
 | `toolbar.js` | DM UI control wiring + drag-drop. Calls `initRoomPanel` and `initControlPanel` last |
-| `controlPanel.js` | Tabbed Fog/Grid/Player panel. Presentational layer over the hidden legacy controls |
+| `controlPanel.js` | Tabbed Fog/Grid/Player panel over the hidden legacy controls |
 | `roomPanel.js` | The room card + map room labels |
-| `moduleText.js` | Module parsing, storage, and the name-field dropdown |
+| `moduleText.js` | Module parsing, storage, name-field dropdown |
 | `pdfLayout.js` | Pure PDF reading-order kernel. Unit-tested, dependency-free |
 | `pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `confirmDialog.js` | The app's only sanctioned confirmation dialog |
@@ -105,7 +106,8 @@ Declarations must precede use at init time. All under `src/`:
 
 ```
 lib/pixi.min.js → renderer.js → state.js → display.js → video.js → fogGeometry.js →
-vttPlan.js → fog.js → tools.js → mapLoader.js → mapConvert.js → undo.js → sceneStore.js →
+vttPlan.js → fog.js → tools.js → mapLoader.js → mapConvert.js → undo.js → sceneGroups.js →
+sceneStore.js →
 scenes.js → sceneManager.js → viewport.js → backup.js → grid.js → effects.js → toolbar.js →
 player.js → input.js → stress.js → memProbe.js → render.js → minimap.js → controlPanel.js →
 confirmDialog.js → floorPlan.js → moduleText.js → roomPanel.js → about.js → inline <script>

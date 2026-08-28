@@ -11,7 +11,9 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
 //
 //   A. The DM pans by dragging, and the map moves with the cursor one pixel for one pixel.
+//        the camera, and the animated map's own element, which is moved separately
 //   B. The wheel zooms about the cursor: the map point under the pointer stays under it.
+//        and the animated map's element takes the new scale
 //   C. Zoom stops at its limits rather than running away.
 //   D. A map that has just loaded is fitted to the window and centred in it.
 //   E. Sync View sends the REGION the DM can read, not the DM's zoom — so a bigger TV shows the

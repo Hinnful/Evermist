@@ -3,6 +3,7 @@
   "reported": [
     "missing:mapconvert.js",
     "missing:fireproto.js",
-    "missing:effects.js"
+    "missing:effects.js",
+    "missing:scenegroups.js"
   ]
 }
