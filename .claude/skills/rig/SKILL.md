@@ -23,9 +23,11 @@ reach for the rig only when code cannot answer the question. Three cases qualify
 **Do not run it to watch work in progress.** Development changes the code constantly and each
 run costs real time, so a pass between edits buys nothing.
 
-**A regression pass belongs to `/commit`, not to `/wrap`.** `/commit` Step 2 runs
-`npm run rig -- regression` and blocks on red, because the DM commits and pushes before he
-wraps. Do not run the set yourself while still building.
+**A commit gets a SMOKE pass; the full regression set belongs to `/release`.** `/commit` Step 2
+picks `smoke` plus the scenarios covering what the diff touched, and blocks on red. `/release`
+Step 2 runs `npm run rig -- regression` and blocks on red, because that is when an `.exe`
+reaches the TV. Nobody builds from a commit, so no commit needs the whole suite. Do not run
+either set yourself while still building.
 
 **Never ask the DM to hand-verify what the rig can check.** They run the `.exe` on a TV; asking
 them to re-test correctness is asking them to do your job.
@@ -53,8 +55,12 @@ npm run rig -- name-one name-two         several by name, in that order
 ```
 
 That is every flag there is, and an unrecognised one stops the run rather than being ignored.
-**There is no way to move the windows out of the way** - Electron exposes no CDP `Browser`
-domain, so a run owns the screen while it lasts.
+
+**A run no longer owns the screen.** It still opens both windows in front, and nothing in the
+DevTools protocol can move an OS window - Electron exposes no CDP `Browser` domain. But the app
+keeps painting behind other windows now (`KEEP_PAINTING` in `run.js`), so clicking away to another
+application no longer fails the run. `tools/window-state.ps1` reads the real OS window state from
+outside when a window question comes up again.
 
 One app instance per scenario, each on a throwaway profile under the OS temp dir. `--exe` is
 never the default: a build per run is minutes, and a rig that slow stops being used.
@@ -114,12 +120,14 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
   the table anyway. A fullscreen Player then covers the DM, so a scenario needing both windows
   painting at once has to interleave them. The DM keeps running its handlers and timers while
   covered, so anything that needs no frame - a control's handler, `sendToPlayer` - still works.
-- **About one run in three the Player comes up invisible and cannot be coaxed out of it.** Cause
-  unknown. Asking again does nothing (`setFullScreen(true)` on a window already flagged fullscreen
-  fires no event and does not re-raise); dropping out and back in fails too, after nine transitions.
-  `rig.player()` therefore CLOSES it through the DM's own button and opens a fresh one, and says so
-  in the notes. If you see "came up invisible and was reopened", nothing is wrong with the app.
-  Do not replace that recovery with more retries on the same window - that was tried.
+- **The "Player comes up invisible" fault is SOLVED, and its cause was another window in front.**
+  Windows reports a covered window as occluded, Chromium stops painting it, and the page then
+  reports `document.hidden` - which the rig could only read as the window never appearing. Working
+  on the machine during a run caused it, which is why it looked intermittent and why it stayed at
+  100% for whole sittings. `run.js` now launches with `KEEP_PAINTING`, three Chromium switches that
+  turn occlusion handling off, and a run survives being pushed to the back of the z-order for its
+  whole length. Proven both ways: remove the switches and the exact old error comes back.
+  `rig.player()` keeps its close-and-reopen recovery as a backstop; it should no longer fire.
 - **Electron does not expose the CDP `Browser` domain.** `Browser.getWindowForTarget` answers
   "wasn't found", so there is no moving or resizing an OS window from the protocol.
 - **An element inside `display:none` has zero-sized rects**, so a spacing or centring assertion

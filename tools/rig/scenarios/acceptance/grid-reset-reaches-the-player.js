@@ -16,10 +16,11 @@
 //   Reset leaves the grid switched on.
 //     → the Player is still drawing a grid at all afterwards
 //
-// ⚠ THE FULLSCREEN PLAYER COVERS THE DM, so the two windows are driven in turns. Nothing here
-// needs the DM to paint: every grid control is driven through its real handler, and the delivery
-// (sendToPlayer, from scheduleAutoSync's timer) needs no frame. The DM's timers are throttled
-// while it is occluded, so every wait below is generous rather than tight.
+// ⚠ THE PLAYER NO LONGER COVERS THE DM. It used to be forced fullscreen, so the two windows had
+// to be driven in turns; it is windowed and parked off-screen now and both keep painting, so
+// they can be read in any order. Nothing here needs the DM to paint in any case: every grid
+// control is driven through its real handler, and the delivery (sendToPlayer, from
+// scheduleAutoSync's timer) needs no frame. The waits below stay generous regardless.
 //
 // ⚠ SET THE SIZE WHILE THE GRID IS STILL SQUARE. drawGridLines paints hexes in either hex mode, so
 // a spacing measured across one row is only a cell size in square mode. The grid type is checked
@@ -58,8 +59,11 @@ module.exports = async function gridResetReachesThePlayer(rig) {
   const player = await rig.player();
   await player.waitFor('!!mapOffscreen && !!fogDataCanvas', 45000, 'the Player to receive the map');
   await player.waitFor('fogCoverT === 0', 45000, 'the scene cover to lift on the Player');
-  rig.note('DM occluded by the fullscreen Player: document.hidden=' +
-           await dm.evaluate('document.hidden'));
+  // Both windows must keep painting with neither in front (KEEP_PAINTING in run.js). If the DM
+  // reports itself hidden here, that has stopped working and every reading below is a zero.
+  rig.check(await dm.evaluate('document.hidden') === false,
+            'the DM reports itself hidden while the Player is open, so it is being given no ' +
+            'frames and every measurement below would read zero');
 
   const playerGrid = () => player.evaluate('({ on: gridEnabled, size: gridSize, offX: gridOffsetX,' +
     ' offY: gridOffsetY, color: gridColor, opacity: +gridOpacity.toFixed(2), mode: gridMode,' +

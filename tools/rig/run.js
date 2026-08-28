@@ -48,13 +48,14 @@ const PLAYER_READY = 'typeof isPlayer !== "undefined" && isPlayer && !!pixiApp';
 // ─── Arguments ───────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
-  const a = { scenarios: [], exe: null, out: null, shot: null, shotSetup: '' };
+  const a = { scenarios: [], exe: null, out: null, shot: null, shotSetup: '', visible: false };
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
     if (t === '--exe') a.exe = argv[++i];
     else if (t === '--out') a.out = argv[++i];
     else if (t === '--shot') a.shot = argv[++i];
     else if (t === '--shot-setup') a.shotSetup = argv[++i] || '';
+    else if (t === '--visible') a.visible = true;
     else if (t.startsWith('--')) throw new Error('unknown flag ' + t);
     else a.scenarios.push(t);
   }
@@ -135,6 +136,96 @@ function killApp(proc) {
 
 function killAll() { for (const p of Array.from(live)) killApp(p); }
 
+// ─── Getting the run off the screen ──────────────────────────────────────────
+// A run used to own the machine: both windows opened in front and stayed there, so nobody could
+// work while one was going. offscreen.ps1 parks every window this app opens at -9000,-9000 for
+// the length of the run, without activating any of them.
+//
+// ⚠ THIS DEPENDS ON KEEP_PAINTING ABOVE. A parked window is the strongest case of "nobody can
+// see this", and without those switches Chromium would stop painting it and every measurement
+// would read zero. Do not remove one without the other.
+//
+// Windows only, and best-effort by design: if PowerShell is missing or refuses, the run still
+// works, it is just visible. `--visible` turns it off for when someone wants to watch.
+const OFFSCREEN_PS1 = path.join(__dirname, 'offscreen.ps1');
+
+function parkOffScreen(appProc, args) {
+  if (args.visible || process.platform !== 'win32') return null;
+  try {
+    const ps = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass',
+      '-File', OFFSCREEN_PS1, String(appProc.pid), String(Math.ceil(HARD_TIMEOUT_MS / 1000))],
+      { stdio: 'ignore', windowsHide: true });
+    ps.on('error', () => {});
+    // It exits on its own when the app goes, but a killed run must not leave it polling.
+    appProc.once('exit', () => { try { ps.kill(); } catch (_) {} });
+    return ps;
+  } catch (_) { return null; }
+}
+
+// ─── Keeping both windows painting while they are not in front ───────────────
+// Windows tells Chromium when a window is covered, and Chromium then stops painting it. That is
+// correct for a real app and wrong for a test: the rig reads pixels, so a covered window makes
+// every measurement read zero and the run fails with nothing wrong. It is also what makes a run
+// unusable while anyone works on the machine, because any other window in front stops the app.
+//
+// These are CHROMIUM switches passed at launch, not app changes: nothing in src/ knows about
+// them and the shipped .exe never sees them. What they cost is that the rig no longer exercises
+// the app's own occluded and backgrounded behaviour — which no scenario asserts, and which the
+// DM's real setup (two windows, one per screen, both visible) does not enter either.
+// PROVEN, not assumed. With these three removed and the windows held at the back of the z-order,
+// the Player fails with exactly the long-standing "never became visible" error and its exact
+// diagnostic — outer 1200x800, inner 2560x1440, focus true. With them, the same run passes.
+// That was the cause all along: something else in front of the window, most often a person
+// working on the machine while a run is going.
+const KEEP_PAINTING = [
+  '--disable-features=CalculateNativeWinOcclusion',  // stop Windows reporting the window covered
+  '--disable-backgrounding-occluded-windows',
+  '--disable-renderer-backgrounding',
+];
+
+// ⚠ THIS IS WHAT MAKES THE SANDBOXED-RENDERER FILTER SAFE (cdp.js NOISE). That filter swallows
+// two messages that Electron logs when a renderer's bootstrap is cut short, because the splash
+// window produces them on roughly one boot in thirty and they cost a full re-run. A REAL preload
+// failure logs the same words, and the app degrades quietly when it happens: every electronAPI
+// call is behind a truthiness guard, so the DM still boots, still reaches DM_READY, and still
+// answers every check that needs no disk. The run would go green with no IPC at all.
+//
+// So the preload is checked directly on every boot, not inferred from the absence of a message.
+// `electronAPI` is on `window` for real — contextBridge puts it there — which is the one case
+// where `window.x` is right in this codebase.
+function assertPreloadRan(dm) {
+  return dm.evaluate('window.electronAPI ? Object.keys(window.electronAPI).length : -1')
+    .then(n => {
+      if (n < 1) {
+        throw new Error('the preload did not run: window.electronAPI is ' +
+          (n === -1 ? 'missing' : 'empty') + '. Every disk and IPC path is dead, and the app hides ' +
+          'that behind truthiness guards rather than failing — so the run would otherwise pass. ' +
+          'Do NOT filter this away in cdp.js.');
+      }
+    });
+}
+
+// ─── Giving the Player the screen it has at the table ────────────────────────
+// The Player used to be forced fullscreen, so every scenario measured it at the real display
+// size. It is windowed now (see showPlayer), which would leave every Player check reading a
+// 1200x800 canvas the table never sees — and Player rendering is size-dependent: its fog is a
+// Canvas-2D layer composited over the PixiJS map with an edge margin, and that seam took a long
+// time to settle (docs/DECISIONS.md).
+//
+// Emulation.setDeviceMetricsOverride resizes the RENDERER only. The OS window stays parked
+// off-screen, so this costs nothing back. Best-effort: a Player at the wrong size is worth less
+// coverage, not a failed run, so a refusal here is reported and stepped over.
+async function sizePlayerToScreen(session) {
+  try {
+    const s = await session.evaluate('({ w: screen.width, h: screen.height })');
+    if (!s || !(s.w > 0) || !(s.h > 0)) return null;
+    await session.send('Emulation.setDeviceMetricsOverride',
+      { width: s.w, height: s.h, deviceScaleFactor: 1, mobile: false });
+    await session.evaluate('syncSize(); viewportDirty = true; scheduleRender(); 0');
+    return s;
+  } catch (_) { return null; }
+}
+
 // Boots the app, attaches to the DM, and hands back everything a scenario needs.
 async function startInstance(args, profileDir) {
   fs.mkdirSync(profileDir, { recursive: true });
@@ -144,6 +235,7 @@ async function startInstance(args, profileDir) {
   // NOT the default: a build per run is minutes, and a rig that slow stops being used.
   const bin = args.exe ? path.resolve(args.exe) : require(path.join(ROOT, 'node_modules', 'electron'));
   const argv = (args.exe ? [] : ['.'])
+    .concat(KEEP_PAINTING)
     .concat(['--remote-debugging-port=' + port, '--user-data-dir=' + profileDir]);
   const proc = spawn(bin, argv, {
     cwd: ROOT,
@@ -151,6 +243,9 @@ async function startInstance(args, profileDir) {
     detached: process.platform !== 'win32',   // so the whole group can be killed at once
   });
   live.add(proc);
+  // Started before the first window exists, so the splash is parked as it appears rather than
+  // after. A window is only ever visible for the poll interval.
+  parkOffScreen(proc, args);
   proc.stdout.on('data', () => {});
   proc.stderr.on('data', () => {});
   let diedEarly = null;
@@ -171,6 +266,7 @@ async function startInstance(args, profileDir) {
   const dm = await cdp.connect(dmTarget.webSocketDebuggerUrl, 'dm');
   await dm.watch();
   await dm.waitFor(DM_READY, 90000, 'the DM init chain');
+  await assertPreloadRan(dm);
 
   // ⚠ REFUSE TO RUN AGAINST A LIBRARY THAT ALREADY HAS SCENES IN IT. Scenarios import maps,
   // switch scenes (which autosaves the outgoing one) and restore backups, so a rig run on real
@@ -200,30 +296,25 @@ async function startInstance(args, profileDir) {
 
 // ─── The rig handed to a scenario ────────────────────────────────────────────
 
-// ⚠ THE PLAYER OPENS *INSIDE* THE DM'S RECTANGLE, so Chromium marks it hidden and stops giving
-// it frames: `document.hidden` goes true, requestAnimationFrame never fires again, and everything
-// the app defers to a frame silently never happens. The scene cover is one of those, so the fog
-// stays shut and the run times out somewhere unrelated. Neither `backgroundThrottling: false`,
-// `Page.bringToFront`, `focus()` nor moving the DM aside clears it. Fullscreen does, and it is
-// the Player's real state at the table anyway.
-// ⚠ ASKING AGAIN IS NOT ENOUGH — IT HAS TO BE A REAL TRANSITION. `setFullScreen(true)` on a
-// window Electron already flags as fullscreen does nothing at all: no enter-full-screen event, no
-// re-raise. So a Player that came up fullscreen-but-occluded stays occluded however many times it
-// is asked, which is exactly what "ten requests, still hidden" looked like. Every retry after the
-// first therefore drops OUT of fullscreen and goes back in, which Electron cannot ignore.
+// THE PLAYER USED TO BE FORCED FULLSCREEN, and it no longer is. It opens inside the DM's
+// rectangle, so Chromium marked it occluded and stopped giving it frames — `document.hidden`
+// true, no requestAnimationFrame, and everything the app defers to a frame silently never
+// happening. Fullscreen was the only thing that cleared it, and a fullscreen Player then covered
+// the DM, so any scenario needing both windows had to drive them in turns.
 //
-// `Page.bringToFront` is kept because it costs nothing, but it cannot raise a separate OS window:
-// Electron does not expose the CDP Browser domain (cdp.js), so there is no other lever here.
+// KEEP_PAINTING removes the cause, so none of that applies now: a Player that is covered, behind,
+// or parked off-screen keeps painting. Not asking for fullscreen is what lets the whole run sit
+// off-screen (offscreen.ps1) instead of taking the machine away from whoever is using it.
+//
+// The retry loop stays. It is now only about a Player that has not finished coming up, so it
+// simply waits and re-checks rather than throwing fullscreen transitions at the window.
+// `Page.bringToFront` is gone with the rest: it cannot raise a separate OS window anyway,
+// because Electron does not expose the CDP Browser domain (cdp.js).
 async function showPlayer(session, budgetMs) {
   const deadline = Date.now() + budgetMs;
   let asked = 0;
   for (;;) {
-    if (asked > 0) {
-      await session.evaluate('window.electronAPI.setFullScreen(false); 0');
-      await cdp.sleep(500);
-    }
-    await session.evaluate('window.electronAPI.setFullScreen(true); 0');
-    await session.send('Page.bringToFront');
+    if (asked > 0) await cdp.sleep(500);
     asked++;
     try {
       // Short per-attempt wait, so a dropped request is retried rather than sat out.
@@ -244,9 +335,11 @@ async function showPlayer(session, budgetMs) {
             devicePixelRatio, focus: document.hasFocus(),
           })`));
         } catch (e) { diag = 'could not be read: ' + e.message; }
-        throw new Error('the Player window never became visible after ' + asked + ' fullscreen ' +
-          'transitions — while it is hidden it renders nothing and every measurement reads zero. ' +
-          'The window reports ' + diag);
+        throw new Error('the Player window never became visible after ' + asked + ' checks over ' +
+          Math.round(budgetMs / 1000) + 's — while it is hidden it renders nothing and every ' +
+          'measurement reads zero. The known cause of this was Windows reporting the window ' +
+          'occluded, which KEEP_PAINTING now switches off; if it is back, check those switches ' +
+          'still reach the app. The window reports ' + diag);
       }
     }
   }
@@ -277,12 +370,14 @@ function makeRig(inst, dirs, tally) {
     // The Player window, attached the first time a scenario asks for it. Opening it is the DM's
     // own button, so this is the app's real path and not a second window the rig conjured.
     //
-    // ⚠ ROUGHLY ONE RUN IN THREE, THE PLAYER COMES UP AND NEVER BECOMES VISIBLE, and no amount of
-    // asking that window to go fullscreen clears it. So the second attempt does not ask again — it
-    // presses the DM's Player button to CLOSE the window (the button toggles), waits for the target
-    // to go, and opens a fresh one. A new window cannot inherit the broken one's state, which
-    // toggling fullscreen on the old one demonstrably could not fix.
-    // Not a diagnosis: the cause is still open, and this is recovery rather than a fix.
+    // ⚠ THE "PLAYER COMES UP INVISIBLE" FAULT IS SOLVED, and the recovery below is now a
+    // backstop rather than a workaround. The cause was Windows reporting the window occluded, so
+    // Chromium stopped painting it and the page reported itself hidden; KEEP_PAINTING switches
+    // that off and a run survives being parked off-screen for its whole length. If the recovery
+    // fires, something has gone wrong with those switches — do not treat it as normal.
+    //
+    // What the recovery does, when it does fire: press the DM's Player button to CLOSE the window
+    // (the button toggles), wait for the target to go, and open a fresh one.
     async player() {
       if (inst.player) return inst.player;
 
@@ -294,6 +389,17 @@ function makeRig(inst, dirs, tally) {
         const session = await cdp.connect(target.webSocketDebuggerUrl, 'player');
         await session.watch();
         await session.waitFor(PLAYER_READY, 30000, 'the Player runtime');
+        // ⚠ THE PLAYER'S PRELOAD IS CHECKED TOO, and for the same reason as the DM's: cdp.js
+        // filters the two messages a failed preload logs. Nothing else here touches the Player's
+        // electronAPI any more, so without this a Player with no IPC would run green and quietly
+        // lose readVideoFile on every animated map.
+        await assertPreloadRan(session);
+        // The TV is a big screen and the window is parked off-screen at its default size, so the
+        // renderer's viewport is overridden to the real display instead. Player rendering is
+        // size-dependent — its fog is a Canvas-2D layer composited over the map with an edge
+        // margin — so measuring it at 1200x800 would test a size the table never uses. This
+        // changes the renderer only; the OS window stays parked.
+        await sizePlayerToScreen(session);
         return session;
       };
 
@@ -317,13 +423,13 @@ function makeRig(inst, dirs, tally) {
       let session = await openOne();
       try {
         const asked = await showPlayer(session, 12000);
-        if (asked > 1) tally.notes.push('  the Player needed ' + asked + ' fullscreen transitions');
+        if (asked > 1) tally.notes.push('  the Player took ' + asked + ' checks to report visible');
       } catch (first) {
         tally.notes.push('  the Player came up invisible and was reopened — ' + first.message);
         await closeOne(session);
         session = await openOne();
         const asked = await showPlayer(session, 30000);
-        tally.notes.push('  the reopened Player took ' + asked + ' fullscreen transition(s)');
+        tally.notes.push('  the reopened Player took ' + asked + ' check(s) to report visible');
       }
       inst.player = session;
       return session;
