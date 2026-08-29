@@ -98,6 +98,14 @@ area. Whole-room fill is out of scope: rare in play, and easier to paint into th
 Alchemist. Two looks were tried and dropped before this one - a filled seamless "material" per type,
 and a lit interior grid - see DECISIONS.
 
+### Doors are marked by hand, never derived · `SETTLED` (design)
+Players reading a revealed room across the table see its outline before they see anything inside
+it, and a rectangle with no break in it says the room is sealed. A door is a notch of cleared fog
+one grid square wide, which changes that outline. The DM marks each one; the app never generates
+them. A floor plan does carry portals, but they have no type, so deriving doors from one would
+hand the players a marked gap at every secret door. Marking by hand also means a door is exactly
+where it should be on a map with no plan at all.
+
 ### Scene folders are list navigation, not map layers · `SETTLED`
 Parked once as "batching three or four maps together", which measured the wrong thing. The
 value is navigating a scene list that has outgrown its container: sixteen scenes in a thin

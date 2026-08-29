@@ -46,9 +46,8 @@ let cloudFramePos  = 0;    // float index — fractional part is crossfade blend
 let cloudBlendCanvas = null, cloudBlendCtx = null;
 
 // ─── Fog Transition (reveal & shroud) ────────────────────────────────────────
-// Cross-fades between fogEffectCanvas / fogBlurCanvas before and after any fog
-// operation. Uses 'lighter' blend so prev*(1-t) + new*t gives proper linear lerp
-// without alpha bleed-through in always-fogged regions.
+// Cross-fades fogEffectCanvas / fogBlurCanvas before and after any fog operation. 'lighter'
+// blend, so prev*(1-t) + new*t is a true lerp with no alpha bleed in always-fogged regions.
 let fogTransPrev        = null; // clone of fogEffectCanvas before op (DM)
 let fogTransBlurPrev    = null; // clone of fogBlurCanvas before op (player)
 let fogTransBlurNext    = null; // saved new-blur target for Player PixiJS per-frame blend
@@ -61,17 +60,15 @@ let fogTransIsShroud    = false;
 // buildRoundedPolyPath lives in fogGeometry.js (pure geometry kernel, loaded first).
 
 // ─── DPI-adaptive radius helpers ──────────────────────────────────────────────
-// Scale blur/feather radii proportionally to fog canvas size so they cover the
-// same fraction of the map regardless of image resolution. The pure math lives
-// in fogGeometry.js (fogSizeScale / scaledRadius); these wrappers read live state.
+// Radii scale with fog canvas size, so they cover the same fraction of any map. The pure math
+// lives in fogGeometry.js; these wrappers read live state.
 function getFogSizeScale() {
   if (!fogDataCanvas) return 1;
   return fogSizeScale(Math.max(fogDataCanvas.width, fogDataCanvas.height), FOG_SIZE_REF);
 }
 let fogFeatherRadius = FOG_FEATHER_RADIUS; // overridable at runtime via UI slider
-// How much fog REMAINS in a half-shrouded room, 0 = fully revealed, 1 = fully shrouded.
-// One global value, not per-room and not per-scene: "half" is one state with one density.
-// Persisted in localStorage (see initFogControls) because it is dialled in across sessions.
+// How much fog REMAINS in a half-shrouded room, 0 = revealed, 1 = shrouded. One global value,
+// never per-room or per-scene: "half" is one state with one density.
 let fogHalfAlpha = 0.5;
 const FOG_HALF_ALPHA_KEY = 'evermist.fogHalfAlpha';
 function getScaledBlurRadius()    { return scaledRadius(FOG_BLUR_RADIUS,  getFogSizeScale()); }
@@ -125,10 +122,8 @@ function applyPolygonToFog(poly) {
     fogDataCtx.restore();
   } else {
     // Feathered reveal: draw polygon blurred on scratch, then destination-out onto fog.
-    // 'half' rides this same mask, so the feathered edge and the cloud-eroded raggedness come
-    // along for free. It then differs in ONE way: the erase runs to completion like a reveal
-    // and half-density fog is painted back through the same mask (see below), which makes the
-    // state ABSOLUTE — a half room lands on exactly fogHalfAlpha whatever was underneath.
+    // 'half' rides this same mask and differs in ONE way — the erase runs to completion like a
+    // reveal and half-density fog is painted back through the mask, so the state is ABSOLUTE.
     const isHalf = poly.mode === 'half';
     const halfAlpha = Math.max(0, Math.min(1, fogHalfAlpha));
     const bb = getPolyBBox(verts);
@@ -149,9 +144,7 @@ function applyPolygonToFog(poly) {
     sCtx.fill();
     sCtx.filter = 'none';
 
-    // Erode edges with cloud noise for organic, non-geometric reveal boundary.
-    // destination-out at low alpha removes a fraction of the edge pixels based on
-    // cloud density — interior stays well-revealed, edge pixels become ragged wisps.
+    // Erode edges with cloud noise so the reveal boundary is ragged rather than geometric.
     if (cloudCanvas) {
       const tileSize = Math.max(8, Math.round(48 * getFogSizeScale()));
       const offX = ((bx % tileSize) + tileSize) % tileSize;
@@ -167,8 +160,7 @@ function applyPolygonToFog(poly) {
       sCtx.restore();
     }
 
-    // Clip the blurred result back to the polygon shape so the soft edge
-    // fades inward only — prevents the blur from clearing fog outside the polygon.
+    // Clip back to the polygon so the soft edge fades inward only, never clearing fog outside.
     sCtx.save();
     sCtx.globalCompositeOperation = 'destination-in';
     sCtx.fillStyle = 'white';
@@ -177,12 +169,9 @@ function applyPolygonToFog(poly) {
     sCtx.fill();
     sCtx.restore();
 
-    // Cloud erosion leaves ~17% residue in the interior. A reveal removes it afterwards with a
-    // hard clearRect on the fog (below); half repaints through this mask instead, so residue
-    // left in the MASK would read as blotchy density. So for 'half' the interior is flattened
-    // back to solid white here, on the mask — same inset polygon, so the feathered edge band
-    // (which is the band we want to keep) is untouched. The reveal path keeps its clearRect
-    // instead, so it stays exactly as it was.
+    // Cloud erosion leaves residue in the interior. A reveal clears it later with a clearRect;
+    // half repaints through this mask, so residue left here reads as blotchy density. Flatten the
+    // interior on the mask instead — the inset keeps the feathered edge band untouched.
     const insetVerts = insetPolygon(fogScaledVerts, feather);
     if (isHalf && insetVerts.length >= 3) {
       sCtx.save();
@@ -194,18 +183,17 @@ function applyPolygonToFog(poly) {
       sCtx.restore();
     }
 
+    flattenSharedWalls(sCtx, poly, fogScaledVerts, feather, bx, by);
+
     fogDataCtx.save();
     fogDataCtx.globalCompositeOperation = 'destination-out';
     fogDataCtx.globalAlpha = 1;
     fogDataCtx.drawImage(scratch, bx, by);
     fogDataCtx.restore();
 
-    // Half: paint fog back through the same mask at fogHalfAlpha. Erase-then-repaint, not a
-    // partial erase — destination-out only ever multiplies, so a partial erase could not touch
-    // ground a brush stroke or a lower-index reveal had already cleared, which is exactly the
-    // room the party has just left. Repainting SETS the density, so the state is absolute.
-    // With mask m the result is (1 − m) × old + fogHalfAlpha × m: interior lands on
-    // fogHalfAlpha, the feathered band ramps from the surrounding fog down to it.
+    // Half: paint fog back through the same mask at fogHalfAlpha. Erase-then-repaint, never a
+    // partial erase — destination-out only multiplies, so it could not touch ground already
+    // cleared by a brush stroke. Repainting SETS the density, which is what makes half absolute.
     if (isHalf) {
       sCtx.save();
       sCtx.globalCompositeOperation = 'source-in';   // recolour the mask, keep its alpha
@@ -218,8 +206,7 @@ function applyPolygonToFog(poly) {
       fogDataCtx.restore();
     }
 
-    // Clip to an inset polygon (shrunk by feather px) so the feathered edge
-    // band is preserved; only the deep interior gets fully cleared.
+    // Clip to the inset polygon so the feathered edge band survives and only the interior clears.
     if (!isHalf && insetVerts.length >= 3) {
       fogDataCtx.save();
       fogDataCtx.beginPath();
@@ -232,6 +219,146 @@ function applyPolygonToFog(poly) {
   }
 }
 
+// A fraction of a cell: two rooms sharing a doorway count, one across a corridor does not.
+const DOOR_SHARED_WALL_TOL = 0.35;
+
+// Carves a room's doors, each in the state the rooms around it resolve to. No cloud erosion: it is
+// a texture for a long boundary and only makes a tab this small look patchy.
+function applyDoorsToFog(poly) {
+  if (!fogDataCtx) return;
+  const doors = poly.doors;
+  if (!doors || !doors.length || poly.vertices.length < 3) return;
+  const size = doorSizeForCell(gridSize / FOG_SCALE, doorWidthPct, doorDepthPct);
+  if (!(size.width > 0) || !(size.depth > 0)) return;
+
+  const tol = gridSize * DOOR_SHARED_WALL_TOL;
+  const open = [], dim = [];
+  for (const d of doors) {
+    const mode = doorResolvedMode(doorPoint(poly.vertices, d), polygons, tol);
+    if (mode === 'reveal') open.push(d);
+    else if (mode === 'half') dim.push(d);
+  }
+  if (!open.length && !dim.length) return;
+
+  const fogVerts = poly.vertices.map(v => ({ x: v.x / FOG_SCALE, y: v.y / FOG_SCALE }));
+  // ⚠ Capped against the notch's own depth. The fog feather is tuned for a room-sized edge, and
+  // against a door it is wider than the shape it softens, which rounds the rectangle into a blob.
+  const feather = Math.min(getScaledFeatherRadius(), size.depth * 0.35);
+  // ⚠ The overrun goes on the OWNER's side only, and only when that side is already cleared, where
+  // it cannot be seen. It exists so the notch meets the reveal's ragged edge rather than leaving a
+  // faint band. Applied to both sides it pinned the visible depth of every door whose owner is the
+  // shrouded room of a shared wall — and which room owns a door is not something the DM aims at.
+  const inward = poly.mode === 'shroud' ? size.depth
+                                        : Math.max(size.depth, getScaledFeatherRadius() * 1.5 + 3);
+  if (open.length) carveDoorNotches(fogVerts, open, size, inward, feather, false);
+  if (dim.length)  carveDoorNotches(fogVerts, dim,  size, inward, feather, true);
+}
+
+// Erase-then-repaint for half, for the reason applyPolygonToFog gives where it does the same.
+function carveDoorNotches(fogVerts, doors, size, inward, feather, half) {
+  const shapes = [];
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const d of doors) {
+    const c = doorNotchCorners(fogVerts, d, size.width, size.depth, inward);
+    if (!c) continue;
+    shapes.push(c);
+    for (const pt of [c.outerL, c.outerR, c.innerL, c.innerR]) {
+      if (pt.x < minX) minX = pt.x;
+      if (pt.y < minY) minY = pt.y;
+      if (pt.x > maxX) maxX = pt.x;
+      if (pt.y > maxY) maxY = pt.y;
+    }
+  }
+  if (!shapes.length) return;
+
+  const pad = Math.ceil(feather) + 2;
+  const bx = Math.floor(minX) - pad, by = Math.floor(minY) - pad;
+  const bw = Math.ceil(maxX - minX) + pad * 2, bh = Math.ceil(maxY - minY) + pad * 2;
+  if (!_fogScratch) { _fogScratch = document.createElement('canvas'); _fogScratchCtx = _fogScratch.getContext('2d'); }
+  _fogScratch.width  = Math.max(1, bw);   // resize clears the canvas
+  _fogScratch.height = Math.max(1, bh);
+  const scratch = _fogScratch, sCtx = _fogScratchCtx;
+  sCtx.filter = feather > 0 ? `blur(${feather}px)` : 'none';
+  sCtx.fillStyle = 'white';
+  for (const c of shapes) {
+    sCtx.beginPath();
+    sCtx.moveTo(c.innerL.x - bx, c.innerL.y - by);
+    sCtx.lineTo(c.outerL.x - bx, c.outerL.y - by);
+    sCtx.lineTo(c.outerR.x - bx, c.outerR.y - by);
+    sCtx.lineTo(c.innerR.x - bx, c.innerR.y - by);
+    sCtx.closePath();
+    sCtx.fill();
+  }
+  sCtx.filter = 'none';
+
+  fogDataCtx.save();
+  fogDataCtx.globalCompositeOperation = 'destination-out';
+  fogDataCtx.globalAlpha = 1;
+  fogDataCtx.drawImage(scratch, bx, by);
+  fogDataCtx.restore();
+
+  if (!half) return;
+  sCtx.save();
+  sCtx.globalCompositeOperation = 'source-in';   // recolour the mask, keep its alpha
+  sCtx.fillStyle = '#1a1a2e';
+  sCtx.fillRect(0, 0, scratch.width, scratch.height);
+  sCtx.restore();
+  fogDataCtx.save();
+  fogDataCtx.globalAlpha = Math.max(0, Math.min(1, fogHalfAlpha));
+  fogDataCtx.drawImage(scratch, bx, by);
+  fogDataCtx.restore();
+}
+
+// How close another room's outline runs to count as the same wall, as a fraction of the feather.
+const SHARED_WALL_TOL = 0.5;
+
+// ⚠ Runs AFTER the mask is clipped to the polygon, so it reaches a little OUTSIDE the wall too:
+// two rooms that traced the same wall a pixel apart leave a sliver neither covers.
+// Only against rooms that are NOT shrouded — a wall facing unexplored space is a real fog
+// boundary and keeps its soft edge.
+function flattenSharedWalls(sCtx, poly, fogScaledVerts, feather, bx, by) {
+  if (typeof polygons === 'undefined' || !(feather > 0)) return;
+  const density = p => (p.mode === 'shroud' ? 'shroud' : p.mode === 'half' ? 'half' : 'reveal');
+  const mine = density(poly);
+  const open = polygons.filter(p => p !== poly && p.vertices.length >= 3 && density(p) !== 'shroud');
+  if (!open.length) return;
+  const tolMap = feather * FOG_SCALE * SHARED_WALL_TOL;
+  const stepMap = feather * FOG_SCALE;
+  const into = feather * 1.6;
+
+  sCtx.save();
+  sCtx.fillStyle = 'white';
+  sCtx.beginPath();
+  // ⚠ The band crosses the wall ONLY where the neighbour paints the same density. Crossing bridges
+  // two rooms traced a few pixels apart, and costs nothing between two revealed rooms. Between a
+  // revealed room and a half one, whichever composites last would win a strip on the wrong side.
+  for (const [group, out] of [[open.filter(p => density(p) === mine), feather * 0.25],
+                              [open.filter(p => density(p) !== mine), 0]]) {
+    if (!group.length) continue;
+    for (let e = 0; e < poly.vertices.length; e++) {
+      const spans = sharedWallSpans(poly.vertices, e, group, tolMap, stepMap);
+      if (!spans.length) continue;
+      const f = doorEdgeFrame(fogScaledVerts, e);
+      if (!f) continue;
+      for (const sp of spans) {
+        // Pulled in at both ends by the outward reach: a band that reached outward all the way to
+        // a wall junction left a tab of cleared fog sticking out of the room block there.
+        const s0 = sp.from / FOG_SCALE + out, s1 = sp.to / FOG_SCALE - out;
+        if (!(s1 > s0)) continue;
+        const ax = f.a.x + f.ux * s0, ay = f.a.y + f.uy * s0;
+        const cx = f.a.x + f.ux * s1, cy = f.a.y + f.uy * s1;
+        sCtx.moveTo(ax + f.n.x * out - bx,   ay + f.n.y * out - by);
+        sCtx.lineTo(cx + f.n.x * out - bx,   cy + f.n.y * out - by);
+        sCtx.lineTo(cx - f.n.x * into - bx,  cy - f.n.y * into - by);
+        sCtx.lineTo(ax - f.n.x * into - bx,  ay - f.n.y * into - by);
+        sCtx.closePath();
+      }
+    }
+  }
+  sCtx.fill();
+  sCtx.restore();
+}
+
 function rebuildFogFromPolygons() {
   if (!fogDataCtx || !fogDataCanvas) return;
   fogDataCtx.clearRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
@@ -242,6 +369,10 @@ function rebuildFogFromPolygons() {
     fogDataCtx.fillRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
   }
   for (let i = polygons.length - 1; i >= 0; i--) applyPolygonToFog(polygons[i]);
+  // ⚠ Doors are carved AFTER every room is composited, never from inside applyPolygonToFog. A door
+  // straddles its wall, so it reaches into whatever is on the other side; carved room by room, a
+  // shrouded neighbour applied later in this walk paints over it and the door silently vanishes.
+  for (const poly of polygons) applyDoorsToFog(poly);
 }
 
 // ─── Fog effect pipeline ──────────────────────────────────────────────────────
@@ -353,17 +484,14 @@ function rebuildFogBlur() {
     fogEffectCtx = fogEffectCanvas.getContext('2d');
   }
 
-  // Blur on a fog-padded canvas so the blur at the map edge samples solid fog
-  // instead of transparency. pad = 3× blur radius to cover the full Gaussian tail (3σ).
+  // Blur on a fog-padded canvas so the map edge samples solid fog, not transparency. pad = 3×
+  // blur radius, the full Gaussian tail.
   const blur = getScaledBlurRadius();
   const pad  = blur * 3;
   const pw = w + pad * 2, ph = h + pad * 2;
-  // Cached on dimensions, like fogBlurCanvas above: this runs on every reveal and a fresh
-  // map-sized canvas each time is the single largest churn on the fog path. A reused canvas
-  // must be cleared first — the drawImage below is source-over and would composite onto the
-  // previous reveal's pixels. Deliberately NOT _fogScratch: applyPolygonToFog resizes that
-  // per polygon, and two callers resizing one canvas saves nothing, since assigning .width
-  // reallocates the backing store anyway.
+  // Cached on dimensions: this runs on every reveal, and a fresh map-sized canvas each time is
+  // the largest churn on the fog path. ⚠ A reused canvas must be cleared first — the drawImage
+  // below is source-over. Never share _fogScratch: applyPolygonToFog resizes that per polygon.
   if (!_fogPadded || _fogPadded.width !== pw || _fogPadded.height !== ph) {
     _fogPadded = document.createElement('canvas');
     _fogPadded.width = pw; _fogPadded.height = ph;
@@ -374,13 +502,10 @@ function rebuildFogBlur() {
   const padded = _fogPadded, pCtx = _fogPaddedCtx;
   pCtx.drawImage(fogDataCanvas, pad, pad);                                     // fog data (center)
 
-  // Always-shrouded edge margin: stamp an opaque navy frame over the whole pad border PLUS
-  // the outer FOG_EDGE_MARGIN px of the fog-data center. The blur then feathers the frame's
-  // inner edge inward, so a reveal that reaches the map boundary fades into this margin
-  // instead of hard-stopping against the solid outside-map fog (the sharp horizontal seam).
-  // This frame also serves as the blur's edge padding (fully overwrites the old clamp-to-edge
-  // strips). Applied to the display blur mask only — fogDataCanvas, undo, and saved scenes
-  // are untouched.
+  // Always-shrouded edge margin: an opaque navy frame over the pad border plus the outer
+  // FOG_EDGE_MARGIN px. The blur feathers its inner edge inward, so a reveal reaching the map
+  // boundary fades into the margin instead of hard-stopping (the sharp horizontal seam).
+  // Display blur mask ONLY — fogDataCanvas, undo and saved scenes are untouched.
   const m = FOG_EDGE_MARGIN;
   pCtx.fillStyle = '#1a1a2e';
   pCtx.fillRect(0,            0,            pw,           pad + m);  // top    (incl. top pad)
@@ -394,10 +519,8 @@ function rebuildFogBlur() {
   fogBlurCtx.filter = 'none';
 }
 
-// Composites cloud texture over the cached blur result.
-// offsets: array of {x, y} per pass for animation drift; null = no drift.
-// blurSrc: optional blur canvas to composite over (default: fogBlurCanvas).
-// Pass fogTransBlurPrev during SHROUD transitions to animate OLD fog in the effect sprite.
+// Composites cloud texture over the cached blur result. offsets is the per-pass drift, null for
+// none. Pass fogTransBlurPrev as blurSrc during SHROUD transitions, to animate the OLD fog.
 function recompositeCloudEffect(offsets, blurSrc) {
   const src = blurSrc || fogBlurCanvas;
   if (!fogEffectCanvas || !src) return;
@@ -426,9 +549,8 @@ function recompositeCloudEffect(offsets, blurSrc) {
     fogEffectCtx.restore();
   }
 
-  // Subtle purple-blue luminosity at fog edge. source-atop draws proportional to
-  // existing alpha: fully-fogged areas get a slight tint, edge pixels get a
-  // visible glow that makes the boundary look luminous rather than geometric.
+  // Edge luminosity. source-atop draws proportional to existing alpha, so edge pixels glow and
+  // the boundary reads as luminous rather than geometric.
   fogEffectCtx.save();
   fogEffectCtx.globalCompositeOperation = 'source-atop';
   fogEffectCtx.globalAlpha = FOG_TINT_ALPHA;
@@ -440,41 +562,39 @@ function recompositeCloudEffect(offsets, blurSrc) {
 function rebuildFogEffect() {
   rebuildFogBlur();
   if (!isPlayer) {
-    // DM GPU path: cloud TilingSprites handle cloud display — just upload the new blur canvas
+    // DM GPU path: TilingSprites display the clouds, so only the blur canvas is uploaded.
     pixiUpdateFogBlurTexture();
   } else {
-    // Player: renderFog draws clouds itself via cloudPattern + fogAnimOffsets
+    // Player: renderFog draws its own clouds.
     fogDirty = true;
     scheduleRender();
   }
 }
 
 function renderFog(vp) {
-  // PixiJS handles fog display for the DM. The Player uses this Canvas-2D path
-  // (fog-on-top with holes) — see the HYBRID note in renderer.js pixiInitFog.
+  // PixiJS handles DM fog. The Player uses this Canvas-2D fog-on-top path — see the HYBRID note
+  // in renderer.js pixiInitFog.
   if (!isPlayer) return;
 
   const { srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH, cw, ch } = vp;
   fogDisplayCtx.clearRect(0, 0, cw, ch);
 
   if (isPlayer) {
-    // Unified single-pass player fog: clouds drawn once over the full display,
-    // then reveal holes punched inside the map rect via destination-in masking.
-    // Because there is only one cloud pass (no inside/outside split) the seam
-    // at the map border is impossible — the same pixels back both regions.
+    // ⚠ ONE cloud pass over the whole display, then reveal holes punched inside the map rect.
+    // Never split it into inside/outside passes: one pass is what makes the border seam
+    // impossible, because the same pixels back both regions.
 
-    // 1. Fill entire display with base fog colour.
+    // 1. Base fog colour.
     fogDisplayCtx.fillStyle = fogBaseColor;
     fogDisplayCtx.fillRect(0, 0, cw, ch);
 
-    // 2. Overlay cloud texture across the full display in display-space coords.
+    // 2. Cloud texture across the full display, in display space.
     if (cloudPattern && fogDataCanvas) {
       fogDisplayCtx.save();
       fogDisplayCtx.globalCompositeOperation = 'source-atop';
-      // Every term is derived from the map, so a scene swap changes all of them at once.
-      // fogCloudAdj re-anchors the incoming scene onto the transform the outgoing one was
-      // last drawn at (rebaseCloudTransform), which is why the swap has no scale change left
-      // to travel across.
+      // Every term derives from the map, so a scene swap changes all of them at once.
+      // fogCloudAdj re-anchors the incoming scene onto the transform the outgoing one was last
+      // drawn at, which is why the swap has no scale change left to travel across.
       let s   = zoom * FOG_SCALE * fogCloudAdj.k;
       let cx  = mapWidth  / 2 * zoom + panX + fogCloudAdj.dx;
       let cy  = mapHeight / 2 * zoom + panY + fogCloudAdj.dy;
@@ -486,8 +606,7 @@ function renderFog(vp) {
         s = fogCloudHold.s; cx = fogCloudHold.cx; cy = fogCloudHold.cy;
         hw = fogCloudHold.hw; hh = fogCloudHold.hh;
       }
-      // The transform AS DRAWN, banked every frame so freezeCloudTransform() has something
-      // exact to pin and rebaseCloudTransform() something exact to match.
+      // The transform AS DRAWN, banked so freeze/rebaseCloudTransform have something exact.
       fogCloudLast = { s: s, cx: cx, cy: cy, hw: hw, hh: hh };
       const bigR = Math.ceil(Math.max(cw, ch) / s) + hw * 2;
       for (let i = 0; i < CLOUD_PASSES.length; i++) {
@@ -514,18 +633,11 @@ function renderFog(vp) {
     fogDisplayCtx.fillRect(0, 0, cw, ch);
     fogDisplayCtx.restore();
 
-    // 4. Punch reveal holes inside the map rect.
-    // fogBlurCanvas: alpha=1 where fogged, alpha≈0 where revealed (blur gives
-    // smooth feathered edges). destination-in keeps existing pixels proportional
-    // to source alpha — retains fog over fogged areas, clears over revealed.
-    // The clip restricts the operation to the map rect so the outside fog
-    // (drawn in steps 1-2) is untouched.
-    // Build blended mask if a fog transition is active (lerps prev↔new fogBlurCanvas).
-    // 'lighter' (additive) blend gives exact prev*(1-t) + new*t with no alpha bleed.
-    // Scene-switch cover (fogCoverT, state.js). FULLY covered punches NOTHING — skipping the
-    // step entirely is what makes the cover immune to the map changing size underneath it,
-    // which it does mid-switch. Partway, the real mask's alpha is lifted toward opaque by an
-    // additive fill, so the fog closes over the map smoothly instead of snapping.
+    // 4. Punch reveal holes inside the map rect. fogBlurCanvas is opaque where fogged and clear
+    // where revealed, so destination-in keeps fog in proportion. The clip leaves the outside fog
+    // from steps 1-2 untouched. A live transition lerps prev↔new with 'lighter'.
+    // ⚠ Scene-switch cover (fogCoverT): FULLY covered punches NOTHING. Skipping the step is what
+    // makes the cover immune to the map changing size underneath it, which it does mid-switch.
     let maskCanvas = fogBlurCanvas;
     if (fogCoverT >= 1) {
       maskCanvas = null;
@@ -579,15 +691,14 @@ function renderFog(vp) {
     return;
   }
 
-  // DM view: semi-transparent fog overlay (CSS opacity 0.55) over map rect only.
-  // No outside-map fog — DM sees the canvas background beyond the map.
+  // DM view: semi-transparent overlay over the map rect only, so the DM sees the canvas
+  // background beyond the map.
   if (!fogDataCanvas || srcW <= 0 || srcH <= 0) return;
   const sx = srcX / FOG_SCALE, sy = srcY / FOG_SCALE;
   const sw = srcW / FOG_SCALE, sh = srcH / FOG_SCALE;
   if (!isDrawing && fogTransPrev && fogEffectCanvas) {
-    // Simple linear crossfade for DM. The noise dissolve can't be used here because
-    // the DM bakes live cloud offsets into fogEffectCanvas every anim frame, making
-    // fogTransPrev and fogEffectCanvas differ everywhere — causing a screen-wide effect.
+    // Linear crossfade, never the noise dissolve: the DM bakes live cloud offsets into
+    // fogEffectCanvas every frame, so the two canvases differ everywhere and it goes screen-wide.
     fogDisplayCtx.globalAlpha = 1 - fogTransT;
     fogDisplayCtx.drawImage(fogTransPrev, sx, sy, sw, sh, dstX, dstY, dstW, dstH);
     fogDisplayCtx.globalCompositeOperation = 'lighter';
@@ -606,10 +717,8 @@ function renderFog(vp) {
 let fogAnimThrottleNext = 0;
 const FOG_ANIM_VIDEO_INTERVAL = 66; // ~15fps fog updates when video is active
 
-// Cloud crossfade rebuild rate. With CLOUD_FRAME_COUNT frames at cloudFrameSpeed the
-// blend advances a few thousandths of a frame per tick, so rebuilding the 512×512
-// canvas every tick paints a picture indistinguishable from the last one. Tunable:
-// raise the rate (lower the number) if the morph ever reads as steppy.
+// Cloud crossfade rebuild rate. The blend advances a few thousandths of a frame per tick, so an
+// every-tick rebuild repaints the same picture. Lower the number if the morph reads as steppy.
 const FOG_CLOUD_BLEND_INTERVAL = 100; // ms → ~10Hz
 // Stall clamp for the morph step. MUST stay above the longest ordinary gap between
 // rebuilds, or it silently slows the morph instead of only catching stalls: with video
@@ -643,19 +752,15 @@ function fogAnimTick(ts) {
     if (!skipExpensiveWork) {
       if (videoEnabled) fogAnimThrottleNext = ts + FOG_ANIM_VIDEO_INTERVAL;
 
-      // One gate and one clock for both paths. The video throttle above only decides
-      // WHICH ticks get here; how far the morph advances comes from the real elapsed
-      // time below, so the clouds morph at the same rate on an animated map as on a
-      // still one. Feeding this the per-tick dt instead is what used to make the morph
-      // crawl whenever the video throttle skipped ticks.
+      // ⚠ One gate and one clock for both paths. The video throttle decides WHICH ticks get
+      // here; how far the morph advances comes from real elapsed time below. Feed this the
+      // per-tick dt instead and the morph crawls whenever the throttle skips ticks.
       const rebuildBlend = shouldRebuildCloudBlend(ts, cloudBlendNext);
-      // Set only where the blend canvas is actually repainted, so the DM's GPU upload
-      // below can be skipped on the ticks that changed nothing.
+      // Set only where the blend canvas is repainted, so the DM's GPU upload can be skipped.
       let blendChanged = false;
 
       if (rebuildBlend && cloudFrames.length > 1 && cloudBlendCtx) {
-        // Advance by real elapsed time so a throttled rebuild morphs at exactly the rate
-        // an every-tick rebuild did, whatever the throttle is.
+        // Real elapsed time, so a throttled rebuild morphs at the every-tick rate.
         const morphSec = cloudBlendElapsedSec(ts, cloudBlendLastTs, FOG_CLOUD_BLEND_MAX_STEP);
         cloudBlendLastTs = ts;
         cloudBlendNext   = ts + FOG_CLOUD_BLEND_INTERVAL;
@@ -676,7 +781,7 @@ function fogAnimTick(ts) {
           cloudBlendCtx.globalCompositeOperation = 'source-over';
           cloudBlendCtx.globalAlpha = 1;
 
-          // cloudPattern is needed by the Player's Canvas-2D renderFog and transition recompositing.
+          // cloudPattern is what the Player's Canvas-2D renderFog draws with.
           if (isPlayer) {
             cloudPattern = cloudFrames[0].getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
           }
@@ -685,12 +790,11 @@ function fogAnimTick(ts) {
 
       if (!isDrawing) {
         if (!isPlayer) {
-          // DM GPU path: update TilingSprite drift every tick (cheap, and what makes
-          // the clouds drift), but re-upload the 512×512 cloud texture only on the
-          // ticks where the blend canvas was actually repainted.
+          // DM GPU path: drift every tick, but re-upload the cloud texture only on the ticks
+          // where the blend canvas was repainted.
           pixiUpdateFogAnim(fogAnimOffsets, fogAnimAlphas, blendChanged);
         } else {
-          // Player draws clouds in renderFog — just mark fogDirty
+          // Player draws clouds in renderFog.
           fogDirty = true;
           scheduleRender();
         }
@@ -713,7 +817,7 @@ function stopFogAnim() {
   if (fogAnimRafId) { cancelAnimationFrame(fogAnimRafId); fogAnimRafId = null; }
   for (let i = 0; i < CLOUD_PASSES.length; i++) fogAnimAlphas[i] = CLOUD_PASSES[i].alpha;
   if (!isPlayer) {
-    // DM GPU path: freeze TilingSprite alphas at static values; tilePositions stay as-is
+    // DM GPU path: freeze sprite alphas; tilePositions stay as they are.
     pixiUpdateFogAnim(null, fogAnimAlphas);
     return;
   }
@@ -722,31 +826,26 @@ function stopFogAnim() {
 }
 
 // ─── Fog transition ───────────────────────────────────────────────────────────
-// Clone fogEffectCanvas / fogBlurCanvas before the rebuild, then crossfade to the
-// new state over FOG_REVEAL_MS. Works for both reveal (fog disappears) and shroud
-// (fog appears) because we interpolate the fog-density canvases, not display pixels.
+// Clone fogEffectCanvas / fogBlurCanvas before the rebuild, then crossfade to the new state.
+// Reveal and shroud both work, because the interpolation is on fog-density canvases.
 
 function startFogTransition(isShroud = false) {
   fogTransIsShroud = isShroud;
   fogTransBlurNext = null; // reset so fogTransTick captures fresh fogBlurCanvas on next tick
 
-  // If a transition is already running, leave it going. rebuildFogEffect() (called by
-  // the caller right after this) will update fogBlurCanvas to include the new reveal,
-  // and the live RAF naturally picks that up as its new target — no snapshot needed.
-  // This avoids the snap (where the first reveal jumped to completion) without
-  // requiring a canvas blend that breaks due to source-over compositing on fog alpha.
+  // A transition already running is LEFT going: the caller's rebuildFogEffect() updates
+  // fogBlurCanvas and the live RAF picks that up as its new target. Snapshotting here instead
+  // makes the first reveal jump to completion.
   if (fogTransRafId !== null) return;
 
   if (!isPlayer) {
-    // DM GPU path: snapshot blur canvas for sprite crossfade
+    // DM GPU path: snapshot the blur canvas for the sprite crossfade.
     fogTransPrev = fogBlurCanvas ? cloneCanvas(fogBlurCanvas) : null;
     pixiSetFogTransition(fogTransPrev, 0);
   } else if (fogBlurCanvas) {
-    // Player (hybrid): fog is Canvas-2D on top. The transition morphs the reveal-hole
-    // shape — renderFog blends fogTransBlurPrev↔fogBlurCanvas via fogTransBlendCanvas each
-    // frame. No fogEffectCanvas snapshot, since the navy+cloud is redrawn fresh every frame.
-    // Player-only: renderFog returns early for the DM, so on the DM path both canvases
-    // below are map-sized allocations nothing ever reads.
+    // Player (hybrid): fog is Canvas-2D on top, and the transition morphs the reveal-hole shape.
+    // No fogEffectCanvas snapshot — the navy and cloud are redrawn every frame. Player-only:
+    // renderFog returns early for the DM, so on that path these would be dead allocations.
     fogTransBlurPrev = cloneCanvas(fogBlurCanvas);
     if (!fogTransBlendCanvas ||
         fogTransBlendCanvas.width  !== fogBlurCanvas.width ||
@@ -769,10 +868,9 @@ function fogTransTick(ts) {
   fogTransT = t * t * (3 - 2 * t); // smoothstep 0→1
 
   if (!isPlayer) {
-    // DM: sprite alpha crossfade
     pixiSetFogTransition(null, fogTransT);
   } else {
-    // Player fog-on-top: renderFog blends fogTransBlurPrev↔fogBlurCanvas via fogTransBlendCanvas
+    // Player fog-on-top: renderFog does the blend.
     fogDirty = true;
     scheduleRender();
   }
@@ -806,45 +904,36 @@ function stopFogTransition() {
 }
 
 // ─── Scene-switch cover ───────────────────────────────────────────────────────
-// A scene switch is covered by THE FOG ITSELF for its whole length, not by a DOM layer: the
-// fog closes over the OLD map the moment the switch starts, the new map is swapped in behind
-// it, and then the ordinary reveal clears it over FOG_REVEAL_MS. Two calls because the cover
-// and the reveal happen at different moments — the fog has to sit at full shroud for however
-// long the map takes to decode, and only then start clearing.
-// COVER EARLY, at the transition's 'out' phase, not when the new fog finishes loading. Waiting
-// leaves the flat blindfold on screen for the whole decode, which is a navy screen with the
-// fog arriving after it — the fog has to be what the players are looking at the entire time.
+// A scene switch is covered by THE FOG ITSELF, never by a DOM layer: the fog closes over the old
+// map, the new one is swapped in behind it, and the ordinary reveal clears it. Two calls, because
+// the fog must sit at full shroud for however long the map takes to decode.
+// ⚠ COVER EARLY, at the transition's 'out' phase, not when the new fog finishes loading. Waiting
+// puts a flat navy blindfold on screen for the whole decode.
 // Player only; the DM's fog is a PixiJS sprite crossfade and is not covered.
 //
 // Both work by feeding the ordinary transition a "previous" mask that is opaque everywhere.
-// renderFog reads that mask for ALPHA ONLY (destination-in), so an opaque fill of any colour
-// means "fogged here", and lerping it into the scene's real fogBlurCanvas IS the reveal.
+// renderFog reads it for ALPHA ONLY, so lerping it into the scene's real fogBlurCanvas IS the
+// reveal.
 
-// Close + name hold (SCENE_FADE_MIN_MS) + clear is the whole switch, ~7s. Slow on purpose:
-// this is the one beat the players watch instead of a map, so it is paced to be looked at.
+// Close + name hold + clear is the whole switch. Slow on purpose: this is the one beat the
+// players watch instead of a map.
 const FOG_SCENE_COVER_MS   = 2250; // fog closes over the outgoing map
 const FOG_SCENE_UNCOVER_MS = 3350; // fog clears off the incoming one
 
-// THE CLOUD TEXTURE IS ANCHORED TO THE MAP — its scale and origin come from mapWidth, zoom and
-// pan (see the transform in renderFog). A scene swap changes every one of those in a single
-// frame, so the texture would jump to a new scale and origin; under an opaque cover that jump
-// is the only thing on screen, and it reads as the fog resetting.
-// THE JUMP IS REMOVED, NOT ANIMATED ACROSS. Two maps fitted to the same screen sit at
-// different zooms, so the scale change between them can be several-fold; eased over the
-// reveal it reads as the whole fog zooming, and cross-fading the two bitmaps instead just
-// dissolves one cloud scale into another, which reads as a wash. Both were built and removed.
-// Instead the texture is PINNED for the length of the switch and the incoming scene is then
-// re-anchored onto that same pinned transform, so there is nothing left to travel across.
-// The cost is that cloud size no longer tracks each map's fit-zoom — it carries forward, which
-// is the more consistent look anyway: the same weather in front of the screen on every map.
-// Pan and zoom inside a scene still scale the clouds, because the adjustment is a multiplier.
+// THE CLOUD TEXTURE IS ANCHORED TO THE MAP — scale and origin come from mapWidth, zoom and pan.
+// A scene swap changes all of those in one frame, and under an opaque cover that jump is the only
+// thing on screen.
+// ⚠ THE JUMP IS REMOVED, NEVER ANIMATED ACROSS. Two maps fitted to one screen can sit several-fold
+// apart in zoom, so easing it reads as the whole fog zooming. The texture is PINNED for the length
+// of the switch and the incoming scene re-anchored onto that transform.
+// Cloud size therefore carries forward rather than tracking each map's fit-zoom. Pan and zoom
+// inside a scene still scale the clouds, because the adjustment is a multiplier.
 function freezeCloudTransform() {
   if (!isPlayer || !fogCloudLast) return;
   fogCloudHold = fogCloudLast;
 }
 
-// Adopt the pinned transform as the new scene's own. By construction the next frame draws
-// exactly what the pinned one was drawing, so releasing the pin changes nothing on screen.
+// Adopt the pinned transform as the new scene's own, so releasing the pin changes nothing.
 function rebaseCloudTransform() {
   if (!fogCloudHold) return;
   const held = fogCloudHold;
@@ -884,22 +973,19 @@ function fogCoverTick(ts) {
   if (cb) cb();
 }
 
-// Close the fog over the outgoing map. Returns false when there is nothing to draw fog WITH
-// (the session's first map, before any cloud pattern exists); only then does the caller fall
-// back to the flat blind. onCovered fires when the map is completely hidden — that is the
-// moment the scene name is allowed to appear.
+// Close the fog over the outgoing map. Returns false when there is nothing to draw fog WITH (the
+// session's first map), and only then may the caller fall back to the flat blind. onCovered fires
+// when the map is hidden, which is when the scene name may appear.
 function closeFogOverMap(onCovered) {
   if (!isPlayer || !fogDataCanvas || !cloudPattern) return false;
-  // The cover has to keep drifting to read as fog and not as a navy fill. No-op if the loop
-  // is already up, so this only matters when the switch begins with the animation idle.
+  // The cover has to keep drifting to read as fog rather than a navy fill.
   startFogAnim();
   animateFogCover(1, FOG_SCENE_COVER_MS, onCovered);
   return true;
 }
 
-// Skip straight to fully covered. The safety net for a scene payload that arrives while the
-// fog is still closing: finishing the cover early is a small ugliness, showing the swap
-// through a half-closed cover is a broken one.
+// Skip straight to fully covered — the safety net for a payload arriving while the fog is still
+// closing. Finishing early is a small ugliness; a swap seen through a half-closed cover is not.
 function snapFogCover(v) {
   if (fogCoverRafId) { cancelAnimationFrame(fogCoverRafId); fogCoverRafId = null; }
   fogCoverDone = null;
@@ -908,24 +994,20 @@ function snapFogCover(v) {
   scheduleRender();
 }
 
-// Clear the fog off the new map. Mirrors the close, so the switch is one movement out and
-// back rather than two unrelated effects.
+// Clear the fog off the new map. Mirrors the close, so the switch is one movement.
 function openFogFromCover() {
   if (!isPlayer || fogCoverT <= 0) return;
-  // Every path that ends a switch reaches here, including a map that failed to load, so the
-  // pin can never be left held forever.
+  // Every path that ends a switch reaches here, so the pin is never left held.
   rebaseCloudTransform();
   animateFogCover(0, FOG_SCENE_UNCOVER_MS, null);
 }
 
 // ─── Fog colour across a switch ───────────────────────────────────────────────
-// Fog colour is per scene, so two scenes that disagree used to swap the whole screen from one
-// colour to the other in a single frame — the incoming scene lands while the cover is fully
-// closed, which is precisely when the colour IS the entire picture.
-// EASED OVER THE CLOSE, NOT THE REVEAL. The fog reaches the new colour while it is thickening,
-// so the hold and the whole reveal are already in it and nothing changes in open view. The DM
-// sends the destination the moment it has read the scene record (sceneManager.js), normally
-// well inside the close; a late one eases over whatever is left, floored so it is never a snap.
+// Fog colour is per scene, and the incoming scene lands while the cover is fully closed, which is
+// exactly when the colour IS the entire picture.
+// ⚠ EASED OVER THE CLOSE, NOT THE REVEAL. The fog reaches the new colour while thickening, so the
+// hold and the reveal are already in it. A late destination eases over whatever is left, floored
+// so it is never a snap.
 let fogColorFromHex = null, fogColorToHex = null;
 let fogColorStart = 0, fogColorDur = 0, fogColorRafId = null;
 const FOG_COLOR_EASE_MIN_MS = 700;
@@ -969,7 +1051,7 @@ function revealAllFog() {
   baseFogCtx.clearRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
   if (typeof polygons !== 'undefined') polygons.forEach(p => { p.mode = 'reveal'; });
   rebuildFogFromPolygons();
-  // The room card's fog pill would otherwise be lying about the fog until the next repaint.
+  // Otherwise the room card's fog pill lies about the fog until the next repaint.
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 }
 
@@ -984,9 +1066,7 @@ function shroudAllFog() {
 
 // ─── Live fog color ───────────────────────────────────────────────────────────
 
-// Called by the DM color picker (and Player on receiving fog-color message).
-// pickedHex: the raw picked color from the <input type="color">.
-// Derives base+tint, updates both state vars, and repaints both render paths.
+// Derives base+tint from the raw picked colour and repaints both render paths.
 function applyFogColor(pickedHex) {
   fogPickedHex = pickedHex;
   const { base, tint } = deriveFogColors(pickedHex);
@@ -994,16 +1074,16 @@ function applyFogColor(pickedHex) {
   fogTintColor = tint;
 
   if (!isPlayer) {
-    // DM: PixiJS path — re-fill base rect and tint overlay (live on next PixiJS render tick).
-    // Also recomposite fogEffectCanvas so brush-stroke preview uses the new colors.
+    // DM: re-fill base rect and tint overlay, and recomposite fogEffectCanvas so the
+    // brush-stroke preview uses the new colours.
     if (typeof pixiUpdateFogBaseColor === 'function') pixiUpdateFogBaseColor(base);
     if (typeof pixiUpdateFogTintColor === 'function') pixiUpdateFogTintColor(tint);
     recompositeCloudEffect(fogAnimOffsets.length ? fogAnimOffsets : null);
     viewportDirty = true;
     scheduleRender();
   } else {
-    // Player: Canvas-2D fog-on-top — fogBaseColor and fogTintColor read at renderFog time.
-    // Also update the container CSS background (outside-map area).
+    // Player: renderFog reads the colours itself; the container background is the outside-map
+    // area.
     const container = document.getElementById('canvas-container');
     if (container) container.style.background = base;
     fogDirty = true;
@@ -1025,23 +1105,18 @@ function applyFogTintAlpha(alpha) {
   }
 }
 
-// Handles the Player-side fog-color postMessage. Extracted from the inline receiver
-// so no new logic lives in index.html.
+// Handles the Player-side fog-color postMessage.
 function handleFogColorMessage(msg) {
   if (msg.fogTintAlpha != null) FOG_TINT_ALPHA = msg.fogTintAlpha;
-  // A switch's colour ease OWNS the colour until it lands. The DM restores the incoming
-  // scene's fog settings partway through the close and pushes that colour down here, and
-  // applying it would snap in one frame to the destination the ease is already crossing to.
-  // Retarget rather than ignore, so a colour picked DURING a switch still arrives.
+  // ⚠ A switch's colour ease OWNS the colour until it lands, or the DM's mid-close push snaps to
+  // the destination in one frame. Retarget rather than ignore, so a colour picked DURING a switch
+  // still arrives.
   if (fogColorToHex) { fogColorToHex = msg.pickedHex; return; }
   applyFogColor(msg.pickedHex);
 }
 
-// Restores fog color + tint from a scene record on the DM side (called from switchScene,
-// after pixiInitFog). Falls back to defaults for scenes that predate fog persistence.
-// Syncs the Fog-panel DOM so the UI matches, then pushes the color to the Player.
-// Runtime defaults for the anim bundle — match fog.js initializer values + force-enabled
-// (init at index.html forces fogAnimEnabled=true). Used when a scene has no anim data.
+// Restores fog colour + tint from a scene record on the DM side, syncing the Fog-panel DOM.
+// Defaults cover scenes that predate fog persistence.
 const ANIM_RUNTIME_DEFAULTS = {
   enabled: true, speed: 1.0, drift: 1.0, morph: 0.35,
   warpStr: 0.15, warpRad: 0.08, pulse: 0.30,
@@ -1060,10 +1135,8 @@ function restoreSceneFogSettings(scene) {
   if (colorEl)  colorEl.value  = hex;
   if (sliderEl) sliderEl.value = Math.round(alpha * 100);
   if (numEl)    numEl.value    = Math.round(alpha * 100);
-  // Don't call syncFogColorToPlayer here — the color arrives bundled in the sendToPlayer
-  // fog-update message (pickedHex field). Calling it early sends the new color to the Player
-  // while the scene-fade overlay is still animating (500ms CSS transition), causing the Player
-  // to render the new color over the old scene's fog canvas — the visible flicker.
+  // ⚠ Never call syncFogColorToPlayer here. The colour rides the sendToPlayer fog-update message;
+  // sending it early paints the new colour over the old scene's fog, which flickers.
 
   const prevWarpStr = cloudWarpStrength;
   const prevWarpRad = cloudWarpRadius;
@@ -1097,14 +1170,13 @@ function restoreSceneFogSettings(scene) {
   if (typeof refreshFogControlUI === 'function') refreshFogControlUI();
 }
 
-// ─── Anim-panel DOM helpers (moved from inline script; called by restoreSceneFogSettings + wiring) ───
+// ─── Anim-panel DOM helpers ───────────────────────────────────────────────────
 
 // Midpoint reference values for the log-scale sliders (slider=500 ↔ these values).
 const ANIM_DEFAULTS = {
   drift: 0.5, morphSpeed: 0.20, warpStr: 0.10, warpRad: 0.06, pulse: 0.15
 };
 
-// Syncs all anim-panel slider + numeric elements to the current live globals.
 function updateAnimSliders() {
   document.getElementById('anim-speed').value = Math.round(fogAnimSpeed * 100);
   document.getElementById('anim-speed-num').value = Math.round(fogAnimSpeed * 100);
@@ -1156,16 +1228,14 @@ function initFogControls() {
     scheduleAutoSync();
   };
 
-  // Half-shroud density. Persisted, unlike Feather above: the DM dials this in across several
-  // sittings before deciding whether half-shroud earns its place, so losing it on restart
-  // would lose the experiment. Global preference, so localStorage — never a scene or a backup.
+  // Half-shroud density. Persisted, unlike Feather above, because it is dialled in across
+  // sittings. Global preference, so localStorage — never a scene or a backup.
   const halfSlider = document.getElementById('fog-half-alpha');
   const halfNum    = document.getElementById('fog-half-alpha-num');
   const applyHalf = pct => {
     fogHalfAlpha = pct / 100;
     try { localStorage.setItem(FOG_HALF_ALPHA_KEY, String(pct)); } catch (_) {}
-    // Rebuild every time, including mid-drag: watching half rooms change while dragging IS
-    // the point of the slider. Same per-tick cost as Feather, which already does this.
+    // Rebuild every time, including mid-drag: watching half rooms change IS the point.
     rebuildFogFromPolygons();
     rebuildFogEffect();
     fogDirty = true;
@@ -1179,8 +1249,7 @@ function initFogControls() {
     halfSlider.value = v;
     applyHalf(v);
   };
-  // Restore the stored value. A garbage entry parses to NaN and is skipped, leaving the
-  // markup's default of 50 — the same self-healing read as RP_DESC_H_KEY in roomPanel.js.
+  // A garbage entry parses to NaN and is skipped, leaving the markup's default.
   try {
     const stored = parseInt(localStorage.getItem(FOG_HALF_ALPHA_KEY), 10);
     if (!isNaN(stored)) {
@@ -1189,6 +1258,41 @@ function initFogControls() {
       halfNum.value = v;
       fogHalfAlpha = v / 100;
     }
+  } catch (_) {}
+
+  // Door size, in percent of a grid cell. A preference the DM sets once, like Half above, so it
+  // lives in localStorage and never in a scene or a backup.
+  const applyDoorSize = () => {
+    try { localStorage.setItem(DOOR_SIZE_KEY, doorWidthPct + ',' + doorDepthPct); } catch (_) {}
+    rebuildFogFromPolygons();
+    rebuildFogEffect();
+    fogDirty = true;
+    scheduleRender();
+    scheduleAutoSync();
+  };
+  const doorFields = [['door-width-num', v => { doorWidthPct = v; }],
+                      ['door-depth-num', v => { doorDepthPct = v; }]];
+  doorFields.forEach(([id, set]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.onchange = function() {
+      const v = Math.max(0, Math.min(300, Math.round(+this.value) || 0));
+      this.value = v;
+      set(v);
+      applyDoorSize();
+    };
+  });
+  // A garbage entry parses to NaN and is skipped, leaving the markup's defaults.
+  try {
+    const parts = String(localStorage.getItem(DOOR_SIZE_KEY) || '').split(',');
+    [doorFields[0], doorFields[1]].forEach(([id, set], i) => {
+      const v = parseInt(parts[i], 10);
+      if (isNaN(v)) return;
+      const clamped = Math.max(0, Math.min(300, v));
+      set(clamped);
+      const el = document.getElementById(id);
+      if (el) el.value = clamped;
+    });
   } catch (_) {}
 
   const fogColorPicker   = document.getElementById('fog-color');

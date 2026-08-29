@@ -84,10 +84,21 @@
     align-items: center;
     gap: 3px;
   }
-  /* ⚠ ONLY THESE THREE HIDE THEMSELVES, and only until init. updateContextPanels() writes an
+  /* ⚠ ONLY THESE FOUR HIDE THEMSELVES, and only until init. updateContextPanels() writes an
      inline display on exactly this list; a group not on it — #material-row — must not start
      hidden, because nothing will ever turn it back on. */
-  #ctx-rooms, #ctx-effects, #panel-brush-bottom { display: none; }
+  #ctx-rooms, #ctx-effects, #ctx-door, #panel-brush-bottom { display: none; }
+  #ctx-door { gap: 6px; }
+  /* The door fields are stock .cp-chip-pre, which is flex:1 because the control panel gives it a
+     column to fill. Nothing does here, and its input is width:0, so the chip needs its own size. */
+  #ctx-door .cp-chip-pre { flex: none; width: 74px; }
+  /* A read-only line, not a control: it says where the Door tool takes its size from. Muted so it
+     cannot be mistaken for something to press. */
+  .tb-hint {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 11px;
+    white-space: nowrap;
+  }
   /* Brush size is a second group in the same pill, so it needs the wider gap to read as its own
      thing rather than as more of the trio beside it. */
   #panel-brush-bottom { gap: 11px; margin-left: 4px; }

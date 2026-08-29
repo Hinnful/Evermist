@@ -28,23 +28,19 @@ if (stressMode) {
   console.log('[stress] powerSaveBlocker started id=' + id + ' interval=' + stressMs + 'ms');
 }
 
-// Portable data: store all Chromium user data (IndexedDB, caches) next to the
-// .exe so the entire folder can be copied between PCs.
-// electron-builder portable sets PORTABLE_EXECUTABLE_DIR to the real .exe location
-// (the app itself runs from a temp extraction directory).
+// Portable data: all Chromium user data sits next to the .exe so the folder can be copied between
+// PCs. PORTABLE_EXECUTABLE_DIR is the real .exe location; the app runs from a temp extraction.
 const portableDir = process.env.PORTABLE_EXECUTABLE_DIR;
 if (portableDir) {
   app.setPath('userData', path.join(portableDir, 'evermist-data'));
 }
 
-// Prevent Chromium from removing the video track on muted looping videos that its
-// compositor deems "occluded" (covered by canvas layers). Without this flag,
-// readyState drops to 1-2 after ~30 s, causing cyclic 1-3 s video freezes.
+// ⚠ Keeps Chromium from removing the video track on a muted looping video its compositor deems
+// occluded. Without it readyState drops after ~30 s and the video freezes cyclically.
 app.commandLine.appendSwitch('disable-features', 'BackgroundVideoTrackOptimization');
 
-// Window/taskbar icon for `npm start` (dev). In packaged builds the OS uses the
-// icon embedded in the .exe/.app by electron-builder, so a missing file here is
-// harmless — fall back to undefined rather than pointing at a non-existent path.
+// Window/taskbar icon for `npm start`. A packaged build uses the icon embedded in the .exe, so a
+// missing file here is harmless — fall back to undefined.
 const devIcon = path.join(__dirname, 'build', 'icon.png');
 const windowIcon = fs.existsSync(devIcon) ? devIcon : undefined;
 
@@ -108,9 +104,8 @@ function createDMWindow() {
   // here instead — lets it pause the PixiJS ticker / flush the texture pool while hidden.
   win.on('minimize', () => win.webContents.send('window-visibility', { visible: false }));
   win.on('restore',  () => win.webContents.send('window-visibility', { visible: true  }));
-  // Hand off from splash to the app once the renderer has painted. Keep the splash
-  // up for a brief minimum so it reads as a branded intro rather than a flash, and
-  // cap it so a slow init can never leave the splash hanging.
+  // Hand off from splash to app once the renderer has painted. A minimum keeps it from flashing,
+  // and a cap keeps a slow init from leaving the splash up.
   const MIN_SPLASH_MS = 1000;
   let handedOff = false;
   const handOff = () => {
@@ -120,10 +115,8 @@ function createDMWindow() {
     setTimeout(() => {
       win.show();
       if (!splash.isDestroyed()) splash.destroy();
-      // The splash is alwaysOnTop and owns the OS focus right up to its destruction, so
-      // show() alone can leave the app visible but not focused — the first click is spent
-      // activating the window and every key before it goes nowhere. Claim focus once the
-      // splash is gone and nothing is left to compete for it.
+      // The splash is alwaysOnTop and owns the OS focus until it is destroyed, so show() alone
+      // leaves the app visible but not focused. Claim focus once nothing competes for it.
       win.focus();
     }, wait);
   };
@@ -159,13 +152,10 @@ function createDMWindow() {
     });
     childWin.on('minimize', () => childWin.webContents.send('window-visibility', { visible: false }));
     childWin.on('restore',  () => childWin.webContents.send('window-visibility', { visible: true  }));
-    // Fullscreen here is NATIVE window fullscreen, so the renderer sees no
-    // fullscreenchange and document.fullscreenElement stays null — the state only exists
-    // in this process. Report it, or the DM's fullscreen button can never show whether it
-    // is on. Sent on load too, so the DM starts with the true value rather than a guess.
-    // TAKE THE STATE FROM THE EVENT, NEVER FROM isFullScreen() INSIDE THE HANDLER. On
-    // Windows the flag still holds the OLD value while the event runs, so reading it there
-    // reports every change backwards — the button lights up exactly when it shouldn't.
+    // NATIVE window fullscreen, so the renderer sees no fullscreenchange and the state lives only
+    // here. Report it, or the DM's fullscreen button cannot show whether it is on.
+    // ⚠ TAKE THE STATE FROM THE EVENT, NEVER FROM isFullScreen() INSIDE THE HANDLER: on Windows
+    // the flag still holds the OLD value while the event runs, so every change reports backwards.
     const sendFullScreenState = (fullScreen) => {
       if (childWin.isDestroyed()) return;
       childWin.webContents.send('fullscreen-state', { fullScreen });
@@ -278,11 +268,9 @@ ipcMain.handle('get-video-file-path', async (_event, sceneId) => {
   return null;
 });
 
-// Read a scene's video into an ArrayBuffer so the Player can play it from an
-// in-memory blob instead of the same file:// path the DM is already streaming.
-// Two <video> elements reading the same file concurrently starve Chromium's media
-// pipeline for it (decode drops to 0, both windows stall at readyState 2); a private
-// blob per window removes that contention.
+// Read a scene's video into an ArrayBuffer so the Player plays an in-memory blob rather than the
+// file:// path the DM is already streaming. ⚠ Two <video> elements on one file starve Chromium's
+// media pipeline and both windows stall.
 ipcMain.handle('read-video-file', async (_event, sceneId) => {
   if (!isSafeId(sceneId)) return null;
   for (const ext of ['.webm', '.mp4']) {
@@ -323,13 +311,11 @@ ipcMain.handle('delete-video-file', async (_event, sceneId) => {
 
 // --- Floor plan sibling lookup ---
 
-// Dungeon Alchemist writes a `.dd2vtt` floor plan beside the map it exports, so the
-// renderer only has to ask "did this map come with one?".
+// Dungeon Alchemist writes a `.dd2vtt` floor plan beside the map it exports, so the renderer only
+// asks whether this map came with one.
 //
-// DELIBERATELY NARROW: main derives the sibling path itself and reads nothing else. A
-// general "read this path" bridge is a far larger surface than one sibling lookup needs,
-// and a floor plan is untrusted input. Returns null on ANY failure, because no plan and an
-// unreadable plan must behave identically — a rejection here would strand the import.
+// ⚠ DELIBERATELY NARROW: main derives the sibling path itself and reads nothing else, because a
+// floor plan is untrusted input. Returns null on ANY failure — a rejection strands the import.
 ipcMain.handle('find-floor-plan', async (_event, mapPath) => {
   try {
     if (typeof mapPath !== 'string' || !mapPath) return null;
@@ -349,11 +335,9 @@ let logsDir;
 
 const _diagModeFiles = { dm: 'video-diag-dm.log', player: 'video-diag-player.log' };
 
-// One long-lived append stream per mode. Deliberately NOT appendFileSync: during a
-// video stall both windows emit dozens of diag events/sec, and a synchronous
-// open/write/close on the shared main process for each would back up the event loop
-// and starve the video pipeline — amplifying the very stall we're trying to observe.
-// A buffered WriteStream writes async and keeps the fd open, so logging stays cheap.
+// One long-lived append stream per mode. ⚠ Never appendFileSync: during a stall both windows emit
+// dozens of events a second, and synchronous writes back up the main process and starve the video
+// pipeline, amplifying the stall being observed.
 const _diagStreams = {};
 
 function _diagStream(mode) {
@@ -366,11 +350,9 @@ function _diagStream(mode) {
   return _diagStreams[mode];
 }
 
-// On each launch, retire the previous session's log to a dated archive and keep only
-// the last 3 per mode (2 archives + the fresh current session). The logs write
-// continuously whenever a video plays (watchdog heartbeat every ~3s) regardless of
-// whether the on-screen overlay is open, so in append mode they'd grow without bound.
-// The live session keeps the stable filename (video-diag-<mode>.log); history is dated.
+// On each launch, retire the previous log to a dated archive and keep only the last few per mode.
+// The logs write continuously whenever a video plays, so append mode grows without bound. The live
+// session keeps the stable filename; history is dated.
 function _rotateDiagLogs() {
   if (!logsDir) return;
   const pad = n => String(n).padStart(2, '0');
@@ -410,11 +392,9 @@ ipcMain.handle('app-version', () => app.getVersion());
 
 // --- Memory probe: per-process working set (src/memProbe.js, ?memprobe=1) ---
 //
-// getAppMetrics() is the only reading that covers what actually costs memory here. A
-// renderer's performance.memory reports the JS heap alone, and every large allocation in
-// this app — canvas backing stores, GPU textures, the video decoder — is native memory
-// outside it. workingSetSize is also the number Task Manager shows, so it is the one that
-// matches what a user reports.
+// getAppMetrics() is the only reading that covers what costs memory here: performance.memory
+// reports the JS heap alone, and canvas backing stores, GPU textures and the video decoder are all
+// native memory outside it. workingSetSize is also what Task Manager shows.
 ipcMain.handle('mem-metrics', () => {
   try {
     return app.getAppMetrics().map(m => ({
@@ -432,21 +412,17 @@ ipcMain.handle('mem-metrics', () => {
 // --- Module text: PDF → plain text IPC ---
 //
 // A published campaign module ships as a PDF, so the app converts it rather than asking the DM to
-// export and "prepare" a file first. The bytes come over IPC rather than a path, because Electron
-// removed File.path in v32 and this app is on 43.
+// prepare a file. The bytes come over IPC rather than a path, because Electron removed File.path.
 //
-// THE PARSE DOES NOT RUN IN THIS PROCESS. A module is a file from somewhere else and pdf.js is a
-// large parser for a format built to carry embedded programs, so it runs in a utilityProcess that
-// is forked per import and killed as soon as it answers — see src/pdfExtract.js for what that does
-// and does not buy. It also cannot run in the renderer: pdfjs-dist is ESM-only and browser-side
-// `import` breaks on file:// (CLAUDE.md), and the renderer stays ES-module-free.
+// ⚠ THE PARSE DOES NOT RUN IN THIS PROCESS. A module is a file from somewhere else and pdf.js is a
+// large parser for a format built to carry embedded programs, so it runs in a utilityProcess forked
+// per import and killed as soon as it answers. It cannot run in the renderer either: pdfjs-dist is
+// ESM-only and browser-side `import` breaks on file://.
 //
-// Measured on a real 255-page module: ~1.4s and ~950KB of text, which is why there is no progress
-// bar. The renderer shows a "Reading PDF…" state and that is enough.
+// A whole module reads in a second or so, which is why there is no progress bar.
 
-// The one place that knows the asar rewrite: pdfjs-dist is unpacked (package.json asarUnpack)
-// because ESM resolves through real filesystem paths and does not go through Electron's asar
-// redirect. The child is handed the resolved directory rather than working it out itself.
+// The one place that knows the asar rewrite: pdfjs-dist is unpacked because ESM resolves through
+// real filesystem paths. The child is handed the resolved directory.
 const PDFJS_BUILD_DIR = path.join(
   __dirname.replace('app.asar', 'app.asar.unpacked'),
   'node_modules', 'pdfjs-dist', 'legacy', 'build',
@@ -491,10 +467,8 @@ ipcMain.handle('show-save-dialog', async (event, opts) => {
   return canceled ? null : filePath;
 });
 
-// scenesData: [{id, mapType, mapExt, metadata, mapBuffer (ArrayBuffer|null), fogBuffer, thumbBuffer}]
-// Video maps are read from mapsDir by id; image/fog/thumb come as ArrayBuffers.
-// moduleText: the renderer's serialised module text, or null — campaign-level, so it lands at the
-// zip root beside manifest.json rather than under scenes/.
+// Video maps are read from mapsDir by id; image, fog and thumb arrive as ArrayBuffers.
+// moduleText is campaign-level, so it lands at the zip root beside manifest.json.
 ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText) => {
   // Pre-check which video files actually exist on disk
   for (const s of scenesData) {
@@ -559,10 +533,8 @@ ipcMain.handle('read-backup-manifest', async (_event, zipPath) => {
   });
 });
 
-// Returns moduleText.json from the zip as a RAW STRING for the renderer to deserialise, or null.
-//
-// Absence RESOLVES NULL rather than rejecting, unlike the manifest above: no module text is the
-// normal case, since it is every zip written before module text shipped.
+// Returns moduleText.json from the zip as a RAW STRING, or null. Absence RESOLVES NULL rather than
+// rejecting, unlike the manifest above: no module text is the normal case.
 ipcMain.handle('read-backup-module-text', async (_event, zipPath) => {
   return new Promise((resolve, reject) => {
     yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
@@ -659,10 +631,9 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
         });
       });
 
-      // A FINAL 100%. pending[] is seeded with all three parts, but a zip need not carry
-      // every one — a scene saved before thumbnails existed, or a video whose file was
-      // already missing at export. Such a scene never empties its list, so markDone()
-      // never counts it and the bar stops short of a restore that in fact finished.
+      // A FINAL 100%. pending[] is seeded with all three parts, but a zip need not carry every
+      // one, and such a scene never empties its list — so the bar stops short of a finished
+      // restore without this.
       zipfile.on('end', () => {
         zipfile.close();
         if (doneScenes < assignments.length) {

@@ -4,55 +4,43 @@
 // material swatches the toolbar picker paints itself with. The array and its id counter live in
 // state.js beside `polygons`.
 //
-// AN EFFECT IS A POLYGON. Same record as a room — {id, vertices, cornerRadius, cornerRadii,
-// name} — carrying a `material` where a room carries a fog `mode`. That is what lets the Select
-// tool, vertex dragging, edge dragging, corner rounding and Delete all serve both with one set
-// of paths in tools.js, rather than a second half-built editor for effects.
+// AN EFFECT IS A POLYGON: the same record as a room, carrying a `material` where a room carries a
+// fog `mode`. That is what lets the Select tool, vertex and edge dragging, corner rounding and
+// Delete serve both from one set of paths in tools.js.
 //
 // What crosses to the Player is that record, never pixels — the Player paints the same fire from
-// the same material name. A 40-metre wall of fire costs the wire a few dozen bytes.
+// the same material name.
 //
-// THE LOOK IS A FLAMING FRAME (docs/DECISIONS.md, docs/PRODUCT.md). An effect marks WHERE an area
-// sits so combat stays legible on a TV: the outline burns with flame tongues that lick INWARD and
-// dissolve at their tips, so the zone reads as holding the hazard rather than spilling it. It is
-// PROCEDURAL — a fragment shader, no image assets — because readymade fire clips smear when
-// stretched to a room and seamless textures were rejected on look.
+// THE LOOK IS A FLAMING FRAME (docs/DECISIONS.md, docs/PRODUCT.md). The outline burns with tongues
+// that lick INWARD and dissolve, so the zone reads as holding the hazard rather than spilling it.
+// PROCEDURAL, with no image assets: readymade fire clips smear when stretched to a room.
 //
-// ⚠ THE FIRE IS A SHADER OVER THE POLYGON'S OWN DISTANCE FIELD, not strokes. One PIXI.Mesh per
-// effect covers the shape's bounding box; the fragment shader computes signed distance to the
-// polygon (so it works on any drawn shape) and grows the fire in the band just inside the edge.
-// This is why it survives arbitrary polygons, rounded or not — the fillet is ignored, a flame
-// does not need it.
+// ⚠ THE FIRE IS A SHADER OVER THE POLYGON'S OWN DISTANCE FIELD, never strokes. One PIXI.Mesh per
+// effect covers the bounding box, and the fragment shader grows fire in the band just inside the
+// edge — which is why it survives any drawn shape, rounded or not.
 //
-// Effects draw UNDER the fog on both screens (pixiEffectsLayer sits between the map layer and the
-// fog layer), so an effect in an unexplored room is hidden for free — no stripping guard.
+// Effects draw UNDER the fog on both screens, so an effect in an unexplored room is hidden for
+// free — no stripping guard.
 
 // ─── Materials ────────────────────────────────────────────────────────────────
-// A material is a warmth (0 = red/orange ember, 1 = white-hot) plus the swatch colours.
+// A material is a warmth (0 = red ember, 1 = white-hot) plus the swatch colours.
 //
-// ⚠ FIRE IS THE ONLY ONE, AND A SECOND ENTRY IS NOT ENOUGH TO ADD ONE. The shader's colour
-// ramp (fireRamp) is hardcoded orange and reads only `warm`; `glow` and `core` reach the swatch
-// and nothing else. So an `acid` entry with green swatch colours shipped a green button that
-// painted orange fire — the picker lied about what it would put on the map. It was removed for
-// that reason. Before adding a material, make the ramp read the material's own colours.
-// `glow` and `core` are the material's own colours. NOTHING READS THEM TODAY - they are what the
-// ramp will need when it stops being hardcoded, and this is the only place fire's colours are
-// written down.
+// ⚠ FIRE IS THE ONLY ONE, AND A SECOND ENTRY IS NOT ENOUGH TO ADD ONE. The shader's colour ramp is
+// hardcoded orange and reads only `warm`, so a green entry ships a green button that paints orange
+// fire. Make the ramp read the material's own colours first.
+// `glow` and `core` reach the swatch and nothing else. They are what the ramp will need.
 const EFFECT_MATERIALS = {
   fire: { warm: 0.30, glow: 0xff5a1e, core: 0xffe0a0 },
 };
 
-// The settled look — the "Cinder seam" border plus the interior and atmosphere. THE DM TUNED
-// THESE ON A REAL MAP AND SIGNED THEM OFF; they are the app's one look, not a picker, and there
-// is no UI that edits them. Change one only on a fresh look call from the DM.
-// The grid relight is separate, in grid.js (drawEffectGridGlow), because the map grid is a canvas
-// above this layer.
+// The settled look — the "Cinder seam" border plus the interior and atmosphere. ⚠ The app's one
+// look, with no UI that edits it. Change a value only on a fresh look call from the DM.
+// The grid relight is separate, in grid.js, because the map grid is a canvas above this layer.
 const FX_LOOK = { heightMul: 0.50, speed: 1.00, diss: 0.55, fill: 0.20,
                   spark: 1.00, smoke: 0.40, haze: 0.70, gridGlow: 0.60 };
 
-// The outline colour a shape preview and an effect's own edge take when SELECTED or previewed on
-// the DM — a plain editing outline, separate from the burning render. A different family from the
-// three fog colours in POLY_EDGE_COLORS so an effect never reads as a fourth fog state.
+// The editing outline for a selected or previewed effect, separate from the burning render. A
+// different colour family from POLY_EDGE_COLORS, so an effect never reads as a fourth fog state.
 const EFFECT_EDGE_COLOR = '#ff8a3d';
 
 // Flame reach INTO the zone, in map units, tied to the grid so the fire stays proportional to the
@@ -75,8 +63,7 @@ function addEffect(vertices) {
               name: mat.charAt(0).toUpperCase() + mat.slice(1) + ' ' + id };
   effects.push(e);
   effectsChanged();
-  // Rides the Auto/Manual sync gate exactly as a fog reveal does: Auto puts it on the TV as soon
-  // as it is drawn, Manual holds it until the DM presses Send. scheduleAutoSync sends fog and
+  // Rides the Auto/Manual sync gate exactly as a fog reveal does. scheduleAutoSync sends fog and
   // effects together, so the two never disagree about when the Player updates.
   if (!isPlayer) { scheduleAutoSync(); scheduleAutoSave(); }
   return e;
@@ -102,15 +89,14 @@ function effectsChanged() {
   // The grid's ember relight (grid.js) lives on the grid canvas, not here, so a change to the
   // effects has to redraw the grid too. On the Player that promotes to a viewport redraw.
   if (typeof gridDirty !== 'undefined') gridDirty = true;
-  // ⚠ AND ASK FOR THE FRAME. The fire itself rides the ticker, so it appears either way — the
-  // ember grid is a Canvas-2D layer that only paints inside doRender, and on the Player nothing
-  // else schedules one when a new effect list arrives.
+  // ⚠ AND ASK FOR THE FRAME. The fire rides the ticker, but the ember grid is Canvas-2D and only
+  // paints inside doRender, which nothing else schedules when a new effect list arrives.
   if (typeof scheduleRender === 'function') scheduleRender();
 }
 
 // ─── Rendering ────────────────────────────────────────────────────────────────
-// One PIXI.Mesh per effect. Its geometry is the shape's bounding box in MAP coordinates; the
-// fragment shader does the rest from the polygon's vertices, passed as a uniform.
+// One PIXI.Mesh per effect, its geometry the shape's bounding box in MAP coordinates. The fragment
+// shader does the rest from the polygon's vertices, passed as a uniform.
 const MAX_FX_VERTS = 64;
 const _fxInstances = new Map();   // effect id → { mesh, geom, buf, verts:Float32Array, geomKey }
 let _fxLayerRef = null;           // which pixiEffectsLayer the meshes were built against
@@ -148,9 +134,9 @@ float noise(vec2 p){
 }
 float fbm(vec2 p){ float v=0., a=.5; for(int i=0;i<5;i++){ v+=a*noise(p); p=p*2.03+vec2(11.,7.); a*=.5; } return v; }
 
-// Signed distance to the polygon (negative inside), the outward normal, and the nearest point on
-// the outline. Carries the previous vertex across the loop so only the loop index touches the
-// uniform array — safe on WebGL1, where dynamic array indexing is not guaranteed.
+// Signed distance to the polygon (negative inside), the outward normal, and the nearest outline
+// point. ⚠ Carries the previous vertex across the loop, so only the loop index touches the uniform
+// array — WebGL1 does not guarantee dynamic array indexing.
 void polyInfo(vec2 p, out float sd, out vec2 nrm, out vec2 near){
   vec2 vlast = uVerts[0];
   for(int i=0;i<${MAX_FX_VERTS};i++){ if(i>=uCount) break; vlast = uVerts[i]; }
@@ -251,9 +237,8 @@ void main(){
 
   vec4 R = vec4(0.0);                           // premultiplied, composited back-to-front
 
-  // haze: soft grey over the WHOLE zone, thinning as it climbs out above the top edge.
-  // ⚠ NOT GATED ON BEING NEAR THE EDGE. It used to be, and haze then read as a second smoke
-  // band hugging the outline rather than air hanging over the area.
+  // haze: soft grey over the WHOLE zone, thinning as it climbs above the top edge.
+  // ⚠ NEVER GATE IT ON BEING NEAR THE EDGE, or it reads as a second smoke band on the outline.
   if(uHaze > 0.001){
     float within = smoothstep(1.0, -2.0, d);                  // full strength anywhere inside
     float above  = smoothstep(0.0, -uG*2.2, p.y - uCentroid.y);
@@ -276,10 +261,9 @@ void main(){
   gl_FragColor = R;   // NORMAL blend, premultiplied: darkens the map
 }`;
 
-// Trace the outline as POINTS with the corners rounded — the same fillet geometry
-// buildRoundedPolyPath draws for rooms, but sampled into vertices the distance shader can walk.
-// This is what makes rounding an effect actually round its fire. Each corner becomes a short arc;
-// the whole thing is decimated to fit the shader's vertex cap.
+// Trace the outline as POINTS with the corners rounded — buildRoundedPolyPath's fillet geometry,
+// sampled into vertices the distance shader can walk, which is what rounds an effect's fire. Each
+// corner becomes a short arc, decimated to fit the shader's vertex cap.
 function _roundedPolyPoints(verts, defaultR, perVertR) {
   const n = verts.length;
   if (n < 3) return verts.map(v => ({ x: v.x, y: v.y }));
@@ -422,9 +406,8 @@ function pumpEffects() {
   for (const e of effects) {
     const inst = _fxInstances.get(e.id);
     if (!inst) continue;
-    // Only the four that actually move: the clock, and the three tied to grid size, which the
-    // DM can change under a placed effect. The FX_LOOK values are seeded once in mkShader and
-    // nothing edits them at runtime.
+    // Only the four that move: the clock, and the three tied to grid size, which the DM can change
+    // under a placed effect. FX_LOOK is seeded once in mkShader.
     for (const m of [inst.meshLight, inst.meshDark]) {
       const u = m.shader.uniforms;
       u.uTime = t; u.uHeight = height; u.uAlong = along; u.uG = cell;

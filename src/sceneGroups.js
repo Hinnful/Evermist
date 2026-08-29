@@ -1,14 +1,12 @@
 'use strict';
 
 // ─── Scene groups ─────────────────────────────────────────────────────────────
-// A group is a NAME a scene carries, never a container that holds scenes. The
-// scene's own `group` field is the only truth, and it rides the scene record
-// through IndexedDB and the backup zip like any other field.
+// A group is a NAME a scene carries, never a container. The scene's own `group` field is the only
+// truth, and it rides the record through IndexedDB and the backup zip.
 //
-// This module keeps the three things that field cannot express: the order the
-// groups appear in, which ones are collapsed, and a group made before anything
-// has been dragged into it. Those live in localStorage, deliberately — losing
-// them costs a collapse state and an empty heading, never a map.
+// This module keeps the three things that field cannot express: heading order, which are collapsed,
+// and a group made before anything was dragged into it. Those live in localStorage, where losing
+// them costs a collapse state, never a map.
 
 const SM_GROUPS_KEY  = 'evermist-scene-groups';
 const SM_GROUP_MAXLEN = 40;
@@ -18,9 +16,8 @@ let smGroupShut  = {};   // name → true while collapsed
 
 // ── Pure kernel (unit-tested) ────────────────────────────────────────────────
 
-// A group name is one line of trimmed text. Empty means ungrouped, which is why
-// every read of a scene's group goes through this: an all-spaces name would
-// otherwise make a heading nothing can ever be dragged out of.
+// A group name is one line of trimmed text, and empty means ungrouped. Every read goes through
+// this, or an all-spaces name makes a heading nothing can be dragged out of.
 function sanitizeGroupName(raw) {
   return String(raw == null ? '' : raw)
     .replace(/\s+/g, ' ')
@@ -39,9 +36,8 @@ function uniqueGroupName(base, taken) {
   return want;
 }
 
-// The stored order is a preference, not a record — a group name can appear on a
-// scene that arrived from a backup zip long after the order was written. So the
-// stored order leads, and any name it has never seen is appended.
+// The stored order is a preference, not a record: a name can arrive on a scene from a backup zip
+// long after the order was written. The stored order leads, and unseen names are appended.
 function mergeGroupOrder(storedOrder, namesInUse) {
   const inUse = new Set((namesInUse || []).map(sanitizeGroupName).filter(Boolean));
   const out = [];
@@ -58,9 +54,8 @@ function mergeGroupOrder(storedOrder, namesInUse) {
   return out;
 }
 
-// Splits scenes into display sections. Ungrouped is ALWAYS last and always
-// present when it holds anything — filing is never forced, so a DM who groups
-// nothing sees exactly the flat list they see today.
+// Splits scenes into display sections. Ungrouped is ALWAYS last and present whenever it holds
+// anything, so a DM who groups nothing still sees a flat list.
 function buildGroupSections(scenes, order) {
   const list = scenes || [];
   const names = mergeGroupOrder(order, list.map(s => sanitizeGroupName(s && s.group)));
@@ -106,9 +101,8 @@ function addGroup(name) {
   return n;
 }
 
-// Renaming rewrites the name on every scene wearing it; the caller persists those.
-// Renaming onto a name already in use MERGES the two groups, and the filter below is what
-// collapses the duplicate entry. The caller asks the DM first; this function does not.
+// Renaming rewrites the name on every scene wearing it, and the caller persists those. Renaming
+// onto a name already in use MERGES the two groups. The caller asks the DM first, not this.
 function renameGroupInOrder(from, to) {
   const a = sanitizeGroupName(from), b = sanitizeGroupName(to);
   if (!a || !b || a === b) return a;

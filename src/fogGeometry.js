@@ -1,12 +1,7 @@
-// fogGeometry.js — pure geometry + math kernel for the fog pipeline.
-// Extracted from fog.js / tools.js so this logic is argument-in / value-out
-// with zero DOM, canvas, RAF, or global-state dependencies — which is what
-// makes it unit-testable under node:test (the rest of fog.js is Canvas-2D
-// compositing and animation lifecycle, which is not node-testable). See CLAUDE.md.
+// fogGeometry.js — pure geometry + math kernel for the fog pipeline. Argument-in / value-out with
+// no DOM, canvas, RAF or global state, which is what makes it unit-testable.
 //
-// Loaded via <script src> BEFORE fog.js and tools.js, so these functions exist
-// when those modules reference them. Also require()-able in tests via the guard
-// at the bottom (same pattern as grid.js:lineWidthForZoom).
+// Loaded via <script src> BEFORE fog.js and tools.js, and require()-able in tests.
 
 'use strict';
 
@@ -21,11 +16,8 @@ function getPolyBBox(verts) {
 }
 
 // ─── Rounded polygon path ─────────────────────────────────────────────────────
-// Used by both the fog pipeline (applyPolygonToFog) and the cursor drawing
-// (drawPolyOutline in tools.js).
-// verts must be in target coordinate space.
-// perVertR: optional array of per-vertex radius overrides (null entries fall back to defaultR).
-// Concave (reflex) vertices are always sharp — prevents inside-out arc deformation.
+// Used by both the fog pipeline and the cursor drawing. verts must be in target space, and
+// perVertR overrides defaultR per vertex. ⚠ Reflex vertices are always sharp, or the arc deforms.
 function buildRoundedPolyPath(ctx, verts, defaultR, perVertR) {
   const n = verts.length;
   const getR = (i) => (perVertR && perVertR[i] != null) ? perVertR[i] : defaultR;
@@ -56,9 +48,8 @@ function buildRoundedPolyPath(ctx, verts, defaultR, perVertR) {
 }
 
 // ─── Polygon inset ──────────────────────────────────────────────────────────
-// Returns a copy of `verts` with each vertex moved inward by `dist` units.
-// Uses the edge-bisector formula so the perpendicular inset is exactly `dist`
-// at every edge (handles both CW and CCW winding via the shoelace sign).
+// Each vertex moved inward by `dist`, by the edge-bisector formula, so the perpendicular inset is
+// exactly `dist` at every edge. Both windings, via the shoelace sign.
 function insetPolygon(verts, dist) {
   const n = verts.length;
   if (n < 3 || dist <= 0) return verts;
@@ -88,14 +79,10 @@ function insetPolygon(verts, dist) {
 }
 
 // ─── Axis alignment snap ──────────────────────────────────────────────────────
-// Nudges `pt` onto a reference point's exact x or y when it is already within `thresh`
-// of sharing one, which straightens a nearly-straight wall. An ALIGNMENT snap, not a
-// movement constraint: off-axis points are returned untouched, so the cursor is never
-// clamped to a track.
-// refs: array of reference points (the previous vertex when drawing, both ring
-// neighbours when dragging). thresh is in the same units as the points — callers in
-// screen-px terms must divide by zoom first.
-// Only the closer of x and y snaps, so a near-45° segment can't flip between axes.
+// Nudges `pt` onto a reference point's exact x or y when already within `thresh`, straightening a
+// nearly-straight wall. An ALIGNMENT snap, never a movement constraint: off-axis points are
+// returned untouched. thresh is in the points' own units, so screen-px callers divide by zoom.
+// Only the closer of x and y snaps, so a near-45° segment cannot flip between axes.
 function snapToAxis(pt, refs, thresh) {
   if (!(thresh > 0) || !refs || !refs.length) return { x: pt.x, y: pt.y };
   let bestDev = thresh, bestAxis = null, bestVal = 0;
@@ -112,26 +99,20 @@ function snapToAxis(pt, refs, thresh) {
 }
 
 // ─── Cone ──────────────────────────────────────────────────────────────────────
-// A cone is drawn apex-first: press at the point of origin, drag towards where it points.
-// The drag sets DIRECTION and LENGTH; the spread is fixed.
+// A cone is drawn apex-first: press at the origin, drag towards where it points. The drag sets
+// DIRECTION and LENGTH; the spread is fixed.
 //
-// ⚠ THE SPREAD IS NOT A FREE PARAMETER. A D&D cone is as wide at its far end as it is long,
-// which fixes the half-angle at atan(0.5) and the apex angle at 53.13°. Every table tool draws
-// it that way, so a cone here that opened wider or narrower would measure a different area than
-// the players' own rulers. Do not turn this into a slider without the DM asking for one.
+// ⚠ THE SPREAD IS NOT A FREE PARAMETER. A D&D cone is as wide at its far end as it is long, which
+// fixes the half-angle at atan(0.5). A cone that opened wider would measure a different area than
+// the players' own rulers. Never make it a slider unless the DM asks.
 //
-// THE FAR EDGE BOWS OUTWARD SLIGHTLY. The rule makes width grow in step with distance, which is
-// a triangle, and a bare triangle read as a paper cut-out rather than as something spreading. So
-// the far edge is a shallow circular arc through the two corners.
+// The far edge bows outward slightly, because a bare triangle reads as a paper cut-out.
 //
-// ⚠ THE TWO CORNERS DO NOT MOVE when the bulge changes, so width-still-equals-length holds
-// exactly however CONE_BULGE is set — and every measurement is taken between the FIRST and LAST
-// vertex, never between v[1] and v[2]. What the bulge does cost is reach: the arc's midpoint
-// stands CONE_BULGE beyond the drag, a fraction of a grid square at table sizes. Keep it small
-// for that reason, and set it to 0 to get the exact triangle back.
+// ⚠ THE TWO CORNERS DO NOT MOVE when the bulge changes, so width-equals-length holds however
+// CONE_BULGE is set — and every measurement runs between the FIRST and LAST vertex, never v[1] and
+// v[2]. The bulge costs reach, so keep it small; 0 gives the exact triangle back.
 //
-// snapDeg > 0 rounds the direction to that many degrees — the straighten-walls toggle, which
-// otherwise has nothing to say while a cone is being dragged.
+// snapDeg > 0 rounds the direction, which is the straighten-walls toggle.
 const CONE_HALF_SPREAD = 0.5;   // half-width at the far end, as a fraction of the length
 const CONE_BULGE = 0.08;        // how far the arc's middle stands past the far edge, ditto
 const CONE_ARC_SEGS = 8;        // enough for a shallow arc; the whole shape stays hand-editable
@@ -153,9 +134,8 @@ function coneVertices(apex, tip, snapDeg) {
   const s = len * CONE_BULGE;
   if (!(s > 0)) return [toMap(0, 0), toMap(len, h), toMap(len, -h)];
 
-  // The circle through (len, +h), (len + s, 0) and (len, -h). Its centre sits on the axis, well
-  // behind the apex for a shallow bulge, which is why the arc reads as a gentle bow and not as a
-  // pizza slice.
+  // The circle through (len, +h), (len + s, 0) and (len, -h). Its centre sits behind the apex for
+  // a shallow bulge, which is why the arc reads as a bow and not a pizza slice.
   const cx = len + s / 2 - (h * h) / (2 * s);
   const r = len + s - cx;
   const half = Math.asin(Math.min(1, h / r));     // half the arc's own angle, from the centre
@@ -170,9 +150,8 @@ function coneVertices(apex, tip, snapDeg) {
 }
 
 // ─── DPI-adaptive radius math ──────────────────────────────────────────────────
-// Scale blur/feather radii proportionally to fog canvas size so they cover the
-// same fraction of the map regardless of image resolution. `maxDim` is the fog
-// canvas's larger dimension; `ref` is the reference size (FOG_SIZE_REF).
+// Radii scale with fog canvas size, so they cover the same fraction of any map. `maxDim` is the
+// canvas's larger dimension, `ref` the reference size.
 function fogSizeScale(maxDim, ref) {
   const linear = Math.min(1, maxDim / ref);
   return linear * linear;
@@ -195,21 +174,17 @@ function pulseAlpha(base, amp, time, freq, phase) {
 }
 
 // ─── Cloud blend rebuild throttle ─────────────────────────────────────────────
-// The 512×512 crossfade canvas is rebuilt with two drawImage calls plus a
-// 'lighter' composite. At display refresh the blend advances a tiny fraction of a
-// frame per tick, so rebuilding every tick is invisible work. These two helpers
-// are the gate: when to rebuild, and how far to advance the morph when we do.
+// At display refresh the blend advances a tiny fraction of a frame per tick, so rebuilding every
+// tick is invisible work. These two helpers are the gate: when, and how far.
 
 // True once the scheduled rebuild time has arrived.
 function shouldRebuildCloudBlend(ts, nextTs) {
   return ts >= nextTs;
 }
 
-// Seconds of morph to apply for this rebuild — the time actually elapsed since the
-// previous one, NOT one tick's dt. Advancing by a tick's dt while skipping ticks
-// would slow the morph in proportion to the throttle. Clamped so a long stall
-// (hidden window, scene switch) cannot jump the morph forward; returns 0 on the
-// first rebuild, when there is no previous timestamp to measure from.
+// Seconds of morph for this rebuild: the time elapsed since the previous one, ⚠ never one tick's
+// dt, which would slow the morph in proportion to the throttle. Clamped so a long stall cannot
+// jump the morph forward, and 0 on the first rebuild.
 function cloudBlendElapsedSec(ts, lastTs, maxSec) {
   if (!lastTs) return 0;
   return Math.min(Math.max(0, (ts - lastTs) / 1000), maxSec);
@@ -226,10 +201,8 @@ function cloudBlendIndices(pos, total) {
 }
 
 // ─── Fog color derivation ──────────────────────────────────────────────────────
-// Derives a { base, tint } hex pair from a single picked hex color.
-// base: dark version of the hue — used as the solid fill behind Player fog.
-// tint: vivid/bright version — used as the source-atop glow overlay on both paths.
-// Both inputs and outputs are '#rrggbb' hex strings.
+// A { base, tint } hex pair from one picked hex. base is the solid fill behind Player fog, tint the
+// source-atop glow on both paths.
 function _hexToHsl(hex) {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -262,10 +235,9 @@ function _hslToHex(h, s, l) {
   return '#' + to2(r) + to2(g) + to2(b);
 }
 
-// deriveFogColors(pickedHex) → { base: '#rrggbb', tint: '#rrggbb' }
-// base: same hue, saturation halved, lightness ~33% of picked (dark, desaturated).
-// tint: hue nudged +8° (toward purple for warm picks), saturation boosted, lightness boosted.
-// Clamped so pure-black/white picks still produce visible fog.
+// base: same hue, saturation halved, lightness a third of the pick.
+// tint: hue nudged +8°, saturation and lightness boosted.
+// Clamped so pure-black and pure-white picks still produce visible fog.
 function deriveFogColors(pickedHex) {
   const { h, s, l } = _hexToHsl(pickedHex);
   const baseS = Math.max(0.10, s * 0.55);
@@ -279,10 +251,9 @@ function deriveFogColors(pickedHex) {
   };
 }
 
-// lerpHex(fromHex, toHex, t) → '#rrggbb' t of the way between the two.
-// Interpolates the PICKED colour in RGB, leaving deriveFogColors to produce base+tint from
-// each step. Going through HSL instead would swing the hue the long way round the wheel on
-// some pairs, which is a rainbow wipe rather than one fog colour becoming another.
+// t of the way between two picked colours, ⚠ interpolated in RGB. HSL swings the hue the long way
+// round the wheel on some pairs, which is a rainbow wipe rather than one fog colour becoming
+// another. deriveFogColors makes base+tint from each step.
 function lerpHex(fromHex, toHex, t) {
   const k = t < 0 ? 0 : t > 1 ? 1 : t;
   const to2 = v => Math.round(v).toString(16).padStart(2, '0');
@@ -296,9 +267,8 @@ function lerpHex(fromHex, toHex, t) {
 }
 
 // ─── Animation slider math ────────────────────────────────────────────────────
-// Log-scale mapping between a 0-1000 slider position and a physical parameter
-// value. baseVal is the midpoint (slider=500 → baseVal). Range is baseVal/50 …
-// baseVal×50 (50× either direction), matching the fog anim panel sliders.
+// Log-scale mapping between a 0-1000 slider position and a parameter value. baseVal is the
+// midpoint, and the range reaches 50× either side of it.
 function animLogScale(sliderVal, baseVal) {
   return baseVal * Math.exp((sliderVal - 500) / 500 * Math.log(50));
 }
@@ -310,8 +280,7 @@ function animSliderFromVal(currentVal, baseVal) {
 }
 
 // ─── Cloud noise kernels ──────────────────────────────────────────────────────
-// Bilinear interpolation over a tiling Float32Array grid of size n×n.
-// Wraps on both axes so the texture tiles seamlessly.
+// Bilinear interpolation over a tiling n×n Float32Array grid. Wraps on both axes.
 function sampleWrappedNoise(grid, n, fx, fy) {
   const x = ((fx % n) + n) % n;
   const y = ((fy % n) + n) % n;
@@ -336,9 +305,8 @@ function fogTurbulence(layers, px, py) {
 }
 
 // ─── Scene fog-settings parser ───────────────────────────────────────────────
-// Pure value-resolution: maps a raw scene record + caller-supplied defaults into
-// a typed settings object. No DOM reads, no global reads, no side effects.
-// defaults shape: { hex, alpha, anim: { enabled, speed, drift, morph, warpStr, warpRad, pulse } }
+// A raw scene record plus caller-supplied defaults into a typed settings object. No DOM, no
+// globals, no side effects.
 function parseSceneFogSettings(scene, defaults) {
   const fs  = scene && scene.fogSettings;
   const hex   = (fs && fs.pickedHex)        ? fs.pickedHex  : defaults.hex;
@@ -362,11 +330,253 @@ function parseSceneFogSettings(scene, defaults) {
 }
 
 // ─── Node.js export guard (unit tests only) ──────────────────────────────────
+// ─── Door notches ─────────────────────────────────────────────────────────────
+// A door marks an exit on a room's outline, stored as {edge, t}: which wall, and where along it.
+// It carries no size — width and depth come from the grid cell at draw time, so correcting a
+// scene's grid resizes every door already placed. The notch straddles its wall, reaching the same
+// distance either side, which frees it from the outline's winding and from which side was traced.
+
+const DOOR_AXIS_EPS = 0.999;   // above this a wall counts as straight, so it snaps to the world grid
+
+function doorSizeForCell(cell, widthPct, depthPct) {
+  const c = cell > 0 ? cell : 0;
+  return { width: c * (widthPct / 100), depth: c * (depthPct / 100) };
+}
+
+function polygonWindingSign(verts) {
+  let area2 = 0;
+  for (let i = 0; i < verts.length; i++) {
+    const j = (i + 1) % verts.length;
+    area2 += verts[i].x * verts[j].y - verts[j].x * verts[i].y;
+  }
+  return area2 > 0 ? 1 : -1;
+}
+
+// Outward unit normal of edge i, i.e. the opposite of the direction insetPolygon moves a vertex.
+function edgeOutwardNormal(verts, edge) {
+  const a = verts[edge % verts.length], b = verts[(edge + 1) % verts.length];
+  const ex = b.x - a.x, ey = b.y - a.y;
+  const len = Math.hypot(ex, ey) || 1;
+  const sign = polygonWindingSign(verts);
+  return { x: sign * ey / len, y: -sign * ex / len };
+}
+
+// The wall a door sits on: its endpoints, unit direction, outward normal and length.
+function doorEdgeFrame(verts, edge) {
+  if (!verts || verts.length < 3) return null;
+  const n = verts.length;
+  const ei = ((edge | 0) % n + n) % n;
+  const a = verts[ei], b = verts[(ei + 1) % n];
+  const ex = b.x - a.x, ey = b.y - a.y;
+  const len = Math.hypot(ex, ey);
+  if (!(len > 0)) return null;
+  return { ei, a, b, len, ux: ex / len, uy: ey / len, n: edgeOutwardNormal(verts, ei) };
+}
+
+// Where a wall's cell boundaries fall, as distances along it from its start vertex. ONE source for
+// both the snap and the ticks the DM sees, so what is drawn is where a door lands.
+// A straight wall on a square grid reads the WORLD grid, offsets included, or a room whose corner
+// sits off a grid line carries every door off with it. Diagonal and hex walls subdivide themselves.
+function doorCellBounds(verts, edge, cell, offsetX, offsetY, squareGrid) {
+  const f = doorEdgeFrame(verts, edge);
+  if (!f || !(cell > 0)) return null;
+  const axis = Math.abs(f.ux) > DOOR_AXIS_EPS || Math.abs(f.uy) > DOOR_AXIS_EPS;
+  const at = [0];
+  if (squareGrid && axis) {
+    // Projecting the grid's origin onto the wall keeps whichever axis the wall runs along and
+    // discards the other, so one expression covers horizontal and vertical alike.
+    const base = ((offsetX || 0) - f.a.x) * f.ux + ((offsetY || 0) - f.a.y) * f.uy;
+    for (let k = Math.ceil(-base / cell); base + k * cell < f.len; k++) {
+      const a = base + k * cell;
+      if (a > 0) at.push(a);
+    }
+  } else {
+    for (let a = cell; a < f.len; a += cell) at.push(a);
+  }
+  at.push(f.len);
+  return { frame: f, at };
+}
+
+// Snaps a click to the cell it landed in, so a door fills that cell.
+function doorCellSnap(verts, edge, mx, my, cell, offsetX, offsetY, squareGrid) {
+  const b = doorCellBounds(verts, edge, cell, offsetX, offsetY, squareGrid);
+  if (!b) return null;
+  const f = b.frame;
+  const along = Math.max(0, Math.min(f.len, (mx - f.a.x) * f.ux + (my - f.a.y) * f.uy));
+  let i = 0;
+  while (i < b.at.length - 2 && along >= b.at[i + 1]) i++;
+  const centre = (b.at[i] + b.at[i + 1]) / 2;
+  const half = Math.min(cell, f.len) / 2;
+  return { edge: f.ei, t: Math.max(half, Math.min(f.len - half, centre)) / f.len };
+}
+
+// The four corners of one notch, a plain rectangle straddling the wall, in the space of `verts`.
+// The caller passes a deeper inward reach than the shape needs: that ground is already clear, and
+// the extra is what makes the notch meet the reveal's ragged edge instead of floating free.
+function doorNotchCorners(verts, door, width, out, inward) {
+  const f = doorEdgeFrame(verts, door && door.edge);
+  if (!f || !(width > 0) || !(out > 0)) return null;
+  // Capped at the wall: a cell is wider than a short alcove edge, and an uncapped door would carve
+  // fog around both its corners rather than mark an opening in it.
+  const hw = Math.min(width, f.len) / 2;
+  const back = -(inward > 0 ? inward : out);
+  const t = Math.max(0, Math.min(1, door.t));
+  const px = f.a.x + (f.b.x - f.a.x) * t, py = f.a.y + (f.b.y - f.a.y) * t;
+  return {
+    outerL: { x: px - f.ux * hw + f.n.x * out,  y: py - f.uy * hw + f.n.y * out },
+    outerR: { x: px + f.ux * hw + f.n.x * out,  y: py + f.uy * hw + f.n.y * out },
+    innerL: { x: px - f.ux * hw + f.n.x * back, y: py - f.uy * hw + f.n.y * back },
+    innerR: { x: px + f.ux * hw + f.n.x * back, y: py + f.uy * hw + f.n.y * back },
+  };
+}
+
+// Nearest point on the outline to (mx,my). Returns null when nothing is within `maxDist`.
+function nearestOutlinePoint(verts, mx, my, maxDist) {
+  if (!verts || verts.length < 2) return null;
+  let best = null;
+  for (let i = 0; i < verts.length; i++) {
+    const a = verts[i], b = verts[(i + 1) % verts.length];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((mx - a.x) * dx + (my - a.y) * dy) / lenSq));
+    const cx = a.x + dx * t, cy = a.y + dy * t;
+    const d = Math.hypot(mx - cx, my - cy);
+    if (!best || d < best.dist) best = { edge: i, t, x: cx, y: cy, dist: d };
+  }
+  if (maxDist != null && best && best.dist > maxDist) return null;
+  return best;
+}
+
+// Where a door's centre sits, for the DM's outline.
+function doorPoint(verts, door) {
+  const f = doorEdgeFrame(verts, door && door.edge);
+  if (!f) return null;
+  const t = Math.max(0, Math.min(1, door.t));
+  return { x: f.a.x + (f.b.x - f.a.x) * t, y: f.a.y + (f.b.y - f.a.y) * t };
+}
+
+// Whether a click landed on a door — the fallback for one placed before the grid changed, which no
+// longer sits on a cell centre. ⚠ `slack` forgives DEPTH ONLY: along the wall it would reach into
+// the next cell, so a click beside a door would delete it instead of opening a second one.
+function pointInDoorNotch(verts, door, width, depth, mx, my, slack) {
+  const f = doorEdgeFrame(verts, door && door.edge);
+  if (!f) return false;
+  const t = Math.max(0, Math.min(1, door.t));
+  const px = f.a.x + (f.b.x - f.a.x) * t, py = f.a.y + (f.b.y - f.a.y) * t;
+  const relX = mx - px, relY = my - py;
+  const along = relX * f.ux + relY * f.uy;
+  const perp  = relX * f.n.x + relY * f.n.y;
+  const s = slack || 0;
+  return Math.abs(along) < Math.min(width, f.len) / 2 && perp >= -depth - s && perp <= depth + s;
+}
+
+// ─── Shared walls ─────────────────────────────────────────────────────────────
+// Which stretches of a wall another room's outline runs along, as {from, to} distances from the
+// wall's start vertex. Two rooms sharing a wall each feather INWARD from it, so neither reaches a
+// full erase on the line and a band of fog is left standing over the wall.
+// `tol` is what counts as the same wall; spans are widened by half a step, to cover the gaps
+// between the points actually sampled.
+function sharedWallSpans(verts, edge, others, tol, step) {
+  const f = doorEdgeFrame(verts, edge);
+  if (!f || !others || !(tol > 0) || !(step > 0)) return [];
+
+  // Bounding-box reject first: on a real map almost no room is anywhere near a given wall.
+  const loX = Math.min(f.a.x, f.b.x) - tol, hiX = Math.max(f.a.x, f.b.x) + tol;
+  const loY = Math.min(f.a.y, f.b.y) - tol, hiY = Math.max(f.a.y, f.b.y) + tol;
+  const near = [];
+  for (const o of others) {
+    if (!o || !o.vertices || o.vertices.length < 3) continue;
+    const b = getPolyBBox(o.vertices);
+    if (b.maxX < loX || b.minX > hiX || b.maxY < loY || b.minY > hiY) continue;
+    near.push(o);
+  }
+  if (!near.length) return [];
+
+  const n = Math.max(1, Math.ceil(f.len / step));
+  const half = f.len / n / 2;
+  const spans = [];
+  let open = -1, last = -1;
+  for (let i = 0; i <= n; i++) {
+    const a = (i / n) * f.len;
+    const px = f.a.x + f.ux * a, py = f.a.y + f.uy * a;
+    let hit = false;
+    for (const o of near) {
+      if (nearestOutlinePoint(o.vertices, px, py, tol)) { hit = true; break; }
+    }
+    // Closed at the last point that HIT, not at the first that missed, or a span that ends
+    // mid-wall runs a whole step past the neighbour it was following.
+    if (hit) { if (open < 0) open = a; last = a; }
+    else if (open >= 0) { spans.push({ from: open, to: last }); open = -1; }
+  }
+  if (open >= 0) spans.push({ from: open, to: last });
+  return spans.map(sp => ({
+    from: Math.max(0, sp.from - half),
+    to: Math.min(f.len, sp.to + half),
+  }));
+}
+
+// Least to most revealed. Anything unset paints like a reveal, matching applyPolygonToFog.
+const DOOR_MODE_ORDER = ['shroud', 'half', 'reveal'];
+
+function doorModeRank(mode) {
+  const i = DOOR_MODE_ORDER.indexOf(mode);
+  return i < 0 ? DOOR_MODE_ORDER.length - 1 : i;
+}
+
+// The state a door shows in: the most revealed of EVERY room whose wall runs through it, never the
+// state of the one room that stores it. Two rooms share a doorway's wall and a click attaches to
+// only one, which the DM cannot aim at. It also settles half-shroud, which has no answer while a
+// door belongs to one room: half beside shrouded is half, revealed beside anything is revealed.
+function doorResolvedMode(centre, rooms, tol) {
+  if (!centre || !rooms) return 'shroud';
+  let best = 0;
+  for (const r of rooms) {
+    if (!r || !r.vertices || r.vertices.length < 3) continue;
+    if (!nearestOutlinePoint(r.vertices, centre.x, centre.y, tol)) continue;
+    const rank = doorModeRank(r.mode);
+    if (rank > best) best = rank;
+  }
+  return DOOR_MODE_ORDER[best];
+}
+
+// Keeps doors pointing at the same wall when a vertex is added or removed. `at` is the index
+// passed to the matching vertices.splice; delta is +1 for an insert, -1 for a delete. A door on
+// a deleted edge has no wall left to sit on, so it goes.
+function remapDoorsForVertexChange(doors, at, delta) {
+  if (!doors || !doors.length) return doors || [];
+  const out = [];
+  for (const d of doors) {
+    if (delta < 0) {
+      if (d.edge === at || d.edge === at - 1) continue;
+      out.push({ ...d, edge: d.edge > at ? d.edge - 1 : d.edge });
+    } else {
+      out.push({ ...d, edge: d.edge > at ? d.edge + 1 : d.edge });
+    }
+  }
+  return out;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getPolyBBox,
     buildRoundedPolyPath,
     insetPolygon,
+    polygonWindingSign,
+    edgeOutwardNormal,
+    doorEdgeFrame,
+    doorSizeForCell,
+    doorCellBounds,
+    doorCellSnap,
+    doorNotchCorners,
+    nearestOutlinePoint,
+    doorPoint,
+    pointInDoorNotch,
+    doorModeRank,
+    doorResolvedMode,
+    sharedWallSpans,
+    DOOR_MODE_ORDER,
+    remapDoorsForVertexChange,
+    DOOR_AXIS_EPS,
     snapToAxis,
     coneVertices,
     CONE_HALF_SPREAD,

@@ -4,20 +4,13 @@
 // Activated ONLY when ?stress=1 is present (injected by main.js under `npm run stress`).
 // Completely inert under normal `npm start` and in the shipped .exe.
 //
-// Design goal: emulate a real table session faithfully so it can run for HOURS and
-// catch the real long-session stall — WITHOUT the rig itself bricking the video.
-// An earlier version slammed the startup (bulk-loaded every scene's video blob, then
-// force-opened the Player and switched scenes within ~100ms of launch) and wedged both
-// decoders in the first minute; `npm start` at human pace never does. So this version
-// paces itself like a person: let the first video settle, THEN open the Player, THEN
-// begin slow cycles.
+// ⚠ It must PACE ITSELF LIKE A PERSON: let the first video settle, THEN open the Player, THEN
+// begin slow cycles. Slamming the startup wedges both decoders in the first minute, which `npm
+// start` at human pace never does.
 //
-// DM branch:
-//   • switches animated scenes every `stressMs` (default 15min)
-//   • toggles a saved polygon reveal↔shroud every `stressRevealMs` (default 3min) —
-//     SPECIFIC polygons via the Select-tool path (toggleSelectedPolygon), never the
-//     brush, because the table only uses polygons.
-// Player branch: read-only stall detector — never touches the video pump.
+// The DM branch switches animated scenes on `stressMs` and toggles a saved polygon on
+// `stressRevealMs`, through the Select-tool path and never the brush, because the table only uses
+// polygons. The Player branch is a read-only stall detector.
 
 async function initStress() {
   var sp = new URLSearchParams(window.location.search);
@@ -152,9 +145,8 @@ function _startSceneCycle(animatedScenes, startIdx, periodMs) {
 }
 
 // ── Polygon reveal cycle ──────────────────────────────────────────────────────
-// Rotates through the current scene's saved polygons, flipping one reveal↔shroud each
-// tick via toggleSelectedPolygon() — the exact call the Select tool makes when the DM
-// clicks a polygon at the table (animated fog transition + push to Player). No brush.
+// Flips one saved polygon reveal↔shroud each tick through toggleSelectedPolygon(), the exact call
+// the Select tool makes at the table. No brush.
 
 var _revealTick = 0;
 
@@ -181,9 +173,8 @@ function _stressTogglePolygon() {
 }
 
 // ── Stall detector ────────────────────────────────────────────────────────────
-// Read-only — never calls play/pause/seek/reload. Polls every 5s; trips after
-// STALL_SUSTAIN_MS of a sustained dead state. Guards against our own intentional
-// buffering pause (_bufferingPause in video.js) so a normal refill is not a false trip.
+// ⚠ Read-only: never calls play, pause, seek or reload. Trips after STALL_SUSTAIN_MS of a sustained
+// dead state, and guards against video.js's own buffering pause so a refill is not a false trip.
 
 var _stressStopped   = false;
 var _stressCyclerStop = null;

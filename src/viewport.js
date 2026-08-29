@@ -1,12 +1,9 @@
-// viewport.js — view sync helpers + Player map delivery
-// Loaded before the inline script; function bodies reference inline-script globals
-// lazily (resolved at call time, not definition time).
+// viewport.js — view sync helpers + Player map delivery. Loaded before the inline script; its
+// globals resolve lazily, at call time.
 
 // ─── Pure coordinate helpers ──────────────────────────────────────────────────
 
-// Compute the source/destination rectangles for a pan+zoom viewport.
-// Pure function — takes explicit params so it can be tested without DOM.
-// Returns { cw, ch, srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH }.
+// The source and destination rectangles for a pan+zoom viewport. Pure, so it tests without DOM.
 function calcViewportRect(panX, panY, zoom, mapW, mapH, vpW, vpH) {
   const srcX = Math.max(0, -panX / zoom);
   const srcY = Math.max(0, -panY / zoom);
@@ -26,18 +23,14 @@ function zoomToFitRegion(viewW, viewH, vpW, vpH) {
   return Math.min(vpW / viewW, vpH / viewH);
 }
 
-// The map-space region a viewport actually shows MAP in — the viewport rectangle
-// intersected with the map. Returns { cx, cy, w, h } in map units.
+// The map-space region a viewport actually shows MAP in — the viewport rectangle intersected with
+// the map, in map units.
 //
-// Why intersect rather than send the viewport rectangle whole: nothing is ever drawn
-// outside the map (the fog canvas is map-sized, the grid is clamped to it, room labels
-// never reach the Player), so the empty background around a zoomed-out map carries no
-// information. Sending it makes the Player reproduce the DM's letterboxing and then add
-// its own on the mismatched axis, which is what left the map small and boxed in on all
-// four sides. Clipping is lossless for the same reason: the trimmed margins were empty.
+// ⚠ Intersect rather than sending the viewport whole. Nothing is drawn outside the map, so the
+// empty background carries no information, and sending it makes the Player reproduce the DM's
+// letterboxing and add its own on the mismatched axis. Clipping is lossless for the same reason.
 //
-// Degenerate case — a viewport parked entirely off the map has no intersection to send,
-// so fall back to the raw viewport rect and let the Player frame it as before.
+// A viewport parked entirely off the map has no intersection, so fall back to the raw rect.
 function visibleMapRegion(panX, panY, zoom, mapW, mapH, vpW, vpH) {
   const vx0 = -panX / zoom, vx1 = (vpW - panX) / zoom;
   const vy0 = -panY / zoom, vy1 = (vpH - panY) / zoom;
@@ -49,14 +42,12 @@ function visibleMapRegion(panX, panY, zoom, mapW, mapH, vpW, vpH) {
   return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, w: x1 - x0, h: y1 - y0 };
 }
 
-// The region the DM is looking at, packaged for the wire. Both places that send a view
-// (Sync View and a manual Send) go through here so they can't drift apart.
-// `zoom` rides along only as the fallback for a payload with no region.
+// The region the DM is looking at, packaged for the wire. Sync View and a manual Send both go
+// through here, so they cannot drift apart. `zoom` rides along as the fallback for a payload with
+// no region.
 //
-// Deliberately NOT subtracting the strip hidden behind the control panel. That was tried
-// and reverted: it made the TV crop to the DM's readable area, which shifted the framing
-// and took content away from the players that used to reach them. Correct on paper, and
-// it read as the Player view no longer matching the DM's. Don't re-add it.
+// ⚠ NEVER subtract the strip hidden behind the control panel. It crops the TV to the DM's readable
+// area, which shifts the framing and takes content away from the players.
 function dmVisibleRegion() {
   const { w: vpW, h: vpH } = getViewportSize();
   const r = visibleMapRegion(panX, panY, zoom, mapWidth, mapHeight, vpW, vpH);
@@ -68,13 +59,11 @@ function toScreen(mapX, mapY) {
   return { sx: mapX * zoom + panX, sy: mapY * zoom + panY };
 }
 
-// A view crosses the wire as a REGION (centre + viewW/viewH in map units), not as a
-// zoom: zoom is px-per-map-unit on the SENDER's canvas, so replaying it verbatim on a
-// differently-sized canvas shows a different amount of map (a 1920 TV covers ~25% more
-// than a 1536 laptop at the same zoom). Refitting the region here is what makes Sync
-// View mean "the players see at least what the DM sees".
-// `v.zoom` is still honoured as a fallback for views that carry no region — the
-// minimap's own snaps (already in Player terms) and any older-shaped payload.
+// ⚠ A view crosses the wire as a REGION (centre plus viewW/viewH in map units), never as a zoom.
+// Zoom is px-per-map-unit on the SENDER's canvas, so replaying it on a differently-sized canvas
+// shows a different amount of map. Refitting the region is what makes Sync View mean "the players
+// see at least what the DM sees".
+// `v.zoom` is still honoured for views carrying no region — the minimap's own snaps.
 function resolveView(v) {
   const { w: vpW, h: vpH } = getViewportSize();
   const z = zoomToFitRegion(v.viewW, v.viewH, vpW, vpH) ?? v.zoom;
@@ -151,9 +140,8 @@ function updatePlayerModeIndicator() {
 
 // ─── Player map-request protocol ─────────────────────────────────────────────
 
-// Deferred player resync: set when the Player requests the map (PLAYER_READY / need-map)
-// but the DM has no scene loaded yet (e.g. mid-scene-switch on a large video). Once the
-// scene finishes loading, onSceneLoaded() flushes the pending request.
+// Deferred player resync: set when the Player asks for the map but the DM has no scene loaded yet.
+// onSceneLoaded() flushes the pending request.
 let _playerResyncPending = false;
 
 // Called once during Player init. Sends need-map to the DM, retrying every 5 s
@@ -174,32 +162,26 @@ function canSendToPlayer() {
   return !!(mapOffscreen && fogDataCanvas && playerWindow && !playerWindow.closed);
 }
 
-// Called by the DM message handler instead of setting playerMapSent inline.
-// Sends immediately if mapOffscreen is ready; defers to onSceneLoaded() if not.
+// Sends immediately if mapOffscreen is ready, and defers to onSceneLoaded() if not.
 //
-// ⚠ THE FLAG MEANS "ASKED AND NOT YET SERVED", AND ONLY A REAL DELIVERY CLEARS IT — sendMap()
-// does that, at the moment the payload goes out. Two wrong versions of this cost real bugs:
+// ⚠ THE FLAG MEANS "ASKED AND NOT YET SERVED", AND ONLY A REAL DELIVERY CLEARS IT, in sendMap()
+// at the moment the payload goes out. Clearing it in onSceneLoaded leaves it clear after a flush
+// that delivered nothing, and never clearing it leaves it set after a send that went out — which
+// makes the next scene switch push a second payload mid-cover.
 //
-// Clearing it in onSceneLoaded left it clear after a flush that delivered nothing, and clearing
-// it never left it SET after a send that had gone out — so the next scene switch flushed a
-// second push on top of the one switchScene already schedules. That extra push is synchronous at
-// the end of the switch while the scheduled one waits out the Player's cover, so it landed
-// mid-cover and the TV could show the swap the cover exists to hide.
-//
-// Clearing it up front on "a send is possible" lost the deferred retry instead. The first send is
-// ASYNCHRONOUS for a video scene: getVideoFilePath resolves, and its callback returns without
-// sending when the clip is not on disk. Nothing was delivered and nothing was left to retry.
+// Clearing it up front on "a send is possible" loses the deferred retry: the first send is
+// ASYNCHRONOUS for a video scene, and its callback returns without sending when the clip is
+// missing.
 function onPlayerResyncRequest() {
   _playerResyncPending = true;
   playerMapSent = false;
   sendToPlayer();
 }
 
-// Called at the end of a successful switchScene load.
-// If the Player asked for the map while the scene was loading, send it now.
-// ⚠ DOES NOT CLEAR THE FLAG. sendMap() clears it when the payload actually goes out, so a flush
-// that delivers nothing — no Player window yet, or a video whose clip is missing — leaves the
-// request standing for the next scene load to serve.
+// Called at the end of a successful switchScene load: if the Player asked for the map while the
+// scene was loading, send it now.
+// ⚠ DOES NOT CLEAR THE FLAG. sendMap() clears it when the payload goes out, so a flush that
+// delivers nothing leaves the request standing for the next scene load.
 function onSceneLoaded() {
   if (!_playerResyncPending) return;
   sendToPlayer();
@@ -252,9 +234,8 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
       }, 'image/jpeg', 0.9);
     }
   } else {
-    // Effects ride along as SHAPE DESCRIPTORS PLUS A MATERIAL NAME, never as pixels — the same
-    // precedent the grid config set. The Player paints the material itself from the same
-    // seeded masks, so a 40-metre wall of fire costs the wire a few dozen bytes.
+    // Effects ride along as SHAPE DESCRIPTORS PLUS A MATERIAL NAME, never as pixels. The Player
+    // paints the material itself from the same seeded masks.
     playerWindow.postMessage({
       type: 'fog-update',
       mapWidth, mapHeight, fogDataUrl, view, isShroud, sceneChange, fogChanged, effects,

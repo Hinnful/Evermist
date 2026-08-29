@@ -214,6 +214,139 @@ function findNarrative(text, skipSections) {
   return hits;
 }
 
+/*
+ * Shipped JavaScript: the exact set `package.json` build.files carries, minus the
+ * vendored `lib/pixi.min.js`. A comment figure that counted a minified library
+ * would measure the library.
+ */
+function shippedJs() {
+  const out = [];
+  for (const f of ['main.js', 'preload.js']) {
+    if (fs.existsSync(path.join(ROOT, f))) out.push(f);
+  }
+  const walk = (dir) => {
+    let items;
+    try {
+      items = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of items) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.js')) out.push(path.relative(ROOT, p).replace(/\\/g, '/'));
+    }
+  };
+  walk(path.join(ROOT, 'src'));
+  return out;
+}
+
+/*
+ * Classify every line as 'code', 'comment' or 'blank'.
+ *
+ * A line carrying code AND a trailing comment counts as CODE, so trailing notes stay
+ * free and the figure measures the comments that occupy a line of their own.
+ * Quotes are tracked because a string may hold "//" or "/*", which would otherwise
+ * flip block state and mis-count the rest of the file.
+ */
+function classifyLines(text) {
+  const lines = text.split(/\r?\n/);
+  const out = [];
+  let block = false;
+
+  for (const line of lines) {
+    let i = 0;
+    let sawCode = false;
+    let sawComment = false;
+    let quote = null;
+
+    while (i < line.length) {
+      const c = line[i];
+      const d = line[i + 1];
+
+      if (block) {
+        sawComment = true;
+        if (c === '*' && d === '/') {
+          block = false;
+          i += 2;
+          continue;
+        }
+        i++;
+        continue;
+      }
+      if (quote) {
+        if (c === '\\') {
+          i += 2;
+          continue;
+        }
+        if (c === quote) quote = null;
+        sawCode = true;
+        i++;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') {
+        quote = c;
+        sawCode = true;
+        i++;
+        continue;
+      }
+      if (c === '/' && d === '/') {
+        sawComment = true;
+        break;
+      }
+      if (c === '/' && d === '*') {
+        block = true;
+        sawComment = true;
+        i += 2;
+        continue;
+      }
+      if (!/\s/.test(c)) sawCode = true;
+      i++;
+    }
+
+    // A template literal spanning lines would otherwise leak its state; treating each
+    // line as self-contained can only under-count, never invent a comment.
+    quote = null;
+    out.push(sawCode ? 'code' : sawComment ? 'comment' : 'blank');
+  }
+  return out;
+}
+
+/*
+ * Codebase-wide comment share, plus the per-file breakdown a report needs.
+ * Blank lines sit outside both sides of the ratio.
+ */
+function commentStats(files) {
+  const perFile = [];
+  let comments = 0;
+  let code = 0;
+
+  for (const rel of files || shippedJs()) {
+    let text;
+    try {
+      text = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    } catch {
+      continue;
+    }
+    const kinds = classifyLines(text);
+    const c = kinds.filter((k) => k === 'comment').length;
+    const k = kinds.filter((k2) => k2 === 'code').length;
+    comments += c;
+    code += k;
+    perFile.push({ file: rel, comments: c, code: k, pct: k + c === 0 ? 0 : (100 * c) / (k + c) });
+  }
+
+  const total = comments + code;
+  return { comments, code, pct: total === 0 ? 0 : (100 * comments) / total, perFile };
+}
+
+/* Strip comments and blank lines, leaving the code a diff can compare verbatim. */
+function pureCode(text) {
+  const lines = text.split(/\r?\n/);
+  const kinds = classifyLines(text);
+  return lines.filter((_, i) => kinds[i] === 'code').join('\n');
+}
+
 module.exports = {
   ROOT,
   readStdin,
@@ -226,4 +359,8 @@ module.exports = {
   findPersonRefsInText,
   findUntagged,
   findNarrative,
+  shippedJs,
+  classifyLines,
+  commentStats,
+  pureCode,
 };

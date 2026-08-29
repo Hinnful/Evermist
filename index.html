@@ -77,6 +77,17 @@
     </div>
 
     <!-- Brush size — shown only when Brush is active, in the same pill as whatever else is up -->
+    <!-- Door tool. ⚠ BOTH NUMBERS ARE A PERCENT OF ONE GRID CELL, NOT PIXELS, and each field
+         carries its own % for that reason: a shared suffix after the pair reads as pixels, and a
+         DM who types their grid size here gets a door that overhangs every grid line.
+         The cell size is shown after them because it is what the percentages are of — a scene
+         whose grid was never calibrated reads 70 px and gives itself away. -->
+    <div class="tb-group" id="ctx-door">
+      <div class="cp-chip cp-chip-pre" title="Door width, as a percent of one grid square"><span class="cp-chip-prefix">W</span><input type="text" id="door-width-num" inputmode="numeric" value="100"><span class="cp-chip-prefix">%</span></div>
+      <div class="cp-chip cp-chip-pre" title="How far a door reaches either side of the wall, as a percent of one grid square"><span class="cp-chip-prefix">D</span><input type="text" id="door-depth-num" inputmode="numeric" value="10"><span class="cp-chip-prefix">%</span></div>
+      <span class="tb-hint">of <span id="door-cell-label">70</span> px cell</span>
+    </div>
+
     <div class="tb-group" id="panel-brush-bottom">
       <input type="range" id="brush-size" min="5" max="300" value="40">
       <div class="brush-chip">
@@ -94,8 +105,8 @@
   <!-- Main icon toolbar -->
   <div id="toolbar-bottom">
 
-    <!-- Tools: Select, Polygon, Rectangle, Circle, Brush -->
-    <button id="btn-select" class="tool-btn" title="Select (V)">
+    <!-- Tools: Select, Polygon, Rectangle, Circle, Cone, Brush, Door -->
+    <button id="btn-select" class="tool-btn active" title="Select (V)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform:translate(1px,1px)"><path d="M5 3l6.4 15.6 2.1-6.1 6.1-2.1L5 3z"/></svg>
     </button>
     <button id="btn-poly" class="tool-btn" title="Polygon (P)">
@@ -110,8 +121,11 @@
     <button id="btn-cone" class="tool-btn" title="Cone (O) - drag from the point of origin">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l14 7-14 7z"/><circle cx="5" cy="4" r="1.6" fill="currentColor" stroke="none"/></svg>
     </button>
-    <button id="btn-brush" class="tool-btn active" title="Brush (B)">
+    <button id="btn-brush" class="tool-btn" title="Brush (B)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8.6 8.6-4 1 1-4L15 4z"/><path d="M13.4 5.6l5 5"/></svg>
+    </button>
+    <button id="btn-door" class="tool-btn" title="Door - click a room's outline to mark an exit, click a mark to remove it">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 20V10.5a5.5 5.5 0 0 1 11 0V20"/><path d="M3.5 20h17"/><circle cx="14.6" cy="14" r="1.05" fill="currentColor" stroke="none"/></svg>
     </button>
 
     <!-- Independent switches: snap to grid, straighten walls. Both work in either mode, so they

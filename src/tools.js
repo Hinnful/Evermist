@@ -2,7 +2,7 @@
 
 // ─── Tool state ───────────────────────────────────────────────────────────────
 let tool  = 'reveal';
-let shape = 'brush';
+let shape = 'select';   // the tool the app is used with; setPlaceMode keeps it across modes
 let brushSize = 40;
 let isDrawing = false;
 let pendingBrushOps = [];
@@ -31,9 +31,8 @@ let axisLock = false;
 const AXIS_LOCK_PX = 12;   // screen px of slack before the snap lets go
 
 // ─── Vertex / edge editing state ──────────────────────────────────────────────
-// -1 = no vertex selected. Also the room card's radius target: roomPanel.js derives
-// "this corner vs all corners" straight from this, so there is no separate mode flag to keep
-// in step with it (there used to be — a `roomRadiusMode` in state.js and a toggle button).
+// -1 = no vertex selected. Also the room card's radius target: roomPanel.js derives "this corner
+// vs all corners" straight from this, so there is no separate mode flag to keep in step.
 let selectedVertexIndex = -1;
 let isDraggingVertex = false;
 let vertexDragOrigVerts = null;
@@ -44,26 +43,23 @@ let edgeDragStartMapX = 0, edgeDragStartMapY = 0;
 let polygonActuallyMoved = false;
 
 // ─── Undo for a drag ──────────────────────────────────────────────────────────
-// PUSHED ON THE FIRST MOVEMENT, never on mousedown. Selecting a room is a click that moves
-// nothing, so pushing at mousedown spent one Ctrl+Z and one full fog-canvas clone on every
-// selection — an undo the DM presses and nothing happens.
+// ⚠ PUSHED ON THE FIRST MOVEMENT, never on mousedown. Selecting a room moves nothing, so pushing
+// at mousedown spends one Ctrl+Z and one full fog-canvas clone on every selection.
 //
-// The snapshot is still pre-drag: mousedown only records dragOrigVerts and writes no
-// geometry, so the first mousemove is the last moment the old shape is still live.
-// armDragUndo() at mousedown, pushDragUndo() immediately before the first write.
+// The snapshot is still pre-drag: mousedown records dragOrigVerts and writes no geometry, so the
+// first mousemove is the last moment the old shape is live.
 let _dragUndoPushed = false;
 function armDragUndo()  { _dragUndoPushed = false; }
 function pushDragUndo() { if (!_dragUndoPushed) { _dragUndoPushed = true; pushUndo(); } }
 
 // ─── Which shapes the tools act on ────────────────────────────────────────────
-// A ROOM AND AN EFFECT ARE THE SAME OBJECT: {id, vertices, cornerRadius, cornerRadii, name},
-// carrying a fog `mode` or a `material`. They live in two arrays only because polygons order
-// IS fog compositing precedence, so an effect in that list would silently change how fog
-// resolves around it.
+// A ROOM AND AN EFFECT ARE THE SAME OBJECT, carrying a fog `mode` or a `material`. They live in
+// two arrays only because polygons order IS fog compositing precedence, so an effect in that list
+// would change how fog resolves around it.
 //
-// The placement mode decides which array every tool reads and writes. That is what makes a
-// click unambiguous over a fire drawn inside a room, which is the normal case rather than the
-// edge one. setPlaceMode() clears the selection, so an id here always resolves in one list.
+// The placement mode decides which array every tool reads and writes, which is what makes a click
+// over a fire drawn inside a room unambiguous. setPlaceMode() clears the selection, so an id here
+// always resolves in one list.
 function activeShapeList() { return placeMode === 'effects' ? effects : polygons; }
 
 function findActiveShape() {
@@ -78,12 +74,11 @@ function shapeGeometryChanged() {
   rebuildFogFromPolygons();
 }
 
-// THE ONE RELEASE PATH for a room or effect drag. toolMouseUp and toolWindowMouseUp were
-// already line-for-line copies of each other; adding a second kind of shape to both copies is
-// how this file breaks, so the body lives here once and both call it.
+// THE ONE RELEASE PATH for a room or effect drag. toolMouseUp and toolWindowMouseUp both call it,
+// rather than each carrying a copy.
 //
-// Same rule as before about transitions: this does NOT stop a running crossfade first.
-// startFogTransition() leaves the live fade running and rebuildFogEffect() re-targets it.
+// This does NOT stop a running crossfade: startFogTransition() leaves the live fade going and
+// rebuildFogEffect() re-targets it.
 function commitShapeDrag() {
   if (placeMode === 'effects') {
     effectsChanged();
@@ -99,9 +94,8 @@ function commitShapeDrag() {
   scheduleAutoSync();
 }
 
-// After an edit that changed geometry but NOT a fog mode - inserting a vertex, deleting one.
-// Deliberately does not start a crossfade: there is no mode to fade towards, and adding one
-// would make a corner edit flash the whole map.
+// After an edit that changed geometry but NOT a fog mode. No crossfade: there is no mode to fade
+// towards, and one would make a corner edit flash the whole map.
 function persistShapeEdit() {
   if (placeMode === 'effects') {
     scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog reveal does
@@ -112,9 +106,8 @@ function persistShapeEdit() {
   scheduleAutoSync();
 }
 
-// A freshly drawn rectangle, circle or polygon, landed in whichever list the mode names. The
-// two records differ only in what they carry - a room a fog `mode`, an effect a `material`.
-// Vertices, corner radii and name are the same fields, which is what lets ONE set of editing
+// A freshly drawn rectangle, circle or polygon, landed in whichever list the mode names. The two
+// records differ only in a fog `mode` against a `material`, which is what lets ONE set of editing
 // paths serve both.
 function commitDrawnShape(verts) {
   let shape;
@@ -127,9 +120,8 @@ function commitDrawnShape(verts) {
     shape = { id: pid, vertices: verts, mode: tool, cornerRadius: 0, name: 'Room ' + pid };
     polygons.push(shape);
   }
-  // Deliberately NOT selected. Drawing must leave the card closed so it can't cover the map
-  // while the DM draws the next one; naming is a second pass with the Select tool. Same as
-  // floorPlan.js does for auto-generated rooms.
+  // Deliberately NOT selected: drawing leaves the card closed so it cannot cover the map, and
+  // naming is a second pass with the Select tool.
   selectedPolygonId = null;
   selectedVertexIndex = -1;
   return shape;
@@ -146,9 +138,8 @@ function snapVertex(mapX, mapY) {
   };
 }
 
-// Straighten the point being placed against the vertex just placed. The threshold is
-// SCREEN px divided by zoom, so the slack feels identical at every zoom level (same
-// conversion as POLY_CLOSE_RADIUS and the handle hit tests).
+// Straighten the point being placed against the vertex just placed. The threshold is SCREEN px
+// divided by zoom, so the slack feels identical at every zoom level.
 function axisLockDraw(pos) {
   if (!axisLock || !activePolygon || !activePolygon.vertices.length) return pos;
   const prev = activePolygon.vertices[activePolygon.vertices.length - 1];
@@ -198,9 +189,8 @@ function distPointToSegment(px, py, ax, ay, bx, by) {
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
-// Only returns a polygon when clicking a vertex dot or edge — not the interior.
-// This lets the DM start a new polygon inside an existing one without accidentally
-// selecting the existing one.
+// Only returns a polygon when clicking a vertex dot or edge, never the interior, so a new polygon
+// can start inside an existing one.
 function findPolygonHandleAt(mapX, mapY) {
   const hitRadius = Math.min(10 / zoom, 30); // clamp: ≤30 map-units so grab shrinks when very zoomed out
   const list = activeShapeList();
@@ -242,6 +232,86 @@ function closestPointOnSegment(px, py, ax, ay, bx, by) {
   if (lenSq === 0) return { x: ax, y: ay };
   const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
   return { x: ax + t * dx, y: ay + t * dy };
+}
+
+// ─── Doors ────────────────────────────────────────────────────────────────────
+// One click toggles one grid cell of one wall, so a revealed room shows where its exits are.
+// Nothing to size and nothing to edit: every door is one cell, and a second click closes it.
+
+const DOOR_HIT_PX = 8;
+
+function doorCellSize() { return gridSize > 0 ? gridSize : 0; }
+
+// Click-to-toggle, so removing has to be tested before placing or a click on a door would stack a
+// second one on top of it.
+// ⚠ Toggling is decided by CELL, never by whether the click hit a door's rectangle: a boundary
+// click belongs to two rectangles and to neither, and the tool ticks those boundaries.
+// ⚠ EVERY room whose wall is under the click is a candidate, not just the nearest — two rooms
+// share a doorway's wall, so one spot could otherwise hold two doors stacked exactly. A revealed
+// room is preferred, because a door on a shrouded one draws nothing and reads as a dead click.
+function doorMouseDown(mapX, mapY) {
+  const cell = doorCellSize();
+  if (!(cell > 0)) return;
+  const slack = DOOR_HIT_PX / zoom;
+  const size = doorSizeForCell(cell, doorWidthPct, doorDepthPct);
+
+  const cands = [];
+  for (const poly of polygons) {
+    if (poly.vertices.length < 3) continue;
+    const near = nearestOutlinePoint(poly.vertices, mapX, mapY, slack * 2);
+    if (!near) continue;
+    const door = doorCellSnap(poly.vertices, near.edge, mapX, mapY, cell,
+                              gridOffsetX, gridOffsetY, gridMode === 'square');
+    if (door) cands.push({ poly, door, dist: near.dist });
+  }
+  if (!cands.length) return;
+
+  for (const c of cands) {
+    const doors = c.poly.doors;
+    if (!doors || !doors.length) continue;
+    const centre = doorPoint(c.poly.vertices, c.door);
+    let hit = doors.findIndex(d => {
+      if (d.edge !== c.door.edge || !centre) return false;
+      const p = doorPoint(c.poly.vertices, d);
+      return p && Math.hypot(p.x - centre.x, p.y - centre.y) < cell * 0.25;
+    });
+    // A door placed before the grid changed no longer sits on a cell centre, so pointing straight
+    // at it is the only way left to take it away.
+    if (hit < 0) hit = doors.findIndex(d =>
+      pointInDoorNotch(c.poly.vertices, d, size.width, size.depth, mapX, mapY, slack));
+    if (hit < 0) continue;
+    pushUndo();
+    // Replaced, never spliced: pushUndo copies a room shallowly, so its snapshot holds THIS array
+    // and an in-place edit would rewrite the undo state too.
+    c.poly.doors = doors.filter((_, k) => k !== hit);
+    commitDoorChange();
+    return;
+  }
+
+  cands.sort((a, b) => (a.poly.mode === 'shroud') - (b.poly.mode === 'shroud') || a.dist - b.dist);
+  const pick = cands[0];
+  pushUndo();
+  pick.poly.doors = (pick.poly.doors || []).concat([pick.door]);
+  commitDoorChange();
+}
+
+function commitDoorChange() {
+  rebuildFogFromPolygons();
+  rebuildFogEffect();
+  fogDirty = true;
+  scheduleRender();
+  scheduleAutoSync();
+}
+
+// Every room's doors resize with the grid, so a scene whose grid was never calibrated is corrected
+// by fixing the grid rather than by redrawing. Skipped when no room has a door, because the cell
+// slider fires this on every input event.
+function rebuildFogForGridChange() {
+  if (typeof polygons === 'undefined') return;
+  if (!polygons.some(p => p.doors && p.doors.length)) return;
+  rebuildFogFromPolygons();
+  rebuildFogEffect();
+  fogDirty = true;
 }
 
 // ─── Brush flush ──────────────────────────────────────────────────────────────
@@ -293,9 +363,8 @@ function flushBrushOps() {
 
 // ─── Cursor / outline drawing ─────────────────────────────────────────────────
 
-// `dimmed` is the list the placement mode does NOT name — rooms while drawing effects, and vice
-// versa. It keeps a faint outline so the DM can see where a shape sits, and loses its vertex
-// dots, which are handles: a handle you cannot grab is the one piece of chrome that lies.
+// `dimmed` is the list the placement mode does NOT name. It keeps a faint outline and loses its
+// vertex dots, because a handle you cannot grab is chrome that lies.
 function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   const verts = poly.vertices;
   if (verts.length < 2) return;
@@ -304,11 +373,10 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   // above "gone" on ground the DM did not choose.
   if (dimmed) cursorCtx.globalAlpha = 0.45;
 
-  // Three fog states, three colours — the shared POLY_EDGE_COLORS table in state.js, so the
-  // room being drawn and the room once it is saved are the same colour. Mode colour is only
-  // visible when the room is deselected; a selected room is always gold.
-  // `material` is what tells an effect from a room. An effect gets its own colour family so it
-  // can never read as a fourth fog state.
+  // Three fog states, three colours, from the shared POLY_EDGE_COLORS table, so a room being drawn
+  // and the saved room match. A selected room is always gold.
+  // `material` tells an effect from a room, and an effect's colour family can never read as a
+  // fourth fog state.
   const edgeColor = isSelected
     ? POLY_EDGE_SELECTED
     : (poly.material ? EFFECT_EDGE_COLOR
@@ -382,17 +450,15 @@ function drawActivePolyPreview(screenX, screenY) {
   if (screenX != null) {
     const last = toScreen(verts[verts.length - 1].x, verts[verts.length - 1].y);
     let tipX = screenX, tipY = screenY;
-    // With axis-lock on, preview where the click will actually land so the wall doesn't
-    // jump on release. Runs the same chain as toolMouseDown. Gated on axisLock so
-    // grid-snap-only drawing keeps its existing free-cursor preview.
+    // With axis-lock on, preview where the click will land so the wall does not jump on release.
+    // Gated on axisLock, so grid-snap-only drawing keeps its free-cursor preview.
     if (axisLock) {
       const m = axisLockDraw(snapVertex((screenX - panX) / zoom, (screenY - panY) / zoom));
       const s = toScreen(m.x, m.y);
       tipX = s.sx; tipY = s.sy;
     }
-    // Mode colour, faded, so an un-placed segment reads as provisional without becoming a
-    // different colour from the placed edges beside it. globalAlpha rather than a second
-    // colour string, so this can never drift from the table.
+    // Mode colour, faded, so an un-placed segment reads as provisional. globalAlpha rather than a
+    // second colour string, so it cannot drift from the table.
     cursorCtx.strokeStyle = edgeColor;
     cursorCtx.globalAlpha = 0.6;
     cursorCtx.lineWidth   = 1.5;
@@ -443,9 +509,7 @@ function drawActivePolyPreview(screenX, screenY) {
 // roomPanel.js (refreshRoomPanel), called from drawCursor().
 
 // ─── Tool mouse handlers ──────────────────────────────────────────────────────
-// Called from index.html event listeners with pre-converted map coordinates.
-// Panning and coordinate conversion are handled in index.html; these functions
-// receive map-space coordinates and dispatch to the active tool's logic.
+// Called from index.html with pre-converted MAP coordinates; panning and conversion are its job.
 
 function toolMouseDown(raw, e) {
   if (shape === 'poly') {
@@ -480,6 +544,13 @@ function toolMouseDown(raw, e) {
     }
     drawCursor(e.clientX - container.getBoundingClientRect().left,
                e.clientY - container.getBoundingClientRect().top);
+    return;
+  }
+
+  if (shape === 'door') {
+    const r = container.getBoundingClientRect();
+    doorMouseDown(raw.x, raw.y);
+    drawCursor(e.clientX - r.left, e.clientY - r.top);
     return;
   }
 
@@ -773,6 +844,7 @@ function toolDblClick(raw, e) {
   const pt = closestPointOnSegment(raw.x, raw.y, a.x, a.y, b.x, b.y);
   poly.vertices.splice(ei + 1, 0, pt);
   if (poly.cornerRadii) poly.cornerRadii.splice(ei + 1, 0, null);
+  if (poly.doors) poly.doors = remapDoorsForVertexChange(poly.doors, ei, 1);
   selectedVertexIndex = ei + 1;
   shapeGeometryChanged();
   persistShapeEdit();
@@ -834,16 +906,12 @@ function deleteSelectedPolygon() {
   deletePolygonById(selectedPolygonId);
 }
 
-// Set one polygon's fog mode by id — the room card's fog pill names the room it acts on,
-// so it doesn't use the selection-keyed toggle below. Mode-agnostic on purpose: chunk 3
-// adds 'half' and only needs the crossfade argument revisited.
-// Sequence matches toggleSelectedPolygon(); scheduleAutoSync() is what reaches the TV
-// (and persists — it calls scheduleAutoSave internally). Deliberately does NOT refresh the
-// whole card: a rebuild would steal focus from the name/description fields mid-edit, so
-// the card updates its pill in place instead.
-// Fog states belong to rooms. An effect has a material instead, so both this and the T-key
-// cycle below refuse in Effects mode rather than resolving an effect's id against `polygons`
-// and toggling whichever room happens to share the number.
+// Set one polygon's fog mode by id — the room card's fog pill names the room it acts on, so it
+// does not use the selection-keyed toggle below. scheduleAutoSync() is what reaches the TV, and it
+// persists too. ⚠ Never refresh the whole card here: a rebuild steals focus from the name and
+// description fields mid-edit, so the pill updates in place.
+// ⚠ Fog states belong to rooms, so this and the T-key cycle refuse in Effects mode rather than
+// resolving an effect's id against `polygons`.
 function setPolygonMode(id, mode) {
   if (placeMode === 'effects') return;
   const poly = polygons.find(p => p.id === id);
@@ -864,9 +932,8 @@ function toggleSelectedPolygon() {
   const poly = polygons.find(p => p.id === selectedPolygonId);
   if (!poly) return;
   pushUndo();
-  // Three-way cycle, not a toggle. With a third state a two-way toggle is a trap: T on a half
-  // room would send it to shroud with no keyboard route back, so the key would silently be able
-  // to leave a state it can't reach. Order matches the pill: reveal → shroud → half → reveal.
+  // ⚠ Three-way cycle, never a toggle: T on a half room would go to shroud with no keyboard route
+  // back. Order matches the pill: reveal → shroud → half → reveal.
   poly.mode = poly.mode === 'reveal' ? 'shroud' : poly.mode === 'shroud' ? 'half' : 'reveal';
   rebuildFogFromPolygons();
   drawCursor(null, null);

@@ -1,13 +1,12 @@
 'use strict';
 // pdfExtract.js — a PDF's text, pulled out in a UTILITY PROCESS.
 //
-// A campaign module is an untrusted file and pdf.js is a large parser, so it runs here
-// rather than in main.js: forked for the one job, killed the moment it answers, with no
-// Electron APIs and no renderer channel. Honest limit: this is still a Node process, so
-// `fs` exists. Full reasoning in docs/DECISIONS.md; the rules in CLAUDE.md.
+// A campaign module is an untrusted file and pdf.js is a large parser, so it runs here rather than
+// in main.js: forked for the one job, killed the moment it answers, with no Electron APIs. Honest
+// limit — this is still a Node process, so `fs` exists.
 //
-// Lives in src/ for the build glob and has NO <script src> tag — nothing here is browser
-// code. Dependency-free apart from pdfLayout.js, so it forks cleanly from inside app.asar.
+// NO <script src> tag; nothing here is browser code. Dependency-free apart from pdfLayout.js, so it
+// forks cleanly from inside app.asar.
 
 const path = require('path');
 const url = require('url');
@@ -15,11 +14,9 @@ const { plDocumentText } = require('./pdfLayout.js');
 
 let _pdfjs = null;
 
-// pdf.js is loaded by EXPLICIT REAL PATH, handed in by main.js — the only place that
-// knows the app.asar → app.asar.unpacked rewrite. Both parts are load-bearing and the
-// packaged app dies without either: pdfjs-dist is unpacked because ESM resolves through
-// real filesystem paths, and workerSrc must be set because pdf.js otherwise guesses the
-// non-minified worker name, which is not shipped. Dev hides both.
+// ⚠ pdf.js is loaded by EXPLICIT REAL PATH, handed in by main.js. The packaged app dies without
+// both parts: pdfjs-dist is unpacked because ESM resolves through real filesystem paths, and
+// workerSrc must be set or pdf.js guesses a worker name that is not shipped. Dev hides both.
 function pdfjsFileUrl(buildDir, name) {
   return url.pathToFileURL(path.join(buildDir, name)).href;
 }

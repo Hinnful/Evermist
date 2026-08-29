@@ -1,13 +1,10 @@
 // vttPlan.js — pure geometry kernel: a Universal VTT floor plan → room polygons.
 //
-// Dungeon Alchemist writes a `.dd2vtt` beside the map it exports, holding the walls as
-// vector data. Deriving rooms from it replaces the slowest part of prep, and none of the
-// hard problems of tracing pixels exist here. Argument-in / value-out, no DOM and no
-// globals, so it is unit-testable under node:test. See the `floor-plan` skill for the
-// rules, docs/DECISIONS.md for why the shape is this shape.
+// Dungeon Alchemist writes a `.dd2vtt` beside the map it exports, holding the walls as vector
+// data. Argument-in / value-out, no DOM and no globals. See the `floor-plan` skill for the rules,
+// docs/DECISIONS.md for why the shape is this shape.
 //
-// Loaded via <script src> before floorPlan.js, and require()-able in tests via the guard
-// at the bottom (same pattern as fogGeometry.js).
+// Loaded via <script src> before floorPlan.js, and require()-able in tests.
 //
 // ⚠ EVERYTHING HERE WORKS IN GRID SQUARES, the file's own unit (1 square = 5 ft). Every
 // tolerance is therefore resolution-independent; applied in pixels they would need
@@ -15,44 +12,34 @@
 
 'use strict';
 
-// Two endpoints this far apart are ONE node, and a node this close to an edge's interior
-// sits ON it. Coincident wall/portal endpoints are near-identical rather than
-// bit-identical, because half the segments on a real map are diagonal or curved. Well
-// under the thinnest DA wall, well over float noise.
+// Two endpoints this far apart are ONE node, and a node this close to an edge's interior sits ON
+// it. Coincident endpoints are near-identical rather than bit-identical. Well under the thinnest
+// DA wall, well over float noise.
 const VTT_NODE_SNAP = 0.02;
 
-// A face vertex whose perpendicular distance from its neighbours' chord is under this is
-// an artefact of a T-junction split, not a corner. Deliberately SMALL: DA tessellates a
-// curved wall finely, and a bigger epsilon flattens real arcs into straight lines.
+// A face vertex whose perpendicular distance from its neighbours' chord is under this is a
+// T-junction artefact, not a corner. SMALL on purpose: a bigger one flattens real arcs.
 const VTT_COLLINEAR_EPS = 0.002;
 
-// Faces smaller than this are not rooms, in square grid squares. Just under one 5ft square,
-// which is the smallest thing anyone shrouds — and a real 5ft closet measures slightly OVER
-// one square, because the polygon follows wall centrelines and carries half a wall each side.
+// Faces smaller than this are not rooms, in square grid squares. Just under one 5ft square, and a
+// real 5ft closet measures slightly over one, because the polygon follows wall centrelines.
 //
-// This is the guard that makes generous gap-closing safe. Bridging a gap at a corner can chop
-// a triangle off it, and a chamfered corner that closes a real room is worth keeping while a
-// bare triangle is not. Sliver in, sliver refused, whatever produced it.
+// This guard is what makes generous gap-closing safe: bridging at a corner can chop a triangle
+// off it. Sliver in, sliver refused, whatever produced it.
 const VTT_MIN_FACE_AREA = 0.9;
 
-// How far a wall end will reach to close a gap. 2.5 squares is 12.5 ft, wider than any
-// double door, so a missing wall panel and an undoored archway both get bridged. Beyond it
-// the two ends are too far apart to be confident they were ever meant to meet.
+// How far a wall end reaches to close a gap — wider than any double door, so a missing wall panel
+// and an undoored archway both bridge. Beyond it, the ends were probably never meant to meet.
 const VTT_CLOSE_GAP_MAX = 2.5;
 
-// The same reach for a MUTUAL PAIR of loose ends, which is much better evidence: two ends
-// that each pick the other as their nearest feature were almost certainly one wall. A stub
-// projecting onto some wall's mid-span is a guess by comparison, so it keeps the tighter
-// ceiling above. 5 squares is 25 ft — the open side of a room that fronts onto a cave,
-// which is the case this exists for. A room only loses its ends to each other once nothing
-// solid is allowed to steal them; see vttLooseEnds.
+// The same reach for a MUTUAL PAIR of loose ends, which is far better evidence: two ends that
+// each pick the other were almost certainly one wall. A stub projecting onto a mid-span is a guess
+// and keeps the tighter ceiling above. This width covers a room fronting onto a cave.
 const VTT_CLOSE_PAIR_MAX = 5;
 
-// Reporting ceiling for the gaps closing could NOT bridge. Must stay above
-// VTT_CLOSE_PAIR_MAX, the widest thing closing reaches, or there is nothing left for it to
-// describe. Low enough that a decorative wall standing in open ground is not reported as a
-// broken room. Past a certain distance the two are genuinely indistinguishable, so this only
-// claims "close enough to have been meant to meet".
+// Reporting ceiling for the gaps closing could NOT bridge. ⚠ Must stay above VTT_CLOSE_PAIR_MAX,
+// or there is nothing left to describe. Low enough that a decorative wall in open ground is not
+// reported as a broken room.
 const VTT_OPEN_WALL_MAX_GAP = 6;
 
 // Room centroids within this vertical distance are one row, for the left-to-right
@@ -60,11 +47,11 @@ const VTT_OPEN_WALL_MAX_GAP = 6;
 const VTT_ROW_BUCKET = 2;
 
 // ─── Edge collection ──────────────────────────────────────────────────────────
-// Walls alone have a gap at every opening; the portals fill those gaps exactly and share
-// endpoints, so walls UNIONED WITH PORTALS is a closed plan and walls alone are not.
+// Walls alone have a gap at every opening; the portals fill those gaps and share endpoints, so
+// walls UNIONED WITH PORTALS is a closed plan and walls alone are not.
 //
-// ⚠ `objects_line_of_sight` is deliberately never read. It is vision-blocking props, so
-// unioning it turns every pillar into a fake room inside a real one.
+// ⚠ `objects_line_of_sight` is never read. It is vision-blocking props, so unioning it turns every
+// pillar into a fake room.
 function vttCollectEdges(plan) {
   const out = [];
   const addPolyline = (pts) => {
@@ -83,8 +70,7 @@ function vttCollectEdges(plan) {
 }
 
 // ─── Node snapping ────────────────────────────────────────────────────────────
-// A grid of buckets one snap-radius wide, so coincidence is a lookup over 9 cells
-// instead of a scan over every node.
+// A grid of buckets one snap-radius wide, so coincidence is a 9-cell lookup, not a scan.
 function vttBuildNodes(edges, snap) {
   const s = snap == null ? VTT_NODE_SNAP : snap;
   const nodes = [];
@@ -131,10 +117,8 @@ function vttProjectToSegment(p, a, b) {
 }
 
 // ─── T-junction splitting ─────────────────────────────────────────────────────
-// A node landing on another edge's INTERIOR is a junction the graph does not know about,
-// and the face walk has nowhere to turn there: without this step the walk collapses to
-// zero-area faces. Every real DA map needs it — a wall abutting another wall mid-span is
-// the normal way rooms share a wall.
+// A node landing on another edge's INTERIOR is a junction the graph does not know about, so the
+// face walk has nowhere to turn and collapses to zero-area faces. Every real DA map needs it.
 function vttSplitAtJunctions(nodes, pairs, snap) {
   const s = snap == null ? VTT_NODE_SNAP : snap;
   const out = [];
@@ -169,9 +153,8 @@ function vttSplitAtJunctions(nodes, pairs, snap) {
 }
 
 // ─── Planar face walk ─────────────────────────────────────────────────────────
-// Each node's neighbours sorted by angle; arriving at v from u, leave by the neighbour
-// immediately CLOCKWISE of (v→u). Every directed edge belongs to exactly one face, so
-// walking from each unvisited one enumerates the faces without repeats.
+// Each node's neighbours sorted by angle; arriving at v from u, leave by the neighbour immediately
+// CLOCKWISE of (v→u). Every directed edge belongs to one face, so this enumerates them all.
 function vttWalkFaces(nodes, pairs) {
   const adj = nodes.map(() => []);
   for (const [ia, ib] of pairs) { adj[ia].push(ib); adj[ib].push(ia); }
@@ -212,9 +195,8 @@ function vttWalkFaces(nodes, pairs) {
 }
 
 // ─── Ring cleanup ─────────────────────────────────────────────────────────────
-// Drops spur tips (the walk goes out along a dangling wall and straight back) and the
-// collinear vertices a T-junction split leaves mid-wall. Repeated until stable, because
-// removing one vertex can make its neighbour collinear in turn.
+// Drops spur tips and the collinear vertices a T-junction split leaves mid-wall. Repeated until
+// stable, because removing one vertex can make its neighbour collinear.
 function vttCleanRing(pts, collinearEps, snap) {
   const eps = collinearEps == null ? VTT_COLLINEAR_EPS : collinearEps;
   const sn = snap == null ? VTT_NODE_SNAP : snap;
@@ -260,19 +242,16 @@ function vttCentroid(ring) {
 }
 
 // ─── Loose wall ends ──────────────────────────────────────────────────────────
-// A missing wall does not distort a room, it DELETES it: the gap joins the interior to the
-// outside and the two merge into one face, so a broken room costs a room and raises no error.
+// A missing wall does not distort a room, it DELETES it: the gap joins the interior to the outside
+// and the two merge into one face, so a broken room raises no error.
 //
-// Every degree-1 node paired with the nearest thing that is not its own wall. Excluding its
-// own wall is not optional: a freestanding wall's two ends are each other's nearest node, so
-// the wall would measure itself and report as a gap of its own length.
+// Every degree-1 node pairs with the nearest thing that is NOT its own wall. ⚠ That exclusion is
+// not optional: a freestanding wall's two ends are each other's nearest node, so it would measure
+// itself and report a gap of its own length.
 //
 // ⚠ `avoid` IS WHY A ROOM FRONTING ONTO A CAVE CAN CLOSE AT ALL. Pass the doorless walls and
-// nothing solid can be a target. Without it, both ends of such a room's open side bridge
-// sideways into the rock a few feet away — nearer than each other — which glues the stubs to
-// the cave and achieves nothing, while consuming the ends so the real partner is never found.
-// The room then merges into the cavern and is silently lost. On the cave map 8 of 10 bridges
-// were that mistake.
+// nothing solid can be a target. Without it both ends bridge sideways into the rock, which
+// consumes them so the real partner is never found and the room merges into the cavern.
 function vttLooseEnds(nodes, pairs, avoid) {
   const solid = (p) => !!avoid && avoid.length > 0 &&
     avoid.some(([a, b]) => vttProjectToSegment(p, a, b).dist <= VTT_NODE_SNAP);
@@ -305,11 +284,9 @@ function vttLooseEnds(nodes, pairs, avoid) {
       if (pr.dist >= best) continue;   // strict, so a tie with a node keeps the node
       const foot = { x: nodes[ia].x + pr.t * (nodes[ib].x - nodes[ia].x),
                      y: nodes[ia].y + pr.t * (nodes[ib].y - nodes[ia].y) };
-      // ⚠ A CLAMPED PROJECTION CAN LAND ON THIS END'S OWN NEIGHBOUR. Skipping incident edges
-      // is not enough: projecting onto a SIBLING edge that shares the neighbour clamps to
-      // that shared corner, so the end measures the length of its own wall and reports a gap
-      // that does not exist. The neighbour exclusion has to apply to the foot, not just to
-      // the edge list.
+      // ⚠ A CLAMPED PROJECTION CAN LAND ON THIS END'S OWN NEIGHBOUR. Skipping incident edges is
+      // not enough: a SIBLING edge sharing the neighbour clamps to that corner, so the end measures
+      // its own wall. The exclusion has to apply to the foot, not just the edge list.
       if (Math.hypot(foot.x - nodes[id].x, foot.y - nodes[id].y) <= VTT_NODE_SNAP) continue;
       let onNeighbour = false;
       for (const nb of linked[id]) {
@@ -324,15 +301,12 @@ function vttLooseEnds(nodes, pairs, avoid) {
 }
 
 // ─── Closing the gaps ─────────────────────────────────────────────────────────
-// Bridges a wall end to whatever it almost reaches, so a broken room becomes a drawable one.
+// Bridges a wall end to whatever it almost reaches, so a broken room becomes a drawable one. An
+// archway with no door still bounds a room the DM wants to shroud.
 //
-// This REVERSES the earlier refusal to auto-close. The case that overturned it: an archway
-// with no door still bounds a room the DM wants to shroud, and real maps are full of them.
-// It is also less of a guess than it sounds — the bridge is a straight line between two
-// points the file already contains, not an invented shape, and `VTT_CLOSE_GAP_MAX` caps how
-// far it will reach. Two loose ends are joined only when they are each other's nearest
-// feature, so a stub whose neighbour is looking elsewhere is left alone. Anything it gets
-// wrong, one Ctrl+Z removes, because the whole import is a single undo step.
+// The bridge is a straight line between two points the file already contains, capped by
+// VTT_CLOSE_GAP_MAX. Two loose ends join only when each is the other's nearest feature. Anything
+// it gets wrong, one Ctrl+Z removes — the whole import is a single undo step.
 function vttCloseGaps(nodes, pairs, maxGap, snap, avoid, pairGap) {
   const max = maxGap == null ? VTT_CLOSE_GAP_MAX : maxGap;
   // Tightening the ceiling tightens BOTH: the pair bonus is part of the default posture, so
@@ -359,11 +333,9 @@ function vttCloseGaps(nodes, pairs, maxGap, snap, avoid, pairGap) {
       }
       target = e.node;
     } else if (e.point) {
-      // ⚠ REUSE A NODE THE PROJECTION LANDS ON. An edge's nearest point is very often its own
-      // endpoint, and float error can make that edge win over the node by a hair. A fresh
-      // node there is not a corner the graph knows: it sits at an existing corner rather than
-      // in an edge's interior, so the re-split never attaches it and the bridge dead-ends
-      // beside the wall it was supposed to reach. The room then silently fails to close.
+      // ⚠ REUSE A NODE THE PROJECTION LANDS ON. An edge's nearest point is often its own endpoint,
+      // and float error can make the edge win by a hair. A fresh node there sits at an existing
+      // corner, so the re-split never attaches it and the bridge dead-ends.
       let existing = -1;
       for (let n = 0; n < nodes.length; n++) {
         if (n === e.id) continue;
@@ -389,10 +361,9 @@ function vttCloseGaps(nodes, pairs, maxGap, snap, avoid, pairGap) {
   return { pairs: added.length ? pairs.concat(added) : pairs, closed };
 }
 
-// What closing left behind: a gap too wide to bridge, which still costs its room. Reported at
-// the midpoint of a mutual pair so the count matches the number of gaps rather than doubling
-// it. Nothing surfaces this in the UI — the import says the room count and a gap is an edge
-// case — but the coordinates are exact and cost nothing to carry.
+// What closing left behind: a gap too wide to bridge, which still costs its room. Reported at the
+// midpoint of a mutual pair, so the count matches the gaps rather than doubling them. Nothing
+// surfaces it in the UI, but the coordinates are exact.
 function vttFindOpenWalls(nodes, pairs, maxGap, avoid) {
   const max = maxGap == null ? VTT_OPEN_WALL_MAX_GAP : maxGap;
   const { ends, deg } = vttLooseEnds(nodes, pairs, avoid);
@@ -414,21 +385,16 @@ function vttFindOpenWalls(nodes, pairs, maxGap, avoid) {
 }
 
 // ─── Doorless wall loops ──────────────────────────────────────────────────────
-// A run of walls that closes on itself and carries NO portal anywhere along it does not
-// bound a room. It is solid: a rock formation standing in a cave, or the cave's own outer
-// shell. Every real room reaches its neighbours or the outside through a doorway, so its
-// walls come out of the file as an OPEN chain that only becomes a loop once the portals
-// are unioned in.
+// A run of walls that closes on itself and carries NO portal anywhere is solid, not a room: a rock
+// formation in a cave, or the cave's outer shell. Every real room reaches its neighbours through a
+// doorway, so its walls are an OPEN chain until the portals are unioned in.
 //
-// Measured on a cave map: the false rooms scored 100%, 100% and 84% of their outline in
-// doorless wall, every real room scored exactly zero, and an interior map has no doorless
-// loop at all. So the test is "any at all", with no threshold to tune.
+// The test is "any at all", with no threshold to tune: a false room is doorless along most of its
+// outline and a real one along none of it.
 //
-// ⚠ IT IS A PROPERTY OF THE WHOLE CONNECTED RUN, NOT OF ONE ROOM, and that is what makes
-// it safe. A sealed vault inside a house is joined to the house's walls at the corners, so
-// it shares their doors and is kept. Only a doorless structure touching nothing else on
-// the map is refused. A whole floor that is a single sealed room would come back empty —
-// the accepted cost, because a missing room is cheaper than a wrong one.
+// ⚠ IT IS A PROPERTY OF THE WHOLE CONNECTED RUN, NOT OF ONE ROOM, which is what makes it safe. A
+// sealed vault inside a house joins the house's walls at the corners, shares their doors, and is
+// kept. A whole floor that is one sealed room comes back empty — the accepted cost.
 function vttDoorlessWalls(plan, snap) {
   const s = snap == null ? VTT_NODE_SNAP : snap;
   const wallEdges = [];
@@ -443,12 +409,10 @@ function vttDoorlessWalls(plan, snap) {
   if (!wallEdges.length) return [];
 
   // ⚠ WALLS ONLY. Union the portals in first and every chain closes into a loop, so the
-  // distinction this whole function rests on disappears.
+  // distinction this function rests on disappears.
   //
-  // The T-split is not optional either. Without it a doorway in one wall of a building
-  // leaves the OTHER walls looking like an untouched closed ring, and the whole building
-  // is refused as solid. Splitting joins every wall that meets another into one run, so a
-  // door anywhere on the structure spares all of it.
+  // ⚠ The T-split is not optional either: without it a doorway in one wall leaves the OTHERS
+  // looking like a closed ring and the whole building is refused as solid.
   const built = vttBuildNodes(wallEdges, s);
   const nodes = built.nodes;
   const pairs = vttSplitAtJunctions(nodes, built.pairs, s);
@@ -490,9 +454,8 @@ function vttDoorlessWalls(plan, snap) {
   return out;
 }
 
-// Does any edge of this ring run along a doorless wall? Tested at each edge's midpoint
-// against the whole segment rather than endpoint to endpoint, so a T-junction split
-// partway along a doorless wall still matches.
+// Does any edge of this ring run along a doorless wall? Tested at each edge's midpoint against the
+// whole segment, so a T-junction split partway along a doorless wall still matches.
 function vttRingOnDoorlessWall(ring, walls, tol) {
   if (!walls || !walls.length) return false;
   const t = tol == null ? VTT_NODE_SNAP : tol;
@@ -506,9 +469,8 @@ function vttRingOnDoorlessWall(ring, walls, tol) {
 }
 
 // ─── The derivation ───────────────────────────────────────────────────────────
-// A plan that yields nothing returns empty arrays rather than throwing: callers must be
-// able to ask "how many rooms?" and get zero. Malformed JSON is the CALLER's problem —
-// this kernel takes an already-parsed object.
+// A plan that yields nothing returns empty arrays rather than throwing, so a caller can ask "how
+// many rooms?" and get zero. Malformed JSON is the CALLER's problem.
 function vttDerivePlan(plan, opts) {
   const o = opts || {};
   const empty = { rooms: [], boundaries: [], closedGaps: [], openWalls: [], refusedSolid: 0,
@@ -531,9 +493,8 @@ function vttDerivePlan(plan, opts) {
   // ⚠ THE DOORLESS WALLS ARE NEEDED BEFORE CLOSING, not just after it. They are what a wall
   // stub must not bridge into, and a bridge into rock costs the room it belonged to.
   const doorless = o.keepDoorless ? [] : vttDoorlessWalls(plan, snap);
-  // Split, close, then split again. The second pass is what attaches a bridge that landed
-  // mid-wall: closing can add a node in an edge's interior, and a junction the graph does not
-  // know about is one the face walk cannot turn at.
+  // Split, close, then split again: closing can add a node in an edge's interior, and the face
+  // walk cannot turn at a junction the graph does not know about.
   const split = vttSplitAtJunctions(nodes, rawPairs, snap);
   const bridged = vttCloseGaps(nodes, split, o.closeGapMax, snap, doorless, o.closePairMax);
   const pairs = bridged.closed.length
@@ -556,10 +517,9 @@ function vttDerivePlan(plan, opts) {
       if (area > 0) refusedSolid++;
       continue;
     }
-    // WINDING, NEVER AREA. Interior faces come out of the clockwise-turn walk with
-    // positive shoelace area and each island's outer boundary with negative. Size looks
-    // like a usable signal right up until a map holds two detached buildings, and then the
-    // smaller building's own boundary outranks a real room. Fails silently, and only there.
+    // ⚠ WINDING, NEVER AREA. The clockwise-turn walk gives interior faces positive shoelace area
+    // and each island's outer boundary negative. Size works until a map holds two detached
+    // buildings, and then the smaller building's boundary outranks a real room.
     (area > 0 ? rooms : boundaries).push(ring);
   }
 
@@ -590,18 +550,13 @@ function vttDerivePlan(plan, opts) {
     closedGaps: bridged.closed.map(toReport),
     openWalls: vttFindOpenWalls(nodes, pairs, o.openWallMaxGap, doorless).map(toReport),
     refusedSolid,
-    // The pixel size the plan believes its own map is. map_size is in grid squares, so
-    // × pixels_per_grid IS the sibling export's resolution at uniform scale 1.0 — and every
-    // coordinate above is in that space, with no map-width term anywhere in this kernel. A
-    // caller whose map is a DIFFERENT size (a shrunk animated map) has to scale by its own
-    // width over this. 0 where the field is absent; callers read that as unknown and scale
-    // by 1, which is what a plan and its own untouched export need.
+    // The pixel size the plan believes its own map is: map_size in grid squares × pixels_per_grid.
+    // Every coordinate above is in that space, so a caller whose map is a DIFFERENT size must scale
+    // by its own width over this. 0 means unknown, which callers read as scale 1.
     srcW: pxSize(res.map_size && res.map_size.x, ppg),
     srcH: pxSize(res.map_size && res.map_size.y, ppg),
-    // How many grid squares wide and tall the plan says its map is, and how many pixels it puts
-    // in one square. With the loaded map's own width these are what let the import set Grid Size
-    // from the plan instead of asking the DM for a DPI: pixels across divided by squares across.
-    // 0 where the file does not say; a caller reads that as unknown.
+    // How many grid squares the plan says its map is, and how many pixels one square holds. With
+    // the loaded map's width, that sets Grid Size without asking the DM for a DPI. 0 means unknown.
     squaresX: gridSpan(res.map_size && res.map_size.x),
     squaresY: gridSpan(res.map_size && res.map_size.y),
     gridPx: ppg,
@@ -620,15 +575,12 @@ function pxSize(gridSpan, ppg) {
   return isFinite(n) && n > 0 ? n * ppg : 0;
 }
 
-// Re-scales derived rings from the plan's own pixel space into the loaded map's. The two
-// differ whenever the map on screen is not the export the plan was written beside — an
-// animated map shrunk at import is the case that made this necessary, and every room came
-// out 1.6× too large without it.
+// Re-scales derived rings from the plan's own pixel space into the loaded map's, which differ
+// whenever the map on screen is not the export the plan was written beside — a shrunk animated map.
 //
-// UNIFORM and POSITIVE, on width alone. Winding is what classifies a face as a room, and a
-// uniform positive scale cannot flip it; scaling the two axes independently would also shear
-// a plan whose aspect disagrees, which is a wrong answer that still looks plausible.
-// Unknown or unusable srcW means scale 1, so a plan beside its own export is untouched.
+// ⚠ UNIFORM and POSITIVE, on width alone. Winding classifies a face as a room and a uniform
+// positive scale cannot flip it; independent axes would shear a plan whose aspect disagrees.
+// Unknown srcW means scale 1, so a plan beside its own export is untouched.
 function vttScaleRooms(rooms, mapWidth, srcW) {
   const list = Array.isArray(rooms) ? rooms : [];
   const mw = Number(mapWidth), sw = Number(srcW);

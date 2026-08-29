@@ -129,6 +129,17 @@ Per-file targets are a bad instrument: `state.js` is 70 lines of one-line declar
 43% is almost entirely load-bearing trap warnings rather than padding, and a parser needs a
 reason attached to each rule or someone simplifies it away. Do not "finish the job."
 
+### The comment share is a ratchet, not a target · `SETTLED` (2026-08-29)
+A number reached by hand does not stay reached: a deliberate trim set the share at 19.3% and it
+was back past 24% within three weeks, because every individual comment reads as justified when
+it is written and nobody owns the total. `guard-comments.js` now holds the ceiling the same way
+`guard-claudemd.js` holds CLAUDE.md's - codebase-wide, falling on its own, rising only by a
+deliberate edit. It ranks the offer of where to cut by comment COUNT rather than share, so it
+cannot become the per-file instrument rejected above.
+What it measures: whole-line comments as a share of non-blank lines, over the exact set
+`build.files` ships minus the vendored PixiJS. A comment sharing a line with code is free, so a
+trailing note never costs anything. `tools/comment-density.js` reports the same figure by hand.
+
 ### Verifying a comment-only change with the test suite alone · `REJECTED`
 Strip comments and blank lines from HEAD and the working copy, then diff the pure code, per
 file. It caught two things 375 green tests did not: two declarations quietly reordered while

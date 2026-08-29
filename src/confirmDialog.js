@@ -1,16 +1,12 @@
 'use strict';
 
-// confirmDialog.js — the app's own yes/no. A native confirm() leaves the page's focus
-// desynced from the field that had it, and nothing in the page can repair it, so it is
-// banned outright. Full rule in CLAUDE.md ("Dialogs"), the bug in docs/DECISIONS.md.
-// Shape is the app's floating-panel pattern; see overlays.css.
+// confirmDialog.js — the app's own yes/no. ⚠ A native confirm() leaves the page's focus desynced
+// beyond any in-page repair, so it is banned outright. Full rule in CLAUDE.md ("Dialogs").
 
 let _cdRoot = null, _cdOnConfirm = null, _cdOnCancel = null;
 
-// ONE DIALOG AT A TIME, AND NONE IS DROPPED. Both entry points below used to write straight
-// over _cdOnConfirm/_cdOnCancel, so a second dialog raised while one was up left the first
-// caller waiting for an answer that could never arrive — a restore asking whether to adopt
-// the backup's module text simply never heard back. The extra one now waits its turn.
+// ⚠ ONE DIALOG AT A TIME, AND NONE IS DROPPED. Writing straight over _cdOnConfirm/_cdOnCancel
+// leaves the first caller waiting for an answer that can never arrive, so the extra one queues.
 let _cdOpen = false;
 const _cdQueue = [];
 
@@ -32,12 +28,9 @@ function _cdShow(kind, o) {
 
 function _cdEl(id) { return document.getElementById(id); }
 
-// ANSWERS ASYNCHRONOUSLY — the one thing callers must design around. This returns
-// immediately; the answer arrives in onConfirm/onCancel. Code that used to write on
-// `if (confirm(...))` has to split into "what happens regardless" and "what happens on
-// yes". See applyModuleEntryToRoom.
-//
-// opts: { title, message, confirmLabel, cancelLabel, danger, onConfirm, onCancel }
+// ⚠ ANSWERS ASYNCHRONOUSLY. This returns immediately and the answer arrives in onConfirm/onCancel,
+// so a caller must split into "what happens regardless" and "what happens on yes" — see
+// applyModuleEntryToRoom.
 function confirmDialog(opts) { _cdRequest('confirm', opts || {}); }
 
 function _cdShowConfirm(o) {
@@ -59,11 +52,9 @@ function _cdShowConfirm(o) {
   _cdEl('cd-cancel').focus();
 }
 
-// A statement, not a question: one button, no danger colouring. Errors come through here,
-// because a native alert() breaks focus exactly the way a native confirm() does. Escape and
-// the backdrop dismiss it too, so every exit runs onClose.
-//
-// opts: { title, message, buttonLabel, onClose }
+// A statement, not a question: one button, no danger colouring. Every error comes through here,
+// because a native alert() breaks focus the way confirm() does. Escape and the backdrop dismiss it,
+// so every exit runs onClose.
 function messageDialog(opts) { _cdRequest('message', opts || {}); }
 
 function _cdShowMessage(o) {
@@ -92,9 +83,8 @@ function _cdClose(confirmed) {
   // Focus is deliberately NOT restored: putting it back would reopen the module-text
   // dropdown on top of the answer the DM just gave.
   if (fn) fn();
-  // The answer runs FIRST, and it may raise its own dialog — an adopt that fails reports
-  // it. That one is already on screen by now, so only hand over to the queue when nothing
-  // took the slot; its own close drains the rest.
+  // The answer runs FIRST and may raise its own dialog, which is already on screen by now — so only
+  // hand over to the queue when nothing took the slot.
   if (!_cdOpen) _cdDrain();
 }
 

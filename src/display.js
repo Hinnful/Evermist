@@ -4,9 +4,8 @@
 // Loaded after state.js. Pure helpers at the top; DOM/IPC wiring at the bottom.
 
 // ─── Pure helper ─────────────────────────────────────────────────────────────
-// Takes an Electron screen.Display object (or a mock for tests) and extracts the
-// three fields we care about. workAreaSize is preferred (excludes OS taskbar);
-// falls back to size when workAreaSize is absent (headless / mock objects).
+// Three fields out of an Electron screen.Display. workAreaSize is preferred, since it excludes the
+// OS taskbar, and size is the fallback where it is absent.
 function normalizeDisplayRecord(raw) {
   const src = (raw && raw.workAreaSize) ? raw.workAreaSize
             : (raw && raw.size)         ? raw.size
@@ -21,17 +20,16 @@ function normalizeDisplayRecord(raw) {
 }
 
 // ─── Renderer-side wiring ─────────────────────────────────────────────────────
-// Called once at init (after state.js + electronAPI are both available). Listens
-// for display-info pushes from main.js and writes normalized records to state.js.
+// Called once at init. Listens for display-info pushes from main.js and writes normalised records
+// to state.js.
 function initDisplayDetection() {
   if (!window.electronAPI || !window.electronAPI.onDisplayInfo) return;
   window.electronAPI.onDisplayInfo((raw) => {
     const prev = displayInfo;
     displayInfo = normalizeDisplayRecord(raw);
     updateDisplayReadout();
-    // Only re-texture when the display dimensions genuinely changed — skips
-    // spurious pushes from window minimize (off-screen bounds) and any event
-    // that fires without a real resolution change.
+    // Only re-texture when the dimensions genuinely changed, which skips the spurious pushes a
+    // window minimize produces.
     const changed = !prev
       || prev.w !== displayInfo.w
       || prev.h !== displayInfo.h

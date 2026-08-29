@@ -63,6 +63,35 @@ faithfully implement `ctx.filter='blur()'`, so feather and blur would not reprod
 Pure math goes in `fogGeometry.js` and gets tested there; the imperative layer stays
 untested. Do not chase testability by injecting render state.
 
+### A door is stored on one room but reads every room on its wall · `SETTLED` (2026-08-30)
+A door marks an exit as a notch in the fog. It is stored on a room, so it appears only when that
+room does and an unexplored map is never handed a diagram of its own exits. Its STATE, though, is
+the most revealed of every room whose outline passes within a third of a cell of it. Asking the
+owning room alone left a door invisible whenever the click had attached it to the shrouded side of
+a shared wall, which is not something the DM can aim at. It also settles half-shroud, which has no
+answer while a door belongs to one room: half beside shrouded is half, revealed beside anything is
+revealed. Free-standing doors were considered and rejected - a door owned by nothing still has to
+know which rooms touch it, and it shows before the party arrives.
+
+### Doors are one grid cell, not a size that gets drawn · `SETTLED` (2026-08-30, replaced a drag)
+A click-and-drag door, whose length along the wall set its width and whose distance from the wall
+set its depth, was built first and taken out. Per-door sizes invite editing, copying and moving,
+and none of that exists. Snapping to the grid removes the question: every door is one cell, a
+second click on the neighbouring cell makes a ten-foot doorway, and a third click on either closes
+it again. Toggling is decided by CELL, never by whether the click landed inside a door's rectangle
+- a boundary click belongs to two rectangles and to neither, and the tool draws its ticks exactly
+there. Width and depth survive as two global percentages of a cell, not as per-door fields.
+
+### The reveal's feather is flattened along walls two rooms share · `SETTLED` (2026-08-30)
+Two revealed rooms sharing a wall each feather inward from it, so neither reaches a full erase on
+the line and a band of fog stands over every shared wall. The mask is flattened along those
+stretches, found by sampling each wall against the other rooms' outlines within half a feather.
+The flattened band may cross the wall ONLY where the neighbour paints the same density: crossing
+bridges two rooms traced a few pixels apart and costs nothing between two revealed rooms, but
+between a revealed room and a half-shrouded one whichever composites last would win a strip on the
+wrong side. Spans stop short of both ends, or a band reaching a wall junction left a tab of cleared
+fog poking out of the room block.
+
 ### Half-shroud is absolute: erase to completion, then repaint · `SETTLED` (reversed 2026-08-04)
 Originally the Half erase was partial (`destination-out` at `1 - fogHalfAlpha`) on the
 theory that you can't half-forget the room the party is standing in, and reveal-then-repaint

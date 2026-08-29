@@ -1,11 +1,9 @@
 'use strict';
-// DM-only UI control wiring: toolbar, tool/fog/grid sliders, fog color,
-// anim presets, poly context panel, scene/backup modals, player controls,
-// section toggles, UI-scale slider. Called once from index.html (DM mode only),
-// at the same point the original inline block used to run.
+// DM-only UI control wiring: toolbar, sliders, fog colour, anim presets, the poly context panel,
+// the scene and backup modals, player controls and the UI-scale slider. Called once from
+// index.html in DM mode.
 // ─── Fog paint direction ──────────────────────────────────────────────────────
-// The fog-mode segment is pick-exactly-one, so ONE helper owns both `tool` and the
-// highlight. Three handlers each poking the other two is where that drifts out of sync.
+// The fog-mode segment is pick-exactly-one, so ONE helper owns both `tool` and the highlight.
 function setPaintDirection(dir) {
   tool = dir;
   ['reveal', 'half', 'shroud'].forEach(d => {
@@ -14,10 +12,9 @@ function setPaintDirection(dir) {
   });
 }
 
-// Half is shape-tools only: the brush paints straight into a cleared-or-opaque fog canvas
-// with no third value. While the brush is picked the button is disabled, and a live half
-// direction falls back to shroud — more fog is the safer accident, and the highlight
-// moving to Shrouded is what tells the DM it happened. Called from setShape().
+// Half is shape-tools only: the brush paints into a cleared-or-opaque fog canvas with no third
+// value. While the brush is picked the button is disabled and a live half direction falls back to
+// shroud, because more fog is the safer accident.
 function refreshHalfAvailability() {
   const btn = document.getElementById('btn-half');
   if (!btn) return;
@@ -27,13 +24,12 @@ function refreshHalfAvailability() {
 }
 
 // ─── Placement mode ───────────────────────────────────────────────────────────
-// Which array the next rectangle or circle lands in. Same shape as setPaintDirection: the pill
-// is pick-exactly-one, so ONE helper owns both the value and the highlight.
+// Which array the next rectangle or circle lands in. Like setPaintDirection, ONE helper owns both
+// the value and the highlight.
 function setPlaceMode(m) {
   if (placeMode !== m) {
-    // ⚠ THE SELECTION IS SCOPED TO THE MODE. Rooms and effects number themselves separately,
-    // so an id left over from the other list would resolve against whichever shape happens to
-    // share the number - and the DM would drag a room they cannot see they selected.
+    // ⚠ THE SELECTION IS SCOPED TO THE MODE. Ids are numbered per list, so one left over from the
+    // other list resolves against whichever shape shares the number.
     selectedPolygonId = null;
     selectedVertexIndex = -1;
     activePolygon = null;
@@ -43,11 +39,9 @@ function setPlaceMode(m) {
     const el = document.getElementById('btn-place-' + k);
     if (el) el.classList.toggle('active', k === m);
   });
-  // The BRUSH is the only tool with no meaning here: it paints fog straight into the stencil,
-  // and an effect has none. Everything else works in either mode - the shape tools draw into
-  // whichever array the mode names, and Select edits it. ⚠ Do not widen this to "anything but
-  // rect and circle": that kicks the DM off Select every time they change mode, and Select is
-  // the tool this app is actually used with.
+  // The BRUSH is the only tool with no meaning here: it paints fog into the stencil, and an effect
+  // has none. ⚠ Never widen this to "anything but rect and circle": that kicks the DM off Select
+  // on every mode change, and Select is the tool this app is used with.
   if (m === 'effects' && shape === 'brush') setShape('rect');
   refreshBrushAvailability();
   // The row above the bar is mode-driven too: the fog trio belongs to rooms, the material
@@ -56,31 +50,29 @@ function setPlaceMode(m) {
   drawCursor(lastScreenX, lastScreenY);   // the shape preview takes the mode's colour
 }
 
-// Same shape as refreshHalfAvailability, and for the same reason: a control that cannot do
-// anything here is greyed rather than left live and silently ignored. setShape() above has
-// already moved the DM off the brush, so the highlight says where they landed.
+// Like refreshHalfAvailability: a control that can do nothing here is greyed rather than left live
+// and silently ignored.
 function refreshBrushAvailability() {
   const btn = document.getElementById('btn-brush');
   if (btn) btn.disabled = placeMode === 'effects';
+  // Doors belong to rooms, so the tool has nothing to act on in Effects mode.
+  const door = document.getElementById('btn-door');
+  if (door) door.disabled = placeMode === 'effects';
 }
 
 // ─── Materials ────────────────────────────────────────────────────────────────
-// What the next effect is made of. Pick-exactly-one like the fog trio, so ONE helper owns both
-// the value and the highlight.
+// What the next effect is made of. Pick-exactly-one like the fog trio, so ONE helper owns both the
+// value and the highlight.
 //
-// Picking a material with an effect SELECTED changes that effect, which is the only way to
-// restyle one now that the card no longer opens for effects. The write is the full edit path -
-// undo entry, repaint, push to the Player, save - because a material change is a real edit to a
-// stored shape, not a toolbar preference.
+// Picking a material with an effect SELECTED changes that effect, which is the only way to restyle
+// one. The write is the full edit path — undo, repaint, push, save — because it is a real edit to
+// a stored shape, not a toolbar preference.
 //
-// Reads the row's markup, so adding a material is one button in index.html plus one entry in
-// EFFECT_MATERIALS and nothing here.
+// Reads the row's markup, so a new material is one button in index.html plus one EFFECT_MATERIALS
+// entry and nothing here.
 //
-// The button carries a PLAIN SVG GLYPH like every other button on this bar. effects.js used to
-// paint a small canvas with the real material instead - the reasoning being that an icon of fire
-// is a drawing of the thing rather than the thing - and it drew a rounded box, inside the
-// button's own selected box, inside the row's pill. Three nested boxes, and it was rejected on
-// sight. Do not bring the painted swatch back; tell a second material apart by its glyph.
+// ⚠ The button carries a PLAIN SVG GLYPH like every other button on this bar. A painted swatch of
+// the real material draws a box inside the button's selected box inside the row's pill.
 function initMaterialPicker() {
   document.querySelectorAll('#material-row [data-material]').forEach(btn => {
     btn.onclick = () => setMaterial(btn.dataset.material);
@@ -123,9 +115,8 @@ function initToolbar() {
         .catch(() => {});
       return;
     }
-    // A plan dropped alongside its map needs nothing: the import finds it on disk beside the
-    // map's own path, so it is dropped from the list rather than reported as a failure.
-    // The loop and the filtering are sceneManager's — this hands over and gets out of the way.
+    // A plan dropped alongside its map needs nothing — the import finds it on disk — so it is
+    // dropped from the list rather than reported as a failure. The loop is sceneManager's.
     if (maps.some(isImportableMapFile) || maps.length > 1) importMapFiles(maps);
   });
 
@@ -138,11 +129,12 @@ function initToolbar() {
   document.getElementById('btn-circle').onclick = () => setShape('circle');
   document.getElementById('btn-cone').onclick   = () => setShape('cone');
   document.getElementById('btn-select').onclick = () => setShape('select');
+  document.getElementById('btn-door').onclick   = () => setShape('door');
   document.getElementById('btn-place-rooms').onclick   = () => setPlaceMode('rooms');
   document.getElementById('btn-place-effects').onclick = () => setPlaceMode('effects');
   document.getElementById('btn-legend').onclick = () => toggleLegend();
   initMaterialPicker();
-  refreshHalfAvailability();  // brush is the tool at load, so half starts disabled
+  refreshHalfAvailability();  // Select is the tool at load, so half starts live
   refreshBrushAvailability();
   document.getElementById('btn-snap').onclick = function() {
     snapToGrid = !snapToGrid;
@@ -190,9 +182,8 @@ function initToolbar() {
   // Grid
   const gridBtn       = document.getElementById('btn-grid');
   const gridSizeInput = document.getElementById('grid-size');
-  // ⚠ EVERY HANDLER BELOW ENDS IN commitGridChange() (grid.js) — render, Player push and scene
-  // save in one call. A grid control that ends any other way is one whose value does not survive
-  // the next scene switch.
+  // ⚠ EVERY HANDLER BELOW ENDS IN commitGridChange() — render, Player push and scene save in one
+  // call. A grid control ending any other way loses its value on the next scene switch.
   gridBtn.onclick = function(e) {
     e.stopPropagation();
     gridEnabled = !gridEnabled;
@@ -430,17 +421,14 @@ function initToolbar() {
 
   document.getElementById('btn-sync-view').onclick = () => {
     if (!playerWindow || playerWindow.closed) return;
-    // Send the REGION the DM can read, not the DM's zoom — the Player refits it to its
-    // own canvas so a bigger TV shows the same map, not more of it. Same helper as a
-    // manual Send, so the two can't frame the TV differently.
+    // Send the REGION the DM can read, never the DM's zoom: the Player refits it, so a bigger TV
+    // shows the same map rather than more of it. Same helper as a manual Send.
     const v = dmVisibleRegion();
     playerWindow.postMessage({ type: 'view-snap', ...v }, '*');
-    // minimapView.zoom is ALWAYS in Player-canvas terms (minimap.js:_visibleExtent /
-    // _frameExtent divide playerScreenW/H by it), so convert before handing it over —
-    // passing the DM's own zoom here is what used to leave the dotted TV frame wrong
-    // until the next drag or free-look report. playerScreenW/H come from the Player's
-    // window.innerWidth/Height, which is exactly its render size (player mode fills the
-    // window and PixiJS runs at resolution 1), so this frame is exact, not approximate.
+    // ⚠ minimapView.zoom is ALWAYS in Player-canvas terms, so convert before handing it over.
+    // Passing the DM's own zoom leaves the dotted TV frame wrong until the next drag.
+    // playerScreenW/H are the Player's window size, which is exactly its render size, so the frame
+    // is exact.
     const playerZoom = zoomToFitRegion(v.viewW, v.viewH, playerScreenW, playerScreenH);
     minimapSetView({ mapCX: v.mapCX, mapCY: v.mapCY, zoom: playerZoom ?? v.zoom });
   };
@@ -509,9 +497,8 @@ function initToolbar() {
     playerWindow = window.open(url, 'evermist-player', 'toolbar=no,menubar=no,scrollbars=no');
   };
 
-  // WRAPPED, never assigned bare. A bare handler is called with the click event, which lands
-  // in sendToPlayer's first parameter (fogOnly) and is truthy — so the button sent fog and
-  // dropped the view, while Space and Shift+S sent both. The two must not disagree.
+  // ⚠ WRAPPED, never assigned bare: a bare handler receives the click event, which lands in
+  // sendToPlayer's fogOnly parameter and is truthy, so the button would send fog without the view.
   document.getElementById('btn-send').onclick = () => sendToPlayer();
 
   // The selected room's card (name, description, fog pill, corners, delete) → roomPanel.js.

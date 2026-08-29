@@ -1,24 +1,20 @@
 'use strict';
 
 // mapConvert.js — re-encoding an oversized animated map at import so it fits MAP_BOX_W ×
-// MAP_BOX_H (state.js). A Dungeon Alchemist WebM export runs 13-20 megapixels, and TWO
-// decoders hold one at once (DM window + Player window), which is the app's largest single
-// memory cost. Shrinking to 2× the TV's resolution is what makes that cost bounded.
+// MAP_BOX_H. A Dungeon Alchemist WebM export runs 13-20 megapixels and TWO decoders hold one at
+// once, which is the app's largest single memory cost.
 //
-// H.264 is required, not preferred: there is no hardware VP9 encoder, and the codec string
-// must be High 5.1 or 5.2 — a lower level caps resolution below the box and MediaRecorder
-// rejects it outright.
+// ⚠ H.264 is required, not preferred: there is no hardware VP9 encoder, and the codec string must
+// be High 5.1 or 5.2 — a lower level caps resolution below the box and MediaRecorder rejects it.
 //
-// Loaded after mapLoader.js (uses its progress helpers via the caller) and before
-// sceneManager.js, which is the only caller.
+// Loaded after mapLoader.js and before sceneManager.js, its only caller.
 
 // ─── The box fit (pure) ──────────────────────────────────────────────────────
-// Fits srcW×srcH inside boxW×boxH preserving aspect ratio. Reports changed:false when the
-// source already fits, so the caller can skip the re-encode entirely — a needless pass
-// costs a generation of quality and thirty seconds for nothing.
+// Fits srcW×srcH inside boxW×boxH, preserving aspect. changed:false lets the caller skip the
+// re-encode, which would cost a generation of quality for nothing.
 //
-// Dimensions are forced EVEN. H.264's chroma planes are half-resolution in both axes, so an
-// odd dimension is either rejected or silently padded depending on the encoder.
+// ⚠ Dimensions are forced EVEN: H.264's chroma planes are half-resolution in both axes, so an odd
+// dimension is rejected or silently padded.
 function fitInsideBox(srcW, srcH, boxW, boxH) {
   var sw = Number(srcW), sh = Number(srcH);
   if (!isFinite(sw) || !isFinite(sh) || sw <= 0 || sh <= 0) {
@@ -43,23 +39,18 @@ function fitInsideBox(srcW, srcH, boxW, boxH) {
 }
 
 // ─── The setting ─────────────────────────────────────────────────────────────
-// A SETTING, NOT A QUESTION. An answer the app remembers is a setting however it was asked for,
-// so asking per import and then reusing the answer was the worst of both: it read as a question
-// and behaved as hidden state. This is the state, in one place, applied to every import with no
-// confirmation.
+// A SETTING, NOT A QUESTION. An answer the app remembers is a setting however it was asked for, so
+// this is the state in one place, applied to every import with no confirmation.
 //
-// OFF by default. Re-encoding is a one-way door and there is no way to predict the hardware a
-// map will be played on, so nothing destructive happens until someone turns it on.
+// OFF by default: re-encoding is a one-way door and the playback hardware is unpredictable.
 var MAP_COMPRESS_KEY = 'evermist.compressBigVideos';
 
 function compressBigVideosEnabled() {
   try { return localStorage.getItem(MAP_COMPRESS_KEY) === '1'; } catch (_) { return false; }
 }
 
-// Explained ONCE PER APP RUN, on the way on. A silent setting still has to say what it does the
-// first time it is armed, and a statement rather than a question — the switch is already on and
-// nothing here needs answering. Per run, not per install: it is a reminder, and flipping the
-// switch twice in one sitting does not need telling twice.
+// Explained ONCE PER APP RUN, on the way on: a silent setting still has to say what it does, as a
+// statement rather than a question. Per run, not per install — it is a reminder.
 var _compressExplained = false;
 
 // Flips, persists, explains if it just came on. Returns the new state so the caller can paint.
@@ -81,24 +72,21 @@ function toggleCompressBigVideos() {
 }
 
 // ─── The conversion (browser only) ───────────────────────────────────────────
-// H.264 High 5.1. avc1.4d0028 (Main 4.0) is REJECTED by MediaRecorder — the level caps
-// resolution below the box — so this string is not interchangeable with a shorter one.
+// ⚠ H.264 High 5.1. Main 4.0 is REJECTED by MediaRecorder, because the level caps resolution below
+// the box, so this string is not interchangeable with a shorter one.
 var MAP_CONVERT_MIME = 'video/mp4;codecs=avc1.640033';
 
 // A frame this long overdue means the decode is stuck rather than slow, so the import falls
 // back to the original file instead of hanging on a progress bar forever.
 var MAP_CONVERT_STALL_MS = 20000;
 
-// file → Promise<{ file, srcW, srcH, outW, outH, converted }>. NEVER rejects: on any failure
-// it resolves with the original file and converted:false, because a map that imports at full
-// size is a memory problem and a map that does not import at all is a broken app.
+// ⚠ NEVER rejects: on any failure it resolves with the original file and converted:false. A map
+// that imports at full size is a memory problem; one that does not import is a broken app.
 //
-// A RESULT OBJECT, not a bare File: the caller needs srcW to correct the floor plan's
-// coordinates, which are in the original export's pixel space (vttScaleRooms).
+// A RESULT OBJECT, not a bare File: the caller needs srcW to correct the floor plan's coordinates,
+// which are in the original export's pixel space.
 //
-// hooks: { onStart(plan), onProgress(pct) }. onStart fires only after the DM has said yes, so
-// the caller raises its progress overlay THEN — a bar behind a modal asking a question reads
-// as work already under way.
+// onStart fires only after the DM has said yes, so the caller raises its progress overlay then.
 function convertVideoForImport(file, hooks) {
   var h = hooks || {};
   var onProgress = h.onProgress;
@@ -219,10 +207,8 @@ function convertVideoForImport(file, hooks) {
         };
 
         // ⚠ REALTIME PACING IS WHAT MAKES THE OUTPUT PLAY AT THE RIGHT SPEED. Driving
-        // requestFrame() faster than realtime produced a file whose duration metadata was
-        // badly wrong, and for a map that loops forever, wrong duration is wrong speed.
-        // requestVideoFrameCallback also only ever sees frames the decoder actually
-        // presented, so a faster rate silently drops most of them.
+        // requestFrame() faster writes wrong duration metadata, and for a map that loops forever
+        // wrong duration is wrong speed. requestVideoFrameCallback also only sees presented frames.
         video.playbackRate = 1;
 
         function pump() {
