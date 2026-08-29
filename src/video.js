@@ -2,23 +2,14 @@
 
 // video.js — display-aware texture sizing for PixiJS map rendering.
 // Loaded after state.js (reads displayInfo) and before the inline blob.
-// Extracted from the blob per CLAUDE.md migrate-on-touch policy.
 
 // ─── Design constants ────────────────────────────────────────────────────────
-// targetLong = max(dispW, dispH) * coverage → how many real map pixels the texture
-// carries along its long axis. Coverage IS zoom headroom: 3 means "1/3 of the map fills
-// the screen at 1:1", so the view stays crisp up to 3× the fit-to-screen zoom.
+// targetLong = max(dispW, dispH) * coverage → real map pixels along the texture's long axis.
+// Coverage IS zoom headroom: 3 means the view stays crisp to 3× the fit-to-screen zoom.
 //
-// The two views get different headroom because they are used differently:
-//   DM     — zooms in to draw rooms, so it keeps the full 3×.
-//   Player — shows the whole map at the table, and its texture is redrawn from the video
-//            and re-uploaded to the GPU every frame on an animated map, so the area is a
-//            per-frame cost and not just a resident one.
-//
-// 2 rather than a tighter 1.5, deliberately: a map at or under 2× the Player's screen is
-// then left at its own resolution and nothing about it changes, which covers the ordinary
-// map. The saving is meant to land on the oversized export, where it more than halves both
-// the texture and the per-frame upload.
+// The DM zooms in to draw rooms and keeps the full 3×. The Player shows the whole map, and on an
+// animated map its texture is re-uploaded every frame, so area there is a per-frame cost.
+// Player coverage of 2 leaves an ordinary map untouched and halves an oversized export.
 var COVERAGE_FACTOR        = 3;
 var PLAYER_COVERAGE_FACTOR = 2;
 
@@ -28,21 +19,11 @@ function coverageFactorFor(isPlayerView) {
 }
 
 // ─── Pure sizing function ─────────────────────────────────────────────────────
-// Returns { w, h } — optimal texture dimensions for a pixiSetMap call.
-// No zoom parameter: sizing is chosen once at load time, before fitToScreen()
-// sets the real zoom. The coverage factor bakes in the expected play zoom.
+// Optimal texture dimensions for a pixiSetMap call. No zoom parameter: sizing is chosen once at
+// load time, before fitToScreen() sets the real zoom, and coverage bakes in the expected zoom.
 //
-// Params:
-//   dispW, dispH  — Player display resolution (from displayInfo)
-//   srcW,  srcH   — master map pixel dimensions
-//   maxTex        — GPU max texture size (from pixiGetMaxTexSize, or fallback)
-//   coverageFactor — override; defaults to COVERAGE_FACTOR when absent/invalid
-//
-// Guarantees:
-//   - Never upscales past source resolution
-//   - Clamps to maxTex (belt-and-suspenders before GPU upload)
-//   - Preserves aspect ratio
-//   - Returns source dims unchanged on zero/absent display info
+// Never upscales past source, clamps to maxTex, preserves aspect, and returns the source dims
+// unchanged when display info is absent.
 function computeOptimalTextureSize(dispW, dispH, srcW, srcH, maxTex, coverageFactor) {
   if (!srcW || !srcH) return { w: srcW || 0, h: srcH || 0 };
 
@@ -80,12 +61,9 @@ function computeOptimalTextureSize(dispW, dispH, srcW, srcH, maxTex, coverageFac
 }
 
 // ─── Downscale helper (browser only) ─────────────────────────────────────────
-// Takes the master canvas and its declared dims. Returns a NEW canvas sized for
-// the detected display, or the original canvas if no downscale is needed.
-//
-// CRITICAL: never pass the returned canvas to thumbnail/fog logic.
-// mapOffscreen must stay full-res — only the GPU texture gets downscaled.
-// The caller is responsible for keeping mapOffscreen untouched.
+// Returns a NEW canvas sized for the detected display, or the original when no downscale is
+// needed. ⚠ Never pass the result to thumbnail or fog logic: mapOffscreen must stay full-res, and
+// the caller is responsible for keeping it untouched.
 function prepareTextureCanvas(masterCanvas, masterW, masterH) {
   var targetW, targetH;
 
@@ -101,11 +79,9 @@ function prepareTextureCanvas(masterCanvas, masterW, masterH) {
     targetH = sized.h;
 
   } else {
-    // ⚠ NOT DEAD, AND NOT A ROLLBACK LEVER. displayInfo is null until main.js pushes it, so a
-    // map loaded in the first moments of a session lands here — the old ~2× viewport heuristic
-    // is the only sizing available before the Player's screen is known. computeOptimalTextureSize
-    // would return the source size untouched in that case, which is a far larger texture.
-    // onDisplayInfoUpdated re-sizes it properly the moment the display is reported.
+    // ⚠ NOT DEAD, AND NOT A ROLLBACK LEVER. displayInfo is null until main.js pushes it, so a map
+    // loaded early lands here, and this heuristic is the only sizing available before the Player's
+    // screen is known. onDisplayInfoUpdated re-sizes it the moment the display is reported.
     var _maxSide = Math.max(
       (typeof innerWidth  !== 'undefined' ? innerWidth  : 1920),
       (typeof innerHeight !== 'undefined' ? innerHeight : 1080)
@@ -126,21 +102,16 @@ function prepareTextureCanvas(masterCanvas, masterW, masterH) {
 }
 
 // ─── Player animated map: a viewport-sized region texture ────────────────────
-// The Player used to hold a texture the size of the whole (display-scaled) map and redraw
-// ALL of it from the video every frame — 90.7 MB resident and 90.7 MB of GPU upload thirty
-// times a second on the 12900×11700 map. A texture sized to the Player's own screen is
-// ~15 MB on a 2560×1392 TV whatever the map's resolution, and it is resolution-correct at
-// every zoom by construction, because it carries one texel per screen pixel.
+// The Player's map texture is sized to its own SCREEN, not to the map: one texel per screen pixel,
+// so it is resolution-correct at every zoom and costs the same whatever the map's resolution.
 //
-// The texture covers the viewport GROWN BY A MARGIN, converted to map units — deliberately
-// not visibleMapRegion(), which is the viewport intersected with the map and therefore
-// shrinks as you pan to an edge. A shrinking region drawn into a fixed canvas would change
-// the texel-per-pixel ratio with the camera. This one holds it constant, and gives a second
-// property worth more: the sprite it feeds always lands on exactly the same screen
-// rectangle, so pan and zoom introduce no sub-pixel drift between the map and the fog.
+// ⚠ The region is the viewport GROWN BY A MARGIN, never visibleMapRegion(), which shrinks as you
+// pan to an edge. A shrinking region in a fixed canvas changes the texel-per-pixel ratio with the
+// camera; this one holds it constant, and the sprite always lands on the same screen rectangle,
+// so nothing drifts between the map and the fog.
 //
-// The margin is insurance for the screen border — float error and a resize handler that
-// runs a frame late — not headroom for panning; the region is recomputed every frame.
+// The margin covers float error and a late resize handler, not panning — the region is recomputed
+// every frame.
 var PLAYER_REGION_MARGIN = 32;
 
 // Pure: the map-space rectangle a texW×texH texture covers. Exported for tests.
@@ -153,11 +124,9 @@ function mapRegionForTexture(panX, panY, zoom, texW, texH, vpW, vpH) {
   };
 }
 
-// Pure: clamp a map-space region to the map and give the matching destination rect inside
-// the texture canvas, so drawImage is never handed a source rect outside the video frame.
-// `clear` reports that the region overhangs the map, i.e. the canvas has pixels the draw
-// will not cover, which would otherwise keep the previous frame's content.
-// Returns null when the region misses the map entirely.
+// Pure: clamp a map-space region to the map and give the matching destination rect inside the
+// texture canvas, so drawImage never gets a source rect outside the video frame. `clear` reports
+// an overhang, where the canvas would otherwise keep the previous frame. Null when it misses.
 function clampRegionToMap(r, mapW, mapH, zoom) {
   var sx = Math.max(0, r.x), sy = Math.max(0, r.y);
   var sw = Math.min(mapW, r.x + r.w) - sx;
@@ -171,9 +140,8 @@ function clampRegionToMap(r, mapW, mapH, zoom) {
   };
 }
 
-// Allocate the region canvas from the viewport, once. Called at video load, on window
-// resize and on a display change — never per frame, and never on pan or zoom, which is
-// the whole point: the allocation is fixed and only its CONTENT follows the camera.
+// Allocate the region canvas from the viewport, once. ⚠ Never per frame and never on pan or zoom:
+// the allocation is fixed and only its CONTENT follows the camera.
 function ensurePlayerRegionCanvas() {
   var vp = getViewportSize();
   var texW = Math.max(1, Math.round(vp.w) + PLAYER_REGION_MARGIN * 2);
@@ -188,9 +156,8 @@ function ensurePlayerRegionCanvas() {
 
 var _playerRegionBound = null;   // the canvas pixiSetMap was last handed
 
-// Point PixiJS at the region canvas. pixiSetMap is given the CANVAS dimensions rather than
-// the map's, so its MAX_TEXTURE_SIZE clamp can never fire on a viewport-sized canvas and
-// rescale it; pixiSetMapRegion then puts the sprite where the region actually is.
+// Point PixiJS at the region canvas. pixiSetMap gets the CANVAS dimensions, never the map's, so
+// its MAX_TEXTURE_SIZE clamp cannot rescale it; pixiSetMapRegion places the sprite.
 function initPlayerMapRegionTexture() {
   if (!mapVideo || !mapWidth || !mapHeight) return;
   ensurePlayerRegionCanvas();
@@ -205,20 +172,16 @@ function initPlayerMapRegionTexture() {
   scheduleRender();
 }
 
-// Restore the clamp the region texture gives up. The old full-map texture ENDED at the map
-// edge, so the GPU clamped there and the boundary was hard. A region texture puts that edge
-// inside the canvas with transparent pixels beyond it, and LINEAR sampling fades the
-// outermost pixel toward nothing — a dark rim along the map border, which is the one thing
-// the hybrid fog architecture cannot tolerate. Stretching the edge row and column one pixel
-// outward gives the sampler real content to blend with, the same as clamping would.
+// Restore the clamp the region texture gives up. A region texture puts the map edge inside the
+// canvas with transparent pixels beyond, and LINEAR sampling fades the outermost pixel toward
+// nothing — a dark rim the hybrid fog cannot tolerate. Stretching the edge row and column one
+// pixel outward gives the sampler real content, as clamping would.
 //
-// Only runs when the region overhangs the map, i.e. zoomed out or panned against an edge.
-// FOG_EDGE_MARGIN hides this band at play zoom, but only ~2 screen px at fit-to-screen —
-// too thin to rely on.
+// Only runs when the region overhangs the map. FOG_EDGE_MARGIN hides the band at play zoom but is
+// too thin at fit-to-screen to rely on.
 //
-// It reads the VIDEO, not the canvas: drawing a canvas onto itself forces a readback of its
-// backing store, measured at 0.185 ms/frame, which is more than the draw it protects. The
-// video is already this frame's source, so re-reading a strip of it is nearly free.
+// ⚠ It reads the VIDEO, not the canvas: drawing a canvas onto itself forces a readback of its
+// backing store, which costs more than the draw it protects.
 function bleedRegionEdges(ctx, video, c, zoom) {
   if (!(c.dw >= 1) || !(c.dh >= 1) || !(zoom > 0)) return;
   var sp = 1 / zoom;                       // one destination pixel, in map units
@@ -250,17 +213,14 @@ function refreshPlayerMapRegion() {
 }
 
 // ─── Binding an animated map's frame-0 texture ───────────────────────────────
-// The two views need OPPOSITE things here, which is why this is one function and not an
-// inlined pair of calls at three call sites.
+// The two views need OPPOSITE things here, which is why this is one function.
 //
-// DM: the map is a CSS-composited DOM <video>, and the PixiJS sprite is hidden the instant it
-// is created — `pixiHideMap` only sets visible=false, so the texture stayed on the GPU for the
-// whole scene. The only path that could show it again (`deactivateVideoDom`) runs from
-// `cleanupVideo`, i.e. during teardown, so it never drew. Clear the layer instead.
+// DM: the map is a CSS-composited DOM <video> and the sprite is hidden at once, so a texture would
+// sit on the GPU for the whole scene and never draw. Clear the layer instead.
 //
-// Player: the sprite IS how the map is drawn, so it keeps one. This first texture is superseded
-// by the viewport-sized region texture a moment later, and that ordering is load-bearing — see
-// `initPlayerMapRegionTexture` and the warning in `onDisplayInfoUpdated`.
+// Player: the sprite IS the map, so it keeps one. ⚠ This first texture is superseded by the
+// viewport-sized region texture a moment later, and that ordering matters — see
+// initPlayerMapRegionTexture and the warning in onDisplayInfoUpdated.
 function bindVideoFrameTexture(frameCanvas, w, h) {
   if (typeof isPlayer !== 'undefined' && !isPlayer) { pixiClearMap(); return; }
   pixiSetMap(prepareTextureCanvas(frameCanvas, w, h), w, h);
@@ -268,32 +228,26 @@ function bindVideoFrameTexture(frameCanvas, w, h) {
 }
 
 // ─── Re-texture on display change ────────────────────────────────────────────
-// Called by display.js whenever displayInfo is updated (Player window opened,
-// moved to a different screen, or display config changed). Re-runs sizing against
-// the full-res mapOffscreen master — which is always preserved — and re-uploads
-// the correctly-sized texture to PixiJS without touching fog or scene state.
+// Called by display.js whenever displayInfo is updated. Re-runs sizing against the full-res
+// mapOffscreen master and re-uploads the texture, touching no fog or scene state.
 //
-// Covers the workflow: Open app → load map → connect TV → open Player → slide
-// Player to TV. The map was loaded before the TV was known; this re-sizes it
-// the moment the TV's resolution is detected.
+// Covers the workflow the app is used by: load a map, connect the TV, open the Player, slide it
+// across. The map was loaded before the TV was known.
 function onDisplayInfoUpdated() {
   if (typeof mapOffscreen === 'undefined' || !mapOffscreen) return;
   if (typeof mapWidth === 'undefined' || !mapWidth || !mapHeight) return;
 
-  // Player animated map: the texture is sized from the Player's own viewport, so a display
-  // change has no sizing to redo. Re-point PixiJS at the region canvas and stop.
-  // Falling through would destroy the region sprite and rebuild a full-map one at 0,0 —
-  // silently undoing this on the exact workflow this function exists for
-  // ("connect TV → open Player → slide Player to TV").
+  // Player animated map: the texture is sized from the Player's own viewport, so there is no
+  // sizing to redo. ⚠ Falling through destroys the region sprite and rebuilds a full-map one at
+  // 0,0, on exactly the workflow this function exists for.
   if (typeof isPlayer !== 'undefined' && isPlayer
       && typeof mapVideo !== 'undefined' && mapVideo) {
     initPlayerMapRegionTexture();
     return;
   }
 
-  // DM animated map: there is no sizing to redo either, because the map is the DOM <video> and
-  // this view holds no map sprite at all (bindVideoFrameTexture). Clearing rather than falling
-  // through is what stops a display change re-uploading the texture that was just removed.
+  // DM animated map: the map is the DOM <video> and this view holds no sprite. Clearing rather
+  // than falling through stops a display change re-uploading the texture just removed.
   if (typeof mapVideo !== 'undefined' && mapVideo) {
     pixiClearMap();
     if (typeof viewportDirty !== 'undefined') viewportDirty = true;
@@ -306,10 +260,9 @@ function onDisplayInfoUpdated() {
   if (typeof scheduleRender === 'function') scheduleRender();
 }
 
-// ─── Video lifecycle — extracted from inline blob ─────────────────────────────
-// All functions below reference inline-blob globals (videoEnabled, mapVideo,
-// videoRVFCId, etc.) lazily — names are resolved at call time, not definition
-// time, so the load-order constraint is safe.
+// ─── Video lifecycle ──────────────────────────────────────────────────────────
+// The functions below reference inline-blob globals lazily — names resolve at call time, so the
+// load order is safe.
 
 function onVideoStalled() {
   // Decoder stalled waiting for data — try to re-kick playback.
@@ -319,9 +272,8 @@ function onVideoStalled() {
 }
 
 function onVideoWaiting() {
-  // Buffer temporarily drained (rs=2). Explicitly pause so Chromium's presentation
-  // clock freezes — prevents a catch-up sync-seek when the buffer refills, which
-  // is what causes visible jitter. Poll until rs≥3, then resume.
+  // Buffer temporarily drained (rs=2). Pause so Chromium's presentation clock freezes, or the
+  // refill triggers a catch-up sync-seek and visible jitter. Poll until rs≥3, then resume.
   if (!videoEnabled || !mapVideo) return;
   _diagAppend('event:waiting rs=' + mapVideo.readyState);
   if (!mapVideo.paused) {
@@ -368,17 +320,13 @@ function detachVideoListeners(video) {
   video.removeEventListener('waiting', onVideoWaiting);
 }
 
-// The per-frame loop. NEITHER VIEW DRAWS ITS MAP FROM HERE: the DM's map is the composited DOM
-// <video>, and the Player's texture rides the PixiJS ticker (pixiStartVideoTextureSync). What the
-// scheduleRender below is actually for is `syncVideoDomTransform`, which doRender runs whenever
-// videoDOMActive — and videoFrameIntervalMs is what keeps that to 24 a second.
+// The per-frame loop. ⚠ NEITHER VIEW DRAWS ITS MAP FROM HERE: the DM's map is the composited DOM
+// <video> and the Player's texture rides the PixiJS ticker. The scheduleRender below is for
+// syncVideoDomTransform, which videoFrameIntervalMs holds to 24 a second.
 //
-// The loop is also the watchdog's liveness signal: a null id is how a dead pump is noticed and
-// restarted. It is part of the rs=2 stall fix and DECISIONS.md keeps every piece of that.
+// The loop is also the watchdog's liveness signal: a null id is how a dead pump is restarted.
 //
-// No requestAnimationFrame fallback: requestVideoFrameCallback has been on HTMLVideoElement in
-// every engine this app can run on for years, and the fallback's own guards had drifted out of
-// step with this branch's.
+// No requestAnimationFrame fallback: requestVideoFrameCallback is everywhere this app runs.
 function scheduleVideoFrame() {
   if (!videoEnabled || !mapVideo) return;
   videoRVFCId = mapVideo.requestVideoFrameCallback(function() {
@@ -401,11 +349,8 @@ function stopVideoWatchdog() {
   if (_videoWatchdogId) { clearInterval(_videoWatchdogId); _videoWatchdogId = null; }
 }
 
-// Polls every 3 s while video is active. Catches cases where Chromium's
-// background-video optimizer silently pauses or stalls a muted video element
-// (typically fires after ~30 s for elements it deems "not visible"). If the
-// video is paused or readyState has dropped, force a play() and restart the
-// RVFC/RAF loop if it died.
+// Polls while video is active, because Chromium's background-video optimizer silently pauses a
+// muted element it deems invisible. Forces play() and restarts the loop if it died.
 function startVideoWatchdog() {
   stopVideoWatchdog();
   _videoWatchdogId = setInterval(function() {
@@ -416,10 +361,8 @@ function startVideoWatchdog() {
     _diagAppend('watchdog rs=' + rs + ' paused=' + pa + ' age=' + age + 's');
     if (pa || rs < 3) {
       if (!pa && rs < 3) {
-        // rs=2 (HAVE_CURRENT_DATA) while not paused = buffer temporarily drained.
-        // The browser is already refilling (event:waiting fires alongside this).
-        // A seek-kick here interrupts that natural recovery and causes visible jitter —
-        // don't seek. play() below is a no-op on a playing element but harmless.
+        // rs=2 while not paused means the buffer drained and the browser is already refilling.
+        // ⚠ Never seek here: it interrupts that recovery and causes visible jitter.
         _diagAppend('rs<3 not paused — letting buffer refill (no kick) rs=' + rs);
       }
       _diagAppend('watchdog play() pa=' + pa + ' rs=' + rs);
@@ -454,20 +397,15 @@ function startVideoLoop() {
   if (mapVideo.paused || mapVideo.ended) {
     mapVideo.play().catch(function() {});
   }
-  // Start the RVFC/RAF loop immediately. onVideoPlaying cannot start it because
-  // the 'playing' event fires before videoEnabled=true (set above), so the loop
-  // would never run without this explicit kick-off.
+  // Start the loop here: 'playing' fires before videoEnabled=true, so onVideoPlaying cannot.
   scheduleVideoFrame();
   startVideoWatchdog();
 }
 
 // ─── Player video element factory ─────────────────────────────────────────────
-// Creates the Player's <video> and inserts it as the first child of container so
-// all canvas siblings (fog last, opacity:1) paint on top via DOM order.
-// Must be a full-container element — a 1×1 px element elsewhere causes Chromium's
-// BackgroundVideoTrackOptimizer to treat the video as occluded and throttle decode
-// (mitigated at the process level by the disable-features flag in main.js, but
-// correct sizing is belt-and-suspenders).
+// Creates the Player's <video> as the container's first child, so every canvas sibling paints on
+// top by DOM order. ⚠ Must be a full-container element: Chromium's BackgroundVideoTrackOptimizer
+// treats a tiny one as occluded and throttles decode.
 function createPlayerVideoElement(container) {
   var video = document.createElement('video');
   video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'auto';
@@ -477,10 +415,8 @@ function createPlayerVideoElement(container) {
 }
 
 // ─── Video DOM compositing + file loading ────────────────────────────────────
-// Instead of drawImage(video) to canvas every frame (which forces a GPU→CPU
-// readback per frame), we insert the <video> element directly into the DOM
-// behind the canvas stack and let the browser's native hardware compositor
-// handle it — the same zero-copy path that VLC/media-players use.
+// The <video> element goes into the DOM behind the canvas stack, so the browser's hardware
+// compositor handles it. drawImage(video) every frame would force a GPU→CPU readback.
 let videoDOMActive = false;
 
 function activateVideoDom(video) {
@@ -533,9 +469,8 @@ function cleanupVideo() {
 }
 
 
-// ⚠ EVERY EXIT ANSWERS — see the same rule on loadMapFromFile. onFail covers the silent
-// falsy-file return as well as a decode failure, and taking it means the CALLER reports the
-// failure; without it this shows its own dialog exactly as it always did.
+// ⚠ EVERY EXIT ANSWERS — the same rule as loadMapFromFile. onFail covers the silent falsy-file
+// return as well as a decode failure, and taking it means the CALLER reports the failure.
 function loadVideoFromFile(file, onVideoLoaded, onFail) {
   const bail = reason => {
     if (onFail) onFail(reason);
@@ -639,9 +574,8 @@ function isVideoFile(file) {
 }
 
 // ─── Diagnostics (DM toggles with backtick `; the Player's is opened by the rig) ──
-// Kept intentionally for future video-stall investigation. Gated: the on-screen
-// overlay only appears on backtick, and the stress rig only runs under ?stress=1.
-// Disk logging (main.js) is always-on during playback but rotated/capped to 3 files.
+// Kept for video-stall investigation. The overlay only appears on backtick and the stress rig only
+// runs under ?stress=1; disk logging is always on during playback, rotated and capped.
 var _diagActive   = false;
 var _diagEl       = null;
 var _diagInterval = null;
@@ -649,9 +583,8 @@ var _diagLog      = [];   // ring buffer, newest appended last; disk log is unbo
 var _diagT0       = null; // perf timestamp of first event
 var _diagPrevRS   = -1;   // detect readyState changes between polls
 
-// Resolved once on first use. 'dm' or 'player' — used as the mode tag for disk log filenames.
-// Note: _diagT0 resets when the overlay is toggled, so the relative +Ns stamp is NOT monotonic
-// across toggles. The wall-clock field (Date.now) is the reliable ordering key in the disk log.
+// Resolved once on first use. 'dm' or 'player' — the mode tag for disk log filenames.
+// ⚠ _diagT0 resets on toggle, so the +Ns stamp is not monotonic; order by the wall-clock field.
 function _diagMode() {
   return (typeof isPlayer !== 'undefined' && isPlayer) ? 'player' : 'dm';
 }

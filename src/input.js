@@ -1,32 +1,33 @@
 'use strict';
-// DM mouse/wheel event handlers, keyboard shortcuts, shape-tool helpers,
-// and the shortcut-legend toggle. Top-level helpers (setShape, updateContextPanels,
-// toggleLegend) stay global so toolbar.js and other modules can call them.
-// initInput() is called once from index.html after initToolbar/initPlayer.
+// DM mouse and wheel handlers, keyboard shortcuts, shape-tool helpers, and the legend toggle.
+// The top-level helpers stay global so toolbar.js can call them. initInput() runs once from
+// index.html, after initToolbar and initPlayer.
 
 // ─── Shape tool helpers ───────────────────────────────────────────────────────
 
 let legendVisible = false;
 
-// The context row above the toolbar. ONE function owns every visibility decision in it, and it
-// is called from both setShape and setPlaceMode — the row answers to the tool AND the placement
-// mode, and more than one group can be up at once (fog trio plus brush size).
-// Fog state is a ROOM's property, so the trio has nothing to say in Effects mode; the material
-// picker takes its place there.
+// The context row above the toolbar. ONE function owns every visibility decision, called from both
+// setShape and setPlaceMode, because the row answers to the tool AND the mode, and more than one
+// group can be up at once.
+// Fog state is a ROOM's property, so the trio has nothing to say in Effects mode.
 function updateContextPanels() {
   const show = (id, on) => {
     const el = document.getElementById(id);
     if (el) el.style.display = on ? 'flex' : 'none';
   };
-  show('ctx-rooms',   placeMode !== 'effects');
+  show('ctx-rooms',   placeMode !== 'effects' && shape !== 'door');
   show('ctx-effects', placeMode === 'effects');
   show('panel-brush-bottom', shape === 'brush');
+  show('ctx-door', shape === 'door');
+  const cellLabel = document.getElementById('door-cell-label');
+  if (cellLabel) cellLabel.textContent = Math.round(gridSize);
 }
 
 function setShape(s) {
   if (isPlayer) return;
   shape = s;
-  ['brush', 'rect', 'poly', 'circle', 'cone', 'select'].forEach(sh => {
+  ['brush', 'rect', 'poly', 'circle', 'cone', 'select', 'door'].forEach(sh => {
     const el = document.getElementById('btn-' + sh);
     if (el) el.classList.toggle('active', sh === s);
   });
@@ -36,7 +37,11 @@ function setShape(s) {
 
   circleCenter = null;
   coneApex = null;
-  container.style.cursor = s === 'select' ? 'default' : 'crosshair';
+  container.style.cursor = s === 'select' ? 'default' : (s === 'door' ? 'pointer' : 'crosshair');
+  // The Door tool shows the grid on its own (renderGrid), so picking or dropping it has to
+  // repaint that layer. The cursor canvas below is a different one and would not carry it.
+  gridDirty = true;
+  scheduleRender();
   drawCursor(lastScreenX, lastScreenY);
   updateContextPanels();
 }
@@ -52,10 +57,9 @@ function toggleLegend() {
 function initInput() {
   if (!isPlayer) {
     container.addEventListener('mousedown', (e) => {
-      // Hand focus back to the map. The canvas is not focusable, so a click on it does not
-      // blur anything by itself: after typing in the room card that field keeps focus for
-      // the rest of the session, and every later Ctrl+Z goes to its text history instead of
-      // the fog. The field's own blur commit is what we want here anyway.
+      // Hand focus back to the map. The canvas is not focusable, so a click does not blur
+      // anything: a room-card field otherwise keeps focus and every later Ctrl+Z goes to its text
+      // history instead of the fog.
       const focused = document.activeElement;
       if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) {
         focused.blur();
@@ -78,13 +82,11 @@ function initInput() {
       const rect = container.getBoundingClientRect();
       lastScreenX = e.clientX - rect.left;
       lastScreenY = e.clientY - rect.top;
-      // Panning is checked BEFORE the hover repaint, and hands the overlay to the
-      // render clock rather than painting it here. Both matter: the hover paint used
-      // to run first and so fired on every pan event too, with the pre-move pan values
-      // baked in, and the pan branch then repainted the whole overlay a second time.
-      // Two full overlay repaints per mouse event, off-clock, is what made the room
-      // outlines slide against the map they sit on. Hover keeps its inline paint so the
-      // brush ring still tracks the pointer at full rate.
+      // ⚠ Panning is checked BEFORE the hover repaint, and hands the overlay to the render clock
+      // rather than painting here. Otherwise the hover paint fires on every pan event with stale
+      // pan values, and the pan branch repaints a second time — two off-clock overlay repaints per
+      // mouse event, which is what slides the room outlines against the map. Hover keeps its
+      // inline paint so the brush ring tracks the pointer at full rate.
       if (isPanning) {
         panX = panStartPanX + (e.clientX - panStartX);
         panY = panStartPanY + (e.clientY - panStartY);
@@ -109,17 +111,13 @@ function initInput() {
       // The brush ring goes: the cursor is no longer over the map.
       drawCursor(null, null);
       // ⚠ NEITHER A STROKE NOR A PAN ENDS HERE, and lastMapX/lastMapY are kept so a drag that
-      // leaves the map and comes back is one continuous stroke. A drag follows the mouse
-      // BUTTON, not the pointer's position over chrome — and the bottom toolbar floats over
-      // the map, so every stroke along the lower edge crosses it.
+      // leaves the map and comes back is one continuous stroke. A drag follows the mouse BUTTON,
+      // and the bottom toolbar floats over the map, so every stroke along the lower edge crosses it.
       //
-      // Clearing isDrawing here also skipped the ENTIRE release path, because
-      // toolWindowMouseUp() is gated on that flag: the fog display stayed stuck in brushing
-      // mode, and the reveal never reached the Player or the scene save.
+      // Clearing isDrawing here also skips the ENTIRE release path, since toolWindowMouseUp() is
+      // gated on that flag: the fog stays in brushing mode and the reveal never reaches the Player.
       //
-      // The window mouseup owns every release — a stroke, a shape and a pan alike. Clearing
-      // isPanning here cost nothing but the gesture, and it made the pan disagree with the
-      // brush about what leaving the map means.
+      // The window mouseup owns every release — a stroke, a shape and a pan alike.
     });
 
     window.addEventListener('mouseup', () => {
@@ -158,9 +156,8 @@ function initInput() {
   }
 
   document.addEventListener('keydown', e => {
-    // TEXTAREA as well as INPUT: the room card's description field is a textarea, and a
-    // bare 'r'/'s'/Delete reaching the map shortcuts while the DM types would switch the
-    // paint tool or delete the room. (The card also stops propagation at source.)
+    // TEXTAREA as well as INPUT: the description field is a textarea, and a bare 'r' or Delete
+    // reaching the map shortcuts while the DM types would switch tool or delete the room.
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (isPlayer) {
       if (e.key === 'f') {
@@ -198,6 +195,7 @@ function initInput() {
             pushUndo();
             poly.vertices.splice(selectedVertexIndex, 1);
             if (poly.cornerRadii) poly.cornerRadii.splice(selectedVertexIndex, 1);
+            if (poly.doors) poly.doors = remapDoorsForVertexChange(poly.doors, selectedVertexIndex, -1);
             selectedVertexIndex = -1;
             shapeGeometryChanged();
             persistShapeEdit();
@@ -232,10 +230,9 @@ function initInput() {
                 document.getElementById('brush-size').value = brushSize;
                 document.getElementById('brush-size-label').textContent = brushSize; break;
       case 'S': if (!autoSync) { e.preventDefault(); sendToPlayer(); } break;
-      // Space is the live Send at the table, so it must mean one thing wherever focus sits.
-      // A toolbar button KEEPS focus after a click, and Space on a focused button presses it
-      // again — so hand focus back to the map first. That stops the second press and stops
-      // the key depending on which control was touched last.
+      // Space is the live Send at the table, so it must mean one thing wherever focus sits. A
+      // toolbar button keeps focus after a click and Space would press it again, so hand focus back
+      // to the map first.
       case ' ':
         e.preventDefault();
         if (document.activeElement && document.activeElement.tagName === 'BUTTON') {

@@ -1,28 +1,21 @@
 'use strict';
 // minimap.js — DM-window live mirror + remote control for the Player camera.
 //
-// Owns:
-//   • minimapView {mapCX, mapCY, zoom} — the triple that IS the Player's intended view.
-//   • A square <canvas> composite of map + fog + grid over a region as wide as the
-//     Player's longest edge, with the Player's own frame marked by dotted lines inside it.
-//   • Drag + wheel input → updates triple → posts view-snap to playerWindow live.
-//   • Lock toggle — gates pointer input so the DM can't nudge the Player mid-reveal.
+// Owns minimapView {mapCX, mapCY, zoom} — the triple that IS the Player's intended view — and a
+// square <canvas> composite of map, fog and grid, with the Player's own frame marked in dotted
+// lines. Drag and wheel update the triple and post view-snap to playerWindow live; the lock gates
+// pointer input so the DM cannot nudge the Player mid-reveal.
 //
-// Called once from index.html: if (!isPlayer) initMinimap();
-// Three functions are also called from toolbar.js:
-//   minimapSetView(v)        — update triple from Sync View button
-//   minimapSyncFromPlayer(v) — update triple from Player freelook reports
-//   minimapRefreshAspect()   — resize canvas when playerScreenW/H arrive
+// Called once from index.html. toolbar.js also calls minimapSetView, minimapSyncFromPlayer and
+// minimapRefreshAspect.
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MINIMAP_W        = 176; // px — square canvas side (before zoom)
 const MINIMAP_ZOOM_MIN = 0.02;
 const MINIMAP_ZOOM_MAX = 20;
-// The preview is square and shows MORE map than the Player sees. The square's side is
-// the TV frame's LONGEST edge, so the TV spans the preview's full width (for a landscape
-// screen) and the extra room is all vertical context — no horizontal real estate is
-// spent on padding. The TV's own edges are marked with dotted lines only: no fill and no
-// dimming, so the frame never obstructs the map underneath it.
+// The preview is square and shows MORE map than the Player sees. Its side is the TV frame's
+// LONGEST edge, so the extra room is all vertical context and none is spent on padding. The TV's
+// edges are dotted lines only, with no fill or dimming, so the map stays readable.
 
 // ─── Module-local state ───────────────────────────────────────────────────────
 let _canvas  = null;
@@ -63,11 +56,9 @@ function _frameExtent() {
   return Math.max(w, h) / minimapView.zoom;
 }
 
-// The canvas's ON-SCREEN size, in the same space as pointer clientX/clientY. NOT
-// _canvas.width (that's the backing store, 176px) and NOT getBoundingClientRect()
-// (which reports the layout box while clientX/Y are zoomed on Chromium < 128 /
-// Electron 28 — the same trap documented in controlPanel.js). offsetWidth is layout
-// px and --ui-zoom scales it to screen px, which is engine-agnostic.
+// The canvas's ON-SCREEN size, in the same space as pointer clientX/clientY. ⚠ Never _canvas.width
+// (the backing store) and never getBoundingClientRect() (the layout box, while clientX/Y are
+// zoomed — the trap documented in controlPanel.js). offsetWidth × --ui-zoom is engine-agnostic.
 function _canvasScreenSize() {
   const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1;
   return {
@@ -82,10 +73,9 @@ function _postSnapThrottled() {
   requestAnimationFrame(() => {
     _snapPending = false;
     if (playerWindow && !playerWindow.closed) {
-      // No viewW/viewH here on purpose: minimapView.zoom is already in Player-canvas
-      // terms, so resolveView's plain-zoom fallback replays it exactly. Sending a region
-      // is only needed when the zoom was measured on the DM's canvas (the Sync View
-      // button) — deriving one here would just round-trip through the same number.
+      // No viewW/viewH on purpose: minimapView.zoom is already in Player-canvas terms, so
+      // resolveView's plain-zoom fallback replays it exactly. A region is only needed when the
+      // zoom was measured on the DM's canvas.
       playerWindow.postMessage({ type: 'view-snap', ...minimapView }, '*');
     }
   });
@@ -113,9 +103,8 @@ function minimapSyncFromPlayer(v) {
   _markDirty();
 }
 
-// The canvas itself is always square — the Player's aspect shows up as the shape of the
-// stroked TV frame inside it, not as the canvas shape. Still called when playerScreenW/H
-// arrive so that frame gets redrawn at the right proportions.
+// The canvas is always square: the Player's aspect shows as the stroked TV frame inside it. Still
+// called when playerScreenW/H arrive, so that frame is redrawn at the right proportions.
 function minimapRefreshAspect() {
   if (!_canvas) return;
   _canvas.width  = MINIMAP_W;
@@ -124,10 +113,9 @@ function minimapRefreshAspect() {
 }
 
 // ─── Zoom API (the Player tab's − / % / + stepper) ────────────────────────────
-// Same triple, same view-snap path as the wheel — it just pivots about the view
-// centre instead of the cursor, so the framing stays put as the zoom changes.
-// Deliberately NOT gated on minimapLocked: the lock exists to stop accidental
-// drag/wheel nudges, and the Player honours view-snap while locked either way.
+// Same triple and view-snap path as the wheel, pivoting about the view centre rather than the
+// cursor. ⚠ Never gate this on minimapLocked: the lock stops accidental drag and wheel nudges,
+// and the Player honours view-snap while locked either way.
 function minimapGetZoom() {
   return minimapView.zoom;
 }
@@ -181,9 +169,8 @@ function drawMinimap() {
   _ctx.restore();
 
   // ── 2. Fog approximation ─────────────────────────────────────────────────
-  // Source: fogBlurCanvas (feathered 1/FOG_SCALE alpha mask) — always current
-  // after rebuildFogBlur(). Apply a CSS blur on draw + a solid fog-color fill
-  // composited source-atop so it reads as misty, not a hard flat block.
+  // fogBlurCanvas is always current after rebuildFogBlur(). A CSS blur plus a source-atop
+  // fog-colour fill keeps it misty rather than a flat block.
   if (fogBlurCanvas && fogBlurCanvas.width > 0) {
     const fSrcX = srcX / FOG_SCALE;
     const fSrcY = srcY / FOG_SCALE;
@@ -201,9 +188,8 @@ function drawMinimap() {
     }
     if (!_mmFogScratchCtx) _mmFogScratchCtx = _mmFogScratch.getContext('2d');
     const sc = _mmFogScratchCtx;
-    // MUST reset on EVERY reuse, not just after a resize: this function exits with
-    // source-atop + alpha 0.35 still set, and the steady state is no resize — so without
-    // this the next frame's mask draw would land tinted and clipped over the last one.
+    // ⚠ MUST reset on EVERY reuse, not just after a resize: this function exits with source-atop
+    // and alpha still set, so the next frame's mask draw lands tinted over the last.
     sc.globalCompositeOperation = 'source-over';
     sc.globalAlpha = 1;
     sc.clearRect(0, 0, mW, mH);
@@ -218,10 +204,8 @@ function drawMinimap() {
     sc.globalCompositeOperation = 'source-in';
     sc.fillStyle = fogBaseColor;
     sc.fillRect(0, 0, mW, mH);
-    // Tint pass, also clipped to the mask. MUST be source-atop, not source-over: a
-    // full-canvas fillRect with source-over ignores the mask and washes fogTintColor
-    // over the whole preview, veiling revealed map (a pure-white map rendered as
-    // (209,199,245) with zero fog painted). source-atop keeps the mask's alpha.
+    // Tint pass, clipped to the mask. ⚠ MUST be source-atop: source-over ignores the mask and
+    // washes fogTintColor over the whole preview, veiling revealed map.
     sc.globalCompositeOperation = 'source-atop';
     sc.globalAlpha = 0.35;
     sc.fillStyle = fogTintColor;
@@ -241,10 +225,8 @@ function drawMinimap() {
   }
 
   // ── 4. TV frame ───────────────────────────────────────────────────────────
-  // Two dotted lines, nothing else. The frame already spans the preview's long axis
-  // (side IS the TV's longest edge), so only its two inner edges need marking — and
-  // marking them with an unfilled dotted line keeps the map fully readable underneath.
-  // Always centred: the view triple is the TV centre and the square shares that centre.
+  // Two dotted lines. The frame already spans the preview's long axis, so only its inner edges
+  // need marking. Always centred: the view triple is the TV centre and the square shares it.
   const { visW, visH } = _visibleExtent();
   _ctx.save();
   _ctx.strokeStyle = 'rgba(140,180,255,0.85)';
@@ -287,10 +269,8 @@ function _onPointerDown(e) {
 function _onPointerMove(e) {
   if (!_isDragging || e.pointerId !== _dragPointerId) return;
   e.preventDefault();
-  // Screen px → map px against the square region that's actually on screen, so the map
-  // tracks the cursor 1:1. Dividing the clientX delta by _canvas.width (the 176px
-  // backing store) instead of the on-screen width made every drag over-shoot by their
-  // ratio — ~1.42× at the default UI scale.
+  // Screen px → map px against the square region actually on screen, so the map tracks the cursor
+  // 1:1. ⚠ Dividing by _canvas.width, the backing store, over-shoots every drag.
   const { w: scrW, h: scrH } = _canvasScreenSize();
   const side = _frameExtent();
   const dx = (e.clientX - _dragStartX) / scrW * side;
@@ -310,11 +290,9 @@ function _onPointerUp(e) {
   _dragPointerId = null;
 }
 
-// Zoom about the view CENTRE, not the cursor. Cursor-pivot zoom is right for the DM's
-// own canvas, but this canvas is a remote control for the TV: pivoting about an off-centre
-// cursor necessarily shifts mapCX/mapCY, so zooming also panned what the players were
-// looking at. Centre-pivot keeps the framing put and makes the wheel agree with the
-// − / + stepper, which has always gone through minimapSetZoom.
+// ⚠ Zoom about the view CENTRE, never the cursor. This canvas is a remote control for the TV, and
+// pivoting about an off-centre cursor shifts mapCX/mapCY, so zooming would also pan what the
+// players see. Centre-pivot also makes the wheel agree with the − / + stepper.
 function _onWheel(e) {
   e.preventDefault();
   if (minimapLocked || !mapOffscreen) return;

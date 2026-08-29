@@ -4,21 +4,16 @@
 // (injected by main.js under `npm run memprobe`). Inert under plain `npm start` and in
 // the shipped .exe.
 //
-// The question it answers: what does ONE large map cost at rest? Not a leak hunt — the
-// symptom is instant and static, so there is no soak here and no trend tracking.
+// The question it answers: what does ONE large map cost at rest? Not a leak hunt, so there is no
+// soak and no trend tracking.
 //
-// Why the readings are shaped this way:
-//   • performance.memory is the JS HEAP ONLY. Canvas backing stores, GPU textures and
-//     the video decoder are native allocations outside it, which is essentially all of
-//     this app's footprint. It is recorded as a footnote, never as the answer.
-//   • app.getAppMetrics() in the main process gives per-process workingSetSize — the
-//     number Task Manager shows, so it is the one a user's report can be checked against.
-//   • The canvas inventory is self-accounting: walk the known references, sum w×h×4. It
-//     is deterministic, so it is what a predicted budget reconciles against.
+// performance.memory is the JS HEAP ONLY, and canvas backing stores, GPU textures and the video
+// decoder are native allocations outside it — so it is a footnote, never the answer.
+// app.getAppMetrics() gives per-process workingSetSize, the number Task Manager shows.
+// The canvas inventory walks known references and sums w×h×4, so a budget reconciles against it.
 //
-// Cross-run comparison on this machine is worthless (DECISIONS.md). Every figure worth
-// trusting comes from two samples inside ONE run with the state changed in between, which
-// is why the sequencer below does everything in a single instance.
+// ⚠ Cross-run comparison on this machine is worthless (DECISIONS.md). Every figure worth trusting
+// comes from two samples inside ONE run, which is why the sequencer works in a single instance.
 
 var _mpActive     = false;
 var _mpSampleNum  = 0;
@@ -55,9 +50,7 @@ function initMemProbe() {
 }
 
 // ── Stub levers ───────────────────────────────────────────────────────────────
-// Both minimize suspects are called from the inline blob's window-visibility handler,
-// which resolves them by name at call time. Replacing the global here is therefore
-// enough — no wiring change in index.html.
+// Both minimize suspects resolve by name at call time, so replacing the global here is enough.
 function _mpApplyStubs() {
   if (_mpNoFlush && typeof pixiFlushTexturePool === 'function') {
     var _realFlush = pixiFlushTexturePool;
@@ -83,8 +76,8 @@ function _mpSleep(ms) {
 }
 
 // ── Canvas inventory ──────────────────────────────────────────────────────────
-// Every long-lived canvas this renderer holds. Bytes are w×h×4: Chromium's 2D backing
-// store is RGBA8 regardless of what was drawn into it.
+// Every long-lived canvas this renderer holds, at w×h×4 — Chromium's 2D backing store is RGBA8
+// whatever was drawn into it.
 
 function _mpCanvasInventory() {
   var items = [];
@@ -126,8 +119,8 @@ function _mpCanvasInventory() {
 }
 
 // ── Undo/redo accounting ──────────────────────────────────────────────────────
-// UNDO_MAX_BYTES is one budget across both stacks. They are still counted separately, so
-// a regression that caps only one of them shows up as a split rather than hiding in a sum.
+// UNDO_MAX_BYTES is one budget across both stacks, counted separately so a regression that caps
+// only one shows as a split.
 
 function _mpUndoBytes() {
   function sum(stack) {
@@ -146,9 +139,8 @@ function _mpUndoBytes() {
 }
 
 // ── PixiJS texture accounting ─────────────────────────────────────────────────
-// Walks the BaseTextures this app creates by name rather than the global cache, so the
-// numbers map onto the budget table line for line. Deduped by uid: the mask sprite shares
-// the blur texture, and counting it twice would invent 13 MB that does not exist.
+// Walks the BaseTextures this app creates by name rather than the global cache, so the numbers map
+// onto the budget table. Deduped by uid: the mask sprite shares the blur texture.
 
 function _mpPixiTextures() {
   var seen = {}, items = [], total = 0;
@@ -190,8 +182,8 @@ function _mpPixiTextures() {
 }
 
 // ── Context fields ────────────────────────────────────────────────────────────
-// A figure without these is not comparable to another figure: the texture size is
-// display-dependent, and opening the Player re-textures mid-run.
+// A figure without these is not comparable: texture size is display-dependent, and opening the
+// Player re-textures mid-run.
 
 function _mpContext() {
   var di = (typeof displayInfo !== 'undefined' && displayInfo) ? displayInfo : null;
@@ -281,10 +273,8 @@ function _mpSample(label) {
 }
 
 // ── Self-sequencing run ───────────────────────────────────────────────────────
-// There is no human at the keyboard: no remote-debugging port, no menu. The actions are
-// the ones stress.js already drives — switchScene, open the Player, toggle a polygon
-// through the Select-tool path — run at fast pace rather than table pace. The pace is the
-// only difference; this is not a soak.
+// No human at the keyboard. The actions are the ones stress.js drives — switchScene, open the
+// Player, toggle a polygon — at fast pace rather than table pace. This is not a soak.
 
 async function _mpRunSequence() {
   await _mpSleep(3000);              // let init settle
@@ -360,14 +350,11 @@ async function _mpRunSequence() {
 }
 
 // ── Video branch ──────────────────────────────────────────────────────────────
-// Animated maps are the ones that get played, so they have to be measured even when no
-// scene record points at a video file. This drives the same load switchScene does — a
-// <video> streaming from a file:// URL, never an in-memory copy of the clip — against the
-// largest map on disk.
+// Animated maps have to be measured even when no scene record points at a video file. This drives
+// the same load switchScene does, against the largest map on disk.
 //
-// It writes NOTHING to IndexedDB. currentScene is set in memory only, so sendToPlayer can
-// take its video branch, and doAutoSave is stubbed for the duration so that in-memory
-// record can never reach the store.
+// ⚠ It writes NOTHING to IndexedDB: currentScene is set in memory only and doAutoSave is stubbed
+// for the duration, so that record can never reach the store.
 async function _mpRunVideoBranch() {
   if (!window.electronAPI || !window.electronAPI.listMapFiles) {
     _mpLog('memprobe: no listMapFiles — skipping video branch');
@@ -499,17 +486,14 @@ function _mpAddRect(x1, y1, x2, y2) {
 
 // ── Minimize ──────────────────────────────────────────────────────────────────
 async function _mpRunMinimizeBranch() {
-  // The window-visibility IPC is what actually fires on Windows OS-minimize;
-  // visibilitychange does not. Nothing in the page can minimize its own OS window, so
-  // this fires the same renderer path the IPC does and logs it as such. The OS-level
-  // working-set movement is measured separately, by hand, against these figures.
+  // The window-visibility IPC is what fires on Windows OS-minimize; visibilitychange does not.
+  // Nothing in the page can minimize its own window, so this fires the same renderer path.
   _mpLog('memprobe: minimize simulation — invoking the same renderer path the IPC drives');
   await _mpSample('07-before-minimize');
 
   if (typeof doAutoSave === 'function') doAutoSave();
-  // Ticker pause only. The texture-pool flush that used to sit here was removed from the
-  // real handler once the pool measured empty in every sample; simulating a call the app
-  // no longer makes would make this branch measure the wrong thing.
+  // Ticker pause only: the real handler no longer flushes the texture pool, and simulating a call
+  // the app does not make would measure the wrong thing.
   if (typeof pixiApp !== 'undefined' && pixiApp) pixiApp.ticker.stop();
   await _mpSleep(4000);
   await _mpSample('08-while-minimized');

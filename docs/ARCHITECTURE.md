@@ -34,10 +34,10 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `render.js` | The render loop. Each frame it decides which layers actually changed and redraws only those, keeps the canvases sized to the window, and paints the cursor and polygon-selection overlay. |
 | `state.js` | Shared values that several files need. Loaded first so they exist before anything reads them. |
 | `fog.js` | Everything fog: the canvases that store what's hidden, the blur and cloud-texture math, and the reveal/hide logic. |
-| `fogGeometry.js` | The pure fog math: polygon insetting, rounded paths, cone vertices, tint-colour derivation, animation timing. Plain functions in, values out, no drawing. Unit-tested. |
+| `fogGeometry.js` | The pure fog math: polygon insetting, rounded paths, cone vertices, door placement and notch geometry, shared-wall detection, tint-colour derivation, animation timing. Plain functions in, values out, no drawing. Unit-tested. |
 | `vttPlan.js` | Turns a Universal VTT floor plan's wall segments into room polygons. Pure geometry, no dependencies, unit-tested. |
 | `floorPlan.js` | The app side of that: finding the plan beside the map, the offer notice, setting Grid Size from the plan at import, and drawing the rooms. |
-| `tools.js` | The drawing tools (brush, rectangle, circle, cone, polygon) and polygon editing. The cone is drawn apex-first - press at the point of origin, drag towards where it points - and commits as an ordinary polygon with a shallow arc on its far edge, so nothing downstream knows a cone from any other shape. |
+| `tools.js` | The drawing tools (brush, rectangle, circle, cone, polygon), the Door tool, and polygon editing. The cone is drawn apex-first - press at the point of origin, drag towards where it points - and commits as an ordinary polygon with a shallow arc on its far edge, so nothing downstream knows a cone from any other shape. |
 | `input.js` | The DM's mouse and keyboard: painting with the tools, keyboard shortcuts, the legend toggle. |
 | `undo.js` | Undo/redo history for fog edits. |
 | `effects.js` | Map effects - burning ground, and the materials to come. Each is a polygon carrying a material name, drawn under the fog on both screens as a flaming border: the outline burns inward with dissolving tongues over a faint fill, with sparks, smoke and haze. Rendered by a fragment shader over the polygon's own distance field, in two PixiJS meshes per effect - an additive pass for the light (fire, fill, sparks) and a normal-blend pass for the darkening (smoke, haze). Owns the `effects` array's model and that render path. The look is a fixed set of numbers in the module with no UI over it. (The ember relight of the map grid inside a zone lives in `grid.js`.) |
@@ -270,6 +270,28 @@ setting is saved; both are off when the app starts.
 **Array order is fog compositing order.** The fog rebuild walks the room list in reverse, so
 reordering the list silently changes what the fog looks like wherever shapes overlap. There
 is no separate display order, and no room list UI to need one.
+
+### Doors
+
+A revealed room reads as a sealed box: its outline is what the players see from across the table,
+and a rectangle with no break in it says there is no way out. A door fixes that by changing the
+outline. It is a notch of cleared fog one grid square wide, straddling the wall so it reads as a
+gap punched through it rather than a bump on the room.
+
+Pick the **Door** tool and click a wall. The click snaps to the grid cell it landed in, so every
+door is the same size and lands on the same lines as the squares. Clicking the same cell again
+closes it; clicking the cell beside it opens a ten-foot doorway. While the tool is picked the grid
+draws on the DM screen even if it is switched off, and every wall carries a tick at each cell
+boundary, which is the only way the cells of a diagonal wall are predictable.
+
+A door stores nothing but which wall it is on and where along it. Width and depth come from the
+scene's grid cell when it is drawn, so correcting a grid resizes every door already placed instead
+of forcing a redraw. Two percentages under the tool set them, at 100% and 10% of a cell by default.
+
+A door belongs to a room, so it appears only when that room does. Its density, though, is the most
+revealed of every room whose wall runs through it - which stops the choice of owner mattering on a
+wall two rooms share, and gives half-shroud an answer. Doors reach the Player for free: they are
+cut into the same fog stencil that crosses to the TV.
 
 ### The room card
 

@@ -14,9 +14,7 @@ function cloneCanvas(src) {
   return c;
 }
 
-// Pure eviction: trims oldest entries until total byte footprint is within maxBytes,
-// but always keeps at least one entry (length > 1 floor).
-// Entries must have shape { baseFog: { width, height } }.
+// Pure eviction: trims oldest entries until the footprint is within maxBytes, always keeping one.
 function evictUndoStack(stack, maxBytes) {
   while (stack.length > 1 &&
          stack.reduce((s, e) => s + e.baseFog.width * e.baseFog.height * 4, 0) > maxBytes) {
@@ -25,10 +23,8 @@ function evictUndoStack(stack, maxBytes) {
   return stack;
 }
 
-// UNDO_MAX_BYTES is the budget for BOTH stacks together, not for each. Redo is trimmed
-// first: it is only ever non-empty after an undo, so losing a redo step costs less than
-// losing undo depth, and during ordinary drawing it is empty and undo keeps the whole
-// budget. Capping the two independently would let the pair reach twice the budget.
+// ⚠ UNDO_MAX_BYTES is the budget for BOTH stacks together. Redo is trimmed first, since it is only
+// non-empty after an undo. Capping the two independently lets the pair reach twice the budget.
 function evictUndoPair(undo, redo, maxBytes) {
   const bytes = s => s.reduce((t, e) => t + e.baseFog.width * e.baseFog.height * 4, 0);
   // length > 1, the same floor evictUndoStack keeps: redo() checks the length, then pushes
@@ -44,9 +40,8 @@ function pushUndo() {
     baseFog: cloneCanvas(baseFogCanvas),
     polygons: polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
     nextPolygonId,
-    // Effects ride the same history: they are edited with the same tools, so a Ctrl+Z that
-    // reversed a room drag but not an effect drag would depend on which mode you were in.
-    // Both spreads are additive — a field whitelist here would drop cornerRadii.
+    // Effects ride the same history, so one Ctrl+Z means the same thing in either mode.
+    // ⚠ Both spreads are additive: a field whitelist here drops cornerRadii.
     effects: effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
     nextEffectId,
   });
@@ -65,10 +60,9 @@ function restoreState(snapshot) {
     setEffects(snapshot.effects);
     nextEffectId = snapshot.nextEffectId || nextEffectId;
   }
-  // Keep the selection when the shape survived the undo — nulling it unconditionally slammed
-  // the room card shut on every Ctrl+Z, mid-read. Only a shape that no longer exists in the
-  // restored set (undoing its creation) clears it. Checked against the list the placement mode
-  // names, which is the same list the selection came from.
+  // Keep the selection when the shape survived the undo, or the room card slams shut on every
+  // Ctrl+Z. Only a shape missing from the restored set clears it, checked against the list the
+  // placement mode names.
   if (selectedPolygonId == null || !activeShapeList().some(s => s.id === selectedPolygonId)) {
     selectedPolygonId = null;
   }
@@ -88,9 +82,8 @@ function undo() {
     baseFog: cloneCanvas(baseFogCanvas),
     polygons: polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
     nextPolygonId,
-    // Effects ride the same history: they are edited with the same tools, so a Ctrl+Z that
-    // reversed a room drag but not an effect drag would depend on which mode you were in.
-    // Both spreads are additive — a field whitelist here would drop cornerRadii.
+    // Effects ride the same history, so one Ctrl+Z means the same thing in either mode.
+    // ⚠ Both spreads are additive: a field whitelist here drops cornerRadii.
     effects: effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
     nextEffectId,
   });
@@ -104,9 +97,8 @@ function redo() {
     baseFog: cloneCanvas(baseFogCanvas),
     polygons: polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
     nextPolygonId,
-    // Effects ride the same history: they are edited with the same tools, so a Ctrl+Z that
-    // reversed a room drag but not an effect drag would depend on which mode you were in.
-    // Both spreads are additive — a field whitelist here would drop cornerRadii.
+    // Effects ride the same history, so one Ctrl+Z means the same thing in either mode.
+    // ⚠ Both spreads are additive: a field whitelist here drops cornerRadii.
     effects: effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
     nextEffectId,
   });

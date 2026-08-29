@@ -1,9 +1,7 @@
 'use strict';
 
 // ─── PixiJS Renderer ─────────────────────────────────────────────────────────
-// Depends on: window.PIXI (loaded via lib/pixi.min.js)
-// Globals: pixiApp, pixiMapSprite, pixiMapTexture,
-//          initPixiRenderer, pixiSetMap, pixiSetViewport, pixiResize, destroyPixiRenderer
+// Depends on window.PIXI (lib/pixi.min.js).
 
 let pixiApp        = null;
 let pixiMapSprite  = null;
@@ -31,18 +29,14 @@ function initPixiRenderer(containerEl) {
     view: document.createElement('canvas'),
   });
 
-  // The ticker auto-starts (autoStart defaults true) and is what presents the stage —
-  // nothing calls pixiApp.render() explicitly. It carries the app's frame cap, and it
-  // is the ONLY clock: the dirty-flag loop rides it too (see below), so both advance
-  // together. Capping the two loops independently was measured and rejected — same
-  // interval, different phase, 33ms p90 of Canvas-2D-vs-map slip during a pan.
+  // The ticker auto-starts and presents the stage; nothing calls pixiApp.render(). It carries the
+  // frame cap and is the ONLY clock — the dirty-flag loop rides it too. ⚠ Never cap the two loops
+  // independently: same interval, different phase, and the Canvas-2D layers slip during a pan.
   pixiApp.ticker.maxFPS = APP_MAX_FPS;
 
-  // Drive render.js's dirty-flag loop from this ticker at a priority ABOVE PixiJS's
-  // own render (PIXI.Application registers that at UPDATE_PRIORITY.LOW). doRender
-  // therefore paints the Canvas-2D layers and sets the stage viewport in the same tick
-  // that presents them — the registration fix. Re-added on every renderer creation,
-  // since destroyPixiRenderer() takes the ticker's callbacks with it.
+  // Drive render.js's dirty-flag loop from this ticker ABOVE PixiJS's own render, so doRender
+  // paints the Canvas-2D layers and sets the stage viewport in the tick that presents them.
+  // Re-added on every renderer creation, since destroyPixiRenderer() takes the callbacks with it.
   if (typeof pumpDirtyRender === 'function') {
     pixiApp.ticker.add(pumpDirtyRender, null, PIXI.UPDATE_PRIORITY.HIGH);
   }
@@ -59,10 +53,8 @@ function initPixiRenderer(containerEl) {
     containerEl.appendChild(canvas);
   }
 
-  // Layer hierarchy. The effects layer sits ABOVE the map and BELOW the fog on purpose, and
-  // that ordering is the whole reason an effect in an unexplored room is hidden on both
-  // screens without any stripping guard — on the DM the fog is the layer above it, and on the
-  // Player the Canvas-2D #fog-canvas covers this whole canvas. effects.js fills it.
+  // ⚠ The effects layer sits ABOVE the map and BELOW the fog. That ordering is the whole reason an
+  // effect in an unexplored room is hidden on both screens with no stripping guard.
   pixiMapLayer     = new PIXI.Container();
   pixiEffectsLayer = new PIXI.Container();
   pixiFogLayer     = new PIXI.Container();
@@ -116,11 +108,10 @@ function pixiSetMap(imageBitmap, width, height) {
 // Drop the map sprite and its GPU texture without uploading a replacement.
 //
 // For the DM's ANIMATED maps, where the map is a CSS-composited <video> and the sprite would be
-// created and then hidden forever. pixiHideMap only sets visible=false, so the texture stayed
-// resident — tens of MB of GPU memory for a sprite whose only re-show path runs during teardown.
+// created and hidden forever. pixiHideMap only sets visible=false, leaving the texture resident.
 //
-// ⚠ CLEARING IS NOT THE SAME AS SKIPPING pixiSetMap. Switching from an image map to a video map
-// has to destroy the outgoing sprite, or the previous map stays on the layer underneath the video.
+// ⚠ CLEARING IS NOT THE SAME AS SKIPPING pixiSetMap: switching from an image map to a video map
+// must destroy the outgoing sprite, or the previous map stays under the video.
 function pixiClearMap() {
   if (!pixiApp) return;
   if (pixiMapTexture) { pixiMapTexture.destroy(true); pixiMapTexture = null; }
@@ -133,14 +124,11 @@ function pixiClearMap() {
 
 // Place the map sprite on a MAP-SPACE rectangle instead of the whole map.
 //
-// The Player's animated-map texture is viewport-sized and carries only the region the
-// camera is over (video.js), so the sprite has to travel with the camera rather than sit
-// at 0,0 spanning the map. Pan and zoom still come from the stage transform, so screen
-// registration is unchanged — which is what keeps the Canvas-2D fog above it lined up,
-// since that hole is computed from calcViewport() and never looks at this sprite.
+// The Player's animated-map texture is viewport-sized and carries only the region the camera is
+// over, so the sprite travels with the camera rather than sitting at 0,0. Pan and zoom still come
+// from the stage transform, which is what keeps the Canvas-2D fog above it lined up.
 //
-// Reaching into pixiMapSprite from player.js would work and is exactly what this exists
-// to prevent: the Pixi wrapper stays the only file that touches sprite internals.
+// ⚠ This file stays the only one that touches sprite internals.
 function pixiSetMapRegion(x, y, w, h) {
   if (!pixiMapSprite) return;
   pixiMapSprite.position.set(x, y);
@@ -167,18 +155,15 @@ function pixiShowMap() {
   if (pixiMapSprite) pixiMapSprite.visible = true;
 }
 
-// Re-upload the map texture to the GPU. Used by the Player video loop: each frame
-// the current video frame is drawn into the texture's source canvas, then this
-// pushes it to the GPU. (The DM uses a DOM <video> element instead, so this is
-// Player-only.)
+// Re-upload the map texture to the GPU, once the Player's video loop has drawn the frame into its
+// source canvas. Player-only: the DM uses a DOM <video> element.
 function pixiUpdateMapTexture() {
   if (pixiMapTexture && pixiMapTexture.baseTexture) pixiMapTexture.baseTexture.update();
 }
 
-// Player video playback: the map is a masked PixiJS sprite (no DOM <video> compositing),
-// so the map texture must be refreshed from the video every rendered frame. We hook the
-// PixiJS render ticker directly rather than the app's dirty-flag render loop, which only
-// fires on demand and would leave the video frozen between viewport changes.
+// Player video playback: the map is a PixiJS sprite, so its texture is refreshed from the video
+// every rendered frame. ⚠ Hooked to the PixiJS ticker, never the dirty-flag loop, which fires on
+// demand and would leave the video frozen between viewport changes.
 let _pixiVideoSyncFn = null;
 function _pixiVideoTick() { if (_pixiVideoSyncFn) _pixiVideoSyncFn(); }
 function pixiStartVideoTextureSync(fn) {
@@ -193,8 +178,7 @@ function pixiStopVideoTextureSync() {
 }
 
 // ─── Texture Size Clamping ──────────────────────────────────────────────────
-// WebGL has a hard MAX_TEXTURE_SIZE limit (4096–16384 depending on GPU).
-// Maps and fog canvases that exceed it need downscaled proxy canvases.
+// WebGL's MAX_TEXTURE_SIZE is a hard limit, so an oversized map or fog canvas needs a proxy.
 
 let pixiMaxTexSize = 0;
 
@@ -225,14 +209,11 @@ function pixiRefreshProxy(proxy, src) {
 }
 
 // ─── PixiJS Fog Layer (DM only) ──────────────────────────────────────────────
-// The Player does NOT render fog in PixiJS — it uses the Canvas-2D renderFog() path
-// (fog.js) drawing fog-on-top-with-holes on #fog-canvas, above #pixi-canvas. PixiJS in
-// the Player draws only the unmasked map sprite. So everything below is DM-only.
+// ⚠ The Player does NOT render fog in PixiJS: it uses the Canvas-2D renderFog() fog-on-top path on
+// #fog-canvas, and its PixiJS draws only the unmasked map sprite. Everything below is DM-only.
 //
-// Layer hierarchy inside pixiFogLayer (DM mode):
-//   [0] pixiFogTransSpr       — snapshot of prior fog state, fades out during transitions
-//   [1] pixiFogBlurSpr        — blurred fog canvas (the base, always visible)
-//   [2] pixiFogCloudContainer — 3 TilingSprites + purple overlay, masked to fog-opaque pixels
+// Inside pixiFogLayer: [0] the prior fog snapshot that fades out during a transition, [1] the
+// blurred fog canvas, [2] the cloud container masked to fog-opaque pixels.
 
 let pixiFogBlurBT     = null; // BaseTexture from fogBlurCanvas
 let pixiFogBlurTex    = null;
@@ -278,12 +259,10 @@ function pixiInitFog(fogDataCvs, fogBlurCvs, cloudBlendCvs, mapW, mapH) {
     pixiFogBlurSpr.height = mapH;
     pixiFogLayer.addChild(pixiFogBlurSpr);
 
-    // --- Cloud TilingSprites (3 passes) + mask ---
-    // Mask sprite re-uses pixiFogBlurTex so BT.update() keeps it in sync automatically.
-    // IMPORTANT: the mask sprite must be a child of pixiFogLayer so that getBounds() uses the
-    // stage world transform (zoom). Without a parent, getBounds() returns local-space bounds
-    // (mapW × mapH = e.g. 10000×6000), causing SpriteMaskFilter to allocate a 229 MB intermediate
-    // RenderTexture. With the stage transform applied, the bounds are viewport-sized (~8 MB).
+    // Cloud TilingSprites and their mask. The mask re-uses pixiFogBlurTex, so BT.update() keeps it
+    // in sync. ⚠ The mask sprite MUST be a child of pixiFogLayer, so getBounds() uses the stage
+    // transform. Unparented it returns map-sized bounds and SpriteMaskFilter allocates hundreds of
+    // megabytes of intermediate RenderTexture.
     pixiFogCloudMaskSpr = new PIXI.Sprite(pixiFogBlurTex);
     pixiFogCloudMaskSpr.width      = mapW;
     pixiFogCloudMaskSpr.height     = mapH;
@@ -297,9 +276,8 @@ function pixiInitFog(fogDataCvs, fogBlurCvs, cloudBlendCvs, mapW, mapH) {
     pixiFogCloudContainer.mask = pixiFogCloudMaskSpr;
     pixiFogLayer.addChild(pixiFogCloudContainer);
 
-    // Base color rect — first child so it renders beneath clouds and tint.
-    // The container mask clips it to fog-opaque pixels, so it recolors the fog body
-    // without touching baked pixel data in fogBlurCanvas.
+    // Base colour rect, first child so it renders beneath clouds and tint. The container mask
+    // clips it to fog-opaque pixels, so it recolours without touching fogBlurCanvas.
     pixiFogBaseColorRect = new PIXI.Graphics();
     pixiFogBaseColorRect.beginFill(parseInt(fogBaseColor.slice(1), 16), 1.0);
     pixiFogBaseColorRect.drawRect(0, 0, mapW, mapH);
@@ -318,9 +296,8 @@ function pixiInitFog(fogDataCvs, fogBlurCvs, cloudBlendCvs, mapW, mapH) {
       return ts;
     });
 
-    // Luminosity tint overlay — replicates the source-atop tint from Canvas 2D path.
-    // Being inside the masked container restricts it to fog-opaque pixels automatically.
-    // Stored in pixiFogTintOverlay so pixiUpdateFogTintColor() can re-fill it live.
+    // Luminosity tint overlay, the source-atop tint from the Canvas-2D path. Inside the masked
+    // container it is restricted to fog-opaque pixels, and pixiUpdateFogTintColor() re-fills it.
     pixiFogTintOverlay = new PIXI.Graphics();
     pixiFogTintOverlay.beginFill(parseInt(fogTintColor.slice(1), 16), FOG_TINT_ALPHA);
     pixiFogTintOverlay.drawRect(0, 0, mapW, mapH);
@@ -372,13 +349,10 @@ function pixiUpdateFogTintColor(hexStr) {
   pixiFogTintOverlay.endFill();
 }
 
-// Called every fog animation tick — updates TilingSprite drift + uploads the 512×512 cloud frame.
-// offsets: array of {x,y} per pass (null entries keep current tilePosition)
-// alphas:  array of alpha values per pass (null entries keep current alpha)
-// cloudChanged: true only when the caller actually repainted cloudBlendCanvas. The
-//   upload is the expensive part, so it is skipped otherwise — fog.js throttles the
-//   blend rebuild, and stopFogAnim() calls this for an alpha-only change that needs
-//   no upload at all. Same null-sentinel spirit as the two arguments above.
+// Called every fog animation tick: TilingSprite drift, plus the cloud frame upload.
+// offsets and alphas are per pass, and a null entry keeps the current value.
+// cloudChanged is true only when the caller repainted cloudBlendCanvas. The upload is the
+// expensive part, so it is skipped otherwise.
 function pixiUpdateFogAnim(offsets, alphas, cloudChanged) {
   if (!pixiFogCloudSprs.length) return;
   for (let i = 0; i < pixiFogCloudSprs.length; i++) {

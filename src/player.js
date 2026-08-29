@@ -1,8 +1,6 @@
 'use strict';
-// Player-mode runtime: cloud-texture pre-gen, PLAYER_READY handshake, resize handler,
-// DM message handler (map/fog/anim/scene-transition/view-snap/fullscreen), and player
-// pan/zoom. Called once from index.html (player mode only), at the same point the
-// original inline block used to run.
+// Player-mode runtime: cloud-texture pre-gen, the PLAYER_READY handshake, resize, the DM message
+// handler and player pan/zoom. Called once from index.html in player mode.
 
 // Bumped on every video-scene load so an async blob read that resolves after a
 // newer scene switch can detect it was superseded and bail out (no orphan <video>).
@@ -11,11 +9,9 @@ var _playerVideoGen = 0;
 function initPlayer() {
   fogAnimEnabled = true; // player view always animates
 
-  // Pre-generate the cloud texture now, while the player sits on the idle "waiting
-  // for DM" screen. The first generateCloudFrames() call blocks for ~1–2s; doing it
-  // lazily inside loadFog (on the first fog-update) meant the map had already been
-  // shown by PixiJS, so players briefly saw a fully-revealed, fog-less map until the
-  // texture finished. Paying the cost up-front closes that gap.
+  // Pre-generate the cloud texture while the player sits on the idle screen. The first
+  // generateCloudFrames() blocks for a second or two, and doing it lazily inside loadFog shows
+  // the players a fully-revealed map until it finishes.
   generateCloudFrames(512, CLOUD_FRAME_COUNT);
 
   if (window.opener) window.opener.postMessage({
@@ -79,10 +75,9 @@ function initPlayer() {
     if (msg.type === 'scene-transition') {
       if (msg.phase === 'out') {
         const fade = document.getElementById('scene-fade');
-        // Marks the switch as landed: .dark is what the rest of the file reads to tell an
-        // ordinary fog update from a switch in progress, and the stamp starts the hold at
-        // full fog (SCENE_FADE_MIN_MS). Both belong to the moment the cover completes, not
-        // to the start of the close.
+        // Marks the switch as landed: .dark tells an ordinary fog update from a switch in
+        // progress, and the stamp starts the hold at full fog. Both belong to the moment the
+        // cover completes, never to the start of the close.
         const covered = () => {
           fade.classList.add('dark');
           _sceneFadeStart = Date.now();
@@ -125,18 +120,13 @@ function initPlayer() {
     if (msg.pickedHex) handleFogColorMessage({ pickedHex: msg.pickedHex, fogTintAlpha: msg.fogTintAlpha });
     // (retry loop in initPlayerMapRetry stops itself when mapOffscreen is set — no timer to clear)
 
-    // Don't reveal yet — keep scene-fade dark until map + fog are fully decoded and render is queued.
-    // This prevents players from seeing the old scene or a partially-applied fog during the transition.
-    // First open has no scene-transition 'out' phase to black out the screen, so the map (painted
-    // immediately by PixiJS) would flash fog-less before the Canvas-2D fog is ready. Cover it the same
-    // way a scene switch does — instantly (transition disabled) so the map can't peek during a fade-in.
-    // revealPlayer() removes .dark with the normal 0.5s ease once map+fog have rendered.
+    // Stay dark until map and fog are decoded and a render is queued, or the players see the old
+    // scene or a half-applied fog. A first open has no 'out' phase, so the map would flash fog-less;
+    // cover it the way a scene switch does, instantly, and let revealPlayer() ease it back.
     if (msg.mapUrl && fogCoverT < 1) {
-      // The DM holds this payload back until the close has had its time (sceneManager.js), so
-      // normally the cover has already landed and this does nothing. If it hasn't — timing
-      // jitter, or a first open, which has no 'out' phase at all — finish the cover NOW:
-      // everything below rewrites the map size and camera, and applying that under a
-      // half-closed cover is exactly the visible swap the cover exists to hide.
+      // The DM holds this payload back until the close has had its time, so normally this does
+      // nothing. ⚠ If the cover has not landed, finish it NOW: everything below rewrites the map
+      // size and camera, and doing that under a half-closed cover shows the swap.
       const fade = document.getElementById('scene-fade');
       fade.style.transition = 'none';
       fade.classList.toggle('blind', !(fogDataCanvas && cloudPattern));
@@ -156,9 +146,8 @@ function initPlayer() {
 
     mapWidth  = msg.mapWidth;
     mapHeight = msg.mapHeight;
-    // Effects arrive as the polygon records themselves — the array IS the wire format, so there
-    // is nothing to convert. An empty list is meaningful (a scene switch sends one), hence the
-    // undefined check rather than a truthiness one.
+    // Effects arrive as the polygon records themselves, so there is nothing to convert. ⚠ An empty
+    // list is meaningful, which is why this checks for undefined rather than truthiness.
     if (msg.effects !== undefined) setEffects(msg.effects);
     if (msg.gridEnabled !== undefined) {
       gridEnabled   = msg.gridEnabled;
@@ -194,11 +183,11 @@ function initPlayer() {
         if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
         if (!skipTransition && msg.fogChanged) startFogTransition(!!msg.isShroud);
         rebuildFogEffect();
-        // Now that this scene HAS a cloud pattern, the flat blind can hand over to real fog —
-        // that is what gets the session's first map onto fog instead of navy. The cover is
-        // already at 1, so this is a swap of what is drawing it, not a change of state.
-        // GATED ON A TRANSITION BEING UP (.dark): every ordinary fog update from the DM lands
-        // here too, and touching the cover on those would blank the players' screen mid-game.
+        // Now this scene has a cloud pattern, the flat blind hands over to real fog, which is what
+        // gets the session's first map onto fog instead of navy. The cover is already at 1, so only
+        // what draws it changes.
+        // ⚠ GATED ON A TRANSITION BEING UP: every ordinary fog update lands here too, and touching
+        // the cover on those blanks the players' screen mid-game.
         const fadeEl = document.getElementById('scene-fade');
         if (fadeEl.classList.contains('dark') && fogDataCanvas && cloudPattern) {
           fadeEl.classList.remove('blind');
@@ -215,13 +204,9 @@ function initPlayer() {
       // Video scene — create a <video> element on Player side.
       cleanupVideo();
 
-      // Play from a PRIVATE in-memory copy of the clip, NOT the same file:// path the
-      // DM is already streaming. Two <video> elements reading the same file at once
-      // starve Chromium's media pipeline for it — decode drops to 0 and BOTH windows
-      // stall at readyState 2 (confirmed via diag: DM-only never stalls; the instant
-      // the Player opens, both collapse together). A blob is a separate data source,
-      // so the two never contend. Falls back to the shared file:// URL if the
-      // in-memory read is unavailable or fails.
+      // ⚠ Play from a PRIVATE in-memory copy of the clip, never the file:// path the DM is already
+      // streaming. Two <video> elements on one file starve Chromium's media pipeline and both
+      // windows stall. Falls back to the shared URL if the in-memory read fails.
       const _gen = ++_playerVideoGen;
 
       const beginPlayerVideo = (srcUrl) => {
@@ -260,9 +245,8 @@ function initPlayer() {
             pixiStartVideoTextureSync(function() {
               if (!mapVideo || !playerMapTexCtx || mapVideo.readyState < 2) return;
               var t = mapVideo.currentTime;
-              // Pan and zoom join the dedup key now that the texture holds a region:
-              // on a paused video the frame never advances, and without this the map
-              // would go stale under a moving camera.
+              // Pan and zoom join the dedup key, because the texture holds a region: on a paused
+              // video the frame never advances and the map would go stale under a moving camera.
               if (t === _texVideoTime && panX === _texPanX && panY === _texPanY && zoom === _texZoom) return;
               _texVideoTime = t; _texPanX = panX; _texPanY = panY; _texZoom = zoom;
               refreshPlayerMapRegion();
@@ -270,10 +254,9 @@ function initPlayer() {
             attachVideoListeners(video);
             fitToScreen();
             if (playerFollowDM && msg.view) applyView(msg.view);
-            // After the camera is settled, so the first texture already holds the region
-            // the players will actually see. Viewport-sized (video.js), not map-sized:
-            // 13.6 MB on a 4320 map and on a 12900 one alike, and that figure is also
-            // the per-frame GPU upload.
+            // After the camera is settled, so the first texture holds the region the players will
+            // see. Viewport-sized, never map-sized — the same cost on any map, and that figure is
+            // also the per-frame GPU upload.
             initPlayerMapRegionTexture();
             loadFog(msg.fogDataUrl, !!msg.sceneChange).then(() => {
               // Hybrid: Player fog is Canvas-2D (renderFog) on top of the PixiJS map — no
@@ -296,10 +279,9 @@ function initPlayer() {
         const _mime = /\.mp4(\?|$)/i.test(msg.mapUrl) ? 'video/mp4' : 'video/webm';
         window.electronAPI.readVideoFile(msg.mapSceneId).then(function(buf) {
           if (buf) {
-            // The DM's own URL goes UNUSED on this path, and for a legacy scene whose clip
-            // never reached disk it is a blob: URL holding the whole video. Nothing else
-            // releases it, so it is released here — the same revoke the image branch below
-            // already does, at the one moment the Player knows it will not be read.
+            // The DM's own URL goes UNUSED here, and for a legacy scene it is a blob: URL holding
+            // the whole video. Nothing else releases it, so it is released at this one moment the
+            // Player knows it will not be read.
             if (/^blob:/.test(msg.mapUrl)) URL.revokeObjectURL(msg.mapUrl);
             beginPlayerVideo(URL.createObjectURL(new Blob([buf], { type: _mime })));
           } else {

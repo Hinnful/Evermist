@@ -1,27 +1,22 @@
 'use strict';
 // pdfLayout.js — turning a PDF page's positioned text back into lines, in reading order.
 //
-// A PDF has no lines and no paragraphs, only glyph runs at coordinates. pdf.js recovers the
-// text; recovering the READING ORDER of a two-column book with sidebars and spanning
-// headings is this file. Pure, so it can be tested.
+// A PDF has no lines and no paragraphs, only glyph runs at coordinates. pdf.js recovers the text;
+// recovering the READING ORDER of a two-column book is this file. Pure, so it can be tested.
 //
-// Not browser code despite living in src/ — main.js requires it, and there is no <script>
-// tag. It sits here for the build glob and the node:test convention, and stays
-// dependency-free so either side can require it.
+// Not browser code despite living in src/ — main.js requires it and there is no <script> tag. It
+// stays dependency-free so either side can require it.
 //
-// THE MISTAKE TO NOT REPEAT: columns first, lines second. On a two-column page the left and
-// right lines share a baseline, so grouping by y merges them into one double-width line;
-// the column split then never fires and the output is the two columns interleaved sentence
-// by sentence. Measured on the real book: 96-character median line the wrong way, 51 the
-// right way.
+// ⚠ COLUMNS FIRST, LINES SECOND. On a two-column page the left and right lines share a baseline, so
+// grouping by y merges them into one double-width line, the column split never fires, and the
+// output interleaves the two columns sentence by sentence.
 
 // "Same line" tolerance in PDF points: loose enough for typesetter baseline jitter, tight
 // enough not to merge consecutive lines (~12pt apart).
 const PL_LINE_TOL = 3;
 
-// How far past the midline a run must reach to count as SPANNING both columns. A column's
-// own text stops well short of the gutter, so this only has to exceed a justified edge's
-// raggedness.
+// How far past the midline a run must reach to count as SPANNING both columns. A column's text
+// stops well short of the gutter, so this only has to exceed a justified edge's raggedness.
 const PL_SPAN_MARGIN = 40;
 
 // Group runs sharing a baseline into one line. Safe ONLY within a single column.
@@ -64,10 +59,9 @@ function plClassify(item, pageWidth, spanMargin) {
 
 // One page's runs → its lines, in reading order.
 //
-// Spanning lines (a chapter heading, a wide table, a caption) cut the page into BANDS.
-// Within a band the left column is read before the right, as a human does. Without the
-// banding, a heading halfway down the page would be read after both full columns, landing
-// its rooms under the wrong heading.
+// Spanning lines cut the page into BANDS, and within a band the left column is read before the
+// right. Without the banding, a heading halfway down the page is read after both columns and its
+// rooms land under the wrong heading.
 function plPageLines(page, opts) {
   const o = opts || {};
   const width = (page && page.width) || 0;
@@ -95,10 +89,9 @@ function plPageLines(page, opts) {
   return out;
 }
 
-// Every page's lines, concatenated into the blob the module parser consumes. Page furniture
-// is left in on purpose: moduleText.js identifies it better than coordinates can, because a
-// running header is not reliably positioned but IS reliably the same text with a different
-// number attached.
+// Every page's lines, concatenated into the blob the module parser consumes. Page furniture is left
+// in: moduleText.js identifies it better than coordinates can, because a running header is not
+// reliably positioned but IS reliably the same text with a different number.
 function plDocumentText(pages, opts) {
   return (Array.isArray(pages) ? pages : [])
     .map(p => plPageLines(p, opts).join('\n'))

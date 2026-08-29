@@ -2,13 +2,12 @@
 
 // floorPlan.js — turning a Dungeon Alchemist floor plan into this scene's rooms.
 //
-// The geometry is vttPlan.js, which is pure and tested. This file is the app side: finding
-// the plan on disk, storing it on the scene, asking the DM once, and rewriting the polygon
-// set. Rules live in the `floor-plan` skill.
+// The geometry is vttPlan.js, pure and tested. This file is the app side: finding the plan on
+// disk, storing it on the scene, asking the DM once, and rewriting the polygon set. Rules live in
+// the `floor-plan` skill.
 //
-// ELECTRON ONLY, on purpose. Finding the sibling file needs the preload bridge, so under
-// `npx serve .` or bare file:// no plan is ever found. It degrades to silence rather than
-// to an error: the app is run as the packaged .exe.
+// ELECTRON ONLY: finding the sibling file needs the preload bridge, so bare file:// finds no plan.
+// It degrades to silence rather than an error.
 
 // ─── Finding the plan ─────────────────────────────────────────────────────────
 
@@ -27,9 +26,9 @@ async function findPlanForFile(file) {
   }
 }
 
-// Reads a plan's text and derives it. A truncated or malformed file must behave EXACTLY
-// like no plan at all — no dialog, no button, and above all nothing thrown into the import
-// path, where an unhandled rejection strands the map-progress overlay forever.
+// Reads a plan's text and derives it. ⚠ A truncated or malformed file must behave EXACTLY like no
+// plan at all, and above all throw nothing into the import path, where an unhandled rejection
+// strands the map-progress overlay.
 function describePlan(planText) {
   if (typeof planText !== 'string' || !planText.trim()) return null;
   let parsed;
@@ -55,22 +54,18 @@ function hasFloorPlan() {
 function applyPlanToScene(derived) {
   if (!derived || !derived.rooms.length) return;
   pushUndo();
-  // Wipe-and-rebuild can delete the room the DM currently has selected, which would leave
-  // selectedPolygonId pointing at a dead id and the room card open on a ghost. Every other
-  // wholesale polygon rewrite in the app nulls both first.
+  // Wipe-and-rebuild can delete the selected room, leaving selectedPolygonId on a dead id and the
+  // card open on a ghost. Every wholesale polygon rewrite nulls both first.
   activePolygon = null;
   selectedPolygonId = null;
 
-  // ⚠ THE KERNEL'S COORDINATES ARE IN THE EXPORT'S PIXEL SPACE, NOT THIS MAP'S. There is no
-  // map-width term in vttPlan.js — it multiplies grid squares by the plan's own
-  // pixels_per_grid — so an animated map that was shrunk at import (mapConvert.js) would get
-  // every room 1.6× too large. Scaling here fixes the import path and the attach-a-plan-later
-  // path with one rule, and self-corrects any resolution mismatch rather than only ours.
+  // ⚠ THE KERNEL'S COORDINATES ARE IN THE EXPORT'S PIXEL SPACE, NOT THIS MAP'S. vttPlan.js has no
+  // map-width term, so a map shrunk at import gets every room too large. Scaling here covers the
+  // import path and the attach-a-plan-later path with one rule.
   const rooms = vttScaleRooms(derived.rooms, mapWidth, derived.srcW);
 
-  // Numbered from 1 in the kernel's spatial order, so the names read down the map. Same
-  // shape the drawing tools produce, or the room card and the fog rebuild would not
-  // recognise them.
+  // Numbered from 1 in the kernel's spatial order, so the names read down the map. Same shape the
+  // drawing tools produce, or the card and the fog rebuild would not recognise them.
   polygons = rooms.map((verts, i) => ({
     id: i + 1,
     vertices: verts.map(v => ({ x: v.x, y: v.y })),
@@ -97,12 +92,10 @@ function applyPlanToScene(derived) {
 const FP_GRID_MIN = 10;
 const FP_GRID_MAX = 400;
 
-// The cell size this plan implies for the map that is actually loaded: PIXELS ACROSS DIVIDED BY
-// SQUARES ACROSS. That self-corrects a resolution mismatch — a map shrunk at import divides the
-// same square count into fewer pixels — where reading pixels_per_grid straight off the file would
-// hand back the untouched export's number and put the grid out of step with the map. The plan's
-// own pixels_per_grid is only the fallback for a file that omits map_size. null where neither is
-// usable, which is also what a map with no plan gets.
+// The cell size this plan implies for the loaded map: PIXELS ACROSS DIVIDED BY SQUARES ACROSS,
+// which self-corrects a resolution mismatch. ⚠ Reading pixels_per_grid straight off the file hands
+// back the untouched export's number and puts the grid out of step. That field is only the
+// fallback for a file omitting map_size; null where neither is usable.
 function planGridSize(planText, mapW) {
   const derived = describePlan(planText);
   if (!derived) return null;
@@ -114,13 +107,11 @@ function planGridSize(planText, mapW) {
   return Math.max(FP_GRID_MIN, Math.min(FP_GRID_MAX, Math.round(raw)));
 }
 
-// ⚠ IMPORT PATH ONLY. Draw Rooms runs applyPlanToScene on the same plan at any later point, and
-// a grid the DM has hand-tuned must survive that — so the derivation lives here and is called
-// once, from the import, and never from applyPlanToScene. Auto on first load; the DM's value
-// wins forever after.
+// ⚠ IMPORT PATH ONLY. Draw Rooms runs applyPlanToScene on the same plan later, and a hand-tuned
+// grid must survive that — so this is called from the import and never from applyPlanToScene.
 //
-// SIZE ONLY, NOT OFFSET. vttPlan.js reads map_origin, so a correctly-sized grid can still land
-// out of phase on a plan with a non-zero origin. Grid offset stays a manual nudge.
+// SIZE ONLY, NOT OFFSET: a correctly-sized grid can still land out of phase on a plan with a
+// non-zero origin, and offset stays a manual nudge.
 function applyPlanGridSize() {
   if (!currentScene) return null;
   const size = planGridSize(currentScene.floorPlan, mapWidth);
@@ -139,9 +130,8 @@ function applyPlanGridSize() {
 
 function _fpRoomWord(n) { return n === 1 ? '1 room' : n + ' rooms'; }
 
-// Draws, asking first ONLY where rooms already exist, because that is a delete the DM did
-// not come here for. Pressing Draw Rooms is not: a confirmation for something explicitly
-// asked for is noise.
+// Draws, asking first ONLY where rooms already exist, because that is a delete the DM did not come
+// here for. A confirmation for what was explicitly asked is noise.
 function applyPlanWithGuard(derived) {
   if (!derived || !derived.rooms.length) return;
   const existing = Array.isArray(polygons) ? polygons.length : 0;
@@ -158,13 +148,11 @@ function applyPlanWithGuard(derived) {
   });
 }
 
-// ⚠ NOT A DIALOG. An import is good news, not a question that has to be answered before the
-// map can be touched: a modal here blocks panning and zooming the map it is talking about.
-// One CTA, one close, no backdrop.
+// ⚠ NOT A DIALOG. An import is good news, not a question, and a modal here blocks panning the map
+// it is talking about. One CTA, one close, no backdrop.
 //
-// It deliberately does NOT report open walls. The kernel still finds every one of them and
-// `openWalls` carries the coordinates, but a gap is an edge case and putting it in the first
-// thing the DM sees costs more attention than it earns.
+// It does NOT report open walls: the kernel finds them and `openWalls` carries the coordinates, but
+// a gap is an edge case and costs more attention here than it earns.
 let _fpNoticeRoot = null;
 
 function _fpBuildNotice() {
@@ -244,9 +232,9 @@ async function attachPlanText(planText) {
 
 // ─── The Fog tab button ───────────────────────────────────────────────────────
 
-// Called on every scene switch. Static label, enabled only where this scene has a plan —
-// the label never carries state, which no other .cp-btn in the app does either. It also
-// clears the notice, because an offer about the previous scene must not outlive it.
+// Called on every scene switch. Static label, enabled only where this scene has a plan, like every
+// other .cp-btn. It also clears the notice, because an offer about the previous scene must not
+// outlive it.
 function refreshFloorPlanUI() {
   hideFloorPlanNotice();
   const btn = document.getElementById('btn-floorplan');

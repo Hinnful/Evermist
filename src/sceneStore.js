@@ -1,13 +1,10 @@
 'use strict';
 
 // ─── IndexedDB scene storage ───────────────────────────────────────────────────
-// One object store 'scenes' keyed by id. Full scene record:
-//   { id, name, group, mapBlob, mapWidth, mapHeight, polygons, nextPolygonId,
-//     effects, nextEffectId, baseFogPNG, gridConfig, thumbnail, createdAt, sortOrder }
+// One object store 'scenes' keyed by id, holding the whole scene record.
 //
-// listScenes() uses a cursor and returns only lightweight metadata so the heavy
-// map Blobs (up to 50 MB each) are never pulled into JS heap during listing.
-// IDB Blobs are lazy — they don't load their binary data until explicitly read.
+// ⚠ listScenes() returns lightweight metadata only, over a cursor, so the heavy map Blobs are never
+// pulled into the JS heap during a listing. IDB Blobs are lazy until read.
 
 const sceneStore = (() => {
   const DB_NAME    = 'evermist';
@@ -41,9 +38,8 @@ const sceneStore = (() => {
     return { tx, store };
   }
 
-  // Resolves on tx.oncomplete (durable commit) rather than req.onsuccess.
-  // req.onsuccess fires before the transaction commits; if the tx later aborts
-  // (quota exceeded, disk error) the write is lost but the promise already resolved.
+  // ⚠ Resolves on tx.oncomplete, never req.onsuccess, which fires before the commit — an abort
+  // then loses the write against a promise that already resolved.
   function idbWrite(req) {
     return new Promise((resolve, reject) => {
       req.onerror              = e => reject(e.target.error);
@@ -71,14 +67,12 @@ const sceneStore = (() => {
 
   // Read-modify-write of ONE stored scene, inside ONE readwrite transaction.
   //
-  // ⚠ NEVER load-then-save FOR THIS. The two are separate transactions, so doAutoSave() can
-  // land between them — it puts the whole in-memory currentScene, and the save half of the
-  // pair then writes the record read before it and takes the fog with it. A rename or a
-  // reorder during a game silently reverted the last reveal.
+  // ⚠ NEVER load-then-save FOR THIS. They are separate transactions, so doAutoSave() can land
+  // between them and the save half then writes the record read before it, taking the fog with it —
+  // a rename during a game silently reverts the last reveal.
   //
-  // saveScene() stays right for the scene the app HOLDS; this is for touching one field of
-  // a scene it does not. `mutate` edits the stored record in place; returning false skips
-  // the put, so an unchanged record costs no write. A scene deleted meanwhile is a no-op.
+  // saveScene() stays right for the scene the app HOLDS; this is for one field of a scene it does
+  // not. `mutate` edits in place, and returning false skips the put.
   function updateScene(id, mutate) {
     return new Promise((resolve, reject) => {
       const { tx, store } = getTx('readwrite');

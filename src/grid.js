@@ -1,6 +1,5 @@
-// grid.js — grid rendering + config serialization.
-// Extracted from the index.html inline blob (migrate-on-touch). See CLAUDE.md.
-// Reads grid state globals from state.js; drawGridLines derives scale from the vp it receives.
+// grid.js — grid rendering + config serialization. Reads grid state from state.js; drawGridLines
+// derives scale from the vp it receives.
 
 // ─── Line width ───────────────────────────────────────────────────────────────
 // N map-pixels wide so lines scale with zoom; floor keeps thin lines visible.
@@ -11,9 +10,8 @@ function lineWidthForZoom(base, zoom) {
 }
 
 // ─── Rendering ───────────────────────────────────────────────────────────────
-// Shared grid-drawing primitive used by both renderGrid (DM) and renderMap (Player).
-// `style` overrides colour/alpha/width for the ember relight inside effect zones; omitted, the
-// grid draws in its own configured colour.
+// The shared primitive behind renderGrid (DM) and renderMap (Player). `style` overrides colour,
+// alpha and width for the ember relight inside effect zones.
 function drawGridLines(ctx, vp, style) {
   const scale = vp.dstW / vp.srcW;
   const step = gridSize * scale;
@@ -96,15 +94,19 @@ function renderGrid(vp) {
   gridCtx.clearRect(0, 0, vp.cw, vp.ch);
   // In Player view the grid is painted onto the map canvas (see renderMap),
   // so the fog layer above it naturally hides it in shrouded areas.
-  if (isPlayer || !gridEnabled) return;
+  if (isPlayer) return;
+  // ⚠ The Door tool shows the grid even when the DM has it switched off, because a door IS one
+  // cell and placing one blind is guesswork. Do NOT do this by flipping gridEnabled: that value
+  // is the scene's and reaches the TV, so picking a tool would put a grid in front of the
+  // players mid-session. renderPlayerGrid stays gated on gridEnabled alone.
+  if (!gridEnabled && shape !== 'door') return;
   drawGridLines(gridCtx, vp);
   drawEffectGridGlow(gridCtx, vp);
 }
 
-// Relight the grid in ember where it falls inside an effect zone, so the squares a hazard covers
-// are countable. It has to live HERE, over the same canvas as the grid: the effect's own fire is
-// a PixiJS layer below this canvas, so anything it drew would sit under these grid lines. Only the
-// square grid is relit — a hex grid keeps its own colour (matches effects.js).
+// Relight the grid in ember inside an effect zone, so the squares a hazard covers stay countable.
+// ⚠ It has to live HERE, on the grid's own canvas: the effect's fire is a PixiJS layer below, so
+// anything it drew would sit under these lines. Square grids only; a hex grid keeps its colour.
 const EFFECT_GRID_EMBER = '#ff9a3c';
 function drawEffectGridGlow(ctx, vp) {
   if (typeof effects === 'undefined' || !effects.length || gridMode !== 'square') return;
@@ -112,9 +114,8 @@ function drawEffectGridGlow(ctx, vp) {
   for (const e of effects) {
     if (!e.vertices || e.vertices.length < 3) continue;
     ctx.save();
-    // Clipped to the ROUNDED outline, the same shape the fire itself is drawn from
-    // (effects.js _roundedPolyPoints). Clipping to the raw vertices left square ember
-    // corners on a rounded effect, so the grid and the fire disagreed about the shape.
+    // Clipped to the ROUNDED outline, the same shape the fire is drawn from. Raw vertices leave
+    // square ember corners, so the grid and the fire disagree about the shape.
     const sv = e.vertices.map(v => ({
       x: vp.dstX + (v.x - vp.srcX) * scale,
       y: vp.dstY + (v.y - vp.srcY) * scale,
@@ -141,12 +142,13 @@ function renderPlayerGrid(vp) {
 }
 
 // ─── Committing a change ──────────────────────────────────────────────────────
-// EVERY grid control goes through this, including the on/off toggle and Reset. The grid
-// belongs to the scene, so a change has to reach the Player AND the store; scheduleAutoSync
-// (viewport.js) debounces both, since it calls scheduleAutoSave itself. Reset called neither,
-// which is why a reset grid came back at the old size on the next scene switch.
+// ⚠ EVERY grid control goes through this, the on/off toggle and Reset included. The grid belongs to
+// the scene, so a change has to reach the Player AND the store, and scheduleAutoSync debounces both.
 function commitGridChange() {
   gridDirty = true;
+  // A door is one cell wide, so the cell changing resizes every door already placed.
+  rebuildFogForGridChange();
+  if (typeof updateContextPanels === 'function') updateContextPanels();
   scheduleRender();
   scheduleAutoSync();
 }

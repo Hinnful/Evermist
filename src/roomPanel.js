@@ -2,18 +2,15 @@
 // roomPanel.js — the room card (the floating panel shown when a room is selected) plus the
 // room-name labels drawn on the DM map. A room is a polygon; `polygon` stays the word in code.
 //
-// The card is MOVABLE and its description RESIZABLE, both load-bearing rather than polish: it
-// floats over the map and will sometimes cover the handles the DM selected the room by, which
-// no placement rule wins in general. See _rpManualPos and RP_DESC_H_KEY.
+// The card is MOVABLE and its description RESIZABLE, neither of them polish: the card floats
+// over the map and will sometimes cover the handles the DM selected the room by.
 //
 // Called once from initToolbar() (DM only). Layout rules in CLAUDE.md, rejected shapes in
 // docs/DECISIONS.md.
 
 const ROOM_NAME_MAX = 60;     // cap so a pasted essay can't wreck the card header
-// Truncation here is SILENT (sanitizeRoomDesc just slices), so the cap sits in the gap between
-// two populations rather than inside either: legitimate rooms average ~3K and the worst case is
-// a room that absorbed a sidebar at maybe 10K, while the failure this guards against — a parse
-// that finds no headings — produces one entry of several hundred thousand characters.
+// Truncation is SILENT, so the cap sits in the gap between a real room (thousands of characters)
+// and the failure it guards against: a parse that found no headings, at hundreds of thousands.
 const ROOM_DESC_MAX = 20000;
 
 // ─── Pure helpers (unit-tested — keep DOM-free) ───────────────────────────────
@@ -44,9 +41,8 @@ function sanitizeRoomDesc(raw) {
   return String(raw == null ? '' : raw).slice(0, ROOM_DESC_MAX).trim();
 }
 
-// Fit `text` into maxPx, ellipsising from the end; '' when not even the ellipsis fits. A
-// string already narrower than maxPx is returned untouched, so a short name is never swapped
-// for a wider ellipsis. measureFn is injected, which is what keeps this pure.
+// Fit `text` into maxPx, ellipsising from the end; '' when not even the ellipsis fits. A string
+// already narrower is returned untouched. measureFn is injected, which keeps this pure.
 function ellipsizeToWidth(text, maxPx, measureFn) {
   const s = String(text == null ? '' : text);
   if (!s) return '';
@@ -64,9 +60,8 @@ function ellipsizeToWidth(text, maxPx, measureFn) {
 
 // ─── Label geometry (pure — unit-tested) ──────────────────────────────────────
 
-// Label size in SCREEN px, scaling only gently with zoom and CLAMPED at both ends: map-locked
-// type would vanish when zoomed out, exactly when the DM most needs to tell rooms apart, and
-// screen-fixed type looks lost inside a hall. The exponent is the dial (0 = fixed, 1 = locked).
+// Label size in SCREEN px, scaling gently with zoom and CLAMPED at both ends: map-locked type
+// vanishes when zoomed out, screen-fixed type looks lost inside a hall. The exponent is the dial.
 function roomLabelFontPx(zoomLevel, base, minPx, maxPx, exp) {
   const b = base  == null ? 21  : base;
   const lo = minPx == null ? 17  : minPx;
@@ -91,21 +86,18 @@ function polygonRowSpans(verts, y) {
   return spans;
 }
 
-// How far a circular corner of radius r cuts in, d below the top edge. Exact: the arc centre
-// is r below the top, so the inset tapers from r at the very top to 0 at depth r. This is what
-// keeps a label inside a heavily rounded room, where the vertices say "sharp corner" and the
-// drawn path says otherwise.
+// How far a circular corner of radius r cuts in, d below the top edge. Keeps a label inside a
+// heavily rounded room, where the vertices say "sharp corner" and the drawn path does not.
 function cornerInsetAt(r, d) {
   if (!(r > 0) || d >= r || d < 0) return 0;
   return r - Math.sqrt(Math.max(0, r * r - (r - d) * (r - d)));
 }
 
-// Top-left-ish anchor for a label inside any room shape. Samples rows downward asking "can the
-// label sit here, fully inside?", which is why it needs no per-shape special case: a circle
-// simply has no usable row until its chord is wide enough.
+// Top-left-ish anchor for a label inside any room shape. Samples rows downward asking whether the
+// label fits fully inside, so no shape needs a special case.
 //
-// Returns the FIRST (highest) row that fits the whole label, or the roomiest row so the caller
-// can ellipsise into it. MAP units, so the result is pan-independent and safe to cache.
+// Returns the FIRST (highest) row that fits the whole label, or the roomiest row so the caller can
+// ellipsise into it. MAP units, so the result is pan-independent and safe to cache.
 function fitLabelBox(verts, textW, textH, pad, cornerR, rows) {
   if (!verts || verts.length < 3) return null;
   const bb = getPolyBBox(verts);
@@ -142,14 +134,12 @@ function fitLabelBox(verts, textW, textH, pad, cornerR, rows) {
 const RP_GAP    = 22;   // screen px between the card and the room's centroid
 const RP_MARGIN = 8;    // keep the card at least this far off every viewport edge
 
-// Where the DM dragged the card, screen px, or null for automatic placement. Once moved it
-// STAYS moved through repaints, pans and room switches, until the card closes or the bar is
-// double-clicked. A card that re-anchored itself would land back on the handles every time.
+// Where the DM dragged the card, screen px, or null for automatic placement. Once moved it STAYS
+// moved until the card closes or the bar is double-clicked, or it lands back on the handles.
 let _rpManualPos = null;
 
-// Last automatic placement, keyed to the room it was computed for. Held still while a vertex or
-// edge drag is in flight: those reshape the room under the pointer, so recomputing every frame
-// would make the card flip sides mid-edit. It re-places once, on release.
+// Last automatic placement, keyed to its room. Held still during a vertex or edge drag, or the
+// card flips sides mid-edit; it re-places once, on release.
 let _rpAutoPos = null;
 
 function _rpAutoFrozen(pid) {
@@ -158,26 +148,20 @@ function _rpAutoFrozen(pid) {
          (typeof isDraggingEdge   !== 'undefined' && isDraggingEdge);
 }
 
-// Description height: ONE preference for the card, not per room, because "how tall I like this
-// box" is about the DM's screen. localStorage, so never in a scene or backup. No MIN/MAX
-// constants beside it — .rp-desc's CSS already clamps anything written to style.height, so a JS
-// range check would guard nothing and could disagree with the CSS.
+// Description height: ONE preference for the card, never per room. localStorage, so never in a
+// scene or backup. No MIN/MAX here — .rp-desc's CSS already clamps style.height.
 const RP_DESC_H_KEY = 'evermist.roomDescHeight';
 
-// Where to put the card, ALL SCREEN PIXELS. `room` is the selected room's screen bounding box
-// ({left, top, right, bottom}), NOT its centroid: the card has to clear the whole room, or a
-// room bigger than the gap swallows the card the DM is trying to edit through.
-// Preference: above the room, then below, then right, then left.
+// Where to put the card, ALL SCREEN PIXELS. `room` is the selected room's screen bounding box,
+// NEVER its centroid: the card has to clear the whole room. Preference: above, below, right, left.
 function clampPanelPosition(room, pw, ph, vw, vh, gap, margin) {
   const g = gap    == null ? RP_GAP    : gap;
   const m = margin == null ? RP_MARGIN : margin;
 
-  // Math.max wraps Math.min so a card bigger than the viewport pins to the top/left edge
-  // rather than being pushed off it.
+  // Math.max wraps Math.min, so a card bigger than the viewport pins to the top/left edge.
   const clampX = l => Math.max(m, Math.min(vw - pw - m, l));
-  // Not redundant with the branches below: the box comes from MAP coordinates, so panning can
-  // put it far off-screen, and "above a room 3000px below the fold" is itself off-screen. A
-  // selected room's card must stay readable when the room has scrolled out of view.
+  // Not redundant with the branches below: the box comes from MAP coordinates, so panning can put
+  // it far off-screen, and the card must stay readable when its room has scrolled out of view.
   const clampY = t => Math.max(m, Math.min(vh - ph - m, t));
 
   const left = clampX((room.left + room.right) / 2 - pw / 2);   // centred on the room
@@ -195,9 +179,8 @@ function clampPanelPosition(room, pw, ph, vw, vh, gap, margin) {
   const beside = room.left - g - pw;
   if (beside >= m) return { left: clampX(beside), top, placement: 'left' };
 
-  // The room reaches every edge, so no placement is fully clear of it — zoomed right into one
-  // room is the ordinary case. Pin the card to whichever viewport edge has the most space
-  // between it and the room, so the card covers as little of the room as it can.
+  // The room reaches every edge, so nothing is fully clear of it. Pin the card to whichever edge
+  // has the most space, covering as little of the room as possible.
   const slots = [
     { placement: 'above', space: room.top - m,          left,              top: m },
     { placement: 'below', space: vh - m - room.bottom,  left,              top: vh - ph - m },
@@ -215,8 +198,8 @@ function clampPanelPosition(room, pw, ph, vw, vh, gap, margin) {
 // changes the selection *before* the focused field's blur fires, so commits key off this.
 let _rpFieldPid = null;
 
-// Label text metrics by polygon id — drawCursor() runs on every mouse move, so measureText()
-// must not run per room per frame.
+// Label text metrics by polygon id: drawCursor() runs on every mouse move, so measureText() must
+// not run per room per frame.
 const _rpLabelCache = new Map();
 
 function _rpInvalidateLabel(id) { _rpLabelCache.delete(id); }
@@ -226,18 +209,15 @@ function resetRoomLabelCache() { _rpLabelCache.clear(); }
 
 function _rpEl(id) { return document.getElementById(id); }
 
-// Resolves against whichever list the placement mode names, because that is the list the
-// selection came from (tools.js activeShapeList). The corner-radius field therefore serves a
-// room and an effect through one helper.
+// Resolves against whichever list the placement mode names, since that is where the selection
+// came from. One helper therefore serves a room and an effect.
 function _rpFindPoly(id) {
   return id == null ? null : activeShapeList().find(s => s.id === id) || null;
 }
 
-// ⚠ THE CARD'S OWN FIELDS RESOLVE AGAINST `polygons`, NOT the active list. The card holds a ROOM
-// and only a room, and the one thing that closes it on a live edit is the placement mode
-// changing — at which point the active list is the OTHER one. Rooms and effects number
-// themselves separately, so the outgoing room's id resolves against an effect that happens to
-// share it, and the name being committed lands on a fire instead of being saved.
+// ⚠ THE CARD'S OWN FIELDS RESOLVE AGAINST `polygons`, NOT the active list. The card holds a ROOM,
+// and what closes it on a live edit is the placement mode changing — at which point the active
+// list is the OTHER one. Ids are numbered per list, so the name would land on an effect.
 function _rpFindRoom(id) {
   return id == null ? null : polygons.find(p => p.id === id) || null;
 }
@@ -248,8 +228,7 @@ function _rpFallbackName(poly) {
   return (poly.material ? 'Fire ' : 'Room ') + poly.id;
 }
 
-// pushUndo() runs BEFORE the write and only on a real change, so one Ctrl+Z reverts one whole
-// edit rather than one keystroke, and focusing a field costs nothing.
+// pushUndo() runs BEFORE the write and only on a real change, so one Ctrl+Z reverts one edit.
 function _rpCommitName() {
   const el = _rpEl('rp-name');
   const poly = _rpFindRoom(_rpFieldPid);
@@ -270,8 +249,8 @@ function _rpCommitDesc() {
   if (!el || !poly) return;
   const v = sanitizeRoomDesc(el.value);
   el.value = v;
-  // `desc` is absent until typed, so missing and empty are the same value — otherwise a blur on
-  // an untouched empty field pushes a pointless undo.
+  // `desc` is absent until typed, so missing and empty are one value — otherwise a blur on an
+  // untouched field pushes a pointless undo.
   if (v === (poly.desc == null ? '' : poly.desc)) return;
   pushUndo();
   poly.desc = v;
@@ -285,13 +264,12 @@ function _rpCommitFields() {
 
 // Fill name AND description from one module-text entry, when the DM picks from the dropdown.
 //
-// ONE pushUndo() for the pair: a pick is a single act, so a single Ctrl+Z must reverse it.
-// Pushed lazily, on the first real write, so declining the question leaves no empty undo.
+// ONE pushUndo() for the pair: a pick is a single act. Pushed lazily, on the first real write, so
+// declining the question leaves no empty undo.
 //
-// The description is never silently replaced — prep that took an evening must survive a mispick.
-// THE QUESTION IS ASYNCHRONOUS, and the split matters: the NAME is written up front because
-// opening the dialog blurs the name field and runs its commit, which would otherwise write the
-// OLD text back over the pick. The name is also not what the question is about.
+// The description is never silently replaced. ⚠ THE QUESTION IS ASYNCHRONOUS: write the NAME up
+// front, because opening the dialog blurs the name field and runs its commit, which would write
+// the OLD text back over the pick.
 function applyModuleEntryToRoom(entry) {
   const poly = _rpFindPoly(selectedPolygonId);
   if (!poly || !entry) return false;
@@ -324,8 +302,8 @@ function applyModuleEntryToRoom(entry) {
       cancelLabel: 'Keep mine',
       danger: true,
       onConfirm: () => {
-        // Re-resolve rather than closing over the object: the DM can select another room, or
-        // switch scenes, while the question is on screen.
+        // Re-resolve rather than closing over the object: the DM can change room or scene while
+        // the question is on screen.
         const p = _rpFindPoly(poly.id);
         if (!p) return;
         undoOnce();
@@ -338,7 +316,7 @@ function applyModuleEntryToRoom(entry) {
 }
 
 // Push a room's values back into the fields and repaint its map label. dataset.orig moves with
-// them, because Escape reverts to it and an edit must not revert past a pick.
+// them, because Escape reverts to it.
 function _rpSyncEntryFields(poly) {
   scheduleAutoSave();
   const nameEl = _rpEl('rp-name'), descEl = _rpEl('rp-desc');
@@ -354,8 +332,8 @@ function _rpSyncEntryFields(poly) {
 // Commit on blur, revert on Escape, and swallow keydown so the global map shortcuts don't fire
 // while typing — without that, writing a description switches tool and can delete the room.
 //
-// opts.onKeyDown gets first refusal and returns true when it consumed the key. That is how the
-// dropdown claims Enter and Escape on the same element, where stopPropagation could not.
+// opts.onKeyDown gets first refusal and returns true when it consumed the key, which is how the
+// dropdown claims Enter and Escape on the same element.
 function _rpWireField(el, opts) {
   const commit = opts.commit;
   el.addEventListener('focus', () => { el.dataset.orig = el.value; });
@@ -380,8 +358,7 @@ function initRoomPanel() {
   // Enter commits the name (one line); in the description it inserts a newline.
   _rpWireField(_rpEl('rp-name'), {
     commit: _rpCommitName, enterCommits: true,
-    // The dropdown claims ↑/↓ and, with a row highlighted, Enter and Escape. The rest falls
-    // through, so the field types exactly as it always did.
+    // The dropdown claims ↑/↓ and, with a row highlighted, Enter and Escape.
     onKeyDown: typeof mtNameKeyDown === 'function' ? mtNameKeyDown : null,
   });
   _rpWireField(_rpEl('rp-desc'), { commit: _rpCommitDesc, enterCommits: false });
@@ -400,8 +377,8 @@ function initRoomPanel() {
     drawCursor(lastScreenX, lastScreenY);
   };
 
-  // Fog pill, all three segments live. Keyed on #rp-mode rather than a styling class: it
-  // borrows stock .cp-tabs looks, so it must not depend on a class a restyle could remove.
+  // Fog pill. Keyed on #rp-mode rather than a styling class, since it borrows stock .cp-tabs
+  // looks and must not depend on a class a restyle could remove.
   panel.querySelectorAll('#rp-mode [data-mode]').forEach(btn => {
     btn.onclick = () => {
       const poly = _rpFindPoly(selectedPolygonId);
@@ -415,16 +392,14 @@ function initRoomPanel() {
     if (selectedPolygonId != null) deleteSelectedPolygon();
   };
 
-  // Corner radius. TWO fields, one behaviour: the card's, for a room, and the Effects context
-  // row's, for an effect — which has no card to put it in. Wired from one helper so the
-  // per-vertex targeting can never drift between them.
+  // Corner radius. TWO fields, one behaviour: the card's for a room, the Effects context row's
+  // for an effect. One helper, so the per-vertex targeting cannot drift between them.
   _rpWireRadiusField('rp-radius-num');
   _rpWireRadiusField('fx-radius-num');
 }
 
-// Corner radius: ONE number field, no slider and no all-corners toggle. ↑/↓ covers the
-// nudging a slider bought, and the row it cost went to description height. Del already
-// removes a vertex via input.js, through the same undo path a button would have used.
+// Corner radius: ONE number field, no slider and no all-corners toggle. ↑/↓ covers the nudging,
+// and Del already removes a vertex via input.js through the same undo path.
 function _rpWireRadiusField(numId) {
   let radiusUndoPushed = false;
   const num = _rpEl(numId);
@@ -434,11 +409,10 @@ function _rpWireRadiusField(numId) {
   const apply = v => {
     const poly = _rpFindPoly(selectedPolygonId);
     if (!poly) return;
-    // One undo per editing session, not per keystroke: typing "150" is one Ctrl+Z. The flag
-    // resets on focus/blur so the next edit gets its own entry.
+    // One undo per editing session, never per keystroke: typing "150" is one Ctrl+Z.
     if (!radiusUndoPushed) { pushUndo(); radiusUndoPushed = true; }
-    // Target follows the selection, no mode flag. cornerRadii is created lazily and padded to
-    // the vertex count, because a polygon can gain vertices after the array exists.
+    // Target follows the selection. cornerRadii is created lazily and padded to the vertex count,
+    // because a polygon can gain vertices after the array exists.
     const vi = selectedVertexIndex;
     if (vi >= 0 && vi < poly.vertices.length) {
       if (!poly.cornerRadii) poly.cornerRadii = new Array(poly.vertices.length).fill(null);
@@ -447,8 +421,8 @@ function _rpWireRadiusField(numId) {
     } else {
       poly.cornerRadius = v;
     }
-    // A room's corners reshape the fog stencil; an effect's reshape only its own fill. Both
-    // paths live in tools.js so neither field has to know which it is holding.
+    // A room's corners reshape the fog stencil, an effect's only its own fill. Both paths live in
+    // tools.js, so neither field has to know which it holds.
     shapeGeometryChanged();
     persistShapeEdit();
     fogDirty = true;
@@ -457,8 +431,7 @@ function _rpWireRadiusField(numId) {
   };
 
   num.addEventListener('focus', () => { radiusUndoPushed = false; });
-  // Normalise on the way out: mid-edit the field is left alone so typing isn't fought, which
-  // means it can be sitting on '' or '007' when focus leaves.
+  // Normalise on the way out: mid-edit the field is left alone, so it can hold '' or '007'.
   num.addEventListener('blur', () => {
     radiusUndoPushed = false;
     num.value = clampR(parseInt(num.value) || 0);
@@ -475,11 +448,9 @@ function _rpWireRadiusField(numId) {
   num.oninput = e => apply(clampR(parseInt(e.target.value) || 0));
 }
 
-// Which corner(s) the radius targets is DERIVED from the selection, never stored, and the field
-// says which by swapping its own glyph — so there is no toggle to keep in sync and no way for
-// icon and write target to disagree. Shared by the card's field and the Effects row's.
-// A null poly means nothing is selected: the Effects row stays on screen either way, so its
-// field is greyed rather than left looking live over a shape that isn't there.
+// Which corner(s) the radius targets is DERIVED from the selection, never stored, so icon and
+// write target cannot disagree. A null poly means nothing is selected, and the field is greyed
+// rather than left looking live.
 function _rpSyncRadiusField(fieldId, numId, poly) {
   const field = _rpEl(fieldId);
   const num   = _rpEl(numId);
@@ -496,9 +467,8 @@ function _rpSyncRadiusField(fieldId, numId, poly) {
     : 'Corner radius for every corner. ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.';
 }
 
-// An effect has a material where a room has a fog state, so the pill has nothing to show and is
-// hidden rather than left sitting there with no segment lit. The row's other occupant, the
-// corner-radius field, keeps its place.
+// An effect has a material where a room has a fog state, so the pill is hidden rather than left
+// with no segment lit. The corner-radius field keeps its place.
 function _rpSyncModePill(poly) {
   const pill = _rpEl('rp-mode');
   if (pill) pill.style.display = poly.material ? 'none' : '';
@@ -507,9 +477,8 @@ function _rpSyncModePill(poly) {
     b.classList.toggle('active', b.dataset.mode === poly.mode));
 }
 
-// Rebuild + reposition. Called from drawCursor() on every repaint and from the paths that
-// rewrite modes or reset polygons wholesale. NOT from setPolygonMode() — a rebuild mid-edit
-// would steal field focus. Visibility is gated on selection ONLY, never the active tool.
+// Rebuild + reposition, from drawCursor() on every repaint. ⚠ NEVER from setPolygonMode(), where
+// a rebuild mid-edit steals field focus. Visibility is gated on selection ONLY, never the tool.
 function refreshRoomPanel() {
   if (typeof isPlayer !== 'undefined' && isPlayer) return;
   const panel = _rpEl('panel-room');
@@ -517,33 +486,27 @@ function refreshRoomPanel() {
 
   const poly = _rpFindPoly(selectedPolygonId);
 
-  // The Effects row's radius field is this card's twin for a shape that has no card, so it
-  // reflects the selection on every repaint the same way the card's does.
+  // The Effects row's radius field is this card's twin for a shape that has no card.
   _rpSyncRadiusField('fx-radius-field', 'fx-radius-num', poly && poly.material ? poly : null);
 
-  // ⚠ AN EFFECT GETS NO CARD. The card is name, description and module text, and an effect has
-  // none of the three — selecting one shows its handles and nothing else. It leaves by the SAME
-  // path as a deselect, because a card that vanishes without committing loses the last thing
-  // typed into a real room.
+  // ⚠ AN EFFECT GETS NO CARD: it has no name, description or module text, so selecting one shows
+  // its handles alone. It leaves by the SAME path as a deselect, or a card can vanish without
+  // committing what was typed into a real room.
   if (!poly || poly.material) {
     if (_rpFieldPid != null) { _rpCommitFields(); _rpFieldPid = null; }
-    // The dropdown lives inside the card, so hiding the card must close it, or it reappears
-    // still filtered by the last room's name.
+    // The dropdown lives inside the card, so hiding the card must close it.
     if (typeof mtCloseDropdown === 'function') mtCloseDropdown();
     panel.style.display = 'none';
-    // Closing is the DM saying they're done with this card, so the next one opens beside its
-    // room rather than wherever the last was parked.
+    // Closing means the next card opens beside its room, not where the last was parked.
     _rpManualPos = null;
     _rpAutoPos = null;
     return;
   }
 
   // Selection moved: commit what the fields still hold for the OLD room before overwriting.
-  // The blur that arrives after this repaint then sees an unchanged value and no-ops.
   const sameRoom = _rpFieldPid === poly.id;
   if (!sameRoom && _rpFieldPid != null) _rpCommitFields();
-  // A dropdown left open across a room change would pick into the new room while filtered by
-  // the previous room's name.
+  // A dropdown left open across a room change picks into the new room while filtered by the old.
   if (!sameRoom && typeof mtCloseDropdown === 'function') mtCloseDropdown();
 
   panel.style.display = 'block';
@@ -563,11 +526,8 @@ function refreshRoomPanel() {
 }
 
 // Screen px → the pre-zoom px style.left/top are written in (the card carries
-// `zoom: var(--ui-zoom)`). MEASURED and AFFINE — a slope AND a constant origin. Assigning
-// screen px raw drifts the card ~20% off the room; dividing by the slope alone leaves a
-// constant offset that automatic placement hides but a drag exposes as a jump on grab. Both
-// terms come from the panel's own measured position, so neither is hard-coded. Never reduce
-// this to a bare `/ uiZoom`.
+// `zoom: var(--ui-zoom)`). MEASURED and AFFINE — a slope AND a constant origin. ⚠ Never reduce
+// this to a bare `/ uiZoom`: that leaves a constant offset a drag exposes as a jump on grab.
 function _rpScreenToStyle(panel, screenLeft, screenTop) {
   const r  = panel.getBoundingClientRect();
   const cs = getComputedStyle(panel);
@@ -582,8 +542,8 @@ function _rpPositionPanel(panel, poly) {
 
   let left, top;
   if (_rpManualPos) {
-    // Re-clamped rather than trusted: the window can be resized and the description dragged
-    // taller after placement, either of which could put a stored position off-screen.
+    // Re-clamped rather than trusted: a resize or a taller description can put a stored position
+    // off-screen.
     left = Math.max(RP_MARGIN, Math.min(window.innerWidth  - r.width  - RP_MARGIN, _rpManualPos.left));
     top  = Math.max(RP_MARGIN, Math.min(window.innerHeight - r.height - RP_MARGIN, _rpManualPos.top));
   } else if (_rpAutoFrozen(poly.id)) {
@@ -602,8 +562,8 @@ function _rpPositionPanel(panel, poly) {
   panel.style.top  = st.top  + 'px';
 }
 
-// Drag by the title bar, screen px throughout. The move/up listeners go on window rather than
-// the bar, so a fast drag that outruns the pointer doesn't drop the card mid-flight.
+// Drag by the title bar, screen px throughout. The move/up listeners go on window, so a fast drag
+// that outruns the pointer doesn't drop the card.
 function _rpInitDrag(panel, head) {
   let dragging = false, gx = 0, gy = 0, l0 = 0, t0 = 0;
 
@@ -630,8 +590,7 @@ function _rpInitDrag(panel, head) {
 
   window.addEventListener('mouseup', () => { dragging = false; });
 
-  // Double-click the bar to send the card back to its room. Without this a DM who parked it in
-  // a corner can only undo that by closing and reopening.
+  // Double-click the bar to send the card back to its room.
   head.addEventListener('dblclick', e => {
     if (e.target.closest('button')) return;
     _rpManualPos = null;
@@ -639,36 +598,30 @@ function _rpInitDrag(panel, head) {
   });
 }
 
-// Restored once at init, which is enough: the browser writes a resize handle's result as an
-// inline style that survives the card being hidden and reshown, so only a reload needs this.
+// Restored once at init: a resize handle's inline style survives the card being hidden and
+// reshown, so only a reload needs this.
 function _rpApplyDescHeight(el) {
   let h = 0;
   try { h = parseInt(localStorage.getItem(RP_DESC_H_KEY)) || 0; } catch (_) {}
-  // Only checks that it IS a height; the RANGE needs no check because .rp-desc's own CSS
-  // clamps it, so an absurd stored value self-heals on the next paint.
+  // Only checks that it IS a height — .rp-desc's CSS clamps the range, so it self-heals.
   if (h > 0) el.style.height = h + 'px';
 }
 
-// Save on mouseup, deliberately not a ResizeObserver. Everything wrong with that version came
-// from it firing continuously: it needed a debounce, it needed a 0×0 guard (hiding the card
-// collapses the textarea, and an unguarded save wiped the preference on every deselect), and it
-// re-clamped the card every tick, so dragging the handle DOWN slid the card UP under the
-// pointer. The listener is on window because a resize drag can release anywhere.
+// Save on mouseup, never a ResizeObserver: firing continuously needs a debounce and a 0×0 guard,
+// and it re-clamps the card every tick so dragging the handle DOWN slides the card UP. The
+// listener is on window because a resize drag can release anywhere.
 function _rpWatchDescHeight(el, panel) {
   let last = el.offsetHeight;
-  // ARMED BY A MOUSEDOWN ON THE TEXTAREA, because the listener below has to live on window
-  // and therefore ran on EVERY mouse release in the app — the end of every brush stroke and
-  // every pan included. offsetHeight forces a synchronous layout, so those gestures each
-  // paid for a measurement of a card they never touched. The resize handle belongs to the
-  // textarea, so a resize drag always starts with a mousedown here.
+  // ARMED BY A MOUSEDOWN ON THE TEXTAREA: the window listener otherwise runs on every mouse
+  // release in the app, and offsetHeight forces a synchronous layout each time. A resize drag
+  // always starts with a mousedown here.
   let armed = false;
   el.addEventListener('mousedown', () => { armed = true; });
   window.addEventListener('mouseup', () => {
     if (!armed) return;
     armed = false;
-    // offsetHeight, NOT getBoundingClientRect().height: the card carries zoom:var(--ui-zoom),
-    // so the rect is screen px while style.height is written in pre-zoom layout px. Storing the
-    // rect would grow the box by the UI scale on every reload.
+    // ⚠ offsetHeight, NOT getBoundingClientRect().height: the card carries zoom:var(--ui-zoom), so
+    // storing the rect grows the box by the UI scale on every reload.
     const h = el.offsetHeight;
     if (!h || h === last) return;          // hidden, or nothing was resized — the common case
     last = h;
@@ -679,24 +632,21 @@ function _rpWatchDescHeight(el, panel) {
 }
 
 // ─── Room labels on the DM map ────────────────────────────────────────────────
-// Names are drawn on the map so the DM can read the dungeon at a glance. DM-only: this paints
-// on the cursor overlay, which the Player window doesn't have.
+// Names are drawn on the map so the DM can read the dungeon at a glance. DM-only: this paints on
+// the cursor overlay, which the Player window doesn't have.
 //
-// Placement is TOP-LEFT INSIDE the room, like a floorplan label. "Top-left" is meaningless for
-// a circle and wrong for a heavily rounded rectangle, since the bounding box corner is outside
-// the shape in both cases, so the anchor comes from fitLabelBox().
+// Placement is TOP-LEFT INSIDE the room. The bounding-box corner is outside the shape on a circle
+// or a heavily rounded rectangle, so the anchor comes from fitLabelBox().
 
-// Plate padding, deliberately generous relative to the type: tighter, the plate shrink-wrapped
-// the glyphs and read as a stray rectangle dropped on the map.
+// Plate padding, generous relative to the type: tighter, it shrink-wraps the glyphs and reads as
+// a stray rectangle.
 const RP_LABEL_PAD_X = 13;
 const RP_LABEL_PAD_Y = 8;
 const RP_LABEL_RADIUS = 7;
 
-// Gap between the PLATE and the room's outline, one number for both axes — which is the point.
-// The fit sizes the whole plate (width includes PAD_X × 2), so box.x/box.y describe the plate
-// and this constant lands identically on both sides. Fitting the TEXT instead made the draw
-// step subtract PAD_X back out, collapsing the left gap to zero while the top kept its own.
-// Screen px, ÷ zoom on the way into the fit.
+// Gap between the PLATE and the room's outline, one number for both axes. ⚠ The fit sizes the
+// whole plate, never the text: fitting the text makes the draw step subtract PAD_X back out and
+// collapses the left gap. Screen px, ÷ zoom on the way into the fit.
 const RP_LABEL_GAP = 10;
 
 function _rpLabelFont(px) {
@@ -705,8 +655,7 @@ function _rpLabelFont(px) {
 
 function drawRoomLabels() {
   if (typeof isPlayer !== 'undefined' && isPlayer) return;
-  // A room name over a fire the DM is drawing is chrome for a shape they cannot touch, and it is
-  // the loudest thing on the map. The dimmed outline is all the inactive list keeps.
+  // A room name over a fire the DM is drawing is chrome for a shape they cannot touch.
   if (placeMode === 'effects') return;
   if (!showRoomLabels || !polygons.length || !cursorCtx) return;
 
@@ -730,9 +679,8 @@ function drawRoomLabels() {
     const name = poly.name != null ? poly.name : ('Room ' + poly.id);
     if (!name) continue;
 
-    // Neither measureText nor the row scan may run per room per frame. The fit is done in MAP
-    // units, so the cached anchor is pan-independent: only a rename, a zoom change or a
-    // geometry edit invalidates it.
+    // Neither measureText nor the row scan may run per room per frame. The fit is in MAP units, so
+    // the cached anchor is pan-independent.
     const bb  = getPolyBBox(poly.vertices);
     const key = name + '|' + fontPx + '|' + poly.vertices.length + '|' +
                 Math.round(bb.minX) + ',' + Math.round(bb.minY) + ',' +
@@ -756,10 +704,8 @@ function drawRoomLabels() {
       );
       if (!box) { _rpLabelCache.set(poly.id, { key, text: '' }); continue; }
       const text = ellipsizeToWidth(name, box.avail * zoom - RP_LABEL_PAD_X * 2, measure);
-      // Auto-hide: "C…" names nothing, so a truncation leaving under two real characters is
-      // dropped. Only truncated text is judged, so a room genuinely called "A" keeps its label.
-      // Self-tuning per room beats one global zoom threshold — a great hall and a broom
-      // cupboard cross the readable line at different zooms.
+      // Auto-hide: a truncation leaving under two real characters names nothing and is dropped.
+      // Only truncated text is judged, so a room genuinely called "A" keeps its label.
       const truncated = text !== name;
       const tooShort  = truncated && text.replace('…', '').trim().length < 2;
       entry = (text && !tooShort)
@@ -769,15 +715,13 @@ function drawRoomLabels() {
     }
     if (!entry.text) continue;
 
-    // sx/sy is the plate's left edge and vertical centre, so the plate draws straight from sx
-    // and the glyphs start one PAD_X in.
+    // sx/sy is the plate's left edge and vertical centre; the glyphs start one PAD_X in.
     const { sx, sy } = toScreen(entry.mx, entry.my);
     const bw = entry.w + RP_LABEL_PAD_X * 2;
     if (sx < -bw || sy < -textH || sx > vw || sy > vh + textH) continue;
 
-    // Opaque enough to read against bright map art: a faint wash let busy Dungeon Alchemist
-    // floors show through and the name dissolved into the texture. The hairline is the panel
-    // border colour, so the plate reads as app chrome rather than part of the art.
+    // Opaque enough to read against bright map art, or the name dissolves into the texture. The
+    // hairline is the panel border colour, so the plate reads as app chrome.
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(sx, sy - textH / 2, bw, textH, RP_LABEL_RADIUS);
     else ctx.rect(sx, sy - textH / 2, bw, textH);

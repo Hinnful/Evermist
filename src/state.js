@@ -137,12 +137,21 @@ let playerMapSent = false;
 let lastScreenX = null, lastScreenY = null;
 
 // ─── Rooms (called polygons in code) ─────────────────────────────────────────
-// {id, vertices:[{x,y}], mode, name, desc, cornerRadius, cornerRadii}.
+// {id, vertices:[{x,y}], mode, name, desc, cornerRadius, cornerRadii, doors}.
+// doors is [{edge, t, w, d}] — a rectangle drawn on the outline that carves a notch out through
+// the wall, so a revealed room shows where its exits are. Stored on the room, so it appears
+// only when the room does; a free-standing marker would map every exit before the party.
 // NEVER reorder this array — rebuildFogFromPolygons() walks it in reverse, so its order
 // IS fog compositing precedence.
 let polygons = [];
 let nextPolygonId = 1;
 let showRoomLabels = true;   // roomPanel.js drawRoomLabels, toggled with L
+
+// Door size, as a percent of one grid cell. Global, never per door: a doorway is one square almost
+// everywhere, and the few that differ are worth a second click rather than a second control.
+let doorWidthPct = 100;
+let doorDepthPct = 10;
+const DOOR_SIZE_KEY = 'evermist.doorSize';
 
 // ─── Map effects ─────────────────────────────────────────────────────────────
 // {id, vertices, material, cornerRadius, cornerRadii, name} — the SAME record a room has, with a

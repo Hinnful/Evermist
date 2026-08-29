@@ -9,9 +9,8 @@ function fogToBlob() {
   });
 }
 
-// Load baseFog from a scene record into the already-initialised fogDataCanvas /
-// baseFogCanvas pair. Handles Blob storage (new) and data-URL strings (legacy).
-// Fills solid navy if neither is present.
+// Load baseFog from a scene record into the initialised fogDataCanvas / baseFogCanvas pair. Handles
+// both Blob and legacy data-URL storage, and fills solid navy if neither is present.
 function loadFogFromScene(scene) {
   return new Promise(resolve => {
     const fill = () => {
@@ -40,12 +39,10 @@ function loadFogFromScene(scene) {
   });
 }
 
-// End the switch: clear the fog off the new map, once it has sat fully closed for
-// SCENE_FADE_MIN_MS. Defers one RAF frame so PixiJS has rendered the fogged scene before
-// anything starts clearing.
-// What the players watch is openFogFromCover() — the fog itself thinning off the map over
-// FOG_SCENE_UNCOVER_MS, mirroring the close that started the switch. The two class removals
-// are bookkeeping: .dark is the "switch in progress" marker and .blind the first-map fill.
+// End the switch: clear the fog off the new map, once it has sat fully closed for its minimum.
+// Defers one RAF frame so PixiJS has rendered the fogged scene before anything clears.
+// What the players watch is openFogFromCover(), mirroring the close. The class removals are
+// bookkeeping: .dark marks a switch in progress and .blind the first-map fill.
 function revealPlayer() {
   const holdMs = Math.max(0, SCENE_FADE_MIN_MS - (Date.now() - _sceneFadeStart));
   setTimeout(() => requestAnimationFrame(() => {
@@ -56,10 +53,9 @@ function revealPlayer() {
   }), holdMs);
 }
 
-// Called from the switchScene catch block. Shows the error, then reloads the
-// previously-active scene (once only — isRecovery guards against loops).
-// The recovery does NOT wait on the dialog: messageDialog answers asynchronously, so a DM
-// who never dismisses it would otherwise be stranded on a broken scene.
+// Called from the switchScene catch block: shows the error, then reloads the previously-active
+// scene once. ⚠ The recovery does NOT wait on the dialog, or a DM who never dismisses it is
+// stranded on a broken scene.
 function onSwitchSceneError(prevId, isRecovery, err) {
   const willRecover = prevId && !isRecovery;
   messageDialog({

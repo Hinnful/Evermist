@@ -18,21 +18,16 @@ function syncSize() {
 
 // ─── Rendering — split into per-layer functions ───────────────────────────────
 
-// This loop RIDES THE PIXIJS TICKER rather than its own requestAnimationFrame —
-// pumpDirtyRender is registered in renderer.js:initPixiRenderer at a priority above
-// PixiJS's own render. That is not a tidiness choice, it is what makes the frame cap
-// safe.
+// ⚠ This loop RIDES THE PIXIJS TICKER, never its own requestAnimationFrame. pumpDirtyRender is
+// registered in renderer.js at a priority above PixiJS's own render, which is what makes the frame
+// cap safe.
 //
-// doRender paints the Canvas-2D layers (grid, Player fog-on-top, cursor overlay) AND
-// sets the Pixi stage viewport; the WebGL map only appears at the next present. Two
-// independently-throttled loops hold the same interval but not the same phase, so the
-// 2D layers ended up leading the map by most of a frame — measured at 33ms p90 during
-// a pan, about 36px of grid sliding against the map. Sharing one clock, with doRender
-// running immediately before the present in the SAME tick, drops that to ~0.
+// doRender paints the Canvas-2D layers AND sets the Pixi stage viewport, and the WebGL map appears
+// at the next present. Two independently-throttled loops share an interval but not a phase, so the
+// 2D layers lead the map by most of a frame and the grid slides against it during a pan.
 //
-// The cap itself therefore lives on the ticker (APP_MAX_FPS, state.js). Do not
-// reintroduce a second gate here: a throttle on top of a throttle is exactly the
-// phase problem this replaced.
+// ⚠ The cap lives on the ticker (APP_MAX_FPS). Never add a second gate here: a throttle on top of
+// a throttle is the phase problem this replaced.
 let _lastRenderTs   = -Infinity;
 let _rafFallbackId  = null;
 
@@ -47,13 +42,10 @@ function scheduleRender() {
 }
 
 // ─── Render boost ─────────────────────────────────────────────────────────────
-// Lift the frame cap for the length of a DM viewport gesture. See the deadline
-// rationale in state.js — the contract here is that boostRender() may be called as
-// often as the gesture likes and nothing has to call a matching stop.
+// Lift the frame cap for the length of a DM viewport gesture. boostRender() may be called as often
+// as the gesture likes, and nothing has to call a matching stop.
 //
-// DM-only on purpose. The Player runs a TV, where the sync path and not the frame
-// rate is the limit, and a boost there would only heat the machine. If Player
-// freelook ever wants this, drop the guard deliberately rather than by accident.
+// DM-only: the Player runs a TV, where the sync path and not the frame rate is the limit.
 function boostRender() {
   if (isPlayer) return;
   renderBoostUntil = performance.now() + RENDER_BOOST_MS;
@@ -65,14 +57,12 @@ function endRenderBoost() {
   if (pixiApp) pixiApp.ticker.maxFPS = APP_MAX_FPS;
 }
 
-// Called by the PixiJS ticker every allowed frame, just before the stage is presented.
-// The ticker runs every frame regardless of whether anything is dirty, so this is a
-// reliable place to notice an expired boost — there is no timer to leak.
+// Called by the PixiJS ticker every allowed frame, just before the stage is presented. The ticker
+// runs whether or not anything is dirty, so an expired boost is noticed here with no timer.
 function pumpDirtyRender() {
   if (renderBoostUntil && performance.now() >= renderBoostUntil) endRenderBoost();
-  // Map effects animate continuously, so they ride the ticker rather than the dirty flags —
-  // the stage is presented every tick anyway, and pumpEffects returns on a Map size check when
-  // nothing is placed. effects.js.
+  // Map effects animate continuously, so they ride the ticker rather than the dirty flags.
+  // pumpEffects returns on a size check when nothing is placed.
   pumpEffects();
   if (renderScheduled) doRender(); // doRender clears renderScheduled
 }
@@ -90,17 +80,12 @@ function _rafFallbackTick(ts) {
 
 // Request an overlay repaint on the shared clock instead of painting inline.
 //
-// THE VIEWPORT GESTURES MUST USE THIS, NOT drawCursor() DIRECTLY. A pan handler runs
-// once per mouse event — on a 180Hz display that is ~180 times a second, while every
-// other layer is capped at APP_MAX_FPS. Painting the overlay inline therefore put the
-// room outlines, labels and room card on a different clock from the map and fog they
-// sit on, which is the whole point of riding the ticker (see the note above). It also
-// made the overlay the most expensive thing on the main thread during a drag — it walks
-// every polygon, lays out every label and repositions the room card — so it delayed the
-// very rAF callbacks the capped layers depend on, and they arrived late and unevenly.
+// ⚠ THE VIEWPORT GESTURES MUST USE THIS, NOT drawCursor() DIRECTLY. A pan handler runs once per
+// mouse event while every other layer is capped, so painting inline puts the outlines, labels and
+// room card on a different clock from the map. It also walks every polygon and lays out every
+// label, delaying the rAF callbacks the capped layers depend on.
 //
-// The non-gesture callers (tools.js, roomPanel.js) still call drawCursor() directly and
-// should: they fire on discrete edits, not per mouse event, and want the repaint now.
+// The non-gesture callers still call drawCursor() directly: they fire on discrete edits.
 let _cursorX = null, _cursorY = null;
 
 function scheduleCursor(screenX, screenY) {
@@ -125,9 +110,7 @@ function doRender() {
   flushBrushOps();
   if (!isPlayer && isDrawing) pixiUpdateFogDataTexture();
 
-  // Ahead of the early returns below so the flag always clears — drawCursor() guards
-  // the no-map case itself. Position within the tick is free: the 2D overlay and the
-  // WebGL present land in the same compositor frame either way.
+  // Ahead of the early returns so the flag always clears — drawCursor() guards the no-map case.
   if (cursorDirty) drawCursor(_cursorX, _cursorY);
 
   if (!videoDOMActive && !mapOffscreen && !pixiMapSprite) return;
@@ -158,10 +141,62 @@ function doRender() {
 }
 
 // ─── Cursor overlay ───────────────────────────────────────────────────────────
+// Doors outline throughout Rooms mode, dimmed unless their own tool is picked, or a room gives no
+// sign it has any. That tool also ticks each wall at its cell boundaries — the only way a diagonal
+// wall's cells are predictable, since it has no world grid to read.
+const DOOR_TICK_MIN_PX = 8;   // screen px per grid cell, below which the wall ticks are dropped
+
+function drawDoorHandles(active) {
+  const size = doorSizeForCell(gridSize, doorWidthPct, doorDepthPct);
+  if (!(size.width > 0)) return;
+  const sx = x => x * zoom + panX, sy = y => y * zoom + panY;
+  const square = gridMode === 'square';
+  cursorCtx.save();
+  cursorCtx.lineWidth = 1.5;
+
+  // ⚠ One tick per cell per wall: at the grid's smallest size on a big map that is tens of
+  // thousands of segments on every mouse move, and a smear rather than a guide. drawGridLines
+  // stops at 4px for the same reason, so the grid itself is already gone by here.
+  if (active && gridSize * zoom >= DOOR_TICK_MIN_PX) {
+    cursorCtx.strokeStyle = 'rgba(120,190,255,0.3)';
+    cursorCtx.beginPath();
+    for (const poly of polygons) {
+      if (poly.vertices.length < 3) continue;
+      for (let e = 0; e < poly.vertices.length; e++) {
+        const b = doorCellBounds(poly.vertices, e, gridSize, gridOffsetX, gridOffsetY, square);
+        if (!b) continue;
+        const f = b.frame, tick = 6 / zoom;
+        for (const a of b.at) {
+          const px = f.a.x + f.ux * a, py = f.a.y + f.uy * a;
+          cursorCtx.moveTo(sx(px - f.n.x * tick), sy(py - f.n.y * tick));
+          cursorCtx.lineTo(sx(px + f.n.x * tick), sy(py + f.n.y * tick));
+        }
+      }
+    }
+    cursorCtx.stroke();
+  }
+
+  cursorCtx.strokeStyle = active ? 'rgba(120,190,255,0.95)' : 'rgba(120,190,255,0.4)';
+  for (const poly of polygons) {
+    if (!poly.doors) continue;
+    for (const d of poly.doors) {
+      const c = doorNotchCorners(poly.vertices, d, size.width, size.depth, size.depth);
+      if (!c) continue;
+      cursorCtx.beginPath();
+      cursorCtx.moveTo(sx(c.innerL.x), sy(c.innerL.y));
+      cursorCtx.lineTo(sx(c.outerL.x), sy(c.outerL.y));
+      cursorCtx.lineTo(sx(c.outerR.x), sy(c.outerR.y));
+      cursorCtx.lineTo(sx(c.innerR.x), sy(c.innerR.y));
+      cursorCtx.closePath();
+      cursorCtx.stroke();
+    }
+  }
+  cursorCtx.restore();
+}
+
 function drawCursor(screenX, screenY) {
-  // Any direct paint satisfies a pending scheduleCursor(), so a discrete caller can
-  // never be undone by a stale scheduled repaint arriving a tick later — mouseleave
-  // clearing the brush ring is the case that needs this.
+  // Any direct paint satisfies a pending scheduleCursor(), so a discrete caller cannot be undone
+  // by a stale scheduled repaint a tick later.
   cursorDirty = false;
   _cursorX = screenX;
   _cursorY = screenY;
@@ -169,10 +204,9 @@ function drawCursor(screenX, screenY) {
   cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
   if (!mapOffscreen && !mapVideo) return;
 
-  // BOTH lists are outlined, so the DM can see a fire while drawing the room around it, but
-  // only the list the placement mode names can be SELECTED — which is what makes a click over
-  // a fire drawn inside a room unambiguous rather than a priority guess. The other list is
-  // DIMMED to match: it is still visible, it just stops offering handles it would refuse.
+  // BOTH lists are outlined, so the DM sees a fire while drawing the room around it, but only the
+  // list the placement mode names can be SELECTED. The other is DIMMED, so it stops offering
+  // handles it would refuse.
   const roomsLive = placeMode !== 'effects';
   for (const poly of polygons) {
     const isSel = roomsLive && poly.id === selectedPolygonId;
@@ -185,6 +219,9 @@ function drawCursor(screenX, screenY) {
       drawPolyOutline(e, isSel, isSel ? selectedVertexIndex : -1, roomsLive);
     }
   }
+  // Editing chrome, never sent to the Player; the notch itself is fog and reads the same on both
+  // screens. Effects mode has no doors to show.
+  if (!isPlayer && placeMode !== 'effects') drawDoorHandles(shape === 'door');
   // Second pass, so labels paint above every outline rather than under the next room's.
   // roomPanel.js loads after this file, hence the guards.
   if (typeof drawRoomLabels === 'function') drawRoomLabels();
@@ -196,12 +233,10 @@ function drawCursor(screenX, screenY) {
   }
 
   if (screenX == null) return;
-  // Same table the polygon paths read, so a brush/rect/circle preview is already the colour
-  // the room it makes will be outlined in. The centre dots below stay white on purpose:
-  // they mark where the stroke lands, so they must read against every map.
-  // In Effects mode the shape tools draw into a different array entirely, so the preview stops
-  // wearing a fog colour — otherwise the only thing saying where the next drag lands is a
-  // toolbar button the DM is not looking at while they draw. effects.js owns the colour.
+  // Same table the polygon paths read, so a preview is already the colour of the room it makes.
+  // The centre dots stay white: they mark where the stroke lands and must read against every map.
+  // In Effects mode the preview stops wearing a fog colour, or the only thing saying where the next
+  // drag lands is a toolbar button the DM is not looking at.
   const drawingEffect = placeMode === 'effects' &&
                        (shape === 'rect' || shape === 'circle' || shape === 'cone');
   const color = drawingEffect ? EFFECT_EDGE_COLOR

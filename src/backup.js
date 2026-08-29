@@ -1,8 +1,7 @@
 'use strict';
 
-// backup.js — zip-based backup export and restore (Electron-only)
-// All IPC calls require window.electronAPI. References to allScenes,
-// sceneStore, showMapProgress, etc. are resolved lazily (inline script loads last).
+// backup.js — zip-based backup export and restore (Electron-only). Every IPC call needs
+// window.electronAPI, and the app globals resolve lazily.
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -97,9 +96,8 @@ async function doExport(selectedIds) {
           nextPolygonId: scene.nextPolygonId || 1,
           effects:       scene.effects || [],
           nextEffectId:  scene.nextEffectId || 1,
-          // This list is a WHITELIST: a field missing from it is silently dropped on
-          // export. The floor plan has to survive, or a restored scene loses its
-          // Draw Rooms button with nothing to explain why.
+          // ⚠ A WHITELIST: a field missing from it is silently dropped on export. The floor plan
+          // has to survive, or a restored scene loses its Draw Rooms button.
           floorPlan:     scene.floorPlan,
           gridConfig:    scene.gridConfig || {},
           fogSettings:   scene.fogSettings,
@@ -134,9 +132,9 @@ async function doExport(selectedIds) {
 
 // ── Restore logic ─────────────────────────────────────────────────────────────
 
-// Adopt the campaign's module text out of a restored zip. Runs only AFTER every scene is saved and
-// the progress bar is down, for two reasons: a dialog must never open on top of the progress bar,
-// and a module-text problem must never be able to strand a half-restore. Nothing in here throws.
+// Adopt the campaign's module text out of a restored zip. ⚠ Runs only AFTER every scene is saved
+// and the bar is down: a dialog must not open over the progress bar, and a module-text problem must
+// not strand a half-restore.
 async function adoptModuleTextFromZip(zipPath) {
   let json = null;
   try {

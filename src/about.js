@@ -2,20 +2,17 @@
 
 // about.js — the About box: app mark, wordmark, tagline, version, repo.
 //
-// Builds its own DOM at init rather than living in index.html: a size guard watches that
-// file's inline script and CLAUDE.md keeps feature logic out of it. index.html carries only
-// the <script> tag and the initAbout() call.
+// Builds its own DOM at init, because CLAUDE.md keeps feature logic out of index.html.
 //
-// Shape and behaviour copy the shortcut legend (input.js toggleLegend, legend.css): backdrop
-// plus centred panel, closing on Esc and on a backdrop click. Its button lives in
-// #ui-scale-row, which is display:none in player mode, so the Player view stays zero-UI.
+// Shape and behaviour copy the shortcut legend: backdrop plus centred panel, closing on Esc and a
+// backdrop click. Its button lives in #ui-scale-row, hidden in player mode, so the Player stays
+// zero-UI.
 
 let _aboutRoot = null;
 let aboutVisible = false;
 
-// The same mark splash.html shows, so the window that greets the DM and the box that names
-// the app are one image. Ids inside are namespaced (_ab) — splash.html is its own window, but
-// index.html is not, and a duplicate SVG id would let one gradient overwrite another.
+// The same mark splash.html shows. ⚠ Ids inside are namespaced (_ab): a duplicate SVG id in
+// index.html lets one gradient overwrite another.
 const ABOUT_MARK_SVG =
   '<svg class="about-mark" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
     '<path d="M784 40H240C129.543 40 40 129.543 40 240V784C40 894.457 129.543 984 240 984H784C894.457 984 984 894.457 984 784V240C984 129.543 894.457 40 784 40Z" fill="url(#ab_p0)"/>' +
@@ -99,10 +96,8 @@ function initAbout() {
   const btn = document.getElementById('btn-about');
   if (btn) btn.onclick = () => toggleAbout();
 
-  // The version comes from package.json through main, never from a literal here — a
-  // hardcoded number goes stale on the next bump with nothing to catch it. Served from a
-  // browser (npx serve) there is no electronAPI, so the line stays hidden rather than
-  // showing a placeholder that would read as the real version.
+  // ⚠ The version comes from package.json through main, never a literal here, which goes stale on
+  // the next bump. With no electronAPI the line hides rather than showing a placeholder.
   if (window.electronAPI && window.electronAPI.getAppVersion) {
     window.electronAPI.getAppVersion().then(v => {
       if (!v) return;

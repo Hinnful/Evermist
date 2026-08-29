@@ -196,7 +196,7 @@ Every error goes through it; no `alert()` ships.
 
 ## Guard hooks
 
-Eight fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file has
+Nine fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file has
 one**, and each explains its own fix when it fires. `guard-skill-hint.js` is the `PreToolUse`
 one: it names the skill owning a file you edit.
 
@@ -207,6 +207,10 @@ one: it names the skill owning a file you edit.
 - Code comments: keep the rule, one clause of why, and any warning about a specific trap.
   Cut named examples that disambiguate nothing, "an earlier version was tried", measurement
   dates and counts, restatements of the code, and anything duplicating this file.
+- **Comment share of shipped JavaScript ratchets DOWN**, codebase-wide, never per file.
+  `guard-comments.js` holds the ceiling; `node tools/comment-density.js` reports it, and
+  `--verify` diffs comment-stripped code against HEAD after a comment-only pass. A comment
+  that warns about a real trap earns its line - pay for it by tightening another.
 
 ## Running the app
 

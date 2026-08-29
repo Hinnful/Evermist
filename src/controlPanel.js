@@ -1,24 +1,16 @@
 'use strict';
 // controlPanel.js — DM-only tabbed Fog / Grid / Player control panel UI.
 //
-// This is a UI LAYER over the existing fog/grid wiring, not new logic. Every
-// interactive control drives the pre-existing (now hidden) inputs/buttons whose
-// toolbar.js / fog.js / grid.js handlers are untouched — so fog/grid state
-// mutation, scene persistence and player-sync paths behave exactly as before.
-// The new pieces here are purely presentational mechanics:
-//   • tab switching (Fog / Grid / Player)
-//   • two HSV colour pickers (SV canvas + hue + alpha + hex field) that feed the
-//     hidden <input type="color"> and the tint/opacity sliders
-//   • the animation-mode icon row (Off / Slow / Medium / Fast / Advanced) and the
-//     grid-type icon row (Off / Square / Hex-pointy / Hex-flat)
-//   • fill/knob overlays on the numeric sliders
-//   • the floating Advanced Settings panel (#anim-advanced-panel)
+// ⚠ A UI LAYER over the existing fog and grid wiring, never new logic. Every control drives the
+// pre-existing hidden input or button, so state mutation, scene persistence and player sync behave
+// exactly as before. What lives here is presentation: tab switching, the two HSV colour pickers,
+// the animation-mode and grid-type icon rows, the slider fill and knob overlays, and the floating
+// Advanced Settings panel.
 //
-// Reflection hooks refreshFogControlUI()/refreshGridControlUI() are called from the
-// scene-restore paths (restoreSceneFogSettings, applyGridConfig) so the panel tracks
-// the active scene's fog/grid settings on scene switch.
+// refreshFogControlUI() and refreshGridControlUI() are called from the scene-restore paths, so the
+// panel tracks the active scene on a switch.
 //
-// Called once from initToolbar() (DM mode only). See CLAUDE.md.
+// Called once from initToolbar(), DM only.
 
 let _cpFogPicker = null;
 let _cpGridPicker = null;
@@ -93,10 +85,9 @@ function _cpActiveTab() {
 }
 
 // ─── HSV colour picker ────────────────────────────────────────────────────────
-// Drives the hidden `<input type="color">` (colorInputId) by setting its value and
-// dispatching an 'input' event, so the existing colour wiring runs unchanged. The
-// alpha slider / % field are the pre-existing tint/opacity inputs (their own
-// wiring applies the alpha); this only paints the gradient + hex field to match.
+// Drives the hidden `<input type="color">` by setting its value and dispatching 'input', so the
+// existing wiring runs unchanged. The alpha slider is the pre-existing tint input; this only
+// paints the gradient and hex field to match.
 function _cpMakePicker(type, colorInputId) {
   const root = document.querySelector('.cp-picker[data-picker="' + type + '"]');
   if (!root) return null;
@@ -131,10 +122,9 @@ function _cpMakePicker(type, colorInputId) {
     swatch.style.background = hex;
     if (document.activeElement !== hexEl) hexEl.value = hex.slice(1).toUpperCase();
     if (alphaEl) {
-      // transparent → selected colour, over a checkerboard, so the track reflects the
-      // picked colour (Figma-style) and stays visible even on pure black. The checkerboard
-      // is two offset 45° linear-gradients over the CSS base colour — NOT a conic gradient,
-      // which fringed visible colour at the track edges on Chromium < 128 (Electron 28).
+      // Transparent → selected colour over a checkerboard, so the track reflects the pick and
+      // stays visible on pure black. ⚠ Two offset 45° linear-gradients, never a conic gradient,
+      // which fringes colour at the track edges on this Chromium.
       const rgb = _cpHexToRgb(hex).join(',');
       const checker = 'linear-gradient(45deg, #2b2b2b 25%, transparent 25%, transparent 75%, #2b2b2b 75%)';
       alphaEl.style.backgroundImage =
@@ -150,10 +140,9 @@ function _cpMakePicker(type, colorInputId) {
     syncVisual();
   }
   function pick(e) {
-    // The SV canvas lives under an ancestor CSS `zoom` (#sidebar-right), and this Chromium
-    // folds that zoom into getBoundingClientRect, so its box is in the same space as the
-    // pointer's clientX/Y. Captured at drag start, not per move: the box cannot change
-    // mid-drag and reading it every mousemove forces a layout.
+    // The SV canvas sits under an ancestor CSS `zoom`, which this Chromium folds into
+    // getBoundingClientRect, so the box shares the pointer's space. Captured at drag start:
+    // reading it every mousemove forces a layout.
     if (e.type === 'mousedown') svBox = canvas.getBoundingClientRect();
     if (!svBox || !svBox.width) return;
     p.s = Math.max(0, Math.min(1, (e.clientX - svBox.left) / svBox.width));
@@ -253,8 +242,8 @@ function setGridTypeUI() {
 }
 
 // ─── Slider fill/knob overlays ────────────────────────────────────────────────
-// The <input type="range"> sits transparent on top of the wrapper; these divs draw
-// the visible track fill + knob. The range keeps its own value + wiring.
+// The <input type="range"> sits transparent over the wrapper and keeps its own value and wiring;
+// these divs draw the visible track fill and knob.
 const _CP_FANCY = [
   ['grid-size', 'grid-size-num'],
   ['grid-thickness', 'grid-thickness-num'],
@@ -313,9 +302,8 @@ function _cpInitResets() {
     fire('fog-color', '#3a3a8c');
     fire('fog-tint-alpha', 18);
     fire('fog-feather', 12);
-    // fog-half-alpha is deliberately NOT reset here. It is the only dial in this panel that
-    // PERSISTS, so resetting it wouldn't just restore a default — it would overwrite a value
-    // the DM spent a session at the table dialling in. Not this button's job.
+    // ⚠ fog-half-alpha is NOT reset here. It is the only dial in this panel that PERSISTS, so
+    // resetting it overwrites a value dialled in across sittings.
     document.getElementById('anim-preset-default').click();
     refreshFogControlUI();
   });
@@ -342,9 +330,8 @@ function _cpUpdateAdvVisibility() {
   if (show) { _cpPositionAdvPanel(); _cpSyncFancy(['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp', 'fog-feather', 'fog-half-alpha']); }
 }
 
-// Place the panel just left of the sidebar. Read off the sidebar's own box: this Chromium
-// folds an ancestor CSS `zoom` into getBoundingClientRect, so the box is already in screen
-// space. Measuring beats hard-coded widths, which silently go stale when the CSS changes.
+// Place the panel just left of the sidebar, measured off the sidebar's own box rather than a
+// hard-coded width, which goes stale when the CSS changes.
 const _CP_ADV_W = 270;   // #anim-advanced-panel CSS width (px)
 const _CP_ADV_GAP = 8;   // gap between panel and sidebar (px)
 function _cpPositionAdvPanel() {
@@ -360,10 +347,8 @@ function _cpPositionAdvPanel() {
 }
 
 // ─── Player tab ───────────────────────────────────────────────────────────────
-// Every visible control is a proxy: it forwards the click to the pre-existing
-// (now hidden) button in #cp-legacy, so the toolbar.js / minimap.js / viewport.js
-// handlers — and the Player-window protocol they drive — are untouched. Nothing
-// here mutates player state; refreshPlayerControlUI() only reads it back.
+// Every visible control is a proxy that forwards its click to the hidden button in #cp-legacy, so
+// the existing handlers and the Player protocol are untouched. Nothing here mutates player state.
 function _cpInitPlayer() {
   const pane = document.getElementById('cp-pane-player');
   if (!pane) return;
@@ -402,9 +387,8 @@ function _cpInitPlayer() {
   setInterval(() => { if (!pane.hidden) refreshPlayerControlUI(); }, 1000);
 }
 
-// Player-zoom stepper — the − / + buttons step by one wheel notch, the field takes a
-// typed percentage. Both go through minimapSetZoom(), which owns the view triple and
-// posts view-snap, so this is the same path as wheel-zooming the minimap.
+// Player-zoom stepper: − / + step by one wheel notch, the field takes a typed percentage. Both go
+// through minimapSetZoom(), the same path as wheel-zooming the minimap.
 function _cpInitZoom() {
   const field = document.getElementById('cp-zoom-num');
   const dec = document.getElementById('cp-zoom-dec');
@@ -488,9 +472,8 @@ function refreshPlayerControlUI() {
   // swaps to Close so the toggle is discoverable. No dot: the fill already says it.
   const live = typeof playerWindow !== 'undefined' && !!playerWindow && !playerWindow.closed;
 
-  // Fullscreen — a toggle, so it wears the on/off box like the others. The state comes from
-  // the Player relaying what main.js reports; a closed Player is never fullscreen, whatever
-  // the last report said.
+  // Fullscreen is a toggle, so it wears the on/off box. The state comes from the Player relaying
+  // main.js, and a closed Player is never fullscreen whatever the last report said.
   const fullscreen = live && typeof playerIsFullscreen !== 'undefined' && playerIsFullscreen;
   const fs = document.getElementById('cp-player-fullscreen');
   if (fs) {
