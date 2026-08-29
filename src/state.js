@@ -175,7 +175,6 @@ let autoSyncTimer = null;
 let currentScene    = null;   // full scene record in memory (includes mapBlob ref)
 let allScenes       = [];     // lightweight list for the sidebar
 let autoSaveTimer   = null;
-let mapLoadMode     = 'auto'; // 'new' = create scene, 'replace' = replace map
 
 // ─── Player sync state ───────────────────────────────────────────────────────
 let playerFollowMode   = true;  // DM side: last known player mode

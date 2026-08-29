@@ -16,7 +16,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // arbitrary path. Resolves to { name, text } or null.
   findFloorPlan: (mapPath) => ipcRenderer.invoke('find-floor-plan', mapPath),
 
-  setFullScreen: (flag) => ipcRenderer.send('set-fullscreen', flag),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
 
   // Native window fullscreen fires no DOM event, so main pushes the state instead. The

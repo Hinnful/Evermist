@@ -7,12 +7,18 @@ one clause of reason at most.
 *what must I never do?* A paragraph that doesn't belongs elsewhere:
 
 - How does it work? Present tense → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- Why this shape, what was tried? Past tense → [docs/DECISIONS.md](docs/DECISIONS.md)
+- Why this shape, what was tried? Past tense → [docs/DECISIONS.md](docs/DECISIONS.md),
+  plus one file per split-out topic in [docs/decisions/](docs/decisions/)
 - What is it for, what will it never do? → [docs/PRODUCT.md](docs/PRODUCT.md)
 - Scoped to one folder → that folder's own `CLAUDE.md`. To a few named files → a skill in
   `.claude/skills/`; `guard-skill-hint.js` fires on an edit and names it.
 
-**Every one has a guard hook.** This file may shrink, never grow.
+**Every one has a guard hook, and every doc grows only by a decision.** Add a rule here
+only after trying to tighten or relocate an existing one; if it still does not fit, raise
+`maxBytes` in `.claude/hooks/claudemd-baseline.json` by hand and say so. The ceiling falls
+on its own and never rises on its own. **The ledgers are meant to grow** - when one gets
+too big to read whole, move its largest `##` section to `docs/decisions/<topic>.md` and
+leave a pointer, never delete an entry.
 
 ## What this is
 
@@ -190,7 +196,7 @@ Every error goes through it; no `alert()` ships.
 
 ## Guard hooks
 
-Six fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file has
+Eight fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file has
 one**, and each explains its own fix when it fires. `guard-skill-hint.js` is the `PreToolUse`
 one: it names the skill owning a file you edit.
 
@@ -207,6 +213,11 @@ one: it names the skill owning a file you edit.
 No build step. `npm start` for the Electron app (after `npm install`). Local installers:
 `npm run build` (Windows `.exe`), `build:mac` (`.dmg`), `build:linux` (`AppImage`).
 **The DM runs `npm start` and the `.exe`. Never open or suggest Chrome.**
+
+**Never put a window on the DM's screen.** The rig is the only sanctioned way to launch the
+app; it parks every window off-screen. `npm start`, the stress and memprobe runs, a built
+`.exe`, and the rig's own visible flag are the DM's to run and never yours. `guard-screen.js`
+refuses them, because a rule alone would not hold.
 
 ## Distribution and releases
 
