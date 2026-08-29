@@ -218,12 +218,6 @@ function findPolygonHandleAt(mapX, mapY) {
   return null;
 }
 
-function getCentroid(verts) {
-  let sx = 0, sy = 0;
-  for (const v of verts) { sx += v.x; sy += v.y; }
-  return { x: sx / verts.length, y: sy / verts.length };
-}
-
 function findVertexAt(poly, mapX, mapY) {
   const hitR = Math.min(10 / zoom, 30); // clamp: matches findPolygonHandleAt
   for (let i = 0; i < poly.vertices.length; i++) {

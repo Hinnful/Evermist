@@ -31,7 +31,6 @@ let smGroupMenuEl = null;        // the open move-to-group popover, if any
 
 // ── Checkbox / trash glyphs (built once, injected by string) ──────────────────
 const SM_CHECK = '<svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="#8fb6ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5l2 2 4-4"/></svg>';
-const SM_DASH  = '<svg width="8" height="2" viewBox="0 0 8 2" fill="none" stroke="#8fb6ff" stroke-width="2" stroke-linecap="round"><line x1="0.5" y1="1" x2="7.5" y2="1"/></svg>';
 const SM_PEN   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.1 2.1 0 00-3-3L5 17z"/></svg>';
 const SM_TRASH = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
 
@@ -65,10 +64,6 @@ function closeDropdown() {
 }
 
 function toggleDropdown() { smIsOpen() ? closeDropdown() : openDropdown(); }
-
-// Back-compat aliases — scenes.js error-recovery calls these names.
-function openSceneManager() { openDropdown(); }
-function closeSceneManager() { closeDropdown(); }
 
 function initSceneManagerUI() {
   const modal = document.getElementById('sm-modal');

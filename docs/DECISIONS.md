@@ -702,6 +702,48 @@ A second request now queues and appears once the first is answered. Letting the 
 the first and treating the first as declined was rejected: it answers a question the DM never
 saw, and the answer it invents is silently "no".
 
+### A pick-one group gets its own pill, not an inset one inside the bar · `SETTLED` (2026-08-26)
+
+The toolbar's "pick exactly one of these" signal used to be a dark inset pill (`.tb-seg`) drawn
+inside `#toolbar-bottom`. With the fog trio moved to a row above the bar and a Rooms/Effects switch
+added, that put a rounded box inside a rounded box at two different heights, which reads as a
+mistake rather than as a grouping. Rejected on sight.
+
+The signal is now a STANDALONE pill wearing the bar's own surface: `#context-row` above the bar,
+`#place-pill` beside it. A group inside one of those is a bare `.tb-group` with no background,
+border or radius. `.tb-seg` is deleted; do not reintroduce it.
+
+Every standalone pill matches `#toolbar-bottom`'s height - 4px padding on 34px buttons there, 6px
+on 30px buttons elsewhere. The placement switch sits outside the bar because it governs every tool
+on it; inside, behind a wide gap, it read as one more segment.
+
+### Two of the four 1.4.3 engine workarounds are gone, one is permanent · `SETTLED` (2026-08-29)
+1.4.3 blamed all four on Chromium 120's `zoom` handling and 1.4.4 moved to Chromium 150 the same
+day, so none had been retested. Measured on the current engine: `getBoundingClientRect` now folds
+an ancestor `zoom` in, within 0.5px. The colour picker's reconstructed box and the Advanced
+panel's hard-coded sidebar widths both went; each now reads the real element box, checked by a
+real pointer event and by where the panel lands.
+**`width: 0` on `.cp-chip-pre input` and `.cp-stepval input` is NOT an engine workaround and must
+stay.** Removing it takes the field from 88px to 168px and overflows its row by 149px on Chromium
+150. An `<input>`'s intrinsic width beats `min-width: 0` alone, on every engine. The comment
+blaming Electron 28 is what invited the deletion, and it has been corrected in place.
+The fourth, the opacity track's linear-gradient checkerboard, was judged by eye and left alone:
+the payoff is three lines of CSS.
+
+### The over-engineering sweep found almost nothing · `SETTLED` (2026-08-29)
+Recorded so the same ground is not re-swept. Every top-level function is reachable, no CSS rule
+or custom property is orphaned, no IPC handler lacks a caller, no constant table has an unused
+key, and no config points at a moved file. What it did find: five unreferenced declarations, a
+`getElementById` for an element that never existed, an unused `set-fullscreen` IPC route, and one
+dead CSS rule.
+Three leads were checked and struck rather than left open. `PLAYER_COVERAGE_FACTOR` is live and
+covered by tests; only its comment was stale. The Player region-texture helpers earn their place
+on a correctness ground the backlog had not credited - `bleedRegionEdges` stops a dark rim at the
+map border. Properties that look write-only are browser and WebGL APIs the platform reads.
+Deliberately not acted on: `memProbe.js` and `stress.js` ship unreachable in an install but remain
+the only tools for two open questions, and 27 silently-swallowing catches are a diagnosability
+question rather than dead code.
+
 ---
 
 ## Storage, packaging and the shell
@@ -1045,331 +1087,18 @@ too, which is a further argument for reading vector data instead.
 
 ## Docs, rules and guards
 
-### The Player keeps its mouse cursor · `SETTLED` (2026-08-14)
-CLAUDE.md read "no buttons, no cursor, no overlays" while `base.css` has set `cursor: default`
-on the Player's canvas since 1.5.2, and the rig surfaced the contradiction. The CSS is right:
-the DM drags the Player's view by hand on the TV constantly, and that needs a cursor you can
-see. The rule was wrong, so the rule changed. **Removing working behaviour always loses against
-keeping it** - that is the general call this settled, not just this line.
+Moved to [decisions/docs-and-guards.md](decisions/docs-and-guards.md) - the doc
+architecture, the guard hooks, and the calls about what CLAUDE.md may hold.
 
-### The test rig drives the app's own shell · `SETTLED` (2026-08-14)
-The app-driving harness had been written and thrown away four times, because each build solved
-one question and then read as disposable. Every one of them stood up its **own** Electron main
-process, which meant none of the app's IPC handlers existed: saving a map, restoring a zip and
-the floor-plan lookup all died on a missing handler, and the Player window was invisible to the
-harness entirely. `tools/rig/` replaces that with a driver attaching to `electron .` over
-`--remote-debugging-port` with an isolated `--user-data-dir`. Boot to verdict is ~10s, which is
-what makes it usable during debugging rather than only at the end.
-Zero dependencies, because Node's global `fetch` and `WebSocket` are the whole CDP client.
-**The Player window has to be put fullscreen to be measurable at all.** It opens inside the DM's
-rectangle, so Chromium marks it hidden and stops giving it frames: `requestAnimationFrame` never
-fires, the scene cover never lifts, and the run times out on a symptom that looks like a fog bug.
-`backgroundThrottling: false`, `Page.bringToFront`, `focus()` and moving the DM aside all fail to
-clear it. Fullscreen through the app's own IPC does, and that is the Player's real state on a TV.
-Traps live in the `rig` skill, not here.
+## Testing and the rig
 
-### Rejected while building the rig · `REJECTED`
-**Driving the built `.exe` by default** - minutes per run, so the rig stops being used. `--exe`.
-**A test hook inside the app** - it would ship, which is what `--stress` already costs.
-**Stubbing an IPC method past the export's native save dialog** - `window.electronAPI` is
-non-writable and non-configurable. The round trip mirrors the payload and keeps a hand test.
-**One app instance for all scenarios** - imports and restores make each file depend on the last.
-**An `--offscreen` flag** - Electron exposes no CDP `Browser` domain, so no window can be moved.
-**Trusting `--user-data-dir` to isolate `--exe`** - the portable build overrides it from
-`PORTABLE_EXECUTABLE_DIR` and a run damaged the real library beside it. The rig now refuses a
-library that is not empty, and `--exe` belongs on `dist/win-unpacked/Evermist.exe`.
+Moved to [decisions/testing-and-the-rig.md](decisions/testing-and-the-rig.md) - the CDP
+rig, acceptance scenarios, and mutation coverage.
 
-### A new acceptance scenario is proven by making it fail · `SETTLED` (2026-08-14)
-A scenario written after the code it checks has never been red, so it has demonstrated nothing.
-Three of the grid/bulk-import scenarios were therefore mutation-checked: the plan-derived grid moved
-before the scene switch (caught), per-map dialogs left on during a batch (caught by the
-overlay-versus-dialog check), and the failure route removed from a loader (caught, as the timeout it
-would be at the table). The fourth mutation exposed a **weak check** rather than a bug: removing the
-batch loop's own `hideMapProgress()` changed nothing, because each map's import already lowers the
-overlay. That line stays as defence, but it is not covered, and a check that passes for a reason
-other than the code under it is worth knowing about before it is trusted.
+## Map effects
 
-### The rig's rules go in a skill, not a folder `CLAUDE.md` · `SETTLED` (2026-08-14)
-A folder's `CLAUDE.md` loads when a file *in that folder* is edited, which is the moment you are
-working on the rig and precisely not the moment you need telling to run it. That is the same
-failure `guard-skill-hint.js` already exists to fix: a pointer only fires if someone is already
-reading that section. The `rig` skill is findable by description from any file, and the hook now
-matches on path (`tools/rig/`) rather than basename, because a scenario file can be called
-anything and the orphan check only scans the app's own directories.
-The split: the rule about *when* to run it is in CLAUDE.md, since only a rule earns space there;
-how to drive it and its traps are in the skill; what it is and how it works is in
-ARCHITECTURE.md. Raising the CLAUDE.md byte cap for those two lines was the sanctioned path, not
-a workaround.
-
-### A `src/` edit with no scenario is hinted, never blocked · `SETTLED` (2026-08-14)
-`guard-scenario.js` fires `PostToolUse` on an edit under `src/` when nothing under
-`tools/rig/scenarios/` has moved in the working tree, and hands back one line. It is the sixth
-guard and the only one that does not exit 2, which was the whole design question. **A hard block
-on every `src/` edit gets the hook commented out inside a week, and then the rule is gone
-permanently** - most edits genuinely need no new scenario (a fix an existing file already covers,
-a comment, a mutation check being restored), so a refusal would be wrong more often than right.
-Once per session, keyed on the `session_id` the payload carries, with the marker under the OS
-temp dir because rig output never enters the working tree. No baseline file, unlike the other
-five: this is a state check against the working tree, not a ratchet against a number.
-The rule it enforces was already in CLAUDE.md and was already being missed, which is the same
-"a pointer is not a trigger" failure recorded above.
-
-### The mutation ranges were pointed at untestable code · `SETTLED` (2026-08-14)
-Two of the three recorded mutation-survivor clusters were still open, and one of them was partly
-an artefact of the config. `stryker.conf.json` mutated `src/tools.js:48-86`, which covers
-`axisLockDraw` - not exported, and reading module globals no unit test can supply, so 11 of its
-38 survivors were permanently unkillable - while excluding `distPointToSegment`, which *is*
-exported and tested. The range now names the three exported kernels.
-The real cause of the rest was the shape of the fixtures, not missing tests: every
-`segmentsIntersect` and `distPointToSegment` case put a segment endpoint on the **origin**, where
-`p2.x - p1.x` and `p2.x + p1.x` are the same number, and used symmetric geometry, where `t` and
-`u` are both 0.5 and each parameter can be computed from the other's formula unnoticed. Every
-`computeOptimalTextureSize` guard case zeroed **both** axes at once, the one shape that cannot
-tell `||` from `&&`. Off-origin, oblique, asymmetric and one-axis-zero cases took the two files
-from 59% and 64% to 97% and 96%. The `scaleFactor: NaN` gap recorded earlier is confirmed closed.
-
-### Fog-colour derivation is left uncovered · `PARKED` (2026-08-14)
-`fogGeometry.js` sits at 58% with 32 survivors, all in `_hslToHex`'s hue-branch chain and
-`deriveFogColors`' clamps - a fourth cluster nobody had filed. It is deliberately not closed
-here. Killing them needs a decided table of expected output colours across the hue wheel, and a
-wrong expectation baked into a test is worse than no test: it pins whatever the code does today
-as correct, which is exactly the trap that makes a green suite meaningless. Closing it is a
-session with the colours on screen, not an afternoon of arithmetic.
-Seven survivors elsewhere are provably **equivalent mutants** and no test can kill them: two in
-`backup.js` where both mutant strings produce the same return value, two on the `segmentsIntersect`
-determinant guard where a parallel input fails the range test anyway, two on the texture cap where
-the clamp factor is exactly 1, and one asking what a point exactly *on* a polygon edge should mean.
-
-### The Player sometimes comes up invisible, and is reopened rather than coaxed · `SETTLED` (2026-08-14)
-Roughly one rig run in three, the Player window opens, reports `document.hidden`, and never
-becomes visible - so every measurement reads zero and the run fails on whichever Player scenario
-went first. **The cause is still unknown and this entry does not claim otherwise.** What is known:
-it predates the scenarios added around it, it does not depend on which scenario runs before it, and
-it is not the display sleeping (this machine is a desktop on AC with the video timeout disabled -
-checked, not assumed).
-Two things were tried and neither is sufficient. Asking again does nothing at all, because
-`setFullScreen(true)` on a window Electron already flags as fullscreen fires no event and does not
-re-raise. Dropping out of fullscreen and back in, which Electron cannot ignore, still failed after
-nine transitions over 45s. So the window is not coaxable once it lands in that state.
-The recovery is to stop trying: press the DM's Player button to close it, wait for the target to
-go, and open a fresh one, which cannot inherit the state. That path is exercised by forcing it, not
-merely written. Chasing the root cause is worth a session with a window-state tool, not more
-guesses from inside the page.
-
-### Rules about rules don't work here; hooks do · `SETTLED`
-Two rules lived in CLAUDE.md: "don't grow the inline blob" and "don't write history in this
-file". The one with a `PostToolUse` hook held for months. The one without it failed
-completely. Every structural rule about this repo's files should ask whether it can be a
-hook.
-
-### Why the "no history in CLAUDE.md" rule failed · `SETTLED` — this file is the fix
-Three causes, and the third is the one that mattered. **The rule's destinations didn't
-work**: it sent post-mortems to commit messages, but a fresh session never reads `git log`,
-so "put it in the commit" read as "throw it away". **A rule without its reason gets
-simplified away**, so reasons got smuggled back in as narrative - right instinct, wrong
-container. **Nobody owned the file's total size**, because appending a section is always
-locally cheap.
-
-### One question per doc, and the mood proves it · `SETTLED`
-Splitting the docs by *subject* failed, because subject is always arguable and a paragraph
-about product positioning has a plausible claim on three files at once. The criterion that
-holds is one question per file, each with a grammatical mood only that file may use: rules are
-imperative, `ARCHITECTURE.md` is present indicative, this file is past tense, `PRODUCT.md` is
-declarative intent. A past-tense sentence in `CLAUDE.md` is a rule leaking its history; an
-imperative here is a rule that escaped the rulebook. The test is answerable without judgement,
-which is why it survives contact with an ambiguous paragraph.
-
-`CLAUDE.md` also carries a size cost the others don't: it loads into every session, so it is
-shrink-only. The rest are read on demand, where *findability* is everything.
-
-### Two module lists, on purpose · `SETTLED`
-`CLAUDE.md` carries a terse module map and `ARCHITECTURE.md` carries a plain-language table of
-the same files. Deleting either looks like an easy win and is not. The rule "extend the module
-that owns the concern, don't duplicate it" is unusable without a map already in context, and
-`CLAUDE.md` is the only file guaranteed to be there; the prose table is for a reader who needs
-to know what a file does before opening it. `guard-architecture.js` checks both against `src/`
-on every module write, so the duplication cannot drift.
-
-### The command ledger is private, the docs ledger is public · `SETTLED`
-Entries about the private slash commands moved to a memory file rather than staying in the repo,
-because they are unreadable without the commands: "auto-running `/redteam` inside `/handoff` was
-rejected" means nothing to someone who has neither. Decisions about **this repo's** docs, rules
-and guard hooks stayed here, since anyone editing the repo needs them and they name nobody. The
-test is the one the docs criterion already uses: useful to someone working on the project, or
-only to whoever owns the tooling.
-
-### A pointer is not a trigger · `SETTLED`
-Links from `CLAUDE.md` to another doc only fire if someone is already reading that exact
-section, which is how `ARCHITECTURE.md` drifted seven modules stale without anyone noticing.
-The fix was not another rule: every doc now has a guard hook that fires on a write, `/wrap`
-files into all of them, and `/brief` reads the ledger as a rejection filter. **A doc with no
-reader and no writer in the actual workflow will rot, however well written.**
-
-### DECISIONS.md is guarded by a NOTICE, not a ratchet · `SETTLED`
-This ledger is meant to grow, so its guard never blocks an addition and says so in every
-message it prints. It fires once per subject on total size, on any `##` section passing 40% of
-the file, and on any `###` entry passing 14 lines. The first two call for splitting a section
-out to `docs/decisions/<topic>.md` behind a pointer, which is scheduled work rather than a
-mid-turn edit; the third is fixed on the spot. **One-file-per-decision, the usual ADR layout,
-was rejected**: it optimises for many readers browsing a directory over years, while this file
-is read whole. The per-entry budget is the real size control, because ledgers bloat by entries
-growing into stories rather than by accumulating decisions.
-
-### Grinding CLAUDE.md down to a byte target · `REJECTED`
-The split targeted "under 16KB" and landed at 23.7KB. The estimate was wrong, not the
-execution: the rule density in the one oversized section was higher than guessed. Getting to
-16KB would mean deleting real rules to hit a number. The distribution was the actual problem
-and it is fixed — one section was 80.7% of the file, and now the largest is 28%.
-
-### CLAUDE.md shrank by relocation, not deletion · `SETTLED` — the byte rejection above stands
-402 lines to 219, 23.7KB to 12.2KB, nothing removed; a script asserted every non-blank old line
-still lands in exactly one destination. The rejection above holds, because no rule was deleted
-and no number was targeted. What changed is that two containers now exist: a child `CLAUDE.md`
-in `src/css/`, loaded only when a stylesheet is touched, and two skills (`module-text`, `dm-ui`)
-whose bodies load on invocation.
-**The judgement that mattered was refusing to move rules that can't be triggered by filename.**
-"Rooms are polygons" governs `polygons` across 16 modules, so a skill keyed on room editing would
-miss the session editing `sceneManager.js`, and the penalty is silent data loss in every saved
-scene. Dialogs, Testing, the render loop and Distribution stayed on the same test. Half-shroud
-moved into `dm-ui`, but its trigger list carries `fog.js`, where its rules actually bind.
-The trigger is `guard-skill-hint.js`, a `PreToolUse` hook mapping filename to skill; the pointers
-left in CLAUDE.md are documentation, since a pointer is still not a trigger.
-
-### Comment density as a target, applied per file · `REJECTED`
-The codebase-wide figure is the meaningful one, and the trim took `src/` from 22.6% to 19.3%.
-Per-file targets are a bad instrument: `state.js` is 70 lines of one-line declarations, so its
-43% is almost entirely load-bearing trap warnings rather than padding, and a parser needs a
-reason attached to each rule or someone simplifies it away. Do not "finish the job."
-
-### Verifying a comment-only change with the test suite alone · `REJECTED`
-Strip comments and blank lines from HEAD and the working copy, then diff the pure code, per
-file. It caught two things 375 green tests did not: two declarations quietly reordered while
-regrouping, and a **real functional regression** where retyping a line turned a literal
-non-breaking space inside a character class into an ordinary space. The two versions are
-visually identical. Reuse this for any comment-only pass, and treat invisible characters in
-source as something a comment must warn about.
-
-### Map effects were built, shipped and then removed · `REVERTED` (2026-08-21)
-
-Drawable areas of burning ground - a polygon carrying a material, persisted like a room - shipped
-as 2.2.1 and were removed whole: the commit was dropped and the app returned to 2.2.0. The
-mechanics worked. Removed on product grounds, and the cause was the process, not the code:
-developing the look by eye took many rounds, each fixing a real defect and exposing another, and
-it never converged. Recoverable from the dropped commit in git.
-
-Three findings are worth not re-deriving:
-- **An effect texture with no alpha channel paints a black rectangle** wherever any compositing
-  step draws it normally instead of adding it - a filter that fails to apply is enough. Additive
-  artwork needs real transparency, not black where it means "nothing".
-- **A looping flipbook cannot hold one-way motion.** Every displacement inside it must return by
-  the last frame, so it reads as travelling out and back. One-way motion belongs where time is
-  unbounded: the draw path, not the sheet.
-- **Layers sharing one frame clock give the whole composite a single visible cycle**, however
-  well each layer behaves on its own. Independent rates hide the loop; nothing in the art can.
-
-### Map effects reopened as grid-fire indication · `REOPENED` (2026-08-22)
-
-After the removal above, effects were reframed from rendered fire to INDICATION and are being
-rebuilt on that basis. Rendering is a fiery grid - the shape's border and the interior grid lines
-lit, clipped to the true outline so a circle stays a circle - not a filled texture. Procedural, no
-assets, ships, and stays legible when zones overlap or seen across a room on a TV.
-Readymade fills were tried and rejected; do not retry:
-- Photoreal fire CLIPS (Jinker's JAA) look right at native size, smear when stretched to a room,
-  and carry no licence to ship.
-- Seamless MAGMA surfaces fill any shape but were rejected on look and ran heavy.
-- Baking a custom fire surface had no reference to measure and never converged.
-Prototyped in a throwaway harness under `tools/`, since removed along with its wiring.
-
-### Map effects settled as a flaming border, rendered in two passes · `SETTLED` (2026-08-25)
-
-The grid-fire idea above gave way to a flaming BORDER chosen by eye: the outline burns INWARD from
-the edge with tongues that dissolve to embers, over a faint interior fill, with sparks, smoke and
-haze. Grid-fire's lit interior grid survives only as an ember RELIGHT of the map grid inside the zone.
-Three shape calls that a future session would otherwise re-derive:
-- **The fire is a fragment shader over each polygon's own signed-distance field** (`effects.js`), not
-  a tiled texture and not stroked lines - so it works on any drawn shape and rounds with the corners.
-- **Two PixiJS meshes per effect: an ADD pass and a NORMAL pass.** Fire/fill/sparks emit light (ADD);
-  smoke/haze DARKEN the map, which addition cannot do. One blend mode cannot be both, and a single
-  NORMAL mesh was tried and dimmed the approved border - rejected.
-- **The ember grid relight lives in `grid.js`, not the effect shader.** The map grid is a Canvas-2D
-  layer above the effect layer, so an ember grid drawn in the effect sits under it and never shows.
-Also corrected here: effect sync rides the Auto/Manual gate like fog; the removed 2.2.1 build
-force-pushed effects to the Player even in Manual.
-
-### The Cone tool draws a D&D cone, apex-first, at a fixed 53.13° · `SETTLED` (2026-08-26)
-
-Dragged from its point of origin: the press sets the apex, the drag sets direction and length.
-Straighten walls rounds that direction to 15°.
-
-**The spread is fixed and should not become a slider without a request.** A D&D cone is as wide at
-its far end as it is long, which fixes the apex angle at 53.13° - Foundry's default, Roll20's
-"lock width to height". Any other spread measures a different area than the players' own rulers,
-which is the one thing an indication tool must not do. A 90° breath is the Polygon tool's job.
-
-**The far edge bows out 8% of the length (`CONE_BULGE`); a bare triangle read as a paper cut-out.**
-The two corners do not move when the bulge changes, so width-equals-length holds at any bulge, and
-every measurement is taken between the FIRST and LAST vertex - everything between them is arc. The
-bow costs reach: the arc's middle stands 8% past where the drag ended. Set it to 0 for the triangle.
-
-A cone commits as ordinary vertices and needs no editing path of its own. `coneVertices` in
-`fogGeometry.js` is pure and unit-tested, so the width rule is checked by arithmetic.
-
-### A pick-one group gets its own pill, not an inset one inside the bar · `SETTLED` (2026-08-26)
-
-The toolbar's "pick exactly one of these" signal used to be a dark inset pill (`.tb-seg`) drawn
-inside `#toolbar-bottom`. With the fog trio moved to a row above the bar and a Rooms/Effects switch
-added, that put a rounded box inside a rounded box at two different heights, which reads as a
-mistake rather than as a grouping. Rejected on sight.
-
-The signal is now a STANDALONE pill wearing the bar's own surface: `#context-row` above the bar,
-`#place-pill` beside it. A group inside one of those is a bare `.tb-group` with no background,
-border or radius. `.tb-seg` is deleted; do not reintroduce it.
-
-Every standalone pill matches `#toolbar-bottom`'s height - 4px padding on 34px buttons there, 6px
-on 30px buttons elsewhere. The placement switch sits outside the bar because it governs every tool
-on it; inside, behind a wide gap, it read as one more segment.
-
-### The effect look was tuned through a temporary panel, then baked · `SETTLED` (2026-08-26)
-
-The fire's height, liveliness, fill, sparks, smoke, haze and grid glow were settled by putting a
-dev slider panel in the DM window, tuning on a real map, and reading the numbers off it. The panel
-and everything built to serve it are gone: the sliders, the cross-window message that pushed live
-values to the Player, and the per-frame uniform writes that fed them.
-
-`FX_LOOK` in `effects.js` is now a fixed set of numbers with no UI over it. Change one only on a
-fresh look call. Two findings from that tuning are worth keeping: haze gated to a band near the
-outline reads as a second smoke ring rather than as air over the area, so it covers the whole
-interior; and a look value edited on the DM reached nothing, because each window holds its own copy.
-
-### The material picker is a glyph, not a painted swatch · `SETTLED` (2026-08-26)
-
-The picker button was painted with a canvas showing the real material - a rounded box burning at
-its own edge - on the reasoning that an icon OF fire is a drawing of the thing rather than the
-thing. It drew a box, inside the button's own selected box, inside the row's pill. Three nested
-boxes, rejected twice. The button is now a plain SVG glyph like every other button on that bar.
-
-The glyph is a wide low flame on a ground line. A tall flame alone read as the same icon as the
-Rooms/Effects switch beside it, and both go blue at once in Effects mode; an angular crest read as
-a mountain range.
-
-`acid` was removed at the same time. `fireRamp` is hardcoded orange and reads only the material's
-`warm`, so a green swatch shipped a button that painted orange fire. A second material needs the
-ramp to read the material's own colours first; until then the picker can only lie.
-
-### Map effects: what was offered alongside them and dropped · `REJECTED` (2026-08-26)
-
-Three things came up while the effects feature was being finished, and each was refused rather than
-deferred. Recorded so none of them is proposed again as an obvious gap.
-
-- **A Line shape.** Offered next to the Cone, which shipped. Not wanted.
-- **A "clear all effects" control.** Refused on how the feature is actually used: one or two effects
-  are on the map at a time, so hunting and deleting each is not a burden worth a button.
-- **Effect render cost on a TV.** Raised as an unproven risk - two shader meshes per effect, a
-  64-step distance loop per pixel. Judged fine in real use at the table. Do not refile it as a risk
-  without a fresh report of stutter.
-
-Also settled at the same time: the fire's spark colour and similar look details are not tracked as
-work. Visual polish on a settled look has no end, so it happens only on a specific request.
+Moved to [decisions/map-effects.md](decisions/map-effects.md) - burning ground, the
+flaming border, the Cone tool and the material picker.
 
 ---
 

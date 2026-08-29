@@ -54,7 +54,6 @@
 
   /* Icon rows (animation mode / grid type) */
   .cp-iconrow { display: flex; gap: 2px; }
-  .cp-iconrow.cp-iconrow-gap { gap: 6px; }
   .cp-iconbtn {
     flex: 1; aspect-ratio: 1; padding: 0;
     display: flex; align-items: center; justify-content: center;
@@ -205,9 +204,10 @@
   .cp-chip-pre { flex: 1; height: 30px; gap: 3px; padding: 0 8px; }
   .cp-chip-prefix { font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #7f858e; flex: none; }
   .cp-chip-pre input {
-    /* flex-basis:0 + width:0 so old Chromium (Electron 28) shrinks the field instead of
-       falling back to its intrinsic width and overflowing the chip on the right. */
-    flex: 1 1 0; width: 0; min-width: 0; border: none; background: transparent; text-align: right; color: #e2e4e8;
+    /* ⚠ width:0 IS REQUIRED, and not an old-engine workaround — measured on Chromium 150,
+       removing it takes the field from 88px to 168px and overflows the chip by 149px. An
+       <input> carries an intrinsic width that min-width:0 alone does not defeat. */
+    flex: 1; width: 0; min-width: 0; border: none; background: transparent; text-align: right; color: #e2e4e8;
     font: 500 12px/1 ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace;
   }
   .cp-chip-pre input:focus { outline: none; }

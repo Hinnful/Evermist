@@ -138,28 +138,47 @@ function killAll() { for (const p of Array.from(live)) killApp(p); }
 
 // ─── Getting the run off the screen ──────────────────────────────────────────
 // A run used to own the machine: both windows opened in front and stayed there, so nobody could
-// work while one was going. offscreen.ps1 parks every window this app opens at -9000,-9000 for
-// the length of the run, without activating any of them.
+// work while one was going. offscreen.ps1 parks every window this run opens at -9000,-9000,
+// without activating any of them.
 //
-// ⚠ THIS DEPENDS ON KEEP_PAINTING ABOVE. A parked window is the strongest case of "nobody can
+// ⚠ ONE PARKER FOR THE WHOLE RUN, STARTED BEFORE THE FIRST APP, AND AWAITED. PowerShell needs
+// ~1s to start and compile the parker's C#. A parker started per app spends that second watching
+// a window that is already on screen holding focus, so a regression showed one window and stole
+// focus once PER SCENARIO. The parker signals through a ready file and startParker waits for it.
+//
+// ⚠ IT MATCHES ON THIS RUN'S OUTPUT DIRECTORY, which is on every app's --user-data-dir, so it
+// can only ever move this run's windows. Matching on the process name would park the DM's real
+// Evermist off their own screen mid-session.
+//
+// ⚠ THIS DEPENDS ON KEEP_PAINTING BELOW. A parked window is the strongest case of "nobody can
 // see this", and without those switches Chromium would stop painting it and every measurement
 // would read zero. Do not remove one without the other.
 //
 // Windows only, and best-effort by design: if PowerShell is missing or refuses, the run still
 // works, it is just visible. `--visible` turns it off for when someone wants to watch.
 const OFFSCREEN_PS1 = path.join(__dirname, 'offscreen.ps1');
+const PARKER_READY_MS = 5000;
 
-function parkOffScreen(appProc, args) {
+async function startParker(args, outDir) {
   if (args.visible || process.platform !== 'win32') return null;
+  const readyFile = path.join(outDir, '.parker-ready');
+  let ps;
   try {
-    const ps = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass',
-      '-File', OFFSCREEN_PS1, String(appProc.pid), String(Math.ceil(HARD_TIMEOUT_MS / 1000))],
+    ps = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass',
+      '-File', OFFSCREEN_PS1, outDir, String(Math.ceil(HARD_TIMEOUT_MS / 1000)), readyFile],
       { stdio: 'ignore', windowsHide: true });
     ps.on('error', () => {});
-    // It exits on its own when the app goes, but a killed run must not leave it polling.
-    appProc.once('exit', () => { try { ps.kill(); } catch (_) {} });
-    return ps;
   } catch (_) { return null; }
+
+  // Bounded: a parker that never reports ready leaves the run visible, which is worth far less
+  // than a run that refuses to start.
+  const deadline = Date.now() + PARKER_READY_MS;
+  while (Date.now() < deadline) {
+    if (fs.existsSync(readyFile)) return ps;
+    if (ps.exitCode !== null) return null;
+    await new Promise(r => setTimeout(r, 50));
+  }
+  return ps;
 }
 
 // ─── Keeping both windows painting while they are not in front ───────────────
@@ -243,9 +262,6 @@ async function startInstance(args, profileDir) {
     detached: process.platform !== 'win32',   // so the whole group can be killed at once
   });
   live.add(proc);
-  // Started before the first window exists, so the splash is parked as it appears rather than
-  // after. A window is only ever visible for the poll interval.
-  parkOffScreen(proc, args);
   proc.stdout.on('data', () => {});
   proc.stderr.on('data', () => {});
   let diedEarly = null;
@@ -476,6 +492,11 @@ async function main() {
 
   // --shot with no scenario named still needs an app to photograph.
   const plan = files.length ? files : [null];
+
+  // Before the first app, so no window is ever on screen long enough to take focus.
+  const parker = await startParker(args, outDir);
+  const stopParker = () => { if (parker) try { parker.kill(); } catch (_) {} };
+  process.once('exit', stopParker);
 
   for (const file of plan) {
     const name = file ? path.basename(file, '.js') : 'shot';

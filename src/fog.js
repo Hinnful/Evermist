@@ -884,12 +884,6 @@ function fogCoverTick(ts) {
   if (cb) cb();
 }
 
-// True while the fog is actively closing — the window in which the incoming scene must not
-// be applied, because its map size and camera would change under a half-drawn cover.
-function fogIsClosing() {
-  return fogCoverRafId !== null && fogCoverTo >= 1;
-}
-
 // Close the fog over the outgoing map. Returns false when there is nothing to draw fog WITH
 // (the session's first map, before any cloud pattern exists); only then does the caller fall
 // back to the flat blind. onCovered fires when the map is completely hidden — that is the
@@ -1010,7 +1004,7 @@ function applyFogColor(pickedHex) {
   } else {
     // Player: Canvas-2D fog-on-top — fogBaseColor and fogTintColor read at renderFog time.
     // Also update the container CSS background (outside-map area).
-    const container = document.getElementById('map-container');
+    const container = document.getElementById('canvas-container');
     if (container) container.style.background = base;
     fogDirty = true;
     scheduleRender();

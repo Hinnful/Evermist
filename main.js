@@ -210,11 +210,8 @@ function pushPlayerDisplay() {
   if (dmWin && !dmWin.isDestroyed()) dmWin.webContents.send('display-info', display);
 }
 
-// ─── Native fullscreen toggle — no user-gesture requirement, bypasses Chromium's
-// activation check that blocks renderer requestFullscreen() on non-focused windows.
-ipcMain.on('set-fullscreen', (event, flag) => {
-  BrowserWindow.fromWebContents(event.sender)?.setFullScreen(flag);
-});
+// Native fullscreen, so it has no user-gesture requirement and sidesteps Chromium's activation
+// check, which blocks a renderer's own requestFullscreen() on a window that is not focused.
 ipcMain.on('toggle-fullscreen', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) win.setFullScreen(!win.isFullScreen());

@@ -56,11 +56,22 @@ npm run rig -- name-one name-two         several by name, in that order
 
 That is every flag there is, and an unrecognised one stops the run rather than being ignored.
 
-**A run no longer owns the screen.** It still opens both windows in front, and nothing in the
-DevTools protocol can move an OS window - Electron exposes no CDP `Browser` domain. But the app
-keeps painting behind other windows now (`KEEP_PAINTING` in `run.js`), so clicking away to another
-application no longer fails the run. `tools/window-state.ps1` reads the real OS window state from
-outside when a window question comes up again.
+**A run NEVER puts a window on the DM's screen, and that is not negotiable.** `offscreen.ps1`
+parks every window the run opens at -9000,-9000 without activating it, and `KEEP_PAINTING` in
+`run.js` stops Chromium refusing to paint a window nobody can see. Neither works without the
+other. Nothing in the DevTools protocol can move an OS window - Electron exposes no CDP `Browser`
+domain - so the parking is done from outside, in PowerShell.
+
+**ONE parker per run, started before the first app and awaited.** PowerShell needs ~1s to start
+and compile it, so a parker started per app left a focused splash window on screen for ~600ms
+EVERY scenario. It signals through a ready file and `startParker` holds the first launch until
+that file appears. It matches on the run's own output directory, never on the process name, so
+it can only move this run's windows and never the DM's real Evermist.
+
+**`--visible` is the DM's flag, not yours.** Do not pass it, and do not reach for `npm start`,
+`npm run stress` or `npm run memprobe` either - all three take the screen and all three are the
+DM's to run. `tools/window-state.ps1` reads the real OS window state from outside when a window
+question comes up again.
 
 One app instance per scenario, each on a throwaway profile under the OS temp dir. `--exe` is
 never the default: a build per run is minutes, and a rig that slow stops being used.

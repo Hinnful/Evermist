@@ -109,7 +109,7 @@ function _cpMakePicker(type, colorInputId) {
   const hexEl  = root.querySelector('.cp-hex');
   const p = { h: 0, s: 0, v: 0 };
   let dragging = false;
-  let svBox = null; // canvas on-screen box, captured at drag start (see pick())
+  let svBox = null; // canvas box, captured at drag start (see pick())
 
   function drawSV() {
     const w = canvas.width, h = canvas.height;
@@ -150,25 +150,14 @@ function _cpMakePicker(type, colorInputId) {
     syncVisual();
   }
   function pick(e) {
-    // The SV canvas lives under an ancestor CSS `zoom` (#sidebar-right). On Chromium
-    // < 128 (Electron 28 ships Chromium 120) getBoundingClientRect() reports the
-    // *layout* box while pointer clientX/Y are in the zoomed on-screen space, so the
-    // two disagree and the pick snaps to a corner (v→0 = #000000). Rather than trust
-    // gBCR, reconstruct the true on-screen box at drag start from the pointer's own
-    // clientX/Y and offsetX/Y (always the same space) plus offsetWidth × zoom. This is
-    // identical to gBCR on modern Chromium and correct on old Chromium alike.
-    if (e.type === 'mousedown') {
-      const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1;
-      svBox = {
-        left: e.clientX - e.offsetX,
-        top:  e.clientY - e.offsetY,
-        w: (canvas.offsetWidth  || 1) * z,
-        h: (canvas.offsetHeight || 1) * z,
-      };
-    }
-    if (!svBox || !svBox.w) return;
-    p.s = Math.max(0, Math.min(1, (e.clientX - svBox.left) / svBox.w));
-    p.v = Math.max(0, Math.min(1, 1 - (e.clientY - svBox.top) / svBox.h));
+    // The SV canvas lives under an ancestor CSS `zoom` (#sidebar-right), and this Chromium
+    // folds that zoom into getBoundingClientRect, so its box is in the same space as the
+    // pointer's clientX/Y. Captured at drag start, not per move: the box cannot change
+    // mid-drag and reading it every mousemove forces a layout.
+    if (e.type === 'mousedown') svBox = canvas.getBoundingClientRect();
+    if (!svBox || !svBox.width) return;
+    p.s = Math.max(0, Math.min(1, (e.clientX - svBox.left) / svBox.width));
+    p.v = Math.max(0, Math.min(1, 1 - (e.clientY - svBox.top) / svBox.height));
     commit();
   }
 
@@ -353,23 +342,21 @@ function _cpUpdateAdvVisibility() {
   if (show) { _cpPositionAdvPanel(); _cpSyncFancy(['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp', 'fog-feather', 'fog-half-alpha']); }
 }
 
-// Place the panel just left of the sidebar, compensating for the panel's own `zoom`.
-// Derived from zoom-independent metrics (window.innerWidth + the sidebar's known CSS
-// width) rather than getBoundingClientRect(), which disagrees with an ancestor CSS
-// `zoom` on Chromium < 128 (Electron 28 = Chromium 120) and threw the panel into
-// mid-screen. innerWidth is unaffected by element `zoom`, so this is engine-agnostic.
-const _CP_SIDEBAR_W = 230; // #sidebar-right CSS width (px)
-const _CP_ANCHOR_PAD = 12; // #sidebar-right-anchor right/top padding (px)
-const _CP_ADV_W = 270;     // #anim-advanced-panel CSS width (px)
-const _CP_ADV_GAP = 8;     // gap between panel and sidebar (px)
+// Place the panel just left of the sidebar. Read off the sidebar's own box: this Chromium
+// folds an ancestor CSS `zoom` into getBoundingClientRect, so the box is already in screen
+// space. Measuring beats hard-coded widths, which silently go stale when the CSS changes.
+const _CP_ADV_W = 270;   // #anim-advanced-panel CSS width (px)
+const _CP_ADV_GAP = 8;   // gap between panel and sidebar (px)
 function _cpPositionAdvPanel() {
   const panel = document.getElementById('anim-advanced-panel');
   if (!panel || panel.style.display === 'none') return;
+  const sidebar = document.getElementById('sidebar-right');
+  if (!sidebar) return;
   const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1.2;
-  const sidebarLeft = window.innerWidth - _CP_ANCHOR_PAD - _CP_SIDEBAR_W * z;
-  // panel's own `zoom` means its style.left/top are in pre-zoom coordinates → divide by z.
-  panel.style.left = ((sidebarLeft - _CP_ADV_GAP) / z - _CP_ADV_W) + 'px';
-  panel.style.top  = (_CP_ANCHOR_PAD / z) + 'px';
+  const box = sidebar.getBoundingClientRect();
+  // The panel's own `zoom` means its style.left/top are in pre-zoom coordinates → divide by z.
+  panel.style.left = ((box.left - _CP_ADV_GAP) / z - _CP_ADV_W) + 'px';
+  panel.style.top  = (box.top / z) + 'px';
 }
 
 // ─── Player tab ───────────────────────────────────────────────────────────────

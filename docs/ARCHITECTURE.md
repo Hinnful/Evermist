@@ -8,7 +8,8 @@ windows running inside an Electron shell.
 nothing else. [CLAUDE.md](../CLAUDE.md) is the rulebook: the constraints you must obey when
 changing something. [DECISIONS.md](DECISIONS.md) is the ledger of settled calls, including
 everything that was tried and rejected - check there first if you're about to redesign
-something. [PRODUCT.md](PRODUCT.md) says what the app is for and what it will never do.
+something, along with its topic files in [decisions/](decisions/). [PRODUCT.md](PRODUCT.md)
+says what the app is for and what it will never do.
 
 A sentence here that explains *why* belongs in one of those. This page says what is.
 
@@ -136,7 +137,8 @@ The fog is the heart of the app, so it's worth understanding.
    a base fill plus a glow tint picked in the Fog panel, so the same fog can be
    dungeon-navy, blood-red, or swamp-green. Each scene remembers its own colour, and the
    choice rides along through Export/Import. Picking a new colour recolours everything
-   live, including areas already shrouded.
+   live, including areas already shrouded, and on the Player it also recolours the area
+   around the map, so the map does not sit in a differently coloured surround.
 
 5. **The DM sees through it, players don't.** On the DM screen the fog is semi-transparent
    so you can plan. On the Player screen it's fully opaque. This matters when judging any
