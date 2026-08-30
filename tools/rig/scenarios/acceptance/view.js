@@ -273,7 +273,7 @@ module.exports = async function viewFeature(rig) {
   // 0,0 and the drag would silently move nothing. Opened through the real tab.
   await dm.evaluate(`(() => {
     const tab = document.querySelector('.cp-tab[data-tab="player"]');
-    if (tab) tab.click();
+    if (tab && !tab.classList.contains('active')) tab.click();
     return 0;
   })()`);
   await rig.sleep(300);

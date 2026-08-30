@@ -32,6 +32,7 @@ function initControlPanel() {
   refreshFogControlUI();
   refreshGridControlUI();
   refreshPlayerControlUI();
+  _cpRestoreTab();
 }
 
 // ─── Colour maths (HSV ⇄ hex) ─────────────────────────────────────────────────
@@ -65,23 +66,47 @@ function _cpHsvToHex(h, s, v) {
 }
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
+// #cp-tabbar never hides. The panel opens under it on the picked tab and shuts on that same one.
+const CP_TAB_KEY = 'evermist.cpPane';
+
 function _cpInitTabs() {
-  document.querySelectorAll('.cp-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const name = tab.dataset.tab;
-      document.querySelectorAll('.cp-tab').forEach(t => t.classList.toggle('active', t === tab));
-      document.querySelectorAll('.cp-pane').forEach(p => { p.hidden = p.id !== 'cp-pane-' + name; });
-      _cpUpdateAdvVisibility();
-      if (name === 'fog'  && _cpFogPicker)  _cpFogPicker.refresh();
-      if (name === 'grid' && _cpGridPicker) _cpGridPicker.refresh();
-      if (name === 'player') refreshPlayerControlUI();
+  document.querySelectorAll('.cp-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _cpSelectTab(btn.dataset.tab === _cpActiveTab() ? null : btn.dataset.tab);
     });
   });
 }
 
+// ⚠ SEPARATE FROM THE BINDING, and called last. The restore needs every control it may refresh
+// to exist; binding does not, and a throw in between must not leave the DM with dead tabs.
+function _cpRestoreTab() {
+  let saved = 'fog';
+  try { const v = localStorage.getItem(CP_TAB_KEY); if (v !== null) saved = v; } catch (e) {}
+  _cpSelectTab(saved || null);
+}
+
+// The one way to open, switch or shut the panel; `name` is a tab, or null for shut.
+function _cpSelectTab(name) {
+  document.querySelectorAll('.cp-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  if (name) document.querySelectorAll('.cp-pane').forEach(p => { p.hidden = p.id !== 'cp-pane-' + name; });
+  const panel = document.getElementById('sidebar-right');
+  if (panel) panel.hidden = !name;
+  // ⚠ Placed off #sidebar-right's box, so shutting must CLOSE it; a pane switch only hides it.
+  const adv = document.getElementById('btn-anim-advanced');
+  if (!name && adv && adv.classList.contains('active')) {
+    adv.click();
+    if (typeof setAnimModeUI === 'function') setAnimModeUI();
+  }
+  _cpUpdateAdvVisibility();
+  if (name === 'fog'  && _cpFogPicker)  _cpFogPicker.refresh();
+  if (name === 'grid' && _cpGridPicker) _cpGridPicker.refresh();
+  if (name === 'player') refreshPlayerControlUI();
+  try { localStorage.setItem(CP_TAB_KEY, name || ''); } catch (e) {}
+}
+
 function _cpActiveTab() {
   const t = document.querySelector('.cp-tab.active');
-  return t ? t.dataset.tab : 'fog';
+  return t ? t.dataset.tab : null;
 }
 
 // ─── HSV colour picker ────────────────────────────────────────────────────────
@@ -122,9 +147,8 @@ function _cpMakePicker(type, colorInputId) {
     swatch.style.background = hex;
     if (document.activeElement !== hexEl) hexEl.value = hex.slice(1).toUpperCase();
     if (alphaEl) {
-      // Transparent → selected colour over a checkerboard, so the track reflects the pick and
-      // stays visible on pure black. ⚠ Two offset 45° linear-gradients, never a conic gradient,
-      // which fringes colour at the track edges on this Chromium.
+      // ⚠ Two offset 45° linear-gradients for the checkerboard, never a conic gradient, which
+      // fringes colour at the track edges on this Chromium.
       const rgb = _cpHexToRgb(hex).join(',');
       const checker = 'linear-gradient(45deg, #2b2b2b 25%, transparent 25%, transparent 75%, #2b2b2b 75%)';
       alphaEl.style.backgroundImage =
@@ -202,7 +226,7 @@ function setAnimModeUI() {
   else if (animOn) {
     const preset = document.querySelector('.anim-preset-btn.active');
     if (preset) active = preset.id.endsWith('calm') ? 'slow' : preset.id.endsWith('default') ? 'medium' : 'fast';
-    else active = null; // enabled with custom (non-preset) settings
+    else active = 'advanced';  // on, matching no preset = dialled in by hand
   }
   row.querySelectorAll('[data-anim]').forEach(b => b.classList.toggle('active', b.dataset.anim === active));
   _cpUpdateAdvVisibility();
@@ -288,24 +312,38 @@ function _cpSyncFancy(ids) {
 }
 
 // ─── Reset buttons ────────────────────────────────────────────────────────────
+// ⚠ Both ASK FIRST: the button lost its full-width red shape beside the selector it resets, so
+// the question is the only warning left. confirmDialog answers asynchronously.
 function _cpInitResets() {
+  const ask = (message, run) => confirmDialog({
+    title: 'Reset settings?',
+    message: message,
+    confirmLabel: 'Reset',
+    danger: true,
+    onConfirm: run,
+  });
+
   const gridReset = document.getElementById('cp-grid-reset');
   if (gridReset) gridReset.addEventListener('click', () => {
-    document.getElementById('btn-grid-reset').click(); // resets grid globals + legacy DOM
-    refreshGridControlUI();
+    ask('Grid type, size, colour and opacity go back to their defaults.', () => {
+      document.getElementById('btn-grid-reset').click(); // resets grid globals + legacy DOM
+      refreshGridControlUI();
+    });
   });
 
   // Fog has no single legacy reset — compose one: default colour + tint + feather + Default preset.
   const fogReset = document.getElementById('cp-fog-reset');
   if (fogReset) fogReset.addEventListener('click', () => {
-    const fire = (id, val) => { const el = document.getElementById(id); if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); } };
-    fire('fog-color', '#3a3a8c');
-    fire('fog-tint-alpha', 18);
-    fire('fog-feather', 12);
-    // ⚠ fog-half-alpha is NOT reset here. It is the only dial in this panel that PERSISTS, so
-    // resetting it overwrites a value dialled in across sittings.
-    document.getElementById('anim-preset-default').click();
-    refreshFogControlUI();
+    ask('Fog colour, tint, feather and animation go back to their defaults.', () => {
+      const fire = (id, val) => { const el = document.getElementById(id); if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); } };
+      fire('fog-color', '#3a3a8c');
+      fire('fog-tint-alpha', 18);
+      fire('fog-feather', 12);
+      // ⚠ fog-half-alpha is NOT reset here. It is the only dial in this panel that PERSISTS, so
+      // resetting it overwrites a value dialled in across sittings.
+      document.getElementById('anim-preset-default').click();
+      refreshFogControlUI();
+    });
   });
 }
 
@@ -317,8 +355,6 @@ function _cpInitAdvPanel() {
     setAnimModeUI();
   });
   window.addEventListener('resize', _cpPositionAdvPanel);
-  const uiScale = document.getElementById('ui-scale');
-  if (uiScale) uiScale.addEventListener('input', _cpPositionAdvPanel);
 }
 
 function _cpUpdateAdvVisibility() {
@@ -384,7 +420,7 @@ function _cpInitPlayer() {
 
   // The Player window can close without telling us (no event on a cross-window close),
   // so poll while the tab is on screen. Read-only; no-ops when the pane is hidden.
-  setInterval(() => { if (!pane.hidden) refreshPlayerControlUI(); }, 1000);
+  setInterval(() => { if (_cpActiveTab() === 'player') refreshPlayerControlUI(); }, 1000);
 }
 
 // Player-zoom stepper: − / + step by one wheel notch, the field takes a typed percentage. Both go

@@ -1,4 +1,4 @@
-/* toolbar.css — the bottom toolbar, its brush sub-panel, and the UI-scale strip. */
+/* toolbar.css — the bottom toolbar, its brush sub-panel, and the help corner. */
   /* ===== BOTTOM TOOLBAR (new design system) ===== */
   /* Outer wrapper: full-width fixed row, centers children, no zoom on the
      wrapper itself (avoids hit-area mismatch from zoom + translateX(-50%));
@@ -22,11 +22,12 @@
     display: flex;
     align-items: center;
     gap: 7px;
-    padding: 4px 8px;
-    border-radius: 12px;
-    background: #1a1a1c;
-    border: 1px solid rgba(255, 255, 255, 0.055);
-    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+    /* ⚠ 4px on EVERY side. A wider left/right reads as a mistake beside the square buttons. */
+    padding: 4px;
+    border-radius: var(--panel-radius);
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    box-shadow: var(--panel-shadow);
   }
 
   /* Tool buttons — Select / Polygon / Rectangle / Circle / Brush */
@@ -71,11 +72,11 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 6px 8px;
-    border-radius: 12px;
-    background: #1a1a1c;
-    border: 1px solid rgba(255, 255, 255, 0.055);
-    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+    padding: 6px;
+    border-radius: var(--panel-radius);
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    box-shadow: var(--panel-shadow);
   }
   /* A group of related controls sitting bare in the row. Carries no background, border or
      radius on purpose; see the warning above. */
@@ -137,10 +138,10 @@
     align-items: center;
     gap: 3px;
     padding: 6px;
-    border-radius: 12px;
-    background: #1a1a1c;
-    border: 1px solid rgba(255, 255, 255, 0.055);
-    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+    border-radius: var(--panel-radius);
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    box-shadow: var(--panel-shadow);
   }
   /* .tb-seg is gone. The dark inset pill it drew was the pick-exactly-one signal while those
      groups lived INSIDE the bar; now each such group is its own standalone pill (#context-row,
@@ -247,65 +248,29 @@
   /* UI SCALE CONTROL — fixed independently so zoom feedback loop can't occur.
      Same surface as #toolbar-bottom and #panel-brush-bottom: this strip shares the screen's
      bottom edge with that bar, so the bar is the thing it should look like. */
-  #ui-scale-row {
+  /* ===== HELP CORNER ===== */
+  /* One button, wearing the same surface as the Scenes button in the opposite corner. The UI
+     scale slider that shared this corner is gone; --ui-zoom keeps its base.css default. */
+  #help-corner {
     position: fixed;
-    left: 12px;
+    left: 16px;
     bottom: 16px;
     z-index: 100;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px 6px 8px;
-    border-radius: 10px;
-    background: #1a1a1c;
-    border: 1px solid rgba(255, 255, 255, 0.055);
-    box-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+    zoom: var(--ui-zoom, 1.2);
   }
-  body.player-mode #ui-scale-row { display: none !important; }
-  #ui-scale-row span {
-    font: 500 11px/1 system-ui, -apple-system, sans-serif;
-    color: #7f858e;
-    white-space: nowrap;
-  }
-  /* The brush slider's track and thumb, so the app has one range control rather than two. */
-  #ui-scale-row input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 80px;
-    height: 16px;
-    background: transparent;
-    cursor: pointer;
-  }
-  #ui-scale-row input[type="range"]::-webkit-slider-runnable-track {
-    height: 3px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.12);
-  }
-  #ui-scale-row input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 11px;
-    height: 11px;
-    margin-top: -4px;
-    border-radius: 50%;
-    background: #e6e7e9;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
-  }
-  /* An independent action, so it sits bare — the same 22px transparent icon button as the
-     room card's and the advanced panel's close (.cp-adv-close). The purple bordered disc it
-     used to be was the only circular button in the app. */
-  #btn-legend {
-    width: 22px; height: 22px;
-    flex-shrink: 0; padding: 0;
+  body.player-mode #help-corner { display: none !important; }
+  #btn-help {
+    width: 30px; height: 30px; padding: 0;
     display: flex; align-items: center; justify-content: center;
-    border: none; border-radius: 6px;
-    background: transparent;
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    border-radius: var(--panel-radius);
     color: #9aa0aa;
-    font: 600 12px/1 system-ui, -apple-system, sans-serif;
     cursor: pointer;
-    transition: background 0.12s, color 0.12s;
+    box-shadow: var(--panel-shadow);
+    transition: background .12s, border-color .12s, color .12s;
   }
-  #btn-legend:hover { background: rgba(255, 255, 255, 0.05); color: #d5d8dd; }
+  #btn-help:hover { border-color: rgba(255, 255, 255, 0.18); background: #202124; color: #d5d8dd; }
 
   /* The bottom-left #panel-brush and bottom-right #panel-player that used to sit here are
      gone with their markup — the brush slider moved into #panel-brush-bottom above the

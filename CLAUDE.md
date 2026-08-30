@@ -66,6 +66,9 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 - **No big-bang refactors.** The blob shrinks as a byproduct of feature work. If a task is
   purely file-shuffling with no feature attached, stop and confirm with the user.
 - **Extend the module that owns the concern**, don't duplicate it elsewhere.
+- **Build nothing for a case that does not exist yet.** No option no caller passes, no
+  wrapper around a single call, no branch for a state the app cannot reach. Delete it rather
+  than keep it "just in case" - git has it.
 
 ### Module map
 
@@ -100,7 +103,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `pdfLayout.js` | Pure PDF reading-order kernel. Unit-tested, dependency-free |
 | `pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `confirmDialog.js` | The app's only sanctioned confirmation dialog |
-| `about.js` | The About box: mark, version, repo |
+| `about.js` | The About block in the legend footer: mark, version, repo |
 | `floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
 | `player.js` | Player-mode runtime |
 | `stress.js` | `?stress=1` harness |
@@ -187,16 +190,16 @@ Every error goes through it; no `alert()` ships.
 - Deliberately untested, don't add tests here: `render.js`, `scenes.js`, `state.js`,
   `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
   `stress.js`.
-- **The rig is a last resort, not a development tool** - reading code is faster. Use it for
-  an end result, what code cannot show, or a bug code cannot find. `/commit` smoke-tests the
-  diff; `/release` runs the full set. Both block on red.
+- **Never run a rig set while building** - not even `smoke`, and not at the end of a chunk.
+  Reading code is faster, and a run is the DM's time. `/commit` smoke-tests the diff;
+  `/release` runs the full set. Both block on red.
 - **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance at the
   table are theirs; correctness is yours. Backup, export and restore are the one exception and
   always get their hand test: the export's save dialog is native and cannot be driven.
 
 ## Guard hooks
 
-Nine fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file has
+Ten fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file has
 one**, and each explains its own fix when it fires. `guard-skill-hint.js` is the `PreToolUse`
 one: it names the skill owning a file you edit.
 
@@ -206,7 +209,10 @@ one: it names the skill owning a file you edit.
   destinations are at the top, and process narrative goes nowhere.
 - Code comments: keep the rule, one clause of why, and any warning about a specific trap.
   Cut named examples that disambiguate nothing, "an earlier version was tried", measurement
-  dates and counts, restatements of the code, and anything duplicating this file.
+  dates and counts, and restatements of the code.
+- **Write no sentence that already sits in another file.** Explain a trap once, at the line
+  where someone hits it; a module's purpose and its rejected shapes stay in the docs. To
+  connect two places, name the file. `guard-comment-echo.js` ratchets the repeat count DOWN.
 - **Comment share of shipped JavaScript ratchets DOWN**, codebase-wide, never per file.
   `guard-comments.js` holds the ceiling; `node tools/comment-density.js` reports it, and
   `--verify` diffs comment-stripped code against HEAD after a comment-only pass. A comment

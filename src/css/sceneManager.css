@@ -27,13 +27,13 @@
     width: 100%; max-width: 180px; height: 30px;
     display: flex; align-items: center; gap: 8px;
     padding: 0 12px;
-    background: #1a1a1c;
-    border: 1.5px solid rgba(255,255,255,0.1);
-    border-radius: 7px;
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    border-radius: var(--panel-radius);
     color: #d5d8dd;
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+    box-shadow: var(--panel-shadow);
     transition: background .12s, border-color .12s, color .12s;
   }
   #scene-dd-toggle svg { flex: none; color: #7f858e; transition: color .12s; }

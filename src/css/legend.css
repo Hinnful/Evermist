@@ -1,9 +1,6 @@
 /* legend.css — the shortcut legend overlay. */
   /* ===== SHORTCUT LEGEND ===== */
-  /* The app's floating-panel surface, written out here rather than borrowed from a shared
-     class: flat #1a1a1c, hairline border, 12px radius and the same drop shadow as
-     #sidebar-right and #scene-dd-menu. The purple .glass-panel it used to wear was the last
-     pre-redesign surface left in the DM interface. */
+  /* The app's one floating-panel surface, from base.css. */
   #shortcut-legend {
     position: fixed;
     top: 50%;
@@ -13,10 +10,10 @@
     padding: 20px 24px 18px;
     min-width: 400px;
     pointer-events: auto;
-    background: #1a1a1c;
-    border: 1px solid rgba(255, 255, 255, 0.055);
-    border-radius: 12px;
-    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.36);
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow);
   }
   #shortcut-legend .legend-title {
     font: 600 13px/1 system-ui, -apple-system, sans-serif;

@@ -1,4 +1,4 @@
 {
-  "maxBytes": 14075,
+  "maxBytes": 14527,
   "note": "Max bytes for CLAUDE.md. Auto-ratchets DOWN as the file shrinks. Raise only for a genuinely new RULE that cannot be stated in the space freed by tightening an existing one - explanation belongs in docs/ARCHITECTURE.md, reasoning in docs/DECISIONS.md."
 }

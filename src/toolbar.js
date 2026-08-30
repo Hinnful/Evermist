@@ -132,7 +132,7 @@ function initToolbar() {
   document.getElementById('btn-door').onclick   = () => setShape('door');
   document.getElementById('btn-place-rooms').onclick   = () => setPlaceMode('rooms');
   document.getElementById('btn-place-effects').onclick = () => setPlaceMode('effects');
-  document.getElementById('btn-legend').onclick = () => toggleLegend();
+  document.getElementById('btn-help').onclick = () => toggleLegend();
   initMaterialPicker();
   refreshHalfAvailability();  // Select is the tool at load, so half starts live
   refreshBrushAvailability();
@@ -501,16 +501,6 @@ function initToolbar() {
   if (typeof initRoomPanel === 'function') initRoomPanel();
 
   updateContextPanels(); // init: brush is default tool, show panel immediately
-
-  // UI scale slider — persists to localStorage
-  (function() {
-    const slider = document.getElementById('ui-scale');
-    const apply  = v => document.documentElement.style.setProperty('--ui-zoom', v / 100);
-    const saved  = localStorage.getItem('evermist-ui-zoom');
-    if (saved) { slider.value = saved; apply(saved); }
-    slider.oninput  = () => apply(slider.value);
-    slider.onchange = () => localStorage.setItem('evermist-ui-zoom', slider.value);
-  })();
 
   // Tabbed Fog/Grid/Player control-panel UI (drives the wiring above). Runs after
   // all legacy controls are wired so its buttons can delegate to them.

@@ -15,14 +15,23 @@
   }
 
   /* ===== FLOATING PANELS ===== */
-  /* The app has ONE floating-panel surface and it is not defined here: flat #1a1a1c, a
-     rgba(255,255,255,0.055) hairline and a soft drop shadow, written out by each panel that
-     wants it (#sidebar-right, #anim-advanced-panel, #panel-room, #mt-modal, #shortcut-legend).
-     The purple .glass-panel that used to live here belonged to the pre-redesign UI. */
-  :root { --ui-zoom: 1.2; }
+  /* ONE surface for every floating thing, defined here so the four the DM sees at once cannot
+     drift: the Scenes button, the bottom toolbar, the tab bar and the settings panel. A panel
+     that writes its own hex instead of these is the bug this replaced.
+     --cp-panel-w is shared by #sidebar-right and the tab bar above it, which must line up. */
+  :root {
+    --ui-zoom: 1.2;
+    --cp-panel-w: 230px;
+    --panel-bg: #1a1a1c;
+    --panel-border: 1.5px solid rgba(255, 255, 255, 0.1);
+    --panel-radius: 12px;
+    --panel-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+  }
 
   /* RIGHT SIDEBAR — same zoom-fix pattern as bottom toolbar:
-     no-zoom anchor handles fixed positioning, zoom lives on inner panel */
+     no-zoom anchor handles fixed positioning, zoom lives on inner panel.
+     A COLUMN with the tab bar FIRST: the bar keeps the top-right corner whether the panel below
+     it is open or shut. */
   #sidebar-right-anchor {
     position: fixed;
     left: 0; right: 0; top: 0; bottom: 0;
