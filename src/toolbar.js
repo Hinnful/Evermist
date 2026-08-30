@@ -480,22 +480,18 @@ function initToolbar() {
     // Toggle: a second press closes the Player again. window.open() on an already-open
     // named window just re-navigates it, so without this the button looked dead.
     if (playerWindow && !playerWindow.closed) {
+      const dying = playerWindow;
       playerWindow.close();
       playerWindow = null;
       if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
+      prewarmPlayerAfter(dying);   // the next press should be as fast as this one was
       return;
     }
-    const sp = new URLSearchParams(window.location.search);
-    const stress = sp.get('stress') === '1';
-    const stressMs = sp.get('stressMs');
-    let url = window.location.href.split('?')[0] + '?mode=player';
-    if (stress) url += '&stress=1';
-    if (stressMs) url += '&stressMs=' + encodeURIComponent(stressMs);
-    // The Player is a second process with its own copy of every map and fog canvas, so
-    // the probe has to run there too or half the footprint is invisible.
-    if (sp.get('memprobe') === '1') url += '&memprobe=1';
-    playerWindow = window.open(url, 'evermist-player', 'toolbar=no,menubar=no,scrollbars=no');
+    revealPlayerWindow();
   };
+
+  // Off the boot path: warming it while the DM comes up trades one wait for another.
+  setTimeout(prewarmPlayer, 2000);
 
   // ⚠ WRAPPED, never assigned bare: a bare handler receives the click event, which lands in
   // sendToPlayer's fogOnly parameter and is truthy, so the button would send fog without the view.

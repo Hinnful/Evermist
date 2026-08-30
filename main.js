@@ -6,18 +6,14 @@ const fs = require('fs');
 const archiver = require('archiver');
 const yauzl = require('yauzl');
 
-// Stress-test mode: activated by `npm run stress` (passes --stress). Inert under
-// plain `npm start` and in the shipped .exe (which never passes the flag).
+// Diagnostic modes, each behind its own npm script's flag. All inert under plain `npm start` and
+// in the shipped .exe, which never passes one.
 const stressMode = process.argv.includes('--stress');
 const stressNoReveals = process.argv.includes('--stress-no-reveals');
-// Memory-footprint probe: activated by `npm run memprobe` (passes --memprobe). Inert under
-// plain `npm start` and in the shipped .exe, which never passes the flag.
 const memProbeMode    = process.argv.includes('--memprobe');
 // Stub levers that attribute the minimize memory movement — each disables one suspect.
 const memProbeNoFlush = process.argv.includes('--memprobe-no-flush');
 const memProbeNoSave  = process.argv.includes('--memprobe-no-save');
-// Measure against the smallest video map rather than the largest, for a before/after
-// comparison that does not tie the machine up.
 const memProbeSmall   = process.argv.includes('--memprobe-small');
 const stressIntervalArg = process.argv.find(a => a.startsWith('--stress-interval='));
 const stressMs = stressIntervalArg
@@ -28,12 +24,7 @@ if (stressMode) {
   console.log('[stress] powerSaveBlocker started id=' + id + ' interval=' + stressMs + 'ms');
 }
 
-// Portable data: all Chromium user data sits next to the .exe so the folder can be copied between
-// PCs. PORTABLE_EXECUTABLE_DIR is the real .exe location; the app runs from a temp extraction.
-const portableDir = process.env.PORTABLE_EXECUTABLE_DIR;
-if (portableDir) {
-  app.setPath('userData', path.join(portableDir, 'evermist-data'));
-}
+// ⚠ Never redirect userData beside the .exe again: it orphans a library on upgrade.
 
 // ⚠ Keeps Chromium from removing the video track on a muted looping video its compositor deems
 // occluded. Without it readyState drops after ~30 s and the video freezes cyclically.
@@ -124,11 +115,14 @@ function createDMWindow() {
   setTimeout(handOff, 6000); // safety cap
 
   // Allow window.open() in the renderer to create the player BrowserWindow.
+  // ⚠ EVERY Player window is created HIDDEN until the DM presses the button: one is pre-warmed at
+  // startup, and showing that would put an empty window on the TV all session.
   win.webContents.setWindowOpenHandler(() => ({
     action: 'allow',
     overrideBrowserWindowOptions: {
       width: 1200,
       height: 800,
+      show: false,
       title: 'Evermist — Player View',
       icon: windowIcon,
       menuBarVisible: false,
@@ -146,6 +140,8 @@ function createDMWindow() {
   win.webContents.on('did-create-window', (childWin) => {
     childWin.setMenu(null);
     playerWin = childWin;
+    // ⚠ `show: false` alone does not hold a window.open() child back — Electron shows it anyway.
+    childWin.hide();
     childWin.once('closed', () => {
       if (playerWin === childWin) playerWin = null;
       clearTimeout(_playerMovedTimer);
@@ -182,6 +178,10 @@ let dmWin     = null;
 let playerWin = null;
 let _playerMovedTimer = null;
 
+function showPlayerWindow() {
+  if (playerWin && !playerWin.isDestroyed() && !playerWin.isVisible()) playerWin.show();
+}
+
 function getDisplayForWindow(win) {
   if (!win || win.isDestroyed()) return null;
   const bounds = win.getBounds();
@@ -206,6 +206,8 @@ ipcMain.on('toggle-fullscreen', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) win.setFullScreen(!win.isFullScreen());
 });
+
+ipcMain.on('player-reveal', () => showPlayerWindow());
 
 let mapsDir;
 

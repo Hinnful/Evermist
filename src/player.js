@@ -6,6 +6,46 @@
 // newer scene switch can detect it was superseded and bail out (no orphan <video>).
 var _playerVideoGen = 0;
 
+// ⚠ STARTS ON THE DM'S FIRST WORD, NEVER AT INIT. A pre-warmed window sits unheld until the button
+// is pressed; a retry running through that lands a `need-map` the DM accepts on adoption, which
+// re-sends the whole map mid-session and blanks the fog the players are looking at.
+var _playerRetryStarted = false;
+function startPlayerMapRetryOnce() {
+  if (_playerRetryStarted) return;
+  _playerRetryStarted = true;
+  initPlayerMapRetry();   // viewport.js: need-map to the DM until a map arrives
+}
+
+// The card's backdrop while the first map decodes: the app's own fog, drifting. Its own loop,
+// because the render pipeline has no map to draw and does nothing on these frames.
+var _loadingFogRaf = null;
+function startLoadingFog() {
+  if (_loadingFogRaf || !landing) return;
+  landing.classList.add('loading');
+  startFogAnim();   // fog.js: what advances the drift and morph this reads
+  const cv = document.getElementById('landing-fog');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const tick = () => {
+    const w = landing.clientWidth, h = landing.clientHeight;
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    drawLoadingFog(ctx, w, h);
+    _loadingFogRaf = requestAnimationFrame(tick);
+  };
+  _loadingFogRaf = requestAnimationFrame(tick);
+}
+
+// Called from revealPlayer() when the cover lifts. ⚠ THE LOOP AND THE LOADING LINE STOP EVEN WITH
+// NO MAP: the error paths reveal too, and a first map that never decodes would otherwise leave the
+// TV reading "Loading map…" for the session with a full-screen repaint running behind it. The card
+// itself only goes when there IS a map, because with none it is the correct empty state.
+function onPlayerMapShown() {
+  if (!landing) return;
+  if (_loadingFogRaf) { cancelAnimationFrame(_loadingFogRaf); _loadingFogRaf = null; }
+  landing.classList.remove('loading');
+  if (mapOffscreen) landing.style.display = 'none';
+}
+
 function initPlayer() {
   fogAnimEnabled = true; // player view always animates
 
@@ -18,7 +58,6 @@ function initPlayer() {
     type: 'PLAYER_READY', screenW: window.innerWidth, screenH: window.innerHeight,
   }, '*');
 
-  initPlayerMapRetry(); // viewport.js: send need-map to DM, retry until map received
 
   // Relay this window's fullscreen state to the DM. It is native window fullscreen, driven
   // from main.js, so this window has nothing to read it from either — main pushes it here.
@@ -50,6 +89,7 @@ function initPlayer() {
   window.addEventListener('message', e => {
     const msg = e.data;
     if (!msg) return;
+    startPlayerMapRetryOnce();   // anything from the DM means it is holding this window
 
     if (msg.type === 'fog-color') { handleFogColorMessage(msg); return; }
 
@@ -99,6 +139,14 @@ function initPlayer() {
       return;
     }
 
+    // ⚠ A pre-warmed window's PLAYER_READY was dropped — the DM was not holding it yet.
+    if (msg.type === 'player-hello') {
+      if (window.opener) window.opener.postMessage({
+        type: 'PLAYER_READY', screenW: window.innerWidth, screenH: window.innerHeight,
+      }, '*');
+      return;
+    }
+
     if (msg.type === 'player-lock') { playerInputLocked = msg.locked; return; }
 
 
@@ -136,7 +184,10 @@ function initPlayer() {
       void fade.offsetWidth;        // force reflow so the instant cover "sticks"
       fade.style.transition = '';   // restore so revealPlayer's removal animates
     }
-    landing.style.display = 'none';
+    // ⚠ THE CARD IS THE LOADING STATE and sits ABOVE the cover (overlays.css). It holds through the
+    // first map's decode; onPlayerMapShown() takes it down once the map is on screen.
+    if (mapOffscreen) landing.style.display = 'none';
+    else if (msg.mapUrl) startLoadingFog();
 
     if (msg.view) lastDMView = msg.view;
 

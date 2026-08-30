@@ -54,7 +54,6 @@ function dmVisibleRegion() {
   return { mapCX: r.cx, mapCY: r.cy, zoom, viewW: r.w, viewH: r.h };
 }
 
-// Map → screen coordinate conversion. Reads pan/zoom globals lazily.
 function toScreen(mapX, mapY) {
   return { sx: mapX * zoom + panX, sy: mapY * zoom + panY };
 }
@@ -138,14 +137,68 @@ function updatePlayerModeIndicator() {
   btn.classList.toggle('player-freelook',  !playerFollowMode);
 }
 
+// ─── The Player window's life ────────────────────────────────────────────────
+// ⚠ PRE-WARMED, AND `playerWindow` STAYS NULL UNTIL THE BUTTON IS PRESSED. Adopting the warm
+// window early would send every fog push, and pull every map, into a window nobody opened.
+let _playerPrewarm = null;
+
+function playerWindowUrl() {
+  const sp = new URLSearchParams(window.location.search);
+  let url = window.location.href.split('?')[0] + '?mode=player';
+  if (sp.get('stress') === '1') url += '&stress=1';
+  const stressMs = sp.get('stressMs');
+  if (stressMs) url += '&stressMs=' + encodeURIComponent(stressMs);
+  // A second process with its own copy of every canvas, so the probe has to run there too.
+  if (sp.get('memprobe') === '1') url += '&memprobe=1';
+  return url;
+}
+
+function openPlayerWindow() {
+  return window.open(playerWindowUrl(), 'evermist-player', 'toolbar=no,menubar=no,scrollbars=no');
+}
+
+// ⚠ NEVER WHILE A PLAYER IS OPEN. window.open reuses a browsing context by NAME, so warming one
+// over a live Player re-navigates it and the TV reloads mid-session.
+function prewarmPlayer() {
+  if (isPlayer) return;
+  if (_playerPrewarm && !_playerPrewarm.closed) return;
+  if (playerWindow && !playerWindow.closed) return;
+  _playerPrewarm = openPlayerWindow();
+}
+
+// Same name reuse, the other way round: a window still closing can answer to the name and the
+// warm handle ends up on a corpse, so the next press pays the page load the warming exists to
+// remove. Bounded, because a window that never reports closed must not stop the warming.
+function prewarmPlayerAfter(dying) {
+  if (!dying || dying.closed) { prewarmPlayer(); return; }
+  let tries = 0;
+  const poll = () => {
+    if (dying.closed || ++tries > 40) prewarmPlayer();
+    else setTimeout(poll, 50);
+  };
+  setTimeout(poll, 50);
+}
+
+// The button's "open": main.js keeps every Player window hidden until this.
+function revealPlayerWindow() {
+  playerWindow = (_playerPrewarm && !_playerPrewarm.closed) ? _playerPrewarm : openPlayerWindow();
+  _playerPrewarm = null;
+  if (!playerWindow) return;   // window.open can answer null; a throw here kills the button
+  if (window.electronAPI && window.electronAPI.playerReveal) {
+    window.electronAPI.playerReveal();
+  }
+  // ⚠ A pre-warmed window announced itself while playerWindow was still null, so its PLAYER_READY
+  // was dropped by the handler's source check. Ask again or nothing is ever sent to it.
+  playerWindow.postMessage({ type: 'player-hello' }, '*');
+}
+
 // ─── Player map-request protocol ─────────────────────────────────────────────
 
 // Deferred player resync: set when the Player asks for the map but the DM has no scene loaded yet.
 // onSceneLoaded() flushes the pending request.
 let _playerResyncPending = false;
 
-// Called once during Player init. Sends need-map to the DM, retrying every 5 s
-// (up to 6 attempts, ~34 s total) until mapOffscreen is populated.
+// Retries need-map every 5s, up to 6 attempts, until mapOffscreen is populated.
 function initPlayerMapRetry() {
   let attempts = 0;
   function tryNeedMap() {

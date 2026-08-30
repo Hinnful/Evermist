@@ -76,12 +76,11 @@ question comes up again.
 One app instance per scenario, each on a throwaway profile under the OS temp dir. `--exe` is
 never the default: a build per run is minutes, and a rig that slow stops being used.
 
-**Point `--exe` at `dist/win-unpacked/Evermist.exe`, never at the portable `dist/Evermist.exe`.**
-The portable build calls `app.setPath('userData', …)` from `PORTABLE_EXECUTABLE_DIR`, which
-overrides `--user-data-dir` completely, so the rig lands in the real library beside that `.exe`
-and a run damages actual maps. The rig refuses to start when the library it opens already holds
-scenes; do not weaken that check. The unpacked build honours the flag and covers the same
-packaging bugs, because it is what the portable `.exe` unpacks to.
+**Either build is safe for `--exe` now.** The portable `dist/Evermist.exe` used to override
+`--user-data-dir` through `PORTABLE_EXECUTABLE_DIR`, which put a run inside the real library; that
+override is gone and every build honours the flag. **The rig still refuses to start when the
+library it opens already holds scenes - do not weaken that check.** `dist/win-unpacked/Evermist.exe`
+covers the same packaging bugs and needs no portable step.
 
 ## Writing a scenario
 

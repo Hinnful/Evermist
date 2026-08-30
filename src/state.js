@@ -38,9 +38,7 @@ const videoFrameIntervalMs    = 1000 / VIDEO_FPS_DEFAULT;
 // is 2× the club TV's 1080p and under the 4096 ceiling where hardware VP9/H.264 decode stops
 // on integrated graphics — two decoders live at once (DM + Player), and they are the memory
 // problem, not the CPU one.
-//
-// The bitrate is a one-line tunable. 15 Mbps inside the box is ~0.073 bits per pixel against
-// the sources' ~0.051, so quality per pixel improves even after H.264's deficit against VP9.
+// The bitrate is a one-line tunable — why 15 Mbps is in docs/DECISIONS.md.
 const MAP_BOX_W = 3840;
 const MAP_BOX_H = 2160;
 const MAP_CONVERT_BITRATE = 15000000;

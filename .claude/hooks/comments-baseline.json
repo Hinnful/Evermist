@@ -1,4 +1,4 @@
 {
-  "maxPct": 19.23,
+  "maxPct": 19.21,
   "note": "Max comment share (percent of non-blank lines) across shipped JavaScript: src/**/*.js plus main.js and preload.js. Auto-ratchets DOWN. Raise only when code was deliberately deleted, which lifts the ratio without a comment being written."
 }
