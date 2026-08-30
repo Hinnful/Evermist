@@ -611,6 +611,36 @@ which control was touched last, with nothing visible saying so.
 
 ## UI and the control panel
 
+### The Fog/Grid/Player tabs left the panel, and the panel now shuts · `SETTLED` (2026-08-30)
+The panel covered about 288 screen px of map on the DM's right edge, so a zoomed-in DM framed the
+TV against a viewport narrower than the one the players saw. **Trimming the region sent to the
+Player by the panel width stays reverted** - it crops the TV to the DM's readable area, so content
+stops reaching the table. What ships instead: `#cp-tabbar` floats above `#sidebar-right` and never
+hides, and picking the lit tab shuts the panel, which gives the strip back without touching the
+region. An acceptance check compares `dmVisibleRegion()` open against shut so the trim cannot
+return unnoticed.
+Rejected on the way, all built or sketched first: a vertical icon rail (icons alone do not say
+"fog" or "grid", and the rail left an empty column beside the open panel); a pane header carrying
+the reset; and stretching the reset button to the selector's height, which made it a rectangle.
+
+### The Animation and Grid Type rows carry no pill · `SETTLED` (2026-08-30)
+The pane gives 207px. Five 30px icons plus a 30px reset button only fit with nothing boxing them,
+so the two rows follow the bottom toolbar's rule that a group inside a bar has no box of its own.
+Both come out 30px tall with no rule forcing it. Any pill around the icons costs icon size, which
+is what makes the smaller variants worse rather than merely different.
+
+### Reset asks rather than offering an undo · `SETTLED` (2026-08-30)
+Reset lost its full-width red footer button when it moved beside the selector it resets, so the
+shape no longer warns and `confirmDialog` does. The undo toast was considered and rejected: it
+belongs to `sceneManager.js` and its button is wired to one fixed action, so sharing it means
+extracting a module and rewiring scene deletion - more risk than the safety here needs.
+
+### The UI scale slider is gone, and About moved into the legend · `SETTLED` (2026-08-30)
+The slider set `--ui-zoom` from a bottom-left strip; that strip also held the two help buttons.
+One button replaces all three: it opens the shortcut legend, and `about.js` now fills that
+legend's footer instead of building a dialog of its own. `--ui-zoom` keeps its `base.css` default,
+and the stored `evermist-ui-zoom` key is dead - a DM who had moved the slider returns to 120%.
+
 ### `window.open` reuses a Player window by NAME, and both directions bite · `SETTLED` (2026-08-30)
 Every Player window is opened as `window.open(url, 'evermist-player')`, so a second call finds the
 first by name and NAVIGATES it rather than creating one. Two live consequences, both found by

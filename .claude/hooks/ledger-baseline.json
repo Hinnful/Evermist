@@ -9,12 +9,13 @@
   "note": "Thresholds for the ledger guards (docs/DECISIONS.md, docs/PRODUCT.md, docs/decisions/*.md, and the private command ledger). These files are MEANT to grow, so nothing here blocks an addition. Per-file \"warned\" state records what has already been reported so a notice fires once and never nags; clear an entry to hear about that subject again.",
   "files": {
     "docs/decisions.md": {
-      "warnedBytes": 0,
+      "warnedBytes": 91803,
       "sections": [],
       "entries": [
         "No automatic cave subdivision, ever · `SETTLED` (scope call)",
         "What one map actually costs · `SETTLED` (measured 2026-08-07)",
-        "The Player's map texture is viewport-sized · `SETTLED` (2026-08-07)"
+        "The Player's map texture is viewport-sized · `SETTLED` (2026-08-07)",
+        "The landing card is the Player's loading state, not a hidden window · `SETTLED` (2026-08-30, replaced a hold)"
       ],
       "untagged": [],
       "persons": []
@@ -38,7 +39,9 @@
       "sections": [],
       "entries": [],
       "untagged": [],
-      "persons": []
+      "persons": [
+        "Repeated text between files gets its own ratchet · `SETTLED` (2026-08-30)#194"
+      ]
     },
     "docs/decisions/map-effects.md": {
       "warnedBytes": 0,

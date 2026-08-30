@@ -3,45 +3,77 @@
   #sidebar-right {
     zoom: var(--ui-zoom, 1.2);
     pointer-events: all;
-    width: 230px;
+    width: var(--cp-panel-w, 230px);
     display: flex;
     flex-direction: column;
     gap: 0;
     padding: 0;
-    background: #1a1a1c;
-    border: 1px solid rgba(255, 255, 255, 0.055);
-    border-radius: 12px;
-    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.36);
-    max-height: calc((100vh - 24px) / var(--ui-zoom, 1.2));
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow);
+    /* ⚠ Less the tab bar above it: 39px of bar plus the anchor's 6px gap, in pre-zoom px like
+       the rest of this expression. The bar left the panel, so the old figure overran the
+       window by its height. */
+    max-height: calc((100vh - 24px) / var(--ui-zoom, 1.2) - 45px);
     overflow-y: auto;
     overflow-x: visible;
   }
   #sidebar-right::-webkit-scrollbar { width: 0; }
   #cp-legacy { display: none; }
 
-  /* Tabs */
-  .cp-tabwrap { padding: 7px; }
+  /* .cp-tabs is the black pick-one pill. Its only user is the in-pane Auto/Manual pair; the
+     Fog/Grid/Player tabs left it for the bar outside the panel. */
   .cp-tabs {
     display: flex; align-items: center; gap: 3px;
     padding: 4px; border-radius: 10px;
     background: rgba(0, 0, 0, 0.28);
     border: 1px solid rgba(255, 255, 255, 0.045);
   }
-  /* .cp-segtab shares the tab look for in-pane segmented controls (e.g. Auto/Manual)
-     without answering to the .cp-tab click handler that switches panes. */
-  .cp-tab, .cp-segtab {
+  .cp-segtab {
     flex: 1; height: 30px; padding: 0;
     border: 1.5px solid transparent; border-radius: 7px;
     background: transparent; color: #7f858e;
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
     cursor: pointer; transition: background .12s, color .12s, border-color .12s;
   }
-  .cp-tab:hover:not(.active), .cp-segtab:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
-  .cp-tab.active, .cp-segtab.active {
+  .cp-segtab:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-segtab.active {
     border-color: rgba(90, 140, 235, 0.6);
     background: rgba(70, 120, 220, 0.11);
     color: #8fb6ff;
   }
+
+  /* ===== THE TAB BAR ===== */
+  /* ONE bar wearing #scene-dd-toggle's surface, so the two corners of the screen read as one
+     design. It holds no pill inside it — the picked tab is the only filled thing. The row spans
+     --cp-panel-w to line up with the panel, and carries the same zoom or the pair render at two
+     scales. */
+  #cp-tabbar {
+    zoom: var(--ui-zoom, 1.2);
+    pointer-events: all;
+    width: var(--cp-panel-w, 230px);
+    display: flex; align-items: center; gap: 3px;
+    padding: 4px; border-radius: var(--panel-radius);
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    box-shadow: var(--panel-shadow);
+  }
+  .cp-tab {
+    flex: 1; min-width: 0; height: 28px; padding: 0 8px;
+    border: 1.5px solid transparent; border-radius: 6px;
+    background: transparent; color: #8b9098;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+  }
+  .cp-tab:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .cp-tab.active {
+    border-color: rgba(90, 140, 235, 0.6);
+    background: rgba(70, 120, 220, 0.11);
+    color: #8fb6ff;
+  }
+
+  #sidebar-right[hidden] { display: none; }
 
   /* Panes */
   .cp-pane { padding: 18px 10px; display: flex; flex-direction: column; gap: 22px; }
@@ -86,6 +118,18 @@
   }
   .cp-seg .cp-iconbtn:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
   .cp-seg .cp-iconbtn.active { border: none; background: transparent; color: #6ea8ff; }
+
+  /* ⚠ THESE TWO ROWS CARRY NO PILL, and adding one back costs icon size. The pane gives 207px:
+     five icons plus the reset only fit at 30px with nothing boxing them. The bottom toolbar does
+     the same — a group inside a bar has no box of its own — so the icons and the reset beside
+     them come out the same height with no rule forcing it. Bare .cp-iconbtn already draws the
+     tool-row outline when picked; all that is left here is the fixed size and the wider gap. */
+  #cp-anim-row, #cp-gridtype-row { gap: 3px; }
+  #cp-anim-row .cp-iconbtn, #cp-gridtype-row .cp-iconbtn {
+    flex: none; aspect-ratio: auto;
+    width: 30px; height: 30px; border-radius: 7px;
+  }
+  #cp-fog-reset, #cp-grid-reset { margin-left: 6px; }
 
   /* HSV colour picker */
   .cp-picker { display: flex; flex-direction: column; gap: 8px; }
@@ -170,6 +214,7 @@
   #btn-floorplan { gap: 7px; }   /* icon-to-label spacing; the rest comes from stock .cp-btn */
   .cp-btn:disabled { opacity: 0.45; cursor: default; }
   .cp-btn:disabled:hover { border-color: rgba(255,255,255,0.1); background: transparent; }
+  .cp-row { display: flex; align-items: center; gap: 6px; }
   .cp-btn-icon { width: 30px; flex: none; padding: 0; }
   .cp-dim { opacity: 0.45; }
   .cp-btn-danger { border: 1.5px solid rgba(200,70,60,0.22); background: rgba(200,50,40,0.07); color: rgba(240,100,90,0.85); }

@@ -6,22 +6,22 @@ description: Load BEFORE editing anything under tools/rig/, and whenever a task 
 # The test rig
 
 `tools/rig/` launches the real app over the Chrome DevTools Protocol, drives both windows, and
-prints one PASS or FAIL. Boot to verdict is about ten seconds, so it is cheap enough to reach for
-first, not last.
+prints one PASS or FAIL. Boot to verdict is about ten seconds, but a run still costs the DM real
+time, so reach for it only at the two gates below.
 
 ## When to run it
 
 **The rig is a last resort, not a development tool.** Reading and editing code is faster, so
-reach for the rig only when code cannot answer the question. Three cases qualify:
+reach for the rig only when code cannot answer the question. Two cases qualify:
 
-- **Checking an end result.** The chunk is built and you need to know it works.
 - **Seeing what code cannot show.** Did the map reach disk. Did the reveal reach the Player.
   Did switching scenes leave the old map underneath. Anything spanning both windows.
 - **Finding a bug nothing else catches.** Reading the code failed, so drive the DM's own repro
   steps in a scenario and watch the failure happen.
 
-**Do not run it to watch work in progress.** Development changes the code constantly and each
-run costs real time, so a pass between edits buys nothing.
+**Do not run any set while building, and that includes the end of a chunk.** Not `regression`,
+not `smoke`, not one scenario. A finished chunk goes to the DM to look at, and `/commit` is where
+it gets proven. Write the scenario during the build and run nothing.
 
 **A commit gets a SMOKE pass; the full regression set belongs to `/release`.** `/commit` Step 2
 picks `smoke` plus the scenarios covering what the diff touched, and blocks on red. `/release`

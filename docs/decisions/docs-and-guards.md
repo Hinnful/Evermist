@@ -188,3 +188,28 @@ Proven both ways: 40 on-screen samples over three scenarios before, 0 after.
 file's own evidence that rules about the repo's habits fail where hooks hold. It matches per shell
 segment with heredoc bodies stripped, because an unanchored match refused every doc edit that
 QUOTED one of those commands in order to forbid it.
+
+### Repeated text between files gets its own ratchet · `SETTLED` (2026-08-30)
+A sweep asked whether the comments here explain the non-obvious. They do: almost all of them
+warn about a trap rather than restate the code. The bloat sat elsewhere. One explanation gets
+written in the module, in a neighbour, and in a ledger, and every copy reads as justified
+where it sits. `guard-comments.js` cannot see it, since dropping one copy and adding
+one warning leaves the share flat. So the count of 12-word runs shared by two files is now its own
+falling number in `guard-comment-echo.js`, which compares shipped comments against each other and
+against CLAUDE.md, the ledgers and the skills. Twelve words was picked by measurement: eight
+matched coincidence between files naming the same function, sixteen let whole sentences through.
+It started at 55, and it blocks rather than hints, because unlike a missing scenario a duplicate
+is never the right answer.
+
+### Bloat is a rule in CLAUDE.md, not a second reviewer · `SETTLED` (2026-08-30)
+The built-in `/code-review` hunts correctness and does not look for speculative code, so three
+ways to add that were weighed. Cloning it was impossible: its instructions ship inside the CLI
+and exist nowhere on disk to copy, and a rewritten prompt would lose the verify pass and the
+structured findings that make its output worth reading. A second reviewer inside `/commit` was
+`REJECTED` on ordering - it edits after the smoke gate proved the code, which makes the green
+result describe a version that no longer exists, and moving it earlier just pays for two agents
+reading one diff. What remains is the file the review already reads. `Build nothing for a case
+that does not exist yet` sits in Code organization as a ban, not as a hunting instruction,
+because this file answers what must never be done and a procedure written here would be the only
+paragraph in another mood. It binds the session that would write the code, and the review gets a
+checkable rule instead of a matter of taste.

@@ -92,12 +92,21 @@ Three signals, and they must not blur into each other:
 
 ## Control-panel button identity
 
+- **One floating surface, and it is four CSS variables in `base.css`** (`--panel-bg`,
+  `--panel-border`, `--panel-radius`, `--panel-shadow`). The Scenes button, the bottom toolbar,
+  the tab bar and the settings panel all read them. A control that writes its own hex drifts.
+- **The Fog/Grid/Player tabs live OUTSIDE the panel**, in `#cp-tabbar`. Picking the lit tab shuts
+  the panel. `.cp-tabs` is now the in-pane Auto/Manual pair alone.
 - A black inset pill (`.cp-tabs` / `.cp-seg`) means *pick one of these*. The selected option
-  goes bare/blue inside it.
+  goes bare/blue inside it. **The Animation and Grid Type rows carry no pill** - the pane's 207px
+  fits five 30px icons plus a reset only when nothing boxes them, so any pill costs icon size.
 - An independent action or toggle is a `.cp-btn`: outlined at rest, outlined + blue-filled
   when `.active`. Never put one inside a pill.
 - Value fields (`.cp-field`, `.cp-stepper`) use the light surface, not the black pill.
-- A **destructive** action keeps the ordinary full-width `.cp-btn` shape plus
-  `.cp-btn-danger` and a hairline footer (`.rp-foot`). The hairline is what stops it reading
-  as the primary action. Don't shrink it to signal danger.
+- A **destructive** action that stands alone keeps the full-width `.cp-btn` shape plus
+  `.cp-btn-danger` and a hairline footer (`.rp-foot`) - the room card's Delete. The hairline is
+  what stops it reading as the primary action; don't shrink it to signal danger.
+- A **destructive** action that belongs to one control sits beside it as a `.cp-btn-icon`, wears
+  no red, and asks through `confirmDialog` instead. Fog and Grid Reset are these. The question is
+  the whole warning, so never drop it to save a click.
 

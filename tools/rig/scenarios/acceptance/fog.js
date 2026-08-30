@@ -394,7 +394,11 @@ module.exports = async function fogFeature(rig) {
   await fire('fog-feather', 3);
   await fire('fog-half-alpha', 77);
   await rig.sleep(400);
+  // ⚠ Reset ASKS FIRST, and confirmDialog answers asynchronously — reading the dials straight
+  // after the click reads them before anyone said yes.
   await dm.evaluate('document.getElementById("cp-fog-reset").click(); 0');
+  await dm.waitFor('document.getElementById("cd-ok")', 5000, 'the reset confirmation');
+  await dm.evaluate('document.getElementById("cd-ok").click(); 0');
   await rig.sleep(600);
   const afterReset = await dm.evaluate(`({
     color: document.getElementById('fog-color').value,

@@ -29,7 +29,7 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | File | What it does |
 |------|--------------|
 | `index.html` | The entry point and page markup, and nothing else. The JavaScript here is just wiring: grab the canvases, start PixiJS, call each module's `init`, connect the lifecycle events. The styling is nine `<link>` tags. It was once a ~2400-line script plus a ~1370-line stylesheet, and a guard hook keeps either from creeping back. |
-| `src/css/*.css` | All of the app's styling, split by the part of the screen it dresses: `base.css` (page reset, floating-panel shell, canvas layers, player mode), then `controlPanel.css`, `toolbar.css`, `roomCard.css`, `playerPane.css`, `legend.css`, `sceneManager.css`, `about.css`, `overlays.css`. They load in that order and it matters, because CSS is one shared cascade. |
+| `src/css/*.css` | All of the app's styling, split by the part of the screen it dresses: `base.css` (page reset, the floating-panel surface every control shares, canvas layers, player mode), then `controlPanel.css`, `toolbar.css`, `roomCard.css`, `playerPane.css`, `legend.css`, `sceneManager.css`, `about.css`, `overlays.css`. They load in that order and it matters, because CSS is one shared cascade. |
 | `renderer.js` | The PixiJS/WebGL wrapper. The GPU drawing path for the map and the DM's fog. |
 | `render.js` | The render loop. Each frame it decides which layers actually changed and redraws only those, keeps the canvases sized to the window, and paints the cursor and polygon-selection overlay. |
 | `state.js` | Shared values that several files need. Loaded first so they exist before anything reads them. |
@@ -53,14 +53,14 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `video.js` | Animated (video) map support: file loading, DOM compositing, decoding, the frame loop, the freeze watchdog. |
 | `display.js` | Detecting the Player screen's real size so the fog and map render at the right resolution. |
 | `backup.js` | The export/restore-to-zip feature. |
-| `toolbar.js` | DM-only UI control wiring: toolbar buttons, sliders, fog colour picker, animation presets, the scene dropdown, Player controls, the UI-scale slider. Also the Rooms/Effects placement switch and the material picker. The row above the toolbar changes with both - `input.js`'s `updateContextPanels` owns every visibility decision in it. |
-| `controlPanel.js` | The tabbed Fog/Grid/Player control panel. A presentational layer over the older hidden controls. |
+| `toolbar.js` | DM-only UI control wiring: toolbar buttons, sliders, fog colour picker, animation presets, the scene dropdown, Player controls. Also the Rooms/Effects placement switch and the material picker. The row above the toolbar changes with both - `input.js`'s `updateContextPanels` owns every visibility decision in it. |
+| `controlPanel.js` | The Fog/Grid/Player control panel and the tab bar above it. A presentational layer over the older hidden controls. The tab bar sits outside the panel and never hides; picking a tab opens the panel on that pane, picking the same tab again shuts it, and the open pane is remembered between sittings. |
 | `roomPanel.js` | The room card and the room name labels drawn on the DM map. |
 | `moduleText.js` | Importing a published module's text and turning the room name field into a searchable dropdown over it. |
 | `pdfLayout.js` | Turning a PDF's scattered text fragments back into reading order. Pure functions, unit-tested, no dependencies. |
 | `pdfExtract.js` | Runs pdf.js in an isolated child process. No `<script>` tag: this one never loads in the browser. |
 | `confirmDialog.js` | The app's own dialogs: a yes/no question, and a one-button message for errors. The only sanctioned pair, because a native `confirm()` or `alert()` breaks the page's focus. One shows at a time; a second waits its turn rather than replacing it, so no question is dropped unanswered. |
-| `about.js` | The About box: the app mark, the tagline, the version number and the repo address. Builds its own markup rather than adding any to `index.html`, and opens from a button next to the shortcut legend. DM only. |
+| `about.js` | The About block: the app mark, the version number and the repo address. Builds its own markup rather than adding any to `index.html`, and fills the shortcut legend's footer, so one button opens both. DM only. |
 | `player.js` | Player-mode runtime: cloud-texture pre-generation, the handshake, the resize listener, the DM message handler, Player pan/zoom. |
 | `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
 | `memProbe.js` | A hidden memory probe: counts what one loaded map costs and writes it to the diagnostics log. Dormant unless the page is opened with `?memprobe=1`. |

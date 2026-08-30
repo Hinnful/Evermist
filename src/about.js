@@ -1,18 +1,10 @@
 'use strict';
 
-// about.js — the About box: app mark, wordmark, tagline, version, repo.
+// about.js — the About block: app mark, wordmark, version, repo.
 //
+// The FOOTER of the shortcut legend, not a box of its own: the app has one "what is this" button.
 // Builds its own DOM at init, because CLAUDE.md keeps feature logic out of index.html.
-//
-// Shape and behaviour copy the shortcut legend: backdrop plus centred panel, closing on Esc and a
-// backdrop click. Its button lives in #ui-scale-row, hidden in player mode, so the Player stays
-// zero-UI.
 
-let _aboutRoot = null;
-let aboutVisible = false;
-
-// The same mark splash.html shows. ⚠ Ids inside are namespaced (_ab): a duplicate SVG id in
-// index.html lets one gradient overwrite another.
 const ABOUT_MARK_SVG =
   '<svg class="about-mark" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
     '<path d="M784 40H240C129.543 40 40 129.543 40 240V784C40 894.457 129.543 984 240 984H784C894.457 984 984 894.457 984 784V240C984 129.543 894.457 40 784 40Z" fill="url(#ab_p0)"/>' +
@@ -55,46 +47,18 @@ const ABOUT_MARK_SVG =
     '</defs>' +
   '</svg>';
 
-function toggleAbout() {
-  if (!_aboutRoot) return;
-  aboutVisible = !aboutVisible;
-  _aboutRoot.style.display = aboutVisible ? '' : 'none';
-}
-
 function initAbout() {
-  if (_aboutRoot || (typeof isPlayer !== 'undefined' && isPlayer)) return;
+  if (typeof isPlayer !== 'undefined' && isPlayer) return;
+  const slot = document.getElementById('legend-about');
+  if (!slot) return;
 
-  const root = document.createElement('div');
-  root.id = 'about-anchor';
-  root.style.display = 'none';
-  root.innerHTML =
-    '<div id="about-backdrop"></div>' +
-    '<div id="about-panel" role="dialog" aria-modal="true" aria-label="About Evermist">' +
-      ABOUT_MARK_SVG +
+  slot.innerHTML =
+    ABOUT_MARK_SVG +
+    '<div class="about-text">' +
       '<div class="about-wordmark">EVERMIST</div>' +
-      '<div class="about-tagline">PREPARE LESS, PLAY BETTER</div>' +
       '<div class="about-version" id="about-version" style="display:none"></div>' +
       '<div class="about-repo">github.com/Hinnful/Evermist</div>' +
-      '<div class="about-hint">Esc to close</div>' +
     '</div>';
-  document.body.appendChild(root);
-  _aboutRoot = root;
-
-  document.getElementById('about-backdrop').addEventListener('click', () => {
-    if (aboutVisible) toggleAbout();
-  });
-
-  // Capture phase, because input.js registers its own document keydown and Escape there
-  // deselects a room or cancels a polygon. With the box open, Escape is only ever "close".
-  document.addEventListener('keydown', e => {
-    if (!aboutVisible || e.key !== 'Escape') return;
-    e.preventDefault();
-    e.stopPropagation();
-    toggleAbout();
-  }, true);
-
-  const btn = document.getElementById('btn-about');
-  if (btn) btn.onclick = () => toggleAbout();
 
   // ⚠ The version comes from package.json through main, never a literal here, which goes stale on
   // the next bump. With no electronAPI the line hides rather than showing a placeholder.
