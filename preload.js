@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
 
+  playerReveal: () => ipcRenderer.send('player-reveal'),
+
   // Native window fullscreen fires no DOM event, so main pushes the state instead. The
   // Player relays it to the DM, which is the only window with a button to reflect it on.
   onFullscreenState: (callback) => {

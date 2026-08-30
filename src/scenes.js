@@ -45,12 +45,15 @@ function loadFogFromScene(scene) {
 // bookkeeping: .dark marks a switch in progress and .blind the first-map fill.
 function revealPlayer() {
   const holdMs = Math.max(0, SCENE_FADE_MIN_MS - (Date.now() - _sceneFadeStart));
-  setTimeout(() => requestAnimationFrame(() => {
-    const fade = document.getElementById('scene-fade');
-    fade.classList.remove('dark');
-    fade.classList.remove('blind');
-    openFogFromCover();
-  }), holdMs);
+  setTimeout(() => {
+    if (typeof onPlayerMapShown === 'function') onPlayerMapShown();
+    requestAnimationFrame(() => {
+      const fade = document.getElementById('scene-fade');
+      fade.classList.remove('dark');
+      fade.classList.remove('blind');
+      openFogFromCover();
+    });
+  }, holdMs);
 }
 
 // Called from the switchScene catch block: shows the error, then reloads the previously-active

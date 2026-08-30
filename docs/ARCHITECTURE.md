@@ -48,7 +48,7 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `sceneStore.js` | Saving and loading scenes to the browser's local database (IndexedDB). Changing one field of a scene the app is not currently showing goes through `updateScene`, which reads and writes in one transaction so an autosave cannot land between the two and lose a fog reveal. |
 | `mapLoader.js` | Loading a map image into the app and driving the progress bar, including the batch label a multi-map import puts on it. Shared by scene-switching and backup restore. |
 | `mapConvert.js` | Asking whether to shrink an oversized animated map at import, and re-encoding it if the answer is yes. Pure box-fitting maths plus the recorder that drives it. |
-| `viewport.js` | Pan, zoom, pushing the camera to the Player window, and the auto-sync helper. |
+| `viewport.js` | Pan, zoom, pushing the camera and the map to the Player window, and the auto-sync helper. Also the Player window's own life: one is prepared in the background at startup and waits hidden, and pressing the button adopts it and asks the shell to show it. |
 | `minimap.js` | The DM's live preview of the Player camera, and the remote control that drives it. |
 | `video.js` | Animated (video) map support: file loading, DOM compositing, decoding, the frame loop, the freeze watchdog. |
 | `display.js` | Detecting the Player screen's real size so the fog and map render at the right resolution. |
@@ -189,6 +189,14 @@ The DM window is the boss. The Player window follows.
 - They talk via **`postMessage`**, the standard browser way for two windows to send each
   other messages. The DM sends things like "here's the new fog", "the camera moved here",
   "switch to this map".
+- **The Player window exists before it is opened.** One is built a couple of seconds after the
+  DM starts and waits out of sight, so pressing Open Player has no page load behind it. The DM
+  ignores that waiting window until the button is pressed, so nothing is sent to it and no map
+  is pulled into it.
+- **The window goes up straight away, showing the app's own landing card** over a full screen of
+  drifting fog, and swaps to the map when it has decoded. The fog is the real thing - the same
+  cloud texture and the same drift the map's fog uses - so the players see a title card rather
+  than the app starting up.
 - The map image or video is sent as a **URL** rather than copied pixel by pixel, so opening
   the Player window doesn't double the memory used.
 - **Auto vs Manual.** With Auto on, every change the DM makes appears on the TV instantly.

@@ -398,7 +398,10 @@ function makeRig(inst, dirs, tally) {
       if (inst.player) return inst.player;
 
       const openOne = async () => {
-        const already = (await cdp.listTargets(inst.port)).some(t => t.url.includes('mode=player'));
+        // ⚠ ASK THE DM, never the target list. A Player window is PRE-WARMED at startup and waits
+        // hidden, so a `mode=player` target exists before the button has ever been pressed —
+        // reading the list would skip the press and then wait forever for a window nobody revealed.
+        const already = await inst.dm.evaluate('!!(playerWindow && !playerWindow.closed)');
         if (!already) await inst.dm.evaluate('document.getElementById("btn-player").click(); 0');
         const target = await cdp.waitForTarget(inst.port, t => t.url.includes('mode=player'), 30000,
                                                'the Player window');

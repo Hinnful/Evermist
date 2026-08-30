@@ -88,7 +88,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `sceneStore.js` | IndexedDB read/write |
 | `mapLoader.js` | Image-map loading + progress-bar helpers |
 | `mapConvert.js` | Import-time animated-map shrink. `fitInsideBox` unit-tested |
-| `viewport.js` | Pan/zoom, Sync View, Player map delivery, `scheduleAutoSync`, `dmVisibleRegion` |
+| `viewport.js` | Pan/zoom, Sync View, the Player window's life and map delivery, autosync |
 | `minimap.js` | Minimap render + drag/zoom remote, view sync both ways, zoom get/set/nudge |
 | `video.js` | Animated-map handling |
 | `display.js` | Display detection |
@@ -245,5 +245,5 @@ the tag, then on GitHub create the release with tag `vX.Y.Z`.
 - **Unsigned by deliberate choice.** `CSC_IDENTITY_AUTO_DISCOVERY=false` must stay set in
   the workflow env and the local Windows `build` script, or the mac build fails.
 - Repo Actions settings need "Allow all actions" and `contents: write`.
-- The portable `evermist-data` copyable-folder trick is **Windows-only**
-  (`PORTABLE_EXECUTABLE_DIR`). Mac and Linux fall back to the OS-default per-user location.
+- **Never redirect `userData` beside the `.exe` again.** Every platform uses the OS per-user
+  location; the old portable folder orphaned a library on upgrade.

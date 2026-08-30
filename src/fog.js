@@ -571,6 +571,43 @@ function rebuildFogEffect() {
   }
 }
 
+// The Player's first map decodes for seconds with no fog canvas to draw over yet, so this paints
+// the same clouds against nothing: base colour, the drifting passes, tint. ⚠ NOT a second fog
+// implementation - it reads the cloudPattern and drift offsets fogAnimTick already maintains, so
+// it morphs and drifts exactly as real fog does. The scale is fixed because there is no camera.
+const LOADING_FOG_SCALE = 2;
+function drawLoadingFog(ctx, cw, ch) {
+  ctx.clearRect(0, 0, cw, ch);
+  ctx.fillStyle = fogBaseColor;
+  ctx.fillRect(0, 0, cw, ch);
+  if (cloudPattern) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    const s = LOADING_FOG_SCALE;
+    const bigR = Math.ceil(Math.max(cw, ch) / s) * 2;
+    for (let i = 0; i < CLOUD_PASSES.length; i++) {
+      const p = CLOUD_PASSES[i];
+      const off = fogAnimOffsets[i];
+      ctx.save();
+      ctx.globalAlpha = fogAnimEnabled ? fogAnimAlphas[i] : p.alpha;
+      ctx.translate(cw / 2, ch / 2);
+      ctx.rotate(p.angle);
+      ctx.scale(s * p.scale, s * p.scale);
+      ctx.translate(off.x, off.y);
+      ctx.fillStyle = cloudPattern;
+      ctx.fillRect(-bigR, -bigR, 2 * bigR, 2 * bigR);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.globalAlpha = FOG_TINT_ALPHA;
+  ctx.fillStyle = fogTintColor;
+  ctx.fillRect(0, 0, cw, ch);
+  ctx.restore();
+}
+
 function renderFog(vp) {
   // PixiJS handles DM fog. The Player uses this Canvas-2D fog-on-top path — see the HYBRID note
   // in renderer.js pixiInitFog.

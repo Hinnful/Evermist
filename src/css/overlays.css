@@ -297,4 +297,24 @@
      TV reads "Open the scene menu (top-left)" — a direction aimed at the DM, in front of the
      players, on the one screen that has no scene menu. The wordmark stays. */
   body.player-mode #landing p { display: none; }
+  /* ⚠ SCOPED TO .loading, NEVER TO #landing. Above #scene-fade (999) so the card shows through
+     the opaque cover while the first map decodes; unscoped it also outranks the scene library,
+     the About box and every dialog, and the DM's own card paints over them. */
+  #landing.loading { z-index: 1000; }
+  /* ⚠ NEGATIVE z-index, so it sits behind the wordmark INSIDE the card's own stacking context.
+     Positioned siblings otherwise paint over the in-flow text and the canvas hides it. */
+  #landing-fog {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    display: none;
+  }
+  #landing.loading #landing-fog { display: block; }
+  #landing-loading {
+    display: none;
+    font: 400 14px/1.5 system-ui, -apple-system, sans-serif;
+    color: #8d83ad;
+    letter-spacing: 0.02em;
+  }
+  #landing.loading #landing-loading { display: block; }
 

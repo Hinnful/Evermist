@@ -611,6 +611,47 @@ which control was touched last, with nothing visible saying so.
 
 ## UI and the control panel
 
+### `window.open` reuses a Player window by NAME, and both directions bite · `SETTLED` (2026-08-30)
+Every Player window is opened as `window.open(url, 'evermist-player')`, so a second call finds the
+first by name and NAVIGATES it rather than creating one. Two live consequences, both found by
+review after the pre-warm shipped. Warming a window while a Player is open re-navigates the live
+one, so the TV reloads mid-session - `prewarmPlayer` refuses when `playerWindow` is open. And
+warming one in the same tick as a close can land on the window still closing, leaving the warm
+handle on a corpse and the next press paying the page load again - the close hands the dying
+window over and the warming waits for it, bounded at two seconds.
+
+### The landing card is the Player's loading state, not a hidden window · `SETTLED` (2026-08-30, replaced a hold)
+Opening the Player used to put the app's own boot on the TV: the landing card carrying the app
+name, then a flat navy cover, then the map. **Holding the window hidden until the map painted was
+built first and rejected** - it removed the ugly part by removing the window, so the button had a
+silent two-and-a-half-second wait behind it and nothing said the app was working. What ships
+instead: the window goes up on the press, and the landing card stays on screen through the first
+map's decode carrying a "Loading map…" line.
+**`#landing.loading` sits at z-index 1000, ABOVE `#scene-fade` (999), and that is what makes it
+work.** The cover has to stay opaque or the players see the map with no fog on it while `loadFog`
+is still running; the card simply sits on top of it. ⚠ The rule is SCOPED to `.loading` and must
+stay that way: the DM shows the same element when no scene is open, and unscoped it outranks the
+scene library, the About box and every dialog.
+Two things from the rejected version are kept because they are worth having on their own.
+**Every Player window is created hidden** - `show: false` in `overrideBrowserWindowOptions` does
+NOT work for a `window.open` child, so `did-create-window` hides it again - and `main.js` shows it
+on the DM's `player-reveal`. That is what lets a window be pre-warmed at all.
+
+**The Player's need-map retry starts on the DM's first message, never at init.** It runs for about
+thirty seconds and used to start when the button was pressed, by which time a map had arrived and it
+never fired. A pre-warmed window starts that clock long before the button, so the retry was still
+running at adoption; the DM accepted the stale `need-map`, cleared `playerMapSent` and re-sent the
+whole map mid-session, which reset the fog the players were looking at. It showed up as a shrouded
+room reading fully clear on the TV, in one regression run out of five. Do not move the start back to
+`initPlayer`.
+
+A window is also **pre-warmed at DM startup and left hidden**, which takes the page load and the
+blocking cloud-texture generation off the button. `playerWindow` deliberately stays null until the
+button is pressed: adopting the warm window early would send every fog push, and pull every map,
+into a window nobody opened. The cost is a second renderer process idle for the session. The map
+is NOT pre-loaded into it, so what remains behind the button is the map's own decode - measured at
+roughly 2.4-2.7s on an animated map on this machine.
+
 ### Player view has essentially no interface · `SETTLED`
 An epic step called "Player view redesign" was wrong and was shrunk. `body.player-mode`
 hides the sidebar, toolbar, minimap, scene dropdown, UI-scale row and the cursor. Exactly
@@ -844,6 +885,12 @@ Two traps for anything else built on this path. `#map-progress` sits at z-index 
 with no way to answer; the progress bar therefore goes up from `onStart`, after the decision.
 And a map already inside the box must not be re-encoded at all - it costs a generation of
 quality and a realtime wait for no memory saved.
+
+### The shrink's bitrate buys quality per pixel, not just size · `SETTLED` (moved out of state.js 2026-08-30)
+`VIDEO_BITRATE` in `state.js` is a one-line tunable and 15 Mbps is not arbitrary. Inside the
+3840×2160 box that is ~0.073 bits per pixel against the source exports' ~0.051, so quality per
+pixel improves even after H.264's deficit against VP9. Lowering it is what would make the shrink
+read as a loss.
 
 ### Auto-drawn rooms scale onto the loaded map · `SETTLED` (2026-08-13)
 `vttPlan.js` multiplies grid squares by the plan's own `pixels_per_grid` and has no map-width
