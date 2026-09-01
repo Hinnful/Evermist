@@ -1334,6 +1334,19 @@ deleting a heading cost no maps. `sceneGroups.js` keeps only the display order, 
 state, and a heading made before anything was dragged into it. Those live in localStorage
 because losing them costs a fold and an empty heading rather than a map.
 
+### One floating surface, and the panels were brought to it · `SETTLED` (2026-09-01)
+
+`base.css` defines the app's floating panel as four variables. Five panels wrote their own values,
+so the room card and the settings panel sat side by side over the map with edges that disagreed.
+All five now read the variables.
+
+**The panels moved to the shared value; the shared value did not move.** The four full shells - the
+advanced fog panel, the module-text modal, the confirm dialog and the room card - went from a 1px
+hairline at 5.5% white, 10px corners and a `0 6px 22px/0.36` shadow to the shared 1.5px at 10%, 12px
+corners and `0 5px 16px/0.28`. They sit visibly FLATTER on the map now, and that is the chosen
+result, not a regression. `#sm-panel` is the exception and takes the border alone, for the reason
+the `dm-ui` skill records.
+
 ### A denser scene list was built and rejected: the thumbnail is the identifier · `SETTLED` (2026-08-29)
 Two of the three sketches shrank the picture to fit more scenes: a 30px row with a 38x22
 thumbnail, and the same row under collapsible headings. Both were rejected on product grounds.

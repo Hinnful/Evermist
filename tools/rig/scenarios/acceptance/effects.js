@@ -18,6 +18,9 @@
 //   H. Effects reach the TV, and they are drawn UNDER the fog there — an effect in a room
 //      nobody has entered stays secret for free.
 //   I. Effects survive a scene switch, because they are placed during play and persist.
+//   J. The grid inside an effect relights in ember on EVERY grid type, square and both hexes,
+//      so the cells a hazard covers stay countable whatever grid the map is on. Outside the
+//      outline the grid keeps the DM's own colour, which is what proves the clip still holds.
 //
 // ⚠ EFFECTS ARE NOT ROOMS AND NOT TOKENS. An effect is the same record as a room carrying a
 // `material` where a room has a fog `mode` (CLAUDE.md). They live in two arrays because array
@@ -306,6 +309,75 @@ module.exports = async function effectsFeature(rig) {
   rig.check(await dm.evaluate('effects.length') === beforeSwitch,
             'switching away and back lost effects: ' + await dm.evaluate('effects.length') +
             ' came back out of ' + beforeSwitch);
+
+  // ══ J. The ember relight happens on every grid type ══
+  // The grid is a plain 2D canvas above the effect layer (grid.js), so this reads gridCtx rather
+  // than the PixiJS stage. The ember is #ff9a3c; gridColor goes hard blue first so an ordinary
+  // grid line can never be mistaken for one — the check is a HUE test, not a brightness test.
+  // ⚠ ONE KNOWN EFFECT AND NOTHING ELSE, then everything put back. The effects standing here have
+  // been moved and deleted by F, so their geometry is not something to sample blind — and the
+  // screenshots below are of the scene as I left it, not as this criterion needs it.
+  await dm.evaluate('globalThis.__rigSavedFx = effects; globalThis.__rigSavedGrid = captureGridConfig();' +
+    ' effects = [{ id: 900, vertices: [{x:600,y:380},{x:1000,y:380},{x:1000,y:640},{x:600,y:640}],' +
+    ' material: "fire", cornerRadius: 0, name: "Ember probe" }];' +
+    ' gridEnabled = true; gridSize = 70; gridOffsetX = 0; gridOffsetY = 0;' +
+    ' gridColor = "#2060ff"; gridOpacity = 0.3; gridLineWidth = 2;' +
+    ' gridDirty = true; scheduleRender(); 0');
+
+  // Ember pixels in a map-space box on the DM's grid canvas. The base grid above goes faint and
+  // blue for this, and the test below is relative rather than absolute, for the reason the `rig`
+  // skill gives under Traps. Blue keeps r = 32 at every alpha, so a grid line can never pass it.
+  await dm.evaluate(`globalThis.__rigEmber = (mx1, my1, mx2, my2) => {
+    const x1 = Math.round(mx1 * zoom + panX), y1 = Math.round(my1 * zoom + panY);
+    const x2 = Math.round(mx2 * zoom + panX), y2 = Math.round(my2 * zoom + panY);
+    const w = Math.max(1, x2 - x1), h = Math.max(1, y2 - y1);
+    const d = gridCtx.getImageData(x1, y1, w, h).data;
+    let ember = 0, other = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 20) continue;
+      if (d[i] > 170 && d[i] - d[i + 2] > 60) ember++;
+      else other++;
+    }
+    return { ember, other };
+  }; 0`);
+
+  // ⚠ PEAK ACROSS FRAMES, like every other read in this file. The grid canvas only repaints on a
+  // dirty flag, so each sample forces one and then lets a frame land.
+  const emberPeak = async () => {
+    let best = { ember: -1, other: 0 };
+    for (let i = 0; i < 5; i++) {
+      await dm.evaluate('gridDirty = true; scheduleRender(); 0');
+      await rig.sleep(80);
+      const v = await dm.evaluate('__rigEmber(620, 400, 980, 620)');
+      if (v.ember > best.ember) best = v;
+    }
+    return best;
+  };
+
+  for (const mode of ['square', 'hex-flat', 'hex-pointy']) {
+    await dm.evaluate('gridMode = ' + JSON.stringify(mode) + '; gridDirty = true; scheduleRender(); 0');
+    await rig.sleep(200);
+    const inside = await emberPeak();
+    rig.note(mode + ' grid: ' + inside.ember + ' ember px inside the effect, ' +
+             inside.other + ' plain');
+    rig.check(inside.ember > 50,
+              'a ' + mode + ' grid does not relight in ember inside an effect (' + inside.ember +
+              ' ember px) — the cells the hazard covers cannot be counted on this grid type');
+  }
+
+  // Outside the outline the grid must stay the DM's own colour, or the clip has stopped working.
+  const outside = await dm.evaluate('__rigEmber(1200, 800, 1500, 1000)');
+  rig.check(outside.ember === 0 && outside.other > 0,
+            'the ember leaked outside the effect outline on a hex grid: ' + JSON.stringify(outside));
+
+  rig.byEye('whether the hex ember reads cleanly — every hexagon is a closed subpath, so two ' +
+            'neighbours stroke their shared edge twice inside one stroke() and those edges land ' +
+            'darker than the outer ones. The unlit hex grid already does this, so it should read ' +
+            'as consistent rather than as a fault');
+
+  await dm.evaluate('effects = __rigSavedFx; applyGridConfig(__rigSavedGrid);' +
+    ' gridDirty = true; scheduleRender(); 0');
+  await rig.sleep(200);
 
   // ══ The look, which is the DM's call and not the rig's ══
   await dm.evaluate('selectedPolygonId = null; selectedVertexIndex = -1; drawCursor(null, null); 0');

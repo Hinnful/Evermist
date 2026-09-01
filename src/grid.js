@@ -104,15 +104,33 @@ function renderGrid(vp) {
   drawEffectGridGlow(gridCtx, vp);
 }
 
-// Relight the grid in ember inside an effect zone, so the squares a hazard covers stay countable.
-// ⚠ It has to live HERE, on the grid's own canvas: the effect's fire is a PixiJS layer below, so
-// anything it drew would sit under these lines. Square grids only; a hex grid keeps its colour.
+// Relight the grid in ember inside an effect zone, so the cells a hazard covers stay countable.
+// ⚠ It has to live HERE, on the grid's own canvas: the fire is a PixiJS layer below it. Hex grids
+// relight too — drawGridLines applies the style override before it branches on gridMode.
 const EFFECT_GRID_EMBER = '#ff9a3c';
 function drawEffectGridGlow(ctx, vp) {
-  if (typeof effects === 'undefined' || !effects.length || gridMode !== 'square') return;
+  if (typeof effects === 'undefined' || !effects.length) return;
   const scale = vp.dstW / vp.srcW;
+  const vx2 = vp.srcX + vp.srcW, vy2 = vp.srcY + vp.srcH;
   for (const e of effects) {
     if (!e.vertices || e.vertices.length < 3) continue;
+    // ⚠ HAND drawGridLines THIS EFFECT'S BOX, never the whole viewport. It walks every cell in
+    // the region it is given, and a hex cell is a six-point subpath, so the viewport would rebuild
+    // the entire grid once per effect to stroke the few cells this clip keeps.
+    let mx1 = Infinity, my1 = Infinity, mx2 = -Infinity, my2 = -Infinity;
+    for (const v of e.vertices) {
+      if (v.x < mx1) mx1 = v.x;
+      if (v.x > mx2) mx2 = v.x;
+      if (v.y < my1) my1 = v.y;
+      if (v.y > my2) my2 = v.y;
+    }
+    mx1 = Math.max(mx1, vp.srcX); my1 = Math.max(my1, vp.srcY);
+    mx2 = Math.min(mx2, vx2);     my2 = Math.min(my2, vy2);
+    if (mx2 <= mx1 || my2 <= my1) continue;
+    const sub = { ...vp,
+      srcX: mx1, srcY: my1, srcW: mx2 - mx1, srcH: my2 - my1,
+      dstX: vp.dstX + (mx1 - vp.srcX) * scale, dstY: vp.dstY + (my1 - vp.srcY) * scale,
+      dstW: (mx2 - mx1) * scale, dstH: (my2 - my1) * scale };
     ctx.save();
     // Clipped to the ROUNDED outline, the same shape the fire is drawn from. Raw vertices leave
     // square ember corners, so the grid and the fire disagree about the shape.
@@ -128,7 +146,7 @@ function drawEffectGridGlow(ctx, vp) {
     buildRoundedPolyPath(ctx, sv, cr, pvR);
     ctx.clip();
     const emberAlpha = (typeof FX_LOOK !== 'undefined') ? FX_LOOK.gridGlow : 0.6;
-    drawGridLines(ctx, vp, { color: EFFECT_GRID_EMBER, alpha: emberAlpha, widthMul: 1.8 });
+    drawGridLines(ctx, sub, { color: EFFECT_GRID_EMBER, alpha: emberAlpha, widthMul: 1.8 });
     ctx.restore();
   }
 }

@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/toolbar.js, src/css/toolbar.css, src/css/sceneManager.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, control-panel buttons, pills, segmented controls, destructive-button styling, or the scene library popup and its header. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/toolbar.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, control-panel buttons, pills, segmented controls, destructive-button styling, or the scene library popup and its header. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -94,7 +94,10 @@ Three signals, and they must not blur into each other:
 
 - **One floating surface, and it is four CSS variables in `base.css`** (`--panel-bg`,
   `--panel-border`, `--panel-radius`, `--panel-shadow`). The Scenes button, the bottom toolbar,
-  the tab bar and the settings panel all read them. A control that writes its own hex drifts.
+  the tab bar, the settings panel, the advanced fog panel (`#anim-advanced-panel`), the module
+  text modal (`#mt-modal`), the confirm dialog (`#cd-modal`) and the room card (`#panel-room`)
+  all read them. `#sm-panel` reads the border only — it is a full-screen modal over a veil, so
+  its heavier shadow and its own radius stay. A control that writes its own hex drifts.
 - **The Fog/Grid/Player tabs live OUTSIDE the panel**, in `#cp-tabbar`. Picking the lit tab shuts
   the panel. `.cp-tabs` is now the in-pane Auto/Manual pair alone.
 - A black inset pill (`.cp-tabs` / `.cp-seg`) means *pick one of these*. The selected option

@@ -261,8 +261,8 @@
   #anim-advanced-panel {
     position: fixed; left: 0; top: 0; z-index: 100; width: 270px;
     zoom: var(--ui-zoom, 1.2);
-    background: #1a1a1c; border: 1px solid rgba(255,255,255,0.055); border-radius: 10px;
-    box-shadow: 0 6px 22px rgba(0,0,0,0.36); overflow: hidden; display: none;
+    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow); overflow: hidden; display: none;
     animation: cpAdvIn .15s ease;
   }
   @keyframes cpAdvIn { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
