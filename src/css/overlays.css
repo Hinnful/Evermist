@@ -1,9 +1,9 @@
 /* overlays.css — full-screen overlays: module text modal, confirm dialog, floor plan notice,
    scene fade, map progress, landing. Loads last. */
   /* ===== MODULE TEXT IMPORT MODAL ===== */
-  /* The app's floating-panel look, not the backup modal's .glass-panel one: flat #1a1a1c, the
-     same hairline border and 10px radius as the room card and #anim-advanced-panel, and stock
-     .cp-* controls inside. It keeps only two things from the old modal shell, because both are
+  /* The app's floating-panel shell, not the backup modal's .glass-panel one — the --panel-*
+     variables, described once on #panel-room in roomCard.css — with stock .cp-* controls
+     inside. It keeps only two things from the old modal shell, because both are
      structural rather than decorative — the backdrop + centring anchor (this wants the screen's
      attention for the few seconds it exists), and the `zoom` + max-height dance that keeps a
      panel inside the viewport at any --ui-zoom.
@@ -29,8 +29,8 @@
     width: min(320px, 92vw);
     max-height: calc(86vh / var(--ui-zoom, 1.2));
     display: flex; flex-direction: column;
-    background: #1a1a1c; border: 1px solid rgba(255,255,255,0.055); border-radius: 10px;
-    box-shadow: 0 6px 22px rgba(0,0,0,0.36);
+    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow);
     overflow: hidden; outline: none;
     animation: cpAdvIn .15s ease;
   }
@@ -94,8 +94,8 @@
   /* ===== CONFIRM DIALOG (confirmDialog.js) ===== */
   /* The app's replacement for the native confirm(), which cannot be used anywhere in this app —
      it leaves the room card's fields focused-but-uncaretable afterwards. See confirmDialog.js.
-     Same shell as #mt-modal above, deliberately: flat #1a1a1c, hairline border, cp-adv-head +
-     cp-adv-body, and the `zoom` + max-height pair that holds a panel inside the viewport at any
+     Same shell as #mt-modal above, deliberately, plus cp-adv-head + cp-adv-body and the
+     `zoom` + max-height pair that holds a panel inside the viewport at any
      --ui-zoom. It sits ABOVE that panel's 502/503, because the import panel's own Remove asks a
      question through this. */
   #cd-anchor {
@@ -111,8 +111,8 @@
     width: min(320px, 90vw);
     max-height: calc(86vh / var(--ui-zoom, 1.2));
     display: flex; flex-direction: column;
-    background: #1a1a1c; border: 1px solid rgba(255,255,255,0.055); border-radius: 10px;
-    box-shadow: 0 6px 22px rgba(0,0,0,0.36);
+    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow);
     overflow: hidden; outline: none;
     animation: cpAdvIn .15s ease;
   }

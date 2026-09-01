@@ -24,6 +24,10 @@
 //      from it was built and reverted: it crops the TV to the DM's readable area, so content
 //      stops reaching the players. This check exists to catch that creeping back in.
 //   G. The open pane survives a reload, and so does a panel left shut.
+//   H. Every panel that floats over the map wears the SAME edge, because all of them read the
+//      four --panel-* variables in base.css. Two panels side by side with edges that disagree
+//      is the fault this catches. It also checks the variables still resolve to a real edge,
+//      which is the one way all four panels can drift together without disagreeing.
 //
 // ⚠ G RE-RUNS THE BOOT PATH, IT DOES NOT NAVIGATE. A real reload would tear down the loaded scene
 // and the CDP session for no extra coverage: what has to hold is that _cpRestoreTab() reads
@@ -144,4 +148,87 @@ module.exports = async function controlPanelFeature(rig) {
   await reboot();
   rig.check(!(await shown('sidebar-right')) && await lit() === '',
             'a reload reopened the panel the DM had shut');
+
+  // ── H ──
+  // ⚠ THE PROBE SITS INSIDE THE PANEL IT MEASURES. Chromium folds an ancestor `zoom` into every
+  // computed length, and every one of these panels carries `zoom: var(--ui-zoom)`, so a probe on
+  // <body> would resolve the variables unscaled and never match anything.
+  const edgeOf = id => dm.evaluate(`(() => {
+    const p = document.getElementById(${JSON.stringify(id)});
+    if (!p) return { err: 'is not in the DOM' };
+    const b = p.getBoundingClientRect();
+    if (b.width === 0 || b.height === 0) return { err: 'measured zero, so it was still hidden' };
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:absolute;left:-9999px;top:0;width:4px;height:4px;' +
+      'background:var(--panel-bg);border:var(--panel-border);' +
+      'border-radius:var(--panel-radius);box-shadow:var(--panel-shadow)';
+    p.appendChild(probe);
+    const read = el => { const c = getComputedStyle(el); return [c.backgroundColor,
+      c.borderTopWidth, c.borderTopColor, c.borderTopLeftRadius, c.boxShadow].join(' | '); };
+    const pc = getComputedStyle(probe);
+    const got = read(p), want = read(probe);
+    const wantW = parseFloat(pc.borderTopWidth), wantR = parseFloat(pc.borderTopLeftRadius);
+    probe.remove();
+    return { got, want, wantW, wantR };
+  })()`);
+
+  // Every panel gets REVEALED first, then measured, then put back.
+  const edges = {};
+  // ⚠ CHECK BEFORE THE TEARDOWN, and let the teardown fail loudly but harmlessly. A panel that
+  // never revealed leaves its close button absent, and closing it first turned the one FAIL line
+  // naming that panel into a thrown scenario that also skipped every panel after it.
+  let resolvedW = 0, resolvedR = 0;
+  const measure = async (id, open, shut) => {
+    await open();
+    await rig.sleep(200);
+    const e = await edgeOf(id);
+    rig.check(!e.err, '#' + id + ' ' + e.err + ', so its edge was never checked');
+    if (!e.err) {
+      rig.check(e.got === e.want,
+                '#' + id + ' writes its own shell instead of reading the --panel-* variables' +
+                ' — it has [' + e.got + '] where base.css says [' + e.want + ']');
+      edges[id] = e.got;
+      resolvedW = e.wantW; resolvedR = e.wantR;
+    }
+    try { await shut(); } catch (err) {
+      rig.note('#' + id + ' would not close again: ' + err.message);
+    }
+    await rig.sleep(120);
+  };
+
+  await pick('fog');
+  const advBtn = 'document.querySelector(\'#cp-anim-row [data-anim="advanced"]\').click(); 0';
+  await measure('anim-advanced-panel',
+    () => dm.evaluate(advBtn),
+    () => dm.evaluate(advBtn));
+  await pick('fog');
+
+  await measure('mt-modal',
+    () => dm.evaluate('openModuleTextModal(); 0'),
+    () => dm.evaluate('closeModuleTextModal(); 0'));
+
+  await measure('cd-modal',
+    () => dm.evaluate('confirmDialog({ title: "Edge probe", message: "Measuring the shell." }); 0'),
+    () => dm.evaluate('document.getElementById("cd-cancel").click(); 0'));
+
+  await measure('panel-room',
+    () => dm.evaluate('polygons = [{ id: 1, vertices: [{x:100,y:100},{x:300,y:100},' +
+      '{x:300,y:260},{x:100,y:260}], mode: "shroud", cornerRadius: 0, name: "Edge probe" }];' +
+      ' nextPolygonId = 2; selectedPolygonId = 1; refreshRoomPanel(); 0'),
+    () => dm.evaluate('polygons = []; nextPolygonId = 1; selectedPolygonId = null;' +
+      ' refreshRoomPanel(); 0'));
+
+  // ⚠ THE PROBE READS THE SAME VARIABLES THE PANELS DO, so a renamed or deleted --panel-* makes
+  // both sides fall back to the initial value and every compare above passes with the panels bare.
+  // This is the only check that notices the variables themselves going missing.
+  rig.check(resolvedW > 0 && resolvedR > 0,
+            'base.css no longer resolves --panel-border and --panel-radius to a real edge ' +
+            '(width ' + resolvedW + 'px, radius ' + resolvedR + 'px) — whichever reads 0 is gone ' +
+            'from every floating panel, and the compares above cannot see it');
+
+  const distinct = [...new Set(Object.values(edges))];
+  rig.check(distinct.length <= 1,
+            'the floating panels do not agree on one edge, so two of them side by side over the ' +
+            'map look like different apps: ' +
+            Object.keys(edges).map(k => '#' + k + ' [' + edges[k] + ']').join(', '));
 };

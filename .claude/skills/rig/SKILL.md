@@ -166,6 +166,13 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
   the real window drop handler the same way.
 - **An ancestor `zoom` is folded into `getBoundingClientRect`** in this Chromium, so its numbers
   match a screenshot's coordinates directly. Do not multiply by the zoom yourself.
+- **A probe that reads the same CSS variable as the element it measures cannot see that variable
+  disappear.** Both sides fall back to the initial value, so the compare passes with the element
+  bare. Assert the resolved number as well - a border computing to `0px` is not an edge.
+- **A pixel sampled off the grid canvas inside an effect is never the ember's own colour.** The
+  ember strokes OVER the base grid line already painted there, so every reading is a blend with
+  `gridColor`. Set the base grid faint first and test the hue RELATIVELY, red far above blue; an
+  absolute `r > 200` read the blend at 181 and found nothing on a working build.
 - **Electron's own security warning arrives as a console error** and is not the app's. `cdp.js`
   filters it. Do not widen that filter.
 

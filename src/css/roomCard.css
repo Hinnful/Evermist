@@ -2,17 +2,18 @@
   /* ===== ROOM CARD (floats near the selected room) ===== */
   /* The map stays the interaction surface; this card is where a room's CONTENT lives —
      the name and the description the DM writes during prep and scans at the table.
-     The shell is #anim-advanced-panel's, deliberately: that is the app's floating-panel
-     pattern (flat #1a1a1c, hairline border, 10px radius, cp-adv head/body, cpAdvIn). The
-     purple .glass-panel/16px look belonged to the pre-redesign UI and no longer exists.
+     The shell is the app's ONE floating surface, and it is the four --panel-* variables in
+     base.css: every panel that floats over the map reads them, so none can drift. What this
+     file adds on top is only cp-adv head/body and cpAdvIn. The purple .glass-panel/16px look
+     belonged to the pre-redesign UI and no longer exists.
      Everything inside is a stock cp-* control at its stock height — nothing bespoke. */
   #panel-room {
     position: fixed; left: 0; top: 0; z-index: 150;
     display: none;                /* refreshRoomPanel() switches this to block */
     zoom: var(--ui-zoom, 1.2);
     width: 270px;
-    background: #1a1a1c; border: 1px solid rgba(255,255,255,0.055); border-radius: 10px;
-    box-shadow: 0 6px 22px rgba(0,0,0,0.36); overflow: hidden;
+    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow); overflow: hidden;
     pointer-events: auto;
     animation: cpAdvIn .15s ease;
   }
