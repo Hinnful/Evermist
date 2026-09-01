@@ -129,22 +129,20 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
 - **Wait out the scene cover before reading painted fog.** A fresh map arrives under a full-fog
   cover that punches nothing, so every sample reads opaque however much was revealed. Poll
   `fogCoverT` down to 0 first.
-- **The Player opens inside the DM's rectangle and is marked hidden**, so it runs no
-  `requestAnimationFrame` at all and anything the app defers to a frame never happens. It reads
-  as a hang somewhere unrelated, not as a failure. Nothing clears it except fullscreen: not
-  `backgroundThrottling: false`, not `Page.bringToFront`, not `focus()`, not moving the DM aside.
-  `rig.player()` puts the Player fullscreen through the app's own IPC, which is its real state at
-  the table anyway. A fullscreen Player then covers the DM, so a scenario needing both windows
-  painting at once has to interleave them. The DM keeps running its handlers and timers while
-  covered, so anything that needs no frame - a control's handler, `sendToPlayer` - still works.
-- **The "Player comes up invisible" fault is SOLVED, and its cause was another window in front.**
-  Windows reports a covered window as occluded, Chromium stops painting it, and the page then
-  reports `document.hidden` - which the rig could only read as the window never appearing. Working
-  on the machine during a run caused it, which is why it looked intermittent and why it stayed at
-  100% for whole sittings. `run.js` now launches with `KEEP_PAINTING`, three Chromium switches that
-  turn occlusion handling off, and a run survives being pushed to the back of the z-order for its
-  whole length. Proven both ways: remove the switches and the exact old error comes back.
-  `rig.player()` keeps its close-and-reopen recovery as a backstop; it should no longer fire.
+- **The Player stays WINDOWED, inside the DM's rectangle, and the rig never fullscreens it.**
+  `rig.player()` clicks the DM's own button and waits for the window to report itself visible;
+  it asks for no fullscreen anywhere (`showPlayer` in `run.js`). Both windows paint at the same
+  time, so a scenario reads either one whenever it likes. Every Player measurement is therefore
+  at the DM window's size, not a display's - assert against the window, never a screen figure.
+- **Do not reintroduce fullscreen to fix a Player that reads as hidden.** The "Player comes up
+  invisible" fault is solved, and its cause was another window in front. Windows reports a covered
+  window as occluded, Chromium stops painting it, and the page then reports `document.hidden` -
+  which the rig could only read as the window never appearing. Working on the machine during a run
+  caused it, which is why it looked intermittent. `run.js` launches with `KEEP_PAINTING`, three
+  Chromium switches that turn occlusion handling off, so a covered, backgrounded or off-screen
+  Player keeps painting. Proven both ways: remove the switches and the exact old error comes back.
+  Not asking for fullscreen is also what lets the whole run sit off-screen. `rig.player()` keeps
+  its close-and-reopen recovery as a backstop; it should no longer fire.
 - **Electron does not expose the CDP `Browser` domain.** `Browser.getWindowForTarget` answers
   "wasn't found", so there is no moving or resizing an OS window from the protocol.
 - **An element inside `display:none` has zero-sized rects**, so a spacing or centring assertion

@@ -91,3 +91,13 @@ The recovery is to stop trying: press the DM's Player button to close it, wait f
 go, and open a fresh one, which cannot inherit the state. That path is exercised by forcing it, not
 merely written. Chasing the root cause is worth a session with a window-state tool, not more
 guesses from inside the page.
+
+### The Player's fullscreen path is recorded, never driven · `WON'T FIX` (2026-09-01)
+Every session at the table runs the Player fullscreen, and no scenario had pressed the button.
+Automating it is refused rather than deferred. `setFullScreen(true)` moves the window onto the
+nearest real monitor; `offscreen.ps1` re-parks only a window still sitting at its parked corner,
+so a fullscreened Player stops matching, gets dragged back on the next tick, and may paint on the
+way. Whether Windows shows it in that gap is not answerable from this repo, and the rule against
+putting a window on the DM's screen is absolute. An app-side hook to make it drivable is barred by
+the rig's own rules. So it is criterion F in `tools/rig/scenarios/acceptance/player-window.js`,
+reported as unchecked on every run.
