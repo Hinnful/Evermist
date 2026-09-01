@@ -1,6 +1,6 @@
 ---
 name: floor-plan
-description: Load BEFORE editing src/vttPlan.js or src/floorPlan.js. Also load when the task mentions the Universal VTT / .dd2vtt floor plan, auto-generated rooms, the Draw Rooms button, open-wall reporting, or the find-floor-plan IPC. Carries rules whose violation silently produces wrong rooms rather than an error.
+description: Load BEFORE editing src/vttPlan.js, src/floorPlan.js, or planDoorPlacements in src/fogGeometry.js. Also load when the task mentions the Universal VTT / .dd2vtt floor plan, auto-generated rooms, derived or auto-placed doors, the Draw Rooms button, open-wall reporting, or the find-floor-plan IPC. Carries rules whose violation silently produces wrong rooms rather than an error.
 ---
 
 # Reading a Dungeon Alchemist floor plan
@@ -42,6 +42,10 @@ the app produces rooms, they are just wrong.
 - `JSON.parse` is the **caller's** job and is wrapped in try/catch there: a truncated
   `.dd2vtt` must behave exactly like no plan at all, because an unhandled rejection in the
   import path strands the map-progress overlay forever.
+- **A portal becomes a door ONLY where two derived rooms share the wall**, at `cell * 0.25` - the
+  same tolerance `doorMouseDown` uses. Anything touching a single room is refused, and the ceiling
+  on widening it is at the function. `planDoorPlacements` lives in `fogGeometry.js`, never here:
+  `vttPlan.js` reports the midpoints and stays dependency-free.
 
 ## What the feature refuses to do
 
@@ -75,8 +79,8 @@ the app produces rooms, they are just wrong.
   `VTT_CLOSE_GAP_MAX`.** Both ends picking each other is far better evidence than a stub
   projecting onto a wall's mid-span. Tightening the base ceiling must tighten the pair
   ceiling with it, or `closeGapMax: 0` stops meaning "no closing".
-- **No door or window rendering.** Portals carry no type field, so doors and windows are
-  indistinguishable, and secret doors would hand the players a map of every hidden passage.
+- **A derived door carries no size**, only `{edge, t}`. Never add a per-door width field; what it
+  would reach is in DECISIONS.
 - **No room naming from module text.** Nothing in the file to match on. Rooms arrive as
   `Room 1`..`Room N` and the name-field dropdown fills them.
 
@@ -110,7 +114,8 @@ the app produces rooms, they are just wrong.
 - **`#fp-notice`, no backdrop.** A found floor plan is good news, not a question that must be
   answered before the map can be touched. A modal here blocks panning and zooming the very
   map it is talking about. One CTA, one close.
-- **It says the room count and the map name, and nothing else.** No coordinates - they are
+- **It says the room count, the door count and the map name, and nothing else.** The door clause
+  is omitted entirely at zero, rather than promising none. No coordinates - they are
   unreadable as text - and no open-wall report: a gap is an edge case, and putting it in the
   first thing the DM sees costs more attention than it earns. The kernel still finds every
   gap and `openWalls` still carries it, so a cheaper home for it later stays open.

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   vttCollectEdges,
+  vttPortalMidpoints,
   vttBuildNodes,
   vttSplitAtJunctions,
   vttWalkFaces,
@@ -762,5 +763,42 @@ describe('vttPlan — the tolerances', () => {
     // A bucket tall enough to swallow the whole map degrades to one row, left to right.
     const oneRow = vttDerivePlan(p, { rowBucket: 100 }).rooms;
     for (let i = 1; i < oneRow.length; i++) assert.ok(bbox(oneRow[i]).x0 >= bbox(oneRow[i - 1]).x0);
+  });
+});
+
+describe('vttPlan — portal midpoints', () => {
+  const inside = (pts, d) => pts.every(p =>
+    isFinite(p.x) && isFinite(p.y) && p.x >= 0 && p.x <= d.srcW && p.y >= 0 && p.y <= d.srcH);
+
+  it('reports one point per portal, in the plan\'s pixel space', () => {
+    const d = vttDerivePlan(plan());
+    assert.equal(d.portals.length, 19);
+    assert.ok(inside(d.portals, d));
+    const c = vttDerivePlan(cave());
+    assert.equal(c.portals.length, 25);
+    assert.ok(inside(c.portals, c));
+  });
+
+  it('skips a portal without two usable bounds points', () => {
+    assert.equal(vttPortalMidpoints({ portals: [
+      { bounds: [{ x: 1, y: 1 }, { x: 3, y: 1 }] },
+      { bounds: [{ x: 1, y: 1 }] },
+      { bounds: [{ x: 1, y: NaN }, { x: 3, y: 1 }] },
+      { bounds: null },
+      null,
+    ] }).length, 1);
+  });
+
+  it('coerces a string coordinate rather than concatenating it', () => {
+    assert.deepEqual(vttPortalMidpoints({ portals: [
+      { bounds: [{ x: '3', y: '1' }, { x: '4', y: '1' }] },
+    ] }), [{ x: 3.5, y: 1 }]);
+  });
+
+  it('takes the first and last bounds point, so a curved portal reads its middle', () => {
+    const [m] = vttPortalMidpoints({ portals: [{ bounds: [
+      { x: 0, y: 0 }, { x: 1, y: 5 }, { x: 4, y: 2 },
+    ] }] });
+    assert.deepEqual(m, { x: 2, y: 1 });
   });
 });

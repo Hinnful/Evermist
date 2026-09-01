@@ -4,8 +4,6 @@
 // data. Argument-in / value-out, no DOM and no globals. See the `floor-plan` skill for the rules,
 // docs/DECISIONS.md for why the shape is this shape.
 //
-// Loaded via <script src> before floorPlan.js, and require()-able in tests.
-//
 // ⚠ EVERYTHING HERE WORKS IN GRID SQUARES, the file's own unit (1 square = 5 ft). Every
 // tolerance is therefore resolution-independent; applied in pixels they would need
 // re-tuning per map. Pixels appear once, in the final conversion.
@@ -66,6 +64,24 @@ function vttCollectEdges(plan) {
   for (const wall of los) addPolyline(wall);
   const portals = (plan && plan.portals) || [];
   for (const p of portals) if (p) addPolyline(p.bounds);
+  return out;
+}
+
+// The centre of each portal's span, in grid squares. First and last bounds point, so a curved
+// portal reports the middle of the opening rather than a bend in it.
+function vttPortalMidpoints(plan) {
+  const out = [];
+  for (const p of ((plan && plan.portals) || [])) {
+    // ⚠ COERCED, not just checked: isFinite('3') is true, and this is the file's one place that
+    // ADDS two coordinates, where a string pair concatenates into a point far off the map.
+    const pts = p && Array.isArray(p.bounds)
+      ? p.bounds.filter(q => q && isFinite(q.x) && isFinite(q.y))
+                .map(q => ({ x: Number(q.x), y: Number(q.y) }))
+      : [];
+    if (pts.length < 2) continue;
+    const a = pts[0], b = pts[pts.length - 1];
+    out.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  }
   return out;
 }
 
@@ -473,8 +489,8 @@ function vttRingOnDoorlessWall(ring, walls, tol) {
 // many rooms?" and get zero. Malformed JSON is the CALLER's problem.
 function vttDerivePlan(plan, opts) {
   const o = opts || {};
-  const empty = { rooms: [], boundaries: [], closedGaps: [], openWalls: [], refusedSolid: 0,
-                  srcW: 0, srcH: 0, squaresX: 0, squaresY: 0, gridPx: 0 };
+  const empty = { rooms: [], boundaries: [], portals: [], closedGaps: [], openWalls: [],
+                  refusedSolid: 0, srcW: 0, srcH: 0, squaresX: 0, squaresY: 0, gridPx: 0 };
   if (!plan || typeof plan !== 'object') return empty;
 
   const res = plan.resolution || {};
@@ -547,6 +563,9 @@ function vttDerivePlan(plan, opts) {
   return {
     rooms: orderedRooms.map(r => r.map(toPx)),
     boundaries: boundaries.map(r => r.map(toPx)),
+    // One point per opening. NOT doors: the file has no type field, so which are doorways is the
+    // caller's call, from the rooms around them.
+    portals: vttPortalMidpoints(plan).map(toPx),
     closedGaps: bridged.closed.map(toReport),
     openWalls: vttFindOpenWalls(nodes, pairs, o.openWallMaxGap, doorless).map(toReport),
     refusedSolid,
@@ -591,7 +610,7 @@ function vttScaleRooms(rooms, mapWidth, srcW) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    vttCollectEdges, vttBuildNodes, vttSplitAtJunctions, vttWalkFaces,
+    vttCollectEdges, vttPortalMidpoints, vttBuildNodes, vttSplitAtJunctions, vttWalkFaces,
     vttCleanRing, vttSignedArea, vttProjectToSegment,
     vttLooseEnds, vttCloseGaps, vttFindOpenWalls,
     vttDoorlessWalls, vttRingOnDoorlessWall, vttDerivePlan, vttScaleRooms,

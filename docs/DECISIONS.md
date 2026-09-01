@@ -1167,6 +1167,22 @@ ends pick each other: far better evidence than a stub projecting onto some wall'
 which keeps the tight one. Tightening the base ceiling tightens both, so "closing off" still
 means off. Result on the cave map: 13 rooms, all real, none false.
 
+### A portal becomes a door only where two rooms share the wall · `SETTLED` (2026-09-01)
+Portals carry no type field, so the only evidence a plan gives about an opening is what stands on
+either side of it. One rule uses that: a portal whose midpoint sits within a quarter cell of two
+derived rooms' outlines is a doorway; one room means a window or an outside entrance and nothing
+is placed. Measured on both fixtures before it was built - 2 of 19 portals qualify on the interior
+map, 16 of 25 on the cave - and the counts are identical at tolerances of 0.1, 0.25 and 0.5 of a
+cell. At a full cell they smear, one portal claiming three rooms. A quarter cell is also what
+`doorMouseDown` already uses to decide two clicks are the same door.
+
+**A derived door is the identical record a click makes**, `{edge, t}` and nothing else. Width and
+depth stay global, so a double doorway in the file comes out one square wide - accepted, because a
+per-door size field would reach the fog rebuild, the click hit-test, the grid-change rebuild, scene
+save, backup and undo, and split doors into two kinds that look different from each other. The
+match runs in `fogGeometry.js`; `vttPlan.js` only gained the portal midpoints, and stays
+dependency-free.
+
 ### Grid Size comes from the plan at import, size only · `SETTLED` (2026-08-14)
 A Dungeon Alchemist export used to mean typing its DPI into Grid Size, and a compressed map broke
 that trick: the right size became 150 × 3840/srcW, which nothing on screen could tell you.
