@@ -26,9 +26,8 @@ async function findPlanForFile(file) {
   }
 }
 
-// Reads a plan's text and derives it. ⚠ A truncated or malformed file must behave EXACTLY like no
-// plan at all, and above all throw nothing into the import path, where an unhandled rejection
-// strands the map-progress overlay.
+// Reads a plan's text and derives it. ⚠ A truncated file must behave EXACTLY like no plan, and
+// throw nothing into the import path, where an unhandled rejection strands the progress overlay.
 function describePlan(planText) {
   if (typeof planText !== 'string' || !planText.trim()) return null;
   let parsed;
@@ -50,6 +49,17 @@ function hasFloorPlan() {
 }
 
 // ─── Drawing the rooms ────────────────────────────────────────────────────────
+
+// The doors this plan implies, against the rooms applyPlanToScene is about to draw. ONE source, so
+// the count the DM is promised is the count that lands. No grid means no cells to snap to, and the
+// rooms still draw.
+function planDoorsFor(derived) {
+  if (!derived || !derived.rooms.length || !(gridSize > 0)) return [];
+  const rooms = vttScaleRooms(derived.rooms, mapWidth, derived.srcW);
+  const portals = vttScaleRooms([derived.portals || []], mapWidth, derived.srcW)[0];
+  return planDoorPlacements(rooms, portals, gridSize, gridOffsetX, gridOffsetY,
+                            gridMode === 'square');
+}
 
 function applyPlanToScene(derived) {
   if (!derived || !derived.rooms.length) return;
@@ -75,6 +85,11 @@ function applyPlanToScene(derived) {
     name: 'Room ' + (i + 1),
   }));
   nextPolygonId = polygons.length + 1;
+
+  for (const p of planDoorsFor(derived)) {
+    const poly = polygons[p.roomIndex];
+    if (poly) poly.doors = (poly.doors || []).concat([p.door]);
+  }
 
   rebuildFogFromPolygons();
   rebuildFogEffect();
@@ -107,11 +122,9 @@ function planGridSize(planText, mapW) {
   return Math.max(FP_GRID_MIN, Math.min(FP_GRID_MAX, Math.round(raw)));
 }
 
-// ⚠ IMPORT PATH ONLY. Draw Rooms runs applyPlanToScene on the same plan later, and a hand-tuned
-// grid must survive that — so this is called from the import and never from applyPlanToScene.
-//
-// SIZE ONLY, NOT OFFSET: a correctly-sized grid can still land out of phase on a plan with a
-// non-zero origin, and offset stays a manual nudge.
+// ⚠ IMPORT PATH ONLY, and SIZE ONLY. Draw Rooms runs applyPlanToScene on the same plan later and a
+// hand-tuned grid must survive that; offset stays a manual nudge, since a correctly-sized grid can
+// still land out of phase on a plan with a non-zero origin.
 function applyPlanGridSize() {
   if (!currentScene) return null;
   const size = planGridSize(currentScene.floorPlan, mapWidth);
@@ -128,7 +141,14 @@ function applyPlanGridSize() {
 
 // ─── The offer ────────────────────────────────────────────────────────────────
 
-function _fpRoomWord(n) { return n === 1 ? '1 room' : n + ' rooms'; }
+function _fpCount(n, word) { return n === 1 ? '1 ' + word : n + ' ' + word + 's'; }
+
+// The " with 4 doors" tail, or nothing at all. A plan whose openings are all windows and outside
+// doors says nothing about doors, rather than promising zero of them.
+function _fpDoorTail(derived) {
+  const n = planDoorsFor(derived).length;
+  return n ? ' with ' + _fpCount(n, 'door') : '';
+}
 
 // Draws, asking first ONLY where rooms already exist, because that is a delete the DM did not come
 // here for. A confirmation for what was explicitly asked is noise.
@@ -138,9 +158,9 @@ function applyPlanWithGuard(derived) {
   if (!existing) { applyPlanToScene(derived); return; }
   confirmDialog({
     title: 'Replace existing rooms?',
-    message: 'This scene has ' + _fpRoomWord(existing) + ' drawn. Importing the floor plan ' +
+    message: 'This scene has ' + _fpCount(existing, 'room') + ' drawn. Importing the floor plan ' +
       'removes them and draws ' + derived.rooms.length +
-      (derived.rooms.length === 1 ? ' new one.' : ' new ones.'),
+      (derived.rooms.length === 1 ? ' new one' : ' new ones') + _fpDoorTail(derived) + '.',
     confirmLabel: 'Replace them',
     cancelLabel: 'Keep them',
     danger: true,
@@ -149,10 +169,7 @@ function applyPlanWithGuard(derived) {
 }
 
 // ⚠ NOT A DIALOG. An import is good news, not a question, and a modal here blocks panning the map
-// it is talking about. One CTA, one close, no backdrop.
-//
-// It does NOT report open walls: the kernel finds them and `openWalls` carries the coordinates, but
-// a gap is an edge case and costs more attention here than it earns.
+// it is talking about. One CTA, one close, no backdrop, and no open-wall report.
 let _fpNoticeRoot = null;
 
 function _fpBuildNotice() {
@@ -192,7 +209,7 @@ function showFloorPlanNotice(sceneName, derived) {
   if (!derived || !derived.rooms.length) return;
   _fpBuildNotice();
   document.getElementById('fp-notice-msg').textContent =
-    'Evermist found ' + _fpRoomWord(derived.rooms.length) +
+    'Evermist found ' + _fpCount(derived.rooms.length, 'room') + _fpDoorTail(derived) +
     (sceneName ? ' in ' + sceneName : '');
   document.getElementById('fp-notice-cta').onclick = () => {
     hideFloorPlanNotice();

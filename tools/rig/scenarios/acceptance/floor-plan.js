@@ -14,8 +14,8 @@
 //   B. The derived size is stored on the scene, and can never fall outside the control's range.
 //   C. A plan that cannot be read behaves exactly like no plan at all.
 //   D. A map that arrives on its own starts on the default grid and offers no Draw Rooms.
-//   E. The offer is a NOTICE, not a dialog: it names the room count and the map, carries one CTA
-//      and one close, blocks nothing, and does not outlive its scene.
+//   E. The offer is a NOTICE, not a dialog: it names the room and door counts and the map, carries
+//      one CTA and one close, blocks nothing, and does not outlive its scene.
 //   F. Draw Rooms draws the plan's rooms onto the loaded map, scaled to it, each one shrouded
 //      and named.
 //   G. Draw Rooms is wipe-and-rebuild: one undo step back to what was there, and no selection
@@ -23,6 +23,9 @@
 //   H. Replacing rooms that already exist asks first. Drawing onto an empty map does not.
 //   I. Draw Rooms pressed later leaves a hand-tuned grid alone.
 //   J. A plan with no door anywhere is rock, not rooms: nothing is drawn and nothing is offered.
+//   K. Draw Rooms also places the doorways: an opening two rooms share becomes a door, an opening
+//      on an outside wall does not, pressing it twice stacks nothing, the doors are saved with the
+//      scene, and the notch reaches the Player.
 //
 // ⚠ THE DISK LOOKUP IS STUBBED, AND NOTHING ELSE IS. DOM.setFileInputFiles does not populate a
 // file input in an Electron renderer, so an import has to go through a File built in-page — and
@@ -218,6 +221,10 @@ module.exports = async function floorPlanFeature(rig) {
   rig.check(offered.notice, 'the floor-plan notice never appeared for an import that had a plan');
   rig.check(offered.noticeText.indexOf('2 rooms') !== -1,
             'the notice does not say how many rooms were found: ' + JSON.stringify(offered.noticeText));
+  // One doorway between the two rooms; the plan's other portal is on an outside wall.
+  rig.check(offered.noticeText.indexOf('1 door') !== -1,
+            'the notice does not say how many doors come with the rooms: ' +
+            JSON.stringify(offered.noticeText));
   rig.check(offered.noticeText.indexOf('Two Halls') !== -1,
             'the notice does not name the map it is talking about: ' + JSON.stringify(offered.noticeText));
   rig.check(!offered.dialog,
@@ -358,6 +365,91 @@ module.exports = async function floorPlanFeature(rig) {
   await rig.sleep(300);
   rig.check((await state()).rooms === 2,
             'a doorless plan wiped the rooms that were already drawn: ' + (await state()).rooms);
+
+  // ── K. Draw Rooms places the doorways too ─────────────────────────────────
+  // Back to the two-room plan on its own grid, so a cell boundary falls where the plan's own
+  // squares do and the door's coordinates below are arithmetic rather than a guess.
+  await dm.evaluate('(() => { const s = document.getElementById("grid-size"); s.value = 140;' +
+    ' s.dispatchEvent(new Event("input", { bubbles: true }));' +
+    ' currentScene.floorPlan = globalThis.__rigTwoRooms; refreshFloorPlanUI();' +
+    ' pushUndo(); polygons = []; rebuildFogFromPolygons(); return 0; })()');
+  await drawRooms();
+
+  // Every door on the map, in map pixels, whichever room stores it.
+  const doorPts = () => dm.evaluate(`polygons.flatMap(p => (p.doors || []).map(d => {
+    const c = doorPoint(p.vertices, d);
+    return { room: p.name, x: Math.round(c.x), y: Math.round(c.y) };
+  }))`);
+
+  const placed = await doorPts();
+  rig.note('doors from the plan: ' + JSON.stringify(placed));
+  // The shared wall runs down x=5 in plan space, the doorway spans y 3..4, and the map is 1.4×
+  // the plan's own export: 700, 490.
+  rig.check(placed.length === 1,
+            'Draw Rooms did not place the one doorway the two rooms share: ' +
+            JSON.stringify(placed));
+  rig.check(placed.length === 1 && Math.abs(placed[0].x - 700) <= 2 &&
+            Math.abs(placed[0].y - 490) <= 2,
+            'the derived door did not land on the shared wall at 700,490: ' +
+            JSON.stringify(placed));
+  // The plan's other portal sits at 350,140 — the left room's outside wall, and nothing else's.
+  // A window and an outside entrance look identical in the file, so neither is guessed at.
+  rig.check(!placed.some(d => Math.abs(d.x - 350) <= 70 && Math.abs(d.y - 140) <= 70),
+            'an opening on an outside wall was turned into a door, which would mark every ' +
+            'window on the map: ' + JSON.stringify(placed));
+  rig.check((await state()).rooms === 2, 'the rooms themselves were lost: ' + (await state()).rooms);
+
+  // Pressed again: the same plan, the same cell, and still one door.
+  await drawRooms();
+  await dm.evaluate('(() => { const b = document.getElementById("cd-ok");' +
+    ' if (b) b.click(); return 0; })()');
+  await rig.sleep(400);
+  const twice = await doorPts();
+  rig.check(twice.length === 1,
+            'Draw Rooms pressed twice stacked doors on the same cell: ' + JSON.stringify(twice));
+
+  // Saved with the scene, or the DM re-marks every doorway on the next switch.
+  await dm.evaluate('switchScene(' + JSON.stringify(noPlan) + ')', 120000);
+  await dm.waitFor('currentScene && currentScene.id === ' + JSON.stringify(noPlan), 60000,
+                   'the switch away from the drawn doors');
+  await dm.evaluate('switchScene(' + JSON.stringify(twoHalls) + ')', 120000);
+  await dm.waitFor('currentScene && currentScene.name === "Two Halls"', 60000,
+                   'the switch back to the drawn doors');
+  const survived = await doorPts();
+  rig.check(survived.length === 1 && Math.abs(survived[0].x - 700) <= 2 &&
+            Math.abs(survived[0].y - 490) <= 2,
+            'the derived door did not survive a scene switch: ' + JSON.stringify(survived));
+
+  // ⚠ THE DEPTH IS WIDENED FIRST. At the default 10% the notch is under four pixels on the
+  // Player's fog canvas, so a sample either side of the wall would be reading the feather.
+  // ⚠ THE LEFT ROOM IS FOUND BY ITS LEFTMOST VERTEX, never by vertices[0]. That is wherever the
+  // kernel's face walk happened to start the ring, so a room spanning 140..700 can report 700 —
+  // and the find would then match nothing and kill the run with a TypeError, not a named FAIL.
+  await dm.evaluate('doorDepthPct = 60;' +
+    ' polygons.find(p => Math.min(...p.vertices.map(v => v.x)) < 400).mode = "reveal";' +
+    ' rebuildFogFromPolygons(); rebuildFogEffect(); fogDirty = true;' +
+    ' scheduleRender(); scheduleAutoSync(); 0');
+
+  const player = await rig.player();
+  await player.waitFor('!!fogDataCanvas', 45000, 'the Player to receive the map');
+  await player.waitFor('fogCoverT === 0', 45000, 'the scene cover to lift on the Player');
+  const SAMPLE = `((mx, my) => fogDataCtx.getImageData(
+    Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
+  // 42px past the shared wall, inside the still-shrouded right room: at the doorway and well
+  // clear of it. The second point is what says the right room is dark at all, so the clear
+  // reading at the doorway is a hole rather than a room that was never shrouded.
+  try { await player.waitFor(SAMPLE + '(742, 490) < 60', 30000, 'the notch to reach the Player'); }
+  catch (_) {}
+  const atDoor = await player.evaluate(SAMPLE + '(742, 490)');
+  const awayFromDoor = await player.evaluate(SAMPLE + '(742, 250)');
+  rig.note('Player fog inside the shrouded room — at the doorway ' + atDoor +
+           ', away from it ' + awayFromDoor);
+  rig.check(awayFromDoor > 200,
+            'the shrouded room reads clear on the Player away from the door, so the sample at ' +
+            'the door proves nothing: alpha ' + awayFromDoor);
+  rig.check(atDoor < 60,
+            'the derived door carved no notch on the Player, so the TV shows an unbroken wall ' +
+            'where the doorway is: alpha ' + atDoor);
 
   rig.byEye('a real Dungeon Alchemist export plus its sibling .dd2vtt, imported so the derived ' +
             "Grid Size can be held against the map's own squares and the rooms against its own " +

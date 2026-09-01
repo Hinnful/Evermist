@@ -539,6 +539,42 @@ function doorResolvedMode(centre, rooms, tol) {
   return DOOR_MODE_ORDER[best];
 }
 
+// Which of a floor plan's openings are doorways, and where each notch goes. `rooms` is one vertex
+// array per room, `portals` the plan's opening centres, both in map pixels.
+//
+// ⚠ AN OPENING BECOMES A DOOR ONLY WHERE TWO ROOMS SHARE THE WALL. One room means a window or an
+// outside entrance, and the DM places those by hand — guessing them fills a map with wrong notches.
+// The tolerance matches doorMouseDown's; widen it past half a cell and one portal starts claiming
+// three rooms.
+function planDoorPlacements(rooms, portals, cell, offsetX, offsetY, squareGrid) {
+  if (!(cell > 0) || !Array.isArray(rooms) || !Array.isArray(portals)) return [];
+  const tol = cell * 0.25;
+  const out = [];
+  for (const p of portals) {
+    if (!p || !isFinite(p.x) || !isFinite(p.y)) continue;
+    let hits = 0, best = null, bestIndex = -1;
+    for (let i = 0; i < rooms.length; i++) {
+      const verts = rooms[i];
+      if (!verts || verts.length < 3) continue;
+      const near = nearestOutlinePoint(verts, p.x, p.y, tol);
+      if (!near) continue;
+      hits++;
+      if (!best || near.dist < best.dist) { best = near; bestIndex = i; }
+    }
+    if (hits < 2) continue;
+    // Stored on ONE room, whichever is nearest: a door on a shared wall shows from either side.
+    const verts = rooms[bestIndex];
+    const door = doorCellSnap(verts, best.edge, p.x, p.y, cell, offsetX, offsetY, squareGrid);
+    if (!door) continue;
+    const centre = doorPoint(verts, door);
+    if (!centre) continue;
+    // Two portals can snap to the same cell — a double doorway is two entries in the file.
+    if (out.some(o => Math.hypot(o.centre.x - centre.x, o.centre.y - centre.y) < tol)) continue;
+    out.push({ roomIndex: bestIndex, door, centre });
+  }
+  return out.map(o => ({ roomIndex: o.roomIndex, door: o.door }));
+}
+
 // Keeps doors pointing at the same wall when a vertex is added or removed. `at` is the index
 // passed to the matching vertices.splice; delta is +1 for an insert, -1 for a delete. A door on
 // a deleted edge has no wall left to sit on, so it goes.
@@ -576,6 +612,7 @@ if (typeof module !== 'undefined' && module.exports) {
     sharedWallSpans,
     DOOR_MODE_ORDER,
     remapDoorsForVertexChange,
+    planDoorPlacements,
     DOOR_AXIS_EPS,
     snapToAxis,
     coneVertices,

@@ -954,3 +954,59 @@ describe('a door never outgrows its wall', () => {
     assert.ok(!pointInDoorNotch(SHORT, door, 6, 1, 4.5, 0, 0));   // past its end
   });
 });
+
+// ─── Doors derived from a floor plan ──────────────────────────────────────────
+const { planDoorPlacements } = require('../src/fogGeometry.js');
+const { vttDerivePlan } = require('../src/vttPlan.js');
+const fpFs = require('node:fs');
+const fpPath = require('node:path');
+
+// ⚠ THE SAME TWO REAL EXPORTS the kernel is pinned against. The counts below are what the
+// shared-wall rule picks out of them, and a change to either the rule or the tolerance moves them.
+const derivePlan = (name) => vttDerivePlan(JSON.parse(
+  fpFs.readFileSync(fpPath.join(__dirname, 'fixtures', name), 'utf8')));
+const placeFor = (name, cell) => {
+  const d = derivePlan(name);
+  return planDoorPlacements(d.rooms, d.portals, cell == null ? 150 : cell, 0, 0, true);
+};
+
+describe('planDoorPlacements', () => {
+  it('takes only the openings two rooms share', () => {
+    // 19 portals, 3 rooms: two doorways run between rooms, the rest are windows and outside doors.
+    assert.equal(placeFor('sample-map.dd2vtt').length, 2);
+    // 25 portals, 13 rooms.
+    assert.equal(placeFor('cave-map.dd2vtt').length, 16);
+  });
+
+  it('places nothing without a grid to snap to', () => {
+    assert.deepEqual(placeFor('cave-map.dd2vtt', 0), []);
+    assert.deepEqual(planDoorPlacements(null, null, 150, 0, 0, true), []);
+  });
+
+  it('never stacks two doors on one cell', () => {
+    for (const name of ['sample-map.dd2vtt', 'cave-map.dd2vtt']) {
+      const d = derivePlan(name);
+      const placed = planDoorPlacements(d.rooms, d.portals, 150, 0, 0, true);
+      const pts = placed.map(p => ({
+        room: p.roomIndex, c: doorPoint(d.rooms[p.roomIndex], p.door),
+      }));
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          const same = pts[i].room === pts[j].room &&
+            Math.hypot(pts[i].c.x - pts[j].c.x, pts[i].c.y - pts[j].c.y) < 150 * 0.25;
+          assert.ok(!same, name + ': doors ' + i + ' and ' + j + ' share a cell');
+        }
+      }
+    }
+  });
+
+  it('names a room that exists, and a wall it owns', () => {
+    const d = derivePlan('cave-map.dd2vtt');
+    for (const p of planDoorPlacements(d.rooms, d.portals, 150, 0, 0, true)) {
+      const verts = d.rooms[p.roomIndex];
+      assert.ok(verts, 'roomIndex points at a room');
+      assert.ok(p.door.edge >= 0 && p.door.edge < verts.length);
+      assert.ok(p.door.t >= 0 && p.door.t <= 1);
+    }
+  });
+});

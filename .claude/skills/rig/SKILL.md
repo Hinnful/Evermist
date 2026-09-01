@@ -23,8 +23,9 @@ reach for the rig only when code cannot answer the question. Two cases qualify:
 not `smoke`, not one scenario. A finished chunk goes to the DM to look at, and `/commit` is where
 it gets proven. Write the scenario during the build and run nothing.
 
-**A commit gets a SMOKE pass; the full regression set belongs to `/release`.** `/commit` Step 2
-picks `smoke` plus the scenarios covering what the diff touched, and blocks on red. `/release`
+**A commit gets a SMOKE pass; the full regression set belongs to `/release`.** `/commit` Step 3
+picks `smoke` plus the scenarios covering what the diff touched, and blocks on red. Its Step 2
+settles where the change's criteria live before that set runs. `/release`
 Step 2 runs `npm run rig -- regression` and blocks on red, because that is when an `.exe`
 reaches the TV. Nobody builds from a commit, so no commit needs the whole suite. Do not run
 either set yourself while still building.

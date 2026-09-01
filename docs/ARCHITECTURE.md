@@ -35,8 +35,8 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `state.js` | Shared values that several files need. Loaded first so they exist before anything reads them. |
 | `fog.js` | Everything fog: the canvases that store what's hidden, the blur and cloud-texture math, and the reveal/hide logic. |
 | `fogGeometry.js` | The pure fog math: polygon insetting, rounded paths, cone vertices, door placement and notch geometry, shared-wall detection, tint-colour derivation, animation timing. Plain functions in, values out, no drawing. Unit-tested. |
-| `vttPlan.js` | Turns a Universal VTT floor plan's wall segments into room polygons. Pure geometry, no dependencies, unit-tested. |
-| `floorPlan.js` | The app side of that: finding the plan beside the map, the offer notice, setting Grid Size from the plan at import, and drawing the rooms. |
+| `vttPlan.js` | Turns a Universal VTT floor plan's wall segments into room polygons, and reports where its openings sit. Pure geometry, no dependencies, unit-tested. |
+| `floorPlan.js` | The app side of that: finding the plan beside the map, the offer notice, setting Grid Size from the plan at import, and drawing the rooms and their doorways. |
 | `tools.js` | The drawing tools (brush, rectangle, circle, cone, polygon), the Door tool, and polygon editing. The cone is drawn apex-first - press at the point of origin, drag towards where it points - and commits as an ordinary polygon with a shallow arc on its far edge, so nothing downstream knows a cone from any other shape. |
 | `input.js` | The DM's mouse and keyboard: painting with the tools, keyboard shortcuts, the legend toggle. |
 | `undo.js` | Undo/redo history for fog edits. |
@@ -339,6 +339,14 @@ The plan's coordinates are in the pixel space of the export it was written besid
 are scaled onto whatever size the map actually is before they're drawn. Without that step a
 compressed map would get rooms half again too large - correctly shaped, sitting in the wrong
 place, with nothing to indicate anything went wrong.
+
+**Draw Rooms also marks the doorways.** The plan lists every opening in the walls, but it does not
+say which are doors, which are windows and which are the way out of the building. What separates
+them is what stands either side: an opening on a wall two rooms share is a doorway between them,
+and one with a room on a single side is a window or an outside entrance. Only the first kind gets a
+door, so a plan with ten to fifteen internal doorways stops being ten to fifteen clicks. A derived
+door is the same thing a click makes, so it takes the same size dials, comes off with one click,
+and is saved with the scene.
 
 **The plan also sets Grid Size**, which used to mean typing the export's DPI in by hand and
 guessing after a map had been compressed. The plan says how many squares wide the map is, the map
