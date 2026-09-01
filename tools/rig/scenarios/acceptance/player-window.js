@@ -18,6 +18,8 @@
 //   D. Once the map is on screen the card is gone, and it does not come back on a later switch.
 //   E. Closing the Player and pressing the button again works, leaves a fresh window warming for
 //      the press after that, and never warms a second one over a Player that is already open.
+//   F. The DM's fullscreen button puts the Player window on the whole TV, and the button then
+//      shows it is on.
 //
 // ⚠ C IS READ WHILE THE MAP IS STILL DECODING, which is only a window at all because the map is
 // animated and takes seconds. rig.player() returns as soon as the window reports itself visible,
@@ -131,4 +133,10 @@ module.exports = async function playerWindowFeature(rig) {
   rig.check(await dm.evaluate('!_playerPrewarm'),
     'prewarmPlayer() opened a window with the Player already open, which re-navigates the live ' +
     'Player window and reloads the TV in the middle of a session');
+
+  // ── F. Fullscreen, and why it stays by eye ─────────────────────────────
+  rig.byEye('whether the DM fullscreen button puts the Player window on the whole TV, and the ' +
+            'button then shows it is on. Driving it is not automated: setFullScreen moves the ' +
+            'window onto the nearest real display, and the rig may not put a window on the DM’s ' +
+            'screen');
 };

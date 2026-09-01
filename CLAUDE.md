@@ -199,9 +199,9 @@ Every error goes through it; no `alert()` ships.
 
 ## Guard hooks
 
-Ten fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file has
-one**, and each explains its own fix when it fires. `guard-skill-hint.js` is the `PreToolUse`
-one: it names the skill owning a file you edit.
+Eleven fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file
+has one**, and each explains its own fix when it fires. `guard-skill-hint.js`, the `PreToolUse`
+one, names the skill owning a file you edit.
 
 ## Conventions
 

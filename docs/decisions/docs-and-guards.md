@@ -213,3 +213,16 @@ that does not exist yet` sits in Code organization as a ban, not as a hunting in
 because this file answers what must never be done and a procedure written here would be the only
 paragraph in another mood. It binds the session that would write the code, and the review gets a
 checkable rule instead of a matter of taste.
+
+### Module size is a per-file ratchet, seeded lazily · `SETTLED` (2026-09-01)
+`guard-blob.js` bounded only the inline script in `index.html`, so nothing bounded a module.
+`guard-module-size.js` copies `guard-claudemd.js` per file rather than setting one number for all
+of them: modules differ by an order of magnitude, and a shared ceiling would fire on the largest
+file forever. Existing size stayed out of scope, so no module was shrunk to satisfy the guard - a
+file missing from the baseline adopts its measured size on the next edit and is bounded from then
+on. Nothing is bounded until a file is touched, which is accepted: an untouched module is not
+growing.
+A baseline that exists and will not parse leaves the file alone rather than rewriting it. That map
+carries every module's ceiling, so treating a malformed file as absent would drop all of them at
+once and re-seed in silence - a reachable path, because raising a number by hand is the escape
+hatch the notice recommends.
