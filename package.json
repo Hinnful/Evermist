@@ -1,6 +1,6 @@
 {
   "name": "evermist",
-  "version": "2.5.4",
+  "version": "2.6.0",
   "description": "D&D fog-of-war map viewer for TV display",
   "main": "main.js",
   "author": "Hinnful",
@@ -34,6 +34,7 @@
       "index.html",
       "splash.html",
       "lib/pixi.min.js",
+      "lib/polygon-clipping.umd.js",
       "src/**/*.js",
       "src/css/**/*.css",
       "main.js",
@@ -72,6 +73,7 @@
     "cross-env": "^10.1.0",
     "electron": "^43.0.0",
     "electron-builder": "^26.15.0",
-    "pixi.js": "^7.4.3"
+    "pixi.js": "^7.4.3",
+    "polygon-clipping": "0.15.7"
   }
 }

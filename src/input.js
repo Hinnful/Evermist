@@ -7,6 +7,9 @@
 
 let legendVisible = false;
 
+// The tools a Join or Trim can act through: every closed shape, and nothing else.
+const SHAPE_OP_TOOLS = ['rect', 'circle', 'poly', 'cone'];
+
 // The context row above the toolbar. ONE function owns every visibility decision, called from both
 // setShape and setPlaceMode, because the row answers to the tool AND the mode, and more than one
 // group can be up at once.
@@ -16,8 +19,11 @@ function updateContextPanels() {
     const el = document.getElementById(id);
     if (el) el.style.display = on ? 'flex' : 'none';
   };
-  show('ctx-rooms',   placeMode !== 'effects' && shape !== 'door');
+  show('ctx-rooms',   placeMode !== 'effects' && shape !== 'door' && shape !== 'cut');
   show('ctx-effects', placeMode === 'effects');
+  // Join and Trim act on a DRAWN shape, so the group belongs to the four closed-shape tools and
+  // to no other. Select and Cut have nothing for it to change.
+  show('ctx-op', SHAPE_OP_TOOLS.indexOf(shape) >= 0);
   show('panel-brush-bottom', shape === 'brush');
   show('ctx-door', shape === 'door');
   const cellLabel = document.getElementById('door-cell-label');
@@ -27,13 +33,15 @@ function updateContextPanels() {
 function setShape(s) {
   if (isPlayer) return;
   shape = s;
-  ['brush', 'rect', 'poly', 'circle', 'cone', 'select', 'door'].forEach(sh => {
+  ['brush', 'rect', 'poly', 'circle', 'cone', 'select', 'door', 'cut'].forEach(sh => {
     const el = document.getElementById('btn-' + sh);
     if (el) el.classList.toggle('active', sh === s);
   });
-  if (s !== 'poly') activePolygon = null;
+  // ⚠ The Polygon tool and Cut both click their shape out through activePolygon, and a leftover
+  // cut path closes as a room on the next Polygon click, so only its owner keeps it.
+  if (s !== (activePolygon && activePolygon.cut ? 'cut' : 'poly')) activePolygon = null;
   if (s !== 'select') selectedVertexIndex = -1;
-  refreshHalfAvailability(); // half is shape-tools only; the brush can't paint it
+  refreshPaintAvailability(); // half is shape-tools only; the brush can't paint it
 
   circleCenter = null;
   coneApex = null;
@@ -145,7 +153,11 @@ function initInput() {
     container.addEventListener('contextmenu', e => e.preventDefault());
 
     container.addEventListener('dblclick', (e) => {
-      if (!mapOffscreen || shape !== 'select' || selectedPolygonId == null) return;
+      if (!mapOffscreen) return;
+      // A cut path has no closing vertex to click, so the double-click IS its finish. The two
+      // mousedowns underneath it have already placed the last point.
+      if (shape === 'cut') { commitCutPath(); return; }
+      if (shape !== 'select' || selectedPolygonId == null) return;
       const raw = screenToMap(e.clientX, e.clientY);
       toolDblClick(raw, e);
     });

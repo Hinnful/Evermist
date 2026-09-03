@@ -30,6 +30,24 @@
        nothing here needs a second one. -->
   <div id="context-row">
 
+    <!-- What a drawn shape DOES: make one, join it to what it lands on, or take itself out of
+         what it lands on. Owlbear's model rather than Figma's - the mode is picked BEFORE the
+         drag, so nothing here needs multi-select. Shown for the four closed-shape tools only;
+         a shape is what these act on. The fog trio to the right greys while Join or Trim is
+         picked, because neither lets the DM choose a fog state.
+         ⚠ A BARE .tb-group. The row is already the pick-exactly-one pill. -->
+    <div class="tb-group" id="ctx-op">
+      <button id="btn-op-new" class="mode-btn active" title="Draw a new room">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="2"/><path d="M12 8.5v7M8.5 12h7"/></svg>
+      </button>
+      <button id="btn-op-join" class="mode-btn" title="Join - the shape you draw merges every room it lands on into one">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4h4v10H9v-4H5z"/></svg>
+      </button>
+      <button id="btn-op-trim" class="mode-btn" title="Trim - the shape you draw is taken out of every room it lands on">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4H9v6H5z"/><path d="M9 9h10v10H9z" stroke-dasharray="2.5 2.5"/></svg>
+      </button>
+    </div>
+
     <!-- Rooms mode: the fog state a newly drawn room gets. Half is shape-tools only —
          input.js disables it while the brush is picked. -->
     <div class="tb-group" id="ctx-rooms">
@@ -126,6 +144,13 @@
     </button>
     <button id="btn-door" class="tool-btn" title="Door - click a room's outline to mark an exit, click a mark to remove it">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 20V10.5a5.5 5.5 0 0 1 11 0V20"/><path d="M3.5 20h17"/><circle cx="14.6" cy="14" r="1.05" fill="currentColor" stroke="none"/></svg>
+    </button>
+
+    <!-- Cut. A pick-one TOOL, not a mode in the row above: Trim can split a room too, but only
+         by removing a strip, and that gap is a wall on a dungeon and a fogged line across open
+         rock in a cave. Rooms only, so it greys in Effects mode. -->
+    <button id="btn-cut" class="tool-btn" title="Cut - click a path across a room to split it in two, double-click to finish">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/><path d="M8.5 3.5l3.5 8-2.5 4.5 2.5 4.5" stroke-dasharray="3 2.5"/></svg>
     </button>
 
     <!-- Independent switches: snap to grid, straighten walls. Both work in either mode, so they
@@ -515,6 +540,7 @@
       <div class="legend-row"><kbd>Del</kbd> Delete polygon / vertex</div>
       <div class="legend-row"><kbd>Esc</kbd> Deselect vertex / polygon</div>
       <div class="legend-row"><kbd>Dbl</kbd> Click edge → insert vertex</div>
+      <div class="legend-row"><kbd>Dbl</kbd> Cut tool → finish the path</div>
       <div class="legend-cat">Player</div>
       <div class="legend-row"><kbd>Space</kbd> Send to player</div>
       <div class="legend-row"><kbd>Shift S</kbd> Send (manual mode)</div>
@@ -781,6 +807,7 @@
 <input type="file" id="file-input" multiple accept="image/*,video/mp4,video/webm,.zip,application/zip" style="display:none">
 
 <script src="lib/pixi.min.js"></script>
+<script src="lib/polygon-clipping.umd.js"></script>
 <script src="src/renderer.js"></script>
 <script src="src/state.js"></script>
 <script src="src/display.js"></script>
@@ -788,6 +815,7 @@
 <script src="src/fogGeometry.js"></script>
 <script src="src/vttPlan.js"></script>
 <script src="src/fog.js"></script>
+<script src="src/roomOps.js"></script>
 <script src="src/tools.js"></script>
 <script src="src/mapLoader.js"></script>
 <script src="src/mapConvert.js"></script>

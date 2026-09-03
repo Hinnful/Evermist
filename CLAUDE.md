@@ -80,6 +80,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `fog.js` | Fog canvases, blur + cloud pipeline, reveal/hide, transitions |
 | `fogGeometry.js` | Pure fog geometry + math kernel. Unit-tested |
 | `vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Unit-tested, dependency-free |
+| `roomOps.js` | Pure Join/Trim/Cut kernel. Unit-tested |
 | `tools.js` | Drawing tools + polygon editing |
 | `input.js` | DM mouse/wheel/keyboard, shape helpers, legend toggle. **Drag-drop is in toolbar.js, not here** |
 | `undo.js` | Undo/redo for fog edits |
@@ -114,12 +115,12 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 Declarations must precede use at init time. All under `src/`:
 
 ```
-lib/pixi.min.js → renderer.js → state.js → display.js → video.js → fogGeometry.js →
-vttPlan.js → fog.js → tools.js → mapLoader.js → mapConvert.js → undo.js → sceneGroups.js →
-sceneStore.js →
-scenes.js → sceneManager.js → viewport.js → backup.js → grid.js → effects.js → toolbar.js →
-player.js → input.js → stress.js → memProbe.js → render.js → minimap.js → controlPanel.js →
-confirmDialog.js → floorPlan.js → moduleText.js → roomPanel.js → about.js → inline <script>
+lib/pixi.min.js → lib/polygon-clipping.umd.js → renderer.js → state.js → display.js →
+video.js → fogGeometry.js → vttPlan.js → fog.js → roomOps.js → tools.js → mapLoader.js →
+mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js →
+viewport.js → backup.js → grid.js → effects.js → toolbar.js → player.js → input.js →
+stress.js → memProbe.js → render.js → minimap.js → controlPanel.js → confirmDialog.js →
+floorPlan.js → moduleText.js → roomPanel.js → about.js → inline <script>
 ```
 
 ### Repo layout
@@ -147,11 +148,10 @@ repair.
 
 `confirmDialog` answers **asynchronously** via `onConfirm`/`onCancel`, so a caller that used
 to write on `if (confirm(…))` must split into "what happens regardless" and "what happens on
-yes" - see `applyModuleEntryToRoom`, which writes the name up front because the dialog's
-focus change blurs that field and runs its commit.
+yes" - see `applyModuleEntryToRoom`.
 
-`messageDialog` is the same file's one-button variant, for a statement that needs no answer.
-Every error goes through it; no `alert()` ships.
+`messageDialog` is its one-button variant, for a statement that needs no answer. Every
+error goes through it; no `alert()` ships.
 
 ## Rooms are polygons
 

@@ -1,4 +1,10 @@
 {
   "note": "Max bytes per module, keyed by repo-relative path. src/*.js only; src/css/ has its own rules. Auto-ratchets DOWN as a file shrinks, and a file absent here adopts its current size on first edit. Raise a number only when the growth is a deliberate choice against extracting the concern into its own module.",
-  "files": {}
+  "files": {
+    "src/roomOps.js": 8096,
+    "src/state.js": 14769,
+    "src/toolbar.js": 23148,
+    "src/input.js": 12155,
+    "src/tools.js": 43794
+  }
 }

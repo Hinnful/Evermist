@@ -170,6 +170,10 @@ let nextEffectId = 1;
 // the destination switches. Runtime-only, like snapToGrid.
 let placeMode = 'rooms';
 
+// What a drawn shape DOES: 'new' makes one, 'join' unions it with every shape it lands on, 'trim'
+// subtracts it from them. Runtime-only, like placeMode. Cut is a `shape`, not a value here.
+let shapeOp = 'new';
+
 // What a newly drawn effect is made of, and what the material picker in the context row has lit.
 // A key into EFFECT_MATERIALS (effects.js). Runtime-only, like placeMode.
 let currentMaterial = 'fire';

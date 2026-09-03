@@ -15,12 +15,30 @@ function setPaintDirection(dir) {
 // Half is shape-tools only: the brush paints into a cleared-or-opaque fog canvas with no third
 // value. While the brush is picked the button is disabled and a live half direction falls back to
 // shroud, because more fog is the safer accident.
-function refreshHalfAvailability() {
+//
+// The whole trio greys under Join and Trim: a join takes the most hidden mode of the rooms it
+// merges and a trim leaves every mode alone, so neither has a fog state for the DM to pick.
+function refreshPaintAvailability() {
+  const opPicked = shapeOp !== 'new';
+  ['reveal', 'half', 'shroud'].forEach(d => {
+    const el = document.getElementById('btn-' + d);
+    if (el) el.disabled = opPicked;
+  });
   const btn = document.getElementById('btn-half');
   if (!btn) return;
   const brushPicked = shape === 'brush';
-  btn.disabled = brushPicked;
+  btn.disabled = opPicked || brushPicked;
   if (brushPicked && tool === 'half') setPaintDirection('shroud');
+}
+
+// What a drawn shape does. Pick-exactly-one, so ONE helper owns the value and the highlight.
+function setShapeOp(op) {
+  shapeOp = op;
+  ['new', 'join', 'trim'].forEach(k => {
+    const el = document.getElementById('btn-op-' + k);
+    if (el) el.classList.toggle('active', k === op);
+  });
+  refreshPaintAvailability();
 }
 
 // ─── Placement mode ───────────────────────────────────────────────────────────
@@ -42,7 +60,8 @@ function setPlaceMode(m) {
   // The BRUSH is the only tool with no meaning here: it paints fog into the stencil, and an effect
   // has none. ⚠ Never widen this to "anything but rect and circle": that kicks the DM off Select
   // on every mode change, and Select is the tool this app is used with.
-  if (m === 'effects' && shape === 'brush') setShape('rect');
+  // Cut joins the brush here: it splits a ROOM, and an effect has no fog to split.
+  if (m === 'effects' && (shape === 'brush' || shape === 'cut')) setShape('rect');
   refreshBrushAvailability();
   // The row above the bar is mode-driven too: the fog trio belongs to rooms, the material
   // picker and corner radius to effects.
@@ -50,14 +69,16 @@ function setPlaceMode(m) {
   drawCursor(lastScreenX, lastScreenY);   // the shape preview takes the mode's colour
 }
 
-// Like refreshHalfAvailability: a control that can do nothing here is greyed rather than left live
-// and silently ignored.
+// Like refreshPaintAvailability: a control that can do nothing here is greyed rather than left
+// live and silently ignored.
 function refreshBrushAvailability() {
   const btn = document.getElementById('btn-brush');
   if (btn) btn.disabled = placeMode === 'effects';
-  // Doors belong to rooms, so the tool has nothing to act on in Effects mode.
+  // Doors and cuts belong to rooms, so neither has anything to act on in Effects mode.
   const door = document.getElementById('btn-door');
   if (door) door.disabled = placeMode === 'effects';
+  const cut = document.getElementById('btn-cut');
+  if (cut) cut.disabled = placeMode === 'effects';
 }
 
 // ─── Materials ────────────────────────────────────────────────────────────────
@@ -129,12 +150,17 @@ function initToolbar() {
   document.getElementById('btn-circle').onclick = () => setShape('circle');
   document.getElementById('btn-cone').onclick   = () => setShape('cone');
   document.getElementById('btn-select').onclick = () => setShape('select');
-  document.getElementById('btn-door').onclick   = () => setShape('door');
+  document.getElementById('btn-door').onclick    = () => setShape('door');
+  document.getElementById('btn-cut').onclick     = () => setShape('cut');
+  document.getElementById('btn-op-new').onclick  = () => setShapeOp('new');
+  document.getElementById('btn-op-join').onclick = () => setShapeOp('join');
+  document.getElementById('btn-op-trim').onclick = () => setShapeOp('trim');
   document.getElementById('btn-place-rooms').onclick   = () => setPlaceMode('rooms');
   document.getElementById('btn-place-effects').onclick = () => setPlaceMode('effects');
   document.getElementById('btn-help').onclick = () => toggleLegend();
   initMaterialPicker();
-  refreshHalfAvailability();  // Select is the tool at load, so half starts live
+  setShapeOp(shapeOp);        // the highlight starts where the value does
+  refreshPaintAvailability(); // Select is the tool at load, so half starts live
   refreshBrushAvailability();
   document.getElementById('btn-snap').onclick = function() {
     snapToGrid = !snapToGrid;

@@ -127,6 +127,140 @@ function commitDrawnShape(verts) {
   return shape;
 }
 
+// ─── Join, Trim and Cut ───────────────────────────────────────────────────────
+// Geometry is roomOps.js; all three land here so one set of rules covers ids, order, undo and fog.
+
+function refuseShapeOp(reason) {
+  messageDialog({ title: 'Nothing changed', message: reason });
+  return false;
+}
+
+// A piece with no shape of its own: the parent's fields, a fresh id, a plain name, no notes.
+function newShapeFromPiece(base, verts) {
+  const id = placeMode === 'effects' ? nextEffectId++ : nextPolygonId++;
+  const s = { ...base, id, vertices: verts };
+  s.name = (base.material ? base.material.charAt(0).toUpperCase() + base.material.slice(1)
+                          : 'Room') + ' ' + id;
+  delete s.cornerRadii;
+  delete s.doors;
+  delete s.desc;
+  return s;
+}
+
+// One plan entry is a group of shapes and the pieces replacing them.
+// ⚠ ARRAY ORDER IS FOG COMPOSITING PRECEDENCE, so a group's first piece takes the slot its
+// earliest member already holds; only a second piece is appended. `mode` is handed in because a
+// join takes the most hidden of its contributors, not the earliest one's.
+function applyShapePlan(plan, mode) {
+  const drop = new Set();
+  const extras = [];
+  for (const g of plan) {
+    const base = g.shapes[0];
+    for (let i = 1; i < g.shapes.length; i++) drop.add(g.shapes[i].id);
+    if (!g.pieces.length) { drop.add(base.id); continue; }
+    base.vertices = g.pieces[0];
+    if (mode) base.mode = mode;
+    // ⚠ DROPPED, NEVER EDITED IN PLACE. Both fields are keyed by vertex position and a boolean
+    // renumbers every one; pushUndo clones a shape with a shallow spread, so its snapshot shares
+    // these arrays with the live record and a splice here would rewrite the undo entry too.
+    delete base.cornerRadii;
+    delete base.doors;
+    for (let i = 1; i < g.pieces.length; i++) extras.push(newShapeFromPiece(base, g.pieces[i]));
+  }
+  const kept = activeShapeList().filter(s => !drop.has(s.id)).concat(extras);
+  if (placeMode === 'effects') effects = kept; else polygons = kept;
+  if (drop.has(selectedPolygonId)) { selectedPolygonId = null; selectedVertexIndex = -1; }
+}
+
+// ⚠ THE CROSSFADE DIRECTION IS PASSED IN, never read off findActiveShape() the way
+// commitShapeDrag() does: every drawing path nulls the selection first, so that read always
+// answers "reveal" and a Trim adding shroud fades at the wrong speed. null asks for no crossfade,
+// which a Cut wants: its pieces paint exactly the fog their parent did.
+function commitShapeOpFog(toShroud) {
+  if (placeMode === 'effects') {
+    effectsChanged();
+    scheduleAutoSync();
+    scheduleAutoSave();
+    scheduleRender();
+    return;
+  }
+  rebuildFogFromPolygons();
+  if (toShroud !== null) startFogTransition(toShroud);
+  rebuildFogEffect();
+  fogDirty = true;
+  scheduleRender();
+  scheduleAutoSync();
+}
+
+// The drawn shape combines with every shape it lands on, and makes none of its own.
+function commitShapeOp(verts) {
+  const hits = activeShapeList().filter(s => s.vertices && s.vertices.length >= 3 &&
+                                             shapesOverlap(s.vertices, verts));
+  if (!hits.length) return false;
+  const minArea = roomOpMinArea(gridSize);
+  const rooms = placeMode !== 'effects';
+  let plan, mode = null, toShroud;
+
+  if (shapeOp === 'join') {
+    const out = joinShapes(hits.map(s => s.vertices), verts, minArea);
+    if (out.reason) return refuseShapeOp(out.reason);
+    plan = [{ shapes: hits, pieces: out.pieces }];
+    if (rooms) mode = mostHiddenMode(hits.map(s => s.mode));
+    toShroud = mode === 'shroud';
+  } else {
+    const out = trimShapes(hits.map(s => s.vertices), verts, minArea);
+    if (out.reason) return refuseShapeOp(out.reason);
+    plan = hits.map((s, i) => ({ shapes: [s], pieces: out.groups[i] }));
+    // Shrinking a shroud room hands ground back; shrinking any other adds fog.
+    toShroud = hits.some(s => s.mode !== 'shroud');
+  }
+
+  pushUndo();
+  applyShapePlan(plan, mode);
+  commitShapeOpFog(toShroud);
+  return true;
+}
+
+// THE ONE PLACE A FINISHED CLOSED SHAPE GOES. `new` makes a record; Join and Trim make none.
+// ⚠ RETURNS NULL FOR EVERY MODE BUT 'new', a refusal included, so no caller may reach into it.
+function commitClosedShape(verts) {
+  if (shapeOp === 'new') return commitDrawnShape(verts);
+  selectedPolygonId = null;
+  selectedVertexIndex = -1;
+  commitShapeOp(verts);
+  return null;
+}
+
+// Held in activePolygon so Escape, the tool switch and the preview all work on it unchanged.
+function cutMouseDown(mapX, mapY) {
+  const pos = snapVertex(mapX, mapY);
+  if (!activePolygon || !activePolygon.cut) activePolygon = { vertices: [pos], mode: tool, cut: true };
+  else activePolygon.vertices.push(pos);
+}
+
+// ⚠ EVERY ROOM THE PATH TOUCHES IS IN OR THE WHOLE CUT IS REFUSED. A room crossed four times has
+// no two-piece answer, and cutting its neighbours while skipping it is a silent refusal.
+function commitCutPath() {
+  const path = activePolygon && activePolygon.cut ? activePolygon.vertices : null;
+  activePolygon = null;
+  drawCursor(lastScreenX, lastScreenY);
+  if (!path || path.length < 2) return;
+  const minArea = roomOpMinArea(gridSize);
+  const plan = [];
+  for (const poly of polygons) {
+    if (!poly.vertices || poly.vertices.length < 3) continue;
+    if (!ringPathCrossings(poly.vertices, path).length) continue;
+    const out = cutRing(poly.vertices, path, minArea);
+    if (out.reason) { refuseShapeOp(out.reason); return; }
+    plan.push({ shapes: [poly], pieces: out.pieces });
+  }
+  if (!plan.length) { refuseShapeOp(REASON_CUT); return; }
+  pushUndo();
+  applyShapePlan(plan, null);
+  commitShapeOpFog(null);
+  drawCursor(lastScreenX, lastScreenY);
+}
+
 // ─── Polygon helpers ──────────────────────────────────────────────────────────
 
 function snapVertex(mapX, mapY) {
@@ -424,11 +558,15 @@ function drawActivePolyPreview(screenX, screenY) {
   const verts = activePolygon.vertices;
   if (verts.length === 0) return;
   const mode = activePolygon.mode || tool;
+  // A cut path is gold, the colour of a selected room, because it edits rooms already there
+  // rather than making one in a fog state.
+  const cut = !!activePolygon.cut;
   // Same colours drawPolyOutline reads, so closing the polygon changes only the line's WEIGHT
   // (2px solid in progress → 1.5px dashed once saved), never its colour.
-  const edgeColor = placeMode === 'effects'
-    ? EFFECT_EDGE_COLOR
-    : (POLY_EDGE_COLORS[mode] || POLY_EDGE_COLORS.shroud);
+  const edgeColor = cut ? POLY_EDGE_SELECTED
+    : (placeMode === 'effects'
+        ? EFFECT_EDGE_COLOR
+        : (POLY_EDGE_COLORS[mode] || POLY_EDGE_COLORS.shroud));
   cursorCtx.save();
 
   // Placed edges (solid, glowing)
@@ -471,8 +609,8 @@ function drawActivePolyPreview(screenX, screenY) {
     cursorCtx.globalAlpha = 1;
   }
 
-  // Close-target halo (first vertex, gold glow when >=3 verts)
-  if (verts.length >= 3) {
+  // Close-target halo (first vertex, gold glow when >=3 verts). A cut path never closes.
+  if (!cut && verts.length >= 3) {
     const { sx, sy } = toScreen(verts[0].x, verts[0].y);
     cursorCtx.setLineDash([4, 3]);
     cursorCtx.strokeStyle = POLY_EDGE_SELECTED;
@@ -550,6 +688,13 @@ function toolMouseDown(raw, e) {
   if (shape === 'door') {
     const r = container.getBoundingClientRect();
     doorMouseDown(raw.x, raw.y);
+    drawCursor(e.clientX - r.left, e.clientY - r.top);
+    return;
+  }
+
+  if (shape === 'cut') {
+    const r = container.getBoundingClientRect();
+    cutMouseDown(raw.x, raw.y);
     drawCursor(e.clientX - r.left, e.clientY - r.top);
     return;
   }
@@ -742,7 +887,7 @@ function toolMouseUp(pos, e) {
     return;
   }
 
-  if (shape === 'poly' || shape === 'select') return;
+  if (shape === 'poly' || shape === 'select' || shape === 'cut') return;
 
   if (!isDrawing) return;
   isDrawing = false;
@@ -753,7 +898,7 @@ function toolMouseUp(pos, e) {
     if (rw > 2 && rh > 2) {
       const x1 = Math.min(rectStartX, pos.x), y1 = Math.min(rectStartY, pos.y);
       const x2 = Math.max(rectStartX, pos.x), y2 = Math.max(rectStartY, pos.y);
-      commitDrawnShape([{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2}]);
+      commitClosedShape([{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2}]);
     }
     drawCursor(null, null);
   }
@@ -761,7 +906,7 @@ function toolMouseUp(pos, e) {
     const verts = coneVertices(coneApex, pos, axisLock ? CONE_SNAP_DEG : 0);
     // The same 2px floor the other shapes use, so a click that was meant as a deselect does
     // not leave a sliver of a cone behind.
-    if (verts && Math.hypot(pos.x - coneApex.x, pos.y - coneApex.y) > 2) commitDrawnShape(verts);
+    if (verts && Math.hypot(pos.x - coneApex.x, pos.y - coneApex.y) > 2) commitClosedShape(verts);
     coneApex = null;
     drawCursor(null, null);
   }
@@ -777,7 +922,7 @@ function toolMouseUp(pos, e) {
           y: circleCenter.y + Math.sin(angle) * radius,
         });
       }
-      commitDrawnShape(verts);
+      commitClosedShape(verts);
     }
     circleCenter = null;
     drawCursor(null, null);
@@ -860,11 +1005,15 @@ function closeActivePolygon() {
   const verts = activePolygon.vertices;
   const mode  = activePolygon.mode;
   activePolygon = null;
-  const shape = commitDrawnShape(verts);
+  const shape = commitClosedShape(verts);
   drawCursor(null, null);
   // The polygon tool paints its own fog below rather than going through toolMouseUp's block,
   // so the flag that block reads must not be left set for the next release to act on.
   fogModifiedThisStroke = false;
+  // ⚠ NOTHING BELOW RUNS FOR JOIN, TRIM OR A REFUSAL. applyPolygonToFog paints the drawn shape
+  // rather than rebuilding the stencil, and a refusal leaves no shape to dereference at all.
+  // Each of those settled its own fog inside commitShapeOp.
+  if (!shape) return;
   if (placeMode === 'effects') { fogDirty = true; scheduleRender(); return; }
   // applyPolygonToFog paints just this room rather than rebuilding the whole stencil, which is
   // why the polygon tool does not share the rectangle path's rebuild.
