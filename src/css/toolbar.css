@@ -85,10 +85,13 @@
     align-items: center;
     gap: 3px;
   }
-  /* ⚠ ONLY THESE FOUR HIDE THEMSELVES, and only until init. updateContextPanels() writes an
+  /* ⚠ ONLY THESE FIVE HIDE THEMSELVES, and only until init. updateContextPanels() writes an
      inline display on exactly this list; a group not on it — #material-row — must not start
      hidden, because nothing will ever turn it back on. */
-  #ctx-rooms, #ctx-effects, #ctx-door, #panel-brush-bottom { display: none; }
+  #ctx-op, #ctx-rooms, #ctx-effects, #ctx-door, #panel-brush-bottom { display: none; }
+  /* The op trio is its own thing from the fog trio beside it, hence the wider gap: one says
+     what the shape does, the other what fog state it lands in. */
+  #ctx-op { margin-right: 8px; }
   #ctx-door { gap: 6px; }
   /* The door fields are stock .cp-chip-pre, which is flex:1 because the control panel gives it a
      column to fill. Nothing does here, and its input is width:0, so the chip needs its own size. */

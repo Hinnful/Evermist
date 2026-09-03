@@ -166,6 +166,18 @@ matching its own name; the toolbar-pill entry went back to "UI and the control p
 same time. One-file-per-decision stays rejected - the split is by topic, and each file is still
 read whole.
 
+### The second ledger split leaves its pointer in place, not in a cluster · `SETTLED` (2026-09-02)
+`DECISIONS.md` reached 93.9 KB, so two more topics moved out: `rendering-and-fog.md` (the two
+views' render paths, the fog pipeline and the render loop) and `ui-and-control-panel.md` (the
+toolbar, the control-panel tabs, the scene library and the dialogs). The main ledger came down
+to 56.7 KB across five topic files. The render loop went with rendering rather than staying a
+sibling section, because a reader asking why a frame is scheduled is already asking about the
+render path.
+**The pointer position is the new call.** The first split moved its three pointer sections to a
+cluster near the bottom of the file. These two stay where their content was, so a reader
+scanning the top-level headings finds "Rendering and fog" in the place they expect and follows
+the link from there. A lookup table is read by heading, not front to back.
+
 ### ARCHITECTURE.md is guarded on mood, and only noticed on size · `SETTLED` (2026-08-29)
 The doc had a drift guard and no size or shape check at all, so it could pad indefinitely as
 long as every module stayed listed. `guard-architecture.js` gained a second trigger: a write to
@@ -226,3 +238,14 @@ A baseline that exists and will not parse leaves the file alone rather than rewr
 carries every module's ceiling, so treating a malformed file as absent would drop all of them at
 once and re-seed in silence - a reachable path, because raising a number by hand is the escape
 hatch the notice recommends.
+
+### An echo ceiling raised for someone else's repeats has to say so · `SETTLED` (2026-09-02)
+The repeated-text ratchet jumped from 54 runs to 72 on the first shipped-code edit after the
+second ledger split, and every one of the 18 new repeats came from the two new files in
+`docs/decisions/` - their shared preamble, plus prose lifted out of module comments. None came
+from the code being written at the time. Parking those two files and re-running the guard is what
+proved it, and it is the check to repeat before raising this number again.
+
+The ceiling was raised to 72 rather than editing another session's uncommitted docs. **A ratchet
+raised for debt the session did not create must name the cause in the handover**, or the next
+session inherits a ceiling nobody can account for and stops trusting the guard.
