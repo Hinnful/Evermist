@@ -8,7 +8,8 @@
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
 //
-//   A. Every shape tool draws an effect in Effects mode, and the brush is not offered there.
+//   A. Every shape tool draws an effect in Effects mode, the brush is not on the bar there,
+//      and the Rooms/Effects switch is one sunken track inside the bar with one side picked.
 //   B. Effects and rooms are two lists that never mix, and an effect paints NO fog.
 //   C. An effect carries a material and a name of its own.
 //   D. An effect actually burns on the DM. It is not an empty layer.
@@ -21,6 +22,9 @@
 //   J. The grid inside an effect relights in ember on EVERY grid type, square and both hexes,
 //      so the cells a hazard covers stay countable whatever grid the map is on. Outside the
 //      outline the grid keeps the DM's own colour, which is what proves the clip still holds.
+//   K. A repair still acts on an EFFECT. Merge and Cut out lost their buttons in Effects mode,
+//      not their reach, so nothing may narrow commitShapeOp to rooms. Entering Effects with
+//      one armed disarms it, because that bar can neither show it nor cancel it.
 //
 // ⚠ EFFECTS ARE NOT ROOMS AND NOT TOKENS. An effect is the same record as a room carrying a
 // `material` where a room has a fog `mode` (CLAUDE.md). They live in two arrays because array
@@ -112,35 +116,37 @@ module.exports = async function effectsFeature(rig) {
                     'rebuildFogEffect(); fogDirty = true; scheduleRender(); 0');
   await dm.waitFor('fogCoverT === 0 && fogTransRafId === null', 30000, 'the clearing to open');
 
-  // ══ A. Every shape tool draws an effect, and the brush is not offered ══
+  // ══ A. Every shape tool draws an effect, and the brush is not on the bar ══
   await dm.evaluate('setPlaceMode("effects"); 0');
   rig.check(await dm.evaluate('placeMode') === 'effects', 'Effects mode did not take');
   rig.check(await dm.evaluate('shape') !== 'brush',
             'the brush survived into Effects mode, where there is no fog for it to paint');
-  rig.check(await dm.evaluate('document.getElementById("btn-brush").disabled') === true,
-            'the brush button is still live in Effects mode');
+  // ABSENT, not greyed. A greyed button keeps prime position on a bar it can do nothing on.
+  rig.check(await dm.evaluate(
+              '(() => { const b = document.getElementById("btn-brush");' +
+              ' return !!b && getComputedStyle(b).display === "none"; })()') === true,
+            'the brush button is still on the bar in Effects mode, where it can paint nothing');
 
-  // Exactly one of Rooms/Effects is picked, and the pair sits in its own pill rather than loose
-  // in the bar — a pick-one group reads as one control or it reads as two toggles.
-  const pill = await dm.evaluate(`(() => {
+  // Exactly one of Rooms/Effects is picked, and the pair sits in a sunken .tb-seg track inside
+  // the bar — a pick-one group reads as one control or it reads as two toggles.
+  const seg = await dm.evaluate(`(() => {
     const on = id => document.getElementById(id).classList.contains('active');
     const b = document.getElementById('btn-place-effects');
     const r = document.getElementById('btn-place-rooms');
     const bar = document.getElementById('toolbar-bottom');
     return { effects: on('btn-place-effects'), rooms: on('btn-place-rooms'),
-             parent: b && b.parentElement ? b.parentElement.id : null,
+             track: !!(b && b.parentElement && b.parentElement.classList.contains('tb-seg')),
              shared: !!(b && r && b.parentElement === r.parentElement),
              inBar: !!(b && bar && bar.contains(b)) };
   })()`);
-  rig.check(pill.effects && !pill.rooms,
-            'the toolbar does not show exactly one of Rooms/Effects picked: ' + JSON.stringify(pill));
-  // A pick-one pair reads as ONE control or it reads as two toggles, so the two buttons live in
-  // their own pill rather than loose in the bar (the dm-ui skill's button-identity rules).
-  // It shipped inside the bar behind a wide gap first and read as just another segment, which
-  // is why it has its own container outside the bar now.
-  rig.check(pill.parent === 'place-pill' && pill.shared && !pill.inBar,
-            'the Rooms/Effects pair is not in its own pill outside the toolbar: ' +
-            JSON.stringify(pill));
+  rig.check(seg.effects && !seg.rooms,
+            'the toolbar does not show exactly one of Rooms/Effects picked: ' + JSON.stringify(seg));
+  // The switch governs every tool to its left, so it wears the one shape nothing else on the bar
+  // does: a sunken track at the end of it. Outside the bar in a pill of its own it was a second
+  // object on screen and pushed the bar off centre.
+  rig.check(seg.track && seg.shared && seg.inBar,
+            'the Rooms/Effects pair is not in a .tb-seg track inside the toolbar: ' +
+            JSON.stringify(seg));
 
   const SHAPES = [
     { s: 'rect',   draw: '__rigDrag(600, 300, 800, 450)' },
@@ -394,4 +400,28 @@ module.exports = async function effectsFeature(rig) {
   rig.byEye('whether the fire in ' + tvShot + ' reads as a flaming frame — the outline burning ' +
             'with flames licking off it, over a faint tint. Judged live, since the motion is the ' +
             'point and a still cannot show it');
+
+  // ══ K. A repair still acts on an effect ══
+  // ⚠ DRIVEN THROUGH setShapeOp, NOT A BUTTON. Effects mode carries neither Merge nor Cut out on
+  // its bar (room-repair.js criterion G), and this is what stops that becoming a Rooms-only
+  // FEATURE: commitShapeOp reads placeMode and must keep reaching the effects list.
+  // Drawn low on the map, clear of every effect the criteria above left standing.
+  await dm.evaluate('setPlaceMode("effects"); setShapeOp("new"); setShape("rect");' +
+                    ' __rigDrag(300, 1100, 500, 1250); __rigDrag(600, 1100, 800, 1250); 0');
+  const kRooms  = await dm.evaluate('polygons.length');
+  const kBefore = await dm.evaluate('effects.length');
+  await dm.evaluate('setShapeOp("join"); setShape("rect"); __rigDrag(400, 1130, 700, 1220);' +
+                    ' setShapeOp("new"); setShape("select"); 0');
+  rig.check(await dm.evaluate('effects.length') === kBefore - 1,
+            'a Merge left ' + await dm.evaluate('effects.length') + ' effects out of ' + kBefore +
+            ' instead of joining two into one, so the repairs no longer reach the effects list');
+  rig.check(await dm.evaluate('polygons.length') === kRooms,
+            'a Merge drawn in Effects mode changed the ROOMS list');
+
+  // Entering Effects DISARMS a repair, because that bar has no button to show it or cancel it.
+  await dm.evaluate('setPlaceMode("rooms"); setShapeOp("join"); setPlaceMode("effects"); 0');
+  rig.check(await dm.evaluate('shapeOp') === 'new',
+            'a Merge armed in Rooms survived into Effects, where nothing on the bar says it is ' +
+            'armed and nothing can cancel it — the next effect the DM draws is swallowed');
+  await dm.evaluate('setPlaceMode("rooms"); setShapeOp("new"); 0');
 };

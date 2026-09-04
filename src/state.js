@@ -170,6 +170,12 @@ let nextEffectId = 1;
 // the destination switches. Runtime-only, like snapToGrid.
 let placeMode = 'rooms';
 
+// The shape each mode was last drawing with, so a mode switch off an unavailable tool puts the
+// DM back where they were. Runtime-only like placeMode; a restart starts both on Polygon.
+// ⚠ ONLY A SHAPE GOES IN HERE - never Select, Brush, Door or Split. See setShape (input.js).
+let roomsShape = 'poly';
+let effectsShape = 'poly';
+
 // What a drawn shape DOES: 'new' makes one, 'join' unions it with every shape it lands on, 'trim'
 // subtracts it from them. Runtime-only, like placeMode. Cut is a `shape`, not a value here.
 let shapeOp = 'new';

@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/toolbar.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, control-panel buttons, pills, segmented controls, destructive-button styling, or the scene library popup and its header. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/toolbar.js, src/shapeMenu.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, or the scene library popup and its header. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -70,25 +70,39 @@ partial erase can't re-fog ground already clear, i.e. the room the party just le
 
 ## Bottom-toolbar button identity
 
-Three signals, and they must not blur into each other:
+Four signals, and they must not blur into each other:
 
-- **A pick-exactly-one group gets its OWN pill**, floating beside or above the bar with the
-  bar's own surface: `#context-row` (fog trio, or materials + radius, plus brush size) and
-  `#place-pill` (Rooms vs Effects). The picked one goes bare blue (`.mode-btn.active`).
-- **Never nest a pill inside a pill.** Each of those groups once carried its own rounded box
-  inside a larger one, and two rounded boxes at different heights read as a mistake. A group
-  inside a pill is a bare `.tb-group`: no background, no border, no radius. The old inset
-  `.tb-seg` is deleted; do not bring it back.
-- **Every standalone pill is the same height as `#toolbar-bottom`.** The bar is 4px padding on
-  34px buttons; a pill of 30px buttons therefore takes 6px. Check it after any padding change.
-- An **independent on/off switch is a bare `.tb-toggle`** on the bar, set off by a wider gap,
-  outlined blue + faint blue fill when on. Snap-to-grid and straighten-walls are these.
+- The tool row (`.tool-btn`) is pick-one *and* wears the **outlined blue box**, which now
+  belongs to the picked tool and to nothing else on the bar. Don't lend it to anything, and
+  don't "fix" the collision by restyling the row. **No hairline dividers on this bar** — one
+  was tried and read as a scratch on the TV.
+- An **independent on/off switch is a bare `.tb-toggle`** on the bar, set off by a 12px gap.
+  On is a soft fill plus a 20px blue underline, never the outlined box. Snap-to-grid and
+  straighten-walls are these, and **both keep their state across a mode switch**.
   **Never gather toggles into a pill** — one alone reads as harmless, and a second one makes
   the pill a lie.
-- The tool row (`.tool-btn`) is pick-one *and* wears the outlined blue box. That collision is
-  deliberate: the tool picker is unique in the app and is meant to look unlike everything to
-  its right. Position alone carries the distinction, so don't "fix" it by restyling either
-  side. **No hairline dividers on this bar** — one was tried and read as a scratch on the TV.
+- **The Rooms/Effects switch is a `.tb-seg` sunken track** at the right-hand end of the bar,
+  behind the same 12px gap. It governs every tool to its left, so it must look unlike all of
+  them; a well with a lighter plate in it is that shape. **`.tb-seg` is for this switch and
+  nothing else.**
+- **A pick-exactly-one group inside `#context-row` gets NO pill of its own**: a bare
+  `.tb-group`, no background, no border, no radius. Two rounded boxes at different heights
+  read as a mistake. `#context-row` is itself the pill, wearing the bar's surface, and it is
+  the same height as `#toolbar-bottom` — 4px padding on 34px buttons there, 6px on 30px here.
+
+Two more rules the bar's shape depends on:
+
+- **A tool a mode cannot use is ABSENT, not greyed.** Rooms shows Select, Shape, Brush, Door,
+  Split, Merge and Cut out; Effects shows Select and Shape. The bar sizes itself to whichever
+  set is up and `#bar-row` keeps it centred. Half is the one control left that greys, and only
+  while the Brush is picked.
+- **Taking a button off a mode's bar means disarming what it held.** `setPlaceMode` returns
+  `shapeOp` to `'new'` on the way into Effects; an armed Merge with no button there is a mode
+  the DM can neither see nor cancel, and it swallows the next effect they draw.
+- **`#context-row` hides with `visibility`, never `display`.** Select and Split leave it blank,
+  and a `display: none` takes its box out of `#tools-wrapper` — the whole cluster then jumps up
+  by the row plus the 11px gap on every Select. Its explicit `height` is what stops the box
+  collapsing once every child inside it is hidden.
 
 ## Control-panel button identity
 

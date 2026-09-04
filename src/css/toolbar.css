@@ -64,9 +64,14 @@
      own rounded box inside this row, which put a pill inside a pill at two different heights.
      The row is the pill; the padding here and the 30px buttons in it are what make it exactly as
      tall as #toolbar-bottom. Same surface as the bar, so the two read as one control area.
-     It never renders empty — updateContextPanels always shows the fog trio or the materials —
-     so there is no hide-when-empty rule to keep in sync. */
+     ⚠ IT DOES RENDER EMPTY - Select and Split have nothing to put here - and it is hidden with
+     `visibility`, never `display`. A hidden box still holds its place, so the bar below does not
+     jump up by this row plus the wrapper's gap every time the DM picks Select. The explicit
+     min-height is what stops the box collapsing to its padding once every child is hidden; it
+     is the 6px padding on 30px children this row already computed to. A floor rather than a
+     fixed size, so a control taller than 30px grows the row instead of being clipped by it. */
   #context-row {
+    min-height: 42px;
     zoom: var(--ui-zoom, 1.2);
     pointer-events: all;
     display: flex;
@@ -85,13 +90,10 @@
     align-items: center;
     gap: 3px;
   }
-  /* ⚠ ONLY THESE FIVE HIDE THEMSELVES, and only until init. updateContextPanels() writes an
+  /* ⚠ ONLY THESE FOUR HIDE THEMSELVES, and only until init. updateContextPanels() writes an
      inline display on exactly this list; a group not on it — #material-row — must not start
      hidden, because nothing will ever turn it back on. */
-  #ctx-op, #ctx-rooms, #ctx-effects, #ctx-door, #panel-brush-bottom { display: none; }
-  /* The op trio is its own thing from the fog trio beside it, hence the wider gap: one says
-     what the shape does, the other what fog state it lands in. */
-  #ctx-op { margin-right: 8px; }
+  #ctx-rooms, #ctx-effects, #ctx-door, #panel-brush-bottom { display: none; }
   #ctx-door { gap: 6px; }
   /* The door fields are stock .cp-chip-pre, which is flex:1 because the control panel gives it a
      column to fill. Nothing does here, and its input is width:0, so the chip needs its own size. */
@@ -121,42 +123,46 @@
   #fx-radius-field { margin-left: 0; }
   #fx-radius-num:disabled { color: #565b62; }
 
-  /* ===== THE BAR AND THE PLACEMENT SWITCH, SIDE BY SIDE ===== */
-  /* Layout only: no surface and no zoom, because both children carry their own and a zoom on
-     the row as well would compound. */
+  /* ===== THE BAR'S ROW ===== */
+  /* Layout only: no surface and no zoom, because the bar carries its own and a zoom here as well
+     would compound. It is what keeps the bar centred while the bar changes width with the mode. */
   #bar-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    pointer-events: none;   /* pass-through; the two pills opt back in */
+    justify-content: center;
+    pointer-events: none;   /* pass-through; the bar opts back in */
   }
-  /* Rooms vs Effects. ITS OWN PILL beside the bar, not a segment on it — it governs every tool
-     to its left, and inside the bar behind a wide gap it read as just another group.
-     Padding 6px against 30px buttons matches #toolbar-bottom's 4px against 34px, so the two
-     pills are the same height. */
-  #place-pill {
-    zoom: var(--ui-zoom, 1.2);
-    pointer-events: all;
+  /* Rooms vs Effects — a SUNKEN TRACK at the end of the bar. It governs every tool to its left,
+     so it has to look unlike all of them, and a well cut into the bar is the one shape nothing
+     else here wears. Sitting beside the bar in a pill of its own was tried and read as a second
+     object on screen.
+     ⚠ .tb-seg IS FOR THIS SWITCH AND NOTHING ELSE. A pick-one group inside #context-row stays a
+     bare .tb-group; two nested rounded boxes at different heights is what deleted this class the
+     first time.
+     34 tall to match a tool button: 3px padding on 28px buttons. */
+  .tb-seg {
     display: flex;
     align-items: center;
     gap: 3px;
-    padding: 6px;
-    border-radius: var(--panel-radius);
-    background: var(--panel-bg);
-    border: var(--panel-border);
-    box-shadow: var(--panel-shadow);
+    padding: 3px;
+    border-radius: 9px;
+    background: #080a10;
+    margin-left: 5px;   /* + the bar's 7px gap = the 12px the helpers get */
   }
-  /* .tb-seg is gone. The dark inset pill it drew was the pick-exactly-one signal while those
-     groups lived INSIDE the bar; now each such group is its own standalone pill (#context-row,
-     #place-pill) and the surface is the bar's. An independent on/off switch is still never
-     gathered into a pill — it stays a bare .tb-toggle. */
+  .tb-seg .mode-btn { width: 30px; height: 28px; border-radius: 7px; }
+  /* The picked mode takes a lighter plate rather than the tool row's outlined box: a well with a
+     raised tile in it says "one of these two", where an outline would say "this tool is live". */
+  .tb-seg .mode-btn.active { background: #323a52; color: #eef1f7; }
+  .tb-seg .mode-btn.active:hover { background: #3a4360; color: #eef1f7; }
 
   /* Independent on/off switches — snap to grid, straighten walls. Each is unrelated to the
-     other, so they sit bare on the bar rather than in a pill. On = the outlined blue box,
-     the toolbar's one "this is live" signal. The tool row borrows the same box for the
-     current tool; the gap between the groups is what keeps the two readings apart — a
-     hairline sat there and read as a scratch on the real monitor. */
+     other, so they sit bare on the bar rather than in a pill.
+     ⚠ ON IS A FILL PLUS AN UNDERLINE, NOT THE OUTLINED BOX. The outlined box belongs to the
+     picked tool alone, and a helper wearing the same box read as a ninth tool. Nothing else on
+     this bar carries an underline. A hairline divider between the two groups was tried instead
+     and read as a scratch on the real monitor. */
   .tb-toggle {
+    position: relative;   /* the underline is ::after */
     width: 30px;
     height: 30px;
     border-radius: 8px;
@@ -172,14 +178,70 @@
     flex-shrink: 0;
   }
   /* The switches keep the wider gap the deleted hairline used to occupy, so they still read
-     as their own group rather than as more of the fog pill. */
-  #btn-snap { margin-left: 12px; }
+     as their own group rather than as more of the tool row. */
+  #btn-snap { margin-left: 5px; }   /* + the bar's 7px gap = 12px */
   .tb-toggle:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
   .tb-toggle.active {
-    border-color: rgba(90, 140, 235, 0.6);
-    background: rgba(70, 120, 220, 0.11);
+    background: rgba(70, 120, 220, 0.16);
     color: #8fb6ff;
   }
+  .tb-toggle.active::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 3px;
+    width: 20px;
+    height: 2.5px;
+    margin-left: -10px;
+    border-radius: 1.25px;
+    background: #6ea8ff;
+  }
+
+  /* ===== THE SHAPE BUTTON AND ITS FLYOUT ===== */
+  /* One button for Polygon, Rectangle, Circle and Cone. The wrapper exists only to anchor the
+     flyout above the button; it adds no size of its own. */
+  .tb-shape-wrap { position: relative; display: flex; }
+  .tb-shape-glyph { display: flex; }
+  #btn-shape { position: relative; }   /* the corner tick is absolute inside it */
+  /* The corner tick: there are more shapes behind this button. Absolute so it does not shift the
+     glyph off centre, inset off the corner so the button's radius does not cut it, and in the
+     button's own colour so it goes blue with it. */
+  .tb-shape-tick {
+    position: absolute;
+    right: 2px;
+    bottom: 1px;
+    pointer-events: none;
+  }
+  /* The flyout. display:none rather than visibility, because a hidden .click() still lands and
+     the rig drives the four shapes by id. Its surface is lighter than the bar's so it reads as
+     sitting on top of it rather than as more bar. */
+  #shape-menu {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    align-items: center;
+    gap: 3px;
+    padding: 6px;
+    border-radius: 10px;
+    background: #1e2231;
+    border: 1px solid #3a4256;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+    z-index: 1;
+  }
+  #shape-menu.open { display: flex; }
+  /* The tail, pointing down at the parent button's centre. */
+  #shape-menu::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -6px;
+    border: 6px solid transparent;
+    border-top-color: #1e2231;
+  }
+  #shape-menu .mode-btn.active { background: rgba(70, 120, 220, 0.16); color: #6ea8ff; }
 
   /* Mode buttons (fog modes) — 30px, low-ink, bare blue when picked */
   .mode-btn {

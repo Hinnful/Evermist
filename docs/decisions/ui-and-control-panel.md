@@ -247,3 +247,36 @@ map border. Properties that look write-only are browser and WebGL APIs the platf
 Deliberately not acted on: `memProbe.js` and `stress.js` ship unreachable in an install but remain
 the only tools for two open questions, and 27 silently-swallowing catches are a diagnosability
 question rather than dead code.
+
+### The placement switch is back inside the bar, and `.tb-seg` with it · `REOPENED` (2026-09-04)
+`#place-pill` was a standalone pill beside the bar so it would not read as one more group on it.
+Two objects at the bottom of the screen is what that cost, and the bar sat off centre beside it.
+The switch is a sunken `.tb-seg` track at the right-hand end of `#toolbar-bottom` now: a well cut
+into the bar is the one shape nothing else on it wears, so it still reads as governing the tools
+rather than joining them. `.tb-seg` is restored **for this switch and nothing else** - a pick-one
+group inside `#context-row` stays a bare `.tb-group`, which is the rule that deleted the class the
+first time. The bar sizes itself to whichever mode's tools are up, and `#bar-row` keeps it centred
+while it changes width.
+
+### A helper that is on no longer wears the picked tool's box · `REOPENED` (2026-09-04)
+Snap and Straighten took the outlined blue box when on, the same mark the picked tool wears, and
+only the gap between the two groups kept them apart. On a bar that now changes width with the
+mode, that reading failed: a lit helper read as one more tool. `.tb-toggle.active` drops
+`border-color` and takes a soft fill plus a 20px blue underline instead. **Nothing else on this
+bar carries an underline**, so the outlined box belongs to the picked tool alone. The 1px divider
+stays rejected - it read as a scratch on the TV, and the on-state is what was wrong, not the gap.
+
+### A tool a mode cannot use leaves the bar rather than greying · `SETTLED` (2026-09-04)
+Two of eight tools greyed out on whichever placement mode was not theirs, so a dead control held
+prime position on every bar. Greying says "not now"; the DM reads it as "not here", and it is
+never coming back inside that mode. The bar now carries only the tools the mode can use, sizes
+itself to them, and `#bar-row` keeps it centred as it changes width. The four shapes collapsed
+behind one button at the same time, opened on right click, which is what made the shorter bar
+possible without losing a tool. Half is the only control still greying, because the Brush can
+genuinely paint the other two fog states.
+Two consequences that must hold together. **Each mode remembers the shape it last drew with**,
+restored only when the current tool is unavailable in the mode being entered - Select is in both
+lists, so it is never replaced. And **taking a button off a bar means disarming what it held**:
+Merge armed in Rooms would otherwise survive into Effects, where nothing shows it or cancels it,
+and swallow the next effect drawn. `commitShapeOp` still reaches the effects list, so restoring
+those two buttons to Effects is markup plus deleting one line.

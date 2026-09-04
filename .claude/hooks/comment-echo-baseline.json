@@ -1,4 +1,4 @@
 {
-  "maxRuns": 72,
+  "maxRuns": 71,
   "note": "Max number of 12-word-or-longer text runs repeated between two files, across shipped JavaScript comments and the governing docs. Auto-ratchets DOWN. Raise only when a repeat is deliberate and unavoidable, and say why in the handover."
 }

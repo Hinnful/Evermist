@@ -30,6 +30,7 @@ const OWNERS = {
   'roompanel.js': 'dm-ui',
   'controlpanel.js': 'dm-ui',
   'toolbar.js': 'dm-ui',
+  'shapemenu.js': 'dm-ui',
   'toolbar.css': 'dm-ui',
   'scenemanager.css': 'dm-ui',
   'roomcard.css': 'dm-ui',
