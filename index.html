@@ -30,24 +30,6 @@
        nothing here needs a second one. -->
   <div id="context-row">
 
-    <!-- What a drawn shape DOES: make one, join it to what it lands on, or take itself out of
-         what it lands on. Owlbear's model rather than Figma's - the mode is picked BEFORE the
-         drag, so nothing here needs multi-select. Shown for the four closed-shape tools only;
-         a shape is what these act on. The fog trio to the right greys while Join or Trim is
-         picked, because neither lets the DM choose a fog state.
-         ⚠ A BARE .tb-group. The row is already the pick-exactly-one pill. -->
-    <div class="tb-group" id="ctx-op">
-      <button id="btn-op-new" class="mode-btn active" title="Draw a new room">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="2"/><path d="M12 8.5v7M8.5 12h7"/></svg>
-      </button>
-      <button id="btn-op-join" class="mode-btn" title="Join - the shape you draw merges every room it lands on into one">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4h4v10H9v-4H5z"/></svg>
-      </button>
-      <button id="btn-op-trim" class="mode-btn" title="Trim - the shape you draw is taken out of every room it lands on">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4H9v6H5z"/><path d="M9 9h10v10H9z" stroke-dasharray="2.5 2.5"/></svg>
-      </button>
-    </div>
-
     <!-- Rooms mode: the fog state a newly drawn room gets. Half is shape-tools only —
          input.js disables it while the brush is picked. -->
     <div class="tb-group" id="ctx-rooms">
@@ -116,29 +98,42 @@
 
   </div>
 
-  <!-- The bar itself and the placement switch, side by side. Two pills, not one: the switch
-       governs the whole bar rather than being one more group on it. -->
+  <!-- The bar, and nothing beside it. The placement switch used to be a second pill out here;
+       it is a sunken track at the right-hand end of the bar now. #bar-row is what keeps the bar
+       centred while it changes width between the two modes. -->
   <div id="bar-row">
 
-  <!-- Main icon toolbar -->
+  <!-- Main icon toolbar. WHICH BUTTONS ARE HERE DEPENDS ON THE MODE, and a tool a mode cannot
+       use is ABSENT rather than greyed - toolbar.js's refreshModeTools() owns that. Rooms shows
+       Select, Shape, Brush, Door, Split, Merge and Cut out; Effects shows Select and Shape. The
+       bar sizes itself to whichever set is up and stays centred. -->
   <div id="toolbar-bottom">
 
-    <!-- Tools: Select, Polygon, Rectangle, Circle, Cone, Brush, Door -->
     <button id="btn-select" class="tool-btn active" title="Select (V)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform:translate(1px,1px)"><path d="M5 3l6.4 15.6 2.1-6.1 6.1-2.1L5 3z"/></svg>
     </button>
-    <button id="btn-poly" class="tool-btn" title="Polygon (P)">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
-    </button>
-    <button id="btn-rect" class="tool-btn" title="Rectangle (E)">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/></svg>
-    </button>
-    <button id="btn-circle" class="tool-btn" title="Circle (C)">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
-    </button>
-    <button id="btn-cone" class="tool-btn" title="Cone (O) - drag from the point of origin">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l14 7-14 7z"/><circle cx="5" cy="4" r="1.6" fill="currentColor" stroke="none"/></svg>
-    </button>
+
+    <!-- ONE BUTTON FOR THE WHOLE SHAPE FAMILY. It wears the glyph of the shape this mode last
+         used, plus a corner tick saying there are more behind it. Left click picks what is
+         showing; RIGHT click opens the flyout. src/shapeMenu.js owns both, including the
+         preventDefault that right click needs - nothing upstream suppresses a context menu
+         over this part of the window. -->
+    <div class="tb-shape-wrap">
+      <button id="btn-shape" class="tool-btn" title="Shape - right-click for the others">
+        <span class="tb-shape-glyph"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+        <svg class="tb-shape-tick" width="6" height="6" viewBox="0 0 6 6" aria-hidden="true"><path d="M6 6 L6 0.5 L0.5 6 z" fill="currentColor"/></svg>
+      </button>
+      <!-- The flyout. Hidden with display:none, which still lets a .click() through - the rig
+           drives these four by id. Cone is in the Effects list only: no room is ever
+           cone-shaped, so refreshModeTools() takes it out in Rooms. -->
+      <div id="shape-menu">
+        <button id="btn-poly" class="mode-btn" title="Polygon (P)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+        <button id="btn-rect" class="mode-btn" title="Rectangle (E)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/></svg></button>
+        <button id="btn-circle" class="mode-btn" title="Circle (C)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg></button>
+        <button id="btn-cone" class="mode-btn" title="Cone (O) - drag from the point of origin"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l14 7-14 7z"/><circle cx="5" cy="4" r="1.6" fill="currentColor" stroke="none"/></svg></button>
+      </div>
+    </div>
+
     <button id="btn-brush" class="tool-btn" title="Brush (B)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8.6 8.6-4 1 1-4L15 4z"/><path d="M13.4 5.6l5 5"/></svg>
     </button>
@@ -146,16 +141,28 @@
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 20V10.5a5.5 5.5 0 0 1 11 0V20"/><path d="M3.5 20h17"/><circle cx="14.6" cy="14" r="1.05" fill="currentColor" stroke="none"/></svg>
     </button>
 
-    <!-- Cut. A pick-one TOOL, not a mode in the row above: Trim can split a room too, but only
-         by removing a strip, and that gap is a wall on a dungeon and a fogged line across open
-         rock in a cave. Rooms only, so it greys in Effects mode. -->
-    <button id="btn-cut" class="tool-btn" title="Cut - click a path across a room to split it in two, double-click to finish">
+    <!-- Split. A pick-one TOOL, not a repair: Cut out can split a room too, but only by removing
+         a strip, and that gap is a wall on a dungeon and a fogged line across open rock in a
+         cave. Rooms only. -->
+    <button id="btn-cut" class="tool-btn" title="Split - click a path across a room to split it in two, double-click to finish">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/><path d="M8.5 3.5l3.5 8-2.5 4.5 2.5 4.5" stroke-dasharray="3 2.5"/></svg>
     </button>
 
+    <!-- The two repairs. Each arms a MODE the next drawn shape runs in, so an armed one is lit
+         alongside the picked shape tool and pressing a lit one disarms it. Rooms only: an
+         effect is still repairable through commitShapeOp, it just has no button here - and
+         entering Effects disarms, because an armed mode with no button cannot be cancelled. -->
+    <button id="btn-op-join" class="tool-btn" title="Merge - the shape you draw merges every room it lands on into one">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4h4v10H9v-4H5z"/></svg>
+    </button>
+    <button id="btn-op-trim" class="tool-btn" title="Cut out - the shape you draw is taken out of every room it lands on">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4H9v6H5z"/><path d="M9 9h10v10H9z" stroke-dasharray="2.5 2.5"/></svg>
+    </button>
+
     <!-- Independent switches: snap to grid, straighten walls. Both work in either mode, so they
-         stay here. Bare .tb-toggle buttons set off by the gap, never gathered into a pill — a
-         pill means pick exactly one of these. -->
+         stay here, and both keep their state across a mode switch. Bare .tb-toggle buttons set
+         off by the gap, never gathered into a pill - a pill means pick exactly one of these.
+         Their on-state is a fill plus an underline, NOT the picked tool's outlined box. -->
     <button id="btn-snap" class="tb-toggle" title="Snap to grid (N)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
     </button>
@@ -163,21 +170,19 @@
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V6h13"/><circle cx="5" cy="19" r="1.7" fill="currentColor" stroke="none"/><circle cx="5" cy="6" r="1.7" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="1.7" fill="currentColor" stroke="none"/></svg>
     </button>
 
-  </div>
-
-  <!-- Placement switch: which array the next shape lands in. ITS OWN PILL, outside the toolbar,
-       because it governs everything on that bar rather than being one more group on it — the
-       tools draw into whichever array it names and the context row above changes to suit. It
-       shipped inside the bar behind a wide gap first, and read as just another segment. A room
-       and an effect are the same gesture with a different payload, so there is no second
-       toolbar. -->
-  <div id="place-pill">
+    <!-- Placement switch: which array the next shape lands in. A SUNKEN TRACK at the end of the
+         bar, and the one control here that looks like nothing it governs - it changes the whole
+         bar rather than being one more group on it. .tb-seg exists for this and nothing else;
+         a group inside #context-row stays bare. -->
+    <div class="tb-seg">
       <button id="btn-place-rooms" class="mode-btn active" title="Draw rooms">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
       </button>
       <button id="btn-place-effects" class="mode-btn" title="Draw effects - burning ground">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 3c.6 3-1.2 4.3-2.7 5.8C8.1 10.5 7 12 7 14.2A5 5 0 0017 14.4c0-2.6-1.6-4.2-2.6-5.6-.5.9-1.2 1.4-2 1.7.9-2.6.6-5.4.1-7.5z"/></svg>
       </button>
+    </div>
+
   </div>
 
   </div>
@@ -516,11 +521,9 @@
   <div class="legend-cols">
     <div>
       <div class="legend-cat">Tools</div>
-      <div class="legend-row"><kbd>B</kbd> Brush</div>
       <div class="legend-row"><kbd>E</kbd> Rectangle</div>
       <div class="legend-row"><kbd>P</kbd> Polygon</div>
       <div class="legend-row"><kbd>C</kbd> Circle</div>
-      <div class="legend-row"><kbd>O</kbd> Cone</div>
       <div class="legend-row"><kbd>V</kbd> Select / Move</div>
       <div class="legend-row"><kbd>R</kbd> Reveal</div>
       <div class="legend-row"><kbd>S</kbd> Shroud</div>
@@ -829,6 +832,7 @@
 <script src="src/grid.js"></script>
 <script src="src/effects.js"></script>
 <script src="src/toolbar.js"></script>
+<script src="src/shapeMenu.js"></script>
 <script src="src/player.js"></script>
 <script src="src/input.js"></script>
 <script src="src/stress.js"></script>
@@ -919,6 +923,7 @@ if (isPlayer) {
 
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
 if (!isPlayer) initToolbar();
+if (!isPlayer) initShapeMenu();   // the shape button's flyout → shapeMenu.js
 if (!isPlayer) initMinimap();
 
 // Player runtime (message handler, pan/zoom, init) lives in player.js.

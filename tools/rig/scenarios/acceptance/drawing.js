@@ -7,10 +7,14 @@
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
 //
-//   A. Every drawing tool is on the bar, answers to its key, and makes one shape.
-//        brush · rectangle · polygon · circle · cone, the cone measured rather than counted
-//        because its geometry IS the tool: apex where the press landed, as wide at the far end
-//        as it is long, 53.13° at the point, and a shallow bow on the far edge.
+//   A. Every drawing tool the mode offers is reachable, answers to its key, and makes one
+//      shape. Three of the four shapes are reached through the flyout the shape button's right
+//      click opens, and that button picks the shape it is showing. A key for a shape the mode
+//      does not offer does nothing at all.
+//        brush · rectangle · polygon · circle on the Rooms bar, cone on the Effects one, the
+//        cone measured rather than counted because its geometry IS the tool: apex where the
+//        press landed, as wide at the far end as it is long, 53.13° at the point, and a
+//        shallow bow on the far edge.
 //   B. The polygon tool closes the way the DM closes it.
 //        clicking the first vertex · crossing an earlier line · and it keeps only the loop
 //   C. A polygon that is not a shape yet is thrown away rather than committed.
@@ -24,6 +28,11 @@
 //   G. A drawn shape leaves the DM ready to draw the next one.
 //   H. Effects mode draws effects, not rooms, and the two lists never mix.
 //   I. ALL THREE FOG MODES REACH THE TV. This is the half of the goal nothing used to check.
+//   J. The bar shows the mode, and picking a tool never moves the bar.
+//        each mode carries only its own tools and greys none of them · the strip above shows
+//        the picked tool's group and nothing else · Select and Split leave the strip blank
+//        WITHOUT the bar moving · the two helpers keep their state across a mode switch ·
+//        switching mode on Select leaves the DM on Select
 //
 // ⚠ ROOMS DO NOT CROSS TO THE PLAYER, AND MUST NOT (CLAUDE.md). What crosses is the fog a room
 // paints. Every TV check here reads the FOG over the ground a shape covers, never a room.
@@ -119,19 +128,17 @@ module.exports = async function drawing(rig) {
                    120000, 'the map to load on the DM');
   await dm.evaluate(HELPERS);
 
-  // ══ A. Every drawing tool is on the bar, answers to its key, and makes one shape ══
-  const TOOLS = [
-    { id: 'btn-brush',  shape: 'brush',  key: 'b' },
-    { id: 'btn-rect',   shape: 'rect',   key: 'e' },
-    { id: 'btn-poly',   shape: 'poly',   key: 'p' },
-    { id: 'btn-circle', shape: 'circle', key: 'c' },
-    { id: 'btn-cone',   shape: 'cone',   key: 'o' },
-  ];
-  for (const t of TOOLS) {
-    const onBar = await dm.evaluate(
+  // ══ A. Every tool the mode offers is reachable, and a key for one it does not is inert ══
+  // The four shapes stand behind one button and are reached through its flyout, so `where`
+  // says which container each tool must actually be in. A tool the mode does not offer is
+  // ABSENT, so `display` is read too — an id that resolves proves nothing on its own.
+  const checkTool = async (t) => {
+    const placed = await dm.evaluate(
       '(() => { const b = document.getElementById("' + t.id + '");' +
-      ' return { there: !!b, inBar: !!(b && b.closest("#toolbar-bottom")) }; })()');
-    rig.check(onBar.there && onBar.inBar, t.id + ' is not on the bottom toolbar');
+      ' return { there: !!b, placed: !!(b && b.closest("' + t.where + '")),' +
+      '   offered: !!b && getComputedStyle(b).display !== "none" }; })()');
+    rig.check(placed.there && placed.placed && placed.offered,
+              t.id + ' is not offered inside ' + t.where + ': ' + JSON.stringify(placed));
 
     // Picked by its button, then by its key from a different tool — a key that only "works"
     // because the tool was already selected proves nothing.
@@ -141,7 +148,49 @@ module.exports = async function drawing(rig) {
     await dm.evaluate('setShape("select"); __rigKey("' + t.key + '"); 0');
     rig.check(await dm.evaluate('shape') === t.shape,
               'the ' + t.key.toUpperCase() + ' key did not pick the ' + t.shape + ' tool');
-  }
+  };
+  const TOOLS = [
+    { id: 'btn-brush',  shape: 'brush',  key: 'b', where: '#toolbar-bottom' },
+    { id: 'btn-rect',   shape: 'rect',   key: 'e', where: '#shape-menu' },
+    { id: 'btn-poly',   shape: 'poly',   key: 'p', where: '#shape-menu' },
+    { id: 'btn-circle', shape: 'circle', key: 'c', where: '#shape-menu' },
+  ];
+  for (const t of TOOLS) await checkTool(t);
+
+  // The Cone is an EFFECTS tool. No room is ever cone-shaped, so Rooms does not list it.
+  await dm.evaluate('setPlaceMode("effects"); 0');
+  await checkTool({ id: 'btn-cone', shape: 'cone', key: 'o', where: '#shape-menu' });
+  // A key for a shape the mode does not offer does NOTHING — no mode switch, no fallback, no
+  // message. The bar has no button for it there either, so the key must match the bar.
+  await dm.evaluate('setShape("select"); __rigKey("b"); 0');
+  rig.check(await dm.evaluate('shape') === 'select',
+            'B in Effects mode picked the Brush, which that bar does not carry');
+  await dm.evaluate('setPlaceMode("rooms"); setShape("select"); __rigKey("o"); 0');
+  rig.check(await dm.evaluate('shape') === 'select',
+            'O in Rooms mode picked the Cone, which that bar does not carry');
+
+  // The flyout is the only way in for three of the four shapes, so the right click that opens it
+  // is part of them being reachable at all.
+  const opened = await dm.evaluate(
+    '(() => { document.getElementById("btn-shape").dispatchEvent(new MouseEvent("contextmenu",' +
+    ' { bubbles: true, cancelable: true, button: 2 }));' +
+    ' return document.getElementById("shape-menu").classList.contains("open"); })()');
+  rig.check(opened, 'right-clicking the shape button did not open the flyout, which is the only ' +
+                    'way the DM reaches Rectangle, Circle and Polygon');
+  const took = await dm.evaluate('document.getElementById("btn-circle").click();' +
+    ' ({ shape, open: document.getElementById("shape-menu").classList.contains("open") })');
+  rig.check(took.shape === 'circle' && !took.open,
+            'picking Circle from the flyout did not both take and shut it: ' + JSON.stringify(took));
+
+  // ⚠ THE BUTTON MUST PICK THE SHAPE IT IS SHOWING. It wears the last shape this mode drew with,
+  // and a left click from any other tool - the Brush included - has to land on that same one.
+  const glyph = await dm.evaluate('setShape("brush");' +
+    ' document.getElementById("btn-shape").querySelector(".tb-shape-glyph").innerHTML');
+  const after = await dm.evaluate('document.getElementById("btn-shape").click();' +
+    ' ({ shape, glyph: document.getElementById("btn-" + shape).innerHTML })');
+  rig.check(after.shape === 'circle' && after.glyph === glyph,
+            'the shape button showed one shape and picked another - it landed on ' + after.shape +
+            ' while wearing a different glyph');
 
   // Each tool draws once, in Reveal, over untouched map. One shape each, and the brush paints
   // fog without making one at all — that difference IS the brush.
@@ -460,4 +509,94 @@ module.exports = async function drawing(rig) {
   rig.check(tv.rooms === 0,
             'the TV is holding ' + tv.rooms + ' room(s). Rooms are DM-only and a room carries the ' +
             'name and notes the DM wrote for themselves');
+
+  // ══ J. The bar shows the mode, and picking a tool never moves the bar ══
+  // Every button that can appear on the bar, and whether it is drawn and whether it is greyed.
+  const BAR = `(() => {
+    const ids = ['btn-select', 'btn-shape', 'btn-brush', 'btn-door', 'btn-cut',
+                 'btn-op-join', 'btn-op-trim', 'btn-cone'];
+    const out = { shown: [], greyed: [] };
+    for (const id of ids) {
+      const b = document.getElementById(id);
+      if (!b) continue;
+      if (getComputedStyle(b).display !== 'none') out.shown.push(id);
+      if (b.disabled) out.greyed.push(id);
+    }
+    return out;
+  })()`;
+  await dm.evaluate('setPlaceMode("rooms"); setShape("rect"); 0');
+  const barRooms = await dm.evaluate(BAR);
+  rig.check(barRooms.shown.join() ===
+            'btn-select,btn-shape,btn-brush,btn-door,btn-cut,btn-op-join,btn-op-trim',
+            'the Rooms bar is not Select, Shape, Brush, Door, Split, Merge, Cut out: ' +
+            barRooms.shown.join(' '));
+  rig.check(barRooms.greyed.length === 0,
+            'the Rooms bar greys a tool instead of leaving it off: ' + barRooms.greyed.join(' '));
+  await dm.evaluate('setPlaceMode("effects"); 0');
+  const barFx = await dm.evaluate(BAR);
+  rig.check(barFx.shown.join() === 'btn-select,btn-shape,btn-cone',
+            'the Effects bar is not Select and Shape (with the Cone in its flyout): ' +
+            barFx.shown.join(' '));
+  rig.check(barFx.greyed.length === 0,
+            'the Effects bar greys a tool instead of leaving it off: ' + barFx.greyed.join(' '));
+
+  // The strip above carries the picked tool's group and nothing else.
+  const STRIP = `(() => {
+    const ids = ['ctx-rooms', 'ctx-effects', 'ctx-door', 'panel-brush-bottom'];
+    const row = document.getElementById('context-row');
+    return { groups: ids.filter(id => {
+               const el = document.getElementById(id);
+               return el && getComputedStyle(el).display !== 'none';
+             }), row: getComputedStyle(row).visibility,
+             rowH: Math.round(row.getBoundingClientRect().height),
+             top: Math.round(document.getElementById('toolbar-bottom').getBoundingClientRect().top) };
+  })()`;
+  const stripFx = await dm.evaluate('setShape("rect"); ' + STRIP);
+  rig.check(stripFx.groups.join() === 'ctx-effects',
+            'a shape in Effects mode shows more than the materials group: ' + stripFx.groups.join(' '));
+  await dm.evaluate('setPlaceMode("rooms"); 0');
+  const stripShape = await dm.evaluate('setShape("rect"); ' + STRIP);
+  rig.check(stripShape.groups.join() === 'ctx-rooms,panel-brush-bottom',
+            'a shape in Rooms mode does not show the fog trio and the brush size together: ' +
+            stripShape.groups.join(' '));
+  const stripDoor = await dm.evaluate('setShape("door"); ' + STRIP);
+  rig.check(stripDoor.groups.join() === 'ctx-door',
+            'the Door tool shows more than the door fields: ' + stripDoor.groups.join(' '));
+
+  const stripSelect = await dm.evaluate('setShape("select"); ' + STRIP);
+  const stripSplit  = await dm.evaluate('setShape("cut"); ' + STRIP);
+  rig.check(stripSelect.groups.length === 0 && stripSelect.row === 'hidden',
+            'the strip is not blank and hidden on Select: ' + JSON.stringify(stripSelect));
+  rig.check(stripSplit.groups.length === 0 && stripSplit.row === 'hidden',
+            'the strip is not blank and hidden on Split: ' + JSON.stringify(stripSplit));
+  // ⚠ THE BOX IS WHAT THIS GUARDS, and reading the bar's position does not guard it. #tools-wrapper
+  // is fixed to the screen's bottom edge, so the bar sits the same distance up whether the strip
+  // holds its box or leaves the layout entirely. A blank strip measuring 0 tall is the failure —
+  // it means someone reached for `display: none`, and everything ABOVE the bar then jumps.
+  rig.check(stripSelect.rowH > 0 && stripSplit.rowH > 0,
+            'the blank strip gave up its layout box — select ' + stripSelect.rowH + 'px, split ' +
+            stripSplit.rowH + 'px against ' + stripShape.rowH + 'px with a shape picked. Hide it ' +
+            'with `visibility`, never `display`.');
+  rig.check(stripSelect.top === stripShape.top && stripSplit.top === stripShape.top,
+            'the bar MOVED when the strip went blank — shape ' + stripShape.top + ', select ' +
+            stripSelect.top + ', split ' + stripSplit.top + '. The DM aims at a bar that is ' +
+            'no longer where they last saw it.');
+
+  // The helpers belong to neither mode, so a mode switch leaves them where the DM set them.
+  await dm.evaluate('document.getElementById("btn-snap").click();' +
+                    ' document.getElementById("btn-axislock").click(); 0');
+  const helpersOn = await dm.evaluate('({ snap: snapToGrid, axis: axisLock })');
+  await dm.evaluate('setPlaceMode("effects"); 0');
+  const helpersFx = await dm.evaluate('({ snap: snapToGrid, axis: axisLock })');
+  rig.check(helpersFx.snap === helpersOn.snap && helpersFx.axis === helpersOn.axis,
+            'Snap or Straighten changed state on a mode switch, and neither belongs to a mode');
+
+  // Select is in both modes' tool sets, so a mode switch must never replace it.
+  await dm.evaluate('setPlaceMode("rooms"); setShape("select"); setPlaceMode("effects"); 0');
+  rig.check(await dm.evaluate('shape') === 'select',
+            'switching to Effects moved the DM off Select, which is the tool this app is ' +
+            'mostly used with');
+  await dm.evaluate('setPlaceMode("rooms"); 0');
+  rig.check(await dm.evaluate('shape') === 'select',
+            'switching back to Rooms moved the DM off Select');
 };

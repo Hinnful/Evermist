@@ -10,7 +10,8 @@
     "missing:fireproto.js",
     "missing:effects.js",
     "missing:scenegroups.js",
-    "missing:roomops.js"
+    "missing:roomops.js",
+    "missing:shapemenu.js"
   ],
   "warnedBytes": 0
 }

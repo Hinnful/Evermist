@@ -7,25 +7,26 @@
 
 let legendVisible = false;
 
-// The tools a Join or Trim can act through: every closed shape, and nothing else.
-const SHAPE_OP_TOOLS = ['rect', 'circle', 'poly', 'cone'];
-
-// The context row above the toolbar. ONE function owns every visibility decision, called from both
-// setShape and setPlaceMode, because the row answers to the tool AND the mode, and more than one
-// group can be up at once.
-// Fog state is a ROOM's property, so the trio has nothing to say in Effects mode.
+// The strip above the toolbar, which carries ONLY what the picked tool uses. ONE function owns
+// every visibility decision, called from setShape and setPlaceMode. Fog state is a ROOM's
+// property; Select and Split take no options at all. The trio and the brush size never split up.
 function updateContextPanels() {
   const show = (id, on) => {
     const el = document.getElementById(id);
     if (el) el.style.display = on ? 'flex' : 'none';
   };
-  show('ctx-rooms',   placeMode !== 'effects' && shape !== 'door' && shape !== 'cut');
-  show('ctx-effects', placeMode === 'effects');
-  // Join and Trim act on a DRAWN shape, so the group belongs to the four closed-shape tools and
-  // to no other. Select and Cut have nothing for it to change.
-  show('ctx-op', SHAPE_OP_TOOLS.indexOf(shape) >= 0);
-  show('panel-brush-bottom', shape === 'brush');
-  show('ctx-door', shape === 'door');
+  const closed = shape === 'poly' || shape === 'rect' || shape === 'circle' || shape === 'cone';
+  const rooms  = placeMode !== 'effects' && (closed || shape === 'brush');
+  const fx     = placeMode === 'effects' && closed;
+  const door   = shape === 'door';
+  show('ctx-rooms', rooms);
+  show('panel-brush-bottom', rooms);
+  show('ctx-effects', fx);
+  show('ctx-door', door);
+  // ⚠ visibility, NEVER display. A hidden box keeps its place, so the bar below does not jump up
+  // by this strip's height every time the DM picks Select and drop back on the next shape.
+  const row = document.getElementById('context-row');
+  if (row) row.style.visibility = (rooms || fx || door) ? '' : 'hidden';
   const cellLabel = document.getElementById('door-cell-label');
   if (cellLabel) cellLabel.textContent = Math.round(gridSize);
 }
@@ -33,10 +34,16 @@ function updateContextPanels() {
 function setShape(s) {
   if (isPlayer) return;
   shape = s;
+  // ⚠ ONLY A SHAPE IS RECORDED. The shape button reads this to decide both the glyph it wears
+  // and what a left click picks, so recording Brush, Door or Split makes those two disagree.
+  if (SHAPE_FAMILY.indexOf(s) >= 0) {
+    if (placeMode === 'effects') effectsShape = s; else roomsShape = s;
+  }
   ['brush', 'rect', 'poly', 'circle', 'cone', 'select', 'door', 'cut'].forEach(sh => {
     const el = document.getElementById('btn-' + sh);
     if (el) el.classList.toggle('active', sh === s);
   });
+  refreshShapeButton();   // the one shape button wears whichever of the four is picked
   // ⚠ The Polygon tool and Cut both click their shape out through activePolygon, and a leftover
   // cut path closes as a room on the next Polygon click, so only its owner keeps it.
   if (s !== (activePolygon && activePolygon.cut ? 'cut' : 'poly')) activePolygon = null;
@@ -52,6 +59,10 @@ function setShape(s) {
   scheduleRender();
   drawCursor(lastScreenX, lastScreenY);
   updateContextPanels();
+}
+
+function pickShapeByKey(s) {
+  if (shapeInMode(s, placeMode)) setShape(s);
 }
 
 function toggleLegend() {
@@ -185,12 +196,13 @@ function initInput() {
     switch (e.key) {
       case 'r': document.getElementById('btn-reveal').click(); break;
       case 's': document.getElementById('btn-shroud').click(); break;
-      case 'b': setShape('brush');  break;
-      case 'e': setShape('rect');   break;
-      case 'p': setShape('poly');   break;
-      case 'c': setShape('circle'); break;
-      // O for cOne — C belongs to Circle, and no better letter is free.
-      case 'o': setShape('cone');   break;
+      // ⚠ A KEY FOR A SHAPE THIS MODE DOES NOT OFFER DOES NOTHING - no switch, no fallback, no
+      // message, because the bar carries no button for it either. O for cOne; C is Circle's.
+      case 'b': pickShapeByKey('brush');  break;
+      case 'e': pickShapeByKey('rect');   break;
+      case 'p': pickShapeByKey('poly');   break;
+      case 'c': pickShapeByKey('circle'); break;
+      case 'o': pickShapeByKey('cone');   break;
       case 'v': setShape('select'); break;
       case 'n': document.getElementById('btn-snap').click();   break;
       case 'g': document.getElementById('btn-grid').click();   break;

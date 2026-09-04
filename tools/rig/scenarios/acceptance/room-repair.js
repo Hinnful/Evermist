@@ -15,7 +15,8 @@
 //   D. Cut makes two rooms whose edges touch exactly, with no strip lost between them.
 //   E. A refusal changes nothing, says so, and spends no undo.
 //   F. A shape drawn over nothing does nothing. Join and Trim never create a room.
-//   G. The modes work in Effects mode too; the Cut tool does not, and greys.
+//   G. Effects mode offers neither the Split tool nor the two repairs, and says so by
+//      leaving all three off the bar rather than greying them.
 //   H. EVERY ONE OF THOSE REACHES THE TV. A repaired room the players still see in its old
 //      shape is the failure this feature exists to prevent.
 //
@@ -305,21 +306,23 @@ module.exports = async function roomRepair(rig) {
   rig.check(await dm.evaluate('__rigById(' + e + ').vertices.length') === 4,
             'the room under test was reshaped by a drag that landed nowhere near it');
 
-  // ══ G. The modes work in Effects mode; the Cut tool does not ══
+  // ══ G. Effects offers neither the Split tool nor the repairs, and leaves all three off ══
+  // ABSENT, not greyed: a dead control in prime position on a bar it can do nothing on is what
+  // this replaced. commitShapeOp still repairs an effect — only the buttons are Rooms-only.
+  const onBar = ids => '(() => ({' + ids.map(id =>
+    '"' + id + '": (() => { const b = document.getElementById("' + id + '");' +
+    ' return !!b && getComputedStyle(b).display !== "none"; })()').join(', ') + '}))()';
+  const REPAIR_BTNS = ['btn-cut', 'btn-op-join', 'btn-op-trim'];
   await dm.evaluate('setPlaceMode("effects"); 0');
-  rig.check(await dm.evaluate('document.getElementById("btn-cut").disabled === true'),
-            'the Cut tool stayed live in Effects mode, where there is no room to cut');
-  await dm.evaluate('setShapeOp("new"); setShape("rect");' +
-                    ' __rigDrag(400, 400, 500, 500); __rigDrag(560, 400, 660, 500); 0');
-  const gBefore = await dm.evaluate('effects.length');
-  rig.check(gBefore >= 2, 'the two effects to join were not drawn');
-  await dm.evaluate('__rigOpRect("join", 470, 430, 590, 470)');
-  rig.check(await dm.evaluate('effects.length') === gBefore - 1,
-            'joining two effects did not leave one, so the modes read the placement mode for ' +
-            'rooms only');
+  const gFx = await dm.evaluate(onBar(REPAIR_BTNS));
+  rig.check(Object.values(gFx).every(v => v === false),
+            'Split, Merge or Cut out is still on the bar in Effects mode, where there is no ' +
+            'room to act on: ' + JSON.stringify(gFx));
   await dm.evaluate('setPlaceMode("rooms"); 0');
-  rig.check(await dm.evaluate('document.getElementById("btn-cut").disabled === false'),
-            'the Cut tool stayed greyed back in Rooms mode');
+  const gRooms = await dm.evaluate(onBar(REPAIR_BTNS));
+  rig.check(Object.values(gRooms).every(v => v === true),
+            'Split, Merge or Cut out did not come back on the bar in Rooms mode: ' +
+            JSON.stringify(gRooms));
 
   // ══ H. Every one of those reaches the TV ══
   rig.check(await dm.evaluate('autoSync === true'),

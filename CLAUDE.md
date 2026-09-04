@@ -82,7 +82,8 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Unit-tested, dependency-free |
 | `roomOps.js` | Pure Join/Trim/Cut kernel. Unit-tested |
 | `tools.js` | Drawing tools + polygon editing |
-| `input.js` | DM mouse/wheel/keyboard, shape helpers, legend toggle. **Drag-drop is in toolbar.js, not here** |
+| `shapeMenu.js` | The one shape button and its right-click flyout |
+| `input.js` | DM mouse/wheel/keyboard, shape helpers, legend. **Drag-drop is in toolbar.js** |
 | `undo.js` | Undo/redo for fog edits |
 | `effects.js` | Map effects: the `effects` array's model and its render path |
 | `grid.js` | Grid config + render |
@@ -118,7 +119,8 @@ Declarations must precede use at init time. All under `src/`:
 lib/pixi.min.js → lib/polygon-clipping.umd.js → renderer.js → state.js → display.js →
 video.js → fogGeometry.js → vttPlan.js → fog.js → roomOps.js → tools.js → mapLoader.js →
 mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js →
-viewport.js → backup.js → grid.js → effects.js → toolbar.js → player.js → input.js →
+viewport.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
+input.js →
 stress.js → memProbe.js → render.js → minimap.js → controlPanel.js → confirmDialog.js →
 floorPlan.js → moduleText.js → roomPanel.js → about.js → inline <script>
 ```
@@ -161,8 +163,7 @@ error goes through it; no `alert()` ships.
 2. **Never normalize a polygon from a fixed key list.** Backfilling a field must be an
    additive spread; a whitelist drops `cornerRadii` from every saved scene on load.
 3. **The map is the interaction surface.** Selecting a room is the Select tool's job alone.
-   Rectangle/Circle/Polygon clicks must keep drawing new rooms, including overlapping and
-   nested ones.
+   A shape tool's click keeps drawing new rooms, overlapping and nested ones included.
 4. Rooms never reach the Player, so room notes are DM-only for free; no stripping guard.
 5. **Map effects live in `effects`, never in `polygons`** (`effects.js`), and are called
    effects, never tokens. They are the same record with a `material` where a room has a fog
@@ -190,9 +191,8 @@ error goes through it; no `alert()` ships.
 - Deliberately untested, don't add tests here: `render.js`, `scenes.js`, `state.js`,
   `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
   `stress.js`.
-- **Never run a rig set while building** - not even `smoke`, and not at the end of a chunk.
-  Reading code is faster, and a run is the DM's time. `/commit` smoke-tests the diff;
-  `/release` runs the full set. Both block on red.
+- **Never run a rig set while building** - not even `smoke`. A run is the DM's time.
+  `/commit` smoke-tests the diff; `/release` runs the full set. Both block on red.
 - **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance at the
   table are theirs; correctness is yours. Backup, export and restore are the one exception and
   always get their hand test: the export's save dialog is native and cannot be driven.

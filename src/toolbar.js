@@ -1,7 +1,6 @@
 'use strict';
-// DM-only UI control wiring: toolbar, sliders, fog colour, anim presets, the poly context panel,
-// the scene and backup modals, player controls and the UI-scale slider. Called once from
-// index.html in DM mode.
+// DM-only UI control wiring: toolbar, sliders, fog colour, anim presets, the scene and backup
+// modals, and player controls. Called once from index.html in DM mode.
 // ─── Fog paint direction ──────────────────────────────────────────────────────
 // The fog-mode segment is pick-exactly-one, so ONE helper owns both `tool` and the highlight.
 function setPaintDirection(dir) {
@@ -13,11 +12,10 @@ function setPaintDirection(dir) {
 }
 
 // Half is shape-tools only: the brush paints into a cleared-or-opaque fog canvas with no third
-// value. While the brush is picked the button is disabled and a live half direction falls back to
-// shroud, because more fog is the safer accident.
+// value, so the button greys while the brush is picked and a live half falls back to shroud.
 //
-// The whole trio greys under Join and Trim: a join takes the most hidden mode of the rooms it
-// merges and a trim leaves every mode alone, so neither has a fog state for the DM to pick.
+// The whole trio greys under Merge and Cut out: a merge takes the most hidden mode of the rooms
+// it joins and a cut-out leaves every mode alone, so neither has a fog state for the DM to pick.
 function refreshPaintAvailability() {
   const opPicked = shapeOp !== 'new';
   ['reveal', 'half', 'shroud'].forEach(d => {
@@ -31,10 +29,12 @@ function refreshPaintAvailability() {
   if (brushPicked && tool === 'half') setPaintDirection('shroud');
 }
 
-// What a drawn shape does. Pick-exactly-one, so ONE helper owns the value and the highlight.
+// What a drawn shape does: 'new' makes one, 'join' merges, 'trim' cuts out. ONE helper owns the
+// value and the highlight. There is no 'new' button — pressing a lit Merge or Cut out is the
+// way back to it.
 function setShapeOp(op) {
   shapeOp = op;
-  ['new', 'join', 'trim'].forEach(k => {
+  ['join', 'trim'].forEach(k => {
     const el = document.getElementById('btn-op-' + k);
     if (el) el.classList.toggle('active', k === op);
   });
@@ -57,40 +57,47 @@ function setPlaceMode(m) {
     const el = document.getElementById('btn-place-' + k);
     if (el) el.classList.toggle('active', k === m);
   });
-  // The BRUSH is the only tool with no meaning here: it paints fog into the stencil, and an effect
-  // has none. ⚠ Never widen this to "anything but rect and circle": that kicks the DM off Select
-  // on every mode change, and Select is the tool this app is used with.
-  // Cut joins the brush here: it splits a ROOM, and an effect has no fog to split.
-  if (m === 'effects' && (shape === 'brush' || shape === 'cut')) setShape('rect');
-  refreshBrushAvailability();
-  // The row above the bar is mode-driven too: the fog trio belongs to rooms, the material
-  // picker and corner radius to effects.
+  // ⚠ ONLY WHEN THE CURRENT TOOL IS NOT IN THE MODE BEING ENTERED. Select is in both lists, so
+  // an unconditional restore would kick the DM off the tool this app is mostly used with.
+  if (!shapeInMode(shape, m)) {
+    const want = m === 'effects' ? effectsShape : roomsShape;
+    setShape(shapeInMode(want, m) ? want : 'poly');
+  }
+  // ⚠ A REPAIR WITH NO BUTTON ON SCREEN IS ARMED WHERE THE DM CANNOT SEE OR CANCEL IT, and a
+  // Merge left armed in Effects swallows the next effect. Goes when those buttons come back.
+  if (m === 'effects' && shapeOp !== 'new') setShapeOp('new');
+  refreshModeTools();
+  // The strip above is mode-driven too: the fog trio to rooms, the materials to effects.
   updateContextPanels();
   drawCursor(lastScreenX, lastScreenY);   // the shape preview takes the mode's colour
 }
 
-// Like refreshPaintAvailability: a control that can do nothing here is greyed rather than left
-// live and silently ignored.
-function refreshBrushAvailability() {
-  const btn = document.getElementById('btn-brush');
-  if (btn) btn.disabled = placeMode === 'effects';
-  // Doors and cuts belong to rooms, so neither has anything to act on in Effects mode.
-  const door = document.getElementById('btn-door');
-  if (door) door.disabled = placeMode === 'effects';
-  const cut = document.getElementById('btn-cut');
-  if (cut) cut.disabled = placeMode === 'effects';
+// ⚠ A TOOL A MODE CANNOT USE IS ABSENT, NOT GREYED. The bar sizes itself to whichever set is up
+// and stays centred. Half is the one control left that greys.
+const MODE_SHAPES = {
+  rooms:   ['select', 'poly', 'rect', 'circle', 'brush', 'door', 'cut'],
+  effects: ['select', 'poly', 'rect', 'circle', 'cone'],
+};
+function shapeInMode(s, m) { return MODE_SHAPES[m].indexOf(s) >= 0; }
+
+// Rooms-only buttons. Merge and Cut out are here because commitShapeOp still repairs an effect;
+// putting them back is markup alone.
+const ROOMS_ONLY = ['btn-brush', 'btn-door', 'btn-cut', 'btn-op-join', 'btn-op-trim'];
+function refreshModeTools() {
+  const fx = placeMode === 'effects';
+  ROOMS_ONLY.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = fx ? 'none' : '';
+  });
+  const cone = document.getElementById('btn-cone');
+  if (cone) cone.style.display = fx ? '' : 'none';
+  refreshShapeButton();
 }
 
 // ─── Materials ────────────────────────────────────────────────────────────────
-// What the next effect is made of. Pick-exactly-one like the fog trio, so ONE helper owns both the
-// value and the highlight.
-//
-// Picking a material with an effect SELECTED changes that effect, which is the only way to restyle
-// one. The write is the full edit path — undo, repaint, push, save — because it is a real edit to
-// a stored shape, not a toolbar preference.
-//
-// Reads the row's markup, so a new material is one button in index.html plus one EFFECT_MATERIALS
-// entry and nothing here.
+// What the next effect is made of. Pick-exactly-one, so ONE helper owns the value and the
+// highlight. Picking one with an effect SELECTED edits that effect, and takes the full path -
+// undo, repaint, push, save - because it is a real edit to a stored shape.
 //
 // ⚠ The button carries a PLAIN SVG GLYPH like every other button on this bar. A painted swatch of
 // the real material draws a box inside the button's selected box inside the row's pill.
@@ -145,23 +152,20 @@ function initToolbar() {
   document.getElementById('btn-half').onclick   = () => setPaintDirection('half');
   document.getElementById('btn-shroud').onclick = () => setPaintDirection('shroud');
   document.getElementById('btn-brush').onclick  = () => setShape('brush');
-  document.getElementById('btn-rect').onclick   = () => setShape('rect');
-  document.getElementById('btn-poly').onclick   = () => setShape('poly');
-  document.getElementById('btn-circle').onclick = () => setShape('circle');
-  document.getElementById('btn-cone').onclick   = () => setShape('cone');
   document.getElementById('btn-select').onclick = () => setShape('select');
   document.getElementById('btn-door').onclick    = () => setShape('door');
   document.getElementById('btn-cut').onclick     = () => setShape('cut');
-  document.getElementById('btn-op-new').onclick  = () => setShapeOp('new');
-  document.getElementById('btn-op-join').onclick = () => setShapeOp('join');
-  document.getElementById('btn-op-trim').onclick = () => setShapeOp('trim');
+  // The four shapes and the button that stands for them are shapeMenu.js's; it owns the flyout.
+  // Pressing a lit repair disarms it, which is the only way back to 'new' now.
+  document.getElementById('btn-op-join').onclick = () => setShapeOp(shapeOp === 'join' ? 'new' : 'join');
+  document.getElementById('btn-op-trim').onclick = () => setShapeOp(shapeOp === 'trim' ? 'new' : 'trim');
   document.getElementById('btn-place-rooms').onclick   = () => setPlaceMode('rooms');
   document.getElementById('btn-place-effects').onclick = () => setPlaceMode('effects');
   document.getElementById('btn-help').onclick = () => toggleLegend();
   initMaterialPicker();
   setShapeOp(shapeOp);        // the highlight starts where the value does
   refreshPaintAvailability(); // Select is the tool at load, so half starts live
-  refreshBrushAvailability();
+  refreshModeTools();
   document.getElementById('btn-snap').onclick = function() {
     snapToGrid = !snapToGrid;
     this.classList.toggle('active', snapToGrid);
@@ -453,8 +457,6 @@ function initToolbar() {
     playerWindow.postMessage({ type: 'view-snap', ...v }, '*');
     // ⚠ minimapView.zoom is ALWAYS in Player-canvas terms, so convert before handing it over.
     // Passing the DM's own zoom leaves the dotted TV frame wrong until the next drag.
-    // playerScreenW/H are the Player's window size, which is exactly its render size, so the frame
-    // is exact.
     const playerZoom = zoomToFitRegion(v.viewW, v.viewH, playerScreenW, playerScreenH);
     minimapSetView({ mapCX: v.mapCX, mapCY: v.mapCY, zoom: playerZoom ?? v.zoom });
   };
@@ -526,7 +528,7 @@ function initToolbar() {
   // The selected room's card (name, description, fog pill, corners, delete) → roomPanel.js.
   if (typeof initRoomPanel === 'function') initRoomPanel();
 
-  updateContextPanels(); // init: brush is default tool, show panel immediately
+  updateContextPanels(); // init: Select is the tool at load, so the strip starts blank
 
   // Tabbed Fog/Grid/Player control-panel UI (drives the wiring above). Runs after
   // all legacy controls are wired so its buttons can delegate to them.

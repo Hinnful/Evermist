@@ -54,7 +54,8 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `video.js` | Animated (video) map support: file loading, DOM compositing, decoding, the frame loop, the freeze watchdog. |
 | `display.js` | Detecting the Player screen's real size so the fog and map render at the right resolution. |
 | `backup.js` | The export/restore-to-zip feature. |
-| `toolbar.js` | DM-only UI control wiring: toolbar buttons, sliders, fog colour picker, animation presets, the scene dropdown, Player controls. Also the Rooms/Effects placement switch, the New/Join/Trim group and the material picker. The row above the toolbar changes with both - `input.js`'s `updateContextPanels` owns every visibility decision in it. |
+| `toolbar.js` | DM-only UI control wiring: toolbar buttons, sliders, fog colour picker, animation presets, the scene dropdown, Player controls. Also the Rooms/Effects switch, the Merge and Cut out repairs, the material picker, and which tools each mode puts on the bar. The strip above the toolbar changes with both - `input.js`'s `updateContextPanels` owns every visibility decision in it. |
+| `shapeMenu.js` | The single shape button on the bar and the flyout its right click opens. Keeps the button wearing whichever of Rectangle, Circle, Polygon and Cone the current mode last drew with. |
 | `controlPanel.js` | The Fog/Grid/Player control panel and the tab bar above it. A presentational layer over the older hidden controls. The tab bar sits outside the panel and never hides; picking a tab opens the panel on that pane, picking the same tab again shuts it, and the open pane is remembered between sittings. |
 | `roomPanel.js` | The room card and the room name labels drawn on the DM map. |
 | `moduleText.js` | Importing a published module's text and turning the room name field into a searchable dropdown over it. |
@@ -269,12 +270,21 @@ channel to strip and no risk of leaking a room's notes to the TV.
 **Selecting a room is the Select tool's job alone.** The other tools keep drawing new rooms
 when you click, including ones that overlap or nest inside existing ones.
 
-Two toggles at the right-hand end of the toolbar help the drawing land where you meant. **Snap
-to grid** pulls each corner onto the nearest grid intersection. **Straighten walls** pulls a
-corner level with the one before it when it's already nearly level, so a wall comes out square
-without a steady hand - it's an alignment nudge, not a lock, so a wall you genuinely want
-diagonal stays diagonal. It works while dragging a corner of a finished room too. Neither
-setting is saved; both are off when the app starts.
+**The bar carries only the tools the current mode can use.** Rooms shows Select, the shape
+button, Brush, Door, Split, Merge and Cut out; Effects shows Select and the shape button. A tool
+the mode cannot use is not on the bar at all, so the bar changes width between the two and stays
+centred. Rectangle, Circle, Polygon and Cone stand behind one button: a left click picks the
+shape it is showing, a right click opens a flyout of the rest, and Cone is offered in Effects
+only. Each mode remembers the shape it last drew with, for the length of the session. The strip
+above the bar shows only what the picked tool uses, and is blank for Select and Split.
+
+Two toggles sit between the tools and the mode switch. **Snap to grid** pulls each corner onto
+the nearest grid intersection. **Straighten walls** pulls a corner level with the one before it
+when it's already nearly level, so a wall comes out square without a steady hand - it's an
+alignment nudge, not a lock, so a wall you genuinely want diagonal stays diagonal. It works while
+dragging a corner of a finished room too. Each shows it is on with a soft fill and a short blue
+underline, which is a different mark from the outlined box the picked tool wears. Neither setting
+is saved, both are off when the app starts, and both keep their state across a mode switch.
 
 **Array order is fog compositing order.** The fog rebuild walks the room list in reverse, so
 reordering the list silently changes what the fog looks like wherever shapes overlap. There
@@ -286,12 +296,13 @@ The floor-plan import draws most rooms correctly, and the rest need fixing rathe
 Three repairs cover it, and none of them asks you to select anything first: you pick what the
 next shape should do, then draw it over the rooms you mean.
 
-**Join** unions the shape you draw with every room it lands on, so one rectangle straddling two
-rooms leaves one room. The result keeps the name and notes of the earlier of the two, and takes
+**Join**, which the bar calls Merge, unions the shape you draw with every room it lands on, so
+one rectangle straddling two rooms leaves one room. The result keeps the name and notes of the earlier of the two, and takes
 the *most hidden* fog mode of the pair - joining a revealed room to a shrouded one gives a
 shrouded room, so a repair can never uncover ground on the TV by accident. **Trim** subtracts the
-shape instead. One rectangle over a wall cuts a notch; one drawn clean across a room splits it in
-two; one covering a room whole deletes it. **Cut** takes a clicked path rather than a shape: the
+shape instead, and the bar calls it Cut out. One rectangle over a wall cuts a notch; one drawn
+clean across a room splits it in two; one covering a room whole deletes it. **Cut**, called Split
+on the bar, takes a clicked path rather than a shape: the
 room becomes two rooms whose edges touch exactly, with no strip removed between them. That
 distinction matters in a cave, where a Trim strip would leave a fogged line across open rock.
 
@@ -299,6 +310,10 @@ All three are one undo step, save with the scene, and reach the Player like any 
 because a room's outline *is* the fog stencil. Two things are dropped rather than carried over:
 per-corner rounding and door marks, both of which are stored by position in the corner list, and
 a repair renumbers every position.
+
+Merge and Cut out are Rooms-only on the bar. `commitShapeOp` still repairs an effect, so
+entering Effects with one armed disarms it rather than leaving a mode nothing on screen can
+cancel.
 
 A repair that cannot produce a valid room refuses and changes nothing, with the reason on screen.
 There are three such cases: the result would have a hole in it, which a room cannot store; the
