@@ -521,10 +521,22 @@ nothing, because `userData` already sits in the OS per-user location and an inst
 library that is already there.
 
 macOS is excluded in code. Squirrel verifies a signature the unsigned `.dmg` does not carry, and an
-Apple Developer certificate was judged not worth its yearly cost against the size of the audience.
+Apple Developer certificate was judged not worth its yearly cost against the size of the audience. It
+was given a link to the releases page rather than silence: a platform told nothing cannot tell an
+up-to-date install from an abandoned one.
 
 The update line shows nothing on error. Being offline is the usual failure and nothing can be done
 about it from beside the table, so a dialog would be noise on a screen next to players.
+
+### Publishing a release stays a hand gesture · `SETTLED` (2026-09-07)
+Auto-releasing on any push to `main` carrying a new version was rejected. `/commit` bumps on every
+shipping commit, so that trigger publishes once per commit against a cadence of one or two per
+minor. Creating the tag and pressing Publish costs about two minutes, and it is the last point
+where a person looks at a release before it exists.
+
+A version bump is not an intent to release, so no trigger derived from the version can stand in for
+that judgement. What remains open is a gate rather than a trigger: nothing runs the rig against the
+built installer before it is uploaded.
 
 ---
 

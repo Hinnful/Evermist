@@ -158,6 +158,15 @@ positioning shift outranks "bump only when the shipped app changes" for one comm
 not a precedent for reaching for big numbers.** A release that rebuilt the whole Player scene
 transition was still a patch.
 
+### An update never installs itself · `SETTLED` (2026-09-07)
+A new version downloads in the background, and it applies only when the Restart to update button
+is pressed. No other action may trigger it, quitting the app included. `autoInstallOnAppQuit`
+stays `false`.
+
+The app is opened to run a game in front of people. A version that arrives because the app was
+closed the night before is a version nobody chose and nobody checked, and the place it first
+runs is the table. Downloading early is free, so the button stays instant.
+
 ---
 
 ## The README and user-facing text

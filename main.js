@@ -417,8 +417,9 @@ function initAutoUpdate() {
     return;
   }
   const { autoUpdater } = require('electron-updater');
+  // ⚠ NOTHING INSTALLS WITHOUT THE BUTTON, quitting included - see PRODUCT.md.
   autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = false;
 
   autoUpdater.on('update-available',     i => setUpdateStatus({ state: 'downloading', version: i.version }));
   autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'none' }));

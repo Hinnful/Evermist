@@ -3,7 +3,6 @@
 // updater.js — the update line in the About footer, and the button that installs.
 //
 // DM only: main sends the status to the DM window alone, and the Player carries no UI.
-// 'manual' is macOS, where Squirrel refuses the unsigned build and nothing here can install.
 // Nothing here downloads. Main does that, so quitting mid-download costs nothing and the
 // next start resumes it.
 
