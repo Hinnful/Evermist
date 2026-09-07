@@ -87,6 +87,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('update-status', handler);
   },
   installUpdate: () => ipcRenderer.send('install-update'),
+  openReleasesPage: () => ipcRenderer.send('open-releases-page'),
 
   // Per-process working set for the memory probe (src/memProbe.js). Main-process only:
   // a renderer sees just its own JS heap, and the allocations that matter here are native.

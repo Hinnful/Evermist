@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, screen, powerSaveBlocker, utilityProcess } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, screen, powerSaveBlocker, shell, utilityProcess } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const archiver = require('archiver');
@@ -410,8 +410,12 @@ function setUpdateStatus(status) {
   if (dmWin && !dmWin.isDestroyed()) dmWin.webContents.send('update-status', status);
 }
 
+// ⚠ macOS MUST STILL HEAR SOMETHING, or an old install reads as up to date forever.
 function initAutoUpdate() {
-  if (!autoUpdateSupported()) return;
+  if (!autoUpdateSupported()) {
+    if (app.isPackaged) setUpdateStatus({ state: 'manual' });
+    return;
+  }
   const { autoUpdater } = require('electron-updater');
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
@@ -428,6 +432,11 @@ function initAutoUpdate() {
 }
 
 ipcMain.handle('update-state', () => _updateStatus);
+
+// The URL is fixed here: a renderer that could name its own opens anything.
+ipcMain.on('open-releases-page', () => {
+  shell.openExternal('https://github.com/Hinnful/Evermist/releases').catch(() => {});
+});
 
 // --- Memory probe: per-process working set (src/memProbe.js, ?memprobe=1) ---
 //

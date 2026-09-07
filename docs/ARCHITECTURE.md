@@ -67,7 +67,7 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `player.js` | Player-mode runtime: cloud-texture pre-generation, the handshake, the resize listener, the DM message handler, Player pan/zoom. |
 | `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
 | `memProbe.js` | A hidden memory probe: counts what one loaded map costs and writes it to the diagnostics log. Dormant unless the page is opened with `?memprobe=1`. |
-| `main.js` / `preload.js` | The Electron shell. Creates the windows, saves video files to disk, reads and writes backup zips, forks the PDF parser, finds a map's floor plan, and reports the app's own version number. |
+| `main.js` / `preload.js` | The Electron shell. Creates the windows, saves video files to disk, reads and writes backup zips, forks the PDF parser, finds a map's floor plan, reports the app's own version number, and asks GitHub whether a newer one exists. |
 
 ## Bringing an animated map in
 
@@ -450,9 +450,9 @@ Some things this deliberately doesn't do:
 - **It never auto-assigns.** A module has sub-locations, where one heading covers several
   rooms on the map, so any automatic 1:1 mapping desyncs within a few rooms. Only the DM
   knows which blob on the map is K12, and that one choice per room is irreducible.
-- **It never talks to a network or an LLM.** The app has to keep working offline from a
-  local file, and a stranger who downloads the `.exe` has to get the full value with nothing
-  else installed.
+- **Module text never talks to a network or an LLM.** Parsing has to keep working offline
+  from a local file, and a stranger who downloads the installer has to get the full value
+  with nothing else installed. The update check is the app's only outbound request.
 - **The parsed text is campaign-level.** It lives in `localStorage` rather than inside a
   scene, because one book serves every map in a campaign. It does ride in a backup zip, as
   one entry for the whole campaign rather than a copy per scene.
@@ -494,6 +494,8 @@ Two things, answering different questions.
 **The unit tests** (`npm test`) cover arithmetic and geometry: fitting a map inside a box,
 insetting a polygon, turning a floor plan's walls into rooms, putting a PDF's text back in
 reading order. Plain functions, values in and values out. Nothing that touches the screen.
+They also check the packaging: every script and stylesheet the app loads has to be one the
+installer actually ships, because a file left out fails silently rather than erroring.
 
 **The rig** (`npm run rig`) covers everything the running app has to be looked at to know.
 It starts the real app the way you do, waits for it to finish loading, then drives it from the

@@ -75,6 +75,13 @@ right. That promotes split over merge in the polygon-editing work.
 
 ---
 
+### Blanking the Player screen · `REJECTED` (2026-09-07)
+Proposed as one toggle covering the Player view in black. The app already answers it twice: the
+fog's scene transition closes the whole view, and Manual mode holds the Player on whatever it was
+last given. A third way to hide the screen is a third thing to remember mid-session.
+
+---
+
 ## What the features are for
 
 ### Auto-polygons: prefer missing a room over producing a bad one · `SETTLED` (design)

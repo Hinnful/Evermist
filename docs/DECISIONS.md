@@ -513,6 +513,19 @@ published via the web UI made it silently skip the upload: the build went green 
 installers attached. Unsigned is a deliberate cost choice; `CSC_IDENTITY_AUTO_DISCOVERY=false`
 is required or the mac build fails hunting for an identity.
 
+### Windows ships an installer, and portable was dropped rather than kept beside it · `SETTLED` (2026-09-07)
+A portable build extracts to a temp directory and cannot replace itself, so self-updating needed an
+NSIS target. Shipping both was rejected: the change exists to remove a download step, and two
+Windows files on a release page reintroduce the choice it set out to remove. Migration costs
+nothing, because `userData` already sits in the OS per-user location and an install finds the
+library that is already there.
+
+macOS is excluded in code. Squirrel verifies a signature the unsigned `.dmg` does not carry, and an
+Apple Developer certificate was judged not worth its yearly cost against the size of the audience.
+
+The update line shows nothing on error. Being offline is the usual failure and nothing can be done
+about it from beside the table, so a dialog would be noise on a screen next to players.
+
 ---
 
 ## Video

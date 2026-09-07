@@ -101,3 +101,23 @@ way. Whether Windows shows it in that gap is not answerable from this repo, and 
 putting a window on the DM's screen is absolute. An app-side hook to make it drivable is barred by
 the rig's own rules. So it is criterion F in `tools/rig/scenarios/acceptance/player-window.js`,
 reported as unchecked on every run.
+
+### Code coming in is gated on the suite, and linting was refused · `SETTLED` (2026-09-07)
+A Tests workflow runs `npm test` on every branch push and pull request, and release builds now wait
+on a verify job running the same suite plus a tag-versus-`package.json` check. Before it, a
+mismatch built and uploaded in silence and shipped an installer whose About box reported a version
+that was never released. Both test paths skip the Electron binary download; the build jobs still
+fetch it.
+
+ESLint ships in the fork this pattern came from and was refused here. It needs a triage pass over
+several hundred existing complaints before its gate could go green, and what it finds is not what
+breaks the app.
+
+### A packaging test guards `build.files` · `SETTLED` (2026-09-07)
+`test/structure.test.js` fails when `index.html` or `splash.html` loads a script or stylesheet that
+`build.files` does not ship. That class of bug is invisible to `npm start` and silent in the
+packaged app, where a missing stylesheet renders unstyled rather than erroring. It passes today:
+the `src/**` globs cover everything, and a third file under `lib/` is the case that breaks it.
+
+The fork's version checks scripts only. Checking stylesheets as well is the addition, because the
+silent failure named in CLAUDE.md is the stylesheet one.

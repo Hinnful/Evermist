@@ -3,6 +3,7 @@
 // updater.js — the update line in the About footer, and the button that installs.
 //
 // DM only: main sends the status to the DM window alone, and the Player carries no UI.
+// 'manual' is macOS, where Squirrel refuses the unsigned build and nothing here can install.
 // Nothing here downloads. Main does that, so quitting mid-download costs nothing and the
 // next start resumes it.
 
@@ -33,11 +34,26 @@ function initUpdater() {
     slot.append(label, btn);
   }
 
+  function showManual() {
+    slot.textContent = '';
+    const label = document.createElement('span');
+    label.textContent = 'Updates are manual on this platform';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'about-update-btn';
+    btn.textContent = 'Open releases page';
+    btn.addEventListener('click', () => api.openReleasesPage());
+
+    slot.append(label, btn);
+  }
+
   function render(status) {
     const state = status && status.state;
 
     if (state === 'downloading') showDownloading(status);
     else if (state === 'ready') showReady(status);
+    else if (state === 'manual') showManual();
     else {
       // 'none' and 'error' both show nothing. Being offline is the usual error and there is
       // nothing the DM can do about it from the table.
