@@ -12,7 +12,37 @@ permissions:
   contents: write   # lets the job upload files to the Release
 
 jobs:
+  # Nothing gets built until the suite is green and the tag matches the version
+  # the app will report. Runs once, on one runner, before the three builds.
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          # Skipped here only. The build jobs below need the real binary.
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+      - name: Run the tests
+        run: npm test
+
+      - name: Check the tag matches package.json
+        run: node .github/check-version.js
+        env:
+          TAG: ${{ github.ref_name }}
+
   build:
+    needs: verify
     strategy:
       fail-fast: false   # if one OS fails, the others still finish
       matrix:

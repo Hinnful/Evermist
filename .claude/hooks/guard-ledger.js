@@ -121,6 +121,12 @@ function main() {
   const { bytes, sections, entries } = lib.analyze(text);
 
   // Rule 1 - total size.
+  //
+  // ⚠ A SPLIT RE-ARMS THE NOTICE. warnedBytes records the size already reported, so a file
+  // that shrank below the ceiling would otherwise keep the old figure as its baseline and
+  // stay silent until it passed THAT plus reWarnEveryBytes - the split's whole gain handed
+  // back as headroom the guard never mentions.
+  if (bytes < cfg.softMaxBytes) seen.warnedBytes = 0;
   const sizeTrigger = seen.warnedBytes ? seen.warnedBytes + cfg.reWarnEveryBytes : cfg.softMaxBytes;
   if (bytes > sizeTrigger) {
     seen.warnedBytes = bytes;

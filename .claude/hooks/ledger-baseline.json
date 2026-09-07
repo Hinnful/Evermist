@@ -9,7 +9,7 @@
   "note": "Thresholds for the ledger guards (docs/DECISIONS.md, docs/PRODUCT.md, docs/decisions/*.md, and the private command ledger). These files are MEANT to grow, so nothing here blocks an addition. Per-file \"warned\" state records what has already been reported so a notice fires once and never nags; clear an entry to hear about that subject again.",
   "files": {
     "docs/decisions.md": {
-      "warnedBytes": 91803,
+      "warnedBytes": 0,
       "sections": [],
       "entries": [
         "No automatic cave subdivision, ever · `SETTLED` (scope call)",
