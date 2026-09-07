@@ -79,6 +79,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // The About box's version number. Main reads it from package.json, so it survives bumps.
   getAppVersion: () => ipcRenderer.invoke('app-version'),
 
+  // Auto-update. getUpdateState catches up a renderer that loaded after the check answered.
+  getUpdateState: () => ipcRenderer.invoke('update-state'),
+  onUpdateStatus: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('update-status', handler);
+    return () => ipcRenderer.removeListener('update-status', handler);
+  },
+  installUpdate: () => ipcRenderer.send('install-update'),
+
   // Per-process working set for the memory probe (src/memProbe.js). Main-process only:
   // a renderer sees just its own JS heap, and the allocations that matter here are native.
   memMetrics: () => ipcRenderer.invoke('mem-metrics'),

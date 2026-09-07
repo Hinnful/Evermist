@@ -6,6 +6,8 @@
     "src/toolbar.js": 23134,
     "src/input.js": 12865,
     "src/tools.js": 43794,
-    "src/shapeMenu.js": 3016
+    "src/shapeMenu.js": 3016,
+    "src/about.js": 4882,
+    "src/updater.js": 1665
   }
 }

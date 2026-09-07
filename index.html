@@ -845,6 +845,7 @@
 <script src="src/moduleText.js"></script>
 <script src="src/roomPanel.js"></script>
 <script src="src/about.js"></script>
+<script src="src/updater.js"></script>
 <script>
 'use strict';
 
@@ -932,6 +933,7 @@ if (isPlayer) initPlayer();
 // Mouse events, keyboard shortcuts, shape helpers, and legend → input.js.
 initInput();
 if (!isPlayer) initAbout();   // About block inside the shortcuts panel → about.js
+if (!isPlayer) initUpdater(); // Update line under it → updater.js (needs About's slot)
 
 window.addEventListener('resize', () => {
   syncSize();

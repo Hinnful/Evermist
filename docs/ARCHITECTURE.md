@@ -63,6 +63,7 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `pdfExtract.js` | Runs pdf.js in an isolated child process. No `<script>` tag: this one never loads in the browser. |
 | `confirmDialog.js` | The app's own dialogs: a yes/no question, and a one-button message for errors. The only sanctioned pair, because a native `confirm()` or `alert()` breaks the page's focus. One shows at a time; a second waits its turn rather than replacing it, so no question is dropped unanswered. |
 | `about.js` | The About block: the app mark, the version number and the repo address. Builds its own markup rather than adding any to `index.html`, and fills the shortcut legend's footer, so one button opens both. DM only. |
+| `updater.js` | The update line under the About block: what the download is doing, and the button that restarts into the new version. Reports only what the main process tells it, and shows nothing at all when there is no update or when the check failed. DM only. |
 | `player.js` | Player-mode runtime: cloud-texture pre-generation, the handshake, the resize listener, the DM message handler, Player pan/zoom. |
 | `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
 | `memProbe.js` | A hidden memory probe: counts what one loaded map costs and writes it to the diagnostics log. Dormant unless the page is opened with `?memprobe=1`. |

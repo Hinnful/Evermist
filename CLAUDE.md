@@ -106,6 +106,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `confirmDialog.js` | The app's only sanctioned confirmation dialog |
 | `about.js` | The About block in the legend footer: mark, version, repo |
+| `updater.js` | The update line under About, and the restart button |
 | `floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
 | `player.js` | Player-mode runtime |
 | `stress.js` | `?stress=1` harness |
@@ -122,7 +123,7 @@ mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js →
 viewport.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
 input.js →
 stress.js → memProbe.js → render.js → minimap.js → controlPanel.js → confirmDialog.js →
-floorPlan.js → moduleText.js → roomPanel.js → about.js → inline <script>
+floorPlan.js → moduleText.js → roomPanel.js → about.js → updater.js → inline <script>
 ```
 
 ### Repo layout
@@ -253,3 +254,7 @@ the tag, then on GitHub create the release with tag `vX.Y.Z`.
 - Repo Actions settings need "Allow all actions" and `contents: write`.
 - **Never redirect `userData` beside the `.exe` again.** Every platform uses the OS per-user
   location; the old portable folder orphaned a library on upgrade.
+- **Windows ships an NSIS installer, not portable.** A portable build extracts to a temp
+  folder and cannot replace itself, so switching back kills auto-update. The release must
+  also carry `latest*.yml` and `*.blockmap`, or electron-updater finds nothing and every
+  installed copy silently stops updating.

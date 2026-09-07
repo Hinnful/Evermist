@@ -74,7 +74,11 @@ jobs:
         with:
           # Each OS uploads only its own installer; the other globs match
           # nothing on that runner, which is fine.
+          # latest*.yml and the blockmaps are what electron-updater reads. Drop them and
+          # every installed copy silently stops finding new versions.
           files: |
             dist/*.exe
             dist/*.dmg
             dist/*.AppImage
+            dist/latest*.yml
+            dist/*.blockmap

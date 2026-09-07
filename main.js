@@ -392,6 +392,43 @@ ipcMain.on('diag-append-line', (_event, mode, line) => {
 // never leave a stale number hardcoded in the renderer.
 ipcMain.handle('app-version', () => app.getVersion());
 
+// --- Auto-update ---
+//
+// NSIS and AppImage replace themselves; macOS cannot, because Squirrel checks a signature the
+// unsigned .dmg does not carry. A dev run is skipped so `npm start` never reaches GitHub.
+//
+// ⚠ KEEP THE LAST STATUS. The DM window can still be loading when the check answers, and the
+// event alone would lose that answer to a race.
+let _updateStatus = { state: 'none' };
+
+function autoUpdateSupported() {
+  return app.isPackaged && process.platform !== 'darwin';
+}
+
+function setUpdateStatus(status) {
+  _updateStatus = status;
+  if (dmWin && !dmWin.isDestroyed()) dmWin.webContents.send('update-status', status);
+}
+
+function initAutoUpdate() {
+  if (!autoUpdateSupported()) return;
+  const { autoUpdater } = require('electron-updater');
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available',     i => setUpdateStatus({ state: 'downloading', version: i.version }));
+  autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'none' }));
+  autoUpdater.on('download-progress',    p => setUpdateStatus({ state: 'downloading', percent: Math.round(p.percent) }));
+  autoUpdater.on('update-downloaded',    i => setUpdateStatus({ state: 'ready', version: i.version }));
+
+  autoUpdater.on('error', err => setUpdateStatus({ state: 'error', message: String((err && err.message) || err) }));
+
+  ipcMain.on('install-update', () => autoUpdater.quitAndInstall());
+  autoUpdater.checkForUpdates().catch(() => {});
+}
+
+ipcMain.handle('update-state', () => _updateStatus);
+
 // --- Memory probe: per-process working set (src/memProbe.js, ?memprobe=1) ---
 //
 // getAppMetrics() is the only reading that covers what costs memory here: performance.memory
@@ -666,6 +703,7 @@ app.whenReady().then(() => {
   screen.on('display-metrics-changed', onDisplayChange);
 
   createDMWindow();
+  initAutoUpdate();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createDMWindow();

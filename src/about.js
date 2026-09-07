@@ -58,6 +58,7 @@ function initAbout() {
       '<div class="about-wordmark">EVERMIST</div>' +
       '<div class="about-version" id="about-version" style="display:none"></div>' +
       '<div class="about-repo">github.com/Hinnful/Evermist</div>' +
+      '<div class="about-update" id="about-update" style="display:none"></div>' +
     '</div>';
 
   // ⚠ The version comes from package.json through main, never a literal here, which goes stale on

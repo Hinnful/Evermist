@@ -102,7 +102,7 @@ Grab the latest version from [**Releases**](../../releases/latest):
 
 | System | File | Notes |
 |--------|------|-------|
-| Windows | `Evermist-<version>.exe` | Portable, no install needed, just runs |
+| Windows | `Evermist-Setup-<version>.exe` | Installs in one click, then keeps itself up to date |
 | macOS | `Evermist-<version>.dmg` | Universal (Intel and Apple Silicon) |
 | Linux | `Evermist-<version>.AppImage` | Make the file executable, then run |
 
@@ -120,7 +120,7 @@ The OS remembers your choice, so this only happens once
 
 ## Nothing leaves your computer
 
-No account, no cloud, no network traffic. Evermist runs with the wifi switched off
+No account, no cloud, no tracking. The Windows and Linux builds ask GitHub whether a newer version exists, and that is the only thing Evermist ever sends anywhere. Switch the wifi off and everything still works
 
 Your maps and scenes sit on your own disk. Module PDFs get read in a separate locked-down process that can't touch your files
 
@@ -136,7 +136,7 @@ npm start       # launch the app
 Build an installer for the current platform:
 
 ```bash
-npm run build         # Windows portable .exe
+npm run build         # Windows installer .exe
 npm run build:mac     # macOS .dmg
 npm run build:linux   # Linux AppImage
 ```

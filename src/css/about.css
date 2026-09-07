@@ -39,3 +39,25 @@
     font: 400 11px/1 system-ui, -apple-system, sans-serif;
     color: #6b7079;
   }
+  /* Hidden until main reports a download or a ready install, so the footer's height only
+     changes when there is something to say. */
+  #shortcut-legend .about-update {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 3px;
+    font: 400 11px/1 system-ui, -apple-system, sans-serif;
+    color: #8f86bb;
+  }
+  #shortcut-legend .about-update-btn {
+    font: 500 11px/1 system-ui, -apple-system, sans-serif;
+    color: #ddd8ee;
+    background: rgba(122, 95, 208, 0.22);
+    border: 1px solid rgba(122, 95, 208, 0.45);
+    border-radius: 5px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  #shortcut-legend .about-update-btn:hover {
+    background: rgba(122, 95, 208, 0.34);
+  }

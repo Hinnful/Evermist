@@ -11,7 +11,8 @@
     "missing:effects.js",
     "missing:scenegroups.js",
     "missing:roomops.js",
-    "missing:shapemenu.js"
+    "missing:shapemenu.js",
+    "missing:updater.js"
   ],
   "warnedBytes": 0
 }
