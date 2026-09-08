@@ -1,3 +1,4 @@
+'use strict';
 // grid.js — grid rendering + config serialization. Reads grid state from state.js; drawGridLines
 // derives scale from the vp it receives.
 

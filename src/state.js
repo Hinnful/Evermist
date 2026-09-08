@@ -1,3 +1,4 @@
+'use strict';
 // state.js — shared mutable state. Loaded before fog.js so these globals exist when
 // fog functions reference them. Grow on-touch, one concern at a time. See CLAUDE.md.
 

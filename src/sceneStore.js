@@ -33,6 +33,9 @@ const sceneStore = (() => {
   }
 
   function getTx(mode) {
+    // Without this every call after a failed open throws "cannot read properties of null", which
+    // names nothing. initScenes reports the open failure; this keeps the rest legible.
+    if (!db) throw new Error('The scene database is not open, so nothing can be read or saved.');
     const tx    = db.transaction(STORE_NAME, mode);
     const store = tx.objectStore(STORE_NAME);
     return { tx, store };
@@ -98,7 +101,7 @@ const sceneStore = (() => {
   function listScenes() {
     return new Promise((resolve, reject) => {
       const results = [];
-      const tx  = db.transaction(STORE_NAME, 'readonly');
+      const { tx } = getTx('readonly');
       const req = tx.objectStore(STORE_NAME).openCursor();
       req.onsuccess = e => {
         const cursor = e.target.result;

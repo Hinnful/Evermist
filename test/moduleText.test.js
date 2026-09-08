@@ -3,7 +3,7 @@ const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  mtSplitLines, mtHeadingCandidate, mtHeadingCandidates, mtCanonPrefix, mtPickHeadings,
+  mtSplitLines, mtHeadingCandidate, mtHeadingCandidates, mtCanonPrefix, mtCanonLetter, mtPickHeadings,
   mtFurniturePart, mtDropFurniture,
   mtWrapWidth, mtEndsParagraph, mtReflow,
   parseModuleText, mtFold, mtFilterEntries, mtPlacedTitles, mtProgress,
@@ -899,5 +899,40 @@ describe('mtSerialize / mtDeserialize', () => {
   test('an empty entry list round-trips as an empty list', () => {
     assert.deepEqual(mtDeserialize(mtSerialize([], '')).entries, []);
     assert.deepEqual(mtDeserialize(mtSerialize(null, null)).entries, []);
+  });
+});
+
+
+// ─── Sub-location letters ────────────────────────────────────────────────────
+// A sub-location sequences on the UNIQUENESS of its letter under its parent number, so two
+// letters a reader cannot tell apart have to fold to one. Without the fold the same room is
+// accepted twice and appears twice in the list the DM picks from.
+describe('mtCanonLetter', () => {
+
+  test('folds case, so a sub-location written either way is one letter', () => {
+    assert.equal(mtCanonLetter('a'), mtCanonLetter('A'));
+    assert.equal(mtCanonLetter('a'), 'A');
+  });
+
+  test('folds a Cyrillic capital onto the Latin one it looks like', () => {
+    assert.equal(mtCanonLetter('\u0410'), 'A');   // Cyrillic А
+    assert.equal(mtCanonLetter('\u0415'), 'E');   // Cyrillic Е
+    assert.equal(mtCanonLetter('\u0421'), 'C');   // Cyrillic С
+  });
+
+  test('folds case and alphabet together, which is how the book writes them', () => {
+    assert.equal(mtCanonLetter('\u0430'), 'A');   // lowercase Cyrillic а
+    assert.equal(mtCanonLetter('\u0435'), mtCanonLetter('e'));
+  });
+
+  test('leaves a letter that is nobody\'s twin alone', () => {
+    assert.equal(mtCanonLetter('D'), 'D');
+    assert.equal(mtCanonLetter('\u0411'), '\u0411');   // Cyrillic Б has no Latin twin
+  });
+
+  test('answers for nothing at all rather than throwing', () => {
+    assert.equal(mtCanonLetter(null), '');
+    assert.equal(mtCanonLetter(undefined), '');
+    assert.equal(mtCanonLetter(''), '');
   });
 });

@@ -2,12 +2,26 @@
   "note": "Max bytes per module, keyed by repo-relative path. src/*.js only; src/css/ has its own rules. Auto-ratchets DOWN as a file shrinks, and a file absent here adopts its current size on first edit. Raise a number only when the growth is a deliberate choice against extracting the concern into its own module.",
   "files": {
     "src/roomOps.js": 8096,
-    "src/state.js": 15105,
-    "src/toolbar.js": 23134,
-    "src/input.js": 12865,
-    "src/tools.js": 43794,
+    "src/state.js": 15119,
+    "src/toolbar.js": 23103,
+    "src/input.js": 12878,
+    "src/tools.js": 43188,
     "src/shapeMenu.js": 3016,
     "src/about.js": 4882,
-    "src/updater.js": 2232
+    "src/updater.js": 2232,
+    "src/player.js": 21134,
+    "src/backup.js": 13110,
+    "src/fog.js": 59984,
+    "src/grid.js": 11283,
+    "src/mapLoader.js": 4584,
+    "src/minimap.js": 14752,
+    "src/render.js": 12902,
+    "src/renderer.js": 18927,
+    "src/roomPanel.js": 32934,
+    "src/sceneManager.js": 49683,
+    "src/sceneStore.js": 4481,
+    "src/scenes.js": 4785,
+    "src/viewport.js": 14542,
+    "src/vttPlan.js": 28549
   }
 }

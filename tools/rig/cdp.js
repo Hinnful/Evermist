@@ -124,7 +124,16 @@ class Session {
       const d = p.exceptionDetails || {};
       this._note('uncaught: ' + (d.exception && d.exception.description ? d.exception.description : d.text));
     } else if (method === 'Log.entryAdded' && p.entry && p.entry.level === 'error') {
-      this._note(p.entry.text);
+      // A network entry's text is just the error code, so an unadorned note reads as
+      // "net::ERR_FILE_NOT_FOUND" with no way to tell WHICH file. The url is on the entry.
+      const e = p.entry;
+      // The initiator frame, when Chromium supplies one, is the difference between "some file is
+      // missing" and the line that asked for it.
+      const frame = e.stackTrace && e.stackTrace.callFrames && e.stackTrace.callFrames[0];
+      this._note(e.text + (e.url ? '  <' + e.url + '>' : '') +
+                 (e.source ? '  [' + e.source + ']' : '') +
+                 (frame ? '  from ' + (frame.functionName || '(top level)') + ' ' +
+                          frame.url + ':' + (frame.lineNumber + 1) : ''));
     }
   }
 

@@ -70,6 +70,13 @@
       ],
       "untagged": [],
       "persons": []
+    },
+    "docs/decisions/rendering-and-fog.md": {
+      "warnedBytes": 0,
+      "sections": [],
+      "entries": [],
+      "untagged": [],
+      "persons": []
     }
   }
 }

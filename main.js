@@ -30,6 +30,14 @@ if (stressMode) {
 // occluded. Without it readyState drops after ~30 s and the video freezes cyclically.
 app.commandLine.appendSwitch('disable-features', 'BackgroundVideoTrackOptimization');
 
+// Every push to a renderer goes through this. A window can close mid-save, and `send` on a gone
+// webContents throws - inside a stream handler that throw takes the main process with it.
+function sendTo(target, channel, payload) {
+  const wc = target && target.webContents ? target.webContents : target;
+  if (!wc || wc.isDestroyed()) return;
+  try { wc.send(channel, payload); } catch (_) {}
+}
+
 // Window/taskbar icon for `npm start`. A packaged build uses the icon embedded in the .exe, so a
 // missing file here is harmless — fall back to undefined.
 const devIcon = path.join(__dirname, 'build', 'icon.png');
@@ -93,8 +101,8 @@ function createDMWindow() {
   win.once('closed', () => { if (dmWin === win) dmWin = null; });
   // visibilitychange does not fire on Windows OS-minimize, so signal the renderer
   // here instead — lets it pause the PixiJS ticker / flush the texture pool while hidden.
-  win.on('minimize', () => win.webContents.send('window-visibility', { visible: false }));
-  win.on('restore',  () => win.webContents.send('window-visibility', { visible: true  }));
+  win.on('minimize', () => sendTo(win, 'window-visibility', { visible: false }));
+  win.on('restore',  () => sendTo(win, 'window-visibility', { visible: true  }));
   // Hand off from splash to app once the renderer has painted. A minimum keeps it from flashing,
   // and a cap keeps a slow init from leaving the splash up.
   const MIN_SPLASH_MS = 1000;
@@ -104,11 +112,13 @@ function createDMWindow() {
     handedOff = true;
     const wait = Math.max(0, MIN_SPLASH_MS - (Date.now() - splashShownAt));
     setTimeout(() => {
-      win.show();
       if (!splash.isDestroyed()) splash.destroy();
+      if (win.isDestroyed()) return;   // closed during the wait, or during the 6s cap below
+      win.show();
       // The splash is alwaysOnTop and owns the OS focus until it is destroyed, so show() alone
       // leaves the app visible but not focused. Claim focus once nothing competes for it.
       win.focus();
+
     }, wait);
   };
   win.once('ready-to-show', handOff);
@@ -146,16 +156,13 @@ function createDMWindow() {
       if (playerWin === childWin) playerWin = null;
       clearTimeout(_playerMovedTimer);
     });
-    childWin.on('minimize', () => childWin.webContents.send('window-visibility', { visible: false }));
-    childWin.on('restore',  () => childWin.webContents.send('window-visibility', { visible: true  }));
+    childWin.on('minimize', () => sendTo(childWin, 'window-visibility', { visible: false }));
+    childWin.on('restore',  () => sendTo(childWin, 'window-visibility', { visible: true  }));
     // NATIVE window fullscreen, so the renderer sees no fullscreenchange and the state lives only
     // here. Report it, or the DM's fullscreen button cannot show whether it is on.
     // ⚠ TAKE THE STATE FROM THE EVENT, NEVER FROM isFullScreen() INSIDE THE HANDLER: on Windows
     // the flag still holds the OLD value while the event runs, so every change reports backwards.
-    const sendFullScreenState = (fullScreen) => {
-      if (childWin.isDestroyed()) return;
-      childWin.webContents.send('fullscreen-state', { fullScreen });
-    };
+    const sendFullScreenState = (fullScreen) => sendTo(childWin, 'fullscreen-state', { fullScreen });
     childWin.on('enter-full-screen', () => sendFullScreenState(true));
     childWin.on('leave-full-screen', () => sendFullScreenState(false));
     // Push once the renderer is ready to receive IPC messages. Reading the flag IS correct
@@ -173,7 +180,6 @@ function createDMWindow() {
 }
 
 // ─── Display detection ────────────────────────────────────────────────────────
-// Track both windows so we can push display info to each.
 let dmWin     = null;
 let playerWin = null;
 let _playerMovedTimer = null;
@@ -189,15 +195,14 @@ function getDisplayForWindow(win) {
   return screen.getDisplayNearestPoint(center);
 }
 
-// Push the Player window's display to both the Player and DM renderers.
-// Both need to know the TV's resolution — DM uses it for map sizing (Task 2).
+// Both renderers need the TV's resolution: the DM sizes maps against it.
 function pushPlayerDisplay() {
   if (!playerWin || playerWin.isDestroyed()) return;
   if (playerWin.isMinimized()) return;
   const display = getDisplayForWindow(playerWin);
   if (!display) return;
-  if (!playerWin.isDestroyed()) playerWin.webContents.send('display-info', display);
-  if (dmWin && !dmWin.isDestroyed()) dmWin.webContents.send('display-info', display);
+  sendTo(playerWin, 'display-info', display);
+  sendTo(dmWin, 'display-info', display);
 }
 
 // Native fullscreen, so it has no user-gesture requirement and sidesteps Chromium's activation
@@ -225,12 +230,17 @@ ipcMain.handle('save-video-file', async (event, sourcePath, sceneId, mimeType) =
     let written = 0;
     const rs = fs.createReadStream(sourcePath);
     const ws = fs.createWriteStream(destPath);
+    // A half-copied map plays as a broken clip rather than reporting, so a failure unlinks it.
+    const fail = (err) => {
+      rs.destroy(); ws.destroy();
+      fs.promises.unlink(destPath).catch(() => {}).then(() => reject(err));
+    };
     rs.on('data', (chunk) => {
       written += chunk.length;
-      event.sender.send('video-save-progress', { sceneId, written, total });
+      sendTo(event.sender, 'video-save-progress', { sceneId, written, total });
     });
-    rs.on('error', (err) => { ws.destroy(); reject(err); });
-    ws.on('error', (err) => { rs.destroy(); reject(err); });
+    rs.on('error', fail);
+    ws.on('error', fail);
     ws.on('finish', () => resolve(destPath));
     rs.pipe(ws);
   });
@@ -250,7 +260,7 @@ ipcMain.handle('save-video-blob', async (event, sceneId, arrayBuffer, mimeType) 
       const end = Math.min(written + CHUNK, total);
       await fd.write(buffer, written, end - written);
       written = end;
-      event.sender.send('video-save-progress', { sceneId, written, total });
+      sendTo(event.sender, 'video-save-progress', { sceneId, written, total });
     }
   } finally {
     await fd.close();
@@ -407,7 +417,7 @@ function autoUpdateSupported() {
 
 function setUpdateStatus(status) {
   _updateStatus = status;
-  if (dmWin && !dmWin.isDestroyed()) dmWin.webContents.send('update-status', status);
+  sendTo(dmWin, 'update-status', status);
 }
 
 // ⚠ macOS MUST STILL HEAR SOMETHING, or an old install reads as up to date forever.
@@ -519,13 +529,16 @@ ipcMain.handle('show-save-dialog', async (event, opts) => {
 // Video maps are read from mapsDir by id; image, fog and thumb arrive as ArrayBuffers.
 // moduleText is campaign-level, so it lands at the zip root beside manifest.json.
 ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText) => {
-  // Pre-check which video files actually exist on disk
   for (const s of scenesData) {
     if (s.mapType === 'video') {
       try { await fs.promises.access(path.join(mapsDir, s.id + s.mapExt)); s._videoExists = true; }
       catch { s._videoExists = false; }
     }
   }
+
+  // A scene whose file has gone leaves the zip with no map, and only the renderer can say so.
+  const missingVideos = scenesData.filter(s2 => s2.mapType === 'video' && !s2._videoExists)
+                                  .map(s2 => (s2.metadata && s2.metadata.name) || s2.id);
 
   await new Promise((resolve, reject) => {
     const out = fs.createWriteStream(destPath);
@@ -547,11 +560,13 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleTe
       }
       if (s.fogBuffer)   archive.append(Buffer.from(s.fogBuffer),   { name: `${base}/fog.png` });
       if (s.thumbBuffer) archive.append(Buffer.from(s.thumbBuffer), { name: `${base}/thumb.jpg` });
-      event.sender.send('backup-progress', { done: idx + 1, total: scenesData.length, phase: 'export' });
+      sendTo(event.sender, 'backup-progress', { done: idx + 1, total: scenesData.length, phase: 'export' });
     });
 
     archive.finalize();
   });
+
+  return { missingVideos };
 });
 
 // Returns parsed manifest.json array from the zip.
@@ -628,7 +643,9 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
   const results = {};
   const pending = {};
   assignments.forEach(a => {
-    results[a.newId] = { newId: a.newId, mapBuffer: null, fogBuffer: null, thumbBuffer: null };
+    results[a.newId] = { newId: a.newId, mapBuffer: null, fogBuffer: null, thumbBuffer: null,
+                         // false until an entry turns up; a zip can carry none for a video.
+                         mapWritten: a.mapType !== 'video' };
     pending[a.newId] = ['map', 'fog', 'thumb'];
   });
   let doneScenes = 0;
@@ -639,7 +656,7 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
     if (i !== -1) p.splice(i, 1);
     if (p.length === 0) {
       doneScenes++;
-      event.sender.send('backup-progress', { done: doneScenes, total: assignments.length, phase: 'restore' });
+      sendTo(event.sender, 'backup-progress', { done: doneScenes, total: assignments.length, phase: 'restore' });
     }
   };
 
@@ -661,8 +678,10 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
             const dest = path.join(mapsDir, newId + a.mapExt);
             const ws = fs.createWriteStream(dest);
             rs.pipe(ws);
-            ws.on('finish', () => { markDone(newId, type); zipfile.readEntry(); });
+            ws.on('finish', () => { results[newId].mapWritten = true; markDone(newId, type); zipfile.readEntry(); });
             ws.on('error', e => { zipfile.close(); reject(e); });
+            // ⚠ pipe() forwards no error: without this a damaged entry hangs the whole restore.
+            rs.on('error', e => { ws.destroy(); zipfile.close(); reject(e); });
           } else {
             const chunks = [];
             rs.on('data', c => chunks.push(c));
@@ -686,7 +705,7 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
       zipfile.on('end', () => {
         zipfile.close();
         if (doneScenes < assignments.length) {
-          event.sender.send('backup-progress',
+          sendTo(event.sender, 'backup-progress',
             { done: assignments.length, total: assignments.length, phase: 'restore' });
         }
         resolve();
@@ -718,6 +737,11 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createDMWindow();
   });
+}).catch(err => {
+  // Nothing has a window yet, so a failure here is otherwise a process that exits in silence.
+  dialog.showErrorBox('Evermist could not start',
+    'The app could not prepare its data folder: ' + ((err && err.message) || err));
+  app.quit();
 });
 
 app.on('window-all-closed', () => {

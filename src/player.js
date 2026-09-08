@@ -2,9 +2,24 @@
 // Player-mode runtime: cloud-texture pre-gen, the PLAYER_READY handshake, resize, the DM message
 // handler and player pan/zoom. Called once from index.html in player mode.
 
-// Bumped on every video-scene load so an async blob read that resolves after a
-// newer scene switch can detect it was superseded and bail out (no orphan <video>).
+// _playerVideoGen bails a blob read that resolved after a newer switch. _playerPendingVideo is
+// the <video> still loading, which ⚠ cleanupVideo() CANNOT SEE: a push overtaking it revokes the
+// blob URL under an element still reading it, and Chromium reports net::ERR_FILE_NOT_FOUND while
+// the newer push paints its own map. Stop that load first, then let cleanupVideo revoke.
 var _playerVideoGen = 0;
+var _playerPendingVideo = null;
+
+function dropPendingPlayerVideo() {
+  const v = _playerPendingVideo;
+  _playerPendingVideo = null;
+  if (!v) return;
+  v.onerror = null; v.oncanplay = null; v.onseeked = null;
+  v.pause();
+  // removeAttribute + load(), never src = '': an empty src sends the element after the document.
+  v.removeAttribute('src');
+  v.load();
+  if (v.parentNode) v.parentNode.removeChild(v);
+}
 
 // ⚠ STARTS ON THE DM'S FIRST WORD, NEVER AT INIT. A pre-warmed window sits unheld until the button
 // is pressed; a retry running through that lands a `need-map` the DM accepts on adoption, which
@@ -252,7 +267,7 @@ function initPlayer() {
     });
 
     if (msg.mapUrl && msg.mapType === 'video') {
-      // Video scene — create a <video> element on Player side.
+      dropPendingPlayerVideo();
       cleanupVideo();
 
       // ⚠ Play from a PRIVATE in-memory copy of the clip, never the file:// path the DM is already
@@ -267,10 +282,12 @@ function initPlayer() {
         }
         mapVideoUrl = srcUrl;
         const video = createPlayerVideoElement(container);
+        _playerPendingVideo = video;
         let settled = false;
         video.onerror = () => {
           if (settled) return;
           settled = true;
+          if (_playerPendingVideo === video) _playerPendingVideo = null;
           video.onerror = null; video.oncanplay = null;
           video.pause(); video.src = '';
           if (video.parentNode) video.parentNode.removeChild(video);
@@ -289,6 +306,8 @@ function initPlayer() {
             mapOffscreen = extractCanvas;
             // mapVideo has to be live before the texture is built: both
             // initPlayerMapRegionTexture and the sync tick read it.
+            // ⚠ Pending ends HERE, not at oncanplay: the seek above still reads the source.
+            if (_playerPendingVideo === video) _playerPendingVideo = null;
             mapVideo = video;
             // Refresh from the video every rendered frame, driven by the PixiJS render
             // ticker so it never freezes between viewport changes.
@@ -343,7 +362,7 @@ function initPlayer() {
         beginPlayerVideo(msg.mapUrl);
       }
     } else if (msg.mapUrl) {
-      // Image scene
+      dropPendingPlayerVideo();
       cleanupVideo();
       const img = new Image();
       img.onerror = () => { URL.revokeObjectURL(msg.mapUrl); revealPlayer(); };

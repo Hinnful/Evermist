@@ -12,6 +12,9 @@
 //   E. A switch delivers the map ONCE. A second delivery lands before the Player's cover has
 //      closed, which is the one moment the cover exists to hide.
 //   F. Sync View puts the DM's region on the TV.
+//   G. A map push that overtakes a still-loading one leaves no dead <video> behind, and no
+//      half-read clip. The Player asks for the map again on a timer, so pushes really do
+//      overlap at the table.
 //
 // WHY THIS FILE EXISTS ALONGSIDE THE OTHER THREE PLAYER SCENARIOS. They each prove one thing
 // ARRIVING — fog, effects, grid. Nothing proved anything CHANGING: no scenario had ever switched
@@ -240,4 +243,36 @@ module.exports = async function everythingReachesThePlayer(rig) {
             Math.round(got.cx) + ',' + Math.round(got.cy) + ')');
   rig.check(await player.evaluate('playerFollowDM === true'),
             'the Player did not go back to following the DM after Sync View');
+  // ── G. A push that overtakes a loading map leaves nothing behind ─────────────
+  // ⚠ THE FAILURE IS SILENT AND IT REDDENED RUNS AT RANDOM. A Player video is not `mapVideo`
+  // until it can play, so cleanupVideo() cannot see one that is still loading: the next push
+  // revoked its blob URL under it and Chromium reported net::ERR_FILE_NOT_FOUND, while the newer
+  // push painted its own map and left the picture looking right. The run fails on any console
+  // error, so it read as a broken app on a working one.
+  //
+  // Driven through onPlayerResyncRequest, which is what a Player `need-map` retry lands on — the
+  // real path, not a hand-built message. The count is the check: one element, never a pile.
+  await dm.evaluate(`(async () => {
+    for (let i = 0; i < 40; i++) {
+      onPlayerResyncRequest();
+      await new Promise(r => setTimeout(r, 4));
+    }
+    return 0;
+  })()`, 60000);
+  await rig.sleep(2500);
+  const left = await player.evaluate(`(() => {
+    const vs = [...document.querySelectorAll('video')];
+    return { n: vs.length, broken: vs.filter(v => v.error).length,
+             ready: vs.map(v => v.readyState) };
+  })()`);
+  rig.note('after 40 overlapping map pushes the Player holds ' + left.n +
+           ' <video> element(s), readyState ' + JSON.stringify(left.ready));
+  rig.check(left.n === 1,
+            'overlapping map pushes left ' + left.n + ' <video> elements in the Player. Each one ' +
+            'past the first is a superseded clip still holding a decoder, and the push that ' +
+            'superseded it revoked the blob URL it was reading — which is the random ' +
+            'net::ERR_FILE_NOT_FOUND that turned a green suite red');
+  rig.check(left.broken === 0,
+            left.broken + ' of the Player video elements ended in an error, so a map push tore ' +
+            'down a clip that was still being read');
 };

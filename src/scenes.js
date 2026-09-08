@@ -1,3 +1,4 @@
+'use strict';
 // scenes.js — scene auto-save + fog state persistence helpers
 // Loaded before the inline script; functions reference inline-script globals lazily.
 

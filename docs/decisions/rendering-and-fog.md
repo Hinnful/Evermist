@@ -210,6 +210,19 @@ readyState recovers - 0.56-1.03s on the Player, 0.20-0.22s on the DM. The two wi
 different moments because each plays its own copy, which is the point of that split. Judged
 not worth chasing against a source-side cause that is expected to go away.
 
+### A Player video that is still loading is tracked apart from `mapVideo` · `SETTLED` (2026-09-08)
+A clip only becomes `mapVideo` once it can play and has seeked, so `cleanupVideo()` could not see
+one that was still loading. A second map push in that window revoked its blob URL under an element
+still reading it, and Chromium reported the aborted read as `net::ERR_FILE_NOT_FOUND`. Nothing
+looked wrong at the table, because the newer push painted its own map - but the rig fails a run on
+any console error, so a working app reddened roughly one run in four and cost a diagnostic pass
+during a commit gate. `_playerPendingVideo` now holds the loading element and
+`dropPendingPlayerVideo()` stops the read before the revoke; the pending flag is handed over where
+`mapVideo` is assigned, not at `oncanplay`, because the seek in between still reads the source.
+The pushes really do overlap: the Player asks for the map again on a timer until one arrives.
+Covered by criterion G in `everything-reaches-the-player.js`, which counts the elements left
+behind - nine without the fix, one with it.
+
 ---
 
 ## The render loop

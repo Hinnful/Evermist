@@ -116,8 +116,16 @@ async function doExport(selectedIds) {
     // when nothing is loaded, and the zip then looks exactly as it always did.
     const moduleTextJson = typeof mtBackupPayload === 'function' ? mtBackupPayload() : null;
 
-    await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson);
+    const wrote = await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson);
     hideMapProgress();
+    // ⚠ REPORTED, NEVER DROPPED: the record still exports, so the backup looks complete.
+    const gone = (wrote && wrote.missingVideos) || [];
+    if (gone.length) messageDialog({
+      title: gone.length === 1 ? 'One map is not in the backup'
+                               : gone.length + ' maps are not in the backup',
+      message: 'Everything else was saved. These scenes had no map file left on disk, so they ' +
+               'went into the backup without one:' + String.fromCharCode(10, 10) + gone.join(String.fromCharCode(10)),
+    });
   } catch (err) {
     hideMapProgress();
     console.error('Export failed:', err);
@@ -230,6 +238,7 @@ async function restoreFromZipPath(zipPath) {
 
     const extractMap = {};
     extracted.forEach(e => { extractMap[e.newId] = e; });
+    const noMap = [];   // names, which is what the DM is told at the end
 
     showMapProgress('Saving scenes…');
     updateMapProgress(0);
@@ -247,7 +256,9 @@ async function restoreFromZipPath(zipPath) {
       let mapPath = undefined;
 
       if (entry.mapType === 'video') {
-        mapPath = `maps/${newId}${entry.mapExt || '.webm'}`;
+        // ⚠ ONLY WHERE THE FILE LANDED: a claimed path the zip never held opens once, then fails.
+        if (ex.mapWritten === false) noMap.push(resolvedName);
+        else mapPath = `maps/${newId}${entry.mapExt || '.webm'}`;
       } else if (ex.mapBuffer) {
         mapBlob = new Blob([ex.mapBuffer], { type: entry.mapMimeType || 'image/jpeg' });
       }
@@ -291,6 +302,13 @@ async function restoreFromZipPath(zipPath) {
     if (typeof renderSceneManager === 'function') renderSceneManager();
 
     hideMapProgress();
+
+    if (noMap.length) messageDialog({
+      title: noMap.length === 1 ? 'One scene came back without its map'
+                                : noMap.length + ' scenes came back without their maps',
+      message: 'The backup carried no map file for these, so they restored empty. Everything ' +
+               'else came back:' + String.fromCharCode(10, 10) + noMap.join(String.fromCharCode(10)),
+    });
 
     // Last, and deliberately: the scenes are safe by this point and the progress bar is gone, so
     // this can ask a question or report a storage failure without either being in the way.

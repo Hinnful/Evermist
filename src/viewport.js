@@ -1,3 +1,4 @@
+'use strict';
 // viewport.js — view sync helpers + Player map delivery. Loaded before the inline script; its
 // globals resolve lazily, at call time.
 
@@ -275,7 +276,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
       window.electronAPI.getVideoFilePath(currentScene.id).then(absPath => {
         if (!absPath || !playerWindow || playerWindow.closed) return;
         sendMap('file:///' + absPath.replace(/\\/g, '/'), 'video');
-      });
+      }).catch(() => {});   // the request stays pending, so the Player asks again
     } else if (mapVideoBlob) {
       sendMap(URL.createObjectURL(mapVideoBlob), 'video');
     } else if (currentScene && currentScene.mapBlob) {

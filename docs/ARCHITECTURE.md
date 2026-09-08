@@ -18,8 +18,9 @@ A sentence here that explains *why* belongs in one of those. This page says what
 There is **one** HTML file, `index.html`. It serves both screens:
 
 - Open it normally, and you get the **DM window** with all the controls.
-- Open it with `?mode=player`, and you get the **Player window**: no buttons, no cursor,
-  just the map. The DM window opens this automatically.
+- Open it with `?mode=player`, and you get the **Player window**: no buttons and no panels,
+  just the map. The pointer stays visible, so the DM can point at something on the TV. The DM
+  window opens this automatically.
 
 The map is drawn on the GPU with **PixiJS** (WebGL), which is what lets a 10000×6000 map
 pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacked on top.
@@ -478,6 +479,9 @@ between PCs.
 - **Restore** reads that zip back and merges it into your current library rather than
   overwriting. If a name already exists you get a "Name (2)" style rename, so importing the
   same backup twice is safe.
+- **A map file that has gone is named, both ways.** A scene whose video was moved or deleted
+  still exports its record, so the export says which scenes went out without a map, and a
+  restore says which came back without one rather than producing a scene that fails on opening.
 - **The module text is adopted last**, after every scene is safely saved. If a module is
   already loaded, the app asks which one to keep and names both; if there is no room left in
   storage for it, the scenes still restore and the app says the text didn't. A zip written
@@ -500,7 +504,8 @@ installer actually ships, because a file left out fails silently rather than err
 **The rig** (`npm run rig`) covers everything the running app has to be looked at to know.
 It starts the real app the way you do, waits for it to finish loading, then drives it from the
 outside over the Chrome DevTools Protocol: import a map, flip a switch, open the Player window,
-reveal an area. Then it reads back what actually happened and prints one line, PASS or FAIL.
+reveal an area. Then it reads back what actually happened. Each scenario reports as it finishes,
+so a long run shows where it is, and the last line is the verdict: PASS or FAIL.
 About ten seconds start to finish.
 
 Driving the app's *own* Electron shell is the point. An earlier harness stood up a second shell

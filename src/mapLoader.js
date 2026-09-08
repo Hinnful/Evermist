@@ -8,8 +8,7 @@
 // callbacks, so a silent return leaves it waiting forever with the progress overlay up.
 //
 // Passing onFail also hands the REPORTING to the caller — it knows whether this file is one of
-// ten, and two dialogs for one bad map is worse than one. Without it, this shows its own dialog
-// exactly as it always did (replaceSceneMap's path).
+// ten, and two dialogs for one bad map is worse than one. Without it, this reports for itself.
 function loadMapFromFile(file, onMapLoaded, onFail) {
   const fail = reason => {
     hideMapProgress();

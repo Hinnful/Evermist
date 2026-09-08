@@ -52,7 +52,7 @@ other than the code under it is worth knowing about before it is trusted.
 
 ### The mutation ranges were pointed at untestable code · `SETTLED` (2026-08-14)
 Two of the three recorded mutation-survivor clusters were still open, and one of them was partly
-an artefact of the config. `stryker.conf.json` mutated `src/tools.js:48-86`, which covers
+an artefact of the config. The config then mutated `src/tools.js:48-86`, which covers
 `axisLockDraw` - not exported, and reading module globals no unit test can supply, so 11 of its
 38 survivors were permanently unkillable - while excluding `distPointToSegment`, which *is*
 exported and tested. The range now names the three exported kernels.
@@ -63,6 +63,15 @@ The real cause of the rest was the shape of the fixtures, not missing tests: eve
 `computeOptimalTextureSize` guard case zeroed **both** axes at once, the one shape that cannot
 tell `||` from `&&`. Off-origin, oblique, asymmetric and one-axis-zero cases took the two files
 from 59% and 64% to 97% and 96%. The `scaleFactor: NaN` gap recorded earlier is confirmed closed.
+
+### Mutation targets are named, never numbered · `SETTLED` (2026-09-08)
+`stryker.conf.json` listed line ranges, and every edit above one moved it while nothing checked
+it - so a run still reported a score, for whatever code had since slid into those lines. Checked a
+month later, ten of the twelve ranges straddled a function boundary and four exported kernels were
+not covered at all. The config is now `stryker.conf.js`, and `tools/mutation-targets.js` holds the
+FUNCTION NAMES and reads each span out of the source at load time. A rename throws there rather
+than being skipped, `test/mutationTargets.test.js` catches the same drift without running Stryker,
+and the two hex helpers stay in the list because `deriveFogColors` reaches them.
 
 ### Fog-colour derivation is left uncovered · `PARKED` (2026-08-14)
 `fogGeometry.js` sits at 58% with 32 survivors, all in `_hslToHex`'s hue-branch chain and
@@ -101,6 +110,19 @@ way. Whether Windows shows it in that gap is not answerable from this repo, and 
 putting a window on the DM's screen is absolute. An app-side hook to make it drivable is barred by
 the rig's own rules. So it is criterion F in `tools/rig/scenarios/acceptance/player-window.js`,
 reported as unchecked on every run.
+
+### A scenario commits a field by dispatching blur, never by calling it · `SETTLED` (2026-09-08)
+`scene-groups` failed its rename step inside a full run and passed alone, and the cascade made one
+missed step read as eight broken checks. The cause was the scenario, not the app. Chromium records
+an element as the document's focused one even when the WINDOW is not the OS's focused window, and
+`el.blur()` then dispatches nothing - so the app's commit handler never ran and the rig read that
+as the app doing nothing. The step guarded on `document.activeElement === field`, which is true in
+exactly that case, so the guard could never fire. A run parks its windows off-screen and never
+activates them, and a second app starting during the run takes the focus away, which is why it
+depended on what else was running. Every commit in that file now dispatches `FocusEvent('blur')`
+at the listener, the way `room-card.js` already did; `focus()` stays where a check reads the caret.
+Measured both ways under a concurrent run: six of twelve red with the old guard, none of fifteen
+with the dispatch.
 
 ### Code coming in is gated on the suite, and linting was refused · `SETTLED` (2026-09-07)
 A Tests workflow runs `npm test` on every branch push and pull request, and release builds now wait

@@ -854,10 +854,6 @@ const isPlayer = new URLSearchParams(window.location.search).get('mode') === 'pl
 if (isPlayer) {
   document.body.classList.add('player-mode');
   document.title = 'Evermist - Player View';
-  // In Electron, requestFullscreen() works without a user gesture.
-  // This auto-fullscreens the player window on launch without using native
-  // Electron fullscreen (which lacks a clean exit path from the renderer).
-
   window.addEventListener('wheel',      e => e.preventDefault(), { passive: false });
   window.addEventListener('touchmove',  e => e.preventDefault(), { passive: false });
   window.addEventListener('contextmenu',e => e.preventDefault());
@@ -973,7 +969,10 @@ if (window.electronAPI && window.electronAPI.onWindowVisibility) {
   });
 }
 
-if (!isPlayer) initScenes().then(() => { initStress(); initMemProbe(); }).catch(console.error);
+// ⚠ THE PLAYER RUNS BOTH TOO. Each carries its own `if (isPlayer)` branch - the stall detector
+// and the memory sampler - and the second video decoder lives in that window.
+if (isPlayer) Promise.resolve().then(() => { initStress(); initMemProbe(); }).catch(console.error);
+else initScenes().then(() => { initStress(); initMemProbe(); }).catch(console.error);
 initDisplayDetection();
 </script>
 </body>

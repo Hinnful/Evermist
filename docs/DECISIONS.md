@@ -374,6 +374,21 @@ The corollary that needed a hook rather than a rule: the entry script was once a
 and `guard-blob.js` blocking any edit that grows it is the only reason the code now lives in
 `src/`.
 
+### A backup names a map it could not find, and still goes out · `SETTLED` (2026-09-08)
+A scene whose video file has been moved or deleted still holds a full record, so the export wrote
+its metadata and skipped the file: the zip looked complete and the scene came back unopenable,
+with the failure surfacing on its first open as a missing-file error. Refusing the whole export
+over one absent clip was rejected - it costs the DM every other scene for a fault in one. The
+export reports the names instead and finishes, and the restore no longer writes a `mapPath` for
+a scene the zip carried no file for. Both sides are covered by criterion I in the backup scenario.
+
+### A vendored library is pinned exactly and checked against its copy · `SETTLED` (2026-09-08)
+What runs is the file in `lib/`; the devDependency only records which version it came from.
+`pixi.js` sat on a caret, so an `npm install` could put a different version in the tree while
+the app kept running the vendored one, and nothing compared them. It is pinned to `7.4.3` now,
+matching how `polygon-clipping` was already handled, and a packaging test reads the version
+banner out of `lib/pixi.min.js` and fails when the two disagree.
+
 ### `File.path` is gone and must never come back · `SETTLED`
 Electron 32 removed it. The renderer was still passing `file.path` to `saveVideoFile`, so
 main got `undefined`, `fs.stat` threw, and because the `await` had no try/catch the rejection

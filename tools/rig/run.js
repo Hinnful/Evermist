@@ -510,20 +510,32 @@ async function main() {
     };
     fs.mkdirSync(dirs.scenario, { recursive: true });
 
-    tally.notes.push('── ' + name);
+    // ⚠ PRINTED AS THE RUN GOES, not gathered for the end. A regression set runs for minutes,
+    // and a report that exists only afterwards says nothing about a run that hangs, nor about
+    // WHICH scenario a random failure landed in. The end-of-run report keeps the verdict alone.
+    console.log('── ' + name);
     const inst = await startInstance(args, dirs.profile);
     const rig = makeRig(inst, dirs, tally);
+    const firstNote = tally.notes.length;
+    const firstFail = tally.fails.length;
+    const firstErr = tally.consoleErrors.length;
+    let thrown = null;
     try {
       if (file) await require(file)(rig);
       if (args.shot && file === plan[plan.length - 1]) await takeShot(rig, inst.dm, args.shot, args.shotSetup);
+    } catch (err) {
+      thrown = err;
     } finally {
       for (const s of [inst.dm, inst.player]) if (s) tally.consoleErrors.push(...s.errors);
       for (const s of [inst.dm, inst.player]) if (s) s.close();
       killApp(inst.proc);
     }
+    for (const n of tally.notes.slice(firstNote)) console.log(n);
+    for (const f of tally.fails.slice(firstFail)) console.log('  FAILED: ' + f);
+    for (const e of tally.consoleErrors.slice(firstErr)) console.log('  CONSOLE ERROR: ' + e);
+    if (thrown) throw thrown;
   }
 
-  for (const n of tally.notes) console.log(n);
   if (tally.consoleErrors.length) console.log('CONSOLE ERRORS:\n  ' + tally.consoleErrors.join('\n  '));
 
   const fails = tally.fails.concat(tally.consoleErrors.length ? ['console errors during the run'] : []);

@@ -253,9 +253,14 @@ module.exports = async function sceneGroupsFeature(rig) {
     field.focus();
     const focused = document.activeElement === field;
     field.value = 'The Watcherhouse';
-    // focus() can fail to take when the window is not the OS's front one, and blur() on an
-    // unfocused element is a silent no-op that reads as the app doing nothing.
-    if (focused) field.blur(); else field.dispatchEvent(new Event('blur'));
+    // ⚠ DISPATCH THE COMMIT, NEVER el.blur(), AND NEVER GUARD IT ON document.activeElement.
+    // Chromium records the element as the document's focused one even while the WINDOW is not
+    // the OS's focused window; blur() then fires nothing, the app's rename handler never runs,
+    // and the run reads the app as having done nothing. activeElement is true in exactly that
+    // case, so it cannot decide. A second app starting during a run takes that focus, which is
+    // why this went red inside a full set and never alone. room-card.js drives its fields the
+    // same way. focus() stays: it is what puts the caret where the checks below read it.
+    field.dispatchEvent(new FocusEvent('blur'));
     return {
       focused,
       to: 'The Watcherhouse',
@@ -414,7 +419,7 @@ module.exports = async function sceneGroupsFeature(rig) {
     field.focus();
     const focused = document.activeElement === field;
     field.value = 'The Watcherhouse';
-    if (focused) field.blur(); else field.dispatchEvent(new Event('blur'));
+    field.dispatchEvent(new FocusEvent('blur'));   // dispatched, not blur() — see section G
 
     const anchor = document.getElementById('cd-anchor');
     for (let i = 0; i < 40 && !(anchor && anchor.style.display === 'flex'); i++) {
@@ -453,7 +458,7 @@ module.exports = async function sceneGroupsFeature(rig) {
     field.focus();
     const focused = document.activeElement === field;
     field.value = head.dataset.group + ' renamed';
-    if (focused) field.blur(); else field.dispatchEvent(new Event('blur'));
+    field.dispatchEvent(new FocusEvent('blur'));   // dispatched, not blur() — see section G
     const after = smSelectedIds.size;
     smSelectedIds.clear(); renderSceneManager();
     return { focused, before, after };
@@ -508,7 +513,7 @@ module.exports = async function sceneGroupsFeature(rig) {
     const focused = document.activeElement === name;
     name.value = was + ' edited';
     name.dispatchEvent(new Event('input'));
-    name.blur();
+    name.dispatchEvent(new FocusEvent('blur'));   // dispatched, not blur() — see section G
     const survived = document.getElementById('sm-list').contains(card);
     return { focused, survived, committed: allScenes.some(s => s.name === was + ' edited') };
   })()`);

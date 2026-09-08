@@ -122,7 +122,6 @@ function initSceneManagerUI() {
     smOpenGroupMenu(e.currentTarget);
   };
 
-  // Undo toast
   document.querySelector('#scene-undo-toast .undo-btn').onclick = undoDelete;
 
   // The compress-on-import setting. mapConvert.js owns it; this flips it and paints the result.
@@ -572,7 +571,16 @@ function persistSceneOrder() {
 
 async function initScenes() {
   try { await sceneStore.initSceneDB(); }
-  catch (err) { console.warn('IndexedDB unavailable, scene persistence disabled:', err); return; }
+  catch (err) {
+    // ⚠ REPORTED, NEVER JUST LOGGED. Every save and every import fails from here on, and a DM
+    // who is told nothing finds out when a session's reveals are gone.
+    messageDialog({
+      title: 'Evermist cannot reach its map library',
+      message: 'The scene database would not open, so maps cannot be saved or loaded this ' +
+               'session. Restarting the app usually clears it. (' + ((err && err.message) || err) + ')',
+    });
+    return;
+  }
   allScenes = await sceneStore.listScenes();
   allScenes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   renderSceneManager();
@@ -829,72 +837,6 @@ async function persistVideoMap(file, sceneId, mimeType) {
     await window.electronAPI.saveVideoBlob(sceneId, ab, mimeType);
   }
   return 'maps/' + sceneId + ext;
-}
-
-async function replaceSceneMap(file) {
-  if (!currentScene) { createNewScene(file); return; }
-  const isVid = isVideoFile(file);
-
-  // ⚠ NEVER SHRINK ONTO A SCENE THAT ALREADY HAS SHAPES. This rewrites mapWidth and mapHeight but
-  // never the polygons, whose vertices switchScene restores verbatim — so a shrink displaces every
-  // one of them silently.
-  //
-  // EFFECTS COUNT, NOT JUST ROOMS: an effect's vertices are map-space too.
-  const hasShapes = (Array.isArray(currentScene.polygons) && currentScene.polygons.length > 0) ||
-                    (Array.isArray(currentScene.effects)  && currentScene.effects.length  > 0);
-  let shrunk = null;
-  if (isVid && !hasShapes && typeof convertVideoForImport === 'function' && compressBigVideosEnabled()) {
-    shrunk = await convertVideoForImport(file, {
-      onStart: () => showMapProgress('Shrinking the animated map…'),
-      onProgress: updateMapProgress,
-    });
-    if (shrunk.converted) file = shrunk.file;
-    else shrunk = null;
-    hideMapProgress();
-  }
-
-  cleanupVideo();
-  const onLoaded = async (bitmap, blob) => {
-    if (isVid && window.electronAPI) {
-      // Delete old video file if this scene had one
-      if (currentScene.mapPath) {
-        window.electronAPI.deleteVideoFile(currentScene.id).catch(() => {});
-      }
-      showMapProgress(shrunk
-        ? 'Saving — shrunk ' + shrunk.srcW + '×' + shrunk.srcH + ' to ' + shrunk.outW + '×' + shrunk.outH
-        : 'Saving animated map…');
-      const mimeType = file.type || (file.name.endsWith('.mp4') ? 'video/mp4' : 'video/webm');
-      try {
-        currentScene.mapPath = await persistVideoMap(file, currentScene.id, mimeType);
-        currentScene.mapBlob = undefined;
-      } catch (err) {
-        console.error('[replaceSceneMap] saving video map to disk failed', err);
-        currentScene.mapPath = undefined;
-        currentScene.mapBlob = mapVideoBlob;
-      }
-      hideMapProgress();
-    } else {
-      currentScene.mapBlob = isVid ? mapVideoBlob : blob;
-      currentScene.mapPath = undefined;
-    }
-    currentScene.mapType    = isVid ? 'video' : 'image';
-    currentScene.mapWidth   = mapWidth;
-    currentScene.mapHeight  = mapHeight;
-    currentScene.baseFogBlob = await fogToBlob();
-    const thumb = await generateThumbnail(bitmap, mapWidth, mapHeight);
-    currentScene.thumbnail = thumb;
-    const meta = allScenes.find(s => s.id === currentScene.id);
-    if (meta) meta.thumbnail = thumb;
-    await sceneStore.saveScene(currentScene);
-    renderSceneManager();
-    // Reload through the proven scene-switch path (see createNewScene): the direct
-    // drop-load path leaves PixiJS fog/video uninitialised until a manual switch.
-    const sid = currentScene.id;
-    currentScene = null;
-    await switchScene(sid);
-  };
-  if (isVid) loadVideoFromFile(file, onLoaded);
-  else loadMapFromFile(file, onLoaded);
 }
 
 async function switchScene(id, _isRecovery = false) {

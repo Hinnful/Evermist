@@ -209,7 +209,6 @@ function initToolbar() {
   // has one; refreshFloorPlanButton() owns that, on every scene switch.
   document.getElementById('btn-floorplan').onclick = () => drawStoredFloorPlan();
 
-  // Grid
   const gridBtn       = document.getElementById('btn-grid');
   const gridSizeInput = document.getElementById('grid-size');
   // ⚠ EVERY HANDLER BELOW ENDS IN commitGridChange() — render, Player push and scene save in one
@@ -379,7 +378,6 @@ function initToolbar() {
     document.getElementById('anim-preset-' + name).onclick = () => applyAnimPreset(name);
   });
 
-  // Advanced toggle
   document.getElementById('btn-anim-advanced').onclick = function() {
     const panel = document.getElementById('anim-advanced-panel');
     const showing = panel.style.display !== 'none';

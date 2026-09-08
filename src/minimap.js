@@ -316,7 +316,6 @@ function initMinimap() {
     _seedView();
   }
 
-  // Lock toggle
   document.getElementById('btn-minimap-lock').addEventListener('click', () => {
     minimapLocked = !minimapLocked;
     document.getElementById('btn-minimap-lock').classList.toggle('active', minimapLocked);
@@ -332,7 +331,6 @@ function initMinimap() {
   _canvas.addEventListener('pointerup',   _onPointerUp);
   _canvas.addEventListener('pointercancel', _onPointerUp);
 
-  // Wheel for zoom
   _canvas.addEventListener('wheel', _onWheel, { passive: false });
 
   _markDirty();

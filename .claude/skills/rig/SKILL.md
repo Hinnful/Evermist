@@ -145,6 +145,13 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
   its close-and-reopen recovery as a backstop; it should no longer fire.
 - **Electron does not expose the CDP `Browser` domain.** `Browser.getWindowForTarget` answers
   "wasn't found", so there is no moving or resizing an OS window from the protocol.
+- **`el.blur()` does not reliably fire a blur event, and `document.activeElement` does not say
+  whether it will.** Chromium keeps the element as the document's focused one even while the
+  WINDOW is not the OS's focused one, and `blur()` then dispatches nothing - a commit handler
+  hanging off it never runs, and the run reads the app as having done nothing. Parked windows are
+  never activated, so whether it fires turns on what else is on the machine: it fails at random
+  inside a set and passes alone. Dispatch `FocusEvent('blur')` at the listener instead, and keep
+  `focus()` where a check reads the caret.
 - **An element inside `display:none` has zero-sized rects**, so a spacing or centring assertion
   against it passes by accident. Reveal it first.
 - **Both windows must stay visible and unminimized.** An OS-minimize makes `main.js` send

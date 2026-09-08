@@ -18,6 +18,7 @@
 //   F. An undo reaches the Player, because the fog it restored is the fog the table must see.
 //   G. Ctrl+Z typed into the room's name or notes edits the text, never the map.
 //   H. The history is bounded by memory, and eviction always leaves something to undo.
+//   I. A per-corner radius comes back on Ctrl+Z, the second one set on a room included.
 //
 // The byte-arithmetic of eviction is unit-tested (test/, evictUndoStack and evictUndoPair). What
 // is here is the behaviour those functions serve, driven through the real keyboard.
@@ -337,4 +338,56 @@ module.exports = async function undoFeature(rig) {
   rig.check(afterEvicted.undo < evicted.depth && afterEvicted.redo >= 1,
             'a history sitting on its memory ceiling would not undo at all: ' +
             JSON.stringify(afterEvicted));
+  // ── I. A per-corner radius is undoable, every time ──────────────────────
+  // ⚠ THE SECOND EDIT IS THE ONE THAT MATTERS. pushUndo copies a shape with a shallow spread, so
+  // its snapshot SHARES cornerRadii with the live room. The first edit creates that array and is
+  // therefore safe; every later one wrote through the shared reference and quietly rewrote the
+  // snapshot, so Ctrl+Z restored the radius it was meant to remove. One edit alone passes either
+  // way, which is why this sets two.
+  await dm.evaluate(`(() => {
+    pushUndo();
+    polygons = [{ id: 1, vertices: [
+      { x: ${ROOM.x1}, y: ${ROOM.y1} }, { x: ${ROOM.x2}, y: ${ROOM.y1} },
+      { x: ${ROOM.x2}, y: ${ROOM.y2} }, { x: ${ROOM.x1}, y: ${ROOM.y2} },
+    ], mode: 'shroud', cornerRadius: 0, name: 'The Chapter House' }];
+    nextPolygonId = 2;
+    placeMode = 'rooms';
+    rebuildFogFromPolygons(); fogDirty = true; scheduleRender();
+    return 0;
+  })()`);
+
+  // Driven through the card's own field. ⚠ The events are DISPATCHED: el.blur() fires nothing in a
+  // window the OS has not focused, and this run's windows are parked off-screen (the rig skill).
+  const setRadius = (vertexIndex, value) => dm.evaluate(`(() => {
+    selectedPolygonId = 1; selectedVertexIndex = ${vertexIndex};
+    refreshRoomPanel();
+    const el = document.getElementById('rp-radius-num');
+    if (!el) return { err: 'no corner-radius field on the card' };
+    el.dispatchEvent(new FocusEvent('focus'));
+    el.value = '${value}';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new FocusEvent('blur'));
+    return { radii: (polygons[0].cornerRadii || []).slice() };
+  })()`);
+
+  const firstRadius  = await setRadius(0, 20);
+  rig.check(!firstRadius.err, 'the corner-radius check could not be staged: ' + firstRadius.err);
+  const secondRadius = await setRadius(1, 40);
+  rig.note('after two corner edits: ' + JSON.stringify(secondRadius.radii));
+  rig.check(!secondRadius.err && secondRadius.radii[0] === 20 && secondRadius.radii[1] === 40,
+            'the two corner radii did not both take, so nothing below is about undo: ' +
+            JSON.stringify(secondRadius.radii));
+
+  await undoKey();
+  await settle();
+  const afterRadiusUndo = await dm.evaluate(
+    '({ radii: (polygons[0] && polygons[0].cornerRadii || []).slice() })');
+  rig.note('the same corners after Ctrl+Z: ' + JSON.stringify(afterRadiusUndo.radii));
+  rig.check(afterRadiusUndo.radii[1] == null,
+            'Ctrl+Z left the second corner radius on the room: the undo snapshot shares the ' +
+            'array with the live record, so setting the radius rewrote the state it goes back to. ' +
+            'Corners now read ' + JSON.stringify(afterRadiusUndo.radii));
+  rig.check(afterRadiusUndo.radii[0] === 20,
+            'Ctrl+Z took the FIRST corner radius as well, so one keystroke reversed two edits: ' +
+            JSON.stringify(afterRadiusUndo.radii));
 };

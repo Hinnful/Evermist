@@ -7,7 +7,6 @@ let pixiApp        = null;
 let pixiMapSprite  = null;
 let pixiMapTexture = null;
 
-// Layer containers
 let pixiMapLayer     = null;
 let pixiEffectsLayer = null;
 let pixiFogLayer     = null;
@@ -284,7 +283,8 @@ function pixiInitFog(fogDataCvs, fogBlurCvs, cloudBlendCvs, mapW, mapH) {
     pixiFogBaseColorRect.endFill();
     pixiFogCloudContainer.addChild(pixiFogBaseColorRect);
 
-    // CLOUD_PASSES is a global from fog.js (loaded before renderer.js)
+    // CLOUD_PASSES is fog.js's, which loads AFTER this file - so read it at call time, never at
+    // evaluation time.
     pixiFogCloudSprs = CLOUD_PASSES.map(p => {
       const ts = new PIXI.TilingSprite(pixiFogCloudTex, mapW, mapH);
       // tileScale: 1 fog-pixel = FOG_SCALE map-pixels, so tile covers p.scale * FOG_SCALE map-px per texture-px

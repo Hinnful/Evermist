@@ -11,6 +11,9 @@ const {
   vttCleanRing,
   vttSignedArea,
   vttDoorlessWalls,
+  vttLooseEnds,
+  vttFindOpenWalls,
+  vttRingOnDoorlessWall,
   vttDerivePlan,
   vttScaleRooms,
   VTT_NODE_SNAP,
@@ -800,5 +803,117 @@ describe('vttPlan — portal midpoints', () => {
       { x: 0, y: 0 }, { x: 1, y: 5 }, { x: 4, y: 2 },
     ] }] });
     assert.deepEqual(m, { x: 2, y: 1 });
+  });
+});
+
+
+// ─── Loose ends, open walls, and rock ────────────────────────────────────────
+// Three exported kernels the suite never reached. Each one fails SILENTLY when it is wrong:
+// the derivation still returns rooms, and they are the wrong rooms.
+
+// Two collinear stubs with a two-square gap between their inner ends.
+const GAP_NODES = [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 0, y: 3 }, { x: 0, y: 4 }];
+const GAP_PAIRS = [[0, 1], [2, 3]];
+
+describe('vttLooseEnds', () => {
+
+  it('reports every degree-one node and what it nearly reaches', () => {
+    const { ends, deg } = vttLooseEnds(GAP_NODES, GAP_PAIRS);
+    assert.equal(ends.length, 4, 'both stubs have two free ends each');
+    assert.deepEqual(deg, [1, 1, 1, 1]);
+    const inner = ends.find(e => e.id === 1);
+    assert.equal(inner.node, 2, 'the inner end should pick the other stub\'s inner end');
+    assert.equal(inner.dist, 2);
+  });
+
+  // ⚠ THE RULE THAT COSTS A ROOM. A clamped projection lands on the end's own neighbour, so an
+  // end measures its OWN wall, reports a gap the length of it, and bridges to a node it is
+  // already joined to. Skipping incident edges alone does not catch it: the SIBLING edge shares
+  // the corner and clamps there.
+  it('never measures its own wall through a sibling edge', () => {
+    const nodes = [{ x: 0, y: 0 }, { x: 0, y: 2 }, { x: 2, y: 2 }];
+    const pairs = [[0, 1], [1, 2]];          // an L: the corner is node 1
+    const { ends } = vttLooseEnds(nodes, pairs);
+    const free = ends.find(e => e.id === 0);
+    assert.ok(free, 'the far end of the first arm is loose');
+    // Its own arm is 2 long; the honest answer is the diagonal to the other free end.
+    assert.ok(Math.abs(free.dist - Math.hypot(2, 2)) < 1e-9,
+      'the end measured its own wall: got ' + free.dist);
+    assert.equal(free.node, 2);
+  });
+
+  // ⚠ A STUB MUST NEVER BRIDGE INTO A DOORLESS WALL. Both ends of a room's open side otherwise
+  // reach into the nearer rock, which glues the wall to the cave and spends the ends, so the
+  // room is silently lost into the cavern.
+  it('skips everything the caller marks as rock', () => {
+    const avoid = [[{ x: 0, y: 3 }, { x: 0, y: 4 }]];   // the far stub is solid
+    const { ends } = vttLooseEnds(GAP_NODES, GAP_PAIRS, avoid);
+    const inner = ends.find(e => e.id === 1);
+    assert.equal(inner.dist, Infinity, 'the end bridged into rock');
+    assert.equal(inner.node, -1);
+    assert.equal(inner.point, null);
+  });
+
+  it('treats an empty avoid list as no avoidance at all', () => {
+    const bare  = vttLooseEnds(GAP_NODES, GAP_PAIRS).ends.find(e => e.id === 1);
+    const empty = vttLooseEnds(GAP_NODES, GAP_PAIRS, []).ends.find(e => e.id === 1);
+    assert.deepEqual(empty, bare);
+  });
+});
+
+describe('vttFindOpenWalls', () => {
+
+  // ⚠ ONE ENTRY PER GAP, NOT TWO. Both ends of a mutual pair see the same gap, so reporting each
+  // of them doubles every count the DM would ever be shown.
+  it('reports a mutual pair once, at the midpoint of the gap', () => {
+    const out = vttFindOpenWalls(GAP_NODES, GAP_PAIRS, 3);
+    const two = out.filter(w => Math.abs(w.gap - 2) < 1e-9);
+    assert.equal(two.length, 1, 'the mutual pair was reported ' + two.length + ' times');
+    assert.ok(Math.abs(two[0].x - 0) < 1e-9 && Math.abs(two[0].y - 2) < 1e-9,
+      'the gap is not reported at its midpoint: ' + JSON.stringify(two[0]));
+  });
+
+  it('says nothing about a gap wider than the ceiling', () => {
+    assert.deepEqual(vttFindOpenWalls(GAP_NODES, GAP_PAIRS, 1.5), []);
+  });
+
+  it('defaults its ceiling to VTT_OPEN_WALL_MAX_GAP', () => {
+    assert.deepEqual(vttFindOpenWalls(GAP_NODES, GAP_PAIRS),
+                     vttFindOpenWalls(GAP_NODES, GAP_PAIRS, VTT_OPEN_WALL_MAX_GAP));
+  });
+});
+
+describe('vttRingOnDoorlessWall', () => {
+
+  const SQUARE = [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }, { x: 0, y: 2 }];
+
+  it('is false when the caller found no doorless walls at all', () => {
+    assert.equal(vttRingOnDoorlessWall(SQUARE, []), false);
+    assert.equal(vttRingOnDoorlessWall(SQUARE, null), false);
+  });
+
+  // A face that traces rock is not a room: it is the inside of a cave shell or a boulder.
+  it('is true when any edge of the ring lies along a doorless wall', () => {
+    const wall = [[{ x: 0, y: -0.001 }, { x: 2, y: -0.001 }]];   // under the bottom edge
+    assert.equal(vttRingOnDoorlessWall(SQUARE, wall), true);
+  });
+
+  it('is false when every wall is somewhere else', () => {
+    const wall = [[{ x: 10, y: 10 }, { x: 12, y: 10 }]];
+    assert.equal(vttRingOnDoorlessWall(SQUARE, wall), false);
+  });
+
+  // Tested because the whole kernel works in grid squares: a tolerance in pixels would need
+  // re-tuning per map, and this is where that would show first.
+  it('takes its tolerance from the caller, defaulting to VTT_NODE_SNAP', () => {
+    const wall = [[{ x: 0, y: -0.5 }, { x: 2, y: -0.5 }]];
+    assert.equal(vttRingOnDoorlessWall(SQUARE, wall), false, 'half a square is not the same wall');
+    assert.equal(vttRingOnDoorlessWall(SQUARE, wall, 1), true, 'a loose tolerance should reach it');
+    assert.equal(vttRingOnDoorlessWall(SQUARE, wall, VTT_NODE_SNAP), false);
+  });
+
+  it('skips a zero-length ring edge rather than dividing by it', () => {
+    const doubled = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 2 }];
+    assert.equal(vttRingOnDoorlessWall(doubled, [[{ x: 9, y: 9 }, { x: 9, y: 8 }]]), false);
   });
 });

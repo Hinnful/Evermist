@@ -81,6 +81,19 @@ describe('what ships in the build', () => {
     assert.deepEqual(missing, [], 'stylesheets loaded but absent from build.files');
   });
 
+  // The vendored copy is what the app actually runs; the devDependency only records which
+  // version it came from. Nothing tied the two together, so an npm bump could leave the app on
+  // one PixiJS and the repo claiming another. polygon-clipping is pinned the same way.
+  it('ships a vendored PixiJS matching the version package.json names', () => {
+    assert.equal(pkg.devDependencies['pixi.js'], '7.4.3', 'pin pixi.js exactly, not with a caret');
+    assert.ok(patterns.indexOf('lib/pixi.min.js') >= 0, 'lib/pixi.min.js is not in build.files');
+    const banner = read('lib/pixi.min.js').slice(0, 400);
+    const m = /pixi\.js\s*-\s*v([\d.]+)/.exec(banner);
+    assert.ok(m, 'lib/pixi.min.js carries no version banner to check');
+    assert.equal(m[1], pkg.devDependencies['pixi.js'],
+                 'the vendored PixiJS is not the version package.json names');
+  });
+
   it('names no build.files path that is missing from disk', () => {
     const missing = patterns.filter(p =>
       !p.startsWith('!') && !/[*?]/.test(p) && !fs.existsSync(path.join(root, p)));

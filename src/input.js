@@ -218,7 +218,7 @@ function initInput() {
           if (poly && poly.vertices.length > 3) {
             pushUndo();
             poly.vertices.splice(selectedVertexIndex, 1);
-            if (poly.cornerRadii) poly.cornerRadii.splice(selectedVertexIndex, 1);
+            if (poly.cornerRadii) editCornerRadii(poly, r => r.splice(selectedVertexIndex, 1));
             if (poly.doors) poly.doors = remapDoorsForVertexChange(poly.doors, selectedVertexIndex, -1);
             selectedVertexIndex = -1;
             shapeGeometryChanged();

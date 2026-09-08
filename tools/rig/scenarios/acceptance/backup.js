@@ -19,6 +19,9 @@
 //      the loaded book alone.
 //   G. Export's metadata list is a WHITELIST, and every field a restore reads back is in it.
 //   H. What only a person can check.
+//   I. A map file that is gone from disk is NAMED, on the way out and on the way back in. The
+//      record still exports, so silence there produces a backup that looks whole and restores
+//      a scene that fails the first time it is opened.
 //
 // ⚠ THE EXPORT'S SAVE DIALOG IS THE ONE SEAM NOTHING CAN CROSS. doExport opens a native
 // showSaveDialog as its FIRST act, and `window.electronAPI` comes through contextBridge, so it is
@@ -380,4 +383,47 @@ module.exports = async function backupFeature(rig) {
             'that lands on disk are all beyond anything but a hand test');
   rig.byEye('a real restore of that file on a second machine, which is the whole point of the ' +
             'feature and the one thing a single-machine run can never be');
+  // ── I. A missing map file is named, never dropped in silence ─────────────
+  // ⚠ THE EXPORT KEEPS GOING. Refusing the whole backup over one absent clip would cost the DM
+  // every other scene, so the zip is written and the gap is reported instead.
+  const gapZip = path.join(rig.outDir, 'gap.zip');
+  const gap = await dm.evaluate(`(async () => {
+    const meta = allScenes.find(m => m.mapType === 'video');
+    if (!meta) return { err: 'no animated scene to take the file from' };
+    const scene = await sceneStore.loadScene(meta.id);
+    if (!scene) return { err: 'the scene vanished' };
+    // The file goes, the record stays — exactly the state a moved or deleted map leaves behind.
+    await window.electronAPI.deleteVideoFile(scene.id);
+    const wrote = await window.electronAPI.createBackupZip(${JSON.stringify(gapZip)}, [{
+      id: scene.id, mapType: 'video', mapExt: mapExtFromScene(scene),
+      metadata: { id: scene.id, name: scene.name, mapType: 'video',
+                  mapWidth: scene.mapWidth, mapHeight: scene.mapHeight,
+                  mapMimeType: 'video/mp4', mapExt: mapExtFromScene(scene),
+                  polygons: [], nextPolygonId: 1, effects: [], nextEffectId: 1,
+                  gridConfig: {}, createdAt: 0, sortOrder: 0 },
+      mapBuffer: null, fogBuffer: null, thumbBuffer: null,
+    }], null);
+    return { name: scene.name, wrote };
+  })()`, 120000);
+  rig.check(!gap.err, 'the missing-file check could not be staged: ' + gap.err);
+  rig.note('export reported: ' + JSON.stringify(gap.wrote));
+  rig.check(!gap.err && gap.wrote && Array.isArray(gap.wrote.missingVideos) &&
+            gap.wrote.missingVideos.indexOf(gap.name) !== -1,
+            'the export said nothing about a scene whose map file was gone, so the backup looks ' +
+            'complete and that scene comes back unopenable: ' + JSON.stringify(gap.wrote));
+
+  const gapBack = await dm.evaluate(`(async () => {
+    const before = allScenes.length;
+    await restoreFromZipPath(${JSON.stringify(gapZip)});
+    const added = allScenes.slice(before);
+    if (!added.length) return { err: 'the gap backup restored nothing at all' };
+    const sc = await sceneStore.loadScene(added[added.length - 1].id);
+    return { name: sc.name, mapPath: sc.mapPath === undefined ? null : sc.mapPath,
+             mapType: sc.mapType };
+  })()`, 120000);
+  rig.note('restored from the gap backup: ' + JSON.stringify(gapBack));
+  rig.check(!gapBack.err, 'the gap backup could not be restored: ' + gapBack.err);
+  rig.check(!gapBack.err && gapBack.mapPath === null,
+            'a scene restored from a backup carrying no map file still claims one at ' +
+            JSON.stringify(gapBack.mapPath) + ' — it opens once, fails, and reads as an app bug');
 };

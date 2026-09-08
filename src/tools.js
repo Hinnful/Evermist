@@ -35,7 +35,6 @@ const AXIS_LOCK_PX = 12;   // screen px of slack before the snap lets go
 // vs all corners" straight from this, so there is no separate mode flag to keep in step.
 let selectedVertexIndex = -1;
 let isDraggingVertex = false;
-let vertexDragOrigVerts = null;
 let isDraggingEdge = false;
 let edgeDragIndex = -1;         // index of first vertex of dragged edge
 let edgeDragOrigVerts = null;
@@ -160,9 +159,8 @@ function applyShapePlan(plan, mode) {
     if (!g.pieces.length) { drop.add(base.id); continue; }
     base.vertices = g.pieces[0];
     if (mode) base.mode = mode;
-    // ⚠ DROPPED, NEVER EDITED IN PLACE. Both fields are keyed by vertex position and a boolean
-    // renumbers every one; pushUndo clones a shape with a shallow spread, so its snapshot shares
-    // these arrays with the live record and a splice here would rewrite the undo entry too.
+    // ⚠ DROPPED, NEVER EDITED IN PLACE: both are keyed by vertex position, and a new outline
+    // renumbers every one. See editCornerRadii for why editing in place is barred as well.
     delete base.cornerRadii;
     delete base.doors;
     for (let i = 1; i < g.pieces.length; i++) extras.push(newShapeFromPiece(base, g.pieces[i]));
@@ -323,27 +321,17 @@ function distPointToSegment(px, py, ax, ay, bx, by) {
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
-// Only returns a polygon when clicking a vertex dot or edge, never the interior, so a new polygon
-// can start inside an existing one.
-function findPolygonHandleAt(mapX, mapY) {
-  const hitRadius = Math.min(10 / zoom, 30); // clamp: ≤30 map-units so grab shrinks when very zoomed out
-  const list = activeShapeList();
-  for (let i = list.length - 1; i >= 0; i--) {
-    const poly = list[i];
-    const verts = poly.vertices;
-    for (const v of verts) {
-      if (Math.hypot(mapX - v.x, mapY - v.y) < hitRadius) return poly;
-    }
-    for (let j = 0; j < verts.length; j++) {
-      const a = verts[j], b = verts[(j + 1) % verts.length];
-      if (distPointToSegment(mapX, mapY, a.x, a.y, b.x, b.y) < hitRadius) return poly;
-    }
-  }
-  return null;
+// ⚠ cornerRadii IS REPLACED ON EVERY EDIT, never spliced or written in place: pushUndo copies a
+// shape with a shallow spread, so its snapshot shares the array and an edit rewrites the undo entry.
+function editCornerRadii(poly, edit) {
+  const next = poly.cornerRadii ? poly.cornerRadii.slice()
+                                : new Array(poly.vertices.length).fill(null);
+  edit(next);
+  poly.cornerRadii = next;
 }
 
 function findVertexAt(poly, mapX, mapY) {
-  const hitR = Math.min(10 / zoom, 30); // clamp: matches findPolygonHandleAt
+  const hitR = Math.min(10 / zoom, 30); // clamp: the grab shrinks when zoomed far out
   for (let i = 0; i < poly.vertices.length; i++) {
     if (Math.hypot(mapX - poly.vertices[i].x, mapY - poly.vertices[i].y) < hitR) return i;
   }
@@ -622,7 +610,6 @@ function drawActivePolyPreview(screenX, screenY) {
     cursorCtx.stroke();
   }
 
-  // Vertex dots
   cursorCtx.setLineDash([]);
   for (let i = 0; i < verts.length; i++) {
     const { sx, sy } = toScreen(verts[i].x, verts[i].y);
@@ -713,7 +700,6 @@ function toolMouseDown(raw, e) {
           armDragUndo();
           selectedVertexIndex = vi;
           isDraggingVertex = true;
-          vertexDragOrigVerts = selPoly.vertices.map(v => ({ x: v.x, y: v.y }));
           drawCursor(sx, sy);
           return;
         }
@@ -866,7 +852,6 @@ function toolMouseMove(pos, e, screenX, screenY) {
 function toolMouseUp(pos, e) {
   if (isDraggingVertex) {
     isDraggingVertex = false;
-    vertexDragOrigVerts = null;
     commitShapeDrag();
     drawCursor(lastScreenX, lastScreenY);   // re-place the card against the reshaped shape
     return;
@@ -946,7 +931,6 @@ function toolMouseUp(pos, e) {
 function toolWindowMouseUp() {
   if (isDraggingVertex) {
     isDraggingVertex = false;
-    vertexDragOrigVerts = null;
     commitShapeDrag();
     drawCursor(lastScreenX, lastScreenY);   // re-place the card against the reshaped shape
   }
@@ -988,7 +972,7 @@ function toolDblClick(raw, e) {
   const a = poly.vertices[ei], b = poly.vertices[(ei + 1) % poly.vertices.length];
   const pt = closestPointOnSegment(raw.x, raw.y, a.x, a.y, b.x, b.y);
   poly.vertices.splice(ei + 1, 0, pt);
-  if (poly.cornerRadii) poly.cornerRadii.splice(ei + 1, 0, null);
+  if (poly.cornerRadii) editCornerRadii(poly, r => r.splice(ei + 1, 0, null));
   if (poly.doors) poly.doors = remapDoorsForVertexChange(poly.doors, ei, 1);
   selectedVertexIndex = ei + 1;
   shapeGeometryChanged();

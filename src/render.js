@@ -1,3 +1,4 @@
+'use strict';
 // render.js — render orchestration (dirty-flag dispatcher, canvas sizing) + cursor overlay
 
 // ─── Canvas sizing ────────────────────────────────────────────────────────────

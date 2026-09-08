@@ -50,7 +50,6 @@ let cloudBlendCanvas = null, cloudBlendCtx = null;
 // blend, so prev*(1-t) + new*t is a true lerp with no alpha bleed in always-fogged regions.
 let fogTransPrev        = null; // clone of fogEffectCanvas before op (DM)
 let fogTransBlurPrev    = null; // clone of fogBlurCanvas before op (player)
-let fogTransBlurNext    = null; // saved new-blur target for Player PixiJS per-frame blend
 let fogTransBlendCanvas = null; // pre-allocated scratch for player blend pass
 let fogTransT           = 0;   // 0→1 during transition
 let fogTransStart       = 0;
@@ -868,7 +867,6 @@ function stopFogAnim() {
 
 function startFogTransition(isShroud = false) {
   fogTransIsShroud = isShroud;
-  fogTransBlurNext = null; // reset so fogTransTick captures fresh fogBlurCanvas on next tick
 
   // A transition already running is LEFT going: the caller's rebuildFogEffect() updates
   // fogBlurCanvas and the live RAF picks that up as its new target. Snapshotting here instead
@@ -935,7 +933,6 @@ function stopFogTransition() {
   if (fogTransRafId) { cancelAnimationFrame(fogTransRafId); fogTransRafId = null; }
   fogTransPrev     = null;
   fogTransBlurPrev = null;
-  fogTransBlurNext = null;
   fogTransT        = 0;
   if (!isPlayer) pixiEndFogTransition();
 }

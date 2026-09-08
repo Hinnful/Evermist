@@ -411,13 +411,13 @@ function _rpWireRadiusField(numId) {
     if (!poly) return;
     // One undo per editing session, never per keystroke: typing "150" is one Ctrl+Z.
     if (!radiusUndoPushed) { pushUndo(); radiusUndoPushed = true; }
-    // Target follows the selection. cornerRadii is created lazily and padded to the vertex count,
-    // because a polygon can gain vertices after the array exists.
+    // The target follows the selection; the array pads out, since a polygon can gain vertices.
     const vi = selectedVertexIndex;
     if (vi >= 0 && vi < poly.vertices.length) {
-      if (!poly.cornerRadii) poly.cornerRadii = new Array(poly.vertices.length).fill(null);
-      while (poly.cornerRadii.length < poly.vertices.length) poly.cornerRadii.push(null);
-      poly.cornerRadii[vi] = v;
+      editCornerRadii(poly, r => {
+        while (r.length < poly.vertices.length) r.push(null);
+        r[vi] = v;
+      });
     } else {
       poly.cornerRadius = v;
     }
