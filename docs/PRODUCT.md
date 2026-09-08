@@ -135,6 +135,26 @@ because the master archive is the Dungeon Alchemist project the map was exported
 duplicating a 100MB clip to hedge would double the cost the feature exists to cut. Anything that
 reads as "Evermist lost my map quality" has to be traceable to a switch someone threw.
 
+### Music is a mid-session control, and it passes the physical-object test · `SETTLED` (scope call)
+The scope line above optimises for prep time and argues against mid-session *authoring*. Picking
+a track is not authoring. The deciding test settles it: no physical object at the table plays
+music, so the app wins that one outright. This is the same reasoning that licensed map effects,
+which are placed during play. Do not read the prep-time line as a ban on in-play controls.
+
+### Music never enters the backup zip · `SETTLED` (scope call)
+A hundred hour-long tracks is about 5.5GB, and a backup is meant to be portable. The music
+folder sits outside the scene store, so a restore on a fresh machine brings scenes and no music.
+Adding it later would be one more folder to walk rather than a migration.
+
+### Music is not grouped, and tracks always loop · `SETTLED` (scope call)
+Typing three letters into the filter beats collapsing folders when a whole campaign is one
+playlist, so subfolder groups were designed and dropped. Grouping starts earning its place at a
+second campaign in one library. Looping has no switch either: an ambient track that stops
+mid-scene is never what anyone wanted.
+
+### No next or previous track · `SETTLED` (scope call)
+A hundred ambient loops have no order a Next button could follow. The list is the control.
+
 ### Distinctive fog identities · `PARKED`
 The most interesting idea in its batch and too big for now. The shape when it lands: "bloody /
 icy / acidic / rusty" are not tint values, they are combinations of knobs the cloud engine

@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/toolbar.js, src/shapeMenu.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, or the scene library popup and its header. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/toolbar.js, src/shapeMenu.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, the scene library popup and its header, or the music bubble and its Add music panel. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -103,6 +103,25 @@ Two more rules the bar's shape depends on:
   and a `display: none` takes its box out of `#tools-wrapper` — the whole cluster then jumps up
   by the row plus the 11px gap on every Select. Its explicit `height` is what stops the box
   collapsing once every child inside it is hidden.
+
+## The music bubble (`music.css`)
+
+It borrows the app's controls rather than restyling them, and every rule below exists because
+the first version broke it.
+
+- **The pill and both panels use `--panel-radius`**, not a pill radius. One floating surface.
+- **The filter and URL fields are `.cp-field`.** The black inset pill (`rgba(0,0,0,0.28)`) means
+  *pick one of these* and must never wrap a field the DM types into.
+- **Volume is `.cp-slider`'s markup** - div track, fill, knob, invisible range - positioned by
+  the same arithmetic as `_cpFancy`. Never a styled native range; that is a second slider look.
+- **Add is `.cp-btn-icon`**, the outlined 30px square Fog Reset already is. A bare transparent
+  icon button belongs to a pick-one row.
+- **The download panel's selection is the scene library's**: `#sm-actionbar`'s shape replacing
+  the header, `.sm-hbtn` buttons, `.sm-bare` for the cancel, and `.sm-cb` for the tick. The tick
+  is scoped down to 15px inside `.mu-picklist` only - a 34px text row cannot carry a card's 20px,
+  and the scene cards keep theirs.
+- **A per-row delete is `.cp-btn-icon` with the app's trash SVG**, hidden until the row hovers,
+  and it asks through `confirmDialog`.
 
 ## Control-panel button identity
 

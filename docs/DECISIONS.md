@@ -912,3 +912,49 @@ follows from the same call: it wraps inside the picture over a darkened foot and
 ellipsized, because a name cut short cannot be told from its neighbour either.
 Do not reopen density as a way to fit more cards. The answers already taken are a wider panel
 and a find field, and both leave the picture alone.
+
+## Music
+
+### Web Audio was built for the crossfade and rejected · `REJECTED` (2026-09-08)
+`createMediaElementSource` into two `GainNode`s was the obvious route, and it risks total
+silence: Chromium taints a source it reads as cross-origin, and the app is served from
+`file://`, whose origin is opaque. Nothing would have caught it before playback existed.
+Playback is two `HTMLAudioElement`s with a volume ramp on a 40ms timer instead, each deck
+owning its own timer. The stutter that a gain ramp would have avoided only bites on a
+minimised window, which is not a state anyone is in while clicking tracks.
+
+### No ffmpeg, and the audio format is sorted by quality not container · `SETTLED` (2026-09-08)
+`bestaudio[protocol^=http]`. YouTube serves audio-only streams as whole files, so nothing needs
+converting and ffmpeg stays out of the installer - 80-140MB per platform. The protocol filter
+excludes HLS manifests, which arrive as segments and would need ffmpeg to join.
+An earlier selector preferred `ext=m4a` and took 129k AAC where the same upload offered 131k
+Opus. Chromium decodes both natively, so a container preference buys nothing and costs bitrate
+on an upload carrying a high-quality track. Never constrain the format by container.
+
+### Only an address the main process built reaches yt-dlp's argv · `SETTLED` (2026-09-08)
+yt-dlp reads `--exec` off its own command line, so a pasted string beginning with `-` would be
+arbitrary command execution from the main process. `ytdlpTarget` rebuilds a canonical address
+from the parsed id; anything not YouTube goes through the URL parser, whose output always starts
+with its scheme. Every call carries `--ignore-config`, ends its options with `--`, and spawns
+with an argument array and no shell. A track name from the renderer is checked for containment
+inside the music folder the same way - `isSafeId` cannot be used, because a name carries spaces
+and Cyrillic.
+
+### yt-dlp is pinned for the build and self-updating at runtime · `SETTLED` (2026-09-08)
+`tools/fetch-ytdlp.js` fetches a named release tag from `postinstall` into a gitignored
+`vendor/`, so two builds of one release tag ship the same binary. What RUNS is a copy in
+`userData`, because a binary inside the install cannot rewrite itself and yt-dlp stops working
+within weeks when YouTube changes. The download panel's Update button rewrites that copy, and
+appears only when a newer release exists.
+
+### The music library has no database · `SETTLED` (2026-09-08)
+The folder is the library: a download writes a file, a delete removes one, and every list is a
+read of the folder. Track durations are read off the files each run rather than stored. The
+"already downloaded" check reads the video id back out of the filename, so nothing has to
+predict yt-dlp's per-OS sanitisation - a predicted name stops matching silently.
+
+### A rig run never makes a sound · `SETTLED` (2026-09-08)
+`--mute-audio` at launch in `run.js`, plus `muted` on both decks in the music scenario. Two
+independent guarantees, because a loud hour-long track out of an unwatched run is the same class
+of intrusion as a window appearing on screen. `muted` does not touch `volume`, so a crossfade
+stays fully measurable.

@@ -32,7 +32,8 @@
 //   M. Pasting a YouTube link downloads the tracks picked from it.
 //
 // ⚠ THE TRACKS ARE WRITTEN HERE AS WAV, not downloaded. A scenario must never reach YouTube: it
-// needs the network, a real video and a 50MB transfer. J and K are therefore rig.byEye.
+// needs the network, a real video and a 50MB transfer. L and M are therefore rig.byEye, and
+// so is the audible half of a fade: a run is MUTED at launch by tools/rig/run.js.
 //
 // ⚠ `--user-data-dir` IS what `app.getPath('userData')` resolves to, so the music folder is
 // `<profileDir>/music`. Writing there is the only way to give an isolated profile a library.
