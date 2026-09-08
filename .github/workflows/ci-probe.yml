@@ -13,7 +13,8 @@ on:
 jobs:
   probe:
     runs-on: windows-latest
-    # Below the rig's own 900s cap per run, with room for the build and the two runs.
+    # Well above the rig's own 900s cap plus the build, so a slow set is reported BY the rig with
+    # its own message rather than cut off by the job with none.
     timeout-minutes: 45
 
     steps:
@@ -51,7 +52,9 @@ jobs:
       - name: Probe the runner
         run: npm run rig -- ci-probe --exe "dist/win-unpacked/Evermist.exe"
 
-      # Only reached when the probe passes. This is the real question: does an existing set go
-      # green against the packaged app on a runner, and how long does it take.
-      - name: Run the smoke set against the built app
-        run: npm run rig -- --exe "dist/win-unpacked/Evermist.exe"
+      # Only reached when the probe passes. Two questions in one run: do the layout-heavy
+      # scenarios hold at the runner's 1008x681 DM window, and does the set fit the rig's own
+      # 900s cap. A timeout answers the second one as surely as a pass does — the step's duration
+      # is the measurement either way.
+      - name: Run the regression set against the built app
+        run: npm run rig -- regression --exe "dist/win-unpacked/Evermist.exe"
