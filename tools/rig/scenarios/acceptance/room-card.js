@@ -223,13 +223,26 @@ module.exports = async function roomCardFeature(rig) {
                card: { x: Math.round(p.left), y: Math.round(p.top),
                        w: Math.round(p.width), h: Math.round(p.height) },
                room: { x: Math.round(rx1), y: Math.round(ry1),
-                       w: Math.round(rx2 - rx1), h: Math.round(ry2 - ry1) } };
+                       w: Math.round(rx2 - rx1), h: Math.round(ry2 - ry1) },
+               gap: { left: Math.round(rx1 - 8), right: Math.round(innerWidth - 8 - rx2),
+                      top: Math.round(ry1 - 8), bottom: Math.round(innerHeight - 8 - ry2) } };
     })()`);
     rig.note(name + ': overlap ' + overlap.ox + 'x' + overlap.oy + ' — card ' +
              JSON.stringify(overlap.card) + ' room ' + JSON.stringify(overlap.room));
-    rig.check(overlap.ox <= 0 || overlap.oy <= 0,
-              'the card is sitting on top of ' + name + ', which is the room it is describing: ' +
-              'they overlap by ' + overlap.ox + 'x' + overlap.oy + ' pixels');
+    // ⚠ ONLY WHERE A CLEAR SPOT EXISTS. The card is 324x515 and stays inside the window, so on a
+    // small screen a wide room can leave no legal position at all — and the placement code is
+    // then doing the best there is. Asserting anyway turned a 1024x768 CI runner red with
+    // nothing wrong. The gaps come from the same measurement as the overlap.
+    const fits = overlap.gap.left >= overlap.card.w || overlap.gap.right >= overlap.card.w ||
+                 overlap.gap.top >= overlap.card.h || overlap.gap.bottom >= overlap.card.h;
+    if (!fits) {
+      rig.note(name + ': no clear spot for a ' + overlap.card.w + 'x' + overlap.card.h +
+               ' card beside it — gaps ' + JSON.stringify(overlap.gap) + ', so overlap is allowed');
+    } else {
+      rig.check(overlap.ox <= 0 || overlap.oy <= 0,
+                'the card is sitting on top of ' + name + ', which is the room it is describing: ' +
+                'they overlap by ' + overlap.ox + 'x' + overlap.oy + ' pixels');
+    }
   }
 
   // ── F. Dragging the card ──────────────────────────────────────────────────
@@ -247,20 +260,25 @@ module.exports = async function roomCardFeature(rig) {
     return 0;
   })()`);
 
-  // ⚠ DRAGGED UP, NOT DOWN. The card is clamped inside the window and it is tall, so a downward
-  // drag is legitimately cut short — and a check on the delta would read that clamp as the card
-  // failing to follow the cursor. Section F's next check is what covers the clamp on purpose.
+  // ⚠ THE VERTICAL DIRECTION IS MEASURED, NOT FIXED. The card is 515 tall and clamped inside the
+  // window, so on a short screen it starts pinned at the top and an UPWARD drag is the one that
+  // gets cut short — which a delta check reads as the card failing to follow the cursor. Drag
+  // towards whichever side has room. The next check is what tests the clamp on purpose.
   const beforeDrag = await card();
-  await dragCard(120, -60);
+  const winH = await dm.evaluate('innerHeight');
+  const DY = beforeDrag.y - 8 >= 60 ? -60 : 60;
+  rig.note('dragging by 120,' + DY + ' — the card sits at y=' + beforeDrag.y +
+           ' in a ' + winH + 'px window, so ' + (DY < 0 ? 'up' : 'down') + ' is the free side');
+  await dragCard(120, DY);
   await rig.sleep(300);
   const afterDrag = await card();
   rig.note('the card was dragged: ' + JSON.stringify(beforeDrag) + ' → ' + JSON.stringify(afterDrag));
   rig.check(afterDrag.x !== beforeDrag.x || afterDrag.y !== beforeDrag.y,
             'dragging the card by its bar moved nothing: ' + JSON.stringify(afterDrag));
   rig.check(Math.abs((afterDrag.x - beforeDrag.x) - 120) < 12 &&
-            Math.abs((afterDrag.y - beforeDrag.y) - -60) < 12,
+            Math.abs((afterDrag.y - beforeDrag.y) - DY) < 12,
             'the card did not follow the cursor: it moved ' + (afterDrag.x - beforeDrag.x) + ',' +
-            (afterDrag.y - beforeDrag.y) + ' for a drag of 120,-60 — a bare divide by the UI zoom ' +
+            (afterDrag.y - beforeDrag.y) + ' for a drag of 120,' + DY + ' — a bare divide by the UI zoom ' +
             'is what puts a constant offset here');
 
   await dragCard(-4000, -4000);

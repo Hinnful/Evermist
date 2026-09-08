@@ -8,6 +8,7 @@
 //   npm run rig -- fog-reaches-the-player
 //   npm run rig -- --exe "dist/Evermist.exe"          drive a built installer instead
 //   npm run rig -- --shot "#sm-panel" --shot-setup "openDropdown()"
+//   npm run rig -- --dm-size 1024x768 --player-size 1024x768    reproduce a CI layout exactly
 //
 // When to run it, when not to, how to write a scenario, and the traps: the `rig` skill.
 // What it is and how the pieces fit: docs/ARCHITECTURE.md.
@@ -36,7 +37,12 @@ const ROOT = path.join(__dirname, '..', '..');
 const OUT_DIRNAME = '.rig';
 const TEMP_ROOT = path.join(os.tmpdir(), 'evermist-rig');
 
-const HARD_TIMEOUT_MS = 900000;
+// ⚠ A WATCHDOG AGAINST A HANG, NOT A BUDGET, so it scales with how much was asked for. A flat
+// 900s was ample for the smoke set and four minutes clear of a 19-scenario regression pass — and
+// a blocking release gate that refuses a good release on a slow runner day is worse than no gate.
+// Per-scenario, one hung boot still trips it in a few minutes rather than half an hour.
+const TIMEOUT_BASE_MS = 180000;
+const TIMEOUT_PER_SCENARIO_MS = 90000;
 
 // initControlPanel is the LAST thing the init chain runs (called from toolbar.js), and
 // _cpFogPicker is the last thing it assigns — so this is the app saying it is fully up. Polled,
@@ -48,13 +54,19 @@ const PLAYER_READY = 'typeof isPlayer !== "undefined" && isPlayer && !!pixiApp';
 // ─── Arguments ───────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
-  const a = { scenarios: [], exe: null, out: null, shot: null, shotSetup: '', visible: false };
+  const a = { scenarios: [], exe: null, out: null, shot: null, shotSetup: '', visible: false,
+              dmSize: null, playerSize: null };
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
     if (t === '--exe') a.exe = argv[++i];
     else if (t === '--out') a.out = argv[++i];
     else if (t === '--shot') a.shot = argv[++i];
     else if (t === '--shot-setup') a.shotSetup = argv[++i] || '';
+    else if (t === '--dm-size' || t === '--player-size') {
+      const m = /^(\d+)x(\d+)$/.exec(argv[++i] || '');
+      if (!m) throw new Error(t + ' wants WIDTHxHEIGHT, e.g. 1024x768');
+      a[t === '--dm-size' ? 'dmSize' : 'playerSize'] = { w: +m[1], h: +m[2] };
+    }
     else if (t === '--visible') a.visible = true;
     else if (t.startsWith('--')) throw new Error('unknown flag ' + t);
     else a.scenarios.push(t);
@@ -159,13 +171,13 @@ function killAll() { for (const p of Array.from(live)) killApp(p); }
 const OFFSCREEN_PS1 = path.join(__dirname, 'offscreen.ps1');
 const PARKER_READY_MS = 5000;
 
-async function startParker(args, outDir) {
+async function startParker(args, outDir, budgetMs) {
   if (args.visible || process.platform !== 'win32') return null;
   const readyFile = path.join(outDir, '.parker-ready');
   let ps;
   try {
     ps = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass',
-      '-File', OFFSCREEN_PS1, outDir, String(Math.ceil(HARD_TIMEOUT_MS / 1000)), readyFile],
+      '-File', OFFSCREEN_PS1, outDir, String(Math.ceil(budgetMs / 1000)), readyFile],
       { stdio: 'ignore', windowsHide: true });
     ps.on('error', () => {});
   } catch (_) { return null; }
@@ -242,33 +254,32 @@ function assertPreloadRan(dm) {
 // Emulation.setDeviceMetricsOverride resizes the RENDERER only. The OS window stays parked
 // off-screen, so this costs nothing back. Best-effort: a Player at the wrong size is worth less
 // coverage, not a failed run, so a refusal here is reported and stepped over.
-// ─── Giving the DM a window wide enough to lay its panels out in ─────────────
-// A GitHub Actions runner has a 1024x768 virtual display, so the DM window comes up at 1008x681
-// there against ~1384x861 on a real monitor. Three checks failed on that alone: the room card is
-// 324 wide and could not find clear space beside the room it describes, the same squeeze pinned
-// it at its top clamp so a vertical drag had nowhere to go, and the Player ended up so close to
-// the DM in shape that a correct Sync View refit landed inside view.js's 0.02 tolerance.
+// ─── Forcing a window size, to reproduce a CI layout ─────────────────────────
+// `--dm-size WxH` and `--player-size WxH` set each renderer's size exactly. Nothing uses them by
+// default: the windows come up at whatever the machine gives, and the scenarios are written to
+// hold at any size rather than at one.
 //
-// ⚠ A FLOOR, NOT A FIXED SIZE. A real monitor already clears it, so a local run is untouched and
-// nothing that passes today changes. Pinning every run to one size would be more reproducible and
-// would also re-baseline every geometry check in the suite against a number nobody has run yet.
-const DM_MIN = { w: 1200, h: 800 };
-
-async function sizeDmToFloor(session) {
+// ⚠ THIS IS HOW A RUNNER FAILURE GETS CHASED WITHOUT PUSHING. A GitHub Actions runner has a
+// 1024x768 virtual display, which put the DM at 1008x681 and broke three geometry checks. With
+// these two flags the same layout reproduces here, digit for digit, in half a minute — against
+// fifteen for a push and a run.
+//
+// ⚠ GROWING THE WINDOW WAS THE WRONG FIX AND IS NOT COMING BACK. A 1200x800 floor did clear all
+// three, and 40% more pixels on a software rasteriser slowed the app enough that one import blew
+// its own budget and the whole set hit the run's 900s cap. The checks were the thing to fix.
+async function sizeRendererTo(session, exact) {
+  if (!exact) return null;
   try {
-    const s = await session.evaluate('({ w: innerWidth, h: innerHeight })');
-    if (!s || (s.w >= DM_MIN.w && s.h >= DM_MIN.h)) return null;
-    const want = { width: Math.max(s.w, DM_MIN.w), height: Math.max(s.h, DM_MIN.h) };
     await session.send('Emulation.setDeviceMetricsOverride',
-      { ...want, deviceScaleFactor: 1, mobile: false });
+      { width: exact.w, height: exact.h, deviceScaleFactor: 1, mobile: false });
     await session.evaluate('syncSize(); viewportDirty = true; scheduleRender(); 0');
-    return want;
+    return exact;
   } catch (_) { return null; }
 }
 
-async function sizePlayerToScreen(session) {
+async function sizePlayerToScreen(session, exact) {
   try {
-    const s = await session.evaluate('({ w: screen.width, h: screen.height })');
+    const s = exact || await session.evaluate('({ w: screen.width, h: screen.height })');
     if (!s || !(s.w > 0) || !(s.h > 0)) return null;
     await session.send('Emulation.setDeviceMetricsOverride',
       { width: s.w, height: s.h, deviceScaleFactor: 1, mobile: false });
@@ -316,8 +327,8 @@ async function startInstance(args, profileDir) {
   await dm.watch();
   await dm.waitFor(DM_READY, 90000, 'the DM init chain');
   await assertPreloadRan(dm);
-  // Before any scenario reads a rect, so every geometry check sees one layout.
-  await sizeDmToFloor(dm);
+  // Before any scenario reads a rect. A no-op unless --dm-size was passed.
+  await sizeRendererTo(dm, args.dmSize);
 
   // ⚠ REFUSE TO RUN AGAINST A LIBRARY THAT ALREADY HAS SCENES IN IT. Scenarios import maps,
   // switch scenes (which autosaves the outgoing one) and restore backups, so a rig run on real
@@ -342,7 +353,8 @@ async function startInstance(args, profileDir) {
       'Evermist.exe instead, which honours it.');
   }
 
-  return { proc, port, browser, dm, dmTargetId: dmTarget.id, player: null };
+  return { proc, port, browser, dm, dmTargetId: dmTarget.id, player: null,
+           playerSize: args.playerSize };
 }
 
 // ─── The rig handed to a scenario ────────────────────────────────────────────
@@ -453,7 +465,7 @@ function makeRig(inst, dirs, tally) {
         // size-dependent — its fog is a Canvas-2D layer composited over the map with an edge
         // margin — so measuring it at 1200x800 would test a size the table never uses. This
         // changes the renderer only; the OS window stays parked.
-        await sizePlayerToScreen(session);
+        await sizePlayerToScreen(session, inst.playerSize);
         return session;
       };
 
@@ -532,7 +544,10 @@ async function main() {
   const plan = files.length ? files : [null];
 
   // Before the first app, so no window is ever on screen long enough to take focus.
-  const parker = await startParker(args, outDir);
+  // Armed here, not at module scope: the budget depends on how many scenarios were asked for,
+  // and the parker outlives the run by the same amount so no window can surface at the end.
+  const budgetMs = armWatchdog(plan.length);
+  const parker = await startParker(args, outDir, budgetMs);
   const stopParker = () => { if (parker) try { parker.kill(); } catch (_) {} };
   process.once('exit', stopParker);
 
@@ -583,12 +598,18 @@ async function main() {
   process.exit(fails.length ? 1 : 0);
 }
 
-const watchdog = setTimeout(() => {
-  console.log('FAIL the rig timed out after ' + (HARD_TIMEOUT_MS / 1000) + 's');
-  killAll();
-  process.exit(1);
-}, HARD_TIMEOUT_MS);
-watchdog.unref();
+let watchdog = null;
+function armWatchdog(scenarioCount) {
+  const ms = TIMEOUT_BASE_MS + TIMEOUT_PER_SCENARIO_MS * Math.max(1, scenarioCount);
+  watchdog = setTimeout(() => {
+    console.log('FAIL the rig timed out after ' + Math.round(ms / 1000) + 's over ' +
+                scenarioCount + ' scenario(s)');
+    killAll();
+    process.exit(1);
+  }, ms);
+  watchdog.unref();
+  return ms;
+}
 
 function die(err) {
   console.log('FAIL the rig threw: ' + (err && err.stack ? err.stack : err));

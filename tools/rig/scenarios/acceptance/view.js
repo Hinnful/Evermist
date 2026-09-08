@@ -253,7 +253,18 @@ module.exports = async function viewFeature(rig) {
             "the Player did not refit the DM's region onto its own canvas: it is at zoom " +
             playerRegion.zoom + ' where fitting ' + dmRegion.w + 'x' + dmRegion.h + ' into ' +
             sizes.player.w + 'x' + sizes.player.h + ' is ' + wantZoom.toFixed(5));
-  rig.check(Math.abs(playerRegion.zoom - dmRegion.zoom) > 0.02,
+  // ⚠ ONLY WHERE THE TWO ANSWERS DIFFER. This guards against the Player copying the DM's zoom
+  // instead of refitting, and it can only tell them apart when a correct refit is more than the
+  // tolerance away from the DM's own zoom. Two viewports of nearly the same shape put the right
+  // answer inside 0.02 of the wrong one, which turned a 1024x768 CI runner red while the check
+  // above confirmed the refit was correct to five decimals.
+  const discriminates = Math.abs(wantZoom - dmRegion.zoom) > 0.02;
+  if (!discriminates) {
+    rig.note('the DM and Player viewports are too close in shape to tell a refit from a copy: ' +
+             'a correct refit is ' + wantZoom.toFixed(5) + " against the DM's " +
+             dmRegion.zoom.toFixed(5) + ', so the verbatim check is skipped');
+  }
+  rig.check(!discriminates || Math.abs(playerRegion.zoom - dmRegion.zoom) > 0.02,
             "the Player took the DM's zoom verbatim rather than refitting the region, which shows " +
             'a different amount of map on a differently sized screen: both read ' +
             playerRegion.zoom);
