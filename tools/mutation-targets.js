@@ -25,6 +25,8 @@ const MUTATE_TARGETS = {
   'src/undo.js':         ['evictUndoStack', 'evictUndoPair'],
   'src/backup.js':       ['resolveSceneName', 'mapExtFromScene'],
   'src/sceneManager.js': ['escHtml'],
+  'src/musicPlan.js':    ['parseMusicUrl', 'videoIdFromFileName', 'displayName', 'filterTracks',
+                          'fadeLevel', 'fadePhase'],
   // ⚠ deriveFogColors and its two helpers are PARKED at 58%, deliberately (see
   // docs/decisions/testing-and-the-rig.md). They stay in the run so the figure keeps being
   // reported; closing them needs a decided colour table, not more arithmetic.

@@ -1,6 +1,6 @@
 {
   "name": "evermist",
-  "version": "2.7.3",
+  "version": "2.8.0",
   "description": "D&D fog-of-war map viewer for TV display",
   "main": "main.js",
   "author": "Hinnful",
@@ -10,6 +10,7 @@
     "url": "https://github.com/Hinnful/Evermist.git"
   },
   "scripts": {
+    "postinstall": "node tools/fetch-ytdlp.js",
     "test": "node --test",
     "test:mutation": "stryker run",
     "start": "electron .",
@@ -46,6 +47,12 @@
     ],
     "asarUnpack": [
       "node_modules/pdfjs-dist/**"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor/yt-dlp",
+        "to": "yt-dlp"
+      }
     ],
     "publish": [
       {

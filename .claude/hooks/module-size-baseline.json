@@ -22,6 +22,10 @@
     "src/sceneStore.js": 4481,
     "src/scenes.js": 4785,
     "src/viewport.js": 14542,
-    "src/vttPlan.js": 28549
-  }
+    "src/vttPlan.js": 28549,
+    "src/musicPlan.js": 4847,
+    "src/music.js": 16974
+  },
+  "src/musicPlan.js": 4938,
+  "src/music.js": 17284
 }

@@ -4,6 +4,10 @@ node_modules/
 # Build output
 dist/
 
+# yt-dlp, fetched per platform by `postinstall` (tools/fetch-ytdlp.js). A 17MB binary per
+# platform must not enter a public repo; the tag it comes from is pinned in that script.
+vendor/
+
 # Test-rig output (screenshots, generated maps, the isolated profile) — regenerate, never
 # commit. It normally lives in the OS temp dir; this covers a --out pointed in here anyway.
 .rig/

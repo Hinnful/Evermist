@@ -3,20 +3,20 @@
 Behavioral rulebook for this repo: the constraints you must obey. Rules only, imperative,
 one clause of reason at most.
 
-**Every doc answers one question; the mood it is written in proves it.** This one answers
-*what must I never do?* A paragraph that doesn't belongs elsewhere:
+**Every doc answers one question.** This one answers *what must I never do?* A paragraph
+that doesn't belongs elsewhere:
 
 - How does it work? Present tense → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - Why this shape, what was tried? Past tense → [docs/DECISIONS.md](docs/DECISIONS.md),
   plus one file per split-out topic in [docs/decisions/](docs/decisions/)
 - What is it for, what will it never do? → [docs/PRODUCT.md](docs/PRODUCT.md)
 - Scoped to one folder → that folder's own `CLAUDE.md`. To a few named files → a skill in
-  `.claude/skills/`; `guard-skill-hint.js` fires on an edit and names it.
+  `.claude/skills/`; `guard-skill-hint.js` names it on an edit.
 
 **Every one has a guard hook, and every doc grows only by a decision.** Add a rule here
 only after trying to tighten or relocate an existing one; if it still does not fit, raise
-`maxBytes` in `.claude/hooks/claudemd-baseline.json` by hand and say so. The ceiling falls
-on its own and never rises on its own. **The ledgers are meant to grow** - when one gets
+`maxBytes` in `.claude/hooks/claudemd-baseline.json` by hand and say so.
+**The ledgers are meant to grow** - when one gets
 too big to read whole, move its largest `##` section to `docs/decisions/<topic>.md` and
 leave a pointer, never delete an entry.
 
@@ -36,8 +36,8 @@ war. No backend, no VTT features (tokens, initiative). Map + fog + grid + two sc
 - Must work offline from `file://`.
 - Player view has **zero UI**: no buttons, no overlays. Keep the cursor.
 - Fog must never be flat black. Blur + noise texture is required.
-- Images up to 30MB / 10000×6000px. Never block the main thread on load; decode into an
-  offscreen canvas asynchronously. No artificial size limit beyond the browser's ~16384px.
+- Images up to 30MB / 10000×6000px, decoded into an offscreen canvas asynchronously. Never
+  block the main thread; no size limit beyond the browser's ~16384px.
 
 ## What ships in the build
 
@@ -107,6 +107,8 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `confirmDialog.js` | The app's only sanctioned confirmation dialog |
 | `about.js` | The About block in the legend footer: mark, version, repo |
 | `updater.js` | The update line under About, and the restart button |
+| `musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Unit-tested |
+| `music.js` | The music bubble: track library, playback, the YouTube download panel |
 | `floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
 | `player.js` | Player-mode runtime |
 | `stress.js` | `?stress=1` harness |
@@ -123,7 +125,8 @@ mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js →
 viewport.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
 input.js →
 stress.js → memProbe.js → render.js → minimap.js → controlPanel.js → confirmDialog.js →
-floorPlan.js → moduleText.js → roomPanel.js → about.js → updater.js → inline <script>
+floorPlan.js → moduleText.js → roomPanel.js → about.js → updater.js → musicPlan.js →
+music.js → inline <script>
 ```
 
 ### Repo layout
@@ -207,7 +210,7 @@ one, names the skill owning a file you edit.
 ## Conventions
 
 - **No dated fix logs, changelog entries, or debugging narrative here.** Rules only;
-  destinations are at the top, and process narrative goes nowhere.
+  destinations are at the top.
 - Code comments: keep the rule, one clause of why, and any warning about a specific trap.
   Cut named examples that disambiguate nothing, "an earlier version was tried", measurement
   dates and counts, and restatements of the code.
@@ -228,7 +231,7 @@ No build step. `npm start` for the Electron app (after `npm install`). Local ins
 **Never put a window on the DM's screen.** The rig is the only sanctioned way to launch the
 app; it parks every window off-screen. `npm start`, the stress and memprobe runs, a built
 `.exe`, and the rig's own visible flag are the DM's to run and never yours. `guard-screen.js`
-refuses them, because a rule alone would not hold.
+refuses them.
 
 ## Distribution and releases
 

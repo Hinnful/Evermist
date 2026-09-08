@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="src/css/legend.css">
 <link rel="stylesheet" href="src/css/sceneManager.css">
 <link rel="stylesheet" href="src/css/about.css">
+<link rel="stylesheet" href="src/css/music.css">
 <link rel="stylesheet" href="src/css/overlays.css">
 </head>
 <body>
@@ -799,6 +800,67 @@
 </div>
 </div><!-- /#mt-anchor -->
 
+<!-- MUSIC BUBBLE (music.js). Top centre, over the map: the scene dropdown owns the top left,
+     the control panel the right and the toolbar the bottom. Nothing here reaches the Player. -->
+<div id="music-anchor">
+  <div id="music-bubble" class="mu-resting">
+    <button id="mu-pill" title="Music">
+      <svg id="mu-note" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 18V5l12-2v13"/></svg>
+      <span id="mu-level" class="mu-level"><i></i><i></i><i></i></span>
+      <span id="mu-pill-name"></span>
+      <svg id="mu-chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div id="mu-panel">
+      <div class="mu-now">
+        <span class="mu-level"><i></i><i></i><i></i></span>
+        <span id="mu-now-name">Nothing playing</span>
+        <button id="btn-mu-stop" class="mu-icon" title="Stop">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        </button>
+      </div>
+      <div class="mu-vol">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>
+        <input id="mu-vol" type="range" min="0" max="100" step="1" value="70" title="Volume">
+      </div>
+      <div class="mu-filterwrap">
+        <input id="mu-filter" class="mu-filter" type="text" placeholder="Filter tracks" spellcheck="false">
+      </div>
+      <div id="mu-list" class="mu-list"></div>
+      <div class="mu-foot">
+        <button id="btn-mu-add" class="cp-btn cp-btn-outline">Add from YouTube</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- The download panel. #mt-modal's shell duplicated under its own id, the way #cd-modal does
+     it, because that shell is id-scoped rather than a class. 520px, not 320: the body is a
+     hundred rows of video titles rather than a question. -->
+<div id="mu-backdrop" style="display:none"></div>
+<div id="mu-anchor">
+<div id="mu-modal" tabindex="-1">
+  <div class="cp-adv-head">
+    <span class="cp-adv-title">Add music</span>
+    <button id="btn-mu-close" class="cp-adv-close" title="Close">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
+    </button>
+  </div>
+  <div class="mu-urlrow">
+    <input id="mu-url" type="text" spellcheck="false" placeholder="youtube.com/playlist?list=…">
+    <button id="btn-mu-look" class="cp-btn cp-btn-outline">Look up</button>
+  </div>
+  <!-- One line of state, and the only place the downloader explains itself. .mt-status is
+       shared with the module-text panel, which wants exactly the same thing. -->
+  <div id="mu-status" class="mt-status"></div>
+  <div id="mu-picklist" class="mu-picklist"></div>
+  <div id="mu-pickfoot">
+    <button id="btn-mu-updater" class="cp-btn cp-btn-outline" title="Update the downloader">Update downloader</button>
+    <span id="mu-pickcount"></span>
+    <button id="btn-mu-get" class="cp-btn cp-btn-outline" disabled>Download</button>
+  </div>
+</div>
+</div><!-- /#mu-anchor -->
+
 <!-- Its own file input, NOT #file-input below: that one belongs to the map loader and accepts
      images, video and .zip. Sharing it would be a silent way to feed a .webm to the parser.
      .pdf is first in the list because that is what a published module actually ships as — the app
@@ -846,6 +908,8 @@
 <script src="src/roomPanel.js"></script>
 <script src="src/about.js"></script>
 <script src="src/updater.js"></script>
+<script src="src/musicPlan.js"></script>
+<script src="src/music.js"></script>
 <script>
 'use strict';
 
@@ -930,6 +994,7 @@ if (isPlayer) initPlayer();
 initInput();
 if (!isPlayer) initAbout();   // About block inside the shortcuts panel → about.js
 if (!isPlayer) initUpdater(); // Update line under it → updater.js (needs About's slot)
+if (!isPlayer) initMusic();   // The music bubble → music.js
 
 window.addEventListener('resize', () => {
   syncSize();

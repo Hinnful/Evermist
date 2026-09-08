@@ -93,4 +93,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // a renderer sees just its own JS heap, and the allocations that matter here are native.
   memMetrics: () => ipcRenderer.invoke('mem-metrics'),
   listMapFiles: () => ipcRenderer.invoke('list-map-files'),
+
+  // Music (src/music.js). Each entry carries a file:// URL main built with pathToFileURL; a
+  // path joined in the renderer breaks on the spaces and Cyrillic downloaded titles carry.
+  listMusicFiles: () => ipcRenderer.invoke('music-list'),
+  deleteMusicFile: (name) => ipcRenderer.invoke('music-delete', name),
+
+  // ⚠ Main rebuilds the address and never trusts `raw` as a bare argument — see ytdlpTarget.
+  musicLookup: (kind, id, raw) => ipcRenderer.invoke('music-lookup', { kind, id, raw }),
+  musicDownload: (id, url) => ipcRenderer.invoke('music-download', { id, url }),
+  musicYtdlpVersion: () => ipcRenderer.invoke('music-ytdlp-version'),
+  musicYtdlpUpdate: () => ipcRenderer.invoke('music-ytdlp-update'),
+  onMusicProgress: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('music-progress', handler);
+    return () => ipcRenderer.removeListener('music-progress', handler);
+  },
 });

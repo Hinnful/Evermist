@@ -3,6 +3,8 @@
 const { app, BrowserWindow, ipcMain, dialog, screen, powerSaveBlocker, shell, utilityProcess } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
+const { pathToFileURL } = require('url');
 const archiver = require('archiver');
 const yauzl = require('yauzl');
 
@@ -319,6 +321,205 @@ ipcMain.handle('delete-video-file', async (_event, sceneId) => {
   for (const ext of ['.webm', '.mp4']) {
     try { await fs.promises.unlink(path.join(mapsDir, sceneId + ext)); } catch {}
   }
+});
+
+// --- Music library + downloader IPC ---
+
+// The music folder IS the library, so there is no database to migrate.
+// ⚠ `music` sits beside `maps`, which nothing may ever delete from.
+let musicDir;
+let ytdlpBin = null;
+
+const YTDLP_ASSET = process.platform === 'win32' ? 'yt-dlp.exe'
+                  : process.platform === 'darwin' ? 'yt-dlp_macos'
+                  : 'yt-dlp_linux';
+
+const MUSIC_EXTS = ['.m4a', '.webm', '.mp3', '.opus', '.ogg', '.oga', '.wav', '.flac', '.aac', '.mp4'];
+
+// ⚠ A NAME FROM THE RENDERER IS NOT A PATH. A track name carries spaces and Cyrillic, so it
+// cannot use `isSafeId`; this containment check stands in for it.
+function musicPath(name) {
+  if (typeof name !== 'string' || !name || name.length > 300) return null;
+  if (name.indexOf('/') !== -1 || name.indexOf('\\') !== -1 || name.indexOf('\0') !== -1) return null;
+  if (name === '.' || name === '..') return null;
+  if (MUSIC_EXTS.indexOf(path.extname(name).toLowerCase()) === -1) return null;
+  const full = path.resolve(musicDir, name);
+  if (full !== path.join(path.resolve(musicDir), name)) return null;
+  return full;
+}
+
+ipcMain.handle('music-list', async () => {
+  try {
+    const names = await fs.promises.readdir(musicDir);
+    const out = [];
+    for (const n of names) {
+      if (MUSIC_EXTS.indexOf(path.extname(n).toLowerCase()) === -1) continue;
+      try {
+        const full = path.join(musicDir, n);
+        const st = await fs.promises.stat(full);
+        if (!st.isFile()) continue;
+        // ⚠ pathToFileURL, not a path joined in the renderer: it escapes the spaces and
+        // non-ASCII every downloaded title carries.
+        out.push({ name: n, size: st.size, url: pathToFileURL(full).href });
+      } catch {}
+    }
+    out.sort((a, b) => a.name.localeCompare(b.name));
+    return out;
+  } catch { return []; }
+});
+
+ipcMain.handle('music-delete', async (_event, name) => {
+  const full = musicPath(name);
+  if (!full) throw new Error('Not a track in the music folder.');
+  await fs.promises.unlink(full);
+  return true;
+});
+
+function ytdlpBundled() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'yt-dlp', YTDLP_ASSET)
+    : path.join(__dirname, 'vendor', 'yt-dlp', YTDLP_ASSET);
+}
+
+// ⚠ THE APP RUNS THE COPY IN userData, never the one inside the install: a binary beside the
+// .exe cannot rewrite itself, and yt-dlp stops working within weeks when YouTube changes.
+function ensureYtdlp() {
+  const dir = path.join(app.getPath('userData'), 'bin');
+  const dest = path.join(dir, YTDLP_ASSET);
+  try {
+    if (fs.statSync(dest).size > 1024 * 1024) { ytdlpBin = dest; return; }
+  } catch (_) {}
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(ytdlpBundled(), dest);
+    if (process.platform !== 'win32') fs.chmodSync(dest, 0o755);
+    ytdlpBin = dest;
+  } catch (err) {
+    ytdlpBin = null;
+    console.error('[music] yt-dlp unavailable: ' + ((err && err.message) || err));
+  }
+}
+
+// ⚠ ONLY AN ADDRESS THIS FUNCTION BUILT reaches yt-dlp's argv. yt-dlp reads `--exec` off its
+// own command line, so a pasted string beginning with `-` is arbitrary command execution from
+// the main process. An id is rebuilt; anything else goes through the URL parser, whose output
+// always starts with its scheme. Every call also carries `--ignore-config` and a `--`.
+function ytdlpTarget(kind, id, raw) {
+  if (kind === 'video' && /^[A-Za-z0-9_-]{11}$/.test(id || '')) {
+    return 'https://www.youtube.com/watch?v=' + id;
+  }
+  if (kind === 'playlist' && /^[A-Za-z0-9_-]{13,64}$/.test(id || '')) {
+    return 'https://www.youtube.com/playlist?list=' + id;
+  }
+  try {
+    const u = new URL(String(raw));
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return u.href;
+  } catch (_) { return null; }
+}
+
+const YTDLP_COMMON = ['--ignore-config', '--no-warnings', '--no-colors'];
+
+// yt-dlp's own words, cut to the one line that says why; its whole stderr is a wall.
+function ytdlpReason(err) {
+  const line = String(err || '').split(/\r?\n/).find(l => /^ERROR:/.test(l));
+  return line ? line.replace(/^ERROR:\s*/, '').trim().slice(0, 300) : '';
+}
+
+// An argument ARRAY and no shell, which is what keeps a URL off a command line.
+function runYtdlp(args, onLine) {
+  return new Promise((resolve, reject) => {
+    if (!ytdlpBin) {
+      reject(new Error('The downloader is missing. Reinstalling Evermist restores it.'));
+      return;
+    }
+    const child = spawn(ytdlpBin, args, { windowsHide: true });
+    let out = '', err = '', tail = '';
+    child.stdout.on('data', d => {
+      out += d;
+      if (!onLine) return;
+      tail += d;
+      const lines = tail.split(/\r?\n/);
+      tail = lines.pop();
+      for (const l of lines) onLine(l);
+    });
+    child.stderr.on('data', d => { err += d; });
+    child.on('error', reject);
+    child.on('close', code => {
+      if (code === 0) resolve(out);
+      else reject(new Error(ytdlpReason(err) || ('the downloader exited with code ' + code)));
+    });
+  });
+}
+
+// Titles only. `--playlist-end` caps a runaway list.
+ipcMain.handle('music-lookup', async (_event, req) => {
+  const kind = req && req.kind === 'playlist' ? 'playlist' : 'video';
+  const target = ytdlpTarget(kind, req && req.id, req && req.raw);
+  if (!target) throw new Error('That link cannot be read.');
+  const args = kind === 'playlist'
+    ? YTDLP_COMMON.concat(['--flat-playlist', '--dump-json', '--playlist-end', '400', '--', target])
+    : YTDLP_COMMON.concat(['--no-playlist', '--dump-json', '--', target]);
+  const out = await runYtdlp(args);
+  const entries = [];
+  let title = '';
+  for (const line of out.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let j;
+    try { j = JSON.parse(line); } catch (_) { continue; }
+    if (!j.id) continue;
+    if (!title && j.playlist_title) title = j.playlist_title;
+    entries.push({
+      id: j.id,
+      title: j.title || j.id,
+      duration: j.duration || 0,
+      size: j.filesize_approx || j.filesize || 0,
+      // Carried because a non-YouTube id gives `ytdlpTarget` nothing to rebuild.
+      url: j.webpage_url || j.url || '',
+    });
+  }
+  if (!entries.length) throw new Error('Nothing at that link could be read as audio.');
+  return { title: title, entries: entries };
+});
+
+// ⚠ AUDIO ONLY AND NO CONVERSION, which keeps ffmpeg out of the installer. The list prefers
+// containers Chromium decodes natively rather than whatever `bestaudio` alone resolves to.
+const MUSIC_FORMAT = 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio';
+
+ipcMain.handle('music-download', async (event, req) => {
+  const id = req && req.id;
+  const target = ytdlpTarget('video', id, req && req.url);
+  if (!target) throw new Error('That track has no address this can download.');
+  // ⚠ The ID IN THE NAME is what the have-it check reads back, so nothing predicts yt-dlp's
+  // sanitisation. `--windows-filenames` is strict on every platform and keeps Cyrillic.
+  const args = YTDLP_COMMON.concat([
+    '-f', MUSIC_FORMAT,
+    '--no-playlist',
+    '--newline',
+    '--windows-filenames',
+    '--trim-filenames', '180',
+    '--no-overwrites',
+    '--progress-template', 'download:EVMPROGRESS %(progress._percent_str)s',
+    '--paths', musicDir,
+    '-o', '%(title)s [%(id)s].%(ext)s',
+    '--', target,
+  ]);
+  await runYtdlp(args, line => {
+    const m = /^EVMPROGRESS\s+([\d.]+)%/.exec(line.trim());
+    if (m) sendTo(event.sender, 'music-progress', { id: id, percent: parseFloat(m[1]) });
+  });
+  return true;
+});
+
+ipcMain.handle('music-ytdlp-version', async () => {
+  try { return (await runYtdlp(['--version'])).trim(); } catch (_) { return null; }
+});
+
+// ⚠ NEVER AUTOMATIC — PRODUCT.md's rule that nothing installs without the button covers a
+// tool the app spawns too.
+ipcMain.handle('music-ytdlp-update', async () => {
+  const out = await runYtdlp(['--ignore-config', '--no-warnings', '-U']);
+  return String(out).trim().split(/\r?\n/).slice(-2).join(' ').slice(0, 200);
 });
 
 // --- Floor plan sibling lookup ---
@@ -720,9 +921,12 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
 app.whenReady().then(() => {
   mapsDir = path.join(app.getPath('userData'), 'maps');
   fs.mkdirSync(mapsDir, { recursive: true });
+  musicDir = path.join(app.getPath('userData'), 'music');
+  fs.mkdirSync(musicDir, { recursive: true });
   logsDir = path.join(app.getPath('userData'), 'logs');
   fs.mkdirSync(logsDir, { recursive: true });
   _rotateDiagLogs();
+  ensureYtdlp();
 
   // Re-push display info when the user moves/resizes the Player window or the
   // OS display configuration changes (resolution, scale factor, plugged-in TV).

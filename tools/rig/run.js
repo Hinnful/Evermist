@@ -202,6 +202,14 @@ const KEEP_PAINTING = [
   '--disable-renderer-backgrounding',
 ];
 
+// ⚠ A RUN NEVER MAKES A SOUND, and that is not negotiable - the same rule as never putting a
+// window on the DM's screen. A run happens while they are working, and an hour-long ambient
+// track at full volume out of nowhere is worse than a window appearing.
+// `--mute-audio` silences the whole renderer's output at the Chromium level, so it covers every
+// scenario including ones nobody has written yet. It does NOT touch `HTMLMediaElement.volume`,
+// so a fade or a crossfade is still fully measurable - see scenarios/acceptance/music.js.
+const STAY_SILENT = ['--mute-audio'];
+
 // ⚠ THIS IS WHAT MAKES THE SANDBOXED-RENDERER FILTER SAFE (cdp.js NOISE). That filter swallows
 // two messages that Electron logs when a renderer's bootstrap is cut short, because the splash
 // window produces them on roughly one boot in thirty and they cost a full re-run. A REAL preload
@@ -255,6 +263,7 @@ async function startInstance(args, profileDir) {
   const bin = args.exe ? path.resolve(args.exe) : require(path.join(ROOT, 'node_modules', 'electron'));
   const argv = (args.exe ? [] : ['.'])
     .concat(KEEP_PAINTING)
+    .concat(STAY_SILENT)
     .concat(['--remote-debugging-port=' + port, '--user-data-dir=' + profileDir]);
   const proc = spawn(bin, argv, {
     cwd: ROOT,
