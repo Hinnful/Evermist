@@ -1,53 +1,71 @@
 'use strict';
 
-// music.js — the music bubble: the track library, playback, and the YouTube download panel.
-// DM window only. Nothing here reaches the Player and no scene switch touches it. Pure helpers
-// live in musicPlan.js.
+// music.js — the music bubble: the track library and playback. The Add music panel it opens
+// lives in musicDownload.js. DM window only: nothing here reaches the Player and no scene
+// switch touches it. Pure helpers live in musicPlan.js.
 
 const MU_FADE_MS = 2000;
 const MU_TICK_MS = 40;
 const MU_VOL_KEY = 'evermist.music.volume';
 
 let _muTracks = [];        // [{ name, size, url }] straight off the folder
-let _muPlaying = null;     // the file name playing, or null
+let _muPlaying = null;     // the file name loaded, playing or paused
+let _muPaused = false;
 let _muOpen = false;
 let _muDecks = null;       // exactly two, so a crossfade has somewhere to go
 let _muActive = 0;
 let _muVolume = 0.7;
 let _muDurations = {};     // name → seconds, for this run only
 
-let _muLookup = null;      // { title, entries: [{ id, title, duration, size, have }] }
-let _muPicked = {};
-let _muQueue = [];
-let _muBusy = false;
-let _muProgress = {};
-let _muMetaEls = {};       // video id → that row's meta cell
-
 function _muEl(id) { return document.getElementById(id); }
 
 function initMusic() {
-  const pill = _muEl('mu-pill');
-  if (!pill) return;
+  if (!_muEl('mu-pill')) return;
 
   const saved = parseFloat(localStorage.getItem(MU_VOL_KEY));
   if (isFinite(saved) && saved >= 0 && saved <= 1) _muVolume = saved;
+
   const vol = _muEl('mu-vol');
   if (vol) {
     vol.value = String(Math.round(_muVolume * 100));
-    vol.addEventListener('input', () => _muSetVolume(Number(vol.value) / 100));
+    _muSyncSlider();
+    vol.addEventListener('input', () => { _muSetVolume(Number(vol.value) / 100); _muSyncSlider(); });
   }
 
-  pill.addEventListener('click', () => _muSetOpen(!_muOpen));
-  const stop = _muEl('btn-mu-stop');
-  if (stop) stop.addEventListener('click', (e) => { e.stopPropagation(); _muStop(); });
-  const filter = _muEl('mu-filter');
-  if (filter) filter.addEventListener('input', _muRenderList);
-  const add = _muEl('btn-mu-add');
-  if (add) add.addEventListener('click', _muOpenDownload);
+  const bind = (id, ev, fn) => { const el = _muEl(id); if (el) el.addEventListener(ev, fn); };
+  bind('btn-mu-open', 'click', () => _muSetOpen(!_muOpen));
+  bind('btn-mu-chev', 'click', () => _muSetOpen(!_muOpen));
+  bind('btn-mu-pause', 'click', _muTogglePause);
+  bind('mu-filter', 'input', _muRenderList);
+  bind('btn-mu-add', 'click', () => { _muSetOpen(false); openMusicDownload(); });
 
-  _muInitDownloadPanel();
+  // A click anywhere but the bubble shuts the panel. mousedown rather than click, so a drag
+  // on the map closes it as the drag starts rather than when it ends.
+  document.addEventListener('mousedown', (e) => {
+    if (!_muOpen) return;
+    const bubble = _muEl('music-bubble');
+    if (bubble && !bubble.contains(e.target)) _muSetOpen(false);
+  });
+
   _muRenderPill();
   _muRefreshTracks();
+  // Last, the way toolbar.js calls initRoomPanel and initControlPanel: the panel it wires reads
+  // this module's track list, so nothing there runs before the list exists.
+  initMusicDownload();
+}
+
+// The app's own slider is a div track with an invisible range over it, so the fill and knob are
+// positioned by hand. Same arithmetic as _cpFancy in controlPanel.js.
+function _muSyncSlider() {
+  const range = _muEl('mu-vol');
+  if (!range) return;
+  const wrap = range.closest('.cp-slider');
+  if (!wrap) return;
+  const pct = Math.min(100, Math.max(0, Number(range.value) || 0));
+  const fill = wrap.querySelector('.cp-slider-fill');
+  const knob = wrap.querySelector('.cp-slider-knob');
+  if (fill) fill.style.width = pct + '%';
+  if (knob) knob.style.left = pct + '%';
 }
 
 // The folder is the library, so this read is the only source of truth.
@@ -69,6 +87,7 @@ function _muScanDurations() {
   if (!pending.length) return;
   const probe = document.createElement('audio');
   probe.preload = 'metadata';
+  probe.muted = true;
   let i = 0;
   const next = () => {
     if (i >= pending.length) return;
@@ -98,14 +117,18 @@ function _muSetOpen(open) {
 
 function _muRenderPill() {
   const bubble = _muEl('music-bubble');
-  if (bubble) bubble.classList.toggle('mu-resting', !_muPlaying);
-  const label = _muPlaying ? displayName(_muPlaying) : '';
+  if (bubble) {
+    bubble.classList.toggle('mu-resting', !_muPlaying);
+    bubble.classList.toggle('mu-paused', !!_muPaused);
+  }
   const name = _muEl('mu-pill-name');
-  if (name) name.textContent = label;
-  const now = _muEl('mu-now-name');
-  if (now) now.textContent = label || 'Nothing playing';
-  const stop = _muEl('btn-mu-stop');
-  if (stop) stop.disabled = !_muPlaying;
+  if (name) name.textContent = _muPlaying ? displayName(_muPlaying) : '';
+  const pause = _muEl('btn-mu-pause');
+  if (pause) pause.title = _muPaused ? 'Play' : 'Pause';
+  const icoPause = _muEl('mu-ico-pause');
+  const icoPlay = _muEl('mu-ico-play');
+  if (icoPause) icoPause.style.display = _muPaused ? 'none' : '';
+  if (icoPlay) icoPlay.style.display = _muPaused ? '' : 'none';
 }
 
 function _muRenderList() {
@@ -120,7 +143,7 @@ function _muRenderList() {
   list.innerHTML = '';
   if (!_muTracks.length) {
     const empty = document.createElement('div');
-    empty.className = 'mu-empty';
+    empty.className = 'mt-status mu-empty';
     empty.textContent = 'No music yet. Add from YouTube, or drop audio files into the app’s music folder.';
     list.appendChild(empty);
     _muRenderCount();
@@ -144,9 +167,11 @@ function _muRenderList() {
     row.appendChild(meta);
 
     const del = document.createElement('button');
-    del.className = 'mu-row-del';
+    del.className = 'cp-btn cp-btn-outline cp-btn-icon mu-row-del';
     del.title = 'Delete this track';
-    del.textContent = '×';
+    del.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/>' +
+      '<path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
     del.addEventListener('click', (e) => { e.stopPropagation(); _muAskDelete(track); });
     row.appendChild(del);
 
@@ -159,7 +184,8 @@ function _muRenderList() {
   _muRenderCount();
 }
 
-// The TOTAL, never the filtered count: a placeholder is invisible while the field has text in it.
+// The placeholder carries the TOTAL, never the filtered count: it is invisible while the field
+// has text in it, which is exactly when a filtered count would be wanted.
 function _muRenderCount() {
   const filter = _muEl('mu-filter');
   if (!filter) return;
@@ -177,15 +203,18 @@ function _muDeck() {
   el.loop = true;
   el.preload = 'auto';
   el.volume = 0;
-  return { el: el, phase: 0, target: 0, timer: 0 };
+  return { el: el, phase: 0, target: 0, timer: 0, keep: false };
 }
 
 function _muEnsureDecks() {
   if (!_muDecks) _muDecks = [_muDeck(), _muDeck()];
 }
 
-function _muRampTo(deck, target) {
+// `keep` is what separates a pause from a crossfade: both fade to zero, but only a crossfade
+// gives the file up. Pausing has to leave currentTime where it was.
+function _muRampTo(deck, target, keep) {
   deck.target = target;
+  deck.keep = !!keep;
   if (deck.timer) return;
   deck.timer = setInterval(() => _muTick(deck), MU_TICK_MS);
 }
@@ -199,10 +228,10 @@ function _muTick(deck) {
   if (deck.phase !== deck.target) return;
   clearInterval(deck.timer);
   deck.timer = 0;
-  if (deck.phase === 0) {
-    deck.el.pause();
-    try { deck.el.removeAttribute('src'); deck.el.load(); } catch (_) {}
-  }
+  if (deck.phase !== 0) return;
+  deck.el.pause();
+  if (deck.keep) return;
+  try { deck.el.removeAttribute('src'); deck.el.load(); } catch (_) {}
 }
 
 function _muPlay(track) {
@@ -219,6 +248,7 @@ function _muPlay(track) {
                'app cannot decode. Delete it and download it again.',
     });
     _muPlaying = null;
+    _muPaused = false;
     _muRenderPill();
     _muRenderList();
   };
@@ -231,22 +261,28 @@ function _muPlay(track) {
   const started = incoming.el.play();
   if (started && typeof started.catch === 'function') started.catch(failed);
 
-  _muRampTo(incoming, 1);
-  _muRampTo(outgoing, 0);
+  _muRampTo(incoming, 1, false);
+  _muRampTo(outgoing, 0, false);
   _muActive = 1 - _muActive;
   _muPlaying = track.name;
+  _muPaused = false;
   _muRenderPill();
-  // The list too, or the picked row is not lit until something else happens to re-render it.
   _muRenderList();
   _muSetOpen(false);
 }
 
-function _muStop() {
+function _muTogglePause() {
   if (!_muPlaying || !_muDecks) return;
-  _muRampTo(_muDecks[_muActive], 0);
-  _muPlaying = null;
+  const deck = _muDecks[_muActive];
+  if (_muPaused) {
+    const started = deck.el.play();
+    if (started && typeof started.catch === 'function') started.catch(() => {});
+    _muRampTo(deck, 1, true);
+  } else {
+    _muRampTo(deck, 0, true);
+  }
+  _muPaused = !_muPaused;
   _muRenderPill();
-  _muRenderList();
 }
 
 function _muSetVolume(v) {
@@ -264,7 +300,12 @@ function _muAskDelete(track) {
     confirmLabel: 'Delete',
     danger: true,
     onConfirm: async () => {
-      if (track.name === _muPlaying) _muStop();
+      if (track.name === _muPlaying) {
+        _muPlaying = null;
+        _muPaused = false;
+        if (_muDecks) _muRampTo(_muDecks[_muActive], 0, false);
+        _muRenderPill();
+      }
       try {
         await window.electronAPI.deleteMusicFile(track.name);
       } catch (err) {
@@ -276,214 +317,25 @@ function _muAskDelete(track) {
   });
 }
 
-// ─── The download panel ──────────────────────────────────────────────────────
-function _muInitDownloadPanel() {
-  const bind = (id, ev, fn) => { const el = _muEl(id); if (el) el.addEventListener(ev, fn); };
-  bind('btn-mu-close', 'click', _muCloseDownload);
-  bind('mu-backdrop', 'click', _muCloseDownload);
-  bind('btn-mu-look', 'click', _muDoLookup);
-  bind('btn-mu-get', 'click', _muStartDownloads);
-  bind('btn-mu-updater', 'click', _muUpdateDownloader);
-  bind('mu-url', 'keydown', (e) => { if (e.key === 'Enter') _muDoLookup(); });
-
-  if (window.electronAPI && window.electronAPI.onMusicProgress) {
-    // ⚠ ONE CELL, NOT A RE-RENDER. yt-dlp reports progress several times a second, and
-    // rebuilding a hundred-row list that often locks the panel up.
-    window.electronAPI.onMusicProgress((d) => {
-      if (!d || !d.id) return;
-      _muProgress[d.id] = d.percent;
-      const cell = _muMetaEls[d.id];
-      if (cell) cell.textContent = Math.round(d.percent) + '%';
-    });
+// How far the download queue has got, drawn on the pill because that is the one control always
+// on screen. `null` takes the line away.
+function setMusicDownloadProgress(fraction) {
+  const bubble = _muEl('music-bubble');
+  const bar = _muEl('mu-dlbar');
+  if (bubble) bubble.classList.toggle('mu-downloading', fraction !== null);
+  if (bar && fraction !== null) {
+    const pct = Math.min(100, Math.max(0, fraction * 100));
+    bar.firstElementChild.style.width = pct + '%';
   }
 }
 
-function _muOpenDownload() {
-  const modal = _muEl('mu-modal');
-  if (!modal) return;
-  modal.style.display = 'flex';
-  const backdrop = _muEl('mu-backdrop');
-  if (backdrop) backdrop.style.display = 'block';
-  const url = _muEl('mu-url');
-  if (url) { url.value = ''; url.focus(); }
-  _muLookup = null;
-  _muPicked = {};
-  _muProgress = {};
-  _muSetStatus('');
-  _muRenderLookup();
-}
-
-function _muCloseDownload() {
-  // ⚠ Shuts the panel, never the queue: a close would lose 50MB already waited for.
-  const modal = _muEl('mu-modal');
-  if (modal) modal.style.display = 'none';
-  const backdrop = _muEl('mu-backdrop');
-  if (backdrop) backdrop.style.display = 'none';
-}
-
-function _muSetStatus(text, isError) {
-  const el = _muEl('mu-status');
-  if (!el) return;
-  el.textContent = text || '';
-  el.classList.toggle('mt-err', !!isError);
-}
-
-async function _muDoLookup() {
-  const field = _muEl('mu-url');
-  if (!field) return;
-  const parsed = parseMusicUrl(field.value);
-  if (!parsed.mode) {
-    _muLookup = null;
-    _muSetStatus('That is not a link this can read. Paste a YouTube video or playlist address.', true);
-    _muRenderLookup();
-    return;
+// The video ids already on disk, which is what tells the download panel which rows to mark as
+// "have it". Kept behind a function so `_muTracks` stays this module's own.
+function _muHaveIds() {
+  const have = {};
+  for (const t of _muTracks) {
+    const id = videoIdFromFileName(t.name);
+    if (id) have[id] = true;
   }
-
-  _muSetStatus(parsed.mode === 'playlist' ? 'Reading the playlist…' : 'Reading the video…');
-  const look = _muEl('btn-mu-look');
-  if (look) look.disabled = true;
-  try {
-    const id = parsed.mode === 'playlist' ? parsed.playlistId : parsed.videoId;
-    const res = await window.electronAPI.musicLookup(parsed.mode, id, parsed.url);
-    const have = {};
-    for (const t of _muTracks) {
-      const vid = videoIdFromFileName(t.name);
-      if (vid) have[vid] = true;
-    }
-    const entries = ((res && res.entries) || []).map(e => ({
-      id: e.id, title: e.title, duration: e.duration, size: e.size, url: e.url,
-      have: !!have[e.id],
-    }));
-    _muLookup = { title: (res && res.title) || '', entries: entries };
-    _muPicked = {};
-    // A single video is the one thing a video link asks for, so it arrives ticked.
-    if (parsed.mode === 'video' && entries.length === 1 && !entries[0].have) _muPicked[entries[0].id] = true;
-    const haveCount = entries.filter(e => e.have).length;
-    _muSetStatus(entries.length + (entries.length === 1 ? ' track' : ' tracks') +
-                 (haveCount ? ' · ' + haveCount + ' already downloaded' : ''));
-  } catch (err) {
-    _muLookup = null;
-    _muSetStatus((err && err.message) || String(err), true);
-  }
-  if (look) look.disabled = false;
-  _muRenderLookup();
-}
-
-function _muRenderLookup() {
-  const list = _muEl('mu-picklist');
-  const foot = _muEl('mu-pickfoot');
-  if (!list) return;
-
-  list.innerHTML = '';
-  _muMetaEls = {};
-  if (!_muLookup || !_muLookup.entries.length) {
-    list.style.display = 'none';
-    if (foot) foot.style.display = 'none';
-    return;
-  }
-  list.style.display = 'block';
-  if (foot) foot.style.display = 'flex';
-
-  if (_muLookup.title) {
-    const head = document.createElement('div');
-    head.className = 'mu-picktitle';
-    head.textContent = _muLookup.title;
-    list.appendChild(head);
-  }
-
-  for (const entry of _muLookup.entries) {
-    const row = document.createElement('div');
-    row.className = 'mu-pick' + (entry.have || entry.done ? ' mu-pick-have' : '');
-
-    const box = document.createElement('span');
-    box.className = 'mu-check' + (_muPicked[entry.id] ? ' mu-check-on' : '');
-    row.appendChild(box);
-
-    const label = document.createElement('span');
-    label.className = 'mu-pick-name';
-    label.textContent = entry.title || entry.id;
-    label.title = entry.error || label.textContent;
-    row.appendChild(label);
-
-    const meta = document.createElement('span');
-    meta.className = 'mu-pick-meta';
-    if (entry.failed) meta.textContent = 'failed';
-    else if (_muProgress[entry.id] !== undefined) meta.textContent = Math.round(_muProgress[entry.id]) + '%';
-    else if (entry.done) meta.textContent = 'done';
-    else if (entry.have) meta.textContent = 'have it';
-    else meta.textContent = entry.duration ? formatDuration(entry.duration) : formatBytes(entry.size);
-    _muMetaEls[entry.id] = meta;
-    row.appendChild(meta);
-
-    if (!entry.have && !entry.done && !_muBusy) {
-      row.addEventListener('click', () => {
-        if (_muPicked[entry.id]) delete _muPicked[entry.id];
-        else _muPicked[entry.id] = true;
-        _muRenderLookup();
-      });
-    }
-    list.appendChild(row);
-  }
-
-  const picked = Object.keys(_muPicked).length;
-  const count = _muEl('mu-pickcount');
-  if (count) count.textContent = _muBusy ? _muQueue.length + ' left' : picked + ' selected';
-  const go = _muEl('btn-mu-get');
-  if (go) {
-    go.disabled = _muBusy || !picked;
-    go.textContent = picked && !_muBusy ? 'Download ' + picked : 'Download';
-  }
-}
-
-// ⚠ ONE AT A TIME. YouTube rate-limits parallel requests, so twenty jobs at once is slower
-// than twenty in a row plus failures.
-function _muStartDownloads() {
-  if (_muBusy || !_muLookup) return;
-  _muQueue = _muLookup.entries.filter(e => _muPicked[e.id]);
-  if (!_muQueue.length) return;
-  _muBusy = true;
-  _muSetStatus('Downloading…');
-  _muRenderLookup();
-  _muQueueStep();
-}
-
-async function _muQueueStep() {
-  const entry = _muQueue.shift();
-  if (!entry) {
-    _muBusy = false;
-    const failed = _muLookup ? _muLookup.entries.filter(e => e.failed) : [];
-    _muSetStatus(failed.length
-      ? failed.length + (failed.length === 1 ? ' track failed' : ' tracks failed') +
-        ' · hover a row for the reason'
-      : 'Done.', failed.length > 0);
-    _muRefreshTracks();
-    _muRenderLookup();
-    return;
-  }
-
-  _muProgress[entry.id] = 0;
-  _muRenderLookup();
-  try {
-    await window.electronAPI.musicDownload(entry.id, entry.url);
-    entry.done = true;
-    delete _muPicked[entry.id];
-  } catch (err) {
-    // ⚠ A failure must never kill the batch: a removed, age-gated or region-locked video is
-    // one row's problem, and the DM comes back to the rest downloaded.
-    entry.failed = true;
-    entry.error = (err && err.message) || String(err);
-  }
-  delete _muProgress[entry.id];
-  _muRenderLookup();
-  _muQueueStep();
-}
-
-function _muUpdateDownloader() {
-  const btn = _muEl('btn-mu-updater');
-  if (btn) btn.disabled = true;
-  _muSetStatus('Updating the downloader…');
-  window.electronAPI.musicYtdlpUpdate()
-    .then(msg => _muSetStatus(msg || 'The downloader is up to date.'))
-    .catch(err => _muSetStatus((err && err.message) || String(err), true))
-    .then(() => { if (btn) btn.disabled = false; });
+  return have;
 }

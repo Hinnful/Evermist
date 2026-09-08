@@ -14,7 +14,7 @@ Ten files in `src/css/`, split by screen region: `base.css`, `controlPanel.css`,
   defines `@keyframes cpAdvIn`, which must stay defined exactly once and which `music.css`
   also uses.
 - **No `player-mode.css`.** The `body.player-mode` overrides deliberately sit next to what
-  they override, in `toolbar.css` and `sceneManager.css`.
+  they override, in `toolbar.css`, `sceneManager.css` and `music.css`.
 - No `@import`, no preprocessor, no runtime style injection.
 - Don't add scoping schemes or cascade layers. Separate files bought findability and small
   diffs, not encapsulation; CSS is one global cascade regardless of file count.

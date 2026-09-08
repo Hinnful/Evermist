@@ -17,13 +17,22 @@
 //   D. Picking a second track CROSSFADES: both decks carry audio part-way through, exactly one
 //      carries it after, and no single file is ever open on two elements at once.
 //   E. The filter narrows the list, in Cyrillic as well as Latin.
-//   F. Stop fades the track out and leaves nothing playing.
-//   G. Deleting a track removes the file from the folder and the row from the list.
-//   H. Sound actually leaves the speaker, and the fade sounds like a fade.
-//   I. Pasting a YouTube link downloads the tracks picked from it.
+//   F. Pause keeps the position and the loaded track, and a second press resumes from there
+//      rather than restarting.
+//   G. Deleting a track removes the file from the folder and the row from the list, and never
+//      touches the maps folder beside it.
+//   H. The volume slider drives the app's own fill and knob, not a bare range input.
+//   I. The download panel's action bar replaces the header while anything is ticked, Select all
+//      skips tracks already on disk, and its label flips once they are all picked.
+//   J. A click anywhere off the bubble shuts the track panel, so it never has to be dismissed
+//      with the button it was opened by.
+//   K. A running download shows its progress on the pill, and reopening the Add music panel
+//      mid-download keeps the queue rather than asking for the link again.
+//   L. Sound actually leaves the speaker, and the fade sounds like a fade.
+//   M. Pasting a YouTube link downloads the tracks picked from it.
 //
 // ⚠ THE TRACKS ARE WRITTEN HERE AS WAV, not downloaded. A scenario must never reach YouTube: it
-// needs the network, a real video and a 50MB transfer. H and I are therefore rig.byEye.
+// needs the network, a real video and a 50MB transfer. J and K are therefore rig.byEye.
 //
 // ⚠ `--user-data-dir` IS what `app.getPath('userData')` resolves to, so the music folder is
 // `<profileDir>/music`. Writing there is the only way to give an isolated profile a library.
@@ -75,13 +84,22 @@ module.exports = async function musicFeature(rig) {
   const resting = await dm.evaluate(`(() => {
     const b = document.getElementById('music-bubble');
     const p = document.getElementById('mu-panel');
-    return { resting: b.classList.contains('mu-resting'), panel: getComputedStyle(p).display };
+    return {
+      resting: b.classList.contains('mu-resting'),
+      panel: getComputedStyle(p).display,
+      radius: getComputedStyle(document.getElementById('mu-pill')).borderTopLeftRadius,
+    };
   })()`);
   rig.check(resting.resting,
     'the bubble is not in its resting state with nothing playing, so it shows a track name for a ' +
     'track the DM never started');
   rig.check(resting.panel === 'none',
-    'the music panel is open before anyone clicked it, so a 340px panel sits over the map at boot');
+    'the music panel is open before anyone clicked it, so a 300px panel sits over the map at boot');
+  // --panel-radius, shared with every other floating surface. A probe reading the variable
+  // itself could not see it disappear, so this reads the resolved number.
+  rig.check(parseFloat(resting.radius) === 12,
+    'the pill corner radius resolves to ' + resting.radius + ' rather than the 12px every other ' +
+    'floating surface in the app uses');
 
   const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
   const expr = await rig.fixtures.asFileExpr(dm, map);
@@ -91,14 +109,14 @@ module.exports = async function musicFeature(rig) {
   const player = await rig.player();
   const onPlayer = await player.evaluate(`(() => {
     const anchor = document.getElementById('music-anchor');
-    return { present: !!anchor, shown: anchor ? getComputedStyle(anchor).display : 'none' };
+    return { shown: anchor ? getComputedStyle(anchor).display : 'none' };
   })()`);
   rig.check(onPlayer.shown === 'none',
     'the music bubble is visible on the PLAYER window, so a control the players must never see ' +
     'is sitting on the TV');
 
   // ── B. The panel lists the folder, by display name ────────────────────────
-  await dm.evaluate("document.getElementById('mu-pill').click()");
+  await dm.evaluate("document.getElementById('btn-mu-open').click()");
   await dm.waitFor('_muTracks.length === 3', 15000, 'the panel to read the three files on disk');
   const listed = await dm.evaluate(`(() => {
     const rows = [...document.querySelectorAll('#mu-list .mu-row .mu-row-name')].map(e => e.textContent);
@@ -116,6 +134,31 @@ module.exports = async function musicFeature(rig) {
     'a Cyrillic track name did not survive the folder read, so a non-Latin library is unusable: ' +
     JSON.stringify(listed.rows));
 
+  // ── H. The volume slider is the app's, not a bare range ───────────────────
+  // Read while the panel is open: an element inside display:none has zero-sized rects.
+  const slider = await dm.evaluate(`(() => {
+    const r = document.getElementById('mu-vol');
+    r.value = '35';
+    r.dispatchEvent(new Event('input'));
+    const wrap = r.closest('.cp-slider');
+    const fill = wrap && wrap.querySelector('.cp-slider-fill');
+    const knob = wrap && wrap.querySelector('.cp-slider-knob');
+    return {
+      wrapped: !!wrap,
+      fill: fill ? fill.style.width : null,
+      knob: knob ? knob.style.left : null,
+      opacity: r ? getComputedStyle(r).opacity : null,
+    };
+  })()`);
+  rig.check(slider.wrapped && slider.fill === '35%' && slider.knob === '35%',
+    'the volume slider did not drive the app\'s own fill and knob (fill ' + slider.fill +
+    ', knob ' + slider.knob + '), so it renders as a second slider look in one app');
+  rig.check(parseFloat(slider.opacity) === 0,
+    'the range input is visible at opacity ' + slider.opacity + ', so Chromium\'s own slider ' +
+    'paints on top of the app\'s');
+  rig.check(await dm.evaluate('Math.abs(_muVolume - 0.35) < 0.001'),
+    'moving the slider did not reach the volume the decks read');
+
   // ── C. A click plays, lights the row, and shuts the panel ─────────────────
   // ⚠ MUTED AT THE ELEMENT TOO, on top of run.js's `--mute-audio`. Two independent guarantees,
   // because one loud hour-long track out of a run nobody was watching is the whole trust of the
@@ -129,15 +172,12 @@ module.exports = async function musicFeature(rig) {
   })()`);
   await dm.waitFor("_muPlaying === 'Strahd Battle Theme [dQw4w9WgXcQ].wav'", 15000,
                    'the clicked track to become the playing one');
-  const afterPick = await dm.evaluate(`(() => {
-    const on = document.querySelectorAll('#mu-list .mu-row-on').length;
-    return {
-      panel: getComputedStyle(document.getElementById('mu-panel')).display,
-      lit: on,
-      pill: document.getElementById('mu-pill-name').textContent,
-      resting: document.getElementById('music-bubble').classList.contains('mu-resting'),
-    };
-  })()`);
+  const afterPick = await dm.evaluate(`(() => ({
+    panel: getComputedStyle(document.getElementById('mu-panel')).display,
+    lit: document.querySelectorAll('#mu-list .mu-row-on').length,
+    pill: document.getElementById('mu-pill-name').textContent,
+    resting: document.getElementById('music-bubble').classList.contains('mu-resting'),
+  }))()`);
   rig.check(afterPick.panel === 'none',
     'the panel stayed open after a pick, so the DM has to shut it by hand before the map is visible');
   rig.check(afterPick.lit === 1,
@@ -154,7 +194,7 @@ module.exports = async function musicFeature(rig) {
   // incoming one reaches it and this criterion measures nothing. A real pick is seconds later.
   await dm.waitFor('_muDecks.every(d => d.timer === 0)', 15000, 'the first fade-in to finish');
 
-  await dm.evaluate("document.getElementById('mu-pill').click()");
+  await dm.evaluate("document.getElementById('btn-mu-open').click()");
   await dm.evaluate(`(() => {
     const rows = [...document.querySelectorAll('#mu-list .mu-row')];
     rows.find(r => r.querySelector('.mu-row-name').textContent === 'Village of Barovia').click();
@@ -167,7 +207,6 @@ module.exports = async function musicFeature(rig) {
     return {
       srcs: [a.el.currentSrc || a.el.src, b.el.currentSrc || b.el.src],
       vols: [a.el.volume, b.el.volume],
-      phases: [a.phase, b.phase],
       volume: _muVolume,
     };
   })()`);
@@ -188,11 +227,10 @@ module.exports = async function musicFeature(rig) {
 
   await dm.waitFor('_muDecks[0].timer === 0 && _muDecks[1].timer === 0', 15000,
                    'the crossfade to finish');
-  const settled = await dm.evaluate(`(() => {
-    const live = _muDecks.filter(d => d.el.volume > 0 && !d.el.paused).length;
-    const cleared = _muDecks.filter(d => !d.el.getAttribute('src')).length;
-    return { live: live, cleared: cleared };
-  })()`);
+  const settled = await dm.evaluate(`(() => ({
+    live: _muDecks.filter(d => d.el.volume > 0 && !d.el.paused).length,
+    cleared: _muDecks.filter(d => !d.el.getAttribute('src')).length,
+  }))()`);
   rig.check(settled.live === 1,
     settled.live + ' decks are still playing after the crossfade settled, so a track is decoding ' +
     'silently forever');
@@ -201,8 +239,7 @@ module.exports = async function musicFeature(rig) {
 
   // The pipeline is FED, which is the automatable half of "sound reaches the speaker": the
   // decoder produced data and playback is consuming it. A muted run cannot prove the rest.
-  // ⚠ A CHANGE, not an increase. The track loops, so currentTime wraps to zero and an
-  // increase is not always reachable inside the poll window.
+  // ⚠ A CHANGE, not an increase: the track loops, so currentTime wraps back to zero.
   const t0 = await dm.evaluate('_muDecks[_muActive].el.currentTime');
   await dm.waitFor('Math.abs(_muDecks[_muActive].el.currentTime - ' + t0 + ') > 0.05', 8000,
                    'the playing deck to advance through the file');
@@ -220,7 +257,7 @@ module.exports = async function musicFeature(rig) {
   // Clicking the row that is already playing must do NOTHING — a second element on the same
   // file is the stall above.
   const before = await dm.evaluate('_muPlaying');
-  await dm.evaluate("document.getElementById('mu-pill').click()");
+  await dm.evaluate("document.getElementById('btn-mu-open').click()");
   await dm.evaluate("document.querySelector('#mu-list .mu-row-on').click()");
   rig.check(await dm.evaluate('_muPlaying === ' + JSON.stringify(before)),
     'clicking the playing row changed what is playing, so it can open a second element on the ' +
@@ -233,37 +270,121 @@ module.exports = async function musicFeature(rig) {
            ', Player ' + plMedia);
 
   // ── E. The filter narrows the list ────────────────────────────────────────
-  await dm.evaluate(`(() => {
+  const setFilter = (v) => dm.evaluate(`(() => {
     const f = document.getElementById('mu-filter');
-    f.value = 'barovia';
+    f.value = ${JSON.stringify(v)};
     f.dispatchEvent(new Event('input'));
   })()`);
+  await setFilter('barovia');
   rig.check(await dm.evaluate("document.querySelectorAll('#mu-list .mu-row').length === 1"),
     'filtering on "barovia" did not narrow the list to one row, so a hundred tracks cannot be ' +
     'searched');
-  await dm.evaluate(`(() => {
-    const f = document.getElementById('mu-filter');
-    f.value = 'КРИПТЫ';
-    f.dispatchEvent(new Event('input'));
-  })()`);
+  await setFilter('КРИПТЫ');
   rig.check(await dm.evaluate("document.querySelectorAll('#mu-list .mu-row').length === 1"),
     'an upper-case Cyrillic filter matched nothing, so case folding is Latin-only');
-  await dm.evaluate(`(() => {
-    const f = document.getElementById('mu-filter');
-    f.value = '';
-    f.dispatchEvent(new Event('input'));
-  })()`);
+  await setFilter('dQw4');
+  rig.check(await dm.evaluate("document.querySelectorAll('#mu-list .mu-row').length === 0"),
+    'four characters of a video id matched a track, so the filter reads the filename rather ' +
+    'than the name the DM sees');
+  await setFilter('');
 
-  // ── F. Stop fades out and leaves nothing playing ──────────────────────────
-  await dm.evaluate("document.getElementById('btn-mu-stop').click()");
-  rig.check(await dm.evaluate('_muPlaying === null'),
-    'Stop left a track marked as playing, so the pill still names it');
-  await dm.waitFor('_muDecks.every(d => d.el.paused)', 15000, 'Stop to fade both decks out');
-  rig.check(await dm.evaluate("document.getElementById('music-bubble').classList.contains('mu-resting')"),
-    'the bubble did not return to its resting state after Stop');
+  // ── F. Pause keeps the position, and a second press resumes ───────────────
+  await dm.evaluate("document.getElementById('btn-mu-pause').click()");
+  rig.check(await dm.evaluate('_muPaused === true'),
+    'pressing pause did not put the bubble into its paused state');
+  rig.check(await dm.evaluate('_muPlaying !== null'),
+    'pause forgot which track was loaded, so it behaves as a stop and the pill goes blank');
+  const paused = await dm.evaluate(`(() => ({
+    flat: document.getElementById('music-bubble').classList.contains('mu-paused'),
+    playIcon: document.getElementById('mu-ico-play').style.display !== 'none',
+    pauseIcon: document.getElementById('mu-ico-pause').style.display !== 'none',
+  }))()`);
+  rig.check(paused.flat,
+    'the level bars are still animating while paused, so the pill says sound is coming out');
+  rig.check(paused.playIcon && !paused.pauseIcon,
+    'the pill still shows a pause icon while paused, so the button does not say what it will do');
+
+  await dm.waitFor('_muDecks[_muActive].el.paused', 15000, 'pause to fade the track out');
+  const at = await dm.evaluate('_muDecks[_muActive].el.currentTime');
+  rig.check(at > 0,
+    'pause left the position at ' + at + ', so resuming restarts the track from the top');
+  rig.check(await dm.evaluate("!!_muDecks[_muActive].el.getAttribute('src')"),
+    'pause released the file, so resuming has to decode it again from nothing');
+
+  await dm.evaluate("document.getElementById('btn-mu-pause').click()");
+  await dm.waitFor('!_muDecks[_muActive].el.paused', 10000, 'the second press to resume the track');
+  rig.check(await dm.evaluate('_muPaused === false'),
+    'resuming left the bubble marked as paused');
+  const resumedAt = await dm.evaluate('_muDecks[_muActive].el.currentTime');
+  rig.check(resumedAt >= at - 0.05,
+    'resuming went back to ' + resumedAt + ' from ' + at + ', so a pause restarts the track');
+  await dm.waitFor('_muDecks[_muActive].timer === 0', 10000, 'the resume fade to finish');
+
+  // ── I. The download panel's action bar and Select all ─────────────────────
+  // Driven against a SEEDED lookup: reaching YouTube from a scenario is out, and the selection
+  // model is app code either way.
+  await dm.evaluate("document.getElementById('btn-mu-add').click()");
+  await dm.waitFor("getComputedStyle(document.getElementById('mu-modal')).display !== 'none'",
+                   10000, 'the download panel to open');
+  await dm.evaluate(`(() => {
+    _muLookup = { title: 'Test playlist', entries: [
+      { id: 'aaaaaaaaaaa', title: 'One',   duration: 60, size: 1048576, url: '', have: false },
+      { id: 'bbbbbbbbbbb', title: 'Two',   duration: 60, size: 1048576, url: '', have: false },
+      { id: 'ccccccccccc', title: 'Three', duration: 60, size: 1048576, url: '', have: true  },
+    ] };
+    _muPicked.clear();
+    _muRenderLookup();
+    0;
+  })()`);
+  const idle = await dm.evaluate(`(() => ({
+    rows: document.querySelectorAll('#mu-picklist .mu-pick').length,
+    selecting: document.getElementById('mu-modal').classList.contains('mu-selecting'),
+    head: getComputedStyle(document.getElementById('mu-head')).display,
+    bar: getComputedStyle(document.getElementById('mu-actionbar')).display,
+    foot: getComputedStyle(document.getElementById('mu-pickfoot')).display,
+  }))()`);
+  rig.check(idle.rows === 3,
+    'the picker rendered ' + idle.rows + ' rows for a three-entry playlist, so no row is truncated ' +
+    'away and none is invented');
+  rig.check(!idle.selecting && idle.head !== 'none' && idle.bar === 'none',
+    'the action bar is up with nothing ticked, so the panel loses its own header and close button');
+  rig.check(idle.foot === 'none',
+    'the Update downloader footer is showing before anything said an update exists');
+
+  await dm.evaluate("document.getElementById('btn-mu-selall').click()");
+  const all = await dm.evaluate(`(() => ({
+    picked: _muPicked.size,
+    hasHave: _muPicked.has('ccccccccccc'),
+    label: document.getElementById('btn-mu-selall').textContent.trim(),
+    count: document.getElementById('mu-selcount').textContent,
+    getLabel: document.getElementById('mu-getlabel').textContent,
+    getOff: document.getElementById('btn-mu-get').disabled,
+    selecting: document.getElementById('mu-modal').classList.contains('mu-selecting'),
+    head: getComputedStyle(document.getElementById('mu-head')).display,
+  }))()`);
+  rig.check(all.picked === 2 && !all.hasHave,
+    'Select all ticked ' + all.picked + ' of 3 entries, so it offers to download a track already ' +
+    'on disk');
+  rig.check(all.selecting && all.head === 'none',
+    'the action bar did not replace the header once rows were ticked');
+  rig.check(all.count === '2 selected',
+    'the action bar reads "' + all.count + '" rather than the number ticked');
+  rig.check(all.label === 'Deselect all',
+    'the button still reads "' + all.label + '" with everything ticked, so there is no way back ' +
+    'out in one press');
+  rig.check(!all.getOff && all.getLabel.indexOf('2') !== -1,
+    'the Download button reads "' + all.getLabel + '" and disabled=' + all.getOff);
+
+  await dm.evaluate("document.getElementById('btn-mu-selall').click()");
+  rig.check(await dm.evaluate('_muPicked.size === 0'),
+    'Deselect all left tracks ticked');
+  rig.check(await dm.evaluate("!document.getElementById('mu-modal').classList.contains('mu-selecting')"),
+    'the action bar stayed up after the selection was cleared');
+  await dm.evaluate("document.getElementById('btn-mu-close').click()");
 
   // ── G. Delete removes the file and the row ────────────────────────────────
-  await dm.evaluate("document.getElementById('mu-pill').click()");
+  await dm.evaluate("document.getElementById('btn-mu-open').click()");
+  await dm.waitFor('_muTracks.length === 3', 15000, 'the list to be back to three rows');
   await dm.evaluate(`(() => {
     const rows = [...document.querySelectorAll('#mu-list .mu-row')];
     rows.find(r => r.querySelector('.mu-row-name').textContent === 'Крипты')
@@ -273,6 +394,7 @@ module.exports = async function musicFeature(rig) {
   await dm.waitFor("getComputedStyle(document.getElementById('cd-modal')).display !== 'none'",
                    10000, 'the confirm dialog to ask before deleting a track');
   await dm.evaluate("document.getElementById('cd-ok').click()");
+
   // ⚠ A BOUNDED POLL, NOT A waitFor. When the delete silently does nothing, a waitFor throws a
   // timeout and this criterion's own checks never run, so a broken delete reads as a rig fault
   // instead. Proven by mutating the handler to a no-op.
@@ -300,8 +422,73 @@ module.exports = async function musicFeature(rig) {
   rig.check(fs.existsSync(path.join(rig.profileDir, 'maps')),
     'the maps folder is gone after a music delete, which would destroy the whole map library');
 
-  rig.byEye('H. Sound leaves the speaker, and a pick crossfades rather than cutting. A run is ' +
+  // ── J. A click off the bubble shuts the panel ─────────────────────────────
+  // Normalised to shut first: the criteria above leave it either way, and a toggle from an
+  // unknown state opens or closes depending on what ran before.
+  await dm.evaluate('_muSetOpen(false); 0');
+  await dm.evaluate("document.getElementById('btn-mu-open').click()");
+  rig.check(await dm.evaluate('_muOpen === true'),
+    'the panel did not open, so J measured nothing');
+  await dm.evaluate(`(() => {
+    document.getElementById('canvas-container')
+      .dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+  })()`);
+  rig.check(await dm.evaluate('_muOpen === false'),
+    'a click on the map left the track panel open, so it can only be dismissed by the control ' +
+    'that opened it');
+  rig.check(await dm.evaluate("getComputedStyle(document.getElementById('mu-panel')).display === 'none'"),
+    'the panel is still painted after being closed by an outside click');
+
+  // ── K. Progress on the pill, and a reopen that keeps the queue ────────────
+  // Driven against a seeded queue: reaching YouTube from a scenario is out, and the arithmetic
+  // and the state retention are app code either way.
+  await dm.evaluate(`(() => {
+    _muLookup = { title: 'Kept', entries: [
+      { id: 'aaaaaaaaaaa', title: 'One', duration: 60, size: 0, url: '', have: false },
+      { id: 'bbbbbbbbbbb', title: 'Two', duration: 60, size: 0, url: '', have: false },
+    ] };
+    _muPicked.clear(); _muPicked.add('aaaaaaaaaaa'); _muPicked.add('bbbbbbbbbbb');
+    _muBusy = true;
+    _muQueueTotal = 4;
+    _muQueue = [{ id: 'ccccccccccc' }];
+    _muProgress = { bbbbbbbbbbb: 50 };
+    _muPushProgress();
+    0;
+  })()`);
+  const dl = await dm.evaluate(`(() => ({
+    on: document.getElementById('music-bubble').classList.contains('mu-downloading'),
+    width: document.getElementById('mu-dlbar').firstElementChild.style.width,
+    shown: getComputedStyle(document.getElementById('mu-dlbar')).display,
+  }))()`);
+  rig.check(dl.on && dl.shown !== 'none',
+    'the pill shows no progress line while a download runs, so closing the panel loses any sense ' +
+    'of how far it has got');
+  // Two of four whole tracks finished plus half of a third: 62.5%.
+  rig.check(dl.width === '62.5%',
+    'the progress line reads ' + dl.width + ' rather than 62.5% for two of four done and one ' +
+    'half-way, so it does not move per track');
+
+  await dm.evaluate('openMusicDownload(); 0');
+  const kept = await dm.evaluate(`(() => ({
+    lookup: !!_muLookup,
+    title: _muLookup ? _muLookup.title : null,
+    picked: _muPicked.size,
+  }))()`);
+  rig.check(kept.lookup && kept.title === 'Kept' && kept.picked === 2,
+    'reopening the panel mid-download wiped the queue, so the link has to be pasted again to ' +
+    'see progress');
+
+  await dm.evaluate(`(() => {
+    _muBusy = false; _muQueueTotal = 0; _muQueue = []; _muProgress = {};
+    _muPushProgress();
+    document.getElementById('btn-mu-close').click();
+    0;
+  })()`);
+  rig.check(await dm.evaluate("!document.getElementById('music-bubble').classList.contains('mu-downloading')"),
+    'the progress line stayed on the pill after the queue emptied');
+
+  rig.byEye('L. Sound leaves the speaker, and a pick crossfades rather than cutting. A run is ' +
             'MUTED by design, so the audible half is the ear at the table and nothing else.');
-  rig.byEye('I. Pasting a YouTube video or playlist link lists its tracks and downloads the ' +
+  rig.byEye('M. Pasting a YouTube video or playlist link lists its tracks and downloads the ' +
             'ones ticked. Needs the network and a real video, so no scenario can drive it.');
 };

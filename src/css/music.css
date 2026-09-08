@@ -1,11 +1,12 @@
-/* music.css — the music bubble at the top of the DM window and its download modal. Loads after
+/* music.css — the music bubble at the top of the DM window and the Add music panel. Loads after
    about.css and before overlays.css: it uses @keyframes cpAdvIn from controlPanel.css, and it
-   must not sit above the confirm dialog's rules. */
+   borrows .cp-field, .cp-slider, .cp-iconbtn, .cp-btn-icon, .sm-hbtn, .sm-bare and .sm-cb rather
+   than restyling any of them. Only sizes and layout live here. */
 
   /* ===== THE BUBBLE ===== */
   /* Same anchor-plus-zoom split as #sidebar-right-anchor: the anchor does fixed positioning at
-     no zoom, the bubble carries --ui-zoom. z-index sits BELOW #fp-notice and #scene-undo-toast
-     (210): both are short-lived and the bubble is not, so a notice wins the few seconds it is up. */
+     no zoom, the bubble carries --ui-zoom. z-index sits BELOW #fp-notice (210), which is
+     short-lived where the bubble is not, so a notice wins the few seconds it is up. */
   #music-anchor {
     position: fixed;
     left: 0; right: 0; top: 0;
@@ -22,53 +23,85 @@
     gap: 6px;
   }
 
-  /* The pill IS the open control, so the whole thing is one button. At rest it shrinks to the
-     note glyph alone — smaller than the Scenes button already in the opposite corner. */
+  /* --panel-radius, not a pill radius: every other floating surface in the app uses it. */
   #mu-pill {
-    display: inline-flex; align-items: center; gap: 9px;
-    height: 32px; padding: 0 12px;
+    position: relative;
+    display: flex; align-items: center;
+    height: 30px; padding: 0 5px 0 11px;
     max-width: 260px;
     background: var(--panel-bg);
     border: var(--panel-border);
-    border-radius: 16px;
+    border-radius: var(--panel-radius);
     box-shadow: var(--panel-shadow);
     color: #d5d8dd;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    cursor: pointer;
-    transition: border-color .12s, background .12s;
+    transition: border-color .12s;
   }
   #mu-pill:hover { border-color: rgba(255,255,255,0.18); }
-  .mu-resting #mu-pill { width: 32px; padding: 0; justify-content: center; }
-  .mu-resting #mu-pill-name, .mu-resting #mu-level, .mu-resting #mu-chev { display: none; }
-  #mu-note { flex: none; }
-  #music-bubble:not(.mu-resting) #mu-note { display: none; }
 
-  #mu-pill-name {
-    flex: 1; min-width: 0;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  /* A hairline across the pill's bottom edge, so download progress costs no height and cannot
+     be mistaken for anything about playback. Only present while a queue is running. */
+  #mu-dlbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    display: none; overflow: hidden;
+    border-radius: 0 0 var(--panel-radius) var(--panel-radius);
+    background: rgba(255,255,255,0.1);
   }
-  #mu-chev { flex: none; color: #6f6f74; transition: transform .14s; }
+  .mu-downloading #mu-dlbar { display: block; }
+  #mu-dlbar i {
+    display: block; height: 100%; width: 0;
+    background: rgba(110,168,255,0.85);
+    transition: width .25s linear;
+  }
+
+  /* The name and the level meter are one button, so a click anywhere but the two controls
+     opens the panel. At rest it shrinks to the note glyph alone. */
+  .mu-open {
+    display: flex; align-items: center; gap: 9px;
+    min-width: 0; padding: 0; height: 100%;
+    border: none; background: transparent; color: inherit;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer;
+  }
+  #mu-pill-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mu-pillbtn { width: 24px; height: 24px; flex: none; border-radius: 6px; }
+  .mu-chevbtn {
+    width: 22px; height: 24px; flex: none; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: none; background: transparent; color: #6b7078; cursor: pointer;
+  }
+  .mu-chevbtn:hover { color: #9aa0aa; }
+  #mu-chev { transition: transform .14s; }
   #mu-chev.mu-chev-up { transform: rotate(180deg); }
 
-  /* Three bars that say "sound is coming out" without a second colour or a label. Paused with
-     the animation, not hidden, so the pill's width never changes as a track starts. */
-  .mu-level { display: flex; align-items: flex-end; gap: 2px; height: 13px; flex: none; }
+  .mu-resting #mu-pill { padding: 0; }
+  .mu-resting .mu-open { width: 30px; justify-content: center; }
+  .mu-resting #mu-pill-name,
+  .mu-resting #mu-level,
+  .mu-resting .mu-pillbtn,
+  .mu-resting .mu-chevbtn { display: none; }
+  #music-bubble:not(.mu-resting) #mu-note { display: none; }
+
+  /* Three bars that say "sound is coming out" without a second colour or a label. Paused
+     FLATTENS them rather than hiding them, so the pill never changes width. */
+  .mu-level { display: flex; align-items: flex-end; gap: 2px; height: 11px; flex: none; }
   .mu-level i {
     display: block; width: 2px; border-radius: 1px;
     background: #6ea8ff;
     animation: muLevel .9s ease-in-out infinite;
   }
-  .mu-level i:nth-child(1) { height: 6px;  animation-delay: -.6s; }
-  .mu-level i:nth-child(2) { height: 13px; animation-delay: -.3s; }
-  .mu-level i:nth-child(3) { height: 9px;  animation-delay: 0s; }
+  .mu-level i:nth-child(1) { height: 5px;  animation-delay: -.6s; }
+  .mu-level i:nth-child(2) { height: 11px; animation-delay: -.3s; }
+  .mu-level i:nth-child(3) { height: 7px;  animation-delay: 0s; }
   @keyframes muLevel {
     0%, 100% { transform: scaleY(0.45); }
     50%      { transform: scaleY(1); }
   }
+  .mu-paused .mu-level i { height: 4px; background: #4d5a6e; animation: none; }
+  .mu-paused #mu-pill-name { color: #9aa0aa; }
 
   /* ===== THE PANEL ===== */
   #mu-panel {
-    width: 340px;
+    width: 300px;
     display: none; flex-direction: column;
     background: var(--panel-bg);
     border: var(--panel-border);
@@ -78,96 +111,63 @@
     animation: cpAdvIn .15s ease;
   }
 
-  .mu-now {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 12px 8px;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd;
-  }
-  #mu-now-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mu-icon {
-    flex: none; width: 24px; height: 24px; padding: 0;
-    display: inline-flex; align-items: center; justify-content: center;
-    border: none; border-radius: 6px; background: transparent;
-    color: #b8b8bd; cursor: pointer;
-  }
-  .mu-icon:hover:not(:disabled) { background: rgba(255,255,255,0.06); color: #d5d8dd; }
-  .mu-icon:disabled { opacity: 0.35; cursor: default; }
-
-  /* A native range input, not the control panel's div-and-JS slider. That one is bound to its
-     own rows; reproducing its drag maths here would be the duplication CLAUDE.md forbids. */
-  .mu-vol { display: flex; align-items: center; gap: 9px; padding: 0 12px 10px; color: #8a8a90; }
-  #mu-vol { flex: 1; height: 12px; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
-  #mu-vol::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: #33333a; }
-  #mu-vol::-webkit-slider-thumb {
-    -webkit-appearance: none; appearance: none;
-    width: 11px; height: 11px; margin-top: -4px;
-    border-radius: 50%; background: #e6e6e6; border: none;
-  }
-
-  .mu-filterwrap { padding: 0 12px 8px; }
-  .mu-filter {
-    width: 100%; height: 28px; padding: 0 9px;
-    border: 1px solid rgba(255,255,255,0.07); border-radius: 7px;
-    background: rgba(0,0,0,0.28); color: #d5d8dd;
+  .mu-toprow { display: flex; align-items: center; gap: 7px; padding: 9px 10px; }
+  .mu-filterfield { flex: 1; min-width: 0; height: 30px; gap: 8px; color: #7f858e; }
+  .mu-filterfield input {
+    flex: 1; width: 0; min-width: 0;
+    border: none; background: transparent; color: #d5d8dd;
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    outline: none;
   }
-  .mu-filter:focus { border-color: rgba(90,140,235,0.5); }
-  .mu-filter::placeholder { color: #5d5d63; }
+  .mu-filterfield input:focus { outline: none; }
+  .mu-filterfield input::placeholder { color: #7f858e; }
+  .mu-filterfield:focus-within { border-color: rgba(90,140,235,0.6); }
+  #btn-mu-add { height: 30px; }
 
-  /* Ten rows visible, the rest on the scrollbar. A hundred tracks must not grow the panel past
-     the window; the visible scrollbar is the only cue that there is more below. */
+  /* Seven rows visible, the rest on the scrollbar. A hundred tracks must not grow the panel
+     past the window, and the visible scrollbar is the only cue there is more below. */
   .mu-list {
     border-top: 1px solid rgba(255,255,255,0.055);
-    max-height: 300px; overflow-y: auto;
+    max-height: 210px; overflow-y: auto;
   }
   .mu-list::-webkit-scrollbar { width: 6px; }
   .mu-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
 
   .mu-row {
     display: flex; align-items: center; gap: 8px;
-    height: 30px; padding: 0 12px;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #d2d2d6;
+    height: 30px; padding: 0 11px;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd;
     cursor: pointer;
   }
-  .mu-row:hover { background: rgba(255,255,255,0.045); }
+  .mu-row:hover { background: rgba(255,255,255,0.05); }
   .mu-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mu-row-meta {
     flex: none; font: 400 11px/1 system-ui, -apple-system, sans-serif; color: #6f6f74;
     font-variant-numeric: tabular-nums;
   }
-  /* The playing row wears the same blue-on-blue as an active .cp-btn-outline, so "this one is
-     live" reads the same here as everywhere else in the app. */
+  /* The playing row wears an active .cp-btn-outline's blue-on-blue, so "this one is live" reads
+     the same here as everywhere else in the app. */
   .mu-row-on { background: rgba(70,120,220,0.11); cursor: default; }
   .mu-row-on .mu-row-name { color: #8fb6ff; }
   .mu-row-on .mu-row-meta { color: #5d7fa3; }
 
-  /* Destructive, belongs to one row, wears no red, and asks through confirmDialog — the rule
-     for a per-control destructive action. Hidden until the row is hovered so a list of a hundred
-     is not a wall of crosses. */
-  .mu-row-del {
-    flex: none; width: 18px; height: 18px; padding: 0;
-    display: none; align-items: center; justify-content: center;
-    border: none; border-radius: 4px; background: transparent;
-    color: #8a8a90; font: 400 14px/1 system-ui, sans-serif; cursor: pointer;
-  }
+  /* Destructive, belongs to one row, wears no red, and asks through confirmDialog. Hidden
+     until the row is hovered so a list of a hundred is not a wall of bins. */
+  .mu-row-del { width: 24px; height: 24px; flex: none; border-radius: 6px; display: none; }
   .mu-row:hover .mu-row-del { display: inline-flex; }
-  .mu-row-del:hover { background: rgba(255,255,255,0.08); color: #d5d8dd; }
 
-  .mu-empty {
-    padding: 14px 12px;
-    font: 400 11px/1.45 system-ui, -apple-system, sans-serif; color: #7f858e;
-  }
+  .mu-empty { padding: 14px 11px; }
 
-  .mu-foot {
+  .mu-volrow {
     border-top: 1px solid rgba(255,255,255,0.055);
-    padding: 8px 12px;
+    display: grid; grid-template-columns: 16px 1fr;
+    align-items: center; column-gap: 10px;
+    padding: 10px 12px;
+    color: #949aa4;
   }
 
-  /* ===== THE DOWNLOAD MODAL ===== */
-  /* #mt-modal's shell, and 520px rather than its 320: the body is a hundred rows of long video
-     titles, not a question. Same backdrop-plus-anchor pair and the same zoom/max-height dance
-     that keeps a panel inside the viewport at any --ui-zoom. */
+  /* ===== THE DOWNLOAD PANEL ===== */
+  /* #mt-modal's shell under its own id, following #cd-modal's precedent, and 520px rather than
+     its 320: the body is a hundred rows of long video titles, not a question. */
   #mu-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 502; }
   #mu-anchor {
     position: fixed; inset: 0; z-index: 503;
@@ -186,74 +186,85 @@
     animation: cpAdvIn .15s ease;
   }
 
-  .mu-urlrow { display: flex; gap: 8px; padding: 14px 14px 8px; }
-  #mu-url {
-    flex: 1; min-width: 0; height: 30px; padding: 0 10px;
-    border: 1px solid rgba(255,255,255,0.07); border-radius: 7px;
-    background: rgba(0,0,0,0.28); color: #d5d8dd;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    outline: none;
+  /* The action bar swaps for the header, exactly as #sm-actionbar does. */
+  #mu-actionbar {
+    flex: none; height: 52px;
+    display: none; align-items: center; gap: 8px;
+    padding: 0 12px 0 10px;
+    background: rgba(70,120,220,0.1);
+    border-bottom: 1px solid rgba(90,140,235,0.3);
   }
-  #mu-url:focus { border-color: rgba(90,140,235,0.5); }
-  #mu-url::placeholder { color: #5d5d63; }
-  #btn-mu-look { width: auto; flex: none; }
+  #mu-modal.mu-selecting #mu-head      { display: none; }
+  #mu-modal.mu-selecting #mu-actionbar { display: flex; }
+  #mu-selcount {
+    flex: 1;
+    font: 600 13px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd;
+    font-variant-numeric: tabular-nums;
+  }
 
-  #mu-status { padding: 0 14px 10px; }
+  .mu-urlrow { padding: 14px 14px 9px; }
+  .mu-urlfield { gap: 9px; }
+  .mu-urlfield input {
+    flex: 1; width: 0; min-width: 0;
+    border: none; background: transparent; color: #d5d8dd;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif;
+  }
+  .mu-urlfield input:focus { outline: none; }
+  .mu-urlfield input::placeholder { color: #7f858e; }
+  .mu-urlfield:focus-within { border-color: rgba(90,140,235,0.6); }
+
+  /* Appears only once a read passes a second, so a fast lookup never flickers one in and out. */
+  .mu-spin {
+    flex: none; width: 13px; height: 13px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.14); border-top-color: #6ea8ff;
+    animation: muSpin .7s linear infinite;
+  }
+  @keyframes muSpin { to { transform: rotate(360deg); } }
+
+  #mu-status { padding: 0 14px 12px; }
 
   .mu-picklist {
     display: none;
     border-top: 1px solid rgba(255,255,255,0.055);
-    max-height: 340px; overflow-y: auto;
+    max-height: 238px; overflow-y: auto;
   }
   .mu-picklist::-webkit-scrollbar { width: 6px; }
   .mu-picklist::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
-  .mu-picktitle {
-    position: sticky; top: 0; z-index: 2;
-    padding: 8px 14px 6px;
-    background: var(--panel-bg);
-    font: 400 11px/1.3 system-ui, -apple-system, sans-serif; color: #7f858e;
-  }
 
   .mu-pick {
-    display: flex; align-items: center; gap: 9px;
-    height: 31px; padding: 0 14px;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #d2d2d6;
+    display: flex; align-items: center; gap: 11px;
+    height: 34px; padding: 0 14px;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd;
     cursor: pointer;
   }
-  .mu-pick:hover { background: rgba(255,255,255,0.045); }
+  .mu-pick:hover { background: rgba(255,255,255,0.05); }
+  .mu-pick.checked { background: rgba(255,255,255,0.028); }
   .mu-pick-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mu-pick-meta {
     flex: none; font: 400 11px/1 system-ui, -apple-system, sans-serif; color: #6f6f74;
     font-variant-numeric: tabular-nums;
   }
   /* A track already on disk is shown rather than hidden: pasting the same playlist before the
-     next session is how the DM picks the next ten, and it has to be obvious which ten are left. */
-  .mu-pick-have { opacity: 0.45; cursor: default; }
+     next session is how the next ten get picked, so which ten are left has to be obvious. */
+  .mu-pick-have { opacity: 0.4; cursor: default; }
   .mu-pick-have:hover { background: transparent; }
 
-  .mu-check {
-    flex: none; width: 13px; height: 13px; border-radius: 3px;
-    border: 1px solid rgba(255,255,255,0.22);
+  /* .sm-cb's colours at 15px instead of 20: a scene card can carry 20, a 34px text row cannot.
+     Scoped to this list, so the scene library keeps its own size. The tick lightens to #dbe8ff
+     because at 7px a mid-blue stroke on #4b7ce0 stops reading as a tick. */
+  .mu-picklist .sm-cb {
+    position: static; opacity: 1;
+    width: 15px; height: 15px; border-radius: 4px;
   }
-  .mu-check-on {
-    border-color: rgba(90,140,235,0.7);
-    background: rgba(70,120,220,0.5);
-  }
-  .mu-pick-have .mu-check { visibility: hidden; }
+  .mu-pick-have .sm-cb { visibility: hidden; }
+  .mu-havemark { flex: none; width: 15px; display: flex; justify-content: center; color: #7fb37f; }
 
   #mu-pickfoot {
-    display: none; align-items: center; gap: 10px;
-    flex: none; padding: 9px 14px;
+    flex: none; display: flex; align-items: center;
+    padding: 11px 14px;
     border-top: 1px solid rgba(255,255,255,0.055);
   }
-  #mu-pickcount {
-    flex: 1;
-    font: 400 11px/1 system-ui, -apple-system, sans-serif; color: #7f858e;
-  }
-  #btn-mu-get { width: auto; flex: none; }
-  /* Updating yt-dlp is a maintenance action, not the panel's purpose, so it sits small and
-     left of the count rather than beside Download. */
-  #btn-mu-updater { width: auto; flex: none; }
+  .mu-updbtn { width: auto; flex: none; gap: 7px; }
 
   /* The Player window is served from this same file, so the bubble has to be taken out there.
      It sits beside the other player-mode overrides' logic, not in a file of its own. */

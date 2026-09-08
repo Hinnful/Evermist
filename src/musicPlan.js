@@ -89,6 +89,14 @@ function fadePhase(level) {
   return Math.asin(v) / (Math.PI / 2);
 }
 
+// yt-dlp versions are dates (2026.08.19), so a plain string compare orders them. Anything that
+// does not look like one answers false rather than offering an update nobody can trust.
+function ytdlpOutdated(current, latest) {
+  const ok = v => typeof v === 'string' && /^\d{4}\.\d{2}\.\d{2}(\.\d+)?$/.test(v.trim());
+  if (!ok(current) || !ok(latest)) return false;
+  return latest.trim() > current.trim();
+}
+
 function formatDuration(seconds) {
   const s = Math.max(0, Math.floor(Number(seconds) || 0));
   const h = Math.floor(s / 3600);
@@ -109,6 +117,6 @@ function formatBytes(bytes) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     parseMusicUrl, videoIdFromFileName, displayName, filterTracks,
-    fadeLevel, fadePhase, formatDuration, formatBytes,
+    fadeLevel, fadePhase, ytdlpOutdated, formatDuration, formatBytes,
   };
 }

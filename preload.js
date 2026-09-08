@@ -102,7 +102,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ⚠ Main rebuilds the address and never trusts `raw` as a bare argument — see ytdlpTarget.
   musicLookup: (kind, id, raw) => ipcRenderer.invoke('music-lookup', { kind, id, raw }),
   musicDownload: (id, url) => ipcRenderer.invoke('music-download', { id, url }),
-  musicYtdlpVersion: () => ipcRenderer.invoke('music-ytdlp-version'),
+  musicYtdlpLatest: () => ipcRenderer.invoke('music-ytdlp-latest'),
   musicYtdlpUpdate: () => ipcRenderer.invoke('music-ytdlp-update'),
   onMusicProgress: (callback) => {
     const handler = (_event, data) => callback(data);

@@ -804,30 +804,49 @@
      the control panel the right and the toolbar the bottom. Nothing here reaches the Player. -->
 <div id="music-anchor">
   <div id="music-bubble" class="mu-resting">
-    <button id="mu-pill" title="Music">
-      <svg id="mu-note" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 18V5l12-2v13"/></svg>
-      <span id="mu-level" class="mu-level"><i></i><i></i><i></i></span>
-      <span id="mu-pill-name"></span>
-      <svg id="mu-chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-    </button>
+    <div id="mu-pill">
+      <button id="btn-mu-open" class="mu-open" title="Music">
+        <svg id="mu-note" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 18V5l12-2v13"/></svg>
+        <span id="mu-level" class="mu-level"><i></i><i></i><i></i></span>
+        <span id="mu-pill-name"></span>
+      </button>
+      <!-- Pause, not stop: it keeps the position, so pressing it again picks the track back up
+           where it was. Its own button so a click on it never reaches the open handler. -->
+      <button id="btn-mu-pause" class="cp-iconbtn mu-pillbtn" title="Pause">
+        <svg id="mu-ico-pause" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+        <svg id="mu-ico-play" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M8 5l11 7-11 7z"/></svg>
+      </button>
+      <button id="btn-mu-chev" class="mu-chevbtn" title="Show tracks">
+        <svg id="mu-chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <!-- How far a download has got, on the one control that is always on screen. Absent
+           unless a queue is running, so it never competes with what is playing. -->
+      <div id="mu-dlbar"><i></i></div>
+    </div>
+
     <div id="mu-panel">
-      <div class="mu-now">
-        <span class="mu-level"><i></i><i></i><i></i></span>
-        <span id="mu-now-name">Nothing playing</span>
-        <button id="btn-mu-stop" class="mu-icon" title="Stop">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+      <div class="mu-toprow">
+        <!-- .cp-field's surface, not the black inset pill: that one means "pick one of these". -->
+        <div class="cp-field mu-filterfield">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
+          <input id="mu-filter" type="text" spellcheck="false" placeholder="Filter tracks">
+        </div>
+        <button id="btn-mu-add" class="cp-btn cp-btn-outline cp-btn-icon" title="Add from YouTube">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
         </button>
       </div>
-      <div class="mu-vol">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>
-        <input id="mu-vol" type="range" min="0" max="100" step="1" value="70" title="Volume">
-      </div>
-      <div class="mu-filterwrap">
-        <input id="mu-filter" class="mu-filter" type="text" placeholder="Filter tracks" spellcheck="false">
-      </div>
+
       <div id="mu-list" class="mu-list"></div>
-      <div class="mu-foot">
-        <button id="btn-mu-add" class="cp-btn cp-btn-outline">Add from YouTube</button>
+
+      <!-- The app's own slider: a div track, fill and knob with an invisible range over them. -->
+      <div class="mu-volrow">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>
+        <div class="cp-slider">
+          <div class="cp-slider-track"></div>
+          <div class="cp-slider-fill"></div>
+          <div class="cp-slider-knob"></div>
+          <input id="mu-vol" type="range" min="0" max="100" step="1" value="70" title="Volume">
+        </div>
       </div>
     </div>
   </div>
@@ -839,24 +858,49 @@
 <div id="mu-backdrop" style="display:none"></div>
 <div id="mu-anchor">
 <div id="mu-modal" tabindex="-1">
-  <div class="cp-adv-head">
+  <div class="cp-adv-head" id="mu-head">
     <span class="cp-adv-title">Add music</span>
     <button id="btn-mu-close" class="cp-adv-close" title="Close">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
     </button>
   </div>
-  <div class="mu-urlrow">
-    <input id="mu-url" type="text" spellcheck="false" placeholder="youtube.com/playlist?list=…">
-    <button id="btn-mu-look" class="cp-btn cp-btn-outline">Look up</button>
+
+  <!-- The scene library's contextual action bar: it REPLACES the header while anything is
+       ticked, and its ✕ cancels the selection rather than the panel. See #sm-actionbar. -->
+  <div id="mu-actionbar">
+    <button id="btn-mu-selclear" class="sm-bare" title="Cancel selection (Esc)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <span id="mu-selcount">0 selected</span>
+    <button id="btn-mu-selall" class="sm-hbtn">Select all</button>
+    <button id="btn-mu-get" class="sm-hbtn primary">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
+      <span id="mu-getlabel">Download</span>
+    </button>
   </div>
+
+  <!-- No Look up button: a paste is looked up at once, typing after 400ms of quiet. The spinner
+       only appears once a read passes a second, so a fast one never flickers. -->
+  <div class="mu-urlrow">
+    <div class="cp-field mu-urlfield">
+      <input id="mu-url" type="text" spellcheck="false" placeholder="Paste a YouTube video or playlist link">
+      <span id="mu-spin" class="mu-spin" style="display:none"></span>
+    </div>
+  </div>
+
   <!-- One line of state, and the only place the downloader explains itself. .mt-status is
        shared with the module-text panel, which wants exactly the same thing. -->
   <div id="mu-status" class="mt-status"></div>
+
   <div id="mu-picklist" class="mu-picklist"></div>
-  <div id="mu-pickfoot">
-    <button id="btn-mu-updater" class="cp-btn cp-btn-outline" title="Update the downloader">Update downloader</button>
-    <span id="mu-pickcount"></span>
-    <button id="btn-mu-get" class="cp-btn cp-btn-outline" disabled>Download</button>
+
+  <!-- Update downloader lives here alone, and the whole footer is absent unless a newer yt-dlp
+       release exists. Nothing installs without this button being pressed. -->
+  <div id="mu-pickfoot" style="display:none">
+    <button id="btn-mu-updater" class="cp-btn cp-btn-outline mu-updbtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11A8 8 0 106.3 6.3L4 8.5"/><path d="M4 4v4.5h4.5"/></svg>
+      Update downloader
+    </button>
   </div>
 </div>
 </div><!-- /#mu-anchor -->
@@ -910,6 +954,7 @@
 <script src="src/updater.js"></script>
 <script src="src/musicPlan.js"></script>
 <script src="src/music.js"></script>
+<script src="src/musicDownload.js"></script>
 <script>
 'use strict';
 

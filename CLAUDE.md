@@ -108,7 +108,8 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `about.js` | The About block in the legend footer: mark, version, repo |
 | `updater.js` | The update line under About, and the restart button |
 | `musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Unit-tested |
-| `music.js` | The music bubble: track library, playback, the YouTube download panel |
+| `music.js` | The music bubble: track library and playback |
+| `musicDownload.js` | The Add music panel: paste a link, pick tracks, download |
 | `floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
 | `player.js` | Player-mode runtime |
 | `stress.js` | `?stress=1` harness |
@@ -126,7 +127,7 @@ viewport.js → backup.js → grid.js → effects.js → toolbar.js → shapeMen
 input.js →
 stress.js → memProbe.js → render.js → minimap.js → controlPanel.js → confirmDialog.js →
 floorPlan.js → moduleText.js → roomPanel.js → about.js → updater.js → musicPlan.js →
-music.js → inline <script>
+music.js → musicDownload.js → inline <script>
 ```
 
 ### Repo layout

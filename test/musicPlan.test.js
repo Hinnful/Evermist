@@ -9,6 +9,7 @@ const {
   filterTracks,
   fadeLevel,
   fadePhase,
+  ytdlpOutdated,
   formatDuration,
   formatBytes,
 } = require('../src/musicPlan');
@@ -183,6 +184,28 @@ describe('fadeLevel and fadePhase', () => {
     assert.ok(Math.abs(fadePhase(9) - 1) < 1e-9);
     assert.equal(fadeLevel(NaN), 0);
     assert.equal(fadePhase(undefined), 0);
+  });
+});
+
+describe('ytdlpOutdated', () => {
+
+  it('offers an update only when the release is newer', () => {
+    assert.equal(ytdlpOutdated('2026.08.19', '2026.09.01'), true);
+    assert.equal(ytdlpOutdated('2026.08.19', '2026.08.19'), false);
+    assert.equal(ytdlpOutdated('2026.09.01', '2026.08.19'), false);
+  });
+
+  it('handles a point release', () => {
+    assert.equal(ytdlpOutdated('2026.08.19', '2026.08.19.1'), true);
+    assert.equal(ytdlpOutdated('2026.08.19.1', '2026.08.19'), false);
+  });
+
+  // A button offering an update nobody can trust is worse than no button.
+  it('answers false for anything that is not a yt-dlp version', () => {
+    for (const pair of [['', '2026.09.01'], ['2026.09.01', ''], ['nightly', '2026.09.01'],
+                        [null, '2026.09.01'], ['2026.09.01', undefined], ['1.2.3', '1.2.4']]) {
+      assert.equal(ytdlpOutdated(pair[0], pair[1]), false, JSON.stringify(pair));
+    }
   });
 });
 

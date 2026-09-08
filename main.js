@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
+const https = require('https');
 const archiver = require('archiver');
 const yauzl = require('yauzl');
 
@@ -427,13 +428,14 @@ function ytdlpReason(err) {
 }
 
 // An argument ARRAY and no shell, which is what keeps a URL off a command line.
-function runYtdlp(args, onLine) {
+function runYtdlp(args, onLine, onSpawn) {
   return new Promise((resolve, reject) => {
     if (!ytdlpBin) {
       reject(new Error('The downloader is missing. Reinstalling Evermist restores it.'));
       return;
     }
     const child = spawn(ytdlpBin, args, { windowsHide: true });
+    if (onSpawn) onSpawn(child);
     let out = '', err = '', tail = '';
     child.stdout.on('data', d => {
       out += d;
@@ -453,6 +455,10 @@ function runYtdlp(args, onLine) {
 }
 
 // Titles only. `--playlist-end` caps a runaway list.
+// ⚠ A SECOND PASTE KILLS THE FIRST READ. The panel looks a link up as it is pasted, so two
+// reads can be in flight; without this the slower one wins and the list shows the wrong playlist.
+let ytdlpLookupChild = null;
+
 ipcMain.handle('music-lookup', async (_event, req) => {
   const kind = req && req.kind === 'playlist' ? 'playlist' : 'video';
   const target = ytdlpTarget(kind, req && req.id, req && req.raw);
@@ -460,7 +466,9 @@ ipcMain.handle('music-lookup', async (_event, req) => {
   const args = kind === 'playlist'
     ? YTDLP_COMMON.concat(['--flat-playlist', '--dump-json', '--playlist-end', '400', '--', target])
     : YTDLP_COMMON.concat(['--no-playlist', '--dump-json', '--', target]);
-  const out = await runYtdlp(args);
+  if (ytdlpLookupChild) { try { ytdlpLookupChild.kill(); } catch (_) {} }
+  const out = await runYtdlp(args, null, c => { ytdlpLookupChild = c; })
+    .finally(() => { ytdlpLookupChild = null; });
   const entries = [];
   let title = '';
   for (const line of out.split(/\r?\n/)) {
@@ -482,9 +490,12 @@ ipcMain.handle('music-lookup', async (_event, req) => {
   return { title: title, entries: entries };
 });
 
-// ⚠ AUDIO ONLY AND NO CONVERSION, which keeps ffmpeg out of the installer. The list prefers
-// containers Chromium decodes natively rather than whatever `bestaudio` alone resolves to.
-const MUSIC_FORMAT = 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio';
+// ⚠ AUDIO ONLY AND NO CONVERSION, which keeps ffmpeg out of the installer. Sorted by quality
+// and NOT by container: Chromium decodes both AAC-in-m4a and Opus-in-webm natively, so a
+// container preference would take 128k AAC over a higher-bitrate Opus on the same upload.
+// The protocol filter excludes HLS manifests, which are segments rather than a file and would
+// need ffmpeg to join.
+const MUSIC_FORMAT = 'bestaudio[protocol^=http]';
 
 ipcMain.handle('music-download', async (event, req) => {
   const id = req && req.id;
@@ -511,8 +522,26 @@ ipcMain.handle('music-download', async (event, req) => {
   return true;
 });
 
-ipcMain.handle('music-ytdlp-version', async () => {
-  try { return (await runYtdlp(['--version'])).trim(); } catch (_) { return null; }
+// The installed version and the newest release, so the panel can hide its Update button when
+// there is nothing to update to. The tag comes off the redirect on GitHub's /latest URL, which
+// needs no API token and no JSON. Either half answers null rather than failing the call.
+ipcMain.handle('music-ytdlp-latest', async () => {
+  const current = await runYtdlp(['--version']).then(v => v.trim()).catch(() => null);
+  let latest = null;
+  try {
+    latest = await new Promise((resolve, reject) => {
+      const req = https.request('https://github.com/yt-dlp/yt-dlp/releases/latest',
+        { method: 'HEAD' }, res => {
+          res.resume();
+          const loc = res.headers.location || '';
+          resolve(loc.split('/').filter(Boolean).pop() || null);
+        });
+      req.on('error', reject);
+      req.setTimeout(6000, () => req.destroy(new Error('timed out')));
+      req.end();
+    });
+  } catch (_) {}
+  return { current: current, latest: latest };
 });
 
 // ⚠ NEVER AUTOMATIC — PRODUCT.md's rule that nothing installs without the button covers a
