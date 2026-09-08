@@ -209,20 +209,33 @@ module.exports = async function effectsFeature(rig) {
                     RB.x2 + ',' + RB.y2 + '); 0');
   const roundId = await dm.evaluate('effects[effects.length - 1].id');
   await dm.waitFor('pixiEffectsLayer.children.length > 0', 15000, 'the mesh for the new effect');
+  // ⚠ THE RADIUS HAS TO DWARF THE BOX, and at 80 it did not. A radius r pulls the outline
+  // r*(√2−1) away from the corner along the diagonal, so 80 put the arc 33 map px out and the
+  // box reached 22 — a 1.4 px margin, which is HALF A SCREEN PIXEL at the zoom a small window
+  // gives. The arc's own glow then landed inside the box and the corner read BRIGHTER after
+  // rounding. 120 puts the arc at 50 and leaves 13 map px, and 140 is the clamp for this rect.
+  const ROUND_R = 120;
   const cornerBox = [RB.x1 + 2, RB.y1 + 2, RB.x1 + 22, RB.y1 + 22];
   const edgeBox   = [(RB.x1 + RB.x2) / 2 - 20, RB.y1 + 4, (RB.x1 + RB.x2) / 2 + 20, RB.y1 + 40];
   const cSharp = await peak(cornerBox), eSharp = await peak(edgeBox);
   await dm.evaluate('(() => { const e = effects.find(x => x.id === ' + roundId + ');' +
-                    ' selectedPolygonId = e.id; selectedVertexIndex = -1; e.cornerRadius = 80;' +
-                    ' effectsChanged(); scheduleRender(); return 0; })()');
-  await dm.waitFor('effects.find(x => x.id === ' + roundId + ').cornerRadius === 80', 5000,
-                   'the radius to take');
-  await rig.sleep(200);
+                    ' selectedPolygonId = e.id; selectedVertexIndex = -1; e.cornerRadius = ' +
+                    ROUND_R + '; effectsChanged(); scheduleRender(); return 0; })()');
+  // ⚠ WAIT FOR THE MESH, NOT FOR THE RECORD. `cornerRadius` is set synchronously and the outline
+  // reloads on a later frame, keyed by `geomKey`. peak() takes the MAX over eight samples, so one
+  // stale frame of the sharp corner wins the whole reading and the check fails on a slow renderer
+  // with nothing wrong. The key starts with the radius, so this is the mesh saying it reloaded.
+  await dm.waitFor('_fxInstances.get(' + roundId + ') && ' +
+                   '_fxInstances.get(' + roundId + ').geomKey.startsWith("' + ROUND_R + '|")',
+                   10000, 'the rounded outline to reach the mesh');
   const cRound = await peak(cornerBox), eRound = await peak(edgeBox);
   rig.note('corner brightness sharp ' + cSharp + ' → rounded ' + cRound +
            ';  straight edge ' + eSharp + ' → ' + eRound);
   rig.check(cSharp > 60, 'the sharp corner never showed fire, so rounding it proves nothing');
-  rig.check(cRound < cSharp - 40,
+  // ⚠ A SHARE OF WHAT WAS THERE, not a fixed 40 points. How bright the flame peaks depends on
+  // the renderer, and a software rasteriser reads 69 where a GPU reads 85 — against which a
+  // fixed drop of 40 is a different demand on each machine.
+  rig.check(cRound < cSharp * 0.6,
             'rounding the corner did not take the fire with it (' + cSharp + ' → ' + cRound +
             ') — the outline rounded and the flame did not');
   rig.check(eRound > eSharp - 40,

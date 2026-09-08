@@ -235,7 +235,13 @@ module.exports = async function mapsFeature(rig) {
   // ── D. A floor plan dropped on its own ─────────────────────────────────────
   // It attaches to the scene that is open; it is never a map, so nothing imports.
   const beforePlan = (await names()).length;
-  rig.check(!(await dm.evaluate('!!(currentScene && currentScene.floorPlan)')),
+  // ⚠ WAIT FOR THE SCENE, NOT JUST FOR THE LIBRARY COUNT. attachPlanText returns false on its
+  // first line when currentScene is null, and the drop handler swallows that. The guard below
+  // reads true for "no scene at all" as happily as for "a scene with no plan", so without this
+  // wait a drop that landed mid-switch looked like the app refusing a valid plan. It failed only
+  // on a slow machine, which is how it reached CI green from here.
+  await dm.waitFor('!!currentScene', 60000, 'a scene to attach the plan to');
+  rig.check(!(await dm.evaluate('!!currentScene.floorPlan')),
             'the open scene already had a plan, so the drop below proves nothing');
   await dm.evaluate('__rigDrop([__rigText("Cellar.dd2vtt", globalThis.__rigPlanText)])');
   const planLanded = await (async () => {

@@ -242,6 +242,30 @@ function assertPreloadRan(dm) {
 // Emulation.setDeviceMetricsOverride resizes the RENDERER only. The OS window stays parked
 // off-screen, so this costs nothing back. Best-effort: a Player at the wrong size is worth less
 // coverage, not a failed run, so a refusal here is reported and stepped over.
+// ─── Giving the DM a window wide enough to lay its panels out in ─────────────
+// A GitHub Actions runner has a 1024x768 virtual display, so the DM window comes up at 1008x681
+// there against ~1384x861 on a real monitor. Three checks failed on that alone: the room card is
+// 324 wide and could not find clear space beside the room it describes, the same squeeze pinned
+// it at its top clamp so a vertical drag had nowhere to go, and the Player ended up so close to
+// the DM in shape that a correct Sync View refit landed inside view.js's 0.02 tolerance.
+//
+// ⚠ A FLOOR, NOT A FIXED SIZE. A real monitor already clears it, so a local run is untouched and
+// nothing that passes today changes. Pinning every run to one size would be more reproducible and
+// would also re-baseline every geometry check in the suite against a number nobody has run yet.
+const DM_MIN = { w: 1200, h: 800 };
+
+async function sizeDmToFloor(session) {
+  try {
+    const s = await session.evaluate('({ w: innerWidth, h: innerHeight })');
+    if (!s || (s.w >= DM_MIN.w && s.h >= DM_MIN.h)) return null;
+    const want = { width: Math.max(s.w, DM_MIN.w), height: Math.max(s.h, DM_MIN.h) };
+    await session.send('Emulation.setDeviceMetricsOverride',
+      { ...want, deviceScaleFactor: 1, mobile: false });
+    await session.evaluate('syncSize(); viewportDirty = true; scheduleRender(); 0');
+    return want;
+  } catch (_) { return null; }
+}
+
 async function sizePlayerToScreen(session) {
   try {
     const s = await session.evaluate('({ w: screen.width, h: screen.height })');
@@ -292,6 +316,8 @@ async function startInstance(args, profileDir) {
   await dm.watch();
   await dm.waitFor(DM_READY, 90000, 'the DM init chain');
   await assertPreloadRan(dm);
+  // Before any scenario reads a rect, so every geometry check sees one layout.
+  await sizeDmToFloor(dm);
 
   // ⚠ REFUSE TO RUN AGAINST A LIBRARY THAT ALREADY HAS SCENES IN IT. Scenarios import maps,
   // switch scenes (which autosaves the outgoing one) and restore backups, so a rig run on real
