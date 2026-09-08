@@ -23,12 +23,16 @@ reach for the rig only when code cannot answer the question. Two cases qualify:
 not `smoke`, not one scenario. A finished chunk goes to the DM to look at, and `/commit` is where
 it gets proven. Write the scenario during the build and run nothing.
 
-**A commit gets a SMOKE pass; the full regression set belongs to `/release`.** `/commit` Step 3
-picks `smoke` plus the scenarios covering what the diff touched, and blocks on red. Its Step 2
-settles where the change's criteria live before that set runs. `/release`
-Step 2 runs `npm run rig -- regression` and blocks on red, because that is when an `.exe`
-reaches the TV. Nobody builds from a commit, so no commit needs the whole suite. Do not run
-either set yourself while still building.
+**A commit gets a SMOKE pass; the regression set runs in CI.** `/commit` Step 3 picks `smoke`
+plus the scenarios covering what the diff touched, and blocks on red. Its Step 2 settles where
+the change's criteria live before that set runs. **`.github/workflows/release.yml` then runs
+`regression` against the built `.exe` on every shipping push, and a red gate means no tag, no
+release and no installers.** So the full set is never run by hand: reach for one scenario to
+answer a question, and let CI own the sweep.
+
+**Reproduce a CI-only failure locally, never by pushing again.** A runner has a 1024x768 virtual
+display, which puts the DM window at 1008x681 and breaks any check written against one size.
+`--dm-size 1008x681 --player-size 1024x768` reproduces that layout here, digit for digit.
 
 **Never ask the DM to hand-verify what the rig can check.** They run the `.exe` on a TV; asking
 them to re-test correctness is asking them to do your job.

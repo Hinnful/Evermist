@@ -553,6 +553,33 @@ been made to **fail**: the code under it is deliberately broken, the failure is 
 names the right thing, and the code goes back. One written after the code it covers has only
 ever seen a pass, which is not the same as working.
 
+## How a version reaches you
+
+Every push to `main` runs the release pipeline. It looks at `package.json`'s version, and if that
+version has no tag yet, it treats the push as a release.
+
+What happens then, in order. The unit tests run first, on one machine, because there is no point
+building anything if the arithmetic is wrong. Then three installers get built in parallel -
+Windows, macOS, Linux - each one checking its own update pointer as it finishes. Alongside them,
+the Windows machine takes the app it just packaged and drives it through the whole rig suite:
+every acceptance scenario, against the real installed application rather than the loose source
+files. That last part catches a class nothing else can see, where a file works during development
+and is simply missing from the installer.
+
+Only if all of that passes does the last job run. It creates the tag, creates the release page,
+and attaches the installers. So a failure anywhere leaves nothing behind: no tag, no release, no
+download. Whoever is running the app stays on the version they have and never learns anything was
+attempted.
+
+The release notes are the commit message. One commit is one release, so the message is written
+for the person reading the release page rather than for the person who wrote the code.
+
+**Taking a release back** is not a matter of undoing the commit. The app asks GitHub for the
+newest release, so a broken version keeps being offered until that release and its tag are
+deleted. Once they are, the previous version becomes the newest, and because the app is allowed
+to move backwards it offers that older version through the same Restart button. Nothing installs
+itself, so each person still chooses when.
+
 ## How it's put together
 
 - **Plain JavaScript in `<script>` tags.** No framework, no bundler, no build step, and no ES

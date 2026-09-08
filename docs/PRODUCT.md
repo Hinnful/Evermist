@@ -178,6 +178,30 @@ positioning shift outranks "bump only when the shipped app changes" for one comm
 not a precedent for reaching for big numbers.** A release that rebuilt the whole Player scene
 transition was still a patch.
 
+### Every shipping commit is released, and the one human gate is a yes · `SETTLED` (2026-09-08)
+A version bump used to mean "installable" and a tag meant "released". They are the same decision
+now: bump the version and it ships, once CI has driven the packaged app through the whole rig
+suite. Docs and tooling commits bump nothing and release nothing.
+
+The point is to take the author out of the loop everywhere a machine can stand in. What is left
+for a person is the yes on a commit's notes, and noticing at the table that something is wrong -
+which no test can do, and which is why the ability to pull a release back matters more here than
+a slower cadence would.
+
+**This reverses "publishing stays a hand gesture" and "a version bump is not an intent to
+release"**, both settled a day earlier. See DECISIONS for what changed the trade.
+
+### A bad release is pulled back, and the app is allowed to go backwards · `SETTLED` (2026-09-08)
+Shipping every commit means a mistake reaches people in fifteen minutes rather than whenever
+someone chose to publish. The answer is not a slower pipeline, it is a recovery that works: the
+release and its tag get deleted, and every installed copy is offered the previous version through
+the same Restart button it already uses.
+
+That is a promise about the app, not just about the pipeline. **An installed copy must always be
+able to reach the newest release, in either direction.** It is why `latest*.yml` is checked on
+every platform before anything is uploaded, and why the check treats a missing update pointer as
+a release failure rather than a warning.
+
 ### An update never installs itself · `SETTLED` (2026-09-07)
 A new version downloads in the background, and it applies only when the Restart to update button
 is pressed. No other action may trigger it, quitting the app included. `autoInstallOnAppQuit`

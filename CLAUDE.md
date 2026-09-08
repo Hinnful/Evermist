@@ -197,7 +197,8 @@ error goes through it; no `alert()` ships.
   `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
   `stress.js`.
 - **Never run a rig set while building** - not even `smoke`. A run is the DM's time.
-  `/commit` smoke-tests the diff; `/release` runs the full set. Both block on red.
+  `/commit` smoke-tests the diff and blocks on red; CI runs the full set against the built
+  `.exe`. Reproduce a CI-only layout with `--dm-size` / `--player-size`, never by pushing again.
 - **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance at the
   table are theirs; correctness is yours. Backup, export and restore are the one exception and
   always get their hand test: the export's save dialog is native and cannot be driven.
@@ -236,29 +237,34 @@ refuses them.
 
 ## Distribution and releases
 
-Releases are built by **GitHub Actions** (`.github/workflows/release.yml`) on
-`windows-latest`, `macos-latest` (universal `.dmg`) and `ubuntu-latest` in parallel,
-because a Mac `.dmg` cannot be built on Windows.
+**A SHIPPING COMMIT IS A RELEASE.** `.github/workflows/release.yml` fires on every push to
+`main` and releases when `package.json` holds a version with no tag. **The commit message becomes
+the release notes verbatim**, so a commit message is public writing; `/commit` carries the rules.
+How the jobs fit: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-**When to bump the version.** A bump means "a new app users can install", so bump **only
-when a change touches the shipped app** (anything in `build.files`). Patch for normal
-changes, minor for a notable feature, major for a breaking overhaul. Docs, tests and
-`.claude/` tooling get a plain commit with **no bump and no tag**, and ride along into the
-next release.
+**Nothing public exists until the gate is green**, and **a red gate blocks every release**, not
+only that commit's - it always runs on `main`'s newest state.
 
-**To cut a release:** get the changes onto `main`, bump `version` in `package.json` to match
-the tag, then on GitHub create the release with tag `vX.Y.Z`.
+**When to bump the version.** A bump now means "release this", so bump **only when a change
+touches the shipped app** (anything in `build.files`). Patch for normal changes, minor for a
+notable feature, major for a breaking overhaul. Docs, tests and `.claude/` tooling get **no
+bump** and pass straight through.
+
+**A version a red gate rejected keeps its number** - nothing published under it.
+
+**To pull a bad release: `/rollback`.** A `git revert` does not undo one.
+
+**Never tag or publish by hand.** The workflow owns both, or neither.
 
 **Pipeline rules:**
 - **Upload with `softprops/action-gh-release@v2`, NOT `electron-builder --publish`.**
-  electron-builder only uploads to *draft* releases and silently skips otherwise. The
-  workflow builds with `--publish never`, then softprops attaches the files.
-- **Unsigned by deliberate choice.** `CSC_IDENTITY_AUTO_DISCOVERY=false` must stay set in
-  the workflow env and the local Windows `build` script, or the mac build fails.
-- Repo Actions settings need "Allow all actions" and `contents: write`.
-- **Never redirect `userData` beside the `.exe` again.** Every platform uses the OS per-user
-  location; the old portable folder orphaned a library on upgrade.
-- **Windows ships an NSIS installer, not portable.** A portable build extracts to a temp
-  folder and cannot replace itself, so switching back kills auto-update. The release must
-  also carry `latest*.yml` and `*.blockmap`, or electron-updater finds nothing and every
-  installed copy silently stops updating.
+  electron-builder only uploads to *draft* releases and silently skips otherwise.
+- **Unsigned by deliberate choice.** `CSC_IDENTITY_AUTO_DISCOVERY=false` must stay set in the
+  workflow env and the local Windows `build` script, or the mac build fails.
+- **Never redirect `userData` beside the `.exe` again** - the old portable folder orphaned a
+  library on upgrade.
+- **Windows ships an NSIS installer, not portable.** A portable build extracts to a temp folder
+  and cannot replace itself, which kills auto-update.
+- **Every release must carry `latest*.yml` and `*.blockmap`**, or electron-updater finds nothing
+  and every installed copy silently stops updating - in both directions, rollback included.
+  `tools/check-update-metadata.js` guards it per platform.

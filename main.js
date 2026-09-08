@@ -382,8 +382,7 @@ function ytdlpBundled() {
     : path.join(__dirname, 'vendor', 'yt-dlp', YTDLP_ASSET);
 }
 
-// ⚠ THE APP RUNS THE COPY IN userData, never the one inside the install: a binary beside the
-// .exe cannot rewrite itself, and yt-dlp stops working within weeks when YouTube changes.
+// ⚠ THE APP RUNS THE COPY IN userData, never the one inside the install - see DECISIONS.
 function ensureYtdlp() {
   const dir = path.join(app.getPath('userData'), 'bin');
   const dest = path.join(dir, YTDLP_ASSET);
@@ -401,10 +400,9 @@ function ensureYtdlp() {
   }
 }
 
-// ⚠ ONLY AN ADDRESS THIS FUNCTION BUILT reaches yt-dlp's argv. yt-dlp reads `--exec` off its
-// own command line, so a pasted string beginning with `-` is arbitrary command execution from
-// the main process. An id is rebuilt; anything else goes through the URL parser, whose output
-// always starts with its scheme. Every call also carries `--ignore-config` and a `--`.
+// ⚠ ONLY AN ADDRESS THIS FUNCTION BUILT reaches yt-dlp's argv, or a pasted string starting with
+// `-` is command execution from the main process. Each call also carries `--ignore-config` and a
+// `--`. See DECISIONS.
 function ytdlpTarget(kind, id, raw) {
   if (kind === 'video' && /^[A-Za-z0-9_-]{11}$/.test(id || '')) {
     return 'https://www.youtube.com/watch?v=' + id;
@@ -660,6 +658,9 @@ function initAutoUpdate() {
   // ⚠ NOTHING INSTALLS WITHOUT THE BUTTON, quitting included - see PRODUCT.md.
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = false;
+  // ⚠ DOWNGRADES ALLOWED, and that IS the rollback: deleting a bad release makes the previous one
+  // newest, and electron-updater refuses to go backwards without this.
+  autoUpdater.allowDowngrade = true;
 
   autoUpdater.on('update-available',     i => setUpdateStatus({ state: 'downloading', version: i.version }));
   autoUpdater.on('update-not-available', () => setUpdateStatus({ state: 'none' }));

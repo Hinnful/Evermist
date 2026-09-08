@@ -543,15 +543,46 @@ up-to-date install from an abandoned one.
 The update line shows nothing on error. Being offline is the usual failure and nothing can be done
 about it from beside the table, so a dialog would be noise on a screen next to players.
 
-### Publishing a release stays a hand gesture · `SETTLED` (2026-09-07)
-Auto-releasing on any push to `main` carrying a new version was rejected. `/commit` bumps on every
-shipping commit, so that trigger publishes once per commit against a cadence of one or two per
-minor. Creating the tag and pressing Publish costs about two minutes, and it is the last point
-where a person looks at a release before it exists.
+### Publishing a release stays a hand gesture · `REVERSED` (2026-09-08)
+Held for a day. The reasoning was that `/commit` bumps on every shipping commit, so releasing on
+a version change would publish once per commit against a cadence of one or two per minor - and
+that creating the tag by hand was the last point where a person looked at a release before it
+existed.
 
-A version bump is not an intent to release, so no trigger derived from the version can stand in for
-that judgement. What remains open is a gate rather than a trigger: nothing runs the rig against the
-built installer before it is uploaded.
+**Both halves were reversed deliberately, and the cadence objection was accepted rather than
+answered.** Every shipping commit now releases. What changed the trade is that the hand gesture
+was never a quality check: nobody hand-tests this app, so "a person looked" meant a person read
+their own commit message. The gate that replaced it drives the packaged `.exe` through the whole
+rig suite, which is more than any glance was doing.
+
+What made it safe to give up was not the gate, though. It was `allowDowngrade`.
+
+### A release that goes wrong is pulled, not patched forward · `SETTLED` (2026-09-08)
+The obvious recovery from a bad release is `git revert`, and it does nothing. `electron-updater`
+serves whatever the newest release is, so the bad installer keeps being offered and a revert just
+publishes another version on top of it.
+
+So `allowDowngrade` is on in `main.js`, and recovery is deleting the release and its tag. The
+previous release becomes newest and installed copies - including the ones already sitting on the
+bad version - are offered the older one through the same Restart button. Without the flag
+`electron-updater` refuses to go backwards and those copies have no way home but a manual
+reinstall. `/rollback` is the procedure, because the wrong first move is the intuitive one.
+
+Two things were considered for limiting blast radius and dropped. **Publishing as a pre-release
+and promoting after a soak** would have made the author the only exposed user for two days, and
+it needed either a second hand gesture or a timer that promotes builds nobody played on. Neither
+fits a workflow whose whole point is one human gate. **Holding minors and majors for approval**
+is the same objection.
+
+### The tag is created last, not first · `SETTLED` (2026-09-08)
+Three shapes were drawn. Tagging by hand and gating before upload leaves a live release page with
+no installers on it when the gate goes red. Publishing to a draft and promoting by hand puts the
+tag public before anything is checked. What ships: the workflow creates the tag as a side effect
+of creating the release, in the last job. A red gate therefore leaves no tag, no page and no
+assets, which is the only shape where nothing public precedes green.
+
+`.github/check-version.js` was deleted with this. It compared a pushed tag against `package.json`,
+and the tag is now derived from `package.json` rather than compared to it.
 
 ---
 

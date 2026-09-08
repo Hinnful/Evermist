@@ -1,84 +1,193 @@
 name: Build & Release
 
-# Runs when you push a version tag like v1.0.0.
-# Builds Evermist on Windows, macOS, and Linux in parallel,
-# then attaches each installer to the GitHub Release for that tag.
+# Fires on every push to main. Releases only when package.json carries a version that has no tag
+# yet, so a docs or tooling commit passes straight through.
+#
+# ⚠ NOTHING PUBLIC EXISTS UNTIL THE GATE IS GREEN. The tag is created by the publish job at the
+# end, not by a person up front, so a red gate leaves no tag, no release page and no installers -
+# users stay on the last release and never see that anything happened.
+#
+# ⚠ THE GATE DRIVES THE PACKAGED APP, not the repo. A file missing from build.files works under
+# `npm start` and is simply absent from the .exe, where a missing stylesheet renders unstyled
+# rather than erroring. That class is invisible to every other check.
+#
+# Rollback is not a revert: delete the release and its tag, and `allowDowngrade` in main.js walks
+# installed copies back through their own Restart button. See docs/PRODUCT.md.
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
 
 permissions:
-  contents: write   # lets the job upload files to the Release
+  contents: write
 
 jobs:
-  # Nothing gets built until the suite is green and the tag matches the version
-  # the app will report. Runs once, on one runner, before the three builds.
-  verify:
+  # Cheap and first: is there anything to release at all?
+  decide:
     runs-on: ubuntu-latest
-
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      release: ${{ steps.check.outputs.release }}
     steps:
-      - name: Check out the code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the tag list is how "already released" is decided
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Does this commit ship a new version?
+        id: check
+        run: |
+          V=$(node -p "require('./package.json').version")
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if git rev-parse "v$V" >/dev/null 2>&1; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "v$V is already tagged, so this commit ships nothing. Stopping."
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "v$V has no tag yet. Gating it."
+          fi
+
+  # Unit tests before anything is built, on one runner.
+  verify:
+    needs: decide
+    if: needs.decide.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1   # skipped here only; the build jobs need the binary
+      - run: npm test
+
+  # THE GATE. Builds the Windows installer, then drives the app it just packaged.
+  # ⚠ The rig is Windows-only (offscreen.ps1 parks the windows), so this is the only platform it
+  # can cover. The mac and linux builds are checked by their unit tests and their update metadata.
+  gate:
+    needs: [decide, verify]
+    runs-on: windows-latest
+    # The rig's own watchdog is 180s + 90s per scenario, so ~31min for the 19 acceptance files.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      # postinstall fetches yt-dlp into vendor/. It fails hard on purpose: a soft failure would
+      # ship an installer whose download button does nothing.
+      - run: npm ci
+
+      - name: Build the Windows installer
+        run: npx electron-builder --win --publish never
         env:
-          # Skipped here only. The build jobs below need the real binary.
-          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-
-      - name: Run the tests
-        run: npm test
-
-      - name: Check the tag matches package.json
-        run: node .github/check-version.js
-        env:
-          TAG: ${{ github.ref_name }}
-
-  build:
-    needs: verify
-    strategy:
-      fail-fast: false   # if one OS fails, the others still finish
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - name: Check out the code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build the installer
-        run: npx electron-builder --publish never
-        env:
-          # We are not paying for code signing, so tell electron-builder
-          # not to look for a signing certificate (otherwise the mac build fails).
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Attach the installer to the Release
-        uses: softprops/action-gh-release@v2
+      - name: Check the update pointer
+        run: node tools/check-update-metadata.js dist/latest.yml
+
+      # dist/win-unpacked/ is a by-product of building the installer, so this costs no second
+      # build. NEVER dist/Evermist.exe — see the rig skill.
+      - name: Drive the packaged app through the full regression set
+        run: npm run rig -- regression --exe "dist/win-unpacked/Evermist.exe"
+
+      - uses: actions/upload-artifact@v4
         with:
-          # Each OS uploads only its own installer; the other globs match
-          # nothing on that runner, which is fine.
-          # latest*.yml and the blockmaps are what electron-updater reads. Drop them and
-          # every installed copy silently stops finding new versions.
-          files: |
+          name: dist-windows
+          path: |
             dist/*.exe
+            dist/latest.yml
+            dist/*.blockmap
+          if-no-files-found: error
+
+  # In parallel with the gate: a red gate stops the publish job, so these are wasted work on a
+  # failure rather than a hole in it.
+  build:
+    needs: [decide, verify]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            flag: --mac
+            meta: dist/latest-mac.yml
+            name: dist-macos
+          - os: ubuntu-latest
+            flag: --linux
+            meta: dist/latest-linux.yml
+            name: dist-linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Build the installer
+        run: npx electron-builder ${{ matrix.flag }} --publish never
+        env:
+          # Unsigned by choice. Unset, the mac build fails looking for a certificate.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Check the update pointer
+        run: node tools/check-update-metadata.js ${{ matrix.meta }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
             dist/*.dmg
             dist/*.AppImage
-            dist/latest*.yml
+            dist/latest-*.yml
             dist/*.blockmap
+          if-no-files-found: error
+
+  # Only reachable with the gate green. Creates the tag as a side effect of creating the release,
+  # which is why no tag exists on a failure.
+  publish:
+    needs: [decide, gate, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # One commit is one release, so the commit message IS the release note. /commit writes it
+      # under the public-text rules for exactly this reason.
+      - name: Read the notes off the commit
+        id: notes
+        run: |
+          {
+            echo "title=$(git log -1 --pretty=%s)"
+            echo "body<<EOF_BODY"
+            git log -1 --pretty=%b
+            echo "EOF_BODY"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: incoming
+          merge-multiple: true
+
+      - name: What is going up
+        run: ls -la incoming
+
+      # ⚠ softprops, NOT electron-builder --publish: electron-builder only uploads to DRAFT
+      # releases and silently skips otherwise.
+      # ⚠ latest*.yml and the blockmaps are what electron-updater reads. Drop them and every
+      # installed copy silently stops finding new versions.
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.decide.outputs.version }}
+          name: ${{ steps.notes.outputs.title }}
+          body: ${{ steps.notes.outputs.body }}
+          draft: false
+          prerelease: false
+          files: |
+            incoming/*.exe
+            incoming/*.dmg
+            incoming/*.AppImage
+            incoming/latest*.yml
+            incoming/*.blockmap
