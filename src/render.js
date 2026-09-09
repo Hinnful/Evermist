@@ -228,6 +228,10 @@ function drawCursor(screenX, screenY) {
   if (typeof drawRoomLabels === 'function') drawRoomLabels();
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 
+  // Calibration owns the map's mouse, so its square and magnifier replace every cursor shape below
+  // rather than sharing the canvas with them.
+  if (gridCalArmed) { drawGridCalibration(); return; }
+
   if (activePolygon && activePolygon.vertices.length > 0) {
     drawActivePolyPreview(screenX, screenY);
     return; // skip other cursor shapes while drawing polygon

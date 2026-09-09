@@ -291,6 +291,8 @@
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="4,2 10,2 13,7 10,12 4,12 1,7"/></svg>
         </button>
         </div>
+        <span class="cp-rowdiv"></span>
+        <button id="cp-grid-calibrate" class="cp-btn cp-btn-outline cp-btn-icon" title="Fit the grid to the map: drag a square across the map's own cells"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5v-3h3"/><path d="M9.5 1.5h3v3"/><path d="M12.5 9.5v3h-3"/><path d="M4.5 12.5h-3v-3"/><line x1="7" y1="4.2" x2="7" y2="9.8"/><line x1="4.2" y1="7" x2="9.8" y2="7"/></svg></button>
         <button id="cp-grid-reset" class="cp-btn cp-btn-outline cp-btn-icon" title="Reset grid settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
       </div>
     </div>
@@ -314,14 +316,6 @@
           </div>
           <input type="text" id="grid-thickness-num" class="cp-chip cp-chip-num" inputmode="numeric" value="1">
         </div>
-      </div>
-    </div>
-
-    <div class="cp-group">
-      <div class="cp-label">Offset</div>
-      <div class="cp-btnrow">
-        <div class="cp-chip cp-chip-pre"><span class="cp-chip-prefix">X</span><input type="text" id="grid-offset-x-num" inputmode="numeric" value="0"></div>
-        <div class="cp-chip cp-chip-pre"><span class="cp-chip-prefix">Y</span><input type="text" id="grid-offset-y-num" inputmode="numeric" value="0"></div>
       </div>
     </div>
 
@@ -422,8 +416,8 @@
   <div id="cp-legacy" aria-hidden="true">
     <input type="color" id="fog-color" value="#3a3a8c">
     <input type="color" id="grid-color" value="#ffffff">
-    <input type="range" id="grid-offset-x" min="0" max="400" value="0">
-    <input type="range" id="grid-offset-y" min="0" max="400" value="0">
+    <input type="range" id="grid-offset-x" min="0" max="700" value="0">
+    <input type="range" id="grid-offset-y" min="0" max="700" value="0">
     <button id="btn-minimap-lock">Lock</button>
     <button id="btn-player">Open Window</button>
     <button id="btn-sync-view">Sync View</button>
@@ -553,6 +547,23 @@
   <!-- Filled by about.js: mark, wordmark, version, repo. A footer, so the shortcuts the DM
        opened this for stay at the top. -->
   <div class="legend-about" id="legend-about"></div>
+</div>
+
+<!-- The calibration count rides the map beside the square, not the bottom bar: the eye is on the
+     intersection being aimed at, and #context-row is hidden while calibration holds the map.
+     gridCalibrate.js places it and switches it on. -->
+<div id="gridcal-hud">
+  <span id="gridcal-hint">Drag a square across the map’s own cells</span>
+  <div class="cp-stepper" id="gridcal-count-wrap" title="Cells the square spans">
+    <button class="cp-stepbtn" id="gridcal-count-dec" title="Fewer cells">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="3" y1="7" x2="11" y2="7"/></svg>
+    </button>
+    <span class="cp-stepval"><input id="gridcal-count" type="text" inputmode="numeric" spellcheck="false" autocomplete="off" value=""><span class="cp-pct">cells</span></span>
+    <button class="cp-stepbtn" id="gridcal-count-inc" title="More cells">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
+    </button>
+  </div>
+  <button id="gridcal-done" class="cp-btn cp-btn-outline" title="Keep this fit and hand the map back">Done</button>
 </div>
 
 <!-- ROOM CARD (floats near the selected room, DM only) -->
@@ -944,6 +955,7 @@
 <script src="src/stress.js"></script>
 <script src="src/memProbe.js"></script>
 <script src="src/render.js"></script>
+<script src="src/gridCalibrate.js"></script>
 <script src="src/minimap.js"></script>
 <script src="src/controlPanel.js"></script>
 <script src="src/confirmDialog.js"></script>

@@ -155,6 +155,13 @@ mid-scene is never what anyone wanted.
 ### No next or previous track · `SETTLED` (scope call)
 A hundred ambient loops have no order a Next button could follow. The list is the control.
 
+### The grid has no offset field · `SETTLED` (2026-09-09, scope call)
+Two number boxes for X and Y phase were the only way to move the grid onto a map's own lines.
+They are gone. A typed number cannot be aimed at a line, so the DM was reading a value off
+nothing and nudging until it looked right; the calibration gesture is aimed at the line itself.
+Grid Reset still returns the phase to zero, so nothing is a one-way door. Cell size keeps its
+slider, because a size is a quantity someone can hold an opinion about and a phase is not.
+
 ### Distinctive fog identities · `PARKED`
 The most interesting idea in its batch and too big for now. The shape when it lands: "bloody /
 icy / acidic / rusty" are not tint values, they are combinations of knobs the cloud engine

@@ -9,7 +9,8 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
 //
 //   A. The card opens on a selected room, closes when nothing is selected, and survives a tool
-//      change — its visibility is the selection and nothing else.
+//      change — its visibility is the selection and nothing else. Grid calibration is the one
+//      thing that puts it away, because it takes the map, and the same card comes back at Done.
 //   B. The card holds the room's name and notes, and what the DM types reaches the room.
 //   C. A name is trimmed and never left empty; notes are kept as typed, including newlines.
 //   D. The card's shape is the one the DM reads: a titleless drag bar with a grip and a Close,
@@ -125,6 +126,28 @@ module.exports = async function roomCardFeature(rig) {
   await select(null);
   rig.check(!(await card()).shown, 'deselecting did not close the room card');
   await select(1);
+
+  // ⚠ CALIBRATION IS NOT A TOOL, and this is not the tool gate the loop above forbids. It takes
+  // the map's mouse and shuts the control panel to clear it; a card left floating there swallows
+  // the drag. THE SELECTION IS UNTOUCHED, which is what brings the same card back at Done.
+  await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
+  await rig.sleep(200);
+  const held = await dm.evaluate('({ armed: gridCalArmed,' +
+    ' card: getComputedStyle(document.getElementById("panel-room")).display })');
+  rig.note('the card while calibration holds the map: ' + JSON.stringify(held));
+  rig.check(held.armed === true,
+            'calibration would not arm, so this criterion checked nothing: ' +
+            JSON.stringify(held));
+  rig.check(held.card === 'none',
+            'the room card stayed over the map that calibration has to be dragged on');
+  await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
+  await rig.sleep(200);
+  const given = await dm.evaluate('({ sel: selectedPolygonId,' +
+    ' card: getComputedStyle(document.getElementById("panel-room")).display })');
+  rig.note('the card after calibration: ' + JSON.stringify(given));
+  rig.check(given.card !== 'none' && given.sel === 1,
+            'the card did not come back on the same room once calibration handed the map back: ' +
+            JSON.stringify(given));
 
   // ── B. The fields reach the room ──────────────────────────────────────────
   rig.check((await card()).name === 'The Vestry',

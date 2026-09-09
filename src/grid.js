@@ -97,10 +97,11 @@ function renderGrid(vp) {
   // so the fog layer above it naturally hides it in shrouded areas.
   if (isPlayer) return;
   // ⚠ The Door tool shows the grid even when the DM has it switched off, because a door IS one
-  // cell and placing one blind is guesswork. Do NOT do this by flipping gridEnabled: that value
-  // is the scene's and reaches the TV, so picking a tool would put a grid in front of the
-  // players mid-session. renderPlayerGrid stays gated on gridEnabled alone.
-  if (!gridEnabled && shape !== 'door') return;
+  // cell and placing one blind is guesswork. Calibration is the same case: it cannot be done
+  // against an invisible grid. Do NOT do this by flipping gridEnabled: that value is the scene's
+  // and reaches the TV, so picking a tool would put a grid in front of the players mid-session.
+  // renderPlayerGrid stays gated on gridEnabled alone.
+  if (!gridEnabled && shape !== 'door' && !gridCalArmed) return;
   drawGridLines(gridCtx, vp);
   drawEffectGridGlow(gridCtx, vp);
 }
@@ -201,9 +202,7 @@ function applyGridConfig(cfg) {
     document.getElementById('grid-size').value                = gridSize;
     document.getElementById('grid-size-num').value            = gridSize;
     document.getElementById('grid-offset-x').value            = gridOffsetX;
-    document.getElementById('grid-offset-x-num').value        = gridOffsetX;
     document.getElementById('grid-offset-y').value            = gridOffsetY;
-    document.getElementById('grid-offset-y-num').value        = gridOffsetY;
     document.getElementById('grid-color').value               = gridColor;
     document.getElementById('grid-opacity').value             = Math.round(gridOpacity * 100);
     document.getElementById('grid-opacity-num').value         = Math.round(gridOpacity * 100);

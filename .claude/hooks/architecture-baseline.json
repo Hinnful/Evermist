@@ -13,7 +13,8 @@
     "missing:roomops.js",
     "missing:shapemenu.js",
     "missing:updater.js",
-    "missing:musicplan.js"
+    "missing:musicplan.js",
+    "missing:gridcalibrate.js"
   ],
   "warnedBytes": 0
 }

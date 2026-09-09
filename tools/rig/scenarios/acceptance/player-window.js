@@ -13,8 +13,10 @@
 //      not yet holding it — so no fog push and no map reaches a window nobody opened.
 //   B. The card only outranks other panels while it is loading. The DM shows the same element
 //      when no scene is open, and it must not paint over the scene library or a dialog.
-//   C. While the map decodes the landing card is what is on screen, marked as loading, and it
-//      sits ABOVE the cover so no bare sheet is ever visible.
+//   C. The players never look at a bare sheet before the first map, in EITHER order. When the
+//      decode outlasts the cover, the card is on screen, marked as loading, and above the cover.
+//      When the cover lifts first, the card holds as the empty state. Either way it is gone once
+//      the map is on screen - which machine takes which order is not this file’s to decide.
 //   D. Once the map is on screen the card is gone, and it does not come back on a later switch.
 //   E. Closing the Player and pressing the button again works, leaves a fresh window warming for
 //      the press after that, and never warms a second one over a Player that is already open.
@@ -67,7 +69,12 @@ module.exports = async function playerWindowFeature(rig) {
   const player = await rig.player();
   const waitMs = Date.now() - pressedAt;
 
-  const whileLoading = await player.evaluate(`(() => {
+  // ⚠ POLLED, NEVER READ ONCE. The card goes up and gets its `loading` class a beat after the
+  // window reports itself visible, so a single read lands in that gap on a slow machine - it
+  // passes here every time and took a release gate down on a runner. The loop is BOUNDED and its
+  // exit conditions are the checks' own: the card being up, or the map decoding first. A card that
+  // never comes up runs the clock out and lands on the same check with the same message.
+  const readLanding = () => player.evaluate(`(() => {
     const el = document.getElementById('landing');
     const cs = getComputedStyle(el);
     const fade = getComputedStyle(document.getElementById('scene-fade'));
@@ -78,23 +85,69 @@ module.exports = async function playerWindowFeature(rig) {
       zIndex:   parseInt(cs.zIndex, 10),
       loading:  el.classList.contains('loading'),
       fadeZ:    parseInt(fade.zIndex, 10),
+      covered:  ['dark', 'blind'].some(c =>
+                  document.getElementById('scene-fade').classList.contains(c)),
     };
   })()`);
+
+  // ⚠ THE COVER BEING DOWN IS WHAT MAKES WAITING VALID. revealPlayer() strips the loading line
+  // once, and never puts it back, so polling past the reveal only burns the decode window and
+  // turns a measurable run into "the map was already decoded". Stop the moment any of the three
+  // settles it: the card is up, the map landed, or the cover lifted.
+  let whileLoading = await readLanding();
+  const landingBy = Date.now() + 8000;
+  while (Date.now() < landingBy && !whileLoading.hasMap && whileLoading.covered &&
+         !(whileLoading.display !== 'none' && whileLoading.loading === true)) {
+    await rig.sleep(50);
+    whileLoading = await readLanding();
+  }
+  rig.note('sampled the Player after ' + (8000 - (landingBy - Date.now())) + 'ms: ' +
+           JSON.stringify(whileLoading));
 
   rig.check(whileLoading.hidden === false,
     'the Player window did not report itself visible after the button was pressed');
 
-  rig.check(whileLoading.hasMap === false,
-    'the map was already decoded when the window came up, so nothing here measured the wait — ' +
-    'the fixture is probably no longer animated');
+  // ⚠ TWO ORDERS, AND BOTH ARE REAL. revealPlayer() lifts the cover on a SCENE_FADE_MIN_MS timer,
+  // not on the map arriving, so a slow machine strips the loading line while there is still no
+  // map - the comment on onPlayerMapShown says the error paths reveal too. Which order a machine
+  // takes is NOT the scenario's to choose, and demanding the first one took a release gate down
+  // three times. NEITHER BRANCH IS A FREE PASS: both say the players never look at a bare sheet.
+  const coverUp = whileLoading.zIndex > whileLoading.fadeZ;
+  if (whileLoading.loading === true) {
+    rig.note('the decode outlasted the cover, so the loading state was measured directly');
+    rig.check(whileLoading.hasMap === false,
+      'the card claims to be loading with the map already decoded, so the line on the TV is a lie');
+    rig.check(whileLoading.display !== 'none',
+      'the landing card was marked loading and not on screen, so the players are looking at a ' +
+      'bare cover with nothing on it');
+    rig.check(coverUp,
+      'the landing card sits under the scene cover (' + whileLoading.zIndex + ' vs ' +
+      whileLoading.fadeZ + '), so the cover hides it and the TV shows a flat sheet');
+  } else {
+    rig.note('the cover lifted first, so the card is checked as the empty state and on the way out');
+    rig.check(whileLoading.display !== 'none' || whileLoading.hasMap === true,
+      'the cover lifted before the map arrived and the landing card went with it, so the TV is ' +
+      'showing nothing at all rather than the empty state the app draws for it');
+    rig.check(whileLoading.zIndex === null || !coverUp,
+      'the loading line was gone but the card still outranks the scene cover, so the cover can ' +
+      'never paint over it: ' + whileLoading.zIndex + ' against ' + whileLoading.fadeZ);
+  }
 
-  rig.check(whileLoading.display !== 'none' && whileLoading.loading === true,
-    'the landing card was not up and marked loading while the map decoded, so the players are ' +
-    'looking at a bare cover with nothing on it');
-
-  rig.check(whileLoading.zIndex > whileLoading.fadeZ,
-    'the landing card sits under the scene cover (' + whileLoading.zIndex + ' vs ' +
-    whileLoading.fadeZ + '), so the cover hides it and the TV shows a flat sheet');
+  // ⚠ THE END STATE IS THE CHECK THAT HOLDS IN EITHER ORDER, and it is the one the players feel:
+  // a card left over a decoded map is the app's own wordmark sitting on the dungeon. Polled
+  // because the map arriving and the card going are two frames, not one.
+  let settled = await readLanding();
+  const settledBy = Date.now() + 30000;
+  while (Date.now() < settledBy && !(settled.hasMap && settled.display === 'none')) {
+    await rig.sleep(100);
+    settled = await readLanding();
+  }
+  rig.note('once the map was on the Player: ' + JSON.stringify(settled));
+  rig.check(settled.hasMap === true,
+    'the map never reached the Player at all, so nothing here measured the wait');
+  rig.check(settled.display === 'none',
+    'the landing card is still on screen with a decoded map under it, so the TV is showing the ' +
+    'wordmark over the dungeon: ' + JSON.stringify(settled));
 
   // The one thing nobody can assert: whether it looks like fog or like a blue screen.
   const shot = require('path').join(rig.outDir, 'player-loading.png');

@@ -543,7 +543,7 @@ up-to-date install from an abandoned one.
 The update line shows nothing on error. Being offline is the usual failure and nothing can be done
 about it from beside the table, so a dialog would be noise on a screen next to players.
 
-### Publishing a release stays a hand gesture · `REVERSED` (2026-09-08)
+### Publishing a release stays a hand gesture · `REJECTED` (reversed 2026-09-08)
 Held for a day. The reasoning was that `/commit` bumps on every shipping commit, so releasing on
 a version change would publish once per commit against a cadence of one or two per minor - and
 that creating the tag by hand was the last point where a person looked at a release before it
@@ -784,6 +784,47 @@ later point, and a hand-tuned grid has to survive it - auto on first load, the D
 forever after. **Size, not offset:** `map_origin` means a correctly-sized grid can still sit out of
 phase, and deriving the offset too was judged the wrong trade against a manual nudge. A map with no
 plan gets nothing, and no hint about the shrink factor either; both accepted, not gaps.
+
+### Grid calibration measures a square across N cells, not one cell and not automatically · `SETTLED` (2026-09-09)
+Three flows were prototyped in a throwaway harness and judged in the running app. The gesture that
+shipped is described in ARCHITECTURE.md; what follows is why it beat the other two.
+**The box is forced square**, which is what made this flow win: a cell is a square, so one
+side carries the whole reading and the second axis contributes nothing but a chance to disagree
+with the first. Rejected on the way: sizing from ONE cell between two draggable anchors, which
+asks for a precise gesture over the shortest distance available; and Owlbear Rodeo's three gated
+steps, which walk the DM through sizing a cell on maps a floor plan already sized. Owlbear,
+Roll20 and Foundry all size from a FIXED 3x3 sample and then correct drift at a distance. An
+adjustable count is that same shape and also serves a large map, at the cost of a guess that has
+to be confirmed.
+
+### A hex grid calibrates from a cell CENTRE, and the phase must undo the stagger · `SETTLED` (2026-09-09)
+Reverses the refusal filed a day earlier, which held that a dragged square would write a hex's
+circumradius as if it were a square's side. The gesture draws the shape the grid is made of, so
+the objection disappears: press a cell's middle, drag out a circumradius, and the count divides it.
+The press is the CENTRE rather than a corner because a hex grid's `gridOffset` names where a
+centre sits, not a vertex.
+**The phase is where this goes wrong quietly.** `drawGridLines` offsets alternate columns
+(flat-top) or rows (pointy-top) by half a step, so taking both offsets as a plain modulo of the
+centre-to-centre step lands the lattice half a cell from the point pressed - for every odd index,
+which is about half of all presses. The anchor's own stagger comes off before the modulo.
+Measured 92.38px out on a 106px cell before the fix, 0.0000px after, over both orientations.
+The correction handle stays square-only; a staggered lattice with two axis steps was judged too
+much for the same session.
+
+### Finding the grid from the map's own pixels · `REJECTED` (2026-09-09)
+A detector was built and tried: sum the absolute gradient down sampled rows and columns, recover
+the repeating period and its phase from those profiles, set the grid from that. It recovered
+synthetic profiles to within 0.08px and came out wrong on real Dungeon Alchemist exports, so it
+was dropped rather than pursued. The maths is not where it failed; the profiles built from a real
+map are. Two dead ends inside it are worth not repeating. Scoring a candidate period by the mean
+energy under its teeth makes every MULTIPLE of the true period win, because a sparser comb
+averages fewer samples - the answer is a significance score weighted by the square root of the
+tooth count. And an integer comb scan cannot find a fractional period at all, because it walks
+off a 94.4px grid within a few cells while a multiple of it drifts three times slower - the answer
+is an autocorrelation coarse pass. It is also the wrong gap to close, which is the reason this
+stays shut rather than parked: a Dungeon Alchemist export already derives its cell size at import
+(the entry above), so reading pixels would serve only maps with no plan - and those now have the
+calibration gesture, which lands within 0.1px by hand.
 
 ### Owlbear Rodeo's automatic fogging is not a template · `REJECTED` (as a model)
 Their "Forecast" feature is a server-side computer vision pipeline gated to their top paid

@@ -15,6 +15,17 @@ header before adding an entry here.
 
 ---
 
+### The calibration count rides the map, and arming borrows the panel rather than taking it · `SETTLED` (2026-09-09)
+The count stepper first went in `#context-row`, where it was never once visible: that row hides
+for the whole of calibration, so the control shipped as dead markup. It sits on the map now, on
+the app's own floating surface, under the shape and following it through a pan, a zoom and a
+drag. It carries Done, which was the only way out that nothing on screen offered.
+Arming shuts the control panel because it covers the map's right edge, and shifts the room card
+away for the same reason - **the card's selection is untouched**, so the same card returns on the
+same room, which keeps the selection-only visibility rule intact. Leaving restores the tab that
+was up, unless the DM picked another one meanwhile: `#cp-tabbar` never hides, so that is a real
+click and it wins.
+
 ### The Fog/Grid/Player tabs left the panel, and the panel now shuts · `SETTLED` (2026-08-30)
 The panel covered about 288 screen px of map on the DM's right edge, so a zoomed-in DM framed the
 TV against a viewport narrower than the one the players saw. **Trimming the region sent to the

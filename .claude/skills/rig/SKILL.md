@@ -156,6 +156,17 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
   never activated, so whether it fires turns on what else is on the machine: it fails at random
   inside a set and passes alone. Dispatch `FocusEvent('blur')` at the listener instead, and keep
   `focus()` where a check reads the caret.
+- **A DRAG'S TOLERANCE IS ONE CLIENT PIXEL IN MAP UNITS, never a flat number.** `mouseAt` builds
+  the event on a whole client pixel, so a 17px drag in map units arrives as 17.5 at a zoom of
+  0.855. Assert against the value the app RECORDED - the committed span, not the drag you aimed -
+  and scale whatever tolerance is left by `2 / zoom`, read live. A flat 0.5 passed at one window
+  size and took a release gate down on a 1008x681 runner.
+- **A criterion over a TRANSIENT must poll, and must assert every order the app allows.** Reading
+  a state that exists for a moment, once, is a coin toss the slow machine loses. Poll for it with
+  a bound. Then check whether the other order is legitimate too - the Player's cover lifts on a
+  timer, not on the map arriving - and if it is, branch and assert both. **Neither branch may be
+  a free pass**; a branch that only notes what happened is a silent skip wearing a check's
+  clothes.
 - **An element inside `display:none` has zero-sized rects**, so a spacing or centring assertion
   against it passes by accident. Reveal it first.
 - **Both windows must stay visible and unminimized.** An OS-minimize makes `main.js` send

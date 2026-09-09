@@ -22,7 +22,7 @@ leave a pointer, never delete an entry.
 
 ## What this is
 
-**Evermist** - a client-side web app for displaying D&D dungeon maps on a TV with fog of
+**Evermist** - a client-side web app showing D&D dungeon maps on a TV with fog of
 war. No backend, no VTT features (tokens, initiative). Map + fog + grid + two screens.
 
 ## Tech constraints
@@ -64,11 +64,10 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 - **Shared mutable state has one home: `state.js`.** Move a piece there when a feature
   touches it. Grow it lazily; never move all globals at once.
 - **No big-bang refactors.** The blob shrinks as a byproduct of feature work. If a task is
-  purely file-shuffling with no feature attached, stop and confirm with the user.
+  purely file-shuffling, stop and confirm with the user.
 - **Extend the module that owns the concern**, don't duplicate it elsewhere.
 - **Build nothing for a case that does not exist yet.** No option no caller passes, no
-  wrapper around a single call, no branch for a state the app cannot reach. Delete it rather
-  than keep it "just in case" - git has it.
+  wrapper around a single call, no branch for a state the app cannot reach. Delete it; git has it.
 
 ### Module map
 
@@ -87,6 +86,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `undo.js` | Undo/redo for fog edits |
 | `effects.js` | Map effects: the `effects` array's model and its render path |
 | `grid.js` | Grid config + render |
+| `gridCalibrate.js` | The calibration square that fits the grid to the map |
 | `scenes.js` | Fog persistence + scene fade helpers |
 | `sceneManager.js` | Scene CRUD, `switchScene`, scene-manager UI |
 | `sceneGroups.js` | Group names on scenes; heading order + collapse. Tested |
@@ -125,7 +125,7 @@ video.js → fogGeometry.js → vttPlan.js → fog.js → roomOps.js → tools.j
 mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js →
 viewport.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
 input.js →
-stress.js → memProbe.js → render.js → minimap.js → controlPanel.js → confirmDialog.js →
+stress.js → memProbe.js → render.js → gridCalibrate.js → minimap.js → controlPanel.js → confirmDialog.js →
 floorPlan.js → moduleText.js → roomPanel.js → about.js → updater.js → musicPlan.js →
 music.js → musicDownload.js → inline <script>
 ```
@@ -211,8 +211,7 @@ one, names the skill owning a file you edit.
 
 ## Conventions
 
-- **No dated fix logs, changelog entries, or debugging narrative here.** Rules only;
-  destinations are at the top.
+- **No dated fix logs, changelog entries, or debugging narrative here.** Rules only.
 - Code comments: keep the rule, one clause of why, and any warning about a specific trap.
   Cut named examples that disambiguate nothing, "an earlier version was tried", measurement
   dates and counts, and restatements of the code.

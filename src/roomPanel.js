@@ -484,6 +484,18 @@ function refreshRoomPanel() {
   const panel = _rpEl('panel-room');
   if (!panel) return;
 
+  // Calibration takes the map's mouse and shuts the control panel for the room it needs; a card
+  // left floating over that map swallows the drag. SELECTION IS UNTOUCHED, so this is not the
+  // tool gate the card must never have - the same card comes back on the same room at Done.
+  // ⚠ Committing first: a card hidden mid-sentence would otherwise drop what was typed, the same
+  // reason the deselect path below commits before it hides.
+  if (typeof gridCalArmed !== 'undefined' && gridCalArmed) {
+    if (_rpFieldPid != null) _rpCommitFields();
+    if (typeof mtCloseDropdown === 'function') mtCloseDropdown();
+    panel.style.display = 'none';
+    return;
+  }
+
   const poly = _rpFindPoly(selectedPolygonId);
 
   // The Effects row's radius field is this card's twin for a shape that has no card.

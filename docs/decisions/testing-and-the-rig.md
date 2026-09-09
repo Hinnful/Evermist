@@ -124,6 +124,27 @@ at the listener, the way `room-card.js` already did; `focus()` stays where a che
 Measured both ways under a concurrent run: six of twelve red with the old guard, none of fifteen
 with the dispatch.
 
+### A drag's tolerance is one client pixel in map units, never a flat number · `SETTLED` (2026-09-09)
+`mouseAt` builds a synthetic event on a whole client pixel, so a 17px drag in MAP units arrives as
+17.5 at a zoom of 0.855. A check written against the number the drag aimed at is then out by half
+a pixel through no fault of the code. It passed here at one window size and took a release gate
+down on a 1008x681 runner. The tolerance is `2 / zoom`, read live, and a 3px drift still goes red.
+The same shape caught a second time in the same session: assertions on a calibrated cell size were
+written against the intended drag rather than the committed span, and missed by the same one
+pixel. **Read the number the app RECORDED, and scale any remaining tolerance by the zoom.**
+
+### A criterion over a transient asserts every order the app allows · `SETTLED` (2026-09-09)
+The Player's landing card is the loading state while the first map decodes, and `player-window`
+read that state once, immediately. `revealPlayer()` lifts the cover on a `SCENE_FADE_MIN_MS`
+timer rather than on the map arriving, so a slow machine strips the loading line first and the
+one-shot read lands after it. The scenario passed here every run and went red on a runner.
+Polling for the state is half the fix. The other half is that BOTH orders are legitimate - the
+comment on `onPlayerMapShown` says the error paths reveal with no map - so the criterion now
+branches and asserts each: the card up and above the cover when the decode wins, and the card
+still on screen as the empty state when the timer does. **Neither branch is a free pass**, which
+is the condition for splitting one at all; a branch that only notes what happened is a silent
+skip wearing a check's clothes.
+
 ### Code coming in is gated on the suite, and linting was refused · `SETTLED` (2026-09-07)
 A Tests workflow runs `npm test` on every branch push and pull request, and release builds now wait
 on a verify job running the same suite plus a tag-versus-`package.json` check. Before it, a

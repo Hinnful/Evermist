@@ -28,6 +28,7 @@ function initControlPanel() {
   _cpInitResets();
   _cpInitAdvPanel();
   _cpInitPlayer();
+  _cpInitCalibrate();
 
   refreshFogControlUI();
   refreshGridControlUI();
@@ -85,8 +86,14 @@ function _cpRestoreTab() {
   _cpSelectTab(saved || null);
 }
 
+// Set while cpHoldTabForCalibration drives the panel, so a tab the DM picks themselves while
+// calibration is armed wins over the one arming shut - #cp-tabbar never hides.
+let _cpTabBeforeCal = null;
+let _cpCalDrivingTab = false;
+
 // The one way to open, switch or shut the panel; `name` is a tab, or null for shut.
 function _cpSelectTab(name) {
+  if (!_cpCalDrivingTab) _cpTabBeforeCal = null;
   document.querySelectorAll('.cp-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   if (name) document.querySelectorAll('.cp-pane').forEach(p => { p.hidden = p.id !== 'cp-pane-' + name; });
   const panel = document.getElementById('sidebar-right');
@@ -107,6 +114,30 @@ function _cpSelectTab(name) {
 function _cpActiveTab() {
   const t = document.querySelector('.cp-tab.active');
   return t ? t.dataset.tab : null;
+}
+
+// Arming shuts the panel: it covers the map's right edge. Every way out reopens the tab that was
+// up, or Done leaves a shut panel the DM never closed. armGridCalibration calls this, so all four
+// exits are one path.
+function cpHoldTabForCalibration(on) {
+  const want = on ? _cpActiveTab() : _cpTabBeforeCal;
+  _cpCalDrivingTab = true;
+  try {
+    if (on) _cpSelectTab(null);
+    else if (want) _cpSelectTab(want);
+  } finally {
+    _cpCalDrivingTab = false;
+    _cpTabBeforeCal = on ? want : null;
+  }
+}
+
+function _cpInitCalibrate() {
+  const btn = document.getElementById('cp-grid-calibrate');
+  if (!btn) return;
+  // The gesture draws the shape the grid is made of, so every grid type calibrates. Switched OFF
+  // is not a type: gridMode keeps its value and renderGrid shows the grid for the gesture anyway.
+  btn.addEventListener('click', () => armGridCalibration(!gridCalArmed));
+  initGridCalibrate();
 }
 
 // ─── HSV colour picker ────────────────────────────────────────────────────────

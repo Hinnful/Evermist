@@ -15,10 +15,14 @@ function updateContextPanels() {
     const el = document.getElementById(id);
     if (el) el.style.display = on ? 'flex' : 'none';
   };
+  // Calibration owns the map's mouse, so the picked tool's options are replaced rather than shown
+  // beside it - a strip offering brush size while a drag sets the grid describes nothing. Its own
+  // count rides the map in #gridcal-hud, not this row.
+  const cal    = gridCalArmed;
   const closed = shape === 'poly' || shape === 'rect' || shape === 'circle' || shape === 'cone';
-  const rooms  = placeMode !== 'effects' && (closed || shape === 'brush');
-  const fx     = placeMode === 'effects' && closed;
-  const door   = shape === 'door';
+  const rooms  = !cal && placeMode !== 'effects' && (closed || shape === 'brush');
+  const fx     = !cal && placeMode === 'effects' && closed;
+  const door   = !cal && shape === 'door';
   show('ctx-rooms', rooms);
   show('panel-brush-bottom', rooms);
   show('ctx-effects', fx);
@@ -33,6 +37,9 @@ function updateContextPanels() {
 
 function setShape(s) {
   if (isPlayer) return;
+  // Picking a tool is the DM asking for the map back, and it is the way out of calibration that
+  // needs no button.
+  if (gridCalArmed) armGridCalibration(false);
   shape = s;
   // ⚠ ONLY A SHAPE IS RECORDED. The shape button reads this to decide both the glyph it wears
   // and what a left click picks, so recording Brush, Door or Split makes those two disagree.
@@ -93,6 +100,7 @@ function initInput() {
       }
       if (e.button !== 0) return;
       const raw = screenToMap(e.clientX, e.clientY);
+      if (gridCalArmed) { gridCalMouseDown(raw); return; }
       toolMouseDown(raw, e);
     });
 
@@ -117,11 +125,15 @@ function initInput() {
       }
       drawCursor(lastScreenX, lastScreenY);
       const pos = screenToMap(e.clientX, e.clientY);
+      if (gridCalArmed) { gridCalMouseMove(pos); return; }
       toolMouseMove(pos, e, lastScreenX, lastScreenY);
     });
 
     container.addEventListener('mouseup', (e) => {
       if (isPanning) { isPanning = false; return; }
+      // Calibration releases on the WINDOW handler below, so a square dragged off the map's edge
+      // still commits. Answering here too would commit it twice.
+      if (gridCalArmed) return;
       const pos = screenToMap(e.clientX, e.clientY);
       toolMouseUp(pos, e);
     });
@@ -140,6 +152,7 @@ function initInput() {
     });
 
     window.addEventListener('mouseup', () => {
+      if (gridCalArmed) { gridCalMouseUp(); if (isPanning) isPanning = false; return; }
       toolWindowMouseUp();
       if (isPanning) { isPanning = false; }
     });
@@ -189,6 +202,8 @@ function initInput() {
       }
       return;
     }
+    // Ahead of the shape shortcuts: while calibration holds the map, Escape means leave it.
+    if (gridCalArmed && e.key === 'Escape') { e.preventDefault(); armGridCalibration(false); return; }
     if (e.ctrlKey || e.metaKey) {
       if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
       if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redo(); return; }

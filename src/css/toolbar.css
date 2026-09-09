@@ -108,6 +108,31 @@
   /* Brush size is a second group in the same pill, so it needs the wider gap to read as its own
      thing rather than as more of the trio beside it. */
   #panel-brush-bottom { gap: 11px; margin-left: 4px; }
+  /* The calibration HUD: the app's floating surface, placed over the map beside the square by
+     gridCalibrate.js. Same fixed + zoom pair as the room card, so style px are pre-zoom px and
+     _rpScreenToStyle is the only correct way to write left/top. It never takes the map's mouse
+     except on its own controls, hence pointer-events on the children alone - a box straddling the
+     square would eat the drag that moves it. */
+  #gridcal-hud {
+    position: fixed; left: 0; top: 0; z-index: 150;
+    display: none;                /* gridCalRefreshUI() switches this to flex */
+    zoom: var(--ui-zoom, 1.2);
+    align-items: center; gap: 9px;
+    padding: 6px 10px;
+    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow);
+    pointer-events: none;
+  }
+  #gridcal-hud > * { pointer-events: auto; }
+  /* The Player pane's stepper is `flex: 1` inside a fixed-width pane; here the HUD sizes itself
+     to its contents, so the stepper needs a width of its own. */
+  #gridcal-hud .cp-stepper { flex: none; width: 106px; }
+  #gridcal-hud #gridcal-hint {
+    color: #8a9099; font: 500 11px/1 system-ui, -apple-system, sans-serif; white-space: nowrap;
+  }
+  /* Done sizes to its word. A stock .cp-btn is full width, which is the pane's shape, not a
+     floating row's. */
+  #gridcal-done { flex: none; width: auto; min-width: 62px; padding: 0 14px; }
   /* The material swatches and the radius field are two groups too, hence the row's own gap
      between them; the swatches keep the tight button spacing inside. */
   #ctx-effects { gap: 10px; }

@@ -229,24 +229,13 @@ function initToolbar() {
     gridSize = v; gridSizeInput.value = v;
     commitGridChange();
   };
+  // No offset FIELD any more - calibration sets the phase, and a typed number cannot be aimed.
   document.getElementById('grid-offset-x').oninput = e => {
     gridOffsetX = parseInt(e.target.value);
-    document.getElementById('grid-offset-x-num').value = gridOffsetX;
-    commitGridChange();
-  };
-  document.getElementById('grid-offset-x-num').oninput = e => {
-    const v = Math.max(0, Math.min(400, parseInt(e.target.value) || 0));
-    gridOffsetX = v; document.getElementById('grid-offset-x').value = v;
     commitGridChange();
   };
   document.getElementById('grid-offset-y').oninput = e => {
     gridOffsetY = parseInt(e.target.value);
-    document.getElementById('grid-offset-y-num').value = gridOffsetY;
-    commitGridChange();
-  };
-  document.getElementById('grid-offset-y-num').oninput = e => {
-    const v = Math.max(0, Math.min(400, parseInt(e.target.value) || 0));
-    gridOffsetY = v; document.getElementById('grid-offset-y').value = v;
     commitGridChange();
   };
   (['sq', 'hflat', 'hptop']).forEach(m => {
@@ -292,9 +281,7 @@ function initToolbar() {
     document.getElementById('grid-size').value          = GRID_DEFAULT_SIZE;
     document.getElementById('grid-size-num').value      = GRID_DEFAULT_SIZE;
     document.getElementById('grid-offset-x').value      = 0;
-    document.getElementById('grid-offset-x-num').value  = 0;
     document.getElementById('grid-offset-y').value      = 0;
-    document.getElementById('grid-offset-y-num').value  = 0;
     document.getElementById('grid-color').value         = '#ffffff';
     document.getElementById('grid-opacity').value       = 25;
     document.getElementById('grid-opacity-num').value   = 25;

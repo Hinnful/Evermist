@@ -29,6 +29,7 @@ const path = require('path');
 const OWNERS = {
   'roompanel.js': 'dm-ui',
   'controlpanel.js': 'dm-ui',
+  'gridcalibrate.js': 'dm-ui',
   'toolbar.js': 'dm-ui',
   'shapemenu.js': 'dm-ui',
   'toolbar.css': 'dm-ui',

@@ -17,7 +17,9 @@
         "The Player's map texture is viewport-sized · `SETTLED` (2026-08-07)",
         "The landing card is the Player's loading state, not a hidden window · `SETTLED` (2026-08-30, replaced a hold)"
       ],
-      "untagged": [],
+      "untagged": [
+        "Publishing a release stays a hand gesture · `REVERSED` (2026-09-08)"
+      ],
       "persons": []
     },
     "project-process.md": {

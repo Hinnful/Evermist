@@ -129,7 +129,15 @@
     flex: none; aspect-ratio: auto;
     width: 30px; height: 30px; border-radius: 7px;
   }
-  #cp-fog-reset, #cp-grid-reset { margin-left: 6px; }
+  #cp-fog-reset { margin-left: 6px; }
+  /* Grid Type carries two actions rather than one, so a hairline splits the types from them
+     and margin-left:auto holds the split. The row is within a pixel of the pane, hence the
+     tighter icon gap here - the reset's own margin is what the divider spends. */
+  #cp-gridtype-row { gap: 2px; }
+  .cp-rowdiv {
+    flex: none; margin-left: auto;
+    width: 1px; height: 18px; background: rgba(255,255,255,0.09);
+  }
 
   /* HSV colour picker */
   .cp-picker { display: flex; flex-direction: column; gap: 8px; }

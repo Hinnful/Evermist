@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/toolbar.js, src/shapeMenu.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, the scene library popup and its header, or the music bubble and its Add music panel. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/gridCalibrate.js, src/toolbar.js, src/shapeMenu.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, the scene library popup and its header, the music bubble and its Add music panel, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -103,6 +103,29 @@ Two more rules the bar's shape depends on:
   and a `display: none` takes its box out of `#tools-wrapper` — the whole cluster then jumps up
   by the row plus the 11px gap on every Select. Its explicit `height` is what stops the box
   collapsing once every child inside it is hidden.
+
+## The calibration HUD (`gridCalibrate.js`, `#gridcal-hud` in `toolbar.css`)
+
+A floating row over the map, and it borrows the app's controls rather than restyling them.
+
+- **It carries the panel's four variables and the room card's `position: fixed` + `zoom` pair.**
+  So `_rpScreenToStyle()` is the only correct way to write its `left`/`top`, for the same reason
+  it is the room card's - never a bare `/ uiZoom`.
+- **The count is the Player pane's `.cp-stepper`**, with the unit as a `.cp-pct` suffix the way
+  `%` is on the zoom control. It does NOT go in `#context-row`: that row is hidden for the whole
+  of calibration, so a control put there ships as dead markup and nobody sees it.
+- **Done is a `.cp-btn-outline`** sized to its word (`width: auto`), because a stock `.cp-btn` is
+  full width and that is the pane's shape.
+- **`pointer-events` sit on the children, never the box.** A box straddling the shape would eat
+  the drag that moves it.
+- No entry animation: `cpAdvIn` slides on `translateX`, and the placer measures the box every
+  frame, so the two chase each other for the length of it.
+
+**Arming calibration clears the map and gives it back.** The control panel shuts, and the room
+card goes with it - **without touching `selectedPolygonId`**, so the selection-only rule above
+still holds and the same card returns on the same room. The card commits its fields on the way
+out, the same as the deselect path. Leaving restores the tab arming shut, unless the DM picked
+another one meanwhile: `#cp-tabbar` never hides, so that is a real click and it wins.
 
 ## The music bubble (`music.css`)
 
