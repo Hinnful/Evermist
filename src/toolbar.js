@@ -5,6 +5,7 @@
 // The fog-mode segment is pick-exactly-one, so ONE helper owns both `tool` and the highlight.
 function setPaintDirection(dir) {
   tool = dir;
+  paneBroadcast('paint-direction', { dir });
   ['reveal', 'half', 'shroud'].forEach(d => {
     const el = document.getElementById('btn-' + d);
     if (el) el.classList.toggle('active', d === dir);
@@ -34,6 +35,7 @@ function refreshPaintAvailability() {
 // way back to it.
 function setShapeOp(op) {
   shapeOp = op;
+  paneBroadcast('shape-op', { op });
   ['join', 'trim'].forEach(k => {
     const el = document.getElementById('btn-op-' + k);
     if (el) el.classList.toggle('active', k === op);
@@ -45,6 +47,7 @@ function setShapeOp(op) {
 // Which array the next rectangle or circle lands in. Like setPaintDirection, ONE helper owns both
 // the value and the highlight.
 function setPlaceMode(m) {
+  paneBroadcast('place-mode', { mode: m });
   if (placeMode !== m) {
     // ⚠ THE SELECTION IS SCOPED TO THE MODE. Ids are numbered per list, so one left over from the
     // other list resolves against whichever shape shares the number.
@@ -111,6 +114,11 @@ function initMaterialPicker() {
 function setMaterial(m) {
   if (isPlayer || !EFFECT_MATERIALS[m]) return;
   currentMaterial = m;
+  if (paneForward('material', { material: m })) {
+    document.querySelectorAll('#material-row [data-material]').forEach(b =>
+      b.classList.toggle('active', b.dataset.material === m));
+    return;
+  }
   document.querySelectorAll('#material-row [data-material]').forEach(b =>
     b.classList.toggle('active', b.dataset.material === m));
 
@@ -122,6 +130,27 @@ function setMaterial(m) {
   effectsChanged();
   scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog edit does
   scheduleAutoSave();
+}
+
+const ANIM_PRESETS = {
+  calm:    { speed: 40,  drift: 0.3,  morph: 0.12, warpStr: 0.08, warpRad: 0.05, pulse: 0.10 },
+  default: { speed: 60,  drift: 0.5,  morph: 0.20, warpStr: 0.10, warpRad: 0.06, pulse: 0.15 },
+  fast:    { speed: 100, drift: 1.0,  morph: 0.35, warpStr: 0.15, warpRad: 0.08, pulse: 0.30 },
+};
+
+// Which preset the animation values ARE, or none when dialled in by hand. ⚠ DERIVED, never
+// remembered: a remembered one describes whichever map was open when a preset was pressed.
+function highlightAnimPreset() {
+  const near = (a, b) => Math.abs(a - b) < 0.001;
+  const hit = Object.keys(ANIM_PRESETS).find(name => {
+    const p = ANIM_PRESETS[name];
+    return near(fogAnimSpeed, p.speed / 100) && near(driftScale, p.drift) &&
+           near(cloudFrameSpeed, p.morph) && near(cloudWarpStrength, p.warpStr) &&
+           near(cloudWarpRadius, p.warpRad) && near(alphaPulseAmp, p.pulse);
+  }) || null;
+  document.querySelectorAll('.anim-preset-btn').forEach(b =>
+    b.classList.toggle('active', hit !== null && b.id === 'anim-preset-' + hit));
+  return hit;
 }
 
 function initToolbar() {
@@ -169,10 +198,12 @@ function initToolbar() {
   document.getElementById('btn-snap').onclick = function() {
     snapToGrid = !snapToGrid;
     this.classList.toggle('active', snapToGrid);
+    paneBroadcast('snap', { on: snapToGrid });
   };
   document.getElementById('btn-axislock').onclick = function() {
     axisLock = !axisLock;
     this.classList.toggle('active', axisLock);
+    paneBroadcast('axislock', { on: axisLock });
   };
 
   const brushSizeInput = document.getElementById('brush-size');
@@ -180,34 +211,24 @@ function initToolbar() {
   brushSizeInput.oninput = e => {
     brushSize = parseInt(e.target.value);
     brushSizeLabel.textContent = brushSize;
+    paneBroadcast('brush-size', { size: brushSize });
   };
 
   document.getElementById('btn-fill-fog').onclick = () => {
-    if (!fogDataCtx) return;
-    pushUndo();
-    activePolygon = null; selectedPolygonId = null;
-    shroudAllFog();
-    startFogTransition(true);
-    rebuildFogEffect();
-    fogDirty = true;
-    scheduleRender();
-    scheduleAutoSync();
+    if (paneForward('shroud-all')) return;
+    shroudAllRooms();
   };
   document.getElementById('btn-clear-fog').onclick = () => {
-    if (!fogDataCtx) return;
-    pushUndo();
-    activePolygon = null; selectedPolygonId = null;
-    revealAllFog();
-    startFogTransition(false);
-    rebuildFogEffect();
-    fogDirty = true;
-    scheduleRender();
-    scheduleAutoSync();
+    if (paneForward('reveal-all')) return;
+    revealAllRooms();
   };
 
   // Draws the rooms from the floor plan the map came with. Enabled only where this scene
   // has one; refreshFloorPlanButton() owns that, on every scene switch.
-  document.getElementById('btn-floorplan').onclick = () => drawStoredFloorPlan();
+  document.getElementById('btn-floorplan').onclick = () => {
+    if (paneForward('floorplan')) return;
+    drawStoredFloorPlan();
+  };
 
   const gridBtn       = document.getElementById('btn-grid');
   const gridSizeInput = document.getElementById('grid-size');
@@ -294,6 +315,7 @@ function initToolbar() {
 
   function setAutoSync(enabled) {
     autoSync = enabled;
+    paneBroadcast('auto-sync', { on: enabled });
     const btn = document.getElementById('btn-auto-sync');
     btn.classList.toggle('active', autoSync);
     btn.textContent = autoSync ? 'Auto' : 'Manual';
@@ -305,7 +327,7 @@ function initToolbar() {
   function toggleFogAnim() {
     fogAnimEnabled = !fogAnimEnabled;
     document.getElementById('btn-anim').classList.toggle('active', fogAnimEnabled);
-    if (fogAnimEnabled) startFogAnim(); else stopFogAnim();
+    if (!panesActive) { if (fogAnimEnabled) startFogAnim(); else stopFogAnim(); }
     syncAnimToPlayer();
   }
   document.getElementById('btn-anim').onclick = function(e) {
@@ -317,11 +339,6 @@ function initToolbar() {
   startFogAnim();
 
   // ─── Fog animation presets & advanced sliders ────────────────────────────
-  const ANIM_PRESETS = {
-    calm:    { speed: 40,  drift: 0.3,  morph: 0.12, warpStr: 0.08, warpRad: 0.05, pulse: 0.10 },
-    default: { speed: 60,  drift: 0.5,  morph: 0.20, warpStr: 0.10, warpRad: 0.06, pulse: 0.15 },
-    fast:    { speed: 100, drift: 1.0,  morph: 0.35, warpStr: 0.15, warpRad: 0.08, pulse: 0.30 },
-  };
   let activePreset = 'default';
 
   function applyAnimPreset(name) {
@@ -365,11 +382,13 @@ function initToolbar() {
     document.getElementById('anim-preset-' + name).onclick = () => applyAnimPreset(name);
   });
 
+  // ⚠ THE BUTTON'S OWN CLASS IS THE STATE, never the panel's display: another tab up hides the
+  // panel too, so a toggle reading display armed Advanced when asked to disarm it.
   document.getElementById('btn-anim-advanced').onclick = function() {
-    const panel = document.getElementById('anim-advanced-panel');
-    const showing = panel.style.display !== 'none';
-    panel.style.display = showing ? 'none' : 'block';
-    this.classList.toggle('active', !showing);
+    const armed = this.classList.contains('active');
+    this.classList.toggle('active', !armed);
+    if (typeof _cpUpdateAdvVisibility === 'function') _cpUpdateAdvVisibility();
+    else document.getElementById('anim-advanced-panel').style.display = armed ? 'none' : 'block';
   };
 
   // Wire speed slider (linear, not log)
@@ -430,11 +449,13 @@ function initToolbar() {
   };
 
   document.getElementById('btn-fullscreen-player').onclick = () => {
+    if (panesActive) { stageFullscreen(); return; }
     if (!playerWindow || playerWindow.closed) return;
     playerWindow.postMessage({ type: 'fullscreen' }, '*');
   };
 
   document.getElementById('btn-sync-view').onclick = () => {
+    if (paneForward('sync-view')) return;
     if (!playerWindow || playerWindow.closed) return;
     // Send the REGION the DM can read, never the DM's zoom: the Player refits it, so a bigger TV
     // shows the same map rather than more of it. Same helper as a manual Send.
@@ -490,17 +511,9 @@ function initToolbar() {
   });
 
   document.getElementById('btn-player').onclick = () => {
-    // Toggle: a second press closes the Player again. window.open() on an already-open
-    // named window just re-navigates it, so without this the button looked dead.
-    if (playerWindow && !playerWindow.closed) {
-      const dying = playerWindow;
-      playerWindow.close();
-      playerWindow = null;
-      if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
-      prewarmPlayerAfter(dying);   // the next press should be as fast as this one was
-      return;
-    }
-    revealPlayerWindow();
+    // One Player screen serves both columns, so this button owns the shell rather than a column.
+    if (panesActive) { toggleStageWindow(); return; }
+    togglePlayerWindow();
   };
 
   // Off the boot path: warming it while the DM comes up trades one wait for another.
@@ -508,7 +521,10 @@ function initToolbar() {
 
   // ⚠ WRAPPED, never assigned bare: a bare handler receives the click event, which lands in
   // sendToPlayer's fogOnly parameter and is truthy, so the button would send fog without the view.
-  document.getElementById('btn-send').onclick = () => sendToPlayer();
+  document.getElementById('btn-send').onclick = () => {
+    if (paneForward('send')) return;
+    sendToPlayer();
+  };
 
   // The selected room's card (name, description, fog pill, corners, delete) → roomPanel.js.
   if (typeof initRoomPanel === 'function') initRoomPanel();

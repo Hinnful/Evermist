@@ -1,0 +1,132 @@
+/* panes.css — two-column mode: the row of columns in the DM window, and the chrome a column
+   hides. Loads after every file it overrides and before overlays.css. */
+
+  /* ===== PANE MODE (inside a column) ===== */
+  /* A column keeps the map, the cursor and the room card. Everything the parent window owns is
+     hidden here rather than deleted, so one instance still runs both modes. */
+  body.pane-mode #tools-wrapper,
+  body.pane-mode #sidebar-right-anchor,
+  body.pane-mode #music-anchor,
+  body.pane-mode #scene-dd,
+  body.pane-mode #sm-modal,
+  body.pane-mode #legend { display: none !important; }
+
+  /* ===== THE TOGGLE ===== */
+  #btn-two-maps {
+    flex: none;
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow);
+    color: #d5d8dd;
+    cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  #btn-two-maps:hover { border-color: rgba(255,255,255,0.18); background: #202124; }
+  /* ⚠ THE LIT FILL GOES OVER AN OPAQUE BASE, never instead of it. This button floats on the
+     map, not on a panel, so the app's translucent blue on its own let the map show through. */
+  #btn-two-maps.active {
+    background: linear-gradient(rgba(70, 120, 220, 0.16), rgba(70, 120, 220, 0.16)), var(--panel-bg);
+    border-color: rgba(90, 140, 235, 0.6);
+    color: #8fb6ff;
+  }
+  body.pane-mode #btn-two-maps { display: none !important; }
+
+  /* ===== THE PLAYER SHELL (stage.html) ===== */
+  /* Zero UI, as the Player view always is. The gap between the halves is REAL, so each map
+     renders to its own edge and the chasm is painted into the space rather than over a map. */
+  body.stage-mode { background: #000; cursor: default; }
+
+  #stage-row {
+    position: fixed; inset: 0;
+    display: flex;
+    align-items: stretch;
+    background: #000;
+  }
+  .stage-col { position: relative; min-width: 0; overflow: hidden; }
+  .stage-frame { width: 100%; height: 100%; border: 0; display: block; }
+
+  /* Spans the whole row, not just the gap: the chasm's fog bleeds over both maps' edges. */
+  #stage-chasm {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  /* A half with no map yet: fog and nothing else. */
+  body.stage-half #landing h2,
+  body.stage-half #landing p,
+  body.stage-half #landing-loading { display: none !important; }
+
+  /* ===== TWO COLUMNS (the parent window) ===== */
+  body.panes-on #canvas-container,
+  body.panes-on #landing { display: none !important; }
+
+  #panes-row {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    min-height: 0;
+    background: #1a1a1a;
+  }
+
+  .pane-col {
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .pane-frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+  }
+
+  /* The frame the toolbar is aimed at. Inset so it reads as a highlight on the column rather
+     than a border between the two. */
+  .pane-col::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 2px solid transparent;
+    transition: border-color .12s;
+  }
+  .pane-col.pane-selected::after { border-color: rgba(90, 140, 235, 0.6); }
+
+  #panes-divider {
+    flex: none;
+    width: 8px;
+    cursor: col-resize;
+    background: rgba(255, 255, 255, 0.06);
+    border-left: 1px solid rgba(0, 0, 0, 0.5);
+    border-right: 1px solid rgba(0, 0, 0, 0.5);
+  }
+  #panes-divider:hover { background: rgba(90, 140, 235, 0.35); }
+
+  /* ⚠ A mousemove over an <iframe> belongs to that frame, so the drag needs the frames covered
+     for its length. panes.js adds the class on mousedown. */
+  .panes-dragging .pane-frame { pointer-events: none; }
+  .panes-dragging { cursor: col-resize; }
+
+  .pane-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 22px;
+    height: 22px;
+    line-height: 1;
+    font-size: 15px;
+    border-radius: 6px;
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    color: rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .12s, color .12s;
+  }
+  .pane-col:hover .pane-close { opacity: 1; }
+  .pane-close:hover { color: #fff; }

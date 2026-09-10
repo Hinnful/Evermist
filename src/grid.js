@@ -165,6 +165,7 @@ function renderPlayerGrid(vp) {
 // ⚠ EVERY grid control goes through this, the on/off toggle and Reset included. The grid belongs to
 // the scene, so a change has to reach the Player AND the store, and scheduleAutoSync debounces both.
 function commitGridChange() {
+  if (paneForward('grid', { config: captureGridConfig() })) return;
   gridDirty = true;
   // A door is one cell wide, so the cell changing resizes every door already placed.
   rebuildFogForGridChange();

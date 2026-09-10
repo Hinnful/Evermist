@@ -53,6 +53,8 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `mapConvert.js` | Asking whether to shrink an oversized animated map at import, and re-encoding it if the answer is yes. Pure box-fitting maths plus the recorder that drives it. |
 | `viewport.js` | Pan, zoom, pushing the camera and the map to the Player window, and the auto-sync helper. Also the Player window's own life: one is prepared in the background at startup and waits hidden, and pressing the button adopts it and asks the shell to show it. |
 | `minimap.js` | The DM's live preview of the Player camera, and the remote control that drives it. |
+| `panes.js` | Two-column mode, where the DM window's map area splits in two and each half holds a whole second copy of the app running in an `<iframe>` with its chrome hidden. Owns the two frames, which column is selected, the draggable divider, and every command the DM's chrome sends into a column. A column therefore has its own scene, camera, grid, rooms, fog, undo history and Player window with nothing written for it. Also the small piece that runs INSIDE a column: Electron gives a subframe no bridge to the shell, so the column borrows the parent window's. |
+| `stage.js` | The Player window in two-map mode. One window, split where the DM's divider sits, holding a whole Player in each half and painting the chasm between them - a dark band with each floor's fog colour bleeding in, embers drifting up it and a faint seam of light down its centre. One window rather than two because Windows gives one fullscreen window per display, so a pair could never both be fullscreen on the same TV. |
 | `video.js` | Animated (video) map support: file loading, DOM compositing, decoding, the frame loop, the freeze watchdog. |
 | `display.js` | Detecting the Player screen's real size so the fog and map render at the right resolution. |
 | `backup.js` | The export/restore-to-zip feature. |
@@ -263,6 +265,48 @@ One thing to know before trusting it: **the preview is deliberately wider than t
 a square canvas showing extra context around the Player's frame, and the actual TV is only
 the band between the two dotted lines. At a 16:9 Player, roughly a third of the preview's
 height is padding. It's a rough sketch for aiming, not evidence of what the players see.
+
+## Two maps at once
+
+A fight in a multi-storey building moves between floors, and every mini standing on the TV has
+to stay where it is. So the DM window's map area can split into two columns, each showing a
+different map, and one Player window on the TV showing both.
+
+- **A column is the whole app again.** It runs in an `<iframe>` pointed at the same
+  `index.html` with `?mode=pane`, and CSS hides the toolbar, the settings panel, the music
+  bubble and the Scenes button inside it. So a column has its own scene, camera, grid, rooms,
+  fog and undo history without any of those being written a second time.
+- **The chrome stays where it is and acts on the column you last touched.** A click anywhere in
+  a column both selects it and does whatever the click was for, in the one press. The selected
+  column wears a blue frame.
+- **Every button sends a message.** The toolbar, the Fog/Grid/Player panel and the minimap all
+  reach a column the same way the DM window reaches the Player window: by `postMessage`. A
+  column then presses the control it already has, so nothing is implemented twice.
+- **One minimap, and it follows the selection.** It draws the selected column's own map, fog and
+  grid, reaching straight into that column because both pages come from the same folder. Reading
+  is the only thing done that way; every command is still a message.
+- **The DM window gives its own map up on the way in.** Entering two columns tears the parent's
+  map, video and fog canvases down rather than hiding them, because hiding frees no memory, and
+  cancels its pending save so it cannot write over a map a column now owns. Leaving loads the
+  map back out of the library.
+- **One Player window carries both floors**, split where the DM's divider sits, with a whole
+  Player in each half. Entering and leaving two-map mode NAVIGATES that one window rather than
+  closing it and opening another, so whatever the DM set up on the TV - fullscreen above all -
+  survives the switch. Two windows was the first shape and it cannot work: Windows gives one
+  fullscreen window per display, so a pair on one TV would show two title bars and the desktop
+  behind them. The shell is `stage.html`, and it owns only the split and the chasm.
+- **The chasm is the seam between the two floors on the TV**: a dark band with each floor's own
+  fog colour bleeding into it, embers drifting up through it and a faint seam of light down its
+  centre. Its numbers are fixed in `stage.js` with no UI over them, the way the fire effect's
+  look is fixed in `effects.js`.
+- **The second column opens empty and waits to be picked.** Pressing the toggle splits the map
+  area and opens the scene library with the empty column selected, so the next click fills it.
+  Its half of the Player screen shows drifting fog and nothing else until then. Filling it with
+  whichever map came next put a map on the TV the DM never chose.
+- **Two columns cannot open the same map.** They would save over each other, so the library
+  refuses and says so.
+- **One map alone is untouched by all of this.** The DM window renders its own map exactly as it
+  did before any of it existed.
 
 ## Rooms
 
@@ -575,8 +619,12 @@ and attaches the installers. So a failure anywhere leaves nothing behind: no tag
 download. Whoever is running the app stays on the version they have and never learns anything was
 attempted.
 
-The release notes are the commit message. One commit is one release, so the message is written
-for the person reading the release page rather than for the person who wrote the code.
+The release notes are a commit message, and the publisher takes it from the commit that set the
+version rather than from whatever sits at the top of the branch. One version is one commit, so
+the message is written for the person reading the release page rather than for the person who
+wrote the code. When the gate goes red, the fix amends that same commit instead of landing on
+top of it, which keeps the notes and the passing checks on the commit the release is named
+after.
 
 **Taking a release back** is not a matter of undoing the commit. The app asks GitHub for the
 newest release, so a broken version keeps being offered until that release and its tag are

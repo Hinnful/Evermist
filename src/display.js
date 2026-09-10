@@ -25,6 +25,9 @@ function normalizeDisplayRecord(raw) {
 function initDisplayDetection() {
   if (!window.electronAPI || !window.electronAPI.onDisplayInfo) return;
   window.electronAPI.onDisplayInfo((raw) => {
+    // ⚠ Two columns share the parent's bridge, so every column sees every column's push. The
+    // name main tags it with says whose Player it describes.
+    if (raw && raw.playerName && raw.playerName !== playerWindowName()) return;
     const prev = displayInfo;
     displayInfo = normalizeDisplayRecord(raw);
     updateDisplayReadout();

@@ -23,7 +23,8 @@ leave a pointer, never delete an entry.
 ## What this is
 
 **Evermist** - a client-side web app showing D&D dungeon maps on a TV with fog of
-war. No backend, no VTT features (tokens, initiative). Map + fog + grid + two screens.
+war. No backend, no VTT features (tokens, initiative). Map + fog + grid + two screens, one
+or two maps at a time.
 
 ## Tech constraints
 
@@ -94,6 +95,8 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `mapLoader.js` | Image-map loading + progress-bar helpers |
 | `mapConvert.js` | Import-time animated-map shrink. `fitInsideBox` unit-tested |
 | `viewport.js` | Pan/zoom, Sync View, the Player window's life and map delivery, autosync |
+| `panes.js` | Two-column mode: the two `<iframe>` columns, which one is selected, the divider, the messages the chrome sends them |
+| `stage.js` | The Player window in two-map mode: one window, a Player in each half, the chasm between |
 | `minimap.js` | Minimap render + drag/zoom remote, view sync both ways, zoom get/set/nudge |
 | `video.js` | Animated-map handling |
 | `display.js` | Display detection |
@@ -123,7 +126,7 @@ Declarations must precede use at init time. All under `src/`:
 lib/pixi.min.js → lib/polygon-clipping.umd.js → renderer.js → state.js → display.js →
 video.js → fogGeometry.js → vttPlan.js → fog.js → roomOps.js → tools.js → mapLoader.js →
 mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js →
-viewport.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
+viewport.js → panes.js → stage.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
 input.js →
 stress.js → memProbe.js → render.js → gridCalibrate.js → minimap.js → controlPanel.js → confirmDialog.js →
 floorPlan.js → moduleText.js → roomPanel.js → about.js → updater.js → musicPlan.js →
@@ -237,9 +240,8 @@ refuses them.
 ## Distribution and releases
 
 **A SHIPPING COMMIT IS A RELEASE.** `.github/workflows/release.yml` fires on every push to
-`main` and releases when `package.json` holds a version with no tag. **The commit message becomes
-the release notes verbatim**, so a commit message is public writing; `/commit` carries the rules.
-How the jobs fit: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+`main` and releases when `package.json` holds a version with no tag. **That commit's message
+becomes the release notes verbatim**, so it is public writing; `/commit` carries the rules.
 
 **Nothing public exists until the gate is green**, and **a red gate blocks every release**, not
 only that commit's - it always runs on `main`'s newest state.
@@ -249,7 +251,8 @@ touches the shipped app** (anything in `build.files`). Patch for normal changes,
 notable feature, major for a breaking overhaul. Docs, tests and `.claude/` tooling get **no
 bump** and pass straight through.
 
-**A version a red gate rejected keeps its number** - nothing published under it.
+**ONE VERSION IS ONE COMMIT.** A version a red gate rejected keeps its number, and the fix
+amends that commit - never a second commit on top.
 
 **To pull a bad release: `/rollback`.** A `git revert` does not undo one.
 

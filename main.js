@@ -150,13 +150,17 @@ function createDMWindow() {
 
   // Remove the native menu bar from the player window; menuBarVisible: false
   // alone doesn't fully strip it on all platforms. Also track it for display pushes.
-  win.webContents.on('did-create-window', (childWin) => {
+  win.webContents.on('did-create-window', (childWin, details) => {
     childWin.setMenu(null);
-    playerWin = childWin;
+    // ⚠ ONE HANDLE PER WINDOW NAME. The DM can have a Player window and a warm one at once, and
+    // a single handle overwritten on each creation left the first never shown and never told the
+    // TV's resolution. The name is the renderer's own (playerWindowName in viewport.js).
+    const key = (details && details.frameName) || 'evermist-player';
+    playerWins.set(key, childWin);
     // ⚠ `show: false` alone does not hold a window.open() child back — Electron shows it anyway.
     childWin.hide();
     childWin.once('closed', () => {
-      if (playerWin === childWin) playerWin = null;
+      if (playerWins.get(key) === childWin) playerWins.delete(key);
       clearTimeout(_playerMovedTimer);
     });
     childWin.on('minimize', () => sendTo(childWin, 'window-visibility', { visible: false }));
@@ -170,25 +174,28 @@ function createDMWindow() {
     childWin.on('leave-full-screen', () => sendFullScreenState(false));
     // Push once the renderer is ready to receive IPC messages. Reading the flag IS correct
     // here: no transition is in flight, so it holds the settled value.
-    childWin.webContents.once('did-finish-load', () => {
-      pushPlayerDisplay();
+    // ⚠ EVERY LOAD, NOT THE FIRST. Two-map mode navigates this same window between the single
+    // Player and the shell, and each new document needs the TV's size and the fullscreen state.
+    childWin.webContents.on('did-finish-load', () => {
+      pushPlayerDisplay(key);
       sendFullScreenState(childWin.isFullScreen());
     });
     // Re-push when the Player window is moved (debounced — fires after drag settles).
     childWin.on('move', () => {
       clearTimeout(_playerMovedTimer);
-      _playerMovedTimer = setTimeout(pushPlayerDisplay, 300);
+      _playerMovedTimer = setTimeout(() => pushPlayerDisplay(key), 300);
     });
   });
 }
 
 // ─── Display detection ────────────────────────────────────────────────────────
 let dmWin     = null;
-let playerWin = null;
+const playerWins = new Map();   // window name -> BrowserWindow; one per column in two-column mode
 let _playerMovedTimer = null;
 
-function showPlayerWindow() {
-  if (playerWin && !playerWin.isDestroyed() && !playerWin.isVisible()) playerWin.show();
+function showPlayerWindow(key) {
+  const win = playerWins.get(key || 'evermist-player');
+  if (win && !win.isDestroyed() && !win.isVisible()) win.show();
 }
 
 function getDisplayForWindow(win) {
@@ -199,13 +206,17 @@ function getDisplayForWindow(win) {
 }
 
 // Both renderers need the TV's resolution: the DM sizes maps against it.
-function pushPlayerDisplay() {
+// ⚠ The push carries the window's NAME: with two columns the DM process receives both.
+function pushPlayerDisplay(key) {
+  const name = key || 'evermist-player';
+  const playerWin = playerWins.get(name);
   if (!playerWin || playerWin.isDestroyed()) return;
   if (playerWin.isMinimized()) return;
   const display = getDisplayForWindow(playerWin);
   if (!display) return;
-  sendTo(playerWin, 'display-info', display);
-  sendTo(dmWin, 'display-info', display);
+  const payload = { ...display, playerName: name };
+  sendTo(playerWin, 'display-info', payload);
+  sendTo(dmWin, 'display-info', payload);
 }
 
 // Native fullscreen, so it has no user-gesture requirement and sidesteps Chromium's activation
@@ -215,7 +226,7 @@ ipcMain.on('toggle-fullscreen', (event) => {
   if (win) win.setFullScreen(!win.isFullScreen());
 });
 
-ipcMain.on('player-reveal', () => showPlayerWindow());
+ipcMain.on('player-reveal', (_event, key) => showPlayerWindow(key));
 
 let mapsDir;
 

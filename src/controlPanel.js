@@ -136,7 +136,17 @@ function _cpInitCalibrate() {
   if (!btn) return;
   // The gesture draws the shape the grid is made of, so every grid type calibrates. Switched OFF
   // is not a type: gridMode keeps its value and renderGrid shows the grid for the gesture anyway.
-  btn.addEventListener('click', () => armGridCalibration(!gridCalArmed));
+  btn.addEventListener('click', () => {
+    // ⚠ THE DM'S PANEL HAS TO GO TOO: armGridCalibration runs inside the column, where the
+    // panel it shuts is that column's own hidden one.
+    if (typeof panesActive !== 'undefined' && panesActive) {
+      const on = !paneScope().gridCalArmed;
+      paneForward('calibrate', { on });
+      cpHoldTabForCalibration(on);
+      return;
+    }
+    armGridCalibration(!gridCalArmed);
+  });
   initGridCalibrate();
 }
 
@@ -537,11 +547,15 @@ function refreshPlayerControlUI() {
 
   // Go-live button — the blue outline + fill is the whole live indicator, and the label
   // swaps to Close so the toggle is discoverable. No dot: the fill already says it.
-  const live = typeof playerWindow !== 'undefined' && !!playerWindow && !playerWindow.closed;
+  // One Player screen serves both columns, so in two-map mode these three describe the shell.
+  const scope = typeof paneScope === 'function' ? paneScope() : {};
+  const live = (typeof panesActive !== 'undefined' && panesActive)
+    ? stageIsOpen()
+    : (!!scope.playerWindow && !scope.playerWindow.closed);
 
   // Fullscreen is a toggle, so it wears the on/off box. The state comes from the Player relaying
   // main.js, and a closed Player is never fullscreen whatever the last report said.
-  const fullscreen = live && typeof playerIsFullscreen !== 'undefined' && playerIsFullscreen;
+  const fullscreen = live && !!scope.playerIsFullscreen;
   const fs = document.getElementById('cp-player-fullscreen');
   if (fs) {
     fs.classList.toggle('active', fullscreen);

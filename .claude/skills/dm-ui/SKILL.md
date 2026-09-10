@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/gridCalibrate.js, src/toolbar.js, src/shapeMenu.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, the scene library popup and its header, the music bubble and its Add music panel, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/gridCalibrate.js, src/toolbar.js, src/shapeMenu.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, the scene library popup and its header, the music bubble and its Add music panel, the two-map toggle beside the Scenes button, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -168,4 +168,7 @@ the first version broke it.
 - A **destructive** action that belongs to one control sits beside it as a `.cp-btn-icon`, wears
   no red, and asks through `confirmDialog` instead. Fog and Grid Reset are these. The question is
   the whole warning, so never drop it to save a click.
+- **A control that floats on the MAP composites its lit fill over an opaque base.** The app's
+  on/off fill is a 16% blue, which reads as intended on a panel and lets the map through on the
+  two-map toggle beside the Scenes button. Layer it over `--panel-bg`; never swap the base out.
 

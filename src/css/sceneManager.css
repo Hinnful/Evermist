@@ -11,20 +11,24 @@
      inside the library, so nothing sits beside it.
      It takes the width of the name it holds and stops at 180px, so a short scene name does not
      reserve a box the length of a long one. Both boxes shrink to fit for that. */
+  /* The Scenes button and the two-map toggle, side by side. Both are view controls: one says
+     which map is open and opens the library, the other says how many maps are on screen. */
   #scene-dd {
     position: fixed;
     top: 16px; left: 16px;
     z-index: 100;
     zoom: var(--ui-zoom, 1.2);
     width: max-content;
-    max-width: 180px;
+    max-width: 222px;
+    display: flex;
+    gap: 6px;
   }
   body.player-mode #scene-dd,
   body.player-mode #sm-modal,
   body.player-mode #scene-undo-toast { display: none !important; }
 
   #scene-dd-toggle {
-    width: 100%; max-width: 180px; height: 30px;
+    min-width: 0; max-width: 180px; height: 30px;
     display: flex; align-items: center; gap: 8px;
     padding: 0 12px;
     background: var(--panel-bg);

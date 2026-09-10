@@ -37,6 +37,7 @@ function updateContextPanels() {
 
 function setShape(s) {
   if (isPlayer) return;
+  paneBroadcast('shape', { shape: s });
   // Picking a tool is the DM asking for the map back, and it is the way out of calibration that
   // needs no button.
   if (gridCalArmed) armGridCalibration(false);

@@ -12,10 +12,11 @@
 <link rel="stylesheet" href="src/css/sceneManager.css">
 <link rel="stylesheet" href="src/css/about.css">
 <link rel="stylesheet" href="src/css/music.css">
+<link rel="stylesheet" href="src/css/panes.css">
 <link rel="stylesheet" href="src/css/overlays.css">
 </head>
 <body>
-<script>if (new URLSearchParams(location.search).get('mode') === 'player') document.body.classList.add('player-mode');</script>
+<script>(function(){var m=new URLSearchParams(location.search).get('mode');if(m==='player')document.body.classList.add('player-mode');else if(m==='pane')document.body.classList.add('pane-mode');})();</script>
 
 <!-- TOOLS WRAPPER (bottom-center, stacks the context row above the toolbar) -->
 <div id="tools-wrapper">
@@ -699,6 +700,9 @@
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>
     <span id="scene-dd-name">No scene</span>
   </button>
+  <button id="btn-two-maps" title="Show a second map beside this one">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>
+  </button>
 </div>
 
 <!-- SCENE LIBRARY POPUP (DM only) — opened by #scene-dd-toggle, wired by sceneManager.js.
@@ -945,6 +949,7 @@
 <script src="src/scenes.js"></script>
 <script src="src/sceneManager.js"></script>
 <script src="src/viewport.js"></script>
+<script src="src/panes.js"></script>
 <script src="src/backup.js"></script>
 <script src="src/grid.js"></script>
 <script src="src/effects.js"></script>
@@ -972,6 +977,12 @@
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────
 const isPlayer = new URLSearchParams(window.location.search).get('mode') === 'player';
+// A pane is the whole app in an <iframe>, one per column of two-column mode, with its chrome
+// hidden by CSS. `paneId` names the column and is what its Player window and its IPC are keyed
+// by, so it must survive into every message this instance sends.
+const isPane = new URLSearchParams(window.location.search).get('mode') === 'pane';
+const paneId = new URLSearchParams(window.location.search).get('pane') || '';
+if (isPane) document.body.classList.add('pane-mode');
 if (isPlayer) {
   document.body.classList.add('player-mode');
   document.title = 'Evermist - Player View';
@@ -1046,6 +1057,9 @@ if (!isPlayer) initMinimap();
 
 // Player runtime (message handler, pan/zoom, init) lives in player.js.
 if (isPlayer) initPlayer();
+// Two-column mode: the parent owns the columns, a column answers the parent → panes.js.
+if (!isPlayer && !isPane) initPanes();
+if (isPane) initPane();
 
 // Mouse events, keyboard shortcuts, shape helpers, and legend → input.js.
 initInput();

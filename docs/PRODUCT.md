@@ -124,6 +124,20 @@ vertical strip with names truncated, so picking one is guesswork. A multi-storey
 simply the case that produces sixteen scenes. The work is drag-and-drop into folders with no
 change to what a scene is.
 
+### Two maps at once is in scope, and it is about the minis · `SETTLED` (2026-09-10)
+Evermist shows one map at a time everywhere else, and that stays true of the Player screen's
+own behaviour. What is in scope is two maps SIDE BY SIDE, because a fight in a multi-storey
+building moves between floors and switching the scene leaves every physical mini standing on
+the wrong room. The value is that a mini never moves because a map changed, so both maps stay
+live, and one Player window carries both floors with a chasm painted between them.
+Two is the number, not "many": it is the case at the table, and each extra column costs a whole
+copy of the app's memory. There is no compositing of the two maps into one image, no shared
+camera and no layers - a floor is a scene, exactly as it already was.
+**A map never reaches the TV unchosen.** The second column opens empty and shows fog until a map
+is picked for it, because filling it with whichever map came next put a floor on the players'
+screen nobody asked for. The band between the two floors carries fixed numbers with no control
+over it, the same call the fire effect's look already took.
+
 ### Compression is opt-in, and the original is never the app's to lose · `SETTLED` (scope call)
 Shrinking an oversized animated map at import is off until switched on, and it stays off for
 anyone who never looks. The reason is not caution about the code: the app cannot know what

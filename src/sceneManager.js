@@ -94,6 +94,8 @@ function initSceneManagerUI() {
     if (e.key === 'Escape') { e.preventDefault(); q.value = ''; smSearch = ''; renderSceneManager(); }
   };
 
+  document.getElementById('btn-two-maps').onclick = toggleTwoMaps;
+
   document.getElementById('sm-new-group').onclick = () => {
     const name = addGroup('New group');
     renderSceneManager();
@@ -161,7 +163,18 @@ function cssEscapeAttr(s) { return String(s).replace(/["\\]/g, '\\$&'); }
 
 function updateTriggerName() {
   const el = document.getElementById('scene-dd-name');
-  if (el) el.textContent = currentScene ? currentScene.name : (allScenes.length ? 'Select a scene' : 'No scenes');
+  if (!el) return;
+  if (panesActive) {
+    // Reading order matches the columns. A column with no map yet says so, or the name reads
+    // as one map while two columns are on screen.
+    el.textContent = PANE_IDS
+      .map(id => panes[id].sceneId
+        ? ((allScenes.find(x => x.id === panes[id].sceneId) || {}).name || '?')
+        : 'Pick a map')
+      .join('  ·  ');
+    return;
+  }
+  el.textContent = currentScene ? currentScene.name : (allScenes.length ? 'Select a scene' : 'No scenes');
 }
 
 // What the search shows. Bulk actions act on these, so "Select all" under a filter means it.
@@ -236,8 +249,33 @@ function smAssignGroup(ids, group) {
   renderSceneManager();
 }
 
+// ⚠ THE SECOND COLUMN OPENS EMPTY and waits to be picked - see docs/ARCHITECTURE.md.
+async function toggleTwoMaps() {
+  if (panesActive) { await exitPanes(panes[panesSelected].sceneId); refreshTwoMapsButton(); return; }
+  const openId = currentScene ? currentScene.id : null;
+  if (!openId) {
+    messageDialog({
+      title: 'Open a map first',
+      message: 'Two maps starts from the one you are on. Open a map, then press it again.',
+    });
+    return;
+  }
+  closeDropdown();
+  await enterPanes(openId, null);
+  refreshTwoMapsButton();
+  openDropdown();   // the next thing to do is pick the second map, so the library is already up
+}
+
+function refreshTwoMapsButton() {
+  const btn = document.getElementById('btn-two-maps');
+  if (!btn) return;
+  btn.classList.toggle('active', panesActive);
+  btn.title = panesActive ? 'Back to one map' : 'Show a second map beside this one';
+}
+
 function renderSceneManager() {
   updateTriggerName();
+  refreshTwoMapsButton();
 
   const list = document.getElementById('sm-list');
   if (!list) return;
@@ -432,8 +470,11 @@ function deleteGroup(sec) {
 }
 
 function buildSceneCard(s) {
-  const isActive   = currentScene && currentScene.id === s.id;
+  const column     = panesActive ? paneColumnOf(s.id) : null;
+  const isActive   = panesActive ? !!column : !!(currentScene && currentScene.id === s.id);
   const isSelected = smSelectedIds.has(s.id);
+  // The badge says WHERE, because in two-map mode two cards wear it at once.
+  const badge      = column ? (column === 'A' ? 'Left' : 'Right') : 'Live';
 
   const card = document.createElement('div');
   card.className = 'sm-card' + (isActive ? ' active' : '') + (isSelected ? ' selected' : '');
@@ -444,7 +485,7 @@ function buildSceneCard(s) {
   card.innerHTML =
     '<div class="sm-frame"><div class="sm-thumb">' +
       '<div class="sm-scrim"></div>' +
-      (isActive ? '<span class="sm-badge"><i></i>Live</span>' : '') +
+      (isActive ? '<span class="sm-badge"><i></i>' + badge + '</span>' : '') +
       '<div class="sm-cb' + (isSelected ? ' checked' : '') + '">' + (isSelected ? SM_CHECK : '') + '</div>' +
       '<div class="sm-botrow">' +
         '<textarea class="sm-name" rows="1" spellcheck="false"></textarea>' +
@@ -487,6 +528,7 @@ function buildSceneCard(s) {
   card.onclick = e => {
     if (e.target.closest('.sm-name') || e.target.closest('.sm-trash') || e.target.closest('.sm-cb')) return;
     if (smSelectedIds.size > 0) { toggleSelect(s.id); return; }
+    if (panesActive) { loadSceneIntoSelectedPane(s.id); return; }
     if (!isActive) switchScene(s.id).catch(err => console.error('switchScene failed:', err));
   };
 
@@ -584,7 +626,9 @@ async function initScenes() {
   allScenes = await sceneStore.listScenes();
   allScenes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   renderSceneManager();
-  const lastId = localStorage.getItem('evermist-current-scene-id');
+  const lastId = isPane
+    ? new URLSearchParams(window.location.search).get('scene')
+    : localStorage.getItem('evermist-current-scene-id');
   if (lastId && allScenes.find(s => s.id === lastId)) await switchScene(lastId);
 }
 
@@ -1017,7 +1061,9 @@ async function switchScene(id, _isRecovery = false) {
   undoStack = []; redoStack = [];
   playerMapSent = false;
   currentScene = scene;
-  localStorage.setItem('evermist-current-scene-id', id);
+  // ⚠ A column must not write this: the parent restores from it at startup, so column B's map
+  // would be the one that came back.
+  if (!isPane) localStorage.setItem('evermist-current-scene-id', id);
   landing.style.display = 'none';
   if (!isPlayer) container.style.cursor = 'crosshair';
   fitToScreen();
@@ -1042,6 +1088,7 @@ async function switchScene(id, _isRecovery = false) {
     setTimeout(() => sendToPlayer(false, true), Math.max(150, closedIn));
   }
   onSceneLoaded(); // viewport.js: flush pending player resync if Player asked while loading
+  reportPaneMapSize();   // panes.js: the parent sizes the columns from the two maps' shapes
   } catch (err) {
     if (myGen !== switchGeneration) return;
     mapOffscreen = null;

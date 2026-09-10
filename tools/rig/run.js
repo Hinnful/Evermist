@@ -277,6 +277,18 @@ async function sizeRendererTo(session, exact) {
   } catch (_) { return null; }
 }
 
+// The shell carries no app, so only its viewport is overridden here; the halves size themselves
+// off their own boxes once it lands.
+async function sizeStageToScreen(session, exact) {
+  try {
+    const s = exact || await session.evaluate('({ w: screen.width, h: screen.height })');
+    if (!s || !(s.w > 0) || !(s.h > 0)) return null;
+    await session.send('Emulation.setDeviceMetricsOverride',
+      { width: s.w, height: s.h, deviceScaleFactor: 1, mobile: false });
+    return s;
+  } catch (_) { return null; }
+}
+
 async function sizePlayerToScreen(session, exact) {
   try {
     const s = exact || await session.evaluate('({ w: screen.width, h: screen.height })');
@@ -353,7 +365,9 @@ async function startInstance(args, profileDir) {
       'Evermist.exe instead, which honours it.');
   }
 
-  return { proc, port, browser, dm, dmTargetId: dmTarget.id, player: null,
+  // One Player per column in two-column mode, so the sessions are keyed rather than held one
+  // at a time. '' is the single-map window.
+  return { proc, port, browser, dm, dmTargetId: dmTarget.id, players: new Map(), stage: null,
            playerSize: args.playerSize };
 }
 
@@ -430,8 +444,64 @@ function makeRig(inst, dirs, tally) {
     byEye(message) { tally.byEye.push(message); },
     note(message) { tally.notes.push('  ' + message); },
 
+    // Every page target the app currently has, as { id, url }. A scenario needs this to count
+    // windows - "one Player screen and not two" cannot be read from inside either of them - and
+    // to tell a REUSED window from a replaced one, which is what the id answers.
+    async targets() {
+      return (await cdp.listTargets(inst.port)).map(t => ({ id: t.id, url: t.url }));
+    },
+
+    // One half of the Player screen in two-map mode. The shell is the window; the halves are
+    // frames inside it, and the DM's own Player button is what opens the shell.
+    async stageHalf(id) {
+      if (!inst.stage) {
+        const already = await inst.dm.evaluate('stageIsOpen()');
+        if (!already) await inst.dm.evaluate('document.getElementById("btn-player").click(); 0');
+        // ⚠ The shell REUSES the Player's own window, so its target url may still read as the
+        // single-map Player for a moment after the navigation is asked for.
+        const target = await cdp.waitForTarget(inst.port, t => t.url.includes('stage.html'), 30000,
+                                               'the Player window to become the two-floor shell');
+        // ⚠ ENTERING TWO-MAP MODE NAVIGATES AN OPEN PLAYER WINDOW INTO THE SHELL, so a session
+        // this scenario already attached may now be pointed at the shell. Adopt it only when its
+        // target IS the shell; adopting on the strength of having one attaches to the wrong page.
+        let session = null;
+        for (const [key, sess] of Array.from(inst.players.entries())) {
+          if (sess.targetId === target.id) { session = sess; inst.players.delete(key); break; }
+        }
+        if (!session) {
+          session = await cdp.connect(target.webSocketDebuggerUrl, 'stage');
+          await session.watch();
+        }
+        session.targetId = target.id;
+        await assertPreloadRan(session);
+        await showPlayer(session, 20000);
+        // The shell is the page, so the TV-sized viewport is set once here and each half then
+        // re-reads its own box.
+        await sizeStageToScreen(session, inst.playerSize);
+        inst.stage = session;
+      }
+      const half = await inst.stage.frame('mode=player&pane=' + id, 30000);
+      await half.waitFor(PLAYER_READY, 30000, 'the Player runtime in column ' + id);
+      // ⚠ Checked on the HALF, not on the shell: a subframe gets no preload of its own and
+      // borrows the window's, so this is what proves that borrow happened.
+      await assertPreloadRan(half);
+      await half.evaluate('syncSize(); viewportDirty = true; scheduleRender(); 0');
+      return half;
+    },
+
+    // One column of two-column mode, as something a check can evaluate against. The app runs
+    // inside an <iframe> there, and rig.dm reaches the parent frame only — where a column's
+    // `polygons`, `zoom` and `currentScene` do not exist.
+    pane(id) {
+      return inst.dm.frame('mode=pane&pane=' + id, 20000);
+    },
+
     // The Player window, attached the first time a scenario asks for it. Opening it is the DM's
     // own button, so this is the app's real path and not a second window the rig conjured.
+    //
+    // ⚠ IN TWO-MAP MODE THERE IS ONE PLAYER WINDOW AND TWO PLAYERS INSIDE IT. `paneId` picks a
+    // half, which is a FRAME of the shell (stage.html), not a window of its own - a scenario
+    // asking for a `mode=player` target there would wait forever.
     //
     // ⚠ THE "PLAYER COMES UP INVISIBLE" FAULT IS SOLVED, and the recovery below is now a
     // backstop rather than a workaround. The cause was Windows reporting the window occluded, so
@@ -441,18 +511,31 @@ function makeRig(inst, dirs, tally) {
     //
     // What the recovery does, when it does fire: press the DM's Player button to CLOSE the window
     // (the button toggles), wait for the target to go, and open a fresh one.
-    async player() {
-      if (inst.player) return inst.player;
+    async player(paneId) {
+      const key = paneId || '';
+      if (inst.players.has(key)) return inst.players.get(key);
+      if (key) {
+        const half = await rig.stageHalf(key);
+        inst.players.set(key, half);
+        return half;
+      }
+      // ⚠ Matched on the pane tag as well as the mode, or the first Player found answers for
+      // both columns and every check then reads one window twice.
+      const matches = t => t.url.includes('mode=player') &&
+        (key ? t.url.includes('pane=' + key) : !/[?&]pane=/.test(t.url));
 
       const openOne = async () => {
         // ⚠ ASK THE DM, never the target list. A Player window is PRE-WARMED at startup and waits
         // hidden, so a `mode=player` target exists before the button has ever been pressed —
         // reading the list would skip the press and then wait forever for a window nobody revealed.
-        const already = await inst.dm.evaluate('!!(playerWindow && !playerWindow.closed)');
-        if (!already) await inst.dm.evaluate('document.getElementById("btn-player").click(); 0');
-        const target = await cdp.waitForTarget(inst.port, t => t.url.includes('mode=player'), 30000,
-                                               'the Player window');
+        // A column presses its OWN button: the parent's chrome would open the parent's window.
+        const opener = key ? await rig.pane(key) : inst.dm;
+        const already = await opener.evaluate('!!(playerWindow && !playerWindow.closed)');
+        if (!already) await opener.evaluate('document.getElementById("btn-player").click(); 0');
+        const target = await cdp.waitForTarget(inst.port, matches, 30000,
+                                               'the Player window' + (key ? ' for column ' + key : ''));
         const session = await cdp.connect(target.webSocketDebuggerUrl, 'player');
+        session.targetId = target.id;
         await session.watch();
         await session.waitFor(PLAYER_READY, 30000, 'the Player runtime');
         // ⚠ THE PLAYER'S PRELOAD IS CHECKED TOO, and for the same reason as the DM's: cdp.js
@@ -471,14 +554,14 @@ function makeRig(inst, dirs, tally) {
 
       const closeOne = async session => {
         session.close();
-        await inst.dm.evaluate('(() => { const b = document.getElementById("btn-player");' +
+        const opener = key ? await rig.pane(key) : inst.dm;
+        await opener.evaluate('(() => { const b = document.getElementById("btn-player");' +
           ' if (playerWindow && !playerWindow.closed) b.click(); return 0; })()');
-        try {
-          await cdp.waitForTarget(inst.port, t => !t.url.includes('mode=player'), 1, 'x');
-        } catch (_) { /* the poll below is the real wait */ }
+        // ⚠ Waits for THIS column's window to go, never for every Player to go: with two open
+        // the other one is legitimately still there and the wait would run out.
         const gone = Date.now() + 10000;
         while (Date.now() < gone) {
-          const still = (await cdp.listTargets(inst.port)).some(t => t.url.includes('mode=player'));
+          const still = (await cdp.listTargets(inst.port)).some(matches);
           if (!still) break;
           await cdp.sleep(200);
         }
@@ -497,7 +580,7 @@ function makeRig(inst, dirs, tally) {
         const asked = await showPlayer(session, 30000);
         tally.notes.push('  the reopened Player took ' + asked + ' check(s) to report visible');
       }
-      inst.player = session;
+      inst.players.set(key, session);
       return session;
     },
   };
@@ -576,8 +659,12 @@ async function main() {
     } catch (err) {
       thrown = err;
     } finally {
-      for (const s of [inst.dm, inst.player]) if (s) tally.consoleErrors.push(...s.errors);
-      for (const s of [inst.dm, inst.player]) if (s) s.close();
+      // ⚠ The shell, not the halves: a half is a VIEW onto the shell's socket, so closing one
+      // closes nothing and its console errors are the shell's.
+      const sessions = [inst.dm].concat(inst.stage ? [inst.stage] : [])
+        .concat(Array.from(inst.players.values()).filter(s => s !== inst.stage));
+      for (const s of sessions) tally.consoleErrors.push(...(s.errors || []));
+      for (const s of sessions) s.close();
       killApp(inst.proc);
     }
     for (const n of tally.notes.slice(firstNote)) console.log(n);

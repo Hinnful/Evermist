@@ -73,9 +73,11 @@
   #mu-chev { transition: transform .14s; }
   #mu-chev.mu-chev-up { transform: rotate(180deg); }
 
-  .mu-resting #mu-pill { padding: 0; }
-  .mu-resting .mu-open { width: 30px; justify-content: center; }
-  .mu-resting #mu-pill-name,
+  /* At rest the pill keeps its shape and carries the word instead of a track name. The controls
+     go, because there is nothing to pause and nothing to turn down. */
+  .mu-resting #mu-pill { padding: 0 11px; }
+  .mu-resting .mu-open { gap: 8px; }
+  .mu-resting #mu-pill-name { color: #7f858e; }
   .mu-resting #mu-level,
   .mu-resting .mu-pillbtn,
   .mu-resting .mu-chevbtn { display: none; }

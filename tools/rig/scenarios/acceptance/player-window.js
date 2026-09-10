@@ -13,10 +13,11 @@
 //      not yet holding it — so no fog push and no map reaches a window nobody opened.
 //   B. The card only outranks other panels while it is loading. The DM shows the same element
 //      when no scene is open, and it must not paint over the scene library or a dialog.
-//   C. The players never look at a bare sheet before the first map, in EITHER order. When the
-//      decode outlasts the cover, the card is on screen, marked as loading, and above the cover.
-//      When the cover lifts first, the card holds as the empty state. Either way it is gone once
-//      the map is on screen - which machine takes which order is not this file’s to decide.
+//   C. The players never look at a bare sheet before the first map, in ANY of three orders. When
+//      the decode outlasts the cover, the card is on screen, marked as loading, and above the
+//      cover. When the cover lifts first, the card holds as the empty state. When the decode beats
+//      the first sample, the map is already there and the card is on its way out. Either way it is
+//      gone once the map is on screen - which machine takes which order is not this file’s to decide.
 //   D. Once the map is on screen the card is gone, and it does not come back on a later switch.
 //   E. Closing the Player and pressing the button again works, leaves a fresh window warming for
 //      the press after that, and never warms a second one over a Player that is already open.
@@ -107,16 +108,25 @@ module.exports = async function playerWindowFeature(rig) {
   rig.check(whileLoading.hidden === false,
     'the Player window did not report itself visible after the button was pressed');
 
-  // ⚠ TWO ORDERS, AND BOTH ARE REAL. revealPlayer() lifts the cover on a SCENE_FADE_MIN_MS timer,
-  // not on the map arriving, so a slow machine strips the loading line while there is still no
-  // map - the comment on onPlayerMapShown says the error paths reveal too. Which order a machine
-  // takes is NOT the scenario's to choose, and demanding the first one took a release gate down
-  // three times. NEITHER BRANCH IS A FREE PASS: both say the players never look at a bare sheet.
+  // ⚠ THREE ORDERS, AND ALL THREE ARE REAL. revealPlayer() lifts the cover on a SCENE_FADE_MIN_MS
+  // timer, not on the map arriving, so a slow machine strips the loading line while there is still
+  // no map - the comment on onPlayerMapShown says the error paths reveal too. A slow machine can
+  // also finish the decode before this file gets its first sample. Which order a machine takes is
+  // NOT the scenario's to choose, and demanding one took a release gate down four times.
+  // ⚠ THE LOADING LINE GOING AND THE MAP LANDING ARE TWO EVENTS, so a sample holding both is the
+  // app mid-swap, not a lie on the TV. The end state below is what proves the card came down.
+  // NO BRANCH IS A FREE PASS: each one says the players never look at a bare sheet.
   const coverUp = whileLoading.zIndex > whileLoading.fadeZ;
-  if (whileLoading.loading === true) {
+  if (whileLoading.hasMap === true) {
+    rig.note('the decode beat the first sample, so the loading window was over before it was read');
+    rig.check(whileLoading.display !== 'none' || whileLoading.covered === false,
+      'the map had decoded, the card was already off screen and the cover was still down, so the ' +
+      'TV is a flat sheet with nothing on it: ' + JSON.stringify(whileLoading));
+    rig.check(whileLoading.loading === false || coverUp,
+      'the card still claims to be loading but sits under the scene cover (' + whileLoading.zIndex +
+      ' vs ' + whileLoading.fadeZ + '), so the cover hides it and the TV shows a flat sheet');
+  } else if (whileLoading.loading === true) {
     rig.note('the decode outlasted the cover, so the loading state was measured directly');
-    rig.check(whileLoading.hasMap === false,
-      'the card claims to be loading with the map already decoded, so the line on the TV is a lie');
     rig.check(whileLoading.display !== 'none',
       'the landing card was marked loading and not on screen, so the players are looking at a ' +
       'bare cover with nothing on it');

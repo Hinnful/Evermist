@@ -114,6 +114,13 @@ function doRender() {
   // Ahead of the early returns so the flag always clears — drawCursor() guards the no-map case.
   if (cursorDirty) drawCursor(_cursorX, _cursorY);
 
+  // ⚠ AHEAD OF THE NO-MAP RETURN. In two-map mode this window holds no map at all and the
+  // preview draws a COLUMN's, so leaving it below the return froze it on its last paint - a
+  // drag moved the Player and the picture never moved with it.
+  // ⚠ AHEAD OF THE NO-MAP RETURN. In two-map mode this window holds no map and the preview
+  // draws a COLUMN's, so below the return it froze on its last paint.
+  if (!isPlayer && minimapDirty) drawMinimap();
+
   if (!videoDOMActive && !mapOffscreen && !pixiMapSprite) return;
 
   const vp = calcViewport();
@@ -136,8 +143,6 @@ function doRender() {
     if (fogDirty)  { renderFog(vp); fogDirty = false; if (!isPlayer) minimapDirty = true; }
     if (gridDirty) { renderGrid(vp); gridDirty = false; if (!isPlayer) minimapDirty = true; }
   }
-
-  if (!isPlayer && minimapDirty) drawMinimap();
 
 }
 

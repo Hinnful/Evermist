@@ -14,7 +14,9 @@
     "missing:shapemenu.js",
     "missing:updater.js",
     "missing:musicplan.js",
-    "missing:gridcalibrate.js"
+    "missing:gridcalibrate.js",
+    "missing:panes.js",
+    "missing:stage.js"
   ],
-  "warnedBytes": 0
+  "warnedBytes": 52228
 }

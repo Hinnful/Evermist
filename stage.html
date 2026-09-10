@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Evermist - Player View</title>
+<link rel="stylesheet" href="src/css/base.css">
+<link rel="stylesheet" href="src/css/panes.css">
+</head>
+<body class="stage-mode">
+<!-- The Player window in two-map mode. It holds NO map of its own: each half is a whole Player
+     in an iframe, and this page owns only the split and the chasm between them. Its own entry
+     point because the app's boot in index.html would build a renderer, canvases and fog this
+     shell has no use for. See stage.js. -->
+<script src="src/stage.js"></script>
+<script>initStage();</script>
+</body>
+</html>

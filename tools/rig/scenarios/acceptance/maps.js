@@ -240,8 +240,20 @@ module.exports = async function mapsFeature(rig) {
   // reads true for "no scene at all" as happily as for "a scene with no plan", so without this
   // wait a drop that landed mid-switch looked like the app refusing a valid plan. It failed only
   // on a slow machine, which is how it reached CI green from here.
-  await dm.waitFor('!!currentScene', 60000, 'a scene to attach the plan to');
-  rig.check(!(await dm.evaluate('!!currentScene.floorPlan')),
+  // ⚠ ONE ATOMIC READ, POLLED. A wait followed by a separate read is not the same as reading
+  // both at once: the import above can start another switchScene between the two, and that
+  // nulls currentScene, so the read threw rather than answering. Slow machine only, again.
+  const sceneForPlan = await (async () => {
+    const deadline = Date.now() + 60000;
+    for (;;) {
+      const st = await dm.evaluate(
+        '({ open: !!currentScene, plan: !!(currentScene && currentScene.floorPlan) })');
+      if (st.open || Date.now() > deadline) return st;
+      await rig.sleep(200);
+    }
+  })();
+  rig.check(sceneForPlan.open, 'no scene stayed open long enough to attach a dropped plan to');
+  rig.check(!sceneForPlan.plan,
             'the open scene already had a plan, so the drop below proves nothing');
   await dm.evaluate('__rigDrop([__rigText("Cellar.dd2vtt", globalThis.__rigPlanText)])');
   const planLanded = await (async () => {

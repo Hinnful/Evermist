@@ -407,6 +407,8 @@ function _rpWireRadiusField(numId) {
   const clampR = v => Math.max(0, Math.min(300, v));
 
   const apply = v => {
+    // ⚠ THE CONTEXT ROW'S FIELD IS THE DM WINDOW'S; the card's own lives inside the column.
+    if (numId === 'fx-radius-num' && paneForward('corner-radius', { radius: v })) return;
     const poly = _rpFindPoly(selectedPolygonId);
     if (!poly) return;
     // One undo per editing session, never per keystroke: typing "150" is one Ctrl+Z.

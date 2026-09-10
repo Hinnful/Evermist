@@ -122,7 +122,8 @@ function _muRenderPill() {
     bubble.classList.toggle('mu-paused', !!_muPaused);
   }
   const name = _muEl('mu-pill-name');
-  if (name) name.textContent = _muPlaying ? displayName(_muPlaying) : '';
+  // ⚠ A LABEL, NEVER AN EMPTY STRING: with no text the pill collapses to a bare square.
+  if (name) name.textContent = _muPlaying ? displayName(_muPlaying) : 'Music';
   const pause = _muEl('btn-mu-pause');
   if (pause) pause.title = _muPaused ? 'Play' : 'Pause';
   const icoPause = _muEl('mu-ico-pause');

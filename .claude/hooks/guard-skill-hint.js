@@ -36,6 +36,7 @@ const OWNERS = {
   'scenemanager.css': 'dm-ui',
   'roomcard.css': 'dm-ui',
   'music.css': 'dm-ui',
+  'panes.css': 'dm-ui',
   'fog.js': 'dm-ui',
   'moduletext.js': 'module-text',
   'pdflayout.js': 'module-text',

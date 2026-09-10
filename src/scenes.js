@@ -85,8 +85,10 @@ function scheduleAutoSave() {
 
 // Non-blocking auto-save: captures a snapshot of current state synchronously,
 // then encodes fog asynchronously via toBlob so the main thread is never blocked.
+// ⚠ RESOLVES WHEN THE WRITE IS DONE, not when it is queued. Closing a column removes the frame,
+// and a fog encode still in flight there dies with it - two-column mode awaits this first.
 function doAutoSave() {
-  if (!currentScene || !baseFogCanvas) return;
+  if (!currentScene || !baseFogCanvas) return Promise.resolve();
   clearTimeout(autoSaveTimer);
   const scene = currentScene;
   const snap = {
@@ -111,15 +113,18 @@ function doAutoSave() {
       },
     },
   };
-  baseFogCanvas.toBlob(blob => {
-    if (!blob || currentScene !== scene) return;
-    scene.polygons      = snap.polygons;
-    scene.nextPolygonId = snap.nextPolygonId;
-    scene.effects       = snap.effects;
-    scene.nextEffectId  = snap.nextEffectId;
-    scene.baseFogBlob   = blob;
-    scene.gridConfig    = snap.gridConfig;
-    scene.fogSettings   = snap.fogSettings;
-    sceneStore.saveScene(scene).catch(console.error);
-  }, 'image/png');
+  return new Promise(resolve => {
+    baseFogCanvas.toBlob(blob => {
+      // ⚠ A null currentScene means a teardown asked for this flush, so it still counts.
+      if (!blob || (currentScene !== null && currentScene !== scene)) { resolve(); return; }
+      scene.polygons      = snap.polygons;
+      scene.nextPolygonId = snap.nextPolygonId;
+      scene.effects       = snap.effects;
+      scene.nextEffectId  = snap.nextEffectId;
+      scene.baseFogBlob   = blob;
+      scene.gridConfig    = snap.gridConfig;
+      scene.fogSettings   = snap.fogSettings;
+      sceneStore.saveScene(scene).catch(console.error).then(resolve, resolve);
+    }, 'image/png');
+  });
 }

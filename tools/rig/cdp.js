@@ -92,6 +92,10 @@ class Session {
     this.ws = ws;
     this.label = label;
     this.errors = [];          // console errors + uncaught exceptions, noise already filtered
+    // Every JS execution context this page has, by id. A page with <iframe>s has one per frame,
+    // and an expression sent without one lands in the main frame — which is how a check against
+    // a two-column app reads the parent's empty scene and passes.
+    this.contexts = new Map();
     this._id = 0;
     this._pending = new Map();
     this._closed = false;
@@ -118,6 +122,13 @@ class Session {
   }
 
   _onEvent(method, p) {
+    if (method === 'Runtime.executionContextCreated') {
+      const c = p.context || {};
+      this.contexts.set(c.id, { frameId: c.auxData && c.auxData.frameId, origin: c.origin });
+      return;
+    }
+    if (method === 'Runtime.executionContextDestroyed') { this.contexts.delete(p.executionContextId); return; }
+    if (method === 'Runtime.executionContextsCleared') { this.contexts.clear(); return; }
     if (method === 'Runtime.consoleAPICalled' && p.type === 'error') {
       this._note((p.args || []).map(a => a.value != null ? String(a.value) : (a.description || a.type)).join(' '));
     } else if (method === 'Runtime.exceptionThrown') {
@@ -167,13 +178,19 @@ class Session {
   // The workhorse. `expression` is evaluated in the page's top-level scope, so bare app
   // identifiers resolve. A promise result is awaited; a thrown error becomes a thrown error here
   // rather than a silently undefined value.
-  async evaluate(expression, timeoutMs = 60000) {
-    const r = await this.send('Runtime.evaluate', {
+  evaluate(expression, timeoutMs = 60000) {
+    return this._evaluateIn(null, expression, timeoutMs);
+  }
+
+  async _evaluateIn(contextId, expression, timeoutMs = 60000) {
+    const params = {
       expression,
       awaitPromise: true,
       returnByValue: true,
       userGesture: true,          // some app paths (fullscreen, media) want an activation
-    }, timeoutMs);
+    };
+    if (contextId != null) params.contextId = contextId;
+    const r = await this.send('Runtime.evaluate', params, timeoutMs);
     if (r.exceptionDetails) {
       const d = r.exceptionDetails;
       const why = (d.exception && d.exception.description) || d.text || 'evaluate failed';
@@ -224,6 +241,48 @@ class Session {
     const r = await this.send('Page.captureScreenshot', params, 60000);
     fs.writeFileSync(destPath, Buffer.from(r.data, 'base64'));
     return destPath;
+  }
+
+  // A view onto ONE frame of this page: the same socket, every evaluate pinned to that frame's
+  // context. Two-column mode puts the app inside <iframe>s, and `polygons` or `zoom` for a column
+  // live nowhere else.
+  //
+  // ⚠ Re-resolved rather than cached across a reload: a frame that navigates gets a NEW context
+  // and the old id answers "Cannot find context with specified id" on every call after.
+  async frame(urlPart, timeoutMs = 20000) {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      const tree = await this.send('Page.getFrameTree');
+      const hit = (tree.frameTree.childFrames || [])
+        .map(c => c.frame)
+        .find(f => f.url && f.url.includes(urlPart));
+      if (hit) {
+        for (const [id, c] of this.contexts) {
+          if (c.frameId === hit.id) return this._view(id);
+        }
+      }
+      if (Date.now() > deadline) {
+        throw new Error('timed out after ' + (timeoutMs / 1000) + 's waiting for a frame whose ' +
+                        'url holds "' + urlPart + '" to have a JS context on ' + this.label);
+      }
+      await sleep(150);
+    }
+  }
+
+  // ⚠ Delegates rather than inheriting from the Session. A copy sharing `_pending` while
+  // keeping its own `_id` counter answers one request with another's reply.
+  _view(contextId) {
+    const parent = this;
+    const view = {
+      label: parent.label + '#' + contextId,
+      get errors() { return parent.errors; },
+      send: (m, p, t) => parent.send(m, p, t),
+      evaluate: (expr, t) => parent._evaluateIn(contextId, expr, t),
+      waitFor: (expr, t, what) => Session.prototype.waitFor.call(view, expr, t, what),
+      screenshot: (dest, clip) => parent.screenshot(dest, clip),
+      close: () => {},
+    };
+    return view;
   }
 
   close() {

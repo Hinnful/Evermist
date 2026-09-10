@@ -119,8 +119,22 @@ function viewLerpTick(ts) {
   else viewLerpActive = false;
 }
 
+// ⚠ A PLAYER WINDOW ANSWERS ITS OPENER; A PLAYER FRAME HAS NONE, so the DM window binds each
+// half of the Player screen to the column that drives it. Top-level functions on purpose: the
+// DM window calls them across the frame boundary, where a `let` is not reachable.
+let _playerReplyTo = null;
+function bindReplyTarget(w) { _playerReplyTo = w; }
+function playerReplyTarget() { return _playerReplyTo || window.opener; }
+
+// The other end: a column is told which half of the Player screen is its own.
+function bindPlayerWindow(w) {
+  playerWindow = w;
+  playerMapSent = false;
+  if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
+}
+
 function notifyDMOfMode() {
-  if (!window.opener) return;
+  if (!playerReplyTarget()) return;
   const msg = { type: 'PLAYER_MODE', mode: playerFollowDM ? 'follow' : 'freelook' };
   if (!playerFollowDM) {
     const { w: vpW, h: vpH } = getViewportSize();
@@ -128,7 +142,7 @@ function notifyDMOfMode() {
     msg.mapCY = (vpH / 2 - panY) / zoom;
     msg.zoom  = zoom;
   }
-  window.opener.postMessage(msg, '*');
+  playerReplyTarget().postMessage(msg, '*');
 }
 
 function updatePlayerModeIndicator() {
@@ -143,6 +157,18 @@ function updatePlayerModeIndicator() {
 // window early would send every fog push, and pull every map, into a window nobody opened.
 let _playerPrewarm = null;
 
+// ⚠ ONE NAME PER COLUMN. window.open reuses a browsing context BY NAME, so two columns sharing
+// the fixed name would hand the second one the first's window and the first TV would go dark.
+// ⚠ Keyed on `paneId` alone, not on the mode: a column's Player carries the same `?pane=` and
+// has to answer to the same name, or main.js's display push never reaches it.
+// ⚠ ONE NAME, because one window serves both columns. A per-column name made a column reject
+// the display push describing its own half, so its map texture was never sized to the screen.
+function playerWindowName() {
+  // A Player FRAME sits inside the shell, and the shell is the window main.js knows about.
+  if (isPlayer && parent !== window) { try { return parent.name || 'evermist-player'; } catch (_) {} }
+  return 'evermist-player';
+}
+
 function playerWindowUrl() {
   const sp = new URLSearchParams(window.location.search);
   let url = window.location.href.split('?')[0] + '?mode=player';
@@ -155,21 +181,20 @@ function playerWindowUrl() {
 }
 
 function openPlayerWindow() {
-  return window.open(playerWindowUrl(), 'evermist-player', 'toolbar=no,menubar=no,scrollbars=no');
+  return window.open(playerWindowUrl(), playerWindowName(), 'toolbar=no,menubar=no,scrollbars=no');
 }
 
 // ⚠ NEVER WHILE A PLAYER IS OPEN. window.open reuses a browsing context by NAME, so warming one
 // over a live Player re-navigates it and the TV reloads mid-session.
 function prewarmPlayer() {
-  if (isPlayer) return;
+  if (isPlayer || isPane || panesActive) return;   // two-map mode has one shell, opened by the DM
   if (_playerPrewarm && !_playerPrewarm.closed) return;
   if (playerWindow && !playerWindow.closed) return;
   _playerPrewarm = openPlayerWindow();
 }
 
-// Same name reuse, the other way round: a window still closing can answer to the name and the
-// warm handle ends up on a corpse, so the next press pays the page load the warming exists to
-// remove. Bounded, because a window that never reports closed must not stop the warming.
+// Same name reuse, the other way round: a window still closing can answer to the name, so the
+// warm handle lands on a corpse. Bounded, or a window that never closes stops the warming.
 function prewarmPlayerAfter(dying) {
   if (!dying || dying.closed) { prewarmPlayer(); return; }
   let tries = 0;
@@ -180,17 +205,37 @@ function prewarmPlayerAfter(dying) {
   setTimeout(poll, 50);
 }
 
+// A whole hidden renderer, so a parent handing its map to the columns drops it.
+function closePrewarmedPlayer() {
+  if (_playerPrewarm && !_playerPrewarm.closed) _playerPrewarm.close();
+  _playerPrewarm = null;
+}
+
 // The button's "open": main.js keeps every Player window hidden until this.
 function revealPlayerWindow() {
   playerWindow = (_playerPrewarm && !_playerPrewarm.closed) ? _playerPrewarm : openPlayerWindow();
   _playerPrewarm = null;
   if (!playerWindow) return;   // window.open can answer null; a throw here kills the button
   if (window.electronAPI && window.electronAPI.playerReveal) {
-    window.electronAPI.playerReveal();
+    window.electronAPI.playerReveal(playerWindowName());
   }
   // ⚠ A pre-warmed window announced itself while playerWindow was still null, so its PLAYER_READY
   // was dropped by the handler's source check. Ask again or nothing is ever sent to it.
   playerWindow.postMessage({ type: 'player-hello' }, '*');
+}
+
+// The Player button is a toggle: window.open on an already-open named window only re-navigates
+// it, so without the close branch the second press looks dead.
+function togglePlayerWindow() {
+  if (playerWindow && !playerWindow.closed) {
+    const dying = playerWindow;
+    playerWindow.close();
+    playerWindow = null;
+    if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
+    prewarmPlayerAfter(dying);   // the next press should be as fast as this one was
+    return;
+  }
+  revealPlayerWindow();
 }
 
 // ─── Player map-request protocol ─────────────────────────────────────────────
@@ -203,9 +248,9 @@ let _playerResyncPending = false;
 function initPlayerMapRetry() {
   let attempts = 0;
   function tryNeedMap() {
-    if (mapOffscreen || !window.opener || attempts >= 6) return;
+    if (mapOffscreen || !playerReplyTarget() || attempts >= 6) return;
     attempts++;
-    window.opener.postMessage({ type: 'need-map' }, '*');
+    playerReplyTarget().postMessage({ type: 'need-map' }, '*');
     setTimeout(tryNeedMap, 5000);
   }
   setTimeout(tryNeedMap, 4000);
@@ -301,9 +346,12 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
 // Syncs fog-animation and video-frame-rate params to the Player window.
 // pass includeWarp=true when cloud warp params changed (triggers regen on Player).
 function syncAnimToPlayer(includeWarp) {
-  if (!playerWindow || playerWindow.closed) return;
   const msg = { type: 'anim-params', fogAnimEnabled, fogAnimSpeed, driftScale, cloudFrameSpeed, alphaPulseAmp };
   if (includeWarp) { msg.cloudWarpStrength = cloudWarpStrength; msg.cloudWarpRadius = cloudWarpRadius; }
+  // The same parameter set every animation control ends in, so one forward covers the presets,
+  // the advanced sliders and the on/off button together.
+  if (paneForward('anim', msg)) return;
+  if (!playerWindow || playerWindow.closed) return;
   playerWindow.postMessage(msg, '*');
 }
 

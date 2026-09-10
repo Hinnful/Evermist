@@ -153,16 +153,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the notes are read off an older commit when a red gate pushed one on top
 
-      # One commit is one release, so the commit message IS the release note. /commit writes it
-      # under the public-text rules for exactly this reason.
-      - name: Read the notes off the commit
+      # ONE VERSION IS ONE COMMIT, and that commit's message IS the release note. /commit writes
+      # it under the public-text rules for exactly this reason.
+      # ⚠ Read the notes off the commit that SET this version, never off HEAD. A red gate that
+      # is fixed by a commit on top leaves HEAD holding a rig fix, and its message would ship as
+      # the release notes for the feature underneath it.
+      - name: Read the notes off the commit that set the version
         id: notes
         run: |
+          V='${{ needs.decide.outputs.version }}'
+          # -S alone also matches the commit that REMOVED the line, so require an added one.
+          SHA=$(git log --format=%H -S"\"version\": \"$V\"" -- package.json | while read -r C; do
+            if git show "$C" -- package.json | grep -q "^+.*\"version\": \"$V\""; then echo "$C"; break; fi
+          done)
+          [ -n "$SHA" ] || SHA=HEAD
+          echo "notes come from $SHA: $(git log -1 --pretty=%s "$SHA")"
           {
-            echo "title=$(git log -1 --pretty=%s)"
+            echo "title=$(git log -1 --pretty=%s "$SHA")"
             echo "body<<EOF_BODY"
-            git log -1 --pretty=%b
+            git log -1 --pretty=%b "$SHA"
             echo "EOF_BODY"
           } >> "$GITHUB_OUTPUT"
 

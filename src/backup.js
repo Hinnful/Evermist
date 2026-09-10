@@ -188,6 +188,9 @@ async function adoptModuleTextFromZip(zipPath) {
 // chosen file turns out to be a .zip.
 async function restoreFromZipPath(zipPath) {
   if (!window.electronAPI || !zipPath) return;
+  // ⚠ A restore rewrites the library underneath whatever is open, and a column holds a scene
+  // record this one is about to replace. Back to one map first, then restore as it always did.
+  if (typeof panesActive !== 'undefined' && panesActive) await exitPanes(panes[panesSelected].sceneId);
 
   const unsubProgress = window.electronAPI.onBackupProgress(({ done, total }) => {
     updateMapProgress(Math.round((done / total) * 100));

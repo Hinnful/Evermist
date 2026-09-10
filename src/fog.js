@@ -1098,10 +1098,27 @@ function shroudAllFog() {
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 }
 
+// Reveal All and Shroud All as the DM presses them: the whole edit, not just the canvas fill.
+function revealAllRooms() { _wholeMapFog(revealAllFog, false); }
+function shroudAllRooms() { _wholeMapFog(shroudAllFog, true); }
+
+function _wholeMapFog(fill, isShroud) {
+  if (!fogDataCtx) return;
+  pushUndo();
+  activePolygon = null; selectedPolygonId = null;
+  fill();
+  startFogTransition(isShroud);
+  rebuildFogEffect();
+  fogDirty = true;
+  scheduleRender();
+  scheduleAutoSync();
+}
+
 // ─── Live fog color ───────────────────────────────────────────────────────────
 
 // Derives base+tint from the raw picked colour and repaints both render paths.
 function applyFogColor(pickedHex) {
+  if (paneForward('fog-color', { pickedHex })) return;
   fogPickedHex = pickedHex;
   const { base, tint } = deriveFogColors(pickedHex);
   fogBaseColor = base;
@@ -1127,6 +1144,7 @@ function applyFogColor(pickedHex) {
 
 // Updates the tint alpha strength on both render paths.
 function applyFogTintAlpha(alpha) {
+  if (paneForward('fog-tint', { alpha })) return;
   FOG_TINT_ALPHA = alpha;
   if (!isPlayer) {
     if (typeof pixiUpdateFogTintColor === 'function') pixiUpdateFogTintColor(fogTintColor);
@@ -1163,18 +1181,26 @@ function restoreSceneFogSettings(scene) {
   const { hex, alpha, anim: an } = parsed;
   applyFogColor(hex);
   applyFogTintAlpha(alpha);
-  const colorEl  = document.getElementById('fog-color');
-  const sliderEl = document.getElementById('fog-tint-alpha');
-  const numEl    = document.getElementById('fog-tint-alpha-num');
-  if (colorEl)  colorEl.value  = hex;
-  if (sliderEl) sliderEl.value = Math.round(alpha * 100);
-  if (numEl)    numEl.value    = Math.round(alpha * 100);
-  // ⚠ Never call syncFogColorToPlayer here. The colour rides the sendToPlayer fog-update message;
-  // sending it early paints the new colour over the old scene's fog, which flickers.
+  // ⚠ Never call syncFogColorToPlayer here: the colour rides the sendToPlayer fog-update, and
+  // sending it early paints the new colour over the old scene's fog.
 
   const prevWarpStr = cloudWarpStrength;
   const prevWarpRad = cloudWarpRadius;
+  showFogSettings(hex, alpha, an);
 
+  if (cloudWarpStrength !== prevWarpStr || cloudWarpRadius !== prevWarpRad) {
+    regenCloudFrames();
+  } else {
+    syncAnimToPlayer(false);
+  }
+  if (fogAnimEnabled) startFogAnim(); else stopFogAnim();
+}
+
+// Every control in the Fog panel, set to one scene's settings. ⚠ TWO CALLERS: a scene switch,
+// and selecting the other column in two-map mode.
+function showFogSettings(hex, alpha, an) {
+  fogPickedHex      = hex;
+  FOG_TINT_ALPHA    = alpha;
   fogAnimEnabled    = an.enabled;
   fogAnimSpeed      = an.speed;
   driftScale        = an.drift;
@@ -1183,24 +1209,16 @@ function restoreSceneFogSettings(scene) {
   cloudWarpRadius   = an.warpRad;
   alphaPulseAmp     = an.pulse;
 
+  const colorEl  = document.getElementById('fog-color');
+  const sliderEl = document.getElementById('fog-tint-alpha');
+  const numEl    = document.getElementById('fog-tint-alpha-num');
+  if (colorEl)  colorEl.value  = hex;
+  if (sliderEl) sliderEl.value = Math.round(alpha * 100);
+  if (numEl)    numEl.value    = Math.round(alpha * 100);
   updateAnimSliders();
-
-  if (cloudWarpStrength !== prevWarpStr || cloudWarpRadius !== prevWarpRad) {
-    regenCloudFrames();
-  } else {
-    syncAnimToPlayer(false);
-  }
-
   const btnAnim = document.getElementById('btn-anim');
-  if (fogAnimEnabled) {
-    startFogAnim();
-    if (btnAnim) btnAnim.classList.add('active');
-  } else {
-    stopFogAnim();
-    if (btnAnim) btnAnim.classList.remove('active');
-  }
-
-  // Reflect the restored fog settings into the redesigned control panel.
+  if (btnAnim) btnAnim.classList.toggle('active', fogAnimEnabled);
+  if (typeof highlightAnimPreset === 'function') highlightAnimPreset();
   if (typeof refreshFogControlUI === 'function') refreshFogControlUI();
 }
 
@@ -1242,8 +1260,9 @@ function initFogControls() {
   const featherSlider = document.getElementById('fog-feather');
   const featherNum    = document.getElementById('fog-feather-num');
   featherSlider.oninput = function() {
-    fogFeatherRadius = +this.value;
     featherNum.value = this.value;
+    if (paneBroadcast('fog-feather', { radius: +this.value })) return;
+    fogFeatherRadius = +this.value;
     rebuildFogFromPolygons();
     rebuildFogEffect();
     fogDirty = true;
@@ -1254,6 +1273,7 @@ function initFogControls() {
     const v = Math.max(0, Math.min(24, Math.round(+this.value)));
     this.value = v;
     featherSlider.value = v;
+    if (paneBroadcast('fog-feather', { radius: v })) return;
     fogFeatherRadius = v;
     rebuildFogFromPolygons();
     rebuildFogEffect();
@@ -1267,6 +1287,7 @@ function initFogControls() {
   const halfSlider = document.getElementById('fog-half-alpha');
   const halfNum    = document.getElementById('fog-half-alpha-num');
   const applyHalf = pct => {
+    if (paneBroadcast('fog-half', { pct })) return;
     fogHalfAlpha = pct / 100;
     try { localStorage.setItem(FOG_HALF_ALPHA_KEY, String(pct)); } catch (_) {}
     // Rebuild every time, including mid-drag: watching half rooms change IS the point.
@@ -1312,6 +1333,7 @@ function initFogControls() {
     el.onchange = function() {
       const v = Math.max(0, Math.min(300, Math.round(+this.value) || 0));
       this.value = v;
+      if (paneBroadcast('door-size', { id, value: v })) return;
       set(v);
       applyDoorSize();
     };

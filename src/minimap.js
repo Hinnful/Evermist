@@ -42,8 +42,8 @@ let _snapPending = false;
 
 function _visibleExtent() {
   // Map-space dimensions visible to the Player at the current triple — i.e. the TV frame.
-  const w = playerScreenW || 1920;
-  const h = playerScreenH || 1080;
+  const w = paneScope().playerScreenW || 1920;
+  const h = paneScope().playerScreenH || 1080;
   const z = minimapView.zoom;
   return { visW: w / z, visH: h / z };
 }
@@ -51,8 +51,8 @@ function _visibleExtent() {
 // Side of the square map-space region the preview draws, in map px: exactly the TV
 // frame's longest edge, so the frame fills that axis and can never overflow.
 function _frameExtent() {
-  const w = playerScreenW || 1920;
-  const h = playerScreenH || 1080;
+  const w = paneScope().playerScreenW || 1920;
+  const h = paneScope().playerScreenH || 1080;
   return Math.max(w, h) / minimapView.zoom;
 }
 
@@ -72,6 +72,8 @@ function _postSnapThrottled() {
   _snapPending = true;
   requestAnimationFrame(() => {
     _snapPending = false;
+    // One minimap, and it drives whichever column is selected. Its Player is that column's.
+    if (paneForward('player-view', { view: minimapView })) return;
     if (playerWindow && !playerWindow.closed) {
       // No viewW/viewH on purpose: minimapView.zoom is already in Player-canvas terms, so
       // resolveView's plain-zoom fallback replays it exactly. A region is only needed when the
@@ -84,6 +86,11 @@ function _postSnapThrottled() {
 function _markDirty() {
   minimapDirty = true;
   scheduleRender();
+  // A column's own preview is never on screen; its job is to tell the parent's one.
+  // ⚠ NOT BEFORE IT HAS A MAP: at boot the triple is still {0, 0, 1}, a view no map is at.
+  if (isPane && parent !== window && mapWidth > 0) {
+    parent.postMessage({ type: 'pane-player-view', pane: paneId, view: minimapView }, '*');
+  }
   // Keep the Player tab's zoom readout honest when the triple moves from anywhere
   // else — wheel, drag, Sync View, or a Player free-look report.
   if (typeof refreshPlayerZoomUI === 'function') refreshPlayerZoomUI();
@@ -138,14 +145,21 @@ function minimapNudgeZoom(dir) {
 
 function drawMinimap() {
   minimapDirty = false;
+  // ⚠ A COLUMN DRAWS NO PREVIEW OF ITS OWN; it tells the parent its picture changed, because
+  // the one preview draws from here and nothing else would say so.
+  if (isPane) {
+    if (parent !== window) parent.postMessage({ type: 'pane-repaint', pane: paneId }, '*');
+    return;
+  }
   if (!_ctx || !_canvas) return;
 
+  const s = paneScope();
   const mW = _canvas.width;
   const mH = _canvas.height;
 
   _ctx.clearRect(0, 0, mW, mH);
 
-  if (!mapOffscreen || !mapWidth || !mapHeight) {
+  if (!s.mapOffscreen || !s.mapWidth || !s.mapHeight) {
     // No map loaded — leave blank (panel shows via CSS background).
     const panel = document.getElementById('minimap-panel');
     if (panel) panel.classList.add('minimap-no-map');
@@ -165,13 +179,13 @@ function drawMinimap() {
   _ctx.beginPath();
   _ctx.rect(0, 0, mW, mH);
   _ctx.clip();
-  _ctx.drawImage(mapOffscreen, srcX, srcY, side, side, 0, 0, mW, mH);
+  _ctx.drawImage(s.mapOffscreen, srcX, srcY, side, side, 0, 0, mW, mH);
   _ctx.restore();
 
   // ── 2. Fog approximation ─────────────────────────────────────────────────
   // fogBlurCanvas is always current after rebuildFogBlur(). A CSS blur plus a source-atop
   // fog-colour fill keeps it misty rather than a flat block.
-  if (fogBlurCanvas && fogBlurCanvas.width > 0) {
+  if (s.fogBlurCanvas && s.fogBlurCanvas.width > 0) {
     const fSrcX = srcX / FOG_SCALE;
     const fSrcY = srcY / FOG_SCALE;
     const fSrcW = side / FOG_SCALE;
@@ -194,7 +208,7 @@ function drawMinimap() {
     sc.globalAlpha = 1;
     sc.clearRect(0, 0, mW, mH);
     sc.filter = 'blur(3px)';
-    sc.drawImage(fogBlurCanvas, fSrcX, fSrcY, fSrcW, fSrcH, 0, 0, mW, mH);
+    sc.drawImage(s.fogBlurCanvas, fSrcX, fSrcY, fSrcW, fSrcH, 0, 0, mW, mH);
     sc.filter = 'none';
 
     // Fill fog base color under the mask, then composite over map.
@@ -202,13 +216,13 @@ function drawMinimap() {
     _ctx.globalAlpha = 0.92;
     // First: paint fog base color clipped to the blurred mask shape.
     sc.globalCompositeOperation = 'source-in';
-    sc.fillStyle = fogBaseColor;
+    sc.fillStyle = s.fogBaseColor;
     sc.fillRect(0, 0, mW, mH);
     // Tint pass, clipped to the mask. ⚠ MUST be source-atop: source-over ignores the mask and
     // washes fogTintColor over the whole preview, veiling revealed map.
     sc.globalCompositeOperation = 'source-atop';
     sc.globalAlpha = 0.35;
-    sc.fillStyle = fogTintColor;
+    sc.fillStyle = s.fogTintColor;
     sc.fillRect(0, 0, mW, mH);
 
     _ctx.drawImage(_mmFogScratch, 0, 0);
@@ -216,8 +230,8 @@ function drawMinimap() {
   }
 
   // ── 3. Grid ───────────────────────────────────────────────────────────────
-  if (gridEnabled) {
-    drawGridLines(_ctx, {
+  if (s.gridEnabled) {
+    s.drawGridLines(_ctx, {
       cw: mW, ch: mH,
       srcX, srcY, srcW: side, srcH: side,
       dstX: 0, dstY: 0, dstW: mW, dstH: mH,
@@ -255,7 +269,7 @@ function drawMinimap() {
 // ─── Input ────────────────────────────────────────────────────────────────────
 
 function _onPointerDown(e) {
-  if (minimapLocked || !mapOffscreen) return;
+  if (minimapLocked || !paneScope().mapOffscreen) return;
   e.preventDefault();
   _isDragging    = true;
   _dragPointerId = e.pointerId;
@@ -295,7 +309,7 @@ function _onPointerUp(e) {
 // players see. Centre-pivot also makes the wheel agree with the − / + stepper.
 function _onWheel(e) {
   e.preventDefault();
-  if (minimapLocked || !mapOffscreen) return;
+  if (minimapLocked || !paneScope().mapOffscreen) return;
   minimapSetZoom(minimapView.zoom * (e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR));
 }
 
@@ -320,6 +334,7 @@ function initMinimap() {
     minimapLocked = !minimapLocked;
     document.getElementById('btn-minimap-lock').classList.toggle('active', minimapLocked);
     document.getElementById('btn-minimap-lock').textContent = minimapLocked ? 'Locked' : 'Lock';
+    if (paneForward('player-lock', { locked: minimapLocked })) return;
     if (playerWindow && !playerWindow.closed) {
       playerWindow.postMessage({ type: 'player-lock', locked: minimapLocked }, '*');
     }
@@ -339,14 +354,16 @@ function initMinimap() {
 // Seed minimapView to fit the whole map (like fitToScreen but for the minimap).
 // Called on init if mapWidth is already set, or externally when a map first loads.
 function minimapSeedView() {
-  if (!mapWidth || !mapHeight) return;
+  const s = paneScope();
+  if (!s.mapWidth || !s.mapHeight) return;
   _seedView();
   _markDirty();
 }
 
 function _seedView() {
-  const w = playerScreenW || 1920;
-  const h = playerScreenH || 1080;
-  const z = Math.min(w / mapWidth, h / mapHeight) * 0.95;
-  minimapView = { mapCX: mapWidth / 2, mapCY: mapHeight / 2, zoom: z };
+  const s = paneScope();
+  const w = s.playerScreenW || 1920;
+  const h = s.playerScreenH || 1080;
+  const z = Math.min(w / s.mapWidth, h / s.mapHeight) * 0.95;
+  minimapView = { mapCX: s.mapWidth / 2, mapCY: s.mapHeight / 2, zoom: z };
 }

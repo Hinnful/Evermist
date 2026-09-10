@@ -355,6 +355,20 @@ which control was touched last, with nothing visible saying so.
 
 ---
 
+### Two maps reach two screens as frames, not as a second copy of the app · `SETTLED` (2026-09-10)
+Rewriting every scene global in `state.js` into a pane object was drawn and rejected: several
+times the work, and its first half would have shipped nothing visible. Each column is instead
+the whole app in an `<iframe>` at `?mode=pane`, so a column's scene, camera, grid, fog and undo
+history all exist with nothing written for them.
+A spike settled three unknowns first. Inside a `file://` iframe, `postMessage` round-trips and
+the scene database opens; Electron injects no preload into a subframe, so a frame borrows the
+bridge of the window above it rather than proxying every call by message.
+The Player side began as one window per column and was replaced within the session, for the
+reason ARCHITECTURE.md gives. Entering and leaving NAVIGATE the one window rather than
+replacing it, which is what carries its fullscreen across.
+Measured before the build finished: a second column and its half cost 3-9% more memory on a
+3840x2160 fixture, so the cheap-DM-window path (flat fog, a still frame) stays dropped.
+
 ## UI and the control panel
 
 Moved to [decisions/ui-and-control-panel.md](decisions/ui-and-control-panel.md) - the
