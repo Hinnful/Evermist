@@ -293,9 +293,10 @@
     letter-spacing: 0.02em;
   }
   #landing p strong { color: #b8abdb; font-weight: 600; }
-  /* The instruction is DM-only. Both windows share this element, so without the override the
-     TV reads "Open the scene menu (top-left)" — a direction aimed at the DM, in front of the
-     players, on the one screen that has no scene menu. The wordmark stays. */
+  /* The Player screen carries fog and map and nothing else, so the whole card's text goes:
+     the instruction names a menu that screen does not have, and the wordmark in front of the
+     players reads as a title screen. #landing-fog stays and is all they see until the map does. */
+  body.player-mode #landing h2,
   body.player-mode #landing p { display: none; }
   /* ⚠ SCOPED TO .loading, NEVER TO #landing. Above #scene-fade (999) so the card shows through
      the opaque cover while the first map decodes; unscoped it also outranks the scene library,
@@ -316,5 +317,7 @@
     color: #8d83ad;
     letter-spacing: 0.02em;
   }
-  #landing.loading #landing-loading { display: block; }
+  /* DM ONLY. The Player card carries no text at all, and this rule outranks that one on
+     specificity, so the line came back on the TV the moment a map started loading. */
+  body:not(.player-mode) #landing.loading #landing-loading { display: block; }
 

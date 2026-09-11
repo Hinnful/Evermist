@@ -71,7 +71,7 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `music.js` | The music bubble at the top of the DM window: it lists whatever audio files sit in the app's music folder, plays one on a click and crossfades to the next, pauses without losing its position, carries the volume and the filter, deletes a track, and and opens the Add music panel. The folder is the whole library, so there is no database behind it. DM only. |
 | `musicDownload.js` | The Add music panel: it reads a pasted YouTube video or playlist link as it is pasted, lists what is behind it with the tracks already on disk marked, and downloads the ones ticked one at a time. How far a queue has got is drawn as a hairline across the bottom of the music pill, which is the one control always on screen, and a queue still running survives the panel being closed and reopened. It also carries the button that updates the downloader, which appears only when a newer release of it exists. Split out of `music.js` and joined to it by three functions rather than a shared variable. DM only. |
 | `updater.js` | The update line under the About block: what the download is doing, and the button that restarts into the new version. Reports only what the main process tells it, and shows nothing at all when there is no update or when the check failed. Where the app cannot replace itself, it offers the releases page instead. DM only. |
-| `player.js` | Player-mode runtime: cloud-texture pre-generation, the handshake, the resize listener, the DM message handler, Player pan/zoom. |
+| `player.js` | Player-mode runtime: the cloud texture it copies or builds, the handshake, the resize listener, the DM message handler, Player pan/zoom. |
 | `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
 | `memProbe.js` | A hidden memory probe: counts what one loaded map costs and writes it to the diagnostics log. Dormant unless the page is opened with `?memprobe=1`. |
 | `main.js` / `preload.js` | The Electron shell. Creates the windows, saves video files to disk, reads and writes backup zips, forks the PDF parser, finds a map's floor plan, reports the app's own version number, and asks GitHub whether a newer one exists. |
@@ -203,10 +203,12 @@ The DM window is the boss. The Player window follows.
   DM starts and waits out of sight, so pressing Open Player has no page load behind it. The DM
   ignores that waiting window until the button is pressed, so nothing is sent to it and no map
   is pulled into it.
-- **The window goes up straight away, showing the app's own landing card** over a full screen of
-  drifting fog, and swaps to the map when it has decoded. The fog is the real thing - the same
-  cloud texture and the same drift the map's fog uses - so the players see a title card rather
-  than the app starting up.
+- **The window goes up straight away, showing a full screen of the app's own drifting fog**, and
+  swaps to the map when it has decoded. The fog is the real thing - the same cloud texture and the
+  same drift the map's fog uses - so the players see weather rather than the app starting up.
+  Nothing else is on that screen: no name and no status line.
+- **A new Player screen copies the cloud texture** from the DM window instead of building its own.
+  Two-map mode opens four documents at once on one thread, and four builds stalled every window.
 - The map image or video is sent as a **URL** rather than copied pixel by pixel, so opening
   the Player window doesn't double the memory used.
 - **Auto vs Manual.** With Auto on, every change the DM makes appears on the TV instantly.

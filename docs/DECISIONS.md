@@ -588,6 +588,35 @@ it needed either a second hand gesture or a timer that promotes builds nobody pl
 fits a workflow whose whole point is one human gate. **Holding minors and majors for approval**
 is the same objection.
 
+### The gate runs before `main`, not on it · `SETTLED` (2026-09-11)
+Releasing on a push to `main` meant a change that failed the gate was already on `main` when the
+failure was read. Nothing public was created, so the release rule held, yet the commit list
+carried the failure and the next shipping change inherited a red branch.
+
+`main` is now protected and takes no push from anyone, the repo owner included. A change goes to
+a `release/**` or `change/**` branch with a pull request; the workflow fires on those prefixes
+only, and its `land` job fast-forwards `main` once the gate is green.
+
+**The landing is a fast-forward and must stay one.** A merge, squash or rebase mints a new commit,
+and `main` would then carry a tree no gate ever drove. The protected check is the workflow's own
+unit-test job rather than the separate Tests workflow, because `land` depends on it and can
+therefore never push before it has reported.
+
+Rejected: keeping every attempt on `main` and bumping the version per retry. It burns numbers
+nobody can install and puts the failures back where they were.
+
+### One version is one commit · `SETTLED` (2026-09-11)
+A red gate used to be fixed by a commit on top of the version bump. That splits one release across
+several commits: the commit naming the version keeps the red gate, the fix below it reads green,
+and the publisher - which read `git log -1` - shipped the fix's message as the release notes.
+
+The fix now amends the version commit and force-pushes the branch. The publisher reads the title
+and body off the commit that SET the version, found by the commit that added that version string
+to `package.json`, so a stray commit on top can no longer become the public notes.
+
+The open pull request keeps every failed attempt's checks on its own page, which is the audit
+trail the branch would otherwise lose to the force-push.
+
 ### The tag is created last, not first · `SETTLED` (2026-09-08)
 Three shapes were drawn. Tagging by hand and gating before upload leaves a live release page with
 no installers on it when the gate goes red. Publishing to a draft and promoting by hand puts the

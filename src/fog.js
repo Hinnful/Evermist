@@ -44,6 +44,7 @@ let fogAnimLastTs  = 0;
 let cloudFrames    = [];   // array of offscreen canvases (domain-warped noise)
 let cloudFramePos  = 0;    // float index — fractional part is crossfade blend
 let cloudBlendCanvas = null, cloudBlendCtx = null;
+let cloudSetWarp = null;   // the warp cloudFrames was built with, never the live numbers
 
 // ─── Fog Transition (reveal & shroud) ────────────────────────────────────────
 // Cross-fades fogEffectCanvas / fogBlurCanvas before and after any fog operation. 'lighter'
@@ -375,7 +376,54 @@ function rebuildFogFromPolygons() {
 
 // ─── Fog effect pipeline ──────────────────────────────────────────────────────
 
+// The set a sibling document copies instead of building its own; a bare `let` never crosses.
+function cloudFrameSet() {
+  return { frames: cloudFrames, warp: cloudSetWarp };
+}
+
+// ⚠ ONE DOCUMENT BUILDS THE SET AND THE REST COPY IT. Two-map mode opens four Player documents on
+// one thread, and four builds of sixteen noise frames stall every window for seconds.
+function adoptCloudFrames(size, numFrames) {
+  const sources = [];
+  const add = (w) => { try { if (w && w !== window) sources.push(w); } catch (e) {} };
+  add(window.parent);
+  add(window.opener);
+  try { add(window.parent !== window && window.parent.opener); } catch (e) {}
+  // ⚠ READ AND COPY INSIDE THE GUARD. A source torn down mid-copy would otherwise throw out of
+  // generateCloudFrames, which runs inside initPlayer and would take the rest of init with it.
+  for (const w of sources) {
+    try {
+      const set = typeof w.cloudFrameSet === 'function' ? w.cloudFrameSet() : null;
+      if (!set || !set.warp || set.frames.length !== numFrames) continue;
+      if (set.frames[0].width !== size) continue;
+      // The warp the frames were BUILT with: a source mid-regeneration still holds the old set.
+      if (set.warp.strength !== cloudWarpStrength || set.warp.radius !== cloudWarpRadius) continue;
+      const copies = set.frames.map((f) => {
+        const c = document.createElement('canvas');
+        c.width = size; c.height = size;
+        c.getContext('2d').drawImage(f, 0, 0);
+        return c;
+      });
+      cloudFrames = copies;
+      cloudCanvas = copies[0];
+      cloudSetWarp = { strength: set.warp.strength, radius: set.warp.radius };
+      cloudBlendCanvas = document.createElement('canvas');
+      cloudBlendCanvas.width = size; cloudBlendCanvas.height = size;
+      cloudBlendCtx = cloudBlendCanvas.getContext('2d');
+      cloudBlendCtx.drawImage(copies[0], 0, 0);
+      cloudPattern = copies[0].getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
+      return true;
+    } catch (e) { /* that window went away; try the next source, else build */ }
+  }
+  return false;
+}
+
 function generateCloudFrames(size, numFrames) {
+  if (!generateCloudFrames._initialized && adoptCloudFrames(size, numFrames)) {
+    generateCloudFrames._initialized = true;
+    return;
+  }
+
   function makeGrid(n) {
     const g = new Float32Array(n * n);
     for (let i = 0; i < g.length; i++) g[i] = Math.random();
@@ -429,12 +477,14 @@ function generateCloudFrames(size, numFrames) {
   // Player window pays the set at startup - twice over in two-map mode, where both halves share
   // one thread. Either path builds its frames one per timeout.
   const genId = ++generateCloudFrames._genId;
+  const genWarp = { strength: cloudWarpStrength, radius: cloudWarpRadius };
   const rest  = [];
   let idx = 0;
   function genNext() {
     if (genId !== generateCloudFrames._genId) return;   // superseded
     if (idx >= numFrames) {
       cloudFrames = rest;
+      cloudSetWarp = genWarp;
       cloudCanvas = rest[0];
       cloudBlendCtx.drawImage(rest[0], 0, 0);
       cloudPattern = rest[0].getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
@@ -589,10 +639,13 @@ function drawLoadingFog(ctx, cw, ch) {
     ctx.save();
     ctx.globalCompositeOperation = 'source-atop';
     const s = LOADING_FOG_SCALE;
-    const bigR = Math.ceil(Math.max(cw, ch) / s) * 2;
+    const half = Math.hypot(cw, ch) / 2;
     for (let i = 0; i < CLOUD_PASSES.length; i++) {
       const p = CLOUD_PASSES[i];
       const off = fogAnimOffsets[i];
+      // ⚠ SIZED PER PASS, in its own scaled space, and it must clear the drift: one shared radius
+      // left the smallest pass short of a corner, and its rotation drew that as a diagonal.
+      const r = half / (s * p.scale) + Math.hypot(off.x, off.y) + 1;
       ctx.save();
       ctx.globalAlpha = fogAnimEnabled ? fogAnimAlphas[i] : p.alpha;
       ctx.translate(cw / 2, ch / 2);
@@ -600,7 +653,7 @@ function drawLoadingFog(ctx, cw, ch) {
       ctx.scale(s * p.scale, s * p.scale);
       ctx.translate(off.x, off.y);
       ctx.fillStyle = cloudPattern;
-      ctx.fillRect(-bigR, -bigR, 2 * bigR, 2 * bigR);
+      ctx.fillRect(-r, -r, 2 * r, 2 * r);
       ctx.restore();
     }
     ctx.restore();

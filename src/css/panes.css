@@ -45,7 +45,9 @@
     align-items: stretch;
     background: #000;
   }
-  .stage-col { position: relative; min-width: 0; overflow: hidden; }
+  /* ⚠ FOG-COLOURED, NOT BLACK. Each half is a whole document that takes about half a second to
+     load, and the shell's own black showed through it as a flash on the TV. */
+  .stage-col { position: relative; min-width: 0; overflow: hidden; background: var(--fog-base); }
   .stage-frame { width: 100%; height: 100%; border: 0; display: block; }
 
   /* Spans the whole row, not just the gap: the chasm's fog bleeds over both maps' edges. */
@@ -54,11 +56,6 @@
     width: 100%; height: 100%;
     pointer-events: none;
   }
-
-  /* A half with no map yet: fog and nothing else. */
-  body.stage-half #landing h2,
-  body.stage-half #landing p,
-  body.stage-half #landing-loading { display: none !important; }
 
   /* ===== TWO COLUMNS (the parent window) ===== */
   body.panes-on #canvas-container,

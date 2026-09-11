@@ -3,9 +3,9 @@
 // player-window.js — HOW THE PLAYER WINDOW ARRIVES ON THE TV.
 //
 // THE GOAL OF THIS FEATURE: pressing Open Player puts the window up at once, showing the app's own
-// landing card while the map decodes, and swaps to the map when it is ready. What the players must
-// never see is the app booting: a flat navy sheet with nothing on it. A window is pre-warmed at DM
-// startup and kept hidden, so the button carries no page load and the card is on screen instantly.
+// drifting fog while the map decodes, and swaps to the map when it is ready. What the players must
+// never see is the app booting: a flat navy sheet, a wordmark, or a line of status text. A window
+// is pre-warmed at DM startup and kept hidden, so the button carries no page load.
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
 //
@@ -19,9 +19,11 @@
 //      the first sample, the map is already there and the card is on its way out. Either way it is
 //      gone once the map is on screen - which machine takes which order is not this file’s to decide.
 //   D. Once the map is on screen the card is gone, and it does not come back on a later switch.
-//   E. Closing the Player and pressing the button again works, leaves a fresh window warming for
+//   E. The Player screen carries no text of the app's own - no wordmark, no loading line - and
+//      the fog it shows while it waits reaches the corners of a narrow screen.
+//   F. Closing the Player and pressing the button again works, leaves a fresh window warming for
 //      the press after that, and never warms a second one over a Player that is already open.
-//   F. The DM's fullscreen button puts the Player window on the whole TV, and the button then
+//   G. The DM's fullscreen button puts the Player window on the whole TV, and the button then
 //      shows it is on.
 //
 // ⚠ C IS READ WHILE THE MAP IS STILL DECODING, which is only a window at all because the map is
@@ -163,8 +165,7 @@ module.exports = async function playerWindowFeature(rig) {
   const shot = require('path').join(rig.outDir, 'player-loading.png');
   await player.screenshot(shot);
   rig.note('Player while the map decodes: ' + shot);
-  rig.byEye('whether ' + shot + ' reads as the app’s own drifting fog behind the wordmark, ' +
-            'rather than a flat sheet with text on it');
+  rig.byEye('whether ' + shot + ' reads as the app’s own drifting fog, rather than a flat sheet');
 
   // ── D. The card goes when the map arrives ─────────────────────────────
   await player.waitFor('!!mapOffscreen', 60000, 'the map to reach the Player');
@@ -174,7 +175,51 @@ module.exports = async function playerWindowFeature(rig) {
   // Printed rather than asserted — a threshold here would measure this machine.
   rig.note('button to window on screen: ' + waitMs + ' ms; the card then holds until the map lands');
 
-  // ── E. Close, warm again, re-open ───────────────────────────────────────
+  // ── E. nothing but fog on the Player screen ────────────────────────────
+  // ⚠ THE CARD IS FORCED OPEN AND PUT BACK. A Player that already has a map has taken it down,
+  // so reading it as it stands answers nothing and passes with the wordmark still in the CSS.
+  const cardText = await player.evaluate(`(() => {
+    const card = document.getElementById('landing');
+    const prevD = card.style.display, had = card.classList.contains('loading');
+    card.style.display = ''; card.classList.add('loading');
+    const vis = (el) => (el && getComputedStyle(el).display !== 'none') ? (el.innerText || '').trim() : '';
+    const text = [vis(card.querySelector('h2')), vis(card.querySelector('p')),
+                  vis(document.getElementById('landing-loading'))].filter(Boolean).join(' | ');
+    card.style.display = prevD; if (!had) card.classList.remove('loading');
+    return text;
+  })()`);
+  rig.check(cardText === '',
+    "the Player screen would show text in front of the players: " + cardText);
+
+  // ⚠ ONE CLOUD PASS AT A TIME, ON A CANVAS OF THIS SCENARIO'S OWN. The three passes overlap, so
+  // two of them still paint a corner the third never reached and the corner reads as painted.
+  // The drift is pinned at its far end, because how far the clouds have slid is otherwise a coin
+  // toss and a corner that tears a minute later passes here.
+  const idleFog = await player.evaluate(`(() => {
+    const cv = document.createElement('canvas');
+    cv.width = 583; cv.height = 795;   // one half of a 1187-wide TV
+    const g = cv.getContext('2d');
+    if (!cloudPattern) return { err: 'the Player has no cloud texture' };
+    for (const o of fogAnimOffsets) { o.x = 511; o.y = 511; }
+    for (let i = 0; i < fogAnimAlphas.length; i++) fogAnimAlphas[i] = (i === 2 ? 1 : 0);
+    drawLoadingFog(g, cv.width, cv.height);
+    const spread = (x, y, n) => {
+      const d = g.getImageData(x, y, n, n).data;
+      let sum = 0, sum2 = 0, c = 0;
+      for (let i = 0; i < d.length; i += 4) { sum += d[i]; sum2 += d[i] * d[i]; c++; }
+      return Math.sqrt(Math.max(0, sum2 / c - (sum / c) * (sum / c)));
+    };
+    const n = 60;
+    return { corner: +spread(0, 0, n).toFixed(2),
+             centre: +spread((cv.width - n) >> 1, (cv.height - n) >> 1, n).toFixed(2) };
+  })()`);
+  rig.check(!idleFog.err, 'the idle fog could not be drawn: ' + idleFog.err);
+  rig.check(idleFog.corner > idleFog.centre * 0.2,
+    'a cloud pass stops short of the corner on a narrow Player screen, and its rotation draws ' +
+    'that as a diagonal band across the fog (spread ' + idleFog.corner + ' against ' +
+    idleFog.centre + ' at the centre)');
+
+  // ── F. Close, warm again, re-open ───────────────────────────────────────
   // ⚠ window.open() REUSES A NAMED WINDOW, so warming a replacement straight after a close can
   // land on the one still dying and leave the button dead on the next press.
   player.close();
@@ -197,7 +242,7 @@ module.exports = async function playerWindowFeature(rig) {
     'prewarmPlayer() opened a window with the Player already open, which re-navigates the live ' +
     'Player window and reloads the TV in the middle of a session');
 
-  // ── F. Fullscreen, and why it stays by eye ─────────────────────────────
+  // ── G. Fullscreen, and why it stays by eye ─────────────────────────────
   rig.byEye('whether the DM fullscreen button puts the Player window on the whole TV, and the ' +
             'button then shows it is on. Driving it is not automated: setFullScreen moves the ' +
             'window onto the nearest real display, and the rig may not put a window on the DM’s ' +

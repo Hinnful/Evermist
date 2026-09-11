@@ -33,6 +33,9 @@
 //   L. Closing a column ends two-map mode on the map that is left, and the TV keeps showing it
 //      rather than going dark.
 //   M. Running one map alone behaves exactly as it did before any of this existed.
+//   N. Opening the second map does not rebuild the fog's cloud texture in each new screen.
+//      Every one of them copies the DM window's, and a half that is still loading has fog
+//      behind it rather than black.
 //
 // ⚠ A COLUMN IS AN <IFRAME>, AND `rig.dm` REACHES THE PARENT FRAME ONLY. `polygons`, `zoom` and
 // `currentScene` for a column live in that column's own JS context — `rig.pane('A')` is the only
@@ -496,6 +499,31 @@ module.exports = async function twoMapsFeature(rig) {
   rig.check(badgeOf(sceneA) === 'Left' && badgeOf(sceneB) === 'Right',
             'the library does not say which column each open map is in: ' + JSON.stringify(badges));
 
+  // ── N. the new screens copy the cloud texture, and wait on fog ───────────
+  // ⚠ THE FINGERPRINT IS A ROW OF PIXELS, not a length. Four screens each building their own
+  // sixteen frames is about six seconds of one shared thread, and every window sags for it -
+  // but four complete sets and four copies count the same, so only the pixels tell them apart.
+  const CLOUDSET = `(() => {
+    if (!cloudFrames || !cloudFrames.length) return { n: 0 };
+    const c = cloudFrames[0], d = c.getContext('2d').getImageData(0, 0, c.width, 1).data;
+    let mark = 0;
+    for (let i = 0; i < d.length; i += 4) mark = (mark + d[i] * (i + 1)) % 2147483647;
+    return { n: cloudFrames.length, w: c.width, mark };
+  })()`;
+  const dmSet = await dm.evaluate(CLOUDSET);
+  rig.check(dmSet.n > 1, 'the DM window holds no cloud texture to copy, so N compares nothing');
+  for (const [who, win] of [['column A', paneA], ["column A's half", tvA], ["column B's half", tvB]]) {
+    const set = await win.evaluate(CLOUDSET);
+    rig.check(set.n === dmSet.n && set.mark === dmSet.mark,
+              who + " built its own cloud texture instead of copying the DM window's, which is " +
+              "seconds of one shared thread and drops every window to a crawl while two maps open");
+  }
+  // ⚠ READ THROUGH A HALF, because the shell is a frame's parent and not a window the rig holds.
+  const behind = await tvA.evaluate(
+    "parent.getComputedStyle(parent.document.querySelector('.stage-col')).backgroundColor");
+  rig.check(behind === 'rgb(26, 26, 46)',
+            'the Player shell shows ' + behind + ' behind a half, so the time each half takes ' +
+            'to load reads as the screen dropping out');
   // ── L. closing a column ends two-map mode, and the TV stays lit ──────────
   await dm.evaluate('document.querySelector(`.pane-col[data-pane="B"] .pane-close`).click(); 0');
   await dm.waitFor('!panesActive', 30000, 'closing a column to end two-map mode');

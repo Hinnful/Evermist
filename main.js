@@ -137,6 +137,8 @@ function createDMWindow() {
       height: 800,
       show: false,
       title: 'Evermist — Player View',
+      // --fog-base in base.css: Chromium paints it between two documents, and this window navigates.
+      backgroundColor: '#1a1a2e',
       icon: windowIcon,
       menuBarVisible: false,
       webPreferences: {

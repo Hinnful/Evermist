@@ -315,3 +315,17 @@ wrongly. On an image map minimizing dropped ~470 MB; on an animated map the read
 image path and ±3 GB on the video path, so a single observation attributes nothing — but peak
 working set only ever ratchets up. Do not re-close this from image-map data.
 
+
+### One document builds the cloud texture and the rest copy it · `SETTLED` (2026-09-11)
+Two-map mode opens four Player documents at once, sharing one renderer process. Each built its own
+sixteen-frame 512px noise set at startup, about 1.5 seconds of JavaScript, so every window ran at
+about 4fps for six seconds after the Two maps press. A new document now copies a finished set from
+the DM window, through `parent`, `opener` or a half's `parent.opener`. Only the Player pre-warmed at
+DM startup still builds one - no map exists yet to copy from - and it does that hidden.
+
+**The set carries the warp it was built with**, never the live numbers: a source part-way through a
+regeneration still holds the old frames while its own warp already reads as the new.
+
+**Two dead ends, both paid for.** It is not GPU texture work and not document loading. And the probe
+measuring it was cancelling the work it measured: a timing wrapper hid `generateCloudFrames._genId`,
+so the continuation read NaN and returned, which looked like the probe's poll curing the stall.

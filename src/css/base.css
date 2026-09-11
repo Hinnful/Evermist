@@ -13,6 +13,7 @@
     user-select: none;
     position: relative;
   }
+  body.player-mode { background: var(--fog-base); }
 
   /* ===== FLOATING PANELS ===== */
   /* ONE surface for every floating thing, defined here so the four the DM sees at once cannot
@@ -26,6 +27,9 @@
     --panel-border: 1.5px solid rgba(255, 255, 255, 0.1);
     --panel-radius: 12px;
     --panel-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
+    /* Mirrors fogBaseColor's default in state.js. It is what a Player screen shows before its
+       own fog paints, so a document still loading reads as fog rather than as a black flash. */
+    --fog-base: #1a1a2e;
   }
 
   /* RIGHT SIDEBAR — same zoom-fix pattern as bottom toolbar:

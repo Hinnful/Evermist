@@ -1014,7 +1014,7 @@ initPixiRenderer(container);
 if (isPlayer) {
   // Fill viewport with fog colour outside the map rect via CSS — keeps PixiJS canvas transparent
   // so the video DOM element can show through for video maps.
-  container.style.background = '#1a1a2e';
+  container.style.background = 'var(--fog-base)';
   // ⚠ NEVER PUT THIS IN THE DOM. A DOM canvas sits above #pixi-canvas, which now carries the fog,
   // and the grid would draw over unexplored ground on the players' screen.
   playerGridCanvas = document.createElement('canvas');

@@ -178,11 +178,9 @@ function initPane() {
 
 function initPlayer() {
   fogAnimEnabled = true; // player view always animates
-  // ⚠ A HALF WITH NO MAP SHOWS FOG ALONE: a second wordmark on one TV reads as a fault.
-  if (paneId) {
-    document.body.classList.add('stage-half');
-    if (!mapOffscreen) startLoadingFog();
-  }
+  if (paneId) document.body.classList.add('stage-half');
+  // ⚠ FOG ALONE: the card's text is hidden here (overlays.css), so a mapless Player needs this.
+  if (!mapOffscreen) startLoadingFog();
 
   // Pre-generate the cloud texture while the player sits on the idle screen. The first
   // generateCloudFrames() blocks for a second or two, and doing it lazily inside loadFog shows

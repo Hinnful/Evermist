@@ -82,6 +82,15 @@ last given. A third way to hide the screen is a third thing to remember mid-sess
 
 ---
 
+### The Player screen shows no text of the app's own · `SETTLED` (2026-09-11)
+The Player screen carries the map and the fog over it. No wordmark, no status line, no instruction,
+at any moment - the seconds before the first map has decoded included, where the empty state is
+drifting fog alone. A name on the TV reads as a title screen to the people at the table, and a
+status line reads as a fault.
+
+The DM window keeps that card's text. It names the app and points at the scene menu, which is
+chrome for the person driving.
+
 ## What the features are for
 
 ### Auto-polygons: prefer missing a room over producing a bad one · `SETTLED` (design)

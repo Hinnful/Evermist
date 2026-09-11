@@ -163,10 +163,12 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
   size and took a release gate down on a 1008x681 runner.
 - **A criterion over a TRANSIENT must poll, and must assert every order the app allows.** Reading
   a state that exists for a moment, once, is a coin toss the slow machine loses. Poll for it with
-  a bound. Then check whether the other order is legitimate too - the Player's cover lifts on a
-  timer, not on the map arriving - and if it is, branch and assert both. **Neither branch may be
-  a free pass**; a branch that only notes what happened is a silent skip wearing a check's
-  clothes.
+  a bound. Then enumerate EVERY order the app allows and branch on all of them - the Player's cover
+  lifts on a timer, not on the map arriving, and on a slow runner the decode can finish before the
+  first sample is even taken. **Two branches looked like all of them and a third order took a
+  release gate down.** Two events the app never ties together must never be asserted as one.
+  **No branch may be a free pass**; a branch that only notes what happened is a silent skip wearing
+  a check's clothes.
 - **An element inside `display:none` has zero-sized rects**, so a spacing or centring assertion
   against it passes by accident. Reveal it first.
 - **Both windows must stay visible and unminimized.** An OS-minimize makes `main.js` send
