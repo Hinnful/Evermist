@@ -251,3 +251,31 @@ jobs:
             incoming/*.AppImage
             incoming/latest*.yml
             incoming/*.blockmap
+
+  # The staging branch has done its job once main holds the commit. Deleting it here rather than in
+  # land, because publish checks out the branch ref to read the notes off it.
+  # ⚠ Never delete on a red gate. The fix amends that commit and force-pushes the same branch.
+  cleanup:
+    needs: [land, publish]
+    if: >-
+      always() &&
+      needs.land.result == 'success' &&
+      needs.publish.result != 'failure' && needs.publish.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Never fail the run over cleanup: the release is already public by this point, and a red X
+      # on a shipped version reads as a broken release.
+      # ⚠ The branch name arrives through the ENVIRONMENT, never interpolated into the script.
+      # A ${{ }} substitution happens before the shell parses the line, so a quote in a ref name
+      # would end the string and run what follows.
+      - name: Delete the staging branch
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          B="$BRANCH"
+          if git ls-remote --exit-code --heads origin "$B" >/dev/null 2>&1; then
+            git push origin --delete "$B" || echo "could not delete $B, leaving it"
+          else
+            echo "$B is already gone"
+          fi

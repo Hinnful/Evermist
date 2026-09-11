@@ -23,9 +23,9 @@ reach for the rig only when code cannot answer the question. Two cases qualify:
 not `smoke`, not one scenario. A finished chunk goes to the DM to look at, and `/commit` is where
 it gets proven. Write the scenario during the build and run nothing.
 
-**A commit gets a SMOKE pass; the regression set runs in CI.** `/commit` Step 3 picks `smoke`
-plus the scenarios covering what the diff touched, and blocks on red. Its Step 2 settles where
-the change's criteria live before that set runs. **`.github/workflows/release.yml` then runs
+**A commit gets a SMOKE pass; the regression set runs in CI.** `/commit` Step 2 settles where the
+change's criteria live, then picks `smoke` plus the scenarios covering what the diff touched, and
+blocks on red. **`.github/workflows/release.yml` then runs
 `regression` against the built `.exe` on every shipping push, and a red gate means no tag, no
 release and no installers.** So the full set is never run by hand: reach for one scenario to
 answer a question, and let CI own the sweep.

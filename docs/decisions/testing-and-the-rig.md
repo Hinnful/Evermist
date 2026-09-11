@@ -164,3 +164,18 @@ the `src/**` globs cover everything, and a third file under `lib/` is the case t
 
 The fork's version checks scripts only. Checking stylesheets as well is the addition, because the
 silent failure named in CLAUDE.md is the stylesheet one.
+
+### A recovery path is only testable with its neighbours stood down · `SETTLED` (2026-09-11)
+An animated map has four ways back from a stop: the `pause` handler, the `waiting` handler, the
+`stalled` handler and the watchdog's three-second poll. They overlap on purpose, so a scenario that
+breaks one and waits for the map to recover watches another one do it. Three checks passed with the
+code under them deleted before this was caught.
+
+Each criterion now stops whatever else could recover the map: `stopVideoWatchdog()` for the three
+handlers, and `_bufferingPause` for the watchdog's own check, which is the app's own way of saying
+a pause is not to be touched.
+
+**The watchdog's frame-pump restart stays uncovered.** This window is parked off-screen, Chromium
+pauses a muted video in it, and the pause handler's resume reaches the pump through
+`onVideoPlaying` about two seconds before the poll would. The scenario asserts the pump comes back
+and does not name which half brought it.

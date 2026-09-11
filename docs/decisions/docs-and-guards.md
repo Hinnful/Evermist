@@ -89,8 +89,9 @@ only to whoever owns the tooling.
 ### A pointer is not a trigger · `SETTLED`
 Links from `CLAUDE.md` to another doc only fire if someone is already reading that exact
 section, which is how `ARCHITECTURE.md` drifted seven modules stale without anyone noticing.
-The fix was not another rule: every doc now has a guard hook that fires on a write, `/wrap`
-files into all of them, and `/brief` reads the ledger as a rejection filter. **A doc with no
+The fix was not another rule: every doc now has a guard hook that fires on a write, the
+ship-the-change command files into all of them, and the session-start one reads the ledger as a
+rejection filter. **A doc with no
 reader and no writer in the actual workflow will rot, however well written.**
 
 ### DECISIONS.md is guarded by a NOTICE, not a ratchet · `SETTLED`

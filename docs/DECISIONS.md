@@ -627,6 +627,18 @@ to `package.json`, so a stray commit on top can no longer become the public note
 The open pull request keeps every failed attempt's checks on its own page, which is the audit
 trail the branch would otherwise lose to the force-push.
 
+### The staging branch is deleted after it lands, never before · `SETTLED` (2026-09-11)
+A branch outlives its change: `land` fast-forwards `main` onto it and nothing ever removes it, so
+the branch list grows one dead entry per release. A `cleanup` job now deletes it.
+
+It runs last, after `publish`, because `publish` checks out the branch ref to read the release
+notes off it. It refuses unless `land` succeeded, which is what keeps a red gate's branch alive for
+the amend that follows. And it never fails the run: the release is already public by the time it
+runs, and a red cross on a shipped version reads as a broken release.
+
+The branch name reaches the script through the environment, not a `${{ }}` substitution into the
+shell body, which a quote in a ref name would end.
+
 ### The tag is created last, not first · `SETTLED` (2026-09-08)
 Three shapes were drawn. Tagging by hand and gating before upload leaves a live release page with
 no installers on it when the gate goes red. Publishing to a draft and promoting by hand puts the
