@@ -7,8 +7,8 @@
     "src/input.js": 13991,
     "src/tools.js": 43318,
     "src/shapeMenu.js": 3016,
-    "src/about.js": 4882,
-    "src/updater.js": 2138,
+    "src/about.js": 5062,
+    "src/updater.js": 4677,
     "src/player.js": 28202,
     "src/backup.js": 13406,
     "src/fog.js": 61390,
@@ -31,6 +31,8 @@
     "src/panes.js": 22030,
     "src/stage.js": 6326,
     "src/fogGeometry.js": 29460,
-    "src/sceneGroups.js": 5396
+    "src/sceneGroups.js": 5396,
+    "src/changelog.js": 4371,
+    "src/changelogData.js": 85851
   }
 }

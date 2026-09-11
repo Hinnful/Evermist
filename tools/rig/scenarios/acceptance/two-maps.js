@@ -37,6 +37,8 @@
 //   N. Opening the second map does not rebuild the fog's cloud texture in each new screen.
 //      Every one of them copies the DM window's, and a half that is still loading has fog
 //      behind it rather than black, and none of them rebuilds the one it copied.
+//   O. An update announces itself in the DM window alone. A column is the same page in an
+//      iframe, and a toast raised there would sit over a map and eat the one announcement.
 //
 // ⚠ A COLUMN IS AN <IFRAME>, AND `rig.dm` REACHES THE PARENT FRAME ONLY. `polygons`, `zoom` and
 // `currentScene` for a column live in that column's own JS context — `rig.pane('A')` is the only
@@ -566,6 +568,24 @@ module.exports = async function twoMapsFeature(rig) {
   rig.check(behind === 'rgb(26, 26, 46)',
             'the Player shell shows ' + behind + ' behind a half, so the time each half takes ' +
             'to load reads as the screen dropping out');
+  // ── O. an update announces itself in the DM window, never inside a column ─
+  // ⚠ AN OLD VERSION GOES INTO THE COLUMN'S OWN RECORD FIRST, so an unguarded initUpdater would
+  // have something to announce. Without that setup the check passes on an app with nothing to say.
+  // ⚠ AND IT IS WAITED FOR. The announcement arrives a tick later, over IPC, so reading straight
+  // after the call finds no toast however broken the guard is.
+  await paneA.evaluate(`(() => {
+    localStorage.setItem('evermistSeenVersion', '0.0.1');
+    initUpdater();
+    return 0;
+  })()`);
+  rig.check(await paneA.evaluate('isPane === true'),
+            'a column is not running in pane mode, so the check below proves nothing');
+  try { await paneA.waitFor('!!document.getElementById("up-toast")', 1500, 'a toast in the column'); }
+  catch (_) {}
+  rig.check(!(await paneA.evaluate('!!document.getElementById("up-toast")')),
+            'an update announces itself inside a map column, over the map - and the DM window then ' +
+            'shows nothing, because both share one record of the version last run');
+
   // ── L. closing a column ends two-map mode, and the TV stays lit ──────────
   await dm.evaluate('document.querySelector(`.pane-col[data-pane="B"] .pane-close`).click(); 0');
   await dm.waitFor('!panesActive', 30000, 'closing a column to end two-map mode');

@@ -967,6 +967,8 @@
 <script src="src/floorPlan.js"></script>
 <script src="src/moduleText.js"></script>
 <script src="src/roomPanel.js"></script>
+<script src="src/changelogData.js"></script>
+<script src="src/changelog.js"></script>
 <script src="src/about.js"></script>
 <script src="src/updater.js"></script>
 <script src="src/musicPlan.js"></script>
@@ -1054,7 +1056,7 @@ if (isPane) initPane();
 // Mouse events, keyboard shortcuts, shape helpers, and legend → input.js.
 initInput();
 if (!isPlayer) initAbout();   // About block inside the shortcuts panel → about.js
-if (!isPlayer) initUpdater(); // Update line under it → updater.js (needs About's slot)
+if (!isPlayer) initUpdater(); // Update line + toast → updater.js (needs About's slot)
 if (!isPlayer) initMusic();   // The music bubble → music.js
 
 window.addEventListener('resize', () => {

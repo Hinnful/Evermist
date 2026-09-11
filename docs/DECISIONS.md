@@ -388,6 +388,25 @@ toolbar, the control-panel tabs, the scene library, and the dialogs.
 
 ## Storage, packaging and the shell
 
+### The in-app changelog is derived from release commits · `SETTLED` (2026-09-12)
+`tools/build-changelog.js` reads every `<version> - <note>` commit subject and its body into
+`src/changelogData.js`, which the What's new panel renders. A hand-kept `CHANGELOG.md` was
+rejected: the release notes on GitHub are already the commit message verbatim, and a second copy
+written by hand drifts from it with nothing to catch the drift. A Markdown file parsed at runtime
+was rejected too - `fetch()` of a local file is blocked on `file://`, so a generated `<script>`
+global is the only shape that needs no parser and no network.
+
+The generator runs AFTER the version-bump commit and the commit is amended, because the newest
+entry is that commit's own message.
+
+### The update toast is the DM window's alone · `SETTLED` (2026-09-12)
+A two-column pane is an `<iframe>` of the same page with `isPlayer` false, so `initUpdater` runs
+in all three documents and they share one `localStorage`. Without the `isPane` guard a toast lands
+over a map column and the record of the version last run is consumed there, leaving the DM window
+silent. The toast also sits above the shortcut legend rather than on the floor-plan notice strip:
+an update arrives whenever it arrives, and the legend's dimmer would otherwise swallow the click
+that installs it.
+
 ### No frameworks, no bundler, no build step · `SETTLED`
 Plain JavaScript in `<script>` tags, because the app has to run straight off the local
 filesystem. That single requirement is also why ES modules are banned: `import`/`export` do not

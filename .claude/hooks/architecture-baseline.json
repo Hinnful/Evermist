@@ -16,7 +16,9 @@
     "missing:musicplan.js",
     "missing:gridcalibrate.js",
     "missing:panes.js",
-    "missing:stage.js"
+    "missing:stage.js",
+    "missing:changelog.js",
+    "missing:changelogdata.js"
   ],
   "warnedBytes": 52228
 }

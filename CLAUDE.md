@@ -109,7 +109,9 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `confirmDialog.js` | The app's only sanctioned confirmation dialog |
 | `about.js` | The About block in the legend footer: mark, version, repo |
-| `updater.js` | The update line under About, and the restart button |
+| `changelogData.js` | The release list. GENERATED; never edit it |
+| `changelog.js` | The What’s new panel |
+| `updater.js` | The update toast, the update line under About, and the restart button |
 | `musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Unit-tested |
 | `music.js` | The music bubble: track library and playback |
 | `musicDownload.js` | The Add music panel: paste a link, pick tracks, download |
@@ -129,7 +131,8 @@ mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js →
 viewport.js → panes.js → stage.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
 input.js →
 stress.js → memProbe.js → render.js → gridCalibrate.js → minimap.js → controlPanel.js → confirmDialog.js →
-floorPlan.js → moduleText.js → roomPanel.js → about.js → updater.js → musicPlan.js →
+floorPlan.js → moduleText.js → roomPanel.js → changelogData.js → changelog.js → about.js →
+updater.js → musicPlan.js →
 music.js → musicDownload.js → inline <script>
 ```
 
@@ -258,6 +261,9 @@ amends that commit - never a second commit on top.
 **To pull a bad release: `/rollback`.** A `git revert` does not undo one.
 
 **Never tag or publish by hand.** The workflow owns both, or neither.
+
+**Never write `src/changelogData.js` by hand.** `tools/build-changelog.js` turns release commit
+subjects into it. Run it after the bump commit and amend, or the panel misses that release.
 
 **Pipeline rules:**
 - **Upload with `softprops/action-gh-release@v2`, NOT `electron-builder --publish`.**

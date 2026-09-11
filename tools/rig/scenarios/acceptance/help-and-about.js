@@ -14,7 +14,12 @@
 //      app is worse than one that was never listed.
 //   D. The About footer carries the mark, the wordmark and the repo, and its version is the one
 //      the build was cut with — never a literal in the page that goes stale on the next bump.
-//   E. The Player screen carries neither the button nor the panel.
+//   E. What's new opens from the About footer, sits ABOVE its own dimmer so the DM can reach
+//      it, marks the version they are running, opens any release to the full note it
+//      shipped with, and closes every way it offers.
+//   F. A ready update announces itself on screen, in the corner and not over the map, and the
+//      restart after it says what version arrived. A first-ever run announces nothing.
+//   G. The Player screen carries neither the button nor the panel.
 //
 // ⚠ THE VERSION IS HELD AGAINST package.json, WHICH IS WHAT main HANDS THE PAGE. Checking that
 // the line is merely non-empty passes on a hard-coded string, which is the one failure this is
@@ -190,7 +195,202 @@ module.exports = async function helpAndAboutFeature(rig) {
             'the About block shows ' + JSON.stringify(about.version) + ' while this build is ' +
             pkgVersion + ', so the version is not the one main handed the page');
 
-  // ── E. None of it reaches the Player ──────────────────────────────────────
+  // ── E. The What's new panel ───────────────────────────────────────────────
+  // ⚠ REACHABILITY IS READ WITH elementFromPoint, never from the panel being in the DOM. The
+  // panel and its dimmer share one stacking context, so a dimmer painting over the panel leaves
+  // every check on markup, size and position passing while no click can land on it.
+  await dm.evaluate('document.getElementById("btn-help").click(); 0');
+  rig.check(await dm.evaluate('__rigShown("#about-whatsnew")'),
+            'the About footer carries no What\'s new link, so the changelog has no way in');
+
+  await dm.evaluate('document.getElementById("about-whatsnew").click(); 0');
+  await dm.waitFor('!!document.getElementById("cl-modal")', 10000, 'the What\'s new panel to build');
+
+  const panel = await dm.evaluate(`(() => {
+    const modal = document.getElementById('cl-modal');
+    const r = modal.getBoundingClientRect();
+    const hitAt = (x, y) => { const el = document.elementFromPoint(x, y); return !!(el && modal.contains(el)); };
+    const rows = Array.from(document.querySelectorAll('#cl-body .cl-entry'));
+    const first = rows[0] ? rows[0].getBoundingClientRect() : null;
+    const closeBox = document.getElementById('cl-close').getBoundingClientRect();
+    const chip = document.querySelector('#cl-body .cl-chip');
+    return {
+      shown: r.width > 0 && r.height > 0,
+      centreHit: hitAt(r.left + r.width / 2, r.top + r.height / 2),
+      headHit: hitAt(r.left + r.width / 2, r.top + 6),
+      rowHit: first ? hitAt(first.left + first.width / 2, first.top + first.height / 2) : false,
+      closeHit: hitAt(closeBox.left + closeBox.width / 2, closeBox.top + closeBox.height / 2),
+      rows: rows.length,
+      entries: typeof CHANGELOG !== 'undefined' ? CHANGELOG.length : -1,
+      chips: document.querySelectorAll('#cl-body .cl-chip').length,
+      chipOn: chip ? chip.closest('.cl-entry').querySelector('.cl-ver').textContent : '',
+    };
+  })()`);
+  rig.note('What\'s new: ' + JSON.stringify(panel));
+
+  rig.check(panel.shown, 'the What\'s new link opened nothing the DM can see');
+  rig.check(panel.centreHit && panel.headHit && panel.rowHit && panel.closeHit,
+            'the What\'s new panel is on screen and a click at it lands on something else, so the ' +
+            'DM gets a darkened panel they cannot use: ' + JSON.stringify(panel));
+  rig.check(panel.rows === panel.entries && panel.rows > 0,
+            'the panel lists ' + panel.rows + ' releases out of ' + panel.entries + ' the app carries');
+  rig.check(panel.chips === 1 && panel.chipOn.indexOf(pkgVersion) === 0,
+            'the panel marks ' + JSON.stringify(panel.chipOn) + ' as installed while this build is ' +
+            pkgVersion + ', so the DM cannot tell which releases they already have');
+
+
+  // ⚠ THE BODY IS HELD AGAINST changelogData.js, not merely found non-empty. A row that expands
+  // to the summary again would pass a length check and tell the DM nothing new.
+  const expanded = await dm.evaluate(`(() => {
+    const row = document.querySelector('#cl-body .cl-entry');
+    row.querySelector('.cl-head-btn').click();
+    const full = row.querySelector('.cl-full');
+    const hitAt = (el) => { const b = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+      return !!(hit && (hit === el || el.contains(hit))); };
+    const gh = row.querySelector('.cl-github');
+    return {
+      open: !full.hidden && full.getClientRects().length > 0,
+      text: (row.querySelector('.cl-text') || {}).textContent || '',
+      want: CHANGELOG[0].body,
+      tag: CHANGELOG[0].tag || '',
+      github: !!gh,
+      githubHit: gh ? hitAt(gh) : false,
+      collapsed: (() => { row.querySelector('.cl-head-btn').click(); return full.hidden; })(),
+    };
+  })()`);
+  rig.check(expanded.open,
+            'a release in the panel does not open, so the DM sees one line and never the rest of ' +
+            'what that version changed');
+  rig.check(expanded.text.length > 0 && expanded.text === expanded.want,
+            'an opened release shows text that is not its own description: ' +
+            JSON.stringify(expanded.text.slice(0, 80)));
+  rig.check(!expanded.tag || (expanded.github && expanded.githubHit),
+            'release ' + expanded.tag + ' has a page on GitHub and the panel offers no way to it');
+  rig.check(expanded.collapsed, 'an opened release does not close again, so the list only ever grows');
+
+  // ⚠ THE CARET IS A ::after ON THE ROW, so it has no box to read. Its lane is the row's right
+  // padding, and the check is that the date ends before that lane starts.
+  const lane = await dm.evaluate(`(() => {
+    const row = document.querySelector('#cl-body .cl-entry');
+    const rowBox = row.getBoundingClientRect();
+    const dateBox = row.querySelector('.cl-date').getBoundingClientRect();
+    return { gap: +(rowBox.right - dateBox.right).toFixed(2) };
+  })()`);
+  rig.check(lane.gap >= 8,
+            'the date runs under the dropdown arrow: it ends ' + lane.gap + 'px from the row edge, ' +
+            'and the arrow needs 8');
+
+  // ⚠ DISPATCHED AT THE PANEL, never at the document. The guard is a CAPTURE listener on the
+  // document, so an event whose target IS the document skips the capture phase entirely and the
+  // check would report a guard that works as broken.
+  const keys = await dm.evaluate(`(() => {
+    setShape('select');
+    document.getElementById('cl-modal').dispatchEvent(new KeyboardEvent('keydown',
+      { key: 'e', bubbles: true, cancelable: true }));
+    const whileOpen = shape;
+    closeChangelog();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true, cancelable: true }));
+    return { whileOpen: whileOpen, whenShut: shape };
+  })()`);
+  rig.check(keys.whileOpen === 'select',
+            'a map shortcut fires through the open What\'s new panel, so Delete while the DM ' +
+            'reads takes out the room they had selected: shape became ' + keys.whileOpen);
+  rig.check(keys.whenShut === 'rect',
+            'the key does nothing with the panel shut either, so the check above passes for the ' +
+            'wrong reason: shape is ' + keys.whenShut);
+
+  await dm.evaluate('document.getElementById("cl-close").click(); 0');
+  rig.check(!(await dm.evaluate('__rigShown("#cl-modal")')),
+            'the panel\'s close button does not shut it');
+
+  await dm.evaluate('document.getElementById("about-whatsnew").click(); document.getElementById("cl-backdrop").click(); 0');
+  rig.check(!(await dm.evaluate('__rigShown("#cl-modal")')),
+            'a click beside the What\'s new panel does not shut it');
+
+  // ⚠ ESCAPE IS DISPATCHED AT THE PANEL, not the document. Its handler stops the event so the
+  // legend underneath stays open, which means a document-level keydown never reaches it.
+  await dm.evaluate(`(() => {
+    document.getElementById('about-whatsnew').click();
+    document.getElementById('cl-modal').dispatchEvent(new KeyboardEvent('keydown',
+      { key: 'Escape', bubbles: true, cancelable: true }));
+    return 0;
+  })()`);
+  rig.check(!(await dm.evaluate('__rigShown("#cl-modal")')),
+            'Escape does not shut the What\'s new panel');
+  rig.check(await dm.evaluate('__rigShown("' + LEGEND + '")'),
+            'Escape shut the help panel underneath as well, so one press closed two things');
+
+  // ── F. The update toast ───────────────────────────────────────────────────
+  // ⚠ DRIVEN THROUGH upToast AND announceInstalledVersion THEMSELVES. main only reaches the page
+  // when a real newer release exists on GitHub, and `npm start` never even checks, so a scenario
+  // that waited for a status would be waiting for something that cannot happen here.
+  await dm.evaluate('hideUpdateToast(); 0');
+
+  const ready = await dm.evaluate(`(() => {
+    upToast('Version 9.9.9 is ready to install', 'Restart now', () => { globalThis.__rigRestart = 1; }, 0);
+    const t = document.getElementById('up-toast');
+    const b = t.getBoundingClientRect();
+    const cta = t.querySelector('.up-cta').getBoundingClientRect();
+    const hit = document.elementFromPoint(cta.left + cta.width / 2, cta.top + cta.height / 2);
+    return {
+      shown: b.width > 0 && b.height > 0,
+      msg: t.querySelector('.up-msg').textContent,
+      ctaHit: !!(hit && t.contains(hit)),
+      // The map fills the window, so a toast over the middle of it would take clicks meant for fog.
+      offMap: b.top < 120 && b.right > document.documentElement.clientWidth - 200,
+    };
+  })()`);
+  rig.note('update toast: ' + JSON.stringify(ready));
+  rig.check(ready.shown && ready.msg.indexOf('9.9.9') > 0,
+            'a ready update puts nothing on screen, so the DM only finds it by opening the help panel');
+  rig.check(ready.ctaHit, 'the toast is on screen and its button cannot be clicked');
+  rig.check(ready.offMap, 'the toast sits over the map instead of the corner: ' + JSON.stringify(ready));
+
+  await dm.evaluate('document.querySelector("#up-toast .up-x").click(); 0');
+  rig.check(!(await dm.evaluate('__rigShown("#up-toast")')), 'the toast cannot be dismissed');
+
+  // ⚠ A FIRST-EVER RUN MUST SAY NOTHING. The app cannot tell "freshly installed" from "just
+  // updated" except by the version it stored last time, and announcing an update to someone who
+  // has never run it before is a lie.
+  const firstRun = await dm.evaluate(`(() => {
+    localStorage.removeItem('evermistSeenVersion');
+    announceInstalledVersion();
+    return 0;
+  })()`);
+  await dm.waitFor('localStorage.getItem("evermistSeenVersion") !== null', 10000,
+                   'the app to record the version it is running');
+  rig.check(!(await dm.evaluate('__rigShown("#up-toast")')),
+            'a first run announces an update that never happened');
+
+  // Now the same call with an older version on record, which is what a real install leaves behind.
+  await dm.evaluate(`(() => {
+    localStorage.setItem('evermistSeenVersion', '0.0.1');
+    announceInstalledVersion();
+    return 0;
+  })()`);
+  await dm.waitFor('__rigShown("#up-toast")', 10000, 'the toast that follows an update');
+  const installed = await dm.evaluate(`(() => {
+    const t = document.getElementById('up-toast');
+    return { msg: t.querySelector('.up-msg').textContent, cta: t.querySelector('.up-cta').textContent };
+  })()`);
+  rig.note('after update: ' + JSON.stringify(installed));
+  rig.check(installed.msg === 'Updated to ' + pkgVersion,
+            'the toast after an update says ' + JSON.stringify(installed.msg) + ' on a ' +
+            pkgVersion + ' build');
+
+  await dm.evaluate('document.querySelector("#up-toast .up-cta").click(); 0');
+  try { await dm.waitFor('__rigShown("#cl-modal")', 10000, 'What\'s new to open from the toast'); } catch (_) {}
+  rig.check(await dm.evaluate('__rigShown("#cl-modal")'),
+            'the toast offers What\'s new and pressing it opens nothing, so the DM is told a ' +
+            'version arrived and never what it changed');
+  await dm.evaluate('closeChangelog(); hideUpdateToast(); 0');
+
+  rig.check(await dm.evaluate('localStorage.getItem("evermistSeenVersion") === ' + JSON.stringify(pkgVersion)),
+            'the app did not record the version it is running, so the same update is announced ' +
+            'again on every start');
+
+  // ── G. None of it reaches the Player ──────────────────────────────────────
   const player = await rig.player();
   const tv = await player.evaluate(`(() => {
     const el = (s) => document.querySelector(s);
@@ -207,12 +407,11 @@ module.exports = async function helpAndAboutFeature(rig) {
             'the Player screen carries the About text, so the app names itself on the TV: ' +
             JSON.stringify(tv.aboutText));
 
-  // ⚠ THE UPDATE LINE UNDER ABOUT CANNOT BE DRIVEN FROM HERE. updater.js renders on an IPC
-  // message from main, its render function is a closure, and electronAPI comes through
-  // contextBridge and cannot be stubbed. Reaching it needs main to send a status, which no
-  // scenario can ask for.
-  rig.byEye('the update line under About: that a new version shows as "Version X is ready" with ' +
-            'a Restart to update button, and that macOS shows the manual line instead');
+  // ⚠ WHAT F DRIVES IS THE PAGE'S OWN upToast. The line under About renders inside a closure on
+  // an IPC message from main, and `npm start` never checks for an update at all, so the handoff
+  // from main is the half no scenario can reach.
+  rig.byEye('a real download arriving from main: the line under About reading "Version X is ' +
+            'ready" beside the toast, and macOS showing the manual line instead');
   rig.byEye('the Player window landing on a SECOND real display, which is what display.js reads ' +
             'and sizes the window from. The rig runs both windows on one screen and parks them ' +
             'off it, so there is no second display for it to find');

@@ -58,8 +58,11 @@ function initAbout() {
       '<div class="about-wordmark">EVERMIST</div>' +
       '<div class="about-version" id="about-version" style="display:none"></div>' +
       '<div class="about-repo">github.com/Hinnful/Evermist</div>' +
+      '<button type="button" class="about-link" id="about-whatsnew">What’s new</button>' +
       '<div class="about-update" id="about-update" style="display:none"></div>' +
     '</div>';
+
+  document.getElementById('about-whatsnew').addEventListener('click', openChangelog);
 
   // ⚠ The version comes from package.json through main, never a literal here, which goes stale on
   // the next bump. With no electronAPI the line hides rather than showing a placeholder.

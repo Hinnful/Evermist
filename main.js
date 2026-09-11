@@ -693,6 +693,12 @@ ipcMain.on('open-releases-page', () => {
   shell.openExternal('https://github.com/Hinnful/Evermist/releases').catch(() => {});
 });
 
+// ⚠ The TAG is all the renderer names, and only in a tag's shape; anything else is dropped.
+ipcMain.on('open-release-page', (_e, tag) => {
+  if (!/^v\d+\.\d+\.\d+$/.test(String(tag || ''))) return;
+  shell.openExternal('https://github.com/Hinnful/Evermist/releases/tag/' + tag).catch(() => {});
+});
+
 // --- Memory probe: per-process working set (src/memProbe.js, ?memprobe=1) ---
 //
 // getAppMetrics() is the only reading that covers what costs memory here: performance.memory
