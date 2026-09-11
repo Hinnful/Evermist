@@ -1,11 +1,16 @@
 name: Build & Release
 
-# Fires on every push to main. Releases only when package.json carries a version that has no tag
-# yet, so a docs or tooling commit passes straight through.
+# Fires on a push to a staging branch, NEVER on main. The land job is the only thing that writes
+# to main, and it only runs once the gate is green, so a failed change never reaches main at all.
+# Releases only when package.json carries a version that has no tag yet, so a docs or tooling
+# change lands without building or publishing anything.
 #
 # ⚠ NOTHING PUBLIC EXISTS UNTIL THE GATE IS GREEN. The tag is created by the publish job at the
 # end, not by a person up front, so a red gate leaves no tag, no release page and no installers -
 # users stay on the last release and never see that anything happened.
+#
+# ⚠ MAIN IS PROTECTED and requires this workflow's `verify` check, so a commit it never ran on
+# cannot be pushed to main by anyone. The branch is the only way in. /commit carries the steps.
 #
 # ⚠ THE GATE DRIVES THE PACKAGED APP, not the repo. A file missing from build.files works under
 # `npm start` and is simply absent from the .exe, where a missing stylesheet renders unstyled
@@ -15,10 +20,18 @@ name: Build & Release
 # installed copies back through their own Restart button. See docs/PRODUCT.md.
 on:
   push:
-    branches: [main]
+    branches:
+      - 'release/**'   # a version bump: gate, land, publish
+      - 'change/**'    # docs, tests, tooling: land only
 
 permissions:
   contents: write
+
+# One landing at a time, or two runs race to fast-forward main and the loser fails on a
+# non-ancestor.
+concurrency:
+  group: land-main
+  cancel-in-progress: false
 
 jobs:
   # Cheap and first: is there anything to release at all?
@@ -46,9 +59,10 @@ jobs:
           fi
 
   # Unit tests before anything is built, on one runner.
+  # ⚠ RUNS ON EVERY CHANGE, bump or not. It is the status check main is protected by, so a commit
+  # it never reported on cannot be landed - by the pipeline or by anyone.
   verify:
     needs: decide
-    if: needs.decide.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,6 +80,7 @@ jobs:
   # can cover. The mac and linux builds are checked by their unit tests and their update metadata.
   gate:
     needs: [decide, verify]
+    if: needs.decide.outputs.release == 'true'
     runs-on: windows-latest
     # The rig's own watchdog is 180s + 90s per scenario, so ~31min for the 19 acceptance files.
     timeout-minutes: 60
@@ -106,6 +121,7 @@ jobs:
   # failure rather than a hole in it.
   build:
     needs: [decide, verify]
+    if: needs.decide.outputs.release == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -146,10 +162,42 @@ jobs:
             dist/*.blockmap
           if-no-files-found: error
 
-  # Only reachable with the gate green. Creates the tag as a side effect of creating the release,
-  # which is why no tag exists on a failure.
+  # THE ONLY THING THAT WRITES TO MAIN, and it runs after the gate rather than before it. A change
+  # that fails never reaches main, so main holds nothing but commits that passed.
+  # ⚠ FAST-FORWARD, never a merge, rebase or squash. Those all mint a new commit, and main would
+  # then carry a tree no gate ever drove. The commit main gets is the commit the gate proved.
+  land:
+    needs: [decide, verify, gate, build]
+    if: >-
+      always() &&
+      needs.decide.result == 'success' &&
+      needs.verify.result == 'success' &&
+      needs.gate.result != 'failure' && needs.gate.result != 'cancelled' &&
+      needs.build.result != 'failure' && needs.build.result != 'cancelled'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # --is-ancestor is what makes this safe: it refuses unless main is already behind this
+      # commit, so the push can never discard work that landed in the meantime.
+      - name: Fast-forward main onto the gated commit
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor origin/main "$GITHUB_SHA"; then
+            echo "main has moved on since this branch was cut."
+            echo "Rebase the branch onto main and push it again."
+            exit 1
+          fi
+          git push origin "$GITHUB_SHA:refs/heads/main"
+          echo "main is now $GITHUB_SHA"
+
+  # Only reachable with the gate green and main already landed. Creates the tag as a side effect
+  # of creating the release, which is why no tag exists on a failure.
   publish:
-    needs: [decide, gate, build]
+    needs: [decide, land]
+    if: needs.decide.outputs.release == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
