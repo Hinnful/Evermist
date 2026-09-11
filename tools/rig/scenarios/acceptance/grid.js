@@ -108,7 +108,10 @@ module.exports = async function gridFeature(rig) {
     JSON.stringify(id) + '); return sc && sc.gridConfig ? sc.gridConfig : null; })()');
 
   // Polled, bounded, and it never throws: a miss has to become a named failure below rather than
-  // an exception that abandons the rest of the file. The store is written from a debounce.
+  // an exception that abandons the rest of the file.
+  // ⚠ THE BOUND COVERS THREE THINGS, not just the 5s debounce in scheduleAutoSave: the save then
+  // encodes the whole fog canvas to a blob and writes it to IndexedDB. A budget sized to the
+  // debounce alone passes here and times out on a CI runner that has just built three installers.
   const waitStored = async (id, size, ms) => {
     const deadline = Date.now() + ms;
     for (;;) {
@@ -318,7 +321,7 @@ module.exports = async function gridFeature(rig) {
   rig.note('scenes: Alpha=' + alpha + ' Beta=' + beta);
 
   await fire('grid-size', 45);
-  rig.check(await waitStored(beta, 45, 9000),
+  rig.check(await waitStored(beta, 45, 25000),
             'a grid size set on a scene never reached the store, so nothing could survive a switch');
 
   await switchTo(alpha);
@@ -327,7 +330,7 @@ module.exports = async function gridFeature(rig) {
             "Beta's grid size followed the switch onto Alpha: " + onAlpha.size);
 
   await fire('grid-size', 123);
-  rig.check(await waitStored(alpha, 123, 9000), "Alpha's grid size never reached the store");
+  rig.check(await waitStored(alpha, 123, 25000), "Alpha's grid size never reached the store");
 
   await switchTo(beta);
   const backOnBeta = await liveGrid();
@@ -358,7 +361,7 @@ module.exports = async function gridFeature(rig) {
   rig.check(reset.sizeSlider === DEFAULT && reset.sizeChip === DEFAULT &&
             reset.opChip === 25 && reset.thickChip === 1 && reset.colorInput === '#ffffff',
             'Reset left a control showing the old value: ' + JSON.stringify(reset));
-  rig.check(await waitStored(alpha, DEFAULT, 9000),
+  rig.check(await waitStored(alpha, DEFAULT, 25000),
             'Reset never reached the store, so the old size comes back on the next switch');
   await switchTo(beta);
   await switchTo(alpha);

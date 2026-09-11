@@ -14,9 +14,7 @@ function setPaintDirection(dir) {
 
 // Half is shape-tools only: the brush paints into a cleared-or-opaque fog canvas with no third
 // value, so the button greys while the brush is picked and a live half falls back to shroud.
-//
-// The whole trio greys under Merge and Cut out: a merge takes the most hidden mode of the rooms
-// it joins and a cut-out leaves every mode alone, so neither has a fog state for the DM to pick.
+// The whole trio greys under Merge and Cut out, which take their fog from the rooms they hit.
 function refreshPaintAvailability() {
   const opPicked = shapeOp !== 'new';
   ['reveal', 'half', 'shroud'].forEach(d => {
@@ -31,8 +29,7 @@ function refreshPaintAvailability() {
 }
 
 // What a drawn shape does: 'new' makes one, 'join' merges, 'trim' cuts out. ONE helper owns the
-// value and the highlight. There is no 'new' button — pressing a lit Merge or Cut out is the
-// way back to it.
+// value and the highlight. There is no 'new' button; a lit Merge or Cut out is the way back.
 function setShapeOp(op) {
   shapeOp = op;
   paneBroadcast('shape-op', { op });
@@ -41,6 +38,18 @@ function setShapeOp(op) {
     if (el) el.classList.toggle('active', k === op);
   });
   refreshPaintAvailability();
+}
+
+// A repair is momentary: one drawn shape spends it, applied or refused. Left armed, it eats the
+// next room drawn twenty minutes later.
+// ⚠ THE CHROME OWNS THE HIGHLIGHT IN TWO-MAP MODE, so a column reports up and takes the
+// broadcast back; setting its own copy alone leaves the button lit over a disarmed column.
+function spendShapeOp() {
+  if (shapeOp === 'new') return;
+  setShapeOp('new');
+  if (isPane && parent !== window) {
+    parent.postMessage({ type: 'pane-shape-op-done', pane: paneId }, '*');
+  }
 }
 
 // ─── Placement mode ───────────────────────────────────────────────────────────

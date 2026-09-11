@@ -353,7 +353,9 @@ is no separate display order, and no room list UI to need one.
 
 The floor-plan import draws most rooms correctly, and the rest need fixing rather than redrawing.
 Three repairs cover it, and none of them asks you to select anything first: you pick what the
-next shape should do, then draw it over the rooms you mean.
+next shape should do, then draw it over the rooms you mean. Merge and Cut out are spent by that
+one shape - applied, refused, or landing on nothing - and switch themselves off, so the shape
+after it makes a room. Split is a tool in the pick-one row and stays picked like any other.
 
 **Join**, which the bar calls Merge, unions the shape you draw with every room it lands on, so
 one rectangle straddling two rooms leaves one room. The result keeps the name and notes of the earlier of the two, and takes

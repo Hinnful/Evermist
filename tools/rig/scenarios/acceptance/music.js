@@ -290,6 +290,11 @@ module.exports = async function musicFeature(rig) {
   await setFilter('');
 
   // ── F. Pause keeps the position, and a second press resumes ───────────────
+  // ⚠ WAIT FOR THE TRACK TO ADVANCE FIRST. The position pause keeps is the position it had, so
+  // pressing pause on an element still sitting at 0 asserts nothing. A loaded CI runner reaches
+  // this line before a muted deck in a parked window has played a single frame.
+  await dm.waitFor('_muDecks[_muActive].el.currentTime > 0', 20000,
+                   'the playing track to advance past its first frame');
   await dm.evaluate("document.getElementById('btn-mu-pause').click()");
   rig.check(await dm.evaluate('_muPaused === true'),
     'pressing pause did not put the bubble into its paused state');

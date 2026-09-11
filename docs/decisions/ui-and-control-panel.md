@@ -15,6 +15,23 @@ header before adding an entry here.
 
 ---
 
+### A repair is momentary, and Split is not · `SETTLED` (2026-09-12)
+
+Merge and Cut out were sticky modes. Drawing a room is hourly and repairing one happens a handful
+of times per map, so a mode set correctly reads as armed twenty minutes later and eats the next
+room drawn in front of the table. They now spend themselves on one shape, whatever it did.
+
+A shape that lands on nothing spends it too. Keeping it armed there singles out the one gesture
+that gives no feedback at all, which is where it is hardest to notice.
+
+Split stays sticky. It is a tool in the pick-one row wearing the outlined blue box, so making it
+jump back to Shape would drop the DM on a tool they did not pick with nothing lit to say so, and
+it is visible for as long as it is live.
+
+In two-map mode the shape is drawn in a column and the button lives in the chrome. The column
+reports the shape as spent and the chrome disarms both columns through the broadcast every
+standing preference already uses, so the button and the two floors cannot disagree.
+
 ### The calibration count rides the map, and arming borrows the panel rather than taking it · `SETTLED` (2026-09-09)
 The count stepper first went in `#context-row`, where it was never once visible: that row hides
 for the whole of calibration, so the control shipped as dead markup. It sits on the map now, on

@@ -429,6 +429,8 @@ function initPanes() {
       return;
     }
     if (msg.type === 'pane-clicked') { selectPane(msg.pane); return; }
+    // The button lives here, so setShapeOp puts BOTH columns back through the usual broadcast.
+    if (msg.type === 'pane-shape-op-done') { setShapeOp('new'); return; }
     if (msg.type === 'pane-scene-result') {
       p.sceneId = msg.sceneId || null;
       renderSceneManager();

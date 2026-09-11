@@ -19,6 +19,8 @@
 //      leaving all three off the bar rather than greying them.
 //   H. EVERY ONE OF THOSE REACHES THE TV. A repaired room the players still see in its old
 //      shape is the failure this feature exists to prevent.
+//   I. A repair is spent by the shape it ran on, applied, refused or landing on nothing, and
+//      the button goes out with it. The next shape drawn makes a room.
 //
 // ⚠ ROOMS DO NOT CROSS TO THE PLAYER (CLAUDE.md). What crosses is the fog they paint, so the TV
 // checks here read fog over ground, never a room.
@@ -75,13 +77,26 @@ globalThis.__rigDrawShroud = (x1, y1, x2, y2) => {
   return polygons[polygons.length - 1].id;
 };
 // A rectangle drawn in Join or Trim mode. Returns nothing: neither mode makes a record.
+// ⚠ PUTS THE MODE BACK ITSELF, which is what criterion I is about — that block uses the raw
+// helper below, or it would be reading its own tidy-up instead of the app's.
 globalThis.__rigOpRect = (op, x1, y1, x2, y2) => {
-  setShapeOp(op);
-  setShape('rect');
-  __rigDrag(x1, y1, x2, y2);
+  __rigOpRectRaw(op, x1, y1, x2, y2);
   setShapeOp('new');
   setShape('select');
   return 0;
+};
+globalThis.__rigOpRectRaw = (op, x1, y1, x2, y2) => {
+  setShapeOp(op);
+  setShape('rect');
+  __rigDrag(x1, y1, x2, y2);
+  return 0;
+};
+globalThis.__rigOpState = () => {
+  const lit = ['join', 'trim'].filter(k => {
+    const b = document.getElementById('btn-op-' + k);
+    return !!b && b.classList.contains('active');
+  });
+  return { op: shapeOp, lit: lit };
 };
 // A cut path: one click per point, then the double-click that finishes it.
 globalThis.__rigCut = (pts) => {
@@ -379,4 +394,43 @@ module.exports = async function roomRepair(rig) {
             'line of clear ground where the DM only split a room');
   rig.check(await dm.evaluate('polygons.filter(p => p.id === ' + seam + ').length') === 1,
             'the cut room lost its own id');
+
+  // ══ I. A repair is spent by the shape it ran on, and the button goes out ══
+  // Drawing is hourly and repairing is rare, so a mode left armed is right when it is set and
+  // wrong twenty minutes later, when it eats the next room instead of making one.
+  // ⚠ ON EMPTY MAP, with a margin on every neighbour. Client coordinates are integers, so a
+  // room placed against another is one zoom away from the Merge taking BOTH: the earlier room
+  // becomes the base, this one is dropped, and the check below reads a room that is gone.
+  const iRoom = await dm.evaluate('__rigDrawShroud(1000, 680, 1300, 860)');
+  await dm.evaluate(SETTLE);
+  await dm.evaluate('__rigOpRectRaw("join", 1250, 720, 1450, 820)');
+  const iApplied = await dm.evaluate('__rigOpState()');
+  const iVerts = await dm.evaluate('(__rigById(' + iRoom + ') || { vertices: [] }).vertices.length');
+  rig.check(iVerts > 4,
+            'the Merge left the room at ' + iVerts + ' points instead of growing it, so the ' +
+            'mode check below is reading a shape that missed');
+  rig.check(iApplied.op === 'new' && iApplied.lit.length === 0,
+            'Merge stayed armed after the shape it ran on (mode "' + iApplied.op + '", lit ' +
+            JSON.stringify(iApplied.lit) + '), so the next room the DM draws is eaten instead');
+
+  // The consequence, not a restatement of it: the very next shape has to become a room.
+  const iCount = await dm.evaluate('polygons.length');
+  await dm.evaluate('setShape("rect"); __rigDrag(1440, 350, 1560, 550); setShape("select"); 0');
+  rig.check(await dm.evaluate('polygons.length') === iCount + 1,
+            'the shape drawn after a Merge made no room, so the armed repair swallowed it');
+
+  await dm.evaluate('__rigOpRectRaw("trim", 300, 1250, 420, 1350)');  // bare map: lands on nothing
+  const iMissed = await dm.evaluate('__rigOpState()');
+  rig.check(iMissed.op === 'new' && iMissed.lit.length === 0,
+            'Cut out stayed armed after a shape that landed on nothing (mode "' + iMissed.op +
+            '"), and the DM has no sign it is still live');
+
+  // A refusal spends it too. Same hole-in-a-room trim criterion E refuses.
+  await dm.evaluate('__rigOpRectRaw("trim", 1700, 400, 1900, 550)');
+  const iRefused = await dm.evaluate('__rigOpState()');
+  rig.check(await dm.evaluate('__rigDialog().up') === true,
+            'the trim meant to be refused was accepted, so the check below proves nothing');
+  rig.check(iRefused.op === 'new' && iRefused.lit.length === 0,
+            'Cut out stayed armed through its own refusal (mode "' + iRefused.op + '")');
+  await dm.evaluate('__rigDismiss(); setShape("select"); 0');
 };

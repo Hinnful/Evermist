@@ -226,6 +226,7 @@ function commitClosedShape(verts) {
   selectedPolygonId = null;
   selectedVertexIndex = -1;
   commitShapeOp(verts);
+  spendShapeOp();
   return null;
 }
 
