@@ -369,6 +369,16 @@ replacing it, which is what carries its fullscreen across.
 Measured before the build finished: a second column and its half cost 3-9% more memory on a
 3840x2160 fixture, so the cheap-DM-window path (flat fog, a still frame) stays dropped.
 
+### A column keeps its camera through every change of width · `SETTLED` (2026-09-11)
+2.10.0 refitted a column whenever its width moved. That threw the DM's framing away three
+times in one gesture: on the way into two columns, when the second map landed and moved the
+split, and on every divider drag. A column now keeps its zoom and holds the map point that
+was in the middle. Fitting on entry was considered and dropped on the same ground - the DM
+presses Two maps while looking at the room a fight is in, not at the whole floor.
+The DM window's own resize is unchanged and still leaves the map where it is. The Player
+halves still refit, because a TV showing less of the floor after a bar moved in the DM's own
+window is worse than a rescale.
+
 ## UI and the control panel
 
 Moved to [decisions/ui-and-control-panel.md](decisions/ui-and-control-panel.md) - the

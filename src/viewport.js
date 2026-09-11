@@ -24,13 +24,10 @@ function zoomToFitRegion(viewW, viewH, vpW, vpH) {
   return Math.min(vpW / viewW, vpH / viewH);
 }
 
-// The map-space region a viewport actually shows MAP in — the viewport rectangle intersected with
-// the map, in map units.
-//
-// ⚠ Intersect rather than sending the viewport whole. Nothing is drawn outside the map, so the
-// empty background carries no information, and sending it makes the Player reproduce the DM's
-// letterboxing and add its own on the mismatched axis. Clipping is lossless for the same reason.
-//
+// The map-space region a viewport actually shows MAP in, in map units.
+// ⚠ Intersect rather than sending the viewport whole: the empty background carries nothing, and
+// sending it makes the Player reproduce the DM's letterboxing and add its own on the mismatched
+// axis. Clipping is lossless for the same reason.
 // A viewport parked entirely off the map has no intersection, so fall back to the raw rect.
 function visibleMapRegion(panX, panY, zoom, mapW, mapH, vpW, vpH) {
   const vx0 = -panX / zoom, vx1 = (vpW - panX) / zoom;
@@ -44,11 +41,9 @@ function visibleMapRegion(panX, panY, zoom, mapW, mapH, vpW, vpH) {
 }
 
 // The region the DM is looking at, packaged for the wire. Sync View and a manual Send both go
-// through here, so they cannot drift apart. `zoom` rides along as the fallback for a payload with
-// no region.
-//
-// ⚠ NEVER subtract the strip hidden behind the control panel. It crops the TV to the DM's readable
-// area, which shifts the framing and takes content away from the players.
+// through here, so they cannot drift apart.
+// ⚠ NEVER subtract the strip hidden behind the control panel. It crops the TV to the DM's
+// readable area, which shifts the framing and takes content away from the players.
 function dmVisibleRegion() {
   const { w: vpW, h: vpH } = getViewportSize();
   const r = visibleMapRegion(panX, panY, zoom, mapWidth, mapHeight, vpW, vpH);
@@ -59,11 +54,9 @@ function toScreen(mapX, mapY) {
   return { sx: mapX * zoom + panX, sy: mapY * zoom + panY };
 }
 
-// ⚠ A view crosses the wire as a REGION (centre plus viewW/viewH in map units), never as a zoom.
-// Zoom is px-per-map-unit on the SENDER's canvas, so replaying it on a differently-sized canvas
-// shows a different amount of map. Refitting the region is what makes Sync View mean "the players
-// see at least what the DM sees".
-// `v.zoom` is still honoured for views carrying no region — the minimap's own snaps.
+// ⚠ A view crosses the wire as a REGION (centre plus viewW/viewH in map units), never as a zoom:
+// zoom is px-per-map-unit on the SENDER's canvas, so replaying it on a differently-sized canvas
+// shows a different amount of map. `v.zoom` is honoured only for a view carrying no region.
 function resolveView(v) {
   const { w: vpW, h: vpH } = getViewportSize();
   const z = zoomToFitRegion(v.viewW, v.viewH, vpW, vpH) ?? v.zoom;
@@ -96,6 +89,35 @@ function fitToScreen() {
   panX = (cw - mapWidth  * zoom) / 2;
   panY = (ch - mapHeight * zoom) / 2;
   pixiSetViewport(zoom, panX, panY);
+}
+
+// The camera as the map point in the middle, plus the zoom. A column adopts one when it takes
+// over a map or changes width, so a narrower column shows less of the map, never a smaller one.
+function captureCamera() {
+  if (!(zoom > 0)) return null;
+  const { w, h } = getViewportSize();
+  return { mapCX: (w / 2 - panX) / zoom, mapCY: (h / 2 - panY) / zoom, zoom };
+}
+
+function applyCamera(c) {
+  if (!(mapWidth > 0 && mapHeight > 0)) return;   // an empty column has no camera to keep
+  if (!c || !(c.zoom > 0)) { fitToScreen(); return; }
+  const { w, h } = getViewportSize();
+  zoom = c.zoom;
+  panX = w / 2 - c.mapCX * zoom;
+  panY = h / 2 - c.mapCY * zoom;
+  pixiSetViewport(zoom, panX, panY);
+}
+
+// A column changes width whenever the split moves, so it keeps the camera the DM set. The DM
+// window's own resize leaves the map where it is, as it always has.
+// ⚠ CAPTURE BEFORE syncSize. The map area reports its OLD size until pixiResize runs inside
+// syncSize, and once it has, nothing can say which map point had been in the middle.
+function resizeViewport() {
+  if (!isPane) { syncSize(); return; }
+  const held = captureCamera();
+  syncSize();
+  applyCamera(held);
 }
 
 function startViewLerp(target) {

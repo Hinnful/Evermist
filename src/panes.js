@@ -8,8 +8,8 @@ let panesActive   = false;
 let panesSelected = 'A';
 const PANE_IDS = ['A', 'B'];
 const panes = {
-  A: { frame: null, sceneId: null, mapW: 0, mapH: 0, ready: false },
-  B: { frame: null, sceneId: null, mapW: 0, mapH: 0, ready: false },
+  A: { frame: null, sceneId: null, mapW: 0, mapH: 0, ready: false, camera: null },
+  B: { frame: null, sceneId: null, mapW: 0, mapH: 0, ready: false, camera: null },
 };
 
 let _paneSplit = null;
@@ -197,8 +197,12 @@ async function enterPanes(sceneIdA, sceneIdB) {
   if (panesActive) return;
   // ⚠ Read before the teardown below, which drops the handle without closing the window.
   const hadPlayer = !!(playerWindow && !playerWindow.closed);
+  // The column taking this scene adopts it, so pressing Two maps keeps the DM's framing.
+  const entryCamera = captureCamera();
   panes.A.sceneId = sceneIdA;
   panes.B.sceneId = sceneIdB;
+  panes.A.camera = sceneIdA ? entryCamera : null;
+  panes.B.camera = sceneIdB ? entryCamera : null;
   for (const id of PANE_IDS) { panes[id].ready = false; panes[id].mapW = 0; panes[id].mapH = 0; }
   _paneSplit = null;
   // ⚠ THE EMPTY COLUMN IS SELECTED, because the library's next click is what fills it.
@@ -249,6 +253,7 @@ async function exitPanes(keepSceneId) {
     panes[id].frame = null;
     panes[id].ready = false;
     panes[id].sceneId = null;
+    panes[id].camera = null;
   }
   syncSize();
   if (!hadPlayer) prewarmPlayer();   // warming would navigate the live window away
@@ -443,6 +448,9 @@ function initPanes() {
       p.sceneId = msg.sceneId || p.sceneId;
       applyPaneSplit();
       sendStageSplit();
+      // After the split, so the column is already at its final width. One shot: the camera belongs
+      // to the map that entered two-column mode, not to whatever the column is given next.
+      if (p.camera) { sendToPane({ type: 'pane-adopt-view', view: p.camera }, msg.pane); p.camera = null; }
       renderSceneManager();
       if (msg.pane === panesSelected) { paneAdoptSelectedSettings(); minimapSeedView(); }
     }

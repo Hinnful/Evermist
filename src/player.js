@@ -78,7 +78,9 @@ const PANE_CONTROLS = {
                            sceneId: currentScene ? currentScene.id : null }, '*');
     });
   },
-  'pane-refit':      () => { syncSize(); fitToScreen(); viewportDirty = true; scheduleRender(); },
+  'pane-refit':      () => { resizeViewport(); viewportDirty = true; scheduleRender(); },
+  // ⚠ syncSize FIRST: the column's own resize event may land either side of this message.
+  'pane-adopt-view': m => { syncSize(); applyCamera(m.view); viewportDirty = true; scheduleRender(); },
 
   'pane-paint-direction': m => setPaintDirection(m.dir),
   'pane-shape':           m => setShape(m.shape),

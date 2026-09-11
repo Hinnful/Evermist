@@ -9,7 +9,7 @@
     "src/shapeMenu.js": 3016,
     "src/about.js": 4882,
     "src/updater.js": 2138,
-    "src/player.js": 27468,
+    "src/player.js": 28202,
     "src/backup.js": 13406,
     "src/fog.js": 60533,
     "src/grid.js": 11294,
@@ -21,14 +21,14 @@
     "src/sceneManager.js": 51687,
     "src/sceneStore.js": 4481,
     "src/scenes.js": 5213,
-    "src/viewport.js": 16984,
+    "src/viewport.js": 17863,
     "src/vttPlan.js": 28549,
     "src/musicPlan.js": 5364,
     "src/music.js": 12830,
     "src/controlPanel.js": 25743,
     "src/gridCalibrate.js": 23577,
     "src/musicDownload.js": 12588,
-    "src/panes.js": 19666,
+    "src/panes.js": 22030,
     "src/stage.js": 6326
   }
 }

@@ -1058,7 +1058,7 @@ if (!isPlayer) initUpdater(); // Update line under it → updater.js (needs Abou
 if (!isPlayer) initMusic();   // The music bubble → music.js
 
 window.addEventListener('resize', () => {
-  syncSize();
+  resizeViewport();   // viewport.js
   if (mapBitmap || mapOffscreen) {
     viewportDirty = true;
     scheduleRender();

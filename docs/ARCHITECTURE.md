@@ -305,6 +305,11 @@ different map, and one Player window on the TV showing both.
   area and opens the scene library with the empty column selected, so the next click fills it.
   Its half of the Player screen shows drifting fog and nothing else until then. Filling it with
   whichever map came next put a map on the TV the DM never chose.
+- **A column keeps the camera it was given.** Pressing Two maps hands the column the zoom and
+  centre the DM window had, and every later change of width - the second map landing, a
+  divider drag - holds that centre rather than refitting. `resizeViewport` in `viewport.js`
+  captures the camera before `syncSize` changes the reported size, which is the only moment
+  the centred map point can still be read.
 - **Two columns cannot open the same map.** They would save over each other, so the library
   refuses and says so.
 - **One map alone is untouched by all of this.** The DM window renders its own map exactly as it

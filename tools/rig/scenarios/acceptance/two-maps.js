@@ -11,8 +11,9 @@
 //
 //   A. The second column opens EMPTY and waits to be picked; choosing a map from the library
 //      fills it, and the DM window then holds no map of its own.
-//   B. The columns start at a width that fills both of them at the same height, and dragging the
-//      divider re-fits each camera to its new column.
+//   B. The columns start at a width that fills both of them at the same height. A column KEEPS
+//      the camera the DM set through every change of width - pressing Two maps and dragging
+//      the divider alike - at the same zoom, with the same map point in the middle.
 //   C. A click anywhere in a column both selects that column and acts on it, in one click.
 //   D. The toolbar acts on the selected column and leaves the other alone.
 //   E. The two columns hold different grid cell sizes, because a grid belongs to its scene.
@@ -35,7 +36,7 @@
 //   M. Running one map alone behaves exactly as it did before any of this existed.
 //   N. Opening the second map does not rebuild the fog's cloud texture in each new screen.
 //      Every one of them copies the DM window's, and a half that is still loading has fog
-//      behind it rather than black.
+//      behind it rather than black, and none of them rebuilds the one it copied.
 //
 // ⚠ A COLUMN IS AN <IFRAME>, AND `rig.dm` REACHES THE PARENT FRAME ONLY. `polygons`, `zoom` and
 // `currentScene` for a column live in that column's own JS context — `rig.pane('A')` is the only
@@ -109,6 +110,16 @@ module.exports = async function twoMapsFeature(rig) {
             'the app came up already in two-column mode');
   rig.check(soloBefore.mapWidth === TALL.w,
             'one map alone did not show the map that was just imported');
+  // ⚠ ZOOMED IN AND OFF CENTRE ON PURPOSE. A map sitting at its fit reads the same whether the
+  // column kept the DM's camera or threw it away and fitted its own.
+  const entryCam = await dm.evaluate(`(() => {
+    zoom = __rigFit() * 2.4;
+    const s = getViewportSize();
+    panX = s.w / 2 - mapWidth * 0.3 * zoom;
+    panY = s.h / 2 - mapHeight * 0.7 * zoom;
+    pixiSetViewport(zoom, panX, panY); viewportDirty = true; scheduleRender();
+    return { zoom, cx: (s.w / 2 - panX) / zoom, cy: (s.h / 2 - panY) / zoom };
+  })()`);
 
   // ── A. the second column opens empty and is filled by hand ───────────────
   await dm.evaluate('document.getElementById("btn-two-maps").click(); 0');
@@ -175,14 +186,30 @@ module.exports = async function twoMapsFeature(rig) {
             'the columns did not open at the width that fills both maps to the same height: got ' +
             got.toFixed(3) + ', wanted ' + want.toFixed(3));
 
-  // Each camera must FIT its own column, so the check is against that column's own arithmetic
-  // rather than against a number measured before the drag.
-  const fits = async (p, id) => {
-    const r = await p.evaluate('({ zoom: +zoom.toFixed(5), fit: __rigFit() })');
-    return rig.check(Math.abs(r.zoom - r.fit) < 0.0005,
-                     'column ' + id + " did not re-fit its camera to its column: zoom " + r.zoom +
-                     ' against a fit of ' + r.fit);
-  };
+  // ⚠ THE COLUMN KEEPS THE DM'S CAMERA, it does not fit its own. A column is narrower than the
+  // window it came from, so fitting rescales the floor and every mini on the TV stands on the
+  // wrong room. Read AFTER the second map landed, which moves the split a second time.
+  const camOf = p => p.evaluate('(() => { const s = getViewportSize(); return { w: s.w, zoom,' +
+    ' cx: (s.w / 2 - panX) / zoom, cy: (s.h / 2 - panY) / zoom, fit: __rigFit() }; })()');
+  const entryGot = await camOf(paneA);
+  rig.check(Math.abs(entryGot.zoom - entryCam.zoom) < 1e-9,
+            'pressing Two maps rescaled the map instead of keeping the zoom: ' + entryGot.zoom +
+            ' against ' + entryCam.zoom);
+  rig.check(Math.abs(entryGot.cx - entryCam.cx) < 2 / entryGot.zoom &&
+            Math.abs(entryGot.cy - entryCam.cy) < 2 / entryGot.zoom,
+            'pressing Two maps moved the map point that was in the middle: ' +
+            [entryGot.cx, entryGot.cy].map(n => n.toFixed(1)).join(',') + ' against ' +
+            [entryCam.cx, entryCam.cy].map(n => n.toFixed(1)).join(','));
+  rig.check(Math.abs(entryGot.zoom - entryGot.fit) > 0.0005,
+            'column A happens to sit at its own fit, so the two checks above prove nothing');
+
+  // Both columns off their fit and off centre, so the drag below cannot pass by landing on a fit.
+  for (const p of [paneA, paneB]) {
+    await p.evaluate('(() => { zoom = __rigFit() * 1.8; const s = getViewportSize();' +
+      ' panX = s.w / 2 - mapWidth * 0.35 * zoom; panY = s.h / 2 - mapHeight * 0.65 * zoom;' +
+      ' pixiSetViewport(zoom, panX, panY); viewportDirty = true; scheduleRender(); return 0; })()');
+  }
+  const preDrag = { A: await camOf(paneA), B: await camOf(paneB) };
   await dm.evaluate(`(() => {
     const row = document.getElementById('panes-row');
     const r = row.getBoundingClientRect();
@@ -198,13 +225,25 @@ module.exports = async function twoMapsFeature(rig) {
                    '.getBoundingClientRect().width / document.getElementById("panes-row")' +
                    '.getBoundingClientRect().width - 0.35) < 0.03', 10000,
                    'the divider drag to resize the columns');
-  // The refit rides a message, so both columns are polled rather than read once.
   for (const [id, p] of [['A', paneA], ['B', paneB]]) {
-    await p.waitFor('Math.abs(zoom - __rigFit()) < 0.0005', 10000,
-                    'column ' + id + ' to re-fit after the divider moved');
+    // The width reaches a column as its own resize event, so wait for it rather than reading once.
+    await p.waitFor('getViewportSize().w !== ' + preDrag[id].w, 10000,
+                    'column ' + id + ' to see the width the divider left it');
+    const now = await camOf(p), was = preDrag[id];
+    rig.check(Math.abs(now.zoom - was.zoom) < 1e-9,
+              'column ' + id + ' rescaled its map when the divider moved: zoom ' + now.zoom +
+              ' against ' + was.zoom);
+    rig.check(Math.abs(now.cx - was.cx) < 2 / now.zoom && Math.abs(now.cy - was.cy) < 2 / now.zoom,
+              'column ' + id + ' moved the map point that was in the middle: ' +
+              [now.cx, now.cy].map(n => n.toFixed(1)).join(',') + ' against ' +
+              [was.cx, was.cy].map(n => n.toFixed(1)).join(','));
+    rig.check(Math.abs(now.zoom - now.fit) > 0.0005,
+              'column ' + id + ' sits at its own fit, so the two checks above prove nothing');
   }
-  await fits(paneA, 'A');
-  await fits(paneB, 'B');
+  // Back to the fit the rest of this file was written against.
+  for (const p of [paneA, paneB]) {
+    await p.evaluate('fitToScreen(); viewportDirty = true; scheduleRender(); 0');
+  }
 
   // ── C. one click selects the column and acts on it ───────────────────────
   // A is selected on entry, so the dab goes into B: the same press has to do both jobs.
@@ -517,6 +556,9 @@ module.exports = async function twoMapsFeature(rig) {
     rig.check(set.n === dmSet.n && set.mark === dmSet.mark,
               who + " built its own cloud texture instead of copying the DM window's, which is " +
               "seconds of one shared thread and drops every window to a crawl while two maps open");
+    rig.check(await win.evaluate('generateCloudFrames._genId === 0'),
+              who + ' built a cloud texture and then threw it away, which is the same cost ' +
+              'again on the one thread every screen shares');
   }
   // ⚠ READ THROUGH A HALF, because the shell is a frame's parent and not a window the rig holds.
   const behind = await tvA.evaluate(
