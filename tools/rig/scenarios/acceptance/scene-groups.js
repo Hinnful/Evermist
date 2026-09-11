@@ -14,6 +14,8 @@
 //   B. Filing a scene under a heading sticks: in the library, in the store, and after a reload
 //      of the library from the store.
 //   C. Dragging a card into another section refiles it, and the order across sections is kept.
+//      Ungrouped stays on screen once every scene is filed, so there is always somewhere to
+//      drag a card back OUT of a group to.
 //   D. A group survives the export/restore round trip. ⚠ THIS IS THE ONE THAT SILENTLY BREAKS:
 //      three separate whitelists drop an unlisted field with no error at all.
 //   E. Deleting a group deletes no maps — everything under it falls back to Ungrouped.
@@ -161,6 +163,51 @@ module.exports = async function sceneGroupsFeature(rig) {
   const draggedOnDisk = dragged.err ? null : await poll(() => storedGroup(dragged.id), v => v === 'Watcherhouse', 12000);
   rig.check(dragged.err ? true : draggedOnDisk === 'Watcherhouse',
             'the dragged scene\'s group never reached the store: ' + JSON.stringify(draggedOnDisk));
+
+  // ⚠ EVERY SCENE IS FILED AT THIS POINT, which is the state the un-file drag needs. `Move to…
+  // > Ungrouped` still works from the selection bar, so a missing heading is only the DRAG half
+  // going away - and that is invisible to every check above.
+  // ⚠ THE HOLE IS MEASURED, NOT JUST FOUND. An element inside a shut section has zero-sized
+  // rects, so finding one would pass with nothing on screen to aim a card at.
+  const unfiled = await dm.evaluate(`(() => {
+    const secs = [...document.querySelectorAll('#sm-list .sm-group')];
+    const back = secs.find(s => s.dataset.group === '');
+    if (!back) return { err: 'Ungrouped is not on screen now that every scene is filed' };
+    const hole = back.querySelector('.sm-group-empty');
+    const h = hole ? hole.getBoundingClientRect().height : 0;
+    const from = secs.find(s => s.dataset.group === 'Watcherhouse');
+    const card = from && from.querySelector('.sm-card');
+    if (!card) return { err: 'nothing left under Watcherhouse to drag back out' };
+    const id = card.dataset.id;
+    back.querySelector('.sm-grid').appendChild(card);
+    commitDragOrder();
+    const moved = allScenes.find(s => s.id === id);
+    return { id, group: moved && moved.group, hole: !!hole, h };
+  })()`);
+  rig.check(!unfiled.err, 'the un-file drag could not be staged: ' + unfiled.err);
+  rig.check(!unfiled.err && unfiled.hole && unfiled.h > 0,
+            'the empty Ungrouped section shows no drop box, so the DM has nothing to aim a card ' +
+            'at: box ' + JSON.stringify(unfiled.hole) + ', ' + (unfiled.h || 0) + 'px tall');
+  rig.check(!unfiled.err && unfiled.group === '',
+            'dropping a card on Ungrouped did not take it out of its group: it is in ' +
+            JSON.stringify(unfiled.group));
+  const unfiledOnDisk = unfiled.err ? null : await poll(() => storedGroup(unfiled.id), v => v === '', 12000);
+  rig.check(unfiled.err ? true : unfiledOnDisk === '',
+            'the un-filed scene is still in its group in the store: ' + JSON.stringify(unfiledOnDisk));
+
+  // Put it back under Watcherhouse: every criterion below was written against C's end state.
+  const refiled = unfiled.err ? { err: unfiled.err } : await dm.evaluate(`(() => {
+    const secs = [...document.querySelectorAll('#sm-list .sm-group')];
+    const to = secs.find(s => s.dataset.group === 'Watcherhouse');
+    const card = document.querySelector('.sm-card[data-id="' + ${JSON.stringify(unfiled.id || '')} + '"]');
+    if (!to || !card) return { err: 'could not put the un-filed card back' };
+    to.querySelector('.sm-grid').appendChild(card);
+    commitDragOrder();
+    return { group: (allScenes.find(s => s.id === ${JSON.stringify(unfiled.id || '')}) || {}).group };
+  })()`);
+  rig.check(unfiled.err ? true : (!refiled.err && refiled.group === 'Watcherhouse'),
+            'the card could not be put back under Watcherhouse, so every criterion below runs on ' +
+            'a library this one left rearranged: ' + JSON.stringify(refiled));
 
   // ── D. The group survives export and restore ──────────────────────────────
   // ⚠ THE FIELD LISTS ARE WHITELISTS IN BOTH DIRECTIONS. Export drops an unlisted field with no

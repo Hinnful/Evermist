@@ -398,6 +398,11 @@ A door stores nothing but which wall it is on and where along it. Width and dept
 scene's grid cell when it is drawn, so correcting a grid resizes every door already placed instead
 of forcing a redraw. Two percentages under the tool set them, at 100% and 10% of a cell by default.
 
+Reshaping the room keeps its doors where they are. Add a vertex to a wall carrying a door and the
+door holds the same point of the map, moving onto whichever half of the split wall now carries it.
+Delete a vertex and the doors on the two walls it joined go with them, having no wall left to sit
+on.
+
 A door belongs to a room, so it appears only when that room does. Its density, though, is the most
 revealed of every room whose wall runs through it - which stops the choice of owner mattering on a
 wall two rooms share, and gives half-shroud an answer. Doors reach the Player for free: they are

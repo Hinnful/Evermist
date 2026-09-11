@@ -54,8 +54,8 @@ function mergeGroupOrder(storedOrder, namesInUse) {
   return out;
 }
 
-// Splits scenes into display sections. Ungrouped is ALWAYS last and present whenever it holds
-// anything, so a DM who groups nothing still sees a flat list.
+// Splits scenes into display sections. Ungrouped is ALWAYS last and ALWAYS present: a DM who
+// groups nothing sees a flat list, and one who files everything can still drag a card back out.
 function buildGroupSections(scenes, order) {
   const list = scenes || [];
   const names = mergeGroupOrder(order, list.map(s => sanitizeGroupName(s && s.group)));
@@ -65,9 +65,7 @@ function buildGroupSections(scenes, order) {
     scenes: list.filter(s => sanitizeGroupName(s && s.group) === name),
   }));
   const loose = list.filter(s => !sanitizeGroupName(s && s.group));
-  if (loose.length || !sections.length) {
-    sections.push({ name: '', ungrouped: true, scenes: loose });
-  }
+  sections.push({ name: '', ungrouped: true, scenes: loose });
   return sections;
 }
 

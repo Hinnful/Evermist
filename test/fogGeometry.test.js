@@ -826,17 +826,28 @@ describe('doorPoint', () => {
 
 describe('remapDoorsForVertexChange', () => {
   const doors = [{ edge: 0, t: 0.5 }, { edge: 2, t: 0.5 }, { edge: 3, t: 0.5 }];
+  // The square's edge 0 runs x=0..12 along y=0. Inserting at splitT s puts a vertex at x=12s,
+  // so a door past that point belongs on the new edge 1 and everything after it shifts by one.
+  const split = (ds, at, s) => remapDoorsForVertexChange(ds, at, 1, s);
 
   it('shifts later walls along when a vertex is inserted', () => {
-    assert.deepEqual(remapDoorsForVertexChange(doors, 0, 1).map(d => d.edge), [0, 3, 4]);
+    assert.deepEqual(split(doors, 0, 0.25).map(d => d.edge), [1, 3, 4]);
   });
 
   it('drops the doors whose wall the deleted vertex took with it', () => {
     assert.deepEqual(remapDoorsForVertexChange(doors, 3, -1).map(d => d.edge), [0]);
   });
 
-  it('keeps each door where it sat along its wall', () => {
-    assert.deepEqual(remapDoorsForVertexChange(doors, 0, 1)[0], { edge: 0, t: 0.5 });
+  it('holds a door on the same map point when its own wall is split', () => {
+    const before = doorPoint(SQUARE_CW, doors[0]);
+    const after = split(doors, 0, 0.25)[0];
+    const verts = [{ x: 0, y: 0 }, { x: 3, y: 0 }, { x: 12, y: 0 }, { x: 12, y: 12 }, { x: 0, y: 12 }];
+    assert.deepEqual(doorPoint(verts, after), before);
+  });
+
+  it('keeps a door on the first half when the split lands past it', () => {
+    const after = split([{ edge: 0, t: 0.25 }], 0, 0.5)[0];
+    assert.deepEqual(after, { edge: 0, t: 0.5 });
   });
 
   it('leaves an empty list alone', () => {

@@ -17,7 +17,9 @@
 //      is still half, never a clear hole into the dark.
 //   D. Two shrouded rooms show no door at all, so a marked exit never gives away a room the
 //      players have not reached.
-//   E. A door stays on its wall when a vertex is added to the room or taken away.
+//   E. A door stays on its wall when a vertex is added to the room or taken away. Adding one to
+//      the door's OWN wall splits that wall in two, and the door holds the map point it was
+//      placed on, moving onto whichever half now carries it.
 //
 // ⚠ THE DOORS ARE PLACED BY HAND HERE, AND THAT IS THE WHOLE POINT OF THE FILE. floor-plan.js
 // criterion K covers a DERIVED door - one the import placed from a .dd2vtt - and the two paths
@@ -356,18 +358,29 @@ module.exports = async function doorsFeature(rig) {
             'the door moved when a vertex was taken off the room ahead of it — it was at ' +
             before.x + ',' + before.y + ' and is now ' + JSON.stringify(late.doors));
 
-  // ⚠ A VERTEX INSERTED ON THE DOOR'S OWN WALL IS A DIFFERENT CASE, and it is measured rather
-  // than asserted. `remapDoorsForVertexChange` keeps a door on the edge it names, but that edge
-  // is now half the wall it was, so the door's position along it means something else. Nothing
-  // has ever said where it should end up, so this reports and does not judge.
+  // ⚠ A VERTEX INSERTED ON THE DOOR'S OWN WALL IS THE CASE THAT WAS WRONG. A door stores a
+  // fraction ALONG the wall it names, and the insert halves that wall, so carrying the fraction
+  // across unchanged threw the door 186px onto a different wall of the room.
+  // ⚠ IT GOES IN ABOVE THE DOOR ON PURPOSE. The ring is traced top, right, bottom, left, so the
+  // right wall runs down from y=450 and a split at y=490 leaves the door on the SECOND half - the
+  // branch that has to move it to a new edge index. Splitting below the door exercises the half
+  // that changes no index, and the check passes with that branch broken.
+  const preSplit = (await dm.evaluate('__rigDoors()'))[0];
   await dm.evaluate('setShape("select"); __rigClick(' + ((wall.left + wall.right) / 2) + ', ' +
                     ((wall.top + wall.bottom) / 2) + ')');
   await dm.evaluate('__rigDbl(' + wall.right + ', ' + (wall.top + 40) + ')');
   const split = await dm.evaluate('__rigDoors()');
-  const moved = split.length === 1 ? Math.round(Math.hypot(split[0].x - before.x, split[0].y - before.y)) : null;
-  rig.note('a vertex inserted on the door\'s own wall moved it ' +
-           (moved == null ? 'off the map entirely' : moved + 'px') + ': ' + JSON.stringify(split));
-  rig.byEye('where a door should sit after a vertex is inserted into the wall it is ON, which ' +
-            'splits that wall in two. The note above says what the app does today; nothing has ' +
-            'decided what it ought to do');
+  rig.check(!!preSplit && split.length === 1 && split[0].edge === preSplit.edge + 1,
+            'the vertex did not go in above the door, so the door kept its own edge index and the ' +
+            'check below cannot see the wrong-half case: ' + JSON.stringify(split));
+  // ⚠ MEASURED AGAINST preSplit, NEVER `before`. The door was closed and re-placed earlier in E,
+  // which is a drag and carries a pixel of its own at every window size; holding the split's own
+  // answer against a baseline from before that drag spends the whole tolerance on something else.
+  // The split preserves the point exactly, so this is float error and nothing more.
+  const moved = (preSplit && split.length === 1)
+    ? Math.round(Math.hypot(split[0].x - preSplit.x, split[0].y - preSplit.y)) : null;
+  rig.check(moved != null && moved <= 1,
+            'the door moved when a vertex went into the wall it sits on — it was at ' +
+            (preSplit ? preSplit.x + ',' + preSplit.y : 'nowhere') + ' and is now ' +
+            (moved == null ? 'off the map entirely' : JSON.stringify(split)));
 };

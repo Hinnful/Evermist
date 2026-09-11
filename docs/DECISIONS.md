@@ -1095,3 +1095,12 @@ predict yt-dlp's per-OS sanitisation - a predicted name stops matching silently.
 independent guarantees, because a loud hour-long track out of an unwatched run is the same class
 of intrusion as a window appearing on screen. `muted` does not touch `volume`, so a crossfade
 stays fully measurable.
+
+### A door split by a new vertex holds its map point · `SETTLED` (2026-09-11)
+Inserting a vertex into a wall halves the edge a door names, and a door stores a fraction along
+that edge, so the same fraction pointed somewhere else - a measured 186px jump onto another wall
+of the same room. Two other answers were dropped: deleting a door whose wall was split loses work
+already done, and refusing the insert makes vertex editing read as broken with nothing on screen
+to explain it. The remap takes the split's own fraction and moves the door onto whichever half now
+carries it, which preserves the point exactly. The notch still caps to the wall the door ends up
+on, so a split made right beside a door draws it narrower than a cell.

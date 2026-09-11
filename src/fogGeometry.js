@@ -575,16 +575,22 @@ function planDoorPlacements(rooms, portals, cell, offsetX, offsetY, squareGrid) 
   return out.map(o => ({ roomIndex: o.roomIndex, door: o.door }));
 }
 
-// Keeps doors pointing at the same wall when a vertex is added or removed. `at` is the index
-// passed to the matching vertices.splice; delta is +1 for an insert, -1 for a delete. A door on
-// a deleted edge has no wall left to sit on, so it goes.
-function remapDoorsForVertexChange(doors, at, delta) {
+// Keeps doors on the same map point when a vertex is added or removed. On an insert `at` is the
+// EDGE being split, `splitT` how far along it the new vertex landed; on a delete `at` is the
+// vertex index and a door on either edge it joined goes, having no wall left.
+// ⚠ `t` is a fraction of the edge it NAMES, so the insert halving that edge moves the door.
+function remapDoorsForVertexChange(doors, at, delta, splitT) {
   if (!doors || !doors.length) return doors || [];
+  const s = (splitT > 0 && splitT < 1) ? splitT : 0.5;
   const out = [];
   for (const d of doors) {
     if (delta < 0) {
       if (d.edge === at || d.edge === at - 1) continue;
       out.push({ ...d, edge: d.edge > at ? d.edge - 1 : d.edge });
+    } else if (d.edge === at) {
+      out.push(d.t < s
+        ? { ...d, t: d.t / s }
+        : { ...d, edge: at + 1, t: (d.t - s) / (1 - s) });
     } else {
       out.push({ ...d, edge: d.edge > at ? d.edge + 1 : d.edge });
     }

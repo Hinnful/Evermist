@@ -75,10 +75,13 @@ test('buildGroupSections always puts Ungrouped last', () => {
   assert.strictEqual(secs[secs.length - 1].ungrouped, true);
 });
 
-test('buildGroupSections omits Ungrouped when every scene is filed', () => {
+test('buildGroupSections keeps Ungrouped when every scene is filed', () => {
+  // It is the only place to drag a card back OUT of a group, so it cannot hide when empty.
   const secs = buildGroupSections([S('a', 'House')], ['House']);
-  assert.strictEqual(secs.length, 1);
+  assert.strictEqual(secs.length, 2);
   assert.strictEqual(secs[0].ungrouped, false);
+  assert.strictEqual(secs[1].ungrouped, true);
+  assert.strictEqual(secs[1].scenes.length, 0);
 });
 
 test('buildGroupSections gives an all-ungrouped library one flat section', () => {
@@ -91,7 +94,7 @@ test('buildGroupSections gives an all-ungrouped library one flat section', () =>
 
 test('buildGroupSections keeps an empty group visible', () => {
   const secs = buildGroupSections([S('a', 'House')], ['House', 'Docks']);
-  assert.deepStrictEqual(secs.map(s => s.name), ['House', 'Docks']);
+  assert.deepStrictEqual(secs.filter(s => !s.ungrouped).map(s => s.name), ['House', 'Docks']);
   assert.strictEqual(secs[1].scenes.length, 0);
 });
 

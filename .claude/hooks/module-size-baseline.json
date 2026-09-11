@@ -5,7 +5,7 @@
     "src/state.js": 15296,
     "src/toolbar.js": 23514,
     "src/input.js": 13991,
-    "src/tools.js": 43188,
+    "src/tools.js": 43318,
     "src/shapeMenu.js": 3016,
     "src/about.js": 4882,
     "src/updater.js": 2138,
@@ -29,6 +29,8 @@
     "src/gridCalibrate.js": 23577,
     "src/musicDownload.js": 12588,
     "src/panes.js": 22030,
-    "src/stage.js": 6326
+    "src/stage.js": 6326,
+    "src/fogGeometry.js": 29460,
+    "src/sceneGroups.js": 5396
   }
 }

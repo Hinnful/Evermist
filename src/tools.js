@@ -971,9 +971,11 @@ function toolDblClick(raw, e) {
   pushUndo();
   const a = poly.vertices[ei], b = poly.vertices[(ei + 1) % poly.vertices.length];
   const pt = closestPointOnSegment(raw.x, raw.y, a.x, a.y, b.x, b.y);
+  const span = Math.hypot(b.x - a.x, b.y - a.y);
+  const splitT = span ? Math.hypot(pt.x - a.x, pt.y - a.y) / span : 0.5;
   poly.vertices.splice(ei + 1, 0, pt);
   if (poly.cornerRadii) editCornerRadii(poly, r => r.splice(ei + 1, 0, null));
-  if (poly.doors) poly.doors = remapDoorsForVertexChange(poly.doors, ei, 1);
+  if (poly.doors) poly.doors = remapDoorsForVertexChange(poly.doors, ei, 1, splitT);
   selectedVertexIndex = ei + 1;
   shapeGeometryChanged();
   persistShapeEdit();
