@@ -583,6 +583,27 @@ var _diagLog      = [];   // ring buffer, newest appended last; disk log is unbo
 var _diagT0       = null; // perf timestamp of first event
 var _diagPrevRS   = -1;   // detect readyState changes between polls
 
+// Frame rate from the browser's own paint clock, not the app's render loop, so a window that has
+// stopped painting reads as stopped. Always on: a sag has to reach the disk log on its own.
+var _diagFps = 0, _diagFpsCount = 0, _diagFpsSince = 0, _diagFpsLoggedAt = 0;
+function _diagStartFps() {
+  if (_diagFpsSince) return;
+  _diagFpsSince = performance.now();
+  (function tick() {
+    requestAnimationFrame(tick);
+    _diagFpsCount++;
+    var now = performance.now(), span = now - _diagFpsSince;
+    if (span < 1000) return;
+    _diagFps = Math.round(_diagFpsCount * 1000 / span);
+    _diagFpsCount = 0; _diagFpsSince = now;
+    // ⚠ Only the bad seconds, and at most one line a second: this runs for the whole session.
+    if (_diagFps < 20 && now - _diagFpsLoggedAt > 900) {
+      _diagFpsLoggedAt = now;
+      _diagAppend('fps=' + _diagFps + ' ⚠');
+    }
+  })();
+}
+
 // Resolved once on first use. 'dm' or 'player' — the mode tag for disk log filenames.
 // ⚠ _diagT0 resets on toggle, so the +Ns stamp is not monotonic; order by the wall-clock field.
 function _diagMode() {
@@ -631,6 +652,7 @@ function _diagRender() {
     'rs=' + rs + (rs < 4 && rs !== '—' ? ' ⚠' : '') +
       '  paused=' + pa + '  ct=' + ct,
     'loopAge=' + loopAge + '  RVFC=' + rvfc,
+    'fps=' + _diagFps + (_diagFps && _diagFps < 20 ? ' ⚠' : ''),
     '── Events (newest first) ──',
   ].concat(_diagLog.slice().reverse());
 
@@ -657,6 +679,10 @@ function _diagToggle() {
     if (_diagEl) { _diagEl.remove(); _diagEl = null; }
   }
 }
+
+// ⚠ EVERY WINDOW. A sag shows on the Player and the two-map halves, and none of them has a
+// keyboard to open an overlay with.
+if (typeof document !== 'undefined') _diagStartFps();
 
 if (typeof document !== 'undefined' && !(typeof isPlayer !== 'undefined' && isPlayer)) {
   document.addEventListener('keydown', function(e) {

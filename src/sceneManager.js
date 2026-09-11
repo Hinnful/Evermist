@@ -1067,7 +1067,9 @@ async function switchScene(id, _isRecovery = false) {
   landing.style.display = 'none';
   if (!isPlayer) container.style.cursor = 'crosshair';
   fitToScreen();
-  viewportDirty = true; gridDirty = true; fogDirty = true;
+  // ⚠ cursorDirty TOO: the room outlines and labels live on the overlay canvas, and nothing else
+  // marks it. Without it the new scene's rooms stay unpainted until the first mouse move.
+  viewportDirty = true; gridDirty = true; fogDirty = true; cursorDirty = true;
   scheduleRender();
   renderSceneManager();
   // Selection was cleared above, so close the room card rather than leaving it floating

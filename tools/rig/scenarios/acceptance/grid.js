@@ -126,9 +126,11 @@ module.exports = async function gridFeature(rig) {
   // to a horizontal grid line picks up faint anti-aliasing and reads as its own signature. The
   // median gap across one row, divided back through the camera, is a cell size in map units.
   const READ_PAINT = [
-    'globalThis.__rigPaint = (canvasId) => {',
-    '  const c = document.getElementById(canvasId);',
-    "  if (!c || !c.width || !c.height) return { err: 'no canvas ' + canvasId };",
+    'globalThis.__rigPaint = (target) => {',
+    "  // ⚠ A CANVAS OR AN ID. The Player's grid canvas is OFFSCREEN - PixiJS shows it as a",
+    '  // sprite under the fog mesh - so it has no id to look up and is passed by reference.',
+    "  const c = (typeof target === 'string') ? document.getElementById(target) : target;",
+    "  if (!c || !c.width || !c.height) return { err: 'no canvas ' + target };",
     "  const ctx = c.getContext('2d');",
     '  const rows = [], sigs = new Map();',
     '  let gapRow = null;',
@@ -150,7 +152,7 @@ module.exports = async function gridFeature(rig) {
     '    sigs.set(sig, (sigs.get(sig) || 0) + 1);',
     '    if (!gapRow) gapRow = starts;',
     '  }',
-    "  if (!gapRow) return { err: 'nothing painted on ' + canvasId, rowsRead: 0 };",
+    "  if (!gapRow) return { err: 'nothing painted', rowsRead: 0 };",
     '  const gaps = [];',
     '  for (let i = 1; i < gapRow.length; i++) gaps.push(gapRow[i] - gapRow[i - 1]);',
     '  gaps.sort((a, b) => a - b);',
@@ -414,10 +416,15 @@ module.exports = async function gridFeature(rig) {
     ' offX: gridOffsetX, offY: gridOffsetY, color: gridColor, opacity: +gridOpacity.toFixed(2),' +
     ' mode: gridMode, width: gridLineWidth })');
 
+  // ⚠ THE CANVAS IS NOT WHAT THE TABLE SEES. It is offscreen and keeps its last paint; the
+  // sprite's visibility is what puts it on the TV, and switching the grid off hides the sprite
+  // rather than clearing the canvas. Reading the canvas alone reports a grid nobody can see.
   const playerPaint = async () => {
     await player.evaluate('gridDirty = true; viewportDirty = true; scheduleRender(); 0');
     await rig.sleep(400);
-    return player.evaluate('__rigPaint("player-grid-canvas")');
+    const shown = await player.evaluate('!!(pixiPGridSpr && pixiPGridSpr.visible)');
+    if (!shown) return { err: 'the grid sprite is hidden, so nothing reaches the TV' };
+    return player.evaluate('__rigPaint(playerGridCanvas)');
   };
 
   // Bounded, never throws: a miss lands as the named check below.

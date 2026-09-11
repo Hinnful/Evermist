@@ -1000,35 +1000,25 @@ const fogCanvas      = document.getElementById('fog-canvas');
 const gridCanvasEl   = document.getElementById('grid-canvas');
 const cursorCanvas   = document.getElementById('cursor-canvas');
 const mapCtx         = mapCanvas.getContext('2d');
-const fogDisplayCtx  = fogCanvas.getContext('2d');
 const gridCtx        = gridCanvasEl.getContext('2d');
 const cursorCtx      = cursorCanvas.getContext('2d');
-// Player+PixiJS only — canvas inserted between #pixi-canvas and #fog-canvas so fog hides it.
+// Player only. Offscreen: PixiJS shows it as a sprite under the fog mesh (pixiSetPlayerGrid).
 let playerGridCanvas = null, playerGridCtx = null;
 const landing        = document.getElementById('landing');
 
-// Fog display canvas uses CSS opacity so the browser GPU-composites it for free.
-fogCanvas.style.opacity = isPlayer ? '1' : String(FOG_OPACITY_DM);
-
 // ─── PixiJS init ──────────────────────────────────────────────────────────────
 mapCanvas.style.display = 'none';
-// Hybrid: the DM's fog is rendered by PixiJS, so its 2D fog-canvas stays hidden.
-// The Player draws Canvas-2D fog (renderFog) ON TOP of the PixiJS map sprite, so
-// its fog-canvas must stay visible — otherwise syncSize skips it (display:none),
-// it never gets sized, and renderFog paints into a 0×0 canvas (map shows fully
-// revealed with only the container background visible around it).
-if (!isPlayer) fogCanvas.style.display = 'none';
+// Both views render fog through PixiJS now, so nothing draws on the 2D fog canvas in either.
+fogCanvas.style.display = 'none';
 initPixiRenderer(container);
 if (isPlayer) {
   // Fill viewport with fog colour outside the map rect via CSS — keeps PixiJS canvas transparent
   // so the video DOM element can show through for video maps.
   container.style.background = '#1a1a2e';
-  // Grid canvas: must sit above #pixi-canvas but below #fog-canvas so fog hides the grid
-  // in shrouded areas. #map-canvas is hidden in PixiJS mode so we need a dedicated layer.
+  // ⚠ NEVER PUT THIS IN THE DOM. A DOM canvas sits above #pixi-canvas, which now carries the fog,
+  // and the grid would draw over unexplored ground on the players' screen.
   playerGridCanvas = document.createElement('canvas');
   playerGridCanvas.id = 'player-grid-canvas';
-  playerGridCanvas.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
-  container.insertBefore(playerGridCanvas, fogCanvas);
   playerGridCtx = playerGridCanvas.getContext('2d');
 }
 

@@ -24,11 +24,9 @@
 //   J. Reset Fog Settings restores the look and deliberately leaves half-shroud alone.
 //   K. The fog looks right on the TV.
 //
-// ⚠ THE PLAYER'S FOG IS CANVAS-2D DRAWN ON TOP OF THE PIXIJS MAP (docs/DECISIONS.md), so its
-// painted fog can be read straight off #fog-canvas — colour included, which the DM's GPU path
-// cannot give up as cheaply. Canvas pixels are CSS pixels here: syncSize sets width/height from
-// clientWidth/clientHeight with no devicePixelRatio, so a map point converts to a fog-canvas
-// pixel with the camera transform alone.
+// ⚠ THE PLAYER'S FOG IS ONE FULL-SCREEN PIXIJS PASS, so its painted fog is read by extracting
+// that mesh from the renderer rather than off a DOM canvas. The extract is in CSS pixels, as the
+// renderer runs at resolution 1, so a map point converts with the camera transform alone.
 //
 // ⚠ WAIT OUT THE SCENE COVER BEFORE READING PAINTED FOG. A fresh map arrives under a full-fog
 // cover (fogCoverT) which punches nothing, so every sample reads opaque no matter what was
@@ -104,24 +102,39 @@ module.exports = async function fogFeature(rig) {
 
   // The fog it PAINTS, with its colour. Alpha says whether fog is there; RGB says what colour it
   // is, which is section F's business.
-  const SAMPLE_PAINTED = `((mx, my) => {
+  // ⚠ EXTRACT THE FOG MESH ALONE, never the stage. The stage composite is opaque everywhere
+  // because the map sits under it, and alpha is the whole point here. The mesh on its own gives
+  // back what #fog-canvas used to: alpha says whether fog is there, RGB says what colour it is.
+  const SNAP = `globalThis.__rigFogSnap = () => {
+    if (!pixiPFogMesh || !pixiApp) return null;
+    const cvs = pixiApp.renderer.extract.canvas(pixiPFogMesh);
+    globalThis.__rigSnap = cvs.getContext('2d').getImageData(0, 0, cvs.width, cvs.height);
+    return { w: cvs.width, h: cvs.height };
+  };
+  globalThis.__rigFogAt = (mx, my) => {
+    const d = globalThis.__rigSnap;
+    if (!d) return { a: -1 };
     const sx = Math.round(mx * zoom + panX), sy = Math.round(my * zoom + panY);
-    const c = document.getElementById('fog-canvas');
-    if (sx < 0 || sy < 0 || sx >= c.width || sy >= c.height) return { a: -1 };
-    const d = c.getContext('2d').getImageData(sx, sy, 1, 1).data;
-    return { r: d[0], g: d[1], b: d[2], a: d[3] };
-  })`;
+    if (sx < 0 || sy < 0 || sx >= d.width || sy >= d.height) return { a: -1 };
+    const i = (sy * d.width + sx) * 4;
+    return { r: d.data[i], g: d.data[i + 1], b: d.data[i + 2], a: d.data[i + 3] };
+  };
+  0`;
+  await player.evaluate(SNAP);
   const repaintPlayer = async () => {
     await player.evaluate('viewportDirty = true; fogDirty = true; scheduleRender(); 0');
     await rig.sleep(500);
+    await player.evaluate('__rigFogSnap()');
   };
-  const painted = (x, y) => player.evaluate(SAMPLE_PAINTED + '(' + x + ',' + y + ')');
+  const painted = (x, y) => player.evaluate('__rigFogAt(' + x + ',' + y + ')');
 
   await repaintPlayer();
   const paintedRevealed = await painted(REVEAL.x, REVEAL.y);
   const paintedUntouched = await painted(UNTOUCHED.x, UNTOUCHED.y);
+  // The 0.55 knock-down is the DM's layer alone. On the Player the fog pass carries no alpha of
+  // its own, and a mesh drawn at less than 1 means the table can read through the fog.
   const layerOpacity = await player.evaluate(
-    "getComputedStyle(document.getElementById('fog-canvas')).opacity");
+    'pixiPFogMesh ? String(pixiPFogMesh.worldAlpha) : "no fog mesh"');
   rig.note('painted fog — revealed ' + JSON.stringify(paintedRevealed) + ', untouched ' +
            JSON.stringify(paintedUntouched) + ', layer opacity ' + layerOpacity);
   rig.check(paintedRevealed.a === 0,

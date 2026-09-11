@@ -11,7 +11,8 @@
 //
 //   A. A scene remembers the fog. The autosave commits what the DM revealed, a switch away does
 //      not damage what was committed, and coming back restores it.
-//   B. A scene remembers its rooms and its effects, and never inherits another scene's.
+//   B. A scene remembers its rooms and its effects, and never inherits another scene's, and
+//      draws them the moment it opens rather than waiting for the DM to move the mouse.
 //   C. A scene's name is the DM's to set: it reaches the store and the library trigger, and an
 //      empty name falls back rather than leaving a nameless card.
 //   D. The library keeps the order the DM dragged it into, and that order survives the next save.
@@ -204,6 +205,29 @@ module.exports = async function scenesFeature(rig) {
             "a room came back without the name the DM gave it: " + backOnAlpha.roomName);
   rig.check(backOnAlpha.fxName === 'Burning pews' && backOnAlpha.fxMaterial === 'fire',
             'an effect came back without its name or its material: ' + JSON.stringify(backOnAlpha));
+
+  // ⚠ NO MOUSE EVENT ANYWHERE NEAR THIS CHECK. Room outlines and labels live on the cursor
+  // overlay, which is marked dirty by pointer movement - so a scene switch that forgets to mark it
+  // leaves the incoming scene's rooms invisible until the DM happens to jiggle the mouse, and any
+  // check that moves the pointer first would paint them itself and pass.
+  const outlineInk = () => dm.evaluate(`(() => {
+    const c = document.getElementById('cursor-canvas');
+    if (!c || !c.width) return -1;
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++;
+    return n;
+  })()`);
+  // Bounded poll, never one read: the overlay paints on the shared render clock.
+  let ink = 0;
+  for (let i = 0; i < 40 && ink <= 0; i++) {
+    ink = await outlineInk();
+    if (ink <= 0) await rig.sleep(100);
+  }
+  rig.note('cursor overlay ink after the switch, with no mouse moved: ' + ink + ' px');
+  rig.check(ink > 0,
+            'the scene came back with its rooms unpainted until the mouse moved (overlay ink ' +
+            ink + ')');
 
   // ── C. Renaming ───────────────────────────────────────────────────────────
   const rename = (id, value) => dm.evaluate(`(() => {

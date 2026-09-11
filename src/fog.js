@@ -50,7 +50,6 @@ let cloudBlendCanvas = null, cloudBlendCtx = null;
 // blend, so prev*(1-t) + new*t is a true lerp with no alpha bleed in always-fogged regions.
 let fogTransPrev        = null; // clone of fogEffectCanvas before op (DM)
 let fogTransBlurPrev    = null; // clone of fogBlurCanvas before op (player)
-let fogTransBlendCanvas = null; // pre-allocated scratch for player blend pass
 let fogTransT           = 0;   // 0→1 during transition
 let fogTransStart       = 0;
 // fogTransRafId lives in state.js (fog RAF lifecycle handle)
@@ -419,48 +418,54 @@ function generateCloudFrames(size, numFrames) {
     ctx.putImageData(img, 0, 0);
   }
 
-  // Synchronous path: generate all frames at once (used at startup)
+  function newFrame(i) {
+    const cvs = document.createElement('canvas');
+    cvs.width = size; cvs.height = size;
+    renderFrame(cvs, i / numFrames);
+    return cvs;
+  }
+
+  // ⚠ NEVER GENERATE THE WHOLE SET SYNCHRONOUSLY. One frame costs tens of milliseconds, and the
+  // Player window pays the set at startup - twice over in two-map mode, where both halves share
+  // one thread. Either path builds its frames one per timeout.
+  const genId = ++generateCloudFrames._genId;
+  const rest  = [];
+  let idx = 0;
+  function genNext() {
+    if (genId !== generateCloudFrames._genId) return;   // superseded
+    if (idx >= numFrames) {
+      cloudFrames = rest;
+      cloudCanvas = rest[0];
+      cloudBlendCtx.drawImage(rest[0], 0, 0);
+      cloudPattern = rest[0].getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
+      return;
+    }
+    rest.push(newFrame(idx++));
+    setTimeout(genNext, 0);
+  }
+
+  // A regeneration keeps the live set on screen until the replacement is whole. A first pass has
+  // nothing to keep, so frame 0 goes out alone; the morph skips a one-frame set and holds still.
   if (!generateCloudFrames._initialized) {
-    cloudFrames = [];
-    for (let f = 0; f < numFrames; f++) {
-      const cvs = document.createElement('canvas');
-      cvs.width = size; cvs.height = size;
-      renderFrame(cvs, f / numFrames);
-      cloudFrames.push(cvs);
-    }
     generateCloudFrames._initialized = true;
-  } else {
-    // Async path: regenerate frames one-at-a-time to avoid blocking UI
-    const genId = ++generateCloudFrames._genId;
-    const newFrames = [];
-    let idx = 0;
-    function genNext() {
-      if (genId !== generateCloudFrames._genId) return; // superseded
-      if (idx >= numFrames) {
-        cloudFrames = newFrames;
-        cloudCanvas = cloudFrames[0];
-        cloudBlendCtx.drawImage(cloudFrames[0], 0, 0);
-        cloudPattern = cloudFrames[0].getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
-        return;
-      }
-      const cvs = document.createElement('canvas');
-      cvs.width = size; cvs.height = size;
-      renderFrame(cvs, idx / numFrames);
-      newFrames.push(cvs);
-      idx++;
-      setTimeout(genNext, 0);
-    }
+    const first = newFrame(idx++);
+    rest.push(first);
+    cloudFrames = [first];
+    cloudCanvas = first;
+    cloudBlendCanvas = document.createElement('canvas');
+    cloudBlendCanvas.width = size; cloudBlendCanvas.height = size;
+    cloudBlendCtx = cloudBlendCanvas.getContext('2d');
+    cloudBlendCtx.drawImage(first, 0, 0);
+    cloudPattern = first.getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
+  }
+  // ⚠ A HIDDEN WINDOW FINISHES THE SET NOW. Nobody is looking, and its timers run at about 1Hz,
+  // so a pre-warmed Player would otherwise still be filling its set when the button is pressed.
+  if (typeof document !== 'undefined' && document.hidden) {
+    while (idx < numFrames) rest.push(newFrame(idx++));
     genNext();
     return;
   }
-
-  cloudCanvas = cloudFrames[0];
-
-  cloudBlendCanvas = document.createElement('canvas');
-  cloudBlendCanvas.width = size; cloudBlendCanvas.height = size;
-  cloudBlendCtx = cloudBlendCanvas.getContext('2d');
-  cloudBlendCtx.drawImage(cloudFrames[0], 0, 0);
-  cloudPattern = cloudFrames[0].getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
+  setTimeout(genNext, 0);
 }
 generateCloudFrames._initialized = false;
 generateCloudFrames._genId = 0;
@@ -564,7 +569,8 @@ function rebuildFogEffect() {
     // DM GPU path: TilingSprites display the clouds, so only the blur canvas is uploaded.
     pixiUpdateFogBlurTexture();
   } else {
-    // Player: renderFog draws its own clouds.
+    // Player GPU path: the reveal mask is the only thing the full-screen pass reads from the CPU.
+    pixiSyncPlayerFog(fogBlurCanvas, cloudBlendCanvas);
     fogDirty = true;
     scheduleRender();
   }
@@ -607,145 +613,89 @@ function drawLoadingFog(ctx, cw, ch) {
   ctx.restore();
 }
 
+// Both views render fog through PixiJS: the DM's as map-sized sprites (pixiInitFog), the Player's
+// as one full-screen pass (pixiInitPlayerFog). This builds the Player's per-frame uniforms.
+const _pfogM = new Float32Array(12);
+const _pfogO = new Float32Array(6);
+const _pfogA = new Float32Array(3);
+const _pfogRGB = new Float32Array(3);
+const _pfogRGB2 = new Float32Array(3);
+const _pfogMaskM = new Float32Array(2);
+const _pfogMaskO = new Float32Array(2);
+const _pfogMaskLim = new Float32Array(2);
+
+function hexToRGBFloat(hex, out) {
+  const n = parseInt(hex.slice(1), 16);
+  out[0] = ((n >> 16) & 255) / 255;
+  out[1] = ((n >>  8) & 255) / 255;
+  out[2] = ( n        & 255) / 255;
+  return out;
+}
+
 function renderFog(vp) {
-  // PixiJS handles DM fog. The Player uses this Canvas-2D fog-on-top path — see the HYBRID note
-  // in renderer.js pixiInitFog.
   if (!isPlayer) return;
+  if (!pixiPlayerFogReady() || !fogDataCanvas || !fogBlurCanvas) return;
 
-  const { srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH, cw, ch } = vp;
-  fogDisplayCtx.clearRect(0, 0, cw, ch);
+  // Every term derives from the map, so a scene swap changes all of them at once. fogCloudAdj
+  // re-anchors the incoming scene onto the transform the outgoing one was last drawn at, which is
+  // why the swap has no scale change left to travel across.
+  let s  = zoom * FOG_SCALE * fogCloudAdj.k;
+  let cx = mapWidth  / 2 * zoom + panX + fogCloudAdj.dx;
+  let cy = mapHeight / 2 * zoom + panY + fogCloudAdj.dy;
+  let hw = fogCloudAdj.hw != null ? fogCloudAdj.hw : fogDataCanvas.width  / 2;
+  let hh = fogCloudAdj.hh != null ? fogCloudAdj.hh : fogDataCanvas.height / 2;
+  // Pinned for the length of a switch, so the map can change size and camera under the closed
+  // cover with the clouds not moving at all.
+  if (fogCloudHold) {
+    s = fogCloudHold.s; cx = fogCloudHold.cx; cy = fogCloudHold.cy;
+    hw = fogCloudHold.hw; hh = fogCloudHold.hh;
+  }
+  // The transform AS DRAWN, banked so freeze/rebaseCloudTransform have something exact.
+  fogCloudLast = { s: s, cx: cx, cy: cy, hw: hw, hh: hh };
 
-  if (isPlayer) {
-    // ⚠ ONE cloud pass over the whole display, then reveal holes punched inside the map rect.
-    // Never split it into inside/outside passes: one pass is what makes the border seam
-    // impossible, because the same pixels back both regions.
-
-    // 1. Base fog colour.
-    fogDisplayCtx.fillStyle = fogBaseColor;
-    fogDisplayCtx.fillRect(0, 0, cw, ch);
-
-    // 2. Cloud texture across the full display, in display space.
-    if (cloudPattern && fogDataCanvas) {
-      fogDisplayCtx.save();
-      fogDisplayCtx.globalCompositeOperation = 'source-atop';
-      // Every term derives from the map, so a scene swap changes all of them at once.
-      // fogCloudAdj re-anchors the incoming scene onto the transform the outgoing one was last
-      // drawn at, which is why the swap has no scale change left to travel across.
-      let s   = zoom * FOG_SCALE * fogCloudAdj.k;
-      let cx  = mapWidth  / 2 * zoom + panX + fogCloudAdj.dx;
-      let cy  = mapHeight / 2 * zoom + panY + fogCloudAdj.dy;
-      let hw  = fogCloudAdj.hw != null ? fogCloudAdj.hw : fogDataCanvas.width  / 2;
-      let hh  = fogCloudAdj.hh != null ? fogCloudAdj.hh : fogDataCanvas.height / 2;
-      // Pinned for the length of a switch, so the map can change size and camera under the
-      // closed cover with the clouds not moving at all.
-      if (fogCloudHold) {
-        s = fogCloudHold.s; cx = fogCloudHold.cx; cy = fogCloudHold.cy;
-        hw = fogCloudHold.hw; hh = fogCloudHold.hh;
-      }
-      // The transform AS DRAWN, banked so freeze/rebaseCloudTransform have something exact.
-      fogCloudLast = { s: s, cx: cx, cy: cy, hw: hw, hh: hh };
-      const bigR = Math.ceil(Math.max(cw, ch) / s) + hw * 2;
-      for (let i = 0; i < CLOUD_PASSES.length; i++) {
-        const p   = CLOUD_PASSES[i];
-        const off = fogAnimOffsets[i];
-        fogDisplayCtx.save();
-        fogDisplayCtx.globalAlpha = fogAnimEnabled ? fogAnimAlphas[i] : p.alpha;
-        fogDisplayCtx.translate(cx, cy);
-        fogDisplayCtx.rotate(p.angle);
-        fogDisplayCtx.scale(s * p.scale, s * p.scale);
-        fogDisplayCtx.translate(-hw + off.x, -hh + off.y);
-        fogDisplayCtx.fillStyle = cloudPattern;
-        fogDisplayCtx.fillRect(-bigR, -bigR, 2 * bigR + hw * 2, 2 * bigR + hh * 2);
-        fogDisplayCtx.restore();
-      }
-      fogDisplayCtx.restore();
-    }
-
-    // 3. Tint glow — source-atop so it only lands on fog pixels, not revealed areas.
-    fogDisplayCtx.save();
-    fogDisplayCtx.globalCompositeOperation = 'source-atop';
-    fogDisplayCtx.globalAlpha = FOG_TINT_ALPHA;
-    fogDisplayCtx.fillStyle = fogTintColor;
-    fogDisplayCtx.fillRect(0, 0, cw, ch);
-    fogDisplayCtx.restore();
-
-    // 4. Punch reveal holes inside the map rect. fogBlurCanvas is opaque where fogged and clear
-    // where revealed, so destination-in keeps fog in proportion. The clip leaves the outside fog
-    // from steps 1-2 untouched. A live transition lerps prev↔new with 'lighter'.
-    // ⚠ Scene-switch cover (fogCoverT): FULLY covered punches NOTHING. Skipping the step is what
-    // makes the cover immune to the map changing size underneath it, which it does mid-switch.
-    let maskCanvas = fogBlurCanvas;
-    if (fogCoverT >= 1) {
-      maskCanvas = null;
-    } else if ((fogTransBlurPrev || fogCoverT > 0) && fogBlurCanvas) {
-      if (!fogTransBlendCanvas ||
-          fogTransBlendCanvas.width  !== fogBlurCanvas.width ||
-          fogTransBlendCanvas.height !== fogBlurCanvas.height) {
-        fogTransBlendCanvas = document.createElement('canvas');
-        fogTransBlendCanvas.width  = fogBlurCanvas.width;
-        fogTransBlendCanvas.height = fogBlurCanvas.height;
-      }
-      const bctx = fogTransBlendCanvas.getContext('2d');
-      const bw = fogTransBlendCanvas.width, bh = fogTransBlendCanvas.height;
-      bctx.clearRect(0, 0, bw, bh);
-      if (fogTransBlurPrev) {
-        bctx.globalAlpha = 1 - fogTransT;
-        bctx.drawImage(fogTransBlurPrev, 0, 0);
-        bctx.globalCompositeOperation = 'lighter';
-        bctx.globalAlpha = fogTransT;
-        bctx.drawImage(fogBlurCanvas, 0, 0);
-      } else {
-        bctx.globalAlpha = 1;
-        bctx.drawImage(fogBlurCanvas, 0, 0);
-        bctx.globalCompositeOperation = 'lighter';
-      }
-      if (fogCoverT > 0) {
-        // 'lighter' adds alpha, so this raises every pixel toward fully fogged.
-        bctx.globalAlpha = fogCoverT;
-        bctx.fillStyle = '#000';
-        bctx.fillRect(0, 0, bw, bh);
-      }
-      bctx.globalCompositeOperation = 'source-over';
-      bctx.globalAlpha = 1;
-      maskCanvas = fogTransBlendCanvas;
-    }
-    if (maskCanvas && srcW > 0 && srcH > 0) {
-      fogDisplayCtx.save();
-      const ix = Math.floor(dstX), iy = Math.floor(dstY);
-      const iw = Math.ceil(dstX + dstW) - ix, ih = Math.ceil(dstY + dstH) - iy;
-      fogDisplayCtx.beginPath();
-      fogDisplayCtx.rect(ix, iy, iw, ih);
-      fogDisplayCtx.clip();
-      fogDisplayCtx.globalCompositeOperation = 'destination-in';
-      fogDisplayCtx.drawImage(maskCanvas,
-        srcX / FOG_SCALE, srcY / FOG_SCALE,
-        srcW / FOG_SCALE, srcH / FOG_SCALE,
-        ix, iy, iw, ih);
-      fogDisplayCtx.restore();
-    }
-
-    return;
+  // Screen pixel → cloud UV, per pass: the context's translate/rotate/scale chain, inverted.
+  const tile = cloudBlendCanvas ? cloudBlendCanvas.width : 512;
+  for (let i = 0; i < CLOUD_PASSES.length; i++) {
+    const p = CLOUD_PASSES[i];
+    const off = fogAnimOffsets[i];
+    const d  = s * p.scale * tile;
+    const ct = Math.cos(p.angle) / d, st = Math.sin(p.angle) / d;
+    _pfogM[i * 4]     =  ct; _pfogM[i * 4 + 1] = st;
+    _pfogM[i * 4 + 2] = -st; _pfogM[i * 4 + 3] = ct;
+    _pfogO[i * 2]     =  ct * cx + st * cy + (-hw + off.x) / tile;
+    _pfogO[i * 2 + 1] = -st * cx + ct * cy + (-hh + off.y) / tile;
+    _pfogA[i] = fogAnimEnabled ? fogAnimAlphas[i] : p.alpha;
   }
 
-  // DM view: semi-transparent overlay over the map rect only, so the DM sees the canvas
-  // background beyond the map.
-  if (!fogDataCanvas || srcW <= 0 || srcH <= 0) return;
-  const sx = srcX / FOG_SCALE, sy = srcY / FOG_SCALE;
-  const sw = srcW / FOG_SCALE, sh = srcH / FOG_SCALE;
-  if (!isDrawing && fogTransPrev && fogEffectCanvas) {
-    // Linear crossfade, never the noise dissolve: the DM bakes live cloud offsets into
-    // fogEffectCanvas every frame, so the two canvases differ everywhere and it goes screen-wide.
-    fogDisplayCtx.globalAlpha = 1 - fogTransT;
-    fogDisplayCtx.drawImage(fogTransPrev, sx, sy, sw, sh, dstX, dstY, dstW, dstH);
-    fogDisplayCtx.globalCompositeOperation = 'lighter';
-    fogDisplayCtx.globalAlpha = fogTransT;
-    fogDisplayCtx.drawImage(fogEffectCanvas, sx, sy, sw, sh, dstX, dstY, dstW, dstH);
-    fogDisplayCtx.globalCompositeOperation = 'source-over';
-    fogDisplayCtx.globalAlpha = 1;
-  } else {
-    const fogSrc = isDrawing ? fogDataCanvas : (fogEffectCanvas || fogDataCanvas);
-    fogDisplayCtx.drawImage(fogSrc, sx, sy, sw, sh, dstX, dstY, dstW, dstH);
+  // Screen pixel → reveal-mask UV. ⚠ Scaled by the BLUR CANVAS's own size, not the map's: its
+  // dimensions are ceil(map / FOG_SCALE), so a map that does not divide evenly leaves a sliver
+  // the map-sized version would sample off by a texel. uMaskLim is where the map itself ends.
+  const bw = fogBlurCanvas.width, bh = fogBlurCanvas.height;
+  _pfogMaskM[0] = 1 / (zoom * FOG_SCALE * bw);
+  _pfogMaskM[1] = 1 / (zoom * FOG_SCALE * bh);
+  _pfogMaskO[0] = panX * _pfogMaskM[0];
+  _pfogMaskO[1] = panY * _pfogMaskM[1];
+  _pfogMaskLim[0] = mapWidth  / (FOG_SCALE * bw);
+  _pfogMaskLim[1] = mapHeight / (FOG_SCALE * bh);
+
+  // ⚠ A FULLY CLOSED COVER REVEALS NOTHING, whatever the mask says. That is what makes the cover
+  // immune to the map changing size underneath it, which it does mid-switch.
+  let hasPrev = 0, transT = 1;
+  if (fogCoverT < 1 && fogTransBlurPrev) {
+    pixiSetPlayerFogPrevMask(fogTransBlurPrev);
+    hasPrev = 1;
+    transT  = fogTransT;
   }
+
+  pixiUpdatePlayerFog({
+    cloudM: _pfogM, cloudO: _pfogO, cloudA: _pfogA,
+    maskM: _pfogMaskM, maskO: _pfogMaskO, maskLim: _pfogMaskLim,
+    base: hexToRGBFloat(fogBaseColor, _pfogRGB),
+    tint: hexToRGBFloat(fogTintColor, _pfogRGB2),
+    tintA: FOG_TINT_ALPHA,
+    cover: Math.min(1, fogCoverT),
+    transT, hasPrev,
+  });
 }
 
 // ─── Fog animation loop ───────────────────────────────────────────────────────
@@ -817,9 +767,11 @@ function fogAnimTick(ts) {
           cloudBlendCtx.globalCompositeOperation = 'source-over';
           cloudBlendCtx.globalAlpha = 1;
 
-          // cloudPattern is what the Player's Canvas-2D renderFog draws with.
+          // The Player's fog samples this canvas on the GPU; the loading card still fills with
+          // the pattern, so both are kept in step here.
           if (isPlayer) {
             cloudPattern = cloudFrames[0].getContext('2d').createPattern(cloudBlendCanvas, 'repeat');
+            pixiUploadPlayerFogCloud();
           }
         }
       }
@@ -878,17 +830,9 @@ function startFogTransition(isShroud = false) {
     fogTransPrev = fogBlurCanvas ? cloneCanvas(fogBlurCanvas) : null;
     pixiSetFogTransition(fogTransPrev, 0);
   } else if (fogBlurCanvas) {
-    // Player (hybrid): fog is Canvas-2D on top, and the transition morphs the reveal-hole shape.
-    // No fogEffectCanvas snapshot — the navy and cloud are redrawn every frame. Player-only:
-    // renderFog returns early for the DM, so on that path these would be dead allocations.
+    // Player: the full-screen pass crossfades the two reveal masks in the shader, so the only
+    // thing to keep is the outgoing mask itself.
     fogTransBlurPrev = cloneCanvas(fogBlurCanvas);
-    if (!fogTransBlendCanvas ||
-        fogTransBlendCanvas.width  !== fogBlurCanvas.width ||
-        fogTransBlendCanvas.height !== fogBlurCanvas.height) {
-      fogTransBlendCanvas = document.createElement('canvas');
-      fogTransBlendCanvas.width  = fogBlurCanvas.width;
-      fogTransBlendCanvas.height = fogBlurCanvas.height;
-    }
   }
   fogTransT     = 0;
   fogTransStart = performance.now();
@@ -905,7 +849,7 @@ function fogTransTick(ts) {
   if (!isPlayer) {
     pixiSetFogTransition(null, fogTransT);
   } else {
-    // Player fog-on-top: renderFog does the blend.
+    // Player: the shader crossfades the two masks, so only the flag is needed here.
     fogDirty = true;
     scheduleRender();
   }
@@ -917,6 +861,7 @@ function fogTransTick(ts) {
     fogTransPrev     = null;
     fogTransBlurPrev = null;
     fogTransT        = 0;
+    if (isPlayer) pixiSetPlayerFogPrevMask(null);   // releases that snapshot's GPU texture
     if (!isPlayer) {
       pixiEndFogTransition();
     } else {

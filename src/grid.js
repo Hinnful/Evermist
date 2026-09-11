@@ -155,10 +155,15 @@ function drawEffectGridGlow(ctx, vp) {
 
 function renderPlayerGrid(vp) {
   if (!playerGridCtx) return;
+  // ⚠ NOTHING IS DRAWN OR UPLOADED WHILE THE GRID IS OFF. This runs on every viewport-dirty
+  // frame, and the upload is the size of the screen - a pan would pay for a blank canvas.
+  if (!gridEnabled) { pixiHidePlayerGrid(); return; }
   playerGridCtx.clearRect(0, 0, vp.cw, vp.ch);
-  if (!gridEnabled) return;
   drawGridLines(playerGridCtx, vp);
   drawEffectGridGlow(playerGridCtx, vp);
+  // The canvas is offscreen; this is what puts it on the screen, under the fog.
+  pixiSetPlayerGrid(playerGridCanvas);
+  pixiUploadPlayerGrid();
 }
 
 // ─── Committing a change ──────────────────────────────────────────────────────

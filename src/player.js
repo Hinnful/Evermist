@@ -239,7 +239,12 @@ function initPlayer() {
       driftScale        = msg.driftScale        ?? driftScale;
       cloudFrameSpeed   = msg.cloudFrameSpeed   ?? cloudFrameSpeed;
       alphaPulseAmp     = msg.alphaPulseAmp     ?? alphaPulseAmp;
-      if (msg.cloudWarpStrength != null || msg.cloudWarpRadius != null) {
+      // ⚠ COMPARE, NEVER JUST CHECK THE FIELDS ARE PRESENT. Every scene load sends this message
+      // carrying warp numbers the Player already has, and rebuilding all sixteen cloud frames on
+      // each one is the freeze on opening the Player and on every switch.
+      const warpChanged = (msg.cloudWarpStrength != null && msg.cloudWarpStrength !== cloudWarpStrength)
+                       || (msg.cloudWarpRadius   != null && msg.cloudWarpRadius   !== cloudWarpRadius);
+      if (warpChanged) {
         cloudWarpStrength = msg.cloudWarpStrength ?? cloudWarpStrength;
         cloudWarpRadius   = msg.cloudWarpRadius  ?? cloudWarpRadius;
         generateCloudFrames(512, CLOUD_FRAME_COUNT);
@@ -455,8 +460,7 @@ function initPlayer() {
             // also the per-frame GPU upload.
             initPlayerMapRegionTexture();
             loadFog(msg.fogDataUrl, !!msg.sceneChange).then(() => {
-              // Hybrid: Player fog is Canvas-2D (renderFog) on top of the PixiJS map — no
-              // PixiJS fog init. loadFog already ran rebuildFogEffect()+startFogAnim().
+              // loadFog already ran rebuildFogEffect(), which syncs the fog pass to the GPU.
               viewportDirty = true;
               scheduleRender();
               video.play().then(() => startVideoLoop()).catch(() => {});
@@ -490,6 +494,9 @@ function initPlayer() {
     } else if (msg.mapUrl) {
       dropPendingPlayerVideo();
       cleanupVideo();
+      // ⚠ THE FOG WAITS FOR THE MAP. Starting both decodes together saves a few tens of ms and
+      // costs correctness: a map that fails to decode leaves the previous one on screen, and the
+      // incoming scene's reveals would be punched into it - ground the players must not see.
       const img = new Image();
       img.onerror = () => { URL.revokeObjectURL(msg.mapUrl); revealPlayer(); };
       img.onload = () => {
@@ -503,8 +510,7 @@ function initPlayer() {
         fitToScreen();
         if (playerFollowDM && msg.view) applyView(msg.view);
         loadFog(msg.fogDataUrl, !!msg.sceneChange).then(() => {
-          // Hybrid: Player fog is Canvas-2D (renderFog) on top of the PixiJS map — no
-          // PixiJS fog init. loadFog already ran rebuildFogEffect()+startFogAnim().
+          // loadFog already ran rebuildFogEffect(), which syncs the fog pass to the GPU.
           viewportDirty = true;
           scheduleRender();
           revealPlayer();
