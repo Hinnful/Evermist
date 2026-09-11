@@ -603,8 +603,13 @@ ever seen a pass, which is not the same as working.
 
 ## How a version reaches you
 
-Every push to `main` runs the release pipeline. It looks at `package.json`'s version, and if that
-version has no tag yet, it treats the push as a release.
+No change is pushed to `main` directly. `main` is protected, so the server refuses a commit that
+no check has passed. Every change goes to a branch first, and a pull request is opened from it so
+the run, and any failed attempt before it, keeps a page of its own.
+
+A push to that branch runs the release pipeline. It looks at `package.json`'s version, and if that
+version has no tag yet, it treats the push as a release. A change that bumps nothing skips
+straight to the landing step and builds nothing.
 
 What happens then, in order. The unit tests run first, on one machine, because there is no point
 building anything if the arithmetic is wrong. Then three installers get built in parallel -
@@ -614,10 +619,14 @@ every acceptance scenario, against the real installed application rather than th
 files. That last part catches a class nothing else can see, where a file works during development
 and is simply missing from the installer.
 
-Only if all of that passes does the last job run. It creates the tag, creates the release page,
-and attaches the installers. So a failure anywhere leaves nothing behind: no tag, no release, no
-download. Whoever is running the app stays on the version they have and never learns anything was
-attempted.
+Only if all of that passes does `main` move. The pipeline fast-forwards it onto the exact commit
+the gate drove, which is why the merge is never a squash or a rebase: those mint a new commit, and
+`main` would then carry a tree nothing ever tested. The pull request closes as merged on its own.
+
+The last job then creates the tag, creates the release page, and attaches the installers. So a
+failure anywhere leaves nothing behind: no tag, no release, no download, and nothing on `main`
+either. Whoever is running the app stays on the version they have and never learns anything was
+attempted. The branch keeps the failure, and the next change is free to go.
 
 The release notes are a commit message, and the publisher takes it from the commit that set the
 version rather than from whatever sits at the top of the branch. One version is one commit, so

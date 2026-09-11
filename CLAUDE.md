@@ -239,17 +239,18 @@ refuses them.
 
 ## Distribution and releases
 
-**A SHIPPING COMMIT IS A RELEASE.** `.github/workflows/release.yml` fires on every push to
-`main` and releases when `package.json` holds a version with no tag. **That commit's message
-becomes the release notes verbatim**, so it is public writing; `/commit` carries the rules.
+**A SHIPPING COMMIT IS A RELEASE.** `.github/workflows/release.yml` fires on a push to
+`release/**` or `change/**`, never on `main`, and releases when `package.json` holds a version
+with no tag. **That commit's message becomes the release notes verbatim**, so it is public
+writing; `/commit` carries the rules.
 
-**Nothing public exists until the gate is green**, and **a red gate blocks every release**, not
-only that commit's - it always runs on `main`'s newest state.
+**NEVER PUSH TO `main`.** It is protected. The workflow's `land` job fast-forwards it once the
+gate is green, and **nothing public exists until then**. A red gate blocks that change alone.
 
 **When to bump the version.** A bump now means "release this", so bump **only when a change
 touches the shipped app** (anything in `build.files`). Patch for normal changes, minor for a
 notable feature, major for a breaking overhaul. Docs, tests and `.claude/` tooling get **no
-bump** and pass straight through.
+bump**; they take a `change/**` branch and land without building anything.
 
 **ONE VERSION IS ONE COMMIT.** A version a red gate rejected keeps its number, and the fix
 amends that commit - never a second commit on top.
