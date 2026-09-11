@@ -603,8 +603,9 @@ ever seen a pass, which is not the same as working.
 
 ## How a version reaches you
 
-No change is pushed to `main` directly. `main` is protected, so the server refuses a commit that
-no check has passed. Every change goes to a branch first, and a pull request is opened from it so
+No change is pushed to `main` directly. `main` is protected, and the check it demands is the
+pipeline's own unit-test job, so the server refuses any commit that job never passed. The refusal
+covers everyone, the repo's owner included. Every change goes to a branch first, and a pull request is opened from it so
 the run, and any failed attempt before it, keeps a page of its own.
 
 A push to that branch runs the release pipeline. It looks at `package.json`'s version, and if that
