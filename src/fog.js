@@ -396,8 +396,9 @@ function adoptCloudFrames(size, numFrames) {
       const set = typeof w.cloudFrameSet === 'function' ? w.cloudFrameSet() : null;
       if (!set || !set.warp || set.frames.length !== numFrames) continue;
       if (set.frames[0].width !== size) continue;
-      // The warp the frames were BUILT with: a source mid-regeneration still holds the old set.
-      if (set.warp.strength !== cloudWarpStrength || set.warp.radius !== cloudWarpRadius) continue;
+      // ⚠ THE WARP COMES WITH THE FRAMES. Every new document starts on the defaults and its real
+      // numbers arrive later, so refusing the copy on a mismatch builds a set nobody sees and then
+      // the right one. `set.warp` is what the frames were BUILT with, so the pair stays consistent.
       const copies = set.frames.map((f) => {
         const c = document.createElement('canvas');
         c.width = size; c.height = size;
@@ -407,6 +408,10 @@ function adoptCloudFrames(size, numFrames) {
       cloudFrames = copies;
       cloudCanvas = copies[0];
       cloudSetWarp = { strength: set.warp.strength, radius: set.warp.radius };
+      // ⚠ AFTER THE COPY, which throws when the source goes away mid-read. Set above, a failed
+      // attempt leaves this document building its own frames at a warp it never chose.
+      cloudWarpStrength = set.warp.strength;
+      cloudWarpRadius   = set.warp.radius;
       cloudBlendCanvas = document.createElement('canvas');
       cloudBlendCanvas.width = size; cloudBlendCanvas.height = size;
       cloudBlendCtx = cloudBlendCanvas.getContext('2d');
@@ -942,10 +947,7 @@ function stopFogTransition() {
 // ⚠ COVER EARLY, at the transition's 'out' phase, not when the new fog finishes loading. Waiting
 // puts a flat navy blindfold on screen for the whole decode.
 // Player only; the DM's fog is a PixiJS sprite crossfade and is not covered.
-//
-// Both work by feeding the ordinary transition a "previous" mask that is opaque everywhere.
-// renderFog reads it for ALPHA ONLY, so lerping it into the scene's real fogBlurCanvas IS the
-// reveal.
+// Both feed the ordinary transition a "previous" mask that is opaque everywhere.
 
 // Close + name hold + clear is the whole switch. Slow on purpose: this is the one beat the
 // players watch instead of a map.

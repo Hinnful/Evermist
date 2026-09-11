@@ -326,6 +326,11 @@ DM startup still builds one - no map exists yet to copy from - and it does that 
 **The set carries the warp it was built with**, never the live numbers: a source part-way through a
 regeneration still holds the old frames while its own warp already reads as the new.
 
+**A copying document TAKES that warp along with the frames** (2026-09-11). Comparing it instead
+refused the copy whenever the advanced fog sliders sat off their defaults, so a screen built a
+set nobody would see and then the right one. A scene load corrects the warp straight after,
+which is what makes taking it safe.
+
 **Two dead ends, both paid for.** It is not GPU texture work and not document loading. And the probe
 measuring it was cancelling the work it measured: a timing wrapper hid `generateCloudFrames._genId`,
 so the continuation read NaN and returned, which looked like the probe's poll curing the stall.
