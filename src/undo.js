@@ -38,11 +38,11 @@ function pushUndo() {
   if (!baseFogCanvas) return;
   undoStack.push({
     baseFog: cloneCanvas(baseFogCanvas),
-    polygons: polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
+    polygons: polygons.map(copyShapeRings),
     nextPolygonId,
     // Effects ride the same history, so one Ctrl+Z means the same thing in either mode.
-    // ⚠ Both spreads are additive: a field whitelist here drops cornerRadii.
-    effects: effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
+    // ⚠ copyShapeRings copies every ring: an aliased hole is edited out from under this entry.
+    effects: effects.map(copyShapeRings),
     nextEffectId,
   });
   redoStack = [];
@@ -52,7 +52,7 @@ function pushUndo() {
 function restoreState(snapshot) {
   baseFogCanvas = cloneCanvas(snapshot.baseFog);
   baseFogCtx = baseFogCanvas.getContext('2d');
-  polygons = snapshot.polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) }));
+  polygons = snapshot.polygons.map(copyShapeRings);
   nextPolygonId = snapshot.nextPolygonId;
   // Snapshots taken before effects existed carry neither field, so an undo across that point
   // must leave the live ones alone rather than emptying them.
@@ -80,11 +80,9 @@ function undo() {
   if (!undoStack.length) return;
   redoStack.push({
     baseFog: cloneCanvas(baseFogCanvas),
-    polygons: polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
+    polygons: polygons.map(copyShapeRings),
     nextPolygonId,
-    // Effects ride the same history, so one Ctrl+Z means the same thing in either mode.
-    // ⚠ Both spreads are additive: a field whitelist here drops cornerRadii.
-    effects: effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
+    effects: effects.map(copyShapeRings),
     nextEffectId,
   });
   evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);
@@ -95,11 +93,9 @@ function redo() {
   if (!redoStack.length) return;
   undoStack.push({
     baseFog: cloneCanvas(baseFogCanvas),
-    polygons: polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
+    polygons: polygons.map(copyShapeRings),
     nextPolygonId,
-    // Effects ride the same history, so one Ctrl+Z means the same thing in either mode.
-    // ⚠ Both spreads are additive: a field whitelist here drops cornerRadii.
-    effects: effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
+    effects: effects.map(copyShapeRings),
     nextEffectId,
   });
   evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);

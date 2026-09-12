@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 // (fogGeometry.js loads long before roomPanel.js). Node has no such ambient scope, so the
 // real implementation is hoisted to the global here rather than duplicated.
 global.getPolyBBox = require('../src/fogGeometry.js').getPolyBBox;
+global.polyRings   = require('../src/fogGeometry.js').polyRings;
 
 const {
   normalizeRoomFields, sanitizeRoomName, sanitizeRoomDesc,
@@ -541,5 +542,20 @@ describe('fitLabelBox', () => {
     const box = fitLabelBox(bigU, 60, 20, 6, 0);
     assert.ok(pointInPoly(box.x, box.y, bigU));
     assert.ok(pointInPoly(box.x + 60, box.y, bigU));
+  });
+});
+
+describe('a label keeps out of a courtyard', () => {
+  const keep = { vertices: rect(0, 0, 200, 200), holes: [rect(60, 0, 80, 200)] };
+
+  test('the row scan reports the ground either side of a hole, not across it', () => {
+    assert.deepEqual(polygonRowSpans(keep, 100),
+                     [{ x0: 0, x1: 60 }, { x0: 140, x1: 200 }]);
+  });
+
+  test('the label sits in the widest strip, never over the void', () => {
+    const box = fitLabelBox(keep, 40, 10, 2, 0);
+    assert.ok(box);
+    assert.ok(box.x + 40 <= 60 || box.x >= 140, 'the label crossed the courtyard');
   });
 });

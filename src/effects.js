@@ -71,7 +71,7 @@ function addEffect(vertices) {
 
 // Replace the whole list — a scene load, an undo, or a Player receiving a push.
 function setEffects(list) {
-  effects = (list || []).map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) }));
+  effects = (list || []).map(copyShapeRings);
   effectsChanged();
 }
 
@@ -116,6 +116,7 @@ const _FX_COMMON = `
 precision highp float;
 varying vec2 vMap;
 uniform vec2 uVerts[${MAX_FX_VERTS}];
+uniform float uBreak[${MAX_FX_VERTS}];   // 1.0 where a new ring starts — see polyInfo
 uniform int uCount;
 uniform float uTime, uHeight, uSpeed, uAlong, uDiss, uWarm;
 uniform float uFill;    // interior warm-wash opacity
@@ -134,25 +135,40 @@ float noise(vec2 p){
 }
 float fbm(vec2 p){ float v=0., a=.5; for(int i=0;i<5;i++){ v+=a*noise(p); p=p*2.03+vec2(11.,7.); a*=.5; } return v; }
 
-// Signed distance to the polygon (negative inside), the outward normal, and the nearest outline
+// One edge: nearest-point distance, and the crossing-parity flip that decides inside from outside.
+void edgeStep(vec2 p, vec2 va, vec2 vb, inout float dmin, inout float s, inout vec2 closest){
+  vec2 e = vb - va, w = p - va;
+  float t = clamp(dot(w,e)/max(dot(e,e),1e-6), 0.0, 1.0);
+  vec2 pr = w - e*t;
+  float dd = dot(pr,pr);
+  if(dd < dmin){ dmin = dd; closest = va + e*t; }
+  bvec3 c = bvec3(p.y>=va.y, p.y<vb.y, e.x*w.y > e.y*w.x);
+  if(all(c) || all(not(c))) s = -s;
+}
+// Signed distance to the shape (negative inside), the outward normal, and the nearest outline
 // point. ⚠ Carries the previous vertex across the loop, so only the loop index touches the uniform
 // array — WebGL1 does not guarantee dynamic array indexing.
+// ⚠ EVERY RING CLOSES AT ITS OWN FIRST POINT, marked by uBreak. Without it the walk bridges the
+// outline to a hole and back, which fills the hole in. The parity then flips once per ring, so a
+// point inside a hole reads as outside the shape, and the nearest edge can be on any ring — which
+// is what makes the flames lick the inner wall.
 void polyInfo(vec2 p, out float sd, out vec2 nrm, out vec2 near){
-  vec2 vlast = uVerts[0];
-  for(int i=0;i<${MAX_FX_VERTS};i++){ if(i>=uCount) break; vlast = uVerts[i]; }
-  float dmin = 1e12, s = 1.0; vec2 closest = p, vb = vlast;
-  for(int i=0;i<${MAX_FX_VERTS};i++){
+  float dmin = 1e12, s = 1.0;
+  vec2 closest = p;
+  vec2 ringStart = uVerts[0];
+  vec2 vprev = uVerts[0];
+  for(int i=1;i<${MAX_FX_VERTS};i++){
     if(i>=uCount) break;
     vec2 va = uVerts[i];
-    vec2 e = vb - va, w = p - va;
-    float t = clamp(dot(w,e)/max(dot(e,e),1e-6), 0.0, 1.0);
-    vec2 pr = w - e*t;
-    float dd = dot(pr,pr);
-    if(dd < dmin){ dmin = dd; closest = va + e*t; }
-    bvec3 c = bvec3(p.y>=va.y, p.y<vb.y, e.x*w.y > e.y*w.x);
-    if(all(c) || all(not(c))) s = -s;
-    vb = va;
+    if(uBreak[i] > 0.5){
+      edgeStep(p, vprev, ringStart, dmin, s, closest);
+      ringStart = va;
+    } else {
+      edgeStep(p, vprev, va, dmin, s, closest);
+    }
+    vprev = va;
   }
+  edgeStep(p, vprev, ringStart, dmin, s, closest);
   sd = s*sqrt(dmin);
   near = closest;
   nrm = normalize((p - closest) + 1e-5) * s;   // s flips it to point OUT of the shape
@@ -264,10 +280,10 @@ void main(){
 // Trace the outline as POINTS with the corners rounded — buildRoundedPolyPath's fillet geometry,
 // sampled into vertices the distance shader can walk, which is what rounds an effect's fire. Each
 // corner becomes a short arc, decimated to fit the shader's vertex cap.
-function _roundedPolyPoints(verts, defaultR, perVertR) {
+function _roundRing(verts, defaultR, perVertR, offset) {
   const n = verts.length;
   if (n < 3) return verts.map(v => ({ x: v.x, y: v.y }));
-  const getR = i => (perVertR && perVertR[i] != null) ? perVertR[i] : defaultR;
+  const getR = i => (perVertR && perVertR[offset + i] != null) ? perVertR[offset + i] : defaultR;
   const out = [];
   for (let i = 0; i < n; i++) {
     const r = getR(i) || 0;
@@ -298,12 +314,34 @@ function _roundedPolyPoints(verts, defaultR, perVertR) {
       out.push({ x: cx + Math.cos(a) * maxR, y: cy + Math.sin(a) * maxR });
     }
   }
-  // Fit the shader's vertex cap by even decimation, never a hard truncation that would leave a
-  // gap where the outline wrapped.
-  if (out.length <= MAX_FX_VERTS) return out;
-  const keep = [], stride = out.length / MAX_FX_VERTS;
-  for (let i = 0; i < MAX_FX_VERTS; i++) keep.push(out[Math.floor(i * stride)]);
+  return out;
+}
+
+function _decimate(ring, cap) {
+  if (ring.length <= cap) return ring;
+  const keep = [], stride = ring.length / cap;
+  for (let i = 0; i < cap; i++) keep.push(ring[Math.floor(i * stride)]);
   return keep;
+}
+
+// ⚠ EACH RING IS DECIMATED ON ITS OWN, never the concatenation: one stride walks over a ring
+// boundary and can leave a small hole with a single point. The budget is shared in proportion to
+// raw ring length, with a floor of three points per ring.
+function _roundedPolyRings(poly, defaultR, perVertR) {
+  const rings = polyRings(poly);
+  const rounded = [];
+  let offset = 0;
+  for (const ring of rings) {
+    rounded.push(_roundRing(ring, defaultR, perVertR, offset));
+    offset += ring.length;
+  }
+  const total = rounded.reduce((t, r) => t + r.length, 0);
+  if (total <= MAX_FX_VERTS) return rounded;
+  const floor = 3;
+  const spare = MAX_FX_VERTS - floor * rounded.length;
+  if (spare <= 0) return rounded.map(r => _decimate(r, Math.max(1, Math.floor(MAX_FX_VERTS / rounded.length))));
+  const caps = rounded.map(r => floor + Math.floor(spare * (r.length / total)));
+  return rounded.map((r, i) => _decimate(r, caps[i]));
 }
 
 // The bounding box, padded to give the atmosphere room: a little on the sides for spark drift and
@@ -322,7 +360,10 @@ function _fxQuad(verts, cell) {
 function _fxGeomKey(e) {
   // Corner radius is part of the shape now, so a rounding change reloads the outline.
   let k = (e.cornerRadius || 0) + '|' + (e.cornerRadii ? e.cornerRadii.join(',') : '') + '|';
-  for (const v of e.vertices) k += (v.x | 0) + ',' + (v.y | 0) + ';';
+  for (const ring of polyRings(e)) {
+    for (const v of ring) k += (v.x | 0) + ',' + (v.y | 0) + ';';
+    k += '/';
+  }
   return k;
 }
 
@@ -337,19 +378,29 @@ function _destroyFxInstance(inst) {
 // Load an effect's vertices into both meshes: the polygon into each shader uniform, the bounding
 // box into the shared geometry. Called on create and whenever the shape moves.
 function _loadFxGeometry(inst, e) {
-  const pts = _roundedPolyPoints(e.vertices, e.cornerRadius || 0, e.cornerRadii || null);
-  const n = Math.min(pts.length, MAX_FX_VERTS);
+  const rings = _roundedPolyRings(e, e.cornerRadius || 0, e.cornerRadii || null);
+  // ⚠ uBreak IS DERIVED AFTER DECIMATION, or a ring that lost points closes in the wrong place.
   inst.verts.fill(0);
-  for (let i = 0; i < n; i++) { inst.verts[i * 2] = pts[i].x; inst.verts[i * 2 + 1] = pts[i].y; }
+  inst.breaks.fill(0);
+  let n = 0;
+  for (const ring of rings) {
+    if (ring.length < 3 || n >= MAX_FX_VERTS) continue;
+    inst.breaks[n] = 1;
+    for (const v of ring) {
+      if (n >= MAX_FX_VERTS) break;
+      inst.verts[n * 2] = v.x; inst.verts[n * 2 + 1] = v.y; n++;
+    }
+  }
   const warm = (EFFECT_MATERIALS[e.material] || EFFECT_MATERIALS.fire).warm;
   let cx = 0, cy = 0;
   for (const v of e.vertices) { cx += v.x; cy += v.y; }
   const cen = [cx / e.vertices.length, cy / e.vertices.length];
   for (const m of [inst.meshLight, inst.meshDark]) {
     const u = m.shader.uniforms;
-    u.uVerts = inst.verts; u.uCount = n; u.uWarm = warm; u.uCentroid = cen;
+    u.uVerts = inst.verts; u.uBreak = inst.breaks; u.uCount = n;
+    u.uWarm = warm; u.uCentroid = cen;
   }
-  inst.geom.getBuffer('aVertexPosition').update(_fxQuad(pts, _gridCell()));
+  inst.geom.getBuffer('aVertexPosition').update(_fxQuad(rings[0] || e.vertices, _gridCell()));
 }
 
 function _syncFxInstances() {
@@ -363,11 +414,13 @@ function _syncFxInstances() {
     let inst = _fxInstances.get(e.id);
     if (!inst) {
       const verts = new Float32Array(MAX_FX_VERTS * 2);
+      const breaks = new Float32Array(MAX_FX_VERTS);
       const geom = new PIXI.Geometry()
         .addAttribute('aVertexPosition', new Float32Array(8), 2)
         .addIndex([0, 1, 2, 0, 2, 3]);
       const mkShader = frag => PIXI.Shader.from(_FX_VERT, frag, {
-        uVerts: verts, uCount: 0, uTime: 0, uHeight: 40, uSpeed: FX_LOOK.speed, uAlong: 0.03,
+        uVerts: verts, uBreak: breaks,
+        uCount: 0, uTime: 0, uHeight: 40, uSpeed: FX_LOOK.speed, uAlong: 0.03,
         uDiss: FX_LOOK.diss, uWarm: 0.30, uFill: FX_LOOK.fill, uG: 70,
         uSpark: FX_LOOK.spark, uSmoke: FX_LOOK.smoke, uHaze: FX_LOOK.haze, uCentroid: [0, 0],
       });
@@ -379,7 +432,7 @@ function _syncFxInstances() {
       meshDark.blendMode = PIXI.BLEND_MODES.NORMAL;
       pixiEffectsLayer.addChild(meshLight);
       pixiEffectsLayer.addChild(meshDark);
-      inst = { meshLight, meshDark, geom, verts, geomKey: null };
+      inst = { meshLight, meshDark, geom, verts, breaks, geomKey: null };
       _fxInstances.set(e.id, inst);
     }
     const key = _fxGeomKey(e);

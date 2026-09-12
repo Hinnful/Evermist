@@ -9,7 +9,7 @@ const {
   toRings, fromRings, ringArea, resultPieces, shapesOverlap,
   joinShapes, trimShapes, cutRing, mostHiddenMode, roomOpMinArea,
   crossSegments, ringPathCrossings, arcForward, dedupeRing,
-  ROOM_OP_MIN_AREA, REASON_HOLE, REASON_CUT,
+  ROOM_OP_MIN_AREA, REASON_CUT,
 } = require('../src/roomOps.js');
 
 const { vttDerivePlan } = require('../src/vttPlan.js');
@@ -21,6 +21,10 @@ const FLOOR = 1;   // sliver floor for the synthetic cases: they are all far abo
 
 const rect = (x1, y1, x2, y2) =>
   [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];
+
+// Every kernel entry point answers with pieces of { verts, holes }. These two read one.
+const pv = (piece) => piece.verts;
+const ph = (piece) => piece.holes || [];
 
 const bbox = (verts) => ({
   x0: Math.min(...verts.map(v => v.x)), x1: Math.max(...verts.map(v => v.x)),
@@ -50,6 +54,13 @@ describe('roomOps — ring conversion', () => {
     assert.deepEqual(fromRings(r), rect(0, 0, 10, 10));
   });
 
+  it('takes a record with holes as well as a bare point list', () => {
+    const r = toRings({ vertices: rect(0, 0, 10, 10), holes: [rect(3, 3, 7, 7)] });
+    assert.equal(r.length, 2);
+    assert.equal(r[1].length, 5);
+    assert.deepEqual(r[1][0], r[1][4]);
+  });
+
   it('measures area regardless of winding', () => {
     assert.equal(ringArea(rect(0, 0, 10, 20)), 200);
     assert.equal(ringArea(rect(0, 0, 10, 20).reverse()), 200);
@@ -62,6 +73,14 @@ describe('roomOps — overlap', () => {
     assert.equal(shapesOverlap(rect(0, 0, 10, 10), rect(10, 0, 20, 10)), false);
     assert.equal(shapesOverlap(rect(0, 0, 10, 10), rect(30, 0, 40, 10)), false);
   });
+
+  it('sees no overlap with a shape that sits inside a hole', () => {
+    const keep = { vertices: rect(0, 0, 100, 100), holes: [rect(30, 30, 70, 70)] };
+    assert.equal(shapesOverlap(keep, rect(40, 40, 60, 60)), false);
+    assert.equal(shapesOverlap(keep, rect(10, 10, 20, 20)), true);
+    // And one reaching from the courtyard out through the wall does overlap.
+    assert.equal(shapesOverlap(keep, rect(40, 40, 90, 60)), true);
+  });
 });
 
 describe('roomOps — trim', () => {
@@ -71,9 +90,10 @@ describe('roomOps — trim', () => {
     assert.equal(out.reason, undefined);
     assert.equal(out.groups.length, 1);
     assert.equal(out.groups[0].length, 1);
-    const piece = out.groups[0][0];
+    const piece = pv(out.groups[0][0]);
     assertOpenRing(piece, 'notched room');
     assert.equal(Math.round(ringArea(piece)), 10000 - 600);
+    assert.deepEqual(ph(out.groups[0][0]), []);
     // The notch is real geometry, not a bounding-box change: the outline gains corners.
     assert.ok(piece.length > 4, 'the notch left the outline a rectangle');
   });
@@ -83,8 +103,8 @@ describe('roomOps — trim', () => {
     assert.equal(out.reason, undefined);
     assert.equal(out.groups[0].length, 2);
     for (const p of out.groups[0]) {
-      assertOpenRing(p, 'split piece');
-      assert.equal(Math.round(ringArea(p)), 4500);
+      assertOpenRing(pv(p), 'split piece');
+      assert.equal(Math.round(ringArea(pv(p))), 4500);
     }
   });
 
@@ -94,27 +114,40 @@ describe('roomOps — trim', () => {
     assert.deepEqual(out.groups, [[]]);
   });
 
-  it('refuses a trim that would leave a hole, and names the hole', () => {
+  it('leaves a hole when the trim lands wholly inside the room', () => {
     const out = trimShapes([rect(0, 0, 100, 100)], rect(30, 30, 70, 70), FLOOR);
-    assert.equal(out.groups, undefined);
-    assert.equal(out.reason, REASON_HOLE);
+    assert.equal(out.reason, undefined);
+    assert.equal(out.groups[0].length, 1, 'a hole is one piece, never two rooms');
+    const piece = out.groups[0][0];
+    assertOpenRing(pv(piece), 'room around a hole');
+    assert.equal(Math.round(ringArea(pv(piece))), 10000);
+    assert.equal(ph(piece).length, 1);
+    assertOpenRing(ph(piece)[0], 'the hole');
+    assert.equal(Math.round(ringArea(ph(piece)[0])), 1600);
   });
 
-  it('refuses the whole operation when only the second room would hole', () => {
+  it('holes the second room without touching the first', () => {
     const rooms = [rect(0, 0, 100, 100), rect(200, 0, 300, 100)];
     // Overlaps the first room's corner, and sits wholly inside the second.
     const drawn = [{ x: 90, y: 90 }, { x: 110, y: 90 }, { x: 110, y: 110 }, { x: 90, y: 110 }];
     assert.equal(trimShapes(rooms, drawn, FLOOR).reason, undefined);
     const holing = trimShapes(rooms, rect(220, 20, 280, 80), FLOOR);
-    assert.equal(holing.reason, REASON_HOLE);
-    assert.equal(holing.groups, undefined);
+    assert.equal(holing.reason, undefined);
+    assert.deepEqual(ph(holing.groups[0][0]), [], 'the first room gained a hole it never got');
+    assert.equal(ph(holing.groups[1][0]).length, 1);
+  });
+
+  it('drops a hole below the sliver floor', () => {
+    const out = trimShapes([rect(0, 0, 100, 100)], rect(50, 50, 52, 52), 100);
+    assert.equal(out.groups[0].length, 1);
+    assert.deepEqual(ph(out.groups[0][0]), []);
   });
 
   it('discards a piece below the sliver floor', () => {
     // A strip 1 unit shy of the far wall: the far piece is 100 units², the near one 4,500.
     const out = trimShapes([rect(0, 0, 100, 100)], rect(45, -10, 99, 110), 1000);
     assert.equal(out.groups[0].length, 1);
-    assert.equal(Math.round(ringArea(out.groups[0][0])), 4500);
+    assert.equal(Math.round(ringArea(pv(out.groups[0][0]))), 4500);
     // With no floor to speak of, the sliver is back — so the filter is what removed it.
     assert.equal(trimShapes([rect(0, 0, 100, 100)], rect(45, -10, 99, 110), 1).groups[0].length, 2);
   });
@@ -125,14 +158,14 @@ describe('roomOps — join', () => {
     const out = joinShapes([rect(0, 0, 50, 50), rect(50, 0, 100, 50)], rect(40, 10, 60, 40), 1);
     assert.equal(out.reason, undefined);
     assert.equal(out.pieces.length, 1);
-    assertOpenRing(out.pieces[0], 'joined room');
-    assert.equal(Math.round(ringArea(out.pieces[0])), 5000);
+    assertOpenRing(pv(out.pieces[0]), 'joined room');
+    assert.equal(Math.round(ringArea(pv(out.pieces[0]))), 5000);
   });
 
   it('bridges two rooms that do not touch', () => {
     const out = joinShapes([rect(0, 0, 50, 50), rect(70, 0, 120, 50)], rect(45, 10, 75, 40), 1);
     assert.equal(out.pieces.length, 1);
-    assert.equal(Math.round(ringArea(out.pieces[0])), 2500 + 2500 + 20 * 30);
+    assert.equal(Math.round(ringArea(pv(out.pieces[0]))), 2500 + 2500 + 20 * 30);
   });
 
   it('hands back two pieces when nothing bridges them', () => {
@@ -140,7 +173,7 @@ describe('roomOps — join', () => {
     const out = joinShapes([rect(0, 0, 50, 50), rect(200, 0, 250, 50)], rect(0, 0, 50, 50), 1);
     assert.equal(out.reason, undefined);
     assert.equal(out.pieces.length, 2);
-    for (const p of out.pieces) assert.equal(Math.round(ringArea(p)), 2500);
+    for (const p of out.pieces) assert.equal(Math.round(ringArea(pv(p))), 2500);
   });
 
   it('takes the most hidden fog mode, never the first', () => {
@@ -163,14 +196,14 @@ describe('roomOps — cut', () => {
     assert.equal(out.reason, undefined);
     assert.equal(out.pieces.length, 2);
     for (const p of out.pieces) {
-      assertOpenRing(p, 'cut piece');
-      assert.equal(Math.round(ringArea(p)), 5000);
+      assertOpenRing(pv(p), 'cut piece');
+      assert.equal(Math.round(ringArea(pv(p))), 5000);
     }
     // Zero width: the two pieces add back up to the room, with no strip missing.
-    assert.equal(Math.round(out.pieces.reduce((s, p) => s + ringArea(p), 0)), 10000);
+    assert.equal(Math.round(out.pieces.reduce((s, p) => s + ringArea(pv(p)), 0)), 10000);
     // And they share the cut, point for point.
-    const shared = out.pieces[0].filter(a =>
-      out.pieces[1].some(b => Math.hypot(a.x - b.x, a.y - b.y) < 1e-9));
+    const shared = pv(out.pieces[0]).filter(a =>
+      pv(out.pieces[1]).some(b => Math.hypot(a.x - b.x, a.y - b.y) < 1e-9));
     assert.equal(shared.length, 2);
   });
 
@@ -179,8 +212,8 @@ describe('roomOps — cut', () => {
                         [{ x: -20, y: 20 }, { x: 50, y: 20 }, { x: 50, y: 80 },
                          { x: 120, y: 80 }], 1);
     assert.equal(out.pieces.length, 2);
-    assert.equal(Math.round(out.pieces.reduce((s, p) => s + ringArea(p), 0)), 10000);
-    assert.ok(out.pieces.some(p => p.length >= 5), 'the corner in the path was dropped');
+    assert.equal(Math.round(out.pieces.reduce((s, p) => s + ringArea(pv(p)), 0)), 10000);
+    assert.ok(out.pieces.some(p => pv(p).length >= 5), 'the corner in the path was dropped');
   });
 
   it('takes an alcove out when the path enters and leaves the same wall', () => {
@@ -189,8 +222,45 @@ describe('roomOps — cut', () => {
                          { x: 60, y: -10 }], 1);
     assert.equal(out.reason, undefined);
     assert.equal(out.pieces.length, 2);
-    const areas = out.pieces.map(p => Math.round(ringArea(p))).sort((a, b) => a - b);
+    const areas = out.pieces.map(p => Math.round(ringArea(pv(p)))).sort((a, b) => a - b);
     assert.deepEqual(areas, [1600, 8400]);
+  });
+
+  it('carries each hole onto the piece it landed in', () => {
+    const keep = { vertices: rect(0, 0, 200, 100),
+                   holes: [rect(20, 20, 60, 80), rect(140, 20, 180, 80)] };
+    const out = cutRing(keep, [{ x: 100, y: -20 }, { x: 100, y: 120 }], 1);
+    assert.equal(out.reason, undefined);
+    assert.equal(out.pieces.length, 2);
+    for (const p of out.pieces) {
+      assert.equal(ph(p).length, 1, 'a hole went to the wrong side of the cut');
+      const b = bbox(ph(p)[0]), pb = bbox(pv(p));
+      assert.ok(b.x0 >= pb.x0 && b.x1 <= pb.x1, 'the hole sits outside its own piece');
+    }
+  });
+
+  it('splits a hole the path runs through, so neither half loses its courtyard', () => {
+    const keep = { vertices: rect(0, 0, 200, 100), holes: [rect(80, 20, 120, 80)] };
+    const out = cutRing(keep, [{ x: 100, y: -20 }, { x: 100, y: 120 }], 1);
+    assert.equal(out.reason, undefined);
+    assert.equal(out.pieces.length, 2);
+    for (const p of out.pieces) {
+      assert.equal(ph(p).length, 1, 'a half of the cut room lost its share of the courtyard');
+      assertOpenRing(ph(p)[0], 'split hole');
+      const h = bbox(ph(p)[0]), pb = bbox(pv(p));
+      // ⚠ THE HOLE MUST SIT INSIDE ITS OWN PIECE. A whole ring handed to one piece pokes out
+      // through that piece's own wall, and the fog then paints on the far side of it.
+      assert.ok(h.x0 >= pb.x0 - 1e-9 && h.x1 <= pb.x1 + 1e-9,
+                'the hole reaches outside its piece: hole ' + JSON.stringify(h) +
+                ' against piece ' + JSON.stringify(pb));
+      assert.equal(Math.round(ringArea(ph(p)[0])), 20 * 60);
+    }
+  });
+
+  it('takes a bare ring as well as a record', () => {
+    const bare = cutRing(rect(0, 0, 100, 100), [{ x: -20, y: 50 }, { x: 120, y: 50 }], 1);
+    assert.equal(bare.pieces.length, 2);
+    for (const p of bare.pieces) assert.deepEqual(ph(p), []);
   });
 
   it('refuses a path that crosses the outline four times', () => {
@@ -255,11 +325,17 @@ describe('roomOps — the sliver floor', () => {
 });
 
 describe('roomOps — resultPieces', () => {
-  it('refuses a second ring inside one polygon and keeps a second polygon', () => {
+  it('turns a second ring inside one polygon into that piece hole', () => {
     const outer = [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]];
     const inner = [[3, 3], [3, 7], [7, 7], [7, 3], [3, 3]];
-    assert.equal(resultPieces([[outer, inner]], 1).reason, REASON_HOLE);
-    assert.equal(resultPieces([[outer], [outer]], 1).pieces.length, 2);
+    const one = resultPieces([[outer, inner]], 1);
+    assert.equal(one.pieces.length, 1);
+    assert.equal(ph(one.pieces[0]).length, 1);
+    assertOpenRing(ph(one.pieces[0])[0], 'hole from a library ring');
+    // A second POLYGON is still a second piece, never a hole.
+    const two = resultPieces([[outer], [outer]], 1);
+    assert.equal(two.pieces.length, 2);
+    for (const p of two.pieces) assert.deepEqual(ph(p), []);
   });
 
   it('treats anything that is not a list as a failure', () => {
@@ -309,7 +385,7 @@ describe('roomOps — the cave export', () => {
     const out = trimShapes([room], drawn, CAVE_FLOOR);
     assert.equal(out.reason, undefined);
     assert.equal(out.groups[0].length, 1);
-    const piece = out.groups[0][0];
+    const piece = pv(out.groups[0][0]);
     assertOpenRing(piece, 'notched cave room');
     assert.ok(ringArea(piece) < ringArea(room), 'the trim took nothing away');
     assert.ok(ringArea(piece) > ringArea(room) * 0.8, 'the trim took far too much');
@@ -323,7 +399,7 @@ describe('roomOps — the cave export', () => {
                            CAVE_FLOOR);
     assert.equal(out.reason, undefined);
     assert.equal(out.groups[0].length, 2);
-    for (const p of out.groups[0]) assertOpenRing(p, 'cave split piece');
+    for (const p of out.groups[0]) assertOpenRing(pv(p), 'cave split piece');
   });
 
   it('joins two real rooms that a bridge crosses', () => {
@@ -333,8 +409,8 @@ describe('roomOps — the cave export', () => {
     const out = joinShapes([a, c], pair.bridge, CAVE_FLOOR);
     assert.equal(out.reason, undefined);
     assert.equal(out.pieces.length, 1, 'the bridge did not make one room');
-    assertOpenRing(out.pieces[0], 'joined cave rooms');
-    assert.ok(ringArea(out.pieces[0]) >= ringArea(a) + ringArea(c),
+    assertOpenRing(pv(out.pieces[0]), 'joined cave rooms');
+    assert.ok(ringArea(pv(out.pieces[0])) >= ringArea(a) + ringArea(c),
               'the joined room is smaller than the rooms it was made of');
   });
 
@@ -346,20 +422,23 @@ describe('roomOps — the cave export', () => {
                         CAVE_FLOOR);
     assert.equal(out.reason, undefined);
     assert.equal(out.pieces.length, 2);
-    for (const p of out.pieces) assertOpenRing(p, 'cave cut piece');
-    const sum = out.pieces.reduce((s, p) => s + ringArea(p), 0);
+    for (const p of out.pieces) assertOpenRing(pv(p), 'cave cut piece');
+    const sum = out.pieces.reduce((s, p) => s + ringArea(pv(p)), 0);
     assert.ok(Math.abs(sum - ringArea(room)) < 1,
               'the cut lost ' + Math.round(ringArea(room) - sum) + ' units of room');
   });
 
-  it('refuses a hole in a real room and changes nothing', () => {
+  it('holes a real room without editing the room it was handed', () => {
     const room = caveRooms.filter(isRect).reduce((a, b) => ringArea(a) > ringArea(b) ? a : b);
     const before = JSON.stringify(room);
     const b = bbox(room);
     const out = trimShapes([room], rect(b.x0 + 200, b.y0 + 200, b.x0 + 500, b.y0 + 500),
                            CAVE_FLOOR);
-    assert.equal(out.reason, REASON_HOLE);
-    assert.equal(JSON.stringify(room), before, 'the kernel edited the room it refused');
+    assert.equal(out.reason, undefined);
+    assert.equal(out.groups[0].length, 1);
+    assert.equal(ph(out.groups[0][0]).length, 1);
+    assertOpenRing(ph(out.groups[0][0])[0], 'cave room hole');
+    assert.equal(JSON.stringify(room), before, 'the kernel edited the room it read');
   });
 
   it('never hands back a ring the app could not store', () => {
@@ -369,11 +448,19 @@ describe('roomOps — the cave export', () => {
     assert.ok(hits.length >= 2, 'the sweep touched only ' + hits.length + ' room(s)');
     const trimmed = trimShapes(hits, drawn, CAVE_FLOOR);
     if (trimmed.groups) {
-      for (const g of trimmed.groups) for (const p of g) assertOpenRing(p, 'swept trim piece');
+      for (const g of trimmed.groups) {
+        for (const p of g) {
+          assertOpenRing(pv(p), 'swept trim piece');
+          for (const h of ph(p)) assertOpenRing(h, 'swept trim hole');
+        }
+      }
     }
     const joined = joinShapes(hits, drawn, CAVE_FLOOR);
     assert.equal(joined.reason, undefined);
-    for (const p of joined.pieces) assertOpenRing(p, 'swept join piece');
+    for (const p of joined.pieces) {
+      assertOpenRing(pv(p), 'swept join piece');
+      for (const h of ph(p)) assertOpenRing(h, 'swept join hole');
+    }
   });
 });
 

@@ -168,8 +168,8 @@ function drawDoorHandles(active) {
     cursorCtx.beginPath();
     for (const poly of polygons) {
       if (poly.vertices.length < 3) continue;
-      for (let e = 0; e < poly.vertices.length; e++) {
-        const b = doorCellBounds(poly.vertices, e, gridSize, gridOffsetX, gridOffsetY, square);
+      for (let e = 0, edges = flatVertexCount(poly); e < edges; e++) {
+        const b = doorCellBounds(poly, e, gridSize, gridOffsetX, gridOffsetY, square);
         if (!b) continue;
         const f = b.frame, tick = 6 / zoom;
         for (const a of b.at) {
@@ -186,7 +186,7 @@ function drawDoorHandles(active) {
   for (const poly of polygons) {
     if (!poly.doors) continue;
     for (const d of poly.doors) {
-      const c = doorNotchCorners(poly.vertices, d, size.width, size.depth, size.depth);
+      const c = doorNotchCorners(poly, d, size.width, size.depth, size.depth);
       if (!c) continue;
       cursorCtx.beginPath();
       cursorCtx.moveTo(sx(c.innerL.x), sy(c.innerL.y));

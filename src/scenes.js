@@ -92,11 +92,11 @@ function doAutoSave() {
   clearTimeout(autoSaveTimer);
   const scene = currentScene;
   const snap = {
-    polygons:      polygons.map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) })),
+    // encodeShapeForSave is what makes an older build fail closed on a held room.
+    polygons:      polygons.map(p => encodeShapeForSave(copyShapeRings(p))),
     nextPolygonId,
-    // Effects belong to the scene the same way rooms do. Additive spread, never a field
-    // whitelist: one would drop cornerRadii from every saved effect on the next load.
-    effects:       effects.map(e => ({ ...e, vertices: e.vertices.map(v => ({ ...v })) })),
+    // Effects belong to the scene the same way rooms do, through the same additive copy.
+    effects:       effects.map(copyShapeRings),
     nextEffectId,
     gridConfig:    captureGridConfig(),
     fogSettings:   {

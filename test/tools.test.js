@@ -1,7 +1,20 @@
 'use strict';
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { pointInPolygon, distPointToSegment, segmentsIntersect } = require('../src/tools.js');
+// tools.js reaches these as bare globals, the way the browser's script order provides them.
+// The real implementations are hoisted rather than duplicated; pushUndo is a counter, since what
+// matters here is that one delete spends exactly one step.
+const _fg = require('../src/fogGeometry.js');
+global.polyRings = _fg.polyRings;
+global.polyHoleRings = _fg.polyHoleRings;
+global.flatVertexRef = _fg.flatVertexRef;
+global.flatVertexCount = _fg.flatVertexCount;
+global.remapDoorsForVertexChange = _fg.remapDoorsForVertexChange;
+let undoPushes = 0;
+global.pushUndo = () => { undoPushes++; };
+
+const { pointInPolygon, pointInShape, deleteShapeVertex,
+        distPointToSegment, segmentsIntersect } = require('../src/tools.js');
 
 // A simple convex quad (unit square)
 const square = [
@@ -232,5 +245,88 @@ describe('distPointToSegment — oblique segments', () => {
     // both ends at (10, 20); the point is a 3-4-5 away from it
     const d = distPointToSegment(13, 24, 10, 20, 10, 20);
     assert.ok(Math.abs(d - 5) < 1e-9, `expected 5, got ${d}`);
+  });
+});
+
+// ─── Rooms with holes ─────────────────────────────────────────────────────────
+const rect = (x1, y1, x2, y2) =>
+  [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];
+
+describe('pointInShape', () => {
+  const keep = { vertices: rect(0, 0, 100, 100), holes: [rect(30, 30, 70, 70)] };
+
+  test('inside the room but outside its courtyard', () => {
+    assert.equal(pointInShape(10, 10, keep), true);
+  });
+  test('inside the courtyard reads as outside the room', () => {
+    assert.equal(pointInShape(50, 50, keep), false);
+  });
+  test('outside the room entirely', () => {
+    assert.equal(pointInShape(200, 200, keep), false);
+  });
+  test('a record with no hole answers exactly as pointInPolygon does', () => {
+    const plain = { vertices: rect(0, 0, 100, 100) };
+    assert.equal(pointInShape(50, 50, plain), true);
+    assert.equal(pointInShape(150, 50, plain), false);
+  });
+  test('two holes each cut their own void', () => {
+    const two = { vertices: rect(0, 0, 100, 100),
+                  holes: [rect(10, 10, 30, 30), rect(60, 60, 90, 90)] };
+    assert.equal(pointInShape(20, 20, two), false);
+    assert.equal(pointInShape(70, 70, two), false);
+    assert.equal(pointInShape(45, 45, two), true);
+  });
+});
+
+describe('deleteShapeVertex', () => {
+  test('takes one point off the outer outline and renumbers nothing else', () => {
+    const p = { vertices: rect(0, 0, 100, 100).concat([{ x: 50, y: 120 }]),
+                holes: [rect(30, 30, 70, 70)],
+                cornerRadii: [1, 2, 3, 4, 5, 6, 7, 8, 9] };
+    assert.equal(deleteShapeVertex(p, 4), true);
+    assert.equal(p.vertices.length, 4);
+    assert.equal(p.holes.length, 1);
+    assert.deepEqual(p.cornerRadii, [1, 2, 3, 4, 6, 7, 8, 9]);
+  });
+
+  test('refuses to take the outer outline below three points', () => {
+    const p = { vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 0, y: 10 }] };
+    assert.equal(deleteShapeVertex(p, 1), false);
+    assert.equal(p.vertices.length, 3);
+  });
+
+  // ⚠ THE WHOLE RING'S FLAT INDICES GO. Splicing one entry for a ring that took three away shifts
+  // every later ring's radii and moves its doors onto other walls.
+  test('drops a hole that falls below three points, and every index it held', () => {
+    const p = {
+      vertices: rect(0, 0, 100, 100),
+      holes: [[{ x: 10, y: 10 }, { x: 20, y: 10 }, { x: 10, y: 20 }], rect(60, 60, 90, 90)],
+      cornerRadii: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      doors: [{ edge: 1, t: 0.5 }, { edge: 5, t: 0.5 }, { edge: 8, t: 0.5 }],
+    };
+    assert.equal(deleteShapeVertex(p, 5), true);   // the first hole's second point
+    assert.equal(p.holes.length, 1);
+    assert.deepEqual(p.holes[0], rect(60, 60, 90, 90));
+    // Flat indices 4, 5 and 6 went with the ring.
+    assert.deepEqual(p.cornerRadii, [1, 2, 3, 4, 8, 9, 10, 11]);
+    // The door on the dropped ring is gone; the one past it moves down by three, not by one.
+    assert.deepEqual(p.doors, [{ edge: 1, t: 0.5 }, { edge: 5, t: 0.5 }]);
+  });
+
+  test('takes one point off a hole that can spare it', () => {
+    const p = { vertices: rect(0, 0, 100, 100), holes: [rect(30, 30, 70, 70)],
+                cornerRadii: [1, 2, 3, 4, 5, 6, 7, 8] };
+    assert.equal(deleteShapeVertex(p, 6), true);
+    assert.equal(p.holes[0].length, 3);
+    assert.deepEqual(p.cornerRadii, [1, 2, 3, 4, 5, 6, 8]);
+  });
+
+  test('spends one undo step per delete, and none on a refusal', () => {
+    const before = undoPushes;
+    const p = { vertices: rect(0, 0, 100, 100) };
+    deleteShapeVertex(p, 0);
+    assert.equal(undoPushes, before + 1);
+    deleteShapeVertex(p, 0);          // now at three points, refused
+    assert.equal(undoPushes, before + 1);
   });
 });

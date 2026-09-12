@@ -110,12 +110,15 @@ function applyPolygonToFog(poly) {
 
   const crFog = (poly.cornerRadius || 0) / FOG_SCALE;
   const pvRFog = poly.cornerRadii ? poly.cornerRadii.map(rv => (rv != null ? rv : (poly.cornerRadius || 0)) / FOG_SCALE) : null;
-  const fogScaledVerts = verts.map(v => ({ x: v.x / FOG_SCALE, y: v.y / FOG_SCALE }));
+  // Every path below carries the holes, so a courtyard stays shrouded inside a revealed keep.
+  const scale = ring => ring.map(v => ({ x: v.x / FOG_SCALE, y: v.y / FOG_SCALE }));
+  const fogScaledVerts = scale(verts);
+  const fogHoles = polyHoleRings(poly).map(scale);
 
   if (poly.mode === 'shroud') {
     fogDataCtx.save();
     fogDataCtx.beginPath();
-    buildRoundedPolyPath(fogDataCtx, fogScaledVerts, crFog, pvRFog);
+    buildRoundedPolyPath(fogDataCtx, fogScaledVerts, crFog, pvRFog, fogHoles);
     fogDataCtx.fillStyle = '#1a1a2e';
     fogDataCtx.fill();
     fogDataCtx.restore();
@@ -139,7 +142,8 @@ function applyPolygonToFog(poly) {
     sCtx.filter = `blur(${feather}px)`;
     sCtx.fillStyle = 'white';
     sCtx.beginPath();
-    buildRoundedPolyPath(sCtx, verts.map(v => ({ x: v.x / FOG_SCALE - bx, y: v.y / FOG_SCALE - by })), crFog, pvRFog);
+    const shift = ring => ring.map(v => ({ x: v.x - bx, y: v.y - by }));
+    buildRoundedPolyPath(sCtx, shift(fogScaledVerts), crFog, pvRFog, fogHoles.map(shift));
     sCtx.fill();
     sCtx.filter = 'none';
 
@@ -164,25 +168,28 @@ function applyPolygonToFog(poly) {
     sCtx.globalCompositeOperation = 'destination-in';
     sCtx.fillStyle = 'white';
     sCtx.beginPath();
-    buildRoundedPolyPath(sCtx, verts.map(v => ({ x: v.x / FOG_SCALE - bx, y: v.y / FOG_SCALE - by })), crFog, pvRFog);
+    buildRoundedPolyPath(sCtx, shift(fogScaledVerts), crFog, pvRFog, fogHoles.map(shift));
     sCtx.fill();
     sCtx.restore();
 
     // Cloud erosion leaves residue in the interior. A reveal clears it later with a clearRect;
     // half repaints through this mask, so residue left here reads as blotchy density. Flatten the
     // interior on the mask instead — the inset keeps the feathered edge band untouched.
-    const insetVerts = insetPolygon(fogScaledVerts, feather);
+    // ⚠ THE HOLES ARE OUTSET while the outer ring is inset, or the band along an inner wall clears.
+    const stepIn = insetPolyRings({ vertices: fogScaledVerts, holes: fogHoles }, feather);
+    const insetVerts = stepIn.vertices;
+    const insetHoles = stepIn.holes;
     if (isHalf && insetVerts.length >= 3) {
       sCtx.save();
       sCtx.beginPath();
-      buildRoundedPolyPath(sCtx, insetVerts.map(v => ({ x: v.x - bx, y: v.y - by })),
-                           Math.max(0, crFog - feather), null);
+      buildRoundedPolyPath(sCtx, shift(insetVerts), Math.max(0, crFog - feather), null,
+                           insetHoles.map(shift));
       sCtx.fillStyle = 'white';
       sCtx.fill();
       sCtx.restore();
     }
 
-    flattenSharedWalls(sCtx, poly, fogScaledVerts, feather, bx, by);
+    flattenSharedWalls(sCtx, poly, fogScaledVerts, fogHoles, feather, bx, by);
 
     fogDataCtx.save();
     fogDataCtx.globalCompositeOperation = 'destination-out';
@@ -209,7 +216,8 @@ function applyPolygonToFog(poly) {
     if (!isHalf && insetVerts.length >= 3) {
       fogDataCtx.save();
       fogDataCtx.beginPath();
-      buildRoundedPolyPath(fogDataCtx, insetVerts, Math.max(0, crFog - feather), null);
+      // The clearRect below keeps its OUTER box: the clip path now excludes each hole.
+      buildRoundedPolyPath(fogDataCtx, insetVerts, Math.max(0, crFog - feather), null, insetHoles);
       fogDataCtx.clip();
       fogDataCtx.clearRect(bb.minX / FOG_SCALE - 1, bb.minY / FOG_SCALE - 1,
                            (bb.maxX - bb.minX) / FOG_SCALE + 2, (bb.maxY - bb.minY) / FOG_SCALE + 2);
@@ -233,13 +241,16 @@ function applyDoorsToFog(poly) {
   const tol = gridSize * DOOR_SHARED_WALL_TOL;
   const open = [], dim = [];
   for (const d of doors) {
-    const mode = doorResolvedMode(doorPoint(poly.vertices, d), polygons, tol);
+    const mode = doorResolvedMode(doorPoint(poly, d), polygons, tol);
     if (mode === 'reveal') open.push(d);
     else if (mode === 'half') dim.push(d);
   }
   if (!open.length && !dim.length) return;
 
-  const fogVerts = poly.vertices.map(v => ({ x: v.x / FOG_SCALE, y: v.y / FOG_SCALE }));
+  // Holes included, so a door on an inner wall carves its notch there.
+  const scaleRing = ring => ring.map(v => ({ x: v.x / FOG_SCALE, y: v.y / FOG_SCALE }));
+  const fogVerts = { vertices: scaleRing(poly.vertices),
+                     holes: polyHoleRings(poly).map(scaleRing) };
   // ⚠ Capped against the notch's own depth. The fog feather is tuned for a room-sized edge, and
   // against a door it is wider than the shape it softens, which rounds the rectangle into a blob.
   const feather = Math.min(getScaledFeatherRadius(), size.depth * 0.35);
@@ -315,7 +326,7 @@ const SHARED_WALL_TOL = 0.5;
 // two rooms that traced the same wall a pixel apart leave a sliver neither covers.
 // Only against rooms that are NOT shrouded — a wall facing unexplored space is a real fog
 // boundary and keeps its soft edge.
-function flattenSharedWalls(sCtx, poly, fogScaledVerts, feather, bx, by) {
+function flattenSharedWalls(sCtx, poly, fogScaledVerts, fogHoles, feather, bx, by) {
   if (typeof polygons === 'undefined' || !(feather > 0)) return;
   const density = p => (p.mode === 'shroud' ? 'shroud' : p.mode === 'half' ? 'half' : 'reveal');
   const mine = density(poly);
@@ -331,13 +342,15 @@ function flattenSharedWalls(sCtx, poly, fogScaledVerts, feather, bx, by) {
   // ⚠ The band crosses the wall ONLY where the neighbour paints the same density. Crossing bridges
   // two rooms traced a few pixels apart, and costs nothing between two revealed rooms. Between a
   // revealed room and a half one, whichever composites last would win a strip on the wrong side.
+  const scaled = { vertices: fogScaledVerts, holes: fogHoles };
+  const edges = flatVertexCount(poly);
   for (const [group, out] of [[open.filter(p => density(p) === mine), feather * 0.25],
                               [open.filter(p => density(p) !== mine), 0]]) {
     if (!group.length) continue;
-    for (let e = 0; e < poly.vertices.length; e++) {
-      const spans = sharedWallSpans(poly.vertices, e, group, tolMap, stepMap);
+    for (let e = 0; e < edges; e++) {
+      const spans = sharedWallSpans(poly, e, group, tolMap, stepMap);
       if (!spans.length) continue;
-      const f = doorEdgeFrame(fogScaledVerts, e);
+      const f = doorEdgeFrame(scaled, e);
       if (!f) continue;
       for (const sp of spans) {
         // Pulled in at both ends by the outward reach: a band that reached outward all the way to

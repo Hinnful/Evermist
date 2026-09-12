@@ -73,12 +73,16 @@ function roomLabelFontPx(zoomLevel, base, minPx, maxPx, exp) {
 
 // Horizontal spans of a polygon's interior at height y. Even-odd scanline: each pair of edge
 // crossings bounds one inside run, and a concave shape yields more than one.
-function polygonRowSpans(verts, y) {
+// EVERY ring's crossings, sorted into one list: the even-odd pairing then skips a hole for free.
+function polygonRowSpans(src, y) {
+  const rings = Array.isArray(src) ? [src] : polyRings(src);
   const xs = [];
-  for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
-    const a = verts[j], b = verts[i];
-    if ((a.y > y) === (b.y > y)) continue;          // edge doesn't straddle this row
-    xs.push(a.x + (y - a.y) / (b.y - a.y) * (b.x - a.x));
+  for (const verts of rings) {
+    for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
+      const a = verts[j], b = verts[i];
+      if ((a.y > y) === (b.y > y)) continue;        // edge doesn't straddle this row
+      xs.push(a.x + (y - a.y) / (b.y - a.y) * (b.x - a.x));
+    }
   }
   xs.sort((p, q) => p - q);
   const spans = [];
@@ -98,9 +102,10 @@ function cornerInsetAt(r, d) {
 //
 // Returns the FIRST (highest) row that fits the whole label, or the roomiest row so the caller can
 // ellipsise into it. MAP units, so the result is pan-independent and safe to cache.
-function fitLabelBox(verts, textW, textH, pad, cornerR, rows) {
-  if (!verts || verts.length < 3) return null;
-  const bb = getPolyBBox(verts);
+function fitLabelBox(poly, textW, textH, pad, cornerR, rows) {
+  const outer = Array.isArray(poly) ? poly : (poly && poly.vertices);
+  if (!outer || outer.length < 3) return null;
+  const bb = getPolyBBox(outer);
   const n = rows || 14;
   const first = bb.minY + pad + textH / 2;
   const last  = bb.maxY - pad - textH / 2;
@@ -111,8 +116,8 @@ function fitLabelBox(verts, textW, textH, pad, cornerR, rows) {
     const y = first + (last - first) * (i / n);
     // Test the label's top AND bottom edges, not its centre: on a shape that narrows upward a
     // centre-only test lets the top corners poke outside the outline.
-    const top = polygonRowSpans(verts, y - textH / 2);
-    const bot = polygonRowSpans(verts, y + textH / 2);
+    const top = polygonRowSpans(poly, y - textH / 2);
+    const bot = polygonRowSpans(poly, y + textH / 2);
     const inset = cornerInsetAt(cornerR, (y - textH / 2) - bb.minY);
 
     let row = null;
@@ -415,9 +420,10 @@ function _rpWireRadiusField(numId) {
     if (!radiusUndoPushed) { pushUndo(); radiusUndoPushed = true; }
     // The target follows the selection; the array pads out, since a polygon can gain vertices.
     const vi = selectedVertexIndex;
-    if (vi >= 0 && vi < poly.vertices.length) {
+    const total = flatVertexCount(poly);
+    if (vi >= 0 && vi < total) {
       editCornerRadii(poly, r => {
-        while (r.length < poly.vertices.length) r.push(null);
+        while (r.length < total) r.push(null);
         r[vi] = v;
       });
     } else {
@@ -458,7 +464,7 @@ function _rpSyncRadiusField(fieldId, numId, poly) {
   const num   = _rpEl(numId);
   if (!field || !num) return;
   num.disabled = !poly;
-  const perVertex = !!poly && selectedVertexIndex >= 0 && selectedVertexIndex < poly.vertices.length;
+  const perVertex = !!poly && selectedVertexIndex >= 0 && selectedVertexIndex < flatVertexCount(poly);
   const override  = perVertex && poly.cornerRadii ? poly.cornerRadii[selectedVertexIndex] : null;
   const currentR  = !poly ? 0 : (override != null ? override : (poly.cornerRadius || 0));
   if (num !== document.activeElement) num.value = currentR;
@@ -696,7 +702,7 @@ function drawRoomLabels() {
     // Neither measureText nor the row scan may run per room per frame. The fit is in MAP units, so
     // the cached anchor is pan-independent.
     const bb  = getPolyBBox(poly.vertices);
-    const key = name + '|' + fontPx + '|' + poly.vertices.length + '|' +
+    const key = name + '|' + fontPx + '|' + flatVertexCount(poly) + '|' +
                 Math.round(bb.minX) + ',' + Math.round(bb.minY) + ',' +
                 Math.round(bb.maxX) + ',' + Math.round(bb.maxY) + '|' +
                 (poly.cornerRadius || 0) + '|' + (poly.cornerRadii ? poly.cornerRadii.join(',') : '');
@@ -710,7 +716,7 @@ function drawRoomLabels() {
       }
       // Fit the PLATE, not the text — see RP_LABEL_GAP.
       const box = fitLabelBox(
-        poly.vertices,
+        poly,
         (measure(name) + RP_LABEL_PAD_X * 2) / zoom,   // map units — screen plate width ÷ zoom
         textH / zoom,
         RP_LABEL_GAP / zoom,

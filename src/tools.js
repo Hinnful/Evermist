@@ -135,15 +135,22 @@ function refuseShapeOp(reason) {
 }
 
 // A piece with no shape of its own: the parent's fields, a fresh id, a plain name, no notes.
-function newShapeFromPiece(base, verts) {
+function newShapeFromPiece(base, piece) {
   const id = placeMode === 'effects' ? nextEffectId++ : nextPolygonId++;
-  const s = { ...base, id, vertices: verts };
+  const s = { ...base, id, vertices: piece.verts };
   s.name = (base.material ? base.material.charAt(0).toUpperCase() + base.material.slice(1)
                           : 'Room') + ' ' + id;
+  setShapeHoles(s, piece.holes);
   delete s.cornerRadii;
   delete s.doors;
   delete s.desc;
   return s;
+}
+
+// ⚠ ABSENT, never empty: a record with no hole stays byte-for-byte today's record.
+function setShapeHoles(shape, holes) {
+  if (holes && holes.length) shape.holes = holes;
+  else delete shape.holes;
 }
 
 // One plan entry is a group of shapes and the pieces replacing them.
@@ -157,7 +164,8 @@ function applyShapePlan(plan, mode) {
     const base = g.shapes[0];
     for (let i = 1; i < g.shapes.length; i++) drop.add(g.shapes[i].id);
     if (!g.pieces.length) { drop.add(base.id); continue; }
-    base.vertices = g.pieces[0];
+    base.vertices = g.pieces[0].verts;
+    setShapeHoles(base, g.pieces[0].holes);
     if (mode) base.mode = mode;
     // ⚠ DROPPED, NEVER EDITED IN PLACE: both are keyed by vertex position, and a new outline
     // renumbers every one. See editCornerRadii for why editing in place is barred as well.
@@ -193,20 +201,20 @@ function commitShapeOpFog(toShroud) {
 // The drawn shape combines with every shape it lands on, and makes none of its own.
 function commitShapeOp(verts) {
   const hits = activeShapeList().filter(s => s.vertices && s.vertices.length >= 3 &&
-                                             shapesOverlap(s.vertices, verts));
+                                             shapesOverlap(s, verts));
   if (!hits.length) return false;
   const minArea = roomOpMinArea(gridSize);
   const rooms = placeMode !== 'effects';
   let plan, mode = null, toShroud;
 
   if (shapeOp === 'join') {
-    const out = joinShapes(hits.map(s => s.vertices), verts, minArea);
+    const out = joinShapes(hits, verts, minArea);
     if (out.reason) return refuseShapeOp(out.reason);
     plan = [{ shapes: hits, pieces: out.pieces }];
     if (rooms) mode = mostHiddenMode(hits.map(s => s.mode));
     toShroud = mode === 'shroud';
   } else {
-    const out = trimShapes(hits.map(s => s.vertices), verts, minArea);
+    const out = trimShapes(hits, verts, minArea);
     if (out.reason) return refuseShapeOp(out.reason);
     plan = hits.map((s, i) => ({ shapes: [s], pieces: out.groups[i] }));
     // Shrinking a shroud room hands ground back; shrinking any other adds fog.
@@ -249,7 +257,7 @@ function commitCutPath() {
   for (const poly of polygons) {
     if (!poly.vertices || poly.vertices.length < 3) continue;
     if (!ringPathCrossings(poly.vertices, path).length) continue;
-    const out = cutRing(poly.vertices, path, minArea);
+    const out = cutRing(poly, path, minArea);
     if (out.reason) { refuseShapeOp(out.reason); return; }
     plan.push({ shapes: [poly], pieces: out.pieces });
   }
@@ -306,10 +314,23 @@ function pointInPolygon(px, py, verts) {
   return inside;
 }
 
+// ⚠ ONE CROSSING TEST PER RING, XORed. Concatenating the rings and testing once wraps j past the
+// end of each ring: the closing edges vanish, two bridge edges appear, and the room grows dead
+// patches where a click selects nothing.
+function pointInShape(px, py, poly) {
+  const verts = poly && poly.vertices;
+  if (!verts || verts.length < 3) return false;
+  const holes = polyHoleRings(poly);
+  if (!holes.length) return pointInPolygon(px, py, verts);
+  let inside = pointInPolygon(px, py, verts);
+  for (const ring of holes) if (pointInPolygon(px, py, ring)) inside = !inside;
+  return inside;
+}
+
 function findPolygonAt(mapX, mapY) {
   const list = activeShapeList();
   for (let i = list.length - 1; i >= 0; i--) {
-    if (pointInPolygon(mapX, mapY, list[i].vertices)) return list[i];
+    if (pointInShape(mapX, mapY, list[i])) return list[i];
   }
   return null;
 }
@@ -326,25 +347,65 @@ function distPointToSegment(px, py, ax, ay, bx, by) {
 // shape with a shallow spread, so its snapshot shares the array and an edit rewrites the undo entry.
 function editCornerRadii(poly, edit) {
   const next = poly.cornerRadii ? poly.cornerRadii.slice()
-                                : new Array(poly.vertices.length).fill(null);
+                                : new Array(flatVertexCount(poly)).fill(null);
   edit(next);
   poly.cornerRadii = next;
 }
 
+// Copied, edited, reassigned — barred from splicing in place for the reason above. A ring left
+// under three points is dropped.
+function editHoles(poly, edit) {
+  // ⚠ FROM polyRings, not poly.holes: `edit` indexes the same rings flatVertexRef counted.
+  const next = polyHoleRings(poly).map(h => h.slice());
+  edit(next);
+  setShapeHoles(poly, next.filter(h => h && h.length >= 3));
+}
+
+// Removing one vertex. The outer outline keeps three points; a hole falling below three is
+// DROPPED, and ⚠ EVERY FLAT INDEX IT HELD GOES WITH IT — cornerRadii and doors are keyed by that
+// index, so splicing one entry for a ring that took three away shifts every later ring's radii and
+// moves its doors onto other walls. Pushes its own undo, and answers whether anything went.
+function deleteShapeVertex(poly, flat) {
+  const ref = flatVertexRef(poly, flat);
+  if (!ref) return false;
+  const ring = polyRings(poly)[ref.ring];
+  if (ref.ring === 0 && ring.length <= 3) return false;
+  const dropRing = ref.ring > 0 && ring.length <= 3;
+  // A dropped ring takes every index from its first; a single delete takes only its own.
+  const at = dropRing ? flat - ref.i : flat;
+  const gone = dropRing ? ring.length : 1;
+  pushUndo();
+  if (ref.ring === 0) poly.vertices.splice(ref.i, 1);
+  else editHoles(poly, hs => { hs[ref.ring - 1].splice(ref.i, 1); });
+  if (poly.cornerRadii) editCornerRadii(poly, r => r.splice(at, gone));
+  if (poly.doors) {
+    poly.doors = dropRing
+      ? poly.doors.filter(d => d.edge < at || d.edge >= at + gone)
+                  .map(d => ({ ...d, edge: d.edge >= at + gone ? d.edge - gone : d.edge }))
+      : remapDoorsForVertexChange(poly.doors, flat, -1);
+  }
+  return true;
+}
+
 function findVertexAt(poly, mapX, mapY) {
   const hitR = Math.min(10 / zoom, 30); // clamp: the grab shrinks when zoomed far out
-  for (let i = 0; i < poly.vertices.length; i++) {
-    if (Math.hypot(mapX - poly.vertices[i].x, mapY - poly.vertices[i].y) < hitR) return i;
+  let flat = 0;
+  for (const ring of polyRings(poly)) {
+    for (let i = 0; i < ring.length; i++, flat++) {
+      if (Math.hypot(mapX - ring[i].x, mapY - ring[i].y) < hitR) return flat;
+    }
   }
   return -1;
 }
 
 function findEdgeAt(poly, mapX, mapY) {
   const hitR = 10 / zoom;
-  const verts = poly.vertices;
-  for (let i = 0; i < verts.length; i++) {
-    const a = verts[i], b = verts[(i + 1) % verts.length];
-    if (distPointToSegment(mapX, mapY, a.x, a.y, b.x, b.y) < hitR) return i;
+  let flat = 0;
+  for (const verts of polyRings(poly)) {
+    for (let i = 0; i < verts.length; i++, flat++) {
+      const a = verts[i], b = verts[(i + 1) % verts.length];
+      if (distPointToSegment(mapX, mapY, a.x, a.y, b.x, b.y) < hitR) return flat;
+    }
   }
   return -1;
 }
@@ -381,9 +442,9 @@ function doorMouseDown(mapX, mapY) {
   const cands = [];
   for (const poly of polygons) {
     if (poly.vertices.length < 3) continue;
-    const near = nearestOutlinePoint(poly.vertices, mapX, mapY, slack * 2);
+    const near = nearestOutlinePoint(poly, mapX, mapY, slack * 2);
     if (!near) continue;
-    const door = doorCellSnap(poly.vertices, near.edge, mapX, mapY, cell,
+    const door = doorCellSnap(poly, near.edge, mapX, mapY, cell,
                               gridOffsetX, gridOffsetY, gridMode === 'square');
     if (door) cands.push({ poly, door, dist: near.dist });
   }
@@ -392,16 +453,16 @@ function doorMouseDown(mapX, mapY) {
   for (const c of cands) {
     const doors = c.poly.doors;
     if (!doors || !doors.length) continue;
-    const centre = doorPoint(c.poly.vertices, c.door);
+    const centre = doorPoint(c.poly, c.door);
     let hit = doors.findIndex(d => {
       if (d.edge !== c.door.edge || !centre) return false;
-      const p = doorPoint(c.poly.vertices, d);
+      const p = doorPoint(c.poly, d);
       return p && Math.hypot(p.x - centre.x, p.y - centre.y) < cell * 0.25;
     });
     // A door placed before the grid changed no longer sits on a cell centre, so pointing straight
     // at it is the only way left to take it away.
     if (hit < 0) hit = doors.findIndex(d =>
-      pointInDoorNotch(c.poly.vertices, d, size.width, size.depth, mapX, mapY, slack));
+      pointInDoorNotch(c.poly, d, size.width, size.depth, mapX, mapY, slack));
     if (hit < 0) continue;
     pushUndo();
     // Replaced, never spliced: pushUndo copies a room shallowly, so its snapshot holds THIS array
@@ -491,6 +552,7 @@ function flushBrushOps() {
 function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   const verts = poly.vertices;
   if (verts.length < 2) return;
+  const holeRings = polyHoleRings(poly);
   cursorCtx.save();
   // 0.3 was tried and disappeared entirely over the darker half of a map — "faint" has to stay
   // above "gone" on ground the DM did not choose.
@@ -505,8 +567,11 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
     : (poly.material ? EFFECT_EDGE_COLOR
                      : (POLY_EDGE_COLORS[poly.mode] || POLY_EDGE_COLORS.shroud));
 
-  // Build screen-space vertex array
-  const sv = verts.map(v => { const s = toScreen(v.x, v.y); return { x: s.sx, y: s.sy }; });
+  // Screen space: the outer outline, then each hole, in flat index order.
+  const toSv = ring => ring.map(v => { const s = toScreen(v.x, v.y); return { x: s.sx, y: s.sy }; });
+  const sv = toSv(verts);
+  const svHoles = holeRings.map(toSv);
+  const svAll = svHoles.length ? sv.concat(...svHoles) : sv;
 
   // Outline (rounded when cornerRadius > 0)
   cursorCtx.strokeStyle = edgeColor;
@@ -517,15 +582,15 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   cursorCtx.beginPath();
   const cr = (poly.cornerRadius || 0) * zoom;
   const pvR = poly.cornerRadii ? poly.cornerRadii.map(rv => (rv != null ? rv : (poly.cornerRadius || 0)) * zoom) : null;
-  buildRoundedPolyPath(cursorCtx, sv, cr, pvR);
+  buildRoundedPolyPath(cursorCtx, sv, cr, pvR, svHoles);
   cursorCtx.stroke();
 
   if (dimmed) { cursorCtx.restore(); return; }
 
-  // Vertex dots — always at actual vertex positions regardless of corner rounding
+  // Vertex dots — always at actual vertex positions regardless of corner rounding, on every ring.
   cursorCtx.setLineDash([]);
-  for (let i = 0; i < sv.length; i++) {
-    const { x, y } = sv[i];
+  for (let i = 0; i < svAll.length; i++) {
+    const { x, y } = svAll[i];
     const isSelVert = isSelected && i === selectedVertIdx;
     const r = isSelVert ? 7 : (isSelected ? 5 : 4);
     cursorCtx.shadowColor = isSelVert ? '#60a0ff' : edgeColor;
@@ -712,7 +777,8 @@ function toolMouseDown(raw, e) {
           edgeDragIndex = ei;
           edgeDragStartMapX = raw.x;
           edgeDragStartMapY = raw.y;
-          edgeDragOrigVerts = selPoly.vertices.map(v => ({ x: v.x, y: v.y }));
+          // Every ring, so a hole's wall drags like any other. edgeDragIndex is flat.
+          edgeDragOrigVerts = polyRings(selPoly).map(r => r.map(v => ({ x: v.x, y: v.y })));
           drawCursor(sx, sy);
           return;
         }
@@ -729,7 +795,7 @@ function toolMouseDown(raw, e) {
       polygonActuallyMoved = false;
       dragStartMapX = raw.x;
       dragStartMapY = raw.y;
-      dragOrigVerts = hit.vertices.map(v => ({ x: v.x, y: v.y }));
+      dragOrigVerts = polyRings(hit).map(r => r.map(v => ({ x: v.x, y: v.y })));
     } else {
       selectedPolygonId = null;
       selectedVertexIndex = -1;
@@ -779,17 +845,20 @@ function toolMouseMove(pos, e, screenX, screenY) {
 
   if (isDraggingVertex && selectedPolygonId != null) {
     const poly = findActiveShape();
-    if (poly && selectedVertexIndex >= 0 && selectedVertexIndex < poly.vertices.length) {
-      const n    = poly.vertices.length;
-      const prev = poly.vertices[(selectedVertexIndex - 1 + n) % n];
-      const next = poly.vertices[(selectedVertexIndex + 1) % n];
+    const ref = poly ? flatVertexRef(poly, selectedVertexIndex) : null;
+    if (ref) {
+      const ring = polyRings(poly)[ref.ring];
+      const n    = ring.length;
+      const prev = ring[(ref.i - 1 + n) % n];
+      const next = ring[(ref.i + 1) % n];
       // Straighten against BOTH ring neighbours, so either adjoining wall can go square.
       const p = axisLock ? snapToAxis(pos, [prev, next], AXIS_LOCK_PX / zoom) : pos;
       const VERT_EPSILON = 0.5; // map units — prevents coincident/zero-length edges
       if (Math.hypot(p.x - prev.x, p.y - prev.y) >= VERT_EPSILON &&
           Math.hypot(p.x - next.x, p.y - next.y) >= VERT_EPSILON) {
         pushDragUndo();
-        poly.vertices[selectedVertexIndex] = { x: p.x, y: p.y };
+        if (ref.ring === 0) poly.vertices[ref.i] = { x: p.x, y: p.y };
+        else editHoles(poly, hs => { hs[ref.ring - 1][ref.i] = { x: p.x, y: p.y }; });
         shapeGeometryChanged();
         fogDirty = true;
         scheduleRender();
@@ -801,18 +870,31 @@ function toolMouseMove(pos, e, screenX, screenY) {
 
   if (isDraggingEdge && selectedPolygonId != null) {
     const poly = findActiveShape();
-    if (poly && edgeDragOrigVerts) {
-      const n = poly.vertices.length;
-      const a = edgeDragOrigVerts[edgeDragIndex];
-      const b = edgeDragOrigVerts[(edgeDragIndex + 1) % n];
+    const ref = poly ? flatVertexRef(poly, edgeDragIndex) : null;
+    // ⚠ THE EDGE WRAPS INSIDE ITS OWN RING. Wrapping against the outer ring's length reads
+    // undefined off a hole's last edge and throws in the middle of a drag.
+    if (ref && edgeDragOrigVerts && edgeDragOrigVerts[ref.ring]) {
+      const orig = edgeDragOrigVerts[ref.ring];
+      const n = orig.length;
+      const a = orig[ref.i];
+      const b = orig[(ref.i + 1) % n];
       const edx = b.x - a.x, edy = b.y - a.y;
       const len = Math.hypot(edx, edy);
       if (len > 0) {
         const nx = -edy / len, ny = edx / len;
         const proj = (pos.x - edgeDragStartMapX) * nx + (pos.y - edgeDragStartMapY) * ny;
+        const p0 = { x: a.x + nx * proj, y: a.y + ny * proj };
+        const p1 = { x: b.x + nx * proj, y: b.y + ny * proj };
         pushDragUndo();
-        poly.vertices[edgeDragIndex]           = { x: a.x + nx * proj, y: a.y + ny * proj };
-        poly.vertices[(edgeDragIndex + 1) % n] = { x: b.x + nx * proj, y: b.y + ny * proj };
+        if (ref.ring === 0) {
+          poly.vertices[ref.i] = p0;
+          poly.vertices[(ref.i + 1) % n] = p1;
+        } else {
+          editHoles(poly, hs => {
+            hs[ref.ring - 1][ref.i] = p0;
+            hs[ref.ring - 1][(ref.i + 1) % n] = p1;
+          });
+        }
       }
       shapeGeometryChanged();
       drawCursor(screenX, screenY);
@@ -826,9 +908,11 @@ function toolMouseMove(pos, e, screenX, screenY) {
     const dx = pos.x - dragStartMapX;
     const dy = pos.y - dragStartMapY;
     const poly = findActiveShape();
-    if (poly) {
+    if (poly && dragOrigVerts) {
       pushDragUndo();
-      poly.vertices = dragOrigVerts.map(v => ({ x: v.x + dx, y: v.y + dy }));
+      const moved = dragOrigVerts.map(r => r.map(v => ({ x: v.x + dx, y: v.y + dy })));
+      poly.vertices = moved[0];
+      setShapeHoles(poly, moved.slice(1));
       polygonActuallyMoved = true;
       shapeGeometryChanged();
       fogDirty = true;
@@ -969,12 +1053,17 @@ function toolDblClick(raw, e) {
   if (findVertexAt(poly, raw.x, raw.y) >= 0) return; // don't insert on existing vertex
   const ei = findEdgeAt(poly, raw.x, raw.y);
   if (ei < 0) return;
+  const ref = flatVertexRef(poly, ei);
+  if (!ref) return;
   pushUndo();
-  const a = poly.vertices[ei], b = poly.vertices[(ei + 1) % poly.vertices.length];
+  const ring = polyRings(poly)[ref.ring];
+  const a = ring[ref.i], b = ring[(ref.i + 1) % ring.length];
   const pt = closestPointOnSegment(raw.x, raw.y, a.x, a.y, b.x, b.y);
   const span = Math.hypot(b.x - a.x, b.y - a.y);
   const splitT = span ? Math.hypot(pt.x - a.x, pt.y - a.y) / span : 0.5;
-  poly.vertices.splice(ei + 1, 0, pt);
+  if (ref.ring === 0) poly.vertices.splice(ref.i + 1, 0, pt);
+  else editHoles(poly, hs => { hs[ref.ring - 1].splice(ref.i + 1, 0, pt); });
+  // Both are keyed by the FLAT index, so a point added to a hole shifts every one after it.
   if (poly.cornerRadii) editCornerRadii(poly, r => r.splice(ei + 1, 0, null));
   if (poly.doors) poly.doors = remapDoorsForVertexChange(poly.doors, ei, 1, splitT);
   selectedVertexIndex = ei + 1;
@@ -1081,5 +1170,6 @@ function toggleSelectedPolygon() {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { pointInPolygon, distPointToSegment, segmentsIntersect };
+  module.exports = { pointInPolygon, pointInShape, deleteShapeVertex,
+                     distPointToSegment, segmentsIntersect };
 }

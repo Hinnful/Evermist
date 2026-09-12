@@ -377,9 +377,18 @@ entering Effects with one armed disarms it rather than leaving a mode nothing on
 cancel.
 
 A repair that cannot produce a valid room refuses and changes nothing, with the reason on screen.
-There are three such cases: the result would have a hole in it, which a room cannot store; the
-clipping maths failed; or a cut path did not enter and leave the room exactly once each. Pieces
-smaller than one grid square are discarded rather than kept as slivers.
+There are two such cases: the clipping maths failed, or a cut path did not enter and leave the
+room exactly once each. Pieces smaller than one grid square are discarded rather than kept as
+slivers, and so are holes.
+
+A Trim or a Cut landing wholly inside a room leaves a **hole** on that room rather than a second
+room: the record gains `holes`, a flat list of inner rings one level deep beside `vertices`. Every
+index the editing paths carry runs flat across the outer outline and then each hole, so an inner
+wall has the same handles, corner rounding and door marks as any other. Drawing still makes a
+room, so a shape drawn inside a courtyard is its own room standing in the void. A record with no
+hole is byte-for-byte what it always was, and a saved room that has one is written as a shroud
+carrying its real mode in `modeWithHoles` - an older build after a rollback then hides the whole
+shape rather than opening the courtyard on the TV.
 
 The geometry lives in `roomOps.js` over the vendored `polygon-clipping` library, and is unit
 tested against rooms derived from a real Dungeon Alchemist cave export rather than against

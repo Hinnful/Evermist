@@ -2,8 +2,16 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const {
   getPolyBBox,
+  polyRings,
+  flatVertexCount,
+  flatVertexRef,
+  copyShapeRings,
+  encodeShapeForSave,
+  decodeShapeFromSave,
   buildRoundedPolyPath,
   insetPolygon,
+  outsetPolygon,
+  insetPolyRings,
   snapToAxis,
   coneVertices,
   CONE_BULGE,
@@ -40,6 +48,81 @@ const square = [
   { x: 10, y: 10 },
   { x: 0, y: 10 },
 ];
+
+const rect = (x1, y1, x2, y2) =>
+  [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];
+
+// A keep with a courtyard: one outer outline, one hole.
+const keep  = { vertices: rect(0, 0, 100, 100), holes: [rect(30, 30, 70, 70)] };
+const keep2 = { vertices: rect(0, 0, 100, 100),
+                holes: [rect(10, 10, 30, 30), rect(60, 60, 90, 90)] };
+const plain = { vertices: rect(0, 0, 100, 100) };
+
+describe('rings', () => {
+  it('reads a record with no holes as one ring', () => {
+    assert.deepEqual(polyRings(plain), [plain.vertices]);
+    assert.equal(flatVertexCount(plain), 4);
+    assert.deepEqual(flatVertexRef(plain, 0), { ring: 0, i: 0 });
+    assert.deepEqual(flatVertexRef(plain, 3), { ring: 0, i: 3 });
+    assert.equal(flatVertexRef(plain, 4), null);
+    assert.equal(flatVertexRef(plain, -1), null);
+  });
+
+  it('counts one hole after the outer outline', () => {
+    assert.equal(polyRings(keep).length, 2);
+    assert.equal(flatVertexCount(keep), 8);
+    assert.deepEqual(flatVertexRef(keep, 4), { ring: 1, i: 0 });
+    assert.deepEqual(flatVertexRef(keep, 7), { ring: 1, i: 3 });
+    assert.equal(flatVertexRef(keep, 8), null);
+  });
+
+  it('counts two holes in the order they are stored', () => {
+    assert.equal(polyRings(keep2).length, 3);
+    assert.equal(flatVertexCount(keep2), 12);
+    assert.deepEqual(flatVertexRef(keep2, 8), { ring: 2, i: 0 });
+    assert.deepEqual(flatVertexRef(keep2, 11), { ring: 2, i: 3 });
+  });
+
+  it('skips a hole ring too short to enclose anything', () => {
+    const bad = { vertices: rect(0, 0, 10, 10), holes: [[{ x: 1, y: 1 }, { x: 2, y: 2 }]] };
+    assert.equal(polyRings(bad).length, 1);
+    assert.equal(flatVertexCount(bad), 4);
+  });
+
+  it('copies every ring point by point and keeps every other field', () => {
+    const src = { ...keep, id: 7, name: 'Keep', cornerRadii: [1, null, 3, null, 0, 0, 0, 0] };
+    const copy = copyShapeRings(src);
+    assert.deepEqual(copy, src);
+    copy.holes[0][0].x = 999;
+    assert.equal(src.holes[0][0].x, 30, 'the copy shares its hole with the original');
+    assert.equal(copy.cornerRadii.length, 8);
+    assert.equal('holes' in copyShapeRings(plain), false, 'a record with no hole gained one');
+  });
+});
+
+describe('downgrade safety', () => {
+  it('writes a revealed room with a hole as a shroud, and reads its mode back', () => {
+    const live = { ...keep, mode: 'reveal' };
+    const saved = encodeShapeForSave(live);
+    assert.equal(saved.mode, 'shroud', 'an older build would reveal the courtyard');
+    assert.equal(saved.modeWithHoles, 'reveal');
+    const back = decodeShapeFromSave(saved);
+    assert.equal(back.mode, 'reveal');
+    assert.equal('modeWithHoles' in back, false);
+    assert.deepEqual(back, live);
+  });
+
+  it('leaves a record with no hole exactly as it is', () => {
+    const live = { ...plain, mode: 'reveal' };
+    assert.equal(encodeShapeForSave(live), live);
+    assert.equal(decodeShapeFromSave(live), live);
+  });
+
+  it('leaves a shrouded room with a hole alone, and an effect too', () => {
+    assert.equal(encodeShapeForSave({ ...keep, mode: 'shroud' }).modeWithHoles, undefined);
+    assert.equal(encodeShapeForSave({ ...keep, material: 'fire' }).modeWithHoles, undefined);
+  });
+});
 
 describe('getPolyBBox', () => {
   it('returns the tight bounds of a polygon', () => {
@@ -95,6 +178,47 @@ describe('buildRoundedPolyPath', () => {
     const arcs = ctx.calls.filter(c => c[0] === 'arcTo');
     // vertex 0 has r=0 → sharp (no arc); vertices 1,2,3 are rounded → 3 arcs.
     assert.equal(arcs.length, 3);
+  });
+});
+
+describe('buildRoundedPolyPath with holes', () => {
+  it('traces each hole as its own subpath, wound against the outer ring', () => {
+    const ctx = recordingCtx();
+    // Both rings are given the SAME winding, so the tracer has to reverse the hole.
+    const hole = rect(3, 3, 7, 7);
+    buildRoundedPolyPath(ctx, square, 0, null, [hole]);
+    const moves = ctx.calls.filter(c => c[0] === 'moveTo');
+    const closes = ctx.calls.filter(c => c[0] === 'closePath');
+    assert.equal(moves.length, 2);
+    assert.equal(closes.length, 2);
+    const traced = ctx.calls.slice(5).filter(c => c[0] !== 'closePath').map(c => [c[1], c[2]]);
+    const forward = hole.map(v => [v.x, v.y]);
+    assert.notDeepEqual(traced, forward, 'the hole kept the outer ring winding');
+    assert.deepEqual(traced, forward.slice().reverse());
+  });
+
+  it('leaves a ring already wound the other way alone', () => {
+    const ctx = recordingCtx();
+    const hole = rect(3, 3, 7, 7).slice().reverse();
+    buildRoundedPolyPath(ctx, square, 0, null, [hole]);
+    const traced = ctx.calls.slice(5).filter(c => c[0] !== 'closePath').map(c => [c[1], c[2]]);
+    assert.deepEqual(traced, hole.map(v => [v.x, v.y]));
+  });
+
+  it('takes a per-vertex radius for a hole from the flat index', () => {
+    const ctx = recordingCtx();
+    const radii = [0, 0, 0, 0, 2, 0, 0, 0];   // the hole's FIRST vertex, flat index 4
+    buildRoundedPolyPath(ctx, square, 0, radii, [rect(3, 3, 7, 7)]);
+    const arcs = ctx.calls.filter(c => c[0] === 'arcTo');
+    assert.equal(arcs.length, 1);
+    assert.deepEqual([arcs[0][1], arcs[0][2]], [3, 3]);
+  });
+
+  it('draws the outline alone when handed no holes', () => {
+    const bare = recordingCtx(), empty = recordingCtx();
+    buildRoundedPolyPath(bare, square, 0, null);
+    buildRoundedPolyPath(empty, square, 0, null, []);
+    assert.deepEqual(bare.calls, empty.calls);
   });
 });
 
@@ -611,6 +735,8 @@ describe('coneVertices', () => {
 const {
   polygonWindingSign,
   edgeOutwardNormal,
+  edgeRingRef,
+  doorEdgeFrame,
   doorSizeForCell,
   doorCellBounds,
   doorCellSnap,
@@ -1019,5 +1145,56 @@ describe('planDoorPlacements', () => {
       assert.ok(p.door.edge >= 0 && p.door.edge < verts.length);
       assert.ok(p.door.t >= 0 && p.door.t <= 1);
     }
+  });
+});
+
+describe('outsetPolygon and insetPolyRings', () => {
+  it('grows a ring whichever way it is wound', () => {
+    const cw = rect(0, 0, 10, 10);
+    const ccw = cw.slice().reverse();
+    assert.deepEqual(outsetPolygon(cw, 1), rect(-1, -1, 11, 11));
+    // The bisector formula is winding-agnostic, so a reversed ring grows by the same points.
+    const grownCcw = outsetPolygon(ccw, 1);
+    assert.equal(Math.min(...grownCcw.map(v => v.x)), -1);
+    assert.equal(Math.max(...grownCcw.map(v => v.x)), 11);
+  });
+
+  it('shrinks the outline and grows every hole by the same distance', () => {
+    const out = insetPolyRings(keep, 5);
+    assert.deepEqual(out.vertices, rect(5, 5, 95, 95));
+    assert.equal(out.holes.length, 1);
+    const b = getPolyBBox(out.holes[0]);
+    assert.deepEqual(b, { minX: 25, minY: 25, maxX: 75, maxY: 75 });
+  });
+
+  it('drops a hole that the feather closes over', () => {
+    const tiny = { vertices: rect(0, 0, 100, 100), holes: [[{ x: 50, y: 50 }, { x: 51, y: 50 }]] };
+    assert.deepEqual(insetPolyRings(tiny, 5).holes, []);
+  });
+});
+
+describe('flat edge numbers', () => {
+  it('finds the nearest point on a hole wall and numbers it past the outline', () => {
+    const near = nearestOutlinePoint(keep, 50, 32, 10);
+    assert.ok(near);
+    assert.ok(near.edge >= 4, 'the hit was numbered as an outer wall');
+    assert.deepEqual(edgeRingRef(keep, near.edge).ring, 1);
+  });
+
+  it('gives a hole wall a normal pointing into the void, not into the room', () => {
+    // The courtyard's top wall runs left to right at y=30. The keep's ground is above it, the
+    // courtyard below, so out of the ROOM there is downward.
+    const f = doorEdgeFrame(keep, 4);
+    assert.ok(f);
+    assert.equal(f.ei, 4, 'the frame lost the flat edge number');
+    assert.ok(f.n.y > 0, 'the notch would carve into the keep instead of the courtyard');
+    // The outer outline keeps the sign it always had: its top wall faces up and out.
+    assert.ok(doorEdgeFrame(keep, 0).n.y < 0);
+  });
+
+  it('keeps a bare point list working unchanged', () => {
+    const near = nearestOutlinePoint(rect(0, 0, 100, 100), 50, 2, 10);
+    assert.equal(near.edge, 0);
+    assert.equal(doorEdgeFrame(rect(0, 0, 100, 100), 0).ei, 0);
   });
 });

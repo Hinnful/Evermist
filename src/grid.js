@@ -136,16 +136,19 @@ function drawEffectGridGlow(ctx, vp) {
     ctx.save();
     // Clipped to the ROUNDED outline, the same shape the fire is drawn from. Raw vertices leave
     // square ember corners, so the grid and the fire disagree about the shape.
-    const sv = e.vertices.map(v => ({
+    const toScreenRing = ring => ring.map(v => ({
       x: vp.dstX + (v.x - vp.srcX) * scale,
       y: vp.dstY + (v.y - vp.srcY) * scale,
     }));
+    const sv = toScreenRing(e.vertices);
+    // The holes go in too, or the embers relight inside a bagel-shaped burn.
+    const svHoles = polyHoleRings(e).map(toScreenRing);
     const cr  = (e.cornerRadius || 0) * scale;
     const pvR = e.cornerRadii
       ? e.cornerRadii.map(rv => (rv != null ? rv : (e.cornerRadius || 0)) * scale)
       : null;
     ctx.beginPath();
-    buildRoundedPolyPath(ctx, sv, cr, pvR);
+    buildRoundedPolyPath(ctx, sv, cr, pvR, svHoles);
     ctx.clip();
     const emberAlpha = (typeof FX_LOOK !== 'undefined') ? FX_LOOK.gridGlow : 0.6;
     drawGridLines(ctx, sub, { color: EFFECT_GRID_EMBER, alpha: emberAlpha, widthMul: 1.8 });

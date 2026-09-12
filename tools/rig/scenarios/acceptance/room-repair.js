@@ -13,14 +13,15 @@
 //   B. Trim splits one room into two.
 //   C. Join makes one room out of two, and takes the MOST HIDDEN fog mode of the two.
 //   D. Cut makes two rooms whose edges touch exactly, with no strip lost between them.
-//   E. A refusal changes nothing, says so, and spends no undo.
+//   E. A refusal changes nothing, says so, and spends no undo. A cut entering a room more than
+//      once is the refusal left: a Trim inside a room makes a hole (rooms-with-holes.js).
 //   F. A shape drawn over nothing does nothing. Join and Trim never create a room.
 //   G. Effects mode offers neither the Split tool nor the two repairs, and says so by
 //      leaving all three off the bar rather than greying them.
 //   H. EVERY ONE OF THOSE REACHES THE TV. A repaired room the players still see in its old
 //      shape is the failure this feature exists to prevent.
-//   I. A repair is spent by the shape it ran on, applied, refused or landing on nothing, and
-//      the button goes out with it. The next shape drawn makes a room.
+//   I. A repair is spent by the shape it ran on, applied or landing on nothing, and the button
+//      goes out with it. The next shape drawn makes a room.
 //
 // ⚠ ROOMS DO NOT CROSS TO THE PLAYER (CLAUDE.md). What crosses is the fog they paint, so the TV
 // checks here read fog over ground, never a room.
@@ -295,16 +296,18 @@ module.exports = async function roomRepair(rig) {
   await dm.evaluate(SETTLE);
   const eSnapshot = await dm.evaluate('JSON.stringify(polygons)');
   const eUndo = await dm.evaluate('undoStack.length');
-  await dm.evaluate('__rigOpRect("trim", 1700, 400, 1900, 550)');
+  // ⚠ THE REFUSAL IS A CUT, not a trim. A trim landing inside a room used to be refused and now
+  // makes a hole; a cut entering the outline four times still has no two-piece answer.
+  await dm.evaluate('__rigCut([[1700, 250], [1700, 700], [1900, 700], [1900, 250]])');
   const refusal = await dm.evaluate('__rigDialog()');
   rig.check(refusal.up && refusal.text.length > 0,
-            'a trim that would leave a hole in a room went through silently — the DM gets a ' +
-            'room whose middle the fog no longer knows about');
+            'a cut crossing a room four times went through silently — the DM gets whatever two ' +
+            'of those four crossings happened to produce');
   rig.note('the refusal said: ' + refusal.text);
   rig.check(await dm.evaluate('JSON.stringify(polygons)') === eSnapshot,
-            'the refused trim edited the rooms anyway');
+            'the refused cut edited the rooms anyway');
   rig.check(await dm.evaluate('undoStack.length') === eUndo,
-            'the refused trim left an undo entry behind, so the DM\'s next Ctrl+Z does nothing ' +
+            'the refused cut left an undo entry behind, so the DM\'s next Ctrl+Z does nothing ' +
             'visible');
   await dm.evaluate('__rigDismiss(); 0');
   rig.check(await dm.evaluate('__rigDialog().up') === false, 'the refusal dialog would not close');
@@ -425,12 +428,8 @@ module.exports = async function roomRepair(rig) {
             'Cut out stayed armed after a shape that landed on nothing (mode "' + iMissed.op +
             '"), and the DM has no sign it is still live');
 
-  // A refusal spends it too. Same hole-in-a-room trim criterion E refuses.
-  await dm.evaluate('__rigOpRectRaw("trim", 1700, 400, 1900, 550)');
-  const iRefused = await dm.evaluate('__rigOpState()');
-  rig.check(await dm.evaluate('__rigDialog().up') === true,
-            'the trim meant to be refused was accepted, so the check below proves nothing');
-  rig.check(iRefused.op === 'new' && iRefused.lit.length === 0,
-            'Cut out stayed armed through its own refusal (mode "' + iRefused.op + '")');
-  await dm.evaluate('__rigDismiss(); setShape("select"); 0');
+  // ⚠ NO REFUSED-REPAIR CASE HERE. Join and Trim answer for every shape the DM can draw, so no
+  // refusal is left to spend the mode with. The cut in block E is not one: a cut carries no
+  // shapeOp, and applying it through the raw helper would be testing the helper.
+  await dm.evaluate('setShape("select"); 0');
 };

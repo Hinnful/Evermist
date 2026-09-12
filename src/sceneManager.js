@@ -1038,9 +1038,10 @@ async function switchScene(id, _isRecovery = false) {
     container.style.cursor = 'crosshair';
   }
 
-  // normalizeRoomFields backfills `name` on scenes saved before rooms had names
-  // (roomPanel.js). Both spreads are additive — a field whitelist here would drop cornerRadii.
-  polygons      = normalizeRoomFields(scene.polygons || []).map(p => ({ ...p, vertices: p.vertices.map(v => ({ ...v })) }));
+  // normalizeRoomFields backfills `name` on scenes saved before rooms had names (roomPanel.js),
+  // copyShapeRings spreads additively, and decodeShapeFromSave gives a held room its mode back.
+  polygons      = normalizeRoomFields(scene.polygons || [])
+                    .map(p => decodeShapeFromSave(copyShapeRings(p)));
   nextPolygonId = scene.nextPolygonId || 1;
   selectedPolygonId   = null;
   selectedVertexIndex = -1;

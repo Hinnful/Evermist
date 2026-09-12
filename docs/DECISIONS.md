@@ -38,7 +38,7 @@ views' render paths, the fog pipeline, and the dirty-flag render loop.
 ## Rooms and the room card
 
 ### Room repair leans on a vendored clipping library · `SETTLED` (2026-09-02)
-Join, Trim and the hole check run on `polygon-clipping` 0.15.7, vendored to `lib/` as its UMD
+Join and Trim run on `polygon-clipping` 0.15.7, vendored to `lib/` as its UMD
 build and pinned as a devDependency for the tests. A hand-written boolean kernel was rejected:
 union and difference over hand-drawn cave outlines is a known hard problem, and the library
 fails loudly where a hand-rolled one fails quietly.
@@ -66,6 +66,33 @@ cave where it puts a fogged line across open rock. A repair that leaves no gap w
 something a difference operation can produce, so Cut is hand-written ring walking in
 `roomOps.js`, deliberately outside the clipping library; `cutRing` says how it keeps the two
 pieces flush.
+
+### A hole is a field on the room, and the gesture decides · `SETTLED` (2026-09-12)
+A room or an effect gained `holes`, an optional flat list of inner rings beside `vertices`, one
+level deep. Two alternatives were rejected: a general `rings` array, which changes every read site
+and rewrites every saved scene, and a child record with a parent id, which fights the rule that
+array order is fog compositing precedence and puts the hole in the room card as a room.
+
+**The gesture decides what you get.** Cut or Trim against an existing shape makes a hole on it;
+drawing always makes a new room, even inside a courtyard. So a hole can never nest, which is what
+keeps `holes` one level deep. `REASON_HOLE` went with it - that refusal was the feature's absence.
+
+Every vertex and edge index the editing paths carry is FLAT across the outer ring then each hole,
+so `selectedVertexIndex` and `edgeDragIndex` stay plain integers.
+
+### A room with a hole persists as a shroud · `SETTLED` (2026-09-12)
+`/rollback` is a supported path, and a build predating this feature ignores `holes` entirely. Left
+alone that is fog failing OPEN on the TV, so the persisted mode is rewritten to fail closed
+instead; `encodeShapeForSave` in `fogGeometry.js` carries the rule. Backfilling old scenes was
+rejected: absent `holes` is byte-for-byte the record that always shipped, and a normalising pass
+over a fixed key list is what drops `cornerRadii`.
+
+### The fire shader marks ring starts per vertex · `SETTLED` (2026-09-12)
+A bagel-shaped effect needs each ring closed at its own first point, or the distance walk bridges
+the outline into the hole and fills it. Ring start/count uniforms were rejected: indexing `uVerts`
+by `start + j` is dynamic array indexing, which WebGL1 does not guarantee. A `uBreak` float per
+vertex is read by the loop index alone, and is derived AFTER decimation so a ring that lost points
+still closes in the right place.
 
 ### The room LIST · `REJECTED`
 A full Rooms tab with a vertical room list (rows, `listOrder`, drag-reorder, 3-state pill,

@@ -15,23 +15,99 @@ function getPolyBBox(verts) {
   return { minX, minY, maxX, maxY };
 }
 
+// ─── Rings ────────────────────────────────────────────────────────────────────
+// A record's outline is `vertices`; `holes` is an optional flat list of inner rings, one level
+// deep, absent when there is none.
+// ⚠ EVERY VERTEX AND EDGE INDEX THE EDITING PATHS CARRY IS FLAT: the outer ring first, then each
+// hole in order, so selectedVertexIndex and edgeDragIndex stay the plain integers they are.
+const NO_HOLES = [];   // shared: a record with no hole allocates nothing on a mousemove
+
+function polyHoleRings(poly) {
+  const holes = poly && poly.holes;
+  if (!holes || !holes.length) return NO_HOLES;
+  return holes.filter(h => h && h.length >= 3);
+}
+
+function polyRings(poly) {
+  if (!poly) return [];
+  const outer = poly.vertices || [];
+  const holes = polyHoleRings(poly);
+  return holes.length ? [outer].concat(holes) : [outer];
+}
+
+function flatVertexCount(poly) {
+  let n = (poly && poly.vertices) ? poly.vertices.length : 0;
+  for (const ring of polyHoleRings(poly)) n += ring.length;
+  return n;
+}
+
+// {ring, i} for a flat index, where `ring` indexes polyRings(). null when out of range.
+function flatVertexRef(poly, flatIndex) {
+  const rings = polyRings(poly);
+  let k = flatIndex | 0;
+  if (k < 0) return null;
+  for (let r = 0; r < rings.length; r++) {
+    if (k < rings[r].length) return { ring: r, i: k };
+    k -= rings[r].length;
+  }
+  return null;
+}
+
+// A snapshot copy: every ring copied point by point, every other field spread through untouched.
+// ⚠ ADDITIVE, never a field whitelist — one drops cornerRadii from every saved scene.
+function copyShapeRings(shape) {
+  const out = { ...shape, vertices: shape.vertices.map(v => ({ ...v })) };
+  if (shape.holes && shape.holes.length) out.holes = shape.holes.map(h => h.map(v => ({ ...v })));
+  else delete out.holes;
+  return out;
+}
+
+// ─── Downgrade safety ─────────────────────────────────────────────────────────
+// ⚠ A build with no holes support reads `vertices` and ignores `holes`, so a revealed keep would
+// show its courtyard — fog failing OPEN on the TV, after a rollback the DM is entitled to. A
+// stored room with a hole is written as a SHROUD carrying its real mode in `modeWithHoles`, so an
+// old build hides ground instead.
+function encodeShapeForSave(shape) {
+  if (!shape || !shape.holes || !shape.holes.length || !shape.mode) return shape;
+  if (shape.mode === 'shroud') return shape;
+  return { ...shape, mode: 'shroud', modeWithHoles: shape.mode };
+}
+
+function decodeShapeFromSave(shape) {
+  if (!shape || !shape.modeWithHoles) return shape;
+  const out = { ...shape };
+  if (shape.holes && shape.holes.length) out.mode = shape.modeWithHoles;
+  delete out.modeWithHoles;
+  return out;
+}
+
 // ─── Rounded polygon path ─────────────────────────────────────────────────────
 // Used by both the fog pipeline and the cursor drawing. verts must be in target space, and
 // perVertR overrides defaultR per vertex. ⚠ Reflex vertices are always sharp, or the arc deforms.
-function buildRoundedPolyPath(ctx, verts, defaultR, perVertR) {
+//
+// Each hole is its own subpath, wound against the outer ring so a `nonzero` fill cuts it out.
+// ⚠ Reversal walks the ring backwards rather than copying it reversed, which keeps every
+// per-vertex radius on the vertex it was written for.
+function _traceRing(ctx, verts, defaultR, perVertR, offset, reverse) {
   const n = verts.length;
-  const getR = (i) => (perVertR && perVertR[i] != null) ? perVertR[i] : defaultR;
+  const src = (k) => reverse ? (n - 1 - k) : k;
+  const at = (k) => verts[src(((k % n) + n) % n)];
+  const getR = (k) => {
+    const v = perVertR ? perVertR[offset + src(k)] : null;
+    return v != null ? v : defaultR;
+  };
   if (n < 3) {
-    ctx.moveTo(verts[0].x, verts[0].y);
-    for (let i = 1; i < n; i++) ctx.lineTo(verts[i].x, verts[i].y);
+    if (!n) return;
+    ctx.moveTo(at(0).x, at(0).y);
+    for (let i = 1; i < n; i++) ctx.lineTo(at(i).x, at(i).y);
     ctx.closePath();
     return;
   }
   for (let i = 0; i < n; i++) {
     const r = getR(i);
-    const prev = verts[(i - 1 + n) % n];
-    const curr = verts[i];
-    const next = verts[(i + 1) % n];
+    const prev = at(i - 1);
+    const curr = at(i);
+    const next = at(i + 1);
     const dPrev = Math.hypot(curr.x - prev.x, curr.y - prev.y);
     const dNext = Math.hypot(next.x - curr.x, next.y - curr.y);
     if (r <= 0 || dPrev === 0 || dNext === 0) {
@@ -47,10 +123,25 @@ function buildRoundedPolyPath(ctx, verts, defaultR, perVertR) {
   ctx.closePath();
 }
 
+function buildRoundedPolyPath(ctx, verts, defaultR, perVertR, holes) {
+  _traceRing(ctx, verts, defaultR, perVertR, 0, false);
+  if (!holes || !holes.length) return;
+  const outerSign = polygonWindingSign(verts);
+  let offset = verts.length;
+  for (const hole of holes) {
+    if (!hole || hole.length < 3) continue;
+    _traceRing(ctx, hole, defaultR, perVertR, offset,
+               polygonWindingSign(hole) === outerSign);
+    offset += hole.length;
+  }
+}
+
 // ─── Polygon inset ──────────────────────────────────────────────────────────
 // Each vertex moved inward by `dist`, by the edge-bisector formula, so the perpendicular inset is
 // exactly `dist` at every edge. Both windings, via the shoelace sign.
-function insetPolygon(verts, dist) {
+// ⚠ WINDING-AGNOSTIC: reversing a ring flips its normals AND its traversal order, so a reversed
+// ring shrinks by the same points. A hole has to GROW, which is what `way` is for.
+function offsetPolygon(verts, dist, way) {
   const n = verts.length;
   if (n < 3 || dist <= 0) return verts;
   let area2 = 0;
@@ -58,7 +149,7 @@ function insetPolygon(verts, dist) {
     const j = (i + 1) % n;
     area2 += verts[i].x * verts[j].y - verts[j].x * verts[i].y;
   }
-  const sign = area2 > 0 ? 1 : -1; // CW in screen space = positive area
+  const sign = (area2 > 0 ? 1 : -1) * (way < 0 ? -1 : 1); // CW in screen space = positive area
   const out = [];
   for (let i = 0; i < n; i++) {
     const a = verts[(i + n - 1) % n], b = verts[i], c = verts[(i + 1) % n];
@@ -76,6 +167,22 @@ function insetPolygon(verts, dist) {
     }
   }
   return out;
+}
+
+function insetPolygon(verts, dist) { return offsetPolygon(verts, dist, 1); }
+function outsetPolygon(verts, dist) { return offsetPolygon(verts, dist, -1); }
+
+// Both sides of an outline moved in by `dist`: the outer ring shrunk, each hole grown. A hole that
+// collapses below three points is dropped rather than folded inside out.
+function insetPolyRings(poly, dist) {
+  const rings = polyRings(poly);
+  const outer = insetPolygon(rings[0] || [], dist);
+  const holes = [];
+  for (let r = 1; r < rings.length; r++) {
+    const h = outsetPolygon(rings[r], dist);
+    if (h && h.length >= 3) holes.push(h);
+  }
+  return { vertices: outer, holes };
 }
 
 // ─── Axis alignment snap ──────────────────────────────────────────────────────
@@ -361,16 +468,38 @@ function edgeOutwardNormal(verts, edge) {
   return { x: sign * ey / len, y: -sign * ex / len };
 }
 
-// The wall a door sits on: its endpoints, unit direction, outward normal and length.
-function doorEdgeFrame(verts, edge) {
-  if (!verts || verts.length < 3) return null;
+// The ring a FLAT edge number lands on, which is what lets a door mark an inner wall.
+function edgeRingRef(src, edge) {
+  const rings = Array.isArray(src) ? [src] : polyRings(src);
+  let total = 0;
+  for (const r of rings) total += (r ? r.length : 0);
+  if (!total) return null;
+  let k = ((edge | 0) % total + total) % total;
+  for (let r = 0; r < rings.length; r++) {
+    const verts = rings[r];
+    if (!verts || !verts.length) continue;
+    if (k < verts.length) return { ring: r, verts, i: k, flat: ((edge | 0) % total + total) % total };
+    k -= verts.length;
+  }
+  return null;
+}
+
+// The wall a door sits on: its endpoints, unit direction, outward normal and length. `ei` is the
+// FLAT edge number, which is what a stored door carries.
+// ⚠ A HOLE'S NORMAL IS FLIPPED: out of the ROOM at an inner wall points into the hole.
+function doorEdgeFrame(src, edge) {
+  const ref = edgeRingRef(src, edge);
+  if (!ref || ref.verts.length < 3) return null;
+  const verts = ref.verts;
   const n = verts.length;
-  const ei = ((edge | 0) % n + n) % n;
-  const a = verts[ei], b = verts[(ei + 1) % n];
+  const a = verts[ref.i], b = verts[(ref.i + 1) % n];
   const ex = b.x - a.x, ey = b.y - a.y;
   const len = Math.hypot(ex, ey);
   if (!(len > 0)) return null;
-  return { ei, a, b, len, ux: ex / len, uy: ey / len, n: edgeOutwardNormal(verts, ei) };
+  const nrm = edgeOutwardNormal(verts, ref.i);
+  const flip = ref.ring > 0 ? -1 : 1;
+  return { ei: ref.flat, a, b, len, ux: ex / len, uy: ey / len,
+           n: { x: nrm.x * flip, y: nrm.y * flip } };
 }
 
 // Where a wall's cell boundaries fall, as distances along it from its start vertex. ONE source for
@@ -430,18 +559,23 @@ function doorNotchCorners(verts, door, width, out, inward) {
   };
 }
 
-// Nearest point on the outline to (mx,my). Returns null when nothing is within `maxDist`.
-function nearestOutlinePoint(verts, mx, my, maxDist) {
-  if (!verts || verts.length < 2) return null;
-  let best = null;
-  for (let i = 0; i < verts.length; i++) {
-    const a = verts[i], b = verts[(i + 1) % verts.length];
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const lenSq = dx * dx + dy * dy;
-    const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((mx - a.x) * dx + (my - a.y) * dy) / lenSq));
-    const cx = a.x + dx * t, cy = a.y + dy * t;
-    const d = Math.hypot(mx - cx, my - cy);
-    if (!best || d < best.dist) best = { edge: i, t, x: cx, y: cy, dist: d };
+// Nearest point on the outline to (mx,my), across every ring, with `edge` the flat number.
+// Returns null when nothing is within `maxDist`.
+function nearestOutlinePoint(src, mx, my, maxDist) {
+  const rings = Array.isArray(src) ? [src] : polyRings(src);
+  let best = null, flat = 0;
+  for (const verts of rings) {
+    if (!verts || verts.length < 2) { flat += verts ? verts.length : 0; continue; }
+    for (let i = 0; i < verts.length; i++) {
+      const a = verts[i], b = verts[(i + 1) % verts.length];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const lenSq = dx * dx + dy * dy;
+      const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((mx - a.x) * dx + (my - a.y) * dy) / lenSq));
+      const cx = a.x + dx * t, cy = a.y + dy * t;
+      const d = Math.hypot(mx - cx, my - cy);
+      if (!best || d < best.dist) best = { edge: flat + i, t, x: cx, y: cy, dist: d };
+    }
+    flat += verts.length;
   }
   if (maxDist != null && best && best.dist > maxDist) return null;
   return best;
@@ -501,7 +635,7 @@ function sharedWallSpans(verts, edge, others, tol, step) {
     const px = f.a.x + f.ux * a, py = f.a.y + f.uy * a;
     let hit = false;
     for (const o of near) {
-      if (nearestOutlinePoint(o.vertices, px, py, tol)) { hit = true; break; }
+      if (nearestOutlinePoint(o, px, py, tol)) { hit = true; break; }
     }
     // Closed at the last point that HIT, not at the first that missed, or a span that ends
     // mid-wall runs a whole step past the neighbour it was following.
@@ -532,7 +666,7 @@ function doorResolvedMode(centre, rooms, tol) {
   let best = 0;
   for (const r of rooms) {
     if (!r || !r.vertices || r.vertices.length < 3) continue;
-    if (!nearestOutlinePoint(r.vertices, centre.x, centre.y, tol)) continue;
+    if (!nearestOutlinePoint(r, centre.x, centre.y, tol)) continue;
     const rank = doorModeRank(r.mode);
     if (rank > best) best = rank;
   }
@@ -601,10 +735,20 @@ function remapDoorsForVertexChange(doors, at, delta, splitT) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     getPolyBBox,
+    polyRings,
+    polyHoleRings,
+    copyShapeRings,
+    encodeShapeForSave,
+    decodeShapeFromSave,
+    flatVertexCount,
+    flatVertexRef,
     buildRoundedPolyPath,
     insetPolygon,
+    outsetPolygon,
+    insetPolyRings,
     polygonWindingSign,
     edgeOutwardNormal,
+    edgeRingRef,
     doorEdgeFrame,
     doorSizeForCell,
     doorCellBounds,
