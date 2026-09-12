@@ -3,9 +3,9 @@
   "files": {
     "src/roomOps.js": 11103,
     "src/state.js": 15296,
-    "src/toolbar.js": 23910,
+    "src/toolbar.js": 23155,
     "src/input.js": 13728,
-    "src/tools.js": 47287,
+    "src/tools.js": 47568,
     "src/shapeMenu.js": 3016,
     "src/about.js": 5062,
     "src/updater.js": 4677,

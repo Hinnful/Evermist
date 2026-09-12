@@ -15,22 +15,38 @@ header before adding an entry here.
 
 ---
 
-### A repair is momentary, and Split is not · `SETTLED` (2026-09-12)
+### Every repair is on both bars · `SETTLED` (2026-09-13)
 
-Merge and Cut out were sticky modes. Drawing a room is hourly and repairing one happens a handful
-of times per map, so a mode set correctly reads as armed twenty minutes later and eats the next
-room drawn in front of the table. They now spend themselves on one shape, whatever it did.
+Merge, Cut out and Split were Rooms-only buttons while `commitShapeOp` already read `placeMode`,
+so the reach was there and the gesture was not: putting a hole in an effect meant calling
+`setShapeOp` by hand. All three sit on both bars now and act on whichever list the mode names.
+`commitCutPath` was the last path still reading `polygons` directly.
 
-A shape that lands on nothing spends it too. Keeping it armed there singles out the one gesture
-that gives no feedback at all, which is where it is hardest to notice.
+The disarm on the way into Effects went with them. A repair armed in one mode survives the
+switch, because its button is on the other bar to show it and to cancel it. The rule behind that
+disarm holds: a button taken off a bar must disarm what it held.
 
-Split stays sticky. It is a tool in the pick-one row wearing the outlined blue box, so making it
-jump back to Shape would drop the DM on a tool they did not pick with nothing lit to say so, and
-it is visible for as long as it is live.
+The Brush and the Door stay Rooms-only. One needs fog to paint and the other needs a wall.
 
-In two-map mode the shape is drawn in a column and the button lives in the chrome. The column
-reports the shape as spent and the chrome disarms both columns through the broadcast every
-standing preference already uses, so the button and the two floors cannot disagree.
+The clipping kernel's refusals name a room, and `refuseShapeOp` swaps the noun in Effects, so
+`roomOps.js` stays pure and its unit tests keep comparing against the constant.
+
+### A repair stays armed until it is pressed again · `REVERTED` (2026-09-13)
+
+Merge and Cut out spent themselves on one shape for a day, on the reasoning that a mode set
+correctly reads as armed twenty minutes later and eats the next room drawn. Use answered it:
+repairs come in runs, and re-arming between each room cost more than the stale mode ever did.
+All three repairs are sticky again and go out when they are pressed again, which is the way back
+the buttons always offered.
+
+The lit button is the whole signal, and it is on screen for as long as the mode is live. A shape
+that lands on nothing changes nothing and leaves the mode where it was.
+
+Split never moved. It is a tool in the pick-one row wearing the outlined blue box, so making it
+jump back to Shape would drop the DM on a tool they did not pick with nothing lit to say so.
+
+Entering Effects still disarms a repair, for the separate reason that no button there could show
+or cancel it.
 
 ### The calibration count rides the map, and arming borrows the panel rather than taking it · `SETTLED` (2026-09-09)
 The count stepper first went in `#context-row`, where it was never once visible: that row hides

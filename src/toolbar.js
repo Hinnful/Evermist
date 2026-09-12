@@ -40,18 +40,6 @@ function setShapeOp(op) {
   refreshPaintAvailability();
 }
 
-// A repair is momentary: one drawn shape spends it, applied or refused. Left armed, it eats the
-// next room drawn twenty minutes later.
-// ⚠ THE CHROME OWNS THE HIGHLIGHT IN TWO-MAP MODE, so a column reports up and takes the
-// broadcast back; setting its own copy alone leaves the button lit over a disarmed column.
-function spendShapeOp() {
-  if (shapeOp === 'new') return;
-  setShapeOp('new');
-  if (isPane && parent !== window) {
-    parent.postMessage({ type: 'pane-shape-op-done', pane: paneId }, '*');
-  }
-}
-
 // ─── Placement mode ───────────────────────────────────────────────────────────
 // Which array the next rectangle or circle lands in. Like setPaintDirection, ONE helper owns both
 // the value and the highlight.
@@ -75,9 +63,6 @@ function setPlaceMode(m) {
     const want = m === 'effects' ? effectsShape : roomsShape;
     setShape(shapeInMode(want, m) ? want : 'poly');
   }
-  // ⚠ A REPAIR WITH NO BUTTON ON SCREEN IS ARMED WHERE THE DM CANNOT SEE OR CANCEL IT, and a
-  // Merge left armed in Effects swallows the next effect. Goes when those buttons come back.
-  if (m === 'effects' && shapeOp !== 'new') setShapeOp('new');
   refreshModeTools();
   // The strip above is mode-driven too: the fog trio to rooms, the materials to effects.
   updateContextPanels();
@@ -88,13 +73,13 @@ function setPlaceMode(m) {
 // and stays centred. Half is the one control left that greys.
 const MODE_SHAPES = {
   rooms:   ['select', 'poly', 'rect', 'circle', 'brush', 'door', 'cut'],
-  effects: ['select', 'poly', 'rect', 'circle', 'cone'],
+  effects: ['select', 'poly', 'rect', 'circle', 'cone', 'cut'],
 };
 function shapeInMode(s, m) { return MODE_SHAPES[m].indexOf(s) >= 0; }
 
-// Rooms-only buttons. Merge and Cut out are here because commitShapeOp still repairs an effect;
-// putting them back is markup alone.
-const ROOMS_ONLY = ['btn-brush', 'btn-door', 'btn-cut', 'btn-op-join', 'btn-op-trim'];
+// Rooms-only buttons. The brush needs fog to paint and a door needs a wall, so neither has
+// anything to act on in Effects. All three repairs work on either list and stay on both bars.
+const ROOMS_ONLY = ['btn-brush', 'btn-door'];
 function refreshModeTools() {
   const fx = placeMode === 'effects';
   ROOMS_ONLY.forEach(id => {

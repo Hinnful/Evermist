@@ -534,9 +534,10 @@ module.exports = async function drawing(rig) {
             'the Rooms bar greys a tool instead of leaving it off: ' + barRooms.greyed.join(' '));
   await dm.evaluate('setPlaceMode("effects"); 0');
   const barFx = await dm.evaluate(BAR);
-  rig.check(barFx.shown.join() === 'btn-select,btn-shape,btn-cone',
-            'the Effects bar is not Select and Shape (with the Cone in its flyout): ' +
-            barFx.shown.join(' '));
+  rig.check(barFx.shown.join() ===
+            'btn-select,btn-shape,btn-cut,btn-op-join,btn-op-trim,btn-cone',
+            'the Effects bar is not Select, Shape, Split, Merge, Cut out (with the Cone in the ' +
+            'shape flyout): ' + barFx.shown.join(' '));
   rig.check(barFx.greyed.length === 0,
             'the Effects bar greys a tool instead of leaving it off: ' + barFx.greyed.join(' '));
 

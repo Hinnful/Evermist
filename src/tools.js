@@ -105,9 +105,8 @@ function persistShapeEdit() {
   scheduleAutoSync();
 }
 
-// A freshly drawn rectangle, circle or polygon, landed in whichever list the mode names. The two
-// records differ only in a fog `mode` against a `material`, which is what lets ONE set of editing
-// paths serve both.
+// A freshly drawn rectangle, circle or polygon, landed in whichever list the mode names. One set
+// of editing paths serves both: the records differ only in a fog `mode` against a `material`.
 function commitDrawnShape(verts) {
   let shape;
   if (placeMode === 'effects') {
@@ -129,8 +128,11 @@ function commitDrawnShape(verts) {
 // ─── Join, Trim and Cut ───────────────────────────────────────────────────────
 // Geometry is roomOps.js; all three land here so one set of rules covers ids, order, undo and fog.
 
+// ⚠ THE KERNEL'S REFUSALS NAME A ROOM and the same gesture repairs an effect, so the noun is
+// swapped here; roomOps.js stays pure and a new reason naming a room inherits it for free.
 function refuseShapeOp(reason) {
-  messageDialog({ title: 'Nothing changed', message: reason });
+  const msg = placeMode === 'effects' ? reason.split('room').join('effect') : reason;
+  messageDialog({ title: 'Nothing changed', message: msg });
   return false;
 }
 
@@ -227,14 +229,14 @@ function commitShapeOp(verts) {
   return true;
 }
 
-// THE ONE PLACE A FINISHED CLOSED SHAPE GOES. `new` makes a record; Join and Trim make none.
+// THE ONE PLACE A FINISHED CLOSED SHAPE GOES. `new` makes a record; Join and Trim make none and
+// stay armed for the next shape.
 // ⚠ RETURNS NULL FOR EVERY MODE BUT 'new', a refusal included, so no caller may reach into it.
 function commitClosedShape(verts) {
   if (shapeOp === 'new') return commitDrawnShape(verts);
   selectedPolygonId = null;
   selectedVertexIndex = -1;
   commitShapeOp(verts);
-  spendShapeOp();
   return null;
 }
 
@@ -245,7 +247,7 @@ function cutMouseDown(mapX, mapY) {
   else activePolygon.vertices.push(pos);
 }
 
-// ⚠ EVERY ROOM THE PATH TOUCHES IS IN OR THE WHOLE CUT IS REFUSED. A room crossed four times has
+// ⚠ EVERY SHAPE THE PATH TOUCHES IS IN OR THE WHOLE CUT IS REFUSED. One crossed four times has
 // no two-piece answer, and cutting its neighbours while skipping it is a silent refusal.
 function commitCutPath() {
   const path = activePolygon && activePolygon.cut ? activePolygon.vertices : null;
@@ -254,7 +256,7 @@ function commitCutPath() {
   if (!path || path.length < 2) return;
   const minArea = roomOpMinArea(gridSize);
   const plan = [];
-  for (const poly of polygons) {
+  for (const poly of activeShapeList()) {
     if (!poly.vertices || poly.vertices.length < 3) continue;
     if (!ringPathCrossings(poly.vertices, path).length) continue;
     const out = cutRing(poly, path, minArea);
@@ -440,7 +442,7 @@ function doorMouseDown(mapX, mapY) {
   const size = doorSizeForCell(cell, doorWidthPct, doorDepthPct);
 
   const cands = [];
-  for (const poly of polygons) {
+  for (const poly of activeShapeList()) {
     if (poly.vertices.length < 3) continue;
     const near = nearestOutlinePoint(poly, mapX, mapY, slack * 2);
     if (!near) continue;

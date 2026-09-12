@@ -22,9 +22,8 @@
 //   J. The grid inside an effect relights in ember on EVERY grid type, square and both hexes,
 //      so the cells a hazard covers stay countable whatever grid the map is on. Outside the
 //      outline the grid keeps the DM's own colour, which is what proves the clip still holds.
-//   K. A repair still acts on an EFFECT. Merge and Cut out lost their buttons in Effects mode,
-//      not their reach, so nothing may narrow commitShapeOp to rooms. Entering Effects with
-//      one armed disarms it, because that bar can neither show it nor cancel it.
+//   K. All three repairs act on an EFFECT, from the Effects bar's own buttons, and never touch
+//      the rooms list. A repair armed in one mode survives the switch to the other.
 //
 // ⚠ EFFECTS ARE NOT ROOMS AND NOT TOKENS. An effect is the same record as a room carrying a
 // `material` where a room has a fog `mode` (CLAUDE.md). They live in two arrays because array
@@ -414,27 +413,49 @@ module.exports = async function effectsFeature(rig) {
             'with flames licking off it, over a faint tint. Judged live, since the motion is the ' +
             'point and a still cannot show it');
 
-  // ══ K. A repair still acts on an effect ══
-  // ⚠ DRIVEN THROUGH setShapeOp, NOT A BUTTON. Effects mode carries neither Merge nor Cut out on
-  // its bar (room-repair.js criterion G), and this is what stops that becoming a Rooms-only
-  // FEATURE: commitShapeOp reads placeMode and must keep reaching the effects list.
+  // ══ K. All three repairs act on an effect, from the bar's own buttons ══
+  // ⚠ EVERY REPAIR HERE IS ARMED BY CLICKING ITS BUTTON, never by calling setShapeOp. The
+  // buttons are the half that was missing, and a scripted setShapeOp would pass without them.
   // Drawn low on the map, clear of every effect the criteria above left standing.
   await dm.evaluate('setPlaceMode("effects"); setShapeOp("new"); setShape("rect");' +
                     ' __rigDrag(300, 1100, 500, 1250); __rigDrag(600, 1100, 800, 1250); 0');
   const kRooms  = await dm.evaluate('polygons.length');
   const kBefore = await dm.evaluate('effects.length');
-  await dm.evaluate('setShapeOp("join"); setShape("rect"); __rigDrag(400, 1130, 700, 1220);' +
-                    ' setShapeOp("new"); setShape("select"); 0');
-  rig.check(await dm.evaluate('effects.length') === kBefore - 1,
-            'a Merge left ' + await dm.evaluate('effects.length') + ' effects out of ' + kBefore +
-            ' instead of joining two into one, so the repairs no longer reach the effects list');
+  await dm.evaluate('document.getElementById("btn-op-join").click(); setShape("rect");' +
+                    ' __rigDrag(400, 1130, 700, 1220); 0');
+  const kJoined = await dm.evaluate('effects.length');
+  rig.check(kJoined === kBefore - 1,
+            'a Merge left ' + kJoined + ' effects out of ' + kBefore + ' instead of joining two ' +
+            'into one, so the Merge button on the Effects bar reaches nothing');
   rig.check(await dm.evaluate('polygons.length') === kRooms,
             'a Merge drawn in Effects mode changed the ROOMS list');
 
-  // Entering Effects DISARMS a repair, because that bar has no button to show it or cancel it.
-  await dm.evaluate('setPlaceMode("rooms"); setShapeOp("join"); setPlaceMode("effects"); 0');
-  rig.check(await dm.evaluate('shapeOp') === 'new',
-            'a Merge armed in Rooms survived into Effects, where nothing on the bar says it is ' +
-            'armed and nothing can cancel it — the next effect the DM draws is swallowed');
+  // Cut out, on the effect the Merge just made. A notch adds corners without adding a record.
+  const kVerts = await dm.evaluate('effects[effects.length - 1].vertices.length');
+  await dm.evaluate('document.getElementById("btn-op-trim").click(); setShape("rect");' +
+                    ' __rigDrag(650, 1080, 780, 1160); 0');
+  rig.check(await dm.evaluate('effects.length') === kJoined,
+            'a Cut out on an effect changed how many effects there are instead of notching one');
+  rig.check(await dm.evaluate('effects[effects.length - 1].vertices.length') > kVerts,
+            'the effect came back at ' + kVerts + ' corners, so the Cut out took nothing out of it');
+
+  // Split, which is a TOOL rather than an armed mode, and cuts whichever list the mode names.
+  await dm.evaluate('document.getElementById("btn-op-trim").click(); 0');
+  const kSplit = await dm.evaluate('effects.length');
+  await dm.evaluate('setShape("cut"); __rigClick(250, 1180); __rigClick(900, 1180);' +
+                    ' container.dispatchEvent(new MouseEvent("dblclick",' +
+                    ' { bubbles: true, cancelable: true })); setShape("select"); 0');
+  rig.check(await dm.evaluate('effects.length') === kSplit + 1,
+            'Split left ' + (await dm.evaluate('effects.length')) + ' effects out of ' + kSplit +
+            ' instead of cutting one in two, so the tool still only reads the rooms list');
+  rig.check(await dm.evaluate('polygons.length') === kRooms,
+            'Split drawn in Effects mode cut a ROOM');
+
+  // A repair armed in one mode SURVIVES the switch, because its button is on both bars.
+  await dm.evaluate('setPlaceMode("rooms"); document.getElementById("btn-op-join").click();' +
+                    ' setPlaceMode("effects"); 0');
+  rig.check(await dm.evaluate('shapeOp') === 'join',
+            'a Merge armed in Rooms was disarmed by the switch to Effects, where its button is ' +
+            'now on the bar to show it and to cancel it');
   await dm.evaluate('setPlaceMode("rooms"); setShapeOp("new"); 0');
 };

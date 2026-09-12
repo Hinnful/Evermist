@@ -93,12 +93,13 @@ Four signals, and they must not blur into each other:
 Two more rules the bar's shape depends on:
 
 - **A tool a mode cannot use is ABSENT, not greyed.** Rooms shows Select, Shape, Brush, Door,
-  Split, Merge and Cut out; Effects shows Select and Shape. The bar sizes itself to whichever
-  set is up and `#bar-row` keeps it centred. Half is the one control left that greys, and only
-  while the Brush is picked.
-- **Taking a button off a mode's bar means disarming what it held.** `setPlaceMode` returns
-  `shapeOp` to `'new'` on the way into Effects; an armed Merge with no button there is a mode
-  the DM can neither see nor cancel, and it swallows the next effect they draw.
+  Split, Merge and Cut out; Effects shows the same set without Brush and Door. The bar sizes
+  itself to whichever set is up and `#bar-row` keeps it centred. Half is the one control left
+  that greys, and only while the Brush is picked.
+- **Taking a button off a mode's bar means disarming what it held.** An armed mode with no
+  button on screen is one the DM can neither see nor cancel, and it swallows the next shape they
+  draw. All three repairs are on both bars now, so `setPlaceMode` disarms nothing; a button
+  removed from a bar in future brings this rule back with it.
 - **`#context-row` hides with `visibility`, never `display`.** Select and Split leave it blank,
   and a `display: none` takes its box out of `#tools-wrapper` — the whole cluster then jumps up
   by the row plus the 11px gap on every Select. Its explicit `height` is what stops the box

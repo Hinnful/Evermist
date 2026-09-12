@@ -330,7 +330,8 @@ channel to strip and no risk of leaking a room's notes to the TV.
 when you click, including ones that overlap or nest inside existing ones.
 
 **The bar carries only the tools the current mode can use.** Rooms shows Select, the shape
-button, Brush, Door, Split, Merge and Cut out; Effects shows Select and the shape button. A tool
+button, Brush, Door, Split, Merge and Cut out; Effects shows all of those but Brush and Door,
+which need fog to paint and a wall to sit on. A tool
 the mode cannot use is not on the bar at all, so the bar changes width between the two and stays
 centred. Rectangle, Circle, Polygon and Cone stand behind one button: a left click picks the
 shape it is showing, a right click opens a flyout of the rest, and Cone is offered in Effects
@@ -353,9 +354,9 @@ is no separate display order, and no room list UI to need one.
 
 The floor-plan import draws most rooms correctly, and the rest need fixing rather than redrawing.
 Three repairs cover it, and none of them asks you to select anything first: you pick what the
-next shape should do, then draw it over the rooms you mean. Merge and Cut out are spent by that
-one shape - applied, refused, or landing on nothing - and switch themselves off, so the shape
-after it makes a room. Split is a tool in the pick-one row and stays picked like any other.
+next shape should do, then draw it over the rooms you mean. All three stay armed until you press
+the lit button again, so a run of repairs is drawn without re-arming between rooms. Split is a
+tool in the pick-one row and stays picked like any other.
 
 **Join**, which the bar calls Merge, unions the shape you draw with every room it lands on, so
 one rectangle straddling two rooms leaves one room. The result keeps the name and notes of the earlier of the two, and takes
@@ -372,9 +373,9 @@ because a room's outline *is* the fog stencil. Two things are dropped rather tha
 per-corner rounding and door marks, both of which are stored by position in the corner list, and
 a repair renumbers every position.
 
-Merge and Cut out are Rooms-only on the bar. `commitShapeOp` still repairs an effect, so
-entering Effects with one armed disarms it rather than leaving a mode nothing on screen can
-cancel.
+All three repairs are on both bars and act on whichever list the mode names, so a Merge drawn in
+Effects joins two effects and never touches a room. A repair armed in one mode is still armed in
+the other, because its button is on both bars to show it and to cancel it.
 
 A repair that cannot produce a valid room refuses and changes nothing, with the reason on screen.
 There are two such cases: the clipping maths failed, or a cut path did not enter and leave the

@@ -17,9 +17,8 @@
 //   F. A shape DRAWN inside the hole becomes a separate room, and stays put when the keep moves.
 //   G. A Cut straight through a courtyard gives each half its own share of it.
 //   H. An effect carrying a hole renders as a ring of flame on both screens, and the ember grid
-//      does not relight inside the hole. ⚠ NO DM GESTURE REACHES THIS. ROOMS_ONLY in toolbar.js
-//      keeps Cut, Merge and Trim off the Effects bar, so this block arms Trim from script. It
-//      covers the render path an effect would take, not a thing the DM can do.
+//      does not relight inside the hole. The hole is made the way the DM makes it: Cut out is
+//      armed from its own button on the Effects bar.
 //   I. A door can be marked on an inner wall, so a keep has a gate onto its courtyard, and the
 //      notch opens a gap in it. Which SIDE the notch reaches further into is settled by a unit
 //      test on doorEdgeFrame - a notch straddles its wall, so no fog sample here separates them.
@@ -373,8 +372,8 @@ module.exports = async function roomsWithHoles(rig) {
             'the cut re-fogged the keep itself (alpha ' + gYard.room + ')');
 
   // ══ H. An effect carrying a hole renders as a ring on both screens ══
-  // ⚠ ARMED FROM SCRIPT. The Effects bar carries no repair button, so nothing below is a gesture
-  // the DM can make. It holds the shader and the ember clip against the record shape only.
+  // ⚠ ARMED FROM THE BAR. Cut out is on the Effects bar, so this is the DM's own gesture and
+  // the block covers the shader and the ember clip behind it.
   const FX = { x1: 1500, y1: 300, x2: 2100, y2: 850 };
   const FX_HOLE = { x1: 1700, y1: 470, x2: 1900, y2: 680 };
   const FX_MID = { x: Math.round((FX_HOLE.x1 + FX_HOLE.x2) / 2),
@@ -383,8 +382,14 @@ module.exports = async function roomsWithHoles(rig) {
                     '__rigDrag(' + FX.x1 + ',' + FX.y1 + ',' + FX.x2 + ',' + FX.y2 + ');' +
                     'setShape("select"); 0');
   const fxId = await dm.evaluate('effects[effects.length - 1].id');
-  await dm.evaluate('__rigOpRect("trim", ' + FX_HOLE.x1 + ',' + FX_HOLE.y1 + ',' +
-                    FX_HOLE.x2 + ',' + FX_HOLE.y2 + ')');
+  rig.check(await dm.evaluate('(() => { const b = document.getElementById("btn-op-trim");' +
+                              ' return !!b && getComputedStyle(b).display !== "none"; })()'),
+            'Cut out is not on the bar in Effects mode, so no DM gesture can put a hole in an ' +
+            'effect and everything below is script-only');
+  await dm.evaluate('document.getElementById("btn-op-trim").click(); setShape("rect");' +
+                    ' __rigDrag(' + FX_HOLE.x1 + ',' + FX_HOLE.y1 + ',' +
+                    FX_HOLE.x2 + ',' + FX_HOLE.y2 + ');' +
+                    ' document.getElementById("btn-op-trim").click(); setShape("select"); 0');
   await dm.evaluate('effectsChanged(); scheduleRender(); sendToPlayer(); 0');
   rig.check(await dm.evaluate('__rigDialog().up') === false,
             'the trim on the effect was refused: ' + (await dm.evaluate('__rigDialog().text')));

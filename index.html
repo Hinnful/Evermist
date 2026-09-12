@@ -145,19 +145,18 @@
 
     <!-- Split. A pick-one TOOL, not a repair: Cut out can split a room too, but only by removing
          a strip, and that gap is a wall on a dungeon and a fogged line across open rock in a
-         cave. Rooms only. -->
-    <button id="btn-cut" class="tool-btn" title="Split - click a path across a room to split it in two, double-click to finish">
+         cave. On both bars: it cuts whichever list the mode names. -->
+    <button id="btn-cut" class="tool-btn" title="Split - click a path across a room or effect to split it in two, double-click to finish">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/><path d="M8.5 3.5l3.5 8-2.5 4.5 2.5 4.5" stroke-dasharray="3 2.5"/></svg>
     </button>
 
     <!-- The two repairs. Each arms a MODE the next drawn shape runs in, so an armed one is lit
-         alongside the picked shape tool and pressing a lit one disarms it. Rooms only: an
-         effect is still repairable through commitShapeOp, it just has no button here - and
-         entering Effects disarms, because an armed mode with no button cannot be cancelled. -->
-    <button id="btn-op-join" class="tool-btn" title="Merge - the shape you draw merges every room it lands on into one">
+         alongside the picked shape tool and pressing a lit one disarms it. On both bars, acting
+         on whichever list the mode names. -->
+    <button id="btn-op-join" class="tool-btn" title="Merge - the shape you draw merges every room or effect it lands on into one">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4h4v10H9v-4H5z"/></svg>
     </button>
-    <button id="btn-op-trim" class="tool-btn" title="Cut out - the shape you draw is taken out of every room it lands on">
+    <button id="btn-op-trim" class="tool-btn" title="Cut out - the shape you draw is taken out of every room or effect it lands on">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4H9v6H5z"/><path d="M9 9h10v10H9z" stroke-dasharray="2.5 2.5"/></svg>
     </button>
 

@@ -16,12 +16,12 @@
 //   E. A refusal changes nothing, says so, and spends no undo. A cut entering a room more than
 //      once is the refusal left: a Trim inside a room makes a hole (rooms-with-holes.js).
 //   F. A shape drawn over nothing does nothing. Join and Trim never create a room.
-//   G. Effects mode offers neither the Split tool nor the two repairs, and says so by
-//      leaving all three off the bar rather than greying them.
+//   G. Effects mode carries all three repairs on its bar, and leaves the Brush and the Door
+//      off it - a tool a mode cannot use is absent, never greyed.
 //   H. EVERY ONE OF THOSE REACHES THE TV. A repaired room the players still see in its old
 //      shape is the failure this feature exists to prevent.
-//   I. A repair is spent by the shape it ran on, applied or landing on nothing, and the button
-//      goes out with it. The next shape drawn makes a room.
+//   I. A repair STAYS ARMED after the shape it ran on, applied or landing on nothing, and the
+//      button stays lit. Pressing that lit button is what puts it out.
 //
 // ⚠ ROOMS DO NOT CROSS TO THE PLAYER (CLAUDE.md). What crosses is the fog they paint, so the TV
 // checks here read fog over ground, never a room.
@@ -78,8 +78,8 @@ globalThis.__rigDrawShroud = (x1, y1, x2, y2) => {
   return polygons[polygons.length - 1].id;
 };
 // A rectangle drawn in Join or Trim mode. Returns nothing: neither mode makes a record.
-// ⚠ PUTS THE MODE BACK ITSELF, which is what criterion I is about — that block uses the raw
-// helper below, or it would be reading its own tidy-up instead of the app's.
+// ⚠ PUTS THE MODE BACK ITSELF. The mode now SURVIVES the shape, so every other block here
+// would leave it armed; criterion I uses the raw helper below and reads the app's own state.
 globalThis.__rigOpRect = (op, x1, y1, x2, y2) => {
   __rigOpRectRaw(op, x1, y1, x2, y2);
   setShapeOp('new');
@@ -324,23 +324,32 @@ module.exports = async function roomRepair(rig) {
   rig.check(await dm.evaluate('__rigById(' + e + ').vertices.length') === 4,
             'the room under test was reshaped by a drag that landed nowhere near it');
 
-  // ══ G. Effects offers neither the Split tool nor the repairs, and leaves all three off ══
+  // ══ G. Effects carries all three repairs, and leaves the Brush and the Door off ══
   // ABSENT, not greyed: a dead control in prime position on a bar it can do nothing on is what
-  // this replaced. commitShapeOp still repairs an effect — only the buttons are Rooms-only.
+  // this replaced. The repairs read placeMode, so they act on whichever list is up.
   const onBar = ids => '(() => ({' + ids.map(id =>
     '"' + id + '": (() => { const b = document.getElementById("' + id + '");' +
     ' return !!b && getComputedStyle(b).display !== "none"; })()').join(', ') + '}))()';
   const REPAIR_BTNS = ['btn-cut', 'btn-op-join', 'btn-op-trim'];
+  const FOG_BTNS = ['btn-brush', 'btn-door'];
   await dm.evaluate('setPlaceMode("effects"); 0');
   const gFx = await dm.evaluate(onBar(REPAIR_BTNS));
-  rig.check(Object.values(gFx).every(v => v === false),
-            'Split, Merge or Cut out is still on the bar in Effects mode, where there is no ' +
-            'room to act on: ' + JSON.stringify(gFx));
-  await dm.evaluate('setPlaceMode("rooms"); 0');
-  const gRooms = await dm.evaluate(onBar(REPAIR_BTNS));
+  rig.check(Object.values(gFx).every(v => v === true),
+            'Split, Merge or Cut out is missing from the bar in Effects mode, so the only way ' +
+            'to repair an effect is to call setShapeOp by hand: ' + JSON.stringify(gFx));
+  const gFxOff = await dm.evaluate(onBar(FOG_BTNS));
+  rig.check(Object.values(gFxOff).every(v => v === false),
+            'the Brush or the Door is on the bar in Effects mode, where there is no fog to ' +
+            'paint and no wall to sit on: ' + JSON.stringify(gFxOff));
+  // A repair armed in one mode survives the switch, because its button is on both bars.
+  await dm.evaluate('setShapeOp("join"); setPlaceMode("rooms"); 0');
+  rig.check(await dm.evaluate('shapeOp') === 'join',
+            'a Merge armed in Effects was disarmed by the switch to Rooms, so the DM has to ' +
+            're-arm it every time they change list');
+  await dm.evaluate('setShapeOp("new"); 0');
+  const gRooms = await dm.evaluate(onBar(REPAIR_BTNS.concat(FOG_BTNS)));
   rig.check(Object.values(gRooms).every(v => v === true),
-            'Split, Merge or Cut out did not come back on the bar in Rooms mode: ' +
-            JSON.stringify(gRooms));
+            'a tool went missing from the bar in Rooms mode: ' + JSON.stringify(gRooms));
 
   // ══ H. Every one of those reaches the TV ══
   rig.check(await dm.evaluate('autoSync === true'),
@@ -398,9 +407,9 @@ module.exports = async function roomRepair(rig) {
   rig.check(await dm.evaluate('polygons.filter(p => p.id === ' + seam + ').length') === 1,
             'the cut room lost its own id');
 
-  // ══ I. A repair is spent by the shape it ran on, and the button goes out ══
-  // Drawing is hourly and repairing is rare, so a mode left armed is right when it is set and
-  // wrong twenty minutes later, when it eats the next room instead of making one.
+  // ══ I. A repair stays armed after its shape, and the lit button is the way out ══
+  // Repairs come in runs, so re-arming between each room costs more than a stale mode does. The
+  // button stays lit for as long as the mode is live, which is the only signal there is.
   // ⚠ ON EMPTY MAP, with a margin on every neighbour. Client coordinates are integers, so a
   // room placed against another is one zoom away from the Merge taking BOTH: the earlier room
   // becomes the base, this one is dropped, and the check below reads a room that is gone.
@@ -412,24 +421,34 @@ module.exports = async function roomRepair(rig) {
   rig.check(iVerts > 4,
             'the Merge left the room at ' + iVerts + ' points instead of growing it, so the ' +
             'mode check below is reading a shape that missed');
-  rig.check(iApplied.op === 'new' && iApplied.lit.length === 0,
-            'Merge stayed armed after the shape it ran on (mode "' + iApplied.op + '", lit ' +
-            JSON.stringify(iApplied.lit) + '), so the next room the DM draws is eaten instead');
+  rig.check(iApplied.op === 'join' && iApplied.lit.join() === 'join',
+            'Merge went out after the shape it ran on (mode "' + iApplied.op + '", lit ' +
+            JSON.stringify(iApplied.lit) + '), so the DM has to re-arm for the next room');
 
-  // The consequence, not a restatement of it: the very next shape has to become a room.
+  // The consequence, not a restatement of it: the very next shape has to repair, not build.
+  // Still armed and still 'rect', so this drag is the DM drawing a second Merge with no re-arm.
   const iCount = await dm.evaluate('polygons.length');
-  await dm.evaluate('setShape("rect"); __rigDrag(1440, 350, 1560, 550); setShape("select"); 0');
-  rig.check(await dm.evaluate('polygons.length') === iCount + 1,
-            'the shape drawn after a Merge made no room, so the armed repair swallowed it');
+  const iArea = await dm.evaluate('__rigArea(__rigById(' + iRoom + ').vertices)');
+  await dm.evaluate('__rigDrag(1050, 800, 1250, 1000); 0');
+  const iArea2 = await dm.evaluate('__rigArea((__rigById(' + iRoom + ') || { vertices: [] }).vertices)');
+  rig.check(await dm.evaluate('polygons.length') === iCount,
+            'the shape drawn straight after a Merge made a room, so the repair did not survive it');
+  rig.check(iArea2 > iArea + 1000,
+            'the second Merge left the room at ' + Math.round(iArea2) + ' square units against ' +
+            Math.round(iArea) + ', so nothing was merged and the count above passed for free');
 
   await dm.evaluate('__rigOpRectRaw("trim", 300, 1250, 420, 1350)');  // bare map: lands on nothing
   const iMissed = await dm.evaluate('__rigOpState()');
-  rig.check(iMissed.op === 'new' && iMissed.lit.length === 0,
-            'Cut out stayed armed after a shape that landed on nothing (mode "' + iMissed.op +
-            '"), and the DM has no sign it is still live');
+  rig.check(iMissed.op === 'trim' && iMissed.lit.join() === 'trim',
+            'Cut out went out after a shape that landed on nothing (mode "' + iMissed.op +
+            '"), so a missed drag costs the DM the mode as well');
 
-  // ⚠ NO REFUSED-REPAIR CASE HERE. Join and Trim answer for every shape the DM can draw, so no
-  // refusal is left to spend the mode with. The cut in block E is not one: a cut carries no
-  // shapeOp, and applying it through the raw helper would be testing the helper.
+  // The lit button is the way out, and it is the ONLY way out inside Rooms.
+  await dm.evaluate('document.getElementById("btn-op-trim").click(); 0');
+  const iOff = await dm.evaluate('__rigOpState()');
+  rig.check(iOff.op === 'new' && iOff.lit.length === 0,
+            'pressing the lit Cut out left it armed (mode "' + iOff.op + '", lit ' +
+            JSON.stringify(iOff.lit) + '), so nothing on the bar cancels a repair');
+
   await dm.evaluate('setShape("select"); 0');
 };
