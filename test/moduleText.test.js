@@ -162,6 +162,51 @@ describe('mtHeadingCandidate', () => {
     assert.deepEqual(mtHeadingCandidate('K12. Chapel'),   { prefix: 'K', num: 12, letter: '', name: 'Chapel' });
   });
 
+  test('accepts a COLON where the period goes — whole books key rooms "V1: Вестибюль"', () => {
+    assert.deepEqual(mtHeadingCandidate('V1: Вестибюль'), { prefix: 'V', num: 1, letter: '', name: 'Вестибюль' });
+    assert.deepEqual(mtHeadingCandidate('7: Chapel'),     { prefix: '', num: 7, letter: '', name: 'Chapel' });
+  });
+
+  test('a PLACE WORD stands in for the prefix, and carries its space into the key', () => {
+    assert.deepEqual(mtHeadingCandidate('Area 1: Entry chamber'),
+                     { prefix: 'Area ', num: 1, letter: '', name: 'Entry chamber' });
+    assert.deepEqual(mtHeadingCandidate('Комната 4. Кухня'),
+                     { prefix: 'Комната ', num: 4, letter: '', name: 'Кухня' });
+  });
+
+  test('a DASH separates a PREFIXED key, spaced or not', () => {
+    assert.deepEqual(mtHeadingCandidate('Area 1 - Old Keeper’s Quarters'),
+                     { prefix: 'Area ', num: 1, letter: '', name: 'Old Keeper’s Quarters' });
+    assert.deepEqual(mtHeadingCandidate('K12 — Chapel'),
+                     { prefix: 'K', num: 12, letter: '', name: 'Chapel' });
+  });
+
+  test('a dash on a BARE number is not a key — it is the encounter table', () => {
+    // Letting this through hands the sequence to the first such table and costs every room after
+    // it: one book swapped all nineteen of its rooms for nineteen random encounters.
+    assert.equal(mtHeadingCandidate('1 - Clockwork Rats (Easy Combat)'), null);
+    assert.equal(mtHeadingCandidate('2 - Common Room'), null);
+  });
+
+  test('a word OUTSIDE the place list is not a key, however heading-shaped', () => {
+    // A book's contents page is full of these, and each one would open its own room sequence.
+    assert.equal(mtHeadingCandidate('Глава 1: Драконий Покой'), null);
+    assert.equal(mtHeadingCandidate('Part 1: Saltport Cove'), null);
+    assert.equal(mtHeadingCandidate('Карта 1: остров'), null);
+  });
+
+  test('a period after a SHORT word is an abbreviation, not a second sentence', () => {
+    assert.deepEqual(mtHeadingCandidate("5. Mrs. Peal's Bakery"),
+                     { prefix: '', num: 5, letter: '', name: "Mrs. Peal's Bakery" });
+    assert.equal(mtHeadingCandidate('1. Дверь заперта. За ней стол'), null);
+  });
+
+  test('a bare-numbered lower-case name needs a capital SOMEWHERE — small caps extract lower', () => {
+    assert.deepEqual(mtHeadingCandidate('14. theChronometer of Harmony'),
+                     { prefix: '', num: 14, letter: '', name: 'theChronometer of Harmony' });
+    assert.equal(mtHeadingCandidate('3. двор прислуги'), null);
+  });
+
   test('the prefix must touch the digits — "В 1. Комнате" is prose, not a key', () => {
     assert.equal(mtHeadingCandidate('В 1. Комнате стоит стол'), null);
   });
@@ -242,6 +287,34 @@ describe('mtHeadingCandidates', () => {
     got.forEach(g => assert.equal(typeof g.i, 'number'));
   });
 
+  test('a candidate FILLING the column is a numbered sentence, not a heading', () => {
+    // Its cost is not the one bad entry: it claims a number, so every later room in that
+    // chapter reads as a restart and is dropped. Curse of Strahd lost twenty-six that way.
+    const short = '25А. Пустой склеп';
+    const filled = '25А. В сундуке лежит 11 зм и 60 см в кошельке из';
+    assert.deepEqual(mtHeadingCandidates([filled], 51), []);
+    assert.deepEqual(mtHeadingCandidates([short], 51).map(g => g.num), [25]);
+  });
+
+  test('a column-filling item still FLAGS the list, so the short items after it stay out', () => {
+    // Skipping it instead breaks the chain: item 1 fills the column, so items 2 and 3 lose the
+    // "the one above me is a flagged list item" evidence and read as headings.
+    const lines = mtSplitLines([
+      'Пол усеян обломками. Персонажи находят следующее:',
+      '1. Кинжал из вороненой стали в ножнах из кожи ящера',
+      '2. Кошель с монетами',
+      '3. Моток прочной верёвки',
+    ].join('\n'));
+    assert.deepEqual(mtHeadingCandidates(lines, 60), []);
+  });
+
+  test('the column rule is OFF when the text is too narrow to have a column', () => {
+    // A document of nothing but headings measures its margin off the longest of them.
+    const filled = '25А. В сундуке лежит 11 зм и 60 см в кошельке из';
+    assert.deepEqual(mtHeadingCandidates([filled], 39).map(g => g.num), [25]);
+    assert.deepEqual(mtHeadingCandidates([filled]).map(g => g.num), [25]);
+  });
+
   test('excludes a list introduced by a colon, and the items that follow it', () => {
     const lines = mtSplitLines([
       'Чтобы открыть тайник, сделайте следующее:',
@@ -308,6 +381,26 @@ describe('mtPickHeadings', () => {
   test('keeps a clean increasing run whole', () => {
     const got = mtPickHeadings([c(1, 0), c(2, 5), c(3, 9)]);
     assert.deepEqual(got.map(g => g.num), [1, 2, 3]);
+  });
+
+  test('a LONE place-word key is a cross-reference — "proceed to Area 6: Storeroom."', () => {
+    // It opens a sequence of its own, so nothing downstream can contradict it. A keyed chapter
+    // runs; the smallest real one across the sample books is four rooms.
+    const p = (prefix, num, i) => ({ prefix, num, name: 'n' + num, letter: '', i });
+    assert.deepEqual(mtPickHeadings([p('Area ', 6, 3)]), []);
+    assert.deepEqual(mtPickHeadings([p('Area ', 1, 0), p('Area ', 2, 4)]).map(g => g.num), [1, 2]);
+  });
+
+  test('a place-word run must be KEYED FROM 1 — two references make a run on their own', () => {
+    // "proceed to Area 6: Storeroom." and "return through Area 7: Ogre Den." is a run of two,
+    // so a count alone lets both in. A real keyed chapter starts at its first room.
+    const p = (prefix, num, i) => ({ prefix, num, name: 'n' + num, letter: '', i });
+    assert.deepEqual(mtPickHeadings([p('Area ', 6, 3), p('Area ', 7, 7)]), []);
+  });
+
+  test('a lone LETTER key is kept — prose does not write "K12." at the start of a line', () => {
+    const p = (prefix, num, i) => ({ prefix, num, name: 'n' + num, letter: '', i });
+    assert.deepEqual(mtPickHeadings([p('X', 5, 3)]).map(g => g.num), [5]);
   });
 
   test('rejects a restart — a number that does not continue the sequence', () => {

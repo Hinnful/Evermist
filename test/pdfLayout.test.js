@@ -85,6 +85,12 @@ describe('plGroupLines', () => {
     assert.equal(l.x1, 240);
   });
 
+  test('keeps a space that arrived as its OWN run — some books emit one per word gap', () => {
+    // Drop these and the whole book comes out as "А1.Тропаимонашескиекельи".
+    assert.equal(plGroupLines([run('Тропа', 50, 700, 30), run(' ', 80, 700, 5), run('и', 85, 700, 5)])[0].text,
+                 'Тропа и');
+  });
+
   test('drops blank and whitespace-only runs, and survives junk input', () => {
     assert.deepEqual(plGroupLines([run('  ', 50, 700, 5), run('', 60, 700, 5)]), []);
     assert.deepEqual(plGroupLines([]), []);

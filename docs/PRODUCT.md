@@ -103,6 +103,14 @@ walls can be dark, light, grass, snowy or cave stone, so any "walls are dark lin
 dead on arrival. And the button is **inverted**: pressing it creates nothing, it lights up
 candidate outlines that become real on click, so bad input is free.
 
+### Module import aims at published books, not at every PDF · `SETTLED` (2026-09-16, scope call)
+The target is near-total coverage of the major publishers' modules and the fan translations of
+them, plus whatever third-party books fall out for free. Universal coverage is not the goal: ten
+Creative Commons modules picked at random keyed their rooms six different ways, and one was a
+scan with no text layer at all. Tuning for that tail costs more than it returns and risks the
+books people actually run. A book the parser cannot read says so and writes nothing, which is
+the honest outcome and needs no apology.
+
 ### Map effects indicate an area, they are not rendered art · `SETTLED` (design)
 An effect marks WHERE an area effect sits so combat stays legible; it is a tool, not a beautiful
 VFX. It is drawn as a flaming border - the shape's outline burning inward with dissolving tongues,

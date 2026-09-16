@@ -4,7 +4,7 @@
     "src/roomOps.js": 11103,
     "src/state.js": 15296,
     "src/toolbar.js": 23155,
-    "src/input.js": 14191,
+    "src/input.js": 14100,
     "src/tools.js": 47568,
     "src/shapeMenu.js": 3016,
     "src/about.js": 5062,
@@ -36,6 +36,8 @@
     "src/changelogData.js": 85851,
     "src/effects.js": 21972,
     "src/undo.js": 4847,
-    "src/video.js": 30518
+    "src/video.js": 30518,
+    "src/pdfLayout.js": 4554,
+    "src/moduleText.js": 39644
   }
 }

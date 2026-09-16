@@ -295,6 +295,29 @@ One cross-reference inside room К1's text cost К2-К6 plus К7's name: six roo
 That is why the sequence prefers its immediate successor over a forward jump, and why that
 fix had to be gated on `prev > 0` after it regressed the numbered-list guard.
 
+### A dash separating a BARE numbered key · `REJECTED` (2026-09-16)
+Accepting `2 - Common Room` alongside `K12 - Chapel` reads a book's first random-encounter table
+as its room list: the table's `1 - …` claims the number and every room after it reads as a
+restart. Measured on real books: one module swapped all nineteen of its rooms for nineteen
+encounters, and a one-page-dungeon collection lost nine. A dash behind a PREFIX shipped, because
+the prefix is the evidence a bare number lacks. The cost is the one module keying rooms
+`2 - Common Room`, which stays unread.
+
+### A place word may key a room, from a CLOSED list and only in a run · `SETTLED` (2026-09-16)
+`Area 1: Entry chamber` keys whole books, so a place word stands in for the capital prefix. An
+open rule was rejected: `Глава 1:`, `Part 1:` and `Карта 1:` carry the identical shape and would
+import a contents page as rooms. Two further guards, both found by running real books rather than
+fixtures: a place-word key must appear more than once, and its numbering must start at 1. One
+alone is a cross-reference in a paragraph; two references to the same book make a run between
+themselves, so the count alone lets both in.
+
+### A candidate FILLING the text column is prose · `SETTLED` (2026-09-16)
+A heading is typeset on its own line and stops short; wrapped prose runs to the margin. Measured
+on one book: the longest real heading line was 37 characters against a 51-character column, and
+the eight false ones were 46 to 50. Rejecting them recovered 26 real rooms, because a numbered
+sentence claims a number and drops every room after it. A threshold anywhere from 75% to 90% of
+the column gave the identical result on seventeen books, so the rule is not balanced on an edge.
+
 ### The parser regression guard · `PARKED`
 All test fixtures are synthetic, so nothing checks the thresholds that were tuned against a
 real book. Change any one and every test still passes while every room silently arrives as a

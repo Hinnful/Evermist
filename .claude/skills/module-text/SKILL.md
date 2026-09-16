@@ -32,8 +32,22 @@ real book or a real build broke the previous version. They are constraints, not 
   sub-location letters are Cyrillic homoglyphs of Latin ones.
 - A heading number may carry **one capital prefix** (`К12.`), part of the room's key. The
   prefix must touch the digits, so "В 1. Комнате" stays prose.
-- A **prefixed** heading may have a lowercase name; a bare-numbered one may not. Same
-  licence for a lowercase sub-letter (`N6e.`).
+- The separator is a **period or a colon**. Whole books key every room `V1: Вестибюль`.
+- A **dash** separates only a PREFIXED key (`Area 1 - Quarters`, `K12 — Chapel`), never a bare
+  number. A bare-numbered dash is the random-encounter table, and it takes the sequence with it.
+- A **place word** may stand in for the capital prefix (`Area 1:`), and it carries its space
+  into the key. `MT_AREA_WORDS` is a **CLOSED list** - `Глава 1:`, `Part 1:` and `Карта 1:`
+  have the identical shape and are not rooms, so an open rule imports a contents page.
+- **A place-word key needs a RUN, and must be KEYED FROM 1.** One on its own is a cross-reference
+  in a paragraph, and it seeds a sequence nothing else can contradict; two references to the same
+  book make a run between them, so the count alone is not enough. Letter prefixes are exempt from
+  both: they are strong enough alone, and a chapter may legitimately land one heading.
+- **A candidate the column rule rejects is FLAGGED as a list item, never merely skipped.** The
+  list test below it reads that flag, so skipping breaks the chain and the short items that follow
+  a column-filling one read as headings.
+- A **prefixed** heading may have a lowercase name; a bare-numbered one needs a capital
+  **somewhere** in the name, because small caps extract lower-case. Same licence for a
+  lowercase sub-letter (`N6e.`).
 - A heading number may carry **one trailing letter**, a sub-location (`N6А.`), part of the
   key and displayed as written. Without it a whole building arrives as one entry.
 - **Sub-locations sequence on UNIQUENESS of the letter under the parent number, never on
@@ -42,6 +56,12 @@ real book or a real build broke the previous version. They are constraints, not 
   room is a cross-reference and is dropped.
 - A **single trailing period** is stripped. What disqualifies a line is ending mid-clause or
   carrying two sentences.
+- **A candidate FILLING the text column is a numbered sentence, not a heading**
+  (`MT_HEADING_LINE_FRACTION`). Its cost is not the bad entry: it claims a number, so every
+  later room in that chapter reads as a restart and is dropped. The rule is OFF below
+  `MT_WRAP_MIN`, or a document of nothing but headings measures the margin off its own longest
+  one. `mtHeadingCandidates` takes the width from its caller for the same reason
+  `mtEndsParagraph` does.
 - Heading selection is **greedy numeric continuation per prefix**. Not
   longest-increasing-subsequence (a numbered list forms a longer chain and wins), and not one
   shared counter (it rejects the next chapter's low numbers).

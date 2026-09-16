@@ -1,14 +1,8 @@
 'use strict';
 // moduleText.js — the published module's text, put inside the room name field.
 //
-// No auto-assign and no "fill all rooms": real module text has sub-locations, so any 1:1
-// mapping desyncs within a few rooms. No LLM and no network — the app works offline.
-//
-// Scope is CAMPAIGN-LEVEL: entries live in localStorage, never in a scene or a backup. What a
-// scene carries is the text a room ends up with, which rides the room's own fields.
-//
-// Called once from initRoomPanel() (DM only). Parser rules in CLAUDE.md, rejected designs in
-// docs/DECISIONS.md.
+// Called once from initRoomPanel() (DM only). What it must never do, and every parser rule, are
+// in the module-text skill; rejected designs in docs/DECISIONS.md.
 
 // ─── Pure kernel: everything above "Storage" is argument-in / value-out, DOM-free ──
 
@@ -46,19 +40,36 @@ function mtSplitLines(raw) {
 //
 // TWO patterns, because a prefixed key is itself evidence of a heading, so it is allowed a
 // lowercase name where a bare-numbered one is not.
-const MT_HEADING_RE      = /^(\p{Lu})(\d{1,3})(\p{L})?\.[ ](\p{L}.*)$/u;
-const MT_HEADING_RE_BARE = /^()(\d{1,3})(\p{Lu})?\.[ ](\p{Lu}.*)$/u;
+// ⚠ A DASH separator only where a PREFIX vouches for the key. Allowing "1 - Clockwork Rats" hands
+// the sequence to the first random-encounter table in the book and costs every room after it.
+const MT_HEADING_RE      = /^(\p{Lu})(\d{1,3})(\p{L})?(?:[.:]|[ ]?[–—-])[ ](\p{L}.*)$/u;
+const MT_HEADING_RE_BARE = /^()(\d{1,3})(\p{Lu})?[.:][ ](\p{L}.*)$/u;
+
+// ⚠ KEEP THIS LIST CLOSED. "Глава 1:" and "Карта 1:" carry the identical shape, so a rule open
+// enough to admit one more place word admits a book's whole contents page as rooms.
+const MT_AREA_WORDS = /^(area|room|location|область|помещение|комната|локация|зона)$/i;
+const MT_HEADING_RE_WORD = /^(\p{Lu}\p{L}+)[ ](\d{1,3})(\p{L})?(?:[.:]|[ ]?[–—-])[ ](\p{L}.*)$/u;
 
 function mtHeadingCandidate(line) {
   const s = String(line == null ? '' : line);
-  const m = MT_HEADING_RE.exec(s) || MT_HEADING_RE_BARE.exec(s);
+  let m = MT_HEADING_RE.exec(s) || MT_HEADING_RE_BARE.exec(s);
+  if (!m) {
+    m = MT_HEADING_RE_WORD.exec(s);
+    // The space rides in the prefix so the key reads "Area 1" the way the book writes it.
+    if (m) m = MT_AREA_WORDS.test(m[1]) ? [m[0], m[1] + ' ', m[2], m[3], m[4]] : null;
+  }
   if (!m) return null;
   // A single TRAILING PERIOD is allowed and stripped — the book has headings like "К43. Ванная
   // комната." and rejecting them lost real rooms. Mid-clause endings still disqualify a line.
   const name = m[4].trim().replace(/\.$/, '').trim();
   if (!name || name.length > MT_HEADING_MAX_NAME) return null;
+  // A bare number is no evidence, so its name must carry a capital somewhere - prose that opens
+  // lower-case does not. Small caps extract lower: "14. theChronometer of Harmony" is a room.
+  if (!m[1] && !/\p{Lu}/u.test(name)) return null;
   if (/[,;:!?]$/.test(name)) return null;    // ends mid-clause, so it is prose
-  if (/\.[ ]/.test(name)) return null;       // two sentences sharing a line
+  // Two sentences sharing a line. A period after THREE letters or fewer is an abbreviation
+  // instead - "Mrs. Peal's Bakery" is one room and rejecting it lost one.
+  if (/\p{L}{4,}\.[ ]/u.test(name)) return null;
   return { prefix: m[1], num: parseInt(m[2], 10), letter: m[3] || '', name };
 }
 
@@ -71,12 +82,27 @@ function mtHeadingCandidate(line) {
 //
 // KNOWN LIMITATION: a numbered list before the first real heading, not introduced by a colon, is
 // indistinguishable from the room sequence. The import panel's list shows the DM that.
-function mtHeadingCandidates(lines) {
+//
+// A third signal, and the strongest: a heading is typeset on its own line and stops short, while
+// wrapped prose FILLS THE COLUMN. A candidate reaching the wrap margin is a numbered sentence,
+// and one of those costs every room after it by pushing the sequence past them.
+//
+// ⚠ wrapWidth is the CALLER'S, like mtEndsParagraph's, and the rule is OFF below MT_WRAP_MIN:
+// a document of nothing but headings measures its margin off the longest of them, and would then
+// reject it. Real books here wrap between 49 and 66 characters; narrower is not a typeset column.
+const MT_HEADING_LINE_FRACTION = 0.85;
+const MT_WRAP_MIN = 40;
+
+function mtHeadingCandidates(lines, wrapWidth) {
   const out = [];
   const isList = new Array(lines.length).fill(false);
+  const full = wrapWidth >= MT_WRAP_MIN ? wrapWidth * MT_HEADING_LINE_FRACTION : Infinity;
   for (let i = 0; i < lines.length; i++) {
     const c = mtHeadingCandidate(lines[i]);
     if (!c) continue;
+    // ⚠ FLAG it, never merely skip it: a numbered sentence IS a list item, and dropping it
+    // silently breaks the chain below, so the short items after it read as headings.
+    if (lines[i].length >= full) { isList[i] = true; continue; }
 
     let prev = i - 1;
     while (prev >= 0 && !lines[prev]) prev--;      // skip blanks to the last line with text
@@ -91,8 +117,7 @@ function mtHeadingCandidates(lines) {
   return out;
 }
 
-// Which candidates are ACTUALLY headings: walk them in document order and keep each one whose
-// number continues the sequence FOR ITS OWN PREFIX.
+// Which candidates are ACTUALLY headings: each one continuing the sequence FOR ITS OWN PREFIX.
 //
 // ⚠ Greedy continuation, never longest-increasing-subsequence: a list restarting at 1 between rooms
 // 12 and 13 forms a longer chain than the rooms, so LIS picks the list. A number that does not
@@ -160,7 +185,22 @@ function mtPickHeadings(cands) {
     last.set(p, c.num);
     out.push(c);
   });
-  return out;
+
+  // ⚠ "proceed to Area 6: Storeroom." is a sentence, and it opens a sequence of its own where
+  // nothing can contradict it. A keyed chapter RUNS and it is KEYED FROM 1; two references to the
+  // same book make a run on their own, so the count alone lets both in. Letter prefixes need
+  // neither check - prose does not write "K12." at the start of a line.
+  const runs = new Map();
+  out.forEach(c => {
+    const p = mtCanonPrefix(c.prefix);
+    const r = runs.get(p) || { n: 0, first: Infinity };
+    runs.set(p, { n: r.n + 1, first: Math.min(r.first, c.num) });
+  });
+  return out.filter(c => {
+    if (!MT_AREA_WORDS.test(String(c.prefix).trim())) return true;
+    const r = runs.get(mtCanonPrefix(c.prefix));
+    return r.n > 1 && r.first === 1;
+  });
 }
 
 // Cyrillic capitals a reader cannot tell from a Latin one, folded onto the Latin. Only these.
@@ -205,9 +245,6 @@ function mtFurniturePart(line) {
 // ⚠ THE RULE IS "the same text with a DIFFERENT number attached", never "seen three times". A count
 // deletes a sub-heading three rooms legitimately share, and keeps a header a short excerpt sees
 // twice. A key with no number attached is untouchable however often it recurs.
-//
-// Two exemptions: a heading-shaped line is never counted, and a line too long to be a header, or
-// shorter than MT_FURNITURE_MIN_WORDS, is left alone.
 //
 // KNOWN GAP: a ONE-WORD running header separated from its page number by a space survives as
 // visible noise, and a lower bar starts eating real one-word sub-headings.
@@ -276,12 +313,9 @@ function mtEndsParagraph(line, next, wrapWidth) {
 //   "…нако-" + "нец"       → "…наконец"        hyphen + next line lowercase = split word
 //   "…слово" + "дальше"    → "…слово дальше"   plain wrap = one space
 //   ""                     → paragraph break
-//   a short line before a capital → paragraph break, when wrapWidth is known
 //
 // The lowercase test is imperfect: a genuine compound wrapping at its own hyphen loses it. That
 // leaves a wrong hyphen the DM can see, far cheaper than every long word glued to the next.
-//
-// wrapWidth is optional: omit it and only explicit blank lines break paragraphs.
 function mtReflow(lines, wrapWidth) {
   const src = Array.isArray(lines) ? lines : [];
   const paras = [];
@@ -309,10 +343,10 @@ function mtReflow(lines, wrapWidth) {
 // is deliberately no sidebar classifier — see DECISIONS.
 function parseModuleText(raw) {
   const lines = mtDropFurniture(mtSplitLines(raw));
-  const cands = mtHeadingCandidates(lines);
-  const heads = mtPickHeadings(cands);
   // Measured over the WHOLE document: a short room would take its width from three lines.
   const wrap = mtWrapWidth(lines);
+  const cands = mtHeadingCandidates(lines, wrap);
+  const heads = mtPickHeadings(cands);
   const entries = heads.map((h, k) => ({
     // `num` is EXACTLY as the book writes it: the homoglyph fold is for sequencing only.
     num:   (h.prefix || '') + h.num + (h.letter || ''),
@@ -381,10 +415,7 @@ function mtProgress(entries, roomNames) {
 }
 
 // ─── Storage (localStorage, campaign-level) ───────────────────────────────────
-// NOT IndexedDB: sceneStore.js is keyed by scene id, so a campaign-level store there means a
-// version bump and an upgrade path on the database holding the user's maps.
-// Only PARSED ENTRIES are stored, never the raw file — keeping a copy of a commercial module is not
-// this app's business.
+// Why not sceneStore.js, and why only parsed entries: the module-text skill.
 
 const MT_KEY = 'evermist.moduleText';
 // A sanity check, NOT the quota guard — mtStore() catches the write rather than trusting this.
@@ -454,9 +485,7 @@ function mtClearStored() {
 }
 
 // ─── The backup bridge ────────────────────────────────────────────────────────
-// The book is CAMPAIGN-level, so it rides in the backup zip as one entry at the root, never as
-// per-scene metadata. These three functions are the whole contract: backup.js never learns the
-// serialised format and never touches MT_KEY.
+// These three functions are the whole contract with backup.js; the rules are in the skill.
 
 // What mtStore() writes, or null. An absent zip entry means the backup carries no module text.
 function mtBackupPayload() {
@@ -491,11 +520,7 @@ function mtCurrentRoomNames() {
 }
 
 // ─── Import panel ─────────────────────────────────────────────────────────────
-// THREE CONTROLS: Choose file, Remove, Close. Do not add a fourth — see DECISIONS.
-//
-// IMPORTING HAPPENS ON CHOOSE, with no confirm step, and three things keep that safe: an empty
-// parse never writes, the list shows what is loaded whenever the panel opens, and Remove is right
-// there. All three must stay.
+// Which controls it may hold, and what makes importing on choose safe: the module-text skill.
 //
 // No drag-and-drop: the drop handler belongs to map loading, and a second meaning for the same
 // gesture would make dropping a file ambiguous.

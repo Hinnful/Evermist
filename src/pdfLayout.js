@@ -24,7 +24,7 @@ const PL_SPAN_MARGIN = 40;
 function plGroupLines(items, tol) {
   const t = tol == null ? PL_LINE_TOL : tol;
   const sorted = (Array.isArray(items) ? items : [])
-    .filter(it => it && it.str && String(it.str).trim())
+    .filter(it => it && typeof it.str === 'string' && it.str.length)
     .slice()
     .sort((a, b) => (b.y - a.y) || (a.x - b.x));   // top-to-bottom, then left-to-right
 
@@ -37,7 +37,8 @@ function plGroupLines(items, tol) {
   return lines.map(l => {
     l.items.sort((a, b) => a.x - b.x);
     // Joined with NO separator: a PDF splits a word across runs at every kerning or style
-    // change, so inserting spaces would break words apart. The runs carry their own spaces.
+    // change, so inserting spaces would break words apart. The runs carry their own spaces,
+    // ⚠ INCLUDING RUNS THAT ARE ONLY A SPACE - some books put every space in one.
     const text = l.items.map(i => String(i.str)).join('').replace(/\s+/g, ' ').trim();
     return {
       text,

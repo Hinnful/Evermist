@@ -195,8 +195,7 @@ function initInput() {
     });
   }
 
-  // ⚠ e.code, THE PHYSICAL KEY - never e.key, the character, which makes every letter here
-  // case-sensitive and layout-sensitive. Caps Lock or a Russian layout killed the lot.
+  // ⚠ e.code, THE PHYSICAL KEY - never e.key, which is the character a layout produced.
   document.addEventListener('keydown', e => {
     // A FOCUSED FIELD OWNS ITS OWN UNDO, so it takes every key including the modifiers.
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
