@@ -686,10 +686,9 @@ if (typeof document !== 'undefined') _diagStartFps();
 
 if (typeof document !== 'undefined' && !(typeof isPlayer !== 'undefined' && isPlayer)) {
   document.addEventListener('keydown', function(e) {
-    // The same field guard input.js carries: a backtick typed into a room name or
-    // description belongs in the field, not on the diagnostics overlay.
+    // The same field guard input.js carries: a backtick typed into a room name belongs there.
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
-    if (e.key === '`') _diagToggle();
+    if (e.code === 'Backquote') _diagToggle();
   });
 }
 

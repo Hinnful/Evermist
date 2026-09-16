@@ -4,7 +4,7 @@
     "src/roomOps.js": 11103,
     "src/state.js": 15296,
     "src/toolbar.js": 23155,
-    "src/input.js": 13728,
+    "src/input.js": 14191,
     "src/tools.js": 47568,
     "src/shapeMenu.js": 3016,
     "src/about.js": 5062,
@@ -32,9 +32,10 @@
     "src/stage.js": 6326,
     "src/fogGeometry.js": 35438,
     "src/sceneGroups.js": 5396,
-    "src/changelog.js": 4371,
+    "src/changelog.js": 4372,
     "src/changelogData.js": 85851,
     "src/effects.js": 21972,
-    "src/undo.js": 4338
+    "src/undo.js": 4847,
+    "src/video.js": 30518
   }
 }

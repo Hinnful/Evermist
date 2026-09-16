@@ -21,6 +21,10 @@
 <!-- TOOLS WRAPPER (bottom-center, stacks the context row above the toolbar) -->
 <div id="tools-wrapper">
 
+  <!-- One line for a key that was heard and had nothing to do; undo.js fills and fades it.
+       Absolutely positioned, so an empty one costs the column no gap. -->
+  <div id="key-hint"></div>
+
   <!-- CONTEXT ROW — what the toolbar below is currently set to. ONE pill, whatever is in it:
        the fog trio in Rooms mode, the material picker and corner radius in Effects mode, brush
        size alongside either. Its occupants change with the placement mode and the tool, and more
@@ -35,13 +39,13 @@
     <!-- Rooms mode: the fog state a newly drawn room gets. Half is shape-tools only —
          input.js disables it while the brush is picked. -->
     <div class="tb-group" id="ctx-rooms">
-      <button id="btn-reveal" class="mode-btn active" title="Revealed (R)">
+      <button id="btn-reveal" class="mode-btn active" title="Revealed">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
       </button>
       <button id="btn-half" class="mode-btn" title="Half-shrouded - explored, but the party isn't there now">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
       </button>
-      <button id="btn-shroud" class="mode-btn" title="Shrouded (S)">
+      <button id="btn-shroud" class="mode-btn" title="Shrouded">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" fill="currentColor" stroke="none"/></svg>
       </button>
     </div>
@@ -130,9 +134,9 @@
            cone-shaped, so refreshModeTools() takes it out in Rooms. -->
       <div id="shape-menu">
         <button id="btn-poly" class="mode-btn" title="Polygon (P)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></button>
-        <button id="btn-rect" class="mode-btn" title="Rectangle (E)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/></svg></button>
-        <button id="btn-circle" class="mode-btn" title="Circle (C)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg></button>
-        <button id="btn-cone" class="mode-btn" title="Cone (O) - drag from the point of origin"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l14 7-14 7z"/><circle cx="5" cy="4" r="1.6" fill="currentColor" stroke="none"/></svg></button>
+        <button id="btn-rect" class="mode-btn" title="Rectangle (R)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/></svg></button>
+        <button id="btn-circle" class="mode-btn" title="Circle (O)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg></button>
+        <button id="btn-cone" class="mode-btn" title="Cone (C) - drag from the point of origin"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l14 7-14 7z"/><circle cx="5" cy="4" r="1.6" fill="currentColor" stroke="none"/></svg></button>
       </div>
     </div>
 
@@ -516,32 +520,35 @@
   <div class="legend-cols">
     <div>
       <div class="legend-cat">Tools</div>
-      <div class="legend-row"><kbd>E</kbd> Rectangle</div>
-      <div class="legend-row"><kbd>P</kbd> Polygon</div>
-      <div class="legend-row"><kbd>C</kbd> Circle</div>
       <div class="legend-row"><kbd>V</kbd> Select / Move</div>
-      <div class="legend-row"><kbd>R</kbd> Reveal</div>
-      <div class="legend-row"><kbd>S</kbd> Shroud</div>
+      <div class="legend-row"><kbd>R</kbd> Rectangle</div>
+      <div class="legend-row"><kbd>O</kbd> Circle</div>
+      <div class="legend-row"><kbd>P</kbd> Polygon</div>
+      <div class="legend-row"><kbd>C</kbd> Cone (Effects)</div>
+      <div class="legend-row"><kbd>B</kbd> Brush (Rooms)</div>
       <div class="legend-row"><kbd>N</kbd> Snap to grid</div>
       <div class="legend-row"><kbd>[</kbd><kbd>]</kbd> Brush size −/+</div>
-      <div class="legend-cat">View</div>
-      <div class="legend-row"><kbd>F</kbd> Fit to screen</div>
+      <div class="legend-cat">Edit</div>
       <div class="legend-row"><kbd>Ctrl Z</kbd> Undo</div>
       <div class="legend-row"><kbd>Ctrl Y</kbd> Redo</div>
+      <div class="legend-row"><kbd>Del</kbd> Delete room / vertex</div>
+      <div class="legend-row"><kbd>Esc</kbd> Drop selection, back to Select</div>
     </div>
     <div>
-      <div class="legend-cat">Fog</div>
+      <div class="legend-cat">Map</div>
+      <div class="legend-row"><kbd>F</kbd> Fit to screen</div>
       <div class="legend-row"><kbd>G</kbd> Grid toggle</div>
       <div class="legend-row"><kbd>A</kbd> Fog animation</div>
-      <div class="legend-row"><kbd>T</kbd> Toggle polygon mode</div>
+      <div class="legend-row"><kbd>T</kbd> Toggle room fog mode</div>
       <div class="legend-row"><kbd>L</kbd> Room name labels</div>
-      <div class="legend-row"><kbd>Del</kbd> Delete polygon / vertex</div>
-      <div class="legend-row"><kbd>Esc</kbd> Deselect vertex / polygon</div>
       <div class="legend-row"><kbd>Dbl</kbd> Click edge → insert vertex</div>
       <div class="legend-row"><kbd>Dbl</kbd> Cut tool → finish the path</div>
       <div class="legend-cat">Player</div>
       <div class="legend-row"><kbd>Space</kbd> Send to player</div>
       <div class="legend-row"><kbd>Shift S</kbd> Send (manual mode)</div>
+      <div class="legend-cat">Help</div>
+      <div class="legend-row"><kbd>?</kbd> This list</div>
+      <div class="legend-row"><kbd>`</kbd> Performance readout</div>
     </div>
   </div>
   <!-- Filled by about.js: mark, wordmark, version, repo. A footer, so the shortcuts the DM

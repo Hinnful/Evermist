@@ -251,7 +251,7 @@ module.exports = async function floorPlanFeature(rig) {
 
   // Escape dismisses it, and it does not reach the map shortcuts on the way out.
   await dm.evaluate(`(() => { const n = document.getElementById('fp-notice');
-    n.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    n.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true, cancelable: true }));
     return 0; })()`);
   rig.check(!(await state()).notice, 'Escape did not dismiss the floor-plan notice');
 

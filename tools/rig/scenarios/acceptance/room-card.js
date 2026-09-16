@@ -114,9 +114,9 @@ module.exports = async function roomCardFeature(rig) {
   rig.note('the card on The Vestry: ' + JSON.stringify(opened));
   rig.check(opened.shown, 'selecting a room did not open its card');
 
-  for (const [k, tool] of [['b', 'brush'], ['e', 'rect'], ['v', 'select']]) {
-    await dm.evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { key: ' +
-      JSON.stringify(k) + ', bubbles: true, cancelable: true })); 0');
+  for (const [k, tool] of [['KeyB', 'brush'], ['KeyR', 'rect'], ['KeyV', 'select']]) {
+    await dm.evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { code: ' +
+      JSON.stringify(k) + ', key: "", bubbles: true, cancelable: true })); 0');
     await rig.sleep(200);
     rig.check((await card()).shown,
               'changing the tool to ' + tool + ' closed the room card, which must be gated on ' +

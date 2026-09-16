@@ -11,7 +11,7 @@
 //      shape. Three of the four shapes are reached through the flyout the shape button's right
 //      click opens, and that button picks the shape it is showing. A key for a shape the mode
 //      does not offer does nothing at all.
-//        brush · rectangle · polygon · circle on the Rooms bar, cone on the Effects one, the
+//        B brush · R rectangle · P polygon · O circle on the Rooms bar, C cone on the Effects one, the
 //        cone measured rather than counted because its geometry IS the tool: apex where the
 //        press landed, as wide at the far end as it is long, 53.13° at the point, and a
 //        shallow bow on the far edge.
@@ -71,8 +71,13 @@ globalThis.__rigDrag = (x1, y1, x2, y2) => {
 };
 // A polygon is built from CLICKS, not a drag: each mousedown places one vertex.
 globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
-globalThis.__rigKey = (k) => document.dispatchEvent(
-  new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
+// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
+// at the table. A NAMED key carries both, because code and key are the same string for it and
+// the fields still read e.key - dropping it would fail a handler that is correct.
+globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
+  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
+                  bubbles: true, cancelable: true }, mods || {})));
 // Alpha of the DM's own fog data over one map point. 255 hidden, 0 clear.
 globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
   Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
@@ -147,27 +152,27 @@ module.exports = async function drawing(rig) {
               'clicking ' + t.id + ' did not pick the ' + t.shape + ' tool');
     await dm.evaluate('setShape("select"); __rigKey("' + t.key + '"); 0');
     rig.check(await dm.evaluate('shape') === t.shape,
-              'the ' + t.key.toUpperCase() + ' key did not pick the ' + t.shape + ' tool');
+              'the ' + t.key + ' key did not pick the ' + t.shape + ' tool');
   };
   const TOOLS = [
-    { id: 'btn-brush',  shape: 'brush',  key: 'b', where: '#toolbar-bottom' },
-    { id: 'btn-rect',   shape: 'rect',   key: 'e', where: '#shape-menu' },
-    { id: 'btn-poly',   shape: 'poly',   key: 'p', where: '#shape-menu' },
-    { id: 'btn-circle', shape: 'circle', key: 'c', where: '#shape-menu' },
+    { id: 'btn-brush',  shape: 'brush',  key: 'KeyB', where: '#toolbar-bottom' },
+    { id: 'btn-rect',   shape: 'rect',   key: 'KeyR', where: '#shape-menu' },
+    { id: 'btn-poly',   shape: 'poly',   key: 'KeyP', where: '#shape-menu' },
+    { id: 'btn-circle', shape: 'circle', key: 'KeyO', where: '#shape-menu' },
   ];
   for (const t of TOOLS) await checkTool(t);
 
   // The Cone is an EFFECTS tool. No room is ever cone-shaped, so Rooms does not list it.
   await dm.evaluate('setPlaceMode("effects"); 0');
-  await checkTool({ id: 'btn-cone', shape: 'cone', key: 'o', where: '#shape-menu' });
+  await checkTool({ id: 'btn-cone', shape: 'cone', key: 'KeyC', where: '#shape-menu' });
   // A key for a shape the mode does not offer does NOTHING — no mode switch, no fallback, no
   // message. The bar has no button for it there either, so the key must match the bar.
-  await dm.evaluate('setShape("select"); __rigKey("b"); 0');
+  await dm.evaluate('setShape("select"); __rigKey("KeyB"); 0');
   rig.check(await dm.evaluate('shape') === 'select',
             'B in Effects mode picked the Brush, which that bar does not carry');
-  await dm.evaluate('setPlaceMode("rooms"); setShape("select"); __rigKey("o"); 0');
+  await dm.evaluate('setPlaceMode("rooms"); setShape("select"); __rigKey("KeyC"); 0');
   rig.check(await dm.evaluate('shape') === 'select',
-            'O in Rooms mode picked the Cone, which that bar does not carry');
+            'C in Rooms mode picked the Cone, which that bar does not carry');
 
   // The flyout is the only way in for three of the four shapes, so the right click that opens it
   // is part of them being reachable at all.

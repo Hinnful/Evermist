@@ -83,14 +83,17 @@ function toggleLegend() {
 
 function initInput() {
   if (!isPlayer) {
-    container.addEventListener('mousedown', (e) => {
-      // Hand focus back to the map. The canvas is not focusable, so a click does not blur
-      // anything: a room-card field otherwise keeps focus and every later Ctrl+Z goes to its text
-      // history instead of the fog.
+    // ⚠ WHOLE DOCUMENT, CAPTURE PHASE. A focused field swallows every map shortcut below, so a
+    // click anywhere outside it hands focus back, not just one on the map. Capture because the
+    // fields stop this bubbling, and it puts their commit ahead of the clicked control.
+    document.addEventListener('mousedown', (e) => {
       const focused = document.activeElement;
-      if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA')) {
-        focused.blur();
-      }
+      if (!focused || (focused.tagName !== 'INPUT' && focused.tagName !== 'TEXTAREA')) return;
+      if (focused === e.target) return;
+      focused.blur();
+    }, true);
+
+    container.addEventListener('mousedown', (e) => {
       if (!mapOffscreen) return;
       if (e.button === 1 || (e.button === 0 && e.altKey)) {
         isPanning = true;
@@ -192,42 +195,41 @@ function initInput() {
     });
   }
 
+  // ⚠ e.code, THE PHYSICAL KEY - never e.key, the character, which makes every letter here
+  // case-sensitive and layout-sensitive. Caps Lock or a Russian layout killed the lot.
   document.addEventListener('keydown', e => {
-    // TEXTAREA as well as INPUT: the description field is a textarea, and a bare 'r' or Delete
-    // reaching the map shortcuts while the DM types would switch tool or delete the room.
+    // A FOCUSED FIELD OWNS ITS OWN UNDO, so it takes every key including the modifiers.
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     if (isPlayer) {
-      if (e.key === 'f') {
+      if (e.code === 'KeyF') {
         if (window.electronAPI) window.electronAPI.toggleFullscreen();
         else document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
       }
       return;
     }
     // Ahead of the shape shortcuts: while calibration holds the map, Escape means leave it.
-    if (gridCalArmed && e.key === 'Escape') { e.preventDefault(); armGridCalibration(false); return; }
+    if (gridCalArmed && e.code === 'Escape') { e.preventDefault(); armGridCalibration(false); return; }
+    // ⚠ RETURNS WHATEVER THE KEY WAS, or Ctrl+C picks the Cone and Ctrl+R the Rectangle.
     if (e.ctrlKey || e.metaKey) {
-      if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
-      if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redo(); return; }
+      if (e.code === 'KeyZ' && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey)) { e.preventDefault(); redo(); }
+      return;
     }
-    switch (e.key) {
-      case 'r': document.getElementById('btn-reveal').click(); break;
-      case 's': document.getElementById('btn-shroud').click(); break;
+    switch (e.code) {
       // ⚠ A KEY FOR A SHAPE THIS MODE DOES NOT OFFER DOES NOTHING - no switch, no fallback, no
-      // message, because the bar carries no button for it either. O for cOne; C is Circle's.
-      case 'b': pickShapeByKey('brush');  break;
-      case 'e': pickShapeByKey('rect');   break;
-      case 'p': pickShapeByKey('poly');   break;
-      case 'c': pickShapeByKey('circle'); break;
-      case 'o': pickShapeByKey('cone');   break;
-      case 'v': setShape('select'); break;
-      case 'n': document.getElementById('btn-snap').click();   break;
-      case 'g': document.getElementById('btn-grid').click();   break;
-      case 'a': document.getElementById('btn-anim').click(); break;
-      // Both cases: this switch reads e.key, which is case-sensitive (see 'S' below), so a
-      // bare 'l' branch alone would make Shift+L look dead.
-      case 'l':
-      case 'L': if (typeof toggleRoomLabels === 'function') toggleRoomLabels(); break;
-      case 'f': if (mapOffscreen) { fitToScreen(); viewportDirty = true; scheduleRender(); } break;
+      // message, because the bar carries no button for it either. Reveal and Shroud have no key
+      // at all: a bare letter means a tool.
+      case 'KeyV': setShape('select'); break;
+      case 'KeyR': pickShapeByKey('rect');   break;
+      case 'KeyO': pickShapeByKey('circle'); break;
+      case 'KeyP': pickShapeByKey('poly');   break;
+      case 'KeyC': pickShapeByKey('cone');   break;
+      case 'KeyB': pickShapeByKey('brush');  break;
+      case 'KeyN': document.getElementById('btn-snap').click(); break;
+      case 'KeyG': document.getElementById('btn-grid').click(); break;
+      case 'KeyA': document.getElementById('btn-anim').click(); break;
+      case 'KeyL': if (typeof toggleRoomLabels === 'function') toggleRoomLabels(); break;
+      case 'KeyF': if (mapOffscreen) { fitToScreen(); viewportDirty = true; scheduleRender(); } break;
       case 'Delete':
         if (shape === 'select' && selectedPolygonId != null && selectedVertexIndex >= 0) {
           const poly = findActiveShape();
@@ -243,6 +245,8 @@ function initInput() {
           deleteSelectedPolygon();
         }
         break;
+      // One press drops one thing, most local first, then puts the bar back to rest - an armed
+      // Merge, Trim or Cut has no other way out from the keyboard.
       case 'Escape':
         if (legendVisible) { toggleLegend(); break; }
         if (activePolygon) {
@@ -254,29 +258,32 @@ function initInput() {
         } else if (selectedPolygonId != null) {
           selectedPolygonId = null;
           drawCursor(null, null);
+        } else {
+          if (shapeOp !== 'new') setShapeOp('new');
+          if (shape !== 'select') setShape('select');
         }
         break;
-      case 't':
+      case 'KeyT':
         if (selectedPolygonId != null) toggleSelectedPolygon();
         break;
-      case '[': brushSize = Math.max(5, brushSize - 10);
+      case 'BracketLeft':  brushSize = Math.max(5, brushSize - 10);
                 document.getElementById('brush-size').value = brushSize;
                 document.getElementById('brush-size-label').textContent = brushSize; break;
-      case ']': brushSize = Math.min(300, brushSize + 10);
+      case 'BracketRight': brushSize = Math.min(300, brushSize + 10);
                 document.getElementById('brush-size').value = brushSize;
                 document.getElementById('brush-size-label').textContent = brushSize; break;
-      case 'S': if (!autoSync) { e.preventDefault(); sendToPlayer(); } break;
+      case 'KeyS': if (e.shiftKey && !autoSync) { e.preventDefault(); sendToPlayer(); } break;
       // Space is the live Send at the table, so it must mean one thing wherever focus sits. A
       // toolbar button keeps focus after a click and Space would press it again, so hand focus back
       // to the map first.
-      case ' ':
+      case 'Space':
         e.preventDefault();
         if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
           document.activeElement.blur();
         }
         sendToPlayer();
         break;
-      case '?': if (!isPlayer) toggleLegend(); break;
+      case 'Slash': if (e.shiftKey) toggleLegend(); break;
     }
   });
 }

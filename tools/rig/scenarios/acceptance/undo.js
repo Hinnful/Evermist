@@ -11,7 +11,7 @@
 //
 //   A. Ctrl+Z reverses the last change and Ctrl+Y puts it back, over several steps, in order.
 //        Ctrl+Shift+Z is the same as Ctrl+Y
-//   B. Undo with nothing to undo does nothing at all, and neither does redo.
+//   B. Undo with nothing to undo does nothing to the map, and says so rather than looking broken.
 //   C. Fog, rooms and effects are ONE history, so a Ctrl+Z reverses whichever came last.
 //   D. A new change after an undo throws the redo away rather than leaving a branch.
 //   E. Undo keeps the room card open on a room that survived, and closes it on one that did not.
@@ -19,14 +19,16 @@
 //   G. Ctrl+Z typed into the room's name or notes edits the text, never the map.
 //   H. The history is bounded by memory, and eviction always leaves something to undo.
 //   I. A per-corner radius comes back on Ctrl+Z, the second one set on a room included.
+//   J. A field the DM has looked away from does not keep their Ctrl+Z. A click anywhere
+//      outside it hands focus back, not only a click on the map.
 //
 // The byte-arithmetic of eviction is unit-tested (test/, evictUndoStack and evictUndoPair). What
 // is here is the behaviour those functions serve, driven through the real keyboard.
 //
 // ⚠ EVERY STEP IS DRIVEN BY THE REAL KEYSTROKE, not by calling undo(). The shortcut is guarded —
-// it returns early for a keystroke aimed at an INPUT or a TEXTAREA — and section G is entirely
-// about that guard. A file that called undo() directly would pass with the guard deleted and the
-// DM's typing eating the map.
+// it returns early for a keystroke aimed at an INPUT or a TEXTAREA — and sections G and J are
+// both about that guard, from its two sides. A file that called undo() directly would pass with
+// the guard deleted and the DM's typing eating the map.
 //
 // ⚠ THE SNAPSHOT IS TAKEN BEFORE THE CHANGE, BY THE CALLER. pushUndo() captures the state as it
 // is now, so a scenario must push, then change — pushing after changing records the new state as
@@ -59,12 +61,14 @@ module.exports = async function undoFeature(rig) {
   await dm.waitFor('fogCoverT === 0', 30000, 'the scene cover to lift');
 
   // The real keystroke, on the document, exactly as the DM's keyboard delivers it.
-  const key = (k, mods) => dm.evaluate('(() => { document.dispatchEvent(new KeyboardEvent(' +
-    '"keydown", Object.assign({ key: ' + JSON.stringify(k) + ', bubbles: true,' +
+  // ⚠ code ONLY, WITH NO key. The map shortcuts read e.code, the physical key, so a regression
+  // back to e.key goes red here instead of dying on a Russian layout at the table.
+  const key = (c, mods) => dm.evaluate('(() => { document.dispatchEvent(new KeyboardEvent(' +
+    '"keydown", Object.assign({ code: ' + JSON.stringify(c) + ', key: "", bubbles: true,' +
     ' cancelable: true }, ' + JSON.stringify(mods || {}) + '))); return 0; })()');
-  const undoKey = () => key('z', { ctrlKey: true });
-  const redoKey = () => key('y', { ctrlKey: true });
-  const redoKeyAlt = () => key('z', { ctrlKey: true, shiftKey: true });
+  const undoKey = () => key('KeyZ', { ctrlKey: true });
+  const redoKey = () => key('KeyY', { ctrlKey: true });
+  const redoKeyAlt = () => key('KeyZ', { ctrlKey: true, shiftKey: true });
 
   const settle = () => rig.sleep(350);
 
@@ -133,6 +137,19 @@ module.exports = async function undoFeature(rig) {
   rig.check(emptyDepths.undo === 0 && emptyDepths.redo === 0,
             'undo or redo on an empty history pushed something onto the other stack: ' +
             JSON.stringify(emptyDepths));
+
+  // ⚠ READ WHILE IT IS STILL UP. The line clears itself after 1400ms, so a read that waits
+  // finds an empty hint and reports the app as silent when it spoke.
+  const said = await dm.evaluate(`(() => {
+    undoStack = [];
+    document.dispatchEvent(new KeyboardEvent('keydown',
+      { code: 'KeyZ', key: '', ctrlKey: true, bubbles: true, cancelable: true }));
+    const el = document.getElementById('key-hint');
+    return el ? { on: el.classList.contains('on'), text: el.textContent } : null;
+  })()`);
+  rig.check(said && said.on && /nothing to undo/i.test(said.text),
+            'Ctrl+Z on an empty history said nothing, so a dead key and a broken one look the ' +
+            'same to the DM: ' + JSON.stringify(said));
 
   // ── C. One history for fog, rooms and effects ─────────────────────────────
   await dm.evaluate(`(() => {
@@ -277,7 +294,7 @@ module.exports = async function undoFeature(rig) {
     if (!el) return { err: 'the room card has no notes field' };
     el.focus();
     el.dispatchEvent(new KeyboardEvent('keydown',
-      { key: 'z', ctrlKey: true, bubbles: true, cancelable: true }));
+      { code: 'KeyZ', key: '', ctrlKey: true, bubbles: true, cancelable: true }));
     return { ok: true, tag: el.tagName };
   })()`);
   if (rig.check(!typed.err, 'the room card has no notes field to type into: ' + typed.err)) {
@@ -298,7 +315,7 @@ module.exports = async function undoFeature(rig) {
     if (!el) return { err: 'the room card has no name field' };
     el.focus();
     el.dispatchEvent(new KeyboardEvent('keydown',
-      { key: 'z', ctrlKey: true, bubbles: true, cancelable: true }));
+      { code: 'KeyZ', key: '', ctrlKey: true, bubbles: true, cancelable: true }));
     return { ok: true };
   })()`);
   if (!namedField.err) {
@@ -390,4 +407,43 @@ module.exports = async function undoFeature(rig) {
   rig.check(afterRadiusUndo.radii[0] === 20,
             'Ctrl+Z took the FIRST corner radius as well, so one keystroke reversed two edits: ' +
             JSON.stringify(afterRadiusUndo.radii));
+
+  // ── J. A field the DM has looked away from does not keep their Ctrl+Z ─────
+  // The bug this was built for: a field holds focus until something takes it, and only a click
+  // on the MAP used to. Click the toolbar, the panel or the scene library and every later Ctrl+Z
+  // went to the text history of a field the DM stopped looking at.
+  // ⚠ CLICKED SOMEWHERE THAT IS NOT THE MAP, or this passes on the old code. The map's own
+  // handler blurred the field long before this fix, so a check that clicks the canvas proves
+  // nothing at all.
+  // ⚠ THE CARD IS RE-OPENED HERE. Sections H and I run between this and the one that opened it,
+  // and a check that fails because its own staging drifted says nothing about the app.
+  await dm.evaluate('selectedPolygonId = polygons[0].id; refreshRoomPanel(); 0');
+  await reveal(A);
+  const before = await depths();
+  const handed = await dm.evaluate(`(() => {
+    const el = document.getElementById('rp-desc') || document.querySelector('#room-panel textarea');
+    if (!el) return { err: 'the room card has no notes field' };
+    el.focus();
+    const away = document.getElementById('toolbar-bottom');
+    away.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+    const held = document.activeElement;
+    // ⚠ THE KEY GOES TO WHATEVER HOLDS FOCUS, never to the document. The guard reads the event's
+    // TARGET, and a keydown dispatched at the document is never a field whatever focus says - so
+    // the undo below would run, and pass, with the blur deleted.
+    (held || document.body).dispatchEvent(new KeyboardEvent('keydown',
+      { code: 'KeyZ', key: '', ctrlKey: true, bubbles: true, cancelable: true }));
+    return { ok: true, stillInField: held === el, tag: held ? held.tagName : null };
+  })()`);
+  if (rig.check(!handed.err, 'the room card has no notes field: ' + handed.err)) {
+    rig.check(!handed.stillInField,
+              'a click on the toolbar left focus in the notes field, so the next Ctrl+Z is the ' +
+              "text's and not the map's: focus is on " + handed.tag);
+    await settle();
+    const after = await depths();
+    rig.note('Ctrl+Z after clicking away from the notes field: ' +
+             JSON.stringify(before) + ' → ' + JSON.stringify(after));
+    rig.check(after.undo < before.undo,
+              'Ctrl+Z did nothing after the DM clicked away from the notes field, which is the ' +
+              'undo that was reported dead at the table: ' + JSON.stringify(after));
+  }
 };

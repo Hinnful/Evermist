@@ -726,7 +726,7 @@ module.exports = async function gridFeature(rig) {
 
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
   await dm.evaluate(
-    'document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); 0');
+    'document.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true })); 0');
   rig.check(await dm.evaluate('gridCalArmed === false'), 'Escape did not leave calibration');
 
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');

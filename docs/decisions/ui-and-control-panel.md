@@ -189,6 +189,31 @@ Ctrl+Z reached its text history instead of the fog's undo. A mousedown on the ma
 field's text undo; on the map it is the fog's. Making Ctrl+Z always undo fog was considered and
 rejected — it would make a room description uneditable in practice.
 
+**WIDENED to any click outside the field (2026-09-16).** The map was the only thing that took
+focus back, so a click on the toolbar, the control panel or the scene library left the field
+holding it with nothing on screen saying so, and every later Ctrl+Z was still the text's. The
+blur now hangs off a document-level mousedown in the CAPTURE phase: the room card and scene
+fields stop the event bubbling, and capture also puts their commit-on-blur ahead of whatever the
+clicked control then does. The split above is unchanged and is the rule — focus decides whose
+undo it is.
+
+### Every map shortcut reads `e.code`, never `e.key` · `SETTLED` (2026-09-16)
+`e.key` is the character produced, so every letter shortcut was case-sensitive and
+layout-sensitive: Caps Lock or a Russian layout killed the lot, and `S` and `L` had carried
+hand-written capital branches to paper over half of it. `e.code` is the physical key and has
+neither problem. Named keys — Escape, Enter, the arrows — keep `e.key` in the field handlers,
+because the two strings are identical for them and `e.code` would break Numpad Enter.
+
+The letters were remapped with it: `V` Select, `R` Rectangle, `O` Circle, `P` Polygon, `C` Cone,
+`B` Brush. **Reveal and Shroud lost their keys** so the bare letters mean tools and nothing else.
+The Ctrl branch now returns whatever the key was, which reserves Ctrl+C and Ctrl+V for the copy
+and paste that do not exist yet; without it Ctrl+C picked the Cone.
+
+### The What's new panel swallows every key while it is open · `SETTLED` (2026-09-16)
+Letting the map shortcuts through it was built and `REVERTED`. The panel is modal and is being
+read, so Delete would take out the room that was selected. The cost is that Ctrl+Z is dead while
+the panel is up, which is correct for a modal and is what `help-and-about.js` criterion E pins.
+
 ### The Player's fullscreen state comes from the event, never from `isFullScreen()` · `SETTLED` (2026-08-09)
 Fullscreen on the Player window is native window fullscreen driven from `main.js`, so the
 renderer sees no `fullscreenchange` and `document.fullscreenElement` stays null — the state

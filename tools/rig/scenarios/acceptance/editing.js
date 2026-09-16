@@ -56,8 +56,13 @@ globalThis.__rigDrag = (x1, y1, x2, y2, releaseOnWindow) => {
   __rigMouse('mouseup', x2, y2, releaseOnWindow);
 };
 globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
-globalThis.__rigKey = (k) => document.dispatchEvent(
-  new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
+// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
+// at the table. A NAMED key carries both, because code and key are the same string for it and
+// the fields still read e.key - dropping it would fail a handler that is correct.
+globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
+  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
+                  bubbles: true, cancelable: true }, mods || {})));
 globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
   Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
 globalThis.__rigById = (id) => polygons.find(p => p.id === id);
@@ -236,7 +241,7 @@ module.exports = async function editing(rig) {
   const seen = [];
   for (let i = 0; i < 4; i++) {
     seen.push(await dm.evaluate('__rigById(' + a2 + ').mode'));
-    await dm.evaluate('__rigKey("t"); 0');
+    await dm.evaluate('__rigKey("KeyT"); 0');
   }
   rig.note('fog mode cycle from the map: ' + seen.join(' → '));
   rig.check(seen[0] === 'shroud' && seen[1] === 'half' && seen[2] === 'reveal' && seen[3] === 'shroud',
@@ -314,8 +319,8 @@ module.exports = async function editing(rig) {
             ') — the shroud was left behind and the table loses map the DM uncovered');
 
   // A mode change reaches the TV too. Shroud → reveal is the case that gives ground BACK.
-  await dm.evaluate('__rigKey("t"); 0');   // shroud → half
-  await dm.evaluate('__rigKey("t"); 0');   // half → reveal
+  await dm.evaluate('__rigKey("KeyT"); 0');   // shroud → half
+  await dm.evaluate('__rigKey("KeyT"); 0');   // half → reveal
   rig.check(await dm.evaluate('__rigById(' + tracked + ').mode') === 'reveal',
             'the room under test is not in Reveal mode, so the TV check below means nothing');
   await dm.evaluate(SETTLE);

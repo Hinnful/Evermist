@@ -26,7 +26,7 @@
 // for.
 //
 // ⚠ C DRIVES EACH KEY AND WATCHES THE APP, rather than reading the panel's own markup back to
-// itself. A check that finds the letter E in the HTML passes whether or not E picks a tool.
+// itself. A check that finds the letter R in the HTML passes whether or not R picks a tool.
 //
 // ⚠ EVERY KEY CARRIES THE SETUP THAT GIVES IT WORK TO DO, and nothing is restored afterwards.
 // A toggle is read as having CHANGED, never as landing on a particular value, so a key pressed
@@ -46,8 +46,13 @@ const SHOWN = `(sel => { const el = document.querySelector(sel);
   return !!el && el.getClientRects().length > 0; })`;
 
 const HELPERS = `
-globalThis.__rigKey = (k, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
-  Object.assign({ key: k, bubbles: true, cancelable: true }, mods || {})));
+// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
+// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
+// at the table. A NAMED key carries both, because code and key are the same string for it and
+// the fields still read e.key - dropping it would fail a handler that is correct.
+globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
+  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
+                  bubbles: true, cancelable: true }, mods || {})));
 globalThis.__rigShown = ${SHOWN};
 globalThis.__rigPanel = () => ({ panel: __rigShown('${LEGEND}'), back: __rigShown('${BACKDROP}') });
 // Everything a listed shortcut could move. One blob, so a key that changes nothing is visible
@@ -56,7 +61,7 @@ globalThis.__rigKeyState = () => ({
   shape: shape, tool: tool, snap: snapToGrid, grid: gridEnabled,
   anim: fogAnimEnabled, labels: showRoomLabels, brush: brushSize,
   zoom: +zoom.toFixed(4), panX: Math.round(panX), panY: Math.round(panY),
-  rooms: polygons.length,
+  rooms: polygons.length, diag: _diagActive,
 });
 0`;
 
@@ -86,7 +91,7 @@ module.exports = async function helpAndAboutFeature(rig) {
             'the help button does not shut the panel it opened: ' + JSON.stringify(toggled));
 
   // ── B. ? opens, Escape shuts, the backdrop shuts ──────────────────────────
-  await dm.evaluate('__rigKey("?")');
+  await dm.evaluate('__rigKey("Slash", { shiftKey: true })');
   rig.check((await dm.evaluate('__rigPanel()')).panel,
             'the ? key did not open the panel, though the button it sits on advertises it');
 
@@ -95,7 +100,7 @@ module.exports = async function helpAndAboutFeature(rig) {
             'Escape did not shut the panel, so the DM is left pressing keys at a sheet over ' +
             'the map');
 
-  await dm.evaluate('__rigKey("?"); document.getElementById("legend-backdrop").click(); 0');
+  await dm.evaluate('__rigKey("Slash", { shiftKey: true }); document.getElementById("legend-backdrop").click(); 0');
   const afterBackdrop = await dm.evaluate('__rigPanel()');
   rig.check(!afterBackdrop.panel && !afterBackdrop.back,
             'clicking beside the panel did not shut it: ' + JSON.stringify(afterBackdrop));
@@ -110,21 +115,30 @@ module.exports = async function helpAndAboutFeature(rig) {
 
   // The keys the panel advertises, each with the field it has to move. `setup` puts the app in
   // the one state where the key has work to do.
+  // ⚠ CODES, AND THE SETUP NAMES THE MODE WHERE THERE IS ONE. Cone is on the Effects bar only
+  // and Brush on the Rooms one, so a key pressed in the other mode is correctly inert and would
+  // be reported here as dead.
   const KEYS = [
-    { key: 'e', field: 'shape',  setup: 'setShape("select")' },
-    { key: 'p', field: 'shape',  setup: 'setShape("select")' },
-    { key: 'c', field: 'shape',  setup: 'setShape("select")' },
-    { key: 'v', field: 'shape',  setup: 'setShape("rect")' },
-    { key: 'r', field: 'tool',   setup: 'document.getElementById("btn-shroud").click()' },
-    { key: 's', field: 'tool',   setup: 'document.getElementById("btn-reveal").click()' },
-    { key: 'n', field: 'snap',   setup: '0' },
-    { key: 'g', field: 'grid',   setup: '0' },
-    { key: 'a', field: 'anim',   setup: '0' },
-    { key: 'l', field: 'labels', setup: '0' },
-    { key: '[', field: 'brush',  setup: 'brushSize = 100' },
-    { key: ']', field: 'brush',  setup: 'brushSize = 100' },
+    { key: 'KeyV', label: 'V', field: 'shape',  setup: 'setPlaceMode("rooms"); setShape("rect")' },
+    { key: 'KeyR', label: 'R', field: 'shape',  setup: 'setShape("select")' },
+    { key: 'KeyO', label: 'O', field: 'shape',  setup: 'setShape("select")' },
+    { key: 'KeyP', label: 'P', field: 'shape',  setup: 'setShape("select")' },
+    { key: 'KeyB', label: 'B', field: 'shape',  setup: 'setShape("select")' },
+    { key: 'KeyC', label: 'C', field: 'shape',  setup: 'setPlaceMode("effects"); setShape("select")' },
+    // ⚠ EVERYTHING ESCAPE DROPS FIRST HAS TO BE EMPTY. Its cascade takes the selection before it
+    // touches the tool, so a room left selected by an earlier check reports Escape as dead.
+    { key: 'Escape', label: 'Esc', field: 'shape',
+      setup: 'setPlaceMode("rooms"); selectedPolygonId = null; selectedVertexIndex = -1;' +
+             ' activePolygon = null; setShape("rect")' },
+    { key: 'KeyN', label: 'N', field: 'snap',   setup: '0' },
+    { key: 'KeyG', label: 'G', field: 'grid',   setup: '0' },
+    { key: 'KeyA', label: 'A', field: 'anim',   setup: '0' },
+    { key: 'KeyL', label: 'L', field: 'labels', setup: '0' },
+    { key: 'BracketLeft',  label: '[', field: 'brush', setup: 'brushSize = 100' },
+    { key: 'BracketRight', label: ']', field: 'brush', setup: 'brushSize = 100' },
+    { key: 'Backquote', label: '`', field: 'diag', setup: '0' },
     // Fit has nothing to do from a fitted view, so the camera is moved off first.
-    { key: 'f', field: 'zoom',   setup: 'zoom = 0.2; panX = 40; panY = 40; viewportDirty = true; scheduleRender()' },
+    { key: 'KeyF', label: 'F', field: 'zoom',   setup: 'zoom = 0.2; panX = 40; panY = 40; viewportDirty = true; scheduleRender()' },
   ];
 
   const dead = [];
@@ -132,8 +146,11 @@ module.exports = async function helpAndAboutFeature(rig) {
     const before = await dm.evaluate('(() => { ' + k.setup + '; return __rigKeyState(); })()');
     await dm.evaluate('__rigKey(' + JSON.stringify(k.key) + ')');
     const after = await dm.evaluate('__rigKeyState()');
-    if (before[k.field] === after[k.field]) dead.push(k.key.toUpperCase() + ' (' + k.field + ')');
+    if (before[k.field] === after[k.field]) dead.push(k.label + ' (' + k.field + ')');
   }
+  // ⚠ THE ONE KEY ABOVE THAT MUST BE PUT BACK. Backquote leaves a z-index 99999 overlay across
+  // the corner for every check below it, which is the corner the update toast is measured in.
+  await dm.evaluate('if (_diagActive) __rigKey("Backquote"); 0');
   rig.check(dead.length === 0,
             'the shortcut panel lists ' + dead.length + ' key(s) the app does nothing with, so ' +
             'the DM presses them at the table and nothing happens: ' + dead.join(', '));
@@ -155,12 +172,12 @@ module.exports = async function helpAndAboutFeature(rig) {
   const drawn = await dm.evaluate('polygons.length');
   rig.check(drawn > 0, 'nothing was drawn, so Undo below has nothing to take back and proves nothing');
 
-  await dm.evaluate('__rigKey("z", { ctrlKey: true })');
+  await dm.evaluate('__rigKey("KeyZ", { ctrlKey: true })');
   const undone = await dm.evaluate('polygons.length');
   rig.check(undone < drawn,
             'Ctrl+Z is on the panel and took nothing back: ' + drawn + ' rooms before, ' +
             undone + ' after');
-  await dm.evaluate('__rigKey("y", { ctrlKey: true })');
+  await dm.evaluate('__rigKey("KeyY", { ctrlKey: true })');
   rig.check(await dm.evaluate('polygons.length') === drawn,
             'Ctrl+Y is on the panel and put nothing back');
 
@@ -287,10 +304,10 @@ module.exports = async function helpAndAboutFeature(rig) {
   const keys = await dm.evaluate(`(() => {
     setShape('select');
     document.getElementById('cl-modal').dispatchEvent(new KeyboardEvent('keydown',
-      { key: 'e', bubbles: true, cancelable: true }));
+      { code: 'KeyR', key: '', bubbles: true, cancelable: true }));
     const whileOpen = shape;
     closeChangelog();
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true, cancelable: true }));
+    document.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyR', key: '', bubbles: true, cancelable: true }));
     return { whileOpen: whileOpen, whenShut: shape };
   })()`);
   rig.check(keys.whileOpen === 'select',
@@ -313,7 +330,7 @@ module.exports = async function helpAndAboutFeature(rig) {
   await dm.evaluate(`(() => {
     document.getElementById('about-whatsnew').click();
     document.getElementById('cl-modal').dispatchEvent(new KeyboardEvent('keydown',
-      { key: 'Escape', bubbles: true, cancelable: true }));
+      { code: 'Escape', key: 'Escape', bubbles: true, cancelable: true }));
     return 0;
   })()`);
   rig.check(!(await dm.evaluate('__rigShown("#cl-modal")')),

@@ -69,7 +69,7 @@ globalThis.__rigPress = (id) => { document.getElementById(id).click(); return 0;
 // document ever arrives here.
 globalThis.__rigEsc = () => {
   document.getElementById('cd-anchor').dispatchEvent(
-    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true, cancelable: true }));
   return 0;
 };
 0`;

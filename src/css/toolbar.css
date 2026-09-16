@@ -16,6 +16,29 @@
     pointer-events: none; /* pass-through; children opt back in */
   }
 
+  /* One statement with nothing to answer, so it is not #fp-notice's shape: no icon, no button,
+     no dismissal. ⚠ ABSOLUTE, not a flex child - in the column an empty one still spends a
+     11px gap and shunts the whole bar down. */
+  #key-hint {
+    position: absolute;
+    bottom: calc(100% + 11px);
+    left: 50%;
+    transform: translateX(-50%);
+    zoom: var(--ui-zoom, 1.2);
+    white-space: nowrap;
+    padding: 5px 12px;
+    border-radius: var(--panel-radius);
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    box-shadow: var(--panel-shadow);
+    font: 400 12px/1.3 system-ui, -apple-system, sans-serif;
+    color: #9aa0aa;
+    opacity: 0;
+    transition: opacity .18s ease;
+  }
+  #key-hint.on { opacity: 1; }
+  body.player-mode #key-hint { display: none !important; }
+
   #toolbar-bottom {
     zoom: var(--ui-zoom, 1.2);
     pointer-events: all;

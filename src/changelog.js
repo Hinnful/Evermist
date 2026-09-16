@@ -33,7 +33,7 @@ function _clBuild() {
 // is up, so Delete pressed while the DM reads would take out the room they had selected.
 function _clKeys(e) {
   e.stopPropagation();
-  if (e.key === 'Escape') closeChangelog();
+  if (e.code === 'Escape') closeChangelog();
 }
 
 function _clFill() {

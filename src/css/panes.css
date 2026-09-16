@@ -4,12 +4,17 @@
   /* ===== PANE MODE (inside a column) ===== */
   /* A column keeps the map, the cursor and the room card. Everything the parent window owns is
      hidden here rather than deleted, so one instance still runs both modes. */
-  body.pane-mode #tools-wrapper,
   body.pane-mode #sidebar-right-anchor,
   body.pane-mode #music-anchor,
   body.pane-mode #scene-dd,
   body.pane-mode #sm-modal,
   body.pane-mode #legend { display: none !important; }
+
+  /* ⚠ THE WRAPPER STAYS, ITS TWO BARS GO. #key-hint hangs off it, and a column runs its own undo
+     stack - hiding the wrapper whole left an empty one silent in the mode that empties it most.
+     The wrapper takes no clicks, so an empty one costs a column nothing. */
+  body.pane-mode #context-row,
+  body.pane-mode #toolbar-bottom { display: none !important; }
 
   /* ===== THE TOGGLE ===== */
   #btn-two-maps {

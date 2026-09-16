@@ -76,8 +76,20 @@ function restoreState(snapshot) {
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 }
 
+// A dead key and a broken key look identical, and both stacks empty legitimately - a scene
+// switch clears them, eviction caps them - so say so rather than nothing.
+let _undoHintTimer = null;
+function undoHint(msg) {
+  const el = document.getElementById('key-hint');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(_undoHintTimer);
+  _undoHintTimer = setTimeout(() => el.classList.remove('on'), 1400);
+}
+
 function undo() {
-  if (!undoStack.length) return;
+  if (!undoStack.length) { undoHint('Nothing to undo'); return; }
   redoStack.push({
     baseFog: cloneCanvas(baseFogCanvas),
     polygons: polygons.map(copyShapeRings),
@@ -90,7 +102,7 @@ function undo() {
 }
 
 function redo() {
-  if (!redoStack.length) return;
+  if (!redoStack.length) { undoHint('Nothing to redo'); return; }
   undoStack.push({
     baseFog: cloneCanvas(baseFogCanvas),
     polygons: polygons.map(copyShapeRings),

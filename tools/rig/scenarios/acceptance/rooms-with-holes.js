@@ -56,8 +56,13 @@ globalThis.__rigDrag = (x1, y1, x2, y2) => {
   __rigMouse('mouseup', x2, y2);
 };
 globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
-globalThis.__rigKey = (k) => document.dispatchEvent(
-  new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
+// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
+// at the table. A NAMED key carries both, because code and key are the same string for it and
+// the fields still read e.key - dropping it would fail a handler that is correct.
+globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
+  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
+                  bubbles: true, cancelable: true }, mods || {})));
 globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
   Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
 globalThis.__rigById = (id) => polygons.find(p => p.id === id);
