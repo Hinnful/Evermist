@@ -67,7 +67,7 @@ function applyPlanToScene(derived) {
   // Wipe-and-rebuild can delete the selected room, leaving selectedPolygonId on a dead id and the
   // card open on a ghost. Every wholesale polygon rewrite nulls both first.
   activePolygon = null;
-  selectedPolygonId = null;
+  clearShapeSelection();
 
   // ⚠ THE KERNEL'S COORDINATES ARE IN THE EXPORT'S PIXEL SPACE, NOT THIS MAP'S. vttPlan.js has no
   // map-width term, so a map shrunk at import gets every room too large. Scaling here covers the

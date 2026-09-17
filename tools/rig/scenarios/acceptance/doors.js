@@ -77,6 +77,10 @@ globalThis.__rigDbl = (mx, my) => {
     bubbles: true, cancelable: true, button: 0,
   }));
 };
+// ⚠ A ROOM HAS TO BE OPEN FOR EDITING BEFORE A WALL TAKES A VERTEX. The first double-click on a
+// room opens it and inserts nothing, so a scenario that fires one and expects five corners reads
+// a working insert as broken.
+globalThis.__rigEdit = (mx, my) => { __rigClick(mx, my); __rigDbl(mx, my); };
 // ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
 // physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
 // at the table. A NAMED key carries both, because code and key are the same string for it and
@@ -290,11 +294,12 @@ module.exports = async function doorsFeature(rig) {
   // bottom, left, the door is on the right, and `remapDoorsForVertexChange` only shifts an edge
   // index ABOVE the insert. Going in at the left wall changes no index at all, so the check
   // passed with the remap deleted — it read a door nothing had asked to move.
-  await dm.evaluate('setShape("select"); __rigClick(' + ((wall.left + wall.right) / 2) + ', ' +
+  await dm.evaluate('setShape("select"); __rigEdit(' + ((wall.left + wall.right) / 2) + ', ' +
                     ((wall.top + wall.bottom) / 2) + ')');
-  rig.check(await dm.evaluate('selectedPolygonId') === leftId,
-            'clicking inside the room did not select it, so no vertex can be inserted and E ' +
-            'measures nothing');
+  rig.check(await dm.evaluate('selectedPolygonId') === leftId &&
+            await dm.evaluate('shapeEditMode') === true,
+            'the room did not open for editing, so no vertex can be inserted and E measures ' +
+            'nothing');
   await dm.evaluate('__rigDbl(' + ((wall.left + wall.right) / 2) + ', ' + wall.top + ')');
   rig.check((await dm.evaluate('__rigDoors()'))[0].edge > before.edge,
             "the vertex went in on a wall the door's own edge index does not sit above, so the " +
@@ -329,7 +334,7 @@ module.exports = async function doorsFeature(rig) {
   // the door on the wrong wall, then the delete puts it back on the right one — two wrong answers
   // that read as one right one. So the delete is run again from a room that already has the extra
   // vertex, with the door placed AFTER it: the remap then runs once, on the way out.
-  await dm.evaluate('setShape("select"); __rigClick(' + ((wall.left + wall.right) / 2) + ', ' +
+  await dm.evaluate('setShape("select"); __rigEdit(' + ((wall.left + wall.right) / 2) + ', ' +
                     ((wall.top + wall.bottom) / 2) + ')');
   await dm.evaluate('__rigDbl(' + ((wall.left + wall.right) / 2) + ', ' + wall.top + ')');
   const sel = await dm.evaluate('selectedVertexIndex');
@@ -351,8 +356,10 @@ module.exports = async function doorsFeature(rig) {
             'the door could not be re-placed on the five-vertex left room, so the delete below ' +
             'has nothing to move: ' + JSON.stringify(placedLate));
 
-  await dm.evaluate('setShape("select"); selectedPolygonId = ' + JSON.stringify(leftId) +
-                    '; selectedVertexIndex = ' + sel + '; __rigKey("Delete")');
+  // ⚠ THROUGH enterShapeEditMode, not a raw flag: Delete outside edit mode takes the whole ROOM,
+  // and a room that vanished passes the vertex-count check below for the wrong reason.
+  await dm.evaluate('setShape("select"); enterShapeEditMode(' + JSON.stringify(leftId) +
+                    '); selectedVertexIndex = ' + sel + '; __rigKey("Delete")');
   const late = await dm.evaluate('({ n: __rigById(' + JSON.stringify(leftId) + ').vertices.length,' +
                                  ' doors: __rigDoors() })');
   rig.check(late.n === 4,

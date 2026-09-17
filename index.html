@@ -947,6 +947,7 @@
 <script src="src/fog.js"></script>
 <script src="src/roomOps.js"></script>
 <script src="src/tools.js"></script>
+<script src="src/shapeSelect.js"></script>
 <script src="src/mapLoader.js"></script>
 <script src="src/mapConvert.js"></script>
 <script src="src/undo.js"></script>
@@ -1036,7 +1037,7 @@ if (isPlayer) {
 // videoDOMActive / activateVideoDom / deactivateVideoDom / syncVideoDomTransform /
 // cleanupVideo / loadVideoFromFile / isVideoFile live in video.js.
 
-// closeActivePolygon / deleteSelectedPolygon / toggleSelectedPolygon live in tools.js (polygon editing).
+// closeActivePolygon lives in tools.js; the selection and its edits live in shapeSelect.js.
 
 // Undo/Redo (pushUndo, undo, redo, restoreState, cloneCanvas) + state live in undo.js.
 

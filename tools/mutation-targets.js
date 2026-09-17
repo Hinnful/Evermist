@@ -18,7 +18,8 @@ const ROOT = path.join(__dirname, '..');
 // Every exported kernel the unit suite actually reaches. Anything not exported cannot be tested,
 // so mutating it only produces survivors no test could ever kill.
 const MUTATE_TARGETS = {
-  'src/tools.js':        ['pointInPolygon', 'distPointToSegment', 'segmentsIntersect'],
+  'src/tools.js':        ['segmentsIntersect'],
+  'src/shapeSelect.js':  ['pointInPolygon', 'distPointToSegment', 'findHoleAt', 'ringCentre'],
   'src/video.js':        ['computeOptimalTextureSize', 'coverageFactorFor',
                           'mapRegionForTexture', 'clampRegionToMap'],
   'src/display.js':      ['normalizeDisplayRecord'],

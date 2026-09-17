@@ -1118,7 +1118,7 @@ function shroudAllRooms() { _wholeMapFog(shroudAllFog, true); }
 function _wholeMapFog(fill, isShroud) {
   if (!fogDataCtx) return;
   pushUndo();
-  activePolygon = null; selectedPolygonId = null;
+  activePolygon = null; clearShapeSelection();
   fill();
   startFogTransition(isShroud);
   rebuildFogEffect();

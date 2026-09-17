@@ -55,7 +55,7 @@ function setShape(s) {
   // ⚠ The Polygon tool and Cut both click their shape out through activePolygon, and a leftover
   // cut path closes as a room on the next Polygon click, so only its owner keeps it.
   if (s !== (activePolygon && activePolygon.cut ? 'cut' : 'poly')) activePolygon = null;
-  if (s !== 'select') selectedVertexIndex = -1;
+  if (s !== 'select') leaveShapeEditMode();
   refreshPaintAvailability(); // half is shape-tools only; the brush can't paint it
 
   circleCenter = null;
@@ -185,9 +185,8 @@ function initInput() {
       // A cut path has no closing vertex to click, so the double-click IS its finish. The two
       // mousedowns underneath it have already placed the last point.
       if (shape === 'cut') { commitCutPath(); return; }
-      if (shape !== 'select' || selectedPolygonId == null) return;
-      const raw = screenToMap(e.clientX, e.clientY);
-      toolDblClick(raw, e);
+      if (shape !== 'select') return;
+      selectDblClick(screenToMap(e.clientX, e.clientY));
     });
 
     document.getElementById('legend-backdrop').addEventListener('click', () => {
@@ -230,19 +229,7 @@ function initInput() {
       case 'KeyL': if (typeof toggleRoomLabels === 'function') toggleRoomLabels(); break;
       case 'KeyF': if (mapOffscreen) { fitToScreen(); viewportDirty = true; scheduleRender(); } break;
       case 'Delete':
-        if (shape === 'select' && selectedPolygonId != null && selectedVertexIndex >= 0) {
-          const poly = findActiveShape();
-          if (poly && deleteShapeVertex(poly, selectedVertexIndex)) {
-            selectedVertexIndex = -1;
-            shapeGeometryChanged();
-            persistShapeEdit();
-            fogDirty = true;
-            scheduleRender();
-            drawCursor(lastScreenX, lastScreenY);
-          }
-        } else if (selectedPolygonId != null) {
-          deleteSelectedPolygon();
-        }
+        deleteSelectedPart();
         break;
       // One press drops one thing, most local first, then puts the bar back to rest - an armed
       // Merge, Trim or Cut has no other way out from the keyboard.
@@ -251,12 +238,8 @@ function initInput() {
         if (activePolygon) {
           activePolygon = null;
           drawCursor(null, null);
-        } else if (selectedVertexIndex >= 0) {
-          selectedVertexIndex = -1;
-          drawCursor(lastScreenX, lastScreenY);
-        } else if (selectedPolygonId != null) {
-          selectedPolygonId = null;
-          drawCursor(null, null);
+        } else if (escapeShapeSelection()) {
+          // one level per press, handled in shapeSelect.js
         } else {
           if (shapeOp !== 'new') setShapeOp('new');
           if (shape !== 'select') setShape('select');

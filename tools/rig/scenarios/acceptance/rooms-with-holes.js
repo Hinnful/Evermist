@@ -13,7 +13,8 @@
 //   B. That fog reaches the Player.
 //   C. The hole survives a save and a reload.
 //   D. Dragging the room carries the hole with it.
-//   E. A hole's wall has handles: dragging one reshapes it, and ONE undo takes it back.
+//   E. A hole's wall has handles ONCE THE ROOM IS OPEN FOR EDITING: dragging one reshapes it,
+//      and ONE undo takes it back.
 //   F. A shape DRAWN inside the hole becomes a separate room, and stays put when the keep moves.
 //   G. A Cut straight through a courtyard gives each half its own share of it.
 //   H. An effect carrying a hole renders as a ring of flame on both screens, and the ember grid
@@ -22,6 +23,12 @@
 //   I. A door can be marked on an inner wall, so a keep has a gate onto its courtyard, and the
 //      notch opens a gap in it. Which SIDE the notch reaches further into is settled by a unit
 //      test on doorEdgeFrame - a notch straddles its wall, so no fog sample here separates them.
+//   J. THE HOLE IS A THING THE DM CAN GRAB. Its empty middle picks it, a drag moves the whole
+//      ring at once, Delete takes it, and one undo puts it back.
+//        the middle is dead at the object level · a double-click puts it in reach · the ring
+//        moves as one and the outer wall does not · Delete · undo
+//   K. A dragged hole STOPS DEAD where it would leave its room. It may bite the wall; it may
+//      not float free. This is the one place the app departs from Figma on purpose.
 //
 // ⚠ ROOMS DO NOT CROSS TO THE PLAYER (CLAUDE.md). What crosses is the fog they paint, so the TV
 // checks read fog over ground. EFFECTS do cross, as the records themselves.
@@ -56,6 +63,18 @@ globalThis.__rigDrag = (x1, y1, x2, y2) => {
   __rigMouse('mouseup', x2, y2);
 };
 globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
+// Edit mode is entered by the real gesture, not by setting the flag.
+globalThis.__rigDbl = (mx, my) => { __rigClick(mx, my); __rigMouse('dblclick', mx, my); };
+// ⚠ A STOP HAS TO BE WALKED UP TO. __rigDrag sends two moves, so a long drag jumps clean over the
+// wall and every frame is refused - the hole then ends where it started and reads as clamped
+// whole. Small steps put a frame just inside the wall, which is the state the stop is about.
+globalThis.__rigDragSteps = (x1, y1, x2, y2, n) => {
+  __rigMouse('mousedown', x1, y1);
+  for (let i = 1; i <= n; i++) {
+    __rigMouse('mousemove', x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n);
+  }
+  __rigMouse('mouseup', x2, y2);
+};
 // ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
 // physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
 // at the table. A NAMED key carries both, because code and key are the same string for it and
@@ -261,8 +280,11 @@ module.exports = async function roomsWithHoles(rig) {
   const wall = { x: YARD.x1 + DX, y: (YARD.y1 + YARD.y2) / 2 + DY };
   const eBefore = await dm.evaluate('__rigShape(' + keep + ')');
   const eUndo = await dm.evaluate('undoStack.length');
-  await dm.evaluate('setShape("select"); __rigClick(' +
+  await dm.evaluate('setShape("select"); __rigDbl(' +
                     (IN_KEEP.x + DX) + ',' + (IN_KEEP.y + DY) + '); 0');
+  rig.check(await dm.evaluate('shapeEditMode') === true,
+            'the keep did not open for editing, so no wall of it carries a handle and every ' +
+            'check in E measures nothing');
   const handles = await dm.evaluate(
     '(() => { const p = __rigById(' + keep + ');' +
     '  return { flat: flatVertexCount(p), outer: p.vertices.length,' +
@@ -513,4 +535,96 @@ module.exports = async function roomsWithHoles(rig) {
             'where the DM marked a way through');
   rig.check(notch.deep > 200,
             'the gate opened the whole courtyard (alpha ' + notch.deep + ') instead of one cell');
+
+  // ══ J. The hole is a thing the DM can grab ══
+  // A fresh keep, so nothing above decides what this one's courtyard has been through.
+  const HOLD = { x1: 1500, y1: 200, x2: 2200, y2: 800 };
+  const CRT  = { x1: 1700, y1: 380, x2: 1980, y2: 620 };
+  const IN_CRT = { x: Math.round((CRT.x1 + CRT.x2) / 2), y: Math.round((CRT.y1 + CRT.y2) / 2) };
+  const hold = await dm.evaluate('__rigDrawRoom("reveal", ' +
+    HOLD.x1 + ',' + HOLD.y1 + ',' + HOLD.x2 + ',' + HOLD.y2 + ')');
+  await dm.evaluate('__rigOpRect("trim", ' + CRT.x1 + ',' + CRT.y1 + ',' +
+                    CRT.x2 + ',' + CRT.y2 + ')');
+  await dm.evaluate(SETTLE);
+  rig.check((await dm.evaluate('__rigShape(' + hold + ')')).holes === 1,
+            'the second keep never got its courtyard, so nothing below is testing a hole');
+
+  // A hole's middle is DEAD GROUND at the object level: pointInShape XORs it out, so the click
+  // reaches past the keep the way it always has.
+  await dm.evaluate('__rigClick(' + IN_CRT.x + ',' + IN_CRT.y + '); 0');
+  rig.check(await dm.evaluate('selectedPolygonId') === null,
+            'clicking inside a courtyard picked the keep around it — the middle of a hole is not ' +
+            'the room, and a click there has always fallen through');
+
+  await dm.evaluate('__rigDbl(' + (HOLD.x1 + 60) + ',' + (HOLD.y1 + 60) + '); 0');
+  rig.check(await dm.evaluate('selectedPolygonId') === hold &&
+            await dm.evaluate('shapeEditMode') === true,
+            'a double-click on the keep did not open it for editing');
+  await dm.evaluate('__rigClick(' + IN_CRT.x + ',' + IN_CRT.y + '); 0');
+  rig.check(await dm.evaluate('selectedHoleIndex') === 0,
+            'clicking inside the courtyard did not pick it, so the only way to repair a hole is ' +
+            'still dragging its corners one at a time');
+
+  // The whole ring moves, and the outer wall stays exactly where it was.
+  const beforeJ = await dm.evaluate('__rigShape(' + hold + ')');
+  await dm.evaluate('__rigDrag(' + IN_CRT.x + ',' + IN_CRT.y + ',' +
+                    (IN_CRT.x + 90) + ',' + (IN_CRT.y + 70) + '); 0');
+  await dm.evaluate(SETTLE);
+  const movedJ = await dm.evaluate('__rigShape(' + hold + ')');
+  const hdx = movedJ.holeBox[0].x0 - beforeJ.holeBox[0].x0;
+  const hdy = movedJ.holeBox[0].y0 - beforeJ.holeBox[0].y0;
+  rig.note('the courtyard was dragged +90,+70 and moved +' +
+           hdx.toFixed(1) + ',+' + hdy.toFixed(1));
+  rig.check(Math.abs(hdx - 90) < 2 * tol && Math.abs(hdy - 70) < 2 * tol,
+            'dragging the courtyard moved it by ' + hdx.toFixed(1) + ',' + hdy.toFixed(1) +
+            ' instead of 90,70');
+  rig.check(Math.abs(movedJ.holeArea[0] - beforeJ.holeArea[0]) < 400 * tol,
+            'the courtyard was reshaped by the drag rather than moved as one ring');
+  rig.check(Math.abs(movedJ.box.x0 - beforeJ.box.x0) < 0.001 &&
+            Math.abs(movedJ.box.y0 - beforeJ.box.y0) < 0.001,
+            'moving the courtyard dragged the keep around it along too');
+
+  // Delete takes the hole, not the room, and one undo puts it back.
+  const undoJ = await dm.evaluate('undoStack.length');
+  await dm.evaluate('__rigKey("Delete"); 0');
+  await dm.evaluate(SETTLE);
+  const gone = await dm.evaluate('__rigShape(' + hold + ')');
+  rig.check(!!gone, 'Delete on a picked courtyard took the whole keep with it');
+  rig.check(gone.holes === 0,
+            'Delete on a picked courtyard left ' + gone.holes + ' hole(s) — the only way to be ' +
+            'rid of one is still whittling its corners away');
+  rig.check(await dm.evaluate('undoStack.length') === undoJ + 1,
+            'deleting a hole spent ' + (await dm.evaluate('undoStack.length') - undoJ) +
+            ' undo steps instead of one');
+  await dm.evaluate('undo(); 0');
+  await dm.evaluate(SETTLE);
+  rig.check((await dm.evaluate('__rigShape(' + hold + ')')).holes === 1,
+            'one undo did not put the deleted courtyard back');
+
+  // ══ K. A dragged hole stops dead where it would leave its room ══
+  await dm.evaluate('__rigDbl(' + (HOLD.x1 + 60) + ',' + (HOLD.y1 + 60) + '); 0');
+  const restored = await dm.evaluate('__rigShape(' + hold + ')');
+  const hx = Math.round((restored.holeBox[0].x0 + restored.holeBox[0].x1) / 2);
+  const hy = Math.round((restored.holeBox[0].y0 + restored.holeBox[0].y1) / 2);
+  await dm.evaluate('__rigClick(' + hx + ',' + hy + '); 0');
+  rig.check(await dm.evaluate('selectedHoleIndex') === 0,
+            'the restored courtyard could not be picked again');
+
+  // Dragged a long way past the keep's far wall. The cursor gets there; the hole must not.
+  await dm.evaluate('__rigDragSteps(' + hx + ',' + hy + ',' + (HOLD.x2 + 500) + ',' + hy +
+                    ', 40); 0');
+  await dm.evaluate(SETTLE);
+  const stopped = await dm.evaluate('__rigShape(' + hold + ')');
+  const cx = (stopped.holeBox[0].x0 + stopped.holeBox[0].x1) / 2;
+  const cy = (stopped.holeBox[0].y0 + stopped.holeBox[0].y1) / 2;
+  rig.note('the courtyard was dragged to x ' + (HOLD.x2 + 500) + ' and stopped with its centre ' +
+           'at ' + Math.round(cx) + ', against the keep wall at ' + stopped.box.x1);
+  rig.check(stopped.holes === 1, 'the courtyard was lost entirely by a drag off the keep');
+  rig.check(cx <= stopped.box.x1 && cx >= stopped.box.x0 &&
+            cy <= stopped.box.y1 && cy >= stopped.box.y0,
+            'the courtyard ended up centred at ' + Math.round(cx) + ',' + Math.round(cy) +
+            ', outside the keep it belongs to, which is the one thing the drag must refuse');
+  rig.check(stopped.holeBox[0].x1 > stopped.box.x1,
+            'the courtyard was clamped whole instead of being allowed to bite the wall — it may ' +
+            'hang past the edge, it may not leave');
 };

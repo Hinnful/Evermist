@@ -66,7 +66,11 @@ function restoreState(snapshot) {
   if (selectedPolygonId == null || !activeShapeList().some(s => s.id === selectedPolygonId)) {
     selectedPolygonId = null;
   }
-  selectedVertexIndex = -1;   // vertex counts can differ across the snapshot
+  // ⚠ EDIT MODE SURVIVES, only the indices go - ring counts differ across a snapshot, but dropping
+  // the level too costs a double-click back on every Ctrl+Z mid-reshape.
+  selectedVertexIndex = -1;
+  selectedHoleIndex = -1;
+  if (selectedPolygonId == null) leaveShapeEditMode();
   activePolygon = null;
   rebuildFogFromPolygons();
   rebuildFogEffect();

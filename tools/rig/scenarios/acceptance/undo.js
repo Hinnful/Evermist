@@ -15,6 +15,9 @@
 //   C. Fog, rooms and effects are ONE history, so a Ctrl+Z reverses whichever came last.
 //   D. A new change after an undo throws the redo away rather than leaving a branch.
 //   E. Undo keeps the room card open on a room that survived, and closes it on one that did not.
+//      A room left OPEN FOR EDITING stays open for editing, so a Ctrl+Z mid-reshape does not cost
+//      a double-click back in. Only the picked corner goes, because ring counts differ across a
+//      snapshot.
 //   F. An undo reaches the Player, because the fog it restored is the fog the table must see.
 //   G. Ctrl+Z typed into the room's name or notes edits the text, never the map.
 //   H. The history is bounded by memory, and eviction always leaves something to undo.
@@ -230,6 +233,20 @@ module.exports = async function undoFeature(rig) {
             'undoing a fog change closed the room card on a room that is still there: ' +
             JSON.stringify(keptCard));
 
+  // Edit mode survives the same undo, and the picked corner does not. Through the app's own
+  // entry point, so a raw flag cannot make this pass on its own.
+  await dm.evaluate('enterShapeEditMode(polygons[0].id); selectedVertexIndex = 1; 0');
+  await reveal(B);
+  await undoKey();
+  await settle();
+  const editKept = await dm.evaluate('({ mode: shapeEditMode, vert: selectedVertexIndex })');
+  rig.check(editKept.mode === true,
+            'undo closed a room that was open for editing, so every Ctrl+Z mid-reshape costs a ' +
+            'double-click to get back in');
+  rig.check(editKept.vert === -1,
+            'undo kept corner ' + editKept.vert + ' picked across a snapshot whose ring counts ' +
+            'can differ, so the card would round a corner that is not the one on screen');
+
   await dm.evaluate(`(() => {
     pushUndo();
     polygons = polygons.concat([{ id: nextPolygonId++, vertices: [
@@ -249,6 +266,9 @@ module.exports = async function undoFeature(rig) {
   rig.check(closedCard.selected === null,
             'the room card stayed open on a room that no longer exists: selected is ' +
             closedCard.selected);
+  rig.check(await dm.evaluate('shapeEditMode') === false,
+            'edit mode outlived the room it belonged to, so the map would draw corner handles ' +
+            'for a shape that is gone');
 
   // ── F. An undo reaches the Player ─────────────────────────────────────────
   rig.check(await dm.evaluate('autoSync === true'),

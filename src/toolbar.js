@@ -48,8 +48,7 @@ function setPlaceMode(m) {
   if (placeMode !== m) {
     // ⚠ THE SELECTION IS SCOPED TO THE MODE. Ids are numbered per list, so one left over from the
     // other list resolves against whichever shape shares the number.
-    selectedPolygonId = null;
-    selectedVertexIndex = -1;
+    clearShapeSelection();
     activePolygon = null;
   }
   placeMode = m;

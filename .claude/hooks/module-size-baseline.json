@@ -18,7 +18,7 @@
     "src/render.js": 13826,
     "src/renderer.js": 18927,
     "src/roomPanel.js": 34062,
-    "src/sceneManager.js": 51919,
+    "src/sceneManager.js": 51918,
     "src/sceneStore.js": 4481,
     "src/scenes.js": 5150,
     "src/viewport.js": 17863,
@@ -38,6 +38,7 @@
     "src/undo.js": 4847,
     "src/video.js": 30518,
     "src/pdfLayout.js": 4554,
-    "src/moduleText.js": 39644
+    "src/moduleText.js": 39644,
+    "src/shapeSelect.js": 23189
   }
 }

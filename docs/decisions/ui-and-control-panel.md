@@ -349,3 +349,22 @@ lists, so it is never replaced. And **taking a button off a bar means disarming 
 Merge armed in Rooms would otherwise survive into Effects, where nothing shows it or cancels it,
 and swallow the next effect drawn. `commitShapeOp` still reaches the effects list, so restoring
 those two buttons to Effects is markup plus deleting one line.
+
+### The Select tool copies a vector editor's two levels · `SETTLED` (2026-09-17)
+One click picks a room whole and shows its outline alone; a double-click opens it for editing and
+puts its corners, walls and holes in reach. The two never show at once. Showing both would put a
+bounding box's handles over every corner of every room, on a map already carrying doors, labels
+and the room card, and the curve handles planned next are the smallest target of the three.
+Reshaping costs a double-click first, which was accepted: rooms are prep work and are mostly left
+alone once drawn. A Bend tool and a Transform tool were each offered for the bar and refused - the
+whole gesture set lives on the shape itself.
+
+### A hole stops at its room's wall instead of floating free · `SETTLED` (2026-09-17)
+A dragged hole may overlap its room's wall and bite the edge; it may not leave the room entirely.
+This is a deliberate departure from the vector editor the rest of the model copies, which lets a
+subpath go anywhere: a hole clear of its room cuts nothing, so it reads as vanished rather than
+moved. Tested on the ring's average point, where a circle's and a rectangle's centroid both sit,
+because a stop that can be predicted beats an exact one. A hole whose centre is already outside -
+reachable by dragging a wall inward past it - drags free until it is home, or it could never be
+recovered. Marked reversible on product grounds.
+

@@ -81,7 +81,8 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `fogGeometry.js` | Pure fog geometry + math kernel. Unit-tested |
 | `vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Unit-tested, dependency-free |
 | `roomOps.js` | Pure Join/Trim/Cut kernel. Unit-tested |
-| `tools.js` | Drawing tools + polygon editing |
+| `tools.js` | Drawing tools; the path a drawn shape takes to a room or effect |
+| `shapeSelect.js` | The selection: its two levels, hole picking, hand edits, outline drawing |
 | `shapeMenu.js` | The one shape button and its right-click flyout |
 | `input.js` | DM mouse/wheel/keyboard, shape helpers, legend. **Drag-drop is in toolbar.js** |
 | `undo.js` | Undo/redo for fog edits |
@@ -126,7 +127,7 @@ Declarations must precede use at init time. All under `src/`:
 
 ```
 lib/pixi.min.js → lib/polygon-clipping.umd.js → renderer.js → state.js → display.js →
-video.js → fogGeometry.js → vttPlan.js → fog.js → roomOps.js → tools.js → mapLoader.js →
+video.js → fogGeometry.js → vttPlan.js → fog.js → roomOps.js → tools.js → shapeSelect.js → mapLoader.js →
 mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js →
 viewport.js → panes.js → stage.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
 input.js →
@@ -173,8 +174,8 @@ error goes through it; no `alert()` ships.
    copy or carries a separate field.
 2. **Never normalize a polygon from a fixed key list.** Backfilling a field must be an
    additive spread; a whitelist drops `cornerRadii` from every saved scene on load.
-3. **The map is the interaction surface.** Selecting a room is the Select tool's job alone.
-   A shape tool's click keeps drawing new rooms, overlapping and nested ones included.
+3. **The map is the interaction surface.** Selecting is the Select tool's job alone; a shape
+   tool's click keeps drawing, overlapping and nested rooms included.
 4. Rooms never reach the Player, so room notes are DM-only for free; no stripping guard.
 5. **Map effects live in `effects`, never in `polygons`** (`effects.js`), and are called
    effects, never tokens. They are the same record with a `material` where a room has a fog
@@ -197,17 +198,15 @@ error goes through it; no `alert()` ships.
 - **Only pure-function modules that export via `module.exports`.** Don't write tests against
   DOM-coupled code.
 - **Testability follows from decoupling, not file count.** Don't inject render state into
-  `fog.js`; its behavior is pixel output. New pure fog logic extends the `fogGeometry.js`
-  kernel, which the canvas layer calls into.
+  `fog.js`; its behavior is pixel output. New pure fog logic extends `fogGeometry.js`.
 - Deliberately untested, don't add tests here: `render.js`, `scenes.js`, `state.js`,
   `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
   `stress.js`.
-- **Never run a rig set while building** - not even `smoke`. A run is the DM's time.
-  `/commit` smoke-tests the diff and blocks on red; CI runs the full set against the built
-  `.exe`. Reproduce a CI-only layout with `--dm-size` / `--player-size`, never by pushing again.
-- **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance at the
-  table are theirs; correctness is yours. Backup, export and restore are the one exception and
-  always get their hand test: the export's save dialog is native and cannot be driven.
+- **Never run a rig set while building** - not even `smoke`. A run is the DM's time. `/commit`
+  gates the diff and CI runs the full set against the built `.exe`. See the `rig` skill.
+- **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance are
+  theirs; correctness is yours. Backup, export and restore are the exception - the save dialog is
+  native and cannot be driven.
 
 ## Guard hooks
 

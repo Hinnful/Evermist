@@ -39,7 +39,8 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `vttPlan.js` | Turns a Universal VTT floor plan's wall segments into room polygons, and reports where its openings sit. Pure geometry, no dependencies, unit-tested. |
 | `roomOps.js` | Reshapes rooms already on the map: joins the ones a drawn shape overlaps into one, trims a drawn shape out of them, and cuts one room into two along a clicked path. Wraps the vendored `polygon-clipping` library and answers with vertex lists or a refusal reason, never a throw. Unit-tested. |
 | `floorPlan.js` | The app side of that: finding the plan beside the map, the offer notice, setting Grid Size from the plan at import, and drawing the rooms and their doorways. |
-| `tools.js` | The drawing tools (brush, rectangle, circle, cone, polygon), the Door tool, and polygon editing. The cone is drawn apex-first - press at the point of origin, drag towards where it points - and commits as an ordinary polygon with a shallow arc on its far edge, so nothing downstream knows a cone from any other shape. |
+| `tools.js` | The drawing tools (brush, rectangle, circle, cone, polygon) and the Door tool, plus the shared path a drawn shape takes to become a room or an effect. The cone is drawn apex-first - press at the point of origin, drag towards where it points - and commits as an ordinary polygon with a shallow arc on its far edge, so nothing downstream knows a cone from any other shape. |
+| `shapeSelect.js` | The Select tool: what is picked, and every edit made by hand on the map. It holds two levels the way Figma does - one click picks a shape as a whole object and shows only its outline, a double-click enters edit mode and puts its vertices, walls and holes in reach. A hole is picked by clicking its empty middle, moves as one ring, and stops where it would leave its room. Also draws every room and effect outline. |
 | `input.js` | The DM's mouse and keyboard: painting with the tools, keyboard shortcuts, the legend toggle. |
 | `undo.js` | Undo/redo history for fog edits. |
 | `effects.js` | Map effects - burning ground, and the materials to come. Each is a polygon carrying a material name, drawn under the fog on both screens as a flaming border: the outline burns inward with dissolving tongues over a faint fill, with sparks, smoke and haze. Rendered by a fragment shader over the polygon's own distance field, in two PixiJS meshes per effect - an additive pass for the light (fire, fill, sparks) and a normal-blend pass for the darkening (smoke, haze). Owns the `effects` array's model and that render path. The look is a fixed set of numbers in the module with no UI over it. (The ember relight of the map grid inside a zone lives in `grid.js`.) |
@@ -345,6 +346,18 @@ channel to strip and no risk of leaking a room's notes to the TV.
 
 **Selecting a room is the Select tool's job alone.** The other tools keep drawing new rooms
 when you click, including ones that overlap or nest inside existing ones.
+
+**The Select tool works at two levels, the way a vector editor does.** One click picks a room as a
+whole object: its outline highlights and the whole thing drags, with no corner handles on screen.
+A double-click opens it for editing, which puts its corners, its walls and any hole it carries in
+reach. Escape climbs back out one level per press - the picked part, then editing, then the room
+itself. The two levels never show at once, because the map already carries doors, room labels and
+the room card.
+
+A hole is picked by clicking its empty middle, which nothing else uses: that ground reads as
+outside the room, so a click there at the object level falls through to whatever sits behind.
+A picked hole drags as one ring and Delete takes it whole. It stops where it would leave its room
+entirely, so it can hang over a wall and bite the edge but cannot float free.
 
 **The bar carries only the tools the current mode can use.** Rooms shows Select, the shape
 button, Brush, Door, Split, Merge and Cut out; Effects shows all of those but Brush and Door,

@@ -119,6 +119,20 @@ const POLY_EDGE_COLORS = {
   shroud: 'rgba(150, 80, 255, 0.8)',
 };
 const POLY_EDGE_SELECTED = '#ffd060';
+// The PART of a picked shape that is itself picked - a vertex, a hole's ring - in one colour, so
+// "what Delete takes" reads the same wherever it sits.
+const SHAPE_PART_SELECTED      = '#60a0ff';
+const SHAPE_PART_SELECTED_EDGE = '#4080ff';
+
+// ─── The selection ── read by a dozen modules, owned by shapeSelect.js ───────
+let selectedPolygonId = null;
+// -1 = no vertex selected. Also the room card's radius target: roomPanel.js derives "this corner
+// vs all corners" straight from this, so there is no separate mode flag to keep in step.
+let selectedVertexIndex = -1;
+// false = the shape is picked as an object, true = vector edit mode. See shapeSelect.js.
+let shapeEditMode = false;
+// Which hole ring of the selected shape is picked, -1 for none. Edit mode only.
+let selectedHoleIndex = -1;
 
 // ─── Map / camera ────────────────────────────────────────────────────────────
 let mapOffscreen = null;

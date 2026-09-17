@@ -1185,3 +1185,15 @@ already done, and refusing the insert makes vertex editing read as broken with n
 to explain it. The remap takes the split's own fraction and moves the door onto whichever half now
 carries it, which preserves the point exactly. The notch still caps to the wall the door ends up
 on, so a split made right beside a door draws it narrower than a cell.
+
+### A scene switch waits for the outgoing scene's own save · `SETTLED` (2026-09-17)
+`switchScene` used to start `doAutoSave()` and move on. The save's write sits inside a `toBlob`
+callback, so a switch away and back could read the store before the outgoing scene's edits landed
+in it, and the scene came back as it was two switches ago. It is awaited now, which costs one fog
+canvas encode on a switch that already awaits a scene load and a video decode.
+
+The race is only reachable where the machine is slow enough to lose it. It survived every local run
+and took a release gate down on a CI runner, three times slower. **A mutation check cannot be got
+here**: with the await removed, `floor-plan.js`'s door-survives-a-switch criterion passed three runs
+in a row on the dev machine. That criterion is the guard; the gate is where it fires.
+

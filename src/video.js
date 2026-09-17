@@ -538,7 +538,7 @@ function loadVideoFromFile(file, onVideoLoaded, onFail) {
       baseFogCtx.fillStyle = '#1a1a2e';
       baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
 
-      polygons = []; activePolygon = null; selectedPolygonId = null;
+      polygons = []; activePolygon = null; clearShapeSelection();
       nextPolygonId = 1;
       playerMapSent = false;
 

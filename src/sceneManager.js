@@ -886,12 +886,13 @@ async function persistVideoMap(file, sceneId, mimeType) {
 async function switchScene(id, _isRecovery = false) {
   if (currentScene && currentScene.id === id) return;
   const myGen = ++switchGeneration;
-  if (currentScene) doAutoSave();
+  // ⚠ AWAITED, or a switch BACK reads the store before these edits land. DECISIONS.md
+  if (currentScene) await doAutoSave();
   const prevId = currentScene ? currentScene.id : null;
   currentScene = null;
   cleanupVideo();
-  // Abort any in-flight crossfade from the outgoing scene, so its tick cannot run against
-  // orphaned snapshots. The drifting anim loop is idempotent — leave it running.
+  // Abort the outgoing crossfade, so its tick cannot run against orphaned snapshots. The drifting
+  // anim loop is idempotent - leave it running.
   stopFogTransition();
   if (!isPlayer && playerWindow && !playerWindow.closed) {
     playerWindow.postMessage({ type: 'scene-transition', phase: 'out' }, '*');
@@ -902,8 +903,8 @@ async function switchScene(id, _isRecovery = false) {
   if (myGen !== switchGeneration) return;
   if (!scene) throw new Error('Scene not found.');
 
-  // Send the destination fog colour AS SOON AS IT IS KNOWN, so the Player reaches it while the fog
-  // is still closing. ⚠ Must beat applyFogSettingsFromScene below, which would land it in a frame.
+  // The destination fog colour, AS SOON AS IT IS KNOWN, so the Player reaches it while the fog is
+  // still closing. ⚠ Must beat applyFogSettingsFromScene, which would land it a frame later.
   if (!isPlayer && playerWindow && !playerWindow.closed) {
     const destHex = scene.fogSettings && scene.fogSettings.pickedHex;
     if (destHex) playerWindow.postMessage({ type: 'scene-transition', phase: 'tint', pickedHex: destHex }, '*');
@@ -1043,8 +1044,7 @@ async function switchScene(id, _isRecovery = false) {
   polygons      = normalizeRoomFields(scene.polygons || [])
                     .map(p => decodeShapeFromSave(copyShapeRings(p)));
   nextPolygonId = scene.nextPolygonId || 1;
-  selectedPolygonId   = null;
-  selectedVertexIndex = -1;
+  clearShapeSelection();
   activePolygon = null;
   // Same additive spread the rooms above take: a field whitelist drops cornerRadii from every
   // saved effect on load. A scene predating effects carries none, clearing the outgoing scene's.
@@ -1136,7 +1136,7 @@ function handleCurrentDeleted() {
   mapBitmap = null; mapOffscreen = null; mapWidth = 0; mapHeight = 0;
   polygons = []; nextPolygonId = 1;
   clearEffects(); nextEffectId = 1;
-  selectedPolygonId = null; selectedVertexIndex = -1;
+  clearShapeSelection();
   if (typeof resetRoomLabelCache === 'function') resetRoomLabelCache();
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
   landing.style.display = '';

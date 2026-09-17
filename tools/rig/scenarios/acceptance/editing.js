@@ -8,12 +8,17 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
 //
 //   A. The Select tool picks a room, and picks the right one.
-//        clicking inside · clicking empty map · overlapping rooms · the vertex/edge/body order
+//        clicking inside · clicking empty map · overlapping rooms
+//   A2. ONE CLICK picks the room whole; a DOUBLE-CLICK opens it for editing. The two levels are
+//       never live at once, and Escape climbs one of them per press.
+//        no corner is reachable at the object level · a double-click puts one in reach ·
+//        Escape drops the corner, then edit mode, then the room
 //   B. Every geometry edit changes the room it was aimed at, and only that one.
 //        move the body · drag a vertex · drag an edge · delete a vertex, and be refused the
 //        deletion that would take a room below three corners
 //   C. An edit that starts on the map finishes wherever the mouse ends up.
-//   D. Editing does not spend undo the DM has not earned, and undo puts the room back.
+//   D. Editing does not spend undo the DM has not earned, and undo puts the room back. A press
+//      that only PICKS something spends no fog crossfade either.
 //   E. A room's fog mode can be changed after the fact, and it cycles rather than toggles.
 //   F. Corner radius reshapes the fog, not just the outline.
 //   G. Deleting removes the room and its fog together.
@@ -56,6 +61,12 @@ globalThis.__rigDrag = (x1, y1, x2, y2, releaseOnWindow) => {
   __rigMouse('mouseup', x2, y2, releaseOnWindow);
 };
 globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
+// Edit mode is entered by a real double-click, not by setting the flag: the whole point of the
+// check is that the gesture reaches it.
+globalThis.__rigDbl = (mx, my) => {
+  __rigClick(mx, my);
+  __rigMouse('dblclick', mx, my);
+};
 // ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
 // physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
 // at the table. A NAMED key carries both, because code and key are the same string for it and
@@ -118,18 +129,49 @@ module.exports = async function editing(rig) {
             'clicking where two rooms overlap selected the one UNDERNEATH, so the DM edits a ' +
             'room they cannot see the edge of');
 
-  // With a room already selected, a click near its corner takes the VERTEX rather than the body.
+  // ══ A2. One click picks the room whole; a double-click opens it for editing ══
+  rig.check(await dm.evaluate('shapeEditMode') === false,
+            'one click opened the room for editing — a click picks it as a whole object, and ' +
+            'its corners are not reachable until a double-click asks for them');
+
+  // AT THE OBJECT LEVEL a corner is not a target. Pressing one moves the whole room, which is
+  // what the bounding box will hang off later.
   const corner = await dm.evaluate('__rigById(' + a2 + ').vertices[0]');
   await dm.evaluate('__rigMouse("mousedown", ' + corner.x + ',' + corner.y + ');' +
                     ' __rigMouse("mouseup", ' + corner.x + ',' + corner.y + '); 0');
+  rig.check(await dm.evaluate('selectedVertexIndex') === -1,
+            'pressing a corner took the corner while the room was picked as a whole object, so ' +
+            'the two levels are live at once and the vertices sit under everything else');
+
+  await dm.evaluate('__rigDbl(850, 650); 0');
+  rig.check(await dm.evaluate('shapeEditMode') === true &&
+            await dm.evaluate('selectedPolygonId') === a2,
+            'a double-click on a room did not open it for editing');
+
+  // NOW the corner is a target.
+  const corner2 = await dm.evaluate('__rigById(' + a2 + ').vertices[0]');
+  await dm.evaluate('__rigMouse("mousedown", ' + corner2.x + ',' + corner2.y + ');' +
+                    ' __rigMouse("mouseup", ' + corner2.x + ',' + corner2.y + '); 0');
   rig.check(await dm.evaluate('selectedVertexIndex') === 0,
-            'pressing on a selected room\'s corner did not take the corner, so a reshape would ' +
-            'move the whole room instead');
+            'pressing a corner inside edit mode did not take it, so a reshape would move the ' +
+            'whole room instead');
+
+  // Escape climbs exactly one level per press, and never two.
   await dm.evaluate('__rigKey("Escape"); 0');
   rig.check(await dm.evaluate('selectedVertexIndex') === -1 &&
+            await dm.evaluate('shapeEditMode') === true &&
             await dm.evaluate('selectedPolygonId') === a2,
-            'Escape let go of the whole room instead of just the corner — it peels back one ' +
-            'level at a time');
+            'Escape on a picked corner left edit mode as well — it peels back one level at a time');
+  await dm.evaluate('__rigKey("Escape"); 0');
+  rig.check(await dm.evaluate('shapeEditMode') === false &&
+            await dm.evaluate('selectedPolygonId') === a2,
+            'Escape let go of the whole room instead of just edit mode');
+  await dm.evaluate('__rigKey("Escape"); 0');
+  rig.check(await dm.evaluate('selectedPolygonId') === null,
+            'Escape at the object level did not let go of the room');
+
+  // Every geometry check below edits corners and walls, so it runs inside edit mode.
+  await dm.evaluate('__rigDbl(850, 650); 0');
 
   // ══ B. Every geometry edit changes the room it was aimed at, and only that one ══
   // B1 — moving the body.
@@ -189,8 +231,9 @@ module.exports = async function editing(rig) {
   // only three are left, then ask once more. Editing the vertex array by hand instead would
   // leave the click landing outside whatever shape that produced.
   const tri = await dm.evaluate('__rigDrawShroud(1500, 950, 1750, 1200)');
-  await dm.evaluate('__rigClick(1620, 1080); 0');
-  rig.check(await dm.evaluate('selectedPolygonId') === tri, 'the room to whittle was not selected');
+  await dm.evaluate('__rigDbl(1620, 1080); 0');
+  rig.check(await dm.evaluate('selectedPolygonId') === tri && await dm.evaluate('shapeEditMode'),
+            'the room to whittle was not open for editing');
   for (let i = 0; i < 3; i++) {
     const tv = await dm.evaluate('__rigById(' + tri + ').vertices[0]');
     await dm.evaluate('__rigMouse("mousedown", ' + tv.x + ',' + tv.y + ');' +
@@ -222,6 +265,20 @@ module.exports = async function editing(rig) {
   await dm.evaluate('__rigClick(1150, 850); 0');        // a pure selection
   rig.check(await dm.evaluate('undoStack.length') === undoBefore,
             'selecting a room spent an undo step, so the DM\'s next undo does nothing visible');
+
+  // ⚠ A PICK IS NOT AN EDIT ON THE FOG SIDE EITHER. Committing a press that moved nothing runs
+  // startFogTransition and pushes the scene to the Player, which is a full fog rebuild per click.
+  // fogTransRafId is what a started crossfade leaves behind.
+  await dm.evaluate('__rigDbl(1150, 850); 0');
+  await dm.waitFor('fogTransRafId === null', 15000, 'the crossfade from the last edit to finish');
+  const pickVert = await dm.evaluate('__rigById(' + a2 + ').vertices[0]');
+  await dm.evaluate('__rigMouse("mousedown", ' + pickVert.x + ',' + pickVert.y + ');' +
+                    ' __rigMouse("mouseup", ' + pickVert.x + ',' + pickVert.y + '); 0');
+  rig.check(await dm.evaluate('selectedVertexIndex') === 0, 'the corner to pick was not taken');
+  rig.check(await dm.evaluate('fogTransRafId') === null,
+            'picking a corner started a fog crossfade, so every click on a handle rebuilds the ' +
+            'whole fog canvas and re-sends the scene to the Player');
+  await dm.evaluate('__rigKey("Escape"); __rigKey("Escape"); 0');
 
   // And a real edit DOES earn one, and undo puts the room back where it was.
   const preEdit = await dm.evaluate('__rigById(' + a2 + ').vertices[0].x');

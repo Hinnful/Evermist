@@ -18,7 +18,8 @@
     "missing:panes.js",
     "missing:stage.js",
     "missing:changelog.js",
-    "missing:changelogdata.js"
+    "missing:changelogdata.js",
+    "missing:shapeselect.js"
   ],
   "warnedBytes": 52228
 }

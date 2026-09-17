@@ -377,8 +377,7 @@ function initRoomPanel() {
 
   _rpEl('rp-close').onclick = () => {
     _rpCommitFields();
-    selectedPolygonId = null;
-    selectedVertexIndex = -1;
+    clearShapeSelection();
     drawCursor(lastScreenX, lastScreenY);
   };
 
