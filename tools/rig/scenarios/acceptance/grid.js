@@ -36,6 +36,9 @@
 //        picking a tool each hand the map back, they give back the tab arming shut unless the DM
 //        picked another one meanwhile, and the DM's own grid switch is never touched
 //      (the room card getting out of the way is room-card.js's section A, with the rooms)
+//   L. The grid the players see stays nailed to the map when the Player's screen changes size -
+//      going fullscreen, or a divider drag in two-map mode. It slides against the map otherwise,
+//      and every distance counted at the table is wrong.
 //
 // ⚠ DRIVE A SCENE SWITCH THROUGH switchScene(), NEVER THE DROPDOWN. openDropdown() calls
 // doAutoSave() before it renders, so a switch made by clicking a card persists the outgoing grid
@@ -823,4 +826,82 @@ module.exports = async function gridFeature(rig) {
   }
   await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
   await dm.evaluate('document.getElementById("btn-grid-sq").click(); 0');
+
+  // -- L. the grid stays on the map when the Player's screen changes size ----
+  // ⚠ THE CANVAS IS SCREEN-SPACE AND RESIZED IN PLACE, so its texture has to be resized with
+  // it. Left stale, the sprite is stretched by old/new: the grid still paints and still reads at
+  // the right cell size on the canvas, and only a PAN shows it moving at the wrong rate.
+  await dm.evaluate('(() => { const b = document.getElementById("btn-grid");' +
+    ' if (!b.classList.contains("active")) b.click(); return 0; })()');
+  await player.waitFor('gridEnabled && !!pixiPGridSpr', 30000, 'the Player to be painting a grid');
+
+  const gridTex = `({
+    cw: playerGridCanvas.width, ch: playerGridCanvas.height,
+    tw: pixiPGridBT ? pixiPGridBT.realWidth : null,
+    th: pixiPGridBT ? pixiPGridBT.realHeight : null,
+    sx: pixiPGridSpr ? +pixiPGridSpr.scale.x.toFixed(4) : null,
+    sy: pixiPGridSpr ? +pixiPGridSpr.scale.y.toFixed(4) : null,
+  })`;
+  // Where the camera says the nearest vertical line to the middle of the screen is, and whether
+  // the canvas actually has ink there. ⚠ Predicted from panX and zoom, never "the leftmost
+  // painted pixel": drawGridLines clips to the map's rectangle, so the left edge of the MAP reads
+  // as ink and moves on its own.
+  const lineProbe = pinned => `((pin) => {
+    const y = Math.floor(playerGridCanvas.height / 2);
+    const d = playerGridCanvas.getContext('2d')
+      .getImageData(0, y, playerGridCanvas.width, 1).data;
+    const mid = playerGridCanvas.width / 2;
+    const k = pin != null ? pin : Math.round(((mid - panX) / zoom - gridOffsetX) / gridSize);
+    const at = (gridOffsetX + k * gridSize) * zoom + panX;
+    const ink = x => {
+      let best = 0;
+      for (let i = Math.max(0, Math.round(x) - 2); i <= Math.min(playerGridCanvas.width - 1, Math.round(x) + 2); i++) {
+        if (d[i * 4 + 3] > best) best = d[i * 4 + 3];
+      }
+      return best;
+    };
+    return { k, at: +at.toFixed(1), ink: ink(at) };
+  })(${pinned == null ? 'null' : pinned})`;
+
+  // The resize the DM goes through: the Player window entering fullscreen, or a divider drag
+  // moving a half of the two-map Player screen.
+  const wasSized = await player.evaluate('({ w: innerWidth, h: innerHeight })');
+  const shrunk = Math.round(wasSized.w * 0.55);
+  await player.send('Emulation.setDeviceMetricsOverride',
+                    { width: shrunk, height: wasSized.h, deviceScaleFactor: 1, mobile: false });
+  await player.waitFor('playerGridCanvas.width === ' + shrunk, 15000,
+                       "the Player's grid canvas to follow its screen");
+  await player.evaluate('gridDirty = true; viewportDirty = true; scheduleRender(); 0');
+  await rig.sleep(500);
+
+  const tex = await player.evaluate(gridTex);
+  rig.note('Player grid texture after the screen shrank: ' + JSON.stringify(tex));
+  rig.check(tex.tw === tex.cw && tex.th === tex.ch,
+            "the Player's grid texture kept the old screen size after a resize: texture " +
+            tex.tw + 'x' + tex.th + ', canvas ' + tex.cw + 'x' + tex.ch);
+  rig.check(tex.sx === 1 && tex.sy === 1,
+            'the Player is stretching its grid over the map rather than drawing it one texel ' +
+            'per pixel: scale ' + tex.sx + 'x' + tex.sy);
+
+  const before = await player.evaluate(lineProbe(null));
+  rig.check(before.ink > 8,
+            'the Player paints no grid line where its own camera says one is, so nothing below ' +
+            'was measured: ' + JSON.stringify(before));
+  // ⚠ LESS THAN ONE CELL ON SCREEN, so the line read after the pan is the SAME line.
+  const PAN = Math.round(await player.evaluate('gridSize * zoom') * 0.4);
+  await player.evaluate('playerFollowDM = false; panX -= ' + PAN +
+                        '; viewportDirty = true; scheduleRender(); 0');
+  await rig.sleep(500);
+  const after = await player.evaluate(lineProbe(before.k));
+  rig.note('the line at ' + before.at + 'px moved to ' + after.at + 'px for a ' + PAN + 'px pan; ' +
+           'ink there ' + after.ink);
+  rig.check(Math.abs((after.at - before.at) + PAN) <= 2,
+            'the grid line the camera tracks did not move with the map: it went ' +
+            before.at + 'px to ' + after.at + 'px for a ' + PAN + 'px pan');
+  rig.check(after.ink > 8,
+            'the Player stopped painting the grid line under its own camera after a pan: ' +
+            JSON.stringify(after));
+
+  await player.send('Emulation.setDeviceMetricsOverride',
+                    { width: wasSized.w, height: wasSized.h, deviceScaleFactor: 1, mobile: false });
 };

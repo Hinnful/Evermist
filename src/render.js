@@ -115,10 +115,8 @@ function doRender() {
   if (cursorDirty) drawCursor(_cursorX, _cursorY);
 
   // ⚠ AHEAD OF THE NO-MAP RETURN. In two-map mode this window holds no map at all and the
-  // preview draws a COLUMN's, so leaving it below the return froze it on its last paint - a
-  // drag moved the Player and the picture never moved with it.
-  // ⚠ AHEAD OF THE NO-MAP RETURN. In two-map mode this window holds no map and the preview
-  // draws a COLUMN's, so below the return it froze on its last paint.
+  // preview draws a COLUMN's, so below the return it froze on its last paint - a drag moved the
+  // Player and the picture never moved with it.
   if (!isPlayer && minimapDirty) drawMinimap();
 
   if (!videoDOMActive && !mapOffscreen && !pixiMapSprite) return;

@@ -426,8 +426,14 @@ function pixiSetPlayerGrid(cvs) {
 
 // ⚠ Only where renderPlayerGrid actually repaints. This uploads a screen-sized texture, so calling
 // it per frame costs more than the fog pass itself.
+// ⚠ THE SIZE FIRST. syncSize resizes this canvas in place and BaseTexture.update() does not
+// re-read it, so a stale texture stretches the sprite and the grid slides against the map.
 function pixiUploadPlayerGrid() {
   if (!pixiPGridBT) return;
+  if (pixiPGridBT.realWidth  !== pixiPGridCvs.width ||
+      pixiPGridBT.realHeight !== pixiPGridCvs.height) {
+    pixiPGridBT.setRealSize(pixiPGridCvs.width, pixiPGridCvs.height);
+  }
   if (pixiPGridSpr) {
     pixiPGridSpr.width = pixiPGridCvs.width;
     pixiPGridSpr.height = pixiPGridCvs.height;

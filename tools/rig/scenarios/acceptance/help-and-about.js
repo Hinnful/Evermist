@@ -16,7 +16,8 @@
 //      the build was cut with — never a literal in the page that goes stale on the next bump.
 //   E. What's new opens from the About footer, sits ABOVE its own dimmer so the DM can reach
 //      it, marks the version they are running, opens any release to the full note it
-//      shipped with, and closes every way it offers.
+//      shipped with, and closes every way it offers. A release whose note is one line has
+//      nothing under it and gets no caret.
 //   F. A ready update announces itself on screen, in the corner and not over the map, and the
 //      restart after it says what version arrived. A first-ever run announces nothing.
 //   G. The Player screen carries neither the button nor the panel.
@@ -258,8 +259,15 @@ module.exports = async function helpAndAboutFeature(rig) {
 
   // ⚠ THE BODY IS HELD AGAINST changelogData.js, not merely found non-empty. A row that expands
   // to the summary again would pass a length check and tell the DM nothing new.
+  //
+  // ⚠ THE FIRST ROW THAT HAS SOMETHING UNDER IT, never rows[0]. A release whose commit carried
+  // a summary alone has no body, and no tag either until the gate that is reading this has passed,
+  // so the app gives it no caret on purpose. Reading rows[0] failed a one-line release.
   const expanded = await dm.evaluate(`(() => {
-    const row = document.querySelector('#cl-body .cl-entry');
+    const rows = Array.from(document.querySelectorAll('#cl-body .cl-entry'));
+    const i = rows.findIndex(r => r.classList.contains('cl-has-more'));
+    if (i < 0) return { none: true };
+    const row = rows[i];
     row.querySelector('.cl-head-btn').click();
     const full = row.querySelector('.cl-full');
     const hitAt = (el) => { const b = el.getBoundingClientRect();
@@ -267,15 +275,24 @@ module.exports = async function helpAndAboutFeature(rig) {
       return !!(hit && (hit === el || el.contains(hit))); };
     const gh = row.querySelector('.cl-github');
     return {
+      i,
       open: !full.hidden && full.getClientRects().length > 0,
       text: (row.querySelector('.cl-text') || {}).textContent || '',
-      want: CHANGELOG[0].body,
-      tag: CHANGELOG[0].tag || '',
+      want: CHANGELOG[i].body,
+      tag: CHANGELOG[i].tag || '',
       github: !!gh,
       githubHit: gh ? hitAt(gh) : false,
       collapsed: (() => { row.querySelector('.cl-head-btn').click(); return full.hidden; })(),
+      // A release with neither a note body nor a page to open must offer no caret, or the DM
+      // presses one and gets an empty box.
+      bareWithCaret: rows.filter((r, n) => r.classList.contains('cl-has-more') &&
+                                           !CHANGELOG[n].body && !CHANGELOG[n].tag).length,
     };
   })()`);
+  rig.check(!expanded.none, 'no release in the panel has anything under it to open');
+  rig.check(expanded.bareWithCaret === 0,
+            expanded.bareWithCaret + ' release(s) with a one-line note offer a caret, so the DM ' +
+            'presses it and gets an empty box');
   rig.check(expanded.open,
             'a release in the panel does not open, so the DM sees one line and never the rest of ' +
             'what that version changed');
@@ -289,7 +306,7 @@ module.exports = async function helpAndAboutFeature(rig) {
   // ⚠ THE CARET IS A ::after ON THE ROW, so it has no box to read. Its lane is the row's right
   // padding, and the check is that the date ends before that lane starts.
   const lane = await dm.evaluate(`(() => {
-    const row = document.querySelector('#cl-body .cl-entry');
+    const row = document.querySelectorAll('#cl-body .cl-entry')[${expanded.i}];
     const rowBox = row.getBoundingClientRect();
     const dateBox = row.querySelector('.cl-date').getBoundingClientRect();
     return { gap: +(rowBox.right - dateBox.right).toFixed(2) };
