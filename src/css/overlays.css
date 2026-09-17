@@ -321,3 +321,30 @@
      specificity, so the line came back on the TV the moment a map started loading. */
   body:not(.player-mode) #landing.loading #landing-loading { display: block; }
 
+
+/* The no-answer notice (confirmDialog.js noticeToast). Above the toolbar so it never lands on the
+   bar the DM is about to press, and it never takes pointer events - it has nothing to click. */
+#notice-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 120px;
+  transform: translate(-50%, 8px);
+  z-index: 2400;
+  max-width: 420px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  background: rgba(24, 26, 38, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+  color: #e8e9f0;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+#notice-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

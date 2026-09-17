@@ -7,6 +7,13 @@
 const clip = typeof polygonClipping !== 'undefined' ? polygonClipping
            : require('polygon-clipping');
 
+// The library reads straight lines only, so a curved wall is sampled on the way in and put back
+// as a curve on the way out — shapeDetail.js does both halves.
+var flattenShapeForClip;
+if (typeof module !== 'undefined' && module.exports) {
+  ({ flattenShapeForClip } = require('./shapeDetail'));
+}
+
 // ⚠ THE LIBRARY THROWS, so every call goes through runClip(). Uncaught, a throw lands in a
 // mouseup handler after pushUndo() has run: a stray undo entry and a dead tool.
 const REASON_FAILED = 'Those shapes could not be combined. Nothing changed.';
@@ -28,7 +35,9 @@ function roomOpMinArea(gridSize) {
 // joinShapes and trimShapes with no record behind it. A plain array is one ring.
 function toRings(src) {
   if (!src) return [];
-  const lists = Array.isArray(src) ? [src] : [src.vertices || []].concat(src.holes || []);
+  const lists = Array.isArray(src) ? [src]
+              : (src.handles ? flattenShapeForClip(src)
+                             : [src.vertices || []].concat(src.holes || []));
   const rings = [];
   for (const verts of lists) {
     if (!verts || verts.length < 3) continue;

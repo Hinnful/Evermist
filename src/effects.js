@@ -280,17 +280,20 @@ void main(){
 // Trace the outline as POINTS with the corners rounded — buildRoundedPolyPath's fillet geometry,
 // sampled into vertices the distance shader can walk, which is what rounds an effect's fire. Each
 // corner becomes a short arc, decimated to fit the shader's vertex cap.
-function _roundRing(verts, defaultR, perVertR, offset) {
+function _roundRing(verts, defaultR, perVertR, offset, handles) {
   const n = verts.length;
   if (n < 3) return verts.map(v => ({ x: v.x, y: v.y }));
-  const getR = i => (perVertR && perVertR[offset + i] != null) ? perVertR[offset + i] : defaultR;
+  // An anchor with handles is sharp, matching buildRoundedPolyPath: a radius needs two straight
+  // tangents and a bent wall gives it neither.
+  const getR = i => handleAt(handles, offset + i) ? 0
+                  : ((perVertR && perVertR[offset + i] != null) ? perVertR[offset + i] : defaultR);
   const out = [];
   for (let i = 0; i < n; i++) {
     const r = getR(i) || 0;
     const prev = verts[(i - 1 + n) % n], curr = verts[i], next = verts[(i + 1) % n];
     const dPrev = Math.hypot(curr.x - prev.x, curr.y - prev.y);
     const dNext = Math.hypot(next.x - curr.x, next.y - curr.y);
-    if (r <= 0 || dPrev === 0 || dNext === 0) { out.push({ x: curr.x, y: curr.y }); continue; }
+    if (r <= 0 || dPrev === 0 || dNext === 0) { out.push({ x: curr.x, y: curr.y }); pushCurve(i); continue; }
     const maxR = Math.min(r, dPrev / 2, dNext / 2);
     const ux = (prev.x - curr.x) / dPrev, uy = (prev.y - curr.y) / dPrev;
     const vx = (next.x - curr.x) / dNext, vy = (next.y - curr.y) / dNext;
@@ -313,8 +316,20 @@ function _roundRing(verts, defaultR, perVertR, offset) {
       const a = a1 + da * (s / steps);
       out.push({ x: cx + Math.cos(a) * maxR, y: cy + Math.sin(a) * maxR });
     }
+    pushCurve(i);
   }
   return out;
+
+  // The wall LEAVING vertex i, sampled when it is bent. The shader walks straight points only, so
+  // a curved effect spends more of the vertex cap than a straight one and decimates sooner.
+  function pushCurve(i) {
+    const j = (i + 1) % n;
+    if (!edgeIsCurved(handles, offset + i, offset + j)) return;
+    const c = edgeCubic(verts[i], verts[j], handleAt(handles, offset + i), handleAt(handles, offset + j));
+    const pts = sampleCubic(c[0], c[1], c[2], c[3], CURVE_SAMPLE_STEPS);
+    pts.pop();                        // the wall's far anchor is the next turn's own point
+    for (const pt of pts) out.push(pt);
+  }
 }
 
 function _decimate(ring, cap) {
@@ -332,7 +347,7 @@ function _roundedPolyRings(poly, defaultR, perVertR) {
   const rounded = [];
   let offset = 0;
   for (const ring of rings) {
-    rounded.push(_roundRing(ring, defaultR, perVertR, offset));
+    rounded.push(_roundRing(ring, defaultR, perVertR, offset, poly.handles));
     offset += ring.length;
   }
   const total = rounded.reduce((t, r) => t + r.length, 0);

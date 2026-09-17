@@ -120,6 +120,27 @@ function _cdBuild() {
   });
 }
 
+// ─── Notice ───────────────────────────────────────────────────────────────────
+// A statement that needs no answer at all, for something the app did that the DM would otherwise
+// not see. It clears itself, because a repair comes in runs and a button on each one is friction.
+// ⚠ NOT FOR AN ERROR — every error goes through messageDialog, which waits to be read.
+let _noticeEl = null, _noticeTimer = 0;
+const NOTICE_MS = 4000;
+
+function noticeToast(text) {
+  if (!text) return;
+  if (!_noticeEl) {
+    _noticeEl = document.createElement('div');
+    _noticeEl.id = 'notice-toast';
+    document.body.appendChild(_noticeEl);
+    _noticeEl.addEventListener('mousedown', e => e.stopPropagation());
+  }
+  _noticeEl.textContent = text;
+  _noticeEl.classList.add('show');
+  if (_noticeTimer) clearTimeout(_noticeTimer);
+  _noticeTimer = setTimeout(() => { _noticeEl.classList.remove('show'); _noticeTimer = 0; }, NOTICE_MS);
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { confirmDialog, messageDialog };
+  module.exports = { confirmDialog, messageDialog, noticeToast };
 }

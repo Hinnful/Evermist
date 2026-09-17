@@ -24,6 +24,16 @@ let holeDragWasStuck = false;
 // ⚠ PUSHED ON THE FIRST MOVEMENT, never on mousedown: selecting moves nothing, so a push there
 // spends a Ctrl+Z and a fog-canvas clone per selection. ⚠ ALSO THE "DID THIS DRAG WRITE ANYTHING"
 // flag on release - committing a press that only PICKED rebuilds the fog and re-sends the scene.
+// Ctrl+drag bends a wall; the two control points of the SELECTED vertex can then be dragged alone.
+let isBendingEdge = false;
+let bendEdgeIndex = -1, bendEndFlat = -1;
+let bendT = 0.5;
+let bendOrigCubic = null;
+let bendStartMapX = 0, bendStartMapY = 0;
+let bendMoved = false;
+let isDraggingHandle = false;
+let handleDragFlat = -1, handleDragPart = 'out';
+
 let _dragUndoPushed = false;
 function armDragUndo()  { _dragUndoPushed = false; }
 function pushDragUndo() { if (!_dragUndoPushed) { _dragUndoPushed = true; pushUndo(); } }
@@ -66,9 +76,17 @@ function pointInShape(px, py, poly) {
   const verts = poly && poly.vertices;
   if (!verts || verts.length < 3) return false;
   const holes = polyHoleRings(poly);
-  if (!holes.length) return pointInPolygon(px, py, verts);
-  let inside = pointInPolygon(px, py, verts);
-  for (const ring of holes) if (pointInPolygon(px, py, ring)) inside = !inside;
+  // A BENT WALL bows away from the straight line between its anchors, so a click in the bulge has
+  // to be tested against the curve or the room has a dead strip along it.
+  const h = poly.handles;
+  const flat = (ring, off) => (h ? flattenRing(ring, h, off) : ring);
+  if (!holes.length) return pointInPolygon(px, py, flat(verts, 0));
+  let inside = pointInPolygon(px, py, flat(verts, 0));
+  let off = verts.length;
+  for (const ring of holes) {
+    if (pointInPolygon(px, py, flat(ring, off))) inside = !inside;
+    off += ring.length;
+  }
   return inside;
 }
 
@@ -118,13 +136,52 @@ function findVertexAt(poly, mapX, mapY) {
   return -1;
 }
 
+// The flat index of the wall's far anchor. A ring wraps, so the last wall ends back at its first.
+function edgeEndFlat(ring, i, flat) {
+  return flat - i + ((i + 1) % ring.length);
+}
+
+// What a wall is hit-tested against: itself when straight, its sampled curve when bent.
+function edgePolyline(poly, ring, i, flat) {
+  const a = ring[i], b = ring[(i + 1) % ring.length];
+  const fb = edgeEndFlat(ring, i, flat);
+  if (!edgeIsCurved(poly.handles, flat, fb)) return [a, b];
+  const c = edgeCubic(a, b, handleAt(poly.handles, flat), handleAt(poly.handles, fb));
+  return [a].concat(sampleCubic(c[0], c[1], c[2], c[3], CURVE_SAMPLE_STEPS));
+}
+
+function distToEdge(poly, ring, i, flat, mapX, mapY) {
+  const pts = edgePolyline(poly, ring, i, flat);
+  let best = Infinity;
+  for (let k = 0; k + 1 < pts.length; k++) {
+    const d = distPointToSegment(mapX, mapY, pts[k].x, pts[k].y, pts[k + 1].x, pts[k + 1].y);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+// The point on a wall nearest the cursor, with `t` the fraction of the wall's own LENGTH — what a
+// door and a vertex insert both key off.
+function closestOnEdge(poly, ring, i, flat, mapX, mapY) {
+  const pts = edgePolyline(poly, ring, i, flat);
+  let best = Infinity, bestPt = pts[0], bestRun = 0, run = 0, total = 0;
+  for (let k = 0; k + 1 < pts.length; k++) {
+    const seg = Math.hypot(pts[k + 1].x - pts[k].x, pts[k + 1].y - pts[k].y);
+    const q = closestPointOnSegment(mapX, mapY, pts[k].x, pts[k].y, pts[k + 1].x, pts[k + 1].y);
+    const d = Math.hypot(mapX - q.x, mapY - q.y);
+    if (d < best) { best = d; bestPt = q; bestRun = total + Math.hypot(q.x - pts[k].x, q.y - pts[k].y); }
+    total += seg;
+  }
+  run = total > 0 ? bestRun / total : 0.5;
+  return { pt: bestPt, t: Math.max(0, Math.min(1, run)) };
+}
+
 function findEdgeAt(poly, mapX, mapY) {
   const hitR = 10 / zoom;
   let flat = 0;
   for (const verts of polyRings(poly)) {
     for (let i = 0; i < verts.length; i++, flat++) {
-      const a = verts[i], b = verts[(i + 1) % verts.length];
-      if (distPointToSegment(mapX, mapY, a.x, a.y, b.x, b.y) < hitR) return flat;
+      if (distToEdge(poly, verts, i, flat, mapX, mapY) < hitR) return flat;
     }
   }
   return -1;
@@ -135,6 +192,29 @@ function editCornerRadii(poly, edit) {
                                 : new Array(flatVertexCount(poly)).fill(null);
   edit(next);
   poly.cornerRadii = next;
+}
+
+// ⚠ SPLICED WHEREVER cornerRadii IS: both are flat-index parallel arrays, and one left behind puts
+// every later curve on the wrong wall.
+function editHandles(poly, edit) {
+  const next = poly.handles ? poly.handles.slice()
+                            : new Array(flatVertexCount(poly)).fill(null);
+  edit(next);
+  poly.handles = next.some(h => h) ? next : undefined;
+  if (!poly.handles) delete poly.handles;
+}
+
+// Writes one control point as an offset from its anchor, and ⚠ CLEARS THAT ANCHOR'S RADIUS —
+// an anchor carries a corner radius or handles, never both.
+function setShapeHandle(poly, flat, part, dx, dy) {
+  editHandles(poly, hs => {
+    const h = hs[flat] ? { ...hs[flat] } : { ix: 0, iy: 0, ox: 0, oy: 0 };
+    if (part === 'out') { h.ox = dx; h.oy = dy; } else { h.ix = dx; h.iy = dy; }
+    hs[flat] = (h.ix || h.iy || h.ox || h.oy) ? h : null;
+  });
+  if (poly.handles && poly.handles[flat] && poly.cornerRadii) {
+    editCornerRadii(poly, r => { r[flat] = 0; });
+  }
 }
 
 // Copied, edited, reassigned, never spliced in place. A ring left under three points is dropped.
@@ -161,6 +241,7 @@ function deleteShapeVertex(poly, flat) {
   if (ref.ring === 0) poly.vertices.splice(ref.i, 1);
   else editHoles(poly, hs => { hs[ref.ring - 1].splice(ref.i, 1); });
   if (poly.cornerRadii) editCornerRadii(poly, r => r.splice(at, gone));
+  if (poly.handles) editHandles(poly, h => h.splice(at, gone));
   if (poly.doors) {
     poly.doors = dropRing
       ? poly.doors.filter(d => d.edge < at || d.edge >= at + gone)
@@ -182,6 +263,7 @@ function deleteShapeHole(poly, holeIdx) {
   pushUndo();
   editHoles(poly, hs => { hs.splice(holeIdx, 1); });
   if (poly.cornerRadii) editCornerRadii(poly, r => r.splice(at, gone));
+  if (poly.handles) editHandles(poly, h => h.splice(at, gone));
   if (poly.doors) {
     poly.doors = poly.doors.filter(d => d.edge < at || d.edge >= at + gone)
                            .map(d => ({ ...d, edge: d.edge >= at + gone ? d.edge - gone : d.edge }));
@@ -199,15 +281,74 @@ function ringCentre(ring) {
 
 function holeStaysOnRoom(poly, movedRing) {
   const c = ringCentre(movedRing);
-  return pointInPolygon(c.x, c.y, poly.vertices);
+  return pointInPolygon(c.x, c.y,
+    poly.handles ? flattenRing(poly.vertices, poly.handles, 0) : poly.vertices);
 }
 
 // ─── Mouse ────────────────────────────────────────────────────────────────────
-function selectMouseDown(raw) {
+// The SELECTED vertex's two control points, in map space. Nothing else shows handles, or the map
+// carries two per corner of every room.
+function selectedHandlePoints(poly) {
+  if (!shapeEditMode || selectedVertexIndex < 0) return [];
+  const h = handleAt(poly.handles, selectedVertexIndex);
+  const ref = h ? flatVertexRef(poly, selectedVertexIndex) : null;
+  if (!ref) return [];
+  const v = polyRings(poly)[ref.ring][ref.i];
+  const out = [];
+  if (h.ox || h.oy) out.push({ part: 'out', x: v.x + h.ox, y: v.y + h.oy, anchor: v });
+  if (h.ix || h.iy) out.push({ part: 'in',  x: v.x + h.ix, y: v.y + h.iy, anchor: v });
+  return out;
+}
+
+function findHandleAt(poly, mapX, mapY) {
+  const hitR = Math.min(9 / zoom, 28);
+  for (const p of selectedHandlePoints(poly)) {
+    if (Math.hypot(mapX - p.x, mapY - p.y) < hitR) return p;
+  }
+  return null;
+}
+
+// Ctrl+drag a wall bends it, Figma's gesture. THE GRAB POINT DECIDES THE SHAPE: the drag is
+// shared between the wall's two control points by their weight at t, so the curve leans where it
+// was grabbed. A single bow number would arc symmetrically, which is why it was refused.
+function startBend(poly, ei, raw) {
+  const ref = flatVertexRef(poly, ei);
+  if (!ref) return false;
+  const ring = polyRings(poly)[ref.ring];
+  const fb = edgeEndFlat(ring, ref.i, ei);
+  const near = closestOnEdge(poly, ring, ref.i, ei, raw.x, raw.y);
+  armDragUndo();
+  isBendingEdge = true;
+  bendEdgeIndex = ei;
+  bendEndFlat = fb;
+  // Clamped off the ends, where one control point's weight reaches zero and the share divides by it.
+  bendT = Math.max(0.05, Math.min(0.95, near.t));
+  bendOrigCubic = edgeCubic(ring[ref.i], ring[(ref.i + 1) % ring.length],
+                            handleAt(poly.handles, ei), handleAt(poly.handles, fb));
+  bendStartMapX = raw.x;
+  bendStartMapY = raw.y;
+  bendMoved = false;
+  return true;
+}
+
+function straightenBentEdge(poly) {
+  setShapeHandle(poly, bendEdgeIndex, 'out', 0, 0);
+  setShapeHandle(poly, bendEndFlat, 'in', 0, 0);
+}
+
+function selectMouseDown(raw, e) {
   const selPoly = findActiveShape();
 
   if (selPoly && shapeEditMode) {
-    // Priority inside edit mode: vertex, then edge, then a hole's empty middle.
+    // Priority inside edit mode: a curve handle, then vertex, then edge, then a hole's middle.
+    const hp = findHandleAt(selPoly, raw.x, raw.y);
+    if (hp) {
+      armDragUndo();
+      isDraggingHandle = true;
+      handleDragFlat = selectedVertexIndex;
+      handleDragPart = hp.part;
+      return;
+    }
     const vi = findVertexAt(selPoly, raw.x, raw.y);
     if (vi >= 0) {
       armDragUndo();
@@ -218,6 +359,7 @@ function selectMouseDown(raw) {
     }
     const ei = findEdgeAt(selPoly, raw.x, raw.y);
     if (ei >= 0) {
+      if (e && e.ctrlKey && startBend(selPoly, ei, raw)) return;
       armDragUndo();
       isDraggingEdge = true;
       edgeDragIndex = ei;
@@ -258,6 +400,7 @@ function selectMouseDown(raw) {
 function selectHoverCursor(pos) {
   const selPoly = findActiveShape();
   if (selPoly && shapeEditMode) {
+    if (findHandleAt(selPoly, pos.x, pos.y)) return 'pointer';
     if (findVertexAt(selPoly, pos.x, pos.y) >= 0) return 'pointer';
     if (findEdgeAt(selPoly, pos.x, pos.y) >= 0) return 'grab';
     if (findHoleAt(selPoly, pos.x, pos.y) >= 0) return 'move';
@@ -266,6 +409,51 @@ function selectHoverCursor(pos) {
 }
 
 function selectMouseMove(pos, screenX, screenY) {
+  if (isBendingEdge && selectedPolygonId != null) {
+    const poly = findActiveShape();
+    if (poly && bendOrigCubic) {
+      const dx = pos.x - bendStartMapX, dy = pos.y - bendStartMapY;
+      if (dx || dy) bendMoved = true;
+      const t = bendT, u = 1 - t;
+      const w1 = 3 * u * u * t, w2 = 3 * u * t * t;
+      const q = w1 * w1 + w2 * w2;
+      const p0 = bendOrigCubic[0], c1 = bendOrigCubic[1];
+      const c2 = bendOrigCubic[2], p3 = bendOrigCubic[3];
+      const n1 = { x: c1.x + dx * w1 / q, y: c1.y + dy * w1 / q };
+      const n2 = { x: c2.x + dx * w2 / q, y: c2.y + dy * w2 / q };
+      const span = Math.hypot(p3.x - p0.x, p3.y - p0.y) || 1;
+      pushDragUndo();
+      // Dragged back near straight it SNAPS to straight, so flattening a wall needs no key at all.
+      if (Math.hypot(n1.x - p0.x, n1.y - p0.y) < span * CURVE_FLAT_EPS &&
+          Math.hypot(n2.x - p3.x, n2.y - p3.y) < span * CURVE_FLAT_EPS) {
+        straightenBentEdge(poly);
+      } else {
+        setShapeHandle(poly, bendEdgeIndex, 'out', n1.x - p0.x, n1.y - p0.y);
+        setShapeHandle(poly, bendEndFlat, 'in', n2.x - p3.x, n2.y - p3.y);
+      }
+      shapeGeometryChanged();
+      fogDirty = true;
+      scheduleRender();
+      drawCursor(screenX, screenY);
+    }
+    return true;
+  }
+
+  if (isDraggingHandle && selectedPolygonId != null) {
+    const poly = findActiveShape();
+    const ref = poly ? flatVertexRef(poly, handleDragFlat) : null;
+    if (ref) {
+      const v = polyRings(poly)[ref.ring][ref.i];
+      pushDragUndo();
+      setShapeHandle(poly, handleDragFlat, handleDragPart, pos.x - v.x, pos.y - v.y);
+      shapeGeometryChanged();
+      fogDirty = true;
+      scheduleRender();
+      drawCursor(screenX, screenY);
+    }
+    return true;
+  }
+
   if (isDraggingVertex && selectedPolygonId != null) {
     const poly = findActiveShape();
     const ref = poly ? flatVertexRef(poly, selectedVertexIndex) : null;
@@ -366,13 +554,22 @@ function selectMouseMove(pos, screenX, screenY) {
 }
 
 function selectDragging() {
-  return isDraggingPolygon || isDraggingVertex || isDraggingEdge || isDraggingHole;
+  return isDraggingPolygon || isDraggingVertex || isDraggingEdge || isDraggingHole ||
+         isBendingEdge || isDraggingHandle;
 }
 
 function selectMouseUp() {
   if (!selectDragging()) return false;
+  // Ctrl+CLICK, with no drag behind it, straightens the wall instead of bending it.
+  if (isBendingEdge && !bendMoved) {
+    const poly = findActiveShape();
+    if (poly) { pushDragUndo(); straightenBentEdge(poly); shapeGeometryChanged(); fogDirty = true; }
+  }
   const wrote = _dragUndoPushed;
-  const reshaped = isDraggingVertex || isDraggingEdge || isDraggingHole;
+  const reshaped = isDraggingVertex || isDraggingEdge || isDraggingHole ||
+                   isBendingEdge || isDraggingHandle;
+  isBendingEdge = isDraggingHandle = false;
+  bendOrigCubic = null;
   isDraggingVertex = isDraggingEdge = isDraggingHole = isDraggingPolygon = false;
   edgeDragOrigVerts = null;
   holeDragOrigRing = null;
@@ -402,13 +599,37 @@ function selectDblClick(raw) {
   pushUndo();
   const ring = polyRings(poly)[ref.ring];
   const a = ring[ref.i], b = ring[(ref.i + 1) % ring.length];
-  const pt = closestPointOnSegment(raw.x, raw.y, a.x, a.y, b.x, b.y);
-  const span = Math.hypot(b.x - a.x, b.y - a.y);
-  const splitT = span ? Math.hypot(pt.x - a.x, pt.y - a.y) / span : 0.5;
+  const fb = edgeEndFlat(ring, ref.i, ei);
+  const curved = edgeIsCurved(poly.handles, ei, fb);
+  const near = closestOnEdge(poly, ring, ref.i, ei, raw.x, raw.y);
+  const splitT = near.t;
+  // A curved wall SPLITS EXACTLY: de Casteljau gives two cubics tracing the same curve, so a new
+  // point never flattens the bend it landed on. A straight wall just takes the point.
+  const cut = curved
+    ? splitCubic(...edgeCubic(a, b, handleAt(poly.handles, ei), handleAt(poly.handles, fb)), splitT)
+    : null;
+  const pt = cut ? { ...cut.mid } : near.pt;
   if (ref.ring === 0) poly.vertices.splice(ref.i + 1, 0, pt);
   else editHoles(poly, hs => { hs[ref.ring - 1].splice(ref.i + 1, 0, pt); });
   // Both are keyed by the FLAT index, so a point added to a hole shifts every one after it.
   if (poly.cornerRadii) editCornerRadii(poly, r => r.splice(ei + 1, 0, null));
+  if (poly.handles || cut) {
+    editHandles(poly, hs => {
+      hs.splice(ei + 1, 0, null);
+      if (!cut) return;
+      const fbAfter = fb > ei ? fb + 1 : fb;
+      const set = (k, part, p, anchor) => {
+        const h = hs[k] ? { ...hs[k] } : { ix: 0, iy: 0, ox: 0, oy: 0 };
+        if (part === 'out') { h.ox = p.x - anchor.x; h.oy = p.y - anchor.y; }
+        else { h.ix = p.x - anchor.x; h.iy = p.y - anchor.y; }
+        hs[k] = (h.ix || h.iy || h.ox || h.oy) ? h : null;
+      };
+      set(ei, 'out', cut.left[1], a);
+      set(ei + 1, 'in', cut.left[2], pt);
+      set(ei + 1, 'out', cut.right[1], pt);
+      set(fbAfter, 'in', cut.right[2], b);
+    });
+  }
   if (poly.doors) poly.doors = remapDoorsForVertexChange(poly.doors, ei, 1, splitT);
   selectedVertexIndex = ei + 1;
   selectedHoleIndex = -1;
@@ -501,7 +722,7 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   cursorCtx.beginPath();
   const cr = (poly.cornerRadius || 0) * zoom;
   const pvR = poly.cornerRadii ? poly.cornerRadii.map(rv => (rv != null ? rv : (poly.cornerRadius || 0)) * zoom) : null;
-  buildRoundedPolyPath(cursorCtx, sv, cr, pvR, svHoles);
+  buildRoundedPolyPath(cursorCtx, sv, cr, pvR, svHoles, scaleHandles(poly.handles, zoom));
   cursorCtx.stroke();
 
   if (dimmed) { cursorCtx.restore(); return; }
@@ -540,6 +761,28 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
     cursorCtx.shadowBlur  = 0;
     cursorCtx.strokeStyle = isSelVert ? SHAPE_PART_SELECTED_EDGE : 'rgba(255,255,255,0.5)';
     cursorCtx.lineWidth   = isSelVert ? 2 : 1.5;
+    cursorCtx.stroke();
+  }
+
+  // Curve handles, for the SELECTED vertex alone. Drawn last so a handle sitting over a wall or a
+  // neighbouring dot stays grabbable, and small enough to read as secondary to the corner itself.
+  for (const h of selectedHandlePoints(poly)) {
+    const a = toScreen(h.anchor.x, h.anchor.y);
+    const c = toScreen(h.x, h.y);
+    cursorCtx.globalAlpha = 1;
+    cursorCtx.shadowBlur = 0;
+    cursorCtx.strokeStyle = 'rgba(255,255,255,0.55)';
+    cursorCtx.lineWidth = 1;
+    cursorCtx.beginPath();
+    cursorCtx.moveTo(a.sx, a.sy);
+    cursorCtx.lineTo(c.sx, c.sy);
+    cursorCtx.stroke();
+    cursorCtx.beginPath();
+    cursorCtx.arc(c.sx, c.sy, 4.5, 0, Math.PI * 2);
+    cursorCtx.fillStyle = SHAPE_PART_SELECTED;
+    cursorCtx.fill();
+    cursorCtx.strokeStyle = '#ffffff';
+    cursorCtx.lineWidth = 1.5;
     cursorCtx.stroke();
   }
 

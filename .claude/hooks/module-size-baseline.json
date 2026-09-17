@@ -39,6 +39,7 @@
     "src/video.js": 30518,
     "src/pdfLayout.js": 4554,
     "src/moduleText.js": 39644,
-    "src/shapeSelect.js": 23189
+    "src/shapeSelect.js": 23189,
+    "src/shapeDetail.js": 10966
   }
 }

@@ -56,8 +56,9 @@ two rooms with no selection at all.
 Three calls fell out of it. A join takes the **most hidden** fog mode of its parts, never the
 earliest one's, so it cannot hand the table ground that was shrouded a moment earlier. A result
 that would leave a hole is refused whole, because a room is one ring of points and storing a
-second one would change every saved scene. And rounding and door marks are dropped rather than
-remapped, for the reason `applyShapePlan` gives.
+second one would change every saved scene — **reversed 2026-09-12, a repair now leaves a hole.**
+And rounding and door marks were dropped rather than remapped — **reversed 2026-09-17: see "A
+repair carries the curve, the radius and the door" below.**
 
 ### Cut is its own geometry, not a thin Trim · `SETTLED` (2026-09-02)
 Trim can already split a room by removing a strip, so a separate Cut looks redundant. It is not:
@@ -66,6 +67,62 @@ cave where it puts a fogged line across open rock. A repair that leaves no gap w
 something a difference operation can produce, so Cut is hand-written ring walking in
 `roomOps.js`, deliberately outside the clipping library; `cutRing` says how it keeps the two
 pieces flush.
+
+### A wall curves through bezier handles, and the bend gesture sets them · `SETTLED` (2026-09-17)
+A wall is a cubic between its two anchors, and each anchor carries `{ix,iy,ox,oy}` — offsets to
+its incoming and outgoing control point, flat-indexed beside `cornerRadii`. Ctrl+drag a wall bends
+it and Ctrl+click straightens it, Figma's own gesture; no Bend tool went on the bar.
+
+**A single bow number per edge was proposed and rejected the same day.** It gives a symmetric arc,
+and a bend has to lean toward where the wall was grabbed: the drag is shared between the two
+control points by their weight at that point, which is what a bow cannot express. A bend dragged
+back near straight snaps flat, so undoing one needs no key.
+
+**The two handles are INDEPENDENT, and a mirrored rule was rejected with them.** A round tower
+meeting a straight corridor needs a sharp corner between a curved wall and a flat one, and
+mirroring would smooth every anchor. **An anchor carries a corner radius OR handles, never both** —
+a fillet needs two straight tangents, so a bent anchor gives its radius up rather than render a
+shape nothing can build.
+
+Offsets rather than absolute control points, because a handle then rides its anchor through a
+move, a rotate and a scale with no work at all.
+
+### A repair carries the curve, the radius and the door · `SETTLED` (2026-09-17)
+**This REVERSES the 2026-09-02 call above**, where Join, Trim and Cut dropped `cornerRadii` and
+`doors` from every shape they touched. The drop was cheap and it threw away work the DM had done
+by hand on walls the repair never came near.
+
+`shapeDetail.js` holds both halves. A curve is sampled into straight points on the way into the
+clipping library, and the answer is matched back onto the walls it came from by coordinate — the
+library repeats a surviving input point bit for bit. Each surviving stretch of wall is put back
+with de Casteljau, so a wall the repair passed by keeps its shape to the last decimal and a wall
+it cut through keeps the half that survived. A corner radius rides its anchor.
+
+**A door whose wall the repair removed is the one thing with nowhere to go.** It is dropped and a
+`noticeToast` says how many went — a self-clearing line, because a repair comes in runs and a button
+on each one is friction. A radius lost with its corner raises nothing; the cut that took it is the
+one just drawn.
+
+**⚠ ONLY THE FLATTENING'S OWN SAMPLE POINTS MAY BE DISCARDED,** and they are keyed for it. A repair
+puts new corners exactly ON a wall - a Trim's notch does it four times - and matching by distance
+alone reads those as sampling, deletes them and widens the cut. Caught by `room-repair.js`.
+
+### A saved room with a curve persists as a shroud · `SETTLED` (2026-09-17)
+The same call the holes feature made in 2.11.0, extended. An older build draws a bent wall as the
+straight line between its anchors, so a wall bent inward would uncover ground the curve was cutting
+away — fog failing OPEN on the TV after a rollback. Such a room is written as a shroud carrying its
+real mode. **`modeWithHoles` keeps its name and covers both**: an old build ignores the field
+either way, and a second field would mean a second decode branch for no gain.
+
+### Doors ride a curved wall on its own arc · `SETTLED` (2026-09-17)
+A door is `{edge, t}`, and `t` is a fraction of the wall's LENGTH. `doorEdgeFrame` now builds the
+sampled arc of a bent wall and reports its arc length, so a notch placed at a half stays halfway
+along the curve instead of sliding to the chord. The notch's own direction and normal turn with
+the wall, and the normal KEEPS THE SIDE the straight frame chose: a curve can reverse the sign of
+its perpendicular, which would carve the notch into the room.
+
+The bezier parameter and the fraction of length are not the same number on a curve. Geometry is
+cut by the first and a door is placed by the second, which is why `wallParamAt` answers with both.
 
 ### A hole is a field on the room, and the gesture decides · `SETTLED` (2026-09-12)
 A room or an effect gained `holes`, an optional flat list of inner rings beside `vertices`, one

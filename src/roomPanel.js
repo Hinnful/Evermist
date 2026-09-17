@@ -105,7 +105,7 @@ function cornerInsetAt(r, d) {
 function fitLabelBox(poly, textW, textH, pad, cornerR, rows) {
   const outer = Array.isArray(poly) ? poly : (poly && poly.vertices);
   if (!outer || outer.length < 3) return null;
-  const bb = getPolyBBox(outer);
+  const bb = shapeBBox(Array.isArray(poly) ? outer : poly);
   const n = rows || 14;
   const first = bb.minY + pad + textH / 2;
   const last  = bb.maxY - pad - textH / 2;
@@ -420,6 +420,9 @@ function _rpWireRadiusField(numId) {
     // The target follows the selection; the array pads out, since a polygon can gain vertices.
     const vi = selectedVertexIndex;
     const total = flatVertexCount(poly);
+    // ⚠ A CURVED CORNER TAKES NO RADIUS: a fillet needs two straight tangents. Writing the number
+    // would store one the outline never draws.
+    if (vi >= 0 && vi < total && handleAt(poly.handles, vi)) return;
     if (vi >= 0 && vi < total) {
       editCornerRadii(poly, r => {
         while (r.length < total) r.push(null);
@@ -462,16 +465,19 @@ function _rpSyncRadiusField(fieldId, numId, poly) {
   const field = _rpEl(fieldId);
   const num   = _rpEl(numId);
   if (!field || !num) return;
-  num.disabled = !poly;
   const perVertex = !!poly && selectedVertexIndex >= 0 && selectedVertexIndex < flatVertexCount(poly);
+  const curved    = perVertex && !!handleAt(poly.handles, selectedVertexIndex);
+  num.disabled = !poly || curved;
   const override  = perVertex && poly.cornerRadii ? poly.cornerRadii[selectedVertexIndex] : null;
-  const currentR  = !poly ? 0 : (override != null ? override : (poly.cornerRadius || 0));
+  const currentR  = !poly ? 0 : (curved ? 0 : (override != null ? override : (poly.cornerRadius || 0)));
   if (num !== document.activeElement) num.value = currentR;
 
   field.classList.toggle('rp-per-vertex', perVertex);
-  field.title = perVertex
-    ? 'Corner radius for the selected corner. ↑/↓ to step, Shift for 10. Esc goes back to every corner, Del removes the vertex.'
-    : 'Corner radius for every corner. ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.';
+  field.title = curved
+    ? 'A curved corner has no radius. Straighten one of its walls with Ctrl+click to round it.'
+    : (perVertex
+      ? 'Corner radius for the selected corner. ↑/↓ to step, Shift for 10. Esc goes back to every corner, Del removes the vertex.'
+      : 'Corner radius for every corner. ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.');
 }
 
 // An effect has a material where a room has a fog state, so the pill is hidden rather than left
@@ -568,7 +574,7 @@ function _rpPositionPanel(panel, poly) {
   } else if (_rpAutoFrozen(poly.id)) {
     left = _rpAutoPos.left; top = _rpAutoPos.top;
   } else {
-    const bb = getPolyBBox(poly.vertices);
+    const bb = shapeBBox(poly);
     const a  = toScreen(bb.minX, bb.minY);
     const b  = toScreen(bb.maxX, bb.maxY);
     const pos = clampPanelPosition({ left: a.sx, top: a.sy, right: b.sx, bottom: b.sy },
@@ -700,7 +706,7 @@ function drawRoomLabels() {
 
     // Neither measureText nor the row scan may run per room per frame. The fit is in MAP units, so
     // the cached anchor is pan-independent.
-    const bb  = getPolyBBox(poly.vertices);
+    const bb  = shapeBBox(poly);
     const key = name + '|' + fontPx + '|' + flatVertexCount(poly) + '|' +
                 Math.round(bb.minX) + ',' + Math.round(bb.minY) + ',' +
                 Math.round(bb.maxX) + ',' + Math.round(bb.maxY) + '|' +

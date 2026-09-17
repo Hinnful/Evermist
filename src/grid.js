@@ -148,7 +148,7 @@ function drawEffectGridGlow(ctx, vp) {
       ? e.cornerRadii.map(rv => (rv != null ? rv : (e.cornerRadius || 0)) * scale)
       : null;
     ctx.beginPath();
-    buildRoundedPolyPath(ctx, sv, cr, pvR, svHoles);
+    buildRoundedPolyPath(ctx, sv, cr, pvR, svHoles, scaleHandles(e.handles, scale));
     ctx.clip();
     const emberAlpha = (typeof FX_LOOK !== 'undefined') ? FX_LOOK.gridGlow : 0.6;
     drawGridLines(ctx, sub, { color: EFFECT_GRID_EMBER, alpha: emberAlpha, widthMul: 1.8 });

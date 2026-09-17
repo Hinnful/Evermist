@@ -112,13 +112,15 @@ function applyPolygonToFog(poly) {
   const pvRFog = poly.cornerRadii ? poly.cornerRadii.map(rv => (rv != null ? rv : (poly.cornerRadius || 0)) / FOG_SCALE) : null;
   // Every path below carries the holes, so a courtyard stays shrouded inside a revealed keep.
   const scale = ring => ring.map(v => ({ x: v.x / FOG_SCALE, y: v.y / FOG_SCALE }));
+  // The handles are offsets, so they take the same scale as the points they hang off.
+  const fogH = scaleHandles(poly.handles, 1 / FOG_SCALE);
   const fogScaledVerts = scale(verts);
   const fogHoles = polyHoleRings(poly).map(scale);
 
   if (poly.mode === 'shroud') {
     fogDataCtx.save();
     fogDataCtx.beginPath();
-    buildRoundedPolyPath(fogDataCtx, fogScaledVerts, crFog, pvRFog, fogHoles);
+    buildRoundedPolyPath(fogDataCtx, fogScaledVerts, crFog, pvRFog, fogHoles, fogH);
     fogDataCtx.fillStyle = '#1a1a2e';
     fogDataCtx.fill();
     fogDataCtx.restore();
@@ -128,7 +130,7 @@ function applyPolygonToFog(poly) {
     // reveal and half-density fog is painted back through the mask, so the state is ABSOLUTE.
     const isHalf = poly.mode === 'half';
     const halfAlpha = Math.max(0, Math.min(1, fogHalfAlpha));
-    const bb = getPolyBBox(verts);
+    const bb = shapeBBox(poly);
     const feather = getScaledFeatherRadius();
     const pad = Math.ceil(feather) + 2;
     const bx = Math.floor(bb.minX / FOG_SCALE) - pad;
@@ -143,7 +145,7 @@ function applyPolygonToFog(poly) {
     sCtx.fillStyle = 'white';
     sCtx.beginPath();
     const shift = ring => ring.map(v => ({ x: v.x - bx, y: v.y - by }));
-    buildRoundedPolyPath(sCtx, shift(fogScaledVerts), crFog, pvRFog, fogHoles.map(shift));
+    buildRoundedPolyPath(sCtx, shift(fogScaledVerts), crFog, pvRFog, fogHoles.map(shift), fogH);
     sCtx.fill();
     sCtx.filter = 'none';
 
@@ -168,7 +170,7 @@ function applyPolygonToFog(poly) {
     sCtx.globalCompositeOperation = 'destination-in';
     sCtx.fillStyle = 'white';
     sCtx.beginPath();
-    buildRoundedPolyPath(sCtx, shift(fogScaledVerts), crFog, pvRFog, fogHoles.map(shift));
+    buildRoundedPolyPath(sCtx, shift(fogScaledVerts), crFog, pvRFog, fogHoles.map(shift), fogH);
     sCtx.fill();
     sCtx.restore();
 
@@ -183,7 +185,7 @@ function applyPolygonToFog(poly) {
       sCtx.save();
       sCtx.beginPath();
       buildRoundedPolyPath(sCtx, shift(insetVerts), Math.max(0, crFog - feather), null,
-                           insetHoles.map(shift));
+                           insetHoles.map(shift), fogH);
       sCtx.fillStyle = 'white';
       sCtx.fill();
       sCtx.restore();
@@ -217,7 +219,7 @@ function applyPolygonToFog(poly) {
       fogDataCtx.save();
       fogDataCtx.beginPath();
       // The clearRect below keeps its OUTER box: the clip path now excludes each hole.
-      buildRoundedPolyPath(fogDataCtx, insetVerts, Math.max(0, crFog - feather), null, insetHoles);
+      buildRoundedPolyPath(fogDataCtx, insetVerts, Math.max(0, crFog - feather), null, insetHoles, fogH);
       fogDataCtx.clip();
       fogDataCtx.clearRect(bb.minX / FOG_SCALE - 1, bb.minY / FOG_SCALE - 1,
                            (bb.maxX - bb.minX) / FOG_SCALE + 2, (bb.maxY - bb.minY) / FOG_SCALE + 2);
@@ -249,8 +251,10 @@ function applyDoorsToFog(poly) {
 
   // Holes included, so a door on an inner wall carves its notch there.
   const scaleRing = ring => ring.map(v => ({ x: v.x / FOG_SCALE, y: v.y / FOG_SCALE }));
+  // The handles ride along, or a notch on a bent wall lands on the chord instead of the curve.
   const fogVerts = { vertices: scaleRing(poly.vertices),
-                     holes: polyHoleRings(poly).map(scaleRing) };
+                     holes: polyHoleRings(poly).map(scaleRing),
+                     handles: scaleHandles(poly.handles, 1 / FOG_SCALE) };
   // ⚠ Capped against the notch's own depth. The fog feather is tuned for a room-sized edge, and
   // against a door it is wider than the shape it softens, which rounds the rectangle into a blob.
   const feather = Math.min(getScaledFeatherRadius(), size.depth * 0.35);
@@ -342,7 +346,9 @@ function flattenSharedWalls(sCtx, poly, fogScaledVerts, fogHoles, feather, bx, b
   // ⚠ The band crosses the wall ONLY where the neighbour paints the same density. Crossing bridges
   // two rooms traced a few pixels apart, and costs nothing between two revealed rooms. Between a
   // revealed room and a half one, whichever composites last would win a strip on the wrong side.
-  const scaled = { vertices: fogScaledVerts, holes: fogHoles };
+  // Scaled here, not handed in: applyPolygonToFog's copy is local to it.
+  const scaled = { vertices: fogScaledVerts, holes: fogHoles,
+                   handles: scaleHandles(poly.handles, 1 / FOG_SCALE) };
   const edges = flatVertexCount(poly);
   for (const [group, out] of [[open.filter(p => density(p) === mine), feather * 0.25],
                               [open.filter(p => density(p) !== mine), 0]]) {
@@ -357,12 +363,13 @@ function flattenSharedWalls(sCtx, poly, fogScaledVerts, fogHoles, feather, bx, b
         // a wall junction left a tab of cleared fog sticking out of the room block there.
         const s0 = sp.from / FOG_SCALE + out, s1 = sp.to / FOG_SCALE - out;
         if (!(s1 > s0)) continue;
-        const ax = f.a.x + f.ux * s0, ay = f.a.y + f.uy * s0;
-        const cx = f.a.x + f.ux * s1, cy = f.a.y + f.uy * s1;
-        sCtx.moveTo(ax + f.n.x * out - bx,   ay + f.n.y * out - by);
-        sCtx.lineTo(cx + f.n.x * out - bx,   cy + f.n.y * out - by);
-        sCtx.lineTo(cx - f.n.x * into - bx,  cy - f.n.y * into - by);
-        sCtx.lineTo(ax - f.n.x * into - bx,  ay - f.n.y * into - by);
+        // Both ends read off the wall itself, so the band follows a bent one instead of cutting
+        // across the chord it bows away from.
+        const p0 = doorFramePoint(f, s0 / f.len), p1 = doorFramePoint(f, s1 / f.len);
+        sCtx.moveTo(p0.x + p0.nx * out - bx,   p0.y + p0.ny * out - by);
+        sCtx.lineTo(p1.x + p1.nx * out - bx,   p1.y + p1.ny * out - by);
+        sCtx.lineTo(p1.x - p1.nx * into - bx,  p1.y - p1.ny * into - by);
+        sCtx.lineTo(p0.x - p0.nx * into - bx,  p0.y - p0.ny * into - by);
         sCtx.closePath();
       }
     }

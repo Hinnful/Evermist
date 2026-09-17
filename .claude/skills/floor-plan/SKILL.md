@@ -1,6 +1,6 @@
 ---
 name: floor-plan
-description: Load BEFORE editing src/vttPlan.js, src/floorPlan.js, or planDoorPlacements in src/fogGeometry.js. Also load when the task mentions the Universal VTT / .dd2vtt floor plan, auto-generated rooms, derived or auto-placed doors, the Draw Rooms button, open-wall reporting, or the find-floor-plan IPC. Carries rules whose violation silently produces wrong rooms rather than an error.
+description: Load BEFORE editing src/vttPlan.js, src/floorPlan.js, or src/doorGeometry.js. Also load when the task mentions the Universal VTT / .dd2vtt floor plan, auto-generated rooms, derived or auto-placed doors, the Draw Rooms button, open-wall reporting, or the find-floor-plan IPC. Carries rules whose violation silently produces wrong rooms rather than an error.
 ---
 
 # Reading a Dungeon Alchemist floor plan
@@ -44,7 +44,7 @@ the app produces rooms, they are just wrong.
   import path strands the map-progress overlay forever.
 - **A portal becomes a door ONLY where two derived rooms share the wall**, at `cell * 0.25` - the
   same tolerance `doorMouseDown` uses. Anything touching a single room is refused, and the ceiling
-  on widening it is at the function. `planDoorPlacements` lives in `fogGeometry.js`, never here:
+  on widening it is at the function. `planDoorPlacements` lives in `doorGeometry.js`, never here:
   `vttPlan.js` reports the midpoints and stays dependency-free.
 
 ## What the feature refuses to do

@@ -78,9 +78,11 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `renderer.js` | PixiJS/WebGL wrapper; map + DM fog GPU path |
 | `render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, viewport sizing, `drawCursor` |
 | `fog.js` | Fog canvases, blur + cloud pipeline, reveal/hide, transitions |
-| `fogGeometry.js` | Pure fog geometry + math kernel. Unit-tested |
+| `fogGeometry.js` | Pure fog geometry kernel. Unit-tested |
+| `doorGeometry.js` | Pure door-notch kernel. Unit-tested |
 | `vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Unit-tested, dependency-free |
 | `roomOps.js` | Pure Join/Trim/Cut kernel. Unit-tested |
+| `shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Unit-tested |
 | `tools.js` | Drawing tools; the path a drawn shape takes to a room or effect |
 | `shapeSelect.js` | The selection: its two levels, hole picking, hand edits, outline drawing |
 | `shapeMenu.js` | The one shape button and its right-click flyout |
@@ -127,7 +129,7 @@ Declarations must precede use at init time. All under `src/`:
 
 ```
 lib/pixi.min.js → lib/polygon-clipping.umd.js → renderer.js → state.js → display.js →
-video.js → fogGeometry.js → vttPlan.js → fog.js → roomOps.js → tools.js → shapeSelect.js → mapLoader.js →
+video.js → fogGeometry.js → doorGeometry.js → vttPlan.js → fog.js → roomOps.js → shapeDetail.js → tools.js → shapeSelect.js → mapLoader.js →
 mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js →
 viewport.js → panes.js → stage.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
 input.js →

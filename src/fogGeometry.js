@@ -5,6 +5,15 @@
 
 'use strict';
 
+function polygonWindingSign(verts) {
+  let area2 = 0;
+  for (let i = 0; i < verts.length; i++) {
+    const j = (i + 1) % verts.length;
+    area2 += verts[i].x * verts[j].y - verts[j].x * verts[i].y;
+  }
+  return area2 > 0 ? 1 : -1;
+}
+
 // ─── Polygon bounding box ──────────────────────────────────────────────────────
 function getPolyBBox(verts) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -63,23 +72,122 @@ function copyShapeRings(shape) {
 }
 
 // ─── Downgrade safety ─────────────────────────────────────────────────────────
-// ⚠ A build with no holes support reads `vertices` and ignores `holes`, so a revealed keep would
-// show its courtyard — fog failing OPEN on the TV, after a rollback the DM is entitled to. A
-// stored room with a hole is written as a SHROUD carrying its real mode in `modeWithHoles`, so an
-// old build hides ground instead.
+// ⚠ AN OLDER BUILD READS `vertices` AND IGNORES THE REST, so a revealed keep shows its courtyard
+// and a wall bent inward reveals ground the curve was cutting away — fog failing OPEN on the TV,
+// after a rollback the DM is entitled to. Such a room is written as a SHROUD carrying its real
+// mode, so an old build hides ground instead.
+// `modeWithHoles` keeps its name: it is the field shipped for holes in 2.11.0, an old build
+// ignores it either way, and a second one would mean a second decode branch.
 function encodeShapeForSave(shape) {
-  if (!shape || !shape.holes || !shape.holes.length || !shape.mode) return shape;
-  if (shape.mode === 'shroud') return shape;
+  const held = shape && ((shape.holes && shape.holes.length) ||
+                         (shape.handles && shape.handles.some(h => h)));
+  if (!held || !shape.mode || shape.mode === 'shroud') return shape;
   return { ...shape, mode: 'shroud', modeWithHoles: shape.mode };
 }
 
 function decodeShapeFromSave(shape) {
   if (!shape || !shape.modeWithHoles) return shape;
   const out = { ...shape };
-  if (shape.holes && shape.holes.length) out.mode = shape.modeWithHoles;
+  if ((shape.holes && shape.holes.length) || (shape.handles && shape.handles.some(h => h))) {
+    out.mode = shape.modeWithHoles;
+  }
   delete out.modeWithHoles;
   return out;
 }
+
+// ─── Bezier handles ───────────────────────────────────────────────────────────
+// A curved wall is a cubic. An anchor may carry {ix,iy,ox,oy}: OFFSETS from the anchor to its
+// incoming and outgoing control point, so a handle rides its anchor through a move, a rotate and
+// a scale. Flat-indexed like cornerRadii — outer ring first, then each hole.
+//
+// The two handles are INDEPENDENT, which keeps a corner sharp where a curved wall meets a flat
+// one. ⚠ An anchor carries a corner radius OR handles, never both: a fillet needs two straight
+// tangents, so _traceRing reads a handled anchor as sharp whatever its radius says.
+
+function handleAt(handles, flat) {
+  const h = handles ? handles[flat] : null;
+  return (h && (h.ix || h.iy || h.ox || h.oy)) ? h : null;
+}
+
+function scaleHandles(handles, scale) {
+  if (!handles) return null;
+  return handles.map(h => handleAt([h], 0) &&
+    { ix: h.ix * scale, iy: h.iy * scale, ox: h.ox * scale, oy: h.oy * scale });
+}
+
+// True when the wall from flat index `a` to flat index `b` is a curve rather than a line.
+function edgeIsCurved(handles, a, b) {
+  const ha = handleAt(handles, a), hb = handleAt(handles, b);
+  return !!((ha && (ha.ox || ha.oy)) || (hb && (hb.ix || hb.iy)));
+}
+
+// The four control points of the wall from `a` to `b`, in the space `verts` are given in.
+function edgeCubic(pa, pb, ha, hb) {
+  return [pa,
+          { x: pa.x + (ha ? ha.ox || 0 : 0), y: pa.y + (ha ? ha.oy || 0 : 0) },
+          { x: pb.x + (hb ? hb.ix || 0 : 0), y: pb.y + (hb ? hb.iy || 0 : 0) },
+          pb];
+}
+
+// de Casteljau. Splits one cubic into two that together trace exactly the same curve, which is
+// what lets a boolean cut a curved wall without flattening it.
+function splitCubic(p0, c1, c2, p3, t) {
+  const lerp = (u, v) => ({ x: u.x + (v.x - u.x) * t, y: u.y + (v.y - u.y) * t });
+  const a = lerp(p0, c1), b = lerp(c1, c2), c = lerp(c2, p3);
+  const d = lerp(a, b), e = lerp(b, c);
+  const m = lerp(d, e);
+  return { mid: m, left: [p0, a, d, m], right: [m, e, c, p3] };
+}
+
+// Points along a cubic, excluding p0 so a caller can append them straight onto a running ring.
+function sampleCubic(p0, c1, c2, p3, steps) {
+  const out = [];
+  const n = Math.max(1, steps | 0);
+  for (let i = 1; i <= n; i++) {
+    const t = i / n, u = 1 - t;
+    const w0 = u * u * u, w1 = 3 * u * u * t, w2 = 3 * u * t * t, w3 = t * t * t;
+    out.push({ x: w0 * p0.x + w1 * c1.x + w2 * c2.x + w3 * p3.x,
+               y: w0 * p0.y + w1 * c1.y + w2 * c2.y + w3 * p3.y });
+  }
+  return out;
+}
+
+// A ring walked as straight points, every curved wall sampled. Used where a consumer cannot take
+// a curve at all: the clipping library, the effects shader, and overlap tests.
+function flattenRing(ring, handles, offset, steps) {
+  const n = ring.length;
+  if (n < 2 || !handles) return ring.map(v => ({ ...v }));
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    out.push({ ...ring[i] });
+    const ha = handleAt(handles, offset + i), hb = handleAt(handles, offset + j);
+    if (!edgeIsCurved(handles, offset + i, offset + j)) continue;
+    const c = edgeCubic(ring[i], ring[j], ha, hb);
+    const pts = sampleCubic(c[0], c[1], c[2], c[3], steps || CURVE_SAMPLE_STEPS);
+    pts.pop();                       // the last point IS ring[j], which the next turn pushes
+    for (const p of pts) out.push(p);
+  }
+  return out;
+}
+
+// The box a shape actually fills, curve bulges included. ⚠ getPolyBBox READS ANCHORS ONLY, so a
+// bent wall reaching outside them is clipped by anything sized off it — the fog scratch canvas
+// first among them.
+function shapeBBox(shape) {
+  if (Array.isArray(shape)) return getPolyBBox(shape);
+  if (!shape || !shape.handles) return getPolyBBox((shape && shape.vertices) || []);
+  const pts = [];
+  let off = 0;
+  for (const ring of polyRings(shape)) {
+    for (const p of flattenRing(ring, shape.handles, off)) pts.push(p);
+    off += ring.length;
+  }
+  return getPolyBBox(pts.length ? pts : (shape.vertices || []));
+}
+
+const CURVE_SAMPLE_STEPS = 12;       // points per curved wall when a consumer needs straight lines
+const CURVE_FLAT_EPS = 0.02;         // handle length under this share of the wall reads as straight
 
 // ─── Rounded polygon path ─────────────────────────────────────────────────────
 // Used by both the fog pipeline and the cursor drawing. verts must be in target space, and
@@ -88,13 +196,38 @@ function decodeShapeFromSave(shape) {
 // Each hole is its own subpath, wound against the outer ring so a `nonzero` fill cuts it out.
 // ⚠ Reversal walks the ring backwards rather than copying it reversed, which keeps every
 // per-vertex radius on the vertex it was written for.
-function _traceRing(ctx, verts, defaultR, perVertR, offset, reverse) {
+function _traceRing(ctx, verts, defaultR, perVertR, offset, reverse, handles) {
   const n = verts.length;
   const src = (k) => reverse ? (n - 1 - k) : k;
-  const at = (k) => verts[src(((k % n) + n) % n)];
+  const idx = (k) => src(((k % n) + n) % n);
+  const at = (k) => verts[idx(k)];
+  const hnd = (k) => handleAt(handles, offset + idx(k));
+  // ⚠ Walking a ring backwards SWAPS each anchor's two handles: the control point that pointed at
+  // the next vertex now points at the previous one.
+  const outH = (k) => { const h = hnd(k); if (!h) return null;
+                        return reverse ? { x: h.ix || 0, y: h.iy || 0 }
+                                       : { x: h.ox || 0, y: h.oy || 0 }; };
+  const inH  = (k) => { const h = hnd(k); if (!h) return null;
+                        return reverse ? { x: h.ox || 0, y: h.oy || 0 }
+                                       : { x: h.ix || 0, y: h.iy || 0 }; };
   const getR = (k) => {
-    const v = perVertR ? perVertR[offset + src(k)] : null;
+    if (hnd(k)) return 0;
+    const v = perVertR ? perVertR[offset + idx(k)] : null;
     return v != null ? v : defaultR;
+  };
+  // ⚠ IN LOOP SPACE, not flat indices: outH/inH already swapped for a reversed walk, and
+  // edgeIsCurved would read the wrong handle of each anchor here.
+  const curvedInto = (k) => {
+    const o = outH(k - 1), q = inH(k);
+    return !!((o && (o.x || o.y)) || (q && (q.x || q.y)));
+  };
+  // The wall ARRIVING at k, drawn to (tx,ty) on it.
+  const arrive = (k, tx, ty) => {
+    const o = outH(k - 1), q = inH(k);
+    if (!curvedInto(k)) { ctx.lineTo(tx, ty); return; }
+    const a = at(k - 1), b = at(k);
+    ctx.bezierCurveTo(a.x + (o ? o.x : 0), a.y + (o ? o.y : 0),
+                      b.x + (q ? q.x : 0), b.y + (q ? q.y : 0), tx, ty);
   };
   if (n < 3) {
     if (!n) return;
@@ -111,27 +244,38 @@ function _traceRing(ctx, verts, defaultR, perVertR, offset, reverse) {
     const dPrev = Math.hypot(curr.x - prev.x, curr.y - prev.y);
     const dNext = Math.hypot(next.x - curr.x, next.y - curr.y);
     if (r <= 0 || dPrev === 0 || dNext === 0) {
-      if (i === 0) ctx.moveTo(curr.x, curr.y); else ctx.lineTo(curr.x, curr.y);
+      if (i === 0) ctx.moveTo(curr.x, curr.y); else arrive(i, curr.x, curr.y);
       continue;
     }
     const maxR = Math.min(r, dPrev / 2, dNext / 2);
     const ex = curr.x + (prev.x - curr.x) / dPrev * maxR;
     const ey = curr.y + (prev.y - curr.y) / dPrev * maxR;
-    if (i === 0) ctx.moveTo(ex, ey); else ctx.lineTo(ex, ey);
+    if (i === 0) ctx.moveTo(ex, ey); else arrive(i, ex, ey);
     ctx.arcTo(curr.x, curr.y, next.x, next.y, maxR);
+  }
+  // The closing wall runs from the last vertex back to the first. A STRAIGHT one is left to
+  // closePath, which is what it has always drawn; only a curve has to be spelled out, back to
+  // whichever point opened the subpath.
+  if (curvedInto(0)) {
+    const r0 = getR(0);
+    const d0 = Math.hypot(at(0).x - at(-1).x, at(0).y - at(-1).y);
+    const dN = Math.hypot(at(1).x - at(0).x, at(1).y - at(0).y);
+    const m0 = (r0 > 0 && d0 > 0 && dN > 0) ? Math.min(r0, d0 / 2, dN / 2) : 0;
+    arrive(0, m0 ? at(0).x + (at(-1).x - at(0).x) / d0 * m0 : at(0).x,
+                m0 ? at(0).y + (at(-1).y - at(0).y) / d0 * m0 : at(0).y);
   }
   ctx.closePath();
 }
 
-function buildRoundedPolyPath(ctx, verts, defaultR, perVertR, holes) {
-  _traceRing(ctx, verts, defaultR, perVertR, 0, false);
+function buildRoundedPolyPath(ctx, verts, defaultR, perVertR, holes, handles) {
+  _traceRing(ctx, verts, defaultR, perVertR, 0, false, handles);
   if (!holes || !holes.length) return;
   const outerSign = polygonWindingSign(verts);
   let offset = verts.length;
   for (const hole of holes) {
     if (!hole || hole.length < 3) continue;
     _traceRing(ctx, hole, defaultR, perVertR, offset,
-               polygonWindingSign(hole) === outerSign);
+               polygonWindingSign(hole) === outerSign, handles);
     offset += hole.length;
   }
 }
@@ -437,300 +581,6 @@ function parseSceneFogSettings(scene, defaults) {
 }
 
 // ─── Node.js export guard (unit tests only) ──────────────────────────────────
-// ─── Door notches ─────────────────────────────────────────────────────────────
-// A door marks an exit on a room's outline, stored as {edge, t}: which wall, and where along it.
-// It carries no size — width and depth come from the grid cell at draw time, so correcting a
-// scene's grid resizes every door already placed. The notch straddles its wall, reaching the same
-// distance either side, which frees it from the outline's winding and from which side was traced.
-
-const DOOR_AXIS_EPS = 0.999;   // above this a wall counts as straight, so it snaps to the world grid
-
-function doorSizeForCell(cell, widthPct, depthPct) {
-  const c = cell > 0 ? cell : 0;
-  return { width: c * (widthPct / 100), depth: c * (depthPct / 100) };
-}
-
-function polygonWindingSign(verts) {
-  let area2 = 0;
-  for (let i = 0; i < verts.length; i++) {
-    const j = (i + 1) % verts.length;
-    area2 += verts[i].x * verts[j].y - verts[j].x * verts[i].y;
-  }
-  return area2 > 0 ? 1 : -1;
-}
-
-// Outward unit normal of edge i, i.e. the opposite of the direction insetPolygon moves a vertex.
-function edgeOutwardNormal(verts, edge) {
-  const a = verts[edge % verts.length], b = verts[(edge + 1) % verts.length];
-  const ex = b.x - a.x, ey = b.y - a.y;
-  const len = Math.hypot(ex, ey) || 1;
-  const sign = polygonWindingSign(verts);
-  return { x: sign * ey / len, y: -sign * ex / len };
-}
-
-// The ring a FLAT edge number lands on, which is what lets a door mark an inner wall.
-function edgeRingRef(src, edge) {
-  const rings = Array.isArray(src) ? [src] : polyRings(src);
-  let total = 0;
-  for (const r of rings) total += (r ? r.length : 0);
-  if (!total) return null;
-  let k = ((edge | 0) % total + total) % total;
-  for (let r = 0; r < rings.length; r++) {
-    const verts = rings[r];
-    if (!verts || !verts.length) continue;
-    if (k < verts.length) return { ring: r, verts, i: k, flat: ((edge | 0) % total + total) % total };
-    k -= verts.length;
-  }
-  return null;
-}
-
-// The wall a door sits on: its endpoints, unit direction, outward normal and length. `ei` is the
-// FLAT edge number, which is what a stored door carries.
-// ⚠ A HOLE'S NORMAL IS FLIPPED: out of the ROOM at an inner wall points into the hole.
-function doorEdgeFrame(src, edge) {
-  const ref = edgeRingRef(src, edge);
-  if (!ref || ref.verts.length < 3) return null;
-  const verts = ref.verts;
-  const n = verts.length;
-  const a = verts[ref.i], b = verts[(ref.i + 1) % n];
-  const ex = b.x - a.x, ey = b.y - a.y;
-  const len = Math.hypot(ex, ey);
-  if (!(len > 0)) return null;
-  const nrm = edgeOutwardNormal(verts, ref.i);
-  const flip = ref.ring > 0 ? -1 : 1;
-  return { ei: ref.flat, a, b, len, ux: ex / len, uy: ey / len,
-           n: { x: nrm.x * flip, y: nrm.y * flip } };
-}
-
-// Where a wall's cell boundaries fall, as distances along it from its start vertex. ONE source for
-// both the snap and the ticks the DM sees, so what is drawn is where a door lands.
-// A straight wall on a square grid reads the WORLD grid, offsets included, or a room whose corner
-// sits off a grid line carries every door off with it. Diagonal and hex walls subdivide themselves.
-function doorCellBounds(verts, edge, cell, offsetX, offsetY, squareGrid) {
-  const f = doorEdgeFrame(verts, edge);
-  if (!f || !(cell > 0)) return null;
-  const axis = Math.abs(f.ux) > DOOR_AXIS_EPS || Math.abs(f.uy) > DOOR_AXIS_EPS;
-  const at = [0];
-  if (squareGrid && axis) {
-    // Projecting the grid's origin onto the wall keeps whichever axis the wall runs along and
-    // discards the other, so one expression covers horizontal and vertical alike.
-    const base = ((offsetX || 0) - f.a.x) * f.ux + ((offsetY || 0) - f.a.y) * f.uy;
-    for (let k = Math.ceil(-base / cell); base + k * cell < f.len; k++) {
-      const a = base + k * cell;
-      if (a > 0) at.push(a);
-    }
-  } else {
-    for (let a = cell; a < f.len; a += cell) at.push(a);
-  }
-  at.push(f.len);
-  return { frame: f, at };
-}
-
-// Snaps a click to the cell it landed in, so a door fills that cell.
-function doorCellSnap(verts, edge, mx, my, cell, offsetX, offsetY, squareGrid) {
-  const b = doorCellBounds(verts, edge, cell, offsetX, offsetY, squareGrid);
-  if (!b) return null;
-  const f = b.frame;
-  const along = Math.max(0, Math.min(f.len, (mx - f.a.x) * f.ux + (my - f.a.y) * f.uy));
-  let i = 0;
-  while (i < b.at.length - 2 && along >= b.at[i + 1]) i++;
-  const centre = (b.at[i] + b.at[i + 1]) / 2;
-  const half = Math.min(cell, f.len) / 2;
-  return { edge: f.ei, t: Math.max(half, Math.min(f.len - half, centre)) / f.len };
-}
-
-// The four corners of one notch, a plain rectangle straddling the wall, in the space of `verts`.
-// The caller passes a deeper inward reach than the shape needs: that ground is already clear, and
-// the extra is what makes the notch meet the reveal's ragged edge instead of floating free.
-function doorNotchCorners(verts, door, width, out, inward) {
-  const f = doorEdgeFrame(verts, door && door.edge);
-  if (!f || !(width > 0) || !(out > 0)) return null;
-  // Capped at the wall: a cell is wider than a short alcove edge, and an uncapped door would carve
-  // fog around both its corners rather than mark an opening in it.
-  const hw = Math.min(width, f.len) / 2;
-  const back = -(inward > 0 ? inward : out);
-  const t = Math.max(0, Math.min(1, door.t));
-  const px = f.a.x + (f.b.x - f.a.x) * t, py = f.a.y + (f.b.y - f.a.y) * t;
-  return {
-    outerL: { x: px - f.ux * hw + f.n.x * out,  y: py - f.uy * hw + f.n.y * out },
-    outerR: { x: px + f.ux * hw + f.n.x * out,  y: py + f.uy * hw + f.n.y * out },
-    innerL: { x: px - f.ux * hw + f.n.x * back, y: py - f.uy * hw + f.n.y * back },
-    innerR: { x: px + f.ux * hw + f.n.x * back, y: py + f.uy * hw + f.n.y * back },
-  };
-}
-
-// Nearest point on the outline to (mx,my), across every ring, with `edge` the flat number.
-// Returns null when nothing is within `maxDist`.
-function nearestOutlinePoint(src, mx, my, maxDist) {
-  const rings = Array.isArray(src) ? [src] : polyRings(src);
-  let best = null, flat = 0;
-  for (const verts of rings) {
-    if (!verts || verts.length < 2) { flat += verts ? verts.length : 0; continue; }
-    for (let i = 0; i < verts.length; i++) {
-      const a = verts[i], b = verts[(i + 1) % verts.length];
-      const dx = b.x - a.x, dy = b.y - a.y;
-      const lenSq = dx * dx + dy * dy;
-      const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, ((mx - a.x) * dx + (my - a.y) * dy) / lenSq));
-      const cx = a.x + dx * t, cy = a.y + dy * t;
-      const d = Math.hypot(mx - cx, my - cy);
-      if (!best || d < best.dist) best = { edge: flat + i, t, x: cx, y: cy, dist: d };
-    }
-    flat += verts.length;
-  }
-  if (maxDist != null && best && best.dist > maxDist) return null;
-  return best;
-}
-
-// Where a door's centre sits, for the DM's outline.
-function doorPoint(verts, door) {
-  const f = doorEdgeFrame(verts, door && door.edge);
-  if (!f) return null;
-  const t = Math.max(0, Math.min(1, door.t));
-  return { x: f.a.x + (f.b.x - f.a.x) * t, y: f.a.y + (f.b.y - f.a.y) * t };
-}
-
-// Whether a click landed on a door — the fallback for one placed before the grid changed, which no
-// longer sits on a cell centre. ⚠ `slack` forgives DEPTH ONLY: along the wall it would reach into
-// the next cell, so a click beside a door would delete it instead of opening a second one.
-function pointInDoorNotch(verts, door, width, depth, mx, my, slack) {
-  const f = doorEdgeFrame(verts, door && door.edge);
-  if (!f) return false;
-  const t = Math.max(0, Math.min(1, door.t));
-  const px = f.a.x + (f.b.x - f.a.x) * t, py = f.a.y + (f.b.y - f.a.y) * t;
-  const relX = mx - px, relY = my - py;
-  const along = relX * f.ux + relY * f.uy;
-  const perp  = relX * f.n.x + relY * f.n.y;
-  const s = slack || 0;
-  return Math.abs(along) < Math.min(width, f.len) / 2 && perp >= -depth - s && perp <= depth + s;
-}
-
-// ─── Shared walls ─────────────────────────────────────────────────────────────
-// Which stretches of a wall another room's outline runs along, as {from, to} distances from the
-// wall's start vertex. Two rooms sharing a wall each feather INWARD from it, so neither reaches a
-// full erase on the line and a band of fog is left standing over the wall.
-// `tol` is what counts as the same wall; spans are widened by half a step, to cover the gaps
-// between the points actually sampled.
-function sharedWallSpans(verts, edge, others, tol, step) {
-  const f = doorEdgeFrame(verts, edge);
-  if (!f || !others || !(tol > 0) || !(step > 0)) return [];
-
-  // Bounding-box reject first: on a real map almost no room is anywhere near a given wall.
-  const loX = Math.min(f.a.x, f.b.x) - tol, hiX = Math.max(f.a.x, f.b.x) + tol;
-  const loY = Math.min(f.a.y, f.b.y) - tol, hiY = Math.max(f.a.y, f.b.y) + tol;
-  const near = [];
-  for (const o of others) {
-    if (!o || !o.vertices || o.vertices.length < 3) continue;
-    const b = getPolyBBox(o.vertices);
-    if (b.maxX < loX || b.minX > hiX || b.maxY < loY || b.minY > hiY) continue;
-    near.push(o);
-  }
-  if (!near.length) return [];
-
-  const n = Math.max(1, Math.ceil(f.len / step));
-  const half = f.len / n / 2;
-  const spans = [];
-  let open = -1, last = -1;
-  for (let i = 0; i <= n; i++) {
-    const a = (i / n) * f.len;
-    const px = f.a.x + f.ux * a, py = f.a.y + f.uy * a;
-    let hit = false;
-    for (const o of near) {
-      if (nearestOutlinePoint(o, px, py, tol)) { hit = true; break; }
-    }
-    // Closed at the last point that HIT, not at the first that missed, or a span that ends
-    // mid-wall runs a whole step past the neighbour it was following.
-    if (hit) { if (open < 0) open = a; last = a; }
-    else if (open >= 0) { spans.push({ from: open, to: last }); open = -1; }
-  }
-  if (open >= 0) spans.push({ from: open, to: last });
-  return spans.map(sp => ({
-    from: Math.max(0, sp.from - half),
-    to: Math.min(f.len, sp.to + half),
-  }));
-}
-
-// Least to most revealed. Anything unset paints like a reveal, matching applyPolygonToFog.
-const DOOR_MODE_ORDER = ['shroud', 'half', 'reveal'];
-
-function doorModeRank(mode) {
-  const i = DOOR_MODE_ORDER.indexOf(mode);
-  return i < 0 ? DOOR_MODE_ORDER.length - 1 : i;
-}
-
-// The state a door shows in: the most revealed of EVERY room whose wall runs through it, never the
-// state of the one room that stores it. Two rooms share a doorway's wall and a click attaches to
-// only one, which the DM cannot aim at. It also settles half-shroud, which has no answer while a
-// door belongs to one room: half beside shrouded is half, revealed beside anything is revealed.
-function doorResolvedMode(centre, rooms, tol) {
-  if (!centre || !rooms) return 'shroud';
-  let best = 0;
-  for (const r of rooms) {
-    if (!r || !r.vertices || r.vertices.length < 3) continue;
-    if (!nearestOutlinePoint(r, centre.x, centre.y, tol)) continue;
-    const rank = doorModeRank(r.mode);
-    if (rank > best) best = rank;
-  }
-  return DOOR_MODE_ORDER[best];
-}
-
-// Which of a floor plan's openings are doorways, and where each notch goes. `rooms` is one vertex
-// array per room, `portals` the plan's opening centres, both in map pixels.
-//
-// ⚠ AN OPENING BECOMES A DOOR ONLY WHERE TWO ROOMS SHARE THE WALL. One room means a window or an
-// outside entrance, and the DM places those by hand — guessing them fills a map with wrong notches.
-// The tolerance matches doorMouseDown's; widen it past half a cell and one portal starts claiming
-// three rooms.
-function planDoorPlacements(rooms, portals, cell, offsetX, offsetY, squareGrid) {
-  if (!(cell > 0) || !Array.isArray(rooms) || !Array.isArray(portals)) return [];
-  const tol = cell * 0.25;
-  const out = [];
-  for (const p of portals) {
-    if (!p || !isFinite(p.x) || !isFinite(p.y)) continue;
-    let hits = 0, best = null, bestIndex = -1;
-    for (let i = 0; i < rooms.length; i++) {
-      const verts = rooms[i];
-      if (!verts || verts.length < 3) continue;
-      const near = nearestOutlinePoint(verts, p.x, p.y, tol);
-      if (!near) continue;
-      hits++;
-      if (!best || near.dist < best.dist) { best = near; bestIndex = i; }
-    }
-    if (hits < 2) continue;
-    // Stored on ONE room, whichever is nearest: a door on a shared wall shows from either side.
-    const verts = rooms[bestIndex];
-    const door = doorCellSnap(verts, best.edge, p.x, p.y, cell, offsetX, offsetY, squareGrid);
-    if (!door) continue;
-    const centre = doorPoint(verts, door);
-    if (!centre) continue;
-    // Two portals can snap to the same cell — a double doorway is two entries in the file.
-    if (out.some(o => Math.hypot(o.centre.x - centre.x, o.centre.y - centre.y) < tol)) continue;
-    out.push({ roomIndex: bestIndex, door, centre });
-  }
-  return out.map(o => ({ roomIndex: o.roomIndex, door: o.door }));
-}
-
-// Keeps doors on the same map point when a vertex is added or removed. On an insert `at` is the
-// EDGE being split, `splitT` how far along it the new vertex landed; on a delete `at` is the
-// vertex index and a door on either edge it joined goes, having no wall left.
-// ⚠ `t` is a fraction of the edge it NAMES, so the insert halving that edge moves the door.
-function remapDoorsForVertexChange(doors, at, delta, splitT) {
-  if (!doors || !doors.length) return doors || [];
-  const s = (splitT > 0 && splitT < 1) ? splitT : 0.5;
-  const out = [];
-  for (const d of doors) {
-    if (delta < 0) {
-      if (d.edge === at || d.edge === at - 1) continue;
-      out.push({ ...d, edge: d.edge > at ? d.edge - 1 : d.edge });
-    } else if (d.edge === at) {
-      out.push(d.t < s
-        ? { ...d, t: d.t / s }
-        : { ...d, edge: at + 1, t: (d.t - s) / (1 - s) });
-    } else {
-      out.push({ ...d, edge: d.edge > at ? d.edge + 1 : d.edge });
-    }
-  }
-  return out;
-}
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
@@ -743,27 +593,20 @@ if (typeof module !== 'undefined' && module.exports) {
     flatVertexCount,
     flatVertexRef,
     buildRoundedPolyPath,
+    CURVE_FLAT_EPS,
+    CURVE_SAMPLE_STEPS,
+    flattenRing,
+    shapeBBox,
+    sampleCubic,
+    splitCubic,
+    edgeCubic,
+    edgeIsCurved,
+    scaleHandles,
+    handleAt,
+    polygonWindingSign,
     insetPolygon,
     outsetPolygon,
     insetPolyRings,
-    polygonWindingSign,
-    edgeOutwardNormal,
-    edgeRingRef,
-    doorEdgeFrame,
-    doorSizeForCell,
-    doorCellBounds,
-    doorCellSnap,
-    doorNotchCorners,
-    nearestOutlinePoint,
-    doorPoint,
-    pointInDoorNotch,
-    doorModeRank,
-    doorResolvedMode,
-    sharedWallSpans,
-    DOOR_MODE_ORDER,
-    remapDoorsForVertexChange,
-    planDoorPlacements,
-    DOOR_AXIS_EPS,
     snapToAxis,
     coneVertices,
     CONE_HALF_SPREAD,

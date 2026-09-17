@@ -106,12 +106,10 @@ function refuseShapeOp(reason) {
 // A piece with no shape of its own: the parent's fields, a fresh id, a plain name, no notes.
 function newShapeFromPiece(base, piece) {
   const id = placeMode === 'effects' ? nextEffectId++ : nextPolygonId++;
-  const s = { ...base, id, vertices: piece.verts };
+  const s = { ...base, id };
   s.name = (base.material ? base.material.charAt(0).toUpperCase() + base.material.slice(1)
                           : 'Room') + ' ' + id;
-  setShapeHoles(s, piece.holes);
-  delete s.cornerRadii;
-  delete s.doors;
+  applyPieceToShape(s, piece);
   delete s.desc;
   return s;
 }
@@ -129,22 +127,41 @@ function setShapeHoles(shape, holes) {
 function applyShapePlan(plan, mode) {
   const drop = new Set();
   const extras = [];
+  let lostDoors = 0;
   for (const g of plan) {
     const base = g.shapes[0];
     for (let i = 1; i < g.shapes.length; i++) drop.add(g.shapes[i].id);
     if (!g.pieces.length) { drop.add(base.id); continue; }
-    base.vertices = g.pieces[0].verts;
-    setShapeHoles(base, g.pieces[0].holes);
+    // Curves, corner radii and doors are CARRIED, not dropped: shapeDetail.js matches the
+    // library's answer back onto the walls it came from, and counts the doors left with no wall.
+    const kept = restoreGroupDetail(g.shapes, g.pieces);
+    lostDoors += kept.droppedDoors;
+    const parts = kept.pieces.length ? kept.pieces : g.pieces.map(p => ({ vertices: p.verts, holes: p.holes }));
+    applyPieceToShape(base, parts[0]);
     if (mode) base.mode = mode;
-    // ⚠ DROPPED, NEVER EDITED IN PLACE: both are keyed by vertex position, and a new outline
-    // renumbers every one. See editCornerRadii for why editing in place is barred as well.
-    delete base.cornerRadii;
-    delete base.doors;
-    for (let i = 1; i < g.pieces.length; i++) extras.push(newShapeFromPiece(base, g.pieces[i]));
+    for (let i = 1; i < parts.length; i++) extras.push(newShapeFromPiece(base, parts[i]));
   }
   const kept = activeShapeList().filter(s => !drop.has(s.id)).concat(extras);
   if (placeMode === 'effects') effects = kept; else polygons = kept;
   if (drop.has(selectedPolygonId)) clearShapeSelection();
+  if (lostDoors) reportLostDoors(lostDoors);
+}
+
+// A door on a wall the repair removed has nothing left to sit on. Reported because the DM placed
+// it by hand and cannot see it go, unlike a corner radius whose corner visibly went with the cut.
+function reportLostDoors(n) {
+  noticeToast(n === 1 ? 'One door was removed with the wall it was on.'
+                      : n + ' doors were removed with the walls they were on.');
+}
+
+// ⚠ EVERY PER-VERTEX FIELD IS REPLACED OR DELETED, never left behind: one array still holding
+// the old outline's length puts every curve and every door on the wrong wall.
+function applyPieceToShape(shape, piece) {
+  shape.vertices = piece.vertices;
+  setShapeHoles(shape, piece.holes);
+  if (piece.cornerRadii) shape.cornerRadii = piece.cornerRadii; else delete shape.cornerRadii;
+  if (piece.handles)     shape.handles     = piece.handles;     else delete shape.handles;
+  if (piece.doors)       shape.doors       = piece.doors;       else delete shape.doors;
 }
 
 // ⚠ THE CROSSFADE DIRECTION IS PASSED IN, never read off findActiveShape() the way
@@ -543,7 +560,7 @@ function toolMouseDown(raw, e) {
 
   if (shape === 'select') {
     const r = container.getBoundingClientRect();
-    selectMouseDown(raw);
+    selectMouseDown(raw, e);
     drawCursor(e.clientX - r.left, e.clientY - r.top);
     return;
   }

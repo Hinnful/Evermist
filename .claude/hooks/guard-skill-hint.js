@@ -44,6 +44,7 @@ const OWNERS = {
   'main.js': 'module-text',
   'vttplan.js': 'floor-plan',
   'floorplan.js': 'floor-plan',
+  'doorgeometry.js': 'floor-plan',
 };
 
 // Matched on PATH, not basename: a scenario file can be called anything, and the

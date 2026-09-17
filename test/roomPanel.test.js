@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 // real implementation is hoisted to the global here rather than duplicated.
 global.getPolyBBox = require('../src/fogGeometry.js').getPolyBBox;
 global.polyRings   = require('../src/fogGeometry.js').polyRings;
+global.shapeBBox   = require('../src/fogGeometry.js').shapeBBox;
 
 const {
   normalizeRoomFields, sanitizeRoomName, sanitizeRoomDesc,

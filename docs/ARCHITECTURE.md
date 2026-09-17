@@ -35,7 +35,9 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 | `render.js` | The render loop. Each frame it decides which layers actually changed and redraws only those, keeps the canvases sized to the window, and paints the cursor and polygon-selection overlay. |
 | `state.js` | Shared values that several files need. Loaded first so they exist before anything reads them. |
 | `fog.js` | Everything fog: the canvases that store what's hidden, the blur and cloud-texture math, and the reveal/hide logic. |
-| `fogGeometry.js` | The pure fog math: polygon insetting, rounded paths, cone vertices, door placement and notch geometry, shared-wall detection, tint-colour derivation, animation timing. Plain functions in, values out, no drawing. Unit-tested. |
+| `fogGeometry.js` | The pure fog math: polygon insetting, rounded paths, cone vertices, tint-colour derivation, animation timing. Plain functions in, values out, no drawing. Unit-tested. |
+| `doorGeometry.js` | The pure door math: notch placement and corners, cell snapping, which wall a point is near, door placement from a floor plan, shared-wall detection, and the remap that keeps a door on its map point when the outline changes. Unit-tested. |
+| `shapeDetail.js` | Carries a room's per-vertex and per-wall detail across a repair: it flattens each curve for the clipping library, then rebuilds the surviving stretches as exact cubics and puts each corner radius and each door back on the wall that now holds it. Unit-tested. |
 | `vttPlan.js` | Turns a Universal VTT floor plan's wall segments into room polygons, and reports where its openings sit. Pure geometry, no dependencies, unit-tested. |
 | `roomOps.js` | Reshapes rooms already on the map: joins the ones a drawn shape overlaps into one, trims a drawn shape out of them, and cuts one room into two along a clicked path. Wraps the vendored `polygon-clipping` library and answers with vertex lists or a refusal reason, never a throw. Unit-tested. |
 | `floorPlan.js` | The app side of that: finding the plan beside the map, the offer notice, setting Grid Size from the plan at import, and drawing the rooms and their doorways. |
@@ -338,7 +340,8 @@ different map, and one Player window on the TV showing both.
 ## Rooms
 
 A "room" is a polygon the DM draws on the map. It carries a fog mode (Revealed, Half, or
-Shrouded), an optional name and description, and optional per-corner rounding.
+Shrouded), an optional name and description, optional per-corner rounding, and optional curves on
+its walls.
 
 Rooms are DM-only, and that comes for free rather than by enforcement: fog crosses to the
 Player as flattened pixels, so the polygon list never leaves the DM window. There's no
@@ -353,6 +356,21 @@ A double-click opens it for editing, which puts its corners, its walls and any h
 reach. Escape climbs back out one level per press - the picked part, then editing, then the room
 itself. The two levels never show at once, because the map already carries doors, room labels and
 the room card.
+
+**A wall can curve.** Hold Ctrl and drag a wall and it bends; Ctrl and click straightens it again.
+The bend leans toward the point you grabbed, so pulling near one end curves that end harder - the
+same asymmetry a vector editor gives you. Drag a bend back to nearly straight and it snaps flat,
+so flattening a wall needs no key at all.
+
+Each corner of a curved wall grows two control points, shown only for the corner you have picked.
+They move independently, which is what keeps a sharp corner where a round tower meets a straight
+corridor. A corner carries rounding or curve handles, never both: rounding needs two straight walls
+to cut the fillet between, and a bent wall gives it neither, so bending a wall clears the rounding
+on its two corners.
+
+The curve reaches the fog, the grid inside an effect and the players, because all of them trace the
+same outline. Everything that has to walk straight lines - the clipping library behind a repair,
+the effect shader, and hit-testing a click - samples the curve into points first.
 
 A hole is picked by clicking its empty middle, which nothing else uses: that ground reads as
 outside the room, so a click there at the object level falls through to whatever sits behind.
@@ -399,9 +417,15 @@ room becomes two rooms whose edges touch exactly, with no strip removed between 
 distinction matters in a cave, where a Trim strip would leave a fogged line across open rock.
 
 All three are one undo step, save with the scene, and reach the Player like any other room,
-because a room's outline *is* the fog stencil. Two things are dropped rather than carried over:
-per-corner rounding and door marks, both of which are stored by position in the corner list, and
-a repair renumbers every position.
+because a room's outline *is* the fog stencil.
+
+**A repair keeps the curves, the corner rounding and the doors on the walls that survive it.** All
+three are stored by position in the corner list, and a repair renumbers every position, so each one
+is matched back onto the wall it came from afterwards. A wall the repair passed by comes out
+unchanged; a wall it cut through keeps the half that is left, still a curve. The one thing with
+nowhere to go is a door on a wall the repair removed outright: it goes, and a line appears on
+screen saying how many went. A corner's rounding disappearing with the corner raises nothing,
+because you drew the cut that took it.
 
 All three repairs are on both bars and act on whichever list the mode names, so a Merge drawn in
 Effects joins two effects and never touches a room. A repair armed in one mode is still armed in
@@ -437,6 +461,10 @@ door is the same size and lands on the same lines as the squares. Clicking the s
 closes it; clicking the cell beside it opens a ten-foot doorway. While the tool is picked the grid
 draws on the DM screen even if it is switched off, and every wall carries a tick at each cell
 boundary, which is the only way the cells of a diagonal wall are predictable.
+
+A door on a curved wall follows the curve, because "where along it" is a fraction of the wall's
+real length rather than of the straight line between its corners. The notch turns with the wall it
+sits on.
 
 A door stores nothing but which wall it is on and where along it. Width and depth come from the
 scene's grid cell when it is drawn, so correcting a grid resizes every door already placed instead
