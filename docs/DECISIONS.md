@@ -87,6 +87,25 @@ shape nothing can build.
 Offsets rather than absolute control points, because a handle then rides its anchor through a
 move, a rotate and a scale with no work at all.
 
+### The bounding box is axis-aligned, and no angle is stored · `SETTLED` (2026-09-18)
+Figma keeps its box tilted with a rotated object, which needs an angle stored per shape. A hole has
+nowhere to keep one: `holes` is re-indexed by a delete and rebuilt entirely by a repair, so a
+parallel array of angles would fall out of step and a tilted box would have shipped for rooms and
+not for holes. A rotate therefore rewrites the points and the box re-derives from them.
+
+The cost is that resizing a turned room works along the map's axes rather than the room's. Accepted
+because one rule covers a room, an effect and a hole, and because the alternative breaks the rule
+that anything a room can do, a hole can do. Reversible: storing the angle is additive, and an older
+build ignores it because the vertices are already in world coordinates.
+
+### A hole is a level of its own, not a second thing on screen · `SETTLED` (2026-09-18)
+A box and a vertex set are never drawn together, so a picked hole needed somewhere to put its own
+box. It became a third level, matching how Figma descends into a boolean group: a double-click opens
+the room, a click boxes a hole, a second double-click opens the hole's corners, and Escape climbs
+back one step per press. Only one level answers the mouse at a time - a boxed hole answers through
+its box alone, and an open hole answers on its own ring - because a hit test that outlives what the
+app draws lets a press reshape a room by landing on nothing.
+
 ### A repair carries the curve, the radius and the door · `SETTLED` (2026-09-17)
 **This REVERSES the 2026-09-02 call above**, where Join, Trim and Cut dropped `cornerRadii` and
 `doors` from every shape they touched. The drop was cheap and it threw away work the DM had done
@@ -677,6 +696,18 @@ electron-builder's own publisher only uploads to *draft* releases, so creating t
 published via the web UI made it silently skip the upload: the build went green with no
 installers attached. Unsigned is a deliberate cost choice; `CSC_IDENTITY_AUTO_DISCOVERY=false`
 is required or the mac build fails hunting for an identity.
+
+### The release is a draft until every file is verified up · `SETTLED` (2026-09-17)
+`uploads.github.com` returned 500 on the three 100MB+ installers for an hour and a half, through
+the action and through `gh` alike, while the small `.yml` and `.blockmap` files went up fine. The
+action uploads all eight files at once and never retries, so one server error took 2.13.0 down
+with it and left a half-filled release page behind.
+
+Files now go up one at a time, five attempts each with a growing wait, and the release stays a
+draft until every uploaded size matches the file on disk. A release that cannot be completed is
+invisible instead of broken: no tag, no page, and installed copies stay on the last version.
+Sizes are compared rather than the upload's exit code trusted, because GitHub accepting a
+truncated asset is exactly what electron-updater would choke on.
 
 ### Windows ships an installer, and portable was dropped rather than kept beside it · `SETTLED` (2026-09-07)
 A portable build extracts to a temp directory and cannot replace itself, so self-updating needed an

@@ -70,6 +70,9 @@ function restoreState(snapshot) {
   // the level too costs a double-click back on every Ctrl+Z mid-reshape.
   selectedVertexIndex = -1;
   selectedHoleIndex = -1;
+  // ⚠ WITH THE HOLE INDEX, or the level below outlives the hole it named and hides the corners
+  // of every ring that is left.
+  holeEditMode = false;
   if (selectedPolygonId == null) leaveShapeEditMode();
   activePolygon = null;
   rebuildFogFromPolygons();

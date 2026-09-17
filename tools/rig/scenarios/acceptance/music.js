@@ -76,9 +76,11 @@ module.exports = async function musicFeature(rig) {
     'Village of Barovia [aBcDeFgHiJk].wav',
     'Крипты [zYxWvUtSrQp].wav',
   ];
-  // Six seconds, not two: the tracks loop, and a short file wraps its currentTime back to zero
-  // often enough that the "is playback consuming this" check below cannot read a clean advance.
-  for (const name of TRACKS) fs.writeFileSync(path.join(musicDir, name), wav(6));
+  // ⚠ SIXTY SECONDS, AND THE LENGTH IS PART OF THE CHECKS. The tracks loop, so a file short
+  // enough to reach its end mid-scenario wraps currentTime back to zero, and the pause/resume
+  // check below then reads a correct resume as a restart. Six seconds ran out on a CI runner.
+  // 8-bit mono at 8kHz is 8KB a second, so a minute costs half a megabyte per track.
+  for (const name of TRACKS) fs.writeFileSync(path.join(musicDir, name), wav(60));
 
   // ── A. On the DM, absent from the Player ──────────────────────────────────
   await dm.waitFor("!!document.getElementById('mu-pill')", 30000, 'the music bubble to exist');

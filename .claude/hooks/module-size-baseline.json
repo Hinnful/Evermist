@@ -2,10 +2,10 @@
   "note": "Max bytes per module, keyed by repo-relative path. src/*.js only; src/css/ has its own rules. Auto-ratchets DOWN as a file shrinks, and a file absent here adopts its current size on first edit. Raise a number only when the growth is a deliberate choice against extracting the concern into its own module.",
   "files": {
     "src/roomOps.js": 11103,
-    "src/state.js": 15296,
+    "src/state.js": 16329,
     "src/toolbar.js": 23155,
     "src/input.js": 14100,
-    "src/tools.js": 47568,
+    "src/tools.js": 29646,
     "src/shapeMenu.js": 3016,
     "src/about.js": 5062,
     "src/updater.js": 4677,
@@ -15,7 +15,7 @@
     "src/grid.js": 11848,
     "src/mapLoader.js": 4584,
     "src/minimap.js": 15784,
-    "src/render.js": 13826,
+    "src/render.js": 13683,
     "src/renderer.js": 18927,
     "src/roomPanel.js": 34062,
     "src/sceneManager.js": 51918,
@@ -35,11 +35,12 @@
     "src/changelog.js": 4372,
     "src/changelogData.js": 85851,
     "src/effects.js": 21972,
-    "src/undo.js": 4847,
+    "src/undo.js": 5209,
     "src/video.js": 30518,
     "src/pdfLayout.js": 4554,
     "src/moduleText.js": 39644,
-    "src/shapeSelect.js": 23189,
-    "src/shapeDetail.js": 10966
+    "src/shapeSelect.js": 36442,
+    "src/shapeDetail.js": 10966,
+    "src/shapeBox.js": 12331
   }
 }

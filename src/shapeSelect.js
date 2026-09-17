@@ -44,12 +44,14 @@ function enterShapeEditMode(id) {
   shapeEditMode = true;
   selectedVertexIndex = -1;
   selectedHoleIndex = -1;
+  holeEditMode = false;
 }
 
 function leaveShapeEditMode() {
   shapeEditMode = false;
   selectedVertexIndex = -1;
   selectedHoleIndex = -1;
+  holeEditMode = false;
 }
 
 function clearShapeSelection() {
@@ -125,11 +127,22 @@ function closestPointOnSegment(px, py, ax, ay, bx, by) {
   return { x: ax + t * dx, y: ay + t * dy };
 }
 
+// ⚠ ONE LEVEL ANSWERS AT A TIME, or the map offers a grab it draws nothing for. A BOXED hole
+// answers through its box alone, so no ring does; a hole OPENED for editing answers on its own
+// ring, so its room's corners and walls stop.
+function ringIsLive(r) {
+  if (!shapeEditMode || selectedHoleIndex < 0) return true;
+  return holeEditMode && r === selectedHoleIndex + 1;
+}
+
 function findVertexAt(poly, mapX, mapY) {
   const hitR = Math.min(10 / zoom, 30); // clamp: the grab shrinks when zoomed far out
   let flat = 0;
-  for (const ring of polyRings(poly)) {
+  const rings = polyRings(poly);
+  for (let r = 0; r < rings.length; r++) {
+    const ring = rings[r];
     for (let i = 0; i < ring.length; i++, flat++) {
+      if (!ringIsLive(r)) continue;
       if (Math.hypot(mapX - ring[i].x, mapY - ring[i].y) < hitR) return flat;
     }
   }
@@ -179,8 +192,11 @@ function closestOnEdge(poly, ring, i, flat, mapX, mapY) {
 function findEdgeAt(poly, mapX, mapY) {
   const hitR = 10 / zoom;
   let flat = 0;
-  for (const verts of polyRings(poly)) {
+  const rings = polyRings(poly);
+  for (let r = 0; r < rings.length; r++) {
+    const verts = rings[r];
     for (let i = 0; i < verts.length; i++, flat++) {
+      if (!ringIsLive(r)) continue;
       if (distToEdge(poly, verts, i, flat, mapX, mapY) < hitR) return flat;
     }
   }
@@ -339,6 +355,13 @@ function straightenBentEdge(poly) {
 function selectMouseDown(raw, e) {
   const selPoly = findActiveShape();
 
+  // ⚠ FIRST, because a box handle sits OUTSIDE the shape and every test below starts from a hit
+  // on the shape itself.
+  if (selPoly) {
+    const bh = findBoxHandleAt(selPoly, raw.x, raw.y);
+    if (bh) { startBoxDrag(selPoly, bh, raw); return; }
+  }
+
   if (selPoly && shapeEditMode) {
     // Priority inside edit mode: a curve handle, then vertex, then edge, then a hole's middle.
     const hp = findHandleAt(selPoly, raw.x, raw.y);
@@ -353,7 +376,9 @@ function selectMouseDown(raw, e) {
     if (vi >= 0) {
       armDragUndo();
       selectedVertexIndex = vi;
-      selectedHoleIndex = -1;
+      // ⚠ NOT INSIDE THE HOLE'S OWN LEVEL: the index names the ring that level is open on, and
+      // clearing it hands every hit test back to the room's outline.
+      if (!holeEditMode) selectedHoleIndex = -1;
       isDraggingVertex = true;
       return;
     }
@@ -369,7 +394,7 @@ function selectMouseDown(raw, e) {
       edgeDragOrigVerts = polyRings(selPoly).map(r => r.map(v => ({ x: v.x, y: v.y })));
       return;
     }
-    const hi = findHoleAt(selPoly, raw.x, raw.y);
+    const hi = holeEditMode ? -1 : findHoleAt(selPoly, raw.x, raw.y);
     if (hi >= 0) {
       armDragUndo();
       selectedHoleIndex = hi;
@@ -399,16 +424,29 @@ function selectMouseDown(raw, e) {
 
 function selectHoverCursor(pos) {
   const selPoly = findActiveShape();
+  if (selPoly) {
+    const bc = boxHoverCursor(selPoly, pos);
+    if (bc) return bc;
+  }
   if (selPoly && shapeEditMode) {
     if (findHandleAt(selPoly, pos.x, pos.y)) return 'pointer';
     if (findVertexAt(selPoly, pos.x, pos.y) >= 0) return 'pointer';
     if (findEdgeAt(selPoly, pos.x, pos.y) >= 0) return 'grab';
-    if (findHoleAt(selPoly, pos.x, pos.y) >= 0) return 'move';
+    if (!holeEditMode && findHoleAt(selPoly, pos.x, pos.y) >= 0) return 'move';
   }
   return findPolygonAt(pos.x, pos.y) ? 'move' : 'default';
 }
 
-function selectMouseMove(pos, screenX, screenY) {
+function selectMouseMove(pos, screenX, screenY, e) {
+  if (boxDragging() && selectedPolygonId != null) {
+    const poly = findActiveShape();
+    if (poly) {
+      boxDragMove(poly, pos, !!(e && e.shiftKey));
+      drawCursor(screenX, screenY);
+    }
+    return true;
+  }
+
   if (isBendingEdge && selectedPolygonId != null) {
     const poly = findActiveShape();
     if (poly && bendOrigCubic) {
@@ -555,11 +593,17 @@ function selectMouseMove(pos, screenX, screenY) {
 
 function selectDragging() {
   return isDraggingPolygon || isDraggingVertex || isDraggingEdge || isDraggingHole ||
-         isBendingEdge || isDraggingHandle;
+         isBendingEdge || isDraggingHandle || boxDragging();
 }
 
 function selectMouseUp() {
   if (!selectDragging()) return false;
+  if (boxDragging()) {
+    endBoxDrag();
+    if (_dragUndoPushed) commitShapeDrag();
+    drawCursor(lastScreenX, lastScreenY);   // re-place the card against the new shape
+    return true;
+  }
   // Ctrl+CLICK, with no drag behind it, straightens the wall instead of bending it.
   if (isBendingEdge && !bendMoved) {
     const poly = findActiveShape();
@@ -591,6 +635,15 @@ function selectDblClick(raw) {
   }
   const poly = findActiveShape();
   if (!poly) return;
+  // A boxed hole opens the same way its room did: one more double-click, one level down.
+  if (selectedHoleIndex >= 0 && !holeEditMode &&
+      findHoleAt(poly, raw.x, raw.y) === selectedHoleIndex) {
+    holeEditMode = true;
+    selectedVertexIndex = -1;
+    drawCursor(lastScreenX, lastScreenY);
+    scheduleRender();
+    return;
+  }
   if (findVertexAt(poly, raw.x, raw.y) >= 0) return; // don't insert on existing vertex
   const ei = findEdgeAt(poly, raw.x, raw.y);
   if (ei < 0) return;
@@ -644,12 +697,20 @@ function deleteSelectedPart() {
   if (selectedPolygonId == null) return false;
   const poly = findActiveShape();
   if (shapeEditMode && poly) {
+    // ⚠ A DELETE CAN TAKE THE WHOLE RING, and the hole indices after it shift up one. A level left
+    // open on that index then edits the hole next door without saying so.
+    const holesBefore = polyHoleRings(poly).length;
     if (selectedVertexIndex >= 0) {
       if (!deleteShapeVertex(poly, selectedVertexIndex)) return true;
       selectedVertexIndex = -1;
+      if (holeEditMode && polyHoleRings(poly).length !== holesBefore) {
+        holeEditMode = false;
+        selectedHoleIndex = -1;
+      }
     } else if (selectedHoleIndex >= 0) {
       if (!deleteShapeHole(poly, selectedHoleIndex)) return true;
       selectedHoleIndex = -1;
+      holeEditMode = false;
     } else {
       deleteSelectedPolygon();
       return true;
@@ -668,6 +729,17 @@ function deleteSelectedPart() {
 // Escape climbs one level per press: the part, edit mode, then the shape.
 function escapeShapeSelection() {
   if (selectedPolygonId == null) return false;
+  if (holeEditMode && selectedVertexIndex >= 0) {
+    selectedVertexIndex = -1;
+    drawCursor(lastScreenX, lastScreenY);
+    return true;
+  }
+  if (holeEditMode) {
+    holeEditMode = false;
+    drawCursor(lastScreenX, lastScreenY);
+    scheduleRender();
+    return true;
+  }
   if (shapeEditMode && (selectedVertexIndex >= 0 || selectedHoleIndex >= 0)) {
     selectedVertexIndex = -1;
     selectedHoleIndex = -1;
@@ -743,12 +815,22 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
     cursorCtx.stroke();
   }
 
-  if (!editing) { cursorCtx.restore(); return; }
+  // A boxed hole shows NO vertices at all: shapeBox.js has the box, and the two never share the
+  // map. Its ring, drawn just above, is what says which hole is picked.
+  if (!editing || (holeSel >= 0 && !holeEditMode)) { cursorCtx.restore(); return; }
 
-  // Vertex dots — at the real vertex, not the fillet, on every ring.
+  // The hole's own level narrows the dots to its ring, so the room's corners stop competing.
+  let dotFrom = 0, dotTo = svAll.length;
+  if (holeEditMode && holeSel >= 0) {
+    dotFrom = verts.length;
+    for (let k = 0; k < holeSel; k++) dotFrom += holeRings[k].length;
+    dotTo = dotFrom + holeRings[holeSel].length;
+  }
+
+  // Vertex dots — at the real vertex, not the fillet, on every live ring.
   cursorCtx.globalAlpha = 1;
   cursorCtx.setLineDash([]);
-  for (let i = 0; i < svAll.length; i++) {
+  for (let i = dotFrom; i < dotTo; i++) {
     const { x, y } = svAll[i];
     const isSelVert = i === selectedVertIdx;
     const r = isSelVert ? 7 : 5;

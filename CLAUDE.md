@@ -84,7 +84,8 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `roomOps.js` | Pure Join/Trim/Cut kernel. Unit-tested |
 | `shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Unit-tested |
 | `tools.js` | Drawing tools; the path a drawn shape takes to a room or effect |
-| `shapeSelect.js` | The selection: its two levels, hole picking, hand edits, outline drawing |
+| `shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
+| `shapeBox.js` | The bounding box: its handles, rotate and scale |
 | `shapeMenu.js` | The one shape button and its right-click flyout |
 | `input.js` | DM mouse/wheel/keyboard, shape helpers, legend. **Drag-drop is in toolbar.js** |
 | `undo.js` | Undo/redo for fog edits |
@@ -129,7 +130,7 @@ Declarations must precede use at init time. All under `src/`:
 
 ```
 lib/pixi.min.js → lib/polygon-clipping.umd.js → renderer.js → state.js → display.js →
-video.js → fogGeometry.js → doorGeometry.js → vttPlan.js → fog.js → roomOps.js → shapeDetail.js → tools.js → shapeSelect.js → mapLoader.js →
+video.js → fogGeometry.js → doorGeometry.js → vttPlan.js → fog.js → roomOps.js → shapeDetail.js → tools.js → shapeSelect.js → shapeBox.js → mapLoader.js →
 mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js →
 viewport.js → panes.js → stage.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
 input.js →
@@ -269,6 +270,9 @@ subjects into it. Run it after the bump commit and amend, or the panel misses th
 **Pipeline rules:**
 - **Upload with `softprops/action-gh-release@v2`, NOT `electron-builder --publish`.**
   electron-builder only uploads to *draft* releases and silently skips otherwise.
+- **The action creates a DRAFT and carries no `files:`.** Files go up one at a time with retries,
+  and the draft turns public only once every size matches. `uploads.github.com` 500s on the
+  100MB+ installers, and a parallel upload loses every file in flight to the first failure.
 - **Unsigned by deliberate choice.** `CSC_IDENTITY_AUTO_DISCOVERY=false` must stay set in the
   workflow env and the local Windows `build` script, or the mac build fails.
 - **Never redirect `userData` beside the `.exe` again** - the old portable folder orphaned a

@@ -223,6 +223,12 @@ function drawCursor(screenX, screenY) {
       drawPolyOutline(e, isSel, isSel ? selectedVertexIndex : -1, roomsLive);
     }
   }
+  // The bounding box, above every outline and below the labels. It draws only where there is one
+  // to draw, so an edit-mode selection reaches it and paints nothing.
+  if (!isPlayer && selectedPolygonId != null) {
+    const sel = (roomsLive ? polygons : effects).find(s => s.id === selectedPolygonId);
+    if (sel) drawShapeBox(sel);
+  }
   // Editing chrome, never sent to the Player; the notch itself is fog and reads the same on both
   // screens. Effects mode has no doors to show.
   if (!isPlayer && placeMode !== 'effects') drawDoorHandles(shape === 'door');

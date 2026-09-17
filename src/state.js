@@ -133,6 +133,9 @@ let selectedVertexIndex = -1;
 let shapeEditMode = false;
 // Which hole ring of the selected shape is picked, -1 for none. Edit mode only.
 let selectedHoleIndex = -1;
+// A picked hole has two levels of its own, exactly as its room does: false = the hole is an
+// object wearing a bounding box, true = the hole's own corners and walls. See shapeBox.js.
+let holeEditMode = false;
 
 // ─── Map / camera ────────────────────────────────────────────────────────────
 let mapOffscreen = null;

@@ -134,8 +134,8 @@ module.exports = async function editing(rig) {
             'one click opened the room for editing — a click picks it as a whole object, and ' +
             'its corners are not reachable until a double-click asks for them');
 
-  // AT THE OBJECT LEVEL a corner is not a target. Pressing one moves the whole room, which is
-  // what the bounding box will hang off later.
+  // AT THE OBJECT LEVEL a corner is not a target. A press there takes the bounding box handle
+  // sitting on it, and going nowhere writes nothing - see transform.js for what a drag does.
   const corner = await dm.evaluate('__rigById(' + a2 + ').vertices[0]');
   await dm.evaluate('__rigMouse("mousedown", ' + corner.x + ',' + corner.y + ');' +
                     ' __rigMouse("mouseup", ' + corner.x + ',' + corner.y + '); 0');

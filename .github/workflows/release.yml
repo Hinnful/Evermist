@@ -236,21 +236,63 @@ jobs:
 
       # ⚠ softprops, NOT electron-builder --publish: electron-builder only uploads to DRAFT
       # releases and silently skips otherwise.
-      # ⚠ latest*.yml and the blockmaps are what electron-updater reads. Drop them and every
-      # installed copy silently stops finding new versions.
+      # ⚠ DRAFT, and carrying no files. The release page and the tag must not exist until every
+      # installer is up; the upload step below fills it and the last step makes it public.
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.decide.outputs.version }}
+          target_commitish: ${{ github.sha }}
           name: ${{ steps.notes.outputs.title }}
           body: ${{ steps.notes.outputs.body }}
-          draft: false
+          draft: true
           prerelease: false
-          files: |
-            incoming/*.exe
-            incoming/*.dmg
-            incoming/*.AppImage
-            incoming/latest*.yml
-            incoming/*.blockmap
+
+      # ⚠ ONE FILE AT A TIME, WITH RETRIES. uploads.github.com returns a 500 ("Error saving
+      # asset") on the 100MB+ installers often enough to cost a release, and a parallel upload
+      # loses every file in flight to the first one that fails.
+      - name: Upload the files one at a time
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ needs.decide.outputs.version }}
+        run: |
+          for F in incoming/*; do
+            for A in 1 2 3 4 5; do
+              if gh release upload "$TAG" "$F" --clobber; then
+                continue 2
+              fi
+              echo "attempt $A failed for $F, waiting $((A * 20))s"
+              sleep $((A * 20))
+            done
+            echo "::error::gave up on $F after 5 attempts"
+            exit 1
+          done
+
+      # ⚠ latest*.yml and the blockmaps are what electron-updater reads. Drop one and every
+      # installed copy silently stops finding new versions, rollback included.
+      # A short upload GitHub accepted still counts as a failure here, so sizes are compared.
+      - name: Every file made it up whole
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ needs.decide.outputs.version }}
+        run: |
+          gh release view "$TAG" --json assets --jq '.assets[] | .name + " " + (.size|tostring)' | sort > up.txt
+          cat up.txt
+          BAD=0
+          for F in incoming/*; do
+            WANT="$(basename "$F") $(stat -c%s "$F")"
+            if ! grep -qxF "$WANT" up.txt; then
+              echo "::error::$WANT is missing or truncated on the release"
+              BAD=1
+            fi
+          done
+          exit $BAD
+
+      # The tag is born here, and nothing public existed before this line.
+      - name: Make the release public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ needs.decide.outputs.version }}
+        run: gh release edit "$TAG" --draft=false
 
   # The staging branch has done its job once main holds the commit. Deleting it here rather than in
   # land, because publish checks out the branch ref to read the notes off it.
