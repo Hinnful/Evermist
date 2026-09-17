@@ -16,6 +16,9 @@
 //   D. The watchdog runs while an animated map is up, and it brings back a map the app's own
 //      pause handler has been told to leave alone. A dead frame pump comes back too.
 //   E. Switching to a still map stops the watchdog, so nothing polls a video that is gone.
+//   F. The log the app writes while a map plays names the window that wrote each line, and says
+//      which map that window is playing. A stall at the table is read off this file afterwards,
+//      and two-map mode puts two windows in one file.
 //
 // ⚠ THIS IS THE RECOVERY PATH, WHICH NOTHING ELSE DRIVES. smoke.js reads the frame loop as alive
 // on a healthy map, which is the state these checks start from and not what they are about.
@@ -35,6 +38,9 @@
 //
 // ⚠ THE WATCHDOG TICKS EVERY THREE SECONDS, so D and E poll to a bound rather than sleeping. A
 // fixed wait here is either a lie or six seconds nobody gets back.
+
+const fs = require('fs');
+const path = require('path');
 
 const MAP_W = 900, MAP_H = 600;
 
@@ -210,6 +216,29 @@ module.exports = async function playbackFeature(rig) {
             JSON.stringify(onStill));
   rig.check(!onStill.enabled,
             'the video path still reports itself enabled on a still map');
+
+  // ── F. the log names the window that wrote each line ─────────────────────
+  // ⚠ READ OFF DISK, never from the in-page ring buffer. The file is what survives the session,
+  // and the tag is added on the way to disk - the overlay's own copy carries no tag at all.
+  const logOf = mode => {
+    const f = path.join(rig.profileDir, 'logs', 'video-diag-' + mode + '.log');
+    try { return fs.readFileSync(f, 'utf8').split(/[\r\n]+/).map(l => l.trim()).filter(Boolean); }
+    catch (_) { return []; }
+  };
+  const dmLog = logOf('dm');
+  rig.note('DM log: ' + dmLog.length + ' lines, last is ' + JSON.stringify(dmLog[dmLog.length - 1] || ''));
+  rig.check(dmLog.length > 0, 'the app wrote no playback log at all, so a stall at the table ' +
+                              'leaves nothing to read afterwards');
+  const tagged = dmLog.filter(l => /^\[\d+\] \[DM\] \[\+[\d.]+s\]/.test(l));
+  rig.check(tagged.length === dmLog.length,
+            (dmLog.length - tagged.length) + ' of ' + dmLog.length + ' log lines do not name the ' +
+            'window that wrote them, so two windows sharing this file cannot be told apart: ' +
+            JSON.stringify((dmLog.find(l => !/^\[\d+\] \[DM\] /.test(l)) || '').slice(0, 90)));
+  const what = dmLog.filter(l => /startVideoLoop scene=/.test(l));
+  rig.note('what each source is playing: ' + JSON.stringify((what[0] || '').slice(-60)));
+  rig.check(what.length > 0 && /map=\d+x\d+ clip=/.test(what[what.length - 1]),
+            'the log never says which map a window is playing, so a stall cannot be tied to a ' +
+            'map: ' + JSON.stringify(what[what.length - 1] || ''));
 
   // ⚠ A DECODER THAT RUNS DRY FOR REAL IS NOT REACHABLE HERE. Every fixture is a whole, valid
   // file on a local disk, and nothing in the protocol truncates a stream mid-decode. What is

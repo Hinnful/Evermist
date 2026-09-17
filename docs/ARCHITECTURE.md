@@ -105,6 +105,23 @@ handed to the browser's own compositor - the same path a media player uses, with
 frame. The graphics layer holds no picture of the map at all on that side, which is the
 counterpart to the Player's one-screen patch described below.
 
+### When an animated map stops
+
+A decoder that runs dry is the one fault the app cannot fix from inside. It pauses the picture,
+waits for the buffer to refill, and restarts the frame loop if that died - and when the data never
+comes back, all three recoveries run forever against a map that has stopped.
+
+So every window playing an animated map writes a line to disk for each of those events, into
+`logs/video-diag-dm.log` and `logs/video-diag-player.log` under the app's own data folder. A line
+carries the wall clock, the window that wrote it, and the map that window is playing. **The window
+matters because two-map mode puts two columns in the DM file and two Player halves in the other**,
+each timing from its own start - untagged, their lines interleave and no gap in either file means
+anything.
+
+Each launch retires the live file to a dated archive. **The archives are pruned by total size, not
+by a count of sessions**: a stall is chased by restarting, and a count throws away the session that
+holds the fault within a few restarts. The newest is never dropped, whatever it weighs.
+
 ## Bringing in a folder of maps
 
 Select ten maps in the file dialog, or drag them onto the window together, and they import one

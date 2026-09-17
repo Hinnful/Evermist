@@ -603,9 +603,14 @@ function _diagStream(mode) {
   return _diagStreams[mode];
 }
 
-// On each launch, retire the previous log to a dated archive and keep only the last few per mode.
-// The logs write continuously whenever a video plays, so append mode grows without bound. The live
-// session keeps the stable filename; history is dated.
+// On each launch, retire the previous log to a dated archive. The logs write continuously whenever
+// a video plays, so append mode grows without bound. The live session keeps the stable filename;
+// history is dated.
+//
+// ⚠ PRUNED BY TOTAL SIZE, NEVER BY COUNT. A stall is chased by restarting, and a count evicts
+// the session holding the fault within a few of them.
+const DIAG_LOG_BUDGET = 500 * 1024 * 1024;
+
 function _rotateDiagLogs() {
   if (!logsDir) return;
   const pad = n => String(n).padStart(2, '0');
@@ -622,16 +627,28 @@ function _rotateDiagLogs() {
         fs.renameSync(current, path.join(logsDir, `${base}-${stamp}.log`));
       }
     } catch {} // no current log yet — first run
-    // Prune archives to the newest 2 (dated names sort chronologically).
-    try {
-      const archives = fs.readdirSync(logsDir)
-        .filter(f => f.startsWith(base + '-') && f.endsWith('.log'))
-        .sort();
-      for (const f of archives.slice(0, Math.max(0, archives.length - 2))) {
-        try { fs.unlinkSync(path.join(logsDir, f)); } catch {}
-      }
-    } catch {}
   }
+  _pruneDiagArchives();
+}
+
+// Newest first, kept until the running total passes the budget. The newest is never dropped, so a
+// session larger than the whole budget survives the launch after it.
+function _pruneDiagArchives() {
+  const bases = Object.values(_diagModeFiles).map(f => f.replace(/\.log$/, ''));
+  const found = [];
+  try {
+    for (const name of fs.readdirSync(logsDir)) {
+      if (!name.endsWith('.log') || !bases.some(b => name.startsWith(b + '-'))) continue;
+      const full = path.join(logsDir, name);
+      try { const st = fs.statSync(full); found.push({ full, size: st.size, at: st.mtimeMs }); } catch {}
+    }
+  } catch { return; }
+  found.sort((a, b) => b.at - a.at);
+  let kept = 0;
+  found.forEach((f, i) => {
+    kept += f.size;
+    if (i > 0 && kept > DIAG_LOG_BUDGET) { try { fs.unlinkSync(f.full); } catch {} }
+  });
 }
 
 ipcMain.on('diag-append-line', (_event, mode, line) => {

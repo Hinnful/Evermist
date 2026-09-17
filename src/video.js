@@ -392,7 +392,7 @@ function startVideoLoop() {
   videoLastRenderTs = 0;
   _videoLoopStartedAt = performance.now();
   _bufferingPause = false;
-  _diagAppend('startVideoLoop');
+  _diagAppend('startVideoLoop ' + _diagWhat());
   if (!isPlayer) activateVideoDom(mapVideo);
   if (mapVideo.paused || mapVideo.ended) {
     mapVideo.play().catch(function() {});
@@ -574,8 +574,7 @@ function isVideoFile(file) {
 }
 
 // ─── Diagnostics (DM toggles with backtick `; the Player's is opened by the rig) ──
-// Kept for video-stall investigation. The overlay only appears on backtick and the stress rig only
-// runs under ?stress=1; disk logging is always on during playback, rotated and capped.
+// Kept for video-stall investigation. Disk logging is always on during playback.
 var _diagActive   = false;
 var _diagEl       = null;
 var _diagInterval = null;
@@ -610,10 +609,29 @@ function _diagMode() {
   return (typeof isPlayer !== 'undefined' && isPlayer) ? 'player' : 'dm';
 }
 
+// ⚠ WHICH WINDOW WROTE THE LINE. Two-map mode's columns share one file and its Player halves
+// share another, each timestamping from its own start, so untagged lines interleave and no
+// duration in either file can be read.
+function _diagSource() {
+  var mode = _diagMode() === 'player' ? 'PLAYER' : 'DM';
+  var id = (typeof paneId !== 'undefined' && paneId) ? ':' + paneId : '';
+  return mode + id;
+}
+
+// Written once per loop start, so every tagged source says which map its stalls belong to.
+function _diagWhat() {
+  var w = (typeof mapWidth !== 'undefined' && mapWidth) ? mapWidth : 0;
+  var h = (typeof mapHeight !== 'undefined' && mapHeight) ? mapHeight : 0;
+  var scene = (typeof currentScene !== 'undefined' && currentScene) ? currentScene.id : 'none';
+  var dur = (typeof mapVideo !== 'undefined' && mapVideo && isFinite(mapVideo.duration))
+    ? mapVideo.duration.toFixed(1) + 's' : '?';
+  return 'scene=' + scene + ' map=' + w + 'x' + h + ' clip=' + dur;
+}
+
 function _diagWriteDisk(relStamp, msg) {
   if (typeof window === 'undefined' || !window.electronAPI || !window.electronAPI.diagAppendLine) return;
   var wallMs = Date.now();
-  var line = '[' + wallMs + '] [' + relStamp + '] ' + msg;
+  var line = '[' + wallMs + '] [' + _diagSource() + '] [' + relStamp + '] ' + msg;
   try { window.electronAPI.diagAppendLine(_diagMode(), line); } catch (_) {}
 }
 

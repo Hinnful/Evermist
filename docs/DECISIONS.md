@@ -731,6 +731,18 @@ resume, the RVFC loop in `startVideoLoop`, and the Player texture-sync dedup on
 permanent, not temporary. Fallback if it ever recurs: throttle the Player's per-frame
 `drawImage(video)`.
 
+### Playback logs are kept by size, not by session count · `SETTLED` (2026-09-17)
+A stall at the table is chased by restarting the app, so a count-based limit evicts the session
+holding the fault within a few restarts - two archives per mode lost three sessions of a reported
+split-view stall before anyone could read them. The archives are pruned oldest-first once the
+`logs` folder passes 500MB, and the newest is never dropped whatever it weighs. A count would also
+throw away one long session to keep several short ones, which is backwards.
+
+Each line names the window that wrote it. Two-map mode puts two columns in the DM file and two
+Player halves in the Player file, each timing from its own start, so untagged lines interleave and
+every duration read out of them pairs events from different windows. Two wrong readings came out
+of one such file before the tag existed.
+
 ### The ~30s jitter · `SETTLED`
 Root cause was Chromium's `BackgroundVideoTrackOptimization` dropping tracks on "occluded"
 muted loops. The `disable-features` switch above is the fix.

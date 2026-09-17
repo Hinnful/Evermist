@@ -37,6 +37,8 @@
 //   N. Opening the second map does not rebuild the fog's cloud texture in each new screen.
 //      Every one of them copies the DM window's, and a half that is still loading has fog
 //      behind it rather than black, and none of them rebuilds the one it copied.
+//   P. The playback log names the window each line came from. Two-map mode has four animated
+//      maps on screen and two files between them, so an untagged line belongs to nobody.
 //   O. An update announces itself in the DM window alone. A column is the same page in an
 //      iframe, and a toast raised there would sit over a map and eat the one announcement.
 //
@@ -324,6 +326,32 @@ module.exports = async function twoMapsFeature(rig) {
   const bAt = await tvB.evaluate('fogDataCtx ? ' + tvFog + ' : -1');
   rig.check(bAt > 120, "a reveal in column A cleared the same ground on column B's Player: " +
                        'alpha ' + bAt);
+
+  // ── P. the log says which of the four windows wrote each line ───────────
+  // ⚠ READ OFF DISK. Two columns share one file and two Player halves share another, each
+  // timestamping from its own start, so without the tag no duration in either file can be read.
+  const sources = mode => {
+    const f = require('path').join(rig.profileDir, 'logs', 'video-diag-' + mode + '.log');
+    let lines = [];
+    try { lines = require('fs').readFileSync(f, 'utf8').split(/[\r\n]+/).filter(Boolean); }
+    catch (_) { return { seen: [], untagged: 0, lines: 0 }; }
+    const seen = new Set();
+    let untagged = 0;
+    for (const l of lines) {
+      const m = l.match(/^\[\d+\] \[([A-Z:]+)\]/);
+      if (m) seen.add(m[1]); else untagged++;
+    }
+    return { seen: Array.from(seen).sort(), untagged, lines: lines.length };
+  };
+  const dmSrc = sources('dm'), plSrc = sources('player');
+  rig.note('log sources: dm ' + JSON.stringify(dmSrc.seen) + ', player ' + JSON.stringify(plSrc.seen));
+  rig.check(dmSrc.untagged === 0 && plSrc.untagged === 0,
+            dmSrc.untagged + ' DM and ' + plSrc.untagged + ' Player log lines name no window, so ' +
+            'the two that share each file cannot be told apart');
+  rig.check(dmSrc.seen.indexOf('DM:A') >= 0 && dmSrc.seen.indexOf('DM:B') >= 0,
+            'both columns write the DM log and it names ' + JSON.stringify(dmSrc.seen));
+  rig.check(plSrc.seen.indexOf('PLAYER:A') >= 0 && plSrc.seen.indexOf('PLAYER:B') >= 0,
+            'both halves of the Player screen write its log and it names ' + JSON.stringify(plSrc.seen));
 
   // ── G. the one minimap follows the selection and repaints ────────────────
   // ⚠ THE PANEL HAS TO BE OPEN. A canvas inside display:none has zero-sized rects, so a drag
