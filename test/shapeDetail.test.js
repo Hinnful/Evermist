@@ -4,10 +4,10 @@ const {
   encodeShapeForSave, decodeShapeFromSave,
   splitCubic, sampleCubic, edgeCubic, edgeIsCurved, handleAt, flattenRing, scaleHandles, shapeBBox,
   buildRoundedPolyPath,
-} = require('../src/fogGeometry.js');
+} = require('../src/fog/fogGeometry.js');
 const {
   subCubic, wallParamAt, wallOf, flattenShapeForClip, restoreShapeDetail, restoreGroupDetail,
-} = require('../src/shapeDetail.js');
+} = require('../src/shapes/shapeDetail.js');
 
 const rect = (x1, y1, x2, y2) =>
   [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];

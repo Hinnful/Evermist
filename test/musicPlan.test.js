@@ -12,7 +12,7 @@ const {
   ytdlpOutdated,
   formatDuration,
   formatBytes,
-} = require('../src/musicPlan');
+} = require('../src/ui/musicPlan');
 
 describe('parseMusicUrl', () => {
 

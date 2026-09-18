@@ -42,11 +42,11 @@ or two maps at a time.
 
 ## What ships in the build
 
-`package.json` `build.files` lists each shipped path. Only two entries are globs:
-`src/**/*.js` and `src/css/**/*.css`; the rest name one file each.
+`package.json` `build.files` lists each shipped path. Three entries are globs: `src/**/*.js`,
+`src/css/**/*.css` and `electron/**/*.js`; the rest name one file each.
 
-- A new `.js` in `src/` or `.css` in `src/css/` ships automatically. Anything else needs its
-  own entry.
+- A new `.js` under `src/` or `electron/`, or a `.css` in `src/css/`, ships automatically.
+  Anything else needs its own entry.
 - A runtime npm dependency needs per-package include/exclude rules (see pdfjs-dist); ESM
   also needs `asarUnpack`.
 - **This whole class of bug is invisible to `npm start`, and the packaged app fails
@@ -59,7 +59,11 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 
 - **Never add feature logic to the inline `<script>` in `index.html`.** It is wiring and
   init only: DOM/canvas refs, PixiJS init, module `init` calls, lifecycle listeners. A new
-  concern gets a new `.js` file in `src/`.
+  concern gets a new `.js` file in the `src/` folder that owns its subsystem.
+- **A module belongs to one subsystem folder**, and a file that would sit in two belongs in
+  neither: split it. `src/` root holds only what every subsystem reads.
+- **A set that grows by one more of the same thing is a folder, not a branch.** A tool, a
+  material, a Player message and a column control each arrive as one file or one record.
 - **Migrate-on-touch.** Modifying a concern still in the blob? Extract *that concern only*
   into its own module first, then build the new behavior there.
 - **Shared mutable state has one home: `state.js`.** Move a piece there when a feature
@@ -75,96 +79,135 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | Module | Owns |
 |---|---|
 | `state.js` | Shared state: fog constants, grid config, fog RAF handles, and every dirty flag |
-| `renderer.js` | PixiJS/WebGL wrapper; map + DM fog GPU path |
-| `render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, `drawCursor` |
-| `fogClouds.js` | The drifting noise texture: one document builds the frame set, siblings copy it |
-| `fog.js` | Fog canvases, the blur + cloud pipeline, reveal/hide |
-| `fogAnim.js` | Fog on a clock: the drift, the reveal crossfade, the scene cover, the colour ease |
-| `fogControls.js` | The Fog tab's controls: anim presets, sliders, colour, feather, half-shroud, doors |
-| `fogGeometry.js` | Pure fog geometry kernel. Unit-tested |
-| `doorGeometry.js` | Pure door-notch kernel. Unit-tested |
-| `vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Unit-tested, dependency-free |
-| `roomOps.js` | Pure Join/Trim/Cut kernel. Unit-tested |
-| `shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Unit-tested |
-| `tools.js` | Drawing tools; the path a drawn shape takes to a room or effect |
-| `shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Unit-tested |
-| `shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
-| `shapeBox.js` | The bounding box: its handles, rotate and scale |
-| `shapeClipboard.js` | Copy, paste, duplicate; a clipboard that outlives a scene switch |
-| `shapeMenu.js` | The one shape button and its right-click flyout |
-| `input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in toolbar.js** |
+| `render/renderer.js` | PixiJS/WebGL wrapper: the context, the map sprite, the texture pool |
+| `render/playerFogPass.js` | The Player's fog: one full-screen GPU pass and its shaders |
+| `render/dmFogLayer.js` | The DM's fog: map-sized sprites, the transition crossfade, the cloud mask |
+| `render/render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, `drawCursor` |
+| `fog/fogClouds.js` | The drifting noise texture: one document builds the frame set, siblings copy it |
+| `fog/fog.js` | Fog canvases, the blur + cloud pipeline, reveal/hide |
+| `fog/fogAnim.js` | Fog on a clock: the drift, the reveal crossfade, the scene cover, the colour ease |
+| `fog/fogControls.js` | The Fog tab's controls: anim presets, sliders, colour, feather, half-shroud, doors |
+| `fog/fogGeometry.js` | Pure fog geometry kernel. Unit-tested |
+| `fog/fogColor.js` | Pure fog colour kernel: base and tint from one hex, the step between two, the settings a scene carries. Unit-tested |
+| `shapes/doorGeometry.js` | Pure door-notch kernel. Unit-tested |
+| `rooms/vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Unit-tested, dependency-free |
+| `shapes/roomOps.js` | Pure Join/Trim/Cut kernel. Unit-tested |
+| `shapes/shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Unit-tested |
+| `shapes/tools.js` | Which tool is in hand, the state they share, and the registry a click dispatches through |
+| `shapes/shapeCommit.js` | A drawn shape into a room, an effect or a repair; every refusal |
+| `shapes/toolPoly.js` | The Polygon tool: a vertex per click, and the two ways it closes |
+| `shapes/toolShapes.js` | The drag-a-shape tools: rectangle, circle, cone |
+| `shapes/toolBrush.js` | The fog brush: the stroke queued while the pointer moves, and the pass that paints it |
+| `shapes/toolDoor.js` | The Door tool and its notch in the fog |
+| `shapes/toolCut.js` | The Cut tool and the two pieces it leaves |
+| `shapes/toolPreview.js` | What a tool draws before anything is committed |
+| `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Unit-tested |
+| `shapes/shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
+| `shapes/shapeBox.js` | The bounding box: its handles, rotate and scale |
+| `shapes/shapeClipboard.js` | Copy, paste, duplicate; a clipboard that outlives a scene switch |
+| `shapes/shapeMenu.js` | The one shape button and its right-click flyout |
+| `ui/input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in `scenes/dragDrop.js`** |
 | `undo.js` | Undo/redo for fog edits |
-| `effects.js` | Map effects: the `effects` array's model and its render path |
-| `grid.js` | Grid config + render |
-| `gridCalibrate.js` | The calibration square that fits the grid to the map |
-| `scenes.js` | Fog persistence + scene fade helpers |
-| `sceneManager.js` | Scene CRUD and the library popup around the list |
-| `sceneCards.js` | The list itself: a card per scene, a section per group, the drag that reorders |
-| `sceneDelete.js` | The trash and its undo |
-| `mapImport.js` | Import: what the app accepts, the one-at-a-time batch loop, video maps to disk |
-| `sceneSwitch.js` | `switchScene`: fog cover, store read, decode, fog reopen |
-| `sceneGroups.js` | Group names on scenes; heading order + collapse. Tested |
-| `sceneStore.js` | IndexedDB read/write |
-| `mapLoader.js` | Image-map loading + progress-bar helpers |
-| `mapConvert.js` | Import-time animated-map shrink. `fitInsideBox` unit-tested |
-| `viewport.js` | Pan/zoom, Sync View, the Player window's life and map delivery, autosync |
-| `panes.js` | Two-column mode: the columns, the divider, the messages sent to them |
-| `stageWindow.js` | The DM's side of the Player screen in two-map mode: open, warm, bind, close |
-| `stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
-| `minimap.js` | Minimap render + drag/zoom remote, view sync both ways, zoom nudge |
-| `video.js` | Animated-map handling |
-| `videoDiag.js` | The video diagnostics overlay and its disk log |
-| `display.js` | Display detection |
-| `backup.js` | Zip backup/restore, including a picked or dropped `.zip` |
-| `toolbar.js` | DM UI wiring + drag-drop. Calls `initRoomPanel` and `initControlPanel` last |
-| `colorPicker.js` | The fog colour picker: square, hue strip, hex field, HSV maths |
-| `controlPanel.js` | Tabbed Fog/Grid/Player panel over the hidden legacy controls |
-| `roomPanel.js` | Map room labels and the pure geometry that places them |
-| `roomCard.js` | The room card: its fields, where it places itself, the drag that moves it |
-| `moduleText.js` | Module parsing, storage, name-field dropdown |
-| `moduleTextPanel.js` | The import panel and the name-field dropdown. Parses nothing |
-| `pdfLayout.js` | Pure PDF reading-order kernel. Unit-tested, dependency-free |
-| `pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
-| `confirmDialog.js` | The app's only sanctioned confirmation dialog |
-| `about.js` | The About block in the legend footer: mark, version, repo |
-| `changelogData.js` | The release list. GENERATED; never edit it |
-| `changelog.js` | The What’s new panel |
-| `updater.js` | The update toast, the update line under About, and the restart button |
-| `musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Unit-tested |
-| `music.js` | The music bubble: track library and playback |
-| `musicDownload.js` | The Add music panel: paste a link, pick tracks, download |
-| `floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
-| `player.js` | Player-mode runtime: the loading card, the handshake, resize, pan/zoom |
-| `playerMap.js` | A map payload landing on the Player: the cover, the fog mask, image or video |
-| `playerMessages.js` | The Player's inbox: one handler per message the DM sends |
-| `paneRuntime.js` | The column's inbox: the control messages a column accepts from the shell |
-| `stress.js` | `?stress=1` harness |
-| `memProbe.js` | `?memprobe=1` memory-footprint probe |
+| `render/effects.js` | Map effects: the `effects` array's model, and the meshes its render path builds |
+| `render/effectMaterials.js` | One record per material: ramp, warmth, swatch. A new material is a record |
+| `render/effectShader.js` | The two fragment passes an effect burns with, and the vertex cap they walk |
+| `render/grid.js` | Grid config + render |
+| `render/gridCalibrate.js` | The calibration square that fits the grid to the map |
+| `scenes/scenes.js` | Fog persistence + scene fade helpers |
+| `scenes/sceneManager.js` | Scene CRUD and the library popup around the list |
+| `scenes/sceneCards.js` | The list itself: a card per scene, a section per group, the drag that reorders |
+| `scenes/sceneDelete.js` | The trash and its undo |
+| `scenes/mapImport.js` | Import: what the app accepts, the one-at-a-time batch loop, video maps to disk |
+| `scenes/sceneSwitch.js` | `switchScene`: fog cover, store read, decode, fog reopen |
+| `scenes/sceneGroups.js` | Group names on scenes; heading order + collapse. Tested |
+| `scenes/sceneStore.js` | IndexedDB read/write |
+| `scenes/mapLoader.js` | Image-map loading + progress-bar helpers |
+| `scenes/mapConvert.js` | Import-time animated-map shrink. `fitInsideBox` unit-tested |
+| `render/viewport.js` | Pan/zoom, fit-to-screen, Sync View, and the camera every push carries |
+| `player/playerWindow.js` | The Player window's life: opening it, warming one, what it is sent and when |
+| `player/panes.js` | Two-column mode: the columns, the divider, the messages sent to them |
+| `player/stageWindow.js` | The DM's side of the Player screen in two-map mode: open, warm, bind, close |
+| `player/stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
+| `player/minimap.js` | Minimap render + drag/zoom remote, view sync both ways, zoom nudge |
+| `render/video.js` | Animated-map handling |
+| `render/videoDiag.js` | The video diagnostics overlay and its disk log |
+| `render/display.js` | Display detection |
+| `scenes/backup.js` | Zip backup/restore, including a picked or dropped `.zip` |
+| `scenes/dragDrop.js` | What a file dropped on the DM window becomes |
+| `ui/toolbar.js` | DM UI wiring. Calls `initRoomPanel` and `initControlPanel` last |
+| `ui/colorPicker.js` | The fog colour picker: square, hue strip, hex field, HSV maths |
+| `ui/controlPanel.js` | Tabbed Fog/Grid/Player panel over the hidden legacy controls |
+| `rooms/roomPanel.js` | Map room labels and the pure geometry that places them |
+| `rooms/roomCard.js` | The room card: its fields, where it places itself, the drag that moves it |
+| `content/moduleText.js` | Module parsing, storage, name-field dropdown |
+| `content/moduleTextPanel.js` | The import panel and the name-field dropdown. Parses nothing |
+| `content/pdfLayout.js` | Pure PDF reading-order kernel. Unit-tested, dependency-free |
+| `content/pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
+| `ui/confirmDialog.js` | The app's only sanctioned confirmation dialog |
+| `ui/about.js` | The About block in the legend footer: mark, version, repo |
+| `ui/changelogData.js` | The release list. GENERATED; never edit it |
+| `ui/changelog.js` | The What’s new panel |
+| `ui/updater.js` | The update toast, the update line under About, and the restart button |
+| `ui/musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Unit-tested |
+| `ui/music.js` | The music bubble: track library and playback |
+| `ui/musicDownload.js` | The Add music panel: paste a link, pick tracks, download |
+| `rooms/floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
+| `player/player.js` | Player-mode runtime: the loading card, the handshake, resize, pan/zoom |
+| `player/playerMap.js` | A map payload landing on the Player: the cover, the fog mask, image or video |
+| `player/playerMessages.js` | The Player's inbox: one handler per message the DM sends |
+| `player/paneRuntime.js` | The column's inbox: the control messages a column accepts from the shell |
+| `dev/stress.js` | `?stress=1` harness |
+| `dev/memProbe.js` | `?memprobe=1` memory-footprint probe |
+
+### The main process
+
+One file per subject in `electron/`, each registering its own IPC on require. `main.js` keeps
+the windows, the display push and the app lifecycle, and hands every module its paths.
+
+| Module | Owns |
+|---|---|
+| `electron/videoFiles.js` | An animated map's file on disk: written, read back, listed, removed |
+| `electron/music.js` | The music folder as the library, and the downloader that fills it |
+| `electron/floorPlan.js` | The `.dd2vtt` sitting beside a map on disk |
+| `electron/diagLog.js` | The playback log every window writes to, and its rotation |
+| `electron/updates.js` | The check for a newer release, its download, and the state About reads |
+| `electron/pdfText.js` | PDF text extraction, in a process of its own |
+| `electron/backupZip.js` | What goes into a backup zip, and what comes back out |
 
 ### Load order
 
 Declarations must precede use at init time. All under `src/`:
 
 ```
-lib/pixi.min.js → lib/polygon-clipping.umd.js → renderer.js → state.js → display.js → video.js →
-videoDiag.js → fogGeometry.js → doorGeometry.js → vttPlan.js → fogClouds.js → fog.js →
-fogAnim.js → fogControls.js → roomOps.js → shapeDetail.js → tools.js → shapeHit.js →
-shapeSelect.js → shapeBox.js → shapeClipboard.js → mapLoader.js → mapConvert.js → undo.js →
-sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js → sceneCards.js → sceneDelete.js →
-mapImport.js → sceneSwitch.js → viewport.js → panes.js → stageWindow.js → backup.js → grid.js →
-effects.js → toolbar.js → shapeMenu.js → player.js → playerMap.js → playerMessages.js →
-paneRuntime.js → input.js → stress.js → memProbe.js → render.js → gridCalibrate.js → minimap.js →
-colorPicker.js → controlPanel.js → confirmDialog.js → floorPlan.js → moduleText.js →
-moduleTextPanel.js → roomPanel.js → roomCard.js → changelogData.js → changelog.js → about.js →
-updater.js → musicPlan.js → music.js → musicDownload.js → inline <script>
+lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
+render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
+fog/fogGeometry.js → fog/fogColor.js → shapes/doorGeometry.js → rooms/vttPlan.js →
+fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → shapes/roomOps.js →
+shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/toolShapes.js →
+shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/toolPreview.js →
+shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/shapeBox.js →
+shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → undo.js →
+scenes/sceneGroups.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneManager.js →
+scenes/sceneCards.js → scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
+render/viewport.js → player/playerWindow.js → player/panes.js → player/stageWindow.js →
+scenes/backup.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
+render/effects.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → player/player.js →
+player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
+dev/stress.js → dev/memProbe.js → render/render.js → render/gridCalibrate.js → player/minimap.js →
+ui/colorPicker.js → ui/controlPanel.js → ui/confirmDialog.js → rooms/floorPlan.js →
+content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/roomCard.js →
+ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
+ui/music.js → ui/musicDownload.js → inline <script>
 ```
 
 ### Repo layout
 
-Browser modules in `src/`, stylesheets in `src/css/`. The Electron shell (`main.js`,
-`preload.js`), both HTML entry points, and `package.json` stay at the repo root. Docs in
-`docs/`; settings, hooks and skills in `.claude/`, skills as `.claude/skills/<slug>/SKILL.md`.
-`tools/` is outside the build glob and must stay that way.
+Browser modules in `src/<subsystem>/`: `fog`, `shapes`, `rooms`, `scenes`, `player`, `render`,
+`ui`, `content`, `dev`. Only `state.js` and `undo.js` sit at `src/` root, because every
+subsystem reads them. Stylesheets in `src/css/`. The main process is `main.js` plus one file
+per subject in `electron/`. Both HTML entry points, `preload.js` and `package.json` stay at the
+repo root. Docs in `docs/`; settings, hooks and skills in `.claude/`, skills as
+`.claude/skills/<slug>/SKILL.md`. `tools/` is outside the build glob and must stay that way.
 
 ### Rules kept outside this file
 
@@ -284,7 +327,7 @@ amends that commit - never a second commit on top.
 
 **Never tag or publish by hand.** The workflow owns both, or neither.
 
-**Never write `src/changelogData.js` by hand.** `tools/build-changelog.js` turns release commit
+**Never write `src/ui/changelogData.js` by hand.** `tools/build-changelog.js` turns release commit
 subjects into it. Run it after the bump commit and amend, or the panel misses that release.
 
 **Pipeline rules:**

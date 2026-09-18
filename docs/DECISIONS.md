@@ -533,7 +533,7 @@ toolbar, the control-panel tabs, the scene library, and the dialogs.
 
 ### The in-app changelog is derived from release commits · `SETTLED` (2026-09-12)
 `tools/build-changelog.js` reads every `<version> - <note>` commit subject and its body into
-`src/changelogData.js`, which the What's new panel renders. A hand-kept `CHANGELOG.md` was
+`src/ui/changelogData.js`, which the What's new panel renders. A hand-kept `CHANGELOG.md` was
 rejected: the release notes on GitHub are already the commit message verbatim, and a second copy
 written by hand drifts from it with nothing to catch the drift. A Markdown file parsed at runtime
 was rejected too - `fetch()` of a local file is blocked on `file://`, so a generated `<script>`

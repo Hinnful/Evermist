@@ -23,7 +23,7 @@ const {
   VTT_CLOSE_PAIR_MAX,
   VTT_OPEN_WALL_MAX_GAP,
   VTT_ROW_BUCKET,
-} = require('../src/vttPlan.js');
+} = require('../src/rooms/vttPlan.js');
 
 // ⚠ THE FIXTURE IS A REAL DUNGEON ALCHEMIST EXPORT, and that is the point. Synthetic
 // fixtures let a wrong module-text parser pass 77 green tests here once already

@@ -2,7 +2,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { segmentsIntersect } = require('../src/tools.js');
+const { segmentsIntersect } = require('../src/shapes/tools.js');
 
 describe('segmentsIntersect', () => {
   test('clean X crossing — returns intersection point', () => {

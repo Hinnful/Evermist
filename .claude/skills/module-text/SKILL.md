@@ -1,6 +1,6 @@
 ---
 name: module-text
-description: Load BEFORE editing src/moduleText.js, src/moduleTextPanel.js, src/pdfLayout.js, src/pdfExtract.js, or the pdfjs handling in main.js. Also load when the task mentions module text import, the room name-field dropdown, heading or sub-location parsing, PDF text extraction, reading order, or the import panel. Carries binding rules whose violation silently corrupts parsed module entries or breaks the packaged .exe only.
+description: Load BEFORE editing src/content/moduleText.js, src/content/moduleTextPanel.js, src/content/pdfLayout.js, src/content/pdfExtract.js, or the pdfjs handling in electron/pdfText.js. Also load when the task mentions module text import, the room name-field dropdown, heading or sub-location parsing, PDF text extraction, reading order, or the import panel. Carries binding rules whose violation silently corrupts parsed module entries or breaks the packaged .exe only.
 ---
 
 # Module text import
@@ -93,10 +93,10 @@ as UTF-8 into replacement characters rather than an error, so the order is the s
 `_mtIsPdf` checks raw magic bytes in the first KB and routes to the converter before any
 decode.
 
-- **The parse runs in a `utilityProcess`** (`src/pdfExtract.js`), forked per import and
+- **The parse runs in a `utilityProcess`** (`src/content/pdfExtract.js`), forked per import and
   killed on reply, with a `PDF_EXTRACT_TIMEOUT_MS` backstop. Do not move it back into the
   main process. It can't go in the renderer either: pdfjs-dist is ESM-only.
-- main.js resolves the pdfjs directory and hands it to the child. It is the only place that
+- electron/pdfText.js resolves the pdfjs directory and hands it to the child. It is the only place that
   knows the asar rewrite. Handle all three of `message`, `exit` and the timeout.
 - **Bytes cross as an ArrayBuffer, never a path.** Electron removed `File.path` in v32.
 - Keep `pdfLayout.js` dependency-free.

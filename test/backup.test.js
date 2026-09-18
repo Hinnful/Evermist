@@ -1,7 +1,7 @@
 'use strict';
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { resolveSceneName, mapExtFromScene } = require('../src/backup.js');
+const { resolveSceneName, mapExtFromScene } = require('../src/scenes/backup.js');
 
 describe('resolveSceneName', () => {
   test('fresh name returned as-is and added to Set', () => {

@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 
 const { sanitizeGroupName, uniqueGroupName, mergeGroupOrder, buildGroupSections } =
-  require('../src/sceneGroups.js');
+  require('../src/scenes/sceneGroups.js');
 
 // ── sanitizeGroupName ────────────────────────────────────────────────────────
 

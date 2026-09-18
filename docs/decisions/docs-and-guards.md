@@ -12,6 +12,21 @@ header before adding an entry here.
 
 ---
 
+### A module is one concern, and a growing set is a folder · `SETTLED` (2026-09-19)
+Size stopped being the test. A file splits when it holds a concern that belongs elsewhere, or
+when the set it holds grows by one more of the same thing - a tool, a material, a message, a
+column control. Length alone earns nothing: `shapeSelect.js` and `fog.js` stayed whole at 800 and
+740 lines, and `tools.js` was split because adding a tool meant editing four places in it.
+Three shapes came out of that reading. The tools are a table with one row and one file per tool,
+so a new one touches nothing that exists. An effect takes every colour from its material record,
+which is what makes a second material possible at all. Each fog pass owns its own file, so a
+fourth pass is a file rather than another section.
+The modules then moved into one folder per subsystem. Nothing technical came of it - there is no
+bundler and load order is still hand-written - and it was done for reading, at 87 modules.
+⚠ THE GUARDS DID NOT FOLLOW ON THEIR OWN. Three of them matched `src/*.js` at the top level and
+silently stopped covering every module the moment one moved; the size baseline is keyed by path
+as well. A tree move is a guard change, and the same is true of anything keyed on a path.
+
 ### The overcrowded modules were split in one pass, and proved line by line · `SETTLED` (2026-09-18)
 The staged order booked for this job - one extraction per commit, the rig green either side - was
 set aside for a single pass over ten modules, leaving sixteen new files. What replaced the staging

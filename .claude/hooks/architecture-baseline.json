@@ -5,33 +5,6 @@
     "maxSectionShare": 0.4
   },
   "note": "Per-subject state for the ARCHITECTURE.md guard, so each notice fires once and never nags. Clear \"reported\" to hear about everything again, and \"warnedBytes\" to hear about size again. \"config\" holds the size thresholds; this doc is MEANT to grow, so nothing here blocks an edit.",
-  "reported": [
-    "missing:mapconvert.js",
-    "missing:fireproto.js",
-    "missing:effects.js",
-    "missing:scenegroups.js",
-    "missing:roomops.js",
-    "missing:shapemenu.js",
-    "missing:updater.js",
-    "missing:musicplan.js",
-    "missing:gridcalibrate.js",
-    "missing:panes.js",
-    "missing:stage.js",
-    "missing:changelog.js",
-    "missing:changelogdata.js",
-    "missing:shapeselect.js",
-    "missing:shapedetail.js",
-    "missing:shapebox.js",
-    "missing:shapeclipboard.js",
-    "missing:fogcontrols.js",
-    "missing:colorpicker.js",
-    "missing:foganim.js",
-    "missing:paneruntime.js",
-    "missing:playermap.js",
-    "missing:playermessages.js",
-    "missing:scenecards.js",
-    "missing:scenedelete.js",
-    "missing:stagewindow.js"
-  ],
-  "warnedBytes": 65424
+  "reported": [],
+  "warnedBytes": 68796
 }

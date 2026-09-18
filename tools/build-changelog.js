@@ -1,6 +1,6 @@
 'use strict';
 
-// build-changelog.js — writes src/changelogData.js from the release commits in git history.
+// build-changelog.js — writes src/ui/changelogData.js from the release commits in git history.
 //
 // A release commit IS the release notes: its subject is "<version> - <note>" and its body is the
 // description GitHub publishes verbatim. Both are copied here, so the panel in the app and the
@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const OUT = path.join(ROOT, 'src', 'changelogData.js');
+const OUT = path.join(ROOT, 'src', 'ui', 'changelogData.js');
 const RELEASE = /^(\d+\.\d+\.\d+) - (.+)$/;
 const UNIT = '\x1f', RECORD = '\x1e';
 

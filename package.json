@@ -39,6 +39,7 @@
       "src/**/*.js",
       "src/css/**/*.css",
       "main.js",
+      "electron/**/*.js",
       "preload.js",
       "!node_modules/pdfjs-dist/**",
       "node_modules/pdfjs-dist/package.json",

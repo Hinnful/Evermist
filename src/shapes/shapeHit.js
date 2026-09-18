@@ -8,12 +8,12 @@
 
 // ⚠ `CURVE_SAMPLE_STEPS` is read, never redeclared — see doorGeometry.js.
 const _shSteps = () => (typeof CURVE_SAMPLE_STEPS !== 'undefined' ? CURVE_SAMPLE_STEPS
-  : require('./fogGeometry').CURVE_SAMPLE_STEPS);
+  : require('../fog/fogGeometry').CURVE_SAMPLE_STEPS);
 
 var polyHoleRings, flattenRing, edgeIsCurved, edgeCubic, handleAt, sampleCubic;
 if (typeof module !== 'undefined' && module.exports) {
   ({ polyHoleRings, flattenRing, edgeIsCurved, edgeCubic, handleAt,
-     sampleCubic } = require('./fogGeometry'));
+     sampleCubic } = require('../fog/fogGeometry'));
 }
 
 function distPointToSegment(px, py, ax, ay, bx, by) {

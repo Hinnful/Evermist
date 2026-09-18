@@ -8,7 +8,7 @@ const {
   boxFromPoints, boxSidePoint, boxSidePoints, boxCentre, boxScaleFactors,
   boxScaleMatrix, boxRotateMatrix, snapAngle, transformRing, transformHandle,
   BOX_SIDES, BOX_MIN_SPAN,
-} = require('../src/shapeBox.js');
+} = require('../src/shapes/shapeBox.js');
 
 const rect = (x1, y1, x2, y2) =>
   [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];

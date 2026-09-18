@@ -24,7 +24,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-// basename -> skill slug. fog.js is here for half-shroud, main.js for the pdfjs
+// basename -> skill slug. fog.js is here for half-shroud, pdfText.js for the pdfjs
 // asar resolution; neither is a DM-UI or module-text file by name.
 const OWNERS = {
   'roompanel.js': 'dm-ui',
@@ -46,7 +46,7 @@ const OWNERS = {
   'moduletextpanel.js': 'module-text',
   'pdflayout.js': 'module-text',
   'pdfextract.js': 'module-text',
-  'main.js': 'module-text',
+  'pdftext.js': 'module-text',
   'vttplan.js': 'floor-plan',
   'floorplan.js': 'floor-plan',
   'doorgeometry.js': 'floor-plan',
@@ -120,7 +120,13 @@ function markFired(file, slug) {
  */
 function repoBasenames() {
   const root = path.join(__dirname, '..', '..');
-  const dirs = [root, path.join(root, 'src'), path.join(root, 'src', 'css')];
+  // src/ holds one folder per subsystem, so the walk goes one level in as well as across.
+  const dirs = [root, path.join(root, 'src'), path.join(root, 'electron')];
+  try {
+    for (const e of fs.readdirSync(path.join(root, 'src'), { withFileTypes: true })) {
+      if (e.isDirectory()) dirs.push(path.join(root, 'src', e.name));
+    }
+  } catch { /* no src -> nothing to walk */ }
   const names = new Set();
   for (const d of dirs) {
     try {

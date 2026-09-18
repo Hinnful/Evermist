@@ -1,7 +1,7 @@
 'use strict';
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeDisplayRecord } = require('../src/display.js');
+const { normalizeDisplayRecord } = require('../src/render/display.js');
 
 describe('normalizeDisplayRecord — scaleFactor', () => {
   test('integer scaleFactor', () => {

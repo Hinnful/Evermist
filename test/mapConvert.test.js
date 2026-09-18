@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { fitInsideBox } = require('../src/mapConvert.js');
+const { fitInsideBox } = require('../src/scenes/mapConvert.js');
 
 // The real box (state.js MAP_BOX_W/H). Repeated here rather than imported: state.js is
 // browser-only globals with no export guard.

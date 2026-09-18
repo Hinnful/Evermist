@@ -72,14 +72,26 @@ const NOTE =
   'to hear about size again. "config" holds the size thresholds; this doc is MEANT ' +
   'to grow, so nothing here blocks an edit.';
 
+// src/ holds one folder per subsystem, and each list names a module by its BASENAME, so the walk
+// goes one level in and reports the file names alone.
 function moduleFiles() {
+  const out = [];
+  const take = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.isFile() && e.name.toLowerCase().endsWith('.js') && !IGNORE.has(e.name.toLowerCase())) out.push(e.name);
+    }
+  };
   try {
-    return fs
-      .readdirSync(SRC)
-      .filter((f) => f.toLowerCase().endsWith('.js') && !IGNORE.has(f.toLowerCase()));
+    take(SRC);
+    for (const e of fs.readdirSync(SRC, { withFileTypes: true })) {
+      if (e.isDirectory() && e.name !== 'css') take(path.join(SRC, e.name));
+    }
+    // The main process is documented the same way, one file per subject.
+    take(path.join(lib.ROOT, 'electron'));
   } catch {
-    return [];
+    return out;
   }
+  return out;
 }
 
 function read(file) {
@@ -92,11 +104,13 @@ function read(file) {
 
 // Every `backticked.js` name a doc mentions. Both lists are markdown tables using
 // code spans, so this is the whole vocabulary either doc claims to cover.
+// A row may name a module with its folder or without it, and both stand for the same file, so
+// what is recorded is the basename.
 function namesIn(text) {
   const found = new Set();
-  const re = /`([A-Za-z0-9_.-]+\.js)`/g;
+  const re = /`([A-Za-z0-9_./-]+\.js)`/g;
   let m;
-  while ((m = re.exec(text)) !== null) found.add(m[1].toLowerCase());
+  while ((m = re.exec(text)) !== null) found.add(m[1].split('/').pop().toLowerCase());
   return found;
 }
 
@@ -140,7 +154,7 @@ function checkModuleWrite(ctx) {
   // Rule 2 - a documented name with no file behind it.
   const onDisk = new Set(files.map((f) => f.toLowerCase()));
   // Names that legitimately are not modules under src/.
-  const NOT_MODULES = new Set(['main.js', 'preload.js', 'index.js']);
+  const NOT_MODULES = new Set(['main.js', 'preload.js', 'index.js', 'build-changelog.js']);
   const stale = [];
   for (const name of archNames) {
     if (onDisk.has(name) || NOT_MODULES.has(name) || name.indexOf('guard-') === 0) continue;
@@ -275,7 +289,8 @@ function main() {
   const rel = lib.toRel(fp);
   if (!rel) process.exit(0);
 
-  const isModule = /^src\/[^/]+\.js$/i.test(rel);
+  const isModule = (/^src\/(?:[^/]+\/)?[^/]+\.js$/i.test(rel) && !/^src\/css\//i.test(rel))
+    || /^electron\/[^/]+\.js$/i.test(rel);
   const isDoc = rel.toLowerCase() === 'docs/architecture.md';
   if (!isModule && !isDoc) process.exit(0);
 

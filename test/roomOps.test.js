@@ -10,9 +10,9 @@ const {
   joinShapes, trimShapes, cutRing, mostHiddenMode, roomOpMinArea,
   crossSegments, ringPathCrossings, arcForward, dedupeRing,
   ROOM_OP_MIN_AREA, REASON_CUT,
-} = require('../src/roomOps.js');
+} = require('../src/shapes/roomOps.js');
 
-const { vttDerivePlan } = require('../src/vttPlan.js');
+const { vttDerivePlan } = require('../src/rooms/vttPlan.js');
 
 // ⚠ THE SYNTHETIC CASES BELOW PROVE ONLY THE SHAPES ALREADY KNOWN. The real cave export at the
 // bottom of this file is what catches a kernel that works on rectangles and not on a floor plan.

@@ -9,13 +9,13 @@
 
 // ⚠ `CURVE_SAMPLE_STEPS` is read, never redeclared — see doorGeometry.js.
 const _sdSteps = () => (typeof CURVE_SAMPLE_STEPS !== 'undefined' ? CURVE_SAMPLE_STEPS
-  : require('./fogGeometry').CURVE_SAMPLE_STEPS);
+  : require('../fog/fogGeometry').CURVE_SAMPLE_STEPS);
 
 var edgeIsCurved, edgeCubic, handleAt, sampleCubic, splitCubic, polyRings, polyHoleRings,
     flatVertexCount;
 if (typeof module !== 'undefined' && module.exports) {
   ({ edgeIsCurved, edgeCubic, handleAt, sampleCubic, splitCubic, polyRings, polyHoleRings,
-     flatVertexCount } = require('./fogGeometry'));
+     flatVertexCount } = require('../fog/fogGeometry'));
 }
 
 // Matched by coordinate: the library repeats a surviving input point bit for bit, so the

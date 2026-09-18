@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const {
   plGroupLines, plClassify, plPageLines, plDocumentText,
   PL_LINE_TOL, PL_SPAN_MARGIN,
-} = require('../src/pdfLayout.js');
+} = require('../src/content/pdfLayout.js');
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 //
@@ -194,7 +194,7 @@ describe('plDocumentText', () => {
 // ─── The two layers together ──────────────────────────────────────────────────
 
 describe('pdfLayout feeding moduleText', () => {
-  const M = require('../src/moduleText.js');
+  const M = require('../src/content/moduleText.js');
 
   test('a two-column page of rooms parses into the right rooms, not interleaved ones', () => {
     // End to end over the seam that matters: geometry in, locations out. Left column holds room 1

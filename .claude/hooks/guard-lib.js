@@ -238,6 +238,7 @@ function shippedJs() {
     }
   };
   walk(path.join(ROOT, 'src'));
+  walk(path.join(ROOT, 'electron'));
   return out;
 }
 

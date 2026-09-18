@@ -26,14 +26,18 @@ const lib = require('./guard-lib.js');
 const BASELINE = path.join(__dirname, 'module-size-baseline.json');
 
 const NOTE =
-  'Max bytes per module, keyed by repo-relative path. src/*.js only; src/css/ has its ' +
+  'Max bytes per module, keyed by repo-relative path: every .js under src/ at the root or one ' +
+  'folder deep, every one in electron/, plus main.js and preload.js. src/css/ has its ' +
   'own rules. Auto-ratchets DOWN as a file shrinks, and a file absent here adopts its ' +
   'current size on first edit. Raise a number only when the growth is a deliberate ' +
   'choice against extracting the concern into its own module.';
 
-// Top level of src/ only. src/css/ is the sole subdirectory and carries no JavaScript.
+// Every module the app ships: src/ at the root or one subsystem folder deep, the main process in
+// electron/, and the two shell files beside it. src/css/ carries no JavaScript.
 function isModule(rel) {
-  return !!rel && /^src\/[^/]+\.js$/.test(rel);
+  if (rel === 'main.js' || rel === 'preload.js') return true;
+  if (/^electron\/[^/]+\.js$/.test(rel)) return true;
+  return /^src\/(?:[^/]+\/)?[^/]+\.js$/.test(rel) && !rel.startsWith('src/css/');
 }
 
 function main() {

@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { lineWidthForZoom } = require('../src/grid.js');
+const { lineWidthForZoom } = require('../src/render/grid.js');
 
 describe('lineWidthForZoom', () => {
   it('scales linearly with zoom above the floor', () => {

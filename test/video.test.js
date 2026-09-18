@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const {
   computeOptimalTextureSize, coverageFactorFor,
   mapRegionForTexture, clampRegionToMap,
-} = require('../src/video.js');
+} = require('../src/render/video.js');
 
 // Helpers
 function aspectRatio(w, h) { return w / h; }

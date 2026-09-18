@@ -1,6 +1,6 @@
 ---
 name: floor-plan
-description: Load BEFORE editing src/vttPlan.js, src/floorPlan.js, or src/doorGeometry.js. Also load when the task mentions the Universal VTT / .dd2vtt floor plan, auto-generated rooms, derived or auto-placed doors, the Draw Rooms button, open-wall reporting, or the find-floor-plan IPC. Carries rules whose violation silently produces wrong rooms rather than an error.
+description: Load BEFORE editing src/rooms/vttPlan.js, src/rooms/floorPlan.js, or src/shapes/doorGeometry.js. Also load when the task mentions the Universal VTT / .dd2vtt floor plan, auto-generated rooms, derived or auto-placed doors, the Draw Rooms button, open-wall reporting, or the find-floor-plan IPC. Carries rules whose violation silently produces wrong rooms rather than an error.
 ---
 
 # Reading a Dungeon Alchemist floor plan

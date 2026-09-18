@@ -7,13 +7,13 @@
 // ⚠ THE SAMPLE COUNT IS READ, NEVER REDECLARED. `CURVE_SAMPLE_STEPS` is a const in
 // fogGeometry.js, so a `var` of that name in this script is a SyntaxError that kills the page.
 const _dgSteps = () => (typeof CURVE_SAMPLE_STEPS !== 'undefined' ? CURVE_SAMPLE_STEPS
-  : require('./fogGeometry').CURVE_SAMPLE_STEPS);
+  : require('../fog/fogGeometry').CURVE_SAMPLE_STEPS);
 
 var getPolyBBox, polyRings, insetPolygon, polygonWindingSign;
 var edgeIsCurved, edgeCubic, handleAt, sampleCubic;
 if (typeof module !== 'undefined' && module.exports) {
   ({ getPolyBBox, polyRings, insetPolygon, polygonWindingSign,
-   edgeIsCurved, edgeCubic, handleAt, sampleCubic } = require('./fogGeometry'));
+   edgeIsCurved, edgeCubic, handleAt, sampleCubic } = require('../fog/fogGeometry'));
 }
 
 // ─── Door notches ─────────────────────────────────────────────────────────────

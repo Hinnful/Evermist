@@ -52,7 +52,7 @@ other than the code under it is worth knowing about before it is trusted.
 
 ### The mutation ranges were pointed at untestable code · `SETTLED` (2026-08-14)
 Two of the three recorded mutation-survivor clusters were still open, and one of them was partly
-an artefact of the config. The config then mutated `src/tools.js:48-86`, which covers
+an artefact of the config. The config then mutated `src/shapes/tools.js:48-86`, which covers
 `axisLockDraw` - not exported, and reading module globals no unit test can supply, so 11 of its
 38 survivors were permanently unkillable - while excluding `distPointToSegment`, which *is*
 exported and tested. The range now names the three exported kernels.

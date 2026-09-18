@@ -5,16 +5,16 @@ const assert = require('node:assert/strict');
 // fitLabelBox() calls getPolyBBox(), which the browser provides via script load order
 // (fogGeometry.js loads long before roomPanel.js). Node has no such ambient scope, so the
 // real implementation is hoisted to the global here rather than duplicated.
-global.getPolyBBox = require('../src/fogGeometry.js').getPolyBBox;
-global.polyRings   = require('../src/fogGeometry.js').polyRings;
-global.shapeBBox   = require('../src/fogGeometry.js').shapeBBox;
+global.getPolyBBox = require('../src/fog/fogGeometry.js').getPolyBBox;
+global.polyRings   = require('../src/fog/fogGeometry.js').polyRings;
+global.shapeBBox   = require('../src/fog/fogGeometry.js').shapeBBox;
 
 const {
   normalizeRoomFields, sanitizeRoomName, sanitizeRoomDesc,
   clampPanelPosition, ellipsizeToWidth,
   roomLabelFontPx, polygonRowSpans, cornerInsetAt, fitLabelBox,
   ROOM_NAME_MAX, ROOM_DESC_MAX,
-} = require('../src/roomPanel.js');
+} = require('../src/rooms/roomPanel.js');
 
 // Helpers for the label-geometry suites.
 const rect = (x, y, w, h) => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];

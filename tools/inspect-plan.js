@@ -11,7 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const V = require(path.join(__dirname, '..', 'src', 'vttPlan.js'));
+const V = require(path.join(__dirname, '..', 'src', 'rooms', 'vttPlan.js'));
 
 const file = process.argv[2];
 if (!file) { console.error('usage: node tools/inspect-plan.js <plan.dd2vtt>'); process.exit(1); }

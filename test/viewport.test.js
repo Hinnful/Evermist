@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { calcViewportRect, zoomToFitRegion, visibleMapRegion } = require('../src/viewport.js');
+const { calcViewportRect, zoomToFitRegion, visibleMapRegion } = require('../src/render/viewport.js');
 
 describe('calcViewportRect', () => {
 

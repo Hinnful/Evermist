@@ -1,7 +1,7 @@
 'use strict';
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { escHtml } = require('../src/sceneManager.js');
+const { escHtml } = require('../src/scenes/sceneManager.js');
 
 describe('escHtml', () => {
   test('escapes & < > " all at once', () => {

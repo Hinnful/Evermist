@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { getPolyBBox, polygonWindingSign } = require('../src/fogGeometry.js');
+const { getPolyBBox, polygonWindingSign } = require('../src/fog/fogGeometry.js');
 
 const rect = (x1, y1, x2, y2) =>
   [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];
@@ -25,7 +25,7 @@ const {
   doorResolvedMode,
   sharedWallSpans,
   remapDoorsForVertexChange,
-} = require('../src/doorGeometry.js');
+} = require('../src/shapes/doorGeometry.js');
 
 // Screen space: y grows downward, so a clockwise ring has positive shoelace area.
 const SQUARE_CW  = [{ x: 0, y: 0 }, { x: 12, y: 0 }, { x: 12, y: 12 }, { x: 0, y: 12 }];
@@ -370,8 +370,8 @@ describe('a door never outgrows its wall', () => {
 });
 
 // ─── Doors derived from a floor plan ──────────────────────────────────────────
-const { planDoorPlacements } = require('../src/doorGeometry.js');
-const { vttDerivePlan } = require('../src/vttPlan.js');
+const { planDoorPlacements } = require('../src/shapes/doorGeometry.js');
+const { vttDerivePlan } = require('../src/rooms/vttPlan.js');
 const fpFs = require('node:fs');
 const fpPath = require('node:path');
 

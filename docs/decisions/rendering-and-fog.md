@@ -183,7 +183,7 @@ so they have to hold against every map. The rule this generalises: anything that
 takes the room's colour; anything that marks a position does not.
 
 ### The About box shows the repo as text, not a link · `SETTLED` (2026-08-09)
-The app gained an About box in 1.7.8 (`src/about.js`, opened from a button beside the shortcut
+The app gained an About box in 1.7.8 (`src/ui/about.js`, opened from a button beside the shortcut
 legend, absent from the Player view because its whole row is). It shows the mark, the wordmark,
 the tagline, the version and the repo address. **The repo is plain text on purpose:** opening a
 URL from Electron needs `shell.openExternal` and another IPC channel, and a link that looks
@@ -261,7 +261,7 @@ kept anyway, as a benefit to lower-end machines. Do not open another CPU-reducti
 Memory was measured on 2026-08-07; see below.
 
 ### What one map actually costs · `SETTLED` (measured 2026-08-07)
-Measured with `src/memProbe.js` (`?memprobe=1`) on a 2560×1392 panel, no TV attached.
+Measured with `src/dev/memProbe.js` (`?memprobe=1`) on a 2560×1392 panel, no TV attached.
 Working set across all processes, DM plus Player: **a 9750×5850 image map ≈ 3.0 GB; a
 12900×11700 animated map ≈ 16.6 GB**, GPU process peaking at 10.4 GB.
 

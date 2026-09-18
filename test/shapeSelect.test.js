@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 // shapeSelect.js reaches these as bare globals, the way the browser's script order provides them.
 // The real implementations are hoisted rather than duplicated; pushUndo is a counter, since what
 // matters here is that one delete spends exactly one step.
-const _fg = require('../src/fogGeometry.js');
+const _fg = require('../src/fog/fogGeometry.js');
 global.polyRings = _fg.polyRings;
 global.polyHoleRings = _fg.polyHoleRings;
 global.flatVertexRef = _fg.flatVertexRef;
@@ -18,8 +18,8 @@ global.setShapeHoles = (shape, holes) => {
 };
 
 const { pointInPolygon, pointInShape, findHoleAt, ringCentre, holeStaysOnRoom,
-        distPointToSegment } = require('../src/shapeHit.js');
-const { deleteShapeVertex, deleteShapeHole } = require('../src/shapeSelect.js');
+        distPointToSegment } = require('../src/shapes/shapeHit.js');
+const { deleteShapeVertex, deleteShapeHole } = require('../src/shapes/shapeSelect.js');
 
 // A simple convex quad (unit square)
 const square = [

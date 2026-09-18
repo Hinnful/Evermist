@@ -45,8 +45,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('video-save-progress', handler);
   },
 
-  // A campaign module ships as a PDF, so the app converts it. Main-process only, because
-  // pdfjs-dist is ESM-only and browser-side `import` breaks on file:// — see main.js.
+  // A campaign module ships as a PDF, so the app converts it. Main-process only — the reason is
+  // at the top of electron/pdfText.js.
   extractPdfText: (arrayBuffer) => ipcRenderer.invoke('extract-pdf-text', arrayBuffer),
 
   showSaveDialog: (opts) => ipcRenderer.invoke('show-save-dialog', opts),
@@ -91,12 +91,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openReleasesPage: () => ipcRenderer.send('open-releases-page'),
   openReleasePage: (tag) => ipcRenderer.send('open-release-page', tag),
 
-  // Per-process working set for the memory probe (src/memProbe.js). Main-process only:
+  // Per-process working set for the memory probe (src/dev/memProbe.js). Main-process only:
   // a renderer sees just its own JS heap, and the allocations that matter here are native.
   memMetrics: () => ipcRenderer.invoke('mem-metrics'),
   listMapFiles: () => ipcRenderer.invoke('list-map-files'),
 
-  // Music (src/music.js). Each entry carries a file:// URL main built with pathToFileURL; a
+  // Music (src/ui/music.js). Each entry carries a file:// URL main built with pathToFileURL; a
   // path joined in the renderer breaks on the spaces and Cyrillic downloaded titles carry.
   listMusicFiles: () => ipcRenderer.invoke('music-list'),
   deleteMusicFile: (name) => ipcRenderer.invoke('music-delete', name),

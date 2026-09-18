@@ -9,7 +9,7 @@ const {
   parseModuleText, mtFold, mtFilterEntries, mtPlacedTitles, mtProgress,
   mtSerialize, mtDeserialize,
   MT_HEADING_MAX_NAME,
-} = require('../src/moduleText.js');
+} = require('../src/content/moduleText.js');
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 //

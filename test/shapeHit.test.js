@@ -3,7 +3,7 @@ const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 
 const { closestPointOnSegment, edgeEndFlat, edgePolyline, distToEdge, closestOnEdge,
-        pointInShape, distPointToSegment } = require('../src/shapeHit.js');
+        pointInShape, distPointToSegment } = require('../src/shapes/shapeHit.js');
 
 // A 100x100 square, walked clockwise from the origin. Flat indices 0..3 are its corners.
 const room = () => ({

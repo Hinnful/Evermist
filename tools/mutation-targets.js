@@ -18,22 +18,23 @@ const ROOT = path.join(__dirname, '..');
 // Every exported kernel the unit suite actually reaches. Anything not exported cannot be tested,
 // so mutating it only produces survivors no test could ever kill.
 const MUTATE_TARGETS = {
-  'src/tools.js':        ['segmentsIntersect'],
-  'src/shapeHit.js':     ['pointInPolygon', 'pointInShape', 'distPointToSegment',
+  'src/shapes/tools.js':        ['segmentsIntersect'],
+  'src/shapes/shapeHit.js':     ['pointInPolygon', 'pointInShape', 'distPointToSegment',
                           'closestPointOnSegment', 'findHoleAt', 'ringCentre', 'holeStaysOnRoom',
                           'edgeEndFlat', 'distToEdge', 'closestOnEdge'],
-  'src/video.js':        ['computeOptimalTextureSize', 'coverageFactorFor',
+  'src/render/video.js':        ['computeOptimalTextureSize', 'coverageFactorFor',
                           'mapRegionForTexture', 'clampRegionToMap'],
-  'src/display.js':      ['normalizeDisplayRecord'],
+  'src/render/display.js':      ['normalizeDisplayRecord'],
   'src/undo.js':         ['evictUndoStack', 'evictUndoPair'],
-  'src/backup.js':       ['resolveSceneName', 'mapExtFromScene'],
-  'src/sceneManager.js': ['escHtml'],
-  'src/musicPlan.js':    ['parseMusicUrl', 'videoIdFromFileName', 'displayName', 'filterTracks',
+  'src/scenes/backup.js':       ['resolveSceneName', 'mapExtFromScene'],
+  'src/scenes/sceneManager.js': ['escHtml'],
+  'src/ui/musicPlan.js':    ['parseMusicUrl', 'videoIdFromFileName', 'displayName', 'filterTracks',
                           'fadeLevel', 'fadePhase'],
   // ⚠ deriveFogColors and its two helpers are PARKED at 58%, deliberately (see
   // docs/decisions/testing-and-the-rig.md). They stay in the run so the figure keeps being
   // reported; closing them needs a decided colour table, not more arithmetic.
-  'src/fogGeometry.js':  ['coneVertices', '_hexToHsl', '_hslToHex', 'deriveFogColors'],
+  'src/fog/fogGeometry.js':  ['coneVertices'],
+  'src/fog/fogColor.js':     ['_hexToHsl', '_hslToHex', 'deriveFogColors'],
 };
 
 // The 1-based [first, last] lines of a top-level `function name(...) { ... }`, found by matching

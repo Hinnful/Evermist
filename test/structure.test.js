@@ -113,14 +113,22 @@ describe('the code parses', () => {
   });
 
   // Parse only - nothing runs, so browser globals never resolve and cost nothing.
+  // ⚠ WALKS THE SUBSYSTEM FOLDERS. A read one level deep stops covering every module the moment
+  // one moves into a folder, and reports success while parsing almost nothing.
   it('parses every module under src/', () => {
     const failed = [];
-    for (const f of fs.readdirSync(path.join(root, 'src'))) {
-      if (!f.endsWith('.js')) continue;
-      try { new vm.Script(read('src/' + f)); }
-      catch (e) { failed.push(f + ': ' + e.message); }
-    }
-    assert.deepEqual(failed, [], 'modules that failed to parse');
+    const walk = (rel) => {
+      for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+        if (e.isDirectory()) { if (e.name !== 'css') walk(rel + '/' + e.name); continue; }
+        if (!e.name.endsWith('.js')) continue;
+        const f = rel + '/' + e.name;
+        try { new vm.Script(read(f)); }
+        catch (err) { failed.push(f + ': ' + err.message); }
+      }
+    };
+    walk('src');
+    walk('electron');
+    assert.ok(failed.length === 0, 'modules that failed to parse: ' + failed.join(', '));
   });
 
   // ⚠ THE MODULES SHARE ONE SCRIPT SCOPE, so a top-level `let` declared in two of them is a
