@@ -211,6 +211,11 @@ function initInput() {
     if (e.ctrlKey || e.metaKey) {
       if (e.code === 'KeyZ' && !e.shiftKey) { e.preventDefault(); undo(); }
       else if (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey)) { e.preventDefault(); redo(); }
+      // Figma's three, on the shapes → shapeClipboard.js. A focused field returned above, so
+      // Ctrl+C still copies text out of the name and description.
+      else if (e.code === 'KeyC') { e.preventDefault(); copySelectedShape(); }
+      else if (e.code === 'KeyV') { e.preventDefault(); pasteShapeAtCursor(); }
+      else if (e.code === 'KeyD') { e.preventDefault(); duplicateSelectedShape(); }
       return;
     }
     switch (e.code) {

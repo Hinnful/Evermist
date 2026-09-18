@@ -41,6 +41,7 @@
     "src/moduleText.js": 39644,
     "src/shapeSelect.js": 36442,
     "src/shapeDetail.js": 10966,
-    "src/shapeBox.js": 12331
+    "src/shapeBox.js": 12331,
+    "src/shapeClipboard.js": 9075
   }
 }

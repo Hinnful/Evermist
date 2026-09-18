@@ -74,9 +74,9 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 
 | Module | Owns |
 |---|---|
-| `state.js` | Shared state: fog constants, grid config, fog RAF handles, map/camera/polygon/scene/sync/dirty flags |
+| `state.js` | Shared state: fog constants, grid config, fog RAF handles, and every dirty flag |
 | `renderer.js` | PixiJS/WebGL wrapper; map + DM fog GPU path |
-| `render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, viewport sizing, `drawCursor` |
+| `render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, `drawCursor` |
 | `fog.js` | Fog canvases, blur + cloud pipeline, reveal/hide, transitions |
 | `fogGeometry.js` | Pure fog geometry kernel. Unit-tested |
 | `doorGeometry.js` | Pure door-notch kernel. Unit-tested |
@@ -86,8 +86,9 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `tools.js` | Drawing tools; the path a drawn shape takes to a room or effect |
 | `shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
 | `shapeBox.js` | The bounding box: its handles, rotate and scale |
+| `shapeClipboard.js` | Copy, paste, duplicate; a clipboard that outlives a scene switch |
 | `shapeMenu.js` | The one shape button and its right-click flyout |
-| `input.js` | DM mouse/wheel/keyboard, shape helpers, legend. **Drag-drop is in toolbar.js** |
+| `input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in toolbar.js** |
 | `undo.js` | Undo/redo for fog edits |
 | `effects.js` | Map effects: the `effects` array's model and its render path |
 | `grid.js` | Grid config + render |
@@ -99,13 +100,13 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `mapLoader.js` | Image-map loading + progress-bar helpers |
 | `mapConvert.js` | Import-time animated-map shrink. `fitInsideBox` unit-tested |
 | `viewport.js` | Pan/zoom, Sync View, the Player window's life and map delivery, autosync |
-| `panes.js` | Two-column mode: the two `<iframe>` columns, which one is selected, the divider, the messages the chrome sends them |
-| `stage.js` | The Player window in two-map mode: one window, a Player in each half, the chasm between |
-| `minimap.js` | Minimap render + drag/zoom remote, view sync both ways, zoom get/set/nudge |
+| `panes.js` | Two-column mode: the two `<iframe>` columns, the divider, the messages sent to them |
+| `stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
+| `minimap.js` | Minimap render + drag/zoom remote, view sync both ways, zoom nudge |
 | `video.js` | Animated-map handling |
 | `display.js` | Display detection |
 | `backup.js` | Zip backup/restore |
-| `toolbar.js` | DM UI control wiring + drag-drop. Calls `initRoomPanel` and `initControlPanel` last |
+| `toolbar.js` | DM UI wiring + drag-drop. Calls `initRoomPanel` and `initControlPanel` last |
 | `controlPanel.js` | Tabbed Fog/Grid/Player panel over the hidden legacy controls |
 | `roomPanel.js` | The room card + map room labels |
 | `moduleText.js` | Module parsing, storage, name-field dropdown |
@@ -130,7 +131,7 @@ Declarations must precede use at init time. All under `src/`:
 
 ```
 lib/pixi.min.js → lib/polygon-clipping.umd.js → renderer.js → state.js → display.js →
-video.js → fogGeometry.js → doorGeometry.js → vttPlan.js → fog.js → roomOps.js → shapeDetail.js → tools.js → shapeSelect.js → shapeBox.js → mapLoader.js →
+video.js → fogGeometry.js → doorGeometry.js → vttPlan.js → fog.js → roomOps.js → shapeDetail.js → tools.js → shapeSelect.js → shapeBox.js → shapeClipboard.js → mapLoader.js →
 mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js →
 viewport.js → panes.js → stage.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
 input.js →

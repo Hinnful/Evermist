@@ -98,6 +98,23 @@ because one rule covers a room, an effect and a hole, and because the alternativ
 that anything a room can do, a hole can do. Reversible: storing the angle is additive, and an older
 build ignores it because the vertices are already in world coordinates.
 
+### A copy lands on the pointer, and the clipboard outlives the scene · `SETTLED` (2026-09-18)
+Batch 4 of the vector editing epic, and the last one: Figma's Ctrl+C, Ctrl+V and Ctrl+D, and its
+rule that a paste centres on the pointer. A copy keeps its name, its description and its fog state,
+so a revealed room pastes revealed.
+
+**The clipboard is a module variable**, which is what lets it outlive a scene switch - copying a
+guard post between floors is the case the feature exists for. **It remembers which list it came
+from**, so an effect pastes among the effects from Rooms mode with no change of mode, drawn faint
+until the mode changes. **A hole pastes as a hole** into the shape under the pointer, held to
+`holeStaysOnRoom` so it can never land where a drag would refuse to leave it.
+
+**Ctrl+D on a hole takes the room the hole already sits in, by name** - a hit test on the offset
+point hands the copy to an overlapping neighbour. It never lays a ring over the original: a
+duplicate nobody can see is worse than one that never arrived, so the opposite offset is tried and
+a `noticeToast` reports a hole with no room left. **`tools.js` was not touched**, so the slice the
+epic records as outstanding stays outstanding.
+
 ### A hole is a level of its own, not a second thing on screen · `SETTLED` (2026-09-18)
 A box and a vertex set are never drawn together, so a picked hole needed somewhere to put its own
 box. It became a third level, matching how Figma descends into a boolean group: a double-click opens

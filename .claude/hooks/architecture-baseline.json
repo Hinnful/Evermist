@@ -21,7 +21,8 @@
     "missing:changelogdata.js",
     "missing:shapeselect.js",
     "missing:shapedetail.js",
-    "missing:shapebox.js"
+    "missing:shapebox.js",
+    "missing:shapeclipboard.js"
   ],
   "warnedBytes": 52228
 }
