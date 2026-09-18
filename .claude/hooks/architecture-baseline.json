@@ -22,7 +22,16 @@
     "missing:shapeselect.js",
     "missing:shapedetail.js",
     "missing:shapebox.js",
-    "missing:shapeclipboard.js"
+    "missing:shapeclipboard.js",
+    "missing:fogcontrols.js",
+    "missing:colorpicker.js",
+    "missing:foganim.js",
+    "missing:paneruntime.js",
+    "missing:playermap.js",
+    "missing:playermessages.js",
+    "missing:scenecards.js",
+    "missing:scenedelete.js",
+    "missing:stagewindow.js"
   ],
-  "warnedBytes": 52228
+  "warnedBytes": 65424
 }

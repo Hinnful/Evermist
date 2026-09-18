@@ -28,7 +28,10 @@ const path = require('path');
 // asar resolution; neither is a DM-UI or module-text file by name.
 const OWNERS = {
   'roompanel.js': 'dm-ui',
+  'roomcard.js': 'dm-ui',
   'controlpanel.js': 'dm-ui',
+  'colorpicker.js': 'dm-ui',
+  'scenecards.js': 'dm-ui',
   'gridcalibrate.js': 'dm-ui',
   'toolbar.js': 'dm-ui',
   'shapemenu.js': 'dm-ui',
@@ -38,7 +41,9 @@ const OWNERS = {
   'music.css': 'dm-ui',
   'panes.css': 'dm-ui',
   'fog.js': 'dm-ui',
+  'fogcontrols.js': 'dm-ui',
   'moduletext.js': 'module-text',
+  'moduletextpanel.js': 'module-text',
   'pdflayout.js': 'module-text',
   'pdfextract.js': 'module-text',
   'main.js': 'module-text',

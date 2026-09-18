@@ -122,4 +122,28 @@ describe('the code parses', () => {
     }
     assert.deepEqual(failed, [], 'modules that failed to parse');
   });
+
+  // ⚠ THE MODULES SHARE ONE SCRIPT SCOPE, so a top-level `let` declared in two of them is a
+  // SyntaxError that blanks the app on boot. Parsing them one at a time above cannot see it, and
+  // neither can any other test - every module that would collide is DOM-coupled. Compiling them
+  // in the page's own order reproduces the scope and surfaces the browser's own error.
+  it('loads every script into one shared scope without a name collision', () => {
+    const html = read('index.html');
+    const parts = [];
+    const re = /<script\b([^>]*)>([\s\S]*?)<\/script>/g;
+    let m;
+    while ((m = re.exec(html))) {
+      const src = /\bsrc=["']([^"']+)["']/.exec(m[1]);
+      if (src && src[1].startsWith('lib/')) continue;   // vendored bundles are not ours to police
+      parts.push({ file: src ? src[1] : '<inline>', code: src ? read(src[1]) : m[2] });
+    }
+    // One file at a time onto what already compiled: V8 gives a duplicate declaration no usable
+    // line, so the first prefix that throws names the file the collision arrived with.
+    let ok = '';
+    for (const p of parts) {
+      const next = ok + '\n' + p.code;
+      assert.doesNotThrow(() => new vm.Script(next), 'collision introduced by ' + p.file);
+      ok = next;
+    }
+  });
 });

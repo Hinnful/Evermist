@@ -328,4 +328,21 @@ async function restoreFromZipPath(zipPath) {
   }
 }
 
+
+
+// Restores a picked backup. The real path comes from the preload bridge; main reads it off disk.
+function restorePickedZip(f) {
+  const zipPath = (window.electronAPI && window.electronAPI.getPathForFile)
+    ? window.electronAPI.getPathForFile(f)
+    : null;
+  if (zipPath) {
+    restoreFromZipPath(zipPath);
+  } else {
+    messageDialog({
+      title: 'Backups need the desktop app',
+      message: 'Restoring a .zip reads it straight off disk, which the browser will not allow. Open Evermist as the app to import this.',
+    });
+  }
+}
+
 if (typeof module !== 'undefined') module.exports = { resolveSceneName, mapExtFromScene };

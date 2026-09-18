@@ -18,8 +18,8 @@ global.setShapeHoles = (shape, holes) => {
 };
 
 const { pointInPolygon, pointInShape, findHoleAt, ringCentre, holeStaysOnRoom,
-        deleteShapeVertex, deleteShapeHole,
-        distPointToSegment } = require('../src/shapeSelect.js');
+        distPointToSegment } = require('../src/shapeHit.js');
+const { deleteShapeVertex, deleteShapeHole } = require('../src/shapeSelect.js');
 
 // A simple convex quad (unit square)
 const square = [

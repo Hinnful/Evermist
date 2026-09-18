@@ -7,8 +7,7 @@
 
 'use strict';
 
-// ⚠ THE SAMPLE COUNT IS READ, NEVER REDECLARED. `CURVE_SAMPLE_STEPS` is a const in
-// fogGeometry.js, so a `var` of that name in this script is a SyntaxError that kills the page.
+// ⚠ `CURVE_SAMPLE_STEPS` is read, never redeclared — see doorGeometry.js.
 const _sdSteps = () => (typeof CURVE_SAMPLE_STEPS !== 'undefined' ? CURVE_SAMPLE_STEPS
   : require('./fogGeometry').CURVE_SAMPLE_STEPS);
 

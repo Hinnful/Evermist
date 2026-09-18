@@ -80,8 +80,8 @@ is what makes the smaller variants worse rather than merely different.
 ### Reset asks rather than offering an undo · `SETTLED` (2026-08-30)
 Reset lost its full-width red footer button when it moved beside the selector it resets, so the
 shape no longer warns and `confirmDialog` does. The undo toast was considered and rejected: it
-belongs to `sceneManager.js` and its button is wired to one fixed action, so sharing it means
-extracting a module and rewiring scene deletion - more risk than the safety here needs.
+belongs to `sceneDelete.js` and its button is wired to one fixed action, so sharing it means
+rewiring scene deletion - more risk than the safety here needs.
 
 ### The UI scale slider is gone, and About moved into the legend · `SETTLED` (2026-08-30)
 The slider set `--ui-zoom` from a bottom-left strip; that strip also held the two help buttons.

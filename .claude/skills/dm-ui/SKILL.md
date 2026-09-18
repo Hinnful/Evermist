@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/gridCalibrate.js, src/toolbar.js, src/shapeMenu.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, the scene library popup and its header, the music bubble and its Add music panel, the two-map toggle beside the Scenes button, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/roomCard.js, src/roomPanel.js, src/controlPanel.js, src/colorPicker.js, src/sceneCards.js, src/fogControls.js, src/gridCalibrate.js, src/toolbar.js, src/shapeMenu.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, or the half-shroud paths in src/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, the scene library popup and its header, the music bubble and its Add music panel, the two-map toggle beside the Scenes button, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -8,7 +8,7 @@ description: Load BEFORE editing src/roomPanel.js, src/controlPanel.js, src/grid
 Binding rules for the DM-facing interface: the room card, half-shroud, and control-panel
 button identity. Each was arrived at by building the alternative and removing it.
 
-## Room card (`roomPanel.js`)
+## Room card (`roomCard.js`)
 
 Layout, top to bottom: a **titleless drag bar** (six-dot grip + Close), the name field, the
 description textarea, ONE unlabelled properties row (the Reveal/Half/Shroud `.cp-seg` pill,
@@ -40,7 +40,7 @@ then the corner-radius field pushed right), and Delete at full width behind a ha
 - `refreshRoomPanel()` is the reflection hook. Called from `drawCursor()` and the paths that
   rewrite modes or reset polygons wholesale. **Not** from `setPolygonMode()`, which updates
   the pill in place so a rebuild can't steal field focus mid-edit.
-- Room labels: `roomLabelFontPx(zoom)` is screen px and **clamped at both ends**. Placement
+- Room labels (`roomPanel.js`): `roomLabelFontPx(zoom)` is screen px and **clamped at both ends**. Placement
   is top-left INSIDE the room via `fitLabelBox()`, which scanline-samples in MAP units so the
   cached anchor is pan-independent. `_rpLabelCache` clears per scene.
 - Pure kernel (unit-tested): `normalizeRoomFields`, `sanitizeRoomName`, `sanitizeRoomDesc`,

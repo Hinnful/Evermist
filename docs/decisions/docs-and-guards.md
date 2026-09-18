@@ -12,6 +12,22 @@ header before adding an entry here.
 
 ---
 
+### The overcrowded modules were split in one pass, and proved line by line · `SETTLED` (2026-09-18)
+The staged order booked for this job - one extraction per commit, the rig green either side - was
+set aside for a single pass over ten modules, leaving sixteen new files. What replaced the staging
+is a mechanical fidelity check: every code line in each parent file still appears in the files it
+became, no top-level function name is declared twice, every identifier in a new module resolves,
+and the shared-scope compile check plus the full acceptance set ran green after each step. The
+four lines that do not survive verbatim are each a deliberate rename or dispatch.
+Ceilings were handled two ways. The module-size numbers for files that grew OUTSIDE this split
+went back to their committed values, so the next edit to each one still reports that growth;
+only the file this work genuinely enlarged keeps a raised number. CLAUDE.md's ceiling rose to
+carry the map rows, because the architecture guard requires a row per module.
+`tools.js` was left alone. Its shape-commit kernel is the next extraction, and putting it in a
+pass this wide would have buried the one change with real behaviour behind it.
+A split that changes nothing a DM can see takes a `change/**` branch, so shipped files moved
+with no version bump - the departure from the usual rule is now in CLAUDE.md.
+
 ### The Player keeps its mouse cursor · `SETTLED` (2026-08-14)
 CLAUDE.md read "no buttons, no cursor, no overlays" while `base.css` has set `cursor: default`
 on the Player's canvas since 1.5.2, and the rig surfaced the contradiction. The CSS is right:

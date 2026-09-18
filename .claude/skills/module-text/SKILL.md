@@ -1,6 +1,6 @@
 ---
 name: module-text
-description: Load BEFORE editing src/moduleText.js, src/pdfLayout.js, src/pdfExtract.js, or the pdfjs handling in main.js. Also load when the task mentions module text import, the room name-field dropdown, heading or sub-location parsing, PDF text extraction, reading order, or the import panel. Carries binding rules whose violation silently corrupts parsed module entries or breaks the packaged .exe only.
+description: Load BEFORE editing src/moduleText.js, src/moduleTextPanel.js, src/pdfLayout.js, src/pdfExtract.js, or the pdfjs handling in main.js. Also load when the task mentions module text import, the room name-field dropdown, heading or sub-location parsing, PDF text extraction, reading order, or the import panel. Carries binding rules whose violation silently corrupts parsed module entries or breaks the packaged .exe only.
 ---
 
 # Module text import

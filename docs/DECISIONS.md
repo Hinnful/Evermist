@@ -667,7 +667,7 @@ and resetting everything discards a look dialled in over a session. The split th
 preferences; cell size and offset reset, because they describe the map that just left the screen.
 
 ### Importing a folder of maps is one sequential loop that owns its own reporting · `SETTLED` (2026-08-14)
-The loop lives in `sceneManager.js` (`importMapFiles`), never a second one in the drop handler.
+The loop lives in `mapImport.js` (`importMapFiles`), never a second one in the drop handler.
 The trap that makes this bigger than it looks: `createNewScene` used to return before the map had
 loaded, because both loaders are callback-based, so a naive `await` in a loop started the second
 import mid-`cleanupVideo`. It now resolves from inside `onLoaded` **and settles on every failure

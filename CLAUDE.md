@@ -77,13 +77,17 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `state.js` | Shared state: fog constants, grid config, fog RAF handles, and every dirty flag |
 | `renderer.js` | PixiJS/WebGL wrapper; map + DM fog GPU path |
 | `render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, `drawCursor` |
-| `fog.js` | Fog canvases, blur + cloud pipeline, reveal/hide, transitions |
+| `fogClouds.js` | The drifting noise texture: one document builds the frame set, siblings copy it |
+| `fog.js` | Fog canvases, the blur + cloud pipeline, reveal/hide |
+| `fogAnim.js` | Fog on a clock: the drift, the reveal crossfade, the scene cover, the colour ease |
+| `fogControls.js` | The Fog tab's controls: anim presets, sliders, colour, feather, half-shroud, doors |
 | `fogGeometry.js` | Pure fog geometry kernel. Unit-tested |
 | `doorGeometry.js` | Pure door-notch kernel. Unit-tested |
 | `vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Unit-tested, dependency-free |
 | `roomOps.js` | Pure Join/Trim/Cut kernel. Unit-tested |
 | `shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Unit-tested |
 | `tools.js` | Drawing tools; the path a drawn shape takes to a room or effect |
+| `shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Unit-tested |
 | `shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
 | `shapeBox.js` | The bounding box: its handles, rotate and scale |
 | `shapeClipboard.js` | Copy, paste, duplicate; a clipboard that outlives a scene switch |
@@ -94,22 +98,31 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `grid.js` | Grid config + render |
 | `gridCalibrate.js` | The calibration square that fits the grid to the map |
 | `scenes.js` | Fog persistence + scene fade helpers |
-| `sceneManager.js` | Scene CRUD, `switchScene`, scene-manager UI |
+| `sceneManager.js` | Scene CRUD and the library popup around the list |
+| `sceneCards.js` | The list itself: a card per scene, a section per group, the drag that reorders |
+| `sceneDelete.js` | The trash and its undo |
+| `mapImport.js` | Import: what the app accepts, the one-at-a-time batch loop, video maps to disk |
+| `sceneSwitch.js` | `switchScene`: fog cover, store read, decode, fog reopen |
 | `sceneGroups.js` | Group names on scenes; heading order + collapse. Tested |
 | `sceneStore.js` | IndexedDB read/write |
 | `mapLoader.js` | Image-map loading + progress-bar helpers |
 | `mapConvert.js` | Import-time animated-map shrink. `fitInsideBox` unit-tested |
 | `viewport.js` | Pan/zoom, Sync View, the Player window's life and map delivery, autosync |
-| `panes.js` | Two-column mode: the two `<iframe>` columns, the divider, the messages sent to them |
+| `panes.js` | Two-column mode: the columns, the divider, the messages sent to them |
+| `stageWindow.js` | The DM's side of the Player screen in two-map mode: open, warm, bind, close |
 | `stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
 | `minimap.js` | Minimap render + drag/zoom remote, view sync both ways, zoom nudge |
 | `video.js` | Animated-map handling |
+| `videoDiag.js` | The video diagnostics overlay and its disk log |
 | `display.js` | Display detection |
-| `backup.js` | Zip backup/restore |
+| `backup.js` | Zip backup/restore, including a picked or dropped `.zip` |
 | `toolbar.js` | DM UI wiring + drag-drop. Calls `initRoomPanel` and `initControlPanel` last |
+| `colorPicker.js` | The fog colour picker: square, hue strip, hex field, HSV maths |
 | `controlPanel.js` | Tabbed Fog/Grid/Player panel over the hidden legacy controls |
-| `roomPanel.js` | The room card + map room labels |
+| `roomPanel.js` | Map room labels and the pure geometry that places them |
+| `roomCard.js` | The room card: its fields, where it places itself, the drag that moves it |
 | `moduleText.js` | Module parsing, storage, name-field dropdown |
+| `moduleTextPanel.js` | The import panel and the name-field dropdown. Parses nothing |
 | `pdfLayout.js` | Pure PDF reading-order kernel. Unit-tested, dependency-free |
 | `pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `confirmDialog.js` | The app's only sanctioned confirmation dialog |
@@ -121,7 +134,10 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `music.js` | The music bubble: track library and playback |
 | `musicDownload.js` | The Add music panel: paste a link, pick tracks, download |
 | `floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
-| `player.js` | Player-mode runtime |
+| `player.js` | Player-mode runtime: the loading card, the handshake, resize, pan/zoom |
+| `playerMap.js` | A map payload landing on the Player: the cover, the fog mask, image or video |
+| `playerMessages.js` | The Player's inbox: one handler per message the DM sends |
+| `paneRuntime.js` | The column's inbox: the control messages a column accepts from the shell |
 | `stress.js` | `?stress=1` harness |
 | `memProbe.js` | `?memprobe=1` memory-footprint probe |
 
@@ -130,15 +146,17 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 Declarations must precede use at init time. All under `src/`:
 
 ```
-lib/pixi.min.js → lib/polygon-clipping.umd.js → renderer.js → state.js → display.js →
-video.js → fogGeometry.js → doorGeometry.js → vttPlan.js → fog.js → roomOps.js → shapeDetail.js → tools.js → shapeSelect.js → shapeBox.js → shapeClipboard.js → mapLoader.js →
-mapConvert.js → undo.js → sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js →
-viewport.js → panes.js → stage.js → backup.js → grid.js → effects.js → toolbar.js → shapeMenu.js → player.js →
-input.js →
-stress.js → memProbe.js → render.js → gridCalibrate.js → minimap.js → controlPanel.js → confirmDialog.js →
-floorPlan.js → moduleText.js → roomPanel.js → changelogData.js → changelog.js → about.js →
-updater.js → musicPlan.js →
-music.js → musicDownload.js → inline <script>
+lib/pixi.min.js → lib/polygon-clipping.umd.js → renderer.js → state.js → display.js → video.js →
+videoDiag.js → fogGeometry.js → doorGeometry.js → vttPlan.js → fogClouds.js → fog.js →
+fogAnim.js → fogControls.js → roomOps.js → shapeDetail.js → tools.js → shapeHit.js →
+shapeSelect.js → shapeBox.js → shapeClipboard.js → mapLoader.js → mapConvert.js → undo.js →
+sceneGroups.js → sceneStore.js → scenes.js → sceneManager.js → sceneCards.js → sceneDelete.js →
+mapImport.js → sceneSwitch.js → viewport.js → panes.js → stageWindow.js → backup.js → grid.js →
+effects.js → toolbar.js → shapeMenu.js → player.js → playerMap.js → playerMessages.js →
+paneRuntime.js → input.js → stress.js → memProbe.js → render.js → gridCalibrate.js → minimap.js →
+colorPicker.js → controlPanel.js → confirmDialog.js → floorPlan.js → moduleText.js →
+moduleTextPanel.js → roomPanel.js → roomCard.js → changelogData.js → changelog.js → about.js →
+updater.js → musicPlan.js → music.js → musicDownload.js → inline <script>
 ```
 
 ### Repo layout
@@ -255,8 +273,9 @@ gate is green, and **nothing public exists until then**. A red gate blocks that 
 
 **When to bump the version.** A bump now means "release this", so bump **only when a change
 touches the shipped app** (anything in `build.files`). Patch for normal changes, minor for a
-notable feature, major for a breaking overhaul. Docs, tests and `.claude/` tooling get **no
-bump**; they take a `change/**` branch and land without building anything.
+notable feature, major for a breaking overhaul. Docs, tests, `.claude/` tooling and a module
+split that changes no behaviour get **no bump**; they take a `change/**` branch and land
+without building anything.
 
 **ONE VERSION IS ONE COMMIT.** A version a red gate rejected keeps its number, and the fix
 amends that commit - never a second commit on top.

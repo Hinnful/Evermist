@@ -19,7 +19,9 @@ const ROOT = path.join(__dirname, '..');
 // so mutating it only produces survivors no test could ever kill.
 const MUTATE_TARGETS = {
   'src/tools.js':        ['segmentsIntersect'],
-  'src/shapeSelect.js':  ['pointInPolygon', 'distPointToSegment', 'findHoleAt', 'ringCentre'],
+  'src/shapeHit.js':     ['pointInPolygon', 'pointInShape', 'distPointToSegment',
+                          'closestPointOnSegment', 'findHoleAt', 'ringCentre', 'holeStaysOnRoom',
+                          'edgeEndFlat', 'distToEdge', 'closestOnEdge'],
   'src/video.js':        ['computeOptimalTextureSize', 'coverageFactorFor',
                           'mapRegionForTexture', 'clampRegionToMap'],
   'src/display.js':      ['normalizeDisplayRecord'],

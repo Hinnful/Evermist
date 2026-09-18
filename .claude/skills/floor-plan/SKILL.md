@@ -100,7 +100,7 @@ the app produces rooms, they are just wrong.
   has no path, so a map that gets compressed on the way in (`mapConvert.js`) arrives with
   nowhere to look beside. Convert first and the plan is lost with no notice and no Draw Rooms
   button, on exactly the oversized exports that ship a `.dd2vtt`. This rule lives in
-  `sceneManager.js`, which no skill trigger maps - the call site carries it as a comment.
+  `mapImport.js`, which no skill trigger maps - the call site carries it as a comment.
 - **Scale the derived rooms onto the loaded map**, never straight into `polygons`. The kernel's
   coordinates are in the plan's OWN pixel space (`srcW`/`srcH`), so a map that is not the export
   the plan was written beside needs `vttScaleRooms`. Uniform, positive, on width alone: winding
