@@ -7,7 +7,8 @@
 // prep: its map, its fog, its rooms, its effects and its grid, kept together and kept apart from
 // every other scene's. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. A scene remembers the fog. The autosave commits what the DM revealed, a switch away does
 //      not damage what was committed, and coming back restores it.
@@ -117,6 +118,7 @@ module.exports = async function scenesFeature(rig) {
   rig.note('scenes: Alpha=' + alpha + ' Beta=' + beta);
 
   // ── A. A scene remembers the fog ───────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await switchTo(alpha);
   // Exactly what the brush does on mouseup: paint, mark dirty, and ask for a save.
   await dm.evaluate('revealCircle(' + REVEAL.x + ',' + REVEAL.y + ',' + REVEAL.r + ');' +
@@ -161,6 +163,7 @@ module.exports = async function scenesFeature(rig) {
             'coming back to a scene lost the shroud over ground nobody entered: alpha ' + backDark);
 
   // ── B. Rooms and effects belong to their scene ─────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate(`(() => {
     pushUndo();
     polygons = [{ id: 1, vertices: [
@@ -226,6 +229,7 @@ module.exports = async function scenesFeature(rig) {
             ink + ')');
 
   // ── C. Renaming ───────────────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const rename = (id, value) => dm.evaluate(`(() => {
     const s = allScenes.find(x => x.id === ${JSON.stringify(id)});
     const input = { value: ${JSON.stringify(value)} };
@@ -256,6 +260,7 @@ module.exports = async function scenesFeature(rig) {
   await rename(alpha, 'Alpha');
 
   // ── D. The order the DM dragged it into ───────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const gamma = await importAs('Gamma');
   await switchTo(alpha);
   const startOrder = await library();
@@ -299,6 +304,7 @@ module.exports = async function scenesFeature(rig) {
             (afterSave && afterSave.order) + ' where the reorder put it at ' + openOrderBefore);
 
   // ── E. Deleting is undoable ───────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const toDelete = await dm.evaluate('allScenes.find(s => s.name === "Gamma").id');
   const posBefore = await dm.evaluate('allScenes.findIndex(s => s.name === "Gamma")');
   await dm.evaluate('deleteScenesWithUndo([' + JSON.stringify(toDelete) + ']); 0');
@@ -337,6 +343,7 @@ module.exports = async function scenesFeature(rig) {
   rig.check(!afterUndo.toast, 'the undo offer stayed up after it had been taken');
 
   // ── F. Deleting the scene that is open ────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const openNow = await dm.evaluate('currentScene.id');
   const others = (await ids()).filter(i => i !== openNow);
   await dm.evaluate('deleteScenesWithUndo([' + JSON.stringify(openNow) + ']); 0');
@@ -353,6 +360,7 @@ module.exports = async function scenesFeature(rig) {
   await dm.evaluate('undoDelete(); 0');
 
   // ── G. A committed delete is final ────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const doomed = await dm.evaluate('allScenes.find(s => s.id !== currentScene.id).id');
   await dm.evaluate('deleteScenesWithUndo([' + JSON.stringify(doomed) + ']);' +
     ' commitPendingDelete(); 0');
@@ -367,6 +375,7 @@ module.exports = async function scenesFeature(rig) {
             'the undo offer is still up after the delete was committed, so it offers nothing');
 
   // ── H. A scene that will not load ─────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // The DM stays where they are and is told why, rather than being left on a blank screen with
   // the library still listing the map.
   const stayedOn = await dm.evaluate('currentScene.id');

@@ -6,7 +6,8 @@
 // shortcuts, with the app's name, version and repo underneath. It is the only place the app
 // explains itself, and the Player screen must never show any of it.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The help button opens the panel and its backdrop, and pressing it again shuts both.
 //   B. The ? key opens it, Escape shuts it, and so does a click on the backdrop.
@@ -68,6 +69,7 @@ module.exports = async function helpAndAboutFeature(rig) {
   await dm.evaluate(OWN_HELPERS);
 
   // ── A. The button opens it and shuts it ───────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const shut = await dm.evaluate('__rigPanel()');
   rig.check(!shut.panel && !shut.back,
             'the shortcut panel is already up before anything was pressed, so opening it cannot ' +
@@ -88,6 +90,7 @@ module.exports = async function helpAndAboutFeature(rig) {
             'the help button does not shut the panel it opened: ' + JSON.stringify(toggled));
 
   // ── B. ? opens, Escape shuts, the backdrop shuts ──────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigKey("Slash", { shiftKey: true })');
   rig.check((await dm.evaluate('__rigPanel()')).panel,
             'the ? key did not open the panel, though the button it sits on advertises it');
@@ -103,6 +106,7 @@ module.exports = async function helpAndAboutFeature(rig) {
             'clicking beside the panel did not shut it: ' + JSON.stringify(afterBackdrop));
 
   // ── C. Every key the panel lists does something ───────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // A map and a room first: four of the keys below do nothing without one, and a key that is
   // inert for want of a map looks exactly like a key that is dead.
   await lib.openMap(rig, { w: MAP_W, h: MAP_H });
@@ -240,6 +244,7 @@ module.exports = async function helpAndAboutFeature(rig) {
             'so they are promised to the DM and never checked: ' + unchecked.join(', '));
 
   // ── D. The About footer, and a version that came from the build ───────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.waitFor('!!document.getElementById("about-version")', 10000, 'the About block to build');
   // ⚠ POLLED. The version arrives over IPC after init, so a single read lands before it on a
   // slow machine and reports the app as having no version at all.
@@ -271,6 +276,7 @@ module.exports = async function helpAndAboutFeature(rig) {
             pkgVersion + ', so the version is not the one main handed the page');
 
   // ── E. The What's new panel ───────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ REACHABILITY IS READ WITH elementFromPoint, never from the panel being in the DOM. The
   // panel and its dimmer share one stacking context, so a dimmer painting over the panel leaves
   // every check on markup, size and position passing while no click can land on it.
@@ -413,6 +419,7 @@ module.exports = async function helpAndAboutFeature(rig) {
             'Escape shut the help panel underneath as well, so one press closed two things');
 
   // ── F. The update toast ───────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ DRIVEN THROUGH upToast AND announceInstalledVersion THEMSELVES. main only reaches the page
   // when a real newer release exists on GitHub, and `npm start` never even checks, so a scenario
   // that waited for a status would be waiting for something that cannot happen here.
@@ -482,6 +489,7 @@ module.exports = async function helpAndAboutFeature(rig) {
             'again on every start');
 
   // ── G. None of it reaches the Player ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const player = await rig.player();
   const tv = await player.evaluate(`(() => {
     const el = (s) => document.querySelector(s);

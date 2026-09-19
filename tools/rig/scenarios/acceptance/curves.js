@@ -5,7 +5,8 @@
 // THE GOAL OF THIS FEATURE: a round tower, a cave mouth and a curved corridor stop being a chain
 // of short straight segments clicked by hand. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. Ctrl+drag a wall bends it, and the bend LEANS toward where the wall was grabbed.
 //        a bend appears · grabbing near one end leans that way
@@ -90,6 +91,7 @@ module.exports = async function curves(rig) {
   const tol = 3 / zoom;
 
   // ══ A. Ctrl+drag a wall bends it, and the bend leans where it was grabbed ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const a = await dm.evaluate('__rigDrawShroud(600, 400, 900, 700)');
   await dm.evaluate('__rigDbl(750, 550); 0');
   rig.check(await dm.evaluate('shapeEditMode') === true, 'the room did not open for editing');
@@ -116,6 +118,7 @@ module.exports = async function curves(rig) {
             ' vs far ' + lean.far.toFixed(1) + ', so the curve does not follow the hand');
 
   // ══ B. Ctrl+click straightens, and a bend dragged back near straight snaps flat ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const bMid = await dm.evaluate('__rigWallPoint(' + b + ', 0, 0.5)');
   await dm.evaluate('__rigClick(' + bMid.x + ',' + bMid.y + ', { mods: { ctrlKey: true } }); 0');
   rig.check(!(await dm.evaluate('__rigBent(' + b + ', 0) || __rigBent(' + b + ', 1)')),
@@ -130,6 +133,7 @@ module.exports = async function curves(rig) {
             'flattening one by hand is impossible without the key');
 
   // ══ C. The handles belong to the selected corner alone, and the two are independent ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const aFlat = await dm.evaluate('__rigWallPoint(' + a + ', 0, 0.5)');
   await dm.evaluate('__rigBend(' + aFlat.x + ',' + aFlat.y + ', 750, 300); 0');
   await dm.evaluate('__rigClick(1800, 1350); __rigDbl(750, 550); 0');
@@ -158,6 +162,7 @@ module.exports = async function curves(rig) {
             'dragging a curve handle moved nothing');
 
   // ══ D. A bent wall reshapes the fog, and it reaches the TV ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ TWO NON-SHROUD ROOMS EXIST FROM HERE ON. flattenSharedWalls only runs for a revealed or
   // half room WITH another one on the map, and that path reads the curve too — a scenario of
   // shroud rooms alone never enters it.
@@ -192,6 +197,7 @@ module.exports = async function curves(rig) {
             'where the DM drew a curve');
 
   // ══ E. A door on a bent wall rides the curve ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const d = await dm.evaluate('__rigDrawShroud(1400, 900, 1700, 1150)');
   await dm.evaluate('__rigById(' + d + ').doors = [{ edge: 0, t: 0.5 }]; 0');
   const doorFlat = await dm.evaluate('doorPoint(__rigById(' + d + '), { edge: 0, t: 0.5 })');
@@ -204,6 +210,7 @@ module.exports = async function curves(rig) {
             'notch floats off the wall it marks');
 
   // ══ F. Join, Trim and Cut keep the curve, the radii and the doors ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ ONE FRESH ROOM PER REPAIR. Running all three over one room leaves geometry nobody can
   // reason about, and a check written against the shape it started as passes or fails by luck.
   const bendTop = async (id, x1, y1, x2) => {
@@ -264,6 +271,7 @@ module.exports = async function curves(rig) {
             'a Cut flattened the curve on the piece that kept the bent wall');
 
   // ══ G. A door whose wall a repair removed is dropped, and the DM is told ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const e = await dm.evaluate('__rigDrawShroud(300, 300, 520, 520)');
   await dm.evaluate('__rigById(' + e + ').doors = [{ edge: 0, t: 0.5 }]; 0');
   // A Trim that takes the whole top wall away: the door has no wall left to sit on.
@@ -278,6 +286,7 @@ module.exports = async function curves(rig) {
             JSON.stringify(notice) + ')');
 
   // ══ H. A bent corner gives up its radius, and a click in a bulge finds the room ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const f = await dm.evaluate('__rigDrawShroud(1950, 300, 2250, 600)');
   await dm.evaluate('__rigById(' + f + ').cornerRadii = [30, 30, null, null]; 0');
   await dm.evaluate('__rigDbl(2100, 450); 0');

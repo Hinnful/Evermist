@@ -5,7 +5,8 @@
 // THE GOAL OF THIS FEATURE: the DM picks a room already on the map and turns it or resizes it by
 // hand, the way they would in Figma, and the players see the result.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. One click on a room draws a bounding box with eight handles, and the box wraps what is
 //      actually drawn — a bent wall's bulge included.
@@ -73,6 +74,7 @@ module.exports = async function transform(rig) {
   const tol = 3 / zoom;
 
   // ══ A. One click draws a box with eight handles ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const aRoom = await dm.evaluate('__rigDrawShroud(600, 400, 1000, 700)');
   await dm.evaluate('__rigClick(800, 550); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === aRoom &&
@@ -101,6 +103,7 @@ module.exports = async function transform(rig) {
             'the box stopped at the corners and cut through the bulge of the bent wall');
 
   // ══ B. A corner handle resizes, and pins the opposite corner ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigKey("Escape"); 0');
   const bRoom = await dm.evaluate('__rigDrawShroud(600, 900, 1000, 1200)');
   await dm.evaluate('__rigClick(800, 1050); 0');
@@ -122,6 +125,7 @@ module.exports = async function transform(rig) {
             'the resize changed how many corners the room has');
 
   // ══ C. Shift holds proportion; a side handle moves one axis ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const boxC = await dm.evaluate('__rigBox(' + bRoom + ')');
   const wC = boxC.maxX - boxC.minX, hC = boxC.maxY - boxC.minY;
   const seC = await dm.evaluate('__rigHandle(' + bRoom + ', "se")');
@@ -146,6 +150,7 @@ module.exports = async function transform(rig) {
   rig.check(afterC2.maxX > boxC2.maxX + tol, 'an east handle did not widen the room at all');
 
   // ══ D. A handle past its anchor never turns the room inside out ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const signD = Math.sign((await dm.evaluate('__rigShape(' + bRoom + ')')).area2);
   const boxD = await dm.evaluate('__rigBox(' + bRoom + ')');
   const seD = await dm.evaluate('__rigHandle(' + bRoom + ', "se")');
@@ -162,6 +167,7 @@ module.exports = async function transform(rig) {
             'the room was collapsed to nothing by a resize and can never be grabbed again');
 
   // ══ E. Turning, around the box centre ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigKey("Escape"); 0');
   const eRoom = await dm.evaluate('__rigDrawShroud(1400, 500, 1900, 800)');
   await dm.evaluate('__rigClick(1650, 650); 0');
@@ -216,6 +222,7 @@ module.exports = async function transform(rig) {
                     ' __rigKey("Delete"); 0');
 
   // ══ F. Shift snaps the turn to fifteen degrees ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ PICKED AGAIN FIRST. The small-room check above selects and deletes a room of its own,
   // and a press on a handle of an UNSELECTED room falls through to the map and reads as a turn
   // of zero degrees. Its centre is unmoved by E, which turned it about that point.
@@ -243,6 +250,7 @@ module.exports = async function transform(rig) {
             ' rather than snapping to 15');
 
   // ══ G. A curve and a door ride the transform ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigKey("Escape"); 0');
   const gRoom = await dm.evaluate('__rigDrawShroud(500, 1000, 900, 1300)');
   await dm.evaluate('setShape("door"); __rigClick(700, 1000); setShape("select"); 0');
@@ -278,6 +286,7 @@ module.exports = async function transform(rig) {
             'the room and the outline no longer matches the box');
 
   // ══ H. A hole gets a box of its own, and stops where it would leave its room ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigKey("Escape"); 0');
   const keep = await dm.evaluate('__rigDrawShroud(1300, 950, 1900, 1350)');
   await dm.evaluate('__rigOpRect("trim", 1500, 1080, 1700, 1220)');
@@ -324,6 +333,7 @@ module.exports = async function transform(rig) {
             'the gesture must refuse');
 
   // ══ I. A boxed hole opens for editing on one more double-click ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigDbl(' + Math.round(hc.x) + ',' + Math.round(hc.y) + '); 0');
   rig.check(await dm.evaluate('holeEditMode') === true &&
             await dm.evaluate('selectedHoleIndex') === 0,
@@ -356,6 +366,7 @@ module.exports = async function transform(rig) {
             'the courtyard\'s box did not come back when its editing closed');
 
   // ══ J. One transform, one undo step ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigKey("Escape"); __rigKey("Escape"); __rigKey("Escape"); 0');
   await dm.evaluate('__rigClick(1650, 650); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === eRoom,
@@ -389,6 +400,7 @@ module.exports = async function transform(rig) {
             'pressing a handle without moving it spent an undo step the DM never earned');
 
   // ══ K. It reaches the TV ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const player = await rig.player();
   await player.waitFor('!!mapOffscreen && !!fogDataCanvas', 45000, 'the Player to receive the map');
   await player.waitFor('fogCoverT === 0', 45000, 'the scene cover to lift on the Player');

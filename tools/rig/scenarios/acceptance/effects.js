@@ -6,7 +6,8 @@
 // just vomited — and the players see it on the TV, without it hiding or revealing anything.
 // Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. Every shape tool draws an effect in Effects mode, the brush is not on the bar there,
 //      and the Rooms/Effects switch is one sunken track inside the bar with one side picked.
@@ -96,6 +97,7 @@ module.exports = async function effectsFeature(rig) {
   await dm.waitFor('fogCoverT === 0 && fogTransRafId === null', 30000, 'the clearing to open');
 
   // ══ A. Every shape tool draws an effect, and the brush is not on the bar ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('setPlaceMode("effects"); 0');
   rig.check(await dm.evaluate('placeMode') === 'effects', 'Effects mode did not take');
   rig.check(await dm.evaluate('shape') !== 'brush',
@@ -141,6 +143,7 @@ module.exports = async function effectsFeature(rig) {
   }
 
   // ══ B. Two lists that never mix, and an effect paints NO fog ══
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(await dm.evaluate('polygons.length') === 0,
             'drawing in Effects mode appended to the ROOMS list as well, which would put an ' +
             'effect into fog compositing order');
@@ -155,6 +158,7 @@ module.exports = async function effectsFeature(rig) {
             'exactly where the DM marked something');
 
   // ══ C. An effect carries a material and a name of its own ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const rec = await dm.evaluate('effects[0]');
   rig.check(rec.material === 'fire',
             'the effect came out with material "' + rec.material + '" rather than the picked one');
@@ -171,6 +175,7 @@ module.exports = async function effectsFeature(rig) {
             'the material picker does not show exactly one material picked: ' + JSON.stringify(picker));
 
   // ══ D. An effect actually burns on the DM ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.waitFor('pixiEffectsLayer && pixiEffectsLayer.children.length > 0', 15000,
                    'the fire meshes to be built');
   const lit = await peak([610, 310, 790, 440]);
@@ -181,6 +186,7 @@ module.exports = async function effectsFeature(rig) {
             bare + ' on bare ground) — the effect exists as a record and draws nothing');
 
   // ══ E. Rounding an effect's corners takes its fire with it ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // Compared BEFORE against AFTER on the same corner, so the map's own colour under it cannot
   // pass the check — only the DROP in brightness can.
   const RB = { x1: 1300, y1: 250, x2: 1680, y2: 530 };
@@ -222,6 +228,7 @@ module.exports = async function effectsFeature(rig) {
             eSharp + ' → ' + eRound + ')');
 
   // ══ F. An effect is edited exactly as a room is ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('setShape("select"); __rigClick(700, 375); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === rec.id,
             'the Select tool did not pick an effect by clicking inside it');
@@ -242,6 +249,7 @@ module.exports = async function effectsFeature(rig) {
             'deleting an effect touched the rooms list');
 
   // ══ G. Effects ride the Auto/Manual send gate ══
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(await dm.evaluate('autoSync === true'), 'auto-sync is not on at the start of the gate check');
   const player = await rig.player();
   await player.waitFor('!!mapOffscreen && !!fogDataCanvas', 45000, 'the Player to receive the map');
@@ -270,6 +278,7 @@ module.exports = async function effectsFeature(rig) {
             'pressing Send did not deliver the held effect to the TV');
 
   // ══ H. Effects reach the TV, and are drawn UNDER the fog ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ AS SHAPE DESCRIPTORS, NOT PIXELS. The Player paints the material itself, so a wall of
   // fire costs the wire a few dozen bytes; a payload carrying an image would still pass a
   // "something arrived" check.
@@ -293,6 +302,7 @@ module.exports = async function effectsFeature(rig) {
             darkFog + ') — placing an effect would tell the players where it is');
 
   // ══ I. Effects survive a scene switch ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // Rooms are prep; effects are placed DURING play and persist, which is the point of them.
   const beforeSwitch = await dm.evaluate('effects.length');
   const sceneOne = await dm.evaluate('currentScene.id');
@@ -308,6 +318,7 @@ module.exports = async function effectsFeature(rig) {
             ' came back out of ' + beforeSwitch);
 
   // ══ J. The ember relight happens on every grid type ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // The grid is a plain 2D canvas above the effect layer (grid.js), so this reads gridCtx rather
   // than the PixiJS stage. The ember is #ff9a3c; gridColor goes hard blue first so an ordinary
   // grid line can never be mistaken for one — the check is a HUE test, not a brightness test.
@@ -395,6 +406,7 @@ module.exports = async function effectsFeature(rig) {
             'point and a still cannot show it');
 
   // ══ K. All three repairs act on an effect, from the bar's own buttons ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ EVERY REPAIR HERE IS ARMED BY CLICKING ITS BUTTON, never by calling setShapeOp. The
   // buttons are the half that was missing, and a scripted setShapeOp would pass without them.
   // Drawn low on the map, clear of every effect the criteria above left standing.

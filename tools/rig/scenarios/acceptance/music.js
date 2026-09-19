@@ -6,7 +6,8 @@
 // track from a control at the top of the Evermist window, it fades in, and picking another
 // crossfades to it. The music folder IS the library, so every list here is a read of that folder.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The bubble is on the DM window and ABSENT from the Player. Music never reaches the TV
 //      as a control, and the Player has no UI at all.
@@ -86,6 +87,7 @@ module.exports = async function musicFeature(rig) {
   for (const name of TRACKS) fs.writeFileSync(path.join(musicDir, name), wav(60));
 
   // ── A. On the DM, absent from the Player ──────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.waitFor("!!document.getElementById('mu-pill')", 30000, 'the music bubble to exist');
   const resting = await dm.evaluate(`(() => {
     const b = document.getElementById('music-bubble');
@@ -119,6 +121,17 @@ module.exports = async function musicFeature(rig) {
     'is sitting on the TV');
 
   // ── B. The panel lists the folder, by display name ────────────────────────
+  // ⚠ THE CHEVRON OPENS IT TOO, and it is the half of the bubble a DM aims at. Both controls
+  // call the same toggle, so one left unwired reads as a bubble that ignores where it was clicked.
+  // RED ON: the btn-mu-chev bind removed from initMusic (music.js) — 2026-09-19
+  await dm.evaluate("document.getElementById('btn-mu-chev').click()");
+  await lib.settle(dm, "getComputedStyle(document.getElementById('mu-panel')).display === 'flex'", 8000);
+  rig.check(await dm.evaluate("getComputedStyle(document.getElementById('mu-panel')).display") === 'flex',
+    'the chevron on the music bubble did not open the track panel');
+  await dm.evaluate("document.getElementById('btn-mu-chev').click()");
+  rig.check(await dm.evaluate("getComputedStyle(document.getElementById('mu-panel')).display") === 'none',
+    'the chevron would not shut the panel it opened');
+
   await dm.evaluate("document.getElementById('btn-mu-open').click()");
   await dm.waitFor('_muTracks.length === 3', 15000, 'the panel to read the three files on disk');
   const listed = await dm.evaluate(`(() => {
@@ -138,6 +151,7 @@ module.exports = async function musicFeature(rig) {
     JSON.stringify(listed.rows));
 
   // ── H. The volume slider is the app's, not a bare range ───────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Read while the panel is open: an element inside display:none has zero-sized rects.
   const slider = await dm.evaluate(`(() => {
     const r = document.getElementById('mu-vol');
@@ -163,6 +177,7 @@ module.exports = async function musicFeature(rig) {
     'moving the slider did not reach the volume the decks read');
 
   // ── C. A click plays, lights the row, and shuts the panel ─────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ MUTED AT THE ELEMENT TOO, on top of run.js's `--mute-audio`. Two independent guarantees,
   // because one loud hour-long track out of a run nobody was watching is the whole trust of the
   // rig. `muted` is independent of `volume`, so every fade assertion below still measures the
@@ -192,6 +207,7 @@ module.exports = async function musicFeature(rig) {
     'instead of what is on');
 
   // ── D. A second pick crossfades, and no file is open twice ────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ LET THE FIRST FADE FINISH FIRST. Clicking the second track while the first is still
   // fading IN leaves the outgoing deck near phase 0, so it drops out of the overlap before the
   // incoming one reaches it and this criterion measures nothing. A real pick is seconds later.
@@ -273,6 +289,7 @@ module.exports = async function musicFeature(rig) {
            ', Player ' + plMedia);
 
   // ── E. The filter narrows the list ────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const setFilter = (v) => dm.evaluate(`(() => {
     const f = document.getElementById('mu-filter');
     f.value = ${JSON.stringify(v)};
@@ -292,6 +309,7 @@ module.exports = async function musicFeature(rig) {
   await setFilter('');
 
   // ── F. Pause keeps the position, and a second press resumes ───────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ WAIT FOR THE TRACK TO ADVANCE FIRST. The position pause keeps is the position it had, so
   // pressing pause on an element still sitting at 0 asserts nothing. A loaded CI runner reaches
   // this line before a muted deck in a parked window has played a single frame.
@@ -388,9 +406,22 @@ module.exports = async function musicFeature(rig) {
     'Deselect all left tracks ticked');
   rig.check(await dm.evaluate("!document.getElementById('mu-modal').classList.contains('mu-selecting')"),
     'the action bar stayed up after the selection was cleared');
+
+  // ⚠ CLEAR IS NOT DESELECT ALL. The two sit side by side on the action bar and only one of them
+  // had ever been pressed, so a Clear wired to the wrong handler would leave the panel toggling
+  // everything back on instead of dropping the ticks.
+  // RED ON: _muPicked.clear() gated off in the btn-mu-selclear handler (musicDownload.js) — 2026-09-19
+  await dm.evaluate("document.getElementById('btn-mu-selall').click()");
+  rig.check(await dm.evaluate('_muPicked.size === 2'), 'the ticks could not be staged for Clear');
+  await dm.evaluate("document.getElementById('btn-mu-selclear').click()");
+  rig.check(await dm.evaluate('_muPicked.size === 0'),
+    'Clear on the action bar left the ticks up, so the bar cannot be dismissed without ' +
+    'toggling every row back on');
+
   await dm.evaluate("document.getElementById('btn-mu-close').click()");
 
   // ── G. Delete removes the file and the row ────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate("document.getElementById('btn-mu-open').click()");
   await dm.waitFor('_muTracks.length === 3', 15000, 'the list to be back to three rows');
   await dm.evaluate(`(() => {
@@ -431,6 +462,7 @@ module.exports = async function musicFeature(rig) {
     'the maps folder is gone after a music delete, which would destroy the whole map library');
 
   // ── J. A click off the bubble shuts the panel ─────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Normalised to shut first: the criteria above leave it either way, and a toggle from an
   // unknown state opens or closes depending on what ran before.
   await dm.evaluate('_muSetOpen(false); 0');
@@ -448,6 +480,7 @@ module.exports = async function musicFeature(rig) {
     'the panel is still painted after being closed by an outside click');
 
   // ── K. Progress on the pill, and a reopen that keeps the queue ────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Driven against a seeded queue: reaching YouTube from a scenario is out, and the arithmetic
   // and the state retention are app code either way.
   await dm.evaluate(`(() => {
@@ -496,6 +529,7 @@ module.exports = async function musicFeature(rig) {
     'the progress line stayed on the pill after the queue emptied');
 
   // ══ N. The downloader is found on disk ═══════════════════════════════════
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ A PATH CHECK, not a download. `--version` runs the bundled binary and needs no network,
   // so this says the app located it and can execute it. Everything else about the downloader
   // needs a real video and stays with the ear and the eye below.
@@ -519,4 +553,6 @@ module.exports = async function musicFeature(rig) {
             'MUTED by design, so the audible half is the ear at the table and nothing else.');
   rig.byEye('M. Pasting a YouTube video or playlist link lists its tracks and downloads the ' +
             'ones ticked. Needs the network and a real video, so no scenario can drive it.');
+  rig.byEye('M. Update downloader fetches a newer yt-dlp and the panel keeps working on it. ' +
+            'Reaches GitHub for a release and writes an executable, so no scenario can drive it.');
 };

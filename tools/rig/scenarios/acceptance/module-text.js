@@ -7,12 +7,14 @@
 // campaign's, not any one map's, and none of it ever reaches the players. Every check below serves
 // that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The panel carries exactly three controls, and an import happens on choosing a file — no
 //      confirm step, and an empty parse never overwrites what is already loaded.
 //   B. A file that is not prose is NAMED rather than parsed as prose.
-//   C. The panel lists what is loaded every time it opens, and Remove clears it.
+//   C. The panel lists what is loaded every time it opens. Remove ASKS before discarding it,
+//      because a parsed book has no undo, and Close shuts the panel it was opened by.
 //   D. The file input is cleared before the dialog opens, so the same file can be picked twice.
 //   E. The text is campaign-level: it survives a scene switch and never lands on a scene.
 //   F. It rides a backup as ONE entry at the zip root, and a zip without that entry restores
@@ -137,6 +139,7 @@ module.exports = async function moduleTextFeature(rig) {
   const undoDepth = () => dm.evaluate('undoStack.length');
 
   // ── A. Three controls, and importing on choose ────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('openModuleTextModal(); 0');
   await lib.settle(dm, 'document.getElementById("mt-modal").style.display !== "none"', 8000);
   const empty = await panel();
@@ -186,6 +189,7 @@ module.exports = async function moduleTextFeature(rig) {
             stillLoaded.entries + ' entries left');
 
   // ── B. A file that is not prose ───────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // A .docx reaches here through the dialog's "All files": its bytes are a zip, and parsing them
   // as prose gives the DM a list of garbage and no idea why.
   await dm.evaluate('__rigPickModule(__rigText("Module.docx", "PK\\u0003\\u0004' +
@@ -200,6 +204,7 @@ module.exports = async function moduleTextFeature(rig) {
             'a binary file replaced the book that was loaded');
 
   // ── D. The input is cleared before the dialog opens ───────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // A file input fires no `change` for the same file twice, so without this a repeat pick is
   // silently dead — which is exactly what the DM does after a parse they did not like.
   // ⚠ THE INPUT HAS TO BE HOLDING A FILENAME WHEN Choose IS PRESSED, or the check passes for
@@ -226,7 +231,11 @@ module.exports = async function moduleTextFeature(rig) {
             'the file input was not cleared before the dialog opened, so picking the same file ' +
             'twice is silently dead: it held ' + JSON.stringify(cleared.valueAtClick));
 
-  // ── C. Remove ─────────────────────────────────────────────────────────────
+  // ── C. The panel lists what is loaded, Remove clears it, and Close shuts it ────
+  // ⚠ REMOVE IS PRESSED, and the panel reopened to read the list. This criterion used to check
+  // only that a Remove button existed in the footer, so a Remove that cleared nothing — and a
+  // panel that came back still listing a book the DM had thrown away — both passed.
+  // RED ON: mtEntries left in place in the btn-mt-remove handler (moduleTextPanel.js) — 2026-09-19
   // Checked after everything that needs a book, so the rest of the file reloads it once.
   const removeId = await dm.evaluate(`(() => {
     const f = document.getElementById('mt-foot');
@@ -235,7 +244,50 @@ module.exports = async function moduleTextFeature(rig) {
   })()`);
   rig.check(!!removeId, 'there is no Remove in the panel footer');
 
+  const listed = await panel();
+  rig.check(listed.listShown && listed.rows.length > 0,
+            'the panel does not list the book that is loaded, so the DM cannot tell what the ' +
+            'name field is offering: ' + JSON.stringify(listed.rows));
+
+  // ⚠ REMOVE ASKS FIRST, and discarding a parsed book has no undo. Cancel is pressed before
+  // Remove so the question is proved to be a real gate rather than a dialog that flashes past.
+  await dm.evaluate('document.getElementById("btn-mt-remove").click(); 0');
+  await lib.settle(dm, 'document.getElementById("cd-anchor").style.display === "flex"', 8000);
+  const mtAsked = await dm.evaluate('({ up: document.getElementById("cd-anchor").style.display === "flex",' +
+    ' title: (document.getElementById("cd-title") || {}).textContent || "" })');
+  rig.check(mtAsked.up, 'Remove discarded the loaded book without asking, and there is no undo for it');
+  await dm.evaluate('document.getElementById("cd-cancel").click(); 0');
+  await lib.settle(dm, 'document.getElementById("cd-anchor").style.display !== "flex"', 8000);
+  rig.check((await store()).entries === 3,
+            'declining the Remove question threw the book away anyway: ' +
+            (await store()).entries + ' entries left');
+
+  await dm.evaluate('document.getElementById("btn-mt-remove").click(); 0');
+  await lib.settle(dm, 'document.getElementById("cd-anchor").style.display === "flex"', 8000);
+  await dm.evaluate('document.getElementById("cd-ok").click(); 0');
+  await lib.settle(dm, '!mtEntries || mtEntries.length === 0', 8000);
+  rig.check((await store()).entries === 0,
+            'Remove left the module text loaded, so there is no way to take a book back out: ' +
+            (await store()).entries + ' entries');
+
+  await dm.evaluate('document.getElementById("btn-mt-close").click(); 0');
+  rig.check(!(await panel()).open,
+            "the panel's own Close button left it open over the map");
+
+  // Put the book back — every criterion after this one needs it.
+  await dm.evaluate('openModuleTextModal(); 0');
+  await lib.settle(dm, 'document.getElementById("mt-modal").style.display !== "none"', 8000);
+  const reopened = await panel();
+  rig.check(!reopened.listShown && !reopened.footShown,
+            'the panel still lists a book after Remove took it away: ' + JSON.stringify(reopened.rows));
+  await dm.evaluate('__rigPickModule(__rigText("Watcherhouse.txt", ' + JSON.stringify(MODULE) + '))');
+  await lib.settle(dm, 'mtEntries && mtEntries.length === 3', 20000);
+  rig.check((await store()).entries === 3,
+            'the book could not be loaded again after Remove, so the rest of this file is ' +
+            'checking an empty panel');
+
   // ── E. Campaign-level, never a scene ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const beta = await importMap('Beta');
   await dm.waitFor('fogCoverT === 0', 30000, 'the cover to lift on Beta');
   rig.check((await store()).entries === 3,
@@ -262,6 +314,7 @@ module.exports = async function moduleTextFeature(rig) {
     ' rebuildFogFromPolygons(); refreshRoomPanel(); scheduleRender(); 0');
 
   // ── F. It rides the backup as one entry at the zip root ───────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const payload = await dm.evaluate(`(() => {
     const p = mtBackupPayload();
     return { present: typeof p === 'string' && p.length > 0,
@@ -298,6 +351,7 @@ module.exports = async function moduleTextFeature(rig) {
             'older zip costs the DM their whole module: ' + JSON.stringify(noEntry));
 
   // ── G. The dropdown is the only way in ───────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('closeModuleTextModal(); selectedPolygonId = 1; refreshRoomPanel(); 0');
   await lib.settle(dm, '!!document.getElementById("rp-mt-dd")', 8000);
 
@@ -359,6 +413,7 @@ module.exports = async function moduleTextFeature(rig) {
             'is kept: ' + JSON.stringify(noMatch));
 
   // ── H. Picking writes the room, in one undo step ──────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate(`(() => {
     const el = document.getElementById('rp-name');
     el.value = '';
@@ -417,6 +472,7 @@ module.exports = async function moduleTextFeature(rig) {
             'rooms needs: ' + JSON.stringify(marked.rows));
 
   // ── I. A room with notes already is asked first ──────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('polygons[1].desc = "My own note about this room."; ' +
     ' selectedPolygonId = 2; refreshRoomPanel(); mtOpenDropdown(); 0');
   await lib.settle(dm, 'document.getElementById("rp-mt-dd").style.display !== "none"', 8000);
@@ -469,6 +525,7 @@ module.exports = async function moduleTextFeature(rig) {
             JSON.stringify(replaced.desc));
 
   // ── J. None of it reaches the Player ─────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const player = await rig.player();
   await player.waitFor('!!mapOffscreen', 45000, 'the Player to receive the map');
   const onTV = await player.evaluate(`({
@@ -513,6 +570,7 @@ module.exports = async function moduleTextFeature(rig) {
             JSON.stringify(afterRemove));
 
   // ══ K. A PDF is converted, in the app that ships ══════════════════════════
+  // RED BY DESIGN: written against the fix, never re-proved
   // Built in the page, because the renderer hands the main process BYTES: Electron removed
   // File.path, so nothing here needs a real file on disk and the whole chain is reachable.
   // ⚠ ASCII ONLY. String.length is the byte count the /Length entry and the xref offsets are

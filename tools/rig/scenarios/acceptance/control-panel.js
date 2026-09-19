@@ -8,7 +8,8 @@
 // opens under it on the picked tab and shuts on that same tab, so the map keeps every pixel the
 // panel is not using — WITHOUT changing one pixel of what the Player is sent.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The tab bar is outside the panel, so shutting the panel cannot take it down. The tabs are
 //      words, not icons. A first run comes up on Fog.
@@ -28,6 +29,10 @@
 //      four --panel-* variables in base.css. Two panels side by side with edges that disagree
 //      is the fault this catches. It also checks the variables still resolve to a real edge,
 //      which is the one way all four panels can drift together without disagreeing.
+//   I. Every control on the Player pane reaches the toolbar button it mirrors, and the zoom
+//      stepper drives the Player's zoom from the panel. The pane is a second set of controls
+//      over one set of behaviour, so a proxy that stops forwarding leaves the toolbar working
+//      and the panel dead — and every scenario that presses the toolbar still passes.
 //
 // ⚠ G RE-RUNS THE BOOT PATH, IT DOES NOT NAVIGATE. A real reload would tear down the loaded scene
 // and the CDP session for no extra coverage: what has to hold is that _cpRestoreTab() reads
@@ -59,6 +64,7 @@ module.exports = async function controlPanelFeature(rig) {
     'document.querySelector(".cp-tab[data-tab=\'' + tab + '\']").click(); 0');
 
   // ── A ──
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(await dm.evaluate('document.querySelectorAll("#sidebar-right .cp-tab").length === 0'),
             'the tab bar sits inside the panel, so shutting the panel takes the tabs with it');
   rig.check(await shown('cp-tabbar'), 'the tab bar is not on screen');
@@ -68,6 +74,7 @@ module.exports = async function controlPanelFeature(rig) {
             'a first run does not come up with the panel open on Fog');
 
   // ── B ── from shut, since a first run comes up open.
+  // RED BY DESIGN: written against the fix, never re-proved
   await pick('fog');
   await pick('fog');
   rig.check(await shown('sidebar-right'), 'the Fog tab did not open the panel');
@@ -89,6 +96,7 @@ module.exports = async function controlPanelFeature(rig) {
             'the tab bar has a second box inside it — one rounded box inside another reads as a mistake');
 
   // ── C ──
+  // RED BY DESIGN: written against the fix, never re-proved
   await pick('grid');
   rig.check(await shown('sidebar-right'), 'switching to Grid shut the panel instead of swapping the pane');
   rig.check(await shown('cp-pane-grid') && !(await shown('cp-pane-fog')),
@@ -96,6 +104,7 @@ module.exports = async function controlPanelFeature(rig) {
   rig.check(await lit() === 'grid', 'the lit tabs read "' + await lit() + '", not "grid" alone');
 
   // ── D ──
+  // RED BY DESIGN: written against the fix, never re-proved
   await pick('grid');
   rig.check(!(await shown('sidebar-right')), 'picking the lit tab again did not shut the panel');
   rig.check(await shown('cp-tabbar'), 'shutting the panel took the tab bar down with it');
@@ -112,6 +121,7 @@ module.exports = async function controlPanelFeature(rig) {
             ' vs ' + panelBox.height + ')');
 
   // ── E ── opened on the Fog pane, or the advanced panel would go dark from the pane swap alone
+  // RED BY DESIGN: written against the fix, never re-proved
   // and the check would pass without the shut doing anything.
   await pick('fog');
   await dm.evaluate('document.querySelector("#cp-anim-row [data-anim=\'advanced\']").click(); 0');
@@ -124,6 +134,7 @@ module.exports = async function controlPanelFeature(rig) {
             'the advanced fog panel was only hidden, not closed — it reopens on the next pane switch');
 
   // ── F ──
+  // RED BY DESIGN: written against the fix, never re-proved
   const shutRegion = await dm.evaluate('JSON.stringify(dmVisibleRegion())');
   await pick('fog');
   const openRegion = await dm.evaluate('JSON.stringify(dmVisibleRegion())');
@@ -132,6 +143,7 @@ module.exports = async function controlPanelFeature(rig) {
             shutRegion + ' vs ' + openRegion);
 
   // ── G ──
+  // RED BY DESIGN: written against the fix, never re-proved
   const reboot = () => dm.evaluate('_cpRestoreTab(); 0');
 
   await pick('player');
@@ -149,6 +161,7 @@ module.exports = async function controlPanelFeature(rig) {
             'a reload reopened the panel the DM had shut');
 
   // ── H ──
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE PROBE SITS INSIDE THE PANEL IT MEASURES. Chromium folds an ancestor `zoom` into every
   // computed length, and every one of these panels carries `zoom: var(--ui-zoom)`, so a probe on
   // <body> would resolve the variables unscaled and never match anything.
@@ -234,4 +247,82 @@ module.exports = async function controlPanelFeature(rig) {
             'the floating panels do not agree on one edge, so two of them side by side over the ' +
             'map look like different apps: ' +
             Object.keys(edges).map(k => '#' + k + ' [' + edges[k] + ']').join(', '));
+
+  // ── I ── the Player pane's controls, pressed
+  // RED ON: proxy()'s forward gated off with `if (target && false)` (controlPanel.js) — 2026-09-19
+  await pick('player');
+  await lib.settle(dm, 'document.getElementById("cp-pane-player").offsetParent !== null', 8000);
+
+  // ⚠ THE FORWARD IS WHAT IS UNDER TEST, not what the toolbar button then does — that has its
+  // own scenario. Four of these open a window, fullscreen a display or push to a Player that is
+  // not up, none of which belongs here, so the toolbar button's own onclick is swapped for a
+  // recorder and put back. Swapping a handler at runtime changes nothing in the app.
+  const forwards = async (fromId, toId) => dm.evaluate(`(() => {
+    const target = document.getElementById(${JSON.stringify(toId)});
+    const source = document.getElementById(${JSON.stringify(fromId)});
+    if (!target) return { err: 'the toolbar button #${toId} it mirrors is not in the DOM' };
+    if (!source) return { err: 'the pane has no #${fromId}' };
+    const was = target.onclick;
+    let hits = 0;
+    target.onclick = () => { hits++; };
+    source.click();
+    target.onclick = was;
+    return { hits };
+  })()`);
+
+  for (const [from, to, what] of [['cp-player-golive', 'btn-player', 'Go live'],
+                                  ['cp-player-fullscreen', 'btn-fullscreen-player', 'Fullscreen'],
+                                  ['cp-player-syncview', 'btn-sync-view', 'Sync view'],
+                                  ['cp-player-send', 'btn-send', 'Send']]) {
+    const f = await forwards(from, to);
+    rig.check(!f.err, what + ' could not be staged: ' + f.err);
+    rig.check(!f.err && f.hits === 1,
+              what + ' on the Player pane does not reach the toolbar button it mirrors, so the ' +
+              'panel shows a control that does nothing (' + (f.hits || 0) + ' forwards)');
+  }
+
+  // Lock is the one proxy whose whole effect is a flag, so it is pressed for real both ways.
+  const lockWas = await dm.evaluate('minimapLocked === true');
+  await dm.evaluate('document.getElementById("cp-player-lock").click(); 0');
+  rig.check(await dm.evaluate('minimapLocked === true') !== lockWas,
+            'Lock on the Player pane did not reach the minimap, so the players can still be ' +
+            'moved from a panel that says they cannot');
+  await dm.evaluate('document.getElementById("cp-player-lock").click(); 0');
+  rig.check(await dm.evaluate('minimapLocked === true') === lockWas,
+            'Lock on the Player pane would not let go again');
+
+  // ⚠ TWO SEGMENTS OVER ONE TOGGLE. Pressing the live segment must not flip it away, which is
+  // the fault the pane's own click guard exists for and the one a plain proxy would cause.
+  const segs = async want => dm.evaluate('(() => { const b = document.querySelector(' +
+    '\'#cp-pane-player [data-sync="' + want + '"]\'); if (!b) return false; b.click(); return true; })()');
+  rig.check(await segs('manual'), 'the Player pane carries no Manual segment');
+  rig.check(await dm.evaluate('autoSync') === false,
+            'the Manual segment did not switch the send gate off, so the DM cannot hold a reveal ' +
+            'back from the panel');
+  await segs('manual');
+  rig.check(await dm.evaluate('autoSync') === false,
+            'pressing the segment that was already lit flipped the gate back to Auto, so a second ' +
+            'press on Manual sends everything the DM was holding');
+  await segs('auto');
+  rig.check(await dm.evaluate('autoSync') === true,
+            'the Auto segment would not switch the send gate back on');
+
+  // The zoom stepper. Both buttons and the field go through minimapSetZoom, the same path the
+  // minimap's own wheel uses.
+  const zoomNow = () => dm.evaluate('+minimapGetZoom().toFixed(4)');
+  const zStart = await zoomNow();
+  await dm.evaluate('document.getElementById("cp-zoom-inc").click(); 0');
+  const zUp = await zoomNow();
+  rig.check(zUp > zStart, 'the + step on the Player pane did not zoom the players in: ' +
+                          zStart + ' → ' + zUp);
+  await dm.evaluate('document.getElementById("cp-zoom-dec").click(); 0');
+  const zBack = await zoomNow();
+  rig.check(zBack < zUp, 'the − step on the Player pane did not zoom back out: ' + zUp + ' → ' + zBack);
+
+  await lib.fire(dm, 'cp-zoom-num', '150', 'change');
+  const zTyped = await zoomNow();
+  rig.note('Player zoom from the panel: ' + zStart + ' → +' + zUp + ' → −' + zBack +
+           ' → typed 150% ' + zTyped);
+  rig.check(Math.abs(zTyped - 1.5) < 0.0005,
+            'typing a percentage into the Player pane did not set the zoom: 150% became ' + zTyped);
 };

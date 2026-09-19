@@ -122,6 +122,37 @@ the unfixed code and confirm it fails on the right line. Written after, break th
 confirm the FAIL names it, then put it back. A check that passes for some reason other than the
 code under it looks identical to one that works.
 
+**A MUTATION MUST NEVER SHRINK THE FILE IT BREAKS.** `guard-module-size.js` ratchets its ceiling
+DOWN the moment a file gets smaller, so deleting a line to break something writes the smaller
+number into the baseline and the revert then reads as growth - 748 bytes of headroom went that way
+once. Gate the line off instead of cutting it: `if (false && cond)` breaks the same behaviour and
+grows the file. Check `git diff -- .claude/hooks/` before the commit whatever you did.
+
+**EVERY CRITERION CARRIES A LABEL, and a new one is not finished without it.** A criterion that
+says nothing about being proved is indistinguishable from one nobody ever ran.
+
+```js
+// RED ON: sendToPlayer() removed from the btn-send handler (toolbar.js) — 2026-09-19
+// RED BY DESIGN: written against the fix, never re-proved
+```
+
+`RED ON` names the edit, never just the date, so anyone can run it again in a minute and a rename
+makes it visibly wrong. `RED BY DESIGN` is the honest label for the suite written before this
+rule: the author meant it to fail and nobody has checked since. A criterion earns `RED ON` only
+when someone watched it go red.
+
+The label sits beside the check it describes, which may be well inside the section rather
+than at its head. Count where the suite stands with:
+
+```
+grep -rho "RED ON:" tools/rig/scenarios/ | wc -l          proved
+grep -rho "RED BY DESIGN:" tools/rig/scenarios/ | wc -l   written to fail, never re-checked
+```
+
+**Converting a criterion from `RED BY DESIGN` to `RED ON` is the only thing that moves that
+count.** It goes down as somebody proves one, and a new criterion arrives carrying `RED ON`
+because proving a new check red is already the rule above.
+
 **A file starts with `const lib = require('../../lib');` and opens its map in one line.**
 `tools/rig/lib.js` holds the page-side helper set, the map preamble, and the two waits. Nothing
 in it is pasted into a scenario. The helpers used to be a `HELPERS` template copied into each

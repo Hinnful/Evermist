@@ -7,7 +7,8 @@
 // history — and Ctrl+Y puts it back. Nothing about the reversal costs the DM their place: the room
 // they were reading stays open, and the TV follows. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. Ctrl+Z reverses the last change and Ctrl+Y puts it back, over several steps, in order.
 //        Ctrl+Shift+Z is the same as Ctrl+Y
@@ -82,6 +83,7 @@ module.exports = async function undoFeature(rig) {
     '); fogDirty = true; scheduleRender(); scheduleAutoSync(); 0');
 
   // ── A. Two steps back and two steps forward ───────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('document.getElementById("btn-fill-fog").click(); 0');
   await settle();
   await dm.evaluate('undoStack = []; redoStack = []; 0');
@@ -121,6 +123,7 @@ module.exports = async function undoFeature(rig) {
             await fog(B.x, B.y) + ')');
 
   // ── B. Nothing to undo ────────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('undoStack = []; redoStack = []; 0');
   const beforeNothing = { a: await fog(A.x, A.y), b: await fog(B.x, B.y) };
   await undoKey();
@@ -150,6 +153,7 @@ module.exports = async function undoFeature(rig) {
             'same to the DM: ' + JSON.stringify(said));
 
   // ── C. One history for fog, rooms and effects ─────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate(`(() => {
     pushUndo();
     polygons = [{ id: 1, vertices: [
@@ -202,6 +206,7 @@ module.exports = async function undoFeature(rig) {
             'an effect came back through redo without its name: ' + JSON.stringify(bothBack.effects));
 
   // ── D. A new change throws the redo away ──────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await undoKey();
   await settle();
   rig.check((await depths()).redo > 0, 'an undo left nothing to redo, so section D proves nothing');
@@ -217,6 +222,7 @@ module.exports = async function undoFeature(rig) {
             'Ctrl+Y after a fresh change brought back the discarded branch');
 
   // ── E. The room card keeps its place ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Nulling the selection on every Ctrl+Z slammed the card shut mid-read. It closes only where
   // the room itself is gone.
   await dm.evaluate('selectedPolygonId = polygons[0].id; refreshRoomPanel(); 0');
@@ -266,6 +272,7 @@ module.exports = async function undoFeature(rig) {
             'for a shape that is gone');
 
   // ── F. An undo reaches the Player ─────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(await dm.evaluate('autoSync === true'),
             'auto-sync is off, so no undo could reach the Player and the check below would be ' +
             "reading the Player's own state");
@@ -302,6 +309,7 @@ module.exports = async function undoFeature(rig) {
             'taken back: alpha ' + sawUndo);
 
   // ── G. Ctrl+Z while typing belongs to the text ────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // The room card's notes field is a textarea, and the shortcut must not reach the map from it.
   await dm.evaluate('selectedPolygonId = polygons[0].id; refreshRoomPanel(); 0');
   await reveal(B);
@@ -342,6 +350,7 @@ module.exports = async function undoFeature(rig) {
   }
 
   // ── H. The history is bounded, and never emptied by eviction ──────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ ENOUGH PUSHES TO ACTUALLY EVICT, and the count is derived rather than guessed: a fixed
   // number that happens to stay inside the budget makes every check here pass for nothing. The
   // fog canvas on this map is about 315KB a snapshot, so the ceiling is a few hundred entries.
@@ -373,6 +382,7 @@ module.exports = async function undoFeature(rig) {
             'a history sitting on its memory ceiling would not undo at all: ' +
             JSON.stringify(afterEvicted));
   // ── I. A per-corner radius is undoable, every time ──────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE SECOND EDIT IS THE ONE THAT MATTERS. pushUndo copies a shape with a shallow spread, so
   // its snapshot SHARES cornerRadii with the live room. The first edit creates that array and is
   // therefore safe; every later one wrote through the shared reference and quietly rewrote the
@@ -426,6 +436,7 @@ module.exports = async function undoFeature(rig) {
             JSON.stringify(afterRadiusUndo.radii));
 
   // ── J. A field the DM has looked away from does not keep their Ctrl+Z ─────
+  // RED BY DESIGN: written against the fix, never re-proved
   // The bug this was built for: a field holds focus until something takes it, and only a click
   // on the MAP used to. Click the toolbar, the panel or the scene library and every later Ctrl+Z
   // went to the text history of a field the DM stopped looking at.

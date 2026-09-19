@@ -6,7 +6,8 @@
 // they wrote during prep — while the map underneath stays visible and usable. It is the DM's own
 // panel and none of it ever reaches the players. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The card opens on a selected room, closes when nothing is selected, and survives a tool
 //      change — its visibility is the selection and nothing else. Grid calibration is the one
@@ -101,6 +102,7 @@ module.exports = async function roomCardFeature(rig) {
   })()`);
 
   // ── A. Visibility is the selection, and nothing else ──────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(!(await card()).shown,
             'the room card is open with nothing selected');
   await select(1);
@@ -144,6 +146,7 @@ module.exports = async function roomCardFeature(rig) {
             JSON.stringify(given));
 
   // ── B. The fields reach the room ──────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check((await card()).name === 'The Vestry',
             'the card is not showing the name of the room that is selected: ' + (await card()).name);
   await typeInto('rp-name', 'The Cold Vestry');
@@ -171,6 +174,7 @@ module.exports = async function roomCardFeature(rig) {
             JSON.stringify(backOnSmall));
 
   // ── C. Trimmed, never empty ───────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await typeInto('rp-name', '   The Cold Vestry   ');
   await lib.settle(dm, 'polygons[0].name === "The Cold Vestry"', 6000);
   rig.check((await room(1)).name === 'The Cold Vestry',
@@ -187,6 +191,7 @@ module.exports = async function roomCardFeature(rig) {
   await typeInto('rp-name', 'The Cold Vestry');
 
   // ── D. The shape of the card ──────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const shape = await dm.evaluate(`(() => {
     const p = document.getElementById('panel-room');
     const head = document.getElementById('rp-head');
@@ -225,6 +230,8 @@ module.exports = async function roomCardFeature(rig) {
 
   // ── E. The card clears the room ───────────────────────────────────────────
   // Against the BIG room especially: a card placed from a room's centroid sits inside it.
+  // RED ON: clampPanelPosition's fallback slot picked on `<` instead of `>` (roomPanel.js),
+  // so it pins to the edge with the LEAST space — 2026-09-19
   for (const [id, name] of [[1, 'The Vestry'], [2, 'The Great Hall']]) {
     await select(id);
     const overlap = await dm.evaluate(`(() => {
@@ -254,8 +261,27 @@ module.exports = async function roomCardFeature(rig) {
     const fits = overlap.gap.left >= overlap.card.w || overlap.gap.right >= overlap.card.w ||
                  overlap.gap.top >= overlap.card.h || overlap.gap.bottom >= overlap.card.h;
     if (!fits) {
+      // ⚠ NO BRANCH IS A FREE PASS. This used to note the gaps and assert nothing, so at a window
+      // size where no side is clear — which is every size the gate runs at — criterion E checked
+      // the card's placement not at all. clampPanelPosition's own fallback promises to pin the
+      // card to whichever edge has the most space, and that promise holds at any size.
       rig.note(name + ': no clear spot for a ' + overlap.card.w + 'x' + overlap.card.h +
-               ' card beside it — gaps ' + JSON.stringify(overlap.gap) + ', so overlap is allowed');
+               ' card beside it — gaps ' + JSON.stringify(overlap.gap) + ', so it pins to an edge');
+      // The margin is the app's own, read live — a number written here would pass against a
+      // card pinned to the wrong place the day the margin changes.
+      const win = await dm.evaluate('({ w: innerWidth, h: innerHeight, m: RP_MARGIN })');
+      const best = Object.keys(overlap.gap)
+        .reduce((a, b) => (overlap.gap[b] > overlap.gap[a] ? b : a));
+      const at = { top: overlap.card.y, left: overlap.card.x,
+                   bottom: win.h - (overlap.card.y + overlap.card.h),
+                   right: win.w - (overlap.card.x + overlap.card.w) };
+      rig.check(at[best] <= win.m + 1,
+                'with no clear spot beside ' + name + ', the card did not pin to the ' + best +
+                ' edge, which has the most room — it sits ' + at[best] + 'px in, covering more ' +
+                'of the room than it has to: ' + JSON.stringify(at));
+      rig.check(at.left >= 0 && at.top >= 0 && at.right >= 0 && at.bottom >= 0,
+                'the card was pushed off screen while getting clear of ' + name + ': ' +
+                JSON.stringify(at));
     } else {
       rig.check(overlap.ox <= 0 || overlap.oy <= 0,
                 'the card is sitting on top of ' + name + ', which is the room it is describing: ' +
@@ -264,6 +290,7 @@ module.exports = async function roomCardFeature(rig) {
   }
 
   // ── F. Dragging the card ──────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await select(1);
   const dragCard = (dx, dy) => dm.evaluate(`(() => {
     const head = document.getElementById('rp-head');
@@ -321,6 +348,7 @@ module.exports = async function roomCardFeature(rig) {
             JSON.stringify(snapped));
 
   // ── H. The notes height is one global preference ──────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Driven through the real release: the height is saved on mouseup, not on every resize.
   // ⚠ THE WATCHER IS ARMED BY A MOUSEDOWN ON THE TEXTAREA, deliberately: its listener lives on
   // window and would otherwise force a layout on every mouse release in the app. A resize that
@@ -365,6 +393,7 @@ module.exports = async function roomCardFeature(rig) {
             'backup and stops being one preference');
 
   // ── I. Room labels ────────────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(await dm.evaluate('showRoomLabels === true'),
             'room labels are off by default, so nothing below is about where they are drawn');
   await select(null);
@@ -418,6 +447,7 @@ module.exports = async function roomCardFeature(rig) {
   rig.check(onTV.card === false, 'the room card is showing on the Player, which has no UI at all');
 
   // ── J. An effect gets no card ─────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate(`(() => {
     setEffects([{ id: 1, vertices: [
       { x: 900, y: 900 }, { x: 1200, y: 900 }, { x: 1200, y: 1150 }, { x: 900, y: 1150 },
@@ -435,6 +465,7 @@ module.exports = async function roomCardFeature(rig) {
             'none of which an effect has: ' + JSON.stringify(onEffect));
 
   // ── G. Delete ─────────────────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('placeMode = "rooms"; selectedPolygonId = 1; refreshRoomPanel(); 0');
   await lib.settle(dm, "document.getElementById('panel-room').style.display !== 'none'", 8000);
   await dm.evaluate('document.getElementById("rp-delete").click(); 0');
@@ -458,6 +489,7 @@ module.exports = async function roomCardFeature(rig) {
             'the card stayed open after its room was deleted, so it is describing a ghost');
 
   // ── K. The look ───────────────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('selectedPolygonId = 2; refreshRoomPanel(); 0');
   await lib.settle(dm, "document.getElementById('panel-room').style.display !== 'none'", 8000);
   rig.byEye('the room card in a screenshot taken with --shot "#panel-room" — whether the notes ' +

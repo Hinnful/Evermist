@@ -7,7 +7,8 @@
 // as the party moves, and every change is on the TV a moment later. Every check below serves that
 // sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. Opening the Player puts the DM's map on it, at the map's own size, fogged all over.
 //   B. An area the DM reveals is clear of fog on the Player — in the fog data it was sent, and
@@ -28,6 +29,10 @@
 //      other two.
 //   M. The Auto/Manual gate holds for FOG. With Auto off nothing the DM reveals reaches the
 //      table until Send is pressed, which is how a room is prepared before the players see it.
+//   N. Every fog dial answers from its number chip as well as its slider, and the five behind
+//      Advanced answer at all. The chip was the half nothing pressed: a DM who types 18 into a
+//      box and watches the slider stay put has a panel that lies about the fog it is showing.
+//      Reset puts the advanced dials back, and the close button shuts the panel that opened.
 //
 // ⚠ THE PLAYER'S FOG IS ONE FULL-SCREEN PIXIJS PASS, so its painted fog is read by extracting
 // that mesh from the renderer rather than off a DOM canvas. The extract is in CSS pixels, as the
@@ -75,6 +80,7 @@ module.exports = async function fogFeature(rig) {
   const dmFog = (x, y) => dm.evaluate(DM_SAMPLE + '(' + x + ',' + y + ')');
 
   // ── A. Opening the Player puts the DM's map on it ──────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const player = await rig.player();
   await player.waitFor('!!mapOffscreen', 45000, 'the Player to receive the map');
   const onPlayer = await player.evaluate('({ w: mapWidth, h: mapHeight, hasFog: !!fogDataCanvas })');
@@ -84,6 +90,7 @@ module.exports = async function fogFeature(rig) {
             'the Player received a map with no fog at all — the table would see everything');
 
   // ── B. What the DM reveals is clear on the Player ──────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // revealCircle is the app's own fog operation, the one the brush drives; sendToPlayer is the
   // app's own delivery. Nothing here is a rig-only path.
   await player.waitFor('fogCoverT === 0', 45000, 'the scene cover to lift on the Player');
@@ -141,6 +148,7 @@ module.exports = async function fogFeature(rig) {
             paintedRevealed.a + ')');
 
   // ── C. Untouched map is still fully fogged ─────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const untouchedData = await player.evaluate(sampleData + '(' + UNTOUCHED.x + ',' + UNTOUCHED.y + ')');
   rig.check(untouchedData === 255,
             'untouched map is not fully fogged in the Player fog data (alpha ' + untouchedData + ')');
@@ -151,6 +159,7 @@ module.exports = async function fogFeature(rig) {
   rig.check(layerOpacity === '1', 'the Player fog layer is not at full opacity: ' + layerOpacity);
 
   // ── D. No DM controls, but the cursor stays ───────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const chrome = await player.evaluate(`(() => {
     const shown = id => { const el = document.getElementById(id);
       if (!el) return false; const b = el.getBoundingClientRect();
@@ -201,8 +210,10 @@ module.exports = async function fogFeature(rig) {
   rig.check(await undoDepth() === beforeReveal + 1,
             'Reveal All did not push exactly one undo step: ' + beforeReveal + ' → ' +
             await undoDepth());
-  await player.waitFor(sampleData + '(' + UNTOUCHED.x + ',' + UNTOUCHED.y + ') === 0', 30000,
-                       'Reveal All to reach the Player');
+  // ⚠ settle, NOT waitFor. A waitFor throws on its timeout, so the check under it could never be
+  // the failing line and the report named a timeout where the criterion had its own words.
+  // RED ON: sendToPlayer() gated off inside revealAllRooms (fog.js) — 2026-09-19
+  await lib.settle(player, sampleData + '(' + UNTOUCHED.x + ',' + UNTOUCHED.y + ') === 0', 30000);
   rig.check(await player.evaluate(sampleData + '(' + UNTOUCHED.x + ',' + UNTOUCHED.y + ')') === 0,
             'Reveal All never reached the TV, so the players are still in the dark');
 
@@ -218,8 +229,7 @@ module.exports = async function fogFeature(rig) {
             JSON.stringify(shroudModes));
   rig.check(await undoDepth() === beforeShroud + 1,
             'Shroud All did not push exactly one undo step');
-  await player.waitFor(sampleData + '(' + REVEAL.x + ',' + REVEAL.y + ') > 200', 30000,
-                       'Shroud All to reach the Player');
+  await lib.settle(player, sampleData + '(' + REVEAL.x + ',' + REVEAL.y + ') > 200', 30000);
   rig.check(await player.evaluate(sampleData + '(' + REVEAL.x + ',' + REVEAL.y + ')') > 200,
             'Shroud All never reached the TV, so the players can still see the room');
 
@@ -230,6 +240,7 @@ module.exports = async function fogFeature(rig) {
             await dmFog(REVEAL.x, REVEAL.y));
 
   // ── F. The fog is never flat black ────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Read on the Player, whose fog is Canvas 2D and gives up its colour. A strong red is far from
   // both the default blue-violet and from black, so the reading cannot be a coincidence.
   //
@@ -261,6 +272,7 @@ module.exports = async function fogFeature(rig) {
             JSON.stringify(blueish));
 
   // ── G. The feathered edge is a dial ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ MEASURED AT A ROOM'S EDGE, NOT A BRUSH STROKE'S. revealCircle punches a hard-edged circle
   // into both fog canvases; Feather is applied by applyPolygonToFog, so a file that measured the
   // brush would read the same ramp at every setting and pass for nothing.
@@ -315,6 +327,7 @@ module.exports = async function fogFeature(rig) {
   await fire('fog-feather', 12);
 
   // ── H. Half-shroud ───────────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const halfRoom = async mode => {
     await dm.evaluate('polygons[0].mode = ' + JSON.stringify(mode) + ';' +
       ' rebuildFogFromPolygons(); 0');
@@ -355,6 +368,7 @@ module.exports = async function fogFeature(rig) {
   await fire('fog-half-alpha', 50);
 
   // ── I. The drift ─────────────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const animState = () => dm.evaluate(`(() => {
     const seg = [...document.querySelectorAll('#cp-anim-row [data-anim]')]
       .filter(b => b.classList.contains('active')).map(b => b.dataset.anim);
@@ -405,6 +419,7 @@ module.exports = async function fogFeature(rig) {
             JSON.stringify(s0) + ' → ' + JSON.stringify(s1));
 
   // ── J. Reset Fog Settings ────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await fire('fog-color', '#c02020');
   await fire('fog-tint-alpha', 70);
   await fire('fog-feather', 3);
@@ -437,6 +452,7 @@ module.exports = async function fogFeature(rig) {
             'that panel that persists: ' + JSON.stringify(afterReset));
 
   // ── K. The look at the table ─────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('document.getElementById("btn-fill-fog").click(); 0');
   await dm.evaluate('revealCircle(' + REVEAL.x + ',' + REVEAL.y + ',' + REVEAL.r + '); sendToPlayer(); 0');
   await lib.settle(player, '!viewportDirty && !fogDirty && !fogTransRafId && !fogColorRafId', 15000);
@@ -449,6 +465,7 @@ module.exports = async function fogFeature(rig) {
             'texture sliding — speed is a feel call at the table, on a TV');
 
   // ── L. The colour picker itself ───────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ EVERY CHECK ABOVE SETS THE HIDDEN `fog-color` INPUT DIRECTLY, which is not a thing the DM
   // can do. The square, the hue strip and the hex field are the only way they reach the colour,
   // and none of them had a check: a dead hex field would ship.
@@ -604,7 +621,11 @@ module.exports = async function fogFeature(rig) {
   rig.check(leaked === null,
             'a reveal made with Auto off reached the TV anyway (alpha ' + (leaked && leaked.alpha) + '), so the DM cannot open a room before the players see it');
 
-  await dm.evaluate('sendToPlayer(); 0');
+  // ⚠ THE BUTTON, NEVER sendToPlayer(). Send is the only way anything reaches the TV on Manual,
+  // and every other scenario calls the function around it, so the handler itself was covered
+  // nowhere. What that handler guards against is at its own line in toolbar.js.
+  // RED ON: sendToPlayer() removed from the btn-send handler (toolbar.js) — 2026-09-19
+  await dm.evaluate('document.getElementById("btn-send").click(); 0');
   await lib.settle(player, '(' + lib.TV_FOG + ')(' + HELD.x + ',' + HELD.y + ') < 60', 20000);
   rig.check(await player.evaluate('(' + lib.TV_FOG + ')(' + HELD.x + ',' + HELD.y + ')') < 60,
             'pressing Send did not deliver the held reveal to the TV, so Manual mode strands the fog on the DM');
@@ -613,5 +634,78 @@ module.exports = async function fogFeature(rig) {
                     ' if (!autoSync) b.click(); return 0; })()');
   rig.check(await dm.evaluate('autoSync') === true,
             'auto-sync would not switch back on, so the DM is stuck in Manual');
+
+  // ── N. Every dial answers from its chip, and the five behind Advanced answer at all ──────
+  // RED ON: apply(v) gated off in wireAnimSlider's num.onchange, and separately
+  // featherSlider.value = v gated off in featherNum.onchange (fogControls.js) — 2026-09-19
+  // ⚠ 'change' ON A CHIP, 'input' ON A SLIDER. The chips commit on change and the sliders on
+  // input, so firing the wrong event leaves the app never hearing the dial move and the read
+  // below reports the value the chip was ALREADY showing.
+  const chip = async (numId, sliderId, v) => {
+    await lib.fire(dm, numId, v, 'change');
+    return dm.evaluate('+document.getElementById(' + JSON.stringify(sliderId) + ').value');
+  };
+
+  rig.check(await chip('fog-feather-num', 'fog-feather', 17) === 17 &&
+            await dm.evaluate('fogFeatherRadius') === 17,
+            'a feather typed into the chip did not drive the fog and the slider: slider ' +
+            await dm.evaluate('document.getElementById("fog-feather").value') + ', radius ' +
+            await dm.evaluate('fogFeatherRadius'));
+
+  rig.check(await chip('fog-half-alpha-num', 'fog-half-alpha', 61) === 61 &&
+            Math.abs(await dm.evaluate('fogHalfAlpha') - 0.61) < 0.0001,
+            'a half-shroud density typed into the chip did not drive the fog and the slider: ' +
+            'slider ' + await dm.evaluate('document.getElementById("fog-half-alpha").value') +
+            ', alpha ' + await dm.evaluate('fogHalfAlpha'));
+
+  // ⚠ THE TINT CHIP COMMITS ON 'input', not 'change' — it is the one chip in this panel wired
+  // the other way, so a shared helper here would read the old value and pass.
+  await lib.fire(dm, 'fog-tint-alpha-num', 44, 'input');
+  rig.check(await dm.evaluate('+document.getElementById("fog-tint-alpha").value') === 44 &&
+            Math.abs(await dm.evaluate('FOG_TINT_ALPHA') - 0.44) < 0.0001,
+            'a tint strength typed into the chip did not drive the fog and the slider: slider ' +
+            await dm.evaluate('document.getElementById("fog-tint-alpha").value') + ', alpha ' +
+            await dm.evaluate('FOG_TINT_ALPHA'));
+
+  // The five behind Advanced. Their sliders are logarithmic, so what is asserted is that the
+  // dial reaches its global and that the chip shows what the global holds — never a number
+  // read off the slider's own scale.
+  await dm.evaluate('document.querySelector("#cp-anim-row [data-anim=\'advanced\']").click(); 0');
+  await lib.settle(dm, 'document.getElementById("anim-advanced-panel").style.display === "block"',
+                   10000);
+
+  const ADV = [['anim-speed', 'anim-speed-num', 'Math.round(fogAnimSpeed * 100)', 140, 1],
+               ['anim-morph-speed', 'anim-morph-num', 'cloudFrameSpeed', 1.7, 0.01],
+               ['anim-warp-str', 'anim-warp-num', 'cloudWarpStrength', 2.4, 0.01],
+               ['anim-warp-rad', 'anim-warp-rad-num', 'cloudWarpRadius', 3.1, 0.01],
+               ['anim-alpha-amp', 'anim-alpha-amp-num', 'alphaPulseAmp', 0.35, 0.01]];
+  for (const [sliderId, numId, global, want, tol] of ADV) {
+    await lib.fire(dm, numId, want, 'change');
+    const got = await dm.evaluate(global);
+    rig.check(Math.abs(got - want) < tol,
+              'the ' + numId + ' chip did not reach the fog: typed ' + want + ', the app holds ' + got);
+    const onSlider = await dm.evaluate('+document.getElementById(' + JSON.stringify(sliderId) + ').value');
+    rig.check(isFinite(onSlider),
+              'the ' + sliderId + ' slider holds no number after its chip was typed into');
+  }
+  rig.note('the advanced dials after typing: ' +
+           JSON.stringify(await dm.evaluate('({ speed: fogAnimSpeed, morph: cloudFrameSpeed, ' +
+             'warpStr: cloudWarpStrength, warpRad: cloudWarpRadius, pulse: alphaPulseAmp })')));
+
+  // ⚠ RESET GOES BACK TO THE ACTIVE PRESET, not to zero. Typing into a chip clears the preset
+  // highlight, so Reset here restores Default — which is what the DM presses it for.
+  await dm.evaluate('document.getElementById("btn-anim-reset").click(); 0');
+  const advAfterReset = await dm.evaluate('({ speed: fogAnimSpeed, morph: cloudFrameSpeed, ' +
+    'warpStr: cloudWarpStrength, warpRad: cloudWarpRadius, pulse: alphaPulseAmp })');
+  rig.note('the advanced dials after Reset: ' + JSON.stringify(advAfterReset));
+  rig.check(Math.abs(advAfterReset.morph - 1.7) > 0.01 && Math.abs(advAfterReset.warpStr - 2.4) > 0.01,
+            'Reset left the typed-in advanced values on the fog, so there is no way back from a ' +
+            'dial the DM has pulled too far: ' + JSON.stringify(advAfterReset));
+
+  await dm.evaluate('document.getElementById("cp-adv-close").click(); 0');
+  rig.check(await dm.evaluate('document.getElementById("anim-advanced-panel").style.display') === 'none',
+            "the advanced panel's own close button left it floating over the map");
+  rig.check(!(await dm.evaluate('document.getElementById("btn-anim-advanced").classList.contains("active")')),
+            'the close button only hid the advanced panel, so it reopens on the next pane switch');
 
 };

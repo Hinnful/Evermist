@@ -1,16 +1,14 @@
 # Decisions - map effects
 
-Split out of [DECISIONS.md](../DECISIONS.md) so the main ledger stays readable. Same
-question, same past tense: what was decided about **map effects** - drawable areas of
-burning ground that persist like a room - and why it held.
+Split out of [DECISIONS.md](../DECISIONS.md). What was decided about **map effects** -
+drawable areas of burning ground that persist like a room - and why it held.
 
 An effect is a polygon carrying a `material` where a room carries a fog `mode`. The rules
 that bind while editing them are in [CLAUDE.md](../../CLAUDE.md); how the two render
 passes work is in [ARCHITECTURE.md](../ARCHITECTURE.md); what effects will never be is in
 [PRODUCT.md](../PRODUCT.md).
 
-**Status tags** and the one-heading-one-paragraph budget are the main ledger's; read its
-header before adding an entry here.
+Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 

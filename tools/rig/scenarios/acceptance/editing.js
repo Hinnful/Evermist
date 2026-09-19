@@ -5,7 +5,8 @@
 // THE GOAL OF THIS FEATURE: the DM picks a room already on the map, changes it any way the app
 // allows, and the players see the change. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The Select tool picks a room, and picks the right one.
 //        clicking inside · clicking empty map · overlapping rooms
@@ -53,6 +54,7 @@ module.exports = async function editing(rig) {
   const tol = 3 / (await dm.evaluate('zoom'));
 
   // ══ A. The Select tool picks a room, and picks the right one ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const a1 = await dm.evaluate('__rigDrawShroud(600, 400, 900, 700)');
   await dm.evaluate('__rigClick(750, 550); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === a1,
@@ -116,6 +118,7 @@ module.exports = async function editing(rig) {
   await dm.evaluate('__rigDbl(850, 650); 0');
 
   // ══ B. Every geometry edit changes the room it was aimed at, and only that one ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // B1 — moving the body.
   const beforeMove = await dm.evaluate('__rigById(' + a2 + ').vertices.map(v => ({x:v.x, y:v.y}))');
   const otherBefore = await dm.evaluate('JSON.stringify(__rigById(' + a1 + ').vertices)');
@@ -189,6 +192,7 @@ module.exports = async function editing(rig) {
             'three corners is not a shape and paints no fog');
 
   // ══ C. An edit that starts on the map finishes wherever the mouse ends up ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE BOTTOM TOOLBAR FLOATS OVER THE MAP, so a drag along the lower edge crosses it on
   // nearly every stroke. A release the map never hears has to commit all the same.
   await dm.evaluate('__rigClick(1150, 850); 0');
@@ -200,6 +204,7 @@ module.exports = async function editing(rig) {
             'back and the DM loses the edit');
 
   // ══ D. Editing does not spend undo the DM has not earned ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ SELECTING IS A CLICK THAT MOVES NOTHING. Pushing undo on mousedown spent one Ctrl+Z and a
   // full fog-canvas clone on every selection, so the DM pressed undo and watched nothing happen.
   await dm.evaluate('__rigClick(1800, 1350); 0');       // deselect first
@@ -234,6 +239,7 @@ module.exports = async function editing(rig) {
             ' against ' + preEdit.toFixed(1) + ')');
 
   // ══ E. A room's fog mode changes after the fact, and it CYCLES ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THREE STATES, NOT A TOGGLE. A two-way toggle on a half room would send it to shroud with
   // no keyboard route back, so the key could leave a state it cannot reach.
   await dm.evaluate('__rigClick(1150, 850); 0');
@@ -247,6 +253,7 @@ module.exports = async function editing(rig) {
             'the fog mode did not cycle shroud → half → reveal → shroud: ' + seen.join(' → '));
 
   // ══ F. Corner radius reshapes the FOG, not just the outline ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // Sampled hard in the corner, where a radius cuts the shape away. The room is put back to
   // shroud first so the corner has fog in it to lose.
   // ⚠ A FRESH ROOM IN CLEAN GROUND, not the one edited above. That one has been moved, reshaped
@@ -276,6 +283,7 @@ module.exports = async function editing(rig) {
             cornerAfter + ') — the outline rounded but the fog the players see did not');
 
   // ══ G. Deleting removes the room and its fog together ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const doomed = await dm.evaluate('__rigDrawShroud(700, 900, 950, 1100)');
   await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigFog(820, 1000)') > 200, 'the room to delete painted no fog');
@@ -287,6 +295,7 @@ module.exports = async function editing(rig) {
             'DM uncovered');
 
   // ══ H. Every one of those reaches the TV ══
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(await dm.evaluate('autoSync === true'),
             'auto-sync is off, so no edit could reach the Player and the checks below would be ' +
             'reading the TV\'s own starting state');
@@ -313,9 +322,9 @@ module.exports = async function editing(rig) {
     '   now: ' + lib.TV_FOG + '(' + WENT.x + ',' + WENT.y + ') })');
   rig.note('TV after the move — where it was ' + moved.was + ', where it went ' + moved.now);
   rig.check(moved.now > 200, 'moving a room did not carry its fog to the new ground on the TV');
-  rig.check(moved.was < 60,
-            'the ground the room moved OFF is still hidden on the TV (alpha ' + moved.was +
-            ') — the shroud was left behind and the table loses map the DM uncovered');
+  // The other half of a move — that the ground it came OFF clears — is
+  // everything-reaches-the-player.js criterion B, which owns delivery to the TV. It was written
+  // here too, condition and message word for word, so one of the two proved nothing new.
 
   // A mode change reaches the TV too. Shroud → reveal is the case that gives ground BACK.
   await dm.evaluate('__rigKey("KeyT"); 0');   // shroud → half
@@ -334,6 +343,7 @@ module.exports = async function editing(rig) {
   rig.check(await dm.evaluate('!__rigById(' + tracked + ')'), 'the tracked room was not deleted');
 
   // ══ I. What must NOT reach the TV still does not ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const keep = await dm.evaluate('__rigDrawShroud(350, 950, 600, 1150)');
   await dm.evaluate('__rigClick(470, 1050); 0');
   // ⚠ THE CARD'S FIELDS COMMIT ON BLUR, NOT ON INPUT. Typing into them and reading the room back

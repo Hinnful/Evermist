@@ -8,7 +8,8 @@
 // their own, and can see where the players have wandered off to. Every check below serves that
 // sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The DM pans by dragging, and the map moves with the cursor one pixel for one pixel.
 //        the camera, and the animated map's own element, which is moved separately
@@ -98,6 +99,7 @@ module.exports = async function viewFeature(rig) {
   };
 
   // ── D. A freshly loaded map is fitted and centred ─────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Checked first, because everything below moves the camera.
   const fitted = await dm.evaluate(`(() => {
     const cw = container.clientWidth, ch = container.clientHeight;
@@ -114,6 +116,7 @@ module.exports = async function viewFeature(rig) {
             'a freshly loaded map was not centred in the window: ' + JSON.stringify(fitted));
 
   // ── A. Panning follows the cursor 1:1 ─────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const before = await camera(dm);
   await drag(-180, 120);
   await lib.settle(dm, '!viewportDirty', 8000);
@@ -171,6 +174,7 @@ module.exports = async function viewFeature(rig) {
   }
 
   // ── B. The wheel zooms about the cursor ───────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const anchor = await dm.evaluate(`(() => {
     // A screen point off-centre, so a zoom that pivots about the centre instead moves it.
     const sx = Math.round(container.clientWidth * 0.28), sy = Math.round(container.clientHeight * 0.7);
@@ -193,6 +197,7 @@ module.exports = async function viewFeature(rig) {
             ' where the camera is at ' + zoomedBox.zoom);
 
   // ── C. Zoom stops at its limits ───────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await wheelAt(dm, 100, 100, 90);
   await lib.settle(dm, 'zoom === 20', 8000);
   const zoomedIn = (await camera(dm)).zoom;
@@ -207,6 +212,7 @@ module.exports = async function viewFeature(rig) {
   await lib.settle(dm, '!viewportDirty', 8000);
 
   // ── E. Sync View sends a region, not a zoom ───────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const player = await rig.player();
   await player.waitFor('!!mapOffscreen', 45000, 'the Player to receive the map');
   await player.waitFor('fogCoverT === 0', 45000, 'the scene cover to lift on the Player');
@@ -246,21 +252,13 @@ module.exports = async function viewFeature(rig) {
             "the Player did not refit the DM's region onto its own canvas: it is at zoom " +
             playerRegion.zoom + ' where fitting ' + dmRegion.w + 'x' + dmRegion.h + ' into ' +
             sizes.player.w + 'x' + sizes.player.h + ' is ' + wantZoom.toFixed(5));
-  // ⚠ ONLY WHERE THE TWO ANSWERS DIFFER. This guards against the Player copying the DM's zoom
-  // instead of refitting, and it can only tell them apart when a correct refit is more than the
-  // tolerance away from the DM's own zoom. Two viewports of nearly the same shape put the right
-  // answer inside 0.02 of the wrong one, which turned a 1024x768 CI runner red while the check
-  // above confirmed the refit was correct to five decimals.
-  const discriminates = Math.abs(wantZoom - dmRegion.zoom) > 0.02;
-  if (!discriminates) {
-    rig.note('the DM and Player viewports are too close in shape to tell a refit from a copy: ' +
-             'a correct refit is ' + wantZoom.toFixed(5) + " against the DM's " +
-             dmRegion.zoom.toFixed(5) + ', so the verbatim check is skipped');
-  }
-  rig.check(!discriminates || Math.abs(playerRegion.zoom - dmRegion.zoom) > 0.02,
-            "the Player took the DM's zoom verbatim rather than refitting the region, which shows " +
-            'a different amount of map on a differently sized screen: both read ' +
-            playerRegion.zoom);
+  // ⚠ REFIT-VERSUS-COPY IS IN sizes.js, NOT HERE, and moving it there is what made it a check.
+  // It can only tell a refit from a copy when the two answers are further apart than the
+  // tolerance, and every run is pinned to 1008x681 against 1024x768 — two viewports so close in
+  // shape that a correct refit always lands inside 0.02 of the DM's own zoom. The check sat here
+  // behind `!discriminates ||` and passed every run without ever running.
+  rig.note('a correct refit here is ' + wantZoom.toFixed(5) + " against the DM's " +
+           dmRegion.zoom.toFixed(5) + '; sizes.js B is where those two separate');
   // The promise is "the players see AT LEAST what the DM sees", so the TV's region contains the
   // DM's rather than matching it exactly.
   rig.check(playerRegion.w >= dmRegion.w - 1 && playerRegion.h >= dmRegion.h - 1,
@@ -272,6 +270,7 @@ module.exports = async function viewFeature(rig) {
             'change re-frames it somewhere else');
 
   // ── F. The minimap is a remote control ───────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE MINIMAP LIVES IN THE CONTROL PANEL'S PLAYER PANE, which carries `hidden` until that tab
   // is chosen — and a hidden element has zero-sized rects, so every gesture below would land at
   // 0,0 and the drag would silently move nothing. Opened through the real tab.
@@ -342,6 +341,7 @@ module.exports = async function viewFeature(rig) {
   }
 
   // ── G. The minimap zooms about the centre ────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const mmBeforeZoom = await mmView();
   await dm.evaluate(`(() => {
     const c = document.getElementById('minimap-canvas');
@@ -367,6 +367,7 @@ module.exports = async function viewFeature(rig) {
             ',' + mmAfterZoom.cy);
 
   // ── H. The minimap's zoom limits, and its stepper ────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const stepUp = await dm.evaluate('(() => { const before = minimapGetZoom();' +
     ' minimapNudgeZoom(1); return { before, after: minimapGetZoom() }; })()');
   rig.check(stepUp.after > stepUp.before,
@@ -384,6 +385,7 @@ module.exports = async function viewFeature(rig) {
   await lib.settle(player, '!viewLerpActive && Math.abs(zoom - ' + mmBeforeZoom.zoom + ') < 1e-4', 10000);
 
   // ── I. Players looking elsewhere reach the minimap ──────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE MOVES ARE SPACED FROM NODE, ON PURPOSE. _postPlayerView throttles to one report per
   // 100ms, so a drag whose moves all arrive inside one window has its FINAL position dropped and
   // the DM's frame is left pointing at the middle of the gesture. Spacing them is what makes "the
@@ -443,6 +445,7 @@ module.exports = async function viewFeature(rig) {
             mmFollowed.zoom + " against the Player's " + playerCentre.zoom);
 
   // ── J. Lock ─────────────────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('document.getElementById("btn-minimap-lock").click(); 0');
   rig.check(await dm.evaluate('minimapLocked === true'), 'the Lock button did not lock the minimap');
   const lockReached = await settleOn(() => player.evaluate('playerInputLocked === true'),

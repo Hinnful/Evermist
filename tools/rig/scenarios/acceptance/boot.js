@@ -6,7 +6,8 @@
 // one. What they left is what they find - the same map, the same fog, the same rooms, the same
 // library. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The app comes up on the scene that was open when it was last closed, with its map at the
 //      map's own size.
@@ -147,6 +148,7 @@ module.exports = async function boot(rig) {
   await lib.installHelpers(dm);
 
   // ── A. The app comes up on the scene it was left on ──────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ POLLED. initScenes opens the database, lists the library and only then calls switchScene,
   // and the DM's ready signal fires before any of that. A single read lands on an app with no
   // map at all and reports the feature as broken.
@@ -168,6 +170,7 @@ module.exports = async function boot(rig) {
             'the reopened map is "' + reopened.type + '" rather than the animated map it was');
 
   // ── B. The fog comes back ────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await lib.settle(dm, 'fogCoverT === 0', 45000);
   const fog = await dm.evaluate('({ at: __rigFog(' + REVEAL.x + ',' + REVEAL.y + '),' +
                                 ' away: __rigFog(' + UNTOUCHED.x + ',' + UNTOUCHED.y + ') })');
@@ -180,6 +183,7 @@ module.exports = async function boot(rig) {
             '), so the restart handed the players the whole map');
 
   // ── C. Rooms, effects, grid and fog look ─────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const carried = await dm.evaluate(`({
     rooms: polygons.length, effects: effects.length,
     mode: polygons[0] ? polygons[0].mode : null,
@@ -200,6 +204,7 @@ module.exports = async function boot(rig) {
             ' the DM dialled in');
 
   // ── D. The library comes back whole, in order, under its group ───────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const library = await dm.evaluate(`(async () => {
     const stored = await sceneStore.listScenes();
     return {
@@ -233,6 +238,7 @@ module.exports = async function boot(rig) {
             'the record and not on screen: ' + JSON.stringify(library.headings));
 
   // ── E. The module text outlives the app ──────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Loaded after the first restart and checked across a second, so it cannot pass on a value
   // that merely stayed in memory from the session that wrote it.
   await dm.evaluate(`(() => {
@@ -270,6 +276,7 @@ module.exports = async function boot(rig) {
             'book every session: ' + JSON.stringify(bookAfter));
 
   // ── F. The Player after a restart gets the restored map ──────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await lib.settle(dm, 'currentScene && currentScene.id === "' + sceneOne + '"', 90000);
   await lib.settle(dm, 'fogCoverT === 0', 45000);
   const player = await rig.player();
@@ -290,6 +297,7 @@ module.exports = async function boot(rig) {
             'ground nobody entered reached the TV clear after a restart (alpha ' + tv.away + ')');
 
   // ── G. A remembered scene that is gone ───────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ LAST, because it leaves the app on no map. The id points at a scene that never existed,
   // which is what a library carried onto another machine looks like.
   await dm.evaluate('localStorage.setItem("evermist-current-scene-id", "no-such-scene-id"); 0');

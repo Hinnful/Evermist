@@ -22,15 +22,63 @@ const path = require('path');
 // and MediaRecorder rejects it outright.
 const REC_MIME = 'video/mp4;codecs=avc1.640033';
 
+// ⚠ A RECORDING IS CHECKED BEFORE IT IS CACHED, and this is not belt and braces. The cache is
+// keyed by SIZE and shared across the whole run, so one truncated clip is handed to every
+// scenario that asks for that size — and none of them says so. The app just never finishes
+// loading the map, and each one dies 180s later on a wait that names the map rather than the
+// file. A gate run lost five scenarios and 15 minutes to a single bad 900x600 recording, and the
+// only clue was a console error about a byte range on a blob.
+//
+// The test is STRUCTURAL, never a byte count: a healthy one-second clip runs from 4KB to 10KB
+// depending on what moved, so any floor big enough to catch a truncation also fails a good file.
+// An mp4 the browser can seek carries all three atoms, and a cut-short recording loses mdat's
+// payload first, which is exactly what the byte-range error is.
+function _validMp4(buf) {
+  if (buf.length < 512) return 'it is only ' + buf.length + ' bytes';
+  for (const atom of ['ftyp', 'moov', 'mdat']) {
+    if (buf.indexOf(Buffer.from(atom)) === -1) return 'it carries no ' + atom + ' atom';
+  }
+  const mdat = buf.indexOf(Buffer.from('mdat'));
+  if (buf.length - mdat < 256) return 'its mdat holds ' + (buf.length - mdat) + ' bytes of picture';
+  return null;
+}
+
+function _validPng(buf) {
+  if (buf.length < 128) return 'it is only ' + buf.length + ' bytes';
+  if (buf.indexOf(Buffer.from('IEND')) === -1) return 'it has no IEND, so it was cut short';
+  return null;
+}
+
 // Cached ON DISK, not just in memory: the runner boots a fresh app per scenario, so an in-memory
 // cache would re-record every clip in real time for every file. The fixture directory is shared
 // across the whole run.
 async function _cached(file, meta, make) {
+  const check = meta.type === 'video/mp4' ? _validMp4 : _validPng;
   if (!fs.existsSync(file)) {
-    const dataUrl = await make();
-    fs.writeFileSync(file, Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64'));
+    // One retry. A truncation is transient, so re-recording turns a 15-minute red run into a
+    // two-second hiccup; a second failure is real and says so here rather than downstream.
+    let why = null;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const dataUrl = await make();
+      const bytes = Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
+      why = check(bytes);
+      if (!why) { fs.writeFileSync(file, bytes); break; }
+    }
+    if (why) {
+      throw new Error('the ' + meta.w + 'x' + meta.h + ' fixture came back unusable twice: ' +
+                      why + '. Every scenario at that size would have timed out waiting for a ' +
+                      'map that can never load.');
+    }
   }
   const buf = fs.readFileSync(file);
+  const why = check(buf);
+  if (why) {
+    // A cached file that no longer passes: thrown away rather than handed on, so the next caller
+    // records a fresh one instead of inheriting the fault.
+    fs.unlinkSync(file);
+    throw new Error('the cached ' + meta.w + 'x' + meta.h + ' fixture is unusable: ' + why +
+                    '. It has been deleted; the next scenario will record a new one.');
+  }
   return Object.assign({ path: file, base64: buf.toString('base64'), bytes: buf.length }, meta);
 }
 

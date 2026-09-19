@@ -6,7 +6,8 @@
 // players see where the exits are without the room behind being given away. Clicking the mark
 // again takes it back. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. A click opens the cell the DM aimed at, on a room whose corners sit off the grid lines.
 //      The cells come from the WORLD grid, so a room drawn anywhere keeps its doors on the
@@ -17,6 +18,9 @@
 //      is still half, never a clear hole into the dark.
 //   D. Two shrouded rooms show no door at all, so a marked exit never gives away a room the
 //      players have not reached.
+//   F. The two size fields are how a door is made wider or deeper, and out-of-range typing is
+//      clamped rather than taken. Everything else in this file sets the two globals directly,
+//      so the fields themselves were the half nothing pressed.
 //   E. A door stays on its wall when a vertex is added to the room or taken away. Adding one to
 //      the door's OWN wall splits that wall in two, and the door holds the map point it was
 //      placed on, moving onto whichever half now carries it.
@@ -127,6 +131,7 @@ module.exports = async function doorsFeature(rig) {
             'measured from the world grid');
 
   // ── A. The click opens the cell the world grid says it did ────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('setShape("door"); 0');
   rig.check(await dm.evaluate('shape') === 'door', 'the Door tool did not take');
   await dm.evaluate('__rigClick(' + wall.right + ', ' + FIRST_CLICK_Y + ')');
@@ -150,6 +155,7 @@ module.exports = async function doorsFeature(rig) {
             ' against a wall at ' + wall.right.toFixed(1));
 
   // ── B. Click it again to close, click beside it to widen ──────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // A different point in the SAME cell, so what closes the door is the cell and not the pixel.
   await dm.evaluate('__rigClick(' + wall.right + ', ' + (FIRST_CLICK_Y + 40) + ')');
   const closed = await dm.evaluate('__rigDoors()');
@@ -212,6 +218,7 @@ module.exports = async function doorsFeature(rig) {
             'unbroken wall where the DM marked an exit: alpha ' + openAtDoor);
 
   // ── C. Half-shrouded shows the door at half density ───────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // The neighbour stays SHROUDED. A door resolves to the most revealed room whose wall runs
   // through it, so half beside dark must still be half and never a hole.
   await dm.evaluate('__rigSetMode(' + JSON.stringify(leftId) + ', "half")');
@@ -227,6 +234,7 @@ module.exports = async function doorsFeature(rig) {
             'not marked at all: alpha ' + halfAtDoor);
 
   // ── D. Two shrouded rooms show nothing ────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigSetMode(' + JSON.stringify(leftId) + ', "shroud")');
   await settleTv(lib.TV_FOG + '(' + atDoorX + ', ' + FIRST_DOOR_Y + ') > 210');
   const darkAtDoor = await tvAt(atDoorX, FIRST_DOOR_Y);
@@ -247,6 +255,7 @@ module.exports = async function doorsFeature(rig) {
             'the room is revealed');
 
   // ── E. The door stays on its wall when the room gains or loses a vertex ───
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigSetMode(' + JSON.stringify(leftId) + ', "reveal")');
   const before = (await dm.evaluate('__rigDoors()'))[0];
 
@@ -356,4 +365,23 @@ module.exports = async function doorsFeature(rig) {
             'the door moved when a vertex went into the wall it sits on — it was at ' +
             (preSplit ? preSplit.x + ',' + preSplit.y : 'nowhere') + ' and is now ' +
             (moved == null ? 'off the map entirely' : JSON.stringify(split)));
+
+  // ── F. The two size fields ────────────────────────────────────────────────
+  // RED ON: set(v) gated off in the doorFields onchange handler (fogControls.js) — 2026-09-19
+  await lib.fire(dm, 'door-width-num', 85, 'change');
+  await lib.fire(dm, 'door-depth-num', 45, 'change');
+  const sized = await dm.evaluate('({ w: doorWidthPct, d: doorDepthPct })');
+  rig.note('the door size fields set: ' + JSON.stringify(sized));
+  rig.check(sized.w === 85 && sized.d === 45,
+            'typing into the door size fields did not reach the doors, so the only way to widen ' +
+            'a doorway is gone: ' + JSON.stringify(sized));
+
+  // ⚠ CLAMPED, NOT TAKEN. The handler caps at 300; a depth of 4000 would punch the notch clean
+  // through the room behind the wall and read as fog that vanished on its own.
+  await lib.fire(dm, 'door-depth-num', 4000, 'change');
+  const capped = await dm.evaluate('({ d: doorDepthPct, field: +document.getElementById("door-depth-num").value })');
+  rig.check(capped.d === 300 && capped.field === 300,
+            'a door depth far outside the range was taken rather than clamped: ' +
+            JSON.stringify(capped));
+  await lib.fire(dm, 'door-depth-num', 60, 'change');
 };

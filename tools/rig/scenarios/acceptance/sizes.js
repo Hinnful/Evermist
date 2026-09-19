@@ -6,7 +6,8 @@
 // three different shapes, and the app has to be right on all of them. Every check below serves
 // that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. A map is fitted to the window and centred in it, at every window size.
 //   B. Sync View sends the REGION the DM can read, and the Player refits it to its own canvas -
@@ -57,6 +58,7 @@ module.exports = async function sizes(rig) {
   await lib.openMap(rig, { w: MAP_W, h: MAP_H });
 
   // ── A. Fitted and centred at every DM size ───────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ REFITTED BY THE APP'S OWN fitToScreen, not by the resize alone. A resize on its own is not
   // required to move the camera, and asserting that it does would test a behaviour nobody
   // promised. What must hold is that a FIT, at any size, lands on that window's own numbers.
@@ -84,6 +86,7 @@ module.exports = async function sizes(rig) {
   }
 
   // ── D. The room card stays on screen at every DM size ────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ DONE BEFORE THE PLAYER IS OPENED, so nothing below has to put the card away again.
   await dm.evaluate('__rigDrawShroud(300, 300, 700, 700); 0');
   await dm.evaluate('setShape("select"); __rigClick(500, 500); 0');
@@ -133,6 +136,7 @@ module.exports = async function sizes(rig) {
   }
 
   // ── E. The panel does not change the region, at any DM width ─────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ _cpSelectTab, NOT A CLICK. The tab toggles, so clicking an open one shuts the panel and
   // the next read is of a closed panel rather than an open one.
   const openPane = tab => dm.evaluate('_cpSelectTab(' + JSON.stringify(tab) + '); 0');
@@ -157,6 +161,7 @@ module.exports = async function sizes(rig) {
   }
 
   // ── B and C. The Player at every TV size ─────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await rig.resizeDm(DM_SIZES[0].w, DM_SIZES[0].h);
   await dm.evaluate('fitToScreen(); 0');
   const player = await rig.player();
@@ -201,7 +206,27 @@ module.exports = async function sizes(rig) {
               " that fits the DM's region to that screen, so the TV shows a different amount of " +
               'map than the DM is reading');
 
+    // ⚠ A REFIT, NOT A COPY, and this file is the only place that can tell the two apart. The
+    // same check lives in view.js and is dead there: every run is pinned to 1008x681 against
+    // 1024x768, two viewports so close in shape that a correct refit lands inside the tolerance
+    // of the DM's own zoom. Here the sizes differ on purpose, so the two answers separate.
+    // RED ON: playerApplyRegion given the DM's zoom verbatim instead of refitting (player.js)
+    // — 2026-09-19
+    const dmZoom = await dm.evaluate('+zoom.toFixed(5)');
+    if (Math.abs(wantZoom - dmZoom) > wantZoom * 0.02) {
+      rig.check(Math.abs(got.zoom - dmZoom) > wantZoom * 0.02,
+                "the Player took the DM's zoom verbatim at " + s.w + 'x' + s.h + ' (' + s.what +
+                ') rather than refitting the region, so a differently sized screen shows a ' +
+                'different amount of map: both read ' + (+got.zoom).toFixed(4));
+    } else {
+      rig.check(Math.abs(got.zoom - wantZoom) < wantZoom * 0.02,
+                'at ' + s.w + 'x' + s.h + ' a refit and a copy land within the tolerance of each ' +
+                'other, so this pass holds the refit alone: it landed on ' +
+                (+got.zoom).toFixed(4) + ' against ' + wantZoom.toFixed(4));
+    }
+
     // ── C ──
+    // RED BY DESIGN: written against the fix, never re-proved
     // Four points a few units inside the map's own corners. The fog there is the Canvas-2D layer
     // over the PixiJS map, and FOG_EDGE_MARGIN is what keeps a shrouded frame at the border.
     const edge = await player.evaluate('(() => { const at = ' + lib.TV_FOG + ';' +

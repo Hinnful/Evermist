@@ -1,15 +1,14 @@
 # Decisions - testing and the rig
 
-Split out of [DECISIONS.md](../DECISIONS.md) so the main ledger stays readable. Same
-question, same past tense: what was decided about **how this app is tested** - the CDP
-rig under `tools/rig/`, acceptance scenarios, and mutation coverage - and why it held.
+Split out of [DECISIONS.md](../DECISIONS.md). What was decided about **how this app is
+tested** - the CDP rig under `tools/rig/`, acceptance scenarios, and mutation coverage - and
+why it held.
 
 How to drive the rig is the `rig` skill. What it is lives in
 [ARCHITECTURE.md](../ARCHITECTURE.md). The doc and guard-hook calls are in
 [docs-and-guards.md](docs-and-guards.md).
 
-**Status tags** and the one-heading-one-paragraph budget are the main ledger's; read its
-header before adding an entry here.
+Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
@@ -206,3 +205,56 @@ Sync View's wait watched one axis against the same tolerance the check asserted 
 released mid-lerp whenever the first axis arrived early. It passed for a year on timing alone and
 went red the moment the sleeps around it were removed. The rule it gives: a wait names the state
 that ends the work - here the view lerp - and never a loosened copy of the assertion after it.
+
+### A control the suite never pressed · `SETTLED` (2026-09-19)
+The suite reached the TV with `sendToPlayer()` in eight places and never clicked Send, deleted
+scenes with `deleteScenesWithUndo()` and never pressed the library's Delete, and so on through 42
+of the DM's 120 controls. Every one of those handlers was proven and every one of those buttons
+was not, so a dead `onclick` would have left the whole set green. The rule: a criterion presses
+the control the DM presses, and reaches past it to the function only where a native dialog, the
+network or a second display makes the control unreachable. Three controls stay unreachable and
+carry a `rig.byEye` line each - Export's save dialog, the YouTube field, the downloader updater.
+
+### Two labels, because "proven" is a claim about a run · `SETTLED` (2026-09-19)
+289 criteria, and nothing recorded which had ever been watched failing. A single "proven" label
+would have been a lie on 272 of them, and the register exists to be trusted. So there are two:
+`RED ON: <the edit> — <date>` where someone broke the app and watched that criterion go red, and
+`RED BY DESIGN: written against the fix, never re-proved` everywhere else. `RED ON` names the
+EDIT rather than the date, so anyone can run it again in a minute and a rename makes it visibly
+wrong. Converting one to the other is the only thing that moves the count.
+
+### A sweep of the whole suite was refused · `REJECTED` (2026-09-19)
+Mutation-proving all 289 criteria costs four minutes each, about 18 hours. It was offered and
+turned down: the suite is written red-first, so the yield is low, and a proof goes stale on its
+own the day the code moves. Proof is spent where it costs nothing extra - on a criterion being
+written or repaired - and the rest carry the honest label. 17 are proved today.
+
+### A mutation must never shrink the file it breaks · `SETTLED` (2026-09-19)
+`guard-module-size.js` ratchets its ceiling DOWN the moment a file gets smaller, so deleting a
+line to break something writes the smaller number into the baseline and the revert then reads as
+growth. 748 bytes of headroom went that way on the first mutation of this work. Gate the line off
+instead: `if (0 > 1) …` breaks the same behaviour and grows the file.
+
+### A fixture is checked before it is cached · `SETTLED` (2026-09-19)
+The fixture cache is keyed by SIZE and shared across a run, and nothing checked a recording before
+storing it. One truncated 900x600 clip was handed to all five scenarios at that size, and each
+died 180s later on a wait that blamed the map - the only clue a console error about a byte range
+on a blob. The test is STRUCTURAL, never a byte count: a healthy one-second clip runs 4KB to 10KB
+depending on what moved, so any floor big enough to catch a truncation also fails a good file. An
+mp4 the browser can seek carries `ftyp`, `moov` and `mdat`, and a cut-short recording loses
+`mdat`'s payload first. One retry, because a truncation is transient; a second failure names the
+fixture and stops there.
+
+### The library grows before the app is on the new scene · `SETTLED` (2026-09-19)
+`maps` criterion K waited for the scene count to rise and then read `currentScene`, which on a
+slow runner is still the previous map. The gate reported a .png arriving as a video at the wrong
+size, which was the animated map before it. A check that reads `currentScene` waits for
+`currentScene` - the count rising says only that a record was written.
+
+### Two mutations that survived, and what each one taught · `SETTLED` (2026-09-19)
+Proving the new kernel tests red, two mutations passed. Casting `pointInRing`'s ray the other way
+is an EQUIVALENT mutant: still a correct point-in-polygon test, so it says nothing about the
+check, and a mutation has to be genuinely wrong before a survivor means anything. `ringHomePiece`'s
+corner fallback could be deleted outright while its test passed, because that case's centroid
+landed inside a piece and the fallback never ran - a test that never reaches the branch it names.
+

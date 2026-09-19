@@ -1,14 +1,12 @@
 # Decisions - docs, rules and guards
 
-Split out of [DECISIONS.md](../DECISIONS.md) so the main ledger stays readable. Same
-question, same past tense: what was decided about **this repo's own documentation, its
-rules, and the guard hooks that enforce them**, and why it held.
+Split out of [DECISIONS.md](../DECISIONS.md). What was decided about **this repo's own
+documentation, its rules, and the guard hooks that enforce them**, and why it held.
 
 Decisions about the app itself stay in the main ledger. Testing and the rig are in
 [testing-and-the-rig.md](testing-and-the-rig.md).
 
-**Status tags** and the one-heading-one-paragraph budget are the main ledger's; read its
-header before adding an entry here.
+Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 

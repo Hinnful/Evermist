@@ -7,7 +7,8 @@
 // its own — and in every one of those the map has to start itself again without the DM noticing.
 // Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. A map the browser paused starts itself again, with nothing asked of the DM.
 //   B. A drained buffer pauses the picture and resumes it when the data comes back, rather than
@@ -19,6 +20,10 @@
 //   F. The log the app writes while a map plays names the window that wrote each line, and says
 //      which map that window is playing. A stall at the table is read off this file afterwards,
 //      and two-map mode puts two windows in one file.
+//   G. The diagnostics box the backtick opens is really on screen, says which window it belongs
+//      to, carries a live frame rate and the video's state, never eats a click, and leaves
+//      nothing behind when it is closed. It is the one thing the DM reads while a map stutters
+//      at the table, and nothing had ever opened it.
 //
 // ⚠ THIS IS THE RECOVERY PATH, WHICH NOTHING ELSE DRIVES. smoke.js reads the frame loop as alive
 // on a healthy map, which is the state these checks start from and not what they are about.
@@ -92,6 +97,7 @@ module.exports = async function playbackFeature(rig) {
             'below starts from the wrong state');
 
   // ── A. A paused map starts itself again ──────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Chromium's background-video optimiser pauses a muted element it thinks nobody is looking at.
   // That arrives as a plain `pause`, which is what this fires.
   //
@@ -113,6 +119,7 @@ module.exports = async function playbackFeature(rig) {
             'session');
 
   // ── B. A drained buffer pauses the picture, then resumes it ──────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ PUT BACK INTO PLAYING FIRST, whatever A ended on. onVideoWaiting does nothing to a video
   // that is already paused, so a failure in A would otherwise land again here as three more.
   await dm.evaluate('mapVideo.play().catch(() => {}); 0');
@@ -144,6 +151,7 @@ module.exports = async function playbackFeature(rig) {
             JSON.stringify(after));
 
   // ── C. A stall the pause handler never sees ──────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE PAUSE HANDLER HAS TO BE OUT OF THE WAY OR IT RECOVERS FIRST, and `stalled` would then
   // pass with its own listener never registered. `_bufferingPause` is the app's own way of saying
   // "this pause is ours" and onVideoPause returns on it; onVideoStalled does not read it at all.
@@ -166,6 +174,7 @@ module.exports = async function playbackFeature(rig) {
             'the watchdog did not come back on, so D below measures nothing');
 
   // ── D. The watchdog recovers a map nothing else will ─────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE PAUSE HANDLER STANDS DOWN AND THE WATCHDOG IS THE ONLY THING LEFT. `_bufferingPause`
   // makes onVideoPause return, and the watchdog does not read that flag at all — so a recovery
   // here can only be the poll's. C proves the other half: with the watchdog also stopped, the
@@ -203,6 +212,7 @@ module.exports = async function playbackFeature(rig) {
             'nothing brings it back');
 
   // ── E. A still map takes the watchdog down with it ───────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const still = await rig.fixtures.stillMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
   await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, still)) + ')', 120000);
   await dm.waitFor('currentScene && currentScene.mapType === "image"', 120000,
@@ -219,6 +229,7 @@ module.exports = async function playbackFeature(rig) {
             'the video path still reports itself enabled on a still map');
 
   // ── F. the log names the window that wrote each line ─────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ READ OFF DISK, never from the in-page ring buffer. The file is what survives the session,
   // and the tag is added on the way to disk - the overlay's own copy carries no tag at all.
   const logOf = mode => {
@@ -247,4 +258,71 @@ module.exports = async function playbackFeature(rig) {
   rig.byEye('an animated map big enough to make the decoder stall on its own at the table, which ' +
             'is the fault these recoveries exist for. The diagnostic log the app writes on every ' +
             'playback is what says whether one happened');
+
+  // ── G. The diagnostics box on screen ──────────────────────────────────────
+  // RED ON: the _diagEl.textContent assignment gated off in _diagRender (videoDiag.js)
+  // — 2026-09-19
+  // ⚠ FOUND BY ITS OWN HEADER, never by an id. The box is built in JS and appended to <body>
+  // with no id at all, so a querySelector on one would find nothing and the criterion would read
+  // as "the overlay is gone" whatever the app did.
+  const diagBox = () => dm.evaluate(`(() => {
+    const el = [...document.body.children]
+      .find(e => (e.textContent || '').indexOf('VIDEO DIAG') >= 0);
+    // ⚠ THE SAME SHAPE EITHER WAY. A missing box that answered { up: false } alone made the
+    // checks below read .length off undefined and THREW, which abandons the file and leaves every
+    // later criterion unread — a failure that hides the rest of the run instead of reporting.
+    if (!el) return { up: false, text: '', clicks: null, fps: null, rs: null, mode: null,
+                      missing: ['the box itself'] };
+    const cs = getComputedStyle(el);
+    const t = el.textContent;
+    return { up: true, text: t.slice(0, 200), clicks: cs.pointerEvents,
+             fps: (t.match(/fps=(\\d+)/) || [])[1],
+             rs: (t.match(/rs=(\\S+)/) || [])[1],
+             mode: (t.match(/VIDEO DIAG \\[(\\w+)\\]/) || [])[1],
+             missing: ['ve=', 'vda=', 'wdog=', 'rs=', 'paused=', 'loopAge=', 'fps=']
+               .filter(k => t.indexOf(k) < 0) };
+  })()`);
+
+  rig.check((await diagBox()).up === false,
+            'the diagnostics box is already on screen with nothing having opened it, so it sits ' +
+            'over the map all session');
+
+  await dm.evaluate('__rigKey("Backquote"); 0');
+  await lib.settle(dm, "[...document.body.children].some(e => (e.textContent || '')" +
+                       ".indexOf('VIDEO DIAG') >= 0)", 8000);
+  const opened = await diagBox();
+  rig.note('the diagnostics box: ' + JSON.stringify(opened.text));
+  rig.check(opened.up === true,
+            'the backtick key did not open the diagnostics box, so the DM has nothing to read ' +
+            'while a map stutters at the table');
+  rig.check(String(opened.mode).toLowerCase() === 'dm',
+            'the box does not say which window it belongs to, and two-map mode puts four on ' +
+            'screen: it reads ' + JSON.stringify(opened.mode));
+  // ⚠ THE FIELDS, NOT THEIR VALUES. Criterion E has already switched this scenario to a still
+  // map, so there is no video and rs correctly reads a dash — asserting a number here would fail
+  // on a box doing its job. What must hold is that every line the DM reads is still there.
+  rig.check(opened.missing.length === 0,
+            'the diagnostics box has stopped reporting ' + opened.missing.join(', ') +
+            ', so the reading a stall is diagnosed from is gone from the one place the DM looks');
+  // ⚠ A FRAME RATE THAT MOVES, not merely a number. It is counted off the browser's own paint
+  // clock on a 250ms redraw, so a box painted once and left shows a figure that is already stale.
+  const live = await lib.poll(async () => {
+    const b = await diagBox();
+    return (b.fps != null && +b.fps > 0) ? { fps: +b.fps } : null;
+  }, 8000, 250);
+  rig.check(live !== null,
+            'the box never showed a frame rate above zero, so the one reading that says whether ' +
+            'the window is painting at all is dead: ' + JSON.stringify((await diagBox()).fps));
+  // ⚠ IT MUST NOT EAT A CLICK. It sits top-right over the map at z-index 99999, so a box that
+  // took pointer events would swallow every press in that corner and read as a dead toolbar.
+  rig.check(opened.clicks === 'none',
+            'the diagnostics box takes clicks, so it swallows every press in the corner it ' +
+            'covers: pointer-events is ' + JSON.stringify(opened.clicks));
+
+  await dm.evaluate('__rigKey("Backquote"); 0');
+  await lib.settle(dm, "![...document.body.children].some(e => (e.textContent || '')" +
+                       ".indexOf('VIDEO DIAG') >= 0)", 8000);
+  rig.check((await diagBox()).up === false,
+            'the backtick key would not close the diagnostics box again, so it stays over the ' +
+            'map for the rest of the session');
 };

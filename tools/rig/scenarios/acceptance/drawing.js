@@ -5,7 +5,8 @@
 // THE GOAL OF THIS FEATURE: the DM draws a shape with any tool, in any fog mode, and the
 // players see the result on the TV. Every check below serves that sentence or does not belong.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. Every drawing tool the mode offers is reachable, answers to its key, and makes one
 //      shape. Three of the four shapes are reached through the flyout the shape button's right
@@ -33,6 +34,10 @@
 //        the picked tool's group and nothing else · Select and Split leave the strip blank
 //        WITHOUT the bar moving · the two helpers keep their state across a mode switch ·
 //        switching mode on Select leaves the DM on Select
+//   K. The outline a tool draws BEFORE anything is committed is really on screen: the walls
+//      placed so far, a line from the last corner to the pointer that follows it, and the
+//      close-target ring once the shape can be closed. Nothing in the suite had ever read that
+//      canvas, so the whole preview could have gone blank and every check still passed.
 //
 // ⚠ ROOMS DO NOT CROSS TO THE PLAYER, AND MUST NOT (CLAUDE.md). What crosses is the fog a room
 // paints. Every TV check here reads the FOG over the ground a shape covers, never a room.
@@ -179,6 +184,22 @@ module.exports = async function drawing(rig) {
   rig.check(await dm.evaluate('__rigFog(300, 1200)') < 60,
             'a brush stroke in Reveal did not clear the ground it crossed');
 
+  // ⚠ THE SLIDER, NOT THE GLOBAL. brushSize is set directly everywhere else in the suite, so the
+  // one control that sets it at the table went unpressed — and a stuck size is a brush that
+  // opens the wrong amount of ground on every stroke.
+  // RED ON: the brushSize assignment gated off in brushSizeInput.oninput (toolbar.js) — 2026-09-19
+  const sizeWas = await dm.evaluate('brushSize');
+  await lib.fire(dm, 'brush-size', sizeWas + 40, 'input');
+  const sizeNow = await dm.evaluate('({ size: brushSize, ' +
+    'label: document.getElementById("brush-size-label").textContent })');
+  rig.check(sizeNow.size === sizeWas + 40,
+            'the brush size slider did not reach the brush: it still paints at ' + sizeNow.size +
+            ' where the slider says ' + (sizeWas + 40));
+  rig.check(+sizeNow.label === sizeNow.size,
+            'the number beside the brush slider disagrees with the brush: it reads ' +
+            sizeNow.label + ' against ' + sizeNow.size);
+  await lib.fire(dm, 'brush-size', sizeWas, 'input');
+
   await dm.evaluate('setShape("rect"); __rigDrag(600, 1150, 850, 1300); 0');
   rig.check(await dm.evaluate('polygons.length') === 1, 'the Rectangle tool made no room');
   await dm.evaluate('setShape("circle"); __rigDrag(1100, 1250, 1100, 1380); 0');
@@ -211,6 +232,7 @@ module.exports = async function drawing(rig) {
             (flat.bulge * 100).toFixed(1) + '% of its length)');
 
   // ══ B. The polygon tool closes the way the DM closes it ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // B1 — clicking back on the first vertex. POLY_CLOSE_RADIUS is 12 SCREEN px, so the click
   // lands a little off the first vertex on purpose: an exact repeat would also pass if the
   // proximity test were gone.
@@ -249,6 +271,7 @@ module.exports = async function drawing(rig) {
             'the vertex before the crossing is still in the shape, so the tail was kept');
 
   // ══ C. A polygon that is not a shape yet is thrown away ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const before = await dm.evaluate('polygons.length');
 
   // C1 — under three vertices. Two clicks then a close attempt on the first: nothing to commit.
@@ -275,6 +298,7 @@ module.exports = async function drawing(rig) {
             'switching tool committed the half-drawn polygon');
 
   // ══ D. The two drawing aids place vertices where the DM aimed ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // D1 — snap to grid. It needs the grid ON and SQUARE; both are asserted, because with the
   // grid off snapVertex returns the raw point and every check here would pass unsnapped.
   await dm.evaluate('(() => { if (!gridEnabled) document.getElementById("btn-grid").click();' +
@@ -370,6 +394,7 @@ module.exports = async function drawing(rig) {
                     ' if (axisLock) document.getElementById("btn-axislock").click(); 0');
 
   // ══ E. Every fog mode reaches the ground it covers, and half is absolute ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // The clearing every shroud and half shape is measured inside.
   await dm.evaluate('revealCircle(' + CLEAR.x + ',' + CLEAR.y + ',' + CLEAR.r + ');' +
                     'rebuildFogEffect(); fogDirty = true; scheduleRender(); 0');
@@ -415,6 +440,7 @@ module.exports = async function drawing(rig) {
             ' against the ' + halfWant + ' fogHalfAlpha asks for');
 
   // ══ F. Half is not offered where it has no meaning, and neither is the brush ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('document.getElementById("btn-half").click(); setShape("brush"); 0');
   rig.check(await dm.evaluate('document.getElementById("btn-half").disabled') === true,
             'the Half button is still live while the brush is picked, and the brush cannot paint half');
@@ -428,6 +454,7 @@ module.exports = async function drawing(rig) {
   await dm.evaluate('setPlaceMode("rooms"); 0');
 
   // ══ G. A drawn shape leaves the DM ready to draw the next one ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('document.getElementById("btn-shroud").click(); setShape("rect"); 0');
   await dm.evaluate('__rigDrag(300, 1350, 500, 1450); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === null,
@@ -437,6 +464,7 @@ module.exports = async function drawing(rig) {
             'the new room was not given a default name');
 
   // ══ H. Effects mode draws effects, not rooms, and the two lists never mix ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const roomsBefore = await dm.evaluate('polygons.length');
   const fogBefore = await dm.evaluate('__rigFog(1900, 900)');
   await dm.evaluate('setPlaceMode("effects"); setShape("rect"); 0');
@@ -449,6 +477,7 @@ module.exports = async function drawing(rig) {
   await dm.evaluate('setPlaceMode("rooms"); 0');
 
   // ══ I. All three fog modes reach the TV ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // The delivery check. Read from the Player's own fog data, which is what it was sent.
   rig.check(await dm.evaluate('autoSync === true'),
             'auto-sync is off, so nothing drawn above could reach the Player and every check ' +
@@ -482,6 +511,7 @@ module.exports = async function drawing(rig) {
             'name and notes the DM wrote for themselves');
 
   // ══ J. The bar shows the mode, and picking a tool never moves the bar ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // Every button that can appear on the bar, and whether it is drawn and whether it is greyed.
   const BAR = `(() => {
     const ids = ['btn-select', 'btn-shape', 'btn-brush', 'btn-door', 'btn-cut',
@@ -571,4 +601,94 @@ module.exports = async function drawing(rig) {
   await dm.evaluate('setPlaceMode("rooms"); 0');
   rig.check(await dm.evaluate('shape') === 'select',
             'switching back to Rooms moved the DM off Select');
+
+  // ── K. The preview outline, read off the canvas it is painted on ──────────
+  // RED ON: the "Dashed preview edge to cursor" block skipped in drawActivePolyPreview
+  // (toolPreview.js) — 2026-09-19
+  // ⚠ READ IN MAP UNITS, SAMPLED IN SCREEN PIXELS. The preview goes on #cursor-canvas, which no
+  // other check has ever looked at, so every coordinate here converts through the app's own
+  // toScreen. A radius is used rather than one pixel: the line is 1.5-2px wide with a shadow, and
+  // a single sample lands beside it as often as on it.
+  await dm.evaluate(`(() => {
+    globalThis.__rigInkAt = (mx, my, r) => {
+      const p = toScreen(mx, my);
+      const rad = r == null ? 4 : r;
+      const x0 = Math.max(0, Math.round(p.sx - rad)), y0 = Math.max(0, Math.round(p.sy - rad));
+      const w = Math.min(cursorCanvas.width - x0, rad * 2 + 1);
+      const h = Math.min(cursorCanvas.height - y0, rad * 2 + 1);
+      if (w <= 0 || h <= 0) return -1;
+      const d = cursorCtx.getImageData(x0, y0, w, h).data;
+      let n = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++;
+      return n;
+    };
+    0
+  })()`);
+
+  // ⚠ THE MAP IS CLEARED FIRST, and the readings are taken against a BASELINE. Earlier sections
+  // leave rooms and their labels all over the cursor canvas, and a sample that lands on one reads
+  // saturated whatever the preview did — 81 of 81 pixels lit at three separate points.
+  await dm.evaluate('polygons = []; effects = []; nextPolygonId = 1; activePolygon = null;' +
+    ' clearShapeSelection(); rebuildFogFromPolygons(); rebuildFogEffect(); scheduleRender(); 0');
+  await dm.evaluate('setShape("poly"); document.getElementById("btn-shroud").click(); 0');
+  const A = { x: 300, y: 1000 }, B = { x: 700, y: 1000 }, C = { x: 700, y: 1250 };
+  const MID_AB = { x: (A.x + B.x) / 2, y: A.y };
+  const POINTER1 = { x: 700, y: 1400 }, POINTER2 = { x: 320, y: 1400 };
+  await dm.evaluate('__rigClick(' + A.x + ',' + A.y + '); __rigClick(' + B.x + ',' + B.y + '); 0');
+  rig.check(await dm.evaluate('activePolygon && activePolygon.vertices.length') === 2,
+            'the polygon under test was not started, so nothing below is reading a preview');
+
+  // The pointer has to MOVE for drawCursor to run: the preview is painted from the mouse handler,
+  // never on a timer.
+  const aim = p => dm.evaluate('__rigMouse("mousemove", ' + p.x + ',' + p.y + '); 0');
+  await aim(POINTER1);
+  const onWall = await dm.evaluate('__rigInkAt(' + MID_AB.x + ',' + MID_AB.y + ')');
+  rig.note('preview ink — placed wall ' + onWall);
+  rig.check(onWall > 0,
+            'the wall already placed is not painted on the map, so the DM draws the next corner ' +
+            'against nothing: ' + onWall + ' lit pixels at its midpoint');
+
+  // The rubber band, and that it FOLLOWS. Both halves matter: a band painted once and left behind
+  // reads as a line the DM cannot get rid of.
+  const band1 = { x: (B.x + POINTER1.x) / 2, y: (B.y + POINTER1.y) / 2 };
+  const onBand1 = await dm.evaluate('__rigInkAt(' + band1.x + ',' + band1.y + ')');
+  rig.check(onBand1 > 0,
+            'no line runs from the last corner to the pointer, so the DM cannot see where the ' +
+            'next wall will go: ' + onBand1 + ' lit pixels');
+  await aim(POINTER2);
+  const band2 = { x: (B.x + POINTER2.x) / 2, y: (B.y + POINTER2.y) / 2 };
+  const moved = await dm.evaluate('({ was: __rigInkAt(' + band1.x + ',' + band1.y + '),' +
+    ' now: __rigInkAt(' + band2.x + ',' + band2.y + ') })');
+  rig.note('preview ink — band before the move ' + onBand1 + ', at the old spot after ' +
+           moved.was + ', at the new spot ' + moved.now);
+  rig.check(moved.now > 0,
+            'the line to the pointer did not follow it, so it points where the pointer used to be');
+  rig.check(onBand1 > 0 && moved.was < onBand1,
+            'the line to the pointer is not cleared when it moves, so every move leaves another ' +
+            'one painted on the map: it read ' + onBand1 + ' lit pixels at the old spot and ' +
+            moved.was + ' after the move');
+
+  // The close ring. It appears only once the shape CAN close, which is the third corner.
+  const ringBefore = await dm.evaluate('__rigInkAt(' + A.x + ',' + A.y + ', 18)');
+  await dm.evaluate('__rigClick(' + C.x + ',' + C.y + '); 0');
+  await aim(POINTER2);
+  const ringAfter = await dm.evaluate('__rigInkAt(' + A.x + ',' + A.y + ', 18)');
+  rig.note('preview ink — around the first corner: ' + ringBefore + ' at two corners, ' +
+           ringAfter + ' at three');
+  rig.check(ringAfter > ringBefore,
+            'no close-target ring appears on the first corner once the shape can be closed, so ' +
+            'the one place a click finishes the room is unmarked: ' + ringBefore + ' → ' + ringAfter);
+
+  // Escape throws the shape away, and the preview has to go with it.
+  await dm.evaluate('__rigKey("Escape"); 0');
+  rig.check(await dm.evaluate('activePolygon') === null,
+            'Escape did not throw the shape away, so the check below is reading a live preview');
+  await aim(POINTER2);
+  const afterEscape = await dm.evaluate('__rigInkAt(' + MID_AB.x + ',' + MID_AB.y + ')');
+  rig.check(afterEscape === 0,
+            'Escape threw the shape away and left its outline painted over the map: ' +
+            afterEscape + ' lit pixels where the wall was');
+
+  rig.byEye('The preview reads as provisional against the committed rooms around it — the placed ' +
+            'walls solid, the line to the pointer dashed and faded, the close ring gold.');
 };

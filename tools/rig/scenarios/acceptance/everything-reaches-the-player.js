@@ -96,6 +96,7 @@ module.exports = async function everythingReachesThePlayer(rig) {
                        'the clearing to reach the Player');
 
   // ── A. A shroud room darkens that ground on the TV ────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('setShape("rect"); document.getElementById("btn-shroud").click(); 0');
   await dm.evaluate('__rigDrag(' + ROOM_A.x1 + ',' + ROOM_A.y1 + ',' +
                                    ROOM_A.x2 + ',' + ROOM_A.y2 + '); 0');
@@ -112,6 +113,7 @@ module.exports = async function everythingReachesThePlayer(rig) {
             shroudArrived + ' where 255 is hidden) — the players can see what the DM hid');
 
   // ── B. Moving the room takes the shroud with it ───────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('setShape("select"); 0');
   await dm.evaluate('__rigDrag(' + AT_A.x + ',' + AT_A.y + ',' + AT_A.x + ',' + AT_A.y + '); 0');
   rig.check(await dm.evaluate('selectedPolygonId !== null'),
@@ -132,6 +134,7 @@ module.exports = async function everythingReachesThePlayer(rig) {
             ') — the shroud was left behind and the table loses map the DM uncovered');
 
   // ── C. Rooms never reach the Player ───────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // The anti-spoiler guarantee is architectural: rooms are simply not in the payload, so notes
   // are DM-only for free. Nothing had ever checked that it stayed true.
   await dm.evaluate('(() => { const p = polygons[0]; p.name = "Secret Vault";' +
@@ -152,6 +155,7 @@ module.exports = async function everythingReachesThePlayer(rig) {
   rig.check(!leaked.inText, 'a room name or note is rendered somewhere in the Player window');
 
   // ── D. Switching scenes puts the new map on the TV, at its own size ───────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ SWITCH THROUGH switchScene(), NOT THE DROPDOWN. openDropdown() calls doAutoSave() before it
   // renders, which changes what the switch carries; the delivery is what is under test here.
   //
@@ -186,6 +190,7 @@ module.exports = async function everythingReachesThePlayer(rig) {
             ') — the table is looking at the wrong map');
 
   // ── E. That switch delivers the map once ──────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ WAIT OUT THE WHOLE COVER BEFORE COUNTING. switchScene holds its own push behind the fog
   // cover (FOG_SCENE_COVER_MS, 2250ms in fog.js), so a shorter wait counts the synchronous push
   // alone and reports 1 — this check PASSED for that reason before the wait was lengthened, which
@@ -203,6 +208,7 @@ module.exports = async function everythingReachesThePlayer(rig) {
             'switch reached the Player through no push at all');
 
   // ── F. Sync View puts the DM's region on the TV ───────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ COMPARE REGIONS, NEVER RAW PAN AND ZOOM. The Player refits what it is sent to its own
   // canvas, so the two windows hold different pan and zoom for the same view on purpose.
   // visibleMapRegion is the shared function both sides already use, and it clamps to the map —
@@ -229,6 +235,7 @@ module.exports = async function everythingReachesThePlayer(rig) {
   rig.check(await player.evaluate('playerFollowDM === true'),
             'the Player did not go back to following the DM after Sync View');
   // ── G. A push that overtakes a loading map leaves nothing behind ─────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE FAILURE IS SILENT AND IT REDDENED RUNS AT RANDOM. A Player video is not `mapVideo`
   // until it can play, so cleanupVideo() cannot see one that is still loading: the next push
   // revoked its blob URL under it and Chromium reported net::ERR_FILE_NOT_FOUND, while the newer

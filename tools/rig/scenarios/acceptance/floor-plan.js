@@ -7,7 +7,8 @@
 // the party walks in — with the grid already sitting on the map's own squares. Nothing is drawn
 // by hand that the export already knows. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. An import whose map came with a plan takes its Grid Size FROM the plan, by dividing
 //      pixels by squares — so a resolution mismatch corrects itself.
@@ -163,6 +164,7 @@ module.exports = async function floorPlanFeature(rig) {
   };
 
   // ── A. The grid comes from the plan ────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('globalThis.__rigPlanText = __rigPlan(10); 0');
   const withPlan = await importAs('Watcherhouse');
   const derived = await state();
@@ -179,6 +181,7 @@ module.exports = async function floorPlanFeature(rig) {
   rig.check(derived.planBtn, 'Draw Rooms is disabled on a scene that has a plan');
 
   // ── B. Stored on the scene, and clamped to the control's range ─────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(await storedSize(withPlan, 140) === 140,
             'the derived grid was not saved onto the scene, so it is gone on the next switch');
 
@@ -193,6 +196,7 @@ module.exports = async function floorPlanFeature(rig) {
             'the clamped value and the slider disagree: ' + clamped.size + '/' + clamped.slider);
 
   // ── C. An unreadable plan is no plan ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const torn = await derive(JSON.stringify('{ "resolution": '));
   rig.check(torn === null, 'a truncated plan produced a grid size: ' + torn);
   const empty = await derive('null');
@@ -202,6 +206,7 @@ module.exports = async function floorPlanFeature(rig) {
             'Draw Rooms is offered for a plan that cannot be parsed, so pressing it does nothing');
 
   // ── D. A map that arrives on its own ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('globalThis.__rigPlanText = null; 0');
   const noPlan = await importAs('Bare Field');
   const bare = await state();
@@ -212,6 +217,7 @@ module.exports = async function floorPlanFeature(rig) {
   rig.check(await storedSize(noPlan, 70) === 70, 'the plan-less scene stored the wrong grid');
 
   // ── E. The offer is a notice, not a dialog ────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('globalThis.__rigPlanText = globalThis.__rigTwoRooms; 0');
   await importAs('Two Halls');
   const offered = await state();
@@ -263,6 +269,7 @@ module.exports = async function floorPlanFeature(rig) {
             'the notice survived a scene switch, so it is talking about a map that is gone');
 
   // ── F. Draw Rooms draws the plan's rooms onto THIS map ────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const twoHalls = await dm.evaluate('allScenes.find(s => s.name === "Two Halls").id');
   await dm.evaluate('switchScene(' + JSON.stringify(twoHalls) + ')', 120000);
   await dm.waitFor('currentScene && currentScene.name === "Two Halls"', 60000, 'the switch back');
@@ -292,6 +299,7 @@ module.exports = async function floorPlanFeature(rig) {
             'spans ' + JSON.stringify(left) + ', expected x ' + (100 * SCALE) + '..' + (500 * SCALE));
 
   // ── G. Wipe-and-rebuild ───────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Cut back to ONE room first, and cut it back by hand rather than through undo: with two rooms
   // either side of the draw, "the previous rooms came back" and "nothing happened at all" read
   // the same. The state is written directly so the undo depth measured below belongs to the draw.
@@ -318,6 +326,7 @@ module.exports = async function floorPlanFeature(rig) {
             (await state()).rooms);
 
   // ── H. Replacing rooms asks; drawing onto an empty map does not ───────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await drawRooms();
   const asked = await state();
   rig.note('asked before replacing: ' + JSON.stringify(asked.dialogTitle));
@@ -340,6 +349,7 @@ module.exports = async function floorPlanFeature(rig) {
   rig.check(fresh.rooms === 2, 'Draw Rooms onto an empty map drew nothing: ' + fresh.rooms);
 
   // ── I. A hand-tuned grid survives Draw Rooms ──────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('(() => { const s = document.getElementById("grid-size"); s.value = 111;' +
     ' s.dispatchEvent(new Event("input", { bubbles: true })); return 0; })()');
   await dm.evaluate('pushUndo(); polygons = []; rebuildFogFromPolygons(); 0');
@@ -351,6 +361,7 @@ module.exports = async function floorPlanFeature(rig) {
   rig.check(await storedSize(twoHalls, 111) === 111, 'the hand-set grid was not saved');
 
   // ── J. A doorless plan is rock ────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('currentScene.floorPlan = globalThis.__rigDoorless; refreshFloorPlanUI(); 0');
   const doorless = await state();
   rig.check(!doorless.planBtn,
@@ -365,6 +376,7 @@ module.exports = async function floorPlanFeature(rig) {
             'a doorless plan wiped the rooms that were already drawn: ' + (await state()).rooms);
 
   // ── K. Draw Rooms places the doorways too ─────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Back to the two-room plan on its own grid, so a cell boundary falls where the plan's own
   // squares do and the door's coordinates below are arithmetic rather than a guess.
   await dm.evaluate('(() => { const s = document.getElementById("grid-size"); s.value = 140;' +

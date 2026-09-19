@@ -6,7 +6,8 @@
 // room rather than being refused. The hole is part of the record: it moves, saves, undoes and
 // takes vertex handles like the outer outline.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. A Trim landing wholly inside a room makes a hole, not a second room.
 //        the room keeps its id and its area · the middle stays shrouded · the rest clears
@@ -92,6 +93,7 @@ module.exports = async function roomsWithHoles(rig) {
             'tool rather than a broken one');
 
   // ══ A. A Trim landing wholly inside a room makes a hole, not a second room ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const keep = await dm.evaluate('__rigDrawRoom("reveal", ' +
     KEEP.x1 + ',' + KEEP.y1 + ',' + KEEP.x2 + ',' + KEEP.y2 + ')');
   await dm.evaluate(lib.SETTLE);
@@ -138,6 +140,7 @@ module.exports = async function roomsWithHoles(rig) {
   rig.byEye('the fog around the courtyard is feathered like any other wall, not a hard edge');
 
   // ══ B. That fog reaches the Player ══
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(await dm.evaluate('autoSync === true'),
             'auto-sync is off, so nothing below could reach the Player');
   const player = await rig.player();
@@ -160,6 +163,7 @@ module.exports = async function roomsWithHoles(rig) {
             'ground the DM left dark');
 
   // ══ C. The hole survives a save and a reload ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE SWITCH GOES AWAY AND BACK. Reading the record after an auto-save proves the write, not
   // the read, and the downgrade encoding rewrites `mode` on the way to disk.
   const keepScene = await dm.evaluate('currentScene.id');
@@ -184,6 +188,7 @@ module.exports = async function roomsWithHoles(rig) {
             'the reloaded keep paints no courtyard, so the field survived and the fog did not');
 
   // ══ D. Dragging the room carries the hole with it ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const DX = 220, DY = 120;
   await dm.evaluate('setShape("select"); __rigClick(' + IN_KEEP.x + ',' + IN_KEEP.y + '); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === keep,
@@ -208,6 +213,7 @@ module.exports = async function roomsWithHoles(rig) {
             'the courtyard\'s fog stayed where the keep used to be');
 
   // ══ E. A hole's wall has handles, and one undo takes a drag back ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // The courtyard's left wall, at the midpoint of its new position.
   const wall = { x: YARD.x1 + DX, y: (YARD.y1 + YARD.y2) / 2 + DY };
   const eBefore = await dm.evaluate('__rigShape(' + keep + ')');
@@ -255,6 +261,7 @@ module.exports = async function roomsWithHoles(rig) {
             ((await dm.evaluate('undoStack.length')) - eUndo + 1) + ' undo steps instead of one');
 
   // ══ F. A shape DRAWN inside the hole is a separate room, and stays put ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE GESTURE DECIDES. A cut makes a hole; drawing makes a room, even in the middle of one.
   const yardNow = (await dm.evaluate('__rigShape(' + keep + ')')).holeBox[0];
   const well = { x1: Math.round(yardNow.x0 + 60), y1: Math.round(yardNow.y0 + 50),
@@ -283,6 +290,7 @@ module.exports = async function roomsWithHoles(rig) {
             'room and stays where the DM put it');
 
   // ══ G. A Cut through a courtyard gives each half its own share of it ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ ON CLEAR GROUND. A cut is refused WHOLE when any room it crosses is crossed more than
   // twice, so a path drawn over the blocks above would take four crossings and kill this one.
   const HALL = { x1: 300, y1: 1120, x2: 900, y2: 1420 };
@@ -331,6 +339,7 @@ module.exports = async function roomsWithHoles(rig) {
             'the cut re-fogged the keep itself (alpha ' + gYard.room + ')');
 
   // ══ H. An effect carrying a hole renders as a ring on both screens ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ ARMED FROM THE BAR. Cut out is on the Effects bar, so this is the DM's own gesture and
   // the block covers the shader and the ember clip behind it.
   const FX = { x1: 1500, y1: 300, x2: 2100, y2: 850 };
@@ -414,6 +423,7 @@ module.exports = async function roomsWithHoles(rig) {
   await dm.evaluate('setPlaceMode("rooms"); setShape("select"); 0');
 
   // ══ I. A door can be marked on an inner wall ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE NOTCH IS DEEPENED FIRST. At the default 10% it is thinner than the fog feather, so a
   // sample either side of the wall would read the blur rather than the door.
   const CELL = 50;
@@ -469,6 +479,7 @@ module.exports = async function roomsWithHoles(rig) {
             'the gate opened the whole courtyard (alpha ' + notch.deep + ') instead of one cell');
 
   // ══ J. The hole is a thing the DM can grab ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // A fresh keep, so nothing above decides what this one's courtyard has been through.
   const HOLD = { x1: 1500, y1: 200, x2: 2200, y2: 800 };
   const CRT  = { x1: 1700, y1: 380, x2: 1980, y2: 620 };
@@ -534,6 +545,7 @@ module.exports = async function roomsWithHoles(rig) {
             'one undo did not put the deleted courtyard back');
 
   // ══ K. A dragged hole stops dead where it would leave its room ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigDbl(' + (HOLD.x1 + 60) + ',' + (HOLD.y1 + 60) + '); 0');
   const restored = await dm.evaluate('__rigShape(' + hold + ')');
   const hx = Math.round((restored.holeBox[0].x0 + restored.holeBox[0].x1) / 2);

@@ -7,7 +7,8 @@
 // thumbnails. A group is a NAME the scene carries, never a container the scene moves into, and
 // every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. A new map is Ungrouped, and a library nobody has filed reads as one flat list — the same
 //      list the DM had before groups existed.
@@ -32,6 +33,10 @@
 //      clears a selection the DM is still gathering.
 //   M. A reorder is never read off a filtered view, and committing a scene name does not
 //      rebuild the list under the click that ended the edit.
+//   N. The selection bar is how the DM acts on several maps at once, and every button on it is
+//      reached by pressing it: a card's tick raises the bar, a second card's click joins it,
+//      Select all takes what the filter shows, Clear puts the bar away, Move to files the lot
+//      under one heading, and Delete takes them all in one undo.
 //
 // ⚠ THE ROUND TRIP IN D IS MIRRORED, NOT EXERCISED. The export's save dialog is native and
 // cannot be driven (see the rig skill), so this file writes the export record and reads it back
@@ -95,6 +100,7 @@ module.exports = async function sceneGroupsFeature(rig) {
                    'the library to render four cards');
 
   // ── A. Ungrouped by default, and flat ─────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const fresh = await sections();
   rig.note('sections on a library nobody has filed: ' + JSON.stringify(fresh.map(s => s.group + ':' + s.n)));
   rig.check(fresh.length === 1,
@@ -107,6 +113,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'a newly imported scene did not reach the store Ungrouped: ' + (await storedGroup(cellar)));
 
   // ── B. Filing sticks, in memory and on disk ───────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('smAssignGroup(' + JSON.stringify([cellar, ground, attic]) + ', "Watcherhouse"); 0');
   const filed = await sections();
   rig.note('after filing three: ' + JSON.stringify(filed.map(s => s.group + ':' + s.n)));
@@ -143,6 +150,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'listScenes drops the group, so a restart forgets every heading: ' + JSON.stringify(reloaded));
 
   // ── C. Dragging a card between sections refiles it ────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const dragged = await dm.evaluate(`(() => {
     const secs = [...document.querySelectorAll('#sm-list .sm-group')];
     const from = secs.find(s => s.dataset.group === '');
@@ -211,6 +219,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'a library this one left rearranged: ' + JSON.stringify(refiled));
 
   // ── D. The group survives export and restore ──────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE FIELD LISTS ARE WHITELISTS IN BOTH DIRECTIONS. Export drops an unlisted field with no
   // error; restore then has nothing to read. This check is the reason the feature is safe.
   await dm.evaluate('smAssignGroup(' + JSON.stringify([pass]) + ', "Wilds"); 0');
@@ -237,6 +246,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'save dialog is native, so the rig mirrors the field lists and cannot drive the file.');
 
   // ── E. Deleting a group deletes no maps ───────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const before = await dm.evaluate('allScenes.length');
   await dm.evaluate(`(() => {
     const secs = sceneGroupSections(allScenes);
@@ -255,6 +265,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'a scene from the deleted group kept its old heading: ' + JSON.stringify(passGroup));
 
   // ── F. Search ignores groups ──────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const found = await dm.evaluate(`(() => {
     const q = document.getElementById('sm-search');
     q.value = 'attic';
@@ -290,6 +301,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'a collapsed heading hid a search match: ' + JSON.stringify(throughShut.hits));
 
   // ── G. Renaming a heading takes its scenes with it ────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ DRIVE THE HEADING'S OWN FIELD, NOT renameGroupInOrder + smAssignGroup BY HAND. Calling
   // the two helpers here proved only that the helpers work: the blur handler that wires them
   // together could be deleted outright and this criterion still passed. Caught by mutation.
@@ -327,6 +339,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'the renamed heading lost scenes: ' + JSON.stringify(renamed.counts));
 
   // ── H. Counts sit on the line, and the selection ring is round ────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ `align-items: center` CENTRES LINE BOXES, NOT BASELINES. A 12px number beside a 14px
   // word therefore sits about a pixel low, which is visible and was reported twice. Equal
   // font-size and line-height is what makes the two boxes the same height; this measures the
@@ -394,6 +407,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'the scene name is not inside its picture over a darkened foot');
 
   // ── I. Ungrouped folds like the rest ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const foldLoose = await dm.evaluate(`(() => {
     const find = () => [...document.querySelectorAll('#sm-list .sm-group')]
       .find(g => g.dataset.group === '');
@@ -418,6 +432,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'Ungrouped folded shut and would not open again');
 
   // ── J. The rename is findable ─────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE NAME FIELD ALONE IS NOT AN AFFORDANCE. It looks like a label until you click it, and
   // that is exactly how the rename went unfound. The pencil is what this check holds in place.
   const rename = await dm.evaluate(`(() => {
@@ -442,6 +457,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'the heading shouts the name back in caps: text-transform is ' + rename.caps);
 
   // ── K. One way to add, and no tag on the cards ────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const chrome = await dm.evaluate(`(() => ({
     adders: document.querySelectorAll('#sm-add, #scene-dd-add').length,
     animTags: document.querySelectorAll('.sm-anim').length,
@@ -455,6 +471,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'the library trigger still wears a dropdown arrow; it opens a popup, not a menu');
 
   // ── L. A rename keeps its hands to itself ─────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ RENAMING ONTO A NAME ALREADY IN USE MERGES TWO GROUPS, AND THAT HAS NO UNDO — the old
   // heading is gone from every scene that wore it. So it asks first.
   await dm.evaluate('smAssignGroup([' + JSON.stringify(pass) + '], "Docks"); 0');
@@ -516,6 +533,7 @@ module.exports = async function sceneGroupsFeature(rig) {
             'renaming a group threw away the selection: ' + (kept.before || 0) + ' ticks became ' + (kept.after || 0));
 
   // ── M. Two ways the library used to damage itself ─────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Both of these were found by review, reproduced in this app, and fixed. They are here
   // because neither is visible in the code that causes it.
   // ⚠ A REORDER READ OFF A FILTERED VIEW RENUMBERS THE WHOLE LIBRARY. order.indexOf answers
@@ -576,5 +594,142 @@ module.exports = async function sceneGroupsFeature(rig) {
   rig.byEye('A heading, its collapse arrow and the drop highlight read as part of the app rather ' +
             'than as a panel bolted onto it.');
 
-  await dm.evaluate('closeDropdown(); 0');
+  // ── N. The selection bar, pressed rather than called ──────────────────────
+  // RED ON: deleteScenesWithUndo gated off behind `false &&` in the sm-sel-delete handler
+  // (sceneManager.js) — 2026-09-19
+  // ⚠ EVERY BUTTON HERE IS CLICKED. The rest of the suite reaches these actions through
+  // smAssignGroup and deleteScenesWithUndo, so the five buttons that gather a selection and
+  // call them were covered nowhere: bulk delete could stop working with the suite green.
+  await dm.evaluate('smSelectedIds.clear(); renderSceneManager(); 0');
+
+  const bar = () => dm.evaluate(`(() => ({
+    n: smSelectedIds.size,
+    selecting: document.body.classList.contains('sm-selecting'),
+    count: (document.getElementById('sm-sel-count') || {}).textContent || '',
+    visible: smVisibleScenes().length,
+  }))()`);
+
+  const tickFirst = await dm.evaluate(`(() => {
+    const cb = document.querySelector('#sm-list .sm-card .sm-cb');
+    if (!cb) return { err: 'no card to tick' };
+    cb.click();
+    return { ok: true };
+  })()`);
+  rig.check(!tickFirst.err, 'the selection could not be staged: ' + tickFirst.err);
+  const oneTicked = await bar();
+  rig.check(oneTicked.n === 1,
+            "ticking a card's own box did not select it, so the DM cannot start a selection at " +
+            'all: ' + oneTicked.n + ' selected');
+  rig.check(oneTicked.selecting === true,
+            'the library did not go into selection mode, so the action bar stays hidden and ' +
+            'every button on it is out of reach');
+  rig.check(/\b1\b/.test(oneTicked.count),
+            'the bar does not say how many are selected: ' + JSON.stringify(oneTicked.count));
+
+  // ⚠ THE CARD'S BODY, NOT ITS BOX. Once a selection exists a plain card click joins it instead
+  // of switching scene, and that second rule is the one a DM leans on while gathering.
+  await dm.evaluate(`(() => {
+    const cards = [...document.querySelectorAll('#sm-list .sm-card')];
+    if (cards[1]) cards[1].click();
+    return 0;
+  })()`);
+  const twoTicked = await bar();
+  rig.check(twoTicked.n === 2,
+            'a click on a second card did not join the selection, so gathering needs the tiny ' +
+            'box every time: ' + twoTicked.n + ' selected');
+
+  await dm.evaluate('document.getElementById("sm-sel-all").click(); 0');
+  const allTicked = await bar();
+  rig.check(allTicked.n === allTicked.visible && allTicked.visible > 2,
+            'Select all did not take every map the library is showing: ' + allTicked.n +
+            ' of ' + allTicked.visible);
+
+  await dm.evaluate('document.getElementById("sm-sel-clear").click(); 0');
+  const cleared = await bar();
+  rig.check(cleared.n === 0 && cleared.selecting === false,
+            'Clear left the selection up, so the bar stays over the library: ' + cleared.n +
+            ' selected');
+
+  // Move to. The flyout is the control; picking a row is what files the maps.
+  const barMoved = await dm.evaluate(`(async () => {
+    const ids = allScenes.slice(0, 2).map(s => s.id);
+    ids.forEach(id => smSelectedIds.add(id));
+    renderSceneManager();
+    document.getElementById('sm-sel-group').click();
+    const menu = document.querySelector('#sm-panel .sm-menu');
+    if (!menu) return { err: 'Move to opened no menu' };
+    // ⚠ NOT THE FIRST ROW. Row one is always Ungrouped, whose label is a display name for the
+    // empty group — picking it files two maps under '' and proves nothing about filing.
+    const rows = [...menu.querySelectorAll('.sm-menu-row')];
+    const row = rows.find(r => r.textContent.trim() !== 'Ungrouped' &&
+                               !/^New group/.test(r.textContent.trim()));
+    if (!row) return { err: 'the Move to menu carries no real heading to pick' };
+    const label = row.textContent.trim();
+    row.click();
+    await new Promise(r => setTimeout(r, 120));
+    // ⚠ COMPARED IN THE PAGE. sanitizeGroupName is what the app files under, and the menu's
+    // label is the raw name — comparing the two in Node would fail on whitespace alone.
+    const want = sanitizeGroupName(label);
+    const groups = ids.map(id => (allScenes.find(s => s.id === id) || {}).group);
+    return { label, left: smSelectedIds.size, groups,
+             filed: groups.every(g => sanitizeGroupName(g) === want),
+             menuGone: !document.querySelector('#sm-panel .sm-menu') };
+  })()`, 30000);
+  rig.check(!barMoved.err, 'Move to could not be staged: ' + barMoved.err);
+  rig.note('Move to filed two maps under: ' + JSON.stringify(barMoved.label));
+  rig.check(!barMoved.err && barMoved.filed === true,
+            'Move to did not file the selected maps under the heading that was picked: ' +
+            JSON.stringify(barMoved.groups) + ' against ' + JSON.stringify(barMoved.label));
+  rig.check(!barMoved.err && barMoved.left === 0,
+            'Move to left the ticks up after filing them, so the next action would repeat on ' +
+            'maps the DM has already moved');
+  rig.check(!barMoved.err && barMoved.menuGone === true,
+            'the Move to menu stayed on screen over the library after a heading was picked');
+
+  // Delete. Two maps, one undo — the bulk path has its own undo and it has never been pressed.
+  const beforeDelete = await dm.evaluate('allScenes.length');
+  const doomedPair = await dm.evaluate(`(() => {
+    const open = currentScene && currentScene.id;
+    const ids = allScenes.filter(s => s.id !== open).slice(0, 2).map(s => s.id);
+    if (ids.length < 2) return { err: 'not enough scenes to delete two of them' };
+    ids.forEach(id => smSelectedIds.add(id));
+    renderSceneManager();
+    document.getElementById('sm-sel-delete').click();
+    return { ids };
+  })()`);
+  rig.check(!doomedPair.err, 'the bulk delete could not be staged: ' + doomedPair.err);
+  const barAfterDelete = await poll(() => dm.evaluate('allScenes.length'),
+                                 n => n === beforeDelete - 2, 15000);
+  rig.check(barAfterDelete === beforeDelete - 2,
+            'Delete on the selection bar did not take both maps: ' + beforeDelete + ' became ' +
+            afterDelete);
+  await dm.evaluate('undoDelete(); 0');
+  const afterUndo = await poll(() => dm.evaluate('allScenes.length'),
+                               n => n === beforeDelete, 15000);
+  rig.check(afterUndo === beforeDelete,
+            'one undo did not bring back both maps the selection bar deleted: ' + afterUndo +
+            ' of ' + beforeDelete);
+
+  // ⚠ EXPORT IS THE ONE BUTTON HERE THAT CANNOT BE PRESSED. doExport opens a native save dialog,
+  // which nothing in the protocol can answer — same seam backup.js records.
+  rig.check(await dm.evaluate('typeof doExport === "function"'),
+            'the selection bar\'s Export has nothing to call, so exporting a chosen few is dead');
+  rig.byEye('Export on the selection bar writes a zip holding exactly the maps that were ticked.');
+
+  await dm.evaluate('smSelectedIds.clear(); renderSceneManager(); 0');
+
+  // The two buttons that open and shut the library. Every scenario reaches it through
+  // openDropdown() and closeDropdown(), so neither button had been pressed.
+  // RED ON: sm-close's onclick reassigned to a no-op (sceneManager.js) — 2026-09-19
+  await dm.evaluate('document.getElementById("sm-close").click(); 0');
+  await lib.settle(dm, 'document.getElementById("sm-modal").style.display === "none"', 8000);
+  rig.check(await dm.evaluate('document.getElementById("sm-modal").style.display') === 'none',
+            'the library\'s own close button left it open over the map');
+  await dm.evaluate('document.getElementById("scene-dd-toggle").click(); 0');
+  await lib.settle(dm, 'document.getElementById("sm-modal").style.display !== "none"', 8000);
+  rig.check(await dm.evaluate('document.getElementById("sm-modal").style.display') !== 'none',
+            'the top-left button did not open the library, so there is no way into it');
+  await dm.evaluate('document.getElementById("scene-dd-toggle").click(); 0');
+  rig.check(await dm.evaluate('document.getElementById("sm-modal").style.display') === 'none',
+            'pressing the top-left button again did not shut the library');
 };

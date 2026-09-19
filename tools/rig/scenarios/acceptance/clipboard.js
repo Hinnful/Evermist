@@ -5,7 +5,8 @@
 // THE GOAL OF THIS FEATURE: a dungeon repeats its rooms, and the DM lays the second one down with
 // two keys instead of redrawing it.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. Ctrl+C then Ctrl+V puts a second room on the map, centred on the pointer, and leaves it
 //      picked as a whole object.
@@ -63,6 +64,7 @@ module.exports = async function clipboard(rig) {
   const tol = 3 / zoom;
 
   // ══ A. Ctrl+C, Ctrl+V, and the copy lands under the pointer ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const aRoom = await dm.evaluate('__rigDrawShroud(500, 300, 800, 500)');
   await dm.evaluate('__rigClick(650, 400); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === aRoom,
@@ -90,6 +92,7 @@ module.exports = async function clipboard(rig) {
             'the paste did not leave the new room picked as a whole object, ready to drag');
 
   // ══ B. Name, description and fog state carry; the id does not ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigOf("rooms",' + aRoom + ').name = "Guard Post";' +
                     '__rigOf("rooms",' + aRoom + ').desc = "Two guards, one asleep."; 0');
   await dm.evaluate('__rigClick(650, 400); __rigKey("KeyC", ' + CTRL + '); 0');
@@ -107,6 +110,7 @@ module.exports = async function clipboard(rig) {
             'the copy took an id another room already holds, so the two cannot be told apart');
 
   // ══ C. Ctrl+D lands one grid square across, and leaves the clipboard alone ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // A SECOND, NARROWER ROOM goes on the clipboard first. Without it the paste that follows the
   // Ctrl+D measures 300 units wide whether it came from the clipboard or from the duplicate, and
   // the check passes either way.
@@ -140,6 +144,7 @@ module.exports = async function clipboard(rig) {
             'the paste after a Ctrl+D did not come from the clipboard, so Ctrl+D overwrote it');
 
   // ══ D. The clipboard outlives a scene switch ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ AIMED CLEAR OF THE DUPLICATE C left one square down and across, or the click picks that
   // instead and D measures the wrong room.
   await dm.evaluate('__rigClick(550, 350); 0');
@@ -172,6 +177,7 @@ module.exports = async function clipboard(rig) {
             'is measuring an empty scene');
 
   // ══ E. A hole pastes as a hole, into the shape under the pointer ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const eRoom = await dm.evaluate('__rigDrawShroud(1400, 1000, 1900, 1350)');
   await dm.evaluate('__rigOpRect("trim", 1480, 1080, 1620, 1200)');
   await dm.evaluate(lib.SETTLE);
@@ -254,6 +260,7 @@ module.exports = async function clipboard(rig) {
             'a hole pasted where no room sits still changed something');
 
   // ══ F. An effect pastes into the effects list from Rooms mode ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigKey("Escape"); __rigKey("Escape"); __rigKey("Escape"); 0');
   await dm.evaluate('setPlaceMode("effects"); 0');
   await dm.evaluate('setShapeOp("new"); setShape("rect"); __rigDrag(300, 300, 550, 500);' +
@@ -280,6 +287,7 @@ module.exports = async function clipboard(rig) {
             'never the id of the pasted effect');
 
   // ══ G. One paste is one undo step ══
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('setShape("select"); __rigClick(550, 350); 0');
   const undoIdle = await dm.evaluate('undoStack.length');
   await dm.evaluate('__rigKey("KeyC", ' + CTRL + '); 0');
@@ -297,6 +305,7 @@ module.exports = async function clipboard(rig) {
             'one undo did not take the pasted room away again');
 
   // ══ H. It reaches the TV ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const player = await rig.player();
   await player.waitFor('!!mapOffscreen && !!fogDataCanvas', 45000, 'the Player to receive the map');
   await player.waitFor('fogCoverT === 0', 45000, 'the scene cover to lift on the Player');

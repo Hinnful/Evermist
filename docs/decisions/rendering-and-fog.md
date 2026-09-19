@@ -1,17 +1,15 @@
 # Decisions - rendering and fog
 
-Split out of [DECISIONS.md](../DECISIONS.md) so the main ledger stays readable. Same
-question, same past tense: what was decided about **how the map and the fog get drawn** -
-the two views' render paths, the fog pipeline, and the loop that schedules a frame - and
-why it held.
+Split out of [DECISIONS.md](../DECISIONS.md). What was decided about **how the map and the fog
+get drawn** - the two views' render paths, the fog pipeline, and the loop that schedules a
+frame - and why it held.
 
 Both views render the map through PixiJS. The DM's fog is a GPU path; the Player's fog is a
 Canvas-2D layer on top. The rules that bind while editing them are in
 [CLAUDE.md](../../CLAUDE.md); how the passes work today is in
 [ARCHITECTURE.md](../ARCHITECTURE.md).
 
-**Status tags** and the one-heading-one-paragraph budget are the main ledger's; read its
-header before adding an entry here.
+Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 

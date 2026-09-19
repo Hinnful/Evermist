@@ -7,7 +7,8 @@
 // lattice on the TV. A grid belongs to the map it was fitted to, so it follows the scene and
 // never leaks onto the next one. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. Every grid dial answers from both its slider and its number chip, and the two agree.
 //        size · opacity · thickness · colour. Offset has NO field: calibration sets the phase,
@@ -176,6 +177,7 @@ module.exports = async function gridFeature(rig) {
   rig.check(await dm.evaluate('gridEnabled === true'), 'the grid button did not switch the grid on');
 
   // ── A. Every dial answers from its slider AND its number chip ──────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await fire('grid-size', 210);
   let g = await liveGrid();
   rig.check(g.size === 210 && g.sizeChip === 210,
@@ -202,6 +204,7 @@ module.exports = async function gridFeature(rig) {
   rig.check(g.color === '#ff3366', 'the colour picker did not drive the grid colour: ' + g.color);
 
   // ── B. Out-of-range numbers are clamped ───────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await fire('grid-size-num', 9999);
   let seen = await dm.evaluate('gridSize');
   rig.check(seen === 400, 'a size typed over the maximum was taken rather than clamped to 400: ' + seen);
@@ -226,6 +229,7 @@ module.exports = async function gridFeature(rig) {
   await fire('grid-color', '#ffffff');
 
   // ── C. On/off, and the three types are exclusive ──────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const typeState = () => dm.evaluate([
     '(() => {',
     "  const active = [...document.querySelectorAll('.grid-mode-btn')]",
@@ -270,6 +274,7 @@ module.exports = async function gridFeature(rig) {
   }
 
   // ── D. The type reaches the canvas ────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('document.getElementById("btn-grid-sq").click(); 0');
   const sq = await dmPaint();
   rig.note('square painted: ' + JSON.stringify(sq));
@@ -311,6 +316,7 @@ module.exports = async function gridFeature(rig) {
   await fire('grid-offset-x', 0);
 
   // ── E. A grid belongs to its scene ────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const beta = await importAs('Beta');
   rig.note('scenes: Alpha=' + alpha + ' Beta=' + beta);
 
@@ -338,6 +344,7 @@ module.exports = async function gridFeature(rig) {
   rig.check(backOnAlpha.size === 123, 'Alpha came back with the wrong grid size: ' + backOnAlpha.size);
 
   // ── F. Grid Reset ─────────────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await fire('grid-offset-x', 30);
   await fire('grid-opacity', 60);
   await fire('grid-thickness', 4);
@@ -363,6 +370,7 @@ module.exports = async function gridFeature(rig) {
   rig.check(seen === DEFAULT, 'the reset grid did not survive a switch: ' + seen);
 
   // ── G. A new import starts on the default fit, keeping the look ───────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await switchTo(beta);
   await fire('grid-size', 45);
   await fire('grid-offset-x', 30);
@@ -389,6 +397,7 @@ module.exports = async function gridFeature(rig) {
             'the imported map is on screen with the old grid size: ' + JSON.stringify(onGamma));
 
   // ── H. Everything reaches the Player, and the Player paints it ────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Auto-sync is what carries a grid change across. It is on by default; asserted rather than
   // assumed, because with it off every check below would be reading the Player's own defaults.
   rig.check(await dm.evaluate('autoSync === true'),
@@ -475,6 +484,7 @@ module.exports = async function gridFeature(rig) {
   await waitPlayer('gridEnabled', true, 30000);
 
   // ── I. Grid Reset reaches the Player, and it paints the reset grid ────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('document.getElementById("btn-grid-reset").click(); 0');
   const sawReset = await waitPlayer('gridSize', DEFAULT, 30000);
   const pReset = await playerGrid();
@@ -500,6 +510,7 @@ module.exports = async function gridFeature(rig) {
             ' map units, expected ' + DEFAULT);
 
   // ── J. The look at the table ──────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const shot = path.join(rig.outDir, 'player-grid.png');
   await player.screenshot(shot);
   rig.note('Player screenshot: ' + shot);
@@ -608,6 +619,16 @@ module.exports = async function gridFeature(rig) {
     rig.check(bumped === 5, 'the stepper did not raise the cell count: ' + bumped);
     rig.check(Math.abs(fit.size - span.w / 5) < 0.01,
               'raising the count did not re-divide the square: ' + fit.size);
+
+    // ⚠ BOTH ARROWS. The guess is as often high as low, and a stepper that only counts up makes
+    // the DM redraw the square to correct it — the one thing the stepper exists to avoid.
+    // RED ON: dec's click listener pointed at +1 instead of -1 (gridCalibrate.js) — 2026-09-19
+    await dm.evaluate('document.getElementById("gridcal-count-dec").click(); 0');
+    const dropped = await dm.evaluate('gridCalSpan.n');
+    fit = await liveGrid();
+    rig.check(dropped === 4, 'the stepper would not lower the cell count again: ' + dropped);
+    rig.check(Math.abs(fit.size - span.w / 4) < 0.01,
+              'lowering the count did not re-divide the square: ' + fit.size);
 
     // The square is an object once it exists. A grab inside it slides it, and the cell size must
     // survive the slide untouched - a move that re-divides would undo the count just corrected.
@@ -819,6 +840,7 @@ module.exports = async function gridFeature(rig) {
   await dm.evaluate('document.getElementById("btn-grid-sq").click(); 0');
 
   // -- L. the grid stays on the map when the Player's screen changes size ----
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE CANVAS IS SCREEN-SPACE AND RESIZED IN PLACE, so its texture has to be resized with
   // it. Left stale, the sprite is stretched by old/new: the grid still paints and still reads at
   // the right cell size on the canvas, and only a PAN shows it moving at the wrong rate.

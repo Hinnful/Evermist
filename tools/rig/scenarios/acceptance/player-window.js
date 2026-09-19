@@ -7,7 +7,8 @@
 // never see is the app booting: a flat navy sheet, a wordmark, or a line of status text. A window
 // is pre-warmed at DM startup and kept hidden, so the button carries no page load.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. A Player window is PRE-WARMED and waiting before the button is ever pressed, with the DM
 //      not yet holding it — so no fog push and no map reaches a window nobody opened.
@@ -41,6 +42,7 @@ module.exports = async function playerWindowFeature(rig) {
   const expr = await rig.fixtures.asFileExpr(dm, map);
 
   // ── A. A window is pre-warmed, and the DM is not holding it ────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // The pre-warm is deliberately off the boot path, so poll for it rather than assuming it is up.
   await dm.waitFor('!!_playerPrewarm', 30000, 'a Player window to be pre-warmed');
   rig.check(await dm.evaluate('!playerWindow'),
@@ -48,6 +50,7 @@ module.exports = async function playerWindowFeature(rig) {
     'every map now goes to a window nobody opened');
 
   // ── B. The idle card on the DM stays under the panels ───────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Read here because no scene is open yet, which is the one state the DM shows the card in.
   const idle = await dm.evaluate(`(() => {
     const l = getComputedStyle(document.getElementById('landing'));
@@ -64,6 +67,7 @@ module.exports = async function playerWindowFeature(rig) {
   await dm.waitFor('!!mapOffscreen', 120000, 'the DM to finish importing the map');
 
   // ── C. The card is the loading state while the map decodes ─────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const pressedAt = Date.now();
   const player = await rig.player();
   const waitMs = Date.now() - pressedAt;
@@ -165,15 +169,39 @@ module.exports = async function playerWindowFeature(rig) {
   rig.note('Player while the map decodes: ' + shot);
   rig.byEye('whether ' + shot + ' reads as the app’s own drifting fog, rather than a flat sheet');
 
-  // ── D. The card goes when the map arrives ─────────────────────────────
-  await player.waitFor('!!mapOffscreen', 60000, 'the map to reach the Player');
-  await player.waitFor("getComputedStyle(document.getElementById('landing')).display === 'none'",
-                       30000, 'the landing card to come down once the map was on screen');
+  // ── D. The card goes when the map arrives, and stays gone ─────────────────
+  // ⚠ settle, NOT waitFor. This criterion used to assert through two waits alone, so a card that
+  // never came down reported a timeout instead of the sentence above, and the second half of the
+  // criterion — that it does not come back — was not tested at all.
+  // RED ON: the landing hide gated off in BOTH places that do it — playerMap.js and
+  // player.js. Gating one alone leaves the other hiding the card and the run stays green.
+  await lib.settle(player, '!!mapOffscreen', 60000);
+  rig.check(await player.evaluate('!!mapOffscreen'),
+    'the map never reached the Player, so the card below is being read on a window with nothing on it');
+  await lib.settle(player,
+    "getComputedStyle(document.getElementById('landing')).display === 'none'", 30000);
+  rig.check(await player.evaluate(
+    "getComputedStyle(document.getElementById('landing')).display") === 'none',
+    'the loading card is still over the map on the TV, so the players are looking at a wordmark ' +
+    'instead of the floor');
+
+  // ⚠ AND IT DOES NOT COME BACK. The card is the LOADING state, not the between-maps state: a
+  // switch that raises it again puts the app's own name in front of the players mid-session.
+  const second = await dm.evaluate(
+    'createNewScene((f => new File([f], "Second.mp4", { type: f.type }))(' + expr + '))', 120000);
+  await dm.waitFor('currentScene && currentScene.name === "Second"', 120000, 'the second map to import');
+  await lib.settle(player, 'fogCoverT === 0', 45000);
+  const onSwitch = await player.evaluate(
+    "getComputedStyle(document.getElementById('landing')).display");
+  rig.check(onSwitch === 'none',
+    'switching to another map raised the loading card again on the TV, so the players see the ' +
+    "app's own name in the middle of a session: the card reads display " + onSwitch);
 
   // Printed rather than asserted — a threshold here would measure this machine.
   rig.note('button to window on screen: ' + waitMs + ' ms; the card then holds until the map lands');
 
   // ── E. nothing but fog on the Player screen ────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE CARD IS FORCED OPEN AND PUT BACK. A Player that already has a map has taken it down,
   // so reading it as it stands answers nothing and passes with the wordmark still in the CSS.
   const cardText = await player.evaluate(`(() => {
@@ -218,6 +246,7 @@ module.exports = async function playerWindowFeature(rig) {
     idleFog.centre + ' at the centre)');
 
   // ── F. Close, warm again, re-open ───────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ window.open() REUSES A NAMED WINDOW, so warming a replacement straight after a close can
   // land on the one still dying and leave the button dead on the next press.
   player.close();
@@ -241,6 +270,7 @@ module.exports = async function playerWindowFeature(rig) {
     'Player window and reloads the TV in the middle of a session');
 
   // ── G. Fullscreen, and why it stays by eye ─────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.byEye('whether the DM fullscreen button puts the Player window on the whole TV, and the ' +
             'button then shows it is on. Driving it is not automated: setFullScreen moves the ' +
             'window onto the nearest real display, and the rig may not put a window on the DM’s ' +

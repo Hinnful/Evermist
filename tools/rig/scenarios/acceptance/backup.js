@@ -6,7 +6,8 @@
 // campaign's module text — leaves one machine as a single .zip and arrives on another with nothing
 // missing. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. A restore ADDS to the library. It never replaces it, and it never disturbs the scene the
 //      DM has open.
@@ -169,6 +170,7 @@ module.exports = async function backupFeature(rig) {
            Math.round(fs.statSync(zipPath).size / 1024) + ' KB');
 
   // ── A. A restore adds, and leaves the open scene alone ────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const restored = await dm.evaluate(`(async () => {
     await restoreFromZipPath(${JSON.stringify(zipPath)});
     const out = [];
@@ -219,6 +221,7 @@ module.exports = async function backupFeature(rig) {
                 'what came back can be checked: the library holds ' +
                 JSON.stringify(restored.scenes.map(x => x.name)))) {
     // ── E. A taken name comes back de-duplicated ─────────────────────────────
+    // RED BY DESIGN: written against the fix, never re-proved
     rig.check(copy.name !== exported.openName,
               'the restored copy took the same name as the scene already in the library, so one of ' +
               'them is now unidentifiable: both read ' + JSON.stringify(copy.name));
@@ -227,6 +230,7 @@ module.exports = async function backupFeature(rig) {
               JSON.stringify(copy.name));
 
     // ── B. The scene comes back whole ────────────────────────────────────────
+    // RED BY DESIGN: written against the fix, never re-proved
     rig.note('the restored copy: ' + JSON.stringify(copy));
     rig.check(copy.w === MAP_W && copy.h === MAP_H,
               'the restored map came back at the wrong size: ' + copy.w + 'x' + copy.h);
@@ -251,6 +255,7 @@ module.exports = async function backupFeature(rig) {
               'the restored scene lost the fog colour the DM dialled in: ' + copy.fogHex);
 
     // ── C. Rooms and effects, with their own fields ──────────────────────────
+    // RED BY DESIGN: written against the fix, never re-proved
     rig.check(copy.rooms.length === 1,
               'the restored scene lost its rooms: ' + JSON.stringify(copy.rooms));
     const r = copy.rooms[0] || {};
@@ -281,6 +286,7 @@ module.exports = async function backupFeature(rig) {
               'shapes: ' + copy.nextPolygonId + '/' + copy.nextEffectId);
 
     // ── D. The floor plan survives ───────────────────────────────────────────
+    // RED BY DESIGN: written against the fix, never re-proved
     rig.check(copy.plan,
               'the restored scene lost its floor plan, so Draw Rooms is disabled on it with ' +
               'nothing to explain why');
@@ -293,6 +299,7 @@ module.exports = async function backupFeature(rig) {
   }
 
   // ── F. The module text rides at the zip root ─────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const adopted = await dm.evaluate(`(async () => {
     const before = mtEntries.length;
     mtStore([], '');
@@ -337,6 +344,7 @@ module.exports = async function backupFeature(rig) {
             'older zip costs the DM their whole module: ' + JSON.stringify(untouched));
 
   // ── G. The export whitelist ──────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Read off doExport itself. Nothing else can see the list the export really uses: the payload
   // above is this file's own copy of it, so the two agreeing proves nothing.
   // ⚠ READ INSIDE THE `metadata:` LITERAL, NOT THE WHOLE FUNCTION. Several of these names are
@@ -371,12 +379,14 @@ module.exports = async function backupFeature(rig) {
             'back without the campaign');
 
   // ── H. What only a person can check ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.byEye('a real export through the Backup button — its save dialog is a native window and ' +
             "`electronAPI` cannot be stubbed, so the picked path, the progress bar and the file " +
             'that lands on disk are all beyond anything but a hand test');
   rig.byEye('a real restore of that file on a second machine, which is the whole point of the ' +
             'feature and the one thing a single-machine run can never be');
   // ── I. A missing map file is named, never dropped in silence ─────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE EXPORT KEEPS GOING. Refusing the whole backup over one absent clip would cost the DM
   // every other scene, so the zip is written and the gap is reported instead.
   const gapZip = path.join(rig.outDir, 'gap.zip');

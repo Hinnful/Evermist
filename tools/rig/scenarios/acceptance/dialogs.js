@@ -7,7 +7,8 @@
 // the page's focus desynced beyond any in-page repair, so neither ever ships. Every check below
 // serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. A question puts up two buttons and answers exactly once — on the button that was pressed
 //      and never on the other.
@@ -85,6 +86,7 @@ module.exports = async function dialogsFeature(rig) {
   const clear = () => dm.evaluate('__rigAnswers = []; 0');
 
   // ── A. A question answers once, on the button that was pressed ────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__rigAsk({ tag: "a", title: "Delete it?", message: "This cannot be undone." })');
   const asked = await state();
   rig.check(asked.up, 'confirmDialog did not put anything on screen');
@@ -106,6 +108,7 @@ module.exports = async function dialogsFeature(rig) {
             'OK did not answer the question exactly once with yes: ' + JSON.stringify(await answers()));
 
   // ── B. Which button holds focus ───────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await clear();
   await dm.evaluate('__rigAsk({ tag: "c", title: "Sure?" })');
   rig.check((await state()).focused === 'cd-cancel',
@@ -119,6 +122,7 @@ module.exports = async function dialogsFeature(rig) {
             'the statement does not focus its only button: focus is on ' + (await state()).focused);
 
   // ── C. One button, and every way out runs onClose ─────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const told = await state();
   rig.check(told.solo,
             'the statement is wearing the question\'s two-button layout: ' + JSON.stringify(told));
@@ -146,6 +150,7 @@ module.exports = async function dialogsFeature(rig) {
             JSON.stringify(await answers()));
 
   // ── D. Two at once, and neither is dropped ────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await clear();
   await dm.evaluate('__rigAsk({ tag: "first", title: "First question" });' +
                     ' __rigAsk({ tag: "second", title: "Second question" }); 0');
@@ -165,6 +170,7 @@ module.exports = async function dialogsFeature(rig) {
   rig.check(!(await state()).up, 'the queue left a dialog on screen with nothing behind it');
 
   // ── E. The dangerous button is coloured, the plain one is not ─────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await clear();
   await dm.evaluate('__rigAsk({ tag: "g", title: "Delete the scene?", danger: true })');
   const danger = await state();

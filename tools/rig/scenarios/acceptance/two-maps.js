@@ -7,7 +7,8 @@
 // each, and neither map moves because the other was touched. Every check below serves that
 // sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The second column opens EMPTY and waits to be picked; choosing a map from the library
 //      fills it, and the DM window then holds no map of its own.
@@ -81,6 +82,7 @@ module.exports = async function twoMapsFeature(rig) {
   const tallId = await importMap(TALL);
 
   // ── M. one map, before anything splits ───────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Read here rather than at the end: this is the app as it shipped, and the point of the
   // criterion is that entering and leaving returns to exactly this.
   await lib.installHelpers(dm);
@@ -114,6 +116,7 @@ module.exports = async function twoMapsFeature(rig) {
   })()`);
 
   // ── A. the second column opens empty and is filled by hand ───────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('document.getElementById("btn-two-maps").click(); 0');
   await dm.waitFor('panesActive && panes.A.ready && panes.B.ready', 180000,
                    'both columns to come up');
@@ -167,6 +170,7 @@ module.exports = async function twoMapsFeature(rig) {
             "the DM window's own map area is still on screen behind the columns");
 
   // ── B. the split, and the divider ────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const wideCol = (await paneA.evaluate('mapWidth')) === WIDE.w ? 'A' : 'B';
   const colWidth = id => dm.evaluate(
     'document.querySelector(\'.pane-col[data-pane="' + id + '"]\').getBoundingClientRect().width');
@@ -239,6 +243,7 @@ module.exports = async function twoMapsFeature(rig) {
   }
 
   // ── C. one click selects the column and acts on it ───────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // A is selected on entry, so the dab goes into B: the same press has to do both jobs.
   // ⚠ THE TOOL HAS TO REACH THE UNSELECTED COLUMN TOO, or that first click paints with whatever
   // that column last had. This is the check that catches a tool sent only to the selected one.
@@ -259,6 +264,7 @@ module.exports = async function twoMapsFeature(rig) {
             'a click in column B changed the fog in column A');
 
   // ── D. the toolbar acts on the selected column only ──────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await paneA.evaluate('__rigDab(200, 200); 0');   // one room in each column to compare
   await dm.waitFor('panesSelected === "A"', 5000, 'the click in column A to select it');
   await dm.evaluate('document.getElementById("btn-fill-fog").click(); 0');
@@ -267,6 +273,7 @@ module.exports = async function twoMapsFeature(rig) {
             'Shroud All on column A also shrouded column B');
 
   // ── E. a grid belongs to its scene, so the two differ ────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const setCell = async (p, id, px) => {
     await dm.evaluate('(() => { selectPane("' + id + '");' +
       ' const f = document.getElementById("grid-size-num"); f.value = ' + px + ';' +
@@ -280,6 +287,7 @@ module.exports = async function twoMapsFeature(rig) {
             await paneA.evaluate('gridSize') + ', B ' + await paneB.evaluate('gridSize'));
 
   // ── F. one Player screen, a floor in each half ──────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const tvA = await rig.player('A');
   const tvB = await rig.player('B');
   // ⚠ ONE WINDOW CARRIES BOTH, and that is the point of the shell: two Player windows could
@@ -317,6 +325,7 @@ module.exports = async function twoMapsFeature(rig) {
                        'alpha ' + bAt);
 
   // ── P. the log says which of the four windows wrote each line ───────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ READ OFF DISK. Two columns share one file and two Player halves share another, each
   // timestamping from its own start, so without the tag no duration in either file can be read.
   const sources = mode => {
@@ -343,6 +352,7 @@ module.exports = async function twoMapsFeature(rig) {
             'both halves of the Player screen write its log and it names ' + JSON.stringify(plSrc.seen));
 
   // ── G. the one minimap follows the selection and repaints ────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE PANEL HAS TO BE OPEN. A canvas inside display:none has zero-sized rects, so a drag
   // built from getBoundingClientRect lands entirely at 0,0 and moves nothing.
   await dm.evaluate('document.querySelector(`.cp-tab[data-tab="player"]`).click(); 0');
@@ -409,19 +419,46 @@ module.exports = async function twoMapsFeature(rig) {
   })()`);
   // ⚠ BOTH COLUMNS. Auto is a standing preference, not one map's setting, and sending it only
   // to the selected column leaves the other silently on Manual - which reads as "Auto is broken".
-  await paneA.waitFor('autoSync === true', 8000, 'Auto to reach column A');
-  await paneB.waitFor('autoSync === true', 8000, 'Auto to reach column B, which is not selected');
-  const AX = 1500, AY = 400;
+  // ⚠ settle, NOT waitFor. This criterion used to assert through three waits alone, so every way
+  // it can fail reported a timeout instead of the sentence above.
+  // RED ON: scheduleAutoSync made to return before pushing (playerWindow.js) — 2026-09-19
+  await lib.settle(paneA, 'autoSync === true', 8000);
+  await lib.settle(paneB, 'autoSync === true', 8000);
+  rig.check(await paneA.evaluate('autoSync') === true && await paneB.evaluate('autoSync') === true,
+            'Auto did not reach both columns, so one of them is silently still on Manual and ' +
+            'everything the DM opens there stops at the DM window: A ' +
+            await paneA.evaluate('autoSync') + ', B ' + await paneB.evaluate('autoSync'));
+  // ⚠ INSIDE COLUMN A'S OWN MAP. Column B took the wide map, so column A holds TALL (1200x1500)
+  // and the old x of 1500 was off the map entirely — the fog data read 0 there whatever Auto did,
+  // and the wait below returned on its first poll every run.
+  const AX = Math.round(TALL.w * 0.5), AY = Math.round(TALL.h * 0.3);
   const autoFog = 'fogDataCtx.getImageData(Math.round(' + AX + ' / FOG_SCALE), Math.round(' + AY +
                   ' / FOG_SCALE), 1, 1).data[3]';
+  // ⚠ THE GROUND IS SHROUDED FIRST, and that is not housekeeping. By the time this criterion
+  // runs, earlier sections have already cleared this point: the reading was 0 before the reveal
+  // and 0 after it, so the check passed on ground that was never dark. A reveal proves nothing
+  // unless there was fog to remove.
+  await paneA.evaluate('document.getElementById("btn-fill-fog").click(); 0');
+  await lib.settle(tvA, autoFog + ' > 200', 15000);
   const beforeAuto = await tvA.evaluate(autoFog);
+  rig.check(beforeAuto > 200,
+            "column A's half of the TV is not shrouded at the point the reveal below aims at, so " +
+            'that reveal would pass with Auto broken: alpha ' + beforeAuto);
+
   // ⚠ NO sendToPlayer() HERE. Pressing Send would pass this check with Auto broken, which is
   // exactly the fault being covered.
   await paneA.evaluate('__rigDab(' + AX + ',' + AY + '); 0');
-  await tvA.waitFor(autoFog + ' < ' + Math.max(1, beforeAuto - 40), 15000,
-                    "Auto to carry the reveal to column A's half without Send");
+  await lib.settle(tvA, autoFog + ' < 60', 15000);
+  const tvAfterAuto = await tvA.evaluate(autoFog);
+  rig.note("column A's half of the TV after an Auto reveal: alpha " + beforeAuto +
+           ' → ' + tvAfterAuto);
+  rig.check(tvAfterAuto < 60,
+            'a reveal made with Auto on never reached the TV in two-map mode, so the DM opens ' +
+            'ground the players never see: alpha ' + tvAfterAuto + ' where ' + beforeAuto +
+            ' was the shrouded reading');
 
   // ── I. the fog controls belong to the column they are aimed at ───────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const HEX_A = '#c04010';
   await dm.evaluate('selectPane("A"); 0');
   await dm.evaluate('(() => { const el = document.getElementById("fog-color");' +
@@ -509,6 +546,7 @@ module.exports = async function twoMapsFeature(rig) {
             ' against a TV at ' + tvZoom);
 
   // ── J. four things only two-map mode can get wrong ───────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ A COLUMN NEEDS THE TV'S RESOLUTION. It sizes the map's GPU texture against it, and with
   // displayInfo null it falls back to a heuristic off its own half-width box and never corrects.
   for (const [id, p] of [['A', paneA], ['B', paneB]]) {
@@ -543,6 +581,7 @@ module.exports = async function twoMapsFeature(rig) {
   await paneA.waitFor('gridCalArmed === false', 8000, 'calibration to disarm on column A');
 
   // ── K. the app says which two maps are open, and where ───────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const nameA = await dm.evaluate('allScenes.find(x => x.id === ' + JSON.stringify(sceneA) + ').name');
   const nameB = await dm.evaluate('allScenes.find(x => x.id === ' + JSON.stringify(sceneB) + ').name');
   const trigger = await dm.evaluate('document.getElementById("scene-dd-name").textContent');
@@ -562,6 +601,7 @@ module.exports = async function twoMapsFeature(rig) {
             'the library does not say which column each open map is in: ' + JSON.stringify(badges));
 
   // ── N. the new screens copy the cloud texture, and wait on fog ───────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE FINGERPRINT IS A ROW OF PIXELS, not a length. Four screens each building their own
   // sixteen frames is about six seconds of one shared thread, and every window sags for it -
   // but four complete sets and four copies count the same, so only the pixels tell them apart.
@@ -590,6 +630,7 @@ module.exports = async function twoMapsFeature(rig) {
             'the Player shell shows ' + behind + ' behind a half, so the time each half takes ' +
             'to load reads as the screen dropping out');
   // ── O. an update announces itself in the DM window, never inside a column ─
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ AN OLD VERSION GOES INTO THE COLUMN'S OWN RECORD FIRST, so an unguarded initUpdater would
   // have something to announce. Without that setup the check passes on an app with nothing to say.
   // ⚠ AND IT IS WAITED FOR. The announcement arrives a tick later, over IPC, so reading straight
@@ -608,6 +649,7 @@ module.exports = async function twoMapsFeature(rig) {
             'shows nothing, because both share one record of the version last run');
 
   // ── L. closing a column ends two-map mode, and the TV stays lit ──────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('document.querySelector(`.pane-col[data-pane="B"] .pane-close`).click(); 0');
   await dm.waitFor('!panesActive', 30000, 'closing a column to end two-map mode');
   rig.check(await dm.evaluate('document.querySelectorAll(".pane-col").length') === 0,
@@ -635,6 +677,7 @@ module.exports = async function twoMapsFeature(rig) {
                        'the map that is left to reach the TV');
 
   // ── M. and one map alone, unchanged ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   await dm.waitFor('fogCoverT === 0', 30000, 'the scene cover to lift');
   await dm.evaluate('syncSize(); fitToScreen(); viewportDirty = true; scheduleRender(); 0');
   const soloAfter = await dm.evaluate(

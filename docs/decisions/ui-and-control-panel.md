@@ -1,17 +1,15 @@
 # Decisions - UI and the control panel
 
-Split out of [DECISIONS.md](../DECISIONS.md) so the main ledger stays readable. Same
-question, same past tense: what was decided about the **DM's chrome** - the toolbar, the
-control panel and its tabs, the scene library, the minimap's furniture and the dialogs -
-and why it held.
+Split out of [DECISIONS.md](../DECISIONS.md). What was decided about the **DM's chrome** - the
+toolbar, the control panel and its tabs, the scene library, the minimap's furniture and the
+dialogs - and why it held.
 
 The Player view has no UI at all, so nothing here reaches it. The layout and
 button-identity rules that bind while editing this chrome are in the `dm-ui` skill; the
 stylesheet cascade is in [src/css/CLAUDE.md](../../src/css/CLAUDE.md); how the panels are
 wired is in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
-**Status tags** and the one-heading-one-paragraph budget are the main ledger's; read its
-header before adding an entry here.
+Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 

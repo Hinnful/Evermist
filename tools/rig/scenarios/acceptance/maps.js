@@ -6,7 +6,8 @@
 // and comes back to a library of scenes. Nothing stops to ask about one bad file, and anything
 // that did not make it is named once at the end. Every check below serves that sentence.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The picker takes a folder's worth of maps in one go, in the order they were picked, and
 //      each scene is named after its file with the extension dropped.
@@ -207,6 +208,7 @@ module.exports = async function mapsFeature(rig) {
   };
 
   // ── A. The picker takes many maps, in order ────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(await dm.evaluate('document.getElementById("file-input").multiple === true'),
             'the "+" picker no longer accepts more than one file at a time');
 
@@ -226,6 +228,7 @@ module.exports = async function mapsFeature(rig) {
             'without the extension: ' + JSON.stringify(afterPick));
 
   // ── B. And it forgets what was picked ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // Without this the DM cannot re-pick a file they just imported: the input holds the old
   // selection and no change event ever fires again.
   rig.check(picked.leftBehind === 0 && picked.value === '',
@@ -238,6 +241,7 @@ module.exports = async function mapsFeature(rig) {
             're-picking the same file imported nothing: ' + JSON.stringify(afterAgain));
 
   // ── C. Maps dropped on the window ──────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const beforeDrop = (await names()).length;
   await dm.evaluate('__rigDrop([__rigFile("Dropped One.mp4"), __rigFile("Dropped Two.mp4")])');
   const afterDrop = await waitLibrary(beforeDrop + 2, 240000);
@@ -249,6 +253,7 @@ module.exports = async function mapsFeature(rig) {
             'the drop imported out of order: ' + JSON.stringify(afterDrop));
 
   // ── D. A floor plan dropped on its own ─────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // It attaches to the scene that is open; it is never a map, so nothing imports.
   const beforePlan = (await names()).length;
   // ⚠ WAIT FOR THE SCENE, NOT JUST FOR THE LIBRARY COUNT. attachPlanText returns false on its
@@ -285,6 +290,7 @@ module.exports = async function mapsFeature(rig) {
             'the plan attached but Draw Rooms stayed disabled, so the DM cannot use it');
 
   // ── E. A drop with nothing importable in it ────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const beforeJunk = (await names()).length;
   await dm.evaluate('__rigDrop([__rigText("notes.txt", "hello", "text/plain")])');
   // Nothing to poll for: the claim is that a drop with nothing importable does NOTHING - no
@@ -298,6 +304,7 @@ module.exports = async function mapsFeature(rig) {
             'a single unimportable dropped file raised a dialog: ' + JSON.stringify(junkDlg));
 
   // ── F. A backup, alone and in a crowd ──────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const beforeZip = (await names()).length;
   await dm.evaluate('__rigPick([__rigText("Library.zip", "PK", "application/zip")])');
   await lib.settle(dm, "(() => { const a = document.getElementById('cd-anchor');" +
@@ -327,6 +334,7 @@ module.exports = async function mapsFeature(rig) {
   await dismiss();
 
   // ── G. The batch label ─────────────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   let mark = await labelCount();
   const before2 = (await names()).length;
   rig.check(await runBatch('[__rigFile("Alpha Hall.mp4"), __rigFile("Beta Vault.mp4")]', 240000),
@@ -364,6 +372,7 @@ module.exports = async function mapsFeature(rig) {
   rig.check(!(await dialogNow()).shown, 'a single clean import ended in a dialog');
 
   // ── H. One bad map costs that map, not the run ─────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   mark = await labelCount();
   const before4 = (await names()).length;
   rig.check(await runBatch('[__rigFile("Gate One.mp4"), __rigFile("Gate Two.mp4"),' +
@@ -421,6 +430,7 @@ module.exports = async function mapsFeature(rig) {
   await dismiss();
 
   // ── I. A map that will not decode lets go, and the CALLER reports it ───────
+  // RED BY DESIGN: written against the fix, never re-proved
   const before6 = (await names()).length;
   await dm.evaluate('globalThis.__rigR = null; globalThis.__rigSettled = false;' +
     ' createNewScene(__rigBrokenVideo("Torn Cavern.mp4"))' +
@@ -501,6 +511,7 @@ module.exports = async function mapsFeature(rig) {
             'listening: ' + JSON.stringify(noFile.msg));
 
   // ── J. The overlay and a dialog are never up together ──────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   const both = await dm.evaluate('(() => { clearInterval(globalThis.__rigTick);' +
     ' return globalThis.__rigBoth; })()');
   rig.check(both.length === 0,
@@ -509,6 +520,7 @@ module.exports = async function mapsFeature(rig) {
 
 
   // ── K. A still image, and a map far bigger than the window ────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ EVERY OTHER ACCEPTANCE FILE IMPORTS AN ANIMATED MAP, deliberately, because that is the
   // only kind the DM makes. A still PNG is still a map the app accepts, and nothing checked
   // that it arrives at all.
@@ -528,6 +540,10 @@ module.exports = async function mapsFeature(rig) {
   rig.check(stillIn.length === beforeStill + 1,
             'a still PNG picked through the "+" button imported nothing: ' +
             JSON.stringify(stillIn));
+  // ⚠ THE LIBRARY GROWS BEFORE THE APP SWITCHES ONTO THE NEW SCENE, and the three checks below
+  // all read currentScene. Waiting on the count alone read the PREVIOUS scene on a slow runner:
+  // the gate reported a .png arriving as a video at the old map size, which is the old map.
+  await lib.settle(dm, 'currentScene && currentScene.name === "Chapel Floor"', 60000);
   const stillScene = await dm.evaluate(`({
     name: currentScene ? currentScene.name : null,
     type: currentScene ? currentScene.mapType : null,
@@ -548,6 +564,7 @@ module.exports = async function mapsFeature(rig) {
   const bigIn = await waitLibrary(beforeStill + 2, 300000);
   rig.check(bigIn.length === beforeStill + 2,
             'a still map bigger than the window imported nothing: ' + JSON.stringify(bigIn));
+  await lib.settle(dm, 'currentScene && currentScene.name === "Great Hall"', 60000);
   const bigScene = await dm.evaluate(`({
     type: currentScene ? currentScene.mapType : null, w: mapWidth, h: mapHeight,
     zoom: +zoom.toFixed(4), cw: container.clientWidth,

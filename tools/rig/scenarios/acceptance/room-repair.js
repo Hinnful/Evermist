@@ -6,7 +6,8 @@
 // fixes them on the map in one gesture each. Two rooms the plan split wrongly become one. One
 // room covering two chambers becomes two. A notch or an alcove is one shape dragged once.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks directly beneath it, in order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
+// letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. Trim takes a notch out of a room, and the fog loses the notch with it.
 //        the outline gains corners · the notch clears · the rest of the room stays shrouded
@@ -89,6 +90,7 @@ module.exports = async function roomRepair(rig) {
             'tool rather than a broken one');
 
   // ══ A. Trim takes a notch out of a room, and the fog loses the notch with it ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const a = await dm.evaluate('__rigDrawShroud(500, 300, 800, 600)');
   await dm.evaluate(lib.SETTLE);
   const aBefore = await dm.evaluate('({ n: __rigById(' + a + ').vertices.length,' +
@@ -136,6 +138,7 @@ module.exports = async function roomRepair(rig) {
             'notch alone');
 
   // ══ B. Trim splits one room into two ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const b = await dm.evaluate('__rigDrawShroud(1000, 300, 1400, 600)');
   const bCountBefore = await dm.evaluate('polygons.length');
   const bNextId = await dm.evaluate('nextPolygonId');
@@ -159,6 +162,7 @@ module.exports = async function roomRepair(rig) {
             'the trimmed strip is still fogged, so the split is in the outline only');
 
   // ══ C. Join makes one room out of two, and takes the MOST HIDDEN mode ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ ONE ROOM IS PUT INTO REVEAL FIRST. A join that keeps the earliest contributor's mode would
   // hand the table ground that was shrouded a moment earlier, and two shroud rooms hide that.
   const c1 = await dm.evaluate('__rigDrawShroud(500, 900, 700, 1100)');
@@ -190,6 +194,7 @@ module.exports = async function roomRepair(rig) {
             'players can see through');
 
   // ══ D. Cut makes two rooms whose edges touch exactly ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const d = await dm.evaluate('__rigDrawShroud(1500, 900, 1900, 1200)');
   const dArea = await dm.evaluate('__rigArea(__rigById(' + d + ').vertices)');
   const dCountBefore = await dm.evaluate('polygons.length');
@@ -237,6 +242,7 @@ module.exports = async function roomRepair(rig) {
             'so the players see a line of clear ground across a room the DM only split');
 
   // ══ E. A refusal changes nothing, says so, and spends no undo ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const e = await dm.evaluate('__rigDrawShroud(1600, 300, 2000, 650)');
   await dm.evaluate(lib.SETTLE);
   const eSnapshot = await dm.evaluate('JSON.stringify(polygons)');
@@ -258,6 +264,7 @@ module.exports = async function roomRepair(rig) {
   rig.check(await dm.evaluate('__rigDialog().up') === false, 'the refusal dialog would not close');
 
   // ══ F. A shape drawn over nothing does nothing ══
+  // RED BY DESIGN: written against the fix, never re-proved
   const fCount = await dm.evaluate('polygons.length');
   const fUndo  = await dm.evaluate('undoStack.length');
   await dm.evaluate('__rigOpRect("join", 300, 1250, 420, 1350)');   // bare map
@@ -270,6 +277,7 @@ module.exports = async function roomRepair(rig) {
             'the room under test was reshaped by a drag that landed nowhere near it');
 
   // ══ G. Effects carries all three repairs, and leaves the Brush and the Door off ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // ABSENT, not greyed: a dead control in prime position on a bar it can do nothing on is what
   // this replaced. The repairs read placeMode, so they act on whichever list is up.
   const onBar = ids => '(() => ({' + ids.map(id =>
@@ -297,6 +305,7 @@ module.exports = async function roomRepair(rig) {
             'a tool went missing from the bar in Rooms mode: ' + JSON.stringify(gRooms));
 
   // ══ H. Every one of those reaches the TV ══
+  // RED BY DESIGN: written against the fix, never re-proved
   rig.check(await dm.evaluate('autoSync === true'),
             'auto-sync is off, so no repair could reach the Player and the checks below would ' +
             'be reading the TV\'s own starting state');
@@ -353,6 +362,7 @@ module.exports = async function roomRepair(rig) {
             'the cut room lost its own id');
 
   // ══ I. A repair stays armed after its shape, and the lit button is the way out ══
+  // RED BY DESIGN: written against the fix, never re-proved
   // Repairs come in runs, so re-arming between each room costs more than a stale mode does. The
   // button stays lit for as long as the mode is live, which is the only signal there is.
   // ⚠ ON EMPTY MAP, with a margin on every neighbour. Client coordinates are integers, so a
