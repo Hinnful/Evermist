@@ -26,8 +26,6 @@
 //      old place is the failure this feature exists to prevent.
 //   I. What must NOT reach the TV still does not: a room's name and notes are the DM's alone.
 //
-// ⚠ ROOMS DO NOT CROSS TO THE PLAYER (CLAUDE.md). What crosses is the fog they paint, so every
-// TV check here reads fog over ground, never a room.
 //
 // ⚠ THE MAP STARTS FULLY FOGGED. Every room edited here is a SHROUD room drawn inside a
 // revealed clearing, so moving it has somewhere to move away from — on untouched map a shroud
@@ -36,75 +34,19 @@
 // ⚠ CLIENT COORDINATES ARE INTEGERS. MouseEvent.clientX/Y truncate, so a map coordinate makes
 // the round trip with up to 1/zoom of error. Geometric checks here carry a tolerance derived
 // from the live zoom; a run failing by half a unit is telling you about the tolerance.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
+
+const lib = require('../../lib');
 
 const MAP_W = 2400, MAP_H = 1500;
 const CLEAR = { x: 1200, y: 700, r: 900 };     // the clearing everything is edited inside
 
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my, onWindow) => {
-  const r = container.getBoundingClientRect();
-  const ev = new MouseEvent(type, {
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  });
-  (onWindow ? window : container).dispatchEvent(ev);
-};
-globalThis.__rigDrag = (x1, y1, x2, y2, releaseOnWindow) => {
-  __rigMouse('mousedown', x1, y1);
-  __rigMouse('mousemove', (x1+x2)/2, (y1+y2)/2);
-  __rigMouse('mousemove', x2, y2);
-  __rigMouse('mouseup', x2, y2, releaseOnWindow);
-};
-globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
-// Edit mode is entered by a real double-click, not by setting the flag: the whole point of the
-// check is that the gesture reaches it.
-globalThis.__rigDbl = (mx, my) => {
-  __rigClick(mx, my);
-  __rigMouse('dblclick', mx, my);
-};
-// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
-// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
-// at the table. A NAMED key carries both, because code and key are the same string for it and
-// the fields still read e.key - dropping it would fail a handler that is correct.
-globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
-  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
-                  bubbles: true, cancelable: true }, mods || {})));
-globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
-globalThis.__rigById = (id) => polygons.find(p => p.id === id);
-// A room drawn as a rectangle, returned by id. Drawing leaves nothing selected on purpose,
-// so the id has to come from the list rather than from the selection.
-globalThis.__rigDrawShroud = (x1, y1, x2, y2) => {
-  setShape('rect');
-  document.getElementById('btn-shroud').click();
-  __rigDrag(x1, y1, x2, y2);
-  setShape('select');
-  return polygons[polygons.length - 1].id;
-};
-0`;
 
-const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
-// Settles the DM's fog and pushes it, so a TV reading is of the edit and not of the frame
-// before it. rebuildFogFromPolygons is the app's own rebuild; sendToPlayer its own delivery.
-const SETTLE = 'rebuildFogFromPolygons(); rebuildFogEffect(); fogDirty = true;' +
-               ' scheduleRender(); sendToPlayer(); 0';
 
 module.exports = async function editing(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
-  await dm.evaluate(HELPERS);
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   await dm.evaluate('revealCircle(' + CLEAR.x + ',' + CLEAR.y + ',' + CLEAR.r + ');' +
                     'rebuildFogEffect(); fogDirty = true; scheduleRender(); 0');
   await dm.waitFor('fogCoverT === 0 && fogTransRafId === null', 30000, 'the clearing to open');
@@ -251,7 +193,7 @@ module.exports = async function editing(rig) {
   // nearly every stroke. A release the map never hears has to commit all the same.
   await dm.evaluate('__rigClick(1150, 850); 0');
   const beforeOff = await dm.evaluate('__rigById(' + a2 + ').vertices[0].x');
-  await dm.evaluate('__rigDrag(1150, 850, 1250, 900, true); 0');   // released on window
+  await dm.evaluate('__rigDrag(1150, 850, 1250, 900, { onWindow: true }); 0');   // released on window
   const afterOff = await dm.evaluate('__rigById(' + a2 + ').vertices[0].x');
   rig.check(Math.abs((afterOff - beforeOff) - 100) < tol,
             'a drag released off the map was abandoned instead of committed — the room snapped ' +
@@ -317,13 +259,13 @@ module.exports = async function editing(rig) {
   rig.check(await dm.evaluate('selectedPolygonId') === rounded,
             'the room to round was not selected, so its card is closed and the radius field is ' +
             'not on screen');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const inCorner = { x: RC.x1 + 14, y: RC.y1 + 14 };
   const cornerBefore = await dm.evaluate('__rigFog(' + inCorner.x + ',' + inCorner.y + ')');
   await dm.evaluate('(() => { const n = document.getElementById("rp-radius-num");' +
                     ' n.value = 110; n.dispatchEvent(new Event("input", { bubbles: true }));' +
                     ' return 0; })()');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const cornerAfter = await dm.evaluate('__rigFog(' + inCorner.x + ',' + inCorner.y + ')');
   rig.note('fog in the corner — sharp ' + cornerBefore + ', rounded ' + cornerAfter);
   rig.check(cornerBefore > 200,
@@ -335,10 +277,10 @@ module.exports = async function editing(rig) {
 
   // ══ G. Deleting removes the room and its fog together ══
   const doomed = await dm.evaluate('__rigDrawShroud(700, 900, 950, 1100)');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigFog(820, 1000)') > 200, 'the room to delete painted no fog');
   await dm.evaluate('__rigClick(820, 1000); __rigKey("Delete"); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('!__rigById(' + doomed + ')'), 'Delete did not remove the room');
   rig.check(await dm.evaluate('__rigFog(820, 1000)') < 60,
             'the deleted room left its fog behind, so the players still cannot see ground the ' +
@@ -355,20 +297,20 @@ module.exports = async function editing(rig) {
   // One room, in a clean patch of the clearing, moved after the Player is watching.
   const tracked = await dm.evaluate('__rigDrawShroud(1700, 400, 1950, 650)');
   const WAS = { x: 1820, y: 520 }, WENT = { x: 2120, y: 520 };
-  await dm.evaluate(SETTLE);
-  try { await player.waitFor(TV_FOG + '(' + WAS.x + ',' + WAS.y + ') > 200', 30000,
+  await dm.evaluate(lib.SETTLE);
+  try { await player.waitFor(lib.TV_FOG + '(' + WAS.x + ',' + WAS.y + ') > 200', 30000,
                              'the new room to reach the Player'); } catch (_) {}
-  rig.check(await player.evaluate(TV_FOG + '(' + WAS.x + ',' + WAS.y + ')') > 200,
+  rig.check(await player.evaluate(lib.TV_FOG + '(' + WAS.x + ',' + WAS.y + ')') > 200,
             'a room drawn while the Player was open never reached the TV');
 
   await dm.evaluate('__rigClick(' + WAS.x + ',' + WAS.y + '); 0');
   await dm.evaluate('__rigDrag(' + WAS.x + ',' + WAS.y + ',' + WENT.x + ',' + WENT.y + '); 0');
-  await dm.evaluate(SETTLE);
-  try { await player.waitFor(TV_FOG + '(' + WENT.x + ',' + WENT.y + ') > 200', 30000,
+  await dm.evaluate(lib.SETTLE);
+  try { await player.waitFor(lib.TV_FOG + '(' + WENT.x + ',' + WENT.y + ') > 200', 30000,
                              'the moved room to reach the Player'); } catch (_) {}
   const moved = await player.evaluate(
-    '({ was: ' + TV_FOG + '(' + WAS.x + ',' + WAS.y + '),' +
-    '   now: ' + TV_FOG + '(' + WENT.x + ',' + WENT.y + ') })');
+    '({ was: ' + lib.TV_FOG + '(' + WAS.x + ',' + WAS.y + '),' +
+    '   now: ' + lib.TV_FOG + '(' + WENT.x + ',' + WENT.y + ') })');
   rig.note('TV after the move — where it was ' + moved.was + ', where it went ' + moved.now);
   rig.check(moved.now > 200, 'moving a room did not carry its fog to the new ground on the TV');
   rig.check(moved.was < 60,
@@ -380,15 +322,15 @@ module.exports = async function editing(rig) {
   await dm.evaluate('__rigKey("KeyT"); 0');   // half → reveal
   rig.check(await dm.evaluate('__rigById(' + tracked + ').mode') === 'reveal',
             'the room under test is not in Reveal mode, so the TV check below means nothing');
-  await dm.evaluate(SETTLE);
-  try { await player.waitFor(TV_FOG + '(' + WENT.x + ',' + WENT.y + ') < 60', 30000,
+  await dm.evaluate(lib.SETTLE);
+  try { await player.waitFor(lib.TV_FOG + '(' + WENT.x + ',' + WENT.y + ') < 60', 30000,
                              'the mode change to reach the Player'); } catch (_) {}
-  rig.check(await player.evaluate(TV_FOG + '(' + WENT.x + ',' + WENT.y + ')') < 60,
+  rig.check(await player.evaluate(lib.TV_FOG + '(' + WENT.x + ',' + WENT.y + ')') < 60,
             'changing a room from Shroud to Reveal did not clear that ground on the TV');
 
   // Deleting reaches it as well.
   await dm.evaluate('__rigClick(' + WENT.x + ',' + WENT.y + '); __rigKey("Delete"); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('!__rigById(' + tracked + ')'), 'the tracked room was not deleted');
 
   // ══ I. What must NOT reach the TV still does not ══
@@ -400,8 +342,11 @@ module.exports = async function editing(rig) {
                     '   el.value = v; el.dispatchEvent(new FocusEvent("blur")); };' +
                     ' set("rp-name", "Hidden Stair"); set("rp-desc", "The trap is armed");' +
                     ' return 0; })()');
-  await dm.evaluate(SETTLE);
-  await rig.sleep(600);
+  await dm.evaluate(lib.SETTLE);
+  // Nothing to poll for: the claim is that a name and a note do NOT arrive. The wait has to be
+  // long enough for a push that carried them to have landed, and then the reading is the proof.
+  await lib.hold(600, 'the leak check below is about what did NOT arrive, so the push needs ' +
+    'time to have arrived for the reading to mean anything');
   const leak = await player.evaluate(`(() => {
     const n = (typeof polygons !== 'undefined' && polygons) ? polygons.length : 0;
     const body = document.body.innerText || '';

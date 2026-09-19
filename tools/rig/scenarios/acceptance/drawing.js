@@ -45,42 +45,15 @@
 // ⚠ THE MAP STARTS FULLY FOGGED, so a shroud shape over untouched ground changes nothing and
 // its check passes without the app doing anything. Ground is revealed first wherever a shroud
 // or half shape is about to be measured.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
+
+const lib = require('../../lib');
 
 const MAP_W = 2400, MAP_H = 1500;
 
 // A wide clearing across the top of the map. Every shroud and half check is drawn inside it.
 const CLEAR = { x: 1200, y: 400, r: 620 };
 
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my, onWindow) => {
-  const r = container.getBoundingClientRect();
-  const ev = new MouseEvent(type, {
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  });
-  (onWindow ? window : container).dispatchEvent(ev);
-};
-globalThis.__rigDrag = (x1, y1, x2, y2) => {
-  __rigMouse('mousedown', x1, y1); __rigMouse('mousemove', (x1+x2)/2, (y1+y2)/2);
-  __rigMouse('mousemove', x2, y2); __rigMouse('mouseup', x2, y2);
-};
-// A polygon is built from CLICKS, not a drag: each mousedown places one vertex.
-globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
-// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
-// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
-// at the table. A NAMED key carries both, because code and key are the same string for it and
-// the fields still read e.key - dropping it would fail a handler that is correct.
-globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
-  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
-                  bubbles: true, cancelable: true }, mods || {})));
-// Alpha of the DM's own fog data over one map point. 255 hidden, 0 clear.
-globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
+const OWN_HELPERS = `
 globalThis.__rigLast = () => polygons[polygons.length - 1];
 // A cone's own measurements, read off the COMMITTED VERTICES rather than off the drag: the press
 // and release land on whole screen pixels, so the map-space length is never exactly what was
@@ -119,19 +92,12 @@ globalThis.__rigCone = (v) => {
 };
 0`;
 
-// The same reading on the Player. Its fogDataCanvas is the map it was sent.
-const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
 module.exports = async function drawing(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
-  await dm.evaluate(HELPERS);
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
+  await dm.evaluate(OWN_HELPERS);
 
   // ══ A. Every tool the mode offers is reachable, and a key for one it does not is inert ══
   // The four shapes stand behind one button and are reached through its flyout, so `where`
@@ -493,13 +459,13 @@ module.exports = async function drawing(rig) {
   await dm.evaluate('sendToPlayer(); 0');
 
   try {
-    await player.waitFor(TV_FOG + '(' + SHROUD.x + ',' + SHROUD.y + ') > 200', 30000,
+    await player.waitFor(lib.TV_FOG + '(' + SHROUD.x + ',' + SHROUD.y + ') > 200', 30000,
                          'the drawn shapes to reach the Player');
   } catch (_) {}
   const tv = await player.evaluate(
-    '({ reveal: ' + TV_FOG + '(' + REVEAL.x + ',' + REVEAL.y + '),' +
-    '   shroud: ' + TV_FOG + '(' + SHROUD.x + ',' + SHROUD.y + '),' +
-    '   half:   ' + TV_FOG + '(' + HALF.x + ',' + HALF.y + '),' +
+    '({ reveal: ' + lib.TV_FOG + '(' + REVEAL.x + ',' + REVEAL.y + '),' +
+    '   shroud: ' + lib.TV_FOG + '(' + SHROUD.x + ',' + SHROUD.y + '),' +
+    '   half:   ' + lib.TV_FOG + '(' + HALF.x + ',' + HALF.y + '),' +
     '   rooms:  (typeof polygons !== "undefined" && polygons) ? polygons.length : 0 })');
   rig.note('TV fog by mode — reveal ' + tv.reveal + ', half ' + tv.half + ', shroud ' + tv.shroud);
   rig.check(tv.reveal < 40,

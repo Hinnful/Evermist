@@ -15,7 +15,10 @@ const root = path.join(__dirname, '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const patterns = (pkg.build && pkg.build.files) || [];
 
-const HTML_ENTRIES = ['index.html', 'splash.html'];
+// ⚠ EVERY PAGE THE APP LOADS, not just the one the DM opens. stage.html is the two-map shell and
+// it pulls its own stylesheets; a page left out of this list is a page whose assets nothing
+// checks, and a missing stylesheet renders unstyled in the .exe rather than erroring.
+const HTML_ENTRIES = ['index.html', 'splash.html', 'stage.html'];
 
 const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 

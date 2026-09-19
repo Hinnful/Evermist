@@ -42,20 +42,15 @@
 // ⚠ NEVER PASS AN ASYNC EXPRESSION TO waitFor. It wraps what it is given in `!!(…)`, so a promise
 // is truthy on the first poll and the wait returns instantly. Anything reading IndexedDB is
 // polled from Node here instead.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
+const lib = require('../../lib');
 const MAP_W = 1400, MAP_H = 900;
 const SCALE = MAP_W / 1000;     // the two-room plan's own export was 1000px across
 
 module.exports = async function floorPlanFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
+  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
   await rig.fixtures.asFileExpr(dm, map);   // leaves __rigB64 in the page
 
   await dm.evaluate(`(() => {
@@ -150,18 +145,21 @@ module.exports = async function floorPlanFeature(rig) {
   // Polled, because the store is written from a toBlob callback. Bounded, and it answers with
   // whatever it last saw rather than throwing, so a miss becomes a named failure below.
   const storedSize = async (id, want) => {
-    const deadline = Date.now() + 9000;
-    for (;;) {
-      const seen = await dm.evaluate('(async () => { const sc = await sceneStore.loadScene(' +
-        JSON.stringify(id) + '); return sc && sc.gridConfig ? sc.gridConfig.cellSize : null; })()');
-      if (seen === want || Date.now() > deadline) return seen;
-      await rig.sleep(200);
-    }
+    const read = () => dm.evaluate('(async () => { const sc = await sceneStore.loadScene(' +
+      JSON.stringify(id) + '); return sc && sc.gridConfig ? sc.gridConfig.cellSize : null; })()');
+    let last;
+    const got = await lib.poll(async () => {
+      last = await read();
+      return last === want ? { v: last } : null;
+    }, 9000, 200);
+    return got ? got.v : last;
   };
 
   const drawRooms = async () => {
     await dm.evaluate('document.getElementById("btn-floorplan").click(); 0');
-    await rig.sleep(400);
+    // Draw Rooms either asks before replacing what is there, or draws straight away. Waiting for
+    // whichever it did beats guessing how long both take.
+    await lib.settle(dm, "(() => { const a = document.getElementById('cd-anchor'); return !!a && a.style.display === 'flex'; })() || polygons.length > 0", 15000);
   };
 
   // ── A. The grid comes from the plan ────────────────────────────────────────
@@ -304,7 +302,7 @@ module.exports = async function floorPlanFeature(rig) {
   // Rooms exist, so this is the replacement question — section H is what asserts it appears.
   await dm.evaluate('(() => { const b = document.getElementById("cd-ok");' +
     ' if (b) b.click(); return 0; })()');
-  await rig.sleep(400);
+  await lib.settle(dm, 'polygons.length > 1 && !viewportDirty', 15000);
   const again = await state();
   rig.check(again.rooms === 2,
             'replacing one room with the plan did not draw its two: ' + again.rooms);
@@ -314,7 +312,7 @@ module.exports = async function floorPlanFeature(rig) {
   rig.check(again.undoDepth === beforeUndo + 1,
             'Draw Rooms did not push exactly one undo step: ' + beforeUndo + ' → ' + again.undoDepth);
   await dm.evaluate('undo(); 0');
-  await rig.sleep(400);
+  await lib.settle(dm, 'polygons.length === 1', 10000);
   rig.check((await state()).rooms === 1,
             'undo after Draw Rooms did not put the one previous room back: ' +
             (await state()).rooms);
@@ -328,7 +326,7 @@ module.exports = async function floorPlanFeature(rig) {
             JSON.stringify(asked));
   await dm.evaluate('(() => { const b = document.getElementById("cd-cancel");' +
     ' if (b) b.click(); return 0; })()');
-  await rig.sleep(400);
+  await lib.settle(dm, "!((() => { const a = document.getElementById('cd-anchor'); return !!a && a.style.display === 'flex'; })())", 10000);
   rig.check((await state()).rooms === 1,
             'keeping the existing room deleted it anyway: ' + (await state()).rooms);
 
@@ -362,7 +360,7 @@ module.exports = async function floorPlanFeature(rig) {
   rig.check(!(await state()).notice,
             'a doorless plan raised the offer, so the DM is told rooms were found that were not');
   await dm.evaluate('drawStoredFloorPlan(); 0');
-  await rig.sleep(300);
+  await lib.settle(dm, '!viewportDirty', 10000);
   rig.check((await state()).rooms === 2,
             'a doorless plan wiped the rooms that were already drawn: ' + (await state()).rooms);
 
@@ -403,7 +401,7 @@ module.exports = async function floorPlanFeature(rig) {
   await drawRooms();
   await dm.evaluate('(() => { const b = document.getElementById("cd-ok");' +
     ' if (b) b.click(); return 0; })()');
-  await rig.sleep(400);
+  await lib.settle(dm, "!((() => { const a = document.getElementById('cd-anchor'); return !!a && a.style.display === 'flex'; })()) && !viewportDirty", 15000);
   const twice = await doorPts();
   rig.check(twice.length === 1,
             'Draw Rooms pressed twice stacked doors on the same cell: ' + JSON.stringify(twice));

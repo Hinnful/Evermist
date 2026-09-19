@@ -16,6 +16,7 @@
 // payload doExport builds and hands it to the real createBackupZip; the RESTORE side runs the
 // app's own restoreFromZipPath untouched. Export changes still need the DM's own hand test.
 
+const lib = require('../lib');
 const fs = require('fs');
 const path = require('path');
 
@@ -286,14 +287,13 @@ module.exports = async function smoke(rig) {
   // here stops work on a working app. A picture that changes ONCE inside the window is proof; only
   // one that never changes is a failure.
   const first = await stageSum();
-  let moved = null, samples = 1;
-  const deadline = Date.now() + 6000;
-  while (Date.now() < deadline) {
-    await rig.sleep(250);
+  let samples = 1;
+  const changed = await lib.poll(async () => {
     samples++;
     const now = await stageSum();
-    if (now !== first) { moved = now; break; }
-  }
+    return now !== first ? { now } : null;
+  }, 6000, 250);
+  const moved = changed ? changed.now : null;
   rig.note('the Player map picture: ' + first + ' then ' + (moved == null ? 'unchanged' : moved) +
            ' over ' + samples + ' samples');
   rig.check(first > 0,

@@ -266,18 +266,18 @@ ipcMain.handle('mem-metrics', () => {
 });
 
 app.whenReady().then(() => {
-  const userData = app.getPath('userData');
-  mapsDir = path.join(userData, 'maps');
-  const musicDir = path.join(userData, 'music');
-  const logsDir  = path.join(userData, 'logs');
-  for (const dir of [mapsDir, musicDir, logsDir]) fs.mkdirSync(dir, { recursive: true });
-
-  // ⚠ AFTER THE FOLDERS EXIST AND BEFORE ANY WINDOW OPENS. A handler registered on require
-  // reads its path from here, so one that fires before this line has nowhere to write.
-  const ctx = { mapsDir, musicDir, logsDir, sendTo, isSafeId, getDmWin: () => dmWin };
-  for (const mod of IPC) mod.register(ctx);
-
-  ipcDiagLog._rotateDiagLogs();
+  const userData = app.getPath('userData');
+  mapsDir = path.join(userData, 'maps');
+  const musicDir = path.join(userData, 'music');
+  const logsDir  = path.join(userData, 'logs');
+  for (const dir of [mapsDir, musicDir, logsDir]) fs.mkdirSync(dir, { recursive: true });
+
+  // ⚠ AFTER THE FOLDERS EXIST AND BEFORE ANY WINDOW OPENS. A handler registered on require
+  // reads its path from here, so one that fires before this line has nowhere to write.
+  const ctx = { mapsDir, musicDir, logsDir, sendTo, isSafeId, getDmWin: () => dmWin };
+  for (const mod of IPC) mod.register(ctx);
+
+  ipcDiagLog._rotateDiagLogs();
   ipcMusic.ensureYtdlp();
 
   // Re-push display info when the user moves/resizes the Player window or the

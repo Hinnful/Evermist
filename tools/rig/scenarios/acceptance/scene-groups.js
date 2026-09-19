@@ -43,6 +43,7 @@
 // ⚠ NEVER PASS AN ASYNC EXPRESSION TO waitFor — it wraps what it is given in `!!(…)`, so a
 // promise is truthy on the first poll. Anything reading IndexedDB is polled from Node here.
 
+const lib = require('../../lib');
 const MAP_W = 900, MAP_H = 600;
 
 module.exports = async function sceneGroupsFeature(rig) {
@@ -63,12 +64,12 @@ module.exports = async function sceneGroupsFeature(rig) {
     JSON.stringify(id) + '); return sc ? (sc.group === undefined ? "<absent>" : sc.group) : null; })()', 30000);
 
   const poll = async (read, ok, ms) => {
-    const deadline = Date.now() + ms;
-    for (;;) {
-      const v = await read();
-      if (ok(v) || Date.now() > deadline) return v;
-      await rig.sleep(150);
-    }
+    // The last value the poll saw. A fresh read after the bound can throw on a window that has
+    // gone, which abandons the file instead of failing the check.
+    let last;
+    const got = await lib.poll(async () => { last = await read(); return ok(last) ? { v: last } : null; },
+                               ms, 150);
+    return got ? got.v : last;
   };
 
   const sections = () => dm.evaluate(`(() => {

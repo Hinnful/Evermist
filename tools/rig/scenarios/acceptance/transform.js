@@ -27,8 +27,6 @@
 //   K. IT REACHES THE TV. A room the DM resized that the players still see at its old size is
 //      the failure this feature exists to prevent.
 //
-// ⚠ ROOMS DO NOT CROSS TO THE PLAYER (CLAUDE.md). What crosses is the fog they paint, so the TV
-// check here reads fog over ground, never a room.
 //
 // ⚠ THE MAP STARTS FULLY FOGGED, so every room here is a SHROUD room inside a revealed clearing.
 // On untouched map a shroud room changes nothing and every fog check passes for free.
@@ -46,85 +44,18 @@
 // drops the selection, so the turn reads as zero degrees instead of as a miss.
 const TURN_OFFSET_PX = 13;   // hypot(13,13) = 18.4, clear of both ends of the ring
 
+const lib = require('../../lib');
+
 const MAP_W = 2400, MAP_H = 1500;
 const CLEAR = { x: 1200, y: 750, r: 1000 };
 
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my, mods) => {
-  const r = container.getBoundingClientRect();
-  const ev = new MouseEvent(type, Object.assign({
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  }, mods || {}));
-  container.dispatchEvent(ev);
-};
-globalThis.__rigDrag = (x1, y1, x2, y2, mods, steps) => {
-  const n = steps || 8;
-  __rigMouse('mousedown', x1, y1, mods);
-  for (let k = 1; k <= n; k++) {
-    __rigMouse('mousemove', x1 + (x2 - x1) * k / n, y1 + (y2 - y1) * k / n, mods);
-  }
-  __rigMouse('mouseup', x2, y2, mods);
-};
-globalThis.__rigClick = (mx, my, mods) => {
-  __rigMouse('mousedown', mx, my, mods); __rigMouse('mouseup', mx, my, mods);
-};
-globalThis.__rigDbl = (mx, my) => { __rigClick(mx, my); __rigMouse('dblclick', mx, my); };
-globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
-  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
-                  bubbles: true, cancelable: true }, mods || {})));
-globalThis.__rigById = (id) => polygons.find(p => p.id === id);
-globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
-globalThis.__rigDrawShroud = (x1, y1, x2, y2) => {
-  setShapeOp('new');
-  setShape('rect');
-  document.getElementById('btn-shroud').click();
-  __rigDrag(x1, y1, x2, y2);
-  setShape('select');
-  return polygons[polygons.length - 1].id;
-};
-globalThis.__rigOpRect = (op, x1, y1, x2, y2) => {
-  setShapeOp(op); setShape('rect'); __rigDrag(x1, y1, x2, y2);
-  setShapeOp('new'); setShape('select'); return 0;
-};
+const OWN_HELPERS = `
 // The box as the app itself computes it, and the handle it would place at a named side.
 globalThis.__rigBox = (id) => shapeBoxOf(__rigById(id));
 globalThis.__rigHandle = (id, name) => boxSidePoint(shapeBoxOf(__rigById(id)), name);
-// Signed area: it says both how big a ring is and which way round it goes, and a mirrored ring is
-// the one thing a resize may never produce.
-globalThis.__rigArea2 = (ring) => {
-  let a = 0;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    a += ring[j].x * ring[i].y - ring[i].x * ring[j].y;
-  }
-  return a;
-};
-globalThis.__rigRingBox = (ring) => ({
-  x0: Math.min(...ring.map(v => v.x)), x1: Math.max(...ring.map(v => v.x)),
-  y0: Math.min(...ring.map(v => v.y)), y1: Math.max(...ring.map(v => v.y)),
-});
-globalThis.__rigShape = (id) => {
-  const p = __rigById(id);
-  if (!p) return null;
-  return {
-    verts: p.vertices.map(v => ({ x: v.x, y: v.y })),
-    box: __rigRingBox(p.vertices),
-    area2: __rigArea2(p.vertices),
-    holes: (p.holes || []).length,
-    holeArea2: (p.holes || []).map(h => __rigArea2(h)),
-    holeBox: (p.holes || []).map(h => __rigRingBox(h)),
-    doors: (p.doors || []).map(d => ({ edge: d.edge, t: d.t, pt: doorPoint(p.vertices, d) })),
-    handles: p.handles ? p.handles.map(h => h && { ix: h.ix, iy: h.iy, ox: h.ox, oy: h.oy }) : null,
-  };
-};
 0`;
 
-const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
-const SETTLE = 'rebuildFogFromPolygons(); rebuildFogEffect(); fogDirty = true;' +
-               ' scheduleRender(); sendToPlayer(); 0';
 
 // The angle of a ring's first wall, which is what a turn has to move.
 const edgeAngle = s => Math.atan2(s.verts[1].y - s.verts[0].y, s.verts[1].x - s.verts[0].x);
@@ -133,11 +64,8 @@ const deg = r => r * 180 / Math.PI;
 module.exports = async function transform(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
-  await dm.evaluate(HELPERS);
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
+  await dm.evaluate(OWN_HELPERS);
   await dm.evaluate('revealCircle(' + CLEAR.x + ',' + CLEAR.y + ',' + CLEAR.r + ');' +
                     'rebuildFogEffect(); fogDirty = true; scheduleRender(); 0');
   await dm.waitFor('fogCoverT === 0 && fogTransRafId === null', 30000, 'the clearing to open');
@@ -161,7 +89,7 @@ module.exports = async function transform(rig) {
 
   // The bulge of a bent wall is INSIDE the box. A box off the anchors cuts through it.
   await dm.evaluate('__rigDbl(800, 550); 0');
-  await dm.evaluate('__rigDrag(800, 400, 800, 280, { ctrlKey: true }); 0');
+  await dm.evaluate('__rigDrag(800, 400, 800, 280, { mods: { ctrlKey: true } }); 0');
   await dm.evaluate('__rigKey("Escape"); __rigKey("Escape"); __rigClick(800, 600); 0');
   const bent = await dm.evaluate('__rigShape(' + aRoom + ')');
   const boxBent = await dm.evaluate('__rigBox(' + aRoom + ')');
@@ -199,7 +127,7 @@ module.exports = async function transform(rig) {
   const seC = await dm.evaluate('__rigHandle(' + bRoom + ', "se")');
   // Asked for 1.5x across and 1.1x down. Shift takes the larger and applies it to both.
   await dm.evaluate('__rigDrag(' + seC.x + ',' + seC.y + ',' + (boxC.minX + wC * 1.5) + ',' +
-                    (boxC.minY + hC * 1.1) + ', { shiftKey: true }); 0');
+                    (boxC.minY + hC * 1.1) + ', { mods: { shiftKey: true } }); 0');
   const afterC = await dm.evaluate('__rigBox(' + bRoom + ')');
   const rx = (afterC.maxX - afterC.minX) / wC, ry = (afterC.maxY - afterC.minY) / hC;
   rig.note('Shift-resize asked for 1.50x by 1.10x and gave ' + rx.toFixed(2) + 'x by ' +
@@ -303,7 +231,7 @@ module.exports = async function transform(rig) {
   const aF = Math.atan2(outF.y - cF.y, outF.x - cF.x) + 22 * Math.PI / 180;  // 22 asked, 15 due
   await dm.evaluate('__rigDrag(' + outF.x + ',' + outF.y + ',' +
                     (cF.x + rF * Math.cos(aF)) + ',' + (cF.y + rF * Math.sin(aF)) +
-                    ', { shiftKey: true }); 0');
+                    ', { mods: { shiftKey: true } }); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === eRoom,
             'the Shift-held press let go of the room, so it missed the turn ring and the angle ' +
             'below is measuring a room nobody touched');
@@ -319,7 +247,7 @@ module.exports = async function transform(rig) {
   const gRoom = await dm.evaluate('__rigDrawShroud(500, 1000, 900, 1300)');
   await dm.evaluate('setShape("door"); __rigClick(700, 1000); setShape("select"); 0');
   await dm.evaluate('__rigDbl(700, 1150); 0');
-  await dm.evaluate('__rigDrag(500, 1150, 380, 1150, { ctrlKey: true }); 0');   // bend the left wall
+  await dm.evaluate('__rigDrag(500, 1150, 380, 1150, { mods: { ctrlKey: true } }); 0');   // bend the left wall
   await dm.evaluate('__rigKey("Escape"); __rigKey("Escape"); __rigClick(700, 1150); 0');
   const beforeG = await dm.evaluate('__rigShape(' + gRoom + ')');
   rig.check(beforeG.doors.length === 1,
@@ -378,7 +306,7 @@ module.exports = async function transform(rig) {
             'DM reshapes the room by pressing on a dot the app draws nowhere');
 
   const seH = await dm.evaluate('__rigHandle(' + keep + ', "se")');
-  await dm.evaluate('__rigDrag(' + seH.x + ',' + seH.y + ', 3000, 2000, null, 24); 0');
+  await dm.evaluate('__rigDrag(' + seH.x + ',' + seH.y + ', 3000, 2000, { steps: 24 }); 0');
   const afterH = await dm.evaluate('__rigShape(' + keep + ')');
   rig.check(afterH.holes === 1, 'resizing the courtyard lost it entirely');
   rig.check(Math.sign(afterH.holeArea2[0]) === Math.sign(hBefore.holeArea2[0]),
@@ -445,7 +373,7 @@ module.exports = async function transform(rig) {
             'one resize spent ' + spentJ + ' undo steps, so taking it back needs that many ' +
             'presses of Ctrl+Z');
   await dm.evaluate('undo(); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const undoneJ = await dm.evaluate('__rigShape(' + eRoom + ')');
   rig.check(undoneJ.verts.every((v, i) => Math.abs(v.x - beforeJ.verts[i].x) < 0.01 &&
                                           Math.abs(v.y - beforeJ.verts[i].y) < 0.01),
@@ -468,11 +396,11 @@ module.exports = async function transform(rig) {
   // A small room in a clean patch of the clearing, and a probe on open ground beside it.
   const kRoom = await dm.evaluate('__rigDrawShroud(1000, 600, 1200, 780)');
   const PROBE = { x: 1300, y: 700 };
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigFog(' + PROBE.x + ',' + PROBE.y + ')') < 60,
             'the ground the resize has to swallow is already hidden on the DM, so growing a ' +
             'shroud room over it would prove nothing');
-  try { await player.waitFor(TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ') < 60', 30000,
+  try { await player.waitFor(lib.TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ') < 60', 30000,
                              'the Player to show that ground open'); } catch (_) {}
 
   await dm.evaluate('__rigClick(1100, 690); 0');
@@ -480,12 +408,12 @@ module.exports = async function transform(rig) {
   const seK = await dm.evaluate('__rigHandle(' + kRoom + ', "se")');
   await dm.evaluate('__rigDrag(' + seK.x + ',' + seK.y + ',' + (PROBE.x + 120) + ',' +
                     (boxK.maxY + 120) + '); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigFog(' + PROBE.x + ',' + PROBE.y + ')') > 200,
             'the DM\'s own fog did not follow the resize, so nothing could reach the TV');
-  try { await player.waitFor(TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ') > 200', 30000,
+  try { await player.waitFor(lib.TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ') > 200', 30000,
                              'the resized room to reach the Player'); } catch (_) {}
-  const tv = await player.evaluate(TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ')');
+  const tv = await player.evaluate(lib.TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ')');
   rig.note('the ground the resize swallowed reads alpha ' + tv + ' on the TV');
   rig.check(tv > 200,
             'the players still see open ground where the DM grew a shroud room over it, so the ' +

@@ -36,40 +36,16 @@
 // ⚠ ONLY ONE MATERIAL EXISTS TODAY. The fire ramp is hardcoded, so a second material would
 // paint orange whatever its button claimed, and the picker holds one entry on purpose. The
 // checks below are written against that; a second material makes C and the picker worth more.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
 const path = require('path');
+
+const lib = require('../../lib');
 
 const MAP_W = 2400, MAP_H = 1400;
 const CLEAR = { x: 800, y: 500, r: 420 };        // revealed: effects here are visible
 const DARK  = { x: 1900, y: 900 };               // never revealed: effects here must stay hidden
 
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my) => {
-  const r = container.getBoundingClientRect();
-  container.dispatchEvent(new MouseEvent(type, {
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  }));
-};
-globalThis.__rigDrag = (x1, y1, x2, y2) => {
-  __rigMouse('mousedown', x1, y1); __rigMouse('mousemove', (x1+x2)/2, (y1+y2)/2);
-  __rigMouse('mousemove', x2, y2); __rigMouse('mouseup', x2, y2);
-};
-globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
-// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
-// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
-// at the table. A NAMED key carries both, because code and key are the same string for it and
-// the fields still read e.key - dropping it would fail a handler that is correct.
-globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
-  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
-                  bubbles: true, cancelable: true }, mods || {})));
-globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
+const OWN_HELPERS = `
 // Brightest red in a map-space box, reading the EFFECT LAYER ALONE, so a bright patch of map
 // underneath cannot stand in for a flame.
 //
@@ -104,18 +80,17 @@ module.exports = async function effectsFeature(rig) {
     for (let i = 0; i < SAMPLES; i++) {
       const v = await dm.evaluate('__rigMaxRed(' + b.join(',') + ')');
       if (v > best) best = v;
-      if (i < SAMPLES - 1) await rig.sleep(GAP);
+      if (i < SAMPLES - 1) {
+        await lib.hold(GAP, 'the flame is an animation and this is looking for its PEAK, so the ' +
+          'samples have to be spread across the cycle rather than taken from one frame');
+      }
     }
     return best;
   };
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   await dm.waitFor('!!mapOffscreen', 60000, 'the DM map surface');
-  await dm.evaluate(HELPERS);
+  await dm.evaluate(OWN_HELPERS);
   await dm.evaluate('revealCircle(' + CLEAR.x + ',' + CLEAR.y + ',' + CLEAR.r + ');' +
                     'rebuildFogEffect(); fogDirty = true; scheduleRender(); 0');
   await dm.waitFor('fogCoverT === 0 && fogTransRafId === null', 30000, 'the clearing to open');
@@ -282,7 +257,9 @@ module.exports = async function effectsFeature(rig) {
   const heldBefore = await player.evaluate('effects.length');
   await dm.evaluate('setPlaceMode("effects"); setShape("rect");' +
                     ' __rigDrag(400, 350, 520, 450); 0');
-  await rig.sleep(1200);
+  // Nothing to poll for: the claim is that the effect does NOT reach the Player with Auto off.
+  await lib.hold(1200, 'long enough for a push that ignored the gate to have landed, then ' +
+    'prove it did not');
   rig.check(await player.evaluate('effects.length') === heldBefore,
             'an effect drawn with auto-sync OFF went to the TV anyway — the gate that lets the ' +
             'DM prepare before the players see it does not hold for effects');
@@ -319,10 +296,7 @@ module.exports = async function effectsFeature(rig) {
   // Rooms are prep; effects are placed DURING play and persist, which is the point of them.
   const beforeSwitch = await dm.evaluate('effects.length');
   const sceneOne = await dm.evaluate('currentScene.id');
-  const map2 = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: 1600, h: 1000 });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map2)) + ')', 120000);
-  await dm.waitFor('currentScene && mapWidth === 1600', 120000, 'the second map');
+  await lib.openMap(rig, { w: 1600, h: 1000 });
   rig.check(await dm.evaluate('effects.length') === 0,
             'the first scene\'s effects followed the DM onto a different map');
   await dm.evaluate('switchScene("' + sceneOne + '"); 0', 120000);
@@ -370,7 +344,9 @@ module.exports = async function effectsFeature(rig) {
     let best = { ember: -1, other: 0 };
     for (let i = 0; i < 5; i++) {
       await dm.evaluate('gridDirty = true; scheduleRender(); 0');
-      await rig.sleep(80);
+      await lib.settle(dm, '!gridDirty', 5000);
+      await lib.hold(80, 'the ember pulses, so five samples across its cycle find its peak where ' +
+        'one frame finds whatever phase it happened to be in');
       const v = await dm.evaluate('__rigEmber(620, 400, 980, 620)');
       if (v.ember > best.ember) best = v;
     }
@@ -379,7 +355,7 @@ module.exports = async function effectsFeature(rig) {
 
   for (const mode of ['square', 'hex-flat', 'hex-pointy']) {
     await dm.evaluate('gridMode = ' + JSON.stringify(mode) + '; gridDirty = true; scheduleRender(); 0');
-    await rig.sleep(200);
+    await lib.settle(dm, '!gridDirty', 8000);
     const inside = await emberPeak();
     rig.note(mode + ' grid: ' + inside.ember + ' ember px inside the effect, ' +
              inside.other + ' plain');
@@ -400,11 +376,11 @@ module.exports = async function effectsFeature(rig) {
 
   await dm.evaluate('effects = __rigSavedFx; applyGridConfig(__rigSavedGrid);' +
     ' gridDirty = true; scheduleRender(); 0');
-  await rig.sleep(200);
+  await lib.settle(dm, '!gridDirty && !viewportDirty', 8000);
 
   // ══ The look, which is the DM's call and not the rig's ══
   await dm.evaluate('selectedPolygonId = null; selectedVertexIndex = -1; drawCursor(null, null); 0');
-  await rig.sleep(250);
+  await lib.settle(dm, '!viewportDirty', 8000);
   const dmShot = path.join(rig.outDir, 'effect-rounded.png');
   await dm.screenshot(dmShot);
   rig.note('DM screenshot: ' + dmShot);

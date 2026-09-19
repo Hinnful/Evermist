@@ -19,6 +19,8 @@
 //   H. One unloadable map costs that map and not the run, and is named once at the end.
 //   I. A map that will not decode LETS GO of the import, and the report comes from the CALLER.
 //   J. The progress overlay is never up while a dialog is on screen.
+//   K. A STILL image imports exactly as an animated map does, and a map far bigger than the
+//      window arrives at its own size rather than being quietly shrunk to fit.
 //
 // Every good map in this file is a recorded clip, so the batch import path runs on the kind of
 // file the DM actually points at. What a playing map RENDERS as is smoke.js's business: block 2
@@ -47,16 +49,30 @@
 // import's promise unsettled forever, so an awaited call becomes a CDP timeout naming the wait
 // rather than the behaviour. Every import below is kicked off, flagged on settle, and polled — so
 // a hang lands as "never settled" instead of "the rig timed out".
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
+
+const lib = require('../../lib');
+
+// A still map the window cannot hold, and one far past it. The app promises up to 10000x6000,
+// and nothing in the suite had ever imported a still image at all.
+const STILL_W = 1400, STILL_H = 900;
+const BIG_W = 4200, BIG_H = 2600;
 
 module.exports = async function mapsFeature(rig) {
   const dm = rig.dm;
 
   const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: 900, h: 600 });
+
+  // ⚠ TWO SETS OF BYTES, AND asFileExpr OVERWRITES THE SAME GLOBAL. The still is pushed
+  // first and copied aside, then the animated one goes back into __rigB64 where every
+  // check below expects it. Criterion K is the only still map in the acceptance suite.
+  const still = await rig.fixtures.stillMap(dm, rig.fixtureDir,
+    { w: STILL_W, h: STILL_H, name: 'rig-maps-still.png' });
+  await rig.fixtures.asFileExpr(dm, still);
+  await dm.evaluate('globalThis.__rigStillB64 = globalThis.__rigB64; 0');
+  const big = await rig.fixtures.stillMap(dm, rig.fixtureDir,
+    { w: BIG_W, h: BIG_H, name: 'rig-maps-big.png' });
+  await rig.fixtures.asFileExpr(dm, big);
+  await dm.evaluate('globalThis.__rigBigB64 = globalThis.__rigB64; 0');
   await rig.fixtures.asFileExpr(dm, map);   // leaves __rigB64 in the page
 
   // ── The fixtures and the recorders, all installed once ─────────────────────
@@ -172,12 +188,12 @@ module.exports = async function mapsFeature(rig) {
   // Neither door returns its promise, so the finish line is the library settling rather than a
   // resolved call. Bounded, and it never throws: a miss has to become a named check.
   const waitLibrary = async (want, ms) => {
-    const deadline = Date.now() + ms;
-    for (;;) {
-      const got = await names();
-      if (got.length >= want || Date.now() > deadline) return got;
-      await rig.sleep(250);
-    }
+    let last = [];
+    const got = await lib.poll(async () => {
+      last = await names();
+      return last.length >= want ? { v: last } : null;
+    }, ms, 250);
+    return got ? got.v : last;
   };
 
   // Starts the real entry point and waits for it to finish, without holding a CDP call open for
@@ -244,25 +260,23 @@ module.exports = async function mapsFeature(rig) {
   // both at once: the import above can start another switchScene between the two, and that
   // nulls currentScene, so the read threw rather than answering. Slow machine only, again.
   const sceneForPlan = await (async () => {
-    const deadline = Date.now() + 60000;
-    for (;;) {
-      const st = await dm.evaluate(
-        '({ open: !!currentScene, plan: !!(currentScene && currentScene.floorPlan) })');
-      if (st.open || Date.now() > deadline) return st;
-      await rig.sleep(200);
-    }
+    const read = () => dm.evaluate(
+      '({ open: !!currentScene, plan: !!(currentScene && currentScene.floorPlan) })');
+    let last = { open: false, plan: false };
+    const got = await lib.poll(async () => {
+      last = await read();
+      return last.open ? { v: last } : null;
+    }, 60000, 200);
+    return got ? got.v : last;
   })();
   rig.check(sceneForPlan.open, 'no scene stayed open long enough to attach a dropped plan to');
   rig.check(!sceneForPlan.plan,
             'the open scene already had a plan, so the drop below proves nothing');
   await dm.evaluate('__rigDrop([__rigText("Cellar.dd2vtt", globalThis.__rigPlanText)])');
   const planLanded = await (async () => {
-    const deadline = Date.now() + 20000;
-    for (;;) {
-      if (await dm.evaluate('!!(currentScene && currentScene.floorPlan)')) return true;
-      if (Date.now() > deadline) return false;
-      await rig.sleep(200);
-    }
+    return !!(await lib.poll(
+      async () => (await dm.evaluate('!!(currentScene && currentScene.floorPlan)')) ? { yes: true } : null,
+      20000, 200));
   })();
   rig.check(planLanded, 'a floor plan dropped on its own did not attach to the open scene');
   rig.check((await names()).length === beforePlan,
@@ -273,7 +287,10 @@ module.exports = async function mapsFeature(rig) {
   // ── E. A drop with nothing importable in it ────────────────────────────────
   const beforeJunk = (await names()).length;
   await dm.evaluate('__rigDrop([__rigText("notes.txt", "hello", "text/plain")])');
-  await rig.sleep(1200);
+  // Nothing to poll for: the claim is that a drop with nothing importable does NOTHING - no
+  // scene and no dialog. The wait has to be long enough for either to have appeared.
+  await lib.hold(1200, 'long enough for an import or a dialog to have appeared, then prove ' +
+    'neither did');
   const junkDlg = await dialogNow();
   rig.check((await names()).length === beforeJunk,
             'a drop with nothing importable in it created a scene');
@@ -283,7 +300,8 @@ module.exports = async function mapsFeature(rig) {
   // ── F. A backup, alone and in a crowd ──────────────────────────────────────
   const beforeZip = (await names()).length;
   await dm.evaluate('__rigPick([__rigText("Library.zip", "PK", "application/zip")])');
-  await rig.sleep(600);
+  await lib.settle(dm, "(() => { const a = document.getElementById('cd-anchor');" +
+    " return !!a && a.style.display === 'flex'; })()", 15000);
   const zipAlone = await dialogNow();
   rig.note('lone .zip through the picker: ' + JSON.stringify(zipAlone.title) + ' / ' +
            JSON.stringify(zipAlone.msg));
@@ -488,6 +506,59 @@ module.exports = async function mapsFeature(rig) {
   rig.check(both.length === 0,
             'the progress overlay was up while a dialog was on screen, which hides the dialog ' +
             'under it: ' + JSON.stringify(Array.from(new Set(both))));
+
+
+  // ── K. A still image, and a map far bigger than the window ────────────────
+  // ⚠ EVERY OTHER ACCEPTANCE FILE IMPORTS AN ANIMATED MAP, deliberately, because that is the
+  // only kind the DM makes. A still PNG is still a map the app accepts, and nothing checked
+  // that it arrives at all.
+  await dm.evaluate(`(() => {
+    globalThis.__rigStill = (name, which) => {
+      const bin = atob(which === 'big' ? globalThis.__rigBigB64 : globalThis.__rigStillB64);
+      const u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      return new File([u8], name, { type: 'image/png' });
+    };
+    0
+  })()`);
+
+  const beforeStill = (await dm.evaluate('allScenes.map(s => s.name)')).length;
+  await dm.evaluate('__rigPick([__rigStill("Chapel Floor.png")])');
+  const stillIn = await waitLibrary(beforeStill + 1, 240000);
+  rig.check(stillIn.length === beforeStill + 1,
+            'a still PNG picked through the "+" button imported nothing: ' +
+            JSON.stringify(stillIn));
+  const stillScene = await dm.evaluate(`({
+    name: currentScene ? currentScene.name : null,
+    type: currentScene ? currentScene.mapType : null,
+    w: mapWidth, h: mapHeight, sprite: !!(pixiMapSprite),
+  })`);
+  rig.note('the still import: ' + JSON.stringify(stillScene));
+  rig.check(stillScene.name === 'Chapel Floor',
+            'the still map was not named after its file: ' + stillScene.name);
+  rig.check(stillScene.type === 'image',
+            'a .png came in as "' + stillScene.type + '" rather than a still image');
+  rig.check(stillScene.w === STILL_W && stillScene.h === STILL_H,
+            'the still map arrived at ' + stillScene.w + 'x' + stillScene.h +
+            ' instead of its own ' + STILL_W + 'x' + STILL_H);
+
+  // ⚠ NOT SHRUNK. The shrink box is for ANIMATED maps, whose frames cost the decoder every
+  // frame. A still is decoded once, so shrinking one would throw away detail the DM paid for.
+  await dm.evaluate('__rigPick([__rigStill("Great Hall.png", "big")])');
+  const bigIn = await waitLibrary(beforeStill + 2, 300000);
+  rig.check(bigIn.length === beforeStill + 2,
+            'a still map bigger than the window imported nothing: ' + JSON.stringify(bigIn));
+  const bigScene = await dm.evaluate(`({
+    type: currentScene ? currentScene.mapType : null, w: mapWidth, h: mapHeight,
+    zoom: +zoom.toFixed(4), cw: container.clientWidth,
+  })`);
+  rig.note('the oversized still: ' + JSON.stringify(bigScene));
+  rig.check(bigScene.w === BIG_W && bigScene.h === BIG_H,
+            'a ' + BIG_W + 'x' + BIG_H + ' still was shrunk on the way in, to ' +
+            bigScene.w + 'x' + bigScene.h + ' — the shrink box is for animated maps alone');
+  rig.check(bigScene.zoom < 1,
+            'a map far wider than the window was not fitted down to it: zoom ' + bigScene.zoom +
+            ' in a ' + bigScene.cw + 'px window');
 
   rig.byEye('a .zip picked through the real "+" button, which is the only way restorePickedZip ' +
             'gets a path on disk to restore from — a File built in-page has none, and ' +

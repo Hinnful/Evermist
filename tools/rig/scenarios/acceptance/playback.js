@@ -42,9 +42,11 @@
 const fs = require('fs');
 const path = require('path');
 
+const lib = require('../../lib');
+
 const MAP_W = 900, MAP_H = 600;
 
-const HELPERS = `
+const OWN_HELPERS = `
 globalThis.__rigPlay = () => ({
   paused: !!mapVideo && mapVideo.paused,
   rs: mapVideo ? mapVideo.readyState : -1,
@@ -74,13 +76,12 @@ globalThis.__rigWatch = () => {
 module.exports = async function playbackFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   await dm.waitFor('currentScene && currentScene.mapType === "video"', 120000,
                    'the animated map to load on the DM');
   await dm.waitFor('!!mapVideo && !mapVideo.paused && mapVideo.readyState >= 3', 45000,
                    'the map to start playing');
-  await dm.evaluate(HELPERS);
+  await dm.evaluate(OWN_HELPERS);
 
   const start = await dm.evaluate('__rigPlay()');
   rig.note('playing: ' + JSON.stringify(start));
@@ -147,7 +148,7 @@ module.exports = async function playbackFeature(rig) {
   // pass with its own listener never registered. `_bufferingPause` is the app's own way of saying
   // "this pause is ours" and onVideoPause returns on it; onVideoStalled does not read it at all.
   await dm.evaluate('stopVideoWatchdog(); _bufferingPause = true; mapVideo.pause(); 0');
-  await rig.sleep(400);
+  await lib.settle(dm, 'mapVideo.paused === true', 8000);
   const suppressed = await dm.evaluate('__rigPlay()');
   rig.check(suppressed.paused,
             'the map resumed on its own with the pause handler suppressed and the watchdog ' +

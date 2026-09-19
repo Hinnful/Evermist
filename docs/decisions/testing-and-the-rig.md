@@ -179,3 +179,30 @@ a pause is not to be touched.
 pauses a muted video in it, and the pause handler's resume reaches the pump through
 `onVideoPlaying` about two seconds before the poll would. The scenario asserts the pump comes back
 and does not name which half brought it.
+
+### A fixed wait is a lie on a slow machine · `SETTLED` (2026-09-19)
+104 `rig.sleep` calls across eighteen scenario files were the largest single reason a run could
+pass here and fail on the build server. They are gone, and `rig.sleep` no longer exists on the
+rig object, so a scenario cannot reach one. Three things replaced them: `lib.settle` for a state,
+`lib.poll` for a value, and `lib.hold(ms, why)` for the one case neither serves - a check that
+something does NOT happen, where the wait IS the claim and has to carry its reason as an argument.
+Fourteen holds survive. The set also runs in 7 minutes instead of 11 for a suite half the size.
+
+The recurring fault while converting: waiting on the window that was TOLD to act rather than the
+one that acts. A DM value is correct the instant it is set; the Player is a postMessage away and
+a lerp or a crossfade away after that. Three checks passed for that reason and broke when the
+timing around them changed.
+
+### A hanging scenario needed its own limit · `SETTLED` (2026-09-19)
+The per-scenario try/catch already stepped over a scenario that THREW. One that hangs never
+throws, so the run-wide watchdog killed the process and every later file went unread - the same
+fault, on the path nobody had covered. Each scenario now has a 300s limit of its own; reaching it
+abandons that file and moves on. Nothing can cancel an async function mid-await, so the runner
+mutes that scenario's `rig` first, or the checks it reaches on its way out land under the next
+file's name.
+
+### A wait weaker than the check it guards · `SETTLED` (2026-09-19)
+Sync View's wait watched one axis against the same tolerance the check asserted on two, so it
+released mid-lerp whenever the first axis arrived early. It passed for a year on timing alone and
+went red the moment the sleeps around it were removed. The rule it gives: a wait names the state
+that ends the work - here the view lerp - and never a loosened copy of the assertion after it.

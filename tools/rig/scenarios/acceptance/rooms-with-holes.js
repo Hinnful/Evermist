@@ -39,6 +39,8 @@
 // ⚠ CLIENT COORDINATES ARE INTEGERS, so a map coordinate makes the round trip with up to 1/zoom
 // of error. Every geometric check carries a tolerance derived from the live zoom.
 
+const lib = require('../../lib');
+
 const MAP_W = 2400, MAP_H = 1500;
 
 // The keep, and the courtyard cut out of its middle. Far enough apart that the fog feather on
@@ -48,23 +50,7 @@ const YARD = { x1: 550, y1: 450, x2: 850, y2: 700 };
 const IN_YARD = { x: 700, y: 575 };            // middle of the courtyard
 const IN_KEEP = { x: 400, y: 350 };            // keep ground, well clear of both walls
 
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my) => {
-  const r = container.getBoundingClientRect();
-  container.dispatchEvent(new MouseEvent(type, {
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  }));
-};
-globalThis.__rigDrag = (x1, y1, x2, y2) => {
-  __rigMouse('mousedown', x1, y1);
-  __rigMouse('mousemove', (x1+x2)/2, (y1+y2)/2);
-  __rigMouse('mousemove', x2, y2);
-  __rigMouse('mouseup', x2, y2);
-};
-globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
-// Edit mode is entered by the real gesture, not by setting the flag.
-globalThis.__rigDbl = (mx, my) => { __rigClick(mx, my); __rigMouse('dblclick', mx, my); };
+const OWN_HELPERS = `
 // ⚠ A STOP HAS TO BE WALKED UP TO. __rigDrag sends two moves, so a long drag jumps clean over the
 // wall and every frame is refused - the hole then ends where it started and reads as clamped
 // whole. Small steps put a frame just inside the wall, which is the state the stop is about.
@@ -74,53 +60,6 @@ globalThis.__rigDragSteps = (x1, y1, x2, y2, n) => {
     __rigMouse('mousemove', x1 + (x2 - x1) * i / n, y1 + (y2 - y1) * i / n);
   }
   __rigMouse('mouseup', x2, y2);
-};
-// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
-// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
-// at the table. A NAMED key carries both, because code and key are the same string for it and
-// the fields still read e.key - dropping it would fail a handler that is correct.
-globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
-  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
-                  bubbles: true, cancelable: true }, mods || {})));
-globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
-globalThis.__rigById = (id) => polygons.find(p => p.id === id);
-globalThis.__rigArea = (v) => {
-  let s = 0;
-  for (let i = 0, n = v.length; i < n; i++) { const a = v[i], b = v[(i+1)%n]; s += a.x*b.y - b.x*a.y; }
-  return Math.abs(s) / 2;
-};
-// Everything a criterion asks about one room, read in one round trip.
-globalThis.__rigShape = (id) => {
-  const p = (polygons.concat(effects)).find(s => s.id === id);
-  if (!p) return null;
-  return { n: p.vertices.length, area: __rigArea(p.vertices), mode: p.mode,
-           holes: (p.holes || []).length,
-           holeArea: (p.holes || []).map(h => __rigArea(h)),
-           holeBox: (p.holes || []).map(h => ({
-             x0: Math.min.apply(null, h.map(v => v.x)), x1: Math.max.apply(null, h.map(v => v.x)),
-             y0: Math.min.apply(null, h.map(v => v.y)), y1: Math.max.apply(null, h.map(v => v.y)),
-           })),
-           box: { x0: Math.min.apply(null, p.vertices.map(v => v.x)),
-                  x1: Math.max.apply(null, p.vertices.map(v => v.x)),
-                  y0: Math.min.apply(null, p.vertices.map(v => v.y)),
-                  y1: Math.max.apply(null, p.vertices.map(v => v.y)) } };
-};
-globalThis.__rigDrawRoom = (mode, x1, y1, x2, y2) => {
-  setShapeOp('new');
-  setShape('rect');
-  document.getElementById('btn-' + mode).click();
-  __rigDrag(x1, y1, x2, y2);
-  setShape('select');
-  return polygons[polygons.length - 1].id;
-};
-globalThis.__rigOpRect = (op, x1, y1, x2, y2) => {
-  setShapeOp(op);
-  setShape('rect');
-  __rigDrag(x1, y1, x2, y2);
-  setShapeOp('new');
-  setShape('select');
-  return 0;
 };
 // A cut path: one click per point, then the double-click that finishes it.
 globalThis.__rigCut = (pts) => {
@@ -137,20 +76,13 @@ globalThis.__rigDialog = () => {
 };
 0`;
 
-const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
-const SETTLE = 'rebuildFogFromPolygons(); rebuildFogEffect(); fogDirty = true;' +
-               ' scheduleRender(); sendToPlayer(); 0';
 
 module.exports = async function roomsWithHoles(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
-  await dm.evaluate(HELPERS);
+  const map = await lib.openMap(rig, { w: MAP_W, h: MAP_H });
+  await dm.evaluate(OWN_HELPERS);
   await dm.waitFor('fogCoverT === 0 && fogTransRafId === null', 30000, 'the scene cover to lift');
   const zoom = await dm.evaluate('zoom');
   const tol = 3 / zoom;
@@ -162,7 +94,7 @@ module.exports = async function roomsWithHoles(rig) {
   // ══ A. A Trim landing wholly inside a room makes a hole, not a second room ══
   const keep = await dm.evaluate('__rigDrawRoom("reveal", ' +
     KEEP.x1 + ',' + KEEP.y1 + ',' + KEEP.x2 + ',' + KEEP.y2 + ')');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const before = await dm.evaluate('__rigShape(' + keep + ')');
   rig.check(before.mode === 'reveal' && before.holes === 0,
             'the keep did not start as a plain revealed room, so the checks below prove nothing');
@@ -173,7 +105,7 @@ module.exports = async function roomsWithHoles(rig) {
   const roomsBefore = await dm.evaluate('polygons.length');
   await dm.evaluate('__rigOpRect("trim", ' + YARD.x1 + ',' + YARD.y1 + ',' +
                     YARD.x2 + ',' + YARD.y2 + ')');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigDialog().up') === false,
             'the trim was refused: ' + (await dm.evaluate('__rigDialog().text')));
   rig.check(await dm.evaluate('polygons.length') === roomsBefore,
@@ -211,14 +143,14 @@ module.exports = async function roomsWithHoles(rig) {
   const player = await rig.player();
   await player.waitFor('!!mapOffscreen && !!fogDataCanvas', 45000, 'the Player to receive the map');
   await player.waitFor('fogCoverT === 0', 45000, 'the scene cover to lift on the Player');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   try {
-    await player.waitFor(TV_FOG + '(' + IN_KEEP.x + ',' + IN_KEEP.y + ') < 60', 30000,
+    await player.waitFor(lib.TV_FOG + '(' + IN_KEEP.x + ',' + IN_KEEP.y + ') < 60', 30000,
                          'the keep to reach the Player');
   } catch (_) { /* asserted below */ }
   const tv = await player.evaluate(
-    '({ yard: ' + TV_FOG + '(' + IN_YARD.x + ',' + IN_YARD.y + '),' +
-    '   keep: ' + TV_FOG + '(' + IN_KEEP.x + ',' + IN_KEEP.y + ') })');
+    '({ yard: ' + lib.TV_FOG + '(' + IN_YARD.x + ',' + IN_YARD.y + '),' +
+    '   keep: ' + lib.TV_FOG + '(' + IN_KEEP.x + ',' + IN_KEEP.y + ') })');
   rig.note('TV — courtyard ' + tv.yard + ', keep ground ' + tv.keep);
   rig.check(tv.keep < 60,
             'the revealed keep never reached the TV (alpha ' + tv.keep + '), so the courtyard ' +
@@ -247,7 +179,7 @@ module.exports = async function roomsWithHoles(rig) {
   rig.check(!!reloaded && reloaded.mode === 'reveal',
             'the keep came back as "' + ((reloaded && reloaded.mode) || 'gone') + '" instead of ' +
             'reveal, so the downgrade encoding was written and never read back');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigFog(' + IN_YARD.x + ',' + IN_YARD.y + ')') > 200,
             'the reloaded keep paints no courtyard, so the field survived and the fog did not');
 
@@ -258,7 +190,7 @@ module.exports = async function roomsWithHoles(rig) {
             'clicking the keep did not select it, so the drag below would move nothing');
   await dm.evaluate('__rigDrag(' + IN_KEEP.x + ',' + IN_KEEP.y + ',' +
                     (IN_KEEP.x + DX) + ',' + (IN_KEEP.y + DY) + ')');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const moved = await dm.evaluate('__rigShape(' + keep + ')');
   rig.check(moved.holes === 1, 'the drag dropped the courtyard entirely');
   const movedBy = { x: moved.box.x0 - reloaded.box.x0, y: moved.box.y0 - reloaded.box.y0 };
@@ -300,7 +232,7 @@ module.exports = async function roomsWithHoles(rig) {
 
   await dm.evaluate('__rigDrag(' + wall.x + ',' + wall.y + ',' +
                     (wall.x - 90) + ',' + wall.y + ')');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const eDragged = await dm.evaluate('__rigShape(' + keep + ')');
   rig.note('the courtyard went from ' + Math.round(eBefore.holeArea[0]) + ' to ' +
            Math.round(eDragged.holeArea[0]) + ' units²');
@@ -311,7 +243,7 @@ module.exports = async function roomsWithHoles(rig) {
             'dragging an inner wall reshaped the keep\'s outer outline too');
 
   await dm.evaluate('undo(); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const eUndone = await dm.evaluate('__rigShape(' + keep + ')');
   rig.check(eUndone.holes === 1 &&
             Math.abs(eUndone.holeArea[0] - eBefore.holeArea[0]) < 400 * tol,
@@ -330,7 +262,7 @@ module.exports = async function roomsWithHoles(rig) {
   const fCount = await dm.evaluate('polygons.length');
   const wellId = await dm.evaluate('__rigDrawRoom("shroud", ' +
     well.x1 + ',' + well.y1 + ',' + well.x2 + ',' + well.y2 + ')');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('polygons.length') === fCount + 1,
             'a shape drawn inside the courtyard made no room — drawing always makes one');
   const wellBefore = await dm.evaluate('__rigShape(' + wellId + ')');
@@ -343,7 +275,7 @@ module.exports = async function roomsWithHoles(rig) {
                     (IN_KEEP.x + DX) + ',' + (IN_KEEP.y + DY) + '); 0');
   await dm.evaluate('__rigDrag(' + (IN_KEEP.x + DX) + ',' + (IN_KEEP.y + DY) + ',' +
                     (IN_KEEP.x + DX + 140) + ',' + (IN_KEEP.y + DY) + ')');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const wellAfter = await dm.evaluate('__rigShape(' + wellId + ')');
   rig.check(Math.abs(wellAfter.box.x0 - wellBefore.box.x0) < 2 * tol,
             'the room standing in the courtyard moved ' +
@@ -359,14 +291,14 @@ module.exports = async function roomsWithHoles(rig) {
     HALL.x1 + ',' + HALL.y1 + ',' + HALL.x2 + ',' + HALL.y2 + ')');
   await dm.evaluate('__rigOpRect("trim", ' + YARD2.x1 + ',' + YARD2.y1 + ',' +
                     YARD2.x2 + ',' + YARD2.y2 + ')');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check((await dm.evaluate('__rigShape(' + hall + ')')).holes === 1,
             'the second keep never got its courtyard, so the cut below proves nothing');
 
   const gCount = await dm.evaluate('polygons.length');
   const gNextId = await dm.evaluate('nextPolygonId');
   await dm.evaluate('__rigCut([[600, 1080], [600, 1460]])');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigDialog().up') === false,
             'the cut through the courtyard was refused: ' +
             (await dm.evaluate('__rigDialog().text')));
@@ -497,14 +429,14 @@ module.exports = async function roomsWithHoles(rig) {
   await dm.evaluate('__rigOpRect("trim", ' + GYARD.x1 + ',' + GYARD.y1 + ',' +
                     GYARD.x2 + ',' + GYARD.y2 + ')');
   await dm.evaluate('doorDepthPct = 60; 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const gateShape = await dm.evaluate('__rigShape(' + gate + ')');
   rig.check(gateShape.holes === 1, 'the gatehouse never got its courtyard');
 
   const GATE_X = Math.round((GYARD.x1 + GYARD.x2) / 2);
   await dm.evaluate('setShape("door"); __rigClick(' + GATE_X + ',' + GYARD.y1 + '); 0');
   await dm.evaluate('setShape("select"); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const marked = await dm.evaluate(
     '(() => { const p = __rigById(' + gate + ');' +
     '  const ds = p.doors || [];' +
@@ -545,7 +477,7 @@ module.exports = async function roomsWithHoles(rig) {
     HOLD.x1 + ',' + HOLD.y1 + ',' + HOLD.x2 + ',' + HOLD.y2 + ')');
   await dm.evaluate('__rigOpRect("trim", ' + CRT.x1 + ',' + CRT.y1 + ',' +
                     CRT.x2 + ',' + CRT.y2 + ')');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check((await dm.evaluate('__rigShape(' + hold + ')')).holes === 1,
             'the second keep never got its courtyard, so nothing below is testing a hole');
 
@@ -569,7 +501,7 @@ module.exports = async function roomsWithHoles(rig) {
   const beforeJ = await dm.evaluate('__rigShape(' + hold + ')');
   await dm.evaluate('__rigDrag(' + IN_CRT.x + ',' + IN_CRT.y + ',' +
                     (IN_CRT.x + 90) + ',' + (IN_CRT.y + 70) + '); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const movedJ = await dm.evaluate('__rigShape(' + hold + ')');
   const hdx = movedJ.holeBox[0].x0 - beforeJ.holeBox[0].x0;
   const hdy = movedJ.holeBox[0].y0 - beforeJ.holeBox[0].y0;
@@ -587,7 +519,7 @@ module.exports = async function roomsWithHoles(rig) {
   // Delete takes the hole, not the room, and one undo puts it back.
   const undoJ = await dm.evaluate('undoStack.length');
   await dm.evaluate('__rigKey("Delete"); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const gone = await dm.evaluate('__rigShape(' + hold + ')');
   rig.check(!!gone, 'Delete on a picked courtyard took the whole keep with it');
   rig.check(gone.holes === 0,
@@ -597,7 +529,7 @@ module.exports = async function roomsWithHoles(rig) {
             'deleting a hole spent ' + (await dm.evaluate('undoStack.length') - undoJ) +
             ' undo steps instead of one');
   await dm.evaluate('undo(); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check((await dm.evaluate('__rigShape(' + hold + ')')).holes === 1,
             'one undo did not put the deleted courtyard back');
 
@@ -613,7 +545,7 @@ module.exports = async function roomsWithHoles(rig) {
   // Dragged a long way past the keep's far wall. The cursor gets there; the hole must not.
   await dm.evaluate('__rigDragSteps(' + hx + ',' + hy + ',' + (HOLD.x2 + 500) + ',' + hy +
                     ', 40); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const stopped = await dm.evaluate('__rigShape(' + hold + ')');
   const cx = (stopped.holeBox[0].x0 + stopped.holeBox[0].x1) / 2;
   const cy = (stopped.holeBox[0].y0 + stopped.holeBox[0].y1) / 2;

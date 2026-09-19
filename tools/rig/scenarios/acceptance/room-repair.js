@@ -23,8 +23,6 @@
 //   I. A repair STAYS ARMED after the shape it ran on, applied or landing on nothing, and the
 //      button stays lit. Pressing that lit button is what puts it out.
 //
-// ⚠ ROOMS DO NOT CROSS TO THE PLAYER (CLAUDE.md). What crosses is the fog they paint, so the TV
-// checks here read fog over ground, never a room.
 //
 // ⚠ THE MAP STARTS FULLY FOGGED, and every room below is a SHROUD room inside a revealed
 // clearing — on untouched map a shroud room changes no fog and every check passes for free.
@@ -40,63 +38,12 @@
 // ⚠ CLIENT COORDINATES ARE INTEGERS, so a map coordinate makes the round trip with up to 1/zoom
 // of error. Every geometric check carries a tolerance derived from the live zoom.
 
+const lib = require('../../lib');
+
 const MAP_W = 2400, MAP_H = 1500;
 const CLEAR = { x: 1200, y: 700, r: 950 };
 
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my) => {
-  const r = container.getBoundingClientRect();
-  container.dispatchEvent(new MouseEvent(type, {
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  }));
-};
-globalThis.__rigDrag = (x1, y1, x2, y2) => {
-  __rigMouse('mousedown', x1, y1);
-  __rigMouse('mousemove', (x1+x2)/2, (y1+y2)/2);
-  __rigMouse('mousemove', x2, y2);
-  __rigMouse('mouseup', x2, y2);
-};
-globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
-// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
-// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
-// at the table. A NAMED key carries both, because code and key are the same string for it and
-// the fields still read e.key - dropping it would fail a handler that is correct.
-globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
-  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
-                  bubbles: true, cancelable: true }, mods || {})));
-globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
-globalThis.__rigById = (id) => polygons.find(p => p.id === id);
-globalThis.__rigArea = (v) => {
-  let s = 0;
-  for (let i = 0, n = v.length; i < n; i++) { const a = v[i], b = v[(i+1)%n]; s += a.x*b.y - b.x*a.y; }
-  return Math.abs(s) / 2;
-};
-// A shroud room, by id. Drawing leaves nothing selected on purpose, so the id comes from the list.
-globalThis.__rigDrawShroud = (x1, y1, x2, y2) => {
-  setShapeOp('new');
-  setShape('rect');
-  document.getElementById('btn-shroud').click();
-  __rigDrag(x1, y1, x2, y2);
-  setShape('select');
-  return polygons[polygons.length - 1].id;
-};
-// A rectangle drawn in Join or Trim mode. Returns nothing: neither mode makes a record.
-// ⚠ PUTS THE MODE BACK ITSELF. The mode now SURVIVES the shape, so every other block here
-// would leave it armed; criterion I uses the raw helper below and reads the app's own state.
-globalThis.__rigOpRect = (op, x1, y1, x2, y2) => {
-  __rigOpRectRaw(op, x1, y1, x2, y2);
-  setShapeOp('new');
-  setShape('select');
-  return 0;
-};
-globalThis.__rigOpRectRaw = (op, x1, y1, x2, y2) => {
-  setShapeOp(op);
-  setShape('rect');
-  __rigDrag(x1, y1, x2, y2);
-  return 0;
-};
+const OWN_HELPERS = `
 globalThis.__rigOpState = () => {
   const lit = ['join', 'trim'].filter(k => {
     const b = document.getElementById('btn-op-' + k);
@@ -125,20 +72,13 @@ globalThis.__rigDismiss = () => {
 };
 0`;
 
-const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
-const SETTLE = 'rebuildFogFromPolygons(); rebuildFogEffect(); fogDirty = true;' +
-               ' scheduleRender(); sendToPlayer(); 0';
 
 module.exports = async function roomRepair(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
-  await dm.evaluate(HELPERS);
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
+  await dm.evaluate(OWN_HELPERS);
   await dm.evaluate('revealCircle(' + CLEAR.x + ',' + CLEAR.y + ',' + CLEAR.r + ');' +
                     'rebuildFogEffect(); fogDirty = true; scheduleRender(); 0');
   await dm.waitFor('fogCoverT === 0 && fogTransRafId === null', 30000, 'the clearing to open');
@@ -150,7 +90,7 @@ module.exports = async function roomRepair(rig) {
 
   // ══ A. Trim takes a notch out of a room, and the fog loses the notch with it ══
   const a = await dm.evaluate('__rigDrawShroud(500, 300, 800, 600)');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const aBefore = await dm.evaluate('({ n: __rigById(' + a + ').vertices.length,' +
                                     '   area: __rigArea(__rigById(' + a + ').vertices) })');
   const IN_NOTCH = { x: 650, y: 350 }, IN_ROOM = { x: 550, y: 550 };
@@ -171,7 +111,7 @@ module.exports = async function roomRepair(rig) {
             'the fog trio stayed greyed after Trim was dropped');
 
   await dm.evaluate('__rigOpRect("trim", 600, 250, 700, 400)');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const aAfter = await dm.evaluate(
     '(() => { const p = __rigById(' + a + ');' +
     ' return p ? { n: p.vertices.length, area: __rigArea(p.vertices) } : null; })()');
@@ -200,7 +140,7 @@ module.exports = async function roomRepair(rig) {
   const bCountBefore = await dm.evaluate('polygons.length');
   const bNextId = await dm.evaluate('nextPolygonId');
   await dm.evaluate('__rigOpRect("trim", 1180, 250, 1220, 650)');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const bCount = await dm.evaluate('polygons.length');
   rig.check(bCount === bCountBefore + 1,
             'a strip trimmed clean across a room left ' + bCount + ' rooms where there should ' +
@@ -228,7 +168,7 @@ module.exports = async function roomRepair(rig) {
             'the first room is not in Reveal mode, so the fog-mode check below means nothing');
   const cCountBefore = await dm.evaluate('polygons.length');
   await dm.evaluate('__rigOpRect("join", 650, 950, 850, 1050)');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('polygons.length') === cCountBefore - 1,
             'joining two rooms did not leave one — the DM still has two rooms to edge-match ' +
             'by hand');
@@ -255,7 +195,7 @@ module.exports = async function roomRepair(rig) {
   const dCountBefore = await dm.evaluate('polygons.length');
   const dNextId = await dm.evaluate('nextPolygonId');
   await dm.evaluate('__rigCut([[1450, 1050], [1950, 1050]])');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigDialog().up') === false,
             'the cut was refused: ' + (await dm.evaluate('__rigDialog().text')));
   const dCount = await dm.evaluate('polygons.length');
@@ -298,7 +238,7 @@ module.exports = async function roomRepair(rig) {
 
   // ══ E. A refusal changes nothing, says so, and spends no undo ══
   const e = await dm.evaluate('__rigDrawShroud(1600, 300, 2000, 650)');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const eSnapshot = await dm.evaluate('JSON.stringify(polygons)');
   const eUndo = await dm.evaluate('undoStack.length');
   // ⚠ THE REFUSAL IS A CUT, not a trim. A trim landing inside a room used to be refused and now
@@ -367,23 +307,23 @@ module.exports = async function roomRepair(rig) {
   // One room in clean ground, repaired while the Player is watching.
   const h = await dm.evaluate('__rigDrawShroud(1000, 1200, 1400, 1420)');
   const KEPT = { x: 1060, y: 1300 }, TRIMMED = { x: 1300, y: 1300 };
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   try {
-    await player.waitFor(TV_FOG + '(' + KEPT.x + ',' + KEPT.y + ') > 200', 30000,
+    await player.waitFor(lib.TV_FOG + '(' + KEPT.x + ',' + KEPT.y + ') > 200', 30000,
                          'the new room to reach the Player');
   } catch (_) { /* asserted below */ }
-  rig.check(await player.evaluate(TV_FOG + '(' + KEPT.x + ',' + KEPT.y + ')') > 200,
+  rig.check(await player.evaluate(lib.TV_FOG + '(' + KEPT.x + ',' + KEPT.y + ')') > 200,
             'the room to repair never reached the TV, so the repair check below means nothing');
 
   await dm.evaluate('__rigOpRect("trim", 1220, 1150, 1450, 1450)');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   try {
-    await player.waitFor(TV_FOG + '(' + TRIMMED.x + ',' + TRIMMED.y + ') < 60', 30000,
+    await player.waitFor(lib.TV_FOG + '(' + TRIMMED.x + ',' + TRIMMED.y + ') < 60', 30000,
                          'the trim to reach the Player');
   } catch (_) { /* asserted below */ }
   const tv = await player.evaluate(
-    '({ kept: ' + TV_FOG + '(' + KEPT.x + ',' + KEPT.y + '),' +
-    '   gone: ' + TV_FOG + '(' + TRIMMED.x + ',' + TRIMMED.y + ') })');
+    '({ kept: ' + lib.TV_FOG + '(' + KEPT.x + ',' + KEPT.y + '),' +
+    '   gone: ' + lib.TV_FOG + '(' + TRIMMED.x + ',' + TRIMMED.y + ') })');
   rig.note('TV after the trim — kept side ' + tv.kept + ', trimmed side ' + tv.gone);
   rig.check(tv.gone < 60,
             'the trimmed part of the room is still hidden on the TV (alpha ' + tv.gone +
@@ -396,15 +336,15 @@ module.exports = async function roomRepair(rig) {
   // in it. A cut is refused WHOLE when any room it crosses has more than two crossings, so a path
   // drawn across the notched room from block A takes four crossings there and kills this cut.
   const seam = await dm.evaluate('__rigDrawShroud(400, 650, 900, 850)');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   await dm.evaluate('__rigCut([[350, 750], [950, 750]])');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigDialog().up') === false,
             'the second cut was refused: ' + (await dm.evaluate('__rigDialog().text')));
   try {
-    await player.waitFor(TV_FOG + '(650, 750) > 120', 30000, 'the cut to reach the Player');
+    await player.waitFor(lib.TV_FOG + '(650, 750) > 120', 30000, 'the cut to reach the Player');
   } catch (_) { /* asserted below */ }
-  const tvSeam = await player.evaluate(TV_FOG + '(650, 750)');
+  const tvSeam = await player.evaluate(lib.TV_FOG + '(650, 750)');
   rig.note('the TV reads ' + tvSeam + ' on the cut');
   rig.check(tvSeam > 120,
             'the TV shows a hole along the cut (alpha ' + tvSeam + '), so the players see a ' +
@@ -419,7 +359,7 @@ module.exports = async function roomRepair(rig) {
   // room placed against another is one zoom away from the Merge taking BOTH: the earlier room
   // becomes the base, this one is dropped, and the check below reads a room that is gone.
   const iRoom = await dm.evaluate('__rigDrawShroud(1000, 680, 1300, 860)');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   await dm.evaluate('__rigOpRectRaw("join", 1250, 720, 1450, 820)');
   const iApplied = await dm.evaluate('__rigOpState()');
   const iVerts = await dm.evaluate('(__rigById(' + iRoom + ') || { vertices: [] }).vertices.length');

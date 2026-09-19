@@ -31,7 +31,9 @@
 // event so a keystroke cannot reach the map shortcuts underneath, which means a keydown fired at
 // the document never reaches it and the check would read the dialog as ignoring Escape.
 
-const HELPERS = `
+const lib = require('../../lib');
+
+const OWN_HELPERS = `
 globalThis.__rigAnswers = [];
 globalThis.__rigDlg = () => {
   const root = document.getElementById('cd-anchor');
@@ -76,7 +78,7 @@ globalThis.__rigEsc = () => {
 
 module.exports = async function dialogsFeature(rig) {
   const dm = rig.dm;
-  await dm.evaluate(HELPERS);
+  await dm.evaluate(OWN_HELPERS);
 
   const state = () => dm.evaluate('__rigDlg()');
   const answers = () => dm.evaluate('__rigAnswers.slice()');

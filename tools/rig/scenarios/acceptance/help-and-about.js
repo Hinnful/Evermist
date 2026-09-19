@@ -34,6 +34,8 @@
 // after another one flipped something still reports what it itself did. Adding a key that reads
 // an absolute value would need its own setup here; there is no restore for it to lean on.
 
+const lib = require('../../lib');
+
 const MAP_W = 1600, MAP_H = 1000;
 
 const LEGEND = '#shortcut-legend';
@@ -46,14 +48,7 @@ const BACKDROP = '#legend-backdrop';
 const SHOWN = `(sel => { const el = document.querySelector(sel);
   return !!el && el.getClientRects().length > 0; })`;
 
-const HELPERS = `
-// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
-// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
-// at the table. A NAMED key carries both, because code and key are the same string for it and
-// the fields still read e.key - dropping it would fail a handler that is correct.
-globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
-  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
-                  bubbles: true, cancelable: true }, mods || {})));
+const OWN_HELPERS = `
 globalThis.__rigShown = ${SHOWN};
 globalThis.__rigPanel = () => ({ panel: __rigShown('${LEGEND}'), back: __rigShown('${BACKDROP}') });
 // Everything a listed shortcut could move. One blob, so a key that changes nothing is visible
@@ -69,7 +64,8 @@ globalThis.__rigKeyState = () => ({
 module.exports = async function helpAndAboutFeature(rig) {
   const dm = rig.dm;
 
-  await dm.evaluate(HELPERS);
+  await lib.installHelpers(dm);
+  await dm.evaluate(OWN_HELPERS);
 
   // ── A. The button opens it and shuts it ───────────────────────────────────
   const shut = await dm.evaluate('__rigPanel()');
@@ -109,10 +105,7 @@ module.exports = async function helpAndAboutFeature(rig) {
   // ── C. Every key the panel lists does something ───────────────────────────
   // A map and a room first: four of the keys below do nothing without one, and a key that is
   // inert for want of a map looks exactly like a key that is dead.
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
 
   // The keys the panel advertises, each with the field it has to move. `setup` puts the app in
   // the one state where the key has work to do.
@@ -181,6 +174,70 @@ module.exports = async function helpAndAboutFeature(rig) {
   await dm.evaluate('__rigKey("KeyY", { ctrlKey: true })');
   rig.check(await dm.evaluate('polygons.length') === drawn,
             'Ctrl+Y is on the panel and put nothing back');
+
+
+  // The four keys the list above could not reach without a room selected or a Player open.
+  // ⚠ SEND IS COUNTED, NOT INFERRED. Both Space and Shift+S are "send", and reading the Player
+  // for a change would pass whenever auto-sync had already delivered it.
+  await dm.evaluate(`(() => {
+    globalThis.__rigSends = 0;
+    const real = sendToPlayer;
+    sendToPlayer = function () { globalThis.__rigSends++; return real.apply(this, arguments); };
+    window.sendToPlayer = sendToPlayer;
+    return 0;
+  })()`);
+  await dm.evaluate('setPlaceMode("rooms"); __rigDrawShroud(300, 300, 700, 700);' +
+                    ' setShape("select"); __rigClick(500, 500); 0');
+  await lib.settle(dm, 'selectedPolygonId !== null', 8000);
+
+  const modeOf = () => dm.evaluate(
+    '(() => { const p = polygons.find(x => x.id === selectedPolygonId); return p ? p.mode : null; })()');
+
+  const wasMode = await modeOf();
+  await dm.evaluate('__rigKey("KeyT")');
+  rig.check(await modeOf() !== wasMode,
+            'T is on the panel and did not change the selected room\'s fog mode: still ' + wasMode);
+
+  const sendsBefore = await dm.evaluate('globalThis.__rigSends');
+  await dm.evaluate('__rigKey("Space")');
+  rig.check(await dm.evaluate('globalThis.__rigSends') > sendsBefore,
+            'Space is on the panel as Send to player and sent nothing');
+  // ⚠ SHIFT+S ONLY SENDS WHEN AUTO IS OFF - it IS the manual Send, and the panel says so.
+  // Pressed with Auto on it is correctly inert, and the check would report it as dead.
+  await dm.evaluate('(() => { const b = document.getElementById("btn-auto-sync");' +
+                    ' if (autoSync) b.click(); return 0; })()');
+  const sendsMid = await dm.evaluate('globalThis.__rigSends');
+  await dm.evaluate('__rigKey("KeyS", { shiftKey: true })');
+  rig.check(await dm.evaluate('globalThis.__rigSends') > sendsMid,
+            'Shift+S is on the panel as the manual Send and sent nothing with Auto off');
+  await dm.evaluate('(() => { const b = document.getElementById("btn-auto-sync");' +
+                    ' if (!autoSync) b.click(); return 0; })()');
+
+  const roomsBefore = await dm.evaluate('polygons.length');
+  await dm.evaluate('__rigKey("Delete")');
+  rig.check(await dm.evaluate('polygons.length') === roomsBefore - 1,
+            'Delete is on the panel and removed no room: ' + roomsBefore + ' before, ' +
+            await dm.evaluate('polygons.length') + ' after');
+
+  // ⚠ THE LIST IS READ OFF THE PANEL, not written here. The checks above run a list of keys this
+  // file holds, so a shortcut added to the panel tomorrow gets no check and nothing complains.
+  // This is what notices.
+  const advertised = await dm.evaluate(
+    "Array.from(document.querySelectorAll('#shortcut-legend kbd'))" +
+    ".map(k => k.textContent.trim())");
+  // Everything above, plus the ones checked elsewhere in this file and the two that are mouse
+  // gestures rather than keys.
+  const COVERED = KEYS.map(k => k.label).concat([
+    'Ctrl Z', 'Ctrl Y',   // exercised just above
+    '?',                  // criterion B opens the panel with it
+    'T', 'Space', 'Shift S', 'Del',
+    'Dbl',                // a mouse gesture, covered by editing.js and curves.js
+  ]);
+  const unchecked = advertised.filter(k => COVERED.indexOf(k) === -1);
+  rig.note('the panel advertises ' + advertised.length + ' keys: ' + advertised.join(' '));
+  rig.check(unchecked.length === 0,
+            'the shortcut panel advertises ' + unchecked.length + ' key(s) nothing here presses, ' +
+            'so they are promised to the DM and never checked: ' + unchecked.join(', '));
 
   // ── D. The About footer, and a version that came from the build ───────────
   await dm.waitFor('!!document.getElementById("about-version")', 10000, 'the About block to build');

@@ -41,11 +41,8 @@
 // keydown at source (roomPanel.js `_rpWireField`) and input.js's own handler returns early for an
 // INPUT or a TEXTAREA. Breaking one to watch section G go red proves nothing — the other catches
 // it. Both have to go at once, which is also why neither is safe to "tidy away as redundant".
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
+
+const lib = require('../../lib');
 
 const MAP_W = 1400, MAP_H = 900;
 const A = { x: 300, y: 250, r: 150 };      // first reveal
@@ -56,11 +53,7 @@ const FX = { x1: 500, y1: 550, x2: 780, y2: 780 };
 module.exports = async function undoFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
-  const expr = await rig.fixtures.asFileExpr(dm, map);
-  await dm.evaluate('createNewScene(' + expr + ')', 120000);
-  await dm.waitFor('currentScene && mapWidth === ' + MAP_W, 120000, 'the map to load on the DM');
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   await dm.waitFor('fogCoverT === 0', 30000, 'the scene cover to lift');
 
   // The real keystroke, on the document, exactly as the DM's keyboard delivers it.
@@ -73,7 +66,9 @@ module.exports = async function undoFeature(rig) {
   const redoKey = () => key('KeyY', { ctrlKey: true });
   const redoKeyAlt = () => key('KeyZ', { ctrlKey: true, shiftKey: true });
 
-  const settle = () => rig.sleep(350);
+  // The fog data is written synchronously; the crossfade owns the layer it is read through, so
+  // this is what says the last edit has finished landing.
+  const settle = () => lib.settle(dm, '!fogTransRafId', 8000);
 
   const fog = (x, y) => dm.evaluate('fogDataCtx.getImageData(Math.round(' + x +
     ' / FOG_SCALE), Math.round(' + y + ' / FOG_SCALE), 1, 1).data[3]');
@@ -281,12 +276,14 @@ module.exports = async function undoFeature(rig) {
   const playerFog = (x, y) => player.evaluate('fogDataCtx.getImageData(Math.round(' + x +
     ' / FOG_SCALE), Math.round(' + y + ' / FOG_SCALE), 1, 1).data[3]');
   const waitPlayerFog = async (x, y, ok, ms) => {
-    const deadline = Date.now() + ms;
-    for (;;) {
-      const v = await playerFog(x, y);
-      if (ok(v) || Date.now() > deadline) return v;
-      await rig.sleep(250);
-    }
+    // The last reading the poll took. A fresh one after the bound can throw on a Player that has
+    // gone, which abandons the file instead of failing the fog check by name.
+    let last;
+    const got = await lib.poll(async () => {
+      last = await playerFog(x, y);
+      return ok(last) ? { v: last } : null;
+    }, ms, 250);
+    return got ? got.v : last;
   };
 
   await dm.evaluate('document.getElementById("btn-fill-fog").click(); 0');

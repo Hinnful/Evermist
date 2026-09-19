@@ -21,8 +21,6 @@
 //   H. IT REACHES THE TV. A pasted shroud room the players still see through is the failure this
 //      feature exists to prevent.
 //
-// ⚠ ROOMS DO NOT CROSS TO THE PLAYER (CLAUDE.md). What crosses is the fog they paint, so the TV
-// check here reads fog over ground, never a room.
 //
 // ⚠ THE MAP STARTS FULLY FOGGED, so every room here is a SHROUD room inside a revealed clearing.
 // On untouched map a shroud room changes nothing and every fog check passes for free.
@@ -31,81 +29,19 @@
 // mousemove recorded, so a Ctrl+V with no move before it drops the shape wherever the previous
 // gesture left the cursor, and the check then measures the wrong place.
 
+const lib = require('../../lib');
+
 const MAP_W = 2400, MAP_H = 1500;
 const CLEAR = { x: 1200, y: 750, r: 1100 };
 
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my, mods) => {
-  const r = container.getBoundingClientRect();
-  const ev = new MouseEvent(type, Object.assign({
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  }, mods || {}));
-  container.dispatchEvent(ev);
-};
-globalThis.__rigDrag = (x1, y1, x2, y2, mods, steps) => {
-  const n = steps || 8;
-  __rigMouse('mousedown', x1, y1, mods);
-  for (let k = 1; k <= n; k++) {
-    __rigMouse('mousemove', x1 + (x2 - x1) * k / n, y1 + (y2 - y1) * k / n, mods);
-  }
-  __rigMouse('mouseup', x2, y2, mods);
-};
-globalThis.__rigClick = (mx, my, mods) => {
-  __rigMouse('mousedown', mx, my, mods); __rigMouse('mouseup', mx, my, mods);
-};
-globalThis.__rigDbl = (mx, my) => { __rigClick(mx, my); __rigMouse('dblclick', mx, my); };
-globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
-  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
-                  bubbles: true, cancelable: true }, mods || {})));
-// The pointer, parked without pressing anything. This is what a paste aims at.
-globalThis.__rigPoint = (mx, my) => __rigMouse('mousemove', mx, my);
-globalThis.__rigDrawShroud = (x1, y1, x2, y2) => {
-  setShapeOp('new');
-  setShape('rect');
-  document.getElementById('btn-shroud').click();
-  __rigDrag(x1, y1, x2, y2);
-  setShape('select');
-  return polygons[polygons.length - 1].id;
-};
-globalThis.__rigOpRect = (op, x1, y1, x2, y2) => {
-  setShapeOp(op); setShape('rect'); __rigDrag(x1, y1, x2, y2);
-  setShapeOp('new'); setShape('select'); return 0;
-};
-globalThis.__rigRingBox = (ring) => ({
-  x0: Math.min(...ring.map(v => v.x)), x1: Math.max(...ring.map(v => v.x)),
-  y0: Math.min(...ring.map(v => v.y)), y1: Math.max(...ring.map(v => v.y)),
-});
-globalThis.__rigCentre = (b) => ({ x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 });
-globalThis.__rigOf = (list, id) => (list === 'effects' ? effects : polygons).find(s => s.id === id);
-globalThis.__rigShape = (list, id) => {
-  const p = __rigOf(list, id);
-  if (!p) return null;
-  return {
-    id: p.id, name: p.name, desc: p.desc == null ? null : p.desc,
-    mode: p.mode == null ? null : p.mode, material: p.material == null ? null : p.material,
-    verts: p.vertices.map(v => ({ x: v.x, y: v.y })),
-    box: __rigRingBox(p.vertices),
-    holes: (p.holes || []).length,
-    holeBox: (p.holes || []).map(h => __rigRingBox(h)),
-    handles: p.handles ? p.handles.map(h => h && { ix: h.ix, iy: h.iy, ox: h.ox, oy: h.oy }) : null,
-    radii: p.cornerRadii ? p.cornerRadii.slice() : null,
-    doors: (p.doors || []).map(d => ({ edge: d.edge, t: d.t })),
-  };
-};
+const OWN_HELPERS = `
 globalThis.__rigLast = (list) => {
   const l = list === 'effects' ? effects : polygons;
-  return l.length ? __rigShape(list, l[l.length - 1].id) : null;
+  return l.length ? __rigShape(l[l.length - 1].id, list) : null;
 };
-globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
 0`;
 
-const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
-const SETTLE = 'rebuildFogFromPolygons(); rebuildFogEffect(); fogDirty = true;' +
-               ' scheduleRender(); sendToPlayer(); 0';
 
 const CTRL = '{ ctrlKey: true }';
 
@@ -117,10 +53,9 @@ module.exports = async function clipboard(rig) {
   const named = n => '(f => new File([f], ' + JSON.stringify(n) + ', { type: f.type }))(' + expr + ')';
 
   await dm.evaluate('createNewScene(' + named('ground-floor.mp4') + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
   const floorOne = await dm.evaluate('currentScene.id');
-  await dm.evaluate(HELPERS);
+  await lib.installHelpers(dm);
+  await dm.evaluate(OWN_HELPERS);
   await dm.evaluate('revealCircle(' + CLEAR.x + ',' + CLEAR.y + ',' + CLEAR.r + ');' +
                     'rebuildFogEffect(); fogDirty = true; scheduleRender(); 0');
   await dm.waitFor('fogCoverT === 0 && fogTransRafId === null', 30000, 'the clearing to open');
@@ -160,7 +95,7 @@ module.exports = async function clipboard(rig) {
   await dm.evaluate('__rigClick(650, 400); __rigKey("KeyC", ' + CTRL + '); 0');
   await dm.evaluate('__rigPoint(1500, 900); __rigKey("KeyV", ' + CTRL + '); 0');
   const copyB = await dm.evaluate('__rigLast("rooms")');
-  const origB = await dm.evaluate('__rigShape("rooms",' + aRoom + ')');
+  const origB = await dm.evaluate('__rigShape(' + aRoom + ', \"rooms\")');
   rig.check(copyB.name === 'Guard Post',
             'the copy is called "' + copyB.name + '" rather than carrying the original\'s name');
   rig.check(copyB.desc === 'Two guards, one asleep.',
@@ -184,7 +119,7 @@ module.exports = async function clipboard(rig) {
   await dm.evaluate('__rigClick(650, 400); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === aRoom,
             'Ctrl+D is about to duplicate a room other than the one C measures');
-  const beforeC = await dm.evaluate('__rigShape("rooms",' + aRoom + ')');
+  const beforeC = await dm.evaluate('__rigShape(' + aRoom + ', \"rooms\")');
   await dm.evaluate('__rigKey("KeyD", ' + CTRL + '); 0');
   const dupC = await dm.evaluate('__rigLast("rooms")');
   rig.note('one grid square is ' + Math.round(cell) + ' map units; the duplicate moved ' +
@@ -215,7 +150,8 @@ module.exports = async function clipboard(rig) {
   await dm.waitFor('currentScene && currentScene.id !== ' + JSON.stringify(floorOne), 120000,
                    'the second scene to open');
   await dm.waitFor('fogCoverT === 0', 30000, 'the second scene\'s cover to lift');
-  await dm.evaluate(HELPERS);
+  await lib.installHelpers(dm);
+  await dm.evaluate(OWN_HELPERS);
   rig.check(await dm.evaluate('polygons.length') === 0,
             'the second scene arrived carrying rooms, so a paste into it proves nothing');
   await dm.evaluate('__rigPoint(1200, 700); __rigKey("KeyV", ' + CTRL + '); 0');
@@ -229,16 +165,17 @@ module.exports = async function clipboard(rig) {
   await dm.waitFor('currentScene && currentScene.id === ' + JSON.stringify(floorOne), 60000,
                    'the switch back to the ground floor');
   await dm.waitFor('fogCoverT === 0', 30000, 'the ground floor\'s cover to lift');
-  await dm.evaluate(HELPERS);
-  rig.check(!!(await dm.evaluate('__rigShape("rooms",' + aRoom + ')')),
+  await lib.installHelpers(dm);
+  await dm.evaluate(OWN_HELPERS);
+  rig.check(!!(await dm.evaluate('__rigShape(' + aRoom + ', \"rooms\")')),
             'the ground floor came back without the rooms A to C drew, so everything below it ' +
             'is measuring an empty scene');
 
   // ══ E. A hole pastes as a hole, into the shape under the pointer ══
   const eRoom = await dm.evaluate('__rigDrawShroud(1400, 1000, 1900, 1350)');
   await dm.evaluate('__rigOpRect("trim", 1480, 1080, 1620, 1200)');
-  await dm.evaluate(SETTLE);
-  const holed = await dm.evaluate('__rigShape("rooms",' + eRoom + ')');
+  await dm.evaluate(lib.SETTLE);
+  const holed = await dm.evaluate('__rigShape(' + eRoom + ', \"rooms\")');
   rig.check(!!holed && holed.holes === 1,
             'the Trim left ' + (holed ? holed.holes : 'no room') + ' rather than one hole, so E ' +
             'is measuring the wrong thing');
@@ -253,8 +190,8 @@ module.exports = async function clipboard(rig) {
   const holeBox = holed.holeBox[0];
   const midX = (holeBox.x0 + holeBox.x1) / 2;
   await dm.evaluate('__rigDrag(' + midX + ',' + holeBox.y0 + ',' + midX + ',' +
-                    (holeBox.y0 - 40) + ', { ctrlKey: true }); 0');
-  const bentE = await dm.evaluate('__rigShape("rooms",' + eRoom + ')');
+                    (holeBox.y0 - 40) + ', { mods: { ctrlKey: true } }); 0');
+  const bentE = await dm.evaluate('__rigShape(' + eRoom + ', \"rooms\")');
   const bentCount = bentE.handles ? bentE.handles.filter(h => h).length : 0;
   rig.check(bentCount > 0,
             'the wall of the hole was never bent, so the curve half of E measures nothing');
@@ -267,8 +204,8 @@ module.exports = async function clipboard(rig) {
   const roomsBeforeE = await dm.evaluate('polygons.length');
   await dm.evaluate('__rigPoint(' + DROP_E.x + ',' + DROP_E.y + '); __rigKey("KeyV", ' +
                     CTRL + '); 0');
-  await dm.evaluate(SETTLE);
-  const afterE = await dm.evaluate('__rigShape("rooms",' + eRoom + ')');
+  await dm.evaluate(lib.SETTLE);
+  const afterE = await dm.evaluate('__rigShape(' + eRoom + ', \"rooms\")');
   rig.check(afterE.holes === 2,
             'the copied hole landed as ' + afterE.holes + ' hole(s) rather than two, so it did ' +
             'not paste into the room under the pointer');
@@ -292,10 +229,10 @@ module.exports = async function clipboard(rig) {
   await dm.evaluate('__rigClick(1550, 1140); 0');
   rig.check(await dm.evaluate('selectedHoleIndex') >= 0,
             'no hole is picked, so Ctrl+D would duplicate the whole room');
-  const dupHoleBefore = await dm.evaluate('__rigShape("rooms",' + eRoom + ')');
+  const dupHoleBefore = await dm.evaluate('__rigShape(' + eRoom + ', \"rooms\")');
   const pickedIdx = await dm.evaluate('selectedHoleIndex');
   await dm.evaluate('__rigKey("KeyD", ' + CTRL + '); 0');
-  const dupHoleAfter = await dm.evaluate('__rigShape("rooms",' + eRoom + ')');
+  const dupHoleAfter = await dm.evaluate('__rigShape(' + eRoom + ', \"rooms\")');
   rig.check(dupHoleAfter.holes === dupHoleBefore.holes + 1,
             'Ctrl+D on a hole left ' + dupHoleAfter.holes + ' holes where ' +
             (dupHoleBefore.holes + 1) + ' were due, so it duplicated into another shape');
@@ -312,7 +249,7 @@ module.exports = async function clipboard(rig) {
   const holesBeforeMiss = dupHoleAfter.holes;
   const undoMiss = await dm.evaluate('undoStack.length');
   await dm.evaluate('__rigPoint(300, 1400); __rigKey("KeyV", ' + CTRL + '); 0');
-  rig.check((await dm.evaluate('__rigShape("rooms",' + eRoom + ')')).holes === holesBeforeMiss &&
+  rig.check((await dm.evaluate('__rigShape(' + eRoom + ', \"rooms\")')).holes === holesBeforeMiss &&
             await dm.evaluate('undoStack.length') === undoMiss,
             'a hole pasted where no room sits still changed something');
 
@@ -355,7 +292,7 @@ module.exports = async function clipboard(rig) {
   rig.check(spentG === 1,
             'one paste spent ' + spentG + ' undo steps, so taking it back needs that many presses');
   await dm.evaluate('undo(); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('polygons.length') === countG,
             'one undo did not take the pasted room away again');
 
@@ -365,21 +302,21 @@ module.exports = async function clipboard(rig) {
   await player.waitFor('fogCoverT === 0', 45000, 'the scene cover to lift on the Player');
 
   const PROBE = { x: 1150, y: 620 };
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigFog(' + PROBE.x + ',' + PROBE.y + ')') < 60,
             'the ground the paste has to swallow is already hidden on the DM, so pasting a ' +
             'shroud room over it would prove nothing');
-  try { await player.waitFor(TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ') < 60', 30000,
+  try { await player.waitFor(lib.TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ') < 60', 30000,
                              'the Player to show that ground open'); } catch (_) {}
 
   await dm.evaluate('__rigClick(550, 350); __rigKey("KeyC", ' + CTRL + '); 0');
   await dm.evaluate('__rigPoint(' + PROBE.x + ',' + PROBE.y + '); __rigKey("KeyV", ' + CTRL + '); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   rig.check(await dm.evaluate('__rigFog(' + PROBE.x + ',' + PROBE.y + ')') > 200,
             'the DM\'s own fog did not follow the paste, so nothing could reach the TV');
-  try { await player.waitFor(TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ') > 200', 30000,
+  try { await player.waitFor(lib.TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ') > 200', 30000,
                              'the pasted room to reach the Player'); } catch (_) {}
-  const tv = await player.evaluate(TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ')');
+  const tv = await player.evaluate(lib.TV_FOG + '(' + PROBE.x + ',' + PROBE.y + ')');
   rig.note('the ground the pasted room swallowed reads alpha ' + tv + ' on the TV');
   rig.check(tv > 200,
             'the players still see open ground where the DM pasted a shroud room, so the whole ' +

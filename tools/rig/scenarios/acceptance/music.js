@@ -30,6 +30,7 @@
 //      mid-download keeps the queue rather than asking for the link again.
 //   L. Sound actually leaves the speaker, and the fade sounds like a fade.
 //   M. Pasting a YouTube link downloads the tracks picked from it.
+//   N. The downloader the app ships with is FOUND on disk, so Add music has something to run.
 //
 // ⚠ THE TRACKS ARE WRITTEN HERE AS WAV, not downloaded. A scenario must never reach YouTube: it
 // needs the network, a real video and a 50MB transfer. L and M are therefore rig.byEye, and
@@ -40,6 +41,8 @@
 
 const fs = require('fs');
 const path = require('path');
+
+const lib = require('../../lib');
 
 const MAP_W = 1600, MAP_H = 1000;
 
@@ -104,10 +107,7 @@ module.exports = async function musicFeature(rig) {
     'the pill corner radius resolves to ' + resting.radius + ' rather than the 12px every other ' +
     'floating surface in the app uses');
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
-  const expr = await rig.fixtures.asFileExpr(dm, map);
-  await dm.evaluate('createNewScene(' + expr + ')', 120000);
-  await dm.waitFor('!!mapOffscreen', 120000, 'the DM to finish importing the map');
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
 
   const player = await rig.player();
   const onPlayer = await player.evaluate(`(() => {
@@ -494,6 +494,26 @@ module.exports = async function musicFeature(rig) {
   })()`);
   rig.check(await dm.evaluate("!document.getElementById('music-bubble').classList.contains('mu-downloading')"),
     'the progress line stayed on the pill after the queue emptied');
+
+  // ══ N. The downloader is found on disk ═══════════════════════════════════
+  // ⚠ A PATH CHECK, not a download. `--version` runs the bundled binary and needs no network,
+  // so this says the app located it and can execute it. Everything else about the downloader
+  // needs a real video and stays with the ear and the eye below.
+  //
+  // ⚠ THE ONLY THING THAT READS THE BUNDLED PATH IS BOOT. main.js calls ensureYtdlp(), which
+  // copies the binary out of the install into userData; the rig's profile is thrown away per
+  // scenario, so that copy happens on every run. A wrong path leaves ytdlpBin null and this is
+  // the first place it shows - the panel itself opens and looks entirely normal.
+  const ytdlp = await dm.evaluate(`(async () => {
+    if (!window.electronAPI || !window.electronAPI.musicYtdlpLatest) return { err: 'no IPC' };
+    try { return await window.electronAPI.musicYtdlpLatest(); }
+    catch (e) { return { err: String((e && e.message) || e) }; }
+  })()`, 30000);
+  rig.note('the bundled downloader reports: ' + JSON.stringify(ytdlp));
+  rig.check(!ytdlp.err, 'the downloader could not be asked for its version: ' + ytdlp.err);
+  rig.check(!!ytdlp.current && /\d/.test(String(ytdlp.current)),
+            'the app shipped a downloader it cannot find on disk, so Add music has nothing to ' +
+            'run and the panel says so only once a track is picked: ' + JSON.stringify(ytdlp));
 
   rig.byEye('L. Sound leaves the speaker, and a pick crossfades rather than cutting. A run is ' +
             'MUTED by design, so the audible half is the ear at the table and nothing else.');

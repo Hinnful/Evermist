@@ -31,11 +31,8 @@
 //
 // ⚠ WAIT OUT THE SCENE COVER BEFORE READING PAINTED FOG (fogCoverT). A fresh map arrives under a
 // full-fog cover that punches nothing, so every sample reads opaque no matter what was revealed.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
+
+const lib = require('../../lib');
 
 const MAP_W = 2000, MAP_H = 1200;          // scene one
 const MAP2_W = 1600, MAP2_H = 1000;        // scene two, a different size so a switch is visible
@@ -48,19 +45,6 @@ const AT_A = { x: 500, y: 350 };           // inside the room where it is drawn
 const MOVE = { dx: 200, dy: 100 };
 const AT_B = { x: AT_A.x + MOVE.dx, y: AT_A.y + MOVE.dy };   // inside it after the move
 
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my) => {
-  const r = container.getBoundingClientRect();
-  container.dispatchEvent(new MouseEvent(type, {
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  }));
-};
-globalThis.__rigDrag = (x1, y1, x2, y2) => {
-  __rigMouse('mousedown', x1, y1); __rigMouse('mousemove', (x1+x2)/2, (y1+y2)/2);
-  __rigMouse('mousemove', x2, y2); __rigMouse('mouseup', x2, y2);
-};
-0`;
 
 // The Player's own source of truth for fog, at 1/FOG_SCALE. Alpha 255 is fully hidden ground,
 // 0 is clear. Read from the DATA canvas rather than the painted one wherever the question is
@@ -81,20 +65,14 @@ window.addEventListener('message', e => {
 module.exports = async function everythingReachesThePlayer(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
                    120000, 'the first map to load on the DM');
-  await dm.evaluate(HELPERS);
   const sceneOne = await dm.evaluate('currentScene.id');
 
   // BOTH SCENES EXIST BEFORE THE PLAYER OPENS. See the warning on D: an import made while the
   // Player is open clears the map request it made on opening, and E cannot then measure anything.
-  const map2 = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP2_W, h: MAP2_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map2)) + ')', 120000);
-  await dm.waitFor('currentScene && mapWidth === ' + MAP2_W, 120000, 'the second map on the DM');
+  await lib.openMap(rig, { w: MAP2_W, h: MAP2_H });
   const sceneTwo = await dm.evaluate('currentScene.id');
   await dm.evaluate('switchScene("' + sceneOne + '"); 0', 120000);
   await dm.waitFor('currentScene && currentScene.id === "' + sceneOne + '" && mapWidth === ' + MAP_W,
@@ -159,7 +137,10 @@ module.exports = async function everythingReachesThePlayer(rig) {
   await dm.evaluate('(() => { const p = polygons[0]; p.name = "Secret Vault";' +
                     ' p.description = "The lich sleeps here"; return 0; })()');
   await dm.evaluate('scheduleAutoSync(); 0');
-  await rig.sleep(600);
+  // Nothing to poll for: the claim is that a room's name and notes do NOT cross. The wait has to
+  // be long enough for the push that would have carried them to have landed.
+  await lib.hold(600, 'the push that would carry a room needs time to have arrived, or "it did ' +
+    'not arrive" means nothing');
   const leaked = await player.evaluate(`(() => {
     const n = (typeof polygons !== 'undefined' && polygons) ? polygons.length : 0;
     const body = document.body.innerText || '';
@@ -186,7 +167,7 @@ module.exports = async function everythingReachesThePlayer(rig) {
   // fires and the DM never enters the state E is about. This is the Player's OWN message, sent
   // exactly as its retry sends it; nothing here is a path the app does not take.
   await player.evaluate('window.opener.postMessage({ type: "need-map" }, "*"); 0');
-  await rig.sleep(800);   // the DM answers straight away; let that answer land before counting
+  await lib.settle(dm, '_playerResyncPending === false', 15000);
 
   // The DM answered that request rather than filing it. A request left outstanding after being
   // served is what the next switch flushes as a second delivery, so this reads the cause while E
@@ -209,7 +190,8 @@ module.exports = async function everythingReachesThePlayer(rig) {
   // cover (FOG_SCENE_COVER_MS, 2250ms in fog.js), so a shorter wait counts the synchronous push
   // alone and reports 1 — this check PASSED for that reason before the wait was lengthened, which
   // is exactly the way a scenario proves nothing while looking green.
-  await rig.sleep(3000);
+  await lib.hold(3000, 'switchScene holds its own push behind the fog cover, 2250ms in fog.js, ' +
+    'so counting sooner counts the synchronous push alone and reports 1 on a broken switch');
   const sends = await player.evaluate('globalThis.__rigFogUpdates');
   rig.note('fog-update messages the Player received for ONE scene switch: ' + sends);
   // EXACTLY one, never "at most one": a count of 0 would mean nothing was delivered at all, and
@@ -232,8 +214,11 @@ module.exports = async function everythingReachesThePlayer(rig) {
   await dm.evaluate('document.getElementById("btn-sync-view").click(); 0');
   const region = `(() => { const s = getViewportSize();
     return visibleMapRegion(panX, panY, zoom, mapWidth, mapHeight, s.w, s.h); })()`;
-  const near = 'Math.abs(' + region + '.cx - ' + want.mapCX + ') < 60';
-  try { await player.waitFor(near, 20000, 'the Player view to settle on the DM region'); } catch (_) {}
+  // ⚠ WAIT FOR THE LERP TO FINISH, NOT FOR ONE AXIS TO GET CLOSE. The wait here used to watch
+  // cx alone against the same 60 the check below asserts on BOTH axes, so it released mid-lerp
+  // the moment cx came inside the tolerance while cy was still 67 away. That read as Sync View
+  // aiming the TV somewhere else, on a build where it was working and simply still moving.
+  await lib.settle(player, '!viewLerpActive', 20000);
   const got = await player.evaluate(region);
   rig.note('view centre — DM asked for ' + Math.round(want.mapCX) + ',' + Math.round(want.mapCY) +
            ', the Player settled on ' + Math.round(got.cx) + ',' + Math.round(got.cy));
@@ -259,7 +244,8 @@ module.exports = async function everythingReachesThePlayer(rig) {
     }
     return 0;
   })()`, 60000);
-  await rig.sleep(2500);
+  await lib.hold(2500, 'the claim is that no superseded <video> is LEFT behind, so the pushes ' +
+    'need time to have finished tearing each other down before the survivors are counted');
   const left = await player.evaluate(`(() => {
     const vs = [...document.querySelectorAll('video')];
     return { n: vs.length, broken: vs.filter(v => v.error).length,

@@ -8,7 +8,10 @@
 //   npm run rig -- fog-reaches-the-player
 //   npm run rig -- --exe "dist/Evermist.exe"          drive a built installer instead
 //   npm run rig -- --shot "#sm-panel" --shot-setup "openDropdown()"
-//   npm run rig -- --dm-size 1024x768 --player-size 1024x768    reproduce a CI layout exactly
+//   npm run rig -- --dm-size 1280x800 --player-size 1920x1080   run at a size other than the default
+//
+// EVERY RUN USES THE SAME GEOMETRY, here and in CI — see RUNNER_DM below. The two size flags
+// override it; nothing else varies between machines.
 //
 // When to run it, when not to, how to write a scenario, and the traps: the `rig` skill.
 // What it is and how the pieces fit: docs/ARCHITECTURE.md.
@@ -44,6 +47,20 @@ const TEMP_ROOT = path.join(os.tmpdir(), 'evermist-rig');
 const TIMEOUT_BASE_MS = 180000;
 const TIMEOUT_PER_SCENARIO_MS = 90000;
 
+// ⚠ THE LIMIT THAT ACTUALLY FIRES, and the reason the one above is now only a backstop. The
+// run-wide watchdog kills the process, so a single scenario that hung at file 3 of 29 spent the
+// whole budget and the other 26 went unread — the same fault the per-scenario try/catch already
+// fixed for a scenario that THROWS. One that hangs never throws, so it slipped past.
+//
+// Generous on purpose. A green 29-file set runs in well under half this per file even on a
+// runner, so a scenario reaching 300s is stuck rather than slow. Too tight a limit here would
+// manufacture exactly the random gate failure it exists to prevent.
+const SCENARIO_TIMEOUT_MS = 300000;
+
+// Consecutive boots that fail before the run gives up. One is a scenario's own problem; three in
+// a row is the machine, and the remaining boot timeouts would only spend the budget saying so.
+const MAX_BOOT_FAILURES = 3;
+
 // initControlPanel is the LAST thing the init chain runs (called from toolbar.js), and
 // _cpFogPicker is the last thing it assigns — so this is the app saying it is fully up. Polled,
 // never slept through: boot takes about ten seconds here and a fixed wait is either a lie or a
@@ -51,11 +68,31 @@ const TIMEOUT_PER_SCENARIO_MS = 90000;
 const DM_READY = 'typeof _cpFogPicker !== "undefined" && !!_cpFogPicker';
 const PLAYER_READY = 'typeof isPlayer !== "undefined" && isPlayer && !!pixiApp';
 
+// ─── The one geometry every run uses ─────────────────────────────────────────
+//
+// ⚠ EVERY RUN IS THE RUNNER'S LAYOUT, HERE AND IN CI, DIGIT FOR DIGIT. A GitHub Actions runner
+// has a 1024x768 virtual display, which puts the DM window at 1008x681. The default used to be
+// "whatever the machine gives", on the theory that scenarios would hold at any size. They did
+// not: three separate geometry checks passed here and took a release gate down there, each
+// costing a twenty-minute run to find.
+//
+// Pinning makes a size-dependent check invisible instead of noisy, so ONE scenario pays for the
+// property the floating default was supposed to buy: scenarios/acceptance/sizes.js runs the
+// size-dependent behaviours at three sizes on purpose.
+//
+// The device scale factor is pinned with them. It used to apply only when a size flag was
+// passed, so a DM's Windows display scaling was live in every local run and absent in CI.
+//
+// ⚠ display.js READS ELECTRON'S OWN screen MODULE, IN THE MAIN PROCESS. Nothing in the DevTools
+// protocol reaches that, so the second-display path stays `rig.byEye`.
+const RUNNER_DM = { w: 1008, h: 681 };
+const RUNNER_SCREEN = { w: 1024, h: 768 };
+
 // ─── Arguments ───────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
   const a = { scenarios: [], exe: null, out: null, shot: null, shotSetup: '', visible: false,
-              dmSize: null, playerSize: null };
+              dmSize: RUNNER_DM, playerSize: RUNNER_SCREEN, screenSize: RUNNER_SCREEN };
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
     if (t === '--exe') a.exe = argv[++i];
@@ -65,7 +102,11 @@ function parseArgs(argv) {
     else if (t === '--dm-size' || t === '--player-size') {
       const m = /^(\d+)x(\d+)$/.exec(argv[++i] || '');
       if (!m) throw new Error(t + ' wants WIDTHxHEIGHT, e.g. 1024x768');
-      a[t === '--dm-size' ? 'dmSize' : 'playerSize'] = { w: +m[1], h: +m[2] };
+      const size = { w: +m[1], h: +m[2] };
+      if (t === '--dm-size') a.dmSize = size;
+      // The Player fills the screen, so its size IS the screen the app reads. Setting the two
+      // apart would give the app a display smaller than the window standing on it.
+      else { a.playerSize = size; a.screenSize = size; }
     }
     else if (t === '--visible') a.visible = true;
     else if (t.startsWith('--')) throw new Error('unknown flag ' + t);
@@ -147,6 +188,25 @@ function killApp(proc) {
 }
 
 function killAll() { for (const p of Array.from(live)) killApp(p); }
+
+// ⚠ A RESTART HAS TO QUIT THE APP THE WAY THE DM DOES, not kill it. `taskkill /F` takes the
+// process down before Chromium flushes localStorage, so the app comes back having forgotten
+// which scene was open - which reads as the app losing it, when the rig threw it away.
+// Closing the DM window is the real path: main.js quits on `window-all-closed`.
+// Bounded, with the hard kill as the fallback, because a run must never leave an app running.
+async function quitApp(inst, ms = 15000) {
+  if (!inst || !inst.proc) return;
+  try { await inst.dm.evaluate('window.close(); 0'); } catch (_) {}
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    if (inst.proc.exitCode !== null || inst.proc.signalCode !== null) {
+      live.delete(inst.proc);
+      return;
+    }
+    await cdp.sleep(120);
+  }
+  killApp(inst.proc);
+}
 
 // ─── Getting the run off the screen ──────────────────────────────────────────
 // A run used to own the machine: both windows opened in front and stayed there, so nobody could
@@ -254,24 +314,28 @@ function assertPreloadRan(dm) {
 // Emulation.setDeviceMetricsOverride resizes the RENDERER only. The OS window stays parked
 // off-screen, so this costs nothing back. Best-effort: a Player at the wrong size is worth less
 // coverage, not a failed run, so a refusal here is reported and stepped over.
-// ─── Forcing a window size, to reproduce a CI layout ─────────────────────────
-// `--dm-size WxH` and `--player-size WxH` set each renderer's size exactly. Nothing uses them by
-// default: the windows come up at whatever the machine gives, and the scenarios are written to
-// hold at any size rather than at one.
 //
-// ⚠ THIS IS HOW A RUNNER FAILURE GETS CHASED WITHOUT PUSHING. A GitHub Actions runner has a
-// 1024x768 virtual display, which put the DM at 1008x681 and broke three geometry checks. With
-// these two flags the same layout reproduces here, digit for digit, in half a minute — against
-// fifteen for a push and a run.
+// ⚠ screenWidth/screenHeight ARE PART OF THE OVERRIDE, not decoration. `screen.width` is what
+// two-map mode sizes its shell from, and it used to read the real monitor — yours at 2560 wide,
+// a runner's at 1024. Pinning the viewport and leaving the screen real gives the app a display
+// it does not have.
 //
-// ⚠ GROWING THE WINDOW WAS THE WRONG FIX AND IS NOT COMING BACK. A 1200x800 floor did clear all
-// three, and 40% more pixels on a software rasteriser slowed the app enough that one import blew
-// its own budget and the whole set hit the run's 900s cap. The checks were the thing to fix.
-async function sizeRendererTo(session, exact) {
+// ⚠ GROWING THE WINDOW WAS THE WRONG FIX AND IS NOT COMING BACK. A 1200x800 floor did clear the
+// three failing checks, and 40% more pixels on a software rasteriser slowed the app enough that
+// one import blew its own budget and the whole set hit the run's 900s cap. The checks were the
+// thing to fix.
+async function applyMetrics(session, size, screen) {
+  const s = screen || size;
+  await session.send('Emulation.setDeviceMetricsOverride', {
+    width: size.w, height: size.h, deviceScaleFactor: 1, mobile: false,
+    screenWidth: s.w, screenHeight: s.h, positionX: 0, positionY: 0,
+  });
+}
+
+async function sizeRendererTo(session, exact, screen) {
   if (!exact) return null;
   try {
-    await session.send('Emulation.setDeviceMetricsOverride',
-      { width: exact.w, height: exact.h, deviceScaleFactor: 1, mobile: false });
+    await applyMetrics(session, exact, screen);
     await session.evaluate('syncSize(); viewportDirty = true; scheduleRender(); 0');
     return exact;
   } catch (_) { return null; }
@@ -279,29 +343,32 @@ async function sizeRendererTo(session, exact) {
 
 // The shell carries no app, so only its viewport is overridden here; the halves size themselves
 // off their own boxes once it lands.
-async function sizeStageToScreen(session, exact) {
+async function sizeStageToScreen(session, exact, screen) {
   try {
-    const s = exact || await session.evaluate('({ w: screen.width, h: screen.height })');
+    const s = exact || screen;
     if (!s || !(s.w > 0) || !(s.h > 0)) return null;
-    await session.send('Emulation.setDeviceMetricsOverride',
-      { width: s.w, height: s.h, deviceScaleFactor: 1, mobile: false });
+    await applyMetrics(session, s, screen);
     return s;
   } catch (_) { return null; }
 }
 
-async function sizePlayerToScreen(session, exact) {
+async function sizePlayerToScreen(session, exact, screen) {
   try {
-    const s = exact || await session.evaluate('({ w: screen.width, h: screen.height })');
+    const s = exact || screen;
     if (!s || !(s.w > 0) || !(s.h > 0)) return null;
-    await session.send('Emulation.setDeviceMetricsOverride',
-      { width: s.w, height: s.h, deviceScaleFactor: 1, mobile: false });
+    await applyMetrics(session, s, screen);
     await session.evaluate('syncSize(); viewportDirty = true; scheduleRender(); 0');
     return s;
   } catch (_) { return null; }
 }
 
 // Boots the app, attaches to the DM, and hands back everything a scenario needs.
-async function startInstance(args, profileDir) {
+//
+// `expectEmptyLibrary` is true for the boot that starts a scenario and false for a restart the
+// scenario asked for — see rig.restart. The empty-library guard is how isolation is PROVEN, so
+// it runs on every first boot and is never weakened; a second boot on the same profile is
+// meant to find the maps the first one put there.
+async function startInstance(args, profileDir, expectEmptyLibrary = true) {
   fs.mkdirSync(profileDir, { recursive: true });
   const port = await freePort();
 
@@ -340,7 +407,7 @@ async function startInstance(args, profileDir) {
   await dm.waitFor(DM_READY, 90000, 'the DM init chain');
   await assertPreloadRan(dm);
   // Before any scenario reads a rect. A no-op unless --dm-size was passed.
-  await sizeRendererTo(dm, args.dmSize);
+  await sizeRendererTo(dm, args.dmSize, args.screenSize);
 
   // ⚠ REFUSE TO RUN AGAINST A LIBRARY THAT ALREADY HAS SCENES IN IT. Scenarios import maps,
   // switch scenes (which autosaves the outgoing one) and restore backups, so a rig run on real
@@ -350,7 +417,8 @@ async function startInstance(args, profileDir) {
   // that .exe. An empty library is the observable proof that isolation held; check it, do not
   // assume it.
   // Retried, because the scene database comes up inside initScenes and can still be null when
-  // the control panel (the DM_READY signal) has already been built.
+  // the control panel (the DM_READY signal) has already been built. Waited for on a restart
+  // too, so a scenario reading the library back never races the store coming up.
   const existing = await dm.evaluate(`(async () => {
     for (let i = 0; i < 75; i++) {
       try { return (await sceneStore.listScenes()).length; }
@@ -358,7 +426,7 @@ async function startInstance(args, profileDir) {
     }
     throw new Error('the scene database never came up');
   })()`, 60000);
-  if (existing > 0) {
+  if (expectEmptyLibrary && existing > 0) {
     throw new Error('the app opened a library that already holds ' + existing + ' scenes, so the ' +
       'isolated profile did not take and a run would damage real maps. A portable build ignores ' +
       '--user-data-dir and keeps its data beside the .exe; point --exe at dist/win-unpacked/' +
@@ -368,7 +436,7 @@ async function startInstance(args, profileDir) {
   // One Player per column in two-column mode, so the sessions are keyed rather than held one
   // at a time. '' is the single-map window.
   return { proc, port, browser, dm, dmTargetId: dmTarget.id, players: new Map(), stage: null,
-           playerSize: args.playerSize };
+           playerSize: args.playerSize, screenSize: args.screenSize };
 }
 
 // ─── The rig handed to a scenario ────────────────────────────────────────────
@@ -422,27 +490,87 @@ async function showPlayer(session, budgetMs) {
   }
 }
 
-function makeRig(inst, dirs, tally) {
+function makeRig(inst, dirs, tally, args) {
+  let muted = false;
   const rig = {
     dm: inst.dm,
     outDir: dirs.scenario,
     fixtureDir: dirs.fixtures,
     profileDir: dirs.profile,
     root: ROOT,
+
+    // ⚠ THE APP, SHUT DOWN AND STARTED AGAIN ON THE SAME PROFILE. Every other boot in the rig is
+    // a first-ever boot on an empty library, so nothing used to exercise the app coming up with
+    // maps already in it: which scene opens, how the library paints first, an older record read
+    // back wrong. Those faults reach the table and no scenario could see them.
+    //
+    // ⚠ THE CALLER MUST TAKE THE SESSION THIS RETURNS. The old `rig.dm` is closed, so a scenario
+    // holding `const dm = rig.dm` from the top of the file is talking to a dead socket, and every
+    // evaluate on it throws rather than reporting anything.
+    async restart() {
+      const old = [inst.dm].concat(inst.stage ? [inst.stage] : [])
+        .concat(Array.from(inst.players.values()).filter(s => s !== inst.stage));
+      // The console errors of the outgoing windows belong to this scenario, not to nothing.
+      for (const s of old) tally.consoleErrors.push(...(s.errors || []));
+      await quitApp(inst);
+      for (const s of old) s.close();
+
+      const next = await startInstance(args, dirs.profile, false);
+      inst.proc = next.proc;
+      inst.port = next.port;
+      inst.browser = next.browser;
+      inst.dm = next.dm;
+      inst.dmTargetId = next.dmTargetId;
+      inst.players = next.players;
+      inst.stage = next.stage;
+      rig.dm = next.dm;
+      return next.dm;
+    },
+
+    // ⚠ THE ONLY SANCTIONED WAY TO VARY THE WINDOW SIZE INSIDE A RUN. Every run is pinned to one
+    // geometry so a local failure and a CI failure are the same failure, which also means a
+    // size-dependent check is invisible instead of noisy. sizes.js pays for that by varying the
+    // size ON PURPOSE, through here.
+    //
+    // The app is told to re-measure, because Chromium's resize event and the override do not
+    // arrive together and a read taken between them is of the old layout.
+    async resizeDm(w, h) {
+      await sizeRendererTo(inst.dm, { w, h }, args.screenSize);
+      return { w, h };
+    },
+    // The Player fills the screen, so its size IS the screen the app reads — the same pairing
+    // the --player-size flag makes.
+    async resizePlayer(w, h) {
+      const session = inst.players.get('');
+      if (!session) throw new Error('resizePlayer was called before the Player was opened');
+      await sizePlayerToScreen(session, { w, h }, { w, h });
+      return { w, h };
+    },
     fixtures: require('./fixtures'),
-    sleep: cdp.sleep,
+    // ⚠ NO sleep HERE, AND IT IS NOT TO COME BACK. A fixed wait is either a lie or a waste,
+    // and on a slow runner it is the lie - 104 of them across eighteen files were the largest
+    // source of a gate that went red on the runner and green here. What replaced them:
+    // lib.settle for a state, lib.poll for a value, and lib.hold for the one case neither
+    // serves - a check that something does NOT happen, where the wait IS the claim and has to
+    // carry its reason in an argument.
 
     // The collector every scenario asserts through. A message reads as the failure, not the
     // expectation, because it is what lands in the FAIL line.
     check(condition, message) {
+      if (muted) return !!condition;
       tally.checked++;
       if (!condition) tally.fails.push(message);
       return !!condition;
     },
     // A criterion nobody can automate. It stays in the scenario file and the report lists it as
     // unchecked, rather than being dropped silently.
-    byEye(message) { tally.byEye.push(message); },
-    note(message) { tally.notes.push('  ' + message); },
+    byEye(message) { if (!muted) tally.byEye.push(message); },
+    note(message) { if (!muted) tally.notes.push('  ' + message); },
+
+    // ⚠ CALLED BY THE RUNNER ALONE, never by a scenario. A scenario the runner gave up waiting
+    // for keeps running, and whatever it reports after that point lands in the tally slice the
+    // runner is already printing under the NEXT scenario's name. Muting closes the tally to it.
+    mute() { muted = true; },
 
     // Every page target the app currently has, as { id, url }. A scenario needs this to count
     // windows - "one Player screen and not two" cannot be read from inside either of them - and
@@ -477,7 +605,7 @@ function makeRig(inst, dirs, tally) {
         await showPlayer(session, 20000);
         // The shell is the page, so the TV-sized viewport is set once here and each half then
         // re-reads its own box.
-        await sizeStageToScreen(session, inst.playerSize);
+        await sizeStageToScreen(session, inst.playerSize, inst.screenSize);
         inst.stage = session;
       }
       const half = await inst.stage.frame('mode=player&pane=' + id, 30000);
@@ -548,7 +676,7 @@ function makeRig(inst, dirs, tally) {
         // size-dependent — its fog is a Canvas-2D layer composited over the map with an edge
         // margin — so measuring it at 1200x800 would test a size the table never uses. This
         // changes the renderer only; the OS window stays parked.
-        await sizePlayerToScreen(session, inst.playerSize);
+        await sizePlayerToScreen(session, inst.playerSize, inst.screenSize);
         return session;
       };
 
@@ -634,6 +762,8 @@ async function main() {
   const stopParker = () => { if (parker) try { parker.kill(); } catch (_) {} };
   process.once('exit', stopParker);
 
+  let bootFailures = 0;
+
   for (const file of plan) {
     const name = file ? path.basename(file, '.js') : 'shot';
     const dirs = {
@@ -647,18 +777,45 @@ async function main() {
     // and a report that exists only afterwards says nothing about a run that hangs, nor about
     // WHICH scenario a random failure landed in. The end-of-run report keeps the verdict alone.
     console.log('── ' + name);
-    const inst = await startInstance(args, dirs.profile);
-    const rig = makeRig(inst, dirs, tally);
     const firstNote = tally.notes.length;
     const firstFail = tally.fails.length;
     const firstErr = tally.consoleErrors.length;
-    let thrown = null;
+
+    // ⚠ A BOOT THAT FAILS IS THIS SCENARIO'S FAILURE, not the run's — with one exception. The
+    // same fault three times running is the machine, not the scenarios, and marching 28 boot
+    // timeouts to say so wastes the whole budget.
+    let inst = null;
     try {
-      if (file) await require(file)(rig);
-      if (args.shot && file === plan[plan.length - 1]) await takeShot(rig, inst.dm, args.shot, args.shotSetup);
+      inst = await startInstance(args, dirs.profile);
+      bootFailures = 0;
     } catch (err) {
-      thrown = err;
+      bootFailures++;
+      tally.fails.push(name + ' never booted: ' + (err && err.message ? err.message : err));
+      for (const f of tally.fails.slice(firstFail)) console.log('  FAILED: ' + f);
+      if (bootFailures >= MAX_BOOT_FAILURES) {
+        throw new Error(MAX_BOOT_FAILURES + ' scenarios in a row could not start the app, so the ' +
+          'fault is the machine and not the scenarios. Last: ' + (err && err.message ? err.message : err));
+      }
+      continue;
+    }
+
+    const rig = makeRig(inst, dirs, tally, args);
+    try {
+      await withTimeout((async () => {
+        if (file) await require(file)(rig);
+        if (args.shot && file === plan[plan.length - 1]) await takeShot(rig, inst.dm, args.shot, args.shotSetup);
+      })(), SCENARIO_TIMEOUT_MS, name);
+    } catch (err) {
+      // ⚠ RECORDED AND STEPPED OVER, never rethrown. `waitFor` throws, and about 190 of them are
+      // unguarded, so one timeout used to end the run and every scenario after it went unread.
+      // A 45-minute gate has to report every problem it found, not the first.
+      tally.fails.push(name + ' stopped early: ' + (err && err.message ? err.message : err));
     } finally {
+      // ⚠ AN ABANDONED SCENARIO IS STILL RUNNING. Nothing can stop an async function mid-await,
+      // so it keeps going until the app is killed below and its next evaluate rejects. Muting
+      // the rig first stops the checks it reaches in the meantime being printed under the NEXT
+      // scenario's heading, which would read as that scenario failing.
+      rig.mute();
       // ⚠ The shell, not the halves: a half is a VIEW onto the shell's socket, so closing one
       // closes nothing and its console errors are the shell's.
       const sessions = [inst.dm].concat(inst.stage ? [inst.stage] : [])
@@ -670,7 +827,6 @@ async function main() {
     for (const n of tally.notes.slice(firstNote)) console.log(n);
     for (const f of tally.fails.slice(firstFail)) console.log('  FAILED: ' + f);
     for (const e of tally.consoleErrors.slice(firstErr)) console.log('  CONSOLE ERROR: ' + e);
-    if (thrown) throw thrown;
   }
 
   if (tally.consoleErrors.length) console.log('CONSOLE ERRORS:\n  ' + tally.consoleErrors.join('\n  '));
@@ -683,6 +839,21 @@ async function main() {
 
   killAll();
   process.exit(fails.length ? 1 : 0);
+}
+
+// A scenario that outstays the limit, turned into a rejection the caller records like any other.
+//
+// ⚠ IT ABANDONS, IT DOES NOT CANCEL. JavaScript cannot stop an async function mid-await, so the
+// scenario runs on until the app is killed and its next evaluate rejects into nothing. That late
+// rejection is already handled — Promise.race's own handler stays attached after the race has
+// settled — so it never reaches the unhandledRejection hook that would end the run.
+function withTimeout(promise, ms, name) {
+  let timer;
+  const limit = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(name + ' ran past its ' + Math.round(ms / 1000) +
+      's limit and was abandoned, so the run moved on')), ms);
+  });
+  return Promise.race([promise, limit]).finally(() => clearTimeout(timer));
 }
 
 let watchdog = null;

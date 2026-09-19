@@ -23,6 +23,7 @@
 //   I. A room that already has notes is asked before they are replaced, and the name lands either
 //      way.
 //   J. None of it reaches the Player.
+//   K. A PDF is CONVERTED rather than refused, in the app that actually ships.
 //
 // The parser is unit-tested and stays that way (test/moduleText.test.js — headings, sub-locations,
 // furniture, reflow, the sequence). What is here is the app around it: the panel, the store, the
@@ -32,6 +33,11 @@
 // this repo. That also means the thresholds this feature tunes — the wrap percentile, paragraph
 // recovery — are NOT what this file measures; they can only be judged against a real book.
 //
+// ⚠ SECTION K IS A PACKAGING CHECK AS MUCH AS A FEATURE ONE. The extraction forks a
+// utilityProcess and loads pdfjs-dist from `app.asar.unpacked`, a path that exists only in a
+// built app. Under `npm start` it resolves to node_modules and passes whatever build.files says,
+// so this criterion only earns its place on the run CI makes against the .exe.
+//
 // ⚠ THE DROPDOWN ACTS ON click, AND ITS mousedown ONLY CALLS preventDefault. That split keeps the
 // pointer from blurring the name field and closing the list, and keeps a dialog out of the middle
 // of a mouse gesture. Section G drives both events in that order, so a scenario that dispatched
@@ -40,11 +46,8 @@
 // ⚠ THE STORE IS localStorage, WHICH SURVIVES NOTHING THE RIG DOES BETWEEN SCENARIOS but survives
 // everything inside one. Section E leans on that: the profile is thrown away per scenario, so the
 // panel starts empty every run.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
+
+const lib = require('../../lib');
 
 const MAP_W = 1400, MAP_H = 900;
 const ROOM_A = { x1: 200, y1: 200, x2: 550, y2: 450 };
@@ -68,8 +71,7 @@ const MODULE = [
 module.exports = async function moduleTextFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
+  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
   const expr = await rig.fixtures.asFileExpr(dm, map);
   const named = n => '(f => new File([f], ' + JSON.stringify(n) + ', { type: f.type }))(' + expr + ')';
 
@@ -136,7 +138,7 @@ module.exports = async function moduleTextFeature(rig) {
 
   // ── A. Three controls, and importing on choose ────────────────────────────
   await dm.evaluate('openModuleTextModal(); 0');
-  await rig.sleep(250);
+  await lib.settle(dm, 'document.getElementById("mt-modal").style.display !== "none"', 8000);
   const empty = await panel();
   rig.note('the panel with nothing loaded: ' + JSON.stringify(empty.status));
   rig.check(empty.open, 'the module-text panel would not open');
@@ -153,7 +155,7 @@ module.exports = async function moduleTextFeature(rig) {
             JSON.stringify(controls));
 
   await dm.evaluate('__rigPickModule(__rigText("Watcherhouse.txt", ' + JSON.stringify(MODULE) + '))');
-  await rig.sleep(600);
+  await lib.settle(dm, 'mtEntries && mtEntries.length === 3', 20000);
   const loaded = await panel();
   const st = await store();
   rig.note('after choosing a file: ' + JSON.stringify(loaded.status) + ' / ' + JSON.stringify(st));
@@ -172,7 +174,7 @@ module.exports = async function moduleTextFeature(rig) {
   // An empty parse must not throw away the book that is loaded.
   await dm.evaluate('__rigPickModule(__rigText("Nothing.txt", "Just some prose with no headings ' +
     'in it at all, running on for a while."))');
-  await rig.sleep(600);
+  await lib.settle(dm, 'document.getElementById("mt-status").textContent.indexOf("numbered locations") !== -1', 20000);
   const afterEmpty = await panel();
   const stillLoaded = await store();
   rig.note('after a file with no headings: ' + JSON.stringify(afterEmpty.status));
@@ -188,7 +190,7 @@ module.exports = async function moduleTextFeature(rig) {
   // as prose gives the DM a list of garbage and no idea why.
   await dm.evaluate('__rigPickModule(__rigText("Module.docx", "PK\\u0003\\u0004' +
     'word/document.xml", "application/octet-stream"))');
-  await rig.sleep(600);
+  await lib.settle(dm, 'document.getElementById("mt-status").textContent.indexOf(".docx") !== -1', 20000);
   const binary = await panel();
   rig.note('after a .docx: ' + JSON.stringify(binary.status));
   rig.check(binary.err,
@@ -297,7 +299,7 @@ module.exports = async function moduleTextFeature(rig) {
 
   // ── G. The dropdown is the only way in ───────────────────────────────────
   await dm.evaluate('closeModuleTextModal(); selectedPolygonId = 1; refreshRoomPanel(); 0');
-  await rig.sleep(300);
+  await lib.settle(dm, '!!document.getElementById("rp-mt-dd")', 8000);
 
   const dd = () => dm.evaluate(`(() => {
     const d = document.getElementById('rp-mt-dd');
@@ -320,7 +322,7 @@ module.exports = async function moduleTextFeature(rig) {
   rig.check(!closed.err && !closed.open, 'the dropdown is open before anyone asked for it');
 
   await dm.evaluate('mtOpenDropdown(); 0');
-  await rig.sleep(250);
+  await lib.settle(dm, "document.getElementById('rp-mt-dd').style.display !== 'none'", 8000);
   const openDd = await dd();
   rig.note('the dropdown: ' + JSON.stringify(openDd.head) + ' ' + JSON.stringify(openDd.rows));
   rig.check(openDd.open && openDd.rows.length === 3,
@@ -337,7 +339,7 @@ module.exports = async function moduleTextFeature(rig) {
     mtOpenDropdown();
     return 0;
   })()`);
-  await rig.sleep(250);
+  await lib.settle(dm, 'document.querySelectorAll(".rp-mt-opt").length === 1', 8000);
   const filtered = await dd();
   rig.note('filtered on "Chapel": ' + JSON.stringify(filtered.rows));
   rig.check(filtered.rows.length === 1 && filtered.rows[0].indexOf('Chapel') !== -1,
@@ -350,7 +352,7 @@ module.exports = async function moduleTextFeature(rig) {
     mtOpenDropdown();
     return 0;
   })()`);
-  await rig.sleep(250);
+  await lib.settle(dm, 'document.querySelectorAll(".rp-mt-opt").length === 0', 8000);
   const noMatch = await dd();
   rig.check(noMatch.rows.length === 0 && noMatch.none,
             'a filter matching nothing does not say so, and does not tell the DM their typing ' +
@@ -364,7 +366,7 @@ module.exports = async function moduleTextFeature(rig) {
     mtOpenDropdown();
     return 0;
   })()`);
-  await rig.sleep(250);
+  await lib.settle(dm, 'document.querySelectorAll(".rp-mt-opt").length === 3', 8000);
 
   const beforePick = await undoDepth();
   // ⚠ mousedown THEN click, in that order, because the split between them is deliberate.
@@ -377,7 +379,7 @@ module.exports = async function moduleTextFeature(rig) {
     return { ok: true };
   })()`);
   if (rig.check(!picked.err, 'the dropdown could not be picked from: ' + picked.err)) {
-    await rig.sleep(400);
+    await lib.settle(dm, 'polygons[0].name === "K1. The Gatehouse"', 8000);
     const written = await room(1);
     rig.note('the room after picking K1: ' + JSON.stringify(written));
     rig.check(written.name === 'K1. The Gatehouse',
@@ -391,7 +393,7 @@ module.exports = async function moduleTextFeature(rig) {
               'picking an entry cost more than one undo step: ' + beforePick + ' → ' +
               await undoDepth());
     await dm.evaluate('undo(); 0');
-    await rig.sleep(400);
+    await lib.settle(dm, 'polygons[0].name === "Room 1"', 8000);
     rig.check((await room(1)).name === 'Room 1',
               'undo after a pick did not put the room back: ' + JSON.stringify(await room(1)));
   }
@@ -404,7 +406,7 @@ module.exports = async function moduleTextFeature(rig) {
   await dm.evaluate('selectedPolygonId = 2; refreshRoomPanel(); 0');
   await dm.evaluate('polygons[0].name = "K1. The Gatehouse"; _rpInvalidateLabel(1);' +
     ' mtOpenDropdown(); 0');
-  await rig.sleep(300);
+  await lib.settle(dm, 'document.querySelectorAll(".rp-mt-opt.placed").length === 1', 8000);
   const marked = await dd();
   rig.note('placed rows: ' + JSON.stringify(marked.placed));
   rig.check(marked.placed.length === 1 && marked.placed[0].indexOf('Gatehouse') !== -1,
@@ -417,7 +419,7 @@ module.exports = async function moduleTextFeature(rig) {
   // ── I. A room with notes already is asked first ──────────────────────────
   await dm.evaluate('polygons[1].desc = "My own note about this room."; ' +
     ' selectedPolygonId = 2; refreshRoomPanel(); mtOpenDropdown(); 0');
-  await rig.sleep(300);
+  await lib.settle(dm, 'document.getElementById("rp-mt-dd").style.display !== "none"', 8000);
   const pickChapel = () => dm.evaluate(`(() => {
     const rows = [...document.querySelectorAll('.rp-mt-opt')];
     const row = rows.find(r => r.textContent.indexOf('Chapel') !== -1);
@@ -427,7 +429,7 @@ module.exports = async function moduleTextFeature(rig) {
     return { ok: true };
   })()`);
   rig.check(!(await pickChapel()).err, 'the Chapel entry is not in the dropdown to pick');
-  await rig.sleep(500);
+  await lib.settle(dm, 'document.getElementById("cd-anchor").style.display === "flex"', 8000);
   const asked = await dm.evaluate(`(() => {
     const a = document.getElementById('cd-anchor');
     return { dialog: !!a && a.style.display === 'flex',
@@ -448,19 +450,19 @@ module.exports = async function moduleTextFeature(rig) {
 
   await dm.evaluate('(() => { const b = document.getElementById("cd-cancel");' +
     ' if (b) b.click(); return 0; })()');
-  await rig.sleep(400);
+  await lib.settle(dm, 'document.getElementById("cd-anchor").style.display !== "flex"', 8000);
   rig.check((await room(2)).desc === 'My own note about this room.',
             'keeping the DM\'s own description replaced it anyway: ' +
             JSON.stringify((await room(2)).desc));
 
   await dm.evaluate('selectedPolygonId = 2; refreshRoomPanel(); mtOpenDropdown(); 0');
-  await rig.sleep(300);
+  await lib.settle(dm, 'document.getElementById("rp-mt-dd").style.display !== "none"', 8000);
   rig.check(!(await pickChapel()).err,
             'the Chapel entry is not in the dropdown to pick a second time');
-  await rig.sleep(500);
+  await lib.settle(dm, 'document.getElementById("cd-anchor").style.display === "flex"', 8000);
   await dm.evaluate('(() => { const b = document.getElementById("cd-ok");' +
     ' if (b) b.click(); return 0; })()');
-  await rig.sleep(500);
+  await lib.settle(dm, 'polygons[1].desc.indexOf("font of black water") !== -1', 8000);
   const replaced = await room(2);
   rig.check(!!replaced.desc && replaced.desc.indexOf('font of black water') !== -1,
             'answering Replace did not put the module text into the room: ' +
@@ -484,7 +486,7 @@ module.exports = async function moduleTextFeature(rig) {
 
   // ── C, finished: Remove clears it ────────────────────────────────────────
   await dm.evaluate('openModuleTextModal(); 0');
-  await rig.sleep(250);
+  await lib.settle(dm, 'document.getElementById("mt-modal").style.display !== "none"', 8000);
   const listedAgain = await panel();
   rig.check(listedAgain.rows.length === 3,
             'the panel does not list what is loaded every time it opens, which is what makes ' +
@@ -495,12 +497,12 @@ module.exports = async function moduleTextFeature(rig) {
     if (b) b.click();
     return 0;
   })()`);
-  await rig.sleep(500);
+  await lib.settle(dm, 'document.getElementById("cd-anchor").style.display === "flex"', 8000);
   // Remove is destructive, so take the confirmation if there is one.
   await dm.evaluate('(() => { const a = document.getElementById("cd-anchor");' +
     ' if (a && a.style.display === "flex") document.getElementById("cd-ok").click();' +
     ' return 0; })()');
-  await rig.sleep(500);
+  await lib.settle(dm, 'mtEntries.length === 0', 8000);
   const removed = await store();
   const afterRemove = await panel();
   rig.note('after Remove: ' + JSON.stringify(removed) + ' / ' + JSON.stringify(afterRemove.status));
@@ -510,7 +512,74 @@ module.exports = async function moduleTextFeature(rig) {
             'the panel still offers a list and a Remove with nothing loaded: ' +
             JSON.stringify(afterRemove));
 
-  rig.byEye('a real campaign PDF through the real Choose file button — the extraction runs in a ' +
-            'utilityProcess on bytes from disk, the thresholds are tuned against real prose, and ' +
-            'no synthetic fixture can stand in for either');
+  // ══ K. A PDF is converted, in the app that ships ══════════════════════════
+  // Built in the page, because the renderer hands the main process BYTES: Electron removed
+  // File.path, so nothing here needs a real file on disk and the whole chain is reachable.
+  // ⚠ ASCII ONLY. String.length is the byte count the /Length entry and the xref offsets are
+  // written from, and one multi-byte character would put every offset out by one.
+  await dm.evaluate(`(() => {
+    globalThis.__rigPdfBytes = (lines) => {
+      let content = 'BT /F1 12 Tf 72 720 Td 14 TL\\n';
+      for (const l of lines) content += '(' + l.replace(/[()\\\\]/g, m => '\\\\' + m) + ') Tj T*\\n';
+      content += 'ET';
+      const objs = [
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]' +
+          ' /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        '<< /Length ' + content.length + ' >>\\nstream\\n' + content + '\\nendstream',
+      ];
+      let body = '%PDF-1.4\\n';
+      const offsets = [];
+      objs.forEach((o, i) => {
+        offsets.push(body.length);
+        body += (i + 1) + ' 0 obj\\n' + o + '\\nendobj\\n';
+      });
+      const xref = body.length;
+      body += 'xref\\n0 ' + (objs.length + 1) + '\\n0000000000 65535 f \\n';
+      for (const off of offsets) body += String(off).padStart(10, '0') + ' 00000 n \\n';
+      body += 'trailer\\n<< /Size ' + (objs.length + 1) + ' /Root 1 0 R >>\\nstartxref\\n' +
+              xref + '\\n%%EOF';
+      const a = new Uint8Array(body.length);
+      for (let i = 0; i < body.length; i++) a[i] = body.charCodeAt(i) & 0xff;
+      return a;
+    };
+    0
+  })()`);
+
+  await dm.evaluate('openModuleTextModal(); 0');
+  await lib.settle(dm, 'document.getElementById("mt-modal").style.display !== "none"', 8000);
+  // ⚠ MODULE IS ONE JOINED STRING. The builder wants a line per element, and a string handed
+  // to its for..of loop iterates by CHARACTER — a PDF of 300 one-letter lines that extracts
+  // cleanly, parses to nothing, and reads exactly like a broken utilityProcess.
+  await dm.evaluate('__rigPickModule(new File([__rigPdfBytes(' + JSON.stringify(MODULE.split('\n')) + ')], ' +
+    '"Keep of the Cold Marches.pdf", { type: "application/pdf" }))');
+
+  // The parse crosses a process boundary, so this is the one import in the file that is not
+  // near-instant. Bounded rather than slept through: a cold utilityProcess is slower than a warm
+  // one, and a fixed wait would be tuned to whichever machine it was written on.
+  const pdfLanded = await lib.settle(dm, 'mtEntries && mtEntries.length > 0', 60000);
+  const pdfPanel = await panel();
+  const pdfStore = await store();
+  rig.note('after the PDF: ' + JSON.stringify(pdfStore) + ' / ' + JSON.stringify(pdfPanel.status));
+  rig.check(pdfLanded && pdfStore.entries > 0,
+            'the PDF never became entries, so the utilityProcess, pdfjs-dist or the asar.unpacked ' +
+            'path is broken in this build: ' + JSON.stringify(pdfPanel.status));
+  rig.check(!pdfPanel.err,
+            'the panel reported the PDF as an error: ' + JSON.stringify(pdfPanel.status));
+  rig.check(pdfStore.source === 'Keep of the Cold Marches.pdf',
+            'the PDF did not become the loaded source: ' + JSON.stringify(pdfStore.source));
+
+  // The headings, not just a count. A PDF that extracted to whitespace would still parse to
+  // SOME entries, and a count alone cannot tell that apart from the book coming through.
+  const pdfNames = await dm.evaluate('mtEntries.map(e => e.name)');
+  rig.note('the entries the PDF produced: ' + JSON.stringify(pdfNames));
+  rig.check(pdfNames.some(n => /Gatehouse/.test(n)),
+            'the PDF parsed, but none of its headings came through: ' + JSON.stringify(pdfNames));
+
+  rig.byEye('a real campaign PDF through the real Choose file button. Section K drives the ' +
+            'conversion on bytes, which is the part that breaks in a packaged build. The native ' +
+            'dialog cannot be driven, and the reflow thresholds can only be judged against real ' +
+            'prose no repo of ours may hold');
 };

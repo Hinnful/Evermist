@@ -40,6 +40,7 @@ jobs:
     outputs:
       version: ${{ steps.check.outputs.version }}
       release: ${{ steps.check.outputs.release }}
+      rig: ${{ steps.rig.outputs.rig }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,6 +57,25 @@ jobs:
           else
             echo "release=true" >> "$GITHUB_OUTPUT"
             echo "v$V has no tag yet. Gating it."
+          fi
+
+      # ⚠ A RIG CHANGE MUST MEET THE RIG. tools/ is outside build.files, so a rig change ships
+      # nothing and takes no version bump — which used to mean the gate was skipped and the rig
+      # landed on main without CI ever running it. The one change nobody could check was the
+      # one that checks everything else.
+      - name: Did this change touch the rig?
+        id: rig
+        run: |
+          # ⚠ NO --depth HERE. The checkout above is fetch-depth: 0, so origin/main and the
+          # merge base are already present; a shallow fetch would truncate main to its tip and
+          # make the three-dot diff fail with "no merge base" whenever main has moved on since
+          # the branch was cut. That failure is swallowed by the `if`, so the step would answer
+          # "the rig did not change" and skip the gate on the one change that needs it.
+          if git diff --name-only origin/main...HEAD | grep -q '^tools/rig/'; then
+            echo "rig=true" >> "$GITHUB_OUTPUT"
+            echo "tools/rig/ changed. Gating it whether or not anything ships."
+          else
+            echo "rig=false" >> "$GITHUB_OUTPUT"
           fi
 
   # Unit tests before anything is built, on one runner.
@@ -80,10 +100,12 @@ jobs:
   # can cover. The mac and linux builds are checked by their unit tests and their update metadata.
   gate:
     needs: [decide, verify]
-    if: needs.decide.outputs.release == 'true'
+    if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
     runs-on: windows-latest
-    # The rig's own watchdog is 180s + 90s per scenario, so ~31min for the 19 acceptance files.
-    timeout-minutes: 60
+    # The rig's own watchdog is 180s + 90s per scenario. At 28 acceptance files that is ~45min,
+    # and the installer build in front of it takes another ten or so. 60 would let a hang blow
+    # the job timeout before the rig could print its own verdict.
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -105,6 +127,13 @@ jobs:
 
       # dist/win-unpacked/ is a by-product of building the installer, so this costs no second
       # build. NEVER dist/Evermist.exe — see the rig skill.
+      #
+      # ⚠ SMOKE FIRST, AND AGAINST THE PACKAGED APP. It holds the video-to-disk IPC and the
+      # archiver/yauzl zip round trip, the two paths most likely to break in packaging and
+      # invisible to `npm start`. It used to run only at /commit, so the .exe never met them.
+      - name: Drive the packaged app through the smoke set
+        run: npm run rig -- --exe "dist/win-unpacked/Evermist.exe"
+
       - name: Drive the packaged app through the full regression set
         run: npm run rig -- regression --exe "dist/win-unpacked/Evermist.exe"
 

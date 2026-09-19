@@ -41,14 +41,11 @@
 // from that whitelist is dropped SILENTLY on export — the zip is valid, the restore succeeds, and
 // the loss only shows up as a room without its corner radii or a scene without its Draw Rooms
 // button. Nothing else in reach can see it.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
 const fs = require('fs');
 const path = require('path');
+
+const lib = require('../../lib');
 
 const MAP_W = 1200, MAP_H = 800;
 const ROOM = { x1: 200, y1: 150, x2: 550, y2: 400 };
@@ -76,11 +73,7 @@ const MODULE = [
 module.exports = async function backupFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
-  const expr = await rig.fixtures.asFileExpr(dm, map);
-  await dm.evaluate('createNewScene(' + expr + ')', 120000);
-  await dm.waitFor('currentScene && mapWidth === ' + MAP_W, 120000, 'the map to load on the DM');
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   await dm.waitFor('fogCoverT === 0', 30000, 'the scene cover to lift');
 
   // Everything a backup has to carry, put onto the one scene: a named room with per-corner radii,
@@ -132,7 +125,7 @@ module.exports = async function backupFeature(rig) {
     __rigLoadModule(${JSON.stringify(MODULE)});
     return 0;
   })()`);
-  await rig.sleep(600);
+  await lib.settle(dm, 'mtEntries && mtEntries.length > 0', 20000);
   rig.check(await dm.evaluate('mtEntries.length') === 2,
             'the module text did not load, so section F has nothing to travel with');
 

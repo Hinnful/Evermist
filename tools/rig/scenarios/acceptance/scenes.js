@@ -44,12 +44,8 @@
 // ⚠ NEVER PASS AN ASYNC EXPRESSION TO waitFor. It wraps what it is given in `!!(…)`, so a promise
 // is truthy on the first poll and the wait returns instantly, having looked at nothing. Anything
 // reading IndexedDB is polled from Node here instead.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
+const lib = require('../../lib');
 const MAP_W = 1400, MAP_H = 900;
 const REVEAL = { x: 400, y: 300, r: 220 };
 const DARK = { x: 1100, y: 700 };
@@ -59,8 +55,7 @@ const FX = { x1: 200, y1: 600, x2: 500, y2: 800 };
 module.exports = async function scenesFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
+  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
   const expr = await rig.fixtures.asFileExpr(dm, map);
   const named = n => '(f => new File([f], ' + JSON.stringify(n) + ', { type: f.type }))(' + expr + ')';
 
@@ -106,12 +101,12 @@ module.exports = async function scenesFeature(rig) {
   // Polled, bounded, and it never throws: a miss becomes a named failure rather than an
   // exception that abandons the rest of the file.
   const waitFor = async (read, ok, ms) => {
-    const deadline = Date.now() + ms;
-    for (;;) {
-      const v = await read();
-      if (ok(v) || Date.now() > deadline) return v;
-      await rig.sleep(200);
-    }
+    // ⚠ THE LAST VALUE THE POLL SAW, never a fresh read. Reading again after the bound can
+    // throw on a window that has gone, which abandons the file instead of failing the check.
+    let last;
+    const got = await lib.poll(async () => { last = await read(); return ok(last) ? { v: last } : null; },
+                               ms, 200);
+    return got ? got.v : last;
   };
 
   const library = () => dm.evaluate('allScenes.map(s => s.name)');
@@ -219,11 +214,12 @@ module.exports = async function scenesFeature(rig) {
     return n;
   })()`);
   // Bounded poll, never one read: the overlay paints on the shared render clock.
-  let ink = 0;
-  for (let i = 0; i < 40 && ink <= 0; i++) {
-    ink = await outlineInk();
-    if (ink <= 0) await rig.sleep(100);
-  }
+  let lastInk = 0;
+  const inked = await lib.poll(async () => {
+    lastInk = await outlineInk();
+    return lastInk > 0 ? { v: lastInk } : null;
+  }, 4000, 100);
+  const ink = inked ? inked.v : lastInk;
   rig.note('cursor overlay ink after the switch, with no mouse moved: ' + ink + ' px');
   rig.check(ink > 0,
             'the scene came back with its rooms unpainted until the mouse moved (overlay ink ' +

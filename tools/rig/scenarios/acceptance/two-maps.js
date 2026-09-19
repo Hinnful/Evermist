@@ -49,28 +49,15 @@
 //
 // ⚠ THE TWO MAPS HAVE DIFFERENT ASPECT RATIOS ON PURPOSE. Section B is the default split, which
 // is derived from them; on two maps of the same shape an even split passes it by accident.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
+
+const lib = require('../../lib');
 
 const WIDE = { w: 2400, h: 1500 };   // aspect 1.60
 const TALL = { w: 1200, h: 1500 };   // aspect 0.80
 
 // A brush dab, which is the smallest gesture that both selects a column and changes it.
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my, onWindow) => {
-  const r = container.getBoundingClientRect();
-  const ev = new MouseEvent(type, {
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  });
-  (onWindow ? window : container).dispatchEvent(ev);
-};
+const OWN_HELPERS = `
 globalThis.__rigDab = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
-globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
 globalThis.__rigFit = () => {
   const cw = container.clientWidth, ch = container.clientHeight;
   return +(Math.min(cw / mapWidth, ch / mapHeight) * 0.95).toFixed(5);
@@ -96,7 +83,8 @@ module.exports = async function twoMapsFeature(rig) {
   // ── M. one map, before anything splits ───────────────────────────────────
   // Read here rather than at the end: this is the app as it shipped, and the point of the
   // criterion is that entering and leaving returns to exactly this.
-  await dm.evaluate(HELPERS);
+  await lib.installHelpers(dm);
+  await dm.evaluate(OWN_HELPERS);
   // A Player on the TV before anything splits, so the transition has a window to preserve.
   await rig.player();
   const soloPlayerTargetId = ((await rig.targets())
@@ -160,7 +148,8 @@ module.exports = async function twoMapsFeature(rig) {
   for (const [id, p] of [['A', paneA], ['B', paneB]]) {
     await p.waitFor('typeof currentScene !== "undefined" && currentScene && !!mapOffscreen', 60000,
                     'column ' + id + ' to have a map');
-    await p.evaluate(HELPERS);
+    await lib.installHelpers(p);
+    await p.evaluate(OWN_HELPERS);
   }
   await dm.waitFor('panes.A.ready && panes.B.ready && panes.B.mapW > 0', 60000,
                    'both columns to report their maps');
@@ -373,27 +362,27 @@ module.exports = async function twoMapsFeature(rig) {
   })()`);
 
   await dm.evaluate('selectPane("A"); minimapSeedView(); 0');
-  await rig.sleep(700);
+  await lib.settle(dm, '!minimapDirty', 10000);
   const mmA = await mmSig();
   rig.check(+mmA.split(':')[1] > 2000, 'the minimap is blank while two maps are open: ' + mmA);
 
   // The decisive one: shroud the selected column and watch the preview follow. A frozen minimap
   // cannot show this, and no resize can fake it.
   await paneA.evaluate('shroudAllRooms(); 0');
-  await rig.sleep(900);
+  await lib.poll(async () => { const s = await mmSig(); return s !== mmA ? { s } : null; }, 15000, 150);
   const mmShrouded = await mmSig();
   rig.check(mmShrouded !== mmA,
             'shrouding the selected column did not change the minimap: ' + mmA + ' → ' + mmShrouded);
   await paneA.evaluate('revealAllRooms(); 0');
-  await rig.sleep(700);
+  await lib.settle(dm, '!minimapDirty', 10000);
 
   await dm.evaluate('selectPane("B"); minimapSeedView(); 0');
-  await rig.sleep(700);
+  await lib.poll(async () => { const s = await mmSig(); return s !== mmA ? { s } : null; }, 15000, 150);
   const mmB = await mmSig();
   rig.check(mmB !== mmA, 'the minimap shows the same picture for both columns: ' + mmB);
 
   await dm.evaluate('selectPane("A"); 0');
-  await rig.sleep(700);
+  await lib.settle(dm, '!minimapDirty', 10000);
   const mmBefore = await mmSig();
   await dm.evaluate(`(() => {
     const c = document.getElementById('minimap-canvas');
@@ -405,7 +394,7 @@ module.exports = async function twoMapsFeature(rig) {
     at('pointerup',   r.left + r.width * 0.2, r.top + r.height * 0.3);
     return 0;
   })()`);
-  await rig.sleep(700);
+  await lib.poll(async () => { const s = await mmSig(); return s !== mmBefore ? { s } : null; }, 15000, 150);
   const mmDragged = await mmSig();
   rig.check(mmDragged !== mmBefore,
             'dragging the minimap moved the Player but did not repaint the preview: ' +
@@ -476,7 +465,7 @@ module.exports = async function twoMapsFeature(rig) {
             'the drift set on column A also changed column B');
 
   await dm.evaluate('selectPane("B"); 0');
-  await rig.sleep(400);
+  await lib.settle(dm, '!minimapDirty', 10000);
   rig.check(await dm.evaluate('document.getElementById("btn-anim").classList.contains("active")'),
             'the panel still shows animation OFF after selecting the column where it is ON');
   const driftShown = await dm.evaluate('+document.getElementById("anim-drift-num").value');
@@ -489,7 +478,7 @@ module.exports = async function twoMapsFeature(rig) {
             'the animation row still reads "' + animMode + '" after selecting a column that is ' +
             'on a preset, because the Advanced panel was left open and aimed at the other one');
   await dm.evaluate('selectPane("A"); 0');
-  await rig.sleep(400);
+  await lib.settle(dm, '!minimapDirty', 10000);
   rig.check(!(await dm.evaluate('document.getElementById("btn-anim").classList.contains("active")')),
             'the panel shows animation ON after selecting the column where it is OFF');
   await dm.evaluate('selectPane("A"); document.getElementById("btn-anim").click(); 0');
@@ -508,7 +497,11 @@ module.exports = async function twoMapsFeature(rig) {
     at('mouseup',   r.left + r.width * 0.55, document);
     return 0;
   })()`);
-  await rig.sleep(1500);
+  await lib.poll(async () => {
+    const tv = await tvA.evaluate('+zoom.toFixed(4)');
+    const mm = await dm.evaluate('+minimapView.zoom.toFixed(4)');
+    return Math.abs(tv - mm) / Math.max(tv, 0.0001) < 0.02 ? { tv, mm } : null;
+  }, 15000, 150);
   const tvZoom = await tvA.evaluate('+zoom.toFixed(4)');
   const mmZoom = await dm.evaluate('+minimapView.zoom.toFixed(4)');
   rig.check(Math.abs(tvZoom - mmZoom) / Math.max(tvZoom, 0.0001) < 0.02,
@@ -629,12 +622,9 @@ module.exports = async function twoMapsFeature(rig) {
   // ⚠ POLLED, AND ONLY AFTER THE MAP IS BACK. The halves go when the shell is navigated to the
   // single Player, and that happens AFTER the scene has loaded - so a single read taken at the
   // moment the mode ends finds them still there. This read once and passed on a fast machine.
-  let bGone = false;
-  const goneBy = Date.now() + 30000;
-  while (Date.now() < goneBy) {
-    try { await tvB.evaluate('1'); } catch (_) { bGone = true; break; }
-    await rig.sleep(300);
-  }
+  const bGone = !!(await lib.poll(async () => {
+    try { await tvB.evaluate('1'); return null; } catch (_) { return { gone: true }; }
+  }, 30000, 300));
   rig.check(bGone, "column B's half of the Player screen is still there after its column closed");
   const backWindows = (await rig.targets()).filter(t => /stage[.]html|mode=player/.test(t.url));
   rig.check(backWindows.length === 1 && backWindows[0].id === soloPlayerTargetId,

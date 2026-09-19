@@ -30,12 +30,8 @@
 // animated and takes seconds. rig.player() returns as soon as the window reports itself visible,
 // which is now the moment of the press — so the read straight after it lands inside the decode.
 // Do not add a wait before it or the map arrives first and C measures nothing.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
+const lib = require('../../lib');
 const MAP_W = 1600, MAP_H = 1000;
 
 module.exports = async function playerWindowFeature(rig) {
@@ -97,14 +93,15 @@ module.exports = async function playerWindowFeature(rig) {
   // once, and never puts it back, so polling past the reveal only burns the decode window and
   // turns a measurable run into "the map was already decoded". Stop the moment any of the three
   // settles it: the card is up, the map landed, or the cover lifted.
-  let whileLoading = await readLanding();
-  const landingBy = Date.now() + 8000;
-  while (Date.now() < landingBy && !whileLoading.hasMap && whileLoading.covered &&
-         !(whileLoading.display !== 'none' && whileLoading.loading === true)) {
-    await rig.sleep(50);
-    whileLoading = await readLanding();
-  }
-  rig.note('sampled the Player after ' + (8000 - (landingBy - Date.now())) + 'ms: ' +
+  const landingFrom = Date.now();
+  let lastLanding = null;
+  const landed = await lib.poll(async () => {
+    lastLanding = await readLanding();
+    const v = lastLanding;
+    return (v.hasMap || !v.covered || (v.display !== 'none' && v.loading === true)) ? { v } : null;
+  }, 8000, 50);
+  const whileLoading = landed ? landed.v : lastLanding;
+  rig.note('sampled the Player after ' + (Date.now() - landingFrom) + 'ms: ' +
            JSON.stringify(whileLoading));
 
   rig.check(whileLoading.hidden === false,
@@ -148,12 +145,13 @@ module.exports = async function playerWindowFeature(rig) {
   // ⚠ THE END STATE IS THE CHECK THAT HOLDS IN EITHER ORDER, and it is the one the players feel:
   // a card left over a decoded map is the app's own wordmark sitting on the dungeon. Polled
   // because the map arriving and the card going are two frames, not one.
-  let settled = await readLanding();
-  const settledBy = Date.now() + 30000;
-  while (Date.now() < settledBy && !(settled.hasMap && settled.display === 'none')) {
-    await rig.sleep(100);
-    settled = await readLanding();
-  }
+  let lastSettled = null;
+  const done = await lib.poll(async () => {
+    lastSettled = await readLanding();
+    const v = lastSettled;
+    return (v.hasMap && v.display === 'none') ? { v } : null;
+  }, 30000, 100);
+  const settled = done ? done.v : lastSettled;
   rig.note('once the map was on the Player: ' + JSON.stringify(settled));
   rig.check(settled.hasMap === true,
     'the map never reached the Player at all, so nothing here measured the wait');
@@ -175,50 +173,50 @@ module.exports = async function playerWindowFeature(rig) {
   // Printed rather than asserted — a threshold here would measure this machine.
   rig.note('button to window on screen: ' + waitMs + ' ms; the card then holds until the map lands');
 
-  // ── E. nothing but fog on the Player screen ────────────────────────────
-  // ⚠ THE CARD IS FORCED OPEN AND PUT BACK. A Player that already has a map has taken it down,
-  // so reading it as it stands answers nothing and passes with the wordmark still in the CSS.
-  const cardText = await player.evaluate(`(() => {
-    const card = document.getElementById('landing');
-    const prevD = card.style.display, had = card.classList.contains('loading');
-    card.style.display = ''; card.classList.add('loading');
-    const vis = (el) => (el && getComputedStyle(el).display !== 'none') ? (el.innerText || '').trim() : '';
-    const text = [vis(card.querySelector('h2')), vis(card.querySelector('p')),
-                  vis(document.getElementById('landing-loading'))].filter(Boolean).join(' | ');
-    card.style.display = prevD; if (!had) card.classList.remove('loading');
-    return text;
-  })()`);
-  rig.check(cardText === '',
-    "the Player screen would show text in front of the players: " + cardText);
-
-  // ⚠ ONE CLOUD PASS AT A TIME, ON A CANVAS OF THIS SCENARIO'S OWN. The three passes overlap, so
-  // two of them still paint a corner the third never reached and the corner reads as painted.
-  // The drift is pinned at its far end, because how far the clouds have slid is otherwise a coin
-  // toss and a corner that tears a minute later passes here.
-  const idleFog = await player.evaluate(`(() => {
-    const cv = document.createElement('canvas');
-    cv.width = 583; cv.height = 795;   // one half of a 1187-wide TV
-    const g = cv.getContext('2d');
-    if (!cloudPattern) return { err: 'the Player has no cloud texture' };
-    for (const o of fogAnimOffsets) { o.x = 511; o.y = 511; }
-    for (let i = 0; i < fogAnimAlphas.length; i++) fogAnimAlphas[i] = (i === 2 ? 1 : 0);
-    drawLoadingFog(g, cv.width, cv.height);
-    const spread = (x, y, n) => {
-      const d = g.getImageData(x, y, n, n).data;
-      let sum = 0, sum2 = 0, c = 0;
-      for (let i = 0; i < d.length; i += 4) { sum += d[i]; sum2 += d[i] * d[i]; c++; }
-      return Math.sqrt(Math.max(0, sum2 / c - (sum / c) * (sum / c)));
-    };
-    const n = 60;
-    return { corner: +spread(0, 0, n).toFixed(2),
-             centre: +spread((cv.width - n) >> 1, (cv.height - n) >> 1, n).toFixed(2) };
-  })()`);
-  rig.check(!idleFog.err, 'the idle fog could not be drawn: ' + idleFog.err);
-  rig.check(idleFog.corner > idleFog.centre * 0.2,
-    'a cloud pass stops short of the corner on a narrow Player screen, and its rotation draws ' +
-    'that as a diagonal band across the fog (spread ' + idleFog.corner + ' against ' +
-    idleFog.centre + ' at the centre)');
-
+  // ── E. nothing but fog on the Player screen ────────────────────────────
+  // ⚠ THE CARD IS FORCED OPEN AND PUT BACK. A Player that already has a map has taken it down,
+  // so reading it as it stands answers nothing and passes with the wordmark still in the CSS.
+  const cardText = await player.evaluate(`(() => {
+    const card = document.getElementById('landing');
+    const prevD = card.style.display, had = card.classList.contains('loading');
+    card.style.display = ''; card.classList.add('loading');
+    const vis = (el) => (el && getComputedStyle(el).display !== 'none') ? (el.innerText || '').trim() : '';
+    const text = [vis(card.querySelector('h2')), vis(card.querySelector('p')),
+                  vis(document.getElementById('landing-loading'))].filter(Boolean).join(' | ');
+    card.style.display = prevD; if (!had) card.classList.remove('loading');
+    return text;
+  })()`);
+  rig.check(cardText === '',
+    "the Player screen would show text in front of the players: " + cardText);
+
+  // ⚠ ONE CLOUD PASS AT A TIME, ON A CANVAS OF THIS SCENARIO'S OWN. The three passes overlap, so
+  // two of them still paint a corner the third never reached and the corner reads as painted.
+  // The drift is pinned at its far end, because how far the clouds have slid is otherwise a coin
+  // toss and a corner that tears a minute later passes here.
+  const idleFog = await player.evaluate(`(() => {
+    const cv = document.createElement('canvas');
+    cv.width = 583; cv.height = 795;   // one half of a 1187-wide TV
+    const g = cv.getContext('2d');
+    if (!cloudPattern) return { err: 'the Player has no cloud texture' };
+    for (const o of fogAnimOffsets) { o.x = 511; o.y = 511; }
+    for (let i = 0; i < fogAnimAlphas.length; i++) fogAnimAlphas[i] = (i === 2 ? 1 : 0);
+    drawLoadingFog(g, cv.width, cv.height);
+    const spread = (x, y, n) => {
+      const d = g.getImageData(x, y, n, n).data;
+      let sum = 0, sum2 = 0, c = 0;
+      for (let i = 0; i < d.length; i += 4) { sum += d[i]; sum2 += d[i] * d[i]; c++; }
+      return Math.sqrt(Math.max(0, sum2 / c - (sum / c) * (sum / c)));
+    };
+    const n = 60;
+    return { corner: +spread(0, 0, n).toFixed(2),
+             centre: +spread((cv.width - n) >> 1, (cv.height - n) >> 1, n).toFixed(2) };
+  })()`);
+  rig.check(!idleFog.err, 'the idle fog could not be drawn: ' + idleFog.err);
+  rig.check(idleFog.corner > idleFog.centre * 0.2,
+    'a cloud pass stops short of the corner on a narrow Player screen, and its rotation draws ' +
+    'that as a diagonal band across the fog (spread ' + idleFog.corner + ' against ' +
+    idleFog.centre + ' at the centre)');
+
   // ── F. Close, warm again, re-open ───────────────────────────────────────
   // ⚠ window.open() REUSES A NAMED WINDOW, so warming a replacement straight after a close can
   // land on the one still dying and leave the button dead on the next press.

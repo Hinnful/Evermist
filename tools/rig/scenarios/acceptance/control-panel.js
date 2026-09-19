@@ -36,15 +36,14 @@
 // ⚠ THE MAP IS ANIMATED, like every acceptance file's. It is here so the region in F is a real
 // one measured against real map bounds rather than the empty-map fallback.
 
+const lib = require('../../lib');
+
 const MAP_W = 900, MAP_H = 600;
 
 module.exports = async function controlPanelFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
-  const expr = await rig.fixtures.asFileExpr(dm, map);
-  await dm.evaluate('createNewScene(' + expr + ')', 120000);
-  await dm.waitFor('currentScene && mapWidth > 0', 120000, 'the map to load');
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
 
   const shown = id => dm.evaluate('(() => { const e = document.getElementById(' +
     JSON.stringify(id) + '); return !!e && !e.hidden && e.offsetParent !== null; })()');
@@ -180,7 +179,9 @@ module.exports = async function controlPanelFeature(rig) {
   let resolvedW = 0, resolvedR = 0;
   const measure = async (id, open, shut) => {
     await open();
-    await rig.sleep(200);
+    // The panel is measured, so wait for it to HAVE a size rather than guess when it will.
+    await lib.settle(dm, 'document.getElementById(' + JSON.stringify(id) + ') && ' +
+      'document.getElementById(' + JSON.stringify(id) + ').getBoundingClientRect().width > 0', 8000);
     const e = await edgeOf(id);
     rig.check(!e.err, '#' + id + ' ' + e.err + ', so its edge was never checked');
     if (!e.err) {
@@ -193,7 +194,9 @@ module.exports = async function controlPanelFeature(rig) {
     try { await shut(); } catch (err) {
       rig.note('#' + id + ' would not close again: ' + err.message);
     }
-    await rig.sleep(120);
+    // Shut again before the next panel opens, or two overlapping panels are measured as one.
+    await lib.settle(dm, '(() => { const el = document.getElementById(' + JSON.stringify(id) +
+      '); return !el || el.getBoundingClientRect().width === 0; })()', 8000);
   };
 
   await pick('fog');

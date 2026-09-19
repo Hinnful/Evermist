@@ -22,8 +22,6 @@
 //   H. A bent corner gives up its radius, and a click in a wall's bulge still finds the room.
 //        the stored radius goes · the card refuses a new one · the bulge is clickable
 //
-// ⚠ ROOMS DO NOT CROSS TO THE PLAYER (CLAUDE.md). What crosses is the fog they paint, so the TV
-// check here reads fog over ground, never a room.
 //
 // ⚠ THE MAP STARTS FULLY FOGGED, so every room here is a SHROUD room inside a revealed clearing.
 // On untouched map a shroud room changes nothing and a fog check passes without the app acting.
@@ -34,33 +32,14 @@
 // ⚠ A RECTANGLE'S WALL 0 IS ITS TOP, running left to right: commitClosedShape is handed
 // [(x1,y1),(x2,y1),(x2,y2),(x1,y2)]. Bending it upward is bending it OUT of the room.
 
+const lib = require('../../lib');
+
 const MAP_W = 2400, MAP_H = 1500;
 const CLEAR = { x: 1200, y: 700, r: 900 };
 
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my, mods) => {
-  const r = container.getBoundingClientRect();
-  const ev = new MouseEvent(type, Object.assign({
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  }, mods || {}));
-  container.dispatchEvent(ev);
-};
-globalThis.__rigDrag = (x1, y1, x2, y2, mods) => {
-  __rigMouse('mousedown', x1, y1, mods);
-  __rigMouse('mousemove', (x1+x2)/2, (y1+y2)/2, mods);
-  __rigMouse('mousemove', x2, y2, mods);
-  __rigMouse('mouseup', x2, y2, mods);
-};
-globalThis.__rigClick = (mx, my, mods) => {
-  __rigMouse('mousedown', mx, my, mods); __rigMouse('mouseup', mx, my, mods);
-};
-globalThis.__rigDbl = (mx, my) => { __rigClick(mx, my); __rigMouse('dblclick', mx, my); };
+const OWN_HELPERS = `
 // The bend gesture itself. Ctrl must be on the mousedown, which is where selectMouseDown reads it.
-globalThis.__rigBend = (x1, y1, x2, y2) => __rigDrag(x1, y1, x2, y2, { ctrlKey: true });
-globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
-globalThis.__rigById = (id) => polygons.find(p => p.id === id);
+globalThis.__rigBend = (x1, y1, x2, y2) => __rigDrag(x1, y1, x2, y2, { mods: { ctrlKey: true } });
 globalThis.__rigH = (id, i) => {
   const p = __rigById(id);
   return (p && p.handles && p.handles[i]) ? p.handles[i] : null;
@@ -68,23 +47,6 @@ globalThis.__rigH = (id, i) => {
 globalThis.__rigBent = (id, i) => {
   const h = __rigH(id, i);
   return !!(h && (h.ix || h.iy || h.ox || h.oy));
-};
-globalThis.__rigDrawRoom = (mode, x1, y1, x2, y2) => {
-  setShapeOp('new');
-  setShape('rect');
-  document.getElementById('btn-' + mode).click();
-  __rigDrag(x1, y1, x2, y2);
-  setShape('select');
-  return polygons[polygons.length - 1].id;
-};
-globalThis.__rigDrawShroud = (x1, y1, x2, y2) => __rigDrawRoom('shroud', x1, y1, x2, y2);
-globalThis.__rigOpRect = (op, x1, y1, x2, y2) => {
-  setShapeOp(op);
-  setShape('rect');
-  __rigDrag(x1, y1, x2, y2);
-  setShapeOp('new');
-  setShape('select');
-  return 0;
 };
 globalThis.__rigCut = (pts) => {
   setShape('cut');
@@ -114,20 +76,13 @@ globalThis.__rigNotice = () => {
 };
 0`;
 
-const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
-const SETTLE = 'rebuildFogFromPolygons(); rebuildFogEffect(); fogDirty = true;' +
-               ' scheduleRender(); sendToPlayer(); 0';
 
 module.exports = async function curves(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
-  await dm.evaluate(HELPERS);
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
+  await dm.evaluate(OWN_HELPERS);
   await dm.evaluate('revealCircle(' + CLEAR.x + ',' + CLEAR.y + ',' + CLEAR.r + ');' +
                     'rebuildFogEffect(); fogDirty = true; scheduleRender(); 0');
   await dm.waitFor('fogCoverT === 0 && fogTransRafId === null', 30000, 'the clearing to open');
@@ -162,7 +117,7 @@ module.exports = async function curves(rig) {
 
   // ══ B. Ctrl+click straightens, and a bend dragged back near straight snaps flat ══
   const bMid = await dm.evaluate('__rigWallPoint(' + b + ', 0, 0.5)');
-  await dm.evaluate('__rigClick(' + bMid.x + ',' + bMid.y + ', { ctrlKey: true }); 0');
+  await dm.evaluate('__rigClick(' + bMid.x + ',' + bMid.y + ', { mods: { ctrlKey: true } }); 0');
   rig.check(!(await dm.evaluate('__rigBent(' + b + ', 0) || __rigBent(' + b + ', 1)')),
             'Ctrl+clicking a bent wall left it bent, so a curve can only be undone');
 
@@ -209,7 +164,7 @@ module.exports = async function curves(rig) {
   await dm.evaluate('__rigDrawRoom("reveal", 1950, 900, 2200, 1100); 0');
   await dm.evaluate('__rigDrawRoom("half", 1950, 1150, 2200, 1350); 0');
   const c = await dm.evaluate('__rigDrawShroud(600, 900, 900, 1150)');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   const clearBefore = await dm.evaluate('__rigFog(750, 840)');
   rig.check(clearBefore < 40,
             'ground just above the room was already fogged, so the bulge check below cannot ' +
@@ -220,7 +175,7 @@ module.exports = async function curves(rig) {
   // The revealed room gets a bend too, so the shared-wall band runs over a curve rather than a
   // straight line. It throws rather than failing a check when that path cannot read the curve.
   await dm.evaluate('__rigDbl(2075, 1000); __rigBend(2075, 900, 2075, 850); 0');
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   await dm.waitFor('fogTransRafId === null', 30000, 'the fog to settle after the bend');
   const fogInBulge = await dm.evaluate('__rigFog(750, 840)');
   rig.check(fogInBulge > 180,
@@ -228,11 +183,11 @@ module.exports = async function curves(rig) {
             '), so the curve is an outline the players never see');
 
   const player = await rig.player();
-  await dm.evaluate(SETTLE);
+  await dm.evaluate(lib.SETTLE);
   await player.waitFor('fogCoverT === 0', 30000, 'the Player cover to lift');
-  await player.waitFor(TV_FOG + '(750, 840) > 120', 30000,
+  await player.waitFor(lib.TV_FOG + '(750, 840) > 120', 30000,
                        'the curved wall to reach the Player');
-  rig.check(await player.evaluate(TV_FOG + '(750, 840)') > 120,
+  rig.check(await player.evaluate(lib.TV_FOG + '(750, 840)') > 120,
             'the bulge of a bent wall never reached the TV, so the players see a straight wall ' +
             'where the DM drew a curve');
 

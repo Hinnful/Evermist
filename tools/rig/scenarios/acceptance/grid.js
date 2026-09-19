@@ -54,12 +54,8 @@
 // ⚠ NEVER PASS AN ASYNC EXPRESSION TO waitFor. It wraps what it is given in `!!(…)`, so a promise
 // is truthy on the first poll and the wait returns instantly. Anything reading IndexedDB is
 // polled from Node here instead.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
+const lib = require('../../lib');
 const path = require('path');
 
 const MAP_W = 1400, MAP_H = 900;
@@ -70,8 +66,7 @@ module.exports = async function gridFeature(rig) {
   const dm = rig.dm;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
+  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
   const expr = await rig.fixtures.asFileExpr(dm, map);
   // One fixture, several scenes: rename the same bytes so each import gets its own scene name.
   const named = n => '(f => new File([f], ' + JSON.stringify(n) + ', { type: f.type }))(' + expr + ')';
@@ -116,13 +111,9 @@ module.exports = async function gridFeature(rig) {
   // encodes the whole fog canvas to a blob and writes it to IndexedDB. A budget sized to the
   // debounce alone passes here and times out on a CI runner that has just built three installers.
   const waitStored = async (id, size, ms) => {
-    const deadline = Date.now() + ms;
-    for (;;) {
-      const cfg = await storedGrid(id);
-      if (cfg && cfg.cellSize === size) return true;
-      if (Date.now() > deadline) return false;
-      await rig.sleep(200);
-    }
+    return !!(await lib.poll(
+      async () => { const cfg = await storedGrid(id); return cfg && cfg.cellSize === size ? { cfg } : null; },
+      ms, 200));
   };
 
   // What a canvas actually PAINTS. Several rows, the leading edge of every run of ink in each, as
@@ -175,7 +166,7 @@ module.exports = async function gridFeature(rig) {
 
   const dmPaint = async () => {
     await dm.evaluate('gridDirty = true; viewportDirty = true; scheduleRender(); 0');
-    await rig.sleep(400);
+    await lib.settle(dm, '!gridDirty && !viewportDirty', 8000);
     return dm.evaluate('__rigPaint("grid-canvas")');
   };
 
@@ -427,7 +418,7 @@ module.exports = async function gridFeature(rig) {
   // rather than clearing the canvas. Reading the canvas alone reports a grid nobody can see.
   const playerPaint = async () => {
     await player.evaluate('gridDirty = true; viewportDirty = true; scheduleRender(); 0');
-    await rig.sleep(400);
+    await lib.settle(player, '!gridDirty && !viewportDirty', 8000);
     const shown = await player.evaluate('!!(pixiPGridSpr && pixiPGridSpr.visible)');
     if (!shown) return { err: 'the grid sprite is hidden, so nothing reaches the TV' };
     return player.evaluate('__rigPaint(playerGridCanvas)');
@@ -435,12 +426,12 @@ module.exports = async function gridFeature(rig) {
 
   // Bounded, never throws: a miss lands as the named check below.
   const waitPlayer = async (expr, want, ms) => {
-    const deadline = Date.now() + ms;
-    for (;;) {
-      const got = await player.evaluate(expr);
-      if (got === want || Date.now() > deadline) return got;
-      await rig.sleep(250);
-    }
+    let last;
+    const got = await lib.poll(async () => {
+      last = await player.evaluate(expr);
+      return last === want ? { v: last } : null;
+    }, ms, 250);
+    return got ? got.v : last;
   };
 
   await fire('grid-size', DIALLED);
@@ -872,7 +863,7 @@ module.exports = async function gridFeature(rig) {
   await player.waitFor('playerGridCanvas.width === ' + shrunk, 15000,
                        "the Player's grid canvas to follow its screen");
   await player.evaluate('gridDirty = true; viewportDirty = true; scheduleRender(); 0');
-  await rig.sleep(500);
+  await lib.settle(player, '!gridDirty && !viewportDirty', 8000);
 
   const tex = await player.evaluate(gridTex);
   rig.note('Player grid texture after the screen shrank: ' + JSON.stringify(tex));
@@ -891,7 +882,7 @@ module.exports = async function gridFeature(rig) {
   const PAN = Math.round(await player.evaluate('gridSize * zoom') * 0.4);
   await player.evaluate('playerFollowDM = false; panX -= ' + PAN +
                         '; viewportDirty = true; scheduleRender(); 0');
-  await rig.sleep(500);
+  await lib.settle(player, '!gridDirty && !viewportDirty', 8000);
   const after = await player.evaluate(lineProbe(before.k));
   rig.note('the line at ' + before.at + 'px moved to ' + after.at + 'px for a ' + PAN + 'px pan; ' +
            'ink there ' + after.ink);

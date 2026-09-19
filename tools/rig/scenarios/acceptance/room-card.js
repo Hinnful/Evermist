@@ -36,11 +36,8 @@
 // "fixing" that with a tool test.
 //
 // ⚠ THE NOTES HEIGHT IS SAVED ON MOUSEUP, not on every resize. Section H drives the release.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
+
+const lib = require('../../lib');
 
 const MAP_W = 2400, MAP_H = 1500;
 // A small room and a big one. The big one is what catches a card anchored on a centroid: it
@@ -51,11 +48,7 @@ const BIG = { x1: 700, y1: 200, x2: 2200, y2: 1300 };
 module.exports = async function roomCardFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
-  const expr = await rig.fixtures.asFileExpr(dm, map);
-  await dm.evaluate('createNewScene(' + expr + ')', 120000);
-  await dm.waitFor('currentScene && mapWidth === ' + MAP_W, 120000, 'the map to load on the DM');
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   await dm.waitFor('fogCoverT === 0', 30000, 'the scene cover to lift');
 
   const box = (x1, y1, x2, y2, id, name) => '{ id: ' + id + ', vertices: [' +
@@ -72,7 +65,8 @@ module.exports = async function roomCardFeature(rig) {
   const select = async id => {
     await dm.evaluate('selectedPolygonId = ' + (id === null ? 'null' : id) +
       '; refreshRoomPanel(); scheduleRender(); 0');
-    await rig.sleep(250);
+    await lib.settle(dm, 'getComputedStyle(document.getElementById("panel-room")).display' +
+      (id === null ? ' === "none"' : ' !== "none"'), 6000);
   };
 
   const card = () => dm.evaluate(`(() => {
@@ -117,7 +111,7 @@ module.exports = async function roomCardFeature(rig) {
   for (const [k, tool] of [['KeyB', 'brush'], ['KeyR', 'rect'], ['KeyV', 'select']]) {
     await dm.evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { code: ' +
       JSON.stringify(k) + ', key: "", bubbles: true, cancelable: true })); 0');
-    await rig.sleep(200);
+    await lib.settle(dm, 'shape === ' + JSON.stringify(tool), 6000);
     rig.check((await card()).shown,
               'changing the tool to ' + tool + ' closed the room card, which must be gated on ' +
               'the selection alone');
@@ -131,7 +125,7 @@ module.exports = async function roomCardFeature(rig) {
   // the map's mouse and shuts the control panel to clear it; a card left floating there swallows
   // the drag. THE SELECTION IS UNTOUCHED, which is what brings the same card back at Done.
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
-  await rig.sleep(200);
+  await lib.settle(dm, 'gridCalArmed === true', 8000);
   const held = await dm.evaluate('({ armed: gridCalArmed,' +
     ' card: getComputedStyle(document.getElementById("panel-room")).display })');
   rig.note('the card while calibration holds the map: ' + JSON.stringify(held));
@@ -141,7 +135,7 @@ module.exports = async function roomCardFeature(rig) {
   rig.check(held.card === 'none',
             'the room card stayed over the map that calibration has to be dragged on');
   await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
-  await rig.sleep(200);
+  await lib.settle(dm, 'gridCalArmed === false', 8000);
   const given = await dm.evaluate('({ sel: selectedPolygonId,' +
     ' card: getComputedStyle(document.getElementById("panel-room")).display })');
   rig.note('the card after calibration: ' + JSON.stringify(given));
@@ -153,13 +147,13 @@ module.exports = async function roomCardFeature(rig) {
   rig.check((await card()).name === 'The Vestry',
             'the card is not showing the name of the room that is selected: ' + (await card()).name);
   await typeInto('rp-name', 'The Cold Vestry');
-  await rig.sleep(250);
+  await lib.settle(dm, 'polygons[0].name === "The Cold Vestry"', 6000);
   rig.check((await room(1)).name === 'The Cold Vestry',
             'a name typed into the card never reached the room: ' + (await room(1)).name);
 
   const NOTES = 'Two acolytes here.\nThe font is trapped.';
   await typeInto('rp-desc', NOTES);
-  await rig.sleep(250);
+  await lib.settle(dm, '!!polygons[0].desc', 6000);
   rig.check((await room(1)).desc === NOTES,
             'notes typed into the card did not reach the room as typed, newlines included: ' +
             JSON.stringify((await room(1)).desc));
@@ -178,12 +172,13 @@ module.exports = async function roomCardFeature(rig) {
 
   // ── C. Trimmed, never empty ───────────────────────────────────────────────
   await typeInto('rp-name', '   The Cold Vestry   ');
-  await rig.sleep(250);
+  await lib.settle(dm, 'polygons[0].name === "The Cold Vestry"', 6000);
   rig.check((await room(1)).name === 'The Cold Vestry',
             'a name was stored with the spaces the DM typed round it: ' +
             JSON.stringify((await room(1)).name));
   await typeInto('rp-name', '     ');
-  await rig.sleep(250);
+  // Nothing is expected to CHANGE here, so the wait is on the field having been handled at all.
+  await lib.settle(dm, 'document.getElementById("rp-name").value === "     "', 6000);
   const blanked = await room(1);
   rig.note('after emptying the name: ' + JSON.stringify(blanked));
   rig.check(!!blanked.name && blanked.name.trim().length > 0,
@@ -293,7 +288,9 @@ module.exports = async function roomCardFeature(rig) {
   rig.note('dragging by 120,' + DY + ' — the card sits at y=' + beforeDrag.y +
            ' in a ' + winH + 'px window, so ' + (DY < 0 ? 'up' : 'down') + ' is the free side');
   await dragCard(120, DY);
-  await rig.sleep(300);
+  await lib.settle(dm,
+    'Math.abs(document.getElementById("panel-room").getBoundingClientRect().x - ' +
+    '(' + beforeDrag.x + ' + 120)) < 2', 5000);
   const afterDrag = await card();
   rig.note('the card was dragged: ' + JSON.stringify(beforeDrag) + ' → ' + JSON.stringify(afterDrag));
   rig.check(afterDrag.x !== beforeDrag.x || afterDrag.y !== beforeDrag.y,
@@ -305,7 +302,8 @@ module.exports = async function roomCardFeature(rig) {
             'is what puts a constant offset here');
 
   await dragCard(-4000, -4000);
-  await rig.sleep(300);
+  await lib.settle(dm,
+    'document.getElementById("panel-room").getBoundingClientRect().left <= 1', 5000);
   const shoved = await card();
   rig.note('the card after being dragged hard off screen: ' + JSON.stringify(shoved));
   rig.check(shoved.x + shoved.w > 20 && shoved.y + shoved.h > 20,
@@ -316,7 +314,7 @@ module.exports = async function roomCardFeature(rig) {
   await dm.evaluate(`(() => { const head = document.getElementById('rp-head');
     head.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
     return 0; })()`);
-  await rig.sleep(300);
+  await lib.settle(dm, 'true', 1);
   const snapped = await card();
   rig.check(snapped.x !== shoved.x || snapped.y !== shoved.y,
             'double-clicking the drag bar did not snap the card back to its room: ' +
@@ -341,7 +339,9 @@ module.exports = async function roomCardFeature(rig) {
     "(() => { try { return localStorage.getItem('evermist.roomDescHeight'); } catch (_) { return null; } })()");
 
   const tall = await setDescHeight(150);
-  await rig.sleep(400);
+  await lib.settle(dm,
+    "(() => { try { return localStorage.getItem('evermist.roomDescHeight') !== null; }" +
+    ' catch (_) { return false; } })()', 6000);
   const savedH = await storedHeight();
   rig.note('the notes were resized to ' + JSON.stringify(tall) + ' and stored as ' + savedH);
   rig.check(savedH !== null && Math.abs(parseInt(savedH, 10) - tall.layout) < 4,
@@ -370,7 +370,7 @@ module.exports = async function roomCardFeature(rig) {
   await select(null);
   await dm.evaluate('resetRoomLabelCache(); drawCursor(null, null);' +
     ' viewportDirty = true; scheduleRender(); 0');
-  await rig.sleep(500);
+  await lib.settle(dm, '!viewportDirty', 8000);
   const labels = await dm.evaluate(`(() => {
     const out = [];
     for (const p of polygons) {
@@ -428,7 +428,7 @@ module.exports = async function roomCardFeature(rig) {
     rebuildFogEffect(); refreshRoomPanel(); scheduleRender();
     return 0;
   })()`);
-  await rig.sleep(300);
+  await lib.settle(dm, '!viewportDirty', 8000);
   const onEffect = await card();
   rig.check(!onEffect.shown,
             'selecting an effect opened the room card, which is name, notes and module text — ' +
@@ -436,14 +436,16 @@ module.exports = async function roomCardFeature(rig) {
 
   // ── G. Delete ─────────────────────────────────────────────────────────────
   await dm.evaluate('placeMode = "rooms"; selectedPolygonId = 1; refreshRoomPanel(); 0');
-  await rig.sleep(250);
+  await lib.settle(dm, "document.getElementById('panel-room').style.display !== 'none'", 8000);
   await dm.evaluate('document.getElementById("rp-delete").click(); 0');
-  await rig.sleep(400);
+  // Delete either asks first or acts. Waiting for whichever happened beats guessing at both.
+  await lib.settle(dm, "(() => { const a = document.getElementById('cd-anchor');" +
+    " return (!!a && a.style.display === 'flex') || !polygons.some(p => p.id === 1); })()", 8000);
   // Delete is destructive, so it may ask first; take the confirmation if it is there.
   await dm.evaluate('(() => { const a = document.getElementById("cd-anchor");' +
     ' if (a && a.style.display === "flex") document.getElementById("cd-ok").click();' +
     ' return 0; })()');
-  await rig.sleep(400);
+  await lib.settle(dm, '!polygons.some(p => p.id === 1)', 8000);
   const afterDelete = await dm.evaluate('({ ids: polygons.map(p => p.id),' +
     ' names: polygons.map(p => p.name), selected: selectedPolygonId })');
   rig.note('after Delete: ' + JSON.stringify(afterDelete));
@@ -457,7 +459,7 @@ module.exports = async function roomCardFeature(rig) {
 
   // ── K. The look ───────────────────────────────────────────────────────────
   await dm.evaluate('selectedPolygonId = 2; refreshRoomPanel(); 0');
-  await rig.sleep(400);
+  await lib.settle(dm, "document.getElementById('panel-room').style.display !== 'none'", 8000);
   rig.byEye('the room card in a screenshot taken with --shot "#panel-room" — whether the notes ' +
             'have enough room, and whether Delete reads as destructive without shouting');
   rig.byEye('room labels over real Dungeon Alchemist floor art, which is what the plate has to ' +

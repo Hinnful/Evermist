@@ -38,11 +38,8 @@
 // ⚠ THE NOTCH IS DEEPENED BEFORE ANY FOG IS SAMPLED. At the default 10% it is 2.5px on the fog
 // canvas, which is thinner than the feather, so a sample either side of the wall would be reading
 // the blur rather than the door.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
+
+const lib = require('../../lib');
 
 const MAP_W = 2400, MAP_H = 1500;
 const CELL = 100;
@@ -57,40 +54,11 @@ const SECOND_CLICK_Y = 730, SECOND_DOOR_Y = 750;   // cell 700..800
 // What a cell measured from the room's own corner at 450 would have answered instead.
 const CORNER_RELATIVE_Y = 600;
 
-const HELPERS = `
-globalThis.__rigMouse = (type, mx, my) => {
-  const r = container.getBoundingClientRect();
-  container.dispatchEvent(new MouseEvent(type, {
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  }));
-};
-globalThis.__rigDrag = (x1, y1, x2, y2) => {
-  __rigMouse('mousedown', x1, y1); __rigMouse('mousemove', (x1+x2)/2, (y1+y2)/2);
-  __rigMouse('mousemove', x2, y2); __rigMouse('mouseup', x2, y2);
-};
-globalThis.__rigClick = (mx, my) => { __rigMouse('mousedown', mx, my); __rigMouse('mouseup', mx, my); };
-globalThis.__rigDbl = (mx, my) => {
-  const r = container.getBoundingClientRect();
-  container.dispatchEvent(new MouseEvent('dblclick', {
-    clientX: mx * zoom + panX + r.left, clientY: my * zoom + panY + r.top,
-    bubbles: true, cancelable: true, button: 0,
-  }));
-};
+const OWN_HELPERS = `
 // ⚠ A ROOM HAS TO BE OPEN FOR EDITING BEFORE A WALL TAKES A VERTEX. The first double-click on a
 // room opens it and inserts nothing, so a scenario that fires one and expects five corners reads
 // a working insert as broken.
 globalThis.__rigEdit = (mx, my) => { __rigClick(mx, my); __rigDbl(mx, my); };
-// ⚠ A LETTER OR A PUNCTUATION KEY GOES AS code WITH NO key. The map shortcuts read e.code, the
-// physical key, so a regression back to e.key goes red here instead of dying on a Russian layout
-// at the table. A NAMED key carries both, because code and key are the same string for it and
-// the fields still read e.key - dropping it would fail a handler that is correct.
-globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
-  Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
-                  bubbles: true, cancelable: true }, mods || {})));
-// Alpha of the DM's own fog over one map point. 255 hidden, 0 clear.
-globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
 // A room drawn with the rectangle tool in one fog mode, returned by id — drawing leaves nothing
 // selected, so the id is read off the end of the list.
 globalThis.__rigRoom = (mode, x1, y1, x2, y2) => {
@@ -101,7 +69,6 @@ globalThis.__rigRoom = (mode, x1, y1, x2, y2) => {
   setShape('select');
   return polygons[polygons.length - 1].id;
 };
-globalThis.__rigById = (id) => polygons.find(p => p.id === id);
 // Every door on the map in map pixels, whichever room stores it, with the wall it sits on.
 globalThis.__rigDoors = () => polygons.flatMap(p => (p.doors || []).map(d => {
   const c = doorPoint(p.vertices, d);
@@ -115,18 +82,12 @@ globalThis.__rigSetMode = (id, mode) => {
 };
 0`;
 
-// The same fog reading on the Player. Its fogDataCanvas is the map it was sent.
-const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
-  Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
 module.exports = async function doorsFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
-  await dm.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(dm, map)) + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
-  await dm.evaluate(HELPERS);
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
+  await dm.evaluate(OWN_HELPERS);
 
   // The grid the doors are cut from. Set BEFORE anything is placed: every door resizes with the
   // cell, so changing it afterwards would move what the checks below measure.
@@ -235,11 +196,11 @@ module.exports = async function doorsFeature(rig) {
   // opaque until it lifts however much was carved.
   await player.waitFor('fogCoverT === 0', 45000, 'the scene cover to lift on the Player');
 
-  const tvAt = async (x, y) => player.evaluate(TV_FOG + '(' + x + ', ' + y + ')');
+  const tvAt = async (x, y) => player.evaluate(lib.TV_FOG + '(' + x + ', ' + y + ')');
   const settleTv = async (expr) => { try { await player.waitFor(expr, 20000, 'the fog to reach the Player'); } catch (_) {} };
 
   // The revealed neighbour first: this is the "clear hole" the other two are held against.
-  await settleTv(TV_FOG + '(' + atDoorX + ', ' + FIRST_DOOR_Y + ') < 60');
+  await settleTv(lib.TV_FOG + '(' + atDoorX + ', ' + FIRST_DOOR_Y + ') < 60');
   const openAtDoor = await tvAt(atDoorX, FIRST_DOOR_Y);
   const openAway   = await tvAt(atDoorX, AWAY_Y);
   rig.note('revealed neighbour — at the door ' + openAtDoor + ', away from it ' + openAway);
@@ -254,7 +215,7 @@ module.exports = async function doorsFeature(rig) {
   // The neighbour stays SHROUDED. A door resolves to the most revealed room whose wall runs
   // through it, so half beside dark must still be half and never a hole.
   await dm.evaluate('__rigSetMode(' + JSON.stringify(leftId) + ', "half")');
-  await settleTv(TV_FOG + '(' + atDoorX + ', ' + FIRST_DOOR_Y + ') > 60');
+  await settleTv(lib.TV_FOG + '(' + atDoorX + ', ' + FIRST_DOOR_Y + ') > 60');
   const halfAtDoor = await tvAt(atDoorX, FIRST_DOOR_Y);
   const halfExpected = await dm.evaluate('Math.round(fogHalfAlpha * 255)');
   rig.note('half-shrouded — at the door ' + halfAtDoor + ', half density is about ' + halfExpected);
@@ -267,7 +228,7 @@ module.exports = async function doorsFeature(rig) {
 
   // ── D. Two shrouded rooms show nothing ────────────────────────────────────
   await dm.evaluate('__rigSetMode(' + JSON.stringify(leftId) + ', "shroud")');
-  await settleTv(TV_FOG + '(' + atDoorX + ', ' + FIRST_DOOR_Y + ') > 210');
+  await settleTv(lib.TV_FOG + '(' + atDoorX + ', ' + FIRST_DOOR_Y + ') > 210');
   const darkAtDoor = await tvAt(atDoorX, FIRST_DOOR_Y);
   const darkAway   = await tvAt(atDoorX, AWAY_Y);
   rig.note('both rooms shrouded — at the door ' + darkAtDoor + ', away from it ' + darkAway);

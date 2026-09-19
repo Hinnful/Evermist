@@ -270,6 +270,9 @@ function initToolbar() {
 
   function setAutoSync(enabled) {
     autoSync = enabled;
+    // ⚠ MANUAL CANCELS A PUSH ALREADY QUEUED. scheduleAutoSync debounces by 300ms, so a reveal
+    // made just after the switch used to ride out on the timer the previous edit armed.
+    if (!enabled) clearTimeout(autoSyncTimer);
     paneBroadcast('auto-sync', { on: enabled });
     const btn = document.getElementById('btn-auto-sync');
     btn.classList.toggle('active', autoSync);

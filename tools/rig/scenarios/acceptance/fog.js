@@ -23,6 +23,11 @@
 //   I. The drift switches on and off, its three presets are exclusive, and the fog really moves.
 //   J. Reset Fog Settings restores the look and deliberately leaves half-shroud alone.
 //   K. The fog looks right on the TV.
+//   L. The colour picker is the only way the DM reaches the fog colour, so the hex field, the
+//      hue strip and the saturation square each have to set it, and each has to move the
+//      other two.
+//   M. The Auto/Manual gate holds for FOG. With Auto off nothing the DM reveals reaches the
+//      table until Send is pressed, which is how a room is prepared before the players see it.
 //
 // ⚠ THE PLAYER'S FOG IS ONE FULL-SCREEN PIXIJS PASS, so its painted fog is read by extracting
 // that mesh from the renderer rather than off a DOM canvas. The extract is in CSS pixels, as the
@@ -39,30 +44,24 @@
 // ⚠ fogHalfAlpha PERSISTS IN localStorage AND NOTHING ELSE IN THAT PANEL DOES. Section J's point
 // is that Reset leaves it alone; a Reset that swept it away would erase a value the DM spent
 // sittings at the table dialling in.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
 
 const path = require('path');
 
 // Where the DM reveals, and where it deliberately does not. Both well inside the map and far
 // apart, so the feathered edge of the reveal cannot reach the untouched sample.
+const lib = require('../../lib');
+
 const MAP_W = 2000, MAP_H = 1200;
 const REVEAL = { x: 500, y: 300, r: 250 };
 const UNTOUCHED = { x: 1500, y: 900 };
 const ROOM = { x1: 1050, y1: 620, x2: 1400, y2: 860 };   // clear of both samples above
 
+const HELD = { x: 300, y: 300 };
+
 module.exports = async function fogFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
-  const fileExpr = await rig.fixtures.asFileExpr(dm, map);
-  await dm.evaluate('createNewScene(' + fileExpr + ')', 120000);
-  await dm.waitFor('currentScene && currentScene.mapType === "video" && mapWidth === ' + MAP_W,
-                   120000, 'the map to load on the DM');
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
 
   // Fires a control's real handler, exactly as a drag does.
   const fire = (id, v, ev) => dm.evaluate('(() => { const el = document.getElementById(' +
@@ -123,7 +122,7 @@ module.exports = async function fogFeature(rig) {
   await player.evaluate(SNAP);
   const repaintPlayer = async () => {
     await player.evaluate('viewportDirty = true; fogDirty = true; scheduleRender(); 0');
-    await rig.sleep(500);
+    await lib.settle(player, '!viewportDirty && !fogDirty && !fogTransRafId && !fogColorRafId', 10000);
     await player.evaluate('__rigFogSnap()');
   };
   const painted = (x, y) => player.evaluate('__rigFogAt(' + x + ',' + y + ')');
@@ -185,7 +184,7 @@ module.exports = async function fogFeature(rig) {
 
   const beforeReveal = await undoDepth();
   await dm.evaluate('document.getElementById("btn-clear-fog").click(); 0');
-  await rig.sleep(400);
+  await lib.settle(dm, DM_SAMPLE + '(' + UNTOUCHED.x + ',' + UNTOUCHED.y + ') === 0', 15000);
   rig.check(await dmFog(UNTOUCHED.x, UNTOUCHED.y) === 0,
             'Reveal All left fog on the map: alpha ' + await dmFog(UNTOUCHED.x, UNTOUCHED.y));
   // ⚠ COUNTED BEFORE IT IS JUDGED. `[].every(...)` is true, so a Reveal All that emptied
@@ -209,7 +208,7 @@ module.exports = async function fogFeature(rig) {
 
   const beforeShroud = await undoDepth();
   await dm.evaluate('document.getElementById("btn-fill-fog").click(); 0');
-  await rig.sleep(400);
+  await lib.settle(dm, DM_SAMPLE + '(' + REVEAL.x + ',' + REVEAL.y + ') === 255', 15000);
   rig.check(await dmFog(REVEAL.x, REVEAL.y) === 255,
             'Shroud All did not put fog back over ground that had been revealed: alpha ' +
             await dmFog(REVEAL.x, REVEAL.y));
@@ -225,7 +224,7 @@ module.exports = async function fogFeature(rig) {
             'Shroud All never reached the TV, so the players can still see the room');
 
   await dm.evaluate('undo(); 0');
-  await rig.sleep(400);
+  await lib.settle(dm, DM_SAMPLE + '(' + REVEAL.x + ',' + REVEAL.y + ') === 0', 15000);
   rig.check(await dmFog(REVEAL.x, REVEAL.y) === 0,
             'undo after Shroud All did not put the revealed ground back: alpha ' +
             await dmFog(REVEAL.x, REVEAL.y));
@@ -238,10 +237,10 @@ module.exports = async function fogFeature(rig) {
   // without this the colour is sampled over ground that carries no fog at all and every reading
   // is a transparent pixel.
   await dm.evaluate('document.getElementById("btn-fill-fog").click(); 0');
-  await rig.sleep(500);
+  await lib.settle(dm, DM_SAMPLE + '(' + UNTOUCHED.x + ',' + UNTOUCHED.y + ') === 255', 15000);
   await fire('fog-color', '#c02020');
   await fire('fog-tint-alpha', 60);
-  await rig.sleep(600);
+  await lib.settle(dm, '!fogColorRafId', 10000);
   await repaintPlayer();
   const coloured = await painted(UNTOUCHED.x, UNTOUCHED.y);
   rig.note('painted fog colour after dialling in #c02020: ' + JSON.stringify(coloured));
@@ -253,7 +252,7 @@ module.exports = async function fogFeature(rig) {
             'a red fog colour did not reach the fog the table sees: ' + JSON.stringify(coloured));
 
   await fire('fog-color', '#2030c0');
-  await rig.sleep(600);
+  await lib.settle(dm, '!fogColorRafId', 10000);
   await repaintPlayer();
   const blueish = await painted(UNTOUCHED.x, UNTOUCHED.y);
   rig.note('painted fog colour after dialling in #2030c0: ' + JSON.stringify(blueish));
@@ -289,7 +288,7 @@ module.exports = async function fogFeature(rig) {
       ' baseFogCtx.fillStyle = "#1a1a2e";' +
       ' baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);' +
       ' rebuildFogFromPolygons(); 0');
-    await rig.sleep(300);
+    await lib.settle(dm, '!fogTransRafId', 10000);
     return dm.evaluate(EDGE + '(' + ROOM_CX + ',' + ROOM_CY + ',' + (ROOM.x2 - ROOM_CX + 300) + ')');
   };
 
@@ -319,7 +318,7 @@ module.exports = async function fogFeature(rig) {
   const halfRoom = async mode => {
     await dm.evaluate('polygons[0].mode = ' + JSON.stringify(mode) + ';' +
       ' rebuildFogFromPolygons(); 0');
-    await rig.sleep(300);
+    await lib.settle(dm, '!fogTransRafId', 10000);
     return dmFog(ROOM_CX, ROOM_CY);
   };
 
@@ -348,7 +347,7 @@ module.exports = async function fogFeature(rig) {
   // that was fully shrouded must both come out at exactly the same density.
   await dm.evaluate('polygons[0].mode = "shroud"; rebuildFogFromPolygons();' +
     ' revealCircle(' + ROOM_CX + ',' + ROOM_CY + ', 60); 0');
-  await rig.sleep(250);
+  await lib.settle(dm, '!fogTransRafId', 10000);
   const overRevealed = await halfRoom('half');
   rig.check(Math.abs(overRevealed - halfAt80) <= 6,
             'half-shroud is relative to what was under it rather than absolute: ' + overRevealed +
@@ -384,18 +383,22 @@ module.exports = async function fogFeature(rig) {
   // Moving, not merely enabled. The offsets only advance on the animation's own tick, so this
   // has to cross real time.
   const t0 = (await animState()).offsets;
-  await rig.sleep(1200);
-  const t1 = (await animState()).offsets;
-  rig.note('drift offsets: ' + JSON.stringify(t0) + ' → ' + JSON.stringify(t1));
-  rig.check(t0.some((v, i) => v !== t1[i]),
+  const t1 = (await lib.poll(async () => {
+    const now = (await animState()).offsets;
+    return t0.some((v, i) => v !== now[i]) ? { offsets: now } : null;
+  }, 15000)) || { offsets: (await animState()).offsets };
+  const t1o = t1.offsets;
+  rig.note('drift offsets: ' + JSON.stringify(t0) + ' → ' + JSON.stringify(t1o));
+  rig.check(t0.some((v, i) => v !== t1o[i]),
             'the fog animation is switched on and the clouds are not moving: the offsets are ' +
-            'still ' + JSON.stringify(t1));
+            'still ' + JSON.stringify(t1o));
 
   await segAnim('off');
   const stopped = await animState();
   rig.check(stopped.on === false, "the drift segment's Off did not switch the animation off");
   const s0 = stopped.offsets;
-  await rig.sleep(900);
+  await lib.hold(900, 'the drift is off, so there is no state to poll for - long enough for ' +
+    'a running animation to have moved the offsets, then prove it did not');
   const s1 = (await animState()).offsets;
   rig.check(s0.every((v, i) => v === s1[i]),
             'the fog is still drifting after the animation was switched off: ' +
@@ -406,13 +409,13 @@ module.exports = async function fogFeature(rig) {
   await fire('fog-tint-alpha', 70);
   await fire('fog-feather', 3);
   await fire('fog-half-alpha', 77);
-  await rig.sleep(400);
+  await lib.settle(dm, '!fogColorRafId', 10000);
   // ⚠ Reset ASKS FIRST, and confirmDialog answers asynchronously — reading the dials straight
   // after the click reads them before anyone said yes.
   await dm.evaluate('document.getElementById("cp-fog-reset").click(); 0');
   await dm.waitFor('document.getElementById("cd-ok")', 5000, 'the reset confirmation');
   await dm.evaluate('document.getElementById("cd-ok").click(); 0');
-  await rig.sleep(600);
+  await lib.settle(dm, 'fogFeatherRadius === 12 && !fogColorRafId', 10000);
   const afterReset = await dm.evaluate(`({
     color: document.getElementById('fog-color').value,
     tint: +document.getElementById('fog-tint-alpha').value,
@@ -436,7 +439,7 @@ module.exports = async function fogFeature(rig) {
   // ── K. The look at the table ─────────────────────────────────────────────
   await dm.evaluate('document.getElementById("btn-fill-fog").click(); 0');
   await dm.evaluate('revealCircle(' + REVEAL.x + ',' + REVEAL.y + ',' + REVEAL.r + '); sendToPlayer(); 0');
-  await rig.sleep(800);
+  await lib.settle(player, '!viewportDirty && !fogDirty && !fogTransRafId && !fogColorRafId', 15000);
   const shot = path.join(rig.outDir, 'player-fog.png');
   await player.screenshot(shot);
   rig.note('Player screenshot: ' + shot);
@@ -444,4 +447,171 @@ module.exports = async function fogFeature(rig) {
             'a hole cut in felt — fog quality is a look-and-feel call, not a pixel one');
   rig.byEye('whether the drift at each of the three speeds reads as weather rather than as a ' +
             'texture sliding — speed is a feel call at the table, on a TV');
+
+  // ── L. The colour picker itself ───────────────────────────────────────────
+  // ⚠ EVERY CHECK ABOVE SETS THE HIDDEN `fog-color` INPUT DIRECTLY, which is not a thing the DM
+  // can do. The square, the hue strip and the hex field are the only way they reach the colour,
+  // and none of them had a check: a dead hex field would ship.
+  //
+  // ⚠ THE FOG TAB HAS TO BE OPEN. An element inside `display:none` has zero-sized rects, so a
+  // click on the square lands nowhere and the picker correctly does nothing - which reads as the
+  // picker being broken.
+  // ⚠ THE TAB TOGGLES, so a blind click on an already-open Fog tab SHUTS the panel - and every
+  // element inside it then has zero-sized rects, so the press below lands nowhere and the
+  // picker correctly does nothing. _cpSelectTab is the app's one way to open a named pane.
+  await dm.evaluate('_cpSelectTab("fog"); 0');
+  await lib.settle(dm, '!document.getElementById("sidebar-right").hidden', 8000);
+  await lib.settle(dm,
+    'document.querySelector(\'.cp-picker[data-picker="fog"] .cp-sv-canvas\')' +
+    '.getBoundingClientRect().width > 0', 8000);
+
+  const picker = () => dm.evaluate(`(() => {
+    const root = document.querySelector('.cp-picker[data-picker="fog"]');
+    if (!root) return { err: 'the fog tab carries no colour picker' };
+    const sv = root.querySelector('.cp-sv-canvas');
+    const box = sv.getBoundingClientRect();
+    const cur = root.querySelector('.cp-sv-cursor');
+    return {
+      hex: (root.querySelector('.cp-hex') || {}).value || '',
+      hue: +(root.querySelector('.cp-hue') || {}).value,
+      swatch: getComputedStyle(root.querySelector('.cp-swatch')).backgroundColor,
+      cursorLeft: parseFloat(cur.style.left), cursorTop: parseFloat(cur.style.top),
+      input: document.getElementById('fog-color').value,
+      picked: fogPickedHex,
+      box: { w: Math.round(box.width), h: Math.round(box.height) },
+    };
+  })()`);
+
+  const typeHex = v => dm.evaluate(`(() => {
+    const el = document.querySelector('.cp-picker[data-picker="fog"] .cp-hex');
+    el.value = ${JSON.stringify(v)};
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return 0;
+  })()`);
+
+  const start = await picker();
+  rig.note('the fog picker: ' + JSON.stringify(start));
+  rig.check(!start.err && start.box.w > 0 && start.box.h > 0,
+            'the fog colour picker has no saturation square to click: ' + JSON.stringify(start));
+
+  // The hex field, which is the one control that takes a value the DM can read off a palette.
+  await typeHex('2E8B57');
+  const typed = await picker();
+  rig.note('after typing 2E8B57: ' + JSON.stringify(typed));
+  rig.check(typed.input.toLowerCase() === '#2e8b57',
+            'a hex typed into the picker did not reach the fog colour: ' + typed.input);
+  rig.check(typed.picked.toLowerCase() === '#2e8b57',
+            'the app did not take the typed colour as the fog colour: ' + typed.picked);
+  rig.check(typed.swatch === 'rgb(46, 139, 87)',
+            'the swatch does not show the colour that was typed: ' + typed.swatch);
+  rig.check(typed.hue > 130 && typed.hue < 160,
+            'the hue strip did not move to the typed colour: ' + typed.hue);
+
+  // Three digits is how a hex is written half the time, and it has to expand rather than be
+  // taken as a colour of its own.
+  await typeHex('F0C');
+  const short = await picker();
+  rig.check(short.input.toLowerCase() === '#ff00cc',
+            'a three-digit hex did not expand to six: ' + short.input);
+
+  // Nonsense must leave the colour alone and put the field back to what is actually set. A field
+  // that keeps the typing and a colour that did not change is how the DM loses track of both.
+  await typeHex('zzzz');
+  const junk = await picker();
+  rig.note('after typing nonsense: ' + JSON.stringify(junk));
+  rig.check(junk.input.toLowerCase() === '#ff00cc',
+            'nonsense in the hex field changed the fog colour: ' + junk.input);
+  rig.check(junk.hex.toLowerCase() === 'ff00cc',
+            'the hex field kept the nonsense instead of showing the colour that is set: ' +
+            junk.hex);
+
+  // The hue strip, dragged. Saturation and value stay where they were, which is the whole point
+  // of a hue strip beside a square.
+  await dm.evaluate(`(() => {
+    const el = document.querySelector('.cp-picker[data-picker="fog"] .cp-hue');
+    el.value = '210';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    return 0;
+  })()`);
+  const hued = await picker();
+  rig.note('after dragging the hue to 210: ' + JSON.stringify(hued));
+  rig.check(hued.input.toLowerCase() === '#0080ff',
+            'the hue strip did not set the fog colour to the hue it was dragged to: ' + hued.input);
+  rig.check(Math.abs(hued.cursorLeft - junk.cursorLeft) < 1 &&
+            Math.abs(hued.cursorTop - junk.cursorTop) < 1,
+            'changing the hue moved the saturation square as well, so the DM cannot pick a hue ' +
+            'without losing the shade: ' + JSON.stringify([junk.cursorLeft, junk.cursorTop]) +
+            ' → ' + JSON.stringify([hued.cursorLeft, hued.cursorTop]));
+
+  // The square, pressed a quarter across and a fifth down. The picker reads the pointer against
+  // the canvas box it captured on mousedown, so this is the real gesture.
+  const pressed = await dm.evaluate(`(() => {
+    const sv = document.querySelector('.cp-picker[data-picker="fog"] .cp-sv-canvas');
+    const b = sv.getBoundingClientRect();
+    const at = (type, fx, fy) => sv.dispatchEvent(new MouseEvent(type, {
+      clientX: b.left + b.width * fx, clientY: b.top + b.height * fy,
+      bubbles: true, cancelable: true, button: 0 }));
+    at('mousedown', 0.25, 0.20);
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    return 0;
+  })()`);
+  const square = await picker();
+  rig.note('after pressing the square at 25%, 20%: ' + JSON.stringify(square));
+  rig.check(Math.abs(square.cursorLeft - 25) < 3 && Math.abs(square.cursorTop - 20) < 3,
+            'the square did not take the press where it was aimed: the marker sits at ' +
+            square.cursorLeft + '%, ' + square.cursorTop + '%');
+  rig.check(square.input.toLowerCase() !== hued.input.toLowerCase(),
+            'pressing the saturation square changed no colour at all, so the square is dead: ' +
+            square.input);
+  rig.check(square.hue === hued.hue,
+            'pressing the square moved the hue as well: ' + hued.hue + ' → ' + square.hue);
+  rig.check(square.picked.toLowerCase() === square.input.toLowerCase(),
+            'the colour the square set never reached the app: field ' + square.input +
+            ' against ' + square.picked);
+
+  // ── M. The Auto/Manual gate, on fog ──────────────────────────────────────
+  // ⚠ THIS GATE WAS ONLY EVER CHECKED ON EFFECTS. It is a fog control - "let me open the next
+  // room before they see it" - and the fog half of it was asserted nowhere, so the one thing
+  // the DM relies on between rooms had no check at all.
+  await dm.evaluate('document.getElementById("btn-fill-fog").click(); sendToPlayer(); 0');
+  await lib.settle(player, '(' + lib.TV_FOG + ')(' + HELD.x + ',' + HELD.y + ') > 200', 20000);
+  rig.check(await player.evaluate('(' + lib.TV_FOG + ')(' + HELD.x + ',' + HELD.y + ')') > 200,
+            'the TV is not fogged at the point the gate uses, so a reveal that leaks through ' +
+            'would be indistinguishable from one that did not');
+  rig.check(await dm.evaluate('autoSync === true'),
+            'auto-sync is not on at the start of the gate check, so switching it off below proves nothing');
+
+  await dm.evaluate('(() => { const b = document.getElementById("btn-auto-sync");' +
+                    ' if (autoSync) b.click(); return 0; })()');
+  rig.check(await dm.evaluate('autoSync') === false, 'auto-sync did not switch off');
+
+  await dm.evaluate('revealCircle(' + HELD.x + ',' + HELD.y + ', 160);' +
+                    ' fogDirty = true; scheduleRender(); 0');
+  rig.check(await dm.evaluate('__rigFog(' + HELD.x + ',' + HELD.y + ')') === 0,
+            'the reveal did not take on the DM, so the gate below is measuring nothing');
+  // ⚠ POLLED FOR THE WRONG ANSWER, with a bound. A single read straight after the reveal would
+  // pass even on a broken gate, because the delivery had not had time to happen yet.
+  const readTv = () => player.evaluate('(' + lib.TV_FOG + ')(' + HELD.x + ',' + HELD.y + ')');
+  // ⚠ WRAPPED, NEVER RETURNED BARE. lib.poll takes a falsy answer as "not found", and a
+  // leaked alpha of 0 is falsy - so returning the number itself makes the poll run its full
+  // bound and report no leak on the one reading that IS the leak.
+  const leaked = await lib.poll(async () => {
+    const a = await readTv();
+    return a < 60 ? { alpha: a } : null;
+  }, 6000);
+  rig.note('the TV at the held point, with Auto off: ' +
+           (leaked === null ? await readTv() : leaked.alpha));
+  rig.check(leaked === null,
+            'a reveal made with Auto off reached the TV anyway (alpha ' + (leaked && leaked.alpha) + '), so the DM cannot open a room before the players see it');
+
+  await dm.evaluate('sendToPlayer(); 0');
+  await lib.settle(player, '(' + lib.TV_FOG + ')(' + HELD.x + ',' + HELD.y + ') < 60', 20000);
+  rig.check(await player.evaluate('(' + lib.TV_FOG + ')(' + HELD.x + ',' + HELD.y + ')') < 60,
+            'pressing Send did not deliver the held reveal to the TV, so Manual mode strands the fog on the DM');
+
+  await dm.evaluate('(() => { const b = document.getElementById("btn-auto-sync");' +
+                    ' if (!autoSync) b.click(); return 0; })()');
+  rig.check(await dm.evaluate('autoSync') === true,
+            'auto-sync would not switch back on, so the DM is stuck in Manual');
+
 };

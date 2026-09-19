@@ -23,16 +23,19 @@ reach for the rig only when code cannot answer the question. Two cases qualify:
 not `smoke`, not one scenario. A finished chunk goes to the DM to look at, and `/commit` is where
 it gets proven. Write the scenario during the build and run nothing.
 
-**A commit gets a SMOKE pass; the regression set runs in CI.** `/commit` Step 2 settles where the
+**A commit gets a SMOKE pass; the full sweep runs in CI.** `/commit` Step 2 settles where the
 change's criteria live, then picks `smoke` plus the scenarios covering what the diff touched, and
-blocks on red. **`.github/workflows/release.yml` then runs
-`regression` against the built `.exe` on every shipping push, and a red gate means no tag, no
-release and no installers.** So the full set is never run by hand: reach for one scenario to
-answer a question, and let CI own the sweep.
+blocks on red. **`.github/workflows/release.yml` then runs `smoke` and `regression` against the
+built `.exe`, and a red gate means no tag, no release and no installers.** So the full set is
+never run by hand: reach for one scenario to answer a question, and let CI own the sweep.
 
-**Reproduce a CI-only failure locally, never by pushing again.** A runner has a 1024x768 virtual
-display, which puts the DM window at 1008x681 and breaks any check written against one size.
-`--dm-size 1008x681 --player-size 1024x768` reproduces that layout here, digit for digit.
+**The gate also runs when `tools/rig/**` changed, bump or no bump.** `tools/` ships nothing, so a
+rig change takes no version and the gate used to be skipped entirely - the one change nobody
+could check was the one that checks everything else.
+
+**A CI-only geometry failure should no longer exist.** Every run is pinned to the runner's own
+layout, here and there. If one appears anyway, `--dm-size` and `--player-size` still reproduce
+any other layout on demand.
 
 **Never ask the DM to hand-verify what the rig can check.** They run the `.exe` on a TV; asking
 them to re-test correctness is asking them to do your job.
@@ -60,6 +63,25 @@ npm run rig -- name-one name-two         several by name, in that order
 ```
 
 That is every flag there is, and an unrecognised one stops the run rather than being ignored.
+
+**EVERY RUN USES ONE GEOMETRY, HERE AND IN CI: the DM at 1008x681 on a 1024x768 screen.** Those
+are a GitHub runner's own numbers, so a local run and a gate run are the same run, digit for
+digit. The default used to be whatever the machine gave, and three geometry checks passed here
+and took a release gate down there. `--dm-size` and `--player-size` override it; nothing else
+varies between machines. `--player-size` sets the reported screen too, because the Player fills
+it.
+
+**A scenario that throws is recorded and stepped over, and so is one that HANGS.** `waitFor`
+throws, about 190 of them are unguarded, and one timeout used to end the run with every later
+scenario unread. A scenario that hangs never throws, so it slipped past that: the run-wide
+watchdog killed the process and the other 28 files went unread. Each scenario now has its own
+300s limit, and reaching it abandons that file and moves on. The verdict names every scenario
+that failed. Three boots failing in a row still stops the run, because that is the machine
+rather than the scenarios.
+
+**An abandoned scenario is still running**, because nothing can stop an async function
+mid-await. The runner mutes its `rig` first, so whatever it reports on its way out cannot land
+under the next scenario's name.
 
 **A run NEVER puts a window on the DM's screen, and that is not negotiable.** `offscreen.ps1`
 parks every window the run opens at -9000,-9000 without activating it, and `KEEP_PAINTING` in
@@ -100,6 +122,53 @@ the unfixed code and confirm it fails on the right line. Written after, break th
 confirm the FAIL names it, then put it back. A check that passes for some reason other than the
 code under it looks identical to one that works.
 
+**A file starts with `const lib = require('../../lib');` and opens its map in one line.**
+`tools/rig/lib.js` holds the page-side helper set, the map preamble, and the two waits. Nothing
+in it is pasted into a scenario. The helpers used to be a `HELPERS` template copied into each
+file: fourteen files carried one, all fourteen differed, and `__rigDrag` alone had four versions
+across ten files.
+
+```js
+const lib = require('../../lib');
+…
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });        // import a map, install the helpers
+  const map = await lib.openMap(rig, { kind: 'still' }); // the fixture, if the file needs the bytes
+  await lib.installHelpers(session);                     // a window openMap did not load into
+  await lib.settle(dm, 'fogCoverT === 0', 30000);        // a bounded wait that never fails alone
+  await lib.poll(fn, 20000);                             // a wait written in Node, for a store read
+  await lib.fire(dm, 'grid-size-num', 93, 'change');     // set a control and let the app hear it
+```
+
+**A file that only needs the FIXTURE calls `rig.fixtures.tableMap` and imports nothing.** Several
+scenarios build their own named scenes from one recording; `openMap` would hand them a scene they
+never had, and every count after it would be one out.
+
+**The extras on a mouse helper travel in a NAMED options object**: `{ mods, onWindow, steps }`.
+The fourth argument used to mean modifier keys in three files and "dispatch on window" in two, so
+a positional merge would have turned a Ctrl+drag into a window dispatch with every check still
+passing.
+
+**THERE IS NO `rig.sleep`, and it is not to come back.** A fixed wait is either a lie or a
+waste, and on a slow runner it is the lie. 104 of them across eighteen files were the largest
+single source of a gate that went red on the runner and green here. Three things replaced them,
+and every wait in a scenario is now one of the three:
+
+- `lib.settle(session, expr, ms)` for a STATE. It names what is being waited for, never fails on
+  its own, and the assertion after it is still the one that decides.
+- `lib.poll(fn, ms, everyMs)` for a VALUE - anything that has to be compared against a reading
+  taken earlier, or read out of IndexedDB.
+- `lib.hold(ms, why)` for the one case neither serves: a check that something does NOT happen.
+  There is no state to wait for, so the wait IS the claim, and `why` is required. Fourteen of
+  these survive, each one reading "long enough for it to have gone wrong, then prove it did not".
+
+**Wait on the window that has to act, not the one that was told to.** A DM value is correct the
+instant it is set; the Player is a postMessage away, and a lerp or a crossfade away after that.
+Three separate failures on this branch were a settle that watched the DM while the Player was
+still moving. The states worth knowing: `!viewportDirty && !fogDirty` (the render has painted),
+`!fogTransRafId` (the reveal/shroud crossfade has finished), `!fogColorRafId` (the colour ease
+has landed), `!viewLerpActive` (a view-snap has finished animating), `!minimapDirty` (the
+preview has repainted).
+
 A file exports one async function taking `rig`:
 
 - `rig.check(condition, message)` — the message reads as the failure, since it is what lands in
@@ -109,6 +178,15 @@ A file exports one async function taking `rig`:
 - `rig.note(message)` — a measured value worth printing.
 - `rig.dm` / `await rig.player()` — the two windows. Asking for the Player clicks the DM's own
   button; nothing conjures a second window.
+- `await rig.restart()` — the app shut down and started again on the SAME profile, for the one
+  thing no other scenario can reach: the app coming up with maps already in the library.
+  **It returns the new DM session and closes the old one**, so a `const dm = rig.dm` taken at
+  the top of the file is a dead socket afterwards. The helpers go back in with
+  `lib.installHelpers`, because the page is new. `scenarios/acceptance/boot.js` is its scenario.
+- `await rig.resizeDm(w, h)` / `await rig.resizePlayer(w, h)` — **`sizes.js` and nothing else.**
+  Every run is pinned to one geometry, and that file is what pays for it by varying the size on
+  purpose. A scenario that sets its own metrics leaves the next one at a size run.js did not
+  choose.
 - `rig.fixtures` — maps generated at runtime, cached on disk, never committed.
   **`tableMap` is the map an acceptance scenario imports, and it is ANIMATED.** Animated is
   the only kind the DM ever uses, so a suite on still PNGs proved the app worked in a case
@@ -197,6 +275,13 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
   absolute `r > 200` read the blend at 181 and found nothing on a working build.
 - **Electron's own security warning arrives as a console error** and is not the app's. `cdp.js`
   filters it. Do not widen that filter.
+- **`lib.poll` reads a FALSY answer as "not found".** A fog alpha of 0 is exactly the reading
+  that means the thing happened, so `return a < 60 ? a : null` polls its whole bound and then
+  reports no leak on the one reading that is the leak. Wrap the answer: `{ alpha: a }`.
+- **Some scenario files are CRLF and some are LF.** A pattern written against `\n` silently
+  misses every CRLF file, so a script that edits several of them leaves half converted and half
+  untouched - and the half it did touch comes back with mixed endings. Normalise to `\n`, edit,
+  then put the file's own ending back on write.
 
 ## Rules that bind
 

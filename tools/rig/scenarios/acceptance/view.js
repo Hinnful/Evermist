@@ -42,22 +42,15 @@
 // ⚠ THE PLAYER STOPS FOLLOWING THE DM AS SOON AS IT IS DRAGGED, and says so. Section I depends on
 // that: a Player still in follow mode reports nothing, so the drag has to be big enough to trip
 // the 4px threshold.
-//
-// ⚠ THE MAP IS ANIMATED, AND EVERY ACCEPTANCE FILE'S IS. Animated is the only kind the DM
-// ever uses, so a suite running on still PNGs proved the app worked in a case that never
-// happens. `tableMap` (tools/rig/fixtures.js) records the clip once per run and caches it by
-// size. Do not swap it back to `stillMap`; smoke.js is the one file that wants both.
+
+const lib = require('../../lib');
 
 const MAP_W = 2400, MAP_H = 1500;
 
 module.exports = async function viewFeature(rig) {
   const dm = rig.dm;
 
-  const map = await rig.fixtures.tableMap(dm, rig.fixtureDir,
-    { w: MAP_W, h: MAP_H });
-  const expr = await rig.fixtures.asFileExpr(dm, map);
-  await dm.evaluate('createNewScene(' + expr + ')', 120000);
-  await dm.waitFor('currentScene && mapWidth === ' + MAP_W, 120000, 'the map to load on the DM');
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   await dm.waitFor('fogCoverT === 0', 30000, 'the scene cover to lift');
 
   const camera = s => s.evaluate('({ panX: +panX.toFixed(2), panY: +panY.toFixed(2),' +
@@ -96,12 +89,12 @@ module.exports = async function viewFeature(rig) {
 
   // Polled, bounded, never throwing: a miss lands as the named check below.
   const settleOn = async (read, ok, ms) => {
-    const deadline = Date.now() + ms;
-    for (;;) {
-      const v = await read();
-      if (ok(v) || Date.now() > deadline) return v;
-      await rig.sleep(150);
-    }
+    // The last value the poll saw. A fresh read after the bound can throw on a window that has
+    // gone, which abandons the file instead of failing the check.
+    let last;
+    const got = await lib.poll(async () => { last = await read(); return ok(last) ? { v: last } : null; },
+                               ms, 150);
+    return got ? got.v : last;
   };
 
   // ── D. A freshly loaded map is fitted and centred ─────────────────────────
@@ -123,7 +116,7 @@ module.exports = async function viewFeature(rig) {
   // ── A. Panning follows the cursor 1:1 ─────────────────────────────────────
   const before = await camera(dm);
   await drag(-180, 120);
-  await rig.sleep(250);
+  await lib.settle(dm, '!viewportDirty', 8000);
   const after = await camera(dm);
   rig.note('pan: ' + JSON.stringify(before) + ' → ' + JSON.stringify(after));
   rig.check(Math.abs((after.panX - before.panX) - -180) < 1 &&
@@ -184,7 +177,7 @@ module.exports = async function viewFeature(rig) {
     return { sx, sy, mapX: (sx - panX) / zoom, mapY: (sy - panY) / zoom };
   })()`);
   await wheelAt(dm, anchor.sx, anchor.sy, 3);
-  await rig.sleep(250);
+  await lib.settle(dm, '!viewportDirty', 8000);
   const held = await dm.evaluate('({ sx: ' + anchor.mapX + ' * zoom + panX,' +
     ' sy: ' + anchor.mapY + ' * zoom + panY, zoom: +zoom.toFixed(5) })');
   rig.note('the map point under the cursor: (' + anchor.sx + ',' + anchor.sy + ') → (' +
@@ -201,17 +194,17 @@ module.exports = async function viewFeature(rig) {
 
   // ── C. Zoom stops at its limits ───────────────────────────────────────────
   await wheelAt(dm, 100, 100, 90);
-  await rig.sleep(300);
+  await lib.settle(dm, 'zoom === 20', 8000);
   const zoomedIn = (await camera(dm)).zoom;
   rig.check(zoomedIn === 20,
             'zooming in without end did not stop at 20: ' + zoomedIn);
   await wheelAt(dm, 100, 100, -200);
-  await rig.sleep(300);
+  await lib.settle(dm, 'zoom === 0.02', 8000);
   const zoomedOut = (await camera(dm)).zoom;
   rig.check(zoomedOut === 0.02,
             'zooming out without end did not stop at 0.02: ' + zoomedOut);
   await dm.evaluate('fitToScreen(); viewportDirty = true; scheduleRender(); 0');
-  await rig.sleep(250);
+  await lib.settle(dm, '!viewportDirty', 8000);
 
   // ── E. Sync View sends a region, not a zoom ───────────────────────────────
   const player = await rig.player();
@@ -230,7 +223,7 @@ module.exports = async function viewFeature(rig) {
   // entirely would sit at the same centre and pass a centre-only check.
   await wheelAt(dm, Math.round(sizes.dm.w / 2), Math.round(sizes.dm.h / 2), 8);
   await dm.evaluate('panX -= 260; panY -= 190; viewportDirty = true; scheduleRender(); 0');
-  await rig.sleep(300);
+  await lib.settle(dm, '!viewportDirty', 8000);
   const dmRegion = await region(dm);
   // What a correct refit lands on: the DM's REGION fitted to the Player's own canvas.
   const wantZoom = Math.min(sizes.player.w / dmRegion.w, sizes.player.h / dmRegion.h);
@@ -238,7 +231,7 @@ module.exports = async function viewFeature(rig) {
            wantZoom.toFixed(5));
 
   await dm.evaluate('document.getElementById("btn-sync-view").click(); 0');
-  // ⚠ SETTLE ON THE ZOOM, NOT THE CENTRE. The Player lerps into place, and it was ALREADY at the
+  // ⚠ lib.SETTLE ON THE ZOOM, NOT THE CENTRE. The Player lerps into place, and it was ALREADY at the
   // right centre before the snap — so a wait that watched the centre returns on its first poll,
   // before the lerp has moved anything, and reads the pre-snap view as the result.
   const playerRegion = await settleOn(() => region(player),
@@ -287,7 +280,8 @@ module.exports = async function viewFeature(rig) {
     if (tab && !tab.classList.contains('active')) tab.click();
     return 0;
   })()`);
-  await rig.sleep(300);
+  await lib.settle(dm, "!!document.getElementById('minimap-canvas') && " +
+    "document.getElementById('minimap-canvas').getBoundingClientRect().width > 0", 8000);
   const mmBox = await dm.evaluate(`(() => {
     const c = document.getElementById('minimap-canvas');
     const b = c ? c.getBoundingClientRect() : null;
@@ -324,7 +318,10 @@ module.exports = async function viewFeature(rig) {
   const mmBefore = await mmView();
   const dragged = await mmDrag(-40, -25);
   if (rig.check(!dragged.err, 'the minimap could not be dragged: ' + dragged.err)) {
-    await rig.sleep(400);
+    await lib.poll(async () => {
+      const v = await mmView();
+      return (v.cx !== mmBefore.cx || v.cy !== mmBefore.cy) ? v : null;
+    }, 10000);
     const mmAfter = await mmView();
     rig.note('minimap view: ' + JSON.stringify(mmBefore) + ' → ' + JSON.stringify(mmAfter));
     rig.check(mmAfter.cx !== mmBefore.cx || mmAfter.cy !== mmBefore.cy,
@@ -356,7 +353,10 @@ module.exports = async function viewFeature(rig) {
     }
     return 0;
   })()`);
-  await rig.sleep(400);
+  await lib.poll(async () => {
+    const v = await mmView();
+    return v.zoom > mmBeforeZoom.zoom ? v : null;
+  }, 10000);
   const mmAfterZoom = await mmView();
   rig.note('minimap zoom: ' + JSON.stringify(mmBeforeZoom) + ' → ' + JSON.stringify(mmAfterZoom));
   rig.check(mmAfterZoom.zoom > mmBeforeZoom.zoom,
@@ -376,8 +376,12 @@ module.exports = async function viewFeature(rig) {
   rig.check(clampedIn === 20, 'the minimap zoom did not stop at 20: ' + clampedIn);
   const clampedOut = await dm.evaluate('(() => { minimapSetZoom(1e-6); return minimapGetZoom(); })()');
   rig.check(clampedOut === 0.02, 'the minimap zoom did not stop at 0.02: ' + clampedOut);
+  // ⚠ WAITED FOR ON THE PLAYER, not on the DM. Restoring the minimap zoom posts a view-snap,
+  // and the DM's own value is correct the instant it is set. Section I then drags the Player's
+  // view, and a LERP still running lands on top of that drag and puts the view back - which
+  // reads as the Player never having moved at all.
   await dm.evaluate('minimapSetZoom(' + mmBeforeZoom.zoom + '); 0');
-  await rig.sleep(300);
+  await lib.settle(player, '!viewLerpActive && Math.abs(zoom - ' + mmBeforeZoom.zoom + ') < 1e-4', 10000);
 
   // ── I. Players looking elsewhere reach the minimap ──────────────────────
   // ⚠ THE MOVES ARE SPACED FROM NODE, ON PURPOSE. _postPlayerView throttles to one report per
@@ -395,9 +399,10 @@ module.exports = async function viewFeature(rig) {
   const playerDrag = async (dx, dy) => {
     await playerStep('mousedown', 0, 0, false);
     await playerStep('mousemove', Math.round(dx / 2), Math.round(dy / 2), false);
-    await rig.sleep(160);
+    await lib.hold(160, "_postPlayerView throttles to one report per 100ms, so two moves inside " +
+      "one window lose the last position and the frame points at the middle of the gesture");
     const out = await playerStep('mousemove', dx, dy, false);
-    await rig.sleep(160);
+    await lib.hold(160, 'the same throttle window, before the release');
     await playerStep('mouseup', dx, dy, true);
     return out;
   };
@@ -408,22 +413,27 @@ module.exports = async function viewFeature(rig) {
   rig.check(looked.follow === false,
             'the Player is still following the DM after being dragged, so it reports nothing and ' +
             'the DM cannot see where the players are looking');
-  const mmFollowed = await settleOn(() => mmView(),
-    v => v.cx !== mmBeforeFreelook.cx || v.cy !== mmBeforeFreelook.cy, 20000);
-  rig.note('the minimap after the players looked away: ' + JSON.stringify(mmBeforeFreelook) +
-           ' → ' + JSON.stringify(mmFollowed));
-  rig.check(mmFollowed.cx !== mmBeforeFreelook.cx || mmFollowed.cy !== mmBeforeFreelook.cy,
-            'the players moved their own view and the DM\'s minimap never heard about it, so the ' +
-            'frame is pointing at somewhere nobody is looking');
   // ⚠ COMPARED AGAINST THE PLAYER'S RAW VIEWPORT CENTRE, NOT ITS visibleMapRegion. That helper
   // CLAMPS to the map, and PLAYER_VIEW reports the unclamped centre — so against a map edge the
   // two legitimately disagree by however far the viewport hangs off the map, and a check written
   // against the clamped figure fails on a view the app framed correctly.
+  //
+  // ⚠ READ BEFORE THE MINIMAP IS POLLED, and the poll waits for AGREEMENT rather than for any
+  // change at all. A drag posts a report per throttle window, so "the minimap moved" is true at
+  // the halfway point — and a wait that stops there compares the middle of the gesture against
+  // the end of it and reports a minimap that is working as broken.
   const playerCentre = await player.evaluate(`(() => {
     const { w, h } = getViewportSize();
     return { cx: +((w / 2 - panX) / zoom).toFixed(1), cy: +((h / 2 - panY) / zoom).toFixed(1),
              zoom: +zoom.toFixed(5) };
   })()`);
+  const mmFollowed = await settleOn(() => mmView(),
+    v => Math.abs(v.cx - playerCentre.cx) < 20 && Math.abs(v.cy - playerCentre.cy) < 20, 20000);
+  rig.note('the minimap after the players looked away: ' + JSON.stringify(mmBeforeFreelook) +
+           ' → ' + JSON.stringify(mmFollowed));
+  rig.check(mmFollowed.cx !== mmBeforeFreelook.cx || mmFollowed.cy !== mmBeforeFreelook.cy,
+            'the players moved their own view and the DM\'s minimap never heard about it, so the ' +
+            'frame is pointing at somewhere nobody is looking');
   rig.check(Math.abs(mmFollowed.cx - playerCentre.cx) < 20 &&
             Math.abs(mmFollowed.cy - playerCentre.cy) < 20,
             'the minimap frame does not agree with where the players are actually looking: ' +
@@ -444,10 +454,12 @@ module.exports = async function viewFeature(rig) {
   // ⚠ LET EVERYTHING THE DM HAS ALREADY SENT LAND FIRST. A view-snap still in flight — section H
   // restored the minimap zoom, which posts one — arrives while the locked drag below is being
   // measured and reads exactly like the lock having failed.
-  await rig.sleep(1200);
+  await lib.hold(1200, 'a view-snap the DM already sent is still in flight, and it lands during ' +
+    'the locked drag below looking exactly like the lock having failed');
   const lockedPlayerBefore = await camera(player);
   await playerDrag(200, 140);
-  await rig.sleep(400);
+  await lib.hold(400, 'the Player is locked, so there is no state to poll for - long enough for ' +
+    'an unlocked drag to have moved the camera, then prove it did not');
   const lockedPlayerAfter = await camera(player);
   rig.check(lockedPlayerAfter.panX === lockedPlayerBefore.panX &&
             lockedPlayerAfter.panY === lockedPlayerBefore.panY,
@@ -456,7 +468,8 @@ module.exports = async function viewFeature(rig) {
 
   const lockedMmBefore = await mmView();
   await mmDrag(-50, -30);
-  await rig.sleep(400);
+  await lib.hold(400, 'the minimap is locked, so there is no state to poll for - long enough ' +
+    'for an unlocked drag to have moved the view, then prove it did not');
   const lockedMmAfter = await mmView();
   rig.check(lockedMmAfter.cx === lockedMmBefore.cx && lockedMmAfter.cy === lockedMmBefore.cy,
             'a locked minimap still moved when it was dragged: ' + JSON.stringify(lockedMmBefore) +

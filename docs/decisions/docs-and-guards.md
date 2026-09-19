@@ -281,3 +281,21 @@ proved it, and it is the check to repeat before raising this number again.
 The ceiling was raised to 72 rather than editing another session's uncommitted docs. **A ratchet
 raised for debt the session did not create must name the cause in the handover**, or the next
 session inherits a ceiling nobody can account for and stops trusting the guard.
+
+### A shallow fetch silently switched the rig gate off · `SETTLED` (2026-09-19)
+`tools/` ships nothing, so a rig-only change takes no version bump and the release gate used to
+skip it entirely - the one change nobody could check was the one that checks everything else. The
+gate now also fires when `tools/rig/**` changed.
+
+The detection itself shipped broken. It ran `git fetch origin main --depth=1` on a checkout that
+was already `fetch-depth: 0`, which writes `.git/shallow` and truncates main to its tip. Once
+main has moved on since the branch was cut, the merge base falls outside that boundary and
+`git diff origin/main...HEAD` fails with "no merge base". The command sits inside an `if`, where
+`bash -e` does not trip, so the failure became "the rig did not change" and the gate stayed off.
+The fetch was redundant and is gone.
+
+### `tools/check-globals.js` was deleted as a duplicate · `REJECTED` (2026-09-19)
+It compiled every script in `index.html` into one scope to catch a top-level name declared twice.
+`test/structure.test.js` already does exactly that and runs in CI on every change, while the tool
+was wired to nothing - no npm script, no hook, no workflow step. A second copy of a check that
+only one of them runs is worse than one.

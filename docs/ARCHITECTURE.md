@@ -704,11 +704,30 @@ by anything but a person.
 - A run no longer takes the machine. Both windows are parked off the side of the screen and
   keep drawing there, so you can carry on working while one is going. `--visible` leaves them
   on screen when you want to watch.
+- Every run uses the same window size as the build server, down to the pixel. A run here and
+  a run on the release gate are the same run. Before this, checks that depended on the window
+  size passed here and failed there, and each one cost a twenty-minute run to find.
+- A scenario that gives up part way through is reported and the run carries on. One stuck wait
+  used to end the whole thing, so a long run came back naming one problem and hiding the rest.
+  A scenario that hangs rather than gives up is abandoned after five minutes and the run moves
+  to the next one, so a single stuck file can no longer spend the whole run saying so.
+- No scenario waits a fixed number of milliseconds for something to happen. It waits for the
+  thing itself - a value to arrive, a crossfade to finish, a window to repaint - and gives up
+  with a bound. A hundred fixed waits were the largest reason a run could pass here and fail on
+  the slower build server. The handful that remain are the opposite case, where the check is
+  that something does *not* happen, and each one has to say in writing why it waits as long as
+  it does.
 
 Three tiers: a **smoke** set that always runs, one **acceptance** file per feature whose pass
 criteria are written in plain English at the top of the file, and the **regression** pass,
 which is every acceptance file together. A criterion that can only be judged by eye stays in
 the file and is reported as unchecked rather than quietly dropped.
+
+Two scenarios stand apart from the rest. One closes the app and opens it again on a library
+that already has maps in it, which is what you do between sessions and what nothing else could
+reach - every other scenario starts on an empty library by design. The other runs the handful
+of things that depend on the window's shape at three different window sizes, from a laptop to
+a wide monitor, so pinning every other run to one size costs no coverage.
 
 An acceptance file covers one whole feature and ends at the Player window. It opens with the
 feature's goal in a sentence - "the DM draws a shape with any tool, in any fog mode, and the
