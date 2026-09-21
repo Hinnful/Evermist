@@ -227,6 +227,51 @@ module.exports = async function effectsFeature(rig) {
             'rounding the corners dimmed a straight edge that should have been untouched (' +
             eSharp + ' → ' + eRound + ')');
 
+  // A corner that also carries a curve keeps its rounding — effects share the fog pipeline's own
+  // fillet (fogGeometry.js's computeFillet), so a bent wall must round the same way a room's does.
+  // ⚠ READ FROM THE MESH'S OWN `verts`, not a fresh call to roundEffectRing: that would prove the
+  // pure function works, which the unit tests already do, and miss a break in the wiring between
+  // it and _loadFxGeometry. ⚠ PIXEL BRIGHTNESS DOES NOT DISCRIMINATE HERE — the flame's own inward
+  // reach (`_flameHeight`) already covers the gap between a barely-curved and a heavily-rounded
+  // corner at this scale, so a geometric check on the uploaded vertices is what actually catches a
+  // regression; brightness only proved the plain, unbent case above.
+  // ⚠ THE CURVE IS SET BEFORE EITHER RADIUS, AND EACH RADIUS IS ITS OWN VALUE: the mesh's geomKey
+  // does not encode handles, only cornerRadius/cornerRadii and vertex coordinates, so a step that
+  // repeats a radius already in the key would rebuild nothing and read a stale mesh.
+  const nearestToCorner = (verts, n) => {
+    let best = Infinity;
+    for (let i = 0; i < n; i++) {
+      const d = Math.hypot(verts[i * 2] - RB.x1, verts[i * 2 + 1] - RB.y1);
+      if (d < best) best = d;
+    }
+    return best;
+  };
+  await dm.evaluate('(() => { const e = effects.find(x => x.id === ' + roundId + ');' +
+                    ' setShapeHandle(e, 0, "out", 0, -30); e.cornerRadius = 1;' +
+                    ' effectsChanged(); scheduleRender(); return 0; })()');
+  await dm.waitFor('_fxInstances.get(' + roundId + ') && ' +
+                   '_fxInstances.get(' + roundId + ').geomKey.startsWith("1|")',
+                   10000, 'the bent, still-sharp outline to reach the mesh');
+  const meshA = await dm.evaluate(
+    '(() => { const i = _fxInstances.get(' + roundId + ');' +
+    ' return { verts: Array.from(i.verts), count: i.meshLight.shader.uniforms.uCount }; })()');
+  const distSharp = nearestToCorner(meshA.verts, meshA.count);
+  await dm.evaluate('(() => { const e = effects.find(x => x.id === ' + roundId + ');' +
+                    ' e.cornerRadius = 60; effectsChanged(); scheduleRender(); return 0; })()');
+  await dm.waitFor('_fxInstances.get(' + roundId + ') && ' +
+                   '_fxInstances.get(' + roundId + ').geomKey.startsWith("60|")',
+                   10000, 'the curved-and-rounded outline to reach the mesh');
+  const meshB = await dm.evaluate(
+    '(() => { const i = _fxInstances.get(' + roundId + ');' +
+    ' return { verts: Array.from(i.verts), count: i.meshLight.shader.uniforms.uCount }; })()');
+  const distRound = nearestToCorner(meshB.verts, meshB.count);
+  rig.note('bent corner distance from its own vertex: sharp ' + distSharp.toFixed(1) +
+           ' → rounded ' + distRound.toFixed(1) + ' map units');
+  rig.check(distRound > distSharp + 8,
+            'a corner that also carries a curve did not pull away from its own vertex when ' +
+            'rounded (' + distSharp.toFixed(1) + ' → ' + distRound.toFixed(1) +
+            '), so an effect cannot round a bent wall the way a room can');
+
   // ══ F. An effect is edited exactly as a room is ══
   // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('setShape("select"); __rigClick(700, 375); 0');

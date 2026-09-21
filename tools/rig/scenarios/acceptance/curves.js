@@ -20,8 +20,10 @@
 //   F. Join, Trim and Cut KEEP the curve, the corner radii and the doors. They used to drop all
 //      three, which is the behaviour this reverses.
 //   G. A door whose wall a repair removed is dropped, and the DM is TOLD. Nothing goes silently.
-//   H. A bent corner gives up its radius, and a click in a wall's bulge still finds the room.
-//        the stored radius goes · the card refuses a new one · the bulge is clickable
+//   H. A bent corner keeps its radius, filleted against the curve, and a click in a wall's
+//      bulge still finds the room.
+//        the stored radius survives the bend · the card takes a new one too · the bulge
+//        is clickable
 //
 //
 // ⚠ THE MAP STARTS FULLY FOGGED, so every room here is a SHROUD room inside a revealed clearing.
@@ -285,29 +287,28 @@ module.exports = async function curves(rig) {
             'a door was removed with its wall and the DM was told nothing (notice: ' +
             JSON.stringify(notice) + ')');
 
-  // ══ H. A bent corner gives up its radius, and a click in a bulge finds the room ══
+  // ══ H. A bent corner keeps its radius, and a click in a bulge finds the room ══
   // RED BY DESIGN: written against the fix, never re-proved
   const f = await dm.evaluate('__rigDrawShroud(1950, 300, 2250, 600)');
   await dm.evaluate('__rigById(' + f + ').cornerRadii = [30, 30, null, null]; 0');
   await dm.evaluate('__rigDbl(2100, 450); 0');
   await dm.evaluate('__rigBend(2100, 300, 2100, 200); 0');
   const radii = await dm.evaluate('__rigById(' + f + ').cornerRadii');
-  rig.check(!radii[0] && !radii[1],
-            'a bent corner kept its radius, so a fillet is being asked for on a wall with no ' +
-            'straight tangent to build it from: ' + JSON.stringify(radii));
+  rig.check(radii[0] === 30 && radii[1] === 30,
+            'a bent corner lost its radius, so a room cannot carry a curve and its rounding at ' +
+            'once: ' + JSON.stringify(radii));
 
-  // THE CARD REFUSES A NEW ONE TOO. Storing it would keep a number no outline ever draws, which
-  // reads to the DM as the field being broken.
+  // THE CARD TAKES A NEW ONE TOO, filleted against the curve rather than the chord to the far
+  // vertex — see computeFillet in fogGeometry.js.
   const v0f = await dm.evaluate('__rigById(' + f + ').vertices[0]');
   await dm.evaluate('__rigClick(' + v0f.x + ',' + v0f.y + '); 0');
-  rig.check(await dm.evaluate('document.getElementById("rp-radius-num").disabled') === true,
-            'the corner radius field was live on a bent corner, so the DM can type a number the ' +
-            'app silently ignores');
-  await dm.evaluate('document.getElementById("rp-radius-num").value = 30;' +
+  rig.check(await dm.evaluate('document.getElementById("rp-radius-num").disabled') === false,
+            'the corner radius field was disabled on a bent corner, so the DM cannot round one');
+  await dm.evaluate('document.getElementById("rp-radius-num").value = 18;' +
                     ' document.getElementById("rp-radius-num")' +
                     '.dispatchEvent(new Event("input", { bubbles: true })); 0');
-  rig.check(!(await dm.evaluate('(__rigById(' + f + ').cornerRadii || [])[0]')),
-            'a radius typed on a bent corner was stored, and nothing draws it');
+  rig.check(await dm.evaluate('(__rigById(' + f + ').cornerRadii || [])[0]') === 18,
+            'a radius typed on a bent corner was not stored');
 
   await dm.evaluate('__rigClick(1800, 1350); 0');
   await dm.evaluate('__rigClick(2100, 240); 0');

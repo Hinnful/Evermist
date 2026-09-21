@@ -219,9 +219,6 @@ function _rpWireRadiusField(numId) {
     // The target follows the selection; the array pads out, since a polygon can gain vertices.
     const vi = selectedVertexIndex;
     const total = flatVertexCount(poly);
-    // ⚠ A CURVED CORNER TAKES NO RADIUS: a fillet needs two straight tangents. Writing the number
-    // would store one the outline never draws.
-    if (vi >= 0 && vi < total && handleAt(poly.handles, vi)) return;
     if (vi >= 0 && vi < total) {
       editCornerRadii(poly, r => {
         while (r.length < total) r.push(null);
@@ -266,14 +263,14 @@ function _rpSyncRadiusField(fieldId, numId, poly) {
   if (!field || !num) return;
   const perVertex = !!poly && selectedVertexIndex >= 0 && selectedVertexIndex < flatVertexCount(poly);
   const curved    = perVertex && !!handleAt(poly.handles, selectedVertexIndex);
-  num.disabled = !poly || curved;
+  num.disabled = !poly;
   const override  = perVertex && poly.cornerRadii ? poly.cornerRadii[selectedVertexIndex] : null;
-  const currentR  = !poly ? 0 : (curved ? 0 : (override != null ? override : (poly.cornerRadius || 0)));
+  const currentR  = !poly ? 0 : (override != null ? override : (poly.cornerRadius || 0));
   if (num !== document.activeElement) num.value = currentR;
 
   field.classList.toggle('rp-per-vertex', perVertex);
   field.title = curved
-    ? 'A curved corner has no radius. Straighten one of its walls with Ctrl+click to round it.'
+    ? 'Corner radius for the selected corner, filleted against its own curve. ↑/↓ to step, Shift for 10.'
     : (perVertex
       ? 'Corner radius for the selected corner. ↑/↓ to step, Shift for 10. Esc goes back to every corner, Del removes the vertex.'
       : 'Corner radius for every corner. ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.');

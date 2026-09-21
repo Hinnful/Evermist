@@ -80,12 +80,24 @@ back near straight snaps flat, so undoing one needs no key.
 
 **The two handles are INDEPENDENT, and a mirrored rule was rejected with them.** A round tower
 meeting a straight corridor needs a sharp corner between a curved wall and a flat one, and
-mirroring would smooth every anchor. **An anchor carries a corner radius OR handles, never both** —
-a fillet needs two straight tangents, so a bent anchor gives its radius up rather than render a
-shape nothing can build.
+mirroring would smooth every anchor. **An anchor carrying a corner radius OR handles, never
+both, is REVERSED** — see "A corner may carry rounding and a curve at once" below.
 
 Offsets rather than absolute control points, because a handle then rides its anchor through a
 move, a rotate and a scale with no work at all.
+
+### A corner may carry rounding and a curve at once · `SETTLED` (2026-09-21)
+**Reverses the "never both" call above.** Figma keeps the radius on an anchor with bezier
+handles, and the standing rule for this epic is to copy Figma when unsure. `computeFillet`
+(`fogGeometry.js`) fillets a curved side against its own tangent at the point the fillet starts,
+rather than the chord to the far vertex, and reprojects the fillet circle's tangent point back
+onto the curve so the drawn segment and the arc meet within sampling tolerance. A curve whose
+tangent leaves no sane fillet — nearly parallel to the other side's line — is refused rather than
+drawn as a wild, distant arc, the same "refuse rather than guess" rule auto-polygons already uses.
+The room card's radius field, the wall-bend gesture, and a repair's restore path all stopped
+clearing the radius; an effect's own rounded outline shares the identical fillet, moved into
+`fogGeometry.js` as `roundEffectRing` so the fog pipeline and an effect round a curved corner the
+same way.
 
 ### The bounding box is axis-aligned, and no angle is stored · `SETTLED` (2026-09-18)
 Figma keeps its box tilted with a rotated object, which needs an angle stored per shape. A hole has

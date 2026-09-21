@@ -11,11 +11,11 @@
 const _sdSteps = () => (typeof CURVE_SAMPLE_STEPS !== 'undefined' ? CURVE_SAMPLE_STEPS
   : require('../fog/fogGeometry').CURVE_SAMPLE_STEPS);
 
-var edgeIsCurved, edgeCubic, handleAt, sampleCubic, splitCubic, polyRings, polyHoleRings,
-    flatVertexCount;
+var edgeIsCurved, edgeCubic, handleAt, sampleCubic, splitCubic, subCubic, polyRings,
+    polyHoleRings, flatVertexCount;
 if (typeof module !== 'undefined' && module.exports) {
-  ({ edgeIsCurved, edgeCubic, handleAt, sampleCubic, splitCubic, polyRings, polyHoleRings,
-     flatVertexCount } = require('../fog/fogGeometry'));
+  ({ edgeIsCurved, edgeCubic, handleAt, sampleCubic, splitCubic, subCubic, polyRings,
+     polyHoleRings, flatVertexCount } = require('../fog/fogGeometry'));
 }
 
 // Matched by coordinate: the library repeats a surviving input point bit for bit, so the
@@ -67,15 +67,8 @@ function wallParamAt(wall, p) {
   };
 }
 
-// The piece of a cubic between two parameters, as its own cubic: two de Casteljau splits, so it
-// traces exactly the stretch it came from.
-function subCubic(c, t0, t1) {
-  if (!(t1 > t0)) return [c[0], c[0], c[3], c[3]];
-  const right = splitCubic(c[0], c[1], c[2], c[3], t0).right;
-  const u = (t1 - t0) / (1 - t0);
-  if (!(u > 0) || !(u < 1)) return right;
-  return splitCubic(right[0], right[1], right[2], right[3], u).left;
-}
+// subCubic (the piece of a cubic between two parameters) now lives in fogGeometry.js, shared
+// with a fillet's own curve trim.
 
 // Every wall a repair touches, plus the lookup that maps an answer point back onto one.
 // ⚠ ONE COORDINATE CAN BE TWO SHAPES' CORNER, so the key holds every claim and locatePoint picks.
@@ -228,9 +221,6 @@ function restoreRing(index, ring, tol) {
     const j = (i + 1) % kept.length;
     handles[i] = setPart(handles[i], 'out', sub[1].x - verts[i].x, sub[1].y - verts[i].y);
     handles[j] = setPart(handles[j], 'in', sub[2].x - verts[j].x, sub[2].y - verts[j].y);
-    // An anchor carries a radius OR handles, the rule setShapeHandle keeps.
-    if (handles[i]) radii[i] = null;
-    if (handles[j]) radii[j] = null;
   }
   return { verts, radii, handles, spans };
 }

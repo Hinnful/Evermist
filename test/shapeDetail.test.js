@@ -116,6 +116,7 @@ describe('buildRoundedPolyPath with curves', () => {
       lineTo: (...a) => calls.push(['lineTo', ...a]),
       bezierCurveTo: (...a) => calls.push(['bez', ...a]),
       arcTo: (...a) => calls.push(['arcTo', ...a]),
+      arc: (...a) => calls.push(['arc', ...a]),
       closePath: () => calls.push(['close']),
     };
   }
@@ -142,12 +143,14 @@ describe('buildRoundedPolyPath with curves', () => {
     assert.equal(ctx.calls[ctx.calls.length - 2][0], 'bez', 'the last wall drawn is the curve');
   });
 
-  it('reads an anchor with handles as sharp, whatever its radius says', () => {
+  it('rounds an anchor with handles against its own curve, not the chord', () => {
     const ctx = recordingCtx();
     const s = bowedSquare();
     buildRoundedPolyPath(ctx, s.vertices, 20, null, null, s.handles);
-    const arcs = ctx.calls.filter(c => c[0] === 'arcTo');
-    assert.equal(arcs.length, 2, 'only the two anchors with no handles round');
+    const arcTos = ctx.calls.filter(c => c[0] === 'arcTo');
+    const arcs = ctx.calls.filter(c => c[0] === 'arc');
+    assert.equal(arcTos.length, 2, 'the two anchors with no curved side keep the old arcTo path');
+    assert.equal(arcs.length, 2, 'the two anchors beside the bowed wall fillet against its tangent');
   });
 
   it('swaps a hole anchor’s two handles when the ring is walked backwards', () => {
@@ -322,14 +325,13 @@ describe('what a repair must not lose', () => {
     assert.equal(out.pieces[0].vertices.length, 3);
   });
 
-  it('clears the radius on any anchor it hands a curve to', () => {
+  it('keeps the radius on an anchor it hands a curve to', () => {
     const s = { ...bowedSquare(), cornerRadii: [25, 25, null, null] };
     const out = restoreShapeDetail([s], flattenShapeForClip(s)).pieces[0];
-    for (let i = 0; i < out.vertices.length; i++) {
+    for (let i = 0; i < 2; i++) {
       const h = out.handles && out.handles[i];
-      const r = out.cornerRadii && out.cornerRadii[i];
-      assert.ok(!(h && (h.ix || h.iy || h.ox || h.oy) && r),
-                'vertex ' + i + ' came back with a radius AND handles, which no outline can draw');
+      assert.ok(h && (h.ix || h.iy || h.ox || h.oy), 'vertex ' + i + ' should still carry its curve');
+      assert.equal(out.cornerRadii[i], 25, 'vertex ' + i + ' should keep its radius alongside it');
     }
   });
 

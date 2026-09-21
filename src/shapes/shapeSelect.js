@@ -123,17 +123,14 @@ function editHandles(poly, edit) {
   if (!poly.handles) delete poly.handles;
 }
 
-// Writes one control point as an offset from its anchor, and ⚠ CLEARS THAT ANCHOR'S RADIUS —
-// an anchor carries a corner radius or handles, never both.
+// Writes one control point as an offset from its anchor. The anchor keeps its own radius — the
+// fog outline fillets a curved side against its own tangent (fogGeometry.js's computeFillet).
 function setShapeHandle(poly, flat, part, dx, dy) {
   editHandles(poly, hs => {
     const h = hs[flat] ? { ...hs[flat] } : { ix: 0, iy: 0, ox: 0, oy: 0 };
     if (part === 'out') { h.ox = dx; h.oy = dy; } else { h.ix = dx; h.iy = dy; }
     hs[flat] = (h.ix || h.iy || h.ox || h.oy) ? h : null;
   });
-  if (poly.handles && poly.handles[flat] && poly.cornerRadii) {
-    editCornerRadii(poly, r => { r[flat] = 0; });
-  }
 }
 
 // Copied, edited, reassigned, never spliced in place. A ring left under three points is dropped.

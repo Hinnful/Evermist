@@ -36,6 +36,8 @@ function recordingCtx() {
     moveTo: (x, y) => calls.push(['moveTo', x, y]),
     lineTo: (x, y) => calls.push(['lineTo', x, y]),
     arcTo: (x1, y1, x2, y2, r) => calls.push(['arcTo', x1, y1, x2, y2, r]),
+    arc: (cx, cy, r, a1, a2, ccw) => calls.push(['arc', cx, cy, r, a1, a2, ccw]),
+    bezierCurveTo: (...a) => calls.push(['bez', ...a]),
     closePath: () => calls.push(['closePath']),
   };
 }
@@ -176,6 +178,56 @@ describe('buildRoundedPolyPath', () => {
     const arcs = ctx.calls.filter(c => c[0] === 'arcTo');
     // vertex 0 has r=0 → sharp (no arc); vertices 1,2,3 are rounded → 3 arcs.
     assert.equal(arcs.length, 3);
+  });
+});
+
+describe('buildRoundedPolyPath rounds a curved anchor', () => {
+  // A square whose bottom wall bows gently outward (away from the square, y<0).
+  const bowed = {
+    vertices: square,
+    handles: [{ ix: 0, iy: 0, ox: 0, oy: -3 }, { ix: 0, iy: -3, ox: 0, oy: 0 }, null, null],
+  };
+
+  it('fillets a handled anchor against its own tangent instead of staying sharp', () => {
+    const ctx = recordingCtx();
+    buildRoundedPolyPath(ctx, bowed.vertices, 2, null, null, bowed.handles);
+    const arcTos = ctx.calls.filter(c => c[0] === 'arcTo');
+    const arcs = ctx.calls.filter(c => c[0] === 'arc');
+    assert.equal(arcTos.length, 2, 'the two anchors with no curved side keep the old arcTo path');
+    assert.equal(arcs.length, 2, 'the two anchors beside the bowed wall round too, not sharp');
+  });
+
+  it('clamps a radius too big for the curve to the largest that fits', () => {
+    const ctx = recordingCtx();
+    // Radius 100 far exceeds the 10px edges either side → clamped to 5, same rule as a straight
+    // corner (min(r, dPrev/2, dNext/2)).
+    buildRoundedPolyPath(ctx, bowed.vertices, 100, null, null, bowed.handles);
+    const arcs = ctx.calls.filter(c => c[0] === 'arc');
+    assert.equal(arcs.length, 2);
+    for (const a of arcs) assert.equal(a[3], 5, 'radius argument to ctx.arc');
+  });
+
+  it('draws the curved wall up to the fillet, not all the way to the anchor', () => {
+    const ctx = recordingCtx();
+    buildRoundedPolyPath(ctx, bowed.vertices, 2, null, null, bowed.handles);
+    const bez = ctx.calls.find(c => c[0] === 'bez');
+    assert.ok(bez, 'the bowed wall is still drawn as a curve');
+    // Its far endpoint (sub[3]) must be short of vertex 1 at (10, 0) by roughly the radius,
+    // not land exactly on it — the fillet owns the last stretch, not the wall.
+    const endX = bez[5], endY = bez[6];
+    assert.ok(Math.abs(endX - 10) > 0.5 || Math.abs(endY - 0) > 0.5,
+              'the curve should stop short of the anchor to leave room for the arc');
+  });
+
+  it('refuses rather than guesses when a curve leaves no sane tangent to fillet', () => {
+    // An extreme bend whose tangent at the anchor runs nearly parallel to the straight wall it
+    // meets there — a well-defined circle, but one nowhere near the corner. Stays sharp instead.
+    const wild = [{ ix: 0, iy: 0, ox: 0, oy: 12 }, { ix: 0, iy: 12, ox: 0, oy: 0 }, null, null];
+    const ctx = recordingCtx();
+    buildRoundedPolyPath(ctx, square, 2, null, null, wild);
+    assert.equal(ctx.calls.filter(c => c[0] === 'arc').length, 0);
+    const bez = ctx.calls.find(c => c[0] === 'bez');
+    assert.deepEqual([bez[5], bez[6]], [10, 0], 'the untrimmed curve reaches its real anchor');
   });
 });
 
