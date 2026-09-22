@@ -9,21 +9,29 @@ function drawActivePolyPreview(screenX, screenY) {
   // A cut path is gold, the colour of a selected room, because it edits rooms already there
   // rather than making one in a fog state.
   const cut = !!activePolygon.cut;
-  // Same colours drawPolyOutline reads, so closing the polygon changes only the line's WEIGHT
-  // (2px solid in progress → 1.5px dashed once saved), never its colour.
-  const edgeColor = cut ? POLY_EDGE_SELECTED
-    : (placeMode === 'effects'
-        ? EFFECT_EDGE_COLOR
-        : (POLY_EDGE_COLORS[mode] || POLY_EDGE_COLORS.shroud));
+  // Same table drawPolyOutline reads, so closing the polygon changes only the line's WEIGHT,
+  // never its colour.
+  const baseRgb = cut ? HELD_RGB
+    : (placeMode === 'effects' ? EFFECT_RGB : (POLY_STATE_RGB[mode] || POLY_STATE_RGB.shroud));
   cursorCtx.save();
 
-  // Placed edges (solid, glowing)
+  // The wash fills as corners land, same alpha the drawing-in-progress ladder settles on.
+  if (verts.length >= 3) {
+    cursorCtx.beginPath();
+    for (let i = 0; i < verts.length; i++) {
+      const { sx, sy } = toScreen(verts[i].x, verts[i].y);
+      if (i === 0) cursorCtx.moveTo(sx, sy); else cursorCtx.lineTo(sx, sy);
+    }
+    cursorCtx.closePath();
+    cursorCtx.fillStyle = `rgba(${baseRgb},0.09)`;
+    cursorCtx.fill();
+  }
+
+  // Placed walls
   if (verts.length >= 2) {
-    cursorCtx.strokeStyle = edgeColor;
-    cursorCtx.lineWidth   = 2;
+    cursorCtx.strokeStyle = `rgba(${baseRgb},0.9)`;
+    cursorCtx.lineWidth   = 1.5;
     cursorCtx.setLineDash([]);
-    cursorCtx.shadowColor = edgeColor;
-    cursorCtx.shadowBlur  = 8;
     cursorCtx.beginPath();
     for (let i = 0; i < verts.length; i++) {
       const { sx, sy } = toScreen(verts[i].x, verts[i].y);
@@ -32,7 +40,7 @@ function drawActivePolyPreview(screenX, screenY) {
     cursorCtx.stroke();
   }
 
-  // Dashed preview edge to cursor
+  // The next wall, not committed yet, is the one dash on the map.
   if (screenX != null) {
     const last = toScreen(verts[verts.length - 1].x, verts[verts.length - 1].y);
     let tipX = screenX, tipY = screenY;
@@ -43,48 +51,30 @@ function drawActivePolyPreview(screenX, screenY) {
       const s = toScreen(m.x, m.y);
       tipX = s.sx; tipY = s.sy;
     }
-    // Mode colour, faded, so an un-placed segment reads as provisional. globalAlpha rather than a
-    // second colour string, so it cannot drift from the table.
-    cursorCtx.strokeStyle = edgeColor;
-    cursorCtx.globalAlpha = 0.6;
+    cursorCtx.strokeStyle = `rgba(${baseRgb},0.6)`;
     cursorCtx.lineWidth   = 1.5;
-    cursorCtx.setLineDash([6, 5]);
-    cursorCtx.shadowBlur  = 0;
+    cursorCtx.setLineDash([4, 4]);
     cursorCtx.beginPath();
     cursorCtx.moveTo(last.sx, last.sy);
     cursorCtx.lineTo(tipX, tipY);
     cursorCtx.stroke();
-    cursorCtx.globalAlpha = 1;
+    cursorCtx.setLineDash([]);
   }
 
-  // Close-target halo (first vertex, gold glow when >=3 verts). A cut path never closes.
+  // Close target: a gold ring around the first corner's own gold puck. A cut path never closes.
   if (!cut && verts.length >= 3) {
     const { sx, sy } = toScreen(verts[0].x, verts[0].y);
-    cursorCtx.setLineDash([4, 3]);
     cursorCtx.strokeStyle = POLY_EDGE_SELECTED;
-    cursorCtx.lineWidth   = 2;
-    cursorCtx.shadowColor = POLY_EDGE_SELECTED;
-    cursorCtx.shadowBlur  = 14;
+    cursorCtx.lineWidth   = 1.5;
     cursorCtx.beginPath();
     cursorCtx.arc(sx, sy, POLY_CLOSE_RADIUS, 0, Math.PI * 2);
     cursorCtx.stroke();
   }
 
-  cursorCtx.setLineDash([]);
   for (let i = 0; i < verts.length; i++) {
     const { sx, sy } = toScreen(verts[i].x, verts[i].y);
     const isFirst = i === 0;
-    const r = isFirst ? 6 : 4;
-    cursorCtx.shadowColor = isFirst ? '#ffd028' : edgeColor;
-    cursorCtx.shadowBlur  = isFirst ? 12 : 6;
-    cursorCtx.beginPath();
-    cursorCtx.arc(sx, sy, r, 0, Math.PI * 2);
-    cursorCtx.fillStyle = isFirst ? '#ffd060' : 'rgba(255,255,255,0.92)';
-    cursorCtx.fill();
-    cursorCtx.shadowBlur  = 0;
-    cursorCtx.strokeStyle = isFirst ? 'rgba(255,255,255,0.6)' : edgeColor;
-    cursorCtx.lineWidth   = 1.5;
-    cursorCtx.stroke();
+    drawCorner(sx, sy, isFirst, isFirst, isFirst ? '#ffd060' : '#ffffff');
   }
 
   cursorCtx.restore();

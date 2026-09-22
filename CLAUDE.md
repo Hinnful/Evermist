@@ -100,7 +100,8 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `shapes/toolBrush.js` | The fog brush: the stroke queued while the pointer moves, and the pass that paints it |
 | `shapes/toolDoor.js` | The Door tool and its notch in the fog |
 | `shapes/toolCut.js` | The Cut tool and the two pieces it leaves |
-| `shapes/toolPreview.js` | What a tool draws before anything is committed |
+| `shapes/shapeMarkers.js` | The corner and hole-hatch markers a picked shape's chrome draws |
+| `shapes/toolPreview.js` | What a tool draws before it is committed |
 | `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Unit-tested |
 | `shapes/shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
 | `shapes/shapeBox.js` | The bounding box: its handles, rotate and scale |
@@ -184,7 +185,8 @@ render/dmFogLayer.js → state.js → render/display.js → render/video.js → 
 fog/fogGeometry.js → fog/fogColor.js → shapes/doorGeometry.js → rooms/vttPlan.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → shapes/roomOps.js →
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/toolShapes.js →
-shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/toolPreview.js →
+shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →
+shapes/toolPreview.js →
 shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/shapeBox.js →
 shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → undo.js →
 scenes/sceneGroups.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneManager.js →

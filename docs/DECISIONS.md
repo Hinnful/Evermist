@@ -318,6 +318,18 @@ description and fog controls together - is the point. The description half of th
 feature is therefore load-bearing, and the confirm-before-overwrite machinery is correctly
 scoped rather than over-built.
 
+### Rooms and effects draw as areas, not outlines · `SETTLED` (2026-09-22)
+The stroked, glow-heavy outline gave way to a translucent wash carrying the fog state, a soft
+inner edge, and a thin line separating neighbours. Two other ways to signal "this one is open
+for editing" were prototyped and rejected: a Figma-style diagonal hatch over the fill, and a
+hollowed-out fill with a brightened border. The line simply turning white on entering edit mode
+won, since it changes nothing about the fill a DM is reading for fog state.
+
+### A shape's bounding box keeps only its four corner handles · `SETTLED` (2026-09-22)
+The box's four edge-midpoint handles - a single-axis stretch - were dropped after they read as
+extra room vertices once their count matched a simple room's own four corners. Corner-drag scale
+survives; single-axis resize has no replacement handle.
+
 ---
 
 ## Module text import

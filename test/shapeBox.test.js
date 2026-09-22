@@ -29,18 +29,15 @@ describe('the box', () => {
     assert.equal(boxFromPoints(null), null);
   });
 
-  it('puts eight handles on the corners and the side middles', () => {
+  it('puts four handles on the corners alone - no edge midpoints', () => {
     const b = boxFromPoints(rect(0, 0, 100, 60));
     assert.deepEqual(boxSidePoints(b).map(p => p.name), BOX_SIDES);
+    assert.deepEqual(BOX_SIDES, ['nw', 'ne', 'se', 'sw']);
     // y grows downward, so 'n' is the low edge.
     ptNear(boxSidePoint(b, 'nw'), 0, 0);
-    ptNear(boxSidePoint(b, 'n'), 50, 0);
     ptNear(boxSidePoint(b, 'ne'), 100, 0);
-    ptNear(boxSidePoint(b, 'e'), 100, 30);
     ptNear(boxSidePoint(b, 'se'), 100, 60);
-    ptNear(boxSidePoint(b, 's'), 50, 60);
     ptNear(boxSidePoint(b, 'sw'), 0, 60);
-    ptNear(boxSidePoint(b, 'w'), 0, 30);
     ptNear(boxCentre(b), 50, 30);
   });
 });

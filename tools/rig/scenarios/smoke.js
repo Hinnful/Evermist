@@ -286,8 +286,18 @@ module.exports = async function smoke(rig) {
   // throttling an off-screen window for one moment. This gate runs on every commit, so a flake
   // here stops work on a working app. A picture that changes ONCE inside the window is proof; only
   // one that never changes is a failure.
-  const first = await stageSum();
-  let samples = 1;
+  // ⚠ THE FIRST SAMPLE RACES THE FIRST RENDER TOO: `pixiApp` existing does not mean a frame has
+  // been drawn to it yet, so a sample taken the instant it appears can legitimately read zero.
+  // Poll for the first nonzero paint the same way the "did it move" check polls for a change.
+  let samples = 0;
+  const firstPaint = await lib.poll(async () => {
+    samples++;
+    const v = await stageSum();
+    return v > 0 ? { v } : null;
+  }, 6000, 250);
+  rig.check(firstPaint !== null,
+            'the Player painted nothing at all in six seconds, so the check below means nothing');
+  const first = firstPaint ? firstPaint.v : 0;
   const changed = await lib.poll(async () => {
     samples++;
     const now = await stageSum();
@@ -296,8 +306,6 @@ module.exports = async function smoke(rig) {
   const moved = changed ? changed.now : null;
   rig.note('the Player map picture: ' + first + ' then ' + (moved == null ? 'unchanged' : moved) +
            ' over ' + samples + ' samples');
-  rig.check(first > 0,
-            'the Player is painting nothing at all, so the check below means nothing: ' + first);
   rig.check(moved !== null,
             'the animated map is frozen on the TV: the map picture never changed over ' + samples +
             ' samples in six seconds (' + first + '), while the DM plays it normally');

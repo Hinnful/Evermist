@@ -5,6 +5,8 @@
     "maxSectionShare": 0.4
   },
   "note": "Per-subject state for the ARCHITECTURE.md guard, so each notice fires once and never nags. Clear \"reported\" to hear about everything again, and \"warnedBytes\" to hear about size again. \"config\" holds the size thresholds; this doc is MEANT to grow, so nothing here blocks an edit.",
-  "reported": [],
+  "reported": [
+    "missing:shapemarkers.js"
+  ],
   "warnedBytes": 68796
 }

@@ -162,7 +162,7 @@ function drawDoorHandles(active) {
   // thousands of segments on every mouse move, and a smear rather than a guide. drawGridLines
   // stops at 4px for the same reason, so the grid itself is already gone by here.
   if (active && gridSize * zoom >= DOOR_TICK_MIN_PX) {
-    cursorCtx.strokeStyle = 'rgba(120,190,255,0.3)';
+    cursorCtx.strokeStyle = 'rgba(255,255,255,0.3)';
     cursorCtx.beginPath();
     for (const poly of polygons) {
       if (poly.vertices.length < 3) continue;
@@ -180,7 +180,7 @@ function drawDoorHandles(active) {
     cursorCtx.stroke();
   }
 
-  cursorCtx.strokeStyle = active ? 'rgba(120,190,255,0.95)' : 'rgba(120,190,255,0.4)';
+  cursorCtx.strokeStyle = active ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.4)';
   for (const poly of polygons) {
     if (!poly.doors) continue;
     for (const d of poly.doors) {

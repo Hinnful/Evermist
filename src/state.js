@@ -122,7 +122,27 @@ const POLY_EDGE_SELECTED = '#ffd060';
 // The PART of a picked shape that is itself picked - a vertex, a hole's ring - in one colour, so
 // "what Delete takes" reads the same wherever it sits.
 const SHAPE_PART_SELECTED      = '#60a0ff';
-const SHAPE_PART_SELECTED_EDGE = '#4080ff';
+const SHAPE_PART_SELECTED_RGB  = '96,160,255';
+
+// Item 102: a wash carries the fog state; reveal alone carries no fill and no soft edge, since it
+// is the one state with nothing left to erode. Read by drawPolyOutline and drawActivePolyPreview.
+const POLY_STATE_RGB = { reveal: '50,220,110', half: '70,190,210', shroud: '150,80,255' };
+const POLY_LOOK = {
+  shroud: { fillA: 0.11, edgeA: 0.12, edgeW: 3, lineA: 0.40, lineW: 1.3 },
+  half:   { fillA: 0.07, edgeA: 0.10, edgeW: 3, lineA: 0.42, lineW: 1.3 },
+  reveal: { fillA: 0,    edgeA: 0,    edgeW: 0, lineA: 0.55, lineW: 1.3 },
+};
+// The list the placement mode is NOT showing: wash halves, soft edge drops, line falls to a hair.
+const POLY_LOOK_DIM = { fillMul: 0.5, lineA: 0.12 };
+const EFFECT_RGB  = '255,138,61';
+const EFFECT_LOOK = { fillA: 0.16, edgeA: 0.28, edgeW: 6, lineA: 0.50, lineW: 1.3 };
+// A held shape's line and soft edge go gold no matter its fog state; its box stays faint.
+const HELD_RGB   = '255,208,96';
+const HELD_LOOK  = { edgeA: 0.16, edgeW: 4, lineW: 1.5 };
+const HELD_BOX_A = 0.30;
+const EDIT_RGB = '255,255,255';   // an editing shape's line - past held, never explained twice
+// A picked hole's ring and hatch, in the same blue a picked vertex wears.
+const HOLE_HATCH_PITCH = 7;
 
 // ─── The selection ── read by a dozen modules, owned by shapeSelect.js ───────
 let selectedPolygonId = null;

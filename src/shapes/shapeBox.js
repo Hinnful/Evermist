@@ -35,7 +35,8 @@ function applyMatVec(m, v) {
 }
 
 // ─── The box ──────────────────────────────────────────────────────────────────
-const BOX_SIDES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+// Corners only - an edge midpoint read as a fifth "vertex" on a simple room and was dropped.
+const BOX_SIDES = ['nw', 'ne', 'se', 'sw'];
 const BOX_MIN_SPAN = 2;        // map units a scale may never take a box under
 const ROT_SNAP_DEG = 15;       // Shift, as in Figma
 
@@ -117,8 +118,7 @@ if (typeof module !== 'undefined' && module.exports) {
 // Two moments, and only two: a shape picked as an object, and a hole picked inside its room.
 // `hole` is -1 for the whole shape, otherwise an index into polyHoleRings().
 
-const BOX_HANDLE_PX = 4.5;   // half-size of a handle square on screen
-const BOX_GRAB_PX   = 9;     // slack around one
+const BOX_GRAB_PX   = 9;     // slack around a handle
 const BOX_ROTATE_PX = 26;    // the rotate ring reaches this far outside a corner
 
 function boxTargetOf(poly) {
@@ -172,19 +172,14 @@ let boxDragFlat   = null;
 let boxDragAngle0 = 0;
 let boxDragHoleStuck = false;
 
-// A corner first, then a side, then the ring just outside a corner that rotates.
+// A corner first, then the ring just outside it that rotates.
 function findBoxHandleAt(poly, mapX, mapY) {
   const b = shapeBoxOf(poly);
   if (!b) return null;
   const grab = BOX_GRAB_PX / zoom;
   const pts = boxSidePoints(b);
   for (const p of pts) {
-    if (p.name.length === 2 && Math.abs(mapX - p.x) < grab && Math.abs(mapY - p.y) < grab) {
-      return { box: b, name: p.name, rotate: false };
-    }
-  }
-  for (const p of pts) {
-    if (p.name.length === 1 && Math.abs(mapX - p.x) < grab && Math.abs(mapY - p.y) < grab) {
+    if (Math.abs(mapX - p.x) < grab && Math.abs(mapY - p.y) < grab) {
       return { box: b, name: p.name, rotate: false };
     }
   }
@@ -193,7 +188,6 @@ function findBoxHandleAt(poly, mapX, mapY) {
   if (mapX > b.minX && mapX < b.maxX && mapY > b.minY && mapY < b.maxY) return null;
   const reach = BOX_ROTATE_PX / zoom;
   for (const p of pts) {
-    if (p.name.length !== 2) continue;
     const d = Math.hypot(mapX - p.x, mapY - p.y);
     if (d >= grab && d < reach) return { box: b, name: p.name, rotate: true };
   }
@@ -268,35 +262,27 @@ function boxHoverCursor(poly, pos) {
   const hit = findBoxHandleAt(poly, pos.x, pos.y);
   if (!hit) return null;
   if (hit.rotate) return 'grab';
-  if (hit.name === 'n' || hit.name === 's') return 'ns-resize';
-  if (hit.name === 'e' || hit.name === 'w') return 'ew-resize';
   return (hit.name === 'nw' || hit.name === 'se') ? 'nwse-resize' : 'nesw-resize';
 }
 
 // ─── Drawing ──────────────────────────────────────────────────────────────────
-// White squares, so a corner reads as something to grab rather than as another vertex dot.
+// Object level (a single click, before edit mode) is "focused": the same rounded-square corner
+// edit mode draws unpicked, so a corner reads the same family everywhere it shows up.
 function drawShapeBox(poly) {
   const b = shapeBoxOf(poly);
   if (!b) return;
   const a = toScreen(b.minX, b.minY), c = toScreen(b.maxX, b.maxY);
-  const colour = b.hole >= 0 ? SHAPE_PART_SELECTED : POLY_EDGE_SELECTED;
+  const boxRgb = b.hole >= 0 ? SHAPE_PART_SELECTED_RGB : HELD_RGB;
+  const handleStroke = b.hole >= 0 ? SHAPE_PART_SELECTED : POLY_EDGE_SELECTED;
   cursorCtx.save();
   cursorCtx.setLineDash([]);
   cursorCtx.shadowBlur = 0;
-  cursorCtx.globalAlpha = 0.9;
-  cursorCtx.strokeStyle = colour;
+  cursorCtx.strokeStyle = `rgba(${boxRgb},${HELD_BOX_A})`;
   cursorCtx.lineWidth = 1;
   cursorCtx.strokeRect(a.sx, a.sy, c.sx - a.sx, c.sy - a.sy);
-  cursorCtx.globalAlpha = 1;
   for (const p of boxSidePoints(b)) {
     const s = toScreen(p.x, p.y);
-    cursorCtx.beginPath();
-    cursorCtx.rect(s.sx - BOX_HANDLE_PX, s.sy - BOX_HANDLE_PX, BOX_HANDLE_PX * 2, BOX_HANDLE_PX * 2);
-    cursorCtx.fillStyle = '#ffffff';
-    cursorCtx.fill();
-    cursorCtx.strokeStyle = colour;
-    cursorCtx.lineWidth = 1.5;
-    cursorCtx.stroke();
+    drawCorner(s.sx, s.sy, false, false, '#ffffff', handleStroke);
   }
   cursorCtx.restore();
 }

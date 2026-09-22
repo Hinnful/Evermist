@@ -645,7 +645,8 @@ function escapeShapeSelection() {
 }
 
 // ⚠ VERTICES ONLY IN EDIT MODE - an object-level pick is the outline alone, leaving the room a
-// bounding box will need.
+// bounding box will need. drawCorner/drawHoleHatch live in shapeMarkers.js, read by this file,
+// shapeBox.js and toolPreview.js alike.
 function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   const verts = poly.vertices;
   if (verts.length < 2) return;
@@ -653,60 +654,90 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   const editing = isSelected && shapeEditMode;
   const holeSel = editing && selectedHoleIndex >= 0 && selectedHoleIndex < holeRings.length
                 ? selectedHoleIndex : -1;
-  cursorCtx.save();
-  // 0.3 was tried and disappeared entirely over the darker half of a map — "faint" has to stay
-  // above "gone" on ground the DM did not choose.
-  if (dimmed) cursorCtx.globalAlpha = 0.45;
 
-  // One POLY_EDGE_COLORS table, so a room being drawn and the saved room match. Selected is
-  // always gold; `material` tells an effect from a room and never reads as a fourth fog state.
-  const edgeColor = isSelected
-    ? POLY_EDGE_SELECTED
-    : (poly.material ? EFFECT_EDGE_COLOR
-                     : (POLY_EDGE_COLORS[poly.mode] || POLY_EDGE_COLORS.shroud));
+  // The wash is always the fog state's own colour; only the edge and line go gold once held.
+  // `material` tells an effect from a room and never reads as a fourth fog state.
+  const isEffect = !!poly.material;
+  const baseRgb = isEffect ? EFFECT_RGB : (POLY_STATE_RGB[poly.mode] || POLY_STATE_RGB.shroud);
+  const look = isEffect ? EFFECT_LOOK : (POLY_LOOK[poly.mode] || POLY_LOOK.shroud);
+  let fillA = look.fillA;
+  let lineRgb = baseRgb, lineA = look.lineA, lineW = look.lineW;
+  let softRgb = baseRgb, softA = look.edgeA, softW = look.edgeW;
+  if (dimmed) { fillA *= POLY_LOOK_DIM.fillMul; lineA = POLY_LOOK_DIM.lineA; softA = 0; }
+  if (isSelected) {
+    lineRgb = softRgb = HELD_RGB;
+    lineA = 1; lineW = HELD_LOOK.lineW;
+    softA = HELD_LOOK.edgeA; softW = HELD_LOOK.edgeW;
+  }
+  // Editing goes one step further than held: Figma's own signal for "you are inside this one
+  // now" is the outline turning white, so editing takes the line past gold rather than beside it.
+  if (editing) lineRgb = softRgb = EDIT_RGB;
+  // A picked hole takes the outline down, so its own ring and hatch are what Delete visibly
+  // points at, not the room the hole sits inside.
+  if (holeSel >= 0) { fillA *= 0.5; lineA *= 0.5; softA *= 0.5; }
 
   // Screen space, in flat index order: the outer ring, then each hole.
   const toSv = ring => ring.map(v => { const s = toScreen(v.x, v.y); return { x: s.sx, y: s.sy }; });
   const sv = toSv(verts);
   const svHoles = holeRings.map(toSv);
   const svAll = svHoles.length ? sv.concat(...svHoles) : sv;
-
-  // A picked hole takes the outline down, so its own ring is what Delete visibly points at.
-  if (holeSel >= 0) cursorCtx.globalAlpha *= 0.5;
-  cursorCtx.strokeStyle = edgeColor;
-  cursorCtx.lineWidth   = isSelected ? 2.5 : 1.5;
-  cursorCtx.setLineDash(isSelected ? [] : [7, 4]);
-  cursorCtx.shadowColor = edgeColor;
-  cursorCtx.shadowBlur  = isSelected ? 10 : 6;
-  cursorCtx.beginPath();
   const cr = (poly.cornerRadius || 0) * zoom;
   const pvR = poly.cornerRadii ? poly.cornerRadii.map(rv => (rv != null ? rv : (poly.cornerRadius || 0)) * zoom) : null;
-  buildRoundedPolyPath(cursorCtx, sv, cr, pvR, svHoles, scaleHandles(poly.handles, zoom));
+  const hs = scaleHandles(poly.handles, zoom);
+  const tracePath = () => buildRoundedPolyPath(cursorCtx, sv, cr, pvR, svHoles, hs);
+
+  cursorCtx.save();
+
+  // The wash: an evenodd fill, so every hole is cut from it and reads only as a gap.
+  if (fillA > 0) {
+    cursorCtx.beginPath();
+    tracePath();
+    cursorCtx.fillStyle = `rgba(${baseRgb},${fillA})`;
+    cursorCtx.fill('evenodd');
+  }
+
+  // The soft inner edge: a blurred stroke, clipped to the same evenodd path so the blur can only
+  // ever fall inside the room, never bleed onto the map or into a hole.
+  if (softA > 0) {
+    cursorCtx.save();
+    cursorCtx.beginPath();
+    tracePath();
+    cursorCtx.clip('evenodd');
+    cursorCtx.filter = 'blur(1.5px)';
+    cursorCtx.strokeStyle = `rgba(${softRgb},${softA})`;
+    cursorCtx.lineWidth = softW;
+    // clip() left the traced path live - stroking it here spends no second walk of the geometry.
+    cursorCtx.stroke();
+    cursorCtx.restore();
+  }
+
+  // The crisp line. Never dashed: a dash means "not committed yet", and a saved room always is.
+  cursorCtx.beginPath();
+  tracePath();
+  cursorCtx.strokeStyle = `rgba(${lineRgb},${lineA})`;
+  cursorCtx.lineWidth = lineW;
   cursorCtx.stroke();
 
   if (dimmed) { cursorCtx.restore(); return; }
 
-  // The picked hole's ring, back at full strength in the blue a picked vertex already wears.
+  // The picked hole: a hatch fills the gap and its ring goes blue, so Delete's target is unmissable.
   if (holeSel >= 0) {
     const ring = svHoles[holeSel];
-    cursorCtx.globalAlpha = 1;
-    cursorCtx.strokeStyle = SHAPE_PART_SELECTED;
-    cursorCtx.lineWidth   = 2.5;
-    cursorCtx.setLineDash([]);
-    cursorCtx.shadowColor = SHAPE_PART_SELECTED;
-    cursorCtx.shadowBlur  = 12;
+    drawHoleHatch(ring);
     cursorCtx.beginPath();
     cursorCtx.moveTo(ring[0].x, ring[0].y);
     for (let i = 1; i < ring.length; i++) cursorCtx.lineTo(ring[i].x, ring[i].y);
     cursorCtx.closePath();
+    cursorCtx.strokeStyle = `rgba(${SHAPE_PART_SELECTED_RGB},1)`;
+    cursorCtx.lineWidth = 1.5;
     cursorCtx.stroke();
   }
 
-  // A boxed hole shows NO vertices at all: shapeBox.js has the box, and the two never share the
+  // A boxed hole shows NO corners at all: shapeBox.js has the box, and the two never share the
   // map. Its ring, drawn just above, is what says which hole is picked.
   if (!editing || (holeSel >= 0 && !holeEditMode)) { cursorCtx.restore(); return; }
 
-  // The hole's own level narrows the dots to its ring, so the room's corners stop competing.
+  // The hole's own level narrows the corners to its ring, so the room's own stop competing.
   let dotFrom = 0, dotTo = svAll.length;
   if (holeEditMode && holeSel >= 0) {
     dotFrom = verts.length;
@@ -714,40 +745,33 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
     dotTo = dotFrom + holeRings[holeSel].length;
   }
 
-  // Vertex dots — at the real vertex, not the fillet, on every live ring.
-  cursorCtx.globalAlpha = 1;
-  cursorCtx.setLineDash([]);
+  // Corners — at the real vertex, not the fillet, on every live ring. Edit mode is where a
+  // corner goes round; the ring on top of that is what says THIS one is picked.
   for (let i = dotFrom; i < dotTo; i++) {
     const { x, y } = svAll[i];
     const isSelVert = i === selectedVertIdx;
-    const r = isSelVert ? 7 : 5;
-    cursorCtx.shadowColor = isSelVert ? SHAPE_PART_SELECTED : edgeColor;
-    cursorCtx.shadowBlur  = isSelVert ? 14 : 6;
-    cursorCtx.beginPath();
-    cursorCtx.arc(x, y, r, 0, Math.PI * 2);
-    cursorCtx.fillStyle = isSelVert ? '#ffffff' : POLY_EDGE_SELECTED;
-    cursorCtx.fill();
-    cursorCtx.shadowBlur  = 0;
-    cursorCtx.strokeStyle = isSelVert ? SHAPE_PART_SELECTED_EDGE : 'rgba(255,255,255,0.5)';
-    cursorCtx.lineWidth   = isSelVert ? 2 : 1.5;
-    cursorCtx.stroke();
+    drawCorner(x, y, true, isSelVert, isSelVert ? SHAPE_PART_SELECTED : '#ffffff');
   }
 
   // Curve handles, for the SELECTED vertex alone. Drawn last so a handle sitting over a wall or a
-  // neighbouring dot stays grabbable, and small enough to read as secondary to the corner itself.
+  // neighbouring corner stays grabbable.
   for (const h of selectedHandlePoints(poly)) {
     const a = toScreen(h.anchor.x, h.anchor.y);
     const c = toScreen(h.x, h.y);
-    cursorCtx.globalAlpha = 1;
-    cursorCtx.shadowBlur = 0;
-    cursorCtx.strokeStyle = 'rgba(255,255,255,0.55)';
+    cursorCtx.strokeStyle = 'rgba(255,255,255,0.5)';
     cursorCtx.lineWidth = 1;
     cursorCtx.beginPath();
     cursorCtx.moveTo(a.sx, a.sy);
     cursorCtx.lineTo(c.sx, c.sy);
     cursorCtx.stroke();
+    // A rhombus, not a circle — a curve handle is never mistaken for a corner even at a glance.
+    const r = 5.5;
     cursorCtx.beginPath();
-    cursorCtx.arc(c.sx, c.sy, 4.5, 0, Math.PI * 2);
+    cursorCtx.moveTo(c.sx, c.sy - r);
+    cursorCtx.lineTo(c.sx + r, c.sy);
+    cursorCtx.lineTo(c.sx, c.sy + r);
+    cursorCtx.lineTo(c.sx - r, c.sy);
+    cursorCtx.closePath();
     cursorCtx.fillStyle = SHAPE_PART_SELECTED;
     cursorCtx.fill();
     cursorCtx.strokeStyle = '#ffffff';

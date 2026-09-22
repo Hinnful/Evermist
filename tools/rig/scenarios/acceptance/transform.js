@@ -8,10 +8,10 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
-//   A. One click on a room draws a bounding box with eight handles, and the box wraps what is
-//      actually drawn — a bent wall's bulge included.
+//   A. One click on a room draws a bounding box with four corner handles, and the box wraps what
+//      is actually drawn — a bent wall's bulge included.
 //   B. Dragging a corner handle resizes the room and pins the opposite corner.
-//   C. Shift holds proportion on a corner; a side handle moves one axis alone.
+//   C. Shift holds proportion on a corner.
 //   D. A handle dragged past its anchor never turns the room inside out, and never collapses it.
 //   E. Dragging just OUTSIDE a corner turns the room around the box centre, keeping its size.
 //      A press inside the box always moves the room, however small the box is.
@@ -86,8 +86,8 @@ module.exports = async function transform(rig) {
   rig.check(Math.abs(boxA.minX - 600) < tol && Math.abs(boxA.minY - 400) < tol &&
             Math.abs(boxA.maxX - 1000) < tol && Math.abs(boxA.maxY - 700) < tol,
             'the box came out as ' + JSON.stringify(boxA) + ' rather than round the room');
-  rig.check(await dm.evaluate('boxSidePoints(__rigBox(' + aRoom + ')).length') === 8,
-            'the box does not carry eight handles, so a side or a corner cannot be grabbed');
+  rig.check(await dm.evaluate('boxSidePoints(__rigBox(' + aRoom + ')).length') === 4,
+            'the box does not carry its four corner handles');
 
   // The bulge of a bent wall is INSIDE the box. A box off the anchors cuts through it.
   await dm.evaluate('__rigDbl(800, 550); 0');
@@ -139,15 +139,6 @@ module.exports = async function transform(rig) {
   rig.check(Math.abs(rx - ry) < 0.06,
             'Shift gave ' + rx.toFixed(2) + ' across and ' + ry.toFixed(2) + ' down, so it did ' +
             'not hold the room\'s proportion');
-
-  const boxC2 = await dm.evaluate('__rigBox(' + bRoom + ')');
-  const eC = await dm.evaluate('__rigHandle(' + bRoom + ', "e")');
-  await dm.evaluate('__rigDrag(' + eC.x + ',' + eC.y + ',' + (eC.x + 150) + ',' +
-                    (eC.y + 200) + '); 0');
-  const afterC2 = await dm.evaluate('__rigBox(' + bRoom + ')');
-  rig.check(Math.abs((afterC2.maxY - afterC2.minY) - (boxC2.maxY - boxC2.minY)) < 2 * tol,
-            'an east handle changed the room\'s height as well as its width');
-  rig.check(afterC2.maxX > boxC2.maxX + tol, 'an east handle did not widen the room at all');
 
   // ══ D. A handle past its anchor never turns the room inside out ══
   // RED BY DESIGN: written against the fix, never re-proved
