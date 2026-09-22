@@ -111,6 +111,7 @@ if (typeof module !== 'undefined' && module.exports) {
     boxFromPoints, boxSidePoint, boxSidePoints, boxCentre, boxScaleFactors,
     boxScaleMatrix, boxRotateMatrix, snapAngle, transformRing, transformHandle,
     BOX_SIDES, BOX_MIN_SPAN, ROT_SNAP_DEG,
+    boxFlatRange,
   };
 }
 

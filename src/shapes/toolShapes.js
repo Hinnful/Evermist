@@ -39,18 +39,7 @@ function toolCircleStart(pos) {
 function toolCircleFinish(pos) {
   if (!circleCenter) return;
   const radius = Math.hypot(pos.x - circleCenter.x, pos.y - circleCenter.y);
-  if (radius > 2) {
-    const SEGS = 32;
-    const verts = [];
-    for (let i = 0; i < SEGS; i++) {
-      const angle = (i / SEGS) * Math.PI * 2;
-      verts.push({
-        x: circleCenter.x + Math.cos(angle) * radius,
-        y: circleCenter.y + Math.sin(angle) * radius,
-      });
-    }
-    commitClosedShape(verts);
-  }
+  if (radius > 2) commitClosedShape(circleVertices(circleCenter, pos));
   circleCenter = null;
   drawCursor(null, null);
 }

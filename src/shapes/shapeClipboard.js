@@ -130,7 +130,7 @@ function copySelectedShape() {
 
 // ⚠ APPENDED, never spliced in: a hole added at the end takes flat indices past every one the
 // shape already holds, so no corner radius, curve or door moves onto another wall.
-function _clipAddHole(poly, ring, clip) {
+function clipAddHole(poly, ring, clip) {
   editHoles(poly, hs => { hs.push(ring); });
   const hi = polyHoleRings(poly).length - 1;
   const { from, count } = boxFlatRange(poly, hi);
@@ -163,7 +163,7 @@ function _clipDrop(clip, dx, dy, into) {
     const poly = into || _clipShapeUnder(clip.list, clip.centre.x + dx, clip.centre.y + dy);
     if (!poly || !holeStaysOnRoom(poly, ring)) return false;
     pushUndo();
-    const hi = _clipAddHole(poly, ring, clip);
+    const hi = clipAddHole(poly, ring, clip);
     if (clip.list === (placeMode === 'effects' ? 'effects' : 'rooms')) {
       selectedPolygonId = poly.id;
       shapeEditMode = true;
@@ -216,4 +216,11 @@ function duplicateSelectedShape() {
   if (_clipDrop(clip, step, step, room) || _clipDrop(clip, -step, -step, room)) return true;
   noticeToast('The hole has no room left to be duplicated into.');
   return false;
+}
+
+// clipAddHole mutates only the `poly` it is given - no DOM, no globals beyond the room-editing
+// helpers it calls. Exported for that reason; every other _clip* helper here reads live app
+// state (the selection, the pointer, the map) and stays private.
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { clipAddHole };
 }

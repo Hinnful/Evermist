@@ -280,6 +280,22 @@ The ceiling was raised to 72 rather than editing another session's uncommitted d
 raised for debt the session did not create must name the cause in the handover**, or the next
 session inherits a ceiling nobody can account for and stops trusting the guard.
 
+### The third and fourth ledger splits moved storage and the module table · `SETTLED` (2026-09-22)
+`DECISIONS.md` reached 91.9 KB, past the moved Storage, packaging and the shell section rather
+than Rooms - byte counts between sections had shifted since the item was filed, and the largest
+one at write time is the one that moves, not whichever was largest when the work was scheduled.
+It moved to `storage-and-packaging.md`, taking the main ledger to 70.9 KB. `ARCHITECTURE.md`
+reached 70.8 KB against its own 45 KB ceiling; its module table moved to
+`architecture/module-map.md`, taking it to 47.2 KB - still over, and left there rather than
+splitting a second subject to chase a number the guard only notices on, never blocks.
+
+### A doc's own drift guard has to read where its content actually lives · `SETTLED` (2026-09-22)
+`guard-architecture.js` scanned `ARCHITECTURE.md` alone for module names, so moving the table to
+`module-map.md` would have made every later module edit report all of them undocumented. The
+guard now reads both files for that check; the size and mood rules it runs on `ARCHITECTURE.md`
+itself stay scoped to that file, since those ration a doc meant to be read whole; the module list
+is a lookup table.
+
 ### A shallow fetch silently switched the rig gate off · `SETTLED` (2026-09-19)
 `tools/` ships nothing, so a rig-only change takes no version bump and the release gate used to
 skip it entirely - the one change nobody could check was the one that checks everything else. The

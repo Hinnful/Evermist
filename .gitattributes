@@ -1,0 +1,15 @@
+# Normalize line endings on the way in, so a script that reads a checked-out file and writes
+# it back cannot commit a third line ending on top of the two it started with. See item 107
+# in the backlog and docs/DECISIONS.md's packaging section.
+#
+# The repo already stores LF (core.autocrlf on Windows checkouts converts on the way out),
+# so eol=lf matches what is already committed - this does not rewrite history, it stops
+# relying on every contributor's local git config to keep doing the conversion correctly.
+* text=auto eol=lf
+
+*.png binary
+*.gif binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.svg -text

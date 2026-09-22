@@ -597,6 +597,21 @@ function coneVertices(apex, tip, snapDeg) {
   return out;
 }
 
+const CIRCLE_TOOL_SEGS = 32;
+
+// A circle's vertices, walked from angle 0. Moved here from toolShapes.js (item 108): shape-tool
+// vertex generation belongs beside coneVertices, its sibling. Pure.
+function circleVertices(center, edge, segs) {
+  const n = segs || CIRCLE_TOOL_SEGS;
+  const radius = Math.hypot(edge.x - center.x, edge.y - center.y);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const angle = (i / n) * Math.PI * 2;
+    out.push({ x: center.x + Math.cos(angle) * radius, y: center.y + Math.sin(angle) * radius });
+  }
+  return out;
+}
+
 // ─── DPI-adaptive radius math ──────────────────────────────────────────────────
 // Radii scale with fog canvas size, so they cover the same fraction of any map. `maxDim` is the
 // canvas's larger dimension, `ref` the reference size.
@@ -724,6 +739,8 @@ if (typeof module !== 'undefined' && module.exports) {
     coneVertices,
     CONE_HALF_SPREAD,
     CONE_BULGE,
+    circleVertices,
+    CIRCLE_TOOL_SEGS,
     fogSizeScale,
     scaledRadius,
     wrapOffset,

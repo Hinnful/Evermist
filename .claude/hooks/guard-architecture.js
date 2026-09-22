@@ -51,6 +51,7 @@ const lib = require('./guard-lib.js');
 
 const STATE = path.join(__dirname, 'architecture-baseline.json');
 const ARCH = path.join(lib.ROOT, 'docs', 'ARCHITECTURE.md');
+const MODULE_MAP = path.join(lib.ROOT, 'docs', 'architecture', 'module-map.md');
 const RULES = path.join(lib.ROOT, 'CLAUDE.md');
 const SRC = path.join(lib.ROOT, 'src');
 
@@ -119,10 +120,13 @@ function checkModuleWrite(ctx) {
   const { notices, mark } = ctx;
 
   const archText = read(ARCH);
+  const moduleMapText = read(MODULE_MAP);
   const rulesText = read(RULES);
   if (!archText || !rulesText) return ctx.warnedBytes;
 
-  const archNames = namesIn(archText);
+  // The module table moved to docs/architecture/module-map.md (the same split
+  // DECISIONS.md uses for its own oversized sections) - a row there counts as documented.
+  const archNames = new Set([...namesIn(archText), ...namesIn(moduleMapText)]);
   const ruleNames = namesIn(rulesText);
   const files = moduleFiles();
   if (files.length === 0) return ctx.warnedBytes;
@@ -132,7 +136,7 @@ function checkModuleWrite(ctx) {
   for (const f of files) {
     const key = f.toLowerCase();
     const gaps = [];
-    if (!archNames.has(key)) gaps.push('docs/ARCHITECTURE.md');
+    if (!archNames.has(key)) gaps.push('docs/architecture/module-map.md');
     if (!ruleNames.has(key)) gaps.push("CLAUDE.md's module map");
     if (gaps.length && mark('missing:' + key)) missing.push({ file: f, gaps });
   }
@@ -142,7 +146,7 @@ function checkModuleWrite(ctx) {
         missing.length +
         (missing.length === 1 ? ' module is undocumented:\n' : ' modules are undocumented:\n') +
         missing.map((m) => '  - src/' + m.file + ' missing from ' + m.gaps.join(' and ')).join('\n') +
-        '\n\nAdd a row to each. ARCHITECTURE.md gets one plain-language sentence saying ' +
+        '\n\nAdd a row to each. module-map.md gets one plain-language sentence saying ' +
         'what the file does, present tense. CLAUDE.md\'s map gets the terse "Owns" ' +
         'phrase; that file grows only by a deliberate raise of its ceiling, so pay for ' +
         'the row by tightening a neighbour first.\n' +
@@ -163,7 +167,7 @@ function checkModuleWrite(ctx) {
   if (stale.length > 0) {
     notices.push(
       'ARCHITECTURE GUARD - fix this in the current turn.\n\n' +
-        'docs/ARCHITECTURE.md names ' +
+        'docs/ARCHITECTURE.md or docs/architecture/module-map.md names ' +
         stale.length +
         (stale.length === 1 ? ' file that does not exist:\n' : ' files that do not exist:\n') +
         stale.map((s) => '  - ' + s).join('\n') +

@@ -10,16 +10,23 @@ global.polyHoleRings = _fg.polyHoleRings;
 global.flatVertexRef = _fg.flatVertexRef;
 global.flatVertexCount = _fg.flatVertexCount;
 global.remapDoorsForVertexChange = _fg.remapDoorsForVertexChange;
+global.edgeCubic = _fg.edgeCubic;
+global.handleAt = _fg.handleAt;
 let undoPushes = 0;
 global.pushUndo = () => { undoPushes++; };
+global.armDragUndo = () => { undoPushes++; };
 // setShapeHoles lives in tools.js with the shape-commit kernel; editHoles is the only caller here.
 global.setShapeHoles = (shape, holes) => {
   if (holes && holes.length) shape.holes = holes; else delete shape.holes;
 };
 
 const { pointInPolygon, pointInShape, findHoleAt, ringCentre, holeStaysOnRoom,
-        distPointToSegment } = require('../src/shapes/shapeHit.js');
-const { deleteShapeVertex, deleteShapeHole } = require('../src/shapes/shapeSelect.js');
+        distPointToSegment, edgeEndFlat, closestOnEdge } = require('../src/shapes/shapeHit.js');
+global.edgeEndFlat = edgeEndFlat;
+global.closestOnEdge = closestOnEdge;
+
+const { deleteShapeVertex, deleteShapeHole, editCornerRadii, editHandles, editHoles,
+        computeBendStart } = require('../src/shapes/shapeSelect.js');
 
 // A simple convex quad (unit square)
 const square = [
@@ -360,5 +367,68 @@ describe('holeStaysOnRoom', () => {
   test('a hole clear of the room does not', () => {
     const gone = [{ x: 11, y: 4 }, { x: 13, y: 4 }, { x: 13, y: 6 }, { x: 11, y: 6 }];
     assert.equal(holeStaysOnRoom(bagel(), gone), false);
+  });
+});
+
+describe('editCornerRadii', () => {
+  test('starts a fresh array the size of the shape when none exists yet', () => {
+    const poly = { vertices: square };
+    editCornerRadii(poly, r => { r[1] = 5; });
+    assert.deepEqual(poly.cornerRadii, [null, 5, null, null]);
+  });
+  test('copies rather than mutating the array in place', () => {
+    const poly = { vertices: square, cornerRadii: [1, 2, 3, 4] };
+    const before = poly.cornerRadii;
+    editCornerRadii(poly, r => { r[0] = 9; });
+    assert.deepEqual(before, [1, 2, 3, 4]);
+    assert.deepEqual(poly.cornerRadii, [9, 2, 3, 4]);
+  });
+});
+
+describe('editHandles', () => {
+  test('drops the array entirely once nothing in it is set', () => {
+    const poly = { vertices: square, handles: [{ ox: 1, oy: 0 }, null, null, null] };
+    editHandles(poly, hs => { hs[0] = null; });
+    assert.equal('handles' in poly, false);
+  });
+  test('keeps the array when any entry still carries an offset', () => {
+    const poly = { vertices: square };
+    editHandles(poly, hs => { hs[2] = { ix: 0, iy: 0, ox: 3, oy: 0 }; });
+    assert.equal(poly.handles[2].ox, 3);
+  });
+});
+
+describe('editHoles', () => {
+  test('drops a ring the edit leaves under three points', () => {
+    const poly = bagel();
+    editHoles(poly, hs => { hs[0] = [hs[0][0], hs[0][1]]; });
+    assert.equal(poly.holes.length, 1);
+  });
+  test('adds a ring appended at the end', () => {
+    const poly = bagel();
+    const ring = [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 2 }];
+    editHoles(poly, hs => { hs.push(ring); });
+    assert.equal(poly.holes.length, 3);
+    assert.deepEqual(poly.holes[2], ring);
+  });
+});
+
+describe('computeBendStart', () => {
+  test('reads null off a flat index that names no wall', () => {
+    assert.equal(computeBendStart({ vertices: square }, 99, { x: 0, y: 0 }), null);
+  });
+  test('leans the bend toward the grabbed point, clamped off the ends', () => {
+    // Grabbed near the wall's start (0,0)-(1,0): t should clamp toward the 0.05 floor.
+    const start = computeBendStart({ vertices: square }, 0, { x: 0.02, y: 0 });
+    assert.ok(start.t >= 0.05 && start.t < 0.5, `expected a low t, got ${start.t}`);
+  });
+  test('names the wall\'s far end as the paired flat index', () => {
+    const start = computeBendStart({ vertices: square }, 0, { x: 0.5, y: 0 });
+    assert.equal(start.fb, 1);
+  });
+  test('carries the wall\'s own cubic, straight when no handle is set', () => {
+    const start = computeBendStart({ vertices: square }, 0, { x: 0.5, y: 0 });
+    assert.deepEqual(start.cubic[0], square[0]);
+    assert.deepEqual(start.cubic[3], square[1]);
   });
 });

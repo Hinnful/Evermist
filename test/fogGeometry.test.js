@@ -15,6 +15,8 @@ const {
   snapToAxis,
   coneVertices,
   CONE_BULGE,
+  circleVertices,
+  CIRCLE_TOOL_SEGS,
   fogSizeScale,
   scaledRadius,
   wrapOffset,
@@ -653,6 +655,31 @@ describe('coneVertices', () => {
 
   it('refuses a zero-length drag rather than returning a degenerate shape', () => {
     assert.strictEqual(coneVertices({ x: 7, y: 7 }, { x: 7, y: 7 }, 0), null);
+  });
+});
+
+describe('circleVertices', () => {
+  const near = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, a + ' vs ' + b);
+  it('defaults to CIRCLE_TOOL_SEGS points', () => {
+    const v = circleVertices({ x: 0, y: 0 }, { x: 10, y: 0 });
+    assert.equal(v.length, CIRCLE_TOOL_SEGS);
+  });
+  it('takes a segment count when one is given', () => {
+    const v = circleVertices({ x: 0, y: 0 }, { x: 10, y: 0 }, 8);
+    assert.equal(v.length, 8);
+  });
+  it('every point sits the drag radius from the centre', () => {
+    const v = circleVertices({ x: 5, y: 5 }, { x: 5, y: 15 }, 12);
+    for (const p of v) near(Math.hypot(p.x - 5, p.y - 5), 10, 1e-9);
+  });
+  it('the first point sits on the drag angle', () => {
+    const v = circleVertices({ x: 0, y: 0 }, { x: 10, y: 0 }, 4);
+    near(v[0].x, 10, 1e-9);
+    near(v[0].y, 0, 1e-9);
+  });
+  it('a zero-length drag gives a circle of radius zero, not a throw', () => {
+    const v = circleVertices({ x: 3, y: 3 }, { x: 3, y: 3 }, 4);
+    for (const p of v) { near(p.x, 3, 1e-9); near(p.y, 3, 1e-9); }
   });
 });
 

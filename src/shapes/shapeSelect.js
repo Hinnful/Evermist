@@ -211,23 +211,33 @@ function findHandleAt(poly, mapX, mapY) {
   return null;
 }
 
-// Ctrl+drag a wall bends it, Figma's gesture. THE GRAB POINT DECIDES THE SHAPE: the drag is
-// shared between the wall's two control points by their weight at t, so the curve leans where it
-// was grabbed. A single bow number would arc symmetrically, which is why it was refused.
-function startBend(poly, ei, raw) {
+// The pure half of starting a bend: everything derivable from the poly and the grab point alone,
+// with no gesture state touched. THE GRAB POINT DECIDES THE SHAPE: the drag is shared between the
+// wall's two control points by their weight at t, so the curve leans where it was grabbed. A
+// single bow number would arc symmetrically, which is why it was refused. Pure. Unit-tested.
+function computeBendStart(poly, ei, raw) {
   const ref = flatVertexRef(poly, ei);
-  if (!ref) return false;
+  if (!ref) return null;
   const ring = polyRings(poly)[ref.ring];
   const fb = edgeEndFlat(ring, ref.i, ei);
   const near = closestOnEdge(poly, ring, ref.i, ei, raw.x, raw.y);
+  // Clamped off the ends, where one control point's weight reaches zero and the share divides by it.
+  const t = Math.max(0.05, Math.min(0.95, near.t));
+  const cubic = edgeCubic(ring[ref.i], ring[(ref.i + 1) % ring.length],
+                          handleAt(poly.handles, ei), handleAt(poly.handles, fb));
+  return { fb, t, cubic };
+}
+
+// Ctrl+drag a wall bends it, Figma's gesture.
+function startBend(poly, ei, raw) {
+  const start = computeBendStart(poly, ei, raw);
+  if (!start) return false;
   armDragUndo();
   isBendingEdge = true;
   bendEdgeIndex = ei;
-  bendEndFlat = fb;
-  // Clamped off the ends, where one control point's weight reaches zero and the share divides by it.
-  bendT = Math.max(0.05, Math.min(0.95, near.t));
-  bendOrigCubic = edgeCubic(ring[ref.i], ring[(ref.i + 1) % ring.length],
-                            handleAt(poly.handles, ei), handleAt(poly.handles, fb));
+  bendEndFlat = start.fb;
+  bendT = start.t;
+  bendOrigCubic = start.cubic;
   bendStartMapX = raw.x;
   bendStartMapY = raw.y;
   bendMoved = false;
@@ -847,5 +857,8 @@ function toggleSelectedPolygon() {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { deleteShapeVertex, deleteShapeHole };
+  module.exports = {
+    deleteShapeVertex, deleteShapeHole,
+    editCornerRadii, editHandles, editHoles, computeBendStart,
+  };
 }
