@@ -59,11 +59,14 @@ notes app, not a physical object, so a DM-side tool is judged against that.
 of fire is any length at any angle and one spell of hundreds, so a pencil on the map is a
 stand-in rather than a better option.
 
-### A combat helper on the DM's screen · `PARKED` (2026-09-24, the 4.0 target)
-Everything a DM tracks in a fight: each monster's HP, AC, abilities and save modifiers, and
-the turn order. It lives on the DM's screen and never reaches the Player. Today it lives in a
-browser and a notes app beside Evermist, which is the switching this removes. Notes for a scene
-with no rooms, such as a wilderness, belong to the same work.
+### A combat helper on the DM's screen · `SETTLED` (2026-09-24)
+Everything a DM tracks in a fight, on the DM's screen and never on the Player's. The fight
+table is its first shape: one fight for the whole app, a row per creature with initiative, name,
+HP typed as a running sum, AC and conditions, and a stat block per creature. It holds monsters
+and names the players only so the turn order can be read out; a player's character sheet is the
+player's own. No dice roll anywhere, because the table has real ones. No turn marker and no
+rounds until something counts turns. Importing stat blocks from a book or a site is wanted and
+deferred. Notes for a scene with no rooms, such as a wilderness, belong to the same work.
 
 ### Map effects are areas, not creatures · `SETTLED` (scope call)
 Difficult terrain, persistent damage zones, light radius, Wall of Fire. No identity, no turn
@@ -223,7 +226,7 @@ README rewrite.
 ### 3.0.0 is prep complete, 4.0.0 is play · `SETTLED` (2026-09-24)
 3.0.0 marks the prep half of a session as done: floor plan, module text and room editing
 together take a map from export to ready. It ships as a README rewrite, the same shape 2.0.0
-took. 4.0.0 is reserved for the combat helper, the first release that covers play.
+took. 4.0.0 marks a group of features that improve play at the table.
 
 ### Size releases conservatively · `SETTLED`
 2.0.0 skipped 1.8 and 1.9 and landed on a docs-only commit, because a release tag has to match

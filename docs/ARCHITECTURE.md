@@ -548,6 +548,20 @@ because a real 255-page book broke the previous version. Read them in CLAUDE.md 
 touching the parser, and read the method warning in DECISIONS.md before trusting a green
 test suite: synthetic fixtures validated the wrong parser twice.
 
+## The fight table
+
+The crossed-swords button beside Two maps opens a table for the fight in progress: a row per
+creature with initiative, name, HP, AC and conditions. There is one fight for the whole app, so
+it stays put through a scene switch, two maps at once and a restart. The HP cell keeps what was
+typed, "45 - 9 - 12", and shows its total beside it; the first number is the maximum, so the row
+reads as bloodied at half and greys out at zero. Rows move by a grip on their left edge, and a
+click on the Init header sorts them once. OPEN on a name shows that creature's stat block,
+edited in place and filed by the name without its copy number, so four skeletons share one.
+The fight and every stat block are one JSON value in localStorage, written as they change and
+carried in backups as `combat.json`; column widths and where the panel sits are kept apart, as
+viewing settings. The Player window never builds any of it. `combatTracker.js` owns the table
+and saving, `combatStatBlock.js` the stat block, `combatPlan.js` the arithmetic.
+
 ## Backing up your maps
 
 Everything you make lives in the browser's local database, and for video maps, on disk next

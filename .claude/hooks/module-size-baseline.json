@@ -39,7 +39,7 @@
     "src/rooms/roomCard.js": 19658,
     "src/rooms/roomPanel.js": 14538,
     "src/rooms/vttPlan.js": 28549,
-    "src/scenes/backup.js": 13947,
+    "src/scenes/backup.js": 14748,
     "src/scenes/dragDrop.js": 1193,
     "src/scenes/mapConvert.js": 11674,
     "src/scenes/mapImport.js": 10817,
@@ -90,6 +90,9 @@
     "electron/videoFiles.js": 4216,
     "main.js": 13242,
     "preload.js": 6111,
-    "src/shapes/shapeMarkers.js": 2310
+    "src/shapes/shapeMarkers.js": 2310,
+    "src/combat/combatPlan.js": 1982,
+    "src/combat/combatStatBlock.js": 6532,
+    "src/combat/combatTracker.js": 18015
   }
 }

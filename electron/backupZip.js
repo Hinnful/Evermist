@@ -22,8 +22,8 @@ ipcMain.handle('show-save-dialog', async (event, opts) => {
 });
 
 // Video maps are read from mapsDir by id; image, fog and thumb arrive as ArrayBuffers.
-// moduleText is campaign-level, so it lands at the zip root beside manifest.json.
-ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText) => {
+// moduleText and combat are campaign-level, so they land at the zip root beside manifest.json.
+ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText, combat) => {
   for (const s of scenesData) {
     if (s.mapType === 'video') {
       try { await fs.promises.access(path.join(mapsDir, s.id + s.mapExt)); s._videoExists = true; }
@@ -45,6 +45,7 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleTe
 
     archive.append(JSON.stringify(scenesData.map(s => s.metadata), null, 2), { name: 'manifest.json' });
     if (moduleText) archive.append(moduleText, { name: 'moduleText.json' });
+    if (combat) archive.append(combat, { name: 'combat.json' });
 
     scenesData.forEach((s, idx) => {
       const base = `scenes/${s.id}`;
@@ -92,15 +93,15 @@ ipcMain.handle('read-backup-manifest', async (_event, zipPath) => {
   });
 });
 
-// Returns moduleText.json from the zip as a RAW STRING, or null. Absence RESOLVES NULL rather than
-// rejecting, unlike the manifest above: no module text is the normal case.
-ipcMain.handle('read-backup-module-text', async (_event, zipPath) => {
+// Returns a root entry from the zip as a RAW STRING, or null. Absence RESOLVES NULL rather than
+// rejecting, unlike the manifest above: a backup older than the entry is the normal case.
+function readRootEntry(zipPath, name) {
   return new Promise((resolve, reject) => {
     yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
       if (err) return reject(err);
       zipfile.readEntry();
       zipfile.on('entry', entry => {
-        if (entry.fileName === 'moduleText.json') {
+        if (entry.fileName === name) {
           zipfile.openReadStream(entry, (err2, rs) => {
             if (err2) { zipfile.close(); return reject(err2); }
             const chunks = [];
@@ -116,7 +117,9 @@ ipcMain.handle('read-backup-module-text', async (_event, zipPath) => {
       zipfile.on('error', reject);
     });
   });
-});
+}
+ipcMain.handle('read-backup-module-text', (_event, zipPath) => readRootEntry(zipPath, 'moduleText.json'));
+ipcMain.handle('read-backup-combat', (_event, zipPath) => readRootEntry(zipPath, 'combat.json'));
 
 // assignments: [{newId, originalId, mapType, mapExt}]
 // Video maps are written to mapsDir/{newId}.ext; all others returned as ArrayBuffers.

@@ -13,6 +13,16 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### The fight table is a spreadsheet grid in a floating panel · `SETTLED` (2026-09-24)
+
+Eleven prototypes led here. Rejected: a text-only list that opened a field on click (HP must be
+typeable with no click first), rows floating on the map with no panel, a panel docked to the
+window's edge, serif type (every number carries the same weight), shields and bars as side
+markers, and a Next turn button. Kept: a full grid with a divider on every column, initiative
+in a darker strip, the side read from the name's colour, and a table that fills its panel edge
+to edge. Numbered copies share one stat block. A backup restore merges the fight rather than
+asking, because the module-text question may already be on screen.
+
 ### Every repair is on both bars · `SETTLED` (2026-09-13)
 
 Merge, Cut out and Split were Rooms-only buttons while `commitShapeOp` already read `placeMode`,

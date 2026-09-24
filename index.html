@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="src/css/about.css">
 <link rel="stylesheet" href="src/css/music.css">
 <link rel="stylesheet" href="src/css/panes.css">
+<link rel="stylesheet" href="src/css/combat.css">
 <link rel="stylesheet" href="src/css/overlays.css">
 </head>
 <body>
@@ -709,6 +710,9 @@
   <button id="btn-two-maps" title="Show a second map beside this one">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>
   </button>
+  <button id="btn-combat" title="Fight">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
+  </button>
 </div>
 
 <!-- SCENE LIBRARY POPUP (DM only) — opened by #scene-dd-toggle, wired by sceneManager.js.
@@ -1016,6 +1020,9 @@
 <script src="src/ui/musicPlan.js"></script>
 <script src="src/ui/music.js"></script>
 <script src="src/ui/musicDownload.js"></script>
+<script src="src/combat/combatPlan.js"></script>
+<script src="src/combat/combatStatBlock.js"></script>
+<script src="src/combat/combatTracker.js"></script>
 <script>
 'use strict';
 
@@ -1100,6 +1107,7 @@ initInput();
 if (!isPlayer) initAbout();   // About block inside the shortcuts panel → about.js
 if (!isPlayer) initUpdater(); // Update line + toast → updater.js (needs About's slot)
 if (!isPlayer) initMusic();   // The music bubble → music.js
+if (!isPlayer && !isPane) initCombatTracker(); // The fight table → combatTracker.js
 
 window.addEventListener('resize', () => {
   resizeViewport();   // viewport.js

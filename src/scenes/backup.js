@@ -116,7 +116,8 @@ async function doExport(selectedIds) {
     // when nothing is loaded, and the zip then looks exactly as it always did.
     const moduleTextJson = typeof mtBackupPayload === 'function' ? mtBackupPayload() : null;
 
-    const wrote = await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson);
+    const combatJson = typeof cbBackupPayload === 'function' ? cbBackupPayload() : null;
+    const wrote = await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson, combatJson);
     hideMapProgress();
     // ⚠ REPORTED, NEVER DROPPED: the record still exports, so the backup looks complete.
     const gone = (wrote && wrote.missingVideos) || [];
@@ -140,9 +141,25 @@ async function doExport(selectedIds) {
 
 // ── Restore logic ─────────────────────────────────────────────────────────────
 
+// Merges rather than asks, because the module-text question may already be on screen: a stat
+// block the DM has keeps theirs, and the backup's fight lands only on an empty table.
+async function adoptCombatFromZip(zipPath) {
+  let json = null;
+  try {
+    json = await window.electronAPI.readBackupCombat(zipPath);
+  } catch (err) {
+    console.error('Reading the fight from backup failed:', err);
+    return;
+  }
+  if (!json || typeof cbMergePayload !== 'function') return;
+  const st = cbMergePayload(json);
+  if (!st.ok) messageDialog({ title: 'Fight table not restored', message: 'The scenes came back, but the fight table did not.\n\n' + st.error });
+}
+
 // Adopt the campaign's module text out of a restored zip. ⚠ Runs only AFTER every scene is saved
 // and the bar is down: a dialog must not open over the progress bar, and a module-text problem must
 // not strand a half-restore.
+
 async function adoptModuleTextFromZip(zipPath) {
   let json = null;
   try {
@@ -316,6 +333,7 @@ async function restoreFromZipPath(zipPath) {
     // Last, and deliberately: the scenes are safe by this point and the progress bar is gone, so
     // this can ask a question or report a storage failure without either being in the way.
     await adoptModuleTextFromZip(zipPath);
+    await adoptCombatFromZip(zipPath);
   } catch (err) {
     hideMapProgress();
     console.error('Restore failed:', err);
