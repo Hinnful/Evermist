@@ -21,6 +21,11 @@
 //   G. A paste is ONE undo step, and undo takes the pasted shape away. A Ctrl+C spends nothing.
 //   H. IT REACHES THE TV. A pasted shroud room the players still see through is the failure this
 //      feature exists to prevent.
+//   I. Alt+drag on a shape leaves the original where it was and drags a copy, as one undo step.
+//      An Alt+click with no drag copies nothing, and Alt+drag on bare map still pans.
+//   J. Ctrl+X takes the shape off the map as one undo step, and Ctrl+V puts it back. On a picked
+//      hole it takes the hole alone.
+//   K. Ctrl+click on a shape opens its corners in one press.
 //
 //
 // ⚠ THE MAP STARTS FULLY FOGGED, so every room here is a SHROUD room inside a revealed clearing.
@@ -330,4 +335,100 @@ module.exports = async function clipboard(rig) {
   rig.check(tv > 200,
             'the players still see open ground where the DM pasted a shroud room, so the whole ' +
             'gesture stops at the DM window');
+
+  // ══ I. Alt+drag moves a copy and leaves the original ══
+  // RED ON: dragCopyOfSelection gated off in the polygon drag (shapeSelect.js) — 2026-09-24
+  const ALT = '{ mods: { altKey: true } }';
+  await dm.evaluate('__rigKey("Escape"); __rigKey("Escape"); __rigKey("Escape"); 0');
+  const iRoom = await dm.evaluate('__rigDrawShroud(1980, 650, 2280, 850)');
+  await dm.evaluate('__rigOf("rooms",' + iRoom + ').name = "Cell"; setShape("select"); 0');
+  const iOrig = await dm.evaluate('__rigShape(' + iRoom + ', \"rooms\")');
+  const countI = await dm.evaluate('polygons.length');
+
+  await dm.evaluate('__rigClick(2130, 750, ' + ALT + '); 0');
+  rig.check(await dm.evaluate('polygons.length') === countI,
+            'an Alt+click with no drag left a copy on the map');
+
+  const undoI = await dm.evaluate('undoStack.length');
+  await dm.evaluate('__rigDrag(2130, 750, 2130, 1150, ' + ALT + '); 0');
+  await dm.evaluate(lib.SETTLE);
+  rig.check(await dm.evaluate('polygons.length') === countI + 1,
+            'Alt+drag on a room put no copy on the map');
+  const iAfter = await dm.evaluate('__rigShape(' + iRoom + ', \"rooms\")');
+  rig.check(Math.abs(iAfter.box.y0 - iOrig.box.y0) < tol,
+            'Alt+drag moved the original room ' + Math.round(iAfter.box.y0 - iOrig.box.y0) +
+            ' units instead of leaving it where it was');
+  const iCopy = await dm.evaluate('__rigLast("rooms")');
+  rig.check(iCopy.id !== iRoom && Math.abs((iCopy.box.y0 - iOrig.box.y0) - 400) < tol,
+            'the copy did not follow the drag: it moved ' + Math.round(iCopy.box.y0 - iOrig.box.y0) +
+            ' of 400 units');
+  rig.check(iCopy.name === 'Cell' && iCopy.mode === 'shroud',
+            'the dragged copy lost the original\'s name or fog state');
+  rig.check(await dm.evaluate('selectedPolygonId') === iCopy.id,
+            'the copy was not left picked after the drag');
+  rig.check(await dm.evaluate('undoStack.length') - undoI === 1,
+            'one Alt+drag spent ' + (await dm.evaluate('undoStack.length') - undoI) + ' undo steps');
+  await dm.evaluate('undo(); 0');
+  await dm.evaluate(lib.SETTLE);
+  rig.check(await dm.evaluate('polygons.length') === countI,
+            'one undo did not take the dragged copy away');
+
+  const panBefore = await dm.evaluate('({ x: panX, y: panY })');
+  await dm.evaluate('__rigDrag(300, 750, 360, 750, ' + ALT + '); 0');
+  const panAfter = await dm.evaluate('({ x: panX, y: panY })');
+  rig.check(panAfter.x !== panBefore.x && await dm.evaluate('polygons.length') === countI,
+            'Alt+drag on bare map no longer pans the view');
+  await dm.evaluate('panX = ' + panBefore.x + '; panY = ' + panBefore.y + ';' +
+                    ' pixiSetViewport(zoom, panX, panY); viewportDirty = true; scheduleRender(); 0');
+
+  // ══ J. Ctrl+X cuts, and Ctrl+V puts it back ══
+  // RED ON: the KeyX branch gated off (input.js) — 2026-09-24
+  await dm.evaluate('__rigClick(2130, 750); 0');
+  rig.check(await dm.evaluate('selectedPolygonId') === iRoom, 'the room J cuts was not picked');
+  const undoJ = await dm.evaluate('undoStack.length');
+  await dm.evaluate('__rigKey("KeyX", ' + CTRL + '); 0');
+  await dm.evaluate(lib.SETTLE);
+  rig.check(await dm.evaluate('polygons.length') === countI - 1 &&
+            !(await dm.evaluate('__rigShape(' + iRoom + ', \"rooms\")')),
+            'Ctrl+X left the room on the map');
+  rig.check(await dm.evaluate('undoStack.length') - undoJ === 1,
+            'one Ctrl+X spent ' + (await dm.evaluate('undoStack.length') - undoJ) + ' undo steps');
+  await dm.evaluate('__rigPoint(2130, 750); __rigKey("KeyV", ' + CTRL + '); 0');
+  const jBack = await dm.evaluate('__rigLast("rooms")');
+  rig.check(await dm.evaluate('polygons.length') === countI && jBack.name === 'Cell',
+            'Ctrl+V after Ctrl+X did not bring the cut room back');
+  await dm.evaluate('undo(); undo(); 0');
+  await dm.evaluate(lib.SETTLE);
+  rig.check(!!(await dm.evaluate('__rigShape(' + iRoom + ', \"rooms\")')),
+            'undoing the paste and then the cut did not bring the original room back');
+
+  // A picked hole is cut alone, and its room stays. ⚠ AIMED AT THE PASTED HOLE'S MIDDLE: the
+  // first hole now has E's duplicate one square across it, and a press near that one's corner
+  // grabs the corner instead of picking a hole.
+  const jBox = (await dm.evaluate('__rigShape(' + eRoom + ', \"rooms\")')).holeBox[1];
+  const jAt = Math.round((jBox.x0 + jBox.x1) / 2) + ',' + Math.round((jBox.y0 + jBox.y1) / 2);
+  await dm.evaluate('__rigKey("Escape"); __rigKey("Escape"); __rigKey("Escape");' +
+                    ' __rigClick(1800, 1300); __rigDbl(1800, 1300); __rigClick(' + jAt + '); 0');
+  rig.check(await dm.evaluate('selectedHoleIndex') >= 0, 'no hole was picked for Ctrl+X');
+  const jHoles = (await dm.evaluate('__rigShape(' + eRoom + ', \"rooms\")')).holes;
+  const jRooms = await dm.evaluate('polygons.length');
+  await dm.evaluate('__rigKey("KeyX", ' + CTRL + '); 0');
+  await dm.evaluate(lib.SETTLE);
+  const jCut = await dm.evaluate('__rigShape(' + eRoom + ', \"rooms\")');
+  rig.check(!!jCut && jCut.holes === jHoles - 1 && await dm.evaluate('polygons.length') === jRooms,
+            'Ctrl+X on a hole did not take the hole alone: ' +
+            (jCut ? jCut.holes + ' of ' + jHoles + ' holes left' : 'the room went with it'));
+
+  // ══ K. Ctrl+click opens a shape's corners ══
+  // RED ON: the Ctrl+click branch gated off in selectMouseDown (shapeSelect.js) — 2026-09-24
+  await dm.evaluate('__rigKey("Escape"); __rigKey("Escape"); __rigKey("Escape"); 0');
+  const kBefore = await dm.evaluate('__rigShape(' + aRoom + ', \"rooms\")');
+  // Clear of C's duplicate, which sits over the middle of the room.
+  await dm.evaluate('__rigClick(550, 350, { mods: { ctrlKey: true } }); 0');
+  rig.check(await dm.evaluate('selectedPolygonId') === aRoom &&
+            await dm.evaluate('shapeEditMode') === true,
+            'Ctrl+click did not open the room\'s corners');
+  const kAfter = await dm.evaluate('__rigShape(' + aRoom + ', \"rooms\")');
+  rig.check(JSON.stringify(kAfter.box) === JSON.stringify(kBefore.box),
+            'Ctrl+click moved the room it opened');
 };

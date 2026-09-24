@@ -22,6 +22,7 @@
 //   J. The progress overlay is never up while a dialog is on screen.
 //   K. A STILL image imports exactly as an animated map does, and a map far bigger than the
 //      window arrives at its own size rather than being quietly shrunk to fit.
+//   L. An import started while another is still running waits its turn, and both arrive whole.
 //
 // Every good map in this file is a recorded clip, so the batch import path runs on the kind of
 // file the DM actually points at. What a playing map RENDERS as is smoke.js's business: block 2
@@ -584,6 +585,31 @@ module.exports = async function mapsFeature(rig) {
   rig.check(bigScene.zoom < 1,
             'a map far wider than the window was not fitted down to it: zoom ' + bigScene.zoom +
             ' in a ' + bigScene.cw + 'px window');
+
+  // ── L. A second import waits for the first ────────────────────────────────
+  // RED ON: importMapFiles calling _importMapFiles directly, past the queue (mapImport.js) — 2026-09-24
+  // Started with no wait at all, so the single import overlaps the batch and its closing switch.
+  const beforeQueue = (await names()).length;
+  const queueDlgMark = await dm.evaluate('globalThis.__rigDlgSeen.length');
+  await dm.evaluate('globalThis.__rigQueued = false;' +
+    ' importMapFiles([__rigFile("Queue One.mp4"), __rigFile("Queue Two.mp4")]);' +
+    ' importMapFiles([__rigFile("Queue Three.mp4")]).then(() => { globalThis.__rigQueued = true; }); 0');
+  try { await dm.waitFor('globalThis.__rigQueued === true', 300000, 'the queued import to finish'); }
+  catch (_) {}
+  const queued = await library();
+  rig.note('after the overlapping imports: ' + JSON.stringify(queued.names.slice(beforeQueue)));
+  rig.check(queued.names.slice(beforeQueue).join('|') === 'Queue One|Queue Two|Queue Three',
+            'two imports started together did not arrive whole and in order: ' +
+            JSON.stringify(queued.names.slice(beforeQueue)));
+  await lib.settle(dm, 'currentScene && currentScene.name === "Queue Three"' +
+    ' && mapVideo && mapVideo.readyState >= 2', 60000);
+  rig.check(await dm.evaluate('!!(currentScene && currentScene.name === "Queue Three"' +
+                              ' && mapVideo && mapVideo.readyState >= 2)'),
+            'the import that waited did not end on its own map, playing');
+  const queuedDlg = (await dm.evaluate('globalThis.__rigDlgSeen')).slice(queueDlgMark);
+  rig.check(queuedDlg.length === 0,
+            'an import started over another reported a failure: ' +
+            JSON.stringify(Array.from(new Set(queuedDlg))));
 
   rig.byEye('a .zip picked through the real "+" button, which is the only way restorePickedZip ' +
             'gets a path on disk to restore from — a File built in-page has none, and ' +

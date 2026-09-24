@@ -201,6 +201,40 @@ function pasteShapeAtCursor() {
   return _clipDrop(shapeClip, p.x - shapeClip.centre.x, p.y - shapeClip.centre.y);
 }
 
+// ─── Cut ──────────────────────────────────────────────────────────────────────
+
+// Delete pushes the one undo step; the copy pushes none.
+function cutSelectedShape() {
+  if (!copySelectedShape()) return false;
+  // ⚠ OR DELETE TAKES THE PICKED CORNER, which the clip never held.
+  selectedVertexIndex = -1;
+  return deleteSelectedPart();
+}
+
+// ─── Alt+drag ─────────────────────────────────────────────────────────────────
+
+// A copy laid over the selection, which then becomes the selection the drag moves.
+// ⚠ NO UNDO OF ITS OWN: the drag pushed one, so one Ctrl+Z takes the copy and its move together.
+function dragCopyOfSelection() {
+  const clip = _clipRead();
+  if (!clip) return false;
+  if (clip.kind === 'hole') {
+    selectedHoleIndex = clipAddHole(findActiveShape(), clip.ring, clip);
+    return true;
+  }
+  const shape = _clipMoved(clip.shape, 0, 0);
+  if (clip.list === 'effects') {
+    shape.id = nextEffectId++;
+    effects.push(shape);
+  } else {
+    shape.id = nextPolygonId++;
+    polygons.push(shape);
+  }
+  selectedPolygonId = shape.id;
+  leaveShapeEditMode();
+  return true;
+}
+
 // ─── Duplicate ────────────────────────────────────────────────────────────────
 
 // ⚠ THE CLIPBOARD IS NOT TOUCHED, as in Figma: Ctrl+D must not throw away what Ctrl+C put there.

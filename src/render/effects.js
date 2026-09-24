@@ -123,7 +123,8 @@ function _fxQuad(verts, cell) {
 
 function _fxGeomKey(e) {
   // Corner radius is part of the shape now, so a rounding change reloads the outline.
-  let k = (e.cornerRadius || 0) + '|' + (e.cornerRadii ? e.cornerRadii.join(',') : '') + '|';
+  let k = (e.cornerRadius || 0) + '|' + (e.cornerRadii ? e.cornerRadii.join(',') : '') + '|' +
+          (e.handles ? JSON.stringify(e.handles) : '') + '|';
   for (const ring of polyRings(e)) {
     for (const v of ring) k += (v.x | 0) + ',' + (v.y | 0) + ';';
     k += '/';

@@ -302,7 +302,7 @@ when you click, including ones that overlap or nest inside existing ones.
 **The Select tool works at two levels, the way a vector editor does.** One click picks a room as a
 whole object: its outline highlights and the whole thing drags, with no corner handles on screen.
 A double-click opens it for editing, which puts its corners, its walls and any hole it carries in
-reach. Escape climbs back out one level per press - the picked part, then editing, then the room
+reach, and Ctrl+click opens it in one press. Inside an open room Ctrl keeps its wall job below. Escape climbs back out one level per press - the picked part, then editing, then the room
 itself. The two levels never show at once, because the map already carries doors, room labels and
 the room card.
 

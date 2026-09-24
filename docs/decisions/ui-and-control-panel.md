@@ -366,3 +366,11 @@ because a stop that can be predicted beats an exact one. A hole whose centre is 
 reachable by dragging a wall inward past it - drags free until it is home, or it could never be
 recovered. Marked reversible on product grounds.
 
+### Ctrl+click means one thing per level, and Alt+drag copies on the first movement · `SETTLED` (2026-09-24)
+Ctrl+click on a shape that is not open opens its corners, as Figma's Cmd+click reaches past a
+group. Inside an open shape it keeps straightening a wall, as Figma straightens inside edit mode.
+The two never meet, because each answers at one level only. Ctrl+click opens without starting a
+drag. Alt+drag makes its copy on the first movement, so an Alt+click leaves nothing behind, and
+Alt anywhere a Select press would grab nothing still pans. Inside an open shape a corner or wall
+under Alt drags as it would without it.
+

@@ -16,11 +16,20 @@ function isZipFile(f) {
                  f.type === 'application/x-zip-compressed');
 }
 
+// ⚠ A SECOND IMPORT WAITS FOR THE FIRST, including the batch's closing switch: both load a video,
+// and each load's cleanupVideo revokes the other's URL, so the later map "could not be played".
+let _importQueue = Promise.resolve();
+function importMapFiles(files) {
+  const run = _importQueue.then(() => _importMapFiles(files));
+  _importQueue = run.catch(() => {});
+  return run;
+}
+
 // Imports every file, STRICTLY ONE AFTER ANOTHER.
 //
 // Nothing appears at the end of a clean run. A run with failures ends in ONE dialog naming what
 // did not make it, and each map's own dialog is suppressed so nothing stops an unattended run.
-async function importMapFiles(files) {
+async function _importMapFiles(files) {
   const list = Array.from(files || []);
   if (!list.length) return;
   const batch = list.length > 1;
@@ -234,4 +243,4 @@ async function persistVideoMap(file, sceneId, mimeType) {
   }
   return 'maps/' + sceneId + ext;
 }
-
+

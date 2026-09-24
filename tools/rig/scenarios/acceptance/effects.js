@@ -25,6 +25,7 @@
 //      outline the grid keeps the DM's own colour, which is what proves the clip still holds.
 //   K. All three repairs act on an EFFECT, from the Effects bar's own buttons, and never touch
 //      the rooms list. A repair armed in one mode survives the switch to the other.
+//   L. Bending an effect's wall redraws its outline, with no other change to the effect.
 //
 // ⚠ EFFECTS ARE NOT ROOMS AND NOT TOKENS. An effect is the same record as a room carrying a
 // `material` where a room has a fog `mode` (CLAUDE.md). They live in two arrays because array
@@ -235,9 +236,7 @@ module.exports = async function effectsFeature(rig) {
   // reach (`_flameHeight`) already covers the gap between a barely-curved and a heavily-rounded
   // corner at this scale, so a geometric check on the uploaded vertices is what actually catches a
   // regression; brightness only proved the plain, unbent case above.
-  // ⚠ THE CURVE IS SET BEFORE EITHER RADIUS, AND EACH RADIUS IS ITS OWN VALUE: the mesh's geomKey
-  // does not encode handles, only cornerRadius/cornerRadii and vertex coordinates, so a step that
-  // repeats a radius already in the key would rebuild nothing and read a stale mesh.
+  // Each step waits on the radius at the head of geomKey, so each radius is its own value.
   const nearestToCorner = (verts, n) => {
     let best = Infinity;
     for (let i = 0; i < n; i++) {
@@ -271,6 +270,23 @@ module.exports = async function effectsFeature(rig) {
             'a corner that also carries a curve did not pull away from its own vertex when ' +
             'rounded (' + distSharp.toFixed(1) + ' → ' + distRound.toFixed(1) +
             '), so an effect cannot round a bent wall the way a room can');
+
+  // ══ L. A bend alone redraws the effect ══
+  // RED ON: e.handles gated out of _fxGeomKey (effects.js) — 2026-09-24
+  // Nothing but a handle changes, so only the handles in geomKey can make the mesh rebuild.
+  const keyBefore = await dm.evaluate('_fxInstances.get(' + roundId + ').geomKey');
+  await dm.evaluate('(() => { const e = effects.find(x => x.id === ' + roundId + ');' +
+                    ' setShapeHandle(e, 1, "out", 40, 0); effectsChanged(); scheduleRender();' +
+                    ' return 0; })()');
+  const rebuilt = await lib.poll(async () => (await dm.evaluate(
+    '_fxInstances.get(' + roundId + ').geomKey !== ' + JSON.stringify(keyBefore))) ? { v: true } : null,
+    10000, 100);
+  const meshC = await dm.evaluate(
+    '(() => { const i = _fxInstances.get(' + roundId + ');' +
+    ' return { verts: Array.from(i.verts), count: i.meshLight.shader.uniforms.uCount }; })()');
+  rig.check(!!rebuilt && meshC.verts.join(',') !== meshB.verts.join(','),
+            'bending a wall on an effect left its outline where it was, so the fire stays on ' +
+            'the old straight wall until something else changes');
 
   // ══ F. An effect is edited exactly as a room is ══
   // RED BY DESIGN: written against the fix, never re-proved

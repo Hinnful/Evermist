@@ -95,7 +95,11 @@ function initInput() {
 
     container.addEventListener('mousedown', (e) => {
       if (!mapOffscreen) return;
-      if (e.button === 1 || (e.button === 0 && e.altKey)) {
+      const raw = screenToMap(e.clientX, e.clientY);
+      // Alt on a shape under the Select tool drags a copy of it; Alt anywhere else pans.
+      const altCopy = e.button === 0 && e.altKey && shape === 'select' && !gridCalArmed &&
+                      selectGrabsAt(raw);
+      if (e.button === 1 || (e.button === 0 && e.altKey && !altCopy)) {
         isPanning = true;
         panStartX = e.clientX; panStartY = e.clientY;
         panStartPanX = panX;   panStartPanY = panY;
@@ -103,7 +107,6 @@ function initInput() {
         e.preventDefault(); return;
       }
       if (e.button !== 0) return;
-      const raw = screenToMap(e.clientX, e.clientY);
       if (gridCalArmed) { gridCalMouseDown(raw); return; }
       toolMouseDown(raw, e);
     });
@@ -211,11 +214,12 @@ function initInput() {
     if (e.ctrlKey || e.metaKey) {
       if (e.code === 'KeyZ' && !e.shiftKey) { e.preventDefault(); undo(); }
       else if (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey)) { e.preventDefault(); redo(); }
-      // Figma's three, on the shapes → shapeClipboard.js. A focused field returned above, so
+      // Figma's keys, on the shapes → shapeClipboard.js. A focused field returned above, so
       // Ctrl+C still copies text out of the name and description.
       else if (e.code === 'KeyC') { e.preventDefault(); copySelectedShape(); }
       else if (e.code === 'KeyV') { e.preventDefault(); pasteShapeAtCursor(); }
       else if (e.code === 'KeyD') { e.preventDefault(); duplicateSelectedShape(); }
+      else if (e.code === 'KeyX') { e.preventDefault(); cutSelectedShape(); }
       return;
     }
     switch (e.code) {

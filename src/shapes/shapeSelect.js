@@ -33,6 +33,8 @@ let bendStartMapX = 0, bendStartMapY = 0;
 let bendMoved = false;
 let isDraggingHandle = false;
 let handleDragFlat = -1, handleDragPart = 'out';
+// Alt+drag moves a copy. It is made on the first movement, so an Alt+click leaves nothing behind.
+let copyOnDrag = false;
 
 let _dragUndoPushed = false;
 function armDragUndo()  { _dragUndoPushed = false; }
@@ -251,6 +253,7 @@ function straightenBentEdge(poly) {
 
 function selectMouseDown(raw, e) {
   const selPoly = findActiveShape();
+  copyOnDrag = false;
 
   // ⚠ FIRST, because a box handle sits OUTSIDE the shape and every test below starts from a hit
   // on the shape itself.
@@ -297,6 +300,7 @@ function selectMouseDown(raw, e) {
       selectedHoleIndex = hi;
       selectedVertexIndex = -1;
       isDraggingHole = true;
+      copyOnDrag = !!(e && e.altKey);
       holeDragStartMapX = raw.x;
       holeDragStartMapY = raw.y;
       holeDragOrigRing = polyHoleRings(selPoly)[hi].map(v => ({ x: v.x, y: v.y }));
@@ -306,11 +310,20 @@ function selectMouseDown(raw, e) {
   }
 
   const hit = findPolygonAt(raw.x, raw.y);
+  // Ctrl+click opens a shape's corners in one press, as Figma's Cmd+click reaches past a group.
+  // Inside the open shape Ctrl keeps its own job, bending and straightening a wall.
+  if (hit && e && e.ctrlKey && !(shapeEditMode && hit.id === selectedPolygonId)) {
+    enterShapeEditMode(hit.id);
+    drawCursor(lastScreenX, lastScreenY);
+    scheduleRender();
+    return;
+  }
   if (hit) {
     if (hit.id !== selectedPolygonId) { selectedPolygonId = hit.id; leaveShapeEditMode(); }
     else if (shapeEditMode) { selectedVertexIndex = -1; selectedHoleIndex = -1; }
     armDragUndo();
     isDraggingPolygon = true;
+    copyOnDrag = !!(e && e.altKey);
     dragStartMapX = raw.x;
     dragStartMapY = raw.y;
     dragOrigVerts = polyRings(hit).map(r => r.map(v => ({ x: v.x, y: v.y })));
@@ -459,6 +472,7 @@ function selectMouseMove(pos, screenX, screenY, e) {
       // A refused frame writes nothing: the hole holds its last good spot and resumes.
       if (holeDragWasStuck || holeStaysOnRoom(poly, moved)) {
         pushDragUndo();
+        if (copyOnDrag) { copyOnDrag = false; dragCopyOfSelection(); }
         editHoles(poly, hs => { hs[selectedHoleIndex] = moved; });
         shapeGeometryChanged();
         fogDirty = true;
@@ -472,9 +486,10 @@ function selectMouseMove(pos, screenX, screenY, e) {
   if (isDraggingPolygon && selectedPolygonId != null) {
     const dx = pos.x - dragStartMapX;
     const dy = pos.y - dragStartMapY;
-    const poly = findActiveShape();
+    let poly = findActiveShape();
     if (poly && dragOrigVerts) {
       pushDragUndo();
+      if (copyOnDrag) { copyOnDrag = false; dragCopyOfSelection(); poly = findActiveShape(); }
       const moved = dragOrigVerts.map(r => r.map(v => ({ x: v.x + dx, y: v.y + dy })));
       poly.vertices = moved[0];
       setShapeHoles(poly, moved.slice(1));
@@ -486,6 +501,13 @@ function selectMouseMove(pos, screenX, screenY, e) {
   }
 
   return false;
+}
+
+// What an Alt+press would grab on the map. Anything else, Alt+drag pans as it always has.
+function selectGrabsAt(raw) {
+  if (findPolygonAt(raw.x, raw.y)) return true;
+  const selPoly = findActiveShape();
+  return !!selPoly && shapeEditMode && !holeEditMode && findHoleAt(selPoly, raw.x, raw.y) >= 0;
 }
 
 function selectDragging() {
@@ -512,6 +534,7 @@ function selectMouseUp() {
   isBendingEdge = isDraggingHandle = false;
   bendOrigCubic = null;
   isDraggingVertex = isDraggingEdge = isDraggingHole = isDraggingPolygon = false;
+  copyOnDrag = false;
   edgeDragOrigVerts = null;
   holeDragOrigRing = null;
   dragOrigVerts = null;
