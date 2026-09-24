@@ -1,110 +1,94 @@
 # Evermist
 
-**English** · [Русский](README.ru.md)
-
 [![Latest release](https://img.shields.io/github/v/release/Hinnful/Evermist?label=download&sort=semver)](../../releases/latest)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-7c6fb0)](../../releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Evermist is for DMs who run TTRPGs in person. Your map goes on the TV, shrouded in fog of war that lifts as the party explores. It's free, and it always will be
+Evermist is for DMs who run their games in person, with a TV on the table and minis on the map. You prepare and run everything from your laptop. The TV shows your players the map with fog of war, grid and effects. Evermist is free, and it will stay free, forever
 
-Every room you draw gets a name and notes. Do the dungeon while you prep, and when the party kicks that door in, the room's name and notes are already on your laptop
-
-> **This is not a VTT.** No tokens, no initiative, no dice, no character sheets. You run the game the way you always have. Evermist handles the map, and what the party knows about it
+If your group plays online, Evermist is not what you're looking for. Players don't connect to it, and it has no tokens and no dice
 
 ![Revealing fog on the player view](assets/reveal.gif)
 
-## Before the session
+## Prepare the session
 
-### Rooms with notes
+### Draw rooms of any shape
 
-Draw a room and the fog covers it. Click it and you get its name, your notes, and how much fog is sitting on it. A room is whatever you draw around, so a terrace or a stretch of corridor counts
-
-Room names show up on your own map too, so you can open a floor you prepped three weeks ago and still know where you are. Everything saves itself as you go, so a half-explored dungeon stays that way until next session
-
-### If you're running a published module
-
-Load the module as `.txt` or `.pdf` and it reads out all the numbered locations: `K12. The Chapel`, and the other eighty-nine of them. Search it from any room's name field: type "chapel", pick the entry, and the name and notes fill in
-
-![Filling a room's name and notes from the module text](assets/module-text.gif)
-
-### If it's all homebrew
-
-Nothing to import, so you type the name and notes in yourself. Rooms can sit empty as long as you like, so you can draw a whole floor in one go and write it up later
-
-### If your map came with a floor plan
-
-If you make your own maps, your editor may be able to export the walls along with the image. Look for "Universal VTT" in the export options, which saves a `.dd2vtt` file next to the map. Load a map with one of those in the same folder and Evermist offers to draw all the rooms for you
-
-Caves don't get drawn automatically. You get the buildings standing in them, and you draw the cave yourself
-
-![Every room drawn from a floor plan in one click](assets/draw-rooms.gif)
-
-## At the table
-
-### Your setup
-
-You get a DM window with all the controls on it, and a clean player window with only the map, the fog and the grid. Your notes stay on your side
-
-1. Run an HDMI cable to the TV and set your computer to extend the desktop. Nothing gets streamed, so the TV keeps up with you
-2. Launch Evermist and load your map. Get the fog how you want it now, before anything reaches the TV
-3. Open the Player window from the Player tab, drag it to the TV, then click Fullscreen
-4. Play. Clear rooms as the party finds them and the TV follows you
-
-![The DM window](assets/dm-window.png)
-
-### The fog
-
-The fog drifts and slowly changes shape, so it looks like weather over the map
-
-Every room is set to Revealed, Shrouded or Half-shrouded. Shrouded is what they haven't found yet, Revealed is where they're standing, and Half-shrouded is somewhere they've been but aren't in right now
-
-You can move, reshape or delete a room at any point. Fog colour is set per scene: navy for a dungeon, green for a swamp, red when things have gone badly
+Draw a room with any outline you need. Double-click it to edit: drag corners and walls, curve a wall, round a corner, or cut a hole for a pillar. Join rooms together or cut one in two. Rooms can be copied, pasted, and moved between scenes
 
 ![Drawing reveal and shroud regions](assets/tools.gif)
 
-### Animated maps
+#### Let the floor plan draw them
 
-Load an MP4 or WebM and the water keeps moving and the torches keep flickering wherever the party has cleared the fog
+Some map editors can export a map's walls as a Universal VTT `.dd2vtt` file. Save that file in the same folder as the map, and Evermist offers to draw every room and door for you. It sizes the grid from the same file
+
+### Write notes for every room
+
+Each room has a name and your notes. They stay on your laptop and never reach the TV. Room names also show on your map
+
+#### Auto-fill notes from the module
+
+If you run a published adventure, load it as a `.pdf` or `.txt`. Evermist finds every numbered location in the book, such as `K12. The Chapel`. Start typing "chapel" in a room's name field and pick it from the list. The room's name and description fill in from the book
+
+![Filling a room's name and notes from the module text](assets/module-text.gif)
+
+### Set up the fog and the grid
+
+Each scene keeps its own fog colour and movement. A dungeon can sit under navy mist and a swamp under a sickly green one. The grid can be square or hex, in any colour or width. To calibrate it to the map, drag across a few of the map's own cells. Room corners can snap to the grid as you draw
+
+### Keep your scenes in order
+
+Scenes sort into groups and can be searched by name. To move your prep to another computer, back up the scenes you need into one `.zip` and restore it there
+
+## Run the session
+
+### Put the map on the TV
+
+1. Connect the TV to your laptop over HDMI and set the display to extend your desktop
+2. Open the Player window from the Player tab and drag it onto the TV
+3. Click Fullscreen
+
+The minimap in the DM window shows which part of the map is on the TV. Drag it to move the TV's view
+
+![The DM window](assets/dm-window.png)
+
+### Reveal rooms as the party explores
+
+Every room can be fully Shrouded, Revealed or Half-shrouded for places the party visited, but left
+
+Manual mode lets you prepare the next reveal in private. The TV doesn't update the picture until you press Send. Switching maps is animated with the fog, so the TV never goes black
+
+### Show two floors at once
+
+When a fight spreads across two floors, split the screen and show both maps side by side. Each floor keeps its own fog and its own view
+
+### Play music from the same window
+
+Paste a YouTube video or playlist link during prep, and Evermist downloads the tracks to your laptop. At the table, pick a track and it fades in and loops until you choose another
+
+### Mark spell areas on the map
+
+When a spell covers an area, draw it straight onto the map with the same tools you use for rooms. Circles, cones and walls of any shape all work. The grid stays visible inside the area, so everyone can count the squares it covers
+
+### Play animated maps
+
+Evermist plays MP4 and WebM maps as well as still images. Wherever the fog is cleared, the water keeps moving and the torches keep flickering
 
 ![Animated map playing under the fog](assets/animated-map.gif)
 
-## Everything else
-
-- Manual mode, so you can set the next reveal up in private and send it with one button when they actually open the door
-- A minimap on the right showing what part of the map is on the TV. Drag it to move the TV
-- Square or hex grid. Size, offset, colour and opacity, so it lines up with the map's own grid
-- Swap maps mid-game and the fog covers the change, so the screen never goes black
-- A 10000×6000 map pans and zooms without complaining
-- Export any set of scenes to one `.zip`, map files included, and restore it on another PC
-- Optional snapping that pulls room corners to the grid, or straightens a wall you drew almost level
-
-Press `?` in the DM window for the shortcut list
-
-## What you need
-
-A map. That's it, and any image or video file will do
-
-The rest is optional and just makes prep faster:
-
-| If you have | You get |
-|---|---|
-| Any PNG or JPG map | Fog, rooms, notes, grid, both screens. All of it |
-| A published module as `.txt` or `.pdf` | Names and notes filled in from the book |
-| An MP4 or WebM map | The map animates while the party looks at it |
-| A `.dd2vtt` floor plan beside the map | Every room drawn for you, caves aside |
-
-Rooms you draw by hand work the same as rooms drawn for you
+Press `?` in the DM window to see every keyboard shortcut
 
 ## Download
 
-Grab the latest version from [**Releases**](../../releases/latest):
+Download the latest version from [**Releases**](../../releases/latest):
 
 | System | File | Notes |
 |--------|------|-------|
 | Windows | `Evermist-Setup-<version>.exe` | Installs in one click, then keeps itself up to date |
-| macOS | `Evermist-<version>.dmg` | Universal (Intel and Apple Silicon) |
-| Linux | `Evermist-<version>.AppImage` | Make the file executable, then run |
+| macOS | `Evermist-<version>.dmg` | Universal (Intel and Apple Silicon). Download each new version by hand |
+| Linux | `Evermist-<version>.AppImage` | Make the file executable, then run. Keeps itself up to date |
+
+An update downloads in the background and installs only when you press Restart to update
 
 Evermist isn't code-signed (signing certificates cost money), so your OS shows a one-time security warning the first time you open it. It's harmless
 
@@ -120,7 +104,7 @@ The OS remembers your choice, so this only happens once
 
 ## Nothing leaves your computer
 
-No account, no cloud, no tracking. The Windows and Linux builds ask GitHub whether a newer version exists, and that is the only thing Evermist ever sends anywhere. Switch the wifi off and everything still works
+No account, no cloud, no tracking. Evermist goes online for two things only. The Windows and Linux builds check GitHub for updates, and a music link you paste downloads from YouTube. Everything else works without an internet connection
 
 Your maps and scenes sit on your own disk. Module PDFs get read in a separate locked-down process that can't touch your files
 
@@ -141,12 +125,12 @@ npm run build:mac     # macOS .dmg
 npm run build:linux   # Linux AppImage
 ```
 
-GitHub Actions builds all three platforms automatically on a `v*` tag push (see [`.github/workflows/release.yml`](.github/workflows/release.yml))
-
-## Architecture
+GitHub Actions builds all three platforms and publishes the release (see [`.github/workflows/release.yml`](.github/workflows/release.yml))
 
 Want to know how the fog rendering or the two-window sync works? [ARCHITECTURE.md](docs/ARCHITECTURE.md) explains it in plain English
 
 ## License
 
 [MIT](LICENSE) - free to use, modify, and share
+
+Have a great session

@@ -23,35 +23,47 @@ what the product does and why that held.
 
 ## What this is
 
-### Evermist is a prep tool that also runs the game · `SETTLED` (positioning)
-"Run cool maps on a TV" described the app until prep automation landed. With a map, its floor
-plan and the module's text, preparing a session is most of the way to automatic, and each of
-the three is useful alone: hand-drawn rooms still auto-populate from module text, and a floor
-plan still draws rooms with no module. The framing is **prep efficiently, run beautifully**.
-A positioning call rather than a scope expansion; the VTT line below is unchanged.
+### Evermist covers the DM's session, prep first and play next · `SETTLED` (2026-09-24, positioning)
+The framing is **prep efficiently, run beautifully**. With a map, its floor plan and the
+module's text, preparing a map is most of the way to automatic, and each of the three is useful
+alone: hand-drawn rooms still fill from module text, and a floor plan still draws rooms with no
+module. Prep is complete as of 3.0.0. Reading the module and exporting the map stay outside the
+app, because neither is a map problem.
+Play is the next target. At the table the app changes scenes, reveals rooms, plays music and
+places effects, and everything else a DM tracks during play still lives in other windows.
 
-### The target is prep time, not mid-session time · `SETTLED` (scope call)
-The app exists to make preparing maps fast. Mid-session is deliberately prep-free: that is when
-the game gets run, not authored. Rooms only get drawn during play when prep was skipped
-entirely, and prep gets skipped when the tools make it slow, so on-the-fly drawing is a symptom
-rather than the workflow to optimise. **Do not propose in-play authoring aids**, and do not
-read the habit of drawing mid-session as evidence that prep is fine.
+### Prep time and play time are separate targets · `SETTLED` (2026-09-24, widens the prep-only call)
+Mid-session is when the game gets run, not authored. Rooms only get drawn during play when prep
+was skipped, and prep gets skipped when the tools make it slow, so on-the-fly drawing is a
+symptom rather than the workflow to optimise. **Do not propose in-play authoring aids.**
+What play wants is reference and control: the facts a DM looks up mid-fight, and the few
+actions that change what the table sees. Those are in scope.
 
 ---
 
 ## The line it will not cross
 
-### The VTT line · `SETTLED`
-No tokens, no initiative, no character sheets. Map, fog, grid, two screens.
+### The VTT line · `SETTLED` (2026-09-24, narrowed to what reaches the TV)
+**Nothing but the map and its effects reaches the Player screen.** Map, fog, grid and effects
+go to the TV. Rooms, notes, controls and anything else the DM reads stay on the DM's side.
+No tokens and no dice, on either screen.
 
-**The test that decides new cases: could a physical object at the table do this job better?**
-If yes, it doesn't ship. Minis, initiative trackers and dice all lose to their physical
-counterparts, and finding, printing and painting a mini is part of the hobby rather than a
-chore to automate away. Digital tokens exist only because online play has no alternative.
+**The test that decides what the TABLE sees: could a physical object at the table do this job
+better?** If yes, it doesn't ship. Minis and dice lose to their physical counterparts, and
+finding, printing and painting a mini is part of the hobby rather than a chore to automate away.
+Digital tokens exist only because online play has no alternative.
+The test does not govern the DM's own screen. There the alternative is a browser tab or a
+notes app, not a physical object, so a DM-side tool is judged against that.
 
 **Combinatorial explosion is what qualifies an exception**, not merely being an effect. A wall
 of fire is any length at any angle and one spell of hundreds, so a pencil on the map is a
 stand-in rather than a better option.
+
+### A combat helper on the DM's screen · `PARKED` (2026-09-24, the 4.0 target)
+Everything a DM tracks in a fight: each monster's HP, AC, abilities and save modifiers, and
+the turn order. It lives on the DM's screen and never reaches the Player. Today it lives in a
+browser and a notes app beside Evermist, which is the switching this removes. Notes for a scene
+with no rooms, such as a wilderness, belong to the same work.
 
 ### Map effects are areas, not creatures · `SETTLED` (scope call)
 Difficult terrain, persistent damage zones, light radius, Wall of Fire. No identity, no turn
@@ -167,8 +179,7 @@ duplicating a 100MB clip to hedge would double the cost the feature exists to cu
 reads as "Evermist lost my map quality" has to be traceable to a switch someone threw.
 
 ### Music is a mid-session control, and it passes the physical-object test · `SETTLED` (scope call)
-The scope line above optimises for prep time and argues against mid-session *authoring*. Picking
-a track is not authoring. The deciding test settles it: no physical object at the table plays
+The scope line above argues against mid-session *authoring*. Picking a track is not authoring. The deciding test settles it: no physical object at the table plays
 music, so the app wins that one outright. This is the same reasoning that licensed map effects,
 which are placed during play. Do not read the prep-time line as a ban on in-play controls.
 
@@ -208,6 +219,11 @@ redefined. A major version should mark a state that can actually be shipped and 
 auto-polygons is an explicit hypothesis test that may fail, which is a bad thing to hang a major
 bump on. 2.0.0 became the UI polish batch plus accumulated fixes, carrying the consolidated
 README rewrite.
+
+### 3.0.0 is prep complete, 4.0.0 is play · `SETTLED` (2026-09-24)
+3.0.0 marks the prep half of a session as done: floor plan, module text and room editing
+together take a map from export to ready. It ships as a README rewrite, the same shape 2.0.0
+took. 4.0.0 is reserved for the combat helper, the first release that covers play.
 
 ### Size releases conservatively · `SETTLED`
 2.0.0 skipped 1.8 and 1.9 and landed on a docs-only commit, because a release tag has to match
@@ -254,24 +270,33 @@ runs is the table. Downloading early is free, so the button stays instant.
 ## The README and user-facing text
 
 ### The README gets one consolidated rewrite, never a paragraph per feature · `SETTLED`
-Both `README.md` and `README.ru.md` are rewritten in a single pass when they are rewritten at
-all. A per-feature paragraph accretes into a changelog nobody reads.
+`README.md` is rewritten in a single pass when it is rewritten at all. A per-feature paragraph
+accretes into a changelog nobody reads.
 
-### The README leads with prep, and the floor plan comes last · `SETTLED`
-The page opens on who it is for (DMs running TTRPGs in person) and states the app is free in the
-first paragraph. Feature sections are ordered by **how likely a reader is to have the thing**,
-not by how impressive it is: rooms and notes, then module import, then homebrew, then the floor
-plan. **Promoting auto-drawn rooms to the top would be a regression.** The common reader has a
-JPG out of a book and no `.dd2vtt`, and an unexplained file extension on the first screen reads
-as "not for me". The floor-plan section opens on the condition rather than the filename for the
-same reason.
+### The README is English only · `SETTLED` (2026-09-24)
+The app's interface is English, so a README in another language promises an app that does not
+exist. A translated README returns together with a translated app, not before it.
+
+### The README turns away online DMs first, then walks a session in order · `SETTLED` (2026-09-24)
+The first screen says who it is for (DMs playing in person with a TV) and who it is not for
+(DMs running online), so the wrong reader leaves in seconds. It states the app is free in the
+first paragraph. Features then follow a session in the order a DM meets them: draw the rooms,
+write their notes, then run the table - reveal, split, music. **A feature never appears before
+the thing it builds on**, so each parser is a subsection of what it fills: the `.dd2vtt` floor
+plan under drawing rooms, the module under notes. Features every map tool has get one short
+section each, and none gets a list of its own.
+Every section heading is a verb and an object, saying what the reader does.
+
+### The README says what the app does, never why · `SETTLED` (2026-09-24)
+The README describes what ships today and who it fits. The reasoning behind the scope stays in
+this file, because a reader can disagree with the reasoning and still want the app. It carries
+no roadmap, since a promised feature goes stale on a date nobody set. The boundary block names
+only what stays out for good: tokens and dice, and anything on the TV besides the map.
 
 ### README conventions that look like mistakes · `SETTLED`
-Four things a later edit would plausibly "fix" and should not:
+Three things a later edit would plausibly "fix" and should not:
 - **"Room" is the only word for a drawn area**, never "shape" or "outline"; `Draw Rooms` is the
   button label, so docs and UI have to agree.
 - **`assets/dm-window.png` shows no visible fog, deliberately.** DM fog sits at low opacity by
   design and the Player fog is already carried by `reveal.gif`.
-- **The Russian README keeps UI labels in English** (Revealed, Shrouded, Half-shrouded, Player,
-  Fullscreen, Manual), because translating them sends a reader hunting for absent buttons.
 - **No image splits a paragraph**, and paragraphs carry no trailing full stop.

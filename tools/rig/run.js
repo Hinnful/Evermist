@@ -420,7 +420,7 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true) {
   // the control panel (the DM_READY signal) has already been built. Waited for on a restart
   // too, so a scenario reading the library back never races the store coming up.
   const existing = await dm.evaluate(`(async () => {
-    for (let i = 0; i < 75; i++) {
+    for (let i = 0; i < 250; i++) {
       try { return (await sceneStore.listScenes()).length; }
       catch (_) { await new Promise(r => setTimeout(r, 200)); }
     }

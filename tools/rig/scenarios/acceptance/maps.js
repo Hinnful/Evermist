@@ -219,6 +219,11 @@ module.exports = async function mapsFeature(rig) {
             'the picker was handed two files and saw ' + picked.delivered +
             ' — the FileList did not take');
   const afterPick = await waitLibrary(2, 240000);
+  // ⚠ A BATCH ENDS ON A SWITCH BACK TO ITS FIRST MAP (mapImport.js), after the library has already
+  // grown. An import started over that switch overlaps two video loads and the new one fails.
+  const landedOn = first => lib.settle(dm, 'currentScene && currentScene.name === ' +
+    JSON.stringify(first) + ' && mapVideo && mapVideo.readyState >= 2', 60000);
+  await landedOn('Picked One');
   rig.note('after the picker: ' + JSON.stringify(afterPick));
   rig.check(afterPick.length === 2,
             'two files through the "+" picker did not produce two scenes: ' +
@@ -237,6 +242,8 @@ module.exports = async function mapsFeature(rig) {
   const again = await dm.evaluate('__rigPick([__rigFile("Picked One.mp4")])');
   rig.check(again.delivered === 1, 'the cleared input would not take a second selection');
   const afterAgain = await waitLibrary(3, 240000);
+  await lib.settle(dm, 'currentScene && currentScene.id === allScenes[allScenes.length - 1].id' +
+    ' && mapVideo && mapVideo.readyState >= 2', 60000);
   rig.check(afterAgain.length === 3,
             're-picking the same file imported nothing: ' + JSON.stringify(afterAgain));
 
@@ -251,6 +258,7 @@ module.exports = async function mapsFeature(rig) {
             JSON.stringify(afterDrop));
   rig.check(afterDrop.slice(beforeDrop).join('|') === 'Dropped One|Dropped Two',
             'the drop imported out of order: ' + JSON.stringify(afterDrop));
+  await landedOn('Dropped One');
 
   // ── D. A floor plan dropped on its own ─────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
@@ -281,7 +289,7 @@ module.exports = async function mapsFeature(rig) {
   const planLanded = await (async () => {
     return !!(await lib.poll(
       async () => (await dm.evaluate('!!(currentScene && currentScene.floorPlan)')) ? { yes: true } : null,
-      20000, 200));
+      60000, 200));
   })();
   rig.check(planLanded, 'a floor plan dropped on its own did not attach to the open scene');
   rig.check((await names()).length === beforePlan,

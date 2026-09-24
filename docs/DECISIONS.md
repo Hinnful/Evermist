@@ -799,7 +799,7 @@ below still applies to it.
 It used to force the grid on for the gesture, as the Door tool does. The old grid over the map art
 is the one thing the DM is not aiming at, so it now hides, and the shape draws its own cells.
 
-### A hex grid calibrates from a cell CENTRE, and the phase must undo the stagger · `REVERSED` (2026-09-09)
+### A hex grid calibrates from a cell CENTRE, and the phase must undo the stagger · `REVERTED` (2026-09-24, shipped 2026-09-09)
 Reverses the refusal filed a day earlier, which held that a dragged square would write a hex's
 circumradius as if it were a square's side. The gesture draws the shape the grid is made of, so
 the objection disappears: press a cell's middle, drag out a circumradius, and the count divides it.
@@ -854,6 +854,29 @@ flaming border, the Cone tool and the material picker.
 
 ---
 
+## Positioning
+
+### The VTT line was narrowed from a feature list to a screen · `SETTLED` (2026-09-24)
+The line used to list what the app would never hold: tokens, initiative, character sheets. It
+now names what may reach the Player screen: the map and its effects. The old list was justified
+by the physical-object test, and that test had only been checked against the table. At the DM's
+side, combat was run from a browser and a notes app, so a DM-side combat helper replaces a
+window switch, not a paper tracker. Tokens and dice stay out, because the physical-object test
+still holds for them.
+
+### The physical-object framing was kept out of the 3.0.0 README · `REJECTED` (2026-09-24)
+Proposed as the README headline, with "Evermist does what your table can't" as the pitch.
+Rejected on the grounds that it argues for the scope instead of describing the app, and a reader
+who disagrees with the argument can still want the app. The README leads with prep and states
+the boundary as a fact about the TV.
+
+### The Russian README was deleted · `REVERTED` (2026-09-24)
+A Russian README shipped from 2.0.0 and was kept in step by hand at every rewrite. It was
+deleted at 3.0.0, because the app has no Russian interface and each rewrite cost a second pass.
+It is in git history if a translated app ever needs it back.
+
+---
+
 ## Corrections worth keeping
 
 Reasoning that turned out wrong in a way that would repeat. Each is here so it doesn't.
@@ -861,6 +884,10 @@ Reasoning that turned out wrong in a way that would repeat. Each is here so it d
 **"It's a big refactor."** Said about the comment trim. It conflated *deleting reasons* with
 *trimming verbosity*. Different operations: the second is comment-only edits with no code
 change, and the test suite catches the one real risk.
+
+**"An initiative tracker loses to a physical one."** True of a paper tracker on the table, and
+beside the point for a DM who tracks HP, AC and saves in a browser. The comparison has to be
+against what the DM actually uses, not against the best physical object that exists.
 
 **"PDF support isn't worth it."** Measured the wrong thing - the cost was never the extra
 rooms, it was the DM having to prepare a file at all.

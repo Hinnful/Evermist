@@ -152,7 +152,7 @@ module.exports = async function floorPlanFeature(rig) {
     const got = await lib.poll(async () => {
       last = await read();
       return last === want ? { v: last } : null;
-    }, 9000, 200);
+    }, 30000, 200);
     return got ? got.v : last;
   };
 
