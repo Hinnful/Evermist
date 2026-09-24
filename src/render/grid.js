@@ -97,11 +97,13 @@ function renderGrid(vp) {
   // so the fog layer above it naturally hides it in shrouded areas.
   if (isPlayer) return;
   // ⚠ The Door tool shows the grid even when the DM has it switched off, because a door IS one
-  // cell and placing one blind is guesswork. Calibration is the same case: it cannot be done
-  // against an invisible grid. Do NOT do this by flipping gridEnabled: that value is the scene's
-  // and reaches the TV, so picking a tool would put a grid in front of the players mid-session.
-  // renderPlayerGrid stays gated on gridEnabled alone.
-  if (!gridEnabled && shape !== 'door' && !gridCalArmed) return;
+  // cell and placing one blind is guesswork. Do NOT do this by flipping gridEnabled: that value is
+  // the scene's and reaches the TV, so picking a tool would put a grid in front of the players
+  // mid-session. renderPlayerGrid stays gated on gridEnabled alone.
+  // Calibration hides it instead: the old grid over the map art is what the DM is not aiming at,
+  // and the shape draws its own cells.
+  if (gridCalArmed) return;
+  if (!gridEnabled && shape !== 'door') return;
   drawGridLines(gridCtx, vp);
   drawEffectGridGlow(gridCtx, vp);
 }

@@ -32,8 +32,10 @@
 //        the box slides the phase and leaves the cell alone - dragging its far corner resizes the
 //        cell and leaves the count alone - a handle well clear of the box re-solves the cell
 //        without moving the phase - a resize too small for one cell is refused rather than clamped
-//        - a hex grid draws a HEXAGON round the cell centre and puts a cell centre exactly on the
-//        point pressed, odd columns and rows included - Done, the Calibrate icon, Escape and
+//        - arming hides the grid - a hex grid runs corner to opposite corner of one big hex,
+//        snaps to a corner direction, and lands its pressed corners on the grid at any count and
+//        all six at an odd one, odd columns and rows included - the HUD clears the magnifier -
+//        Done, the Calibrate icon, Escape and
 //        picking a tool each hand the map back, they give back the tab arming shut unless the DM
 //        picked another one meanwhile, and the DM's own grid switch is never touched
 //      (the room card getting out of the way is room-card.js's section A, with the rooms)
@@ -575,11 +577,22 @@ module.exports = async function gridFeature(rig) {
   rig.check(armed.panel === true,
             'arming calibration left the control panel over the map it has to be dragged on');
 
+  // The old grid over the map art is what the DM is NOT aiming at, so calibration hides it and
+  // the shape draws its own cells. It used to force the grid on for the gesture.
+  // RED ON: renderGrid's old `!gridCalArmed` exception restored (grid.js) — 2026-09-24
   const armedPaint = await dmPaint();
-  rig.note('DM painted while armed with the grid off: ' + JSON.stringify(armedPaint));
-  rig.check(!armedPaint.err,
-            'calibration draws no grid to aim at while the DM has the grid switched off: ' +
-            JSON.stringify(armedPaint));
+  rig.note('DM painted while armed: ' + JSON.stringify(armedPaint));
+  rig.check(armedPaint.err === 'nothing painted',
+            'calibration painted a grid the DM has switched off: ' + JSON.stringify(armedPaint));
+  // ⚠ The case the DM sees is the grid switched ON. With it off, an app that ignored
+  // calibration entirely would paint nothing here too.
+  // RED ON: renderGrid's `if (gridCalArmed) return;` gated off (grid.js) — 2026-09-24
+  await dm.evaluate('gridEnabled = true; 0');
+  const armedOn = await dmPaint();
+  await dm.evaluate('gridEnabled = false; 0');
+  rig.check(armedOn.err === 'nothing painted',
+            'calibration left the switched-on grid painted over the map it is aimed at: ' +
+            JSON.stringify(armedOn));
   rig.check(await dm.evaluate('gridEnabled === false'),
             'calibration switched gridEnabled on, which would put a grid in front of the players');
 
@@ -773,69 +786,112 @@ module.exports = async function gridFeature(rig) {
             chosen);
   await dm.evaluate('_cpSelectTab("grid"); 0');
 
-  // A hex grid calibrates too. The gesture draws the shape the grid is made of: the press is a
-  // CELL CENTRE and the drag is a circumradius, because that is what gridSize means for a hex.
+  // A hex grid calibrates too: corner to opposite corner of one big hex, so the press and the
+  // release are both points the map art draws.
   await dm.evaluate('document.getElementById("btn-grid-hflat").click(); 0');
   await fire('grid-size', 100);
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
   rig.check(await dm.evaluate('gridCalArmed === true'),
-            'calibration refused a hex grid, which it now measures with a hexagon');
+            'calibration refused a hex grid, which it measures corner to corner');
 
-  // ⚠ THE CHECK IS "A CELL CENTRE LANDS ON THE PRESS", never gridCalWrite's own arithmetic. An
-  // assertion that restates the formula agrees with it however wrong it is - and a hex lattice
-  // STAGGERS alternate columns and rows, so the phase is only right for half the anchors. This
-  // walks drawGridLines' own centre formula and reports the nearest one.
+  // ⚠ THE CHECK IS "EVERY CORNER OF THE BIG HEX SITS ON A GRID CORNER", never gridCalWrite's own
+  // arithmetic. An assertion that restates the formula agrees with it however wrong it is - and a
+  // hex lattice STAGGERS alternate columns and rows, so the phase is only right for half the
+  // anchors. This walks drawGridLines' own centre formula and reports the nearest vertex.
   const missAt = (ax, ay) => dm.evaluate([
     '(() => {',
-    '  const R = gridSize, flat = gridMode === "hex-flat";',
+    '  const R = gridSize, flat = gridMode === "hex-flat", a0 = flat ? 0 : Math.PI / 6;',
     '  const A = R * (flat ? 1.5 : Math.sqrt(3)), B = R * (flat ? Math.sqrt(3) : 1.5);',
     '  let best = Infinity;',
-    '  for (let c = -80; c <= 80; c++) for (let r = -80; r <= 80; r++) {',
+    '  for (let c = -60; c <= 60; c++) for (let r = -60; r <= 60; r++) {',
     '    const cx = gridOffsetX + c * A + (flat ? 0 : (r & 1) * A / 2);',
     '    const cy = gridOffsetY + r * B + (flat ? (c & 1) * B / 2 : 0);',
-    '    best = Math.min(best, Math.hypot(cx - ' + ax + ', cy - ' + ay + '));',
+    '    for (let k = 0; k < 6; k++) best = Math.min(best, Math.hypot(',
+    '      cx + R * Math.cos(a0 + k * Math.PI / 3) - ' + ax + ', cy + R * Math.sin(a0 + k * Math.PI / 3) - ' + ay + '));',
     '  }',
     '  return best;',
     '})()'].join(''));
 
-  // Both anchors drag 320 out. At a 100px cell the count guesses 3, so the cell solves to 106.67.
-  // ⚠ 560 is the one that matters: it falls in an ODD column, where the stagger applies. 400 falls
-  // in an even one and passes with the stagger ignored entirely.
+  // Each drag runs 320 straight RIGHT. A pointy-top hex has no corner straight across that way,
+  // so the diagonal has to snap to one of its six corner directions. At a 40px cell the count
+  // guesses 3 across, and an odd count centres the big hex on a cell, so all six of its corners
+  // sit on the grid.
+  // ⚠ Three anchors, because the stagger only bites where the centre falls in an odd column or
+  // row; one anchor can pass with the stagger ignored entirely.
+  // RED ON: gridCalAnchor phasing a hex on the pressed corner instead of the big hex's centre
+  //   (gridCalibrate.js) — 2026-09-24
   for (const [mode, btn] of [['hex-flat', 'btn-grid-hflat'], ['hex-pointy', 'btn-grid-hptop']]) {
     for (const [ax, ay] of [[400, 400], [560, 400], [400, 560]]) {
       if (await dm.evaluate('gridCalArmed')) {
         await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
       }
       await dm.evaluate('document.getElementById("' + btn + '").click(); 0');
-      await fire('grid-size', 100);
+      await fire('grid-size', 40);
       await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
       await mouseAt('mousemove', ax, ay);
       await mouseAt('mousedown', ax, ay);
       await mouseAt('mousemove', ax + 320, ay);
+      // Mid-drag the magnifier sits on the far corner, and the HUD must not cover it.
+      // RED ON: gridCalPlaceHud's gap without GRIDCAL_MAG_RADIUS (gridCalibrate.js) — 2026-09-24
+      const overlap = await dm.evaluate('(() => { drawCursor(lastScreenX, lastScreenY);' +
+        ' const h = document.getElementById("gridcal-hud").getBoundingClientRect();' +
+        ' const c = container.getBoundingClientRect(), p = toScreen(gridCalDrag.bx, gridCalDrag.by);' +
+        ' const x = c.left + p.sx, y = c.top + p.sy;' +
+        ' const dx = Math.max(h.left - x, 0, x - h.right), dy = Math.max(h.top - y, 0, y - h.bottom);' +
+        ' return Math.hypot(dx, dy) - GRIDCAL_MAG_RADIUS; })()');
+      rig.check(overlap >= 0, 'the calibration HUD covers the magnifier mid-drag by ' +
+                (-overlap).toFixed(1) + 'px (' + mode + ' at ' + ax + ',' + ay + ')');
       await mouseAt('mouseup', ax + 320, ay, true);
       // ⚠ EVERY NUMBER BELOW COMES OFF THE COMMITTED SPAN, never off the drag that was aimed. A
       // synthetic mouse event lands on a whole client pixel, about 1.1 map px at this zoom, which
       // sinks a tight tolerance while saying nothing about the maths under test.
       const got = await dm.evaluate('({ isHex: gridCalIsHex(), n: gridCalSpan && gridCalSpan.n,' +
-        ' verts: gridCalSpan ? gridCalHexVerts(gridCalSpan).length : 0, size: gridSize,' +
-        ' ax: gridCalSpan && gridCalSpan.ax, ay: gridCalSpan && gridCalSpan.ay,' +
+        ' size: gridSize, corners: gridCalSpan ? gridCalHexOutline(gridCalSpan) : [],' +
+        ' ang: gridCalSpan ? Math.atan2(gridCalSpan.by - gridCalSpan.ay, gridCalSpan.bx - gridCalSpan.ax) : 0,' +
+        ' a0: gridMode === "hex-flat" ? 0 : Math.PI / 6,' +
         ' reach: gridCalSpan ? gridCalSpanReach(gridCalSpan) : 0 })');
-      const miss = await missAt(got.ax, got.ay);
-      rig.note(mode + ' at (' + ax + ',' + ay + '): ' + JSON.stringify(got) +
-               ' nearest centre off by ' + miss.toFixed(4) + 'px');
-      rig.check(got.isHex === true && got.verts === 6,
-                'the ' + mode + ' gesture did not draw a hexagon: ' + JSON.stringify(got));
-      rig.check(got.n === 3,
-                'the hex count was not guessed from the size already set: ' + got.n);
-      rig.check(Math.abs(got.size - got.reach / got.n) < 0.01,
-                'the hex drag did not set the cell to the radius divided by its count: ' +
-                got.size + ' against ' + (got.reach / got.n));
-      rig.check(miss < 0.01,
-                'no ' + mode + ' cell centre landed on the point pressed at (' +
-                got.ax.toFixed(1) + ',' + got.ay.toFixed(1) + '): the nearest is ' +
-                miss.toFixed(2) + 'px away, so the lattice sits off the map');
+      const misses = [];
+      for (const c of got.corners) misses.push(await missAt(c.x, c.y));
+      const off = ((got.ang - got.a0) / (Math.PI / 3)) % 1;
+      rig.note(mode + ' at (' + ax + ',' + ay + '): n=' + got.n + ' size=' + got.size +
+               ' corner misses ' + misses.map(m => m.toFixed(4)).join(','));
+      rig.check(got.isHex === true && got.n === 3,
+                'the ' + mode + ' gesture did not guess 3 hexes across a 320 drag at a 40 cell: ' +
+                got.n);
+      rig.check(Math.min(Math.abs(off), 1 - Math.abs(off)) < 1e-6,
+                'the ' + mode + ' diagonal did not snap to a corner direction: ' + got.ang);
+      rig.check(Math.abs(got.size - got.reach / (3 * got.n - 1)) < 0.01,
+                'the hex drag did not set the cell to the diagonal over 3n - 1: ' +
+                got.size + ' against ' + (got.reach / (3 * got.n - 1)));
+      rig.check(misses.length === 6 && misses.every(m => m < 0.01),
+                'a corner of the big ' + mode + ' hex from (' + ax + ',' + ay + ') sits off the ' +
+                'grid: misses ' + misses.map(m => m.toFixed(2)).join(', ') + 'px, so the grid ' +
+                'does not match the hexes the DM drew');
     }
   }
+  // The stepper counts 1, 2, 3. An even count centres the big hex on a wall, so only the two
+  // corners the DM pressed are claimed to sit on the grid.
+  // RED ON: gridCalAnchor phasing a hex on the big hex's centre at every count, and
+  //   gridCalNudgeCount stepping by two (gridCalibrate.js) — 2026-09-24
+  // ⚠ The stepper must REDRAW the shape too: the grid is hidden, so the cells drawn inside it are
+  // the only thing that shows the new count, and a click on the HUD never moves the mouse. The
+  // repaint is counted rather than compared, because two paints of one state differ by a few
+  // pixels.
+  const stepped = await dm.evaluate('(() => { const a = gridCalSpan.n, paint = drawCursor;' +
+    ' let calls = 0; drawCursor = (...x) => { calls++; return paint(...x); };' +
+    ' try { document.getElementById("gridcal-count-inc").click(); } finally { drawCursor = paint; }' +
+    ' return { was: a, now: gridCalSpan.n, calls,' +
+    ' ends: [[gridCalSpan.ax, gridCalSpan.ay], [gridCalSpan.bx, gridCalSpan.by]] }; })()');
+  // RED ON: gridCalCommit without its drawCursor call (gridCalibrate.js) — 2026-09-24
+  rig.check(stepped.calls > 0,
+            'the hex count stepper changed the count and left the drawn cells showing the old one');
+  const endMiss = [];
+  for (const [x, y] of stepped.ends) endMiss.push(await missAt(x, y));
+  rig.check(stepped.now === stepped.was + 1,
+            'the hex count stepper did not step by one: ' + JSON.stringify(stepped));
+  rig.check(endMiss.every(m => m < 0.01),
+            'at an even count the corners the DM pressed left the grid: misses ' +
+            endMiss.map(m => m.toFixed(2)).join(', ') + 'px');
   await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
   await dm.evaluate('document.getElementById("btn-grid-sq").click(); 0');
 

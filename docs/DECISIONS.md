@@ -783,7 +783,23 @@ Roll20 and Foundry all size from a FIXED 3x3 sample and then correct drift at a 
 adjustable count is that same shape and also serves a large map, at the cost of a guess that has
 to be confirmed.
 
-### A hex grid calibrates from a cell CENTRE, and the phase must undo the stagger · `SETTLED` (2026-09-09)
+### A hex grid calibrates corner to opposite corner · `SETTLED` (2026-09-24, reverses the centre press below)
+Pressing a cell centre asked the DM to aim at a point the map does not draw. Dungeon Alchemist
+bakes the hex lines into the image and exports only pointy-top hexes, so the corners are the
+visible marks. The drag runs from one corner to the opposite corner of one big hex, snapped to
+the nearest of the six corner directions, and the grid's hexes draw inside it. A straight line of
+hexes was built first and dropped the same day: along a corner diagonal neighbours touch only
+through a wall, so it drew separate hexes with gaps. An odd-only count was built and dropped the
+same day on product grounds: an even count centres the big hex on a wall so four of its corners
+miss the grid, and that costs less than a stepper that skips numbers. The hex the pressed corner belongs to
+becomes the offset, so what `gridOffset` stores never had to shape the gesture; the stagger rule
+below still applies to it.
+
+### Calibration hides the DM's grid · `SETTLED` (2026-09-24)
+It used to force the grid on for the gesture, as the Door tool does. The old grid over the map art
+is the one thing the DM is not aiming at, so it now hides, and the shape draws its own cells.
+
+### A hex grid calibrates from a cell CENTRE, and the phase must undo the stagger · `REVERSED` (2026-09-09)
 Reverses the refusal filed a day earlier, which held that a dragged square would write a hex's
 circumradius as if it were a square's side. The gesture draws the shape the grid is made of, so
 the objection disappears: press a cell's middle, drag out a circumradius, and the count divides it.

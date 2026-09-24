@@ -39,9 +39,9 @@ function initGridCalibrate() {
 }
 
 // ─── Arming ───────────────────────────────────────────────────────────────────
-// ⚠ gridEnabled is NEVER touched here. It is the scene's and it reaches the TV, so switching it on
-// to calibrate would put a grid in front of the players; renderGrid shows the grid for the
-// duration instead, the same way it does for the Door tool.
+// ⚠ gridEnabled is NEVER touched here. It is the scene's and it reaches the TV, so toggling it
+// to calibrate would change what the players see; renderGrid hides the DM's grid for the
+// duration instead, and the shape draws its own cells.
 function armGridCalibration(on) {
   if (isPlayer) return;
   if (on && !mapWidth) return;   // nothing to calibrate against
@@ -104,8 +104,10 @@ function gridCalDrawHeld() {
 }
 
 // ─── Square or hexagon ────────────────────────────────────────────────────────
-// One span record, two readings. A square span is a corner and its opposite corner; a hex span
-// is a CENTRE and a radius handle, because a hex grid's phase is where a hex centre sits.
+// One span record, two readings. A square span is a corner and its opposite corner. A hex span
+// is corner to opposite corner of one BIG hex holding n hexes across: each spans 2R through its
+// centre and a shared wall of R separates neighbours, so the diagonal is (3n - 1) R. An even n
+// centres the big hex on a wall, so only its two pressed corners sit on the grid.
 function gridCalIsHex() {
   return gridMode === 'hex-flat' || gridMode === 'hex-pointy';
 }
@@ -122,18 +124,68 @@ function gridCalHexGeom() {
   };
 }
 
-// What the DM dragged out: a square's side or a hexagon's circumradius. Both divide by the count.
+// What the DM dragged out: a square's side, or a hex line's corner-to-corner length.
 function gridCalSpanReach(s) {
   return gridCalIsHex() ? Math.hypot(s.bx - s.ax, s.by - s.ay) : Math.abs(s.bx - s.ax);
 }
 
-function gridCalHexVerts(s) {
+function gridCalCellOf(reach, n) {
+  return gridCalIsHex() ? reach / (3 * n - 1) : reach / n;
+}
+
+function gridCalGuessCount(reach) {
+  if (!gridCalIsHex()) return Math.round(reach / gridSize);
+  return Math.max(1, Math.round((reach / gridSize + 1) / 3));
+}
+
+// Corner to opposite corner only runs along one of the six corner directions, so the drag snaps
+// to the nearest one; a line a few degrees off would put every centre after the first off-lattice.
+function gridCalHexEnd(ax, ay, mx, my) {
   const g = gridCalHexGeom();
-  const r = Math.hypot(s.bx - s.ax, s.by - s.ay);
-  const out = [];
+  const step = Math.PI / 3;
+  const a = g.a0 + Math.round((Math.atan2(my - ay, mx - ax) - g.a0) / step) * step;
+  const d = Math.max(0, (mx - ax) * Math.cos(a) + (my - ay) * Math.sin(a));
+  return { bx: ax + d * Math.cos(a), by: ay + d * Math.sin(a) };
+}
+
+function gridCalHexPoly(cx, cy, r) {
+  const a0 = gridCalHexGeom().a0, v = [];
   for (let k = 0; k < 6; k++) {
-    const a = Math.PI / 3 * k + g.a0;
-    out.push({ x: s.ax + r * Math.cos(a), y: s.ay + r * Math.sin(a) });
+    const a = Math.PI / 3 * k + a0;
+    v.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+  }
+  return v;
+}
+
+// The big hex, centred between the two corners.
+function gridCalHexOutline(s) {
+  const reach = gridCalSpanReach(s);
+  return gridCalHexPoly((s.ax + s.bx) / 2, (s.ay + s.by) / 2, reach / 2);
+}
+
+// The point gridCalWrite phases the lattice on: the pressed corner for a square, and for a hex
+// the centre of the hex that corner belongs to, one circumradius along the diagonal - a hex
+// grid's offset names a centre, and the big hex's own centre is one only for an odd count.
+function gridCalAnchor(s) {
+  const reach = gridCalSpanReach(s);
+  const n = s.n != null ? s.n : gridCalGuessCount(reach);
+  if (!gridCalIsHex() || !(reach > 0) || n < 1) return { x: s.ax, y: s.ay };
+  const r = reach / (3 * n - 1);
+  return { x: s.ax + (s.bx - s.ax) / reach * r, y: s.ay + (s.by - s.ay) / reach * r };
+}
+
+// The cells inside it, laid from the anchor, for the drawing to clip to the outline.
+function gridCalHexInner(s) {
+  const reach = gridCalSpanReach(s);
+  const n = s.n != null ? s.n : gridCalGuessCount(reach);
+  if (!(reach > 0) || n < 1) return [];
+  const g = gridCalHexGeom(), r = reach / (3 * n - 1), o = gridCalAnchor(s);
+  const mx = (s.ax + s.bx) / 2, my = (s.ay + s.by) / 2;
+  const px = r * g.stepX, py = r * g.stepY, k = n + 2, out = [];
+  for (let i = -k; i <= k; i++) for (let j = -k; j <= k; j++) {
+    const x = o.x + i * px + (g.flat ? 0 : (j & 1) * px / 2);
+    const y = o.y + j * py + (g.flat ? (i & 1) * py / 2 : 0);
+    if (Math.hypot(x - mx, y - my) <= reach / 2 + r) out.push(gridCalHexPoly(x, y, r));
   }
   return out;
 }
@@ -184,27 +236,31 @@ function gridCalWrite(cell, ax, ay) {
 
 // Finished path. Through applyGridConfig so the sliders and number chips move with the globals,
 // then commitGridChange so the scene keeps it and the Player gets it.
+// ⚠ The grid is hidden while armed, so the shape's own cells are the only feedback, and a stepper
+// click never moves the mouse to redraw them.
 function gridCalCommit() {
   applyGridConfig({ ...captureGridConfig(), cellSize: gridSize, offsetX: gridOffsetX, offsetY: gridOffsetY });
   commitGridChange();
   gridCalRefreshUI();
+  drawCursor(lastScreenX, lastScreenY);
 }
 
 // gridCalWrite's clamp paints a 10px lattice over the whole map, so a span that small is refused.
 function gridCalCellFits(reach, n) {
-  return n >= 1 && reach / n >= gridCalCellRange().min;
+  return n >= 1 && gridCalCellOf(reach, n) >= gridCalCellRange().min;
 }
 
 function gridCalApplySpan() {
   const s = gridCalSpan;
   if (!s || !s.n) return;
-  gridCalWrite(gridCalSpanReach(s) / s.n, s.ax, s.ay);
+  const at = gridCalAnchor(s);
+  gridCalWrite(gridCalCellOf(gridCalSpanReach(s), s.n), at.x, at.y);
 }
 
 // The count is GUESSED from the size already set, so a map whose size is far out guesses wrong and
 // the stepper is the way back.
 function gridCalCommitSpan(ax, ay, bx, by) {
-  const n = Math.round(gridCalSpanReach({ ax, ay, bx, by }) / gridSize);
+  const n = gridCalGuessCount(gridCalSpanReach({ ax, ay, bx, by }));
   if (n < 1) return;
   gridCalSpan = { ax, ay, bx, by, n };
   gridCalApplySpan();
@@ -265,7 +321,7 @@ function gridCalHitPart(pos) {
   if (!s) return null;
   const c = toScreen(pos.x, pos.y), b = toScreen(s.bx, s.by);
   if (Math.hypot(c.sx - b.sx, c.sy - b.sy) <= GRIDCAL_HIT_PX) return 'resize';
-  if (gridCalIsHex()) return pointInPolygon(pos.x, pos.y, gridCalHexVerts(s)) ? 'move' : null;
+  if (gridCalIsHex()) return pointInPolygon(pos.x, pos.y, gridCalHexOutline(s)) ? 'move' : null;
   const inX = pos.x >= Math.min(s.ax, s.bx) && pos.x <= Math.max(s.ax, s.bx);
   const inY = pos.y >= Math.min(s.ay, s.by) && pos.y <= Math.max(s.ay, s.by);
   return (inX && inY) ? 'move' : null;
@@ -274,7 +330,7 @@ function gridCalHitPart(pos) {
 function gridCalPartCursor(part) {
   if (part === 'move') return 'move';
   if (part !== 'resize') return 'crosshair';
-  if (gridCalIsHex()) return 'grab';   // a radius handle, with no diagonal to point along
+  if (gridCalIsHex()) return 'grab';   // a corner snapped to six directions, no box diagonal to point along
   const s = gridCalSpan;
   return ((s.bx - s.ax < 0) !== (s.by - s.ay < 0)) ? 'nesw-resize' : 'nwse-resize';
 }
@@ -308,8 +364,7 @@ function gridCalMouseMove(pos) {
     gridCalRefine = gridCalFindRefine(pos);
     container.style.cursor = gridCalRefine ? 'grab' : gridCalPartCursor(gridCalHitPart(pos));
   } else if (gridCalDrag.which === 'span') {
-    // A hexagon has no dominant axis: the press is its centre, the pointer its radius.
-    const sq = gridCalIsHex() ? { bx: pos.x, by: pos.y }
+    const sq = gridCalIsHex() ? gridCalHexEnd(gridCalDrag.ax, gridCalDrag.ay, pos.x, pos.y)
                               : gridCalSquareEnd(gridCalDrag.ax, gridCalDrag.ay, pos.x, pos.y);
     gridCalDrag.bx = sq.bx; gridCalDrag.by = sq.by;
   } else if (gridCalDrag.which === 'move') {
@@ -318,10 +373,11 @@ function gridCalMouseMove(pos) {
     const w = s.bx - s.ax, h = s.by - s.ay;
     s.ax = pos.x + gridCalDrag.ox; s.ay = pos.y + gridCalDrag.oy;
     s.bx = s.ax + w; s.by = s.ay + h;
-    gridCalWrite(gridSize, s.ax, s.ay);
+    const at = gridCalAnchor(s);
+    gridCalWrite(gridSize, at.x, at.y);
   } else if (gridCalDrag.which === 'resize') {
     const s = gridCalSpan;
-    const sq = gridCalIsHex() ? { bx: pos.x, by: pos.y }
+    const sq = gridCalIsHex() ? gridCalHexEnd(s.ax, s.ay, pos.x, pos.y)
                               : gridCalSquareEnd(s.ax, s.ay, pos.x, pos.y);
     const reach = gridCalSpanReach({ ax: s.ax, ay: s.ay, bx: sq.bx, by: sq.by });
     if (gridCalCellFits(reach, s.n)) {
@@ -378,11 +434,13 @@ function gridCalPlaceHud() {
     cx = box.left + box.width / 2;
     top = barTop - GRIDCAL_HUD_LIFT - r.height;
   } else {
-    const a = toScreen(s.ax, s.ay), b = toScreen(s.bx, s.by);
-    cx = box.left + (a.sx + b.sx) / 2;
-    top = box.top + Math.max(a.sy, b.sy) + GRIDCAL_HUD_GAP;
+    // ⚠ The magnifier sits on a corner of the shape during a drag, so the HUD clears its radius
+    // as well as the shape, or it covers the view being aimed through.
+    const sb = gridCalScreenBox(s), gap = GRIDCAL_MAG_RADIUS + GRIDCAL_HUD_GAP;
+    cx = box.left + sb.x + sb.w / 2;
+    top = box.top + sb.y + sb.h + gap;
     if (top + r.height > window.innerHeight - GRIDCAL_HUD_MARGIN) {
-      top = box.top + Math.min(a.sy, b.sy) - GRIDCAL_HUD_GAP - r.height;
+      top = box.top + sb.y - gap - r.height;
     }
   }
   const left = Math.max(GRIDCAL_HUD_MARGIN,
@@ -395,6 +453,14 @@ function gridCalPlaceHud() {
 }
 
 // ─── Drawing, from drawCursor ─────────────────────────────────────────────────
+// Screen box of what is drawn: the square, or the big hex, which reaches past its two corners.
+function gridCalScreenBox(s) {
+  const pts = gridCalIsHex() ? gridCalHexOutline(s) : [{ x: s.ax, y: s.ay }, { x: s.bx, y: s.by }];
+  const sp = pts.map(q => toScreen(q.x, q.y));
+  const x = Math.min(...sp.map(q => q.sx)), y = Math.min(...sp.map(q => q.sy));
+  return { x, y, w: Math.max(...sp.map(q => q.sx)) - x, h: Math.max(...sp.map(q => q.sy)) - y };
+}
+
 function gridCalHandle(sx, sy, r, fill, stroke) {
   cursorCtx.beginPath();
   cursorCtx.arc(sx, sy, r, 0, Math.PI * 2);
@@ -440,7 +506,7 @@ function drawGridCalibration() {
   gridCalPlaceHud();
   const s = (gridCalDrag && gridCalDrag.which === 'span') ? gridCalDrag : gridCalSpan;
   if (!s) {
-    // A hex span is placed by its CENTRE, so the magnifier rides the pointer before any drag.
+    // The press is aimed at a corner in the map art, so the magnifier rides the pointer first.
     if (!gridCalDrag && lastScreenX != null) gridCalMagnifier(gridCalLastMapPos());
     return;
   }
@@ -451,32 +517,44 @@ function drawGridCalibration() {
   cursorCtx.lineWidth = 1.5;
   let x, y, w, h;
   if (gridCalIsHex()) {
-    const v = gridCalHexVerts(s).map(q => toScreen(q.x, q.y));
-    x = Math.min(...v.map(q => q.sx)); y = Math.min(...v.map(q => q.sy));
-    w = Math.max(...v.map(q => q.sx)) - x; h = Math.max(...v.map(q => q.sy)) - y;
-    cursorCtx.beginPath();
-    v.forEach((q, i) => (i ? cursorCtx.lineTo(q.sx, q.sy) : cursorCtx.moveTo(q.sx, q.sy)));
-    cursorCtx.closePath();
+    const path = v => {
+      v.forEach((q, i) => { const p = toScreen(q.x, q.y); i ? cursorCtx.lineTo(p.sx, p.sy) : cursorCtx.moveTo(p.sx, p.sy); });
+      cursorCtx.closePath();
+    };
+    const box = gridCalScreenBox(s);
+    x = box.x; y = box.y; w = box.w; h = box.h;
+    cursorCtx.beginPath(); path(gridCalHexOutline(s));
     cursorCtx.fill();
+    cursorCtx.save(); cursorCtx.clip();
+    cursorCtx.beginPath(); gridCalHexInner(s).forEach(path);
+    cursorCtx.strokeStyle = 'rgba(96,160,255,0.5)'; cursorCtx.lineWidth = 1; cursorCtx.stroke();
+    cursorCtx.restore();
+    cursorCtx.beginPath(); path(gridCalHexOutline(s));
     cursorCtx.setLineDash([6, 4]); cursorCtx.stroke(); cursorCtx.setLineDash([]);
-    // The handle is a radius rather than a corner, so the line says what it is measuring.
-    cursorCtx.beginPath();
-    cursorCtx.moveTo(a.sx, a.sy); cursorCtx.lineTo(b.sx, b.sy);
-    cursorCtx.strokeStyle = 'rgba(96,160,255,0.45)'; cursorCtx.lineWidth = 1;
-    cursorCtx.stroke();
   } else {
     x = Math.min(a.sx, b.sx); y = Math.min(a.sy, b.sy);
     w = Math.abs(b.sx - a.sx); h = Math.abs(b.sy - a.sy);
     cursorCtx.fillRect(x, y, w, h);
+    const cells = s.n != null ? s.n : gridCalGuessCount(gridCalSpanReach(s));
+    if (cells > 1) {
+      cursorCtx.beginPath();
+      for (let i = 1; i < cells; i++) {
+        const t = i / cells;
+        cursorCtx.moveTo(x + w * t, y); cursorCtx.lineTo(x + w * t, y + h);
+        cursorCtx.moveTo(x, y + h * t); cursorCtx.lineTo(x + w, y + h * t);
+      }
+      cursorCtx.strokeStyle = 'rgba(96,160,255,0.5)'; cursorCtx.lineWidth = 1; cursorCtx.stroke();
+      cursorCtx.strokeStyle = 'rgba(96,160,255,0.9)'; cursorCtx.lineWidth = 1.5;
+    }
     cursorCtx.setLineDash([6, 4]); cursorCtx.strokeRect(x, y, w, h); cursorCtx.setLineDash([]);
   }
 
   // The count is on the HUD, so the label carries only what the count works out to. A committed
   // span reads gridSize, the clamped number the grid is drawn at; a live drag has written nothing
   // yet, so it previews.
-  const n = s.n != null ? s.n : Math.round(gridCalSpanReach(s) / gridSize);
+  const n = s.n != null ? s.n : gridCalGuessCount(gridCalSpanReach(s));
   if (n >= 1) {
-    const label = (s.n != null ? gridSize : gridCalSpanReach(s) / n).toFixed(1) + ' px';
+    const label = (s.n != null ? gridSize : gridCalCellOf(gridCalSpanReach(s), n)).toFixed(1) + ' px';
     cursorCtx.font = 'bold 12px ui-monospace, monospace';
     const tw = cursorCtx.measureText(label).width;
     cursorCtx.fillStyle = 'rgba(18,18,28,0.9)';

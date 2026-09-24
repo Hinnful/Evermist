@@ -153,6 +153,11 @@ grep -rho "RED BY DESIGN:" tools/rig/scenarios/ | wc -l   written to fail, never
 count.** It goes down as somebody proves one, and a new criterion arrives carrying `RED ON`
 because proving a new check red is already the rule above.
 
+**PROVE ON TOUCH, at `/commit`.** When the gate runs a scenario because the diff reached what it
+covers, each `RED BY DESIGN` criterion guarding the changed code is proved in that same gate: break
+the line, watch it go red, restore it, relabel it `RED ON`. Criteria the diff did not reach keep
+their label. There is no sweep; the count falls only as the code under it moves.
+
 **A file starts with `const lib = require('../../lib');` and opens its map in one line.**
 `tools/rig/lib.js` holds the page-side helper set, the map preamble, and the two waits. Nothing
 in it is pasted into a scenario. The helpers used to be a `HELPERS` template copied into each
