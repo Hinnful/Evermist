@@ -573,12 +573,27 @@ that draws its stat block with its own scripts reads whole. `statBlockParse.js` 
 its Armor Class line and keeps the page's description as lore, a lair set inside it as lair
 actions. Export writes picked entries to a file and From a file adds them back.
 
+From a PDF book reads every stat block in a book at once. The picker hands over only the file's
+path, and the extraction process reads the file itself, so a 300MB book never crosses into the
+window. That process lays the text out a second time for monsters: each line carries the font it
+is set in, and a band starts at a stat block's name when the other column is empty there, which
+keeps a wide two-column box from being read into the lore beside it. The rooms keep the first
+layout untouched. `statBlockBook.js` learns which fonts the book uses for lore and ends a block
+where the text changes to one, and starts an entry where a line opens in a font of its own; plain
+text uses a short heading after a finished sentence for both.
+A module import runs the same finder on its file, so its monsters arrive beside its rooms. Every
+monster is sourced to the file name without its extension, a name already there under that
+source is skipped. A block that does not read clean (no challenge rating, no actions, fewer
+than six scores, an unnamed entry, a credit or caption left inside it) is left out: the import
+names it in one message at the end, whose Import anyway adds it for the DM to fix by hand. A book that does not fit
+in storage is taken back whole.
+
 The fight and the bestiary are one JSON value in localStorage, written as they change and carried
 in backups as `combat.json`; a restore adds entries the bestiary lacks and lands its fight only on
 an empty table. Column widths and where the panel sits are kept apart, as viewing settings. The
 Player window never builds any of it. `combatTracker.js` owns the table and saving,
 `combatStatBlock.js` the editor and the row's popup, `bestiary.js` the window, `statBlockImport.js`
-the queue, `combatPlan.js` the arithmetic and a row's copy.
+the queue and the book import, `combatPlan.js` the arithmetic and a row's copy.
 
 ## Backing up your maps
 

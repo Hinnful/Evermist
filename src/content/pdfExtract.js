@@ -10,7 +10,8 @@
 
 const path = require('path');
 const url = require('url');
-const { plDocumentText } = require('./pdfLayout.js');
+const { plDocumentText, plDocumentBlockText } = require('./pdfLayout.js');
+const { statBlockHeadAt } = require('../combat/statBlockBook.js');
 
 let _pdfjs = null;
 
@@ -51,11 +52,11 @@ async function extractPdfText(bytes, buildDir) {
         const content = await page.getTextContent();
         pages.push({
           width: page.getViewport({ scale: 1 }).width,
-          // Only these four fields cross into the pure layer, which is what keeps
+          // Only these five fields cross into the pure layer, which is what keeps
           // pdfLayout.js free of any pdf.js shape. transform[4]/[5] are the run's x/y.
           items: content.items
             .filter(it => it && typeof it.str === 'string')
-            .map(it => ({ str: it.str, x: it.transform[4], y: it.transform[5], w: it.width || 0 })),
+            .map(it => ({ str: it.str, x: it.transform[4], y: it.transform[5], w: it.width || 0, f: it.fontName })),
         });
       } finally {
         // Without this, every page's operator list is held until the document is
@@ -63,7 +64,7 @@ async function extractPdfText(bytes, buildDir) {
         page.cleanup();
       }
     }
-    return { ok: true, text: plDocumentText(pages), pages: doc.numPages };
+    return { ok: true, text: plDocumentText(pages), blockText: plDocumentBlockText(pages, statBlockHeadAt), pages: doc.numPages };
   } finally {
     await doc.destroy();
   }
@@ -76,7 +77,8 @@ if (process.parentPort) {
     const d = (e && e.data) || {};
     let res;
     try {
-      res = await extractPdfText(d.bytes, d.buildDir);
+      const bytes = d.path ? new Uint8Array(require('fs').readFileSync(d.path)) : d.bytes;
+      res = await extractPdfText(bytes, d.buildDir);
     } catch (err) {
       res = { ok: false, error: String((err && err.message) || err) };
     }

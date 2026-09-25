@@ -6,18 +6,18 @@
 // marked; an unmarked line matching a section name is read as a heading too.
 
 const SB_LABELS = [
-  ['ac', ['armor class', 'класс доспеха', 'класс защиты', 'класс брони', 'кд', 'ac']],
-  ['hp', ['hit points', 'хиты', 'hp']],
+  ['ac', ['armor class', 'класс доспеха', 'класс защиты', 'класс брони', 'кд', 'кб', 'ac']],
+  ['hp', ['hit points', 'хиты', 'пз', 'hp']],
   ['speed', ['speed', 'скорость']],
   ['saves', ['saving throws', 'спасброски']],
   ['skills', ['skills', 'навыки']],
-  ['vuln', ['damage vulnerabilities', 'vulnerabilities', 'уязвимость к урону', 'уязвимости к урону', 'уязвимости']],
-  ['resist', ['damage resistances', 'resistances', 'сопротивление урону', 'сопротивление к урону', 'сопротивления урону', 'сопротивления']],
+  ['vuln', ['damage vulnerabilities', 'vulnerabilities', 'уязвимость к урону', 'уязвимости к урону', 'уязвимости', 'уязвимость']],
+  ['resist', ['damage resistances', 'resistances', 'сопротивление урону', 'сопротивление к урону', 'сопротивления урону', 'сопротивления', 'сопротивление', 'устойчивости', 'устойчивость']],
   ['immune', ['damage immunities', 'condition immunities', 'immunities', 'иммунитет к урону',
-    'иммунитет к состоянию', 'иммунитет к состояниям', 'иммунитеты']],
-  ['senses', ['senses', 'чувства']],
+    'иммунитет к состоянию', 'иммунитет к состояниям', 'иммунитеты', 'иммунитет', 'невосприимчивости', 'невосприимчивость']],
+  ['senses', ['senses', 'чувства', 'восприятие']],
   ['languages', ['languages', 'языки']],
-  ['cr', ['challenge', 'уровень опасности', 'опасность', 'по', 'cr']],
+  ['cr', ['challenge', 'уровень опасности', 'опасность', 'по', 'ко', 'cr']],
   // Read so they are not mistaken for traits, and dropped: the popup has no place for them.
   [null, ['proficiency bonus', 'бонус мастерства', 'initiative', 'инициатива', 'habitat', 'среда обитания',
     'местность обитания', 'места обитания', 'treasure', 'сокровища', 'gear', 'снаряжение', 'инвентарь', 'источник']],
@@ -28,19 +28,19 @@ const SB_SECTIONS = [
   ['Traits', ['traits', 'особенности', 'умения']],
   ['Actions', ['actions', 'действия']],
   ['Bonus actions', ['bonus actions', 'бонусные действия']],
-  ['Reactions', ['reactions', 'реакции']],
+  ['Reactions', ['reactions', 'реакции', 'ответные действия']],
   ['Legendary actions', ['legendary actions', 'легендарные действия']],
   ['Lair actions', ['lair actions', 'действия логова', 'действия в логове']],
 ];
 
-const SB_ABIL = [['STR', 'СИЛ', 'Str', 'Сил'], ['DEX', 'ЛОВ', 'Dex', 'Лов'], ['CON', 'ТЕЛ', 'Con', 'Тел'],
+const SB_ABIL = [['STR', 'СИЛ', 'Str', 'Сил'], ['DEX', 'ЛОВ|ЛВК', 'Dex', 'Лов'], ['CON', 'ТЕЛ|ВЫН', 'Con', 'Тел'],
   ['INT', 'ИНТ', 'Int', 'Инт'], ['WIS', 'МДР', 'Wis', 'Мдр'], ['CHA', 'ХАР', 'Cha', 'Хар']];
 // The page's description is kept as lore; its comments end the block.
 const SB_LORE = /^(description|lore|описание)$/i;
 const SB_END = /^(comments?|комментарии)$/i;
 const SB_LAIR = /^(логово|lair)(\s|$)|['’]s lair$/i;
 const SB_SIGN = '[+\\-−–]';
-const SB_SIZE = /^(tiny|small|medium|large|huge|gargantuan|крошечн|маленьк|средн|больш|огромн|громадн|исполинск)/i;
+const SB_SIZE = /^(tiny|small|medium|large|huge|gargantuan|крошечн|маленьк|небольш|средн|больш|крупн|огромн|громадн|исполинск)/i;
 
 function _sbBlank() {
   return { name: '', meta: '', ac: '', hp: '', speed: '', abil: ['10', '10', '10', '10', '10', '10'],
@@ -53,7 +53,12 @@ function _sbLabel(line) {
     if (!low.startsWith(label)) continue;
     const rest = line.slice(label.length);
     if (rest && !/^[\s:.]/.test(rest)) continue;
-    return { field, value: rest.replace(/^[\s:.]+/, '').trim() };
+    const value = rest.replace(/^[\s:.]+/, '').trim();
+    // The 2024 Russian senses line is "Восприятие", and so is a skill wrapped onto the next line.
+    if (label === 'восприятие' && /^[+\-−]\d/.test(value)) return null;
+    // "Устойчивость к магии. У беса…" is a trait that shares its first word with a label.
+    if ((field === 'resist' || field === 'immune' || field === 'vuln') && /^[^.:;,]{1,40}\.\s+\p{Lu}/u.test(line)) return null;
+    return { field, value };
   }
   return null;
 }
@@ -88,13 +93,13 @@ function _sbAbilities(text) {
   return found.filter(Boolean).length >= 3 ? { found, saves } : null;
 }
 
-const SB_ABIL_TOKEN = new RegExp(`^(?:${SB_ABIL.flatMap(a => a.slice(0, 2)).join('|')}|\\d+|\\(\\s*${SB_SIGN}?\\d+\\s*\\)|${SB_SIGN}\\d+|mod|save|мод|спас|спасбросок|бросок|[\\s,])+$`, 'iu');
+const SB_ABIL_TOKEN = new RegExp(`^(?:${SB_ABIL.flatMap(a => a.slice(0, 2)).join('|')}|\\d+|\\(\\s*${SB_SIGN}?\\d+\\s*\\)|${SB_SIGN}\\d+|mod|save|мод|спас|спасбросок|бросок|исп|[\\s,])+$`, 'iu');
 
 // "Bite. Melee Weapon Attack: ..." names its entry up to the first full stop. A long first
 // sentence, or one with a colon in it, is text: a legendary intro or a spell list.
 function _sbEntry(line, alone) {
-  const m = line.match(/^(.{1,70}?)\.\s+(.*)$/s);
-  if (m && !/:/.test(m[1]) && m[1].split(/\s+/).length <= 9 && /^[\p{Lu}\d]/u.test(m[1])) {
+  const m = line.match(/^(.{1,110}?)\.\s+(.*)$/s);
+  if (m && !/:/.test(m[1]) && m[1].replace(/\([^)]*\)/g, '').trim().split(/\s+/).length <= 9 && /^[\p{Lu}\d+]/u.test(m[1])) {
     return { n: m[1].trim(), t: m[2].trim() };
   }
   // A name alone on its line, of at most `alone` words: a short sentence has the same shape, and
@@ -120,6 +125,7 @@ function statBlockFromLines(input) {
   const b = _sbBlank();
   b.name = lines[0].replace(/^#+\s*/, '').replace(/\s*\[[^\]]*\]\s*$/, '').trim();
   let sec = null, skipping = false, entry = null, seenAbil = false, derivedSaves = [], lore = null, lair = false;
+  let lastField = null, lastVal = '', abilRead = 0;
   const add = (field, value) => { b[field] = b[field] ? `${b[field]}; ${value}` : value; };
 
   for (let i = 1; i < lines.length; i++) {
@@ -154,19 +160,35 @@ function statBlockFromLines(input) {
 
     if (!sec) {
       // A source badge can ride on the size line: "... нейтрально-злой Источник: MM".
-      if (!b.meta && !b.ac && SB_SIZE.test(line)) { b.meta = line.replace(/\s+(источник|source):.*$/i, ''); continue; }
+      if (!b.meta && !b.ac && SB_SIZE.test(line)) { b.meta = line.replace(/\s+(источник|source):.*$/i, ''); lastField = 'meta'; lastVal = b.meta; continue; }
       const abil = !seenAbil && _sbAbilities(line);
       if (abil) {
         abil.found.forEach((v, k) => { if (v) b.abil[k] = v; });
+        abilRead = abil.found.filter(Boolean).length;
         derivedSaves = abil.saves;
         seenAbil = true;
+        lastField = null;
         continue;
       }
       // "Armor Class 17 Initiative +3 (13)": a newer layout sets two labels on one line.
-      line = line.replace(/\s+(initiative|инициатива)\s+\S.*$/i, '');
-      const lab = _sbLabel(line);
+      line = line.replace(/\s+(initiative|инициатива|proficiency bonus|бонус мастерства)[\s:]+\S.*$/i, '');
+      // A label word alone in lower case is the wrapped end of the line above: "понимает известные вам" / "языки".
+      const lab = !(lastField && !lastVal.endsWith('.') && /^\p{Ll}+$/u.test(line)) && _sbLabel(line);
       if (lab) {
         if (lab.field && lab.value) add(lab.field, lab.value);
+        // A label the popup drops still owns the lines it wraps onto.
+        lastField = lab.field || '-';
+        lastVal = lab.value;
+        continue;
+      }
+      // A book wraps a long header line: the rest starts in lower case, follows a comma or a sign,
+      // finishes the size line, or is the value of a label left alone on its line.
+      const open = (lastVal.match(/\(/g) || []).length > (lastVal.match(/\)/g) || []).length;
+      const tail = /\p{Ll}$/u.test(lastVal) && (line.split(' ').length <= 3 || /^\d/.test(line)) && !(/^\p{L}/u.test(line) && _sbEntry(line));
+      if (lastField && (lastField === 'meta' || !lastVal || open || tail || /^[\p{Ll}[(]/u.test(line) || /[,;+×—–-]$/.test(lastVal))) {
+        lastVal = lastVal ? `${lastVal} ${line}` : line;
+        if (lastField !== '-') b[lastField] = b[lastField] ? `${b[lastField]} ${line}` : line;
+        if (lastField === 'meta') lastField = null;
         continue;
       }
       if (!b.ac && !b.hp && !seenAbil) continue;
@@ -187,6 +209,8 @@ function statBlockFromLines(input) {
   if (lore) b.lore = lore.join('\n\n');
   for (const s of Object.keys(b.secs)) if (!b.secs[s].length) delete b.secs[s];
   if (!b.ac && !b.hp && !seenAbil) return null;
+  // Not enumerable, so it never reaches a saved entry.
+  Object.defineProperty(b, 'abilRead', { value: abilRead });
   return b;
 }
 
@@ -276,5 +300,6 @@ function statBlockFromPage(html) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { statBlockFromLines, statBlockFind, statBlockHtmlLines, statBlockFromPage };
+  module.exports = { statBlockFromLines, statBlockFind, statBlockHtmlLines, statBlockFromPage,
+    _sbLabel, _sbSection, _sbEntry, SB_SIZE, SB_ABIL_TOKEN };
 }

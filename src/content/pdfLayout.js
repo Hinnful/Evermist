@@ -40,8 +40,12 @@ function plGroupLines(items, tol) {
     // change, so inserting spaces would break words apart. The runs carry their own spaces,
     // ⚠ INCLUDING RUNS THAT ARE ONLY A SPACE - some books put every space in one.
     const text = l.items.map(i => String(i.str)).join('').replace(/\s+/g, ' ').trim();
+    const chars = new Map();
+    for (const i of l.items) if (i.f) chars.set(i.f, (chars.get(i.f) || 0) + String(i.str).trim().length);
     return {
       text,
+      font: [...chars].sort((a, b) => b[1] - a[1]).map(e => e[0])[0] || '',
+      lead: (l.items.find(i => i.f && String(i.str).trim()) || {}).f || '',
       y: l.y,
       x0: Math.min(...l.items.map(i => i.x)),
       x1: Math.max(...l.items.map(i => i.x + (i.w || 0))),
@@ -64,6 +68,13 @@ function plClassify(item, pageWidth, spanMargin) {
 // right. Without the banding, a heading halfway down the page is read after both columns and its
 // rooms land under the wrong heading.
 function plPageLines(page, opts) {
+  return _plPageLineObjs(page, opts).map(l => l.text);
+}
+
+// How far the other column must be empty around a stat block's name for it to start a band.
+const PL_CUT_CLEAR = 12;
+
+function _plPageLineObjs(page, opts) {
   const o = opts || {};
   const width = (page && page.width) || 0;
   const items = (page && page.items) || [];
@@ -76,15 +87,29 @@ function plPageLines(page, opts) {
   const right = plGroupLines(buckets.right, o.lineTol);
   const span  = plGroupLines(buckets.span,  o.lineTol);
 
+  // A wide two-column stat block box starts a band at its name, or the lore beside it is read into
+  // the block. A block inside one column sits beside running text, which leaves no gap for a band.
+  const cuts = [];
+  if (o.cutAbove) {
+    for (const [col, other] of [[left, right], [right, left]]) {
+      const texts = col.map(l => l.text);
+      col.forEach((l, i) => {
+        const b = l.y + 1;
+        if (o.cutAbove(texts, i) && !other.some(x => Math.abs(x.y - b) < PL_CUT_CLEAR)) cuts.push(b);
+      });
+    }
+  }
+
   // Bands run downward, so boundaries are descending y values.
   const out = [];
   let top = Infinity;
-  for (const boundary of [...span.map(s => s.y), -Infinity]) {
+  const bounds = [...span.map(s => s.y), ...cuts].sort((a, b) => b - a);
+  for (const boundary of [...bounds, -Infinity]) {
     const inBand = l => l.y <= top && l.y > boundary;
-    left.filter(inBand).forEach(l => out.push(l.text));
-    right.filter(inBand).forEach(l => out.push(l.text));
+    left.filter(inBand).forEach(l => out.push(l));
+    right.filter(inBand).forEach(l => out.push(l));
     const s = span.find(x => x.y === boundary);
-    if (s) out.push(s.text);
+    if (s) out.push(s);
     top = boundary;
   }
   return out;
@@ -99,9 +124,18 @@ function plDocumentText(pages, opts) {
     .join('\n');
 }
 
+// The same pages for the stat block finder: each line as "font\u0001first run's font\u0001text", with
+// a band started wherever `cutAbove(columnTexts, i)` names a stat block. The rooms keep
+// plDocumentText untouched.
+function plDocumentBlockText(pages, cutAbove) {
+  return (Array.isArray(pages) ? pages : [])
+    .map(p => _plPageLineObjs(p, { cutAbove }).map(l => `${l.font}\u0001${l.lead}\u0001${l.text}`).join('\n'))
+    .join('\n');
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    plGroupLines, plClassify, plPageLines, plDocumentText,
+    plGroupLines, plClassify, plPageLines, plDocumentText, plDocumentBlockText,
     PL_LINE_TOL, PL_SPAN_MARGIN,
   };
 }

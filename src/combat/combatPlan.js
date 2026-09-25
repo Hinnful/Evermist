@@ -111,15 +111,31 @@ function combatRowHpState(max, rest) {
 }
 
 // A backup's bestiary merges in without doubling an entry already here; its fight lands only on an empty table.
+// An edited entry of the same name is still added, so its edits are not lost.
 function combatMerge(cur, incoming) {
   const blocks = Object.assign({}, cur.blocks);
-  const same = (a, b) => JSON.stringify(combatSnapshot(a)) === JSON.stringify(combatSnapshot(b));
+  const key = b => `${b.name}\u0000${b.source || ''}`;
+  const seen = new Map();
+  const note = b => { const k = key(b); seen.set(k, (seen.get(k) || new Set()).add(JSON.stringify(combatSnapshot(b)))); };
+  Object.values(blocks).forEach(note);
   for (const b of Object.values(incoming.blocks || {})) {
-    if (!Object.values(blocks).some(x => same(x, b))) combatAddEntry(blocks, b);
+    if ((seen.get(key(b)) || new Set()).has(JSON.stringify(combatSnapshot(b)))) continue;
+    note(combatAddEntry(blocks, b));
   }
   let rows = cur.rows, nextId = cur.nextId;
   if (!rows.length) rows = (incoming.rows || []).map(r => Object.assign({}, r, { id: nextId++ }));
   return Object.assign({}, cur, { rows, blocks, nextId });
+}
+
+// A book or module's file name without its extension, so both imports of one file share a source.
+function combatSourceName(fileName) {
+  return String(fileName || '').replace(/\.[^./\\]{1,5}$/, '').trim();
+}
+
+// The blocks an import adds: none already stored under this source, and a name printed twice once.
+function combatNewBlocks(blocks, existing, source) {
+  const taken = new Set(Object.values(existing).filter(b => (b.source || '') === source).map(b => b.name));
+  return blocks.filter(b => !taken.has(b.name) && taken.add(b.name));
 }
 
 // Name matches first, then names that merely contain the query; each group alphabetical.
@@ -136,5 +152,6 @@ function combatSearchBlocks(blocks, query) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { combatHpSum, combatHpState, combatBaseName, combatSortByInit, combatAbilityMod,
     combatBlankBlock, combatFirstNum, combatSetFirstNum, combatUniqueName, combatNextBlockId, combatSnapshot,
-    combatAddEntry, combatRowFromEntry, combatRowHpState, combatMerge, combatSearchBlocks };
+    combatAddEntry, combatRowFromEntry, combatRowHpState, combatMerge, combatSourceName, combatNewBlocks,
+    combatSearchBlocks };
 }

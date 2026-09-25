@@ -82,7 +82,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `render/playerFogPass.js` | The Player's fog: one full-screen GPU pass and its shaders |
 | `render/dmFogLayer.js` | The DM's fog: map-sized sprites, crossfade, cloud mask |
 | `render/render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, `drawCursor` |
-| `fog/fogClouds.js` | The drifting noise texture: one document builds the frame set, siblings copy it |
+| `fog/fogClouds.js` | The drifting noise texture, built once and shared |
 | `fog/fog.js` | Fog canvases, the blur + cloud pipeline, reveal/hide |
 | `fog/fogAnim.js` | Fog on a clock: the drift, the reveal crossfade, the scene cover, the colour ease |
 | `fog/fogControls.js` | The Fog tab's controls: anim presets, sliders, colour, feather, half-shroud, doors |
@@ -104,12 +104,12 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Unit-tested |
 | `shapes/shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
 | `shapes/shapeBox.js` | The bounding box: its handles, rotate and scale |
-| `shapes/shapeClipboard.js` | Copy, paste, duplicate; a clipboard that outlives a scene switch |
+| `shapes/shapeClipboard.js` | Copy, paste, duplicate, across scene switches |
 | `shapes/shapeMenu.js` | The one shape button and its right-click flyout |
 | `ui/input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in `scenes/dragDrop.js`** |
 | `undo.js` | Undo/redo for fog edits |
 | `render/effects.js` | Map effects: the `effects` array's model, and the meshes its render path builds |
-| `render/effectMaterials.js` | One record per material: ramp, warmth, swatch. A new material is a record |
+| `render/effectMaterials.js` | One record per material: ramp, warmth, swatch |
 | `render/effectShader.js` | An effect's two fragment passes and their vertex cap |
 | `render/grid.js` | Grid config + render |
 | `render/gridCalibrate.js` | The calibration square that fits the grid to the map |
@@ -122,15 +122,15 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `scenes/sceneGroups.js` | Group names on scenes; heading order + collapse. Tested |
 | `scenes/sceneStore.js` | IndexedDB read/write |
 | `scenes/mapLoader.js` | Image-map loading + progress-bar helpers |
-| `scenes/mapConvert.js` | Import-time animated-map shrink. `fitInsideBox` unit-tested |
+| `scenes/mapConvert.js` | Animated-map shrink at import. `fitInsideBox` tested |
 | `render/viewport.js` | Pan/zoom, fit, Sync View, the camera a push carries |
-| `player/playerWindow.js` | The Player window: opening, warming, what it is sent |
+| `player/playerWindow.js` | The Player window: opening, warming, what it gets |
 | `player/panes.js` | Two-column mode: the columns, the divider, the messages sent to them |
 | `player/stageWindow.js` | The two-map Player window, DM side |
 | `player/stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
-| `player/minimap.js` | Minimap render + drag/zoom remote, view sync both ways, zoom nudge |
+| `player/minimap.js` | Minimap render, drag/zoom remote, two-way view sync, zoom nudge |
 | `render/video.js` | Animated-map handling |
-| `render/videoDiag.js` | The video diagnostics overlay and its disk log |
+| `render/videoDiag.js` | Video diagnostics overlay and its disk log |
 | `render/display.js` | Display detection |
 | `scenes/backup.js` | Zip backup/restore, including a picked or dropped `.zip` |
 | `scenes/dragDrop.js` | What a file dropped on the DM window becomes |
@@ -147,7 +147,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `ui/about.js` | The About block in the legend footer: mark, version, repo |
 | `ui/changelogData.js` | The release list. GENERATED; never edit it |
 | `ui/changelog.js` | The What’s new panel |
-| `ui/updater.js` | The update toast, the update line under About, and the restart button |
+| `ui/updater.js` | Update toast, About's update line, restart button |
 | `ui/musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Unit-tested |
 | `ui/music.js` | The music bubble: track library and playback |
 | `ui/musicDownload.js` | The Add music panel |
@@ -156,7 +156,8 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `combat/combatTracker.js` | The fight table: rows, name search, saving |
 | `combat/combatStatBlock.js` | The stat block popup |
 | `combat/statBlockParse.js` | Pure stat block parser. Unit-tested |
-| `combat/statBlockImport.js` | The link import queue |
+| `combat/statBlockBook.js` | Pure: a book into stat blocks, and their clean-read gate. Tested |
+| `combat/statBlockImport.js` | The link queue and the book import |
 | `combat/bestiary.js` | The bestiary: table, filters, selection |
 | `combat/bestiaryPage.js` | A bestiary monster's page |
 | `rooms/floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
@@ -208,7 +209,8 @@ ui/colorPicker.js → ui/controlPanel.js → ui/confirmDialog.js → rooms/floor
 content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/roomCard.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicDownload.js → combat/combatPlan.js → combat/bestiaryPlan.js →
-combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockImport.js →
+combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
+combat/statBlockImport.js →
 combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → inline <script>
 ```
 

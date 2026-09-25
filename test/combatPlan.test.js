@@ -95,7 +95,7 @@ describe('combatAbilityMod', () => {
 
 const {
   combatUniqueName, combatMerge, combatSearchBlocks, combatBlankBlock, combatFirstNum, combatSetFirstNum,
-  combatSnapshot, combatAddEntry, combatRowFromEntry, combatRowHpState,
+  combatSnapshot, combatAddEntry, combatRowFromEntry, combatRowHpState, combatSourceName, combatNewBlocks,
 } = require('../src/combat/combatPlan.js');
 
 describe('the bestiary', () => {
@@ -128,6 +128,11 @@ describe('the bestiary', () => {
     const m = combatMerge(cur, { rows: [{ id: 5, name: 'Orc' }], blocks: { b1: orc, b2: Object.assign({}, goblin, { id: 'b2' }) } });
     assert.deepEqual(Object.values(m.blocks).map(b => b.name).sort(), ['Goblin', 'Orc']);
     assert.deepEqual(m.rows.map(r => r.name), ['Goblin']);
+  });
+  it('still adds a backup entry that shares a name but carries edits', () => {
+    const edited = Object.assign({}, goblin, { id: 'b7', hp: '12 (3d6)' });
+    const m = combatMerge({ rows: [], blocks: { b1: goblin }, nextId: 1 }, { rows: [], blocks: { b7: edited, b8: Object.assign({}, goblin, { id: 'b8' }) } });
+    assert.deepEqual(Object.values(m.blocks).map(b => b.name + ' ' + b.hp).sort(), ['Goblin (1) 12 (3d6)', 'Goblin 7 (2d6)']);
   });
   it('lands a backup fight only on an empty table, renumbered', () => {
     const m = combatMerge({ rows: [], blocks: {}, nextId: 1 }, { rows: [{ id: 9, name: 'Skeleton 1' }], blocks: {} });
@@ -185,5 +190,22 @@ describe('the numbers a row shares with its stat block', () => {
   it('reads a row with no max yet as the typed line alone', () => {
     assert.equal(combatRowHpState('', '30 - 5').value, 25);
     assert.equal(combatRowHpState('', '').value, null);
+  });
+});
+
+describe('importing a book or a module', () => {
+  it('names the source after the file, without its extension', () => {
+    assert.equal(combatSourceName('Curse of Strahd.pdf'), 'Curse of Strahd');
+    assert.equal(combatSourceName('Keep.v2.txt'), 'Keep.v2');
+    assert.equal(combatSourceName('AG-MM-v1.1-dc.pdf'), 'AG-MM-v1.1-dc');
+  });
+  it('adds nothing a module import of the same file already added, and each name once', () => {
+    const source = combatSourceName('Curse of Strahd.pdf');
+    const found = [combatBlankBlock(null, 'Rahadin'), combatBlankBlock(null, 'Strahd'), combatBlankBlock(null, 'Strahd')];
+    const blocks = {};
+    for (const b of combatNewBlocks(found, blocks, source)) combatAddEntry(blocks, Object.assign(b, { source }));
+    assert.deepEqual(Object.values(blocks).map(b => b.name), ['Rahadin', 'Strahd']);
+    assert.deepEqual(combatNewBlocks(found, blocks, combatSourceName('Curse of Strahd.pdf')), []);
+    assert.equal(combatNewBlocks(found, blocks, 'Other book').length, 2);
   });
 });

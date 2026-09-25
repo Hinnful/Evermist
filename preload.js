@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // A campaign module ships as a PDF, so the app converts it. Main-process only — the reason is
   // at the top of electron/pdfText.js.
   extractPdfText: (arrayBuffer) => ipcRenderer.invoke('extract-pdf-text', arrayBuffer),
+  extractPdfTextPath: (filePath) => ipcRenderer.invoke('extract-pdf-text-path', filePath),
 
   fetchStatPage: (url) => ipcRenderer.invoke('fetch-stat-page', url),
 

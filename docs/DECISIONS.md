@@ -446,6 +446,34 @@ heading keys, per-entry body lengths), which is a statistics table rather than t
 
 ---
 
+### Stat blocks read a second layout of the book, tagged with fonts · `SETTLED` (2026-09-25)
+The rooms keep `plDocumentText` byte for byte; the stat block finder reads `plDocumentBlockText`,
+where each line carries its dominant font and the font it starts in, and a band starts at a wide
+two-column stat block box. Text shape alone failed on real books: a 2024 box read the lore beside
+it into the block, a sidebar's bold lead-in looked exactly like an action name, and a wrapped name
+merged into the entry above. Fonts separate all three within one book, and the finder learns them
+per book rather than from a list. A diff of room entries on three books before and after showed no
+change.
+
+### A running head needs a climbing page number and a heading font · `SETTLED` (2026-09-25)
+"The same words with a different number" also matched "пассивное Внимание 10" across monsters, and
+a filter on lines repeated ten times deleted common speed and immunity lines. Both were reverted.
+A running head now needs numbers that climb through the book, facing pages when seen only twice,
+and a font that is neither the book's body font nor its lore font.
+
+### A stat block that does not read clean is left out · `SETTLED` (2026-09-25)
+No challenge rating, no actions, fewer than six scores, an unnamed entry, or a credit, caption or
+callout number left inside it: the import leaves the block out and names it, with Import anyway.
+A half-read monster that looks whole is worse than a gap, because nothing prompts a fix; the link
+import and the editor fill a gap. A monster with no actions is left out too: the bestiary feeds the
+fight table, and a creature with nothing to do in a fight is narrative or a misprint.
+
+### A book is read from its path · `SETTLED` (2026-09-25)
+The Monster Manual PDF is 305 MB. The book import hands `getPathForFile`'s path to the extraction
+process, which reads the file itself, so the bytes never cross IPC; the module import still sends
+bytes. A module text store of 2M characters and a whole bestiary fit in this app's localStorage,
+measured at about 50M characters.
+
 ## Player sync and the minimap
 
 ### A view crosses the wire as a region, not a zoom · `SETTLED`

@@ -98,7 +98,8 @@ decode.
   main process. It can't go in the renderer either: pdfjs-dist is ESM-only.
 - electron/pdfText.js resolves the pdfjs directory and hands it to the child. It is the only place that
   knows the asar rewrite. Handle all three of `message`, `exit` and the timeout.
-- **Bytes cross as an ArrayBuffer, never a path.** Electron removed `File.path` in v32.
+- **Bytes cross as an ArrayBuffer, or a `getPathForFile` path; never `File.path`.** Electron removed
+  `File.path` in v32. The book import sends a path so 300MB never crosses IPC.
 - Keep `pdfLayout.js` dependency-free.
 - **COLUMNS FIRST, THEN LINES.** A two-column page's left and right lines share a baseline,
   so grouping by `y` first interleaves the columns sentence by sentence. Spanning lines cut

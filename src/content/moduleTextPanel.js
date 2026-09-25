@@ -104,17 +104,22 @@ function _mtBinaryKind(text) {
 }
 
 // Parse and STORE in one step. ⚠ An empty parse writes nothing: that loss is unrecoverable.
-function _mtImport(text, sourceName) {
+// The module's stat blocks go to the bestiary too; `blockText` is a PDF's copy laid out for them.
+function _mtImport(text, sourceName, blockText) {
   const res = parseModuleText(text);
   const n = res.entries.length;
+  const mon = cbImportBookText(blockText || text, sourceName || 'Module text');
+  const monLine = mon.added.length ? ` ${mon.added.length} monster${mon.added.length === 1 ? '' : 's'} added to the bestiary.` : '';
+  cbReportImport(mon);
   if (!n) {
+    if (monLine) { _mtRenderModal('No numbered locations in that file.' + monLine); return; }
     _mtRenderModal('No numbered locations in that file. Evermist splits the text at headings ' +
                    'like “K12. Chapel”, so try one chapter at a time.', true);
     return;
   }
   const st = mtStore(res.entries, sourceName || 'Module text');
   if (!st.ok) { _mtRenderModal(st.error, true); return; }
-  _mtRenderModal();
+  _mtRenderModal(monLine ? `${n} location${n === 1 ? '' : 's'} from ${mtSourceName}.${monLine}` : null);
 }
 
 function _mtInitModal() {
@@ -162,7 +167,7 @@ function _mtInitModal() {
           _mtRenderModal('Could not read that PDF' + (res && res.error ? ': ' + res.error : '.'), true);
           return;
         }
-        _mtImport(res.text, f.name);
+        _mtImport(res.text, f.name, res.blockText);
         return;
       }
 

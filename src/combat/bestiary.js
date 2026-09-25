@@ -44,7 +44,7 @@ function _bsCell(b, k) {
 function _bsTableHtml(list) {
   if (!list.length) {
     return `<div class="bs-empty"><b>${_bsAll().length ? 'Nothing matches' : 'No monsters yet'}</b>${
-      _bsAll().length ? 'Loosen a filter, or <button class="bs-link" data-a="clear">clear them all</button>.' : 'Import one from a link, or add a new one.'}</div>`;
+      _bsAll().length ? 'Loosen a filter, or <button class="bs-link" data-a="clear">clear them all</button>.' : 'Import from a link or a PDF book, or add a new one.'}</div>`;
   }
   const cols = bs.open ? BS_COLS.filter(c => BS_NARROW.includes(c[0])) : BS_COLS;
   const arrow = k => bs.sort.k === k ? (bs.sort.d > 0 ? ' ↑' : ' ↓') : '';
@@ -91,8 +91,8 @@ function bestiaryRender() {
     + (bsFiltered(bs.f) ? '<button class="bs-link" data-a="clear">Clear all</button>' : '');
   panel.querySelector('.bs-shown').textContent = `${list.length} of ${_bsAll().length}`;
   const queue = _bsEl('bs-queue');
-  queue.innerHTML = _bsQueueHtml();
-  queue.style.display = cbImportQueue.length ? '' : 'none';
+  queue.innerHTML = (cbBookReading ? `<div class="bs-q"><span class="bs-spin"></span><span class="u">Reading ${_cbEsc(cbBookReading)}…</span></div>` : '') + _bsQueueHtml();
+  queue.style.display = cbImportQueue.length || cbBookReading ? '' : 'none';
   const table = _bsEl('bs-table'), top = table.scrollTop;
   table.innerHTML = _bsTableHtml(list);
   table.scrollTop = top;
@@ -166,17 +166,28 @@ function _bsImportMenu(anchor) {
   el.className = 'bs-pop bs-menu';
   el.innerHTML = `<div class="it" data-m="links">Paste links<small>One or many monster pages, from any site</small></div>
     <div class="it" data-m="file">From a file<small>Monsters exported from Evermist</small></div>
-    <div class="it off">From a PDF book<small>Later: every stat block in the book, ticked before import</small></div>`;
+    <div class="it${cbBookReading ? ' off' : ''}" data-m="book">From a PDF book<small>Every stat block in the book or module</small></div>`;
   el.addEventListener('click', e => {
     const m = e.target.closest('[data-m]');
     if (!m) return;
     _bsClosePop();
     if (m.dataset.m === 'file') { _bsEl('bs-file').click(); return; }
+    if (m.dataset.m === 'book') {
+      if (cbBookReading) return;
+      _bsEl('bs-book').value = '';
+      _bsEl('bs-book').click();
+      return;
+    }
     bs.importing = true;
     bestiaryRender();
     _bsEl('bs-links').focus();
   });
   _bsPlace(el, anchor);
+}
+
+function bestiaryMarkNew(ids) {
+  ids.forEach(id => bs.fresh.add(id));
+  bestiaryRender();
 }
 
 // An import has landed: its row is marked NEW and its page opens so the DM sees what was read.
@@ -337,6 +348,7 @@ function initBestiary() {
     <div id="bs-queue" class="bs-queue" style="display:none"></div>
     <div class="bs-wrap"><div id="bs-table"></div><div id="bs-page" style="display:none"></div></div>
     <input type="file" id="bs-file" accept=".json,application/json" style="display:none">
+    <input type="file" id="bs-book" accept=".pdf,application/pdf" style="display:none">
   </div>`;
   document.body.appendChild(modal);
   const panel = _bsEl('bs-panel');
@@ -412,5 +424,8 @@ function initBestiary() {
     const file = e.target.files[0];
     e.target.value = '';
     if (file) _bsImportFile(file);
+  });
+  _bsEl('bs-book').addEventListener('change', e => {
+    if (e.target.files[0]) cbImportBook(e.target.files[0], bestiaryRender);
   });
 }

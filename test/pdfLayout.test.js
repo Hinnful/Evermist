@@ -216,3 +216,46 @@ describe('pdfLayout feeding moduleText', () => {
     assert.doesNotMatch(entries[0].body, /верхнего этажа/);
   });
 });
+
+// ─── The stat block copy of the text ──────────────────────────────────────────
+//
+// Geometry from the 2024 Monster Manual: lore in both columns up top, then a wide stat block box
+// whose own two columns start lower down, leaving a gap in the right column at the box's name.
+describe('plDocumentBlockText', () => {
+  const { plDocumentBlockText } = require('../src/content/pdfLayout.js');
+  const { statBlockHeadAt } = require('../src/combat/statBlockBook.js');
+  const f = (str, x, y, font) => Object.assign(run(str, x, y, 200), { f: font });
+  const box = {
+    width: W,
+    items: [
+      f('Лор слева один', 50, 700, 'L'), f('Лор слева два', 50, 689, 'L'),
+      f('Лор справа один', 320, 700, 'L'), f('Лор справа два', 320, 689, 'L'),
+      f('Болотный зверь', 50, 640, 'H'), f('Крупная Бестия, Хаотичная Злая', 50, 626, 'S'),
+      f('КБ 15', 50, 613, 'S'), f('ПЗ 45 (6d10 + 12)', 50, 603, 'S'),
+      f('Действия', 320, 610, 'S'), f('Укус. Бросок атаки: +6.', 320, 596, 'S'),
+    ],
+  };
+  const texts = s => s.split('\n').map(l => l.split('\u0001').pop());
+  test('reads the lore above a wide box before the box, each column in turn', () => {
+    assert.deepEqual(texts(plDocumentBlockText([box], statBlockHeadAt)), [
+      'Лор слева один', 'Лор слева два', 'Лор справа один', 'Лор справа два',
+      'Болотный зверь', 'Крупная Бестия, Хаотичная Злая', 'КБ 15', 'ПЗ 45 (6d10 + 12)',
+      'Действия', 'Укус. Бросок атаки: +6.',
+    ]);
+  });
+  test('tags each line with the font most of its letters use, then the font it starts in', () => {
+    const name = Object.assign(run('Укус.', 320, 580, 30), { f: 'B' });
+    const rest = Object.assign(run(' Бросок атаки: +6.', 350, 580, 150), { f: 'S' });
+    const out = plDocumentBlockText([{ width: W, items: [name, rest] }], statBlockHeadAt);
+    assert.equal(out, 'S\u0001B\u0001Укус. Бросок атаки: +6.');
+  });
+  test('leaves the rooms text alone', () => {
+    assert.equal(plDocumentText([box]).split('\n')[2], 'Болотный зверь');
+  });
+  test('cuts no band beside a block inside one column, where the other column runs on', () => {
+    const inColumn = { width: W, items: box.items.slice(4, 8).concat(
+      [700, 689, 678, 667, 656, 645, 634, 623, 612, 601].map((y, i) => f(`Текст справа ${i}`, 320, y, 'L'))) };
+    const out = texts(plDocumentBlockText([inColumn], statBlockHeadAt));
+    assert.deepEqual(out.slice(0, 4), ['Болотный зверь', 'Крупная Бестия, Хаотичная Злая', 'КБ 15', 'ПЗ 45 (6d10 + 12)']);
+  });
+});

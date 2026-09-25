@@ -22,16 +22,20 @@ function cbZoom() {
 
 // ── Saving ───────────────────────────────────────────────────────────────────
 
-function cbSave() {
+// `quiet`: the caller reports a failure itself, and later saves still get their own dialog.
+function cbSave(quiet) {
   clearTimeout(_cbSaveTimer);
   _cbSaveTimer = null;
   try {
     localStorage.setItem(CB_KEY, JSON.stringify(cbState));
+    return true;
   } catch (err) {
+    if (quiet) return false;
     console.error('Saving the fight failed:', err);
     // Once per session: a full store would otherwise raise a dialog on every keystroke.
     if (!_cbSaveFailed) messageDialog({ title: 'The fight is not being saved', message: 'Evermist could not write the fight table to disk, so it will be gone after a restart.\n\n' + (err.message || err) });
     _cbSaveFailed = true;
+    return false;
   }
 }
 function cbSaveSoon() {

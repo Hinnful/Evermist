@@ -67,7 +67,8 @@ and names the players only so the turn order can be read out; a player's charact
 player's own. No dice roll anywhere, because the table has real ones. No turn marker and no
 rounds until something counts turns. The bestiary holds every stat block and is the source the
 fight copies from; nothing in a fight changes it unless saved back as a new entry. Stat blocks
-import from any monster page; importing from a book is deferred. Notes for a scene with no rooms,
+import from any monster page, and every one a book or module prints reads in at once; one that
+does not read clean, or has no actions, is left out and named. Notes for a scene with no rooms,
 such as a wilderness, belong to the same work.
 
 ### Map effects are areas, not creatures · `SETTLED` (scope call)
