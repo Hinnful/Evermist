@@ -88,11 +88,17 @@
     "electron/pdfText.js": 2752,
     "electron/updates.js": 2917,
     "electron/videoFiles.js": 4216,
-    "main.js": 13242,
-    "preload.js": 6111,
+    "main.js": 13273,
+    "preload.js": 6282,
     "src/shapes/shapeMarkers.js": 2310,
-    "src/combat/combatPlan.js": 1982,
-    "src/combat/combatStatBlock.js": 6532,
-    "src/combat/combatTracker.js": 18015
+    "src/combat/combatPlan.js": 6062,
+    "src/combat/combatStatBlock.js": 8004,
+    "src/combat/combatTracker.js": 20925,
+    "src/combat/statBlockParse.js": 14628,
+    "electron/statBlockFetch.js": 3611,
+    "src/combat/statBlockImport.js": 2424,
+    "src/combat/bestiary.js": 21702,
+    "src/combat/bestiaryPlan.js": 7331,
+    "src/combat/bestiaryPage.js": 4963
   }
 }

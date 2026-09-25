@@ -13,6 +13,24 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### A fight row owns a copy of its stat block · `SETTLED` (2026-09-25)
+
+Reverses "numbered copies share one stat block" in the entry below. The bestiary is the source of
+truth and the fight table a snapshot of it: a pick copies the entry, and nothing in the fight
+writes back except Save to Bestiary, which always adds a new entry. Sharing one block between
+copies was dropped because an edit to one copy is meant to reach that copy alone, which makes the
+sharing invisible. Max HP belongs to the copy and is not typable in the row.
+
+### The bestiary is a table beside a one-column page · `SETTLED` (2026-09-25)
+
+Rejected layouts: a floating list panel, a list with the page inside a scene-library window, and a
+full-window wiki with the stat block as an infobox. Rejected for the page: two columns, gold
+highlights, number rows without boxes, printed-block lines, and every number the same size. Kept:
+the system blue, AC and HP as the two large boxes, Initiative and Speed as smaller horizontal
+boxes, ability cards keyed once in a caption, a sign hung outside the digits so they centre, and
+an icon group in the page head that becomes an Editing strip. A floating Edit button was rejected
+because it covers text while scrolling.
+
 ### The fight table is a spreadsheet grid in a floating panel · `SETTLED` (2026-09-24)
 
 Eleven prototypes led here. Rejected: a text-only list that opened a field on click (HP must be

@@ -552,15 +552,33 @@ test suite: synthetic fixtures validated the wrong parser twice.
 
 The crossed-swords button beside Two maps opens a table for the fight in progress: a row per
 creature with initiative, name, HP, AC and conditions. There is one fight for the whole app, so
-it stays put through a scene switch, two maps at once and a restart. The HP cell keeps what was
-typed, "45 - 9 - 12", and shows its total beside it; the first number is the maximum, so the row
-reads as bloodied at half and greys out at zero. Rows move by a grip on their left edge, and a
-click on the Init header sorts them once. OPEN on a name shows that creature's stat block,
-edited in place and filed by the name without its copy number, so four skeletons share one.
-The fight and every stat block are one JSON value in localStorage, written as they change and
-carried in backups as `combat.json`; column widths and where the panel sits are kept apart, as
-viewing settings. The Player window never builds any of it. `combatTracker.js` owns the table
-and saving, `combatStatBlock.js` the stat block, `combatPlan.js` the arithmetic.
+it stays put through a scene switch, two maps at once and a restart. The HP cell shows the
+creature's max HP as a fixed number and keeps what was typed after it, "- 9 - 12", with the total
+beside it; the row reads as bloodied at half and greys out at zero. Rows move by a grip on their
+left edge, and a click on the Init header sorts them once. OPEN on a name shows that row's stat
+block, edited in place.
+
+A row owns a copy of its stat block. Typing in a name field offers matching bestiary entries; a
+pick copies the entry into the row, and after that the two never affect each other. The row's
+name without its copy number, its AC and its max HP are the copy's own fields, so an edit on
+either side shows on both. A hand-typed row starts from an empty copy. Save to Bestiary
+lights after any edit to a copy and adds it to the bestiary as a new entry.
+
+The bestiary is the DM's list of every monster, opened by the Bestiary button: a sortable
+table, a name search and filters that read size, type and alignment in English or Russian
+as one vocabulary (`bestiaryPlan.js`), and the picked monster's page beside it (`bestiaryPage.js`),
+read-only until Edit swaps in the stat block editor. Links pasted in go through a queue one at a
+time; each is fetched in a hidden window that waits until the page text stops changing, so a site
+that draws its stat block with its own scripts reads whole. `statBlockParse.js` finds the block by
+its Armor Class line and keeps the page's description as lore, a lair set inside it as lair
+actions. Export writes picked entries to a file and From a file adds them back.
+
+The fight and the bestiary are one JSON value in localStorage, written as they change and carried
+in backups as `combat.json`; a restore adds entries the bestiary lacks and lands its fight only on
+an empty table. Column widths and where the panel sits are kept apart, as viewing settings. The
+Player window never builds any of it. `combatTracker.js` owns the table and saving,
+`combatStatBlock.js` the editor and the row's popup, `bestiary.js` the window, `statBlockImport.js`
+the queue, `combatPlan.js` the arithmetic and a row's copy.
 
 ## Backing up your maps
 

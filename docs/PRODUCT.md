@@ -65,8 +65,10 @@ table is its first shape: one fight for the whole app, a row per creature with i
 HP typed as a running sum, AC and conditions, and a stat block per creature. It holds monsters
 and names the players only so the turn order can be read out; a player's character sheet is the
 player's own. No dice roll anywhere, because the table has real ones. No turn marker and no
-rounds until something counts turns. Importing stat blocks from a book or a site is wanted and
-deferred. Notes for a scene with no rooms, such as a wilderness, belong to the same work.
+rounds until something counts turns. The bestiary holds every stat block and is the source the
+fight copies from; nothing in a fight changes it unless saved back as a new entry. Stat blocks
+import from any monster page; importing from a book is deferred. Notes for a scene with no rooms,
+such as a wilderness, belong to the same work.
 
 ### Map effects are areas, not creatures · `SETTLED` (scope call)
 Difficult terrain, persistent damage zones, light radius, Wall of Fire. No identity, no turn

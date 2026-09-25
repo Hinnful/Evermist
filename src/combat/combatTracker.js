@@ -60,12 +60,7 @@ function cbBackupPayload() {
 function cbMergePayload(json) {
   let d;
   try { d = JSON.parse(json); } catch (err) { return { ok: false, error: 'The fight in this backup could not be read.' }; }
-  for (const [name, block] of Object.entries(d.blocks || {})) {
-    if (!cbState.blocks[name]) cbState.blocks[name] = block;
-  }
-  if (!cbState.rows.length && Array.isArray(d.rows)) {
-    cbState.rows = d.rows.map(r => Object.assign({}, r, { id: cbState.nextId++ }));
-  }
+  cbState = combatMerge(cbState, { rows: Array.isArray(d.rows) ? d.rows : [], blocks: d.blocks || {} });
   cbSave();
   cbRender();
   return { ok: true };
@@ -89,13 +84,13 @@ function cbRender() {
   if (!list) return;
   const shown = cbStatRowId();
   list.innerHTML = cbState.rows.map(r => {
-    const hp = combatHpState(r.hp);
+    const max = combatFirstNum(cbRowBlock(r).hp), hp = combatRowHpState(max, r.hp);
     const cls = ['cb-row', 'side-' + r.side, hp.down ? 'down' : '', hp.bloodied ? 'bloodied' : '', r.id === shown ? 'shown' : ''].join(' ');
     return `<div class="${cls}" data-id="${r.id}">
       <span class="cb-rowgrip" title="Drag to move">${CB_ICON_ROWGRIP}</span>
       <div class="cb-cell num init"><input data-f="init" value="${_cbEsc(r.init)}" inputmode="numeric" spellcheck="false"></div>
       <div class="cb-cell name"><input data-f="name" value="${_cbEsc(r.name)}" placeholder="Name" spellcheck="false"><button class="cb-open" data-open>OPEN</button></div>
-      <div class="cb-cell hp"><input data-f="hp" value="${_cbEsc(r.hp)}" spellcheck="false"><span class="sum">${_cbSumText(hp.value)}</span></div>
+      <div class="cb-cell hp">${max ? `<span class="max" title="Max HP, from the stat block">${max}</span>` : ''}<input data-f="hp" value="${_cbEsc(r.hp)}" spellcheck="false"><span class="sum">${_cbSumText(hp.value)}</span></div>
       <div class="cb-cell num"><input data-f="ac" value="${_cbEsc(r.ac)}" inputmode="numeric" spellcheck="false"></div>
       <div class="cb-cell cond" data-cond>${_cbCondCell(r)}</div>
       <button class="cb-iconbtn del" data-del title="Remove">${CB_ICON_DEL}</button>
@@ -104,13 +99,36 @@ function cbRender() {
 }
 
 function _cbAddRow(side) {
-  const r = { id: cbState.nextId++, init: '', name: '', hp: '', ac: '', conds: [], side };
+  const r = { id: cbState.nextId++, init: '', name: '', hp: '', ac: '', conds: [], side, sbChanged: false };
   cbState.rows.push(r);
   cbSave();
   cbRender();
   const inp = document.querySelector(`#cb-list .cb-row[data-id="${r.id}"] [data-f="name"]`);
   inp.focus();
   inp.scrollIntoView({ block: 'nearest' });
+}
+
+// A row edit is an edit to its copy: the popup, if it shows this row, follows without redrawing.
+function _cbRowEdited(r, field) {
+  r.sbChanged = true;
+  if (cbStatRowId() !== r.id) return;
+  const pop = document.getElementById('cb-stat');
+  const f = pop.querySelector(`[data-p="${field}"]`);
+  if (f) f.textContent = r.sb[field];
+  const btn = pop.querySelector('[data-save]');
+  btn.disabled = false;
+  btn.textContent = 'Save to Bestiary';
+}
+
+// A row with no max HP yet gives its first typed number to the stat block, which then holds it.
+function _cbTakeMax(r) {
+  const sb = cbRowBlock(r);
+  if (combatFirstNum(sb.hp)) return;
+  const m = String(r.hp).trim().match(/^(\d+)\s*(.*)$/);
+  if (!m) return;
+  sb.hp = m[1];
+  r.hp = m[2];
+  _cbRowEdited(r, 'hp');
 }
 
 function _cbRemoveRow(r) {
@@ -288,7 +306,7 @@ function cbSetOpen(open) {
   document.getElementById('btn-combat').classList.toggle('active', open);
   if (open) { cbRender(); _cbPlaceFight(el); return; }
   cbCloseMenu();
-  cbCloseStat();
+  if (cbStatRowId()) cbCloseStat();
 }
 
 function initCombatTracker() {
@@ -325,12 +343,18 @@ function initCombatTracker() {
     const f = e.target.dataset.f, r = _cbRowOf(e.target);
     if (!f || !r) return;
     r[f] = e.target.value;
+    const sb = cbRowBlock(r);
     if (f === 'hp') {
-      const hp = combatHpState(r.hp), rowEl = e.target.closest('.cb-row');
+      const hp = combatRowHpState(combatFirstNum(sb.hp), r.hp), rowEl = e.target.closest('.cb-row');
       e.target.nextElementSibling.textContent = _cbSumText(hp.value);
       rowEl.classList.toggle('bloodied', hp.bloodied);
     }
-    if (f === 'name' && cbStatRowId() === r.id) cbOpenStat(r);
+    if (f === 'ac') { sb.ac = combatSetFirstNum(sb.ac, r.ac.trim()); _cbRowEdited(r, 'ac'); }
+    if (f === 'name') {
+      sb.name = combatBaseName(r.name);
+      _cbRowEdited(r, 'name');
+      _cbSuggest(e.target, r);
+    }
     cbSaveSoon();
   });
   list.addEventListener('focusin', e => {
@@ -338,10 +362,16 @@ function initCombatTracker() {
     const i = e.target;
     setTimeout(() => i.setSelectionRange(i.value.length, i.value.length));
   });
-  list.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset.f) e.target.blur(); });
+  list.addEventListener('keydown', e => {
+    if (_cbSuggestKey(e)) return;
+    if (e.key === 'Enter' && e.target.dataset.f) e.target.blur();
+  });
   // Grey-out waits until the field is left, so a row never changes under the caret.
   list.addEventListener('focusout', e => {
     if (!e.target.dataset.f) return;
+    _cbSuggestClose();
+    const r = _cbRowOf(e.target);
+    if (r && e.target.dataset.f === 'hp') _cbTakeMax(r);
     cbSave();
     setTimeout(() => { if (!list.contains(document.activeElement)) cbRender(); });
   });
@@ -376,4 +406,60 @@ function initCombatTracker() {
   document.getElementById('btn-combat').addEventListener('click', () => cbSetOpen(fight.style.display !== 'block'));
 
   initCombatStatBlock();
+  initBestiary();
+}
+
+// ── The name field's suggestions from the bestiary ───────────────────────────
+
+let _cbSug = null;   // { row, items, at, el }
+
+function _cbSuggest(input, row) {
+  _cbSuggestClose();
+  const q = input.value.trim();
+  const items = q ? combatSearchBlocks(cbState.blocks, q).slice(0, 8) : [];
+  if (!items.length) return;
+  const el = document.createElement('div');
+  el.className = 'cb-menu';
+  el.id = 'cb-suggest';
+  el.innerHTML = items.map((b, i) => `<div data-i="${i}" class="${i ? '' : 'on'}">${_cbEsc(b.name)}<span class="src">${_cbEsc(b.source || '')}</span></div>`).join('');
+  // mousedown, not click: the field's blur would close the list first.
+  el.addEventListener('mousedown', e => {
+    e.preventDefault(); e.stopPropagation();
+    const d = e.target.closest('[data-i]');
+    if (d) _cbSuggestPick(+d.dataset.i);
+  });
+  document.body.appendChild(el);
+  const z = cbZoom(), r = input.getBoundingClientRect();
+  el.style.left = (r.left / z) + 'px';
+  el.style.top = ((r.bottom + 4) / z) + 'px';
+  _cbSug = { row, items, at: 0, el };
+}
+
+function _cbSuggestClose() {
+  if (_cbSug) _cbSug.el.remove();
+  _cbSug = null;
+}
+
+function _cbSuggestKey(e) {
+  if (!_cbSug) return false;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    _cbSug.at = (_cbSug.at + (e.key === 'ArrowDown' ? 1 : -1) + _cbSug.items.length) % _cbSug.items.length;
+    _cbSug.el.querySelectorAll('[data-i]').forEach((d, i) => d.classList.toggle('on', i === _cbSug.at));
+    return true;
+  }
+  if (e.key === 'Enter') { e.preventDefault(); _cbSuggestPick(_cbSug.at); return true; }
+  if (e.key === 'Escape') { e.stopPropagation(); _cbSuggestClose(); return true; }
+  return false;
+}
+
+// A pick replaces the row with a fresh copy of the entry, dropping whatever the row held.
+function _cbSuggestPick(i) {
+  const { row, items } = _cbSug;
+  _cbSuggestClose();
+  Object.assign(row, combatRowFromEntry(items[i], cbState.rows.filter(r => r !== row)));
+  cbSave();
+  if (cbStatRowId() === row.id) cbOpenStat(row);
+  document.activeElement.blur();
+  cbRender();
 }

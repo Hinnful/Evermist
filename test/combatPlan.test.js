@@ -92,3 +92,98 @@ describe('combatAbilityMod', () => {
     assert.equal(combatAbilityMod(''), '');
   });
 });
+
+const {
+  combatUniqueName, combatMerge, combatSearchBlocks, combatBlankBlock, combatFirstNum, combatSetFirstNum,
+  combatSnapshot, combatAddEntry, combatRowFromEntry, combatRowHpState,
+} = require('../src/combat/combatPlan.js');
+
+describe('the bestiary', () => {
+  const goblin = Object.assign(combatBlankBlock('b1', 'Goblin'), { source: 'dnd.su', ac: '15 (leather armor)', hp: '7 (2d6)' });
+  it('lets a name repeat under another source, and numbers it under the same one', () => {
+    const blocks = { b1: goblin };
+    assert.equal(combatUniqueName(blocks, 'Goblin', 'dndbeyond.com'), 'Goblin');
+    assert.equal(combatUniqueName(blocks, 'Goblin', 'dnd.su'), 'Goblin (1)');
+    blocks.b2 = Object.assign(combatBlankBlock('b2', 'Goblin (1)'), { source: 'dnd.su' });
+    assert.equal(combatUniqueName(blocks, 'Goblin', 'dnd.su'), 'Goblin (2)');
+  });
+  it('adds an entry under a fresh id and a name that does not clash', () => {
+    const blocks = { b1: goblin };
+    const e = combatAddEntry(blocks, goblin);
+    assert.equal(e.id, 'b2');
+    assert.equal(e.name, 'Goblin (1)');
+    assert.equal(blocks.b1.name, 'Goblin');
+  });
+  it('copies an entry so that no edit on either side reaches the other', () => {
+    const c = combatSnapshot(goblin);
+    c.secs.Actions = [{ n: 'Scimitar.', t: '' }];
+    c.abil[0] = '18';
+    assert.deepEqual(goblin.secs, {});
+    assert.equal(goblin.abil[0], '10');
+    assert.equal(c.id, undefined);
+  });
+  it('merges a backup without doubling an entry it already has', () => {
+    const cur = { rows: [{ id: 1, name: 'Goblin' }], blocks: { b1: goblin }, nextId: 2 };
+    const orc = Object.assign(combatBlankBlock('b1', 'Orc'), { ac: '13' });
+    const m = combatMerge(cur, { rows: [{ id: 5, name: 'Orc' }], blocks: { b1: orc, b2: Object.assign({}, goblin, { id: 'b2' }) } });
+    assert.deepEqual(Object.values(m.blocks).map(b => b.name).sort(), ['Goblin', 'Orc']);
+    assert.deepEqual(m.rows.map(r => r.name), ['Goblin']);
+  });
+  it('lands a backup fight only on an empty table, renumbered', () => {
+    const m = combatMerge({ rows: [], blocks: {}, nextId: 1 }, { rows: [{ id: 9, name: 'Skeleton 1' }], blocks: {} });
+    assert.deepEqual(m.rows.map(r => r.id), [1]);
+    assert.equal(m.nextId, 2);
+  });
+  it('searches names that start with the query first', () => {
+    const blocks = { b1: goblin, b2: Object.assign(combatBlankBlock('b2', 'Hobgoblin'), { ac: '18' }),
+      b3: combatBlankBlock('b3', 'Ogre') };
+    assert.deepEqual(combatSearchBlocks(blocks, 'gob').map(b => b.name), ['Goblin', 'Hobgoblin']);
+  });
+});
+
+describe('a row picked from the bestiary', () => {
+  const skeleton = Object.assign(combatBlankBlock('b4', 'Skeleton'), { ac: '13 (armor scraps)', hp: '13 (2d8+4)' });
+  it('takes the name, AC and a copy of the stat block, at full HP with no conditions', () => {
+    const r = combatRowFromEntry(skeleton, []);
+    assert.equal(r.name, 'Skeleton');
+    assert.equal(r.ac, '13');
+    assert.equal(r.hp, '');
+    assert.deepEqual(r.conds, []);
+    assert.equal(r.sbChanged, false);
+    r.sb.ac = '17';
+    assert.equal(skeleton.ac, '13 (armor scraps)');
+  });
+  it('numbers the second copy of a monster already in the fight', () => {
+    assert.equal(combatRowFromEntry(skeleton, [{ name: 'Skeleton' }]).name, 'Skeleton 2');
+    assert.equal(combatRowFromEntry(skeleton, [{ name: 'Skeleton' }, { name: 'Skeleton 2' }]).name, 'Skeleton 3');
+    assert.equal(combatRowFromEntry(skeleton, [{ name: 'Ghoul' }]).name, 'Skeleton');
+  });
+});
+
+describe('the numbers a row shares with its stat block', () => {
+  it('reads the first number of a line', () => {
+    assert.equal(combatFirstNum('15 (leather armor)'), '15');
+    assert.equal(combatFirstNum('Hit Points 45 (6d8+18)'), '45');
+    assert.equal(combatFirstNum(''), '');
+  });
+  it('writes a row number back and keeps the rest of the line', () => {
+    assert.equal(combatSetFirstNum('15 (leather armor)', '17'), '17 (leather armor)');
+    assert.equal(combatSetFirstNum('', '12'), '12');
+    assert.equal(combatSetFirstNum('natural armor', '12'), '12');
+    assert.equal(combatSetFirstNum('15 (leather armor)', ''), '(leather armor)');
+  });
+  it('counts damage and healing from the stat block max', () => {
+    assert.equal(combatRowHpState('45', '').value, 45);
+    assert.equal(combatRowHpState('45', '- 9 - 12').value, 24);
+    assert.equal(combatRowHpState('45', '-30').bloodied, true);
+    assert.equal(combatRowHpState('45', '+ 5').share, 1);
+    assert.equal(combatRowHpState('45', '-45').down, true);
+  });
+  it('shows a line that does not start with a sign as unreadable, not as a bigger number', () => {
+    assert.ok(Number.isNaN(combatRowHpState('45', '9').value));
+  });
+  it('reads a row with no max yet as the typed line alone', () => {
+    assert.equal(combatRowHpState('', '30 - 5').value, 25);
+    assert.equal(combatRowHpState('', '').value, null);
+  });
+});

@@ -42,8 +42,7 @@ or two maps at a time.
 
 ## What ships in the build
 
-`package.json` `build.files` lists each shipped path. Three entries are globs: `src/**/*.js`,
-`src/css/**/*.css` and `electron/**/*.js`; the rest name one file each.
+`package.json` `build.files` lists what ships.
 
 - A new `.js` under `src/` or `electron/`, or a `.css` in `src/css/`, ships automatically.
   Anything else needs its own entry.
@@ -152,9 +151,14 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `ui/musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Unit-tested |
 | `ui/music.js` | The music bubble: track library and playback |
 | `ui/musicDownload.js` | The Add music panel |
-| `combat/combatPlan.js` | Pure fight-table kernel: HP sum, initiative order. Unit-tested |
-| `combat/combatTracker.js` | The fight table: its rows, saving, the button that opens it |
-| `combat/combatStatBlock.js` | The stat block popup and the library of blocks behind it |
+| `combat/combatPlan.js` | Pure fight kernel: HP sum, order, a row's copy. Unit-tested |
+| `combat/bestiaryPlan.js` | Pure bestiary kernel. Unit-tested |
+| `combat/combatTracker.js` | The fight table: rows, name search, saving |
+| `combat/combatStatBlock.js` | The stat block popup |
+| `combat/statBlockParse.js` | Pure stat block parser. Unit-tested |
+| `combat/statBlockImport.js` | The link import queue |
+| `combat/bestiary.js` | The bestiary: table, filters, selection |
+| `combat/bestiaryPage.js` | A bestiary monster's page |
 | `rooms/floorPlan.js` | Floor-plan lookup, the import question, and drawing the rooms |
 | `player/player.js` | Player-mode runtime: the loading card, the handshake, resize, pan/zoom |
 | `player/playerMap.js` | A map landing on the Player: cover, fog mask, image or video |
@@ -177,6 +181,7 @@ the windows, the display push and the app lifecycle, and hands every module its 
 | `electron/updates.js` | The check for a newer release, its download, and the state About reads |
 | `electron/pdfText.js` | PDF text extraction, in a process of its own |
 | `electron/backupZip.js` | What goes into a backup zip, and what comes back out |
+| `electron/statBlockFetch.js` | A monster page, in a hidden window |
 
 ### Load order
 
@@ -202,14 +207,14 @@ dev/stress.js → dev/memProbe.js → render/render.js → render/gridCalibrate.
 ui/colorPicker.js → ui/controlPanel.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/roomCard.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
-ui/music.js → ui/musicDownload.js → combat/combatPlan.js → combat/combatStatBlock.js →
-combat/combatTracker.js → inline <script>
+ui/music.js → ui/musicDownload.js → combat/combatPlan.js → combat/bestiaryPlan.js →
+combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockImport.js →
+combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → inline <script>
 ```
 
 ### Repo layout
 
-Browser modules in `src/<subsystem>/`: `fog`, `shapes`, `rooms`, `scenes`, `player`, `render`,
-`ui`, `content`, `combat`, `dev`. Only `state.js` and `undo.js` sit at `src/` root, because every
+Browser modules in `src/<subsystem>/`. Only `state.js` and `undo.js` sit at `src/` root, because every
 subsystem reads them. Stylesheets in `src/css/`. The main process is `main.js` plus one file
 per subject in `electron/`. Both HTML entry points, `preload.js` and `package.json` stay at the
 repo root. Docs in `docs/`; settings, hooks and skills in `.claude/`, skills as

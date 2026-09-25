@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // at the top of electron/pdfText.js.
   extractPdfText: (arrayBuffer) => ipcRenderer.invoke('extract-pdf-text', arrayBuffer),
 
+  fetchStatPage: (url) => ipcRenderer.invoke('fetch-stat-page', url),
+
   showSaveDialog: (opts) => ipcRenderer.invoke('show-save-dialog', opts),
   createBackupZip: (destPath, scenesData, moduleText, combat) => ipcRenderer.invoke('create-backup-zip', destPath, scenesData, moduleText, combat),
   readBackupManifest: (zipPath) => ipcRenderer.invoke('read-backup-manifest', zipPath),

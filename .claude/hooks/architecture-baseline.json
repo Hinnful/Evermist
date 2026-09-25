@@ -9,7 +9,15 @@
     "missing:shapemarkers.js",
     "missing:combatplan.js",
     "stale:combattracker.js",
-    "stale:combatstatblock.js"
+    "stale:combatstatblock.js",
+    "missing:statblockparse.js",
+    "missing:statblockfetch.js",
+    "missing:statblockimport.js",
+    "stale:dndsu.js",
+    "stale:ttgclub.js",
+    "stale:newttgclub.js",
+    "missing:bestiary.js",
+    "missing:bestiaryplan.js"
   ],
   "warnedBytes": 47203
 }

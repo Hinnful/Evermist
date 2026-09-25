@@ -16,13 +16,16 @@
 //   D. The Conditions cell opens a list that ticks several conditions on and off, and closes on a
 //      click anywhere, on a second click of its cell, and on Escape.
 //   E. The Init header sorts highest first, and a row dragged by its grip lands where it is dropped.
-//   F. OPEN shows the creature's stat block: an ability's modifier follows its score, the Enemy |
-//      Ally switch moves the row to that side, and numbered copies share one block.
+//   F. OPEN shows the row's own stat block: an ability's modifier follows its score, the Enemy |
+//      Ally switch moves the row to that side, and an edit changes that row alone. The row's AC is
+//      the stat block's AC, and a row typed by hand hands its first HP number to the stat block.
+//   K. Save to Bestiary lights on an edit, adds the row's stat block to the bestiary as a new
+//      entry, and goes dark; the entry and the row then change apart.
 //   G. A letter typed into the stat block stays in the stat block; the map's tool does not change.
-//   H. The fight and its stat blocks come back after a restart.
+//   H. The fight and its rows' stat blocks come back after a restart.
 //   I. The Player window has no fight table and no Fight button.
-//   J. A backup's fight joins the one on screen: a block the DM already has keeps theirs, a new one
-//      is added, and the backup's rows land only on an empty table.
+//   J. A backup's bestiary joins the one on screen: an entry the DM already has keeps theirs, a new
+//      one is added, and the backup's rows land only on an empty table.
 //
 // ⚠ THE ZIP ITSELF IS NOT DRIVEN. Its save dialog is native, so J hands cbMergePayload the JSON a
 // backup carries; backup.js's own scenario covers the zip path around it.
@@ -164,17 +167,50 @@ module.exports = async function fightTableFeature(rig) {
   await dm.evaluate('__cbRow("Skeleton 1").querySelector("[data-open]").click(); 0');
   rig.check(await dm.evaluate('document.getElementById("cb-stat").style.display === "block"'),
             'OPEN did not show the stat block');
-  await dm.evaluate('__cbEdit("abil.1", "14"); __cbEdit("ac", "13 (armor scraps)")');
+  await dm.evaluate('__cbEdit("abil.1", "14"); __cbEdit("ac", "15 (armor scraps)")');
   const mod = await dm.evaluate('document.querySelector("#cb-stat [data-mod=\\"1\\"]").textContent');
   rig.check(mod === '(+2)', 'a DEX of 14 shows the modifier ' + mod + ', not (+2)');
-  const shared = await dm.evaluate(`({ blocks: Object.keys(cbState.blocks),
-    note: (document.querySelector('#cb-stat .cb-sb-shared') || {}).textContent || '' })`);
-  rig.check(JSON.stringify(shared.blocks) === '["Skeleton"]',
-            'the stat block is not filed under "Skeleton" alone, so the copies do not share it: ' + JSON.stringify(shared.blocks));
-  rig.check(/^2 rows/.test(shared.note), 'the shared block does not say two rows share it: "' + shared.note + '"');
+  // RED ON: the ac line gated off in _cbCopyEdited (combatStatBlock.js) — 2026-09-25
+  const own = await dm.evaluate(`(() => {
+    const row = n => cbState.rows.find(r => r.name === n);
+    return { one: row('Skeleton 1').sb.abil[1], two: row('Skeleton 2').sb.abil[1], ac: row('Skeleton 1').ac,
+      cellAc: __cbRow('Skeleton 1').querySelector('[data-f=ac]').value, bestiary: Object.keys(cbState.blocks).length,
+      max: row('Wight').sb.hp, line: row('Wight').hp, shownMax: (__cbRow('Wight').querySelector('.max') || {}).textContent || '' };
+  })()`);
+  rig.check(own.one === '14' && own.two === '10',
+            "an edit to Skeleton 1's stat block reached Skeleton 2, or did not land: " + JSON.stringify(own));
+  rig.check(own.ac === '15' && own.cellAc === '15', "the row's AC does not follow its stat block's AC: " + JSON.stringify(own));
+  rig.check(own.bestiary === 0, 'an edit in the fight wrote to the bestiary: ' + own.bestiary + ' entries');
+  rig.check(own.max === '45' && own.line === '- 9 - 12' && own.shownMax === '45',
+            "the Wight's typed 45 did not become its stat block's max HP: " + JSON.stringify(own));
   await dm.evaluate('document.querySelector("#cb-stat [data-side=\\"ally\\"]").click(); 0');
   rig.check((await dm.evaluate('cbState.rows.find(r => r.name === "Skeleton 1").side')) === 'ally',
             'the Ally switch in the stat block did not move the row to the allies');
+
+  // ── K. Save to Bestiary ───────────────────────────────────────────────────
+  // RED ON: combatAddEntry gated off in _cbSaveToBestiary (combatStatBlock.js) — 2026-09-25
+  // OPEN toggles, and F left this row's stat block open.
+  await dm.evaluate('cbStatRowId() === cbState.rows.find(r => r.name === "Skeleton 1").id || __cbRow("Skeleton 1").querySelector("[data-open]").click(); 0');
+  const saveBefore = await dm.evaluate('!document.querySelector("#cb-stat [data-save]").disabled');
+  await dm.evaluate('document.querySelector("#cb-stat [data-save]").click(); 0');
+  const saved = await dm.evaluate(`(() => {
+    const e = Object.values(cbState.blocks);
+    const btn = document.querySelector('#cb-stat [data-save]');
+    const out = { n: e.length, name: e[0] && e[0].name, dex: e[0] && e[0].abil[1], dark: btn.disabled, label: btn.textContent };
+    __cbEdit('abil.1', '16');
+    out.rowDex = cbState.rows.find(r => r.name === 'Skeleton 1').sb.abil[1];
+    out.entryDex = e[0] && e[0].abil[1];
+    out.lit = !btn.disabled;
+    return out;
+  })()`);
+  rig.note('saved: ' + JSON.stringify(saved));
+  rig.check(saveBefore, 'Save to Bestiary was dark after an edit to the stat block');
+  rig.check(saved.n === 1 && saved.name === 'Skeleton' && saved.dex === '14',
+            'Save to Bestiary did not add the row stat block as one "Skeleton" entry: ' + JSON.stringify(saved));
+  rig.check(saved.dark && saved.label === 'Saved', 'Save to Bestiary did not go dark after saving: ' + JSON.stringify(saved));
+  rig.check(saved.rowDex === '16' && saved.entryDex === '14' && saved.lit,
+            'after saving, an edit to the row reached the bestiary entry, or did not light the button again: ' + JSON.stringify(saved));
+  await dm.evaluate('__cbEdit("abil.1", "14"); 0');
 
   // ── G. Typing in the stat block stays there ───────────────────────────────
   // RED ON: the panels' keydown stopPropagation gated off (combatTracker.js) — 2026-09-24
@@ -198,9 +234,10 @@ module.exports = async function fightTableFeature(rig) {
   dm = await rig.restart();
   await lib.settle(dm, 'typeof cbState !== "undefined" && cbState.rows.length > 0', 60000);
   const back = await dm.evaluate(`({ rows: cbState.rows.map(r => r.name + '|' + r.hp + '|' + r.side),
-    dex: cbState.blocks.Skeleton && cbState.blocks.Skeleton.abil[1] })`);
+    dex: (cbState.rows.find(r => r.name === 'Skeleton 1') || { sb: { abil: [] } }).sb.abil[1] })`);
   rig.note('after the restart: ' + JSON.stringify(back));
-  rig.check(back.rows.length === 4 && back.rows.includes('Wight|45 - 9 - 12|enemy'),
+  // RED ON: _cbTakeMax returning early (combatTracker.js) — 2026-09-25
+  rig.check(back.rows.length === 4 && back.rows.includes('Wight|- 9 - 12|enemy'),
             'the fight did not come back after a restart: ' + JSON.stringify(back.rows));
   rig.check(back.dex === '14', 'the stat block did not come back after a restart: DEX is ' + back.dex);
 
@@ -216,19 +253,22 @@ module.exports = async function fightTableFeature(rig) {
   // RED ON: cbMergePayload overwriting blocks the DM has (combatTracker.js) — 2026-09-24
   const merged = await dm.evaluate(`(() => {
     const incoming = JSON.stringify({
-      rows: [{ id: 1, init: '9', name: 'Ghoul 1', hp: '22', ac: '12', conds: [], side: 'enemy' }],
-      blocks: { Skeleton: { name: 'Skeleton', abil: ['1','1','1','1','1','1'], secs: {} },
-                Ghoul: { name: 'Ghoul', abil: ['13','15','10','7','10','6'], secs: {} } },
+      rows: [{ id: 1, init: '9', name: 'Ghoul 1', hp: '', ac: '12', conds: [], side: 'enemy', sbChanged: false,
+               sb: { name: 'Ghoul', source: '', hp: '22', abil: ['13','15','10','7','10','6'], secs: {} } }],
+      blocks: { b1: { id: 'b1', name: 'Skeleton', source: '', abil: ['1','1','1','1','1','1'], secs: {} },
+                b2: { id: 'b2', name: 'Ghoul', source: '', abil: ['13','15','10','7','10','6'], secs: {} } },
     });
     const kept = cbMergePayload(incoming).ok;
-    const onFull = { rows: cbState.rows.length, dex: cbState.blocks.Skeleton.abil[1], ghoul: !!cbState.blocks.Ghoul };
+    const named = n => Object.values(cbState.blocks).filter(b => b.name === n);
+    const onFull = { rows: cbState.rows.length, dex: named('Skeleton').map(b => b.abil[1]).join(), ghoul: named('Ghoul').length === 1 };
     cbState.rows = [];
     cbMergePayload(incoming);
     return { kept, onFull, onEmpty: cbState.rows.map(r => r.name) };
   })()`);
   rig.note('merge: ' + JSON.stringify(merged));
   rig.check(merged.kept, 'cbMergePayload refused a backup it wrote itself');
-  rig.check(merged.onFull.dex === '14', 'the backup overwrote the Skeleton block the DM already had');
+  // RED ON: combatMerge landing rows on a full table (combatPlan.js) — 2026-09-25
+  rig.check(merged.onFull.dex === '14', 'the backup overwrote the Skeleton entry the DM already had: ' + merged.onFull.dex);
   rig.check(merged.onFull.ghoul, "the backup's Ghoul block was not added");
   rig.check(merged.onFull.rows === 4, "the backup's rows landed on a table that already had a fight");
   rig.check(JSON.stringify(merged.onEmpty) === '["Ghoul 1"]',

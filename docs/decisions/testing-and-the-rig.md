@@ -12,6 +12,14 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### Saved monster pages stay off the public repo · `SETTLED` (2026-09-25)
+
+The pages the stat block parser is tested against are the sites' own pages, official monster text
+included, so they live in the gitignored `.claude/private/fixtures/statblocks/` and the tests that
+read them skip where the folder is absent. CI runs the line-based parser tests only. The bestiary
+scenario serves a page written for an invented monster instead. Keeping them in the app's data
+folder was rejected: tests cannot reach it from a checkout, and it sits beside the map library.
+
 ### The test rig drives the app's own shell · `SETTLED` (2026-08-14)
 The app-driving harness had been written and thrown away four times, because each build solved
 one question and then read as disposable. Every one of them stood up its **own** Electron main
