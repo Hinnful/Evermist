@@ -26,6 +26,7 @@
 //   I. Players who look somewhere else on their own reach the DM's minimap, so the frame shows
 //      where they are actually looking.
 //   J. Lock stops the players moving the view, and stops the minimap being nudged by accident.
+//   K. Send puts the DM's view on the TV, and the minimap's zoom follows the TV there.
 //
 // The arithmetic behind a view crossing the wire is unit-tested (test/, calcViewportRect,
 // zoomToFitRegion, visibleMapRegion). What is here is the behaviour those functions serve, driven
@@ -268,6 +269,23 @@ module.exports = async function viewFeature(rig) {
   rig.check(await player.evaluate('playerFollowDM === true'),
             'the Player did not go back to following the DM after Sync View, so the next fog ' +
             'change re-frames it somewhere else');
+
+  // ── K. After Send, the minimap reads the TV's zoom ───────────────────────
+  // RED ON: reportPlayerView skipped after a pushed view in applyPlayerFogOnly (playerMap.js) — 2026-09-26
+  await wheelAt(dm, Math.round(sizes.dm.w / 2), Math.round(sizes.dm.h / 2), 2);
+  await lib.settle(dm, '!viewportDirty', 8000);
+  const sendRegion = await region(dm);
+  const sendZoom = Math.min(sizes.player.w / sendRegion.w, sizes.player.h / sendRegion.h);
+  // ⚠ THE PREVIEW IS PUT WRONG FIRST, so a Player that never reports cannot pass by already agreeing.
+  await dm.evaluate('minimapSetView({ mapCX: minimapView.mapCX, mapCY: minimapView.mapCY,' +
+    ' zoom: minimapView.zoom * 1.5 }); 0');
+  await dm.evaluate('document.getElementById("btn-send").click(); 0');
+  const sentTo = await settleOn(() => region(player), v => Math.abs(v.zoom - sendZoom) < 0.02, 20000);
+  const mmAfterSend = await settleOn(() => dm.evaluate('minimapView.zoom'),
+    z => Math.abs(z - sentTo.zoom) / sentTo.zoom < 0.02, 10000);
+  rig.check(Math.abs(mmAfterSend - sentTo.zoom) / sentTo.zoom < 0.02,
+            'the minimap kept its own zoom after Send moved the TV: preview ' + mmAfterSend +
+            ' against a TV at ' + sentTo.zoom);
 
   // ── F. The minimap is a remote control ───────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved

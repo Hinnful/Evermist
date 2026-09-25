@@ -232,7 +232,8 @@ it was taken back out.
 
 The DM's right column carries a small live preview of what the Player camera is framing,
 and dragging or scrolling it **drives** the TV. It's a remote control rather than a second
-independent camera: it feeds the same camera message the Player already listens for.
+independent camera: it feeds the same camera message the Player already listens for. Each
+camera move on the TV travels back to it, from a Send and a new map to a finished snap.
 
 One thing to know before trusting it: **the preview is deliberately wider than the TV.** It's
 a square canvas showing extra context around the Player's frame, and the actual TV is only

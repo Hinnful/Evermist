@@ -172,6 +172,7 @@ function startPlayerVideoMap(msg) {
         attachVideoListeners(video);
         fitToScreen();
         if (playerFollowDM && msg.view) applyView(msg.view);
+        reportPlayerView();
         // After the camera is settled, so the first texture holds the region the players will
         // see. Viewport-sized, never map-sized — the same cost on any map, and that figure is
         // also the per-frame GPU upload.
@@ -228,6 +229,7 @@ function startPlayerImageMap(msg) {
     pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
     fitToScreen();
     if (playerFollowDM && msg.view) applyView(msg.view);
+    reportPlayerView();
     loadPlayerFog(msg, !!msg.sceneChange).then(() => {
       viewportDirty = true;
       scheduleRender();
@@ -238,7 +240,7 @@ function startPlayerImageMap(msg) {
 }
 
 function applyPlayerFogOnly(msg) {
-  if (playerFollowDM && msg.view) applyView(msg.view);
+  if (playerFollowDM && msg.view) { applyView(msg.view); reportPlayerView(); }
   loadPlayerFog(msg, !!msg.sceneChange).then(() => {
     viewportDirty = true;
     scheduleRender();

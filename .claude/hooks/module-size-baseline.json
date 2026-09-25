@@ -34,7 +34,7 @@
     "src/render/renderer.js": 18927,
     "src/render/video.js": 25332,
     "src/render/videoDiag.js": 6073,
-    "src/render/viewport.js": 17863,
+    "src/render/viewport.js": 7780,
     "src/rooms/floorPlan.js": 11673,
     "src/rooms/roomCard.js": 19658,
     "src/rooms/roomPanel.js": 14538,

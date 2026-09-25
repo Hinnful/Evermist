@@ -80,12 +80,7 @@ function initPlayer() {
       if (mapVideo) initPlayerMapRegionTexture();
       viewportDirty = true;
       scheduleRender();
-      // ⚠ THE MINIMAP CANNOT WORK THIS OUT: its zoom is px-per-map-unit on THIS canvas, so a
-      // resize changes it and nothing else reports that. A divider drag resizes both halves.
-      if (playerReplyTarget()) playerReplyTarget().postMessage({
-        type: 'PLAYER_VIEW', mapCX: (getViewportSize().w / 2 - panX) / zoom,
-        mapCY: (getViewportSize().h / 2 - panY) / zoom, zoom,
-      }, '*');
+      reportPlayerView();
     }
   });
 
@@ -99,14 +94,7 @@ function initPlayer() {
     const now = performance.now();
     if (now - _playerViewThrottleTs < 100) return;
     _playerViewThrottleTs = now;
-    if (!playerReplyTarget()) return;
-    const { w: vpW, h: vpH } = getViewportSize();
-    playerReplyTarget().postMessage({
-      type: 'PLAYER_VIEW',
-      mapCX: (vpW / 2 - panX) / zoom,
-      mapCY: (vpH / 2 - panY) / zoom,
-      zoom,
-    }, '*');
+    reportPlayerView();
   }
 
   container.addEventListener('mousedown', e => {

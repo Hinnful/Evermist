@@ -523,6 +523,7 @@ module.exports = async function twoMapsFeature(rig) {
 
   // A column that changes width refits its half of the Player screen, so the preview's zoom has
   // to follow it. Nothing else reports that resize.
+  // RED ON: reportPlayerView made to send nothing (viewport.js) — 2026-09-26
   await dm.evaluate(`(() => {
     const row = document.getElementById('panes-row');
     const r = row.getBoundingClientRect();

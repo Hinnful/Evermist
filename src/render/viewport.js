@@ -138,7 +138,7 @@ function viewLerpTick(ts) {
   viewportDirty = true;
   scheduleRender();
   if (t < 1) requestAnimationFrame(viewLerpTick);
-  else viewLerpActive = false;
+  else { viewLerpActive = false; reportPlayerView(); }
 }
 
 // ⚠ A PLAYER WINDOW ANSWERS ITS OPENER; A PLAYER FRAME HAS NONE, so the DM window binds each
@@ -153,6 +153,12 @@ function bindPlayerWindow(w) {
   playerWindow = w;
   playerMapSent = false;
   if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
+}
+
+// ⚠ EVERY CAMERA CHANGE ON THE PLAYER MUST END HERE, or the DM's minimap keeps the old zoom.
+function reportPlayerView() {
+  const c = captureCamera();
+  if (c && playerReplyTarget()) playerReplyTarget().postMessage({ type: 'PLAYER_VIEW', ...c }, '*');
 }
 
 function notifyDMOfMode() {
