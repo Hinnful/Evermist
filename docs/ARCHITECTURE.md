@@ -551,13 +551,16 @@ test suite: synthetic fixtures validated the wrong parser twice.
 
 ## The fight table
 
-The crossed-swords button beside Two maps opens a table for the fight in progress: a row per
-creature with initiative, name, HP, AC and conditions. There is one fight for the whole app, so
-it stays put through a scene switch, two maps at once and a restart. The HP cell shows the
-creature's max HP as a fixed number and keeps what was typed after it, "- 9 - 12", with the total
-beside it; the row reads as bloodied at half and greys out at zero. Rows move by a grip on their
-left edge, and a click on the Init header sorts them once. OPEN on a name shows that row's stat
-block, edited in place.
+The Combat button opens a table for the fight in progress: a row per creature with initiative,
+name, HP, AC, conditions and attacks. The title is a picker over a list of fights (combatFights.js),
+none tied to a scene, and the open one stays put through a scene switch, two maps at once and a
+restart. AC and max HP come from the stat block and are fixed in the row. The HP cell keeps what was
+typed after the max, "- 9 - 12", with "= 24" beside it, yellow below half and red at zero. An empty
+Init field hints the DEX bonus. A press that travels 5px drags a row, and a click on the Init header
+sorts them once. The Attacks cell reads each attack from the stat block (attackLine.js) until the DM
+double-clicks it to write a line of their own, and holds the row's icons on hover: stat block,
+duplicate, switch side, delete. The right-click menu carries the same actions, and Ctrl+D
+duplicates. The table resizes from its right and bottom edges, the width going to Attacks.
 
 A row owns a copy of its stat block. Typing in a name field offers matching bestiary entries; a
 pick copies the entry into the row, and after that the two never affect each other. The row's
@@ -589,9 +592,10 @@ than six scores, an unnamed entry, a credit or caption left inside it) is left o
 names it in one message at the end, whose Import anyway adds it for the DM to fix by hand. A book that does not fit
 in storage is taken back whole.
 
-The fight and the bestiary are one JSON value in localStorage, written as they change and carried
-in backups as `combat.json`; a restore adds entries the bestiary lacks and lands its fight only on
-an empty table. Column widths and where the panel sits are kept apart, as viewing settings. The
+The open fight and the bestiary are one JSON value in localStorage, in the shape saved before the
+list existed, and the other fights sit under a second key an older build never reads
+(fightPlan.js). Both go into backups as `combat.json`; a restore adds entries the bestiary lacks
+and fights the list lacks, never replacing one. Column widths and where the panel sits are kept apart, as viewing settings. The
 Player window never builds any of it. `combatTracker.js` owns the table and saving,
 `combatStatBlock.js` the editor and the row's popup, `bestiary.js` the window, `statBlockImport.js`
 the queue and the book import, `combatPlan.js` the arithmetic and a row's copy.

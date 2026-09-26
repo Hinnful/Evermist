@@ -19,7 +19,7 @@ function combatHpState(expr) {
   const max = parseInt((String(expr || '').match(/\d+/) || [])[0], 10);
   if (value === null || Number.isNaN(value) || !max) return { value, share: null, bloodied: false, down: false };
   const share = Math.max(0, Math.min(1, value / max));
-  return { value, share, bloodied: share <= 0.5, down: value <= 0 };
+  return { value, share, bloodied: share < 0.5, down: value <= 0 };
 }
 
 // A row's name without its copy number: "Skeleton 3" is a "Skeleton".
@@ -93,12 +93,30 @@ function combatAddEntry(blocks, b) {
   return e;
 }
 
+// The next copy of a creature takes the highest number in the fight plus one, so a number freed
+// by a removed copy is never handed out twice: "Wolf" and "Wolf 3" make the next one "Wolf 4".
+function combatNextName(base, rows) {
+  let top = 0;
+  for (const r of rows) {
+    const n = String(r.name || '').trim();
+    if (n === base) top = Math.max(top, 1);
+    else if (combatBaseName(n) === base) top = Math.max(top, parseInt(n.slice(base.length), 10) || 0);
+  }
+  return top ? `${base} ${top + 1}` : base;
+}
+
 // A picked entry becomes the row: the row owns a copy of the stat block, and its AC and max HP
-// are that copy's. A second Skeleton in the fight is "Skeleton 2".
+// are that copy's.
 function combatRowFromEntry(entry, rows) {
-  const copies = rows.filter(r => combatBaseName(r.name) === entry.name).length;
-  return { name: copies ? `${entry.name} ${copies + 1}` : entry.name, ac: combatFirstNum(entry.ac),
+  return { name: combatNextName(entry.name, rows), ac: combatFirstNum(entry.ac),
     hp: '', conds: [], sb: combatSnapshot(entry), sbChanged: false };
+}
+
+// A row's copy with full HP and no conditions, meant to sit straight after it.
+function combatDuplicateRow(row, rows, id) {
+  const c = Object.assign(JSON.parse(JSON.stringify(row)), { id, hp: '', conds: [] });
+  c.name = combatNextName(combatBaseName(row.name), rows);
+  return c;
 }
 
 // A row's HP is its stat block's max, then the damage and healing typed after it: max 45 and
@@ -108,23 +126,6 @@ function combatRowHpState(max, rest) {
   if (!max) return combatHpState(r);
   if (r && !/^[+-]/.test(r)) return { value: NaN, share: null, bloodied: false, down: false };
   return combatHpState(max + r);
-}
-
-// A backup's bestiary merges in without doubling an entry already here; its fight lands only on an empty table.
-// An edited entry of the same name is still added, so its edits are not lost.
-function combatMerge(cur, incoming) {
-  const blocks = Object.assign({}, cur.blocks);
-  const key = b => `${b.name}\u0000${b.source || ''}`;
-  const seen = new Map();
-  const note = b => { const k = key(b); seen.set(k, (seen.get(k) || new Set()).add(JSON.stringify(combatSnapshot(b)))); };
-  Object.values(blocks).forEach(note);
-  for (const b of Object.values(incoming.blocks || {})) {
-    if ((seen.get(key(b)) || new Set()).has(JSON.stringify(combatSnapshot(b)))) continue;
-    note(combatAddEntry(blocks, b));
-  }
-  let rows = cur.rows, nextId = cur.nextId;
-  if (!rows.length) rows = (incoming.rows || []).map(r => Object.assign({}, r, { id: nextId++ }));
-  return Object.assign({}, cur, { rows, blocks, nextId });
 }
 
 // A book or module's file name without its extension, so both imports of one file share a source.
@@ -152,6 +153,6 @@ function combatSearchBlocks(blocks, query) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { combatHpSum, combatHpState, combatBaseName, combatSortByInit, combatAbilityMod,
     combatBlankBlock, combatFirstNum, combatSetFirstNum, combatUniqueName, combatNextBlockId, combatSnapshot,
-    combatAddEntry, combatRowFromEntry, combatRowHpState, combatMerge, combatSourceName, combatNewBlocks,
-    combatSearchBlocks };
+    combatAddEntry, combatRowFromEntry, combatRowHpState, combatSourceName, combatNewBlocks,
+    combatSearchBlocks, combatNextName, combatDuplicateRow };
 }

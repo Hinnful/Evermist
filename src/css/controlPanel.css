@@ -54,14 +54,15 @@
     pointer-events: all;
     width: var(--cp-panel-w, 230px);
     display: flex; align-items: center; gap: 3px;
-    padding: 4px; border-radius: var(--panel-radius);
+    box-sizing: border-box; height: 30px;
+    padding: 0 2px; border-radius: var(--panel-radius);
     background: var(--panel-bg);
     border: var(--panel-border);
     box-shadow: var(--panel-shadow);
   }
   .cp-tab {
-    flex: 1; min-width: 0; height: 28px; padding: 0 8px;
-    border: 1.5px solid transparent; border-radius: 6px;
+    flex: 1; min-width: 0; height: 23px; padding: 0 8px;
+    border: 1.5px solid transparent; border-radius: 9px;
     background: transparent; color: #8b9098;
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
     cursor: pointer; transition: background .12s, color .12s, border-color .12s;

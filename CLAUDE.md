@@ -152,9 +152,12 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `ui/music.js` | The music bubble: track library and playback |
 | `ui/musicDownload.js` | The Add music panel |
 | `combat/combatPlan.js` | Pure fight kernel: HP sum, order, a row's copy. Unit-tested |
+| `combat/fightPlan.js` | Pure: the list of fights, its save shape, a backup merge. Unit-tested |
+| `combat/attackLine.js` | Pure: the Attacks line read from a stat block. Unit-tested |
 | `combat/bestiaryPlan.js` | Pure bestiary kernel. Unit-tested |
 | `combat/combatTracker.js` | The fight table: rows, name search, saving |
 | `combat/combatStatBlock.js` | The stat block popup |
+| `combat/combatFights.js` | The fight picker and its list |
 | `combat/statBlockParse.js` | Pure stat block parser. Unit-tested |
 | `combat/statBlockBook.js` | Pure: a book into stat blocks, and their clean-read gate. Tested |
 | `combat/statBlockImport.js` | The link queue and the book import |
@@ -208,10 +211,12 @@ dev/stress.js → dev/memProbe.js → render/render.js → render/gridCalibrate.
 ui/colorPicker.js → ui/controlPanel.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/roomCard.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
-ui/music.js → ui/musicDownload.js → combat/combatPlan.js → combat/bestiaryPlan.js →
+ui/music.js → ui/musicDownload.js → combat/combatPlan.js → combat/fightPlan.js →
+combat/attackLine.js → combat/bestiaryPlan.js →
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
-combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → inline <script>
+combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js →
+inline <script>
 ```
 
 ### Repo layout

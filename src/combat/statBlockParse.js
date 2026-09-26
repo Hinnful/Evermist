@@ -209,6 +209,7 @@ function statBlockFromLines(input) {
   if (lore) b.lore = lore.join('\n\n');
   for (const s of Object.keys(b.secs)) if (!b.secs[s].length) delete b.secs[s];
   if (!b.ac && !b.hp && !seenAbil) return null;
+  b.hp = statBlockJoinHp(b.hp);
   // Not enumerable, so it never reaches a saved entry.
   Object.defineProperty(b, 'abilRead', { value: abilRead });
   return b;
@@ -299,7 +300,17 @@ function statBlockFromPage(html) {
   return statBlockFromLines(statBlockFind(statBlockHtmlLines(html)));
 }
 
+// A PDF's text layer can split a number at a kerning gap: "14 9 (13к12 + 65)" is 149. The digits
+// join only when the joined number is the dice's average, so a real "14 9" is never rewritten.
+function statBlockJoinHp(hp) {
+  const m = String(hp || '').match(/^(\d+(?:\s+\d+)+)\s*\(\s*(\d+)\s*[dк]\s*(\d+)\s*(?:([+\-−–])\s*(\d+))?\s*\)/i);
+  if (!m) return hp;
+  const avg = Math.floor(+m[2] * (+m[3] + 1) / 2 + (m[4] ? (m[4] === '+' ? 1 : -1) * +m[5] : 0));
+  const joined = m[1].replace(/\s+/g, '');
+  return +joined === avg ? joined + hp.slice(m[1].length) : hp;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { statBlockFromLines, statBlockFind, statBlockHtmlLines, statBlockFromPage,
+  module.exports = { statBlockFromLines, statBlockFind, statBlockHtmlLines, statBlockFromPage, statBlockJoinHp,
     _sbLabel, _sbSection, _sbEntry, SB_SIZE, SB_ABIL_TOKEN };
 }

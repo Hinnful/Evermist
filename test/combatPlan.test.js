@@ -35,9 +35,9 @@ describe('combatHpState', () => {
     assert.equal(s.bloodied, false);
     assert.equal(s.down, false);
   });
-  it('is bloodied at exactly half', () => {
-    assert.equal(combatHpState('40 - 20').bloodied, true);
-    assert.equal(combatHpState('40 - 19').bloodied, false);
+  it('is bloodied below half, not at exactly half', () => {
+    assert.equal(combatHpState('40 - 21').bloodied, true);
+    assert.equal(combatHpState('40 - 20').bloodied, false);
   });
   it('is down at zero or below, and the share stops at zero', () => {
     const s = combatHpState('13 - 6 - 9');
@@ -94,8 +94,9 @@ describe('combatAbilityMod', () => {
 });
 
 const {
-  combatUniqueName, combatMerge, combatSearchBlocks, combatBlankBlock, combatFirstNum, combatSetFirstNum,
+  combatUniqueName, combatSearchBlocks, combatBlankBlock, combatFirstNum, combatSetFirstNum,
   combatSnapshot, combatAddEntry, combatRowFromEntry, combatRowHpState, combatSourceName, combatNewBlocks,
+  combatNextName, combatDuplicateRow,
 } = require('../src/combat/combatPlan.js');
 
 describe('the bestiary', () => {
@@ -122,23 +123,6 @@ describe('the bestiary', () => {
     assert.equal(goblin.abil[0], '10');
     assert.equal(c.id, undefined);
   });
-  it('merges a backup without doubling an entry it already has', () => {
-    const cur = { rows: [{ id: 1, name: 'Goblin' }], blocks: { b1: goblin }, nextId: 2 };
-    const orc = Object.assign(combatBlankBlock('b1', 'Orc'), { ac: '13' });
-    const m = combatMerge(cur, { rows: [{ id: 5, name: 'Orc' }], blocks: { b1: orc, b2: Object.assign({}, goblin, { id: 'b2' }) } });
-    assert.deepEqual(Object.values(m.blocks).map(b => b.name).sort(), ['Goblin', 'Orc']);
-    assert.deepEqual(m.rows.map(r => r.name), ['Goblin']);
-  });
-  it('still adds a backup entry that shares a name but carries edits', () => {
-    const edited = Object.assign({}, goblin, { id: 'b7', hp: '12 (3d6)' });
-    const m = combatMerge({ rows: [], blocks: { b1: goblin }, nextId: 1 }, { rows: [], blocks: { b7: edited, b8: Object.assign({}, goblin, { id: 'b8' }) } });
-    assert.deepEqual(Object.values(m.blocks).map(b => b.name + ' ' + b.hp).sort(), ['Goblin (1) 12 (3d6)', 'Goblin 7 (2d6)']);
-  });
-  it('lands a backup fight only on an empty table, renumbered', () => {
-    const m = combatMerge({ rows: [], blocks: {}, nextId: 1 }, { rows: [{ id: 9, name: 'Skeleton 1' }], blocks: {} });
-    assert.deepEqual(m.rows.map(r => r.id), [1]);
-    assert.equal(m.nextId, 2);
-  });
   it('searches names that start with the query first', () => {
     const blocks = { b1: goblin, b2: Object.assign(combatBlankBlock('b2', 'Hobgoblin'), { ac: '18' }),
       b3: combatBlankBlock('b3', 'Ogre') };
@@ -162,6 +146,22 @@ describe('a row picked from the bestiary', () => {
     assert.equal(combatRowFromEntry(skeleton, [{ name: 'Skeleton' }]).name, 'Skeleton 2');
     assert.equal(combatRowFromEntry(skeleton, [{ name: 'Skeleton' }, { name: 'Skeleton 2' }]).name, 'Skeleton 3');
     assert.equal(combatRowFromEntry(skeleton, [{ name: 'Ghoul' }]).name, 'Skeleton');
+  });
+  it('never hands out a number twice after a copy is removed', () => {
+    assert.equal(combatNextName('Wolf', [{ name: 'Wolf' }, { name: 'Wolf 3' }]), 'Wolf 4');
+    assert.equal(combatNextName('Wolf', [{ name: 'Wolf 2' }]), 'Wolf 3');
+    assert.equal(combatNextName('Wolf', [{ name: 'Dire wolf' }, { name: 'Wolfhound 2' }]), 'Wolf');
+  });
+  it('duplicates a row at full HP, with no conditions, under the next number', () => {
+    const row = { id: 3, name: 'Skeleton', init: '12', hp: '- 5', conds: ['Prone'], sb: combatSnapshot(skeleton), side: 'enemy' };
+    const c = combatDuplicateRow(row, [row], 9);
+    assert.equal(c.id, 9);
+    assert.equal(c.name, 'Skeleton 2');
+    assert.equal(c.hp, '');
+    assert.deepEqual(c.conds, []);
+    assert.equal(c.init, '12');
+    c.sb.ac = '1';
+    assert.equal(row.sb.ac, '13 (armor scraps)');
   });
 });
 

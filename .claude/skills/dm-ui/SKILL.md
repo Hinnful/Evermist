@@ -134,6 +134,8 @@ It borrows the app's controls rather than restyling them, and every rule below e
 the first version broke it.
 
 - **The pill and both panels use `--panel-radius`**, not a pill radius. One floating surface.
+  The pill's left corners are square: it joins Bestiary's right edge in the play group, whose
+  three-column grid keeps Bestiary on the centre line while the pill widens to the right.
 - **The filter and URL fields are `.cp-field`.** The black inset pill (`rgba(0,0,0,0.28)`) means
   *pick one of these* and must never wrap a field the DM types into.
 - **Volume is `.cp-slider`'s markup** - div track, fill, knob, invisible range - positioned by

@@ -31,7 +31,7 @@ function _cbEsc(s) {
 // plaintext-only keeps a paste from a website from bringing its markup in with it.
 function _cbEd(path, val, ph, cls, tag) {
   const t = tag || 'span';
-  return `<${t} class="${cls || ''}" contenteditable="plaintext-only" spellcheck="false" data-p="${path}" data-ph="${ph}">${_cbEsc(val)}</${t}>`;
+  return `<${t} class="${cls || ''}" contenteditable="plaintext-only" spellcheck="false" data-p="${path}" data-ph="${_cbEsc(ph)}">${_cbEsc(val)}</${t}>`;
 }
 
 function cbEditorHtml(b) {
@@ -54,6 +54,7 @@ function cbEditorHtml(b) {
         ${_cbEd('abil.' + i, b.abil[i], '10', 'v')}<div class="m" data-mod="${i}">(${combatAbilityMod(b.abil[i])})</div></div>`).join('')}</div>
       <div class="cb-sb-rule"></div>
       ${CB_DETAILS.map(([k, label]) => `<div class="cb-sb-line"><b>${label}</b> ${_cbEd(k, b[k], '—')}</div>`).join('')}
+      <div class="cb-sb-line"><b>Table line</b> ${_cbEd('quick', b.quick === undefined ? '' : b.quick, b.quick === undefined ? combatAttackLine(b) || '—' : '—')}</div>
       ${secs}
       <div class="cb-sb-add cb-sb-addsec" data-addsec>+ Add section</div>
     </div>`;
@@ -107,7 +108,7 @@ function _cbCopyEdited(row, field) {
     const btn = document.querySelector('#cb-stat [data-save]');
     if (btn) { btn.disabled = false; btn.textContent = 'Save to Bestiary'; }
   }
-  if (field === 'name' || field === 'ac' || field === 'hp') cbRender();
+  if (field === 'name' || field === 'ac' || field === 'hp' || field === 'quick') cbRender();
 }
 
 function _cbSaveToBestiary(row) {

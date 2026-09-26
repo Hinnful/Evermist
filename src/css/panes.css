@@ -19,8 +19,9 @@
   /* ===== THE TOGGLE ===== */
   #btn-two-maps {
     flex: none;
-    width: 30px; height: 30px;
+    height: 30px; padding: 0 12px; gap: 8px;
     display: flex; align-items: center; justify-content: center;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif;
     background: var(--panel-bg);
     border: var(--panel-border);
     border-radius: var(--panel-radius);
@@ -29,6 +30,7 @@
     cursor: pointer;
     transition: background .12s, border-color .12s, color .12s;
   }
+  #btn-two-maps svg { flex: none; color: #7f858e; }
   #btn-two-maps:hover { border-color: rgba(255,255,255,0.18); background: #202124; }
   /* ⚠ THE LIT FILL GOES OVER AN OPAQUE BASE, never instead of it. This button floats on the
      map, not on a panel, so the app's translucent blue on its own let the map show through. */
@@ -37,6 +39,7 @@
     border-color: rgba(90, 140, 235, 0.6);
     color: #8fb6ff;
   }
+  #btn-two-maps.active svg { color: #8fb6ff; }
   body.pane-mode #btn-two-maps { display: none !important; }
 
   /* ===== THE PLAYER SHELL (stage.html) ===== */

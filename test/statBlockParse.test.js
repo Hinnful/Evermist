@@ -181,3 +181,21 @@ describe('ttg.club, which sets names and labels as headings', () => {
     assert.equal(P.statBlockFind(lines)[0], 'Гоблин');
   });
 });
+
+describe('an HP number split by the PDF text layer', () => {
+  it('joins the digits when the joined number is the dice average', () => {
+    assert.equal(P.statBlockJoinHp('14 9 (13к12 + 65)'), '149 (13к12 + 65)');
+    assert.equal(P.statBlockJoinHp('1 35 (18d8 + 54)'), '135 (18d8 + 54)');
+  });
+  it('leaves every other line as it was', () => {
+    assert.equal(P.statBlockJoinHp('14 9 (4d8)'), '14 9 (4d8)');
+    assert.equal(P.statBlockJoinHp('149 (13к12 + 65)'), '149 (13к12 + 65)');
+    assert.equal(P.statBlockJoinHp('7 (2d6)'), '7 (2d6)');
+    assert.equal(P.statBlockJoinHp(''), '');
+  });
+  it('is applied to a parsed stat block', () => {
+    const b = P.statBlockFromLines(['Древесная зараза', 'Огромное растение, нейтрально-злое', 'Класс доспеха 15',
+      'Хиты 14 9 (13к12 + 65)', 'Скорость 30 фт.', 'Действия', 'Ветвь. Рукопашная атака оружием: +9 к попаданию. Попадание: 16 (3к6 + 6) дробящего урона.']);
+    assert.equal(b.hp, '149 (13к12 + 65)');
+  });
+});

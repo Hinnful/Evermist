@@ -92,14 +92,17 @@
     "preload.js": 6491,
     "src/shapes/shapeMarkers.js": 2310,
     "src/combat/combatPlan.js": 6916,
-    "src/combat/combatStatBlock.js": 8004,
-    "src/combat/combatTracker.js": 21087,
-    "src/combat/statBlockParse.js": 16998,
+    "src/combat/combatStatBlock.js": 8205,
+    "src/combat/combatTracker.js": 28808,
+    "src/combat/statBlockParse.js": 17623,
     "electron/statBlockFetch.js": 3611,
     "src/combat/statBlockImport.js": 5853,
-    "src/combat/bestiary.js": 22360,
+    "src/combat/bestiary.js": 22486,
     "src/combat/bestiaryPlan.js": 7331,
     "src/combat/bestiaryPage.js": 4963,
-    "src/combat/statBlockBook.js": 14500
+    "src/combat/statBlockBook.js": 14500,
+    "src/combat/fightPlan.js": 5721,
+    "src/combat/combatFights.js": 5819,
+    "src/combat/attackLine.js": 1753
   }
 }

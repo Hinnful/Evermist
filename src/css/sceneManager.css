@@ -15,11 +15,10 @@
      which map is open and opens the library, the other says how many maps are on screen. */
   #scene-dd {
     position: fixed;
-    top: 16px; left: 16px;
+    top: 10px; left: 16px;
     z-index: 100;
     zoom: var(--ui-zoom, 1.2);
     width: max-content;
-    max-width: 222px;
     display: flex;
     gap: 6px;
   }
@@ -28,7 +27,7 @@
   body.player-mode #scene-undo-toast { display: none !important; }
 
   #scene-dd-toggle {
-    min-width: 0; max-width: 180px; height: 30px;
+    min-width: 0; max-width: 220px; height: 30px;
     display: flex; align-items: center; gap: 8px;
     padding: 0 12px;
     background: var(--panel-bg);

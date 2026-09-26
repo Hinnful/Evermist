@@ -315,7 +315,8 @@ function _bsKey(e) {
 function initBestiary() {
   const btn = document.createElement('button');
   btn.id = 'btn-bestiary';
-  btn.textContent = 'Bestiary';
+  btn.title = 'Every monster you have';
+  btn.innerHTML = CB_ICON_BOOK.replace('width="14" height="14"', 'width="15" height="15"') + '<span>Bestiary</span>';
   document.getElementById('btn-combat').after(btn);
 
   const modal = document.createElement('div');

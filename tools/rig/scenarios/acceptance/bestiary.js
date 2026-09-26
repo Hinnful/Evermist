@@ -57,7 +57,7 @@ globalThis.__sbEdit = (p, v) => {
 };
 // A name typed into a new fight row, then the suggestion list answered with Enter.
 globalThis.__cbPickTyped = (typed) => {
-  document.querySelector('.cb-add[data-add="enemy"]').click();
+  document.querySelector('#cb-list [data-add]').click();
   const inp = [...document.querySelectorAll('#cb-list .cb-row')].pop().querySelector('[data-f=name]');
   inp.focus(); inp.value = typed;
   inp.dispatchEvent(new Event('input', { bubbles: true }));
@@ -76,7 +76,7 @@ module.exports = async function bestiaryFeature(rig) {
   // RED ON: the active toggle gated off in bestiarySetOpen (bestiary.js) — 2026-09-25
   await dm.evaluate('document.getElementById("btn-bestiary").click(); 0');
   const opened = await dm.evaluate(`({ open: bsIsOpen(), lit: document.getElementById('btn-bestiary').classList.contains('active'),
-    label: document.getElementById('btn-bestiary').textContent })`);
+    label: document.getElementById('btn-bestiary').textContent.trim() })`);
   rig.check(opened.open && opened.lit, 'the Bestiary button did not open the window, lit: ' + JSON.stringify(opened));
   rig.check(opened.label === 'Bestiary', 'the button does not say Bestiary: ' + opened.label);
   await dm.evaluate('__bsAct("close"); 0');

@@ -709,9 +709,7 @@
   </button>
   <button id="btn-two-maps" title="Show a second map beside this one">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>
-  </button>
-  <button id="btn-combat" title="Fight">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
+    <span>Two maps</span>
   </button>
 </div>
 
@@ -825,9 +823,13 @@
 </div>
 </div><!-- /#mt-anchor -->
 
-<!-- MUSIC BUBBLE (music.js). Top centre, over the map: the scene dropdown owns the top left,
-     the control panel the right and the toolbar the bottom. Nothing here reaches the Player. -->
+<!-- THE PLAY GROUP: Combat, Bestiary (bestiary.js adds it) and the music bubble (music.js), top
+     centre with Bestiary on the window's centre line. Nothing here reaches the Player. -->
 <div id="music-anchor">
+  <button id="btn-combat" title="The fight table">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
+    <span>Combat</span>
+  </button>
   <div id="music-bubble" class="mu-resting">
     <div id="mu-pill">
       <button id="btn-mu-open" class="mu-open" title="Music">
@@ -1021,6 +1023,8 @@
 <script src="src/ui/music.js"></script>
 <script src="src/ui/musicDownload.js"></script>
 <script src="src/combat/combatPlan.js"></script>
+<script src="src/combat/fightPlan.js"></script>
+<script src="src/combat/attackLine.js"></script>
 <script src="src/combat/bestiaryPlan.js"></script>
 <script src="src/combat/combatStatBlock.js"></script>
 <script src="src/combat/statBlockParse.js"></script>
@@ -1029,6 +1033,7 @@
 <script src="src/combat/bestiaryPage.js"></script>
 <script src="src/combat/bestiary.js"></script>
 <script src="src/combat/combatTracker.js"></script>
+<script src="src/combat/combatFights.js"></script>
 <script>
 'use strict';
 

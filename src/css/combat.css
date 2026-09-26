@@ -1,18 +1,26 @@
-/* combat.css — the fight table, the bestiary, their stat block popup, and the two buttons beside Two maps. */
+/* combat.css — the fight table and its fight picker, the bestiary, their stat block popup, and the
+   Combat and Bestiary buttons in the top play group beside Music. */
 
-  /* The button wears #btn-two-maps's surface (panes.css), since the two sit side by side. */
+  /* Both buttons wear the Scenes button's shape (sceneManager.css): an icon and a word. Combat,
+     Bestiary and the music pill (music.css) join edge to edge into one group. */
   #btn-combat, #btn-bestiary {
-    flex: none; width: 30px; height: 30px;
+    zoom: var(--ui-zoom, 1.2); pointer-events: all; position: relative;
+    height: 30px; padding: 0 12px; gap: 8px;
     display: flex; align-items: center; justify-content: center;
     background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
     box-shadow: var(--panel-shadow); color: #d5d8dd; cursor: pointer;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif;
     transition: background .12s, border-color .12s, color .12s;
   }
-  #btn-combat:hover, #btn-bestiary:hover { border-color: rgba(255,255,255,0.18); background: #202124; }
+  #btn-combat { justify-self: end; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  #btn-bestiary { justify-self: center; border-radius: 0; margin-left: -1.5px; }
+  #btn-combat svg, #btn-bestiary svg { flex: none; color: #7f858e; }
+  #btn-combat:hover, #btn-bestiary:hover { border-color: rgba(255,255,255,0.18); background: #202124; z-index: 1; }
   #btn-combat.active, #btn-bestiary.active {
     background: linear-gradient(rgba(70, 120, 220, 0.16), rgba(70, 120, 220, 0.16)), var(--panel-bg);
-    border-color: rgba(90, 140, 235, 0.6); color: #8fb6ff;
+    border-color: rgba(90, 140, 235, 0.6); color: #8fb6ff; z-index: 1;
   }
+  #btn-combat.active svg, #btn-bestiary.active svg { color: #8fb6ff; }
   body.player-mode #btn-combat, body.pane-mode #btn-combat, body.player-mode #btn-bestiary, body.pane-mode #btn-bestiary,
   body.player-mode .cb-panel, body.pane-mode .cb-panel { display: none !important; }
 
@@ -21,13 +29,13 @@
     zoom: var(--ui-zoom, 1.2);
     background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
     box-shadow: var(--panel-shadow); overflow: hidden;
-    font: 400 12px/1.3 system-ui, -apple-system, sans-serif; color: #d5d8dd;
+    font: 400 13px/1.3 system-ui, -apple-system, sans-serif; color: #d5d8dd;
     user-select: none;
   }
   .cb-panel input, .cb-panel [contenteditable] { user-select: text; }
   /* The table decides the panel's width, so a wider column widens the panel. */
   #cb-fight { width: max-content; }
-  #cb-stat { width: 330px; z-index: 161; }
+  #cb-stat { width: 380px; z-index: 161; }
 
   .cb-head {
     display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px;
@@ -35,7 +43,6 @@
   }
   .cb-head .rp-grip { flex: none; color: #4a4f57; }
   .cb-head:hover .rp-grip { color: #7f858e; }
-  .cb-title { font: 600 12px/1 system-ui, sans-serif; margin-right: auto; }
   .cb-iconbtn {
     width: 22px; height: 22px; flex: none; padding: 0;
     display: flex; align-items: center; justify-content: center;
@@ -44,111 +51,147 @@
   .cb-iconbtn:hover { background: rgba(255,255,255,0.06); color: #d5d8dd; }
   .cb-iconbtn.del:hover { color: rgba(240,100,90,0.95); }
 
+  /* ===== The fight picker (combatFights.js) ===== */
+  #cb-fightpick {
+    display: flex; align-items: center; gap: 6px; margin: 0 auto 0 -6px; min-width: 0; max-width: 360px;
+    border: 0; background: none; padding: 4px 6px; border-radius: 6px; cursor: pointer;
+    font: 600 13px/1 system-ui, sans-serif; color: #d5d8dd;
+  }
+  #cb-fightpick:hover, #cb-fightpick.open { background: rgba(255,255,255,0.06); }
+  #cb-fightpick .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #cb-fightpick .car { font-size: 8px; color: #7f858e; }
+  #cf-menu {
+    position: fixed; z-index: 200; zoom: var(--ui-zoom, 1.2); width: 320px;
+    background: #232327; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45); overflow: hidden;
+    font: 500 13px/1.2 system-ui, sans-serif; color: #d5d8dd;
+  }
+  .cf-list { max-height: 360px; overflow-y: auto; padding: 4px; }
+  .cf-item { display: flex; align-items: center; gap: 7px; min-height: 32px; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
+  .cf-item:hover { background: rgba(255,255,255,0.05); }
+  .cf-item.on { background: rgba(90,140,235,0.16); }
+  .cf-item.on:hover { background: rgba(90,140,235,0.24); }
+  .cf-item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cf-item.on .nm { font-weight: 600; }
+  #cb-fightpick .nm.editing, .cf-item .nm.editing {
+    overflow: visible; text-overflow: clip; outline: 1px solid rgba(90,140,235,0.7); border-radius: 3px;
+    padding: 1px 3px; cursor: text; user-select: text; background: #1a1a1c;
+  }
+  .cf-item .meta { flex: none; color: #7f858e; font-size: 12px; }
+  .cf-new, .cb-addrow {
+    display: block; width: 100%; border: 0; border-top: 1px solid rgba(255,255,255,0.07); background: none;
+    padding: 11px 12px; text-align: left; cursor: pointer; color: #9aa0aa; font: 600 13px/1 system-ui, sans-serif;
+  }
+  .cf-new:hover, .cb-addrow:hover { background: rgba(255,255,255,0.03); color: #d5d8dd; }
+  .cb-addrow { border-top: none; }
+
   /* ===== The table: a spreadsheet grid, edge to edge inside the panel ===== */
   .cb-colhdr, .cb-row {
     display: grid;
-    grid-template-columns: 44px var(--cb-name, 190px) var(--cb-hp, 120px) 44px var(--cb-cond, 130px) 26px;
+    grid-template-columns: 64px var(--cb-name, 200px) var(--cb-hp, 150px) 52px var(--cb-cond, 150px) var(--cb-atk, 250px);
   }
   .cb-colhdr {
     background: #232327; border-bottom: 1px solid rgba(255,255,255,0.08);
-    font: 600 10px/1 system-ui, sans-serif; letter-spacing: .6px; text-transform: uppercase; color: #b8bdc6;
+    font: 600 11px/1 system-ui, sans-serif; letter-spacing: .6px; text-transform: uppercase; color: #b8bdc6;
   }
-  .cb-colhdr > span { position: relative; padding: 8px 8px 7px; white-space: nowrap; }
+  .cb-colhdr > span { position: relative; min-width: 0; padding: 9px 9px 8px; white-space: nowrap; }
+  .cb-colhdr .lbl { display: block; overflow: hidden; text-overflow: ellipsis; }
   /* The grab strip for a column's width sits on its right-hand divider. */
   .cb-colsize { position: absolute; right: -4px; top: 0; bottom: 0; width: 8px; z-index: 1; cursor: col-resize; }
   .cb-colsize:hover { background: linear-gradient(90deg, transparent 3px, #6ea8ff 3px, #6ea8ff 5px, transparent 5px); }
   .cb-colhdr > span + span { border-left: 1px solid rgba(255,255,255,0.08); }
-  .cb-colhdr > span:last-child { border-left: none; }
   .cb-colhdr .c { text-align: center; }
   .cb-colhdr .sortable { cursor: pointer; }
   .cb-colhdr .sortable:hover { color: #eceef1; }
 
-  #cb-list { max-height: calc(100vh / var(--ui-zoom, 1.2) - 200px); overflow-y: auto; }
-  #cb-list::-webkit-scrollbar { width: 6px; }
-  #cb-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
+  /* A height the DM set holds whatever the rows need; with none set, the list grows to its rows. */
+  #cb-list { height: var(--cb-list-h, auto); max-height: calc(100vh / var(--ui-zoom, 1.2) - 200px); overflow-y: auto; }
+  .cb-rs { position: absolute; z-index: 4; }
+  .cb-rs[data-rs="r"] { top: 0; right: 0; bottom: 8px; width: 6px; cursor: ew-resize; }
+  .cb-rs[data-rs="b"] { left: 0; right: 8px; bottom: 0; height: 6px; cursor: ns-resize; }
+  .cb-rs[data-rs="br"] { right: 0; bottom: 0; width: 12px; height: 12px; cursor: nwse-resize; }
+  #cb-list::-webkit-scrollbar, .cf-list::-webkit-scrollbar, .cb-menu::-webkit-scrollbar { width: 6px; }
+  #cb-list::-webkit-scrollbar-thumb, .cf-list::-webkit-scrollbar-thumb, .cb-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
+  .cf-list::-webkit-scrollbar-button, .cb-menu::-webkit-scrollbar-button { display: none; }
+  .cb-empty { padding: 22px 16px; text-align: center; color: #7f858e; border-bottom: 1px solid rgba(255,255,255,0.09); }
   .cb-row { position: relative; align-items: stretch; border-bottom: 1px solid rgba(255,255,255,0.09); }
   .cb-row:hover { background: rgba(255,255,255,0.03); }
-  .cb-row.down .cb-cell { opacity: 0.35; }
   .cb-row.dragging { opacity: 0.4; }
   .cb-row.drop-above { box-shadow: inset 0 2px 0 #6ea8ff; }
   .cb-row.drop-below { box-shadow: inset 0 -2px 0 #6ea8ff; }
 
-  /* The row grip sits over the left edge of the Init cell, inside the row, so it stays under the
-     pointer on the way to it. */
-  .cb-rowgrip {
-    position: absolute; left: 0; top: 0; bottom: 0; width: 11px; z-index: 2;
-    display: flex; align-items: center; justify-content: center;
-    color: #5a5f67; cursor: grab; visibility: hidden;
-  }
-  .cb-rowgrip:hover { color: #b8bdc6; }
-  .cb-row:hover .cb-rowgrip { visibility: visible; }
-
-  .cb-cell { position: relative; height: 34px; min-width: 0; border-right: 1px solid rgba(255,255,255,0.09); }
-  .cb-cell.cond { border-right: none; }
+  .cb-cell { position: relative; min-height: 40px; min-width: 0; border-right: 1px solid rgba(255,255,255,0.09); }
+  .cb-cell.atk { border-right: none; }
   .cb-cell.init { background: #202024; }
   .cb-cell:focus-within, .cb-cell.open { box-shadow: inset 0 0 0 2px #6ea8ff; background: rgba(110,168,255,0.06); }
+  .cb-cell:has(input[readonly]):focus-within { box-shadow: none; background: none; }
+  /* Every number weighs the same, except the two the stat block fixes: AC and max HP. */
   .cb-cell input {
-    width: 100%; height: 100%; box-sizing: border-box; padding: 0 8px;
-    border: none; outline: none; background: transparent; color: #eceef1;
-    font: 600 13.5px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
+    width: 100%; height: 100%; box-sizing: border-box; padding: 0 9px;
+    border: none; outline: none; background: transparent; color: #eceef1; text-overflow: ellipsis;
+    font: 400 14px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
   }
-  .cb-cell input::placeholder { color: #4a4f57; font-weight: 500; }
+  .cb-cell input[readonly] { font-weight: 700; cursor: default; }
+  .cb-cell input::placeholder { color: #5c6168; font-weight: 400; }
   .cb-cell.num input { text-align: center; padding: 0 2px; }
+  .cb-cell.name input { font-weight: 600; }
   .cb-row.side-enemy .cb-cell.name input { color: #f0937f; }
   .cb-row.side-ally .cb-cell.name input { color: #93d19c; }
   .cb-row.shown .cb-cell.name input { text-decoration: underline; text-underline-offset: 3px; }
-  .cb-cell.name:hover input { padding-right: 48px; }
-  .cb-open {
-    position: absolute; right: 5px; top: 8px; height: 18px; padding: 0 6px; display: none; align-items: center;
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; background: #26272b; color: #9aa0aa; cursor: pointer;
-    font: 600 9.5px/1 system-ui, sans-serif; letter-spacing: .4px;
-  }
-  .cb-open:hover { color: #e2e4e8; border-color: rgba(255,255,255,0.2); }
-  .cb-cell.name:hover .cb-open { display: flex; }
-  /* The HP line, and its total in a slot of its own at the right. */
-  .cb-cell.hp input { padding-right: 42px; }
-  .cb-cell.hp .sum {
-    position: absolute; right: 0; top: 0; bottom: 0; width: 36px; pointer-events: none;
-    display: flex; align-items: center; justify-content: center;
-    border-left: 1px solid rgba(255,255,255,0.06); color: #8a9099;
-    font: 600 13.5px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums;
-  }
-  .cb-row.bloodied .cb-cell.hp .sum { color: #f07068; }
-  /* Max HP belongs to the stat block, so it sits before the typed line and cannot be typed over. */
-  .cb-cell.hp:has(.max) { display: flex; align-items: center; }
-  .cb-cell.hp .max { flex: none; padding-left: 8px; color: #8a9099; font: 600 13.5px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  /* The HP cell lays out in a row, so a long line of damage never runs under the total. */
+  .cb-cell.hp { display: flex; align-items: center; }
+  .cb-cell.hp input { flex: 1; min-width: 0; width: auto; padding: 0 6px 0 9px; }
   .cb-cell.hp:has(.max) input { padding-left: 4px; }
-  .cb-cell.cond { cursor: pointer; display: flex; align-items: center; gap: 3px; padding: 0 6px; overflow: hidden; }
+  .cb-cell.hp .max { flex: none; padding-left: 9px; color: #eceef1; font: 700 14px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  .cb-cell.hp .sum { flex: none; padding: 0 10px 0 4px; pointer-events: none; color: #d5d8dd; font: 400 14px/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  .cb-cell.hp .sum:not(:empty)::before { content: '='; color: #5c6168; margin-right: 5px; }
+  .cb-row.low .cb-cell.hp .sum { color: #f0c24e; }
+  .cb-row.dead .cb-cell.hp .sum { color: #f26a60; }
+  .cb-cell.cond { cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; align-content: center; gap: 4px; padding: 6px; }
   .cb-chip {
-    flex: none; padding: 2px 6px; border-radius: 3px; white-space: nowrap;
-    background: rgba(224,160,96,0.14); color: #e0a060; font: 500 11.5px/1.2 system-ui, sans-serif;
+    flex: none; padding: 3px 7px; border-radius: 3px; white-space: nowrap;
+    background: rgba(224,160,96,0.14); color: #e0a060; font: 500 12px/1.2 system-ui, sans-serif;
   }
-  .cb-row .del { align-self: center; justify-self: center; visibility: hidden; }
-  .cb-row:hover .del { visibility: visible; }
-
-  .cb-foot { display: flex; }
-  .cb-add {
-    flex: 1; height: 34px; padding: 0 12px; border: none; background: none; text-align: left;
-    color: #7f858e; cursor: pointer; font: 500 12px/1 system-ui, sans-serif;
+  /* The Attacks cell is the one nobody clicks, so the row's actions sit inside it on hover. */
+  .cb-cell.atk { display: flex; align-items: center; padding: 8px 10px; overflow: hidden; cursor: default; }
+  .cb-atk { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.4; color: #9aa0aa; }
+  .cb-atk.own { color: #d5d8dd; }
+  .cb-atk.editing { display: block; width: 100%; min-height: 1.4em; outline: none; cursor: text; user-select: text; }
+  .cb-atk.editing:empty::before { content: 'Attacks, spells, save DCs'; color: #5c6168; }
+  .cb-atk .an { color: #d5d8dd; }
+  .cb-atk .ah { color: #8fb6ff; font-variant-numeric: tabular-nums; }
+  .cb-atk .ad { color: #eceef1; font-variant-numeric: tabular-nums; }
+  .cb-acts {
+    position: absolute; right: 0; top: 0; bottom: 0; display: none; align-items: center; gap: 1px; padding: 0 6px 0 22px;
+    background: linear-gradient(90deg, rgba(30,31,34,0), #1e1f22 18px);
   }
-  .cb-add + .cb-add { border-left: 1px solid rgba(255,255,255,0.07); }
-  .cb-add:hover { background: rgba(255,255,255,0.03); color: #d5d8dd; }
-  .cb-add[data-add="enemy"]:hover { color: #f0937f; }
-  .cb-add[data-add="ally"]:hover { color: #93d19c; }
+  .cb-row:hover .cb-acts { display: flex; }
+  .cb-row:has(.cb-atk.editing) .cb-acts { display: none; }
+  .cb-acts .cb-iconbtn { width: 26px; height: 26px; }
 
+  /* One menu for the table, the fight list and the stat block: right-click, conditions, sections. */
   .cb-menu {
-    position: fixed; z-index: 200; zoom: var(--ui-zoom, 1.2); min-width: 150px; max-height: 280px; overflow-y: auto;
+    position: fixed; z-index: 210; zoom: var(--ui-zoom, 1.2); min-width: 170px;
+    max-height: calc(100vh / var(--ui-zoom, 1.2) - 16px); overflow-y: auto;
     background: #232327; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.45); padding: 4px;
   }
   .cb-menu div {
-    display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 6px; cursor: pointer;
-    font: 500 12px/1.2 system-ui, sans-serif; color: #d5d8dd;
+    display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 6px; cursor: pointer;
+    font: 500 13px/1.2 system-ui, sans-serif; color: #d5d8dd;
   }
   .cb-menu div:hover { background: rgba(90,140,235,0.22); }
-  .cb-menu .tick { width: 10px; color: #6ea8ff; }
+  .cb-menu div.danger { color: #f0857a; }
+  .cb-menu div.danger:hover { background: rgba(240,100,90,0.16); }
+  .cb-menu hr { border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 4px 6px; }
+  .cb-menu .key { margin-left: auto; padding-left: 18px; color: #7f858e; font-size: 12px; }
+  .cb-menu .box { flex: none; width: 15px; height: 15px; box-sizing: border-box; border: 1.5px solid rgba(255,255,255,0.32); border-radius: 4px; }
+  .cb-menu .box.on {
+    border-color: #4a82e8; background: #4a82e8 center / 11px no-repeat;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
   #cb-suggest div.on { background: rgba(90,140,235,0.22); }
-  #cb-suggest .src { margin-left: auto; padding-left: 14px; color: #7f858e; font-weight: 400; font-size: 11px; }
+  #cb-suggest .src { margin-left: auto; padding-left: 14px; color: #7f858e; font-weight: 400; font-size: 12px; }
 
   /* ===== The stat block ===== */
   .cb-side-switch { margin-right: auto; padding: 3px; }
@@ -162,37 +205,35 @@
   .cb-sb [contenteditable]:hover { background: rgba(255,255,255,0.04); }
   .cb-sb [contenteditable]:focus { background: rgba(255,255,255,0.06); box-shadow: 0 0 0 1.5px rgba(90,140,235,0.6); }
   .cb-sb [contenteditable]:empty::before { content: attr(data-ph); color: #4a4f57; }
-  .cb-sb-name { font: 700 18px/1.2 system-ui, sans-serif; color: #8fb6ff; }
-  .cb-sb-meta { font: italic 11.5px/1.4 system-ui, sans-serif; color: #9aa0aa; margin-top: 2px; display: block; }
-  .cb-sb-source { font-size: 11px; color: #7f858e; margin-top: 3px; }
+  .cb-sb-name { font: 700 19px/1.2 system-ui, sans-serif; color: #8fb6ff; }
+  .cb-sb-meta { font: italic 12.5px/1.4 system-ui, sans-serif; color: #9aa0aa; margin-top: 2px; display: block; }
+  .cb-sb-source { font-size: 12px; color: #7f858e; margin-top: 3px; }
   .cb-sb-source [contenteditable] { color: #b8bdc6; }
   .cb-sb-rule { height: 2px; margin: 8px 0; background: linear-gradient(90deg, rgba(90,140,235,0.7), rgba(90,140,235,0)); }
-  .cb-sb-line { font-size: 12px; line-height: 1.55; color: #c4c8cf; }
+  .cb-sb-line { font-size: 13px; line-height: 1.55; color: #c4c8cf; }
   .cb-sb-line b { color: #8fb6ff; font-weight: 600; }
   .cb-sb-abil { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; text-align: center; }
-  .cb-sb-abil .k { font: 700 10.5px/1 system-ui, sans-serif; color: #8fb6ff; letter-spacing: .5px; margin-bottom: 4px; }
-  .cb-sb-abil .v { display: inline-block; min-width: 18px; font: 600 12.5px/1.2 system-ui, sans-serif; color: #e2e4e8; font-variant-numeric: tabular-nums; }
-  .cb-sb-abil .m { font-size: 11px; color: #7f858e; }
+  .cb-sb-abil .k { font: 700 11px/1 system-ui, sans-serif; color: #8fb6ff; letter-spacing: .5px; margin-bottom: 4px; }
+  .cb-sb-abil .v { display: inline-block; min-width: 18px; font: 600 13.5px/1.2 system-ui, sans-serif; color: #e2e4e8; font-variant-numeric: tabular-nums; }
+  .cb-sb-abil .m { font-size: 12px; color: #7f858e; }
   .cb-sb-sec { margin-top: 12px; }
   .cb-sb-sechd {
     display: flex; align-items: center; justify-content: space-between; padding-bottom: 3px; margin-bottom: 6px;
-    border-bottom: 1px solid rgba(90,140,235,0.45); font: 600 13px/1 system-ui, sans-serif; color: #8fb6ff;
+    border-bottom: 1px solid rgba(90,140,235,0.45); font: 600 14px/1 system-ui, sans-serif; color: #8fb6ff;
   }
   .cb-sb-sechd .cb-iconbtn { width: 18px; height: 18px; visibility: hidden; }
   .cb-sb-sec:hover .cb-sb-sechd .cb-iconbtn { visibility: visible; }
-  .cb-sb-entry { position: relative; margin-bottom: 6px; padding-right: 16px; font-size: 12px; line-height: 1.5; color: #c4c8cf; }
+  .cb-sb-entry { position: relative; margin-bottom: 6px; padding-right: 16px; font-size: 13px; line-height: 1.5; color: #c4c8cf; }
   .cb-sb-entry .n { font-weight: 700; font-style: italic; color: #e2e4e8; }
   .cb-sb-entry .x { position: absolute; right: -4px; top: 0; width: 18px; height: 18px; visibility: hidden; }
   .cb-sb-entry:hover .x { visibility: visible; }
-  .cb-sb-add { padding: 2px 0; font-size: 11.5px; color: #62676e; cursor: pointer; }
+  .cb-sb-add { padding: 2px 0; font-size: 12.5px; color: #62676e; cursor: pointer; }
   .cb-sb-add:hover { color: #b8bdc6; }
   .cb-sb-addsec { margin-top: 14px; }
   .cb-save { margin-left: auto; }
   .cb-save:disabled { opacity: 0.45; cursor: default; }
 
   /* ===== The bestiary: the scene library's window, a table, and a page beside it ===== */
-  /* The Bestiary button says its name; an icon alone did not say what it opens. */
-  #btn-bestiary { width: auto; padding: 0 12px; font: 600 12.5px/1 system-ui, -apple-system, sans-serif; }
   #bs-modal { position: fixed; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center; background: rgba(6,7,9,0.62); }
   body.player-mode #bs-modal, body.pane-mode #bs-modal { display: none !important; }
   #bs-panel {

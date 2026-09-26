@@ -13,6 +13,18 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### A list of fights, and the table settled over twelve prototypes · `SETTLED` (2026-09-26)
+
+Reverses four calls in "The fight table is a spreadsheet grid" below: one fight for the app (now a
+list of fights, none tied to a scene), every number the same weight (AC and max HP are bold because
+the stat block fixes them), a restore landing only on an empty table (it adds the fights missing),
+and the row grip (a press that travels 5px drags). Bloodied moved from half or below to below half.
+Rejected: a header that swaps into the picked row's actions, a ⋯ column, icons floating outside
+the panel, fight notes (they wait for scene notes), and an Attacks line that only parses; the DM
+can overwrite it. The open fight keeps the pre-list save shape under its old key, so a pulled
+release still opens it and never overwrites another fight. The music pill's left corners square
+off where it joins Bestiary in the top play group.
+
 ### A fight row owns a copy of its stat block · `SETTLED` (2026-09-25)
 
 Reverses "numbered copies share one stat block" in the entry below. The bestiary is the source of

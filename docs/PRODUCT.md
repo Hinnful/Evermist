@@ -61,8 +61,9 @@ stand-in rather than a better option.
 
 ### A combat helper on the DM's screen · `SETTLED` (2026-09-24)
 Everything a DM tracks in a fight, on the DM's screen and never on the Player's. The fight
-table is its first shape: one fight for the whole app, a row per creature with initiative, name,
-HP typed as a running sum, AC and conditions, and a stat block per creature. It holds monsters
+table is its first shape: a list of fights prepared ahead and run from one table, a row per
+creature with initiative, name, HP typed as a running sum, AC, conditions and attacks, and a stat
+block per creature. A fight belongs to no scene, so the same one opens wherever it happens. It holds monsters
 and names the players only so the turn order can be read out; a player's character sheet is the
 player's own. No dice roll anywhere, because the table has real ones. No turn marker and no
 rounds until something counts turns. The bestiary holds every stat block and is the source the
