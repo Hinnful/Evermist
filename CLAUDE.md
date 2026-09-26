@@ -86,12 +86,12 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `fog/fog.js` | Fog canvases, the blur + cloud pipeline, reveal/hide |
 | `fog/fogAnim.js` | Fog on a clock: the drift, the reveal crossfade, the scene cover, the colour ease |
 | `fog/fogControls.js` | The Fog tab's controls: anim presets, sliders, colour, feather, half-shroud, doors |
-| `fog/fogGeometry.js` | Pure fog geometry kernel. Unit-tested |
-| `fog/fogColor.js` | Pure fog colour kernel: base, tint, the step between two, a scene's settings. Unit-tested |
-| `shapes/doorGeometry.js` | Pure door-notch kernel. Unit-tested |
-| `rooms/vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Unit-tested, dependency-free |
-| `shapes/roomOps.js` | Pure Join/Trim/Cut kernel. Unit-tested |
-| `shapes/shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Unit-tested |
+| `fog/fogGeometry.js` | Pure fog geometry kernel. Tested |
+| `fog/fogColor.js` | Pure fog colour kernel: base, tint, the step between two, a scene's settings. Tested |
+| `shapes/doorGeometry.js` | Pure door-notch kernel. Tested |
+| `rooms/vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Tested, dependency-free |
+| `shapes/roomOps.js` | Pure Join/Trim/Cut kernel. Tested |
+| `shapes/shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Tested |
 | `shapes/tools.js` | The tool in hand, shared tool state, the click registry |
 | `shapes/shapeCommit.js` | A drawn shape into a room, an effect or a repair; every refusal |
 | `shapes/toolPoly.js` | The Polygon tool: a vertex per click, and the two ways it closes |
@@ -101,7 +101,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `shapes/toolCut.js` | The Cut tool and the two pieces it leaves |
 | `shapes/shapeMarkers.js` | The corner and hole-hatch markers a picked shape's chrome draws |
 | `shapes/toolPreview.js` | What a tool draws before it is committed |
-| `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Unit-tested |
+| `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Tested |
 | `shapes/shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
 | `shapes/shapeBox.js` | The bounding box: its handles, rotate and scale |
 | `shapes/shapeClipboard.js` | Copy, paste, duplicate, across scene switches |
@@ -141,24 +141,25 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `rooms/roomCard.js` | The room card: fields, placement, drag |
 | `content/moduleText.js` | Module parsing, storage, name-field dropdown |
 | `content/moduleTextPanel.js` | The import panel and the name-field dropdown. Parses nothing |
-| `content/pdfLayout.js` | Pure PDF reading-order kernel. Unit-tested, dependency-free |
+| `content/pdfLayout.js` | Pure PDF reading-order kernel. Tested, dependency-free |
 | `content/pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `ui/confirmDialog.js` | The app's only sanctioned confirmation dialog |
 | `ui/about.js` | The About block in the legend footer: mark, version, repo |
 | `ui/changelogData.js` | The release list. GENERATED; never edit it |
 | `ui/changelog.js` | The What’s new panel |
 | `ui/updater.js` | Update toast, About's update line, restart button |
-| `ui/musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Unit-tested |
+| `ui/musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Tested |
 | `ui/music.js` | The music bubble: track library and playback |
 | `ui/musicDownload.js` | The Add music panel |
-| `combat/combatPlan.js` | Pure fight kernel: HP sum, order, a row's copy. Unit-tested |
-| `combat/fightPlan.js` | Pure: the list of fights, its save shape, a backup merge. Unit-tested |
-| `combat/attackLine.js` | Pure: the Attacks line read from a stat block. Unit-tested |
-| `combat/bestiaryPlan.js` | Pure bestiary kernel. Unit-tested |
+| `combat/combatPlan.js` | Pure fight kernel: HP sum, order, a row's copy. Tested |
+| `combat/fightPlan.js` | Pure: the fight list, its save shape, a backup merge. Tested |
+| `combat/attackLine.js` | Pure: attacks read from a stat block. Tested |
+| `combat/attackPills.js` | Attack pills and glyphs |
+| `combat/bestiaryPlan.js` | Pure bestiary kernel. Tested |
 | `combat/combatTracker.js` | The fight table: rows, name search, saving |
 | `combat/combatStatBlock.js` | The stat block popup |
 | `combat/combatFights.js` | The fight picker and its list |
-| `combat/statBlockParse.js` | Pure stat block parser. Unit-tested |
+| `combat/statBlockParse.js` | Pure stat block parser. Tested |
 | `combat/statBlockBook.js` | Pure: a book into stat blocks, and their clean-read gate. Tested |
 | `combat/statBlockImport.js` | The link queue and the book import |
 | `combat/bestiary.js` | The bestiary: table, filters, selection |
@@ -212,7 +213,7 @@ ui/colorPicker.js → ui/controlPanel.js → ui/confirmDialog.js → rooms/floor
 content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/roomCard.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicDownload.js → combat/combatPlan.js → combat/fightPlan.js →
-combat/attackLine.js → combat/bestiaryPlan.js →
+combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
 combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js →

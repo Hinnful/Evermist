@@ -26,7 +26,10 @@
 //   K. Save to Bestiary lights on an edit, adds the row's stat block to the bestiary as a new
 //      entry, and goes dark; the entry and the row then change apart.
 //   L. An empty Init field shows the stat block's DEX bonus as a hint; a player's shows none.
-//   M. The Attacks cell reads each attack from the stat block. A double-click writes the DM's own
+//   M. The Attacks cell shows each damaging action as a pill: name, to-hit, a glyph and the damage,
+//      no type word, and its full text on hover. Two damage types sit in one pill, a clear
+//      Multiattack counts its attacks, and one with a choice is a Multiattack pill with no counts.
+//      A double-click writes the DM's own
 //      line: Enter keeps it, Escape drops it, Save to Bestiary lights, and the stat block's Table
 //      line shows it. Nothing typed there reaches the page as markup.
 //   N. A row's hover icons duplicate it, switch its side and delete it. Ctrl+D duplicates the row
@@ -294,10 +297,21 @@ module.exports = async function fightTableFeature(rig) {
   const atk = await dm.evaluate(`(async () => {
     const tick = () => new Promise(r => setTimeout(r, 30));
     const r = __cbData('Wight');
+    const pills = () => [...__cbRow('Wight').querySelectorAll('.cb-atk .cb-pill')].map(p => ({
+      text: p.textContent, title: p.title, fb: p.classList.contains('fb'),
+      dmg: [...p.querySelectorAll('.pd')].map(d => ({ n: d.textContent, glyph: !!d.querySelector('svg') })) }));
+    const bite = { n: 'Bite', t: 'Melee Weapon Attack: +10 to hit. Hit: 17 (2d10 + 6) piercing damage plus 3 (1d6) fire damage.' };
+    const claw = { n: 'Claw', t: 'Melee Weapon Attack: +10 to hit. Hit: 13 (2d6 + 6) slashing damage.' };
+    r.sb.secs = { Actions: [{ n: 'Multiattack', t: 'It makes three attacks: one with its bite and two with its claws.' }, bite, claw] };
+    cbRender();
+    const out = { counted: pills() };
+    r.sb.secs = { Actions: [{ n: 'Multiattack', t: 'It makes two claw attacks or one bite attack.' }, bite, claw] };
+    cbRender();
+    out.choice = pills();
     r.sb.secs = { Actions: [{ n: 'Longsword', t: 'Melee Weapon Attack: +4 to hit, reach 5 ft. Hit: 6 (1d8 + 2) slashing damage.' }] };
     r.sbChanged = false;
     cbRender();
-    const out = { auto: __cbRow('Wight').querySelector('.cb-atk').textContent };
+    out.single = pills();
     const cell = () => __cbRow('Wight').querySelector('.cb-cell.atk');
     cell().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     let span = cell().querySelector('.cb-atk');
@@ -321,8 +335,18 @@ module.exports = async function fightTableFeature(rig) {
     return out;
   })()`);
   rig.note('attacks: ' + JSON.stringify(atk));
-  rig.check(atk.auto.includes('Longsword') && atk.auto.includes('+4') && atk.auto.includes('6') && atk.auto.includes('slashing'),
-            'the Attacks cell did not read the stat block\'s attack: ' + atk.auto);
+  // RED ON: _cbDamageSeg's glyph, the pill's title, combatAttacks' counts and _cbMultiCounts' choice
+  // test each gated off in turn (attackPills.js, attackLine.js) — 2026-09-26
+  const one = atk.single[0] || { dmg: [] };
+  rig.check(atk.single.length === 1 && one.text.includes('Longsword') && one.text.includes('+4') && !/slashing/i.test(one.text)
+            && one.dmg.length === 1 && one.dmg[0].n === '6' && one.dmg[0].glyph,
+            "the Attacks cell did not show the stat block's attack as a pill with a glyph: " + JSON.stringify(atk.single));
+  rig.check(one.title && one.title.includes('Hit: 6 (1d8 + 2) slashing damage'), "a pill's hover does not carry the action's full text: " + one.title);
+  const [cBite, cClaw] = atk.counted.concat({ dmg: [], text: '' }, { dmg: [], text: '' });
+  rig.check(atk.counted.length === 2 && cBite.dmg.map(d => d.n).join() === '17,3' && !/2×/.test(cBite.text) && /2×/.test(cClaw.text),
+            'a two-type attack is not one pill with two damage parts, or a clear Multiattack did not count: ' + JSON.stringify(atk.counted));
+  rig.check(atk.choice.length === 3 && atk.choice[0].fb && !atk.choice.some(p => /×/.test(p.text)),
+            'a Multiattack with a choice did not show as its own pill with no counts: ' + JSON.stringify(atk.choice));
   rig.check(atk.editing && atk.afterEscape === undefined, 'a double-click did not edit the line, or Escape kept what was typed: ' + JSON.stringify(atk));
   rig.check(atk.quick === 'Drain <b>life</b> DC 13' && atk.shown === atk.quick && !atk.markup,
             "the DM's own line was not kept as plain text: " + JSON.stringify(atk));

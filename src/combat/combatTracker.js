@@ -101,10 +101,7 @@ function _cbHpClass(hp) { return hp.down ? 'dead' : hp.bloodied ? 'low' : ''; }
 // The DM's own line once written, else what the stat block's actions read as.
 function _cbAtkCell(sb) {
   if (sb.quick !== undefined) return `<span class="cb-atk own">${_cbEsc(sb.quick)}</span>`;
-  const atks = combatAttacks(sb);
-  return `<span class="cb-atk" title="${_cbEsc(atks.map(a => `${a.n}: ${a.hit} to hit, ${a.dmg} ${a.type} damage`).join('\n'))}">${
-    atks.map(a => `<span class="an">${_cbEsc(a.n)}</span> <span class="ah">${_cbEsc(a.hit)}</span> <span class="ad">${_cbEsc(a.dmg)}</span>${
-      a.type ? ` <span class="at">${_cbEsc(a.type)}</span>` : ''}`).join('\n')}</span>`;
+  return `<span class="cb-atk pills">${combatAttacks(sb).map(cbAttackPill).join('')}</span>`;
 }
 
 function cbRender() {

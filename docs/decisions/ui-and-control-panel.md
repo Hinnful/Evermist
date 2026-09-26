@@ -13,6 +13,18 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### The Attacks cell is pills, one per damaging action · `SETTLED` (2026-09-26)
+
+A line of words gave most of the cell to type names. Each action that deals damage is now a pill:
+name, to-hit or save DC, then a glyph and number per damage type, with colours after Baldur's
+Gate 3 and glyphs from Tabler (the game's own icons are not free to copy). Segments separate by
+tint alone; an outline, faint dividers, dots and a name outside the pill were sketched and
+rejected as busy or hard to scan. A Multiattack gives counts only when its wording holds no choice
+or swap, otherwise a dashed Multiattack pill; wrong counts are worse than none. Only Actions get
+pills, and a Multiattack's non-damage step (Frightful Presence) shows nothing. Rejected on scope: a
+universal action display with bonus, legendary and lair actions, moves and pools - a game
+mechanic rather than a DM tool; the stat block covers them.
+
 ### A list of fights, and the table settled over twelve prototypes · `SETTLED` (2026-09-26)
 
 Reverses four calls in "The fight table is a spreadsheet grid" below: one fight for the app (now a

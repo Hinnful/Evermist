@@ -149,18 +149,32 @@
   .cb-row.dead .cb-cell.hp .sum { color: #f26a60; }
   .cb-cell.cond { cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; align-content: center; gap: 4px; padding: 6px; }
   .cb-chip {
-    flex: none; padding: 3px 7px; border-radius: 3px; white-space: nowrap;
+    flex: none; padding: 3px 7px; border-radius: 6px; white-space: nowrap;
     background: rgba(224,160,96,0.14); color: #e0a060; font: 500 12px/1.2 system-ui, sans-serif;
   }
   /* The Attacks cell is the one nobody clicks, so the row's actions sit inside it on hover. */
   .cb-cell.atk { display: flex; align-items: center; padding: 8px 10px; overflow: hidden; cursor: default; }
+  .cb-cell.atk:has(.pills:not(.editing)) { padding: 6px; }
   .cb-atk { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.4; color: #9aa0aa; }
   .cb-atk.own { color: #d5d8dd; }
   .cb-atk.editing { display: block; width: 100%; min-height: 1.4em; outline: none; cursor: text; user-select: text; }
   .cb-atk.editing:empty::before { content: 'Attacks, spells, save DCs'; color: #5c6168; }
-  .cb-atk .an { color: #d5d8dd; }
-  .cb-atk .ah { color: #8fb6ff; font-variant-numeric: tabular-nums; }
-  .cb-atk .ad { color: #eceef1; font-variant-numeric: tabular-nums; }
+  /* Tints alone separate a pill's segments: no outline, no divider. */
+  .cb-atk.pills:not(.editing) { display: flex; flex-wrap: wrap; gap: 4px; white-space: normal; }
+  .cb-pill {
+    display: inline-flex; border-radius: 6px; overflow: hidden; white-space: nowrap;
+    font: 500 12px/1.2 system-ui, sans-serif; font-variant-numeric: tabular-nums;
+  }
+  .cb-pill > span { display: inline-flex; align-items: center; gap: 3px; padding: 3px 6px; background: rgba(255,255,255,0.07); color: #d5d8dd; }
+  .cb-pill .px { color: #7f858e; margin-right: 1px; }
+  .cb-pill .pr { color: #ff8a4c; }
+  .cb-pill .ph { background: rgba(110,168,255,0.13); color: #8fb6ff; }
+  .cb-pill .pd { color: var(--c, #eceef1); background: color-mix(in srgb, var(--c, #ffffff) 16%, transparent); }
+  .cb-pill .pd.w { background: color-mix(in srgb, var(--c) 10%, transparent); }
+  .cb-pill .pg { background: rgba(224,160,96,0.14); color: #e0a060; }
+  .cb-pill svg { flex: none; }
+  .cb-pill.fb { border: 1px dashed rgba(255,255,255,0.22); }
+  .cb-pill.fb > span { background: transparent; color: #9aa0aa; padding: 2px 6px; }
   .cb-acts {
     position: absolute; right: 0; top: 0; bottom: 0; display: none; align-items: center; gap: 1px; padding: 0 6px 0 22px;
     background: linear-gradient(90deg, rgba(30,31,34,0), #1e1f22 18px);

@@ -93,7 +93,7 @@
     "src/shapes/shapeMarkers.js": 2310,
     "src/combat/combatPlan.js": 6916,
     "src/combat/combatStatBlock.js": 8205,
-    "src/combat/combatTracker.js": 28808,
+    "src/combat/combatTracker.js": 28505,
     "src/combat/statBlockParse.js": 17623,
     "electron/statBlockFetch.js": 3611,
     "src/combat/statBlockImport.js": 5853,
@@ -103,6 +103,7 @@
     "src/combat/statBlockBook.js": 14500,
     "src/combat/fightPlan.js": 5721,
     "src/combat/combatFights.js": 5819,
-    "src/combat/attackLine.js": 1753
+    "src/combat/attackLine.js": 10478,
+    "src/combat/attackPills.js": 4370
   }
 }
