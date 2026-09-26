@@ -103,12 +103,12 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `shapes/toolPreview.js` | What a tool draws before it is committed |
 | `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Tested |
 | `shapes/shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
-| `shapes/shapeBox.js` | The bounding box: its handles, rotate and scale |
+| `shapes/shapeBox.js` | The bounding box, its handles, rotate, scale |
 | `shapes/shapeClipboard.js` | Copy, paste, duplicate, across scene switches |
 | `shapes/shapeMenu.js` | The one shape button and its right-click flyout |
 | `ui/input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in `scenes/dragDrop.js`** |
 | `undo.js` | Undo/redo for fog edits |
-| `render/effects.js` | Map effects: the `effects` array's model, and the meshes its render path builds |
+| `render/effects.js` | Map effects: the `effects` array's model and its meshes |
 | `render/effectMaterials.js` | One record per material: ramp, warmth, swatch |
 | `render/effectShader.js` | An effect's two fragment passes and their vertex cap |
 | `render/grid.js` | Grid config + render |
@@ -118,7 +118,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `scenes/sceneCards.js` | The library list: cards, group sections, reorder drag |
 | `scenes/sceneDelete.js` | The trash and its undo |
 | `scenes/mapImport.js` | Import: accepted kinds, the batch loop, video maps to disk |
-| `scenes/sceneSwitch.js` | `switchScene`: fog cover, store read, decode, fog reopen |
+| `scenes/sceneSwitch.js` | `switchScene` and each of its steps |
 | `scenes/sceneGroups.js` | Group names on scenes; heading order + collapse. Tested |
 | `scenes/sceneStore.js` | IndexedDB read/write |
 | `scenes/mapLoader.js` | Image-map loading + progress-bar helpers |
@@ -130,7 +130,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `player/stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
 | `player/minimap.js` | Minimap render, drag/zoom remote, two-way view sync, zoom nudge |
 | `render/video.js` | Animated-map handling |
-| `render/videoDiag.js` | Video diagnostics overlay and its disk log |
+| `render/videoDiag.js` | Video diagnostics overlay and disk log |
 | `render/display.js` | Display detection |
 | `scenes/backup.js` | Zip backup/restore, including a picked or dropped `.zip` |
 | `scenes/dragDrop.js` | What a file dropped on the DM window becomes |
@@ -144,23 +144,24 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `content/pdfLayout.js` | Pure PDF reading-order kernel. Tested, dependency-free |
 | `content/pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `ui/confirmDialog.js` | The app's only sanctioned confirmation dialog |
-| `ui/about.js` | The About block in the legend footer: mark, version, repo |
+| `ui/about.js` | The About block: mark, version, repo |
 | `ui/changelogData.js` | The release list. GENERATED; never edit it |
 | `ui/changelog.js` | The What’s new panel |
 | `ui/updater.js` | Update toast, About's update line, restart button |
 | `ui/musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Tested |
 | `ui/music.js` | The music bubble: track library and playback |
-| `ui/musicDownload.js` | The Add music panel |
+| `ui/musicDownload.js` | Add music panel |
 | `combat/combatPlan.js` | Pure fight kernel: HP sum, order, a row's copy. Tested |
 | `combat/fightPlan.js` | Pure: the fight list, its save shape, a backup merge. Tested |
 | `combat/attackLine.js` | Pure: attacks read from a stat block. Tested |
+| `combat/multiattack.js` | Pure: Multiattack reading. Tested |
 | `combat/attackPills.js` | Attack pills and glyphs |
 | `combat/bestiaryPlan.js` | Pure bestiary kernel. Tested |
 | `combat/combatTracker.js` | The fight table: rows, name search, saving |
 | `combat/combatStatBlock.js` | The stat block popup |
 | `combat/combatFights.js` | The fight picker and its list |
 | `combat/statBlockParse.js` | Pure stat block parser. Tested |
-| `combat/statBlockBook.js` | Pure: a book into stat blocks, and their clean-read gate. Tested |
+| `combat/statBlockBook.js` | Pure: a book into stat blocks, and the clean-read gate. Tested |
 | `combat/statBlockImport.js` | The link queue and the book import |
 | `combat/bestiary.js` | The bestiary: table, filters, selection |
 | `combat/bestiaryPage.js` | A bestiary monster's page |
@@ -170,7 +171,7 @@ Hard rules. "It's easier to just add it to the inline script" is never a valid r
 | `player/playerMessages.js` | The Player's inbox: one handler per message the DM sends |
 | `player/paneRuntime.js` | A column's inbox from the shell |
 | `dev/stress.js` | `?stress=1` harness |
-| `dev/memProbe.js` | `?memprobe=1` memory-footprint probe |
+| `dev/memProbe.js` | `?memprobe=1` memory probe |
 
 ### The main process
 
@@ -213,7 +214,7 @@ ui/colorPicker.js → ui/controlPanel.js → ui/confirmDialog.js → rooms/floor
 content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/roomCard.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicDownload.js → combat/combatPlan.js → combat/fightPlan.js →
-combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →
+combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
 combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js →

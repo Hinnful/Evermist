@@ -17,6 +17,7 @@ const CB_DAMAGE_LOOK = {
   thunder: ['#a77bf0', '<path d="M21 12h-2c-.894 0 -1.662 -.857 -1.761 -2c-.296 -3.45 -.749 -6 -2.749 -6s-2.5 3.582 -2.5 8s-.5 8 -2.5 8s-2.452 -2.547 -2.749 -6c-.1 -1.147 -.867 -2 -1.763 -2h-2"/>'],
 };
 const CB_GLYPH_INFO = '<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 9h.01"/><path d="M11 12h1v4h1"/>';
+const CB_GLYPH_SWAP = '<path d="M7 10h14l-4 -4"/><path d="M17 14h-14l4 4"/>';
 const CB_WEAPON_TYPES = ['slashing', 'piercing', 'bludgeoning'];
 
 const _cbGlyph = paths => `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
@@ -27,9 +28,17 @@ function _cbDamageSeg(p) {
   return `<span class="pd${CB_WEAPON_TYPES.includes(p.type) ? ' w' : ''}" style="--c:${look[0]}">${_cbGlyph(look[1])}${_cbEsc(p.dmg)}</span>`;
 }
 
+// A Multiattack with a pick or a swap: one frame, the count once at its front.
+function _cbGroup(a) {
+  return `<span class="cb-grp" title="${_cbEsc(`${a.n}. ${a.t}`)}">${a.x ? `<span class="gx">${a.x}×</span>` : ''}${
+    a.opts.map(cbAttackPill).join(a.or ? '<span class="gor">or</span>' : '')}${
+    a.swap ? `<span class="gsw">${_cbGlyph(CB_GLYPH_SWAP)}${_cbEsc(a.swap.k)} for ${_cbEsc(a.swap.to)}</span>` : ''}</span>`;
+}
+
 function cbAttackPill(a) {
+  if (a.group) return _cbGroup(a);
   if (a.fallback) return `<span class="cb-pill fb" title="${_cbEsc(a.t)}"><span class="pn">${_cbGlyph(CB_GLYPH_INFO)}${_cbEsc(a.n)}</span></span>`;
-  return `<span class="cb-pill" title="${_cbEsc(`${a.n}. ${a.t}`)}"><span class="pn">${a.x ? `<span class="px">${a.x}×</span>` : ''}${_cbEsc(a.n)}</span>${
+  return `<span class="cb-pill" title="${_cbEsc(`${a.n}. ${a.t}`)}">${a.ba ? '<span class="pb">Bonus</span>' : ''}<span class="pn">${a.x ? `<span class="px">${a.x}×</span>` : ''}${_cbEsc(a.n)}</span>${
     a.rc ? `<span class="pr">${_cbEsc(a.rc)}</span>` : ''}<span class="ph">${_cbEsc(a.hit)}</span>${a.parts.map(_cbDamageSeg).join('')}${
     a.grab ? `<span class="pg">Grappled DC ${_cbEsc(a.grab)}</span>` : ''}</span>`;
 }

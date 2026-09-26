@@ -13,6 +13,17 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### A Multiattack pick or swap is one frame, and bonus actions get pills · `SETTLED` (2026-09-27)
+
+Amends the entry below. A pass over the Russian 2024 Monster Manual, the Free Rules and Curse of
+Strahd found most Multiattacks fell back, because the 2024 books write "in any combination" or "can
+replace one attack". The count on one pill read as if that attack alone repeated, so a pick or a
+swap is now one outlined frame: the count once at its front, the options inside joined by "or", and
+the swap as a tag naming its target. The swap target stays text, and its own pill keeps its place.
+Two full alternatives ("either ... or ...") keep the dashed pill. A damaging bonus action is
+easy to miss in the stat block, so it gets a pill tagged Bonus, outside every Multiattack count. Book
+misprints stay as printed.
+
 ### The Attacks cell is pills, one per damaging action · `SETTLED` (2026-09-26)
 
 A line of words gave most of the cell to type names. Each action that deals damage is now a pill:

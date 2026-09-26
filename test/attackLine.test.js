@@ -48,6 +48,16 @@ describe('an attack pill', () => {
       'A +10 17 piercing + 3 fire');
     assert.equal(brief(read('Рукопашная атака оружием: +14 к попаданию, досягаемость 10 футов, одна цель. Попадание: Колющий урон 19 (2к10 + 8) плюс урон огнём 7 (2к6).')),
       'A +14 19 piercing + 7 fire');
+    assert.equal(brief(read('Рукопашная атака оружием: +9 к попаданию. Попадание: Колющий урон 7 (1к6+4) плюс урон некротической энергией 10 (3к6). Максимум хитов цели уменьшается.')),
+      'A +9 7 piercing + 10 necrotic');
+    assert.equal(brief(read('Бросок атаки в ближнем бою: +7. Попадание: 10 (1d12 + 4) Режущего урона, и ещё 10 (3d6) урона Громом цели или другому существу в пределах 5 футов от цели.')),
+      'A +7 10 slashing + 10 thunder');
+  });
+  it('joins the part after an alternative set off by dashes', () => {
+    assert.equal(brief(read('Melee Attack Roll: +5. Hit: 7 (1d8 + 3) Piercing damage—or 12 (2d8 + 3) Piercing damage if the target is Grappled—plus 4 (1d8) Acid damage.')),
+      'A +5 7 piercing + 4 acid');
+    assert.equal(brief(read('Бросок атаки в ближнем бою: +6. Попадание: 8 (1d8 + 4) Колющего урона — или 6 (1d4 + 4) Колющего урона, если стая Окровавлена — плюс 10 (3d6) урона Ядом.')),
+      'A +6 8 piercing + 10 poison');
   });
   it('shows a versatile weapon one-handed', () => {
     assert.equal(brief(read('Melee Weapon Attack: +6 to hit. Hit: 8 (1d8 + 4) slashing damage, or 9 (1d10 + 4) slashing damage if used with two hands.')),
@@ -101,6 +111,12 @@ describe('a save pill', () => {
     assert.equal(a.rc, '5–6');
     assert.equal(brief(pills([['Дыхание', 'Спасбросок Ловкости: Сл 17, каждое существо в Конусе 60 фт. Провал: 56 (16к6) урона Огнём. Успех: Половина урона.']])[0]),
       'Дыхание DC 17 Dex 56 fire');
+    assert.equal(brief(pills([['Дыхание', 'Испытание\nЛовкости: СЛ 12, каждое существо в 15-футовом Конусе.\nПровал: 17 (5d6) урона Огнём. Успех: половина урона.']])[0]),
+      'Дыхание DC 12 Dex 17 fire');
+  });
+  it('names a ray from its text when the action is named by a die roll', () => {
+    assert.equal(brief(pills([['4', 'Луч замедления. Испытание Выносливости: СЛ 16. Провал: 18 (4d8) Некротического урона.']])[0]),
+      'Луч замедления DC 16 Con 18 necrotic');
   });
   it('leaves out an action with no damage', () => {
     assert.deepEqual(pills([['Frightful Presence', 'Each creature of the dragon\'s choice within 120 feet must succeed on a DC 19 Wisdom saving throw or become frightened for 1 minute.']]), []);
@@ -141,17 +157,68 @@ describe('Multiattack', () => {
     assert.deepEqual(pills([['Мультиатака', 'Гоблин совершает две атаки Скимитаром.'],
       ['Скимитар', 'Рукопашная атака оружием: +4 к попаданию. Попадание: 5 (1к6 + 2) рубящего урона.']]).map(brief),
     ['2× Скимитар +4 5 slashing']);
+    const paw = ['Лапа', 'Бросок атаки в ближнем бою: +6. Попадание: 8 (1d6 + 3) Режущего урона.'];
+    assert.deepEqual(pills([['Мультиатака', 'Зорн совершает одну атаку Укусом и три атаки Лапой.'],
+      ['Укус', 'Бросок атаки в ближнем бою: +6. Попадание: 17 (4d6 + 3) Колющего урона.'], paw]).map(brief),
+    ['Укус +6 17 piercing', '3× Лапа +6 8 slashing']);
+  });
+  it('never reads a number inside a hyphenated name', () => {
+    assert.deepEqual(pills([['Мультиатака', 'Три-крины совершают три атаки Псионическим копьём.'],
+      ['Псионическое копьё', 'Бросок атаки: +7. Попадание: 18 (3d8 + 5) Психического урона.']]).map(brief),
+    ['3× Псионическое копьё +7 18 psychic']);
   });
   it('falls back on a choice, and counts nothing', () => {
     const scim = ['Scimitar', 'Melee Weapon Attack: +5 to hit. Hit: 6 (1d6 + 3) slashing damage.'];
     const dagger = ['Dagger', 'Melee or Ranged Weapon Attack: +5 to hit. Hit: 5 (1d4 + 3) piercing damage.'];
     assert.deepEqual(pills([['Multiattack', 'The captain makes three melee attacks: two with its scimitar and one with its dagger. Or the captain makes two ranged attacks with its daggers.'], scim, dagger]).map(brief),
       ['MULTI', 'Scimitar +5 6 slashing', 'Dagger +5 5 piercing']);
-    assert.deepEqual(pills([['Multiattack', 'The dragon makes three Rend attacks. It can replace one attack with a use of Spellcasting.'], ['Rend', 'Melee Attack Roll: +7. Hit: 14 (2d8 + 5) Slashing damage.']]).map(brief),
-      ['MULTI', 'Rend +7 14 slashing']);
-    assert.deepEqual(pills([['Мультиатака', 'Лич совершает три атаки Потусторонней вспышкой или Парализующим касанием в любой комбинации.'],
-      ['Потусторонняя вспышка', 'Бросок рукопашной или дальнобойной атаки: +12. Попадание: 31 (4к12 + 5) Силового урона.']]).map(brief),
-    ['MULTI', 'Потусторонняя вспышка +12 31 force']);
+    assert.equal(pills([['Мультиатака', 'Дьявол совершает либо одну атаку Лапами и одну атаку Хвостом, либо две атаки Метанием пламени.'],
+      ['Лапы', 'Бросок атаки: +2. Попадание: 5 (2d4) Режущего урона.'], ['Хвост', 'Бросок атаки: +2. Попадание: 3 (1d6) Режущего урона.'],
+      ['Метание пламени', 'Бросок атаки: +4. Попадание: 10 (3d6) урона Огнём.']])[0].fallback, true);
+  });
+  const group = a => `[${a.x ? a.x + '× ' : ''}${a.opts.map(brief).join(' | ')}${a.swap ? ` ⇄ ${a.swap.k} ${a.swap.to}` : ''}]`;
+  const burst = ['Потусторонняя вспышка', 'Бросок рукопашной или дальнобойной атаки: +12. Попадание: 31 (4к12 + 5) Силового урона.'];
+  const touch = ['Парализующее касание', 'Бросок рукопашной атаки: +12. Попадание: 15 (3к6 + 5) урона Холодом.'];
+  it('groups a pick in any combination under one count', () => {
+    const got = pills([['Мультиатака', 'Лич совершает три атаки Потусторонней вспышкой или Парализующим касанием в любой комбинации.'], burst, touch]);
+    assert.deepEqual(got.map(a => a.group ? group(a) : brief(a)), ['[3× Потусторонняя вспышка +12 31 force | Парализующее касание +12 15 cold]']);
+    assert.equal(got[0].t, 'Лич совершает три атаки Потусторонней вспышкой или Парализующим касанием в любой комбинации.');
+    assert.deepEqual(pills([['Multiattack', 'The lich makes three attacks, using Eldritch Burst or Paralyzing Touch in any combination.'],
+      ['Eldritch Burst', 'Melee or Ranged Attack Roll: +12. Hit: 31 (4d12 + 5) Force damage.'], ['Paralyzing Touch', 'Melee Attack Roll: +12. Hit: 15 (3d6 + 5) Cold damage.']])
+      .map(a => a.group ? group(a) : brief(a)), ['[3× Eldritch Burst +12 31 force | Paralyzing Touch +12 15 cold]']);
+    assert.deepEqual(pills([['Мультиатака', 'Воитель совершает две атаки либо Двуручным мечом, либо Тяжёлым арбалетом.'],
+      ['Двуручный меч', 'Бросок атаки: +5. Попадание: 10 (2d6 + 3) Режущего урона.'], ['Тяжёлый арбалет', 'Бросок атаки: +3. Попадание: 6 (1d10 + 1) Колющего урона.']])
+      .map(a => a.group ? group(a) : brief(a)), ['[2× Двуручный меч +5 10 slashing | Тяжёлый арбалет +3 6 piercing]']);
+  });
+  it('settles two names that share a first word by the second', () => {
+    assert.deepEqual(pills([['Мультиатака', 'Джинн совершает три атаки Грозовым клинком или Грозовым разрядом в любой комбинации.'],
+      ['Грозовой клинок', 'Бросок атаки: +9. Попадание: 12 (2d6 + 5) Режущего урона.'], ['Грозовой разряд', 'Бросок атаки: +9. Попадание: 13 (3d8 + 5) урона Молнией.']])
+      .map(a => a.group ? group(a) : brief(a)), ['[3× Грозовой клинок +9 12 slashing | Грозовой разряд +9 13 lightning]']);
+  });
+  it('keeps a count with its swap', () => {
+    const rend = ['Раздирание', 'Бросок атаки: +7. Попадание: 15 (2d10 + 4) Режущего урона.'];
+    const breath = ['Отторгающее дыхание', 'Испытание Силы: СЛ 15, каждое существо в 30-футовом Конусе. Провал: цель отталкивается.'];
+    assert.deepEqual(pills([['Мультиатака', 'Дракон совершает три атаки Раздиранием. Он может заменить одну из этих атак на использование Отторгающего дыхания.'], rend, breath])
+      .map(a => a.group ? group(a) : brief(a)), ['[3× Раздирание +7 15 slashing ⇄ 1 Отторгающее дыхание]']);
+    assert.deepEqual(pills([['Мультиатака', 'Дракон совершает три атаки Раздиранием. Он может заменить одну из этих атак на (А) использование Отторгающего дыхания или (Б) сотворение заклинания Направляющий луч (2-й круг).'], rend])
+      .map(a => a.group ? group(a) : brief(a)), ['[3× Раздирание +7 15 slashing ⇄ 1 Отторгающего дыхания or Направляющий луч (2-й круг)]']);
+    assert.deepEqual(pills([['Multiattack', 'The dragon makes three Rend attacks. It can replace one attack with a use of Spellcasting.'], ['Rend', 'Melee Attack Roll: +7. Hit: 14 (2d8 + 5) Slashing damage.']])
+      .map(a => a.group ? group(a) : brief(a)), ['[3× Rend +7 14 slashing ⇄ 1 Spellcasting]']);
+  });
+  it('names a swapped-in spell as printed, never as an attack sharing its first letters', () => {
+    const rend = ['Раздирание', 'Бросок атаки: +14. Попадание: 13 (2d8 + 4) Режущего урона.'];
+    const g = pills([['Мультиатака', 'Дракон совершает три атаки Раздиранием. Он может заменить одну из этих атак на сотворение заклинания Разбивающий звук.'], rend])[0];
+    assert.equal(g.swap.to, 'Разбивающий звук');
+    const arc = pills([['Мультиатака', 'Арканалот совершает три атаки Вспышкой. Он может заменить одну из этих атак на атаку Изгоняющим когтем.'],
+      ['Вспышка', 'Бросок атаки: +9. Попадание: 20 (4d8 + 2) Силового урона.'], ['Изгоняющий коготь (требуется Фолиант душ)', 'Бросок атаки: +9. Попадание: 9 (1d8 + 5) Режущего урона.']]);
+    assert.equal(arc.find(a => a.group).swap.to, 'Изгоняющий коготь');
+  });
+  it('groups a pick with a swap, the options joined by or', () => {
+    const got = pills([['Мультиатака', 'Волк-оборотень совершает две атаки Царапаньем или Длинным луком в любой комбинации. Он может заменить одну из этих атак на атаку Укусом.'],
+      ['Укус', 'Бросок атаки: +5. Попадание: 12 (2d8 + 3) Колющего урона.'], ['Царапание', 'Бросок атаки: +5. Попадание: 10 (2d6 + 3) Режущего урона.'],
+      ['Длинный лук', 'Бросок атаки: +4. Попадание: 11 (2d8 + 2) Колющего урона.']]);
+    assert.deepEqual(got.map(a => a.group ? group(a) : brief(a)), ['Укус +5 12 piercing', '[2× Царапание +5 10 slashing | Длинный лук +4 11 piercing ⇄ 1 Укус]']);
+    assert.equal(got[1].or, true);
   });
   it('falls back when a name matches nothing or the counts do not add up', () => {
     assert.deepEqual(pills([['Multiattack', 'The beast makes two attacks: one with its bite and one with its tentacles.'], bite]).map(brief),
@@ -174,6 +241,17 @@ describe('Multiattack', () => {
   it('keeps the fallback pill\'s full text', () => {
     const [m] = pills([['Multiattack', 'Two attacks or one spell.'], bite]);
     assert.deepEqual(m, { n: 'Multiattack', t: 'Two attacks or one spell.', fallback: true });
+  });
+});
+
+describe('bonus actions', () => {
+  it('gives a damaging bonus action a marked pill after the actions, outside the Multiattack count', () => {
+    const got = combatAttacks({ secs: {
+      Actions: [{ n: 'Мультиатака', t: 'Заражённое растение совершает две атаки Ветвью.' },
+        { n: 'Ветвь', t: 'Бросок атаки в ближнем бою: +9, зона досягаемости 15 футов. Попадание: 16 (3d6 + 6) Дробящего урона.' }],
+      'Bonus actions': [{ n: 'Щелчок зубами', t: 'Испытание Ловкости: СЛ 17, одно Захваченное существо. Провал: 19 (3d8 + 6) Колющего урона. Успех: половина урона.' },
+        { n: 'Шаг', t: 'Растение перемещается на 10 футов.' }] } });
+    assert.deepEqual(got.map(a => [brief(a), !!a.ba]), [['2× Ветвь +9 16 bludgeoning', false], ['Щелчок зубами DC 17 Dex 19 piercing', true]]);
   });
 });
 

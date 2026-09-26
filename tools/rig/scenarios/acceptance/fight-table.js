@@ -28,8 +28,10 @@
 //   L. An empty Init field shows the stat block's DEX bonus as a hint; a player's shows none.
 //   M. The Attacks cell shows each damaging action as a pill: name, to-hit, a glyph and the damage,
 //      no type word, and its full text on hover. Two damage types sit in one pill, a clear
-//      Multiattack counts its attacks, and one with a choice is a Multiattack pill with no counts.
-//      A double-click writes the DM's own
+//      Multiattack counts its attacks, a pick in any combination or a swap is one frame with the
+//      count once at its front, the options inside and the swap named, and one it cannot read is a
+//      Multiattack pill with no counts. A damaging bonus action is a pill tagged Bonus, after the
+//      actions. A double-click writes the DM's own
 //      line: Enter keeps it, Escape drops it, Save to Bestiary lights, and the stat block's Table
 //      line shows it. Nothing typed there reaches the page as markup.
 //   N. A row's hover icons duplicate it, switch its side and delete it. Ctrl+D duplicates the row
@@ -298,7 +300,7 @@ module.exports = async function fightTableFeature(rig) {
     const tick = () => new Promise(r => setTimeout(r, 30));
     const r = __cbData('Wight');
     const pills = () => [...__cbRow('Wight').querySelectorAll('.cb-atk .cb-pill')].map(p => ({
-      text: p.textContent, title: p.title, fb: p.classList.contains('fb'),
+      text: p.textContent, title: p.title, fb: p.classList.contains('fb'), inGrp: !!p.closest('.cb-grp'),
       dmg: [...p.querySelectorAll('.pd')].map(d => ({ n: d.textContent, glyph: !!d.querySelector('svg') })) }));
     const bite = { n: 'Bite', t: 'Melee Weapon Attack: +10 to hit. Hit: 17 (2d10 + 6) piercing damage plus 3 (1d6) fire damage.' };
     const claw = { n: 'Claw', t: 'Melee Weapon Attack: +10 to hit. Hit: 13 (2d6 + 6) slashing damage.' };
@@ -308,6 +310,17 @@ module.exports = async function fightTableFeature(rig) {
     r.sb.secs = { Actions: [{ n: 'Multiattack', t: 'It makes two claw attacks or one bite attack.' }, bite, claw] };
     cbRender();
     out.choice = pills();
+    const bolt = { n: 'Bolt', t: 'Ranged Attack Roll: +10. Hit: 11 (2d6 + 4) Lightning damage.' };
+    const frame = () => [...__cbRow('Wight').querySelectorAll('.cb-atk .cb-grp')].map(g => ({
+      count: (g.querySelector('.gx') || {}).textContent || '', pills: g.querySelectorAll('.cb-pill').length,
+      or: g.querySelectorAll('.gor').length, swap: (g.querySelector('.gsw') || {}).textContent || '', title: g.title }));
+    r.sb.secs = { Actions: [{ n: 'Multiattack', t: 'The wight makes three attacks, using Claw or Bolt in any combination.' }, claw, bolt] };
+    cbRender();
+    out.pick = { frames: frame(), loose: __cbRow('Wight').querySelectorAll('.cb-atk > .cb-pill').length };
+    r.sb.secs = { Actions: [{ n: 'Multiattack', t: 'The wight makes two Claw attacks. It can replace one attack with a use of Bolt.' }, claw, bolt],
+      'Bonus actions': [{ n: 'Tail', t: 'Melee Attack Roll: +10. Hit: 9 (1d8 + 5) Bludgeoning damage.' }, { n: 'Dash', t: 'The wight moves.' }] };
+    cbRender();
+    out.swap = { frames: frame(), loose: pills().filter(p => !p.inGrp).map(p => p.text) };
     r.sb.secs = { Actions: [{ n: 'Longsword', t: 'Melee Weapon Attack: +4 to hit, reach 5 ft. Hit: 6 (1d8 + 2) slashing damage.' }] };
     r.sbChanged = false;
     cbRender();
@@ -347,6 +360,15 @@ module.exports = async function fightTableFeature(rig) {
             'a two-type attack is not one pill with two damage parts, or a clear Multiattack did not count: ' + JSON.stringify(atk.counted));
   rig.check(atk.choice.length === 3 && atk.choice[0].fb && !atk.choice.some(p => /×/.test(p.text)),
             'a Multiattack with a choice did not show as its own pill with no counts: ' + JSON.stringify(atk.choice));
+  // RED ON: the _cbMultiChoice call, the _cbMultiSwap call and the Bonus actions loop each gated off
+  // with false && in _cbApplyMulti and combatAttacks (attackLine.js) — 2026-09-27
+  const [pk] = atk.pick.frames.concat({}), [sw] = atk.swap.frames.concat({});
+  rig.check(atk.pick.frames.length === 1 && pk.count === '3×' && pk.pills === 2 && pk.or === 1 && atk.pick.loose === 0 && /any combination/.test(pk.title),
+            'a Multiattack with a pick in any combination is not one frame with its count, both options and "or": ' + JSON.stringify(atk.pick));
+  rig.check(atk.swap.frames.length === 1 && sw.count === '2×' && sw.pills === 1 && sw.or === 0 && sw.swap === '1 for Bolt',
+            'a Multiattack with a swap is not one frame with its count, the base attack and the swap named: ' + JSON.stringify(atk.swap));
+  rig.check(atk.swap.loose.length === 2 && /Bolt/.test(atk.swap.loose[0]) && /^Bonus/.test(atk.swap.loose[1]) && /Tail/.test(atk.swap.loose[1]),
+            'a damaging bonus action is not a pill tagged Bonus after the actions: ' + JSON.stringify(atk.swap.loose));
   rig.check(atk.editing && atk.afterEscape === undefined, 'a double-click did not edit the line, or Escape kept what was typed: ' + JSON.stringify(atk));
   rig.check(atk.quick === 'Drain <b>life</b> DC 13' && atk.shown === atk.quick && !atk.markup,
             "the DM's own line was not kept as plain text: " + JSON.stringify(atk));

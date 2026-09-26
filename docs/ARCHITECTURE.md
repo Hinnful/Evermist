@@ -558,8 +558,10 @@ restart. AC and max HP come from the stat block and are fixed in the row. The HP
 typed after the max, "- 9 - 12", with "= 24" beside it, yellow below half and red at zero. An empty
 Init field hints the DEX bonus. A press that travels 5px drags a row, and a click on the Init header
 sorts them once. The Attacks cell shows each damaging action as a pill (attackLine.js reads it,
-attackPills.js draws it): a glyph and colour per damage type, Multiattack counts, and a dashed
-Multiattack pill when its wording holds a choice. It keeps them until the DM
+attackPills.js draws it): a glyph and colour per damage type, and damaging bonus actions after
+the rest under a Bonus tag. multiattack.js reads the Multiattack: plain counts go on the pills, a
+pick or a swap becomes one frame with the count at its front, and wording it cannot map gives a
+dashed Multiattack pill. It keeps them until the DM
 double-clicks it to write a line of their own, and holds the row's icons on hover: stat block,
 duplicate, switch side, delete. The right-click menu carries the same actions, and Ctrl+D
 duplicates. The table resizes from its right and bottom edges, the width going to Attacks.

@@ -103,7 +103,8 @@
     "src/combat/statBlockBook.js": 14500,
     "src/combat/fightPlan.js": 5721,
     "src/combat/combatFights.js": 5819,
-    "src/combat/attackLine.js": 10478,
-    "src/combat/attackPills.js": 4370
+    "src/combat/attackLine.js": 9624,
+    "src/combat/attackPills.js": 4370,
+    "src/combat/multiattack.js": 6786
   }
 }
