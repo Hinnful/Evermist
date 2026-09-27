@@ -161,14 +161,14 @@
   .sm-compress-lbl svg { display: none; }
   #sm-compress { flex: none; height: 30px; padding: 2px; gap: 2px; }
   #sm-compress .cp-segtab { flex: none; height: 24px; padding: 0 9px; }
-  /* The search field gives up width first on a small screen, so the row never wraps. */
-  #sm-head .sm-field { flex: 0 1 220px; min-width: 120px; }
+  /* The search field gives up width first, so the row never wraps. A wider system font (Linux)
+     squeezes it at desktop widths too. */
+  #sm-head .sm-field { flex: 0 1 220px; min-width: 86px; }
   /* A small laptop at 150% scaling is about 850px wide: the word becomes a glyph. */
   @media (max-width: 1000px) {
     .sm-compress-lbl { margin-left: 4px; }
     .sm-compress-lbl span { display: none; }
     .sm-compress-lbl svg { display: block; }
-    #sm-head .sm-field { min-width: 86px; }
   }
 
   /* ── contextual action bar ──

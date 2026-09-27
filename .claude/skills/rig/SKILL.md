@@ -25,9 +25,14 @@ it gets proven. Write the scenario during the build and run nothing.
 
 **A commit gets a SMOKE pass; the full sweep runs in CI.** `/commit` Step 2 settles where the
 change's criteria live, then picks `smoke` plus the scenarios covering what the diff touched, and
-blocks on red. **`.github/workflows/release.yml` then runs `smoke` and `regression` against the
-built `.exe`, and a red gate means no tag, no release and no installers.** So the full set is
+blocks on red. **`.github/workflows/gate.yml` then runs `smoke` and `regression` against the
+built app on Windows, Mac and Linux, and a red gate on any of them means no tag, no release and no installers.** So the full set is
 never run by hand: reach for one scenario to answer a question, and let CI own the sweep.
+
+**A failure that comes and goes gets a PROBE, not another gate run.** `.github/workflows/probe.yml`
+runs one scenario in many copies at once on any platform; edit its matrix and push to `probe/**`.
+Ten copies answer "how often, and why" in five minutes. The gate splits each platform into four
+jobs, and Linux skips `playback` (see `gate.yml`).
 
 **The gate also runs when `tools/rig/**` changed, bump or no bump.** `tools/` ships nothing, so a
 rig change takes no version and the gate used to be skipped entirely - the one change nobody

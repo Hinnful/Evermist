@@ -92,6 +92,7 @@ class Session {
     this.ws = ws;
     this.label = label;
     this.errors = [];          // console errors + uncaught exceptions, noise already filtered
+    this.warnings = [];        // printed only under a failed scenario, where they name the cause
     // Every JS execution context this page has, by id. A page with <iframe>s has one per frame,
     // and an expression sent without one lands in the main frame — which is how a check against
     // a two-column app reads the parent's empty scene and passes.
@@ -131,6 +132,8 @@ class Session {
     if (method === 'Runtime.executionContextsCleared') { this.contexts.clear(); return; }
     if (method === 'Runtime.consoleAPICalled' && p.type === 'error') {
       this._note((p.args || []).map(a => a.value != null ? String(a.value) : (a.description || a.type)).join(' '));
+    } else if (method === 'Runtime.consoleAPICalled' && p.type === 'warning') {
+      this.warnings.push((p.args || []).map(a => a.value != null ? String(a.value) : (a.description || a.type)).join(' '));
     } else if (method === 'Runtime.exceptionThrown') {
       const d = p.exceptionDetails || {};
       this._note('uncaught: ' + (d.exception && d.exception.description ? d.exception.description : d.text));

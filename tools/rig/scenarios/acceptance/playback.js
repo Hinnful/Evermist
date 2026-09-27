@@ -145,16 +145,21 @@ module.exports = async function playbackFeature(rig) {
   await dm.evaluate('__rigFire("waiting")');
   // Both halves have to land, and the order is the app's: pause first, play second.
   try {
-    await dm.waitFor('__rigSeen.includes("pause") && __rigSeen.includes("play")', 10000,
+    await dm.waitFor('__rigSeen.indexOf("pause") >= 0 && __rigSeen.lastIndexOf("play") > __rigSeen.indexOf("pause")', 10000,
                      'the buffer pause and the resume that follows it');
   } catch (_) {}
   const seen = await dm.evaluate('__rigSeen.slice()');
-  const after = await dm.evaluate('__rigPlay()');
+  // ⚠ POLLED: a machine that decodes in software drains its own buffer twice a second, so one
+  // read can land on a real stall the app is already riding out.
+  const after = (await lib.poll(async () => {
+    const st = await dm.evaluate('__rigPlay()');
+    return !st.paused && !st.buffering ? st : null;
+  }, 10000)) || await dm.evaluate('__rigPlay()');
   rig.note('a drained buffer: ' + JSON.stringify(seen) + ' then ' + JSON.stringify(after));
   rig.check(seen.indexOf('pause') >= 0,
             'a drained buffer did not pause the picture, so the presentation clock runs on and ' +
             'the refill lands as a visible jump: ' + JSON.stringify(seen));
-  rig.check(seen.indexOf('play') > seen.indexOf('pause'),
+  rig.check(seen.lastIndexOf('play') > seen.indexOf('pause'),
             'the picture was paused for a drained buffer and never resumed, so the map is frozen ' +
             'from here on: ' + JSON.stringify(seen));
   rig.check(!after.paused && !after.buffering,
@@ -174,9 +179,11 @@ module.exports = async function playbackFeature(rig) {
             'stopped, so the stall below has nothing to recover and C proves nothing');
 
   await dm.evaluate('__rigFire("stalled")');
-  try { await dm.waitFor('!mapVideo.paused', 8000, 'the stall to be kicked back into playing'); }
-  catch (_) {}
-  const kicked = await dm.evaluate('__rigPlay()');
+  // ⚠ CAPTURED AT THE MOMENT IT PLAYS: a software decoder's own next stall pauses it again.
+  const kicked = (await lib.poll(async () => {
+    const st = await dm.evaluate('__rigPlay()');
+    return !st.paused ? st : null;
+  }, 8000)) || await dm.evaluate('__rigPlay()');
   rig.check(!kicked.paused,
             'a stalled decoder was never kicked back into playing, so a map that runs dry stays ' +
             'dry: ' + JSON.stringify(kicked));
@@ -190,13 +197,17 @@ module.exports = async function playbackFeature(rig) {
   // makes onVideoPause return, and the watchdog does not read that flag at all — so a recovery
   // here can only be the poll's. C proves the other half: with the watchdog also stopped, the
   // same pause is not recovered at all.
+  // ⚠ PLAYING FIRST, or the pause below lands on a video already paused and fires no event.
+  await lib.settle(dm, '!mapVideo.paused && !_bufferingPause', 10000);
   await dm.evaluate('__rigWatch(); _bufferingPause = true; mapVideo.pause(); 0');
   const pausedAt = Date.now();
   // ⚠ POLLED TO A BOUND OF MORE THAN ONE TICK. The watchdog runs every three seconds and a pause
   // lands at a random point in that cycle, so a bound under two ticks fails on timing alone.
-  try { await dm.waitFor('!mapVideo.paused', 10000, 'the watchdog to bring the map back'); }
-  catch (_) {}
-  const byWatchdog = await dm.evaluate('({ state: __rigPlay(), seen: __rigSeen.slice() })');
+  const WATCH = '({ state: __rigPlay(), seen: __rigSeen.slice() })';
+  const byWatchdog = (await lib.poll(async () => {
+    const got = await dm.evaluate(WATCH);
+    return !got.state.paused ? got : null;
+  }, 10000)) || await dm.evaluate(WATCH);
   rig.note('the watchdog took ' + (Date.now() - pausedAt) + 'ms: ' + JSON.stringify(byWatchdog.seen));
   rig.check(byWatchdog.seen.indexOf('pause') >= 0,
             'the video never paused, so the watchdog had nothing to recover: ' +
@@ -210,9 +221,11 @@ module.exports = async function playbackFeature(rig) {
   // is parked off-screen, Chromium's own optimiser pauses a muted video in it, and the pause
   // handler's resume gets to the pump through onVideoPlaying before the watchdog's own poll does.
   // A check naming the watchdog here passed with that line deleted.
-  await dm.evaluate('(() => { if (videoRVFCId != null && mapVideo.cancelVideoFrameCallback)' +
-    ' mapVideo.cancelVideoFrameCallback(videoRVFCId); videoRVFCId = null; return 0; })()');
-  rig.check(!(await dm.evaluate('__rigPlay()')).loop,
+  // ⚠ Read in the SAME evaluate as the kill: a stuttering decoder fires `playing` often enough to
+  // restart the pump before a second round trip lands.
+  const killed = await dm.evaluate('(() => { if (videoRVFCId != null && mapVideo.cancelVideoFrameCallback)' +
+    ' mapVideo.cancelVideoFrameCallback(videoRVFCId); videoRVFCId = null; return __rigPlay(); })()');
+  rig.check(!killed.loop,
             'the frame pump could not be stopped, so its recovery below has nothing to restart');
   const killedAt = Date.now();
   try { await dm.waitFor('videoRVFCId != null', 12000, 'the frame pump to come back'); }

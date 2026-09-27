@@ -55,17 +55,19 @@ function _validPng(buf) {
 async function _cached(file, meta, make) {
   const check = meta.type === 'video/mp4' ? _validMp4 : _validPng;
   if (!fs.existsSync(file)) {
-    // One retry. A truncation is transient, so re-recording turns a 15-minute red run into a
-    // two-second hiccup; a second failure is real and says so here rather than downstream.
+    // Four tries. A truncation is transient, so re-recording turns a red run into a second's
+    // hiccup; a Mac runner's encoder writes nothing from a short clip often enough to need more
+    // than one retry. A fourth failure is real and says so here rather than downstream.
+    const TRIES = 4;
     let why = null;
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= TRIES; attempt++) {
       const dataUrl = await make();
       const bytes = Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
       why = check(bytes);
       if (!why) { fs.writeFileSync(file, bytes); break; }
     }
     if (why) {
-      throw new Error('the ' + meta.w + 'x' + meta.h + ' fixture came back unusable twice: ' +
+      throw new Error('the ' + meta.w + 'x' + meta.h + ' fixture came back unusable ' + TRIES + ' times: ' +
                       why + '. Every scenario at that size would have timed out waiting for a ' +
                       'map that can never load.');
     }

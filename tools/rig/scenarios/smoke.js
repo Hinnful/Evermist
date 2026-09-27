@@ -178,7 +178,7 @@ module.exports = async function smoke(rig) {
   // exercises the shrink for real rather than only its arithmetic.
   const still = await rig.fixtures.stillMap(dm, rig.fixtureDir, { w: 2000, h: 1200, name: 'rig-still.png' });
   const anim = await rig.fixtures.animatedMap(dm, rig.fixtureDir,
-    { w: 4096, h: 2160, seconds: 2, name: 'rig-anim-big.mp4' });
+    { w: 4096, h: 2160, seconds: 5, name: 'rig-anim-big.mp4' });
   rig.note('fixtures: ' + still.name + ' ' + still.w + 'x' + still.h + ' ' + Math.round(still.bytes / 1024) + ' KB, ' +
            anim.name + ' ' + anim.w + 'x' + anim.h + ' ' + Math.round(anim.bytes / 1024) + ' KB');
 
@@ -206,7 +206,9 @@ module.exports = async function smoke(rig) {
   rig.check(!!saved.abs && fs.existsSync(saved.abs) && fs.statSync(saved.abs).size > 0,
             'the animated map was never written to disk by save-video-blob');
   // The whole point of the isolated --user-data-dir: a rig run must never touch the real library.
-  rig.check(!!saved.abs && saved.abs.toLowerCase().startsWith(rig.profileDir.toLowerCase()),
+  // ⚠ REAL PATHS: a Mac's temp dir is /var, a symlink the app resolves to /private/var.
+  const real = p => fs.realpathSync(p).toLowerCase();
+  rig.check(!!saved.abs && real(saved.abs).startsWith(real(rig.profileDir)),
             'the map was saved outside the rig profile, at ' + saved.abs);
   // Compression was on and the source is wider than the box, so the stored map must be 3840 wide.
   rig.check(saved.w === 3840, 'the oversized import was not shrunk to 3840 wide: ' + saved.w + 'x' + saved.h);
@@ -238,8 +240,12 @@ module.exports = async function smoke(rig) {
   })`;
 
   await dm.evaluate('switchScene(' + JSON.stringify(vid.id) + ')', 120000);
-  await settle(dm, 'videoDOMActive && !!mapVideo && !mapVideo.paused && mapVideo.readyState >= 3', 30000);
-  const v1 = await dm.evaluate(STATE);
+  // ⚠ READ THE STATE IN THE POLL. A machine that decodes 4K in software stalls and resumes twice a
+  // second, so a read taken after a settle can land on a stall the app is already recovering from.
+  const v1 = (await lib.poll(async () => {
+    const s = await dm.evaluate(STATE);
+    return s.domVideo && s.playing ? s : null;
+  }, 30000)) || await dm.evaluate(STATE);
   rig.note('animated "' + vid.name + '" ' + v1.w + 'x' + v1.h + ': sprite=' + v1.sprite +
            ' domVideo=' + v1.domVideo + ' playing=' + v1.playing + ' loop=' + v1.loopAlive);
   rig.check(!v1.sprite && !v1.texture, 'DM still holds a map sprite for an animated map');

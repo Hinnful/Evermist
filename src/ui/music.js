@@ -204,7 +204,7 @@ function _muDeck() {
   el.loop = true;
   el.preload = 'auto';
   el.volume = 0;
-  return { el: el, phase: 0, target: 0, timer: 0, keep: false };
+  return { el: el, phase: 0, target: 0, timer: 0, keep: false, at: 0 };
 }
 
 function _muEnsureDecks() {
@@ -217,11 +217,16 @@ function _muRampTo(deck, target, keep) {
   deck.target = target;
   deck.keep = !!keep;
   if (deck.timer) return;
+  deck.at = performance.now();
   deck.timer = setInterval(() => _muTick(deck), MU_TICK_MS);
 }
 
 function _muTick(deck) {
-  const step = MU_TICK_MS / MU_FADE_MS;
+  // ⚠ STEP BY ELAPSED TIME, never per tick. A busy page delivers ticks late, and a fixed step
+  // stretched a 2s fade to 10s on a machine drawing at 5fps.
+  const now = performance.now();
+  const step = (now - deck.at) / MU_FADE_MS;
+  deck.at = now;
   deck.phase = deck.phase < deck.target
     ? Math.min(deck.target, deck.phase + step)
     : Math.max(deck.target, deck.phase - step);

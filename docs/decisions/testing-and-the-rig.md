@@ -12,6 +12,15 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### The gate runs on all three platforms, split four ways · `SETTLED` (2026-09-28)
+The rig had only ever driven the Windows build, so a Mac or Linux break reached users unseen. Mac
+and Linux joined the gate after two clean runs in a row; the random failures on the way were rig
+waits that read a state once while the app was still recovering, fixed with polls. Each platform's
+regression is dealt four ways by name, which took the slowest platform from 34 minutes to 10.
+Linux leaves `playback` out: a runner with no GPU stalls its own video twice a second, and every
+point fix there moved the failure to the next check. Windows and Mac still run it. Keeping Mac and
+Linux as report-only was rejected once the failures were measured and found to be rig faults.
+
 ### Saved monster pages stay off the public repo · `SETTLED` (2026-09-25)
 
 The pages the stat block parser is tested against are the sites' own pages, official monster text

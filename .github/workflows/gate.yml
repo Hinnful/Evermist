@@ -1,0 +1,145 @@
+name: Gate
+
+# THE GATE, on all three platforms at once. One job per platform builds the installer users get and
+# checks its update pointer; four per platform drive the packaged app through smoke and a quarter
+# of the regression each, so the slowest platform finishes in minutes rather than half an hour.
+# release.yml calls it; a push to any `platformrig/**` branch runs it alone and ships nothing.
+#
+# ⚠ THE GATE DRIVES THE PACKAGED APP, not the repo. A file missing from build.files works under
+# `npm start` and is simply absent from the installer, where a missing stylesheet renders unstyled
+# rather than erroring. That class is invisible to every other check.
+on:
+  workflow_call:
+  push:
+    branches:
+      - 'platformrig/**'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, flag: --win, meta: dist/latest.yml, name: dist-windows }
+          - { os: macos-latest, flag: --mac, meta: dist/latest-mac.yml, name: dist-macos }
+          - { os: ubuntu-latest, flag: --linux, meta: dist/latest-linux.yml, name: dist-linux }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # postinstall fetches yt-dlp into vendor/. It fails hard on purpose: a soft failure would
+      # ship an installer whose download button does nothing.
+      - run: npm ci
+
+      - name: Build the installer
+        run: npx electron-builder ${{ matrix.flag }} --publish never
+        env:
+          # Unsigned by choice. Unset, the mac build fails looking for a certificate.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Check the update pointer
+        run: node tools/check-update-metadata.js ${{ matrix.meta }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+            dist/*.AppImage
+            dist/latest*.yml
+            dist/*.blockmap
+          if-no-files-found: error
+
+  rig:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          # NEVER dist/Evermist.exe - see the rig skill.
+          - { os: windows-latest, build: --win dir, exe: dist/win-unpacked/Evermist.exe, run: '', skip: '' }
+          - { os: macos-latest, build: --mac dir --universal, exe: dist/mac-universal/Evermist.app/Contents/MacOS/Evermist, run: '', skip: '' }
+          # xvfb at the Windows runner's screen size, so every geometry check reads the same.
+          # ⚠ NO PLAYBACK ON LINUX. The runner has no GPU, so the app draws at 5fps and its video
+          # stalls and recovers by itself twice a second, which undoes every stall playback fakes.
+          # Windows and Mac still run it.
+          - { os: ubuntu-latest, build: --linux dir, exe: dist/linux-unpacked/evermist, run: 'xvfb-run -a -s "-screen 0 1024x768x24"', skip: playback }
+        # ⚠ FOUR, because a free account runs five Mac jobs at once and the update proof takes one.
+        shard: [1, 2, 3, 4]
+    runs-on: ${{ matrix.platform.os }}
+    # The rig's own watchdog is 180s + 90s per scenario, and the build sits in front.
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs, and the app then exits
+      # at launch.
+      - name: Let Chromium sandbox itself
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      # ⚠ THE GATE DRIVES THE PACKAGED APP, not the repo. A file missing from build.files works
+      # under `npm start` and is simply absent from the package, where a missing stylesheet
+      # renders unstyled rather than erroring.
+      - name: Build the packaged app
+        run: npx electron-builder ${{ matrix.platform.build }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # ⚠ SMOKE AGAINST THE PACKAGED APP. It holds the video-to-disk IPC and the archiver/yauzl
+      # zip round trip, the two paths most likely to break in packaging. Shard 2 is the lightest.
+      - name: Drive the packaged app through the smoke set
+        if: matrix.shard == 2
+        run: ${{ matrix.platform.run }} npm run rig -- --exe "${{ matrix.platform.exe }}"
+
+      # Every fourth scenario by name, so a new file joins a shard with no edit here.
+      - name: Drive the packaged app through a quarter of the regression set
+        if: success() || failure()
+        run: |
+          NAMES=$(ls tools/rig/scenarios/acceptance/*.js | xargs -n1 basename | sed 's/\.js$//' |
+                  awk -v i=${{ matrix.shard }} -v skip="${{ matrix.platform.skip }}" \
+                      '(NR - 1) % 4 == i - 1 && $0 != skip' | tr '\n' ' ')
+          echo "this shard: $NAMES"
+          ${{ matrix.platform.run }} npm run rig -- $NAMES --exe "${{ matrix.platform.exe }}"
+
+      # ⚠ A RED RUN KEEPS ITS EVIDENCE. The rig writes under the OS temp dir, which the job throws
+      # away, so a flaky red used to leave nothing but its FAIL line.
+      - name: Collect the rig's evidence
+        if: failure()
+        run: |
+          ROOT="$(node -p "require('path').join(require('os').tmpdir(), 'evermist-rig')")"
+          if command -v cygpath >/dev/null; then ROOT="$(cygpath -u "$ROOT")"; fi
+          if [ -d "$ROOT" ]; then
+            cd "$ROOT"
+            find . -type f \( -name '*.log' -o -name '*.png' \) \
+              ! -path '*IndexedDB*' ! -path '*Local Storage*' ! -path '*Session Storage*' \
+              -exec sh -c 'mkdir -p "$0/$(dirname "$1")" && cp "$1" "$0/$1"' "$GITHUB_WORKSPACE/rig-evidence" {} \;
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: rig-evidence-${{ runner.os }}-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: rig-evidence/
+          retention-days: 14
+          if-no-files-found: warn

@@ -25,7 +25,7 @@ if (process.platform !== 'darwin') {
 const [NEW_DIR, OLD_DIR] = process.argv.slice(2).map(d => path.resolve(d || ''));
 const APP = '/Applications/Evermist.app';
 const BIN = 'Contents/MacOS/Evermist';
-// ⚠ Fixed, because the feed URL is baked into each build (mac-update.yml).
+// ⚠ Fixed, because the feed URL is baked into each build (update-proofs.yml).
 const FEED_PORT = 8765;
 const PORT = 9333;
 const READY = "(document.querySelector('#about-update .about-update-btn') || {}).textContent === 'Restart to update'";

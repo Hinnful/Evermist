@@ -213,6 +213,7 @@ function convertVideoForImport(file, hooks) {
           var blob = new Blob(chunks, { type: 'video/mp4' });
           cleanup();
           if (!blob.size) {
+            console.warn('[mapConvert] keeping the original file: the recorder wrote nothing');
             resolve({ file: file, srcW: srcW, srcH: srcH, outW: srcW, outH: srcH, converted: false });
             return;
           }

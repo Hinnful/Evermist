@@ -14,7 +14,7 @@
  * firing there would nag mid-repair. A write to docs/ARCHITECTURE.md runs the SIZE
  * and MOOD rules, which only that write can cause.
  *
- * Two module lists exist on purpose. CLAUDE.md's map is terse and always in context,
+ * Two module lists exist on purpose. .claude/rules/modules.md is terse and loads with app code,
  * because the rule "extend the module that owns the concern" is unusable without it.
  * ARCHITECTURE.md's table is the plain-language version, read on demand. Both drift,
  * so both are checked.
@@ -52,7 +52,7 @@ const lib = require('./guard-lib.js');
 const STATE = path.join(__dirname, 'architecture-baseline.json');
 const ARCH = path.join(lib.ROOT, 'docs', 'ARCHITECTURE.md');
 const MODULE_MAP = path.join(lib.ROOT, 'docs', 'architecture', 'module-map.md');
-const RULES = path.join(lib.ROOT, 'CLAUDE.md');
+const RULES = path.join(lib.ROOT, '.claude', 'rules', 'modules.md');
 const SRC = path.join(lib.ROOT, 'src');
 
 // Not modules: the vendored library, and anything under a subfolder.
@@ -137,7 +137,7 @@ function checkModuleWrite(ctx) {
     const key = f.toLowerCase();
     const gaps = [];
     if (!archNames.has(key)) gaps.push('docs/architecture/module-map.md');
-    if (!ruleNames.has(key)) gaps.push("CLAUDE.md's module map");
+    if (!ruleNames.has(key)) gaps.push('.claude/rules/modules.md');
     if (gaps.length && mark('missing:' + key)) missing.push({ file: f, gaps });
   }
   if (missing.length > 0) {
@@ -147,9 +147,8 @@ function checkModuleWrite(ctx) {
         (missing.length === 1 ? ' module is undocumented:\n' : ' modules are undocumented:\n') +
         missing.map((m) => '  - src/' + m.file + ' missing from ' + m.gaps.join(' and ')).join('\n') +
         '\n\nAdd a row to each. module-map.md gets one plain-language sentence saying ' +
-        'what the file does, present tense. CLAUDE.md\'s map gets the terse "Owns" ' +
-        'phrase; that file grows only by a deliberate raise of its ceiling, so pay for ' +
-        'the row by tightening a neighbour first.\n' +
+        'what the file does, present tense. .claude/rules/modules.md gets the terse "Owns" ' +
+        'phrase and, for a src/ module, its place in the load order.\n' +
         'A module nothing documents is a module the next session will duplicate ' +
         'instead of extending.\n'
     );
@@ -173,7 +172,7 @@ function checkModuleWrite(ctx) {
         stale.map((s) => '  - ' + s).join('\n') +
         '\n\nA rename leaves the old row behind and the doc then describes a file ' +
         'nobody can open. Update or delete the row. Check whether the same name still ' +
-        "appears in CLAUDE.md's module map and in .claude/hooks/guard-skill-hint.js.\n"
+        "appears in .claude/rules/modules.md and in .claude/hooks/guard-skill-hint.js.\n"
     );
   }
 

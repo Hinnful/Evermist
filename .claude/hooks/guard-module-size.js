@@ -2,12 +2,13 @@
 'use strict';
 
 /*
- * Module size guard - a per-file ratchet on every .js at the top level of src/.
+ * Module size guard - a per-file ratchet on every .js in src/ (root or one folder deep),
+ * in electron/, and on main.js and preload.js.
  *
  * WHY: guard-blob.js watches the inline script in index.html, and nothing watched a
  * module. The concern is a god-module, not a line count: a file that absorbs a second
- * and third concern gets edited by every task and reviewed by none. CLAUDE.md's
- * migrate-on-touch rule is the fix, and this is what makes someone reach for it.
+ * and third concern gets edited by every task and reviewed by none. Extracting the
+ * concern is the fix, and this is what makes someone reach for it.
  *
  * Existing size is out of scope. First sight of a file adopts whatever it measures as
  * that file's ceiling, silently, so seeding happens one file at a time as each is edited
@@ -85,9 +86,8 @@ function main() {
       lib.fmt(size) + ' bytes.\n' +
       'A module that keeps growing is on its way to owning several concerns at once, and ' +
       'then every task edits it and nobody reviews it.\n' +
-      'Per CLAUDE.md migrate-on-touch: extract the concern you just touched into its own ' +
-      '.js file under src/, register it in the module map and the load order, then build ' +
-      'there.\n' +
+      'Extract the concern you just touched into its own .js file under src/, register it ' +
+      'in .claude/rules/modules.md (map and load order), then build there.\n' +
       'GROWTH IS ALLOWED where the concern genuinely belongs in this file - do not contort ' +
       'code or delete a warning comment to get under the number. If extraction is wrong ' +
       'here, raise "' + rel + '" to ' + size + ' in ' +

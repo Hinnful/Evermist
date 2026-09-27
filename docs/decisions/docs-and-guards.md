@@ -10,6 +10,25 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### The refactor ban became an ask-first rule · `SETTLED` (2026-09-27)
+"No big-bang refactors" and "migrate-on-touch" were written while the inline script was being
+dissolved. That work finished on 2026-07-10, yet the rules stayed, and two large restructures
+landed on explicit approval anyway, on 2026-09-18 and 2026-09-19. The module-size guard also told
+every session to extract files, against the ban. A rule that practice overrules invites a newer,
+literal model to follow it exactly where it is wrong. The replacement states the procedure
+actually in use: restructuring is its own task, done on approval of a stated scope, in its own
+commit, never inside a feature change.
+
+### The module map loads with app code, not with every session · `SETTLED` (2026-09-27)
+The module map, main-process table and load order were about half of CLAUDE.md. Anthropic's
+guidance puts a CLAUDE.md under about 200 lines and names file-by-file descriptions as content to
+leave out, and a 2026 study of agent context files found codebase overviews did not help. They
+moved to `.claude/rules/modules.md`, a path-scoped rule that loads when a session touches `src/`,
+`electron/` or the entry files, so a session writing code still sees where each concern lives.
+CLAUDE.md fell from 368 lines to about 220. `guard-architecture.js` and `guard-comment-echo.js`
+read the new file. Both lists from "Two module lists, on purpose" still exist; only the terse
+one's home changed, and the path-scoped load keeps it in context where that entry needs it.
+
 ### A module is one concern, and a growing set is a folder · `SETTLED` (2026-09-19)
 Size stopped being the test. A file splits when it holds a concern that belongs elsewhere, or
 when the set it holds grows by one more of the same thing - a tool, a material, a message, a

@@ -141,11 +141,10 @@ The fog is the heart of the app, so it's worth understanding.
    resizing to the new map. Nothing is written on screen during a switch - the scene's name was
    shown there for a while and was taken back out.
 
-8. **The two windows draw fog differently, and that's on purpose.** The DM's fog is drawn
-   on the GPU with PixiJS. The **Player's fog is drawn on top of the map with the regular
-   2D canvas.** When the Player's fog was done on the GPU, a faint seam appeared at the
-   edge of animated maps. Drawing one continuous layer over the whole window makes the seam
-   impossible. See [DECISIONS.md](DECISIONS.md) for the full story.
+8. **Both windows draw fog on the GPU, in different shapes.** The DM's fog is map-sized
+   sprites. The **Player's fog is one pass over the whole window**, masked inside the map.
+   Two layers meeting at the map's edge leave a faint seam on animated maps, and one
+   window-wide pass has no edge for a seam to sit on. See [DECISIONS.md](DECISIONS.md).
 
 ## How the render loop works
 
@@ -722,14 +721,16 @@ version has no tag yet, it treats the push as a release. A change that bumps not
 straight to the landing step and builds nothing.
 
 What happens then, in order. The unit tests run first, on one machine, because there is no point
-building anything if the arithmetic is wrong. Then three installers get built in parallel -
-Windows, macOS, Linux - each one checking its own update pointer as it finishes. Alongside them,
-the Windows machine takes the app it just packaged and drives it through the whole rig suite:
-every acceptance scenario, against the real installed application rather than the loose source
-files. That last part catches a class nothing else can see, where a file works during development
-and is simply missing from the installer. A Mac runner proves the Mac update the same way: it
-installs the new build, lets it walk back to an older one and forward again through the Restart
-button, and checks that each swapped copy opens.
+building anything if the arithmetic is wrong. Then the gate (`gate.yml`) runs on Windows, macOS
+and Linux at once. On each platform one machine builds the installer and checks its update
+pointer, and four more build the packaged app and drive it through the rig: smoke once, and a
+quarter of the acceptance scenarios each, dealt out by name. Every scenario runs against the real
+packaged application rather than the loose source files, which catches a file that works during
+development and is simply missing from the installer. Linux leaves out `playback`: its runner has
+no graphics card, so the app draws at five frames a second and its video stalls and recovers on
+its own, which undoes every stall that scenario fakes. Alongside the gate, `update-proofs.yml`
+proves each platform's update: it installs the new build, lets it walk back to an older one and
+forward again through the Restart button, and checks that each swapped copy opens.
 
 Only if all of that passes does `main` move. The pipeline fast-forwards it onto the exact commit
 the gate drove, which is why the merge is never a squash or a rebase: those mint a new commit, and
@@ -745,6 +746,8 @@ screenshot, kept for two weeks under the run. A separate workflow, `soak.yml`, a
 red was the code or the machine. A push to any `soak/**` branch builds once, drives that build
 through the whole suite on six runners at the same time, and lists each scenario that failed in
 some runs as flaky and in all of them as broken. It ships nothing and never touches `main`.
+`probe.yml` is the narrow version: a push to any `probe/**` branch runs one scenario in many
+copies at once on one platform, which says how often a failure comes back, and why, in minutes.
 
 The release notes are a commit message, and the publisher takes it from the commit that set the
 version rather than from whatever sits at the top of the branch. One version is one commit, so

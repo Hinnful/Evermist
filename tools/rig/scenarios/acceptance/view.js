@@ -399,8 +399,13 @@ module.exports = async function viewFeature(rig) {
   // and the DM's own value is correct the instant it is set. Section I then drags the Player's
   // view, and a LERP still running lands on top of that drag and puts the view back - which
   // reads as the Player never having moved at all.
+  // ⚠ COUNT THE SNAP IN. It posts on the DM's next frame, and when the Player's zoom already
+  // matches, a settle on the zoom alone passes before the snap lands - on top of the drag below.
+  await player.evaluate(`globalThis.__rigSnaps = 0; window.addEventListener('message', e => {
+    if (e.data && e.data.type === 'view-snap') __rigSnaps++;
+  }); 0`);
   await dm.evaluate('minimapSetZoom(' + mmBeforeZoom.zoom + '); 0');
-  await lib.settle(player, '!viewLerpActive && Math.abs(zoom - ' + mmBeforeZoom.zoom + ') < 1e-4', 10000);
+  await lib.settle(player, '__rigSnaps > 0 && !viewLerpActive && Math.abs(zoom - ' + mmBeforeZoom.zoom + ') < 1e-4', 10000);
 
   // ── I. Players looking elsewhere reach the minimap ──────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
@@ -428,6 +433,13 @@ module.exports = async function viewFeature(rig) {
   };
 
   const mmBeforeFreelook = await mmView();
+  // What the DM hears during the drag, so a frame that never moves says whether the report was lost
+  // on the way or ignored on arrival.
+  await dm.evaluate(`globalThis.__rigHeard = []; window.addEventListener('message', e => {
+    const m = e.data || {};
+    __rigHeard.push(m.type + (m.mapCX != null ? '@' + Math.round(m.mapCX) : '') +
+                    (e.source === playerWindow ? '' : ' (not the Player)'));
+  }); 0`);
   const looked = await playerDrag(-260, -160);
   rig.note('the Player after dragging its own view: ' + JSON.stringify(looked));
   rig.check(looked.follow === false,
@@ -451,6 +463,7 @@ module.exports = async function viewFeature(rig) {
     v => Math.abs(v.cx - playerCentre.cx) < 20 && Math.abs(v.cy - playerCentre.cy) < 20, 20000);
   rig.note('the minimap after the players looked away: ' + JSON.stringify(mmBeforeFreelook) +
            ' → ' + JSON.stringify(mmFollowed));
+  rig.note('the DM heard: ' + JSON.stringify(await dm.evaluate('__rigHeard')));
   rig.check(mmFollowed.cx !== mmBeforeFreelook.cx || mmFollowed.cy !== mmBeforeFreelook.cy,
             'the players moved their own view and the DM\'s minimap never heard about it, so the ' +
             'frame is pointing at somewhere nobody is looking');
@@ -461,6 +474,25 @@ module.exports = async function viewFeature(rig) {
   rig.check(Math.abs(mmFollowed.zoom - playerCentre.zoom) < 0.01,
             'the minimap frame is drawn at the wrong size for what the players can see: zoom ' +
             mmFollowed.zoom + " against the Player's " + playerCentre.zoom);
+
+  // A quick drag lands the frame where it ENDED. Both moves arrive inside one throttle window,
+  // so the second is dropped and only the release can report it.
+  // RED ON: the mouseup reportPlayerView() gated off with `false &&` (player.js) - 2026-09-28
+  await playerStep('mousedown', 0, 0, false);
+  await playerStep('mousemove', 60, 40, false);
+  await playerStep('mousemove', 120, 80, false);
+  await playerStep('mouseup', 120, 80, true);
+  const quickCentre = await player.evaluate(`(() => {
+    const { w, h } = getViewportSize();
+    return { cx: +((w / 2 - panX) / zoom).toFixed(1), cy: +((h / 2 - panY) / zoom).toFixed(1) };
+  })()`);
+  const mmQuick = await settleOn(() => mmView(),
+    v => Math.abs(v.cx - quickCentre.cx) < 20 && Math.abs(v.cy - quickCentre.cy) < 20, 5000);
+  rig.note('a quick drag: the Player at ' + JSON.stringify(quickCentre) + ', the minimap at ' +
+           JSON.stringify(mmQuick));
+  rig.check(Math.abs(mmQuick.cx - quickCentre.cx) < 20 && Math.abs(mmQuick.cy - quickCentre.cy) < 20,
+            'after a quick drag the minimap frame stopped short of where the players let go: ' +
+            JSON.stringify(mmQuick) + ' against ' + JSON.stringify(quickCentre));
 
   // ── J. Lock ─────────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved

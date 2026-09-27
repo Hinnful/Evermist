@@ -14,7 +14,7 @@ const fs = require('fs');
 
 // `latest/download` follows GitHub's newest release, so deleting one walks every Mac back to the
 // previous. A build whose publish config is a generic url reads that instead, as electron-updater
-// does; CI builds one to serve updates locally (mac-update.yml).
+// does; CI builds one to serve updates locally (update-proofs.yml).
 function readFeed() {
   try {
     const yml = fs.readFileSync(path.join(process.resourcesPath, 'app-update.yml'), 'utf8');

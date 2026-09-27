@@ -58,6 +58,8 @@ async function doExport(selectedIds) {
 
   showMapProgress('Creating backup…');
   try {
+    // ⚠ The open scene saves 5s after its last edit, and the zip is read from the store.
+    if (currentScene && selectedIds.includes(currentScene.id)) await doAutoSave();
     const scenesData = [];
     for (const id of selectedIds) {
       const scene = await sceneStore.loadScene(id);

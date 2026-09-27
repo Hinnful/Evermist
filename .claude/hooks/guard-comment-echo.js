@@ -44,7 +44,7 @@ const NOTE =
 
 /* The docs a comment is most likely to echo. A file not here simply is not compared. */
 function docFiles() {
-  const out = ['CLAUDE.md', 'src/css/CLAUDE.md'];
+  const out = ['CLAUDE.md', 'src/css/CLAUDE.md', '.claude/rules/modules.md'];
   const push = (dir) => {
     let items;
     try {

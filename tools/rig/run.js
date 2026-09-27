@@ -786,6 +786,7 @@ async function main() {
     const firstNote = tally.notes.length;
     const firstFail = tally.fails.length;
     const firstErr = tally.consoleErrors.length;
+    const warnings = [];
 
     // ⚠ A BOOT THAT FAILS IS THIS SCENARIO'S FAILURE, not the run's — with one exception. The
     // same fault three times running is the machine, not the scenarios, and marching 28 boot
@@ -827,12 +828,14 @@ async function main() {
       const sessions = [inst.dm].concat(inst.stage ? [inst.stage] : [])
         .concat(Array.from(inst.players.values()).filter(s => s !== inst.stage));
       for (const s of sessions) tally.consoleErrors.push(...(s.errors || []));
+      for (const s of sessions) warnings.push(...(s.warnings || []));
       for (const s of sessions) s.close();
       killApp(inst.proc);
     }
     for (const n of tally.notes.slice(firstNote)) console.log(n);
     for (const f of tally.fails.slice(firstFail)) console.log('  FAILED: ' + f);
     for (const e of tally.consoleErrors.slice(firstErr)) console.log('  CONSOLE ERROR: ' + e);
+    if (tally.fails.length > firstFail) for (const w of warnings) console.log('  CONSOLE WARN: ' + w);
   }
 
   if (tally.consoleErrors.length) console.log('CONSOLE ERRORS:\n  ' + tally.consoleErrors.join('\n  '));

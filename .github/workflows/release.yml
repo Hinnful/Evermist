@@ -12,10 +12,6 @@ name: Build & Release
 # ⚠ MAIN IS PROTECTED and requires this workflow's `verify` check, so a commit it never ran on
 # cannot be pushed to main by anyone. The branch is the only way in. /commit carries the steps.
 #
-# ⚠ THE GATE DRIVES THE PACKAGED APP, not the repo. A file missing from build.files works under
-# `npm start` and is simply absent from the .exe, where a missing stylesheet renders unstyled
-# rather than erroring. That class is invisible to every other check.
-#
 # Rollback is not a revert: delete the release and its tag, and `allowDowngrade` in main.js walks
 # installed copies back through their own Restart button. See docs/PRODUCT.md.
 on:
@@ -95,147 +91,30 @@ jobs:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1   # skipped here only; the build jobs need the binary
       - run: npm test
 
-  # THE GATE. Builds the Windows installer, then drives the app it just packaged.
-  # ⚠ The rig is Windows-only (offscreen.ps1 parks the windows), so this is the only platform it
-  # can cover. The mac and linux builds are checked by their unit tests and their update metadata.
+  # THE GATE: Windows, Mac and Linux in parallel, each driving the installer it built (gate.yml).
   gate:
     needs: [decide, verify]
     if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
-    runs-on: windows-latest
-    # The rig's own watchdog is 180s + 90s per scenario. At 28 acceptance files that is ~45min,
-    # and the installer build in front of it takes another ten or so. 60 would let a hang blow
-    # the job timeout before the rig could print its own verdict.
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
+    uses: ./.github/workflows/gate.yml
 
-      # postinstall fetches yt-dlp into vendor/. It fails hard on purpose: a soft failure would
-      # ship an installer whose download button does nothing.
-      - run: npm ci
-
-      - name: Build the Windows installer
-        run: npx electron-builder --win --publish never
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-
-      - name: Check the update pointer
-        run: node tools/check-update-metadata.js dist/latest.yml
-
-      # dist/win-unpacked/ is a by-product of building the installer, so this costs no second
-      # build. NEVER dist/Evermist.exe — see the rig skill.
-      #
-      # ⚠ SMOKE FIRST, AND AGAINST THE PACKAGED APP. It holds the video-to-disk IPC and the
-      # archiver/yauzl zip round trip, the two paths most likely to break in packaging and
-      # invisible to `npm start`. It used to run only at /commit, so the .exe never met them.
-      - name: Drive the packaged app through the smoke set
-        run: npm run rig -- --exe "dist/win-unpacked/Evermist.exe"
-
-      - name: Drive the packaged app through the full regression set
-        run: npm run rig -- regression --exe "dist/win-unpacked/Evermist.exe"
-
-      # ⚠ A RED RUN KEEPS ITS EVIDENCE. The rig writes under %TEMP%, which the job throws away, so
-      # a flaky red used to leave nothing but its FAIL line.
-      - name: Collect the rig's evidence
-        if: failure()
-        shell: pwsh
-        run: |
-          $root = Join-Path $env:TEMP 'evermist-rig'
-          if (Test-Path $root) {
-            Get-ChildItem $root -Recurse -File -Include *.log,*.png |
-              Where-Object { $_.FullName -notmatch '(IndexedDB|Local Storage|Session Storage)' } |
-              ForEach-Object {
-                $dest = Join-Path 'rig-evidence' $_.FullName.Substring($root.Length + 1)
-                New-Item -ItemType Directory -Force (Split-Path $dest) | Out-Null
-                Copy-Item $_.FullName $dest
-              }
-          }
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: rig-evidence-attempt-${{ github.run_attempt }}
-          path: rig-evidence/
-          retention-days: 14
-          if-no-files-found: warn
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dist-windows
-          path: |
-            dist/*.exe
-            dist/latest.yml
-            dist/*.blockmap
-          if-no-files-found: error
-
-  # In parallel with the gate: a red gate stops the publish job, so these are wasted work on a
-  # failure rather than a hole in it.
-  build:
+  # Every platform walks back and forward through its own update path, which the rig never touches.
+  update:
     needs: [decide, verify]
     if: needs.decide.outputs.release == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            flag: --mac
-            meta: dist/latest-mac.yml
-            name: dist-macos
-          - os: ubuntu-latest
-            flag: --linux
-            meta: dist/latest-linux.yml
-            name: dist-linux
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-
-      - name: Build the installer
-        run: npx electron-builder ${{ matrix.flag }} --publish never
-        env:
-          # Unsigned by choice. Unset, the mac build fails looking for a certificate.
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-
-      - name: Check the update pointer
-        run: node tools/check-update-metadata.js ${{ matrix.meta }}
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.name }}
-          path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.AppImage
-            dist/latest-*.yml
-            dist/*.blockmap
-          if-no-files-found: error
-
-  # The Mac updates itself outside electron-updater, so the rig above never touches that path.
-  mac-update:
-    needs: [decide, verify]
-    if: needs.decide.outputs.release == 'true'
-    uses: ./.github/workflows/mac-update.yml
+    uses: ./.github/workflows/update-proofs.yml
 
   # THE ONLY THING THAT WRITES TO MAIN, and it runs after the gate rather than before it. A change
   # that fails never reaches main, so main holds nothing but commits that passed.
   # ⚠ FAST-FORWARD, never a merge, rebase or squash. Those all mint a new commit, and main would
   # then carry a tree no gate ever drove. The commit main gets is the commit the gate proved.
   land:
-    needs: [decide, verify, gate, build, mac-update]
+    needs: [decide, verify, gate, update]
     if: >-
       always() &&
       needs.decide.result == 'success' &&
       needs.verify.result == 'success' &&
       needs.gate.result != 'failure' && needs.gate.result != 'cancelled' &&
-      needs.build.result != 'failure' && needs.build.result != 'cancelled' &&
-      needs.mac-update.result != 'failure' && needs.mac-update.result != 'cancelled'
+      needs.update.result != 'failure' && needs.update.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

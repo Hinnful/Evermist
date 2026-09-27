@@ -241,7 +241,7 @@ for one was ruled out. The app reads the same `latest-mac.yml`, downloads the zi
 its sha512, and a detached shell swaps the bundle once the process exits, restoring the old copy if
 the new one fails to land. A file the app writes carries no quarantine mark, so Gatekeeper asks only
 on the first install. The swap needs a writable folder, which is why a copy outside Applications is
-offered the move first. `mac-update.yml` proves it on a real Mac for every release, walking an
+offered the move first. `update-proofs.yml` proves it on a real Mac for every release, walking an
 installed copy back to an older build and forward again, served from a local feed.
 
 ### Publishing a release stays a hand gesture · `REJECTED` (reversed 2026-09-08)

@@ -1,0 +1,40 @@
+name: Probe
+
+# One scenario, many copies at once, to measure a random failure in minutes rather than a gate run
+# per sample. Edit the matrix to the question, then push to any `probe/**` branch. Ships nothing.
+on:
+  push:
+    branches:
+      - 'probe/**'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        # `scenario` empty is the smoke set. A free account runs five Mac jobs at once.
+        target:
+          - { os: windows-latest, build: --win dir, exe: dist/win-unpacked/Evermist.exe, run: '', scenario: '' }
+        copy: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    runs-on: ${{ matrix.target.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Let Chromium sandbox itself
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: npx electron-builder ${{ matrix.target.build }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - run: ${{ matrix.target.run }} npm run rig -- ${{ matrix.target.scenario }} --exe "${{ matrix.target.exe }}"

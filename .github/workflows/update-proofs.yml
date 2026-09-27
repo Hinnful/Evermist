@@ -1,8 +1,8 @@
-name: Windows and Linux update proofs
+name: Update proofs
 
-# The twins of mac-update.yml: install this version, walk it back to an older build and forward
-# again through the Restart button. Both update through electron-updater, which reads its feed from
-# inside the build, so each build gets a local feed baked in. A push to any `platformrig/**` branch
+# Proves every platform updates itself: install this version, walk it back to an older build and
+# forward again through the Restart button. Each build gets a local feed baked in, since the app
+# reads its feed from inside the build. release.yml calls it; a push to any `platformrig/**` branch
 # runs it alone and ships nothing.
 on:
   workflow_call:
@@ -20,11 +20,21 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            flag: --win nsis
+            new: --win nsis
+            old: --win nsis
             script: tools/win-update-proof.js
             run: ''
+          # The Mac updates outside electron-updater (electron/macUpdate.js). The zip users
+          # receive is universal; the older build is only something to walk back to, so the
+          # runner's own arch is enough.
+          - os: macos-latest
+            new: --mac zip --universal
+            old: --mac zip --arm64
+            script: tools/mac-update-proof.js
+            run: ''
           - os: ubuntu-latest
-            flag: --linux AppImage
+            new: --linux AppImage
+            old: --linux AppImage
             script: tools/linux-update-proof.js
             run: xvfb-run -a -s "-screen 0 1024x768x24"
     runs-on: ${{ matrix.os }}
@@ -49,18 +59,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libfuse2t64
 
-      # ⚠ The port must match FEED_PORT in both proof scripts.
+      # ⚠ The port must match FEED_PORT in all three proof scripts.
       - name: Point the update feed at this machine
         run: |
           node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.build.publish=[{provider:'generic',url:'http://127.0.0.1:8765/'}];fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
 
       - name: Build this version
-        run: npx electron-builder ${{ matrix.flag }} --publish never -c.directories.output=dist-new
+        run: npx electron-builder ${{ matrix.new }} --publish never -c.directories.output=dist-new
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Build an older version
-        run: npx electron-builder ${{ matrix.flag }} --publish never -c.directories.output=dist-old -c.extraMetadata.version=0.0.1
+        run: npx electron-builder ${{ matrix.old }} --publish never -c.directories.output=dist-old -c.extraMetadata.version=0.0.1
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 

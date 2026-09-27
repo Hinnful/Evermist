@@ -104,8 +104,7 @@ module.exports = async function backupFeature(rig) {
 
     revealCircle(300, 250, 120);
     rebuildFogFromPolygons(); rebuildFogEffect(); fogDirty = true; scheduleRender();
-    doAutoSave();
-    await new Promise(r => setTimeout(r, 900));
+    await doAutoSave();
     return { id: currentScene.id, name: currentScene.name, rooms: polygons.length,
              effects: effects.length, grid: gridSize };
   })()`, 60000);
@@ -385,6 +384,8 @@ module.exports = async function backupFeature(rig) {
             'that lands on disk are all beyond anything but a hand test');
   rig.byEye('a real restore of that file on a second machine, which is the whole point of the ' +
             'feature and the one thing a single-machine run can never be');
+  rig.byEye('an export through the Backup button within five seconds of an edit carries that ' +
+            'edit - doExport saves the open scene first, behind the same native dialog');
   // ── I. A missing map file is named, never dropped in silence ─────────────
   // RED BY DESIGN: written against the fix, never re-proved
   // ⚠ THE EXPORT KEEPS GOING. Refusing the whole backup over one absent clip would cost the DM

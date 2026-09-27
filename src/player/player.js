@@ -122,7 +122,11 @@ function initPlayer() {
     scheduleRender();
   });
 
-  window.addEventListener('mouseup', () => { playerIsPanning = false; });
+  // ⚠ The throttle drops the last moves of a quick drag, so the release reports where it ended.
+  window.addEventListener('mouseup', () => {
+    if (playerIsPanning && !playerFollowDM) reportPlayerView();
+    playerIsPanning = false;
+  });
 
   container.addEventListener('wheel', e => {
     e.preventDefault();
