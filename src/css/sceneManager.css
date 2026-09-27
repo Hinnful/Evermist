@@ -152,8 +152,24 @@
   .sm-bare.danger:hover { background: rgba(200,50,40,0.22); color: rgba(240,110,100,0.95); }
 
   /* Compression sits with the title, not with the buttons: it is a standing setting rather
-     than an action, and a wider gap keeps it from reading as part of the count. */
-  #sm-head #sm-compress { margin-left: 14px; }
+     than an action, and a wider gap keeps it from reading as part of the count. Its pill is
+     .cp-tabs at the header's 30px, the stat block's side switch shape. */
+  .sm-compress-lbl {
+    flex: none; margin-left: 14px; display: flex; align-items: center;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #9aa0aa;
+  }
+  .sm-compress-lbl svg { display: none; }
+  #sm-compress { flex: none; height: 30px; padding: 2px; gap: 2px; }
+  #sm-compress .cp-segtab { flex: none; height: 24px; padding: 0 9px; }
+  /* The search field gives up width first on a small screen, so the row never wraps. */
+  #sm-head .sm-field { flex: 0 1 220px; min-width: 120px; }
+  /* A small laptop at 150% scaling is about 850px wide: the word becomes a glyph. */
+  @media (max-width: 1000px) {
+    .sm-compress-lbl { margin-left: 4px; }
+    .sm-compress-lbl span { display: none; }
+    .sm-compress-lbl svg { display: block; }
+    #sm-head .sm-field { min-width: 86px; }
+  }
 
   /* ── contextual action bar ──
      Material's contextual app bar: while anything is selected it REPLACES the header rather
@@ -384,62 +400,6 @@
   }
   .sm-menu-row:hover { background: rgba(70,120,220,0.18); }
   .sm-menu-sep { height: 1px; margin: 4px 6px; background: rgba(255,255,255,0.07); flex: none; }
-
-  /* ===== .sm-switch — the app's switch, invented here =====
-     A SWITCH, not a .cp-btn. The control-panel rule (an independent toggle is an outlined button
-     that fills blue) governs the Fog/Grid/Player panes; a filled button in a header row reads as
-     an action to press rather than a state to set.
-
-     The colours are the app's existing toggle vocabulary, not new ones: the off track is the same
-     black inset as .cp-tabs, and on is the blue pair every .active control already uses.
-
-     ⚠ NEITHER AXIS MAY BE POSITIONED AGAINST THE NOMINAL BORDER WIDTH. #sm-panel carries
-     zoom: 1.2, and under it a 1.5px border resolves to 0.83px while a 1.5px offset stays 1.5px —
-     so `top: 1.5px` put the knob 1.6px high, which is visible at this size. Vertical centring is
-     therefore `top: 50%` + translateY, and the travel is `calc(100% - …)` where 100% is the
-     padding box the real border already produced. Both make the browser do the sum. */
-  .sm-switch {
-    display: flex; align-items: center; gap: 9px;
-    height: 30px;
-    cursor: pointer; user-select: none;
-  }
-  .sm-switch-lbl {
-    flex: none;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    color: #9aa0aa;
-    transition: color .14s;
-  }
-  .sm-switch:hover .sm-switch-lbl { color: #cdd2da; }
-  .sm-switch.on .sm-switch-lbl { color: #d5d8dd; }
-
-  .sm-switch-track {
-    flex: none; position: relative;
-    width: 32px; height: 18px;
-    border-radius: 999px;
-    background: rgba(0,0,0,0.28);
-    border: 1.5px solid rgba(255,255,255,0.1);
-    transition: background .16s, border-color .16s;
-  }
-  .sm-switch:hover .sm-switch-track { border-color: rgba(255,255,255,0.18); }
-  .sm-switch.on .sm-switch-track {
-    background: rgba(70,120,220,0.3);
-    border-color: rgba(90,140,235,0.75);
-  }
-  .sm-switch.on:hover .sm-switch-track { border-color: rgba(90,140,235,0.95); }
-
-  .sm-switch-knob {
-    position: absolute;
-    top: 50%; left: 2px;
-    width: 11px; height: 11px;
-    border-radius: 50%;
-    background: #7f858e;
-    transform: translateY(-50%);
-    /* `left`, not a transform: translateY already owns transform for the centring, and a
-       transform distance cannot be expressed against the track's width. */
-    transition: left .16s cubic-bezier(.3, .85, .35, 1), background .16s;
-  }
-  .sm-switch:hover .sm-switch-knob { background: #9aa0aa; }
-  .sm-switch.on .sm-switch-knob { left: calc(100% - 13px); background: #8fb6ff; }
 
   /* ── Undo toast (after delete) ──
      ⚠ NO `zoom` HERE, AND ITS SIZES ARE WRITTEN OUT INSTEAD. It is a fixed element centred with

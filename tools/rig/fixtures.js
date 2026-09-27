@@ -165,7 +165,7 @@ async function animatedMap(session, outDir, opts) {
 // from the video every frame, fog composites over a moving image, and pan and zoom move the video
 // with a CSS transform instead of the PixiJS camera.
 //
-// Deliberately SMALLER than MAP_BOX_W/H, so an import does not trigger the shrink. Exercising the
+// Deliberately SMALLER than the 4K compression box, so an import does not trigger the shrink. Exercising the
 // shrink is smoke.js's job and it costs a real-time re-encode; every scenario paying for that
 // would make the suite slow enough to stop being run.
 //

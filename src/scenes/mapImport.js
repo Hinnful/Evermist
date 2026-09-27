@@ -116,11 +116,13 @@ async function createNewScene(file, opts) {
   // on exactly the oversized exports that ship a .dd2vtt.
   const floorPlan = typeof findPlanForFile === 'function' ? await findPlanForFile(file) : null;
 
-  // Then shrink it, if the scene dropdown's setting is on. No confirmation — it is a setting.
+  // Then shrink it, if the library's Compression setting names a size. No confirmation — it is a setting.
   // The overlay is raised from onStart, so a map that already fits never flashes a progress bar.
   let shrunk = null;
-  if (isVid && typeof convertVideoForImport === 'function' && compressBigVideosEnabled()) {
+  const box = isVid && typeof compressBox === 'function' ? compressBox() : null;
+  if (box && typeof convertVideoForImport === 'function') {
     shrunk = await convertVideoForImport(file, {
+      box,
       onStart: () => showMapProgress('Shrinking the animated map…'),
       onProgress: updateMapProgress,
     });

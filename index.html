@@ -724,14 +724,19 @@
       <span class="sm-head-div"></span>
       <!-- Compression is a standing setting, not an action, so it sits with the title. What
            is left on the right reads as one sequence: find, then add a group, then add maps. -->
-      <label id="sm-compress" class="sm-switch" title="Animated maps bigger than 3840×2160 are re-encoded to fit that size on import. Improves performance on low-end machines.">
-        <span class="sm-switch-lbl">Compression</span>
-        <span class="sm-switch-track"><span class="sm-switch-knob"></span></span>
-      </label>
+      <span class="sm-compress-lbl" title="Compression"><span>Compression</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>
+      </span>
+      <div id="sm-compress" class="cp-tabs" title="Animated maps bigger than the size picked here are re-encoded to fit it on import. Improves performance on low-end machines.">
+        <button class="cp-segtab" data-size="0">Off</button>
+        <button class="cp-segtab" data-size="1080">1080p</button>
+        <button class="cp-segtab" data-size="1440">2K</button>
+        <button class="cp-segtab" data-size="1">4K</button>
+      </div>
       <span class="sm-head-sp"></span>
       <label class="sm-field">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
-        <input id="sm-search" placeholder="Find a scene" spellcheck="false" autocomplete="off">
+        <input id="sm-search" placeholder="Search" spellcheck="false" autocomplete="off">
       </label>
       <!-- Labels, no glyphs. These two sit side by side and do the same kind of thing, so one
            wearing an icon and the other not would read as a difference that is not there. -->

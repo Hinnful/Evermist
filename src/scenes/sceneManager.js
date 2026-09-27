@@ -122,13 +122,20 @@ function initSceneManagerUI() {
 
   document.querySelector('#scene-undo-toast .undo-btn').onclick = undoDelete;
 
-  // The compress-on-import setting. mapConvert.js owns it; this flips it and paints the result.
+  // The compress-on-import setting. mapConvert.js owns it; this sets it and paints the result.
   const compress = document.getElementById('sm-compress');
-  if (compress && typeof compressBigVideosEnabled === 'function') {
-    const paint = on => compress.classList.toggle('on', on);
-    // A label wrapping no input, so the click is ours and needs no preventDefault.
-    compress.addEventListener('click', () => paint(toggleCompressBigVideos()));
-    paint(compressBigVideosEnabled());
+  if (compress && typeof compressSize === 'function') {
+    const paint = () => {
+      const v = compressSize().value;
+      compress.querySelectorAll('.cp-segtab').forEach(b => b.classList.toggle('active', b.dataset.size === v));
+    };
+    compress.addEventListener('click', e => {
+      const b = e.target.closest('.cp-segtab');
+      if (!b) return;
+      setCompressSize(b.dataset.size);
+      paint();
+    });
+    paint();
   }
 
   // Allow drops in the gaps between cards

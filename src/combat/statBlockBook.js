@@ -11,6 +11,7 @@ const BK_HEADER_SKIP = 15;
 const BK_MAX_LINES = 250;
 const BK_HEADER_LINES = 12;
 const BK_LORE_LIFT = 0.3;
+const BK_ASIDE_LINES = 12;
 
 function _bkStat(t) {
   const lab = SBB._sbLabel(t);
@@ -191,6 +192,13 @@ function statBlocksInText(text) {
       }
       if (!head && !heading) {
         const list = /^[\p{Lu}\d][\p{L}\d/ ,–-]{0,39}:\s/u.test(t) || /^[•\-–]/.test(t);
+        // A quote set between two entries: the block goes on at a name in a font it already used.
+        if (foreign(l) && !list) {
+          let m = k;
+          while (m < lines.length && m - k < BK_ASIDE_LINES && foreign(lines[m])) m++;
+          const r = lines[m];
+          if (r && !foreign(r) && r.lead && r.lead !== bodyFont && leads.has(r.lead) && SBB._sbEntry(r.t)) { k = m - 1; continue; }
+        }
         // Lore after the block's last line; a lone line in another font just before it was a sidebar's lead-in.
         if (foreign(l) && !list) { if (from === k - 1 && lines[from].f !== bodyFont && fresh && body.length > 2 && !SBB._sbSection(body[body.length - 2])) body.pop(); break; }
         if (/^(Время накладывания|Накладывание более высокой|Casting Time|Using a Higher-Level)/.test(t)) break;

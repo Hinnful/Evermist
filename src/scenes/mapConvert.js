@@ -1,7 +1,7 @@
 'use strict';
 
-// mapConvert.js — re-encoding an oversized animated map at import so it fits MAP_BOX_W ×
-// MAP_BOX_H. A Dungeon Alchemist WebM export runs 13-20 megapixels and TWO decoders hold one at
+// mapConvert.js — re-encoding an oversized animated map at import so it fits the size the DM
+// picked. A Dungeon Alchemist WebM export runs 13-20 megapixels and TWO decoders hold one at
 // once, which is the app's largest single memory cost.
 //
 // ⚠ H.264 is required, not preferred: there is no hardware VP9 encoder, and the codec string must
@@ -43,32 +43,49 @@ function fitInsideBox(srcW, srcH, boxW, boxH) {
 // this is the state in one place, applied to every import with no confirmation.
 //
 // OFF by default: re-encoding is a one-way door and the playback hardware is unpredictable.
+// ⚠ 4K keeps the stored '1' the on/off switch wrote, so an older build rolled back to still reads
+// 4K as on and every other size as off.
 var MAP_COMPRESS_KEY = 'evermist.compressBigVideos';
+var MAP_COMPRESS_SIZES = [
+  { value: '0', label: 'Off' },
+  { value: '1080', label: '1080p', w: 1920, h: 1080 },
+  { value: '1440', label: '2K', w: 2560, h: 1440 },
+  // ⚠ The largest box: the H.264 level the encoder runs at stops at 4096 wide, and so does
+  // hardware decode on integrated graphics.
+  { value: '1', label: '4K', w: 3840, h: 2160 },
+];
 
-function compressBigVideosEnabled() {
-  try { return localStorage.getItem(MAP_COMPRESS_KEY) === '1'; } catch (_) { return false; }
+function compressSize() {
+  var v = '0';
+  try { v = localStorage.getItem(MAP_COMPRESS_KEY) || '0'; } catch (_) {}
+  return MAP_COMPRESS_SIZES.find(function(s) { return s.value === v; }) || MAP_COMPRESS_SIZES[0];
+}
+
+// The box an import shrinks to, or null while compression is off.
+function compressBox() {
+  var s = compressSize();
+  return s.w ? { w: s.w, h: s.h } : null;
 }
 
 // Explained ONCE PER APP RUN, on the way on: a silent setting still has to say what it does, as a
 // statement rather than a question. Per run, not per install — it is a reminder.
 var _compressExplained = false;
 
-// Flips, persists, explains if it just came on. Returns the new state so the caller can paint.
-function toggleCompressBigVideos() {
-  var on = !compressBigVideosEnabled();
-  try { localStorage.setItem(MAP_COMPRESS_KEY, on ? '1' : '0'); } catch (_) {}
-  if (on && !_compressExplained && typeof messageDialog === 'function') {
+function setCompressSize(value) {
+  var wasOff = !compressBox();
+  try { localStorage.setItem(MAP_COMPRESS_KEY, value); } catch (_) {}
+  var box = compressBox();
+  if (box && wasOff && !_compressExplained && typeof messageDialog === 'function') {
     _compressExplained = true;
     messageDialog({
       title: 'Compression',
       message:
-        'Animated maps bigger than ' + MAP_BOX_W + '×' + MAP_BOX_H + ' will be re-encoded to fit ' +
+        'Animated maps bigger than ' + box.w + '×' + box.h + ' will be re-encoded to fit ' +
         'that size on import. This improves performance on low-end PCs and laptops.\n\n' +
         'Leave it off if your machine can handle full-size maps.',
       buttonLabel: 'Got it',
     });
   }
-  return on;
 }
 
 // ─── The conversion (browser only) ───────────────────────────────────────────
@@ -86,7 +103,7 @@ var MAP_CONVERT_STALL_MS = 20000;
 // A RESULT OBJECT, not a bare File: the caller needs srcW to correct the floor plan's coordinates,
 // which are in the original export's pixel space.
 //
-// onStart fires only after the DM has said yes, so the caller raises its progress overlay then.
+// onStart fires only once a shrink is certain, so the caller raises its progress overlay then.
 function convertVideoForImport(file, hooks) {
   var h = hooks || {};
   var onProgress = h.onProgress;
@@ -159,7 +176,7 @@ function convertVideoForImport(file, hooks) {
           resolve({ file: file, srcW: srcW, srcH: srcH, outW: srcW, outH: srcH, converted: false });
         }
 
-        var fit = fitInsideBox(srcW, srcH, MAP_BOX_W, MAP_BOX_H);
+        var fit = fitInsideBox(srcW, srcH, h.box.w, h.box.h);
         // Already inside the box: hand the original straight back. Re-encoding it would cost a
         // generation of quality and a realtime wait for no memory saved at all.
         if (!fit.changed) { keepOriginal(); return; }

@@ -120,6 +120,14 @@ with no way to answer; the progress bar therefore goes up from `onStart`, after 
 And a map already inside the box must not be re-encoded at all - it costs a generation of
 quality and a realtime wait for no memory saved.
 
+### The switch became a size, and 4K is the largest · `SETTLED` (2026-09-27)
+The setting picks a box - Off, 1080p, 2K (2560×1440), 4K - because a weak laptop wants less than
+4K and one fixed box served nobody below it. **8K was dropped**: the High 5.1 encoder caps at
+4096 wide, and a machine that plays 8K leaves compression off. It stays in the scene library
+header beside Add maps, because it acts at import; a Player-tab row was drawn and rejected, since
+that tab holds settings for the TV. 4K keeps the stored `'1'` the switch wrote, so a rollback
+still reads 4K as on and the smaller sizes as off, which fails safe.
+
 ### The shrink's bitrate buys quality per pixel, not just size · `SETTLED` (moved out of state.js 2026-08-30)
 `VIDEO_BITRATE` in `state.js` is a one-line tunable and 15 Mbps is not arbitrary. Inside the
 3840×2160 box that is ~0.073 bits per pixel against the source exports' ~0.051, so quality per

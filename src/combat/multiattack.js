@@ -51,6 +51,19 @@ function _cbActionName(text, actions) {
   return hits.length === 1 ? hits[0] : '';
 }
 
+const COMBAT_JOIN = new Set(['or', 'and', 'или', 'либо', 'и']);
+const _cbSkip = tk => /^(attacks?|атак[а-яё]*)$/.test(tk) || COMBAT_FILLER.has(tk);
+// "Two attacks with A and B" is a pick, so one count never lands on A alone.
+function _cbJoinedName(toks, j, pills) {
+  let k = j + 1;
+  while (k < toks.length && !COMBAT_JOIN.has(toks[k])) {
+    if (/^[.:;]$/.test(toks[k]) || COMBAT_NUMBERS[toks[k]]) return false;
+    k++;
+  }
+  while (++k < toks.length && _cbSkip(toks[k]));
+  return k < toks.length && !COMBAT_NUMBERS[toks[k]] && !!_cbNameMatch(toks[k], pills);
+}
+
 function _cbMultiCounts(text, pills) {
   if (/\b(?:or|either|instead|replaces?|in place of)\b|(?:^|\s)(?:или|либо|вместо|замен[а-яё]*)(?=\s|$)/i.test(text)) return null;
   const toks = text.toLowerCase().match(/[a-zа-яё]+(?:-[a-zа-яё]+)*|[.:;]/g) || [];
@@ -66,6 +79,7 @@ function _cbMultiCounts(text, pills) {
       if (/^(attacks?|атак[а-яё]*)$/.test(tk)) { attackWord = true; continue; }
       const p = _cbNameMatch(tk, pills);
       if (p === 'many') return null;
+      if (p && _cbJoinedName(toks, j, pills)) return null;
       if (p) { found = p; break; }
     }
     if (found) counts.set(found, (counts.get(found) || 0) + n);
@@ -82,7 +96,6 @@ function _cbMultiCounts(text, pills) {
 
 // "Three attacks with A or B in any combination": one count over a pick of named attacks, in one
 // sentence. Words after a matched name belong to that name until a comma or a joining word.
-const COMBAT_JOIN = new Set(['or', 'and', 'или', 'либо', 'и']);
 function _cbMultiChoice(text, pills) {
   const s = text.replace(/\s*(?:in any combination|в любой комбинации)/i, '').trim().replace(/\.$/, '');
   if (/[.;:]/.test(s)) return null;

@@ -4,8 +4,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { fitInsideBox } = require('../src/scenes/mapConvert.js');
 
-// The real box (state.js MAP_BOX_W/H). Repeated here rather than imported: state.js is
-// browser-only globals with no export guard.
+// The 4K box (mapConvert.js MAP_COMPRESS_SIZES), repeated because the size list is not exported.
 const BOX_W = 3840, BOX_H = 2160;
 
 const aspect = r => r.w / r.h;

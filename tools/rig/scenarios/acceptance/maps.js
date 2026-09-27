@@ -160,7 +160,7 @@ module.exports = async function mapsFeature(rig) {
     0
   })()`);
 
-  rig.check(await dm.evaluate('!compressBigVideosEnabled()'),
+  rig.check(await dm.evaluate('!compressBox()'),
             'compression is on, so the broken video bytes go through the converter instead of ' +
             'the loader and section I would be testing the wrong path');
 

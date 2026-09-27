@@ -158,6 +158,20 @@ describe('statBlocksInText with the font each line starts in', () => {
     assert.ok(!JSON.stringify(b).includes('Среда обитания'));
     assert.equal(statBlockUnclean(b), '');
   });
+  it('reads past a quote set between two entries, and stops at lore and a heading after the last one', () => {
+    const lore = t => ['L', 'L', t];
+    const [y] = statBlocksInText(pdf([lore('Йети живут в горах.'), lore('Они охотятся стаями.'), lore('Их боятся все.'),
+      ...head, ['T', 'T', 'Особенности'], ['S', 'N', 'Страх огня. Помеха после урона Огнём.'],
+      ['S', 'N', 'Лазание. Йети лазает без проверок.'], ['S', 'N', 'Нюх. Преимущество на проверки по запаху.'],
+      ['T', 'T', 'Действия'],
+      ['S', 'N', 'Лапа. Бросок атаки: +6. Попадание: 6 (1d4 + 4) Режущего урона.'],
+      lore('Йети неведомо сочувствие.'), lore('Им не подвластна мощь гор.'), lore('Келеста Хоук'),
+      ['S', 'N', 'Бросок льда. Бросок атаки: +6. Попадание: 7 (1d6 + 4) Дробящего урона.'],
+      lore('Йети обитают на вершинах.'), lore('Там холодно.'), lore('И тихо.'),
+      ['H', 'H', 'Логово йети'], ['S', 'N', 'Холод. Это не действие йети.']]));
+    assert.deepEqual(y.secs.Actions.map(e => e.n), ['Лапа', 'Бросок льда']);
+    assert.ok(!JSON.stringify(y).includes('Келеста'));
+  });
 });
 
 describe('statBlockUnclean', () => {

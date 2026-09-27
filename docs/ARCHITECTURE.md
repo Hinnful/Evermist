@@ -37,10 +37,11 @@ proposition: it costs a video decoder in every window that shows it, for as long
 open, and that is comfortably the heaviest thing the app does. A Dungeon Alchemist export runs
 13 to 20 megapixels, several times what any table television can show.
 
-So there's a **Compression** switch at the bottom of the scene list. With it on, any animated map
-larger than 3840×2160 is re-encoded on import to fit that box - twice a 1080p TV, and under the
-4096-pixel ceiling where a laptop's built-in graphics stop decoding video in hardware and fall
-back to the processor. A map already inside the box is stored exactly as it arrived.
+So the scene library's header carries a **Compression** size: Off, 1080p, 2K (2560×1440) or 4K
+(3840×2160). With a size picked, any animated map larger than it is re-encoded on import to fit
+that box. 4K is the largest because it sits under the 4096-pixel ceiling where a laptop's built-in
+graphics stop decoding video in hardware and fall back to the processor. A map already inside the
+box is stored exactly as it arrived.
 
 It is off until switched on, and it replaces what the app stores rather than keeping both. The
 cost is time: re-encoding runs at the speed the map plays, so a thirty-second map takes about

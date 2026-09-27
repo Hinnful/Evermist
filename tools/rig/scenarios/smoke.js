@@ -2,8 +2,8 @@
 
 // smoke.js — the fast always-run set. Four blocks:
 //
-//   1. The animated-map compression feature: load order, the switch's placement and persistence,
-//      the one-per-run explainer, and the switch's own geometry.
+//   1. The animated-map compression feature: load order, the size control's placement and
+//      persistence, the one-per-run explainer, and the control's own geometry.
 //   2. The map render path across real scenes — that the DM holds NO map sprite for an animated
 //      map (its map is the composited DOM <video>) and DOES hold one for a still, in both switch
 //      directions. Both scenes are generated at runtime, so this no longer skips itself.
@@ -36,47 +36,44 @@ module.exports = async function smoke(rig) {
 
     if (typeof fitInsideBox !== 'function') fails.push('fitInsideBox missing');
     if (typeof convertVideoForImport !== 'function') fails.push('convertVideoForImport missing');
-    if (typeof compressBigVideosEnabled !== 'function') fails.push('compressBigVideosEnabled missing');
-    if (typeof toggleCompressBigVideos !== 'function') fails.push('toggleCompressBigVideos missing');
-    if (typeof MAP_BOX_W === 'undefined' || MAP_BOX_W !== 3840) fails.push('MAP_BOX_W wrong: ' + MAP_BOX_W);
-    if (typeof MAP_BOX_H === 'undefined' || MAP_BOX_H !== 2160) fails.push('MAP_BOX_H wrong: ' + MAP_BOX_H);
+    if (typeof compressSize !== 'function') fails.push('compressSize missing');
+    if (typeof compressBox !== 'function') fails.push('compressBox missing');
+    if (typeof setCompressSize !== 'function') fails.push('setCompressSize missing');
     if (typeof MAP_CONVERT_BITRATE === 'undefined') fails.push('MAP_CONVERT_BITRATE missing');
     if (typeof vttScaleRooms !== 'function') fails.push('vttScaleRooms missing');
     if (!MediaRecorder.isTypeSupported('video/mp4;codecs=avc1.640033')) fails.push('no H.264 recorder in the app runtime');
 
-    // Both earlier shapes must be gone — either one left behind is a second source of truth.
+    // Every earlier shape must be gone — any one left behind is a second source of truth.
     if (typeof askShrinkAnimated !== 'undefined') fails.push('the per-import question survives');
     if (typeof shrinkAnimatedEnabled !== 'undefined') fails.push('the first build\\'s setting survives');
+    if (typeof toggleCompressBigVideos !== 'undefined') fails.push('the on/off switch survives');
     if (document.getElementById('cp-shrink-anim')) fails.push('the Player-tab toggle is still in the markup');
 
-    // The already-fits path, exercised against the real constants.
-    const same = fitInsideBox(1920, 1080, MAP_BOX_W, MAP_BOX_H);
-    if (same.changed) fails.push('a 1920x1080 map claimed it needed shrinking');
-    const shrink = fitInsideBox(6150, 2850, MAP_BOX_W, MAP_BOX_H);
-    if (!shrink.changed || shrink.w !== 3840) fails.push('6150x2850 did not fit to 3840: ' + JSON.stringify(shrink));
-
-    // ─── Where the switch lives ────────────────────────────────────────────
+    // ─── Where the control lives ───────────────────────────────────────────
     const sw = document.getElementById('sm-compress');
     if (!sw) fails.push('#sm-compress missing from the scene library');
-    if (sw && !sw.closest('#sm-panel')) fails.push('the switch is not in the scene library popup');
-    if (sw && sw.closest('#sm-list')) fails.push('the switch is inside the scrolling scene list');
-    if (sw && !sw.closest('#sm-head')) fails.push('the switch is not in the library header');
-    const label = sw ? sw.querySelector('.sm-switch-lbl').textContent.trim() : null;
+    if (sw && !sw.closest('#sm-panel')) fails.push('the control is not in the scene library popup');
+    if (sw && sw.closest('#sm-list')) fails.push('the control is inside the scrolling scene list');
+    if (sw && !sw.closest('#sm-head')) fails.push('the control is not in the library header');
+    const tab = size => sw.querySelector('.cp-segtab[data-size="' + size + '"]');
+    const labels = sw ? [...sw.querySelectorAll('.cp-segtab')].map(b => b.textContent.trim()) : [];
+    // RED ON: the 2K choice relabelled 1440p (index.html #sm-compress) — 2026-09-27
+    if (labels.join('|') !== 'Off|1080p|2K|4K') fails.push('the choices read ' + labels.join(' · '));
+    const label = (document.querySelector('.sm-compress-lbl') || {}).textContent.trim();
     const tip = sw ? (sw.getAttribute('title') || '') : '';
-    if (tip.indexOf('3840') === -1) fails.push('the tooltip does not say what size it fits');
 
     // ─── Default OFF ───────────────────────────────────────────────────────
     localStorage.removeItem('evermist.compressBigVideos');
-    if (compressBigVideosEnabled()) fails.push('the setting defaults to on');
+    if (compressBox()) fails.push('the setting defaults to on');
 
-    // ─── First switch-on explains itself, once per run ──────────────────────
+    // ─── First size explains itself, once per run ───────────────────────────
     const anchor = () => document.getElementById('cd-anchor');
     const shownNow = () => { const a = anchor(); return !!a && a.style.display === 'flex'; };
+    const lit = () => [...sw.querySelectorAll('.cp-segtab.active')].map(b => b.dataset.size).join(',');
 
-    sw.click();
+    tab('1').click();
     await new Promise(r => setTimeout(r, 120));
-    const onAfterFirst = compressBigVideosEnabled();
-    const classOn = sw.classList.contains('on');
+    const box4k = compressBox();
     const explained = shownNow();
     const dlg = {
       title: (document.getElementById('cd-title') || {}).textContent,
@@ -85,44 +82,48 @@ module.exports = async function smoke(rig) {
       // A statement, so the cancel button is hidden by .cd-solo — there is nothing to decline.
       solo: !!anchor() && anchor().classList.contains('cd-solo'),
     };
-    if (!onAfterFirst) fails.push('the switch did not turn on');
-    if (!classOn) fails.push('the switch did not paint itself on');
-    if (localStorage.getItem('evermist.compressBigVideos') !== '1') fails.push('the setting is not persisted');
+    if (!box4k || box4k.w !== 3840 || box4k.h !== 2160) fails.push('4K did not set a 3840x2160 box: ' + JSON.stringify(box4k));
+    if (lit() !== '1') fails.push('4K did not paint itself as the one lit choice: ' + lit());
+    // An older build reads '1' as on, so a rollback keeps 4K.
+    if (localStorage.getItem('evermist.compressBigVideos') !== '1') fails.push('4K is not stored as the switch\\'s old on value');
     if (!explained) fails.push('turning it on for the first time explained nothing');
     if (!dlg.solo) fails.push('the explainer is a question, not a statement');
     if (dlg.msg.indexOf('3840×2160') === -1) fails.push('the explainer omits the box size');
     if (dlg.msg.indexOf('low-end') === -1) fails.push('the explainer omits who it is for');
     if (dlg.msg.length > 250) fails.push('the explainer is too long: ' + dlg.msg.length + ' chars');
 
-    // The knob has to be centred in its track under the dropdown's zoom, which is what a
-    // border-width-derived offset got wrong. Measured, not eyeballed.
-    // ⚠ The menu is display:none until opened, so the footer has NO layout and every rect reads
+    // The imports shrink against the box the DM picked, exercised against the real sizes.
+    const same = fitInsideBox(1920, 1080, box4k.w, box4k.h);
+    if (same.changed) fails.push('a 1920x1080 map claimed it needed shrinking');
+    const shrink = fitInsideBox(6150, 2850, box4k.w, box4k.h);
+    if (!shrink.changed || shrink.w !== 3840) fails.push('6150x2850 did not fit to 3840: ' + JSON.stringify(shrink));
+
+    // The pill shares the header row with the buttons, so it sits on their centre line and at
+    // their height. It is a standing SETTING, not an action, so it leads the row: the run of
+    // controls after it has to read find → new group → add maps, in that order.
+    // ⚠ The menu is display:none until opened, so the header has NO layout and every rect reads
     // zero — which passes a centring check by accident. Open it first.
     openDropdown();
     await new Promise(r => setTimeout(r, 250));
-    const tr = sw.querySelector('.sm-switch-track').getBoundingClientRect();
-    const kn = sw.querySelector('.sm-switch-knob').getBoundingClientRect();
-    const above = kn.y - tr.y, below = (tr.y + tr.height) - (kn.y + kn.height);
-    const right = (tr.x + tr.width) - (kn.x + kn.width);   // measured with the switch ON
-    if (Math.abs(above - below) > 0.4) fails.push('knob off centre: ' + above.toFixed(2) + ' above, ' + below.toFixed(2) + ' below');
-    if (right < 0.5) fails.push('the on-state knob overshoots its track: ' + right.toFixed(2) + 'px clearance');
-
-    // The switch shares the header row with the buttons, so it sits on their centre line. It
-    // is a standing SETTING, not an action, so it leads the row: the run of controls after it
-    // has to read find → new group → add maps, in that order and nothing between them.
     const addBtn = document.getElementById('sm-add').getBoundingClientRect();
     const swBox = sw.getBoundingClientRect();
+    const head = document.getElementById('sm-head');
     const order = [
-      ['compression', swBox.x],
+      ['compression', document.querySelector('.sm-compress-lbl').getBoundingClientRect().x],
+      ['sizes', swBox.x],
       ['find', document.getElementById('sm-search').getBoundingClientRect().x],
       ['new group', document.getElementById('sm-new-group').getBoundingClientRect().x],
       ['add maps', addBtn.x],
     ];
     const gaps = {
       drift: (swBox.y + swBox.height / 2) - (addBtn.y + addBtn.height / 2),
+      tall: swBox.height - addBtn.height,
+      overflow: head.scrollWidth - head.clientWidth,
       reads: order.map(o => o[0]).join(' → '),
     };
-    if (Math.abs(gaps.drift) > 0.6) fails.push('the switch is off the header centre line by ' + gaps.drift.toFixed(2) + 'px');
+    if (Math.abs(gaps.drift) > 0.6) fails.push('the sizes are off the header centre line by ' + gaps.drift.toFixed(2) + 'px');
+    if (Math.abs(gaps.tall) > 0.6) fails.push('the sizes pill and Add maps differ in height by ' + gaps.tall.toFixed(2) + 'px');
+    if (gaps.overflow > 0) fails.push('the header overflows its row by ' + gaps.overflow + 'px');
     for (let i = 1; i < order.length; i++) {
       if (order[i][1] <= order[i - 1][1]) {
         fails.push('the header reads out of order: ' + order[i][0] + ' is not to the right of ' + order[i - 1][0]);
@@ -135,41 +136,45 @@ module.exports = async function smoke(rig) {
     document.getElementById('cd-ok').click();
     await new Promise(r => setTimeout(r, 60));
 
-    // Off, then on again in the SAME run — the second arming must not re-explain.
-    sw.click();
+    // Another size, then off, then on again in the SAME run — none of it re-explains.
+    tab('1440').click();
     await new Promise(r => setTimeout(r, 80));
-    const offAgain = !compressBigVideosEnabled();
+    const box2k = compressBox();
+    const explainedOnSwap = shownNow();
+    tab('0').click();
+    await new Promise(r => setTimeout(r, 80));
+    const offAgain = !compressBox() && lit() === '0';
     const explainedOnOff = shownNow();
-    sw.click();
+    tab('1080').click();
     await new Promise(r => setTimeout(r, 120));
-    const onAgain = compressBigVideosEnabled();
+    const box1080 = compressBox();
     const explainedTwice = shownNow();
-    if (!offAgain) fails.push('the switch would not turn off');
+    if (!box2k || box2k.w !== 2560 || box2k.h !== 1440) fails.push('2K did not set a 2560x1440 box: ' + JSON.stringify(box2k));
+    if (explainedOnSwap) fails.push('changing size while on showed the explainer');
+    if (!offAgain) fails.push('Off would not turn it off');
     if (explainedOnOff) fails.push('turning it OFF showed the explainer');
-    if (!onAgain) fails.push('the switch would not turn back on');
+    if (!box1080 || box1080.w !== 1920 || box1080.h !== 1080) fails.push('1080p did not set a 1920x1080 box: ' + JSON.stringify(box1080));
     if (explainedTwice) fails.push('it explained itself a second time in one run');
 
     closeDropdown();
-    return { fails, shrink, label, tip, dlg, onAfterFirst, offAgain, onAgain, explainedTwice,
-             knob: { above: +above.toFixed(2), below: +below.toFixed(2), right: +right.toFixed(2) },
-             gaps: { drift: +gaps.drift.toFixed(2), reads: gaps.reads } };
+    return { fails, shrink, label, tip, labels, dlg, offAgain, explainedTwice,
+             gaps: { drift: +gaps.drift.toFixed(2), overflow: gaps.overflow, reads: gaps.reads } };
   })()`);
 
   for (const f of result.fails) rig.check(false, f);
   rig.check(result.fails.length === 0, 'the compression block reported ' + result.fails.length + ' failures');
-  rig.note('knob inside its track — above ' + result.knob.above + ', below ' + result.knob.below +
-           ', right clearance ' + result.knob.right);
-  rig.note('header reads ' + result.gaps.reads + ' — switch centre-line drift ' + result.gaps.drift);
-  rig.note('switch label: ' + JSON.stringify(result.label) + '   tooltip: ' + JSON.stringify(result.tip));
+  rig.note('header reads ' + result.gaps.reads + ' — sizes centre-line drift ' + result.gaps.drift +
+           ', overflow ' + result.gaps.overflow);
+  rig.note('label: ' + JSON.stringify(result.label) + '   choices: ' + result.labels.join(' · ') +
+           '   tooltip: ' + JSON.stringify(result.tip));
   rig.note('explainer: ' + JSON.stringify(result.dlg.title) + '  button=' + JSON.stringify(result.dlg.button) +
            '  ' + result.dlg.msg.length + ' chars, statement=' + result.dlg.solo);
-  rig.note('off by default, then on/off/on: ' + result.onAfterFirst + '/' + result.offAgain + '/' +
-           result.onAgain + '   re-explained: ' + result.explainedTwice);
+  rig.note('off by default, then 4K/2K/off/1080p: off again=' + result.offAgain + '   re-explained: ' + result.explainedTwice);
   rig.note('6150x2850 -> ' + result.shrink.w + 'x' + result.shrink.h);
 
   // ── The two maps every later block needs ───────────────────────────────────
   // Generated in-page and cached on disk, so nothing binary lives in the repo and no real map
-  // has to be pointed at. The animated one is deliberately WIDER than MAP_BOX_W, so the import
+  // has to be pointed at. The animated one is deliberately WIDER than the 4K box, so the import
   // exercises the shrink for real rather than only its arithmetic.
   const still = await rig.fixtures.stillMap(dm, rig.fixtureDir, { w: 2000, h: 1200, name: 'rig-still.png' });
   const anim = await rig.fixtures.animatedMap(dm, rig.fixtureDir,

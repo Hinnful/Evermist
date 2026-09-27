@@ -35,13 +35,8 @@ const VIDEO_FPS_DEFAULT       = 24;
 const videoFrameIntervalMs    = 1000 / VIDEO_FPS_DEFAULT;
 
 // ─── Animated-map import box ─────────────────────────────────────────────────
-// An oversized animated map is re-encoded to fit this box at import (mapConvert.js). 3840×2160
-// is 2× the club TV's 1080p and under the 4096 ceiling where hardware VP9/H.264 decode stops
-// on integrated graphics — two decoders live at once (DM + Player), and they are the memory
-// problem, not the CPU one.
-// The bitrate is a one-line tunable — why 15 Mbps is in docs/DECISIONS.md.
-const MAP_BOX_W = 3840;
-const MAP_BOX_H = 2160;
+// The re-encode's bitrate at import (mapConvert.js) is a one-line tunable — why 15 Mbps is in
+// docs/DECISIONS.md.
 const MAP_CONVERT_BITRATE = 15000000;
 
 // ─── App frame-rate cap ──────────────────────────────────────────────────────
