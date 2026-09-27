@@ -1,0 +1,89 @@
+name: Rig soak
+
+# Runs the full regression set several times on ONE build, to tell a flaky scenario from a broken
+# one. Push any commit to a `soak/**` branch to start it. It ships nothing and never touches main.
+on:
+  push:
+    branches:
+      - 'soak/**'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx electron-builder --win --dir --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-unpacked
+          path: dist/win-unpacked/
+          retention-days: 3
+
+  # Parallel jobs, each on a fresh runner, because a flake that depends on the machine only shows
+  # across machines.
+  run:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          name: win-unpacked
+          path: dist/win-unpacked/
+      # cmd, not pwsh: a pwsh pipe re-encodes the rig's UTF-8 through the console codepage, and the
+      # summary finds each scenario by its "──" heading.
+      - name: Drive the build through the full regression set
+        shell: cmd
+        run: |
+          node tools\rig\run.js regression --exe "dist\win-unpacked\Evermist.exe" > run-${{ matrix.n }}.txt 2>&1
+          type run-${{ matrix.n }}.txt
+          exit /b 0
+      - name: Collect the rig's evidence
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:TEMP 'evermist-rig'
+          if (Test-Path $root) {
+            Get-ChildItem $root -Recurse -File -Include *.log,*.png |
+              Where-Object { $_.FullName -notmatch '(IndexedDB|Local Storage|Session Storage)' } |
+              ForEach-Object {
+                $dest = Join-Path 'rig-evidence' $_.FullName.Substring($root.Length + 1)
+                New-Item -ItemType Directory -Force (Split-Path $dest) | Out-Null
+                Copy-Item $_.FullName $dest
+              }
+          }
+          Copy-Item "run-${{ matrix.n }}.txt" rig-evidence/ -ErrorAction SilentlyContinue
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soak-run-${{ matrix.n }}
+          path: rig-evidence/
+          retention-days: 14
+
+  summary:
+    needs: run
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: soak-run-*
+          path: soak/
+      - run: node tools/rig/soak-summary.js soak/*/run-*.txt

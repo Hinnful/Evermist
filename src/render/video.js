@@ -385,6 +385,8 @@ function stopVideoLoop() {
   }
 }
 
+// ⚠ CALL IT WITHOUT WAITING ON play(): a first play() that is interrupted or never settles would
+// otherwise leave no watchdog, and nothing would ever restart the map.
 function startVideoLoop() {
   if (!mapVideo) return;
   stopVideoLoop();
@@ -552,7 +554,7 @@ function loadVideoFromFile(file, onVideoLoaded, onFail) {
       viewportDirty = true;
       scheduleRender();
 
-      video.play().then(() => startVideoLoop()).catch(() => {});
+      startVideoLoop();
       if (onVideoLoaded) onVideoLoaded(extractCanvas, file);
     }
 

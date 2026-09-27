@@ -200,7 +200,7 @@ async function switchScene(id, _isRecovery = false) {
   // Draw Rooms belongs to the scene, not the session: it enables only where this
   // particular map came with a floor plan.
   if (typeof refreshFloorPlanUI === 'function') refreshFloorPlanUI();
-  if (mapVideo) mapVideo.play().then(() => startVideoLoop()).catch(() => {});
+  startVideoLoop();
   // ⚠ HOLD THE PAYLOAD until the Player's fog has closed over the outgoing map. The Player rewrites
   // its map size and camera the moment this lands, and under a half-closed cover that shows the
   // swap. A cached scene loads well inside the close, so the race is the common case.

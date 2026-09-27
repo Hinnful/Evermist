@@ -181,7 +181,7 @@ function startPlayerVideoMap(msg) {
           // loadFog already ran rebuildFogEffect(), which syncs the fog pass to the GPU.
           viewportDirty = true;
           scheduleRender();
-          video.play().then(() => startVideoLoop()).catch(() => {});
+          startVideoLoop();
           revealPlayer();
         });
       }

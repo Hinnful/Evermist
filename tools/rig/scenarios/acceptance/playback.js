@@ -24,6 +24,8 @@
 //      to, carries a live frame rate and the video's state, never eats a click, and leaves
 //      nothing behind when it is closed. It is the one thing the DM reads while a map stutters
 //      at the table, and nothing had ever opened it.
+//   H. A map whose first start is cut off still plays. The watchdog waited on that start, so a
+//      refused one left the map frozen with nothing watching it.
 //
 // ⚠ THIS IS THE RECOVERY PATH, WHICH NOTHING ELSE DRIVES. smoke.js reads the frame loop as alive
 // on a healthy map, which is the state these checks start from and not what they are about.
@@ -84,9 +86,18 @@ module.exports = async function playbackFeature(rig) {
   await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   await dm.waitFor('currentScene && currentScene.mapType === "video"', 120000,
                    'the animated map to load on the DM');
-  await dm.waitFor('!!mapVideo && !mapVideo.paused && mapVideo.readyState >= 3', 45000,
-                   'the map to start playing');
+  // ⚠ THE STATE GOES INTO THE FAILURE. A bare timeout here took a release gate down with nothing
+  // to say whether the video was paused, starved or never handed to the watchdog.
+  const playing = await lib.settle(dm, '!!mapVideo && !mapVideo.paused && mapVideo.readyState >= 3',
+                                   45000);
   await dm.evaluate(OWN_HELPERS);
+  if (!playing) {
+    const st = await dm.evaluate('({ ...__rigPlay(), net: mapVideo && mapVideo.networkState, ' +
+      't: mapVideo && mapVideo.currentTime, err: mapVideo && mapVideo.error && mapVideo.error.code })');
+    rig.check(false, 'the animated map never started playing on the DM within 45s: ' +
+              JSON.stringify(st));
+    return;
+  }
 
   const start = await dm.evaluate('__rigPlay()');
   rig.note('playing: ' + JSON.stringify(start));
@@ -325,4 +336,32 @@ module.exports = async function playbackFeature(rig) {
   rig.check((await diagBox()).up === false,
             'the backtick key would not close the diagnostics box again, so it stays over the ' +
             'map for the rest of the session');
+
+  // ── H. A first start that is cut off ─────────────────────────────────────
+  // RED ON: startVideoLoop chained back onto video.play().then() in video.js, playerMap.js and
+  // sceneSwitch.js — 2026-09-27
+  // ⚠ THE FIRST TWO STARTS ARE REFUSED, because a new map is started twice: by the loader and by
+  // the scene switch. One refusal passed on the old code. Only the map's own element is refused;
+  // the import's shrink probe plays a video of its own.
+  await dm.evaluate(`(() => {
+    const real = HTMLMediaElement.prototype.play;
+    globalThis.__rigRefused = 0;
+    HTMLMediaElement.prototype.play = function () {
+      if (mapVideo && this === mapVideo && globalThis.__rigRefused < 2) {
+        globalThis.__rigRefused++;
+        return Promise.reject(new DOMException('interrupted by the rig', 'AbortError'));
+      }
+      return real.apply(this, arguments);
+    };
+    return 0;
+  })()`);
+  await lib.openMap(rig, { w: MAP_W, h: MAP_H });
+  await lib.settle(dm, '__rigRefused === 2 && !!mapVideo && !mapVideo.paused', 20000);
+  const cut = await dm.evaluate('({ refused: __rigRefused, ...__rigPlay() })');
+  rig.note('after a refused first start: ' + JSON.stringify(cut));
+  rig.check(cut.refused === 2,
+            'the rig did not refuse both starts, so H proves nothing: ' + JSON.stringify(cut));
+  rig.check(!cut.paused && cut.watchdog,
+            'a map whose first start was cut off stayed frozen with no watchdog, so the TV holds ' +
+            'one frame until the DM switches scenes: ' + JSON.stringify(cut));
 };

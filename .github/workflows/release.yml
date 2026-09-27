@@ -137,6 +137,31 @@ jobs:
       - name: Drive the packaged app through the full regression set
         run: npm run rig -- regression --exe "dist/win-unpacked/Evermist.exe"
 
+      # ⚠ A RED RUN KEEPS ITS EVIDENCE. The rig writes under %TEMP%, which the job throws away, so
+      # a flaky red used to leave nothing but its FAIL line.
+      - name: Collect the rig's evidence
+        if: failure()
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:TEMP 'evermist-rig'
+          if (Test-Path $root) {
+            Get-ChildItem $root -Recurse -File -Include *.log,*.png |
+              Where-Object { $_.FullName -notmatch '(IndexedDB|Local Storage|Session Storage)' } |
+              ForEach-Object {
+                $dest = Join-Path 'rig-evidence' $_.FullName.Substring($root.Length + 1)
+                New-Item -ItemType Directory -Force (Split-Path $dest) | Out-Null
+                Copy-Item $_.FullName $dest
+              }
+          }
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: rig-evidence-attempt-${{ github.run_attempt }}
+          path: rig-evidence/
+          retention-days: 14
+          if-no-files-found: warn
+
       - uses: actions/upload-artifact@v4
         with:
           name: dist-windows

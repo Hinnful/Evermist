@@ -266,3 +266,15 @@ check, and a mutation has to be genuinely wrong before a survivor means anything
 corner fallback could be deleted outright while its test passed, because that case's centroid
 landed inside a piece and the fallback never ran - a test that never reaches the branch it names.
 
+### A flaky gate is measured on six runners, not rerun · `SETTLED` (2026-09-27)
+Reds that passed on a rerun had cost several releases, and each left only its FAIL line, because
+the rig writes under a temp folder the job discards. The gate now uploads the logs and screenshots
+of a red run, and `soak.yml` drives one build through the suite six times in parallel. A rerun
+answers nothing; six runs of the same build tell a flaky scenario from a broken one. The first
+soak ran green six times out of six.
+
+### A new map is started twice, so one refused start proves nothing · `SETTLED` (2026-09-27)
+The watchdog used to start only once the first `play()` resolved. `playback.js` criterion H first
+refused one start and passed on the old code, because the scene switch starts the map a second
+time. It refuses two. The watchdog now starts at load, whether or not a start goes through.
+

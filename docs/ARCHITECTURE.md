@@ -738,6 +738,12 @@ failure anywhere leaves nothing behind: no tag, no release, no download, and not
 either. Whoever is running the app stays on the version they have and never learns anything was
 attempted. The branch keeps the failure, and the next change is free to go.
 
+A red gate also uploads what the rig left behind: each scenario's playback log and every
+screenshot, kept for two weeks under the run. A separate workflow, `soak.yml`, answers whether a
+red was the code or the machine. A push to any `soak/**` branch builds once, drives that build
+through the whole suite on six runners at the same time, and lists each scenario that failed in
+some runs as flaky and in all of them as broken. It ships nothing and never touches `main`.
+
 The release notes are a commit message, and the publisher takes it from the commit that set the
 version rather than from whatever sits at the top of the branch. One version is one commit, so
 the message is written for the person reading the release page rather than for the person who
