@@ -109,6 +109,7 @@ language, present tense. The terse version every session carries is in
 | `electron/floorPlan.js` | Looks beside a map on disk for the `.dd2vtt` that came with it. |
 | `electron/diagLog.js` | The playback log every window writes into, rotated on each start, with a few past runs kept. |
 | `electron/updates.js` | Asks whether a newer release exists, downloads it, and holds the state the About line and the toast read. |
+| `electron/macUpdate.js` | The Mac's update. Reads the same pointer file, downloads the zip and checks it, then swaps the app in Applications and reopens it once the DM presses Restart. |
 | `electron/pdfText.js` | Runs a campaign PDF through the parser in a separate process, so a malformed file cannot take the app down. |
 | `electron/backupZip.js` | What goes into a backup zip and what comes back out of one. |
 | `electron/statBlockFetch.js` | Opens a monster page in a hidden window, lets the site's own scripts draw the stat block, and hands back the finished page. Any web address; never a file on disk. The window is never shown. |

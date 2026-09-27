@@ -61,6 +61,11 @@ for (const name of named) {
   }
 }
 
+// The Mac updates from the zip alone; a pointer naming only the .dmg leaves it nothing to swap in.
+if (/latest-mac\.yml$/.test(file) && ![...named].some(n => n.endsWith('.zip'))) {
+  problems.push('names no .zip, so a Mac would find the update and have nothing to install.');
+}
+
 if (!/sha512:\s*\S+/.test(text)) {
   problems.push('carries no sha512, so a truncated download would install unchecked.');
 }

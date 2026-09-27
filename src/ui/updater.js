@@ -7,6 +7,7 @@
 // next start resumes it.
 
 const UP_SEEN_KEY = 'evermistSeenVersion';
+const UP_MOVE_KEY = 'evermistMoveOffered';
 const UP_INSTALLED_MS = 12000;
 
 let _upToast = null;
@@ -59,12 +60,35 @@ function initUpdater() {
     slot.append(label, btn);
   }
 
+  // A Mac copy outside Applications cannot replace itself. The toast offers the move once; the
+  // About line keeps offering it.
+  function showMove() {
+    slot.textContent = '';
+    const label = document.createElement('span');
+    label.textContent = 'Move to Applications to get updates';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'about-update-btn';
+    btn.textContent = 'Move and restart';
+    btn.addEventListener('click', () => api.moveToApplications());
+
+    slot.append(label, btn);
+    let offered = true;
+    try { offered = !!localStorage.getItem(UP_MOVE_KEY); localStorage.setItem(UP_MOVE_KEY, '1'); } catch (_) {}
+    if (!offered) {
+      upToast('Move Evermist to Applications so it can update itself', 'Move and restart',
+        () => api.moveToApplications(), 0);
+    }
+  }
+
   function render(status) {
     const state = status && status.state;
 
     if (state === 'downloading') showDownloading(status);
     else if (state === 'ready') showReady(status);
     else if (state === 'manual') showManual();
+    else if (state === 'move') showMove();
     else {
       // 'none' and 'error' both show nothing. Being offline is the usual error and there is
       // nothing the DM can do about it from the table.

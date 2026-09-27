@@ -211,23 +211,31 @@ jobs:
           name: ${{ matrix.name }}
           path: |
             dist/*.dmg
+            dist/*.zip
             dist/*.AppImage
             dist/latest-*.yml
             dist/*.blockmap
           if-no-files-found: error
+
+  # The Mac updates itself outside electron-updater, so the rig above never touches that path.
+  mac-update:
+    needs: [decide, verify]
+    if: needs.decide.outputs.release == 'true'
+    uses: ./.github/workflows/mac-update.yml
 
   # THE ONLY THING THAT WRITES TO MAIN, and it runs after the gate rather than before it. A change
   # that fails never reaches main, so main holds nothing but commits that passed.
   # ⚠ FAST-FORWARD, never a merge, rebase or squash. Those all mint a new commit, and main would
   # then carry a tree no gate ever drove. The commit main gets is the commit the gate proved.
   land:
-    needs: [decide, verify, gate, build]
+    needs: [decide, verify, gate, build, mac-update]
     if: >-
       always() &&
       needs.decide.result == 'success' &&
       needs.verify.result == 'success' &&
       needs.gate.result != 'failure' && needs.gate.result != 'cancelled' &&
-      needs.build.result != 'failure' && needs.build.result != 'cancelled'
+      needs.build.result != 'failure' && needs.build.result != 'cancelled' &&
+      needs.mac-update.result != 'failure' && needs.mac-update.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

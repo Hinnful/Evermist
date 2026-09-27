@@ -727,7 +727,9 @@ Windows, macOS, Linux - each one checking its own update pointer as it finishes.
 the Windows machine takes the app it just packaged and drives it through the whole rig suite:
 every acceptance scenario, against the real installed application rather than the loose source
 files. That last part catches a class nothing else can see, where a file works during development
-and is simply missing from the installer.
+and is simply missing from the installer. A Mac runner proves the Mac update the same way: it
+installs the new build, lets it walk back to an older one and forward again through the Restart
+button, and checks that each swapped copy opens.
 
 Only if all of that passes does `main` move. The pipeline fast-forwards it onto the exact commit
 the gate drove, which is why the merge is never a squash or a rebase: those mint a new commit, and

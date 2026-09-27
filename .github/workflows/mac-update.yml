@@ -1,0 +1,45 @@
+name: Mac update proof
+
+# Proves the Mac updates itself: installs this version, walks it back to an older build and forward
+# again through the Restart button (tools/mac-update-proof.js). The release gate calls it; a push to
+# any `macproof/**` branch runs it alone and ships nothing.
+on:
+  workflow_call:
+  push:
+    branches:
+      - 'macproof/**'
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # ⚠ The port must match FEED_PORT in tools/mac-update-proof.js.
+      - name: Point the update feed at this machine
+        run: |
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.build.publish=[{provider:'generic',url:'http://127.0.0.1:8765/'}];fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
+
+      # The zip users receive, universal like the release.
+      - name: Build this version
+        run: npx electron-builder --mac zip --universal --publish never -c.directories.output=dist-new
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # Only something to walk back to, so the runner's own arch is enough.
+      - name: Build an older version
+        run: npx electron-builder --mac zip --arm64 --publish never -c.directories.output=dist-old -c.extraMetadata.version=0.0.1
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Walk the installed app back and forward
+        run: node tools/mac-update-proof.js dist-new dist-old

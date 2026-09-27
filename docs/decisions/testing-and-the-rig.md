@@ -278,3 +278,11 @@ The watchdog used to start only once the first `play()` resolved. `playback.js` 
 refused one start and passed on the old code, because the scene switch starts the map a second
 time. It refuses two. The watchdog now starts at load, whether or not a start goes through.
 
+
+### The divider check waits for the TV to move before it compares · `SETTLED` (2026-09-27)
+`two-maps.js`'s minimap-after-resize check went red on one gate in four, always with the preview
+at its pre-drag zoom. The app was never at fault. The check polled for the TV and the preview to
+agree, and before the TV refits they agree on the old zoom, so the poll passed at once and the
+final reads raced the refit. 3.3.1's lerp fix was aimed at the app and could not have helped. The
+check now waits for the TV's zoom to change, then for the preview to match, and prints each hop
+of the report on a red. It was vacuous before: switching the TV's report off still passed.

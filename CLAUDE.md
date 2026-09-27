@@ -180,11 +180,12 @@ the windows, the display push and the app lifecycle, and hands every module its 
 
 | Module | Owns |
 |---|---|
-| `electron/videoFiles.js` | An animated map's file on disk: written, read back, listed, removed |
+| `electron/videoFiles.js` | An animated map's file on disk |
 | `electron/music.js` | The music folder as the library, and the downloader that fills it |
 | `electron/floorPlan.js` | The `.dd2vtt` sitting beside a map on disk |
 | `electron/diagLog.js` | The playback log every window writes to, and its rotation |
-| `electron/updates.js` | The check for a newer release, its download, and the state About reads |
+| `electron/updates.js` | The update check, download, About's state |
+| `electron/macUpdate.js` | The Mac's swap and relaunch |
 | `electron/pdfText.js` | PDF text extraction, in a process of its own |
 | `electron/backupZip.js` | What goes into a backup zip, and what comes back out |
 | `electron/statBlockFetch.js` | A monster page, in a hidden window |

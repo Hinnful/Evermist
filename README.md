@@ -85,7 +85,7 @@ Download the latest version from [**Releases**](../../releases/latest):
 | System | File | Notes |
 |--------|------|-------|
 | Windows | `Evermist-Setup-<version>.exe` | Installs in one click, then keeps itself up to date |
-| macOS | `Evermist-<version>.dmg` | Universal (Intel and Apple Silicon). Download each new version by hand |
+| macOS | `Evermist-<version>.dmg` | Universal (Intel and Apple Silicon). Drag it into Applications, then it keeps itself up to date |
 | Linux | `Evermist-<version>.AppImage` | Make the file executable, then run. Keeps itself up to date |
 
 An update downloads in the background and installs only when you press Restart to update

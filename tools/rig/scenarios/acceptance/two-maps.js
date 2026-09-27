@@ -523,7 +523,34 @@ module.exports = async function twoMapsFeature(rig) {
 
   // A column that changes width refits its half of the Player screen, so the preview's zoom has
   // to follow it. Nothing else reports that resize.
-  // RED ON: reportPlayerView made to send nothing (viewport.js) — 2026-09-26
+  // RED ON: reportPlayerView made to send nothing (viewport.js) — 2026-09-27
+  // ⚠ WAIT FOR THE TV TO MOVE FIRST. Before it refits, the TV and the preview agree on the old
+  // zoom, so a poll for agreement alone passes at once and the reads after it race the refit.
+  // Each hop of the TV's report is recorded, so a red names the hop it stopped at.
+  const tvBefore = await tvA.evaluate('zoom');
+  await tvA.evaluate(`(() => {
+    window.__viewLog = [{ at: 'tv before', zoom }];
+    const send = reportPlayerView;
+    reportPlayerView = function () { __viewLog.push({ at: 'tv reports', zoom }); return send.apply(this, arguments); };
+    window.addEventListener('resize', () => __viewLog.push({ at: 'tv resized', w: innerWidth, zoom }));
+    return 0;
+  })()`);
+  await paneA.evaluate(`(() => {
+    window.__viewLog = [{ at: 'column before', zoom: minimapView.zoom }];
+    window.addEventListener('message', e => {
+      if (e.data && e.data.type === 'PLAYER_VIEW') __viewLog.push({ at: 'column heard', zoom: e.data.zoom,
+        fromItsTv: e.source === playerWindow, locked: minimapLocked, kept: minimapView.zoom });
+    });
+    return 0;
+  })()`);
+  await dm.evaluate(`(() => {
+    window.__viewLog = [{ at: 'preview before', zoom: minimapView.zoom }];
+    window.addEventListener('message', e => {
+      if (e.data && e.data.type === 'pane-player-view') __viewLog.push({ at: 'preview heard', pane: e.data.pane,
+        zoom: e.data.view && e.data.view.zoom, selected: panesSelected, kept: minimapView.zoom });
+    });
+    return 0;
+  })()`);
   await dm.evaluate(`(() => {
     const row = document.getElementById('panes-row');
     const r = row.getBoundingClientRect();
@@ -535,16 +562,24 @@ module.exports = async function twoMapsFeature(rig) {
     at('mouseup',   r.left + r.width * 0.55, document);
     return 0;
   })()`);
-  await lib.poll(async () => {
+  const moved = await lib.poll(async () => {
+    const tv = await tvA.evaluate('zoom');
+    return Math.abs(tv - tvBefore) / tvBefore > 0.02 ? { tv } : null;
+  }, 15000, 150);
+  rig.check(!!moved, 'the TV kept zoom ' + tvBefore + ' after its half was resized, so nothing below is tested');
+  const synced = await lib.poll(async () => {
     const tv = await tvA.evaluate('+zoom.toFixed(4)');
     const mm = await dm.evaluate('+minimapView.zoom.toFixed(4)');
     return Math.abs(tv - mm) / Math.max(tv, 0.0001) < 0.02 ? { tv, mm } : null;
   }, 15000, 150);
   const tvZoom = await tvA.evaluate('+zoom.toFixed(4)');
   const mmZoom = await dm.evaluate('+minimapView.zoom.toFixed(4)');
-  rig.check(Math.abs(tvZoom - mmZoom) / Math.max(tvZoom, 0.0001) < 0.02,
+  const chain = synced ? '' : ' | chain: ' +
+    JSON.stringify([].concat(await tvA.evaluate('__viewLog'), await paneA.evaluate('__viewLog'),
+      await dm.evaluate('__viewLog')));
+  rig.check(!chain,
             'the minimap kept the old zoom after the columns were resized: preview ' + mmZoom +
-            ' against a TV at ' + tvZoom);
+            ' against a TV at ' + tvZoom + chain);
 
   // ── J. four things only two-map mode can get wrong ───────────────────────
   // RED BY DESIGN: written against the fix, never re-proved

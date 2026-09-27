@@ -3,7 +3,7 @@
 // the About line and the toast read.
 
 const { ipcMain, shell, app } = require('electron');
-const https = require('https');
+const { initMacUpdate } = require('./macUpdate.js');
 
 let getDmWin, sendTo;
 
@@ -13,28 +13,21 @@ function register(ctx) {
 
 // --- Auto-update ---
 //
-// NSIS and AppImage replace themselves; macOS cannot, because Squirrel checks a signature the
-// unsigned .dmg does not carry. A dev run is skipped so `npm start` never reaches GitHub.
+// NSIS and AppImage replace themselves through electron-updater. macOS takes its own path in
+// macUpdate.js. A dev run is skipped so `npm start` never reaches GitHub.
 //
 // ⚠ KEEP THE LAST STATUS. The DM window can still be loading when the check answers, and the
 // event alone would lose that answer to a race.
 let _updateStatus = { state: 'none' };
-
-function autoUpdateSupported() {
-  return app.isPackaged && process.platform !== 'darwin';
-}
 
 function setUpdateStatus(status) {
   _updateStatus = status;
   sendTo(getDmWin(), 'update-status', status);
 }
 
-// ⚠ macOS MUST STILL HEAR SOMETHING, or an old install reads as up to date forever.
 function initAutoUpdate() {
-  if (!autoUpdateSupported()) {
-    if (app.isPackaged) setUpdateStatus({ state: 'manual' });
-    return;
-  }
+  if (!app.isPackaged) return;
+  if (process.platform === 'darwin') { initMacUpdate(setUpdateStatus); return; }
   const { autoUpdater } = require('electron-updater');
   // ⚠ NOTHING INSTALLS WITHOUT THE BUTTON, quitting included - see PRODUCT.md.
   autoUpdater.autoDownload = true;

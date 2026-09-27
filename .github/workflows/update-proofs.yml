@@ -1,0 +1,68 @@
+name: Windows and Linux update proofs
+
+# The twins of mac-update.yml: install this version, walk it back to an older build and forward
+# again through the Restart button. Both update through electron-updater, which reads its feed from
+# inside the build, so each build gets a local feed baked in. A push to any `platformrig/**` branch
+# runs it alone and ships nothing.
+on:
+  workflow_call:
+  push:
+    branches:
+      - 'platformrig/**'
+
+permissions:
+  contents: read
+
+jobs:
+  prove:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            flag: --win nsis
+            script: tools/win-update-proof.js
+            run: ''
+          - os: ubuntu-latest
+            flag: --linux AppImage
+            script: tools/linux-update-proof.js
+            run: xvfb-run -a -s "-screen 0 1024x768x24"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs, and an AppImage needs
+      # FUSE to mount itself.
+      - name: Let Chromium sandbox itself, and AppImages mount
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo apt-get update
+          sudo apt-get install -y libfuse2t64
+
+      # ⚠ The port must match FEED_PORT in both proof scripts.
+      - name: Point the update feed at this machine
+        run: |
+          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.build.publish=[{provider:'generic',url:'http://127.0.0.1:8765/'}];fs.writeFileSync('package.json',JSON.stringify(p,null,2))"
+
+      - name: Build this version
+        run: npx electron-builder ${{ matrix.flag }} --publish never -c.directories.output=dist-new
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Build an older version
+        run: npx electron-builder ${{ matrix.flag }} --publish never -c.directories.output=dist-old -c.extraMetadata.version=0.0.1
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Walk the installed app back and forward
+        run: ${{ matrix.run }} node ${{ matrix.script }} dist-new dist-old

@@ -228,13 +228,21 @@ Windows files on a release page reintroduce the choice it set out to remove. Mig
 nothing, because `userData` already sits in the OS per-user location and an install finds the
 library that is already there.
 
-macOS is excluded in code. Squirrel verifies a signature the unsigned `.dmg` does not carry, and an
-Apple Developer certificate was judged not worth its yearly cost against the size of the audience. It
-was given a link to the releases page rather than silence: a platform told nothing cannot tell an
-up-to-date install from an abandoned one.
+macOS was excluded here and takes its own path since 3.4.5; see the entry below. A copy that cannot
+update itself still gets a link to the releases page rather than silence: a platform told nothing
+cannot tell an up-to-date install from an abandoned one.
 
 The update line shows nothing on error. Being offline is the usual failure and nothing can be done
 about it from beside the table, so a dialog would be noise on a screen next to players.
+
+### The Mac updates by swapping its own bundle · `SETTLED` (2026-09-27)
+Squirrel, which electron-updater hands a Mac install to, verifies a paid Apple signature, and paying
+for one was ruled out. The app reads the same `latest-mac.yml`, downloads the zip itself and checks
+its sha512, and a detached shell swaps the bundle once the process exits, restoring the old copy if
+the new one fails to land. A file the app writes carries no quarantine mark, so Gatekeeper asks only
+on the first install. The swap needs a writable folder, which is why a copy outside Applications is
+offered the move first. `mac-update.yml` proves it on a real Mac for every release, walking an
+installed copy back to an older build and forward again, served from a local feed.
 
 ### Publishing a release stays a hand gesture · `REJECTED` (reversed 2026-09-08)
 Held for a day. The reasoning was that `/commit` bumps on every shipping commit, so releasing on

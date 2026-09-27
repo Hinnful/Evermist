@@ -180,7 +180,8 @@ function killApp(proc) {
   if (!proc || !live.has(proc)) return;
   live.delete(proc);
   if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore' });
+    // ⚠ BOUNDED. A taskkill that hangs blocks the event loop, and every rig timer with it.
+    spawnSync('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { stdio: 'ignore', timeout: 15000 });
   } else {
     try { process.kill(-proc.pid, 'SIGKILL'); } catch (_) {}
     try { proc.kill('SIGKILL'); } catch (_) {}
@@ -282,6 +283,10 @@ const KEEP_PAINTING = [
 // so a fade or a crossfade is still fully measurable - see scenarios/acceptance/music.js.
 const STAY_SILENT = ['--mute-audio'];
 
+// A Linux runner has no GPU, and Chromium no longer falls back to software WebGL on its own, so
+// PixiJS would get no context under xvfb.
+const SOFTWARE_GL = process.platform === 'linux' ? ['--enable-unsafe-swiftshader'] : [];
+
 // ⚠ THIS IS WHAT MAKES THE SANDBOXED-RENDERER FILTER SAFE (cdp.js NOISE). That filter swallows
 // two messages that Electron logs when a renderer's bootstrap is cut short, because the splash
 // window produces them on roughly one boot in thirty and they cost a full re-run. A REAL preload
@@ -378,6 +383,7 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true) {
   const argv = (args.exe ? [] : ['.'])
     .concat(KEEP_PAINTING)
     .concat(STAY_SILENT)
+    .concat(SOFTWARE_GL)
     .concat(['--remote-debugging-port=' + port, '--user-data-dir=' + profileDir]);
   const proc = spawn(bin, argv, {
     cwd: ROOT,
