@@ -109,6 +109,14 @@ function _sbEntry(line, alone) {
   return null;
 }
 
+// A PDF can run a second attack into the first one's text after its hit: "... Hit: 5 (1d6+2).
+// Hand Crossbow. Ranged Weapon Attack: ...".
+const SB_ATTACK_OPEN = '(?:Melee|Ranged|Рукопашная|Дальнобойная|Бросок)\\s';
+function _sbSplitAttacks(e) {
+  const m = e.t.match(new RegExp(`^(.*?(?:Hit|Попадание):[^]*?\\.)\\s+(\\p{Lu}[^.:\\n]{1,60}?)\\.\\s+(${SB_ATTACK_OPEN}[^]*)$`, 'u'));
+  return m ? [{ ...e, t: m[1] }, ..._sbSplitAttacks({ n: m[2].trim(), t: m[3] })] : [e];
+}
+
 function statBlockFromLines(input) {
   const lines = [];
   for (const raw of input) {
@@ -205,6 +213,7 @@ function statBlockFromLines(input) {
     else { entry = { n: '', t: line }; b.secs[sec].push(entry); }
   }
 
+  for (const s of Object.keys(b.secs)) b.secs[s] = b.secs[s].flatMap(_sbSplitAttacks);
   if (!b.saves && derivedSaves.length) b.saves = derivedSaves.join(', ');
   if (lore) b.lore = lore.join('\n\n');
   for (const s of Object.keys(b.secs)) if (!b.secs[s].length) delete b.secs[s];

@@ -2,8 +2,9 @@
 // what the parser made of each. Read-only, prints and exits. Not shipped: `tools/` is outside the
 // build glob. Book text is never written anywhere.
 //
-//   node tools/inspect-statblocks.js <book.pdf|module.txt> [--list] [--show <name>] [--rooms]
+//   node tools/inspect-statblocks.js <book.pdf|module.txt> [--list] [--show <name>] [--rooms] [--multi]
 //
+// --multi prints how the fight table reads every Multiattack, one line each, so two runs diff.
 // A count can stay right while names go wrong, so names that look like a size line are flagged.
 
 'use strict';
@@ -39,6 +40,17 @@ if (!file) { console.error('usage: node tools/inspect-statblocks.js <book.pdf|mo
   const bad = blocks.filter(statBlockUnclean);
   const oddName = blocks.filter(b => SB_SIZE.test(b.name) || b.name.length < 2);
   console.log(`${path.basename(file)}: ${blocks.length} stat blocks, ${bad.length} would be skipped, ${oddName.length} odd names, ${JSON.stringify(blocks).length} chars as JSON`);
+  if (args.includes('--multi')) {
+    const { combatAttacks } = require(src('combat/attackLine.js'));
+    const one = a => `${a.ba ? 'Bonus ' : ''}${a.x ? a.x + '× ' : ''}${a.n}`;
+    const grp = a => a.alts ? `[${a.alts.map(alt => alt.map(one).join(' + ')).join(' OR ')}]`
+      : `[${a.x ? a.x + '× ' : ''}${a.opts.map(one).join(a.or ? ' | ' : ' + ')}${a.swap ? ` ⇄ ${a.swap.k} ${a.swap.to}` : ''}]`;
+    for (const b of blocks.filter(x => !statBlockUnclean(x))) {
+      if (!(b.secs.Actions || []).some(e => /^(multiattack|мультиатака)/i.test(e.n))) continue;
+      console.log(`${b.name} :: ${combatAttacks(b).map(a => a.fallback ? 'DASHED' : a.group ? grp(a) : one(a)).join('  ')}`);
+    }
+    return;
+  }
   if (show) {
     for (const b of blocks.filter(x => x.name.toLowerCase().includes(show.toLowerCase()))) console.log(JSON.stringify(b, null, 1));
     return;

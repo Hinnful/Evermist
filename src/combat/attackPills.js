@@ -28,10 +28,12 @@ function _cbDamageSeg(p) {
   return `<span class="pd${CB_WEAPON_TYPES.includes(p.type) ? ' w' : ''}" style="--c:${look[0]}">${_cbGlyph(look[1])}${_cbEsc(p.dmg)}</span>`;
 }
 
-// A Multiattack with a pick or a swap: one frame, the count once at its front.
+// A Multiattack is one frame; a several-pill alternative gets its own, so "or" never splits it.
+const CB_OR = '<span class="gor">or</span>';
 function _cbGroup(a) {
+  const alt = pills => pills.length === 1 ? cbAttackPill(pills[0]) : `<span class="cb-grp">${pills.map(cbAttackPill).join('')}</span>`;
   return `<span class="cb-grp" title="${_cbEsc(`${a.n}. ${a.t}`)}">${a.x ? `<span class="gx">${a.x}×</span>` : ''}${
-    a.opts.map(cbAttackPill).join(a.or ? '<span class="gor">or</span>' : '')}${
+    a.alts ? a.alts.map(alt).join(CB_OR) : a.opts.map(cbAttackPill).join(a.or ? CB_OR : '')}${
     a.swap ? `<span class="gsw">${_cbGlyph(CB_GLYPH_SWAP)}${_cbEsc(a.swap.k)} for ${_cbEsc(a.swap.to)}</span>` : ''}</span>`;
 }
 

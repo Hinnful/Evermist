@@ -177,7 +177,8 @@
   .cb-grp { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; }
   .cb-grp .gx { padding: 0 2px 0 5px; color: #eceef1; font: 500 13px/1.2 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
   .cb-grp .gor { color: #7f858e; font: 500 11px/1.2 system-ui, sans-serif; }
-  .cb-grp .gsw { display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 6px; border-left: 1px solid rgba(255,255,255,0.14); color: #9aa0aa; font: 500 11px/1.2 system-ui, sans-serif; white-space: nowrap; }
+  .cb-grp .cb-grp { border-color: rgba(255,255,255,0.12); }
+  .cb-grp .gsw { display: inline-flex; align-items: center; gap: 3px; padding: 0 5px 0 2px; color: #9aa0aa; font: 500 11px/1.2 system-ui, sans-serif; white-space: nowrap; }
   .cb-pill.fb { border: 1px dashed rgba(255,255,255,0.22); }
   .cb-pill.fb > span { background: transparent; color: #9aa0aa; padding: 2px 6px; }
   .cb-acts {

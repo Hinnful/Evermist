@@ -13,6 +13,16 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### Every Multiattack is one frame, and a busy one stays dashed · `SETTLED` (2026-09-28)
+
+Amends the entry below. A Multiattack is one action, so every reading is one frame, plain counts
+included, and a pill outside it is a separate action. A frame shows a count plus at most one of a
+pick, a swap ("only one of which can be X" is one), or two full alternatives joined by "or". A
+condition, a spell, an extra damaging action, a count the DM tracks (the Hydra's heads) or two of
+those shapes at once stays dashed: a glance-sized frame cannot say it, and the stat block can. The
+swap tag lost its divider line. An attack that only grapples gets a pill for its roll and DC, since
+a Multiattack counts it. A non-damage step (Frightful Presence) still shows nothing.
+
 ### A Multiattack pick or swap is one frame, and bonus actions get pills · `SETTLED` (2026-09-27)
 
 Amends the entry below. A pass over the Russian 2024 Monster Manual, the Free Rules and Curse of

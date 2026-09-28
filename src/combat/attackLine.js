@@ -3,7 +3,7 @@
 // attackLine.js — pure: the fight table's Attacks pills read from a stat block's actions. No DOM.
 
 const MA = (typeof module !== 'undefined' && module.exports) ? require('./multiattack.js')
-  : { COMBAT_MULTI, _cbMultiCounts, _cbMultiChoice, _cbMultiSwap };
+  : { COMBAT_MULTI, _cbMultiRead };
 
 // ── Damage types ─────────────────────────────────────────────────────────────
 // One key per type. A Russian book gives the type in any grammatical case, so Russian reads by stem.
@@ -84,14 +84,18 @@ function _cbSave(t) {
   return ability ? { hit: `DC ${dc} ${ability}`, at: m.index + m[0].length } : null;
 }
 
+const COMBAT_REST = /\(\s*(?:recharges after a (short or )?long rest|перезаряжается после (короткого или )?продолжительного отдыха)\s*\)/i;
 function _cbRecharge(s) {
   const m = s.match(/\(\s*(?:recharge|перезарядка)\s+(\d(?:\s*[–—-]\s*\d)?)\s*\)/i);
-  return m ? m[1].replace(/\s*[–—-]\s*/, '–') : '';
+  if (m) return m[1].replace(/\s*[–—-]\s*/, '–');
+  const r = s.match(COMBAT_REST);
+  return r ? (r[1] || r[2] ? 'Short rest' : 'Long rest') : '';
 }
 
 function _cbGrapple(hit) {
   const m = hit.match(/grappled[^.(]*\(\s*escape\s+DC\s*(\d+)\s*\)/i)
-    || hit.match(/(?:схвачен|захвачен)[а-яё]*[^.(]*\(\s*Сл\s+(?:высвобождения|освобождения|выхода|побега)\s*(\d+)\s*\)/i);
+    || hit.match(/(?:схвачен|захвачен)[а-яё]*[^.(]*\(\s*Сл\s+(?:высвобождения|освобождения|выхода|побега)\s*(\d+)\s*\)/i)
+    || hit.match(/(?:схвачен|захвачен)[а-яё]*[^.(]*\(\s*(?:вырваться|высвободиться)\s+Сл\s*(\d+)\s*\)/i);
   return m ? m[1] : '';
 }
 
@@ -100,11 +104,14 @@ function _cbGrapple(hit) {
 // 2024 and Russian (dnd.su, the 2024 books) all read, flat damage too. Bonus actions follow, marked.
 function _cbPill(n, t) {
   const rc = _cbRecharge(n) || _cbRecharge(t);
-  let name = n.replace(/\s*\(\s*(?:recharge|перезарядка)[^)]*\)/i, '').trim();
+  let name = n.replace(/\s*\(\s*(?:recharge|перезарядка)[^)]*\)/i, '').replace(COMBAT_REST, '').trim();
   // A Beholder's rays arrive named by their die roll, the ray's own name opening the text.
   if (/^\d+$/.test(name)) name = t.split('.')[0].trim();
   const bonus = t.match(/(?:attack|атак)[^:.]*:\s*([+\-−–]\s?\d+)/i);
   const hitText = t.split(/Hit:|Попадание:/i)[1];
+  // An attack that only grapples still has a roll and a DC to show.
+  const grab = bonus && _cbGrapple(hitText || t);
+  if (grab && !_cbHitDamage(hitText || '').length) return { n: name, t, hit: bonus[1].replace(/\s/g, '').replace(/[−–]/, '-'), parts: [], rc, grab, x: 0 };
   if (bonus && hitText) {
     let parts = _cbHitDamage(hitText);
     if (!parts.length) {
@@ -119,30 +126,35 @@ function _cbPill(n, t) {
   return parts.length ? { n: name, t, hit: save.hit, parts, rc, grab: '', x: 0 } : null;
 }
 
-// A pick or a swap becomes one group at its first member's place, its members inside it.
+// The frame sits at its first member's place. One attack carries the count on the frame; several
+// carry their own.
 function _cbApplyMulti(multi, out) {
-  const counts = MA._cbMultiCounts(multi.t, out);
-  if (counts) { for (const [p, c] of counts) p.x = c > 1 ? c : 0; return; }
-  const swap = MA._cbMultiSwap(multi.t, out, multi.actions), pick = swap ? swap.pick : MA._cbMultiChoice(multi.t, out);
-  if (!pick && !swap) { out.splice(multi.pos, 0, { n: multi.n, t: multi.t, fallback: true }); return; }
-  const opts = pick ? pick.opts : [...swap.counts.keys()];
-  const one = !pick && swap.counts.size === 1;
-  if (!pick) for (const [p, c] of swap.counts) p.x = !one && c > 1 ? c : 0;
-  const g = { group: true, n: multi.n, t: multi.t, x: pick ? pick.x : one ? [...swap.counts.values()][0] : 0,
-    opts, or: !!pick, swap: swap ? swap.swap : null };
-  const at = out.findIndex(p => opts.includes(p));
-  for (let i = out.length - 1; i >= 0; i--) if (opts.includes(out[i])) out.splice(i, 1);
+  const r = MA._cbMultiRead(multi.t, out, multi.actions);
+  if (!r) { out.splice(multi.pos, 0, { n: multi.n, t: multi.t, fallback: true }); return; }
+  const g = { group: true, n: multi.n, t: multi.t, x: r.x || 0, opts: r.opts || [], or: !!r.or, swap: r.swap || null };
+  if (r.counts) {
+    const one = r.counts.size === 1;
+    for (const [p, c] of r.counts) p.x = !one && c > 1 ? c : 0;
+    if (one) g.x = [...r.counts.values()][0] > 1 ? [...r.counts.values()][0] : 0;
+  }
+  if (r.alts) g.alts = r.alts.map(a => [...a].map(([p, c]) => ({ ...p, x: c > 1 ? c : 0 })));
+  const members = r.alts ? r.alts.flatMap(a => [...a.keys()]) : g.opts;
+  const at = out.findIndex(p => members.includes(p));
+  for (let i = out.length - 1; i >= 0; i--) if (members.includes(out[i]) || r.bonus.includes(out[i])) out.splice(i, 1);
   out.splice(at, 0, g);
+  for (const p of r.bonus) out.push({ ...p, ba: true });
 }
 
 function combatAttacks(sb) {
   const out = [], secs = (sb && sb.secs) || {};
-  let multi = null;
+  let multi = null, list = '';
   for (const en of secs.Actions || []) {
     const n = String(en.n || ''), t = String(en.t || '');
     if (MA.COMBAT_MULTI.test(n)) { multi = { n, t, pos: out.length }; continue; }
     const p = _cbPill(n, t);
-    if (p) out.push(p);
+    // Numbered entries are the rays of the action above them: "Eye Rays", then 1 to 10.
+    if (!/^\d+$/.test(n)) list = p ? '' : n.split('(')[0].trim();
+    if (p) out.push(list && /^\d+$/.test(n) ? { ...p, of: list } : p);
   }
   if (multi) _cbApplyMulti({ ...multi, actions: secs.Actions.map(a => ({ n: String(a.n || '') })) }, out);
   for (const en of secs['Bonus actions'] || []) {
@@ -156,6 +168,7 @@ function combatAttacks(sb) {
 const _cbLine = a => `${a.x ? a.x + '× ' : ''}${a.n} ${a.hit} ${a.parts.map(p => p.dmg + (p.type ? ' ' + p.type : '')).join(' + ')}`;
 function combatAttackLine(sb) {
   return combatAttacks(sb).filter(a => !a.fallback).map(a => !a.group ? (a.ba ? 'Bonus: ' : '') + _cbLine(a)
+    : a.alts ? a.alts.map(alt => alt.map(_cbLine).join(', ')).join(' or ')
     : `${a.x ? a.x + '× ' : ''}${a.opts.map(_cbLine).join(a.or ? ' or ' : ', ')}${a.swap ? ` (${a.swap.k} for ${a.swap.to})` : ''}`).join('\n');
 }
 

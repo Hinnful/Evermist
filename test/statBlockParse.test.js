@@ -41,6 +41,19 @@ describe('statBlockFromLines on plain English text', () => {
   });
 });
 
+describe('statBlockFromLines on an attack run into the one before it', () => {
+  const b = P.statBlockFromLines(['Wererat', 'Armor Class 12', 'Hit Points 33 (6d8 + 6)', 'Actions',
+    'Shortsword. Melee Weapon Attack: +4 to hit. Hit: 5 (1d6 + 2) piercing damage. Hand Crossbow (Humanoid Form Only). Ranged Weapon Attack: +4 to hit. Hit: 5 (1d6 + 2) piercing damage.',
+    'Bite. Melee Weapon Attack: +4 to hit. Hit: 4 (1d4 + 2) piercing damage. The target is cursed.']);
+  it('splits the second attack into its own entry', () => {
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Shortsword', 'Hand Crossbow (Humanoid Form Only)', 'Bite']);
+    assert.equal(b.secs.Actions[0].t, 'Melee Weapon Attack: +4 to hit. Hit: 5 (1d6 + 2) piercing damage.');
+  });
+  it('keeps a sentence after the hit that opens no attack', () => {
+    assert.equal(b.secs.Actions[2].t, 'Melee Weapon Attack: +4 to hit. Hit: 4 (1d4 + 2) piercing damage. The target is cursed.');
+  });
+});
+
 describe('statBlockFromLines on the 2024 layout', () => {
   const b = P.statBlockFromLines(['Mage', 'Medium or Small Humanoid (Wizard), Neutral',
     'AC 15 Initiative +2 (12)', 'HP 81 (18d8)', 'STR 9 −1 −1 DEX 14 +2 +2 CON 11 +0 +0 INT 17 +3 +6 WIS 12 +1 +4 CHA 11 +0 +0']);

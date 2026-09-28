@@ -27,11 +27,11 @@
 //      entry, and goes dark; the entry and the row then change apart.
 //   L. An empty Init field shows the stat block's DEX bonus as a hint; a player's shows none.
 //   M. The Attacks cell shows each damaging action as a pill: name, to-hit, a glyph and the damage,
-//      no type word, and its full text on hover. Two damage types sit in one pill, a clear
-//      Multiattack counts its attacks, a pick in any combination or a swap is one frame with the
-//      count once at its front, the options inside and the swap named, and one it cannot read is a
-//      Multiattack pill with no counts. A damaging bonus action is a pill tagged Bonus, after the
-//      actions. A double-click writes the DM's own
+//      no type word, and its full text on hover. Two damage types sit in one pill. Every Multiattack
+//      it reads is one frame: counted attacks inside it, a pick or a swap with the count once at its
+//      front and the swap named, two alternatives joined by "or" with a several-pill one in a frame
+//      of its own. One it cannot read, or one with a condition, is a Multiattack pill with no counts.
+//      A damaging bonus action is a pill tagged Bonus, after the actions. A double-click writes the DM's own
 //      line: Enter keeps it, Escape drops it, Save to Bestiary lights, and the stat block's Table
 //      line shows it. Nothing typed there reaches the page as markup.
 //   N. A row's hover icons duplicate it, switch its side and delete it. Ctrl+D duplicates the row
@@ -307,13 +307,17 @@ module.exports = async function fightTableFeature(rig) {
     r.sb.secs = { Actions: [{ n: 'Multiattack', t: 'It makes three attacks: one with its bite and two with its claws.' }, bite, claw] };
     cbRender();
     const out = { counted: pills() };
-    r.sb.secs = { Actions: [{ n: 'Multiattack', t: 'It makes two claw attacks or one bite attack.' }, bite, claw] };
+    r.sb.secs = { Actions: [{ n: 'Multiattack', t: 'It makes two claw attacks, or three if it is bloodied.' }, bite, claw] };
     cbRender();
     out.choice = pills();
     const bolt = { n: 'Bolt', t: 'Ranged Attack Roll: +10. Hit: 11 (2d6 + 4) Lightning damage.' };
-    const frame = () => [...__cbRow('Wight').querySelectorAll('.cb-atk .cb-grp')].map(g => ({
-      count: (g.querySelector('.gx') || {}).textContent || '', pills: g.querySelectorAll('.cb-pill').length,
-      or: g.querySelectorAll('.gor').length, swap: (g.querySelector('.gsw') || {}).textContent || '', title: g.title }));
+    const frame = () => [...__cbRow('Wight').querySelectorAll('.cb-atk > .cb-grp, .cb-atk .cb-grp .cb-grp')].map(g => ({
+      count: (g.querySelector(':scope > .gx') || {}).textContent || '', pills: g.querySelectorAll('.cb-pill').length,
+      or: g.querySelectorAll(':scope > .gor').length, inner: !!g.parentElement.closest('.cb-grp'),
+      swap: (g.querySelector('.gsw') || {}).textContent || '', title: g.title }));
+    r.sb.secs = { Actions: [{ n: 'Multiattack', t: 'It makes either one bite attack and one claw attack, or two bolt attacks.' }, bite, claw, bolt] };
+    cbRender();
+    out.alts = { frames: frame(), pills: pills().map(p => p.text), loose: __cbRow('Wight').querySelectorAll('.cb-atk > .cb-pill').length };
     r.sb.secs = { Actions: [{ n: 'Multiattack', t: 'The wight makes three attacks, using Claw or Bolt in any combination.' }, claw, bolt] };
     cbRender();
     out.pick = { frames: frame(), loose: __cbRow('Wight').querySelectorAll('.cb-atk > .cb-pill').length };
@@ -358,8 +362,16 @@ module.exports = async function fightTableFeature(rig) {
   const [cBite, cClaw] = atk.counted.concat({ dmg: [], text: '' }, { dmg: [], text: '' });
   rig.check(atk.counted.length === 2 && cBite.dmg.map(d => d.n).join() === '17,3' && !/2×/.test(cBite.text) && /2×/.test(cClaw.text),
             'a two-type attack is not one pill with two damage parts, or a clear Multiattack did not count: ' + JSON.stringify(atk.counted));
+  // RED ON: the counted frame's splice swapped for its loose pills in _cbApplyMulti (attackLine.js) — 2026-09-28
+  rig.check(atk.counted.every(p => p.inGrp), 'a counted Multiattack is not one frame round its attacks: ' + JSON.stringify(atk.counted));
   rig.check(atk.choice.length === 3 && atk.choice[0].fb && !atk.choice.some(p => /×/.test(p.text)),
-            'a Multiattack with a choice did not show as its own pill with no counts: ' + JSON.stringify(atk.choice));
+            'a Multiattack with a condition did not show as its own pill with no counts: ' + JSON.stringify(atk.choice));
+  // RED ON: the g.alts line gated off with false && in _cbApplyMulti (attackLine.js) — 2026-09-28
+  const [outer, inner] = atk.alts.frames.concat({}, {});
+  rig.check(atk.alts.frames.length === 2 && !outer.inner && outer.or === 1 && outer.count === '' && inner.inner && inner.pills === 2
+            && atk.alts.loose === 0 && atk.alts.pills.some(t => /^2×\s*Bolt/.test(t)),
+            'two full alternatives are not one frame joined by "or", the several-pill one framed inside it: ' + JSON.stringify(atk.alts));
+  rig.byEye('the swap tag sits after the pills with no divider line before it');
   // RED ON: the _cbMultiChoice call, the _cbMultiSwap call and the Bonus actions loop each gated off
   // with false && in _cbApplyMulti and combatAttacks (attackLine.js) — 2026-09-27
   const [pk] = atk.pick.frames.concat({}), [sw] = atk.swap.frames.concat({});
