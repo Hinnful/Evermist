@@ -4,7 +4,7 @@
 // arrive as "font\u0001lead\u0001text" (plDocumentBlockText); plain text has shapes but no fonts.
 
 const SBB = (typeof module !== 'undefined' && module.exports) ? require('./statBlockParse.js')
-  : { statBlockFromLines, _sbLabel, _sbSection, _sbEntry, SB_SIZE, SB_ABIL_TOKEN };
+  : { statBlockFromLines, statBlockTypes, _sbLabel, _sbSection, _sbEntry, SB_SIZE, SB_ABIL_TOKEN };
 
 const BK_BRACKET = /^\[[^\]]*\]$/;
 const BK_HEADER_SKIP = 15;
@@ -12,6 +12,8 @@ const BK_MAX_LINES = 250;
 const BK_HEADER_LINES = 12;
 const BK_LORE_LIFT = 0.3;
 const BK_ASIDE_LINES = 12;
+const BK_ASIDE_LONG = 60;
+const BK_RESUME = 10;
 const BK_NAME_CAPS = 0.7;
 const BK_NAME_BACK = 80;
 
@@ -49,7 +51,7 @@ function _bkFurniture(lines) {
   lines.forEach(l => { if (l.f) tally.set(l.f, (tally.get(l.f) || 0) + 1); });
   const common = new Set([...tally].sort((x, y) => y[1] - x[1]).slice(0, 2).map(e => e[0]));
   const keyOf = (t, f) => {
-    if (t.length > 50 || SBB._sbLabel(t)) return null;
+    if (t.length > 50 || SBB._sbLabel(t) || SBB._sbSection(t)) return null;
     const m = t.match(/^(\d{1,3})\s*(\p{L}[^\d]*(?:\d[\d. ]*)?)$/u) || t.match(/^(\p{L}[^\d]*?(?:\d+(?:\.\d+)+)?)\s*(\d{1,3})$/u);
     if (!m) return null;
     const words = /^\d/.test(m[1]) ? m[2] : m[1];
@@ -80,14 +82,19 @@ function _bkFurniture(lines) {
 // An artist's credit in capitals, fused onto its neighbour: "КЕВ УОЛКЕРаболета".
 function _bkUncredit(t, before) {
   // A credit that swallowed the label after it: "ДЖОДИ МЬЮИРКО 4 (1 100 ПО…)".
-  t = t.replace(/^(?:\p{Lu}{2,}\.?[ ,]+)+\p{Lu}*?(?=(?:КО|ПО|КБ|КД|ПЗ|CR|AC|HP) [\d\p{Ll}])/u, '');
+  t = t.replace(/^(?:\p{Lu}{2,}\.?[ ,]+)+\p{Lu}*?(?=(?:КО|ПО|КБ|КД|ПЗ|CR|AC|HP) [\d\p{Ll}])/u, '')
+    // A text layer that sets "З" as the digit: "3атаптывание".
+    .replace(/(^|[\s(])3(?=[а-яё]{3})/g, '$1З');
   if (!/\p{Ll}/u.test(t) || SBB.SB_ABIL_TOKEN.test(t)) return t;
   // After a comma, colon or full stop the fused word starts with a capital, and keeps it.
   return t.replace(/(?:(?:\p{Lu}{2,}|\p{Lu}\.)\.?[ ,]+)+\p{Lu}{2,}(?:[-‑–]\p{Lu}{2,})?[-‑–]?(?=[\p{Ll}\d]|$)|\p{Lu}{3,}[-‑–]?(?=\p{Ll})/gu, (m, at, s) => {
     if (!/\p{Lu}{3}/u.test(m)) return m;
     return /[,:.(]\s*$/.test(at ? s.slice(0, at) : before) && /\p{Lu}$/u.test(m) && /^\p{Ll}{3}/u.test(s.slice(at + m.length)) ? m.slice(-1) : '';
-  }).replace(/([.!?])\p{Lu}{3,}$/u, '$1').replace(/(\p{Script=Cyrillic}.*) [a-z]$/u, '$1').replace(/\s{2,}/g, ' ').trim();
+  }).replace(/([.!?])\p{Lu}+$/u, '$1').replace(/(\p{Script=Cyrillic}.*) [a-z]$/u, '$1').replace(/\s{2,}/g, ' ').trim();
 }
+
+// A score line, small caps split or not: "Str 14 +2 +2 D ex 13 +1 +1".
+const _bkScores = t => SBB.SB_ABIL_TOKEN.test(t.replace(/\b([SDCIW]) (tr|ex|on|nt|is|ha)\b/gi, '$1$2'));
 
 function _bkLines(text) {
   let before = '';
@@ -97,8 +104,8 @@ function _bkLines(text) {
     before = t || before;
     return { f: parts.length > 1 ? parts[0] : '', lead: parts.length > 2 ? parts[1] : '', t };
   }).filter(l => l.t);
-  // A caption printed twice over, whole or in pieces: "Квазит.Квазит.", "John GrelloJohn Grello".
-  lines = lines.filter(l => !(l.t.length >= 4 && l.t.slice(0, l.t.length / 2) === l.t.slice(l.t.length / 2)) &&
+  // A caption printed twice over, whole or in pieces: "Квазит.Квазит."; a score line repeats by nature.
+  lines = lines.filter(l => _bkScores(l.t) || !(l.t.length >= 4 && l.t.slice(0, l.t.length / 2) === l.t.slice(l.t.length / 2)) &&
     l.t.replace(/(.{3,40}?)\1/g, '$1').length > l.t.length * 0.65);
   lines = _bkFurniture(lines);
   // A compound keeps its hyphen across a line break: both halves are words elsewhere, "волка-оборотня".
@@ -107,11 +114,13 @@ function _bkLines(text) {
     for (const w of (l.t.toLowerCase().match(/\p{L}+/gu) || []).slice(1, -1)) words.set(w, (words.get(w) || 0) + 1);
   }
   const out = [];
-  for (const l of lines) {
+  for (const [i, l] of lines.entries()) {
+    // A margin callout on the baseline, mid-sentence: "вампир может5" / "общаться…".
+    if (/^\p{Ll}/u.test((lines[i + 1] || {}).t || '')) l.t = l.t.replace(/([а-йл-яё]-?)\d{1,2}$/, '$1');
     const prev = out[out.length - 1];
     if (prev && /\p{L}[-‑]$/u.test(prev.t) && /^\p{Ll}/u.test(l.t)) {
       const a = (prev.t.match(/(\p{L}+)[-‑]$/u) || [])[1].toLowerCase(), b = (l.t.match(/^\p{L}+/u) || [''])[0];
-      prev.t = prev.t.slice(0, -1) + (words.get(a) > 1 && words.get(b) > 1 ? '-' : '') + l.t;
+      prev.t = prev.t.slice(0, -1) + (a.length > 2 && words.get(a) > 1 && words.get(b) > 1 ? '-' : '') + l.t;
     } else out.push(l);
   }
   return out;
@@ -139,14 +148,14 @@ function _bkLoreFonts(lines, anchors) {
 // A closing bracket is no full stop: "Hit: 10 (2d6 + 3)" goes on with its damage type.
 const _bkEnds = t => /[.!?…»]$/.test(t);
 
-// A name alone on its line, text on the next: "Укус (только в форме волка или гибридной форме)."
+// A name alone on its line, text on the next, once the sentence above has ended: "Укус (только в форме волка)."
 const _bkNameOnly = t => /^[\p{Lu}\d+][^.:]{0,90}\.$/u.test(t) &&
   t.replace(/\([^)]*\)/g, '').trim().split(/\s+/).length <= 6;
 
 function _bkName(t) {
   const n = t.replace(/\s*\[[^\]]*\]?\s*$/, '').trim();
-  // Small caps arrive in lower case, a stray capital inside a word: "блуждающий оГонёк".
-  if (/^\p{Ll}/u.test(n)) return n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
+  // Small caps arrive in lower case, a stray capital inside a word: "блуждающий оГонёк", "ГиГантская Гиена".
+  if (/^\p{Ll}/u.test(n) || /[а-яё]Г/.test(n)) return n.charAt(0).toUpperCase() + n.slice(1).toLowerCase();
   if (/\p{Ll}/u.test(n) || !/[A-Z]/.test(n)) return n;
   return n.toLowerCase().replace(/(^|[\s(-])(\p{L})/gu, (m, a, c) => a + c.toUpperCase());
 }
@@ -157,6 +166,8 @@ function statBlocksInText(text) {
   const anchors = [];
   for (let i = 0; i < texts.length; i++) if (_bkAnchor(texts, i) && !(anchors.length && i - anchors[anchors.length - 1] <= 3)) anchors.push(i);
   const lore = _bkLoreFonts(lines, anchors);
+  // A sidebar is often another monster's; its title is set in the "вариант :" font, in small caps read as lower case.
+  const sidebar = new Set(lines.filter(l => l.f && /^(?:вариант|разновидность|variant)\s*:/.test(l.t)).map(l => l.f));
   const caps = new Map(), seen = new Map();
   for (const l of lines) if (l.f) { seen.set(l.f, (seen.get(l.f) || 0) + 1); if (/^\p{Lu}/u.test(l.t)) caps.set(l.f, (caps.get(l.f) || 0) + 1); }
   for (const [f, c] of caps) caps.set(f, c / seen.get(f));
@@ -196,19 +207,41 @@ function statBlocksInText(text) {
     const body = [name];
     let pageNo = false, head = true, scored = false, skipped = 0, last = '', end = top, lastList = false, lastName = false, from = -1;
     const leads = new Set();
-    let fresh = false;
+    let fresh = false, firstLead = '';
+    const knownEntry = j => lines[j].lead !== bodyFont && leads.has(lines[j].lead) && SBB._sbEntry(lines[j].t);
+    // Where the block reads on past lore, or 0: past a page number, its own text or its own name; lore then a lair entry is the lair's.
+    const stop = m => m >= lines.length || _bkAnchor(texts, m) || statBlockHeadAt(texts, m) || SBB._sbSection(texts[m]) || sidebar.has(lines[m].f);
+    const resumes = k => {
+      let m = k, paged = _bkName(texts[k]).toLowerCase() === name.toLowerCase();
+      while (m - k < BK_ASIDE_LONG && !stop(m) && lines[m].f !== bodyFont && !knownEntry(m)) if (/^\d{1,3}$/.test(texts[m++])) paged = true;
+      let j = m;
+      while (j - m < BK_RESUME && !stop(j) && lines[j].f === bodyFont && !knownEntry(j)) j++;
+      if ((paged || j > m) && !stop(j) && knownEntry(j) && lines[j].lead === firstLead) return m;
+      // A sentence cut by a page of lore goes on in lower case: "…урона. Если" / "цель — существо…".
+      if (_bkEnds(last)) return 0;
+      for (m = k; m - k < BK_ASIDE_LONG && !stop(m); m++) {
+        if (lines[m].f !== bodyFont || !/^\p{Ll}/u.test(texts[m])) continue;
+        for (j = m + 1; j - m < BK_RESUME && !stop(j) && !knownEntry(j); j++);
+        return !stop(j) && knownEntry(j) && lines[j].lead === firstLead ? m : 0;
+      }
+      return 0;
+    };
     for (let k = top; k < lines.length && k < top + BK_MAX_LINES; k++) {
       const l = lines[k], t = l.t;
       if (k > a + 3 && (_bkAnchor(texts, k) || statBlockHeadAt(texts, k))) break;
       // The next monster's name over its lore: a short line in the font this block's name is set in.
-      if (!head && nameFont && l.f === nameFont && t.length <= 60 && !_bkEnds(t) && !/\.\s/.test(t) &&!SBB._sbSection(t) && !SBB._sbLabel(t)) break;
+      if (!head && nameFont && l.f === nameFont && t.length <= 60 && !_bkEnds(t) && !/\.\s/.test(t) &&!SBB._sbSection(t) && !SBB._sbLabel(t)) {
+        const back = resumes(k);
+        if (back > 0) { k = back - 1; continue; }
+        break;
+      }
       const heading = SBB._sbSection(t);
       // An artist's credit on a line of its own, in capitals.
       if (/^(?:(?:\p{Lu}{2,}|\p{Lu}\.)[ ,.-]*)+$/u.test(t) && !heading && k > a && !SBB.SB_ABIL_TOKEN.test(t)) continue;
       // A running head where a block crosses a page; "дао89", fused and lower case, anywhere.
       const head2 = !l.f || l.f !== bodyFont;
       if (/^\d{1,3} [^|]{1,40}\|/.test(t)) continue;
-      if ((head2 && /^\p{Ll}[^\d]*\p{L}\d{1,3}$/u.test(t) || (!head || foreign(l)) && (foreign(l) || _bkEnds(last) || lone(k))) && !SBB._sbLabel(t) && t.split(' ').length <= 4 && /^\d{1,3}\s*\p{L}[^\d]*$|^\p{L}[^\d]*?\d{1,3}$/u.test(t)) continue;
+      if ((head2 && /^\p{Ll}[^\d]*\p{L}\d{1,3}$/u.test(t) || (!head || foreign(l)) && (foreign(l) || _bkEnds(last) || lone(k))) && !SBB._sbLabel(t) && !heading && t.split(' ').length <= 4 &&/^\d{1,3}\s*\p{L}[^\d]*$|^\p{L}[^\d]*?\d{1,3}$/u.test(t)) continue;
       // A page number alone, or a running head in lower case after it: "250 ракшаса".
       if (!head && head2 && (/^\d{1,3}$/.test(t) || /^\d{1,3} \p{Ll}[^\d:]*[^\d:.,;!?)]$/u.test(t) && t.split(' ').length <= 4)) continue;
       // A chapter's tab letter, and a head on its own line above its page number: "Е", "Единорог", "152".
@@ -217,7 +250,7 @@ function statBlocksInText(text) {
       let joins = false, opened = false;
       if (head) {
         // Text from the column beside a block's header is skipped, not read as its end.
-        if (foreign(l) && !heading && k > a) { if (++skipped > BK_HEADER_SKIP) break; continue; }
+        if (foreign(l) && !heading && k > a && !_bkScores(t)) { if (++skipped > BK_HEADER_SKIP) break; continue; }
         // Only past the scores can an entry start: a wrapped "30 фт.; лазая…" has the same shape.
         if (SBB.SB_ABIL_TOKEN.test(t) || /(?:STR|СИЛ)\s*\d/i.test(t)) scored = true;
         if (heading || (scored && /^\p{Lu}/u.test(t) && SBB._sbEntry(t) && !SBB._sbLabel(t) && !SBB.SB_ABIL_TOKEN.test(t))) { head = false; opened = true; }
@@ -230,26 +263,37 @@ function statBlocksInText(text) {
           while (m < lines.length && m - k < BK_ASIDE_LINES && foreign(lines[m])) m++;
           const r = lines[m];
           if (r && !foreign(r) && r.lead && r.lead !== bodyFont && leads.has(r.lead) && SBB._sbEntry(r.t)) { k = m - 1; continue; }
+          const back = resumes(k);
+          if (back > 0) { k = back - 1; continue; }
         }
         // Lore after the block's last line; a lone line in another font just before it was a sidebar's lead-in.
         if (foreign(l) && !list) { if (from === k - 1 && lines[from].f !== bodyFont && fresh && body.length > 2 && !SBB._sbSection(body[body.length - 2])) body.pop(); break; }
         if (/^(Время накладывания|Накладывание более высокой|Casting Time|Using a Higher-Level)/.test(t)) break;
+        if (/^(?:вариант|разновидность|variant)\s*:/i.test(t) || sidebar.has(l.f) && /^\p{Ll}/u.test(t)) break;
         const marked = l.lead ? l.lead !== bodyFont : null;
-        const named = marked && _bkNameOnly(t);
+        const named = marked && _bkNameOnly(t) && (_bkEnds(last) || SBB._sbSection(last) || /[:)]$/.test(last));
         const e = SBB._sbEntry(t);
         const long = e && e.n.replace(/\([^)]*\)/g, '').trim().split(/\s+/).length > 7;
         const shape = (!long && e) || named;
         // A habitat line, or a short heading after a full stop or a spell list: the next monster.
         const lab = SBB._sbLabel(t);
-        const listDone = lastList && !/[,;:]$/.test(last);
+        // A list's wrapped line keeps its font: "1/Day Each: …, Power" / "Word Kill, Scrying".
+        const listDone = lastList && !/[,;:]$/.test(last) &&
+          !(l.f && l.f === lines[k - 1].f && l.f !== bodyFont) && !/^[\p{Lu}\d][\p{L}\d/ ,–-]{0,39}:\s/u.test(texts[k + 1] || '') &&
+          !(/\p{L}$/u.test(last) && /[,()]/.test(t));
         if ((lab && lab.field === null) || (!shape && !list && (_bkEnds(last) || listDone) && t.length < 35 && !_bkEnds(t) && /^\p{Lu}/u.test(t))) break;
         // An entry starts at a name its font marks, or else one after a full stop or a spell list.
-        const after = opened || _bkEnds(last) || listDone || SBB._sbSection(last);
+        const after = opened || _bkEnds(last) || listDone || SBB._sbSection(last) || /:$/.test(last) && /^\d+\.\s/.test(t);
         const known = marked === true && leads.has(l.lead) && /^\p{Lu}/u.test(t);
-        const starts = list || (shape && (marked === true || marked === null) && (after || known)) || (marked === true && after && !long && /^\p{Lu}/u.test(t));
+        // The first entry past the header starts even with its name unmarked: "Двуглавость. Пёс…".
+        const starts = list || (shape && (opened || (marked === true || marked === null) && (after || known))) || (marked === true && after && !long && /^\p{Lu}/u.test(t));
         const open = (last.match(/\(/g) || []).length > (last.match(/\)/g) || []).length;
         joins = body.length > 1 && !SBB._sbSection(last) && (lastName || open || !starts);
-        if (!joins) { fresh = !leads.has(l.lead); if (shape) leads.add(l.lead); lastList = list; lastName = named; from = k; } else lastName = false;
+        if (joins && l.f !== bodyFont && /^\p{Lu}[^.:]{0,39}$/u.test(t) && !e && !_bkEnds(last)) {
+          const back = resumes(k);
+          if (back > k) { k = back - 1; continue; }
+        }
+        if (!joins) { fresh = !leads.has(l.lead); if (shape) leads.add(l.lead); if (shape && marked && !firstLead) firstLead = l.lead; lastList = list; lastName = named; from = k; } else lastName = false;
       }
       if (joins) body[body.length - 1] += ' ' + t;
       else body.push(t);
@@ -259,7 +303,7 @@ function statBlocksInText(text) {
     const b = SBB.statBlockFromLines(body);
     // A number set as its own text run arrives fused: "пассивное Внимание24".
     if (b) b.senses = b.senses.replace(/(\p{L})(\d)/gu, '$1 $2');
-    if (b && b.name) blocks.push(b);
+    if (b && b.name) blocks.push(...SBB.statBlockTypes(b));
     done = end;
   }
   return blocks;
@@ -281,7 +325,7 @@ function statBlockUnclean(b) {
   }
   const all = [b.meta, b.ac, b.hp, b.speed, b.saves, b.skills, b.senses, b.languages, b.cr, ...entries.map(e => e.n + ' ' + e.t)].join('\n');
   // Page leftovers: a credit, a fused callout number, a web footer, a doubled caption.
-  if (/\p{Lu}{3,}(?:[ ,]+\p{Lu}{2,})+|[а-йл-яё]\d|\)\d|\p{L}-\d+ \p{Ll}|©|https?:|www\.|Художник|Click the link|(.{8,})\1/u.test(all)) return 'page text inside it';
+  if (/\p{Lu}{3,}(?:[ ,]+\p{Lu}{2,})+|[а-йл-яё]\d|\)\d|\p{L}-\d+ \p{Ll}|©|https?:|www\.|Художник|Click the link|(\S.{6,}\S)\1/u.test(all)) return 'page text inside it';
   return '';
 }
 

@@ -274,4 +274,17 @@ describe('plDocumentBlockText', () => {
     const out = texts(plDocumentBlockText([inColumn], statBlockHeadAt));
     assert.deepEqual(out.slice(0, 4), ['Болотный зверь', 'Крупная Бестия, Хаотичная Злая', 'КБ 15', 'ПЗ 45 (6d10 + 12)']);
   });
+  test('cuts no band where the other column only pauses between two entries of its own block', () => {
+    const page = { width: W, items: [
+      f('Kraken Whale', 50, 700, 'H'), f('Huge beast, unaligned', 50, 686, 'S'), f('Armor Class 12', 50, 673, 'S'),
+      f('Hit Points 90 (12d12 + 12)', 50, 663, 'S'), f('Challenge 3 (700 XP)', 50, 650, 'S'),
+      f('Echolocation. It hears.', 50, 620, 'S'), f('Bite. Melee Weapon Attack: +6.', 50, 608, 'S'),
+      f('Lion tail. It roars.', 320, 700, 'S'), f('Claw. Melee Weapon Attack: +5.', 320, 689, 'S'),
+      f('Lizard', 320, 634, 'H'), f('Tiny beast, unaligned', 320, 620, 'S'), f('Armor Class 10', 320, 607, 'S'),
+      f('Hit Points 2 (1d4)', 320, 597, 'S'),
+    ] };
+    const out = texts(plDocumentBlockText([page], statBlockHeadAt));
+    assert.deepEqual(out.slice(0, 7), ['Kraken Whale', 'Huge beast, unaligned', 'Armor Class 12', 'Hit Points 90 (12d12 + 12)',
+      'Challenge 3 (700 XP)', 'Echolocation. It hears.', 'Bite. Melee Weapon Attack: +6.']);
+  });
 });

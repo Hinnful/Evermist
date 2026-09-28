@@ -136,7 +136,9 @@ function combatSourceName(fileName) {
 // The blocks an import adds: none already stored under this source, and a name printed twice once.
 function combatNewBlocks(blocks, existing, source) {
   const taken = new Set(Object.values(existing).filter(b => (b.source || '') === source).map(b => b.name));
-  return blocks.filter(b => !taken.has(b.name) && taken.add(b.name));
+  // A name printed twice keeps the later block: a book's introduction shows a sample before the monster's own.
+  const last = new Map(blocks.map((b, i) => [b.name, i]));
+  return blocks.filter((b, i) => last.get(b.name) === i && !taken.has(b.name));
 }
 
 // Name matches first, then names that merely contain the query; each group alphabetical.

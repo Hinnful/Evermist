@@ -275,6 +275,8 @@ describe('Multiattack', () => {
     const dagger = ['Dagger', 'Melee or Ranged Weapon Attack: +5 to hit. Hit: 5 (1d4 + 3) piercing damage.'];
     assert.deepEqual(show([['Multiattack', 'The captain makes three melee attacks: two with its scimitar and one with its dagger. Or the captain makes two ranged attacks with its daggers.'], scim, dagger]),
       ['[2× Scimitar +5 6 slashing + Dagger +5 5 piercing OR 2× Dagger +5 5 piercing]']);
+    assert.deepEqual(show([['Multiattack', 'The captain makes either three melee attacks--two with its scimitar and one with its dagger--or two attacks with its dagger.'], scim, dagger]),
+      ['[2× Scimitar +5 6 slashing + Dagger +5 5 piercing OR 2× Dagger +5 5 piercing]']);
     const sword = ['Сияющий меч', 'Бросок атаки: +12. Попадание: 14 (2d6 + 7) Режущего урона.'];
     const holy = ['Святая вспышка', 'Испытание Ловкости: СЛ 20. Провал: 24 (7d6) урона Излучением.'];
     assert.deepEqual(show([['Мультиатака', 'Планетар совершает три атаки Сияющим мечом или дважды использует Святую вспышку.'], sword, holy]),
@@ -383,5 +385,67 @@ describe('combatAttacks on site wording', () => {
     const at = combatAttacks({ secs: { Actions: [{ n: 'Мультиатака', t: 'Дракон совершает три атаки Раздиранием. Он может заменить одну из этих атак использованием Сотворения заклинаний (Палящий луч).' },
       { n: 'Раздирание', t: 'Бросок рукопашной атаки: +14. Попадание: 13 (1к10 + 8) Рубящего урона.' }] } });
     assert.deepEqual(at[0].swap, { k: '1', to: 'Палящий луч' });
+  });
+  it('joins a part set after "+": "Колющего урона + 7 (2к6) урона Ядом"', () => {
+    assert.deepEqual(one('Жало', 'Бросок рукопашной атаки: +5. Попадание: 6 (1к6 + 3) Колющего урона + 7 (2к6) урона Ядом.').parts,
+      [{ dmg: '6', type: 'piercing' }, { dmg: '7', type: 'poison' }]);
+  });
+  const swapOf = (t, acts) => combatAttacks({ secs: { Actions: [{ n: 'Мультиатака', t }, ...acts.map(([n, a]) => ({ n, t: a }))] } })[0].swap;
+  const hit = d => `Бросок атаки: +4. Попадание: ${d} Колющего урона.`;
+  it('reads "используя A и B в любой комбинации" as a pick', () => {
+    const at = combatAttacks({ secs: { Actions: [{ n: 'Мультиатака', t: 'Разведчик совершает две атаки, используя Короткий меч и Длинный лук в любой комбинации.' },
+      { n: 'Короткий меч', t: hit('5 (1к6 + 2)') }, { n: 'Длинный лук', t: hit('6 (1к8 + 2)') }] } });
+    assert.deepEqual([at[0].x, at[0].opts.map(p => p.n)], [2, ['Короткий меч', 'Длинный лук']]);
+  });
+  it('keeps a joining word inside a name open: "Штормовым мечом или Громом и молнией"', () => {
+    const at = combatAttacks({ secs: { Actions: [{ n: 'Мультиатака', t: 'Великан совершает две атаки Штормовым мечом или Громом и молнией в любой комбинации.' },
+      { n: 'Штормовой меч', t: hit('23 (4к6 + 9)') }, { n: 'Гром и молния', t: hit('22 (5к8)') }] } });
+    assert.deepEqual(at[0].opts.map(p => p.n), ['Штормовой меч', 'Гром и молния']);
+  });
+  it('reads rays counted before the verb: "дважды использует Лучи из глаз"', () => {
+    const at = combatAttacks({ secs: { Actions: [{ n: 'Мультиатака', t: 'Наблюдатель дважды использует Лучи из глаз.' },
+      { n: 'Лучи из глаз', t: 'Наблюдатель пускает луч:' },
+      { n: 'Луч ужаса', t: 'Спасбросок Мудрости: Сл 12. Провал: 5 (1к8) Психического урона.' },
+      { n: 'Луч ранения', t: 'Спасбросок Телосложения: Сл 12. Провал: 16 (3к10) Некротического урона.' }] } });
+    assert.deepEqual([at[0].x, at[0].opts.length], [2, 2]);
+  });
+  it('reads the site swaps "одну из атак на", "каждую атаку" and "одну атаку Укусом"', () => {
+    const acts = [['Удар', hit('7 (1к6 + 4)')], ['Укус', hit('12 (2к8 + 3)')]];
+    assert.deepEqual(swapOf('Культист совершает две атаки Ударом. Он может заменить одну из атак на Укус.', acts), { k: '1', to: 'Укус' });
+    assert.deepEqual(swapOf('Культист совершает две атаки Ударом. Он может заменить каждую атаку Укусом.', acts), { k: 'any', to: 'Укус' });
+    assert.deepEqual(swapOf('Верволк совершает две атаки Ударом. Он может заменить одну атаку Укусом.', acts), { k: '1', to: 'Укус' });
+  });
+});
+
+describe('combatAttacks on book text layers', () => {
+  it('reads a save split across a line break: "Dexterity Saving\\nThrow"', () => {
+    assert.equal(brief(read('Dexterity Saving\nThrow: DC 16, each creature in a Line. Failure: 55 (10d10) Lightning damage.')), 'A DC 16 Dex 55 lightning');
+  });
+  it('reads a type followed by "полем": "урон силовым полем 45 (10к8)"', () => {
+    assert.deepEqual(read('Цель должна преуспеть в спасброске Ловкости со Сл 16, иначе получит урон силовым полем 45 (10к8).').parts,
+      [{ dmg: '45', type: 'force' }]);
+  });
+  it('reads Open5e’s damage with no "Hit:" after "feet", flat or with dice', () => {
+    assert.deepEqual(read('Melee Attack Roll: +2, reach 5 ft. 1 Bludgeoning damage.').parts, [{ dmg: '1', type: 'bludgeoning' }]);
+    assert.deepEqual(read('Melee Attack Roll: +9, reach 5 feet. 12 (2d6 + 5) Slashing damage.').parts, [{ dmg: '12', type: 'slashing' }]);
+  });
+  it('reads "екротического" with its first letter lost as necrotic', () => {
+    assert.equal(combatDamageType('екротического'), 'necrotic');
+  });
+  const hit = d => `Бросок атаки: +7. Попадание: ${d} Колющего урона.`;
+  it('falls back on a count limited "only once"', () => {
+    const at = pills([['Мультиатака', 'Юань-ти совершает две дальнобойные атаки или две рукопашные атаки, но Укус может использовать только раз.'],
+      ['Укус', hit('5 (1к4 + 3)')], ['Длинный лук', 'Бросок дальнобойной атаки: +4. Попадание: 6 (1к8 + 2) Колющего урона.']]);
+    assert.equal(at[0].fallback, true);
+  });
+  it('names the attack a swap is tied to: "заменить атаку Лапой на"', () => {
+    const at = pills([['Мультиатака', 'Химера совершает одну атаку Укусом и одну атаку Лапой. Она может заменить атаку Лапой на использование Огненного дыхания.'],
+      ['Укус', hit('11 (2d6 + 4)')], ['Лапа', hit('7 (1d6 + 4)')], ['Огненное дыхание (перезарядка 5–6)', 'Испытание Ловкости: Сл 15. Провал: 31 (7d8) урона Огнём.']]);
+    assert.deepEqual(at[0].swap, { k: '1', to: 'Огненное дыхание', of: 'Лапа' });
+  });
+  it('gives each numbered option its list’s recharge', () => {
+    const at = pills([['Катастрофическое событие (перезарядка 4–6)', 'Катаклизм создаёт один из эффектов (бросьте 1d4):'],
+      ['1', 'Цепкое пламя. Испытание Ловкости: СЛ 23. Провал: 45 (10d8) урона Огнём.']]);
+    assert.deepEqual([at[0].n, at[0].rc], ['Цепкое пламя', '4–6']);
   });
 });

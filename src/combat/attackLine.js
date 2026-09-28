@@ -11,7 +11,7 @@ const COMBAT_DAMAGE_TYPES = ['slashing', 'piercing', 'bludgeoning', 'acid', 'col
   'lightning', 'necrotic', 'poison', 'psychic', 'radiant', 'thunder'];
 const COMBAT_RU_TYPES = [['рубящ', 'slashing'], ['режущ', 'slashing'], ['колющ', 'piercing'], ['дробящ', 'bludgeoning'],
   ['кислот', 'acid'], ['холод', 'cold'], ['огн', 'fire'], ['огон', 'fire'], ['силов', 'force'], ['силой', 'force'],
-  ['электр', 'lightning'], ['молни', 'lightning'], ['некрот', 'necrotic'], ['яд', 'poison'],
+  ['электр', 'lightning'], ['молни', 'lightning'], ['некрот', 'necrotic'], ['екротич', 'necrotic'], ['яд', 'poison'],
   ['психич', 'psychic'], ['излуч', 'radiant'], ['лучист', 'radiant'], ['звук', 'thunder'], ['гром', 'thunder']];
 
 function combatDamageType(word) {
@@ -25,8 +25,8 @@ function combatDamageType(word) {
 // Every "N (dice) type" in the text, with where its phrase starts and ends. A number no known type
 // sits beside (a reach, a DC) is not damage.
 const W = '[A-Za-zА-Яа-яЁё]+';
-// Psychic and necrotic can carry "энергией" after the type: "урон некротической энергией 10 (3к6)".
-const EN = '(?:\\s+энерги[а-яё]*)?';
+// A type can carry a noun after it: "урон некротической энергией 10 (3к6)", "урон силовым полем 45".
+const EN = '(?:\\s+(?:энерги[а-яё]*|пол[ея]м?))?';
 function _cbDamageParts(text) {
   const out = [];
   for (const m of text.matchAll(/(\d+)(\s*\([^)]*\))?/g)) {
@@ -55,7 +55,7 @@ function _cbHitDamage(text) {
   for (const p of parts) {
     if (out.length) {
       const gap = text.slice(out[out.length - 1].e, p.s);
-      if (!/^\s*,?\s*(?:plus|and|плюс|и(?:\s+ещ[её])?)\s+$/i.test(gap)) break;
+      if (!/^\s*,?\s*(?:plus|and|плюс|и(?:\s+ещ[её])?|\+)\s+$/i.test(gap)) break;
       if (/^[^.;]*?\b(?:if|when)\b|^[^.;]*?(?:^|\s)(?:если|когда)\s/i.test(text.slice(p.e))) break;
     }
     out.push(p);
@@ -73,8 +73,8 @@ const _cbAbility = w => {
 };
 
 function _cbSave(t) {
-  const m = t.match(/DC\s*(\d+)\s+(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)\s+saving throw/i)
-    || t.match(/(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)\s+Saving Throw:\s*DC\s*(\d+)/i)
+  const m = t.match(/DC\s*(\d+)\s+(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)\s+saving\s+throw/i)
+    || t.match(/(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)\s+Saving\s+Throw:\s*DC\s*(\d+)/i)
     || t.match(/спасброс[а-яё]*\s+([А-Яа-яЁё]+)[:,]?\s*(?:со\s+)?Сл\s*(\d+)/i)
     || t.match(/Сл\s*(\d+)[^.]{0,30}?спасброс[а-яё]*\s+([А-Яа-яЁё]+)/i)
     || t.match(/Испытани[а-яё]*\s+([А-Яа-яЁё-]+):?\s*Сл\s*(\d+)/i);
@@ -103,8 +103,7 @@ function _cbGrapple(hit) {
 }
 
 // ── The pills ────────────────────────────────────────────────────────────────
-// One per action that deals damage, by attack roll or by save, in the book's order. English 2014 and
-// 2024 and Russian (dnd.su, the 2024 books) all read, flat damage too. Bonus actions follow, marked.
+// One per damaging action, by attack roll or save, in book order, any edition or language; bonus actions follow.
 function _cbPill(n, t) {
   // A site that prints only the dice, "Hit: (2d6 + 5) bludgeoning", gets the average every book prints.
   t = t.replace(/(^|[^\d\s]\s*)\((\d+)d(\d+)(?:\s*([+\-−–])\s*(\d+))?\)(?=\s*[A-Za-z]+ damage)/g, (m, pre, c, d, s, k) =>
@@ -115,7 +114,7 @@ function _cbPill(n, t) {
   if (/^\d+$/.test(name)) name = t.split('.')[0].trim();
   const bonus = t.match(/(?:attack|атак)[^:.]*:\s*([+\-−–]\s?\d+)/i);
   // Open5e's 2024 text drops "Hit:" and runs the damage on after the reach.
-  const run = bonus && t.slice(bonus.index + bonus[0].length).match(/ft\.\s*(\d+\s*\(.*)$/s);
+  const run = bonus && t.slice(bonus.index + bonus[0].length).match(/(?:ft|feet)\.\s*(\d+\s*(?:\(|[A-Za-z]+ damage).*)$/s);
   const hitText = t.split(/Hit:|Попадание:/i)[1] ?? (run ? run[1] : undefined);
   // An attack that only grapples still has a roll and a DC to show.
   const grab = bonus && _cbGrapple(hitText || t);
@@ -155,7 +154,7 @@ function _cbApplyMulti(multi, out) {
 
 function combatAttacks(sb) {
   const out = [], secs = (sb && sb.secs) || {};
-  let multi = null, list = '', listed = '', breathRc = '';
+  let multi = null, list = '', listed = '', breathRc = '', listRc = '';
   for (const en of secs.Actions || []) {
     const n = String(en.n || ''), t = String(en.t || '');
     if (MA.COMBAT_MULTI.test(n)) { multi = { n, t, pos: out.length }; continue; }
@@ -165,7 +164,8 @@ function combatAttacks(sb) {
     else if (p && !p.rc && breathRc && /breath|дыхани/i.test(n)) p = { ...p, rc: breathRc };
     // Rays follow their action numbered 1 to 10, or unnumbered after its text ends in a colon.
     if (!p && /:$/.test(t.trim())) listed = n.split('(')[0].trim();
-    if (!/^\d+$/.test(n)) list = p ? '' : n.split('(')[0].trim();
+    if (!/^\d+$/.test(n)) { list = p ? '' : n.split('(')[0].trim(); listRc = p ? '' : _cbRecharge(n); }
+    if (p && !p.rc && listRc && /^\d+$/.test(n)) p = { ...p, rc: listRc };
     if (p) out.push(list && /^\d+$/.test(n) ? { ...p, of: list } : listed ? { ...p, of: listed } : p);
   }
   if (multi) _cbApplyMulti({ ...multi, actions: secs.Actions.map(a => ({ n: String(a.n || '') })) }, out);
@@ -181,7 +181,7 @@ const _cbLine = a => `${a.x ? a.x + '× ' : ''}${a.n} ${a.hit} ${a.parts.map(p =
 function combatAttackLine(sb) {
   return combatAttacks(sb).filter(a => !a.fallback).map(a => !a.group ? (a.ba ? 'Bonus: ' : '') + _cbLine(a)
     : a.alts ? a.alts.map(alt => alt.map(_cbLine).join(', ')).join(' or ')
-    : `${a.x ? a.x + '× ' : ''}${a.opts.map(_cbLine).join(a.or ? ' or ' : ', ')}${a.swap ? ` (${a.swap.k} for ${a.swap.to})` : ''}`).join('\n');
+    : `${a.x ? a.x + '× ' : ''}${a.opts.map(_cbLine).join(a.or ? ' or ' : ', ')}${a.swap ? ` (${a.swap.of || a.swap.k} for ${a.swap.to})` : ''}`).join('\n');
 }
 
 if (typeof module !== 'undefined' && module.exports) {

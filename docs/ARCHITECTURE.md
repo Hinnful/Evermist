@@ -579,7 +579,9 @@ read-only until Edit swaps in the stat block editor. Links pasted in go through 
 time; each is fetched in a hidden window that waits until the page text stops changing, so a site
 that draws its stat block with its own scripts reads whole. `statBlockParse.js` finds the block by
 its Armor Class line, names it from the line the page title starts with when one is there, and keeps the page's description as lore, a lair set inside it as lair
-actions. Export writes picked entries to a file and From a file adds them back.
+actions. The block ends at a site footer ("Habitat:", "Source:"), and unheaded text past the
+element holding the last section is read as lore. A page whose block does not read clean is
+refused with its reason, the same check a book import makes. Export writes picked entries to a file and From a file adds them back.
 
 From a PDF book reads every stat block in a book at once. The picker hands over only the file's
 path, and the extraction process reads the file itself, so a 300MB book never crosses into the

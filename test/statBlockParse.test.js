@@ -230,6 +230,33 @@ describe('site quirks, on made-up pages', () => {
       'DC <span class="ve-rd__dc--rollable-text">15</span><span class="ve-rd__dc--rollable-dice">1d8 + 10</span>.</p>'));
     assert.match(JSON.stringify(b.secs), /Attack Roll: \+7, reach 10 ft\. DC 15\./);
   });
+  it('keeps unheaded text past the last section’s element as lore, and a heading past it as a part of its own', () => {
+    const b = P.statBlockFromPage('<div><div><h2>Огр</h2><p>Большой великан</p><p>Класс доспеха 11</p><p>Хиты 59 (7к10 + 21)</p></div>' +
+      '<div><h3>Действия</h3><div><h4>Палица.</h4><p>Рукопашная атака оружием: +6 к попаданию. Попадание: 13 (2к8 + 4) дробящего урона.</p></div></div>' +
+      '<div><p>Огры</p><p>Огры слабы умом. Они живут, грабя.</p><p>Вспыльчивый нрав. Огры выходят из себя.</p></div></div>');
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Палица']);
+    assert.match(b.lore, /^Огры\n\nОгры слабы умом/);
+    const d = P.statBlockFromPage('<div><div><h2>Огр</h2><p>Большой великан</p><p>Класс доспеха 11</p><p>Хиты 59 (7к10 + 21)</p></div>' +
+      '<div><h3>Действия</h3><div><h4>Палица.</h4><p>Попадание: 13 (2к8 + 4) дробящего урона.</p></div></div>' +
+      '<div><h3>Легендарные действия</h3><div><p>Удар. Огр атакует.</p></div></div></div>');
+    assert.deepEqual(d.secs['Legendary actions'].map(e => e.n), ['Удар']);
+    const h = P.statBlockFromPage('<div><div><h2>Скелет</h2><p>Средняя нежить</p><p>Класс доспеха 13</p><p>Хиты 13 (2к8 + 4)</p></div>' +
+      '<div><h3>Действия</h3><div><h4>Короткий меч.</h4><p>Попадание: 5 (1к6 + 2) колющего урона.</p></div></div>' +
+      '<div><h3>Места обитания</h3><p>город</p></div></div>');
+    assert.equal(h.lore, '');
+  });
+  it('reads an entry name with a stray bracket after its period', () => {
+    assert.deepEqual(P._sbEntry('Legendary Resistance (3/Day).) If the dragon fails a saving throw.'),
+      { n: 'Legendary Resistance (3/Day)', t: 'If the dragon fails a saving throw.' });
+  });
+  it('ends the last action at a site footer', () => {
+    const b = P.statBlockFromPage(html('<h2>Troll</h2><div>Large Giant, Chaotic Evil</div><div>AC 15</div><div>HP 84 (8d10 + 40)</div>' +
+      '<p>Actions</p><p>Rend. Melee Attack Roll: +7, reach 10 ft. Hit: 11 (2d6 + 4) Slashing damage.</p><p>Habitat: Forest</p><p>Source: MM\'25, page 311.</p>'));
+    assert.equal(b.secs.Actions[0].t, 'Melee Attack Roll: +7, reach 10 ft. Hit: 11 (2d6 + 4) Slashing damage.');
+    const o = P.statBlockFromPage(html('<h2>Troll</h2><div>Large Giant, Chaotic Evil</div><div>AC 15</div><div>HP 84 (8d10 + 40)</div>' +
+      '<p>Actions</p><p>Bite. Hit: 7 (1d6 + 4) piercing damage.</p><p>Environments: Forest or Jungle</p>'));
+    assert.equal(o.secs.Actions[0].t, 'Hit: 7 (1d6 + 4) piercing damage.');
+  });
   it('reads a trait heading that starts with a label word, and ttg.club’s grid note off the size line', () => {
     const b = P.statBlockFromLines(['Свежеватель разума', 'Средняя аберрация, законно-злая / medium 1 клетка Источник: MM',
       'Класс доспеха 15', 'Хиты 71 (13к8 + 13)', '## Сопротивление магии.', 'Свежеватель совершает спасброски с преимуществом.']);
@@ -244,5 +271,58 @@ describe('site quirks, on made-up pages', () => {
     assert.deepEqual(b.abil, ['18', '13', '20', '7', '9', '7']);
     assert.equal(b.resist, 'Cold');
     assert.equal(b.cr, '5 (1,800 XP)');
+  });
+  it('keeps a paragraph whose first sentence runs past a name as text of the entry above', () => {
+    const b = P.statBlockFromLines(['Зелёная карга', 'Средняя фея, нейтрально-злая', 'Класс доспеха 17', 'Хиты 82 (11к8 + 33)',
+      'СИЛ 18 ЛОВ 12 ТЕЛ 16 ИНТ 13 МДР 14 ХАР 14', '## Действия', 'Иллюзорная внешность. Карга покрывает себя иллюзией.',
+      'Изменения, внесенные этим эффектом, не проходят физическую проверку. Кожа карги выглядит гладкой.']);
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Иллюзорная внешность']);
+    assert.match(b.secs.Actions[0].t, /физическую проверку/);
+  });
+  it('reads "smaller" as no size line', () => {
+    assert.ok(!P.SB_SIZE.test('smaller creature, it has the Prone condition.'));
+    assert.ok(P.SB_SIZE.test('Small Beast, Unaligned'));
+  });
+  const head = ['Шпион', 'Средний гуманоид, любое мировоззрение', 'Класс Доспеха 12', 'Хиты 27 (6к8)', 'СИЛ 10 ЛОВ 15 ТЕЛ 10 ИНТ 12 МДР 14 ХАР 16'];
+  it('keeps a header line wrapped onto a sign and a number: "Обман" / "+5, Скрытность +4"', () => {
+    const b = P.statBlockFromLines([...head, 'Навыки Анализ +5, Обман', '+5, Проницательность +4, Скрытность +4, Убеждение +5', 'Опасность 1 (200 опыта)', '## Действия', 'Удар. Рукопашная атака оружием: +4 к попаданию.']);
+    assert.equal(b.cr, '1 (200 опыта)');
+    assert.equal(b.skills, 'Анализ +5, Обман +5, Проницательность +4, Скрытность +4, Убеждение +5');
+  });
+  it('names a first trait printed with a colon, and keeps a die table inside its trait', () => {
+    const b = P.statBlockFromLines([...head, 'Опасность 1 (200 опыта)', 'Атака в броске: Если лось переместится, цель падает.',
+      'Бормотание. Цель бросает к8.', '5–6. Цель ничего не делает.', '## Действия', 'Удар. Рукопашная атака оружием: +4 к попаданию.']);
+    assert.deepEqual(b.secs.Traits.map(e => e.n), ['Атака в броске', 'Бормотание']);
+    assert.match(b.secs.Traits[1].t, /5–6\. Цель ничего не делает/);
+  });
+  it('splits a size line run into its AC line, and an attack run into a Multiattack', () => {
+    const b = P.statBlockFromLines(['Stone Giant', 'Huge giant, neutral Armor Class 17 (natural armor)', 'Hit Points 126 (11d12 + 55)',
+      'STR 23 DEX 15 CON 20 INT 10 WIS 12 CHA 9', 'Challenge 7 (2,900 XP)', '## Actions',
+      'Multiattack. The giant makes two greatclub attacks. Greatclub. Melee Weapon Attack: +9 to hit. Hit: 19 (3d8 + 6) bludgeoning damage.']);
+    assert.equal(b.ac, '17 (natural armor)');
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Multiattack', 'Greatclub']);
+  });
+  it('reads past a header box whose Senses line looks like an entry: "120 ft. (unimpeded…)"', () => {
+    const b = P.statBlockFromPage('<div><div><h2>Imp</h2><p>Tiny Fiend (Devil), Lawful Evil</p><p>AC 13</p><p>HP 21 (6d4 + 6)</p>' +
+      '<p>Str 6 −2 −2 Dex 17 +3 +3 Con 13 +1 +1</p><p>Int 11 +0 +0 Wis 12 +1 +1 Cha 14 +2 +2</p>' +
+      '<p>Senses Darkvision 120 ft. (unimpeded by magical Darkness), Passive Perception 11</p><p>CR 1 (XP 200; PB +2)</p></div>' +
+      '<div><h3>Actions</h3><p>Sting. Melee Attack Roll: +5. Hit: 6 (1d6 + 3) Piercing damage.</p></div></div>');
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Sting']);
+  });
+  it('names an entry whose site dropped the space after its name, and takes a doubled word as printed', () => {
+    const b = P.statBlockFromLines([...head, 'Опасность 1 (200 опыта)', 'Легендарное сопротивление (3/день).Если он проваливает спасбросок, он преуспевает.',
+      '## Действия', 'Щупальца. Рукопашная атака оружием: +7 к попаданию. Попадание: 22 (4к8 + 4) Психического урона, и цель получает состояние состояние Схваченный.']);
+    assert.deepEqual(b.secs.Traits.map(e => e.n), ['Легендарное сопротивление (3/день)']);
+    assert.equal(require('../src/combat/statBlockBook.js').statBlockUnclean(b), '');
+  });
+  it('drops a site’s leftover markdown', () => {
+    assert.deepEqual([...P.statBlockHtmlLines('<p>*Legendary Resistance.* Melee or _Ranged Weapon Attack:__ +5</p>')], ['Legendary Resistance. Melee or Ranged Weapon Attack: +5']);
+  });
+  it('makes one monster per action set: "Действия для вида 1"', () => {
+    const b = P.statBlockFromLines([...head, 'Опасность 3 (700 опыта)', 'Сопротивление магии. Юань-ти совершает спасброски.',
+      'Действия для вида 1', 'Укус. Рукопашная атака оружием: +5 к попаданию.', 'Действия для вида 2', 'Сжимание. Рукопашная атака оружием: +5 к попаданию.']);
+    const types = P.statBlockTypes(b);
+    assert.deepEqual(types.map(t => [t.name, t.secs.Actions.map(e => e.n).join()]), [['Шпион (вид 1)', 'Укус'], ['Шпион (вид 2)', 'Сжимание']]);
+    assert.equal(types[1].secs.Traits.length, 1);
   });
 });

@@ -208,4 +208,9 @@ describe('importing a book or a module', () => {
     assert.deepEqual(combatNewBlocks(found, blocks, combatSourceName('Curse of Strahd.pdf')), []);
     assert.equal(combatNewBlocks(found, blocks, 'Other book').length, 2);
   });
+  it('keeps the later of two blocks a book prints under one name', () => {
+    const sample = Object.assign(combatBlankBlock(null, 'Фамильяр вампира'), { hp: '21 (6d4 + 6)' });
+    const own = Object.assign(combatBlankBlock(null, 'Фамильяр вампира'), { hp: '65 (10d8 + 20)' });
+    assert.deepEqual(combatNewBlocks([sample, combatBlankBlock(null, 'Бес'), own], {}, 'MM').map(b => b.hp || b.name), ['Бес', '65 (10d8 + 20)']);
+  });
 });

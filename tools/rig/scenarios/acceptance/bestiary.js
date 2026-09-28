@@ -22,8 +22,8 @@
 //      entry's name, AC and max HP, a second pick is numbered, and a later edit to the entry leaves
 //      those rows as they were.
 //   G. Pasted links are read one at a time: a monster page becomes an entry marked NEW with its
-//      page open and every action whole, even one the page draws late, and a line that is not a
-//      link stays as a failed row with its reason.
+//      page open and every action whole, even one the page draws late; a page whose stat block does
+//      not read clean, and a line that is not a link, each stay as a failed row with its reason.
 //   H. A key pressed while the window is open never reaches the map.
 //
 // ⚠ G SERVES A PAGE WRITTEN HERE, for an invented monster, from this process. No live site is
@@ -33,14 +33,19 @@
 const http = require('http');
 const lib = require('../../lib');
 
+const SCORES = '<table><tr><th>STR</th><th>DEX</th><th>CON</th><th>INT</th><th>WIS</th><th>CHA</th></tr>'
+  + '<tr><td>8 (-1)</td><td>14 (+2)</td><td>12 (+1)</td><td>2 (-4)</td><td>10 (+0)</td><td>5 (-3)</td></tr></table>';
 // The actions arrive a moment after the header, as they do on ttg.club.
 const PAGE = `<!DOCTYPE html><html><body><nav>Bestiary</nav><main><article>
   <h1>Tunnel Gnawer</h1><p>Small beast, unaligned</p>
   <p>Armor Class 13 (natural armor)</p><p>Hit Points 9 (2d6 + 2)</p><p>Speed 30 ft., burrow 10 ft.</p>
+  ${SCORES}<p>Challenge 1/8 (25 XP)</p>
   <div id="late"></div></article></main>
   <script>setTimeout(() => { document.getElementById('late').innerHTML = '<h3>Actions</h3>'
     + '<p>Bite. Melee Weapon Attack: +3 to hit, reach 5 ft. Hit: 4 (1d6 + 1) piercing damage.</p>'; }, 700);</script>
   <footer>Comments</footer></body></html>`;
+// The same monster with its score row missing.
+const HALF = PAGE.replace(SCORES, '');
 
 const OWN_HELPERS = `
 globalThis.__bsNames = () => Object.values(cbState.blocks).map(b => b.name).sort();
@@ -166,14 +171,14 @@ module.exports = async function bestiaryFeature(rig) {
 
   // ── G. Pasted links ───────────────────────────────────────────────────────
   // RED ON: bs.fresh.add gated off in _bsImported (bestiary.js) — 2026-09-25
-  const server = http.createServer((req, res) => { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(PAGE); });
+  const server = http.createServer((req, res) => { res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.end(req.url.includes('half-read') ? HALF : PAGE); });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   try {
     const url = 'http://127.0.0.1:' + server.address().port + '/bestiary/tunnel-gnawer/';
     await dm.evaluate(`(() => {
       __bsAct('import');
       document.querySelector('.bs-menu [data-m="links"]').click();
-      document.getElementById('bs-links').value = ${JSON.stringify(url)} + '\\nnot a link';
+      document.getElementById('bs-links').value = ${JSON.stringify(url + '\n' + url.replace('tunnel-gnawer', 'half-read') + '\nnot a link')};
       __bsAct('go');
       return 0;
     })()`);
@@ -189,7 +194,10 @@ module.exports = async function bestiaryFeature(rig) {
     // RED ON: the held-still wait gated off in readPage (statBlockFetch.js) — 2026-09-25
     rig.check(!!done && done.bite.includes('Hit: 4 (1d6 + 1)'),
               'the import took the page before its actions were drawn, so the attack has no damage: ' + JSON.stringify(done && done.bite));
-    rig.check(!!done && done.failed.length === 1 && /not a link.*not a web link/.test(done.failed[0]),
+    // RED ON: the unclean refusal gated off in _cbReadLink (statBlockImport.js) — 2026-09-28
+    rig.check(!!done && done.failed.some(q => /half-read.*could not be read cleanly \(ability scores\)/.test(q)),
+              'a page whose stat block does not read clean did not stay as a failed row naming why: ' + JSON.stringify(done && done.failed));
+    rig.check(!!done && done.failed.length === 2 && done.failed.some(q => /not a link.*not a web link/.test(q)),
               'a line that is not a link did not stay as one failed row with its reason: ' + JSON.stringify(done && done.failed));
   } finally {
     server.close();

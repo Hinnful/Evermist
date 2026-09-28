@@ -1,8 +1,7 @@
 'use strict';
 
 // multiattack.js — pure: what a Multiattack line says about the attacks beside it. No DOM.
-// A count, plus at most one pick, swap or pair of alternatives. Anything more, and anything the
-// reading could get wrong, gives the fallback pill.
+// A count, plus at most one pick, swap or pair of alternatives; anything more or uncertain gives the fallback.
 
 const COMBAT_NUMBERS = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
   одну: 1, один: 1, одной: 1, одним: 1, две: 2, два: 2, двумя: 2, три: 3, тремя: 3, четыре: 4, пять: 5, шесть: 6 };
@@ -12,7 +11,7 @@ const COMBAT_MULTI = /^(multiattack|мультиатака)(?![a-zа-яё])/i;
 // A whole-word match wins over a stem, so "longsword" never also matches Longbow. The stem is for
 // Russian cases ("когтями" against "Коготь").
 const COMBAT_FILLER = new Set(['with', 'its', 'his', 'her', 'their', 'the', 'using', 'melee', 'ranged',
-  'своим', 'своими', 'его', 'её', 'ее', 'ближнем', 'дальнобойные']);
+  'своим', 'своими', 'его', 'её', 'ее', 'ближнем', 'дальнобойные', 'используя']);
 const _cbWords = p => p.n.toLowerCase().replace(/ё/g, 'е').split(/[\s(]+/);
 // 2 for a whole word, 1 for a shared stem, 0 for neither.
 function _cbWordMatch(t, w) {
@@ -117,7 +116,8 @@ function _cbMultiChoice(text, pills) {
   for (let i = at + 1; i < toks.length; i++) {
     const tk = toks[i];
     if (COMBAT_NUMBERS[tk]) return null;
-    if (tk === ',' || COMBAT_JOIN.has(tk)) { open = false; continue; }
+    // "Громом и молнией": a join word inside the open name does not close it.
+    if (tk === ',' || COMBAT_JOIN.has(tk) && !(open && opts[opts.length - 1].n.split('(')[0].toLowerCase().split(/\s+/).includes(tk))) { open = false; continue; }
     if (open || /^(attacks?|атак[а-яё]*)$/.test(tk) || COMBAT_FILLER.has(tk)) continue;
     const p = _cbNameMatch(tk, pills, toks[i + 1]);
     if (!p || p === 'many' || opts.includes(p)) return null;
@@ -129,9 +129,9 @@ function _cbMultiChoice(text, pills) {
 
 // A swap in the last sentence, or "only one of which can be X" in the same one. The base is the
 // text before it, and "only one" also keeps the base's count off X.
-const COMBAT_SWAP_N = { one: '1', two: '2', any: 'any', одну: '1', одна: '1', две: '2', любую: 'any' };
+const COMBAT_SWAP_N = { one: '1', two: '2', any: 'any', одну: '1', одна: '1', две: '2', любую: 'any', каждую: 'any' };
 const COMBAT_SWAPS = [
-  /\.\s+(?:it|he|she|он|она|оно)?\s*(?:может заменить|can replace)\s+(?:(one|two|any|одну|две|любую)\s+)?(?:(?:of (?:the|those|these|its) attacks|из этих атак|атак[а-яё]*|attacks?)\s+)?(?:[a-zа-яё]+\s+)??(?:на\s+|with\s+|(?=использованием\s))(.+)$/i,
+  /\.\s+(?:it|he|she|он|она|оно)?\s*(?:может заменить|can replace)\s+(?:(one|two|any|одну|две|любую|каждую)\s+)?(?:(?:of (?:the|those|these|its) attacks|из (?:этих )?атак|атак[а-яё]*|attacks?)\s+)?(?:[a-zа-яё]+\s+)??(?:на\s+|with\s+|(?=использованием\s)|(?<=\sатаку\s)(?!.*\sна\s))(.+)$/i,
   /\.\s+(one|одна) (?:of them|of those attacks|of these attacks|из них) (?:can be replaced|может быть заменена) (?:with|by|на)\s+(.+)$/i,
   /\.\s+(?:it|he|she)\s+can use (?:its |the )?(.+?) in place of (one|any)(?: of (?:those|these|its))?(?: (?:melee|ranged))? attacks?$/i,
   /,?\s+(?:only one of which can be|только одна из которых может(?:\s+быть)?(?:\s+сделана)?)\s+(.+)$/i,
@@ -149,7 +149,12 @@ function _cbMultiSwap(text, actions) {
       .replace(/^заклинани[ея]\s+/i, '').replace(/\s+(?:attack|атакой)$/i, '').trim();
     return _cbActionName(clean, actions) || clean;
   });
-  return { base: s.slice(0, m.index), only: i === 3, names, swap: { k: COMBAT_SWAP_N[k.toLowerCase()], to: names.join(' or ') } };
+  // A swap tied to one attack names it: "заменить атаку Лапой на Огненное дыхание".
+  const tied = m[0].match(/атаку\s+([а-яё]+)\s+на\s/i);
+  const of = tied && actions.map(a => a.n.split('(')[0].trim()).find(n => _cbWordMatch(tied[1].toLowerCase().replace(/ё/g, 'е'), n.toLowerCase().replace(/ё/g, 'е').split(/\s+/)[0]));
+  const swap = { k: COMBAT_SWAP_N[k.toLowerCase()], to: names.join(' or ') };
+  if (of) swap.of = of;
+  return { base: s.slice(0, m.index), only: i === 3, names, swap };
 }
 
 function _cbMultiAlts(text, pills) {
@@ -163,19 +168,23 @@ const COMBAT_TIMES = { twice: 2, 'three times': 3, 'four times': 4, дважды
 const COMBAT_TIMES_WORD = ['', '', 'two', 'three', 'four'];
 const COMBAT_TIMES_RE = 'twice|three times|four times|дважды|трижды';
 function _cbMultiRays(text, pills) {
-  const m = text.trim().match(new RegExp(`^\\S+(?:\\s\\S+)?\\s+(?:uses|использует)\\s+(?:its\\s+)?(.+?)\\s+(${COMBAT_TIMES_RE})\\.?$`, 'i'));
+  const s = text.trim();
+  const after = s.match(new RegExp(`^\\S+(?:\\s\\S+)?\\s+(?:uses|использует)\\s+(?:its\\s+)?(.+?)\\s+(${COMBAT_TIMES_RE})\\.?$`, 'i'));
+  const before = !after && s.match(new RegExp(`^\\S+(?:\\s\\S+)?\\s+(${COMBAT_TIMES_RE})\\s+(?:uses|использует)\\s+(.+?)\\.?$`, 'i'));
+  const [list, times] = after ? [after[1], after[2]] : before ? [before[2], before[1]] : [];
   const lists = [...new Set(pills.map(p => p.of).filter(Boolean))];
-  const name = m && _cbActionName(m[1], lists.map(n => ({ n })));
+  const name = list && _cbActionName(list, lists.map(n => ({ n })));
   const opts = name ? pills.filter(p => p.of === name) : [];
-  return opts.length > 1 ? { x: COMBAT_TIMES[m[2].toLowerCase()], opts, or: true } : null;
+  return opts.length > 1 ? { x: COMBAT_TIMES[times.toLowerCase()], opts, or: true } : null;
 }
 
 // What a frame may not carry: a condition, a spell, a count the DM tracks, a form to be in.
-const COMBAT_TOO_MUCH = /\b(?:if|when|while|unless|spells?|casts?|as many|in \w+ form|each one)\b|\d+[dк]\d+|(?:^|\s)(?:если|когда|пока|заклинани[а-яё]*|сотвор[а-яё]*|столько|в облике)(?=[\s.,]|$)/i;
+const COMBAT_TOO_MUCH = /\b(?:if|when|while|unless|spells?|casts?|as many|in \w+ form|each one|only once)\b|\d+[dк]\d+|(?:^|\s)(?:если|когда|пока|заклинани[а-яё]*|сотвор[а-яё]*|столько|в облике|только раз)(?=[\s.,]|$)/i;
 const COMBAT_BONUS = /bonus action|бонусн[а-яё]* действи/i;
 
 // { opts, counts }, { x, opts, or } or { alts }, with its swap and bonus pills; null is the fallback pill.
 function _cbMultiRead(text, pills, actions) {
+  text = text.replace(/(?<=\p{L})(?:[—–]|--)(?=\p{L})/gu, ' — ');
   const rays = _cbMultiRays(text, pills);
   if (rays) return { ...rays, bonus: [] };
   const sents = text.trim().split(/(?<=\.)\s+/);

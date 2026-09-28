@@ -34,7 +34,7 @@ function _cbGroup(a) {
   const alt = pills => pills.length === 1 ? cbAttackPill(pills[0]) : `<span class="cb-grp">${pills.map(cbAttackPill).join('')}</span>`;
   return `<span class="cb-grp" title="${_cbEsc(`${a.n}. ${a.t}`)}">${a.x ? `<span class="gx">${a.x}×</span>` : ''}${
     a.alts ? a.alts.map(alt).join(CB_OR) : a.opts.map(cbAttackPill).join(a.or ? CB_OR : '')}${
-    a.swap ? `<span class="gsw">${_cbGlyph(CB_GLYPH_SWAP)}${_cbEsc(a.swap.k)} for ${_cbEsc(a.swap.to)}</span>` : ''}</span>`;
+    a.swap ? `<span class="gsw">${_cbGlyph(CB_GLYPH_SWAP)}${_cbEsc(a.swap.of || a.swap.k)} for ${_cbEsc(a.swap.to)}</span>` : ''}</span>`;
 }
 
 const _cbPillName = n => n.replace(/\s*\([^)]*\)/g, '').trim() || n;

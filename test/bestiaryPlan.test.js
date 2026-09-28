@@ -31,6 +31,8 @@ describe('what a monster is filed under', () => {
     assert.equal(B.bsCr(lich), '21');
     assert.equal(B.bsCrValue(B.bsCr(goblin)), 0.25);
     assert.equal(B.bsCrValue('—'), -1);
+    assert.equal(B.bsCr({ cr: '¼ (50 ПО; БМ +2)' }), '1/4');
+    assert.equal(B.bsCrValue(B.bsCr({ cr: '⅛' })), 0.125);
   });
 });
 

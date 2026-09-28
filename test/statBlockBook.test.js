@@ -292,3 +292,87 @@ describe('statBlocksInText on page furniture inside a header, and fused credits'
     assert.match(b.secs.Traits[1].t, /со всеми ПЗ где-то/);
   });
 });
+
+describe('statBlocksInText on sidebars, lore across a page, and spell lists', () => {
+  const prose = n => lore(n).map(([f, t]) => [f, f, t]);
+  const pdf = rows => rows.map(([f, lead, t]) => `${f}\u0001${lead}\u0001${t}`).join('\n');
+  const head = [['N', 'N', 'костяной дьявол'], ['S', 'S', 'Большое исчадие (дьявол), законно-злое'], ['B', 'B', 'Класс Доспеха 19'],
+    ['B', 'B', 'Хиты 142 (15к10 + 60)'], ['B', 'B', 'СИЛ ЛОВ ТЕЛ ИНТ МДР ХАР'], ['B', 'B', '18 ( +4 ) 16 ( +3 ) 18 ( +4 ) 13 ( +1 ) 14 ( +2 ) 16 ( +3 )'],
+    ['B', 'B', 'Опасность 9 (5000 опыта)']];
+  const act = (n, d) => ['B', 'E', `${n}. Рукопашная атака оружием: +8 к попаданию. Попадание: Рубящий урон ${d}.`];
+  it('ends at a variant sidebar, which is often another monster’s', () => {
+    const [b] = statBlocksInText(pdf([...head, ['H', 'H', 'Действия'], act('Коготь', '8 (1к8+4)'),
+      ['V', 'V', 'вариант : копья ледяных дьяволов'], act('Ледяное копьё', '14 (2к8+5)')]));
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Коготь']);
+  });
+  it('keeps a name set as a sentence’s last word inside the sentence', () => {
+    const [b] = statBlocksInText(pdf([...head, ['H', 'H', 'Действия'], ['B', 'E', 'Мультиатака. Насыпь совершает два удара и использует против неё'],
+      ['E', 'E', 'Поглощение.'], ['N', 'E', 'Размашистый удар. Рукопашная атака оружием: +7 к попаданию. Попадание: Дробящий урон 13 (2к8+4).']]));
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Мультиатака', 'Размашистый удар']);
+  });
+  it('drops a line-break hyphen after a two-letter half: "re-" / "place"', () => {
+    const [b] = statBlocksInText(pdf([...head, ['H', 'H', 'Действия'], ['B', 'E', 'Мультиатака. Дьявол совершает атаки. It can re-'],
+      ['B', 'B', 'place one attack.'], ['L', 'L', 'Here re and re and place and place stand as words.']]));
+    assert.match(b.secs.Actions[0].t, /can replace one/);
+  });
+  it('ends at any sidebar title set in small caps in the variant font, and drops a glued chapter tab', () => {
+    const [b] = statBlocksInText(pdf([['V', 'V', 'вариант : фамильяр бес'], ['L', 'L', 'Бесы служат колдунам.'],
+      ...head, ['H', 'H', 'Действия'], ['B', 'E', 'Коготь. Рукопашная атака оружием: +8 к попаданию. Попадание: Рубящий урон 8 (1к8+4).Э'],
+      ['V', 'V', 'природа роёв'], ['L', 'L', 'Рои — это не просто звери.']]));
+    assert.match(b.secs.Actions[0].t, /\(1к8\+4\)\.$/);
+    assert.ok(!JSON.stringify(b).includes('роёв'));
+  });
+  it('starts the first entry past the header even when its name is set in the body font', () => {
+    const [b] = statBlocksInText(pdf([...head, ['B', 'B', 'Двуглавость. Пёс совершает с преимуществом проверки.'],
+      ['H', 'H', 'Действия'], act('Коготь', '8 (1к8+4)')]));
+    assert.equal(b.cr, '9 (5000 опыта)');
+    assert.deepEqual(b.secs.Traits.map(e => e.n), ['Двуглавость']);
+  });
+  it('reads on past lore set across a page’s end, at an entry in the block’s own font', () => {
+    const [b] = statBlocksInText(pdf([...head, ['H', 'H', 'Действия'], act('Укус', '12 (2к8+3)'),
+      ['N', 'N', 'дракон, теневой'], ...Array.from({ length: 20 }, (_, i) => ['L', 'L', `Теневые драконы живут во тьме, строка ${i}.`]),
+      ['R', 'R', 'Дракон, теневой'], ['P', 'P', '98'], act('Коготь', '8 (1к8+4)')]));
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Укус', 'Коготь']);
+    assert.ok(!JSON.stringify(b).includes('Теневые'));
+  });
+  it('reads on past lore that cuts a sentence, where the sentence goes on in lower case', () => {
+    const [b] = statBlocksInText(pdf([...head, ['H', 'H', 'Действия'],
+      ['B', 'E', 'Проклятое касание. Рукопашная атака оружием: +10 к попаданию. Попадание: Рубящий урон 12 (2к6+5). Если'],
+      ['R', 'R', '250 ракшаса'], ['N', 'N', 'Ракшаса'], ['B', 'B', 'Сокровища: Реликвии'], ['L', 'L', 'Ракшасы — мастера манипуляций.'], ['L', 'L', 'Они скрывают свою природу.'],
+      ['B', 'B', 'цель — существо, она проклята.'], act('Гибельный приказ', '28 (8к6)')]));
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Проклятое касание', 'Гибельный приказ']);
+    assert.match(b.secs.Actions[0].t, /Если цель — существо/);
+    assert.ok(!JSON.stringify(b).includes('манипуляций'));
+  });
+  it('keeps a spell list’s wrapped lines, and the sections after it', () => {
+    const [b] = statBlocksInText(pdf([...head, ['H', 'H', 'Действия'], act('Коготь', '8 (1к8+4)'),
+      ['B', 'E', 'Заклинания. Дьявол сотворяет одно из заклинаний:'], ['W', 'X', 'Неограниченно: Обнаружение магии, Доспехи мага (включено в'],
+      ['W', 'W', 'КД), Свет'], ['W', 'X', '1 в день каждое: Огненный шар, Полёт,'], ['W', 'W', 'Слово Силы'],
+      ['H', 'H', 'Реакции'], ['B', 'E', 'Защитная магия. Дьявол сотворяет Щит.']]));
+    assert.deepEqual(b.secs.Reactions.map(e => e.n), ['Защитная магия']);
+  });
+  it('keeps a score line that repeats itself, and one set in a lore font', () => {
+    const [b] = statBlocksInText(pdf([...prose(30), ['N', 'N', 'магмовый мефит'], ['S', 'S', 'Маленький элементаль, нейтрально-злой'], ['B', 'B', 'Класс Доспеха 11'],
+      ['B', 'B', 'Хиты 22 (5к6 + 5)'], ['B', 'B', 'Скорость 30 фт., летая 30 фт.'], ['L', 'L', 'СИЛ ЛОВ ТЕЛ ИНТ МДР ХАР'], ['L', 'L', '8 (−1) 12 (+1) 12 (+1) 7 (−2) 10 (+0) 10 (+0)'],
+      ['B', 'B', 'Опасность 1/2 (100 опыта)'], ['H', 'H', 'Действия'], ...['Коготь', 'Укус', 'Хвост', 'Рога', 'Копыто', 'Жало', 'Лапа', 'Шип'].map(n => act(n, '3 (1к4+1)')), ...prose(12)]));
+    assert.deepEqual(b.abil, ['8', '12', '12', '7', '10', '10']);
+  });
+  it('drops a margin callout fused mid-sentence, and reads the text layer’s "3" for "З"', () => {
+    const [b] = statBlocksInText(pdf([...head, ['H', 'H', 'Действия'], ['B', 'E', 'Коготь. Рукопашная атака оружием: +8 к попаданию. Вампир может5'],
+      ['B', 'B', 'общаться телепатически. Попадание: Рубящий урон 8 (1к8+4).'], ['H', 'H', 'Бонусные действия'], ['B', 'E', '3атаптывание. Спасбросок Ловкости: Сл 18.']]));
+    assert.match(b.secs.Actions[0].t, /может общаться/);
+    assert.equal(b.secs['Bonus actions'][0].n, 'Затаптывание');
+  });
+  it('reads a block on past lore headed with its own name, and a small-caps name with stray capitals', () => {
+    const [b] = statBlocksInText(pdf([['N', 'N', 'ГиГантская Гиена'], ...head.slice(1), ['H', 'H', 'Действия'], act('Коготь', '8 (1к8+4)'),
+      ['N', 'N', 'гиГантская гиена'], ...Array.from({ length: 8 }, (_, i) => ['L', 'L', `Гиены рыщут по степи, строка ${i}.`]), act('Укус', '12 (2к8+3)')]));
+    assert.equal(b.name, 'Гигантская гиена');
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Коготь', 'Укус']);
+  });
+  it('keeps "Действия для вида 1" as a heading, and starts a numbered entry after a colon', () => {
+    const blocks = statBlocksInText(pdf([...prose(12), ...head, ['H', 'H', 'Действия'], ['B', 'E', 'Лучи. Дьявол испускает луч:'], ['B', 'R', '1. Луч страха. Цель испугана.'],
+      ['H', 'H', 'Действия для вида 1'], act('Коготь', '8 (1к8+4)'), ['H', 'H', 'Действия для вида 2'], act('Укус', '12 (2к8+3)')]));
+    assert.deepEqual(blocks.map(b => b.name), ['Костяной дьявол (вид 1)', 'Костяной дьявол (вид 2)']);
+    assert.deepEqual(blocks[0].secs.Actions.map(e => e.n), ['Лучи', '1', 'Коготь']);
+  });
+});

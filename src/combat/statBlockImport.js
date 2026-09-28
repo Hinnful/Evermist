@@ -80,6 +80,8 @@ async function _cbReadLink(link) {
   let parsed = null;
   try { parsed = statBlockFromPage(res.text); } catch (err) { console.error('Reading the stat block failed:', err); }
   if (!parsed) return { why: 'No stat block on that page, so nothing was added.' };
+  const unclean = statBlockUnclean(parsed);
+  if (unclean) return { why: `The stat block on that page could not be read cleanly (${unclean}), so nothing was added.` };
   const id = combatAddEntry(cbState.blocks, Object.assign(parsed, { source: url.hostname.replace(/^www\./, '') })).id;
   cbSave();
   return { id };

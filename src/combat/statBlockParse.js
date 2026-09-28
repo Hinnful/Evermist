@@ -1,7 +1,6 @@
 'use strict';
 
 // statBlockParse.js — pure kernel: stat block text, English or Russian, into the popup's block.
-// Unit-tested; see test/statBlockParse.test.js.
 // The line protocol: the first line is the name. A line starting "## " is a heading the source
 // marked; an unmarked line matching a section name is read as a heading too.
 
@@ -40,7 +39,8 @@ const SB_LORE = /^(description|lore|описание)$/i;
 const SB_END = /^(comments?|комментарии)$/i;
 const SB_LAIR = /^(логово|lair)(\s|$)|['’]s lair$/i;
 const SB_SIGN = '[+\\-−–]';
-const SB_SIZE = /^(tiny|small|medium|large|huge|gargantuan|крошечн|крохотн|маленьк|небольш|средн|больш|крупн|огромн|громадн|исполинск)/i;
+// Whole English words: a wrapped "smaller creature, it has…" is no size line.
+const SB_SIZE = /^((?:tiny|small|medium|large|huge|gargantuan)(?![a-z])|крошечн|крохотн|маленьк|небольш|средн|больш|крупн|огромн|громадн|исполинск)/i;
 
 function _sbBlank() {
   return { name: '', meta: '', ac: '', hp: '', speed: '', abil: ['10', '10', '10', '10', '10', '10'],
@@ -65,8 +65,23 @@ function _sbLabel(line) {
 
 function _sbSection(line) {
   const low = line.replace(/^##\s*/, '').replace(/[:.]\s*$/, '').trim().toLowerCase();
+  const type = low.match(/^(?:действия для вида|actions \(type)\s*(\d+)\)?$/);
+  if (type) return `Actions:${type[1]}`;
   const hit = SB_SECTIONS.find(([, names]) => names.includes(low));
   return hit ? hit[0] : null;
+}
+
+// A block printing an action set per type, "Действия для вида 1", is one monster per type.
+function statBlockTypes(b) {
+  const types = Object.keys(b.secs).filter(k => /^Actions:\d+$/.test(k));
+  if (!types.length) return [b];
+  return types.map(k => {
+    const secs = {};
+    for (const [s, v] of Object.entries(b.secs)) if (!types.includes(s)) secs[s] = v;
+    secs.Actions = (b.secs.Actions || []).concat(b.secs[k]);
+    const t = { ...b, name: `${b.name} (${/\p{Script=Cyrillic}/u.test(b.name) ? 'вид' : 'Type'} ${k.slice(8)})`, secs };
+    return Object.defineProperty(t, 'abilRead', { value: b.abilRead });
+  });
 }
 
 // Abilities arrive as one line ("STR 12 (+1) DEX 15 (+2) ..."), as a table with a save column
@@ -95,10 +110,10 @@ function _sbAbilities(text) {
 
 const SB_ABIL_TOKEN = new RegExp(`^(?:${SB_ABIL.flatMap(a => a.slice(0, 2)).join('|')}|\\d+|\\(\\s*${SB_SIGN}?\\d+\\s*\\)|${SB_SIGN}\\d+|mod|save|ability|score|physical|mental|abilities|мод|спас|спасбросок|бросок|исп|[\\s,])+$`, 'iu');
 
-// "Bite. Melee Weapon Attack: ..." names its entry up to the first full stop. A long first
-// sentence, or one with a colon in it, is text: a legendary intro or a spell list.
+// "Bite. Melee Weapon Attack: ..." names its entry up to the first full stop, a space after it or not.
+// A long first sentence, or one with a colon in it, is text: a legendary intro or a spell list.
 function _sbEntry(line, alone) {
-  const m = line.match(/^(.{1,110}?)\.\s+(.*)$/s);
+  const m = line.match(/^(.{1,110}?)\.(?:(?<=\)\.)\))?(?:\s+|(?=\p{Lu}\p{Ll}))(.*)$/su);
   if (m && !/:/.test(m[1]) && m[1].replace(/\([^)]*\)/g, '').trim().split(/\s+/).length <= 9 && /^[\p{Lu}\d+]/u.test(m[1])) {
     return { n: m[1].trim(), t: m[2].trim() };
   }
@@ -109,16 +124,17 @@ function _sbEntry(line, alone) {
   return null;
 }
 
-// A PDF can run a second attack into the first one's text after its hit: "... Hit: 5 (1d6+2).
-// Hand Crossbow. Ranged Weapon Attack: ...".
+// A PDF or a site can run an attack into the entry before it: "…two greatclub attacks. Greatclub. Melee…".
 const SB_ATTACK_OPEN = '(?:Melee|Ranged|Рукопашная|Дальнобойная|Бросок)\\s';
 function _sbSplitAttacks(e) {
-  const m = e.t.match(new RegExp(`^(.*?(?:Hit|Попадание):[^]*?\\.)\\s+(\\p{Lu}[^.:\\n]{1,60}?)\\.\\s+(${SB_ATTACK_OPEN}[^]*)$`, 'u'));
+  const m = e.t.match(new RegExp(`^(.*?\\.)\\s+(\\p{Lu}[^.:\\n]{1,60}?)\\.\\s+(${SB_ATTACK_OPEN}[^]*)$`, 'u'));
   return m ? [{ ...e, t: m[1] }, ..._sbSplitAttacks({ n: m[2].trim(), t: m[3] })] : [e];
 }
 
 function statBlockFromLines(input) {
   const lines = [];
+  // A size line run into the AC line after it: "Large fiend (demon), chaotic evil Armor Class 16".
+  input = [].concat(...input.map(r => SB_SIZE.test(String(r || '')) ? String(r).split(/\s+(?=(?:armor class|класс доспеха|класс защиты)\s+\d)/i) : [r]));
   for (const raw of input) {
     let l = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
     if (!l) continue;
@@ -195,7 +211,7 @@ function statBlockFromLines(input) {
       // finishes the size line, or is the value of a label left alone on its line.
       const open = (lastVal.match(/\(/g) || []).length > (lastVal.match(/\)/g) || []).length;
       const tail = /\p{Ll}$/u.test(lastVal) && (line.split(' ').length <= 3 || /^\d/.test(line)) && !(/^\p{L}/u.test(line) && _sbEntry(line));
-      if (lastField && (lastField === 'meta' || !lastVal || open || tail || /^[\p{Ll}[(]/u.test(line) || /(?:[,;+×—–-]|\s(?:and|or|и|или))$/.test(lastVal))) {
+      if (lastField && (lastField === 'meta' || !lastVal || open || tail || /^[\p{Ll}[(]|^[+\-−]\d/u.test(line) || /(?:[,;+×—–-]|\s(?:and|or|и|или))$/.test(lastVal))) {
         lastVal = lastVal ? `${lastVal} ${line}` : line;
         if (lastField !== '-') b[lastField] = b[lastField] ? `${b[lastField]} ${line}` : line;
         if (lastField === 'meta') lastField = null;
@@ -210,14 +226,23 @@ function statBlockFromLines(input) {
     // A name alone on its line takes the next line as its text, whatever that line looks like.
     if (entry && entry.n && !entry.t) { entry.t = line; continue; }
     const e = sec !== 'Lair actions' && _sbEntry(line, 4);
-    if (e) { entry = e; b.secs[sec].push(e); }
+    // A site sets a paragraph of an entry's text apart: its first sentence is no name.
+    if (e && entry && e.n.replace(/\([^)]*\)/g, '').trim().split(/\s+/).length > 7) entry.t = entry.t ? `${entry.t}\n${line}` : line;
+    else if (e) { entry = e; b.secs[sec].push(e); }
     else if (entry) entry.t = entry.t ? `${entry.t}\n${line}` : line;
-    else { entry = { n: '', t: line }; b.secs[sec].push(entry); }
+    else {
+      // A book's typo, taken as printed: "Атака в броске: Если лось…" names its trait with a colon.
+      const c = sec !== 'Lair actions' && line.match(/^(\p{Lu}[\p{L} ]{2,40}):\s+(\p{Lu}.*)$/su);
+      entry = c ? { n: c[1], t: c[2] } : { n: '', t: line };
+      b.secs[sec].push(entry);
+    }
   }
 
   for (const s of Object.keys(b.secs)) b.secs[s] = b.secs[s].flatMap(_sbSplitAttacks);
   if (!b.saves && derivedSaves.length) b.saves = derivedSaves.join(', ');
   if (lore) b.lore = lore.join('\n\n');
+  // A die table inside a trait, "5–6. The target…", stays in it; numbered rays are actions.
+  if (b.secs.Traits) b.secs.Traits = b.secs.Traits.filter((e, i, all) => !(i && /^\d+(?:[–-]\d+)?$/.test(e.n) && (all[i - 1].t += `\n${e.n}. ${e.t}`)));
   for (const s of Object.keys(b.secs)) if (!b.secs[s].length) delete b.secs[s];
   if (!b.ac && !b.hp && !seenAbil) return null;
   b.hp = statBlockJoinHp(b.hp);
@@ -253,9 +278,24 @@ function statBlockFind(page) {
     for (let d = n; d > 0; d--) {
       const stop = paths.findIndex((p, i) => i > at && p[d - 1] !== b[d - 1]);
       const last = stop < 0 ? lines.length : stop;
-      if (lines.slice(at + 1, last).some(l => _sbSection(l) || _sbEntry(l))) { end = last; break; }
+      if (lines.slice(at + 1, last).some(l => _sbSection(l) || _sbEntry(l) && !_sbLabel(l))) { end = last; break; }
+    }
+    // A section ends where its heading's element does; unheaded text past it is lore, a heading a new part.
+    let sec = null, depth = 0;
+    for (let i = at + 1; i < end; i++) {
+      if (_sbSection(lines[i]) && i + 1 < end) {
+        sec = paths[i]; depth = 0;
+        while (depth < sec.length && sec[depth] === paths[i + 1][depth]) depth++;
+      } else if (sec && paths[i].slice(0, depth).some((x, k) => x !== sec[k])) {
+        if (lines[i].startsWith('## ')) { sec = null; continue; }
+        if (!SB_LORE.test(lines[i])) { lines.splice(i, 0, 'Description'); end++; }
+        break;
+      }
     }
   }
+  // A site's footer can sit inside that box, under the last action.
+  const foot = lines.findIndex((l, i) => i > at && /^(?:Habitat|Treasure|Source|Environments?):/.test(l));
+  if (foot > 0 && foot < end) end = foot;
   // Source badges ride along in some headings: "Goblin [Goblin] PH14 MM14".
   return [name.replace(/(\s*[A-Z]{2,6}\d{2})+$/, '')].concat(lines.slice(top, end));
 }
@@ -274,7 +314,8 @@ function statBlockHtmlLines(html) {
   const lines = [], paths = [], stack = [];
   let text = '', path = null, heading = false, id = 0;
   const flush = () => {
-    const t = statBlockDecode(text).replace(/\s+/g, ' ').trim();
+    // A site's leftover markdown: "Melee or _Ranged Weapon Attack:__ +5".
+    const t = statBlockDecode(text).replace(/[_*]+/g, '').replace(/\s+/g, ' ').trim();
     if (t) { lines.push(heading ? `## ${t}` : t); paths.push(path); }
     text = ''; path = null;
   };
@@ -327,6 +368,6 @@ function statBlockJoinHp(hp) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { statBlockFromLines, statBlockFind, statBlockHtmlLines, statBlockFromPage, statBlockJoinHp,
+  module.exports = { statBlockFromLines, statBlockFind, statBlockHtmlLines, statBlockFromPage, statBlockJoinHp, statBlockTypes,
     _sbLabel, _sbSection, _sbEntry, SB_SIZE, SB_ABIL_TOKEN };
 }

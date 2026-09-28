@@ -31,7 +31,8 @@ function bsMoves(b) {
   const m = BS_MOVES.filter(([, r]) => r.test(String(b.speed || ''))).map(([n]) => n);
   return m.length ? m : ['Walk only'];
 }
-function bsCr(b) { return String(b.cr || '').trim().split(/[\s(]/)[0] || '—'; }
+const BS_FRACTIONS = { '⅛': '1/8', '¼': '1/4', '½': '1/2' };
+function bsCr(b) { return String(b.cr || '').trim().split(/[\s(]/)[0].replace(/[⅛¼½]/, c => BS_FRACTIONS[c]) || '—'; }
 function bsCrValue(cr) {
   const c = String(cr);
   if (c.includes('/')) { const [a, d] = c.split('/'); return a / d; }

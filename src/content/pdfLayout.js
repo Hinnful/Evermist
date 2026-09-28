@@ -76,6 +76,8 @@ const PL_CUT_CLEAR = 12;
 const PL_CUT_GAP = 24;
 const PL_CUT_BACK = 16;
 const PL_CUT_HEAD = 3;
+const PL_CUT_REACH = 60;
+const PL_CUT_WIDE = 45;
 
 function _plPageLineObjs(page, opts) {
   const o = opts || {};
@@ -100,7 +102,12 @@ function _plPageLineObjs(page, opts) {
       col.forEach((l, i) => {
         if (!o.cutAbove(texts, i)) return;
         const b = l.y + 1;
-        if (!other.some(x => Math.abs(x.y - b) < PL_CUT_CLEAR)) { cuts.push(b); return; }
+        if (!other.some(x => Math.abs(x.y - b) < PL_CUT_CLEAR)) {
+          // Only a wide box's other half starts below a wide gap; beside a one-column block the other column runs on.
+          const above = other.filter(x => x.y > b).pop(), bi = other.findIndex(x => x.y < b && b - x.y <= PL_CUT_REACH);
+          if (above && (bi < 0 || above.y - other[bi].y < PL_CUT_WIDE || o.cutAbove(otherTexts, bi))) return;
+          cuts.push(b); return;
+        }
         // Two boxes stacked on a page: this box's other half starts level with its name, under a gap.
         const k = other.findIndex((x, j) => j && other[j - 1].y - x.y >= PL_CUT_GAP && x.y >= l.y && x.y - l.y <= PL_CUT_CLEAR);
         const own = new Set(col.slice(i + 1, i + 30).map(x => x.font));

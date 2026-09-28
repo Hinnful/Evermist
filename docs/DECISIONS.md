@@ -470,6 +470,11 @@ fight table, and a creature with nothing to do in a fight is narrative or a misp
 2026-09-28 although it refuses the few creatures printed with no actions: it is the check that
 catches a block whose actions a page break cut off, and Import anyway brings the rest in.
 
+### A link that does not read clean is refused · `SETTLED` (2026-09-28)
+The link import took any page it found an Armor Class on, so a site whose layout merged traits or
+dropped a score row added a half-read monster that looked whole. It now runs the book import's
+clean-read check and names the reason in the failed row; the editor and Retry cover the gap.
+
 ### A book is read from its path · `SETTLED` (2026-09-25)
 The Monster Manual PDF is 305 MB. The book import hands `getPathForFile`'s path to the extraction
 process, which reads the file itself, so the bytes never cross IPC; the module import still sends
