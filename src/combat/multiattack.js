@@ -143,10 +143,10 @@ function _cbMultiSwap(text, actions) {
   if (i < 0) return null;
   const [k, raw] = i === 2 ? [m[2], m[1]] : i === 3 ? ['one', m[1]] : [m[1] || 'one', m[2]];
   const names = raw.split(/\s+(?:или|or)\s+/).map(alt => {
-    const clean = alt.replace(/\([АБAB]\)\s*/g, '').replace(/,?\s*(?:если оно доступно|if available)$/i, '')
+    const clean = alt.replace(/\([АБAB]\)\s*/g, '').replace(/,?\s*(?:если (?:оно|это заклинание) доступно|if available)$/i, '').replace(/\s*\[[^\]]*\]/g, '')
       .replace(/^(?:использованием|использование|сотворение|атаку|an? (?:use|casting) of|one use of|casting|an?)\s+/i, '')
       .replace(/^сотворени[а-яё]*\s+заклинани[а-яё]*\s+\((.+)\)$/i, '$1')
-      .replace(/^заклинани[ея]\s+/i, '').replace(/\s+(?:attack|атакой)$/i, '').trim();
+      .replace(/^заклинани[ея]\s+/i, '').replace(/^заклинаний,?\s+чтобы\s+(?:наложить|сотворить)\s+(?:заклинание\s+)?/i, '').replace(/\s+(?:attack|атакой)$/i, '').trim();
     return _cbActionName(clean, actions) || clean;
   });
   // A swap tied to one attack names it: "заменить атаку Лапой на Огненное дыхание".

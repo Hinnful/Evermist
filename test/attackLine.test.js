@@ -257,6 +257,13 @@ describe('Multiattack', () => {
     assert.deepEqual(show([['Multiattack', 'The devil makes two melee attacks with its fork. It can use Hurl Flame in place of any melee attack.'], fork, flame]),
       ['[2× Fork +10 15 piercing ⇄ any Hurl Flame]', 'Hurl Flame +7 14 fire']);
   });
+  it('reads the site\'s "Сл. 17" and a swap to a spell "чтобы наложить заклинание"', () => {
+    const strike = ['Удар смерти', 'Бросок рукопашной атаки: +9, досягаемость 5 фт. Попадание: 8 (1к8 + 4) рубящего урона плюс 14 (4к6) некротического урона. Если цель является существом Большого размера или меньше, она получает состояние схваченный (Сл. высвобождения 14) одной из двух рук Страда.'];
+    const bite = ['Укус (только в форме летучей мыши или вампира)', 'Спасбросок Телосложения: Сл. 17, одно существо в пределах 5 фт. Провал: 7 (1к6 + 4) колющего урона плюс 10 (3к6) некротического урона.'];
+    const at = pills([['Мультиатака', 'Страд совершает две атаки Удар смерти. Он может заменить одну из этих атак использованием (А) Укус или (Б) Использование заклинаний, чтобы наложить заклинание Огненный шар [Fireball], если это заклинание доступно.'], strike, bite,
+      ['Использование заклинаний', 'Страд накладывает одно из следующих заклинаний:']]);
+    assert.deepEqual([at[0].swap, at[0].opts[0].grab, brief(at[1])], [{ k: '1', to: 'Укус or Огненный шар' }, '14', 'Укус (только в форме летучей мыши или вампира) DC 17 Con 7 piercing + 10 necrotic']);
+  });
   it('reads "only one of which" as a swap, the count kept off the swapped attack', () => {
     const strike = ['Unarmed Strike', 'Melee Weapon Attack: +9 to hit. Hit: 8 (1d8 + 4) bludgeoning damage.'];
     const vbite = ['Bite', 'Melee Weapon Attack: +9 to hit. Hit: 7 (1d6 + 4) piercing damage plus 10 (3d6) necrotic damage.'];

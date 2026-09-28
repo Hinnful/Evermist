@@ -75,9 +75,9 @@ const _cbAbility = w => {
 function _cbSave(t) {
   const m = t.match(/DC\s*(\d+)\s+(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)\s+saving\s+throw/i)
     || t.match(/(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)\s+Saving\s+Throw:\s*DC\s*(\d+)/i)
-    || t.match(/спасброс[а-яё]*\s+([А-Яа-яЁё]+)[:,]?\s*(?:со\s+)?Сл\s*(\d+)/i)
-    || t.match(/Сл\s*(\d+)[^.]{0,30}?спасброс[а-яё]*\s+([А-Яа-яЁё]+)/i)
-    || t.match(/Испытани[а-яё]*\s+([А-Яа-яЁё-]+):?\s*Сл\s*(\d+)/i);
+    || t.match(/спасброс[а-яё]*\s+([А-Яа-яЁё]+)[:,]?\s*(?:со\s+)?Сл\.?\s*(\d+)/i)
+    || t.match(/Сл\.?\s*(\d+)[^.]{0,30}?спасброс[а-яё]*\s+([А-Яа-яЁё]+)/i)
+    || t.match(/Испытани[а-яё]*\s+([А-Яа-яЁё-]+):?\s*Сл\.?\s*(\d+)/i);
   if (!m) return null;
   const [dc, ab] = /^\d/.test(m[1]) ? [m[1], m[2]] : [m[2], m[1]];
   const ability = _cbAbility(ab);
@@ -97,8 +97,8 @@ function _cbRecharge(s) {
 
 function _cbGrapple(hit) {
   const m = hit.match(/grappled[^.(]*\(\s*escape\s+DC\s*(\d+)\s*\)/i)
-    || hit.match(/(?:схвачен|захвачен)[а-яё]*[^.(]*\(\s*Сл\s+(?:высвобождения|освобождения|выхода|побега)(?:\s+от\s+захвата)?\s*(\d+)\s*\)/i)
-    || hit.match(/(?:схвачен|захвачен)[а-яё]*[^.(]*\(\s*(?:вырваться|высвободиться)\s+Сл\s*(\d+)\s*\)/i);
+    || hit.match(/(?:схвачен|захвачен)[а-яё]*[^.(]*\(\s*Сл\.?\s+(?:высвобождения|освобождения|выхода|побега)(?:\s+от\s+захвата)?\s*(\d+)\s*\)/i)
+    || hit.match(/(?:схвачен|захвачен)[а-яё]*[^.(]*\(\s*(?:вырваться|высвободиться)\s+Сл\.?\s*(\d+)\s*\)/i);
   return m ? m[1] : '';
 }
 
