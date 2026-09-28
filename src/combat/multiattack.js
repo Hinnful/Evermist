@@ -131,7 +131,7 @@ function _cbMultiChoice(text, pills) {
 // text before it, and "only one" also keeps the base's count off X.
 const COMBAT_SWAP_N = { one: '1', two: '2', any: 'any', одну: '1', одна: '1', две: '2', любую: 'any' };
 const COMBAT_SWAPS = [
-  /\.\s+(?:it|he|she|он|она|оно)?\s*(?:может заменить|can replace)\s+(?:(one|two|any|одну|две|любую)\s+)?(?:(?:of (?:the|those|these|its) attacks|из этих атак|атак[а-яё]*|attacks?)\s+)?(?:[a-zа-яё]+\s+)??(?:на|with)\s+(.+)$/i,
+  /\.\s+(?:it|he|she|он|она|оно)?\s*(?:может заменить|can replace)\s+(?:(one|two|any|одну|две|любую)\s+)?(?:(?:of (?:the|those|these|its) attacks|из этих атак|атак[а-яё]*|attacks?)\s+)?(?:[a-zа-яё]+\s+)??(?:на\s+|with\s+|(?=использованием\s))(.+)$/i,
   /\.\s+(one|одна) (?:of them|of those attacks|of these attacks|из них) (?:can be replaced|может быть заменена) (?:with|by|на)\s+(.+)$/i,
   /\.\s+(?:it|he|she)\s+can use (?:its |the )?(.+?) in place of (one|any)(?: of (?:those|these|its))?(?: (?:melee|ranged))? attacks?$/i,
   /,?\s+(?:only one of which can be|только одна из которых может(?:\s+быть)?(?:\s+сделана)?)\s+(.+)$/i,
@@ -144,7 +144,8 @@ function _cbMultiSwap(text, actions) {
   const [k, raw] = i === 2 ? [m[2], m[1]] : i === 3 ? ['one', m[1]] : [m[1] || 'one', m[2]];
   const names = raw.split(/\s+(?:или|or)\s+/).map(alt => {
     const clean = alt.replace(/\([АБAB]\)\s*/g, '').replace(/,?\s*(?:если оно доступно|if available)$/i, '')
-      .replace(/^(?:использование|сотворение|атаку|an? (?:use|casting) of|one use of|casting|an?)\s+/i, '')
+      .replace(/^(?:использованием|использование|сотворение|атаку|an? (?:use|casting) of|one use of|casting|an?)\s+/i, '')
+      .replace(/^сотворени[а-яё]*\s+заклинани[а-яё]*\s+\((.+)\)$/i, '$1')
       .replace(/^заклинани[ея]\s+/i, '').replace(/\s+(?:attack|атакой)$/i, '').trim();
     return _cbActionName(clean, actions) || clean;
   });

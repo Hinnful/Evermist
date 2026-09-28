@@ -122,6 +122,11 @@ describe('a save pill', () => {
     assert.deepEqual([a.n, a.rc], ['Проклятие', 'Long rest']);
     assert.equal(pills([['Curse (Recharges after a Short or Long Rest)', 'Wisdom Saving Throw: DC 14. Failure: 6 (1d12) Psychic damage.']])[0].rc, 'Short rest');
   });
+  it('reads uses per day as a recharge', () => {
+    const [a] = pills([['Смертельный вой (1 в день)', 'Испытание Выносливости: СЛ 13. Провал: 10 (3d6) Психического урона.']]);
+    assert.deepEqual([a.n, a.rc], ['Смертельный вой', '1/day']);
+    assert.equal(pills([['Stunning Screech (1/Day)', 'Constitution Saving Throw: DC 14. Failure: 10 (3d6) Thunder damage.']])[0].rc, '1/day');
+  });
   it('names a ray from its text when the action is named by a die roll', () => {
     assert.equal(brief(pills([['4', 'Луч замедления. Испытание Выносливости: СЛ 16. Провал: 18 (4d8) Некротического урона.']])[0]),
       'Луч замедления DC 16 Con 18 necrotic');
@@ -338,5 +343,45 @@ describe('the plain line', () => {
     assert.equal(combatAttackLine(sb), '2× Scimitar +4 5 slashing\nBite +4 5 piercing + 2 fire');
     assert.equal(combatAttackLine({ secs: {} }), '');
     assert.equal(combatAttackLine(undefined), '');
+  });
+});
+
+describe('combatAttacks on 2014 wording', () => {
+  it('reads a damage type followed by an aside in brackets', () => {
+    const [a] = combatAttacks({ secs: { Actions: [{ n: 'Коготь', t: 'Рукопашная атака оружием: +3 к попаданию. Попадание: Дробящий или рубящий (на выбор руки) урон 3 (1к4+1).' }] } });
+    assert.deepEqual(a.parts, [{ dmg: '3', type: 'slashing' }]);
+  });
+  it('gives each breath the recharge its Breath Weapons entry carries', () => {
+    const at = combatAttacks({ secs: { Actions: [
+      { n: 'Оружия дыхания (перезарядка 5–6)', t: 'Дракон использует один из следующих видов оружия дыхания.' },
+      { n: 'Огненное дыхание', t: 'Все существа в этой области должны совершить спасбросок Ловкости со Сл 21, получая урон огнём 66 (12к10) при провале.' }] } });
+    assert.deepEqual(at.map(a => [a.n, a.rc]), [['Огненное дыхание', '5–6']]);
+  });
+});
+
+describe('combatAttacks on site wording', () => {
+  const one = (n, t) => combatAttacks({ secs: { Actions: [{ n, t }] } })[0];
+  it('works out the average a site leaves out, "Hit: (2d6 + 5)"', () => {
+    assert.deepEqual(one('Bite', 'Melee Weapon Attack: +14 to hit, reach 10 ft. Hit: (2d10 + 8) piercing damage plus (2d6)fire damage.').parts,
+      [{ dmg: '19', type: 'piercing' }, { dmg: '7', type: 'fire' }]);
+  });
+  it('reads Open5e’s 2024 damage with no "Hit:"', () => {
+    assert.deepEqual(one('Ice Spear', 'Melee or Ranged Attack Roll: +10, reach 5 ft. or range 30/120 ft. 14 (2d8 + 5) Piercing damage plus 10 (3d6) Cold damage.').parts,
+      [{ dmg: '14', type: 'piercing' }, { dmg: '10', type: 'cold' }]);
+  });
+  it('reads "Сл освобождения от захвата"', () => {
+    assert.equal(one('Щупальце', 'Бросок рукопашной атаки: +9, досягаемость 15 фт. Попадание: 12 (2к6 + 5) Дробящего урона. Она становится Схваченной(Сл освобождения от захвата 14).').grab, '14');
+  });
+  it('links rays listed with no numbers to the action whose text ends in a colon', () => {
+    const at = combatAttacks({ secs: { Actions: [{ n: 'Мультиатака', t: 'Бехолдер использует Лучи из глаз трижды.' },
+      { n: 'Лучи из глаз', t: 'Бехолдер пускает луч (бросьте 1к10):' },
+      { n: 'Луч ужаса', t: 'Спасбросок Мудрости: Сл 16. Провал: 14 (4к6) Психического урона.' },
+      { n: 'Луч смерти', t: 'Спасбросок Ловкости: Сл 16. Провал: 55 (10к10) Некротического урона.' }] } });
+    assert.deepEqual([at[0].x, at[0].opts.map(p => p.n)], [3, ['Луч ужаса', 'Луч смерти']]);
+  });
+  it('reads a swap written "использованием Сотворения заклинаний (Палящий луч)"', () => {
+    const at = combatAttacks({ secs: { Actions: [{ n: 'Мультиатака', t: 'Дракон совершает три атаки Раздиранием. Он может заменить одну из этих атак использованием Сотворения заклинаний (Палящий луч).' },
+      { n: 'Раздирание', t: 'Бросок рукопашной атаки: +14. Попадание: 13 (1к10 + 8) Рубящего урона.' }] } });
+    assert.deepEqual(at[0].swap, { k: '1', to: 'Палящий луч' });
   });
 });

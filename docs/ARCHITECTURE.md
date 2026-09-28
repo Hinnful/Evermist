@@ -578,14 +578,15 @@ as one vocabulary (`bestiaryPlan.js`), and the picked monster's page beside it (
 read-only until Edit swaps in the stat block editor. Links pasted in go through a queue one at a
 time; each is fetched in a hidden window that waits until the page text stops changing, so a site
 that draws its stat block with its own scripts reads whole. `statBlockParse.js` finds the block by
-its Armor Class line and keeps the page's description as lore, a lair set inside it as lair
+its Armor Class line, names it from the line the page title starts with when one is there, and keeps the page's description as lore, a lair set inside it as lair
 actions. Export writes picked entries to a file and From a file adds them back.
 
 From a PDF book reads every stat block in a book at once. The picker hands over only the file's
 path, and the extraction process reads the file itself, so a 300MB book never crosses into the
 window. That process lays the text out a second time for monsters: each line carries the font it
-is set in, and a band starts at a stat block's name when the other column is empty there, which
-keeps a wide two-column box from being read into the lore beside it. The rooms keep the first
+is set in, and a band starts at a stat block's name when the other column is empty there, or
+where the other column's half of the same box starts level with the name, which keeps a wide
+two-column box from being read into the lore beside it or into the box above it. The rooms keep the first
 layout untouched. `statBlockBook.js` learns which fonts the book uses for lore and ends a block
 where the text changes to one, and starts an entry where a line opens in a font of its own; plain
 text uses a short heading after a finished sentence for both.

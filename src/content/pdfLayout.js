@@ -73,6 +73,9 @@ function plPageLines(page, opts) {
 
 // How far the other column must be empty around a stat block's name for it to start a band.
 const PL_CUT_CLEAR = 12;
+const PL_CUT_GAP = 24;
+const PL_CUT_BACK = 16;
+const PL_CUT_HEAD = 3;
 
 function _plPageLineObjs(page, opts) {
   const o = opts || {};
@@ -93,9 +96,16 @@ function _plPageLineObjs(page, opts) {
   if (o.cutAbove) {
     for (const [col, other] of [[left, right], [right, left]]) {
       const texts = col.map(l => l.text);
+      const otherTexts = other.map(x => x.text);
       col.forEach((l, i) => {
+        if (!o.cutAbove(texts, i)) return;
         const b = l.y + 1;
-        if (o.cutAbove(texts, i) && !other.some(x => Math.abs(x.y - b) < PL_CUT_CLEAR)) cuts.push(b);
+        if (!other.some(x => Math.abs(x.y - b) < PL_CUT_CLEAR)) { cuts.push(b); return; }
+        // Two boxes stacked on a page: this box's other half starts level with its name, under a gap.
+        const k = other.findIndex((x, j) => j && other[j - 1].y - x.y >= PL_CUT_GAP && x.y >= l.y && x.y - l.y <= PL_CUT_CLEAR);
+        const own = new Set(col.slice(i + 1, i + 30).map(x => x.font));
+        const fits = x => x && own.has(x.font);
+        if (k > 0 && other[k].font !== l.font && (fits(other[k]) || fits(other[k + 1]) && other[k].y - l.y <= PL_CUT_HEAD) && ![...Array(PL_CUT_BACK).keys()].some(d => k - d >= 0 && o.cutAbove(otherTexts, k - d))) cuts.push(other[k].y + 1);
       });
     }
   }

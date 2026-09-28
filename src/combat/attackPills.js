@@ -37,10 +37,12 @@ function _cbGroup(a) {
     a.swap ? `<span class="gsw">${_cbGlyph(CB_GLYPH_SWAP)}${_cbEsc(a.swap.k)} for ${_cbEsc(a.swap.to)}</span>` : ''}</span>`;
 }
 
+const _cbPillName = n => n.replace(/\s*\([^)]*\)/g, '').trim() || n;
+
 function cbAttackPill(a) {
   if (a.group) return _cbGroup(a);
-  if (a.fallback) return `<span class="cb-pill fb" title="${_cbEsc(a.t)}"><span class="pn">${_cbGlyph(CB_GLYPH_INFO)}${_cbEsc(a.n)}</span></span>`;
-  return `<span class="cb-pill" title="${_cbEsc(`${a.n}. ${a.t}`)}">${a.ba ? '<span class="pb">Bonus</span>' : ''}<span class="pn">${a.x ? `<span class="px">${a.x}×</span>` : ''}${_cbEsc(a.n)}</span>${
+  if (a.fallback) return `<span class="cb-pill fb" title="${_cbEsc(a.t)}"><span class="pn">${_cbGlyph(CB_GLYPH_INFO)}${_cbEsc(_cbPillName(a.n))}</span></span>`;
+  return `<span class="cb-pill" title="${_cbEsc(`${a.n}. ${a.t}`)}">${a.ba ? '<span class="pb">Bonus</span>' : ''}<span class="pn">${a.x ? `<span class="px">${a.x}×</span>` : ''}${_cbEsc(_cbPillName(a.n))}</span>${
     a.rc ? `<span class="pr">${_cbEsc(a.rc)}</span>` : ''}<span class="ph">${_cbEsc(a.hit)}</span>${a.parts.map(_cbDamageSeg).join('')}${
     a.grab ? `<span class="pg">Grappled DC ${_cbEsc(a.grab)}</span>` : ''}</span>`;
 }

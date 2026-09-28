@@ -11,8 +11,8 @@ const SB_LABELS = [
   ['speed', ['speed', 'скорость']],
   ['saves', ['saving throws', 'спасброски']],
   ['skills', ['skills', 'навыки']],
-  ['vuln', ['damage vulnerabilities', 'vulnerabilities', 'уязвимость к урону', 'уязвимости к урону', 'уязвимости', 'уязвимость']],
-  ['resist', ['damage resistances', 'resistances', 'сопротивление урону', 'сопротивление к урону', 'сопротивления урону', 'сопротивления', 'сопротивление', 'устойчивости', 'устойчивость']],
+  ['vuln', ['damage vulnerabilities', 'damage vulnerability', 'vulnerabilities', 'уязвимость к урону', 'уязвимости к урону', 'уязвимости', 'уязвимость']],
+  ['resist', ['damage resistances', 'damage resistance', 'resistances', 'сопротивление урону', 'сопротивление к урону', 'сопротивления урону', 'сопротивления', 'сопротивление', 'устойчивости', 'устойчивость']],
   ['immune', ['damage immunities', 'condition immunities', 'immunities', 'иммунитет к урону',
     'иммунитет к состоянию', 'иммунитет к состояниям', 'иммунитеты', 'иммунитет', 'невосприимчивости', 'невосприимчивость']],
   ['senses', ['senses', 'чувства', 'восприятие']],
@@ -40,7 +40,7 @@ const SB_LORE = /^(description|lore|описание)$/i;
 const SB_END = /^(comments?|комментарии)$/i;
 const SB_LAIR = /^(логово|lair)(\s|$)|['’]s lair$/i;
 const SB_SIGN = '[+\\-−–]';
-const SB_SIZE = /^(tiny|small|medium|large|huge|gargantuan|крошечн|маленьк|небольш|средн|больш|крупн|огромн|громадн|исполинск)/i;
+const SB_SIZE = /^(tiny|small|medium|large|huge|gargantuan|крошечн|крохотн|маленьк|небольш|средн|больш|крупн|огромн|громадн|исполинск)/i;
 
 function _sbBlank() {
   return { name: '', meta: '', ac: '', hp: '', speed: '', abil: ['10', '10', '10', '10', '10', '10'],
@@ -56,8 +56,8 @@ function _sbLabel(line) {
     const value = rest.replace(/^[\s:.]+/, '').trim();
     // The 2024 Russian senses line is "Восприятие", and so is a skill wrapped onto the next line.
     if (label === 'восприятие' && /^[+\-−]\d/.test(value)) return null;
-    // "Устойчивость к магии. У беса…" is a trait that shares its first word with a label.
-    if ((field === 'resist' || field === 'immune' || field === 'vuln') && /^[^.:;,]{1,40}\.\s+\p{Lu}/u.test(line)) return null;
+    // "Устойчивость к магии. У беса…" and "Treasure Sense. The…" are traits sharing a label's first word.
+    if ((field === 'resist' || field === 'immune' || field === 'vuln' || field === null) && /^[^.:;,]{1,40}\.\s+\p{Lu}/u.test(line)) return null;
     return { field, value };
   }
   return null;
@@ -93,7 +93,7 @@ function _sbAbilities(text) {
   return found.filter(Boolean).length >= 3 ? { found, saves } : null;
 }
 
-const SB_ABIL_TOKEN = new RegExp(`^(?:${SB_ABIL.flatMap(a => a.slice(0, 2)).join('|')}|\\d+|\\(\\s*${SB_SIGN}?\\d+\\s*\\)|${SB_SIGN}\\d+|mod|save|мод|спас|спасбросок|бросок|исп|[\\s,])+$`, 'iu');
+const SB_ABIL_TOKEN = new RegExp(`^(?:${SB_ABIL.flatMap(a => a.slice(0, 2)).join('|')}|\\d+|\\(\\s*${SB_SIGN}?\\d+\\s*\\)|${SB_SIGN}\\d+|mod|save|ability|score|physical|mental|abilities|мод|спас|спасбросок|бросок|исп|[\\s,])+$`, 'iu');
 
 // "Bite. Melee Weapon Attack: ..." names its entry up to the first full stop. A long first
 // sentence, or one with a colon in it, is text: a legendary intro or a spell list.
@@ -122,8 +122,10 @@ function statBlockFromLines(input) {
   for (const raw of input) {
     let l = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
     if (!l) continue;
+    // A small-caps PDF sets an ability's capital in a font of its own: "D ex 15 +2 +2".
+    l = l.replace(/(^|\s)(S tr|D ex|C on|I nt|W is|C ha)(?=\s+\d)/gi, (m, s, a) => s + a.replace(' ', ''));
     // A site that sets each ability's name, or a label, as a heading has marked nothing.
-    if (l.startsWith('## ') && (SB_ABIL_TOKEN.test(l.slice(3)) || (_sbLabel(l.slice(3)) || {}).field)) l = l.slice(3);
+    if (l.startsWith('## ') && (SB_ABIL_TOKEN.test(l.slice(3)) || (_sbLabel(l.slice(3)) || {}).field && !/\.$/.test(l))) l = l.slice(3);
     const prev = lines[lines.length - 1];
     if (SB_ABIL_TOKEN.test(l) && prev !== undefined && lines.length > 1 && SB_ABIL_TOKEN.test(prev)) lines[lines.length - 1] = prev + ' ' + l;
     else lines.push(l);
@@ -168,7 +170,7 @@ function statBlockFromLines(input) {
 
     if (!sec) {
       // A source badge can ride on the size line: "... нейтрально-злой Источник: MM".
-      if (!b.meta && !b.ac && SB_SIZE.test(line)) { b.meta = line.replace(/\s+(источник|source):.*$/i, ''); lastField = 'meta'; lastVal = b.meta; continue; }
+      if (!b.meta && !b.ac && SB_SIZE.test(line)) { b.meta = line.replace(/\s+(источник|source):.*$/i, '').replace(/\s+\/\s+(?:tiny|small|medium|large|huge|gargantuan)\b.*$/i, ''); lastField = 'meta'; lastVal = b.meta; continue; }
       const abil = !seenAbil && _sbAbilities(line);
       if (abil) {
         abil.found.forEach((v, k) => { if (v) b.abil[k] = v; });
@@ -193,7 +195,7 @@ function statBlockFromLines(input) {
       // finishes the size line, or is the value of a label left alone on its line.
       const open = (lastVal.match(/\(/g) || []).length > (lastVal.match(/\)/g) || []).length;
       const tail = /\p{Ll}$/u.test(lastVal) && (line.split(' ').length <= 3 || /^\d/.test(line)) && !(/^\p{L}/u.test(line) && _sbEntry(line));
-      if (lastField && (lastField === 'meta' || !lastVal || open || tail || /^[\p{Ll}[(]/u.test(line) || /[,;+×—–-]$/.test(lastVal))) {
+      if (lastField && (lastField === 'meta' || !lastVal || open || tail || /^[\p{Ll}[(]/u.test(line) || /(?:[,;+×—–-]|\s(?:and|or|и|или))$/.test(lastVal))) {
         lastVal = lastVal ? `${lastVal} ${line}` : line;
         if (lastField !== '-') b[lastField] = b[lastField] ? `${b[lastField]} ${line}` : line;
         if (lastField === 'meta') lastField = null;
@@ -235,9 +237,11 @@ function statBlockFind(page) {
   const near = lines.slice(Math.max(0, top - 10), top).reverse();
   const head = near.find(l => l.startsWith('## ') && l.length <= 80);
   const short = near.filter(l => l.length <= 60 && !_sbLabel(l));
-  // A translated page puts the original name under its own: "Гоблин", then "Goblin".
-  const own = /^\p{Script=Latin}[^\p{Script=Cyrillic}]*$/u.test(short[0] || '') && /\p{Script=Cyrillic}/u.test(short[1] || '') ? short[1] : short[0];
-  const name = (head || own || '').replace(/^##\s*/, '');
+  // A translated page puts the original under its name, "Гоблин" then "Goblin"; that beats any heading.
+  const pair = /^\p{Script=Latin}[^\p{Script=Cyrillic}]*$/u.test(short[0] || '') && /\p{Script=Cyrillic}/u.test(short[1] || '');
+  // A line the page's title opens with names it over a cookie banner's heading.
+  const titled = page.title && [head, ...short].find(l => l && l !== page.title && page.title.startsWith(l.replace(/^##\s*/, '')));
+  const name = (titled || (pair ? short[1] : head || short[0]) || '').replace(/^##\s*/, '');
   // The page's own box ends the block: the smallest element around the size and AC lines that
   // also holds a trait or an action. A newer layout boxes the header lines on their own.
   let end = lines.length;
@@ -264,7 +268,9 @@ const SB_VOID_TAGS = /^(br|img|hr|input|meta|link|source|wbr|col|area|base)$/;
 // elements, which statBlockFind reads to see where the stat block's box closes.
 function statBlockHtmlLines(html) {
   const src = String(html || '').replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<(script|style|svg|sup|noscript|nav|footer|header|aside|form|button)\b[\s\S]*?<\/\1>/gi, '');
+    .replace(/<(script|style|svg|sup|noscript|nav|footer|header|aside|form|button)\b[\s\S]*?<\/\1>/gi, '')
+    // 5e.tools prints a hidden dice variant after every bonus and DC: "+14" then "+1d12 + 8".
+    .replace(/<span class="[^"]*(?:roll-prof-dice|rollable-dice)[^"]*">[^<]*<\/span>/g, '');
   const lines = [], paths = [], stack = [];
   let text = '', path = null, heading = false, id = 0;
   const flush = () => {
@@ -293,6 +299,7 @@ function statBlockHtmlLines(html) {
   }
   flush();
   lines.paths = paths;
+  lines.title = statBlockDecode((src.match(/<title[^>]*>([^<]*)</i) || [])[1] || '').trim();
   return lines;
 }
 
@@ -310,13 +317,13 @@ function statBlockFromPage(html) {
 }
 
 // A PDF's text layer can split a number at a kerning gap: "14 9 (13к12 + 65)" is 149. The digits
-// join only when the joined number is the dice's average, so a real "14 9" is never rewritten.
+// join, and a footnote mark after the dice drops, only when the number is the dice's average.
 function statBlockJoinHp(hp) {
-  const m = String(hp || '').match(/^(\d+(?:\s+\d+)+)\s*\(\s*(\d+)\s*[dк]\s*(\d+)\s*(?:([+\-−–])\s*(\d+))?\s*\)/i);
+  const m = String(hp || '').match(/^(\d+(?:\s+\d+)*)\s*\(\s*(\d+)\s*[dк]\s*(\d+)\s*(?:([+\-−–])\s*(\d+))?\s*\)(\d*)$/i);
   if (!m) return hp;
   const avg = Math.floor(+m[2] * (+m[3] + 1) / 2 + (m[4] ? (m[4] === '+' ? 1 : -1) * +m[5] : 0));
   const joined = m[1].replace(/\s+/g, '');
-  return +joined === avg ? joined + hp.slice(m[1].length) : hp;
+  return +joined === avg ? joined + hp.slice(m[1].length, hp.length - m[6].length) : hp;
 }
 
 if (typeof module !== 'undefined' && module.exports) {

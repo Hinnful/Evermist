@@ -36,7 +36,7 @@ function _cbDamageParts(text) {
       type = combatDamageType(q[1]); e = end + q[0].length;
     } else if ((q = after.match(new RegExp(`^\\s+урон[а-яё]*\\s+(${W})${EN}`, 'i'))) && combatDamageType(q[1])) {
       type = combatDamageType(q[1]); e = end + q[0].length;
-    } else if ((q = before.match(new RegExp(`(${W})${EN}\\s+урон[а-яё]*\\s+$`, 'i'))) && combatDamageType(q[1])) {
+    } else if ((q = before.match(new RegExp(`(${W})${EN}(?:\\s*\\([^)]*\\))?\\s+урон[а-яё]*\\s+$`, 'i'))) && combatDamageType(q[1])) {
       type = combatDamageType(q[1]); s = at - q[0].length;
     } else if ((q = before.match(new RegExp(`урон[а-яё]*\\s+(${W})${EN}\\s+$`, 'i'))) && combatDamageType(q[1])) {
       type = combatDamageType(q[1]); s = at - q[0].length;
@@ -85,16 +85,19 @@ function _cbSave(t) {
 }
 
 const COMBAT_REST = /\(\s*(?:recharges after a (short or )?long rest|перезаряжается после (короткого или )?продолжительного отдыха)\s*\)/i;
+const COMBAT_PER_DAY = /\(\s*(\d+)\s*(?:\/\s*(?:day|день)|в день)\s*\)/i;
 function _cbRecharge(s) {
   const m = s.match(/\(\s*(?:recharge|перезарядка)\s+(\d(?:\s*[–—-]\s*\d)?)\s*\)/i);
   if (m) return m[1].replace(/\s*[–—-]\s*/, '–');
+  const d = s.match(COMBAT_PER_DAY);
+  if (d) return `${d[1]}/day`;
   const r = s.match(COMBAT_REST);
   return r ? (r[1] || r[2] ? 'Short rest' : 'Long rest') : '';
 }
 
 function _cbGrapple(hit) {
   const m = hit.match(/grappled[^.(]*\(\s*escape\s+DC\s*(\d+)\s*\)/i)
-    || hit.match(/(?:схвачен|захвачен)[а-яё]*[^.(]*\(\s*Сл\s+(?:высвобождения|освобождения|выхода|побега)\s*(\d+)\s*\)/i)
+    || hit.match(/(?:схвачен|захвачен)[а-яё]*[^.(]*\(\s*Сл\s+(?:высвобождения|освобождения|выхода|побега)(?:\s+от\s+захвата)?\s*(\d+)\s*\)/i)
     || hit.match(/(?:схвачен|захвачен)[а-яё]*[^.(]*\(\s*(?:вырваться|высвободиться)\s+Сл\s*(\d+)\s*\)/i);
   return m ? m[1] : '';
 }
@@ -103,12 +106,17 @@ function _cbGrapple(hit) {
 // One per action that deals damage, by attack roll or by save, in the book's order. English 2014 and
 // 2024 and Russian (dnd.su, the 2024 books) all read, flat damage too. Bonus actions follow, marked.
 function _cbPill(n, t) {
+  // A site that prints only the dice, "Hit: (2d6 + 5) bludgeoning", gets the average every book prints.
+  t = t.replace(/(^|[^\d\s]\s*)\((\d+)d(\d+)(?:\s*([+\-−–])\s*(\d+))?\)(?=\s*[A-Za-z]+ damage)/g, (m, pre, c, d, s, k) =>
+    `${pre}${Math.floor(c * (+d + 1) / 2) + (k ? (s === '+' ? 1 : -1) * k : 0)} (${m.slice(pre.length + 1, -1)})`).replace(/\)(?=[A-Za-z])/g, ') ');
   const rc = _cbRecharge(n) || _cbRecharge(t);
-  let name = n.replace(/\s*\(\s*(?:recharge|перезарядка)[^)]*\)/i, '').replace(COMBAT_REST, '').trim();
+  let name = n.replace(/\s*\(\s*(?:recharge|перезарядка)[^)]*\)/i, '').replace(COMBAT_REST, '').replace(COMBAT_PER_DAY, '').trim();
   // A Beholder's rays arrive named by their die roll, the ray's own name opening the text.
   if (/^\d+$/.test(name)) name = t.split('.')[0].trim();
   const bonus = t.match(/(?:attack|атак)[^:.]*:\s*([+\-−–]\s?\d+)/i);
-  const hitText = t.split(/Hit:|Попадание:/i)[1];
+  // Open5e's 2024 text drops "Hit:" and runs the damage on after the reach.
+  const run = bonus && t.slice(bonus.index + bonus[0].length).match(/ft\.\s*(\d+\s*\(.*)$/s);
+  const hitText = t.split(/Hit:|Попадание:/i)[1] ?? (run ? run[1] : undefined);
   // An attack that only grapples still has a roll and a DC to show.
   const grab = bonus && _cbGrapple(hitText || t);
   if (grab && !_cbHitDamage(hitText || '').length) return { n: name, t, hit: bonus[1].replace(/\s/g, '').replace(/[−–]/, '-'), parts: [], rc, grab, x: 0 };
@@ -147,14 +155,18 @@ function _cbApplyMulti(multi, out) {
 
 function combatAttacks(sb) {
   const out = [], secs = (sb && sb.secs) || {};
-  let multi = null, list = '';
+  let multi = null, list = '', listed = '', breathRc = '';
   for (const en of secs.Actions || []) {
     const n = String(en.n || ''), t = String(en.t || '');
     if (MA.COMBAT_MULTI.test(n)) { multi = { n, t, pos: out.length }; continue; }
-    const p = _cbPill(n, t);
-    // Numbered entries are the rays of the action above them: "Eye Rays", then 1 to 10.
+    let p = _cbPill(n, t);
+    // A 2014 book sets the recharge on "Breath Weapons" and each breath below it.
+    if (!p && /breath|дыхани/i.test(n)) breathRc = _cbRecharge(n);
+    else if (p && !p.rc && breathRc && /breath|дыхани/i.test(n)) p = { ...p, rc: breathRc };
+    // Rays follow their action numbered 1 to 10, or unnumbered after its text ends in a colon.
+    if (!p && /:$/.test(t.trim())) listed = n.split('(')[0].trim();
     if (!/^\d+$/.test(n)) list = p ? '' : n.split('(')[0].trim();
-    if (p) out.push(list && /^\d+$/.test(n) ? { ...p, of: list } : p);
+    if (p) out.push(list && /^\d+$/.test(n) ? { ...p, of: list } : listed ? { ...p, of: listed } : p);
   }
   if (multi) _cbApplyMulti({ ...multi, actions: secs.Actions.map(a => ({ n: String(a.n || '') })) }, out);
   for (const en of secs['Bonus actions'] || []) {

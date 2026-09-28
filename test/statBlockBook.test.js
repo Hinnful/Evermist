@@ -192,3 +192,103 @@ describe('statBlockUnclean', () => {
     assert.equal(statBlockUnclean(c), 'no actions');
   });
 });
+
+// The English SRD 5.2.1: small caps split each ability, a footer in the body's font on every page.
+describe('statBlocksInText on a 2024 English book', () => {
+  const pdf = rows => rows.map(([f, lead, t]) => `${f}\u0001${lead}\u0001${t}`).join('\n');
+  const page = n => [['B', 'B', `Page ${n} prose runs on about the world and its many strange beasts.`],
+    ['F', 'F', `${n}System Reference Document 5.2.1`]];
+  const pages = from => Array.from({ length: 6 }, (_, i) => page(from + i)).flat();
+  const [x, w] = statBlocksInText(pdf([...pages(280),
+    ['H', 'H', 'Xorn'], ['S', 'S', 'Medium Elemental, Neutral'], ['S', 'S', 'AC 19 Initiative +0 (10)'],
+    ['B', 'S', 'HP 84 (8d8 + 48)'], ['B', 'S', 'Speed 20 ft., Burrow 20 ft.'], ['F', 'F', '286System Reference Document 5.2.1'],
+    ['T', 'T', 'MOD SAVE MOD SAVE MOD SAVE'], ['T', 'A', 'Str 17 +3 +3 D ex 10 +0 +0 Con 22 +6 +6'],
+    ['A', 'A', 'I nt 11 +0 +0 WIS 10 +0 +0 C ha 11 +0 +0'],
+    ['B', 'S', 'Languages Understands Common, Elvish, and'], ['B', 'B', 'Sylvan but can’t speak'],
+    ['B', 'S', 'CR 5 (XP 1,800; PB +3)'], ['T', 'T', 'Traits'],
+    ['B', 'N', 'Treasure Sense. The xorn can pinpoint precious metals.'],
+    ['B', 'N', 'Corrosive Form. Any weapon that hits it takes a −1 penalty.'],
+    ['V', 'V', 'The weapon is destroyed if the penalty reaches −5. The'], ['B', 'B', 'penalty can be removed.'],
+    ['T', 'T', 'Actions'],
+    ['B', 'N', 'Bite. Melee Attack Roll: +6, reach 5 ft. Hit: 17 (4d6 + 3) Piercing damage. 287System Reference Document 5.2.1'],
+    ...pages(288),
+    ['H', 'H', 'Medium or Small Monstrosity (Lycanthrope), Chaotic Evil'], ['S', 'S', 'Medium Dragon, Chaotic Evil'],
+    ['S', 'S', 'AC 15'], ['B', 'S', 'HP 71 (11d8 + 22)'], ['T', 'A', 'Str 14 +2 +2 D ex 10 +0 +2 Con 14 +2 +2'],
+    ['A', 'A', 'I nt 5 −3 −3 WIS 10 +0 +2 C ha 11 +0 +0'], ['B', 'S', 'CR 2 (450 XP; PB +2)'], ['T', 'T', 'Actions'],
+    ['B', 'N', 'Rend. Melee Attack Roll: +4, reach 5 ft. Hit: 6 (1d8 + 2) Slashing damage.'],
+    ...pages(294)]));
+  it('reads abilities whose capitals a small-caps font split off', () => {
+    assert.deepEqual(x.abil, ['17', '10', '22', '11', '10', '11']);
+  });
+  it('drops a footer that ends in a version, alone or run onto a line', () => {
+    assert.ok(!JSON.stringify(x).includes('System Reference'));
+    assert.equal(statBlockUnclean(x), '');
+  });
+  it('finishes a languages line wrapped after "and"', () => {
+    assert.equal(x.languages, 'Understands Common, Elvish, and Sylvan but can’t speak');
+  });
+  it('reads a trait that opens with a label word, and keeps a long sentence in its entry', () => {
+    assert.deepEqual(x.secs.Traits.map(e => e.n), ['Treasure Sense', 'Corrosive Form']);
+    assert.deepEqual(x.secs.Actions.map(e => e.n), ['Bite']);
+  });
+  it('refuses a block named by a size line', () => {
+    assert.equal(statBlockUnclean(w), 'no name');
+  });
+});
+
+// The Russian 2014 book: names in lower-case small caps, alone on their line, over their lore.
+describe('statBlocksInText on a 2014 Russian book', () => {
+  const pdf = rows => rows.map(([f, lead, t]) => `${f}\u0001${lead}\u0001${t}`).join('\n');
+  const block = name => [['N', 'N', name], ['S', 'S', 'Маленькая нежить, законно-злая'], ['B', 'B', 'Класс Доспеха 12'],
+    ['B', 'B', 'Хиты 2 (1к4)'], ['B', 'B', 'СИЛ ЛОВ ТЕЛ ИНТ МДР ХАР'],
+    ['B', 'B', '13 ( +1 ) 14 ( +2 ) 11 ( +0 ) 5 ( –3 ) 10 ( +0 ) 4 ( –3 )'], ['B', 'B', 'Опасность 0 (10 опыта)']];
+  const [r, s] = statBlocksInText(pdf([['L', 'L', 'от него могут вернуться вместе с ним.'], ...block('ползающая рука'),
+    ['H', 'H', 'Действия'], ['B', 'E', 'Коготь. Рукопашная атака оружием: +3 к попаданию. Попадание: Колющий урон 3 (1к4+1).'],
+    ['T', 'T', 'Ползающая рука'], ['P', 'P', '237'],
+    ['B', 'E', 'Хватка. Рукопашная атака оружием: +3 к попаданию. Попадание: Колющий урон 2 (1к4).'],
+    ['N', 'N', 'ползающий падальщик'], ['L', 'L', 'Ползающие падальщики объедают гнилую плоть с трупов, а потом кости.'],
+    ...block('шмыгун'), ['H', 'H', 'Действия'], ['B', 'E', 'Укус. Рукопашная атака оружием: +2 к попаданию. Попадание: Колющий урон 1.']]));
+  it('names a block from its small-caps line alone, with a capital', () => {
+    assert.deepEqual([r.name, s.name], ['Ползающая рука', 'Шмыгун']);
+  });
+  it('reads past a running head set above its page number', () => {
+    assert.deepEqual(r.secs.Actions.map(e => e.n), ['Коготь', 'Хватка']);
+  });
+  it('ends at the next monster’s name over its lore', () => {
+    assert.ok(!JSON.stringify(r).includes('падальщик'));
+  });
+});
+
+describe('statBlocksInText on a name split across columns', () => {
+  const pdf = rows => rows.map(([f, lead, t]) => `${f}\u0001${lead}\u0001${t}`).join('\n');
+  const head = (name, size) => [['N', 'N', name], ['S', 'S', size], ['B', 'B', 'КБ 17'], ['B', 'B', 'ПЗ 123 (13d10 + 52)'],
+    ['B', 'B', 'Сил 19 +4 +4 Лвк 12 +1 +1 Вын 18 +4 +4'], ['B', 'B', 'Инт 7 −2 −2 Мдр 14 +2 +2 Хар 10 +0 +0'],
+    ['B', 'B', 'КО 7 (2 900 ПО; БУ +3)'], ['H', 'H', 'Действия'], ['B', 'E', 'Удар. Бросок атаки: +8. Попадание: 9 (1d10 + 4) Дробящего урона.']];
+  const blocks = statBlocksInText(pdf([['N', 'N', 'Грибы'], ['L', 'L', 'Грибы растут в темноте.'], ['N', 'N', 'Некроколония фиолетовых'], ['L', 'L', 'Фиолетовый сморчок'],
+    ...head('Фиолетовый сморчок', 'Среднее Растение, Без мировоззрения'), ...head('сморчков', 'Крупное Растение, Нейтральное Злое')]));
+  it('takes the first half from the nearest line above in the name font, past the other block’s name', () => {
+    assert.deepEqual(blocks.map(b => b.name), ['Фиолетовый сморчок', 'Некроколония фиолетовых сморчков']);
+  });
+});
+
+describe('statBlocksInText on page furniture inside a header, and fused credits', () => {
+  const pdf = rows => rows.map(([f, lead, t]) => `${f}\u0001${lead}\u0001${t}`).join('\n');
+  const head = [['N', 'N', 'молодой белый дракон'], ['S', 'S', 'Большой дракон, хаотично-злой'], ['B', 'B', 'Класс Доспеха 17'],
+    ['B', 'B', 'Хиты 133 (14к10 + 56)'], ['B', 'B', 'СИЛ ЛОВ ТЕЛ ИНТ МДР ХАР'], ['B', 'B', '18 ( +4 ) 10 ( +0 ) 18 ( +4 ) 6 ( –2 ) 11 ( +0 ) 12 ( +1 )'],
+    ['B', 'B', 'Опасность 6 (2300 опыта)']];
+  it('drops a chapter tab, its running head and page number between the scores and the traits', () => {
+    const [b] = statBlocksInText(pdf([...head, ['T', 'T', 'Д'], ['R', 'R', 'Драконы'], ['P', 'P', '102'],
+      ['B', 'E', 'Хождение по льду. Дракон лазает по льду.'], ['H', 'H', 'Действия'], ['B', 'E', 'Укус. Рукопашная атака оружием: +7 к попаданию. Попадание: Колющий урон 15 (2к10+4).']]));
+    assert.equal(statBlockUnclean(b), '');
+    assert.deepEqual(b.secs.Traits.map(e => e.n), ['Хождение по льду']);
+  });
+  it('cuts a hyphenated credit and one fused onto a label out of the text', () => {
+    const [b] = statBlocksInText(pdf([...head, ['B', 'E', 'Скрытность в тени. Находясь в области Тусклого света'],
+      ['B', 'B', 'ЛАРЕ ГРАНТ-ВЕСТили Темноты, дракон прячется.'], ['B', 'E', 'Возрождение. Дракон возрождается со всеми'],
+      ['B', 'B', 'КАЙО МОНТЕЙРА, НИЛЬС ХАММПЗ где-то в горах.'], ['H', 'H', 'Действия'],
+      ['B', 'E', 'Укус. Рукопашная атака оружием: +7 к попаданию. Попадание: Колющий урон 15 (2к10+4).']]));
+    assert.equal(statBlockUnclean(b), '');
+    assert.match(b.secs.Traits[0].t, /Тусклого света или Темноты/);
+    assert.match(b.secs.Traits[1].t, /со всеми ПЗ где-то/);
+  });
+});

@@ -33,7 +33,8 @@
 //      of its own. One it cannot read, or one with a condition, is a Multiattack pill with no counts.
 //      A damaging bonus action is a pill tagged Bonus, after the actions. A double-click writes the DM's own
 //      line: Enter keeps it, Escape drops it, Save to Bestiary lights, and the stat block's Table
-//      line shows it. Nothing typed there reaches the page as markup.
+//      line shows it. Nothing typed there reaches the page as markup. A bracket in an action's name
+//      stays off the pill and in its hover, and uses per day show where a recharge does.
 //   N. A row's hover icons duplicate it, switch its side and delete it. Ctrl+D duplicates the row
 //      being typed in. A copy takes the highest number plus one, at full HP with no conditions.
 //      The right-click menu on a row lists its actions and closes on a pick.
@@ -329,6 +330,13 @@ module.exports = async function fightTableFeature(rig) {
     r.sbChanged = false;
     cbRender();
     out.single = pills();
+    r.sb.secs = { Actions: [{ n: 'Bite (Wolf or Hybrid Form Only)', t: 'Melee Weapon Attack: +4 to hit. Hit: 6 (1d8 + 2) piercing damage.' },
+      { n: 'Wail (1/Day)', t: 'Constitution Saving Throw: DC 13. Failure: 10 (3d6) Psychic damage.' }] };
+    cbRender();
+    out.limits = [...__cbRow('Wight').querySelectorAll('.cb-atk .cb-pill')].map(p => ({
+      name: (p.querySelector('.pn') || {}).textContent, chip: (p.querySelector('.pr') || {}).textContent || '', title: p.title }));
+    r.sb.secs = { Actions: [{ n: 'Longsword', t: 'Melee Weapon Attack: +4 to hit, reach 5 ft. Hit: 6 (1d8 + 2) slashing damage.' }] };
+    cbRender();
     const cell = () => __cbRow('Wight').querySelector('.cb-cell.atk');
     cell().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     let span = cell().querySelector('.cb-atk');
@@ -359,6 +367,12 @@ module.exports = async function fightTableFeature(rig) {
             && one.dmg.length === 1 && one.dmg[0].n === '6' && one.dmg[0].glyph,
             "the Attacks cell did not show the stat block's attack as a pill with a glyph: " + JSON.stringify(atk.single));
   rig.check(one.title && one.title.includes('Hit: 6 (1d8 + 2) slashing damage'), "a pill's hover does not carry the action's full text: " + one.title);
+  // RED ON: _cbPillName made to return its name whole, and COMBAT_PER_DAY gated off in _cbRecharge
+  // (attackPills.js, attackLine.js) — 2026-09-28
+  const [lBite, lWail] = atk.limits.concat({}, {});
+  rig.check(lBite.name === 'Bite' && /Wolf or Hybrid Form Only/.test(lBite.title || ''),
+            "a bracket in an action's name is on its pill, or gone from its hover: " + JSON.stringify(atk.limits));
+  rig.check(lWail.name === 'Wail' && lWail.chip === '1/day', 'uses per day do not show where a recharge does: ' + JSON.stringify(atk.limits));
   const [cBite, cClaw] = atk.counted.concat({ dmg: [], text: '' }, { dmg: [], text: '' });
   rig.check(atk.counted.length === 2 && cBite.dmg.map(d => d.n).join() === '17,3' && !/2×/.test(cBite.text) && /2×/.test(cClaw.text),
             'a two-type attack is not one pill with two damage parts, or a clear Multiattack did not count: ' + JSON.stringify(atk.counted));

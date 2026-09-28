@@ -466,13 +466,34 @@ No challenge rating, no actions, fewer than six scores, an unnamed entry, or a c
 callout number left inside it: the import leaves the block out and names it, with Import anyway.
 A half-read monster that looks whole is worse than a gap, because nothing prompts a fix; the link
 import and the editor fill a gap. A monster with no actions is left out too: the bestiary feeds the
-fight table, and a creature with nothing to do in a fight is narrative or a misprint.
+fight table, and a creature with nothing to do in a fight is narrative or a misprint. Kept on
+2026-09-28 although it refuses the few creatures printed with no actions: it is the check that
+catches a block whose actions a page break cut off, and Import anyway brings the rest in.
 
 ### A book is read from its path · `SETTLED` (2026-09-25)
 The Monster Manual PDF is 305 MB. The book import hands `getPathForFile`'s path to the extraction
 process, which reads the file itself, so the bytes never cross IPC; the module import still sends
 bytes. A module text store of 2M characters and a whole bestiary fit in this app's localStorage,
 measured at about 50M characters.
+
+### Two stacked boxes cut where the second one's other half starts · `SETTLED` (2026-09-28)
+A 2014 page stacks two wide boxes, and a cut only where the other column is empty mixed their
+halves: an adult dragon lost its breath and the young one below took the adult's legendary
+actions, both reading as clean. The band now also starts at a name when the other column has a
+gap ending level with it and the line under that gap is set in this block's fonts. Without those
+two conditions the cut fired inside side-by-side blocks, before an Actions heading or at a
+neighbour's name, and cost 2014 SRD monsters. A column mark on every line was built for this and
+removed unused.
+
+### A scanned book is not read · `REJECTED` (2026-09-28)
+Machine-read text misreads 13 as "l3" and 1d6 as "ld6". Scores, HP and damage could be checked
+against their modifiers and dice, but AC, attack bonus, save DC and challenge rating have nothing
+to check against, so a misread one reaches the fight table looking whole. Reading scans with those
+checks was rejected; a book with real text and the sites cover the same monsters.
+
+### A site's missing average is worked out from its dice · `SETTLED` (2026-09-28)
+A page printing "Hit: (2d6 + 5)" gets the average every book prints, the dice's average rounded
+down plus the bonus. Without it the reader took the next number in the text, a disease's damage.
 
 ## Player sync and the minimap
 

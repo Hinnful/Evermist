@@ -2,9 +2,11 @@
 // what the parser made of each. Read-only, prints and exits. Not shipped: `tools/` is outside the
 // build glob. Book text is never written anywhere.
 //
-//   node tools/inspect-statblocks.js <book.pdf|module.txt> [--list] [--show <name>] [--rooms] [--multi]
+//   node tools/inspect-statblocks.js <book.pdf|module.txt> [--list] [--show <name>] [--rooms] [--multi] [--record]
 //
 // --multi prints how the fight table reads every Multiattack, one line each, so two runs diff.
+// --record prints every block's whole reading, pills included, one line each. Keep the output in
+// the gitignored .claude/private/fixtures/readings/ and diff it after a change to any reader.
 // A count can stay right while names go wrong, so names that look like a size line are flagged.
 
 'use strict';
@@ -40,14 +42,24 @@ if (!file) { console.error('usage: node tools/inspect-statblocks.js <book.pdf|mo
   const bad = blocks.filter(statBlockUnclean);
   const oddName = blocks.filter(b => SB_SIZE.test(b.name) || b.name.length < 2);
   console.log(`${path.basename(file)}: ${blocks.length} stat blocks, ${bad.length} would be skipped, ${oddName.length} odd names, ${JSON.stringify(blocks).length} chars as JSON`);
+  const { combatAttacks } = require(src('combat/attackLine.js'));
+  const record = args.includes('--record');
+  const one = a => `${a.ba ? 'Bonus ' : ''}${a.x ? a.x + '× ' : ''}${a.n}${!record ? '' : `${a.rc ? ` {${a.rc}}` : ''} ${a.hit} ${a.parts.map(p => `${p.dmg} ${p.type || '?'}`).join(' + ')}${a.grab ? ` grab ${a.grab}` : ''}`}`;
+  const grp = a => a.alts ? `[${a.alts.map(alt => alt.map(one).join(' + ')).join(' OR ')}]`
+    : `[${a.x ? a.x + '× ' : ''}${a.opts.map(one).join(a.or ? ' | ' : ' + ')}${a.swap ? ` ⇄ ${a.swap.k} ${a.swap.to}` : ''}]`;
+  const attacks = b => combatAttacks(b).map(a => a.fallback ? (record ? `DASHED ${a.n}` : 'DASHED') : a.group ? grp(a) : one(a)).join('  ');
+  if (record) {
+    const secs = b => Object.entries(b.secs).map(([k, v]) => `${k}:${v.map(e => e.n).join('/')}`).join(' ');
+    for (const b of blocks) {
+      const bad = statBlockUnclean(b);
+      console.log(`${bad ? `! [${bad}] ` : ''}${b.name} | ${b.ac} | ${b.hp} | ${b.abil.join(' ')} | ${secs(b)}${bad ? '' : ` :: ${attacks(b)}`}`);
+    }
+    return;
+  }
   if (args.includes('--multi')) {
-    const { combatAttacks } = require(src('combat/attackLine.js'));
-    const one = a => `${a.ba ? 'Bonus ' : ''}${a.x ? a.x + '× ' : ''}${a.n}`;
-    const grp = a => a.alts ? `[${a.alts.map(alt => alt.map(one).join(' + ')).join(' OR ')}]`
-      : `[${a.x ? a.x + '× ' : ''}${a.opts.map(one).join(a.or ? ' | ' : ' + ')}${a.swap ? ` ⇄ ${a.swap.k} ${a.swap.to}` : ''}]`;
     for (const b of blocks.filter(x => !statBlockUnclean(x))) {
       if (!(b.secs.Actions || []).some(e => /^(multiattack|мультиатака)/i.test(e.n))) continue;
-      console.log(`${b.name} :: ${combatAttacks(b).map(a => a.fallback ? 'DASHED' : a.group ? grp(a) : one(a)).join('  ')}`);
+      console.log(`${b.name} :: ${attacks(b)}`);
     }
     return;
   }

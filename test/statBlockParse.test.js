@@ -167,7 +167,7 @@ describe('ttg.club, which sets names and labels as headings', () => {
       '## Действия', '## Мультиатака.', 'Гоблин совершает две атаки Скимитаром.',
       '## Скимитар.', 'Рукопашная атака оружием: +4 к попаданию. Попадание: 5 (1к6 + 2) рубящего урона.',
       '## Места обитания', 'лес, равнина/луг, холмы, подземье', 'Описание', 'Гоблиноиды. Гоблины принадлежат к семейству.']);
-    assert.equal(b.meta, 'Маленький гуманоид (гоблиноид), нейтрально-злой / small 1 клетка');
+    assert.equal(b.meta, 'Маленький гуманоид (гоблиноид), нейтрально-злой');
     assert.deepEqual(b.abil, ['8', '14', '10', '10', '8', '8']);
     assert.equal(b.resist, 'холод');
     assert.equal(b.cr, '1/4 (50 опыта)');
@@ -200,6 +200,10 @@ describe('an HP number split by the PDF text layer', () => {
     assert.equal(P.statBlockJoinHp('14 9 (13к12 + 65)'), '149 (13к12 + 65)');
     assert.equal(P.statBlockJoinHp('1 35 (18d8 + 54)'), '135 (18d8 + 54)');
   });
+  it('drops a footnote mark fused on after the dice, only when the number is the dice average', () => {
+    assert.equal(P.statBlockJoinHp('21 (6d4 + 6)2'), '21 (6d4 + 6)');
+    assert.equal(P.statBlockJoinHp('20 (6d4 + 6)2'), '20 (6d4 + 6)2');
+  });
   it('leaves every other line as it was', () => {
     assert.equal(P.statBlockJoinHp('14 9 (4d8)'), '14 9 (4d8)');
     assert.equal(P.statBlockJoinHp('149 (13к12 + 65)'), '149 (13к12 + 65)');
@@ -210,5 +214,35 @@ describe('an HP number split by the PDF text layer', () => {
     const b = P.statBlockFromLines(['Древесная зараза', 'Огромное растение, нейтрально-злое', 'Класс доспеха 15',
       'Хиты 14 9 (13к12 + 65)', 'Скорость 30 фт.', 'Действия', 'Ветвь. Рукопашная атака оружием: +9 к попаданию. Попадание: 16 (3к6 + 6) дробящего урона.']);
     assert.equal(b.hp, '149 (13к12 + 65)');
+  });
+});
+
+describe('site quirks, on made-up pages', () => {
+  const html = body => `<html><head><title>Troll - Monsters</title></head><body>${body}</body></html>`;
+  it('names the monster from the line the page title opens with, over a cookie banner heading', () => {
+    const b = P.statBlockFromPage(html('<h2>Your Privacy Choices</h2><p>Cookies.</p><div>Troll</div><div>Large Giant, Chaotic Evil</div>' +
+      '<div>Armor Class 15</div><div>Hit Points 84 (8d10 + 40)</div><div>Challenge 5 (1,800 XP)</div><h3>Actions</h3><p>Bite. Melee Weapon Attack: +7 to hit. Hit: 7 (1d6 + 4) piercing damage.</p>'));
+    assert.equal(b.name, 'Troll');
+  });
+  it('drops 5e.tools hidden dice variants after a bonus and a DC', () => {
+    const b = P.statBlockFromPage(html('<h2>Troll</h2><div>Large Giant, Chaotic Evil</div><div>AC 15</div><div>HP 84 (8d10 + 40)</div>' +
+      '<p>Rend. Melee Attack Roll: <span class="ve-rd__roller--roll-prof-bonus">+7</span><span class="ve-rd__roller--roll-prof-dice">+1d8 + 4</span>, reach 10 ft. ' +
+      'DC <span class="ve-rd__dc--rollable-text">15</span><span class="ve-rd__dc--rollable-dice">1d8 + 10</span>.</p>'));
+    assert.match(JSON.stringify(b.secs), /Attack Roll: \+7, reach 10 ft\. DC 15\./);
+  });
+  it('reads a trait heading that starts with a label word, and ttg.club’s grid note off the size line', () => {
+    const b = P.statBlockFromLines(['Свежеватель разума', 'Средняя аберрация, законно-злая / medium 1 клетка Источник: MM',
+      'Класс доспеха 15', 'Хиты 71 (13к8 + 13)', '## Сопротивление магии.', 'Свежеватель совершает спасброски с преимуществом.']);
+    assert.equal(b.meta, 'Средняя аберрация, законно-злая');
+    assert.equal(b.resist, '');
+    assert.deepEqual(b.secs.Traits.map(e => e.n), ['Сопротивление магии']);
+  });
+  it('joins Open5e’s ability rows across its Physical and Mental headings, and reads a singular label', () => {
+    const b = P.statBlockFromLines(['Troll', 'Large Giant, chaotic evil', 'Armor Class 15', 'Hit Points 84 (8d10+40)',
+      'Physical Abilities', 'Ability Score Mod Save', 'STR 18 +4 +4', 'DEX 13 +1 +1', 'CON 20 +5 +5',
+      'Mental Abilities', 'Ability Score Mod Save', 'INT 7 -2 -2', 'WIS 9 -1 -1', 'CHA 7 -2 -2', 'Damage Resistance Cold', 'Challenge 5 (1,800 XP)']);
+    assert.deepEqual(b.abil, ['18', '13', '20', '7', '9', '7']);
+    assert.equal(b.resist, 'Cold');
+    assert.equal(b.cr, '5 (1,800 XP)');
   });
 });
