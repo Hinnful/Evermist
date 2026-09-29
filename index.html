@@ -82,6 +82,8 @@
         <input type="text" id="fx-radius-num" inputmode="numeric" value="0">
       </div>
     </div>
+    <!-- Effect preset sizes, built by toolPreset.js for the picked shape. -->
+    <div class="tb-group" id="ctx-presets"></div>
 
     <!-- Brush size — shown only when Brush is active, in the same pill as whatever else is up -->
     <!-- Door tool. ⚠ BOTH NUMBERS ARE A PERCENT OF ONE GRID CELL, NOT PIXELS, and each field
@@ -138,6 +140,8 @@
         <button id="btn-rect" class="mode-btn" title="Rectangle (R)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/></svg></button>
         <button id="btn-circle" class="mode-btn" title="Circle (O)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg></button>
         <button id="btn-cone" class="mode-btn" title="Cone (C) - drag from the point of origin"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l14 7-14 7z"/><circle cx="5" cy="4" r="1.6" fill="currentColor" stroke="none"/></svg></button>
+        <button id="btn-line" class="mode-btn" title="Line - pick a length and width, drag to aim"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9.5" width="18" height="5" rx="1"/><circle cx="3" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></button>
+        <button id="btn-ring" class="mode-btn" title="Ring - pick its width across and its thickness"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/></svg></button>
       </div>
     </div>
 
@@ -970,6 +974,7 @@
 <script src="src/fog/fogGeometry.js"></script>
 <script src="src/fog/fogColor.js"></script>
 <script src="src/shapes/doorGeometry.js"></script>
+<script src="src/shapes/presetGeometry.js"></script>
 <script src="src/rooms/vttPlan.js"></script>
 <script src="src/fog/fogClouds.js"></script>
 <script src="src/fog/fog.js"></script>
@@ -980,6 +985,7 @@
 <script src="src/shapes/shapeCommit.js"></script>
 <script src="src/shapes/toolPoly.js"></script>
 <script src="src/shapes/toolShapes.js"></script>
+<script src="src/shapes/toolPreset.js"></script>
 <script src="src/shapes/toolBrush.js"></script>
 <script src="src/shapes/toolDoor.js"></script>
 <script src="src/shapes/toolCut.js"></script>

@@ -318,6 +318,7 @@ function initPanes() {
       return;
     }
     if (msg.type === 'pane-clicked') { selectPane(msg.pane); return; }
+    if (msg.type === 'pane-tool') { if (shape !== msg.shape) setShape(msg.shape); setPreset(msg.preset); return; }
     if (msg.type === 'pane-scene-result') {
       p.sceneId = msg.sceneId || null;
       renderSceneManager();

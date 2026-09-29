@@ -447,3 +447,15 @@ drag. Alt+drag makes its copy on the first movement, so an Alt+click leaves noth
 Alt anywhere a Select press would grab nothing still pans. Inside an open shape a corner or wall
 under Alt drags as it would without it.
 
+
+### Effect presets: a size row above the bar, the wheel steps it, a click places · `SETTLED` (2026-09-29)
+A shape with preset sizes lists them in `#context-row` as bare pick-one numbers, with no unit (the
+cursor label names it). The picked size wears the tool row's outlined box, on his call, so the
+pick reads at a glance; the dashed shape glyph first means draw by hand. Line and Ring have no
+hand tool, so picking one arms a size. A preset never snaps: the grid sets its size once, at
+placement, and a later grid change leaves it alone. The wheel steps through the listed sizes and
+wraps; Ctrl+wheel still zooms. A cone or line aims by press-and-drag from its origin, like the
+cone tool. Rejected in the prototype: a popup of size chips (read as a table), hover to open the
+sizes, "Free" as a word, a unit at the end of the row, and an Effects tab in the right panel. An
+aim handle on the placed effect was dropped because it needs an origin and angle saved on every
+effect. The searchable material palette waits for a second material (backlog 46).

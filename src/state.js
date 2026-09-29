@@ -221,6 +221,10 @@ let shapeOp = 'new';
 // A key into EFFECT_MATERIALS (effects.js). Runtime-only, like placeMode.
 let currentMaterial = 'fire';
 
+// The effect preset the next click places: { kind, s, w } in feet, or null when the shape tool
+// draws by hand. Runtime-only, like placeMode; toolPreset.js owns the value and the highlight.
+let presetArmed = null;
+
 // ─── Auto-Sync ───────────────────────────────────────────────────────────────
 let autoSync = false;
 let autoSyncTimer = null;

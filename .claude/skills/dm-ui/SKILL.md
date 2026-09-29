@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/scenes/sceneCards.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/shapes/shapeMenu.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, the scene library popup and its header, the music bubble and its Add music panel, the two-map toggle beside the Scenes button, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/scenes/sceneCards.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/shapes/shapeMenu.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the room card, where the card places itself, room labels, the description textarea, corner radius, half-shroud or fogHalfAlpha, toolbar toggles or segments, the shape button or its flyout, which tools a placement mode shows, control-panel buttons, pills, segmented controls, destructive-button styling, the scene library popup and its header, the music bubble and its Add music panel, the two-map toggle beside the Scenes button, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -74,7 +74,8 @@ partial erase can't re-fog ground already clear, i.e. the room the party just le
 Four signals, and they must not blur into each other:
 
 - The tool row (`.tool-btn`) is pick-one *and* wears the **outlined blue box**, which now
-  belongs to the picked tool and to nothing else on the bar. Don't lend it to anything, and
+  belongs to the picked tool and to nothing else on the bar. The one loan is off the bar: the
+  picked effect preset size in `#context-row` (`toolPreset.js`). Don't lend it to anything else, and
   don't "fix" the collision by restyling the row. **No hairline dividers on this bar** — one
   was tried and read as a scratch on the TV.
 - An **independent on/off switch is a bare `.tb-toggle`** on the bar, set off by a 12px gap.

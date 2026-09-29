@@ -9,7 +9,7 @@
 
 // The flyout is MODE_SHAPES (toolbar.js) filtered to the drawable shapes, so the list and the bar
 // can never disagree about what a mode offers. Polygon leads; no room is ever cone-shaped.
-const SHAPE_FAMILY = ['poly', 'rect', 'circle', 'cone'];
+const SHAPE_FAMILY = ['poly', 'rect', 'circle', 'cone', 'line', 'ring'];
 function shapeMenuItems() {
   return MODE_SHAPES[placeMode].filter(s => SHAPE_FAMILY.indexOf(s) >= 0);
 }

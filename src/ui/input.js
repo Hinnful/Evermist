@@ -19,13 +19,16 @@ function updateContextPanels() {
   // beside it - a strip offering brush size while a drag sets the grid describes nothing. Its own
   // count rides the map in #gridcal-hud, not this row.
   const cal    = gridCalArmed;
-  const closed = shape === 'poly' || shape === 'rect' || shape === 'circle' || shape === 'cone';
+  const closed = shape === 'poly' || shape === 'rect' || shape === 'circle' || shape === 'cone' ||
+                 shape === 'line' || shape === 'ring';
   const rooms  = !cal && placeMode !== 'effects' && (closed || shape === 'brush');
   const fx     = !cal && placeMode === 'effects' && closed;
   const door   = !cal && shape === 'door';
   show('ctx-rooms', rooms);
   show('panel-brush-bottom', rooms);
   show('ctx-effects', fx);
+  show('ctx-presets', fx && !!EFFECT_PRESETS[shape]);
+  refreshPresetRow();
   show('ctx-door', door);
   // ⚠ visibility, NEVER display. A hidden box keeps its place, so the bar below does not jump up
   // by this strip's height every time the DM picks Select and drop back on the next shape.
@@ -47,7 +50,8 @@ function setShape(s) {
   if (SHAPE_FAMILY.indexOf(s) >= 0) {
     if (placeMode === 'effects') effectsShape = s; else roomsShape = s;
   }
-  ['brush', 'rect', 'poly', 'circle', 'cone', 'select', 'door', 'cut'].forEach(sh => {
+  presetArmed = presetForShape(s);
+  ['brush', 'rect', 'poly', 'circle', 'cone', 'line', 'ring', 'select', 'door', 'cut'].forEach(sh => {
     const el = document.getElementById('btn-' + sh);
     if (el) el.classList.toggle('active', sh === s);
   });
@@ -169,6 +173,8 @@ function initInput() {
     container.addEventListener('wheel', (e) => {
       if (!mapOffscreen) return;
       e.preventDefault();
+      // An armed preset takes the wheel for its sizes; Ctrl+wheel still zooms.
+      if (presetArmed && !e.ctrlKey) { stepPreset(e.deltaY < 0 ? 1 : -1); return; }
       const factor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
       const newZoom = Math.max(0.02, Math.min(20, zoom * factor));
       const { x: mx, y: my } = clientToView(e.clientX, e.clientY);
@@ -244,6 +250,7 @@ function initInput() {
       // Merge, Trim or Cut has no other way out from the keyboard.
       case 'Escape':
         if (legendVisible) { toggleLegend(); break; }
+        if (dropPreset()) break;
         if (activePolygon) {
           activePolygon = null;
           drawCursor(null, null);

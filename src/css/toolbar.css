@@ -116,7 +116,14 @@
   /* ⚠ ONLY THESE FOUR HIDE THEMSELVES, and only until init. updateContextPanels() writes an
      inline display on exactly this list; a group not on it — #material-row — must not start
      hidden, because nothing will ever turn it back on. */
-  #ctx-rooms, #ctx-effects, #ctx-door, #panel-brush-bottom { display: none; }
+  #ctx-rooms, #ctx-effects, #ctx-door, #ctx-presets, #panel-brush-bottom { display: none; }
+  /* Preset sizes (toolPreset.js). */
+  #ctx-presets { margin-left: 4px; }
+  #ctx-presets .mode-btn {
+    width: auto; min-width: 30px; padding: 0 5px; border: 1.5px solid transparent; border-radius: 8px;
+    font: 500 12.5px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; color: #9aa0aa;
+  }
+  #ctx-presets .mode-btn.active { color: #8fb6ff; background: rgba(70, 120, 220, 0.11); border-color: rgba(90, 140, 235, 0.6); }
   #ctx-door { gap: 6px; }
   /* The door fields are stock .cp-chip-pre, which is flex:1 because the control panel gives it a
      column to fill. Nothing does here, and its input is width:0, so the chip needs its own size. */
@@ -261,8 +268,7 @@
     pointer-events: none;
   }
   /* The flyout. display:none rather than visibility, because a hidden .click() still lands and
-     the rig drives the four shapes by id. Its surface is lighter than the bar's so it reads as
-     sitting on top of it rather than as more bar. */
+     the rig drives the shapes by id. It wears the bar's own surface. */
   #shape-menu {
     display: none;
     position: absolute;
@@ -273,8 +279,8 @@
     gap: 3px;
     padding: 6px;
     border-radius: 10px;
-    background: #1e2231;
-    border: 1px solid #3a4256;
+    background: var(--panel-bg);
+    border: var(--panel-border);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
     z-index: 1;
   }
@@ -287,7 +293,7 @@
     left: 50%;
     margin-left: -6px;
     border: 6px solid transparent;
-    border-top-color: #1e2231;
+    border-top-color: var(--panel-bg);
   }
   #shape-menu .mode-btn.active { background: rgba(70, 120, 220, 0.16); color: #6ea8ff; }
 

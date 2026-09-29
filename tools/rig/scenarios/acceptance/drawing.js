@@ -515,7 +515,7 @@ module.exports = async function drawing(rig) {
   // Every button that can appear on the bar, and whether it is drawn and whether it is greyed.
   const BAR = `(() => {
     const ids = ['btn-select', 'btn-shape', 'btn-brush', 'btn-door', 'btn-cut',
-                 'btn-op-join', 'btn-op-trim', 'btn-cone'];
+                 'btn-op-join', 'btn-op-trim', 'btn-cone', 'btn-line', 'btn-ring'];
     const out = { shown: [], greyed: [] };
     for (const id of ids) {
       const b = document.getElementById(id);
@@ -536,15 +536,15 @@ module.exports = async function drawing(rig) {
   await dm.evaluate('setPlaceMode("effects"); 0');
   const barFx = await dm.evaluate(BAR);
   rig.check(barFx.shown.join() ===
-            'btn-select,btn-shape,btn-cut,btn-op-join,btn-op-trim,btn-cone',
-            'the Effects bar is not Select, Shape, Split, Merge, Cut out (with the Cone in the ' +
-            'shape flyout): ' + barFx.shown.join(' '));
+            'btn-select,btn-shape,btn-cut,btn-op-join,btn-op-trim,btn-cone,btn-line,btn-ring',
+            'the Effects bar is not Select, Shape, Split, Merge, Cut out (with the Cone, Line and ' +
+            'Ring in the shape flyout): ' + barFx.shown.join(' '));
   rig.check(barFx.greyed.length === 0,
             'the Effects bar greys a tool instead of leaving it off: ' + barFx.greyed.join(' '));
 
   // The strip above carries the picked tool's group and nothing else.
   const STRIP = `(() => {
-    const ids = ['ctx-rooms', 'ctx-effects', 'ctx-door', 'panel-brush-bottom'];
+    const ids = ['ctx-rooms', 'ctx-effects', 'ctx-presets', 'ctx-door', 'panel-brush-bottom'];
     const row = document.getElementById('context-row');
     return { groups: ids.filter(id => {
                const el = document.getElementById(id);
@@ -554,8 +554,8 @@ module.exports = async function drawing(rig) {
              top: Math.round(document.getElementById('toolbar-bottom').getBoundingClientRect().top) };
   })()`;
   const stripFx = await dm.evaluate('setShape("rect"); ' + STRIP);
-  rig.check(stripFx.groups.join() === 'ctx-effects',
-            'a shape in Effects mode shows more than the materials group: ' + stripFx.groups.join(' '));
+  rig.check(stripFx.groups.join() === 'ctx-effects,ctx-presets',
+            'a shape in Effects mode does not show the materials and the preset sizes, and nothing else: ' + stripFx.groups.join(' '));
   await dm.evaluate('setPlaceMode("rooms"); 0');
   const stripShape = await dm.evaluate('setShape("rect"); ' + STRIP);
   rig.check(stripShape.groups.join() === 'ctx-rooms,panel-brush-bottom',

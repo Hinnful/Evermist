@@ -52,6 +52,7 @@ function setPlaceMode(m) {
     activePolygon = null;
   }
   placeMode = m;
+  if (m !== 'effects') presetArmed = null;   // a size is an effect's; Rooms draws by hand
   ['rooms', 'effects'].forEach(k => {
     const el = document.getElementById('btn-place-' + k);
     if (el) el.classList.toggle('active', k === m);
@@ -72,7 +73,7 @@ function setPlaceMode(m) {
 // and stays centred. Half is the one control left that greys.
 const MODE_SHAPES = {
   rooms:   ['select', 'poly', 'rect', 'circle', 'brush', 'door', 'cut'],
-  effects: ['select', 'poly', 'rect', 'circle', 'cone', 'cut'],
+  effects: ['select', 'poly', 'rect', 'circle', 'cone', 'line', 'ring', 'cut'],
 };
 function shapeInMode(s, m) { return MODE_SHAPES[m].indexOf(s) >= 0; }
 
@@ -85,8 +86,10 @@ function refreshModeTools() {
     const el = document.getElementById(id);
     if (el) el.style.display = fx ? 'none' : '';
   });
-  const cone = document.getElementById('btn-cone');
-  if (cone) cone.style.display = fx ? '' : 'none';
+  ['btn-cone', 'btn-line', 'btn-ring'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = fx ? '' : 'none';
+  });
   refreshShapeButton();
 }
 

@@ -33,6 +33,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `shapes/tools.js` | The tool in hand, shared tool state, the click registry |
 | `shapes/shapeCommit.js` | A drawn shape into a room, an effect or a repair; every refusal |
 | `shapes/toolPoly.js` | The Polygon tool: a vertex per click, and the two ways it closes |
+| `shapes/presetGeometry.js` | Pure effect-preset kernel: sizes, outlines, labels. Tested |
+| `shapes/toolPreset.js` | Effect presets: the size row, the cursor preview, the wheel, placing |
 | `shapes/toolShapes.js` | The drag-a-shape tools: rectangle, circle, cone |
 | `shapes/toolBrush.js` | The fog brush: the queued stroke and the pass that paints it |
 | `shapes/toolDoor.js` | The Door tool and its notch in the fog |
@@ -137,10 +139,10 @@ Declarations must precede use at init time. All under `src/`:
 ```
 lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
-fog/fogGeometry.js → fog/fogColor.js → shapes/doorGeometry.js → rooms/vttPlan.js →
+fog/fogGeometry.js → fog/fogColor.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → shapes/roomOps.js →
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/toolShapes.js →
-shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →
+shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →
 shapes/toolPreview.js →
 shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/shapeBox.js →
 shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → undo.js →

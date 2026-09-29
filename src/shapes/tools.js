@@ -15,6 +15,8 @@ let circleCenter = null;
 // The cone's point of origin, held for the length of the drag. Same lifetime as circleCenter:
 // set on mousedown, cleared on every release path including the one outside the canvas.
 let coneApex = null;
+// Where an effect preset's aiming drag began. Same lifetime as coneApex.
+let presetPress = null;
 // Direction snap for a cone, in degrees, when straighten-walls is on. 15 is what table tools
 // settled on: eight compass points plus the halves between them.
 const CONE_SNAP_DEG = 15;
@@ -75,13 +77,17 @@ const TOOLS = {
   rect:   { drags: true, start: pos => toolRectStart(pos),   finish: pos => toolRectFinish(pos) },
   circle: { drags: true, start: pos => toolCircleStart(pos), finish: pos => toolCircleFinish(pos) },
   cone:   { drags: true, start: pos => toolConeStart(pos),   finish: pos => toolConeFinish(pos) },
+  preset: { drags: true, start: pos => toolPresetStart(pos), finish: (pos, e) => toolPresetFinish(pos, e) },
 };
 
 // ─── Tool mouse handlers ──────────────────────────────────────────────────────
 // Called from index.html with pre-converted MAP coordinates; panning and conversion are its job.
 
+// An armed preset takes the click from whichever shape tool picked it.
+function activeTool() { return TOOLS[presetArmed ? 'preset' : shape]; }
+
 function toolMouseDown(raw, e) {
-  const t = TOOLS[shape];
+  const t = activeTool();
   if (!t) return;
   if (!t.drags) {
     t.down(raw, e);
@@ -100,19 +106,19 @@ function toolMouseMove(pos, e, screenX, screenY) {
   if (selectMouseMove(pos, screenX, screenY, e)) return;
 
   if (!isDrawing) return;
-  const t = TOOLS[shape];
+  const t = activeTool();
   if (t && t.move) t.move(pos);
   scheduleRender();
 }
 
 function toolMouseUp(pos, e) {
   if (selectMouseUp()) return;
-  const t = TOOLS[shape];
+  const t = activeTool();
   if (!t || !t.drags || !isDrawing) return;
   isDrawing = false;
   if (!isPlayer) pixiSetFogBrushing(false);
   lastMapX = lastMapY = null;
-  if (t.finish) t.finish(pos);
+  if (t.finish) t.finish(pos, e);
   settleFogAfterStroke();
 }
 
@@ -125,6 +131,7 @@ function toolWindowMouseUp() {
   if (!isPlayer) pixiSetFogBrushing(false);
   circleCenter = null;
   coneApex = null;
+  presetPress = null;
   settleFogAfterStroke();
 }
 

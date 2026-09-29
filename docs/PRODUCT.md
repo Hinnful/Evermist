@@ -147,7 +147,7 @@ VFX. It is drawn as a flaming border - the shape's outline burning inward with d
 over a faint fill, with sparks and smoke, and the map grid relit inside the zone so covered squares
 stay countable. Clipped to the true shape so a circle stays a circle. Typed by material (fire, acid,
 ...), never per-spell: the combinatorics rule out a spell library, about a dozen types cover the
-list, and size is drawn or typed. No metrics on the shape - no rounds, damage or duration, just the
+list, and size is drawn or picked from presets. No metrics on the shape - no rounds, damage or duration, just the
 area. Whole-room fill is out of scope: rare in play, and easier to paint into the map in Dungeon
 Alchemist. Two looks were tried and dropped before this one - a filled seamless "material" per type,
 and a lit interior grid - see DECISIONS.

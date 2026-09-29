@@ -27,6 +27,8 @@ language, present tense. The terse version every session carries is in
 | `tools.js` | Which tool the DM is holding, the state every tool shares, and the table a click is dispatched through. Each tool is a row in that table and a file of its own, so a new one is added without touching the others. The cone is drawn apex-first - press at the point of origin, drag towards where it points - and commits as an ordinary polygon with a shallow arc on its far edge, so nothing downstream knows a cone from any other shape. |
 | `shapeCommit.js` | What happens to a shape once it is drawn: it becomes a room, an effect, or a repair of one already there. Join, Trim and Cut all end here, and so does every refusal the DM sees. |
 | `toolPoly.js` | The Polygon tool: one vertex per click, closing either by clicking the first vertex again or by crossing its own line. |
+| `presetGeometry.js` | The pure preset math: the sizes each shape offers in feet, the outline a size makes at the grid's scale, the cursor label, and the wrap-around step through a size list. Unit-tested. |
+| `toolPreset.js` | Effect presets: the size row above the bar, the outline and label that follow the cursor, the wheel that steps sizes, and placing one with a click or an aiming drag. |
 | `toolShapes.js` | The three tools drawn by dragging: rectangle, circle and cone. Each starts on the press and commits what it has on release. |
 | `toolBrush.js` | The fog brush. Strokes queue while the pointer moves and land in one pass, so painting stays smooth on a big map. |
 | `toolDoor.js` | The Door tool: which wall a click belongs to, where along it the door sits, and the notch that opens in the fog there. |

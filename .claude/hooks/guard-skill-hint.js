@@ -35,6 +35,7 @@ const OWNERS = {
   'gridcalibrate.js': 'dm-ui',
   'toolbar.js': 'dm-ui',
   'shapemenu.js': 'dm-ui',
+  'toolpreset.js': 'dm-ui',
   'toolbar.css': 'dm-ui',
   'scenemanager.css': 'dm-ui',
   'roomcard.css': 'dm-ui',

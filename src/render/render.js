@@ -247,6 +247,7 @@ function drawCursor(screenX, screenY) {
   }
 
   if (screenX == null) return;
+  if (presetArmed) { drawPresetPreview(screenX, screenY); return; }
   // Same table the polygon paths read, so a preview is already the colour of the room it makes.
   // The centre dots stay white: they mark where the stroke lands and must read against every map.
   // In Effects mode the preview stops wearing a fog colour, or the only thing saying where the next

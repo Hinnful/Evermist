@@ -28,6 +28,7 @@ const PANE_CONTROLS = {
   'pane-shape-op':        m => setShapeOp(m.op),
   'pane-place-mode':      m => setPlaceMode(m.mode),
   'pane-material':        m => setMaterial(m.material),
+  'pane-preset':          m => setPreset(m.preset),
   'pane-snap':            m => { snapToGrid = m.on; _paneToggle('btn-snap', m.on); },
   'pane-axislock':        m => { axisLock = m.on; _paneToggle('btn-axislock', m.on); },
   'pane-brush-size':      m => { brushSize = m.size; },
