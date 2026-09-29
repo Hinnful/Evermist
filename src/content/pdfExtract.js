@@ -12,6 +12,7 @@ const path = require('path');
 const url = require('url');
 const { plDocumentText, plDocumentBlockText } = require('./pdfLayout.js');
 const { statBlockHeadAt } = require('../combat/statBlockBook.js');
+const { _sbSection } = require('../combat/statBlockParse.js');
 
 let _pdfjs = null;
 
@@ -64,7 +65,7 @@ async function extractPdfText(bytes, buildDir) {
         page.cleanup();
       }
     }
-    return { ok: true, text: plDocumentText(pages), blockText: plDocumentBlockText(pages, statBlockHeadAt), pages: doc.numPages };
+    return { ok: true, text: plDocumentText(pages), blockText: plDocumentBlockText(pages, statBlockHeadAt, _sbSection), pages: doc.numPages };
   } finally {
     await doc.destroy();
   }

@@ -79,11 +79,29 @@ const PL_CUT_HEAD = 3;
 const PL_CUT_REACH = 60;
 const PL_CUT_WIDE = 45;
 
+// Blocks set three abreast: the middle column straddles the midline, and the columns may touch.
+function _plThreeColumns(items, width, cutAbove) {
+  const xs = items.filter(it => String(it.str).trim()).map(it => it.x);
+  const mass = x => xs.filter(v => Math.abs(v - x) <= 8).length;
+  const peak = (lo, hi) => xs.filter(x => x >= width * lo && x < width * hi).map(x => [x, mass(x)]).sort((a, b) => b[1] - a[1])[0];
+  const peaks = [peak(0, 0.2), peak(0.3, 0.47), peak(0.62, 0.8)];
+  if (peaks.some(p => !p)) return null;
+  const least = Math.min(...peaks.map(p => p[1]));
+  if (xs.some(x => peaks.every(p => Math.abs(x - p[0]) > 16) && mass(x) > least)) return null;
+  const cols = [[], [], []];
+  for (const it of items) cols[it.x < peaks[1][0] - 8 ? 0 : it.x < peaks[2][0] - 8 ? 1 : 2].push(it);
+  const lines = cols.map(c => plGroupLines(c));
+  const heads = lines.filter(c => { const t = c.map(l => l.text); return t.some((_, i) => cutAbove(t, i)); }).length;
+  return heads >= 2 ? lines : null;
+}
+
 function _plPageLineObjs(page, opts) {
   const o = opts || {};
   const width = (page && page.width) || 0;
   const items = (page && page.items) || [];
   if (!width || !items.length) return [];
+  const three = o.cutAbove && _plThreeColumns(items, width, o.cutAbove);
+  if (three) return three.flat();
 
   const buckets = { left: [], right: [], span: [] };
   for (const it of items) buckets[plClassify(it, width, o.spanMargin)].push(it);
@@ -112,22 +130,33 @@ function _plPageLineObjs(page, opts) {
         const k = other.findIndex((x, j) => j && other[j - 1].y - x.y >= PL_CUT_GAP && x.y >= l.y && x.y - l.y <= PL_CUT_CLEAR);
         const own = new Set(col.slice(i + 1, i + 30).map(x => x.font));
         const fits = x => x && own.has(x.font);
-        if (k > 0 && other[k].font !== l.font && (fits(other[k]) || fits(other[k + 1]) && other[k].y - l.y <= PL_CUT_HEAD) && ![...Array(PL_CUT_BACK).keys()].some(d => k - d >= 0 && o.cutAbove(otherTexts, k - d))) cuts.push(other[k].y + 1);
+        if (k > 0 && other[k].font !== l.font && (fits(other[k]) || o.sectionAt && o.sectionAt(other[k].text) || fits(other[k + 1]) && other[k].y - l.y <= PL_CUT_HEAD) && ![...Array(PL_CUT_BACK).keys()].some(d => k - d >= 0 && o.cutAbove(otherTexts, k - d))) { cuts.push(other[k].y + 1); return; }
+        // With no gap: lore in a font the block never uses runs down to the name, and the block's own font starts level with it.
+        const h = other.findIndex(x => Math.abs(x.y - l.y) <= PL_CUT_HEAD);
+        if (h > 2 && fits(other[h]) && [1, 2, 3].every(d => !own.has(other[h - d].font)) && !own.has(l.font) && ![...Array(PL_CUT_BACK).keys()].some(d => h - d >= 0 && o.cutAbove(otherTexts, h - d))) { cuts.push(Math.max(l.y, other[h].y) + 1); return; }
+        // The block above runs on past this name: a heading repeated in the other column starts this block's half there.
+        if (!o.sectionAt) return;
+        const j = other.findIndex(x => x.y < l.y && o.sectionAt(x.text));
+        const u = j > 0 ? other.findLastIndex((z, m) => m < j && z.y > l.y && o.sectionAt(z.text) === o.sectionAt(other[j].text)) : -1;
+        if (u >= 0 && !other.some((z, m) => m > u && m < j && o.cutAbove(otherTexts, m))) {
+          let n = i;
+          while (n > 0 && col[n - 1].font === l.font && col[n - 1].y - col[n].y <= 16) n--;
+          cuts.push(col === left ? { l: col[n].y + 1, r: other[j].y + 1 } : { l: other[j].y + 1, r: col[n].y + 1 });
+        }
       });
     }
   }
 
-  // Bands run downward, so boundaries are descending y values.
+  // Bands run downward, so boundaries are descending y values, one per column.
   const out = [];
-  let top = Infinity;
-  const bounds = [...span.map(s => s.y), ...cuts].sort((a, b) => b - a);
-  for (const boundary of [...bounds, -Infinity]) {
-    const inBand = l => l.y <= top && l.y > boundary;
-    left.filter(inBand).forEach(l => out.push(l));
-    right.filter(inBand).forEach(l => out.push(l));
-    const s = span.find(x => x.y === boundary);
-    if (s) out.push(s);
-    top = boundary;
+  let topL = Infinity, topR = Infinity;
+  const bounds = [...span.map(x => ({ l: x.y, r: x.y, s: x })), ...cuts.map(c => typeof c === 'number' ? { l: c, r: c } : c)]
+    .sort((a, b) => Math.max(b.l, b.r) - Math.max(a.l, a.r));
+  for (const bd of [...bounds, { l: -Infinity, r: -Infinity }]) {
+    left.filter(x => x.y <= topL && x.y > bd.l).forEach(x => out.push(x));
+    right.filter(x => x.y <= topR && x.y > bd.r).forEach(x => out.push(x));
+    if (bd.s) out.push(bd.s);
+    topL = bd.l; topR = bd.r;
   }
   return out;
 }
@@ -142,11 +171,11 @@ function plDocumentText(pages, opts) {
 }
 
 // The same pages for the stat block finder: each line as "font\u0001first run's font\u0001text", with
-// a band started wherever `cutAbove(columnTexts, i)` names a stat block. The rooms keep
-// plDocumentText untouched.
-function plDocumentBlockText(pages, cutAbove) {
+// a band started wherever `cutAbove(columnTexts, i)` names a stat block, or its other half opens at a
+// `sectionAt(text)` heading. The rooms keep plDocumentText untouched.
+function plDocumentBlockText(pages, cutAbove, sectionAt) {
   return (Array.isArray(pages) ? pages : [])
-    .map(p => _plPageLineObjs(p, { cutAbove }).map(l => `${l.font}\u0001${l.lead}\u0001${l.text}`).join('\n'))
+    .map(p => _plPageLineObjs(p, { cutAbove, sectionAt }).map(l => `${l.font}\u0001${l.lead}\u0001${l.text}`).join('\n'))
     .join('\n');
 }
 

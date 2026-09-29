@@ -2,7 +2,7 @@
 // The popup edits that row's own copy, which reaches the bestiary only through Save to Bestiary;
 // bestiaryPage.js puts the same editor on an entry's page. combatTracker.js owns saving.
 
-const CB_SECTIONS = ['Traits', 'Actions', 'Bonus actions', 'Reactions', 'Legendary actions', 'Lair actions'];
+const CB_SECTIONS = ['Traits', 'Actions', 'Bonus actions', 'Reactions', 'Legendary actions', 'Mythic actions', 'Lair actions'];
 const CB_ABILITIES = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
 const CB_LINES = [['ac', 'Armor Class'], ['hp', 'Hit Points'], ['speed', 'Speed']];
 const CB_DETAILS = [['saves', 'Saving Throws'], ['skills', 'Skills'], ['vuln', 'Vulnerabilities'], ['resist', 'Damage Resistances'],

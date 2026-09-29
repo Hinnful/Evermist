@@ -109,7 +109,7 @@ describe('statBlocksInText edge cases', () => {
     assert.deepEqual(blocks.map(b => b.name), ['Волк', 'Рысь']);
     assert.match(blocks[1].senses, /пассивное Внимание 11$/);
   });
-  it('calls a block with no actions or scores unclean, so the import skips it', () => {
+  it('calls a block with no scores unclean, so the import skips it', () => {
     const [b] = statBlocksInText(['Гриб', 'Средний Растение, Без мировоззрения', 'КБ 5', 'ПЗ 13 (3d8)',
       'Ответные действия', 'Визг. Гриб визжит.'].join('\n'));
     assert.equal(!!statBlockUnclean(b), true);
@@ -185,11 +185,15 @@ describe('statBlockUnclean', () => {
     const c = base(); c.hp += '2'; c.hp = '5 (1d8 + 1)2';
     assert.equal(statBlockUnclean(c), 'page text inside it');
   });
-  it('fails a block with no challenge rating or no actions', () => {
+  it('fails a block with no challenge rating, and passes one printed with no actions', () => {
     const b = base(); b.cr = '';
     assert.equal(statBlockUnclean(b), 'no challenge rating');
     const c = base(); delete c.secs.Actions;
-    assert.equal(statBlockUnclean(c), 'no actions');
+    assert.equal(statBlockUnclean(c), '');
+  });
+  it('fails a challenge rating that runs into the next sentence', () => {
+    const b = base(); b.cr = '0 (XP 0; PB +2) figurine or both simultaneously. Each can become';
+    assert.equal(statBlockUnclean(b), 'page text inside it');
   });
 });
 
@@ -374,5 +378,103 @@ describe('statBlocksInText on sidebars, lore across a page, and spell lists', ()
       ['H', 'H', 'Действия для вида 1'], act('Коготь', '8 (1к8+4)'), ['H', 'H', 'Действия для вида 2'], act('Укус', '12 (2к8+3)')]));
     assert.deepEqual(blocks.map(b => b.name), ['Костяной дьявол (вид 1)', 'Костяной дьявол (вид 2)']);
     assert.deepEqual(blocks[0].secs.Actions.map(e => e.n), ['Лучи', '1', 'Коготь']);
+  });
+});
+
+describe('statBlocksInText on free modules’ own layouts', () => {
+  const pdf = rows => rows.map(([f, lead, t]) => `${f}\u0001${lead}\u0001${t}`).join('\n');
+  const en = name => [['N', 'N', name], ['S', 'S', 'Medium humanoid (any race), any alignment'], ['B', 'B', 'Armor Class 12'],
+    ['B', 'B', 'Hit Points 11 (2d8 + 2)'], ['B', 'B', 'Speed 30 ft.'], ['B', 'B', 'STR DEX CON INT WIS CHA'],
+    ['B', 'B', '11 (+0) 12 (+1) 12 (+1) 10 (+0) 10 (+0) 10 (+0)'], ['B', 'B', 'Challenge 1/8 (25 XP)']];
+  const hit = ['B', 'E', 'Club. Melee Weapon Attack: +2 to hit, reach 5 ft., one target. Hit: 2 (1d4) bludgeoning damage.'];
+  const prose = n => Array.from({ length: n }, (_, i) => ['L', 'L', `The road winds on past the old mill, line ${i}.`]);
+
+  it('splits armour class and hit points set on one line', () => {
+    const [b] = statBlocksInText(pdf([['N', 'N', 'Гоблин воин'], ['S', 'S', 'Маленькая фея (гоблиноид), хаотичная нейтральная'],
+      ['B', 'B', 'Класс доспеха 15 Хиты 10 (3к6)'], ['B', 'B', 'Скорость 30 фт.'], ['B', 'B', 'СИЛ ЛОВ ТЕЛ ИНТ МДР ХАР'],
+      ['B', 'B', '8 (−1) 15 (+2) 10 (+0) 10 (+0) 8 (−1) 8 (−1)'], ['B', 'B', 'Опасность 1/4 (50 опыта)'], ['H', 'H', 'Действия'],
+      ['B', 'E', 'Скимитар. Рукопашная атака: +4. Попадание: 5 (1к6 + 2) рубящего урона.']]));
+    assert.equal(b.ac, '15');
+    assert.equal(b.hp, '10 (3к6)');
+  });
+  it('keeps one copy of a name printed twice over, and joins a wrapped one', () => {
+    const blocks = statBlocksInText(pdf([...prose(6), ['L', 'L', 'Mimic'], ['N', 'N', 'MimicMimic'], ...en('x').slice(1), ['H', 'H', 'Actions'], hit,
+      ...prose(6), ['N', 'N', 'Giant Zombie ConstrictorGiant Zombie Constrictor'], ['N', 'N', 'SnakeSnake'], ...en('x').slice(1), ['H', 'H', 'Actions'], hit]));
+    assert.deepEqual(blocks.map(b => b.name), ['Mimic', 'Giant Zombie Constrictor Snake']);
+  });
+  it('joins a name wrapped onto a line in brackets', () => {
+    const [b] = statBlocksInText(pdf([...prose(6), ['N', 'N', 'Samulkin Farcaster'], ...en('(Illusionist)'), ['H', 'H', 'Actions'], hit]));
+    assert.equal(b.name, 'Samulkin Farcaster (Illusionist)');
+  });
+  it('moves a score run onto its header row back to the scores', () => {
+    const rows = en('Stirge');
+    rows[5] = ['B', 'B', 'STR DEX CON INT WIS CHA 4'];
+    rows[6] = ['B', 'B', '(−3)16 (+3) 11 (+0) 2 (−4) 8 (−1) 6 (−2)'];
+    const [b] = statBlocksInText(pdf([...rows, ['H', 'H', 'Actions'], hit]));
+    assert.deepEqual(b.abil, ['4', '16', '11', '2', '8', '6']);
+  });
+  it('reads past a sidebar set between the traits and the actions', () => {
+    const [b] = statBlocksInText(pdf([...en('Assassin'), ['B', 'E', 'Evasion. It takes no damage on a success.'], ['T', 'T', 'Customizing NPCs'],
+      ['B', 'B', 'You can add racial traits to an NPC.'], ['B', 'B', 'Doing so does not alter its challenge rating.'], ['H', 'H', 'Actions'], hit]));
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Club']);
+  });
+  it('splits "Actions for Type 1" into one monster per type', () => {
+    const blocks = statBlocksInText(pdf([...en('Yuan-ti Malison'), ['H', 'H', 'Actions for Type 1'], hit, ['H', 'H', 'Actions for Type 2'], hit]));
+    assert.deepEqual(blocks.map(b => b.name), ['Yuan-ti Malison (Type 1)', 'Yuan-ti Malison (Type 2)']);
+  });
+  it('drops the bullet before each line and after it', () => {
+    const [b] = statBlocksInText(pdf([['N', 'N', 'Волк'], ['S', 'S', '• Средний зверь, без мировоззрения•'], ['B', 'B', '• Класс Доспеха 13 (природный доспех)'],
+      ['B', 'B', '• Хиты 11 (2к8 +2)•'], ['B', 'B', 'СИЛ ЛОВ ТЕЛ ИНТ МДР ХАР'], ['B', 'B', '12 (+1) 15 (+2) 12 (+1) 3 (-4) 12 (+1) 6 (-2)'],
+      ['B', 'B', '• Опасность 1/4 - 50 опыта•'], ['H', 'H', '• ДЕЙСТВИЯ'], ['B', 'E', 'Укус. Рукопашная атака: +4. Попадание: 7 (2к4 + 2) колющего урона.']]));
+    assert.equal(b.hp, '11 (2к8 +2)');
+    assert.equal(b.cr, '1/4 - 50 опыта');
+  });
+  it('ends the last action at a page headed twice over', () => {
+    const [b] = statBlocksInText(pdf([...en('Exul'), ['H', 'H', 'Actions'], hit, ['C', 'C', 'CreditsCredits'],
+      ['W', 'W', 'Adventure Writing & Maps: Somebody Else'], ['W', 'W', 'Illustrators: A Few More People']]));
+    assert.doesNotMatch(b.secs.Actions[0].t, /Adventure/);
+  });
+});
+
+describe('statBlocksInText keeps page text out of the last entry', () => {
+  const pdf = rows => rows.map(([f, lead, t]) => `${f}\u0001${lead}\u0001${t}`).join('\n');
+  const en = name => [['N', 'N', name], ['S', 'S', 'Medium beast, unaligned'], ['S', 'S', 'Armor Class 13'],
+    ['S', 'S', 'Hit Points 4 (1d8)'], ['S', 'S', 'STR DEX CON INT WIS CHA'],
+    ['B', 'B', '11 (+0) 16 (+3) 11 (+0) 2 (−4) 14 (+2) 5 (−3)'], ['S', 'S', 'Challenge 0 (10 XP)'], ['H', 'H', 'Actions']];
+  const bite = [['B', 'E', 'Bite. Melee Weapon Attack: +2 to hit, reach 5 ft., one target.'], ['D', 'X', 'Hit: 2 (1d4) piercing damage.']];
+  const text = b => b.secs.Actions.map(e => e.t).join(' ');
+
+  it('reads a Mythic Actions section and its opening paragraph', () => {
+    const [b] = statBlocksInText(pdf([...en('Dullahan'), ...bite, ['H', 'H', 'Mythic Actions'],
+      ['B', 'B', 'If the dullahan has used its call, it can use the options below.'], ['B', 'E', 'Coordinated Assault. The dullahan attacks.']]));
+    assert.deepEqual(b.secs['Mythic actions'].map(e => e.n), ['', 'Coordinated Assault']);
+    assert.equal(statBlockUnclean(b), '');
+  });
+  it('keeps a Hit line set above a page number in another font', () => {
+    const [b] = statBlocksInText(pdf([...en('Deer'), ...bite, ['P', 'P', '66'], ['L', 'L', 'Lore about the next beast goes on here'],
+      ['L', 'L', 'and runs to a second line.']]));
+    assert.match(text(b), /Hit: 2 \(1d4\) piercing damage\.$/);
+  });
+  it('drops the legal footer, a page number printed twice and a chapter head', () => {
+    const [b] = statBlocksInText(pdf([...en('Deer'), ...bite, ['F', 'F', 'Not for resale. Permission granted to print or photocopy this document.'],
+      ['P', 'P', '1010'], ['F', 'F', 'Chapter 12: Monsters 122122'], ['B', 'E', 'Hooves. Melee Weapon Attack: +2 to hit. Hit: 3 (1d6) damage.']]));
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Bite', 'Hooves']);
+    assert.doesNotMatch(text(b), /resale|1010|Chapter/);
+  });
+  it('keeps "These effects last for 1 minute." inside the action it belongs to', () => {
+    const [b] = statBlocksInText(pdf([...en('Stone Golem'), ['B', 'E', 'Slow (Recharge 5–6). The golem targets one creature.'],
+      ['B', 'C', 'These effects last for 1 minute. A target can repeat the saving throw.']]));
+    assert.deepEqual(b.secs.Actions.map(e => e.n), ['Slow (Recharge 5–6)']);
+  });
+  it('keeps a short line that starts with a number when it ends a sentence', () => {
+    const [b] = statBlocksInText(pdf([...en('Hezrou'), ['B', 'E', 'Stench. A creature is immune to the stench for'], ['Z', 'Z', '24 hours.'], ...bite]));
+    assert.match(b.secs.Actions[0].t, /for 24 hours\.$/);
+  });
+  it('ends at two lines of flavour text in fonts the block never used, but reads on past a quote', () => {
+    const [f] = statBlocksInText(pdf([...en('Quipper'), ...bite, ['Q', 'Q', 'A quipper is a carnivorous fish'], ['R', 'R', 'with sharp teeth.']]));
+    assert.match(text(f), /piercing damage\.$/);
+    const [y] = statBlocksInText(pdf([...en('Yeti'), ...bite, ['Q', 'Q', '"Cold," it said,'], ['R', 'R', '"is all there is."'],
+      ['B', 'E', 'Chilling Gaze. The yeti targets one creature.']]));
+    assert.deepEqual(y.secs.Actions.map(e => e.n), ['Bite', 'Chilling Gaze']);
   });
 });

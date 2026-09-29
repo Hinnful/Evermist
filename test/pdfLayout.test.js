@@ -288,3 +288,38 @@ describe('plDocumentBlockText', () => {
       'Challenge 3 (700 XP)', 'Echolocation. It hears.', 'Bite. Melee Weapon Attack: +6.']);
   });
 });
+
+describe('plDocumentBlockText on free modules’ own layouts', () => {
+  const { plDocumentBlockText } = require('../src/content/pdfLayout.js');
+  const { statBlockHeadAt } = require('../src/combat/statBlockBook.js');
+  const { _sbSection } = require('../src/combat/statBlockParse.js');
+  const f = (str, x, y, font, w = 200) => Object.assign(run(str, x, y, w), { f: font });
+  const texts = s => s.split('\n').map(l => l.split('\u0001').pop());
+  const head = (name, x, y) => [f(name, x, y, 'H', 150), f('Маленький зверь, без мировоззрения', x, y - 12, 'S', 150),
+    f('Класс Доспеха 12', x, y - 24, 'S', 150), f('Хиты 7 (2к6)', x, y - 36, 'S', 150)];
+
+  test('reads stat blocks set three abreast one column at a time', () => {
+    const page = { width: W, items: [0, 1, 2].flatMap(c => [...head(`Зверь ${c}`, 20 + c * 200, 700),
+      ...[0, 1, 2, 3, 4].map(k => f(`Строка ${k} зверя ${c}.`, 20 + c * 200, 640 - k * 12, 'S', 150))]) };
+    const out = texts(plDocumentBlockText([page], statBlockHeadAt, _sbSection));
+    assert.deepEqual(out.slice(0, 9), ['Зверь 0', 'Маленький зверь, без мировоззрения', 'Класс Доспеха 12', 'Хиты 7 (2к6)',
+      'Строка 0 зверя 0.', 'Строка 1 зверя 0.', 'Строка 2 зверя 0.', 'Строка 3 зверя 0.', 'Строка 4 зверя 0.']);
+  });
+  test('starts a block’s other half at an Actions heading level with its name', () => {
+    const page = { width: W, items: [f('Лор слева.', 50, 500, 'L'), f('Лор справа.', 320, 500, 'L'),
+      ...head('Мертвионетка', 50, 351), f('Необычная природа. Не дышит.', 50, 300, 'B'),
+      f('Действия', 320, 354, 'T'), f('Игла. Атака +4.', 320, 336, 'N')] };
+    const out = texts(plDocumentBlockText([page], statBlockHeadAt, _sbSection));
+    assert.deepEqual(out.slice(-2), ['Действия', 'Игла. Атака +4.']);
+    assert.equal(out.indexOf('Лор справа.'), 1);
+  });
+  test('cuts each column at its own height where the block above repeats a heading', () => {
+    const page = { width: W, items: [...head('Младший эмиссар', 50, 800), f('Черта младшего.', 50, 740, 'B'),
+      f('Легендарные действия', 320, 800, 'T'), f('Плеть младшего.', 320, 788, 'N'), f('Желчь младшего.', 320, 440, 'N'),
+      ...head('Высший эмиссар', 50, 430), f('Черта высшего.', 50, 370, 'B'),
+      f('Легендарные действия', 320, 300, 'T'), f('Плеть высшего.', 320, 288, 'N')] };
+    const out = texts(plDocumentBlockText([page], statBlockHeadAt, _sbSection));
+    assert.ok(out.indexOf('Желчь младшего.') < out.indexOf('Высший эмиссар'));
+    assert.ok(out.indexOf('Черта высшего.') < out.indexOf('Плеть высшего.'));
+  });
+});

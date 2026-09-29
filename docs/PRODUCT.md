@@ -69,7 +69,7 @@ player's own. No dice roll anywhere, because the table has real ones. No turn ma
 rounds until something counts turns. The bestiary holds every stat block and is the source the
 fight copies from; nothing in a fight changes it unless saved back as a new entry. Stat blocks
 import from any monster page, and every one a book or module prints reads in at once; one that
-does not read clean, or has no actions, is left out and named. A misprint imports as printed:
+does not read clean is left out and named; one printed with no actions reads in as printed. A misprint imports as printed:
 Evermist never corrects a book or a site. Notes for a scene with no rooms
 are a separate piece of work, not part of the combat helper.
 

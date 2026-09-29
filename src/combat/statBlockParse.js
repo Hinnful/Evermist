@@ -29,11 +29,12 @@ const SB_SECTIONS = [
   ['Bonus actions', ['bonus actions', 'бонусные действия']],
   ['Reactions', ['reactions', 'реакции', 'ответные действия']],
   ['Legendary actions', ['legendary actions', 'легендарные действия']],
+  ['Mythic actions', ['mythic actions', 'мифические действия']],
   ['Lair actions', ['lair actions', 'действия логова', 'действия в логове']],
 ];
 
 const SB_ABIL = [['STR', 'СИЛ', 'Str', 'Сил'], ['DEX', 'ЛОВ|ЛВК', 'Dex', 'Лов'], ['CON', 'ТЕЛ|ВЫН', 'Con', 'Тел'],
-  ['INT', 'ИНТ', 'Int', 'Инт'], ['WIS', 'МДР', 'Wis', 'Мдр'], ['CHA', 'ХАР', 'Cha', 'Хар']];
+  ['INT', 'ИНТ', 'Int', 'Инт'], ['WIS', 'МДР|МУД', 'Wis', 'Мдр'], ['CHA', 'ХАР', 'Cha', 'Хар']];
 // The page's description is kept as lore; its comments end the block.
 const SB_LORE = /^(description|lore|описание)$/i;
 const SB_END = /^(comments?|комментарии)$/i;
@@ -65,7 +66,7 @@ function _sbLabel(line) {
 
 function _sbSection(line) {
   const low = line.replace(/^##\s*/, '').replace(/[:.]\s*$/, '').trim().toLowerCase();
-  const type = low.match(/^(?:действия для вида|actions \(type)\s*(\d+)\)?$/);
+  const type = low.match(/^(?:действия для вида|actions for type|actions \(type)\s*(\d+)\)?$/);
   if (type) return `Actions:${type[1]}`;
   const hit = SB_SECTIONS.find(([, names]) => names.includes(low));
   return hit ? hit[0] : null;

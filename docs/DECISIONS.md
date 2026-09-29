@@ -462,13 +462,18 @@ A running head now needs numbers that climb through the book, facing pages when 
 and a font that is neither the book's body font nor its lore font.
 
 ### A stat block that does not read clean is left out · `SETTLED` (2026-09-25)
-No challenge rating, no actions, fewer than six scores, an unnamed entry, or a credit, caption or
-callout number left inside it: the import leaves the block out and names it, with Import anyway.
-A half-read monster that looks whole is worse than a gap, because nothing prompts a fix; the link
-import and the editor fill a gap. A monster with no actions is left out too: the bestiary feeds the
-fight table, and a creature with nothing to do in a fight is narrative or a misprint. Kept on
-2026-09-28 although it refuses the few creatures printed with no actions: it is the check that
-catches a block whose actions a page break cut off, and Import anyway brings the rest in.
+No challenge rating, fewer than six scores, an unnamed entry, or a credit, caption or callout
+number left inside it: the import leaves the block out and names it, with Import anyway. A
+half-read monster that looks whole is worse than a gap, because nothing prompts a fix; the link
+import and the editor fill a gap.
+
+**No actions stopped being a refusal on 2026-09-29, reversing this entry's earlier call.** It was
+kept as the check that caught a block whose actions a page break or a sidebar cut off. Across 29
+books every such cut was fixed in the reader instead, and every block the rule still refused was
+printed with no actions (Frog, Sea Horse, Shrieker, a guardian portrait); the DM pressed Import
+anyway on each. A cut block now imports without its actions, so a reader change is diffed across
+the book set before it ships. A challenge rating that runs into a new sentence is refused as page
+text: it was the one misread the rule had been hiding.
 
 ### A link that does not read clean is refused · `SETTLED` (2026-09-28)
 The link import took any page it found an Armor Class on, so a site whose layout merged traits or
@@ -489,6 +494,15 @@ gap ending level with it and the line under that gap is set in this block's font
 two conditions the cut fired inside side-by-side blocks, before an Actions heading or at a
 neighbour's name, and cost 2014 SRD monsters. A column mark on every line was built for this and
 removed unused.
+
+### Page text is skipped inside a block, never removed from the book · `SETTLED` (2026-09-29)
+Footers, doubled page numbers and chapter heads rode on the last action of about 70 blocks.
+Dropping those lines from the whole book moved block ends elsewhere, because lore fonts are learned
+from how each font runs, so the reader skips them only inside a block. Two broader rules were built
+and dropped: lines repeated ten times word for word, which deleted repeated attack lines, and a
+block ending at any line in a font it never used, which cut spell lists and actions. What stayed
+ends a block at two lines of flavour text in unused fonts, and reads on when an entry of the block
+follows them. A publisher's legal footer is dropped by its wording.
 
 ### A scanned book is not read · `REJECTED` (2026-09-28)
 Machine-read text misreads 13 as "l3" and 1d6 as "ld6". Scores, HP and damage could be checked

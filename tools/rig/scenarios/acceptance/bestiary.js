@@ -25,6 +25,7 @@
 //      page open and every action whole, even one the page draws late; a page whose stat block does
 //      not read clean, and a line that is not a link, each stay as a failed row with its reason.
 //   H. A key pressed while the window is open never reaches the map.
+//   I. A monster's Mythic Actions show on its page under their own heading, after its actions.
 //
 // ⚠ G SERVES A PAGE WRITTEN HERE, for an invented monster, from this process. No live site is
 // reached, so a site changing its markup cannot fail this file; the parser's unit tests carry the sites.
@@ -216,4 +217,20 @@ module.exports = async function bestiaryFeature(rig) {
   })()`);
   rig.check(keys.shut === 'rect', 'R with the bestiary shut did not pick the rectangle, so this check cannot tell anything: ' + keys.shut);
   rig.check(keys.open === 'select', 'an R pressed with the bestiary open reached the map and picked "' + keys.open + '"');
+
+  // ── I. Mythic Actions ─────────────────────────────────────────────────────
+  // RED ON: 'Mythic actions' dropped from CB_SECTIONS (combatStatBlock.js) — 2026-09-29
+  const mythic = await dm.evaluate(`(() => {
+    bestiarySetOpen(true);
+    const b = combatAddEntry(cbState.blocks, Object.assign(combatBlankBlock('', 'Dullahan'), { meta: 'Medium undead, lawful evil', secs: {
+      Actions: [{ n: 'Fiery Skull', t: 'Ranged Spell Attack: +7 to hit. Hit: 14 (2d10 + 3) fire damage.' }],
+      'Mythic actions': [{ n: '', t: 'If the dullahan used its call, it can use these options.' }, { n: 'Coordinated Assault', t: 'The dullahan attacks.' }] } }));
+    bestiaryRender(); _bsShow(b.id, false);
+    const heads = [...document.querySelectorAll('#bs-page .bp-sec-h')].map(h => h.textContent.replace(/[▼\\s]+/g, ' ').trim());
+    const sec = document.querySelector('#bs-page .bp-sec[data-fold="Mythic actions"]');
+    return { heads, text: sec ? sec.textContent.replace(/\\s+/g, ' ').trim() : null };
+  })()`);
+  rig.check(!!mythic.text && /Coordinated Assault\. The dullahan attacks\./.test(mythic.text) &&
+            mythic.heads.indexOf('Mythic actions') > mythic.heads.indexOf('Actions') && mythic.heads.indexOf('Actions') >= 0,
+            'a monster’s Mythic Actions did not show on its page under their own heading after its actions: ' + JSON.stringify(mythic));
 };
