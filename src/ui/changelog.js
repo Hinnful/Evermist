@@ -21,7 +21,7 @@ function _clBuild() {
         '<span class="cl-title">What\'s new</span>' +
         '<button type="button" class="cl-x" id="cl-close" title="Close" aria-label="Close">✕</button>' +
       '</div>' +
-      '<div id="cl-body"></div>' +
+      '<div id="cl-body" data-no-i18n></div>' +
     '</div>';
   document.body.appendChild(_clRoot);
 
@@ -50,7 +50,7 @@ function _clFill() {
     if (entry.version === _clVersion) {
       const chip = document.createElement('span');
       chip.className = 'cl-chip';
-      chip.textContent = 'installed';
+      chip.textContent = t('installed');
       ver.appendChild(chip);
     }
     const date = document.createElement('span');
@@ -88,7 +88,7 @@ function _clFill() {
       const link = document.createElement('button');
       link.type = 'button';
       link.className = 'cl-github';
-      link.textContent = 'View on GitHub';
+      link.textContent = t('View on GitHub');
       link.addEventListener('click', () => window.electronAPI.openReleasePage(entry.tag));
       full.appendChild(link);
     }

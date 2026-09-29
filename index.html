@@ -720,7 +720,7 @@
 <div id="scene-dd">
   <button id="scene-dd-toggle" title="Scenes">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>
-    <span id="scene-dd-name">No scene</span>
+    <span id="scene-dd-name" data-no-i18n>No scene</span>
   </button>
   <button id="btn-two-maps" title="Show a second map beside this one">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>
@@ -855,7 +855,7 @@
       <button id="btn-mu-open" class="mu-open" title="Music">
         <svg id="mu-note" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 18V5l12-2v13"/></svg>
         <span id="mu-level" class="mu-level"><i></i><i></i><i></i></span>
-        <span id="mu-pill-name"></span>
+        <span id="mu-pill-name" data-no-i18n></span>
       </button>
       <!-- Pause, not stop: it keeps the position, so pressing it again picks the track back up
            where it was. Its own button so a click on it never reaches the open handler. -->
@@ -883,7 +883,7 @@
         </button>
       </div>
 
-      <div id="mu-list" class="mu-list"></div>
+      <div id="mu-list" class="mu-list" data-no-i18n></div>
 
       <!-- The app's own slider: a div track, fill and knob with an invisible range over them. -->
       <div class="mu-volrow">
@@ -939,7 +939,7 @@
        shared with the module-text panel, which wants exactly the same thing. -->
   <div id="mu-status" class="mt-status"></div>
 
-  <div id="mu-picklist" class="mu-picklist"></div>
+  <div id="mu-picklist" class="mu-picklist" data-no-i18n></div>
 
   <!-- Update downloader lives here alone, and the whole footer is absent unless a newer yt-dlp
        release exists. Nothing installs without this button being pressed. -->
@@ -962,6 +962,9 @@
      inside a multi-file selection is refused (sceneManager.js importMapFiles). -->
 <input type="file" id="file-input" multiple accept="image/*,video/mp4,video/webm,.zip,application/zip" style="display:none">
 
+<script src="src/i18n/i18nPlan.js"></script>
+<script src="src/i18n/ru.js"></script>
+<script src="src/i18n/i18n.js"></script>
 <script src="lib/pixi.min.js"></script>
 <script src="lib/polygon-clipping.umd.js"></script>
 <script src="src/render/renderer.js"></script>

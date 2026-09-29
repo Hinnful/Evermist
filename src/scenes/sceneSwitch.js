@@ -161,7 +161,7 @@ async function switchScene(id, _isRecovery = false) {
 
   // normalizeRoomFields backfills `name` on scenes saved before rooms had names (roomPanel.js),
   // copyShapeRings spreads additively, and decodeShapeFromSave gives a held room its mode back.
-  polygons      = normalizeRoomFields(scene.polygons || [])
+  polygons      = normalizeRoomFields(scene.polygons || [], id => t('Room {n}', { n: id }))
                     .map(p => decodeShapeFromSave(copyShapeRings(p)));
   nextPolygonId = scene.nextPolygonId || 1;
   clearShapeSelection();

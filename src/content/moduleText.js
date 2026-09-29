@@ -463,15 +463,14 @@ function mtLoadStored() {
 function mtStore(entries, sourceName) {
   const json = mtSerialize(entries, sourceName);
   if (json.length > MT_MAX_CHARS) {
-    return { ok: false, error: 'That module text is too large to store (' +
-      Math.round(json.length / 1024) + ' KB, limit ' + Math.round(MT_MAX_CHARS / 1024) +
-      ' KB). Import one chapter at a time.' };
+    return { ok: false, error: t('That module text is too large to store ({kb} KB, limit {max} KB). ' +
+      'Import one chapter at a time.', { kb: Math.round(json.length / 1024), max: Math.round(MT_MAX_CHARS / 1024) }) };
   }
   try {
     localStorage.setItem(MT_KEY, json);
   } catch (err) {
-    return { ok: false, error: 'Browser storage is full, so nothing was saved. Free some space ' +
-      'or import a smaller chapter. (' + (err && err.name ? err.name : 'error') + ')' };
+    return { ok: false, error: t('Browser storage is full, so nothing was saved. Free some space ' +
+      'or import a smaller chapter.') + ' (' + (err && err.name ? err.name : 'error') + ')' };
   }
   mtEntries = entries;
   mtSourceName = sourceName;

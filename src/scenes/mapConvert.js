@@ -79,10 +79,9 @@ function setCompressSize(value) {
     _compressExplained = true;
     messageDialog({
       title: 'Compression',
-      message:
-        'Animated maps bigger than ' + box.w + '×' + box.h + ' will be re-encoded to fit ' +
+      message: t('Animated maps bigger than {w}×{h} will be re-encoded to fit ' +
         'that size on import. This improves performance on low-end PCs and laptops.\n\n' +
-        'Leave it off if your machine can handle full-size maps.',
+        'Leave it off if your machine can handle full-size maps.', box),
       buttonLabel: 'Got it',
     });
   }

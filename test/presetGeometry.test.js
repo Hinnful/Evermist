@@ -2,6 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { EFFECT_PRESETS, presetRings, presetLabel, stepPresetIndex } = require('../src/shapes/presetGeometry');
+const { i18nFill } = require('../src/i18n/i18nPlan');
 
 const O = { x: 500, y: 400 };
 const bbox = vs => {
@@ -67,8 +68,8 @@ test('the wheel wraps at both ends', () => {
 });
 
 test('the cursor label names the unit', () => {
-  assert.strictEqual(presetLabel('circle', 20, 0), '20 ft radius');
-  assert.strictEqual(presetLabel('line', 60, 5), '60 × 5 ft line');
-  assert.strictEqual(presetLabel('rect', 10, 0), '10 × 10 ft');
-  assert.strictEqual(presetLabel('ring', 20, 1), '20 × 1 ft ring');
+  assert.strictEqual(presetLabel('circle', 20, 0, i18nFill), '20 ft radius');
+  assert.strictEqual(presetLabel('line', 60, 5, i18nFill), '60 × 5 ft line');
+  assert.strictEqual(presetLabel('rect', 10, 0, i18nFill), '10 × 10 ft');
+  assert.strictEqual(presetLabel('ring', 20, 1, i18nFill), '20 × 1 ft ring');
 });

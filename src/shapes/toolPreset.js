@@ -54,7 +54,7 @@ function refreshPresetRow() {
       b.className = 'mode-btn';
       b.dataset.preset = String(i);
       b.textContent = z.w ? z.s + '×' + z.w : String(z.s);
-      b.title = presetLabel(shape, z.s, z.w);
+      b.title = presetLabel(shape, z.s, z.w, t);
       b.onclick = () => setPreset({ kind: row.dataset.kind, ...z });
       row.appendChild(b);
     });
@@ -135,7 +135,7 @@ function drawPresetPreview(sx, sy) {
   c.fillStyle = 'rgba(255,255,255,0.6)';
   c.beginPath(); c.arc(o.x, o.y, 2.5, 0, Math.PI * 2); c.fill();
 
-  const txt = presetLabel(p.kind, p.s, p.w);
+  const txt = presetLabel(p.kind, p.s, p.w, t);
   c.font = '600 12px system-ui, -apple-system, sans-serif';
   const w = c.measureText(txt).width + 16, y = Math.max(14, top - 16);
   c.fillStyle = 'rgba(26,26,28,0.92)';

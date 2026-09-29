@@ -40,8 +40,8 @@ async function _importMapFiles(files) {
   if (zip) {
     messageDialog({
       title: 'Import the backup on its own',
-      message: '“' + zip.name + '” is a backup, and restoring one is its own job. Import it by ' +
-               'itself, then come back for the maps.',
+      message: t('“{name}” is a backup, and restoring one is its own job. Import it by ' +
+                 'itself, then come back for the maps.', { name: zip.name }),
     });
     return;
   }
@@ -52,7 +52,7 @@ async function _importMapFiles(files) {
   const queue = [];
   for (const f of list) {
     if (isImportableMapFile(f)) queue.push(f);
-    else failures.push('“' + f.name + '” is not an image or an animated map.');
+    else failures.push(t('“{name}” {reason}', { name: f.name, reason: t('is not an image or an animated map.') }));
   }
 
   const ids = [];
@@ -60,7 +60,7 @@ async function _importMapFiles(files) {
     for (let i = 0; i < queue.length; i++) {
       const f = queue[i];
       if (batch) {
-        setMapProgressPrefix('Map ' + (i + 1) + ' of ' + queue.length + ' - ' + sceneNameForFile(f));
+        setMapProgressPrefix(t('Map {i} of {n}', { i: i + 1, n: queue.length }) + ' - ' + sceneNameForFile(f));
         showMapProgress('Reading the map…');
       }
       // ⚠ THE ORIGINALLY PICKED File, STRAIGHT THROUGH: findPlanForFile needs its path on disk, so
@@ -69,7 +69,7 @@ async function _importMapFiles(files) {
       try { r = await createNewScene(f, { quiet: batch }); }
       catch (err) { console.error('[importMapFiles] import threw', err); }
       if (r && r.ok) ids.push(r.id);
-      else failures.push('“' + f.name + '” ' + ((r && r.reason) || 'would not open.'));
+      else failures.push(t('“{name}” {reason}', { name: f.name, reason: (r && r.reason) || t('would not open.') }));
     }
   } finally {
     setMapProgressPrefix('');
@@ -87,7 +87,7 @@ async function _importMapFiles(files) {
   // invisible. It is already down (the finally above) and this is the last thing to run.
   if (batch && failures.length) {
     messageDialog({
-      title: failures.length === 1 ? 'One map did not make it' : failures.length + ' maps did not make it',
+      title: t.plural(failures.length, 'One map did not make it', '{n} maps did not make it'),
       message: failures.join('\n'),
     });
   }
@@ -95,7 +95,7 @@ async function _importMapFiles(files) {
 
 // The scene name a file will get, so a batch's progress label and the scene it creates agree.
 function sceneNameForFile(file) {
-  return file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim() || 'New Scene';
+  return file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim() || t('New Scene');
 }
 
 // Resolves { ok, id, name, reason } once the map is on screen or refused — NEVER BEFORE, and never
@@ -146,7 +146,7 @@ async function createNewScene(file, opts) {
       hideMapProgress();
       if (!o.quiet) messageDialog({
         title: isVid ? 'Animated map would not play' : 'Map would not open',
-        message: '“' + file.name + '” ' + result.reason,
+        message: t('“{name}” {reason}', { name: file.name, reason: result.reason }),
       });
     }
     answer(result);
@@ -165,7 +165,7 @@ async function createNewScene(file, opts) {
       // A statement of what happened, carried on the label of the longest step that follows it,
       // so it is on screen long enough to read. Never a dialog: nothing here needs an answer.
       showMapProgress(shrunk
-        ? 'Saving — shrunk ' + shrunk.srcW + '×' + shrunk.srcH + ' to ' + shrunk.outW + '×' + shrunk.outH
+        ? t('Saving — shrunk {srcW}×{srcH} to {outW}×{outH}', shrunk)
         : 'Saving animated map…');
       const mimeType = file.type || (file.name.endsWith('.mp4') ? 'video/mp4' : 'video/webm');
       try {
@@ -219,7 +219,7 @@ async function createNewScene(file, opts) {
     // The fifth way this ends: the save path itself throwing. Left unhandled that is an
     // unsettled promise with the overlay up, which is a hang rather than a failure.
     console.error('[createNewScene] import failed', err);
-    finish({ ok: false, name, reason: 'could not be saved. ' + (err && err.message ? err.message : '') });
+    finish({ ok: false, name, reason: t('could not be saved.') + ' ' + (err && err.message ? err.message : '') });
    }
   };
   if (isVid) loadVideoFromFile(file, onLoaded, reason => finish({ ok: false, name, reason }));

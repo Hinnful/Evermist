@@ -58,7 +58,7 @@ function commitDrawnShape(verts) {
     pushUndo();
     fogModifiedThisStroke = true;
     const pid = nextPolygonId++;
-    shape = { id: pid, vertices: verts, mode: tool, cornerRadius: 0, name: 'Room ' + pid };
+    shape = { id: pid, vertices: verts, mode: tool, cornerRadius: 0, name: t('Room {n}', { n: pid }) };
     polygons.push(shape);
   }
   // Deliberately NOT selected: drawing leaves the card closed so it cannot cover the map, and
@@ -81,8 +81,8 @@ function refuseShapeOp(reason) {
 function newShapeFromPiece(base, piece) {
   const id = placeMode === 'effects' ? nextEffectId++ : nextPolygonId++;
   const s = { ...base, id };
-  s.name = (base.material ? base.material.charAt(0).toUpperCase() + base.material.slice(1)
-                          : 'Room') + ' ' + id;
+  s.name = t((base.material ? base.material.charAt(0).toUpperCase() + base.material.slice(1)
+                            : 'Room') + ' {n}', { n: id });
   applyPieceToShape(s, piece);
   delete s.desc;
   return s;
@@ -124,8 +124,7 @@ function applyShapePlan(plan, mode) {
 // A door on a wall the repair removed has nothing left to sit on. Reported because the DM placed
 // it by hand and cannot see it go, unlike a corner radius whose corner visibly went with the cut.
 function reportLostDoors(n) {
-  noticeToast(n === 1 ? 'One door was removed with the wall it was on.'
-                      : n + ' doors were removed with the walls they were on.');
+  noticeToast(t.plural(n, 'One door was removed with the wall it was on.', '{n} doors were removed with the walls they were on.'));
 }
 
 // ⚠ EVERY PER-VERTEX FIELD IS REPLACED OR DELETED, never left behind: one array still holding

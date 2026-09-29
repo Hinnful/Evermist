@@ -39,7 +39,7 @@ function cbSave(quiet) {
     if (quiet) return false;
     console.error('Saving the fight failed:', err);
     // Once per session: a full store would otherwise raise a dialog on every keystroke.
-    if (!_cbSaveFailed) messageDialog({ title: 'The fight is not being saved', message: 'Evermist could not write the fight table to disk, so it will be gone after a restart.\n\n' + (err.message || err) });
+    if (!_cbSaveFailed) messageDialog({ title: 'The fight is not being saved', message: t('Evermist could not write the fight table to disk, so it will be gone after a restart.') + '\n\n' + (err.message || err) });
     _cbSaveFailed = true;
     return false;
   }
@@ -74,7 +74,7 @@ function cbBackupPayload() {
 
 function cbMergePayload(json) {
   let d;
-  try { d = JSON.parse(json); } catch (err) { return { ok: false, error: 'The fight in this backup could not be read.' }; }
+  try { d = JSON.parse(json); } catch (err) { return { ok: false, error: t('The fight in this backup could not be read.') }; }
   cbState = combatMerge(cbState, { rows: Array.isArray(d.rows) ? d.rows : [], blocks: d.blocks || {},
     fights: Array.isArray(d.fights) ? d.fights : [], openId: d.openId }, combatFightId);
   cbSave();
@@ -100,8 +100,8 @@ function _cbHpClass(hp) { return hp.down ? 'dead' : hp.bloodied ? 'low' : ''; }
 
 // The DM's own line once written, else what the stat block's actions read as.
 function _cbAtkCell(sb) {
-  if (sb.quick !== undefined) return `<span class="cb-atk own">${_cbEsc(sb.quick)}</span>`;
-  return `<span class="cb-atk pills">${combatAttacks(sb).map(cbAttackPill).join('')}</span>`;
+  if (sb.quick !== undefined) return `<span class="cb-atk own" data-no-i18n>${_cbEsc(sb.quick)}</span>`;
+  return `<span class="cb-atk pills" data-no-i18n>${combatAttacks(sb).map(cbAttackPill).join('')}</span>`;
 }
 
 function cbRender() {
@@ -406,6 +406,7 @@ function _cbEditAttacks(cell, r) {
   span.textContent = before;
   span.contentEditable = 'plaintext-only';
   span.classList.add('editing');
+  span.dataset.ph = t('Attacks, spells, save DCs');
   span.focus();
   getSelection().selectAllChildren(span);
   getSelection().collapseToEnd();
@@ -592,6 +593,7 @@ function _cbSuggest(input, row) {
   const el = document.createElement('div');
   el.className = 'cb-menu';
   el.id = 'cb-suggest';
+  el.dataset.noI18n = '';
   el.innerHTML = items.map((b, i) => `<div data-i="${i}" class="${i ? '' : 'on'}">${_cbEsc(b.name)}<span class="src">${_cbEsc(b.source || '')}</span></div>`).join('');
   // mousedown, not click: the field's blur would close the list first.
   el.addEventListener('mousedown', e => {

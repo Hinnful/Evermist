@@ -93,7 +93,7 @@ function initSceneManagerUI() {
   document.getElementById('btn-two-maps').onclick = toggleTwoMaps;
 
   document.getElementById('sm-new-group').onclick = () => {
-    const name = addGroup('New group');
+    const name = addGroup(t('New group'));
     renderSceneManager();
     const el = document.querySelector('.sm-group[data-group="' + cssEscapeAttr(name) + '"] .sm-group-name');
     if (el) { el.focus(); el.select(); }
@@ -173,11 +173,11 @@ function updateTriggerName() {
     el.textContent = PANE_IDS
       .map(id => panes[id].sceneId
         ? ((allScenes.find(x => x.id === panes[id].sceneId) || {}).name || '?')
-        : 'Pick a map')
+        : t('Pick a map'))
       .join('  ·  ');
     return;
   }
-  el.textContent = currentScene ? currentScene.name : (allScenes.length ? 'Select a scene' : 'No scenes');
+  el.textContent = currentScene ? currentScene.name : t(allScenes.length ? 'Select a scene' : 'No scenes');
 }
 
 // What the search shows. Bulk actions act on these, so "Select all" under a filter means it.
@@ -198,13 +198,14 @@ function smOpenGroupMenu(anchor) {
   if (!panel) return;
 
   // Ungrouped IS a group row. "Remove from group" said the same thing a second way.
-  const rows = [{ label: 'Ungrouped', group: '' }]
+  const rows = [{ label: t('Ungrouped'), group: '' }]
     .concat(knownGroupNames().map(n => ({ label: n, group: n })));
   rows.push({ sep: true });
-  rows.push({ label: 'New group…', group: null, fresh: true });
+  rows.push({ label: t('New group…'), group: null, fresh: true });
 
   const menu = document.createElement('div');
   menu.className = 'sm-menu';
+  menu.dataset.noI18n = '';
   menu.innerHTML = rows.map((r, i) => r.sep
     ? '<div class="sm-menu-sep"></div>'
     : '<button class="sm-menu-row" data-i="' + i + '">' + escHtml(r.label) + '</button>'
@@ -226,7 +227,7 @@ function smOpenGroupMenu(anchor) {
     const btn = e.target.closest('.sm-menu-row');
     if (!btn) return;
     const row = rows[+btn.dataset.i];
-    const target = row.fresh ? addGroup('New group') : row.group;
+    const target = row.fresh ? addGroup(t('New group')) : row.group;
     const ids = [...smSelectedIds];
     smCloseGroupMenu();
     smSelectedIds.clear();   // the move is what the selection was gathered for
@@ -295,7 +296,7 @@ function renderSceneManager() {
   const selecting = smSelectedIds.size > 0;
   document.body.classList.toggle('sm-selecting', selecting);
   const selCount = document.getElementById('sm-sel-count');
-  if (selCount) selCount.textContent = smSelectedIds.size + ' selected';
+  if (selCount) selCount.textContent = t('{n} selected', { n: smSelectedIds.size });
 
   const shown = smVisibleScenes();
   const q = smSearch.trim();
@@ -308,7 +309,7 @@ function renderSceneManager() {
     return;
   }
   if (!shown.length) {
-    list.innerHTML = '<div id="sm-empty">No scene matches “' + escHtml(q) + '”.</div>';
+    list.innerHTML = '<div id="sm-empty">' + t('No scene matches “{q}”.', { q: escHtml(q) }) + '</div>';
     return;
   }
 
@@ -334,8 +335,8 @@ async function initScenes() {
     // who is told nothing finds out when a session's reveals are gone.
     messageDialog({
       title: 'Evermist cannot reach its map library',
-      message: 'The scene database would not open, so maps cannot be saved or loaded this ' +
-               'session. Restarting the app usually clears it. (' + ((err && err.message) || err) + ')',
+      message: t('The scene database would not open, so maps cannot be saved or loaded this ' +
+                 'session. Restarting the app usually clears it.') + ' (' + ((err && err.message) || err) + ')',
     });
     return;
   }

@@ -135,8 +135,8 @@ async function _muDoLookup() {
     const haveCount = entries.filter(e => e.have).length;
     _muSetStatus([
       _muLookup.title,
-      entries.length + (entries.length === 1 ? ' track' : ' tracks'),
-      haveCount ? haveCount + ' already downloaded' : '',
+      t.plural(entries.length, '{n} track', '{n} tracks'),
+      haveCount ? t('{n} already downloaded', { n: haveCount }) : '',
     ].filter(Boolean).join(' · '));
   } catch (err) {
     if (token !== _muLookupToken) return;
@@ -205,10 +205,10 @@ function _muRenderLookup() {
 
     const meta = document.createElement('span');
     meta.className = 'mu-pick-meta';
-    if (entry.failed) meta.textContent = 'failed';
+    if (entry.failed) meta.textContent = t('failed');
     else if (_muProgress[entry.id] !== undefined) meta.textContent = Math.round(_muProgress[entry.id]) + '%';
-    else if (entry.done) meta.textContent = 'done';
-    else if (entry.have) meta.textContent = 'have it';
+    else if (entry.done) meta.textContent = t('done');
+    else if (entry.have) meta.textContent = t('have it');
     else meta.textContent = entry.duration ? formatDuration(entry.duration) : formatBytes(entry.size);
     _muMetaEls[entry.id] = meta;
     row.appendChild(meta);
@@ -231,8 +231,8 @@ function _muRenderActionBar() {
 
   const count = _muEl('mu-selcount');
   if (count) count.textContent = _muBusy
-    ? 'Downloading, ' + _muQueue.length + ' left'
-    : _muPicked.size + ' selected';
+    ? t('Downloading, {n} left', { n: _muQueue.length })
+    : t('{n} selected', { n: _muPicked.size });
 
   const all = _muEl('btn-mu-selall');
   if (all) {
@@ -249,7 +249,7 @@ function _muRenderActionBar() {
     let bytes = 0;
     if (_muLookup) for (const e of _muLookup.entries) if (_muPicked.has(e.id)) bytes += e.size || 0;
     const size = formatBytes(bytes);
-    label.textContent = 'Download ' + _muPicked.size + (size ? ' · ' + size : '');
+    label.textContent = t('Download {n}', { n: _muPicked.size }) + (size ? ' · ' + size : '');
   }
 }
 
@@ -286,8 +286,7 @@ async function _muQueueStep() {
     _muPushProgress();
     const failed = _muLookup ? _muLookup.entries.filter(e => e.failed) : [];
     _muSetStatus(failed.length
-      ? failed.length + (failed.length === 1 ? ' track failed' : ' tracks failed') +
-        ' · hover a row for the reason'
+      ? t.plural(failed.length, '{n} track failed', '{n} tracks failed') + ' · ' + t('hover a row for the reason')
       : 'Done.', failed.length > 0);
     _muRefreshTracks();
     _muRenderLookup();

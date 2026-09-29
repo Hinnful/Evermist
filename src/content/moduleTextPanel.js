@@ -15,8 +15,9 @@ function _mtRenderModal(status, isError) {
   const st = _mtEl('mt-status');
   if (st) {
     st.textContent = status != null ? status : (n
-      ? n + ' location' + (n === 1 ? '' : 's') + (mtSourceName ? ' from ' + mtSourceName : '')
-      : 'No module text loaded.');
+      ? (mtSourceName ? t.plural(n, '{n} location from {src}', '{n} locations from {src}', { src: mtSourceName })
+                      : t.plural(n, '{n} location', '{n} locations'))
+      : t('No module text loaded.'));
     st.classList.toggle('mt-err', !!isError);
   }
 
@@ -32,10 +33,11 @@ function _mtRenderModal(status, isError) {
       num.textContent = e.num + '.';
       const nm = document.createElement('span');
       nm.className = 'mt-name';
+      nm.dataset.noI18n = '';
       nm.textContent = e.name;
       const ch = document.createElement('span');
       ch.className = 'mt-chars' + (e.body ? '' : ' mt-empty');
-      ch.textContent = e.body ? e.body.length + ' chars' : 'empty';
+      ch.textContent = e.body ? t.plural(e.body.length, '{n} char', '{n} chars') : t('empty');
       row.appendChild(num); row.appendChild(nm); row.appendChild(ch);
       list.appendChild(row);
     });
@@ -109,17 +111,17 @@ function _mtImport(text, sourceName, blockText) {
   const res = parseModuleText(text);
   const n = res.entries.length;
   const mon = cbImportBookText(blockText || text, sourceName || 'Module text');
-  const monLine = mon.added.length ? ` ${mon.added.length} monster${mon.added.length === 1 ? '' : 's'} added to the bestiary.` : '';
+  const monLine = mon.added.length ? ' ' + t.plural(mon.added.length, '{n} monster added to the bestiary.', '{n} monsters added to the bestiary.') : '';
   cbReportImport(mon);
   if (!n) {
-    if (monLine) { _mtRenderModal('No numbered locations in that file.' + monLine); return; }
+    if (monLine) { _mtRenderModal(t('No numbered locations in that file.') + monLine); return; }
     _mtRenderModal('No numbered locations in that file. Evermist splits the text at headings ' +
                    'like “K12. Chapel”, so try one chapter at a time.', true);
     return;
   }
   const st = mtStore(res.entries, sourceName || 'Module text');
   if (!st.ok) { _mtRenderModal(st.error, true); return; }
-  _mtRenderModal(monLine ? `${n} location${n === 1 ? '' : 's'} from ${mtSourceName}.${monLine}` : null);
+  _mtRenderModal(monLine ? t.plural(n, '{n} location from {src}', '{n} locations from {src}', { src: mtSourceName }) + '.' + monLine : null);
 }
 
 function _mtInitModal() {
@@ -164,7 +166,7 @@ function _mtInitModal() {
         try { res = await window.electronAPI.extractPdfText(buf); }
         catch (err) { res = { ok: false, error: String((err && err.message) || err) }; }
         if (!res || !res.ok) {
-          _mtRenderModal('Could not read that PDF' + (res && res.error ? ': ' + res.error : '.'), true);
+          _mtRenderModal(t('Could not read that PDF') + (res && res.error ? ': ' + t(res.error) : '.'), true);
           return;
         }
         _mtImport(res.text, f.name, res.blockText);
@@ -176,8 +178,7 @@ function _mtInitModal() {
       // Anything else that isn't prose gets NAMED, or a .docx lists as binary garbage.
       const kind = _mtBinaryKind(text);
       if (kind) {
-        _mtRenderModal('That looks like ' + kind + ', not plain text. Save it as .txt first, ' +
-                       'then load that.', true);
+        _mtRenderModal(t('That looks like {kind}, not plain text. Save it as .txt first, then load that.', { kind: t(kind) }), true);
         return;
       }
       _mtImport(text, f.name);
@@ -267,7 +268,7 @@ function _mtRender() {
 
   const head = _mtEl('rp-mt-head');
   head.textContent = mtEntries.length
-    ? prog.placed + ' of ' + prog.total + ' placed'
+    ? t('{placed} of {total} placed', prog)
     : 'No module text loaded';
 
   // Filter on the typed text ONLY once it differs from the field's own, or one row shows.
@@ -289,13 +290,14 @@ function _mtRender() {
     num.textContent = e.num + '.';
     const nm = document.createElement('span');
     nm.className = 'rp-mt-name';
+    nm.dataset.noI18n = '';
     nm.textContent = e.name;
     b.appendChild(num); b.appendChild(nm);
     // Marked but still selectable — one heading can legitimately serve several polygons.
     if (placed.has(e.title)) {
       const dot = document.createElement('span');
       dot.className = 'rp-mt-dot';
-      dot.title = 'Already on this map';
+      dot.title = t('Already on this map');
       b.appendChild(dot);
     }
     list.appendChild(b);

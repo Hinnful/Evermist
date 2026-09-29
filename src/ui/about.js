@@ -63,6 +63,7 @@ function initAbout() {
     '</div>';
 
   document.getElementById('about-whatsnew').addEventListener('click', openChangelog);
+  slot.querySelector('.about-text').appendChild(buildLanguageSwitch());
 
   // ⚠ The version comes from package.json through main, never a literal here, which goes stale on
   // the next bump. With no electronAPI the line hides rather than showing a placeholder.
@@ -70,7 +71,7 @@ function initAbout() {
     window.electronAPI.getAppVersion().then(v => {
       if (!v) return;
       const el = document.getElementById('about-version');
-      el.textContent = 'Version ' + v;
+      el.textContent = t('Version {v}', { v: v });
       el.style.display = '';
     }).catch(() => {});
   }

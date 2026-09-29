@@ -283,6 +283,11 @@ const KEEP_PAINTING = [
 // so a fade or a crossfade is still fully measurable - see scenarios/acceptance/music.js.
 const STAY_SILENT = ['--mute-audio'];
 
+// Every run starts in English whatever the runner's own language, because the app follows the
+// computer's language when nothing is stored and the scenarios read English text.
+// scenarios/acceptance/language.js stores Russian itself. Chromium ignores --lang on macOS.
+const PIN_LANGUAGE = ['--lang=en-US'];
+
 // A Linux runner has no GPU, and Chromium no longer falls back to software WebGL on its own, so
 // PixiJS would get no context under xvfb.
 const SOFTWARE_GL = process.platform === 'linux' ? ['--enable-unsafe-swiftshader'] : [];
@@ -383,6 +388,7 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true) {
   const argv = (args.exe ? [] : ['.'])
     .concat(KEEP_PAINTING)
     .concat(STAY_SILENT)
+    .concat(PIN_LANGUAGE)
     .concat(SOFTWARE_GL)
     .concat(['--remote-debugging-port=' + port, '--user-data-dir=' + profileDir]);
   const proc = spawn(bin, argv, {

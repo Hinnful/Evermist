@@ -230,3 +230,8 @@
     cursor: pointer; transition: background .12s;
   }
   .cl-github:hover { background: rgba(122,95,208,0.28); }
+  /* The English / Русский pick: the app's pick-one pill, at the footer's size. */
+  #shortcut-legend .about-lang { margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+  #shortcut-legend .about-lang .cp-tabs { padding: 3px; border-radius: 8px; }
+  #shortcut-legend .about-lang .cp-segtab { flex: none; height: 22px; padding: 0 10px; font-size: 11px; border-radius: 6px; }
+  #shortcut-legend .about-lang-note { font: 400 11px/1 system-ui, -apple-system, sans-serif; color: #8f86bb; }

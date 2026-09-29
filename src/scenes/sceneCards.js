@@ -79,8 +79,8 @@ function buildGroupSection(sec) {
       if (!knownGroupNames().some(n => n !== sec.name && n === next)) { apply(); return; }
       confirmDialog({
         title: 'Merge these groups?',
-        message: '“' + next + '” already exists. Both groups end up under that one heading, ' +
-                 'and “' + sec.name + '” goes away. No map is deleted, and the merge has no undo.',
+        message: t('“{next}” already exists. Both groups end up under that one heading, ' +
+                   'and “{old}” goes away. No map is deleted, and the merge has no undo.', { next: next, old: sec.name }),
         confirmLabel: 'Merge',
         onConfirm: apply,
         onCancel: () => { nameEl.value = sec.name; },
@@ -142,9 +142,10 @@ function deleteGroup(sec) {
   if (!sec.scenes.length) { finish(); return; }
   confirmDialog({
     title: 'Delete this group?',
-    message: '“' + sec.name + '” holds ' + sec.scenes.length + ' scene' +
-             (sec.scenes.length === 1 ? '' : 's') +
-             '. The group goes away and they move to Ungrouped. No map is deleted.',
+    message: t.plural(sec.scenes.length,
+      '“{name}” holds {n} scene. The group goes away and they move to Ungrouped. No map is deleted.',
+      '“{name}” holds {n} scenes. The group goes away and they move to Ungrouped. No map is deleted.',
+      { name: sec.name }),
     confirmLabel: 'Delete group',
     danger: true,
     onConfirm: finish,

@@ -13,6 +13,21 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### The interface translates by its English text, one language per window · `SETTLED` (2026-09-29)
+The English on screen is the key to a Russian dictionary, so English stays the only language
+the code is written in and a missing entry falls back to it. Keys were rejected: hundreds of
+elements would each need one. A live switch was rejected: text the code had already built in one
+language stayed in it after a switch, so the choice applies after a restart. The DM's own text
+and every field being edited are skipped, because an edited field writes its text back to saved
+data and a typed "Poisoned" would save as Russian.
+
+### A missing Russian entry fails the release · `SETTLED` (2026-09-29)
+`test/i18nGaps.test.js` fails on English with no entry, a count with no Russian forms, or a
+sentence built from pieces, and the release workflow runs the tests. Rejected: a guard hook, which
+misses edits made outside the edit tools; a `/commit` step, which loads an already long command;
+a rule in CLAUDE.md, which nothing enforces. A warning-only report was the first shape, reversed
+because a warning is skipped.
+
 ### Every Multiattack is one frame, and a busy one stays dashed · `SETTLED` (2026-09-28)
 
 Amends the entry below. A Multiattack is one action, so every reading is one frame, plain counts

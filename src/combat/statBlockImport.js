@@ -41,15 +41,15 @@ async function cbImportBook(file, onChange) {
   cbBookReading = null;
   const done = res.ok ? cbImportBookText(res.blockText || res.text, file.name) : null;
   onChange();
-  if (!res.ok) messageDialog({ title: 'That book could not be read', message: `${res.error} Nothing was added.` });
-  else if (!done.found) messageDialog({ title: 'No stat blocks in that book', message: `Evermist found no stat blocks in ${file.name}, so nothing was added. A scanned book with no text in it cannot be read.` });
+  if (!res.ok) messageDialog({ title: 'That book could not be read', message: t(res.error) + ' ' + t('Nothing was added.') });
+  else if (!done.found) messageDialog({ title: 'No stat blocks in that book', message: t('Evermist found no stat blocks in {name}, so nothing was added. A scanned book with no text in it cannot be read.', { name: file.name }) });
   else cbReportImport(done);
 }
 
 function cbImportProblems(res) {
-  if (res.failed) return `The ${res.found} monsters found do not fit in Evermist's storage, so none were added. Delete monsters you no longer need, then import again.`;
+  if (res.failed) return t('The {n} monsters found do not fit in Evermist\'s storage, so none were added. Delete monsters you no longer need, then import again.', { n: res.found });
   if (!res.unread.length) return '';
-  return `These monsters could not be read cleanly, so they were left out. Import them anyway to fix them by hand, or add them later from a link:\n\n${res.unread.join(', ')}`;
+  return t('These monsters could not be read cleanly, so they were left out. Import them anyway to fix them by hand, or add them later from a link:') + '\n\n' + res.unread.join(', ');
 }
 
 // The one message after a book or module import; silent when everything went in.
@@ -81,7 +81,7 @@ async function _cbReadLink(link) {
   try { parsed = statBlockFromPage(res.text); } catch (err) { console.error('Reading the stat block failed:', err); }
   if (!parsed) return { why: 'No stat block on that page, so nothing was added.' };
   const unclean = statBlockUnclean(parsed);
-  if (unclean) return { why: `The stat block on that page could not be read cleanly (${unclean}), so nothing was added.` };
+  if (unclean) return { why: t('The stat block on that page could not be read cleanly ({why}), so nothing was added.', { why: t(unclean) }) };
   const id = combatAddEntry(cbState.blocks, Object.assign(parsed, { source: url.hostname.replace(/^www\./, '') })).id;
   cbSave();
   return { id };

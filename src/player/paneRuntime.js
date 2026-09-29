@@ -111,7 +111,7 @@ function initPane() {
   // A column opened empty has no scene menu of its own, so the card cannot tell the DM to use one.
   if (!new URLSearchParams(location.search).get('scene')) {
     const line = landing && landing.querySelector('p');
-    if (line) line.innerHTML = 'Pick a map from <strong>Scenes</strong>';
+    if (line) line.innerHTML = t('Pick a map from <strong>Scenes</strong>');
   }
   window.addEventListener('message', e => {
     const msg = e.data;

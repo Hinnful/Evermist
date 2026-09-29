@@ -64,8 +64,8 @@ function onSwitchSceneError(prevId, isRecovery, err) {
   const willRecover = prevId && !isRecovery;
   messageDialog({
     title: 'Scene would not load',
-    message: (err && err.message ? err.message : 'The map file is missing or damaged.')
-           + (willRecover ? '\n\nEvermist is going back to the last scene that worked.' : ''),
+    message: (err && err.message ? err.message : t('The map file is missing or damaged.'))
+           + (willRecover ? '\n\n' + t('Evermist is going back to the last scene that worked.') : ''),
   });
   if (willRecover) {
     setTimeout(() => switchScene(prevId, true).catch(err2 => {

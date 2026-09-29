@@ -29,7 +29,7 @@ function _rpFindRoom(id) {
 // A room defaults to "Room 4", an effect to "Fire 4". `material` is the discriminator
 // everywhere; there is no type field to keep in step with it.
 function _rpFallbackName(poly) {
-  return (poly.material ? 'Fire ' : 'Room ') + poly.id;
+  return t(poly.material ? 'Fire {n}' : 'Room {n}', { n: poly.id });
 }
 
 // pushUndo() runs BEFORE the write and only on a real change, so one Ctrl+Z reverts one edit.

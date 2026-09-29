@@ -292,9 +292,9 @@ runs is the table. Downloading early is free, so the button stays instant.
 `README.md` is rewritten in a single pass when it is rewritten at all. A per-feature paragraph
 accretes into a changelog nobody reads.
 
-### The README is English only · `SETTLED` (2026-09-24)
-The app's interface is English, so a README in another language promises an app that does not
-exist. A translated README returns together with a translated app, not before it.
+### The README is English only · `SETTLED` (2026-09-29)
+The README stays English though the interface is English or Russian. A Russian README costs a
+second pass at every rewrite, and returns only when it is asked for.
 
 ### The README turns away online DMs first, then walks a session in order · `SETTLED` (2026-09-24)
 The first screen says who it is for (DMs playing in person with a TV) and who it is not for

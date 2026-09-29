@@ -46,7 +46,7 @@ async function doExport(selectedIds) {
   const now = new Date();
   const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const destPath = await window.electronAPI.showSaveDialog({
-    title: 'Save Backup',
+    title: t('Save Backup'),
     defaultPath: `evermist-backup-${ymd}.zip`,
     filters: [{ name: 'Evermist Backup', extensions: ['zip'] }],
   });
@@ -124,17 +124,16 @@ async function doExport(selectedIds) {
     // ⚠ REPORTED, NEVER DROPPED: the record still exports, so the backup looks complete.
     const gone = (wrote && wrote.missingVideos) || [];
     if (gone.length) messageDialog({
-      title: gone.length === 1 ? 'One map is not in the backup'
-                               : gone.length + ' maps are not in the backup',
-      message: 'Everything else was saved. These scenes had no map file left on disk, so they ' +
-               'went into the backup without one:' + String.fromCharCode(10, 10) + gone.join(String.fromCharCode(10)),
+      title: t.plural(gone.length, 'One map is not in the backup', '{n} maps are not in the backup'),
+      message: t('Everything else was saved. These scenes had no map file left on disk, so they ' +
+                 'went into the backup without one:') + String.fromCharCode(10, 10) + gone.join(String.fromCharCode(10)),
     });
   } catch (err) {
     hideMapProgress();
     console.error('Export failed:', err);
     messageDialog({
       title: 'Export failed',
-      message: 'The backup file is incomplete, so delete it and try again.\n\n' + (err.message || err),
+      message: t('The backup file is incomplete, so delete it and try again.') + '\n\n' + (err.message || err),
     });
   } finally {
     unsubProgress();
@@ -155,7 +154,7 @@ async function adoptCombatFromZip(zipPath) {
   }
   if (!json || typeof cbMergePayload !== 'function') return;
   const st = cbMergePayload(json);
-  if (!st.ok) messageDialog({ title: 'Fight table not restored', message: 'The scenes came back, but the fight table did not.\n\n' + st.error });
+  if (!st.ok) messageDialog({ title: 'Fight table not restored', message: t('The scenes came back, but the fight table did not.') + '\n\n' + st.error });
 }
 
 // Adopt the campaign's module text out of a restored zip. ⚠ Runs only AFTER every scene is saved
@@ -176,7 +175,7 @@ async function adoptModuleTextFromZip(zipPath) {
   if (typeof mtRestorePayload !== 'function') return;
 
   const incoming = typeof mtDeserialize === 'function' ? mtDeserialize(json) : null;
-  const incomingName = (incoming && incoming.sourceName) || 'the module text in this backup';
+  const incomingName = (incoming && incoming.sourceName) || t('the module text in this backup');
   const current = typeof mtLoadedSourceName === 'function' ? mtLoadedSourceName() : null;
 
   const adopt = () => {
@@ -185,7 +184,7 @@ async function adoptModuleTextFromZip(zipPath) {
     // The scenes are already saved, so this is a footnote and not a failure.
     messageDialog({
       title: 'Module text not restored',
-      message: 'The scenes came back, but the module text did not.\n\n' + st.error,
+      message: t('The scenes came back, but the module text did not.') + '\n\n' + st.error,
     });
   };
 
@@ -194,9 +193,10 @@ async function adoptModuleTextFromZip(zipPath) {
   // Replace or keep, nothing in between - so name both books and let the DM choose.
   confirmDialog({
     title: 'Replace the module text?',
-    message: 'This backup carries “' + incomingName + '”, and “' + current + '” is loaded now. ' +
-             'Evermist holds one module at a time, so one of them goes.\n\nRoom names and ' +
-             'descriptions already written to your maps stay as they are either way.',
+    message: t('This backup carries “{incoming}”, and “{current}” is loaded now. ' +
+               'Evermist holds one module at a time, so one of them goes.\n\nRoom names and ' +
+               'descriptions already written to your maps stay as they are either way.',
+               { incoming: incomingName, current: current }),
     confirmLabel: 'Use the backup’s',
     cancelLabel: 'Keep what I have',
     onConfirm: adopt,
@@ -239,7 +239,7 @@ async function restoreFromZipPath(zipPath) {
       return {
         newId,
         originalId: entry.id,
-        resolvedName: resolveSceneName(entry.name || 'Imported Scene', usedNames),
+        resolvedName: resolveSceneName(entry.name || t('Imported Scene'), usedNames),
         sortOrder: maxOrder,
         entry,
       };
@@ -326,10 +326,9 @@ async function restoreFromZipPath(zipPath) {
     hideMapProgress();
 
     if (noMap.length) messageDialog({
-      title: noMap.length === 1 ? 'One scene came back without its map'
-                                : noMap.length + ' scenes came back without their maps',
-      message: 'The backup carried no map file for these, so they restored empty. Everything ' +
-               'else came back:' + String.fromCharCode(10, 10) + noMap.join(String.fromCharCode(10)),
+      title: t.plural(noMap.length, 'One scene came back without its map', '{n} scenes came back without their maps'),
+      message: t('The backup carried no map file for these, so they restored empty. Everything ' +
+                 'else came back:') + String.fromCharCode(10, 10) + noMap.join(String.fromCharCode(10)),
     });
 
     // Last, and deliberately: the scenes are safe by this point and the progress bar is gone, so
@@ -341,7 +340,7 @@ async function restoreFromZipPath(zipPath) {
     console.error('Restore failed:', err);
     messageDialog({
       title: 'Restore failed',
-      message: 'Evermist stopped partway through the backup, so some scenes are missing.\n\n' + (err.message || err),
+      message: t('Evermist stopped partway through the backup, so some scenes are missing.') + '\n\n' + (err.message || err),
     });
   } finally {
     unsubProgress();

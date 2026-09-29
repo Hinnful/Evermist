@@ -26,14 +26,14 @@ function initUpdater() {
 
   function showDownloading(status) {
     slot.textContent = typeof status.percent === 'number'
-      ? 'Downloading update ' + status.percent + '%'
+      ? t('Downloading update {pct}%', { pct: status.percent })
       : 'Downloading update';
   }
 
   function showReady(status) {
     slot.textContent = '';
     const label = document.createElement('span');
-    label.textContent = 'Version ' + status.version + ' is ready';
+    label.textContent = t('Version {v} is ready', { v: status.version });
 
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -42,7 +42,7 @@ function initUpdater() {
     btn.addEventListener('click', () => api.installUpdate());
 
     slot.append(label, btn);
-    upToast('Version ' + status.version + ' is ready to install', 'Restart now',
+    upToast(t('Version {v} is ready to install', { v: status.version }), 'Restart now',
       () => api.installUpdate(), 0);
   }
 
@@ -117,7 +117,7 @@ function announceInstalledVersion() {
     try { seen = localStorage.getItem(UP_SEEN_KEY); } catch (_) { return; }
     try { localStorage.setItem(UP_SEEN_KEY, version); } catch (_) {}
     if (!seen || seen === version) return;
-    upToast('Updated to ' + version, 'What\'s new', openChangelog, UP_INSTALLED_MS);
+    upToast(t('Updated to {v}', { v: version }), 'What\'s new', openChangelog, UP_INSTALLED_MS);
   }).catch(() => {});
 }
 

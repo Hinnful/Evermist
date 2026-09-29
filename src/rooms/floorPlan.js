@@ -82,7 +82,7 @@ function applyPlanToScene(derived) {
     // A freshly prepped map starts hidden. Rooms get revealed at the table, not now.
     mode: 'shroud',
     cornerRadius: 0,
-    name: 'Room ' + (i + 1),
+    name: t('Room {n}', { n: i + 1 }),
   }));
   nextPolygonId = polygons.length + 1;
 
@@ -141,13 +141,11 @@ function applyPlanGridSize() {
 
 // ─── The offer ────────────────────────────────────────────────────────────────
 
-function _fpCount(n, word) { return n === 1 ? '1 ' + word : n + ' ' + word + 's'; }
-
 // The " with 4 doors" tail, or nothing at all. A plan whose openings are all windows and outside
 // doors says nothing about doors, rather than promising zero of them.
 function _fpDoorTail(derived) {
   const n = planDoorsFor(derived).length;
-  return n ? ' with ' + _fpCount(n, 'door') : '';
+  return n ? ' ' + t.plural(n, 'with {n} door', 'with {n} doors') : '';
 }
 
 // Draws, asking first ONLY where rooms already exist, because that is a delete the DM did not come
@@ -158,9 +156,11 @@ function applyPlanWithGuard(derived) {
   if (!existing) { applyPlanToScene(derived); return; }
   confirmDialog({
     title: 'Replace existing rooms?',
-    message: 'This scene has ' + _fpCount(existing, 'room') + ' drawn. Importing the floor plan ' +
-      'removes them and draws ' + derived.rooms.length +
-      (derived.rooms.length === 1 ? ' new one' : ' new ones') + _fpDoorTail(derived) + '.',
+    message: t('This scene has {rooms} drawn. Importing the floor plan removes them and draws {fresh}{doors}.', {
+      rooms: t.plural(existing, '{n} room', '{n} rooms'),
+      fresh: t.plural(derived.rooms.length, '{n} new one', '{n} new ones'),
+      doors: _fpDoorTail(derived),
+    }),
     confirmLabel: 'Replace them',
     cancelLabel: 'Keep them',
     danger: true,
@@ -209,8 +209,9 @@ function showFloorPlanNotice(sceneName, derived) {
   if (!derived || !derived.rooms.length) return;
   _fpBuildNotice();
   document.getElementById('fp-notice-msg').textContent =
-    'Evermist found ' + _fpCount(derived.rooms.length, 'room') + _fpDoorTail(derived) +
-    (sceneName ? ' in ' + sceneName : '');
+    t(sceneName ? 'Evermist found {rooms}{doors} in {name}' : 'Evermist found {rooms}{doors}', {
+      rooms: t.plural(derived.rooms.length, '{n} room', '{n} rooms'), doors: _fpDoorTail(derived), name: sceneName,
+    });
   document.getElementById('fp-notice-cta').onclick = () => {
     hideFloorPlanNotice();
     applyPlanWithGuard(derived);

@@ -16,6 +16,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | Module | Owns |
 |---|---|
 | `state.js` | Shared state: fog constants, grid config, fog RAF handles, and every dirty flag |
+| `i18n/i18nPlan.js` | Pure interface-language kernel: lookup, `{name}` fill, plural pick. Tested |
+| `i18n/ru.js` | The Russian dictionary, keyed by the English text. Data only |
+| `i18n/i18n.js` | The interface language: `t()`, the pass that swaps on-screen English, the About switch |
 | `render/renderer.js` | PixiJS/WebGL wrapper: the context, the map sprite, the texture pool |
 | `render/playerFogPass.js` | The Player's fog: one full-screen GPU pass and its shaders |
 | `render/dmFogLayer.js` | The DM's fog: map-sized sprites, crossfade, cloud mask |
@@ -137,7 +140,7 @@ the windows, the display push and the app lifecycle, and hands every module its 
 Declarations must precede use at init time. All under `src/`:
 
 ```
-lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
+i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
 fog/fogGeometry.js → fog/fogColor.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → shapes/roomOps.js →

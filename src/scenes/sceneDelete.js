@@ -25,7 +25,7 @@ function deleteScenesWithUndo(ids) {
   if (currentScene && idset.has(currentScene.id)) handleCurrentDeleted();
 
   smPending = { items, ids: items.map(x => x.id) };
-  showUndoToast(items.length === 1 ? `"${items[0].meta.name}" removed` : `${items.length} scenes removed`);
+  showUndoToast(items.length === 1 ? t('"{name}" removed', { name: items[0].meta.name }) : t.plural(items.length, '{n} scene removed', '{n} scenes removed'));
   clearTimeout(smUndoTimer);
   smUndoTimer = setTimeout(commitPendingDelete, 4200);
   renderSceneManager();

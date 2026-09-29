@@ -123,7 +123,7 @@ function _muRenderPill() {
   }
   const name = _muEl('mu-pill-name');
   // ⚠ A LABEL, NEVER AN EMPTY STRING: with no text the pill collapses to a bare square.
-  if (name) name.textContent = _muPlaying ? displayName(_muPlaying) : 'Music';
+  if (name) name.textContent = _muPlaying ? displayName(_muPlaying) : t('Music');
   const pause = _muEl('btn-mu-pause');
   if (pause) pause.title = _muPaused ? 'Play' : 'Pause';
   const icoPause = _muEl('mu-ico-pause');
@@ -145,7 +145,7 @@ function _muRenderList() {
   if (!_muTracks.length) {
     const empty = document.createElement('div');
     empty.className = 'mt-status mu-empty';
-    empty.textContent = 'No music yet. Add from YouTube, or drop audio files into the app’s music folder.';
+    empty.textContent = t('No music yet. Add from YouTube, or drop audio files into the app’s music folder.');
     list.appendChild(empty);
     _muRenderCount();
     return;
@@ -169,7 +169,7 @@ function _muRenderList() {
 
     const del = document.createElement('button');
     del.className = 'cp-btn cp-btn-outline cp-btn-icon mu-row-del';
-    del.title = 'Delete this track';
+    del.title = t('Delete this track');
     del.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
       'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/>' +
       '<path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
@@ -191,7 +191,7 @@ function _muRenderCount() {
   const filter = _muEl('mu-filter');
   if (!filter) return;
   const total = _muTracks.length;
-  filter.placeholder = 'Filter ' + total + (total === 1 ? ' track' : ' tracks');
+  filter.placeholder = t.plural(total, 'Filter {n} track', 'Filter {n} tracks');
 }
 
 // ─── Playback ────────────────────────────────────────────────────────────────
@@ -250,8 +250,8 @@ function _muPlay(track) {
     incoming.target = 0;
     messageDialog({
       title: 'That track will not play',
-      message: displayName(track.name) + '\n\nThe file may be incomplete, or in a format this ' +
-               'app cannot decode. Delete it and download it again.',
+      message: displayName(track.name) + '\n\n' + t('The file may be incomplete, or in a format this ' +
+               'app cannot decode. Delete it and download it again.'),
     });
     _muPlaying = null;
     _muPaused = false;
@@ -301,8 +301,8 @@ function _muSetVolume(v) {
 function _muAskDelete(track) {
   confirmDialog({
     title: 'Delete this track?',
-    message: displayName(track.name) + '\n\nThe file leaves the music folder. There is no undo, ' +
-             'and downloading it again is one paste.',
+    message: displayName(track.name) + '\n\n' + t('The file leaves the music folder. There is no undo, ' +
+             'and downloading it again is one paste.'),
     confirmLabel: 'Delete',
     danger: true,
     onConfirm: async () => {

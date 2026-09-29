@@ -481,7 +481,7 @@ function loadVideoFromFile(file, onVideoLoaded, onFail) {
       message: 'Evermist could not read this video. WebM and MP4 are the safe choices.',
     });
   };
-  if (!file) { bail('is not a file Evermist can read.'); return; }
+  if (!file) { bail(t('is not a file Evermist can read.')); return; }
   cleanupVideo();
   const url = URL.createObjectURL(file);
   mapVideoUrl = url;
@@ -500,7 +500,7 @@ function loadVideoFromFile(file, onVideoLoaded, onFail) {
     video.pause(); video.src = '';
     if (video.parentNode) video.parentNode.removeChild(video);
     cleanupVideo();
-    bail('could not be played. WebM and MP4 are the safe choices.' + (reason ? ' ' + reason : ''));
+    bail(t('could not be played. WebM and MP4 are the safe choices.') + (reason ? ' ' + reason : ''));
   }
   video.onerror = () => failLoad();
   video.oncanplay = function() {

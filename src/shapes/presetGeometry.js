@@ -39,13 +39,12 @@ function presetRings(kind, s, w, origin, angle, pxPerFt) {
   return null;
 }
 
-function presetLabel(kind, s, w) {
-  if (kind === 'circle') return s + ' ft radius';
-  if (kind === 'rect')   return s + ' × ' + s + ' ft';
-  if (kind === 'cone')   return s + ' ft cone';
-  if (kind === 'line')   return s + ' × ' + w + ' ft line';
-  if (kind === 'ring')   return s + ' × ' + w + ' ft ring';
-  return '';
+const PRESET_LABELS = { circle: '{s} ft radius', rect: '{s} × {s} ft', cone: '{s} ft cone',
+  line: '{s} × {w} ft line', ring: '{s} × {w} ft ring' };
+
+// `word(template, values)` fills it in the interface language: t() in the window.
+function presetLabel(kind, s, w, word) {
+  return PRESET_LABELS[kind] ? word(PRESET_LABELS[kind], { s: s, w: w }) : '';
 }
 
 // The next size along a list, wrapping at both ends.

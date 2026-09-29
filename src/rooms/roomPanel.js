@@ -12,13 +12,13 @@ const ROOM_DESC_MAX = 20000;
 
 // ─── Pure helpers (unit-tested — keep DOM-free) ───────────────────────────────
 
-// Backfill `name` on polygons from scenes saved before rooms had names.
+// Backfill `name` on polygons from scenes saved before rooms had names; `nameFor(id)` words it.
 // ADDITIVE SPREAD ONLY — a fixed key list would silently drop cornerRadii from every scene.
-function normalizeRoomFields(polys) {
+function normalizeRoomFields(polys, nameFor) {
   if (!Array.isArray(polys)) return [];
   return polys.map(p => ({
     ...p,
-    name: p.name ?? ('Room ' + p.id),
+    name: p.name ?? nameFor(p.id),
   }));
 }
 
@@ -248,7 +248,7 @@ function drawRoomLabels() {
     if (poly.id === selectedPolygonId) continue;         // its name is already in the card
     if (!poly.vertices || poly.vertices.length < 3) continue;
 
-    const name = poly.name != null ? poly.name : ('Room ' + poly.id);
+    const name = poly.name != null ? poly.name : t('Room {n}', { n: poly.id });
     if (!name) continue;
 
     // Neither measureText nor the row scan may run per room per frame. The fit is in MAP units, so

@@ -160,7 +160,7 @@
   .cb-atk { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13.5px; line-height: 1.4; color: #9aa0aa; }
   .cb-atk.own { color: #d5d8dd; }
   .cb-atk.editing { display: block; width: 100%; min-height: 1.4em; outline: none; cursor: text; user-select: text; }
-  .cb-atk.editing:empty::before { content: 'Attacks, spells, save DCs'; color: #5c6168; }
+  .cb-atk.editing:empty::before { content: attr(data-ph); color: #5c6168; }
   /* Tints alone separate a pill's segments: no outline, no divider. */
   .cb-atk.pills:not(.editing) { display: flex; flex-wrap: wrap; gap: 4px; white-space: normal; }
   .cb-pill {

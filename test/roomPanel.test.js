@@ -37,27 +37,29 @@ const pointInPoly = (px, py, vs) => {
   return inside;
 };
 
+const ROOM = id => 'Room ' + id;
+
 describe('normalizeRoomFields', () => {
   test('backfills a missing name from the polygon id', () => {
-    assert.equal(normalizeRoomFields([{ id: 7 }])[0].name, 'Room 7');
+    assert.equal(normalizeRoomFields([{ id: 7 }], ROOM)[0].name, 'Room 7');
   });
 
   test('leaves a name that is already there exactly as it was', () => {
-    assert.equal(normalizeRoomFields([{ id: 4, name: 'Kitchen' }])[0].name, 'Kitchen');
+    assert.equal(normalizeRoomFields([{ id: 4, name: 'Kitchen' }], ROOM)[0].name, 'Kitchen');
   });
 
   test('an empty name string is preserved — only null/undefined are backfilled', () => {
     // ?? not || : the card's own rename path is what enforces a non-empty name.
-    assert.equal(normalizeRoomFields([{ id: 5, name: '' }])[0].name, '');
+    assert.equal(normalizeRoomFields([{ id: 5, name: '' }], ROOM)[0].name, '');
   });
 
   test('empty array in, empty array out', () => {
-    assert.deepEqual(normalizeRoomFields([]), []);
+    assert.deepEqual(normalizeRoomFields([], ROOM), []);
   });
 
   test('non-array input yields an empty array rather than throwing', () => {
-    assert.deepEqual(normalizeRoomFields(undefined), []);
-    assert.deepEqual(normalizeRoomFields(null), []);
+    assert.deepEqual(normalizeRoomFields(undefined, ROOM), []);
+    assert.deepEqual(normalizeRoomFields(null, ROOM), []);
   });
 
   test('preserves every other field — cornerRadii and desc included', () => {
@@ -71,7 +73,7 @@ describe('normalizeRoomFields', () => {
       cornerRadii: [4, null, 12],
       desc: 'Twelve bunks.',
     };
-    const out = normalizeRoomFields([poly])[0];
+    const out = normalizeRoomFields([poly], ROOM)[0];
     assert.deepEqual(out.cornerRadii, [4, null, 12]);
     assert.deepEqual(out.vertices, poly.vertices);
     assert.equal(out.mode, 'shroud');
@@ -81,12 +83,12 @@ describe('normalizeRoomFields', () => {
   });
 
   test('does not backfill a description — absent until the DM types one', () => {
-    assert.equal('desc' in normalizeRoomFields([{ id: 3 }])[0], false);
+    assert.equal('desc' in normalizeRoomFields([{ id: 3 }], ROOM)[0], false);
   });
 
   test('does not mutate the input polygons', () => {
     const poly = { id: 3 };
-    normalizeRoomFields([poly]);
+    normalizeRoomFields([poly], ROOM);
     assert.equal(poly.name, undefined);
   });
 });

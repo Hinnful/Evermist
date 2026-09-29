@@ -5,15 +5,18 @@ let _cfMenu = null;
 
 function _cfOpen() { return cbState.fights.find(f => f.id === cbState.openId); }
 
+// The name fightPlan.js gives a fight nobody has named yet is the app's word, not the DM's.
+const _cfName = f => f.name === 'Fight' ? t('Fight') : f.name;
+
 function _cfCount(f) {
   const rows = combatFightRows(cbState, f), en = rows.filter(r => r.side === 'enemy').length, al = rows.length - en;
-  if (!rows.length) return 'empty';
-  return [en ? en + (en === 1 ? ' enemy' : ' enemies') : '', al ? al + (al === 1 ? ' ally' : ' allies') : ''].filter(Boolean).join(' · ');
+  if (!rows.length) return t('empty');
+  return [en ? t.plural(en, '{n} enemy', '{n} enemies') : '', al ? t.plural(al, '{n} ally', '{n} allies') : ''].filter(Boolean).join(' · ');
 }
 
 function cbFightsTitle() {
   const t = document.querySelector('#cb-fightpick .nm');
-  if (t) t.textContent = _cfOpen().name;
+  if (t) t.textContent = _cfName(_cfOpen());
   if (_cfMenu) _cfDraw();
 }
 
@@ -29,7 +32,7 @@ function _cfSwitch(id) {
 function _cfDraw() {
   _cfMenu.innerHTML = `<div class="cf-list">${cbState.fights.map(f => `
     <div class="cf-item${f.id === cbState.openId ? ' on' : ''}" data-id="${_cbEsc(f.id)}">
-      <span class="nm">${_cbEsc(f.name)}</span><span class="meta">${_cfCount(f)}</span>
+      <span class="nm" data-no-i18n>${_cbEsc(_cfName(f))}</span><span class="meta">${_cfCount(f)}</span>
     </div>`).join('')}</div>
     <button class="cf-new" data-new>+ New fight</button>`;
 }
@@ -80,9 +83,9 @@ function _cfDelete(f) {
   cbCloseFights();
   const n = combatFightRows(cbState, f).length;
   confirmDialog({
-    title: `Delete “${f.name}”?`,
-    message: n === 1 ? 'Its one creature goes with it, with its HP and conditions.'
-      : n ? `Its ${n} creatures go with it, with their HP and conditions.` : 'It is empty.',
+    title: t('Delete “{name}”?', { name: _cfName(f) }),
+    message: n ? t.plural(n, 'Its one creature goes with it, with its HP and conditions.',
+      'Its {n} creatures go with it, with their HP and conditions.') : t('It is empty.'),
     confirmLabel: 'Delete', danger: true,
     onConfirm: () => {
       if (f.id === cbState.openId && cbStatRowId()) cbCloseStat();
@@ -147,7 +150,7 @@ function initCombatFights() {
   const b = document.createElement('button');
   b.id = 'cb-fightpick';
   b.title = 'Your fights';
-  b.innerHTML = '<span class="nm"></span><span class="car">▾</span>';
+  b.innerHTML = '<span class="nm" data-no-i18n></span><span class="car">▾</span>';
   document.getElementById('cb-fightslot').replaceWith(b);
   b.addEventListener('click', _cfToggle);
   b.addEventListener('dblclick', e => { e.preventDefault(); cbCloseFights(); _cfRename(b.querySelector('.nm'), _cfOpen()); });

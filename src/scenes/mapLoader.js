@@ -18,9 +18,9 @@ function loadMapFromFile(file, onMapLoaded, onFail) {
       message: 'Evermist could not read this image. It may be damaged, or saved in a format the app does not handle.',
     });
   };
-  if (!file) { fail('is not a file Evermist can read.'); return; }
+  if (!file) { fail(t('is not a file Evermist can read.')); return; }
   if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|bmp|webp|svg)$/i.test(file.name)) {
-    fail('is not an image or an animated map.');
+    fail(t('is not an image or an animated map.'));
     return;
   }
   cleanupVideo();
@@ -28,7 +28,7 @@ function loadMapFromFile(file, onMapLoaded, onFail) {
   const img = new Image();
   img.onerror = () => {
     URL.revokeObjectURL(url);
-    fail('could not be read. It may be damaged, or saved in a format the app does not handle.');
+    fail(t('could not be read. It may be damaged, or saved in a format the app does not handle.'));
   };
   img.onload = () => {
     mapWidth  = img.naturalWidth;
@@ -88,7 +88,7 @@ function setMapProgressPrefix(prefix) { _mapProgressPrefix = prefix || ''; }
 
 function showMapProgress(label) {
   document.getElementById('map-progress-label').textContent =
-    (_mapProgressPrefix ? _mapProgressPrefix + ' - ' : '') + (label || 'Saving...');
+    (_mapProgressPrefix ? _mapProgressPrefix + ' - ' : '') + t(label || 'Saving...');
   document.getElementById('map-progress-bar').style.width = '0%';
   document.getElementById('map-progress').style.display = 'flex';
 }

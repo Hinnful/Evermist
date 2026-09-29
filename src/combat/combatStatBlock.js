@@ -32,8 +32,8 @@ function _cbEsc(s) {
 
 // plaintext-only keeps a paste from a website from bringing its markup in with it.
 function _cbEd(path, val, ph, cls, tag) {
-  const t = tag || 'span';
-  return `<${t} class="${cls || ''}" contenteditable="plaintext-only" spellcheck="false" data-p="${path}" data-ph="${_cbEsc(ph)}">${_cbEsc(val)}</${t}>`;
+  const tg = tag || 'span';
+  return `<${tg} class="${cls || ''}" contenteditable="plaintext-only" spellcheck="false" data-p="${path}" data-ph="${_cbEsc(t(ph))}">${_cbEsc(val)}</${tg}>`;
 }
 
 function cbEditorHtml(b) {

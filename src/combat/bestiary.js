@@ -21,22 +21,22 @@ function _bsFilterButton(F) {
   let val = '';
   if (F.range) { if (bs.f.cr[0] !== null || bs.f.cr[1] !== null) val = `${bs.f.cr[0] || '0'}–${bs.f.cr[1] || '30'}`; }
   else val = bs.f[F.k].length === 1 ? bs.f[F.k][0] : bs.f[F.k].length ? String(bs.f[F.k].length) : '';
-  return `<button class="bs-f ${val ? 'on' : ''}" data-filter="${F.k}">${F.label}${val ? ` <span class="v">${_cbEsc(val)}</span>` : ''}<span class="car">▼</span></button>`;
+  return `<button class="bs-f ${val ? 'on' : ''}" data-filter="${F.k}">${F.label}${val ? ` <span class="v" data-no-i18n>${_cbEsc(t(val))}</span>` : ''}<span class="car">▼</span></button>`;
 }
 
 function _bsQueueHtml() {
   return cbImportQueue.map(q => q.state === 'failed'
-    ? `<div class="bs-q err"><span class="u">${_cbEsc(q.url)}<span class="why">${_cbEsc(q.why)}</span></span>
+    ? `<div class="bs-q err"><span class="u">${_cbEsc(q.url)}<span class="why">${_cbEsc(t(q.why))}</span></span>
         <button data-q="retry" data-qid="${q.id}">Retry</button><button class="dim" data-q="drop" data-qid="${q.id}">Remove</button></div>`
     : `<div class="bs-q"><span class="bs-spin ${q.state === 'waiting' ? 'idle' : ''}"></span>
-        <span class="u">${q.state === 'waiting' ? 'Waiting: ' : 'Reading '}${_cbEsc(q.host)}…</span><button data-q="drop" data-qid="${q.id}">Cancel</button></div>`).join('');
+        <span class="u">${t(q.state === 'waiting' ? 'Waiting: {host}…' : 'Reading {host}…', { host: _cbEsc(q.host) })}</span><button data-q="drop" data-qid="${q.id}">Cancel</button></div>`).join('');
 }
 
 function _bsCell(b, k) {
   if (k === 'cr') return `<td class="num"><span class="bs-crb">${_cbEsc(bsCr(b))}</span></td>`;
-  if (k === 'name') return `<td class="nm">${_cbEsc(b.name)}${bs.fresh.has(b.id) ? '<span class="bs-new">NEW</span>' : ''}</td>`;
-  if (k === 'size') return `<td>${_cbEsc(bsSize(b))}</td>`;
-  if (k === 'type') return `<td>${_cbEsc(bsType(b))}</td>`;
+  if (k === 'name') return `<td class="nm">${_cbEsc(b.name)}${bs.fresh.has(b.id) ? '<span class="bs-new">' + t('NEW') + '</span>' : ''}</td>`;
+  if (k === 'size') return `<td>${_cbEsc(t(bsSize(b)))}</td>`;
+  if (k === 'type') return `<td>${_cbEsc(t(bsType(b)))}</td>`;
   if (k === 'ac' || k === 'hp') return `<td class="num">${_cbEsc(combatFirstNum(b[k]) || '—')}</td>`;
   return `<td class="src">${_cbEsc(b.source || '')}</td>`;
 }
@@ -49,7 +49,7 @@ function _bsTableHtml(list) {
   const cols = bs.open ? BS_COLS.filter(c => BS_NARROW.includes(c[0])) : BS_COLS;
   const arrow = k => bs.sort.k === k ? (bs.sort.d > 0 ? ' ↑' : ' ↓') : '';
   return `<table class="bs-t"><thead><tr><th class="cbc"></th>${cols.map(([k, l, c]) => `<th class="${c || ''}" data-sort="${k}">${l}${arrow(k)}</th>`).join('')}</tr></thead>
-    <tbody>${list.map(b => `<tr class="${bs.picked.has(b.id) ? 'sel' : ''} ${bs.open === b.id ? 'open' : ''}" data-id="${b.id}">
+    <tbody data-no-i18n>${list.map(b => `<tr class="${bs.picked.has(b.id) ? 'sel' : ''} ${bs.open === b.id ? 'open' : ''}" data-id="${b.id}">
       <td class="cbc"><span class="bs-cb ${bs.picked.has(b.id) ? 'on' : ''}" data-tick></span></td>${cols.map(([k]) => _bsCell(b, k)).join('')}</tr>`).join('')}</tbody></table>`;
 }
 
@@ -64,9 +64,9 @@ const BS_ICONS = {
 // that says so and holds Done, as Figma's mode bar does.
 function _bsPageHtml(b) {
   const head = bs.editing
-    ? `<div class="bs-page-head editing"><div class="t"><span class="bs-mode">Editing</span><h2>${_cbEsc(b.name)}</h2></div>
+    ? `<div class="bs-page-head editing"><div class="t"><span class="bs-mode">Editing</span><h2 data-no-i18n>${_cbEsc(b.name)}</h2></div>
         <button class="sm-hbtn primary bs-done" data-a="edit">${BS_ICONS.done} Done</button></div>`
-    : `<div class="bs-page-head"><div class="t"><h2>${_cbEsc(b.name)}<span class="bs-src">${_cbEsc(b.source || 'no source')}</span></h2></div>
+    : `<div class="bs-page-head"><div class="t"><h2 data-no-i18n>${_cbEsc(b.name)}<span class="bs-src">${_cbEsc(b.source || t('no source'))}</span></h2></div>
         <div class="bs-tools"><button class="bs-ib" data-a="edit" title="Edit">${BS_ICONS.edit}</button>
           <button class="bs-ib" data-a="dup-open" title="Duplicate (Ctrl+D)">${BS_ICONS.dup}</button>
           <button class="bs-ib danger" data-a="del-open" title="Delete (Del)">${BS_ICONS.del}</button></div>
@@ -83,15 +83,15 @@ function bestiaryRender() {
   panel.classList.toggle('selecting', bs.picked.size > 0);
   panel.classList.toggle('paged', !!bs.open);
   panel.querySelector('.bs-count').textContent = _bsAll().length;
-  panel.querySelector('.bs-picked').textContent = `${bs.picked.size} selected`;
-  panel.querySelector('[data-a="pick-all"]').textContent = `Select all ${list.length}`;
+  panel.querySelector('.bs-picked').textContent = t('{n} selected', { n: bs.picked.size });
+  panel.querySelector('[data-a="pick-all"]').textContent = t('Select all {n}', { n: list.length });
   panel.querySelector('.bs-importbar').style.display = bs.importing ? '' : 'none';
   panel.querySelector('.bs-fbtns').innerHTML = BS_FILTERS.filter(F => !F.more || bs.more).map(_bsFilterButton).join('')
     + `<button class="bs-link" data-a="more">${bs.more ? 'Fewer filters' : 'More filters'}</button>`
     + (bsFiltered(bs.f) ? '<button class="bs-link" data-a="clear">Clear all</button>' : '');
-  panel.querySelector('.bs-shown').textContent = `${list.length} of ${_bsAll().length}`;
+  panel.querySelector('.bs-shown').textContent = t('{shown} of {all}', { shown: list.length, all: _bsAll().length });
   const queue = _bsEl('bs-queue');
-  queue.innerHTML = (cbBookReading ? `<div class="bs-q"><span class="bs-spin"></span><span class="u">Reading ${_cbEsc(cbBookReading)}…</span></div>` : '') + _bsQueueHtml();
+  queue.innerHTML = (cbBookReading ? `<div class="bs-q"><span class="bs-spin"></span><span class="u">${t('Reading {host}…', { host: _cbEsc(cbBookReading) })}</span></div>` : '') + _bsQueueHtml();
   queue.style.display = cbImportQueue.length || cbBookReading ? '' : 'none';
   const table = _bsEl('bs-table'), top = table.scrollTop;
   table.innerHTML = _bsTableHtml(list);
@@ -138,8 +138,8 @@ function _bsFilterPop(anchor, k) {
   } else {
     const draw = () => {
       el.innerHTML = `<div class="top"><button data-p="all">Select all</button><button data-p="none">Clear</button></div>
-        <div class="opts">${bsOptions(_bsAll(), bs.f, k).map(o => `<div class="o" data-v="${_cbEsc(o.value)}">
-          <span class="bs-cb ${bs.f[k].includes(o.value) ? 'on' : ''}"></span>${_cbEsc(o.value)}<span class="c">${o.count}</span></div>`).join('')}</div>`;
+        <div class="opts" data-no-i18n>${bsOptions(_bsAll(), bs.f, k).map(o => `<div class="o" data-v="${_cbEsc(o.value)}">
+          <span class="bs-cb ${bs.f[k].includes(o.value) ? 'on' : ''}"></span>${_cbEsc(t(o.value))}<span class="c">${o.count}</span></div>`).join('')}</div>`;
     };
     draw();
     el.addEventListener('click', e => {
@@ -224,7 +224,7 @@ function _bsTargets() {
 function _bsDelete(ids) {
   if (!ids.length) return;
   confirmDialog({
-    title: ids.length === 1 ? `Delete ${cbState.blocks[ids[0]].name}?` : `Delete ${ids.length} monsters?`,
+    title: ids.length === 1 ? t('Delete {name}?', { name: cbState.blocks[ids[0]].name }) : t('Delete {n} monsters?', { n: ids.length }),
     message: 'Monsters already in the fight keep their own copies.',
     confirmLabel: 'Delete', danger: true,
     onConfirm: () => {
@@ -257,7 +257,7 @@ async function _bsImportFile(file) {
 }
 
 function _bsNew() {
-  const b = cbNewBlock(combatUniqueName(cbState.blocks, 'New monster', ''));
+  const b = cbNewBlock(combatUniqueName(cbState.blocks, t('New monster'), ''));
   cbSave();
   _bsShow(b.id, true);
   const name = _bsEl('bs-page').querySelector('.cb-sb-name');
