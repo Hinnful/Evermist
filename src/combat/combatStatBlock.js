@@ -8,6 +8,8 @@ const CB_LINES = [['ac', 'Armor Class'], ['hp', 'Hit Points'], ['speed', 'Speed'
 const CB_DETAILS = [['saves', 'Saving Throws'], ['skills', 'Skills'], ['vuln', 'Vulnerabilities'], ['resist', 'Damage Resistances'],
   ['immune', 'Immunities'], ['senses', 'Senses'], ['languages', 'Languages'], ['cr', 'Challenge']];
 
+const CB_STAT_MIN = { w: 320, h: 120 };
+
 let _cbStatRowId = null;
 
 function cbNewBlock(name) {
@@ -73,7 +75,8 @@ function cbOpenStat(row) {
       <button class="sm-hbtn cb-save" data-save ${row.sbChanged ? '' : 'disabled'}>Save to Bestiary</button>
       <button class="cb-iconbtn" data-close title="Close">${CB_ICON_X}</button>
     </div>
-    ${cbEditorHtml(cbRowBlock(row))}`;
+    ${cbEditorHtml(cbRowBlock(row))}
+    <i class="cb-rs" data-rs="r"></i><i class="cb-rs" data-rs="b"></i><i class="cb-rs" data-rs="br"></i>`;
   if (el.style.display !== 'block') _cbPlaceBeside(el, document.getElementById('cb-fight'));
   cbRender();
 }
@@ -91,6 +94,26 @@ function _cbPlaceBeside(el, beside) {
   if (left < 8) left = p.right + 10 + w < innerWidth ? p.right + 10 : 8;
   el.style.left = (left / z) + 'px';
   el.style.top = (Math.max(8, p.top) / z) + 'px';
+}
+
+// The popup resizes from its right edge, bottom edge and corner, and the next one opens at that size.
+function cbResizeStat(handle, e) {
+  const el = document.getElementById('cb-stat'), sb = el.querySelector('.cb-sb'), z = cbZoom();
+  const dir = handle.dataset.rs, x0 = e.clientX, y0 = e.clientY;
+  const box = el.getBoundingClientRect(), sbBox = sb.getBoundingClientRect();
+  const w0 = box.width / z, h0 = sbBox.height / z;
+  const wMax = (innerWidth - box.left) / z - 8, hMax = (innerHeight - sbBox.top) / z - 8;
+  let w = w0, h = h0;
+  const move = m => {
+    if (dir !== 'b') el.style.setProperty('--cb-stat-w', (w = Math.round(Math.min(wMax, Math.max(CB_STAT_MIN.w, w0 + (m.clientX - x0) / z)))) + 'px');
+    if (dir !== 'r') el.style.setProperty('--cb-stat-h', (h = Math.round(Math.min(hMax, Math.max(CB_STAT_MIN.h, h0 + (m.clientY - y0) / z)))) + 'px');
+  };
+  const up = () => {
+    window.removeEventListener('mousemove', move);
+    _cbSaveCols(dir === 'r' ? { statW: w } : dir === 'b' ? { statH: h } : { statW: w, statH: h });
+  };
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up, { once: true });
 }
 
 function _cbStatRow() { return cbState.rows.find(r => r.id === _cbStatRowId); }
@@ -162,6 +185,10 @@ function cbWireEditor(el, ed) {
 
 function initCombatStatBlock() {
   const el = document.getElementById('cb-stat');
+  let cols = {};
+  try { cols = JSON.parse(localStorage.getItem(CB_COLS_KEY) || '{}') || {}; } catch (_) {}
+  if (cols.statW) el.style.setProperty('--cb-stat-w', cols.statW + 'px');
+  if (cols.statH) el.style.setProperty('--cb-stat-h', cols.statH + 'px');
   cbWireEditor(el, {
     block: () => { const row = _cbStatRow(); return row && cbRowBlock(row); },
     edited: field => { const row = _cbStatRow(); if (row) _cbCopyEdited(row, field); },

@@ -42,6 +42,7 @@
 //      maps on screen and two files between them, so an untagged line belongs to nobody.
 //   O. An update announces itself in the DM window alone. A column is the same page in an
 //      iframe, and a toast raised there would sit over a map and eat the one announcement.
+//   Q. A ping in a column reaches that column's half of the Player screen and not the other.
 //
 // ⚠ A COLUMN IS AN <IFRAME>, AND `rig.dm` REACHES THE PARENT FRAME ONLY. `polygons`, `zoom` and
 // `currentScene` for a column live in that column's own JS context — `rig.pane('A')` is the only
@@ -323,6 +324,14 @@ module.exports = async function twoMapsFeature(rig) {
   const bAt = await tvB.evaluate('fogDataCtx ? ' + tvFog + ' : -1');
   rig.check(bAt > 120, "a reveal in column A cleared the same ground on column B's Player: " +
                        'alpha ' + bAt);
+
+  // ── Q. a ping reaches its own half only ───────────────────────────────────
+  // RED ON: the postMessage in pingAt gated off (playerWindow.js); the other-half check is unproved — 2026-09-29
+  await paneA.evaluate("__rigMouse('mousedown', " + SX + ', ' + SY + ', { mods: { button: 1, ctrlKey: true } }); 0');
+  await lib.settle(tvA, 'typeof _pings !== "undefined" && _pings.length > 0', 5000);
+  rig.check(await tvA.evaluate('typeof _pings !== "undefined" && _pings.length > 0'), "a ping in column A did not reach column A's half");
+  const pingB = await tvB.evaluate('typeof _pings === "undefined" ? 0 : _pings.length');
+  rig.check(pingB === 0, "a ping in column A also showed on column B's half: " + pingB);
 
   // ── P. the log says which of the four windows wrote each line ───────────
   // RED BY DESIGN: written against the fix, never re-proved

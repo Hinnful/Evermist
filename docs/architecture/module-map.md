@@ -56,6 +56,7 @@ language, present tense. The terse version every session carries is in
 | `mapConvert.js` | Asking whether to shrink an oversized animated map at import, and re-encoding it if the answer is yes. Pure box-fitting maths plus the recorder that drives it. |
 | `viewport.js` | Pan, zoom, fitting a map to the screen, and the camera arithmetic every push to the Player carries. |
 | `mapTurn.js` | My seat: the DM's map turned 0°, 90°, 180° or 270° so the laptop faces the way the table does from the DM's chair. Every canvas over the map turns together, so nothing drawn can slide off the map; the few places that meet a mouse position or place a panel convert through here. The TV never sees it. |
+| `ping.js` | The ping: a gold ring with ticks, ripples and sparks at a map point for about two and a half seconds, drawn in the DM window and on the TV alike. It is sized to the window rather than the map and stored nowhere. |
 | `playerWindow.js` | The DM's side of the Player window: opening it, keeping a warm one ready so the next press is instant, and deciding what is sent to it and when. |
 | `minimap.js` | The DM's live preview of the Player camera, and the remote control that drives it. |
 | `stageWindow.js` | The DM side of the Player screen while two maps are up: opening that window, keeping a warm one ready so the next press is instant, wiring each column to its own half, and closing it. |

@@ -96,6 +96,7 @@ function initInput() {
     container.addEventListener('mousedown', (e) => {
       if (!mapOffscreen) return;
       const raw = screenToMap(e.clientX, e.clientY);
+      if (e.button === 1 && e.ctrlKey) { e.preventDefault(); pingAt(raw.x, raw.y); return; }
       // Alt on a shape under the Select tool drags a copy of it; Alt anywhere else pans.
       const altCopy = e.button === 0 && e.altKey && shape === 'select' && !gridCalArmed &&
                       selectGrabsAt(raw);

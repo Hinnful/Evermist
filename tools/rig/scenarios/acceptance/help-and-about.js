@@ -236,6 +236,7 @@ module.exports = async function helpAndAboutFeature(rig) {
     '?',                  // criterion B opens the panel with it
     'T', 'Space', 'Shift S', 'Del',
     'Dbl',                // a mouse gesture, covered by editing.js and curves.js
+    'Ctrl Middle',        // a mouse gesture, covered by ping.js
   ]);
   const unchecked = advertised.filter(k => COVERED.indexOf(k) === -1);
   rig.note('the panel advertises ' + advertised.length + ' keys: ' + advertised.join(' '));

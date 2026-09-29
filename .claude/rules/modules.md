@@ -63,6 +63,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/mapConvert.js` | Animated-map shrink at import. `fitInsideBox` tested |
 | `render/viewport.js` | Pan/zoom, fit, Sync View, the camera a push carries |
 | `render/mapTurn.js` | My seat: the DM map turned in quarter steps, and client ↔ view conversion |
+| `render/ping.js` | The ping at a map point, drawn in both views |
 | `player/playerWindow.js` | The Player window: opening, warming, what it gets |
 | `player/panes.js` | Two-column mode: the columns, the divider, the messages sent to them |
 | `player/stageWindow.js` | The two-map Player window, DM side |
@@ -145,7 +146,7 @@ shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/shap
 shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → undo.js →
 scenes/sceneGroups.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneManager.js →
 scenes/sceneCards.js → scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
-render/viewport.js → render/mapTurn.js → player/playerWindow.js → player/panes.js → player/stageWindow.js →
+render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/stageWindow.js →
 scenes/backup.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
 render/effects.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →

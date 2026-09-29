@@ -484,7 +484,7 @@ function initCombatTracker() {
       const size = e.target.closest('.cb-colsize');
       if (size) { e.preventDefault(); _cbDragCol(size, e); return; }
       const rs = e.target.closest('.cb-rs');
-      if (rs) { e.preventDefault(); _cbResizePanel(rs, e); return; }
+      if (rs) { e.preventDefault(); (el === stat ? cbResizeStat : _cbResizePanel)(rs, e); return; }
       const head = e.target.closest('[data-drag]');
       if (head && !e.target.closest('button')) { e.preventDefault(); _cbDragPanel(el, e); }
     });

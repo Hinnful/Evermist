@@ -340,10 +340,11 @@ infrastructure for one particular campaign rather than a standalone feature anyb
 **The test to apply to anything in this area: does a stranger who downloads the `.exe` get
 value with nothing else installed?**
 
-### A notes scratch pad in the app · `REJECTED`
-It competes with Notion and loses (tables, initiative tracking, folders, embedded links).
-Notion stays. Evermist's room note is the five seconds when the party opens a door. That
-boundary is what keeps the feature small.
+### A notes scratch pad in the app · `REOPENED` (2026-09-29)
+Rejected because it competed with Notion and lost (tables, initiative tracking, folders,
+embedded links), which kept the room note to the five seconds when the party opens a door.
+Reopened by the one-stop positioning in PRODUCT.md: a feature is judged by the work it takes
+off the DM, not by another tool doing the job better, so notes on a scene or a place are in scope.
 
 ### Auto-assigning entries in click order (a queue) · `REJECTED`
 Killed by the real text: sub-locations mean one heading covers several polygons, so it
@@ -613,6 +614,13 @@ presses Two maps while looking at the room a fight is in, not at the whole floor
 The DM window's own resize is unchanged and still leaves the map where it is. The Player
 halves still refit, because a TV showing less of the floor after a bar moved in the DM's own
 window is worse than a rescale.
+
+### The ping is Ctrl+middle-click and a gold bezel · `SETTLED` (2026-09-29)
+Right-click was free but was kept for a context menu later, and a plain middle-click pans, so the
+ping takes Ctrl with the middle button and needs no tool. Rejected on look: plain rings (too
+plain), a rune circle with glyphs and a star (it ties a map from any game to fantasy), a flare, a
+target lock, embers and four water drops, one bending the map under its ripples. The bezel keeps
+the rune's glow, ripples and sparks with ticks and four diamonds for symbols.
 
 ## UI and the control panel
 

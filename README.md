@@ -8,6 +8,8 @@ Evermist is for DMs who run their games in person, with a TV on the table and mi
 
 If your group plays online, Evermist is not what you're looking for. Players don't connect to it, and it has no tokens and no dice
 
+Evermist is built for D&D 5e, both the 2014 and the 2024 rules. A map from any game shows on the TV, but module import and the bestiary read D&D books only
+
 ![Revealing fog on the player view](assets/reveal.gif)
 
 ## Prepare the session

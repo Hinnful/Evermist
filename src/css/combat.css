@@ -35,7 +35,9 @@
   .cb-panel input, .cb-panel [contenteditable] { user-select: text; }
   /* The table decides the panel's width, so a wider column widens the panel. */
   #cb-fight { width: max-content; }
-  #cb-stat { width: 380px; z-index: 161; }
+  /* A width saved on a wider screen still fits a narrower one. */
+  #cb-stat { width: min(var(--cb-stat-w, 380px), calc(100vw / var(--ui-zoom, 1.2) - 16px)); z-index: 161; }
+  #cb-stat .cb-sb { height: var(--cb-stat-h, auto); }
 
   .cb-head {
     display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px;

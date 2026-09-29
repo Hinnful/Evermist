@@ -19,6 +19,7 @@ function initPlayerMessages() {
     }
 
     if (msg.type === 'player-lock') { playerInputLocked = msg.locked; return; }
+    if (msg.type === 'ping') { showPing(msg.x, msg.y); return; }
 
     if (msg.type === 'view-snap') {
       playerFollowDM = true;

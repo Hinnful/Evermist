@@ -206,6 +206,12 @@ function syncAnimToPlayer(includeWarp) {
 
 // Sends the current fog color to the Player window without a full fog re-send.
 // pickedHex: the raw value from the DM's fog-color input (Player derives base+tint itself).
+// The DM sees the ping too, so they know what the TV got. A column's playerWindow is its own half.
+function pingAt(mx, my) {
+  showPing(mx, my);
+  if (canSendToPlayer()) playerWindow.postMessage({ type: 'ping', x: mx, y: my }, '*');
+}
+
 function syncFogColorToPlayer(pickedHex) {
   if (!playerWindow || playerWindow.closed) return;
   playerWindow.postMessage({ type: 'fog-color', pickedHex, fogTintAlpha: FOG_TINT_ALPHA }, '*');

@@ -23,6 +23,16 @@ what the product does and why that held.
 
 ## What this is
 
+### Evermist is a one-stop place to run an in-person campaign · `SETTLED` (2026-09-29, positioning, widens the entry below)
+Evermist is campaign management for Dungeon Masters: it takes work off the DM before and during a
+session, and leaves the talking and the dice to the DM. Everything hangs off one tree - campaign,
+places, scenes, rooms - with fights and notes at any level, so opening a place shows everything
+that happens there. **The only thing it asks for is a map**, from a photographed sketch to a
+90-room Dungeon Alchemist export; a floor plan, a module or a monster book is optional and fills
+more in. **A feature is judged by whether it takes work off the DM, never by whether another tool
+does the job better.** It is built for D&D 5e, 2014 and 2024: any map shows on the TV, but the
+module import and the bestiary read D&D alone.
+
 ### Evermist covers the DM's session, prep first and play next · `SETTLED` (2026-09-24, positioning)
 The framing is **prep efficiently, run beautifully**. With a map, its floor plan and the
 module's text, preparing a map is most of the way to automatic, and each of the three is useful
@@ -44,8 +54,8 @@ actions that change what the table sees. Those are in scope.
 ## The line it will not cross
 
 ### The VTT line · `SETTLED` (2026-09-24, narrowed to what reaches the TV)
-**Nothing but the map and its effects reaches the Player screen.** Map, fog, grid and effects
-go to the TV. Rooms, notes, controls and anything else the DM reads stay on the DM's side.
+**Nothing but the map and its effects reaches the Player screen.** Map, fog, grid, effects and
+the DM's ping go to the TV. Rooms, notes, controls and anything else the DM reads stay on the DM's side.
 No tokens and no dice, on either screen.
 
 **The test that decides what the TABLE sees: could a physical object at the table do this job
@@ -63,7 +73,7 @@ stand-in rather than a better option.
 Everything a DM tracks in a fight, on the DM's screen and never on the Player's. The fight
 table is its first shape: a list of fights prepared ahead and run from one table, a row per
 creature with initiative, name, HP typed as a running sum, AC, conditions and attacks, and a stat
-block per creature. A fight belongs to no scene, so the same one opens wherever it happens. It holds monsters
+block per creature. A fight belongs to no scene, so the same one opens wherever it happens, and a place can list it. It holds monsters
 and names the players only so the turn order can be read out; a player's character sheet is the
 player's own. No dice roll anywhere, because the table has real ones. No turn marker and no
 rounds until something counts turns. The bestiary holds every stat block and is the source the
@@ -159,7 +169,8 @@ Parked once as "batching three or four maps together", which measured the wrong 
 value is navigating a scene list that has outgrown its container: sixteen scenes in a thin
 vertical strip with names truncated, so picking one is guesswork. A multi-storey building is
 simply the case that produces sixteen scenes. The work is drag-and-drop into folders with no
-change to what a scene is.
+change to what a scene is. A place in the campaign tree is a folder, and a map that opens one
+opens the same folder.
 
 ### Two maps at once is in scope, and it is about the minis · `SETTLED` (2026-09-10)
 Evermist shows one map at a time everywhere else, and that stays true of the Player screen's

@@ -18,7 +18,8 @@
     "stale:newttgclub.js",
     "missing:bestiary.js",
     "missing:bestiaryplan.js",
-    "missing:multiattack.js"
+    "missing:multiattack.js",
+    "missing:ping.js"
   ],
   "warnedBytes": 47203
 }

@@ -49,6 +49,8 @@
 //      entry the DM already has keeps theirs, and a backup from before the list adds one fight.
 //   Q. The table resizes from its right edge, bottom edge and corner: width goes to the Attacks
 //      column, which stops at its minimum, height goes to the rows, and the size is remembered.
+//   R. The stat block popup resizes from its right edge, bottom edge and corner, stops at its
+//      minimum width, and the next popup opens at that size, after a restart too.
 //   P. Scenes, Two maps, Combat, Bestiary, Music and the Fog/Grid/Player tabs share one top edge
 //      and one height; Bestiary sits on the window's centre line.
 //
@@ -551,6 +553,42 @@ module.exports = async function fightTableFeature(rig) {
   rig.check(Math.abs(size.min - 110) <= 1 && size.saved.atk === 110 && size.saved.listH > 0,
             'the Attacks column shrank past its minimum, or the size was not remembered: ' + JSON.stringify(size));
 
+  // ── R. Resizing the stat block popup ──────────────────────────────────────
+  // RED ON: the width line in cbResizeStat gated off with false && (combatStatBlock.js) — 2026-09-29
+  const pop = await dm.evaluate(`(() => {
+    const p = document.getElementById('cb-stat');
+    if (p.style.display === 'block') p.querySelector('[data-close]').click();
+    document.querySelector('#cb-list .cb-row [data-b="stat"]').click();
+    const drag = (rs, dx, dy) => { const h = p.querySelector('[data-rs="' + rs + '"]'), b = h.getBoundingClientRect();
+      h.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: b.left + 2, clientY: b.top + 2 }));
+      window.dispatchEvent(new MouseEvent('mousemove', { clientX: b.left + 2 + dx, clientY: b.top + 2 + dy }));
+      window.dispatchEvent(new MouseEvent('mouseup', {})); };
+    const sbH = () => p.querySelector('.cb-sb').getBoundingClientRect().height;
+    const out = { open: p.style.display === 'block', w0: p.getBoundingClientRect().width, h0: sbH() };
+    drag('br', -40, -60);
+    out.w1 = p.getBoundingClientRect().width; out.h1 = sbH();
+    drag('r', -2000, 0);
+    out.min = p.getBoundingClientRect().width / cbZoom();
+    const head = p.querySelector('.cb-head');
+    out.headFits = head.scrollWidth <= head.clientWidth + 1;
+    drag('b', 0, 30);
+    out.h2 = sbH();
+    out.saved = JSON.parse(localStorage.getItem('evermist.combatCols') || '{}');
+    p.querySelector('[data-close]').click();
+    document.querySelector('#cb-list .cb-row [data-b="stat"]').click();
+    out.reopened = p.getBoundingClientRect().width / cbZoom();
+    p.querySelector('[data-close]').click();
+    return out;
+  })()`);
+  rig.note('stat block resize: ' + JSON.stringify(pop));
+  rig.check(pop.open && pop.w0 - pop.w1 > 20 && pop.h0 - pop.h1 > 30,
+            'the popup\'s corner did not resize both ways: ' + JSON.stringify(pop));
+  rig.check(pop.headFits, 'the popup\'s header overflows at its minimum width: ' + JSON.stringify(pop));
+  rig.check(Math.abs(pop.min - 320) <= 1 && pop.saved.statW === 320,
+            'the popup shrank past its minimum width, or its width was not remembered: ' + JSON.stringify(pop));
+  rig.check(pop.h2 - pop.h1 > 20 && pop.saved.statH > 0, 'the popup\'s bottom edge did not make it taller: ' + JSON.stringify(pop));
+  rig.check(Math.abs(pop.reopened - 320) <= 1, 'the next popup did not open at the size the last one was left at: ' + JSON.stringify(pop));
+
   // ── P. The top bar ────────────────────────────────────────────────────────
   // RED ON: #scene-dd's top put back to 16px (sceneManager.css) — 2026-09-26
   const bar = await dm.evaluate(`(() => {
@@ -582,6 +620,17 @@ module.exports = async function fightTableFeature(rig) {
   // RED ON: the evermist.combatFights read gated off in _cbLoad (combatTracker.js) — 2026-09-26
   rig.check(JSON.stringify(back.fights) === JSON.stringify(['Fight', 'Strahd', 'Restored fight']) && JSON.stringify(back.strahd) === '["Strahd"]',
             'the list of fights did not come back whole after a restart: ' + JSON.stringify(back));
+  // RED ON: the statW read in initCombatStatBlock gated off with false && (combatStatBlock.js) — 2026-09-29
+  const popBack = await dm.evaluate(`(() => {
+    if (document.getElementById('cb-fight').style.display !== 'block') document.getElementById('btn-combat').click();
+    const btn = document.querySelector('#cb-list .cb-row [data-b="stat"]');
+    if (!btn) return null;
+    btn.click();
+    const p = document.getElementById('cb-stat'), w = p.getBoundingClientRect().width / cbZoom();
+    p.querySelector('[data-close]').click();
+    return w;
+  })()`);
+  rig.check(popBack !== null && Math.abs(popBack - 320) <= 1, 'the stat block popup did not keep its size through a restart: ' + popBack);
   await dm.evaluate(`(() => {
     localStorage.setItem('evermist.combat', JSON.stringify({ rows: [{ id: 1, init: '12', name: 'Old goblin', hp: '- 2', ac: '15',
       conds: [], side: 'enemy', sbChanged: false }], blocks: {}, nextId: 2 }));

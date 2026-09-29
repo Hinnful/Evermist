@@ -254,6 +254,13 @@ map turns back to read upright. Sync View sends the TV the region the laptop wou
 around the same centre, so the TV's framing does not change with the seat. In two-map mode each
 column turns its own map.
 
+### The ping
+
+Ctrl+middle-click on the DM map sends a map point to the TV, and both windows draw the same gold
+mark there for about two and a half seconds, sized to the window and not the map. A plain middle
+drag still pans. In two-map mode a column sends to its own half. The ping rides the PixiJS ticker
+only while one is showing, and nothing of it is stored.
+
 ## Two maps at once
 
 A fight in a multi-storey building moves between floors, and every mini standing on the TV has
@@ -579,6 +586,7 @@ a dashed Multiattack pill. It keeps them until the DM
 double-clicks it to write a line of their own, and holds the row's icons on hover: stat block,
 duplicate, switch side, delete. The right-click menu carries the same actions, and Ctrl+D
 duplicates. The table resizes from its right and bottom edges, the width going to Attacks.
+The stat block popup resizes the same way, and the next popup opens at the size the last was left at.
 
 A row owns a copy of its stat block. Typing in a name field offers matching bestiary entries; a
 pick copies the entry into the row, and after that the two never affect each other. The row's
