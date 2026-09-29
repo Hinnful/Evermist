@@ -95,7 +95,7 @@ function gridCalReleaseMap() {
 function gridCalDrawHeld() {
   if (!gridCalFreeze) return;
   const f = gridCalFreeze;
-  const cw = container.clientWidth, ch = container.clientHeight;
+  const { w: cw, h: ch } = mapAreaSize();
   if (f.canvas.width !== cw) f.canvas.width = cw;
   if (f.canvas.height !== ch) f.canvas.height = ch;
   f.ctx.clearRect(0, 0, cw, ch);
@@ -362,7 +362,7 @@ function gridCalMouseDown(raw) {
 function gridCalMouseMove(pos) {
   if (!gridCalDrag) {
     gridCalRefine = gridCalFindRefine(pos);
-    container.style.cursor = gridCalRefine ? 'grab' : gridCalPartCursor(gridCalHitPart(pos));
+    container.style.cursor = gridCalRefine ? 'grab' : turnCursor(gridCalPartCursor(gridCalHitPart(pos)), seatTurn);
   } else if (gridCalDrag.which === 'span') {
     const sq = gridCalIsHex() ? gridCalHexEnd(gridCalDrag.ax, gridCalDrag.ay, pos.x, pos.y)
                               : gridCalSquareEnd(gridCalDrag.ax, gridCalDrag.ay, pos.x, pos.y);
@@ -396,7 +396,7 @@ function gridCalMouseUp() {
   gridCalDrag = null;
   if (d.which === 'span') gridCalCommitSpan(d.ax, d.ay, d.bx, d.by);
   else gridCalCommit();
-  container.style.cursor = gridCalPartCursor(gridCalHitPart(gridCalLastMapPos()));
+  container.style.cursor = turnCursor(gridCalPartCursor(gridCalHitPart(gridCalLastMapPos())), seatTurn);
   drawCursor(lastScreenX, lastScreenY);
 }
 
@@ -437,10 +437,11 @@ function gridCalPlaceHud() {
     // ⚠ The magnifier sits on a corner of the shape during a drag, so the HUD clears its radius
     // as well as the shape, or it covers the view being aimed through.
     const sb = gridCalScreenBox(s), gap = GRIDCAL_MAG_RADIUS + GRIDCAL_HUD_GAP;
-    cx = box.left + sb.x + sb.w / 2;
-    top = box.top + sb.y + sb.h + gap;
+    const cb = viewRectToClient(sb.x, sb.y, sb.w, sb.h);
+    cx = (cb.left + cb.right) / 2;
+    top = cb.bottom + gap;
     if (top + r.height > window.innerHeight - GRIDCAL_HUD_MARGIN) {
-      top = box.top + sb.y - gap - r.height;
+      top = cb.top - gap - r.height;
     }
   }
   const left = Math.max(GRIDCAL_HUD_MARGIN,
@@ -557,10 +558,13 @@ function drawGridCalibration() {
     const label = (s.n != null ? gridSize : gridCalCellOf(gridCalSpanReach(s), n)).toFixed(1) + ' px';
     cursorCtx.font = 'bold 12px ui-monospace, monospace';
     const tw = cursorCtx.measureText(label).width;
+    cursorCtx.save();
+    uprightAt(cursorCtx, x + w, y);
     cursorCtx.fillStyle = 'rgba(18,18,28,0.9)';
     cursorCtx.fillRect(x + w + 8, y - 20, tw + 12, 20);
     cursorCtx.fillStyle = '#8fb4ff';
     cursorCtx.fillText(label, x + w + 14, y - 6);
+    cursorCtx.restore();
   }
 
   gridCalHandle(a.sx, a.sy, 5, '#ffffff', '#4080ff');

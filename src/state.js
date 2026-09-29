@@ -164,6 +164,7 @@ let videoLastRenderTs = 0;
 
 let mapWidth = 0, mapHeight = 0;
 let zoom = 1, panX = 0, panY = 0;
+let seatTurn = 0;   // degrees the DM map is turned clockwise (mapTurn.js); always 0 on the Player
 let isPanning = false;
 let panStartX, panStartY, panStartPanX, panStartPanY;
 let playerWindow = null;

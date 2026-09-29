@@ -373,7 +373,9 @@ function _rpPositionPanel(panel, poly) {
     const bb = shapeBBox(poly);
     const a  = toScreen(bb.minX, bb.minY);
     const b  = toScreen(bb.maxX, bb.maxY);
-    const pos = clampPanelPosition({ left: a.sx, top: a.sy, right: b.sx, bottom: b.sy },
+    const room = seatTurn ? viewRectToClient(a.sx, a.sy, b.sx - a.sx, b.sy - a.sy)
+                          : { left: a.sx, top: a.sy, right: b.sx, bottom: b.sy };
+    const pos = clampPanelPosition(room,
                                    r.width, r.height, window.innerWidth, window.innerHeight);
     left = pos.left; top = pos.top;
     _rpAutoPos = { pid: poly.id, left, top };

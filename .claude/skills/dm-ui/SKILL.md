@@ -42,7 +42,8 @@ then the corner-radius field pushed right), and Delete at full width behind a ha
   the pill in place so a rebuild can't steal field focus mid-edit.
 - Room labels (`roomPanel.js`): `roomLabelFontPx(zoom)` is screen px and **clamped at both ends**. Placement
   is top-left INSIDE the room via `fitLabelBox()`, which scanline-samples in MAP units so the
-  cached anchor is pan-independent. `_rpLabelCache` clears per scene.
+  cached anchor is pan-independent. With My seat turned it fits against `turnShape(poly)`, the
+  room as the screen shows it, so the plate stays inside. `_rpLabelCache` clears per scene.
 - Pure kernel (unit-tested): `normalizeRoomFields`, `sanitizeRoomName`, `sanitizeRoomDesc`,
   `clampPanelPosition`, `ellipsizeToWidth`, `roomLabelFontPx`, `polygonRowSpans`,
   `cornerInsetAt`, `fitLabelBox`.
@@ -158,7 +159,7 @@ the first version broke it.
   all read them. `#sm-panel` reads the border only — it is a full-screen modal over a veil, so
   its heavier shadow and its own radius stay. A control that writes its own hex drifts.
 - **The Fog/Grid/Player tabs live OUTSIDE the panel**, in `#cp-tabbar`. Picking the lit tab shuts
-  the panel. `.cp-tabs` is now the in-pane Auto/Manual pair alone.
+  the panel. `.cp-tabs` is now the in-pane Auto/Manual pair and the My seat angles.
 - A black inset pill (`.cp-tabs` / `.cp-seg`) means *pick one of these*. The selected option
   goes bare/blue inside it. **The Animation and Grid Type rows carry no pill** - the pane's 207px
   fits five 30px icons plus a reset only when nothing boxes them, so any pill costs icon size.

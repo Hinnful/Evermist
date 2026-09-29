@@ -22,7 +22,7 @@
   #sidebar-right::-webkit-scrollbar { width: 0; }
   #cp-legacy { display: none; }
 
-  /* .cp-tabs is the black pick-one pill. Its only user is the in-pane Auto/Manual pair; the
+  /* .cp-tabs is the black pick-one pill: the in-pane Auto/Manual pair and My seat. The
      Fog/Grid/Player tabs left it for the bar outside the panel. */
   .cp-tabs {
     display: flex; align-items: center; gap: 3px;

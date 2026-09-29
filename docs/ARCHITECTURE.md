@@ -240,6 +240,20 @@ a square canvas showing extra context around the Player's frame, and the actual 
 the band between the two dotted lines. At a 16:9 Player, roughly a third of the preview's
 height is padding. It's a rough sketch for aiming, not evidence of what the players see.
 
+### My seat
+
+The Player tab's My seat control turns the DM's map 0°, 90°, 180° or 270°, so the laptop shows
+the map the way the table shows it from the DM's chair. It is a setting of the laptop, kept in
+local storage, never in a scene or a backup, and the TV never sees it.
+
+Every canvas over the map turns together as one piece, so the map, fog, grid, effects and the
+tool overlay cannot slide apart. The animated map is a video element with its own transform, and
+takes the same turn. The map area itself stays upright and takes the mouse, so the few places that
+meet a mouse position or place a panel beside the map convert through `mapTurn.js`. Text on the
+map turns back to read upright. Sync View sends the TV the region the laptop would show at 0°
+around the same centre, so the TV's framing does not change with the seat. In two-map mode each
+column turns its own map.
+
 ## Two maps at once
 
 A fight in a multi-storey building moves between floors, and every mini standing on the TV has

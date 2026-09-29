@@ -113,17 +113,18 @@ function initInput() {
 
     container.addEventListener('mousemove', (e) => {
       if (!mapOffscreen) return;
-      const rect = container.getBoundingClientRect();
-      lastScreenX = e.clientX - rect.left;
-      lastScreenY = e.clientY - rect.top;
+      const v = clientToView(e.clientX, e.clientY);
+      lastScreenX = v.x;
+      lastScreenY = v.y;
       // ⚠ Panning is checked BEFORE the hover repaint, and hands the overlay to the render clock
       // rather than painting here. Otherwise the hover paint fires on every pan event with stale
       // pan values, and the pan branch repaints a second time — two off-clock overlay repaints per
       // mouse event, which is what slides the room outlines against the map. Hover keeps its
       // inline paint so the brush ring tracks the pointer at full rate.
       if (isPanning) {
-        panX = panStartPanX + (e.clientX - panStartX);
-        panY = panStartPanY + (e.clientY - panStartY);
+        const d = turnDelta(e.clientX - panStartX, e.clientY - panStartY);
+        panX = panStartPanX + d.x;
+        panY = panStartPanY + d.y;
         pixiSetViewport(zoom, panX, panY);
         viewportDirty = true;
         boostRender();                            // re-arms the deadline each event
@@ -169,9 +170,7 @@ function initInput() {
       e.preventDefault();
       const factor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
       const newZoom = Math.max(0.02, Math.min(20, zoom * factor));
-      const rect = container.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
+      const { x: mx, y: my } = clientToView(e.clientX, e.clientY);
       panX = mx - (mx - panX) * (newZoom / zoom);
       panY = my - (my - panY) * (newZoom / zoom);
       zoom = newZoom;

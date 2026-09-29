@@ -3,8 +3,8 @@
 
 // ─── Canvas sizing ────────────────────────────────────────────────────────────
 function syncSize() {
-  const cw = container.clientWidth;
-  const ch = container.clientHeight;
+  seatTurnLayout();
+  const { w: cw, h: ch } = mapAreaSize();
   const _sizableCanvases = [mapCanvas, fogCanvas, gridCanvasEl, cursorCanvas];
   if (playerGridCanvas) _sizableCanvases.push(playerGridCanvas);
   for (const c of _sizableCanvases) {

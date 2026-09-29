@@ -403,6 +403,16 @@
     </div>
 
     <div class="cp-group">
+      <div class="cp-label">My seat</div>
+      <div class="cp-tabs">
+        <button class="cp-segtab" data-seat="0" title="The laptop map as it is">0°</button>
+        <button class="cp-segtab" data-seat="90" title="Turn the laptop map a quarter clockwise">90°</button>
+        <button class="cp-segtab" data-seat="180" title="Turn the laptop map upside down">180°</button>
+        <button class="cp-segtab" data-seat="270" title="Turn the laptop map a quarter anticlockwise">270°</button>
+      </div>
+    </div>
+
+    <div class="cp-group">
       <div class="cp-label">Updates</div>
       <div class="cp-row">
         <div class="cp-tabs">
@@ -991,6 +1001,7 @@
 <script src="src/scenes/mapImport.js"></script>
 <script src="src/scenes/sceneSwitch.js"></script>
 <script src="src/render/viewport.js"></script>
+<script src="src/render/mapTurn.js"></script>
 <script src="src/player/playerWindow.js"></script>
 <script src="src/player/panes.js"></script>
 <script src="src/player/stageWindow.js"></script>
@@ -1119,6 +1130,7 @@ if (isPlayer) initPlayer();
 // Two-column mode: the parent owns the columns, a column answers the parent → panes.js.
 if (!isPlayer && !isPane) initPanes();
 if (isPane) initPane();
+initSeatTurn();   // My seat → mapTurn.js
 
 // Mouse events, keyboard shortcuts, shape helpers, and legend → input.js.
 initInput();

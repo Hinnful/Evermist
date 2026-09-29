@@ -287,8 +287,10 @@ function _onPointerMove(e) {
   // 1:1. ⚠ Dividing by _canvas.width, the backing store, over-shoots every drag.
   const { w: scrW, h: scrH } = _canvasScreenSize();
   const side = _frameExtent();
-  const dx = (e.clientX - _dragStartX) / scrW * side;
-  const dy = (e.clientY - _dragStartY) / scrH * side;
+  // The preview turns with the DM map, so the drag is turned back into the map's own axes.
+  const d  = turnDelta(e.clientX - _dragStartX, e.clientY - _dragStartY);
+  const dx = d.x / scrW * side;
+  const dy = d.y / scrH * side;
   minimapView = {
     mapCX: _dragStartCX - dx,
     mapCY: _dragStartCY - dy,

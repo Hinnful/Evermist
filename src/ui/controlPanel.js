@@ -341,6 +341,11 @@ function _cpInitPlayer() {
     });
   });
 
+  // My seat turns the laptop map only; the TV never sees it.
+  pane.querySelectorAll('[data-seat]').forEach(btn => {
+    btn.addEventListener('click', () => { setSeatTurn(+btn.dataset.seat); refreshPlayerControlUI(); });
+  });
+
   _cpInitZoom();
 
   // The Player window can close without telling us (no event on a cross-window close),
@@ -428,6 +433,7 @@ function refreshPlayerControlUI() {
   });
   const send = document.getElementById('cp-player-send');
   if (send) send.classList.toggle('cp-dim', auto);
+  pane.querySelectorAll('[data-seat]').forEach(b => b.classList.toggle('active', +b.dataset.seat === seatTurn));
 
   // Go-live button — the blue outline + fill is the whole live indicator, and the label
   // swaps to Close so the toggle is discoverable. No dot: the fill already says it.

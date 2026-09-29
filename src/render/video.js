@@ -446,7 +446,7 @@ function syncVideoDomTransform() {
   if (!videoDOMActive || !mapVideo) return;
   mapVideo.style.width  = mapWidth  + 'px';
   mapVideo.style.height = mapHeight + 'px';
-  mapVideo.style.transform = 'translate(' + panX + 'px,' + panY + 'px) scale(' + zoom + ')';
+  mapVideo.style.transform = seatTurnCss() + 'translate(' + panX + 'px,' + panY + 'px) scale(' + zoom + ')';
 }
 
 function cleanupVideo() {

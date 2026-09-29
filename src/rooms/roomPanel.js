@@ -257,7 +257,8 @@ function drawRoomLabels() {
     const key = name + '|' + fontPx + '|' + flatVertexCount(poly) + '|' +
                 Math.round(bb.minX) + ',' + Math.round(bb.minY) + ',' +
                 Math.round(bb.maxX) + ',' + Math.round(bb.maxY) + '|' +
-                (poly.cornerRadius || 0) + '|' + (poly.cornerRadii ? poly.cornerRadii.join(',') : '');
+                (poly.cornerRadius || 0) + '|' + (poly.cornerRadii ? poly.cornerRadii.join(',') : '') +
+                '|' + seatTurn;
 
     let entry = _rpLabelCache.get(poly.id);
     if (!entry || entry.key !== key) {
@@ -267,8 +268,9 @@ function drawRoomLabels() {
         for (const r of poly.cornerRadii) if (r != null && r > cornerR) cornerR = r;
       }
       // Fit the PLATE, not the text — see RP_LABEL_GAP.
+      // A turned seat fits the plate against the room as the screen shows it, so it reads upright.
       const box = fitLabelBox(
-        poly,
+        seatTurn ? turnShape(poly, seatTurn) : poly,
         (measure(name) + RP_LABEL_PAD_X * 2) / zoom,   // map units — screen plate width ÷ zoom
         textH / zoom,
         RP_LABEL_GAP / zoom,
@@ -280,8 +282,9 @@ function drawRoomLabels() {
       // Only truncated text is judged, so a room genuinely called "A" keeps its label.
       const truncated = text !== name;
       const tooShort  = truncated && text.replace('…', '').trim().length < 2;
+      const at = turnVec(box.x, box.y, unturn(seatTurn));
       entry = (text && !tooShort)
-        ? { key, text, w: measure(text), mx: box.x, my: box.y }
+        ? { key, text, w: measure(text), mx: at.x, my: at.y }
         : { key, text: '' };
       _rpLabelCache.set(poly.id, entry);
     }
@@ -290,10 +293,13 @@ function drawRoomLabels() {
     // sx/sy is the plate's left edge and vertical centre; the glyphs start one PAD_X in.
     const { sx, sy } = toScreen(entry.mx, entry.my);
     const bw = entry.w + RP_LABEL_PAD_X * 2;
-    if (sx < -bw || sy < -textH || sx > vw || sy > vh + textH) continue;
+    if (seatTurn ? (sx < -bw || sy < -bw || sx > vw + bw || sy > vh + bw)
+                 : (sx < -bw || sy < -textH || sx > vw || sy > vh + textH)) continue;
 
     // Opaque enough to read against bright map art, or the name dissolves into the texture. The
     // hairline is the panel border colour, so the plate reads as app chrome.
+    ctx.save();
+    uprightAt(ctx, sx, sy);
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(sx, sy - textH / 2, bw, textH, RP_LABEL_RADIUS);
     else ctx.rect(sx, sy - textH / 2, bw, textH);
@@ -305,6 +311,7 @@ function drawRoomLabels() {
 
     ctx.fillStyle = '#fff';
     ctx.fillText(entry.text, sx + RP_LABEL_PAD_X, sy);
+    ctx.restore();
   }
 
   ctx.restore();

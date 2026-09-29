@@ -84,9 +84,9 @@ function toolMouseDown(raw, e) {
   const t = TOOLS[shape];
   if (!t) return;
   if (!t.drags) {
-    const r = container.getBoundingClientRect();
     t.down(raw, e);
-    drawCursor(e.clientX - r.left, e.clientY - r.top);
+    const v = clientToView(e.clientX, e.clientY);
+    drawCursor(v.x, v.y);
     return;
   }
   isDrawing = true;
@@ -96,7 +96,7 @@ function toolMouseDown(raw, e) {
 }
 
 function toolMouseMove(pos, e, screenX, screenY) {
-  if (shape === 'select' && !selectDragging()) container.style.cursor = selectHoverCursor(pos);
+  if (shape === 'select' && !selectDragging()) container.style.cursor = turnCursor(selectHoverCursor(pos), seatTurn);
   if (selectMouseMove(pos, screenX, screenY, e)) return;
 
   if (!isDrawing) return;

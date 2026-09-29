@@ -15,8 +15,9 @@ function _clipStep() { return gridSize > 0 ? gridSize : 70; }
 
 // A paste the mouse never moved over falls back to the middle of the view.
 function _clipDropPoint() {
-  const sx = lastScreenX != null ? lastScreenX : container.clientWidth / 2;
-  const sy = lastScreenY != null ? lastScreenY : container.clientHeight / 2;
+  const area = mapAreaSize();
+  const sx = lastScreenX != null ? lastScreenX : area.w / 2;
+  const sy = lastScreenY != null ? lastScreenY : area.h / 2;
   return { x: (sx - panX) / zoom, y: (sy - panY) / zoom };
 }
 

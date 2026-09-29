@@ -217,7 +217,8 @@ module.exports = async function effectsFeature(rig) {
   const cRound = await peak(cornerBox), eRound = await peak(edgeBox);
   rig.note('corner brightness sharp ' + cSharp + ' → rounded ' + cRound +
            ';  straight edge ' + eSharp + ' → ' + eRound);
-  rig.check(cSharp > 60, 'the sharp corner never showed fire, so rounding it proves nothing');
+  // ⚠ 45, NOT 60: the flame flickers, and the peak read 60 to 80 across runners. Bare map reads 30.
+  rig.check(cSharp > 45, 'the sharp corner never showed fire, so rounding it proves nothing');
   // ⚠ A SHARE OF WHAT WAS THERE, not a fixed 40 points. How bright the flame peaks depends on
   // the renderer, and a software rasteriser reads 69 where a GPU reads 85 — against which a
   // fixed drop of 40 is a different demand on each machine.

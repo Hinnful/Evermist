@@ -1148,3 +1148,11 @@ and took a release gate down on a CI runner, three times slower. **A mutation ch
 here**: with the await removed, `floor-plan.js`'s door-survives-a-switch criterion passed three runs
 in a row on the dev machine. That criterion is the guard; the gate is where it fires.
 
+### My seat turns the whole canvas stack, never each drawing · `SETTLED` (2026-09-29)
+The TV sits in the table turned from the laptop, so the DM map turns in quarter steps to match. The
+map, fog, grid and overlay are drawn by separate code on separate canvases, and turning each one's
+drawing would have touched every tool and left any one missed drawing sliding off the map. One CSS
+turn on every canvas in the map area keeps them together by construction, and the conversion moves
+to the handful of places that meet a mouse position. Free angles for a round table were left for
+later: at 30° the rectangle tool drags along the map's diagonal on screen, which is a design
+question, not a code one.

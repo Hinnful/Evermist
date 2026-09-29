@@ -44,9 +44,17 @@ function visibleMapRegion(panX, panY, zoom, mapW, mapH, vpW, vpH) {
 // through here, so they cannot drift apart.
 // ⚠ NEVER subtract the strip hidden behind the control panel. It crops the TV to the DM's
 // readable area, which shifts the framing and takes content away from the players.
+// ⚠ A sideways seat sends the region the laptop would show UNTURNED around the same centre, or the
+// TV gets a tall slice of map and letterboxes it.
 function dmVisibleRegion() {
   const { w: vpW, h: vpH } = getViewportSize();
-  const r = visibleMapRegion(panX, panY, zoom, mapWidth, mapHeight, vpW, vpH);
+  let r;
+  if (seatSideways(seatTurn)) {
+    const cx = (vpW / 2 - panX) / zoom, cy = (vpH / 2 - panY) / zoom;
+    r = visibleMapRegion(vpH / 2 - cx * zoom, vpW / 2 - cy * zoom, zoom, mapWidth, mapHeight, vpH, vpW);
+  } else {
+    r = visibleMapRegion(panX, panY, zoom, mapWidth, mapHeight, vpW, vpH);
+  }
   return { mapCX: r.cx, mapCY: r.cy, zoom, viewW: r.w, viewH: r.h };
 }
 
@@ -75,16 +83,12 @@ function applyView(v) {
 // ─── Screen ↔ map + fit-to-screen ─────────────────────────────────────────────
 
 function screenToMap(clientX, clientY) {
-  const rect = container.getBoundingClientRect();
-  return {
-    x: (clientX - rect.left - panX) / zoom,
-    y: (clientY - rect.top  - panY) / zoom,
-  };
+  const v = clientToView(clientX, clientY);
+  return { x: (v.x - panX) / zoom, y: (v.y - panY) / zoom };
 }
 
 function fitToScreen() {
-  const cw = container.clientWidth;
-  const ch = container.clientHeight;
+  const { w: cw, h: ch } = mapAreaSize();
   zoom = Math.min(cw / mapWidth, ch / mapHeight) * 0.95;
   panX = (cw - mapWidth  * zoom) / 2;
   panY = (ch - mapHeight * zoom) / 2;

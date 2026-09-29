@@ -48,6 +48,7 @@ const PANE_CONTROLS = {
 
   'pane-grid':      m => { applyGridConfig(m.config); commitGridChange(); },
   'pane-calibrate': m => armGridCalibration(!!m.on),
+  'pane-seat-turn': m => { seatTurn = m.deg; applySeatTurn(); },
 
   // The Player pane. Each column drives its OWN Player window through its own controls.
   'pane-sync-view':         () => _paneClick('btn-sync-view'),

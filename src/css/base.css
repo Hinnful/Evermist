@@ -61,6 +61,15 @@
   #fog-canvas, #grid-canvas, #cursor-canvas {
     pointer-events: none;
   }
+  /* My seat (mapTurn.js). !important beats the inline inset the PixiJS and hold canvases carry. */
+  #canvas-container.seat-turned > canvas {
+    inset: auto !important;
+    left: var(--seat-l) !important;
+    top: var(--seat-t) !important;
+    width: var(--seat-w) !important;
+    height: var(--seat-h) !important;
+    transform: rotate(var(--seat-a));
+  }
 
   /* ===== PLAYER MODE ===== */
   body.player-mode #sidebar-right-anchor,
