@@ -54,6 +54,10 @@
           },
           {
             "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-process.js\""
+          },
+          {
+            "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-backlog.js\""
           },
           {
@@ -68,5 +72,7 @@
     "deny": [
       "mcp__claude-in-chrome"
     ]
-  }
+  },
+  "outputStyle": "Steering",
+  "includeCoAuthoredBy": false
 }

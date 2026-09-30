@@ -29,10 +29,11 @@ evermist-data/
 # Claude Code machine-local settings
 .claude/settings.local.json
 
-# Private slash commands (his own workflow; not for anyone who clones this)
-.claude/commands/
+# /commit's per-run state: where a stopped run resumes, and the notes awaiting a yes
+.claude/commit/run.json
+.claude/commit/notes.txt
 
-# Private working files - the backlog quotes him by name; OneDrive syncs them, git must not
+# Private working files: specs, design prototypes, personal fixtures, archived memory
 .claude/private/
 
 # OS / editor cruft

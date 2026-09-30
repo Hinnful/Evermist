@@ -12,8 +12,9 @@ name: Build & Release
 # ⚠ MAIN IS PROTECTED and requires this workflow's `verify` check, so a commit it never ran on
 # cannot be pushed to main by anyone. The branch is the only way in. /commit carries the steps.
 #
-# Rollback is not a revert: delete the release and its tag, and `allowDowngrade` in main.js walks
-# installed copies back through their own Restart button. See docs/PRODUCT.md.
+# Rollback is not a revert: delete the release and its tag, and `allowDowngrade` in
+# electron/updates.js walks installed copies back through their own Restart button.
+# See docs/PRODUCT.md.
 on:
   push:
     branches:
@@ -74,6 +75,13 @@ jobs:
             echo "rig=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # The branch, the bump and the files touched must agree before anything is built. The rules
+      # live in CLAUDE.md, "Distribution and releases".
+      - name: Do the branch, the version and the files agree?
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: node tools/check-release.js "$BRANCH"
+
   # Unit tests before anything is built, on one runner.
   # ⚠ RUNS ON EVERY CHANGE, bump or not. It is the status check main is protected by, so a commit
   # it never reported on cannot be landed - by the pipeline or by anyone.
@@ -90,6 +98,18 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1   # skipped here only; the build jobs need the binary
       - run: npm test
+
+  # The ratchet guards over the whole tree. The hooks only meet an edit made in a Claude session,
+  # so this is what catches the rest.
+  guards:
+    needs: decide
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/check-guards.js
 
   # THE GATE: Windows, Mac and Linux in parallel, each driving the installer it built (gate.yml).
   gate:
@@ -108,11 +128,12 @@ jobs:
   # ⚠ FAST-FORWARD, never a merge, rebase or squash. Those all mint a new commit, and main would
   # then carry a tree no gate ever drove. The commit main gets is the commit the gate proved.
   land:
-    needs: [decide, verify, gate, update]
+    needs: [decide, verify, guards, gate, update]
     if: >-
       always() &&
       needs.decide.result == 'success' &&
       needs.verify.result == 'success' &&
+      needs.guards.result == 'success' &&
       needs.gate.result != 'failure' && needs.gate.result != 'cancelled' &&
       needs.update.result != 'failure' && needs.update.result != 'cancelled'
     runs-on: ubuntu-latest

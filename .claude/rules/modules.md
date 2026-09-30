@@ -141,7 +141,8 @@ the windows, the display push and the app lifecycle, and hands every module its 
 
 ## Load order
 
-Declarations must precede use at init time. All under `src/`:
+Declarations must precede use at init time. All under `src/` except `lib/`, which sits at the
+repo root:
 
 ```
 i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →

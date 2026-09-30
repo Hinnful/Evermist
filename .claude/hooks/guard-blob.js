@@ -49,6 +49,19 @@ function readStdin() {
   }
 }
 
+// Listed from the folder so the message cannot fall behind a new stylesheet.
+function cssFiles() {
+  try {
+    return fs
+      .readdirSync(path.join(__dirname, '..', '..', 'src', 'css'))
+      .filter((f) => f.endsWith('.css'))
+      .map((f) => f.slice(0, -4))
+      .join(', ');
+  } catch {
+    return 'see src/css/';
+  }
+}
+
 // Count non-blank lines inside the last inline <script> ... </script> (no src attr).
 function countBlobLines(html) {
   const open = html.lastIndexOf('<script>');
@@ -121,9 +134,9 @@ function main() {
       'STYLE GUARD: index.html has a <style> element before <body>.\n' +
         'CLAUDE.md hard rule: index.html carries no stylesheet — CSS lives in ' +
         'src/css/*.css, linked with <link rel="stylesheet">. Move the rules you ' +
-        'just added into the src/css file that owns that concern (base, ' +
-        'controlPanel, toolbar, roomCard, playerPane, legend, sceneManager, ' +
-        'overlays) and redo the edit. A genuinely new concern gets a new file in ' +
+        'just added into the src/css file that owns that concern (' +
+        cssFiles() +
+        ') and redo the edit. A genuinely new concern gets a new file in ' +
         'src/css/ plus a <link> in the existing load order.\n'
     );
   }

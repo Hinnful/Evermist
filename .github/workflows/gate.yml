@@ -79,7 +79,8 @@ jobs:
         # ⚠ FOUR, because a free account runs five Mac jobs at once and the update proof takes one.
         shard: [1, 2, 3, 4]
     runs-on: ${{ matrix.platform.os }}
-    # The rig's own watchdog is 180s + 90s per scenario, and the build sits in front.
+    # The rig abandons a scenario at 300s (SCENARIO_TIMEOUT_MS in tools/rig/run.js), and the build
+    # sits in front.
     timeout-minutes: 45
     defaults:
       run:

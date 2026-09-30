@@ -230,6 +230,23 @@ The most interesting idea in its batch and too big for now. The shape when it la
 icy / acidic / rusty" are not tint values, they are combinations of knobs the cloud engine
 already has (cell size, warp radius, warp strength, anim speed, base and tint colour, opacity).
 
+### Drawing and editing copy Figma · `SETTLED` (2026-09-17)
+When a drawing or editing choice is open, Figma's model is the answer: anchors, bezier handles,
+the bounding box, edit mode, and Figma's keys (Ctrl to bend, Shift to constrain, Ctrl+C / V / D).
+A simpler stand-in for a Figma gesture is not offered. Where the app departs from Figma, the
+departure is recorded in DECISIONS.md with its reason.
+
+### Success is silent, failure is loud · `SETTLED` (2026-08-14)
+A batch that works ends with nothing on screen: no "done" toast, no per-item confirmation. A
+batch with failures ends with one report naming what did not make it. A question a long batch
+needs waits for the end of the batch, so nothing stops midway.
+
+### An import skips what it cannot read cleanly · `SETTLED` (2026-09-25)
+A book, module or monster page that reads an entry badly skips it and names it in the end
+report; it never imports a half-read entry that looks whole. The link import and the editors
+cover a skipped entry by hand. The source's own typos import as printed, since correcting a book
+is not the app's job.
+
 ---
 
 ## Versions and releases

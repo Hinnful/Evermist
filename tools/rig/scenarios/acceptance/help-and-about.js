@@ -324,12 +324,11 @@ module.exports = async function helpAndAboutFeature(rig) {
   // ⚠ THE BODY IS HELD AGAINST changelogData.js, not merely found non-empty. A row that expands
   // to the summary again would pass a length check and tell the DM nothing new.
   //
-  // ⚠ THE FIRST ROW THAT HAS SOMETHING UNDER IT, never rows[0]. A release whose commit carried
-  // a summary alone has no body, and no tag either until the gate that is reading this has passed,
-  // so the app gives it no caret on purpose. Reading rows[0] failed a one-line release.
+  // ⚠ THE FIRST ROW WITH A BODY, never rows[0] and never merely the first with a caret. A
+  // one-line release has no body, and once it is tagged its caret opens a GitHub link alone.
   const expanded = await dm.evaluate(`(() => {
     const rows = Array.from(document.querySelectorAll('#cl-body .cl-entry'));
-    const i = rows.findIndex(r => r.classList.contains('cl-has-more'));
+    const i = rows.findIndex((r, n) => r.classList.contains('cl-has-more') && CHANGELOG[n].body);
     if (i < 0) return { none: true };
     const row = rows[i];
     row.querySelector('.cl-head-btn').click();
@@ -345,7 +344,7 @@ module.exports = async function helpAndAboutFeature(rig) {
       want: CHANGELOG[i].body,
       tag: CHANGELOG[i].tag || '',
       github: !!gh,
-      githubHit: gh ? hitAt(gh) : false,
+      githubHit: gh ? (gh.scrollIntoView({ block: 'center' }), hitAt(gh)) : false,
       collapsed: (() => { row.querySelector('.cl-head-btn').click(); return full.hidden; })(),
       // A release with neither a note body nor a page to open must offer no caret, or the DM
       // presses one and gets an empty box.

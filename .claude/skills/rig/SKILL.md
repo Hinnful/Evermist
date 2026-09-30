@@ -19,9 +19,13 @@ reach for the rig only when code cannot answer the question. Two cases qualify:
 - **Finding a bug nothing else catches.** Reading the code failed, so drive the DM's own repro
   steps in a scenario and watch the failure happen.
 
-**Do not run any set while building, and that includes the end of a chunk.** Not `regression`,
-not `smoke`, not one scenario. A finished chunk goes to the DM to look at, and `/commit` is where
-it gets proven. Write the scenario during the build and run nothing.
+**On the DM's machine, do not run any set while building, and that includes the end of a
+chunk.** Not `regression`, not `smoke`, not one scenario. A finished chunk goes to the DM to look
+at, and `/commit` is where it gets proven. Write the scenario during the build and run nothing.
+The DM can ask for a run; that is the only other one.
+
+**In a cloud session, run it freely.** `CLAUDE_CODE_REMOTE=true` marks one, and no screen there
+belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `gate.yml` does.
 
 **A commit gets a SMOKE pass; the full sweep runs in CI.** `/commit` Step 2 settles where the
 change's criteria live, then picks `smoke` plus the scenarios covering what the diff touched, and
@@ -88,8 +92,9 @@ rather than the scenarios.
 mid-await. The runner mutes its `rig` first, so whatever it reports on its way out cannot land
 under the next scenario's name.
 
-**A run NEVER puts a window on the DM's screen, and that is not negotiable.** `offscreen.ps1`
-parks every window the run opens at -9000,-9000 without activating it, and `KEEP_PAINTING` in
+**A run NEVER puts a window on the DM's screen, and that is not negotiable.** The rig launches
+the app with `--offscreen`, so every window opens at -9000,-9000 and never takes focus.
+`offscreen.ps1` is the backstop: it parks anything else the run opens, without activating it, and `KEEP_PAINTING` in
 `run.js` stops Chromium refusing to paint a window nobody can see. Neither works without the
 other. Nothing in the DevTools protocol can move an OS window - Electron exposes no CDP `Browser`
 domain - so the parking is done from outside, in PowerShell.
@@ -326,9 +331,10 @@ Each of these cost a debugging round, and most of them make a scenario **pass** 
 
 ## Rules that bind
 
-- **No app-side changes to serve the rig.** Nothing in `src/`, nothing in `index.html`, no new
-  flag in `main.js`. Everything it needs is already reachable as a bare global, and a test hook
-  inside the app would ship in the build.
+- **No app-side changes to serve the rig.** Nothing in `src/`, nothing in `index.html`.
+  Everything it needs is already reachable as a bare global, and a test hook inside the app would
+  ship in the build. The one exception is `--offscreen` in `main.js`, which only places windows;
+  `docs/decisions/testing-and-the-rig.md` says why.
 - **No dependency, dev or runtime.** Node has global `fetch` and `WebSocket`; that is the whole
   CDP client.
 - **No rig output inside the working tree.** Screenshots, generated maps and the profile all go

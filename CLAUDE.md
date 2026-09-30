@@ -10,6 +10,8 @@ that doesn't belongs elsewhere:
 - Why this shape, what was tried? Past tense → [docs/DECISIONS.md](docs/DECISIONS.md),
   plus one file per split-out topic in [docs/decisions/](docs/decisions/)
 - What is it for, what will it never do? → [docs/PRODUCT.md](docs/PRODUCT.md)
+- How do we work, and where does each instruction live? → [docs/PROCESS.md](docs/PROCESS.md)
+- What comes next? → [docs/BACKLOG.md](docs/BACKLOG.md)
 - Scoped to one folder → that folder's own `CLAUDE.md`. To a few named files → a skill in
   `.claude/skills/`; `guard-skill-hint.js` names it on an edit.
 
@@ -26,13 +28,33 @@ leave a pointer, never delete an entry.
 war. No backend, no VTT features (tokens, initiative). Map + fog + grid + two screens, one
 or two maps at a time.
 
+## Who owns what
+
+- **The DM owns the product**: vision, ideas, steering, feedback, and whether the app is worth it.
+- **Claude owns whether it works**: implementation, quality, testability, tests and maintenance.
+  Never wait for approval on those.
+
+## Habits
+
+- **Check the ledger before re-proposing an idea or restoring removed code.** `docs/DECISIONS.md`
+  and `docs/decisions/` hold every settled call.
+- **Prove code is dead before deleting it**: no caller, no string lookup, no HTML or IPC reference.
+- **A new persisted field must load safely on the previous release.** `/rollback` puts the DM
+  back on it with the same data.
+- **Prove a fix both ways**: the check fails without the fix and passes with it.
+- **A check that flakes is suspect first.** Rule out the check before changing the app for it.
+- **When a fix fails, say so and re-diagnose** from the evidence, never a second guess on the first.
+- **Look-and-feel work is a throwaway prototype**, one at a time, for the DM to pick. It skips
+  the rig and test gates until it is picked.
+
 ## Tech constraints
 
 - Vanilla JS. No frameworks, no bundler, no build step.
 - **No ES modules.** Plain `<script src="...">` only; `import`/`export` break on `file://`.
 - **PixiJS (WebGL) is the render path** for both views, fog included. Canvas 2D only builds
   the fog mask. There is no Canvas 2D map fallback.
-- One HTML entry point: `index.html` serves both DM and Player (`?mode=player`).
+- Three HTML pages: `index.html` serves DM and Player (`?mode=player`), `stage.html` is the
+  two-map shell, `splash.html` the boot splash.
 - postMessage for DM → Player sync.
 - Must work offline from `file://`.
 - Player view has **zero UI**: no buttons, no overlays. Keep the cursor.
@@ -63,7 +85,7 @@ or two maps at a time.
   material, a Player message and a column control each arrive as one file or one record.
 - **Shared mutable state has one home: `state.js`.** Move a piece there when a feature
   touches it.
-- **Restructuring is its own task.** Splits, moves and renames happen on the user's yes to a
+- **Restructuring is its own task.** Splits, moves and renames happen on the DM's yes to a
   stated scope, in their own commit, never inside a feature change, so a feature diff stays
   readable.
 - **Extend the module that owns the concern**, don't duplicate it elsewhere.
@@ -74,7 +96,7 @@ or two maps at a time.
 
 Browser modules in `src/<subsystem>/`. Only `state.js` and `undo.js` sit at `src/` root, because every
 subsystem reads them. Stylesheets in `src/css/`. The main process is `main.js` plus one file
-per subject in `electron/`. Both HTML entry points, `preload.js` and `package.json` stay at the
+per subject in `electron/`. The HTML pages, `preload.js` and `package.json` stay at the
 repo root. Docs in `docs/`; settings, hooks and skills in `.claude/`, skills as
 `.claude/skills/<slug>/SKILL.md`. `tools/` is outside the build glob and must stay that way.
 
@@ -137,7 +159,8 @@ error goes through it; no `alert()` ships.
 - Deliberately untested, don't add tests here: `render.js`, `scenes.js`, `state.js`,
   `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
   `stress.js`.
-- **Never run a rig set while building** - not even `smoke`. A run is the DM's time. `/commit`
+- **Never run a rig set on the DM's machine while building** - not even `smoke`. A run is the
+  DM's time. A cloud session runs it freely. `/commit`
   gates the diff and CI runs the full set against the built app on all three platforms. See the `rig` skill.
 - **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance are
   theirs; correctness is yours. Backup, export and restore are the exception - the save dialog is
@@ -145,7 +168,7 @@ error goes through it; no `alert()` ships.
 
 ## Guard hooks
 
-Eleven fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file
+Twelve fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file
 has one**, and each explains its own fix when it fires. `guard-skill-hint.js`, the `PreToolUse`
 one, names the skill owning a file you edit.
 
@@ -167,7 +190,8 @@ one, names the skill owning a file you edit.
 
 No build step. `npm start` for the Electron app (after `npm install`). Local installers:
 `npm run build` (Windows `.exe`), `build:mac` (`.dmg`), `build:linux` (`AppImage`).
-**The DM runs `npm start` and the `.exe`. Never open or suggest Chrome.**
+**The DM runs `npm start` and the `.exe`. Never ask the DM to open Chrome**; Claude may use
+browser previews.
 
 **Never put a window on the DM's screen.** The rig is the only sanctioned way to launch the
 app; it parks every window off-screen. `npm start`, the stress and memprobe runs, a built

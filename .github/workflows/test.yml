@@ -32,3 +32,19 @@ jobs:
 
       - name: Run the tests
         run: npm test
+
+  # The ratchet guards over the whole tree, beside the suite rather than after it.
+  guards:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run the guards
+        run: node tools/check-guards.js

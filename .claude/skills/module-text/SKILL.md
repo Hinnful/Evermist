@@ -22,7 +22,7 @@ real book or a real build broke the previous version. They are constraints, not 
 - **No auto-assign, no queue, no "fill all rooms."** Sub-locations mean one heading serves
   several polygons, so any 1:1 mapping desyncs.
 - **No LLM and no network, ever.**
-- `ROOM_DESC_MAX` is **20000**. Truncation is silent, so don't lower it without making it
+- `ROOM_DESC_MAX` (`src/rooms/roomPanel.js`, not here) is **20000**. Truncation is silent, so don't lower it without making it
   visible.
 - Don't commit copyrighted module text. Test fixtures are **synthetic**.
 

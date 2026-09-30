@@ -961,7 +961,10 @@ the boundary as a fact about the TV.
 ### The Russian README was deleted · `REVERTED` (2026-09-24)
 A Russian README shipped from 2.0.0 and was kept in step by hand at every rewrite. It was
 deleted at 3.0.0, because the app has no Russian interface and each rewrite cost a second pass.
-It is in git history if a translated app ever needs it back.
+It is in git history if a translated app ever needs it back. The "no Russian interface" reason
+lapsed at 3.9.0, which shipped a Russian DM screen (see "A missing Russian entry fails the
+release" in [decisions/ui-and-control-panel.md](decisions/ui-and-control-panel.md)); the README
+stayed English-only.
 
 ---
 

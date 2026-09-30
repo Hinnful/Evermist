@@ -15,7 +15,8 @@ A sentence here that explains *why* belongs in one of those. This page says what
 
 ## The big picture
 
-There is **one** HTML file, `index.html`. It serves both screens:
+There are three HTML pages. `splash.html` is the startup splash, `stage.html` is the two-map
+shell described below, and `index.html` is the app itself. It serves both screens:
 
 - Open it normally, and you get the **DM window** with all the controls.
 - Open it with `?mode=player`, and you get the **Player window**: no buttons and no panels,

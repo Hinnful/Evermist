@@ -263,7 +263,7 @@ The obvious recovery from a bad release is `git revert`, and it does nothing. `e
 serves whatever the newest release is, so the bad installer keeps being offered and a revert just
 publishes another version on top of it.
 
-So `allowDowngrade` is on in `main.js`, and recovery is deleting the release and its tag. The
+So `allowDowngrade` is on in `electron/updates.js`, and recovery is deleting the release and its tag. The
 previous release becomes newest and installed copies - including the ones already sitting on the
 bad version - are offered the older one through the same Restart button. Without the flag
 `electron-updater` refuses to go backwards and those copies have no way home but a manual

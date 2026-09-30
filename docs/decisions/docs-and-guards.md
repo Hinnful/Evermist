@@ -124,7 +124,9 @@ the same files. Deleting either looks like an easy win and is not. The rule "ext
 that owns the concern, don't duplicate it" is unusable without a map already in context, and
 `CLAUDE.md` is the only file guaranteed to be there; the prose table is for a reader who needs
 to know what a file does before opening it. `guard-architecture.js` checks both against `src/`
-on every module write, so the duplication cannot drift.
+on every module write, so the duplication cannot drift. The terse map later moved out of
+`CLAUDE.md` into `.claude/rules/modules.md`, which loads with app code, so it is still in context
+where the rule applies.
 
 ### The command ledger is private, the docs ledger is public · `SETTLED`
 Entries about the private slash commands moved to a memory file rather than staying in the repo,

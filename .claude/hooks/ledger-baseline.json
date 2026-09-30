@@ -92,6 +92,16 @@
       "entries": [],
       "untagged": [],
       "persons": []
+    },
+    "docs/decisions/process.md": {
+      "warnedBytes": 0,
+      "sections": [],
+      "entries": [
+        "Auto-running `/redteam` inside `/handoff` · `REJECTED`",
+        "`/spec` became a DoR / DoD drill · `SETTLED` (2026-09-19)"
+      ],
+      "untagged": [],
+      "persons": []
     }
   }
 }

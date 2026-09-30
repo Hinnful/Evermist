@@ -34,8 +34,10 @@ const NOTE =
   'choice against extracting the concern into its own module.';
 
 // Every module the app ships: src/ at the root or one subsystem folder deep, the main process in
-// electron/, and the two shell files beside it. src/css/ carries no JavaScript.
+// electron/, and the two shell files beside it. src/css/ carries no JavaScript. changelogData.js is
+// generated and grows by a release, not by a concern.
 function isModule(rel) {
+  if (rel === 'src/ui/changelogData.js') return false;
   if (rel === 'main.js' || rel === 'preload.js') return true;
   if (/^electron\/[^/]+\.js$/.test(rel)) return true;
   return /^src\/(?:[^/]+\/)?[^/]+\.js$/.test(rel) && !rel.startsWith('src/css/');

@@ -295,3 +295,11 @@ agree, and before the TV refits they agree on the old zoom, so the poll passed a
 final reads raced the refit. 3.3.1's lerp fix was aimed at the app and could not have helped. The
 check now waits for the TV's zoom to change, then for the preview to match, and prints each hop
 of the report on a red. It was vacuous before: switching the TV's report off still passed.
+
+### The app opens its own windows off-screen under the rig · `SETTLED` (2026-09-30)
+`offscreen.ps1` moves a window only once it exists, so the splash, each new Player window and
+the DM window's focus call still reached the DM's screen for a moment on every boot. Nothing
+outside the main process can place a window before it first shows, so `main.js` takes an
+`--offscreen` flag that the rig passes: every window opens at -9000,-9000 and shows without focus.
+It is the one app-side change made for the rig, and the parker stays as the backstop.
+`test/offscreen.test.js` reads `main.js`, because the parker would hide a window that forgot it.

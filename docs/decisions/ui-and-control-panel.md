@@ -465,7 +465,7 @@ under Alt drags as it would without it.
 
 ### Effect presets: a size row above the bar, the wheel steps it, a click places · `SETTLED` (2026-09-29)
 A shape with preset sizes lists them in `#context-row` as bare pick-one numbers, with no unit (the
-cursor label names it). The picked size wears the tool row's outlined box, on his call, so the
+cursor label names it). The picked size wears the tool row's outlined box, so the
 pick reads at a glance; the dashed shape glyph first means draw by hand. Line and Ring have no
 hand tool, so picking one arms a size. A preset never snaps: the grid sets its size once, at
 placement, and a later grid change leaves it alone. The wheel steps through the listed sizes and

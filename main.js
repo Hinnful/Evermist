@@ -17,6 +17,10 @@ const stressIntervalArg = process.argv.find(a => a.startsWith('--stress-interval
 const stressMs = stressIntervalArg
   ? (v => (isNaN(v) || v <= 0 ? 900000 : v))(parseInt(stressIntervalArg.split('=')[1], 10))
   : 900000;
+// The rig's flag: every window opens off-screen and never takes focus.
+const offscreen = process.argv.includes('--offscreen');
+const OFFSCREEN_AT = offscreen ? { x: -9000, y: -9000 } : {};
+const reveal = (win) => (offscreen ? win.showInactive() : win.show());
 if (stressMode) {
   const id = powerSaveBlocker.start('prevent-display-sleep');
   console.log('[stress] powerSaveBlocker started id=' + id + ' interval=' + stressMs + 'ms');
@@ -50,15 +54,16 @@ function createSplashWindow() {
     backgroundColor: '#00000000',
     resizable: false,
     movable: false,
-    center: true,
+    center: !offscreen,
     skipTaskbar: true,
-    alwaysOnTop: true,
+    alwaysOnTop: !offscreen,
     show: false,
     icon: windowIcon,
+    ...OFFSCREEN_AT,
   });
   splash.setMenu(null);
   splash.loadFile('splash.html');
-  splash.once('ready-to-show', () => splash.show());
+  splash.once('ready-to-show', () => reveal(splash));
   return splash;
 }
 
@@ -72,6 +77,7 @@ function createDMWindow() {
     title: 'Evermist',
     icon: windowIcon,
     show: false,
+    ...OFFSCREEN_AT,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -112,10 +118,10 @@ function createDMWindow() {
     setTimeout(() => {
       if (!splash.isDestroyed()) splash.destroy();
       if (win.isDestroyed()) return;   // closed during the wait, or during the 6s cap below
-      win.show();
+      reveal(win);
       // The splash is alwaysOnTop and owns the OS focus until it is destroyed, so show() alone
       // leaves the app visible but not focused. Claim focus once nothing competes for it.
-      win.focus();
+      if (!offscreen) win.focus();
 
     }, wait);
   };
@@ -131,6 +137,7 @@ function createDMWindow() {
       width: 1200,
       height: 800,
       show: false,
+      ...OFFSCREEN_AT,
       title: 'Evermist — Player View',
       // --fog-base in base.css: Chromium paints it between two documents, and this window navigates.
       backgroundColor: '#1a1a2e',
@@ -192,7 +199,7 @@ let _playerMovedTimer = null;
 
 function showPlayerWindow(key) {
   const win = playerWins.get(key || 'evermist-player');
-  if (win && !win.isDestroyed() && !win.isVisible()) win.show();
+  if (win && !win.isDestroyed() && !win.isVisible()) reveal(win);
 }
 
 function getDisplayForWindow(win) {

@@ -103,11 +103,9 @@ function main() {
         additionalContext:
           'RIG HINT: ' + rel + ' is shipped code, and nothing under ' + SCENARIO_DIR + '/ has ' +
           'changed in this working tree.\n\n' +
-          'If this change is a bug fix, reproduce the bug with a scenario BEFORE fixing it — ' +
-          '`npm run rig -- <name>` is about ten seconds to a verdict. If it is a feature, its ' +
-          'acceptance scenario is part of the build, not a follow-up, and it has to be seen RED ' +
-          'once: break the line under it, confirm the FAIL names the right check, put the line ' +
-          'back. A scenario written after the code has only ever seen green and proves nothing.\n\n' +
+          'A shipped behaviour needs a scenario behind it, and writing it is part of this build. ' +
+          'Write it now and run nothing: CLAUDE.md forbids a rig run while building. `/commit` ' +
+          'runs the new scenario alone and has to see it RED once before it counts.\n\n' +
           'Nothing to add is a perfectly good answer — an existing scenario already covering it, ' +
           'a comment, or a mutation check being restored. This is said once per session either ' +
           'way. Rules: the `rig` skill.',

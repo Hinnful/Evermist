@@ -210,9 +210,9 @@ async function quitApp(inst, ms = 15000) {
 }
 
 // ─── Getting the run off the screen ──────────────────────────────────────────
-// A run used to own the machine: both windows opened in front and stayed there, so nobody could
-// work while one was going. offscreen.ps1 parks every window this run opens at -9000,-9000,
-// without activating any of them.
+// `--offscreen` makes the app open every window at -9000,-9000 and never take focus (main.js).
+// offscreen.ps1 is the backstop for anything the app does not place itself, such as a native
+// dialog: it parks every window this run opens, without activating any of them.
 //
 // ⚠ ONE PARKER FOR THE WHOLE RUN, STARTED BEFORE THE FIRST APP, AND AWAITED. PowerShell needs
 // ~1s to start and compile the parker's C#. A parker started per app spends that second watching
@@ -390,6 +390,7 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true) {
     .concat(STAY_SILENT)
     .concat(PIN_LANGUAGE)
     .concat(SOFTWARE_GL)
+    .concat(args.visible ? [] : ['--offscreen'])
     .concat(['--remote-debugging-port=' + port, '--user-data-dir=' + profileDir]);
   const proc = spawn(bin, argv, {
     cwd: ROOT,

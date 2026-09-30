@@ -49,9 +49,10 @@
 
 const fs = require('fs');
 const path = require('path');
+const lib = require('./guard-lib.js');
 
 const STATE = path.join(__dirname, 'backlog-baseline.json');
-const TARGET = 'project-backlog.md';
+const TARGET = 'docs/backlog.md';
 
 const DEFAULTS = {
   maxLines: 450,
@@ -121,7 +122,7 @@ function writeState(state) {
 
 function isGuarded(fp) {
   try {
-    return path.basename(String(fp)).toLowerCase() === TARGET;
+    return (lib.toRel(fp) || '').toLowerCase() === TARGET;
   } catch {
     return false;
   }
@@ -226,6 +227,17 @@ function main() {
         'Low priority is NOT closed. An item the user simply has not picked yet, ' +
         'or one waiting on a file from them, is open and stays — do not delete ' +
         'those, and do not mark them.\n'
+    );
+  }
+
+  // Rule 1b - the file is public, so it names nobody. Fix in this turn.
+  const people = lib.findPersonRefsInText(text);
+  if (people.length > 0) {
+    notices.push(
+      'BACKLOG GUARD - fix this in the current turn.\n\n' +
+        people.map((h) => '  - line ' + h.line + ': ' + h.text).join('\n') +
+        '\n\nThe backlog is public. Call the person "the DM", quote no chat, and state ' +
+        'the work, not who asked for it.\n'
     );
   }
 
