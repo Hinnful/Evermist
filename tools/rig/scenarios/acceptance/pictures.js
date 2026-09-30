@@ -19,7 +19,7 @@
 //   K. A room copied into another scene carries its pictures.
 //   L. An animated GIF and an SVG are kept as they are, so the GIF still plays and the SVG stays
 //      sharp; each keeps its own format.
-//   (Two-map mode: one picture covering both halves is not driven here.)
+//   (Two-map mode, one picture over both halves: two-maps.js, criterion R.)
 
 const lib = require('../../lib');
 
