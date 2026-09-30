@@ -1162,6 +1162,8 @@ on, so a split made right beside a door draws it narrower than a cell.
 callback, so a switch away and back could read the store before the outgoing scene's edits landed
 in it, and the scene came back as it was two switches ago. It is awaited now, which costs one fog
 canvas encode on a switch that already awaits a scene load and a video decode.
+A map import had the same race and got the same await in 3.10.1: once the new scene is current, the
+old scene's save is dropped, and a slow decode got there first.
 
 The race is only reachable where the machine is slow enough to lose it. It survived every local run
 and took a release gate down on a CI runner, three times slower. **A mutation check cannot be got

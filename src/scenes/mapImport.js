@@ -132,7 +132,8 @@ async function createNewScene(file, opts) {
   }
 
   if (!isVid) showMapProgress('Loading map…');
-  if (currentScene) doAutoSave();
+  // ⚠ AWAITED: the save is dropped once the new scene is current, which a slow decode wins.
+  if (currentScene) await doAutoSave();
   cleanupVideo();
   const maxOrder = allScenes.length > 0 ? Math.max(...allScenes.map(s => s.sortOrder ?? 0)) : -1;
 

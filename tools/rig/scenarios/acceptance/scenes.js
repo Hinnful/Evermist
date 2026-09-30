@@ -22,6 +22,8 @@
 //   G. Once the delete is committed the scene is really gone — out of the store, not just out of
 //      the list.
 //   H. Switching to a scene that will not load leaves the DM where they were, with a reason.
+//   I. A room drawn just before importing a map is saved with its own scene, however slow the
+//      save is.
 //
 // What a switch sends to the Player is everything-reaches-the-player.js's business, not this
 // file's: sections D and E there cover the new map arriving on the TV exactly once. Nothing here
@@ -416,6 +418,27 @@ module.exports = async function scenesFeature(rig) {
             'a scene that would not load said nothing at all: ' + JSON.stringify(brokenSwitch));
   await dm.evaluate('(() => { const b = document.getElementById("cd-ok");' +
     ' if (b) b.click(); return 0; })()');
+
+  // ── I. An import waits for the open scene's save ──────────────────────────
+  // RED ON: the await on doAutoSave in createNewScene gated off with false ? (mapImport.js) - 2026-09-30
+  // ⚠ ONLY THE FIRST ENCODE IS HELD, and that is the open scene's save. Holding every one holds
+  // the import's own fog encode too, and the import then finishes after the save either way.
+  await lib.installHelpers(dm);
+  const roomsBefore = (await stored(stayedOn)).rooms;
+  await dm.evaluate(`(() => {
+    const orig = HTMLCanvasElement.prototype.toBlob; let held = false;
+    globalThis.__rigOrigToBlob = orig;
+    HTMLCanvasElement.prototype.toBlob = function (cb, ...rest) {
+      if (held) return orig.call(this, cb, ...rest);
+      held = true;
+      return orig.call(this, blob => setTimeout(() => cb(blob), 8000), ...rest);
+    };
+    __rigDrawShroud(200, 200, 400, 400); return 0; })()`);
+  await importAs('Late Import');
+  const kept = await waitFor(() => stored(stayedOn), v => !!v && v.rooms === roomsBefore + 1, 12000);
+  await dm.evaluate('HTMLCanvasElement.prototype.toBlob = globalThis.__rigOrigToBlob; 0');
+  rig.check(!!kept && kept.rooms === roomsBefore + 1,
+            'a room drawn just before a map import was lost from its scene: ' + JSON.stringify(kept));
 
   rig.byEye('dragging scene cards by hand in the real dropdown — the drag itself is a pointer ' +
             'gesture on a list that scrolls, and only the order it commits is checked here');
