@@ -80,7 +80,7 @@ function setCompressSize(value) {
     messageDialog({
       title: 'Compression',
       message: t('Animated maps bigger than {w}×{h} will be re-encoded to fit ' +
-        'that size on import. This improves performance on low-end PCs and laptops.\n\n' +
+        'that size on import, and room pictures are shrunk to it. This improves performance on low-end PCs and laptops.\n\n' +
         'Leave it off if your machine can handle full-size maps.', box),
       buttonLabel: 'Got it',
     });

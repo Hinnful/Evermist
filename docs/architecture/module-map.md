@@ -69,13 +69,16 @@ language, present tense. The terse version every session carries is in
 | `videoDiag.js` | A panel that shows how an animated map is actually playing, plus the log file it writes. The counting runs whether or not the panel is open, so a stutter the DM only hears about later is still on record. |
 | `display.js` | Detecting the Player screen's real size so the fog and map render at the right resolution. |
 | `backup.js` | The export/restore-to-zip feature. |
-| `dragDrop.js` | What happens when files are dropped on the DM window. Maps become scenes through the ordinary import; a floor plan arriving alone is attached to whatever scene is open, which is the case where it got separated from the map it belongs to. |
+| `dragDrop.js` | What happens when files are dropped on the DM window. A floor plan arriving alone is attached to whatever scene is open, which is the case where it got separated from the map it belongs to. A dropped map imports nothing; maps come in through the + button. |
 | `toolbar.js` | DM-only UI control wiring: toolbar buttons, sliders, the scene dropdown, Player controls. The Fog tab's own controls live in `fogControls.js`. Also the Rooms/Effects switch, the Merge and Cut out repairs, the material picker, and which tools each mode puts on the bar. The strip above the toolbar changes with both - `input.js`'s `updateContextPanels` owns every visibility decision in it. |
 | `shapeMenu.js` | The single shape button on the bar and the flyout its right click opens. Keeps the button wearing whichever of Rectangle, Circle, Polygon and Cone the current mode last drew with. |
 | `colorPicker.js` | The fog colour control: a saturation square, a hue strip and a hex field, kept in step with each other. It writes into the same hidden colour input the rest of the app listens to. |
 | `controlPanel.js` | The Fog/Grid/Player control panel and the tab bar above it. A presentational layer over the older hidden controls. The tab bar sits outside the panel and never hides; picking a tab opens the panel on that pane, picking the same tab again shuts it, and the open pane is remembered between sittings. |
 | `roomPanel.js` | The names drawn on the DM's map over each room, and the arithmetic that finds a spot inside the shape where a name fits. |
 | `roomCard.js` | The small panel that appears beside a selected room, holding its name, notes, fog state and corner rounding. It keeps clear of the room it belongs to, and the DM can drag it anywhere. |
+| `picturePlan.js` | The rules for room pictures that need no screen: how big a picture may be, how the list reorders, and the file name a picture takes inside a backup. |
+| `pictureDecode.js` | Turns a picked or dropped file into a room picture. A still picture shrinks to the compression size; an animated one or a vector drawing is kept as it is. |
+| `roomPictures.js` | A room's pictures on its card: adding, reordering, deleting, and the one picture shown on the TV, which comes down when its room, its picture or its scene goes. |
 | `moduleText.js` | Parsing a published module's text into locations, storing them, and carrying them through a backup. |
 | `moduleTextPanel.js` | The panel that takes a module file, and the room name field as a searchable dropdown over what it found. |
 | `pdfLayout.js` | Turning a PDF's scattered text fragments back into reading order. It also lays the text out a second time for the stat block finder, each line tagged with its font and a band started at each wide stat block box. Pure functions, unit-tested, no dependencies. |
@@ -107,6 +110,7 @@ language, present tense. The terse version every session carries is in
 | `updater.js` | What the DM sees about updates: a toast in the top right when a download is ready to install, and the line under the About block that says what the download is doing. After a restart into a new version, the toast says so and offers the What's new panel. Reports only what the main process tells it, and shows nothing at all when there is no update or when the check failed. Where the app cannot replace itself, it offers the releases page instead. DM only. |
 | `player.js` | Player-mode runtime: the card shown while the first map decodes, the handshake with the DM, the resize listener, and the players' own pan and zoom. |
 | `playerMessages.js` | Everything the DM can say to a Player window, and what each sentence does when it arrives. |
+| `tvPicture.js` | A room picture on the TV, centred over the dimmed map. It runs in the Player window and in the two-map window, where one picture covers both halves. |
 | `playerMap.js` | A new map arriving on the Player: holding the screen dark until both the map and its fog have decoded, then swapping in an image or a video and easing the fog back off. The players must never see a half-applied scene, which is what most of the care here is for. |
 | `stress.js` | A hidden stress-test harness for chasing video and memory bugs. Dormant unless the page is opened with `?stress=1`. |
 | `memProbe.js` | A hidden memory probe: counts what one loaded map costs and writes it to the diagnostics log. Dormant unless the page is opened with `?memprobe=1`. |

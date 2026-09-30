@@ -54,8 +54,10 @@ actions that change what the table sees. Those are in scope.
 ## The line it will not cross
 
 ### The VTT line · `SETTLED` (2026-09-24, narrowed to what reaches the TV)
-**Nothing but the map and its effects reaches the Player screen.** Map, fog, grid, effects and
-the DM's ping go to the TV. Rooms, notes, controls and anything else the DM reads stay on the DM's side.
+**Nothing but the map, its effects and a picture the DM shows reaches the Player screen.** Map,
+fog, grid, effects, the DM's ping and a room's picture go to the TV. Rooms, notes, controls and
+anything else the DM reads stay on the DM's side. The picture passed the test below on
+2026-09-30: one TV beats a phone handed round six players.
 No tokens and no dice, on either screen.
 
 **The test that decides what the TABLE sees: could a physical object at the table do this job

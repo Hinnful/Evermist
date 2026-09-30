@@ -46,7 +46,7 @@ if (!file) { console.error('usage: node tools/inspect-statblocks.js <book.pdf|mo
   const record = args.includes('--record');
   const one = a => `${a.ba ? 'Bonus ' : ''}${a.x ? a.x + '× ' : ''}${a.n}${!record ? '' : `${a.rc ? ` {${a.rc}}` : ''} ${a.hit} ${a.parts.map(p => `${p.dmg} ${p.type || '?'}`).join(' + ')}${a.grab ? ` grab ${a.grab}` : ''}`}`;
   const grp = a => a.alts ? `[${a.alts.map(alt => alt.map(one).join(' + ')).join(' OR ')}]`
-    : `[${a.x ? a.x + '× ' : ''}${a.opts.map(one).join(a.or ? ' | ' : ' + ')}${a.swap ? ` ⇄ ${a.swap.k} ${a.swap.to}` : ''}]`;
+    : `[${a.x ? a.x + '× ' : ''}${a.opts.map(one).join(a.or ? ' | ' : ' + ')}${a.swap ? ` ⇄ ${a.swap.k} ${a.swap.to.join(' or ')}` : ''}]`;
   const attacks = b => combatAttacks(b).map(a => a.fallback ? (record ? `DASHED ${a.n}` : 'DASHED') : a.group ? grp(a) : one(a)).join('  ');
   if (record) {
     const secs = b => Object.entries(b.secs).map(([k, v]) => `${k}:${v.map(e => e.n).join('/')}`).join(' ');

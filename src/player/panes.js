@@ -255,6 +255,7 @@ async function exitPanes(keepSceneId) {
     panes[id].sceneId = null;
     panes[id].camera = null;
   }
+  _paneTvPicture = null;
   syncSize();
   if (!hadPlayer) prewarmPlayer();   // warming would navigate the live window away
   // The map comes back out of the store, which is where the column has been saving it all along.
@@ -317,6 +318,7 @@ function initPanes() {
       renderSceneManager();
       return;
     }
+    if (msg.type === 'pane-picture') { paneRelayPicture(msg.pane, msg.blob); return; }
     if (msg.type === 'pane-clicked') { selectPane(msg.pane); return; }
     if (msg.type === 'pane-tool') { if (shape !== msg.shape) setShape(msg.shape); setPreset(msg.preset); return; }
     if (msg.type === 'pane-scene-result') {
@@ -345,6 +347,30 @@ function initPanes() {
       if (msg.pane === panesSelected) { paneAdoptSelectedSettings(); minimapSeedView(); }
     }
   });
+}
+
+// ─── The room picture on the TV ──────────────────────────────────────────────
+// One picture covers the whole screen, so the shell shows it and one column owns it at a time.
+
+let _paneTvPicture = null;   // { pane, blob }
+
+function paneRelayPicture(id, blob) {
+  const prev = _paneTvPicture;
+  _paneTvPicture = blob ? { pane: id, blob } : null;
+  if (blob && prev && prev.pane !== id) sendToPane({ type: 'pane-picture-replaced' }, prev.pane);
+  if (!blob && prev && prev.pane !== id) { _paneTvPicture = prev; return; }
+  paneResendPicture(true);
+}
+
+function paneResendPicture(evenNone) {
+  if (!stageIsOpen() || (!_paneTvPicture && !evenNone)) return;
+  _stageWindow.postMessage({ type: 'tv-picture', blob: _paneTvPicture ? _paneTvPicture.blob : null }, '*');
+}
+
+function paneTakeDownPicture() {
+  if (!_paneTvPicture) return false;
+  sendToPane({ type: 'pane-picture-down' }, _paneTvPicture.pane);
+  return true;
 }
 
 function paneColumnOf(sceneId) {

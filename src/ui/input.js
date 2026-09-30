@@ -250,6 +250,7 @@ function initInput() {
       // Merge, Trim or Cut has no other way out from the keyboard.
       case 'Escape':
         if (legendVisible) { toggleLegend(); break; }
+        if (takeDownTvPicture()) break;
         if (dropPreset()) break;
         if (activePolygon) {
           activePolygon = null;

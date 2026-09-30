@@ -77,8 +77,7 @@ holds the fault within a few restarts. The newest is never dropped, whatever it 
 
 ## Bringing in a folder of maps
 
-Select ten maps in the file dialog, or drag them onto the window together, and they import one
-after another - never overlapping, because two maps decoding at once is how a video import lands
+Select ten maps in the file dialog and they import one after another - never overlapping, because two maps decoding at once is how a video import lands
 on top of the one still being saved. The progress bar says which map of how many is going through
 and names it, over the top of whatever that map is doing at the time.
 
@@ -472,13 +471,31 @@ Room names are also drawn on the DM map itself, sized relative to zoom and place
 room's outline rather than at its bounding box corner, which is what makes circles and
 heavily-rounded rectangles work without special cases. `L` toggles them.
 
+### Room pictures
+
+A room can hold pictures: a portrait, a letter, a drawing of an item. They show on its card as a
+strip of thumbnails, added with the card's picture button or by dropping files on the card. A
+click puts one on the TV over the dimmed map, and a second click or Escape takes it down. The
+picture comes and goes in soft patches of cloud noise, drawn on a canvas that hands back to the
+plain image once it is whole, so an animated GIF plays throughout and a picture that is up costs
+the TV nothing.
+
+A still picture shrinks to the Compression size on the way in (4K when Compression is off), and
+stays PNG only when it has transparency. An animated GIF, WebP or PNG and an SVG are kept as they
+came, since a canvas would keep one frame of the first and blur the second.
+
+The bytes belong to the scene, never to a room. A room holds only each picture's id and name, so
+its record stays plain data an older build can save and back up. The TV loses the picture whenever
+what it came from goes: the picture, its room, or the scene. In two-map mode one picture covers the
+whole TV, and a column showing a second one replaces the first.
+
 ### Drawing the rooms from the map's own floor plan
 
 Dungeon Alchemist writes a `.dd2vtt` floor plan beside every map it exports: wall segments,
 doors and windows, light sources, and the grid calibration, all as vector data. So the rooms
 don't have to be traced by hand or guessed at from pixels - they're already in a file.
 
-Dropping a map asks the Electron shell whether a plan sits beside it. That question is asked
+Importing a map asks the Electron shell whether a plan sits beside it. That question is asked
 **first, before anything else touches the file**, for two reasons: the map is about to be copied
 into the app's own folder and will no longer have a sibling to find, and if the map gets
 compressed on the way in, the file that arrives at the far end was built in memory and has no
@@ -639,7 +656,8 @@ between PCs.
 
 - **Export** bundles the scenes you pick into a single `.zip`: the fog, the polygons, the
   thumbnails, and the actual map and video files. The imported module text goes in too, once
-  for the whole campaign rather than once per scene.
+  for the whole campaign rather than once per scene. Room pictures travel as files beside
+  their scene, named from their own id, never from anything the zip claims.
 - **Restore** reads that zip back and merges it into your current library rather than
   overwriting. If a name already exists you get a "Name (2)" style rename, so importing the
   same backup twice is safe.

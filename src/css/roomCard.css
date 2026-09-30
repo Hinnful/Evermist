@@ -208,6 +208,28 @@
   #panel-room .cp-adv-body { gap: 17px; }
   .rp-props { gap: 8px; }
 
+  /* Pictures: a strip only while the room has one, so the description keeps its height. */
+  .rp-pics { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+  .rp-pic {
+    position: relative; width: 46px; height: 46px; border-radius: 6px; overflow: hidden;
+    border: 2px solid transparent; cursor: pointer; background: rgba(255,255,255,0.04);
+  }
+  .rp-pic img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .rp-pic.on { border-color: #6ea8ff; }
+  .rp-pic.on::after {
+    content: "TV"; position: absolute; left: 2px; bottom: 2px; padding: 0 3px; border-radius: 3px;
+    background: #6ea8ff; color: #0d1a2e; font: 600 9px/12px system-ui, sans-serif;
+  }
+  .rp-pic.drag { opacity: .35; }
+  .rp-pic.over { box-shadow: -3px 0 0 #6ea8ff; }
+  .rp-pic-x {
+    position: absolute; top: 1px; right: 1px; width: 16px; height: 16px; padding: 0;
+    border: none; border-radius: 50%; background: rgba(0,0,0,0.75); color: #eceef1;
+    font: 11px/16px system-ui, sans-serif; cursor: pointer; opacity: 0;
+  }
+  .rp-pic:hover .rp-pic-x { opacity: 1; }
+  .rp-pic-x:hover { background: #e8595f; }
+
   /* Delete's footer: a hairline in the panel's own border colour, and the button below it at
      the app's standard full width. The narrow right-aligned variant this replaces was trying
      to fix "a destructive action reads as the card's primary action" with SIZE, which cost it

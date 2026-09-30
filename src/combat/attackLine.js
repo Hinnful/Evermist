@@ -181,7 +181,7 @@ const _cbLine = a => `${a.x ? a.x + '× ' : ''}${a.n} ${a.hit} ${a.parts.map(p =
 function combatAttackLine(sb) {
   return combatAttacks(sb).filter(a => !a.fallback).map(a => !a.group ? (a.ba ? 'Bonus: ' : '') + _cbLine(a)
     : a.alts ? a.alts.map(alt => alt.map(_cbLine).join(', ')).join(' or ')
-    : `${a.x ? a.x + '× ' : ''}${a.opts.map(_cbLine).join(a.or ? ' or ' : ', ')}${a.swap ? ` (${a.swap.of || a.swap.k} for ${a.swap.to})` : ''}`).join('\n');
+    : `${a.x ? a.x + '× ' : ''}${a.opts.map(_cbLine).join(a.or ? ' or ' : ', ')}${a.swap ? ` (${a.swap.of || a.swap.k} for ${a.swap.to.join(' or ')})` : ''}`).join('\n');
 }
 
 if (typeof module !== 'undefined' && module.exports) {

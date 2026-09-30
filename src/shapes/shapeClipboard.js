@@ -47,6 +47,7 @@ function _clipDetach(out) {
   if (out.cornerRadii) out.cornerRadii = out.cornerRadii.slice();
   if (out.handles) out.handles = out.handles.map(h => h ? { ...h } : null);
   if (out.doors) out.doors = out.doors.map(d => ({ ...d }));
+  if (out.pictures) out.pictures = out.pictures.slice();
   return out;
 }
 
@@ -117,7 +118,9 @@ function _clipRead() {
   }
   const shape = _clipDetach(copyShapeRings(poly));
   delete shape.id;
-  return { list: listName, kind: 'shape', centre: _clipCentre(poly, -1), shape };
+  // The bytes ride along: a paste into another scene finds none of its own.
+  return { list: listName, kind: 'shape', centre: _clipCentre(poly, -1), shape,
+           pictures: picturesReferenced([shape], pictureBlobs) };
 }
 
 function copySelectedShape() {
@@ -178,6 +181,7 @@ function _clipDrop(clip, dx, dy, into) {
   }
   const shape = _clipMoved(clip.shape, dx, dy);
   pushUndo();
+  Object.assign(pictureBlobs, clip.pictures);
   if (clip.list === 'effects') {
     shape.id = nextEffectId++;
     effects.push(shape);

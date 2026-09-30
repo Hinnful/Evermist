@@ -152,7 +152,7 @@ function _cbMultiSwap(text, actions) {
   // A swap tied to one attack names it: "заменить атаку Лапой на Огненное дыхание".
   const tied = m[0].match(/атаку\s+([а-яё]+)\s+на\s/i);
   const of = tied && actions.map(a => a.n.split('(')[0].trim()).find(n => _cbWordMatch(tied[1].toLowerCase().replace(/ё/g, 'е'), n.toLowerCase().replace(/ё/g, 'е').split(/\s+/)[0]));
-  const swap = { k: COMBAT_SWAP_N[k.toLowerCase()], to: names.join(' or ') };
+  const swap = { k: COMBAT_SWAP_N[k.toLowerCase()], to: names };
   if (of) swap.of = of;
   return { base: s.slice(0, m.index), only: i === 3, names, swap };
 }

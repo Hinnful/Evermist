@@ -54,6 +54,8 @@ const PANE_CONTROLS = {
   // The Player pane. Each column drives its OWN Player window through its own controls.
   'pane-sync-view':         () => _paneClick('btn-sync-view'),
   'pane-send':              () => sendToPlayer(),
+  'pane-picture-down':      () => hideTvPicture(),
+  'pane-picture-replaced':  () => hideTvPicture(true),
   'pane-auto-sync':         m => { if (autoSync !== m.on) _paneClick('btn-auto-sync'); },
   'pane-player-lock':       m => {
     minimapLocked = m.locked;

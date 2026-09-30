@@ -34,7 +34,12 @@ function _cbGroup(a) {
   const alt = pills => pills.length === 1 ? cbAttackPill(pills[0]) : `<span class="cb-grp">${pills.map(cbAttackPill).join('')}</span>`;
   return `<span class="cb-grp" title="${_cbEsc(`${a.n}. ${a.t}`)}">${a.x ? `<span class="gx">${a.x}×</span>` : ''}${
     a.alts ? a.alts.map(alt).join(CB_OR) : a.opts.map(cbAttackPill).join(a.or ? CB_OR : '')}${
-    a.swap ? `<span class="gsw">${_cbGlyph(CB_GLYPH_SWAP)}${t('{of} for {to}', { of: _cbEsc(a.swap.of || a.swap.k), to: _cbEsc(a.swap.to) })}</span>` : ''}</span>`;
+    a.swap ? `<span class="gsw">${_cbGlyph(CB_GLYPH_SWAP)}${_cbSwapText(a.swap)}</span>` : ''}</span>`;
+}
+
+function _cbSwapText(sw) {
+  const to = sw.to.map(_cbEsc).join(` ${t('or')} `);
+  return sw.of ? t('{of} attack for {to}', { of: _cbEsc(sw.of), to }) : t('{of} for {to}', { of: sw.k === 'any' ? t('any') : sw.k, to });
 }
 
 const _cbPillName = n => n.replace(/\s*\([^)]*\)/g, '').trim() || n;

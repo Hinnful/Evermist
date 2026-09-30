@@ -164,6 +164,7 @@ async function switchScene(id, _isRecovery = false) {
   polygons      = normalizeRoomFields(scene.polygons || [], id => t('Room {n}', { n: id }))
                     .map(p => decodeShapeFromSave(copyShapeRings(p)));
   nextPolygonId = scene.nextPolygonId || 1;
+  adoptScenePictures(scene);
   clearShapeSelection();
   activePolygon = null;
   // Same additive spread the rooms above take: a field whitelist drops cornerRadii from every

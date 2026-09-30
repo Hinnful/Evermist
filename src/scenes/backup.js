@@ -77,6 +77,12 @@ async function doExport(selectedIds) {
 
       const thumbBuffer = await blobToArrayBuffer(scene.thumbnail);
 
+      const picList = pictureBackupList(scene.polygons, scene.pictureBlobs || {});
+      const pictures = [];
+      for (const p of picList) {
+        pictures.push({ name: pictureZipName(p.id, p.type), buffer: await blobToArrayBuffer(scene.pictureBlobs[p.id]) });
+      }
+
       const mapMimeType = scene.mapBlob
         ? (scene.mapBlob.type || 'image/jpeg')
         : (mapExt === '.mp4' ? 'video/mp4' : 'video/webm');
@@ -96,6 +102,7 @@ async function doExport(selectedIds) {
           mapExt,
           polygons:      scene.polygons || [],
           nextPolygonId: scene.nextPolygonId || 1,
+          pictures:      picList,
           effects:       scene.effects || [],
           nextEffectId:  scene.nextEffectId || 1,
           // ⚠ A WHITELIST: a field missing from it is silently dropped on export. The floor plan
@@ -109,6 +116,7 @@ async function doExport(selectedIds) {
         mapBuffer,
         fogBuffer,
         thumbBuffer,
+        pictures,
       });
     }
 
@@ -203,6 +211,15 @@ async function adoptModuleTextFromZip(zipPath) {
   });
 }
 
+function _restoredPictures(list, buffers) {
+  const out = {};
+  for (const p of Array.isArray(list) ? list : []) {
+    const name = p && pictureZipName(p.id, p.type);
+    if (name && buffers && buffers[name]) out[p.id] = new Blob([buffers[name]], { type: pictureType(p.type) });
+  }
+  return out;
+}
+
 // Restore straight from a zip path — the scene "+" button's only route in, taken when the
 // chosen file turns out to be a .zip.
 async function restoreFromZipPath(zipPath) {
@@ -255,6 +272,8 @@ async function restoreFromZipPath(zipPath) {
         originalId: a.originalId,
         mapType:    a.entry.mapType || 'image',
         mapExt:     a.entry.mapExt  || '.jpg',
+        pictures:   (Array.isArray(a.entry.pictures) ? a.entry.pictures : [])
+                      .map(p => p && pictureZipName(p.id, p.type)).filter(Boolean),
       }))
     );
 
@@ -297,6 +316,8 @@ async function restoreFromZipPath(zipPath) {
         mapPath,
         polygons:      entry.polygons      || [],
         nextPolygonId: entry.nextPolygonId || 1,
+        // Absent in every zip written before pictures, and a room's refs then point at nothing.
+        pictureBlobs:  _restoredPictures(entry.pictures, ex.pictures),
         // Absent in every zip written before effects existed, which restores as a scene with
         // none — the same shape a scene that never had one has.
         effects:       entry.effects       || [],

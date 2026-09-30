@@ -5,9 +5,9 @@
  * Ledger guard - a NOTICE on size, a FIX request on shape.
  *
  * Covers every past-tense ledger: docs/DECISIONS.md, docs/PRODUCT.md, any
- * docs/decisions/<topic>.md a split produces, and the private command ledger in the
- * memory dir. One guard rather than three near-copies, because they are the same
- * kind of file with different subjects.
+ * docs/decisions/<topic>.md a split produces, and the private command ledger at
+ * .claude/private/project-process.md. One guard rather than three near-copies,
+ * because they are the same kind of file with different subjects.
  *
  * WHY IT NEVER BLOCKS SIZE: these files are SUPPOSED to grow. The alternative to a
  * growing ledger is making the same decision twice, which is the expensive mistake
@@ -81,18 +81,12 @@ function writeState(state) {
 }
 
 // Returns the key to store state under, or null if this file is not a ledger.
-// In-repo files are keyed by repo-relative path; the private ledger lives outside
-// the repo and is keyed by basename.
+// The private ledger keeps its old basename key so its baseline carries over.
 function ledgerKey(fp) {
-  const rel = lib.toRel(fp);
-  if (rel) {
-    const p = rel.toLowerCase();
-    if (p === 'docs/decisions.md' || p === 'docs/product.md') return p;
-    if (/^docs\/decisions\/[^/]+\.md$/.test(p)) return p;
-    return null;
-  }
-  const base = path.basename(String(fp)).toLowerCase();
-  return base === 'project-process.md' ? base : null;
+  const p = (lib.toRel(fp) || '').toLowerCase();
+  if (p === 'docs/decisions.md' || p === 'docs/product.md') return p;
+  if (/^docs\/decisions\/[^/]+\.md$/.test(p)) return p;
+  return p === '.claude/private/project-process.md' ? 'project-process.md' : null;
 }
 
 function main() {

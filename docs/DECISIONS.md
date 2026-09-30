@@ -330,6 +330,18 @@ The box's four edge-midpoint handles - a single-axis stretch - were dropped afte
 extra room vertices once their count matched a simple room's own four corners. Corner-drag scale
 survives; single-axis resize has no replacement handle.
 
+### A room picture comes and goes in patches of fog · `SETTLED` (2026-09-30)
+Ten entrances were prototyped side by side: a blur-and-settle, a slow zoom, a dropped card, a
+soft-edged circle, a darkroom develop, and five built from cloud noise. The plain noise dissolve
+won, patches appearing at random and joining, at 1.9s in and 1.0s out. A CSS mask regenerated per
+frame was rejected before it shipped: each new mask image decodes asynchronously, and the bare
+picture can flash between two of them. A canvas draws the frames instead.
+
+### Maps no longer import by a drop on the window · `REVERTED` (2026-09-30)
+A map dropped on the DM window used to import like a picked one. It went when the room card started
+taking picture drops, so a picture missing the card by a few pixels cannot become a scene. Maps come
+in through the "+" picker; a floor plan dropped on its own still attaches to the open scene.
+
 ---
 
 ## Module text import

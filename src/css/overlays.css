@@ -226,6 +226,18 @@
   #scene-fade.dark  { opacity: 1; }
   #scene-fade.blind { background: #1a1a2e; }
 
+  /* A room picture on the TV (tvPicture.js). Under the scene cover: a switch takes it down.
+     The map dims first on the way in and last on the way out. */
+  #tv-picture {
+    position: fixed; inset: 0; z-index: 998; pointer-events: none;
+    display: grid; place-items: center;
+    background: rgba(5,6,8,0.7); opacity: 0; transition: opacity .6s ease-in .6s;
+  }
+  #tv-picture.up { opacity: 1; transition: opacity .5s ease-out; }
+  #tv-picture img { max-height: 84vh; max-width: 90vw; object-fit: contain; }
+  #tv-picture img, #tv-picture canvas { grid-area: 1 / 1; border-radius: 4px; }
+  #tv-picture img:not([src]) { display: none; }
+
   /* ===== MAP PROGRESS OVERLAY ===== */
   #map-progress {
     position: fixed;

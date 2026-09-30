@@ -145,7 +145,7 @@ describe('Multiattack', () => {
   const claw = ['Claw', 'Melee Weapon Attack: +14 to hit. Hit: 15 (2d6 + 8) slashing damage.'];
   const tail = ['Tail', 'Melee Weapon Attack: +14 to hit. Hit: 17 (2d8 + 8) bludgeoning damage.'];
   const group = a => a.alts ? `[${a.alts.map(alt => alt.map(brief).join(' + ')).join(' OR ')}]`
-    : `[${a.x ? a.x + '× ' : ''}${a.opts.map(brief).join(a.or ? ' | ' : ' + ')}${a.swap ? ` ⇄ ${a.swap.k} ${a.swap.to}` : ''}]`;
+    : `[${a.x ? a.x + '× ' : ''}${a.opts.map(brief).join(a.or ? ' | ' : ' + ')}${a.swap ? ` ⇄ ${a.swap.k} ${a.swap.to.join(' or ')}` : ''}]`;
   const show = acts => pills(acts).map(a => a.group ? group(a) : (a.ba ? 'Bonus ' : '') + brief(a));
   it('frames named counts as one action and drops its own line', () => {
     assert.deepEqual(show([['Multiattack', 'The dragon makes three attacks: one with its bite and two with its claws.'], bite, claw, tail]),
@@ -262,7 +262,7 @@ describe('Multiattack', () => {
     const bite = ['Укус (только в форме летучей мыши или вампира)', 'Спасбросок Телосложения: Сл. 17, одно существо в пределах 5 фт. Провал: 7 (1к6 + 4) колющего урона плюс 10 (3к6) некротического урона.'];
     const at = pills([['Мультиатака', 'Страд совершает две атаки Удар смерти. Он может заменить одну из этих атак использованием (А) Укус или (Б) Использование заклинаний, чтобы наложить заклинание Огненный шар [Fireball], если это заклинание доступно.'], strike, bite,
       ['Использование заклинаний', 'Страд накладывает одно из следующих заклинаний:']]);
-    assert.deepEqual([at[0].swap, at[0].opts[0].grab, brief(at[1])], [{ k: '1', to: 'Укус or Огненный шар' }, '14', 'Укус (только в форме летучей мыши или вампира) DC 17 Con 7 piercing + 10 necrotic']);
+    assert.deepEqual([at[0].swap, at[0].opts[0].grab, brief(at[1])], [{ k: '1', to: ['Укус', 'Огненный шар'] }, '14', 'Укус (только в форме летучей мыши или вампира) DC 17 Con 7 piercing + 10 necrotic']);
   });
   it('reads "only one of which" as a swap, the count kept off the swapped attack', () => {
     const strike = ['Unarmed Strike', 'Melee Weapon Attack: +9 to hit. Hit: 8 (1d8 + 4) bludgeoning damage.'];
@@ -391,7 +391,7 @@ describe('combatAttacks on site wording', () => {
   it('reads a swap written "использованием Сотворения заклинаний (Палящий луч)"', () => {
     const at = combatAttacks({ secs: { Actions: [{ n: 'Мультиатака', t: 'Дракон совершает три атаки Раздиранием. Он может заменить одну из этих атак использованием Сотворения заклинаний (Палящий луч).' },
       { n: 'Раздирание', t: 'Бросок рукопашной атаки: +14. Попадание: 13 (1к10 + 8) Рубящего урона.' }] } });
-    assert.deepEqual(at[0].swap, { k: '1', to: 'Палящий луч' });
+    assert.deepEqual(at[0].swap, { k: '1', to: ['Палящий луч'] });
   });
   it('joins a part set after "+": "Колющего урона + 7 (2к6) урона Ядом"', () => {
     assert.deepEqual(one('Жало', 'Бросок рукопашной атаки: +5. Попадание: 6 (1к6 + 3) Колющего урона + 7 (2к6) урона Ядом.').parts,
@@ -418,9 +418,9 @@ describe('combatAttacks on site wording', () => {
   });
   it('reads the site swaps "одну из атак на", "каждую атаку" and "одну атаку Укусом"', () => {
     const acts = [['Удар', hit('7 (1к6 + 4)')], ['Укус', hit('12 (2к8 + 3)')]];
-    assert.deepEqual(swapOf('Культист совершает две атаки Ударом. Он может заменить одну из атак на Укус.', acts), { k: '1', to: 'Укус' });
-    assert.deepEqual(swapOf('Культист совершает две атаки Ударом. Он может заменить каждую атаку Укусом.', acts), { k: 'any', to: 'Укус' });
-    assert.deepEqual(swapOf('Верволк совершает две атаки Ударом. Он может заменить одну атаку Укусом.', acts), { k: '1', to: 'Укус' });
+    assert.deepEqual(swapOf('Культист совершает две атаки Ударом. Он может заменить одну из атак на Укус.', acts), { k: '1', to: ['Укус'] });
+    assert.deepEqual(swapOf('Культист совершает две атаки Ударом. Он может заменить каждую атаку Укусом.', acts), { k: 'any', to: ['Укус'] });
+    assert.deepEqual(swapOf('Верволк совершает две атаки Ударом. Он может заменить одну атаку Укусом.', acts), { k: '1', to: ['Укус'] });
   });
 });
 
@@ -448,7 +448,7 @@ describe('combatAttacks on book text layers', () => {
   it('names the attack a swap is tied to: "заменить атаку Лапой на"', () => {
     const at = pills([['Мультиатака', 'Химера совершает одну атаку Укусом и одну атаку Лапой. Она может заменить атаку Лапой на использование Огненного дыхания.'],
       ['Укус', hit('11 (2d6 + 4)')], ['Лапа', hit('7 (1d6 + 4)')], ['Огненное дыхание (перезарядка 5–6)', 'Испытание Ловкости: Сл 15. Провал: 31 (7d8) урона Огнём.']]);
-    assert.deepEqual(at[0].swap, { k: '1', to: 'Огненное дыхание', of: 'Лапа' });
+    assert.deepEqual(at[0].swap, { k: '1', to: ['Огненное дыхание'], of: 'Лапа' });
   });
   it('gives each numbered option its list’s recharge', () => {
     const at = pills([['Катастрофическое событие (перезарядка 4–6)', 'Катаклизм создаёт один из эффектов (бросьте 1d4):'],

@@ -9,6 +9,9 @@ const yauzl = require('yauzl');
 
 let mapsDir, sendTo, isSafeId;
 
+// The renderer names each picture from its id (picturePlan.js); anything else is refused here.
+const PICTURE_NAME_RE = /^pic-[a-z0-9]{1,32}\.(jpg|png|gif|webp|svg)$/;
+
 function register(ctx) {
   ({ mapsDir, sendTo, isSafeId } = ctx);
 }
@@ -56,6 +59,9 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleTe
       }
       if (s.fogBuffer)   archive.append(Buffer.from(s.fogBuffer),   { name: `${base}/fog.png` });
       if (s.thumbBuffer) archive.append(Buffer.from(s.thumbBuffer), { name: `${base}/thumb.jpg` });
+      for (const p of s.pictures || []) {
+        if (p && PICTURE_NAME_RE.test(p.name) && p.buffer) archive.append(Buffer.from(p.buffer), { name: `${base}/${p.name}` });
+      }
       sendTo(event.sender, 'backup-progress', { done: idx + 1, total: scenesData.length, phase: 'export' });
     });
 
@@ -130,12 +136,14 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
   }
 
   // Map zip entry path → assignment role
+  const pics = a => (Array.isArray(a.pictures) ? a.pictures : []).filter(n => PICTURE_NAME_RE.test(n));
   const pathMap = {};
   assignments.forEach(a => {
     const base = `scenes/${a.originalId}`;
     pathMap[`${base}/map${a.mapExt}`] = { newId: a.newId, type: 'map', a };
     pathMap[`${base}/fog.png`]        = { newId: a.newId, type: 'fog', a };
     pathMap[`${base}/thumb.jpg`]      = { newId: a.newId, type: 'thumb', a };
+    for (const name of pics(a)) pathMap[`${base}/${name}`] = { newId: a.newId, type: 'pic:' + name, a };
   });
 
   const results = {};
@@ -143,8 +151,8 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
   assignments.forEach(a => {
     results[a.newId] = { newId: a.newId, mapBuffer: null, fogBuffer: null, thumbBuffer: null,
                          // false until an entry turns up; a zip can carry none for a video.
-                         mapWritten: a.mapType !== 'video' };
-    pending[a.newId] = ['map', 'fog', 'thumb'];
+                         mapWritten: a.mapType !== 'video', pictures: {} };
+    pending[a.newId] = ['map', 'fog', 'thumb'].concat(pics(a).map(n => 'pic:' + n));
   });
   let doneScenes = 0;
 
@@ -189,6 +197,7 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
               if (type === 'map')        results[newId].mapBuffer   = ab;
               else if (type === 'fog')   results[newId].fogBuffer   = ab;
               else if (type === 'thumb') results[newId].thumbBuffer = ab;
+              else results[newId].pictures[type.slice(4)] = ab;
               markDone(newId, type);
               zipfile.readEntry();
             });

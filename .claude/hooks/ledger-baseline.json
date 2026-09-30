@@ -27,7 +27,11 @@
     "project-process.md": {
       "warnedBytes": 0,
       "sections": [],
-      "entries": [],
+      "entries": [
+        "Auto-running `/redteam` inside `/handoff` · `REJECTED`",
+        "`/handoff` became `/spec`, and it drills before it writes · `SETTLED` (2026-09-02)",
+        "`/spec` became a DoR / DoD drill · `SETTLED` (2026-09-19)"
+      ],
       "untagged": [],
       "persons": []
     },

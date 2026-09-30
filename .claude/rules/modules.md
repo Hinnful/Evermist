@@ -84,6 +84,10 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/controlPanel.js` | Tabbed Fog/Grid/Player panel over the hidden legacy controls |
 | `rooms/roomPanel.js` | Map room labels and the pure geometry that places them |
 | `rooms/roomCard.js` | The room card: fields, placement, drag |
+| `rooms/picturePlan.js` | Pure room-picture kernel: size, order, backup names. Tested |
+| `rooms/pictureDecode.js` | A file turned into a room picture: shrunk, or kept whole if animated or SVG |
+| `rooms/roomPictures.js` | The card's pictures and the one on the TV |
+| `player/tvPicture.js` | A room picture drawn on the TV, Player and two-map shell |
 | `content/moduleText.js` | Module parsing, storage, name-field dropdown |
 | `content/moduleTextPanel.js` | The import panel and the name-field dropdown. Parses nothing |
 | `content/pdfLayout.js` | Pure PDF reading-order kernel. Tested, dependency-free |
@@ -157,7 +161,8 @@ render/effects.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/gridCalibrate.js → player/minimap.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/confirmDialog.js → rooms/floorPlan.js →
-content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/roomCard.js →
+content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/picturePlan.js → rooms/roomCard.js →
+rooms/pictureDecode.js → rooms/roomPictures.js → player/tvPicture.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicDownload.js → combat/combatPlan.js → combat/fightPlan.js →
 combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →

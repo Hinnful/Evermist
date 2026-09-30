@@ -12,7 +12,7 @@
 //   A. The picker takes a folder's worth of maps in one go, in the order they were picked, and
 //      each scene is named after its file with the extension dropped.
 //   B. The picker forgets what was picked, so the same map can be picked again.
-//   C. Maps dropped on the window import exactly as picked ones do.
+//   C. A map dropped on the window imports nothing; maps come in through the "+" picker.
 //   D. A floor plan dropped on its own attaches to the open scene and imports nothing.
 //   E. A drop carrying nothing importable does nothing at all — no scene, no dialog.
 //   F. A backup takes the restore route on its own, and is refused by name inside a selection.
@@ -248,18 +248,13 @@ module.exports = async function mapsFeature(rig) {
   rig.check(afterAgain.length === 3,
             're-picking the same file imported nothing: ' + JSON.stringify(afterAgain));
 
-  // ── C. Maps dropped on the window ──────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
+  // ── C. A map dropped on the window imports nothing ─────────────────────────
+  // RED BY DESIGN: written against the change, never re-proved
   const beforeDrop = (await names()).length;
   await dm.evaluate('__rigDrop([__rigFile("Dropped One.mp4"), __rigFile("Dropped Two.mp4")])');
-  const afterDrop = await waitLibrary(beforeDrop + 2, 240000);
-  rig.note('after the drop: ' + JSON.stringify(afterDrop));
-  rig.check(afterDrop.length === beforeDrop + 2,
-            'two maps dropped on the window did not produce two scenes: ' +
-            JSON.stringify(afterDrop));
-  rig.check(afterDrop.slice(beforeDrop).join('|') === 'Dropped One|Dropped Two',
-            'the drop imported out of order: ' + JSON.stringify(afterDrop));
-  await landedOn('Dropped One');
+  await lib.hold(1500, 'long enough for a dropped map to have started importing, then prove it did not');
+  rig.check((await names()).length === beforeDrop,
+            'a map dropped on the window became a scene: ' + JSON.stringify(await names()));
 
   // ── D. A floor plan dropped on its own ─────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
@@ -614,9 +609,6 @@ module.exports = async function mapsFeature(rig) {
   rig.byEye('a .zip picked through the real "+" button, which is the only way restorePickedZip ' +
             'gets a path on disk to restore from — a File built in-page has none, and ' +
             'electronAPI cannot be stubbed to pretend otherwise');
-  rig.byEye('maps dragged in from a real Explorer window, plus a map and its sibling .dd2vtt ' +
-            'dropped together, so the plan is found beside the map rather than reported as a ' +
-            'file that would not open');
   rig.byEye('a real half-copied Dungeon Alchemist .webm — a file whose container is intact but ' +
             'whose stream is cut short can fail later than the decode, and only a real one has ' +
             'that shape');

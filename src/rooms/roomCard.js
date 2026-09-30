@@ -171,6 +171,7 @@ function initRoomPanel() {
   if (typeof initModuleText === 'function') initModuleText(_rpEl('rp-name'));
 
   _rpInitDrag(panel, _rpEl('rp-head'));
+  initRoomPictures(panel);
   _rpApplyDescHeight(_rpEl('rp-desc'));
   _rpWatchDescHeight(_rpEl('rp-desc'), panel);
 
@@ -292,6 +293,7 @@ function refreshRoomPanel() {
   if (typeof isPlayer !== 'undefined' && isPlayer) return;
   const panel = _rpEl('panel-room');
   if (!panel) return;
+  reconcileTvPicture();
 
   // Calibration takes the map's mouse and shuts the control panel for the room it needs; a card
   // left floating over that map swallows the drag. SELECTION IS UNTOUCHED, so this is not the
@@ -340,6 +342,7 @@ function refreshRoomPanel() {
   _rpFieldPid = poly.id;
 
   _rpSyncModePill(poly);
+  refreshRoomPictures(poly);
 
   _rpSyncRadiusField('rp-radius-field', 'rp-radius-num', poly);
 

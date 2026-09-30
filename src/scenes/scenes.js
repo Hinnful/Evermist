@@ -95,6 +95,7 @@ function doAutoSave() {
     // encodeShapeForSave is what makes an older build fail closed on a held room.
     polygons:      polygons.map(p => encodeShapeForSave(copyShapeRings(p))),
     nextPolygonId,
+    pictureBlobs:  picturesReferenced(polygons, pictureBlobs),
     // Effects belong to the scene the same way rooms do, through the same additive copy.
     effects:       effects.map(copyShapeRings),
     nextEffectId,
@@ -119,6 +120,7 @@ function doAutoSave() {
       if (!blob || (currentScene !== null && currentScene !== scene)) { resolve(); return; }
       scene.polygons      = snap.polygons;
       scene.nextPolygonId = snap.nextPolygonId;
+      scene.pictureBlobs  = snap.pictureBlobs;
       scene.effects       = snap.effects;
       scene.nextEffectId  = snap.nextEffectId;
       scene.baseFogBlob   = blob;
