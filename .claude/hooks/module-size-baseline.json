@@ -88,8 +88,8 @@
     "electron/pdfText.js": 2991,
     "electron/updates.js": 2675,
     "electron/videoFiles.js": 4102,
-    "main.js": 13630,
-    "preload.js": 6443,
+    "main.js": 13665,
+    "preload.js": 6532,
     "src/shapes/shapeMarkers.js": 2310,
     "src/combat/combatPlan.js": 6855,
     "src/combat/combatStatBlock.js": 9783,
@@ -113,10 +113,13 @@
     "src/shapes/toolPreset.js": 5827,
     "src/i18n/i18n.js": 4143,
     "src/i18n/i18nPlan.js": 1632,
-    "src/i18n/ru.js": 51320,
+    "src/i18n/ru.js": 52656,
     "src/rooms/picturePlan.js": 3240,
     "src/rooms/roomPictures.js": 7027,
     "src/player/tvPicture.js": 5418,
-    "src/rooms/pictureDecode.js": 2195
+    "src/rooms/pictureDecode.js": 2195,
+    "src/ui/soundList.js": 5686,
+    "src/ui/soundboard.js": 6536,
+    "electron/sounds.js": 653
   }
 }

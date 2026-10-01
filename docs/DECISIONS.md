@@ -1181,3 +1181,22 @@ turn on every canvas in the map area keeps them together by construction, and th
 to the handful of places that meet a mouse position. Free angles for a round table were left for
 later: at 30° the rectangle tool drags along the map's diagonal on screen, which is a design
 question, not a code one.
+
+## Sounds
+
+### The soundboard plays decoded buffers through Web Audio · `SETTLED` (2026-10-01)
+Copies of one sound overlap by design, and one file open on two `<audio>` elements stalls
+Chromium's media pipeline. So the main process reads each file's bytes over IPC and the renderer
+decodes them into an `AudioBuffer` once. That leaves no `file://` source for Web Audio to taint,
+which was the reason music rejected it, and any number of copies can play at once.
+
+### Thirty built-in CC0 sounds, and the DM adds none · `SETTLED` (2026-10-01)
+A curated set in six groups of five ships inside the app, as Freesound HQ previews of sounds
+each page licenses CC0; `assets/sounds/SOURCES.md` lists them. Uploading the DM's own files
+waits for a later version. The groups and their place in the panel are how a sound is found,
+so there are no pins and no search.
+
+### A left click adds a copy, a right click stops the newest · `SETTLED` (2026-10-01)
+A second press of a playing sound starts another copy over it, for a second thunderclap or a
+longer laugh. There is no stop-all control: the sounds last seconds. A prototype where a second
+press stopped the sound was rejected on product grounds.

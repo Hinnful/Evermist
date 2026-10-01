@@ -100,6 +100,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Tested |
 | `ui/music.js` | The music bubble: track library and playback |
 | `ui/musicDownload.js` | Add music panel |
+| `ui/soundList.js` | The built-in sounds: groups, files, names, icons. Data only |
+| `ui/soundboard.js` | The Sounds pill and panel: one-shot sounds over the music |
 | `combat/combatPlan.js` | Pure fight kernel: HP sum, order, a row's copy. Tested |
 | `combat/fightPlan.js` | Pure: the fight list, its save shape, a backup merge. Tested |
 | `combat/attackLine.js` | Pure: attacks read from a stat block. Tested |
@@ -131,6 +133,7 @@ the windows, the display push and the app lifecycle, and hands every module its 
 |---|---|
 | `electron/videoFiles.js` | An animated map's file on disk |
 | `electron/music.js` | The music folder as the library, and the downloader that fills it |
+| `electron/sounds.js` | The built-in sound files, read for the soundboard |
 | `electron/floorPlan.js` | The `.dd2vtt` sitting beside a map on disk |
 | `electron/diagLog.js` | The playback log every window writes to, and its rotation |
 | `electron/updates.js` | The update check, download, About's state |
@@ -165,7 +168,7 @@ ui/colorPicker.js → ui/controlPanel.js → ui/confirmDialog.js → rooms/floor
 content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/picturePlan.js → rooms/roomCard.js →
 rooms/pictureDecode.js → rooms/roomPictures.js → player/tvPicture.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
-ui/music.js → ui/musicDownload.js → combat/combatPlan.js → combat/fightPlan.js →
+ui/music.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →
 combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →

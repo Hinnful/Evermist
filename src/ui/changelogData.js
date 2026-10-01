@@ -6,7 +6,8 @@
 const CHANGELOG_REPO = 'https://github.com/Hinnful/Evermist';
 
 const CHANGELOG = [
-  {"version":"3.10.2","date":"2026-09-30","note":"Development docs and workflow open in the repo","body":""},
+  {"version":"3.11.0","date":"2026-10-01","note":"Soundboard","body":"A Sounds pill beside the music pill opens a panel of thirty sound effects in six groups\nA left click on a sound plays one more copy over the ones still sounding, and a right click stops the newest\nThe sounds panel has its own volume slider\nEvery sound ships with the app and is public domain (CC0)"},
+  {"version":"3.10.2","date":"2026-09-30","note":"Development docs and workflow open in the repo","body":"","tag":"v3.10.2"},
   {"version":"3.10.1","date":"2026-09-30","note":"A room drawn just before a map import is saved with its scene","body":"","tag":"v3.10.1"},
   {"version":"3.10.0","date":"2026-09-30","note":"Room pictures shown on the TV","body":"The room card holds pictures, added with its picture button or dropped onto the card\nA click on a thumbnail shows the picture on the TV over the dimmed map, and a second click or Escape takes it down\nThe picture appears and leaves in patches of fog\nThumbnails reorder by drag, and × deletes one\nAnimated GIF, WebP and PNG files keep playing, and SVGs stay sharp at any size\nPictures travel with the room through copy and paste, and with the scene through a backup\nA map dropped on the window imports nothing; maps come in through \"+\"\nMultiattack swaps read in Russian as one attack that can be replaced","tag":"v3.10.0"},
   {"version":"3.9.0","date":"2026-09-29","note":"The DM screen in Russian","body":"The About block switches the interface between English and Русский, applied after a restart\nA first launch follows the computer's language\nNames, notes and stat blocks typed by the DM stay as typed\nCounts read with Russian plural forms","tag":"v3.9.0"},

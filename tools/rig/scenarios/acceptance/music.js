@@ -95,7 +95,7 @@ module.exports = async function musicFeature(rig) {
     return {
       resting: b.classList.contains('mu-resting'),
       panel: getComputedStyle(p).display,
-      radius: getComputedStyle(document.getElementById('mu-pill')).borderTopRightRadius,
+      radius: getComputedStyle(document.getElementById('btn-sb-open')).borderTopRightRadius,
     };
   })()`);
   rig.check(resting.resting,
@@ -103,10 +103,11 @@ module.exports = async function musicFeature(rig) {
     'track the DM never started');
   rig.check(resting.panel === 'none',
     'the music panel is open before anyone clicked it, so a 300px panel sits over the map at boot');
-  // --panel-radius, shared with every other floating surface; the left corners join Bestiary, so
-  // the outer one is read. A probe reading the variable could not see it disappear.
+  // --panel-radius, shared with every other floating surface. Bestiary and the Sounds pill join
+  // the music pill on both sides, so the play group's outer corner is the Sounds pill's. A probe
+  // reading the variable could not see it disappear.
   rig.check(parseFloat(resting.radius) === 12,
-    'the pill corner radius resolves to ' + resting.radius + ' rather than the 12px every other ' +
+    'the outer corner of the play group resolves to ' + resting.radius + ' rather than the 12px every other ' +
     'floating surface in the app uses');
 
   await lib.openMap(rig, { w: MAP_W, h: MAP_H });

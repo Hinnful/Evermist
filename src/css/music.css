@@ -26,8 +26,10 @@
   }
   /* The pill's left edge joins Bestiary's right one; the panels below keep all four corners. */
 
-  /* --panel-radius, not a pill radius: every other floating surface in the app uses it. The left
-     edge joins Bestiary's, so only the right-hand corners round. */
+  /* --panel-radius, not a pill radius: every other floating surface in the app uses it. Bestiary
+     joins the music pill's left edge and the Sounds pill its right, so only the Sounds pill's
+     right-hand corners round. */
+  .mu-pillrow { display: flex; }
   #mu-pill {
     position: relative;
     display: flex; align-items: center;
@@ -35,7 +37,7 @@
     max-width: 260px;
     background: var(--panel-bg);
     border: var(--panel-border);
-    border-radius: 0 var(--panel-radius) var(--panel-radius) 0;
+    border-radius: 0;
     box-shadow: var(--panel-shadow);
     color: #d5d8dd;
     transition: border-color .12s;
@@ -47,7 +49,6 @@
   #mu-dlbar {
     position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
     display: none; overflow: hidden;
-    border-radius: 0 0 var(--panel-radius) var(--panel-radius);
     background: rgba(255,255,255,0.1);
   }
   .mu-downloading #mu-dlbar { display: block; }
@@ -170,6 +171,59 @@
     padding: 10px 12px;
     color: #949aa4;
   }
+
+  /* ===== THE SOUNDS PILL AND PANEL ===== */
+  #btn-sb-open {
+    display: flex; align-items: center; gap: 8px;
+    height: 30px; padding: 0 11px; margin-left: -1.5px;
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    border-radius: 0 var(--panel-radius) var(--panel-radius) 0;
+    box-shadow: var(--panel-shadow);
+    color: #7f858e;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif;
+    cursor: pointer;
+    transition: border-color .12s;
+  }
+  #btn-sb-open:hover { border-color: rgba(255,255,255,0.18); color: #9aa0aa; }
+  /* The lit fill over an opaque base: this pill floats on the map. */
+  #btn-sb-open.sb-pill-on {
+    background: linear-gradient(rgba(70,120,220,0.16), rgba(70,120,220,0.16)), var(--panel-bg);
+    color: #8fb6ff;
+  }
+
+  #sb-panel {
+    width: 438px;
+    display: none; flex-direction: column;
+    background: var(--panel-bg);
+    border: var(--panel-border);
+    border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow);
+    overflow: hidden;
+    animation: cpAdvIn .15s ease;
+  }
+  #sb-cols { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 2px; padding: 2px 6px 6px; }
+  .sb-col { display: flex; flex-direction: column; min-width: 0; }
+  .sb-cap {
+    padding: 9px 8px 4px;
+    font: 600 9.5px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0.07em;
+    text-transform: uppercase; color: #6f6f74;
+  }
+  .sb-row {
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; height: 24px; padding: 0 8px; box-sizing: border-box;
+    border: none; border-radius: 6px; background: transparent;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #b9bec6; text-align: left;
+    cursor: pointer; user-select: none;
+  }
+  .sb-row svg { flex: none; color: #7f858e; }
+  .sb-row:hover { background: rgba(255,255,255,0.06); color: #d5d8dd; }
+  .sb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sb-count { flex: none; font: 600 10px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; }
+  .sb-bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: #6ea8ff; }
+  .sb-row-on { background: rgba(70,120,220,0.14); color: #8fb6ff; }
+  .sb-row-on svg { color: #8fb6ff; }
 
   /* ===== THE DOWNLOAD PANEL ===== */
   /* #mt-modal's shell under its own id, following #cd-modal's precedent, and 520px rather than

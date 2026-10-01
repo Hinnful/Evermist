@@ -218,6 +218,11 @@ mid-scene is never what anyone wanted.
 ### No next or previous track · `SETTLED` (scope call)
 A hundred ambient loops have no order a Next button could follow. The list is the control.
 
+### Sounds belong to the app, never to a scene · `SETTLED` (scope call)
+No sound is tied to a scene, a room or a reveal, and the soundboard's volume is one app-wide
+value kept outside the backup, the way music's is. The table cannot be predicted - a door creaks
+or sings on a die roll - and any per-scene setup is prep time the app exists to cut.
+
 ### The grid has no offset field · `SETTLED` (2026-09-09, scope call)
 Two number boxes for X and Y phase were the only way to move the grid onto a map's own lines.
 They are gone. A typed number cannot be aimed at a line, so the DM was reading a value off

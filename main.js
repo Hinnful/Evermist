@@ -247,6 +247,7 @@ const IPC = [
   require('./electron/pdfText.js'),
   require('./electron/backupZip.js'),
   require('./electron/statBlockFetch.js'),
+  require('./electron/sounds.js'),
 ];
 const [, ipcMusic, , ipcDiagLog, ipcUpdates] = IPC;   // the three with a call of their own
 

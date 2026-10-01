@@ -152,13 +152,6 @@ or music. `draw-rooms.gif` is no longer used by the README.
 README only · 1 · Risk none
 
 
-### 137. Russian interface
-Filed 2026-09-29. Every DM-side label, button and message in Russian; the bestiary already reads
-Russian. Item 74 was deleted unbuilt on 2026-09-16 because nobody had asked; now it is asked for.
-**Needs /spec:** how the language is picked, and whether the Russian README returns with it
-(PRODUCT.md ties the two). Rig checks that match English words will break.
-DM only · 1+ · Risk M - touches every piece of DM-side text
-
 ### 139. Build or edit an action pill by hand
 Filed 2026-09-29. A homebrew action not written in book wording gets no pill, so the DM types
 ugly notes instead. **Needs /spec:** the recommendation is fields in the stat block editor (name,
@@ -182,13 +175,6 @@ place rooms, fill notes, build fights. The app works fully without it, which is 
 DECISIONS.md \"LLM in the loop\" rejection asked for. Waits for 140, because it exposes the
 campaign's shape.
 DM only · ? · Risk ?
-
-### 143. Soundboard
-Filed 2026-09-29. The music panel gains one-shot sounds: a lightning strike, a scary laugh, a door
-creak. They play over the ambient track and do not stop it.
-**Needs /spec:** where the sounds come from, how they are laid out, and whether a sound can also
-fire a map effect (lightning).
-DM only · 1 · Risk L - music already has its own audio path
 
 ### 144. A phone remote for the DM
 Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in
