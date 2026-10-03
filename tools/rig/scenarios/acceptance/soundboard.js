@@ -1,6 +1,6 @@
 'use strict';
 
-// soundboard.js — THE SOUNDS PILL BESIDE THE MUSIC PILL.
+// soundboard.js — THE DOCK'S SOUNDS PANE.
 //
 // THE GOAL OF THIS FEATURE: a door creak or a dragon roar is one click away during play, over
 // the music and never instead of it. The thirty sounds ship inside the app.
@@ -8,11 +8,10 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter.
 //
-//   A. The Sounds pill is on the DM window and ABSENT from the Player.
-//   B. The panel is shut at boot, opens on a click with all thirty sounds in six groups across
-//      three columns, and shuts on a second click.
-//   C. One panel under the pills at a time: opening the sounds shuts the music list, and opening
-//      the music list shuts the sounds.
+//   A. The Sounds tab is on the DM window's rail and ABSENT from the Player.
+//   B. The tab opens the pane with all thirty sounds as tiles, two to a row, under six group
+//      names, and a second click shuts it.
+//   C. Every tile's name fits it whole at the default dock width.
 //   D. Every sound in the list decodes, so no file is missing from the build or unreadable.
 //   E. A left click plays one more copy over the ones still sounding: two clicks, two copies,
 //      the row lit and marked ×2.
@@ -29,7 +28,6 @@ const lib = require('../../lib');
 const MAP_W = 1600, MAP_H = 1000;
 
 const rowCount = "document.querySelectorAll('#sb-cols .sb-row').length";
-const shown = id => `getComputedStyle(document.getElementById('${id}')).display`;
 const row = file => `document.querySelector('#sb-cols [data-file="${file}"]')`;
 
 module.exports = async function soundboardFeature(rig) {
@@ -37,21 +35,18 @@ module.exports = async function soundboardFeature(rig) {
   await lib.openMap(rig, { w: MAP_W, h: MAP_H });
 
   // ── A. On the DM, absent from the Player ───────────────────────────────────
-  // RED ON: `body.player-mode #music-anchor` renamed in music.css — 2026-10-01
-  await dm.waitFor("!!document.getElementById('btn-sb-open')", 30000, 'the Sounds pill to exist');
-  rig.check(await dm.evaluate("document.getElementById('btn-sb-open').getBoundingClientRect().width > 0"),
-    'the Sounds pill has no width on the DM window, so there is nothing to click');
+  // RED ON: the body.player-mode #dock selector renamed (dock.css) — 2026-10-02
+  rig.check(await dm.evaluate("document.getElementById('dock-tab-sounds').getBoundingClientRect().width > 0"),
+    'the Sounds tab has no width on the DM window, so there is nothing to click');
   const player = await rig.player();
   rig.check(await player.evaluate(`(() => {
-    const b = document.getElementById('btn-sb-open');
+    const b = document.getElementById('dock-tab-sounds');
     return !b || b.getBoundingClientRect().width === 0;
-  })()`), 'the Sounds pill shows on the Player, which must carry no UI at all');
+  })()`), 'the Sounds tab shows on the Player, which must carry no UI at all');
 
-  // ── B. Shut at boot, thirty in six groups, toggled by the pill ─────────────
-  // RED ON: the pill's click handler made `_sbSetOpen(true || !_sbOpen)` (soundboard.js) — 2026-10-01
-  rig.check(await dm.evaluate(shown('sb-panel')) === 'none',
-    'the sounds panel is open before anyone clicked the pill');
-  await dm.evaluate("document.getElementById('btn-sb-open').click()");
+  // ── B. The pane, thirty tiles in six groups ────────────────────────────────
+  // RED ON: .dk-tiles set to three columns (music.css) — 2026-10-02
+  await dm.evaluate("dockOpen(null); document.getElementById('dock-tab-sounds').click(); 0");
   // Silenced at the first moment the context exists, before any sound can start.
   await dm.evaluate(`(() => {
     _sbMaster.disconnect();
@@ -59,31 +54,23 @@ module.exports = async function soundboardFeature(rig) {
     _sbMaster.connect(zero); zero.connect(_sbCtx.destination);
     return 0;
   })()`);
-  rig.check(await dm.evaluate(shown('sb-panel')) === 'flex', 'a click on the Sounds pill did not open the panel');
-  const layout = await dm.evaluate(`(() => ({
-    rows: ${rowCount},
-    cols: document.querySelectorAll('#sb-cols .sb-col').length,
-    caps: [...document.querySelectorAll('#sb-cols .sb-cap')].length,
-    lit: document.getElementById('btn-sb-open').classList.contains('sb-pill-on'),
-  }))()`);
-  rig.check(layout.rows === 30, 'the panel lists ' + layout.rows + ' sounds, not thirty');
-  rig.check(layout.cols === 3 && layout.caps === 6,
-    'the panel has ' + layout.cols + ' columns and ' + layout.caps + ' group captions, not three and six');
-  rig.check(layout.lit, 'the Sounds pill does not light while its panel is open');
-  await dm.evaluate("document.getElementById('btn-sb-open').click()");
-  rig.check(await dm.evaluate(shown('sb-panel')) === 'none', 'a second click on the Sounds pill did not shut the panel');
+  rig.check(await dm.evaluate("dockActivePane() === 'sounds'"), 'a click on the Sounds tab did not open its pane');
+  const layout = await dm.evaluate(`(() => {
+    const tiles = [...document.querySelectorAll('#sb-cols .dk-tile')];
+    const tops = new Map();
+    tiles.forEach(t => { const y = Math.round(t.getBoundingClientRect().top); tops.set(y, (tops.get(y) || 0) + 1); });
+    return { rows: ${rowCount}, groups: document.querySelectorAll('#sb-cols .dk-sbg').length,
+             widest: Math.max(...tops.values()) };
+  })()`);
+  rig.check(layout.rows === 30, 'the pane lists ' + layout.rows + ' sounds, not thirty');
+  rig.check(layout.groups === 6 && layout.widest === 2,
+    'the pane has ' + layout.groups + ' groups and up to ' + layout.widest + ' tiles a row, not six and two');
 
-  // ── C. One panel at a time ─────────────────────────────────────────────────
-  // RED ON: the `_muSetOpen(false)` call in `_sbSetOpen` gated off with `false &&` (soundboard.js) — 2026-10-01
-  await dm.evaluate("document.getElementById('btn-mu-chev').click()");
-  await dm.evaluate("document.getElementById('btn-sb-open').click()");
-  rig.check(await dm.evaluate(shown('mu-panel')) === 'none',
-    'opening the sounds left the music list open under it');
-  await dm.evaluate("document.getElementById('btn-mu-open').click()");
-  rig.check(await dm.evaluate(shown('sb-panel')) === 'none',
-    'opening the music list left the sounds panel open under it');
-  await dm.evaluate("document.getElementById('btn-mu-open').click()");
-  await dm.evaluate("document.getElementById('btn-sb-open').click()");
+  // ── C. Every name fits its tile ────────────────────────────────────────────
+  // RED ON: .sb-name given white-space: nowrap and a one-line clamp (music.css) — 2026-10-02
+  const clipped = await dm.evaluate(`[...document.querySelectorAll('#sb-cols .sb-name')]
+    .filter(n => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 2).map(n => n.textContent)`);
+  rig.check(clipped.length === 0, 'these sound names clip in their tiles: ' + clipped.join(', '));
 
   // ── D. Every file decodes ──────────────────────────────────────────────────
   // RED ON: `rats.mp3` renamed `rats-x.mp3` in soundList.js — 2026-10-01

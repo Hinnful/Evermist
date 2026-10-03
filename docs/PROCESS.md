@@ -76,6 +76,8 @@ A bug report is an ordinary message and needs no command.
 - **Read the owning skill before editing its files.** `guard-skill-hint.js` names it.
 - **Before look-and-feel work starts,** state what the result should look like and get the DM's
   agreement. The prototype rule is in CLAUDE.md.
+- **A prototype of a window that already exists loads the app's stylesheets and renders it with
+  the app's own code**, the proposal as overrides on top, and checks its own rules with a script.
 - **Correctness work gets its check during the build.** A shipped behaviour needs a unit test or
   a rig scenario behind it, and Claude writes it without asking.
 - **On this machine the rig runs once, at `/commit`, or when the DM asks.** A cloud session runs

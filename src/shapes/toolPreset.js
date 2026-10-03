@@ -119,9 +119,12 @@ function drawPresetPreview(sx, sy) {
   const c = cursorCtx;
   c.save();
   c.beginPath();
-  let top = Infinity;
+  const o = toS(origin);
+  // Screen-up in the turned canvas: the plate sits above the shape as the DM sees it, and upright.
+  const th = -seatTurn * Math.PI / 180, ux = Math.sin(th), uy = -Math.cos(th);
+  let reach = 0;
   for (const ring of [r.vertices].concat(r.holes || [])) {
-    ring.forEach((v, i) => { const s = toS(v); top = Math.min(top, s.y); if (i) c.lineTo(s.x, s.y); else c.moveTo(s.x, s.y); });
+    ring.forEach((v, i) => { const s = toS(v); reach = Math.max(reach, (s.x - o.x) * ux + (s.y - o.y) * uy); if (i) c.lineTo(s.x, s.y); else c.moveTo(s.x, s.y); });
     c.closePath();
   }
   c.fillStyle = `rgba(${EFFECT_RGB},0.09)`;
@@ -131,17 +134,18 @@ function drawPresetPreview(sx, sy) {
   c.setLineDash([4, 3]);
   c.stroke();
   c.setLineDash([]);
-  const o = toS(origin);
   c.fillStyle = 'rgba(255,255,255,0.6)';
   c.beginPath(); c.arc(o.x, o.y, 2.5, 0, Math.PI * 2); c.fill();
 
   const txt = presetLabel(p.kind, p.s, p.w, t);
   c.font = '600 12px system-ui, -apple-system, sans-serif';
-  const w = c.measureText(txt).width + 16, y = Math.max(14, top - 16);
+  const w = c.measureText(txt).width + 16, px = o.x + ux * (reach + 16);
+  const y = seatTurn ? o.y + uy * (reach + 16) : Math.max(14, o.y + uy * (reach + 16));
+  uprightAt(c, px, y);
   c.fillStyle = 'rgba(26,26,28,0.92)';
-  c.beginPath(); c.roundRect(o.x - w / 2, y - 11, w, 22, 6); c.fill();
+  c.beginPath(); c.roundRect(px - w / 2, y - 11, w, 22, 6); c.fill();
   c.fillStyle = '#f0f1f3';
   c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(txt, o.x, y + 0.5);
+  c.fillText(txt, px, y + 0.5);
   c.restore();
 }

@@ -126,12 +126,14 @@ decode.
   opens, and Remove is present.
 - **Clear `#mt-file-input.value` before opening the dialog.** A file input fires no `change`
   for the same file twice, so a repeat pick is silently dead without this.
-- Shell is the app's floating-panel pattern at 320px (flat `#1a1a1c`, hairline border,
-  `.cp-adv-head`/`.cp-adv-body`, stock `.cp-btn`), not the backup modal's `.glass-panel`.
-  Keep the backdrop, the centring anchor, and the `zoom` + max-height rule.
-- Remove sits **outside the scrolling body** behind a hairline (`.mt-foot`).
-- The dropdown's **footer row is the only entry point**, and the dropdown sits inside the
-  card in `.rp-ident` so `--ui-zoom` applies for free.
+- Shell is the window parts' `.sm-win.w-m` (the dm-ui skill, Windows): the header counts the
+  rooms, the loaded file is one row with Choose another file, the list sits on the window with no
+  box, an empty room wears an Empty chip. Keep the backdrop and the centring anchor.
+- Remove module text sits alone on the footer's right, **outside the scrolling body**
+  (`#mt-foot`). There is no Done.
+- **Two ways in, and no third**: the dropdown's footer row, and the load button on Scene
+  control's Sources row. The dropdown sits inside the Room tab under the name, so the dock's
+  `--ui-zoom` applies for free.
 - **The dropdown acts on `click`; its `mousedown` only calls `preventDefault`.** That
   preventDefault stops the pointer blurring the name field and closing the list; acting one
   event later keeps a dialog out of the middle of a mouse gesture.

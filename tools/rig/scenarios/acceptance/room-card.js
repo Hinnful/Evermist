@@ -1,48 +1,36 @@
 'use strict';
 
-// room-card.js — THE ROOM CARD AND THE ROOM LABELS, whole.
+// room-card.js — THE ROOM TAB AND THE ROOM LABELS, whole.
 //
 // THE GOAL OF THIS FEATURE: the DM clicks a room and reads what is in it — its name, the notes
-// they wrote during prep — while the map underneath stays visible and usable. It is the DM's own
-// panel and none of it ever reaches the players. Every check below serves that sentence.
+// they wrote during prep — in the dock's Room tab, while the map underneath stays visible and
+// usable. It is the DM's own and none of it ever reaches the players.
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
-//   A. The card opens on a selected room, closes when nothing is selected, and survives a tool
-//      change — its visibility is the selection and nothing else. Grid calibration is the one
-//      thing that puts it away, because it takes the map, and the same card comes back at Done.
-//   B. The card holds the room's name and notes, and what the DM types reaches the room.
+//   A. Selecting a room opens the Room tab from any pane or a shut dock, and deselecting goes
+//      back to the pane that was open. A tool change does not close it — it follows the
+//      selection and nothing else. Grid calibration puts it away and the same room comes back at
+//      Done.
+//   B. The tab holds the room's name and notes, and what the DM types reaches the room.
 //   C. A name is trimmed and never left empty; notes are kept as typed, including newlines.
-//   D. The card's shape is the one the DM reads: a titleless drag bar with a grip and a Close,
-//      the name field, the notes, ONE properties row, and Delete at the bottom behind a hairline.
-//   E. The card clears the room it belongs to — the whole outline, not just its middle.
-//   F. The card can be dragged, and a drag cannot put it off screen.
-//   G. Delete on the card removes that room and nothing else.
-//   H. The notes height is ONE global preference: it survives a room change and a scene switch,
-//      and it never lands on a scene.
+//   D. The tab's shape: the name as its header with Delete beside it, the notes, the pictures and
+//      the corner-radius field. No fog pill, no drag bar, no Close.
+//   E. The fog trio shows and sets the selected room's fog while Select is in hand, and T cycles
+//      it; with a drawing tool in hand it is the paint direction again.
+//   G. Delete in the tab removes that room and nothing else.
+//   H. The notes grow with their text, and no notes height is stored anywhere.
 //   I. A room wears its name on the map, inside its own outline, and never on the Player.
-//   J. An effect gets no card at all, because it has none of what a card is for.
-//   K. The card looks right.
+//   J. An effect gets no Room tab at all, because it has none of what the tab is for.
+//   K. The tab looks right.
 //
-// Changing a room's fog mode from the pill, deleting it with the keyboard and the fog those cost
-// are editing.js's business (its sections E and G). What is here is the card as a PANEL.
-//
-// ⚠ THE CARD IS INSIDE A `zoom: var(--ui-zoom)` ELEMENT, and this Chromium folds an ancestor zoom
-// into getBoundingClientRect — so the rects read here are already in screen pixels and match a
-// screenshot's coordinates directly. Do NOT multiply by the zoom.
-//
-// ⚠ VISIBILITY IS SELECTION-ONLY AND MUST STAY THAT WAY. Creating a room leaves nothing selected,
-// which is what keeps the card shut while the DM draws. Section A is the check that stops anyone
-// "fixing" that with a tool test.
-//
-// ⚠ THE NOTES HEIGHT IS SAVED ON MOUSEUP, not on every resize. Section H drives the release.
+// ⚠ VISIBILITY FOLLOWS THE SELECTION AND MUST STAY THAT WAY. Creating a room leaves nothing
+// selected, which is what keeps the tab shut while the DM draws.
 
 const lib = require('../../lib');
 
 const MAP_W = 2400, MAP_H = 1500;
-// A small room and a big one. The big one is what catches a card anchored on a centroid: it
-// swallows the card whole while its centre is nowhere near it.
 const SMALL = { x1: 300, y1: 250, x2: 620, y2: 500 };
 const BIG = { x1: 700, y1: 200, x2: 2200, y2: 1300 };
 
@@ -63,23 +51,21 @@ module.exports = async function roomCardFeature(rig) {
     ' nextPolygonId = 3; selectedPolygonId = null;' +
     ' rebuildFogFromPolygons(); refreshRoomPanel(); scheduleRender(); 0');
 
+  const OPEN = '(dockActivePane() === "room" && document.getElementById("panel-room").getBoundingClientRect().width > 0)';
   const select = async id => {
     await dm.evaluate('selectedPolygonId = ' + (id === null ? 'null' : id) +
       '; refreshRoomPanel(); scheduleRender(); 0');
-    await lib.settle(dm, 'getComputedStyle(document.getElementById("panel-room")).display' +
-      (id === null ? ' === "none"' : ' !== "none"'), 6000);
+    await lib.settle(dm, id === null ? '!' + OPEN : OPEN, 6000);
   };
 
   const card = () => dm.evaluate(`(() => {
     const p = document.getElementById('panel-room');
-    if (!p) return { err: 'the room card is not in the DOM' };
+    if (!p) return { err: 'the Room tab is not in the DOM' };
     const b = p.getBoundingClientRect();
-    const shown = getComputedStyle(p).display !== 'none' && b.width > 0;
     const nameEl = document.getElementById('rp-name');
     const descEl = document.getElementById('rp-desc');
     return {
-      shown, x: Math.round(b.left), y: Math.round(b.top),
-      w: Math.round(b.width), h: Math.round(b.height),
+      shown: ${OPEN}, w: Math.round(b.width), h: Math.round(b.height),
       name: nameEl ? nameEl.value : null, desc: descEl ? descEl.value : null,
       descH: descEl ? Math.round(descEl.getBoundingClientRect().height) : 0,
     };
@@ -101,80 +87,69 @@ module.exports = async function roomCardFeature(rig) {
     return { ok: true, left: el.value };
   })()`);
 
-  // ── A. Visibility is the selection, and nothing else ──────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
-  rig.check(!(await card()).shown,
-            'the room card is open with nothing selected');
+  // ── A. The tab follows the selection ──────────────────────────────────────
+  // RED ON: dockSyncRoom gated off in refreshRoomPanel (roomCard.js), and separately dockSyncRoom's _dockBeforeRoom branch (dock.js) — 2026-10-02
+  rig.check(!(await card()).shown, 'the Room tab is open with nothing selected');
+  await dm.evaluate('dockOpen("music"); 0');
   await select(1);
-  const opened = await card();
-  rig.note('the card on The Vestry: ' + JSON.stringify(opened));
-  rig.check(opened.shown, 'selecting a room did not open its card');
-
+  rig.check((await card()).shown, 'selecting a room did not open the Room tab from the Music pane');
   for (const [k, tool] of [['KeyB', 'brush'], ['KeyR', 'rect'], ['KeyV', 'select']]) {
-    await dm.evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { code: ' +
-      JSON.stringify(k) + ', key: "", bubbles: true, cancelable: true })); 0');
+    await dm.evaluate('__rigKey(' + JSON.stringify(k) + '); 0');
     await lib.settle(dm, 'shape === ' + JSON.stringify(tool), 6000);
     rig.check((await card()).shown,
-              'changing the tool to ' + tool + ' closed the room card, which must be gated on ' +
-              'the selection alone');
+              'changing the tool to ' + tool + ' closed the Room tab, which must follow the selection alone');
   }
-
   await select(null);
-  rig.check(!(await card()).shown, 'deselecting did not close the room card');
+  rig.check(await dm.evaluate('dockActivePane()') === 'music',
+            'deselecting did not go back to the pane that was open: ' + await dm.evaluate('dockActivePane()'));
+  await dm.evaluate('dockOpen(null); 0');
+  await select(1);
+  rig.check((await card()).shown, 'selecting a room did not open the Room tab from a shut dock');
+  await select(null);
+  rig.check(await dm.evaluate('dockActivePane()') === null, 'deselecting did not shut the dock it opened from');
   await select(1);
 
-  // ⚠ CALIBRATION IS NOT A TOOL, and this is not the tool gate the loop above forbids. It takes
-  // the map's mouse and shuts the control panel to clear it; a card left floating there swallows
-  // the drag. THE SELECTION IS UNTOUCHED, which is what brings the same card back at Done.
+  // ⚠ CALIBRATION IS NOT A TOOL. It takes the map's mouse and puts the pane away; THE SELECTION
+  // IS UNTOUCHED, which is what brings the same room back at Done.
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
   await lib.settle(dm, 'gridCalArmed === true', 8000);
-  const held = await dm.evaluate('({ armed: gridCalArmed,' +
-    ' card: getComputedStyle(document.getElementById("panel-room")).display })');
-  rig.note('the card while calibration holds the map: ' + JSON.stringify(held));
-  rig.check(held.armed === true,
-            'calibration would not arm, so this criterion checked nothing: ' +
-            JSON.stringify(held));
-  rig.check(held.card === 'none',
-            'the room card stayed over the map that calibration has to be dragged on');
+  rig.check(await dm.evaluate('gridCalArmed === true') && !(await card()).shown,
+            'the Room tab stayed over the map that calibration has to be dragged on');
   await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
   await lib.settle(dm, 'gridCalArmed === false', 8000);
-  const given = await dm.evaluate('({ sel: selectedPolygonId,' +
-    ' card: getComputedStyle(document.getElementById("panel-room")).display })');
-  rig.note('the card after calibration: ' + JSON.stringify(given));
-  rig.check(given.card !== 'none' && given.sel === 1,
-            'the card did not come back on the same room once calibration handed the map back: ' +
-            JSON.stringify(given));
+  rig.check((await card()).shown && await dm.evaluate('selectedPolygonId') === 1,
+            'the Room tab did not come back on the same room once calibration handed the map back');
 
   // ── B. The fields reach the room ──────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
+  // RED ON: poly.name = v gated off in _rpCommitName (roomCard.js) — 2026-10-02
   rig.check((await card()).name === 'The Vestry',
-            'the card is not showing the name of the room that is selected: ' + (await card()).name);
+            'the Room tab is not showing the name of the room that is selected: ' + (await card()).name);
   await typeInto('rp-name', 'The Cold Vestry');
   await lib.settle(dm, 'polygons[0].name === "The Cold Vestry"', 6000);
   rig.check((await room(1)).name === 'The Cold Vestry',
-            'a name typed into the card never reached the room: ' + (await room(1)).name);
+            'a name typed into the Room tab never reached the room: ' + (await room(1)).name);
 
   const NOTES = 'Two acolytes here.\nThe font is trapped.';
   await typeInto('rp-desc', NOTES);
   await lib.settle(dm, '!!polygons[0].desc', 6000);
   rig.check((await room(1)).desc === NOTES,
-            'notes typed into the card did not reach the room as typed, newlines included: ' +
+            'notes typed into the Room tab did not reach the room as typed, newlines included: ' +
             JSON.stringify((await room(1)).desc));
 
   // Selecting another room and coming back must not carry the first room's text across.
   await select(2);
   const onBig = await card();
   rig.check(onBig.name === 'The Great Hall' && onBig.desc === '',
-            "the card carried the previous room's name or notes onto the next room: " +
+            "the Room tab carried the previous room's name or notes onto the next room: " +
             JSON.stringify(onBig));
   await select(1);
   const backOnSmall = await card();
   rig.check(backOnSmall.name === 'The Cold Vestry' && backOnSmall.desc === NOTES,
-            'coming back to a room lost what was typed into its card: ' +
+            'coming back to a room lost what was typed into its tab: ' +
             JSON.stringify(backOnSmall));
 
   // ── C. Trimmed, never empty ───────────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
+  // RED ON: poly.name = v gated off in _rpCommitName (roomCard.js) — 2026-10-02
   await typeInto('rp-name', '   The Cold Vestry   ');
   await lib.settle(dm, 'polygons[0].name === "The Cold Vestry"', 6000);
   rig.check((await room(1)).name === 'The Cold Vestry',
@@ -190,207 +165,55 @@ module.exports = async function roomCardFeature(rig) {
             'nothing: ' + JSON.stringify(blanked.name));
   await typeInto('rp-name', 'The Cold Vestry');
 
-  // ── D. The shape of the card ──────────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
+  // ── D. The shape of the tab ───────────────────────────────────────────────
+  // RED ON: #rp-delete pushed 40px down by a rule appended to dock.css — 2026-10-02
   const shape = await dm.evaluate(`(() => {
     const p = document.getElementById('panel-room');
-    const head = document.getElementById('rp-head');
-    const del = document.getElementById('rp-delete');
-    const foot = p.querySelector('.rp-foot');
-    const rows = p.querySelectorAll('.rp-props, .rp-row');
+    const name = document.getElementById('rp-name'), del = document.getElementById('rp-delete');
+    const order = ['rp-name', 'rp-desc', 'rp-pic-add', 'rp-radius-field']
+      .map(id => document.getElementById(id).getBoundingClientRect().top);
     return {
-      headText: head ? head.textContent.replace(/\\s+/g, '') : null,
-      grip: !!p.querySelector('.rp-grip'),
-      close: !!document.getElementById('rp-close'),
-      pill: !!document.getElementById('rp-mode'),
-      radius: !!document.getElementById('rp-radius-field'),
-      del: !!del,
-      delWidth: del ? Math.round(del.getBoundingClientRect().width) : 0,
-      cardWidth: Math.round(p.getBoundingClientRect().width),
-      delBottom: del && foot ? del.getBoundingClientRect().top >= foot.getBoundingClientRect().top - 2 : null,
-      danger: del ? del.className.indexOf('cp-btn-danger') !== -1 : false,
-      propRows: rows.length,
+      headRow: Math.abs(name.getBoundingClientRect().top - del.getBoundingClientRect().top) < 12 &&
+               del.getBoundingClientRect().left > name.getBoundingClientRect().left,
+      ordered: order.every((t, i) => i === 0 || t > order[i - 1]),
+      gone: ['rp-mode', 'rp-head', 'rp-close'].filter(id => document.getElementById(id)),
+      inDock: !!p.closest('#dock'),
     };
   })()`);
-  rig.note('the card\'s shape: ' + JSON.stringify(shape));
-  rig.check(shape.grip && shape.close,
-            'the drag bar has lost its grip or its Close: ' + JSON.stringify(shape));
-  rig.check(shape.headText === '',
-            'the drag bar has grown a title, which the card deliberately does not have: ' +
-            JSON.stringify(shape.headText));
-  rig.check(shape.pill && shape.radius,
-            'the properties row has lost the fog pill or the corner-radius field: ' +
-            JSON.stringify(shape));
-  rig.check(shape.del && shape.danger,
-            'Delete is not marked as the destructive action, so it reads as the primary one: ' +
-            JSON.stringify(shape));
-  rig.check(shape.delWidth > shape.cardWidth * 0.8,
-            'Delete was shrunk to signal danger, which the hairline is there to do instead: ' +
-            shape.delWidth + ' wide in a ' + shape.cardWidth + ' card');
+  rig.note('the tab\'s shape: ' + JSON.stringify(shape));
+  rig.check(shape.inDock && shape.headRow && shape.ordered,
+            'the Room tab is not name and Delete, then notes, pictures and corner radius: ' + JSON.stringify(shape));
+  rig.check(shape.gone.length === 0, 'the floating card\'s parts are still in the page: ' + shape.gone.join(', '));
 
-  // ── E. The card clears the room ───────────────────────────────────────────
-  // Against the BIG room especially: a card placed from a room's centroid sits inside it.
-  // RED ON: clampPanelPosition's fallback slot picked on `<` instead of `>` (roomPanel.js),
-  // so it pins to the edge with the LEAST space — 2026-09-19
-  for (const [id, name] of [[1, 'The Vestry'], [2, 'The Great Hall']]) {
-    await select(id);
-    const overlap = await dm.evaluate(`(() => {
-      const p = document.getElementById('panel-room').getBoundingClientRect();
-      const poly = polygons.find(x => x.id === ${id});
-      const xs = poly.vertices.map(v => v.x * zoom + panX);
-      const ys = poly.vertices.map(v => v.y * zoom + panY);
-      const r = container.getBoundingClientRect();
-      const rx1 = Math.min(...xs) + r.left, rx2 = Math.max(...xs) + r.left;
-      const ry1 = Math.min(...ys) + r.top,  ry2 = Math.max(...ys) + r.top;
-      const ox = Math.min(p.right, rx2) - Math.max(p.left, rx1);
-      const oy = Math.min(p.bottom, ry2) - Math.max(p.top, ry1);
-      return { ox: Math.round(ox), oy: Math.round(oy),
-               card: { x: Math.round(p.left), y: Math.round(p.top),
-                       w: Math.round(p.width), h: Math.round(p.height) },
-               room: { x: Math.round(rx1), y: Math.round(ry1),
-                       w: Math.round(rx2 - rx1), h: Math.round(ry2 - ry1) },
-               gap: { left: Math.round(rx1 - 8), right: Math.round(innerWidth - 8 - rx2),
-                      top: Math.round(ry1 - 8), bottom: Math.round(innerHeight - 8 - ry2) } };
-    })()`);
-    rig.note(name + ': overlap ' + overlap.ox + 'x' + overlap.oy + ' — card ' +
-             JSON.stringify(overlap.card) + ' room ' + JSON.stringify(overlap.room));
-    // ⚠ ONLY WHERE A CLEAR SPOT EXISTS. The card is 324x515 and stays inside the window, so on a
-    // small screen a wide room can leave no legal position at all — and the placement code is
-    // then doing the best there is. Asserting anyway turned a 1024x768 CI runner red with
-    // nothing wrong. The gaps come from the same measurement as the overlap.
-    const fits = overlap.gap.left >= overlap.card.w || overlap.gap.right >= overlap.card.w ||
-                 overlap.gap.top >= overlap.card.h || overlap.gap.bottom >= overlap.card.h;
-    if (!fits) {
-      // ⚠ NO BRANCH IS A FREE PASS. This used to note the gaps and assert nothing, so at a window
-      // size where no side is clear — which is every size the gate runs at — criterion E checked
-      // the card's placement not at all. clampPanelPosition's own fallback promises to pin the
-      // card to whichever edge has the most space, and that promise holds at any size.
-      rig.note(name + ': no clear spot for a ' + overlap.card.w + 'x' + overlap.card.h +
-               ' card beside it — gaps ' + JSON.stringify(overlap.gap) + ', so it pins to an edge');
-      // The margin is the app's own, read live — a number written here would pass against a
-      // card pinned to the wrong place the day the margin changes.
-      const win = await dm.evaluate('({ w: innerWidth, h: innerHeight, m: RP_MARGIN })');
-      const best = Object.keys(overlap.gap)
-        .reduce((a, b) => (overlap.gap[b] > overlap.gap[a] ? b : a));
-      const at = { top: overlap.card.y, left: overlap.card.x,
-                   bottom: win.h - (overlap.card.y + overlap.card.h),
-                   right: win.w - (overlap.card.x + overlap.card.w) };
-      rig.check(at[best] <= win.m + 1,
-                'with no clear spot beside ' + name + ', the card did not pin to the ' + best +
-                ' edge, which has the most room — it sits ' + at[best] + 'px in, covering more ' +
-                'of the room than it has to: ' + JSON.stringify(at));
-      rig.check(at.left >= 0 && at.top >= 0 && at.right >= 0 && at.bottom >= 0,
-                'the card was pushed off screen while getting clear of ' + name + ': ' +
-                JSON.stringify(at));
-    } else {
-      rig.check(overlap.ox <= 0 || overlap.oy <= 0,
-                'the card is sitting on top of ' + name + ', which is the room it is describing: ' +
-                'they overlap by ' + overlap.ox + 'x' + overlap.oy + ' pixels');
-    }
-  }
+  // ── E. The fog trio, split by the tool in hand ────────────────────────────
+  // RED ON: fogTrioRoom made to return null (toolbar.js), and separately setPolygonMode gated off in pressFogTrio — 2026-10-02
+  const lit = () => dm.evaluate('[...document.querySelectorAll("#ctx-rooms .active")].map(b => b.id).join()');
+  await dm.evaluate('setShape("select"); setShapeOp("new"); setPaintDirection("reveal"); 0');
+  rig.check(await dm.evaluate('document.getElementById("context-row").style.visibility') !== 'hidden' &&
+            await lit() === 'btn-' + (await room(1)).mode,
+            'with Select in hand the trio does not show the selected room\'s fog: lit ' + await lit());
+  await dm.evaluate('document.getElementById("btn-half").click(); 0');
+  rig.check((await room(1)).mode === 'half' && await lit() === 'btn-half' &&
+            await dm.evaluate('tool') === 'reveal',
+            'the trio did not set the selected room\'s fog, or it moved the paint direction too');
+  await dm.evaluate('__rigKey("KeyT"); 0');
+  rig.check((await room(1)).mode === 'reveal' && await lit() === 'btn-reveal',
+            'T did not cycle the selected room\'s fog, or the trio did not follow it');
+  await dm.evaluate('setShape("rect"); 0');
+  await dm.evaluate('document.getElementById("btn-shroud").click(); 0');
+  rig.check(await dm.evaluate('tool') === 'shroud' && (await room(1)).mode === 'reveal',
+            'with a drawing tool in hand the trio did not go back to being the paint direction');
+  await dm.evaluate('setShape("select"); 0');
 
-  // ── F. Dragging the card ──────────────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
-  await select(1);
-  const dragCard = (dx, dy) => dm.evaluate(`(() => {
-    const head = document.getElementById('rp-head');
-    const b = head.getBoundingClientRect();
-    const x0 = b.left + b.width / 2, y0 = b.top + b.height / 2;
-    const ev = (type, x, y, target) => target.dispatchEvent(new MouseEvent(type, {
-      clientX: x, clientY: y, button: 0, buttons: 1, bubbles: true, cancelable: true }));
-    ev('mousedown', x0, y0, head);
-    ev('mousemove', x0 + ${dx} / 2, y0 + ${dy} / 2, window);
-    ev('mousemove', x0 + ${dx}, y0 + ${dy}, window);
-    ev('mouseup', x0 + ${dx}, y0 + ${dy}, window);
-    return 0;
-  })()`);
-
-  // ⚠ THE VERTICAL DIRECTION IS MEASURED, NOT FIXED. The card is 515 tall and clamped inside the
-  // window, so on a short screen it starts pinned at the top and an UPWARD drag is the one that
-  // gets cut short — which a delta check reads as the card failing to follow the cursor. Drag
-  // towards whichever side has room. The next check is what tests the clamp on purpose.
-  const beforeDrag = await card();
-  const winH = await dm.evaluate('innerHeight');
-  const DY = beforeDrag.y - 8 >= 60 ? -60 : 60;
-  rig.note('dragging by 120,' + DY + ' — the card sits at y=' + beforeDrag.y +
-           ' in a ' + winH + 'px window, so ' + (DY < 0 ? 'up' : 'down') + ' is the free side');
-  await dragCard(120, DY);
-  await lib.settle(dm,
-    'Math.abs(document.getElementById("panel-room").getBoundingClientRect().x - ' +
-    '(' + beforeDrag.x + ' + 120)) < 2', 5000);
-  const afterDrag = await card();
-  rig.note('the card was dragged: ' + JSON.stringify(beforeDrag) + ' → ' + JSON.stringify(afterDrag));
-  rig.check(afterDrag.x !== beforeDrag.x || afterDrag.y !== beforeDrag.y,
-            'dragging the card by its bar moved nothing: ' + JSON.stringify(afterDrag));
-  rig.check(Math.abs((afterDrag.x - beforeDrag.x) - 120) < 12 &&
-            Math.abs((afterDrag.y - beforeDrag.y) - DY) < 12,
-            'the card did not follow the cursor: it moved ' + (afterDrag.x - beforeDrag.x) + ',' +
-            (afterDrag.y - beforeDrag.y) + ' for a drag of 120,' + DY + ' — a bare divide by the UI zoom ' +
-            'is what puts a constant offset here');
-
-  await dragCard(-4000, -4000);
-  await lib.settle(dm,
-    'document.getElementById("panel-room").getBoundingClientRect().left <= 1', 5000);
-  const shoved = await card();
-  rig.note('the card after being dragged hard off screen: ' + JSON.stringify(shoved));
-  rig.check(shoved.x + shoved.w > 20 && shoved.y + shoved.h > 20,
-            'the card can be dragged off screen, where the DM cannot get it back: ' +
-            JSON.stringify(shoved));
-
-  // A double-click on the bar snaps it back beside its room.
-  await dm.evaluate(`(() => { const head = document.getElementById('rp-head');
-    head.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
-    return 0; })()`);
-  await lib.settle(dm, 'true', 1);
-  const snapped = await card();
-  rig.check(snapped.x !== shoved.x || snapped.y !== shoved.y,
-            'double-clicking the drag bar did not snap the card back to its room: ' +
-            JSON.stringify(snapped));
-
-  // ── H. The notes height is one global preference ──────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
-  // Driven through the real release: the height is saved on mouseup, not on every resize.
-  // ⚠ THE WATCHER IS ARMED BY A MOUSEDOWN ON THE TEXTAREA, deliberately: its listener lives on
-  // window and would otherwise force a layout on every mouse release in the app. A resize that
-  // never pressed the handle is never saved, so the gesture has to start with that mousedown.
-  //
-  // ⚠ IT STORES offsetHeight, NOT THE SCREEN RECT. The card carries `zoom: var(--ui-zoom)`, so the
-  // rect is screen px while style.height is pre-zoom layout px. Both are reported here.
-  const setDescHeight = h => dm.evaluate(`(() => {
-    const el = document.getElementById('rp-desc');
-    el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    el.style.height = ${h} + 'px';
-    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-    return { layout: el.offsetHeight, screen: Math.round(el.getBoundingClientRect().height) };
-  })()`);
-  const storedHeight = () => dm.evaluate(
-    "(() => { try { return localStorage.getItem('evermist.roomDescHeight'); } catch (_) { return null; } })()");
-
-  const tall = await setDescHeight(150);
-  await lib.settle(dm,
-    "(() => { try { return localStorage.getItem('evermist.roomDescHeight') !== null; }" +
-    ' catch (_) { return false; } })()', 6000);
-  const savedH = await storedHeight();
-  rig.note('the notes were resized to ' + JSON.stringify(tall) + ' and stored as ' + savedH);
-  rig.check(savedH !== null && Math.abs(parseInt(savedH, 10) - tall.layout) < 4,
-            'resizing the notes was not remembered at all: the store holds ' + savedH +
-            ' against a height of ' + tall.layout);
-
-  await select(2);
-  await select(1);
-  const keptH = (await card()).descH;
-  rig.check(Math.abs(keptH - tall.screen) < 8,
-            'the notes height was not kept across a room change: ' + keptH + ' against ' +
-            tall.screen);
-
-  const inScene = await dm.evaluate(`(() => {
-    doAutoSave();
-    return JSON.stringify(polygons).indexOf('descHeight') === -1 &&
-           JSON.stringify(currentScene.polygons || []).indexOf('descHeight') === -1;
-  })()`);
-  rig.check(inScene === true,
-            'the notes height was written onto a room, so it travels between machines in a ' +
-            'backup and stops being one preference');
+  // ── H. The notes grow, and no height is stored ────────────────────────────
+  // RED ON: _rpFitNotes made to return first (roomCard.js) — 2026-10-02
+  const short = (await card()).descH;
+  await typeInto('rp-desc', NOTES + '\n'.repeat(30) + 'The end.');
+  const grown = (await card()).descH;
+  rig.check(grown > short + 100, 'the notes did not grow with their text: ' + short + ' → ' + grown);
+  rig.check(await dm.evaluate('localStorage.getItem("evermist.roomDescHeight") === null'),
+            'a notes height was written to storage, which the Room tab has no use for');
+  await typeInto('rp-desc', NOTES);
 
   // ── I. Room labels ────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
@@ -435,7 +258,7 @@ module.exports = async function roomCardFeature(rig) {
   const onTV = await player.evaluate(`({
     rooms: typeof polygons === 'undefined' ? 'undefined' : polygons.length,
     card: (() => { const p = document.getElementById('panel-room');
-                   return !!p && getComputedStyle(p).display !== 'none'; })(),
+                   return !!p && p.getBoundingClientRect().width > 0; })(),
     labels: typeof drawRoomLabels === 'function'
       ? (() => { try { drawRoomLabels(); return 'ran and drew nothing'; } catch (e) { return 'threw'; } })()
       : 'absent',
@@ -444,9 +267,9 @@ module.exports = async function roomCardFeature(rig) {
   rig.check(onTV.rooms === 0 || onTV.rooms === 'undefined',
             'rooms reached the Player, so a room name and its notes are one bug away from the ' +
             'table: it holds ' + onTV.rooms);
-  rig.check(onTV.card === false, 'the room card is showing on the Player, which has no UI at all');
+  rig.check(onTV.card === false, 'the Room tab is showing on the Player, which has no UI at all');
 
-  // ── J. An effect gets no card ─────────────────────────────────────────────
+  // ── J. An effect gets no Room tab ─────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate(`(() => {
     setEffects([{ id: 1, vertices: [
@@ -461,13 +284,13 @@ module.exports = async function roomCardFeature(rig) {
   await lib.settle(dm, '!viewportDirty', 8000);
   const onEffect = await card();
   rig.check(!onEffect.shown,
-            'selecting an effect opened the room card, which is name, notes and module text — ' +
+            'selecting an effect opened the Room tab, which is name, notes and module text — ' +
             'none of which an effect has: ' + JSON.stringify(onEffect));
 
   // ── G. Delete ─────────────────────────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
+  // RED ON: deleteSelectedPolygon gated off in the rp-delete handler (roomCard.js) — 2026-10-02
   await dm.evaluate('placeMode = "rooms"; selectedPolygonId = 1; refreshRoomPanel(); 0');
-  await lib.settle(dm, "document.getElementById('panel-room').style.display !== 'none'", 8000);
+  await lib.settle(dm, OPEN, 8000);
   await dm.evaluate('document.getElementById("rp-delete").click(); 0');
   // Delete either asks first or acts. Waiting for whichever happened beats guessing at both.
   await lib.settle(dm, "(() => { const a = document.getElementById('cd-anchor');" +
@@ -481,19 +304,18 @@ module.exports = async function roomCardFeature(rig) {
     ' names: polygons.map(p => p.name), selected: selectedPolygonId })');
   rig.note('after Delete: ' + JSON.stringify(afterDelete));
   rig.check(afterDelete.ids.indexOf(1) === -1,
-            'Delete on the card did not remove the room it was open on: ' +
+            'Delete in the tab did not remove the room it was open on: ' +
             JSON.stringify(afterDelete));
   rig.check(afterDelete.ids.indexOf(2) !== -1,
-            'Delete on the card took a room it was not open on: ' + JSON.stringify(afterDelete));
+            'Delete in the tab took a room it was not open on: ' + JSON.stringify(afterDelete));
   rig.check(!(await card()).shown,
-            'the card stayed open after its room was deleted, so it is describing a ghost');
+            'the Room tab stayed open after its room was deleted, so it is describing a ghost');
 
   // ── K. The look ───────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
-  await dm.evaluate('selectedPolygonId = 2; refreshRoomPanel(); 0');
-  await lib.settle(dm, "document.getElementById('panel-room').style.display !== 'none'", 8000);
-  rig.byEye('the room card in a screenshot taken with --shot "#panel-room" — whether the notes ' +
-            'have enough room, and whether Delete reads as destructive without shouting');
+  await select(2);
+  rig.byEye('the Room tab in a screenshot taken with --shot "#dock" — the name as the header, the ' +
+            'notes on the dock\'s own background, and Delete reading as destructive only on hover');
   rig.byEye('room labels over real Dungeon Alchemist floor art, which is what the plate has to ' +
             'stay readable against');
 };

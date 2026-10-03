@@ -12,12 +12,14 @@ function _mtEl(id) { return document.getElementById(id); }
 function _mtRenderModal(status, isError) {
   const n = mtEntries.length;
 
+  _mtEl('mt-count').textContent = n ? t.plural(n, '{n} room', '{n} rooms') : '';
+  const name = _mtEl('mt-file-name');
+  name.textContent = n ? (mtSourceName || t('Module text')) : t('No module text loaded.');
+  name.classList.toggle('sm-dim', !n);
+
   const st = _mtEl('mt-status');
   if (st) {
-    st.textContent = status != null ? status : (n
-      ? (mtSourceName ? t.plural(n, '{n} location from {src}', '{n} locations from {src}', { src: mtSourceName })
-                      : t.plural(n, '{n} location', '{n} locations'))
-      : t('No module text loaded.'));
+    st.textContent = status != null ? status : '';
     st.classList.toggle('mt-err', !!isError);
   }
 
@@ -25,26 +27,33 @@ function _mtRenderModal(status, isError) {
   if (list) {
     list.innerHTML = '';
     list.style.display = n ? '' : 'none';
+    if (n) {
+      const sub = document.createElement('div');
+      sub.className = 'sm-sub';
+      sub.textContent = t('Rooms found');
+      list.appendChild(sub);
+    }
     mtEntries.forEach(e => {
       const row = document.createElement('div');
-      row.className = 'mt-row';
+      row.className = 'sm-row mt-row';
       const num = document.createElement('span');
-      num.className = 'mt-num';
-      num.textContent = e.num + '.';
+      num.className = 'sm-num mt-num';
+      num.textContent = e.num;
       const nm = document.createElement('span');
       nm.className = 'mt-name';
       nm.dataset.noI18n = '';
       nm.textContent = e.name;
       const ch = document.createElement('span');
-      ch.className = 'mt-chars' + (e.body ? '' : ' mt-empty');
-      ch.textContent = e.body ? t.plural(e.body.length, '{n} char', '{n} chars') : t('empty');
+      ch.className = e.body ? 'sm-num mt-chars' : 'sm-chip mt-chars mt-empty';
+      ch.textContent = e.body ? t.plural(e.body.length, '{n} char', '{n} chars') : t('Empty');
       row.appendChild(num); row.appendChild(nm); row.appendChild(ch);
       list.appendChild(row);
     });
   }
 
   const lbl = _mtEl('mt-file-label');
-  if (lbl) lbl.textContent = n ? 'Choose another file…' : 'Choose file…';
+  if (lbl) lbl.textContent = n ? t('Choose another file') : t('Choose file');
+  _mtEl('btn-mt-file').classList.toggle('primary', !n);
   const foot = _mtEl('mt-foot');
   if (foot) foot.style.display = n ? '' : 'none';
 }

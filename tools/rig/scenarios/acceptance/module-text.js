@@ -26,6 +26,8 @@
 //      way.
 //   J. None of it reaches the Player.
 //   K. A PDF is CONVERTED rather than refused, in the app that actually ships.
+//   L. The window's header counts the rooms it found, and its footer holds Remove module text
+//      alone, destructive, on the right. Nothing on it says Done.
 //
 // The parser is unit-tested and stays that way (test/moduleText.test.js — headings, sub-locations,
 // furniture, reflow, the sequence). What is here is the app around it: the panel, the store, the
@@ -173,6 +175,21 @@ module.exports = async function moduleTextFeature(rig) {
   rig.check(loaded.fileLabel.indexOf('another') !== -1,
             'the Choose button still reads as if nothing were loaded: ' +
             JSON.stringify(loaded.fileLabel));
+
+  // ── L. The header's count and the footer ──────────────────────────────────
+  // RED ON: the mt-count line gated off in _mtRenderModal (moduleTextPanel.js) — 2026-10-03
+  const shell = await dm.evaluate(`(() => {
+    const foot = document.getElementById('mt-foot');
+    const btns = [...foot.querySelectorAll('button')];
+    const fr = foot.getBoundingClientRect(), br = btns[0] ? btns[0].getBoundingClientRect() : null;
+    return { count: document.getElementById('mt-count').textContent,
+      buttons: btns.map(b => b.textContent.trim()),
+      danger: !!btns[0] && btns[0].classList.contains('danger') && !!btns[0].querySelector('svg.i-trash'),
+      right: !!br && fr.right - br.right < 24 };
+  })()`);
+  rig.check(shell.count === '3 rooms', 'the module text header does not count the rooms found: ' + JSON.stringify(shell.count));
+  rig.check(JSON.stringify(shell.buttons) === '["Remove module text"]' && shell.danger && shell.right,
+            'the footer does not hold Remove module text alone, destructive, on the right: ' + JSON.stringify(shell));
 
   // An empty parse must not throw away the book that is loaded.
   await dm.evaluate('__rigPickModule(__rigText("Nothing.txt", "Just some prose with no headings ' +

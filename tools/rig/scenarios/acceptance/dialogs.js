@@ -18,7 +18,9 @@
 //      click beside it. An error the DM dismisses by habit must not leave its caller waiting.
 //   D. Two dialogs asked for at once do not overwrite one another. The second waits its turn and
 //      both callers get their answer.
-//   E. A dangerous action colours the button that does it; a plain question does not.
+//   E. A dangerous action's button is the destructive kind - no fill and the trash, red only
+//      under the pointer - and a plain question ends on the primary button. No dialog carries a
+//      close: Escape is Cancel.
 //
 // ⚠ THESE ARE DRIVEN THROUGH confirmDialog AND messageDialog THEMSELVES, not through a caller
 // that happens to raise one. Nineteen call sites across nine modules hand this their errors, and
@@ -47,6 +49,9 @@ globalThis.__rigDlg = () => {
     msg: (document.getElementById('cd-msg') || {}).textContent || '',
     okText: ok ? ok.textContent : null,
     okClass: ok ? ok.className : null,
+    okTrash: ok ? !!ok.querySelector('svg.i-trash') : false,
+    okFill: ok ? getComputedStyle(ok).backgroundColor : null,
+    closes: document.querySelectorAll('#cd-modal .sm-x').length,
     cancelShown: !!cancel && cancel.getClientRects().length > 0,
     focused: document.activeElement ? document.activeElement.id : null,
   };
@@ -169,8 +174,8 @@ module.exports = async function dialogsFeature(rig) {
             JSON.stringify(await answers()));
   rig.check(!(await state()).up, 'the queue left a dialog on screen with nothing behind it');
 
-  // ── E. The dangerous button is coloured, the plain one is not ─────────────
-  // RED BY DESIGN: written against the fix, never re-proved
+  // ── E. The dangerous button is the destructive kind, the plain one primary ─
+  // RED ON: the danger branch in _cdShowConfirm forced to 'primary' (confirmDialog.js) — 2026-10-03
   await clear();
   await dm.evaluate('__rigAsk({ tag: "g", title: "Delete the scene?", danger: true })');
   const danger = await state();
@@ -179,10 +184,10 @@ module.exports = async function dialogsFeature(rig) {
   const plain = await state();
   await dm.evaluate('__rigPress("cd-cancel")');
   rig.note('confirm button classes — danger "' + danger.okClass + '", plain "' + plain.okClass + '"');
-  rig.check(/cp-btn-danger/.test(danger.okClass || ''),
-            'a destructive answer is not coloured as one, so the DM presses it the same way they ' +
-            'press every other OK: ' + danger.okClass);
-  rig.check(!/cp-btn-danger/.test(plain.okClass || ''),
-            'an ordinary question colours its OK as destructive, which makes the colour mean ' +
-            'nothing where it matters: ' + plain.okClass);
+  rig.check(/\bdanger\b/.test(danger.okClass || '') && danger.okTrash && danger.okFill === 'rgba(0, 0, 0, 0)',
+            'a destructive answer is not the destructive button - no fill and the trash - so the DM ' +
+            'presses it the same way they press every other OK: ' + JSON.stringify(danger));
+  rig.check(/\bprimary\b/.test(plain.okClass || '') && !/\bdanger\b/.test(plain.okClass || '') && !plain.okTrash,
+            'an ordinary question does not end on the primary button: ' + plain.okClass);
+  rig.check(danger.closes === 0 && plain.closes === 0, 'a dialog carries a close button, where Escape is Cancel');
 };

@@ -106,11 +106,12 @@ function _rpPicEdit(roomId, fn) {
 }
 
 // Rebuilt only when the room, its pictures or the one on the TV changed: this runs every repaint.
-function refreshRoomPictures(poly) {
+// `tvPic` is a column's own reading in two-map mode; the DM window holds no tvPicture then.
+function refreshRoomPictures(poly, tvPic) {
   const strip = _rpEl('rp-pics');
   if (!strip) return;
   const refs = roomPictureRefs(poly, pictureBlobs);
-  const onTv = tvPicture && tvPicture.roomId === poly.id ? tvPicture.picId : '';
+  const onTv = tvPic != null ? tvPic : (tvPicture && tvPicture.roomId === poly.id ? tvPicture.picId : '');
   const key = poly.id + ':' + refs.map(p => p.id).join(',') + ':' + onTv;
   if (key === _rpPicKey) return;
   _rpPicKey = key;
@@ -131,9 +132,13 @@ function refreshRoomPictures(poly) {
     th.append(img, x);
     th.onclick = e => {
       if (e.target === x) return;
+      if (paneRoomEdit('tv', { pic: p.id === onTv ? '' : p.id })) return;
       if (p.id === onTv) hideTvPicture(); else showTvPicture(poly.id, p.id);
     };
-    x.onclick = e => { e.stopPropagation(); _rpPicEdit(poly.id, list => picturesWithout(list, p.id)); };
+    x.onclick = e => {
+      e.stopPropagation();
+      if (!paneRoomEdit('drop-picture', { pic: p.id })) _rpPicEdit(poly.id, list => picturesWithout(list, p.id));
+    };
     th.addEventListener('dragstart', () => { _rpPicDrag = i; th.classList.add('drag'); });
     th.addEventListener('dragend', () => { _rpPicDrag = -1; _rpPicKey = null; drawCursor(lastScreenX, lastScreenY); });
     th.addEventListener('dragover', e => { if (_rpPicDrag >= 0) { e.preventDefault(); th.classList.add('over'); } });
@@ -143,7 +148,7 @@ function refreshRoomPictures(poly) {
       e.preventDefault(); e.stopPropagation();
       const from = _rpPicDrag;
       _rpPicDrag = -1;
-      if (from !== i) _rpPicEdit(poly.id, list => picturesMoved(list, from, i));
+      if (from !== i && !paneRoomEdit('move-picture', { from, to: i })) _rpPicEdit(poly.id, list => picturesMoved(list, from, i));
     });
     strip.appendChild(th);
   });
@@ -155,7 +160,7 @@ function initRoomPictures(panel) {
   input.onchange = () => {
     const files = Array.from(input.files || []);
     input.value = '';
-    if (files.length && _rpFieldPid != null) addRoomPictures(_rpFieldPid, files);
+    if (files.length && !paneRoomEdit('add-pictures', { files }) && _rpFieldPid != null) addRoomPictures(_rpFieldPid, files);
   };
   // ⚠ STOPPED HERE, so a file dropped on the card never reaches the window's own drop handler.
   const hasFiles = e => e.dataTransfer && Array.from(e.dataTransfer.items || []).some(i => i.kind === 'file');
@@ -164,6 +169,6 @@ function initRoomPictures(panel) {
     if (!hasFiles(e)) return;
     e.preventDefault(); e.stopPropagation();
     const files = Array.from(e.dataTransfer.files || []);
-    if (files.length && _rpFieldPid != null) addRoomPictures(_rpFieldPid, files);
+    if (files.length && !paneRoomEdit('add-pictures', { files }) && _rpFieldPid != null) addRoomPictures(_rpFieldPid, files);
   });
 }

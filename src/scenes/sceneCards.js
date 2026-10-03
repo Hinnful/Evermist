@@ -43,10 +43,8 @@ function buildGroupSection(sec) {
       : '<input class="sm-group-name" spellcheck="false" title="Click to rename this group">') +
     '<span class="sm-group-n">' + sec.scenes.length + '</span>' +
     '<span class="sm-group-sp"></span>' +
-    // The pencil is the affordance for the rename; it only puts the caret in that field.
     (sec.ungrouped ? '' :
-      '<button class="sm-bare sm-group-ren" title="Rename this group">' + SM_PEN + '</button>' +
-      '<button class="sm-bare danger sm-group-del" title="Delete this group">' + SM_TRASH + '</button>');
+      '<button class="sm-bare danger sm-group-del" title="Delete this group">' + uiIcon('trash') + '</button>');
 
   // The chevron, count and empty space collapse. ⚠ The NAME does not — it is the rename field.
   head.onclick = e => {
@@ -87,10 +85,6 @@ function buildGroupSection(sec) {
       });
     };
 
-    head.querySelector('.sm-group-ren').onclick = e => {
-      e.stopPropagation();
-      nameEl.focus(); nameEl.select();
-    };
     head.querySelector('.sm-group-del').onclick = e => {
       e.stopPropagation();
       deleteGroup(sec);
@@ -169,10 +163,10 @@ function buildSceneCard(s) {
     '<div class="sm-frame"><div class="sm-thumb">' +
       '<div class="sm-scrim"></div>' +
       (isActive ? '<span class="sm-badge"><i></i>' + badge + '</span>' : '') +
-      '<div class="sm-cb' + (isSelected ? ' checked' : '') + '">' + (isSelected ? SM_CHECK : '') + '</div>' +
+      '<div class="sm-cb' + (isSelected ? ' checked' : '') + '"></div>' +
       '<div class="sm-botrow">' +
         '<textarea class="sm-name" rows="1" spellcheck="false"></textarea>' +
-        '<button class="sm-trash" title="Delete scene">' + SM_TRASH + '</button>' +
+        '<button class="sm-trash" title="Delete scene">' + uiIcon('trash') + '</button>' +
       '</div>' +
     '</div></div>';
 

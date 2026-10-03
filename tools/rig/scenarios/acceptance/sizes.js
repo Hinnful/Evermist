@@ -15,9 +15,9 @@
 //   C. The Player's fog covers the map to its edge at every Player size. The fog there is a
 //      Canvas-2D layer composited over the PixiJS map, so a clear band at the edge is a seam and
 //      the players see through the map's border.
-//   D. The room card stays wholly on screen at every DM size, including one too short to hold it
-//      at its natural place.
-//   E. The region sent to the Player does not change when the control panel opens, at any DM
+//   D. The Room tab and its Delete stay wholly on screen at every DM size, including a short
+//      window, and the dock never covers the toolbar.
+//   E. The region sent to the Player does not change when the dock's pane opens, at any DM
 //      width. The reverted panel-width trim was a fraction of a wide window and most of a narrow
 //      one, so a narrow DM is where it shows.
 //
@@ -85,71 +85,55 @@ module.exports = async function sizes(rig) {
               JSON.stringify(fit));
   }
 
-  // ── D. The room card stays on screen at every DM size ────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
-  // ⚠ DONE BEFORE THE PLAYER IS OPENED, so nothing below has to put the card away again.
+  // ── D. The Room tab stays on screen at every DM size ─────────────────────
+  // RED ON: the toolbar's left clamp in dockLayout made Infinity || (dock.js) — 2026-10-02
+  // ⚠ DONE BEFORE THE PLAYER IS OPENED, so nothing below has to put the tab away again.
   await dm.evaluate('__rigDrawShroud(300, 300, 700, 700); 0');
   await dm.evaluate('setShape("select"); __rigClick(500, 500); 0');
   await lib.settle(dm, 'selectedPolygonId !== null', 8000);
 
-  const dragCard = (dx, dy) => dm.evaluate(`(() => {
-    const head = document.getElementById('rp-head');
-    const b = head.getBoundingClientRect();
-    const x0 = b.left + b.width / 2, y0 = b.top + b.height / 2;
-    const ev = (type, x, y, target) => target.dispatchEvent(new MouseEvent(type, {
-      clientX: x, clientY: y, button: 0, buttons: 1, bubbles: true, cancelable: true }));
-    ev('mousedown', x0, y0, head);
-    ev('mousemove', x0 + ${dx} / 2, y0 + ${dy} / 2, window);
-    ev('mousemove', x0 + ${dx}, y0 + ${dy}, window);
-    ev('mouseup', x0 + ${dx}, y0 + ${dy}, window);
-    return 0;
-  })()`);
-
-  // A short window as well as three normal ones: the card is taller than some screens, and the
-  // clamp is what keeps its Delete button reachable.
-  for (const s of DM_SIZES.concat([{ w: 1100, h: 560, what: 'a window shorter than the card' }])) {
+  for (const s of DM_SIZES.concat([{ w: 1100, h: 560, what: 'a short window' }])) {
     await rig.resizeDm(s.w, s.h);
     await lib.settle(dm, 'container.clientWidth === ' + s.w, 8000);
-    // Dragged hard at every corner of the screen in turn, because a clamp that holds on one
-    // edge and not the opposite one reads as working.
-    for (const push of [[-4000, -4000], [4000, -4000], [-4000, 4000], [4000, 4000]]) {
-      await dragCard(push[0], push[1]);
-    }
+    // The dock lays itself out from a ResizeObserver, a frame after the window changes.
+    await lib.settle(dm, 'document.getElementById("toolbar-bottom").getBoundingClientRect().right <=' +
+                         ' document.getElementById("dock").getBoundingClientRect().left', 3000);
     const box = await dm.evaluate(`(() => {
       const r = document.getElementById('panel-room').getBoundingClientRect();
+      const del = document.getElementById('rp-delete').getBoundingClientRect();
+      const dock = document.getElementById('dock').getBoundingClientRect();
+      const bar = document.getElementById('toolbar-bottom').getBoundingClientRect();
       return { l: Math.round(r.left), t: Math.round(r.top),
                rt: Math.round(r.right), b: Math.round(r.bottom),
                w: Math.round(r.width), h: Math.round(r.height),
+               del: del.width > 0 && del.left >= 0 && del.right <= innerWidth && del.top >= 0 && del.bottom <= innerHeight,
+               covers: bar.right > dock.left, pane: dockActivePane(),
                winW: innerWidth, winH: innerHeight };
     })()`);
-    rig.note('the room card after four hard drags at ' + s.w + 'x' + s.h + ': ' +
-             JSON.stringify(box));
-    rig.check(box.w > 0 && box.h > 0,
-              'the room card has no size at ' + s.w + 'x' + s.h + ', so the clamp below is ' +
-              'measuring a hidden element: ' + JSON.stringify(box));
-    rig.check(box.l >= 0 && box.t >= 0,
-              'the room card was dragged off the top or left at ' + s.w + 'x' + s.h + ' (' +
-              s.what + '), so its drag bar is unreachable: ' + JSON.stringify(box));
-    rig.check(box.rt <= box.winW && box.b <= box.winH,
-              'the room card was dragged past the bottom or right at ' + s.w + 'x' + s.h + ' (' +
-              s.what + "), so its Delete button is off screen: " + JSON.stringify(box));
+    rig.note('the Room tab at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
+    rig.check(box.pane === 'room' && box.w > 0 && box.h > 0,
+              'the Room tab is not open on the selected room at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
+    rig.check(box.l >= 0 && box.t >= 0 && box.rt <= box.winW && box.b <= box.winH && box.del,
+              'the Room tab or its Delete is off screen at ' + s.w + 'x' + s.h + ' (' + s.what + '): ' +
+              JSON.stringify(box));
+    rig.check(!box.covers, 'the dock covers the toolbar at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
   }
 
   // ── E. The panel does not change the region, at any DM width ─────────────
   // RED BY DESIGN: written against the fix, never re-proved
-  // ⚠ _cpSelectTab, NOT A CLICK. The tab toggles, so clicking an open one shuts the panel and
-  // the next read is of a closed panel rather than an open one.
-  const openPane = tab => dm.evaluate('_cpSelectTab(' + JSON.stringify(tab) + '); 0');
-  const shutPane = () => dm.evaluate('_cpSelectTab(null); 0');
+  // ⚠ dockOpen, NOT A CLICK. The tab toggles, so clicking an open one shuts the pane and the
+  // next read is of a shut pane rather than an open one.
+  const openPane = name => dm.evaluate('dockOpen(' + JSON.stringify(name) + '); 0');
+  const shutPane = () => dm.evaluate('dockOpen(null); 0');
   for (const s of DM_SIZES) {
     await rig.resizeDm(s.w, s.h);
     await lib.settle(dm, 'container.clientWidth === ' + s.w, 8000);
     // Shut, then open, then read both. The tab toggles, so picking the lit one closes it.
     await shutPane();
-    await lib.settle(dm, 'document.getElementById("sidebar-right").hidden === true', 8000);
+    await lib.settle(dm, '!document.getElementById("dock").classList.contains("open")', 8000);
     const shutFirst = await dm.evaluate('JSON.stringify(dmVisibleRegion())');
-    await openPane('fog');
-    await lib.settle(dm, 'document.getElementById("sidebar-right").hidden === false', 8000);
+    await openPane('scene');
+    await lib.settle(dm, 'document.getElementById("dock").classList.contains("open")', 8000);
     const open = await dm.evaluate('JSON.stringify(dmVisibleRegion())');
     await shutPane();
     const shutAgain = await dm.evaluate('JSON.stringify(dmVisibleRegion())');

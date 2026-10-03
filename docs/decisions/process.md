@@ -15,6 +15,16 @@ ledgers.
 
 ---
 
+### A prototype of an existing window renders the app's own code, and audits itself · `SETTLED` (2026-10-03)
+Item 150's first round rebuilt each window by hand in a mock page. It drifted from the app twice:
+it lost the stat block's positioned lines and hints, and its parts disagreed with one another -
+icons sat high beside labels, destructive buttons came in three styles, outlines came and went.
+The rounds that held loaded the app's real stylesheets and rendered the real windows from the
+app's own scripts, with the proposal as one override stylesheet that maps onto the edits a build
+makes. A script on the page measured every rule (heights, outlines, icon against label baseline,
+destructive styling, footer placement, widths) and was proven by breaking each rule on purpose.
+The prototype stays in `.claude/private/design/`, and the audit ports into the rig.
+
 ### `/commit` is a spine that resumes, with its rules read per step · `SETTLED` (2026-09-29)
 At ~300 lines, one stop midway could leave a dirty tree, a release without its What's new entry or
 an unwatched gate. The command is now a sub-100-line spine; each step reads its own file in

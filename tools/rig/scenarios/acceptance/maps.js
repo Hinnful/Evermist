@@ -16,7 +16,8 @@
 //   D. A floor plan dropped on its own attaches to the open scene and imports nothing.
 //   E. A drop carrying nothing importable does nothing at all — no scene, no dialog.
 //   F. A backup takes the restore route on its own, and is refused by name inside a selection.
-//   G. A batch says which map of how many is going through; a single import wears no batch label.
+//   G. A batch says which map of how many is going through, and names its file, in the progress
+//      window; a single import wears no batch count.
 //   H. One unloadable map costs that map and not the run, and is named once at the end.
 //   I. A map that will not decode LETS GO of the import, and the report comes from the CALLER.
 //   J. The progress overlay is never up while a dialog is on screen.
@@ -140,7 +141,8 @@ module.exports = async function mapsFeature(rig) {
     const origProgress = showMapProgress;
     window.showMapProgress = function (label) {
       origProgress(label);
-      globalThis.__rigLabels.push(document.getElementById('map-progress-label').textContent);
+      globalThis.__rigLabels.push(['map-progress-count', 'map-progress-file', 'map-progress-label']
+        .map(id => document.getElementById(id).textContent).join(' | '));
     };
     showMapProgress = window.showMapProgress;
 
@@ -354,8 +356,9 @@ module.exports = async function mapsFeature(rig) {
 
   const cleanLabels = await labelsSince(mark);
   rig.note('labels: ' + JSON.stringify(cleanLabels));
-  rig.check(cleanLabels.some(l => l.startsWith('Map 1 of 2 - Alpha Hall')) &&
-            cleanLabels.some(l => l.startsWith('Map 2 of 2 - Beta Vault')),
+  // RED ON: the count line gated off in showMapProgress (mapLoader.js) — 2026-10-03
+  rig.check(cleanLabels.some(l => l.startsWith('1 of 2 | Alpha Hall')) &&
+            cleanLabels.some(l => l.startsWith('2 of 2 | Beta Vault')),
             'the overlay never carried the batch label: ' + JSON.stringify(cleanLabels));
 
   const afterClean = await dialogNow();
@@ -371,7 +374,7 @@ module.exports = async function mapsFeature(rig) {
   rig.check(lone.names.length === before3 + 1,
             'a single import did not add exactly one scene: ' + JSON.stringify(lone.names));
   const loneLabels = await labelsSince(mark);
-  rig.check(!loneLabels.some(l => l.indexOf('Map 1 of 1') !== -1),
+  rig.check(!loneLabels.some(l => l.indexOf('1 of 1') !== -1),
             'a single import wore a batch label: ' + JSON.stringify(loneLabels));
   rig.check(!(await dialogNow()).shown, 'a single clean import ended in a dialog');
 
@@ -394,7 +397,7 @@ module.exports = async function mapsFeature(rig) {
             'the mixed batch did not land on its first map: ' + mixed.current);
 
   const mixedLabels = await labelsSince(mark);
-  rig.check(mixedLabels.some(l => l.startsWith('Map 4 of 4 - Gate Three')),
+  rig.check(mixedLabels.some(l => l.startsWith('4 of 4 | Gate Three')),
             'the batch stopped counting at the broken file: ' + JSON.stringify(mixedLabels));
 
   const summary = await dialogNow();
@@ -427,8 +430,8 @@ module.exports = async function mapsFeature(rig) {
   // Counted, not just filtered: the label says "of 1" because the queue holds one map, not "of 2"
   // for the selection. The count of labels is asserted first — an empty list would pass `every`
   // for nothing at all.
-  const filteredLabels = (await labelsSince(mark)).filter(l => l.indexOf('Map ') !== -1);
-  rig.check(filteredLabels.length > 0 && filteredLabels.every(l => l.indexOf('Map 1 of 1') !== -1),
+  const filteredLabels = (await labelsSince(mark)).filter(l => /^\d+ of \d+ \|/.test(l));
+  rig.check(filteredLabels.length > 0 && filteredLabels.every(l => l.startsWith('1 of 1 |')),
             'the batch counted the file it was never going to import: ' +
             JSON.stringify(filteredLabels));
   await dismiss();

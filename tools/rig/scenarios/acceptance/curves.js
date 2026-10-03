@@ -75,7 +75,7 @@ globalThis.__rigWallPoint = (id, edge, t) => {
 };
 globalThis.__rigNotice = () => {
   const el = document.getElementById('notice-toast');
-  return (el && el.classList.contains('show')) ? el.textContent : null;
+  return (el && el.style.display !== 'none') ? el.querySelector('.m').textContent : null;
 };
 0`;
 

@@ -100,3 +100,11 @@ describe('evictUndoPair — one budget across both stacks', () => {
     assert.strictEqual(result.redo, redo);
   });
 });
+
+describe('a settings entry', () => {
+  it('carries no fog image, so it costs nothing against the budget', () => {
+    const s = [entry(100, 100), { settings: {} }, { settings: {} }];
+    evictUndoStack(s, 100 * 100 * 4);
+    assert.equal(s.length, 3);
+  });
+});

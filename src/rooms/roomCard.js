@@ -1,9 +1,5 @@
 'use strict';
-// roomCard.js — the floating panel shown when a room is selected: its fields, where it places
-// itself, and the drag that moves it.
-//
-// The card is MOVABLE and its description RESIZABLE, neither of them polish: the card floats
-// over the map and will sometimes cover the handles the DM selected the room by.
+// roomCard.js — the dock's Room tab: the selected room's name, notes, pictures and corner radius.
 //
 // Called once from initToolbar() (DM only). The name labels on the map are roomPanel.js.
 
@@ -35,6 +31,7 @@ function _rpFallbackName(poly) {
 // pushUndo() runs BEFORE the write and only on a real change, so one Ctrl+Z reverts one edit.
 function _rpCommitName() {
   const el = _rpEl('rp-name');
+  if (el && paneRoomEdit('name', { value: el.value })) return;
   const poly = _rpFindRoom(_rpFieldPid);
   if (!el || !poly) return;
   const v = sanitizeRoomName(el.value, _rpFallbackName(poly));
@@ -49,6 +46,7 @@ function _rpCommitName() {
 
 function _rpCommitDesc() {
   const el = _rpEl('rp-desc');
+  if (el && paneRoomEdit('desc', { value: el.value })) return;
   const poly = _rpFindRoom(_rpFieldPid);
   if (!el || !poly) return;
   const v = sanitizeRoomDesc(el.value);
@@ -75,6 +73,7 @@ function _rpCommitFields() {
 // front, because opening the dialog blurs the name field and runs its commit, which would write
 // the OLD text back over the pick.
 function applyModuleEntryToRoom(entry) {
+  if (entry && paneRoomEdit('entry', { entry })) return true;
   const poly = _rpFindPoly(selectedPolygonId);
   if (!poly || !entry) return false;
 
@@ -156,9 +155,6 @@ function initRoomPanel() {
   const panel = _rpEl('panel-room');
   if (!panel) return;
 
-  // The card floats over the map; a click inside must never reach the canvas handlers.
-  panel.addEventListener('mousedown', e => e.stopPropagation());
-
   // Enter commits the name (one line); in the description it inserts a newline.
   _rpWireField(_rpEl('rp-name'), {
     commit: _rpCommitName, enterCommits: true,
@@ -166,37 +162,20 @@ function initRoomPanel() {
     onKeyDown: typeof mtNameKeyDown === 'function' ? mtNameKeyDown : null,
   });
   _rpWireField(_rpEl('rp-desc'), { commit: _rpCommitDesc, enterCommits: false });
+  _rpEl('rp-desc').addEventListener('input', _rpFitNotes);
 
   // Last of the field wiring, so the dropdown is appended after the fields exist.
   if (typeof initModuleText === 'function') initModuleText(_rpEl('rp-name'));
 
-  _rpInitDrag(panel, _rpEl('rp-head'));
   initRoomPictures(panel);
-  _rpApplyDescHeight(_rpEl('rp-desc'));
-  _rpWatchDescHeight(_rpEl('rp-desc'), panel);
-
-  _rpEl('rp-close').onclick = () => {
-    _rpCommitFields();
-    clearShapeSelection();
-    drawCursor(lastScreenX, lastScreenY);
-  };
-
-  // Fog pill. Keyed on #rp-mode rather than a styling class, since it borrows stock .cp-tabs
-  // looks and must not depend on a class a restyle could remove.
-  panel.querySelectorAll('#rp-mode [data-mode]').forEach(btn => {
-    btn.onclick = () => {
-      const poly = _rpFindPoly(selectedPolygonId);
-      if (!poly) return;
-      setPolygonMode(poly.id, btn.dataset.mode);
-      _rpSyncModePill(poly);   // in place — setPolygonMode deliberately doesn't refresh
-    };
-  });
+  document.addEventListener('dockpane', e => { if (e.detail === 'room') _rpFitNotes(); });
 
   _rpEl('rp-delete').onclick = () => {
+    if (paneRoomEdit('delete')) return;
     if (selectedPolygonId != null) deleteSelectedPolygon();
   };
 
-  // Corner radius. TWO fields, one behaviour: the card's for a room, the Effects context row's
+  // Corner radius. TWO fields, one behaviour: the Room tab's for a room, the Effects context row's
   // for an effect. One helper, so the per-vertex targeting cannot drift between them.
   _rpWireRadiusField('rp-radius-num');
   _rpWireRadiusField('fx-radius-num');
@@ -213,6 +192,7 @@ function _rpWireRadiusField(numId) {
   const apply = v => {
     // ⚠ THE CONTEXT ROW'S FIELD IS THE DM WINDOW'S; the card's own lives inside the column.
     if (numId === 'fx-radius-num' && paneForward('corner-radius', { radius: v })) return;
+    if (numId === 'rp-radius-num' && paneRoomEdit('radius', { radius: v })) return;
     const poly = _rpFindPoly(selectedPolygonId);
     if (!poly) return;
     // One undo per editing session, never per keystroke: typing "150" is one Ctrl+Z.
@@ -258,16 +238,23 @@ function _rpWireRadiusField(numId) {
 // Which corner(s) the radius targets is DERIVED from the selection, never stored, so icon and
 // write target cannot disagree. A null poly means nothing is selected, and the field is greyed
 // rather than left looking live.
-function _rpSyncRadiusField(fieldId, numId, poly) {
+function _rpRadiusView(poly) {
+  const perVertex = !!poly && selectedVertexIndex >= 0 && selectedVertexIndex < flatVertexCount(poly);
+  const override  = perVertex && poly.cornerRadii ? poly.cornerRadii[selectedVertexIndex] : null;
+  return {
+    perVertex, curved: perVertex && !!handleAt(poly.handles, selectedVertexIndex),
+    value: !poly ? 0 : (override != null ? override : (poly.cornerRadius || 0)),
+  };
+}
+
+// `view` is a column's own reading in two-map mode, where the vertex selection lives there.
+function _rpSyncRadiusField(fieldId, numId, poly, view) {
   const field = _rpEl(fieldId);
   const num   = _rpEl(numId);
   if (!field || !num) return;
-  const perVertex = !!poly && selectedVertexIndex >= 0 && selectedVertexIndex < flatVertexCount(poly);
-  const curved    = perVertex && !!handleAt(poly.handles, selectedVertexIndex);
+  const { perVertex, curved, value } = view || _rpRadiusView(poly);
   num.disabled = !poly;
-  const override  = perVertex && poly.cornerRadii ? poly.cornerRadii[selectedVertexIndex] : null;
-  const currentR  = !poly ? 0 : (override != null ? override : (poly.cornerRadius || 0));
-  if (num !== document.activeElement) num.value = currentR;
+  if (num !== document.activeElement) num.value = value;
 
   field.classList.toggle('rp-per-vertex', perVertex);
   field.title = curved
@@ -277,80 +264,74 @@ function _rpSyncRadiusField(fieldId, numId, poly) {
       : 'Corner radius for every corner. ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.');
 }
 
-// An effect has a material where a room has a fog state, so the pill is hidden rather than left
-// with no segment lit. The corner-radius field keeps its place.
-function _rpSyncModePill(poly) {
-  const pill = _rpEl('rp-mode');
-  if (pill) pill.style.display = poly.material ? 'none' : '';
-  if (poly.material) return;
-  document.querySelectorAll('#rp-mode [data-mode]').forEach(b =>
-    b.classList.toggle('active', b.dataset.mode === poly.mode));
+// The notes grow with what is written in them; the tab scrolls, the field never does.
+function _rpFitNotes() {
+  const el = _rpEl('rp-desc');
+  if (!el || !el.offsetParent) return;
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
 }
 
-// Rebuild + reposition, from drawCursor() on every repaint. ⚠ NEVER from setPolygonMode(), where
-// a rebuild mid-edit steals field focus. Visibility is gated on selection ONLY, never the tool.
+// Refill, from drawCursor() on every repaint. ⚠ NEVER from setPolygonMode(), where a rebuild
+// mid-edit steals field focus. The tab follows the selection ONLY, never the tool.
+let _rpTrioPid = null, _rpTabKey = null;
 function refreshRoomPanel() {
   if (typeof isPlayer !== 'undefined' && isPlayer) return;
   const panel = _rpEl('panel-room');
   if (!panel) return;
   reconcileTvPicture();
+  refreshFogTrio();
 
-  // Calibration takes the map's mouse and shuts the control panel for the room it needs; a card
-  // left floating over that map swallows the drag. SELECTION IS UNTOUCHED, so this is not the
-  // tool gate the card must never have - the same card comes back on the same room at Done.
-  // ⚠ Committing first: a card hidden mid-sentence would otherwise drop what was typed, the same
-  // reason the deselect path below commits before it hides.
+  // Calibration takes the map's mouse and puts the pane away (dock.js). SELECTION IS UNTOUCHED,
+  // so the same room is in the tab at Done. ⚠ Committing first: a tab put away mid-sentence
+  // would otherwise drop what was typed.
   if (typeof gridCalArmed !== 'undefined' && gridCalArmed) {
     if (_rpFieldPid != null) _rpCommitFields();
     if (typeof mtCloseDropdown === 'function') mtCloseDropdown();
-    panel.style.display = 'none';
     return;
   }
 
   const poly = _rpFindPoly(selectedPolygonId);
+  const linked = paneSelectedRoom();
+  const room = linked || (poly && !poly.material ? poly : null);
+  if (isPane) paneReportRoom(room);
+  if (roomTabKey(room) !== _rpTrioPid) { _rpTrioPid = roomTabKey(room); updateContextPanels(); }
 
-  // The Effects row's radius field is this card's twin for a shape that has no card.
+  // The Effects row's radius field is this tab's twin for a shape that has no tab.
   _rpSyncRadiusField('fx-radius-field', 'fx-radius-num', poly && poly.material ? poly : null);
+  dockSyncRoom(roomTabKey(room));
 
-  // ⚠ AN EFFECT GETS NO CARD: it has no name, description or module text, so selecting one shows
-  // its handles alone. It leaves by the SAME path as a deselect, or a card can vanish without
-  // committing what was typed into a real room.
-  if (!poly || poly.material) {
+  // ⚠ AN EFFECT GETS NO TAB: it has no name, notes or module text. It leaves by the SAME path as
+  // a deselect, or the tab can go without committing what was typed into a real room.
+  if (!room) {
     if (_rpFieldPid != null) { _rpCommitFields(); _rpFieldPid = null; }
-    // The dropdown lives inside the card, so hiding the card must close it.
+    paneRoomAim(null);
     if (typeof mtCloseDropdown === 'function') mtCloseDropdown();
-    panel.style.display = 'none';
-    // Closing means the next card opens beside its room, not where the last was parked.
-    _rpManualPos = null;
-    _rpAutoPos = null;
     return;
   }
 
   // Selection moved: commit what the fields still hold for the OLD room before overwriting.
-  const sameRoom = _rpFieldPid === poly.id;
+  const sameRoom = _rpFieldPid === room.id && _rpTabKey === roomTabKey(room);
+  _rpTabKey = roomTabKey(room);
   if (!sameRoom && _rpFieldPid != null) _rpCommitFields();
   // A dropdown left open across a room change picks into the new room while filtered by the old.
   if (!sameRoom && typeof mtCloseDropdown === 'function') mtCloseDropdown();
 
-  panel.style.display = 'block';
-
   const nameEl = _rpEl('rp-name');
   const descEl = _rpEl('rp-desc');
   // Never clobber a field being typed in.
-  if (!sameRoom || nameEl !== document.activeElement) nameEl.value = poly.name != null ? poly.name : _rpFallbackName(poly);
-  if (!sameRoom || descEl !== document.activeElement) descEl.value = poly.desc != null ? poly.desc : '';
-  _rpFieldPid = poly.id;
+  if (!sameRoom || nameEl !== document.activeElement) nameEl.value = room.name != null ? room.name : _rpFallbackName(room);
+  if (!sameRoom || descEl !== document.activeElement) descEl.value = room.desc != null ? room.desc : '';
+  _rpFieldPid = room.id;
+  paneRoomAim(room);
 
-  _rpSyncModePill(poly);
-  refreshRoomPictures(poly);
-
-  _rpSyncRadiusField('rp-radius-field', 'rp-radius-num', poly);
-
-  _rpPositionPanel(panel, poly);
+  refreshRoomPictures(room, linked ? linked.onTv : null);
+  _rpSyncRadiusField('rp-radius-field', 'rp-radius-num', room, linked && linked.radius);
+  if (!sameRoom) _rpFitNotes();
 }
 
-// Screen px → the pre-zoom px style.left/top are written in (the card carries
-// `zoom: var(--ui-zoom)`). MEASURED and AFFINE — a slope AND a constant origin. ⚠ Never reduce
+// Screen px → the pre-zoom px style.left/top are written in, for a box carrying
+// `zoom: var(--ui-zoom)`. MEASURED and AFFINE — a slope AND a constant origin. ⚠ Never reduce
 // this to a bare `/ uiZoom`: that leaves a constant offset a drag exposes as a jump on grab.
 function _rpScreenToStyle(panel, screenLeft, screenTop) {
   const r  = panel.getBoundingClientRect();
@@ -360,101 +341,3 @@ function _rpScreenToStyle(panel, screenLeft, screenTop) {
   const originY = r.top  - (parseFloat(cs.top)  || 0) * z;
   return { left: (screenLeft - originX) / z, top: (screenTop - originY) / z };
 }
-
-function _rpPositionPanel(panel, poly) {
-  const r = panel.getBoundingClientRect();
-
-  let left, top;
-  if (_rpManualPos) {
-    // Re-clamped rather than trusted: a resize or a taller description can put a stored position
-    // off-screen.
-    left = Math.max(RP_MARGIN, Math.min(window.innerWidth  - r.width  - RP_MARGIN, _rpManualPos.left));
-    top  = Math.max(RP_MARGIN, Math.min(window.innerHeight - r.height - RP_MARGIN, _rpManualPos.top));
-  } else if (_rpAutoFrozen(poly.id)) {
-    left = _rpAutoPos.left; top = _rpAutoPos.top;
-  } else {
-    const bb = shapeBBox(poly);
-    const a  = toScreen(bb.minX, bb.minY);
-    const b  = toScreen(bb.maxX, bb.maxY);
-    const room = seatTurn ? viewRectToClient(a.sx, a.sy, b.sx - a.sx, b.sy - a.sy)
-                          : { left: a.sx, top: a.sy, right: b.sx, bottom: b.sy };
-    const pos = clampPanelPosition(room,
-                                   r.width, r.height, window.innerWidth, window.innerHeight);
-    left = pos.left; top = pos.top;
-    _rpAutoPos = { pid: poly.id, left, top };
-  }
-  const st = _rpScreenToStyle(panel, left, top);
-  panel.style.left = st.left + 'px';
-  panel.style.top  = st.top  + 'px';
-}
-
-// Drag by the title bar, screen px throughout. The move/up listeners go on window, so a fast drag
-// that outruns the pointer doesn't drop the card.
-function _rpInitDrag(panel, head) {
-  let dragging = false, gx = 0, gy = 0, l0 = 0, t0 = 0;
-
-  head.addEventListener('mousedown', e => {
-    if (e.button !== 0 || e.target.closest('button')) return;   // let Close be Close
-    const r = panel.getBoundingClientRect();
-    dragging = true;
-    gx = e.clientX; gy = e.clientY; l0 = r.left; t0 = r.top;
-    e.preventDefault();      // no text selection, no native drag
-    e.stopPropagation();     // and nothing reaches the canvas handlers underneath
-  });
-
-  window.addEventListener('mousemove', e => {
-    if (!dragging) return;
-    const r = panel.getBoundingClientRect();
-    _rpManualPos = {
-      left: Math.max(RP_MARGIN, Math.min(window.innerWidth  - r.width  - RP_MARGIN, l0 + e.clientX - gx)),
-      top:  Math.max(RP_MARGIN, Math.min(window.innerHeight - r.height - RP_MARGIN, t0 + e.clientY - gy)),
-    };
-    const st = _rpScreenToStyle(panel, _rpManualPos.left, _rpManualPos.top);
-    panel.style.left = st.left + 'px';
-    panel.style.top  = st.top  + 'px';
-  });
-
-  window.addEventListener('mouseup', () => { dragging = false; });
-
-  // Double-click the bar to send the card back to its room.
-  head.addEventListener('dblclick', e => {
-    if (e.target.closest('button')) return;
-    _rpManualPos = null;
-    drawCursor(lastScreenX, lastScreenY);
-  });
-}
-
-// Restored once at init: a resize handle's inline style survives the card being hidden and
-// reshown, so only a reload needs this.
-function _rpApplyDescHeight(el) {
-  let h = 0;
-  try { h = parseInt(localStorage.getItem(RP_DESC_H_KEY)) || 0; } catch (_) {}
-  // Only checks that it IS a height — .rp-desc's CSS clamps the range, so it self-heals.
-  if (h > 0) el.style.height = h + 'px';
-}
-
-// Save on mouseup, never a ResizeObserver: firing continuously needs a debounce and a 0×0 guard,
-// and it re-clamps the card every tick so dragging the handle DOWN slides the card UP. The
-// listener is on window because a resize drag can release anywhere.
-function _rpWatchDescHeight(el, panel) {
-  let last = el.offsetHeight;
-  // ARMED BY A MOUSEDOWN ON THE TEXTAREA: the window listener otherwise runs on every mouse
-  // release in the app, and offsetHeight forces a synchronous layout each time. A resize drag
-  // always starts with a mousedown here.
-  let armed = false;
-  el.addEventListener('mousedown', () => { armed = true; });
-  window.addEventListener('mouseup', () => {
-    if (!armed) return;
-    armed = false;
-    // ⚠ offsetHeight, NOT getBoundingClientRect().height: the card carries zoom:var(--ui-zoom), so
-    // storing the rect grows the box by the UI scale on every reload.
-    const h = el.offsetHeight;
-    if (!h || h === last) return;          // hidden, or nothing was resized — the common case
-    last = h;
-    try { localStorage.setItem(RP_DESC_H_KEY, String(h)); } catch (_) {}
-    const poly = _rpFindPoly(selectedPolygonId);
-    if (poly) _rpPositionPanel(panel, poly);   // the card changed height, so re-clamp it once
-  });
-}
-
-

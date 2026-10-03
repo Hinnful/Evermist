@@ -4,8 +4,6 @@
 
 const BS_COLS = [['cr', 'CR', 'num'], ['name', 'Name'], ['size', 'Size'], ['type', 'Type'], ['ac', 'AC', 'num'], ['hp', 'HP', 'num'], ['source', 'Source']];
 const BS_NARROW = ['cr', 'name', 'type'];
-const BS_CLOSE = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-const BS_FIND = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>';
 
 const bs = { f: bsNoFilter(), more: false, sort: { k: 'name', d: 1 }, picked: new Set(), anchor: null, open: null,
   editing: false, importing: false, fresh: new Set(), pop: null };
@@ -56,8 +54,6 @@ function _bsTableHtml(list) {
 const BS_ICONS = {
   edit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.1 2.1 0 00-3-3L5 17z"/></svg>',
   done: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
-  dup: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>',
-  del: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>',
 };
 
 // Reading, the head carries the page's three actions as one group; editing, it becomes a strip
@@ -68,9 +64,9 @@ function _bsPageHtml(b) {
         <button class="sm-hbtn primary bs-done" data-a="edit">${BS_ICONS.done} Done</button></div>`
     : `<div class="bs-page-head"><div class="t"><h2 data-no-i18n>${_cbEsc(b.name)}<span class="bs-src">${_cbEsc(b.source || t('no source'))}</span></h2></div>
         <div class="bs-tools"><button class="bs-ib" data-a="edit" title="Edit">${BS_ICONS.edit}</button>
-          <button class="bs-ib" data-a="dup-open" title="Duplicate (Ctrl+D)">${BS_ICONS.dup}</button>
-          <button class="bs-ib danger" data-a="del-open" title="Delete (Del)">${BS_ICONS.del}</button></div>
-        <span class="bs-div"></span><button class="bs-ib" data-a="unpage" title="Close the page (Esc)">${BS_CLOSE}</button></div>`;
+          <button class="bs-ib" data-a="dup-open" title="Duplicate (Ctrl+D)">${uiIcon('dup')}</button>
+          <button class="bs-ib danger" data-a="del-open" title="Delete (Del)">${uiIcon('trash')}</button></div>
+        <span class="bs-div"></span><button class="bs-ib" data-a="unpage" title="Close the page (Esc)">${uiIcon('collapse')}</button></div>`;
   return `${head}<div class="bs-page-body">${bpHtml(b, bs.editing)}</div>`;
 }
 
@@ -82,14 +78,15 @@ function bestiaryRender() {
   const panel = _bsEl('bs-panel'), list = _bsShown();
   panel.classList.toggle('selecting', bs.picked.size > 0);
   panel.classList.toggle('paged', !!bs.open);
-  panel.querySelector('.bs-count').textContent = _bsAll().length;
   panel.querySelector('.bs-picked').textContent = t('{n} selected', { n: bs.picked.size });
-  panel.querySelector('[data-a="pick-all"]').textContent = t('Select all {n}', { n: list.length });
+  const tick = _bsEl('bs-tickall'), all = list.length && list.every(b => bs.picked.has(b.id));
+  tick.className = 'sm-tick' + (all ? ' on' : bs.picked.size ? ' part' : '');
+  tick.title = bs.picked.size ? t('Clear the selection') : t('Select all');
   panel.querySelector('.bs-importbar').style.display = bs.importing ? '' : 'none';
   panel.querySelector('.bs-fbtns').innerHTML = BS_FILTERS.filter(F => !F.more || bs.more).map(_bsFilterButton).join('')
     + `<button class="bs-link" data-a="more">${bs.more ? 'Fewer filters' : 'More filters'}</button>`
     + (bsFiltered(bs.f) ? '<button class="bs-link" data-a="clear">Clear all</button>' : '');
-  panel.querySelector('.bs-shown').textContent = t('{shown} of {all}', { shown: list.length, all: _bsAll().length });
+  panel.querySelector('.bs-shown').textContent = t('{shown} of {all} monsters', { shown: list.length, all: _bsAll().length });
   const queue = _bsEl('bs-queue');
   queue.innerHTML = (cbBookReading ? `<div class="bs-q"><span class="bs-spin"></span><span class="u">${t('Reading {host}…', { host: _cbEsc(cbBookReading) })}</span></div>` : '') + _bsQueueHtml();
   queue.style.display = cbImportQueue.length || cbBookReading ? '' : 'none';
@@ -165,19 +162,12 @@ function _bsImportMenu(anchor) {
   const el = document.createElement('div');
   el.className = 'bs-pop bs-menu';
   el.innerHTML = `<div class="it" data-m="links">Paste links<small>One or many monster pages, from any site</small></div>
-    <div class="it" data-m="file">From a file<small>Monsters exported from Evermist</small></div>
-    <div class="it${cbBookReading ? ' off' : ''}" data-m="book">From a PDF book<small>Every stat block in the book or module</small></div>`;
+    <div class="it" data-m="file">From a file<small>An Evermist export (.json) or a PDF book</small></div>`;
   el.addEventListener('click', e => {
     const m = e.target.closest('[data-m]');
     if (!m) return;
     _bsClosePop();
-    if (m.dataset.m === 'file') { _bsEl('bs-file').click(); return; }
-    if (m.dataset.m === 'book') {
-      if (cbBookReading) return;
-      _bsEl('bs-book').value = '';
-      _bsEl('bs-book').click();
-      return;
-    }
+    if (m.dataset.m === 'file') { _bsEl('bs-file').value = ''; _bsEl('bs-file').click(); return; }
     bs.importing = true;
     bestiaryRender();
     _bsEl('bs-links').focus();
@@ -285,6 +275,7 @@ function _bsPick(id, e) {
 function bestiarySetOpen(open) {
   _bsEl('bs-modal').style.display = open ? '' : 'none';
   _bsEl('btn-bestiary').classList.toggle('active', open);
+  dockRefreshRail();
   _bsClosePop();
   if (!open) { bs.picked.clear(); bs.editing = false; return; }
   _bsRenderPage();
@@ -313,43 +304,35 @@ function _bsKey(e) {
 }
 
 function initBestiary() {
-  const btn = document.createElement('button');
-  btn.id = 'btn-bestiary';
-  btn.title = 'Every monster you have';
-  btn.innerHTML = CB_ICON_BOOK.replace('width="14" height="14"', 'width="15" height="15"') + '<span>Bestiary</span>';
-  document.getElementById('btn-combat').after(btn);
+  const btn = document.getElementById('btn-bestiary');
 
   const modal = document.createElement('div');
   modal.id = 'bs-modal';
   modal.style.display = 'none';
   modal.innerHTML = `<div id="bs-panel" tabindex="-1">
-    <div class="bs-head bs-norm">
-      <span class="bs-title">Bestiary</span><span class="bs-count"></span><span class="bs-sp"></span>
-      <button class="sm-hbtn" data-a="new">New monster</button>
-      <button class="sm-hbtn primary" data-a="import">Import ▾</button>
-      <button class="sm-bare" data-a="close" title="Close (Esc)">${BS_CLOSE}</button>
-    </div>
-    <div class="bs-head bs-act">
-      <button class="sm-bare" data-a="unpick" title="Cancel selection (Esc)">${BS_CLOSE}</button>
-      <span class="bs-picked"></span>
-      <button class="sm-hbtn" data-a="pick-all"></button>
-      <button class="sm-hbtn" data-a="dup">Duplicate</button>
-      <button class="sm-hbtn" data-a="export">Export</button>
-      <button class="sm-hbtn danger" data-a="del">Delete</button>
+    <div class="bs-head">
+      <span class="bs-title">Bestiary</span><span class="bs-sp"></span>
+      <label class="sm-field">${uiIcon('search')}<input id="bs-search" placeholder="Search by name" spellcheck="false" autocomplete="off"></label>
+      <button class="sm-hbtn" data-a="new">${uiIcon('plus')}New monster</button>
+      <button class="sm-hbtn primary" data-a="import">Import<span class="sm-chev"></span></button>
+      <button class="sm-x" data-a="close" title="Close (Esc)">${uiIcon('x')}</button>
     </div>
     <div class="bs-importbar">
       <textarea id="bs-links" spellcheck="false" placeholder="Paste one or more monster page links, one per line"></textarea>
       <div class="col"><button class="sm-hbtn primary" data-a="go">Import</button><button class="sm-hbtn" data-a="no-import">Cancel</button></div>
     </div>
-    <div class="bs-filters">
-      <label class="sm-field">${BS_FIND}<input id="bs-search" placeholder="Search by name" spellcheck="false" autocomplete="off"></label>
+    <div class="sm-ltb bs-filters">
+      <span class="sm-tick" id="bs-tickall"></span>
       <span class="bs-fbtns"></span>
-      <span class="bs-shown"></span>
+      <span class="bs-acts"><span class="cnt on bs-picked"></span>
+        <button class="sm-hbtn" data-a="dup">${uiIcon('dup')}Duplicate</button>
+        <button class="sm-hbtn" data-a="export">${uiIcon('export')}Export</button>
+        <button class="sm-hbtn danger" data-a="del">${uiIcon('trash')}Delete</button></span>
+      <span class="end bs-shown"></span>
     </div>
     <div id="bs-queue" class="bs-queue" style="display:none"></div>
     <div class="bs-wrap"><div id="bs-table"></div><div id="bs-page" style="display:none"></div></div>
-    <input type="file" id="bs-file" accept=".json,application/json" style="display:none">
-    <input type="file" id="bs-book" accept=".pdf,application/pdf" style="display:none">
+    <input type="file" id="bs-file" accept=".json,.pdf,application/json,application/pdf" style="display:none">
   </div>`;
   document.body.appendChild(modal);
   const panel = _bsEl('bs-panel');
@@ -392,8 +375,10 @@ function initBestiary() {
     if (act === 'import') return _bsImportMenu(a);
     if (act === 'go') return _bsStartImport();
     if (act === 'no-import') { bs.importing = false; return bestiaryRender(); }
-    if (act === 'unpick') { bs.picked.clear(); return bestiaryRender(); }
-    if (act === 'pick-all') { _bsShown().forEach(b => bs.picked.add(b.id)); return bestiaryRender(); }
+    if (t.closest('#bs-tickall')) {
+      if (bs.picked.size) bs.picked.clear(); else _bsShown().forEach(b => bs.picked.add(b.id));
+      return bestiaryRender();
+    }
     if (act === 'dup' || act === 'dup-open') return _bsAdd(act === 'dup' ? [...bs.picked].map(id => cbState.blocks[id]) : [cbState.blocks[bs.open]]);
     if (act === 'del' || act === 'del-open') return _bsDelete(act === 'del' ? [...bs.picked] : [bs.open]);
     if (act === 'export') return _bsExport();
@@ -421,12 +406,12 @@ function initBestiary() {
   });
   _bsEl('bs-search').addEventListener('input', e => { bs.f.q = e.target.value; bestiaryRender(); });
   _bsEl('bs-links').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) _bsStartImport(); });
+  // One input for both kinds: the extension says whether it is an export or a book.
   _bsEl('bs-file').addEventListener('change', e => {
     const file = e.target.files[0];
-    e.target.value = '';
-    if (file) _bsImportFile(file);
-  });
-  _bsEl('bs-book').addEventListener('change', e => {
-    if (e.target.files[0]) cbImportBook(e.target.files[0], bestiaryRender);
+    if (!file) return;
+    if (!/\.pdf$/i.test(file.name)) { e.target.value = ''; _bsImportFile(file); return; }
+    if (cbBookReading) { noticeToast(t('A book is already being read. Try again when it is done.')); return; }
+    cbImportBook(file, bestiaryRender);
   });
 }

@@ -68,7 +68,7 @@ let gridOffsetX   = 0;
 let gridOffsetY   = 0;
 let gridColor     = '#ffffff';
 let gridOpacity   = 0.25;
-let gridMode      = 'square'; // 'square' | 'hex-flat' | 'hex-pointy'
+let gridMode      = 'square'; // 'square' | 'hex-pointy'
 let gridLineWidth = 1;
 // Calibration captures the map's mouse, so grid.js and input.js both read it. The rest of that
 // feature's state stays private to gridCalibrate.js.

@@ -2,7 +2,7 @@
 // minimap.js — DM-window live mirror + remote control for the Player camera.
 //
 // Owns minimapView {mapCX, mapCY, zoom} — the triple that IS the Player's intended view — and a
-// square <canvas> composite of map, fog and grid, with the Player's own frame marked in dotted
+// square <canvas> composite of map and fog, with the Player's own frame marked in dotted
 // lines. Drag and wheel update the triple and post view-snap to playerWindow live; the lock gates
 // pointer input so the DM cannot nudge the Player mid-reveal.
 //
@@ -91,9 +91,6 @@ function _markDirty() {
   if (isPane && parent !== window && mapWidth > 0) {
     parent.postMessage({ type: 'pane-player-view', pane: paneId, view: minimapView }, '*');
   }
-  // Keep the Player tab's zoom readout honest when the triple moves from anywhere
-  // else — wheel, drag, Sync View, or a Player free-look report.
-  if (typeof refreshPlayerZoomUI === 'function') refreshPlayerZoomUI();
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -119,14 +116,9 @@ function minimapRefreshAspect() {
   _markDirty();
 }
 
-// ─── Zoom API (the Player tab's − / % / + stepper) ────────────────────────────
-// Same triple and view-snap path as the wheel, pivoting about the view centre rather than the
-// cursor. ⚠ Never gate this on minimapLocked: the lock stops accidental drag and wheel nudges,
-// and the Player honours view-snap while locked either way.
-function minimapGetZoom() {
-  return minimapView.zoom;
-}
-
+// ─── Zoom ─────────────────────────────────────────────────────────────────────
+// The wheel's path, pivoting about the view centre. ⚠ Never gate this on minimapLocked: the
+// Player honours view-snap while locked either way.
 function minimapSetZoom(z) {
   if (!isFinite(z)) return;
   const nz = Math.max(MINIMAP_ZOOM_MIN, Math.min(MINIMAP_ZOOM_MAX, z));
@@ -134,11 +126,6 @@ function minimapSetZoom(z) {
   minimapView = { mapCX: minimapView.mapCX, mapCY: minimapView.mapCY, zoom: nz };
   _markDirty();
   _postSnapThrottled();
-}
-
-// dir > 0 zooms in, dir < 0 out — one step equals one wheel notch.
-function minimapNudgeZoom(dir) {
-  minimapSetZoom(minimapView.zoom * (dir > 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR));
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
@@ -229,16 +216,7 @@ function drawMinimap() {
     _ctx.restore();
   }
 
-  // ── 3. Grid ───────────────────────────────────────────────────────────────
-  if (s.gridEnabled) {
-    s.drawGridLines(_ctx, {
-      cw: mW, ch: mH,
-      srcX, srcY, srcW: side, srcH: side,
-      dstX: 0, dstY: 0, dstW: mW, dstH: mH,
-    });
-  }
-
-  // ── 4. TV frame ───────────────────────────────────────────────────────────
+  // ── 3. TV frame ───────────────────────────────────────────────────────────
   // Two dotted lines. The frame already spans the preview's long axis, so only its inner edges
   // need marking. Always centred: the view triple is the TV centre and the square shares it.
   const { visW, visH } = _visibleExtent();
@@ -308,7 +286,7 @@ function _onPointerUp(e) {
 
 // ⚠ Zoom about the view CENTRE, never the cursor. This canvas is a remote control for the TV, and
 // pivoting about an off-centre cursor shifts mapCX/mapCY, so zooming would also pan what the
-// players see. Centre-pivot also makes the wheel agree with the − / + stepper.
+// players see.
 function _onWheel(e) {
   e.preventDefault();
   if (minimapLocked || !paneScope().mapOffscreen) return;

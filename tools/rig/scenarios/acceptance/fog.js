@@ -164,7 +164,7 @@ module.exports = async function fogFeature(rig) {
     const shown = id => { const el = document.getElementById(id);
       if (!el) return false; const b = el.getBoundingClientRect();
       return getComputedStyle(el).display !== 'none' && b.width > 0 && b.height > 0; };
-    return { toolbar: shown('toolbar-bottom'), sidebar: shown('sidebar-right'),
+    return { toolbar: shown('toolbar-bottom'), sidebar: shown('dock'),
              minimap: shown('minimap-panel'),
              cursor: getComputedStyle(document.getElementById('canvas-container')).cursor };
   })()`);
@@ -368,19 +368,22 @@ module.exports = async function fogFeature(rig) {
   await fire('fog-half-alpha', 50);
 
   // ── I. The drift ─────────────────────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
+  // RED ON: the .on toggle gated off with false && in setAnimModeUI (controlPanel.js) — 2026-10-02
   const animState = () => dm.evaluate(`(() => {
-    const seg = [...document.querySelectorAll('#cp-anim-row [data-anim]')]
-      .filter(b => b.classList.contains('active')).map(b => b.dataset.anim);
+    const seg = [...document.querySelectorAll('#cp-pop-move [data-anim]')]
+      .filter(b => b.classList.contains('on')).map(b => b.dataset.anim);
     const presets = [...document.querySelectorAll('.anim-preset-btn')]
       .filter(b => b.classList.contains('active')).map(b => b.id);
     return { on: fogAnimEnabled, speed: fogAnimSpeed, seg, presets,
              offsets: fogAnimOffsets.map(o => +(o.x + o.y).toFixed(3)) };
   })()`);
 
-  const segAnim = m => dm.evaluate('(() => { const b = document.querySelector(' +
-    JSON.stringify('#cp-anim-row [data-anim="' + m + '"]') + ');' +
-    ' if (!b) return "missing"; b.click(); return "clicked"; })()');
+  // Movement is a preset dropdown, then the eye; Off is the eye.
+  const segAnim = m => dm.evaluate(m === 'off'
+    ? '(() => { if (fogAnimEnabled) document.getElementById("cp-move-eye").click(); return "clicked"; })()'
+    : '(() => { document.getElementById("cp-move-dd").click(); const b = document.querySelector(' +
+      JSON.stringify('#cp-pop-move [data-anim="' + m + '"]') + ');' +
+      ' if (!b) return "missing"; b.click(); return "clicked"; })()');
 
   for (const [mode, preset] of [['slow', 'anim-preset-calm'], ['medium', 'anim-preset-default'],
                                 ['fast', 'anim-preset-fast']]) {
@@ -391,7 +394,7 @@ module.exports = async function fogFeature(rig) {
               'the ' + mode + ' drift chose the wrong preset, or more than one: ' +
               JSON.stringify(a.presets));
     rig.check(a.seg.length === 1 && a.seg[0] === mode,
-              'the drift segment shows the wrong mode chosen: ' + JSON.stringify(a.seg));
+              'the movement dropdown shows the wrong preset chosen: ' + JSON.stringify(a.seg));
   }
 
   // Moving, not merely enabled. The offsets only advance on the animation's own tick, so this
@@ -409,7 +412,7 @@ module.exports = async function fogFeature(rig) {
 
   await segAnim('off');
   const stopped = await animState();
-  rig.check(stopped.on === false, "the drift segment's Off did not switch the animation off");
+  rig.check(stopped.on === false, 'the movement eye did not switch the animation off');
   const s0 = stopped.offsets;
   await lib.hold(900, 'the drift is off, so there is no state to poll for - long enough for ' +
     'a running animation to have moved the offsets, then prove it did not');
@@ -470,14 +473,12 @@ module.exports = async function fogFeature(rig) {
   // can do. The square, the hue strip and the hex field are the only way they reach the colour,
   // and none of them had a check: a dead hex field would ship.
   //
-  // ⚠ THE FOG TAB HAS TO BE OPEN. An element inside `display:none` has zero-sized rects, so a
+  // ⚠ THE PICKER HAS TO BE OPEN. An element inside `display:none` has zero-sized rects, so a
   // click on the square lands nowhere and the picker correctly does nothing - which reads as the
-  // picker being broken.
-  // ⚠ THE TAB TOGGLES, so a blind click on an already-open Fog tab SHUTS the panel - and every
-  // element inside it then has zero-sized rects, so the press below lands nowhere and the
-  // picker correctly does nothing. _cpSelectTab is the app's one way to open a named pane.
-  await dm.evaluate('_cpSelectTab("fog"); 0');
-  await lib.settle(dm, '!document.getElementById("sidebar-right").hidden', 8000);
+  // picker being broken. dockOpen, never a tab click: the tab toggles, and a click on the open
+  // one shuts the pane.
+  await dm.evaluate('dockOpen("scene"); if (document.getElementById("cp-pop-fog").hidden)' +
+                    ' document.getElementById("cp-fog-field").click(); 0');
   await lib.settle(dm,
     'document.querySelector(\'.cp-picker[data-picker="fog"] .cp-sv-canvas\')' +
     '.getBoundingClientRect().width > 0', 8000);
@@ -670,9 +671,9 @@ module.exports = async function fogFeature(rig) {
   // The five behind Advanced. Their sliders are logarithmic, so what is asserted is that the
   // dial reaches its global and that the chip shows what the global holds — never a number
   // read off the slider's own scale.
-  await dm.evaluate('document.querySelector("#cp-anim-row [data-anim=\'advanced\']").click(); 0');
-  await lib.settle(dm, 'document.getElementById("anim-advanced-panel").style.display === "block"',
-                   10000);
+  await dm.evaluate('dockOpen("scene"); document.getElementById("cp-move-dd").click();' +
+                    ' document.querySelector("#cp-pop-move [data-anim=advanced]").click(); 0');
+  await lib.settle(dm, 'document.getElementById("anim-advanced-panel").hidden === false', 10000);
 
   const ADV = [['anim-speed', 'anim-speed-num', 'Math.round(fogAnimSpeed * 100)', 140, 1],
                ['anim-morph-speed', 'anim-morph-num', 'cloudFrameSpeed', 1.7, 0.01],
@@ -703,7 +704,7 @@ module.exports = async function fogFeature(rig) {
             'dial the DM has pulled too far: ' + JSON.stringify(advAfterReset));
 
   await dm.evaluate('document.getElementById("cp-adv-close").click(); 0');
-  rig.check(await dm.evaluate('document.getElementById("anim-advanced-panel").style.display') === 'none',
+  rig.check(await dm.evaluate('document.getElementById("anim-advanced-panel").hidden') === true,
             "the advanced panel's own close button left it floating over the map");
   rig.check(!(await dm.evaluate('document.getElementById("btn-anim-advanced").classList.contains("active")')),
             'the close button only hid the advanced panel, so it reopens on the next pane switch');

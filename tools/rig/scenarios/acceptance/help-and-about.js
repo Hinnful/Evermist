@@ -2,7 +2,7 @@
 
 // help-and-about.js — THE ONE "WHAT IS THIS" BUTTON.
 //
-// THE GOAL OF THIS FEATURE: the DM presses one button in the corner and gets the keyboard
+// THE GOAL OF THIS FEATURE: the DM presses one button on the dock's rail and gets the keyboard
 // shortcuts, with the app's name, version and repo underneath. It is the only place the app
 // explains itself, and the Player screen must never show any of it.
 //
@@ -10,17 +10,20 @@
 // letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The help button opens the panel and its backdrop, and pressing it again shuts both.
-//   B. The ? key opens it, Escape shuts it, and so does a click on the backdrop.
+//   B. The ? key opens it, Escape shuts it, and so does a click on the backdrop or its close.
+//      It draws at the dock's zoom, and lists Copy, Cut, Paste and Duplicate.
 //   C. Every key the panel advertises does something. A shortcut listed here and ignored by the
 //      app is worse than one that was never listed.
-//   D. The About footer carries the mark, the wordmark and the repo, and its version is the one
-//      the build was cut with — never a literal in the page that goes stale on the next bump.
-//   E. What's new opens from the About footer, sits ABOVE its own dimmer so the DM can reach
+//   D. The About block sits at the foot of Settings, not in the shortcut list. It carries the
+//      mark, the wordmark and the repo, and its version is the one the build was cut with — never
+//      a literal in the page that goes stale on the next bump.
+//   E. What's new opens from the About block, sits ABOVE its own dimmer so the DM can reach
 //      it, marks the version they are running, opens any release to the full note it
 //      shipped with, and closes every way it offers. A release whose note is one line has
 //      nothing under it and gets no caret.
-//   F. A ready update announces itself on screen, in the corner and not over the map, and the
-//      restart after it says what version arrived. A first-ever run announces nothing.
+//   F. A ready update announces itself in the toast stack above the toolbar, stays clickable
+//      over any open window's dimmer, and the restart after it says what version arrived. A
+//      first-ever run announces nothing.
 //   G. The Player screen carries neither the button nor the panel.
 //
 // ⚠ THE VERSION IS HELD AGAINST package.json, WHICH IS WHAT main HANDS THE PAGE. Checking that
@@ -43,8 +46,8 @@ const LEGEND = '#shortcut-legend';
 const BACKDROP = '#legend-backdrop';
 
 // ⚠ WHETHER IT HAS A BOX, never its own computed `display`. The help button is hidden by
-// `body.player-mode #help-corner { display: none }` on its CONTAINER, and a child of a hidden
-// parent still computes its own display as `block` — so reading the button reports the Player as
+// `body.player-mode #dock { display: none }` on its CONTAINER, and a child of a hidden parent
+// still computes its own display as `block` — so reading the button reports the Player as
 // showing a button it does not show.
 const SHOWN = `(sel => { const el = document.querySelector(sel);
   return !!el && el.getClientRects().length > 0; })`;
@@ -104,6 +107,29 @@ module.exports = async function helpAndAboutFeature(rig) {
   const afterBackdrop = await dm.evaluate('__rigPanel()');
   rig.check(!afterBackdrop.panel && !afterBackdrop.back,
             'clicking beside the panel did not shut it: ' + JSON.stringify(afterBackdrop));
+
+  // RED ON: the legend-close listener gated off (input.js) — 2026-10-03
+  await dm.evaluate('document.getElementById("btn-help").click(); document.getElementById("legend-close").click(); 0');
+  const afterClose = await dm.evaluate('__rigPanel()');
+  rig.check(!afterClose.panel && !afterClose.back,
+            'the shortcut list\'s close button does not shut it: ' + JSON.stringify(afterClose));
+
+  // ⚠ THE RATIO A RAIL BUTTON PROVES, never --ui-zoom read back: the dock's zoom is what the DM
+  // sees, and the list drew smaller than every other window for as long as it read neither.
+  // RED ON: zoom dropped from .sm-win (sceneManager.css) — 2026-10-03
+  await dm.evaluate('document.getElementById("btn-help").click(); 0');
+  const scale = await dm.evaluate(`(() => {
+    // ⚠ The window opens on a scale animation, which a rect reads; it is finished first.
+    const k = el => { el.getAnimations().forEach(a => a.finish()); return el.getBoundingClientRect().height / el.offsetHeight; };
+    const rows = [...document.querySelectorAll('#shortcut-legend .lg-row')].map(r => r.firstChild.textContent.trim());
+    return { list: +k(document.getElementById('legend-win')).toFixed(3), dock: +k(document.getElementById('btn-help')).toFixed(3), rows };
+  })()`);
+  await dm.evaluate('document.getElementById("btn-help").click(); 0');
+  rig.check(Math.abs(scale.list - scale.dock) < 0.01,
+            'the shortcut list draws at ' + scale.list + 'x while the dock draws at ' + scale.dock + 'x');
+  // RED ON: the Copy, cut, paste row renamed Copy, cut and paste (index.html) — 2026-10-03
+  rig.check(['Copy, cut, paste', 'Duplicate'].every(r => scale.rows.indexOf(r) !== -1),
+            'the shortcut list misses copy, cut, paste or duplicate, which the app has: ' + scale.rows.join(', '));
 
   // ── C. Every key the panel lists does something ───────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
@@ -227,16 +253,17 @@ module.exports = async function helpAndAboutFeature(rig) {
   // file holds, so a shortcut added to the panel tomorrow gets no check and nothing complains.
   // This is what notices.
   const advertised = await dm.evaluate(
-    "Array.from(document.querySelectorAll('#shortcut-legend kbd'))" +
-    ".map(k => k.textContent.trim())");
+    "Array.from(document.querySelectorAll('#shortcut-legend .lg-row .k'))" +
+    ".map(k => Array.from(k.querySelectorAll('kbd')).map(x => x.textContent.trim()).join(' '))");
   // Everything above, plus the ones checked elsewhere in this file and the two that are mouse
   // gestures rather than keys.
   const COVERED = KEYS.map(k => k.label).concat([
     'Ctrl Z', 'Ctrl Y',   // exercised just above
-    '?',                  // criterion B opens the panel with it
+    '[ ]',                // both brackets, each pressed above
     'T', 'Space', 'Shift S', 'Del',
-    'Dbl',                // a mouse gesture, covered by editing.js and curves.js
-    'Ctrl Middle',        // a mouse gesture, covered by ping.js
+    'Ctrl C X V', 'Ctrl D', // the clipboard, covered by clipboard.js
+    'Double-click',       // a mouse gesture, covered by editing.js and curves.js
+    'Ctrl Middle-click',  // a mouse gesture, covered by ping.js
   ]);
   const unchecked = advertised.filter(k => COVERED.indexOf(k) === -1);
   rig.note('the panel advertises ' + advertised.length + ' keys: ' + advertised.join(' '));
@@ -244,8 +271,8 @@ module.exports = async function helpAndAboutFeature(rig) {
             'the shortcut panel advertises ' + unchecked.length + ' key(s) nothing here presses, ' +
             'so they are promised to the DM and never checked: ' + unchecked.join(', '));
 
-  // ── D. The About footer, and a version that came from the build ───────────
-  // RED BY DESIGN: written against the fix, never re-proved
+  // ── D. The About block, and a version that came from the build ────────────
+  // RED ON: #legend-about moved into #shortcut-legend (index.html) — 2026-10-02
   await dm.waitFor('!!document.getElementById("about-version")', 10000, 'the About block to build');
   // ⚠ POLLED. The version arrives over IPC after init, so a single read lands before it on a
   // slow machine and reports the app as having no version at all.
@@ -263,6 +290,9 @@ module.exports = async function helpAndAboutFeature(rig) {
     };
   })()`);
   rig.note('About: ' + JSON.stringify(about));
+  rig.check(await dm.evaluate('!!document.querySelector("#dock-pane-settings #legend-about") &&' +
+                              ' !document.querySelector("#shortcut-legend #legend-about")'),
+            'the About block is not in Settings, or is still in the shortcut list');
   rig.check(about.mark, 'the About block has no app mark, so the panel names the app without showing it');
   rig.check(about.wordmark === 'EVERMIST',
             'the About block does not carry the wordmark: ' + JSON.stringify(about.wordmark));
@@ -281,9 +311,9 @@ module.exports = async function helpAndAboutFeature(rig) {
   // ⚠ REACHABILITY IS READ WITH elementFromPoint, never from the panel being in the DOM. The
   // panel and its dimmer share one stacking context, so a dimmer painting over the panel leaves
   // every check on markup, size and position passing while no click can land on it.
-  await dm.evaluate('document.getElementById("btn-help").click(); 0');
+  await dm.evaluate('dockOpen("settings"); 0');
   rig.check(await dm.evaluate('__rigShown("#about-whatsnew")'),
-            'the About footer carries no What\'s new link, so the changelog has no way in');
+            'the About block carries no What\'s new link, so the changelog has no way in');
 
   await dm.evaluate('document.getElementById("about-whatsnew").click(); 0');
   await dm.waitFor('!!document.getElementById("cl-modal")', 10000, 'the What\'s new panel to build');
@@ -295,7 +325,7 @@ module.exports = async function helpAndAboutFeature(rig) {
     const rows = Array.from(document.querySelectorAll('#cl-body .cl-entry'));
     const first = rows[0] ? rows[0].getBoundingClientRect() : null;
     const closeBox = document.getElementById('cl-close').getBoundingClientRect();
-    const chip = document.querySelector('#cl-body .cl-chip');
+    const chip = document.querySelector('#cl-body .sm-chip');
     return {
       shown: r.width > 0 && r.height > 0,
       centreHit: hitAt(r.left + r.width / 2, r.top + r.height / 2),
@@ -304,8 +334,8 @@ module.exports = async function helpAndAboutFeature(rig) {
       closeHit: hitAt(closeBox.left + closeBox.width / 2, closeBox.top + closeBox.height / 2),
       rows: rows.length,
       entries: typeof CHANGELOG !== 'undefined' ? CHANGELOG.length : -1,
-      chips: document.querySelectorAll('#cl-body .cl-chip').length,
-      chipOn: chip ? chip.closest('.cl-entry').querySelector('.cl-ver').textContent : '',
+      chips: document.querySelectorAll('#cl-body .sm-chip').length,
+      chipOn: chip ? chip.closest('.cl-entry').querySelector('.v').textContent : '',
     };
   })()`);
   rig.note('What\'s new: ' + JSON.stringify(panel));
@@ -324,32 +354,35 @@ module.exports = async function helpAndAboutFeature(rig) {
   // ⚠ THE BODY IS HELD AGAINST changelogData.js, not merely found non-empty. A row that expands
   // to the summary again would pass a length check and tell the DM nothing new.
   //
-  // ⚠ THE FIRST ROW WITH A BODY, never rows[0] and never merely the first with a caret. A
-  // one-line release has no body, and once it is tagged its caret opens a GitHub link alone.
+  // ⚠ THE FIRST ROW WITH A BODY, never rows[0] and never merely the first with a chevron. A
+  // one-line release has no body, and once it is tagged its chevron opens a GitHub link alone.
+  // ⚠ A BODY READS AS A LIST OR AS PROSE, so both sides are compared line by line.
   const expanded = await dm.evaluate(`(() => {
+    const lines = s => String(s).split('\\n').map(l => l.trim()).filter(Boolean).join('\\n');
+    const more = r => !!r.querySelector('.cl-row .sm-chev');
     const rows = Array.from(document.querySelectorAll('#cl-body .cl-entry'));
-    const i = rows.findIndex((r, n) => r.classList.contains('cl-has-more') && CHANGELOG[n].body);
+    const i = rows.findIndex((r, n) => more(r) && CHANGELOG[n].body);
     if (i < 0) return { none: true };
     const row = rows[i];
-    row.querySelector('.cl-head-btn').click();
-    const full = row.querySelector('.cl-full');
+    row.querySelector('.cl-row').click();
+    const full = row.querySelector('.cl-body');
     const hitAt = (el) => { const b = el.getBoundingClientRect();
       const hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
       return !!(hit && (hit === el || el.contains(hit))); };
-    const gh = row.querySelector('.cl-github');
+    const gh = row.querySelector('.cl-body .sm-hbtn');
+    const li = Array.from(full.querySelectorAll('li')).map(l => l.textContent);
     return {
       i,
       open: !full.hidden && full.getClientRects().length > 0,
-      text: (row.querySelector('.cl-text') || {}).textContent || '',
-      want: CHANGELOG[i].body,
+      text: lines(li.length ? li.join('\\n') : (row.querySelector('.cl-text') || {}).textContent || ''),
+      want: lines(CHANGELOG[i].body),
       tag: CHANGELOG[i].tag || '',
       github: !!gh,
       githubHit: gh ? (gh.scrollIntoView({ block: 'center' }), hitAt(gh)) : false,
-      collapsed: (() => { row.querySelector('.cl-head-btn').click(); return full.hidden; })(),
-      // A release with neither a note body nor a page to open must offer no caret, or the DM
+      collapsed: (() => { row.querySelector('.cl-row').click(); return full.hidden; })(),
+      // A release with neither a note body nor a page to open must offer no chevron, or the DM
       // presses one and gets an empty box.
-      bareWithCaret: rows.filter((r, n) => r.classList.contains('cl-has-more') &&
-                                           !CHANGELOG[n].body && !CHANGELOG[n].tag).length,
+      bareWithCaret: rows.filter((r, n) => more(r) && !CHANGELOG[n].body && !CHANGELOG[n].tag).length,
     };
   })()`);
   rig.check(!expanded.none, 'no release in the panel has anything under it to open');
@@ -366,17 +399,14 @@ module.exports = async function helpAndAboutFeature(rig) {
             'release ' + expanded.tag + ' has a page on GitHub and the panel offers no way to it');
   rig.check(expanded.collapsed, 'an opened release does not close again, so the list only ever grows');
 
-  // ⚠ THE CARET IS A ::after ON THE ROW, so it has no box to read. Its lane is the row's right
-  // padding, and the check is that the date ends before that lane starts.
   const lane = await dm.evaluate(`(() => {
     const row = document.querySelectorAll('#cl-body .cl-entry')[${expanded.i}];
-    const rowBox = row.getBoundingClientRect();
-    const dateBox = row.querySelector('.cl-date').getBoundingClientRect();
-    return { gap: +(rowBox.right - dateBox.right).toFixed(2) };
+    const dateBox = row.querySelector('.cl-row .d').getBoundingClientRect();
+    const chevBox = row.querySelector('.cl-row .sm-chev').getBoundingClientRect();
+    return { gap: +(chevBox.left - dateBox.right).toFixed(2) };
   })()`);
   rig.check(lane.gap >= 8,
-            'the date runs under the dropdown arrow: it ends ' + lane.gap + 'px from the row edge, ' +
-            'and the arrow needs 8');
+            'the date runs under the chevron: it ends ' + lane.gap + 'px before it, and the chevron needs 8');
 
   // ⚠ DISPATCHED AT THE PANEL, never at the document. The guard is a CAPTURE listener on the
   // document, so an event whose target IS the document skips the capture phase entirely and the
@@ -407,7 +437,9 @@ module.exports = async function helpAndAboutFeature(rig) {
 
   // ⚠ ESCAPE IS DISPATCHED AT THE PANEL, not the document. Its handler stops the event so the
   // legend underneath stays open, which means a document-level keydown never reaches it.
+  // The shortcut list opened first, so there is something underneath to stay open.
   await dm.evaluate(`(() => {
+    if (!__rigShown('${LEGEND}')) document.getElementById('btn-help').click();
     document.getElementById('about-whatsnew').click();
     document.getElementById('cl-modal').dispatchEvent(new KeyboardEvent('keydown',
       { code: 'Escape', key: 'Escape', bubbles: true, cancelable: true }));
@@ -429,23 +461,44 @@ module.exports = async function helpAndAboutFeature(rig) {
     upToast('Version 9.9.9 is ready to install', 'Restart now', () => { globalThis.__rigRestart = 1; }, 0);
     const t = document.getElementById('up-toast');
     const b = t.getBoundingClientRect();
-    const cta = t.querySelector('.up-cta').getBoundingClientRect();
+    const cta = t.querySelector('.sm-hbtn.primary').getBoundingClientRect();
     const hit = document.elementFromPoint(cta.left + cta.width / 2, cta.top + cta.height / 2);
+    const bar = document.getElementById('toolbar-bottom').getBoundingClientRect();
     return {
       shown: b.width > 0 && b.height > 0,
-      msg: t.querySelector('.up-msg').textContent,
+      msg: t.querySelector('.m').textContent,
       ctaHit: !!(hit && t.contains(hit)),
-      // The map fills the window, so a toast over the middle of it would take clicks meant for fog.
-      offMap: b.top < 120 && b.right > document.documentElement.clientWidth - 200,
+      // One stack for every toast, above the toolbar, so none of them lands on a button the DM is about to press.
+      inStack: !!t.closest('#sm-toasts') && b.bottom <= bar.top,
     };
   })()`);
   rig.note('update toast: ' + JSON.stringify(ready));
   rig.check(ready.shown && ready.msg.indexOf('9.9.9') > 0,
             'a ready update puts nothing on screen, so the DM only finds it by opening the help panel');
   rig.check(ready.ctaHit, 'the toast is on screen and its button cannot be clicked');
-  rig.check(ready.offMap, 'the toast sits over the map instead of the corner: ' + JSON.stringify(ready));
+  // RED ON: _upToast moved from the stack onto document.body (updater.js) — 2026-10-03
+  rig.check(ready.inStack, 'the update toast is not in the toast stack above the toolbar: ' + JSON.stringify(ready));
 
-  await dm.evaluate('document.querySelector("#up-toast .up-x").click(); 0');
+  // ⚠ EVERY DIMMER THE DM CAN HAVE UP, one at a time: an update lands whenever it lands, and a
+  // veil over the button swallows the click that installs it.
+  // RED ON: .sm-toasts z-index dropped to 140 (sceneManager.css) — 2026-10-03
+  const overVeils = await dm.evaluate(`(() => {
+    const hitOn = () => { const t = document.getElementById('up-toast');
+      const c = t.querySelector('.sm-hbtn.primary').getBoundingClientRect();
+      const el = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
+      return !!(el && t.contains(el)); };
+    const out = {};
+    openDropdown(); out.library = hitOn(); closeDropdown();
+    bestiarySetOpen(true); out.bestiary = hitOn(); bestiarySetOpen(false);
+    toggleLegend(); out.shortcuts = hitOn(); toggleLegend();
+    openModuleTextModal(); out.moduleText = hitOn(); closeModuleTextModal();
+    showMapProgress('Saving...'); out.progress = hitOn(); hideMapProgress();
+    return out;
+  })()`);
+  rig.check(Object.values(overVeils).every(Boolean),
+            'the update toast cannot be clicked over an open window\'s dimmer: ' + JSON.stringify(overVeils));
+
+  await dm.evaluate('document.querySelector("#up-toast .sm-x").click(); 0');
   rig.check(!(await dm.evaluate('__rigShown("#up-toast")')), 'the toast cannot be dismissed');
 
   // ⚠ A FIRST-EVER RUN MUST SAY NOTHING. The app cannot tell "freshly installed" from "just
@@ -470,14 +523,14 @@ module.exports = async function helpAndAboutFeature(rig) {
   await dm.waitFor('__rigShown("#up-toast")', 10000, 'the toast that follows an update');
   const installed = await dm.evaluate(`(() => {
     const t = document.getElementById('up-toast');
-    return { msg: t.querySelector('.up-msg').textContent, cta: t.querySelector('.up-cta').textContent };
+    return { msg: t.querySelector('.m').textContent, cta: t.querySelector('.sm-hbtn.primary').textContent };
   })()`);
   rig.note('after update: ' + JSON.stringify(installed));
   rig.check(installed.msg === 'Updated to ' + pkgVersion,
             'the toast after an update says ' + JSON.stringify(installed.msg) + ' on a ' +
             pkgVersion + ' build');
 
-  await dm.evaluate('document.querySelector("#up-toast .up-cta").click(); 0');
+  await dm.evaluate('document.querySelector("#up-toast .sm-hbtn.primary").click(); 0');
   try { await dm.waitFor('__rigShown("#cl-modal")', 10000, 'What\'s new to open from the toast'); } catch (_) {}
   rig.check(await dm.evaluate('__rigShown("#cl-modal")'),
             'the toast offers What\'s new and pressing it opens nothing, so the DM is told a ' +
@@ -495,7 +548,7 @@ module.exports = async function helpAndAboutFeature(rig) {
     const el = (s) => document.querySelector(s);
     const vis = ${SHOWN};
     return { helpThere: !!el('#btn-help'), helpShown: vis('#btn-help'),
-             cornerShown: vis('#help-corner'),
+             cornerShown: vis('#dock'),
              panelShown: vis('${LEGEND}'), aboutText: ((el('#legend-about') || {}).innerText || '').trim() };
   })()`);
   rig.check(!tv.helpShown && !tv.cornerShown,

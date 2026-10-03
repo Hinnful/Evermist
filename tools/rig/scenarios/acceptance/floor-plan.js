@@ -27,6 +27,8 @@
 //   K. Draw Rooms also places the doorways: an opening two rooms share becomes a door, an opening
 //      on an outside wall does not, pressing it twice stacks nothing, the doors are saved with the
 //      scene, and the notch reaches the Player.
+//   L. The floor plan row in Sources loads a plan picked by hand onto the open scene, offers it
+//      as a dropped one is offered, and then names its room count. A file that is not a plan says so and changes nothing.
 //
 // ⚠ THE DISK LOOKUP IS STUBBED, AND NOTHING ELSE IS. DOM.setFileInputFiles does not populate a
 // file input in an Electron renderer, so an import has to go through a File built in-page — and
@@ -130,7 +132,7 @@ module.exports = async function floorPlanFeature(rig) {
     selected: selectedPolygonId,
     undoDepth: undoStack.length,
     notice: (() => { const n = document.getElementById('fp-notice');
-                     return !!n && n.style.display === 'flex'; })(),
+                     return !!n && n.style.display !== 'none'; })(),
     noticeText: (document.getElementById('fp-notice-msg') || {}).textContent || '',
     dialog: (() => { const a = document.getElementById('cd-anchor');
                      return !!a && a.style.display === 'flex'; })(),
@@ -216,6 +218,31 @@ module.exports = async function floorPlanFeature(rig) {
   rig.check(!bare.notice, 'the floor-plan notice appeared for a map with no plan');
   rig.check(await storedSize(noPlan, 70) === 70, 'the plan-less scene stored the wrong grid');
 
+  // ── L. A plan picked by hand ──────────────────────────────────────────────
+  // RED ON: loadPlanFile gated off in the plan input's change handler (toolbar.js) — 2026-10-02
+  // ⚠ THE PICKER'S OWN change HANDLER, through a real FileList: DOM.setFileInputFiles fills
+  // nothing in an Electron renderer (rig skill).
+  const pick = (name, text) => dm.evaluate('(() => { const dt = new DataTransfer();' +
+    ' dt.items.add(new File([' + text + '], ' + JSON.stringify(name) + '));' +
+    ' const i = document.getElementById("cp-plan-input"); i.files = dt.files;' +
+    ' i.dispatchEvent(new Event("change")); return 0; })()');
+  rig.check(!(await dm.evaluate('document.getElementById("cp-src-plan").disabled')),
+            'L: the floor plan row is not offered as a button on an open scene');
+  await pick('notes.dd2vtt', JSON.stringify('not a floor plan'));
+  await lib.settle(dm, 'document.getElementById("cd-anchor") && document.getElementById("cd-anchor").style.display === "flex"', 8000);
+  const junk = await state();
+  rig.check(junk.dialog && junk.dialogTitle === 'That file is not a floor plan' && !junk.planBtn &&
+            !(await dm.evaluate('!!currentScene.floorPlan')),
+            'L: a file that is not a plan did not say so, or it changed the scene: ' + JSON.stringify(junk));
+  await dm.evaluate('document.getElementById("cd-ok").click(); 0');
+  await pick('Bare Field.dd2vtt', '__rigTwoRooms');
+  await lib.settle(dm, '!!document.getElementById("fp-notice") && document.getElementById("fp-notice").style.display !== "none"', 8000);
+  const loaded = await state();
+  rig.check(loaded.notice && loaded.noticeText.indexOf('2 rooms') !== -1 && loaded.planBtn && loaded.rooms === 0 &&
+            await dm.evaluate('document.querySelector("#cp-src-plan .nm").textContent') === 'Floor plan · 2 rooms',
+            'L: a plan picked by hand was not loaded onto the scene and offered: ' + JSON.stringify(loaded));
+  await dm.evaluate('hideFloorPlanNotice(); 0');
+
   // ── E. The offer is a notice, not a dialog ────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('globalThis.__rigPlanText = globalThis.__rigTwoRooms; 0');
@@ -241,14 +268,17 @@ module.exports = async function floorPlanFeature(rig) {
     if (!n) return { err: 'no notice' };
     const s = getComputedStyle(n);
     return {
-      ctas: n.querySelectorAll('.fp-cta').length,
-      closes: n.querySelectorAll('.fp-x').length,
+      ctas: n.querySelectorAll('.sm-hbtn.primary').length,
+      closes: n.querySelectorAll('.sm-x').length,
+      inStack: !!n.closest('#sm-toasts'),
       // A backdrop is a full-viewport fixed layer. The notice must not be one.
       covers: s.position === 'fixed' && n.clientWidth >= window.innerWidth * 0.95,
     };
   })()`);
   rig.check(noticeShape.ctas === 1 && noticeShape.closes === 1,
             'the notice does not carry exactly one CTA and one close: ' + JSON.stringify(noticeShape));
+  // RED ON: the notice moved from the stack onto document.body (floorPlan.js) — 2026-10-03
+  rig.check(noticeShape.inStack, 'the floor-plan notice is not in the toast stack above the toolbar');
   rig.check(noticeShape.covers === false,
             'the notice covers the viewport like a backdrop, so the map underneath cannot be ' +
             'panned or zoomed');

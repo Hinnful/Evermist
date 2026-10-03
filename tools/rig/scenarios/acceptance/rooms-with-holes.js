@@ -350,8 +350,10 @@ module.exports = async function roomsWithHoles(rig) {
                     '__rigDrag(' + FX.x1 + ',' + FX.y1 + ',' + FX.x2 + ',' + FX.y2 + ');' +
                     'setShape("select"); 0');
   const fxId = await dm.evaluate('effects[effects.length - 1].id');
-  rig.check(await dm.evaluate('(() => { const b = document.getElementById("btn-op-trim");' +
-                              ' return !!b && getComputedStyle(b).display !== "none"; })()'),
+  rig.check(await dm.evaluate('(() => { document.querySelector("[data-chev=ops]").click();' +
+                              ' const row = document.querySelector("#tb-dd [data-dd=btn-op-trim]");' +
+                              ' const ok = !!row && !row.disabled; document.querySelector("[data-chev=ops]").click();' +
+                              ' return ok; })()'),
             'Cut out is not on the bar in Effects mode, so no DM gesture can put a hole in an ' +
             'effect and everything below is script-only');
   await dm.evaluate('document.getElementById("btn-op-trim").click(); setShape("rect");' +

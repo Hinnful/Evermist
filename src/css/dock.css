@@ -1,0 +1,177 @@
+/* dock.css — the dock on the right edge: the rail, the pane beside it, and the grey skin every
+   control inside it wears. Loads after the stylesheets whose controls it reskins. */
+  #dock {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 100;
+    zoom: var(--ui-zoom, 1.2);
+    display: flex; flex-direction: row-reverse;
+    background: var(--g-bg); border-left: 1px solid var(--g-line);
+    color: var(--g-text);
+  }
+  body.player-mode #dock, body.pane-mode #dock { display: none !important; }
+
+  /* ===== THE RAIL ===== */
+  .dk-rail {
+    width: 44px; flex: none; padding: 8px 0;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    border-left: 1px solid transparent;   /* always there, or opening the pane widens the rail and shifts the toolbar */
+  }
+  #dock.open .dk-rail { border-left-color: var(--g-line); }
+  .rail-btn {
+    position: relative; width: 32px; height: 32px; flex: none; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 0; border-radius: 7px; background: transparent; color: #8b9098; cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+  .rail-btn:hover:not(.active):not(.off) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .rail-btn.active, .rail-btn.active:hover { background: var(--b-tint); color: var(--b-icon); }
+  .rail-btn.off { color: #3f4349; cursor: default; }
+  .rail-btn.win::after {
+    content: ''; position: absolute; top: 3px; right: 3px;
+    width: 5px; height: 5px; border-radius: 50%; background: var(--b-icon);
+  }
+  /* The fight table is a free window: open, it wears the dot alone, never the tab's tint. */
+  #btn-combat.active:not(:hover) { background: transparent; color: #8b9098; }
+  .rail-sep { width: 18px; height: 1px; background: rgba(255, 255, 255, 0.08); margin: 4px 0; }
+  .rail-end { margin-top: auto; }
+
+  /* ===== THE PANE ===== */
+  .dk-pw { position: relative; width: var(--dock-pane-w, 230px); display: flex; flex-direction: column; min-height: 0; }
+  #dock:not(.open) .dk-pw { display: none; }
+  .dk-sec { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .dk-sec[hidden] { display: none; }
+  /* The inner edge you drag to resize: a strip straddling the border, wider than it looks. */
+  #dock-edge { position: absolute; left: -3px; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 2; }
+  #dock-edge:hover, #dock.resizing #dock-edge { background: var(--b-tint); }
+
+  .dk-head {
+    height: 42px; min-height: 42px; flex: none; padding: 0 8px 0 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    border-bottom: 1px solid var(--g-line);
+  }
+  .dk-head .cp-adv-title { font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text);
+                           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dk-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+  .dk-scroll::-webkit-scrollbar { width: 0; }
+
+  /* ===== THE SKIN: the app's stock controls, grey and borderless inside the dock ===== */
+  .dk-head .cp-row { gap: 2px; }
+  .dk-scene { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .dk-live { width: 7px; height: 7px; border-radius: 50%; flex: none; background: #4a4d54; }
+  .dk-live.on { background: var(--b-icon); box-shadow: 0 0 0 3px rgba(110, 168, 255, 0.16); }
+
+  #dock .cp-group { padding: 10px 10px 14px 14px; gap: 8px; border-bottom: 1px solid var(--g-line); }
+  #dock .cp-label { font: 600 12px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0;
+                    text-transform: none; color: var(--g-text); }
+  .dk-sh { display: flex; align-items: center; justify-content: space-between; min-height: 24px; margin-right: -2px; }
+  .dk-blk { display: flex; flex-direction: column; gap: 6px; }
+  .dk-sub { font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
+  .dk-secbody { display: flex; flex-direction: column; gap: 8px; }
+  .dk-dim > * { opacity: 0.4; }
+
+  #dock .cp-adv-close, .dk-pop .cp-adv-close { width: 24px; height: 24px; border-radius: 5px; color: #b9bec6; }
+  #dock .cp-adv-close:hover, .dk-pop .cp-adv-close:hover { background: var(--g-field); color: var(--g-text); }
+  #dock .cp-adv-close.active, #dock .cp-adv-close.active:hover { background: var(--b-tint); color: var(--b-icon); }
+  #dock .cp-adv-close:disabled { opacity: 0.35; cursor: default; background: transparent; }
+
+  #dock .cp-btn, .dk-pop .cp-btn { height: 26px; border: 0; border-radius: 5px; background: var(--g-field);
+                                   color: #d5d8dd; font: 500 11.5px/1 system-ui, -apple-system, sans-serif; }
+  #dock .cp-btn:hover, .dk-pop .cp-btn:hover { background: var(--g-hover); }
+  #dock .cp-btn-live { gap: 7px; }
+  #dock .cp-btn-live.live { background: var(--b-tint); color: var(--b-icon); }
+  #dock .cp-btnrow { gap: 6px; }
+
+  #dock .cp-tabs, #dock .cp-seg { padding: 2px; gap: 2px; border: 0; border-radius: 5px; background: var(--g-field); }
+  #dock .cp-segtab { height: 22px; border: 0; border-radius: 4px; color: var(--g-dim);
+                     font: 500 11px/1 system-ui, -apple-system, sans-serif; }
+  #dock .cp-segtab.active { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+  #dock .cp-seg { align-self: stretch; display: flex; }
+  #dock .cp-seg .cp-iconbtn { width: auto; flex: 1; height: 22px; border-radius: 4px; color: var(--g-dim); }
+  #dock .cp-seg .cp-iconbtn.active { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+
+  #dock .cp-field, .dk-pop .cp-field { height: 26px; border: 0; border-radius: 5px; background: var(--g-field); padding: 0 8px; gap: 7px; }
+  #dock .dk-colour { cursor: pointer; }
+  #dock .cp-field:hover, #dock .dk-colour.open { background: var(--g-hover); }
+  #dock .cp-swatch, .dk-pop .cp-swatch { width: 14px; height: 14px; border-radius: 3px; }
+  #dock .cp-hex, #dock .cp-alphanum, #dock .cp-hash { font: 500 11px/1 system-ui, -apple-system, sans-serif; }
+  #dock .cp-hex { flex: 1; }
+  #dock .cp-hint { color: var(--g-dim); }
+
+  #dock .cp-slider-fill, .dk-pop .cp-slider-fill, #anim-advanced-panel .cp-slider-fill { background: var(--g-text); }
+  #dock .cp-slider-track, .dk-pop .cp-slider-track, #anim-advanced-panel .cp-slider-track { background: #3a3c42; }
+  #dock .cp-chip, #anim-advanced-panel .cp-chip { height: 24px; border: 0; border-radius: 5px; background: var(--g-field);
+                                                font: 500 11px/1 system-ui, -apple-system, sans-serif; }
+  #dock .cp-advrow { grid-template-columns: max-content 1fr 42px; }
+  #dock input.cp-chip-num { width: 42px; }
+
+  /* A row of fields side by side; the row's own action is a 24px icon at its right end. */
+  .dk-r { display: flex; align-items: center; gap: 6px; }
+  .dk-r > :not(.cp-adv-close):not(.dk-eye) { flex: 1; min-width: 0; }
+  .dk-r.hidden > :not(.dk-eye) { opacity: 0.4; }
+
+  /* The eye means shown/hidden. A closed one is a switch that is on, so it wears the tint. */
+  .dk-eye { width: 24px; height: 24px; flex: none; padding: 0; display: flex; align-items: center; justify-content: center;
+            border: 0; border-radius: 5px; background: transparent; color: #9aa0aa; cursor: pointer; }
+  .dk-eye:hover { background: var(--g-field); color: var(--g-text); }
+  .dk-eye .ico-off, .dk-eye.off .ico-on { display: none; }
+  .dk-eye.off .ico-off { display: block; }
+  .dk-eye.off, .dk-eye.off:hover { background: var(--b-tint); color: var(--b-icon); }
+
+  /* A number you scrub by dragging its icon, Figma's X / Y / W / H. */
+  .dk-num { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px 0 0; border-radius: 5px; background: var(--g-field); }
+  .dk-num:hover, .dk-num:focus-within { background: var(--g-hover); }
+  .dk-num .pre { width: 24px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center;
+                 color: var(--g-dim); cursor: ew-resize; }
+  /* ⚠ width: 0, or the input's intrinsic width overflows the field (see .cp-chip-pre input). */
+  .dk-num input { flex: 1; width: 0; min-width: 0; border: 0; outline: none; background: none; color: #d5d8dd;
+                  font: 500 11.5px/1 system-ui, sans-serif; }
+  .dk-num .u { color: var(--g-dim); font: 400 11px/1 system-ui, sans-serif; }
+
+  /* A dropdown field: the movement preset. */
+  .dk-dd { display: flex; align-items: center; justify-content: space-between; height: 26px; padding: 0 8px;
+           border: 0; border-radius: 5px; background: var(--g-field); color: #d5d8dd;
+           font: 500 11.5px/1 system-ui, sans-serif; cursor: pointer; text-align: left; }
+  .dk-dd:hover, .dk-dd.open { background: var(--g-hover); }
+  .dk-dd .car { font-size: 8px; color: var(--g-dim); }
+
+  /* A source: what is loaded, in a field, with its one action at the right. */
+  .dk-src { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px; border-radius: 5px;
+            background: var(--g-field); min-width: 0; border: 0; text-align: left; font: inherit; cursor: pointer; }
+  .dk-src:hover:not(:disabled) { background: var(--g-hover); }
+  .dk-src:disabled { cursor: default; }
+  .dk-src .ic { color: var(--g-dim); display: flex; flex: none; }
+  .dk-src .nm { color: #d5d8dd; font: 500 11.5px/1 system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dk-src .mt { margin-left: auto; color: var(--g-dim); font: 400 11px/1 system-ui, sans-serif; white-space: nowrap; flex: none; }
+  .dk-src.none .nm { color: var(--g-dim); font-weight: 400; }
+
+  /* ===== POP-OUTS: beside the dock, level with their row ===== */
+  .dk-pop, #anim-advanced-panel {
+    position: fixed; z-index: 110; zoom: var(--ui-zoom, 1.2); width: 250px; left: 0; top: 0;
+    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
+    box-shadow: var(--panel-shadow); overflow: hidden; animation: cpAdvIn .15s ease;
+  }
+  .dk-pop[hidden], #anim-advanced-panel[hidden] { display: none; }
+  .dk-pop .cp-adv-title, #anim-advanced-panel .cp-adv-title { font: 600 12px/1 system-ui, sans-serif; color: var(--g-text); }
+  .dk-pop .cp-sv-canvas { height: 130px; }
+  .dk-pop.dk-small { width: 190px; }
+  .dk-menu { padding: 4px; }
+  .dk-menu button { display: flex; align-items: center; gap: 8px; width: 100%; height: 26px; padding: 0 8px; border: 0;
+                    border-radius: 4px; background: none; color: #d5d8dd; font: 500 11.5px/1 system-ui, sans-serif;
+                    cursor: pointer; text-align: left; }
+  .dk-menu button:hover { background: var(--b-solid); color: #fff; }
+  .dk-menu button::before { content: ''; width: 12px; flex: none; text-align: center; }
+  .dk-menu button.on::before { content: '\2713'; }
+  .dk-menu .sep { height: 1px; background: var(--g-line); margin: 4px 2px 4px 22px; }
+  .dk-pop.dk-drop { width: auto; }
+
+  /* ===== THE MINIMAP: bottom left, square, an opaque frame ===== */
+  #minimap-panel {
+    position: fixed; left: 16px; bottom: 16px; z-index: 100; zoom: var(--ui-zoom, 1.2);
+    width: 168px; aspect-ratio: 1; border-radius: 8px;
+    border: 1px solid #3a3c42; box-shadow: none;
+  }
+  #minimap-panel .cp-ovbtn { width: 24px; height: 24px; top: 5px; right: 5px; border: 0; border-radius: 6px;
+                             box-shadow: none; background: var(--g-bg); color: #b9bec6; }
+  #minimap-panel .cp-ovbtn.left { left: 5px; right: auto; }
+  #minimap-panel .cp-ovbtn:hover { background: var(--g-hover); color: var(--g-text); }
+  #minimap-panel .cp-ovbtn.active { background: #1b2a3c; color: var(--b-icon); }
+  body.pane-mode #minimap-panel { display: none !important; }

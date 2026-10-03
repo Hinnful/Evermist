@@ -105,7 +105,7 @@ repo root. Docs in `docs/`; settings, hooks and skills in `.claude/`, skills as
 - Module map, main-process table, load order → `.claude/rules/modules.md`, loaded with app code.
 - Stylesheets and the `src/css/` cascade → `src/css/CLAUDE.md`, loaded when you touch a file
   in that folder.
-- Room card, room labels, half-shroud, control-panel button identity → the `dm-ui` skill.
+- The dock, Room tab, room labels, half-shroud, button identity → the `dm-ui` skill.
 - Module text, parser rules, file loading, PDFs, packaging traps, import panel → the
   `module-text` skill.
 - UVTT coordinates, winding-not-area, what the room import refuses → the `floor-plan` skill.

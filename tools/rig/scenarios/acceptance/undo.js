@@ -25,6 +25,8 @@
 //   I. A per-corner radius comes back on Ctrl+Z, the second one set on a room included.
 //   J. A field the DM has looked away from does not keep their Ctrl+Z. A click anywhere
 //      outside it hands focus back, not only a click on the map.
+//   K. Grid and fog colour changes are undoable: one Ctrl+Z takes back one whole scrub, Ctrl+Y
+//      puts it back, the fields follow, and the hint says the step happened.
 //
 // The byte-arithmetic of eviction is unit-tested (test/, evictUndoStack and evictUndoPair). What
 // is here is the behaviour those functions serve, driven through the real keyboard.
@@ -474,4 +476,26 @@ module.exports = async function undoFeature(rig) {
               'Ctrl+Z did nothing after the DM clicked away from the notes field, which is the ' +
               'undo that was reported dead at the table: ' + JSON.stringify(after));
   }
+
+  // ── K. Grid and fog colour ride the history ───────────────────────────────
+  // RED ON: noteSettingsChange gated off in commitGridChange (grid.js) — 2026-10-02
+  await dm.evaluate('document.activeElement && document.activeElement.blur(); 0');
+  const size0 = await dm.evaluate('gridSize');
+  for (const v of [130, 140, 150]) await lib.fire(dm, 'grid-size-num', v, 'input');
+  rig.check(await dm.evaluate('gridSize') === 150, 'K: the cell size field did not set the grid: ' + await dm.evaluate('gridSize'));
+  await undoKey();
+  rig.check(await dm.evaluate('gridSize') === size0 && +(await dm.evaluate('document.getElementById("grid-size-num").value')) === size0,
+            'K: one Ctrl+Z did not take back the whole scrub of the cell size: ' + await dm.evaluate('gridSize'));
+  rig.check(await dm.evaluate('document.getElementById("key-hint").textContent') === 'Undone',
+            'K: a successful undo said nothing, so a change with nothing on screen reads as a dead key');
+  await redoKey();
+  rig.check(await dm.evaluate('gridSize') === 150, 'K: Ctrl+Y did not put the cell size back');
+  await undoKey();
+  const hex0 = await dm.evaluate('fogPickedHex');
+  await lib.fire(dm, 'fog-color', '#aa2233', 'input');
+  rig.check(await dm.evaluate('fogPickedHex') === '#aa2233', 'K: the fog colour field did not set the fog');
+  await undoKey();
+  rig.check(await dm.evaluate('fogPickedHex') === hex0 &&
+            (await dm.evaluate('document.getElementById("fog-color").value')).toLowerCase() === hex0.toLowerCase(),
+            'K: Ctrl+Z did not take back the fog colour: ' + await dm.evaluate('fogPickedHex'));
 };

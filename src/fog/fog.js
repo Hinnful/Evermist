@@ -53,6 +53,7 @@ let fogFeatherRadius = FOG_FEATHER_RADIUS; // overridable at runtime via UI slid
 // never per-room or per-scene: "half" is one state with one density.
 let fogHalfAlpha = 0.5;
 const FOG_HALF_ALPHA_KEY = 'evermist.fogHalfAlpha';
+const FOG_FEATHER_KEY = 'evermist.fogFeather';
 function getScaledBlurRadius()    { return scaledRadius(FOG_BLUR_RADIUS,  getFogSizeScale()); }
 function getScaledFeatherRadius() { return scaledRadius(fogFeatherRadius, getFogSizeScale()); }
 

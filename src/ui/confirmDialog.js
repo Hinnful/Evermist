@@ -37,11 +37,12 @@ function _cdShowConfirm(o) {
   _cdBuild();
   _cdEl('cd-title').textContent   = o.title   || 'Are you sure?';
   _cdEl('cd-msg').textContent     = o.message || '';
-  _cdEl('cd-ok').textContent      = o.confirmLabel || 'OK';
+  _cdEl('cd-ok').innerHTML = (o.danger ? uiIcon('trash') : '') + '<span></span>';
+  _cdEl('cd-ok').lastChild.textContent = o.confirmLabel || 'OK';
   _cdEl('cd-cancel').textContent  = o.cancelLabel  || 'Cancel';
   // Danger is about the ACTION, not the dialog: a question is not destructive, the
   // button that answers it yes might be.
-  _cdEl('cd-ok').className = 'cp-btn ' + (o.danger ? 'cp-btn-danger' : 'cp-btn-outline');
+  _cdEl('cd-ok').className = 'sm-hbtn ' + (o.danger ? 'danger' : 'primary');
   _cdOnConfirm = typeof o.onConfirm === 'function' ? o.onConfirm : null;
   _cdOnCancel  = typeof o.onCancel  === 'function' ? o.onCancel  : null;
 
@@ -62,7 +63,7 @@ function _cdShowMessage(o) {
   _cdEl('cd-title').textContent = o.title   || 'Something went wrong';
   _cdEl('cd-msg').textContent   = o.message || '';
   _cdEl('cd-ok').textContent    = o.buttonLabel || 'OK';
-  _cdEl('cd-ok').className      = 'cp-btn cp-btn-outline';
+  _cdEl('cd-ok').className      = 'sm-hbtn primary';
   // Both slots hold the same handler: with nothing to decline, every way out is the same way out.
   const fn = typeof o.onClose === 'function' ? o.onClose : null;
   _cdOnConfirm = _cdOnCancel = fn;
@@ -95,12 +96,11 @@ function _cdBuild() {
   root.style.display = 'none';
   root.innerHTML =
     '<div id="cd-backdrop"></div>' +
-    '<div id="cd-modal" tabindex="-1" role="alertdialog" aria-modal="true">' +
-      '<div class="cp-adv-head"><span class="cp-adv-title" id="cd-title"></span></div>' +
-      '<div class="cp-adv-body"><div class="cd-msg" id="cd-msg"></div></div>' +
-      '<div class="cd-foot">' +
-        '<button type="button" class="cp-btn cp-btn-outline" id="cd-cancel"></button>' +
-        '<button type="button" class="cp-btn cp-btn-outline" id="cd-ok"></button>' +
+    '<div id="cd-modal" class="sm-win w-s" tabindex="-1" role="alertdialog" aria-modal="true">' +
+      '<div class="sm-wbody cd-body"><div class="sm-wtitle" id="cd-title"></div><div class="cd-msg" id="cd-msg"></div></div>' +
+      '<div class="sm-wfoot cd-foot">' +
+        '<button type="button" class="sm-hbtn" id="cd-cancel"></button>' +
+        '<button type="button" class="sm-hbtn primary" id="cd-ok"></button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(root);
@@ -120,6 +120,32 @@ function _cdBuild() {
   });
 }
 
+// ─── The toast stack ──────────────────────────────────────────────────────────
+// Every toast lives in #sm-toasts, one style and one place. A toast is an icon, its message, and
+// at most an action and a close.
+function toastEl(id, icon, solo) {
+  const el = document.createElement('div');
+  el.id = id;
+  el.className = 'sm-toast' + (solo ? ' solo' : '');
+  el.style.display = 'none';
+  el.innerHTML = uiIcon(icon, 16) + '<span class="m"></span>';
+  el.addEventListener('mousedown', e => e.stopPropagation());
+  document.getElementById('sm-toasts').appendChild(el);
+  return el;
+}
+
+// The stack sits just above whatever is on screen at the foot of the map, centred on the toolbar:
+// the row over it when that shows, the toolbar alone, or the window's foot in a column.
+function showToast(el) {
+  el.style.display = '';
+  const st = document.getElementById('sm-toasts');
+  const boxes = ['context-row', 'toolbar-bottom'].map(id => document.getElementById(id))
+    .filter(b => b && b.getClientRects().length && getComputedStyle(b).visibility !== 'hidden')
+    .map(b => b.getBoundingClientRect());
+  st.style.bottom = (boxes.length ? innerHeight - Math.min(...boxes.map(r => r.top)) + 12 : 24) + 'px';
+  st.style.left = boxes.length ? (boxes[boxes.length - 1].left + boxes[boxes.length - 1].right) / 2 + 'px' : '';
+}
+
 // ─── Notice ───────────────────────────────────────────────────────────────────
 // A statement that needs no answer at all, for something the app did that the DM would otherwise
 // not see. It clears itself, because a repair comes in runs and a button on each one is friction.
@@ -129,18 +155,13 @@ const NOTICE_MS = 4000;
 
 function noticeToast(text) {
   if (!text) return;
-  if (!_noticeEl) {
-    _noticeEl = document.createElement('div');
-    _noticeEl.id = 'notice-toast';
-    document.body.appendChild(_noticeEl);
-    _noticeEl.addEventListener('mousedown', e => e.stopPropagation());
-  }
-  _noticeEl.textContent = text;
-  _noticeEl.classList.add('show');
+  if (!_noticeEl) _noticeEl = toastEl('notice-toast', 'info', true);
+  _noticeEl.querySelector('.m').textContent = text;
+  showToast(_noticeEl);
   if (_noticeTimer) clearTimeout(_noticeTimer);
-  _noticeTimer = setTimeout(() => { _noticeEl.classList.remove('show'); _noticeTimer = 0; }, NOTICE_MS);
+  _noticeTimer = setTimeout(() => { _noticeEl.style.display = 'none'; _noticeTimer = 0; }, NOTICE_MS);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { confirmDialog, messageDialog, noticeToast };
+  module.exports = { confirmDialog, messageDialog, noticeToast, toastEl, showToast };
 }

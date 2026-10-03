@@ -426,7 +426,7 @@ module.exports = async function effectsFeature(rig) {
     return best;
   };
 
-  for (const mode of ['square', 'hex-flat', 'hex-pointy']) {
+  for (const mode of ['square', 'hex-pointy']) {
     await dm.evaluate('gridMode = ' + JSON.stringify(mode) + '; gridDirty = true; scheduleRender(); 0');
     await lib.settle(dm, '!gridDirty', 8000);
     const inside = await emberPeak();

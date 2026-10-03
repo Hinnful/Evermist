@@ -1,9 +1,8 @@
 'use strict';
 
-// about.js — the About block: app mark, wordmark, version, repo.
-//
-// The FOOTER of the shortcut legend, not a box of its own: the app has one "what is this" button.
-// Builds its own DOM at init, because CLAUDE.md keeps feature logic out of index.html.
+// about.js — the About block at the foot of Settings: app mark, wordmark, version, repo, and the
+// language switch above it. Builds its own DOM at init, because CLAUDE.md keeps feature logic out
+// of index.html.
 
 const ABOUT_MARK_SVG =
   '<svg class="about-mark" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
@@ -63,7 +62,7 @@ function initAbout() {
     '</div>';
 
   document.getElementById('about-whatsnew').addEventListener('click', openChangelog);
-  slot.querySelector('.about-text').appendChild(buildLanguageSwitch());
+  document.getElementById('settings-lang').appendChild(buildLanguageSwitch());
 
   // ⚠ The version comes from package.json through main, never a literal here, which goes stale on
   // the next bump. With no electronAPI the line hides rather than showing a placeholder.

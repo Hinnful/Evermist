@@ -22,3 +22,22 @@ describe('lineWidthForZoom', () => {
     assert.equal(lineWidthForZoom(1, 0.8), 0.8);
   });
 });
+
+const { normalizeGridMode } = require('../src/render/grid.js');
+
+describe('normalizeGridMode', () => {
+  it('turns a flat-top hex grid into a pointy-top one', () => {
+    assert.equal(normalizeGridMode('hex-flat', 'square'), 'hex-pointy');
+  });
+
+  it('keeps square and pointy-top as they are', () => {
+    assert.equal(normalizeGridMode('square', 'hex-pointy'), 'square');
+    assert.equal(normalizeGridMode('hex-pointy', 'square'), 'hex-pointy');
+  });
+
+  it('keeps the current mode when the saved one is missing or unknown', () => {
+    assert.equal(normalizeGridMode(undefined, 'hex-pointy'), 'hex-pointy');
+    assert.equal(normalizeGridMode(null, 'square'), 'square');
+    assert.equal(normalizeGridMode('triangle', 'square'), 'square');
+  });
+});

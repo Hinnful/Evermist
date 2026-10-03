@@ -79,16 +79,17 @@ function loadMapFromFile(file, onMapLoaded, onFail) {
   img.src = url;
 }
 
-// A batch import sets this to "Map 3 of 10 - Watcherhouse" and every stage label that follows
-// carries it, so the DM can see where the run is without the loop having to hold the overlay up
-// across ten maps — each map still raises and lowers its own, which is what keeps the overlay from
-// ever sitting above a dialog.
-let _mapProgressPrefix = '';
-function setMapProgressPrefix(prefix) { _mapProgressPrefix = prefix || ''; }
+// A batch import sets the count ("3 of 10") and the file, and every stage that follows shows them,
+// so the DM can see where the run is without the loop having to hold the overlay up across ten
+// maps — each map still raises and lowers its own, which is what keeps the overlay from ever
+// sitting above a dialog.
+let _mapProgressCount = '', _mapProgressFile = '';
+function setMapProgressRun(count, file) { _mapProgressCount = count || ''; _mapProgressFile = file || ''; }
 
 function showMapProgress(label) {
-  document.getElementById('map-progress-label').textContent =
-    (_mapProgressPrefix ? _mapProgressPrefix + ' - ' : '') + t(label || 'Saving...');
+  document.getElementById('map-progress-label').textContent = t(label || 'Saving...');
+  document.getElementById('map-progress-count').textContent = _mapProgressCount;
+  document.getElementById('map-progress-file').textContent = _mapProgressFile;
   document.getElementById('map-progress-bar').style.width = '0%';
   document.getElementById('map-progress').style.display = 'flex';
 }

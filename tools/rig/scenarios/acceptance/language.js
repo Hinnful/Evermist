@@ -18,10 +18,11 @@
 //   E. A count reads in the right Russian plural form.
 //   F. The DM's own text stays as typed, even when it is a word the dictionary knows: a fight
 //      name, a monster's name in its stat block, the Attacks line typed into the fight table,
-//      and a scene name on the Scenes button.
+//      and a scene name in Scene control's header.
 //   G. Typing into an editable cell saves exactly what was typed.
 //   H. Text with no Russian entry shows its English and breaks nothing.
 //   I. Picking English and restarting brings back the English readings from A, byte for byte.
+//   J. In Russian, no label in any dock pane clips at the default dock width.
 //
 // ⚠ THE PASS RUNS ON A MUTATION OBSERVER, which answers after the change that fed it. Every read
 // after an action waits a tick first, or it reads the English the observer has not reached yet.
@@ -35,7 +36,7 @@ const TICK = 'new Promise(r => setTimeout(r, 30))';
 
 // The fixed readings A takes and I compares against.
 const SAMPLES = `(() => ({
-  tab: document.querySelector('#cp-tabbar [data-tab="fog"]').textContent.trim(),
+  tab: document.querySelector('#cp-sec-fog .cp-label').textContent.trim(),
   help: document.getElementById('btn-help').title,
   golive: document.getElementById('cp-player-golive').title,
   gridReset: document.getElementById('cp-grid-reset').title,
@@ -53,7 +54,7 @@ module.exports = async function language(rig) {
   rig.note('navigator.language under the rig: ' + navLang);
   const english = await dm.evaluate(SAMPLES);
   // RED ON: the no-choice default set to 'ru' in i18n.js - 2026-09-29
-  rig.check(english.tab === 'Fog' && english.help === 'Shortcuts and about (?)' && english.lang === 'en',
+  rig.check(english.tab === 'Fog' && english.help === 'Keyboard shortcuts (?)' && english.lang === 'en',
     'A: a run with nothing stored did not come up in English: ' + JSON.stringify(english));
   rig.check(await dm.evaluate('document.querySelector(".about-lang .active").dataset.lang === "en"'),
     'A: the About switch does not show English picked');
@@ -86,7 +87,7 @@ module.exports = async function language(rig) {
   await dm.evaluate(TICK);
   const russian = await dm.evaluate(SAMPLES);
   // RED ON: the pass and t() forced to English in i18n.js - 2026-09-29
-  rig.check(russian.tab === 'Туман' && russian.help === 'Горячие клавиши и о программе (?)' && russian.lang === 'ru',
+  rig.check(russian.tab === 'Туман' && russian.help === 'Горячие клавиши (?)' && russian.lang === 'ru',
     'C: after the restart the screen is not Russian: ' + JSON.stringify(russian));
   await rig.player();
   await dm.evaluate('refreshPlayerControlUI(); ' + TICK);
@@ -105,6 +106,29 @@ module.exports = async function language(rig) {
   rig.check(dialog.title === 'Сбросить настройки?' && dialog.msg.startsWith('Тип, размер') && dialog.ok === 'Сбросить',
     'D: the reset dialog is not Russian: ' + JSON.stringify(dialog));
   await dm.evaluate('document.getElementById("cd-cancel").click(); 0');
+
+  // ── J ─────────────────────────────────────────────────────────────────────
+  // RED ON: 'Spell' set back to 'Заклинание' (ru.js) — 2026-10-02
+  // ⚠ WIDTH FOR A ONE-LINE LABEL, HEIGHT TOO FOR A TILE NAME: a name may take two lines there,
+  // and a line-height of 1 overhangs its box by a pixel of descender, which is no clip.
+  const clipped = await dm.evaluate(`(async () => {
+    localStorage.setItem('evermist.dockWidth', '230'); _dockWantW = 230; dockLayout();
+    const SEL = '.cp-label, .dk-sub, .cp-btn, .cp-segtab, .dk-src .nm, .dk-dd span, .cp-advlbl, ' +
+                '.dk-addpic span, .dk-head .cp-adv-title, .pl-sub span, .sb-name';
+    const out = [];
+    for (const p of ['scene', 'music', 'sounds', 'settings']) {
+      dockOpen(p);
+      await new Promise(r => setTimeout(r, 60));
+      for (const e of document.querySelectorAll('#dock-pane-' + p + ' :is(' + SEL + ')')) {
+        if (!e.offsetParent || e.closest('[data-no-i18n]') && !e.classList.contains('sb-name')) continue;
+        const tall = e.classList.contains('sb-name') && e.scrollHeight > e.clientHeight + 2;
+        if (e.scrollWidth > e.clientWidth + 1 || tall) out.push(p + ': ' + e.textContent.trim());
+      }
+    }
+    dockOpen('scene');
+    return out;
+  })()`);
+  rig.check(clipped.length === 0, 'J: these Russian labels clip at the default dock width: ' + clipped.join(' | '));
 
   // ── E ─────────────────────────────────────────────────────────────────────
   const counts = await dm.evaluate(`(() => {
@@ -125,7 +149,7 @@ module.exports = async function language(rig) {
   rig.check(scene === 'Grid', 'F: the scene named "Grid" reads "' + scene + '" on the Scenes button');
 
   await dm.evaluate('document.getElementById("btn-combat").click(); ' + TICK);
-  await dm.evaluate('document.querySelector("#cb-list [data-add]").click(); ' + TICK);
+  await dm.evaluate('document.getElementById("cb-add").click(); ' + TICK);
   const row = await dm.evaluate('cbState.rows[cbState.rows.length - 1].id');
   await dm.evaluate(`(() => { combatRenameFight(cbState, cbState.openId, 'Poisoned'); cbFightsTitle();
     const r = cbState.rows.find(x => x.id === ${JSON.stringify(row)});

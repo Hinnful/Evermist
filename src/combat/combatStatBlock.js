@@ -67,13 +67,12 @@ function cbOpenStat(row) {
   const el = document.getElementById('cb-stat');
   el.innerHTML = `
     <div class="cb-head" data-drag>
-      ${CB_ICON_GRIP}
       <div class="cp-tabs cb-side-switch">
         <button class="cp-segtab ${row.side === 'enemy' ? 'active' : ''}" data-side="enemy">Enemy</button>
         <button class="cp-segtab ${row.side === 'ally' ? 'active' : ''}" data-side="ally">Ally</button>
       </div>
       <button class="sm-hbtn cb-save" data-save ${row.sbChanged ? '' : 'disabled'}>Save to Bestiary</button>
-      <button class="cb-iconbtn" data-close title="Close">${CB_ICON_X}</button>
+      <button class="cb-iconbtn" data-close title="Close">${uiIcon('x')}</button>
     </div>
     ${cbEditorHtml(cbRowBlock(row))}
     <i class="cb-rs" data-rs="r"></i><i class="cb-rs" data-rs="b"></i><i class="cb-rs" data-rs="br"></i>`;

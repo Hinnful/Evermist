@@ -474,6 +474,7 @@ function mtStore(entries, sourceName) {
   }
   mtEntries = entries;
   mtSourceName = sourceName;
+  refreshRoomsControlUI();
   return { ok: true };
 }
 
@@ -481,6 +482,7 @@ function mtClearStored() {
   try { localStorage.removeItem(MT_KEY); } catch (_) {}
   mtEntries = [];
   mtSourceName = '';
+  refreshRoomsControlUI();
 }
 
 // ─── The backup bridge ────────────────────────────────────────────────────────

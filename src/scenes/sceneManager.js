@@ -25,11 +25,6 @@ let smSelectedIds = new Set();   // ids checked for bulk actions
 let smSearch = '';              // what the find field holds, cleared when the library closes
 let smGroupMenuEl = null;        // the open move-to-group popover, if any
 
-// ── Checkbox / trash glyphs (built once, injected by string) ──────────────────
-const SM_CHECK = '<svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="#8fb6ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5l2 2 4-4"/></svg>';
-const SM_PEN   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2.1 2.1 0 00-3-3L5 17z"/></svg>';
-const SM_TRASH = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
-
 function smIsOpen() {
   const m = document.getElementById('sm-modal');
   return !!m && m.style.display !== 'none';
@@ -40,8 +35,7 @@ function openDropdown() {
   if (!m) return;
   if (typeof doAutoSave === 'function') doAutoSave(); // persist current fog before a possible switch
   m.style.display = '';
-  const dd = document.getElementById('scene-dd');
-  if (dd) dd.classList.add('open');
+  dockRefreshRail();
   renderSceneManager();
   const q = document.getElementById('sm-search');
   if (q) { q.value = smSearch; q.focus(); }
@@ -51,8 +45,7 @@ function closeDropdown() {
   const m = document.getElementById('sm-modal');
   if (!m) return;
   m.style.display = 'none';
-  const dd = document.getElementById('scene-dd');
-  if (dd) dd.classList.remove('open');
+  dockRefreshRail();
   smSearch = '';
   smCloseGroupMenu();
   if (smSelectedIds.size) { smSelectedIds.clear(); renderSceneManager(); }
@@ -68,7 +61,6 @@ function initSceneManagerUI() {
 
   loadGroupPrefs();
 
-  document.getElementById('scene-dd-toggle').onclick = toggleDropdown;
   document.getElementById('sm-add').onclick = () => fileInput.click();
   document.getElementById('sm-close').onclick = closeDropdown;
 
@@ -99,12 +91,10 @@ function initSceneManagerUI() {
     if (el) { el.focus(); el.select(); }
   };
 
-  // ── contextual action bar ──
-  document.getElementById('sm-sel-clear').onclick = () => { smSelectedIds.clear(); renderSceneManager(); };
-  document.getElementById('sm-sel-all').onclick = () => {
-    const shown = smVisibleScenes();
-    if (shown.length && shown.every(s => smSelectedIds.has(s.id))) smSelectedIds.clear();
-    else shown.forEach(s => smSelectedIds.add(s.id));
+  // The all/none tick: any selection clears, none selects what the search shows.
+  document.getElementById('sm-tickall').onclick = () => {
+    if (smSelectedIds.size) smSelectedIds.clear();
+    else smVisibleScenes().forEach(s => smSelectedIds.add(s.id));
     renderSceneManager();
   };
   document.getElementById('sm-sel-export').onclick = () => {
@@ -121,6 +111,7 @@ function initSceneManagerUI() {
   };
 
   document.querySelector('#scene-undo-toast .undo-btn').onclick = undoDelete;
+  document.querySelector('#scene-undo-toast .undo-x').onclick = commitPendingDelete;
 
   // The compress-on-import setting. mapConvert.js owns it; this sets it and paints the result.
   const compress = document.getElementById('sm-compress');
@@ -204,27 +195,24 @@ function smOpenGroupMenu(anchor) {
   rows.push({ label: t('New group…'), group: null, fresh: true });
 
   const menu = document.createElement('div');
-  menu.className = 'sm-menu';
+  menu.className = 'sm-menu sm-movemenu';
   menu.dataset.noI18n = '';
   menu.innerHTML = rows.map((r, i) => r.sep
-    ? '<div class="sm-menu-sep"></div>'
-    : '<button class="sm-menu-row" data-i="' + i + '">' + escHtml(r.label) + '</button>'
+    ? '<div class="sm-msep"></div>'
+    : '<button class="sm-mi" data-i="' + i + '">' + escHtml(r.label) + '</button>'
   ).join('');
 
-  // ⚠ ANCHOR THE RIGHT EDGE, NOT THE LEFT: #sm-panel is overflow: hidden, so a left-anchored menu
-  // wider than the button is clipped.
-  //
   // The panel carries the zoom, so the reported rect is screen px while the offset written back is
   // pre-zoom px. Divide by the ratio the anchor itself proves, never by --ui-zoom.
   const a = anchor.getBoundingClientRect();
   const p = panel.getBoundingClientRect();
   const z = anchor.offsetHeight ? (a.height / anchor.offsetHeight) : 1;
   menu.style.top   = ((a.bottom - p.top) / z + 6) + 'px';
-  menu.style.right = ((p.right - a.right) / z) + 'px';
+  menu.style.left  = ((a.left - p.left) / z) + 'px';
 
   menu.addEventListener('mousedown', e => e.stopPropagation());
   menu.onclick = e => {
-    const btn = e.target.closest('.sm-menu-row');
+    const btn = e.target.closest('.sm-mi');
     if (!btn) return;
     const row = rows[+btn.dataset.i];
     const target = row.fresh ? addGroup(t('New group')) : row.group;
@@ -295,13 +283,20 @@ function renderSceneManager() {
 
   const selecting = smSelectedIds.size > 0;
   document.body.classList.toggle('sm-selecting', selecting);
-  const selCount = document.getElementById('sm-sel-count');
-  if (selCount) selCount.textContent = t('{n} selected', { n: smSelectedIds.size });
-
   const shown = smVisibleScenes();
   const q = smSearch.trim();
+  const selCount = document.getElementById('sm-sel-count');
+  if (selCount) selCount.textContent = selecting ? t('{n} selected', { n: smSelectedIds.size }) : '';
+  const tick = document.getElementById('sm-tickall');
+  if (tick) {
+    const all = shown.length && shown.every(s => smSelectedIds.has(s.id));
+    tick.className = 'sm-tick' + (all ? ' on' : selecting ? ' part' : '');
+    tick.title = selecting ? t('Clear the selection') : t('Select all');
+  }
   const countEl = document.getElementById('sm-count');
-  if (countEl) countEl.textContent = q ? shown.length + ' / ' + allScenes.length : String(allScenes.length);
+  if (countEl) countEl.textContent = q
+    ? t('{n} of {total} scenes', { n: shown.length, total: allScenes.length })
+    : t.plural(allScenes.length, '{n} scene', '{n} scenes');
 
   list.innerHTML = '';
   if (!allScenes.length) {

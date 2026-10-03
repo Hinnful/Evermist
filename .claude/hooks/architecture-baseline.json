@@ -24,7 +24,11 @@
     "missing:roompictures.js",
     "missing:tvpicture.js",
     "missing:soundlist.js",
-    "missing:soundboard.js"
+    "missing:soundboard.js",
+    "missing:dock.js",
+    "missing:roomlink.js",
+    "missing:musicgroups.js",
+    "missing:icons.js"
   ],
   "warnedBytes": 47203
 }

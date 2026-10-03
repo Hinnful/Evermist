@@ -209,11 +209,13 @@ A hundred hour-long tracks is about 5.5GB, and a backup is meant to be portable.
 folder sits outside the scene store, so a restore on a fresh machine brings scenes and no music.
 Adding it later would be one more folder to walk rather than a migration.
 
-### Music is not grouped, and tracks always loop · `SETTLED` (scope call)
-Typing three letters into the filter beats collapsing folders when a whole campaign is one
-playlist, so subfolder groups were designed and dropped. Grouping starts earning its place at a
-second campaign in one library. Looping has no switch either: an ambient track that stops
-mid-scene is never what anyone wanted.
+### Music groups are made in the app, and tracks always loop · `REOPENED` (2026-10-02)
+Groups came back on the DM's call, the scene library's way: New group in the Music pane, a track
+dragged onto a heading, rename by the name, delete hands the tracks back. A group is a name a
+track carries, and the music folder stays flat. Nobody arranges an app's data folder by hand, so a
+subfolder is not a group (`docs/decisions/ui-and-control-panel.md`). Looping has no switch: an
+ambient track that stops mid-scene is never what anyone wanted, and the player no longer says
+"loops" about a thing the DM cannot change.
 
 ### No next or previous track · `SETTLED` (scope call)
 A hundred ambient loops have no order a Next button could follow. The list is the control.
@@ -227,8 +229,9 @@ or sings on a die roll - and any per-scene setup is prep time the app exists to 
 Two number boxes for X and Y phase were the only way to move the grid onto a map's own lines.
 They are gone. A typed number cannot be aimed at a line, so the DM was reading a value off
 nothing and nudging until it looked right; the calibration gesture is aimed at the line itself.
-Grid Reset still returns the phase to zero, so nothing is a one-way door. Cell size keeps its
-slider, because a size is a quantity someone can hold an opinion about and a phase is not.
+Grid Reset still returns the phase to zero, so nothing is a one-way door. Cell size keeps a
+control of its own, because a size is a quantity someone can hold an opinion about and a phase is
+not; since the dock (2026-10-02) it is a field scrubbed by its icon rather than a slider.
 
 ### Distinctive fog identities · `PARKED`
 The most interesting idea in its batch and too big for now. The shape when it lands: "bloody /

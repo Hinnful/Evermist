@@ -37,6 +37,11 @@ views' render paths, the fog pipeline, and the dirty-flag render loop.
 
 ## Rooms and the room card
 
+### The room card became the dock's Room tab · `SETTLED` (2026-10-02)
+The floating card, its placement and its drag are gone; the selected room is edited in the dock.
+The entries below on the card's position and shape are the record of the old shape. The calls it
+reverses: [decisions/ui-and-control-panel.md](decisions/ui-and-control-panel.md), "The dock".
+
 ### Room repair leans on a vendored clipping library · `SETTLED` (2026-09-02)
 Join and Trim run on `polygon-clipping` 0.15.7, vendored to `lib/` as its UMD
 build and pinned as a devDependency for the tests. A hand-written boolean kernel was rejected:
@@ -636,8 +641,9 @@ the rune's glow, ripples and sparks with ticks and four diamonds for symbols.
 
 ## UI and the control panel
 
-Moved to [decisions/ui-and-control-panel.md](decisions/ui-and-control-panel.md) - the
-toolbar, the control-panel tabs, the scene library, and the dialogs.
+Moved to [decisions/ui-and-control-panel.md](decisions/ui-and-control-panel.md) - the dock,
+the toolbar, the scene library, and the dialogs. The dock (2026-10-02) reversed the tab bar,
+the floating room card and the icon-rail rejection.
 
 ---
 

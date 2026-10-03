@@ -123,34 +123,30 @@ function announceInstalledVersion() {
 
 // One at a time. hideMs 0 keeps it up until the DM dismisses it, for an action still pending.
 function upToast(message, ctaLabel, onCta, hideMs) {
-  if (!_upToast) {
-    _upToast = document.createElement('div');
-    _upToast.id = 'up-toast';
-    document.body.appendChild(_upToast);
-  }
+  if (!_upToast) _upToast = toastEl('up-toast', 'download');
   clearTimeout(_upHideTimer);
-  _upToast.innerHTML = '';
+  _upToast.innerHTML = uiIcon('download', 16);
 
-  const msg = document.createElement('div');
-  msg.className = 'up-msg';
+  const msg = document.createElement('span');
+  msg.className = 'm';
   msg.textContent = message;
 
   const cta = document.createElement('button');
   cta.type = 'button';
-  cta.className = 'up-cta';
+  cta.className = 'sm-hbtn primary';
   cta.textContent = ctaLabel;
   cta.addEventListener('click', () => { hideUpdateToast(); onCta(); });
 
   const x = document.createElement('button');
   x.type = 'button';
-  x.className = 'up-x';
+  x.className = 'sm-x';
   x.title = 'Dismiss';
   x.setAttribute('aria-label', 'Dismiss');
-  x.textContent = '✕';
+  x.innerHTML = uiIcon('x');
   x.addEventListener('click', hideUpdateToast);
 
   _upToast.append(msg, cta, x);
-  _upToast.style.display = 'flex';
+  showToast(_upToast);
   if (hideMs) _upHideTimer = setTimeout(hideUpdateToast, hideMs);
 }
 

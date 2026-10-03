@@ -1,8 +1,7 @@
 'use strict';
 
-// music.js — the music bubble: the track library and playback. The Add music panel it opens
-// lives in musicDownload.js. DM window only: nothing here reaches the Player and no scene
-// switch touches it. Pure helpers live in musicPlan.js.
+// music.js — the dock's Music pane: the player, the track library and playback. DM window only;
+// the Add music panel is musicDownload.js and the pure helpers musicPlan.js.
 
 const MU_FADE_MS = 2000;
 const MU_TICK_MS = 40;
@@ -11,7 +10,6 @@ const MU_VOL_KEY = 'evermist.music.volume';
 let _muTracks = [];        // [{ name, size, url }] straight off the folder
 let _muPlaying = null;     // the file name loaded, playing or paused
 let _muPaused = false;
-let _muOpen = false;
 let _muDecks = null;       // exactly two, so a crossfade has somewhere to go
 let _muActive = 0;
 let _muVolume = 0.7;
@@ -20,7 +18,7 @@ let _muDurations = {};     // name → seconds, for this run only
 function _muEl(id) { return document.getElementById(id); }
 
 function initMusic() {
-  if (!_muEl('mu-pill')) return;
+  if (!_muEl('dock-pane-music')) return;
 
   const saved = parseFloat(localStorage.getItem(MU_VOL_KEY));
   if (isFinite(saved) && saved >= 0 && saved <= 1) _muVolume = saved;
@@ -33,19 +31,14 @@ function initMusic() {
   }
 
   const bind = (id, ev, fn) => { const el = _muEl(id); if (el) el.addEventListener(ev, fn); };
-  bind('btn-mu-open', 'click', () => _muSetOpen(!_muOpen));
-  bind('btn-mu-chev', 'click', () => _muSetOpen(!_muOpen));
   bind('btn-mu-pause', 'click', _muTogglePause);
   bind('mu-filter', 'input', _muRenderList);
-  bind('btn-mu-add', 'click', () => { _muSetOpen(false); openMusicDownload(); });
-
-  // A click anywhere but the bubble shuts the panel. mousedown rather than click, so a drag
-  // on the map closes it as the drag starts rather than when it ends.
-  document.addEventListener('mousedown', (e) => {
-    if (!_muOpen) return;
-    const bubble = _muEl('music-bubble');
-    if (bubble && !bubble.contains(e.target)) _muSetOpen(false);
-  });
+  bind('mu-filter', 'keydown', e => e.stopPropagation());
+  bind('btn-mu-add', 'click', () => openMusicDownload());
+  bind('btn-mu-group', 'click', newMusicGroup);
+  loadMusicGroups();
+  // The folder is read again each time the pane opens, so a file dropped in meanwhile shows.
+  document.addEventListener('dockpane', e => { if (e.detail === 'music') _muRefreshTracks(); });
 
   _muRenderPill();
   _muRefreshTracks();
@@ -54,8 +47,7 @@ function initMusic() {
   initMusicDownload();
 }
 
-// The app's own slider is a div track with an invisible range over it, so the fill and knob are
-// positioned by hand. Same arithmetic as _cpFancy in controlPanel.js.
+// The app's own slider: a div track with an invisible range over it, fill and knob set by hand.
 function _muSyncSlider() {
   const range = _muEl('mu-vol');
   if (!range) return;
@@ -66,6 +58,8 @@ function _muSyncSlider() {
   const knob = wrap.querySelector('.cp-slider-knob');
   if (fill) fill.style.width = pct + '%';
   if (knob) knob.style.left = pct + '%';
+  const shown = _muEl('mu-vol-pct');
+  if (shown) shown.textContent = String(Math.round(pct));
 }
 
 // The folder is the library, so this read is the only source of truth.
@@ -105,16 +99,7 @@ function _muScanDurations() {
   next();
 }
 
-// ─── The bubble ──────────────────────────────────────────────────────────────
-function _muSetOpen(open) {
-  _muOpen = !!open;
-  const panel = _muEl('mu-panel');
-  if (panel) panel.style.display = _muOpen ? 'flex' : 'none';
-  const chev = _muEl('mu-chev');
-  if (chev) chev.classList.toggle('mu-chev-up', _muOpen);
-  if (_muOpen) _muRefreshTracks();
-}
-
+// ─── The player ──────────────────────────────────────────────────────────────
 function _muRenderPill() {
   const bubble = _muEl('music-bubble');
   if (bubble) {
@@ -122,14 +107,16 @@ function _muRenderPill() {
     bubble.classList.toggle('mu-paused', !!_muPaused);
   }
   const name = _muEl('mu-pill-name');
-  // ⚠ A LABEL, NEVER AN EMPTY STRING: with no text the pill collapses to a bare square.
-  if (name) name.textContent = _muPlaying ? displayName(_muPlaying) : t('Music');
+  if (name) name.textContent = _muPlaying ? displayName(_muPlaying) : t('Nothing playing');
+  const state = _muEl('mu-state');
+  if (state) state.textContent = !_muPlaying ? t('Pick a track below') : t(_muPaused ? 'Paused' : 'Playing');
   const pause = _muEl('btn-mu-pause');
-  if (pause) pause.title = _muPaused ? 'Play' : 'Pause';
+  if (pause) pause.title = t(_muPaused ? 'Play' : 'Pause: fades out and keeps the place');
   const icoPause = _muEl('mu-ico-pause');
   const icoPlay = _muEl('mu-ico-play');
-  if (icoPause) icoPause.style.display = _muPaused ? 'none' : '';
-  if (icoPlay) icoPlay.style.display = _muPaused ? '' : 'none';
+  const showPlay = _muPaused || !_muPlaying;
+  if (icoPause) icoPause.style.display = showPlay ? 'none' : '';
+  if (icoPlay) icoPlay.style.display = showPlay ? '' : 'none';
 }
 
 function _muRenderList() {
@@ -137,7 +124,7 @@ function _muRenderList() {
   if (!list) return;
   const filter = _muEl('mu-filter');
   const rows = filterTracks(
-    _muTracks.map(t => ({ name: t.name, display: displayName(t.name), url: t.url, size: t.size })),
+    _muTracks.map(t => ({ name: t.name, group: musicGroupOf(t.name), display: displayName(t.name), url: t.url, size: t.size })),
     filter ? filter.value : ''
   );
 
@@ -151,38 +138,51 @@ function _muRenderList() {
     return;
   }
 
-  for (const track of rows) {
-    const row = document.createElement('div');
-    row.className = 'mu-row' + (track.name === _muPlaying ? ' mu-row-on' : '');
-
-    const label = document.createElement('span');
-    label.className = 'mu-row-name';
-    label.textContent = track.display;
-    label.title = track.display;
-    row.appendChild(label);
-
-    const meta = document.createElement('span');
-    meta.className = 'mu-row-meta';
-    const secs = _muDurations[track.name];
-    meta.textContent = secs ? formatDuration(secs) : formatBytes(track.size);
-    row.appendChild(meta);
-
-    const del = document.createElement('button');
-    del.className = 'cp-btn cp-btn-outline cp-btn-icon mu-row-del';
-    del.title = t('Delete this track');
-    del.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-      'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/>' +
-      '<path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
-    del.addEventListener('click', (e) => { e.stopPropagation(); _muAskDelete(track); });
-    row.appendChild(del);
-
-    // ⚠ The row IS the play control, and a click on the row already playing does NOTHING.
-    // Opening a second element on one file starves Chromium's media pipeline - the same
-    // landmine that makes the Player buffer its own copy of a video map.
-    row.addEventListener('click', () => { if (track.name !== _muPlaying) _muPlay(track); });
-    list.appendChild(row);
-  }
+  // A filter opens every group and leaves out the ones with no match.
+  const filtering = !!(filter && filter.value.trim());
+  const sections = musicSections(rows);
+  if (sections.length === 1) rows.forEach(track => _muRenderRow(list, track));
+  else for (const sec of sections) if (!filtering || sec.scenes.length) list.appendChild(buildMusicGroup(sec, filtering));
   _muRenderCount();
+}
+
+function _muRenderRow(list, track) {
+  const row = document.createElement('div');
+  row.className = 'mu-row' + (track.name === _muPlaying ? ' mu-row-on' : '');
+  musicRowDrag(row, track.name);
+  if (track.name === _muPlaying) {
+    const bars = document.createElement('span');
+    bars.className = 'pl-bars sm';
+    bars.innerHTML = '<i></i><i></i><i></i>';
+    row.appendChild(bars);
+  }
+
+  const label = document.createElement('span');
+  label.className = 'mu-row-name';
+  label.textContent = track.display;
+  label.title = track.display;
+  row.appendChild(label);
+
+  const meta = document.createElement('span');
+  meta.className = 'mu-row-meta';
+  const secs = _muDurations[track.name];
+  meta.textContent = secs ? formatDuration(secs) : formatBytes(track.size);
+  row.appendChild(meta);
+
+  const del = document.createElement('button');
+  del.className = 'mu-row-del';
+  del.title = t('Delete this track');
+  del.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/>' +
+    '<path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
+  del.addEventListener('click', (e) => { e.stopPropagation(); _muAskDelete(track); });
+  row.appendChild(del);
+
+  // ⚠ The row IS the play control, and a click on the row already playing does NOTHING.
+  // Opening a second element on one file starves Chromium's media pipeline - the same
+  // landmine that makes the Player buffer its own copy of a video map.
+  row.addEventListener('click', () => { if (track.name !== _muPlaying) _muPlay(track); });
+  list.appendChild(row);
 }
 
 // The placeholder carries the TOTAL, never the filtered count: it is invisible while the field
@@ -274,7 +274,6 @@ function _muPlay(track) {
   _muPaused = false;
   _muRenderPill();
   _muRenderList();
-  _muSetOpen(false);
 }
 
 function _muTogglePause() {
@@ -318,13 +317,13 @@ function _muAskDelete(track) {
         messageDialog({ title: 'Could not delete that track', message: (err && err.message) || String(err) });
       }
       delete _muDurations[track.name];
+      forgetMusicTrack(track.name);
       _muRefreshTracks();
     },
   });
 }
 
-// How far the download queue has got, drawn on the pill because that is the one control always
-// on screen. `null` takes the line away.
+// How far the download queue has got, under the player. `null` takes the bar away.
 function setMusicDownloadProgress(fraction) {
   const bubble = _muEl('music-bubble');
   const bar = _muEl('mu-dlbar');
@@ -335,8 +334,7 @@ function setMusicDownloadProgress(fraction) {
   }
 }
 
-// The video ids already on disk, which is what tells the download panel which rows to mark as
-// "have it". Kept behind a function so `_muTracks` stays this module's own.
+// The video ids already on disk, which the download panel marks as "have it".
 function _muHaveIds() {
   const have = {};
   for (const t of _muTracks) {

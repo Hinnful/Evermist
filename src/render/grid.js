@@ -41,29 +41,6 @@ function drawGridLines(ctx, vp, style) {
     }
     ctx.stroke();
 
-  } else if (gridMode === 'hex-flat') {
-    const hh = gridSize * Math.sqrt(3);
-    const colStep = 1.5 * gridSize;
-    const colMin = Math.floor((vp.srcX - gridOffsetX - gridSize * 2) / colStep);
-    const colMax = Math.ceil( (vp.srcX - gridOffsetX + vp.srcW + gridSize * 2) / colStep);
-    const rowMin = Math.floor((vp.srcY - gridOffsetY - hh) / hh);
-    const rowMax = Math.ceil( (vp.srcY - gridOffsetY + vp.srcH + hh) / hh);
-    ctx.beginPath();
-    for (let col = colMin; col <= colMax; col++) {
-      for (let row = rowMin; row <= rowMax; row++) {
-        const cx = gridOffsetX + col * colStep;
-        const cy = gridOffsetY + row * hh + (col & 1) * hh / 2;
-        for (let k = 0; k < 6; k++) {
-          const angle = Math.PI / 3 * k;
-          const px = vp.dstX + (cx + gridSize * Math.cos(angle) - vp.srcX) * scale;
-          const py = vp.dstY + (cy + gridSize * Math.sin(angle) - vp.srcY) * scale;
-          if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-      }
-    }
-    ctx.stroke();
-
   } else { // hex-pointy
     const hw = gridSize * Math.sqrt(3);
     const rowStep = 1.5 * gridSize;
@@ -176,6 +153,7 @@ function renderPlayerGrid(vp) {
 // the scene, so a change has to reach the Player AND the store, and scheduleAutoSync debounces both.
 function commitGridChange() {
   if (paneForward('grid', { config: captureGridConfig() })) return;
+  noteSettingsChange();
   gridDirty = true;
   // A door is one cell wide, so the cell changing resizes every door already placed.
   rebuildFogForGridChange();
@@ -194,6 +172,13 @@ function freshGridConfig() {
 }
 
 // ─── Config serialization ─────────────────────────────────────────────────────
+// Flat-top hex was dropped: a saved one loads as pointy-top and needs one recalibration.
+const GRID_MODES = ['square', 'hex-pointy'];
+function normalizeGridMode(mode, current) {
+  if (mode === 'hex-flat') return 'hex-pointy';
+  return GRID_MODES.includes(mode) ? mode : current;
+}
+
 function captureGridConfig() {
   return { enabled: gridEnabled, cellSize: gridSize, offsetX: gridOffsetX, offsetY: gridOffsetY, color: gridColor, opacity: gridOpacity, mode: gridMode, lineWidth: gridLineWidth };
 }
@@ -206,7 +191,7 @@ function applyGridConfig(cfg) {
   gridOffsetY   = cfg.offsetY   ?? gridOffsetY;
   gridColor     = cfg.color     ?? gridColor;
   gridOpacity   = cfg.opacity   ?? gridOpacity;
-  gridMode      = cfg.mode      ?? gridMode;
+  gridMode      = normalizeGridMode(cfg.mode, gridMode);
   gridLineWidth = cfg.lineWidth ?? gridLineWidth;
   if (!isPlayer) {
     document.getElementById('btn-grid').classList.toggle('active', gridEnabled);
@@ -220,7 +205,7 @@ function applyGridConfig(cfg) {
     document.getElementById('grid-thickness').value           = gridLineWidth;
     document.getElementById('grid-thickness-num').value       = gridLineWidth;
     document.querySelectorAll('.grid-mode-btn').forEach(b => b.classList.remove('active'));
-    const mk = gridMode === 'square' ? 'sq' : gridMode === 'hex-flat' ? 'hflat' : 'hptop';
+    const mk = gridMode === 'square' ? 'sq' : 'hptop';
     document.getElementById('btn-grid-' + mk).classList.add('active');
     // Reflect the restored grid settings into the redesigned control panel.
     if (typeof refreshGridControlUI === 'function') refreshGridControlUI();
@@ -230,5 +215,5 @@ function applyGridConfig(cfg) {
 
 // ─── Node.js export guard (unit tests only) ──────────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { lineWidthForZoom };
+  module.exports = { lineWidthForZoom, normalizeGridMode };
 }

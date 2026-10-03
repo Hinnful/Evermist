@@ -54,7 +54,6 @@ window.paneView = {
   get fogBlurCanvas()     { return fogBlurCanvas; },
   get fogBaseColor()      { return fogBaseColor; },
   get fogTintColor()      { return fogTintColor; },
-  get gridEnabled()       { return gridEnabled; },
   get playerScreenW()     { return playerScreenW; },
   get playerScreenH()     { return playerScreenH; },
   get playerWindow()      { return playerWindow; },
@@ -68,7 +67,6 @@ window.paneView = {
                      morph: cloudFrameSpeed, warpStr: cloudWarpStrength,
                      warpRad: cloudWarpRadius, pulse: alphaPulseAmp } };
   },
-  drawGridLines: (ctx, rect) => drawGridLines(ctx, rect),
 };
 
 // ⚠ THE CHROME MUST SHOW THE SELECTED COLUMN'S OWN SETTINGS. The grid and the animation set
@@ -103,6 +101,7 @@ function selectPane(id) {
   const v = paneScope().minimapView;
   if (v) minimapSetView(v);
   if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
+  refreshRoomPanel();   // the Room tab follows the selected column's room
 }
 
 function refreshPaneSelection() {
@@ -138,9 +137,9 @@ function buildPaneRow() {
     panes[id].frame = frame;
     col.appendChild(frame);
     const close = document.createElement('button');
-    close.className = 'pane-close';
+    close.className = 'sm-x pane-close';
     close.title = 'Close this map and keep the other';
-    close.textContent = '×';
+    close.innerHTML = uiIcon('x');
     close.addEventListener('click', () => closePaneColumn(id));
     col.appendChild(close);
     row.appendChild(col);
@@ -256,6 +255,7 @@ async function exitPanes(keepSceneId) {
     panes[id].camera = null;
   }
   _paneTvPicture = null;
+  paneRoomsClear();
   syncSize();
   if (!hadPlayer) prewarmPlayer();   // warming would navigate the live window away
   // The map comes back out of the store, which is where the column has been saving it all along.
@@ -285,7 +285,7 @@ function teardownParentMap() {
   baseFogCanvas = null; baseFogCtx = null;
   polygons = [];
   setEffects([]);
-  undoStack = []; redoStack = [];
+  clearUndo();
   currentScene = null;
   playerMapSent = false;
   pixiClearMap();
@@ -315,11 +315,14 @@ function initPanes() {
       bindStageHalves();
       // ⚠ Or the chrome keeps the torn-down scene's settings and pushes them into this column.
       if (msg.pane === panesSelected) paneAdoptSelectedSettings();
+      sendToPane({ type: 'pane-room-labels', on: showRoomLabels }, msg.pane);
       renderSceneManager();
       return;
     }
     if (msg.type === 'pane-picture') { paneRelayPicture(msg.pane, msg.blob); return; }
+    if (msg.type === 'pane-room') { paneRoomReported(msg.pane, msg.room, msg.blobs); return; }
     if (msg.type === 'pane-clicked') { selectPane(msg.pane); return; }
+    if (msg.type === 'pane-labels-key') { toggleRoomLabels(); return; }
     if (msg.type === 'pane-tool') { if (shape !== msg.shape) setShape(msg.shape); setPreset(msg.preset); return; }
     if (msg.type === 'pane-scene-result') {
       p.sceneId = msg.sceneId || null;

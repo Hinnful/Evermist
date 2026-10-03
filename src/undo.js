@@ -14,10 +14,12 @@ function cloneCanvas(src) {
   return c;
 }
 
+function _undoBytes(e) { return e.baseFog ? e.baseFog.width * e.baseFog.height * 4 : 0; }
+
 // Pure eviction: trims oldest entries until the footprint is within maxBytes, always keeping one.
 function evictUndoStack(stack, maxBytes) {
   while (stack.length > 1 &&
-         stack.reduce((s, e) => s + e.baseFog.width * e.baseFog.height * 4, 0) > maxBytes) {
+         stack.reduce((s, e) => s + _undoBytes(e), 0) > maxBytes) {
     stack.shift();
   }
   return stack;
@@ -26,7 +28,7 @@ function evictUndoStack(stack, maxBytes) {
 // ⚠ UNDO_MAX_BYTES is the budget for BOTH stacks together. Redo is trimmed first, since it is only
 // non-empty after an undo. Capping the two independently lets the pair reach twice the budget.
 function evictUndoPair(undo, redo, maxBytes) {
-  const bytes = s => s.reduce((t, e) => t + e.baseFog.width * e.baseFog.height * 4, 0);
+  const bytes = s => s.reduce((t, e) => t + _undoBytes(e), 0);
   // length > 1, the same floor evictUndoStack keeps: redo() checks the length, then pushes
   // and evicts before popping, so a stack this can empty would pop undefined.
   while (redo.length > 1 && bytes(undo) + bytes(redo) > maxBytes) redo.shift();
@@ -34,9 +36,8 @@ function evictUndoPair(undo, redo, maxBytes) {
   return { undo, redo };
 }
 
-function pushUndo() {
-  if (!baseFogCanvas) return;
-  undoStack.push({
+function _undoSnapshot() {
+  return {
     baseFog: cloneCanvas(baseFogCanvas),
     polygons: polygons.map(copyShapeRings),
     nextPolygonId,
@@ -44,12 +45,61 @@ function pushUndo() {
     // ⚠ copyShapeRings copies every ring: an aliased hole is edited out from under this entry.
     effects: effects.map(copyShapeRings),
     nextEffectId,
-  });
+  };
+}
+
+function pushUndo() {
+  if (!baseFogCanvas) return;
+  undoStack.push(_undoSnapshot());
   redoStack = [];
   evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);
 }
 
+// ─── Grid and fog colour ──────────────────────────────────────────────────────
+// They ride the same history as light entries. The first change after a pause pushes the
+// settings as they stood before it, and the rest of that drag or scrub joins the same step.
+const UNDO_SETTINGS_GAP_MS = 800;
+let _undoSettings = null, _undoSettingsAt = 0, _undoApplying = false;
+
+function _undoCaptureSettings() {
+  return { grid: captureGridConfig(), fogHex: fogPickedHex, fogTint: FOG_TINT_ALPHA };
+}
+
+function clearUndo() {
+  undoStack = []; redoStack = [];
+  _undoSettings = _undoCaptureSettings();
+  _undoSettingsAt = 0;
+}
+
+function noteSettingsChange() {
+  if (_undoApplying || isPlayer) return;
+  const now = Date.now();
+  if (_undoSettings && now - _undoSettingsAt > UNDO_SETTINGS_GAP_MS) {
+    undoStack.push({ settings: _undoSettings });
+    redoStack = [];
+    evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);
+  }
+  _undoSettingsAt = now;
+  _undoSettings = _undoCaptureSettings();
+}
+
+function _undoApplySettings(s) {
+  _undoApplying = true;
+  try {
+    applyGridConfig(s.grid);
+    commitGridChange();
+    // Through the fields' own handlers, so the Player and the dock hear it the usual way.
+    const fire = (id, v) => { const el = document.getElementById(id); if (el) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } };
+    fire('fog-color', s.fogHex);
+    fire('fog-tint-alpha-num', Math.round(s.fogTint * 100));
+    if (typeof refreshGridControlUI === 'function') refreshGridControlUI();
+  } finally { _undoApplying = false; }
+  _undoSettings = s;
+  _undoSettingsAt = 0;
+}
+
 function restoreState(snapshot) {
+  if (snapshot.settings) { _undoApplySettings(snapshot.settings); return; }
   baseFogCanvas = cloneCanvas(snapshot.baseFog);
   baseFogCtx = baseFogCanvas.getContext('2d');
   polygons = snapshot.polygons.map(copyShapeRings);
@@ -89,36 +139,31 @@ let _undoHintTimer = null;
 function undoHint(msg) {
   const el = document.getElementById('key-hint');
   if (!el) return;
-  el.textContent = msg;
+  el.querySelector('.m').textContent = t(msg);
   el.classList.add('on');
+  showToast(el);
   clearTimeout(_undoHintTimer);
   _undoHintTimer = setTimeout(() => el.classList.remove('on'), 1400);
 }
 
+// The opposite stack takes the present in the same kind as the entry being left, and the hint
+// says the step happened: a note or a grid colour can change with nothing on screen showing it.
+function _undoStep(from, to, done) {
+  const entry = from.pop();
+  to.push(entry.settings ? { settings: _undoCaptureSettings() } : _undoSnapshot());
+  evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);
+  restoreState(entry);
+  undoHint(done);
+}
+
 function undo() {
   if (!undoStack.length) { undoHint('Nothing to undo'); return; }
-  redoStack.push({
-    baseFog: cloneCanvas(baseFogCanvas),
-    polygons: polygons.map(copyShapeRings),
-    nextPolygonId,
-    effects: effects.map(copyShapeRings),
-    nextEffectId,
-  });
-  evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);
-  restoreState(undoStack.pop());
+  _undoStep(undoStack, redoStack, 'Undone');
 }
 
 function redo() {
   if (!redoStack.length) { undoHint('Nothing to redo'); return; }
-  undoStack.push({
-    baseFog: cloneCanvas(baseFogCanvas),
-    polygons: polygons.map(copyShapeRings),
-    nextPolygonId,
-    effects: effects.map(copyShapeRings),
-    nextEffectId,
-  });
-  evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);
-  restoreState(redoStack.pop());
+  _undoStep(redoStack, undoStack, 'Redone');
 }
 
 // ─── Node.js export guard (unit tests only) ──────────────────────────────────

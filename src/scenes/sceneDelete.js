@@ -77,7 +77,7 @@ function showUndoToast(msg) {
   const t = document.getElementById('scene-undo-toast');
   if (!t) return;
   t.querySelector('.undo-msg').textContent = msg;
-  t.style.display = '';
+  showToast(t);
   const bar = t.querySelector('.undo-bar');
   bar.style.animation = 'none';
   void bar.offsetWidth; // reflow so the 4s timer bar restarts on each delete

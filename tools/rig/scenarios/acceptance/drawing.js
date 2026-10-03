@@ -145,18 +145,49 @@ module.exports = async function drawing(rig) {
   rig.check(await dm.evaluate('shape') === 'select',
             'C in Rooms mode picked the Cone, which that bar does not carry');
 
-  // The flyout is the only way in for three of the four shapes, so the right click that opens it
-  // is part of them being reachable at all.
+  // The list is the only way in for the shapes behind the button, so both ways of opening it are
+  // part of them being reachable at all: the chevron, and a right-click on the button.
+  // RED ON: _tbOpenList gated off in the contextmenu listener (shapeMenu.js) — 2026-10-02
   const opened = await dm.evaluate(
     '(() => { document.getElementById("btn-shape").dispatchEvent(new MouseEvent("contextmenu",' +
     ' { bubbles: true, cancelable: true, button: 2 }));' +
-    ' return document.getElementById("shape-menu").classList.contains("open"); })()');
-  rig.check(opened, 'right-clicking the shape button did not open the flyout, which is the only ' +
+    ' return !!document.getElementById("tb-dd"); })()');
+  rig.check(opened, 'right-clicking the shape button did not open its list, which is the only ' +
                     'way the DM reaches Rectangle, Circle and Polygon');
-  const took = await dm.evaluate('document.getElementById("btn-circle").click();' +
-    ' ({ shape, open: document.getElementById("shape-menu").classList.contains("open") })');
+  const took = await dm.evaluate('document.querySelector("#tb-dd [data-dd=btn-circle]").click();' +
+    ' ({ shape, open: !!document.getElementById("tb-dd") })');
   rig.check(took.shape === 'circle' && !took.open,
-            'picking Circle from the flyout did not both take and shut it: ' + JSON.stringify(took));
+            'picking Circle from the list did not both take and shut it: ' + JSON.stringify(took));
+  const chev = await dm.evaluate(`(() => {
+    const chevron = document.querySelector('[data-chev=shape]');
+    chevron.click();
+    const rows = [...document.querySelectorAll('#tb-dd .dd-it')].map(r => ({ id: r.dataset.dd, off: r.disabled }));
+    chevron.click();
+    return { rows, gone: !document.getElementById('tb-dd') };
+  })()`);
+  rig.check(chev.rows.length === 6 && chev.rows.filter(r => r.off).map(r => r.id).join() === 'btn-cone,btn-line,btn-ring' && chev.gone,
+            'the chevron does not open the six shapes with the Effects-only three greyed, or a second ' +
+            'click does not shut it: ' + JSON.stringify(chev));
+
+  // The operations button wears the last pick: Split is a tool in hand, Merge and Cut out are
+  // switches, and picking one off the list disarms the others.
+  // RED ON: setShapeOp('new') gated off in _tbPick's Split branch (shapeMenu.js) — 2026-10-02
+  const opsShown = () => dm.evaluate('["btn-op-join", "btn-op-trim", "btn-cut"]' +
+    '.filter(id => getComputedStyle(document.getElementById(id)).display !== "none")');
+  const pickOp = id => dm.evaluate('document.querySelector("[data-chev=ops]").click();' +
+    ' document.querySelector("#tb-dd [data-dd=' + id + ']").click(); ({ shape, shapeOp })');
+  // Merge armed first, or Split has nothing to disarm and the check below cannot see it fail to.
+  await dm.evaluate('setShapeOp("join"); 0');
+  let op = await pickOp('btn-cut');
+  rig.check(op.shape === 'cut' && op.shapeOp === 'new' && (await opsShown()).join() === 'btn-cut',
+            'picking Split did not put Split in hand and on the bar alone: ' + JSON.stringify(op));
+  op = await pickOp('btn-op-trim');
+  rig.check(op.shape === 'select' && op.shapeOp === 'trim' && (await opsShown()).join() === 'btn-op-trim',
+            'picking Cut out did not arm it, put Split down, and wear it: ' + JSON.stringify(op));
+  await dm.evaluate('document.getElementById("btn-op-trim").click(); 0');
+  rig.check(await dm.evaluate('shapeOp') === 'new' && (await opsShown()).join() === 'btn-op-trim',
+            'pressing the lit Cut out did not disarm it, or the button left the bar');
+  await dm.evaluate('setShapeOp("new"); 0');
 
   // ⚠ THE BUTTON MUST PICK THE SHAPE IT IS SHOWING. It wears the last shape this mode drew with,
   // and a left click from any other tool - the Brush included - has to land on that same one.
@@ -323,8 +354,8 @@ module.exports = async function drawing(rig) {
 
   // D2 — snap does NOTHING on a hex grid. There are no intersections to snap to, so the raw
   // point has to survive; rounding it to a square lattice would move vertices the DM placed.
-  await dm.evaluate('document.getElementById("btn-grid-hflat").click(); 0');
-  rig.check(await dm.evaluate('gridMode') === 'hex-flat', 'the grid did not switch to hex');
+  await dm.evaluate('document.getElementById("btn-grid-hptop").click(); 0');
+  rig.check(await dm.evaluate('gridMode') === 'hex-pointy', 'the grid did not switch to hex');
   await dm.evaluate('setShape("poly"); __rigClick(317, 723); 0');
   const onHex = await dm.evaluate('activePolygon.vertices[0]');
   rig.check(Math.abs(onHex.x - 317) < 2 && Math.abs(onHex.y - 723) < 2,
@@ -511,34 +542,26 @@ module.exports = async function drawing(rig) {
             'name and notes the DM wrote for themselves');
 
   // ══ J. The bar shows the mode, and picking a tool never moves the bar ══
-  // RED BY DESIGN: written against the fix, never re-proved
-  // Every button that can appear on the bar, and whether it is drawn and whether it is greyed.
+  // RED ON: #tb-grp-ops moved after #btn-door (index.html) — 2026-10-02
+  // Every button drawn on the bar, in the order it is drawn, and whether any is greyed.
   const BAR = `(() => {
-    const ids = ['btn-select', 'btn-shape', 'btn-brush', 'btn-door', 'btn-cut',
-                 'btn-op-join', 'btn-op-trim', 'btn-cone', 'btn-line', 'btn-ring'];
-    const out = { shown: [], greyed: [] };
-    for (const id of ids) {
-      const b = document.getElementById(id);
-      if (!b) continue;
-      if (getComputedStyle(b).display !== 'none') out.shown.push(id);
-      if (b.disabled) out.greyed.push(id);
-    }
-    return out;
+    const bs = [...document.querySelectorAll('#toolbar-bottom button:not(.tb-chev)')]
+      .filter(b => !b.closest('#shape-menu') && getComputedStyle(b).display !== 'none');
+    return { shown: bs.map(b => b.id), greyed: bs.filter(b => b.disabled).map(b => b.id) };
   })()`;
-  await dm.evaluate('setPlaceMode("rooms"); setShape("rect"); 0');
+  await dm.evaluate('setPlaceMode("rooms"); setShapeOp("join"); setShapeOp("new"); setShape("rect"); 0');
   const barRooms = await dm.evaluate(BAR);
   rig.check(barRooms.shown.join() ===
-            'btn-select,btn-shape,btn-brush,btn-door,btn-cut,btn-op-join,btn-op-trim',
-            'the Rooms bar is not Select, Shape, Brush, Door, Split, Merge, Cut out: ' +
+            'btn-select,btn-shape,btn-op-join,btn-brush,btn-door,btn-snap,btn-axislock,btn-place-rooms,btn-place-effects',
+            'the Rooms bar is not Select, Shape, the operations, Brush, Door, then the switches: ' +
             barRooms.shown.join(' '));
   rig.check(barRooms.greyed.length === 0,
             'the Rooms bar greys a tool instead of leaving it off: ' + barRooms.greyed.join(' '));
   await dm.evaluate('setPlaceMode("effects"); 0');
   const barFx = await dm.evaluate(BAR);
   rig.check(barFx.shown.join() ===
-            'btn-select,btn-shape,btn-cut,btn-op-join,btn-op-trim,btn-cone,btn-line,btn-ring',
-            'the Effects bar is not Select, Shape, Split, Merge, Cut out (with the Cone, Line and ' +
-            'Ring in the shape flyout): ' + barFx.shown.join(' '));
+            'btn-select,btn-shape,btn-op-join,btn-snap,btn-axislock,btn-place-rooms,btn-place-effects',
+            'the Effects bar is not Select, Shape, the operations, then the switches: ' + barFx.shown.join(' '));
   rig.check(barFx.greyed.length === 0,
             'the Effects bar greys a tool instead of leaving it off: ' + barFx.greyed.join(' '));
 

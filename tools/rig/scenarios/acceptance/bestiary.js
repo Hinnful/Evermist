@@ -18,14 +18,20 @@
 //   D. A row's click opens its page to read; Edit swaps in the editor and Done swaps it back.
 //   E. Picked rows (tick, Ctrl+click) put up the selection bar; Duplicate, Ctrl+D, and Ctrl+C then
 //      Ctrl+V each add copies under names that do not clash; Delete asks first, then removes them.
-//   F. A name typed in the fight offers the entries it matches; a pick fills the row with the
-//      entry's name, AC and max HP, a second pick is numbered, and a later edit to the entry leaves
-//      those rows as they were.
+//   F. A name typed in the fight offers the entries it matches; a pick, by Enter or by a click,
+//      fills the row with the entry's name, AC and max HP, a second pick is numbered, and a later
+//      edit to the entry leaves those rows as they were.
 //   G. Pasted links are read one at a time: a monster page becomes an entry marked NEW with its
 //      page open and every action whole, even one the page draws late; a page whose stat block does
 //      not read clean, and a line that is not a link, each stay as a failed row with its reason.
 //   H. A key pressed while the window is open never reaches the map.
 //   I. A monster's Mythic Actions show on its page under their own heading, after its actions.
+//   J. The search sits in the header and the filters on the list toolbar. Ticking swaps the
+//      filters for "N selected" with Duplicate, Export and Delete; the all/none tick selects all
+//      and clears, a partial selection shows a dash, the ticks show without a hover, and Export
+//      starts a download of the ticked monsters.
+//   K. "From a file" takes one file input that opens a .json as an export and a .pdf as a book.
+//   L. The page's collapse closes the page and leaves the Bestiary open.
 //
 // ⚠ G SERVES A PAGE WRITTEN HERE, for an invented monster, from this process. No live site is
 // reached, so a site changing its markup cannot fail this file; the parser's unit tests carry the sites.
@@ -63,7 +69,7 @@ globalThis.__sbEdit = (p, v) => {
 };
 // A name typed into a new fight row, then the suggestion list answered with Enter.
 globalThis.__cbPickTyped = (typed) => {
-  document.querySelector('#cb-list [data-add]').click();
+  document.getElementById('cb-add').click();
   const inp = [...document.querySelectorAll('#cb-list .cb-row')].pop().querySelector('[data-f=name]');
   inp.focus(); inp.value = typed;
   inp.dispatchEvent(new Event('input', { bubbles: true }));
@@ -82,9 +88,9 @@ module.exports = async function bestiaryFeature(rig) {
   // RED ON: the active toggle gated off in bestiarySetOpen (bestiary.js) — 2026-09-25
   await dm.evaluate('document.getElementById("btn-bestiary").click(); 0');
   const opened = await dm.evaluate(`({ open: bsIsOpen(), lit: document.getElementById('btn-bestiary').classList.contains('active'),
-    label: document.getElementById('btn-bestiary').textContent.trim() })`);
+    label: document.getElementById('btn-bestiary').title })`);
   rig.check(opened.open && opened.lit, 'the Bestiary button did not open the window, lit: ' + JSON.stringify(opened));
-  rig.check(opened.label === 'Bestiary', 'the button does not say Bestiary: ' + opened.label);
+  rig.check(opened.label === 'Bestiary', 'the rail button is not named Bestiary: ' + opened.label);
   await dm.evaluate('__bsAct("close"); 0');
   rig.check(await dm.evaluate('!bsIsOpen() && !document.getElementById("btn-bestiary").classList.contains("active")'),
             'the close button left the bestiary open or lit');
@@ -115,7 +121,7 @@ module.exports = async function bestiaryFeature(rig) {
   })()`);
   await dm.evaluate('document.getElementById("bs-panel").dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); __bsAct("clear"); 0');
   const cleared = await dm.evaluate('__bsRows().length');
-  rig.check(JSON.stringify(searched.rows) === '["Goblin"]' && searched.shown === '1 of 3',
+  rig.check(JSON.stringify(searched.rows) === '["Goblin"]' && searched.shown === '1 of 3 monsters',
             'the name search did not narrow the table to the Goblin: ' + JSON.stringify(searched));
   rig.check(JSON.stringify(typed.opts) === '["Beast","Humanoid","Undead"]' && JSON.stringify(typed.rows) === '["Лич"]',
             'the Type filter did not offer one name per type, or did not narrow to the undead: ' + JSON.stringify(typed));
@@ -155,6 +161,77 @@ module.exports = async function bestiaryFeature(rig) {
   rig.check(asked.up && asked.n === 6, 'Delete removed entries without asking first: ' + JSON.stringify(asked));
   rig.check(JSON.stringify(afterDel) === '["Goblin","Wolf","Лич"]', 'Delete did not remove the three picked copies: ' + JSON.stringify(afterDel));
 
+  // ── J. The header search and the list toolbar's selection ─────────────────
+  // RED ON: the header's search field moved onto the list toolbar (bestiary.js) — 2026-10-03
+  rig.check(await dm.evaluate('!!document.querySelector("#bs-panel .bs-head #bs-search")'),
+            'the Bestiary search is not in the header');
+  const ltb = () => dm.evaluate(`(() => { const shown = sel => { const el = document.querySelector(sel); return !!el && el.getClientRects().length > 0; };
+    return { n: bs.picked.size, tick: document.getElementById('bs-tickall').className,
+      count: document.querySelector('.bs-picked').textContent, filters: shown('.bs-fbtns'),
+      acts: ['dup', 'export', 'del'].every(a => shown('.bs-acts [data-a="' + a + '"]')),
+      tickOpacity: getComputedStyle(document.querySelector('#bs-table tbody .bs-cb')).opacity }; })()`);
+  const rest = await ltb();
+  // RED ON: the always-visible tick rule dropped (combat.css) — 2026-10-03
+  rig.check(rest.tickOpacity === '1', 'a row\'s tick is hidden until the pointer is on it: opacity ' + rest.tickOpacity);
+  rig.check(rest.filters && !rest.acts && rest.tick === 'sm-tick',
+            'with nothing ticked the list toolbar does not hold the filters alone: ' + JSON.stringify(rest));
+  await dm.evaluate('__bsClick(__bsRow("Goblin").querySelector("[data-tick]")); 0');
+  const one = await ltb();
+  // RED ON: the ' part' class dropped from #bs-tickall in bestiaryRender (bestiary.js) — 2026-10-03
+  rig.check(one.n === 1 && !one.filters && one.acts && one.count === '1 selected' && /\bpart\b/.test(one.tick),
+            'a ticked row did not swap the filters for "1 selected" and its actions with a dash on the tick: ' + JSON.stringify(one));
+  // ⚠ EXPORT ENDS IN THE BROWSER'S SAVE, which is native. The press is checked to START a
+  // download carrying the ticked monster, and the anchor's click is held for the press only.
+  // RED ON: _bsExport() gated off behind `false &&` in the export action (bestiary.js) — 2026-10-03
+  const dl = await dm.evaluate(`(() => {
+    const real = HTMLAnchorElement.prototype.click; let got = null;
+    HTMLAnchorElement.prototype.click = function () { got = this.download; };
+    try { __bsAct('export'); } finally { HTMLAnchorElement.prototype.click = real; }
+    return got;
+  })()`);
+  rig.check(dl === 'Goblin.json', 'Export on the list toolbar did not start a download of the ticked monster: ' + JSON.stringify(dl));
+  // RED ON: bs.picked.clear() gated off in the #bs-tickall branch (bestiary.js) — 2026-10-03
+  await dm.evaluate('__bsClick(document.getElementById("bs-tickall")); 0');
+  const none = await ltb();
+  rig.check(none.n === 0 && none.filters, 'the all/none tick left a partial selection up: ' + JSON.stringify(none));
+  await dm.evaluate('__bsClick(document.getElementById("bs-tickall")); 0');
+  const every = await ltb();
+  rig.check(every.n === 3 && /\bon\b/.test(every.tick), 'the all/none tick did not select every monster shown: ' + JSON.stringify(every));
+  await dm.evaluate('__bsClick(document.getElementById("bs-tickall")); 0');
+  rig.check((await ltb()).n === 0, 'a second press on the all/none tick left monsters ticked');
+
+  // ── K. One file input, routed by extension ────────────────────────────────
+  // ⚠ THE TWO READERS ARE HELD FOR THE CHANGE EVENT ONLY. A real book needs a path on disk,
+  // which a File built in the page never has, so the route is what is checked, not the read.
+  // RED ON: the .pdf test in the bs-file change handler forced false (bestiary.js) — 2026-10-03
+  const routed = await dm.evaluate(`(() => {
+    const input = document.getElementById('bs-file');
+    const realBook = cbImportBook, realFile = _bsImportFile, got = [];
+    cbImportBook = f => { got.push('book:' + f.name); };
+    _bsImportFile = f => { got.push('export:' + f.name); };
+    try {
+      for (const name of ['monsters.json', 'Monster Manual.PDF']) {
+        const dt = new DataTransfer();
+        dt.items.add(new File(['{}'], name));
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    } finally { cbImportBook = realBook; _bsImportFile = realFile; }
+    return { got, accept: input.accept, inputs: document.querySelectorAll('#bs-panel input[type=file]').length };
+  })()`);
+  rig.check(JSON.stringify(routed.got) === '["export:monsters.json","book:Monster Manual.PDF"]' &&
+            routed.inputs === 1 && /\.json/.test(routed.accept) && /\.pdf/.test(routed.accept),
+            'From a file does not open a .json as an export and a .pdf as a book through one input: ' + JSON.stringify(routed));
+
+  // ── L. The page's collapse ────────────────────────────────────────────────
+  // RED ON: bestiarySetOpen(false) called from the unpage action (bestiary.js) — 2026-10-03
+  await dm.evaluate('bs.open = null; bs.editing = false; _bsRenderPage(); __bsClick(__bsRow("Goblin")); 0');
+  const paged = await dm.evaluate(`(() => { const b = document.querySelector('#bs-page [data-a="unpage"]');
+    const icon = !!(b && b.querySelector('svg.i-collapse')); if (b) __bsClick(b);
+    return { icon, page: bs.open, open: bsIsOpen() }; })()`);
+  rig.check(paged.icon && paged.page === null && paged.open,
+            'the page\'s collapse did not close the page and leave the Bestiary open: ' + JSON.stringify(paged));
+
   // ── F. A pick from the fight's Name field ─────────────────────────────────
   // RED ON: combatRowFromEntry handing the row the entry itself (combatPlan.js) — 2026-09-25
   await dm.evaluate('bestiarySetOpen(false); document.getElementById("btn-combat").click(); 0');
@@ -168,6 +245,23 @@ module.exports = async function bestiaryFeature(rig) {
             picked.every(r => r.ac === '15' && r.max === '7 (2d6)' && r.hp === '' && r.dex === '14'),
             'two picks did not make "Goblin" and "Goblin 2" at full HP with the entry’s numbers: ' + JSON.stringify(picked));
   rig.check(apart.every(r => r === '15|15 (leather armor, shield)|14'), 'an edit to the entry reached the rows in the fight: ' + JSON.stringify(apart));
+  // ⚠ THE CLICK GOES THROUGH THE PAGE'S CAPTURE mousedown, which takes focus off a field and so
+  // closed the list before its own handler ran. A parked window fires no blur event, so the check
+  // reads the focus itself at the row, after the capture and before the list's own handler.
+  // RED ON: data-keeps-focus dropped from #cb-suggest (combatTracker.js) — 2026-10-03
+  const clicked = await dm.evaluate(`(() => {
+    document.getElementById('cb-add').click();
+    const inp = [...document.querySelectorAll('#cb-list .cb-row')].pop().querySelector('[data-f=name]');
+    inp.focus(); inp.value = 'gob'; inp.dispatchEvent(new Event('input', { bubbles: true }));
+    const d = document.querySelector('#cb-suggest [data-i]');
+    if (!d) return null;
+    const b = d.getBoundingClientRect(), o = { bubbles: true, cancelable: true, button: 0, clientX: b.left + 4, clientY: b.top + 4 };
+    let kept = false;
+    d.addEventListener('mousedown', () => { kept = document.activeElement === inp; }, { once: true });
+    d.dispatchEvent(new MouseEvent('mousedown', o)); d.dispatchEvent(new MouseEvent('click', o));
+    return kept ? cbState.rows[cbState.rows.length - 1].name : 'the field lost focus first';
+  })()`);
+  rig.check(clicked === 'Goblin 3', 'a click on a suggestion did not pick the monster: the row reads ' + JSON.stringify(clicked));
   await dm.evaluate('cbSetOpen(false); document.getElementById("btn-bestiary").click(); 0');
 
   // ── G. Pasted links ───────────────────────────────────────────────────────

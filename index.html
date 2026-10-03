@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="src/css/music.css">
 <link rel="stylesheet" href="src/css/panes.css">
 <link rel="stylesheet" href="src/css/combat.css">
+<link rel="stylesheet" href="src/css/dock.css">
 <link rel="stylesheet" href="src/css/overlays.css">
 </head>
 <body>
@@ -21,10 +22,6 @@
 
 <!-- TOOLS WRAPPER (bottom-center, stacks the context row above the toolbar) -->
 <div id="tools-wrapper">
-
-  <!-- One line for a key that was heard and had nothing to do; undo.js fills and fades it.
-       Absolutely positioned, so an empty one costs the column no gap. -->
-  <div id="key-hint"></div>
 
   <!-- CONTEXT ROW — what the toolbar below is currently set to. ONE pill, whatever is in it:
        the fog trio in Rooms mode, the material picker and corner radius in Effects mode, brush
@@ -122,19 +119,15 @@
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform:translate(1px,1px)"><path d="M5 3l6.4 15.6 2.1-6.1 6.1-2.1L5 3z"/></svg>
     </button>
 
-    <!-- ONE BUTTON FOR THE WHOLE SHAPE FAMILY. It wears the glyph of the shape this mode last
-         used, plus a corner tick saying there are more behind it. Left click picks what is
-         showing; RIGHT click opens the flyout. src/shapes/shapeMenu.js owns both, including the
-         preventDefault that right click needs - nothing upstream suppresses a context menu
-         over this part of the window. -->
+    <!-- ONE BUTTON FOR THE WHOLE SHAPE FAMILY, wearing the shape this mode last used. Left click
+         picks what is showing; the chevron or a right-click lists the others (shapeMenu.js). -->
+    <span class="tb-grp" id="tb-grp-shape">
     <div class="tb-shape-wrap">
-      <button id="btn-shape" class="tool-btn" title="Shape - right-click for the others">
+      <button id="btn-shape" class="tool-btn" title="Shape - the arrow beside it, or a right-click, lists the others">
         <span class="tb-shape-glyph"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></span>
-        <svg class="tb-shape-tick" width="6" height="6" viewBox="0 0 6 6" aria-hidden="true"><path d="M6 6 L6 0.5 L0.5 6 z" fill="currentColor"/></svg>
       </button>
-      <!-- The flyout. Hidden with display:none, which still lets a .click() through - the rig
-           drives these four by id. Cone is in the Effects list only: no room is ever
-           cone-shaped, so refreshModeTools() takes it out in Rooms. -->
+      <!-- The shapes themselves, never shown: the button borrows their glyphs and the list its
+           rows, and a .click() on one still picks it (the rig drives them by id). -->
       <div id="shape-menu">
         <button id="btn-poly" class="mode-btn" title="Polygon (P)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></button>
         <button id="btn-rect" class="mode-btn" title="Rectangle (R)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/></svg></button>
@@ -144,6 +137,24 @@
         <button id="btn-ring" class="mode-btn" title="Ring - pick its width across and its thickness"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/></svg></button>
       </div>
     </div>
+    <button class="tb-chev" data-chev="shape" title="Shapes"><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3l2.5 2.5L6.5 3"/></svg></button>
+    </span>
+
+    <!-- The three repairs behind ONE button that wears the last pick. Merge and Cut out arm a
+         MODE the next drawn shape runs in; Split is a tool. All three stay in the page so each
+         keeps its id and its handler; shapeMenu.js shows the one picked. -->
+    <span class="tb-grp" id="tb-grp-ops">
+    <button id="btn-op-join" class="tool-btn" title="Merge - the shape you draw merges every room or effect it lands on into one">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4h4v10H9v-4H5z"/></svg>
+    </button>
+    <button id="btn-op-trim" class="tool-btn" title="Cut out - the shape you draw is taken out of every room or effect it lands on">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4H9v6H5z"/><path d="M9 9h10v10H9z" stroke-dasharray="2.5 2.5"/></svg>
+    </button>
+    <button id="btn-cut" class="tool-btn" title="Split - click a path across a room or effect to split it in two, double-click to finish">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/><path d="M8.5 3.5l3.5 8-2.5 4.5 2.5 4.5" stroke-dasharray="3 2.5"/></svg>
+    </button>
+    <button class="tb-chev" data-chev="ops" title="Merge, Cut out or Split"><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3l2.5 2.5L6.5 3"/></svg></button>
+    </span>
 
     <button id="btn-brush" class="tool-btn" title="Brush (B)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8.6 8.6-4 1 1-4L15 4z"/><path d="M13.4 5.6l5 5"/></svg>
@@ -152,27 +163,8 @@
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 20V10.5a5.5 5.5 0 0 1 11 0V20"/><path d="M3.5 20h17"/><circle cx="14.6" cy="14" r="1.05" fill="currentColor" stroke="none"/></svg>
     </button>
 
-    <!-- Split. A pick-one TOOL, not a repair: Cut out can split a room too, but only by removing
-         a strip, and that gap is a wall on a dungeon and a fogged line across open rock in a
-         cave. On both bars: it cuts whichever list the mode names. -->
-    <button id="btn-cut" class="tool-btn" title="Split - click a path across a room or effect to split it in two, double-click to finish">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/><path d="M8.5 3.5l3.5 8-2.5 4.5 2.5 4.5" stroke-dasharray="3 2.5"/></svg>
-    </button>
-
-    <!-- The two repairs. Each arms a MODE the next drawn shape runs in, so an armed one is lit
-         alongside the picked shape tool and pressing a lit one disarms it. On both bars, acting
-         on whichever list the mode names. -->
-    <button id="btn-op-join" class="tool-btn" title="Merge - the shape you draw merges every room or effect it lands on into one">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4h4v10H9v-4H5z"/></svg>
-    </button>
-    <button id="btn-op-trim" class="tool-btn" title="Cut out - the shape you draw is taken out of every room or effect it lands on">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4H9v6H5z"/><path d="M9 9h10v10H9z" stroke-dasharray="2.5 2.5"/></svg>
-    </button>
-
-    <!-- Independent switches: snap to grid, straighten walls. Both work in either mode, so they
-         stay here, and both keep their state across a mode switch. Bare .tb-toggle buttons set
-         off by the gap, never gathered into a pill - a pill means pick exactly one of these.
-         Their on-state is a fill plus an underline, NOT the picked tool's outlined box. -->
+    <!-- Independent switches: snap to grid, straighten walls. Both work in either mode and keep
+         their state across a mode switch. Bare .tb-toggle buttons, never gathered into a pill. -->
     <button id="btn-snap" class="tb-toggle" title="Snap to grid (N)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
     </button>
@@ -181,9 +173,7 @@
     </button>
 
     <!-- Placement switch: which array the next shape lands in. A SUNKEN TRACK at the end of the
-         bar, and the one control here that looks like nothing it governs - it changes the whole
-         bar rather than being one more group on it. .tb-seg exists for this and nothing else;
-         a group inside #context-row stays bare. -->
+         bar; .tb-seg exists for this and nothing else. -->
     <div class="tb-seg">
       <button id="btn-place-rooms" class="mode-btn active" title="Draw rooms">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
@@ -198,73 +188,312 @@
   </div>
 </div>
 
-<!-- RIGHT SIDEBAR -->
-<div id="sidebar-right-anchor">
+<!-- THE DOCK: an icon rail on the right edge and one pane beside it, over the map. dock.js. -->
+<div id="dock" class="dk">
+  <nav id="dock-rail" class="dk-rail">
+    <button class="rail-btn" id="dock-tab-library" data-dock-win="library" title="Scene library">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>
+    </button>
+    <button class="rail-btn" id="btn-bestiary" title="Bestiary">
+      <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg>
+    </button>
+    <div class="rail-sep"></div>
+    <button class="rail-btn" id="dock-tab-scene" data-dock-pane="scene" title="Scene control">
+      <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><line x1="1.5" y1="4" x2="12.5" y2="4"/><circle cx="8.5" cy="4" r="1.5"/><line x1="1.5" y1="7.5" x2="12.5" y2="7.5"/><circle cx="4.5" cy="7.5" r="1.5"/><line x1="1.5" y1="11" x2="12.5" y2="11"/><circle cx="9.5" cy="11" r="1.5"/></svg>
+    </button>
+    <button class="rail-btn" id="dock-tab-room" data-dock-pane="room" title="Room">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <div class="rail-sep"></div>
+    <button class="rail-btn" id="dock-tab-music" data-dock-pane="music" title="Music">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 18V5l12-2v13"/></svg>
+    </button>
+    <button class="rail-btn" id="dock-tab-sounds" data-dock-pane="sounds" title="Sounds">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>
+    </button>
+    <button class="rail-btn" id="btn-combat" title="The fight table">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
+    </button>
+    <button class="rail-btn rail-end" id="dock-tab-settings" data-dock-pane="settings" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+    <button class="rail-btn" id="btn-help" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.1 2.4c-.7.2-1.2.9-1.2 1.6v.3"/><circle cx="11.5" cy="16.9" r=".9" fill="currentColor" stroke="none"/></svg>
+    </button>
+  </nav>
+  <div id="dock-pane" class="dk-pw">
+    <div id="dock-edge" title="Drag to resize"></div>
+    <section class="dk-sec" id="dock-pane-scene" data-pane="scene" hidden>
+      <div class="dk-head">
+        <span class="dk-scene"><span class="dk-live" id="dock-live" title="On the TV"></span><span id="scene-dd-name" class="cp-adv-title" data-no-i18n>No scene</span></span>
+        <button id="btn-two-maps" class="cp-adv-close" title="Two maps: show a second map beside this one">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>
+        </button>
+      </div>
+      <div class="dk-scroll">
 
-<!-- THE TAB BAR LIVES OUTSIDE THE PANEL, so it survives the panel shutting. Words, not icons:
-     nothing about fog or a grid draws as a glyph the DM reads at a glance. -->
-<div id="cp-tabbar">
-  <button class="cp-tab" data-tab="fog">Fog</button>
-  <button class="cp-tab" data-tab="grid">Grid</button>
-  <button class="cp-tab" data-tab="player">Player</button>
+        <div class="cp-group" id="cp-sec-fog">
+          <div class="dk-sh"><span class="cp-label">Fog</span>
+            <button id="cp-fog-reset" class="cp-adv-close" title="Reset fog settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">Colour</span>
+            <div class="cp-field dk-colour" id="cp-fog-field" data-dock-pop="cp-pop-fog" title="Fog colour and tint strength">
+              <span class="cp-swatch"></span><span class="cp-hash">#</span><span class="cp-hex"></span><span class="cp-fdiv"></span><span class="cp-alphanum"></span><span class="cp-pct">%</span>
+            </div>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">Movement</span>
+            <div class="dk-r" id="cp-move-row">
+              <button class="dk-dd" id="cp-move-dd" data-dock-pop="cp-pop-move" title="Movement preset"><span id="cp-move-lbl">Medium drift</span><span class="car">▼</span></button>
+              <button class="dk-eye" id="cp-move-eye" title="Fog movement (A)"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cp-group" id="cp-sec-rooms">
+          <div class="dk-sh"><span class="cp-label">Rooms</span>
+            <button class="dk-eye" id="cp-labels-eye" title="Room names on my map (L)"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">All rooms</span>
+            <div class="cp-btnrow">
+              <button id="btn-clear-fog" class="cp-btn" title="Clear fog from every room">Reveal all</button>
+              <button id="btn-fill-fog" class="cp-btn" title="Fog every room">Shroud all</button>
+            </div>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">Sources</span>
+            <div class="dk-r">
+              <button class="dk-src" id="cp-src-plan" disabled title="Load a floor plan (.dd2vtt) for this map"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"><path d="M3 1.5h5.5L11 4v8.5H3z"/><path d="M8.5 1.5V4H11"/></svg></span><span class="nm">Floor plan</span></button>
+              <input type="file" id="cp-plan-input" accept=".dd2vtt" hidden>
+              <button id="btn-floorplan" class="cp-adv-close" title="Draw Rooms from the floor plan" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+            </div>
+            <div class="dk-r">
+              <button class="dk-src" id="cp-src-module" title="Load or replace the module text"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg></span><span class="nm" data-no-i18n></span><span class="mt"></span></button>
+              <button id="cp-module-clear" class="cp-adv-close" title="Remove the module text" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cp-group" id="cp-sec-grid">
+          <div class="dk-sh"><span class="cp-label">Grid</span>
+            <div class="cp-row">
+              <button class="dk-eye" id="cp-grid-eye" title="Grid (G)"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
+              <button id="cp-grid-reset" class="cp-adv-close" title="Reset grid settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
+            </div>
+          </div>
+          <div class="dk-secbody" id="cp-grid-body">
+            <div class="dk-blk"><span class="dk-sub">Type</span>
+              <div class="cp-iconrow cp-seg" id="cp-gridtype-row">
+                <button class="cp-iconbtn" data-gtype="square" title="Square"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="11" height="11" rx="1"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="1.5" y1="9" x2="12.5" y2="9"/><line x1="5.5" y1="1.5" x2="5.5" y2="12.5"/><line x1="9" y1="1.5" x2="9" y2="12.5"/></svg></button>
+                <button class="cp-iconbtn" data-gtype="hex-pointy" title="Hex"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="7,1 12,4 12,10 7,13 2,10 2,4"/></svg></button>
+              </div>
+            </div>
+            <div class="dk-blk"><span class="dk-sub">Cells</span>
+              <div class="dk-r">
+                <label class="dk-num" title="Cell size. Drag the icon to change it."><span class="pre" data-scrub="grid-size-num" data-min="10" data-max="400" data-per="2"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05"><rect x="2.5" y="2.5" width="9" height="9" rx="1"/></svg></span><input type="text" id="grid-size-num" inputmode="numeric" value="70"><span class="u">px</span></label>
+                <label class="dk-num" title="Line width. Drag the icon to change it."><span class="pre" data-scrub="grid-thickness-num" data-min="1" data-max="10" data-per="12"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M2 4h10" stroke-width="0.9"/><path d="M2 7h10" stroke-width="1.6"/><path d="M2 10.5h10" stroke-width="2.4"/></svg></span><input type="text" id="grid-thickness-num" inputmode="numeric" value="1"><span class="u">px</span></label>
+                <button id="cp-grid-calibrate" class="cp-adv-close" title="Fit the grid to the map: drag a square across the map's own cells"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5v-3h3"/><path d="M9.5 1.5h3v3"/><path d="M12.5 9.5v3h-3"/><path d="M4.5 12.5h-3v-3"/><line x1="7" y1="4.2" x2="7" y2="9.8"/><line x1="4.2" y1="7" x2="9.8" y2="7"/></svg></button>
+              </div>
+            </div>
+            <div class="dk-blk"><span class="dk-sub">Lines</span>
+              <div class="cp-field dk-colour" id="cp-grid-field" data-dock-pop="cp-pop-grid" title="Grid colour and opacity">
+                <span class="cp-swatch"></span><span class="cp-hash">#</span><span class="cp-hex"></span><span class="cp-fdiv"></span><span class="cp-alphanum"></span><span class="cp-pct">%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cp-group" id="cp-pane-player">
+          <div class="dk-sh"><span class="cp-label">Player</span><span id="display-info-readout" class="cp-hint"></span></div>
+          <div class="dk-blk"><span class="dk-sub">Window</span>
+            <div class="dk-r">
+              <button id="cp-player-golive" class="cp-btn cp-btn-live" title="Open the Player window">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3.2" width="10" height="7" rx="1.2"/><line x1="7" y1="10.2" x2="7" y2="11.8"/><line x1="4.8" y1="11.8" x2="9.2" y2="11.8"/></svg>
+                <span id="cp-golive-lbl">Open Window</span>
+              </button>
+              <button class="cp-adv-close" id="cp-player-fullscreen" title="Fullscreen the Player window"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5 V2 H5.5"/><path d="M8.5 2 H12 V5.5"/><path d="M12 8.5 V12 H8.5"/><path d="M5.5 12 H2 V8.5"/></svg></button>
+            </div>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">Updates</span>
+            <div class="dk-r">
+              <div class="cp-tabs">
+                <button class="cp-segtab" data-sync="auto" title="Send fog changes as you paint them">Auto</button>
+                <button class="cp-segtab" data-sync="manual" title="Hold changes until you press Send">Manual</button>
+              </div>
+              <button class="cp-adv-close" id="cp-player-send" title="Send to the Player now"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="3.5,2.3 11.8,7 3.5,11.7"/></svg></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cp-group" id="cp-sec-seat">
+          <div class="dk-sh"><span class="cp-label">My seat</span></div>
+          <div class="cp-tabs">
+            <button class="cp-segtab" data-seat="0" title="The laptop map as it is">0°</button>
+            <button class="cp-segtab" data-seat="90" title="Turn the laptop map a quarter clockwise">90°</button>
+            <button class="cp-segtab" data-seat="180" title="Turn the laptop map upside down">180°</button>
+            <button class="cp-segtab" data-seat="270" title="Turn the laptop map a quarter anticlockwise">270°</button>
+          </div>
+        </div>
+
+        <!-- The back end the pane drives: the fog, grid and player wiring reads and clicks these. -->
+        <div id="cp-legacy" aria-hidden="true">
+          <input type="color" id="fog-color" value="#3a3a8c">
+          <input type="color" id="grid-color" value="#ffffff">
+          <input type="range" id="grid-size" min="10" max="400" value="70">
+          <input type="range" id="grid-thickness" min="1" max="10" value="1">
+          <input type="range" id="grid-offset-x" min="0" max="700" value="0">
+          <input type="range" id="grid-offset-y" min="0" max="700" value="0">
+          <button id="btn-minimap-lock">Lock</button>
+          <button id="btn-player">Open Window</button>
+          <button id="btn-sync-view">Sync View</button>
+          <button id="btn-auto-sync">Auto</button>
+          <button id="btn-fullscreen-player">Fullscreen</button>
+          <button id="btn-send">Send</button>
+          <button id="btn-grid"></button>
+          <button id="btn-grid-sq" class="grid-mode-btn active"></button>
+          <button id="btn-grid-hptop" class="grid-mode-btn"></button>
+          <button id="btn-grid-reset"></button>
+          <button id="btn-anim"></button>
+          <button id="anim-preset-calm" class="anim-preset-btn"></button>
+          <button id="anim-preset-default" class="anim-preset-btn active"></button>
+          <button id="anim-preset-fast" class="anim-preset-btn"></button>
+          <button id="btn-anim-advanced"></button>
+          <button id="btn-anim-reset"></button>
+        </div>
+      </div>
+    </section>
+    <section class="dk-sec" id="dock-pane-room" data-pane="room" hidden>
+      <!-- The selected room, Notion's way: the name is the header, Delete sits where Close was,
+           then the notes and the pictures. roomCard.js fills it. -->
+      <div id="panel-room" class="dk-room">
+        <div class="dk-rhead rp-ident">
+          <input id="rp-name" class="rp-name" type="text" spellcheck="false" autocomplete="off"
+                 maxlength="60" placeholder="Room name" title="Room name. The module's locations drop down here.">
+          <button id="rp-delete" class="cp-adv-close" title="Delete room (Del)">
+            <svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
+        </div>
+        <textarea id="rp-desc" class="rp-desc" spellcheck="false" rows="1"
+                  placeholder="What's in here, what the party sees, what's hidden…"></textarea>
+        <div class="rp-pics" id="rp-pics" style="display:none"></div>
+        <button class="dk-addpic" id="rp-pic-add" title="Pick a picture, or drop one here">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7.5V11A1.5 1.5 0 0 1 11 12.5H3A1.5 1.5 0 0 1 1.5 11V3A1.5 1.5 0 0 1 3 1.5h4.5"/><circle cx="4.8" cy="5" r="1.1"/><path d="M12.5 9.6 10.4 7.5a1 1 0 0 0-1.4 0L4 12.5"/><path d="M11 .8v4M9 2.8h4"/></svg>
+          <span>Add a picture</span>
+        </button>
+        <input type="file" id="rp-pic-input" accept="image/*,.avif,.svg,.webp,.gif,.bmp,.ico,.jfif" multiple hidden>
+        <div class="dk-rcorner">
+          <span class="dk-sub">Corner radius</span>
+          <div class="cp-chip cp-chip-pre rp-radius" id="rp-radius-field">
+            <svg class="rp-radius-ico rp-ico-all" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+              <path d="M2 6V4.5A2.5 2.5 0 014.5 2H6"/><path d="M10 2h1.5A2.5 2.5 0 0114 4.5V6"/>
+              <path d="M14 10v1.5a2.5 2.5 0 01-2.5 2.5H10"/><path d="M6 14H4.5A2.5 2.5 0 012 11.5V10"/>
+            </svg>
+            <svg class="rp-radius-ico rp-ico-one" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
+              <path d="M2.5 14V6.5A4 4 0 016.5 2.5H14"/>
+            </svg>
+            <input type="text" id="rp-radius-num" inputmode="numeric" value="0">
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="dk-sec" id="dock-pane-music" data-pane="music" hidden>
+      <div class="dk-head"><span class="cp-adv-title">Music</span><div class="cp-row">
+        <button id="btn-mu-group" class="cp-adv-close" title="New group">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5v7h11v-6h-5L6 4H1.5z"/><path d="M7 6.8v3M5.5 8.3h3"/></svg>
+        </button>
+        <button id="btn-mu-add" class="cp-adv-close" title="Add from YouTube">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button></div>
+      </div>
+      <!-- The player: what is loaded, playing or paused, and how loud. music.js. -->
+      <div class="dk-player mu-resting" id="music-bubble">
+        <div class="pl-top">
+          <!-- Pause, not stop: it keeps the position, so pressing it again picks the track back up. -->
+          <button id="btn-mu-pause" class="pl-play" title="Pause">
+            <svg id="mu-ico-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+            <svg id="mu-ico-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M8 5l11 7-11 7z"/></svg>
+          </button>
+          <div class="pl-meta">
+            <div class="pl-title" id="mu-pill-name" data-no-i18n></div>
+            <div class="pl-sub"><span class="pl-bars" id="mu-level"><i></i><i></i><i></i><i></i></span><span id="mu-state"></span></div>
+          </div>
+        </div>
+        <div class="pl-vol">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>
+          <div class="cp-slider">
+            <div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div>
+            <input id="mu-vol" type="range" min="0" max="100" step="1" value="70" title="Music volume">
+          </div>
+          <span class="pl-pct" id="mu-vol-pct"></span>
+        </div>
+        <!-- How far a download has got. Absent unless a queue is running. -->
+        <div class="pl-dl" id="mu-dl"><div class="bar" id="mu-dlbar"><i></i></div><span>Downloading</span></div>
+      </div>
+      <div class="mu-toprow">
+        <!-- .cp-field's surface, not the inset pill: that one means "pick one of these". -->
+        <div class="cp-field mu-filterfield">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
+          <input id="mu-filter" type="text" spellcheck="false" placeholder="Filter tracks">
+        </div>
+      </div>
+      <div class="dk-scroll"><div id="mu-list" class="mu-list" data-no-i18n></div></div>
+    </section>
+    <section class="dk-sec" id="dock-pane-sounds" data-pane="sounds" hidden>
+      <div class="dk-head"><span class="cp-adv-title">Sounds</span></div>
+      <div class="dk-player">
+        <div class="pl-vol">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>
+          <div class="cp-slider">
+            <div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div>
+            <input id="sb-vol" type="range" min="0" max="100" step="1" value="50" title="Sound volume, separate from music">
+          </div>
+          <span class="pl-pct" id="sb-vol-pct"></span>
+        </div>
+      </div>
+      <!-- Left click plays one more copy, right click stops the newest. soundboard.js. -->
+      <div class="dk-scroll"><div id="sb-cols" class="dk-sbgroups" data-no-i18n></div></div>
+    </section>
+    <section class="dk-sec" id="dock-pane-settings" data-pane="settings" hidden>
+      <div class="dk-head"><span class="cp-adv-title">Settings</span></div>
+      <div class="dk-scroll">
+        <!-- Filled by i18n.js's language switch. -->
+        <div class="cp-group" id="settings-lang"><div class="dk-sh"><span class="cp-label">Language</span></div></div>
+        <div class="cp-group">
+          <div class="dk-sh"><span class="cp-label">Shrink big maps</span></div>
+          <div id="sm-compress" class="cp-tabs" title="Animated maps bigger than the size picked here are re-encoded to fit it on import, and room pictures are shrunk to it. Improves performance on low-end machines.">
+            <button class="cp-segtab" data-size="0">Off</button>
+            <button class="cp-segtab" data-size="1080">1080p</button>
+            <button class="cp-segtab" data-size="1440">2K</button>
+            <button class="cp-segtab" data-size="1">4K</button>
+          </div>
+        </div>
+        <!-- One value for every scene, never stored in one. Judge Half on the PLAYER window: the
+             DM view draws fog at FOG_OPACITY_DM, so 50 reads as ~27% here and 50% on the TV. -->
+        <div class="cp-group">
+          <div class="dk-sh"><span class="cp-label">Fog in every scene</span></div>
+          <div class="cp-advrow">
+            <span class="cp-advlbl">Half</span>
+            <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="fog-half-alpha" min="0" max="100" value="50" step="1" title="Half-shroud density: how much fog remains (0 = revealed, 100 = shrouded)"></div>
+            <input type="text" id="fog-half-alpha-num" class="cp-chip cp-chip-num" inputmode="numeric" value="50">
+          </div>
+          <div class="cp-advrow">
+            <span class="cp-advlbl">Feather</span>
+            <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="fog-feather" min="0" max="24" value="12" step="1" title="How soft the edge of a revealed area is"></div>
+            <input type="text" id="fog-feather-num" class="cp-chip cp-chip-num" inputmode="numeric" value="12">
+          </div>
+        </div>
+        <!-- Filled by about.js: mark, wordmark, version, repo, What's new, the update line. -->
+        <div class="cp-group legend-about" id="legend-about"></div>
+      </div>
+    </section>
+  </div>
 </div>
 
-<!-- Settings panel -->
-<div id="sidebar-right">
-
-  <!-- ===== FOG PANE ===== -->
-  <div class="cp-pane" id="cp-pane-fog">
-    <div class="cp-group">
-      <div class="cp-label">Control</div>
-      <div class="cp-btnrow">
-        <button id="btn-clear-fog" class="cp-btn cp-btn-outline">Reveal All</button>
-        <button id="btn-fill-fog" class="cp-btn cp-btn-outline">Shroud All</button>
-      </div>
-    </div>
-
-    <!-- Its own group, not a third button beside the fog pair: Reveal/Shroud All paint fog,
-         this one creates rooms, and three identical outlines in a row said they were the
-         same kind of thing. The icon is the Polygon tool's, so the button reads as room
-         work at a glance. -->
-    <div class="cp-group">
-      <div class="cp-label">Rooms</div>
-      <div class="cp-btnrow">
-        <button id="btn-floorplan" class="cp-btn cp-btn-outline" disabled>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
-          Draw Rooms
-        </button>
-      </div>
-    </div>
-
-    <div class="cp-group">
-      <div class="cp-label">Animation</div>
-      <div class="cp-row">
-        <div class="cp-iconrow" id="cp-anim-row">
-        <button class="cp-iconbtn" data-anim="off" title="Off">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4.5"/><line x1="4.2" y1="4.2" x2="9.8" y2="9.8"/></svg>
-        </button>
-        <button class="cp-iconbtn" data-anim="slow" title="Slow drift">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 7 C3.5 3.5 6 3.5 7 7 C8 10.5 10.5 10.5 12.5 7"/></svg>
-        </button>
-        <button class="cp-iconbtn" data-anim="medium" title="Medium drift">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1 5.5 C2 3.5 3.5 3.5 4.5 5.5 C5.5 7.5 7 7.5 8 5.5 C9 3.5 10.5 3.5 11.5 5.5 C12.5 7.5 13 7.5 13.5 5.5"/><path d="M0.5 8.5 C1.5 6.5 3 6.5 4 8.5 C5 10.5 6.5 10.5 7.5 8.5 C8.5 6.5 10 6.5 11 8.5 C12 10.5 13 10.5 13.5 8.5"/></svg>
-        </button>
-        <button class="cp-iconbtn" data-anim="fast" title="Fast drift">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M0.5 4.5 C1.2 3 2.3 3 3 4.5 C3.7 6 4.8 6 5.5 4.5 C6.2 3 7.3 3 8 4.5 C8.7 6 9.8 6 10.5 4.5 C11.2 3 12.3 3 13 4.5"/><path d="M0.5 7 C1.2 5.5 2.3 5.5 3 7 C3.7 8.5 4.8 8.5 5.5 7 C6.2 5.5 7.3 5.5 8 7 C8.7 8.5 9.8 8.5 10.5 7 C11.2 5.5 12.3 5.5 13 7"/><path d="M0.5 9.5 C1.2 8 2.3 8 3 9.5 C3.7 11 4.8 11 5.5 9.5 C6.2 8 7.3 8 8 9.5 C8.7 11 9.8 11 10.5 9.5 C11.2 8 12.3 8 13 9.5"/></svg>
-        </button>
-        <button class="cp-iconbtn" data-anim="advanced" title="Advanced settings">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><line x1="1.5" y1="4" x2="12.5" y2="4"/><circle cx="8.5" cy="4" r="1.5"/><line x1="1.5" y1="7.5" x2="12.5" y2="7.5"/><circle cx="4.5" cy="7.5" r="1.5"/><line x1="1.5" y1="11" x2="12.5" y2="11"/><circle cx="9.5" cy="11" r="1.5"/></svg>
-        </button>
-        </div>
-        <button id="cp-fog-reset" class="cp-btn cp-btn-outline cp-btn-icon" title="Reset fog settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
-      </div>
-    </div>
-
-    <div class="cp-group">
-      <div class="cp-label">Custom Color</div>
+<!-- The dock's pop-outs, placed to its left level with the row that opened them (dock.js). -->
+<div class="dk-pop" id="cp-pop-fog" hidden>
+  <div class="cp-adv-head"><span class="cp-adv-title">Fog colour</span><button class="cp-adv-close" data-pop-close title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg></button></div>
+  <div class="cp-adv-body">
       <div class="cp-picker" data-picker="fog">
         <div class="cp-sv">
-          <canvas class="cp-sv-canvas" width="202" height="130"></canvas>
+          <canvas class="cp-sv-canvas" width="222" height="130"></canvas>
           <div class="cp-sv-cursor"></div>
         </div>
         <input type="range" class="ev-slider cp-hue" min="0" max="360" value="0" title="Hue">
@@ -278,61 +507,14 @@
           <span class="cp-pct">%</span>
         </div>
       </div>
-    </div>
   </div>
-
-  <!-- ===== GRID PANE ===== -->
-  <div class="cp-pane" id="cp-pane-grid" hidden>
-    <div class="cp-group">
-      <div class="cp-label">Grid Type</div>
-      <div class="cp-row">
-        <div class="cp-iconrow" id="cp-gridtype-row">
-        <button class="cp-iconbtn" data-gtype="off" title="Off">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="4.5"/><line x1="4.2" y1="4.2" x2="9.8" y2="9.8"/></svg>
-        </button>
-        <button class="cp-iconbtn" data-gtype="square" title="Square">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="11" height="11" rx="1"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="1.5" y1="9" x2="12.5" y2="9"/><line x1="5.5" y1="1.5" x2="5.5" y2="12.5"/><line x1="9" y1="1.5" x2="9" y2="12.5"/></svg>
-        </button>
-        <button class="cp-iconbtn" data-gtype="hex-pointy" title="Pointy-top hex">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="7,1 12,4 12,10 7,13 2,10 2,4"/></svg>
-        </button>
-        <button class="cp-iconbtn" data-gtype="hex-flat" title="Flat-top hex">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="4,2 10,2 13,7 10,12 4,12 1,7"/></svg>
-        </button>
-        </div>
-        <span class="cp-rowdiv"></span>
-        <button id="cp-grid-calibrate" class="cp-btn cp-btn-outline cp-btn-icon" title="Fit the grid to the map: drag a square across the map's own cells"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5v-3h3"/><path d="M9.5 1.5h3v3"/><path d="M12.5 9.5v3h-3"/><path d="M4.5 12.5h-3v-3"/><line x1="7" y1="4.2" x2="7" y2="9.8"/><line x1="4.2" y1="7" x2="9.8" y2="7"/></svg></button>
-        <button id="cp-grid-reset" class="cp-btn cp-btn-outline cp-btn-icon" title="Reset grid settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
-      </div>
-    </div>
-
-    <div class="cp-group">
-      <div class="cp-label">Grid</div>
-      <div class="cp-slrows">
-        <div class="cp-slrow">
-          <span class="cp-rowlbl">Size</span>
-          <div class="cp-slider">
-            <div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div>
-            <input type="range" id="grid-size" min="10" max="400" value="70" title="Grid cell size">
-          </div>
-          <input type="text" id="grid-size-num" class="cp-chip cp-chip-num" inputmode="numeric" value="70">
-        </div>
-        <div class="cp-slrow">
-          <span class="cp-rowlbl">Width</span>
-          <div class="cp-slider">
-            <div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div>
-            <input type="range" id="grid-thickness" min="1" max="10" value="1" title="Line thickness">
-          </div>
-          <input type="text" id="grid-thickness-num" class="cp-chip cp-chip-num" inputmode="numeric" value="1">
-        </div>
-      </div>
-    </div>
-
-    <div class="cp-group">
-      <div class="cp-label">Color</div>
+</div>
+<div class="dk-pop" id="cp-pop-grid" hidden>
+  <div class="cp-adv-head"><span class="cp-adv-title">Grid colour</span><button class="cp-adv-close" data-pop-close title="Close"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg></button></div>
+  <div class="cp-adv-body">
       <div class="cp-picker" data-picker="grid">
         <div class="cp-sv">
-          <canvas class="cp-sv-canvas" width="202" height="130"></canvas>
+          <canvas class="cp-sv-canvas" width="222" height="130"></canvas>
           <div class="cp-sv-cursor"></div>
         </div>
         <input type="range" class="ev-slider cp-hue" min="0" max="360" value="0" title="Hue">
@@ -346,125 +528,35 @@
           <span class="cp-pct">%</span>
         </div>
       </div>
-    </div>
   </div>
-
-  <!-- ===== PLAYER PANE ===== -->
-  <!-- Presentational only: every control here proxies a click to its (hidden) legacy
-       button in #cp-legacy, so the toolbar.js / minimap.js / viewport.js wiring is
-       untouched. See _cpInitPlayer() / refreshPlayerControlUI() in controlPanel.js. -->
-  <div class="cp-pane" id="cp-pane-player" hidden>
-    <div class="cp-group">
-      <div class="cp-labelrow">
-        <span class="cp-label">Window</span>
-        <span id="display-info-readout" class="cp-hint"></span>
-      </div>
-      <div class="cp-row">
-        <button id="cp-player-golive" class="cp-btn cp-btn-live" title="Open the Player window">
-          <!-- A monitor, not a power symbol. A power glyph's mass is its bottom arc with
-               an empty gap above, so it reads as sitting low however you centre it. This
-               shape has even mass, so its ink centre (y 3.2..11.8, centre 7.5) IS its
-               optical centre, and 7.5 is where the label's cap-height centre falls. -->
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3.2" width="10" height="7" rx="1.2"/><line x1="7" y1="10.2" x2="7" y2="11.8"/><line x1="4.8" y1="11.8" x2="9.2" y2="11.8"/></svg>
-          <span id="cp-golive-lbl">Open Window</span>
-        </button>
-        <button class="cp-btn cp-btn-outline cp-btn-icon" id="cp-player-fullscreen" title="Fullscreen the Player window">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5 V2 H5.5"/><path d="M8.5 2 H12 V5.5"/><path d="M12 8.5 V12 H8.5"/><path d="M5.5 12 H2 V8.5"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <div class="cp-group">
-      <div class="cp-label">Preview</div>
-      <div id="minimap-panel">
-        <canvas id="minimap-canvas" width="176" height="176"></canvas>
-        <button id="cp-player-lock" class="cp-ovbtn" title="Lock the minimap so a stray drag can't move the view">
-          <svg class="cp-ico-off" width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.3" width="8" height="5.4" rx="1"/><path d="M4.7 6.3 V4.6 a2.3 2.3 0 0 1 4.6 0"/></svg>
-          <svg class="cp-ico-on" width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.3" width="8" height="5.4" rx="1"/><path d="M4.7 6.3 V4.6 a2.3 2.3 0 0 1 4.6 0 V6.3"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <div class="cp-group">
-      <div class="cp-label">View</div>
-      <div class="cp-row">
-        <div class="cp-stepper">
-          <button class="cp-stepbtn" id="cp-zoom-dec" title="Zoom out">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="3" y1="7" x2="11" y2="7"/></svg>
-          </button>
-          <span class="cp-stepval">
-            <input id="cp-zoom-num" type="text" inputmode="numeric" spellcheck="false" autocomplete="off" value="100" title="Player zoom">
-            <span class="cp-pct">%</span>
-          </span>
-          <button class="cp-stepbtn" id="cp-zoom-inc" title="Zoom in">
-            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg>
-          </button>
-        </div>
-        <button class="cp-btn cp-btn-outline cp-btn-icon" id="cp-player-syncview" title="Push this view to the Player">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M2.2 7 a4.8 4.8 0 0 1 8.1 -3.5 L11.8 5"/><polyline points="11.8,1.6 11.8,5 8.4,5"/><path d="M11.8 7 a4.8 4.8 0 0 1 -8.1 3.5 L2.2 9"/><polyline points="2.2,12.4 2.2,9 5.6,9"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <div class="cp-group">
-      <div class="cp-label">My seat</div>
-      <div class="cp-tabs">
-        <button class="cp-segtab" data-seat="0" title="The laptop map as it is">0°</button>
-        <button class="cp-segtab" data-seat="90" title="Turn the laptop map a quarter clockwise">90°</button>
-        <button class="cp-segtab" data-seat="180" title="Turn the laptop map upside down">180°</button>
-        <button class="cp-segtab" data-seat="270" title="Turn the laptop map a quarter anticlockwise">270°</button>
-      </div>
-    </div>
-
-    <div class="cp-group">
-      <div class="cp-label">Updates</div>
-      <div class="cp-row">
-        <div class="cp-tabs">
-          <button class="cp-segtab" data-sync="auto" title="Send fog changes as you paint them">Auto</button>
-          <button class="cp-segtab" data-sync="manual" title="Hold changes until you press Send">Manual</button>
-        </div>
-        <button class="cp-btn cp-btn-outline cp-btn-icon" id="cp-player-send" title="Send to the Player now">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="3.5,2.3 11.8,7 3.5,11.7"/></svg>
-        </button>
-      </div>
-    </div>
+</div>
+<div class="dk-pop dk-drop" id="cp-pop-move" hidden>
+  <div class="dk-menu">
+    <button data-anim="slow">Slow drift</button>
+    <button data-anim="medium">Medium drift</button>
+    <button data-anim="fast">Fast drift</button>
+    <div class="sep"></div>
+    <button data-anim="advanced">Custom…</button>
   </div>
-
-  <!-- Hidden legacy controls — the new UI drives these so the existing fog/grid/player
-       wiring (toolbar.js / fog.js / grid.js / minimap.js) runs unchanged. See controlPanel.js. -->
-  <div id="cp-legacy" aria-hidden="true">
-    <input type="color" id="fog-color" value="#3a3a8c">
-    <input type="color" id="grid-color" value="#ffffff">
-    <input type="range" id="grid-offset-x" min="0" max="700" value="0">
-    <input type="range" id="grid-offset-y" min="0" max="700" value="0">
-    <button id="btn-minimap-lock">Lock</button>
-    <button id="btn-player">Open Window</button>
-    <button id="btn-sync-view">Sync View</button>
-    <button id="btn-auto-sync">Auto</button>
-    <button id="btn-fullscreen-player">Fullscreen</button>
-    <button id="btn-send">Send</button>
-    <button id="btn-grid"></button>
-    <button id="btn-grid-sq" class="grid-mode-btn active"></button>
-    <button id="btn-grid-hflat" class="grid-mode-btn"></button>
-    <button id="btn-grid-hptop" class="grid-mode-btn"></button>
-    <button id="btn-grid-reset"></button>
-    <button id="btn-anim"></button>
-    <button id="anim-preset-calm" class="anim-preset-btn"></button>
-    <button id="anim-preset-default" class="anim-preset-btn active"></button>
-    <button id="anim-preset-fast" class="anim-preset-btn"></button>
-    <button id="btn-anim-advanced"></button>
-    <button id="btn-anim-reset"></button>
-  </div>
-
 </div>
 
-</div><!-- /#sidebar-right-anchor -->
+<!-- The minimap: what the TV shows, bottom left. Drag or wheel it to move the Player's view. -->
+<div id="minimap-panel">
+  <canvas id="minimap-canvas" width="176" height="176"></canvas>
+  <button id="cp-player-syncview" class="cp-ovbtn left" title="Push this view to the Player">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M2.2 7 a4.8 4.8 0 0 1 8.1 -3.5 L11.8 5"/><polyline points="11.8,1.6 11.8,5 8.4,5"/><path d="M11.8 7 a4.8 4.8 0 0 1 -8.1 3.5 L2.2 9"/><polyline points="2.2,12.4 2.2,9 5.6,9"/></svg>
+  </button>
+  <button id="cp-player-lock" class="cp-ovbtn" title="Lock the minimap so a stray drag can't move the view">
+    <svg class="cp-ico-off" width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.3" width="8" height="5.4" rx="1"/><path d="M4.7 6.3 V4.6 a2.3 2.3 0 0 1 4.6 0"/></svg>
+    <svg class="cp-ico-on" width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.3" width="8" height="5.4" rx="1"/><path d="M4.7 6.3 V4.6 a2.3 2.3 0 0 1 4.6 0 V6.3"/></svg>
+  </button>
+</div>
 
-<!-- ADVANCED FOG SETTINGS — floats to the left of the panel (positioned by controlPanel.js).
-     Holds the real animation sliders; toggled by the Fog tab's "Advanced" button. -->
-<div id="anim-advanced-panel" style="display:none">
+<!-- CUSTOM MOVEMENT — the real animation dials, beside the dock. Custom… in the movement
+     dropdown arms it; controlPanel.js shows and places it. -->
+<div id="anim-advanced-panel" hidden>
   <div class="cp-adv-head">
-    <span class="cp-adv-title">Advanced Settings</span>
+    <span class="cp-adv-title">Custom movement</span>
     <button id="cp-adv-close" class="cp-adv-close" title="Close">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
     </button>
@@ -500,76 +592,54 @@
       <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-alpha-amp" min="0" max="1000" value="500" title="How much the fog breathes lighter and darker"></div>
       <input type="text" id="anim-alpha-amp-num" class="cp-chip cp-chip-num" inputmode="numeric" value="0.30">
     </div>
-    <div class="cp-advrow">
-      <span class="cp-advlbl">Feather</span>
-      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="fog-feather" min="0" max="24" value="12" step="1" title="How soft the edge of a revealed area is"></div>
-      <input type="text" id="fog-feather-num" class="cp-chip cp-chip-num" inputmode="numeric" value="12">
-    </div>
-    <!-- Half density — how much fog REMAINS in a half-shrouded room. Lives here rather than on
-         the Fog tab because it is a fiddly dial, same as Feather above it: one global value the
-         DM sets once and leaves alone, not a per-scene control. Judge it on the PLAYER window —
-         the DM view draws fog at FOG_OPACITY_DM, so 50 reads as ~27% here and 50% on the TV. -->
-    <div class="cp-advrow">
-      <span class="cp-advlbl">Half</span>
-      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="fog-half-alpha" min="0" max="100" value="50" step="1" title="Half-shroud density: how much fog remains (0 = revealed, 100 = shrouded)"></div>
-      <input type="text" id="fog-half-alpha-num" class="cp-chip cp-chip-num" inputmode="numeric" value="50">
-    </div>
   </div>
-</div>
-
-<!-- HELP CORNER — ONE button. It opens the shortcuts panel, and the About block lives inside
-     that panel, so the app has a single "what is this" entry point. -->
-<div id="help-corner">
-  <button id="btn-help" title="Shortcuts and about (?)" aria-label="Shortcuts and about">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.1 2.4c-.7.2-1.2.9-1.2 1.6v.3"/><circle cx="11.5" cy="16.9" r=".9" fill="currentColor" stroke="none"/></svg>
-  </button>
 </div>
 
 <!-- SHORTCUT LEGEND (DM only) -->
 <div id="legend-backdrop" style="display:none"></div>
 <div id="shortcut-legend" style="display:none">
-  <div class="legend-title">
-    <span>Keyboard Shortcuts</span>
-    <span class="legend-hint">? or Esc to close</span>
-  </div>
-  <div class="legend-cols">
-    <div>
-      <div class="legend-cat">Tools</div>
-      <div class="legend-row"><kbd>V</kbd> Select / Move</div>
-      <div class="legend-row"><kbd>R</kbd> Rectangle</div>
-      <div class="legend-row"><kbd>O</kbd> Circle</div>
-      <div class="legend-row"><kbd>P</kbd> Polygon</div>
-      <div class="legend-row"><kbd>C</kbd> Cone (Effects)</div>
-      <div class="legend-row"><kbd>B</kbd> Brush (Rooms)</div>
-      <div class="legend-row"><kbd>N</kbd> Snap to grid</div>
-      <div class="legend-row"><kbd>[</kbd><kbd>]</kbd> Brush size −/+</div>
-      <div class="legend-cat">Edit</div>
-      <div class="legend-row"><kbd>Ctrl Z</kbd> Undo</div>
-      <div class="legend-row"><kbd>Ctrl Y</kbd> Redo</div>
-      <div class="legend-row"><kbd>Del</kbd> Delete room / vertex</div>
-      <div class="legend-row"><kbd>Esc</kbd> Drop selection, back to Select</div>
+  <div class="sm-win w-l" id="legend-win">
+    <div class="sm-whead"><span class="sm-wtitle">Keyboard shortcuts</span><span class="sm-sp"></span>
+      <button class="sm-x" id="legend-close" title="Close (Esc)"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="sm-wbody lg-body">
+      <div class="lg-cols">
+      <div>
+        <div class="sm-sub">Tools</div>
+        <div class="lg-row">Select<span class="k"><kbd>V</kbd></span></div>
+        <div class="lg-row">Rectangle<span class="k"><kbd>R</kbd></span></div>
+        <div class="lg-row">Circle<span class="k"><kbd>O</kbd></span></div>
+        <div class="lg-row">Polygon<span class="k"><kbd>P</kbd></span></div>
+        <div class="lg-row">Cone, in Effects<span class="k"><kbd>C</kbd></span></div>
+        <div class="lg-row">Brush, in Rooms<span class="k"><kbd>B</kbd></span></div>
+        <div class="lg-row">Brush size<span class="k"><kbd>[</kbd><kbd>]</kbd></span></div>
+        <div class="lg-row">Snap to grid<span class="k"><kbd>N</kbd></span></div>
+      </div>
+      <div>
+        <div class="sm-sub">Edit</div>
+        <div class="lg-row">Undo<span class="k"><kbd>Ctrl</kbd><kbd>Z</kbd></span></div>
+        <div class="lg-row">Redo<span class="k"><kbd>Ctrl</kbd><kbd>Y</kbd></span></div>
+        <div class="lg-row">Copy, cut, paste<span class="k"><kbd>Ctrl</kbd><kbd>C</kbd><kbd>X</kbd><kbd>V</kbd></span></div>
+        <div class="lg-row">Duplicate<span class="k"><kbd>Ctrl</kbd><kbd>D</kbd></span></div>
+        <div class="lg-row">Delete room or point<span class="k"><kbd>Del</kbd></span></div>
+        <div class="lg-row">Add a point on an edge<span class="k"><kbd>Double-click</kbd></span></div>
+        <div class="lg-row">Finish a Split path<span class="k"><kbd>Double-click</kbd></span></div>
+        <div class="lg-row">Drop the selection<span class="k"><kbd>Esc</kbd></span></div>
+      </div>
+      <div>
+        <div class="sm-sub">Map</div>
+        <div class="lg-row">Fit to screen<span class="k"><kbd>F</kbd></span></div>
+        <div class="lg-row">Grid<span class="k"><kbd>G</kbd></span></div>
+        <div class="lg-row">Fog animation<span class="k"><kbd>A</kbd></span></div>
+        <div class="lg-row">Room fog<span class="k"><kbd>T</kbd></span></div>
+        <div class="lg-row">Room names<span class="k"><kbd>L</kbd></span></div>
+        <div class="sm-sub">TV</div>
+        <div class="lg-row">Send to the TV<span class="k"><kbd>Space</kbd></span></div>
+        <div class="lg-row">Send, with Sync off<span class="k"><kbd>Shift</kbd><kbd>S</kbd></span></div>
+        <div class="lg-row">Ping a point<span class="k"><kbd>Ctrl</kbd><kbd>Middle-click</kbd></span></div>
+      </div>
+      </div>
     </div>
-    <div>
-      <div class="legend-cat">Map</div>
-      <div class="legend-row"><kbd>F</kbd> Fit to screen</div>
-      <div class="legend-row"><kbd>G</kbd> Grid toggle</div>
-      <div class="legend-row"><kbd>A</kbd> Fog animation</div>
-      <div class="legend-row"><kbd>T</kbd> Toggle room fog mode</div>
-      <div class="legend-row"><kbd>L</kbd> Room name labels</div>
-      <div class="legend-row"><kbd>Dbl</kbd> Click edge → insert vertex</div>
-      <div class="legend-row"><kbd>Dbl</kbd> Cut tool → finish the path</div>
-      <div class="legend-cat">Player</div>
-      <div class="legend-row"><kbd>Space</kbd> Send to player</div>
-      <div class="legend-row"><kbd>Shift S</kbd> Send (manual mode)</div>
-      <div class="legend-row"><kbd>Ctrl Middle</kbd> Ping a point</div>
-      <div class="legend-cat">Help</div>
-      <div class="legend-row"><kbd>?</kbd> This list</div>
-      <div class="legend-row"><kbd>`</kbd> Performance readout</div>
-    </div>
   </div>
-  <!-- Filled by about.js: mark, wordmark, version, repo. A footer, so the shortcuts the DM
-       opened this for stay at the top. -->
-  <div class="legend-about" id="legend-about"></div>
 </div>
 
 <!-- The calibration count rides the map beside the square, not the bottom bar: the eye is on the
@@ -589,116 +659,6 @@
   <button id="gridcal-done" class="cp-btn cp-btn-outline" title="Keep this fit and hand the map back">Done</button>
 </div>
 
-<!-- ROOM CARD (floats near the selected room, DM only) -->
-<!-- Always identical: no modes, nothing that appears or disappears with the active tool.
-     Built + positioned by roomPanel.js — see refreshRoomPanel(). -->
-<!-- Same shell as #anim-advanced-panel: the app's one floating-panel pattern. Title bar +
-     .cp-adv-body, .cp-seg icon segment, .cp-btn actions — no bespoke surfaces. A titleless
-     drag bar (grip + Close), then three blocks: what the room IS (the name field + the
-     description, one column of identical fields), its properties (fog state + corner radius,
-     one unlabelled row), and — off on its own behind a hairline — the destructive action. -->
-<div id="panel-room">
-  <!-- Drag bar. It earns its ~27px three times over: it is where Close lives (out from on top
-       of the name field, which it used to overlap), it is the DRAG HANDLE, and it lets the name
-       below be a plain field with nothing floating over it. Double-click snaps the card back to
-       the room it belongs to. It carries no title — see the grip comment below. -->
-  <div class="rp-head" id="rp-head" title="Drag to move, double-click to snap back to the room">
-    <!-- A GRIP, not a title. The bar used to read "ROOM" and the field right below it reads
-         "Room name" — the same word twice, and pure noise the moment the room is called
-         anything. There is nothing else for a title here to say either: this card only ever
-         shows a room. So the bar says what it IS instead of what it contains — six dots that
-         mean "drag me", which is the one thing about this bar a DM needs told. -->
-    <svg class="rp-grip" width="12" height="8" viewBox="0 0 12 8" fill="currentColor">
-      <circle cx="1.5" cy="1.5" r="1.1"/><circle cx="6" cy="1.5" r="1.1"/><circle cx="10.5" cy="1.5" r="1.1"/>
-      <circle cx="1.5" cy="6.5" r="1.1"/><circle cx="6" cy="6.5" r="1.1"/><circle cx="10.5" cy="6.5" r="1.1"/>
-    </svg>
-    <button id="rp-close" class="cp-adv-close" title="Close">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
-    </button>
-  </div>
-  <div class="cp-adv-body">
-    <!-- What the room IS: two fields with the SAME box and the SAME 10px text inset, so both
-         boxes sit on the 14px column and both texts sit on the 24px column. That is the whole
-         answer to the name field's long-running alignment problem — see .rp-name in the CSS.
-         No .cp-label above either: the title bar says what this card is and the placeholders
-         carry the rest. -->
-    <div class="cp-group rp-ident">
-      <input id="rp-name" class="rp-name" type="text" spellcheck="false" autocomplete="off"
-             maxlength="60" placeholder="Room name">
-      <textarea id="rp-desc" class="rp-desc" spellcheck="false"
-                placeholder="What's in here, what the party sees, what's hidden…"></textarea>
-    </div>
-
-    <!-- Properties — ONE row, no labels. This was four rows once (two .cp-label headers, a
-         slider row, a fog row); every pixel it gave up went to the description above, which
-         is the control the DM actually uses at the table. What's left is the three things a
-         room has beyond its text: fog state, corner radius, and which corners that radius
-         applies to. The corner radius SLIDER is deliberately gone — the number field plus
-         ↑/↓ stepping (roomPanel.js) covers both "set it to 40" and "nudge it", and the
-         slider was costing a whole row to do the second of those. Everything here carries a
-         title tooltip, since the labels that used to name them are gone.
-         Fog stays a .cp-seg black inset box = "pick one of these", selected icon bare+blue:
-         same icon-segment pattern as #cp-anim-row, and the same three glyphs as the bottom
-         toolbar's fog-mode group — outline / half-filled / filled circle — in the toolbar's
-         order (Reveal → Shroud), so muscle memory carries between the two surfaces.
-         data-mode values are the contract roomPanel.js keys on: do not rename. -->
-    <div class="rp-pics" id="rp-pics" style="display:none"></div>
-
-    <div class="cp-group rp-props">
-      <div class="rp-row">
-        <div class="cp-iconrow cp-seg" id="rp-mode">
-          <button class="cp-iconbtn" data-mode="reveal" title="Revealed - the party can see this room">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
-          </button>
-          <button class="cp-iconbtn" data-mode="half" title="Half-shrouded - explored, but the party isn't there now">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
-          </button>
-          <button class="cp-iconbtn" data-mode="shroud" title="Shrouded - hidden behind fog">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" fill="currentColor" stroke="none"/></svg>
-          </button>
-        </div>
-
-        <!-- Corner radius, pushed to the row's right edge. There is NO all-corners/one-corner
-             toggle: the field switches target by itself — select a vertex on the map and it
-             edits that corner, deselect and it edits all four — and the ICON INSIDE THE FIELD
-             is how it says which. A toggle would have been a second control for a decision the
-             selection already made. Both glyphs ship; refreshRoomPanel() flips .rp-per-vertex.
-             There is also no "v3/8" vertex readout beside it any more: it named a fact the map
-             was already showing (the selected handle is highlighted) in a notation nobody
-             asked for, and the icon here covers the one thing it was really reporting — which
-             corners this number is about. -->
-        <button class="cp-btn cp-btn-outline cp-btn-icon" id="rp-pic-add" title="Add a picture to show on the TV">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7.5V11A1.5 1.5 0 0 1 11 12.5H3A1.5 1.5 0 0 1 1.5 11V3A1.5 1.5 0 0 1 3 1.5h4.5"/><circle cx="4.8" cy="5" r="1.1"/><path d="M12.5 9.6 10.4 7.5a1 1 0 0 0-1.4 0L4 12.5"/><path d="M11 .8v4M9 2.8h4"/></svg>
-        </button>
-        <input type="file" id="rp-pic-input" accept="image/*,.avif,.svg,.webp,.gif,.bmp,.ico,.jfif" multiple hidden>
-
-        <div class="cp-chip cp-chip-pre rp-radius" id="rp-radius-field">
-          <svg class="rp-radius-ico rp-ico-all" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
-            <path d="M2 6V4.5A2.5 2.5 0 014.5 2H6"/><path d="M10 2h1.5A2.5 2.5 0 0114 4.5V6"/>
-            <path d="M14 10v1.5a2.5 2.5 0 01-2.5 2.5H10"/><path d="M6 14H4.5A2.5 2.5 0 012 11.5V10"/>
-          </svg>
-          <svg class="rp-radius-ico rp-ico-one" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
-            <path d="M2.5 14V6.5A4 4 0 016.5 2.5H14"/>
-          </svg>
-          <input type="text" id="rp-radius-num" inputmode="numeric" value="0">
-        </div>
-      </div>
-    </div>
-
-    <!-- Delete is an independent destructive action, so it's a .cp-btn — never in a pill —
-         and it takes the app's standard full-width button shape rather than a bespoke
-         text-width one. What keeps it from reading as the card's primary action is the
-         HAIRLINE, not a narrower box: it sits in its own footer, outside the content stack,
-         which is the same separation a destructive row gets everywhere else in the app. -->
-    <div class="rp-foot">
-      <button id="rp-delete" class="cp-btn cp-btn-danger rp-del">
-        <svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-        Delete Room
-      </button>
-    </div>
-  </div>
-</div>
-
 <div id="canvas-container">
   <canvas id="map-canvas"></canvas>
   <canvas id="fog-canvas"></canvas>
@@ -709,273 +669,124 @@
 <div id="landing">
   <canvas id="landing-fog"></canvas>
   <h2>Evermist</h2>
-  <p>Open the <strong>scene menu</strong> (top-left) to get started</p>
+  <p>Open the <strong>scene library</strong> (top of the dock, right) to get started</p>
   <div id="landing-loading">Loading map…</div>
 </div>
 
 <div id="scene-fade"></div>
 
 <div id="map-progress">
-  <div id="map-progress-label">Saving animated map…</div>
-  <div id="map-progress-track">
-    <div id="map-progress-bar"></div>
+  <div class="sm-win w-s">
+    <div class="sm-wbody mp-body">
+      <div class="mp-top"><span class="sm-wtitle" id="map-progress-label">Saving animated map…</span><span class="sm-sp"></span><span class="sm-num" id="map-progress-count"></span></div>
+      <div class="sm-track" id="map-progress-track"><i id="map-progress-bar"></i></div>
+      <div class="sm-dim mp-file" id="map-progress-file" data-no-i18n></div>
+    </div>
   </div>
 </div>
 
-<!-- SCENE MANAGER — the library trigger (DM only). One button: it names the open scene and
-     opens the library. Adding maps lives inside the library, so there is no second + out here. -->
-<div id="scene-dd">
-  <button id="scene-dd-toggle" title="Scenes">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>
-    <span id="scene-dd-name" data-no-i18n>No scene</span>
-  </button>
-  <button id="btn-two-maps" title="Show a second map beside this one">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>
-    <span>Two maps</span>
-  </button>
-</div>
-
-<!-- SCENE LIBRARY POPUP (DM only) — opened by #scene-dd-toggle, wired by sceneManager.js.
-     It sits OUTSIDE #scene-dd on purpose: #scene-dd carries zoom, and a fixed full-screen veil
-     inside a zoomed element resolves its own inset against the scaled coordinate space. -->
+<!-- SCENE LIBRARY (DM only) — a centred window over a veil, opened from the dock's rail and wired
+     by sceneManager.js. It sits outside the dock: the dock carries zoom, and a fixed full-screen
+     veil inside a zoomed element resolves its own inset against the scaled coordinate space. -->
 <div id="sm-modal" style="display:none">
   <div id="sm-panel">
-    <div id="sm-head">
-      <span id="sm-title">Scenes</span>
-      <span id="sm-count">0</span>
-      <span class="sm-head-div"></span>
-      <!-- Compression is a standing setting, not an action, so it sits with the title. What
-           is left on the right reads as one sequence: find, then add a group, then add maps. -->
-      <span class="sm-compress-lbl" title="Compression"><span>Compression</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>
-      </span>
-      <div id="sm-compress" class="cp-tabs" title="Animated maps bigger than the size picked here are re-encoded to fit it on import, and room pictures are shrunk to it. Improves performance on low-end machines.">
-        <button class="cp-segtab" data-size="0">Off</button>
-        <button class="cp-segtab" data-size="1080">1080p</button>
-        <button class="cp-segtab" data-size="1440">2K</button>
-        <button class="cp-segtab" data-size="1">4K</button>
-      </div>
-      <span class="sm-head-sp"></span>
-      <label class="sm-field">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+    <div id="sm-head" class="sm-whead">
+      <span id="sm-title" class="sm-wtitle">Scene library</span>
+      <span class="sm-sp"></span>
+      <label class="sm-field"><svg class="i-search" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
         <input id="sm-search" placeholder="Search" spellcheck="false" autocomplete="off">
       </label>
       <!-- Labels, no glyphs. These two sit side by side and do the same kind of thing, so one
            wearing an icon and the other not would read as a difference that is not there. -->
       <button id="sm-new-group" class="sm-hbtn" title="Make a new group">New group</button>
       <button id="sm-add" class="sm-hbtn primary" title="Add maps, or pick a .zip backup to restore">Add maps</button>
-      <!-- Borderless, like .cp-adv-close on the Fog advanced panel. A close is not an action
-           you weigh, so it does not wear an outline. -->
-      <button id="sm-close" class="sm-bare" title="Close (Esc)">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
+      <button id="sm-close" class="sm-x" title="Close (Esc)"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
 
-    <!-- Material's contextual action bar: it REPLACES the header while anything is selected. -->
-    <div id="sm-actionbar">
-      <button id="sm-sel-clear" class="sm-bare" title="Cancel selection (Esc)">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
-      <span id="sm-sel-count">0 selected</span>
-      <button id="sm-sel-all" class="sm-hbtn">Select all</button>
-      <button id="sm-sel-group" class="sm-hbtn">Move to…</button>
-      <button id="sm-sel-export" class="sm-hbtn">Export</button>
-      <button id="sm-sel-delete" class="sm-hbtn danger">Delete</button>
+    <!-- The list toolbar: the all/none tick, then the selection's count and actions, then the
+         library's count at the right end. The header never changes. -->
+    <div id="sm-ltb" class="sm-ltb">
+      <span id="sm-tickall" class="sm-tick" title="Select all"></span>
+      <span id="sm-sel-count" class="cnt on"></span>
+      <button id="sm-sel-group" class="sm-hbtn sm-selact">Move to<span class="sm-chev"></span></button>
+      <button id="sm-sel-export" class="sm-hbtn sm-selact"><svg class="i-export" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"/></svg>Export</button>
+      <button id="sm-sel-delete" class="sm-hbtn danger sm-selact"><svg class="i-trash" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>Delete</button>
+      <span id="sm-count" class="end"></span>
     </div>
 
     <div id="sm-list"></div>
   </div>
 </div>
 
-<!-- Undo toast (after scene delete) -->
-<div id="scene-undo-toast" style="display:none">
-  <div class="undo-body">
-    <span class="undo-ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></span>
-    <span class="undo-msg"></span>
-    <button class="undo-btn">Undo</button>
+<!-- THE TOAST STACK, above the toolbar and above every veil. confirmDialog.js owns it; the
+     notice, floor plan and update toasts are built into it there and in their own modules. -->
+<div id="sm-toasts" class="sm-toasts">
+  <!-- A key that was heard and had nothing to do; undo.js fills and fades it. -->
+  <div id="key-hint" class="sm-toast solo"><svg class="i-undo" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span class="m"></span></div>
+  <div id="scene-undo-toast" class="sm-toast" style="display:none">
+    <svg class="i-trash" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg><span class="m undo-msg"></span>
+    <button class="sm-hbtn primary undo-btn">Undo</button>
+    <button class="sm-x undo-x" title="Dismiss"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <i class="timer undo-bar"></i>
   </div>
-  <div class="undo-track"><div class="undo-bar"></div></div>
 </div>
 
-<!-- MODULE TEXT IMPORT MODAL (DM only) -->
-<!-- Load the published module once, and every room's name field becomes a searchable list of its
-     locations. Shell is the app's floating-panel pattern (#anim-advanced-panel / the room card):
-     flat #1a1a1c, hairline border, .cp-adv-head + .cp-adv-body, stock .cp-btn actions. The old
-     purple .glass-panel modal look belonged to the pre-redesign UI and no longer exists.
-     THREE CONTROLS, and that is the whole panel: Choose file, Remove, Close. What used to sit here
-     as well — a paste textarea, a Preview button and a paragraph explaining numbered headings — is
-     gone on purpose. Nobody pastes 300 pages into a 320px box; the file picker already parses on
-     choose, so a separate Preview step was a button that re-read an empty textarea; and the DM is
-     not going to re-typeset their book to suit the parser, so telling them its rules bought
-     nothing. What replaced all of it is the LIST BELOW, which now shows what is actually loaded
-     rather than only what was just pasted — the one thing the old Preview never did.
-     Wired by moduleText.js. -->
+<!-- MODULE TEXT (DM only). Choose file, Remove, Close: the module-text skill. Importing happens on
+     choose, so the list shows what is loaded every time it opens. Wired by moduleTextPanel.js. -->
 <div id="mt-backdrop" style="display:none"></div>
 <div id="mt-anchor">
-<div id="mt-modal" style="display:none" tabindex="-1">
-  <div class="cp-adv-head">
-    <span class="cp-adv-title">Module Text</span>
-    <!-- Close. The ✕ is it — same control, same place as the room card's and the advanced
-         panel's, so there is no second Cancel button restating it in a footer. -->
-    <button id="btn-mt-close" class="cp-adv-close" title="Close">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
-    </button>
+<div id="mt-modal" class="sm-win w-m" style="display:none" tabindex="-1">
+  <div class="sm-whead">
+    <span class="sm-wtitle">Module text</span><span class="sm-wcount" id="mt-count"></span>
+    <span class="sm-sp"></span>
+    <button id="btn-mt-close" class="sm-x" title="Close"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
-  <div class="cp-adv-body" id="mt-body">
-    <!-- The one action. Its label switches to "Choose another file…" once something is loaded,
-         because at that point the action is a replacement and saying so is free. -->
-    <button id="btn-mt-file" class="cp-btn cp-btn-outline">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/></svg>
-      <span id="mt-file-label">Choose file…</span>
-    </button>
-
-    <!-- One line of state: what is loaded, or what went wrong. Errors turn it red and are the
-         only place the parser explains itself, which is where an explanation is actually wanted. -->
+  <div class="sm-wbody" id="mt-body">
+    <div class="sm-row mt-filerow">
+      <svg class="i-file" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>
+      <span id="mt-file-name" class="mt-file-name" data-no-i18n></span>
+      <button id="btn-mt-file" class="sm-hbtn"><span id="mt-file-label">Choose file</span></button>
+    </div>
     <div id="mt-status" class="mt-status"></div>
-
-    <!-- What is loaded, room by room. Not a preview awaiting a confirm — the import is already
-         saved by the time this renders, and it renders on open too. The char count per row is
-         what says whether a room came through with its description or came through empty, which
-         is the failure a bad parse actually produces. -->
     <div id="mt-list" class="mt-list" style="display:none"></div>
   </div>
-  <!-- Remove sits behind a hairline, outside the scrolling body — the same footer separation
-       every destructive action in the app gets (see .rp-foot). Hidden when nothing is loaded. -->
-  <div class="mt-foot" id="mt-foot" style="display:none">
-    <button id="btn-mt-remove" class="cp-btn cp-btn-danger mt-del">
-      <svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-      Remove Module Text
-    </button>
+  <div class="sm-wfoot" id="mt-foot" style="display:none">
+    <button id="btn-mt-remove" class="sm-hbtn danger"><svg class="i-trash" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>Remove module text</button>
   </div>
 </div>
 </div><!-- /#mt-anchor -->
 
-<!-- THE PLAY GROUP: Combat, Bestiary (bestiary.js adds it) and the music bubble (music.js), top
-     centre with Bestiary on the window's centre line. Nothing here reaches the Player. -->
-<div id="music-anchor">
-  <button id="btn-combat" title="The fight table">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
-    <span>Combat</span>
-  </button>
-  <div id="music-bubble" class="mu-resting">
-    <div class="mu-pillrow">
-    <div id="mu-pill">
-      <button id="btn-mu-open" class="mu-open" title="Music">
-        <svg id="mu-note" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 18V5l12-2v13"/></svg>
-        <span id="mu-level" class="mu-level"><i></i><i></i><i></i></span>
-        <span id="mu-pill-name" data-no-i18n></span>
-      </button>
-      <!-- Pause, not stop: it keeps the position, so pressing it again picks the track back up
-           where it was. Its own button so a click on it never reaches the open handler. -->
-      <button id="btn-mu-pause" class="cp-iconbtn mu-pillbtn" title="Pause">
-        <svg id="mu-ico-pause" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
-        <svg id="mu-ico-play" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M8 5l11 7-11 7z"/></svg>
-      </button>
-      <button id="btn-mu-chev" class="mu-chevbtn" title="Show tracks">
-        <svg id="mu-chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      <!-- How far a download has got, on the one control that is always on screen. Absent
-           unless a queue is running, so it never competes with what is playing. -->
-      <div id="mu-dlbar"><i></i></div>
-    </div>
-    <!-- One-shot sounds over the music (soundboard.js). -->
-    <button id="btn-sb-open" title="Sounds">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>
-      <span>Sounds</span>
-    </button>
-    </div>
-
-    <div id="mu-panel">
-      <div class="mu-toprow">
-        <!-- .cp-field's surface, not the black inset pill: that one means "pick one of these". -->
-        <div class="cp-field mu-filterfield">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
-          <input id="mu-filter" type="text" spellcheck="false" placeholder="Filter tracks">
-        </div>
-        <button id="btn-mu-add" class="cp-btn cp-btn-outline cp-btn-icon" title="Add from YouTube">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-        </button>
-      </div>
-
-      <div id="mu-list" class="mu-list" data-no-i18n></div>
-
-      <!-- The app's own slider: a div track, fill and knob with an invisible range over them. -->
-      <div class="mu-volrow">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>
-        <div class="cp-slider">
-          <div class="cp-slider-track"></div>
-          <div class="cp-slider-fill"></div>
-          <div class="cp-slider-knob"></div>
-          <input id="mu-vol" type="range" min="0" max="100" step="1" value="70" title="Volume">
-        </div>
-      </div>
-    </div>
-
-    <!-- Left click plays one more copy, right click stops the newest. -->
-    <div id="sb-panel">
-      <div id="sb-cols" data-no-i18n></div>
-      <div class="mu-volrow">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>
-        <div class="cp-slider">
-          <div class="cp-slider-track"></div>
-          <div class="cp-slider-fill"></div>
-          <div class="cp-slider-knob"></div>
-          <input id="sb-vol" type="range" min="0" max="100" step="1" value="50" title="Sound volume">
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- The download panel. #mt-modal's shell duplicated under its own id, the way #cd-modal does
-     it, because that shell is id-scoped rather than a class. 520px, not 320: the body is a
-     hundred rows of video titles rather than a question. -->
+<!-- Add from YouTube (musicDownload.js). The tick on the list toolbar selects all and clears. -->
 <div id="mu-backdrop" style="display:none"></div>
 <div id="mu-anchor">
-<div id="mu-modal" tabindex="-1">
-  <div class="cp-adv-head" id="mu-head">
-    <span class="cp-adv-title">Add music</span>
-    <button id="btn-mu-close" class="cp-adv-close" title="Close">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
-    </button>
-  </div>
-
-  <!-- The scene library's contextual action bar: it REPLACES the header while anything is
-       ticked, and its ✕ cancels the selection rather than the panel. See #sm-actionbar. -->
-  <div id="mu-actionbar">
-    <button id="btn-mu-selclear" class="sm-bare" title="Cancel selection (Esc)">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-    <span id="mu-selcount">0 selected</span>
-    <button id="btn-mu-selall" class="sm-hbtn">Select all</button>
-    <button id="btn-mu-get" class="sm-hbtn primary">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>
-      <span id="mu-getlabel">Download</span>
-    </button>
+<div id="mu-modal" class="sm-win w-m" tabindex="-1">
+  <div class="sm-whead" id="mu-head">
+    <span class="sm-wtitle">Add from YouTube</span><span class="sm-sp"></span>
+    <button id="btn-mu-close" class="sm-x" title="Close"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
 
   <!-- No Look up button: a paste is looked up at once, typing after 400ms of quiet. The spinner
        only appears once a read passes a second, so a fast one never flickers. -->
-  <div class="mu-urlrow">
-    <div class="cp-field mu-urlfield">
+  <div class="sm-wbody mu-urlrow">
+    <label class="sm-field"><svg class="i-link" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1"/></svg>
       <input id="mu-url" type="text" spellcheck="false" placeholder="Paste a YouTube video or playlist link">
       <span id="mu-spin" class="mu-spin" style="display:none"></span>
-    </div>
+    </label>
+    <div id="mu-status" class="mt-status"></div>
   </div>
 
-  <!-- One line of state, and the only place the downloader explains itself. .mt-status is
-       shared with the module-text panel, which wants exactly the same thing. -->
-  <div id="mu-status" class="mt-status"></div>
+  <div class="sm-ltb" id="mu-ltb" style="display:none">
+    <span class="sm-tick" id="mu-tickall" title="Select all"></span>
+    <span class="cnt" id="mu-selcount"></span>
+    <span class="end" id="mu-ltb-end" data-no-i18n></span>
+  </div>
+  <div id="mu-picklist" class="sm-wbody mu-picklist" data-no-i18n></div>
 
-  <div id="mu-picklist" class="mu-picklist" data-no-i18n></div>
-
-  <!-- Update downloader lives here alone, and the whole footer is absent unless a newer yt-dlp
-       release exists. Nothing installs without this button being pressed. -->
-  <div id="mu-pickfoot" style="display:none">
-    <button id="btn-mu-updater" class="cp-btn cp-btn-outline mu-updbtn">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11A8 8 0 106.3 6.3L4 8.5"/><path d="M4 4v4.5h4.5"/></svg>
-      Update downloader
-    </button>
+  <!-- Update downloader shows only when a newer yt-dlp release exists. Nothing installs without
+       this button being pressed. -->
+  <div class="sm-wfoot" id="mu-foot" style="display:none">
+    <button id="btn-mu-updater" class="sm-hbtn" style="display:none">Update downloader</button>
+    <button id="btn-mu-get" class="sm-hbtn primary"><svg class="i-download" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span id="mu-getlabel">Download</span></button>
   </div>
 </div>
 </div><!-- /#mu-anchor -->
@@ -993,6 +804,7 @@
 <script src="src/i18n/i18nPlan.js"></script>
 <script src="src/i18n/ru.js"></script>
 <script src="src/i18n/i18n.js"></script>
+<script src="src/ui/icons.js"></script>
 <script src="lib/pixi.min.js"></script>
 <script src="lib/polygon-clipping.umd.js"></script>
 <script src="src/render/renderer.js"></script>
@@ -1064,6 +876,7 @@
 <script src="src/player/minimap.js"></script>
 <script src="src/ui/colorPicker.js"></script>
 <script src="src/ui/controlPanel.js"></script>
+<script src="src/ui/dock.js"></script>
 <script src="src/ui/confirmDialog.js"></script>
 <script src="src/rooms/floorPlan.js"></script>
 <script src="src/content/moduleText.js"></script>
@@ -1073,6 +886,7 @@
 <script src="src/rooms/roomCard.js"></script>
 <script src="src/rooms/pictureDecode.js"></script>
 <script src="src/rooms/roomPictures.js"></script>
+<script src="src/rooms/roomLink.js"></script>
 <script src="src/player/tvPicture.js"></script>
 <script src="src/ui/changelogData.js"></script>
 <script src="src/ui/changelog.js"></script>
@@ -1080,6 +894,7 @@
 <script src="src/ui/updater.js"></script>
 <script src="src/ui/musicPlan.js"></script>
 <script src="src/ui/music.js"></script>
+<script src="src/ui/musicGroups.js"></script>
 <script src="src/ui/musicDownload.js"></script>
 <script src="src/ui/soundList.js"></script>
 <script src="src/ui/soundboard.js"></script>
@@ -1184,6 +999,7 @@ if (!isPlayer) initUpdater(); // Update line + toast → updater.js (needs About
 if (!isPlayer) initMusic();   // The music bubble → music.js
 if (!isPlayer) initSoundboard();   // The Sounds pill → soundboard.js
 if (!isPlayer && !isPane) initCombatTracker(); // The fight table → combatTracker.js
+if (!isPlayer && !isPane) initDock();          // The dock → dock.js
 
 window.addEventListener('resize', () => {
   resizeViewport();   // viewport.js

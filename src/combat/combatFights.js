@@ -151,7 +151,7 @@ function initCombatFights() {
   b.id = 'cb-fightpick';
   b.title = 'Your fights';
   b.innerHTML = '<span class="nm" data-no-i18n></span><span class="car">▾</span>';
-  document.getElementById('cb-fightslot').replaceWith(b);
+  document.getElementById('cb-fightslot').appendChild(b);
   b.addEventListener('click', _cfToggle);
   b.addEventListener('dblclick', e => { e.preventDefault(); cbCloseFights(); _cfRename(b.querySelector('.nm'), _cfOpen()); });
   cbFightsTitle();

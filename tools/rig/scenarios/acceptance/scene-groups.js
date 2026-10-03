@@ -33,10 +33,12 @@
 //      clears a selection the DM is still gathering.
 //   M. A reorder is never read off a filtered view, and committing a scene name does not
 //      rebuild the list under the click that ended the edit.
-//   N. The selection bar is how the DM acts on several maps at once, and every button on it is
-//      reached by pressing it: a card's tick raises the bar, a second card's click joins it,
-//      Select all takes what the filter shows, Clear puts the bar away, Move to files the lot
-//      under one heading, and Delete takes them all in one undo.
+//   N. The list toolbar is how the DM acts on several maps at once, Gmail's way, and every
+//      button on it is reached by pressing it: a card's tick writes "N selected" and puts the
+//      actions beside it while the header stays, a second card's click joins it, a partial
+//      selection shows a dash, the all/none tick takes what the filter shows and clears it,
+//      Move to files the lot under one heading, Export starts with the ticked maps, and Delete
+//      takes them all in one undo.
 //
 // ⚠ THE ROUND TRIP IN D IS MIRRORED, NOT EXERCISED. The export's save dialog is native and
 // cannot be driven (see the rig skill), so this file writes the export record and reads it back
@@ -352,8 +354,7 @@ module.exports = async function sceneGroupsFeature(rig) {
       return rng.getBoundingClientRect().bottom;
     };
     const title = document.getElementById('sm-title');
-    const count = document.getElementById('sm-count');
-    if (!title || !count) return { err: 'the header title pair is missing' };
+    if (!title) return { err: 'the header title is missing' };
 
     const head = document.querySelector('#sm-list .sm-group .sm-group-head');
     if (!head) return { err: 'no group heading rendered' };
@@ -377,8 +378,7 @@ module.exports = async function sceneGroupsFeature(rig) {
       // ⚠ THE ELEMENT RECT IS USELESS HERE. Both are flex items, so each box is centred by
       // construction and their centres match whatever the font sizes are. A Range over the
       // text returns the GLYPHS, which is what the eye actually reads as aligned or not.
-      headDrift: textBottom(count) - textBottom(title),
-      headSizes: [getComputedStyle(title).fontSize, getComputedStyle(count).fontSize],
+      title: title.textContent.trim(),
       groupDrift: mid(n.getBoundingClientRect()) - (top + inner / 2),
       groupSizes: [cs.fontSize, getComputedStyle(n).fontSize],
       ring,
@@ -388,13 +388,11 @@ module.exports = async function sceneGroupsFeature(rig) {
     };
   })()`);
   rig.check(!aligned.err, 'the alignment could not be measured: ' + aligned.err);
-  rig.note('alignment — header drift ' + (aligned.headDrift || 0).toFixed(2) +
-           'px, heading drift ' + (aligned.groupDrift || 0).toFixed(2) + 'px');
-  rig.check(!aligned.err && Math.abs(aligned.headDrift) < 0.5,
-            'the header count sits ' + (aligned.headDrift || 0).toFixed(2) + 'px off the title line');
-  rig.check(!aligned.err && aligned.headSizes[0] === aligned.headSizes[1],
-            'the header count is a different size from the title, so centring cannot align them: ' +
-            JSON.stringify(aligned.headSizes));
+  rig.note('alignment — heading drift ' + (aligned.groupDrift || 0).toFixed(2) + 'px');
+  // A window's title is the name of the button that opens it.
+  // RED ON: #sm-title back to "Scenes" (index.html) — 2026-10-03
+  rig.check(!aligned.err && aligned.title === 'Scene library',
+            'the library\'s title reads ' + JSON.stringify(aligned.title) + ', not the rail button\'s name');
   rig.check(!aligned.err && Math.abs(aligned.groupDrift) < 0.5,
             'a group count sits ' + (aligned.groupDrift || 0).toFixed(2) + 'px off its own name');
   rig.check(!aligned.err && aligned.groupSizes[0] === aligned.groupSizes[1],
@@ -432,27 +430,27 @@ module.exports = async function sceneGroupsFeature(rig) {
             'Ungrouped folded shut and would not open again');
 
   // ── J. The rename is findable ─────────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
-  // ⚠ THE NAME FIELD ALONE IS NOT AN AFFORDANCE. It looks like a label until you click it, and
-  // that is exactly how the rename went unfound. The pencil is what this check holds in place.
+  // RED ON: the heading's click guard for its name gated off with false && (sceneCards.js) — 2026-10-02
+  // The name IS the rename: one way in, so the heading carries no pencil beside it.
   const rename = await dm.evaluate(`(() => {
     const head = [...document.querySelectorAll('#sm-list .sm-group')]
       .find(g => g.dataset.group === 'The Watcherhouse');
     if (!head) return { err: 'no renamed heading to work with' };
-    const pen = head.querySelector('.sm-group-ren');
-    if (!pen) return { err: 'the heading carries no rename control' };
     const field = head.querySelector('input.sm-group-name');
-    pen.click();
+    if (!field) return { err: 'the heading name is not a field' };
+    field.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    field.focus();
     const focused = document.activeElement === field;
+    const pen = !!head.querySelector('.sm-group-ren');
     const collapsed = head.classList.contains('shut');
     field.blur();
-    return { focused, collapsed, caps: getComputedStyle(field).textTransform };
+    return { focused, collapsed, pen, caps: getComputedStyle(field).textTransform };
   })()`);
   rig.check(!rename.err, 'the rename could not be reached: ' + rename.err);
-  rig.check(!rename.err && rename.focused === true,
-            'the rename control did not put the caret in the heading name');
+  rig.check(!rename.err && rename.focused === true && rename.pen === false,
+            'the heading name is not the one way to rename: ' + JSON.stringify(rename));
   rig.check(!rename.err && rename.collapsed === false,
-            'pressing rename collapsed the group instead of renaming it');
+            'a click on the heading name collapsed the group instead of renaming it');
   rig.check(!rename.err && rename.caps === 'none',
             'the heading shouts the name back in caps: text-transform is ' + rename.caps);
 
@@ -606,6 +604,9 @@ module.exports = async function sceneGroupsFeature(rig) {
     n: smSelectedIds.size,
     selecting: document.body.classList.contains('sm-selecting'),
     count: (document.getElementById('sm-sel-count') || {}).textContent || '',
+    tick: document.getElementById('sm-tickall').className,
+    head: getComputedStyle(document.getElementById('sm-head')).display,
+    acts: ['sm-sel-group', 'sm-sel-export', 'sm-sel-delete'].every(id => document.getElementById(id).getClientRects().length > 0),
     visible: smVisibleScenes().length,
   }))()`);
 
@@ -620,9 +621,15 @@ module.exports = async function sceneGroupsFeature(rig) {
   rig.check(oneTicked.n === 1,
             "ticking a card's own box did not select it, so the DM cannot start a selection at " +
             'all: ' + oneTicked.n + ' selected');
-  rig.check(oneTicked.selecting === true,
-            'the library did not go into selection mode, so the action bar stays hidden and ' +
-            'every button on it is out of reach');
+  rig.check(oneTicked.selecting === true && oneTicked.acts,
+            'the library did not put Move to, Export and Delete beside the count, so every ' +
+            'action on a selection is out of reach');
+  // RED ON: #sm-head hidden under body.sm-selecting (sceneManager.css) — 2026-10-03
+  rig.check(oneTicked.head !== 'none',
+            'ticking a card took the header away; the header never changes');
+  // RED ON: the ' part' class dropped from #sm-tickall in renderSceneManager (sceneManager.js) — 2026-10-03
+  rig.check(/\bpart\b/.test(oneTicked.tick),
+            'one map of several ticked does not show the dash on the all/none tick: ' + oneTicked.tick);
   rig.check(/\b1\b/.test(oneTicked.count),
             'the bar does not say how many are selected: ' + JSON.stringify(oneTicked.count));
 
@@ -638,17 +645,21 @@ module.exports = async function sceneGroupsFeature(rig) {
             'a click on a second card did not join the selection, so gathering needs the tiny ' +
             'box every time: ' + twoTicked.n + ' selected');
 
-  await dm.evaluate('document.getElementById("sm-sel-all").click(); 0');
-  const allTicked = await bar();
-  rig.check(allTicked.n === allTicked.visible && allTicked.visible > 2,
-            'Select all did not take every map the library is showing: ' + allTicked.n +
-            ' of ' + allTicked.visible);
-
-  await dm.evaluate('document.getElementById("sm-sel-clear").click(); 0');
+  // The all/none tick, Gmail's way: with a selection up it clears, with none it takes what the
+  // filter shows.
+  // RED ON: smSelectedIds.clear() gated off in the sm-tickall handler (sceneManager.js) — 2026-10-03
+  await dm.evaluate('document.getElementById("sm-tickall").click(); 0');
   const cleared = await bar();
-  rig.check(cleared.n === 0 && cleared.selecting === false,
-            'Clear left the selection up, so the bar stays over the library: ' + cleared.n +
-            ' selected');
+  rig.check(cleared.n === 0 && cleared.selecting === false && cleared.count === '',
+            'the all/none tick left a partial selection up: ' + cleared.n + ' selected');
+
+  await dm.evaluate('document.getElementById("sm-tickall").click(); 0');
+  const allTicked = await bar();
+  rig.check(allTicked.n === allTicked.visible && allTicked.visible > 2 && /\bon\b/.test(allTicked.tick),
+            'the all/none tick did not take every map the library is showing: ' + allTicked.n +
+            ' of ' + allTicked.visible + ', tick ' + allTicked.tick);
+  await dm.evaluate('document.getElementById("sm-tickall").click(); 0');
+  rig.check((await bar()).n === 0, 'a second press on the all/none tick left maps ticked');
 
   // Move to. The flyout is the control; picking a row is what files the maps.
   const barMoved = await dm.evaluate(`(async () => {
@@ -660,7 +671,7 @@ module.exports = async function sceneGroupsFeature(rig) {
     if (!menu) return { err: 'Move to opened no menu' };
     // ⚠ NOT THE FIRST ROW. Row one is always Ungrouped, whose label is a display name for the
     // empty group — picking it files two maps under '' and proves nothing about filing.
-    const rows = [...menu.querySelectorAll('.sm-menu-row')];
+    const rows = [...menu.querySelectorAll('.sm-mi')];
     const row = rows.find(r => r.textContent.trim() !== 'Ungrouped' &&
                                !/^New group/.test(r.textContent.trim()));
     if (!row) return { err: 'the Move to menu carries no real heading to pick' };
@@ -710,11 +721,24 @@ module.exports = async function sceneGroupsFeature(rig) {
             'one undo did not bring back both maps the selection bar deleted: ' + afterUndo +
             ' of ' + beforeDelete);
 
-  // ⚠ EXPORT IS THE ONE BUTTON HERE THAT CANNOT BE PRESSED. doExport opens a native save dialog,
-  // which nothing in the protocol can answer — same seam backup.js records.
-  rig.check(await dm.evaluate('typeof doExport === "function"'),
-            'the selection bar\'s Export has nothing to call, so exporting a chosen few is dead');
-  rig.byEye('Export on the selection bar writes a zip holding exactly the maps that were ticked.');
+  // ⚠ EXPORT ENDS IN A NATIVE SAVE DIALOG, which nothing in the protocol can answer — same seam
+  // backup.js records. So the press is checked to START it with the ticked maps, and doExport
+  // is held for the length of the press only.
+  // RED ON: doExport(ids) gated off behind `false &&` in the sm-sel-export handler (sceneManager.js) — 2026-10-03
+  const exported = await dm.evaluate(`(() => {
+    const ids = allScenes.slice(0, 2).map(s => s.id);
+    ids.forEach(id => smSelectedIds.add(id));
+    renderSceneManager();
+    const real = doExport;
+    let got = null;
+    doExport = list => { got = list; };
+    try { document.getElementById('sm-sel-export').click(); } finally { doExport = real; }
+    smSelectedIds.clear(); renderSceneManager();
+    return { want: ids, got };
+  })()`);
+  rig.check(JSON.stringify(exported.got) === JSON.stringify(exported.want),
+            'Export on the list toolbar did not start with the ticked maps: ' + JSON.stringify(exported));
+  rig.byEye('Export on the list toolbar writes a zip holding exactly the maps that were ticked.');
 
   await dm.evaluate('smSelectedIds.clear(); renderSceneManager(); 0');
 
@@ -725,11 +749,13 @@ module.exports = async function sceneGroupsFeature(rig) {
   await lib.settle(dm, 'document.getElementById("sm-modal").style.display === "none"', 8000);
   rig.check(await dm.evaluate('document.getElementById("sm-modal").style.display') === 'none',
             'the library\'s own close button left it open over the map');
-  await dm.evaluate('document.getElementById("scene-dd-toggle").click(); 0');
+  await dm.evaluate('document.getElementById("dock-tab-library").click(); 0');
   await lib.settle(dm, 'document.getElementById("sm-modal").style.display !== "none"', 8000);
   rig.check(await dm.evaluate('document.getElementById("sm-modal").style.display') !== 'none',
-            'the top-left button did not open the library, so there is no way into it');
-  await dm.evaluate('document.getElementById("scene-dd-toggle").click(); 0');
+            'the rail\'s Scene library tab did not open the library, so there is no way into it');
+  rig.check(await dm.evaluate('document.getElementById("dock-tab-library").classList.contains("active")'),
+            'the rail does not show the library as open');
+  await dm.evaluate('document.getElementById("dock-tab-library").click(); 0');
   rig.check(await dm.evaluate('document.getElementById("sm-modal").style.display') === 'none',
-            'pressing the top-left button again did not shut the library');
+            'pressing the Scene library tab again did not shut the library');
 };

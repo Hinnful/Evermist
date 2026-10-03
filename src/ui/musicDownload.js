@@ -1,6 +1,6 @@
 'use strict';
 
-// musicDownload.js — the Add music panel: it reads a pasted YouTube link, lists what is behind
+// musicDownload.js — the Add from YouTube window: it reads a pasted YouTube link, lists what is behind
 // it, and downloads the tracks ticked. Split out of music.js, which owns the bubble and
 // playback. The seam is five named functions and no shared variable: `_muRefreshTracks`,
 // `_muHaveIds` and `setMusicDownloadProgress` in, `initMusicDownload` and `openMusicDownload`
@@ -26,8 +26,7 @@ function initMusicDownload() {
   bind('mu-backdrop', 'click', _muCloseDownload);
   bind('btn-mu-get', 'click', _muStartDownloads);
   bind('btn-mu-updater', 'click', _muUpdateDownloader);
-  bind('btn-mu-selclear', 'click', () => { _muPicked.clear(); _muRenderLookup(); });
-  bind('btn-mu-selall', 'click', _muToggleSelectAll);
+  bind('mu-tickall', 'click', _muToggleSelectAll);
 
   // A paste is read at once; typing waits for the field to go quiet. Both drop the previous
   // request rather than letting two reads race.
@@ -132,12 +131,7 @@ async function _muDoLookup() {
     _muPicked.clear();
     // A single video is the one thing a video link asks for, so it arrives ticked.
     if (parsed.mode === 'video' && entries.length === 1 && !entries[0].have) _muPicked.add(entries[0].id);
-    const haveCount = entries.filter(e => e.have).length;
-    _muSetStatus([
-      _muLookup.title,
-      t.plural(entries.length, '{n} track', '{n} tracks'),
-      haveCount ? t('{n} already downloaded', { n: haveCount }) : '',
-    ].filter(Boolean).join(' · '));
+    _muSetStatus('');
   } catch (err) {
     if (token !== _muLookupToken) return;
     _muLookup = null;
@@ -154,9 +148,9 @@ function _muSelectable() {
 }
 
 function _muToggleSelectAll() {
-  const pickable = _muSelectable();
-  if (pickable.length && pickable.every(e => _muPicked.has(e.id))) _muPicked.clear();
-  else pickable.forEach(e => _muPicked.add(e.id));
+  if (_muBusy) return;
+  if (_muPicked.size) _muPicked.clear();
+  else _muSelectable().forEach(e => _muPicked.add(e.id));
   _muRenderLookup();
 }
 
@@ -166,36 +160,20 @@ function _muRenderLookup() {
 
   list.innerHTML = '';
   _muMetaEls = {};
-  if (!_muLookup || !_muLookup.entries.length) {
-    list.style.display = 'none';
-    _muRenderActionBar();
-    return;
-  }
-  list.style.display = 'block';
+  const any = !!(_muLookup && _muLookup.entries.length);
+  list.style.display = any ? '' : 'none';
+  _muEl('mu-ltb').style.display = any ? '' : 'none';
+  if (!any) { _muRenderActionBar(); return; }
 
   for (const entry of _muLookup.entries) {
     const done = entry.have || entry.done;
+    const picked = _muPicked.has(entry.id);
     const row = document.createElement('div');
-    row.className = 'mu-pick' + (done ? ' mu-pick-have' : '') +
-                    (_muPicked.has(entry.id) ? ' checked' : '');
+    row.className = 'sm-row mu-pick' + (done ? ' mu-pick-have' : '') + (picked ? ' sm-sel' : '');
 
-    if (done) {
-      const mark = document.createElement('span');
-      mark.className = 'mu-havemark';
-      mark.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" ' +
-        'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
-        '<path d="M4 12.5l5 5L20 6.5"/></svg>';
-      row.appendChild(mark);
-    } else {
-      // .sm-cb, the scene library's checkbox, at this list's own 15px.
-      const box = document.createElement('div');
-      box.className = 'sm-cb' + (_muPicked.has(entry.id) ? ' checked' : '');
-      if (_muPicked.has(entry.id)) {
-        box.innerHTML = '<svg width="7" height="7" viewBox="0 0 9 9" fill="none" stroke="#dbe8ff" ' +
-          'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5l2 2 4-4"/></svg>';
-      }
-      row.appendChild(box);
-    }
+    const box = document.createElement('span');
+    box.className = 'sm-tick' + (done ? ' done' : picked ? ' on' : '');
+    row.appendChild(box);
 
     const label = document.createElement('span');
     label.className = 'mu-pick-name';
@@ -204,11 +182,11 @@ function _muRenderLookup() {
     row.appendChild(label);
 
     const meta = document.createElement('span');
-    meta.className = 'mu-pick-meta';
-    if (entry.failed) meta.textContent = t('failed');
+    meta.className = entry.have && !entry.done ? 'sm-chip' : 'sm-num mu-pick-meta';
+    if (entry.failed) { meta.textContent = t('failed'); meta.classList.add('sm-err'); }
     else if (_muProgress[entry.id] !== undefined) meta.textContent = Math.round(_muProgress[entry.id]) + '%';
     else if (entry.done) meta.textContent = t('done');
-    else if (entry.have) meta.textContent = t('have it');
+    else if (entry.have) meta.textContent = t('In library');
     else meta.textContent = entry.duration ? formatDuration(entry.duration) : formatBytes(entry.size);
     _muMetaEls[entry.id] = meta;
     row.appendChild(meta);
@@ -226,31 +204,43 @@ function _muRenderLookup() {
 }
 
 function _muRenderActionBar() {
-  const modal = _muEl('mu-modal');
-  if (modal) modal.classList.toggle('mu-selecting', _muPicked.size > 0 || _muBusy);
-
+  const n = _muPicked.size;
   const count = _muEl('mu-selcount');
-  if (count) count.textContent = _muBusy
-    ? t('Downloading, {n} left', { n: _muQueue.length })
-    : t('{n} selected', { n: _muPicked.size });
+  if (count) {
+    count.textContent = _muBusy ? t('Downloading, {n} left', { n: _muQueue.length }) : n ? t('{n} selected', { n: n }) : '';
+    count.classList.toggle('on', _muBusy || n > 0);
+  }
 
-  const all = _muEl('btn-mu-selall');
-  if (all) {
+  const tick = _muEl('mu-tickall');
+  if (tick) {
     const pickable = _muSelectable();
-    all.disabled = _muBusy || !pickable.length;
-    all.textContent = pickable.length && pickable.every(e => _muPicked.has(e.id))
-      ? 'Deselect all' : 'Select all';
+    const all = pickable.length && pickable.every(e => _muPicked.has(e.id));
+    tick.className = 'sm-tick' + (all ? ' on' : n ? ' part' : '');
+    tick.title = all ? t('Clear the selection') : t('Select all');
+  }
+  const end = _muEl('mu-ltb-end');
+  if (end && _muLookup) {
+    end.textContent = [_muLookup.title, t.plural(_muLookup.entries.length, '{n} track', '{n} tracks')].filter(Boolean).join(' · ');
   }
 
   const go = _muEl('btn-mu-get');
   const label = _muEl('mu-getlabel');
-  if (go) go.disabled = _muBusy || !_muPicked.size;
+  if (go) go.disabled = _muBusy || !n;
   if (label) {
     let bytes = 0;
     if (_muLookup) for (const e of _muLookup.entries) if (_muPicked.has(e.id)) bytes += e.size || 0;
     const size = formatBytes(bytes);
-    label.textContent = t('Download {n}', { n: _muPicked.size }) + (size ? ' · ' + size : '');
+    label.textContent = t('Download {n}', { n: n }) + (size ? ' · ' + size : '');
   }
+  _muShowFoot();
+}
+
+function _muShowFoot() {
+  const foot = _muEl('mu-foot');
+  const upd = _muEl('btn-mu-updater');
+  const any = !!(_muLookup && _muLookup.entries.length);
+  _muEl('btn-mu-get').style.display = any ? '' : 'none';
+  if (foot) foot.style.display = any || (upd && upd.style.display !== 'none') ? '' : 'none';
 }
 
 // ⚠ ONE AT A TIME. YouTube rate-limits parallel requests, so twenty jobs at once is slower
@@ -312,16 +302,18 @@ async function _muQueueStep() {
   _muQueueStep();
 }
 
-// The footer exists only when there is something newer to move to, because a button offering an
+// The updater button shows only when there is something newer to move to: a button offering an
 // update that does not exist is worse than no button.
 async function _muCheckDownloaderVersion() {
-  const foot = _muEl('mu-pickfoot');
-  if (!foot || !window.electronAPI || !window.electronAPI.musicYtdlpLatest) return;
-  foot.style.display = 'none';
+  const btn = _muEl('btn-mu-updater');
+  if (!btn || !window.electronAPI || !window.electronAPI.musicYtdlpLatest) return;
+  btn.style.display = 'none';
+  _muShowFoot();
   try {
     const v = await window.electronAPI.musicYtdlpLatest();
-    if (ytdlpOutdated(v && v.current, v && v.latest)) foot.style.display = 'flex';
+    if (ytdlpOutdated(v && v.current, v && v.latest)) btn.style.display = '';
   } catch (_) {}
+  _muShowFoot();
 }
 
 function _muUpdateDownloader() {

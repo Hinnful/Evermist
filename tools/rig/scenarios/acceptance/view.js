@@ -22,7 +22,7 @@
 //   F. The minimap is a remote control for the TV: dragging it moves the Player's view and leaves
 //      the DM's own alone.
 //   G. The minimap zooms about the view centre, so changing the zoom never re-frames the players.
-//   H. The minimap's zoom stops at its limits, and its stepper agrees with its wheel.
+//   H. The minimap's zoom stops at its limits.
 //   I. Players who look somewhere else on their own reach the DM's minimap, so the frame shows
 //      where they are actually looking.
 //   J. Lock stops the players moving the view, and stops the minimap being nudged by accident.
@@ -289,14 +289,8 @@ module.exports = async function viewFeature(rig) {
 
   // ── F. The minimap is a remote control ───────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
-  // ⚠ THE MINIMAP LIVES IN THE CONTROL PANEL'S PLAYER PANE, which carries `hidden` until that tab
-  // is chosen — and a hidden element has zero-sized rects, so every gesture below would land at
-  // 0,0 and the drag would silently move nothing. Opened through the real tab.
-  await dm.evaluate(`(() => {
-    const tab = document.querySelector('.cp-tab[data-tab="player"]');
-    if (tab && !tab.classList.contains('active')) tab.click();
-    return 0;
-  })()`);
+  // ⚠ A hidden element has zero-sized rects, so every gesture below would land at 0,0 and the
+  // drag would silently move nothing. The minimap is always up; the wait proves it.
   await lib.settle(dm, "!!document.getElementById('minimap-canvas') && " +
     "document.getElementById('minimap-canvas').getBoundingClientRect().width > 0", 8000);
   const mmBox = await dm.evaluate(`(() => {
@@ -384,16 +378,11 @@ module.exports = async function viewFeature(rig) {
             'went from ' + mmBeforeZoom.cx + ',' + mmBeforeZoom.cy + ' to ' + mmAfterZoom.cx +
             ',' + mmAfterZoom.cy);
 
-  // ── H. The minimap's zoom limits, and its stepper ────────────────────────
+  // ── H. The minimap's zoom limits ──────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
-  const stepUp = await dm.evaluate('(() => { const before = minimapGetZoom();' +
-    ' minimapNudgeZoom(1); return { before, after: minimapGetZoom() }; })()');
-  rig.check(stepUp.after > stepUp.before,
-            'the minimap stepper does not zoom in the same direction as its wheel: ' +
-            JSON.stringify(stepUp));
-  const clampedIn = await dm.evaluate('(() => { minimapSetZoom(1e6); return minimapGetZoom(); })()');
+  const clampedIn = await dm.evaluate('(() => { minimapSetZoom(1e6); return minimapView.zoom; })()');
   rig.check(clampedIn === 20, 'the minimap zoom did not stop at 20: ' + clampedIn);
-  const clampedOut = await dm.evaluate('(() => { minimapSetZoom(1e-6); return minimapGetZoom(); })()');
+  const clampedOut = await dm.evaluate('(() => { minimapSetZoom(1e-6); return minimapView.zoom; })()');
   rig.check(clampedOut === 0.02, 'the minimap zoom did not stop at 0.02: ' + clampedOut);
   // ⚠ WAITED FOR ON THE PLAYER, not on the DM. Restoring the minimap zoom posts a view-snap,
   // and the DM's own value is correct the instant it is set. Section I then drags the Player's
@@ -527,14 +516,6 @@ module.exports = async function viewFeature(rig) {
   rig.check(lockedMmAfter.cx === lockedMmBefore.cx && lockedMmAfter.cy === lockedMmBefore.cy,
             'a locked minimap still moved when it was dragged: ' + JSON.stringify(lockedMmBefore) +
             ' → ' + JSON.stringify(lockedMmAfter));
-
-  // The stepper is deliberately NOT locked: the lock exists to stop an accidental nudge, and a
-  // deliberate zoom is still the DM's to make.
-  const lockedStep = await dm.evaluate('(() => { const before = minimapGetZoom();' +
-    ' minimapNudgeZoom(1); return { before, after: minimapGetZoom() }; })()');
-  rig.check(lockedStep.after !== lockedStep.before,
-            'Lock also disabled the zoom stepper, which it is not meant to: ' +
-            JSON.stringify(lockedStep));
 
   await dm.evaluate('document.getElementById("btn-minimap-lock").click(); 0');
   rig.check(await dm.evaluate('minimapLocked === false'), 'the Lock button would not unlock');

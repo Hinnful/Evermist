@@ -26,6 +26,19 @@ shell described below, and `index.html` is the app itself. It serves both screen
 The map is drawn on the GPU with **PixiJS** (WebGL), which is what lets a 10000×6000 map
 pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacked on top.
 
+### The DM screen
+
+The map fills the DM window. Over it sit three things: the toolbar at the bottom, the minimap in
+the bottom-left corner, and **the dock** on the right edge.
+
+The dock is an icon rail with one pane open beside it. The rail opens the scene library and the
+Bestiary as centred windows, and the fight table as a free window. Its panes are **Scene
+control** (fog, rooms, grid, the Player window, My seat), **Room** (the selected room), **Music**,
+**Sounds** and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
+dock sits over the map rather than beside it, so opening a pane never moves the map or changes
+what the TV is sent. Its inner edge drags to resize it, and it gives way so the toolbar stays
+clear. Selecting a room opens the Room tab from wherever the dock was, and deselecting goes back.
+
 ## The files
 
 Moved to [architecture/module-map.md](architecture/module-map.md) - one row per file, what
@@ -230,8 +243,9 @@ it was taken back out.
 
 ### The minimap
 
-The DM's right column carries a small live preview of what the Player camera is framing,
-and dragging or scrolling it **drives** the TV. It's a remote control rather than a second
+The bottom-left corner carries a small live preview of what the Player camera is framing,
+and dragging or scrolling it **drives** the TV. Sync View sits on its top-left corner and Lock,
+which stops a stray drag moving the players, on its top-right. It's a remote control rather than a second
 independent camera: it feeds the same camera message the Player already listens for. Each
 camera move on the TV travels back to it, from a Send and a new map to a finished snap.
 
@@ -268,13 +282,15 @@ to stay where it is. So the DM window's map area can split into two columns, eac
 different map, and one Player window on the TV showing both.
 
 - **A column is the whole app again.** It runs in an `<iframe>` pointed at the same
-  `index.html` with `?mode=pane`, and CSS hides the toolbar, the settings panel, the music
-  bubble and the Scenes button inside it. So a column has its own scene, camera, grid, rooms,
+  `index.html` with `?mode=pane`, and CSS hides the toolbar, the dock and the minimap inside
+  it. So a column has its own scene, camera, grid, rooms,
   fog and undo history without any of those being written a second time.
 - **The chrome stays where it is and acts on the column you last touched.** A click anywhere in
   a column both selects it and does whatever the click was for, in the one press. The selected
   column wears a blue frame.
-- **Every button sends a message.** The toolbar, the Fog/Grid/Player panel and the minimap all
+- **The selected room is edited in the DM window.** A column reports the room selected in it,
+  and the Room tab shows the selected column's room. Every edit goes back to that column alone.
+- **Every button sends a message.** The toolbar, Scene control and the minimap all
   reach a column the same way the DM window reaches the Player window: by `postMessage`. A
   column then presses the control it already has, so nothing is implemented twice.
 - **One minimap, and it follows the selection.** It draws the selected column's own map, fog and
@@ -325,8 +341,7 @@ when you click, including ones that overlap or nest inside existing ones.
 whole object: its outline highlights and the whole thing drags, with no corner handles on screen.
 A double-click opens it for editing, which puts its corners, its walls and any hole it carries in
 reach, and Ctrl+click opens it in one press. Inside an open room Ctrl keeps its wall job below. Escape climbs back out one level per press - the picked part, then editing, then the room
-itself. The two levels never show at once, because the map already carries doors, room labels and
-the room card.
+itself. The two levels never show at once, because the map already carries doors and room labels.
 
 **A wall can curve.** Hold Ctrl and drag a wall and it bends; Ctrl and click straightens it again.
 The bend leans toward the point you grabbed, so pulling near one end curves that end harder - the
@@ -349,20 +364,21 @@ A picked hole drags as one ring and Delete takes it whole. It stops where it wou
 entirely, so it can hang over a wall and bite the edge but cannot float free.
 
 **The bar carries only the tools the current mode can use.** Rooms shows Select, the shape
-button, Brush, Door, Split, Merge and Cut out; Effects shows all of those but Brush and Door,
+button, the operations button, Brush and Door; Effects shows all of those but Brush and Door,
 which need fog to paint and a wall to sit on. A tool
 the mode cannot use is not on the bar at all, so the bar changes width between the two and stays
-centred. Rectangle, Circle, Polygon and Cone stand behind one button: a left click picks the
-shape it is showing, a right click opens a flyout of the rest, and Cone is offered in Effects
-only. Each mode remembers the shape it last drew with, for the length of the session. The strip
+centred. The shapes stand behind one button: a left click picks the shape it is showing, and the
+arrow beside it or a right click lists the rest, with Cone, Line and Ring greyed outside Effects.
+Merge, Cut out and Split stand behind the operations button the same way, and it wears the last
+one picked. Each mode remembers the shape it last drew with, for the length of the session. The strip
 above the bar shows only what the picked tool uses, and is blank for Select and Split.
 
 Two toggles sit between the tools and the mode switch. **Snap to grid** pulls each corner onto
 the nearest grid intersection. **Straighten walls** pulls a corner level with the one before it
 when it's already nearly level, so a wall comes out square without a steady hand - it's an
 alignment nudge, not a lock, so a wall you genuinely want diagonal stays diagonal. It works while
-dragging a corner of a finished room too. Each shows it is on with a soft fill and a short blue
-underline, which is a different mark from the outlined box the picked tool wears. Neither setting
+dragging a corner of a finished room too. Each shows it is on with a blue tint, which is a
+different mark from the solid blue the tool in hand wears. Neither setting
 is saved, both are off when the app starts, and both keep their state across a mode switch.
 
 **Array order is fog compositing order.** The fog rebuild walks the room list in reverse, so
@@ -451,22 +467,16 @@ revealed of every room whose wall runs through it - which stops the choice of ow
 wall two rooms share, and gives half-shroud an answer. Doors reach the Player for free: they are
 cut into the same fog stencil that crosses to the TV.
 
-### The room card
+### The Room tab
 
-Select a room and a floating card appears with its name, description, fog mode, and corner
-radius. It stays open when you switch tools, so you can read a description while painting
-fog. **Drawing a room doesn't open it** - a new room is created with nothing selected, so the
-card can't cover the map while you draw the next one. Naming is a second pass with Select.
+Select a room and the dock opens its Room tab: the name as the header, Delete beside it, the
+notes, the pictures and the corner radius. It stays open when you switch tools, so you can read
+the notes while painting fog. **Drawing a room doesn't open it** - a new room is created with
+nothing selected, so the tab stays on what you had open while you draw the next one. The notes
+grow with what is written in them.
 
-Two things about it are load-bearing rather than polish. The card **floats over the map** and
-places itself clear of the whole room, not just its centre: the first of above, below, right
-or left that the room's outline leaves free. It holds still while you drag a vertex or an
-edge, so it can't hop sides mid-edit, and re-places once when you let go. If a room leaves no
-gap big enough anywhere, the card hugs the viewport edge furthest from it - you can always
-drag it, and double-clicking its bar sends it back. And the description box is **resizable**,
-with its height remembered as one global preference, because a box's height belongs to your
-screen rather than to a room. That height is also what decides whether a big room has room
-for the card beside it.
+The room's fog is set from the toolbar: with Select in hand and a room selected, Reveal, Half and
+Shroud above the bar show and set that room's fog, and T cycles it.
 
 Room names are also drawn on the DM map itself, sized relative to zoom and placed inside the
 room's outline rather than at its bounding box corner, which is what makes circles and
@@ -474,8 +484,8 @@ heavily-rounded rectangles work without special cases. `L` toggles them.
 
 ### Room pictures
 
-A room can hold pictures: a portrait, a letter, a drawing of an item. They show on its card as a
-strip of thumbnails, added with the card's picture button or by dropping files on the card. A
+A room can hold pictures: a portrait, a letter, a drawing of an item. They show in its Room tab
+below the notes, added with Add a picture or by dropping files on the tab. A
 click puts one on the TV over the dimmed map, and a second click or Escape takes it down. The
 picture comes and goes in soft patches of cloud noise, drawn on a canvas that hands back to the
 plain image once it is whole, so an animated GIF plays throughout and a picture that is up costs
@@ -562,7 +572,7 @@ The biggest prep cost for a DM isn't typing a room description, it's finding the
 400-page book eighty times. So the app reads the book once.
 
 Point it at a published module (`.txt` or `.pdf`), and it parses out the numbered locations:
-`K12. The Chapel`, and so on. After that the room card's name field becomes a **searchable
+`K12. The Chapel`, and so on. After that the Room tab's name field becomes a **searchable
 dropdown** over those entries. Pick one, and it fills the name and the description together.
 A counter shows how many are placed, because a finite shrinking list is a different
 psychological object than an open-ended chore.
@@ -621,9 +631,9 @@ that draws its stat block with its own scripts reads whole. `statBlockParse.js` 
 its Armor Class line, names it from the line the page title starts with when one is there, and keeps the page's description as lore, a lair set inside it as lair
 actions. The block ends at a site footer ("Habitat:", "Source:"), and unheaded text past the
 element holding the last section is read as lore. A page whose block does not read clean is
-refused with its reason, the same check a book import makes. Export writes picked entries to a file and From a file adds them back.
+refused with its reason, the same check a book import makes. Export writes the selected entries to a file. From a file takes either kind of file through one input and reads its extension: a .json is an export and is added back, a .pdf is a book.
 
-From a PDF book reads every stat block in a book at once. The picker hands over only the file's
+A book read from a PDF gives every stat block in it at once. The picker hands over only the file's
 path, and the extraction process reads the file itself, so a 300MB book never crosses into the
 window. That process lays the text out a second time for monsters: each line carries the font it
 is set in, and a band starts at a stat block's name when the other column is empty there, or

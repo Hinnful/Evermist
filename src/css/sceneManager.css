@@ -1,48 +1,206 @@
-/* sceneManager.css — the library trigger, the library popup, its undo toast, and their keyframes.
-   Everything here speaks the control panel's vocabulary: 30px controls, a 7px radius, 500/12px
-   labels, and the same outlined / blue-filled / borderless button identities. */
+/* sceneManager.css — the window parts every window outside the dock is built from, then the scene
+   library window and its undo toast. */
   @keyframes smPopIn   { from { opacity: 0; transform: scale(0.985) translateY(6px); } to { opacity: 1; transform: none; } }
   @keyframes smVeilIn  { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes smToastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @keyframes smToastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   @keyframes smUndoTimer { from { width: 100%; } to { width: 0%; } }
 
-  /* ===== THE TRIGGER =====
-     ONE button, no chevron: it opens a popup, it does not drop a menu down. Adding maps lives
-     inside the library, so nothing sits beside it.
-     It takes the width of the name it holds and stops at 180px, so a short scene name does not
-     reserve a box the length of a long one. Both boxes shrink to fit for that. */
-  /* The Scenes button and the two-map toggle, side by side. Both are view controls: one says
-     which map is open and opens the library, the other says how many maps are on screen. */
-  #scene-dd {
-    position: fixed;
-    top: 10px; left: 16px;
-    z-index: 100;
-    zoom: var(--ui-zoom, 1.2);
-    width: max-content;
-    display: flex;
-    gap: 6px;
+  /* ===== THE WINDOW PARTS =====
+     Every window outside the dock is built from these. 28px controls, no outline ever: a focus
+     ring shows only when the DM tabs to a control. */
+  .sm-hbtn {
+    flex: none; height: 28px; padding: 0 12px; gap: 6px;
+    display: inline-flex; align-items: center;
+    border: 0; border-radius: 6px;
+    background: var(--g-field); color: var(--g-text);
+    font: 500 12px/16px system-ui, -apple-system, sans-serif;
+    cursor: pointer; white-space: nowrap;
+    transition: background .12s, color .12s;
   }
-  body.player-mode #scene-dd,
-  body.player-mode #sm-modal,
-  body.player-mode #scene-undo-toast { display: none !important; }
+  .sm-hbtn:hover { background: var(--g-hover); color: var(--g-text); }
+  .sm-hbtn > svg:first-child { margin-left: -2px; }
+  .sm-hbtn svg { flex: none; width: 14px; height: 14px; transform: translateY(var(--icon-nudge)); }
+  /* The trash's lid carries its weight at the top, so it reads low once nudged: it stays centred. */
+  .sm-hbtn svg.i-trash { transform: none; }
+  .sm-hbtn.primary { background: var(--b-tint); color: var(--b-icon); }
+  .sm-hbtn.primary:hover { background: var(--b-tint-h); color: var(--b-icon); }
+  .sm-hbtn:disabled { opacity: 0.4; cursor: default; }
+  .sm-hbtn:disabled:hover { background: var(--g-field); }
+  /* Destructive: no fill and the trash at rest; red only under the pointer. */
+  .sm-hbtn.danger { background: transparent; color: var(--g-text); }
+  .sm-hbtn.danger:hover { background: var(--r-tint); color: var(--r-text); }
 
-  #scene-dd-toggle {
-    min-width: 0; max-width: 220px; height: 30px;
-    display: flex; align-items: center; gap: 8px;
-    padding: 0 12px;
-    background: var(--panel-bg);
-    border: var(--panel-border);
-    border-radius: var(--panel-radius);
-    color: #d5d8dd;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    cursor: pointer;
-    box-shadow: var(--panel-shadow);
-    transition: background .12s, border-color .12s, color .12s;
+  /* An icon button; the close is this with the cross. */
+  .sm-bare, .sm-x {
+    width: 28px; height: 28px; flex: none; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; border-radius: 6px;
+    background: transparent; color: #9aa0aa; cursor: pointer;
+    transition: background .12s, color .12s;
   }
-  #scene-dd-toggle svg { flex: none; color: #7f858e; transition: color .12s; }
-  #scene-dd-toggle:hover { border-color: rgba(255,255,255,0.18); background: #202124; }
-  #scene-dd-toggle:hover svg { color: #9aa0aa; }
-  #scene-dd-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+  .sm-bare svg, .sm-x svg { width: 14px; height: 14px; }
+  .sm-bare:hover, .sm-x:hover { background: var(--g-field); color: #fff; }
+  .sm-bare.danger:hover { background: var(--r-tint); color: var(--r-text); }
+  .sm-hbtn:focus-visible, .sm-bare:focus-visible, .sm-x:focus-visible {
+    outline: 2px solid var(--b-solid); outline-offset: 2px;
+  }
+
+  /* The one chevron, wherever a control opens a list. */
+  .sm-chev {
+    display: inline-block; flex: none; width: 10px; height: 10px; font-size: 0; opacity: 0.7;
+    background: currentColor;
+    -webkit-mask: var(--chev) center / 10px no-repeat; mask: var(--chev) center / 10px no-repeat;
+    transform: translateY(var(--icon-nudge));
+  }
+
+  /* Grey, no outline; focus lifts one step and draws a 1px blue line. */
+  .sm-field {
+    height: 28px; padding: 0 9px; gap: 7px;
+    display: flex; align-items: center;
+    border: 0; border-radius: 6px;
+    background: var(--g-field); color: var(--g-dim);
+  }
+  .sm-field input {
+    flex: 1; min-width: 0; border: 0; outline: 0; background: none;
+    color: var(--g-text); font: 400 12px/16px system-ui, -apple-system, sans-serif;
+  }
+  .sm-field input::placeholder { color: var(--g-dim); }
+  .sm-field svg { flex: none; width: 14px; height: 14px; transform: translateY(var(--icon-nudge)); }
+  .sm-field:focus-within { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-solid); }
+
+  /* The tick. A partial selection shows a dash; a row that cannot be picked again is .done. */
+  .sm-tick {
+    width: 16px; height: 16px; flex: none; border: 0; border-radius: 4px;
+    display: inline-grid; place-items: center;
+    background: var(--g-pick); cursor: pointer;
+  }
+  .sm-tick.on, .sm-tick.part { background: var(--b-solid); }
+  .sm-tick.on::after, .sm-tick.done::after {
+    content: ''; width: 8px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0;
+    transform: translateY(-1px) rotate(-45deg);
+  }
+  .sm-tick.part::after { content: ''; width: 8px; height: 2px; border-radius: 1px; background: #fff; }
+  .sm-tick.done { background: var(--g-field); cursor: default; }
+  .sm-tick.done::after { border-color: var(--g-dim); }
+
+  .sm-chip {
+    height: 20px; padding: 0 7px; border: 0; border-radius: 4px;
+    display: inline-flex; align-items: center; flex: none;
+    background: var(--g-field); color: #c8ccd3;
+    font: 500 11px/1 system-ui, -apple-system, sans-serif;
+  }
+  .sm-chip.on { background: var(--b-tint); color: var(--b-icon); }
+
+  /* A window: 360 for a question or a progress bar, 480 for a list, 720 for a reference. The
+     library and the Bestiary fill the screen. */
+  .sm-win {
+    zoom: var(--ui-zoom, 1.2);
+    display: flex; flex-direction: column; position: relative;
+    max-height: calc(100vh / var(--ui-zoom, 1.2) - 90px);
+    background: var(--g-bg); border: 1px solid var(--g-line); border-radius: 10px;
+    box-shadow: var(--win-shadow);
+    color: var(--g-text); font: 400 12px/1.45 system-ui, -apple-system, sans-serif;
+    animation: smPopIn .16s ease-out;
+  }
+  .sm-win.w-s { width: 360px; }
+  .sm-win.w-m { width: 480px; }
+  .sm-win.w-l { width: 720px; }
+  .sm-whead {
+    flex: none; height: 48px; min-height: 48px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 10px 0 16px; border-bottom: 1px solid var(--g-line);
+  }
+  .sm-wtitle { font: 600 14px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  /* ⚠ The same size and line-height as the title: centring aligns line boxes, not baselines. */
+  .sm-wcount {
+    margin-left: -2px; font: 400 14px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .sm-sp { flex: 1; }
+  .sm-wbody { padding: 12px 16px; overflow: auto; min-height: 0; }
+  .sm-wfoot {
+    flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+    padding: 12px 16px; border-top: 1px solid var(--g-line);
+  }
+  .sm-sub { font-size: 11px; color: var(--g-dim); margin: 14px 0 6px; line-height: 1; }
+  .sm-sub:first-child { margin-top: 2px; }
+  .sm-row {
+    height: 32px; display: flex; align-items: center; gap: 10px;
+    padding: 0 8px; margin: 0 -8px; border-radius: 6px;
+  }
+  /* No hover of its own: a row lights only where clicking it does something (.mu-pick). */
+  /* One scroll bar for every window: thin, no arrows. */
+  .sm-win ::-webkit-scrollbar { width: 8px; height: 8px; }
+  .sm-win ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.16); border-radius: 4px; }
+  .sm-win ::-webkit-scrollbar-track { background: transparent; }
+  .sm-win ::-webkit-scrollbar-button { display: none; }
+  .sm-num { font-variant-numeric: tabular-nums; color: var(--g-dim); }
+  .sm-dim { color: var(--g-dim); }
+  .sm-err { color: var(--r-text); }
+
+  /* Selection, Gmail's way: the header never changes. The list's own toolbar carries the
+     all/none tick; a selection writes its count there and puts its actions beside it. Nothing
+     turns blue but the ticks. */
+  .sm-ltb {
+    flex: none; height: 44px; display: flex; align-items: center; gap: 8px;
+    padding: 0 16px; border-bottom: 1px solid var(--g-line);
+  }
+  .sm-ltb > .sm-tick { margin-right: 4px; }
+  .sm-ltb .cnt { color: var(--g-dim); }
+  .sm-ltb .cnt.on { color: var(--g-text); font-weight: 600; margin-right: 4px; }
+  .sm-ltb .end { margin-left: auto; color: var(--g-dim); white-space: nowrap; }
+  .sm-sel { background: var(--g-field); }
+
+  /* A list dropped from a control: the dock's list. */
+  .sm-menu {
+    padding: 4px; background: var(--g-bg);
+    border: 1px solid var(--g-line); border-radius: 8px; box-shadow: var(--pop-shadow);
+    color: var(--g-text); font: 400 12px/16px system-ui, -apple-system, sans-serif;
+  }
+  .sm-mi {
+    min-height: 28px; width: 100%; display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px 6px 6px; border: 0; border-radius: 5px;
+    background: none; color: var(--g-text); text-align: left; cursor: pointer;
+    font: 400 12px/16px system-ui, -apple-system, sans-serif;
+  }
+  .sm-mi::before { content: ''; width: 14px; flex: none; text-align: center; font-size: 11px; }
+  .sm-mi.on::before { content: '\2713'; }
+  .sm-mi:hover, .sm-mi.hot { background: var(--b-solid); color: #fff; }
+  .sm-mi:hover .sm-dim, .sm-mi.hot .sm-dim { color: rgba(255,255,255,0.75); }
+  /* The toast stack: one style, one place, above the context row over the toolbar and above
+     every veil, the progress overlay's included. An update lands whenever it lands, and a veil
+     would swallow the click that installs it. The stack takes no clicks; its toasts do. */
+  .sm-toasts {
+    position: fixed; left: 50%; bottom: calc(26px + 97px * var(--ui-zoom, 1.2)); z-index: 10050;
+    transform: translateX(-50%);
+    display: flex; flex-direction: column-reverse; align-items: center; gap: 8px;
+    pointer-events: none;
+  }
+  .sm-toast {
+    zoom: var(--ui-zoom, 1.2); position: relative; overflow: hidden; max-width: 460px;
+    min-height: 40px; display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 12px;
+    background: var(--g-raised); border: 1px solid var(--g-line); border-radius: 8px; box-shadow: var(--pop-shadow);
+    color: var(--g-text); font: 400 12px/16px system-ui, -apple-system, sans-serif;
+    pointer-events: auto; animation: smToastIn .18s ease;
+  }
+  .sm-toast.solo { padding-right: 12px; }
+  .sm-toast > svg { flex: none; width: 16px; height: 16px; color: var(--g-dim); transform: translateY(var(--icon-nudge)); }
+  .sm-toast > svg.i-trash { transform: none; }
+  /* A long message wraps instead of cutting off. */
+  .sm-toast .m { flex: 1; min-width: 0; }
+  /* A toast's action is blue text, with no fill until the pointer is on it. */
+  .sm-toast .sm-hbtn.primary { background: none; font-weight: 600; padding: 0 10px; }
+  .sm-toast .sm-hbtn.primary:hover { background: var(--b-tint); }
+  /* The countdown runs along the top edge, so it adds no weight under the button. */
+  .sm-toast .timer { position: absolute; left: 0; top: 0; height: 2px; width: 100%; background: var(--b-icon); }
+  /* A key heard with nothing to do: it says so and fades. */
+  #key-hint { display: none; }
+  #key-hint.on { display: flex; }
+
+  .sm-msep { border: 0; height: 1px; flex: none; background: var(--g-line); margin: 4px 2px; }
+
+  body.player-mode #sm-modal,
+  body.player-mode #sm-toasts { display: none !important; }
 
   /* ===== THE LIBRARY POPUP =====
      ⚠ THE VEIL CARRIES NO ZOOM AND THE PANEL CARRIES ALL OF IT. `zoom` scales the coordinate
@@ -54,7 +212,7 @@
   #sm-modal {
     position: fixed; inset: 0; z-index: 150;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(6,7,9,0.62);
+    background: var(--veil);
     animation: smVeilIn .14s ease;
   }
   #sm-panel {
@@ -64,131 +222,22 @@
     max-width: 1180px;
     max-height: calc((100vh - 56px) / var(--ui-zoom, 1.2));
     display: flex; flex-direction: column;
-    background: #1a1a1c;
+    background: var(--panel-bg);
     border: var(--panel-border);
-    border-radius: 12px;
-    box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+    border-radius: var(--panel-radius);
+    box-shadow: var(--win-shadow);
+    color: var(--g-text); font: 400 12px/1.45 system-ui, -apple-system, sans-serif;
     animation: smPopIn .15s ease;
     overflow: hidden;
   }
 
-  /* ── header ── */
-  #sm-head {
-    flex: none; height: 52px;
-    display: flex; align-items: center; gap: 8px;
-    padding: 0 12px 0 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.055);
-  }
-  #sm-title { font: 600 14px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd; }
-  /* The number alone, sitting against the word. "Scenes — 4 scenes" said it twice, and a
-     bordered pill around a two-digit number is chrome the number does not need.
-     ⚠ SAME FONT-SIZE AND LINE-HEIGHT AS THE WORD BESIDE IT, AND THAT IS WHAT ALIGNS THEM.
-     `align-items: center` centres the two line BOXES, so a 12px number beside a 14px word
-     sits on its own baseline, about a pixel low. Matching both metrics makes the boxes the
-     same height, which puts the baselines in the same place. Colour carries the hierarchy
-     instead of size. Never shrink this without moving the pair to baseline alignment. */
-  #sm-count {
-    margin-left: -3px;
-    font: 500 14px/1 system-ui, -apple-system, sans-serif; color: #6b7078;
-    font-variant-numeric: tabular-nums;
-  }
-  /* A rule, because a setting and a title are different kinds of thing sharing one row. */
-  .sm-head-div {
-    flex: none; width: 1px; height: 18px; margin: 0 2px;
-    background: rgba(255,255,255,0.12);
-  }
-  .sm-head-sp { flex: 1; }
-
-  .sm-field {
-    display: flex; align-items: center; gap: 7px;
-    height: 30px; width: 220px; padding: 0 11px;
-    background: rgba(0,0,0,0.28);
-    border: 1.5px solid rgba(255,255,255,0.1);
-    border-radius: 7px;
-    transition: border-color .12s, background .12s;
-  }
-  .sm-field svg { flex: none; color: #6b7078; }
-  .sm-field input {
-    flex: 1; min-width: 0;
-    background: none; border: none; outline: none;
-    color: #d5d8dd; font: 500 12px/1 system-ui, -apple-system, sans-serif;
-  }
-  .sm-field input::placeholder { color: #5b6069; }
-  .sm-field:focus-within { border-color: rgba(90,140,235,0.6); background: rgba(0,0,0,0.5); }
-
-  /* .cp-btn's metrics and identities, applied here: outlined at rest, outlined + blue-filled
-     for the one primary action, red only for the destructive one. Never a pill. */
-  .sm-hbtn {
-    flex: none; height: 30px; padding: 0 12px;
-    display: inline-flex; align-items: center; gap: 6px;
-    border: 1.5px solid rgba(255,255,255,0.1);
-    border-radius: 7px;
-    background: transparent;
-    color: #d5d8dd;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    cursor: pointer; white-space: nowrap;
-    transition: background .12s, border-color .12s, color .12s;
-  }
-  .sm-hbtn:hover { border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.05); }
-  .sm-hbtn.primary {
-    border-color: rgba(90,140,235,0.6);
-    background: rgba(70,120,220,0.11);
-    color: #8fb6ff;
-  }
-  .sm-hbtn.primary:hover { background: rgba(70,120,220,0.2); border-color: rgba(90,140,235,0.85); }
-  .sm-hbtn.danger { border: 1.5px solid rgba(200,70,60,0.22); background: rgba(200,50,40,0.07); color: rgba(240,100,90,0.85); }
-  .sm-hbtn.danger:hover { border-color: rgba(200,70,60,0.4); background: rgba(200,50,40,0.15); color: rgba(240,100,90,0.95); }
-
-  /* Borderless, copied from .cp-adv-close. A close, a rename pencil and a group trash are all
-     this shape: they answer nothing and weigh nothing, so an outline would overstate them. */
-  .sm-bare {
-    width: 26px; height: 26px; flex: none; padding: 0;
-    display: flex; align-items: center; justify-content: center;
-    border: none; background: transparent; color: #9aa0aa;
-    border-radius: 6px; cursor: pointer;
-    transition: background .12s, color .12s;
-  }
-  .sm-bare:hover { background: rgba(255,255,255,0.05); color: #d5d8dd; }
-  .sm-bare.danger:hover { background: rgba(200,50,40,0.22); color: rgba(240,110,100,0.95); }
-
-  /* Compression sits with the title, not with the buttons: it is a standing setting rather
-     than an action, and a wider gap keeps it from reading as part of the count. Its pill is
-     .cp-tabs at the header's 30px, the stat block's side switch shape. */
-  .sm-compress-lbl {
-    flex: none; margin-left: 14px; display: flex; align-items: center;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #9aa0aa;
-  }
-  .sm-compress-lbl svg { display: none; }
-  #sm-compress { flex: none; height: 30px; padding: 2px; gap: 2px; }
-  #sm-compress .cp-segtab { flex: none; height: 24px; padding: 0 9px; }
   /* The search field gives up width first, so the row never wraps. A wider system font (Linux)
      squeezes it at desktop widths too. */
   #sm-head .sm-field { flex: 0 1 220px; min-width: 86px; }
-  /* A small laptop at 150% scaling is about 850px wide: the word becomes a glyph. */
-  @media (max-width: 1000px) {
-    .sm-compress-lbl { margin-left: 4px; }
-    .sm-compress-lbl span { display: none; }
-    .sm-compress-lbl svg { display: block; }
-  }
-
-  /* ── contextual action bar ──
-     Material's contextual app bar: while anything is selected it REPLACES the header rather
-     than crowding it, so the actions never need a mode button to reach and the leading X is
-     the only way out. Its own tinted surface is what says the panel is in a different mode. */
-  #sm-actionbar {
-    flex: none; height: 52px;
-    display: none; align-items: center; gap: 8px;
-    padding: 0 12px 0 10px;
-    background: rgba(70,120,220,0.1);
-    border-bottom: 1px solid rgba(90,140,235,0.3);
-  }
-  body.sm-selecting #sm-head      { display: none; }
-  body.sm-selecting #sm-actionbar { display: flex; }
-  #sm-sel-count {
-    flex: 1;
-    font: 600 13px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd;
-    font-variant-numeric: tabular-nums;
-  }
+  /* The selection's actions show while anything is ticked. */
+  .sm-selact { display: none; }
+  body.sm-selecting .sm-selact { display: inline-flex; }
+  #sm-sel-count:empty { display: none; }
 
   /* ── list ── */
   #sm-list {
@@ -196,7 +245,7 @@
     overflow-y: auto; overflow-x: hidden;
     padding: 4px 16px 20px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.16) #1a1a1c;
+    scrollbar-color: rgba(255,255,255,0.16) var(--g-bg);
   }
   #sm-list::-webkit-scrollbar { width: 9px; }
   #sm-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.16); border-radius: 5px; }
@@ -218,7 +267,7 @@
     position: sticky; top: 0; z-index: 3;
     display: flex; align-items: center; gap: 7px;
     height: 38px; padding: 0 4px;
-    background: #1a1a1c;
+    background: var(--g-bg);
     cursor: pointer;
   }
   .sm-group-chev { flex: none; color: #6b7078; transition: transform .16s ease, color .12s; }
@@ -237,7 +286,7 @@
   input.sm-group-name { cursor: text; }
   input.sm-group-name:hover { background: rgba(255,255,255,0.05); }
   input.sm-group-name:focus {
-    background: rgba(0,0,0,0.5); border-color: rgba(90,140,235,0.6); color: #f3f4f6;
+    background: var(--g-hover); border-color: transparent; box-shadow: inset 0 0 0 1px var(--b-solid); color: #f3f4f6;
   }
   /* Against the name, and bare. The pill it used to wear put a border and 16px of padding
      between a heading and its own count.
@@ -253,8 +302,8 @@
   .sm-group-head:hover .sm-bare { opacity: 1; }
   /* The whole section lights while a scene hovers over it, because the heading alone is a
      40px target in a panel where the grid below it is what the eye is already on. */
-  .sm-group.drop .sm-group-head { background: #1e2a48; border-radius: 8px; }
-  .sm-group.drop .sm-grid { background: rgba(70,120,220,0.07); border-radius: 10px; }
+  .sm-group.drop .sm-group-head { background: var(--b-tint); border-radius: 8px; }
+  .sm-group.drop .sm-grid { background: rgba(12,140,233,0.07); border-radius: 10px; }
 
   .sm-grid {
     display: grid;
@@ -288,7 +337,7 @@
     transition: background .14s;
   }
   .sm-card:hover .sm-frame { background: rgba(255,255,255,0.2); }
-  .sm-card.active .sm-frame { background: rgba(90,140,235,0.75); }
+  .sm-card.active .sm-frame { background: var(--b-solid); }
   .sm-thumb {
     position: relative; overflow: hidden;
     border-radius: 8.5px; aspect-ratio: 16/9;
@@ -300,8 +349,8 @@
     /* A pseudo-element does not inherit its host's corner, so an inset ring drawn without
        this is square inside a rounded thumbnail. */
     border-radius: inherit;
-    background: rgba(70,120,220,0.42);
-    box-shadow: inset 0 0 0 2px rgba(143,182,255,0.9);
+    background: rgba(12,140,233,0.32);
+    box-shadow: inset 0 0 0 2px var(--b-solid);
     opacity: 0; transition: opacity .12s;
     pointer-events: none;
   }
@@ -324,10 +373,10 @@
     position: absolute; top: 7px; left: 7px; z-index: 4;
     display: flex; align-items: center; gap: 5px;
     padding: 4px 8px 4px 7px; border-radius: 6px;
-    background: rgba(10,12,18,0.82); border: 1px solid rgba(90,140,235,0.6);
-    color: #8fb6ff; font: 600 11px/1 system-ui, -apple-system, sans-serif;
+    background: var(--b-solid); border: 0;
+    color: #fff; font: 600 11px/1 system-ui, -apple-system, sans-serif;
   }
-  .sm-badge i { width: 5px; height: 5px; border-radius: 50%; background: #8fb6ff; }
+  .sm-badge i { width: 5px; height: 5px; border-radius: 50%; background: #fff; }
   .sm-cb {
     position: absolute; top: 7px; right: 7px; z-index: 5;
     width: 20px; height: 20px; flex: none;
@@ -340,7 +389,11 @@
   }
   .sm-card:hover .sm-cb,
   body.sm-selecting .sm-card .sm-cb { opacity: 1; }
-  .sm-cb.checked { background: #4b7ce0; border-color: #8fb6ff; }
+  .sm-cb.checked { background: var(--b-solid); border-color: var(--b-solid); }
+  .sm-cb.checked::after {
+    content: ''; width: 9px; height: 5px; border: 2px solid #fff; border-top: 0; border-right: 0;
+    transform: translateY(-1px) rotate(-45deg);
+  }
   .sm-trash {
     flex: none; width: 24px; height: 24px;
     display: flex; align-items: center; justify-content: center;
@@ -371,63 +424,17 @@
     transition: background .12s, border-color .12s;
   }
   .sm-name:hover { background: rgba(255,255,255,0.12); }
-  .sm-name:focus { background: rgba(0,0,0,0.62); border-color: rgba(90,140,235,0.6); text-shadow: none; }
+  .sm-name:focus { background: rgba(0,0,0,0.62); border-color: var(--b-solid); text-shadow: none; }
 
   /* ── Move-to menu ──
-     A one-list popover, not a dialog: the choice is which heading, and a modal over a modal is
-     two Escapes to get out of. It is a child of #sm-panel, which is position: relative for
-     exactly this — anchored against the veil instead, it landed wherever the veil's corner was. */
-  .sm-menu {
+     A one-list popover, not a dialog: a modal over a modal is two Escapes to get out of. A child
+     of #sm-panel, which is position: relative for exactly this. */
+  .sm-movemenu {
     position: absolute; z-index: 20;
     min-width: 180px; max-width: 260px;
     max-height: 280px; overflow-y: auto;
-    padding: 5px;
-    background: #1a1a1c;
-    border: 1px solid rgba(255,255,255,0.11);
-    border-radius: 10px;
-    box-shadow: 0 10px 34px rgba(0,0,0,0.55);
-    display: flex; flex-direction: column; gap: 2px;
+    display: flex; flex-direction: column;
   }
-  .sm-menu-row {
-    display: block; width: 100%; text-align: left;
-    padding: 8px 10px;
-    border: none; border-radius: 6px;
-    background: transparent; color: #d5d8dd;
-    font: 500 12px/1.2 system-ui, -apple-system, sans-serif;
-    cursor: pointer;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    transition: background .12s, color .12s;
-  }
-  .sm-menu-row:hover { background: rgba(70,120,220,0.18); }
-  .sm-menu-sep { height: 1px; margin: 4px 6px; background: rgba(255,255,255,0.07); flex: none; }
+  .sm-movemenu .sm-mi { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; padding-left: 10px; }
+  .sm-movemenu .sm-mi::before { display: none; }
 
-  /* ── Undo toast (after delete) ──
-     ⚠ NO `zoom` HERE, AND ITS SIZES ARE WRITTEN OUT INSTEAD. It is a fixed element centred with
-     `left: 50%`, and zoom scales that 50% too, which would push it off centre by the zoom
-     factor. So the toast carries panel-sized numbers of its own rather than borrowing the
-     scale everything else uses. */
-  #scene-undo-toast {
-    position: fixed; bottom: 96px; left: 50%;
-    transform: translateX(-50%);
-    z-index: 200; width: 360px;
-    background: #1a1a1c;
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 12px; overflow: hidden;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-    animation: smToastIn .18s ease;
-  }
-  #scene-undo-toast .undo-body { display: flex; align-items: center; gap: 12px; padding: 15px 16px 14px; }
-  #scene-undo-toast .undo-ico { flex: none; color: #7f858e; display: flex; }
-  #scene-undo-toast .undo-ico svg { width: 17px; height: 17px; }
-  #scene-undo-toast .undo-msg { flex: 1; font: 400 15px/1.3 system-ui, -apple-system, sans-serif; color: #b6bcc5; }
-  #scene-undo-toast .undo-btn {
-    flex: none; height: 32px; padding: 0 14px;
-    border: 1.5px solid rgba(90,140,235,0.6);
-    background: rgba(70,120,220,0.11);
-    border-radius: 8px; color: #8fb6ff;
-    font: 600 14px/1 system-ui, -apple-system, sans-serif;
-    cursor: pointer; transition: background .12s;
-  }
-  #scene-undo-toast .undo-btn:hover { background: rgba(70,120,220,0.2); }
-  #scene-undo-toast .undo-track { height: 3px; background: rgba(255,255,255,0.05); }
-  #scene-undo-toast .undo-bar { height: 100%; width: 100%; background: rgba(90,140,235,0.6); }

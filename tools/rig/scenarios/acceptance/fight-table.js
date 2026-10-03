@@ -10,8 +10,9 @@
 // letter.
 //
 //   A. The Combat button opens and closes the table, and is lit while it is open.
-//   B. "+ Add creature" adds an enemy with the caret in its name; the right-click menu's Add ally
-//      adds an ally, and the menu closes on the pick.
+//   B. Add creature in the header adds an enemy with the caret in its name, and no add row sits
+//      under the table; the right-click menu's Add ally adds an ally, and the menu closes on the
+//      pick.
 //   C. The HP cell shows "= N" for what the line adds up to. Below half the total is yellow, at
 //      exactly half it is not, and at zero or below it is red. No row dims.
 //   D. The Conditions cell opens a list of checkboxes that set several conditions, every picked
@@ -51,8 +52,8 @@
 //      column, which stops at its minimum, height goes to the rows, and the size is remembered.
 //   R. The stat block popup resizes from its right edge, bottom edge and corner, stops at its
 //      minimum width, and the next popup opens at that size, after a restart too.
-//   P. Scenes, Two maps, Combat, Bestiary, Music and the Fog/Grid/Player tabs share one top edge
-//      and one height; Bestiary sits on the window's centre line.
+//   P. No button floats over the top of the map: the scene library, the Bestiary and the fight
+//      table open from the dock's rail, in the order the DM picked.
 //
 // ⚠ THE ZIP ITSELF IS NOT DRIVEN. Its save dialog is native, so J hands cbBackupPayload and
 // cbMergePayload the JSON a backup carries; backup.js's own scenario covers the zip path around it.
@@ -83,8 +84,8 @@ globalThis.__cbType = (name, f, v) => {
   return 0;
 };
 globalThis.__cbAdd = (side, init, name, hp, ac) => {
-  if (side === 'enemy') document.querySelector('#cb-list [data-add]').click();
-  else { __cbContext(document.querySelector('#cb-list [data-add]')); __cbPick('Add ally'); }
+  if (side === 'enemy') document.getElementById('cb-add').click();
+  else { __cbContext(document.querySelector('#cb-fight .cb-colhdr')); __cbPick('Add ally'); }
   const focused = document.activeElement && document.activeElement.dataset.f;
   __cbType(null, 'init', init); __cbType(null, 'name', name); __cbType(null, 'hp', hp); __cbType(null, 'ac', ac);
   return focused;
@@ -145,6 +146,9 @@ module.exports = async function fightTableFeature(rig) {
   rig.check(rows[0].side === 'enemy' && rows[1].side === 'ally',
             '"+ Add creature" and the menu\'s Add ally did not put their rows on their own sides: ' + JSON.stringify(rows.map(r => r.side)));
   rig.check(menuGone, 'the right-click menu stayed open after Add ally was picked');
+  // RED ON: the add row put back after the rows' join in the list render (combatTracker.js) — 2026-10-03
+  rig.check(await dm.evaluate('!!document.querySelector("#cb-fight .cb-head #cb-add") && !document.querySelector("#cb-list [data-add], .cb-addrow")'),
+            'Add creature is not in the fight table\'s header, or the add row is still under the table');
 
   // ── C. The HP total and its colours ───────────────────────────────────────
   // RED ON: the low class gated off in _cbHpClass (combatTracker.js) — 2026-09-26
@@ -254,7 +258,7 @@ module.exports = async function fightTableFeature(rig) {
     initWeight: getComputedStyle(__cbRow('Wight').querySelector('[data-f=init]')).fontWeight,
     player: __cbRow('Alister').querySelector('[data-f=ac]').readOnly })`);
   rig.check(fixed.ac && !fixed.player, 'the AC field is typable once the stat block holds an AC, or locked on a player: ' + JSON.stringify(fixed));
-  rig.check(+fixed.acWeight >= 700 && +fixed.maxWeight >= 700 && +fixed.initWeight <= 400,
+  rig.check(+fixed.acWeight >= 600 && +fixed.maxWeight >= 600 && +fixed.initWeight <= 400,
             'AC and max HP are not bold, or another number is: ' + JSON.stringify(fixed));
   await dm.evaluate('document.querySelector("#cb-stat [data-side=\\"ally\\"]").click(); 0');
   rig.check((await dm.evaluate('__cbData("Skeleton 1").side')) === 'ally',
@@ -589,21 +593,17 @@ module.exports = async function fightTableFeature(rig) {
   rig.check(pop.h2 - pop.h1 > 20 && pop.saved.statH > 0, 'the popup\'s bottom edge did not make it taller: ' + JSON.stringify(pop));
   rig.check(Math.abs(pop.reopened - 320) <= 1, 'the next popup did not open at the size the last one was left at: ' + JSON.stringify(pop));
 
-  // ── P. The top bar ────────────────────────────────────────────────────────
-  // RED ON: #scene-dd's top put back to 16px (sceneManager.css) — 2026-09-26
-  const bar = await dm.evaluate(`(() => {
-    const ids = ['scene-dd-toggle', 'btn-two-maps', 'btn-combat', 'btn-bestiary', 'mu-pill', 'cp-tabbar'];
-    const boxes = ids.map(id => { const b = document.getElementById(id).getBoundingClientRect(); return { id, top: b.top, h: b.height, mid: b.left + b.width / 2, w: b.width }; });
-    return { boxes, width: innerWidth, inScenes: !!document.querySelector('#scene-dd #btn-combat, #scene-dd #btn-bestiary') };
-  })()`);
-  rig.note('top bar: ' + JSON.stringify(bar.boxes.map(b => b.id + ' ' + Math.round(b.top) + '/' + Math.round(b.h))));
-  const tops = bar.boxes.map(b => b.top), heights = bar.boxes.map(b => b.h);
-  rig.check(bar.boxes.every(b => b.w > 0) && Math.max(...tops) - Math.min(...tops) <= 1 && Math.max(...heights) - Math.min(...heights) <= 1,
-            'the top bar does not share one top edge and one height: ' + JSON.stringify(bar.boxes));
-  const best = bar.boxes.find(b => b.id === 'btn-bestiary');
-  rig.check(Math.abs(best.mid - bar.width / 2) <= 2, 'Bestiary is not on the window\'s centre line: ' + best.mid + ' of ' + bar.width);
-  rig.check(!bar.inScenes, 'Combat or Bestiary still sits in the Scenes group');
-  rig.byEye('the top bar reads as three groups, with Combat, Bestiary and Music joined into one');
+  // ── P. The windows open from the rail ─────────────────────────────────────
+  // RED ON: #btn-bestiary moved below the Scene control tab (index.html) — 2026-10-02
+  const rail = await dm.evaluate(`(() => ({
+    order: [...document.querySelectorAll('#dock-rail .rail-btn')].map(b => b.id),
+    floating: ['scene-dd', 'music-anchor'].filter(id => document.getElementById(id)),
+  }))()`);
+  rig.check(rail.floating.length === 0, 'a button still floats over the top of the map: ' + rail.floating.join(', '));
+  rig.check(rail.order.join() === 'dock-tab-library,btn-bestiary,dock-tab-scene,dock-tab-room,dock-tab-music,' +
+            'dock-tab-sounds,btn-combat,dock-tab-settings,btn-help',
+            'the rail is not in the order the DM picked: ' + rail.order.join());
+  rig.byEye('the fight table, the Bestiary and the scene library wear the dock\'s grey');
 
   // ── H. A restart, then a save from before the list ────────────────────────
   // RED ON: _cbLoad returning before it reads the store (combatTracker.js) — 2026-09-24

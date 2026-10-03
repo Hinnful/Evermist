@@ -13,6 +13,184 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+## The dock (2026-10-02)
+
+Twenty-three prototypes settled the DM screen's new shape; the last one, v23, is what shipped.
+Each entry below names the earlier call it reverses. Those entries stay as the record of why
+the old shape held while it did.
+
+### The DM screen is one dock on the right edge, with an icon rail · `SETTLED` (2026-10-02)
+Five floating places held the controls - the control panel, the room card, the top play group,
+the Scenes button and the help corner - and each opened its popups somewhere else. One dock now
+holds them: an icon rail on the right edge, one pane beside it, over the map and never narrowing
+it. Reverses the icon rail rejected on 2026-08-30 ("icons alone do not say fog or grid"): the
+panes now carry their own titles, so a rail icon only has to find the pane. Reverses the
+Fog/Grid/Player tab bar and the panel's place under it. The open pane and the width persist under
+new keys, never `evermist.cpPane`, which the previous release reads.
+
+### A panel docked to the window's edge, for the fight table · `REJECTED` (2026-10-02, stands)
+The dock is not the fight table's model. A dock pane was too narrow for the fight table and for
+the Bestiary's stat blocks, so the fight table stays a free window and the Bestiary and the scene
+library open from the rail as centred windows. All three wear the dock's grey.
+
+### Scene control follows Figma's right panel · `SETTLED` (2026-10-02)
+Fog, Rooms, Grid, Player and My seat, one section each. An eye means shown or hidden and ends its
+row; a closed eye wears the blue tint. Numbers are fields with a leading icon you drag to scrub,
+with no slider and no label. Movement is a preset dropdown and an eye, and Custom… opens the dials
+beside the dock. Reverses "The Animation and Grid Type rows carry no pill": both rows are gone,
+into the dropdown and a two-way segment. Reverses PRODUCT.md's "Cell size keeps its slider": the
+cell size is a scrub field. The pane drives `#cp-legacy`, so no behaviour code changed.
+
+### The TV zoom stepper is gone · `REVERTED` (2026-10-02)
+The − / % / + stepper in the Player tab duplicated the minimap's wheel, which stays. The minimap
+moved to the bottom-left corner, square, with Sync View and Lock on it and the TV's edges dotted
+across it.
+
+### The room card became the dock's Room tab · `SETTLED` (2026-10-02)
+Name as the header, Delete where Close was, the notes, pictures inline below them, the corner
+radius. Reverses the card's automatic placement and its drag (clampPanelPosition is deleted),
+"The card shows everything" (the fog pill left for the toolbar), the stored description height
+(the notes grow with their text; `evermist.roomDescHeight` is no longer read) and "A destructive
+button should keep the standard shape" for this one button: Delete is a header icon now, and a
+room delete is undoable. The tab still follows the selection alone.
+
+### The fog trio is the selected room's fog while Select is in hand · `SETTLED` (2026-10-02)
+With Select in hand and a room selected, Reveal / Half / Shroud above the toolbar show and set
+that room's fog, and T cycles it. With a drawing tool or the Brush in hand the trio is the paint
+direction, as before. The room card's pill had been a second control for the first meaning.
+
+### Two maps: the Room tab edits the room in its column · `SETTLED` (2026-10-02)
+A column has no dock, so it reports its selected room to the DM window and every edit goes back to
+that column alone, aimed at the column the fields were filled from rather than the one selected
+now. A column refuses an edit once its selection has moved on. Two columns number rooms alike, so
+the tab tells rooms apart by column too.
+
+### The toolbar follows Figma: chevron lists and one operations button · `SETTLED` (2026-10-02)
+Select, Shape ▾, Merge / Cut out / Split ▾, Brush, Door, then snap, straighten and Rooms/Effects,
+in 36px boxes. A chevron or a right-click opens each list. Reverses "Every repair is on both bars"
+as three buttons: they are still on both bars, behind one button wearing the last pick, and
+picking Split disarms the other two. Reverses the corner tick and the right-click-only flyout, and
+"A helper that is on no longer wears the picked tool's box": its underline went with the outlined
+pick. Blue now means on or in use: solid for the tool in hand, a tint for a switch.
+
+### On the narrowest window the toolbar gives way into the minimap's corner · `SETTLED` (2026-10-02)
+The toolbar centres between the minimap and the dock. On a window too narrow for both, such as the
+rig's 1008px, it slides over the minimap's right edge and never under the dock.
+
+### Settings gathers what applies to every scene · `SETTLED` (2026-10-02)
+Language, Shrink big maps, Half and Feather, and the About block with the version and What's new.
+Reverses "About moved into the legend" and the compression pill in the library header. Feather now
+persists under `evermist.fogFeather`, like Half; Fog Reset still sets it back. Backup stayed in
+the library.
+
+### Flat-top hex is gone, with a one-way loss · `REVERTED` (2026-10-02)
+A saved flat-top grid loads as pointy-top through a normaliser in `applyGridConfig`, with no
+error. Its cells need one recalibration, and a rollback does not bring flat-top back.
+
+### Music and Sounds are players in the dock · `SETTLED` (2026-10-02)
+A round play/pause, the track, level bars, the state line, the volume slider and the download bar;
+the sounds are tiles two to a row. The top play group and its pills are gone. Music groups came
+later the same day, below.
+
+### A music group is a name a track carries, never a subfolder · `REJECTED` (2026-10-02)
+Subfolders of the music folder were built as groups and dropped the same day: nothing in the app
+can make one, and a DM will not arrange an app's data folder by hand. Where a group is kept and why
+is in `musicGroups.js`.
+
+### A group is renamed by its name alone · `SETTLED` (2026-10-02)
+The pencil beside a group's name is gone, in the scene library and in Music: two ways to the same
+action is one too many. It had been added because a bare name read as a label; the name now
+lightens on hover instead.
+
+### A Sources row is the button · `SETTLED` (2026-10-02)
+The grey row was already button-shaped, so it is the button: the floor plan row picks a
+`.dd2vtt` and then names its room count, the module text row opens its panel. The icon beside
+each does the next thing: Draw Rooms, and removing the module text. A folder icon beside the
+row was built and dropped as the same action twice.
+
+### A dropdown's list opens under the dropdown · `SETTLED` (2026-10-02)
+Figma's way, the check on the left, at least as wide as the dropdown, above it where the window
+runs out. Pop-outs that are panels (a colour picker, Custom movement) still open beside the dock.
+
+### The toolbar never moves with the dock's pane · `SETTLED` (2026-10-02)
+Its place comes from the window alone, and the pane stops at it. A rail border that only appeared
+with the pane open, and a zoom read off the dock's own snapped border, each moved it a pixel;
+the rail border is now always there and the zoom is read off a rail button.
+
+### Grid and fog colour are undoable · `SETTLED` (2026-10-02)
+They never were, 3.11.0 included: a focused field's own text undo made it look so. They ride the
+same history as light entries with no fog image, one per drag or scrub. With two maps, Ctrl+Z
+reaches the selected column. A successful undo says "Undone", because a note or a colour can
+change with nothing on screen showing it.
+
+## The windows (2026-10-03)
+
+Item 150 redesigned every window the dock redesign had only recoloured. The prototype rendered
+the app's own markup under the proposed stylesheet, and an audit measured each rule below.
+
+### Every window outside the dock is one shell · `SETTLED` (2026-10-03)
+Item 150, settled over four prototype rounds. A centred window has a 48px header with a 14px bold
+title, its count, its actions and one close cross last; a free window (the fight table, the stat
+block) carries the dock's 12px bold title. Controls in a window are 28px, a step above the dock's
+26px. Widths are three: 360 for a question or a progress bar, 480 for a list, 720 for a reference;
+the scene library and the Bestiary fill the screen. A window's title is the name of the button
+that opens it, so "Scenes" became "Scene library" and "Add music" became "Add from YouTube".
+Rejected: the first round, which gave each window its own header, close and button sizes and read
+as inconsistent at a glance.
+
+### Buttons are three kinds and an icon button · `SETTLED` (2026-10-03)
+Primary wears the blue tint, one per window, and only where the window has an action it exists
+for: the stat block popup has none. Secondary is grey. Destructive has no fill and carries the
+trash; it turns red only under the pointer, and sits on the right in every footer and dialog.
+No button has an outline; a focus ring shows only on keyboard focus. An icon beside a label sits
+1px under the box centre, because Segoe UI's letters sit low in the line; the trash stays centred,
+since its lid makes it read low once moved. Rejected: a grey-filled destructive button, one red at
+rest, one on a footer's left while the next dialog put its own on the right, and a Done button in
+a window where nothing waits to be accepted.
+
+### Selection follows Gmail, not a tinted header · `SETTLED` (2026-10-03)
+Reverses the selection bar that replaced the header in the scene library, the Bestiary and the
+music download panel. The header never changes now: each list has a toolbar above it starting
+with an all/none tick, a partial selection shows a dash, and ticking writes "N selected" with the
+actions beside it, Delete last, and the list's count on the right. Ticks in a list show at all
+times. Rejected: Material's tinted bar, on product grounds and because it squared off the panel's
+rounded top corners; a Select all button beside the tick; ticks shown only on hover; "picked" for
+"selected".
+
+### Toasts are one style in one stack · `SETTLED` (2026-10-03)
+Five toasts in four styles and three places became one stack above the toolbar: Undone, a removed
+scene with Undo, a notice, the floor plan found, and an update. The update toast keeps the reason
+it sat where it did: it stays clickable over any window's dimmer. A toast's action is blue text
+with no fill; a filled button was tried and read as heavier than the message. The floor-plan
+toast keeps its door count after the rooms, because the Draw them it offers draws both. Rejected: a toast
+that announces an install as a fact, because an update is always the DM's choice.
+
+### Both stat blocks share the Bestiary page's type · `SETTLED` (2026-10-03)
+Reverses "the system blue" kept in "The bestiary is a table beside a one-column page": blue now
+means on or in use, so the labels, dice and to-hit turned white or dim. The size and weight stay:
+AC and HP as large heavy numbers, Initiative and Speed bold, each ability its own big modifier,
+the name and the section headings large. Flattening them to the dock's type was tried and
+rejected - the headings are how a monster is navigated, and the numbers are read mid-fight. The
+fight table's popup reads at the same sizes, loses its grip, and its Save to Bestiary is a grey
+button.
+
+### The fight table reads at the app's 12px · `SETTLED` (2026-10-03)
+It was 13 to 14px with 40px rows, larger than every other window. It now has 12px type, 32px
+rows and sentence-case column titles. Add creature moved from the row under the table to the
+header's primary button, and the close reaches the window's right edge, where it had followed the
+fight's name. Rejected: an HP bar and other additions slipped into a restyle.
+
+### The Bestiary imports from one file button · `SETTLED` (2026-10-03)
+From a file takes a .json export or a PDF book and reads the extension; two menu items for two
+file types asked the DM a question the file already answers. Search moved into the header, as in
+the scene library, and the page's close became a collapse icon, since two crosses one above the
+other read as the same button.
+
+### The minimap draws no grid · `SETTLED` (2026-10-02)
+It only ever appeared once a zoom made a cell four pixels wide, which read as a glitch.
+
+---
+
 ### The interface translates by its English text, one language per window · `SETTLED` (2026-09-29)
 The English on screen is the key to a Russian dictionary, so English stays the only language
 the code is written in and a missing entry falls back to it. Keys were rejected: hundreds of

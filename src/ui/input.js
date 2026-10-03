@@ -24,7 +24,8 @@ function updateContextPanels() {
   const rooms  = !cal && placeMode !== 'effects' && (closed || shape === 'brush');
   const fx     = !cal && placeMode === 'effects' && closed;
   const door   = !cal && shape === 'door';
-  show('ctx-rooms', rooms);
+  const room   = !cal && !!fogTrioRoom();   // the selected room's fog, with Select in hand
+  show('ctx-rooms', rooms || room);
   show('panel-brush-bottom', rooms);
   show('ctx-effects', fx);
   show('ctx-presets', fx && !!EFFECT_PRESETS[shape]);
@@ -33,7 +34,7 @@ function updateContextPanels() {
   // ⚠ visibility, NEVER display. A hidden box keeps its place, so the bar below does not jump up
   // by this strip's height every time the DM picks Select and drop back on the next shape.
   const row = document.getElementById('context-row');
-  if (row) row.style.visibility = (rooms || fx || door) ? '' : 'hidden';
+  if (row) row.style.visibility = (rooms || fx || door || room) ? '' : 'hidden';
   const cellLabel = document.getElementById('door-cell-label');
   if (cellLabel) cellLabel.textContent = Math.round(gridSize);
 }
@@ -93,7 +94,8 @@ function initInput() {
     document.addEventListener('mousedown', (e) => {
       const focused = document.activeElement;
       if (!focused || (focused.tagName !== 'INPUT' && focused.tagName !== 'TEXTAREA')) return;
-      if (focused === e.target) return;
+      // A list that answers the field it hangs off (the fight's name suggestions) keeps its focus.
+      if (focused === e.target || e.target.closest('[data-keeps-focus]')) return;
       focused.blur();
     }, true);
 
@@ -201,6 +203,9 @@ function initInput() {
     document.getElementById('legend-backdrop').addEventListener('click', () => {
       if (legendVisible) toggleLegend();
     });
+    document.getElementById('legend-close').addEventListener('click', () => {
+      if (legendVisible) toggleLegend();
+    });
   }
 
   // ⚠ e.code, THE PHYSICAL KEY - never e.key, which is the character a layout produced.
@@ -218,8 +223,9 @@ function initInput() {
     if (gridCalArmed && e.code === 'Escape') { e.preventDefault(); armGridCalibration(false); return; }
     // ⚠ RETURNS WHATEVER THE KEY WAS, or Ctrl+C picks the Cone and Ctrl+R the Rectangle.
     if (e.ctrlKey || e.metaKey) {
-      if (e.code === 'KeyZ' && !e.shiftKey) { e.preventDefault(); undo(); }
-      else if (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey)) { e.preventDefault(); redo(); }
+      // With two maps the history is the selected column's; the DM window has none of its own.
+      if (e.code === 'KeyZ' && !e.shiftKey) { e.preventDefault(); if (!paneForward('undo')) undo(); }
+      else if (e.code === 'KeyY' || (e.code === 'KeyZ' && e.shiftKey)) { e.preventDefault(); if (!paneForward('redo')) redo(); }
       // Figma's keys, on the shapes → shapeClipboard.js. A focused field returned above, so
       // Ctrl+C still copies text out of the name and description.
       else if (e.code === 'KeyC') { e.preventDefault(); copySelectedShape(); }
@@ -241,7 +247,11 @@ function initInput() {
       case 'KeyN': document.getElementById('btn-snap').click(); break;
       case 'KeyG': document.getElementById('btn-grid').click(); break;
       case 'KeyA': document.getElementById('btn-anim').click(); break;
-      case 'KeyL': if (typeof toggleRoomLabels === 'function') toggleRoomLabels(); break;
+      // In a column, L asks the DM window, which keeps the eye and both columns in step.
+      case 'KeyL':
+        if (isPane && parent !== window) parent.postMessage({ type: 'pane-labels-key', pane: paneId }, '*');
+        else if (typeof toggleRoomLabels === 'function') toggleRoomLabels();
+        break;
       case 'KeyF': if (mapOffscreen) { fitToScreen(); viewportDirty = true; scheduleRender(); } break;
       case 'Delete':
         deleteSelectedPart();

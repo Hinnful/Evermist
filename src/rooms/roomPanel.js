@@ -133,67 +133,6 @@ function fitLabelBox(poly, textW, textH, pad, cornerR, rows) {
   return best;
 }
 
-const RP_GAP    = 22;   // screen px between the card and the room's centroid
-const RP_MARGIN = 8;    // keep the card at least this far off every viewport edge
-
-// Where the DM dragged the card, screen px, or null for automatic placement. Once moved it STAYS
-// moved until the card closes or the bar is double-clicked, or it lands back on the handles.
-let _rpManualPos = null;
-
-// Last automatic placement, keyed to its room. Held still during a vertex or edge drag, or the
-// card flips sides mid-edit; it re-places once, on release.
-let _rpAutoPos = null;
-
-function _rpAutoFrozen(pid) {
-  if (!_rpAutoPos || _rpAutoPos.pid !== pid) return false;
-  return (typeof isDraggingVertex !== 'undefined' && isDraggingVertex) ||
-         (typeof isDraggingEdge   !== 'undefined' && isDraggingEdge);
-}
-
-// Description height: ONE preference for the card, never per room. localStorage, so never in a
-// scene or backup. No MIN/MAX here — .rp-desc's CSS already clamps style.height.
-const RP_DESC_H_KEY = 'evermist.roomDescHeight';
-
-// Where to put the card, ALL SCREEN PIXELS. `room` is the selected room's screen bounding box,
-// NEVER its centroid: the card has to clear the whole room. Preference: above, below, right, left.
-function clampPanelPosition(room, pw, ph, vw, vh, gap, margin) {
-  const g = gap    == null ? RP_GAP    : gap;
-  const m = margin == null ? RP_MARGIN : margin;
-
-  // Math.max wraps Math.min, so a card bigger than the viewport pins to the top/left edge.
-  const clampX = l => Math.max(m, Math.min(vw - pw - m, l));
-  // Not redundant with the branches below: the box comes from MAP coordinates, so panning can put
-  // it far off-screen, and the card must stay readable when its room has scrolled out of view.
-  const clampY = t => Math.max(m, Math.min(vh - ph - m, t));
-
-  const left = clampX((room.left + room.right) / 2 - pw / 2);   // centred on the room
-  const top  = clampY((room.top + room.bottom) / 2 - ph / 2);
-
-  const above = room.top - g - ph;
-  if (above >= m) return { left, top: clampY(above), placement: 'above' };
-
-  const below = room.bottom + g;
-  if (below + ph <= vh - m) return { left, top: clampY(below), placement: 'below' };
-
-  const right = room.right + g;
-  if (right + pw <= vw - m) return { left: clampX(right), top, placement: 'right' };
-
-  const beside = room.left - g - pw;
-  if (beside >= m) return { left: clampX(beside), top, placement: 'left' };
-
-  // The room reaches every edge, so nothing is fully clear of it. Pin the card to whichever edge
-  // has the most space, covering as little of the room as possible.
-  const slots = [
-    { placement: 'above', space: room.top - m,          left,              top: m },
-    { placement: 'below', space: vh - m - room.bottom,  left,              top: vh - ph - m },
-    { placement: 'right', space: vw - m - room.right,   left: vw - pw - m, top },
-    { placement: 'left',  space: room.left - m,         left: m,           top },
-  ];
-  let best = slots[0];
-  for (const s of slots) if (s.space > best.space) best = s;
-  return { left: clampX(best.left), top: clampY(best.top), placement: best.placement };
-}
-
 // Label text metrics by polygon id: drawCursor() runs on every mouse move, so measureText() must
 // not run per room per frame.
 const _rpLabelCache = new Map();
@@ -319,13 +258,15 @@ function drawRoomLabels() {
 
 function toggleRoomLabels() {
   showRoomLabels = !showRoomLabels;
+  refreshRoomsControlUI();
+  paneBroadcast('room-labels', { on: showRoomLabels });
   drawCursor(lastScreenX, lastScreenY);
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     normalizeRoomFields, sanitizeRoomName, sanitizeRoomDesc,
-    clampPanelPosition, ellipsizeToWidth,
+    ellipsizeToWidth,
     roomLabelFontPx, polygonRowSpans, cornerInsetAt, fitLabelBox,
     ROOM_NAME_MAX, ROOM_DESC_MAX,
   };

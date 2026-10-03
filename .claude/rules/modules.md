@@ -26,7 +26,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `fog/fogClouds.js` | The drifting noise texture, built once and shared |
 | `fog/fog.js` | Fog canvases, the blur + cloud pipeline, reveal/hide |
 | `fog/fogAnim.js` | Fog on a clock: the drift, the reveal crossfade, the scene cover, the colour ease |
-| `fog/fogControls.js` | The Fog tab's controls: anim presets, sliders, colour, feather, half-shroud, doors |
+| `fog/fogControls.js` | The fog's controls: anim presets, dials, colour, feather, half-shroud, doors |
 | `fog/fogGeometry.js` | Pure fog geometry kernel. Tested |
 | `fog/fogColor.js` | Pure fog colour kernel: base, tint, the step between two, a scene's settings. Tested |
 | `shapes/doorGeometry.js` | Pure door-notch kernel. Tested |
@@ -48,7 +48,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `shapes/shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
 | `shapes/shapeBox.js` | The bounding box, its handles, rotate, scale |
 | `shapes/shapeClipboard.js` | Copy, paste, duplicate, across scene switches |
-| `shapes/shapeMenu.js` | The one shape button and its right-click flyout |
+| `shapes/shapeMenu.js` | The bar's two chevron lists: the shapes, and the repair the operations button wears |
 | `ui/input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in `scenes/dragDrop.js`** |
 | `undo.js` | Undo/redo for fog edits |
 | `render/effects.js` | Map effects: the `effects` array's model and its meshes |
@@ -73,7 +73,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `player/panes.js` | Two-column mode: the columns, the divider, the messages sent to them |
 | `player/stageWindow.js` | The two-map Player window, DM side |
 | `player/stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
-| `player/minimap.js` | Minimap render, drag/zoom remote, two-way view sync, zoom nudge |
+| `player/minimap.js` | Minimap render, drag/zoom remote, two-way view sync |
 | `render/video.js` | Animated-map handling |
 | `render/videoDiag.js` | Video diagnostics overlay and disk log |
 | `render/display.js` | Display detection |
@@ -81,27 +81,31 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/dragDrop.js` | What a file dropped on the DM window becomes |
 | `ui/toolbar.js` | DM UI wiring. Calls `initRoomPanel` and `initControlPanel` last |
 | `ui/colorPicker.js` | The fog colour picker: square, hue strip, hex field, HSV maths |
-| `ui/controlPanel.js` | Tabbed Fog/Grid/Player panel over the hidden legacy controls |
+| `ui/controlPanel.js` | The dock's Scene control pane over the hidden legacy controls |
+| `ui/dock.js` | The dock: the icon rail, the one open pane, its width |
 | `rooms/roomPanel.js` | Map room labels and the pure geometry that places them |
-| `rooms/roomCard.js` | The room card: fields, placement, drag |
+| `rooms/roomCard.js` | The dock's Room tab: the selected room's fields |
 | `rooms/picturePlan.js` | Pure room-picture kernel: size, order, backup names. Tested |
 | `rooms/pictureDecode.js` | A file turned into a room picture: shrunk, or kept whole if animated or SVG |
-| `rooms/roomPictures.js` | The card's pictures and the one on the TV |
+| `rooms/roomPictures.js` | The Room tab's pictures and the one on the TV |
+| `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the Room tab |
 | `player/tvPicture.js` | A room picture drawn on the TV, Player and two-map shell |
 | `content/moduleText.js` | Module parsing, storage, name-field dropdown |
 | `content/moduleTextPanel.js` | The import panel and the name-field dropdown. Parses nothing |
 | `content/pdfLayout.js` | Pure PDF reading-order kernel. Tested, dependency-free |
 | `content/pdfExtract.js` | pdf.js in a `utilityProcess`. No `<script>` tag |
 | `ui/confirmDialog.js` | The app's only sanctioned confirmation dialog |
-| `ui/about.js` | The About block: mark, version, repo |
+| `ui/icons.js` | The window icons: one cross, one trash, the rest of the set |
+| `ui/about.js` | The About block in Settings: mark, version, repo, What's new |
 | `ui/changelogData.js` | The release list. GENERATED; never edit it |
 | `ui/changelog.js` | The What’s new panel |
 | `ui/updater.js` | Update toast, About's update line, restart button |
 | `ui/musicPlan.js` | Pure music kernel: link parsing, filenames, the fade curve. Tested |
-| `ui/music.js` | The music bubble: track library and playback |
+| `ui/music.js` | The Music pane: the player, track library and playback |
+| `ui/musicGroups.js` | The Music pane's groups: names, order, folding, and a track dragged into one |
 | `ui/musicDownload.js` | Add music panel |
-| `ui/soundList.js` | The built-in sounds: groups, files, names, icons. Data only |
-| `ui/soundboard.js` | The Sounds pill and panel: one-shot sounds over the music |
+| `ui/soundList.js` | The built-in sounds: groups, files, names. Data only |
+| `ui/soundboard.js` | The Sounds pane: one-shot sounds over the music, as tiles |
 | `combat/combatPlan.js` | Pure fight kernel: HP sum, order, a row's copy. Tested |
 | `combat/fightPlan.js` | Pure: the fight list, its save shape, a backup merge. Tested |
 | `combat/attackLine.js` | Pure: attacks read from a stat block. Tested |
@@ -148,7 +152,7 @@ Declarations must precede use at init time. All under `src/` except `lib/`, whic
 repo root:
 
 ```
-i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
+i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
 fog/fogGeometry.js → fog/fogColor.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → shapes/roomOps.js →
@@ -164,11 +168,11 @@ scenes/backup.js → render/grid.js → render/effectMaterials.js → render/eff
 render/effects.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/gridCalibrate.js → player/minimap.js →
-ui/colorPicker.js → ui/controlPanel.js → ui/confirmDialog.js → rooms/floorPlan.js →
+ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/picturePlan.js → rooms/roomCard.js →
-rooms/pictureDecode.js → rooms/roomPictures.js → player/tvPicture.js →
+rooms/pictureDecode.js → rooms/roomPictures.js → rooms/roomLink.js → player/tvPicture.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
-ui/music.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →
+ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →
 combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →

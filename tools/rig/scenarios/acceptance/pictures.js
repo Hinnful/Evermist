@@ -65,7 +65,7 @@ module.exports = async function picturesFeature(rig) {
     " polygons = [{ id: 1, vertices: [{ x: 200, y: 200 }, { x: 700, y: 200 }, { x: 700, y: 600 }," +
     " { x: 200, y: 600 }], mode: 'reveal', cornerRadius: 0, name: 'Parlour' }]; nextPolygonId = 2;" +
     ' selectedPolygonId = 1; rebuildFogFromPolygons(); refreshRoomPanel(); scheduleRender(); 0');
-  await lib.settle(dm, 'getComputedStyle(document.getElementById("panel-room")).display !== "none"', 6000);
+  await lib.settle(dm, 'dockActivePane() === "room"', 6000);
   const tv = await rig.player();
   await dm.evaluate('sendToPlayer(); 0');
   await tv.waitFor('mapWidth > 0 && fogCoverT === 0', 30000, 'the map to reach the TV');

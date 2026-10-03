@@ -1,6 +1,11 @@
 ---
 name: project-backlog
-description: "**2026-09-30 (latest): item 114 was BUILT and CLOSED, shipping as 3.10.0 (PR #53): room pictures on the TV,** with the Multiattack swap wording and the removal of map drops on the window in the same release. The picture comes and goes in patches of cloud noise, 1.9s in and 1.0s out; animated GIF, WebP and PNG files and SVGs are kept whole. **Dead ends, do not re-propose (docs/DECISIONS.md):** blur-and-settle, slow zoom, a dropped card, a soft-edged circle, a darkroom develop, and four other noise styles were prototyped and lost; a CSS mask swapped per frame flashes the bare picture while each mask decodes. **Not filed, on instruction:** iPhone HEIC pictures. **12 open items; IDs run to 146.**
+description: "**2026-10-03 (latest): item 150 BUILT on the dm-screen-dock branch, not yet released:** every window outside the dock rebuilt from one set of parts, with Gmail's selection in the scene library, the Bestiary and Add from YouTube, and one toast stack above the toolbar. Ships with 4.0.0. **12 open items; IDs run to 151.**
+**2026-10-03: item 151 FILED on the DM's instruction during the item 150 design rounds:** a Cancel in the progress window. **13 open items; IDs run to 151.**
+**2026-10-02: items 147 and 149 BUILT on the dm-screen-dock branch, not yet released:** music groups made in the app (not subfolders), and a floor plan loaded by hand from the Sources row, which is now the button. Ships with 4.0.0. **12 open items; IDs run to 150.**
+**2026-10-02: four items FILED on the DM's instruction during the DM screen redesign spec (.claude/private/specs/dm-screen-dock.md):** 147 music groups, 148 corner rounding by handles, 149 load a floor plan by hand, 150 redesign the restyled windows. **14 open items; IDs run to 150.**
+**2026-10-01: item 143 was BUILT and CLOSED, shipping as 3.11.0 (PR #58): the soundboard.** A Sounds pill beside the music pill opens thirty built-in CC0 sounds in six groups; a left click plays one more copy, a right click stops the newest. Item 137 (Russian interface) DELETED, shipped as 3.9.0. **Dead end, do not re-propose (docs/DECISIONS.md):** a second press that stops the sound; pins and a search over a nine-sound strip. **Not filed, on instruction:** follow-ups wait for the DM's own testing. **10 open items; IDs run to 146.**
+**2026-09-30 (latest): item 114 was BUILT and CLOSED, shipping as 3.10.0 (PR #53): room pictures on the TV,** with the Multiattack swap wording and the removal of map drops on the window in the same release. The picture comes and goes in patches of cloud noise, 1.9s in and 1.0s out; animated GIF, WebP and PNG files and SVGs are kept whole. **Dead ends, do not re-propose (docs/DECISIONS.md):** blur-and-settle, slow zoom, a dropped card, a soft-edged circle, a darkroom develop, and four other noise styles were prototyped and lost; a CSS mask swapped per frame flashes the bare picture while each mask decodes. **Not filed, on instruction:** iPhone HEIC pictures. **12 open items; IDs run to 146.**
 **2026-09-30 (HANDOFF): item 114 (pictures on the room card, shown on the TV) is BUILT and UNCOMMITTED, with the Multiattack swap-wording fix (never filed) in the same tree.** Spec: .claude/private/specs/114-pictures.md. Rig green: pictures 26 checks (5 proved red), smoke + maps, room-card, clipboard, undo, backup, player-window, two-maps, language 390 checks. Map drag-and-drop REMOVED on instruction (a lone .dd2vtt drop stays); PRODUCT.md VTT line widened to the room picture. **Open for next session:** /commit (both ship together unless the DM splits them); the DM's hand test of backup export+restore with pictures and the TV look; two-map picture never driven by a scenario; maps.js C never proved red. Delete item 114 at /commit. **13 open items; IDs run to 146.**
 **2026-09-29 (newest): item 146 (slim /commit) CLOSED on instruction - already done: /commit is a resumable spine over .claude/commit/. Item 137 (Russian interface) shipped as 3.9.0 and is still listed until the DM confirms. **13 open items; IDs run to 146.**
 **2026-09-29 (latest): item 113 was BUILT and CLOSED, shipping as 3.8.0 (PR #51): effect presets.** The Effects flyout gains Line and Ring; a picked shape lists its sizes in feet in the row above the bar (bare numbers, the picked one outlined, the dashed shape glyph first for drawing by hand); the wheel steps the sizes and wraps, Ctrl+wheel zooms; a click places at the pointer, never snapped, a drag aims a cone or line; the grid sets the size at placement only. Rings are across×thick: 20×1, 20×5, 60×5. **Dead ends, do not re-propose (docs/decisions/ui-and-control-panel.md):** a popup of size chips, hover to open sizes, the word Free, a unit after the row, an Effects tab in the right panel, cells lit whole instead of the shape, snapping presets to the grid, and an aim handle on the placed effect (needs an origin and angle saved on every effect). **14 open items; IDs run to 146.**"
@@ -90,7 +95,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **3.7.0** (the ping, the stat block popup resize), pushed as PR #50. **4.0.0 marks a group of play features, not the combat helper alone.** 2.12.0 to 2.15.3 are the
+`package.json` is at **3.11.0** (the soundboard). The DM screen redesign waits on the `dm-screen-dock` branch for 4.0.0. **4.0.0 marks a group of play features, not the combat helper alone.** 2.12.0 to 2.15.3 are the
 vector editing epic, now closed: two selection levels, curved walls, the bounding box,
 copy/paste/duplicate, a radius on a curved corner, and shapes drawn as coloured areas.
 
@@ -181,6 +186,20 @@ Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, w
 hand for a few controls: sounds, reveals, a scene change. **Open:** which controls, and how a phone
 reaches an offline desktop app. Nothing on the phone reaches the TV except through the app.
 Phone · ? · Risk ?
+
+### 148. Corner rounding by handles on the map
+Filed 2026-10-02 on the DM's instruction, during the DM screen redesign. A handle sits in every
+corner of the selected room, as in Figma: dragging one rounds every corner, Alt+drag rounds only
+that corner. The typed number then likely moves to the Rooms section of Scene control. Until
+then the number field stays in the Room tab.
+DM only · 1 · Risk M - a new drag on the map competes with the corner and wall drags already there
+
+### 151. Cancel a long import, backup or restore
+Filed 2026-10-03 on the DM's instruction, out of item 150's scope. The progress window has no
+Cancel, so a restore of a large backup or a big map import cannot be stopped once it starts.
+**Needs /spec:** which of the operations can stop safely part-way, and what a stopped restore
+leaves in the library.
+DM only · 1 · Risk M - each operation needs a clean way to stop, not only a button
 
 ---
 

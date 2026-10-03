@@ -2,10 +2,10 @@
 
 // effect-presets.js — an area effect at an exact D&D size in one click.
 //
-//   A. The Effects flyout offers Line and Ring beside the four shapes; Rooms offers neither.
-//      The flyout wears the bar's own surface.
-//   B. A shape with sizes shows them in the row above the bar, the dashed hand-draw button
-//      first and picked; a picked size wears the outlined blue box.
+//   A. The Effects shape list offers Line and Ring beside the four shapes; Rooms greys both.
+//      The list wears the bar's own surface.
+//   B. A shape with sizes shows them in the row above the bar, the hand-draw button first and
+//      picked; a picked size wears the grey plate.
 //   C. Line and Ring have no hand tool, so picking one arms its default size.
 //   D. The wheel steps through the sizes and wraps at both ends; Ctrl+wheel still zooms.
 //   E. A click places the effect at the exact size, where it was clicked, never snapped; it
@@ -27,21 +27,27 @@ module.exports = async function effectPresets(rig) {
   await dm.evaluate('setPlaceMode("effects"); setShape("select"); 0');
 
   // ══ A ══
-  // RED BY DESIGN: written against the feature, never re-proved
-  const shown = id => `getComputedStyle(document.getElementById("${id}")).display !== "none"`;
-  rig.check(await dm.evaluate(shown('btn-line') + ' && ' + shown('btn-ring')) === true,
-            'the Effects flyout does not offer Line and Ring');
-  await dm.evaluate('setPlaceMode("rooms"); 0');
-  rig.check(await dm.evaluate('!(' + shown('btn-line') + ') && !(' + shown('btn-ring') + ')') === true,
-            'the Rooms flyout offers Line or Ring, which no room is');
-  await dm.evaluate('setPlaceMode("effects"); 0');
+  // RED ON: shapeInMode's greying gated off with false && in _tbOpenList (shapeMenu.js) — 2026-10-02
+  const offered = async () => {
+    await dm.evaluate('document.querySelector("[data-chev=shape]").click(); 0');
+    const rows = await dm.evaluate('[...document.querySelectorAll("#tb-dd .dd-it")].map(r => ({ id: r.dataset.dd, off: r.disabled }))');
+    return id => rows.some(r => r.id === id && !r.off);
+  };
+  let has = await offered();
+  rig.check(has('btn-line') && has('btn-ring'), 'the Effects shape list does not offer Line and Ring');
+  await dm.evaluate('document.querySelector("[data-chev=shape]").click(); setPlaceMode("rooms"); 0');
+  has = await offered();
+  rig.check(!has('btn-line') && !has('btn-ring'), 'the Rooms shape list offers Line or Ring, which no room is');
+  await dm.evaluate('document.querySelector("[data-chev=shape]").click(); setPlaceMode("effects");' +
+                    ' document.querySelector("[data-chev=shape]").click(); 0');
   const surf = await dm.evaluate(`(() => {
-    const m = getComputedStyle(document.getElementById('shape-menu'));
+    const m = getComputedStyle(document.getElementById('tb-dd'));
     const b = getComputedStyle(document.getElementById('toolbar-bottom'));
     return { m: m.backgroundColor, b: b.backgroundColor, bw: m.borderTopWidth };
   })()`);
   rig.check(surf.m === surf.b && surf.bw !== '0px',
-            'the shape flyout does not wear the bar\'s surface: ' + JSON.stringify(surf));
+            'the shape list does not wear the bar\'s surface: ' + JSON.stringify(surf));
+  await dm.evaluate('document.querySelector("[data-chev=shape]").click(); 0');
 
   // ══ B ══
   // RED BY DESIGN: written against the feature, never re-proved
@@ -51,7 +57,7 @@ module.exports = async function effectPresets(rig) {
     const on = bs.find(b => b.classList.contains('active'));
     return { shown: getComputedStyle(row).display !== 'none', keys: bs.map(b => b.dataset.preset),
              text: bs.map(b => b.textContent), on: on ? on.dataset.preset : null,
-             onBorder: on ? getComputedStyle(on).borderTopColor : null };
+             onPlate: on ? getComputedStyle(on).backgroundColor : null };
   })()`;
   await dm.evaluate('setShape("circle"); 0');
   let row = await dm.evaluate(ROW);
@@ -60,11 +66,13 @@ module.exports = async function effectPresets(rig) {
   rig.check(row.on === 'hand' && (await dm.evaluate('presetArmed')) === null,
             'picking Circle did not leave hand drawing picked: ' + JSON.stringify(row));
   await dm.evaluate('document.querySelector("#ctx-presets [data-preset=\\"3\\"]").click(); 0');
+  // ⚠ The plate fades in, so a read straight after the click finds the transparent start.
+  await lib.settle(dm, 'getComputedStyle(document.querySelector("#ctx-presets .active")).backgroundColor !== "rgba(0, 0, 0, 0)"', 3000);
   row = await dm.evaluate(ROW);
   const armed = await dm.evaluate('presetArmed');
   rig.check(armed && armed.kind === 'circle' && armed.s === 20, 'clicking 20 did not arm a 20 ft circle: ' + JSON.stringify(armed));
-  rig.check(row.on === '3' && !/rgba\(0, 0, 0, 0\)/.test(row.onBorder),
-            'the picked size does not wear an outline: ' + JSON.stringify(row));
+  rig.check(row.on === '3' && !/rgba\(0, 0, 0, 0\)/.test(row.onPlate),
+            'the picked size does not wear the grey plate: ' + JSON.stringify(row));
 
   // ══ D ══
   // RED ON: stepPreset clamped instead of stepPresetIndex (toolPreset.js) — 2026-09-29

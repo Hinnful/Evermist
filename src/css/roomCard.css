@@ -1,87 +1,74 @@
-/* roomCard.css — the room card that floats near the selected room. Animates with @keyframes cpAdvIn, defined once in controlPanel.css (which loads before this). */
-  /* ===== ROOM CARD (floats near the selected room) ===== */
-  /* The map stays the interaction surface; this card is where a room's CONTENT lives —
-     the name and the description the DM writes during prep and scans at the table.
-     The shell is the app's ONE floating surface, and it is the four --panel-* variables in
-     base.css: every panel that floats over the map reads them, so none can drift. What this
-     file adds on top is only cp-adv head/body and cpAdvIn. The purple .glass-panel/16px look
-     belonged to the pre-redesign UI and no longer exists.
-     Everything inside is a stock cp-* control at its stock height — nothing bespoke. */
-  #panel-room {
-    position: fixed; left: 0; top: 0; z-index: 150;
-    display: none;                /* refreshRoomPanel() switches this to block */
-    zoom: var(--ui-zoom, 1.2);
-    width: 270px;
-    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
-    box-shadow: var(--panel-shadow); overflow: hidden;
-    pointer-events: auto;
-    animation: cpAdvIn .15s ease;
+/* roomCard.css — the dock's Room tab: the selected room's name, notes, pictures and corners, and the module-text dropdown under the name. */
+  /* Notion's way: the dock is the only box. Name and notes sit on its background, share one left
+     and one right edge, and a field shows itself only on hover and while typing. */
+  .dk-room { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
+  .dk-room::-webkit-scrollbar { width: 0; }
+  .dk-rhead { position: relative; display: flex; align-items: flex-start; gap: 6px; padding: 14px 10px 0 12px; }
+  .dk-rhead .cp-adv-close { margin-top: 5px; flex: none; }
+  .dk-rhead .cp-adv-close:hover { color: rgba(240, 100, 90, 0.95); background: rgba(200, 50, 40, 0.12); }
+
+  .rp-name, .rp-desc {
+    width: 100%; box-sizing: border-box; padding: 4px; border: 0; border-radius: 5px;
+    background: transparent; outline: none; transition: background .12s;
   }
+  .rp-name { flex: 1; min-width: 0; height: 34px; color: var(--g-text);
+             font: 600 16px/1.2 system-ui, -apple-system, sans-serif; text-overflow: ellipsis; }
+  .rp-desc { min-height: 120px; margin: 6px 0 0; padding: 4px 16px 12px; border-radius: 0; resize: none; overflow: hidden;
+             color: #c4c8ce; font: 400 13px/1.6 system-ui, -apple-system, sans-serif; }
+  .rp-name:hover, .rp-desc:hover { background: rgba(255, 255, 255, 0.03); }
+  .rp-name:focus, .rp-desc:focus { background: rgba(255, 255, 255, 0.04); }
+  .rp-name::placeholder, .rp-desc::placeholder { color: #5d626a; font-weight: 400; }
 
-  /* Title bar = the drag handle (roomPanel.js wires the mousedown), and a bar with NO TITLE:
-     a grip on the left, Close on the right. cursor: move and user-select: none are what make it
-     read and behave as one, and they are the only reason this isn't just .cp-adv-head —
-     dragging a bar that highlights its own text feels broken.
-     Close sits in this flex row, which is where a close belongs and is no longer a cost: the
-     row it shares is the bar's, not the name field's, so the field below still spans the full
-     14px-to-14px content width. */
-  .rp-head {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 9px 9px 3px 14px;
-    cursor: move; user-select: none;
+  /* Pictures inline below the notes, the way Notion shows images in a page. */
+  .rp-pics { display: flex; flex-direction: column; gap: 10px; padding: 4px 16px 0; }
+  .rp-pic { position: relative; border-radius: 4px; overflow: hidden; cursor: pointer; background: var(--g-field); }
+  .rp-pic img { width: 100%; display: block; pointer-events: none; }
+  .rp-pic.on { box-shadow: 0 0 0 2px #5fbf8a; }
+  .rp-pic.on::after {
+    content: "TV"; position: absolute; left: 6px; bottom: 6px; padding: 2px 6px; border-radius: 3px;
+    background: #5fbf8a; color: #0d1a12; font: 600 10px/1.2 system-ui, sans-serif;
   }
-  #rp-close { cursor: pointer; }
-
-  /* The grip that replaced the bar's title text. Muted at rest so it reads as an affordance
-     rather than content, and it BRIGHTENS ON HOVER OF THE WHOLE BAR — not of itself — because
-     the whole bar is the drag target and the grip is only where it says so. Six dots is small
-     enough to sit on the 14px content column without competing with the name field below it. */
-  .rp-grip { flex: none; color: #4a4f57; transition: color .12s; }
-  .rp-head:hover .rp-grip { color: #7f858e; }
-
-  /* THE NAME IS JUST A FIELD — same box, same 10px text inset as .rp-desc below it. This is
-     the resolution of a problem three earlier passes each half-solved, and the trap is worth
-     spelling out: the old comment here reasoned that a field's glyphs would sit at 24px while
-     "everything else in the card starts at 14px", and stripped the box to a bare underline to
-     drag the glyphs onto 14. But the description is ALSO a field with 10px padding — its own
-     glyphs are at 24px too. The 14px column is where BOXES start; 24px is where TEXT starts.
-     Matching the description's box gives both, so the name lands on both columns at once and
-     needs no underline, no icon, and no compromise between its rest and focus states.
-     Height is 32px = .cp-field's, not the description's line-height, so it reads as the peer
-     of every other single-line field in the app. */
-  .rp-name {
-    width: 100%; box-sizing: border-box; height: 32px;
-    padding: 0 10px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.07); border-radius: 8px;
-    color: #d5d8dd; font: 600 13px/1 system-ui, -apple-system, sans-serif;
-    outline: none; cursor: text; text-overflow: ellipsis;
-    transition: background .12s, border-color .12s;
+  .rp-pic.drag { opacity: .35; }
+  .rp-pic.over { box-shadow: 0 -3px 0 var(--b-icon); }
+  .rp-pic-x {
+    position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; padding: 0;
+    border: none; border-radius: 4px; background: rgba(0, 0, 0, 0.65); color: #e6e7e9;
+    font: 13px/20px system-ui, sans-serif; cursor: pointer; opacity: 0;
   }
-  .rp-name:hover { border-color: rgba(255,255,255,0.13); }
-  .rp-name:focus { background: rgba(255,255,255,0.07); border-color: rgba(90,140,235,0.6); }
-  .rp-name::placeholder { color: #6b7078; font-weight: 500; }
+  .rp-pic:hover .rp-pic-x { opacity: 1; }
+  .rp-pic-x:hover { background: #e8595f; }
+  .dk-addpic {
+    display: flex; align-items: center; gap: 6px; margin: 8px 16px 4px; padding: 4px 0;
+    border: 0; background: none; color: #5d626a; cursor: pointer; text-align: left;
+    font: 400 12.5px/1.4 system-ui, sans-serif;
+  }
+  .dk-addpic:hover { color: #9aa0aa; }
 
-  /* Name + description are one block — what the room IS — so they sit tighter to each other
-     than to the properties below (8px against the body's 17px).
-     position: relative is what the module-text dropdown hangs off — see .rp-mt-dd. */
-  .rp-ident { gap: 8px; position: relative; }
+  /* Corner radius. The field switches target by itself: a vertex selected on the map edits that
+     corner, none edits all four, and the icon inside the field says which. */
+  .dk-rcorner { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+                margin-top: auto; padding: 12px 10px 14px 16px; border-top: 1px solid var(--g-line); }
+  .rp-radius {
+    flex: none; width: 76px; height: 26px; gap: 5px; border: 0; border-radius: 5px;
+    background: var(--g-field); color: var(--g-dim);
+  }
+  .rp-radius:focus-within { background: var(--g-hover); }
+  .rp-radius input { text-align: left; font: 500 11.5px/1 system-ui, sans-serif; }
+  .rp-radius-ico { flex: none; }
+  .rp-radius .rp-ico-one { display: none; }
+  .rp-radius.rp-per-vertex { color: var(--b-icon); }
+  .rp-radius.rp-per-vertex .rp-ico-one { display: block; }
+  .rp-radius.rp-per-vertex .rp-ico-all { display: none; }
 
   /* ===== MODULE TEXT DROPDOWN (the book, inside the name field) ===== */
   /* The published module's locations, offered where the DM is already typing a room's name.
      Built by moduleText.js, not in index.html, because the whole thing is that module's UI.
 
-     It sits INSIDE the card — absolutely positioned in .rp-ident rather than floating over the
-     page — and that is a deliberate structural choice, not laziness. Two things fall out of it
-     for free: #panel-room's `zoom: var(--ui-zoom)` applies here like it does to everything else,
-     so there is no repeat of the screen-px-vs-pre-zoom-px conversion that _rpScreenToStyle()
-     exists to solve; and the list cannot be left orphaned on screen when the card is dragged,
-     repositioned or closed. The cost is that it covers the description while open, which is the
-     right trade — at that moment the DM is naming the room, not reading it.
-     Heights are bounded so the list never reaches past the card: 8px below a 32px field, and a
-     190px scrolling list, lands well inside a card whose description alone is 214px. */
+     It sits INSIDE the Room tab, absolutely positioned under the name, so the dock's zoom applies
+     and it can never be left on screen when the tab goes. It covers the notes while open, which
+     is the right trade: at that moment the DM is naming the room, not reading it. */
   .rp-mt-dd {
-    position: absolute; left: 0; right: 0; top: 38px; z-index: 4;
+    position: absolute; left: 12px; right: 10px; top: 100%; z-index: 4;
     background: #232327;
     border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.45);
@@ -135,9 +122,8 @@
     font: 400 11px/1.4 system-ui, -apple-system, sans-serif;
   }
 
-  /* The ONLY entry point to the import modal. It lives here rather than as a button on the card
-     because the card's layout is settled and its scarcest resource is description height — and
-     because the one moment a DM wants the module is the moment they are looking at this list. */
+  /* The import panel's way in from here: the one moment a DM wants the module is the moment
+     they are looking at this list. Scene control's Sources row is the other. */
   .rp-mt-foot { border-top: 1px solid rgba(255,255,255,0.06); padding: 4px; }
   .rp-mt-foot button {
     width: 100%; padding: 6px 8px;
@@ -146,97 +132,3 @@
     font: 500 11px/1.25 system-ui, -apple-system, sans-serif;
   }
   .rp-mt-foot button:hover { background: rgba(90,140,235,0.16); }
-
-  /* One description field, always editable — no read mode, no edit mode. Same surface as
-     .cp-field / .cp-chip. This is the card's MAIN action, so it gets the height to match:
-     ~11 lines visible at rest, which is two paragraphs of prep read at the table without
-     scrolling.
-     RESIZABLE, vertical only. The height is a VIEWING preference, not room data: it is
-     remembered in localStorage for the whole card (roomPanel.js) and deliberately never
-     written into a scene or a backup, because "how tall I like this box" does not belong to
-     any one room. Horizontal resize is off — the card is a fixed 270px column and a wider
-     textarea would simply overflow it. max-height is what stops a drag from growing the card
-     until it swallows the room it describes; the internal scroll takes over past it. */
-  .rp-desc {
-    width: 100%; box-sizing: border-box;
-    min-height: 120px; max-height: 620px; height: 214px; resize: vertical;
-    padding: 8px 10px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.07); border-radius: 8px;
-    color: #d5d8dd; font: 400 12px/1.5 system-ui, -apple-system, sans-serif;
-    outline: none; overflow-y: auto;
-    transition: background .12s, border-color .12s;
-  }
-  .rp-desc:hover { border-color: rgba(255,255,255,0.13); }
-  .rp-desc:focus { background: rgba(255,255,255,0.07); border-color: rgba(90,140,235,0.6); }
-  .rp-desc::placeholder { color: #6b7078; }
-  .rp-desc::-webkit-scrollbar { width: 6px; }
-  .rp-desc::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
-
-  /* The one properties row: fog pill left, corner radius pushed to the right edge. The
-     wrapper that used to hold the radius field alongside a "v3/8" vertex readout is gone with
-     the readout, so the auto margin can live on the field itself again. */
-  .rp-row { display: flex; align-items: center; gap: 7px; }
-  .rp-row .cp-seg { align-self: center; }   /* beat .cp-seg's own align-self: flex-start */
-
-  /* Corner radius: a stock .cp-chip-pre (the app's icon/prefix-inside-a-field chip) at a
-     fixed width, so the digits don't move the field as they grow. Two things it fixes: the
-     old chip was 26px tall next to a 30px button, which is the mismatch that read as sloppy
-     — .cp-chip-pre is 30px, the same as the fog pill's segments — and the separate toggle it
-     sat beside is gone, its whole job now done by the glyph inside this field.
-     Four corner brackets = every corner; one rounded L = just the selected vertex, and it
-     goes blue because that state is temporary and worth noticing. */
-  .rp-radius {
-    flex: none; width: 64px; gap: 5px; margin-left: auto; color: #7f858e;
-    transition: color .12s, background .12s, border-color .12s;
-  }
-  .rp-radius:focus-within { border-color: rgba(90,140,235,0.6); background: rgba(255,255,255,0.07); }
-  .rp-radius input { text-align: left; }
-  .rp-radius-ico { flex: none; }
-  .rp-radius .rp-ico-one { display: none; }
-  .rp-radius.rp-per-vertex { color: #6ea8ff; }
-  .rp-radius.rp-per-vertex .rp-ico-one { display: block; }
-  .rp-radius.rp-per-vertex .rp-ico-all { display: none; }
-
-  .rp-del { gap: 7px; }   /* icon-to-label spacing; width/height come from stock .cp-btn */
-
-  /* Body rhythm. This block has been three shapes: a flat stack of five unrelated controls,
-     then two .cp-label-headed groups, now one unlabelled row. Each pass traded chrome for
-     description height, which is the only thing in the card that is ever short of room. The
-     card is three blocks separated by the 17px body gap: the description, the properties,
-     and the destructive action behind its hairline. */
-  #panel-room .cp-adv-body { gap: 17px; }
-  .rp-props { gap: 8px; }
-
-  /* Pictures: a strip only while the room has one, so the description keeps its height. */
-  .rp-pics { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
-  .rp-pic {
-    position: relative; width: 46px; height: 46px; border-radius: 6px; overflow: hidden;
-    border: 2px solid transparent; cursor: pointer; background: rgba(255,255,255,0.04);
-  }
-  .rp-pic img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
-  .rp-pic.on { border-color: #6ea8ff; }
-  .rp-pic.on::after {
-    content: "TV"; position: absolute; left: 2px; bottom: 2px; padding: 0 3px; border-radius: 3px;
-    background: #6ea8ff; color: #0d1a2e; font: 600 9px/12px system-ui, sans-serif;
-  }
-  .rp-pic.drag { opacity: .35; }
-  .rp-pic.over { box-shadow: -3px 0 0 #6ea8ff; }
-  .rp-pic-x {
-    position: absolute; top: 1px; right: 1px; width: 16px; height: 16px; padding: 0;
-    border: none; border-radius: 50%; background: rgba(0,0,0,0.75); color: #eceef1;
-    font: 11px/16px system-ui, sans-serif; cursor: pointer; opacity: 0;
-  }
-  .rp-pic:hover .rp-pic-x { opacity: 1; }
-  .rp-pic-x:hover { background: #e8595f; }
-
-  /* Delete's footer: a hairline in the panel's own border colour, and the button below it at
-     the app's standard full width. The narrow right-aligned variant this replaces was trying
-     to fix "a destructive action reads as the card's primary action" with SIZE, which cost it
-     the shape every other button in the app has. The hairline is what actually fixes it — the
-     button is outside the content stack, so it isn't the end of the form, it's a footer. */
-  .rp-foot {
-    margin-top: 1px; padding-top: 12px;
-    border-top: 1px solid rgba(255,255,255,0.055);
-  }
-

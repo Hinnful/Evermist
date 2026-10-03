@@ -69,15 +69,15 @@ module.exports = async function seatTurn(rig) {
   await lib.settle(dm, '!fogTransRafId && !viewportDirty', 8000);
 
   // ── 1. the control ───────────────────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
+  // RED ON: data-seat="270" changed to 2700, and separately the seat pill's cp-tabs class renamed (index.html) — 2026-10-02
   const control = await dm.evaluate(`(() => {
-    const pane = document.getElementById('cp-pane-player');
+    const pane = document.getElementById('cp-sec-seat');
     const b = [...pane.querySelectorAll('[data-seat]')];
     return { seats: b.map(x => +x.dataset.seat), lit: b.filter(x => x.classList.contains('active'))
       .map(x => +x.dataset.seat), pill: !!b[0] && b[0].parentElement.classList.contains('cp-tabs') };
   })()`);
   rig.check(JSON.stringify(control.seats) === '[0,90,180,270]',
-            'the Player tab does not offer the four seats: ' + JSON.stringify(control));
+            'Scene control does not offer the four seats: ' + JSON.stringify(control));
   rig.check(control.pill, 'the seats are not a pick-one pill, so they read as four separate buttons');
   // refreshPlayerControlUI lights the pick; it runs on a tab switch and on every click.
   await dm.evaluate('refreshPlayerControlUI(); 0');
@@ -277,27 +277,13 @@ module.exports = async function seatTurn(rig) {
   await dm.evaluate('__seatPick(90); 0');
   rig.byEye('whether room labels and the calibration numbers read upright at each seat');
 
-  // ⚠ A ROOM NEAR THE MAP'S CORNER. The middle of the view sits still under a turn, so a card placed
-  // off the unturned room lands beside a middle room anyway and the check cannot tell.
+  // ⚠ A ROOM NEAR THE MAP'S CORNER. The middle of the view sits still under a turn, so a click
+  // read off the unturned map lands on a middle room anyway and the check cannot tell.
   await dm.evaluate('setShape("select"); __rigClick(487, 407); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === poly.id, 'the corner room was not picked');
-  await lib.settle(dm, "getComputedStyle(document.getElementById('panel-room')).display !== 'none'", 8000);
-  // ⚠ THE CARD SLIDES IN (cpAdvIn), and a rect read mid-slide is off by the slide on a slow runner.
-  await lib.settle(dm, "document.getElementById('panel-room').getAnimations().length === 0", 8000);
-  const card = await dm.evaluate(`(() => {
-    const p = document.getElementById('panel-room').getBoundingClientRect();
-    const bb = shapeBBox(__rigById(${poly.id}));
-    const r = __seatClientBox(bb.minX, bb.minY, bb.maxX, bb.maxY);
-    // Where the card's own placement rule puts it around the room as the screen shows it.
-    const want = clampPanelPosition(r, p.width, p.height, window.innerWidth, window.innerHeight);
-    return { off: Math.hypot(p.left - want.left, p.top - want.top), placement: want.placement,
-             card: [p.left, p.top, p.right, p.bottom].map(Math.round),
-             room: [r.left, r.top, r.right, r.bottom].map(Math.round) };
-  })()`);
-  // ⚠ 12px, NOT 2: the card places itself while it slides in (cpAdvIn, 8px at the panel's zoom), so
-  // it settles about 10px short at every seat. A card placed off the unturned room misses by hundreds.
-  rig.check(card.off < 12,
-            'at 90° the room card is not where its room on screen puts it: ' + JSON.stringify(card));
+  await lib.settle(dm, 'dockActivePane() === "room"', 8000);
+  rig.check(await dm.evaluate('dockActivePane() === "room"'),
+            'at 90° picking the corner room did not open the Room tab');
   await dm.evaluate('__rigKey("Escape"); __rigKey("Escape"); 0');
 
   // ── 8. calibration ───────────────────────────────────────────────────────
@@ -324,8 +310,6 @@ module.exports = async function seatTurn(rig) {
 
   // ── 9. the minimap ───────────────────────────────────────────────────────
   // RED ON: the minimap drag left unturned, and its canvas left upright (minimap.js, mapTurn.js) — 2026-09-29
-  await dm.evaluate('document.querySelector(\'#cp-tabbar [data-tab="player"]\') &&' +
-                    ' _cpActiveTab() !== "player" && document.querySelector(\'#cp-tabbar [data-tab="player"]\').click(); 0');
   const mm = await dm.evaluate(`(() => {
     const c = document.getElementById('minimap-canvas');
     const m = __seatMatrix(c);

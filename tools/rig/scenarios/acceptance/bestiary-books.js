@@ -10,7 +10,7 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter.
 //
-//   A. The Import menu offers From a PDF book, ready to pick.
+//   A. The Import menu's From a file offers a PDF book, ready to pick.
 //   B. A book read from its path adds every stat block in it under the book's name without its
 //      extension, marked NEW, and leaves out and names the one it could only partly read.
 //   C. The same book again adds nothing.
@@ -80,11 +80,12 @@ module.exports = async function bestiaryBooks(rig) {
   })()`, 60000);
 
   // ── A. The Import menu offers the book ────────────────────────────────────
-  // RED ON: the book item forced off in _bsImportMenu (bestiary.js) — 2026-09-25
+  // RED ON: the From a file item given the .json-only accept back (bestiary.js) — 2026-10-03
   await dm.evaluate('document.getElementById("btn-bestiary").click(); document.querySelector(\'#bs-panel [data-a="import"]\').click(); 0');
-  const item = await dm.evaluate(`(() => { const it = document.querySelector('.bs-menu [data-m="book"]');
-    return it ? { off: it.classList.contains('off'), text: it.firstChild.textContent } : null; })()`);
-  rig.check(item && !item.off, 'the Import menu has no From a PDF book item ready to pick: ' + JSON.stringify(item));
+  const item = await dm.evaluate(`(() => { const it = document.querySelector('.bs-menu [data-m="file"]');
+    return it ? { off: it.classList.contains('off'), text: it.textContent, accept: document.getElementById('bs-file').accept } : null; })()`);
+  rig.check(item && !item.off && /PDF/.test(item.text) && /\.pdf/.test(item.accept),
+            'the Import menu has no From a file item that takes a PDF book: ' + JSON.stringify(item));
   await dm.evaluate('document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })); 0');
 
   // ── B. A book adds every stat block ───────────────────────────────────────

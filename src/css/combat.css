@@ -1,27 +1,5 @@
-/* combat.css — the fight table and its fight picker, the bestiary, their stat block popup, and the
-   Combat and Bestiary buttons in the top play group beside Music. */
+/* combat.css — the fight table and its fight picker, the bestiary, and their stat block popup. */
 
-  /* Both buttons wear the Scenes button's shape (sceneManager.css): an icon and a word. Combat,
-     Bestiary and the music pill (music.css) join edge to edge into one group. */
-  #btn-combat, #btn-bestiary {
-    zoom: var(--ui-zoom, 1.2); pointer-events: all; position: relative;
-    height: 30px; padding: 0 12px; gap: 8px;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
-    box-shadow: var(--panel-shadow); color: #d5d8dd; cursor: pointer;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    transition: background .12s, border-color .12s, color .12s;
-  }
-  #btn-combat { justify-self: end; border-top-right-radius: 0; border-bottom-right-radius: 0; }
-  #btn-bestiary { justify-self: center; border-radius: 0; margin-left: -1.5px; }
-  #btn-combat svg, #btn-bestiary svg { flex: none; color: #7f858e; }
-  #btn-combat:hover, #btn-bestiary:hover { border-color: rgba(255,255,255,0.18); background: #202124; z-index: 1; }
-  #btn-combat.active, #btn-bestiary.active {
-    background: linear-gradient(rgba(70, 120, 220, 0.16), rgba(70, 120, 220, 0.16)), var(--panel-bg);
-    border-color: rgba(90, 140, 235, 0.6); color: #8fb6ff; z-index: 1;
-  }
-  #btn-combat.active svg, #btn-bestiary.active svg { color: #8fb6ff; }
-  body.player-mode #btn-combat, body.pane-mode #btn-combat, body.player-mode #btn-bestiary, body.pane-mode #btn-bestiary,
   body.player-mode .cb-panel, body.pane-mode .cb-panel { display: none !important; }
 
   .cb-panel {
@@ -43,8 +21,6 @@
     display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px;
     border-bottom: 1px solid rgba(255,255,255,0.07); cursor: move;
   }
-  .cb-head .rp-grip { flex: none; color: #4a4f57; }
-  .cb-head:hover .rp-grip { color: #7f858e; }
   .cb-iconbtn {
     width: 22px; height: 22px; flex: none; padding: 0;
     display: flex; align-items: center; justify-content: center;
@@ -77,15 +53,14 @@
   .cf-item.on .nm { font-weight: 600; }
   #cb-fightpick .nm.editing, .cf-item .nm.editing {
     overflow: visible; text-overflow: clip; outline: 1px solid rgba(90,140,235,0.7); border-radius: 3px;
-    padding: 1px 3px; cursor: text; user-select: text; background: #1a1a1c;
+    padding: 1px 3px; cursor: text; user-select: text; background: var(--g-bg);
   }
   .cf-item .meta { flex: none; color: #7f858e; font-size: 12px; }
-  .cf-new, .cb-addrow {
+  .cf-new {
     display: block; width: 100%; border: 0; border-top: 1px solid rgba(255,255,255,0.07); background: none;
     padding: 11px 12px; text-align: left; cursor: pointer; color: #9aa0aa; font: 600 13px/1 system-ui, sans-serif;
   }
-  .cf-new:hover, .cb-addrow:hover { background: rgba(255,255,255,0.03); color: #d5d8dd; }
-  .cb-addrow { border-top: none; }
+  .cf-new:hover { background: rgba(255,255,255,0.03); color: #d5d8dd; }
 
   /* ===== The table: a spreadsheet grid, edge to edge inside the panel ===== */
   .cb-colhdr, .cb-row {
@@ -212,8 +187,9 @@
     border-color: #4a82e8; background: #4a82e8 center / 11px no-repeat;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
-  #cb-suggest div.on { background: rgba(90,140,235,0.22); }
-  #cb-suggest .src { margin-left: auto; padding-left: 14px; color: #7f858e; font-weight: 400; font-size: 12px; }
+  #cb-suggest .src { margin-left: auto; padding-left: 14px; color: var(--g-dim); font-weight: 400; font-size: 11px; }
+  /* On the solid blue of the focused row, the source reads light. */
+  #cb-suggest div.on .src, #cb-suggest div:hover .src { color: rgba(255,255,255,0.75); }
 
   /* ===== The stat block ===== */
   .cb-side-switch { margin-right: auto; padding: 3px; }
@@ -256,30 +232,25 @@
   .cb-save:disabled { opacity: 0.45; cursor: default; }
 
   /* ===== The bestiary: the scene library's window, a table, and a page beside it ===== */
-  #bs-modal { position: fixed; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center; background: rgba(6,7,9,0.62); }
+  #bs-modal { position: fixed; inset: 0; z-index: 150; display: flex; align-items: center; justify-content: center; background: var(--veil); }
   body.player-mode #bs-modal, body.pane-mode #bs-modal { display: none !important; }
   #bs-panel {
     zoom: var(--ui-zoom, 1.2); width: calc(92vw / var(--ui-zoom, 1.2)); max-width: 1380px;
     height: calc((100vh - 56px) / var(--ui-zoom, 1.2)); display: flex; flex-direction: column; outline: none;
-    background: #1a1a1c; border: var(--panel-border); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,0.6); overflow: hidden;
+    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius); box-shadow: 0 18px 60px rgba(0,0,0,0.6); overflow: hidden;
     font: 500 12.5px/1.4 system-ui, -apple-system, sans-serif; color: #d5d8dd;
   }
   #bs-panel * { box-sizing: border-box; }
   .bs-head { flex: none; height: 52px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 16px; border-bottom: 1px solid rgba(255,255,255,0.055); }
   .bs-title { font: 600 14px/1 system-ui, sans-serif; }
-  .bs-count { margin-left: 2px; color: #7f858e; font-weight: 600; }
   .bs-sp { flex: 1; }
-  .bs-act { display: none; }
-  .bs-act .bs-picked { margin: 0 auto 0 4px; font-weight: 600; }
-  #bs-panel.selecting .bs-norm { display: none; }
-  #bs-panel.selecting .bs-act { display: flex; }
   .bs-link { border: 0; background: none; padding: 6px; color: #7f858e; cursor: pointer; font: 600 12px/1 system-ui, sans-serif; }
   .bs-link:hover { color: #d5d8dd; }
 
   .bs-importbar { flex: none; display: flex; gap: 8px; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.055); background: rgba(90,140,235,0.05); }
   .bs-importbar textarea {
     flex: 1; height: 66px; resize: none; padding: 7px 9px; border-radius: 7px; border: 1.5px solid rgba(255,255,255,0.1); outline: none;
-    background: rgba(0,0,0,0.35); color: #d5d8dd; font: 500 12px/1.4 ui-monospace, Consolas, monospace;
+    background: rgba(0,0,0,0.35); color: #d5d8dd; font: 500 12px/1.4 system-ui, -apple-system, sans-serif;
   }
   .bs-importbar textarea:focus { border-color: rgba(90,140,235,0.6); }
   .bs-importbar .col { flex: none; display: flex; flex-direction: column; gap: 6px; }
@@ -290,7 +261,6 @@
   #bs-panel textarea::-webkit-scrollbar-button { display: none; }
 
   .bs-filters { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.055); }
-  .bs-filters .sm-field { width: 230px; }
   .bs-fbtns { display: contents; }
   .bs-f {
     display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px 0 11px; cursor: pointer;
@@ -329,7 +299,7 @@
     border-radius: 4px; border: 1.5px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.3);
   }
   .bs-cb.on { background: #4b7ce0; border-color: #8fb6ff; }
-  .bs-cb.on::after { content: ''; width: 7px; height: 4px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(1px, -1px); }
+  .bs-cb.on::after, .cb-menu .box.on::after { content: ''; width: 7px; height: 4px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(1px, -1px); }
   .bs-t .bs-cb { opacity: 0; }
   .bs-t tr:hover .bs-cb, #bs-panel.selecting .bs-t .bs-cb, .bs-t .bs-cb.on { opacity: 1; }
 
@@ -354,7 +324,7 @@
   .bs-t { width: 100%; border-collapse: collapse; }
   .bs-t th {
     position: sticky; top: 0; z-index: 1; padding: 9px 10px; text-align: left; white-space: nowrap; cursor: pointer; user-select: none;
-    background: #1a1a1c; border-bottom: 1px solid rgba(255,255,255,0.08); color: #7f858e; font: 700 10.5px/1 system-ui, sans-serif; letter-spacing: .5px; text-transform: uppercase;
+    background: var(--g-bg); border-bottom: 1px solid rgba(255,255,255,0.08); color: #7f858e; font: 700 10.5px/1 system-ui, sans-serif; letter-spacing: .5px; text-transform: uppercase;
   }
   .bs-t th:hover { color: #b8bdc6; }
   .bs-t th.num, .bs-t td.num { text-align: center; }
@@ -441,3 +411,264 @@
   .bp-editing .cb-sb-abil .v { font-size: 16px; }
   .bp-editing .cb-sb-sechd { font-size: 17px; padding-bottom: 5px; margin-bottom: 8px; }
   .bp-edit-h { margin-top: 22px; cursor: default; }
+
+  /* ===== THE WINDOW SKIN =====
+     The window parts (sceneManager.css) applied to the fight table, the stat block and the
+     Bestiary. Overrides on the rules above, in this order; content colours inside a stat block or
+     a page stay. */
+  .bs-f, .cb-save {
+    height: 28px; padding: 0 12px; gap: 6px; border: 0; border-radius: 6px;
+    display: inline-flex; align-items: center; flex: none; white-space: nowrap; cursor: pointer;
+    background: var(--g-field); color: var(--g-text); font: 500 12px/16px system-ui, -apple-system, sans-serif;
+  }
+  .bs-f:hover { background: var(--g-hover); color: var(--g-text); }
+  .bs-f svg { flex: none; width: 14px; height: 14px; transform: translateY(var(--icon-nudge)); }
+  .cb-save:hover { background: var(--g-hover); }
+  .cb-save:disabled { opacity: 0.4; background: var(--g-field); }
+
+  .cb-iconbtn, .bs-ib {
+    width: 28px; height: 28px; flex: none; padding: 0; border: 0; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    background: transparent; color: #9aa0aa;
+  }
+  .cb-iconbtn svg, .bs-ib svg { width: 14px; height: 14px; }
+  .cb-iconbtn:hover, .bs-ib:hover { background: var(--g-field); color: #fff; }
+  .cb-iconbtn.del:hover, .bs-ib.danger:hover { background: var(--r-tint); color: var(--r-text); }
+  .cb-iconbtn:focus-visible, .bs-ib:focus-visible, .bs-f:focus-visible, .cb-save:focus-visible {
+    outline: 2px solid var(--b-solid); outline-offset: 2px;
+  }
+  .bs-f .car, #cb-fightpick .car {
+    display: inline-block; flex: none; width: 10px; height: 10px; font-size: 0; opacity: 0.7;
+    background: currentColor; -webkit-mask: var(--chev) center / 10px no-repeat; mask: var(--chev) center / 10px no-repeat;
+    transform: translateY(var(--icon-nudge));
+  }
+
+  .bs-importbar textarea, .bp-notes, .bs-pop select {
+    border: 0; border-radius: 6px; background: var(--g-field); color: var(--g-text); outline: 0;
+  }
+  .bs-importbar textarea:focus, .bp-notes:focus, .bs-pop select:focus { background: var(--g-hover); box-shadow: inset 0 0 0 1px var(--b-solid); }
+
+  .bs-cb, .cb-menu .box {
+    width: 16px; height: 16px; flex: none; border: 0; border-radius: 4px; background: var(--g-pick);
+    display: inline-grid; place-items: center;
+  }
+  .bs-cb.on, .cb-menu .box.on { background: var(--b-solid); border: 0; }
+  .bs-cb.on::after {
+    content: ''; width: 8px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0;
+    transform: translateY(-1px) rotate(-45deg);
+  }
+  /* On the solid blue of a hovered row, a ticked box turns white and its tick blue. */
+  .cb-menu div:hover .box { background: rgba(255,255,255,0.28); }
+  .cb-menu div:hover .box.on { background: #fff; }
+  .cb-menu div:hover .box.on::after { border-color: var(--b-solid); }
+  .bs-src, .bs-new {
+    height: 20px; padding: 0 7px; border: 0; border-radius: 4px; display: inline-flex; align-items: center;
+    background: var(--g-field); color: #c8ccd3; font: 500 11px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0;
+  }
+  .bs-new { background: var(--b-tint); color: var(--b-icon); }
+  .bs-src { vertical-align: 5px; }
+
+  .bs-head, .cb-head {
+    flex: none; height: 48px; min-height: 48px; display: flex; align-items: center; gap: 8px;
+    padding: 0 10px 0 16px; border-bottom: 1px solid var(--g-line);
+  }
+  .bs-title { font: 600 14px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  /* The search field gives up width first, so the header never wraps. */
+  .bs-head .sm-field { flex: 0 1 220px; min-width: 86px; }
+
+  #cf-menu, .cb-menu, .bs-pop {
+    background: var(--g-bg); border: 1px solid var(--g-line); border-radius: 8px;
+    box-shadow: var(--pop-shadow); padding: 4px; color: var(--g-text); font: 400 12px/16px system-ui, -apple-system, sans-serif;
+  }
+  .cf-item, .cb-menu div, .bs-menu .it, .bs-pop .o, .cf-new {
+    min-height: 28px; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; border-radius: 5px;
+    background: none; color: var(--g-text); font: 400 12px/16px system-ui, -apple-system, sans-serif; cursor: pointer; border: 0; width: 100%; text-align: left;
+  }
+  .cf-item::before, .cf-new::before { content: ''; width: 14px; flex: none; text-align: center; font-size: 11px; }
+  .cf-item.on::before { content: '\2713'; }
+  .cf-new::before { content: '+'; font-size: 14px; }
+  .cf-item:hover, .cf-item.on:hover, .cb-menu div:hover, .bs-menu .it:hover, .bs-pop .o:hover, .cf-new:hover, #cb-suggest div.on {
+    background: var(--b-solid); color: #fff;
+  }
+  .cf-item:hover .meta, .bs-menu .it:hover small, .bs-pop .o:hover .c, .cb-menu div:hover .key { color: rgba(255,255,255,0.75); }
+  .cf-item.on { background: none; }
+  .cf-item.on .nm { font-weight: 400; }
+  .cf-item .meta, .cb-menu .key, .bs-pop .o .c { margin-left: auto; color: var(--g-dim); font-size: 11px; }
+  .cf-list { padding: 0; }
+  .cf-new { border-top: 0; margin-top: 4px; position: relative; }
+  .cf-new::after { content: ''; position: absolute; left: 2px; right: 2px; top: -3px; height: 1px; background: var(--g-line); }
+  .cb-menu div.danger { color: var(--g-text); }
+  .cb-menu div.danger:hover { background: var(--r-tint); color: var(--r-text); }
+  .cb-menu hr { border: 0; height: 1px; background: var(--g-line); margin: 4px 2px; }
+  .bs-menu .it { flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 10px; font-weight: 400; }
+  .bs-menu small { margin: 0; color: var(--g-dim); font-size: 11px; font-weight: 400; }
+  .bs-pop .top { gap: 6px; padding: 4px 4px 8px; border-bottom: 1px solid var(--g-line); margin-bottom: 4px; align-items: center; }
+  .bs-pop .top button {
+    height: 28px; padding: 0 12px; border-radius: 6px; background: var(--g-field); color: var(--g-text); font: 500 12px/16px system-ui, sans-serif;
+  }
+  .bs-pop .top button:last-child { color: var(--g-text); }
+  .bs-pop .top button:hover { background: var(--g-hover); }
+
+  /* ── Fight table and stat block: chrome ── */
+  .cb-panel { border: 1px solid var(--g-line); box-shadow: var(--win-shadow); }
+  .cb-head { gap: 6px; padding: 0 10px 0 12px; }
+  /* The slot stretches, so the picker sits left and the header's buttons reach the right edge. */
+  #cb-fightslot { flex: 1; min-width: 0; display: flex; }
+  /* A free window's title is the dock's 12px bold; a centred window's is 14px. */
+  #cb-fightpick {
+    height: 28px; margin: 0 0 0 -6px; padding: 0 8px; gap: 6px; border-radius: 6px; min-width: 0;
+    font: 600 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text);
+  }
+  #cb-fightpick:hover, #cb-fightpick.open { background: var(--g-field); }
+  .cb-colhdr { background: var(--g-bg); border-bottom: 1px solid var(--g-line); }
+  .cb-cell:focus-within, .cb-cell.open { box-shadow: inset 0 0 0 2px var(--b-solid); background: rgba(12,140,233,0.06); }
+  .cb-colsize:hover { background: linear-gradient(90deg, transparent 3px, var(--b-solid) 3px, var(--b-solid) 5px, transparent 5px); }
+  .cb-row.drop-above { box-shadow: inset 0 2px 0 var(--b-solid); }
+  .cb-row.drop-below { box-shadow: inset 0 -2px 0 var(--b-solid); }
+  .cb-acts { padding: 0 6px 0 22px; gap: 0; }
+  .cb-acts .cb-iconbtn { width: 28px; height: 28px; }
+  /* Enemy / Ally keeps its colours: they are the colours of the names in the table. */
+  .cb-side-switch.cp-tabs { height: 28px; padding: 2px; gap: 2px; border: 0; border-radius: 6px; background: var(--g-field); }
+  .cb-side-switch .cp-segtab { height: 24px; border: 0; border-radius: 4px; color: #9aa0aa; font: 500 12px/16px system-ui, sans-serif; }
+  .cb-side-switch .cp-segtab:hover:not(.active) { background: var(--g-hover); color: var(--g-text); }
+  .cb-side-switch .cp-segtab[data-side="enemy"].active { border: 0; background: rgba(217,87,74,0.22); color: #f0937f; }
+  .cb-side-switch .cp-segtab[data-side="ally"].active { border: 0; background: rgba(95,179,107,0.22); color: #93d19c; }
+  .cb-sb [contenteditable]:focus { background: var(--g-field); box-shadow: 0 0 0 1px var(--b-solid); }
+
+  /* ── Bestiary: chrome ── */
+  #bs-panel { border: 1px solid var(--g-line); }
+  .bs-head, .bs-filters, .bs-queue, .bs-importbar { border-bottom: 1px solid var(--g-line); }
+  .bs-filters { gap: 8px; padding: 0 16px; flex-wrap: nowrap; }
+  .bs-fbtns { overflow-x: auto; scrollbar-width: none; }
+  .bs-fbtns, .bs-acts { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .bs-acts { display: none; }
+  #bs-panel.selecting .bs-fbtns { display: none; }
+  #bs-panel.selecting .bs-acts { display: flex; }
+  .bs-f { padding: 0 10px 0 12px; }
+  .bs-f.on { background: var(--b-tint); color: var(--b-icon); }
+  .bs-f.on:hover { background: var(--b-tint-h); }
+  .bs-f .v { color: var(--b-icon); font-weight: 600; }
+  .bs-shown { color: var(--g-dim); font-size: 12px; }
+  .bs-importbar { background: none; padding: 12px 16px; }
+  .bs-importbar .col .sm-hbtn { justify-content: center; }
+  .bs-q { min-height: 40px; padding: 6px 6px 6px 12px; border: 0; border-radius: 6px; background: var(--g-field); }
+  .bs-q.err { border: 0; background: var(--r-tint); }
+  .bs-q.err .u { color: var(--r-text); }
+  .bs-spin { border-color: var(--g-pick); border-top-color: var(--b-icon); }
+  .bs-t th { border-bottom: 1px solid var(--g-line); }
+  .bs-t tr.open td { background: rgba(12,140,233,0.12); }
+  .bs-t tr.sel td { background: var(--g-field); }
+  .bs-tools { gap: 2px; padding: 0; border: 0; border-radius: 0; background: none; }
+  .bs-div { height: 16px; margin: 0 4px; background: var(--g-line); }
+  .bs-page-head { padding: 12px 10px 12px 28px; border-bottom: 1px solid var(--g-line); }
+  .bs-page-head.editing { background: var(--b-tint); border-bottom-color: var(--g-line); }
+  .bs-mode { color: var(--b-icon); }
+  #bs-page { border-left: 1px solid var(--g-line); }
+  .bp-notes { padding: 10px 12px; }
+
+  /* ── Fight table: the app's 12px type, 32px rows ── */
+  .cb-panel { font: 400 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .cb-colhdr { font: 500 11px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0; text-transform: none; color: var(--g-dim); }
+  .cb-colhdr > span { padding: 9px 8px 8px; }
+  .cb-colhdr > span + span { border-left: 1px solid var(--g-line); }
+  .cb-colhdr .sortable:hover { color: var(--g-text); }
+  .cb-row { border-bottom: 1px solid var(--g-line); }
+  .cb-row:hover { background: rgba(255, 255, 255, 0.025); }
+  .cb-cell { min-height: 32px; border-right: 1px solid var(--g-line); }
+  .cb-cell.init { background: rgba(255, 255, 255, 0.02); }
+  .cb-cell input { padding: 0 8px; color: var(--g-text); font: 400 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; }
+  .cb-cell input[readonly] { font-weight: 600; }
+  .cb-cell input::placeholder { color: #5c6168; }
+  .cb-cell.hp .max { padding-left: 8px; color: var(--g-text); font: 600 12px/1 system-ui, sans-serif; }
+  .cb-cell.hp .sum { color: #c8ccd3; font: 400 12px/1 system-ui, sans-serif; }
+  .cb-cell.cond { padding: 5px 6px; }
+  .cb-chip { height: 20px; display: inline-flex; align-items: center; padding: 0 6px; border-radius: 4px; font: 500 11px/1 system-ui, sans-serif; }
+  .cb-cell.atk { padding: 6px 8px; }
+  .cb-cell.atk:has(.pills:not(.editing)) { padding: 5px 6px; }
+  .cb-atk { font-size: 12px; line-height: 1.45; }
+  .cb-pill { border-radius: 4px; font: 500 11px/1 system-ui, sans-serif; }
+  .cb-pill > span { height: 20px; padding: 0 6px; background: var(--g-field); color: var(--g-text); }
+  .cb-pill .pb { background: rgba(255, 255, 255, 0.03); font-size: 11px; }
+  /* to-hit is a number to read, not a state: white on the lighter grey */
+  .cb-pill .ph { background: var(--g-pick); color: #fff; font-weight: 600; }
+  .cb-grp { border: 1px solid var(--g-pick); border-radius: 6px; }
+  .cb-grp .gx { font: 500 12px/1 system-ui, sans-serif; }
+  .cb-acts { background: linear-gradient(90deg, rgba(30, 30, 33, 0), var(--g-bg) 18px); }
+  .cb-empty { color: var(--g-dim); border-bottom: 1px solid var(--g-line); }
+
+  /* ── One stat block: the popup reads at the Bestiary page's sizes. The book's order and
+     blocks stay. ── */
+  .cb-sb { padding: 12px 16px 16px; font-size: 13px; }
+  .cb-sb [contenteditable] { border-radius: 4px; padding: 0 3px; margin: 0 -3px; }
+  .cb-sb [contenteditable]:hover { background: var(--g-field); }
+  .cb-sb [contenteditable]:empty::before { color: #5c6168; }
+  .cb-sb-name { font: 700 24px/1.2 system-ui, -apple-system, sans-serif; letter-spacing: -0.2px; color: var(--g-text); }
+  .cb-sb-meta { font: 400 13px/1.45 system-ui, -apple-system, sans-serif; color: var(--g-dim); margin-top: 4px; }
+  .cb-sb-source { font-size: 12px; color: var(--g-dim); margin-top: 4px; }
+  .cb-sb-source [contenteditable] { color: #c8ccd3; }
+  .cb-sb-rule { height: 1px; margin: 12px 0; background: var(--g-line); }
+  .cb-sb-line { font-size: 13px; line-height: 1.7; color: var(--g-text); }
+  .cb-sb-line b { color: var(--g-dim); font-weight: 500; margin-right: 2px; }
+  .cb-sb-abil { gap: 4px; }
+  .cb-sb-abil > div { background: var(--g-field); border-radius: 6px; padding: 8px 0 7px; }
+  .cb-sb-abil .k { font: 500 11px/1 system-ui, sans-serif; color: var(--g-dim); letter-spacing: 0; margin-bottom: 5px; }
+  .cb-sb-abil .v { font: 700 16px/1.2 system-ui, sans-serif; color: var(--g-text); }
+  .cb-sb-abil .m { font-size: 12px; color: var(--g-dim); margin-top: 1px; }
+  .cb-sb-sec { margin-top: 18px; }
+  .cb-sb-sechd { padding-bottom: 7px; margin-bottom: 10px; border-bottom: 1px solid #3a3c42; font: 700 19px/1.2 system-ui, -apple-system, sans-serif; letter-spacing: -0.1px; color: var(--g-text); }
+  .cb-sb-sechd .cb-iconbtn { width: 20px; height: 20px; }
+  .cb-sb-entry { margin-bottom: 8px; font-size: 13px; line-height: 1.6; color: #c8ccd3; }
+  .cb-sb-entry .n { font-weight: 700; font-style: normal; color: var(--g-text); }
+  .cb-sb-add { font-size: 12px; color: var(--g-dim); padding: 3px 0; }
+  .cb-sb-add:hover { color: var(--g-text); }
+
+  /* ── Bestiary: table and page in the dock's type and greys ── */
+  #bs-panel { font: 400 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .bs-t th { padding: 0 10px; height: 32px; font: 500 11px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0; text-transform: none; color: var(--g-dim); }
+  .bs-t th:hover { color: var(--g-text); }
+  .bs-t td { height: 32px; color: #c8ccd3; border-bottom: 1px solid var(--g-line); }
+  .bs-t td.nm { color: var(--g-text); font-weight: 500; }
+  .bs-t td.src { color: var(--g-dim); }
+  .bs-crb { min-width: 30px; height: 20px; display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; border-radius: 4px; background: var(--g-field); color: var(--g-text); font: 500 11px/1 system-ui, sans-serif; }
+  .bs-empty { color: var(--g-dim); }
+  .bs-empty b { color: var(--g-text); font-weight: 600; }
+  /* Ticks show at all times, in a narrow first column. */
+  .bs-t td.cbc, .bs-t th.cbc { width: 30px; padding: 0 0 0 14px; }
+  .bs-t .bs-cb, .bs-t tr:hover .bs-cb { opacity: 1; }
+  #bs-page { background: var(--g-bg); }
+  /* The page is read by its headings and its numbers: they keep their size and weight. Only the
+     blue goes. */
+  .bs-page-head h2 { font: 700 24px/1.2 system-ui, -apple-system, sans-serif; letter-spacing: -0.2px; color: var(--g-text); }
+  .bs-page-head h2 .bs-src { margin-left: 8px; vertical-align: 4px; }
+  .bp-read { padding: 16px 28px 40px; font-size: 13px; line-height: 1.6; color: #c8ccd3; }
+  .bp-meta { margin-bottom: 14px; font-style: normal; font-size: 13px; color: var(--g-dim); }
+  .bp-hi { color: #fff; font-weight: 700; }
+  .bp-big, .bp-minor, .bp-ab-c { border: 0; border-radius: 8px; background: var(--g-field); }
+  .bp-big .k, .bp-minor .k, .bp-ab-c .k, .bp-ab-cap .t { font: 500 11px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0; text-transform: none; color: var(--g-dim); }
+  .bp-big { padding: 12px 16px; }
+  .bp-big .v { margin-top: 8px; font: 800 34px/1 system-ui, -apple-system, sans-serif; letter-spacing: -0.5px; color: var(--g-text); }
+  .bp-big .sub { margin-top: 6px; font-size: 12px; color: var(--g-dim); }
+  .bp-big .sub .bp-hi { color: #c8ccd3; }
+  .bp-minor { padding: 10px 16px; align-items: center; }
+  .bp-minor b, .bp-minor b.bp-hi { font: 700 18px/1.2 system-ui, sans-serif; color: var(--g-text); }
+  .bp-key { gap: 10px; padding: 0; border: 0; background: none; font: 500 11px/1 system-ui, sans-serif; }
+  .bp-key .km { color: var(--g-text); }
+  .bp-key .ks, .bp-key .kv { color: var(--g-dim); }
+  .bp-ab { gap: 4px; }
+  .bp-ab-c .k { margin-top: 10px; }
+  .bp-ab-c .m { margin: 9px 0 6px; font: 800 28px/1 system-ui, sans-serif; color: var(--g-text); }
+  .bp-ab-c .sc { margin-bottom: 9px; font: 400 12px/1 system-ui, sans-serif; color: var(--g-dim); }
+  .bp-ab-c .s { padding: 7px 0; background: rgba(255, 255, 255, 0.03); border-top: 1px solid var(--g-line); font: 400 12px/1.2 system-ui, sans-serif; color: var(--g-dim); }
+  .bp-ab-c .s.pro { color: var(--g-text); font-weight: 800; }
+  .bp-kv b { color: var(--g-dim); font-weight: 500; }
+  .bp-sec { margin-bottom: 18px; }
+  .bp-sec-h { gap: 8px; margin: 0 0 10px; padding-bottom: 7px; border-bottom: 1px solid #3a3c42; font: 700 19px/1.2 system-ui, -apple-system, sans-serif; letter-spacing: -0.1px; color: var(--g-text); }
+  .bp-sec-h .car {
+    width: 10px; height: 10px; font-size: 0; background: var(--g-dim);
+    -webkit-mask: var(--chev) center / 10px no-repeat; mask: var(--chev) center / 10px no-repeat;
+  }
+  .bp-sec-b p .n { font-weight: 700; font-style: normal; color: var(--g-text); }
+  .bp-sec-b .bp-none { color: var(--g-dim); }
+  .bp-notes { font: 400 13px/1.55 system-ui, -apple-system, sans-serif; }
+  .bp-editing .cb-sb-name { font-size: 24px; }
+  .bp-editing .cb-sb-sechd { font-size: 19px; }

@@ -46,6 +46,11 @@
 //   R. A room picture shown from a column covers the whole Player screen, both halves. One shown
 //      from the other column replaces it and clears the first column's mark, and Escape in the
 //      DM window takes it down.
+//   S. A room selected in either column is edited in the DM window's Room tab - name, notes, fog,
+//      corner radius and Delete - and every edit lands in that column and never the other. A
+//      column window shows no dock and no rail of its own.
+//   T. Hiding the room names hides them in both columns, from the Rooms eye and from L pressed
+//      inside a column, and the eye says which it is.
 //
 // ⚠ A COLUMN IS AN <IFRAME>, AND `rig.dm` REACHES THE PARENT FRAME ONLY. `polygons`, `zoom` and
 // `currentScene` for a column live in that column's own JS context — `rig.pane('A')` is the only
@@ -403,11 +408,10 @@ module.exports = async function twoMapsFeature(rig) {
 
   // ── G. the one minimap follows the selection and repaints ────────────────
   // RED BY DESIGN: written against the fix, never re-proved
-  // ⚠ THE PANEL HAS TO BE OPEN. A canvas inside display:none has zero-sized rects, so a drag
-  // built from getBoundingClientRect lands entirely at 0,0 and moves nothing.
-  await dm.evaluate('document.querySelector(`.cp-tab[data-tab="player"]`).click(); 0');
+  // ⚠ THE MINIMAP HAS TO HAVE A SIZE. A canvas inside display:none has zero-sized rects, so a
+  // drag built from getBoundingClientRect lands entirely at 0,0 and moves nothing.
   await dm.waitFor('document.getElementById("minimap-canvas").offsetWidth > 0', 8000,
-                   'the Player tab to open so the minimap has a real size');
+                   'the minimap to have a real size');
 
   // ⚠ THE SIZE RIDES ALONG WITH THE PIXELS. The canvas is cleared whenever it is resized, so a
   // bare "the picture changed" comparison passes on a resize with nothing redrawn - which is
@@ -540,7 +544,8 @@ module.exports = async function twoMapsFeature(rig) {
   // nudging one, and a stale slider sends the OTHER column's value into this one.
   // The panel is OPENED first, because the mode row reading "advanced" for a column that is on
   // a preset is the fault this covers.
-  await dm.evaluate('document.querySelector(`#cp-anim-row [data-anim="advanced"]`).click(); 0');
+  await dm.evaluate('dockOpen("scene"); document.getElementById("cp-move-dd").click();' +
+                    ' document.querySelector(`#cp-pop-move [data-anim="advanced"]`).click(); 0');
   await dm.evaluate(`(() => {
     const n = document.getElementById('anim-drift-num');
     n.value = '2.50';
@@ -560,7 +565,7 @@ module.exports = async function twoMapsFeature(rig) {
             'the advanced sliders still show the other column: panel ' + driftShown +
             ' against column B at ' + await paneB.evaluate('driftScale'));
   const animMode = await dm.evaluate(
-    '(document.querySelector("#cp-anim-row [data-anim].active") || {}).dataset?.anim || "none"');
+    '(document.querySelector("#cp-pop-move [data-anim].on") || {}).dataset?.anim || "none"');
   rig.check(animMode !== 'advanced' && animMode !== 'none',
             'the animation row still reads "' + animMode + '" after selecting a column that is ' +
             'on a preset, because the Advanced panel was left open and aimed at the other one');
@@ -657,12 +662,12 @@ module.exports = async function twoMapsFeature(rig) {
                       'the corner radius to reach the effect selected in column A');
   await paneA.evaluate('effects.pop(); selectedPolygonId = null; setPlaceMode("rooms"); 0');
 
-  // ⚠ ARMING CALIBRATION PUTS THE DM'S PANEL AWAY. armGridCalibration runs inside the column,
-  // where the panel it shuts is that column's hidden one, so the DM's has to be shut from here.
-  await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
+  // ⚠ ARMING CALIBRATION PUTS THE DM'S PANE AWAY. armGridCalibration runs inside the column,
+  // where the dock it shuts is that column's hidden one, so the DM's has to be shut from here.
+  await dm.evaluate('dockOpen("scene"); document.getElementById("cp-grid-calibrate").click(); 0');
   await paneA.waitFor('gridCalArmed === true', 8000, 'calibration to arm on column A');
-  rig.check(await dm.evaluate('document.querySelector(".cp-tab.active") === null'),
-            "arming calibration left the DM's own panel open over the map");
+  rig.check(await dm.evaluate('dockActivePane() === null'),
+            "arming calibration left the DM's own dock pane open over the map");
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
   await paneA.waitFor('gridCalArmed === false', 8000, 'calibration to disarm on column A');
 
@@ -733,6 +738,65 @@ module.exports = async function twoMapsFeature(rig) {
   rig.check(!(await paneA.evaluate('!!document.getElementById("up-toast")')),
             'an update announces itself inside a map column, over the map - and the DM window then ' +
             'shows nothing, because both share one record of the version last run');
+
+  // ── S. the Room tab edits the room in the column it lives in ────────────
+  // RED ON: paneReportRoom gated off in refreshRoomPanel (roomCard.js); every edit sent to column A in paneRoomEdit (roomLink.js); body.pane-mode #dock renamed (dock.css) — 2026-10-02
+  for (const pane of [paneA, paneB]) {
+    rig.check(await pane.evaluate('(() => { const d = document.getElementById("dock");' +
+                                  ' return !d || d.getBoundingClientRect().width === 0; })()'),
+              'S: a column window shows a dock of its own');
+  }
+  const ROOM = (id, name) => 'polygons.push({ id: ' + id + ', vertices: [{x:100,y:100},{x:420,y:100},' +
+    '{x:420,y:320},{x:100,y:320}], mode: "shroud", cornerRadius: 0, name: ' + JSON.stringify(name) + ' });' +
+    ' nextPolygonId = Math.max(nextPolygonId, ' + (id + 1) + '); rebuildFogFromPolygons();' +
+    ' setShape("select"); selectedPolygonId = ' + id + '; drawCursor(lastScreenX, lastScreenY); 0';
+  // The SAME id in both columns, so an edit routed by id alone would land in the wrong one.
+  await paneA.evaluate(ROOM(901, 'Upper hall'));
+  await paneB.evaluate(ROOM(901, 'Cellar'));
+  const roomIn = (pane, k) => pane.evaluate('(p => p ? p.' + k + ' : null)(polygons.find(p => p.id === 901))');
+  const typeName = v => dm.evaluate('(() => { const el = document.getElementById("rp-name");' +
+    ' el.dispatchEvent(new FocusEvent("focus")); el.value = ' + JSON.stringify(v) + ';' +
+    ' el.dispatchEvent(new FocusEvent("blur")); return 0; })()');
+  for (const [id, pane, other, was] of [['A', paneA, paneB, 'Upper hall'], ['B', paneB, paneA, 'Cellar']]) {
+    await dm.evaluate('selectPane(' + JSON.stringify(id) + '); 0');
+    await lib.settle(dm, 'document.getElementById("rp-name").value === ' + JSON.stringify(was), 8000);
+    rig.check(await dm.evaluate('dockActivePane()') === 'room' &&
+              await dm.evaluate('document.getElementById("rp-name").value') === was,
+              'S: the Room tab does not show the room selected in column ' + id);
+    const otherName = await roomIn(other, 'name');
+    const otherMode = await roomIn(other, 'mode'), otherRadius = await roomIn(other, 'cornerRadius');
+    await typeName(was + ' (' + id + ')');
+    await lib.poll(async () => (await roomIn(pane, 'name')) === was + ' (' + id + ')' ? { ok: 1 } : null, 8000);
+    rig.check(await roomIn(pane, 'name') === was + ' (' + id + ')' && await roomIn(other, 'name') === otherName,
+              'S: a name typed in the Room tab did not land in column ' + id + ' alone');
+    await dm.evaluate('setShape("select"); document.getElementById("btn-half").click(); 0');
+    await lib.poll(async () => (await roomIn(pane, 'mode')) === 'half' ? { ok: 1 } : null, 8000);
+    rig.check(await roomIn(pane, 'mode') === 'half' && await roomIn(other, 'mode') === otherMode,
+              'S: the fog trio did not set the room in column ' + id + ' alone');
+    await lib.fire(dm, 'rp-radius-num', 30, 'input');
+    await lib.poll(async () => (await roomIn(pane, 'cornerRadius')) === 30 ? { ok: 1 } : null, 8000);
+    rig.check(await roomIn(pane, 'cornerRadius') === 30 && await roomIn(other, 'cornerRadius') === otherRadius,
+              'S: the corner radius did not land in column ' + id + ' alone');
+  }
+  await dm.evaluate('document.getElementById("rp-delete").click(); 0');
+  await lib.poll(async () => (await roomIn(paneB, 'id')) === null ? { ok: 1 } : null, 8000);
+  rig.check(await roomIn(paneB, 'id') === null && await roomIn(paneA, 'id') === 901,
+            'S: Delete in the Room tab did not remove the room in column B alone');
+  await paneA.evaluate('polygons = polygons.filter(p => p.id !== 901); selectedPolygonId = null;' +
+                       ' rebuildFogFromPolygons(); drawCursor(lastScreenX, lastScreenY); 0');
+
+  // ── T. room names hide in both columns ──────────────────────────────────
+  // RED ON: paneBroadcast gated off in toggleRoomLabels (roomPanel.js) — 2026-10-02
+  const labelsIn = async () => [await paneA.evaluate('showRoomLabels'), await paneB.evaluate('showRoomLabels')].join();
+  const eyeShut = () => dm.evaluate('document.getElementById("cp-labels-eye").classList.contains("off")');
+  await dm.evaluate('dockOpen("scene"); document.getElementById("cp-labels-eye").click(); 0');
+  await lib.poll(async () => (await labelsIn()) === 'false,false' ? { ok: 1 } : null, 8000);
+  rig.check(await labelsIn() === 'false,false' && await eyeShut(),
+            'T: the Rooms eye did not hide the room names in both columns: ' + await labelsIn());
+  await paneA.evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyL", key: "l", bubbles: true })); 0');
+  await lib.poll(async () => (await labelsIn()) === 'true,true' ? { ok: 1 } : null, 8000);
+  rig.check(await labelsIn() === 'true,true' && !(await eyeShut()),
+            'T: L pressed in a column did not bring the names back in both columns and on the eye: ' + await labelsIn());
 
   // ── L. closing a column ends two-map mode, and the TV stays lit ──────────
   // RED BY DESIGN: written against the fix, never re-proved

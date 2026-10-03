@@ -9,7 +9,6 @@ const CB_COL_MIN = { name: 90, hp: 80, cond: 70, atk: 110 };
 const CB_CONDITIONS = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible',
   'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious', 'Concentrating'];
 const CB_ICON_X = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>';
-const CB_ICON_GRIP = '<svg class="rp-grip" width="12" height="8" viewBox="0 0 12 8" fill="currentColor"><circle cx="1.5" cy="1.5" r="1.1"/><circle cx="6" cy="1.5" r="1.1"/><circle cx="10.5" cy="1.5" r="1.1"/><circle cx="1.5" cy="6.5" r="1.1"/><circle cx="6" cy="6.5" r="1.1"/><circle cx="10.5" cy="6.5" r="1.1"/></svg>';
 const CB_ICON_DEL = '<svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/></svg>';
 const CB_ICON_BOOK = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg>';
 const CB_ICON_DUP = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><path d="M8.5 1.5h-6a1 1 0 0 0-1 1v6"/></svg>';
@@ -126,7 +125,7 @@ function cbRender() {
           <button class="cb-iconbtn del" data-b="del" title="Delete">${CB_ICON_DEL}</button>
         </span></div>
     </div>`;
-  }).join('') + '<div class="cb-addrow" data-add>+ Add creature</div>';
+  }).join('');
 }
 
 function _cbAddRow(side) {
@@ -449,6 +448,7 @@ function cbSetOpen(open) {
   const el = document.getElementById('cb-fight');
   el.style.display = open ? 'block' : 'none';
   document.getElementById('btn-combat').classList.toggle('active', open);
+  dockRefreshRail();
   if (open) { cbRender(); _cbPlaceFight(el); return; }
   cbCloseMenu();
   cbCloseFights();
@@ -466,7 +466,8 @@ function initCombatTracker() {
   fight.className = 'cb-panel';
   fight.innerHTML = `
     <div class="cb-head" data-drag><span id="cb-fightslot"></span>
-      <button class="cb-iconbtn" id="cb-close" title="Close">${CB_ICON_X}</button></div>
+      <button class="sm-hbtn primary" id="cb-add" data-add>${uiIcon('plus')}Add creature</button>
+      <button class="cb-iconbtn" id="cb-close" title="Close">${uiIcon('x')}</button></div>
     <div class="cb-colhdr"><span class="c sortable" id="cb-sort" title="Sort by initiative">Init ↓</span>${_cbColHead('Name', 'name')}${
       _cbColHead('HP', 'hp')}<span class="c">AC</span>${_cbColHead('Conditions', 'cond')}${_cbColHead('Attacks', 'atk')}</div>
     <div id="cb-list"></div>
@@ -544,7 +545,6 @@ function initCombatTracker() {
   });
   list.addEventListener('click', e => {
     const t = e.target;
-    if (t.closest('[data-add]')) { _cbAddRow('enemy'); return; }
     const r = _cbRowOf(t);
     if (!r) return;
     const b = t.closest('[data-b]');
@@ -574,6 +574,7 @@ function initCombatTracker() {
 
   document.getElementById('cb-sort').addEventListener('click', () => { cbState.rows = combatSortByInit(cbState.rows); cbSave(); cbRender(); });
   document.getElementById('cb-close').addEventListener('click', () => cbSetOpen(false));
+  document.getElementById('cb-add').addEventListener('click', () => _cbAddRow('enemy'));
   document.getElementById('btn-combat').addEventListener('click', () => cbSetOpen(fight.style.display !== 'block'));
 
   initCombatStatBlock();
@@ -594,12 +595,19 @@ function _cbSuggest(input, row) {
   el.className = 'cb-menu';
   el.id = 'cb-suggest';
   el.dataset.noI18n = '';
+  el.dataset.keepsFocus = '';
   el.innerHTML = items.map((b, i) => `<div data-i="${i}" class="${i ? '' : 'on'}">${_cbEsc(b.name)}<span class="src">${_cbEsc(b.source || '')}</span></div>`).join('');
   // mousedown, not click: the field's blur would close the list first.
   el.addEventListener('mousedown', e => {
     e.preventDefault(); e.stopPropagation();
     const d = e.target.closest('[data-i]');
     if (d) _cbSuggestPick(+d.dataset.i);
+  });
+  el.addEventListener('mousemove', e => {
+    const d = e.target.closest('[data-i]');
+    if (!d || !_cbSug) return;
+    _cbSug.at = +d.dataset.i;
+    el.querySelectorAll('[data-i]').forEach((x, i) => x.classList.toggle('on', i === _cbSug.at));
   });
   document.body.appendChild(el);
   const z = cbZoom(), r = input.getBoundingClientRect();

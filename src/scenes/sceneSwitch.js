@@ -180,7 +180,7 @@ async function switchScene(id, _isRecovery = false) {
 
   if (!isPlayer) restoreSceneFogSettings(scene); // fog.js
 
-  undoStack = []; redoStack = [];
+  clearUndo();
   playerMapSent = false;
   currentScene = scene;
   // ⚠ A column must not write this: the parent restores from it at startup, so column B's map

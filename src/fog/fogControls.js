@@ -135,8 +135,7 @@ function initFogAnimControls() {
   document.getElementById('btn-anim-advanced').onclick = function() {
     const armed = this.classList.contains('active');
     this.classList.toggle('active', !armed);
-    if (typeof _cpUpdateAdvVisibility === 'function') _cpUpdateAdvVisibility();
-    else document.getElementById('anim-advanced-panel').style.display = armed ? 'none' : 'block';
+    _cpUpdateAdvVisibility();
   };
 
   // Wire speed slider (linear, not log)
@@ -195,11 +194,16 @@ function initFogAnimControls() {
   };
 }
 
+function saveFeather(v) {
+  try { localStorage.setItem(FOG_FEATHER_KEY, String(v)); } catch (_) {}
+}
+
 function initFogInputs() {
   const featherSlider = document.getElementById('fog-feather');
   const featherNum    = document.getElementById('fog-feather-num');
   featherSlider.oninput = function() {
     featherNum.value = this.value;
+    saveFeather(+this.value);
     if (paneBroadcast('fog-feather', { radius: +this.value })) return;
     fogFeatherRadius = +this.value;
     rebuildFogFromPolygons();
@@ -212,6 +216,7 @@ function initFogInputs() {
     const v = Math.max(0, Math.min(24, Math.round(+this.value)));
     this.value = v;
     featherSlider.value = v;
+    saveFeather(v);
     if (paneBroadcast('fog-feather', { radius: v })) return;
     fogFeatherRadius = v;
     rebuildFogFromPolygons();
@@ -221,8 +226,18 @@ function initFogInputs() {
     scheduleAutoSync();
   };
 
-  // Half-shroud density. Persisted, unlike Feather above, because it is dialled in across
-  // sittings. Global preference, so localStorage — never a scene or a backup.
+  // Feather and Half are dialled in across sittings: global preferences in localStorage, never a
+  // scene or a backup. A garbage entry parses to NaN and is skipped, leaving the markup's default.
+  try {
+    const stored = parseInt(localStorage.getItem(FOG_FEATHER_KEY), 10);
+    if (!isNaN(stored)) {
+      const v = Math.max(0, Math.min(24, stored));
+      featherSlider.value = v;
+      featherNum.value = v;
+      fogFeatherRadius = v;
+    }
+  } catch (_) {}
+
   const halfSlider = document.getElementById('fog-half-alpha');
   const halfNum    = document.getElementById('fog-half-alpha-num');
   const applyHalf = pct => {
@@ -243,7 +258,6 @@ function initFogInputs() {
     halfSlider.value = v;
     applyHalf(v);
   };
-  // A garbage entry parses to NaN and is skipped, leaving the markup's default.
   try {
     const stored = parseInt(localStorage.getItem(FOG_HALF_ALPHA_KEY), 10);
     if (!isNaN(stored)) {
@@ -297,18 +311,21 @@ function initFogInputs() {
   fogColorPicker.oninput = function() {
     applyFogColor(this.value);
     syncFogColorToPlayer(this.value);
+    noteSettingsChange();
   };
   tintAlphaSlider.oninput = function() {
     const v = parseInt(this.value);
     tintAlphaNum.value = v;
     applyFogTintAlpha(v / 100);
     syncFogColorToPlayer(fogColorPicker.value);
+    noteSettingsChange();
   };
   tintAlphaNum.oninput = function() {
     const v = Math.max(0, Math.min(100, parseInt(this.value) || 0));
     tintAlphaSlider.value = v;
     applyFogTintAlpha(v / 100);
     syncFogColorToPlayer(fogColorPicker.value);
+    noteSettingsChange();
   };
 }
 

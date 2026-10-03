@@ -6,17 +6,42 @@
 function setPaintDirection(dir) {
   tool = dir;
   paneBroadcast('paint-direction', { dir });
+  refreshFogTrio();
+}
+
+// The fog trio means two things. With Select in hand and a room selected it is that room's fog;
+// with a drawing tool or the Brush in hand it is what gets drawn next.
+function fogTrioRoom() {
+  if (shape !== 'select' || placeMode === 'effects') return null;
+  const linked = paneSelectedRoom();
+  if (linked || selectedPolygonId == null) return linked;
+  return polygons.find(p => p.id === selectedPolygonId) || null;
+}
+
+function refreshFogTrio() {
+  const room = fogTrioRoom();
+  const lit = room ? room.mode : tool;
   ['reveal', 'half', 'shroud'].forEach(d => {
     const el = document.getElementById('btn-' + d);
-    if (el) el.classList.toggle('active', d === dir);
+    if (el) el.classList.toggle('active', d === lit);
   });
+  refreshPaintAvailability();
+}
+
+function pressFogTrio(dir) {
+  const room = fogTrioRoom();
+  if (!room) { setPaintDirection(dir); return; }
+  if (paneRoomEdit('mode', { mode: dir })) return;
+  setPolygonMode(room.id, dir);
+  refreshFogTrio();   // in place — setPolygonMode deliberately doesn't refresh
 }
 
 // Half is shape-tools only: the brush paints into a cleared-or-opaque fog canvas with no third
 // value, so the button greys while the brush is picked and a live half falls back to shroud.
 // The whole trio greys under Merge and Cut out, which take their fog from the rooms they hit.
+// A selected room's own fog is none of these, so the trio is whole while it shows one.
 function refreshPaintAvailability() {
-  const opPicked = shapeOp !== 'new';
+  const opPicked = shapeOp !== 'new' && !fogTrioRoom();
   ['reveal', 'half', 'shroud'].forEach(d => {
     const el = document.getElementById('btn-' + d);
     if (el) el.disabled = opPicked;
@@ -38,6 +63,7 @@ function setShapeOp(op) {
     if (el) el.classList.toggle('active', k === op);
   });
   refreshPaintAvailability();
+  refreshOpsButton();
 }
 
 // ─── Placement mode ───────────────────────────────────────────────────────────
@@ -135,9 +161,9 @@ function initToolbar() {
 
   initDragDrop();
 
-  document.getElementById('btn-reveal').onclick = () => setPaintDirection('reveal');
-  document.getElementById('btn-half').onclick   = () => setPaintDirection('half');
-  document.getElementById('btn-shroud').onclick = () => setPaintDirection('shroud');
+  document.getElementById('btn-reveal').onclick = () => pressFogTrio('reveal');
+  document.getElementById('btn-half').onclick   = () => pressFogTrio('half');
+  document.getElementById('btn-shroud').onclick = () => pressFogTrio('shroud');
   document.getElementById('btn-brush').onclick  = () => setShape('brush');
   document.getElementById('btn-select').onclick = () => setShape('select');
   document.getElementById('btn-door').onclick    = () => setShape('door');
@@ -187,6 +213,9 @@ function initToolbar() {
     if (paneForward('floorplan')) return;
     drawStoredFloorPlan();
   };
+  const planInput = document.getElementById('cp-plan-input');
+  document.getElementById('cp-src-plan').onclick = () => planInput.click();
+  planInput.onchange = () => { loadPlanFile(planInput.files[0]); planInput.value = ''; };
 
   const gridBtn       = document.getElementById('btn-grid');
   const gridSizeInput = document.getElementById('grid-size');
@@ -217,9 +246,9 @@ function initToolbar() {
     gridOffsetY = parseInt(e.target.value);
     commitGridChange();
   };
-  (['sq', 'hflat', 'hptop']).forEach(m => {
+  (['sq', 'hptop']).forEach(m => {
     document.getElementById('btn-grid-' + m).onclick = () => {
-      gridMode = m === 'sq' ? 'square' : m === 'hflat' ? 'hex-flat' : 'hex-pointy';
+      gridMode = m === 'sq' ? 'square' : 'hex-pointy';
       document.querySelectorAll('.grid-mode-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('btn-grid-' + m).classList.add('active');
       commitGridChange();

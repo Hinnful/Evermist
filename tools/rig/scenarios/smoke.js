@@ -51,15 +51,15 @@ module.exports = async function smoke(rig) {
 
     // ─── Where the control lives ───────────────────────────────────────────
     const sw = document.getElementById('sm-compress');
-    if (!sw) fails.push('#sm-compress missing from the scene library');
-    if (sw && !sw.closest('#sm-panel')) fails.push('the control is not in the scene library popup');
-    if (sw && sw.closest('#sm-list')) fails.push('the control is inside the scrolling scene list');
-    if (sw && !sw.closest('#sm-head')) fails.push('the control is not in the library header');
+    if (!sw) fails.push('#sm-compress missing from Settings');
+    if (sw && !sw.closest('#dock-pane-settings')) fails.push('the control is not in Settings');
+    if (document.querySelector('#sm-head #sm-compress, .sm-compress-lbl')) fails.push('the library header still carries the control');
     const tab = size => sw.querySelector('.cp-segtab[data-size="' + size + '"]');
     const labels = sw ? [...sw.querySelectorAll('.cp-segtab')].map(b => b.textContent.trim()) : [];
     // RED ON: the 2K choice relabelled 1440p (index.html #sm-compress) — 2026-09-27
     if (labels.join('|') !== 'Off|1080p|2K|4K') fails.push('the choices read ' + labels.join(' · '));
-    const label = (document.querySelector('.sm-compress-lbl') || {}).textContent.trim();
+    const label = sw ? sw.closest('.cp-group').querySelector('.cp-label').textContent.trim() : '';
+    if (label !== 'Shrink big maps') fails.push('the control is labelled ' + JSON.stringify(label));
     const tip = sw ? (sw.getAttribute('title') || '') : '';
 
     // ─── Default OFF ───────────────────────────────────────────────────────
@@ -98,37 +98,15 @@ module.exports = async function smoke(rig) {
     const shrink = fitInsideBox(6150, 2850, box4k.w, box4k.h);
     if (!shrink.changed || shrink.w !== 3840) fails.push('6150x2850 did not fit to 3840: ' + JSON.stringify(shrink));
 
-    // The pill shares the header row with the buttons, so it sits on their centre line and at
-    // their height. It is a standing SETTING, not an action, so it leads the row: the run of
-    // controls after it has to read find → new group → add maps, in that order.
-    // ⚠ The menu is display:none until opened, so the header has NO layout and every rect reads
-    // zero — which passes a centring check by accident. Open it first.
+    // Laid out where it can be read: the pane is display:none until opened, so every rect reads
+    // zero and passes a fit check by accident. Open it first.
+    dockOpen('settings');
+    const swBox = sw.getBoundingClientRect(), group = sw.closest('.cp-group').getBoundingClientRect();
+    const gaps = { overflow: Math.round(sw.scrollWidth - sw.clientWidth), drift: 0, reads: 'Settings' };
+    if (!(swBox.width > 0) || swBox.right > group.right + 0.5) fails.push('the sizes pill does not fit its Settings group');
+    if (gaps.overflow > 0) fails.push('the sizes pill overflows by ' + gaps.overflow + 'px');
     openDropdown();
     await new Promise(r => setTimeout(r, 250));
-    const addBtn = document.getElementById('sm-add').getBoundingClientRect();
-    const swBox = sw.getBoundingClientRect();
-    const head = document.getElementById('sm-head');
-    const order = [
-      ['compression', document.querySelector('.sm-compress-lbl').getBoundingClientRect().x],
-      ['sizes', swBox.x],
-      ['find', document.getElementById('sm-search').getBoundingClientRect().x],
-      ['new group', document.getElementById('sm-new-group').getBoundingClientRect().x],
-      ['add maps', addBtn.x],
-    ];
-    const gaps = {
-      drift: (swBox.y + swBox.height / 2) - (addBtn.y + addBtn.height / 2),
-      tall: swBox.height - addBtn.height,
-      overflow: head.scrollWidth - head.clientWidth,
-      reads: order.map(o => o[0]).join(' → '),
-    };
-    if (Math.abs(gaps.drift) > 0.6) fails.push('the sizes are off the header centre line by ' + gaps.drift.toFixed(2) + 'px');
-    if (Math.abs(gaps.tall) > 0.6) fails.push('the sizes pill and Add maps differ in height by ' + gaps.tall.toFixed(2) + 'px');
-    if (gaps.overflow > 0) fails.push('the header overflows its row by ' + gaps.overflow + 'px');
-    for (let i = 1; i < order.length; i++) {
-      if (order[i][1] <= order[i - 1][1]) {
-        fails.push('the header reads out of order: ' + order[i][0] + ' is not to the right of ' + order[i - 1][0]);
-      }
-    }
     // Labels or glyphs, never one of each on two buttons doing the same kind of thing.
     if (document.querySelectorAll('#sm-add svg, #sm-new-group svg').length)
       fails.push('New group and Add maps carry both an icon and a label');

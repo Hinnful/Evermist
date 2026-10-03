@@ -1,4 +1,4 @@
-/* base.css — reset, :root --ui-zoom, the sidebar anchor, canvas layers, player mode. Loads first. #sidebar-right-anchor lives here; its pair #sidebar-right is in controlPanel.css. */
+/* base.css — reset, :root --ui-zoom and the shared tokens, canvas layers, player mode. Loads first. */
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
     width: 100%; height: 100%;
@@ -16,38 +16,44 @@
   body.player-mode { background: var(--fog-base); }
 
   /* ===== FLOATING PANELS ===== */
-  /* ONE surface for every floating thing, defined here so the four the DM sees at once cannot
-     drift: the Scenes button, the bottom toolbar, the tab bar and the settings panel. A panel
-     that writes its own hex instead of these is the bug this replaced.
-     --cp-panel-w is shared by #sidebar-right and the tab bar above it, which must line up. */
+  /* ONE surface for every floating thing, defined here so they cannot drift. A panel that
+     writes its own hex instead of these is the bug this replaced. */
   :root {
     --ui-zoom: 1.2;
-    --cp-panel-w: 230px;
-    --panel-bg: #1a1a1c;
-    --panel-border: 1.5px solid rgba(255, 255, 255, 0.1);
-    --panel-radius: 12px;
+    --panel-bg: var(--g-bg);
+    --panel-border: 1px solid var(--g-line);
+    --panel-radius: 10px;
     --panel-shadow: 0 5px 16px rgba(0, 0, 0, 0.28);
     /* Mirrors fogBaseColor's default in state.js. It is what a Player screen shows before its
        own fog paints, so a document still loading reads as fog rather than as a black flash. */
     --fog-base: #1a1a2e;
+    /* The dock's skin: grey surfaces and fields with no outline, a pick one step lighter. */
+    --g-bg: #1e1e21;
+    --g-line: #2c2d31;
+    --g-field: #2a2b2f;
+    --g-hover: #313237;
+    --g-pick: #45474e;
+    --g-text: #e4e6ea;
+    --g-dim: #8b9099;
+    /* Blue means on or in use. Solid: the tool in hand, one thing on screen. Tint: a switch
+       that is on, the open rail tab, a closed eye. */
+    --b-solid: #0c8ce9;
+    --b-tint: rgba(12, 140, 233, 0.2);
+    --b-tint-h: rgba(12, 140, 233, 0.28);
+    --b-icon: #5cb1ff;
+    /* Red only under the pointer, on a destructive control. */
+    --r-text: #ff8a8a;
+    --r-tint: rgba(240, 82, 82, 0.16);
+    --veil: rgba(6, 7, 9, 0.62);
+    --win-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+    --pop-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --g-raised: #26272b;
+    /* Segoe UI 12px sits its baseline 5px under the line's centre, so a label's visual centre
+       is about 1px below a box-centred icon. Every icon beside a label moves down by this. */
+    --icon-nudge: 1px;
+    --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
 
-  /* RIGHT SIDEBAR — same zoom-fix pattern as bottom toolbar:
-     no-zoom anchor handles fixed positioning, zoom lives on inner panel.
-     A COLUMN with the tab bar FIRST: the bar keeps the top-right corner whether the panel below
-     it is open or shut. */
-  #sidebar-right-anchor {
-    position: fixed;
-    left: 0; right: 0; top: 0; bottom: 0;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    justify-content: flex-start;
-    padding: 12px 12px 12px 0;
-    pointer-events: none;
-    gap: 6px;
-  }
   /* ===== CANVAS LAYERS ===== */
   #canvas-container {
     flex: 1;
@@ -73,7 +79,6 @@
   }
 
   /* ===== PLAYER MODE ===== */
-  body.player-mode #sidebar-right-anchor,
   body.player-mode #tools-wrapper,
   body.player-mode #minimap-panel { display: none !important; }
   body.player-mode #canvas-container { cursor: default; }

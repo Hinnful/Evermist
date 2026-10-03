@@ -45,7 +45,12 @@ function describePlan(planText) {
 
 // Drives the Draw Rooms button's enabled state.
 function hasFloorPlan() {
-  return !!(currentScene && currentScene.floorPlan && describePlan(currentScene.floorPlan));
+  return floorPlanRoomCount() > 0;
+}
+
+function floorPlanRoomCount() {
+  const derived = currentScene && currentScene.floorPlan ? describePlan(currentScene.floorPlan) : null;
+  return derived ? derived.rooms.length : 0;
 }
 
 // ─── Drawing the rooms ────────────────────────────────────────────────────────
@@ -174,27 +179,14 @@ let _fpNoticeRoot = null;
 
 function _fpBuildNotice() {
   if (_fpNoticeRoot) return;
-  const root = document.createElement('div');
-  root.id = 'fp-notice';
-  root.style.display = 'none';
-  root.innerHTML =
-    '<div class="fp-ico">' +
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-      'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
-      '<path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/></svg>' +
-    '</div>' +
-    '<div class="fp-msg" id="fp-notice-msg"></div>' +
-    '<button type="button" class="fp-cta" id="fp-notice-cta">Draw the rooms</button>' +
-    '<button type="button" class="fp-x" id="fp-notice-x" title="Dismiss" aria-label="Dismiss">' +
-      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-      'stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>' +
-    '</button>';
-  document.body.appendChild(root);
+  const root = toastEl('fp-notice', 'plan');
+  root.querySelector('.m').id = 'fp-notice-msg';
+  root.insertAdjacentHTML('beforeend',
+    '<button type="button" class="sm-hbtn primary" id="fp-notice-cta">Draw them</button>' +
+    '<button type="button" class="sm-x" id="fp-notice-x" title="Dismiss" aria-label="Dismiss">' + uiIcon('x') + '</button>');
   _fpNoticeRoot = root;
   document.getElementById('fp-notice-x').addEventListener('click', hideFloorPlanNotice);
-  // The two guards every floating panel here carries: a click must not reach the canvas
-  // handlers, a keystroke must not reach the global map shortcuts.
-  root.addEventListener('mousedown', e => e.stopPropagation());
+  // A keystroke must not reach the global map shortcuts.
   root.addEventListener('keydown', e => {
     e.stopPropagation();
     if (e.key === 'Escape') { e.preventDefault(); hideFloorPlanNotice(); }
@@ -209,14 +201,15 @@ function showFloorPlanNotice(sceneName, derived) {
   if (!derived || !derived.rooms.length) return;
   _fpBuildNotice();
   document.getElementById('fp-notice-msg').textContent =
-    t(sceneName ? 'Evermist found {rooms}{doors} in {name}' : 'Evermist found {rooms}{doors}', {
-      rooms: t.plural(derived.rooms.length, '{n} room', '{n} rooms'), doors: _fpDoorTail(derived), name: sceneName,
+    t(sceneName ? '{name} has a floor plan with {rooms}{doors}' : 'This map has a floor plan with {rooms}{doors}', {
+      rooms: t.plural(derived.rooms.length, '{n} room', '{n} rooms'), name: sceneName,
+      doors: (n => n ? ' ' + t.plural(n, 'and {n} door', 'and {n} doors') : '')(planDoorsFor(derived).length),
     });
   document.getElementById('fp-notice-cta').onclick = () => {
     hideFloorPlanNotice();
     applyPlanWithGuard(derived);
   };
-  _fpNoticeRoot.style.display = 'flex';
+  showToast(_fpNoticeRoot);
 }
 
 // The stored plan for the current scene, offered rather than drawn. Used by the post-import
@@ -248,6 +241,14 @@ async function attachPlanText(planText) {
   return true;
 }
 
+// The Sources row: a plan picked by hand, offered the way a dropped one is.
+async function loadPlanFile(file) {
+  if (!currentScene || !file) return;
+  if (await file.text().then(attachPlanText, () => false)) { offerStoredFloorPlan(); return; }
+  messageDialog({ title: 'That file is not a floor plan',
+                  message: 'Evermist reads the .dd2vtt file Dungeon Alchemist exports beside a map. Nothing was changed.' });
+}
+
 // ─── The Fog tab button ───────────────────────────────────────────────────────
 
 // Called on every scene switch. Static label, enabled only where this scene has a plan, like every
@@ -258,4 +259,6 @@ function refreshFloorPlanUI() {
   const btn = document.getElementById('btn-floorplan');
   if (!btn) return;
   btn.disabled = !hasFloorPlan();
+  document.getElementById('cp-src-plan').disabled = !currentScene;
+  refreshRoomsControlUI();
 }

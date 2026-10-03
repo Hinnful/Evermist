@@ -47,7 +47,7 @@ function armGridCalibration(on) {
   if (on && !mapWidth) return;   // nothing to calibrate against
   if (on === gridCalArmed) return;
   gridCalArmed = on;
-  cpHoldTabForCalibration(on);
+  dockHoldForCalibration(on);
   gridCalDrag = null;
   gridCalRefine = null;
   if (on) {
@@ -109,20 +109,11 @@ function gridCalDrawHeld() {
 // centre and a shared wall of R separates neighbours, so the diagonal is (3n - 1) R. An even n
 // centres the big hex on a wall, so only its two pressed corners sit on the grid.
 function gridCalIsHex() {
-  return gridMode === 'hex-flat' || gridMode === 'hex-pointy';
+  return gridMode === 'hex-pointy';
 }
 
-// Off drawGridLines (grid.js): gridSize is the circumradius, and the two modes swap which axis
-// carries the 1.5R centre-to-centre step.
-function gridCalHexGeom() {
-  const flat = gridMode === 'hex-flat';
-  return {
-    flat,
-    a0: flat ? 0 : Math.PI / 6,
-    stepX: flat ? 1.5 : Math.sqrt(3),
-    stepY: flat ? Math.sqrt(3) : 1.5,
-  };
-}
+// Off drawGridLines (grid.js): gridSize is the circumradius, and rows carry the 1.5R step.
+const GRID_CAL_HEX = { a0: Math.PI / 6, stepX: Math.sqrt(3), stepY: 1.5 };
 
 // What the DM dragged out: a square's side, or a hex line's corner-to-corner length.
 function gridCalSpanReach(s) {
@@ -141,7 +132,7 @@ function gridCalGuessCount(reach) {
 // Corner to opposite corner only runs along one of the six corner directions, so the drag snaps
 // to the nearest one; a line a few degrees off would put every centre after the first off-lattice.
 function gridCalHexEnd(ax, ay, mx, my) {
-  const g = gridCalHexGeom();
+  const g = GRID_CAL_HEX;
   const step = Math.PI / 3;
   const a = g.a0 + Math.round((Math.atan2(my - ay, mx - ax) - g.a0) / step) * step;
   const d = Math.max(0, (mx - ax) * Math.cos(a) + (my - ay) * Math.sin(a));
@@ -149,7 +140,7 @@ function gridCalHexEnd(ax, ay, mx, my) {
 }
 
 function gridCalHexPoly(cx, cy, r) {
-  const a0 = gridCalHexGeom().a0, v = [];
+  const a0 = GRID_CAL_HEX.a0, v = [];
   for (let k = 0; k < 6; k++) {
     const a = Math.PI / 3 * k + a0;
     v.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
@@ -179,12 +170,12 @@ function gridCalHexInner(s) {
   const reach = gridCalSpanReach(s);
   const n = s.n != null ? s.n : gridCalGuessCount(reach);
   if (!(reach > 0) || n < 1) return [];
-  const g = gridCalHexGeom(), r = reach / (3 * n - 1), o = gridCalAnchor(s);
+  const g = GRID_CAL_HEX, r = reach / (3 * n - 1), o = gridCalAnchor(s);
   const mx = (s.ax + s.bx) / 2, my = (s.ay + s.by) / 2;
   const px = r * g.stepX, py = r * g.stepY, k = n + 2, out = [];
   for (let i = -k; i <= k; i++) for (let j = -k; j <= k; j++) {
-    const x = o.x + i * px + (g.flat ? 0 : (j & 1) * px / 2);
-    const y = o.y + j * py + (g.flat ? (i & 1) * py / 2 : 0);
+    const x = o.x + i * px + (j & 1) * px / 2;
+    const y = o.y + j * py;
     if (Math.hypot(x - mx, y - my) <= reach / 2 + r) out.push(gridCalHexPoly(x, y, r));
   }
   return out;
@@ -209,26 +200,19 @@ function gridCalPhase(v, step) {
   return ((v % step) + step) % step;
 }
 
-// ⚠ A HEX LATTICE STAGGERS every other column (flat) or row (pointy) by half a step, so one axis's
-// phase depends on the anchor's index (drawGridLines) - a plain modulo lands half a cell off.
+// ⚠ A HEX LATTICE STAGGERS every other row by half a step, so the x phase depends on the anchor's
+// row (drawGridLines) - a plain modulo lands half a cell off.
 function gridCalWrite(cell, ax, ay) {
   const r = gridCalCellRange();
   gridSize = Math.max(r.min, Math.min(r.max, cell));
-  const g = gridCalIsHex() ? gridCalHexGeom() : null;
-  if (!g) {
+  if (!gridCalIsHex()) {
     gridOffsetX = gridCalPhase(ax, gridSize);
     gridOffsetY = gridCalPhase(ay, gridSize);
   } else {
-    const px = gridSize * g.stepX, py = gridSize * g.stepY;
-    if (g.flat) {
-      gridOffsetX = gridCalPhase(ax, px);
-      const col = Math.round((ax - gridOffsetX) / px);
-      gridOffsetY = gridCalPhase(ay - (col & 1) * py / 2, py);
-    } else {
-      gridOffsetY = gridCalPhase(ay, py);
-      const row = Math.round((ay - gridOffsetY) / py);
-      gridOffsetX = gridCalPhase(ax - (row & 1) * px / 2, px);
-    }
+    const px = gridSize * GRID_CAL_HEX.stepX, py = gridSize * GRID_CAL_HEX.stepY;
+    gridOffsetY = gridCalPhase(ay, py);
+    const row = Math.round((ay - gridOffsetY) / py);
+    gridOffsetX = gridCalPhase(ax - (row & 1) * px / 2, px);
   }
   gridDirty = true;
   scheduleRender();
@@ -556,7 +540,7 @@ function drawGridCalibration() {
   const n = s.n != null ? s.n : gridCalGuessCount(gridCalSpanReach(s));
   if (n >= 1) {
     const label = (s.n != null ? gridSize : gridCalCellOf(gridCalSpanReach(s), n)).toFixed(1) + ' px';
-    cursorCtx.font = 'bold 12px ui-monospace, monospace';
+    cursorCtx.font = 'bold 12px system-ui, sans-serif';
     const tw = cursorCtx.measureText(label).width;
     cursorCtx.save();
     uprightAt(cursorCtx, x + w, y);

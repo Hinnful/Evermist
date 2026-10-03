@@ -72,7 +72,10 @@
     },
     "docs/decisions/ui-and-control-panel.md": {
       "warnedBytes": 0,
-      "sections": [],
+      "sections": [
+        "The dock (2026-10-02)",
+        "The windows (2026-10-03)"
+      ],
       "entries": [
         "The landing card is the Player's loading state, not a hidden window · `SETTLED` (2026-08-30, replaced a hold)"
       ],

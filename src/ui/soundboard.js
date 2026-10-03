@@ -1,11 +1,10 @@
 'use strict';
 
-// soundboard.js — the Sounds pill beside the music pill and its panel of one-shot sounds. DM only.
+// soundboard.js — the dock's Sounds pane: one-shot sounds over the music, as tiles. DM only.
 
 const SB_VOL_KEY = 'evermist.sounds.volume';
 const SB_STOP_S = 0.12;
 
-let _sbOpen = false;
 let _sbCtx = null;
 let _sbMaster = null;
 let _sbVolume = 0.5;
@@ -16,7 +15,7 @@ let _sbRaf = 0;
 function _sbEl(id) { return document.getElementById(id); }
 
 function initSoundboard() {
-  if (!_sbEl('btn-sb-open')) return;
+  if (!_sbEl('dock-pane-sounds')) return;
 
   const saved = parseFloat(localStorage.getItem(SB_VOL_KEY));
   if (isFinite(saved) && saved >= 0 && saved <= 1) _sbVolume = saved;
@@ -25,14 +24,12 @@ function initSoundboard() {
   _sbSyncSlider();
   vol.addEventListener('input', () => { _sbSetVolume(Number(vol.value) / 100); _sbSyncSlider(); });
 
-  _sbEl('btn-sb-open').addEventListener('click', () => _sbSetOpen(!_sbOpen));
-  // One panel under the pills at a time: opening the music list puts this one away.
-  for (const id of ['btn-mu-open', 'btn-mu-chev']) {
-    const b = _sbEl(id);
-    if (b) b.addEventListener('click', () => _sbSetOpen(false));
-  }
-  document.addEventListener('keydown', (e) => {
-    if (_sbOpen && e.code === 'Escape') _sbSetOpen(false);
+  _sbRender();
+  // Decoded when the pane opens, so the first press of each sound plays at once.
+  document.addEventListener('dockpane', e => {
+    if (e.detail !== 'sounds') return;
+    _sbEnsureCtx();
+    for (const g of SOUND_GROUPS) for (const s of g.sounds) _sbBuffer(s.file).catch(() => {});
   });
 }
 
@@ -42,6 +39,7 @@ function _sbSyncSlider() {
   const pct = Math.min(100, Math.max(0, Number(range.value) || 0));
   wrap.querySelector('.cp-slider-fill').style.width = pct + '%';
   wrap.querySelector('.cp-slider-knob').style.left = pct + '%';
+  _sbEl('sb-vol-pct').textContent = String(Math.round(pct));
 }
 
 function _sbSetVolume(v) {
@@ -50,44 +48,30 @@ function _sbSetVolume(v) {
   if (_sbMaster) _sbMaster.gain.value = _sbVolume;
 }
 
-function _sbSetOpen(open) {
-  _sbOpen = !!open;
-  _sbEl('sb-panel').style.display = _sbOpen ? 'flex' : 'none';
-  _sbEl('btn-sb-open').classList.toggle('sb-pill-on', _sbOpen);
-  if (!_sbOpen) return;
-  if (typeof _muSetOpen === 'function') _muSetOpen(false);
-  _sbRender();
-  // Decoded on open, so the first press of each sound plays at once.
-  _sbEnsureCtx();
-  for (const g of SOUND_GROUPS) for (const s of g.sounds) _sbBuffer(s.file).catch(() => {});
-}
-
+// Each group's sub-header, then its sounds as tiles two to a row.
 function _sbRender() {
-  const cols = _sbEl('sb-cols');
-  cols.innerHTML = '';
-  for (let c = 0; c < 3; c++) {
-    const col = document.createElement('div');
-    col.className = 'sb-col';
-    for (const g of SOUND_GROUPS.slice(c * 2, c * 2 + 2)) {
-      const cap = document.createElement('div');
-      cap.className = 'sb-cap';
-      cap.textContent = t(g.name);
-      col.appendChild(cap);
-      for (const s of g.sounds) col.appendChild(_sbRow(s));
-    }
-    cols.appendChild(col);
+  const groups = _sbEl('sb-cols');
+  groups.innerHTML = '';
+  for (const g of SOUND_GROUPS) {
+    const box = document.createElement('div');
+    box.className = 'dk-sbg';
+    const cap = document.createElement('div');
+    cap.className = 'dk-sub';
+    cap.textContent = t(g.name);
+    const tiles = document.createElement('div');
+    tiles.className = 'dk-tiles';
+    for (const s of g.sounds) tiles.appendChild(_sbRow(s));
+    box.append(cap, tiles);
+    groups.appendChild(box);
   }
-  for (const file of Object.keys(_sbPlaying)) _sbPaint(file);
 }
 
 function _sbRow(s) {
   const row = document.createElement('button');
-  row.className = 'sb-row';
+  row.className = 'sb-row dk-tile';
   row.dataset.file = s.file;
-  row.title = t(s.name);
-  row.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-    'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + s.icon + '</svg>' +
-    '<span class="sb-name"></span><span class="sb-count"></span><span class="sb-bar"></span>';
+  row.title = t('{name}: click plays one more, right-click stops the newest', { name: t(s.name) });
+  row.innerHTML = '<span class="sb-name"></span><span class="sb-count"></span><span class="sb-bar"></span>';
   row.querySelector('.sb-name').textContent = t(s.name);
   row.addEventListener('click', () => _sbPlay(s));
   row.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); _sbStopNewest(s.file); });
@@ -167,7 +151,6 @@ function _sbTick() {
 }
 
 function _sbPaint(file) {
-  if (!_sbOpen) return;
   const row = _sbEl('sb-cols').querySelector('[data-file="' + file + '"]');
   if (!row) return;
   const list = _sbPlaying[file];

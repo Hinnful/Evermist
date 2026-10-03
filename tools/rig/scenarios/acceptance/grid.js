@@ -14,7 +14,7 @@
 //        size · opacity · thickness · colour. Offset has NO field: calibration sets the phase,
 //        because a number typed into a box cannot be aimed at a line on the map.
 //   B. A number typed outside a dial's range is clamped, and nonsense reads as the floor.
-//   C. The grid switches on and off, the three types are exclusive, and picking a type in the
+//   C. The grid switches on and off, square and hex are exclusive, and picking a type in the
 //      panel switches the grid on.
 //   D. The type reaches the canvas: a square grid lines up row to row, a hex grid staggers.
 //   E. A grid belongs to its scene. It survives a switch away and back, and never lands on
@@ -26,7 +26,7 @@
 //   J. The grid the players see sits at a weight the table can read against the map.
 //   K. The grid can be fitted by dragging the shape it is made of on the map, and the fit
 //      reaches the controls, the scene and the Player.
-//        the button wears the panel's own outline and lights while armed - arming captures the
+//        the button wears the pane's own skin and lights while armed - arming captures the
 //        map and puts its count HUD on the map - a square box comes out square whatever the drag
 //        was - the cell is that box divided by its count - the count corrects it - dragging inside
 //        the box slides the phase and leaves the cell alone - dragging its far corner resizes the
@@ -36,12 +36,14 @@
 //        snaps to a corner direction, and lands its pressed corners on the grid at any count and
 //        all six at an odd one, odd columns and rows included - the HUD clears the magnifier -
 //        Done, the Calibrate icon, Escape and
-//        picking a tool each hand the map back, they give back the tab arming shut unless the DM
-//        picked another one meanwhile, and the DM's own grid switch is never touched
+//        picking a tool each hand the map back, they give back the dock pane arming shut unless
+//        the DM picked another one meanwhile, and the DM's own grid switch is never touched
 //      (the room card getting out of the way is room-card.js's section A, with the rooms)
 //   L. The grid the players see stays nailed to the map when the Player's screen changes size -
 //      going fullscreen, or a divider drag in two-map mode. It slides against the map otherwise,
 //      and every distance counted at the table is wrong.
+//   M. A scene or a backup saved with the flat-top hex grid an older release offered loads as
+//      pointy-top hex, with no error. The cells need one recalibration; that loss is accepted.
 //
 // ⚠ DRIVE A SCENE SWITCH THROUGH switchScene(), NEVER THE DROPDOWN. openDropdown() calls
 // doAutoSave() before it renders, so a switch made by clicking a card persists the outgoing grid
@@ -230,7 +232,7 @@ module.exports = async function gridFeature(rig) {
   await fire('grid-opacity-num', 90);       // strong ink, so a scanline reads cleanly
   await fire('grid-color', '#ffffff');
 
-  // ── C. On/off, and the three types are exclusive ──────────────────────────
+  // ── C. On/off, and the two types are exclusive ──────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
   const typeState = () => dm.evaluate([
     '(() => {',
@@ -242,8 +244,7 @@ module.exports = async function gridFeature(rig) {
     '})()',
   ].join('\n'));
 
-  for (const [btn, mode] of [['btn-grid-hflat', 'hex-flat'], ['btn-grid-hptop', 'hex-pointy'],
-                             ['btn-grid-sq', 'square']]) {
+  for (const [btn, mode] of [['btn-grid-hptop', 'hex-pointy'], ['btn-grid-sq', 'square']]) {
     await dm.evaluate('document.getElementById(' + JSON.stringify(btn) + ').click(); 0');
     const t = await typeState();
     rig.check(t.mode === mode, btn + ' did not set the grid type to ' + mode + ': ' + t.mode);
@@ -262,16 +263,16 @@ module.exports = async function gridFeature(rig) {
   const seg = t => dm.evaluate('(() => { const b = document.querySelector(' +
     JSON.stringify('#cp-gridtype-row [data-gtype="' + t + '"]') + ');' +
     ' if (!b) return "missing"; b.click(); return "clicked"; })()');
-  const segHex = await seg('hex-flat');
-  if (rig.check(segHex === 'clicked', 'the panel has no hex-flat grid-type button to press')) {
+  const segHex = await seg('hex-pointy');
+  if (rig.check(segHex === 'clicked', 'the panel has no hex grid-type button to press')) {
     const back = await typeState();
-    rig.check(back.on === true && back.mode === 'hex-flat',
+    rig.check(back.on === true && back.mode === 'hex-pointy',
               'picking a grid type in the panel did not switch the grid on: ' + JSON.stringify(back));
-    rig.check(back.seg.length === 1 && back.seg[0] === 'hex-flat',
+    rig.check(back.seg.length === 1 && back.seg[0] === 'hex-pointy',
               'the panel segment shows the wrong type chosen: ' + JSON.stringify(back.seg));
-    await seg('off');
+    await dm.evaluate('document.getElementById("cp-grid-eye").click(); 0');
     rig.check(await dm.evaluate('gridEnabled') === false,
-              "the panel segment's Off did not switch the grid off");
+              "the Grid title's eye did not switch the grid off");
     await seg('square');
   }
 
@@ -289,17 +290,11 @@ module.exports = async function gridFeature(rig) {
   rig.check(Math.abs(sq.cell - DEFAULT) <= 2,
             'the DM painted the square grid at the wrong cell size: ' + sq.cell + ' map units');
 
-  await dm.evaluate('document.getElementById("btn-grid-hflat").click(); 0');
-  const hex = await dmPaint();
-  rig.note('hex-flat painted: ' + JSON.stringify(hex));
-  rig.check(!hex.err && hex.modal < hex.rowsRead / 2,
-            'a hex grid painted the same vertical lines on nearly every row, which is a square ' +
-            'lattice wearing a hex label: ' + JSON.stringify(hex));
-
   await dm.evaluate('document.getElementById("btn-grid-hptop").click(); 0');
   const pointy = await dmPaint();
-  // A pointy-top hexagon has two vertical edges, so more of its rows repeat than a flat-top's.
-  // The margin is still wide: 4 of 12 here against 11 of 12 for a square lattice.
+  rig.note('hex painted: ' + JSON.stringify(pointy));
+  // A pointy-top hexagon has two vertical edges, so some rows repeat; 4 of 12 here against 11 of
+  // 12 for a square lattice.
   rig.check(!pointy.err && pointy.modal < pointy.rowsRead / 2,
             'the pointy-top hex grid painted a square lattice: ' + JSON.stringify(pointy));
   await dm.evaluate('document.getElementById("btn-grid-sq").click(); 0');
@@ -351,7 +346,7 @@ module.exports = async function gridFeature(rig) {
   await fire('grid-opacity', 60);
   await fire('grid-thickness', 4);
   await fire('grid-color', '#ff3366');
-  await dm.evaluate('document.getElementById("btn-grid-hflat").click(); 0');
+  await dm.evaluate('document.getElementById("btn-grid-hptop").click(); 0');
   await dm.evaluate('document.getElementById("btn-grid-reset").click(); 0');
   const reset = await liveGrid();
   rig.note('after Grid Reset: ' + JSON.stringify(reset));
@@ -379,9 +374,9 @@ module.exports = async function gridFeature(rig) {
   await fire('grid-color', '#ff3366');
   await fire('grid-opacity', 60);
   await fire('grid-thickness', 3);
-  await dm.evaluate('document.getElementById("btn-grid-hflat").click(); 0');
+  await dm.evaluate('document.getElementById("btn-grid-hptop").click(); 0');
   const beforeImport = await liveGrid();
-  rig.check(beforeImport.size === 45 && beforeImport.offX === 30 && beforeImport.mode === 'hex-flat',
+  rig.check(beforeImport.size === 45 && beforeImport.offX === 30 && beforeImport.mode === 'hex-pointy',
             'the pre-import grid state did not take: ' + JSON.stringify(beforeImport));
 
   const gamma = await importAs('Gamma');
@@ -392,11 +387,59 @@ module.exports = async function gridFeature(rig) {
   rig.check(!!gcfg && gcfg.offsetX === 0 && gcfg.offsetY === 0,
             "a new import inherited the previous map's grid offset: " + JSON.stringify(gcfg));
   rig.check(!!gcfg && gcfg.color === '#ff3366' && Math.round(gcfg.opacity * 100) === 60 &&
-            gcfg.lineWidth === 3 && gcfg.mode === 'hex-flat',
+            gcfg.lineWidth === 3 && gcfg.mode === 'hex-pointy',
             'a new import dropped the grid look the DM had dialled in: ' + JSON.stringify(gcfg));
   const onGamma = await liveGrid();
   rig.check(onGamma.size === DEFAULT && onGamma.sizeChip === DEFAULT,
             'the imported map is on screen with the old grid size: ' + JSON.stringify(onGamma));
+
+  // ── M. An old flat-top grid loads as pointy-top ───────────────────────────
+  // RED ON: normalizeGridMode's hex-flat line gated off with false && (grid.js) — 2026-10-02
+  const gridShown = () => dm.evaluate('({ mode: gridMode,' +
+    ' legacy: [...document.querySelectorAll(".grid-mode-btn.active")].map(b => b.id) })');
+  await switchTo(alpha);
+  const seeded = await dm.evaluate('(async () => { const sc = await sceneStore.loadScene(' +
+    JSON.stringify(gamma) + '); sc.gridConfig = { ...sc.gridConfig, mode: "hex-flat" };' +
+    ' await sceneStore.saveScene(sc); return (await sceneStore.loadScene(' + JSON.stringify(gamma) +
+    ')).gridConfig.mode; })()');
+  if (rig.check(seeded === 'hex-flat', 'a flat-top grid could not be seeded into the store: ' + seeded)) {
+    await switchTo(gamma);
+    const fromScene = await gridShown();
+    rig.check(fromScene.mode === 'hex-pointy' && fromScene.legacy.join() === 'btn-grid-hptop',
+              'a scene saved with a flat-top grid did not load as pointy-top: ' +
+              JSON.stringify(fromScene));
+  }
+
+  const flatZip = path.join(rig.outDir, 'flat-top.zip');
+  const zipped = await dm.evaluate(`(async () => {
+    const sc = await sceneStore.loadScene(${JSON.stringify(gamma)});
+    const mapExt = mapExtFromScene(sc);
+    const fog = sc.baseFogBlob ? await blobToArrayBuffer(sc.baseFogBlob)
+              : sc.baseFogPNG ? await dataURLToArrayBuffer(sc.baseFogPNG) : null;
+    await window.electronAPI.createBackupZip(${JSON.stringify(flatZip)}, [{
+      id: sc.id, mapType: sc.mapType || 'image', mapExt,
+      metadata: { id: sc.id, name: 'Flat', mapType: sc.mapType || 'image',
+        mapWidth: sc.mapWidth, mapHeight: sc.mapHeight, mapExt,
+        mapMimeType: sc.mapBlob ? (sc.mapBlob.type || 'image/jpeg') : 'video/mp4',
+        polygons: [], nextPolygonId: 1, effects: [], nextEffectId: 1,
+        gridConfig: { ...sc.gridConfig, mode: 'hex-flat' }, fogSettings: sc.fogSettings },
+      mapBuffer: sc.mapType !== 'video' ? await blobToArrayBuffer(sc.mapBlob) : null,
+      fogBuffer: fog, thumbBuffer: await blobToArrayBuffer(sc.thumbnail),
+    }], mtBackupPayload());
+    const before = allScenes.map(x => x.id);
+    await restoreFromZipPath(${JSON.stringify(flatZip)});
+    const added = allScenes.find(x => !before.includes(x.id));
+    return added ? { id: added.id, stored: (await sceneStore.loadScene(added.id)).gridConfig.mode } : null;
+  })()`, 300000);
+  rig.note('the flat-top backup restored as: ' + JSON.stringify(zipped));
+  if (rig.check(!!zipped, 'a backup holding a flat-top grid restored no scene at all')) {
+    await switchTo(zipped.id);
+    const fromZip = await gridShown();
+    rig.check(fromZip.mode === 'hex-pointy' && fromZip.legacy.join() === 'btn-grid-hptop',
+              'a backup saved with a flat-top grid did not load as pointy-top: ' +
+              JSON.stringify(fromZip));
+  }
+  await switchTo(gamma);
 
   // ── H. Everything reaches the Player, and the Player paints it ────────────
   // RED BY DESIGN: written against the fix, never re-proved
@@ -463,8 +506,8 @@ module.exports = async function gridFeature(rig) {
   await fire('grid-color', '#ff3366');
   await fire('grid-opacity', 60);
   await fire('grid-thickness', 3);
-  await dm.evaluate('document.getElementById("btn-grid-hflat").click(); 0');
-  await waitPlayer('gridMode', 'hex-flat', 30000);
+  await dm.evaluate('document.getElementById("btn-grid-hptop").click(); 0');
+  await waitPlayer('gridMode', 'hex-pointy', 30000);
   const dialled = await playerGrid();
   rig.note('Player holds the dialled-in look: ' + JSON.stringify(dialled));
   rig.check(dialled.offX === 33 && dialled.offY === 44,
@@ -472,7 +515,7 @@ module.exports = async function gridFeature(rig) {
   rig.check(dialled.color === '#ff3366' && dialled.opacity === 0.6 && dialled.width === 3,
             'the grid colour, opacity or thickness never reached the Player: ' +
             JSON.stringify(dialled));
-  rig.check(dialled.mode === 'hex-flat', 'the grid type never reached the Player: ' + dialled.mode);
+  rig.check(dialled.mode === 'hex-pointy', 'the grid type never reached the Player: ' + dialled.mode);
 
   // Switched off on the DM means nothing on the TV.
   await dm.evaluate('document.getElementById("btn-grid").click(); 0');
@@ -539,21 +582,19 @@ module.exports = async function gridFeature(rig) {
   await dm.evaluate('gridEnabled = false; gridDirty = true; scheduleRender(); 0');
   await fire('grid-size', 100);
 
-  // ⚠ The button has to carry .cp-btn-outline, not .cp-btn alone. .cp-btn sets metrics only, so a
-  // button missing the identity class renders as the browser's own grey box AND loses its armed
-  // state, since the blue fill is defined on .cp-btn-outline.active. Both read as a styling slip
-  // and neither shows up in any behaviour check.
-  const skin = (on) => dm.evaluate('(() => { const b = document.getElementById("cp-grid-calibrate"),' +
+  // ⚠ Compared against the Reset icon on the section title: a button missing the pane's icon
+  // class renders as the browser's own grey box AND loses its armed tint, and neither shows up
+  // in any behaviour check.
+  const skin = () => dm.evaluate('(() => { const b = document.getElementById("cp-grid-calibrate"),' +
     ' r = document.getElementById("cp-grid-reset"), c = getComputedStyle(b);' +
-    ' return { bg: c.backgroundColor, border: c.borderTopColor, w: parseFloat(c.borderTopWidth),' +
-    '   same: c.borderTopColor === getComputedStyle(r).borderTopColor, lit: b.classList.contains("active") };' +
+    ' return { bg: c.backgroundColor, same: c.backgroundColor === getComputedStyle(r).backgroundColor &&' +
+    '   c.width === getComputedStyle(r).width, lit: b.classList.contains("active") };' +
     ' })()');
+  // RED ON: #cp-grid-calibrate's class renamed off cp-adv-close (index.html) — 2026-10-02
   const rest = await skin();
   rig.note('Calibrate at rest: ' + JSON.stringify(rest));
-  // ⚠ Compared against the reset beside it, never against 1.5: the pane carries --ui-zoom and
-  // getComputedStyle reports the border already divided by it.
-  rig.check(rest.w > 0.5 && rest.same,
-            'the Calibrate button does not wear the outline every other panel button wears: ' +
+  rig.check(rest.same,
+            'the Calibrate button does not wear the skin the icon beside it wears: ' +
             JSON.stringify(rest));
 
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
@@ -566,7 +607,7 @@ module.exports = async function gridFeature(rig) {
     ' hud: getComputedStyle(document.getElementById("gridcal-hud")).display,' +
     ' hudW: document.getElementById("gridcal-hud").getBoundingClientRect().width,' +
     ' rooms: getComputedStyle(document.getElementById("ctx-rooms")).display,' +
-    ' panel: document.getElementById("sidebar-right").hidden })');
+    ' panel: !document.getElementById("dock").classList.contains("open") })');
   rig.check(armed.on === true, 'the Calibrate button did not arm calibration');
   rig.check(armed.hud !== 'none', 'arming calibration did not put its count HUD on the map');
   // #context-row is hidden for the length of calibration, so a HUD parked inside it would be
@@ -575,7 +616,7 @@ module.exports = async function gridFeature(rig) {
   rig.check(armed.rooms === 'none',
             'the room tools kept their option strip while calibration held the map');
   rig.check(armed.panel === true,
-            'arming calibration left the control panel over the map it has to be dragged on');
+            'arming calibration left the dock pane over the map it has to be dragged on');
 
   // The old grid over the map art is what the DM is NOT aiming at, so calibration hides it and
   // the shape draws its own cells. It used to force the grid on for the gesture.
@@ -763,32 +804,33 @@ module.exports = async function gridFeature(rig) {
             'picking a tool did not hand the map back from calibration');
 
   // Done on the HUD is the only way out that is visible while the map is held, and every way out
-  // has to reopen the tab arming shut - the DM did not close it.
-  await dm.evaluate('_cpSelectTab("grid"); 0');
+  // has to reopen the pane arming shut - the DM did not close it.
+  // RED ON: dockHoldForCalibration's restore gated off with false && (dock.js) — 2026-10-02
+  await dm.evaluate('dockOpen("scene"); 0');
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
-  rig.check(await dm.evaluate('document.getElementById("sidebar-right").hidden === true'),
-            'arming left the control panel over the map a second time round');
+  rig.check(await dm.evaluate('!document.getElementById("dock").classList.contains("open")'),
+            'arming left the dock pane over the map a second time round');
   await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
-  const back = await dm.evaluate('({ armed: gridCalArmed, tab: _cpActiveTab(),' +
-    ' hidden: document.getElementById("sidebar-right").hidden })');
+  const back = await dm.evaluate('({ armed: gridCalArmed, pane: dockActivePane() })');
   rig.check(back.armed === false, 'Done on the calibration HUD did not hand the map back');
-  rig.check(back.hidden === false && back.tab === 'grid',
-            'Done left the panel shut on a tab the DM never closed: ' + JSON.stringify(back));
+  rig.check(back.pane === 'scene',
+            'Done left the dock shut on a pane the DM never closed: ' + JSON.stringify(back));
 
-  // ⚠ #cp-tabbar NEVER HIDES, so a tab the DM picks while armed is a real click and it has to win
+  // ⚠ THE RAIL NEVER HIDES, so a tab the DM picks while armed is a real click and it has to win
   // over the one arming shut.
+  // RED ON: dockHoldForCalibration's _dockForgetCal listener and its !_dockPane guard both gated off (dock.js) — 2026-10-02
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
-  await dm.evaluate('_cpSelectTab("fog"); 0');
+  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
   await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
-  const chosen = await dm.evaluate('_cpActiveTab()');
-  rig.check(chosen === 'fog',
-            'Done threw away the tab the DM picked while calibrating and forced back the old one: ' +
+  const chosen = await dm.evaluate('dockActivePane()');
+  rig.check(chosen === 'music',
+            'Done threw away the pane the DM picked while calibrating and forced back the old one: ' +
             chosen);
-  await dm.evaluate('_cpSelectTab("grid"); 0');
+  await dm.evaluate('dockOpen("scene"); 0');
 
   // A hex grid calibrates too: corner to opposite corner of one big hex, so the press and the
   // release are both points the map art draws.
-  await dm.evaluate('document.getElementById("btn-grid-hflat").click(); 0');
+  await dm.evaluate('document.getElementById("btn-grid-hptop").click(); 0');
   await fire('grid-size', 100);
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
   rig.check(await dm.evaluate('gridCalArmed === true'),
@@ -800,12 +842,12 @@ module.exports = async function gridFeature(rig) {
   // anchors. This walks drawGridLines' own centre formula and reports the nearest vertex.
   const missAt = (ax, ay) => dm.evaluate([
     '(() => {',
-    '  const R = gridSize, flat = gridMode === "hex-flat", a0 = flat ? 0 : Math.PI / 6;',
-    '  const A = R * (flat ? 1.5 : Math.sqrt(3)), B = R * (flat ? Math.sqrt(3) : 1.5);',
+    '  const R = gridSize, a0 = Math.PI / 6;',
+    '  const A = R * Math.sqrt(3), B = R * 1.5;',
     '  let best = Infinity;',
     '  for (let c = -60; c <= 60; c++) for (let r = -60; r <= 60; r++) {',
-    '    const cx = gridOffsetX + c * A + (flat ? 0 : (r & 1) * A / 2);',
-    '    const cy = gridOffsetY + r * B + (flat ? (c & 1) * B / 2 : 0);',
+    '    const cx = gridOffsetX + c * A + (r & 1) * A / 2;',
+    '    const cy = gridOffsetY + r * B;',
     '    for (let k = 0; k < 6; k++) best = Math.min(best, Math.hypot(',
     '      cx + R * Math.cos(a0 + k * Math.PI / 3) - ' + ax + ', cy + R * Math.sin(a0 + k * Math.PI / 3) - ' + ay + '));',
     '  }',
@@ -820,7 +862,7 @@ module.exports = async function gridFeature(rig) {
   // row; one anchor can pass with the stagger ignored entirely.
   // RED ON: gridCalAnchor phasing a hex on the pressed corner instead of the big hex's centre
   //   (gridCalibrate.js) — 2026-09-24
-  for (const [mode, btn] of [['hex-flat', 'btn-grid-hflat'], ['hex-pointy', 'btn-grid-hptop']]) {
+  for (const [mode, btn] of [['hex-pointy', 'btn-grid-hptop']]) {
     for (const [ax, ay] of [[400, 400], [560, 400], [400, 560]]) {
       if (await dm.evaluate('gridCalArmed')) {
         await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
@@ -848,7 +890,7 @@ module.exports = async function gridFeature(rig) {
       const got = await dm.evaluate('({ isHex: gridCalIsHex(), n: gridCalSpan && gridCalSpan.n,' +
         ' size: gridSize, corners: gridCalSpan ? gridCalHexOutline(gridCalSpan) : [],' +
         ' ang: gridCalSpan ? Math.atan2(gridCalSpan.by - gridCalSpan.ay, gridCalSpan.bx - gridCalSpan.ax) : 0,' +
-        ' a0: gridMode === "hex-flat" ? 0 : Math.PI / 6,' +
+        ' a0: Math.PI / 6,' +
         ' reach: gridCalSpan ? gridCalSpanReach(gridCalSpan) : 0 })');
       const misses = [];
       for (const c of got.corners) misses.push(await missAt(c.x, c.y));

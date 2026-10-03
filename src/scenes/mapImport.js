@@ -60,7 +60,7 @@ async function _importMapFiles(files) {
     for (let i = 0; i < queue.length; i++) {
       const f = queue[i];
       if (batch) {
-        setMapProgressPrefix(t('Map {i} of {n}', { i: i + 1, n: queue.length }) + ' - ' + sceneNameForFile(f));
+        setMapProgressRun(t('{i} of {n}', { i: i + 1, n: queue.length }), f.name);
         showMapProgress('Reading the map…');
       }
       // ⚠ THE ORIGINALLY PICKED File, STRAIGHT THROUGH: findPlanForFile needs its path on disk, so
@@ -72,7 +72,7 @@ async function _importMapFiles(files) {
       else failures.push(t('“{name}” {reason}', { name: f.name, reason: (r && r.reason) || t('would not open.') }));
     }
   } finally {
-    setMapProgressPrefix('');
+    setMapProgressRun('');
     hideMapProgress();
   }
 

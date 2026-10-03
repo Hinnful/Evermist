@@ -1,333 +1,160 @@
-/* music.css — the music bubble at the top of the DM window and the Add music panel. Loads after
-   about.css and before overlays.css: it uses @keyframes cpAdvIn from controlPanel.css, and it
-   borrows .cp-field, .cp-slider, .cp-iconbtn, .cp-btn-icon, .sm-hbtn, .sm-bare and .sm-cb rather
-   than restyling any of them. Only sizes and layout live here. */
+/* music.css — the dock's Music and Sounds panes, and the Add from YouTube window. Loads after about.css
+   and before dock.css: it uses @keyframes cpAdvIn from controlPanel.css, and it borrows
+   .cp-field, .cp-slider and the window parts in sceneManager.css rather than restyling any of them. */
 
-  /* ===== THE BUBBLE ===== */
-  /* Same anchor-plus-zoom split as #sidebar-right-anchor: the anchor does fixed positioning at
-     no zoom, the bubble carries --ui-zoom. z-index sits BELOW #fp-notice (210), which is
-     short-lived where the bubble is not, so a notice wins the few seconds it is up. */
-  #music-anchor {
-    position: fixed;
-    left: 0; right: 0; top: 0;
-    z-index: 120;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: start;
-    padding-top: 12px;
-    pointer-events: none;
-  }
-  #music-bubble {
-    zoom: var(--ui-zoom, 1.2);
-    pointer-events: all;
-    justify-self: start;
-    display: flex; flex-direction: column; align-items: flex-start;
-    gap: 6px;
-  }
-  /* The pill's left edge joins Bestiary's right one; the panels below keep all four corners. */
-
-  /* --panel-radius, not a pill radius: every other floating surface in the app uses it. Bestiary
-     joins the music pill's left edge and the Sounds pill its right, so only the Sounds pill's
-     right-hand corners round. */
-  .mu-pillrow { display: flex; }
-  #mu-pill {
-    position: relative;
-    display: flex; align-items: center;
-    height: 30px; padding: 0 5px 0 11px; margin-left: -1.5px;
-    max-width: 260px;
-    background: var(--panel-bg);
-    border: var(--panel-border);
-    border-radius: 0;
-    box-shadow: var(--panel-shadow);
-    color: #d5d8dd;
-    transition: border-color .12s;
-  }
-  #mu-pill:hover { border-color: rgba(255,255,255,0.18); }
-
-  /* A hairline across the pill's bottom edge, so download progress costs no height and cannot
-     be mistaken for anything about playback. Only present while a queue is running. */
-  #mu-dlbar {
-    position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
-    display: none; overflow: hidden;
-    background: rgba(255,255,255,0.1);
-  }
-  .mu-downloading #mu-dlbar { display: block; }
-  #mu-dlbar i {
-    display: block; height: 100%; width: 0;
-    background: rgba(110,168,255,0.85);
-    transition: width .25s linear;
-  }
-
-  /* The name and the level meter are one button, so a click anywhere but the two controls
-     opens the panel. At rest it shrinks to the note glyph alone. */
-  .mu-open {
-    display: flex; align-items: center; gap: 9px;
-    min-width: 0; padding: 0; height: 100%;
-    border: none; background: transparent; color: inherit;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    cursor: pointer;
-  }
-  #mu-pill-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mu-pillbtn { width: 24px; height: 24px; flex: none; border-radius: 6px; }
-  .mu-chevbtn {
-    width: 22px; height: 24px; flex: none; padding: 0;
+  /* ===== THE PLAYER ===== */
+  /* Players, not forms: Scene control's field rules stop here, and volume is always a slider. */
+  .dk-player { padding: 14px 12px 14px 14px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid var(--g-line); }
+  .pl-top { display: flex; align-items: center; gap: 12px; }
+  .pl-play {
+    width: 40px; height: 40px; flex: none; padding: 0; border: 0; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    border: none; background: transparent; color: #6b7078; cursor: pointer;
+    background: var(--g-text); color: #18181a; cursor: pointer; transition: transform .1s, background .12s;
   }
-  .mu-chevbtn:hover { color: #9aa0aa; }
-  #mu-chev { transition: transform .14s; }
-  #mu-chev.mu-chev-up { transform: rotate(180deg); }
+  .pl-play:hover { background: #fff; transform: scale(1.04); }
+  .mu-resting .pl-play { opacity: 0.35; cursor: default; transform: none; }
+  .pl-meta { min-width: 0; flex: 1; }
+  .pl-title { font: 600 14px/1.25 system-ui, -apple-system, sans-serif; color: var(--g-text);
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mu-resting .pl-title { color: var(--g-dim); font-weight: 500; }
+  .pl-sub { display: flex; align-items: center; gap: 6px; margin-top: 4px; font: 400 11px/1 system-ui, sans-serif;
+            color: var(--g-dim); white-space: nowrap; }
+  .mu-resting .pl-sub .pl-bars { display: none; }
 
-  /* At rest the pill keeps its shape and carries the word instead of a track name. The controls
-     go, because there is nothing to pause and nothing to turn down. */
-  .mu-resting #mu-pill { padding: 0 11px; }
-  .mu-resting .mu-open { gap: 8px; }
-  .mu-resting #mu-pill-name { color: #7f858e; }
-  .mu-resting #mu-level,
-  .mu-resting .mu-pillbtn,
-  .mu-resting .mu-chevbtn { display: none; }
-  #music-bubble:not(.mu-resting) #mu-note { display: none; }
+  /* Bars that say "sound is coming out"; paused flattens them rather than hiding them. */
+  .pl-bars { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 10px; flex: none; }
+  .pl-bars i { width: 2px; height: 3px; border-radius: 1px; background: var(--g-text); animation: plBar .9s ease-in-out infinite; }
+  .pl-bars i:nth-child(2) { animation-delay: -.3s; }
+  .pl-bars i:nth-child(3) { animation-delay: -.6s; }
+  .pl-bars i:nth-child(4) { animation-delay: -.15s; }
+  @keyframes plBar { 0%, 100% { height: 3px; } 50% { height: 10px; } }
+  .mu-paused .pl-bars i { animation: none; background: var(--g-dim); }
+  .pl-bars.sm { margin-right: 2px; }
 
-  /* Three bars that say "sound is coming out" without a second colour or a label. Paused
-     FLATTENS them rather than hiding them, so the pill never changes width. */
-  .mu-level { display: flex; align-items: flex-end; gap: 2px; height: 11px; flex: none; }
-  .mu-level i {
-    display: block; width: 2px; border-radius: 1px;
-    background: #6ea8ff;
-    animation: muLevel .9s ease-in-out infinite;
-  }
-  .mu-level i:nth-child(1) { height: 5px;  animation-delay: -.6s; }
-  .mu-level i:nth-child(2) { height: 11px; animation-delay: -.3s; }
-  .mu-level i:nth-child(3) { height: 7px;  animation-delay: 0s; }
-  @keyframes muLevel {
-    0%, 100% { transform: scaleY(0.45); }
-    50%      { transform: scaleY(1); }
-  }
-  .mu-paused .mu-level i { height: 4px; background: #4d5a6e; animation: none; }
-  .mu-paused #mu-pill-name { color: #9aa0aa; }
+  .pl-vol { display: flex; align-items: center; gap: 10px; color: var(--g-dim); }
+  .pl-vol svg { flex: none; }
+  .pl-vol .cp-slider { flex: 1; }
+  .pl-vol .cp-slider-fill { background: var(--g-text); }
+  .pl-vol .cp-slider-track { background: #3a3c42; }
+  .pl-pct { width: 22px; flex: none; text-align: right; font: 500 11px/1 system-ui, sans-serif;
+            color: var(--g-dim); font-variant-numeric: tabular-nums; }
 
-  /* ===== THE PANEL ===== */
-  #mu-panel {
-    width: 300px;
-    display: none; flex-direction: column;
-    background: var(--panel-bg);
-    border: var(--panel-border);
-    border-radius: var(--panel-radius);
-    box-shadow: var(--panel-shadow);
-    overflow: hidden;
-    animation: cpAdvIn .15s ease;
-  }
+  .pl-dl { display: none; flex-direction: column; gap: 5px; font: 400 10.5px/1 system-ui, sans-serif; color: var(--g-dim); }
+  .mu-downloading .pl-dl { display: flex; }
+  .pl-dl .bar { height: 3px; border-radius: 2px; background: #3a3c42; overflow: hidden; }
+  .pl-dl .bar i { display: block; height: 100%; width: 0; background: var(--g-dim); transition: width .25s linear; }
 
-  .mu-toprow { display: flex; align-items: center; gap: 7px; padding: 9px 10px; }
-  .mu-filterfield { flex: 1; min-width: 0; height: 30px; gap: 8px; color: #7f858e; }
+  /* ===== THE TRACK LIST ===== */
+  .mu-toprow { display: flex; align-items: center; gap: 7px; padding: 12px 12px 6px 14px; }
+  .mu-filterfield { flex: 1; min-width: 0; gap: 8px; color: var(--g-dim); }
   .mu-filterfield input {
     flex: 1; width: 0; min-width: 0;
     border: none; background: transparent; color: #d5d8dd;
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
   }
   .mu-filterfield input:focus { outline: none; }
-  .mu-filterfield input::placeholder { color: #7f858e; }
-  .mu-filterfield:focus-within { border-color: rgba(90,140,235,0.6); }
-  #btn-mu-add { height: 30px; }
+  .mu-filterfield input::placeholder { color: var(--g-dim); }
 
-  /* Seven rows visible, the rest on the scrollbar. A hundred tracks must not grow the panel
-     past the window, and the visible scrollbar is the only cue there is more below. */
-  .mu-list {
-    border-top: 1px solid rgba(255,255,255,0.055);
-    max-height: 210px; overflow-y: auto;
-  }
-  .mu-list::-webkit-scrollbar { width: 6px; }
-  .mu-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
-
+  .mu-list { padding-bottom: 12px; }
   .mu-row {
     display: flex; align-items: center; gap: 8px;
-    height: 30px; padding: 0 11px;
+    height: 30px; padding: 0 10px 0 14px;
     font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd;
     cursor: pointer;
   }
-  .mu-row:hover { background: rgba(255,255,255,0.05); }
+  .mu-row:hover { background: rgba(255, 255, 255, 0.04); }
   .mu-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mu-row-meta {
-    flex: none; font: 400 11px/1 system-ui, -apple-system, sans-serif; color: #6f6f74;
-    font-variant-numeric: tabular-nums;
-  }
-  /* The playing row wears an active .cp-btn-outline's blue-on-blue, so "this one is live" reads
-     the same here as everywhere else in the app. */
-  .mu-row-on { background: rgba(70,120,220,0.11); cursor: default; }
-  .mu-row-on .mu-row-name { color: #8fb6ff; }
-  .mu-row-on .mu-row-meta { color: #5d7fa3; }
+  .mu-row-meta { flex: none; font: 400 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim);
+                 font-variant-numeric: tabular-nums; }
+  .mu-row-on { background: var(--g-field); cursor: default; }
+  .mu-row-on .mu-row-name { color: var(--g-text); font-weight: 600; }
 
   /* Destructive, belongs to one row, wears no red, and asks through confirmDialog. Hidden
      until the row is hovered so a list of a hundred is not a wall of bins. */
-  .mu-row-del { width: 24px; height: 24px; flex: none; border-radius: 6px; display: none; }
+  .mu-row-del { width: 24px; height: 24px; flex: none; padding: 0; border: 0; border-radius: 5px; display: none;
+                align-items: center; justify-content: center; background: transparent; color: var(--g-dim); cursor: pointer; }
+  .mu-row-del:hover { background: var(--g-hover); color: var(--g-text); }
   .mu-row:hover .mu-row-del { display: inline-flex; }
+  .mu-empty { padding: 14px; }
 
-  .mu-empty { padding: 14px 11px; }
+  /* Groups, the scene library's way: the heading folds, its name is the rename field, and a row
+     dragged onto a group files it there. */
+  .mu-grp-h { display: flex; align-items: center; gap: 6px; height: 30px; margin-top: 6px; padding: 0 8px 0 12px;
+              color: var(--g-dim); font: 600 11px/1 system-ui, -apple-system, sans-serif; cursor: pointer; }
+  .mu-grp-h:hover { color: var(--g-text); }
+  .mu-grp-h .car { flex: none; transition: transform .12s; }
+  .mu-grp.shut .car { transform: rotate(-90deg); }
+  .mu-grp-name { min-width: 0; max-width: 60%; padding: 3px 4px; border: 0; border-radius: 4px; background: none;
+                 color: inherit; font: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  input.mu-grp-name { cursor: text; field-sizing: content; }
+  input.mu-grp-name:hover { background: rgba(255, 255, 255, 0.05); }
+  input.mu-grp-name:focus { outline: none; background: var(--g-field); color: var(--g-text); }
+  .mu-grp-h .c { font-weight: 400; }
+  .mu-grp-h .sp { flex: 1; }
+  .mu-grp-btn { width: 22px; height: 22px; flex: none; padding: 0; border: 0; border-radius: 5px; display: inline-flex;
+                align-items: center; justify-content: center; background: transparent; color: var(--g-dim);
+                cursor: pointer; opacity: 0; }
+  .mu-grp-h:hover .mu-grp-btn { opacity: 1; }
+  .mu-grp-btn:hover { background: var(--g-hover); color: var(--g-text); }
+  .mu-grp.drop .mu-grp-h { background: var(--b-tint); color: var(--b-icon); border-radius: 5px; }
+  .mu-grp-empty { padding: 6px 14px 8px; color: var(--g-dim); font: 400 11px/1.3 system-ui, -apple-system, sans-serif; }
+  .mu-grp.shut .mu-grp-b { display: none; }
 
-  .mu-volrow {
-    border-top: 1px solid rgba(255,255,255,0.055);
-    display: grid; grid-template-columns: 16px 1fr;
-    align-items: center; column-gap: 10px;
-    padding: 10px 12px;
-    color: #949aa4;
-  }
-
-  /* ===== THE SOUNDS PILL AND PANEL ===== */
-  #btn-sb-open {
-    display: flex; align-items: center; gap: 8px;
-    height: 30px; padding: 0 11px; margin-left: -1.5px;
-    background: var(--panel-bg);
-    border: var(--panel-border);
-    border-radius: 0 var(--panel-radius) var(--panel-radius) 0;
-    box-shadow: var(--panel-shadow);
-    color: #7f858e;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    cursor: pointer;
-    transition: border-color .12s;
-  }
-  #btn-sb-open:hover { border-color: rgba(255,255,255,0.18); color: #9aa0aa; }
-  /* The lit fill over an opaque base: this pill floats on the map. */
-  #btn-sb-open.sb-pill-on {
-    background: linear-gradient(rgba(70,120,220,0.16), rgba(70,120,220,0.16)), var(--panel-bg);
-    color: #8fb6ff;
-  }
-
-  #sb-panel {
-    width: 438px;
-    display: none; flex-direction: column;
-    background: var(--panel-bg);
-    border: var(--panel-border);
-    border-radius: var(--panel-radius);
-    box-shadow: var(--panel-shadow);
-    overflow: hidden;
-    animation: cpAdvIn .15s ease;
-  }
-  #sb-cols { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 2px; padding: 2px 6px 6px; }
-  .sb-col { display: flex; flex-direction: column; min-width: 0; }
-  .sb-cap {
-    padding: 9px 8px 4px;
-    font: 600 9.5px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0.07em;
-    text-transform: uppercase; color: #6f6f74;
-  }
-  .sb-row {
+  /* ===== SOUNDS: groups of tiles, two to a row ===== */
+  .dk-sbgroups { display: flex; flex-direction: column; gap: 16px; padding: 14px 12px 16px 14px; }
+  .dk-sbg { display: flex; flex-direction: column; gap: 8px; }
+  .dk-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .dk-tile {
     position: relative; overflow: hidden;
-    display: flex; align-items: center; gap: 8px;
-    width: 100%; height: 24px; padding: 0 8px; box-sizing: border-box;
-    border: none; border-radius: 6px; background: transparent;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #b9bec6; text-align: left;
-    cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 6px; min-width: 0;
+    height: 34px; padding: 0 10px; border: 0; border-radius: 6px;
+    background: var(--g-field); color: #d5d8dd; cursor: pointer; text-align: left; user-select: none;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif; transition: background .12s;
   }
-  .sb-row svg { flex: none; color: #7f858e; }
-  .sb-row:hover { background: rgba(255,255,255,0.06); color: #d5d8dd; }
-  .sb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sb-count { flex: none; font: 600 10px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; }
-  .sb-bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: #6ea8ff; }
-  .sb-row-on { background: rgba(70,120,220,0.14); color: #8fb6ff; }
-  .sb-row-on svg { color: #8fb6ff; }
+  .dk-tile svg { flex: none; color: var(--g-dim); }
+  .dk-tile:hover { background: var(--g-hover); color: var(--g-text); }
+  .dk-tile:active { transform: scale(0.98); }
+  /* Two lines when a name needs them: a tile is two to a row, and Russian names run long. */
+  .sb-name { flex: 1; min-width: 0; overflow: hidden; line-height: 1.15;
+             display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .sb-count { flex: none; font: 600 10px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;
+              color: var(--g-text); opacity: .7; }
+  .sb-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--g-text); }
+  .sb-row-on { background: var(--g-pick); color: var(--g-text); }
+  .sb-row-on svg { color: var(--g-text); }
 
-  /* ===== THE DOWNLOAD PANEL ===== */
-  /* #mt-modal's shell under its own id, following #cd-modal's precedent, and 520px rather than
-     its 320: the body is a hundred rows of long video titles, not a question. */
-  #mu-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 502; }
+  /* ===== ADD FROM YOUTUBE (musicDownload.js): the .sm-win shell at the list width ===== */
+  #mu-backdrop { position: fixed; inset: 0; background: var(--veil); z-index: 502; }
   #mu-anchor {
     position: fixed; inset: 0; z-index: 503;
     display: flex; align-items: center; justify-content: center;
     pointer-events: none;
   }
-  #mu-modal {
-    zoom: var(--ui-zoom, 1.2);
-    pointer-events: all;
-    width: min(520px, 92vw);
-    max-height: calc(86vh / var(--ui-zoom, 1.2));
-    display: none; flex-direction: column;
-    background: var(--panel-bg); border: var(--panel-border); border-radius: var(--panel-radius);
-    box-shadow: var(--panel-shadow);
-    overflow: hidden; outline: none;
-    animation: cpAdvIn .15s ease;
-  }
-
-  /* The action bar swaps for the header, exactly as #sm-actionbar does. */
-  #mu-actionbar {
-    flex: none; height: 52px;
-    display: none; align-items: center; gap: 8px;
-    padding: 0 12px 0 10px;
-    background: rgba(70,120,220,0.1);
-    border-bottom: 1px solid rgba(90,140,235,0.3);
-  }
-  #mu-modal.mu-selecting #mu-head      { display: none; }
-  #mu-modal.mu-selecting #mu-actionbar { display: flex; }
-  #mu-selcount {
-    flex: 1;
-    font: 600 13px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .mu-urlrow { padding: 14px 14px 9px; }
-  .mu-urlfield { gap: 9px; }
-  .mu-urlfield input {
-    flex: 1; width: 0; min-width: 0;
-    border: none; background: transparent; color: #d5d8dd;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif;
-  }
-  .mu-urlfield input:focus { outline: none; }
-  .mu-urlfield input::placeholder { color: #7f858e; }
-  .mu-urlfield:focus-within { border-color: rgba(90,140,235,0.6); }
+  #mu-modal { display: none; pointer-events: all; outline: none; }
+  .mu-urlrow { flex: none; overflow: visible; }
+  #mu-status { margin-top: 8px; }
+  #mu-ltb { border-top: 1px solid var(--g-line); }
+  #mu-ltb-end { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
   /* Appears only once a read passes a second, so a fast lookup never flickers one in and out. */
   .mu-spin {
     flex: none; width: 13px; height: 13px; border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.14); border-top-color: #6ea8ff;
+    border: 2px solid var(--g-pick); border-top-color: var(--b-icon);
     animation: muSpin .7s linear infinite;
   }
   @keyframes muSpin { to { transform: rotate(360deg); } }
 
-  #mu-status { padding: 0 14px 12px; }
-
-  .mu-picklist {
-    display: none;
-    border-top: 1px solid rgba(255,255,255,0.055);
-    max-height: 238px; overflow-y: auto;
-  }
-  .mu-picklist::-webkit-scrollbar { width: 6px; }
-  .mu-picklist::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.13); border-radius: 3px; }
-
-  .mu-pick {
-    display: flex; align-items: center; gap: 11px;
-    height: 34px; padding: 0 14px;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd;
-    cursor: pointer;
-  }
-  .mu-pick:hover { background: rgba(255,255,255,0.05); }
-  .mu-pick.checked { background: rgba(255,255,255,0.028); }
+  .mu-picklist { flex: 1; }
+  .mu-pick { cursor: pointer; }
+  .mu-pick:hover { background: var(--g-hover); }
   .mu-pick-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mu-pick-meta {
-    flex: none; font: 400 11px/1 system-ui, -apple-system, sans-serif; color: #6f6f74;
-    font-variant-numeric: tabular-nums;
-  }
+  .mu-pick-meta { flex: none; }
   /* A track already on disk is shown rather than hidden: pasting the same playlist before the
      next session is how the next ten get picked, so which ten are left has to be obvious. */
-  .mu-pick-have { opacity: 0.4; cursor: default; }
+  .mu-pick-have { color: var(--g-dim); cursor: default; }
   .mu-pick-have:hover { background: transparent; }
-
-  /* .sm-cb's colours at 15px instead of 20: a scene card can carry 20, a 34px text row cannot.
-     Scoped to this list, so the scene library keeps its own size. The tick lightens to #dbe8ff
-     because at 7px a mid-blue stroke on #4b7ce0 stops reading as a tick. */
-  .mu-picklist .sm-cb {
-    position: static; opacity: 1;
-    width: 15px; height: 15px; border-radius: 4px;
-  }
-  .mu-pick-have .sm-cb { visibility: hidden; }
-  .mu-havemark { flex: none; width: 15px; display: flex; justify-content: center; color: #7fb37f; }
-
-  #mu-pickfoot {
-    flex: none; display: flex; align-items: center;
-    padding: 11px 14px;
-    border-top: 1px solid rgba(255,255,255,0.055);
-  }
-  .mu-updbtn { width: auto; flex: none; gap: 7px; }
 
   /* The Player window is served from this same file, so the bubble has to be taken out there.
      It sits beside the other player-mode overrides' logic, not in a file of its own. */
-  body.player-mode #music-anchor,
   body.player-mode #mu-anchor,
   body.player-mode #mu-backdrop { display: none !important; }

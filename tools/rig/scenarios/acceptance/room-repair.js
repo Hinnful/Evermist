@@ -277,7 +277,7 @@ module.exports = async function roomRepair(rig) {
             'the room under test was reshaped by a drag that landed nowhere near it');
 
   // ══ G. Effects carries all three repairs, and leaves the Brush and the Door off ══
-  // RED BY DESIGN: written against the fix, never re-proved
+  // RED ON: the Cut out row disabled in _tbOpenList's ops list (shapeMenu.js) — 2026-10-02
   // ABSENT, not greyed: a dead control in prime position on a bar it can do nothing on is what
   // this replaced. The repairs read placeMode, so they act on whichever list is up.
   const onBar = ids => '(() => ({' + ids.map(id =>
@@ -286,10 +286,15 @@ module.exports = async function roomRepair(rig) {
   const REPAIR_BTNS = ['btn-cut', 'btn-op-join', 'btn-op-trim'];
   const FOG_BTNS = ['btn-brush', 'btn-door'];
   await dm.evaluate('setPlaceMode("effects"); 0');
-  const gFx = await dm.evaluate(onBar(REPAIR_BTNS));
-  rig.check(Object.values(gFx).every(v => v === true),
+  // The three stand behind one operations button, so each is on the bar when its list offers it.
+  const listed = () => dm.evaluate('(() => { document.querySelector("[data-chev=ops]").click();' +
+    ' const ids = [...document.querySelectorAll("#tb-dd .dd-it:not(.off)")].map(r => r.dataset.dd);' +
+    ' document.querySelector("[data-chev=ops]").click(); return ids.join(); })()');
+  const gFx = await listed();
+  rig.check(gFx === REPAIR_BTNS.slice(1).concat('btn-cut').join() &&
+            Object.values(await dm.evaluate(onBar(REPAIR_BTNS))).filter(Boolean).length === 1,
             'Split, Merge or Cut out is missing from the bar in Effects mode, so the only way ' +
-            'to repair an effect is to call setShapeOp by hand: ' + JSON.stringify(gFx));
+            'to repair an effect is to call setShapeOp by hand: ' + gFx);
   const gFxOff = await dm.evaluate(onBar(FOG_BTNS));
   rig.check(Object.values(gFxOff).every(v => v === false),
             'the Brush or the Door is on the bar in Effects mode, where there is no fog to ' +
@@ -300,8 +305,8 @@ module.exports = async function roomRepair(rig) {
             'a Merge armed in Effects was disarmed by the switch to Rooms, so the DM has to ' +
             're-arm it every time they change list');
   await dm.evaluate('setShapeOp("new"); 0');
-  const gRooms = await dm.evaluate(onBar(REPAIR_BTNS.concat(FOG_BTNS)));
-  rig.check(Object.values(gRooms).every(v => v === true),
+  const gRooms = await dm.evaluate(onBar(FOG_BTNS));
+  rig.check(Object.values(gRooms).every(v => v === true) && await listed() === gFx,
             'a tool went missing from the bar in Rooms mode: ' + JSON.stringify(gRooms));
 
   // ══ H. Every one of those reaches the TV ══
