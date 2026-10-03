@@ -34,6 +34,11 @@ describe('the release branch rules', () => {
     }), []);
   });
 
+  it('lets a bump already on main republish with a fix that ships nothing', () => {
+    assert.deepEqual(run({ branch: 'release/3.11.0', bump: true, landed: true, subject: '3.11.0 - Rooms fade in',
+      changed: ['.github/workflows/release.yml'] }), []);
+  });
+
   it('refuses a bump that touches only its own files', () => {
     const out = run({ branch: 'release/3.11.0', bump: true, subject: '3.11.0 - Nothing',
       changed: ['package.json', 'package-lock.json', 'src/ui/changelogData.js', 'docs/PRODUCT.md'] });

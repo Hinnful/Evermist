@@ -195,7 +195,12 @@ jobs:
           merge-multiple: true
 
       - name: What is going up
-        run: ls -la incoming
+        run: |
+          ls -la incoming
+          if [ -n "$(find incoming -mindepth 1 -type d)" ]; then
+            echo "::error::incoming/ holds a folder, and a release upload takes files only"
+            exit 1
+          fi
 
       # ⚠ softprops, NOT electron-builder --publish: electron-builder only uploads to DRAFT
       # releases and silently skips otherwise.
