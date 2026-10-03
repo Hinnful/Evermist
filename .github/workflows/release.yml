@@ -191,6 +191,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: incoming
+          pattern: dist-*
           merge-multiple: true
 
       - name: What is going up
