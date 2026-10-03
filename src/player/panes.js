@@ -60,6 +60,8 @@ window.paneView = {
   get playerIsFullscreen() { return playerIsFullscreen; },
   get minimapView()       { return minimapView; },
   get gridCalArmed()      { return gridCalArmed; },
+  get lightsHidden()      { return lightsHidden; },
+  get planLights()        { return planLightCount(); },
   get gridConfig()        { return captureGridConfig(); },
   get fogSettings()       {
     return { pickedHex: fogPickedHex, tintAlpha: FOG_TINT_ALPHA,
@@ -74,6 +76,7 @@ window.paneView = {
 function paneAdoptSelectedSettings() {
   const s = paneScope();
   if (s.gridConfig) applyGridConfig(s.gridConfig);
+  refreshLightsControlUI();
   const f = s.fogSettings;
   if (!f || !f.anim) return;
   // ⚠ THE ADVANCED PANEL IS AIMED AT ONE COLUMN: left open, the mode row reads "advanced"

@@ -28,7 +28,7 @@ function refreshShapeButton() {
   const items = shapeMenuItems();
   const want  = items.indexOf(shape) >= 0
     ? shape
-    : (placeMode === 'effects' ? effectsShape : roomsShape);
+    : modeShape(placeMode);
   const src = document.getElementById('btn-' + want);
   const box = btn.querySelector('.tb-shape-glyph');
   if (src && box && items.indexOf(want) >= 0) box.innerHTML = src.innerHTML;
@@ -50,7 +50,7 @@ function refreshOpsButton() {
 function _tbPickedRow(kind) {
   if (kind === 'ops') return _opsPick;
   const items = shapeMenuItems();
-  return 'btn-' + (items.indexOf(shape) >= 0 ? shape : (placeMode === 'effects' ? effectsShape : roomsShape));
+  return 'btn-' + (items.indexOf(shape) >= 0 ? shape : modeShape(placeMode));
 }
 
 function _tbCloseList() {
@@ -108,7 +108,7 @@ function initShapeMenu() {
   btn.onclick = () => {
     const items = shapeMenuItems();
     if (items.indexOf(shape) >= 0) return;   // already on the shape showing
-    const want = placeMode === 'effects' ? effectsShape : roomsShape;
+    const want = modeShape(placeMode);
     setShape(items.indexOf(want) >= 0 ? want : 'poly');
   };
   SHAPE_FAMILY.forEach(s => {

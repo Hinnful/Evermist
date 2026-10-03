@@ -2,10 +2,23 @@
 // shapeCommit.js — what a drawn shape becomes: a room, an effect, or a repair of one that is
 // already there. Join, Trim and Cut all land here, and so does every refusal.
 
-// A ROOM AND AN EFFECT ARE THE SAME OBJECT, carrying a fog `mode` or a `material`. Two arrays
-// only because polygons order IS fog compositing precedence. The placement mode picks the array,
-// and setPlaceMode() clears the selection, so an id here always resolves in one list.
-function activeShapeList() { return placeMode === 'effects' ? effects : polygons; }
+// A ROOM, AN EFFECT AND A LIGHT ARE THE SAME OBJECT, carrying a fog `mode`, a `material` or a
+// `light` flag. Separate arrays because polygons order IS fog compositing precedence. The
+// placement mode picks the list, and setPlaceMode() clears the selection, so an id here always
+// resolves in one list. Only a room's change touches the fog. Effects mode holds two arrays as one
+// list, the lights under the fires so a click lands on a fire first, and a lit area is often large:
+// ids come from one counter, and a write routes each shape home by its `light` flag. ⚠ THE EFFECTS LIST IS A NEW ARRAY EACH CALL, so a write goes through
+// setShapeListNamed or pushShapeTo, never into what shapeListNamed returned.
+function shapeListNamed(name) { return name === 'effects' ? lightShapes.concat(effects) : polygons; }
+function activeShapeList() { return shapeListNamed(placeMode); }
+function setShapeListNamed(name, list) {
+  if (name === 'effects') { effects = list.filter(s => !s.light); lightShapes = list.filter(s => s.light); } else polygons = list;
+}
+function pushShapeTo(name, shape) {
+  if (name === 'effects') (shape.light ? lightShapes : effects).push(shape); else polygons.push(shape);
+}
+function takeShapeId(name) { return name === 'effects' ? nextEffectId++ : nextPolygonId++; }
+function shapeListChanged(name) { if (name === 'effects') { effectsChanged(); lightsChanged(); } }
 
 function findActiveShape() {
   return selectedPolygonId == null ? null
@@ -15,15 +28,15 @@ function findActiveShape() {
 // Live feedback mid-drag. A room's geometry IS the fog stencil, so it rebuilds; an effect only
 // has to tell its own render path, and must never touch the fog.
 function shapeGeometryChanged() {
-  if (placeMode === 'effects') { effectsChanged(); return; }
+  if (placeMode !== 'rooms') { shapeListChanged(placeMode); return; }
   rebuildFogFromPolygons();
 }
 
 // THE ONE RELEASE PATH for a room or effect drag. It does NOT stop a running crossfade:
 // startFogTransition() leaves the live fade going and rebuildFogEffect() re-targets it.
 function commitShapeDrag() {
-  if (placeMode === 'effects') {
-    effectsChanged();
+  if (placeMode !== 'rooms') {
+    shapeListChanged(placeMode);
     scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog reveal does
     scheduleAutoSave();
     scheduleRender();
@@ -39,7 +52,7 @@ function commitShapeDrag() {
 // After an edit that changed geometry but NOT a fog mode. No crossfade: there is no mode to fade
 // towards, and one would make a corner edit flash the whole map.
 function persistShapeEdit() {
-  if (placeMode === 'effects') {
+  if (placeMode !== 'rooms') {
     scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog reveal does
     scheduleAutoSave();
     return;
@@ -53,7 +66,7 @@ function persistShapeEdit() {
 function commitDrawnShape(verts) {
   let shape;
   if (placeMode === 'effects') {
-    shape = addEffect(verts);
+    shape = currentMaterial === 'light' ? addLightShape(verts) : addEffect(verts);
   } else {
     pushUndo();
     fogModifiedThisStroke = true;
@@ -72,17 +85,18 @@ function commitDrawnShape(verts) {
 // ⚠ THE KERNEL'S REFUSALS NAME A ROOM and the same gesture repairs an effect, so the noun is
 // swapped here; roomOps.js stays pure and a new reason naming a room inherits it for free.
 function refuseShapeOp(reason) {
-  const msg = placeMode === 'effects' ? reason.split('room').join('effect') : reason;
+  const msg = placeMode === 'rooms' ? reason : reason.split('room').join(currentMaterial === 'light' ? 'light' : 'effect');
   messageDialog({ title: 'Nothing changed', message: msg });
   return false;
 }
 
 // A piece with no shape of its own: the parent's fields, a fresh id, a plain name, no notes.
 function newShapeFromPiece(base, piece) {
-  const id = placeMode === 'effects' ? nextEffectId++ : nextPolygonId++;
+  const id = takeShapeId(placeMode);
   const s = { ...base, id };
-  s.name = t((base.material ? base.material.charAt(0).toUpperCase() + base.material.slice(1)
-                            : 'Room') + ' {n}', { n: id });
+  if (base.light) { delete s.name; } else {
+    s.name = t((base.material ? base.material.charAt(0).toUpperCase() + base.material.slice(1) : 'Room') + ' {n}', { n: id });
+  }
   applyPieceToShape(s, piece);
   delete s.desc;
   return s;
@@ -116,7 +130,7 @@ function applyShapePlan(plan, mode) {
     for (let i = 1; i < parts.length; i++) extras.push(newShapeFromPiece(base, parts[i]));
   }
   const kept = activeShapeList().filter(s => !drop.has(s.id)).concat(extras);
-  if (placeMode === 'effects') effects = kept; else polygons = kept;
+  setShapeListNamed(placeMode, kept);
   if (drop.has(selectedPolygonId)) clearShapeSelection();
   if (lostDoors) reportLostDoors(lostDoors);
 }
@@ -142,8 +156,8 @@ function applyPieceToShape(shape, piece) {
 // answers "reveal" and a Trim adding shroud fades at the wrong speed. null asks for no crossfade,
 // which a Cut wants: its pieces paint exactly the fog their parent did.
 function commitShapeOpFog(toShroud) {
-  if (placeMode === 'effects') {
-    effectsChanged();
+  if (placeMode !== 'rooms') {
+    shapeListChanged(placeMode);
     scheduleAutoSync();
     scheduleAutoSave();
     scheduleRender();
@@ -159,11 +173,13 @@ function commitShapeOpFog(toShroud) {
 
 // The drawn shape combines with every shape it lands on, and makes none of its own.
 function commitShapeOp(verts) {
+  // Effects mode holds fires and lights: a repair acts on the kind being drawn.
   const hits = activeShapeList().filter(s => s.vertices && s.vertices.length >= 3 &&
+                                             (placeMode === 'rooms' || !!s.light === (currentMaterial === 'light')) &&
                                              shapesOverlap(s, verts));
   if (!hits.length) return false;
   const minArea = roomOpMinArea(gridSize);
-  const rooms = placeMode !== 'effects';
+  const rooms = placeMode === 'rooms';
   let plan, mode = null, toShroud;
 
   if (shapeOp === 'join') {

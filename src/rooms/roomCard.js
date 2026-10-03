@@ -293,7 +293,7 @@ function refreshRoomPanel() {
 
   const poly = _rpFindPoly(selectedPolygonId);
   const linked = paneSelectedRoom();
-  const room = linked || (poly && !poly.material ? poly : null);
+  const room = linked || (poly && !poly.material && !poly.light ? poly : null);
   if (isPane) paneReportRoom(room);
   if (roomTabKey(room) !== _rpTrioPid) { _rpTrioPid = roomTabKey(room); updateContextPanels(); }
 
@@ -301,7 +301,7 @@ function refreshRoomPanel() {
   _rpSyncRadiusField('fx-radius-field', 'fx-radius-num', poly && poly.material ? poly : null);
   dockSyncRoom(roomTabKey(room));
 
-  // ⚠ AN EFFECT GETS NO TAB: it has no name, notes or module text. It leaves by the SAME path as
+  // ⚠ AN EFFECT OR A LIGHT GETS NO TAB: it has no name, notes or module text. It leaves by the SAME path as
   // a deselect, or the tab can go without committing what was typed into a real room.
   if (!room) {
     if (_rpFieldPid != null) { _rpCommitFields(); _rpFieldPid = null; }

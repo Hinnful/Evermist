@@ -65,6 +65,7 @@ function pumpDirtyRender() {
   // Map effects animate continuously, so they ride the ticker rather than the dirty flags.
   // pumpEffects returns on a size check when nothing is placed.
   pumpEffects();
+  pumpLights();
   if (renderScheduled) doRender(); // doRender clears renderScheduled
 }
 
@@ -211,7 +212,7 @@ function drawCursor(screenX, screenY) {
   // BOTH lists are outlined, so the DM sees a fire while drawing the room around it, but only the
   // list the placement mode names can be SELECTED. The other is DIMMED, so it stops offering
   // handles it would refuse.
-  const roomsLive = placeMode !== 'effects';
+  const roomsLive = placeMode === 'rooms', fxLive = placeMode === 'effects';
   for (const poly of polygons) {
     const isSel = roomsLive && poly.id === selectedPolygonId;
     drawPolyOutline(poly, isSel, isSel ? selectedVertexIndex : -1, !roomsLive);
@@ -219,19 +220,28 @@ function drawCursor(screenX, screenY) {
   // Player-side guard: effects DO cross to the Player, and its view carries no editing chrome.
   if (!isPlayer) {
     for (const e of effects) {
-      const isSel = !roomsLive && e.id === selectedPolygonId;
-      drawPolyOutline(e, isSel, isSel ? selectedVertexIndex : -1, roomsLive);
+      const isSel = fxLive && e.id === selectedPolygonId;
+      drawPolyOutline(e, isSel, isSel ? selectedVertexIndex : -1, !fxLive);
+    }
+  }
+  // The editing outlines are Effects mode's alone, so a room whose light has the same shape is
+  // never mistaken for it.
+  if (!isPlayer && fxLive && !lightsHidden) {
+    for (const l of lightShapes) {
+      // Only the picked light is drawn at full strength; the rest wait, dimmed.
+      const isSel = l.id === selectedPolygonId;
+      drawPolyOutline(l, isSel, isSel ? selectedVertexIndex : -1, !isSel);
     }
   }
   // The bounding box, above every outline and below the labels. It draws only where there is one
   // to draw, so an edit-mode selection reaches it and paints nothing.
   if (!isPlayer && selectedPolygonId != null) {
-    const sel = (roomsLive ? polygons : effects).find(s => s.id === selectedPolygonId);
+    const sel = activeShapeList().find(s => s.id === selectedPolygonId);
     if (sel) drawShapeBox(sel);
   }
   // Editing chrome, never sent to the Player; the notch itself is fog and reads the same on both
   // screens. Effects mode has no doors to show.
-  if (!isPlayer && placeMode !== 'effects') drawDoorHandles(shape === 'door');
+  if (!isPlayer && roomsLive) drawDoorHandles(shape === 'door');
   // Second pass, so labels paint above every outline rather than under the next room's.
   // roomPanel.js loads after this file, hence the guards.
   if (typeof drawRoomLabels === 'function') drawRoomLabels();
@@ -254,7 +264,7 @@ function drawCursor(screenX, screenY) {
   // drag lands is a toolbar button the DM is not looking at.
   const drawingEffect = placeMode === 'effects' &&
                        (shape === 'rect' || shape === 'circle' || shape === 'cone');
-  const color = drawingEffect ? EFFECT_EDGE_COLOR
+  const color = drawingEffect ? effectPreviewEdge()
                               : (POLY_EDGE_COLORS[tool] || POLY_EDGE_COLORS.shroud);
   cursorCtx.save();
   cursorCtx.strokeStyle = color;

@@ -57,15 +57,19 @@
          the tall narrow flame on the Rooms/Effects switch below - both go blue at once
          whenever Effects mode is on, so they must not be the same shape. An angular crest
          read as a mountain range and three thin licks read as heat haze; neither shipped.
-         ⚠ FIRE IS THE ONLY MATERIAL, and a button here is not enough to add a second: the
+         ⚠ FIRE IS THE ONLY SHADER MATERIAL, and a button here is not enough to add a second: the
          shader's colour ramp is hardcoded orange, so a second material would paint orange fire
-         whatever it claimed to be. See the warning on EFFECT_MATERIALS. toolbar.js reads
-         data-material and needs no edit once that is fixed.
+         whatever it claimed to be. See the warning on EFFECT_MATERIALS. Light is not a material of
+         that kind: it is not in EFFECT_MATERIALS, and the commit paths send it to the lights list
+         (lights.js) instead of the effects array.
          The radius field is here because an effect has no card to carry it. -->
     <div class="tb-group" id="ctx-effects">
       <div class="tb-group" id="material-row">
         <button class="mode-btn mat-btn active" data-material="fire" title="Fire - burning ground">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 18.6c-2.6-1.5-3.2-4.4-1.4-6.4.3 1 .9 1.6 1.7 1.9-1-2.6.3-5.2 3-6.9-.5 2.4.2 3.7 1.7 5 1.2 1 2 2 2 3.4a4.6 4.6 0 01-2.6 3"/><path d="M3.5 20.6h17"/></svg>
+        </button>
+        <button class="mode-btn mat-btn" data-material="light" title="Light - a lit area, not a fire">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.4"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4L18 18M18 6l-1.6 1.6M7.6 16.4L6 18"/></svg>
         </button>
       </div>
       <div class="cp-chip cp-chip-pre rp-radius" id="fx-radius-field">
@@ -178,7 +182,7 @@
       <button id="btn-place-rooms" class="mode-btn active" title="Draw rooms">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
       </button>
-      <button id="btn-place-effects" class="mode-btn" title="Draw effects - burning ground">
+      <button id="btn-place-effects" class="mode-btn" title="Draw effects - burning ground and light">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 3c.6 3-1.2 4.3-2.7 5.8C8.1 10.5 7 12 7 14.2A5 5 0 0017 14.4c0-2.6-1.6-4.2-2.6-5.6-.5.9-1.2 1.4-2 1.7.9-2.6.6-5.4.1-7.5z"/></svg>
       </button>
     </div>
@@ -232,6 +236,28 @@
       </div>
       <div class="dk-scroll">
 
+        <div class="cp-group" id="cp-pane-player">
+          <div class="dk-sh"><span class="cp-label">Player</span><span id="display-info-readout" class="cp-hint"></span></div>
+          <div class="dk-blk"><span class="dk-sub">Window</span>
+            <div class="dk-r">
+              <button id="cp-player-golive" class="cp-btn cp-btn-live" title="Open the Player window">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3.2" width="10" height="7" rx="1.2"/><line x1="7" y1="10.2" x2="7" y2="11.8"/><line x1="4.8" y1="11.8" x2="9.2" y2="11.8"/></svg>
+                <span id="cp-golive-lbl">Open Window</span>
+              </button>
+              <button class="cp-adv-close" id="cp-player-fullscreen" title="Fullscreen the Player window"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5 V2 H5.5"/><path d="M8.5 2 H12 V5.5"/><path d="M12 8.5 V12 H8.5"/><path d="M5.5 12 H2 V8.5"/></svg></button>
+            </div>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">Updates</span>
+            <div class="dk-r">
+              <div class="cp-tabs">
+                <button class="cp-segtab" data-sync="auto" title="Send fog changes as you paint them">Auto</button>
+                <button class="cp-segtab" data-sync="manual" title="Hold changes until you press Send">Manual</button>
+              </div>
+              <button class="cp-adv-close" id="cp-player-send" title="Send to the Player now"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="3.5,2.3 11.8,7 3.5,11.7"/></svg></button>
+            </div>
+          </div>
+        </div>
+
         <div class="cp-group" id="cp-sec-fog">
           <div class="dk-sh"><span class="cp-label">Fog</span>
             <button id="cp-fog-reset" class="cp-adv-close" title="Reset fog settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
@@ -272,6 +298,19 @@
           </div>
         </div>
 
+        <div class="cp-group" id="cp-sec-lights">
+          <div class="dk-sh"><span class="cp-label">Lights</span>
+            <button class="dk-eye" id="cp-lights-eye" title="Lights"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">Sources</span>
+            <div class="dk-r">
+              <button class="dk-src" id="cp-src-lights" disabled title="Load a floor plan (.dd2vtt) and draw its lights"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"><path d="M3 1.5h5.5L11 4v8.5H3z"/><path d="M8.5 1.5V4H11"/></svg></span><span class="nm">Floor plan</span></button>
+              <input type="file" id="cp-lights-plan-input" accept=".dd2vtt" hidden>
+              <button id="btn-lights-redraw" class="cp-adv-close" title="Redraw the lights from the floor plan" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+            </div>
+          </div>
+        </div>
+
         <div class="cp-group" id="cp-sec-grid">
           <div class="dk-sh"><span class="cp-label">Grid</span>
             <div class="cp-row">
@@ -297,28 +336,6 @@
               <div class="cp-field dk-colour" id="cp-grid-field" data-dock-pop="cp-pop-grid" title="Grid colour and opacity">
                 <span class="cp-swatch"></span><span class="cp-hash">#</span><span class="cp-hex"></span><span class="cp-fdiv"></span><span class="cp-alphanum"></span><span class="cp-pct">%</span>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="cp-group" id="cp-pane-player">
-          <div class="dk-sh"><span class="cp-label">Player</span><span id="display-info-readout" class="cp-hint"></span></div>
-          <div class="dk-blk"><span class="dk-sub">Window</span>
-            <div class="dk-r">
-              <button id="cp-player-golive" class="cp-btn cp-btn-live" title="Open the Player window">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3.2" width="10" height="7" rx="1.2"/><line x1="7" y1="10.2" x2="7" y2="11.8"/><line x1="4.8" y1="11.8" x2="9.2" y2="11.8"/></svg>
-                <span id="cp-golive-lbl">Open Window</span>
-              </button>
-              <button class="cp-adv-close" id="cp-player-fullscreen" title="Fullscreen the Player window"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5 V2 H5.5"/><path d="M8.5 2 H12 V5.5"/><path d="M12 8.5 V12 H8.5"/><path d="M5.5 12 H2 V8.5"/></svg></button>
-            </div>
-          </div>
-          <div class="dk-blk"><span class="dk-sub">Updates</span>
-            <div class="dk-r">
-              <div class="cp-tabs">
-                <button class="cp-segtab" data-sync="auto" title="Send fog changes as you paint them">Auto</button>
-                <button class="cp-segtab" data-sync="manual" title="Hold changes until you press Send">Manual</button>
-              </div>
-              <button class="cp-adv-close" id="cp-player-send" title="Send to the Player now"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="3.5,2.3 11.8,7 3.5,11.7"/></svg></button>
             </div>
           </div>
         </div>
@@ -817,6 +834,7 @@
 <script src="src/shapes/doorGeometry.js"></script>
 <script src="src/shapes/presetGeometry.js"></script>
 <script src="src/rooms/vttPlan.js"></script>
+<script src="src/fog/lightGeometry.js"></script>
 <script src="src/fog/fogClouds.js"></script>
 <script src="src/fog/fog.js"></script>
 <script src="src/fog/fogAnim.js"></script>
@@ -859,6 +877,7 @@
 <script src="src/render/effectMaterials.js"></script>
 <script src="src/render/effectShader.js"></script>
 <script src="src/render/effects.js"></script>
+<script src="src/render/lights.js"></script>
 <script src="src/scenes/dragDrop.js"></script>
 <script src="src/ui/toolbar.js"></script>
 <script src="src/shapes/shapeMenu.js"></script>

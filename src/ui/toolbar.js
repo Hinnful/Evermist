@@ -12,7 +12,7 @@ function setPaintDirection(dir) {
 // The fog trio means two things. With Select in hand and a room selected it is that room's fog;
 // with a drawing tool or the Brush in hand it is what gets drawn next.
 function fogTrioRoom() {
-  if (shape !== 'select' || placeMode === 'effects') return null;
+  if (shape !== 'select' || placeMode !== 'rooms') return null;
   const linked = paneSelectedRoom();
   if (linked || selectedPolygonId == null) return linked;
   return polygons.find(p => p.id === selectedPolygonId) || null;
@@ -78,7 +78,7 @@ function setPlaceMode(m) {
     activePolygon = null;
   }
   placeMode = m;
-  if (m !== 'effects') presetArmed = null;   // a size is an effect's; Rooms draws by hand
+  if (m !== 'effects') presetArmed = null;   // a size is an effect's or a light's; Rooms draws by hand
   ['rooms', 'effects'].forEach(k => {
     const el = document.getElementById('btn-place-' + k);
     if (el) el.classList.toggle('active', k === m);
@@ -101,6 +101,10 @@ const MODE_SHAPES = {
   rooms:   ['select', 'poly', 'rect', 'circle', 'brush', 'door', 'cut'],
   effects: ['select', 'poly', 'rect', 'circle', 'cone', 'line', 'ring', 'cut'],
 };
+
+// The shape each mode last drew with, so a mode switch puts the DM back where they were.
+function modeShape(m) { return m === 'effects' ? effectsShape : roomsShape; }
+function setModeShape(m, s) { if (m === 'effects') effectsShape = s; else roomsShape = s; }
 function shapeInMode(s, m) { return MODE_SHAPES[m].indexOf(s) >= 0; }
 
 // Rooms-only buttons. The brush needs fog to paint and a door needs a wall, so neither has
@@ -108,14 +112,9 @@ function shapeInMode(s, m) { return MODE_SHAPES[m].indexOf(s) >= 0; }
 const ROOMS_ONLY = ['btn-brush', 'btn-door'];
 function refreshModeTools() {
   const fx = placeMode === 'effects';
-  ROOMS_ONLY.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = fx ? 'none' : '';
-  });
-  ['btn-cone', 'btn-line', 'btn-ring'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = fx ? '' : 'none';
-  });
+  const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+  ROOMS_ONLY.forEach(id => show(id, placeMode === 'rooms'));
+  ['btn-cone', 'btn-line', 'btn-ring'].forEach(id => show(id, fx));
   refreshShapeButton();
 }
 
@@ -134,7 +133,7 @@ function initMaterialPicker() {
 }
 
 function setMaterial(m) {
-  if (isPlayer || !EFFECT_MATERIALS[m]) return;
+  if (isPlayer || (m !== 'light' && !EFFECT_MATERIALS[m])) return;
   currentMaterial = m;
   if (paneForward('material', { material: m })) {
     document.querySelectorAll('#material-row [data-material]').forEach(b =>
@@ -144,7 +143,7 @@ function setMaterial(m) {
   document.querySelectorAll('#material-row [data-material]').forEach(b =>
     b.classList.toggle('active', b.dataset.material === m));
 
-  if (placeMode !== 'effects' || selectedPolygonId == null) return;
+  if (m === 'light' || placeMode !== 'effects' || selectedPolygonId == null) return;
   const e = effects.find(x => x.id === selectedPolygonId);
   if (!e || e.material === m) return;
   pushUndo();
@@ -216,6 +215,13 @@ function initToolbar() {
   const planInput = document.getElementById('cp-plan-input');
   document.getElementById('cp-src-plan').onclick = () => planInput.click();
   planInput.onchange = () => { loadPlanFile(planInput.files[0]); planInput.value = ''; };
+  const lightsInput = document.getElementById('cp-lights-plan-input');
+  document.getElementById('cp-src-lights').onclick = () => lightsInput.click();
+  lightsInput.onchange = () => {
+    const f = lightsInput.files[0];
+    lightsInput.value = '';
+    if (!paneForward('lights-file', { file: f })) loadPlanLights(f);
+  };
 
   const gridBtn       = document.getElementById('btn-grid');
   const gridSizeInput = document.getElementById('grid-size');

@@ -33,7 +33,7 @@ the bottom-left corner, and **the dock** on the right edge.
 
 The dock is an icon rail with one pane open beside it. The rail opens the scene library and the
 Bestiary as centred windows, and the fight table as a free window. Its panes are **Scene
-control** (fog, rooms, grid, the Player window, My seat), **Room** (the selected room), **Music**,
+control** (the Player window, fog, rooms, lights, grid, My seat), **Room** (the selected room), **Music**,
 **Sounds** and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
 dock sits over the map rather than beside it, so opening a pane never moves the map or changes
 what the TV is sent. Its inner edge drags to resize it, and it gives way so the toolbar stays
@@ -274,6 +274,43 @@ Ctrl+middle-click on the DM map sends a map point to the TV, and both windows dr
 mark there for about two and a half seconds, sized to the window and not the map. A plain middle
 drag still pans. In two-map mode a column sends to its own half. The ping rides the PixiJS ticker
 only while one is showing, and nothing of it is stored.
+
+### Lights
+
+A light is a polygon, the same record as a room or an effect, in a list of its own. Lights are edited
+in Effects mode beside the fires, as one list with the lights under the fires, so a click on a small
+fire lands on it and not on the large lit area beneath. Both take their ids from one counter.
+Every tool a room has works on a light: draw, select, move, reshape, round corners, rotate, scale,
+Merge, Cut out, Split, copy and paste. Light is an effect type, a material beside Fire: pick a shape, pick the Light material, place it,
+by hand or with the size presets. A repair acts on the kind being drawn,
+fires or lights, never both. The Lights eye in Scene control hides them all; a single light is
+deleted, not switched off.
+
+A floor plan seeds lights once. The Lights row in Scene control loads a .dd2vtt as the Rooms row
+does, and the icon beside it redraws the lights from the file. Each light in the file becomes one
+polygon, by where it sits. A light inside a room fills the room up to the walls or its radius: the whole room when the radius reaches every corner, the part the radius
+covers when it does not. The lights of one room become one polygon when they share 30% of the
+smaller one, or fill 90% of the room together, so a table of candles is not fifty polygons. A light
+in no room keeps its native radius and never joins another, so a lone torch stays lonely; only a
+shape wholly inside another is dropped. An outdoor light is stopped by the rooms' walls: its circle
+less every room, so a torch outside a house never lights the inside. Walls, doors and windows are not read, so
+light stays in its own room and a doorway never lets it through; the DM drags the polygon through a
+door by hand. After seeding the polygons are the DM's, and nothing follows the plan. A daytime map
+has no lights in its file and is drawn by hand.
+
+The TV draws a light only where the fog is fully cleared: a shrouded or half-shrouded room shows no
+light, though its polygon stays, and a reveal brings the light with it. Both windows draw the union
+of the lights on the effects layer, under the fog, as light pooled along the inside of each edge and
+fading inward: a wide dim glow under a tight bright one, with no fill and no line. It is drawn at 60%
+strength on the TV and the idle DM map, and at full strength on the DM map while a light is in hand.
+In Effects mode only the picked light's outline is drawn at full strength. The DM sends the Player
+the outlines as lists of points, so the TV holds no plan. The texture is rebuilt only when the
+lights, the fog, the map, the grid cell or the strength change. Every change pushes an undo step,
+rides Auto/Manual sync and saves with the scene.
+
+The scene holds `lightShapes` and `lightsHidden`, beside `effects` and never in it, because an older
+release maps `effects` through a function that would draw a light as fire. A scene without them has
+no lights. In two-map mode each column holds and sends its own scene's lights.
 
 ## Two maps at once
 

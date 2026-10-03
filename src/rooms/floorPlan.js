@@ -261,4 +261,5 @@ function refreshFloorPlanUI() {
   btn.disabled = !hasFloorPlan();
   document.getElementById('cp-src-plan').disabled = !currentScene;
   refreshRoomsControlUI();
+  refreshLightsControlUI();
 }

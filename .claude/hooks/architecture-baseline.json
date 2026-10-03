@@ -28,7 +28,9 @@
     "missing:dock.js",
     "missing:roomlink.js",
     "missing:musicgroups.js",
-    "missing:icons.js"
+    "missing:icons.js",
+    "missing:lightgeometry.js",
+    "missing:lights.js"
   ],
   "warnedBytes": 47203
 }

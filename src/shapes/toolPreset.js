@@ -98,8 +98,9 @@ function toolPresetFinish(pos, e) {
   const r = presetRings(p.kind, p.s, p.w, origin, _presetAngle(origin, pos, axisLock || e.shiftKey), presetPxPerFt());
   let placed = null;
   if (shapeOp === 'new') {
-    placed = addEffect(r.vertices);
-    if (r.holes) { setShapeHoles(placed, r.holes); effectsChanged(); }
+    // The Light material places a light where any other places a fire.
+    placed = currentMaterial === 'light' ? addLightShape(r.vertices) : addEffect(r.vertices);
+    if (r.holes) { setShapeHoles(placed, r.holes); shapeListChanged('effects'); }
   } else {
     commitClosedShape(r.vertices);
   }
@@ -127,9 +128,9 @@ function drawPresetPreview(sx, sy) {
     ring.forEach((v, i) => { const s = toS(v); reach = Math.max(reach, (s.x - o.x) * ux + (s.y - o.y) * uy); if (i) c.lineTo(s.x, s.y); else c.moveTo(s.x, s.y); });
     c.closePath();
   }
-  c.fillStyle = `rgba(${EFFECT_RGB},0.09)`;
+  c.fillStyle = `rgba(${effectPreviewRgb()},0.09)`;
   c.fill('evenodd');
-  c.strokeStyle = EFFECT_EDGE_COLOR;
+  c.strokeStyle = effectPreviewEdge();
   c.lineWidth = 1.5;
   c.setLineDash([4, 3]);
   c.stroke();

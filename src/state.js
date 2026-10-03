@@ -130,6 +130,7 @@ const POLY_LOOK = {
 // The list the placement mode is NOT showing: wash halves, soft edge drops, line falls to a hair.
 const POLY_LOOK_DIM = { fillMul: 0.5, lineA: 0.12 };
 const EFFECT_RGB  = '255,138,61';
+const LIGHT_OUTLINE_RGB = '255,217,138';
 const EFFECT_LOOK = { fillA: 0.16, edgeA: 0.28, edgeW: 6, lineA: 0.50, lineW: 1.3 };
 // A held shape's line and soft edge go gold no matter its fog state; its box stays faint.
 const HELD_RGB   = '255,208,96';
@@ -204,7 +205,7 @@ let nextEffectId = 1;
 
 // Which array a newly drawn rectangle or circle lands in: 'rooms' | 'effects'. A room and an
 // effect are the same gesture with a different payload, so the shape tools are shared and only
-// the destination switches. Runtime-only, like snapToGrid.
+// the destination switches. Runtime-only, like snapToGrid. Effects mode also holds the lights.
 let placeMode = 'rooms';
 
 // The shape each mode was last drawing with, so a mode switch off an unavailable tool puts the
@@ -218,12 +219,22 @@ let effectsShape = 'poly';
 let shapeOp = 'new';
 
 // What a newly drawn effect is made of, and what the material picker in the context row has lit.
-// A key into EFFECT_MATERIALS (effects.js). Runtime-only, like placeMode.
+// A key into EFFECT_MATERIALS (effects.js), or 'light', which draws a light instead of an effect.
+// Runtime-only, like placeMode.
 let currentMaterial = 'fire';
 
 // The effect preset the next click places: { kind, s, w } in feet, or null when the shape tool
 // draws by hand. Runtime-only, like placeMode; toolPreset.js owns the value and the highlight.
 let presetArmed = null;
+
+// ─── Lights (render/lights.js) ───────────────────────────────────────────────
+// A light is a polygon like a room or an effect, in a list of its own: {id, vertices, light: true,
+// off?}. It is edited in Effects mode beside the fires and takes its id from nextEffectId, so a pick
+// is unambiguous. ⚠ NEVER INSIDE `effects` OR `polygons`: an older release maps `effects` through
+// copyShapeRings, which would draw a light as fire, and polygon order is fog precedence.
+let lightShapes = [];
+let lightsHidden = false;    // the Scene control eye: every light in the scene
+let lightPolys = [];         // what is drawn: per light, its rings as flat [x, y, …] lists
 
 // ─── Auto-Sync ───────────────────────────────────────────────────────────────
 let autoSync = false;

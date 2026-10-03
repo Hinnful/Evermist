@@ -183,6 +183,7 @@ async function switchScene(id, _isRecovery = false) {
   clearUndo();
   playerMapSent = false;
   currentScene = scene;
+  loadSceneLights(scene);   // after currentScene: the plan's lights come from it
   // ⚠ A column must not write this: the parent restores from it at startup, so column B's map
   // would be the one that came back.
   if (!isPane) localStorage.setItem('evermist-current-scene-id', id);
@@ -222,4 +223,4 @@ async function switchScene(id, _isRecovery = false) {
     onSwitchSceneError(prevId, _isRecovery, err); // scenes.js
   }
 }
-
+

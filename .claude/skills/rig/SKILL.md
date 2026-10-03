@@ -22,7 +22,10 @@ reach for the rig only when code cannot answer the question. Two cases qualify:
 **On the DM's machine, do not run any set while building, and that includes the end of a
 chunk.** Not `regression`, not `smoke`, not one scenario. A finished chunk goes to the DM to look
 at, and `/commit` is where it gets proven. Write the scenario during the build and run nothing.
-The DM can ask for a run; that is the only other one.
+The DM can ask for a run; that is the only other one. **"Use the rig" is one of two things.** The
+DM is on their phone and does not mind what runs, or they want a look at something only the app can
+show, in which case it is a single run to see what is wrong. Neither lifts this rule: the next
+build step goes back to running nothing.
 
 **In a cloud session, run it freely.** `CLAUDE_CODE_REMOTE=true` marks one, and no screen there
 belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `gate.yml` does.

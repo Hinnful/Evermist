@@ -690,8 +690,8 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
 
   // The wash is always the fog state's own colour; only the edge and line go gold once held.
   // `material` tells an effect from a room and never reads as a fourth fog state.
-  const isEffect = !!poly.material;
-  const baseRgb = isEffect ? EFFECT_RGB : (POLY_STATE_RGB[poly.mode] || POLY_STATE_RGB.shroud);
+  const isEffect = !!poly.material || !!poly.light;
+  const baseRgb = poly.light ? LIGHT_OUTLINE_RGB : isEffect ? EFFECT_RGB : (POLY_STATE_RGB[poly.mode] || POLY_STATE_RGB.shroud);
   const look = isEffect ? EFFECT_LOOK : (POLY_LOOK[poly.mode] || POLY_LOOK.shroud);
   let fillA = look.fillA;
   let lineRgb = baseRgb, lineA = look.lineA, lineW = look.lineW;
@@ -819,10 +819,10 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
 function deletePolygonById(id) {
   if (id == null) return;
   pushUndo();
-  if (placeMode === 'effects') {
-    effects = effects.filter(e => e.id !== id);
+  if (placeMode !== 'rooms') {
+    setShapeListNamed(placeMode, activeShapeList().filter(e => e.id !== id));
     if (selectedPolygonId === id) clearShapeSelection();
-    effectsChanged();
+    shapeListChanged(placeMode);
     drawCursor(null, null);
     scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog edit does
     scheduleAutoSave();
@@ -848,7 +848,7 @@ function deleteSelectedPolygon() {
 // card here: a rebuild steals focus from the name and description fields mid-edit.
 // ⚠ Fog states belong to rooms, so this and the T-key cycle refuse in Effects mode.
 function setPolygonMode(id, mode) {
-  if (placeMode === 'effects') return;
+  if (placeMode !== 'rooms') return;
   const poly = polygons.find(p => p.id === id);
   if (!poly || poly.mode === mode) return;
   pushUndo();
@@ -863,7 +863,7 @@ function setPolygonMode(id, mode) {
 }
 
 function toggleSelectedPolygon() {
-  if (placeMode === 'effects') return;
+  if (placeMode !== 'rooms') return;
   const poly = polygons.find(p => p.id === selectedPolygonId);
   if (!poly) return;
   pushUndo();

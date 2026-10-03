@@ -120,3 +120,63 @@ Also settled at the same time: the fire's spark colour and similar look details 
 work. Visual polish on a settled look has no end, so it happens only on a specific request.
 
 ---
+
+### Lights are polygons in a list of their own, edited in Effects mode · `SETTLED` (2026-10-03)
+
+Items 118 and 145 built lights as polygons stored in `lightShapes`, edited in Effects mode as a
+material beside Fire. PRODUCT.md calls a light a map effect, and it is one for the DM, but not in
+the data: an older release maps `effects` through `copyShapeRings`, which would draw a stored light
+as fire, so `/rollback` needs them apart.
+
+- **Fires and lights are one list in Effects mode, two arrays on disk.** They share one id counter.
+  The lights sit under the fires in that list so a click lands on a small fire, not the large lit
+  area beneath it.
+- **A third placement mode was built and dropped.** It kept lights apart, but a torch pulled out at
+  the table was a trip to another mode, and a separate Light tool was redundant beside the material.
+- **No light has an off switch, a name or a description.** Delete takes one, the eye hides all.
+
+---
+
+### Two earlier light builds were rejected · `REJECTED` (2026-10-03)
+
+The first read the plan's walls and cast rays from each light. It bent round corners, lit through
+doorways and left dark corners in oddly shaped rooms, and the plan's lights looked wrong on real
+maps. The second kept the file's lights and let the DM move, resize and switch them off: not enough,
+because a good light map needs every polygon editable. A soft glow outside the edge and a thin line
+were both tried as the look and were too heavy or too faint.
+
+---
+
+### A floor plan seeds lights by where each one sits · `SETTLED` (2026-10-03)
+
+Seeding makes each light a polygon once, and nothing follows the plan afterwards.
+
+- **Indoors, a light fills its room** up to the walls or its radius, and a room's lights blob by
+  overlap: 30% of the smaller, or 90% of the room between them.
+- **Outdoors, a light keeps its native circle, cut by every room's wall**, and never joins another,
+  so a lone torch stays lonely and a torch outside a house never lights the inside. Merging every
+  light turned fourteen yard lamps on Постоялый Двор into a blob over 75% of the map; snapping a wall
+  torch into its room left every exterior torch dark.
+- **No light passes a portal.** The `closed` flag is ignored, because the fixtures mix both values.
+- **One colour for every light**, and the Player is sent outlines, never the plan.
+
+---
+
+### The TV shows a light only over cleared fog, as a faint inner glow · `SETTLED` (2026-10-03)
+
+- **Under half fog the light showed through and gave the room away**, so the Player masks the light
+  texture by its fog data: ground not fully revealed draws none. The polygons stay on the DM.
+- **The look is Falloff, at 60%:** light pooled along the inside of each edge, a wide dim glow under
+  a tight bright one. The TV and the idle DM map show 60%; the DM map shows it whole while a light
+  is in hand, and only the picked light's outline is drawn at full strength.
+- **Dim light, darkvision, flicker and light colours from the file** were left out.
+
+---
+
+### A name clash once blanked every outline · `SETTLED` (2026-10-03)
+
+The lights module called `flattenRing`, a name `fogGeometry.js` owns with another meaning, so every
+outline was NaN and nothing drew on either screen, though a sprite existed and the rig passed. The
+rig now reads the light texture's pixels, not only that a sprite is there.
+
+---

@@ -51,7 +51,7 @@ function closeActivePolygon() {
   // rather than rebuilding the stencil, and a refusal leaves no shape to dereference at all.
   // Each of those settled its own fog inside commitShapeOp.
   if (!shape) return;
-  if (placeMode === 'effects') { fogDirty = true; scheduleRender(); return; }
+  if (placeMode !== 'rooms') { fogDirty = true; scheduleRender(); return; }
   // applyPolygonToFog paints just this room rather than rebuilding the whole stencil, which is
   // why the polygon tool does not share the rectangle path's rebuild.
   applyPolygonToFog(shape);

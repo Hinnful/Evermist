@@ -15,6 +15,7 @@ function initControlPanel() {
   _cpInitMovement();
   _cpInitGrid();
   _cpInitRooms();
+  _cpInitLights();
   _cpInitScrubs();
   _cpFogPicker  = _cpMakePicker('fog',  'fog-color');
   _cpGridPicker = _cpMakePicker('grid', 'grid-color');
@@ -28,6 +29,7 @@ function initControlPanel() {
   refreshGridControlUI();
   refreshPlayerControlUI();
   refreshRoomsControlUI();
+  refreshLightsControlUI();
 }
 
 const _cpEl = id => document.getElementById(id);
@@ -134,6 +136,28 @@ function _cpInitRooms() {
     confirmLabel: 'Remove',
     onConfirm: mtClearStored,
   }));
+}
+
+// ─── Lights: one eye for every light in the scene ────────────────────────────
+function _cpInitLights() {
+  _cpEl('cp-lights-eye').addEventListener('click', () => {
+    if (paneForward('lights-toggle')) { setTimeout(refreshLightsControlUI, 120); return; }
+    toggleLightsHidden();
+  });
+  _cpEl('btn-lights-redraw').addEventListener('click', () => {
+    if (!paneForward('lights-plan')) drawPlanLights();
+  });
+}
+
+function refreshLightsControlUI() {
+  if (!_cpEl('cp-lights-eye')) return;
+  _cpSetEye('cp-lights-eye', !paneScope().lightsHidden, 'Lights');
+  const n = typeof planLightCount === 'function' ? paneScope().planLights : 0;
+  const src = _cpEl('cp-src-lights');
+  src.disabled = !(panesActive || currentScene);
+  src.classList.toggle('none', !n);
+  src.querySelector('.nm').textContent = n ? t.plural(n, 'Floor plan · {n} light', 'Floor plan · {n} lights') : t('Load floor plan…');
+  _cpEl('btn-lights-redraw').disabled = !n;
 }
 
 // From toggleRoomLabels, refreshFloorPlanUI and every module-text load or removal.

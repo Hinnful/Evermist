@@ -9,7 +9,7 @@
 
 let shapeClip = null;
 
-function _clipList(name) { return name === 'effects' ? effects : polygons; }
+function _clipList(name) { return shapeListNamed(name); }
 
 function _clipStep() { return gridSize > 0 ? gridSize : 70; }
 
@@ -53,8 +53,8 @@ function _clipDetach(out) {
 
 // The commit paths in tools.js read placeMode, and a paste may land in the OTHER list.
 function _clipCommit(listName, toShroud) {
-  if (listName === 'effects') {
-    effectsChanged();
+  if (listName !== 'rooms') {
+    shapeListChanged(listName);
     scheduleAutoSync();
     scheduleAutoSave();
     scheduleRender();
@@ -100,7 +100,7 @@ function _clipRingMoved(ring, dx, dy) {
 function _clipRead() {
   const poly = findActiveShape();
   if (!poly) return null;
-  const listName = placeMode === 'effects' ? 'effects' : 'rooms';
+  const listName = placeMode;
   const holes = polyHoleRings(poly);
   if (shapeEditMode && selectedHoleIndex >= 0 && holes[selectedHoleIndex]) {
     const hi = selectedHoleIndex;
@@ -168,7 +168,7 @@ function _clipDrop(clip, dx, dy, into) {
     if (!poly || !holeStaysOnRoom(poly, ring)) return false;
     pushUndo();
     const hi = clipAddHole(poly, ring, clip);
-    if (clip.list === (placeMode === 'effects' ? 'effects' : 'rooms')) {
+    if (clip.list === placeMode) {
       selectedPolygonId = poly.id;
       shapeEditMode = true;
       holeEditMode = false;
@@ -182,16 +182,11 @@ function _clipDrop(clip, dx, dy, into) {
   const shape = _clipMoved(clip.shape, dx, dy);
   pushUndo();
   Object.assign(pictureBlobs, clip.pictures);
-  if (clip.list === 'effects') {
-    shape.id = nextEffectId++;
-    effects.push(shape);
-  } else {
-    shape.id = nextPolygonId++;
-    polygons.push(shape);
-  }
+  shape.id = takeShapeId(clip.list);
+  pushShapeTo(clip.list, shape);
   // Figma leaves a paste selected and ready to drag. Only the live list can hold the selection,
   // so an effect pasted from Rooms mode arrives unselected.
-  if (clip.list === (placeMode === 'effects' ? 'effects' : 'rooms')) {
+  if (clip.list === placeMode) {
     selectedPolygonId = shape.id;
     leaveShapeEditMode();
   }
@@ -228,13 +223,8 @@ function dragCopyOfSelection() {
     return true;
   }
   const shape = _clipMoved(clip.shape, 0, 0);
-  if (clip.list === 'effects') {
-    shape.id = nextEffectId++;
-    effects.push(shape);
-  } else {
-    shape.id = nextPolygonId++;
-    polygons.push(shape);
-  }
+  shape.id = takeShapeId(clip.list);
+  pushShapeTo(clip.list, shape);
   selectedPolygonId = shape.id;
   leaveShapeEditMode();
   return true;

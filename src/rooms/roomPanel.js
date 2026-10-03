@@ -167,7 +167,7 @@ function _rpLabelFont(px) {
 function drawRoomLabels() {
   if (typeof isPlayer !== 'undefined' && isPlayer) return;
   // A room name over a fire the DM is drawing is chrome for a shape they cannot touch.
-  if (placeMode === 'effects') return;
+  if (placeMode !== 'rooms') return;
   if (!showRoomLabels || !polygons.length || !cursorCtx) return;
 
   const ctx = cursorCtx;

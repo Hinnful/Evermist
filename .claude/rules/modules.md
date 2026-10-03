@@ -31,6 +31,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `fog/fogColor.js` | Pure fog colour kernel: base, tint, the step between two, a scene's settings. Tested |
 | `shapes/doorGeometry.js` | Pure door-notch kernel. Tested |
 | `rooms/vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Tested, dependency-free |
+| `fog/lightGeometry.js` | Pure light kernel: a plan's lights and the polygon each starts as. Tested |
 | `shapes/roomOps.js` | Pure Join/Trim/Cut kernel. Tested |
 | `shapes/shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Tested |
 | `shapes/tools.js` | The tool in hand, shared tool state, the click registry |
@@ -69,6 +70,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `render/viewport.js` | Pan/zoom, fit, Sync View, the camera a push carries |
 | `render/mapTurn.js` | My seat: the DM map turned in quarter steps, and client ↔ view conversion |
 | `render/ping.js` | The ping at a map point, drawn in both views |
+| `render/lights.js` | A scene's light polygons: model, seeding from the plan, the outline texture under the fog |
 | `player/playerWindow.js` | The Player window: opening, warming, what it gets |
 | `player/panes.js` | Two-column mode: the columns, the divider, the messages sent to them |
 | `player/stageWindow.js` | The two-map Player window, DM side |
@@ -154,7 +156,7 @@ repo root:
 ```
 i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
-fog/fogGeometry.js → fog/fogColor.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js →
+fog/fogGeometry.js → fog/fogColor.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → fog/lightGeometry.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → shapes/roomOps.js →
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/toolShapes.js →
 shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →
@@ -165,7 +167,7 @@ scenes/sceneGroups.js → scenes/sceneStore.js → scenes/scenes.js → scenes/s
 scenes/sceneCards.js → scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
 render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/stageWindow.js →
 scenes/backup.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
-render/effects.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → player/player.js →
+render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/gridCalibrate.js → player/minimap.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/confirmDialog.js → rooms/floorPlan.js →

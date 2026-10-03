@@ -12,7 +12,7 @@ function drawActivePolyPreview(screenX, screenY) {
   // Same table drawPolyOutline reads, so closing the polygon changes only the line's WEIGHT,
   // never its colour.
   const baseRgb = cut ? HELD_RGB
-    : (placeMode === 'effects' ? EFFECT_RGB : (POLY_STATE_RGB[mode] || POLY_STATE_RGB.shroud));
+    : (placeMode === 'effects' ? effectPreviewRgb() : (POLY_STATE_RGB[mode] || POLY_STATE_RGB.shroud));
   cursorCtx.save();
 
   // The wash fills as corners land, same alpha the drawing-in-progress ladder settles on.

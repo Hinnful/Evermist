@@ -45,6 +45,7 @@ function _undoSnapshot() {
     // ⚠ copyShapeRings copies every ring: an aliased hole is edited out from under this entry.
     effects: effects.map(copyShapeRings),
     nextEffectId,
+    lights: lightsSceneFields(),
   };
 }
 
@@ -110,6 +111,8 @@ function restoreState(snapshot) {
     setEffects(snapshot.effects);
     nextEffectId = snapshot.nextEffectId || nextEffectId;
   }
+  // Snapshots from before lights carry none, so an undo across that point leaves them alone.
+  if (snapshot.lights) restoreLights(snapshot.lights);
   // Keep the selection when the shape survived the undo, or the room card slams shut on every
   // Ctrl+Z. Only a shape missing from the restored set clears it, checked against the list the
   // placement mode names.

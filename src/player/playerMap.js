@@ -57,6 +57,7 @@ function applyFogUpdate(msg) {
   // Effects arrive as the polygon records themselves, so there is nothing to convert. ⚠ An empty
   // list is meaningful, which is why this checks for undefined rather than truthiness.
   if (msg.effects !== undefined) setEffects(msg.effects);
+  if (msg.lights !== undefined) setLightPolys(msg.lights);
   if (msg.gridEnabled !== undefined) {
     gridEnabled   = msg.gridEnabled;
     gridSize      = msg.gridSize      || gridSize;
@@ -93,6 +94,7 @@ function loadPlayerFog(msg, skipTransition) {
       }
       fogDataCtx.clearRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
       fogDataCtx.drawImage(img, 0, 0, fogDataCanvas.width, fogDataCanvas.height);
+      lightsFogChanged();   // lights.js: the TV draws a light only where the fog is cleared
       if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
       if (!skipTransition && msg.fogChanged) startFogTransition(!!msg.isShroud);
       rebuildFogEffect();

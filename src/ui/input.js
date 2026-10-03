@@ -21,7 +21,7 @@ function updateContextPanels() {
   const cal    = gridCalArmed;
   const closed = shape === 'poly' || shape === 'rect' || shape === 'circle' || shape === 'cone' ||
                  shape === 'line' || shape === 'ring';
-  const rooms  = !cal && placeMode !== 'effects' && (closed || shape === 'brush');
+  const rooms  = !cal && placeMode === 'rooms' && (closed || shape === 'brush');
   const fx     = !cal && placeMode === 'effects' && closed;
   const door   = !cal && shape === 'door';
   const room   = !cal && !!fogTrioRoom();   // the selected room's fog, with Select in hand
@@ -49,7 +49,7 @@ function setShape(s) {
   // ⚠ ONLY A SHAPE IS RECORDED. The shape button reads this to decide both the glyph it wears
   // and what a left click picks, so recording Brush, Door or Split makes those two disagree.
   if (SHAPE_FAMILY.indexOf(s) >= 0) {
-    if (placeMode === 'effects') effectsShape = s; else roomsShape = s;
+    setModeShape(placeMode, s);
   }
   presetArmed = presetForShape(s);
   ['brush', 'rect', 'poly', 'circle', 'cone', 'line', 'ring', 'select', 'door', 'cut'].forEach(sh => {

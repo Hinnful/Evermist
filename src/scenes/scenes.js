@@ -99,6 +99,7 @@ function doAutoSave() {
     // Effects belong to the scene the same way rooms do, through the same additive copy.
     effects:       effects.map(copyShapeRings),
     nextEffectId,
+    lights:        lightsSceneFields(),
     gridConfig:    captureGridConfig(),
     fogSettings:   {
       pickedHex: fogPickedHex,
@@ -123,6 +124,7 @@ function doAutoSave() {
       scene.pictureBlobs  = snap.pictureBlobs;
       scene.effects       = snap.effects;
       scene.nextEffectId  = snap.nextEffectId;
+      Object.assign(scene, snap.lights);
       scene.baseFogBlob   = blob;
       scene.gridConfig    = snap.gridConfig;
       scene.fogSettings   = snap.fogSettings;
