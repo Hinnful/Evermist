@@ -271,6 +271,14 @@ README rewrite.
 together take a map from export to ready. It ships as a README rewrite, the same shape 2.0.0
 took. 4.0.0 marks a group of features that improve play at the table.
 
+### 4.0.0 is efficient play, 5.0.0 is campaigns · `SETTLED` (2026-10-03)
+4.0.0 gathers what makes the DM's time at the table easier: the fight table and bestiary, the
+ping, My seat, the soundboard and effect presets already shipped toward it. It lands when the
+items marked 4.0 in docs/BACKLOG.md are built, as a README rewrite, the shape 3.0.0 took. A phone
+remote is play too but stays out of the gate, because its size is unknown. 5.0.0 widens Evermist
+from running sessions to running a campaign: the world map, notes beyond rooms, and an MCP server.
+Polish and prep items ship as 3.x patches and never hold a major version up.
+
 ### Size releases conservatively · `SETTLED`
 2.0.0 skipped 1.8 and 1.9 and landed on a docs-only commit, because a release tag has to match
 `package.json` and that release published five versions together. A major version marking a

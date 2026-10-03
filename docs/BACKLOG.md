@@ -1,6 +1,8 @@
 ---
 name: project-backlog
-description: "**2026-10-03 (latest): item 150 BUILT on the dm-screen-dock branch, not yet released:** every window outside the dock rebuilt from one set of parts, with Gmail's selection in the scene library, the Bestiary and Add from YouTube, and one toast stack above the toolbar. Ships with 4.0.0. **12 open items; IDs run to 151.**
+description: "**2026-10-03 (newest): the backlog was REGROUPED by release on the DM's instruction,** each item tagged Prep, Play, Campaign, Polish, Upkeep or Bug; effort and risk dropped from items. 4.0.0 is 118, 145, 139, 46 if a material is picked, and 121 with a README rewrite; 144 moved to 4.x; 119, 140 and 142 are 5.0 (PRODUCT.md). **16 open items; IDs run to 155.**
+**2026-10-03 (earlier): 3.12.0 SHIPPED items 147, 149 and 150 with the dock; four items FILED on the DM's instruction:** 152 the logo mark without violet, 153 the backup progress window names its file, 154 the dock's pop-outs get the windows' close cross, 155 a rig check for the effect size label under My seat. The fog's default tint and the thunder damage icon keep their violet, on the DM's call. **16 open items; IDs run to 155.**
+**2026-10-03: item 150 BUILT on the dm-screen-dock branch:** every window outside the dock rebuilt from one set of parts, with Gmail's selection in the scene library, the Bestiary and Add from YouTube, and one toast stack above the toolbar. Ships with 4.0.0. **12 open items; IDs run to 151.**
 **2026-10-03: item 151 FILED on the DM's instruction during the item 150 design rounds:** a Cancel in the progress window. **13 open items; IDs run to 151.**
 **2026-10-02: items 147 and 149 BUILT on the dm-screen-dock branch, not yet released:** music groups made in the app (not subfolders), and a floor plan loaded by hand from the Sources row, which is now the button. Ships with 4.0.0. **12 open items; IDs run to 150.**
 **2026-10-02: four items FILED on the DM's instruction during the DM screen redesign spec (.claude/private/specs/dm-screen-dock.md):** 147 music groups, 148 corner rounding by handles, 149 load a floor plan by hand, 150 redesign the restyled windows. **14 open items; IDs run to 150.**
@@ -95,7 +97,8 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **3.11.0** (the soundboard). The DM screen redesign waits on the `dm-screen-dock` branch for 4.0.0. **4.0.0 marks a group of play features, not the combat helper alone.** 2.12.0 to 2.15.3 are the
+`package.json` is at **3.12.0** (the dock). **4.0.0 lands when every item under 4.0 below is
+built** (PRODUCT.md). Items under ANY TIME ship as 3.x patches and never hold 4.0 up. 2.12.0 to 2.15.3 are the
 vector editing epic, now closed: two selection levels, curved walls, the bounding box,
 copy/paste/duplicate, a radius on a curved corner, and shapes drawn as coloured areas.
 
@@ -115,17 +118,21 @@ shows only LOCAL tags, which once cost a day of believing a shipped release was 
 - **Size releases conservatively.** A release that rebuilt the whole Player scene transition was
   still a patch.
 
+## Categories
+
+Each item ends with its tags: category, release, then where it shows. An item takes at most two
+categories. Effort and risk are judged once an item is picked, not here.
+
+- **Prep** - makes getting a session ready faster, more scalable or easier to maintain.
+- **Play** - the same, at the table during a session.
+- **Campaign** - spans sessions: the world, its places, its notes. The 5.0 work.
+- **Polish** - a visible gap or small QoL fix the DM would notice.
+- **Upkeep** - checks, CI, docs: nothing the DM sees ships.
+- **Bug** - the app does something wrong.
+
 ---
 
-# FEATURES
-
-### 116. Clouds drifting over the map
-Filed 2026-09-24. Purely visual, for mood: cloud shadows passing over the revealed map on the TV.
-**Needs /spec:** the look, whether it is per scene, and whether the DM sees it. **It adds GPU cost
-on the Player**, and split view with an animated map is where the Player has stalled before, so
-judge it in that case too.
-Player (DM ?) · 1 · Risk M - a new pass on the Player's render path
-
+# 4.0 - PLAY AT THE TABLE
 
 ### 118. Lights from the floor plan, shown on the TV
 Filed 2026-09-24, reshaped 2026-09-29. Players ask "is this area lit?", mostly a character
@@ -137,73 +144,20 @@ placed by hand - that is item 145. A light is a map effect in PRODUCT.md's sense
 **Bright light only, no dim ring** (settled 2026-09-29): the file's `range` is the lit area, and
 whether a spot counts as dark enough is the players' call at the table.
 **Needs /spec:** the look (a faint circle at most, it must not clutter the map), whether the DM can switch a light off (a torch put out), and what reveal hides.
-DM + Player · 1+ · Risk M - a new layer on the TV and new data carried in every saved scene
+It adds a layer on the TV and new data to every saved scene.
+**Play · 4.0 · DM + Player**
 
 ### 145. Spell light placed by hand
 Filed 2026-09-29, split out of 118. Light, Daylight and similar spells: a lit circle, bright light
 only as in 118, placed like an effect preset (shipped in 3.8.0) on the same layer as 118. Waits for 118 only.
-DM + Player · 1 · Risk L - reuses 118's layer and the preset placement
-
-### 119. Notes for a scene with no rooms
-Filed 2026-09-24. Notes live only on rooms, so a wilderness or any map with no rooms has nowhere
-to keep DM notes, and the general notes for a scene live outside the app. It is its own piece of
-work, not part of the combat helper (PRODUCT.md, 2026-09-28).
-DM only · 1 · Risk L - DM-side only, nothing reaches the Player
-
-### 121. Re-record the README GIFs
-Filed 2026-09-24. The DM records these by hand; nothing to build. `tools.gif` shows reveal and
-shroud drawing under "Draw rooms of any shape", and no GIF covers two floors at once, map effects
-or music. `draw-rooms.gif` is no longer used by the README.
-README only · 1 · Risk none
-
+**Play · 4.0 · DM + Player**
 
 ### 139. Build or edit an action pill by hand
 Filed 2026-09-29. A homebrew action not written in book wording gets no pill, so the DM types
 ugly notes instead. **Needs /spec:** the recommendation is fields in the stat block editor (name,
 to-hit or DC, damage, type) that write the action in book wording, so the existing reader makes
 the pill; a typed formula like `Bite [+5]{16}(slashing)` is one more syntax to remember.
-DM only · 1 · Risk M - the action reader and the editor both change
-
-### 140. World map with places
-Filed 2026-09-29. A World map button opens a DM-only map of the campaign. Places on it are
-folders holding scenes, fights and notes; roads connect places; a fight marker can stand alone.
-**The TV never shows it** - it shows fights and secret places. Prototype in gitignored
-`.claude/private/design/world-map/`. Item 119 may fold into it: a scene note and a place note may
-be one thing. Auto-filling places from the module is NOT a promise.
-**Needs /spec:** what a road carries, whether the module offers place names, what the first
-screen on opening is, and that the backup carries all of it.
-DM only · 1+ · Risk H - the library's structure is costly to change once campaigns are saved
-
-### 142. An MCP server, so an AI can prepare a session
-Filed 2026-09-29 as a DISCUSSION. An AI client reads and writes the campaign: import a module,
-place rooms, fill notes, build fights. The app works fully without it, which is what the
-DECISIONS.md \"LLM in the loop\" rejection asked for. Waits for 140, because it exposes the
-campaign's shape.
-DM only · ? · Risk ?
-
-### 144. A phone remote for the DM
-Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in
-hand for a few controls: sounds, reveals, a scene change. **Open:** which controls, and how a phone
-reaches an offline desktop app. Nothing on the phone reaches the TV except through the app.
-Phone · ? · Risk ?
-
-### 148. Corner rounding by handles on the map
-Filed 2026-10-02 on the DM's instruction, during the DM screen redesign. A handle sits in every
-corner of the selected room, as in Figma: dragging one rounds every corner, Alt+drag rounds only
-that corner. The typed number then likely moves to the Rooms section of Scene control. Until
-then the number field stays in the Room tab.
-DM only · 1 · Risk M - a new drag on the map competes with the corner and wall drags already there
-
-### 151. Cancel a long import, backup or restore
-Filed 2026-10-03 on the DM's instruction, out of item 150's scope. The progress window has no
-Cancel, so a restore of a large backup or a big map import cannot be stopped once it starts.
-**Needs /spec:** which of the operations can stop safely part-way, and what a stopped restore
-leaves in the library.
-DM only · 1 · Risk M - each operation needs a clean way to stop, not only a button
-
----
-
-# TECH DEBT
+**Prep + Play · 4.0 · DM only**
 
 ### 46. A second effect material needs a look, not a code change
 The shader reads all six colour stops from the material record (`src/render/effectMaterials.js`),
@@ -213,7 +167,106 @@ like, and what its button says. `acid` was deleted rather than shipped last time
 The second material also brings the searchable material palette settled in item 113's prototype
 (`.claude/private/design/item-113/effect-presets.html`): the flame button with a corner tick opens
 it above the row. Not built with one material, per CLAUDE.md.
-DM + Player · S · Risk L - the rig covers what must not change, and the look is judged at the table
+**Play · 4.0 if the DM picks a material · DM + Player**
+
+### 121. Re-record the README GIFs
+Filed 2026-09-24. The DM records these by hand; nothing to build. `tools.gif` shows reveal and
+shroud drawing under "Draw rooms of any shape", and no GIF covers two floors at once, map effects
+or music. `draw-rooms.gif` is no longer used by the README.
+It lands with the README rewrite that marks 4.0.0, the way 3.0.0 did.
+**Upkeep · 4.0 · README only**
+
+---
+
+# ANY TIME
+
+### 144. A phone remote for the DM
+Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in
+hand for a few controls: sounds, reveals, a scene change. **Open:** which controls, and how a phone
+reaches an offline desktop app. Nothing on the phone reaches the TV except through the app.
+Kept out of the 4.0 gate because its size is unknown.
+**Play · 4.x · Phone**
+
+### 116. Clouds drifting over the map
+Filed 2026-09-24. Purely visual, for mood: cloud shadows passing over the revealed map on the TV.
+**Needs /spec:** the look, whether it is per scene, and whether the DM sees it. **It adds GPU cost
+on the Player**, and split view with an animated map is where the Player has stalled before, so
+judge it in that case too.
+Mood, not speed: no release until the DM decides.
+**Play · Player**
+
+### 148. Corner rounding by handles on the map
+Filed 2026-10-02 on the DM's instruction, during the DM screen redesign. A handle sits in every
+corner of the selected room, as in Figma: dragging one rounds every corner, Alt+drag rounds only
+that corner. The typed number then likely moves to the Rooms section of Scene control. Until
+then the number field stays in the Room tab.
+**Prep · DM only**
+
+### 151. Cancel a long import, backup or restore
+Filed 2026-10-03 on the DM's instruction, out of item 150's scope. The progress window has no
+Cancel, so a restore of a large backup or a big map import cannot be stopped once it starts.
+**Needs /spec:** which of the operations can stop safely part-way, and what a stopped restore
+leaves in the library.
+**Polish · DM only**
+
+### 152. The logo mark without violet
+Filed 2026-10-03 on the DM's instruction. 3.12.0 took violet out of every window, the splash and
+the start screen, and left the logo mark violet in About and on the splash, where it matches the
+app icon file. Redrawing it means the mark in `about.js` and `splash.html` and the icon files
+together, so the installed icon and the in-app mark stay one picture.
+**Polish · Both**
+
+### 153. The backup progress window names its file
+Filed 2026-10-03. A batch import shows its count and the map's file under the bar; a backup
+restore shows the bar alone. `setMapProgressRun` (mapLoader.js) takes the file, and the restore
+path in `backup.js` never passes it.
+**Polish · DM only**
+
+### 154. The dock's pop-outs get the windows' close cross
+Filed 2026-10-03. Fog colour, Grid colour and the movement dials still close with the older 12px
+cross, while every window outside the dock uses `uiIcon('x')` (icons.js).
+**Polish · DM only**
+
+### 155. A rig check for the effect size label under My seat
+Filed 2026-10-03. 3.12.0 stands the size label of an effect being placed upright under a turned
+seat and puts it above the shape as the screen shows it (`drawPresetPreview`, toolPreset.js). No
+scenario covers it, so a regression would show only at the table. The label is canvas pixels, so
+the check reads where the plate lands and its turn, not a DOM box.
+**Upkeep · DM only**
+
+---
+
+# 5.0 - CAMPAIGNS
+
+### 119. Notes for a scene with no rooms
+Filed 2026-09-24. Notes live only on rooms, so a wilderness or any map with no rooms has nowhere
+to keep DM notes, and the general notes for a scene live outside the app. It is its own piece of
+work, not part of the combat helper (PRODUCT.md, 2026-09-28).
+**Campaign · 5.0 · DM only**
+
+### 140. World map with places
+Filed 2026-09-29. A World map button opens a DM-only map of the campaign. Places on it are
+folders holding scenes, fights and notes; roads connect places; a fight marker can stand alone.
+**The TV never shows it** - it shows fights and secret places. Prototype in gitignored
+`.claude/private/design/world-map/`. Item 119 may fold into it: a scene note and a place note may
+be one thing. Auto-filling places from the module is NOT a promise.
+**Needs /spec:** what a road carries, whether the module offers place names, what the first
+screen on opening is, and that the backup carries all of it.
+The library's structure is costly to change once campaigns are saved.
+**Campaign · 5.0 · DM only**
+
+### 142. An MCP server, so an AI can prepare a session
+Filed 2026-09-29 as a DISCUSSION. An AI client reads and writes the campaign: import a module,
+place rooms, fill notes, build fights. The app works fully without it, which is what the
+DECISIONS.md \"LLM in the loop\" rejection asked for. Waits for 140, because it exposes the
+campaign's shape.
+**Campaign · 5.0 · DM only**
+
+---
+
+# BUGS
+
+None open.
 
 ---
 

@@ -24,6 +24,8 @@
 //      fog's Feather, set in Settings.
 //   H. The Player window shows no dock and no rail.
 //   I. The toolbar stays where it is while the pane opens, shuts or is dragged wider or narrower.
+//   J. The Fog colour, Grid colour and Custom movement pop-outs close with the scene library
+//      window's close button, and each button still closes its pop-out.
 //
 // ⚠ G RESTARTS THE APP, so it runs last but one: rig.restart() hands back a new DM session and
 // the `dm` taken at the top is a dead socket after it.
@@ -144,6 +146,39 @@ module.exports = async function dockFeature(rig) {
   rig.check(await player.evaluate('(() => { const d = document.getElementById("dock");' +
                                   ' return !d || d.getBoundingClientRect().width === 0; })()'),
             'H: the Player window shows the dock');
+
+  // ── J ──
+  // RED ON: the Fog pop-out button's class put back to cp-adv-close, its data-pop-close and the Custom movement click handler gated off (index.html, controlPanel.js) — 2026-10-03
+  await tab('scene');
+  const closeLook = id => dm.evaluate('(() => { const b = document.getElementById(' + JSON.stringify(id) + ');' +
+    ' if (!b) return null; const s = getComputedStyle(b);' +
+    ' return { svg: b.innerHTML.trim(), w: s.width, h: s.height }; })()');
+  const POPS = [
+    { name: 'Fog colour', open: 'document.querySelector("[data-dock-pop=cp-pop-fog]").click()',
+      pop: 'cp-pop-fog', close: 'document.querySelector("#cp-pop-fog .cp-adv-head button")' },
+    { name: 'Grid colour', open: 'document.querySelector("[data-dock-pop=cp-pop-grid]").click()',
+      pop: 'cp-pop-grid', close: 'document.querySelector("#cp-pop-grid .cp-adv-head button")' },
+    { name: 'Custom movement', open: 'document.getElementById("btn-anim-advanced").click()',
+      pop: 'anim-advanced-panel', close: 'document.getElementById("cp-adv-close")' },
+  ];
+  const ref = await closeLook('sm-close');
+  rig.check(!!ref && ref.w === '28px' && ref.h === '28px',
+            'J: the scene library close button, the pattern to match, did not read 28px: ' + JSON.stringify(ref));
+  for (const p of POPS) {
+    await dm.evaluate(p.open + '; 0');
+    await lib.settle(dm, 'document.getElementById("' + p.pop + '").hidden === false', 5000);
+    const look = await dm.evaluate('(() => { const b = ' + p.close + '; if (!b) return null;' +
+      ' const s = getComputedStyle(b); return { cls: b.className, svg: b.innerHTML.trim(), w: s.width, h: s.height }; })()');
+    rig.check(!!look && /\bsm-x\b/.test(look.cls) && !!ref && look.svg === ref.svg &&
+              Math.abs(parseFloat(look.w) - parseFloat(ref.w)) < 0.1 &&
+              Math.abs(parseFloat(look.h) - parseFloat(ref.h)) < 0.1,
+              'J: the ' + p.name + ' pop-out close button is not the scene library window\'s: ' +
+              JSON.stringify(look) + ' against ' + JSON.stringify(ref));
+    await dm.evaluate(p.close + '.click(); 0');
+    await lib.settle(dm, 'document.getElementById("' + p.pop + '").hidden === true', 5000);
+    rig.check(await dm.evaluate('document.getElementById("' + p.pop + '").hidden'),
+              'J: the ' + p.name + ' close button did not close its pop-out');
+  }
 
   // ── G ──
   // RED ON: localStorage.setItem(DOCK_PANE_KEY) gated off (dock.js), and separately saveFeather's write (fogControls.js) — 2026-10-02

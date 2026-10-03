@@ -68,8 +68,8 @@
   .dk-secbody { display: flex; flex-direction: column; gap: 8px; }
   .dk-dim > * { opacity: 0.4; }
 
-  #dock .cp-adv-close, .dk-pop .cp-adv-close { width: 24px; height: 24px; border-radius: 5px; color: #b9bec6; }
-  #dock .cp-adv-close:hover, .dk-pop .cp-adv-close:hover { background: var(--g-field); color: var(--g-text); }
+  #dock .cp-adv-close { width: 24px; height: 24px; border-radius: 5px; color: #b9bec6; }
+  #dock .cp-adv-close:hover { background: var(--g-field); color: var(--g-text); }
   #dock .cp-adv-close.active, #dock .cp-adv-close.active:hover { background: var(--b-tint); color: var(--b-icon); }
   #dock .cp-adv-close:disabled { opacity: 0.35; cursor: default; background: transparent; }
 

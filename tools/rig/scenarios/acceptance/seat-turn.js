@@ -17,6 +17,8 @@
 //   9. The minimap turns with the DM map, and a drag on it goes the way the hand goes.
 //  10. Sync View gives the TV the same framing at 90° as at 0°.
 //  11. The TV shows the same picture at every angle.
+//  12. At every angle the size label of an effect being placed reads upright and sits above the
+//      shape on screen.
 //  13. In two-map mode each column turns its own map, and the columns stay side by side.
 //
 // ⚠ THE MOUSE IS AIMED BY THE BROWSER'S OWN LAYOUT, never by the app's conversion. __rigMouse is
@@ -330,6 +332,48 @@ module.exports = async function seatTurn(rig) {
   rig.check(Math.abs(mm.dx) < 1 && mm.dy > 5,
             'at 90° a drag to the right on the minimap moved the view ' + JSON.stringify(mm) +
             ', not the way the hand went');
+
+  // ── 12. the size label of an effect being placed ─────────────────────────
+  // RED ON: uprightAt gated off, and separately the up vector's turn zeroed in drawPresetPreview (toolPreset.js) — 2026-10-03
+  // Read at the moment drawPresetPreview draws it: the label's canvas point and the context's
+  // transform, then the canvas's own CSS turn, so the answer is what the DM sees on screen.
+  await dm.evaluate(`(() => {
+    fitToScreen(); setPlaceMode('effects'); setShape('circle');
+    setPreset({ kind: 'circle', ...EFFECT_PRESETS.circle[3] });
+    globalThis.__seatLabelText = presetLabel('circle', presetArmed.s, presetArmed.w, t);
+    globalThis.__seatHits = [];
+    const saved = cursorCtx.fillText;
+    globalThis.__seatUnspy = () => { delete cursorCtx.fillText; };
+    cursorCtx.fillText = function (txt, x, y) {
+      if (txt === globalThis.__seatLabelText) globalThis.__seatHits.push({ x, y, m: this.getTransform() });
+      return saved.apply(this, arguments);
+    };
+    globalThis.__seatLabelRead = (mx, my) => {
+      const h = globalThis.__seatHits[globalThis.__seatHits.length - 1];
+      if (!h) return null;
+      const c = document.getElementById('cursor-canvas'), M = __seatMatrix(c);
+      const ctxDeg = Math.atan2(h.m.b, h.m.a) * 180 / Math.PI, cssDeg = Math.atan2(M.b, M.a) * 180 / Math.PI;
+      const net = ((ctxDeg + cssDeg) % 360 + 540) % 360 - 180;
+      const k = c.offsetWidth / c.width, P = h.m.transformPoint(new DOMPoint(h.x, h.y));
+      const w = c.offsetWidth, ht = c.offsetHeight;
+      const q = M.transformPoint(new DOMPoint(P.x * k - w / 2, P.y * k - ht / 2));
+      const r = container.getBoundingClientRect();
+      const at = { x: r.left + c.offsetLeft + w / 2 + q.x, y: r.top + c.offsetTop + ht / 2 + q.y };
+      return { net, above: __seatClient(mx, my).y - at.y };
+    };
+    return 0;
+  })()`);
+  for (const deg of TURNS) {
+    await dm.evaluate('__seatPick(' + deg + '); fitToScreen(); globalThis.__seatHits.length = 0; ' +
+                      '__rigMouse("mousemove", 1200, 750); 0');
+    const read = await lib.poll(() => dm.evaluate('globalThis.__seatHits.length ? { v: __seatLabelRead(1200, 750) } : null'), 8000);
+    rig.check(!!read && !!read.v && Math.abs(read.v.net) < 0.5,
+              'at ' + deg + '° the size label of an effect being placed is not upright: ' + JSON.stringify(read));
+    rig.check(!!read && !!read.v && read.v.above > 5,
+              'at ' + deg + '° the size label sits beside or below the shape on screen, not above it: ' +
+              JSON.stringify(read));
+  }
+  await dm.evaluate('__seatUnspy(); setPreset(null); setShape("select"); setPlaceMode("rooms"); __seatPick(90); 0');
 
   // ── 10 + 11. the TV ──────────────────────────────────────────────────────
   // RED ON: dmVisibleRegion's sideways branch gated off (viewport.js) — 2026-09-29

@@ -302,3 +302,10 @@ Cloud sessions committed as Claude with a co-author line, which put Claude in th
 contributor list, so `tools/check-release.js` refuses any commit whose author differs from
 `main`'s latest, or that carries one. It compares against `main` so no address is written into a
 public file. The repo settings also turn the co-author line off.
+
+### The backlog sorts by release and category, not by effort and risk · `SETTLED` (2026-10-03)
+The backlog serves prioritising, and the DM weighs size and risk only once an item is picked, so
+items drop their effort and risk marks and `/brief`'s table drops those columns. Each item carries
+a category (Prep, Play, Campaign, Polish, Upkeep, Bug, at most two) and a release, and the file is
+grouped by release. Upkeep is split from Polish because it ships nothing the DM sees, so a triage
+can skip it. The DM's first list called Polish "tech debt", which reads as invisible code work.

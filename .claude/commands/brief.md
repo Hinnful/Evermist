@@ -66,15 +66,15 @@ every time. Never let the user infer backlog size from an ID.
 
 Then one table, every open item, one row each, no omissions:
 
-| # | Item | Area | Effort | Risk | Spec | State |
-|---|------|------|--------|------|------|-------|
+| # | Item | Category | Release | Spec | State |
+|---|------|----------|---------|------|-------|
 
 - **#** - the backlog's own ID.
 - **Item** - a short phrase in plain language, not the backlog's heading verbatim if that heading
   is jargon.
-- **Area** - DM, Player, both, rig, or process. "Rig" and "process" mean nothing ships.
-- **Effort** - ½ / 1 / 1+ sitting, or `?` when it is genuinely unknown.
-- **Risk** - L / M / H.
+- **Category** - the item's own tag from `docs/BACKLOG.md`: Prep, Play, Campaign, Polish,
+  Upkeep or Bug, at most two. Upkeep means nothing the DM sees ships.
+- **Release** - the item's own release tag (`4.0`, `4.x`, `5.0`), or blank.
 - **Spec** - whether the idea is settled enough to hand to a build session. `ready` when the
   item already says what to build and every open call in it has an answer. `needed` when a
   choice is still open - a shape to settle, a scope question, a look-and-feel call. `needed`
@@ -83,7 +83,9 @@ Then one table, every open item, one row each, no omissions:
 - **State** - blank when ready to pick up. Otherwise the one word that stops it: `blocked`,
   `needs-a-call`, `parked`, `discussion`, `lead-only`.
 
-Sort the table by group, in the same order the detail below uses, so the two read together.
+Sort the table by release, then by category, in the same order the detail below uses, so the
+two read together. **No effort or risk column**: the backlog is for prioritising, and the DM
+weighs size and risk only once an item is picked.
 
 **Every open item appears in this table.** An item you judge unimportant still gets its row. The
 table is the inventory; the recommendation is your opinion, and the user must be able to see the
@@ -91,25 +93,24 @@ first without your filter on it.
 
 ## Step 4 - Analyze, score, group
 
-After the table, expand the same items **grouped by theme or implementation logic** - e.g. correctness/anti-spoiler, performance, identity/UI, marquee feature, quick wins. Lead each group with its highest-value item.
+After the table, expand the same items **grouped by release, then category**. Lead each group with its highest-value item.
 
 **The detail covers every row in the table.** Items you would not recommend get a line or two rather than a paragraph, but none disappears between the table and the detail.
 
 For each item give, kept skimmable:
 - **What it is** - plain language. The user is a non-dev PM: high-level first, code/file refs as footnotes.
 - **Where it shows** - DM view, Player view, or both.
-- **Effort** - rough (½ / 1 / 1+ sitting). Fuzzy is fine and expected.
-- **Risk** - low / med / high (regression risk, how much other behaviour depends on the touched code). A file governed by a skill has many dependents by definition, which is why its rules were worth extracting.
 - **Blockers** - anything that must happen first (e.g. "needs your clarification on desired behavior", "blocked until per-scene storage exists").
 
-Reuse the backlog's own effort/risk annotations as a starting point, but re-judge them - they can be stale.
+Judge size and risk yourself to size the recommendation, but do not print them per item. Name a
+risk only when it changes what to pick.
 
 ## Step 5 - Recommend a pick
 
 Recommend a chunk sized to roughly **one session, or even one chat**. Sizing is deliberately fuzzy - aim small enough to finish *and verify* in a single sitting. Prefer items that:
 - group naturally (same area, same file, same de-blob trigger) so the work compounds,
 - are unblocked,
-- respect any agreed roadmap order in the backlog (if you deviate, say why),
+- serve the next release first (the items tagged with it in the backlog), and respect any agreed roadmap order (if you deviate, say why),
 - honor freeze/constraint notes (don't recommend ship-gated work while a freeze is on).
 
 Give a **primary recommendation** with a one-line why, plus a **backup pick for a different mood** (e.g. "if you'd rather do visible work than plumbing"). Two or three options total is plenty - don't hide the recommendation under ten.

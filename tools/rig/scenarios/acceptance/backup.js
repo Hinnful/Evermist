@@ -23,6 +23,8 @@
 //   I. A map file that is gone from disk is NAMED, on the way out and on the way back in. The
 //      record still exports, so silence there produces a backup that looks whole and restores
 //      a scene that fails the first time it is opened.
+//   J. A restore's progress bar names the backup file at every stage.
+//   K. After a restore, the next map import shows only its own file name.
 //
 // ⚠ THE EXPORT'S SAVE DIALOG IS THE ONE SEAM NOTHING CAN CROSS. doExport opens a native
 // showSaveDialog as its FIRST act, and `window.electronAPI` comes through contextBridge, so it is
@@ -171,6 +173,14 @@ module.exports = async function backupFeature(rig) {
   // ── A. A restore adds, and leaves the open scene alone ────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
   const restored = await dm.evaluate(`(async () => {
+    // Wrapped like maps.js does: a restore stage can pass faster than any sampler ticks.
+    globalThis.__rigFiles = [];
+    const origProgress = showMapProgress;
+    window.showMapProgress = function (label) {
+      origProgress(label);
+      globalThis.__rigFiles.push(document.getElementById('map-progress-file').textContent);
+    };
+    showMapProgress = window.showMapProgress;
     await restoreFromZipPath(${JSON.stringify(zipPath)});
     const out = [];
     for (const meta of allScenes) {
@@ -198,6 +208,13 @@ module.exports = async function backupFeature(rig) {
     return { scenes: out, openId: currentScene ? currentScene.id : null,
              openName: currentScene ? currentScene.name : null };
   })()`, 300000);
+  // ── J. The bar names the backup file during a restore (item 153) ─────────
+  // RED ON: setMapProgressRun gated off before the first showMapProgress in restoreFromZipPath (backup.js) — 2026-10-03
+  const zipName = path.basename(zipPath);
+  const restoreFiles = await dm.evaluate('globalThis.__rigFiles');
+  rig.check(restoreFiles.length > 0 && restoreFiles.every(f => f === zipName),
+            'the restore bar did not name the backup file at every stage, so the DM cannot tell ' +
+            'which file is loading: ' + JSON.stringify(restoreFiles) + ' against ' + zipName);
   rig.note('the library after the restore: ' +
            JSON.stringify(restored.scenes.map(s => s.name)));
   rig.check(restored.scenes.length === exported.before + exported.count,
@@ -430,4 +447,22 @@ module.exports = async function backupFeature(rig) {
   rig.check(!gapBack.err && gapBack.mapPath === null,
             'a scene restored from a backup carrying no map file still claims one at ' +
             JSON.stringify(gapBack.mapPath) + ' — it opens once, fails, and reads as an app bug');
+
+  // ── K. The backup's name does not outlive the restore ────────────────────
+  // RED ON: the restore's finally clear of setMapProgressRun gated off (backup.js) — 2026-10-03
+  // ⚠ A SINGLE MAP: a batch writes its own file name over a leftover, so only the import that
+  // names nothing can show the backup's name still on the bar.
+  const after = await dm.evaluate(`(async () => {
+    globalThis.__rigFiles = [];
+    const png = n => new Promise(res => {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+      c.getContext('2d').fillRect(0, 0, 32, 32);
+      c.toBlob(b => res(new File([b], n, { type: 'image/png' })), 'image/png');
+    });
+    await importMapFiles([await png('rig-after.png')]);
+    return globalThis.__rigFiles;
+  })()`, 120000);
+  rig.check(after.length > 0 && after.every(f => f === ''),
+            'a map import after the restore still showed a file name, the backup file: ' +
+            JSON.stringify(after));
 };

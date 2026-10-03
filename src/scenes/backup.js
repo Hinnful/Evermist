@@ -56,6 +56,7 @@ async function doExport(selectedIds) {
     updateMapProgress(Math.round((done / total) * 100));
   });
 
+  setMapProgressRun('', destPath.split(/[\\/]/).pop());
   showMapProgress('Creating backup…');
   try {
     // ⚠ The open scene saves 5s after its last edit, and the zip is read from the store.
@@ -144,6 +145,7 @@ async function doExport(selectedIds) {
       message: t('The backup file is incomplete, so delete it and try again.') + '\n\n' + (err.message || err),
     });
   } finally {
+    setMapProgressRun('');
     unsubProgress();
   }
 }
@@ -232,6 +234,7 @@ async function restoreFromZipPath(zipPath) {
     updateMapProgress(Math.round((done / total) * 100));
   });
 
+  setMapProgressRun('', zipPath.split(/[\\/]/).pop());
   showMapProgress('Reading backup…');
   try {
     const manifest = await window.electronAPI.readBackupManifest(zipPath);
@@ -364,6 +367,7 @@ async function restoreFromZipPath(zipPath) {
       message: t('Evermist stopped partway through the backup, so some scenes are missing.') + '\n\n' + (err.message || err),
     });
   } finally {
+    setMapProgressRun('');
     unsubProgress();
   }
 }
