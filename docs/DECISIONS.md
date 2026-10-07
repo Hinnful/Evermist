@@ -974,6 +974,18 @@ stayed English-only.
 
 ---
 
+## Campaigns
+
+### A relationship graph of the party, NPCs and places · `REJECTED` (2026-10-04)
+Proposed beside the world map (BACKLOG 140), after the R-maps of Japanese RPGs and the Pathways
+map of the Smallville RPG. Rejected on product grounds: the view shows the DM relationships they
+already know, so it does not help them run the game, even when it fills itself. A pre-written
+module already carries its relationships, so only homebrew writers would fill one by hand, and
+a search answers the forgotten-NPC case without lines. The pointcrawl stays, because there the
+shape of the graph is the answer: lines decide where the party can go and how long it takes.
+
+---
+
 ## Corrections worth keeping
 
 Reasoning that turned out wrong in a way that would repeat. Each is here so it doesn't.

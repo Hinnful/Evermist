@@ -5,30 +5,36 @@
 // Unit-tested; see test/bestiaryPlan.test.js.
 
 // English and Russian name the same size, type and alignment, so one filter holds both.
-const BS_SIZES = [['Tiny', /^(tiny|крошечн)/i], ['Small', /^(small|маленьк)/i], ['Medium', /^(medium|средн)/i],
+// "Маленький" is Small in the 2014 translation and Tiny in the 2024 one; bsSize reads it by the hit die.
+const BS_SIZES = [['Tiny', /^(tiny|крошечн|крохотн)/i], ['Small', /^(small|небольш|маленьк)/i], ['Medium', /^(medium|средн)/i],
   ['Large', /^(large|больш|крупн)/i], ['Huge', /^(huge|огромн)/i], ['Gargantuan', /^(gargantuan|громадн|исполинск)/i]];
-const BS_TYPES = [['Aberration', /^(aberration|аберрац)/i], ['Beast', /^(beast|звер)/i], ['Celestial', /^(celestial|небожит)/i],
-  ['Construct', /^(construct|конструкт)/i], ['Dragon', /^(dragon|дракон)/i], ['Elemental', /^(elemental|элементал)/i],
+const BS_TYPES = [['Aberration', /^(aberration|аберрац)/i], ['Beast', /^(beast|звер|животн)/i], ['Celestial', /^(celestial|небожит)/i],
+  ['Construct', /^(construct|конструк)/i], ['Dragon', /^(dragon|дракон)/i], ['Elemental', /^(elemental|элементал)/i],
   ['Fey', /^(fey|фе[яи])/i], ['Fiend', /^(fiend|исчади|бести)/i], ['Giant', /^(giant|великан)/i], ['Humanoid', /^(humanoid|гуманоид)/i],
-  ['Monstrosity', /^(monstrosity|монстр|чудовищ)/i], ['Ooze', /^(ooze|слиз)/i], ['Plant', /^(plant|растени)/i], ['Undead', /^(undead|нежит)/i]];
-// Plain Neutral comes last: "нейтрально-злой" would match it first.
-const BS_ALIGN = [['Lawful good', /(lawful good|законопослушн\S* добр)/i], ['Neutral good', /(neutral good|нейтральн\S* добр)/i],
-  ['Chaotic good', /(chaotic good|хаотичн\S* добр)/i], ['Lawful neutral', /(lawful neutral|законопослушн\S* нейтральн)/i],
-  ['Chaotic neutral', /(chaotic neutral|хаотичн\S* нейтральн)/i], ['Lawful evil', /(lawful evil|законопослушн\S* зл)/i],
-  ['Neutral evil', /(neutral evil|нейтрально-зл|нейтральн\S* зл)/i], ['Chaotic evil', /(chaotic evil|хаотично-зл|хаотичн\S* зл)/i],
+  ['Monstrosity', /^(monstrosity|монстр|чудовищ)/i], ['Ooze', /^(ooze|слиз|жиж)/i], ['Plant', /^(plant|растени)/i], ['Undead', /^(undead|нежит)/i]];
+// Read after bsAlign turns hyphens into spaces. Plain Neutral comes last: "нейтрально злой" would match it first.
+const BS_ALIGN = [['Lawful good', /(lawful good|(законопослушн|законн|принципиальн)\S* добр)/i], ['Neutral good', /(neutral good|нейтральн\S* добр)/i],
+  ['Chaotic good', /(chaotic good|хаотичн\S* добр)/i], ['Lawful neutral', /(lawful neutral|(законопослушн|законн|принципиальн)\S* нейтральн)/i],
+  ['Chaotic neutral', /(chaotic neutral|хаотичн\S* нейтральн)/i], ['Lawful evil', /(lawful evil|(законопослушн|законн|принципиальн)\S* зл)/i],
+  ['Neutral evil', /(neutral evil|нейтральн\S* зл)/i], ['Chaotic evil', /(chaotic evil|хаотичн\S* зл)/i],
   ['Any evil', /(any evil|любое злое)/i], ['Unaligned', /(unaligned|без мировоззрения)/i], ['Neutral', /^(neutral|нейтральн\S*)$/i]];
 const BS_MOVES = [['Fly', /fly|лета/i], ['Swim', /swim|плава/i], ['Climb', /climb|лаза/i], ['Burrow', /burrow|копа/i]];
 const BS_CRS = ['0', '1/8', '1/4', '1/2'].concat(Array.from({ length: 30 }, (_, i) => String(i + 1)));
 
 function _bsWords(b) { return String(b.meta || '').replace(/[(),]/g, ' ').split(/\s+/).filter(Boolean); }
-function bsSize(b) { return (BS_SIZES.find(([, r]) => r.test(_bsWords(b)[0] || '')) || ['—'])[0]; }
+function bsSize(b) {
+  const w = _bsWords(b)[0] || '';
+  if (/^маленьк/i.test(w)) return /[dк]4\b/i.test(String(b.hp || '')) ? 'Tiny' : 'Small';
+  return (BS_SIZES.find(([, r]) => r.test(w)) || ['—'])[0];
+}
 function bsType(b) {
   const words = _bsWords({ meta: String(b.meta || '').split(',')[0] });
   for (const w of words) { const ty = BS_TYPES.find(([, r]) => r.test(w)); if (ty) return ty[0]; }
   return 'Other';
 }
 function bsAlign(b) {
-  const a = String(b.meta || '').split(',').slice(1).join(',').trim();
+  // A bracket can hold a comma: "исчадие (демон, перевёртыш), хаотично-злое".
+  const a = String(b.meta || '').replace(/\([^)]*\)/g, '').split(',').slice(1).join(',').replace(/-/g, ' ').trim();
   return (BS_ALIGN.find(([, r]) => r.test(a)) || ['—'])[0];
 }
 function bsMoves(b) {

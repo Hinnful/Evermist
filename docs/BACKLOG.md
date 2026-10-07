@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 10 open items; IDs run to 157."
+description: "Open work only. 11 open items; IDs run to 159."
 metadata: 
   node_type: memory
   type: project
@@ -109,13 +109,6 @@ judge it in that case too.
 Mood, not speed: no release until the DM decides.
 **Play · Player**
 
-### 148. Corner rounding by handles on the map
-Filed 2026-10-02 on the DM's instruction, during the DM screen redesign. A handle sits in every
-corner of the selected room, as in Figma: dragging one rounds every corner, Alt+drag rounds only
-that corner. The typed number then likely moves to the Rooms section of Scene control. Until
-then the number field stays in the Room tab.
-**Prep · DM only**
-
 ### 152. The logo mark without violet
 Filed 2026-10-03 on the DM's instruction. 3.12.0 took violet out of every window, the splash and
 the start screen, and left the logo mark violet in About and on the splash, where it matches the
@@ -129,6 +122,18 @@ limit when the limits became tests: six files over 600 lines, eight functions ov
 comment blocks over 8 lines and four unused imports in `electron/`. Each split is its own
 restructuring task on the DM's yes, one file at a time, taken when a feature already touches that
 file; the unused imports ride the next release. Done when both lists are empty.
+**Upkeep · any time · no visible change**
+
+### 158. Split one topic out of ARCHITECTURE.md
+Filed 2026-10-07. `docs/ARCHITECTURE.md` is about 61 KB against a 45 KB soft ceiling, past the
+point where it is read whole. Move its largest subject into `docs/architecture/<topic>.md` and leave
+a pointer, as the ledgers do. Docs only.
+**Upkeep · any time · no visible change**
+
+### 159. The linter ignores the private design folder
+Filed 2026-10-07. `npm run lint` reports hundreds of errors on a working copy that has the
+gitignored `.claude/private/` and `tools/fire-proto/` prototypes, so a local run is always red
+while CI, on a clean checkout, is green. Add both to the ignores in `eslint.config.js`.
 **Upkeep · any time · no visible change**
 
 ---

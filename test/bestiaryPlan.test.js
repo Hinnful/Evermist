@@ -22,6 +22,25 @@ describe('what a monster is filed under', () => {
     assert.deepEqual([beast, imp].map(B.bsType), ['Fiend', 'Fiend']);
     assert.equal(B.bsSize(beast), 'Large');
   });
+  it('reads the 2024 Russian words: Животное, Конструкция, Жижа, Небольшой, a swarm of Животных', () => {
+    const metas = ['Крупное Животное (Динозавр), Без мировоззрения', 'Средняя Конструкция, Без мировоззрения',
+      'Исполинская Жижа (Титан), Без мировоззрения', 'Средняя стая Маленьких Животных, Без мировоззрения'];
+    assert.deepEqual(metas.map(m => B.bsType(mk('x', m))), ['Beast', 'Construct', 'Ooze', 'Beast']);
+    assert.equal(B.bsSize(mk('Гоблин-воитель', 'Небольшая Фея (Гоблиноид), Хаотичная Нейтральная')), 'Small');
+    assert.equal(B.bsSize(mk('Ворон', 'Крохотный зверь, без мировоззрения')), 'Tiny');
+  });
+  it('reads "Маленький" by its hit die: Small in the 2014 translation, Tiny in the 2024 one', () => {
+    assert.equal(B.bsSize(mk('Кошка', 'Маленькое Животное, Без мировоззрения', { hp: '2 (1d4)' })), 'Tiny');
+    assert.equal(B.bsSize(mk('Кошка', 'Маленький зверь, без мировоззрения', { hp: '2 (1к4)' })), 'Tiny');
+    assert.equal(B.bsSize(mk('Кобольд', 'Маленький гуманоид (кобольд), законно-злой', { hp: '5 (2к6 – 2)' })), 'Small');
+  });
+  it('reads Lawful as законно- or Принципиальный, hyphenated or not, past a bracket holding a comma', () => {
+    const al = m => B.bsAlign(mk('x', m));
+    assert.deepEqual(['Средний гуманоид, законно-добрый', 'Средняя Бестия (Дьявол), Принципиальная Злая',
+      'Огромный дракон, хаотично-добрый', 'Средняя Фея, Законная Злая', 'Средний гуманоид, законно-нейтральный',
+      'Крохотное исчадие (демон, перевёртыш), хаотично-злое', 'Средний великан (демон, перевёртыш), нейтрально-добрый'].map(al),
+    ['Lawful good', 'Lawful evil', 'Chaotic good', 'Lawful evil', 'Lawful neutral', 'Chaotic evil', 'Neutral good']);
+  });
   it('reads the type after a choice of sizes', () => {
     assert.equal(B.bsType(mk('Wererat', 'Medium or Small Monstrosity (Lycanthrope), Chaotic Evil')), 'Monstrosity');
     assert.equal(B.bsType(mk('Культист', 'Средний или Маленький Гуманоид, Любое мировоззрение')), 'Humanoid');
