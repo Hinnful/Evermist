@@ -7,7 +7,7 @@ cloud session.
 This file is written in the **present tense** and describes the process as it runs. The rules
 you must obey are in [CLAUDE.md](../CLAUDE.md); why a step has its shape is in
 [DECISIONS.md](DECISIONS.md), the process's own reasons in
-[decisions/process.md](decisions/process.md). `guard-process.js` refuses
+[decisions/process.md](decisions/process.md). `test/houseRules.test.js` refuses
 a sentence about a person or a dated story here, because this file is public.
 
 ## Who does what

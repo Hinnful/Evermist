@@ -167,9 +167,9 @@ error goes through it; no `alert()` ships.
 
 ## Guard hooks
 
-Twelve fail-open hooks in `.claude/settings.json`, baselines beside them. **Every guarded file
-has one**, and each explains its own fix when it fires. `guard-skill-hint.js`, the `PreToolUse`
-one, names the skill owning a file you edit.
+Four fail-open hooks in `.claude/settings.json`: the screen guard, the skill hint, and the size
+ratchets on the inline script and this file. Every other house rule is a test, and each failure
+says how to fix it.
 
 ## Conventions
 
@@ -179,11 +179,10 @@ one, names the skill owning a file you edit.
   dates and counts, and restatements of the code.
 - **Write no sentence that already sits in another file.** Explain a trap once, at the line
   where someone hits it; a module's purpose and its rejected shapes stay in the docs. To
-  connect two places, name the file. `guard-comment-echo.js` ratchets the repeat count DOWN.
-- **Comment share of shipped JavaScript ratchets DOWN**, codebase-wide, never per file.
-  `guard-comments.js` holds the ceiling; `node tools/comment-density.js` reports it, and
-  `--verify` diffs comment-stripped code against HEAD after a comment-only pass. A comment
-  that warns about a real trap earns its line - pay for it by tightening another.
+  connect two places, name the file.
+- **Comments stay at or under 20% of shipped JavaScript**, codebase-wide.
+  `node tools/comment-density.js` reports it, and `--verify` diffs comment-stripped code against
+  HEAD after a comment-only pass. A comment that warns about a real trap earns its line.
 
 ## Running the app
 

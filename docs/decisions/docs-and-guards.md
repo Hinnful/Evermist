@@ -341,4 +341,5 @@ the comment one and the module one adopted any new file at its first size. A fil
 limit sits in `test/houseRules.allow.json` and may only shrink. The module maps, the skill trigger
 map, the backlog size, ledger entries and the public-docs name rule are tests too, so each one
 passes or fails where the notice hooks spoke once and went quiet. The skill-map test found
-`dock.js` and `dock.css` claimed by `dm-ui` but never mapped.
+`dock.js` and `dock.css` claimed by `dm-ui` but never mapped. Eight hooks went with it; four stay, the
+screen guard, the skill hint and the two size ratchets on the inline script and CLAUDE.md.

@@ -32,8 +32,7 @@ function report() {
     '\n' + lib.fmt(stats.comments) + ' comment lines / ' + lib.fmt(stats.comments + stats.code) +
       ' non-blank = ' + stats.pct.toFixed(2) + '%'
   );
-  const base = lib.readJson(path.join(lib.ROOT, '.claude/hooks/comments-baseline.json'), null);
-  if (base) console.log('guard ceiling: ' + base.maxPct + '%');
+  console.log('ceiling: 20% (test/houseRules.test.js)');
 }
 
 function verify() {

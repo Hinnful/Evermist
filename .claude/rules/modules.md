@@ -9,7 +9,7 @@ paths:
 
 # Where code lives
 
-Loaded when you work on app code. A new module gets a row here and a line in `docs/architecture/module-map.md`; `guard-architecture.js` checks both.
+Loaded when you work on app code. A new module gets a row here and a line in `docs/architecture/module-map.md`; `test/houseRules.test.js` checks both.
 
 ## Module map
 

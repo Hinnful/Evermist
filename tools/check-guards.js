@@ -6,8 +6,7 @@
  *
  * The hooks in .claude/hooks/ only fire when a Claude session edits a file through its editor, so
  * an edit made any other way never meets them. This feeds each ratchet the file it watches and
- * fails if any of them blocks. The notice-only guards (skill hint, architecture, ledger, backlog,
- * scenario) are hints for a live session and stay out of this.
+ * fails if any of them blocks. Every other house rule is a test in test/houseRules.test.js.
  *
  *   node tools/check-guards.js
  */
@@ -19,18 +18,9 @@ const lib = require('../.claude/hooks/guard-lib.js');
 
 const HOOKS = path.join(lib.ROOT, '.claude', 'hooks');
 
-function modules() {
-  const out = lib.shippedJs().filter((rel) => /^(src\/(?:[^/]+\/)?[^/]+|electron\/[^/]+|main|preload)\.js$/.test(rel));
-  return out.filter((rel) => !rel.startsWith('src/css/'));
-}
-
 const CHECKS = [
   { hook: 'guard-blob.js', what: 'the inline script in index.html', files: ['index.html'] },
   { hook: 'guard-claudemd.js', what: 'the size and shape of CLAUDE.md', files: ['CLAUDE.md'] },
-  { hook: 'guard-process.js', what: 'the shape of docs/PROCESS.md', files: ['docs/PROCESS.md'] },
-  { hook: 'guard-comments.js', what: 'the comment share of shipped JavaScript', files: ['main.js'] },
-  { hook: 'guard-comment-echo.js', what: 'sentences repeated between files', files: ['main.js'] },
-  { hook: 'guard-module-size.js', what: 'the size of each module', files: modules() },
 ];
 
 let failed = 0;

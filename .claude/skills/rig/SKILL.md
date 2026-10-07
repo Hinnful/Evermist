@@ -135,12 +135,6 @@ the unfixed code and confirm it fails on the right line. Written after, break th
 confirm the FAIL names it, then put it back. A check that passes for some reason other than the
 code under it looks identical to one that works.
 
-**A MUTATION MUST NEVER SHRINK THE FILE IT BREAKS.** `guard-module-size.js` ratchets its ceiling
-DOWN the moment a file gets smaller, so deleting a line to break something writes the smaller
-number into the baseline and the revert then reads as growth - 748 bytes of headroom went that way
-once. Gate the line off instead of cutting it: `if (false && cond)` breaks the same behaviour and
-grows the file. Check `git diff -- .claude/hooks/` before the commit whatever you did.
-
 **EVERY CRITERION CARRIES A LABEL, and a new one is not finished without it.** A criterion that
 says nothing about being proved is indistinguishable from one nobody ever ran.
 

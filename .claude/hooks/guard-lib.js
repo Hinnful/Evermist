@@ -167,7 +167,7 @@ const NARRATIVE_RE =
 /*
  * Scans "##" sections only, skipping any named in skipSections and any fenced block.
  *
- * Content before the first "##" is skipped for the same reason guard-ledger skips a
+ * Content before the first "##" is skipped for the same reason the ledger test skips a
  * ledger preamble: that is where a file states which mood belongs where, and it has to
  * quote past-tense phrasing to route it away. A fence is code, not prose.
  *
