@@ -1,6 +1,8 @@
 ---
 name: project-backlog
-description: "**2026-10-03 (newest): the backlog was REGROUPED by release on the DM's instruction,** each item tagged Prep, Play, Campaign, Polish, Upkeep or Bug; effort and risk dropped from items. 4.0.0 is 118, 145, 139, 46 if a material is picked, and 121 with a README rewrite; 144 moved to 4.x; 119, 140 and 142 are 5.0 (PRODUCT.md). **16 open items; IDs run to 155.**
+description: "**2026-10-07 (latest): item 151 BUILT, not yet released:** the progress window has a Cancel that asks first; a stopped restore leaves the library as it was (docs/decisions/storage-and-packaging.md). **9 open items; IDs run to 155.**
+**2026-10-07 (newest): items 118 and 145 (lights) shipped in 3.13.0, 153 and 154 in 3.12.1, and 155 is a check in the seat-turn scenario; all five DELETED. Item 139 CLOSED as not needed** (docs/decisions/ui-and-control-panel.md): a form was built and taken out, since book wording already makes a pill. The bestiary reads Бестия and Исчадие as Fiend and Крупный as Large, and finds the type after a choice of sizes. **4.0.0 is now 46 if a material is picked, and 121 with a README rewrite. 10 open items; IDs run to 155.**
+**2026-10-03 (newest): the backlog was REGROUPED by release on the DM's instruction,** each item tagged Prep, Play, Campaign, Polish, Upkeep or Bug; effort and risk dropped from items. 4.0.0 is 118, 145, 139, 46 if a material is picked, and 121 with a README rewrite; 144 moved to 4.x; 119, 140 and 142 are 5.0 (PRODUCT.md). **16 open items; IDs run to 155.**
 **2026-10-03 (earlier): 3.12.0 SHIPPED items 147, 149 and 150 with the dock; four items FILED on the DM's instruction:** 152 the logo mark without violet, 153 the backup progress window names its file, 154 the dock's pop-outs get the windows' close cross, 155 a rig check for the effect size label under My seat. The fog's default tint and the thunder damage icon keep their violet, on the DM's call. **16 open items; IDs run to 155.**
 **2026-10-03: item 150 BUILT on the dm-screen-dock branch:** every window outside the dock rebuilt from one set of parts, with Gmail's selection in the scene library, the Bestiary and Add from YouTube, and one toast stack above the toolbar. Ships with 4.0.0. **12 open items; IDs run to 151.**
 **2026-10-03: item 151 FILED on the DM's instruction during the item 150 design rounds:** a Cancel in the progress window. **13 open items; IDs run to 151.**
@@ -97,7 +99,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **3.12.0** (the dock). **4.0.0 lands when every item under 4.0 below is
+`package.json` is at **3.13.0** (lights). **4.0.0 lands when every item under 4.0 below is
 built** (PRODUCT.md). Items under ANY TIME ship as 3.x patches and never hold 4.0 up. 2.12.0 to 2.15.3 are the
 vector editing epic, now closed: two selection levels, curved walls, the bounding box,
 copy/paste/duplicate, a radius on a curved corner, and shapes drawn as coloured areas.
@@ -133,31 +135,6 @@ categories. Effort and risk are judged once an item is picked, not here.
 ---
 
 # 4.0 - PLAY AT THE TABLE
-
-### 118. Lights from the floor plan, shown on the TV
-Filed 2026-09-24, reshaped 2026-09-29. Players ask "is this area lit?", mostly a character
-looking for darkness to hide in. A Dungeon Alchemist `.dd2vtt` already carries every light
-(`lights`: position, `range` in cells, colour, `shadows`), and the room import can read it: the
-cave test fixture has 40 lights at range 4-8, the sample map 6. Walls in `line_of_sight` block a
-light that casts shadows. **The TV shows it**, faintly, so a player can see the dark spots. Not
-placed by hand - that is item 145. A light is a map effect in PRODUCT.md's sense, not a material.
-**Bright light only, no dim ring** (settled 2026-09-29): the file's `range` is the lit area, and
-whether a spot counts as dark enough is the players' call at the table.
-**Needs /spec:** the look (a faint circle at most, it must not clutter the map), whether the DM can switch a light off (a torch put out), and what reveal hides.
-It adds a layer on the TV and new data to every saved scene.
-**Play · 4.0 · DM + Player**
-
-### 145. Spell light placed by hand
-Filed 2026-09-29, split out of 118. Light, Daylight and similar spells: a lit circle, bright light
-only as in 118, placed like an effect preset (shipped in 3.8.0) on the same layer as 118. Waits for 118 only.
-**Play · 4.0 · DM + Player**
-
-### 139. Build or edit an action pill by hand
-Filed 2026-09-29. A homebrew action not written in book wording gets no pill, so the DM types
-ugly notes instead. **Needs /spec:** the recommendation is fields in the stat block editor (name,
-to-hit or DC, damage, type) that write the action in book wording, so the existing reader makes
-the pill; a typed formula like `Bite [+5]{16}(slashing)` is one more syntax to remember.
-**Prep + Play · 4.0 · DM only**
 
 ### 46. A second effect material needs a look, not a code change
 The shader reads all six colour stops from the material record (`src/render/effectMaterials.js`),
@@ -202,37 +179,12 @@ that corner. The typed number then likely moves to the Rooms section of Scene co
 then the number field stays in the Room tab.
 **Prep · DM only**
 
-### 151. Cancel a long import, backup or restore
-Filed 2026-10-03 on the DM's instruction, out of item 150's scope. The progress window has no
-Cancel, so a restore of a large backup or a big map import cannot be stopped once it starts.
-**Needs /spec:** which of the operations can stop safely part-way, and what a stopped restore
-leaves in the library.
-**Polish · DM only**
-
 ### 152. The logo mark without violet
 Filed 2026-10-03 on the DM's instruction. 3.12.0 took violet out of every window, the splash and
 the start screen, and left the logo mark violet in About and on the splash, where it matches the
 app icon file. Redrawing it means the mark in `about.js` and `splash.html` and the icon files
 together, so the installed icon and the in-app mark stay one picture.
 **Polish · Both**
-
-### 153. The backup progress window names its file
-Filed 2026-10-03. A batch import shows its count and the map's file under the bar; a backup
-restore shows the bar alone. `setMapProgressRun` (mapLoader.js) takes the file, and the restore
-path in `backup.js` never passes it.
-**Polish · DM only**
-
-### 154. The dock's pop-outs get the windows' close cross
-Filed 2026-10-03. Fog colour, Grid colour and the movement dials still close with the older 12px
-cross, while every window outside the dock uses `uiIcon('x')` (icons.js).
-**Polish · DM only**
-
-### 155. A rig check for the effect size label under My seat
-Filed 2026-10-03. 3.12.0 stands the size label of an effect being placed upright under a turned
-seat and puts it above the shape as the screen shows it (`drawPresetPreview`, toolPreset.js). No
-scenario covers it, so a regression would show only at the table. The label is canvas pixels, so
-the check reads where the plate lands and its turn, not a DOM box.
-**Upkeep · DM only**
 
 ---
 

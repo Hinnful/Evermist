@@ -57,12 +57,15 @@ async function doExport(selectedIds) {
   });
 
   setMapProgressRun('', destPath.split(/[\\/]/).pop());
+  const job = mapJobStart({ title: 'Stop the backup?', message: 'The unfinished backup file is deleted.' },
+    () => window.electronAPI.cancelBackup());
   showMapProgress('Creating backup…');
   try {
     // ⚠ The open scene saves 5s after its last edit, and the zip is read from the store.
     if (currentScene && selectedIds.includes(currentScene.id)) await doAutoSave();
     const scenesData = [];
     for (const id of selectedIds) {
+      if (job.stopped) break;
       const scene = await sceneStore.loadScene(id);
       if (!scene) continue;
 
@@ -123,7 +126,7 @@ async function doExport(selectedIds) {
       });
     }
 
-    if (!scenesData.length) { hideMapProgress(); return; }
+    if (!scenesData.length || job.stopped) { hideMapProgress(); return; }
 
     // The module text is CAMPAIGN-level, so it goes in once at the zip root, not per scene. Null
     // when nothing is loaded, and the zip then looks exactly as it always did.
@@ -132,6 +135,7 @@ async function doExport(selectedIds) {
     const combatJson = typeof cbBackupPayload === 'function' ? cbBackupPayload() : null;
     const wrote = await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson, combatJson);
     hideMapProgress();
+    if (wrote && wrote.cancelled) return;
     // ⚠ REPORTED, NEVER DROPPED: the record still exports, so the backup looks complete.
     const gone = (wrote && wrote.missingVideos) || [];
     if (gone.length) messageDialog({
@@ -141,12 +145,14 @@ async function doExport(selectedIds) {
     });
   } catch (err) {
     hideMapProgress();
+    if (job.stopped) return;
     console.error('Export failed:', err);
     messageDialog({
       title: 'Export failed',
       message: t('The backup file is incomplete, so delete it and try again.') + '\n\n' + (err.message || err),
     });
   } finally {
+    mapJobEnd(job);
     setMapProgressRun('');
     unsubProgress();
   }
@@ -237,6 +243,16 @@ async function restoreFromZipPath(zipPath) {
   });
 
   setMapProgressRun('', zipPath.split(/[\\/]/).pop());
+  const job = mapJobStart({ title: 'Stop restoring?', message: 'The library goes back to how it was before the restore.' },
+    () => window.electronAPI.cancelBackup());
+  // A stopped restore leaves nothing: every scene saved so far and every map file written.
+  let assignments = [];
+  const saved = [];
+  const undo = async () => {
+    for (const id of saved) await sceneStore.deleteScene(id).catch(err => console.error('[restore] undo', err));
+    for (const a of assignments) if (a.entry.mapType === 'video') await window.electronAPI.deleteVideoFile(a.newId);
+    hideMapProgress();
+  };
   showMapProgress('Reading backup…');
   try {
     const manifest = await window.electronAPI.readBackupManifest(zipPath);
@@ -253,7 +269,8 @@ async function restoreFromZipPath(zipPath) {
     const usedNames = new Set(existingScenes.map(s => s.name));
     let maxOrder = existingScenes.length ? Math.max(...existingScenes.map(s => s.sortOrder ?? 0)) : -1;
 
-    const assignments = manifest.map(entry => {
+    if (job.stopped) return undo();
+    assignments = manifest.map(entry => {
       const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
         ? crypto.randomUUID()
         : Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -282,6 +299,7 @@ async function restoreFromZipPath(zipPath) {
       }))
     );
 
+    if (job.stopped) return undo();
     const extractMap = {};
     extracted.forEach(e => { extractMap[e.newId] = e; });
     const noMap = [];   // names, which is what the DM is told at the end
@@ -292,6 +310,7 @@ async function restoreFromZipPath(zipPath) {
     const newSceneMeta = [];
 
     for (let i = 0; i < assignments.length; i++) {
+      if (job.stopped) return undo();
       const { newId, resolvedName, sortOrder, entry } = assignments[i];
       const ex = extractMap[newId] || {};
 
@@ -342,10 +361,13 @@ async function restoreFromZipPath(zipPath) {
       };
 
       await sceneStore.saveScene(scene);
+      saved.push(newId);
       newSceneMeta.push({ id: newId, name: resolvedName, group: scene.group, thumbnail: thumbBlob, sortOrder, createdAt: scene.createdAt, mapType: scene.mapType });
       updateMapProgress(Math.round(((i + 1) / assignments.length) * 100));
     }
 
+    if (job.stopped) return undo();
+    mapJobEnd(job);
     if (typeof allScenes !== 'undefined') {
       allScenes.push(...newSceneMeta);
       allScenes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
@@ -365,6 +387,7 @@ async function restoreFromZipPath(zipPath) {
     await adoptModuleTextFromZip(zipPath);
     await adoptCombatFromZip(zipPath);
   } catch (err) {
+    if (job.stopped) return undo();
     hideMapProgress();
     console.error('Restore failed:', err);
     messageDialog({
@@ -372,6 +395,7 @@ async function restoreFromZipPath(zipPath) {
       message: t('Evermist stopped partway through the backup, so some scenes are missing.') + '\n\n' + (err.message || err),
     });
   } finally {
+    mapJobEnd(job);
     setMapProgressRun('');
     unsubProgress();
   }

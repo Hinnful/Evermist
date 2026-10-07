@@ -17,6 +17,15 @@ describe('what a monster is filed under', () => {
     assert.deepEqual([goblin, goblinRu, lich, eagle].map(B.bsSize), ['Small', 'Small', 'Medium', 'Large']);
     assert.deepEqual([goblin, goblinRu, lich, eagle].map(B.bsType), ['Humanoid', 'Humanoid', 'Undead', 'Beast']);
   });
+  it('reads the 2024 Russian Monster Manual: Бестия and Исчадие are Fiend, Крупный is Large', () => {
+    const beast = mk('Болотный зверь', 'Крупная Бестия, Хаотичная Злая'), imp = mk('Бес', 'Крошечное Исчадие (Дьявол), Законопослушное Злое');
+    assert.deepEqual([beast, imp].map(B.bsType), ['Fiend', 'Fiend']);
+    assert.equal(B.bsSize(beast), 'Large');
+  });
+  it('reads the type after a choice of sizes', () => {
+    assert.equal(B.bsType(mk('Wererat', 'Medium or Small Monstrosity (Lycanthrope), Chaotic Evil')), 'Monstrosity');
+    assert.equal(B.bsType(mk('Культист', 'Средний или Маленький Гуманоид, Любое мировоззрение')), 'Humanoid');
+  });
   it('reads "нейтрально-злой" as neutral evil, not as plain neutral', () => {
     assert.equal(B.bsAlign(goblinRu), 'Neutral evil');
     assert.equal(B.bsAlign(lich), 'Neutral evil');

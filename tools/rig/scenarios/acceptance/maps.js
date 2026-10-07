@@ -24,6 +24,8 @@
 //   K. A STILL image imports exactly as an animated map does, and a map far bigger than the
 //      window arrives at its own size rather than being quietly shrunk to fit.
 //   L. An import started while another is still running waits its turn, and both arrive whole.
+//   M. Cancel while an animated map is shrinking asks first; Stop ends the shrink and the map is
+//      not imported, with no failure reported.
 //
 // Every good map in this file is a recorded clip, so the batch import path runs on the kind of
 // file the DM actually points at. What a playing map RENDERS as is smoke.js's business: block 2
@@ -608,6 +610,37 @@ module.exports = async function mapsFeature(rig) {
   rig.check(queuedDlg.length === 0,
             'an import started over another reported a failure: ' +
             JSON.stringify(Array.from(new Set(queuedDlg))));
+
+  // ── M. Cancel during a shrink ─────────────────────────────────────────────
+  // RED ON: the h.stopped check gated off with false && in pump (mapConvert.js) — 2026-10-07
+  const shrinkMap = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: 2400, h: 1350, seconds: 3, name: 'rig-shrink-stop.mp4' });
+  const shrinkExpr = await rig.fixtures.asFileExpr(dm, shrinkMap);
+  const shrink = await dm.evaluate(`(async () => {
+    localStorage.setItem('evermist.compressBigVideos', '1080');
+    const orig = showMapProgress, out = {};
+    showMapProgress = function (label) {
+      orig(label);
+      if (label !== 'Shrinking the animated map…' || out.asked) return;
+      out.asked = true;
+      document.getElementById('map-progress-stop').click();
+      out.title = document.getElementById('cd-title').textContent;
+      document.getElementById('cd-ok').click();
+    };
+    const before = allScenes.length, mark = globalThis.__rigDlgSeen.length;
+    const t0 = performance.now();
+    const r = await createNewScene(${shrinkExpr});
+    showMapProgress = orig;
+    localStorage.removeItem('evermist.compressBigVideos');
+    return { asked: !!out.asked, title: out.title, r, added: allScenes.length - before,
+             dialogs: globalThis.__rigDlgSeen.slice(mark), ms: Math.round(performance.now() - t0),
+             shown: document.getElementById('map-progress').style.display };
+  })()`, 120000);
+  rig.note('stopping a shrink: ' + JSON.stringify(shrink));
+  rig.check(shrink.asked && shrink.title === 'Stop shrinking this map?',
+            'Cancel did not ask before stopping the shrink, or the shrink never started: ' + JSON.stringify(shrink));
+  rig.check(shrink.r && shrink.r.stopped && shrink.added === 0 && shrink.shown === 'none',
+            'a stopped shrink still imported the map, or left the progress window up: ' + JSON.stringify(shrink));
+  rig.check(shrink.dialogs.length === 0, 'a stopped shrink reported a failure: ' + JSON.stringify(shrink.dialogs));
 
   rig.byEye('a .zip picked through the real "+" button, which is the only way restorePickedZip ' +
             'gets a path on disk to restore from — a File built in-page has none, and ' +

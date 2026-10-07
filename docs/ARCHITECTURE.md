@@ -716,6 +716,9 @@ between PCs.
   already loaded, the app asks which one to keep and names both; if there is no room left in
   storage for it, the scenes still restore and the app says the text didn't. A zip written
   before this existed carries no module text and restores exactly as it always did.
+- **Cancel stops either one, after asking.** A stopped export deletes its half-written zip. A
+  stopped restore deletes the scenes and map files it had written, so the library is as it was.
+  The same Cancel stops a batch import after the map in hand, and a shrink before it imports.
 
 The zip reading and writing happens in the Electron shell, driven by `backup.js` on the page.
 `moduleText.js` owns the module-text format at both ends: `backup.js` asks it for a payload

@@ -16,6 +16,10 @@ function register(ctx) {
   ({ mapsDir, sendTo, isSafeId } = ctx);
 }
 
+// The running zip write or read, stopped by the progress window's Cancel. One at a time.
+let stopZip = null;
+ipcMain.handle('cancel-backup', () => { if (stopZip) stopZip(); });
+
 // --- Backup / Restore IPC ---
 
 ipcMain.handle('show-save-dialog', async (event, opts) => {
@@ -27,6 +31,8 @@ ipcMain.handle('show-save-dialog', async (event, opts) => {
 // Video maps are read from mapsDir by id; image, fog and thumb arrive as ArrayBuffers.
 // moduleText and combat are campaign-level, so they land at the zip root beside manifest.json.
 ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText, combat) => {
+  let cancelled = false;
+  stopZip = () => { cancelled = true; };
   for (const s of scenesData) {
     if (s.mapType === 'video') {
       try { await fs.promises.access(path.join(mapsDir, s.id + s.mapExt)); s._videoExists = true; }
@@ -39,8 +45,10 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleTe
                                   .map(s2 => (s2.metadata && s2.metadata.name) || s2.id);
 
   await new Promise((resolve, reject) => {
+    if (cancelled) return resolve();
     const out = fs.createWriteStream(destPath);
     const archive = archiver('zip', { zlib: { level: 6 } });
+    stopZip = () => { cancelled = true; archive.abort(); out.destroy(); resolve(); };
     out.on('close', resolve);
     out.on('error', reject);
     archive.on('error', reject);
@@ -66,8 +74,12 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleTe
     });
 
     archive.finalize();
-  });
+  }).finally(() => { stopZip = null; });
 
+  if (cancelled) {
+    await fs.promises.unlink(destPath).catch(() => {});
+    return { cancelled: true, missingVideos: [] };
+  }
   return { missingVideos };
 });
 
@@ -166,9 +178,14 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
     }
   };
 
+  let writing = null, cancelled = false;
+  stopZip = () => { cancelled = true; };
   await new Promise((resolve, reject) => {
     yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
       if (err) return reject(err);
+      if (cancelled) { zipfile.close(); return resolve(); }
+      // The renderer deletes whatever already landed in mapsDir; this only stops the reading.
+      stopZip = () => { if (writing) writing.destroy(); zipfile.close(); resolve(); };
       zipfile.readEntry();
 
       zipfile.on('entry', entry => {
@@ -183,6 +200,7 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
           if (type === 'map' && a.mapType === 'video') {
             const dest = path.join(mapsDir, newId + a.mapExt);
             const ws = fs.createWriteStream(dest);
+            writing = ws;
             rs.pipe(ws);
             ws.on('finish', () => { results[newId].mapWritten = true; markDone(newId, type); zipfile.readEntry(); });
             ws.on('error', e => { zipfile.close(); reject(e); });
@@ -219,7 +237,7 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
       });
       zipfile.on('error', reject);
     });
-  });
+  }).finally(() => { stopZip = null; });
 
   return Object.values(results);
 });

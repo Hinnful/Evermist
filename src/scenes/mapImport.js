@@ -56,8 +56,10 @@ async function _importMapFiles(files) {
   }
 
   const ids = [];
+  const job = batch ? mapJobStart({ title: 'Stop importing?', message: 'The maps already imported stay. The rest are skipped.' }) : null;
   try {
     for (let i = 0; i < queue.length; i++) {
+      if (job && job.stopped) break;
       const f = queue[i];
       if (batch) {
         setMapProgressRun(t('{i} of {n}', { i: i + 1, n: queue.length }), f.name);
@@ -69,9 +71,10 @@ async function _importMapFiles(files) {
       try { r = await createNewScene(f, { quiet: batch }); }
       catch (err) { console.error('[importMapFiles] import threw', err); }
       if (r && r.ok) ids.push(r.id);
-      else failures.push(t('“{name}” {reason}', { name: f.name, reason: (r && r.reason) || t('would not open.') }));
+      else if (!(r && r.stopped)) failures.push(t('“{name}” {reason}', { name: f.name, reason: (r && r.reason) || t('would not open.') }));
     }
   } finally {
+    mapJobEnd(job);
     setMapProgressRun('');
     hideMapProgress();
   }
@@ -121,14 +124,19 @@ async function createNewScene(file, opts) {
   let shrunk = null;
   const box = isVid && typeof compressBox === 'function' ? compressBox() : null;
   if (box && typeof convertVideoForImport === 'function') {
+    // A batch's own Cancel covers its shrinks.
+    const own = o.quiet ? null : mapJobStart({ title: 'Stop shrinking this map?', message: 'The map will not be imported.' });
     shrunk = await convertVideoForImport(file, {
       box,
       onStart: () => showMapProgress('Shrinking the animated map…'),
       onProgress: updateMapProgress,
+      stopped: mapJobStopped,
     });
+    mapJobEnd(own);
+    hideMapProgress();
+    if (shrunk.stopped) return { ok: false, stopped: true, name };
     if (shrunk.converted) file = shrunk.file;
     else shrunk = null;
-    hideMapProgress();
   }
 
   if (!isVid) showMapProgress('Loading map…');

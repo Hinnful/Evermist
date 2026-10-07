@@ -102,6 +102,8 @@
   .sm-track i { display: block; width: 0; height: 100%; border-radius: 2px; background: var(--b-solid); transition: width 0.12s ease-out; }
   .mp-file { margin-top: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mp-file:empty { display: none; }
+  #map-progress-foot { display: none; }
+  #map-progress.stoppable #map-progress-foot { display: flex; }
 
   /* ===== LANDING ===== */
   /* ONE element, shown on BOTH screens — the empty state before any map is open. So it is a

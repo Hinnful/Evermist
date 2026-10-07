@@ -231,6 +231,13 @@ function convertVideoForImport(file, hooks) {
         function pump() {
           rvfc = null;
           if (settled || !video) return;
+          if (h.stopped && h.stopped()) {
+            settled = true;
+            if (rec && rec.state !== 'inactive') { try { rec.stop(); } catch (_) {} }
+            cleanup();
+            resolve({ file: file, stopped: true, converted: false });
+            return;
+          }
           armStall();
           try {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);

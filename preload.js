@@ -59,6 +59,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readBackupModuleText: (zipPath) => ipcRenderer.invoke('read-backup-module-text', zipPath),
   readBackupCombat: (zipPath) => ipcRenderer.invoke('read-backup-combat', zipPath),
   extractBackupScenes: (zipPath, assignments) => ipcRenderer.invoke('extract-backup-scenes', zipPath, assignments),
+  cancelBackup: () => ipcRenderer.invoke('cancel-backup'),
   onBackupProgress: (callback) => {
     const handler = (_event, data) => callback(data);
     ipcRenderer.on('backup-progress', handler);

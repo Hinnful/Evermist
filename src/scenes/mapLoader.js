@@ -86,19 +86,64 @@ function loadMapFromFile(file, onMapLoaded, onFail) {
 let _mapProgressCount = '', _mapProgressFile = '';
 function setMapProgressRun(count, file) { _mapProgressCount = count || ''; _mapProgressFile = file || ''; }
 
+// A long job the DM can stop. `ask` is the question Cancel puts first; the job reads `stopped`
+// between its own steps and undoes what it must.
+let _mapJob = null, _mapProgressUp = false, _mapProgressAsking = false;
+function mapJobStart(ask, onStop) {
+  _mapJob = { stopped: false, ask, onStop };
+  _mapProgressPaint();
+  return _mapJob;
+}
+function mapJobEnd(job) {
+  if (_mapJob === job) _mapJob = null;
+  _mapProgressPaint();
+}
+function mapJobStopped() { return !!(_mapJob && _mapJob.stopped); }
+
+// ⚠ The overlay sits above every dialog, so it steps aside while the question is up.
+function _mapProgressPaint() {
+  const el = document.getElementById('map-progress');
+  el.style.display = _mapProgressUp && !_mapProgressAsking ? 'flex' : 'none';
+  el.classList.toggle('stoppable', !!(_mapJob && !_mapJob.stopped));
+}
+
+function _mapProgressAsk() {
+  const job = _mapJob;
+  if (!job || job.stopped) return;
+  _mapProgressAsking = true;
+  _mapProgressPaint();
+  const back = () => { _mapProgressAsking = false; _mapProgressPaint(); };
+  confirmDialog({
+    title: job.ask.title, message: job.ask.message, confirmLabel: 'Stop', cancelLabel: 'Keep going',
+    onConfirm: () => {
+      if (_mapJob === job) {
+        job.stopped = true;
+        document.getElementById('map-progress-label').textContent = t('Stopping…');
+        if (job.onStop) job.onStop();
+      }
+      back();
+    },
+    onCancel: back,
+  });
+}
+
 function showMapProgress(label) {
-  document.getElementById('map-progress-label').textContent = t(label || 'Saving...');
+  document.getElementById('map-progress-label').textContent = t(mapJobStopped() ? 'Stopping…' : label || 'Saving...');
   document.getElementById('map-progress-count').textContent = _mapProgressCount;
   document.getElementById('map-progress-file').textContent = _mapProgressFile;
   document.getElementById('map-progress-bar').style.width = '0%';
-  document.getElementById('map-progress').style.display = 'flex';
+  _mapProgressUp = true;
+  _mapProgressPaint();
 }
 function updateMapProgress(pct) {
   document.getElementById('map-progress-bar').style.width = Math.min(100, pct) + '%';
 }
 function hideMapProgress() {
-  document.getElementById('map-progress').style.display = 'none';
+  _mapProgressUp = false;
+  _mapProgressPaint();
 }
+
+document.getElementById('map-progress-stop').addEventListener('click', _mapProgressAsk);
 
 if (window.electronAPI && window.electronAPI.onVideoSaveProgress) {
   window.electronAPI.onVideoSaveProgress(({ written, total }) => {

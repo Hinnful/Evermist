@@ -6,10 +6,10 @@
 
 // English and Russian name the same size, type and alignment, so one filter holds both.
 const BS_SIZES = [['Tiny', /^(tiny|крошечн)/i], ['Small', /^(small|маленьк)/i], ['Medium', /^(medium|средн)/i],
-  ['Large', /^(large|больш)/i], ['Huge', /^(huge|огромн)/i], ['Gargantuan', /^(gargantuan|громадн|исполинск)/i]];
+  ['Large', /^(large|больш|крупн)/i], ['Huge', /^(huge|огромн)/i], ['Gargantuan', /^(gargantuan|громадн|исполинск)/i]];
 const BS_TYPES = [['Aberration', /^(aberration|аберрац)/i], ['Beast', /^(beast|звер)/i], ['Celestial', /^(celestial|небожит)/i],
   ['Construct', /^(construct|конструкт)/i], ['Dragon', /^(dragon|дракон)/i], ['Elemental', /^(elemental|элементал)/i],
-  ['Fey', /^(fey|фе[яи])/i], ['Fiend', /^(fiend|исчади)/i], ['Giant', /^(giant|великан)/i], ['Humanoid', /^(humanoid|гуманоид)/i],
+  ['Fey', /^(fey|фе[яи])/i], ['Fiend', /^(fiend|исчади|бести)/i], ['Giant', /^(giant|великан)/i], ['Humanoid', /^(humanoid|гуманоид)/i],
   ['Monstrosity', /^(monstrosity|монстр|чудовищ)/i], ['Ooze', /^(ooze|слиз)/i], ['Plant', /^(plant|растени)/i], ['Undead', /^(undead|нежит)/i]];
 // Plain Neutral comes last: "нейтрально-злой" would match it first.
 const BS_ALIGN = [['Lawful good', /(lawful good|законопослушн\S* добр)/i], ['Neutral good', /(neutral good|нейтральн\S* добр)/i],
@@ -22,7 +22,11 @@ const BS_CRS = ['0', '1/8', '1/4', '1/2'].concat(Array.from({ length: 30 }, (_, 
 
 function _bsWords(b) { return String(b.meta || '').replace(/[(),]/g, ' ').split(/\s+/).filter(Boolean); }
 function bsSize(b) { return (BS_SIZES.find(([, r]) => r.test(_bsWords(b)[0] || '')) || ['—'])[0]; }
-function bsType(b) { return (BS_TYPES.find(([, r]) => r.test(_bsWords(b)[1] || '')) || ['Other'])[0]; }
+function bsType(b) {
+  const words = _bsWords({ meta: String(b.meta || '').split(',')[0] });
+  for (const w of words) { const ty = BS_TYPES.find(([, r]) => r.test(w)); if (ty) return ty[0]; }
+  return 'Other';
+}
 function bsAlign(b) {
   const a = String(b.meta || '').split(',').slice(1).join(',').trim();
   return (BS_ALIGN.find(([, r]) => r.test(a)) || ['—'])[0];

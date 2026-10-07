@@ -25,6 +25,11 @@
 //      a scene that fails the first time it is opened.
 //   J. A restore's progress bar names the backup file at every stage.
 //   K. After a restore, the next map import shows only its own file name.
+//   L. Cancel in the progress window asks first. Keep going lets the restore finish; Stop ends
+//      it and the library is as it was: no scene added and no map file left on disk.
+//   M. A backup stopped while it is written leaves no file behind.
+//   N. A batch import stopped partway keeps the map it was on and skips the rest, with no
+//      failure reported for them.
 //
 // ⚠ THE EXPORT'S SAVE DIALOG IS THE ONE SEAM NOTHING CAN CROSS. doExport opens a native
 // showSaveDialog as its FIRST act, and `window.electronAPI` comes through contextBridge, so it is
@@ -465,4 +470,116 @@ module.exports = async function backupFeature(rig) {
   rig.check(after.length > 0 && after.every(f => f === ''),
             'a map import after the restore still showed a file name, the backup file: ' +
             JSON.stringify(after));
+
+  // ── L. A restore stopped from the progress window ────────────────────────
+  // RED ON: undo()'s deleteScene and deleteVideoFile loops gated off with if (false) in restoreFromZipPath (backup.js) — 2026-10-07
+  const mapsDir = path.join(rig.profileDir, 'maps');
+  const mapFiles = () => fs.existsSync(mapsDir) ? fs.readdirSync(mapsDir).sort() : [];
+  const filesBefore = mapFiles();
+  // ⚠ The sections above leave their own dialogs queued, and a question asked now waits behind them.
+  const drainDialogs = `(() => {
+    const a = document.getElementById('cd-anchor');
+    for (let i = 0; i < 20 && a && a.style.display === 'flex'; i++)
+      document.getElementById(a.classList.contains('cd-solo') ? 'cd-ok' : 'cd-cancel').click();
+    return 0;
+  })()`;
+  await dm.evaluate(drainDialogs);
+  const stop = await dm.evaluate(`(async () => {
+    const shown = () => document.getElementById('map-progress').style.display;
+    const ask = (at, answer) => {
+      const orig = showMapProgress, out = {};
+      showMapProgress = function (label) {
+        orig(label);
+        if (label !== at || out.asked) return;
+        if (!answer) { out.asked = true; return; }
+        out.stoppable = document.getElementById('map-progress').classList.contains('stoppable');
+        document.getElementById('map-progress-stop').click();
+        out.asked = true;
+        out.title = document.getElementById('cd-title').textContent;
+        out.hiddenWhileAsking = shown() === 'none';
+        document.getElementById(answer).click();
+        out.backAfter = shown();
+      };
+      return { out, done: () => { showMapProgress = orig; } };
+    };
+    const before = (await sceneStore.listScenes()).length;
+    const keep = ask('Extracting scenes…', 'cd-cancel');
+    await restoreFromZipPath(${JSON.stringify(zipPath)});
+    keep.done();
+    const afterKeep = (await sceneStore.listScenes()).length;
+    ${drainDialogs};
+    // Stopped once a scene is saved, so the undo has a scene to take back as well as a file.
+    const halt = ask('Saving scenes…', null);
+    const origPct = updateMapProgress;
+    updateMapProgress = function (pct) {
+      origPct(pct);
+      if (!halt.out.asked || halt.out.title || pct < 100) return;
+      document.getElementById('map-progress-stop').click();
+      halt.out.title = document.getElementById('cd-title').textContent;
+      halt.out.hiddenWhileAsking = shown() === 'none';
+      document.getElementById('cd-ok').click();
+    };
+    await restoreFromZipPath(${JSON.stringify(zipPath)});
+    halt.done();
+    updateMapProgress = origPct;
+    return { before, afterKeep, afterStop: (await sceneStore.listScenes()).length, shownAfter: shown(),
+             keep: keep.out, halt: halt.out, dialogs: document.querySelectorAll('#cd-anchor').length &&
+             document.getElementById('cd-anchor').style.display };
+  })()`, 300000);
+  rig.note('stopping a restore: ' + JSON.stringify(stop));
+  const filesAfter = mapFiles();
+  rig.check(stop.keep.asked && stop.keep.stoppable && stop.keep.title === 'Stop restoring?' && stop.keep.hiddenWhileAsking,
+            'Cancel did not ask before stopping the restore, or the progress window stayed over the question: ' + JSON.stringify(stop.keep));
+  rig.check(stop.keep.backAfter === 'flex' && stop.afterKeep === stop.before + exported.count,
+            'Keep going did not bring the progress window back and let the restore finish: ' + JSON.stringify(stop));
+  rig.check(stop.halt.title === 'Stop restoring?' && stop.afterStop === stop.afterKeep,
+            'a stopped restore left scenes in the library: ' + stop.afterKeep + ' before, ' + stop.afterStop + ' after');
+  rig.check(filesAfter.length === filesBefore.length + exported.count,
+            'a stopped restore left its map files on disk: ' + JSON.stringify({ before: filesBefore, after: filesAfter }));
+  rig.check(stop.shownAfter === 'none', 'the progress window stayed up after the restore stopped');
+
+  // ── M. A backup stopped while it is written ───────────────────────────────
+  // RED ON: the unlink after a cancelled write gated off with if (false) in create-backup-zip (electron/backupZip.js) — 2026-10-07
+  const stoppedZip = path.join(rig.outDir, 'stopped.zip');
+  const wrote = await dm.evaluate(`(async () => {
+    const big = new Uint8Array(40 * 1024 * 1024).map((_, i) => (i * 2654435761) >>> 24);
+    const pending = window.electronAPI.createBackupZip(${JSON.stringify(stoppedZip)}, [{ id: 'rig-big', mapType: 'image', mapExt: '.png',
+      metadata: { id: 'rig-big', name: 'Big', mapType: 'image' }, mapBuffer: big.buffer }], null);
+    window.electronAPI.cancelBackup();
+    return await pending;
+  })()`, 120000);
+  rig.check(wrote && wrote.cancelled && !fs.existsSync(stoppedZip),
+            'a stopped backup left a file behind, or was not stopped: ' + JSON.stringify(wrote) + ' exists ' + fs.existsSync(stoppedZip));
+
+  // ── N. A batch import stopped partway ─────────────────────────────────────
+  // RED ON: the job.stopped break gated off with false && in _importMapFiles (mapImport.js) — 2026-10-07
+  await dm.evaluate(drainDialogs);
+  const batch = await dm.evaluate(`(async () => {
+    const png = n => new Promise(res => {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+      c.getContext('2d').fillRect(0, 0, 32, 32);
+      c.toBlob(b => res(new File([b], n, { type: 'image/png' })), 'image/png');
+    });
+    const orig = showMapProgress, out = { names: [] };
+    showMapProgress = function (label) {
+      orig(label);
+      if (out.asked) return;
+      out.asked = true;
+      document.getElementById('map-progress-stop').click();
+      out.title = document.getElementById('cd-title').textContent;
+      document.getElementById('cd-ok').click();
+    };
+    const before = allScenes.length;
+    await importMapFiles([await png('rig-one.png'), await png('rig-two.png'), await png('rig-three.png')]);
+    showMapProgress = orig;
+    out.added = allScenes.length - before;
+    out.dialog = document.getElementById('cd-anchor').style.display;
+    out.names = allScenes.slice(-1).map(sc => sc.name);
+    return out;
+  })()`, 120000);
+  rig.note('stopping a batch import: ' + JSON.stringify(batch));
+  rig.check(batch.title === 'Stop importing?' && batch.added === 1,
+            'a stopped batch import did not keep the one map it was on and skip the rest: ' + JSON.stringify(batch));
+  rig.check(batch.dialog !== 'flex', 'a stopped batch import reported the skipped maps as failures');
+  rig.byEye('Cancel sits at the bottom right of the progress window, and the Stop question reads right');
 };

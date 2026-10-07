@@ -206,6 +206,13 @@ misses edits made outside the edit tools; a `/commit` step, which loads an alrea
 a rule in CLAUDE.md, which nothing enforces. A warning-only report was the first shape, reversed
 because a warning is skipped.
 
+### A homebrew pill is written in the book's wording · `REJECTED` (2026-10-07)
+Item 139 asked for a way to make a pill for an action not in book wording. A form in the stat
+block that wrote the book's sentence was built, then taken out before release: an
+action worded like the Bestiary's already gets its pill, so the form only saved remembering the
+wording, which the DM knows. A typed shorthand such as `Bite: (+5){DC 13}[2d6+3]*fire*` was
+rejected for the same reason, and because it is a second syntax beside the book's.
+
 ### Every Multiattack is one frame, and a busy one stays dashed · `SETTLED` (2026-09-28)
 
 Amends the entry below. A Multiattack is one action, so every reading is one frame, plain counts
