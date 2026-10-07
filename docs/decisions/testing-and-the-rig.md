@@ -303,3 +303,11 @@ outside the main process can place a window before it first shows, so `main.js` 
 `--offscreen` flag that the rig passes: every window opens at -9000,-9000 and shows without focus.
 It is the one app-side change made for the rig, and the parker stays as the backstop.
 `test/offscreen.test.js` reads `main.js`, because the parker would hide a window that forgot it.
+
+### ESLint runs on every change, narrowed to names and dead code · `REOPENED` (2026-10-07)
+The 2026-09-07 refusal priced a triage of several hundred complaints. Collecting every top-level
+name across the page scripts as a shared global left 20, none of them app bugs: dead bindings in
+tests and the rig, four unused imports in `electron/`, and eight functions past 120 lines. The
+first group was cut and the rest sit in `eslint-suppressions.json`, which may only shrink. What it
+guards is a misspelt or deleted global, which no test reads and which throws only when its line
+runs. A type check was measured at about 2,000 errors from the same shared scope and stays out.

@@ -33,6 +33,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the What's new list is read off the release commits and tags
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -41,6 +43,9 @@ jobs:
       # postinstall fetches yt-dlp into vendor/. It fails hard on purpose: a soft failure would
       # ship an installer whose download button does nothing.
       - run: npm ci
+
+      - name: Write the What's new list
+        run: node tools/build-changelog.js
 
       - name: Build the installer
         run: npx electron-builder ${{ matrix.flag }} --publish never
@@ -87,11 +92,14 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: node tools/build-changelog.js
 
       # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs, and the app then exits
       # at launch.

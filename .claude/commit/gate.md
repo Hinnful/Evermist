@@ -17,7 +17,9 @@ go to `rig.byEye`. Correctness is yours.
 
 Then the gate:
 
-- **`npm test` once, whatever the diff touched.** It costs seconds.
+- **`npm test` and `npm run lint` once, whatever the diff touched.** They cost seconds. The house
+  rules on comments, file size, the module maps and the public docs are tests, so a red here can
+  be one of those; its message says what to fix.
 - **A SMOKE pass, never the full regression set.** CI runs regression against the packaged `.exe`
   after the push. This local pass catches a break while the change is still in front of you.
 - **Skip the rig entirely** when the diff touches no file under `src/` and no `index.html`,
@@ -37,12 +39,4 @@ If most of the suite qualifies, say so and run `regression` instead.
 and do not write notes. If the failure is the rig rather than the app - the Player window never
 becoming visible is the known one - say which of the two it is.
 
-**One red is expected on every version bump.** `help-and-about`'s check that the What's new panel
-marks the running version as installed fails, because the changelog is regenerated only after the
-commit exists (`push.md`). Read it as expected, confirm nothing ELSE is red, and carry on. Any
-other red still blocks.
-
-**Mutation-check every NEW scenario.** Break the line in `src/` that implements it, re-run that one
-scenario, confirm it goes FAIL *and that the failure names the right check*, then restore and verify
-`git diff -- src/` is empty. A scenario can pass a mutation check for the wrong reason - a timeout,
-or a different assertion - and that reads exactly like success.
+A new scenario was mutation-checked when it was written; the `rig` skill carries how.

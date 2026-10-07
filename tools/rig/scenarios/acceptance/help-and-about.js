@@ -336,6 +336,7 @@ module.exports = async function helpAndAboutFeature(rig) {
       entries: typeof CHANGELOG !== 'undefined' ? CHANGELOG.length : -1,
       chips: document.querySelectorAll('#cl-body .sm-chip').length,
       chipOn: chip ? chip.closest('.cl-entry').querySelector('.v').textContent : '',
+      listed: typeof CHANGELOG !== 'undefined' && CHANGELOG.some((e) => e.version === ${JSON.stringify(pkgVersion)}),
     };
   })()`);
   rig.note('What\'s new: ' + JSON.stringify(panel));
@@ -346,9 +347,15 @@ module.exports = async function helpAndAboutFeature(rig) {
             'DM gets a darkened panel they cannot use: ' + JSON.stringify(panel));
   rig.check(panel.rows === panel.entries && panel.rows > 0,
             'the panel lists ' + panel.rows + ' releases out of ' + panel.entries + ' the app carries');
-  rig.check(panel.chips === 1 && panel.chipOn.indexOf(pkgVersion) === 0,
-            'the panel marks ' + JSON.stringify(panel.chipOn) + ' as installed while this build is ' +
-            pkgVersion + ', so the DM cannot tell which releases they already have');
+  // CI writes the running version's entry before it builds. A local build before the release
+  // commit exists has none, so there is nothing to mark.
+  if (panel.listed) {
+    rig.check(panel.chips === 1 && panel.chipOn.indexOf(pkgVersion) === 0,
+              'the panel marks ' + JSON.stringify(panel.chipOn) + ' as installed while this build is ' +
+              pkgVersion + ', so the DM cannot tell which releases they already have');
+  } else {
+    rig.note(pkgVersion + ' is not in the changelog yet, so the installed mark is not checked');
+  }
 
 
   // ⚠ THE BODY IS HELD AGAINST changelogData.js, not merely found non-empty. A row that expands
@@ -504,7 +511,7 @@ module.exports = async function helpAndAboutFeature(rig) {
   // ⚠ A FIRST-EVER RUN MUST SAY NOTHING. The app cannot tell "freshly installed" from "just
   // updated" except by the version it stored last time, and announcing an update to someone who
   // has never run it before is a lie.
-  const firstRun = await dm.evaluate(`(() => {
+  await dm.evaluate(`(() => {
     localStorage.removeItem('evermistSeenVersion');
     announceInstalledVersion();
     return 0;

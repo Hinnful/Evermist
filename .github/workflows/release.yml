@@ -82,6 +82,17 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: node tools/check-release.js "$BRANCH"
 
+      # The same mechanical rules /commit checks, once more on the words that will be published.
+      - name: Do the release notes pass their checker?
+        if: steps.check.outputs.release == 'true'
+        run: |
+          V='${{ steps.check.outputs.version }}'
+          SHA=$(git log --format=%H -S"\"version\": \"$V\"" -- package.json | while read -r C; do
+            if git show "$C" -- package.json | grep -q "^+.*\"version\": \"$V\""; then echo "$C"; break; fi
+          done)
+          git log -1 --pretty=%B "${SHA:-HEAD}" > "$RUNNER_TEMP/notes.txt"
+          node .claude/commit/check-notes.js "$RUNNER_TEMP/notes.txt"
+
   # Unit tests before anything is built, on one runner.
   # ⚠ RUNS ON EVERY CHANGE, bump or not. It is the status check main is protected by, so a commit
   # it never reported on cannot be landed - by the pipeline or by anyone.
@@ -98,6 +109,7 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1   # skipped here only; the build jobs need the binary
       - run: npm test
+      - run: npm run lint
 
   # The ratchet guards over the whole tree. The hooks only meet an edit made in a Claude session,
   # so this is what catches the rest.

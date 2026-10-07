@@ -1,7 +1,8 @@
 'use strict';
 
-// ship.js - /commit's tail: commit, changelog, branch cleanup, push, pull request.
-// Usage: node .claude/commit/ship.js --branch <release/x|change/y> [--amend] -- <path>...
+// ship.js - /commit's tail: commit, the branch rules, push, pull request.
+// Usage: node .claude/commit/ship.js [--slug <name>] [--amend] -- <path>...
+// An untagged version goes to release/<version>; anything else to change/<slug>.
 // Every stage checks whether it is already done, so a re-run after a stop repeats nothing.
 
 const { execFileSync } = require('child_process');
@@ -13,7 +14,6 @@ const path = require('path');
 // script run from its real path would otherwise commit and push in the real repo.
 const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const DIR = path.join(ROOT, '.claude', 'commit');
-const RUN = path.join(DIR, 'run.json');
 const NOTES = path.join(DIR, 'notes.txt');
 
 // Node on Windows runs the real gh.exe even with a stub earlier on PATH, so a test swaps gh here.
@@ -26,17 +26,15 @@ function parseArgs(argv) {
   const sep = argv.indexOf('--');
   const flags = sep < 0 ? argv : argv.slice(0, sep);
   const paths = sep < 0 ? [] : argv.slice(sep + 1);
-  const bi = flags.indexOf('--branch');
-  return { branch: bi >= 0 ? flags[bi + 1] : '', amend: flags.includes('--amend'), paths };
+  const si = flags.indexOf('--slug');
+  return { slug: si >= 0 ? flags[si + 1] : '', amend: flags.includes('--amend'), paths };
 }
 
-function readRun() {
-  try { return JSON.parse(fs.readFileSync(RUN, 'utf8')); } catch { return {}; }
-}
-
-function writeRun(patch) {
-  const run = { ...readRun(), ...patch, head: git(['rev-parse', 'HEAD']) };
-  fs.writeFileSync(RUN, JSON.stringify(run, null, 2) + '\n');
+function branchFor(slug) {
+  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+  if (!git(['tag', '-l', `v${version}`])) return `release/${version}`;
+  if (!/^[\w.-]+$/.test(slug || '')) throw new Error(`v${version} is already released, so this goes to change/<slug>; pass --slug`);
+  return `change/${slug}`;
 }
 
 function readNotes() {
@@ -77,30 +75,19 @@ function stageCommit({ branch, paths, amend }, notes) {
   return 'committed';
 }
 
-function stageChangelog() {
-  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
-  if (git(['tag', '-l', `v${version}`])) return `v${version} is tagged, no bump`;
-  const out = 'src/ui/changelogData.js';
-  execFileSync(process.execPath, [path.join(ROOT, 'tools', 'build-changelog.js')], { cwd: ROOT, stdio: 'ignore' });
-  if (!git(['status', '--porcelain', '--', out])) return 'changelog already carries this commit';
-  git(['add', '--', out]);
-  git(['commit', '--amend', '--no-edit']);
-  return 'changelog amended in';
+// The land job refuses a branch that does not contain main, but only after the whole gate ran.
+function stageBase() {
+  try {
+    git(['merge-base', '--is-ancestor', 'origin/main', 'HEAD']);
+  } catch {
+    throw new Error('HEAD does not contain origin/main; merge it in first');
+  }
+  return 'contains origin/main';
 }
 
-function stageCleanup() {
-  const current = git(['rev-parse', '--abbrev-ref', 'HEAD']);
-  const inWorktree = new Set(git(['worktree', 'list', '--porcelain']).split('\n')
-    .filter(l => l.startsWith('branch refs/heads/')).map(l => l.slice('branch refs/heads/'.length)));
-  const merged = git(['for-each-ref', '--merged', 'origin/main', '--format=%(refname:short)', 'refs/heads/'])
-    .split('\n').map(s => s.trim()).filter(Boolean);
-  const deleted = [], kept = [];
-  for (const b of merged) {
-    if (b === 'main' || b === current || inWorktree.has(b)) continue;
-    try { git(['branch', '-d', b], { stdio: 'pipe' }); deleted.push(b); } catch { kept.push(b); }
-  }
-  if (kept.length) console.error(`ship.js: could not delete ${kept.join(', ')} - left in place`);
-  return deleted.length ? `deleted ${deleted.join(', ')}` : 'no merged branches';
+function stageAgree({ branch }) {
+  execFileSync(process.execPath, [path.join(ROOT, 'tools', 'check-release.js'), branch], { cwd: ROOT, stdio: 'pipe' });
+  return 'branch, version and files agree';
 }
 
 function stagePush({ branch, amend }) {
@@ -126,16 +113,13 @@ function stagePr({ branch }, notes) {
 
 function main() {
   const opts = parseArgs(process.argv.slice(2));
-  if (!/^(release|change)\/[\w.-]+$/.test(opts.branch)) {
-    throw new Error(`--branch must be release/<version> or change/<slug>, got "${opts.branch}"`);
-  }
+  git(['fetch', '--prune', '--tags', 'origin'], { stdio: 'pipe' });
+  opts.branch = branchFor(opts.slug);
   const notes = readNotes();
-  git(['fetch', '--prune', 'origin'], { stdio: 'pipe' });
-  writeRun({ branch: opts.branch });
   const stages = [
+    ['base', stageBase],
     ['commit', () => stageCommit(opts, notes)],
-    ['changelog', stageChangelog],
-    ['cleanup', stageCleanup],
+    ['agree', () => stageAgree(opts)],
     ['push', () => stagePush(opts)],
     ['pr', () => stagePr(opts, notes)],
   ];
@@ -143,14 +127,13 @@ function main() {
   for (const [name, fn] of stages) {
     let result;
     try { result = fn(); } catch (e) {
-      console.error(`ship.js: FAILED at ${name}: ${(e.stderr || e.message || e).toString().trim()}`);
+      console.error(`ship.js: FAILED at ${name}: ${(e.stdout || '').toString().trim()} ${(e.stderr || e.message || e).toString().trim()}`.trim());
       process.exit(1);
     }
     if (name === 'pr') url = result;
     console.log(`${name}: ${result}`);
-    writeRun({ stage: name });
   }
-  console.log(`${git(['rev-parse', '--short', 'HEAD'])} ${url}`);
+  console.log(`${opts.branch} ${git(['rev-parse', '--short', 'HEAD'])} ${url}`);
 }
 
 try { main(); } catch (e) {

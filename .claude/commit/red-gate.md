@@ -19,7 +19,7 @@ keeps the last release and the next change is free to go, so do not report a red
 still yours to edit.
 
 ```
-node .claude/commit/ship.js --branch release/2.11.0 --amend -- <paths>
+node .claude/commit/ship.js --amend -- <paths>
 ```
 
 If `notes.txt` is gone, write it from `git log -1 --format=%B` first. `--amend` folds the paths into the commit instead of adding one, takes the message from

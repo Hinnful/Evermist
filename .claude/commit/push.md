@@ -11,21 +11,18 @@ already done before acting, so a re-run after a stop finishes the tail and repea
   named is one nobody reviewed. Pass them to the script; it stages nothing else.
 - **Commit** with the Summary as subject and the Description below it, read from `notes.txt`. No
   `Co-Authored-By` trailer.
-- **On a version bump, regenerate the in-app changelog and amend**, so the panel carries this
-  release. The generator reads the commit that must already exist.
-- **Delete every local branch already in `main`**, except `main`, the current branch and any
-  branch checked out in another worktree. `cleanup` deletes the remote branch, but a local one
-  stays in the app's branch picker forever.
-- **Push a BRANCH by refspec, never `main`, and never create the branch locally.** `main` is
-  protected. Name it `release/<version>` when the version moved, `change/<short-slug>` when it
-  did not. The workflow fires on those two prefixes only, and the script refuses any other.
+- **Refuse a HEAD that does not contain `origin/main`**, and **check the branch, the version and
+  the files agree** with the same rules CI applies.
+- **Push a BRANCH by refspec, never `main`, and never create the branch locally.** The script
+  picks `release/<version>` for an untagged version and `change/<slug>` otherwise.
 - **Open a pull request**, so the run and every failed attempt before it keep a permanent page.
 
 ```
-node .claude/commit/ship.js --branch release/2.11.0 -- <path> <path>
+node .claude/commit/ship.js [--slug <short-slug>] -- <path> <path>
 ```
 
-It prints the short hash and the pull request URL, and fails loudly at the stage that broke.
+It prints the branch, the short hash and the pull request URL, and fails loudly at the stage that
+broke. CI writes the in-app What's new list when it builds, so nothing is amended after the commit.
 
 - **Never merge the pull request yourself.** The `land` job fast-forwards `main` once the gate is
   green and the PR closes as merged; `cleanup` then deletes the branch. A merge, rebase or squash
@@ -42,8 +39,8 @@ It prints the short hash and the pull request URL, and fails loudly at the stage
 The backlog lives at `docs/BACKLOG.md`. This edit comes after the push, so it rides into the
 next commit. Read it first so you match its structure and do not duplicate an entry.
 
-- **Close what shipped.** Delete every item this change built. Record it in the dated note at the
-  top, naming any dead end the work paid for, so nobody re-investigates it.
+- **Close what shipped.** Delete every item this change built and update the open count in the
+  header. A dead end the work paid for goes to the decisions ledger, never to the backlog.
 - **File what was deferred.** Anything discovered, skipped, or left as a follow-up. Use the
   backlog's own fields - plain-language *what it is*, *where it shows* (DM/Player/both), rough
   effort, risk, any blocker. This is the shape `/brief` reads back.

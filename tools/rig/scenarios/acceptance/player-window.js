@@ -187,7 +187,7 @@ module.exports = async function playerWindowFeature(rig) {
 
   // ⚠ AND IT DOES NOT COME BACK. The card is the LOADING state, not the between-maps state: a
   // switch that raises it again puts the app's own name in front of the players mid-session.
-  const second = await dm.evaluate(
+  await dm.evaluate(
     'createNewScene((f => new File([f], "Second.mp4", { type: f.type }))(' + expr + '))', 120000);
   await dm.waitFor('currentScene && currentScene.name === "Second"', 120000, 'the second map to import');
   await lib.settle(player, 'fogCoverT === 0', 45000);

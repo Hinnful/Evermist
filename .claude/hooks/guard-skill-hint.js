@@ -27,6 +27,8 @@ const path = require('path');
 // basename -> skill slug. fog.js is here for half-shroud, pdfText.js for the pdfjs
 // asar resolution; neither is a DM-UI or module-text file by name.
 const OWNERS = {
+  'dock.js': 'dm-ui',
+  'dock.css': 'dm-ui',
   'roompanel.js': 'dm-ui',
   'roomcard.js': 'dm-ui',
   'controlpanel.js': 'dm-ui',
@@ -53,15 +55,8 @@ const OWNERS = {
   'doorgeometry.js': 'floor-plan',
 };
 
-// Matched on PATH, not basename: a scenario file can be called anything, and the
-// orphan check below only scans the app's own directories. guard-scenario.js is here
-// rather than in OWNERS for that second reason - it decides when a scenario is
-// required, which is the rig's concern, but it lives in .claude/hooks/ and a basename
-// entry would report itself as a stale trigger map forever.
-const PATH_OWNERS = [
-  { re: /(^|\/)tools\/rig\//, slug: 'rig' },
-  { re: /(^|\/)guard-scenario\.js$/, slug: 'rig' },
-];
+// Matched on PATH, not basename: a scenario file can be called anything.
+const PATH_OWNERS = [{ re: /(^|\/)tools\/rig\//, slug: 'rig' }];
 
 const BLURB = {
   rig: 'when to run the rig and when not to, how to write a scenario, and the traps that make one silently pass',
@@ -112,52 +107,6 @@ function markFired(file, slug) {
   }
 }
 
-/*
- * Every basename this repo actually holds, lowercased. A rename that lands a
- * governed concern on a new filename silently orphans its skill: the map below stops
- * matching, the hint stops firing, and the rules quietly cease to exist. Nothing
- * else in the repo catches that, so the check runs on EVERY edit rather than only on
- * a name already in the map.
- */
-function repoBasenames() {
-  const root = path.join(__dirname, '..', '..');
-  // src/ holds one folder per subsystem, so the walk goes one level in as well as across.
-  const dirs = [root, path.join(root, 'src'), path.join(root, 'electron')];
-  try {
-    for (const e of fs.readdirSync(path.join(root, 'src'), { withFileTypes: true })) {
-      if (e.isDirectory()) dirs.push(path.join(root, 'src', e.name));
-    }
-  } catch { /* no src -> nothing to walk */ }
-  const names = new Set();
-  for (const d of dirs) {
-    try {
-      for (const f of fs.readdirSync(d)) names.add(f.toLowerCase());
-    } catch {
-      /* missing dir -> nothing to add */
-    }
-  }
-  return names;
-}
-
-function orphanNotice(marker) {
-  if (alreadyFired(marker, '__orphans__')) return null;
-  const present = repoBasenames();
-  if (present.size === 0) return null; // could not read the repo -> stay quiet
-
-  const missing = Object.keys(OWNERS).filter((b) => !present.has(b));
-  if (missing.length === 0) return null;
-
-  markFired(marker, '__orphans__');
-  return (
-    'SKILL TRIGGER MAP IS STALE: guard-skill-hint.js maps ' +
-    missing.map((m) => m + ' -> ' + OWNERS[m]).join(', ') +
-    ', and no such file exists. A skill whose trigger never fires is a rule that ' +
-    'silently does not exist. Update OWNERS here and the trigger filenames in that ' +
-    "skill's `description` together - the description is what makes the skill " +
-    'findable when the hook does not fire.'
-  );
-}
-
 function main() {
   const payload = readStdin();
   const fp = payload && payload.tool_input && payload.tool_input.file_path;
@@ -165,9 +114,6 @@ function main() {
 
   const marker = markerPath(payload.session_id);
   const messages = [];
-
-  const orphans = orphanNotice(marker);
-  if (orphans) messages.push(orphans);
 
   const posix = String(fp).replace(/\\/g, '/');
   const base = path.basename(posix).toLowerCase();
@@ -202,8 +148,12 @@ function main() {
   process.exit(0);
 }
 
-try {
-  main();
-} catch {
-  process.exit(0);
+if (require.main === module) {
+  try {
+    main();
+  } catch {
+    process.exit(0);
+  }
 }
+
+module.exports = { OWNERS, PATH_OWNERS };

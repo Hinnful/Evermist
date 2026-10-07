@@ -334,3 +334,11 @@ It compiled every script in `index.html` into one scope to catch a top-level nam
 `test/structure.test.js` already does exactly that and runs in CI on every change, while the tool
 was wired to nothing - no npm script, no hook, no workflow step. A second copy of a check that
 only one of them runs is worse than one.
+### House rules are tests with fixed limits, not ratchets · `SETTLED` (2026-10-07)
+Comment share is capped at 20%, comment blocks at 8 lines, files at 600 lines and functions at 120,
+with no history markers in comments. The ratchets moved with every edit, so deleting code tripped
+the comment one and the module one adopted any new file at its first size. A file already past a
+limit sits in `test/houseRules.allow.json` and may only shrink. The module maps, the skill trigger
+map, the backlog size, ledger entries and the public-docs name rule are tests too, so each one
+passes or fails where the notice hooks spoke once and went quiet. The skill-map test found
+`dock.js` and `dock.css` claimed by `dm-ui` but never mapped.

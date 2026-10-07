@@ -109,7 +109,7 @@ module.exports = async function doorsFeature(rig) {
 
   await dm.evaluate('setPlaceMode("rooms"); 0');
   const leftId  = await dm.evaluate('__rigRoom("reveal", ' + [LEFT.x1, LEFT.y1, LEFT.x2, LEFT.y2].join(',') + ')');
-  const rightId = await dm.evaluate('__rigRoom("shroud", ' + [RIGHT.x1, RIGHT.y1, RIGHT.x2, RIGHT.y2].join(',') + ')');
+  await dm.evaluate('__rigRoom("shroud", ' + [RIGHT.x1, RIGHT.y1, RIGHT.x2, RIGHT.y2].join(',') + ')');
 
   // The wall the doors go on, as the app recorded it. Its x is the drag's and its y-span decides
   // whether the cell centres below are clamped, so both are read rather than assumed.

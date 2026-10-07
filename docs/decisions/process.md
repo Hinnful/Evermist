@@ -309,3 +309,12 @@ items drop their effort and risk marks and `/brief`'s table drops those columns.
 a category (Prep, Play, Campaign, Polish, Upkeep, Bug, at most two) and a release, and the file is
 grouped by release. Upkeep is split from Polish because it ships nothing the DM sees, so a triage
 can skip it. The DM's first list called Polish "tech debt", which reads as invisible code work.
+
+### `/commit` hands its mechanical steps to CI and `ship.js` · `SETTLED` (2026-10-07)
+CI writes the What's new list before each build, so the amend after the commit and the help-and-
+about red expected on every bump are gone; that scenario checks the installed mark only when the
+running version is listed. CI runs `check-notes.js` on the version commit. `ship.js` picks the
+branch from the version, refuses a HEAD without `origin/main`, and runs `check-release.js` before it
+pushes. **Dropped:** `run.json` (a leftover `notes.txt` is the resume signal), the previous-release
+report (the CI monitor wakes the session on red), the humanizer pass, and the merged-branch cleanup
+of 2026-09-28, which a release does not need.

@@ -263,7 +263,7 @@ module.exports = async function scenesFeature(rig) {
 
   // ── D. The order the DM dragged it into ───────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
-  const gamma = await importAs('Gamma');
+  await importAs('Gamma');
   await switchTo(alpha);
   const startOrder = await library();
   rig.note('order before the drag: ' + JSON.stringify(startOrder));

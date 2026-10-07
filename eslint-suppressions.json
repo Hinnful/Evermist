@@ -1,0 +1,52 @@
+{
+  "electron/diagLog.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "electron/music.js": {
+    "no-unused-vars": {
+      "count": 2
+    }
+  },
+  "electron/pdfText.js": {
+    "no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/combat/statBlockBook.js": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/scenes/backup.js": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/scenes/mapConvert.js": {
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/scenes/sceneSwitch.js": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/shapes/shapeSelect.js": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/ui/input.js": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/ui/toolbar.js": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  }
+}

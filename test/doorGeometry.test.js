@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { getPolyBBox, polygonWindingSign } = require('../src/fog/fogGeometry.js');
+const { polygonWindingSign } = require('../src/fog/fogGeometry.js');
 
 const rect = (x1, y1, x2, y2) =>
   [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];

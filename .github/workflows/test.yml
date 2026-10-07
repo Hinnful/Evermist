@@ -33,6 +33,9 @@ jobs:
       - name: Run the tests
         run: npm test
 
+      - name: Run the linter
+        run: npm run lint
+
   # The ratchet guards over the whole tree, beside the suite rather than after it.
   guards:
     runs-on: ubuntu-latest

@@ -1,0 +1,32 @@
+{
+  "historyComments": {
+    "src/fog/fogGeometry.js": 1
+  },
+  "commentBlocks": {
+    "src/content/moduleText.js": 17,
+    "src/content/pdfLayout.js": 11,
+    "src/dev/memProbe.js": 14,
+    "src/dev/stress.js": 11,
+    "src/fog/fogGeometry.js": 15,
+    "src/player/minimap.js": 9,
+    "src/player/paneRuntime.js": 10,
+    "src/player/playerWindow.js": 10,
+    "src/render/effects.js": 21,
+    "src/render/render.js": 10,
+    "src/render/video.js": 11,
+    "src/rooms/vttPlan.js": 11,
+    "src/state.js": 11
+  },
+  "fileLines": {
+    "src/combat/combatTracker.js": 647,
+    "src/fog/fog.js": 740,
+    "src/fog/fogGeometry.js": 757,
+    "src/i18n/ru.js": 866,
+    "src/rooms/vttPlan.js": 621,
+    "src/shapes/shapeSelect.js": 888
+  },
+  "longLedgerEntries": [
+    "A repair carries the curve, the radius and the door · `SETTLED` (2026-09-17)",
+    "The landing card is the Player's loading state, not a hidden window · `SETTLED` (2026-08-30, replaced a hold)"
+  ]
+}

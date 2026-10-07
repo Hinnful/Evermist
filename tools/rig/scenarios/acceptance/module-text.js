@@ -305,7 +305,7 @@ module.exports = async function moduleTextFeature(rig) {
 
   // ── E. Campaign-level, never a scene ──────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
-  const beta = await importMap('Beta');
+  await importMap('Beta');
   await dm.waitFor('fogCoverT === 0', 30000, 'the cover to lift on Beta');
   rig.check((await store()).entries === 3,
             'the module text did not survive an import and a scene switch, so it is per-scene');

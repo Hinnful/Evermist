@@ -23,7 +23,8 @@
     "rig": "node tools/rig/run.js",
     "build": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
     "build:mac": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac",
-    "build:linux": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux"
+    "build:linux": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux",
+    "lint": "eslint ."
   },
   "build": {
     "appId": "com.evermist.app",
@@ -77,8 +78,14 @@
     },
     "mac": {
       "target": [
-        { "target": "dmg", "arch": "universal" },
-        { "target": "zip", "arch": "universal" }
+        {
+          "target": "dmg",
+          "arch": "universal"
+        },
+        {
+          "target": "zip",
+          "arch": "universal"
+        }
       ],
       "category": "public.app-category.entertainment"
     },
@@ -98,6 +105,9 @@
     "cross-env": "^10.1.0",
     "electron": "^43.0.0",
     "electron-builder": "^26.15.0",
+    "eslint": "^9.39.5",
+    "espree": "^10.4.0",
+    "globals": "^17.13.0",
     "pixi.js": "7.4.3",
     "polygon-clipping": "0.15.7"
   }

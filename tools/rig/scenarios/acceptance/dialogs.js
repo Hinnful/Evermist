@@ -34,8 +34,6 @@
 // event so a keystroke cannot reach the map shortcuts underneath, which means a keydown fired at
 // the document never reaches it and the check would read the dialog as ignoring Escape.
 
-const lib = require('../../lib');
-
 const OWN_HELPERS = `
 globalThis.__rigAnswers = [];
 globalThis.__rigDlg = () => {

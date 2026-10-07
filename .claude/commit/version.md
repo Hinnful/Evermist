@@ -1,12 +1,11 @@
 ## Step 3 - Set the version
 
 Read `version` from `package.json`. **`CLAUDE.md`'s "When to bump the version" section is the
-authority.** As it stands:
+authority.** `ship.js` refuses a bump that disagrees with the files touched, so the only call here
+is the size:
 
-- **Bump only when the change touches the shipped app** - anything matched by `build.files`. Check
-  the diff against those globs.
 - **Patch** for fixes and ordinary changes, **minor** for a notable feature, **major** for a
-  breaking overhaul, **no bump** for docs, tests and `.claude/` tooling.
+  breaking overhaul, **no bump** when nothing in `build.files` changed.
 - **A mixed diff takes the highest applicable bump.**
 - **Edit `package.json` yourself.** A tag whose `package.json` disagrees builds wrongly named
   artifacts.

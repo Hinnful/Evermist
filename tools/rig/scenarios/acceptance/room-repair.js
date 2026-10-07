@@ -319,7 +319,7 @@ module.exports = async function roomRepair(rig) {
   await player.waitFor('fogCoverT === 0', 45000, 'the scene cover to lift on the Player');
 
   // One room in clean ground, repaired while the Player is watching.
-  const h = await dm.evaluate('__rigDrawShroud(1000, 1200, 1400, 1420)');
+  await dm.evaluate('__rigDrawShroud(1000, 1200, 1400, 1420)');
   const KEPT = { x: 1060, y: 1300 }, TRIMMED = { x: 1300, y: 1300 };
   await dm.evaluate(lib.SETTLE);
   try {

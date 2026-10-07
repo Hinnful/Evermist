@@ -2,7 +2,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const {
   encodeShapeForSave, decodeShapeFromSave,
-  splitCubic, sampleCubic, edgeCubic, edgeIsCurved, handleAt, flattenRing, scaleHandles, shapeBBox,
+  splitCubic, edgeIsCurved, handleAt, flattenRing, scaleHandles, shapeBBox,
   buildRoundedPolyPath,
 } = require('../src/fog/fogGeometry.js');
 const {

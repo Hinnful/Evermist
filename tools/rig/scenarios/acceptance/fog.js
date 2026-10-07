@@ -563,7 +563,7 @@ module.exports = async function fogFeature(rig) {
 
   // The square, pressed a quarter across and a fifth down. The picker reads the pointer against
   // the canvas box it captured on mousedown, so this is the real gesture.
-  const pressed = await dm.evaluate(`(() => {
+  await dm.evaluate(`(() => {
     const sv = document.querySelector('.cp-picker[data-picker="fog"] .cp-sv-canvas');
     const b = sv.getBoundingClientRect();
     const at = (type, fx, fy) => sv.dispatchEvent(new MouseEvent(type, {

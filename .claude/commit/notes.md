@@ -71,8 +71,7 @@ rooms".
 vocabulary for their own belongings.
 
 **Never an em-dash in the Summary or Description** - use " - ". No "not X but Y", no rule-of-three
-triples, nothing from the `filler-words` list. Run a user-facing draft through the **humanizer** skill, then
-re-read it for the rules above.
+triples, nothing from the `filler-words` list.
 
 **Cut:** rationale, a diff restated in prose, test counts, docs churn that rides along, anything
 `git diff` shows more precisely.
@@ -86,6 +85,8 @@ until it passes, then show the notes. It cannot judge the privacy rules above; y
 ```
 node .claude/commit/check-notes.js
 ```
+
+CI runs the same checker on the commit before anything is published.
 
 **Then STOP.** The notes are a proposal. Do not stage, commit or push in the same turn. The user is
 the only reviewer this repo has, and reading the Summary is where they do it. End with one short

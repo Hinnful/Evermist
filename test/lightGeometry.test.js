@@ -2,7 +2,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { planLights, lightShapeFor, seedLightShapes, lightCircle, dropCoveredLights,
+const { planLights, lightShapeFor, seedLightShapes, dropCoveredLights,
         LIGHT_DEFAULT_RANGE } = require('../src/fog/lightGeometry.js');
 const { vttDerivePlan, vttScaleRooms } = require('../src/rooms/vttPlan.js');
 

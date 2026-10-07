@@ -7,8 +7,7 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write
 # Mode: Ship This Change
 
 Six steps, each one feeding the next. The diff decides the test plan, the plan decides the gate,
-a green gate releases the version, the version heads the notes, and the notes wait for the user's
-yes. **The turn ends at the push.** Nothing here watches a pipeline.
+the version heads the notes, and the notes wait for the user's yes. **The turn ends at the push.** Nothing here watches a pipeline.
 
 **⚠ A SHIPPING COMMIT IS A RELEASE.** `.github/workflows/release.yml` fires on a push to
 `release/**` or `change/**`. When `package.json` carries a version with no tag, it runs the unit
@@ -23,44 +22,21 @@ re-tells those files is duplicated work that goes stale.
 Optional steering input - anything to emphasize, or an explicit version: $ARGUMENTS
 
 **Each step's rules live in `.claude/commit/`. Read that step's file when you reach the
-step, not before**, so the rules are fresh when they apply. After each step, write its number to
-`.claude/commit/run.json` as `step` (keep the other fields).
+step, not before**, so the rules are fresh when they apply.
 
 ## Step 0 - Find where the last run stopped
 
-`git fetch --prune origin` first; a stale remote-tracking ref otherwise reads as in flight. Then
-take the first row that matches and say in one line what you found:
+`git fetch --prune origin`, then take the first row that matches and say in one line what you
+found:
 
 | State | Go to |
 | --- | --- |
-| `run.json` present | The step after its `step`. Inside Step 6, re-run `ship.js`; it skips finished stages. If `run.json`'s `head` differs from HEAD and no step since the commit explains it, say so and stop |
-| No `run.json`, dirty tree | Step 1, a fresh run |
-| No `run.json`, clean tree, HEAD equal to an `origin/release/*` or `origin/change/*` ref and not on `origin/main` | A pushed change whose gate has not landed. Report its PR and Build & Release run (below). Red: read `red-gate.md`. Running: say so and stop |
+| `.claude/commit/notes.txt` present | A run stopped at the notes or the push. Show the notes again and ask; a yes never carries across sessions. On a yes, re-run `ship.js`, which skips finished stages |
+| Dirty tree | Step 1, a fresh run |
 | Anything else | Nothing in flight. Say so and stop |
 
-"Pushed" means `git rev-parse origin/<branch>` equals HEAD. Never test with `--contains`: every
-finished release contains `main`. Local `release/*` branches are not a signal; `ship.js` never
-creates one, and another worktree's branch belongs to another session.
-
-**Before Step 1 on a fresh run, HEAD must contain `origin/main`**
-(`git merge-base --is-ancestor origin/main HEAD`). The `land` job refuses a branch that does not,
-after the whole gate has run. If it does not, say so and offer
-`git stash && git merge --ff-only origin/main && git stash pop`; run it on a yes. In a worktree
-the app made, use `sync_with_base_branch` instead.
-
-**A yes never carries across sessions.** Resuming at Step 5 or 6 in a new session shows
-`notes.txt` again and asks again, unless `run.json`'s `stage` is past `commit`.
-
-**An open PR this session has not bound:** find it with
-`gh pr list --head <branch> --state open --json number,url`. If `mcp__ccd_pr__get_status` shows no
-PR for this session, bind it with `mcp__ccd_pr__bind_pr` and arm `mcp__ccd_pr__set_monitor` with
-`auto_fix: true`. A monitor armed by a closed session wakes no one.
-
-**The previous release**, reported on every start: take the newest `release/` head from
-`gh pr list --state all --limit 10 --json headRefName,state,url`, then
-`gh run list --branch <it> --workflow release.yml --limit 1 --json status,conclusion,url`. Name the
-workflow: the Tests workflow fires on the same push and can come back first. Report it only if it
-is running or red.
+A failed release wakes the session that pushed it through the CI monitor, so Step 0 never goes
+looking for one.
 
 ## Step 1 - Read the diff
 
@@ -89,7 +65,7 @@ Read `.claude/commit/notes.md` now. The notes go to `notes.txt` and pass
 ## Step 6 - On their yes: push, arm the monitor, close the backlog
 
 Read `.claude/commit/push.md` now. `ship.js` runs the tail. Once the backlog is written
-on the user's answer, delete `run.json` and `notes.txt`.
+on the user's answer, delete `notes.txt`.
 
 ## When the monitor wakes you on red
 

@@ -170,7 +170,7 @@ module.exports = async function curves(rig) {
   // shroud rooms alone never enters it.
   await dm.evaluate('__rigDrawRoom("reveal", 1950, 900, 2200, 1100); 0');
   await dm.evaluate('__rigDrawRoom("half", 1950, 1150, 2200, 1350); 0');
-  const c = await dm.evaluate('__rigDrawShroud(600, 900, 900, 1150)');
+  await dm.evaluate('__rigDrawShroud(600, 900, 900, 1150)');
   await dm.evaluate(lib.SETTLE);
   const clearBefore = await dm.evaluate('__rigFog(750, 840)');
   rig.check(clearBefore < 40,

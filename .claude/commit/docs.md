@@ -1,8 +1,8 @@
 ## Step 4 - File what the work settled
 
-Everything here describes CODE, so it is true the moment the code is written. Four destinations,
-each with its own guard hook. Check all four, skip any that has nothing, never manufacture an entry.
-If a hook fires, follow its message rather than reverting the edit.
+Everything here describes CODE, so it is true the moment the code is written. Check each
+destination, skip any that has nothing, never manufacture an entry. `npm test` holds the shape
+rules for all of them, so a red test names the fix.
 
 **A settled call → one of three ledgers.** Anything the session decided rather than deferred: an
 approach built then rejected, something reverted, a design settled so it stops being re-litigated.
@@ -22,13 +22,9 @@ rejects an untagged entry and one over 14 lines. A style preference is a rule, a
 ruled", "I recommended" and verbatim chat quotes read as leaked notes about a named person. Write
 "rejected on product grounds: …" instead. The same rule holds in `ARCHITECTURE.md` and `CLAUDE.md`.
 
-**Changed behaviour → `docs/ARCHITECTURE.md`.** A new module, a changed subsystem, or a description
-there this change made wrong. This doc has no other upkeep mechanism. A bug fix that preserves
-behaviour needs no edit.
-
-**A moved or renamed module → the skill trigger map.** Skill rules load only because
-`.claude/hooks/guard-skill-hint.js` maps a basename to its skill. Update `OWNERS` and that skill's
-`description` together. A skill that never loads is a rule that does not exist.
+**Changed behaviour → `docs/ARCHITECTURE.md`.** A changed subsystem, or a description there this
+change made wrong. A bug fix that preserves behaviour needs no edit. A new, moved or renamed module
+fails `npm test` until both module maps and the skill trigger map name it.
 
 **A spent spec → deleted.** If this chunk came from a file in `.claude/private/specs/`, delete it.
 If only half of it shipped, leave the file and say so.

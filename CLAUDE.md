@@ -71,8 +71,7 @@ or two maps at a time.
 - A runtime npm dependency needs per-package include/exclude rules (see pdfjs-dist); ESM
   also needs `asarUnpack`.
 - **This whole class of bug is invisible to `npm start`, and the packaged app fails
-  silently** (a missing stylesheet just renders unstyled). Verify with
-  `npx electron-builder --win --dir` and run the real `.exe`.
+  silently**. Verify with `npx electron-builder --win --dir` and run the real `.exe`.
 
 ## Code organization
 
@@ -150,15 +149,15 @@ error goes through it; no `alert()` ships.
 
 ## Testing
 
-- Node's built-in runner (`node:test`). `npm test` for all, `node --test test/x.test.js` for
-  one. Tests live in `test/`.
+- Node's built-in runner: `npm test` for all, `node --test test/x.test.js` for one, in `test/`.
+- **`npm test` and `npm run lint` hold the house rules.** A file past a limit, listed in
+  `test/houseRules.allow.json` or `eslint-suppressions.json`, may only shrink.
 - **Only pure-function modules that export via `module.exports`.** Don't write tests against
   DOM-coupled code.
 - **Testability follows from decoupling, not file count.** Don't inject render state into
   `fog.js`; its behavior is pixel output. New pure fog logic extends `fogGeometry.js`.
-- Deliberately untested, don't add tests here: `render.js`, `scenes.js`, `state.js`,
-  `renderer.js`, `toolbar.js`, `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`,
-  `stress.js`.
+- Never add unit tests for `render.js`, `scenes.js`, `state.js`, `renderer.js`, `toolbar.js`,
+  `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`, `stress.js`.
 - **Never run a rig set on the DM's machine while building** - not even `smoke`. A run is the
   DM's time. A cloud session runs it freely. `/commit`
   gates the diff and CI runs the full set against the built app on all three platforms. See the `rig` skill.
@@ -222,8 +221,8 @@ amends that commit.
 
 **Never tag or publish by hand.** The workflow owns both, or neither.
 
-**Never write `src/ui/changelogData.js` by hand.** `tools/build-changelog.js` turns release commit
-subjects into it. Run it after the bump commit and amend, or the panel misses that release.
+**Never write `src/ui/changelogData.js` by hand.** CI writes it from the release commits at
+build time.
 
 **Pipeline rules:**
 - **Upload with `softprops/action-gh-release@v2`, NOT `electron-builder --publish`.**
