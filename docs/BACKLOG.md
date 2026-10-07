@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 9 open items; IDs run to 156."
+description: "Open work only. 10 open items; IDs run to 157."
 metadata: 
   node_type: memory
   type: project
@@ -122,6 +122,14 @@ the start screen, and left the logo mark violet in About and on the splash, wher
 app icon file. Redrawing it means the mark in `about.js` and `splash.html` and the icon files
 together, so the installed icon and the in-app mark stay one picture.
 **Polish · Both**
+
+### 157. Bring the frozen files under the house-rule limits
+Filed 2026-10-07. `test/houseRules.allow.json` and `eslint-suppressions.json` list what was over a
+limit when the limits became tests: six files over 600 lines, eight functions over 120, thirteen
+comment blocks over 8 lines and four unused imports in `electron/`. Each split is its own
+restructuring task on the DM's yes, one file at a time, taken when a feature already touches that
+file; the unused imports ride the next release. Done when both lists are empty.
+**Upkeep · any time · no visible change**
 
 ---
 
