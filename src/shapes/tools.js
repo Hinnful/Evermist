@@ -102,7 +102,7 @@ function toolMouseDown(raw, e) {
 }
 
 function toolMouseMove(pos, e, screenX, screenY) {
-  if (shape === 'select' && !selectDragging()) container.style.cursor = turnCursor(selectHoverCursor(pos), seatTurn);
+  if (shape === 'select' && !selectDragging()) container.style.cursor = turnCursor(selectHoverCursor(pos, e), seatTurn);
   if (selectMouseMove(pos, screenX, screenY, e)) return;
 
   if (!isDrawing) return;

@@ -37,8 +37,6 @@ const PANE_CONTROLS = {
   'pane-axislock':        m => { axisLock = m.on; _paneToggle('btn-axislock', m.on); },
   'pane-brush-size':      m => { brushSize = m.size; },
   'pane-door-size':       m => _paneField(m.id, m.value, 'change'),
-  // ⚠ `input`, not `change`: that field is wired to oninput and ignores change entirely.
-  'pane-corner-radius':   m => _paneField('fx-radius-num', m.radius, 'input'),
 
   'pane-room-edit':   m => paneApplyRoomEdit(m),
   'pane-reveal-all':  () => revealAllRooms(),

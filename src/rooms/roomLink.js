@@ -16,7 +16,6 @@ function paneReportRoom(room) {
     desc: room.desc != null ? room.desc : '', mode: room.mode,
     pictures: roomPictureRefs(room, pictureBlobs).map(p => ({ id: p.id, name: p.name })),
     onTv: tvPicture && tvPicture.roomId === room.id ? tvPicture.picId : '',
-    radius: _rpRadiusView(room),
   } : null;
   const key = JSON.stringify(snap);
   if (key === _rlSent) return;
@@ -37,7 +36,6 @@ function paneApplyRoomEdit(m) {
     _rpEl(m.op === 'name' ? 'rp-name' : 'rp-desc').value = m.value;
     if (m.op === 'name') _rpCommitName(); else _rpCommitDesc();
   } else if (m.op === 'mode') setPolygonMode(room.id, m.mode);
-  else if (m.op === 'radius') _paneField('rp-radius-num', m.radius, 'input');
   else if (m.op === 'delete') deleteSelectedPolygon();
   else if (m.op === 'entry') applyModuleEntryToRoom(m.entry);
   else if (m.op === 'add-pictures') addRoomPictures(room.id, m.files);

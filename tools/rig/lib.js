@@ -82,6 +82,29 @@ globalThis.__rigDblOnly = (mx, my) => __rigMouse('dblclick', mx, my);
 // The pointer parked without pressing anything. This is what a paste aims at.
 globalThis.__rigPoint = (mx, my) => __rigMouse('mousemove', mx, my);
 
+// ── Corner rounding ──
+// The circle on corner \`flat\` of the selected shape, in map units, or null where none shows. A
+// focused shape shows its circles only while the pointer is on it, so park it there first.
+globalThis.__rigCornerCircle = flat => {
+  const s = activeShapeList().find(p => p.id === selectedPolygonId);
+  const h = s && cornerCircles(s).find(c => c.flat === flat);
+  return h ? { x: h.x, y: h.y } : null;
+};
+
+// A radius typed into the field a double-click on that circle opens, kept with Enter. False when
+// no circle showed to double-click.
+globalThis.__rigTypeCorner = (flat, value, mods) => {
+  const h = __rigCornerCircle(flat);
+  if (!h) return false;
+  __rigClick(h.x, h.y, { mods });
+  __rigMouse('dblclick', h.x, h.y, { mods });
+  const n = document.getElementById('corner-field-num');
+  n.value = String(value);
+  n.dispatchEvent(new Event('input', { bubbles: true }));
+  n.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  return true;
+};
+
 // ── Keyboard ──
 globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
   Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,

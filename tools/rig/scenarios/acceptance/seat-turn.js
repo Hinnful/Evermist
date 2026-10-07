@@ -20,6 +20,8 @@
 //  12. At every angle the size label of an effect being placed reads upright and sits above the
 //      shape on screen.
 //  13. In two-map mode each column turns its own map, and the columns stay side by side.
+//  14. At every angle the label of a corner being rounded reads upright and sits below and right
+//      of its circle on screen.
 //
 // ⚠ THE MOUSE IS AIMED BY THE BROWSER'S OWN LAYOUT, never by the app's conversion. __rigMouse is
 // replaced below with one that reads the turned canvas's computed transform, so a conversion
@@ -374,6 +376,61 @@ module.exports = async function seatTurn(rig) {
               JSON.stringify(read));
   }
   await dm.evaluate('__seatUnspy(); setPreset(null); setShape("select"); setPlaceMode("rooms"); __seatPick(90); 0');
+
+  // ── 14. the label of a corner being rounded ──────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
+  // The same read as 12, against the circle being dragged: the label's net turn on screen, and
+  // where it lands from the circle as the DM sees it.
+  await dm.evaluate(`(() => {
+    polygons.push({ id: 9014, vertices: [{x:600,y:400},{x:1800,y:400},{x:1800,y:1100},{x:600,y:1100}],
+                    mode: 'shroud', cornerRadius: 0, name: 'Seat corner' });
+    rebuildFogFromPolygons();
+    globalThis.__seatHits = [];
+    const saved = cursorCtx.fillText;
+    globalThis.__seatUnspy = () => { delete cursorCtx.fillText; };
+    cursorCtx.fillText = function (txt, x, y) {
+      if (/ px$/.test(txt)) globalThis.__seatHits.push({ x, y, m: this.getTransform() });
+      return saved.apply(this, arguments);
+    };
+    globalThis.__seatCornerRead = (mx, my) => {
+      const h = globalThis.__seatHits[globalThis.__seatHits.length - 1];
+      if (!h) return null;
+      const c = document.getElementById('cursor-canvas'), M = __seatMatrix(c);
+      const ctxDeg = Math.atan2(h.m.b, h.m.a) * 180 / Math.PI, cssDeg = Math.atan2(M.b, M.a) * 180 / Math.PI;
+      const net = ((ctxDeg + cssDeg) % 360 + 540) % 360 - 180;
+      const k = c.offsetWidth / c.width, P = h.m.transformPoint(new DOMPoint(h.x, h.y));
+      const w = c.offsetWidth, ht = c.offsetHeight;
+      const q = M.transformPoint(new DOMPoint(P.x * k - w / 2, P.y * k - ht / 2));
+      const r = container.getBoundingClientRect();
+      const at = { x: r.left + c.offsetLeft + w / 2 + q.x, y: r.top + c.offsetTop + ht / 2 + q.y };
+      const o = __seatClient(mx, my);
+      return { net, right: at.x - o.x, below: at.y - o.y };
+    };
+    return 0;
+  })()`);
+  for (const deg of TURNS) {
+    const read = await dm.evaluate(`(() => {
+      __seatPick(${deg}); fitToScreen(); setShape('select');
+      const poly = __rigById(9014); poly.cornerRadius = 0;
+      selectedPolygonId = 9014; leaveShapeEditMode();
+      __rigMouse('mousemove', 1200, 750);
+      const h = __rigCornerCircle(0);
+      if (!h) return { err: 'no circle on the focused room' };
+      globalThis.__seatHits.length = 0;
+      __rigMouse('mousedown', h.x, h.y);
+      __rigMouse('mousemove', h.x + 30, h.y + 30);
+      const v = __seatCornerRead(h.x, h.y);
+      __rigMouse('mouseup', h.x + 30, h.y + 30);
+      return v;
+    })()`);
+    rig.check(!!read && !read.err && Math.abs(read.net) < 0.5,
+              'at ' + deg + '° the label of a corner being rounded is not upright: ' + JSON.stringify(read));
+    rig.check(!!read && !read.err && read.right > 5 && read.below > 5,
+              'at ' + deg + '° the rounding label is not below and right of its circle on screen: ' +
+              JSON.stringify(read));
+  }
+  await dm.evaluate('__seatUnspy(); polygons = polygons.filter(p => p.id !== 9014); selectedPolygonId = null;' +
+                    ' rebuildFogFromPolygons(); __seatPick(90); 0');
 
   // ── 10 + 11. the TV ──────────────────────────────────────────────────────
   // RED ON: dmVisibleRegion's sideways branch gated off (viewport.js) — 2026-09-29

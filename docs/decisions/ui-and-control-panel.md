@@ -659,3 +659,12 @@ cone tool. Rejected in the prototype: a popup of size chips (read as a table), h
 sizes, "Free" as a word, a unit at the end of the row, and an Effects tab in the right panel. An
 aim handle on the placed effect was dropped because it needs an origin and angle saved on every
 effect. The searchable material palette waits for a second material (backlog 46).
+
+### Corners round by circles on the map, and the dock's radius fields went · `SETTLED` (2026-10-07)
+Copied from Figma. A focused room, effect or light shows a circle inside each corner while the
+pointer is on it: a drag rounds every corner, Alt+drag one. Circles on every corner in edit mode,
+beside every vertex dot, were built in the prototype and rejected as too busy, so edit mode shows
+the picked corner's alone. Focus hides them until the pointer is on the shape, because focus is
+what the DM uses at the table. The Room tab's and the Effects row's radius fields were removed
+rather than kept beside the circles: a double-click on a circle opens the one number field. A
+corner that barely turns (a circle's or an arc's own points) shows no circle.

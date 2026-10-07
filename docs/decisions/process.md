@@ -318,3 +318,10 @@ branch from the version, refuses a HEAD without `origin/main`, and runs `check-r
 pushes. **Dropped:** `run.json` (a leftover `notes.txt` is the resume signal), the previous-release
 report (the CI monitor wakes the session on red), the humanizer pass, and the merged-branch cleanup
 of 2026-09-28, which a release does not need.
+
+### CI writes the What's new list before the unit tests too · `SETTLED` (2026-10-07)
+Moving the list's generation to build time left the suite's check that it opens with
+`package.json`'s version running against the committed copy, which a bump commit no longer
+updates, so every release would have gone red at its unit tests. The test and release workflows
+now run `tools/build-changelog.js` on a full-history checkout before `npm test`. Locally the
+check stays red on a bump until the release commit exists, as before.

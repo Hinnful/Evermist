@@ -139,20 +139,27 @@
   /* Done sizes to its word. A stock .cp-btn is full width, which is the pane's shape, not a
      floating row's. */
   #gridcal-done { flex: none; width: auto; min-width: 62px; padding: 0 14px; }
-  /* The material swatches and the radius field are two groups too, hence the row's own gap
-     between them; the swatches keep the tight button spacing inside. */
-  #ctx-effects { gap: 10px; }
-
   /* A material button is a stock .mode-btn with a plain SVG glyph, exactly like the fog trio it
      stands in for: grey at rest, bare blue when picked, no box of its own. It used to hold a
      canvas painted with the real material, which drew a rounded box inside the button inside the
      row's pill - three nested boxes. No .mat-btn styling of its own is needed or wanted. */
 
-  /* The corner-radius field rides the Effects row because an effect has no card to carry it.
-     Stock .cp-chip-pre + .rp-radius from the room card, so the two fields are one control in two
-     places. Its margin-left:auto would push it off the end of a flex row it does not fill. */
-  #fx-radius-field { margin-left: 0; }
-  #fx-radius-num:disabled { color: #565b62; }
+  /* The typed corner radius floats beside a corner's circle, the Room tab's old field lifted onto
+     the map. ⚠ position:fixed + zoom, so only _rpScreenToStyle() places it. The blue one-corner
+     icon says a single corner takes the number. */
+  #corner-field {
+    position: fixed; left: 0; top: 0; z-index: 150; display: none; zoom: var(--ui-zoom, 1.2);
+    width: auto; min-width: 84px; height: 26px; gap: 5px; border: 1px solid var(--g-line); border-radius: 6px;
+    background: var(--g-field); color: var(--g-dim); box-shadow: var(--pop-shadow);
+  }
+  #corner-field:focus-within { background: var(--g-hover); }
+  #corner-field input { flex: 1 0 auto; text-align: left; font: 500 11.5px/1 system-ui, sans-serif; }
+  #corner-field input::placeholder { color: var(--g-dim); }
+  .rp-radius-ico { flex: none; }
+  #corner-field .rp-ico-one { display: none; }
+  #corner-field.rp-per-vertex { color: var(--b-icon); }
+  #corner-field.rp-per-vertex .rp-ico-one { display: block; }
+  #corner-field.rp-per-vertex .rp-ico-all { display: none; }
 
   /* ===== THE BAR'S ROW ===== */
   /* Layout only: no surface and no zoom, because the bar carries its own and a zoom here as well

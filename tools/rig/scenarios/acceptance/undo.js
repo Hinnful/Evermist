@@ -402,17 +402,10 @@ module.exports = async function undoFeature(rig) {
     return 0;
   })()`);
 
-  // Driven through the card's own field. ⚠ The events are DISPATCHED: el.blur() fires nothing in a
-  // window the OS has not focused, and this run's windows are parked off-screen (the rig skill).
+  // Driven through the number field a double-click on the picked corner's circle opens.
   const setRadius = (vertexIndex, value) => dm.evaluate(`(() => {
-    selectedPolygonId = 1; selectedVertexIndex = ${vertexIndex};
-    refreshRoomPanel();
-    const el = document.getElementById('rp-radius-num');
-    if (!el) return { err: 'no corner-radius field on the card' };
-    el.dispatchEvent(new FocusEvent('focus'));
-    el.value = '${value}';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new FocusEvent('blur'));
+    setShape('select'); enterShapeEditMode(1); selectedVertexIndex = ${vertexIndex};
+    if (!__rigTypeCorner(${vertexIndex}, ${value})) return { err: 'the picked corner showed no rounding circle' };
     return { radii: (polygons[0].cornerRadii || []).slice() };
   })()`);
 

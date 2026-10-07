@@ -1,5 +1,5 @@
 'use strict';
-// roomCard.js — the dock's Room tab: the selected room's name, notes, pictures and corner radius.
+// roomCard.js — the dock's Room tab: the selected room's name, notes and pictures.
 //
 // Called once from initToolbar() (DM only). The name labels on the map are roomPanel.js.
 
@@ -174,94 +174,6 @@ function initRoomPanel() {
     if (paneRoomEdit('delete')) return;
     if (selectedPolygonId != null) deleteSelectedPolygon();
   };
-
-  // Corner radius. TWO fields, one behaviour: the Room tab's for a room, the Effects context row's
-  // for an effect. One helper, so the per-vertex targeting cannot drift between them.
-  _rpWireRadiusField('rp-radius-num');
-  _rpWireRadiusField('fx-radius-num');
-}
-
-// Corner radius: ONE number field, no slider and no all-corners toggle. ↑/↓ covers the nudging,
-// and Del already removes a vertex via input.js through the same undo path.
-function _rpWireRadiusField(numId) {
-  let radiusUndoPushed = false;
-  const num = _rpEl(numId);
-  if (!num) return;
-  const clampR = v => Math.max(0, Math.min(300, v));
-
-  const apply = v => {
-    // ⚠ THE CONTEXT ROW'S FIELD IS THE DM WINDOW'S; the card's own lives inside the column.
-    if (numId === 'fx-radius-num' && paneForward('corner-radius', { radius: v })) return;
-    if (numId === 'rp-radius-num' && paneRoomEdit('radius', { radius: v })) return;
-    const poly = _rpFindPoly(selectedPolygonId);
-    if (!poly) return;
-    // One undo per editing session, never per keystroke: typing "150" is one Ctrl+Z.
-    if (!radiusUndoPushed) { pushUndo(); radiusUndoPushed = true; }
-    // The target follows the selection; the array pads out, since a polygon can gain vertices.
-    const vi = selectedVertexIndex;
-    const total = flatVertexCount(poly);
-    if (vi >= 0 && vi < total) {
-      editCornerRadii(poly, r => {
-        while (r.length < total) r.push(null);
-        r[vi] = v;
-      });
-    } else {
-      poly.cornerRadius = v;
-    }
-    // A room's corners reshape the fog stencil, an effect's only its own fill. Both paths live in
-    // tools.js, so neither field has to know which it holds.
-    shapeGeometryChanged();
-    persistShapeEdit();
-    fogDirty = true;
-    scheduleRender();
-    drawCursor(lastScreenX, lastScreenY);
-  };
-
-  num.addEventListener('focus', () => { radiusUndoPushed = false; });
-  // Normalise on the way out: mid-edit the field is left alone, so it can hold '' or '007'.
-  num.addEventListener('blur', () => {
-    radiusUndoPushed = false;
-    num.value = clampR(parseInt(num.value) || 0);
-  });
-  num.addEventListener('keydown', e => {
-    e.stopPropagation();   // keep the map shortcuts out of a field being typed in
-    const dir = e.key === 'ArrowUp' ? 1 : e.key === 'ArrowDown' ? -1 : 0;
-    if (!dir) return;
-    e.preventDefault();
-    const v = clampR((parseInt(num.value) || 0) + dir * (e.shiftKey ? 10 : 1));
-    num.value = v;
-    apply(v);
-  });
-  num.oninput = e => apply(clampR(parseInt(e.target.value) || 0));
-}
-
-// Which corner(s) the radius targets is DERIVED from the selection, never stored, so icon and
-// write target cannot disagree. A null poly means nothing is selected, and the field is greyed
-// rather than left looking live.
-function _rpRadiusView(poly) {
-  const perVertex = !!poly && selectedVertexIndex >= 0 && selectedVertexIndex < flatVertexCount(poly);
-  const override  = perVertex && poly.cornerRadii ? poly.cornerRadii[selectedVertexIndex] : null;
-  return {
-    perVertex, curved: perVertex && !!handleAt(poly.handles, selectedVertexIndex),
-    value: !poly ? 0 : (override != null ? override : (poly.cornerRadius || 0)),
-  };
-}
-
-// `view` is a column's own reading in two-map mode, where the vertex selection lives there.
-function _rpSyncRadiusField(fieldId, numId, poly, view) {
-  const field = _rpEl(fieldId);
-  const num   = _rpEl(numId);
-  if (!field || !num) return;
-  const { perVertex, curved, value } = view || _rpRadiusView(poly);
-  num.disabled = !poly;
-  if (num !== document.activeElement) num.value = value;
-
-  field.classList.toggle('rp-per-vertex', perVertex);
-  field.title = curved
-    ? 'Corner radius for the selected corner, filleted against its own curve. ↑/↓ to step, Shift for 10.'
-    : (perVertex
-      ? 'Corner radius for the selected corner. ↑/↓ to step, Shift for 10. Esc goes back to every corner, Del removes the vertex.'
-      : 'Corner radius for every corner. ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.');
 }
 
 // The notes grow with what is written in them; the tab scrolls, the field never does.
@@ -297,8 +209,6 @@ function refreshRoomPanel() {
   if (isPane) paneReportRoom(room);
   if (roomTabKey(room) !== _rpTrioPid) { _rpTrioPid = roomTabKey(room); updateContextPanels(); }
 
-  // The Effects row's radius field is this tab's twin for a shape that has no tab.
-  _rpSyncRadiusField('fx-radius-field', 'fx-radius-num', poly && poly.material ? poly : null);
   dockSyncRoom(roomTabKey(room));
 
   // ⚠ AN EFFECT OR A LIGHT GETS NO TAB: it has no name, notes or module text. It leaves by the SAME path as
@@ -326,7 +236,6 @@ function refreshRoomPanel() {
   paneRoomAim(room);
 
   refreshRoomPictures(room, linked ? linked.onTv : null);
-  _rpSyncRadiusField('rp-radius-field', 'rp-radius-num', room, linked && linked.radius);
   if (!sameRoom) _rpFitNotes();
 }
 

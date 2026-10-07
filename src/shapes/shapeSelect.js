@@ -61,7 +61,6 @@ function clearShapeSelection() {
   leaveShapeEditMode();
 }
 
-
 function findPolygonAt(mapX, mapY) {
   const list = activeShapeList();
   for (let i = list.length - 1; i >= 0; i--) {
@@ -69,7 +68,6 @@ function findPolygonAt(mapX, mapY) {
   }
   return null;
 }
-
 
 // ⚠ ONE LEVEL ANSWERS AT A TIME, or the map offers a grab it draws nothing for. A BOXED hole
 // answers through its box alone, so no ring does; a hole OPENED for editing answers on its own
@@ -92,7 +90,6 @@ function findVertexAt(poly, mapX, mapY) {
   }
   return -1;
 }
-
 
 function findEdgeAt(poly, mapX, mapY) {
   const hitR = 10 / zoom;
@@ -189,7 +186,6 @@ function deleteShapeHole(poly, holeIdx) {
   return true;
 }
 
-
 // ─── Mouse ────────────────────────────────────────────────────────────────────
 // The SELECTED vertex's two control points, in map space. Nothing else shows handles, or the map
 // carries two per corner of every room.
@@ -261,6 +257,7 @@ function selectMouseDown(raw, e) {
     const bh = findBoxHandleAt(selPoly, raw.x, raw.y);
     if (bh) { startBoxDrag(selPoly, bh, raw); return; }
   }
+  if (cornerRoundDown(selPoly, raw, e)) return;
 
   if (selPoly && shapeEditMode) {
     // Priority inside edit mode: a curve handle, then vertex, then edge, then a hole's middle.
@@ -332,12 +329,14 @@ function selectMouseDown(raw, e) {
   }
 }
 
-function selectHoverCursor(pos) {
+function selectHoverCursor(pos, e) {
   const selPoly = findActiveShape();
+  const cc = cornerRoundHover(selPoly, pos, e);
   if (selPoly) {
     const bc = boxHoverCursor(selPoly, pos);
     if (bc) return bc;
   }
+  if (cc) return cc;
   if (selPoly && shapeEditMode) {
     if (findHandleAt(selPoly, pos.x, pos.y)) return 'pointer';
     if (findVertexAt(selPoly, pos.x, pos.y) >= 0) return 'pointer';
@@ -348,6 +347,7 @@ function selectHoverCursor(pos) {
 }
 
 function selectMouseMove(pos, screenX, screenY, e) {
+  if (cornerRoundMove(findActiveShape(), pos)) return true;
   if (boxDragging() && selectedPolygonId != null) {
     const poly = findActiveShape();
     if (poly) {
@@ -512,10 +512,11 @@ function selectGrabsAt(raw) {
 
 function selectDragging() {
   return isDraggingPolygon || isDraggingVertex || isDraggingEdge || isDraggingHole ||
-         isBendingEdge || isDraggingHandle || boxDragging();
+         isBendingEdge || isDraggingHandle || boxDragging() || cornerRoundDragging();
 }
 
 function selectMouseUp() {
+  if (cornerRoundUp()) return true;
   if (!selectDragging()) return false;
   if (boxDragging()) {
     endBoxDrag();
@@ -545,6 +546,7 @@ function selectMouseUp() {
 
 // A double-click is the way IN to edit mode, and once inside it is the way a wall gains a vertex.
 function selectDblClick(raw) {
+  if (cornerRoundDblClick(findActiveShape(), raw)) return;
   if (!shapeEditMode) {
     const hit = findPolygonAt(raw.x, raw.y);
     if (!hit) return;
@@ -840,9 +842,7 @@ function deletePolygonById(id) {
   scheduleAutoSync();
 }
 
-function deleteSelectedPolygon() {
-  deletePolygonById(selectedPolygonId);
-}
+function deleteSelectedPolygon() { deletePolygonById(selectedPolygonId); }
 
 // By id, because the room card's fog pill names the room it acts on. ⚠ Never refresh the whole
 // card here: a rebuild steals focus from the name and description fields mid-edit.

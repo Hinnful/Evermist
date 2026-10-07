@@ -44,21 +44,6 @@
   }
   .dk-addpic:hover { color: #9aa0aa; }
 
-  /* Corner radius. The field switches target by itself: a vertex selected on the map edits that
-     corner, none edits all four, and the icon inside the field says which. */
-  .dk-rcorner { display: flex; align-items: center; justify-content: space-between; gap: 8px;
-                margin-top: auto; padding: 12px 10px 14px 16px; border-top: 1px solid var(--g-line); }
-  .rp-radius {
-    flex: none; width: 76px; height: 26px; gap: 5px; border: 0; border-radius: 5px;
-    background: var(--g-field); color: var(--g-dim);
-  }
-  .rp-radius:focus-within { background: var(--g-hover); }
-  .rp-radius input { text-align: left; font: 500 11.5px/1 system-ui, sans-serif; }
-  .rp-radius-ico { flex: none; }
-  .rp-radius .rp-ico-one { display: none; }
-  .rp-radius.rp-per-vertex { color: var(--b-icon); }
-  .rp-radius.rp-per-vertex .rp-ico-one { display: block; }
-  .rp-radius.rp-per-vertex .rp-ico-all { display: none; }
 
   /* ===== MODULE TEXT DROPDOWN (the book, inside the name field) ===== */
   /* The published module's locations, offered where the DM is already typing a room's name.

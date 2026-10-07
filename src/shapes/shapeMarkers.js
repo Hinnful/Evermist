@@ -52,3 +52,24 @@ function drawHoleHatch(ring) {
   cursorCtx.stroke();
   cursorCtx.restore();
 }
+
+// The dark label a shape being sized or rounded wears, centred on (cx, cy) and upright on screen.
+// `icon` is a 16-unit SVG path drawn at 13px before the text.
+function drawLabelPlate(c, cx, cy, txt, icon, iconColor) {
+  c.save();
+  c.font = '600 12px system-ui, -apple-system, sans-serif';
+  const iw = icon ? 17 : 0, w = c.measureText(txt).width + 16 + iw;
+  uprightAt(c, cx, cy);
+  c.fillStyle = 'rgba(26,26,28,0.92)';
+  c.beginPath(); c.roundRect(cx - w / 2, cy - 11, w, 22, 6); c.fill();
+  c.fillStyle = '#f0f1f3';
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(txt, cx + iw / 2, cy + 0.5);
+  if (icon) {
+    c.translate(cx - w / 2 + 8, cy - 6.5);
+    c.scale(13 / 16, 13 / 16);
+    c.strokeStyle = iconColor; c.lineWidth = 1.3 * 16 / 13; c.lineCap = 'round';
+    c.stroke(new Path2D(icon));
+  }
+  c.restore();
+}

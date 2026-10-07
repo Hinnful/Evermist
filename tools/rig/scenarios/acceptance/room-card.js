@@ -170,19 +170,19 @@ module.exports = async function roomCardFeature(rig) {
   const shape = await dm.evaluate(`(() => {
     const p = document.getElementById('panel-room');
     const name = document.getElementById('rp-name'), del = document.getElementById('rp-delete');
-    const order = ['rp-name', 'rp-desc', 'rp-pic-add', 'rp-radius-field']
+    const order = ['rp-name', 'rp-desc', 'rp-pic-add']
       .map(id => document.getElementById(id).getBoundingClientRect().top);
     return {
       headRow: Math.abs(name.getBoundingClientRect().top - del.getBoundingClientRect().top) < 12 &&
                del.getBoundingClientRect().left > name.getBoundingClientRect().left,
       ordered: order.every((t, i) => i === 0 || t > order[i - 1]),
-      gone: ['rp-mode', 'rp-head', 'rp-close'].filter(id => document.getElementById(id)),
+      gone: ['rp-mode', 'rp-head', 'rp-close', 'rp-radius-field'].filter(id => document.getElementById(id)),
       inDock: !!p.closest('#dock'),
     };
   })()`);
   rig.note('the tab\'s shape: ' + JSON.stringify(shape));
   rig.check(shape.inDock && shape.headRow && shape.ordered,
-            'the Room tab is not name and Delete, then notes, pictures and corner radius: ' + JSON.stringify(shape));
+            'the Room tab is not name and Delete, then notes and pictures: ' + JSON.stringify(shape));
   rig.check(shape.gone.length === 0, 'the floating card\'s parts are still in the page: ' + shape.gone.join(', '));
 
   // ── E. The fog trio, split by the tool in hand ────────────────────────────

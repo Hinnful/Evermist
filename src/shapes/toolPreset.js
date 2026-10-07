@@ -138,15 +138,8 @@ function drawPresetPreview(sx, sy) {
   c.fillStyle = 'rgba(255,255,255,0.6)';
   c.beginPath(); c.arc(o.x, o.y, 2.5, 0, Math.PI * 2); c.fill();
 
-  const txt = presetLabel(p.kind, p.s, p.w, t);
-  c.font = '600 12px system-ui, -apple-system, sans-serif';
-  const w = c.measureText(txt).width + 16, px = o.x + ux * (reach + 16);
+  const px = o.x + ux * (reach + 16);
   const y = seatTurn ? o.y + uy * (reach + 16) : Math.max(14, o.y + uy * (reach + 16));
-  uprightAt(c, px, y);
-  c.fillStyle = 'rgba(26,26,28,0.92)';
-  c.beginPath(); c.roundRect(px - w / 2, y - 11, w, 22, 6); c.fill();
-  c.fillStyle = '#f0f1f3';
-  c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(txt, px, y + 0.5);
+  drawLabelPlate(c, px, y, presetLabel(p.kind, p.s, p.w, t));
   c.restore();
 }

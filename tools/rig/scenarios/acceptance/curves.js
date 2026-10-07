@@ -298,15 +298,14 @@ module.exports = async function curves(rig) {
             'a bent corner lost its radius, so a room cannot carry a curve and its rounding at ' +
             'once: ' + JSON.stringify(radii));
 
-  // THE CARD TAKES A NEW ONE TOO, filleted against the curve rather than the chord to the far
+  // RED ON: cornerHandle probing at 1% of the corner's reach, which reads a bent wall as straight (cornerGeometry.js) — 2026-10-07
+  // A BENT CORNER TAKES A NEW ONE TOO, filleted against the curve rather than the chord to the far
   // vertex — see computeFillet in fogGeometry.js.
   const v0f = await dm.evaluate('__rigById(' + f + ').vertices[0]');
   await dm.evaluate('__rigClick(' + v0f.x + ',' + v0f.y + '); 0');
-  rig.check(await dm.evaluate('document.getElementById("rp-radius-num").disabled') === false,
-            'the corner radius field was disabled on a bent corner, so the DM cannot round one');
-  await dm.evaluate('document.getElementById("rp-radius-num").value = 18;' +
-                    ' document.getElementById("rp-radius-num")' +
-                    '.dispatchEvent(new Event("input", { bubbles: true })); 0');
+  rig.check(await dm.evaluate('__rigCornerCircle(0)') !== null,
+            'a picked bent corner showed no rounding circle, so the DM cannot round one');
+  await dm.evaluate('__rigTypeCorner(0, 18)');
   rig.check(await dm.evaluate('(__rigById(' + f + ').cornerRadii || [])[0]') === 18,
             'a radius typed on a bent corner was not stored');
 

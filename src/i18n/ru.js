@@ -7,6 +7,7 @@
 const RU = {
   // The dock
   'Shapes': 'Фигуры',
+  'Mixed': 'Скругление',
   'Merge, Cut out or Split': 'Слияние, вырез или разрез',
   'Cone': 'Конус',
   'Line': 'Линия',
@@ -31,7 +32,6 @@ const RU = {
   'Delete room (Del)': 'Удалить комнату (Del)',
   'Pick a picture, or drop one here': 'Выберите картинку или перетащите её сюда',
   'Add a picture': 'Добавить картинку',
-  'Corner radius': 'Скругление углов',
   'On the TV': 'На экране',
   'Two maps: show a second map beside this one': 'Две карты: показать вторую карту рядом',
   'Fog colour and tint strength': 'Цвет тумана и сила оттенка',
@@ -305,9 +305,6 @@ const RU = {
   'Revealed - the party can see this room': 'Открыто - группа видит эту комнату',
   'Shrouded - hidden behind fog': 'Скрыто - спрятано туманом',
   'Delete Room': 'Удалить комнату',
-  'Corner radius for the selected corner, filleted against its own curve. ↑/↓ to step, Shift for 10.': 'Радиус выбранного угла, скруглённого по своей кривой. ↑/↓ - шаг, Shift - по 10.',
-  'Corner radius for the selected corner. ↑/↓ to step, Shift for 10. Esc goes back to every corner, Del removes the vertex.': 'Радиус выбранного угла. ↑/↓ - шаг, Shift - по 10. Esc возвращает ко всем углам, Del удаляет вершину.',
-  'Corner radius for every corner. ↑/↓ to step, Shift for 10. Select a vertex on the map to round just that one.': 'Радиус всех углов. ↑/↓ - шаг, Shift - по 10. Выберите вершину на карте, чтобы скруглить только её.',
   'Replace description?': 'Заменить описание?',
   'This room already has a description. Replacing it with the module text overwrites what you wrote. Keeping yours still applies the name.': 'У этой комнаты уже есть описание. Текст модуля заменит то, что вы написали. Если оставить своё, название всё равно применится.',
   'Replace': 'Заменить',

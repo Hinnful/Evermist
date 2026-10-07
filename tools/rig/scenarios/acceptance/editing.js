@@ -264,14 +264,13 @@ module.exports = async function editing(rig) {
                                     RC.x2 + ',' + RC.y2 + ')');
   await dm.evaluate('__rigClick(' + ((RC.x1 + RC.x2) / 2) + ',' + ((RC.y1 + RC.y2) / 2) + '); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === rounded,
-            'the room to round was not selected, so its card is closed and the radius field is ' +
-            'not on screen');
+            'the room to round was not selected, so it shows no rounding circles');
   await dm.evaluate(lib.SETTLE);
   const inCorner = { x: RC.x1 + 14, y: RC.y1 + 14 };
   const cornerBefore = await dm.evaluate('__rigFog(' + inCorner.x + ',' + inCorner.y + ')');
-  await dm.evaluate('(() => { const n = document.getElementById("rp-radius-num");' +
-                    ' n.value = 110; n.dispatchEvent(new Event("input", { bubbles: true }));' +
-                    ' return 0; })()');
+  await dm.evaluate('__rigPoint(' + ((RC.x1 + RC.x2) / 2) + ',' + ((RC.y1 + RC.y2) / 2) + '); 0');
+  rig.check(await dm.evaluate('__rigTypeCorner(0, 110)'),
+            'the focused room showed no rounding circle to type a radius into');
   await dm.evaluate(lib.SETTLE);
   const cornerAfter = await dm.evaluate('__rigFog(' + inCorner.x + ',' + inCorner.y + ')');
   rig.note('fog in the corner — sharp ' + cornerBefore + ', rounded ' + cornerAfter);

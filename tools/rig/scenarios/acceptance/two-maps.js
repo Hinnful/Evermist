@@ -28,8 +28,8 @@
 //      when the selection moves - colour, animation and the advanced sliders alike.
 //   J. Four things only two-map mode can get wrong, each of which reads as the app working until
 //      someone looks closely: a column learns the TV's resolution, the chrome adopts the column
-//      it lands on, the corner-radius field reaches the selected column, and arming calibration
-//      puts the DM's own panel away.
+//      it lands on, a corner rounded on a column's map lands in that column alone, and arming
+//      calibration puts the DM's own panel away.
 //   K. Both open maps are named where the app says what is open: the top-left button, and the
 //      scene library, which marks which column each one is in.
 //   L. Closing a column ends two-map mode on the map that is left, and the TV keeps showing it
@@ -46,8 +46,8 @@
 //   R. A room picture shown from a column covers the whole Player screen, both halves. One shown
 //      from the other column replaces it and clears the first column's mark, and Escape in the
 //      DM window takes it down.
-//   S. A room selected in either column is edited in the DM window's Room tab - name, notes, fog,
-//      corner radius and Delete - and every edit lands in that column and never the other. A
+//   S. A room selected in either column is edited in the DM window's Room tab - name, notes, fog
+//      and Delete - and every edit lands in that column and never the other. A
 //      column window shows no dock and no rail of its own.
 //   T. Hiding the room names hides them in both columns, from the Rooms eye and from L pressed
 //      inside a column, and the eye says which it is.
@@ -645,22 +645,26 @@ module.exports = async function twoMapsFeature(rig) {
                     "column " + id + " to be told the Player screen's size");
   }
 
-  // The corner-radius field edits the SELECTED shape, so the column needs one selected. The
-  // selection is set directly: what is under test is the message, not the picking.
+  // A corner is rounded on the column's own map, by its circles. The selection is set directly:
+  // what is under test is where the radius lands, not the picking.
   await dm.evaluate('selectPane("A"); 0');
-  await paneA.evaluate(`(() => {
-    setPlaceMode('effects');
+  const FX = `(() => {
+    setPlaceMode('effects'); setShape('select');
     effects.push({ id: nextEffectId++, material: 'fire', cornerRadius: 0,
                    vertices: [{x:100,y:100},{x:400,y:100},{x:400,y:400},{x:100,y:400}] });
     selectedPolygonId = effects[effects.length - 1].id;
-    selectedVertexIndex = -1;
+    leaveShapeEditMode();
     return 0;
-  })()`);
-  await dm.evaluate('(() => { const f = document.getElementById("fx-radius-num");' +
-    ' f.value = 37; f.dispatchEvent(new Event("input", { bubbles: true })); return 0; })()');
-  await paneA.waitFor('effects[effects.length - 1].cornerRadius === 37', 8000,
-                      'the corner radius to reach the effect selected in column A');
-  await paneA.evaluate('effects.pop(); selectedPolygonId = null; setPlaceMode("rooms"); 0');
+  })()`;
+  await paneA.evaluate(FX);
+  await paneB.evaluate(FX);
+  await paneA.evaluate('__rigPoint(250, 250); 0');
+  rig.check(await paneA.evaluate('__rigTypeCorner(0, 37)'),
+            'J: a focused effect in column A showed no rounding circle under the pointer');
+  rig.check(await paneA.evaluate('effects[effects.length - 1].cornerRadius') === 37 &&
+            await paneB.evaluate('effects[effects.length - 1].cornerRadius') === 0,
+            "J: a corner rounded on column A's map did not land in column A alone");
+  for (const p of [paneA, paneB]) await p.evaluate('effects.pop(); selectedPolygonId = null; setPlaceMode("rooms"); 0');
 
   // ⚠ ARMING CALIBRATION PUTS THE DM'S PANE AWAY. armGridCalibration runs inside the column,
   // where the dock it shuts is that column's hidden one, so the DM's has to be shut from here.
@@ -764,7 +768,7 @@ module.exports = async function twoMapsFeature(rig) {
               await dm.evaluate('document.getElementById("rp-name").value') === was,
               'S: the Room tab does not show the room selected in column ' + id);
     const otherName = await roomIn(other, 'name');
-    const otherMode = await roomIn(other, 'mode'), otherRadius = await roomIn(other, 'cornerRadius');
+    const otherMode = await roomIn(other, 'mode');
     await typeName(was + ' (' + id + ')');
     await lib.poll(async () => (await roomIn(pane, 'name')) === was + ' (' + id + ')' ? { ok: 1 } : null, 8000);
     rig.check(await roomIn(pane, 'name') === was + ' (' + id + ')' && await roomIn(other, 'name') === otherName,
@@ -773,10 +777,6 @@ module.exports = async function twoMapsFeature(rig) {
     await lib.poll(async () => (await roomIn(pane, 'mode')) === 'half' ? { ok: 1 } : null, 8000);
     rig.check(await roomIn(pane, 'mode') === 'half' && await roomIn(other, 'mode') === otherMode,
               'S: the fog trio did not set the room in column ' + id + ' alone');
-    await lib.fire(dm, 'rp-radius-num', 30, 'input');
-    await lib.poll(async () => (await roomIn(pane, 'cornerRadius')) === 30 ? { ok: 1 } : null, 8000);
-    rig.check(await roomIn(pane, 'cornerRadius') === 30 && await roomIn(other, 'cornerRadius') === otherRadius,
-              'S: the corner radius did not land in column ' + id + ' alone');
   }
   await dm.evaluate('document.getElementById("rp-delete").click(); 0');
   await lib.poll(async () => (await roomIn(paneB, 'id')) === null ? { ok: 1 } : null, 8000);

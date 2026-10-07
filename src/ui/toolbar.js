@@ -401,8 +401,9 @@ function initToolbar() {
     sendToPlayer();
   };
 
-  // The selected room's card (name, description, fog pill, corners, delete) → roomPanel.js.
+  // The Room tab → roomCard.js.
   if (typeof initRoomPanel === 'function') initRoomPanel();
+  initCornerField();
 
   updateContextPanels(); // init: Select is the tool at load, so the strip starts blank
 

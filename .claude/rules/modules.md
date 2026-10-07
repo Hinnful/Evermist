@@ -48,6 +48,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Tested |
 | `shapes/shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
 | `shapes/shapeBox.js` | The bounding box, its handles, rotate, scale |
+| `shapes/cornerGeometry.js` | Pure corner-rounding kernel: the circle's place, the drag's radius. Tested |
+| `shapes/cornerRound.js` | The corner-rounding circles, their drag, label and number field |
 | `shapes/shapeClipboard.js` | Copy, paste, duplicate, across scene switches |
 | `shapes/shapeMenu.js` | The bar's two chevron lists: the shapes, and the repair the operations button wears |
 | `ui/input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in `scenes/dragDrop.js`** |
@@ -161,7 +163,7 @@ fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → sh
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/toolShapes.js →
 shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →
 shapes/toolPreview.js →
-shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/shapeBox.js →
+shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/shapeBox.js → shapes/cornerGeometry.js → shapes/cornerRound.js →
 shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → undo.js →
 scenes/sceneGroups.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneManager.js →
 scenes/sceneCards.js → scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →

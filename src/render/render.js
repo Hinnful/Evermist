@@ -237,7 +237,7 @@ function drawCursor(screenX, screenY) {
   // to draw, so an edit-mode selection reaches it and paints nothing.
   if (!isPlayer && selectedPolygonId != null) {
     const sel = activeShapeList().find(s => s.id === selectedPolygonId);
-    if (sel) drawShapeBox(sel);
+    if (sel) { drawShapeBox(sel); drawCornerCircles(sel); }
   }
   // Editing chrome, never sent to the Player; the notch itself is fog and reads the same on both
   // screens. Effects mode has no doors to show.

@@ -101,6 +101,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the What's new list is read off the release commits
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -108,6 +110,8 @@ jobs:
       - run: npm ci
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1   # skipped here only; the build jobs need the binary
+      # ⚠ Written before the suite, which checks it opens with package.json's version.
+      - run: node tools/build-changelog.js
       - run: npm test
       - run: npm run lint
 

@@ -66,15 +66,16 @@ the `width: 0` on `.cp-chip-pre input` and `.cp-stepval input` through any resty
 
 The room card's module renders into the Room tab; there is no floating card.
 
-- **Name as the header, Delete where Close was**, then the notes, pictures inline below them,
-  and the corner-radius field. No boxes: name and notes share one left and right edge.
+- **Name as the header, Delete where Close was**, then the notes and the pictures inline below
+  them. No boxes: name and notes share one left and right edge.
+- **No corner radius in the tab or on the Effects row.** Corners round on the map by their circles
+  (`cornerRound.js`), and the typed radius is the `#corner-field` a double-click on a circle opens.
 - **The module dropdown stays on the name field.**
 - **A click on the map takes focus off the tab's fields**; the fields stop their own events.
 - **The fog state is NOT in the tab.** It is the toolbar's fog trio (below).
 - `refreshRoomPanel()` is the reflection hook. Called from `drawCursor()` and the paths that
   rewrite modes or reset polygons wholesale. **Not** from `setPolygonMode()`, which updates the
   trio in place so a rebuild can't steal field focus mid-edit.
-- The radius field's target derives from `selectedVertexIndex` and is never stored.
 - **In two-map mode the selected room lives in a column.** The column reports it to the shell,
   the tab edits it, and every edit goes back to that column only through `paneForward`.
 - Room labels (`roomPanel.js`): `roomLabelFontPx(zoom)` is screen px and **clamped at both

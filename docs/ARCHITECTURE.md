@@ -387,9 +387,15 @@ so flattening a wall needs no key at all.
 
 Each corner of a curved wall grows two control points, shown only for the corner you have picked.
 They move independently, which is what keeps a sharp corner where a round tower meets a straight
-corridor. A corner carries rounding or curve handles, never both: rounding needs two straight walls
-to cut the fillet between, and a bent wall gives it neither, so bending a wall clears the rounding
-on its two corners.
+corridor. A corner can carry rounding and a curve at once: the fillet is cut against the curved
+wall's own direction at the corner.
+
+**Corners round on the map, the way Figma rounds them.** A picked room, effect or light shows a
+small circle inside each corner while the pointer is over it. Dragging a circle rounds every corner
+to the same radius; Alt+drag rounds that corner alone. Inside edit mode only the picked corner shows
+its circle, and dragging it rounds that corner. A double-click on a circle opens a number field
+beside it for an exact radius. A shape too small on screen, and a corner that barely turns (the
+points along a circle or an arc), show no circle.
 
 The curve reaches the fog, the grid inside an effect and the players, because all of them trace the
 same outline. Everything that has to walk straight lines - the clipping library behind a repair,
