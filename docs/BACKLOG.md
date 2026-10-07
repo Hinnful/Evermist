@@ -1,6 +1,7 @@
 ---
 name: project-backlog
-description: "**2026-10-07 (latest): item 151 BUILT, not yet released:** the progress window has a Cancel that asks first; a stopped restore leaves the library as it was (docs/decisions/storage-and-packaging.md). **9 open items; IDs run to 155.**
+description: "**2026-10-07 (newest): item 156 FILED:** the release script refuses a clone with incomplete history. 3.13.1 pushed (items 151 and the bestiary types). **10 open items; IDs run to 156.**
+**2026-10-07 (latest): item 151 BUILT, not yet released:** the progress window has a Cancel that asks first; a stopped restore leaves the library as it was (docs/decisions/storage-and-packaging.md). **9 open items; IDs run to 155.**
 **2026-10-07 (newest): items 118 and 145 (lights) shipped in 3.13.0, 153 and 154 in 3.12.1, and 155 is a check in the seat-turn scenario; all five DELETED. Item 139 CLOSED as not needed** (docs/decisions/ui-and-control-panel.md): a form was built and taken out, since book wording already makes a pill. The bestiary reads Бестия and Исчадие as Fiend and Крупный as Large, and finds the type after a choice of sizes. **4.0.0 is now 46 if a material is picked, and 121 with a README rewrite. 10 open items; IDs run to 155.**
 **2026-10-03 (newest): the backlog was REGROUPED by release on the DM's instruction,** each item tagged Prep, Play, Campaign, Polish, Upkeep or Bug; effort and risk dropped from items. 4.0.0 is 118, 145, 139, 46 if a material is picked, and 121 with a README rewrite; 144 moved to 4.x; 119, 140 and 142 are 5.0 (PRODUCT.md). **16 open items; IDs run to 155.**
 **2026-10-03 (earlier): 3.12.0 SHIPPED items 147, 149 and 150 with the dock; four items FILED on the DM's instruction:** 152 the logo mark without violet, 153 the backup progress window names its file, 154 the dock's pop-outs get the windows' close cross, 155 a rig check for the effect size label under My seat. The fog's default tint and the thunder damage icon keep their violet, on the DM's call. **16 open items; IDs run to 155.**
@@ -185,6 +186,13 @@ the start screen, and left the logo mark violet in About and on the splash, wher
 app icon file. Redrawing it means the mark in `about.js` and `splash.html` and the icon files
 together, so the installed icon and the in-app mark stay one picture.
 **Polish · Both**
+
+### 156. The release script refuses a clone with incomplete history
+Filed 2026-10-07. A cloud session's clone holds only the last 50 commits, and `ship.js` rebuilt
+`src/ui/changelogData.js` from that history, dropping every older release from What's new. It was
+caught by hand on 3.13.1 and fixed with `git fetch --unshallow`. The script should stop with a
+plain error when `git rev-parse --is-shallow-repository` says true, before it commits anything.
+**Upkeep · release tooling**
 
 ---
 
