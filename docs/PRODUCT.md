@@ -299,6 +299,14 @@ table plus the world map, its places and roads, and the left notes panel with ca
 and scene notes. 5.0.0 keeps what is left of campaigns: the party flag, the gallery and the MCP
 server.
 
+### Claude writes prep into Evermist from 4.x · `SETTLED` (2026-10-09)
+Supersedes the MCP half of the entry above. The DM brainstorms in the Claude desktop app and says
+"write that down in Evermist". The first cut lists the campaign, reads and adds notes at the
+campaign, place and scene levels, creates places and creates fights from the bestiary. Claude only
+adds, never replaces. It works whenever the PC is on: a closed Evermist starts unseen for the call.
+The DM installs it once from Settings' Connect to Claude. Undo covers new places alone. Without
+Claude the app is unchanged, which keeps the "LLM in the loop" test in DECISIONS.md.
+
 ### Size releases conservatively · `SETTLED`
 2.0.0 skipped 1.8 and 1.9 and landed on a docs-only commit, because a release tag has to match
 `package.json` and that release published five versions together. A major version marking a

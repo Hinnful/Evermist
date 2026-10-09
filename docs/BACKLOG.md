@@ -156,10 +156,10 @@ whether the flag rides a backup. The TV never shows it.
 **Campaign · 5.0 · DM only**
 
 ### 142. An MCP server, so an AI can prepare a session
-Filed 2026-09-29 as a DISCUSSION. An AI client reads and writes the campaign: import a module,
-place rooms, fill notes, build fights. The app works fully without it, which is what the
-DECISIONS.md \"LLM in the loop\" rejection asked for. It exposes the campaign's shape as 4.0.0 ships it:
-world map › place › scene › room, notes at each level, and roads.
+Filed 2026-09-29. The first cut ships in 4.x (PRODUCT.md, 2026-10-09): Claude lists the campaign,
+reads and adds notes, creates places and creates fights from the bestiary. **Still open:** rooms,
+roads, moving places, importing a module, adding monsters to the bestiary, and undo for notes and
+fights.
 **Campaign · 5.0 · DM only**
 
 ---

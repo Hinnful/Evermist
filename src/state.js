@@ -147,6 +147,9 @@ let selectedPolygonId = null;
 // selection (the room if one is selected, else the scene). A new room pick, a deselect or a scene
 // switch puts it back to null (notesPanel.js).
 let notesLevelPick = null;
+// Started by a Claude call with no window (electron/mcpBridge.js): no map opens and no Player warms.
+// Showing the window reloads the page without it.
+const appInBackground = new URLSearchParams(window.location.search).get('background') === '1';
 // The world map (src/world/worldMap.js): whether it covers the map, and what is picked on it. The
 // notes panel and the map's own keys read both, so they live here.
 let worldMapOpen = false;

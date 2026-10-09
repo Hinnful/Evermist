@@ -150,6 +150,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `player/playerMap.js` | A map landing on the Player: cover, fog mask, image or video |
 | `player/playerMessages.js` | The Player's inbox: one handler per message the DM sends |
 | `player/paneRuntime.js` | A column's inbox from the shell |
+| `mcp/mcpPlan.js` | Pure Claude-connection kernel: a note appended, a free spot for a place, a fight from the bestiary. Tested |
+| `mcp/mcpConnect.js` | Settings' Connect to Claude: the extension handed to Claude to install |
+| `mcp/mcpTools.js` | What Claude may read and write, answered in the DM window |
 | `dev/stress.js` | `?stress=1` harness |
 | `dev/memProbe.js` | `?memprobe=1` memory probe |
 
@@ -170,6 +173,9 @@ the windows, the display push and the app lifecycle, and hands every module its 
 | `electron/pdfText.js` | PDF text extraction, in a process of its own |
 | `electron/backupZip.js` | What goes into a backup zip, and what comes back out |
 | `electron/statBlockFetch.js` | A monster page, in a hidden window |
+| `electron/mcpBridge.js` | The Claude connection's localhost door, its key, and the extension Connect to Claude builds |
+| `electron/mcpConfig.js` | Pure: the Claude extension's manifest. Tested |
+| `electron/mcpShim.js` | The stdio MCP server inside the extension: the tool list, each call relayed to the app, which it starts unseen when closed. Run by its test as Claude runs it |
 
 ## Load order
 
@@ -203,5 +209,5 @@ combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → com
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
 combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js →
-inline <script>
+mcp/mcpPlan.js → mcp/mcpConnect.js → mcp/mcpTools.js → inline <script>
 ```

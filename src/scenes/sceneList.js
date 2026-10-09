@@ -72,7 +72,7 @@ async function initScenes() {
   const lastId = isPane
     ? new URLSearchParams(window.location.search).get('scene')
     : localStorage.getItem('evermist-current-scene-id');
-  if (lastId && allScenes.find(s => s.id === lastId)) await switchScene(lastId);
+  if (lastId && !appInBackground && allScenes.find(s => s.id === lastId)) await switchScene(lastId);
 }
 
 if (typeof module !== 'undefined') module.exports = { escHtml };

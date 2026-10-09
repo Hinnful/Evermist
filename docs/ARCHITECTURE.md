@@ -2,7 +2,8 @@
 
 A plain-language tour of how Evermist works, for anyone reading the code. It's a
 client-side app with no server and no cloud database. Everything happens in two browser
-windows running inside an Electron shell.
+windows running inside an Electron shell. The one listener it opens is on 127.0.0.1, for the
+Claude desktop app (see "The Claude connection").
 
 **Where to look for what.** This page explains how the app works, in the present tense, and
 nothing else. [CLAUDE.md](../CLAUDE.md) is the rulebook: the constraints you must obey when
@@ -490,6 +491,28 @@ and fights the list lacks, never replacing one. Column widths and where the pane
 Player window never builds any of it. `combatTracker.js` owns the table and saving,
 `combatStatBlock.js` the editor and the row's popup, `bestiary.js` the window, `statBlockImport.js`
 the queue and the book import, `combatPlan.js` the arithmetic and a row's copy.
+
+## The Claude connection
+
+The DM brainstorms in the Claude desktop app and asks it to write the prep into Evermist. Settings'
+Connect to Claude hands Claude a desktop extension (`Evermist.mcpb`), which Claude asks to install.
+Inside it is a small MCP server over stdio (`electron/mcpShim.js`) that runs on Claude's own Node,
+holds the tool list and relays each call to the app. Evermist never writes Claude's files.
+
+The app side is a server on 127.0.0.1 (`electron/mcpBridge.js`) behind a key made at each launch.
+Its port and key sit in `mcp.json` in the data folder, which is gone once the app quits. Main
+hands each call to the DM window, and `mcpTools.js` answers it there, because the campaign lives in
+that window's storage.
+
+With Evermist closed, the shim starts it with `--background`: no splash, no window, no map opened
+and no Player warmed. The app holds one copy per library, so the DM opening Evermist reaches the
+same app, which reloads its page as a normal start and shows it. Unseen, it quits after fifteen
+minutes with no call.
+
+Claude only adds. Its text goes below the DM's notes; a new place lands in an empty spot on the
+world map and takes one world-map undo step; a new fight is built from monsters already in the
+bestiary and leaves the DM's open fight alone. A note for a scene held in a column goes through that
+column, so its autosave keeps it. Nothing reaches the Player.
 
 ## Backing up your maps
 

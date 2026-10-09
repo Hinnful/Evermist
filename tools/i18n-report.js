@@ -144,8 +144,9 @@ function scanJs(src, where) {
 }
 
 // Kernels, shaders and the main process write no DOM; their strings only count as used, since
-// the window can pass them through t() (a size label, a main-process error).
-const QUIET_FILE = /^(ru|changelogData|(music|combat|fight|bestiary|i18n|vtt)Plan|statBlockParse|statBlockBook|attackLine|multiattack|pdfLayout|fogGeometry|effectShader|playerFogPass|dmFogLayer|renderer|videoDiag)\.js$/;
+// the window can pass them through t() (a size label, a main-process error). mcpTools.js answers
+// Claude, which reads English.
+const QUIET_FILE = /^(ru|changelogData|(music|combat|fight|bestiary|i18n|vtt|mcp)Plan|mcpTools|statBlockParse|statBlockBook|attackLine|multiattack|pdfLayout|fogGeometry|effectShader|playerFogPass|dmFogLayer|renderer|videoDiag)\.js$/;
 
 // The whole scan, once per call. test/i18nGaps.test.js fails the release on any missing entry or
 // glued sentence; the CLI below prints the same lists.

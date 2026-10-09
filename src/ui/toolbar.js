@@ -394,7 +394,7 @@ function initToolbar() {
   };
 
   // Off the boot path: warming it while the DM comes up trades one wait for another.
-  setTimeout(prewarmPlayer, 2000);
+  if (!appInBackground) setTimeout(prewarmPlayer, 2000);
 
   // ⚠ WRAPPED, never assigned bare: a bare handler receives the click event, which lands in
   // sendToPlayer's fogOnly parameter and is truthy, so the button would send fog without the view.

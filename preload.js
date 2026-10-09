@@ -115,6 +115,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readSound: (name) => ipcRenderer.invoke('sound-read', name),   // src/ui/soundboard.js
   musicYtdlpLatest: () => ipcRenderer.invoke('music-ytdlp-latest'),
   musicYtdlpUpdate: () => ipcRenderer.invoke('music-ytdlp-update'),
+  // The Claude connection (src/mcp/mcpTools.js): main asks, the DM window answers by the request's id.
+  onMcpRequest: (callback) => {
+    const handler = (_event, req) => callback(req);
+    ipcRenderer.on('mcp-request', handler);
+    return () => ipcRenderer.removeListener('mcp-request', handler);
+  },
+  mcpReply: (id, result) => ipcRenderer.send('mcp-reply', id, result),
+  mcpReady: () => ipcRenderer.send('mcp-ready'),
+  // Resolves '' once Claude has been handed its extension to install, else the reason it was not.
+  connectClaude: () => ipcRenderer.invoke('mcp-connect-claude'),
   onMusicProgress: (callback) => {
     const handler = (_event, data) => callback(data);
     ipcRenderer.on('music-progress', handler);

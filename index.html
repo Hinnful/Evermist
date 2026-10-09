@@ -503,6 +503,16 @@
             <span id="wm-bk-line" class="cp-hint"></span>
           </div>
         </div>
+        <!-- The Claude connection's install (mcpConnect.js). -->
+        <div class="cp-group" id="mcp-group">
+          <div class="dk-sh"><span class="cp-label">AI assistants</span></div>
+          <div class="dk-blk">
+            <div class="cp-btnrow">
+              <button id="mcp-connect" class="cp-btn" title="Lets the Claude desktop app read your campaign and write prep into it. Claude asks before it installs anything.">Connect to Claude</button>
+            </div>
+            <span id="mcp-line" class="cp-hint"></span>
+          </div>
+        </div>
         <!-- Filled by about.js: mark, wordmark, version, repo, What's new, the update line. -->
         <div class="cp-group legend-about" id="legend-about"></div>
       </div>
@@ -993,6 +1003,9 @@
 <script src="src/combat/bestiary.js"></script>
 <script src="src/combat/combatTracker.js"></script>
 <script src="src/combat/combatFights.js"></script>
+<script src="src/mcp/mcpPlan.js"></script>
+<script src="src/mcp/mcpConnect.js"></script>
+<script src="src/mcp/mcpTools.js"></script>
 <script>
 'use strict';
 
@@ -1083,6 +1096,7 @@ if (!isPlayer && !isPane) initCombatTracker(); // The fight table → combatTrac
 if (!isPlayer && !isPane) initDock();          // The dock → dock.js
 if (!isPlayer && !isPane) initNotesPanel();    // The left panel → notesPanel.js
 if (!isPlayer && !isPane) worldMapInit();      // The world map → worldMap.js
+if (!isPlayer && !isPane) initMcp();           // The Claude connection → mcpTools.js
 
 window.addEventListener('resize', () => {
   resizeViewport();   // viewport.js

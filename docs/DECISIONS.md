@@ -985,6 +985,18 @@ module already carries its relationships, so only homebrew writers would fill on
 a search answers the forgotten-NPC case without lines. The pointcrawl stays, because there the
 shape of the graph is the answer: lines decide where the party can go and how long it takes.
 
+### Evermist writing itself into Claude's config file · `REJECTED` (2026-10-10)
+Built first: every launch merged an entry into `claude_desktop_config.json`, in `%APPDATA%\Claude`
+and the Microsoft Store build's package folder. A running Claude rewrote the file from the copy it
+read at startup and dropped the entry, so it held only when Evermist launched while Claude was
+closed. Replaced by a desktop extension (`.mcpb`) Settings hands to Claude, which Claude installs
+and keeps. Evermist never writes another app's files.
+
+### Moving the campaign out of the browser storage for a closed app · `REJECTED` (2026-10-10)
+Claude reaching the campaign with Evermist closed would have needed it in plain files. Rejected as
+a large change with risk to saved data. A closed Evermist starts unseen for the call instead, one
+copy per library, and quits after fifteen idle minutes.
+
 ---
 
 ## Corrections worth keeping

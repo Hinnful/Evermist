@@ -21,6 +21,10 @@ const stressMs = stressIntervalArg
 const offscreen = process.argv.includes('--offscreen');
 const OFFSCREEN_AT = offscreen ? { x: -9000, y: -9000 } : {};
 const reveal = (win) => (offscreen ? win.showInactive() : win.show());
+// A Claude call started the app (mcpShim.js): no window and no splash until the DM opens Evermist.
+let inBackground = process.argv.includes('--background');
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) app.quit();
 if (stressMode) {
   const id = powerSaveBlocker.start('prevent-display-sleep');
   console.log('[stress] powerSaveBlocker started id=' + id + ' interval=' + stressMs + 'ms');
@@ -68,7 +72,7 @@ function createSplashWindow() {
 }
 
 function createDMWindow() {
-  const splash = createSplashWindow();
+  const splash = inBackground ? null : createSplashWindow();
   const splashShownAt = Date.now();
 
   const win = new BrowserWindow({
@@ -99,6 +103,7 @@ function createDMWindow() {
     if (memProbeNoSave)  q.memprobeNoSave  = '1';
     if (memProbeSmall)   q.memprobeSmall   = '1';
   }
+  if (inBackground) q.background = '1';
   if (Object.keys(q).length) win.loadFile('index.html', { query: q });
   else win.loadFile('index.html');
   dmWin = win;
@@ -112,7 +117,7 @@ function createDMWindow() {
   const MIN_SPLASH_MS = 1000;
   let handedOff = false;
   const handOff = () => {
-    if (handedOff) return;
+    if (handedOff || !splash) return;
     handedOff = true;
     const wait = Math.max(0, MIN_SPLASH_MS - (Date.now() - splashShownAt));
     setTimeout(() => {
@@ -232,12 +237,33 @@ ipcMain.on('toggle-fullscreen', (event) => {
 
 ipcMain.on('player-reveal', (_event, key) => showPlayerWindow(key));
 
+// The DM opened Evermist. One a Claude call left running unseen reloads as a normal start, so its
+// last map opens and the Player warms, and the page Claude was talking to is the one shown.
+function bringToFront() {
+  if (!dmWin || dmWin.isDestroyed()) { inBackground = false; createDMWindow(); return; }
+  if (inBackground) {
+    inBackground = false;
+    ipcMcp.notReady();
+    dmWin.webContents.once('did-finish-load', () => { reveal(dmWin); if (!offscreen) dmWin.focus(); });
+    dmWin.loadFile('index.html');
+    return;
+  }
+  if (dmWin.isMinimized()) dmWin.restore();
+  reveal(dmWin);
+  if (!offscreen) dmWin.focus();
+}
+
+// ⚠ ONE APP PER LIBRARY. Two would both write the same scenes, and a second launch is either the DM
+// opening the app Claude started or Claude's own call, which needs no window.
+app.on('second-instance', (_event, argv) => { if (!argv.includes('--background')) bringToFront(); });
+
 let mapsDir;
 
 function isSafeId(id) { return typeof id === 'string' && /^[0-9a-zA-Z_-]+$/.test(id); }
 
 // Each subject's IPC lives in electron/. Requiring one registers its handlers; register() hands
 // it the paths and helpers it needs, once the app is ready and they exist.
+const ipcMcp = require('./electron/mcpBridge.js');
 const IPC = [
   require('./electron/videoFiles.js'),
   require('./electron/music.js'),
@@ -248,6 +274,7 @@ const IPC = [
   require('./electron/backupZip.js'),
   require('./electron/statBlockFetch.js'),
   require('./electron/sounds.js'),
+  ipcMcp,
 ];
 const [, ipcMusic, , ipcDiagLog, ipcUpdates] = IPC;   // the three with a call of their own
 
@@ -274,7 +301,10 @@ ipcMain.handle('mem-metrics', () => {
   } catch (_) { return []; }
 });
 
+const IDLE_QUIT_MS = 15 * 60 * 1000;
+
 app.whenReady().then(() => {
+  if (!gotLock) return;
   const userData = app.getPath('userData');
   mapsDir = path.join(userData, 'maps');
   const musicDir = path.join(userData, 'music');
@@ -298,10 +328,10 @@ app.whenReady().then(() => {
 
   createDMWindow();
   ipcUpdates.initAutoUpdate();
+  // Unseen, the app leaves once Claude has been quiet a while. Shown, it is the DM's to close.
+  setInterval(() => { if (inBackground && Date.now() - ipcMcp.lastCallAt() > IDLE_QUIT_MS) app.quit(); }, 60000);
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createDMWindow();
-  });
+  app.on('activate', bringToFront);
 }).catch(err => {
   // Nothing has a window yet, so a failure here is otherwise a process that exits in silence.
   dialog.showErrorBox('Evermist could not start',
