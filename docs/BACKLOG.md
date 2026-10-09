@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 12 open items; IDs run to 163."
+description: "Open work only. 11 open items; IDs run to 169."
 metadata: 
   node_type: memory
   type: project
@@ -36,8 +36,8 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **3.13.3**. **4.0.0 lands when every item under 4.0 below is
-built** (PRODUCT.md). Items under ANY TIME ship as 3.x patches and never hold 4.0 up. 2.12.0 to 2.15.3 are the
+`package.json` is at **4.0.0**: play at the table plus the world map (PRODUCT.md). **5.0.0 is campaigns**, the
+items under 5.0 below. Items under ANY TIME ship as 4.x patches and never hold 5.0 up. 2.12.0 to 2.15.3 are the
 vector editing epic, now closed: two selection levels, curved walls, the bounding box,
 copy/paste/duplicate, a radius on a curved corner, and shapes drawn as coloured areas.
 
@@ -110,86 +110,56 @@ Filed 2026-10-07. `test/houseRules.allow.json` and `eslint-suppressions.json` li
 limit when the limits became tests: six files over 600 lines, eight functions over 120, thirteen
 comment blocks over 8 lines and four unused imports in `electron/`. Each split is its own
 restructuring task on the DM's yes, one file at a time, taken when a feature already touches that
-file; the unused imports ride the next release. Done when both lists are empty.
+file; the unused imports go out in 4.0.1 with item 160. Done when both lists are empty.
 **Upkeep · any time · no visible change**
-
-### 162. Release 4.0.0 in four stages
-Filed 2026-10-08, rewritten 2026-10-09 as the handoff for the 4.0 release. Everything since 3.13.3 sits on branch
-`wip/notes-left-panel`, committed locally and never pushed: the notes panel, the world map with places and roads,
-Two maps, and the Scene library's removal. PRODUCT.md's "4.0.0 also carries the world map" says why it is 4.0.
-The DM's order. Commit to the working branch freely; push nothing before stage 4. The rig is the DM's to allow per session.
-- **Stage 1, analysis: DONE 2026-10-09.** A UX audit found 7 blockers and about 15 gaps. All are fixed, each proved red
-  then green. Before the fixes the full rig regression passed 36 of 45. The "after 4.0" gaps the audit found are not
-  filed; propose them to the DM in stage 3.
-- **Stage 2, code review: DONE 2026-10-09.** Four Sonnet reviewers and a fifth sorting the rig reds. Five app bugs
-  fixed, each proved red then green: a scene opened from the world map came up with the last scene's room picked; the
-  right-click Delete on the open scene switched the TV; a Two maps column filled from the map had its notes overwritten
-  by the previous scene's; moving a scene card or reshaping a place cut the road ends stuck to it; Ctrl+Z on a place
-  dropped it instead of keeping it picked as a room does. Rollback to 3.13.3 and backup round-trips were traced clean.
-  The rest of the reds were stale checks, now repaired: `world-map`, `world-roads`, `notes-panel`, `two-maps` and
-  smoke all pass.
-- **Stage 3, README and docs: DONE 2026-10-09.** README rewritten for 4.0 with five animated WebP clips recorded off-screen
-  on the DM's own maps; item 121 closed. Item 140 cut to what is left after 4.0, the ledger's early world map entries point
-  at their replacements, and two comments name the right files. The recording found one bug, fixed: a module fill left the
-  room's notes field at its old height. The stage 1 audit's "after 4.0" list was lost with that session.
-- **Stage 4, release.** 4.0.0 on a `release/4.0.0` branch through `/commit`, one commit; watch CI, fix, amend, push
-  again. `npm test` fails the changelog version check until CI regenerates `changelogData.js`; that is expected.
-**Upkeep · 4.0 · Both**
-
-### 163. World map toolbar polish
-Filed 2026-10-09 at the DM's word: the world map's toolbar, as built, is a no-go. It is the scene's own bar with tools
-swapped in: Select, Shape, Merge or Cut out or Split, Straighten, then Add a scene, Road and Find.
-Agreed 2026-10-09 and built: three clusters, as the scene's bar groups its tools - Select, the drawing tools, the boolean
-operations and Road; then Add a scene and Find; then Straighten. Add a scene wears a plus. Road is a tool, so it wears
-the solid blue. Find is built too: a result list under the field, grouped Places, Scenes and Roads, with a count, finding
-scenes outside the view. It matches names only; notes text is a later step.
-**Polish · 4.0 · DM only**
 
 ### 160. "Walk only" stays English in the Russian bestiary
 Filed 2026-10-08. The bestiary's Movement filter shows "Walk only" in Russian mode, while Fly,
 Swim, Climb and Burrow are translated. The string is missing from `src/i18n/ru.js`; add it there.
+Ships as 4.0.1 with 157's unused imports.
 **Polish · any time · DM only**
+
+### 166. A scene card over a place's corner blocks the corner
+Filed 2026-10-08 in item 140, split out 2026-10-09. When a scene's print sits over a corner handle of a place being
+edited, a press grabs the card and the corner cannot be dragged until the map pans. The corner should win while the
+place is open for editing.
+**Polish · 4.x · DM only**
+
+### 167. A hint when a scene card is dropped partly outside a place
+Filed 2026-10-08 in item 140, split out 2026-10-09. A card belongs to a place only when all of it sits inside the
+outline, so a card dropped a few pixels over the edge leaves the place with no sign of why. **Open:** the cue - the
+outline lighting while the card is fully in, or the card nudged inside on drop.
+**Polish · 4.x · DM only**
 
 ---
 
 # 5.0 - CAMPAIGNS
 
 ### 161. The gallery: one app-wide store of images
-Filed 2026-10-08. A window of every image the DM keeps, linked to no scene. It replaces today's room
-pictures, which each scene stores in its own record and which the previous release's autosave trims
-when no room uses them.
-- **One store, every picture once.** Rooms, scenes and places link to a picture and never hold its
-  bytes, so one picture of a castle serves many. Today's room pictures move into it in a one-time
-  migration. A backup carries the store once.
-- **The DM adds, names, finds and removes pictures there**, and drops a file on the window to add one.
-  A picture can go to the TV from the gallery without belonging to any room.
-- **The old room-picture strip and its "Add a picture" button are removed**, replaced by picking from
-  the gallery. The TV's picture mode stays.
-- Open for /spec: how a room, scene or place picks and shows a linked picture; whether deleting a
-  picture that is linked asks first; `/rollback` must keep room pictures visible to the previous release.
+Filed 2026-10-08, rewritten 2026-10-09. A window of every image the DM keeps, still or animated (GIF and WebP included),
+tied to no map, place, scene or room. It answers a monster that chases the party through several scenes: its picture
+goes to the TV from the gallery, wherever the party is, without being placed in every room it passes.
+- **The DM adds, names, finds and removes pictures there**, and drops a file on the window to add one. Any picture goes
+  to the TV from the gallery. The TV's picture mode stays.
+- **Room pictures go.** The room's picture strip and its "Add a picture" button are removed, and the pictures rooms
+  hold today move into the gallery in a one-time migration. A backup carries the gallery once.
+- Open for /spec: the window's look and where it opens from; whether removing a picture asks first; `/rollback` must
+  leave the previous release able to open a scene whose room pictures moved out.
 **Campaign · 5.0 · DM only**
 
-### 140. The world map after 4.0: the party flag and the rough edges
-Filed 2026-09-29, cut down 2026-10-09: the world map, places, roads, the notes panel and the Scene library's removal ship
-in 4.0.0. Every settled call is in decisions/ui-and-control-panel.md, from "The world map v1" on. What is left:
-- **The party flag.** The DM drags a flag onto the scene or place the party is in. It is apart from the open scene, since
-  the DM preps scenes the party is not in. Scenes the party has visited look different. **Look, settled 2026-10-08:** the
-  Ping tool's bezel pared down to a thin gold ring with four diamonds, turning slowly around the scene, and the mist thins
-  around it.
-- **A switch to turn the world map's mist off**, at the DM's word.
-- **Pictures on a place** wait for the gallery (item 161).
-- **Rough edges found while building**, each a small fix or a UX call: a scene card over a corner handle blocks it until
-  the map pans; a card dropped partly outside a place is out with no hint of how far; Alt+drag does not copy a place.
-
-**The TV never shows the world map, a place or a road.** Auto-filling places from the module is
-NOT a promise.
+### 164. The party flag on the world map
+Filed 2026-09-29 in item 140, split out 2026-10-09. The DM drags a flag onto the scene or place the party is in. It is
+apart from the open scene, since the DM preps scenes the party is not in, and scenes the party has visited look
+different. **Look, settled 2026-10-08:** the Ping tool's bezel pared down to a thin gold ring with four diamonds,
+turning slowly around the scene, with the mist thinning around it. **Open for /spec:** what "visited" looks like, and
+whether the flag rides a backup. The TV never shows it.
 **Campaign · 5.0 · DM only**
 
 ### 142. An MCP server, so an AI can prepare a session
 Filed 2026-09-29 as a DISCUSSION. An AI client reads and writes the campaign: import a module,
 place rooms, fill notes, build fights. The app works fully without it, which is what the
-DECISIONS.md \"LLM in the loop\" rejection asked for. Waits for 140 part 2, because it exposes the
-campaign's shape: world map › place › scene › room, notes at each level, and roads.
+DECISIONS.md \"LLM in the loop\" rejection asked for. It exposes the campaign's shape as 4.0.0 ships it:
+world map › place › scene › room, notes at each level, and roads.
 **Campaign · 5.0 · DM only**
 
 ---
@@ -209,8 +179,7 @@ Kept here because forgetting them causes damage, and they have no other trigger.
   library. Unreferenced files there are normal and have been dismissed as a concern.
 - **Auto-polygons is DONE as v1.** A change to it comes only with a specific problem or a bug
   report from the table. Do not open a
-  speculative improvement session on it. Item 1 is the exception, because it was asked for
-  unprompted.
+  speculative improvement session on it.
 - **ROOMS are prep work** - they only get drawn mid-session when prep was skipped entirely.
   **EFFECTS are the opposite and this is not a contradiction: they are placed DURING play and
   persist, which is the entire point of them.** A cone of acid a zombie just vomited, fire still
@@ -220,8 +189,8 @@ Kept here because forgetting them causes damage, and they have no other trigger.
   differently painted cones to the table, so the app wins that one. Where a token or a scrap of
   paper genuinely wins, don't build it.
 - **Ground truth on the DM's maps:** all Dungeon Alchemist exports; primary case is INTERIORS with
-  rooms sharing walls and connected by doorways; 7-12 rooms per floor, ~20 in the cellar, ~10
-  maps total. **Wall colour is not a usable signal** - DA walls can be dark, light, grass, snowy
+  rooms sharing walls and connected by doorways; 7-12 rooms per floor, ~20 in the cellar, a few
+  dozen maps. **Wall colour is not a usable signal** - DA walls can be dark, light, grass, snowy
   or cave stone. Never commit a `.webm`.
 - **`tools/inspect-plan.js`** is the first thing to reach for on any floor-plan report.
   `node tools/inspect-plan.js <file>.dd2vtt`. Outside the build glob - keep it that way.
@@ -233,6 +202,3 @@ Kept here because forgetting them causes damage, and they have no other trigger.
 - **EVERY SHIPPING COMMIT RELEASES.** The old "releases are RARE, 1-2 per minor" rule is dead as
   of 2026-09-08. A commit gets a local smoke pass; the full regression set runs in CI against the
   packaged `.exe` and gates the release. Never ask the DM to verify or regress-test an `.exe`.
-- **CLAUDE.md rules for map effects land WITH the code**, not before: effects get their own
-  array, never mixed into `polygons`. Already reasoned out in DECISIONS.md, so state it tersely
-  and pay the bytes once.

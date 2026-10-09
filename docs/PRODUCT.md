@@ -238,6 +238,19 @@ The most interesting idea in its batch and too big for now. The shape when it la
 icy / acidic / rusty" are not tint values, they are combinations of knobs the cloud engine
 already has (cell size, warp radius, warp strength, anim speed, base and tint colour, opacity).
 
+### The world map's mist has no off switch · `REJECTED` (2026-10-09)
+The mist is the world map's look, and a map without it is a different design rather than a setting. Proposed twice, as a
+switch in Settings and as "later, if wanted", and refused both times.
+
+### A place is never copied · `REJECTED` (2026-10-09)
+A place is defined by the scenes inside it, so a copy would either duplicate those scenes or be an empty outline with
+the same shape. Neither is something a campaign needs: no town is prepared twice. Rooms keep Alt+drag and Ctrl+D.
+
+### Pictures belong to the gallery, never to a room, scene or place · `SETTLED` (2026-10-09)
+A picture shown on the TV is linked to nothing on the map, so one picture serves every scene it is needed in, such as
+a creature that follows the party from map to map. Once the gallery exists, room pictures move into it and the
+room's picture strip goes. No place, scene or room gains a picture of its own.
+
 ### Drawing and editing copy Figma · `SETTLED` (2026-09-17)
 When a drawing or editing choice is open, Figma's model is the answer: anchors, bezier handles,
 the bounding box, edit mode, and Figma's keys (Ctrl to bend, Shift to constrain, Ctrl+C / V / D).
