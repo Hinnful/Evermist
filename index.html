@@ -15,6 +15,8 @@
 <link rel="stylesheet" href="src/css/panes.css">
 <link rel="stylesheet" href="src/css/combat.css">
 <link rel="stylesheet" href="src/css/dock.css">
+<link rel="stylesheet" href="src/css/notesPanel.css">
+<link rel="stylesheet" href="src/css/worldMap.css">
 <link rel="stylesheet" href="src/css/overlays.css">
 </head>
 <body>
@@ -87,6 +89,9 @@
       <div class="cp-chip cp-chip-pre" title="How far a door reaches either side of the wall, as a percent of one grid square"><span class="cp-chip-prefix">D</span><input type="text" id="door-depth-num" inputmode="numeric" value="10"><span class="cp-chip-prefix">%</span></div>
       <span class="tb-hint">of <span id="door-cell-label">70</span> px cell</span>
     </div>
+
+    <!-- The world map's Find field. -->
+    <div class="tb-group" id="ctx-wm-search"><input id="wm-search" placeholder="Find a scene, place or road" spellcheck="false" autocomplete="off"></div>
 
     <div class="tb-group" id="panel-brush-bottom">
       <input type="range" id="brush-size" min="5" max="300" value="40">
@@ -166,6 +171,16 @@
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V6h13"/><circle cx="5" cy="19" r="1.7" fill="currentColor" stroke="none"/><circle cx="5" cy="6" r="1.7" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="1.7" fill="currentColor" stroke="none"/></svg>
     </button>
 
+    <button id="wm-add" class="tool-btn wm-tool" title="Add a scene - pick a map file">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button id="wm-road" class="tool-btn wm-tool" title="Road - click points along the way, double-click to finish">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c5-1 2-7 7-8s3-6 7-7" stroke-dasharray="3 2.5"/><circle cx="5" cy="19" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="4" r="1.7" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button id="wm-find" class="tb-toggle wm-tool" title="Find a scene, place or road (Ctrl+F)">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+    </button>
+
     <!-- Placement switch: which array the next shape lands in. A SUNKEN TRACK at the end of the
          bar; .tb-seg exists for this and nothing else. -->
     <div class="tb-seg">
@@ -185,8 +200,8 @@
 <!-- THE DOCK: an icon rail on the right edge and one pane beside it, over the map. dock.js. -->
 <div id="dock" class="dk">
   <nav id="dock-rail" class="dk-rail">
-    <button class="rail-btn" id="dock-tab-library" data-dock-win="library" title="Scene library">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>
+    <button class="rail-btn" id="btn-world" data-dock-win="world" title="World map (M)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9S14.6 18.4 12 21c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3z"/></svg>
     </button>
     <button class="rail-btn" id="btn-bestiary" title="Bestiary">
       <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg>
@@ -194,9 +209,6 @@
     <div class="rail-sep"></div>
     <button class="rail-btn" id="dock-tab-scene" data-dock-pane="scene" title="Scene control">
       <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><line x1="1.5" y1="4" x2="12.5" y2="4"/><circle cx="8.5" cy="4" r="1.5"/><line x1="1.5" y1="7.5" x2="12.5" y2="7.5"/><circle cx="4.5" cy="7.5" r="1.5"/><line x1="1.5" y1="11" x2="12.5" y2="11"/><circle cx="9.5" cy="11" r="1.5"/></svg>
-    </button>
-    <button class="rail-btn" id="dock-tab-room" data-dock-pane="room" title="Room">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
     </button>
     <div class="rail-sep"></div>
     <button class="rail-btn" id="dock-tab-music" data-dock-pane="music" title="Music">
@@ -367,27 +379,6 @@
         </div>
       </div>
     </section>
-    <section class="dk-sec" id="dock-pane-room" data-pane="room" hidden>
-      <!-- The selected room, Notion's way: the name is the header, Delete sits where Close was,
-           then the notes and the pictures. roomCard.js fills it. -->
-      <div id="panel-room" class="dk-room">
-        <div class="dk-rhead rp-ident">
-          <input id="rp-name" class="rp-name" type="text" spellcheck="false" autocomplete="off"
-                 maxlength="60" placeholder="Room name" title="Room name. The module's locations drop down here.">
-          <button id="rp-delete" class="cp-adv-close" title="Delete room (Del)">
-            <svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-          </button>
-        </div>
-        <textarea id="rp-desc" class="rp-desc" spellcheck="false" rows="1"
-                  placeholder="What's in here, what the party sees, what's hidden…"></textarea>
-        <div class="rp-pics" id="rp-pics" style="display:none"></div>
-        <button class="dk-addpic" id="rp-pic-add" title="Pick a picture, or drop one here">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7.5V11A1.5 1.5 0 0 1 11 12.5H3A1.5 1.5 0 0 1 1.5 11V3A1.5 1.5 0 0 1 3 1.5h4.5"/><circle cx="4.8" cy="5" r="1.1"/><path d="M12.5 9.6 10.4 7.5a1 1 0 0 0-1.4 0L4 12.5"/><path d="M11 .8v4M9 2.8h4"/></svg>
-          <span>Add a picture</span>
-        </button>
-        <input type="file" id="rp-pic-input" accept="image/*,.avif,.svg,.webp,.gif,.bmp,.ico,.jfif" multiple hidden>
-      </div>
-    </section>
     <section class="dk-sec" id="dock-pane-music" data-pane="music" hidden>
       <div class="dk-head"><span class="cp-adv-title">Music</span><div class="cp-row">
         <button id="btn-mu-group" class="cp-adv-close" title="New group">
@@ -448,30 +439,68 @@
     <section class="dk-sec" id="dock-pane-settings" data-pane="settings" hidden>
       <div class="dk-head"><span class="cp-adv-title">Settings</span></div>
       <div class="dk-scroll">
-        <!-- Filled by i18n.js's language switch. -->
-        <div class="cp-group" id="settings-lang"><div class="dk-sh"><span class="cp-label">Language</span></div></div>
-        <div class="cp-group">
-          <div class="dk-sh"><span class="cp-label">Shrink big maps</span></div>
-          <div id="sm-compress" class="cp-tabs" title="Animated maps bigger than the size picked here are re-encoded to fit it on import, and room pictures are shrunk to it. Improves performance on low-end machines.">
-            <button class="cp-segtab" data-size="0">Off</button>
-            <button class="cp-segtab" data-size="1080">1080p</button>
-            <button class="cp-segtab" data-size="1440">2K</button>
-            <button class="cp-segtab" data-size="1">4K</button>
+        <div class="cp-group" id="cp-sec-interface">
+          <div class="dk-sh"><span class="cp-label">Interface</span></div>
+          <!-- Filled by about.js's language switch. -->
+          <div class="dk-blk" id="settings-lang"><span class="dk-sub">Language</span></div>
+          <div class="dk-blk"><span class="dk-sub">Shrink big maps</span>
+            <div id="sm-compress" class="cp-tabs" title="Animated maps bigger than the size picked here are re-encoded to fit it on import, and room pictures are shrunk to it. Improves performance on low-end machines.">
+              <button class="cp-segtab" data-size="0">Off</button>
+              <button class="cp-segtab" data-size="1080">1080p</button>
+              <button class="cp-segtab" data-size="1440">2K</button>
+              <button class="cp-segtab" data-size="1">4K</button>
+            </div>
           </div>
         </div>
         <!-- One value for every scene, never stored in one. Judge Half on the PLAYER window: the
-             DM view draws fog at FOG_OPACITY_DM, so 50 reads as ~27% here and 50% on the TV. -->
+             DM view draws fog at FOG_OPACITY_DM, so 50 reads as ~27% here and 50% on the TV. The two
+             ranges are the back end fogControls.js drives; the fields above them are what the DM sees. -->
         <div class="cp-group">
           <div class="dk-sh"><span class="cp-label">Fog in every scene</span></div>
-          <div class="cp-advrow">
-            <span class="cp-advlbl">Half</span>
-            <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="fog-half-alpha" min="0" max="100" value="50" step="1" title="Half-shroud density: how much fog remains (0 = revealed, 100 = shrouded)"></div>
-            <input type="text" id="fog-half-alpha-num" class="cp-chip cp-chip-num" inputmode="numeric" value="50">
+          <div class="dk-r">
+            <div class="dk-blk"><span class="dk-sub">Half shroud</span>
+              <label class="dk-num" title="How much fog remains in a half room. Drag the icon to change it."><span class="pre" data-scrub="fog-half-alpha-num" data-min="0" data-max="100" data-per="2" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"/><path d="M7 2a5 5 0 010 10z" fill="currentColor"/></svg></span><input type="text" id="fog-half-alpha-num" inputmode="numeric" value="50"><span class="u">%</span></label>
+            </div>
+            <div class="dk-blk"><span class="dk-sub">Feather</span>
+              <label class="dk-num" title="How soft the edge of a revealed area is. Drag the icon to change it."><span class="pre" data-scrub="fog-feather-num" data-min="0" data-max="24" data-per="8" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="3"/><circle cx="7" cy="7" r="5.5" stroke-dasharray="1.2 1.6"/></svg></span><input type="text" id="fog-feather-num" inputmode="numeric" value="12"><span class="u">px</span></label>
+            </div>
           </div>
-          <div class="cp-advrow">
-            <span class="cp-advlbl">Feather</span>
-            <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="fog-feather" min="0" max="24" value="12" step="1" title="How soft the edge of a revealed area is"></div>
-            <input type="text" id="fog-feather-num" class="cp-chip cp-chip-num" inputmode="numeric" value="12">
+          <div hidden>
+            <input type="range" id="fog-half-alpha" min="0" max="100" value="50" step="1">
+            <input type="range" id="fog-feather" min="0" max="24" value="12" step="1">
+          </div>
+        </div>
+        <!-- The world map's settings: the backdrop (worldBackground.js) and the backup (worldBackup.js). Never on the TV. -->
+        <div class="cp-group" id="wm-bg-group">
+          <div class="dk-sh"><span class="cp-label">World map</span></div>
+          <div class="dk-blk"><span class="dk-sub">Background</span>
+            <div class="dk-r">
+              <button class="dk-src none" id="wm-bg-pick" title="Choose a picture for behind the places. The TV never shows it."><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="9" rx="1.2"/><circle cx="5" cy="6" r="1"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 2.5 2.5"/></svg></span><span class="nm" data-no-i18n>Choose image…</span></button>
+              <input type="file" id="wm-bg-file" accept="image/*" hidden>
+              <button id="wm-bg-clear" class="cp-adv-close" title="Remove the image" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+            </div>
+          </div>
+          <div id="wm-bg-controls" class="dk-secbody" hidden>
+            <div class="dk-r">
+              <div class="dk-blk"><span class="dk-sub">Size</span>
+                <label class="dk-num" title="Size of the image on the world map. Drag the icon to change it."><span class="pre" data-scrub="wm-bg-scale-num" data-min="5" data-max="400" data-per="1.5" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l8-8M7 3h4v4"/></svg></span><input type="text" id="wm-bg-scale-num" inputmode="numeric" value="100"><span class="u">%</span></label>
+              </div>
+              <div class="dk-blk"><span class="dk-sub">Opacity</span>
+                <label class="dk-num" title="How strongly the image shows. Drag the icon to change it."><span class="pre" data-scrub="wm-bg-alpha-num" data-min="5" data-max="100" data-per="2" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.8s4 4.2 4 6.6a4 4 0 01-8 0c0-2.4 4-6.6 4-6.6z"/></svg></span><input type="text" id="wm-bg-alpha-num" inputmode="numeric" value="60"><span class="u">%</span></label>
+              </div>
+            </div>
+            <div class="dk-blk"><span class="dk-sub">Position</span>
+              <button id="wm-bg-move" class="cp-btn cp-btn-live" aria-pressed="false" title="Open the world map, then drag the empty ground to move the image"><span id="wm-bg-move-label">Move on the map</span></button>
+              <span id="wm-bg-hint" class="cp-hint" hidden>Drag the empty ground on the world map.</span>
+            </div>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">Backup</span>
+            <div class="cp-btnrow">
+              <button id="wm-bk-export" class="cp-btn" title="Shift-click scenes on the world map, or Shift-drag a box around them, to export only those.">Export everything</button>
+              <button id="wm-bk-restore" class="cp-btn" title="Pick a backup .zip, or drop one on the world map.">Restore</button>
+            </div>
+            <input type="file" id="wm-bk-file" accept=".zip,application/zip" hidden>
+            <span id="wm-bk-line" class="cp-hint"></span>
           </div>
         </div>
         <!-- Filled by about.js: mark, wordmark, version, repo, What's new, the update line. -->
@@ -531,6 +560,42 @@
     <button data-anim="fast">Fast drift</button>
     <div class="sep"></div>
     <button data-anim="advanced">Custom…</button>
+  </div>
+</div>
+
+<!-- THE LEFT PANEL: breadcrumbs, and the notes of the campaign, the scene or the room. notesPanel.js. -->
+<button id="np-fab" class="np-fab" title="Open the notes" hidden>
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 17h5"/></svg>
+</button>
+<div id="notes-panel" class="np" hidden>
+  <div id="np-edge" title="Drag to resize"></div>
+  <div class="np-head">
+    <div class="np-crumbs" id="np-crumbs"></div>
+    <button id="np-toggle" class="np-toggle" title="Collapse the notes">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="7.5,2.5 4,6 7.5,9.5"/></svg>
+    </button>
+  </div>
+  <div class="np-body" id="np-body">
+    <textarea id="np-field" class="rp-desc" spellcheck="false" rows="1" hidden></textarea>
+    <!-- The selected room, Notion's way: the name is the header, Delete sits where Close was, then the
+         notes and the pictures. roomCard.js fills it. -->
+    <div id="panel-room" class="dk-room">
+      <div class="dk-rhead rp-ident">
+        <input id="rp-name" class="rp-name" type="text" spellcheck="false" autocomplete="off"
+               maxlength="60" placeholder="Room name" title="Room name. The module's locations drop down here.">
+        <button id="rp-delete" class="cp-adv-close" title="Delete room (Del)">
+          <svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+      <textarea id="rp-desc" class="rp-desc" spellcheck="false" rows="1"
+                placeholder="What's in here, what the party sees, what's hidden…"></textarea>
+      <div class="rp-pics" id="rp-pics" style="display:none"></div>
+      <button class="dk-addpic" id="rp-pic-add" title="Pick a picture, or drop one here">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7.5V11A1.5 1.5 0 0 1 11 12.5H3A1.5 1.5 0 0 1 1.5 11V3A1.5 1.5 0 0 1 3 1.5h4.5"/><circle cx="4.8" cy="5" r="1.1"/><path d="M12.5 9.6 10.4 7.5a1 1 0 0 0-1.4 0L4 12.5"/><path d="M11 .8v4M9 2.8h4"/></svg>
+        <span>Add a picture</span>
+      </button>
+      <input type="file" id="rp-pic-input" accept="image/*,.avif,.svg,.webp,.gif,.bmp,.ico,.jfif" multiple hidden>
+    </div>
   </div>
 </div>
 
@@ -628,6 +693,13 @@
         <div class="lg-row">Send to the TV<span class="k"><kbd>Space</kbd></span></div>
         <div class="lg-row">Send, with Sync off<span class="k"><kbd>Shift</kbd><kbd>S</kbd></span></div>
         <div class="lg-row">Ping a point<span class="k"><kbd>Ctrl</kbd><kbd>Middle-click</kbd></span></div>
+        <div class="sm-sub">World map</div>
+        <div class="lg-row">Open or close<span class="k"><kbd>M</kbd></span></div>
+        <div class="lg-row">Open a scene<span class="k"><kbd>Double-click</kbd></span></div>
+        <div class="lg-row">Pick more scenes<span class="k"><kbd>Shift</kbd><kbd>Click</kbd></span></div>
+        <div class="lg-row">Pick with a box<span class="k"><kbd>Shift</kbd><kbd>Drag</kbd></span></div>
+        <div class="lg-row">Find<span class="k"><kbd>Ctrl</kbd><kbd>F</kbd></span></div>
+        <div class="lg-row">Finish a road<span class="k"><kbd>Enter</kbd></span></div>
       </div>
       </div>
     </div>
@@ -670,10 +742,23 @@
   <canvas id="cursor-canvas"></canvas>
 </div>
 
+<!-- THE WORLD MAP: a layer over the map, not inside #canvas-container, so none of the map's own pointer
+     handlers (input.js) ever see it. worldMap.js. -->
+<div id="wm" hidden>
+  <div id="wm-world">
+    <div id="wm-bgimg"></div>
+    <svg id="wm-mist" width="1" height="1"></svg>
+    <div id="wm-hull"></div>
+    <svg id="wm-roads" width="1" height="1"></svg>
+    <div id="wm-card"></div><div id="wm-mark"></div><div id="wm-rn"></div><div id="wm-edit"></div>
+  </div>
+  <div id="wm-empty" hidden>No scenes yet. Add a map with the button below.</div>
+</div>
+
 <div id="landing">
   <canvas id="landing-fog"></canvas>
   <h2>Evermist</h2>
-  <p>Open the <strong>scene library</strong> (top of the dock, right) to get started</p>
+  <p>Open the <strong>world map</strong> (top of the dock, right) to get started</p>
   <div id="landing-loading">Loading map…</div>
 </div>
 
@@ -687,39 +772,6 @@
       <div class="sm-dim mp-file" id="map-progress-file" data-no-i18n></div>
     </div>
     <div class="sm-wfoot" id="map-progress-foot"><button type="button" class="sm-hbtn" id="map-progress-stop">Cancel</button></div>
-  </div>
-</div>
-
-<!-- SCENE LIBRARY (DM only) — a centred window over a veil, opened from the dock's rail and wired
-     by sceneManager.js. It sits outside the dock: the dock carries zoom, and a fixed full-screen
-     veil inside a zoomed element resolves its own inset against the scaled coordinate space. -->
-<div id="sm-modal" style="display:none">
-  <div id="sm-panel">
-    <div id="sm-head" class="sm-whead">
-      <span id="sm-title" class="sm-wtitle">Scene library</span>
-      <span class="sm-sp"></span>
-      <label class="sm-field"><svg class="i-search" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
-        <input id="sm-search" placeholder="Search" spellcheck="false" autocomplete="off">
-      </label>
-      <!-- Labels, no glyphs. These two sit side by side and do the same kind of thing, so one
-           wearing an icon and the other not would read as a difference that is not there. -->
-      <button id="sm-new-group" class="sm-hbtn" title="Make a new group">New group</button>
-      <button id="sm-add" class="sm-hbtn primary" title="Add maps, or pick a .zip backup to restore">Add maps</button>
-      <button id="sm-close" class="sm-x" title="Close (Esc)"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    </div>
-
-    <!-- The list toolbar: the all/none tick, then the selection's count and actions, then the
-         library's count at the right end. The header never changes. -->
-    <div id="sm-ltb" class="sm-ltb">
-      <span id="sm-tickall" class="sm-tick" title="Select all"></span>
-      <span id="sm-sel-count" class="cnt on"></span>
-      <button id="sm-sel-group" class="sm-hbtn sm-selact">Move to<span class="sm-chev"></span></button>
-      <button id="sm-sel-export" class="sm-hbtn sm-selact"><svg class="i-export" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5M5 20h14"/></svg>Export</button>
-      <button id="sm-sel-delete" class="sm-hbtn danger sm-selact"><svg class="i-trash" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>Delete</button>
-      <span id="sm-count" class="end"></span>
-    </div>
-
-    <div id="sm-list"></div>
   </div>
 </div>
 
@@ -796,15 +848,14 @@
 </div>
 </div><!-- /#mu-anchor -->
 
-<!-- Its own file input, NOT #file-input below: that one belongs to the map loader and accepts
-     images, video and .zip. Sharing it would be a silent way to feed a .webm to the parser.
+<!-- Its own file input: sharing one with the map loader would be a silent way to feed a .webm to the parser.
      .pdf is first in the list because that is what a published module actually ships as — the app
      converts it (main.js, via pdfjs-dist) rather than asking the DM to export text first. -->
 <input type="file" id="mt-file-input" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" style="display:none">
 
-<!-- multiple: pick a folder's worth of maps in one go. A lone .zip still restores a backup; one
-     inside a multi-file selection is refused (sceneManager.js importMapFiles). -->
-<input type="file" id="file-input" multiple accept="image/*,video/mp4,video/webm,.zip,application/zip" style="display:none">
+<!-- The world map's own: it adds maps and never opens one, and takes no .zip. -->
+<input type="file" id="wm-file-input" multiple accept="image/*,video/mp4,video/webm" style="display:none">
+
 
 <script src="src/i18n/i18nPlan.js"></script>
 <script src="src/i18n/ru.js"></script>
@@ -843,6 +894,7 @@
 <script src="src/shapes/tools.js"></script>
 <script src="src/shapes/shapeHit.js"></script>
 <script src="src/shapes/shapeSelect.js"></script>
+<script src="src/shapes/openLine.js"></script>
 <script src="src/shapes/shapeBox.js"></script>
 <script src="src/shapes/cornerGeometry.js"></script>
 <script src="src/shapes/cornerRound.js"></script>
@@ -853,8 +905,7 @@
 <script src="src/scenes/sceneGroups.js"></script>
 <script src="src/scenes/sceneStore.js"></script>
 <script src="src/scenes/scenes.js"></script>
-<script src="src/scenes/sceneManager.js"></script>
-<script src="src/scenes/sceneCards.js"></script>
+<script src="src/scenes/sceneList.js"></script>
 <script src="src/scenes/sceneDelete.js"></script>
 <script src="src/scenes/mapImport.js"></script>
 <script src="src/scenes/sceneSwitch.js"></script>
@@ -863,6 +914,7 @@
 <script src="src/render/ping.js"></script>
 <script src="src/player/playerWindow.js"></script>
 <script src="src/player/panes.js"></script>
+<script src="src/player/twoMaps.js"></script>
 <script src="src/player/stageWindow.js"></script>
 <script src="src/scenes/backup.js"></script>
 <script src="src/render/grid.js"></script>
@@ -890,12 +942,32 @@
 <script src="src/rooms/floorPlan.js"></script>
 <script src="src/content/moduleText.js"></script>
 <script src="src/content/moduleTextPanel.js"></script>
+<script src="src/notes/notesPlan.js"></script>
 <script src="src/rooms/roomPanel.js"></script>
 <script src="src/rooms/picturePlan.js"></script>
 <script src="src/rooms/roomCard.js"></script>
 <script src="src/rooms/pictureDecode.js"></script>
 <script src="src/rooms/roomPictures.js"></script>
 <script src="src/rooms/roomLink.js"></script>
+<script src="src/notes/notesPanel.js"></script>
+<script src="src/world/worldMapPlan.js"></script>
+<script src="src/world/worldRoadPlan.js"></script>
+<script src="src/world/worldMapStore.js"></script>
+<script src="src/world/worldPlaces.js"></script>
+<script src="src/world/worldRoads.js"></script>
+<script src="src/world/worldMist.js"></script>
+<script src="src/world/worldBackground.js"></script>
+<script src="src/world/worldMap.js"></script>
+<script src="src/world/worldMapEdit.js"></script>
+<script src="src/world/worldMapMenu.js"></script>
+<script src="src/world/worldMapShapes.js"></script>
+<script src="src/world/worldMapRoads.js"></script>
+<script src="src/world/worldMapColumns.js"></script>
+<script src="src/world/worldFindPlan.js"></script>
+<script src="src/world/worldMapFind.js"></script>
+<script src="src/world/worldPickPlan.js"></script>
+<script src="src/world/worldMapPick.js"></script>
+<script src="src/world/worldBackup.js"></script>
 <script src="src/player/tvPicture.js"></script>
 <script src="src/ui/changelogData.js"></script>
 <script src="src/ui/changelog.js"></script>
@@ -983,7 +1055,7 @@ if (isPlayer) {
 
 // ─── Auto-Sync helper → viewport.js ──────────────────────────────────────────
 
-// Scene management (switchScene, createNewScene, scene-manager UI, …) lives in sceneManager.js.
+// Scene management (switchScene, createNewScene, the scene list, …) lives in the scenes/ modules.
 
 // ─── Render orchestration + cursor overlay → render.js ───────────────────────
 
@@ -1009,6 +1081,8 @@ if (!isPlayer) initMusic();   // The music bubble → music.js
 if (!isPlayer) initSoundboard();   // The Sounds pill → soundboard.js
 if (!isPlayer && !isPane) initCombatTracker(); // The fight table → combatTracker.js
 if (!isPlayer && !isPane) initDock();          // The dock → dock.js
+if (!isPlayer && !isPane) initNotesPanel();    // The left panel → notesPanel.js
+if (!isPlayer && !isPane) worldMapInit();      // The world map → worldMap.js
 
 window.addEventListener('resize', () => {
   resizeViewport();   // viewport.js

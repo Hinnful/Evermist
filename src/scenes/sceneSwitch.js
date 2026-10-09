@@ -6,6 +6,7 @@
 async function switchScene(id, _isRecovery = false) {
   if (currentScene && currentScene.id === id) return;
   const myGen = ++switchGeneration;
+  if (typeof notesPanelFlush === 'function') notesPanelFlush();
   // ⚠ AWAITED, or a switch BACK reads the store before these edits land. DECISIONS.md
   if (currentScene) await doAutoSave();
   const prevId = currentScene ? currentScene.id : null;
@@ -194,7 +195,8 @@ async function switchScene(id, _isRecovery = false) {
   // marks it. Without it the new scene's rooms stay unpainted until the first mouse move.
   viewportDirty = true; gridDirty = true; fogDirty = true; cursorDirty = true;
   scheduleRender();
-  renderSceneManager();
+  sceneListChanged();
+  if (worldMapOpen) worldMapHide();   // a scene opened from anywhere else is the one to look at
   // Selection was cleared above, so close the room card rather than leaving it floating
   // over the new scene with the previous scene's room in it.
   if (typeof resetRoomLabelCache === 'function') resetRoomLabelCache();
@@ -214,6 +216,7 @@ async function switchScene(id, _isRecovery = false) {
   }
   onSceneLoaded(); // viewport.js: flush pending player resync if Player asked while loading
   reportPaneMapSize();   // panes.js: the parent sizes the columns from the two maps' shapes
+  takePlanOffer();       // floorPlan.js: a scene added on the world map settles its plan now
   } catch (err) {
     if (myGen !== switchGeneration) return;
     mapOffscreen = null;

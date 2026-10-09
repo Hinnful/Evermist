@@ -49,20 +49,6 @@ module.exports = async function playerWindowFeature(rig) {
     'the DM adopted the pre-warmed window without the button being pressed, so every fog push and ' +
     'every map now goes to a window nobody opened');
 
-  // ── B. The idle card on the DM stays under the panels ───────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
-  // Read here because no scene is open yet, which is the one state the DM shows the card in.
-  const idle = await dm.evaluate(`(() => {
-    const l = getComputedStyle(document.getElementById('landing'));
-    const m = getComputedStyle(document.getElementById('sm-modal'));
-    return { z: l.zIndex, modalZ: parseInt(m.zIndex, 10), shown: l.display };
-  })()`);
-  rig.check(idle.shown !== 'none',
-    'the DM is not showing the landing card with no scene open, so B measured nothing');
-  rig.check(idle.z === 'auto' || parseInt(idle.z, 10) < idle.modalZ,
-    'the DM landing card outranks the scene library (' + idle.z + ' against ' + idle.modalZ +
-    '), so with no scene open its wordmark paints over the library, the About box and dialogs');
-
   await dm.evaluate('createNewScene(' + expr + ')', 120000);
   await dm.waitFor('!!mapOffscreen', 120000, 'the DM to finish importing the map');
 

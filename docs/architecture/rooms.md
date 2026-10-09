@@ -150,13 +150,15 @@ revealed of every room whose wall runs through it - which stops the choice of ow
 wall two rooms share, and gives half-shroud an answer. Doors reach the Player for free: they are
 cut into the same fog stencil that crosses to the TV.
 
-## The Room tab
+## The room in the left panel
 
-Select a room and the dock opens its Room tab: the name as the header, Delete beside it, the
-notes, the pictures and the corner radius. It stays open when you switch tools, so you can read
-the notes while painting fog. **Drawing a room doesn't open it** - a new room is created with
-nothing selected, so the tab stays on what you had open while you draw the next one. The notes
-grow with what is written in them.
+Select a room and the left panel shows its level: the name as the header, Delete beside it, the
+notes and the pictures. A shut panel opens on the pick without changing what the DM keeps open. It
+stays on the room when you switch tools, so you can read the notes while painting fog. **Drawing a
+room doesn't select it** - a new room is created with nothing selected, so the panel stays on the
+scene while you draw the next one. The notes grow with what is written in them. Corners are rounded
+on the map by their circles, not in the panel. The panel's other levels, the scene's and the
+campaign's notes, are in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 The room's fog is set from the toolbar: with Select in hand and a room selected, Reveal, Half and
 Shroud above the bar show and set that room's fog, and T cycles it.
@@ -167,8 +169,8 @@ heavily-rounded rectangles work without special cases. `L` toggles them.
 
 ## Room pictures
 
-A room can hold pictures: a portrait, a letter, a drawing of an item. They show in its Room tab
-below the notes, added with Add a picture or by dropping files on the tab. A
+A room can hold pictures: a portrait, a letter, a drawing of an item. They show in the left
+panel below the room's notes, added with Add a picture or by dropping files on the panel. A
 click puts one on the TV over the dimmed map, and a second click or Escape takes it down. The
 picture comes and goes in soft patches of cloud noise, drawn on a canvas that hands back to the
 plain image once it is whole, so an animated GIF plays throughout and a picture that is up costs

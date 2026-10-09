@@ -17,8 +17,11 @@
 //   D. A restored scene keeps its floor plan, so Draw Rooms still works on it.
 //   E. A name already in the library comes back de-duplicated rather than overwriting.
 //   F. The module text rides at the zip ROOT and is adopted on restore; a zip without it leaves
-//      the loaded book alone.
-//   G. Export's metadata list is a WHITELIST, and every field a restore reads back is in it.
+//      the loaded book alone. The campaign's notes ride there too, as campaign.json: a restore
+//      never overwrites the notes the DM has, restoring one backup twice adds nothing the second
+//      time, and a scene's notes come back with the scene.
+//   G. Export's metadata list is a WHITELIST, and every field a restore reads back is in it,
+//      a scene's notes included.
 //   H. What only a person can check.
 //   I. A map file that is gone from disk is NAMED, on the way out and on the way back in. The
 //      record still exports, so silence there produces a backup that looks whole and restores
@@ -30,6 +33,8 @@
 //   M. A backup stopped while it is written leaves no file behind.
 //   N. A batch import stopped partway keeps the map it was on and skips the rest, with no
 //      failure reported for them.
+//   O. A backup carrying a notes field that is not text, or a damaged campaign.json, still
+//      restores its scenes, keeps the DM's campaign notes, and names both in ONE message.
 //
 // ⚠ THE EXPORT'S SAVE DIALOG IS THE ONE SEAM NOTHING CAN CROSS. doExport opens a native
 // showSaveDialog as its FIRST act, and `window.electronAPI` comes through contextBridge, so it is
@@ -100,6 +105,8 @@ module.exports = async function backupFeature(rig) {
       name: 'The Vestry', desc: 'Two acolytes and a trapped font.',
     }];
     nextPolygonId = 2;
+    currentScene.notes = 'Scene lore.';
+    notesCampaignSet('Campaign lore.');
     setEffects([{
       id: 1,
       vertices: [{ x: ${FX.x1}, y: ${FX.y1} }, { x: ${FX.x2}, y: ${FX.y1} },
@@ -157,6 +164,7 @@ module.exports = async function backupFeature(rig) {
           id: scene.id, name: scene.name, mapType: scene.mapType || 'image',
           mapWidth: scene.mapWidth, mapHeight: scene.mapHeight, mapMimeType, mapExt,
           polygons: scene.polygons || [], nextPolygonId: scene.nextPolygonId || 1,
+          notes: scene.notes,
           effects: scene.effects || [], nextEffectId: scene.nextEffectId || 1,
           floorPlan: scene.floorPlan, gridConfig: scene.gridConfig || {},
           fogSettings: scene.fogSettings, createdAt: scene.createdAt || 0,
@@ -166,7 +174,7 @@ module.exports = async function backupFeature(rig) {
       });
     }
     await window.electronAPI.createBackupZip(${JSON.stringify(zipPath)}, scenesData,
-      mtBackupPayload());
+      mtBackupPayload(), null, notesCampaignPayload(notesCampaignGet()));
     return { count: scenesData.length, before: allScenes.length,
              openId: currentScene.id, openName: currentScene.name };
   })()`, 300000);
@@ -207,7 +215,7 @@ module.exports = async function backupFeature(rig) {
                  cr: p.cornerRadius, radii: p.cornerRadii, verts: p.vertices.length })),
         effects: (sc.effects || []).map(e => ({ name: e.name, material: e.material,
                  cr: e.cornerRadius, radii: e.cornerRadii, verts: e.vertices.length })),
-        nextPolygonId: sc.nextPolygonId, nextEffectId: sc.nextEffectId,
+        nextPolygonId: sc.nextPolygonId, nextEffectId: sc.nextEffectId, notes: sc.notes,
       });
     }
     return { scenes: out, openId: currentScene ? currentScene.id : null,
@@ -306,6 +314,10 @@ module.exports = async function backupFeature(rig) {
               'the restored scene came back with id counters that would collide with its own ' +
               'shapes: ' + copy.nextPolygonId + '/' + copy.nextEffectId);
 
+    // RED BY DESIGN: written against the fix, never re-proved
+    rig.check(copy.notes === 'Scene lore.',
+              "a restored scene lost the DM's scene notes: " + JSON.stringify(copy.notes));
+
     // ── D. The floor plan survives ───────────────────────────────────────────
     // RED BY DESIGN: written against the fix, never re-proved
     rig.check(copy.plan,
@@ -364,6 +376,79 @@ module.exports = async function backupFeature(rig) {
             'restoring a backup with no module text in it wiped the book that was loaded, so an ' +
             'older zip costs the DM their whole module: ' + JSON.stringify(untouched));
 
+  // The campaign's notes are in the zip at its root, and adopting them twice adds them once.
+  // RED BY DESIGN: written against the fix, never re-proved
+  const campaign = await dm.evaluate(`(async () => {
+    const raw = await window.electronAPI.readBackupCampaign(${JSON.stringify(zipPath)});
+    const none = await window.electronAPI.readBackupCampaign(${JSON.stringify(plainZip)});
+    const sep = NOTES_SEPARATOR;
+    notesCampaignSet('');
+    await adoptCampaignNotesFromZip(${JSON.stringify(zipPath)}, []);
+    const empty = notesCampaignGet();
+    notesCampaignSet('Mine.');
+    await adoptCampaignNotesFromZip(${JSON.stringify(zipPath)}, []);
+    const once = notesCampaignGet();
+    await adoptCampaignNotesFromZip(${JSON.stringify(zipPath)}, []);
+    const twice = notesCampaignGet();
+    await adoptCampaignNotesFromZip(${JSON.stringify(plainZip)}, []);
+    return { raw, none, empty, once, twice, afterPlain: notesCampaignGet(), want: 'Mine.' + sep + 'Campaign lore.' };
+  })()`, 60000);
+  rig.note('the campaign notes in the zip: ' + JSON.stringify(campaign));
+  rig.check(campaign.raw && JSON.parse(campaign.raw).notes === 'Campaign lore.' && campaign.none === null,
+            'campaign.json is not at the zip root, or a zip without notes carries one: ' + JSON.stringify([campaign.raw, campaign.none]));
+  rig.check(campaign.empty === 'Campaign lore.',
+            'restoring into a campaign with no notes did not bring the backup\'s notes: ' + JSON.stringify(campaign.empty));
+  rig.check(campaign.once === campaign.want,
+            'a restore overwrote the DM\'s campaign notes instead of adding below them: ' + JSON.stringify(campaign.once));
+  rig.check(campaign.twice === campaign.once && campaign.afterPlain === campaign.once,
+            'restoring the same backup twice added the notes twice, or a zip with none changed them: ' + JSON.stringify(campaign.twice));
+
+  // ── O. A damaged notes field and a damaged campaign.json ─────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
+  const badZip = path.join(rig.outDir, 'bad-notes.zip');
+  const bad = await dm.evaluate(`(async () => {
+    const scene = await sceneStore.loadScene(${JSON.stringify(exported.openId)});
+    const meta = { id: scene.id, name: 'Notes broke here', mapType: 'image',
+                   mapWidth: scene.mapWidth, mapHeight: scene.mapHeight,
+                   mapMimeType: 'image/png', mapExt: '.png', polygons: [], nextPolygonId: 1,
+                   notes: 5, effects: [], nextEffectId: 1, gridConfig: {}, createdAt: 0, sortOrder: 0 };
+    await window.electronAPI.createBackupZip(${JSON.stringify(badZip)},
+      [{ id: scene.id, mapType: 'image', mapExt: '.png', metadata: meta, mapBuffer: null, fogBuffer: null, thumbBuffer: null }],
+      null, null, '{not json');
+    // The module-text question from an earlier restore may still be on screen.
+    const open = document.getElementById('cd-anchor');
+    for (let i = 0; i < 20 && open && open.style.display === 'flex'; i++)
+      document.getElementById(open.classList.contains('cd-solo') ? 'cd-ok' : 'cd-cancel').click();
+    notesCampaignSet('Keep me.');
+    const before = allScenes.length;
+    await restoreFromZipPath(${JSON.stringify(badZip)});
+    const anchor = document.getElementById('cd-anchor');
+    const out = {
+      added: allScenes.length - before,
+      notes: null,
+      campaign: notesCampaignGet(),
+      shown: !!anchor && anchor.style.display === 'flex',
+      title: document.getElementById('cd-title').textContent,
+      msg: document.getElementById('cd-msg').textContent,
+    };
+    const made = allScenes.find(m => m.name === 'Notes broke here');
+    if (made) {
+      out.notes = (await sceneStore.loadScene(made.id)).notes;
+      await sceneStore.deleteScene(made.id);
+      allScenes.splice(allScenes.indexOf(made), 1);
+      sceneListChanged();
+    }
+    return out;
+  })()`, 120000);
+  rig.note('a restore with damaged notes: ' + JSON.stringify(bad));
+  rig.check(bad.added === 1 && bad.notes === '',
+            'a backup with a damaged notes field did not restore its scene, or kept the damage: ' + JSON.stringify([bad.added, bad.notes]));
+  rig.check(bad.campaign === 'Keep me.',
+            'a damaged campaign.json changed the DM\'s campaign notes: ' + JSON.stringify(bad.campaign));
+  rig.check(bad.shown && bad.title.includes('notes') && bad.msg.includes('Notes broke here') && bad.msg.includes('campaign notes'),
+            'the damaged notes were not named, scene and campaign, in one dialog: ' + JSON.stringify([bad.title, bad.msg]));
+  await dm.evaluate('document.getElementById("cd-ok").click(); notesCampaignSet("Campaign lore."); 0');
+
   // ── G. The export whitelist ──────────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
   // Read off doExport itself. Nothing else can see the list the export really uses: the payload
@@ -385,9 +470,10 @@ module.exports = async function backupFeature(rig) {
     const block = src.slice(at, end);
     const want = ['polygons', 'nextPolygonId', 'effects', 'nextEffectId', 'floorPlan',
                   'gridConfig', 'fogSettings', 'name', 'mapWidth', 'mapHeight', 'mapType',
-                  'mapMimeType', 'mapExt', 'createdAt', 'sortOrder'];
+                  'mapMimeType', 'mapExt', 'createdAt', 'sortOrder', 'notes'];
     const missing = want.filter(k => !new RegExp('(^|[\\\\s{,])' + k + '\\\\s*[:,}\\\\n]').test(block));
-    return { missing, carriesModuleText: src.indexOf('mtBackupPayload') !== -1 };
+    return { missing, carriesModuleText: src.indexOf('mtBackupPayload') !== -1,
+             carriesCampaign: src.indexOf('notesCampaignPayload') !== -1 };
   })()`);
   if (whitelist.err) rig.check(false, 'the export whitelist could not be read: ' + whitelist.err);
   rig.note('the export whitelist: ' + JSON.stringify(whitelist));
@@ -398,6 +484,8 @@ module.exports = async function backupFeature(rig) {
   rig.check(whitelist.carriesModuleText,
             'the export no longer puts the module text in the zip, so a restored library comes ' +
             'back without the campaign');
+  rig.check(whitelist.carriesCampaign,
+            'the export no longer puts the campaign notes in the zip, so a restored library comes back without them');
 
   // ── H. What only a person can check ──────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved

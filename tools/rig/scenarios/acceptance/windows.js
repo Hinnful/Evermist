@@ -152,8 +152,6 @@ module.exports = async function windowsFeature(rig) {
   // RED ON: .sm-hbtn height set back to 30px (sceneManager.css) — 2026-10-03
   // RED ON: .sm-hbtn.danger given its red fill back (sceneManager.css) — 2026-10-03
   // RED ON: #mt-modal's w-m class misspelt (index.html) — 2026-10-03
-  await audit('Scene library', 'openDropdown(); smSelectedIds.add(allScenes[0].id); renderSceneManager()', '#sm-panel',
-              { anyWidth: true }, 'smSelectedIds.clear(); closeDropdown()');
   await audit('Confirm dialog', 'confirmDialog({ title: "Delete the scene?", message: "It goes for good.", confirmLabel: "Delete", danger: true })',
               '#cd-modal', {}, 'document.getElementById("cd-cancel").click()');
   await audit('Message dialog', 'messageDialog({ title: "The map would not open", message: "It is not an image." })',

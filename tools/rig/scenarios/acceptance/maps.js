@@ -109,7 +109,7 @@ module.exports = async function mapsFeature(rig) {
     // The picker, through its own change handler. The FileList is real and so is the handler;
     // only the click that would have opened the OS dialog is skipped.
     globalThis.__rigPick = files => {
-      const inp = document.getElementById('file-input');
+      const inp = document.getElementById('wm-file-input');
       inp.files = globalThis.__rigDT(files).files;
       const seen = inp.files.length;
       inp.dispatchEvent(new Event('change', { bubbles: true }));
@@ -213,9 +213,9 @@ module.exports = async function mapsFeature(rig) {
   };
 
   // ── A. The picker takes many maps, in order ────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
-  rig.check(await dm.evaluate('document.getElementById("file-input").multiple === true'),
-            'the "+" picker no longer accepts more than one file at a time');
+  // RED BY DESIGN: written against the change, never re-proved (the picker is now the world map's #wm-file-input)
+  rig.check(await dm.evaluate('document.getElementById("wm-file-input").multiple === true'),
+            'the world map\'s "+" picker no longer accepts more than one file at a time');
 
   const picked = await dm.evaluate('__rigPick([__rigFile("Picked One.mp4"), ' +
     '__rigFile("Picked_Two.mp4")])');
@@ -263,6 +263,8 @@ module.exports = async function mapsFeature(rig) {
   // ── D. A floor plan dropped on its own ─────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
   // It attaches to the scene that is open; it is never a map, so nothing imports.
+  // Add a scene never opens what it adds, so the plan's scene is opened here, as the DM opens one from the world map.
+  await dm.evaluate('switchScene(allScenes.find(s => s.name === "Picked One").id); 0', 120000);
   const beforePlan = (await names()).length;
   // ⚠ WAIT FOR THE SCENE, NOT JUST FOR THE LIBRARY COUNT. attachPlanText returns false on its
   // first line when currentScene is null, and the drop handler swallows that. The guard below
@@ -322,12 +324,11 @@ module.exports = async function mapsFeature(rig) {
            JSON.stringify(zipAlone.msg));
   rig.check((await names()).length === beforeZip,
             'a lone .zip through the picker was imported as a map');
-  // ⚠ The discriminator between the two routes. restorePickedZip answers "Backups need the
-  // desktop app"; importMapFiles answers "Import the backup on its own". A check on "a dialog
-  // appeared" would pass for either, which is the whole regression.
-  rig.check(zipAlone.shown && zipAlone.title.indexOf('desktop app') !== -1,
-            'a lone .zip did not reach restorePickedZip — it was handed to the map importer ' +
-            'instead: ' + JSON.stringify(zipAlone));
+  // Add a scene takes maps alone: a backup restores from Settings or a .zip dropped on the world map
+  // (decisions/ui-and-control-panel.md, "The backup lives in Settings"), so a .zip here is refused by name.
+  // RED BY DESIGN: rewritten for the world map's picker, never re-proved
+  rig.check(zipAlone.shown && zipAlone.msg.indexOf('Library.zip') !== -1,
+            'a lone .zip through Add a scene was not refused by name: ' + JSON.stringify(zipAlone));
   await dismiss();
 
   await runBatch('[__rigFile("Library.zip", "application/zip"), __rigFile("Late Arrival.mp4")]',
@@ -552,6 +553,7 @@ module.exports = async function mapsFeature(rig) {
   // ⚠ THE LIBRARY GROWS BEFORE THE APP SWITCHES ONTO THE NEW SCENE, and the three checks below
   // all read currentScene. Waiting on the count alone read the PREVIOUS scene on a slow runner:
   // the gate reported a .png arriving as a video at the old map size, which is the old map.
+  await dm.evaluate('switchScene(allScenes.find(s => s.name === "Chapel Floor").id); 0', 120000);   // Add a scene never opens it
   await lib.settle(dm, 'currentScene && currentScene.name === "Chapel Floor"', 60000);
   const stillScene = await dm.evaluate(`({
     name: currentScene ? currentScene.name : null,
@@ -573,6 +575,7 @@ module.exports = async function mapsFeature(rig) {
   const bigIn = await waitLibrary(beforeStill + 2, 300000);
   rig.check(bigIn.length === beforeStill + 2,
             'a still map bigger than the window imported nothing: ' + JSON.stringify(bigIn));
+  await dm.evaluate('switchScene(allScenes.find(s => s.name === "Great Hall").id); 0', 120000);   // Add a scene never opens it
   await lib.settle(dm, 'currentScene && currentScene.name === "Great Hall"', 60000);
   const bigScene = await dm.evaluate(`({
     type: currentScene ? currentScene.mapType : null, w: mapWidth, h: mapHeight,

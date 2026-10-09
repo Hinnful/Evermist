@@ -1,7 +1,7 @@
 'use strict';
 // musicGroups.js — the Music pane's groups. A group is a name a track carries, kept in the app's
 // settings by file name; the files never move, so a release without groups still lists every
-// track. The pure half is sceneGroups.js's, shared with the scene library.
+// track. The pure half is sceneGroups.js's, shared with the world map's groups.
 
 const MU_GROUPS_KEY = 'evermist.musicGroups';
 

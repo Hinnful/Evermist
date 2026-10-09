@@ -10,7 +10,7 @@
 // ids come from one counter, and a write routes each shape home by its `light` flag. ⚠ THE EFFECTS LIST IS A NEW ARRAY EACH CALL, so a write goes through
 // setShapeListNamed or pushShapeTo, never into what shapeListNamed returned.
 function shapeListNamed(name) { return name === 'effects' ? lightShapes.concat(effects) : polygons; }
-function activeShapeList() { return shapeListNamed(placeMode); }
+function activeShapeList() { return worldMapOpen ? worldPlaceRecords().concat(worldRoadRecords()) : shapeListNamed(placeMode); }
 function setShapeListNamed(name, list) {
   if (name === 'effects') { effects = list.filter(s => !s.light); lightShapes = list.filter(s => s.light); } else polygons = list;
 }
@@ -25,9 +25,11 @@ function findActiveShape() {
        : activeShapeList().find(s => s.id === selectedPolygonId) || null;
 }
 
+// ⚠ WHILE THE WORLD MAP IS UP the three below act on its places, never on the room or the fog.
 // Live feedback mid-drag. A room's geometry IS the fog stencil, so it rebuilds; an effect only
 // has to tell its own render path, and must never touch the fog.
 function shapeGeometryChanged() {
+  if (worldMapOpen) { worldMapDrawOverlay(); return; }
   if (placeMode !== 'rooms') { shapeListChanged(placeMode); return; }
   rebuildFogFromPolygons();
 }
@@ -35,6 +37,7 @@ function shapeGeometryChanged() {
 // THE ONE RELEASE PATH for a room or effect drag. It does NOT stop a running crossfade:
 // startFogTransition() leaves the live fade going and rebuildFogEffect() re-targets it.
 function commitShapeDrag() {
+  if (worldMapOpen) { worldPlaceCommit(); return; }
   if (placeMode !== 'rooms') {
     shapeListChanged(placeMode);
     scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog reveal does
@@ -52,6 +55,7 @@ function commitShapeDrag() {
 // After an edit that changed geometry but NOT a fog mode. No crossfade: there is no mode to fade
 // towards, and one would make a corner edit flash the whole map.
 function persistShapeEdit() {
+  if (worldMapOpen) { worldPlaceCommit(); return; }
   if (placeMode !== 'rooms') {
     scheduleAutoSync();   // rides the Auto/Manual gate exactly as a fog reveal does
     scheduleAutoSave();

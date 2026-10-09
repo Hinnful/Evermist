@@ -205,6 +205,7 @@ function drawCursor(screenX, screenY) {
   cursorDirty = false;
   _cursorX = screenX;
   _cursorY = screenY;
+  if (worldMapOpen) { worldMapDrawOverlay(); return; }
 
   cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
   if (!mapOffscreen && !mapVideo) return;

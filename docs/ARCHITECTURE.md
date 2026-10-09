@@ -31,13 +31,45 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 The map fills the DM window. Over it sit three things: the toolbar at the bottom, the minimap in
 the bottom-left corner, and **the dock** on the right edge.
 
-The dock is an icon rail with one pane open beside it. The rail opens the scene library and the
-Bestiary as centred windows, and the fight table as a free window. Its panes are **Scene
-control** (the Player window, fog, rooms, lights, grid, My seat), **Room** (the selected room), **Music**,
+The dock is an icon rail with one pane open beside it. The rail opens the world map, the
+Bestiary as a centred window, and the fight table as a free window. Its panes are **Scene
+control** (the Player window, fog, rooms, lights, grid, My seat), **Music**,
 **Sounds** and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
 dock sits over the map rather than beside it, so opening a pane never moves the map or changes
 what the TV is sent. Its inner edge drags to resize it, and it gives way so the toolbar stays
-clear. Selecting a room opens the Room tab from wherever the dock was, and deselecting goes back.
+clear. The toolbar stays centred on the window whatever either side does.
+
+**The world map** (`worldMap.js`, `worldMapEdit.js`) is a DOM layer over the map. It replaced the Scene library, which is gone.
+A place IS a scene group (`scene.group`) and each scene stores where it sits as `worldPos`, written by one
+helper (`worldMapStore.js`) to the store, the open scene and, with two maps on, the column holding it. Scenes are
+framed 110x77 prints, shown only zoomed in, where they stand as the DM put them and wear their names inside the
+print. Zoomed out no scene in a place is shown: the places show, each with a name plate that is a room's label
+(its type size by zoom and clamped, its weight, padding and gap) at the top left of the outline. A scene with no place is
+a black diamond with its name beside it. The camera cannot leave the map: zoomed out no further than the picture and
+layout, with a fifth of the map's size beyond, fill the window. The mist stops at the picture's edge. a scene with no place is a black diamond with its name beside it. Zoomed in the prints wear their
+names and the places have none. Under the prints sits the mist (`worldMist.js`): a drifting veil that thins
+inside the places, over the backdrop, which is greyed outside them. A place's white 2px line is painted above by
+the room code. The bar is the scene's own toolbar (Select, Shape,
+Merge / Cut out / Split, Straighten) lent to the layer and given back on closing, and Merge, Cut out and Split run
+the room kernel on places (`worldMapShapes.js`). One backdrop image, set in Settings, sits behind the places
+(`worldBackground.js`, its own IndexedDB). A double-click opens a scene; Add a scene
+imports a map off screen and never opens it. A right-click menu (`worldMapMenu.js`) offers each thing's actions, a place is a room-shaped record (`worldPlaces.js`) drawn with the rectangle, circle or polygon tool and edited by the room's own selection code, and a scene belongs to the outline that holds all of its card. The room code reads the camera from globals, so each of its calls is made inside `_wmWithCamera`, which lends it the world's. The layer is a sibling of the canvas, so none of the map's
+own handlers see it, and while it is up the map's keys are held back so nothing reaches the TV. Place notes
+live in `evermist.placeNotes` by name and ride a backup in `campaign.json`.
+
+**The left panel** (`notesPanel.js`) mirrors the dock: a full-height pane, dragged wider on its inner
+edge, that shuts to a floating icon. The minimap sits to its right and moves when the panel opens,
+shuts or widens. It holds the notes and the selected room, whose name, Delete, notes and pictures
+used to be the dock's Room tab; picking a room opens a shut panel. Breadcrumbs Campaign › Scene › Room sit on top,
+and below them the notes of one level. By default the panel follows the selection: the room if one is
+selected, otherwise the scene. A crumb picks a level without touching the selection, so the room keeps
+its crumb while the scene's or the campaign's notes show. A new room pick, a deselect or a scene
+switch goes back to following. Room notes and room pictures render in the panel but
+keep their logic in `roomCard.js` and `roomPictures.js`. Scene notes are a `notes` string on the scene
+record, written by `doAutoSave`; campaign notes are one `localStorage` value; both ride in a backup,
+the campaign's as `campaign.json` at the zip root. Nothing in the panel reaches the TV. In two-map mode
+a column reports its scene's name and notes with its room, and a notes edit goes back to the column it
+was filled from. Grid calibration puts the panel away, as it does the dock pane.
 
 ## The files
 
@@ -51,7 +83,7 @@ proposition: it costs a video decoder in every window that shows it, for as long
 open, and that is comfortably the heaviest thing the app does. A Dungeon Alchemist export runs
 13 to 20 megapixels, several times what any table television can show.
 
-So the scene library's header carries a **Compression** size: Off, 1080p, 2K (2560×1440) or 4K
+So Settings carries a **Shrink big maps** size: Off, 1080p, 2K (2560×1440) or 4K
 (3840×2160). With a size picked, any animated map larger than it is re-encoded on import to fit
 that box. 4K is the largest because it sits under the 4096-pixel ceiling where a laptop's built-in
 graphics stop decoding video in hardware and fall back to the processor. A map already inside the
@@ -326,7 +358,7 @@ different map, and one Player window on the TV showing both.
   a column both selects it and does whatever the click was for, in the one press. The selected
   column wears a blue frame.
 - **The selected room is edited in the DM window.** A column reports the room selected in it,
-  and the Room tab shows the selected column's room. Every edit goes back to that column alone.
+  and the left panel shows the selected column's room. Every edit goes back to that column alone.
 - **Every button sends a message.** The toolbar, Scene control and the minimap all
   reach a column the same way the DM window reaches the Player window: by `postMessage`. A
   column then presses the control it already has, so nothing is implemented twice.
@@ -348,7 +380,7 @@ different map, and one Player window on the TV showing both.
   centre. Its numbers are fixed in `stage.js` with no UI over them, the way the fire effect's
   look is fixed in `effects.js`.
 - **The second column opens empty and waits to be picked.** Pressing the toggle splits the map
-  area and opens the scene library with the empty column selected, so the next click fills it.
+  area and opens the world map with the empty column selected, so the next double-click fills it.
   Its half of the Player screen shows drifting fog and nothing else until then. Filling it with
   whichever map came next put a map on the TV the DM never chose.
 - **A column keeps the camera it was given.** Pressing Two maps hands the column the zoom and
@@ -364,7 +396,7 @@ different map, and one Player window on the TV showing both.
 ## Rooms
 
 Moved to [architecture/rooms.md](architecture/rooms.md) - drawing and selecting rooms, repair,
-doors, the Room tab, room pictures and the floor-plan import.
+doors, the room in the left panel, room pictures and the floor-plan import.
 
 ## Reading a published module
 
@@ -372,7 +404,7 @@ The biggest prep cost for a DM isn't typing a room description, it's finding the
 400-page book eighty times. So the app reads the book once.
 
 Point it at a published module (`.txt` or `.pdf`), and it parses out the numbered locations:
-`K12. The Chapel`, and so on. After that the Room tab's name field becomes a **searchable
+`K12. The Chapel`, and so on. After that the room's name field in the left panel becomes a **searchable
 dropdown** over those entries. Pick one, and it fills the name and the description together.
 A counter shows how many are placed, because a finite shrinking list is a different
 psychological object than an open-ended chore.

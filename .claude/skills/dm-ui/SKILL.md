@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/scenes/sceneCards.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/shapes/shapeMenu.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the operations button, which tools a placement mode shows, the fog trio, the music or sounds player, the scene library window and its header, the two-maps toggle, the minimap's Sync and Lock, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/shapes/shapeMenu.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the operations button, which tools a placement mode shows, the fog trio, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's Sync and Lock, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -14,17 +14,17 @@ One dock on the right edge holds every control that is not on the map or the too
 
 - **It sits OVER the map and never narrows it.** The canvas keeps the whole window; a window
   resize keeps the map where it is.
-- **The rail is icons only, in three groups split by dividers**: Scene library and Bestiary
-  (windows), Scene control and Room (panes), Music, Sounds and Combat. Settings and Help sit at
+- **The rail is icons only, in three groups split by dividers**: World map and Bestiary
+  (windows), Scene control (pane), Music, Sounds and Combat. Settings and Help sit at
   the bottom. The open pane's tab wears the blue tint; a window that is open wears a dot.
 - **Clicking the open tab again closes the pane, leaving the rail.** The rail never hides.
-- **One pane at a time.** Selecting a room opens the Room tab from any pane or a closed dock;
-  deselecting goes back to the pane that was open before, or shut if it was shut.
+- **One pane at a time.** The dock has no Room tab: the selected room lives in the left panel.
 - **The open pane and the width persist under `evermist.dockPane` and `evermist.dockWidth`.**
   Never write `evermist.cpPane`: the previous release reads it and would open a panel on a tab
   that no longer exists.
-- **The width is dragged on the dock's inner edge**, and stops at the toolbar. **The toolbar never
-  moves with the pane**: its place comes from the window alone (`_dockToolbarBox`). The dock carries `zoom: var(--ui-zoom)`, so a pointer delta goes
+- **The width is dragged on the dock's inner edge**, and stops short of the toolbar. **The toolbar
+  is centred on the window, ALWAYS**: no pane, panel or minimap moves it, and only a pane's narrowest
+  width may cover it (`_dockMaxW`). The dock carries `zoom: var(--ui-zoom)`, so a pointer delta goes
   through `_rpScreenToStyle()`, never a bare `/ uiZoom`.
 - **Hidden in `body.player-mode` and `body.pane-mode`.** A column window shows no dock.
 - **Pop-outs** (a colour picker, Custom movement) open to the dock's LEFT, level with the row that
@@ -62,12 +62,12 @@ Rules from Figma's right panel, and they bind every section:
 elements, and the pane mirrors their state. Keep the colour picker's zoom-safe box reads and
 the `width: 0` on `.cp-chip-pre input` and `.cp-stepval input` through any restyle.
 
-## The Room tab (`roomCard.js`)
+## The room in the left panel (`roomCard.js`)
 
-The room card's module renders into the Room tab; there is no floating card.
+The room card's module renders into the left panel's room level; there is no floating card and no Room tab.
 
 - **Name as the header, Delete where Close was**, then the notes and the pictures inline below
-  them. No boxes: name and notes share one left and right edge.
+  them, inside `#notes-panel` (`notesPanel.js`), which wears the dock's grey and type. No boxes.
 - **No corner radius in the tab or on the Effects row.** Corners round on the map by their circles
   (`cornerRound.js`), and the typed radius is the `#corner-field` a double-click on a circle opens.
 - **The module dropdown stays on the name field.**
@@ -84,6 +84,68 @@ The room card's module renders into the Room tab; there is no floating card.
   `turnShape(poly)`. `_rpLabelCache` clears per scene.
 - Pure kernel (unit-tested): `normalizeRoomFields`, `sanitizeRoomName`, `sanitizeRoomDesc`,
   `ellipsizeToWidth`, `roomLabelFontPx`, `polygonRowSpans`, `cornerInsetAt`, `fitLabelBox`.
+
+## The left panel (`notesPanel.js`, `notesPanel.css`)
+
+- **Breadcrumbs Campaign › Place › Scene › Room, then one level's notes.** The levels never merge. The
+  Place crumb exists for a scene in a group and holds that place's notes (`evermist.placeNotes`, by name).
+  By default the panel follows the selection: the room if one is selected, else the scene. A crumb picks
+  a level (`notesLevelPick`, `state.js`) and changes nothing else: the room stays selected and keeps its
+  crumb. A new room pick, a deselect or a scene switch puts the pick back to following.
+- **A crumb never touches the TV.**
+- **It is the dock's mirror: a full-height pane, shut to a floating icon** (`#np-fab`, top left).
+  The chevron in its header shuts it and the icon opens it (`evermist.notesPanelOpen`); picking a
+  room opens a shut panel without changing what is kept. Its width is dragged on its inner edge
+  (`evermist.notesWidth`) and stops short of the toolbar. **The minimap sits to its right**
+  (`--np-right`) and moves with it. The notes area carries the app's own 8px scrollbar. It is put away
+  while grid calibration is armed, as the dock pane is.
+- **`#rp-desc` and the pictures render inside it**, but their logic stays in `roomCard.js` and
+  `roomPictures.js`. Scene and campaign notes are the separate `#np-field`, with the field's own undo.
+  It fills the panel and scrolls itself, under the app's own 8px scrollbar; the room level scrolls the body.
+- In two-map mode the panel follows the selected column. A notes edit goes to the column it was
+  filled from with `sendToPane`, never `paneForward`.
+- **Hidden in `body.player-mode` and `body.pane-mode`**, and absent from `stage.html`.
+
+## The world map (`worldMap.js`, `worldMapEdit.js`, `worldMap.css`)
+
+A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolbar is the scene's own: Select, Shape
+(rectangle, circle, polygon: V, R, O, P), Merge / Cut out / Split, Straighten, then Add a scene and Find. Brush,
+Door, Snap and the Rooms/Effects switch are hidden, and the tool, mode and repair the scene held are put
+away on opening and given back on closing. The context row hides with `visibility` so the bar does not move.
+One level of name shows at a time: zoomed out only the place plates, zoomed in only the scene names (the split is `WM_SPLIT`, 0.75). A scene is a 110x77 framed print shown only zoomed in, its name a plate inside it at the top left; zoomed out no scene in a place is shown (a grid was built and removed, see the ledger), and a scene with no place is a black diamond with a white rim and its name beside it. Under the prints sits the mist (`worldMist.js`): a drifting veil that clears 90% inside a place, over a backdrop greyed outside the places and 70% in colour inside them, a 20 soft edge. A place's outline is white, 2px (`POLY_LOOK.place`). A place's name is a small black plate inside its top left (`_wmLayoutLabels`, via the room's `fitLabelBox`), blue when picked, boxed in edit colours while edited. Rename is off while its name is hidden, and the backdrop image is set in Settings
+(`worldBackground.js`).
+
+- **The TV never changes while it is open.** Its keys are caught at the document in the capture phase,
+  and `input.js` stands down on `worldMapOpen`. A field and a dialog keep their own keys.
+- **Esc, M and the button return to the open scene. With none open they do nothing; with two maps on they close the map.**
+- **With two maps on the world map shows a Left and a Right chip** (`worldMapColumns.js`): the active one solid blue, the other
+  solid black. A double-click fills the active column and closes the map.
+- **The notes panel follows the world map's pick**, Campaign › Place, and shows with no scene open.
+- **Add a scene adds and never opens**: the open scene and the TV stay as they are.
+- **A place is a room-shaped record, and the polygons decide membership.** A scene belongs to the smallest
+  outline that holds ALL of its card (rounded corners and curved walls count); one pixel outside takes it
+  out. Every move, edit, draw and add ends in `worldAssignAll`, so a scene's `group` follows the geometry.
+- **A place is edited by the room's own code**, not a copy of it: `activeShapeList()` answers the places
+  while `worldMapOpen`, and `worldMap.js` runs `selectMouseDown` and its kin inside `_wmWithCamera`, which
+  lends them the world's camera for one synchronous call. Rounding circles, corner points, Ctrl+drag
+  bends, curve handles, the scaling box and Escape's levels are therefore the room's. A change to that code
+  must keep working with `worldMapOpen` true, and `pushUndo`, `commitShapeDrag`, `persistShapeEdit` and
+  `deletePolygonById` each stand down for the places.
+- **The room's overlay canvas rides above the layer** (`body.world #cursor-canvas`) and paints the places,
+  so a polygon is drawn at every zoom.
+- **Drawing a place is an addition to dragging.** A scene dropped on a loose scene still makes a place, as
+  the rectangle that fits both. A group with no place (one made before the world map) gets that
+  rectangle on first open, and a scene filed under a place is moved inside it.
+- **Scenes are picked together with Shift** (`worldMapPick.js`, rules in `worldPickPlan.js`): Shift-click toggles, a
+  Shift-dragged box adds, a plain click drops the pick, Esc clears it. A pick is scenes only and moves as one.
+- **Settings wears Scene control's parts**: three sections (Interface, Fog in every scene, World map), each a 12px title
+  over 11px sub-headers and 26px fields. The backdrop is a Sources row (the picture's name in a `.dk-src`, a trash
+  icon at its right to remove it, which asks first); Half shroud, Feather, Size and Opacity are scrub fields with no
+  slider. The long hint lives in a tooltip.
+- **Settings' World map section holds the backdrop and the backup.** Export wears the pick ("Export 3 scenes"),
+  and with none picked saves everything; Restore is a picker or a .zip dropped on the layer (`worldBackup.js`).
+- **The right-click menu is the `.sm-menu` look** (`sceneManager.css`). Delete works on any scene: deleting the open
+  one switches the window to the first scene, as it always did. Delete has no red until the pointer is on it.
 
 ## Half-shroud
 
@@ -149,10 +211,10 @@ A floating row over the map, borrowing the app's controls.
 - No entry animation: `cpAdvIn` slides on `translateX`, and the placer measures the box every
   frame.
 
-**Arming calibration puts the dock pane away and gives it back.** The pane shuts - the Room tab
-too, **without touching `selectedPolygonId`** - and leaving restores the pane that was open,
+**Arming calibration puts the dock pane and the left panel away and gives them back.** The pane
+shuts, **without touching `selectedPolygonId`**, and leaving restores the pane that was open,
 unless the DM picked another tab meanwhile. The rail never hides, so that is a real click and
-it wins. The Room tab commits its fields on the way out, the same as the deselect path.
+it wins. The panel commits its fields on the way out, the same as the deselect path.
 
 ## Music and Sounds panes
 
@@ -165,23 +227,23 @@ slider** (`.cp-slider`'s markup, never a styled native range).
   one more copy, right click stops the newest; ×N and the draining bar show what is playing.
 - **The filter and URL fields are `.cp-field`.** The black inset pill means *pick one of these*
   and never wraps a field the DM types into.
-- **Add from YouTube selects as the scene library does** (Windows, below), and a track already
+- **Add from YouTube selects as the Bestiary does** (Windows, below), and a track already
   on disk wears `.sm-tick.done` and an In library chip.
 - **A per-row delete is an icon with the app's trash SVG**, hidden until the row hovers, and it
   asks through `confirmDialog`.
-- **Music groups are the scene library's groups** (`musicGroups.js`): New group in the header,
-  a row dragged onto a heading, Ungrouped first. **A group is renamed by its name, never a pencil**,
-  here and in the library. A track's file never moves.
+- **Music groups** (`musicGroups.js`): New group in the header,
+  a row dragged onto a heading, Ungrouped first. **A group is renamed by its name, never a pencil.**
+  A track's file never moves.
 
 ## Windows
 
-The scene library and the Bestiary open from the rail as centred windows over a veil; the
-fight table stays a free window. Backup Export and Restore stay in the library.
+The Bestiary opens from the rail as a centred window over a veil; the
+fight table stays a free window. Backup Export and Restore are in Settings' World map section.
 
 - **Every window is built from the parts in `sceneManager.css`**: `.sm-win` with `.w-s`
   (360, a question or progress), `.w-m` (480, a list) or `.w-l` (720, a reference);
   `.sm-whead` 48px with a 14px title and the `.sm-x` close last; `.sm-wbody`, `.sm-wfoot`.
-  The library and the Bestiary fill the screen. A free window's title is the dock's 12px bold.
+  The Bestiary fills the screen. A free window's title is the dock's 12px bold.
 - **The title repeats the label of its opening button**, word for word.
 - **Controls in a window are 28px with no outline**, a focus ring only on keyboard focus.
   `.sm-hbtn` is secondary, `.primary` the one action the window exists for, `.danger` the

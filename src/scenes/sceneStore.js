@@ -106,8 +106,8 @@ const sceneStore = (() => {
       req.onsuccess = e => {
         const cursor = e.target.result;
         if (!cursor) { resolve(results); return; }
-        const { id, name, group, thumbnail, sortOrder, createdAt, mapType } = cursor.value;
-        results.push({ id, name, group: group || '', thumbnail, sortOrder, createdAt, mapType });
+        const { id, name, group, thumbnail, sortOrder, createdAt, mapType, worldPos } = cursor.value;
+        results.push({ id, name, group: group || '', thumbnail, sortOrder, createdAt, mapType, worldPos });
         cursor.continue();
       };
       req.onerror = e => reject(e.target.error);

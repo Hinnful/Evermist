@@ -3,20 +3,20 @@
 // room-card.js — THE ROOM TAB AND THE ROOM LABELS, whole.
 //
 // THE GOAL OF THIS FEATURE: the DM clicks a room and reads what is in it — its name, the notes
-// they wrote during prep — in the dock's Room tab, while the map underneath stays visible and
+// they wrote during prep — in the left panel, while the map underneath stays visible and
 // usable. It is the DM's own and none of it ever reaches the players.
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
-//   A. Selecting a room opens the Room tab from any pane or a shut dock, and deselecting goes
-//      back to the pane that was open. A tool change does not close it — it follows the
-//      selection and nothing else. Grid calibration puts it away and the same room comes back at
-//      Done.
+//   A. Selecting a room shows it in the left panel, and opens the panel if it was shut without
+//      changing what the DM keeps. A tool change does not put it away — it follows the selection
+//      and nothing else. Grid calibration puts it away and the same room comes back at Done.
 //   B. The tab holds the room's name and notes, and what the DM types reaches the room.
 //   C. A name is trimmed and never left empty; notes are kept as typed, including newlines.
-//   D. The tab's shape: the name as its header with Delete beside it, the notes, the pictures and
-//      the corner-radius field. No fog pill, no drag bar, no Close.
+//   D. The tab's shape: the name as its header with Delete beside it, and nothing else of the
+//      room's own. The notes and the pictures sit in the left panel, notes above pictures. No fog
+//      pill, no drag bar, no Close.
 //   E. The fog trio shows and sets the selected room's fog while Select is in hand, and T cycles
 //      it; with a drawing tool in hand it is the paint direction again.
 //   G. Delete in the tab removes that room and nothing else.
@@ -51,7 +51,7 @@ module.exports = async function roomCardFeature(rig) {
     ' nextPolygonId = 3; selectedPolygonId = null;' +
     ' rebuildFogFromPolygons(); refreshRoomPanel(); scheduleRender(); 0');
 
-  const OPEN = '(dockActivePane() === "room" && document.getElementById("panel-room").getBoundingClientRect().width > 0)';
+  const OPEN = '(!document.getElementById("notes-panel").hidden && document.getElementById("panel-room").getBoundingClientRect().width > 0)';
   const select = async id => {
     await dm.evaluate('selectedPolygonId = ' + (id === null ? 'null' : id) +
       '; refreshRoomPanel(); scheduleRender(); 0');
@@ -87,26 +87,28 @@ module.exports = async function roomCardFeature(rig) {
     return { ok: true, left: el.value };
   })()`);
 
-  // ── A. The tab follows the selection ──────────────────────────────────────
-  // RED ON: dockSyncRoom gated off in refreshRoomPanel (roomCard.js), and separately dockSyncRoom's _dockBeforeRoom branch (dock.js) — 2026-10-02
-  rig.check(!(await card()).shown, 'the Room tab is open with nothing selected');
-  await dm.evaluate('dockOpen("music"); 0');
+  // ── A. The room follows the selection ─────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(!(await card()).shown, 'the room is showing in the left panel with nothing selected');
   await select(1);
-  rig.check((await card()).shown, 'selecting a room did not open the Room tab from the Music pane');
+  rig.check((await card()).shown, 'selecting a room did not show it in the left panel');
   for (const [k, tool] of [['KeyB', 'brush'], ['KeyR', 'rect'], ['KeyV', 'select']]) {
     await dm.evaluate('__rigKey(' + JSON.stringify(k) + '); 0');
     await lib.settle(dm, 'shape === ' + JSON.stringify(tool), 6000);
     rig.check((await card()).shown,
-              'changing the tool to ' + tool + ' closed the Room tab, which must follow the selection alone');
+              'changing the tool to ' + tool + ' put the room away, which must follow the selection alone');
   }
   await select(null);
-  rig.check(await dm.evaluate('dockActivePane()') === 'music',
-            'deselecting did not go back to the pane that was open: ' + await dm.evaluate('dockActivePane()'));
-  await dm.evaluate('dockOpen(null); 0');
+  rig.check(!(await card()).shown, 'deselecting left the room in the left panel');
+  // A shut panel opens on a pick, and the pick does not change what the DM chose to keep.
+  await dm.evaluate('document.getElementById("np-toggle").click(); 0');
+  await lib.settle(dm, 'document.getElementById("notes-panel").hidden', 6000);
   await select(1);
-  rig.check((await card()).shown, 'selecting a room did not open the Room tab from a shut dock');
+  rig.check((await card()).shown, 'selecting a room did not open a shut left panel');
+  rig.check(await dm.evaluate('localStorage.getItem("evermist.notesPanelOpen")') === '0',
+            'a room pick changed whether the DM keeps the panel open');
+  await dm.evaluate('localStorage.setItem("evermist.notesPanelOpen", "1"); 0');
   await select(null);
-  rig.check(await dm.evaluate('dockActivePane()') === null, 'deselecting did not shut the dock it opened from');
   await select(1);
 
   // ⚠ CALIBRATION IS NOT A TOOL. It takes the map's mouse and puts the pane away; THE SELECTION
@@ -170,19 +172,25 @@ module.exports = async function roomCardFeature(rig) {
   const shape = await dm.evaluate(`(() => {
     const p = document.getElementById('panel-room');
     const name = document.getElementById('rp-name'), del = document.getElementById('rp-delete');
-    const order = ['rp-name', 'rp-desc', 'rp-pic-add']
+    const order = ['rp-desc', 'rp-pic-add']
       .map(id => document.getElementById(id).getBoundingClientRect().top);
+    const left = document.getElementById('notes-panel');
     return {
       headRow: Math.abs(name.getBoundingClientRect().top - del.getBoundingClientRect().top) < 12 &&
                del.getBoundingClientRect().left > name.getBoundingClientRect().left,
       ordered: order.every((t, i) => i === 0 || t > order[i - 1]),
+      notesHome: ['rp-desc', 'rp-pics', 'rp-pic-add', 'rp-pic-input'].every(id => left.contains(document.getElementById(id))),
+      notesLeftBehind: ['rp-desc', 'rp-pics', 'rp-pic-add', 'rp-pic-input'].filter(id => document.getElementById('dock').contains(document.getElementById(id))),
       gone: ['rp-mode', 'rp-head', 'rp-close', 'rp-radius-field'].filter(id => document.getElementById(id)),
-      inDock: !!p.closest('#dock'),
+      inPanel: !!p.closest('#notes-panel'),
+      railTab: !!document.getElementById('dock-tab-room') || !!document.getElementById('dock-pane-room'),
     };
   })()`);
   rig.note('the tab\'s shape: ' + JSON.stringify(shape));
-  rig.check(shape.inDock && shape.headRow && shape.ordered,
-            'the Room tab is not name and Delete, then notes and pictures: ' + JSON.stringify(shape));
+  rig.check(shape.inPanel && shape.headRow && !shape.railTab,
+            'the room is not the name with Delete beside it in the left panel, or the dock still has a Room tab: ' + JSON.stringify(shape));
+  rig.check(shape.notesHome && shape.notesLeftBehind.length === 0 && shape.ordered,
+            'the room\'s notes and pictures are not in the left panel, notes above pictures: ' + JSON.stringify(shape));
   rig.check(shape.gone.length === 0, 'the floating card\'s parts are still in the page: ' + shape.gone.join(', '));
 
   // ── E. The fog trio, split by the tool in hand ────────────────────────────
@@ -314,8 +322,8 @@ module.exports = async function roomCardFeature(rig) {
   // ── K. The look ───────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
   await select(2);
-  rig.byEye('the Room tab in a screenshot taken with --shot "#dock" — the name as the header, the ' +
-            'notes on the dock\'s own background, and Delete reading as destructive only on hover');
+  rig.byEye('the room in a screenshot taken with --shot "#notes-panel" — the name as the header, the ' +
+            'notes on the panel\'s own background, and Delete reading as destructive only on hover');
   rig.byEye('room labels over real Dungeon Alchemist floor art, which is what the plate has to ' +
             'stay readable against');
 };

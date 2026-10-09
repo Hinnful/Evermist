@@ -1,6 +1,6 @@
 'use strict';
 // mapLoader.js — image-map loading (loadMapFromFile) + shared progress-bar helpers
-// (showMapProgress / updateMapProgress / hideMapProgress) used by backup.js and sceneManager.js.
+// (showMapProgress / updateMapProgress / hideMapProgress) used by backup.js, mapImport.js and sceneSwitch.js.
 // Video loading lives in video.js; render helpers (scheduleRender, fitToScreen) stay in the inline script.
 
 // ⚠ EVERY EXIT ANSWERS. onMapLoaded fires on success; onFail fires on ALL FOUR ways this can

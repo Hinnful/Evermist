@@ -156,8 +156,8 @@ module.exports = async function everythingReachesThePlayer(rig) {
 
   // ── D. Switching scenes puts the new map on the TV, at its own size ───────
   // RED BY DESIGN: written against the fix, never re-proved
-  // ⚠ SWITCH THROUGH switchScene(), NOT THE DROPDOWN. openDropdown() calls doAutoSave() before it
-  // renders, which changes what the switch carries; the delivery is what is under test here.
+  // ⚠ SWITCH THROUGH switchScene() DIRECTLY, with no save first, which would change what the switch
+  // carries; the delivery is what is under test here.
   //
   // ⚠ THIS MUST BE THE FIRST SCENE CHANGE SINCE THE PLAYER OPENED, which is why both scenes are
   // imported before it opens. The Player asks for the map on open, and only onSceneLoaded clears

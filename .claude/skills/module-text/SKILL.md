@@ -132,8 +132,8 @@ decode.
 - Remove module text sits alone on the footer's right, **outside the scrolling body**
   (`#mt-foot`). There is no Done.
 - **Two ways in, and no third**: the dropdown's footer row, and the load button on Scene
-  control's Sources row. The dropdown sits inside the Room tab under the name, so the dock's
-  `--ui-zoom` applies for free.
+  control's Sources row. The dropdown sits inside the left panel under the room's name, so the
+  panel's `--ui-zoom` applies for free.
 - **The dropdown acts on `click`; its `mousedown` only calls `preventDefault`.** That
   preventDefault stops the pointer blurring the name field and closing the list; acting one
   event later keeps a dialog out of the middle of a mouse gesture.

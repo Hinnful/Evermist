@@ -29,8 +29,9 @@ ipcMain.handle('show-save-dialog', async (event, opts) => {
 });
 
 // Video maps are read from mapsDir by id; image, fog and thumb arrive as ArrayBuffers.
-// moduleText and combat are campaign-level, so they land at the zip root beside manifest.json.
-ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText, combat) => {
+// moduleText, combat and campaign are campaign-level, so they land at the zip root beside manifest.json.
+// worldBg is the world map's backdrop, { meta, buffer }, or null.
+ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText, combat, campaign, worldBg) => {
   let cancelled = false;
   stopZip = () => { cancelled = true; };
   for (const s of scenesData) {
@@ -57,6 +58,11 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleTe
     archive.append(JSON.stringify(scenesData.map(s => s.metadata), null, 2), { name: 'manifest.json' });
     if (moduleText) archive.append(moduleText, { name: 'moduleText.json' });
     if (combat) archive.append(combat, { name: 'combat.json' });
+    if (campaign) archive.append(campaign, { name: 'campaign.json' });
+    if (worldBg && worldBg.meta && worldBg.buffer) {
+      archive.append(worldBg.meta, { name: 'world-background.json' });
+      archive.append(Buffer.from(worldBg.buffer), { name: 'world-background.img' });
+    }
 
     scenesData.forEach((s, idx) => {
       const base = `scenes/${s.id}`;
@@ -113,7 +119,7 @@ ipcMain.handle('read-backup-manifest', async (_event, zipPath) => {
 
 // Returns a root entry from the zip as a RAW STRING, or null. Absence RESOLVES NULL rather than
 // rejecting, unlike the manifest above: a backup older than the entry is the normal case.
-function readRootEntry(zipPath, name) {
+function readRootEntry(zipPath, name, asBuffer) {
   return new Promise((resolve, reject) => {
     yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
       if (err) return reject(err);
@@ -124,7 +130,7 @@ function readRootEntry(zipPath, name) {
             if (err2) { zipfile.close(); return reject(err2); }
             const chunks = [];
             rs.on('data', c => chunks.push(c));
-            rs.on('end', () => { zipfile.close(); resolve(Buffer.concat(chunks).toString('utf8')); });
+            rs.on('end', () => { zipfile.close(); const all = Buffer.concat(chunks); resolve(asBuffer ? all : all.toString('utf8')); });
             rs.on('error', e => { zipfile.close(); reject(e); });
           });
         } else {
@@ -138,6 +144,13 @@ function readRootEntry(zipPath, name) {
 }
 ipcMain.handle('read-backup-module-text', (_event, zipPath) => readRootEntry(zipPath, 'moduleText.json'));
 ipcMain.handle('read-backup-combat', (_event, zipPath) => readRootEntry(zipPath, 'combat.json'));
+ipcMain.handle('read-backup-campaign', (_event, zipPath) => readRootEntry(zipPath, 'campaign.json'));
+// The backdrop: its numbers and its picture, or null when the backup has none.
+ipcMain.handle('read-backup-world-background', async (_event, zipPath) => {
+  const meta = await readRootEntry(zipPath, 'world-background.json');
+  const img = meta ? await readRootEntry(zipPath, 'world-background.img', true) : null;
+  return meta && img ? { meta, buffer: img } : null;
+});
 
 // assignments: [{newId, originalId, mapType, mapExt}]
 // Video maps are written to mapsDir/{newId}.ext; all others returned as ArrayBuffers.

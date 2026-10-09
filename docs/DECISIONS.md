@@ -37,8 +37,9 @@ views' render paths, the fog pipeline, and the dirty-flag render loop.
 
 ## Rooms and the room card
 
-### The room card became the dock's Room tab · `SETTLED` (2026-10-02)
-The floating card, its placement and its drag are gone; the selected room is edited in the dock.
+### The room card became the dock's Room tab · `REVERTED` (2026-10-08, the left panel)
+The floating card, its placement and its drag are gone; the selected room is edited in the left
+panel now, and the dock has no Room tab.
 The entries below on the card's position and shape are the record of the old shape. The calls it
 reverses: [decisions/ui-and-control-panel.md](decisions/ui-and-control-panel.md), "The dock".
 

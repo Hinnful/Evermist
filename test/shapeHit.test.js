@@ -123,3 +123,19 @@ describe('distPointToSegment — a zero-length wall', () => {
     assert.equal(distPointToSegment(3, 4, 0, 0, 0, 0), 5);
   });
 });
+
+describe('an open line (a road)', () => {
+  const line = () => ({ ...room(), open: true });
+
+  test('has no inside, so a click in its middle picks nothing', () => {
+    assert.equal(pointInShape(50, 50, line()), false);
+    assert.equal(pointInShape(50, 50, room()), true);
+  });
+
+  test('has no closing wall', () => {
+    const l = line(), ring = l.vertices;
+    assert.equal(distToEdge(l, ring, 3, 3, 0, 50), Infinity, 'the wall from the last point back to the first');
+    assert.equal(distToEdge(room(), ring, 3, 3, 0, 50), 0, 'a room still has it');
+    assert.equal(distToEdge(l, ring, 0, 0, 50, 0), 0, 'the first wall is there');
+  });
+});

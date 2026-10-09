@@ -53,11 +53,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fetchStatPage: (url) => ipcRenderer.invoke('fetch-stat-page', url),
 
   showSaveDialog: (opts) => ipcRenderer.invoke('show-save-dialog', opts),
-  createBackupZip: (destPath, scenesData, moduleText, combat) => ipcRenderer.invoke('create-backup-zip', destPath, scenesData, moduleText, combat),
+  createBackupZip: (destPath, scenesData, moduleText, combat, campaign, worldBg) => ipcRenderer.invoke('create-backup-zip', destPath, scenesData, moduleText, combat, campaign, worldBg),
   readBackupManifest: (zipPath) => ipcRenderer.invoke('read-backup-manifest', zipPath),
   // Resolves null when the zip carries no module text, which is every backup written before it shipped.
   readBackupModuleText: (zipPath) => ipcRenderer.invoke('read-backup-module-text', zipPath),
   readBackupCombat: (zipPath) => ipcRenderer.invoke('read-backup-combat', zipPath),
+  readBackupCampaign: (zipPath) => ipcRenderer.invoke('read-backup-campaign', zipPath),
+  readBackupWorldBackground: (zipPath) => ipcRenderer.invoke('read-backup-world-background', zipPath),
   extractBackupScenes: (zipPath, assignments) => ipcRenderer.invoke('extract-backup-scenes', zipPath, assignments),
   cancelBackup: () => ipcRenderer.invoke('cancel-backup'),
   onBackupProgress: (callback) => {

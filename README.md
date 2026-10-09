@@ -8,75 +8,89 @@ Evermist is for DMs who run their games in person, with a TV on the table and mi
 
 If your group plays online, Evermist is not what you're looking for. Players don't connect to it, and it has no tokens and no dice
 
-Evermist is built for D&D 5e, both the 2014 and the 2024 rules. A map from any game shows on the TV, but module import and the bestiary read D&D books only
+Evermist is built for D&D 5e, both the 2014 and the 2024 rules. A map from any game shows on the TV, a still picture or an animated MP4 or WebM, but module import and the bestiary read D&D books only
 
-![Revealing fog on the player view](assets/reveal.gif)
+![A room revealed on the laptop clears on the TV](assets/reveal.webp)
 
 ## Prepare the session
+
+### Lay out your campaign on the world map
+
+Every scene sits on one map of your campaign. Gather scenes into places, such as a town or a dungeon, and draw each place on the map with the same tools you use for rooms. Join places with roads, and put an encounter right on the road where it happens. Zoom out to see the whole campaign, and double-click a scene to open it. Find any place, scene or road by its name, and set a picture of your region behind it all
+
+To move your prep to another computer, back up the whole campaign or only the scenes you pick into one `.zip`, and restore it there
+
+![Zooming out to the campaign and into a scene on the road](assets/world-map.webp)
 
 ### Draw rooms of any shape
 
 Draw a room with any outline you need. Double-click it to edit: drag corners and walls, curve a wall, round a corner, or cut a hole for a pillar. Join rooms together or cut one in two. Rooms can be copied, pasted, and moved between scenes
 
-![Drawing reveal and shroud regions](assets/tools.gif)
+![Drawing a room and rounding its corners to fit the windmill](assets/draw-rooms.webp)
 
 #### Let the floor plan draw them
 
-Some map editors can export a map's walls as a Universal VTT `.dd2vtt` file. Save that file in the same folder as the map, and Evermist offers to draw every room and door for you. It sizes the grid from the same file
+Some map editors can export a map's walls as a Universal VTT `.dd2vtt` file. Save that file in the same folder as the map, and Evermist offers to draw every room and door for you. It sizes the grid and places the map's lights from the same file
 
-### Write notes for every room
+### Write notes at every level
 
-Each room has a name and your notes. They stay on your laptop and never reach the TV. Room names also show on your map
+The panel on the left holds your notes for the whole campaign, a place, a road, a scene or a single room. Pick a room and its notes open. They stay on your laptop and never reach the TV. Room names also show on your map
+
+A room can hold pictures too, such as a portrait or a handout. Show one on the TV when the party gets there
 
 #### Auto-fill notes from the module
 
 If you run a published adventure, load it as a `.pdf` or `.txt`. Evermist finds every numbered location in the book, such as `K12. The Chapel`. Start typing "chapel" in a room's name field and pick it from the list. The room's name and description fill in from the book
 
-![Filling a room's name and notes from the module text](assets/module-text.gif)
+![Filling the dining room from Death House, the free Curse of Strahd introduction](assets/module-text.webp)
 
-### Set up the fog and the grid
+### Fill your bestiary
+
+The bestiary holds every monster you use. Paste a link to a monster's page, or load a monster book as a `.pdf`, and every stat block in it reads in. Search by name and filter by size, type and alignment. A stat block that doesn't read cleanly is left out and named, so you never get half a monster
+
+### Set up the fog, the grid and the light
 
 Each scene keeps its own fog colour and movement. A dungeon can sit under navy mist and a swamp under a sickly green one. The grid can be square or hex, in any colour or width. To calibrate it to the map, drag across a few of the map's own cells. Room corners can snap to the grid as you draw
 
-### Keep your scenes in order
-
-Scenes sort into groups and can be searched by name. To move your prep to another computer, back up the scenes you need into one `.zip` and restore it there
+Lights pool inside their rooms and show on the TV only once the room is revealed. Draw them yourself, or let the floor plan place them
 
 ## Run the session
 
 ### Put the map on the TV
 
 1. Connect the TV to your laptop over HDMI and set the display to extend your desktop
-2. Open the Player window from the Player tab and drag it onto the TV
+2. Open Scene control on the right, click Open Window, and drag the window onto the TV
 3. Click Fullscreen
 
-The minimap in the DM window shows which part of the map is on the TV. Drag it to move the TV's view
-
-![The DM window](assets/dm-window.png)
+The minimap in the DM window shows which part of the map is on the TV. Drag it to move the TV's view. If you sit at the side of the table, My seat turns the map on your laptop to match your chair, and the TV stays as it is
 
 ### Reveal rooms as the party explores
 
-Every room can be fully Shrouded, Revealed or Half-shrouded for places the party visited, but left
+Every room can be Shrouded, Revealed, or Half-shrouded for places the party visited but has left
 
 Manual mode lets you prepare the next reveal in private. The TV doesn't update the picture until you press Send. Switching maps is animated with the fog, so the TV never goes black
 
-### Show two floors at once
+To point at something, Ctrl+middle-click the map. A gold mark shows in the same spot on the TV
 
-When a fight spreads across two floors, split the screen and show both maps side by side. Each floor keeps its own fog and its own view
+### Show two maps at once
 
-### Play music from the same window
+When a fight spreads across two floors, or the party splits, show both maps side by side on the TV. Each map keeps its own fog and its own view, so no mini has to move when the other map changes
 
-Paste a YouTube video or playlist link during prep, and Evermist downloads the tracks to your laptop. At the table, pick a track and it fades in and loops until you choose another
+![The TV showing two animated maps side by side](assets/two-maps.webp)
 
 ### Mark spell areas on the map
 
-When a spell covers an area, draw it straight onto the map with the same tools you use for rooms. Circles, cones and walls of any shape all work. The grid stays visible inside the area, so everyone can count the squares it covers
+When a spell covers an area, draw it straight onto the map with the same tools you use for rooms, or pick a size from the presets. Circles, cones and walls of any shape all work. The grid stays visible inside the area, so everyone can count the squares it covers
 
-### Play animated maps
+### Run the fight from one table
 
-Evermist plays MP4 and WebM maps as well as still images. Wherever the fog is cleared, the water keeps moving and the torches keep flickering
+Prepare your fights ahead, then run each one from a single table on your laptop. Every creature gets a row with its initiative, HP, AC, conditions and attacks, and its stat block opens with one click. Type damage as it lands and the table keeps the total. Pick a monster from your bestiary and its row fills in. Nothing from the fight reaches the TV
 
-![Animated map playing under the fog](assets/animated-map.gif)
+### Play music and sounds
+
+Paste a YouTube video or playlist link during prep, and Evermist downloads the tracks to your laptop. At the table, pick a track and it fades in and loops until you choose another. Sort your tracks into groups
+
+The Sounds pane plays a door creak, a crow or a bell over the music with one click
 
 Press `?` in the DM window to see every keyboard shortcut
 
@@ -106,7 +120,7 @@ The OS remembers your choice, so this only happens once
 
 ## Nothing leaves your computer
 
-No account, no cloud, no tracking. Evermist goes online for two things only. The Windows and Linux builds check GitHub for updates, and a music link you paste downloads from YouTube. Everything else works without an internet connection
+No account, no cloud, no tracking. Evermist goes online for three things only. The app checks GitHub for updates, a music link you paste downloads from YouTube, and a monster link you paste reads that page. Everything else works without an internet connection
 
 Your maps and scenes sit on your own disk. Module PDFs get read in a separate locked-down process that can't touch your files
 

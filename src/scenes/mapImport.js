@@ -1,7 +1,8 @@
 // mapImport.js — a picked or dropped file on its way to being a scene.
 
-// The "+" picker and a drop on the window both land in importMapFiles. THE LOOP LIVES HERE, in
-// the module that owns scene creation — never a second one in toolbar.js.
+// importMapFiles imports one file after another and opens the result; the rig builds its scenes with it. The world map's
+// Add a scene is addMapsToLibrary, which adds and never opens. THE LOOPS LIVE HERE, in the module that owns scene
+// creation — never a second one in toolbar.js.
 
 // What either route accepts, so the picker and a drop cannot disagree about what imports.
 const MAP_FILE_RE = /\.(jpe?g|png|gif|bmp|webp|svg|mp4|webm)$/i;
@@ -101,6 +102,37 @@ function sceneNameForFile(file) {
   return file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim() || t('New Scene');
 }
 
+// What an import does before it touches a map.
+//
+// ⚠ THE FLOOR PLAN IS RESOLVED FIRST, FROM THE FILE THE DM PICKED. findPlanForFile needs
+// getPathForFile, and a File built in-page has none, so converting first loses the plan silently
+// on exactly the oversized exports that ship a .dd2vtt.
+async function _importFront(file, quiet) {
+  const isVid = isVideoFile(file);
+  const floorPlan = typeof findPlanForFile === 'function' ? await findPlanForFile(file) : null;
+
+  // Then shrink it, if the library's Compression setting names a size. No confirmation — it is a setting.
+  // The overlay is raised from onStart, so a map that already fits never flashes a progress bar.
+  let shrunk = null;
+  const box = isVid && typeof compressBox === 'function' ? compressBox() : null;
+  if (box && typeof convertVideoForImport === 'function') {
+    // A batch's own Cancel covers its shrinks.
+    const own = quiet ? null : mapJobStart({ title: 'Stop shrinking this map?', message: 'The map will not be imported.' });
+    shrunk = await convertVideoForImport(file, {
+      box,
+      onStart: () => showMapProgress('Shrinking the animated map…'),
+      onProgress: updateMapProgress,
+      stopped: mapJobStopped,
+    });
+    mapJobEnd(own);
+    hideMapProgress();
+    if (shrunk.stopped) return { stopped: true };
+    if (shrunk.converted) file = shrunk.file;
+    else shrunk = null;
+  }
+  return { file, floorPlan, shrunk };
+}
+
 // Resolves { ok, id, name, reason } once the map is on screen or refused — NEVER BEFORE, and never
 // not at all. That is what lets importMapFiles run a batch one at a time, since the loaders are
 // callback-based.
@@ -113,31 +145,10 @@ async function createNewScene(file, opts) {
   const o = opts || {};
   const isVid = isVideoFile(file);
   const name = sceneNameForFile(file);
-
-  // ⚠ THE FLOOR PLAN IS RESOLVED FIRST, FROM THE FILE THE DM PICKED. findPlanForFile needs
-  // getPathForFile, and a File built in-page has none, so converting first loses the plan silently
-  // on exactly the oversized exports that ship a .dd2vtt.
-  const floorPlan = typeof findPlanForFile === 'function' ? await findPlanForFile(file) : null;
-
-  // Then shrink it, if the library's Compression setting names a size. No confirmation — it is a setting.
-  // The overlay is raised from onStart, so a map that already fits never flashes a progress bar.
-  let shrunk = null;
-  const box = isVid && typeof compressBox === 'function' ? compressBox() : null;
-  if (box && typeof convertVideoForImport === 'function') {
-    // A batch's own Cancel covers its shrinks.
-    const own = o.quiet ? null : mapJobStart({ title: 'Stop shrinking this map?', message: 'The map will not be imported.' });
-    shrunk = await convertVideoForImport(file, {
-      box,
-      onStart: () => showMapProgress('Shrinking the animated map…'),
-      onProgress: updateMapProgress,
-      stopped: mapJobStopped,
-    });
-    mapJobEnd(own);
-    hideMapProgress();
-    if (shrunk.stopped) return { ok: false, stopped: true, name };
-    if (shrunk.converted) file = shrunk.file;
-    else shrunk = null;
-  }
+  const front = await _importFront(file, o.quiet);
+  if (front.stopped) return { ok: false, stopped: true, name };
+  file = front.file;
+  const { floorPlan, shrunk } = front;
 
   if (!isVid) showMapProgress('Loading map…');
   // ⚠ AWAITED: the save is dropped once the new scene is current, which a slow decode wins.
@@ -210,7 +221,7 @@ async function createNewScene(file, opts) {
       createdAt:     Date.now(),
       sortOrder:     maxOrder + 1,
     };
-    allScenes.push({ id, name, group: '', thumbnail: thumb, sortOrder: scene.sortOrder, createdAt: scene.createdAt, mapType: scene.mapType });
+    allScenes.push({ id, name, group: '', thumbnail: thumb, sortOrder: scene.sortOrder, createdAt: scene.createdAt, mapType: scene.mapType, worldPos: scene.worldPos });
     await sceneStore.saveScene(scene);
     hideMapProgress();
     // ⚠ Reload through switchScene. The direct drop-load path leaves the PixiJS fog and video
@@ -255,3 +266,104 @@ async function persistVideoMap(file, sceneId, mimeType) {
   return 'maps/' + sceneId + ext;
 }
 
+// ─── Adding without opening ──────────────────────────────────────────────────
+
+// The world map's Add a scene. ⚠ NEVER THE LIVE MAP: no autosave, no cleanupVideo, no switchScene, so
+// the open scene and the TV stay as they are. Each file lands loose, side by side around `at`.
+function addMapsToLibrary(files, at) {
+  const run = _importQueue.then(() => _addMaps(Array.from(files || []), at));
+  _importQueue = run.catch(() => {});
+  return run;
+}
+
+async function _addMaps(list, at) {
+  const queue = list.filter(f => isImportableMapFile(f) && !isZipFile(f));
+  const failures = list.filter(f => !queue.includes(f))
+    .map(f => t('“{name}” {reason}', { name: f.name, reason: t('is not an image or an animated map.') }));
+  const spots = wmSideBySide(at.x, at.y, queue.length);
+  const batch = queue.length > 1;
+  const job = batch ? mapJobStart({ title: 'Stop importing?', message: 'The maps already imported stay. The rest are skipped.' }) : null;
+  try {
+    for (let i = 0; i < queue.length; i++) {
+      if (job && job.stopped) break;
+      if (batch) { setMapProgressRun(t('{i} of {n}', { i: i + 1, n: queue.length }), queue[i].name); showMapProgress('Reading the map…'); }
+      let r = null;
+      try { r = await _addOneMap(queue[i], spots[i], batch); }
+      catch (err) { console.error('[addMapsToLibrary] failed', err); }
+      if (!(r && (r.ok || r.stopped))) failures.push(t('“{name}” {reason}', { name: queue[i].name, reason: (r && r.reason) || t('would not open.') }));
+    }
+  } finally {
+    mapJobEnd(job);
+    setMapProgressRun('');
+    hideMapProgress();
+  }
+  if (failures.length) messageDialog({
+    title: t.plural(failures.length, 'One map did not make it', '{n} maps did not make it'),
+    message: failures.join('\n'),
+  });
+}
+
+// Size and a first frame, read off screen. The element is never put in the page.
+async function _decodeOffscreen(file, isVid) {
+  const url = URL.createObjectURL(file);
+  const el = document.createElement(isVid ? 'video' : 'img');
+  try {
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('timed out')), 30000);
+      const ok = () => { clearTimeout(timer); resolve(); };
+      el.onerror = () => { clearTimeout(timer); reject(new Error('unreadable')); };
+      if (isVid) {
+        el.muted = true; el.preload = 'auto';
+        el.onloadeddata = () => { el.onseeked = ok; el.currentTime = 0.001; setTimeout(ok, 2000); };
+      } else {
+        el.onload = ok;
+      }
+      el.src = url;
+    });
+    const w = isVid ? el.videoWidth : el.naturalWidth, h = isVid ? el.videoHeight : el.naturalHeight;
+    if (!w || !h) throw new Error('no size');
+    return { w, h, thumb: await generateThumbnail(el, w, h) };
+  } finally {
+    URL.revokeObjectURL(url);
+    if (isVid) { el.removeAttribute('src'); el.load(); }
+  }
+}
+
+async function _addOneMap(file, at, quiet) {
+  const isVid = isVideoFile(file);
+  const front = await _importFront(file, quiet);
+  if (front.stopped) return { ok: false, stopped: true };
+  file = front.file;
+  if (!isVid) showMapProgress('Loading map…');
+  let decoded;
+  try { decoded = await _decodeOffscreen(file, isVid); }
+  catch (err) {
+    hideMapProgress();
+    return { ok: false, reason: t(isVid ? 'could not be played. WebM and MP4 are the safe choices.' : 'could not be read. It may be damaged, or saved in a format the app does not handle.') };
+  }
+  const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+  let mapBlob = file, mapPath;
+  if (isVid && window.electronAPI) {
+    showMapProgress('Saving animated map…');
+    try { mapPath = await persistVideoMap(file, id, file.type || (file.name.endsWith('.mp4') ? 'video/mp4' : 'video/webm')); mapBlob = undefined; }
+    catch (err) { console.error('[addMapsToLibrary] saving video map to disk failed', err); }
+  }
+  const maxOrder = allScenes.length ? Math.max(...allScenes.map(s => s.sortOrder ?? 0)) : -1;
+  // No baseFogBlob: the scene opens fully fogged (loadFogFromScene).
+  const scene = {
+    id, name: sceneNameForFile(file), group: '', worldPos: at,
+    mapBlob, mapPath, mapType: isVid ? 'video' : 'image',
+    mapWidth: decoded.w, mapHeight: decoded.h,
+    floorPlan: front.floorPlan, planOfferPending: !!front.floorPlan,
+    polygons: [], nextPolygonId: 1,
+    gridConfig: freshGridConfig(), thumbnail: decoded.thumb,
+    createdAt: Date.now(), sortOrder: maxOrder + 1,
+  };
+  await sceneStore.saveScene(scene);
+  allScenes.push({ id, name: scene.name, group: '', thumbnail: decoded.thumb, sortOrder: scene.sortOrder,
+                   createdAt: scene.createdAt, mapType: scene.mapType, worldPos: at });
+  hideMapProgress();
+  sceneListChanged();
+  return { ok: true, id };
+}

@@ -7,7 +7,7 @@
 //   npm run rig -- regression          every acceptance scenario
 //   npm run rig -- fog-reaches-the-player
 //   npm run rig -- --exe "dist/Evermist.exe"          drive a built installer instead
-//   npm run rig -- --shot "#sm-panel" --shot-setup "openDropdown()"
+//   npm run rig -- --shot "#world-map" --shot-setup "worldMapShow()"
 //   npm run rig -- --dm-size 1280x800 --player-size 1920x1080   run at a size other than the default
 //
 // EVERY RUN USES THE SAME GEOMETRY, here and in CI — see RUNNER_DM below. The two size flags

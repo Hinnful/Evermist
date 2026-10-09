@@ -50,7 +50,7 @@ function pointInPolygon(px, py, verts) {
 // patches where a click selects nothing.
 function pointInShape(px, py, poly) {
   const verts = poly && poly.vertices;
-  if (!verts || verts.length < 3) return false;
+  if (!verts || verts.length < 3 || poly.open) return false;
   const holes = polyHoleRings(poly);
   // A BENT WALL bows away from the straight line between its anchors, so a click in the bulge has
   // to be tested against the curve or the room has a dead strip along it.
@@ -91,6 +91,7 @@ function edgePolyline(poly, ring, i, flat) {
 }
 
 function distToEdge(poly, ring, i, flat, mapX, mapY) {
+  if (poly.open && i === ring.length - 1) return Infinity;   // an open line has no closing wall
   const pts = edgePolyline(poly, ring, i, flat);
   let best = Infinity;
   for (let k = 0; k + 1 < pts.length; k++) {

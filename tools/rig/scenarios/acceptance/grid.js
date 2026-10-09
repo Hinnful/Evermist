@@ -45,9 +45,9 @@
 //   M. A scene or a backup saved with the flat-top hex grid an older release offered loads as
 //      pointy-top hex, with no error. The cells need one recalibration; that loss is accepted.
 //
-// ⚠ DRIVE A SCENE SWITCH THROUGH switchScene(), NEVER THE DROPDOWN. openDropdown() calls
-// doAutoSave() before it renders, so a switch made by clicking a card persists the outgoing grid
-// on its way past — and section E would pass with the per-scene grid broken underneath it.
+// ⚠ DRIVE A SCENE SWITCH THROUGH switchScene() DIRECTLY. A doAutoSave() before it would persist
+// the outgoing grid on its way past — and section E would pass with the per-scene grid broken
+// underneath it.
 //
 // ⚠ THE GRID IS OFF BY DEFAULT (state.js), and a Player drawing no grid would pass "the reset
 // grid arrived" with an empty canvas. It is switched on before anything is measured, and that it

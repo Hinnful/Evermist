@@ -71,7 +71,7 @@ module.exports = async function language(rig) {
   // Names that are dictionary words, set before the restart so they come back from storage.
   const sceneId = await dm.evaluate('currentScene.id');
   await dm.evaluate('(() => { const s = allScenes.find(x => x.id === currentScene.id);' +
-                    ' commitSceneName(s, { value: "Grid" }); return 0; })()');
+                    ' renameScene(s.id, "Grid"); return 0; })()');
   // ⚠ THE RENAME IS WRITTEN AFTER IT RETURNS. A restart that beats the write finds the old name,
   // which reads as the translator eating the DM's text; a slow runner loses that race.
   const renamed = await lib.poll(async () => {

@@ -16,7 +16,7 @@
 //      draws them the moment it opens rather than waiting for the DM to move the mouse.
 //   C. A scene's name is the DM's to set: it reaches the store and the library trigger, and an
 //      empty name falls back rather than leaving a nameless card.
-//   D. The library keeps the order the DM dragged it into, and that order survives the next save.
+//   D. (The drag-reordered library went with the library window; the section only sets up E.)
 //   E. Deleting is undoable for a few seconds, and Undo puts the scene back where it was.
 //   F. Deleting the scene that is open leaves the DM on another map, not on nothing.
 //   G. Once the delete is committed the scene is really gone — out of the store, not just out of
@@ -40,9 +40,8 @@
 // committed, or something was written and not read. The store is read at each step, so the FAIL
 // line says which.
 //
-// ⚠ DRIVE A SWITCH THROUGH switchScene(), NEVER THE DROPDOWN. openDropdown() saves before it
-// renders, so a switch made by clicking a card carries a save the switch itself did not make —
-// which is a different path from the one the DM's own keyboard and card clicks take here.
+// ⚠ DRIVE A SWITCH THROUGH switchScene() DIRECTLY. No other call may save first on the switch's
+// behalf, or a switch carries a save it did not make itself.
 //
 // ⚠ NEVER PASS AN ASYNC EXPRESSION TO waitFor. It wraps what it is given in `!!(…)`, so a promise
 // is truthy on the first poll and the wait returns instantly, having looked at nothing. Anything
@@ -112,7 +111,6 @@ module.exports = async function scenesFeature(rig) {
     return got ? got.v : last;
   };
 
-  const library = () => dm.evaluate('allScenes.map(s => s.name)');
   const ids = () => dm.evaluate('allScenes.map(s => s.id)');
 
   const alpha = await importAs('Alpha');
@@ -234,9 +232,8 @@ module.exports = async function scenesFeature(rig) {
   // RED BY DESIGN: written against the fix, never re-proved
   const rename = (id, value) => dm.evaluate(`(() => {
     const s = allScenes.find(x => x.id === ${JSON.stringify(id)});
-    const input = { value: ${JSON.stringify(value)} };
-    commitSceneName(s, input);
-    return { inMemory: s.name, inField: input.value,
+    const kept = renameScene(s.id, ${JSON.stringify(value)});
+    return { inMemory: s.name, inField: kept,
              trigger: (document.getElementById('scene-dd-name') || {}).textContent || '' };
   })()`);
 
@@ -261,49 +258,9 @@ module.exports = async function scenesFeature(rig) {
             JSON.stringify(blanked));
   await rename(alpha, 'Alpha');
 
-  // ── D. The order the DM dragged it into ───────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
+  // ── D. A third scene, for E to delete ─────────────────────────────────────
   await importAs('Gamma');
   await switchTo(alpha);
-  const startOrder = await library();
-  rig.note('order before the drag: ' + JSON.stringify(startOrder));
-
-  // commitDragOrder reads the DOM the DM just rearranged, so the cards are reordered here rather
-  // than the array — anything that sorted the array first would test nothing.
-  const dragged = await dm.evaluate(`(() => {
-    const list = document.getElementById('sm-list');
-    if (!list) return { err: 'the scene list is not in the DOM' };
-    // ⚠ THE GRID, NOT THE LIST. Cards live inside a .sm-grid inside a .sm-group section, and
-    // commitDragOrder walks the sections — a card reparented to #sm-list itself is invisible
-    // to it, so the reorder silently loses that scene instead of failing.
-    const grid = list.querySelector('.sm-grid');
-    if (!grid) return { err: 'no scene grid rendered' };
-    const cards = [...grid.querySelectorAll('.sm-card')];
-    if (cards.length < 3) return { err: 'only ' + cards.length + ' cards rendered' };
-    grid.insertBefore(cards[cards.length - 1], cards[0]);   // last card to the front
-    commitDragOrder();
-    return { order: allScenes.map(s => s.name), sortOrders: allScenes.map(s => s.sortOrder) };
-  })()`);
-  rig.note('after the drag: ' + JSON.stringify(dragged));
-  rig.check(!dragged.err, 'the scene cards could not be rearranged: ' + dragged.err);
-  rig.check(!dragged.err && dragged.order[0] === startOrder[startOrder.length - 1],
-            'dragging a card to the front did not move it there: ' + JSON.stringify(dragged.order));
-  rig.check(!dragged.err && dragged.sortOrders.join(',') === '0,1,2',
-            'the reordered library did not renumber from 0: ' + JSON.stringify(dragged.sortOrders));
-
-  const movedId = await dm.evaluate('allScenes[0].id');
-  rig.check((await waitFor(() => stored(movedId), v => v && v.order === 0, 12000) || {}).order === 0,
-            'the new order never reached the store, so it is gone on the next restart');
-
-  // ⚠ doAutoSave writes currentScene WHOLESALE, so an order written only to the store is reverted
-  // by the next save of the open scene. That is a bug this check exists to catch.
-  const openId = await dm.evaluate('currentScene.id');
-  const openOrderBefore = await dm.evaluate('currentScene.sortOrder');
-  await dm.evaluate('doAutoSave(); 0');
-  const afterSave = await waitFor(() => stored(openId), v => v && v.order === openOrderBefore, 12000);
-  rig.check(!!afterSave && afterSave.order === openOrderBefore,
-            'saving the open scene reverted its place in the library: it is stored at ' +
-            (afterSave && afterSave.order) + ' where the reorder put it at ' + openOrderBefore);
 
   // ── E. Deleting is undoable ───────────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved

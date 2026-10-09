@@ -58,7 +58,7 @@ module.exports = async function smoke(rig) {
     const labels = sw ? [...sw.querySelectorAll('.cp-segtab')].map(b => b.textContent.trim()) : [];
     // RED ON: the 2K choice relabelled 1440p (index.html #sm-compress) — 2026-09-27
     if (labels.join('|') !== 'Off|1080p|2K|4K') fails.push('the choices read ' + labels.join(' · '));
-    const label = sw ? sw.closest('.cp-group').querySelector('.cp-label').textContent.trim() : '';
+    const label = sw ? sw.closest('.dk-blk').querySelector('.dk-sub').textContent.trim() : '';
     if (label !== 'Shrink big maps') fails.push('the control is labelled ' + JSON.stringify(label));
     const tip = sw ? (sw.getAttribute('title') || '') : '';
 
@@ -105,12 +105,6 @@ module.exports = async function smoke(rig) {
     const gaps = { overflow: Math.round(sw.scrollWidth - sw.clientWidth), drift: 0, reads: 'Settings' };
     if (!(swBox.width > 0) || swBox.right > group.right + 0.5) fails.push('the sizes pill does not fit its Settings group');
     if (gaps.overflow > 0) fails.push('the sizes pill overflows by ' + gaps.overflow + 'px');
-    openDropdown();
-    await new Promise(r => setTimeout(r, 250));
-    // Labels or glyphs, never one of each on two buttons doing the same kind of thing.
-    if (document.querySelectorAll('#sm-add svg, #sm-new-group svg').length)
-      fails.push('New group and Add maps carry both an icon and a label');
-
     document.getElementById('cd-ok').click();
     await new Promise(r => setTimeout(r, 60));
 
@@ -134,7 +128,6 @@ module.exports = async function smoke(rig) {
     if (!box1080 || box1080.w !== 1920 || box1080.h !== 1080) fails.push('1080p did not set a 1920x1080 box: ' + JSON.stringify(box1080));
     if (explainedTwice) fails.push('it explained itself a second time in one run');
 
-    closeDropdown();
     return { fails, shrink, label, tip, labels, dlg, offAgain, explainedTwice,
              gaps: { drift: +gaps.drift.toFixed(2), overflow: gaps.overflow, reads: gaps.reads } };
   })()`);

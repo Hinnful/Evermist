@@ -17,6 +17,7 @@ function initControlPanel() {
   _cpInitRooms();
   _cpInitLights();
   _cpInitScrubs();
+  _cpInitCompress();
   _cpFogPicker  = _cpMakePicker('fog',  'fog-color');
   _cpGridPicker = _cpMakePicker('grid', 'grid-color');
   _cpInitFields();
@@ -125,6 +126,24 @@ function setGridTypeUI() {
   _cpSetEye('cp-grid-eye', on, 'Grid (G)');
 }
 
+// ─── Settings: shrink big maps ────────────────────────────────────────────────
+// mapConvert.js owns the setting; this sets it and paints the result.
+function _cpInitCompress() {
+  const compress = _cpEl('sm-compress');
+  if (!compress || typeof compressSize !== 'function') return;
+  const paint = () => {
+    const v = compressSize().value;
+    compress.querySelectorAll('.cp-segtab').forEach(b => b.classList.toggle('active', b.dataset.size === v));
+  };
+  compress.addEventListener('click', e => {
+    const b = e.target.closest('.cp-segtab');
+    if (!b) return;
+    setCompressSize(b.dataset.size);
+    paint();
+  });
+  paint();
+}
+
 // ─── Rooms: the names eye and the two sources ─────────────────────────────────
 function _cpInitRooms() {
   _cpEl('cp-labels-eye').addEventListener('click', () => toggleRoomLabels());
@@ -178,7 +197,8 @@ function refreshRoomsControlUI() {
 
 // ─── Scrub fields ─────────────────────────────────────────────────────────────
 // A number you drag by its leading icon, Figma's way. It writes the field and fires the field's
-// own input event, so the app's handler is the one that takes the value.
+// own input event (or `data-fire`'s, for a field that takes its value on change), so the app's
+// handler is the one that takes the value.
 function _cpInitScrubs() {
   document.querySelectorAll('#dock [data-scrub]').forEach(pre => {
     const input = _cpEl(pre.dataset.scrub);
@@ -191,7 +211,7 @@ function _cpInitScrubs() {
         const v = Math.max(min, Math.min(max, Math.round(v0 + (m.clientX - x0) / per)));
         if (String(v) === input.value) return;
         input.value = v;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event(pre.dataset.fire || 'input', { bubbles: true }));
       };
       const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
       window.addEventListener('mousemove', move);
@@ -199,7 +219,7 @@ function _cpInitScrubs() {
     });
   });
   // A typed value is clamped on the way out, as the handler clamped what it took.
-  [['grid-size-num', 10, 400], ['grid-thickness-num', 1, 10]].forEach(([id, lo, hi]) => {
+  [['grid-size-num', 10, 400], ['grid-thickness-num', 1, 10], ['fog-half-alpha-num', 0, 100], ['fog-feather-num', 0, 24]].forEach(([id, lo, hi]) => {
     const el = _cpEl(id);
     el.addEventListener('change', () => { el.value = Math.max(lo, Math.min(hi, parseInt(el.value) || lo)); });
     el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') el.blur(); });
@@ -277,9 +297,7 @@ function _cpInitAdvPanel() {
   window.addEventListener('resize', _cpUpdateAdvVisibility);
 }
 
-const _CP_DIALS = ['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp', 'fog-feather', 'fog-half-alpha'];
-// Settings' two dials take their fills when the pane opens; an element out of view measures nothing.
-document.addEventListener('dockpane', e => { if (e.detail === 'settings') _cpSyncFancy(['fog-feather', 'fog-half-alpha']); });
+const _CP_DIALS = ['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp'];
 const _CP_DIAL_NUM = { 'anim-morph-speed': 'anim-morph-num', 'anim-warp-str': 'anim-warp-num' };
 
 function _cpUpdateAdvVisibility() {

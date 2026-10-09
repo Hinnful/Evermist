@@ -72,6 +72,7 @@ function setShape(s) {
   scheduleRender();
   drawCursor(lastScreenX, lastScreenY);
   updateContextPanels();
+  if (worldMapOpen) worldMapToolSync();   // the world map draws with this tool
 }
 
 function pickShapeByKey(s) {
@@ -167,6 +168,7 @@ function initInput() {
     });
 
     window.addEventListener('mouseup', () => {
+      if (worldMapOpen) return;   // the world map releases its own drags
       if (gridCalArmed) { gridCalMouseUp(); if (isPanning) isPanning = false; return; }
       toolWindowMouseUp();
       if (isPanning) { isPanning = false; }
@@ -219,6 +221,8 @@ function initInput() {
       }
       return;
     }
+    // The world map covers this scene, so none of its keys may reach it (worldMap.js catches them first).
+    if (worldMapOpen) return;
     // Ahead of the shape shortcuts: while calibration holds the map, Escape means leave it.
     if (gridCalArmed && e.code === 'Escape') { e.preventDefault(); armGridCalibration(false); return; }
     // ⚠ RETURNS WHATEVER THE KEY WAS, or Ctrl+C picks the Cone and Ctrl+R the Rectangle.
@@ -245,6 +249,10 @@ function initInput() {
       case 'KeyC': pickShapeByKey('cone');   break;
       case 'KeyB': pickShapeByKey('brush');  break;
       case 'KeyN': document.getElementById('btn-snap').click(); break;
+      case 'KeyM':
+        if (isPane && parent !== window) parent.postMessage({ type: 'pane-world-key', pane: paneId }, '*');
+        else if (!isPane) worldMapToggle();
+        break;
       case 'KeyG': document.getElementById('btn-grid').click(); break;
       case 'KeyA': document.getElementById('btn-anim').click(); break;
       // In a column, L asks the DM window, which keeps the eye and both columns in step.

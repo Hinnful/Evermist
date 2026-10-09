@@ -4,7 +4,6 @@
   /* ===== PANE MODE (inside a column) ===== */
   /* A column keeps the map, the cursor and the room card. Everything the parent window owns is
      hidden here rather than deleted, so one instance still runs both modes. */
-  body.pane-mode #sm-modal,
   body.pane-mode #legend { display: none !important; }
 
   /* A column runs no toolbar of its own: the DM window's bar drives it. */

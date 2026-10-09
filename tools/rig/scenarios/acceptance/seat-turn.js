@@ -285,9 +285,9 @@ module.exports = async function seatTurn(rig) {
   // read off the unturned map lands on a middle room anyway and the check cannot tell.
   await dm.evaluate('setShape("select"); __rigClick(487, 407); 0');
   rig.check(await dm.evaluate('selectedPolygonId') === poly.id, 'the corner room was not picked');
-  await lib.settle(dm, 'dockActivePane() === "room"', 8000);
-  rig.check(await dm.evaluate('dockActivePane() === "room"'),
-            'at 90° picking the corner room did not open the Room tab');
+  await lib.settle(dm, '!document.getElementById("notes-panel").hidden && document.getElementById("panel-room").offsetParent !== null', 8000);
+  rig.check(await dm.evaluate('!document.getElementById("notes-panel").hidden && document.getElementById("panel-room").offsetParent !== null'),
+            'at 90° picking the corner room did not show it in the left panel');
   await dm.evaluate('__rigKey("Escape"); __rigKey("Escape"); 0');
 
   // ── 8. calibration ───────────────────────────────────────────────────────

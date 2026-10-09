@@ -46,7 +46,7 @@
 //   R. A room picture shown from a column covers the whole Player screen, both halves. One shown
 //      from the other column replaces it and clears the first column's mark, and Escape in the
 //      DM window takes it down.
-//   S. A room selected in either column is edited in the DM window's Room tab - name, notes, fog
+//   S. A room selected in either column is edited in the DM window's left panel - name, notes, fog
 //      and Delete - and every edit lands in that column and never the other. A
 //      column window shows no dock and no rail of its own.
 //   T. Hiding the room names hides them in both columns, from the Rooms eye and from L pressed
@@ -140,6 +140,10 @@ module.exports = async function twoMapsFeature(rig) {
             'the second column opened with a map the DM never picked');
   rig.check(await dm.evaluate('panesSelected === "B"'),
             'the empty column is not the one the library would fill');
+  // RED ON: the empty column's card left saying 'Pick a map from Scenes' (paneRuntime.js) — 2026-10-09
+  const emptyCard = await paneB.evaluate('document.querySelector("#landing p").textContent');
+  rig.check(/world map/i.test(emptyCard) && !/Scenes/.test(emptyCard),
+            'the empty column does not send the DM to the world map: "' + emptyCard + '"');
   rig.check((await dm.evaluate('document.getElementById("scene-dd-name").textContent'))
               .includes('Pick a map'),
             'the top-left button does not say the second column is waiting for a map');
@@ -154,7 +158,7 @@ module.exports = async function twoMapsFeature(rig) {
             'the empty column reported its default camera and the preview adopted it: ' +
             JSON.stringify(mmOnEntry));
 
-  await dm.evaluate('loadSceneIntoSelectedPane(' + JSON.stringify(wideId) + '); 0');
+  await dm.evaluate('worldMapColumnFill(' + JSON.stringify(wideId) + '); 0');   // the double-click on the world map, which closes it
   await dm.waitFor('panes.B.sceneId === ' + JSON.stringify(wideId), 30000,
                    'the picked map to land in column B');
   for (const [id, p] of [['A', paneA], ['B', paneB]]) {
@@ -684,16 +688,30 @@ module.exports = async function twoMapsFeature(rig) {
             'the top-left button does not name both open maps: "' + trigger + '"');
   rig.check(await dm.evaluate('document.getElementById("btn-two-maps").classList.contains("active")'),
             'the two-map toggle is not lit while two maps are open');
-  const badges = await dm.evaluate(`(() => {
-    openDropdown();
-    return Array.from(document.querySelectorAll('.sm-card.active')).map(c => ({
-      id: c.dataset.id, badge: (c.querySelector('.sm-badge') || {}).textContent || '' }));
-  })()`);
-  await dm.evaluate('closeDropdown(); 0');
-  rig.check(badges.length === 2, 'the library marks ' + badges.length + ' maps as open, not two');
-  const badgeOf = id => (badges.find(b => b.id === id) || {}).badge;
-  rig.check(badgeOf(sceneA) === 'Left' && badgeOf(sceneB) === 'Right',
-            'the library does not say which column each open map is in: ' + JSON.stringify(badges));
+  // RED BY DESIGN: written against the change, never re-proved (this read the library's Left/Right badges)
+  const held = await dm.evaluate(`(() => ({
+    A: panes.A.sceneId, B: panes.B.sceneId,
+    ofA: paneColumnOf(${JSON.stringify(sceneA)}), ofB: paneColumnOf(${JSON.stringify(sceneB)}) }))()`);
+  rig.check(held.A === sceneA && held.B === sceneB,
+            'the two columns do not hold the two open maps, A then B: ' + JSON.stringify(held));
+  rig.check(held.ofA === 'A' && held.ofB === 'B',
+            'the app does not say which column each open map is in: ' + JSON.stringify(held));
+
+  // ── U. M inside a column, and a delete the columns refuse ────────────────
+  // RED ON: KeyM ignored inside a column (input.js) — 2026-10-09
+  await paneA.evaluate('document.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyM", key: "m", bubbles: true })); 0');
+  await lib.settle(dm, 'worldMapOpen', 8000);
+  rig.check(await dm.evaluate('worldMapOpen'), 'U: M pressed inside a column did not open the world map');
+  await dm.evaluate('worldMapHide(); 0');
+  // ⚠ A column autosaves the scene it shows, so a delete under it would be written back.
+  // RED ON: the column check in deleteScenesWithUndo removed (sceneDelete.js) — 2026-10-09
+  await dm.evaluate('deleteScenesWithUndo([' + JSON.stringify(sceneB) + ']); 0');
+  const refused = await dm.evaluate('({ kept: allScenes.some(s => s.id === ' + JSON.stringify(sceneB) + '),' +
+    ' said: (document.getElementById("cd-title") || {}).textContent || "" })');
+  rig.check(refused.kept && /column/.test(refused.said),
+            'U: deleting a scene a column shows was not refused with a word why: ' + JSON.stringify(refused));
+  await dm.evaluate('(() => { const ok = document.getElementById("cd-ok"); if (ok && ok.offsetParent) ok.click(); ' +
+                    'if (typeof undoDelete === "function") undoDelete(); return 0; })()');
 
   // ── N. the new screens copy the cloud texture, and wait on fog ───────────
   // RED BY DESIGN: written against the fix, never re-proved
@@ -764,9 +782,9 @@ module.exports = async function twoMapsFeature(rig) {
   for (const [id, pane, other, was] of [['A', paneA, paneB, 'Upper hall'], ['B', paneB, paneA, 'Cellar']]) {
     await dm.evaluate('selectPane(' + JSON.stringify(id) + '); 0');
     await lib.settle(dm, 'document.getElementById("rp-name").value === ' + JSON.stringify(was), 8000);
-    rig.check(await dm.evaluate('dockActivePane()') === 'room' &&
+    rig.check(await dm.evaluate('!document.getElementById("notes-panel").hidden && document.getElementById("panel-room").offsetParent !== null') &&
               await dm.evaluate('document.getElementById("rp-name").value') === was,
-              'S: the Room tab does not show the room selected in column ' + id);
+              'S: the left panel does not show the room selected in column ' + id);
     const otherName = await roomIn(other, 'name');
     const otherMode = await roomIn(other, 'mode');
     await typeName(was + ' (' + id + ')');
@@ -842,6 +860,17 @@ module.exports = async function twoMapsFeature(rig) {
   rig.check(Math.abs(soloAfter.zoom - soloAfter.fit) < 0.0005,
             'the map that came back was not fitted to the window: zoom ' + soloAfter.zoom +
             ' against a fit of ' + soloAfter.fit);
+
+  // ── V. leaving two maps from an empty column keeps a map open ───────────
+  // RED ON: exitPanes handed the selected empty column's null scene (twoMaps.js) — 2026-10-09
+  await dm.evaluate('document.getElementById("btn-two-maps").click(); 0');
+  await dm.waitFor('panesActive && panes.A.ready && panes.B.ready && panesSelected === "B"', 180000, 'two maps again, the empty column picked');
+  await dm.evaluate('worldMapHide(); 0');
+  await dm.evaluate('document.getElementById("btn-two-maps").click(); 0');
+  await lib.settle(dm, '!panesActive && !!currentScene && !!mapOffscreen', 60000);
+  rig.check(await dm.evaluate('!panesActive && !!currentScene && currentScene.id === ' + JSON.stringify(sceneA)),
+            'V: leaving two maps with the empty column picked left the DM on no map: ' +
+            JSON.stringify(await dm.evaluate('({ panes: panesActive, scene: currentScene && currentScene.id })')));
 
   rig.byEye('Two floors side by side read as two maps and not as one split image, and the ' +
             'selected column is obvious at a glance from across the table.');

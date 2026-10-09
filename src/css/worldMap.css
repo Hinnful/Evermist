@@ -1,0 +1,214 @@
+/* worldMap.css — the world map: a dark layer over the map, with places and scenes on it, and the
+   toolbar it swaps in. Sizes that must stay readable at any zoom are multiplied by --iz, the inverse
+   of the layer's scale (worldMap.js). */
+  #wm {
+    position: fixed; inset: 0; z-index: 50; overflow: hidden; user-select: none;
+    background-color: #0e1012;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.3px);
+    opacity: 0; transition: opacity .25s;
+  }
+  #wm[hidden] { display: none; }
+  #wm.shown { opacity: 1; }
+  #wm.panning { cursor: grabbing; }
+  body.player-mode #wm, body.pane-mode #wm { display: none !important; }
+  #wm-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; --wz: calc(var(--iz) * var(--uz, 1)); }
+  #wm-world > div { position: absolute; left: 0; top: 0; }
+
+  /* A scene is a framed print: a black 2px frame, a light hairline outside it, a soft shadow. Its name sits
+     inside at the top left, as a room's does. */
+  .wm-card {
+    position: absolute; left: 0; top: 0; width: 110px; height: 77px; cursor: pointer;
+    transform: translate(var(--px), var(--py));
+    transition: transform .4s cubic-bezier(.2, .8, .2, 1), opacity .3s;
+  }
+  .wm-th {
+    position: absolute; inset: 0; border-radius: 4px; background: #222 center / cover;
+    box-shadow: 0 0 0 calc(2px * var(--wz)) #0b0b0d, 0 0 0 calc(3px * var(--wz)) rgba(255, 255, 255, 0.26), 0 calc(3px * var(--wz)) calc(12px * var(--wz)) rgba(0, 0, 0, 0.55);
+  }
+  .wm-card:hover .wm-th { outline: calc(2px * var(--wz)) solid #fff; outline-offset: calc(3px * var(--wz)); }
+  .wm-card.cur .wm-th { box-shadow: 0 0 0 calc(2px * var(--wz)) #0b0b0d, 0 0 0 calc(4px * var(--wz)) var(--b-solid, #3b82f6), 0 calc(3px * var(--wz)) calc(12px * var(--wz)) rgba(0, 0, 0, 0.55); }
+  .wm-card.sel .wm-th { outline: calc(3px * var(--wz)) solid var(--b-icon, #8fb6ff); outline-offset: calc(3px * var(--wz)); }
+  .wm-card.drop .wm-th { outline: calc(4px * var(--wz)) solid var(--b-icon, #8fb6ff); outline-offset: calc(3px * var(--wz)); }
+  .wm-nm {
+    position: absolute; left: calc(4px * var(--wz)); top: calc(4px * var(--wz)); max-width: calc(100% - 8px * var(--wz)); box-sizing: border-box;
+    padding: calc(2px * var(--wz)) calc(6px * var(--wz)); border-radius: calc(4px * var(--wz)); background: #0b0b0d;
+    box-shadow: 0 calc(1px * var(--wz)) calc(4px * var(--wz)) rgba(0, 0, 0, 0.6), inset 0 0 0 calc(1px * var(--wz)) rgba(255, 255, 255, 0.26);
+    font: 500 calc(11px * var(--wz)) / 1.2 system-ui, sans-serif; color: #e6ebf5;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default;
+  }
+  .wm-card.sel .wm-nm, .wm-card.cur .wm-nm { color: var(--b-icon, #8fb6ff); }
+  .wm-card.dragging { transition: none; pointer-events: none; z-index: 5; opacity: .9; }
+  /* Zoomed out the scenes are not shown: only the places, and a scene with no place as a diamond. */
+  #wm.places .wm-card { opacity: 0; pointer-events: none; }
+
+  /* A place's polygon is painted on the cursor canvas by the room code, which rides above this layer while
+     the map is up. Its name sits at the highest corner. */
+  body.world #cursor-canvas { z-index: 60; }
+  /* With two maps on the map's container is hidden, and the overlay canvas inside it with it. It is laid back over the
+     whole window, its other canvases kept unseen, so the places are drawn. */
+  body.panes-on.world #canvas-container { display: block !important; position: fixed; inset: 0; z-index: 60; visibility: hidden; pointer-events: none; }
+  body.panes-on.world #cursor-canvas { visibility: visible; }
+  /* A place's name is a room's label (roomPanel.js): its weight, padding, radius and fill, at the top left of the place,
+     the focus colour when its place is picked. The type size is the room label's, by zoom and clamped, in screen px;
+     --fs --lx --ly --lr are set by worldMap.js and laid in world units. */
+  .wm-hl {
+    position: absolute; left: 0; top: 0; box-sizing: border-box; max-width: calc(var(--hw, 9999) * 1px); overflow: hidden; text-overflow: ellipsis;
+    transform: translate(var(--hx), var(--hy)) translateY(-50%);
+    padding: calc(var(--ly, 8) * 1px * var(--iz)) calc(var(--lx, 13) * 1px * var(--iz)); border-radius: calc(var(--lr, 7) * 1px * var(--iz));
+    background: rgba(10, 9, 18, 0.75); box-shadow: inset 0 0 0 calc(1px * var(--iz)) rgba(255, 255, 255, 0.055); color: #fff;
+    font: 600 calc(var(--fs, 17) * 1px * var(--iz)) / 1 system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap; cursor: grab;
+  }
+  .wm-hl.off { opacity: 0; pointer-events: none; }
+  .wm-hl.sel { color: var(--b-icon, #8fb6ff); }
+  /* One level of name at a time: places zoomed out, scenes zoomed in. */
+  #wm.scenes .wm-hl { opacity: 0; pointer-events: none; }
+  /* The mist rides above the backdrop and under the cards. The backdrop is greyed; the mist svg lays its own
+     colour back inside the places. */
+  #wm-mist { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+  .wmist-veil { fill: rgba(12, 15, 22, 0.5); }
+  #wm-bgimg { background: center / 100% 100% no-repeat; transform-origin: 0 0; pointer-events: none; filter: saturate(.5) brightness(.78); }
+  #wm.bgmove { cursor: move; }
+  #wm.drawing { cursor: crosshair; }
+
+  .wm-lm {
+    position: absolute; left: 0; top: 0; transform-origin: 0 0;
+    transform: translate(var(--mx), var(--my)) scale(var(--wz)); transition: opacity .25s;
+  }
+  /* A scene with no place is a black diamond with a white rim and its name beside it, until the camera is
+     close enough for prints. */
+  .wm-lm .wm-dot {
+    position: absolute; left: -8px; top: -8px; width: 16px; height: 16px; box-sizing: border-box; transform: rotate(45deg);
+    background: #0b0b0d; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.85), 0 2px 6px rgba(0, 0, 0, 0.6); cursor: pointer;
+  }
+  .wm-lm .wm-dot:hover { box-shadow: inset 0 0 0 2px #fff, 0 2px 6px rgba(0, 0, 0, 0.6); }
+  /* The name beside a stray scene is a place's plate (.wm-hl): the room label's size by zoom, weight, padding and
+     fill. This box is scaled by --wz already, so the plate's screen px are divided back out by --uz. */
+  .wm-lm .wm-lbl, .wm-rn {
+    padding: calc(var(--ly, 8) * 1px / var(--uz, 1)) calc(var(--lx, 13) * 1px / var(--uz, 1)); border-radius: calc(var(--lr, 7) * 1px / var(--uz, 1));
+    background: rgba(10, 9, 18, 0.75); box-shadow: inset 0 0 0 calc(1px / var(--uz, 1)) rgba(255, 255, 255, 0.055); color: #fff;
+    font: 600 calc(var(--fs, 17) * 1px / var(--uz, 1)) / 1 system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap;
+  }
+  .wm-lm .wm-lbl { position: absolute; left: calc(15px + 4px / var(--uz, 1)); top: 0; transform: translateY(-50%); cursor: default; }
+  .wm-lm.sel .wm-lbl, .wm-rn.sel { color: var(--b-icon, #8fb6ff); }
+  .wm-lm.cur .wm-dot { box-shadow: inset 0 0 0 2px var(--b-icon, #8fb6ff), 0 2px 6px rgba(0, 0, 0, 0.6); }
+  .wm-lm.sel .wm-dot { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.85), 0 0 0 3px rgba(143, 182, 255, 0.35); }
+  #wm.scenes .wm-lm { opacity: 0; pointer-events: none; }
+  /* A road is a dashed line on a dark casing. Its width follows the zoom (--rw, set by worldMap.js: 3px far out,
+     up to 7px close in), and the casing and dashes follow it. Blue when picked. Its hit stroke is
+     wide so a thin line is easy to press; only the stroke answers the pointer. Its name always shows, on a
+     place's plate. A scene on a road is a black diamond with no name beside it, since the road's own name
+     says where it is. */
+  #wm-roads { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+  .roadcase { fill: none; stroke: rgba(0, 0, 0, 0.7); stroke-width: calc(var(--rw) * 1px + 4px); stroke-linecap: round; stroke-linejoin: round; }
+  .road {
+    fill: none; stroke: #fff; stroke-width: calc(var(--rw) * 1px); stroke-linejoin: round;
+    stroke-dasharray: calc(var(--rw) * 2.6px) calc(var(--rw) * 1.6px);
+  }
+  .road.sel { stroke: var(--b-icon, #8fb6ff); }
+  .roadhit { fill: none; stroke: transparent; stroke-width: 18px; pointer-events: stroke; cursor: pointer; }
+  #wm.drawing .roadhit, #wm.drawing .wm-rn { pointer-events: none; }
+  .wm-rn {
+    position: absolute; left: 0; top: 0; transform-origin: 0 0; cursor: default;
+    transform: translate(var(--mx), var(--my)) scale(var(--wz)) translate(-50%, -50%);
+  }
+  .wm-rn:empty:not([contenteditable="true"]) { display: none !important; }
+  .wm-lm.stn .wm-lbl { display: none; }
+  #wm .dim { opacity: .15 !important; }
+  #wm.moving *, #wm.notrans * { transition: none !important; }
+  #wm [contenteditable="true"] {
+    outline: 1.5px solid var(--b-icon, #8fb6ff); background: #111 !important; color: #fff !important;
+    cursor: text !important; user-select: text; text-overflow: clip !important;
+  }
+  #wm-empty {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #7f858e;
+    font: 13px system-ui, sans-serif; pointer-events: none;
+  }
+  #wm-empty[hidden] { display: none; }
+
+  /* The toolbar trades its tools while the world map is up. The bar and its row keep their places:
+     the row hides with visibility, as everywhere else, so the bar does not jump. */
+  body:not(.world) .wm-tool, body:not(.world) #ctx-wm-search { display: none !important; }
+  body.world #toolbar-bottom > :not(.wm-tool):not(#btn-select):not(#tb-grp-shape):not(#tb-grp-ops):not(#btn-axislock) { display: none !important; }
+  /* The bar reads in three clusters: Select, the drawing tools, the boolean operations and Road; then Add a scene and
+     Find; then Straighten. `order` sets it without moving the scene's own buttons in the page. */
+  body.world #btn-select { order: 1; }
+  body.world #tb-grp-shape { order: 2; }
+  body.world #tb-grp-ops { order: 3; }
+  body.world #wm-road { order: 4; }
+  body.world #wm-add { order: 5; margin-left: 8px; }
+  body.world #wm-find { order: 6; }
+  body.world #btn-axislock { order: 7; margin-left: 8px; }
+  body.world #context-row > :not(#ctx-wm-search) { display: none !important; }
+  body.world:not(.searching) #context-row { visibility: hidden !important; }
+  body.world.searching #context-row { visibility: visible !important; }
+  body.world #minimap-panel { display: none !important; }
+  #wm-search {
+    width: 220px; height: 30px; box-sizing: border-box; padding: 0 10px; border: 0; border-radius: 6px; outline: none;
+    background: var(--g-field, #2a2c31); color: var(--g-text, #e3e6ea); font: 13px system-ui, sans-serif;
+  }
+
+  /* The right-click menu: the library's own menu, over everything on the map. A delete row wears no
+     red until the pointer is on it. */
+  .wm-menu { position: fixed; z-index: 120; min-width: 170px; }
+  .wm-menu .sm-mi::before { display: none; }
+  .wm-menu .sm-mi:disabled { opacity: .35; pointer-events: none; }
+  .wm-menu .sm-mi.danger:hover { background: #c0392b; }
+
+  /* Settings' World map section wears Scene control's parts (dock.css). A hidden row must really hide. */
+  #wm-bg-group [hidden] { display: none !important; }
+  #wm-bg-hint, #wm-bk-line { font: 400 11px/1.4 system-ui, -apple-system, sans-serif; }
+
+  /* Shift-drag on the ground draws the pick's box, and a backup dragged over the layer says where it lands. */
+  #wm-marquee { position: absolute; display: none; pointer-events: none; z-index: 3; border: 1px solid var(--b-icon, #8fb6ff); background: rgba(92, 177, 255, 0.12); }
+  #wm-dropveil {
+    position: absolute; inset: 12px; display: none; place-items: center; pointer-events: none; z-index: 4; border-radius: 16px;
+    border: 2px dashed var(--b-icon, #8fb6ff); background: rgba(12, 140, 233, 0.12); font: 600 18px system-ui, sans-serif; color: #fff;
+  }
+  #wm.bkdrop #wm-dropveil { display: grid; }
+
+  /* Two maps: the column chips at the top, and the L or R on a scene a column holds. */
+  #wm-cols { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); z-index: 5; display: flex; gap: 6px; zoom: var(--ui-zoom, 1.2); }
+  #wm-cols[hidden] { display: none; }
+  #wm-cols button {
+    display: flex; align-items: center; gap: 8px; height: 28px; max-width: 220px; padding: 0 12px; border: 0; border-radius: 7px;
+    background: #0b0b0d; color: #e6ebf5; font: 500 12px/1 system-ui, -apple-system, sans-serif; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  }
+  #wm-cols button:hover { background: #1a1b1f; }
+  #wm-cols button.active, #wm-cols button.active:hover { background: var(--b-solid); color: #fff; }
+  .wm-col-side { font-weight: 600; flex: none; }
+  .wm-col-nm { color: #9aa0aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #wm-cols button.active .wm-col-nm { color: #fff; }
+  .wm-card[data-col]:not([data-col=""])::after, .wm-lm[data-col]:not([data-col=""])::after {
+    content: attr(data-col); position: absolute; z-index: 2; box-sizing: border-box; min-width: calc(18px * var(--wz)); height: calc(18px * var(--wz)); padding: 0 calc(5px * var(--wz));
+    display: flex; align-items: center; justify-content: center; border-radius: calc(5px * var(--wz));
+    background: var(--b-solid, #0c8ce9); color: #fff; font: 700 calc(11px * var(--wz)) / 1 system-ui, sans-serif; pointer-events: none;
+  }
+  .wm-card[data-col]:not([data-col=""])::after { right: calc(-6px * var(--wz)); top: calc(-6px * var(--wz)); }
+  .wm-lm[data-col]:not([data-col=""])::after { left: calc(6px * var(--wz)); top: calc(-24px * var(--wz)); }
+
+  /* Find: the results open upward from the field, a list in the app's menu look - the row under the pointer or the
+     keys is solid blue. */
+  #ctx-wm-search { position: relative; }
+  #wm-find-list {
+    position: absolute; left: 0; bottom: calc(100% + 10px); width: 320px; max-height: 330px; overflow-y: auto; padding: 4px;
+    border-radius: var(--panel-radius, 10px); background: var(--g-bg); box-shadow: var(--panel-shadow, 0 5px 16px rgba(0, 0, 0, 0.28)), 0 0 0 1px var(--g-line);
+    scrollbar-width: none;
+  }
+  #wm-find-list::-webkit-scrollbar { width: 0; }
+  #wm-find-list[hidden] { display: none; }
+  .wf-n, .wf-h { padding: 6px 8px 3px; font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
+  .wf-h { padding-top: 9px; }
+  .wf-row {
+    display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 5px; cursor: pointer;
+    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text);
+  }
+  .wf-row.on { background: var(--b-solid); color: #fff; }
+  .wf-ic { width: 20px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--g-dim); }
+  .wf-ic svg { width: 16px; height: 16px; }
+  .wf-ic.thumb { width: 30px; height: 21px; border-radius: 3px; background: #222 center / cover; }
+  .wf-row.on .wf-ic { color: #fff; }
+  .wf-nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wf-nm b { font-weight: 700; }
+  .wf-sub { flex: none; max-width: 40%; color: var(--g-dim); font-size: 11px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wf-row.on .wf-sub { color: rgba(255, 255, 255, 0.78); }

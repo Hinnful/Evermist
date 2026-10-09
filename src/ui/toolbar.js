@@ -64,6 +64,7 @@ function setShapeOp(op) {
   });
   refreshPaintAvailability();
   refreshOpsButton();
+  if (worldMapOpen) worldMapToolSync();   // an armed repair changes what the world map's next shape does
 }
 
 // ─── Placement mode ───────────────────────────────────────────────────────────
@@ -154,9 +155,10 @@ function setMaterial(m) {
 }
 
 function initToolbar() {
-  // Scene manager UI (dropdown, drag-reorder, bulk ops, undo, "+" = new/import)
-  // is wired in sceneManager.js — it owns the scene concern.
-  initSceneManagerUI();
+  // The scene list, the delete's undo and Two maps wire themselves.
+  sceneListInit();
+  sceneDeleteInit();
+  twoMapsInit();
 
   initDragDrop();
 

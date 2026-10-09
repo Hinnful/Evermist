@@ -27,7 +27,7 @@ const MUTATE_TARGETS = {
   'src/render/display.js':      ['normalizeDisplayRecord'],
   'src/undo.js':         ['evictUndoStack', 'evictUndoPair'],
   'src/scenes/backup.js':       ['resolveSceneName', 'mapExtFromScene'],
-  'src/scenes/sceneManager.js': ['escHtml'],
+  'src/scenes/sceneList.js': ['escHtml'],
   'src/ui/musicPlan.js':    ['parseMusicUrl', 'videoIdFromFileName', 'displayName', 'filterTracks',
                           'fadeLevel', 'fadePhase'],
   // ⚠ deriveFogColors and its two helpers are PARKED at 58%, deliberately (see

@@ -47,6 +47,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `shapes/toolPreview.js` | What a tool draws before it is committed |
 | `shapes/shapeHit.js` | Pure hit-test kernel: point-in-room, distance to a wall, where along it. Tested |
 | `shapes/shapeSelect.js` | The selection: its levels, hand edits, outline drawing |
+| `shapes/openLine.js` | A picked road's chrome (an open line, no closing wall) and the curve-handle markers shared with the closed shapes |
 | `shapes/shapeBox.js` | The bounding box, its handles, rotate, scale |
 | `shapes/cornerGeometry.js` | Pure corner-rounding kernel: the circle's place, the drag's radius. Tested |
 | `shapes/cornerRound.js` | The corner-rounding circles, their drag, label and number field |
@@ -60,8 +61,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `render/grid.js` | Grid config + render |
 | `render/gridCalibrate.js` | The calibration square that fits the grid to the map |
 | `scenes/scenes.js` | Fog persistence + scene fade helpers |
-| `scenes/sceneManager.js` | Scene CRUD and the library popup around the list |
-| `scenes/sceneCards.js` | The library list: cards, group sections, reorder drag |
+| `scenes/sceneList.js` | The list of scenes the app holds: loaded at startup, its thumbnails, the open scene's name in the dock |
 | `scenes/sceneDelete.js` | The trash and its undo |
 | `scenes/mapImport.js` | Import: accepted kinds, the batch loop, video maps to disk |
 | `scenes/sceneSwitch.js` | `switchScene` and each of its steps |
@@ -74,6 +74,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `render/ping.js` | The ping at a map point, drawn in both views |
 | `render/lights.js` | A scene's light polygons: model, seeding from the plan, the outline texture under the fog |
 | `player/playerWindow.js` | The Player window: opening, warming, what it gets |
+| `player/twoMaps.js` | The Two maps toggle: into two columns from the open map, and back |
 | `player/panes.js` | Two-column mode: the columns, the divider, the messages sent to them |
 | `player/stageWindow.js` | The two-map Player window, DM side |
 | `player/stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
@@ -87,12 +88,32 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/colorPicker.js` | The fog colour picker: square, hue strip, hex field, HSV maths |
 | `ui/controlPanel.js` | The dock's Scene control pane over the hidden legacy controls |
 | `ui/dock.js` | The dock: the icon rail, the one open pane, its width |
+| `notes/notesPlan.js` | Pure notes kernel: the crumb list, a notes string cleaned, a restored campaign note merged in. Tested |
+| `notes/notesPanel.js` | The left panel: breadcrumbs, and the notes of the campaign, a place, the scene or the room |
+| `world/worldMapPlan.js` | Pure world-map kernel: starting layout, polygon geometry and which polygon holds a card, the camera. Tested |
+| `world/worldMapStore.js` | Where a scene sits on the world map, its place and its name: the one writer, and a column's inbox for it |
+| `world/worldRoadPlan.js` | Pure road kernel: a road cleaned and parsed, its line sampled, an end laid on its scene or place, what deleting, renaming and restoring do to it. Tested |
+| `world/worldPlaces.js` | The places: room-shaped records kept by name, undo for them, and the rule that a scene belongs to the outline holding its whole card |
+| `world/worldRoads.js` | The roads: open-line records kept by a stored id, undo for them, the ends that follow their scene or place, and the scenes a road holds |
+| `world/worldMist.js` | The world map's mist: veil, drifting wisps, masks cut by the places, the backdrop's colour inside them |
+| `world/worldBackground.js` | The world map's backdrop: one image from Settings, its place, size and opacity |
+| `world/worldMap.js` | The world map: its layer, camera, opening and closing, and the keys it keeps from the hidden scene |
+| `world/worldMapEdit.js` | What the DM does on the world map: pick, drag, drop, rename, find, add |
+| `world/worldMapShapes.js` | Drawing a place with the toolbar's tools, and Merge, Cut out and Split on places |
+| `world/worldMapRoads.js` | Roads in the world map's layer: the line, its name, the Road tool, delete |
+| `world/worldFindPlan.js` | Pure Find kernel: which places, scenes and roads a query matches, best first. Tested |
+| `world/worldMapFind.js` | Find on the world map: the field's result list, its keys, and flying to a pick |
+| `world/worldMapColumns.js` | Two maps on the world map: the Left and Right chips, filling the active column, the L or R on a held scene |
+| `world/worldPickPlan.js` | Pure pick kernel: a Shift-click toggled, what a Shift-dragged box touches, what a backup of picked scenes carries. Tested |
+| `world/worldMapPick.js` | More than one scene picked on the world map: Shift-click and the Shift-dragged box |
+| `world/worldBackup.js` | Settings' World map backup: Export the pick or everything, Restore from a picker or a dropped .zip |
+| `world/worldMapMenu.js` | The right-click menu on the world map: a scene, a place, or the ground |
 | `rooms/roomPanel.js` | Map room labels and the pure geometry that places them |
-| `rooms/roomCard.js` | The dock's Room tab: the selected room's fields |
+| `rooms/roomCard.js` | The selected room's fields, in the left panel |
 | `rooms/picturePlan.js` | Pure room-picture kernel: size, order, backup names. Tested |
 | `rooms/pictureDecode.js` | A file turned into a room picture: shrunk, or kept whole if animated or SVG |
-| `rooms/roomPictures.js` | The Room tab's pictures and the one on the TV |
-| `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the Room tab |
+| `rooms/roomPictures.js` | The left panel's room pictures and the one on the TV |
+| `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the left panel |
 | `player/tvPicture.js` | A room picture drawn on the TV, Player and two-map shell |
 | `content/moduleText.js` | Module parsing, storage, name-field dropdown |
 | `content/moduleTextPanel.js` | The import panel and the name-field dropdown. Parses nothing |
@@ -163,18 +184,19 @@ fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → sh
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/toolShapes.js →
 shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →
 shapes/toolPreview.js →
-shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/shapeBox.js → shapes/cornerGeometry.js → shapes/cornerRound.js →
+shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/openLine.js → shapes/shapeBox.js → shapes/cornerGeometry.js → shapes/cornerRound.js →
 shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → undo.js →
-scenes/sceneGroups.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneManager.js →
-scenes/sceneCards.js → scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
-render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/stageWindow.js →
+scenes/sceneGroups.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneList.js →
+scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
+render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/twoMaps.js → player/stageWindow.js →
 scenes/backup.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
 render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/gridCalibrate.js → player/minimap.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/confirmDialog.js → rooms/floorPlan.js →
-content/moduleText.js → content/moduleTextPanel.js → rooms/roomPanel.js → rooms/picturePlan.js → rooms/roomCard.js →
-rooms/pictureDecode.js → rooms/roomPictures.js → rooms/roomLink.js → player/tvPicture.js →
+content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/picturePlan.js → rooms/roomCard.js →
+rooms/pictureDecode.js → rooms/roomPictures.js → rooms/roomLink.js → notes/notesPanel.js →
+world/worldMapPlan.js → world/worldRoadPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → world/worldFindPlan.js → world/worldMapFind.js → world/worldMapColumns.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →
 combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →

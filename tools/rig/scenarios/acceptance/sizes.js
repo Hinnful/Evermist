@@ -15,8 +15,8 @@
 //   C. The Player's fog covers the map to its edge at every Player size. The fog there is a
 //      Canvas-2D layer composited over the PixiJS map, so a clear band at the edge is a seam and
 //      the players see through the map's border.
-//   D. The Room tab and its Delete stay wholly on screen at every DM size, including a short
-//      window, and the dock never covers the toolbar.
+//   D. The room's name and its Delete stay wholly on screen at every DM size, including a short
+//      window, and the toolbar stays centred on the window.
 //   E. The region sent to the Player does not change when the dock's pane opens, at any DM
 //      width. The reverted panel-width trim was a fraction of a wide window and most of a narrow
 //      one, so a narrow DM is where it shows.
@@ -85,7 +85,7 @@ module.exports = async function sizes(rig) {
               JSON.stringify(fit));
   }
 
-  // ── D. The Room tab stays on screen at every DM size ─────────────────────
+  // ── D. The room stays on screen at every DM size ─────────────────────
   // RED ON: the toolbar's left clamp in dockLayout made Infinity || (dock.js) — 2026-10-02
   // ⚠ DONE BEFORE THE PLAYER IS OPENED, so nothing below has to put the tab away again.
   await dm.evaluate('__rigDrawShroud(300, 300, 700, 700); 0');
@@ -95,28 +95,25 @@ module.exports = async function sizes(rig) {
   for (const s of DM_SIZES.concat([{ w: 1100, h: 560, what: 'a short window' }])) {
     await rig.resizeDm(s.w, s.h);
     await lib.settle(dm, 'container.clientWidth === ' + s.w, 8000);
-    // The dock lays itself out from a ResizeObserver, a frame after the window changes.
-    await lib.settle(dm, 'document.getElementById("toolbar-bottom").getBoundingClientRect().right <=' +
-                         ' document.getElementById("dock").getBoundingClientRect().left', 3000);
+    await lib.settle(dm, '!document.getElementById("notes-panel").hidden', 3000);
     const box = await dm.evaluate(`(() => {
       const r = document.getElementById('panel-room').getBoundingClientRect();
       const del = document.getElementById('rp-delete').getBoundingClientRect();
-      const dock = document.getElementById('dock').getBoundingClientRect();
       const bar = document.getElementById('toolbar-bottom').getBoundingClientRect();
       return { l: Math.round(r.left), t: Math.round(r.top),
                rt: Math.round(r.right), b: Math.round(r.bottom),
                w: Math.round(r.width), h: Math.round(r.height),
                del: del.width > 0 && del.left >= 0 && del.right <= innerWidth && del.top >= 0 && del.bottom <= innerHeight,
-               covers: bar.right > dock.left, pane: dockActivePane(),
+               off: Math.abs((bar.left + bar.right) / 2 - innerWidth / 2), shown: !document.getElementById('notes-panel').hidden,
                winW: innerWidth, winH: innerHeight };
     })()`);
-    rig.note('the Room tab at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
-    rig.check(box.pane === 'room' && box.w > 0 && box.h > 0,
-              'the Room tab is not open on the selected room at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
+    rig.note('the room at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
+    rig.check(box.shown && box.w > 0 && box.h > 0,
+              'the left panel is not showing the selected room at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
     rig.check(box.l >= 0 && box.t >= 0 && box.rt <= box.winW && box.b <= box.winH && box.del,
-              'the Room tab or its Delete is off screen at ' + s.w + 'x' + s.h + ' (' + s.what + '): ' +
+              'the room or its Delete is off screen at ' + s.w + 'x' + s.h + ' (' + s.what + '): ' +
               JSON.stringify(box));
-    rig.check(!box.covers, 'the dock covers the toolbar at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
+    rig.check(box.off < 2, 'the toolbar is not centred on the window at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
   }
 
   // ── E. The panel does not change the region, at any DM width ─────────────

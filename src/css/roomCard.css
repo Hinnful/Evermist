@@ -1,4 +1,4 @@
-/* roomCard.css — the dock's Room tab: the selected room's name, notes, pictures and corners, and the module-text dropdown under the name. */
+/* roomCard.css — the left panel's room level: the selected room's name, notes and pictures, and the module-text dropdown under the name. */
   /* Notion's way: the dock is the only box. Name and notes sit on its background, share one left
      and one right edge, and a field shows itself only on hover and while typing. */
   .dk-room { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
@@ -49,7 +49,7 @@
   /* The published module's locations, offered where the DM is already typing a room's name.
      Built by moduleText.js, not in index.html, because the whole thing is that module's UI.
 
-     It sits INSIDE the Room tab, absolutely positioned under the name, so the dock's zoom applies
+     It sits INSIDE the room's header, absolutely positioned under the name, so the panel's zoom applies
      and it can never be left on screen when the tab goes. It covers the notes while open, which
      is the right trade: at that moment the DM is naming the room, not reading it. */
   .rp-mt-dd {

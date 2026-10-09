@@ -1,0 +1,57 @@
+/* notesPanel.css — the left panel: full height, the dock's mirror, shut to a floating icon. Its notes wear
+   the dock's grey. The minimap sits to its right (--np-right, set by notesPanel.js). */
+  .np {
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 100;
+    zoom: var(--ui-zoom, 1.2);
+    width: var(--np-pane-w, 220px); display: flex; flex-direction: column; min-height: 0;
+    background: var(--g-bg); border-right: 1px solid var(--g-line); color: var(--g-text);
+  }
+  .np[hidden], .np-fab[hidden] { display: none; }
+  body.player-mode .np, body.pane-mode .np, body.player-mode .np-fab, body.pane-mode .np-fab { display: none !important; }
+
+  #np-edge { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 2; }
+  #np-edge:hover, .np.resizing #np-edge { background: var(--b-tint); }
+
+  /* The icon that opens it: a small grey plate over the map, top left. */
+  .np-fab {
+    position: fixed; left: 12px; top: 12px; z-index: 100; zoom: var(--ui-zoom, 1.2);
+    width: 36px; height: 36px; padding: 0; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--g-line); border-radius: 9px; background: var(--g-bg); color: #8b9098; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); transition: background .12s, color .12s;
+  }
+  .np-fab:hover { background: var(--g-hover); color: var(--g-text); }
+
+  .np-head {
+    height: 42px; min-height: 42px; flex: none; padding: 0 8px 0 8px; display: flex; align-items: center; gap: 6px;
+    border-bottom: 1px solid var(--g-line);
+  }
+  .np-crumbs { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1; overflow: hidden; }
+  .np-crumb {
+    min-width: 0; max-width: 100%; padding: 4px 6px; border: 0; border-radius: 5px; background: transparent;
+    color: #8b9098; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font: 600 12px/1.2 system-ui, -apple-system, sans-serif;
+  }
+  .np-crumb:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+  .np-crumb.on { color: var(--g-text); }
+  /* The last level reads in full; the ones before it give their width up first, down to a stub. */
+  .np-crumb { flex: 0 1000 auto; min-width: 28px; }
+  .np-crumb:last-child { flex: 0 1 auto; min-width: 0; }
+  .np-sep { flex: none; color: #4a4d54; font: 400 12px/1 system-ui, sans-serif; }
+  .np-toggle {
+    width: 24px; height: 24px; flex: none; padding: 0; display: flex; align-items: center; justify-content: center;
+    border: 0; border-radius: 6px; background: transparent; color: #8b9098; cursor: pointer;
+  }
+  .np-toggle:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
+
+  /* The app's own scrollbar, as the windows wear it. */
+  .np-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding-bottom: 8px; }
+  .np-body .dk-room { flex: none; overflow: visible; }
+  /* .dk-room sets display, which beats the hidden attribute: without this both levels show at once. */
+  .np-body .dk-room[hidden], #np-field[hidden] { display: none; }
+  /* The campaign and scene notes fill the panel and scroll themselves. */
+  #np-field { flex: 1 1 auto; min-height: 120px; overflow-y: auto; }
+  .np-body::-webkit-scrollbar, #np-field::-webkit-scrollbar { width: 8px; }
+  .np-body::-webkit-scrollbar-thumb, #np-field::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 4px; }
+  .np-body::-webkit-scrollbar-thumb:hover, #np-field::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.26); }
+  .np-body::-webkit-scrollbar-track, #np-field::-webkit-scrollbar-track { background: transparent; }
+  .np-body::-webkit-scrollbar-button, #np-field::-webkit-scrollbar-button { display: none; }

@@ -7,7 +7,8 @@
 // #tools-wrapper.
 
 // The shapes are MODE_SHAPES (toolbar.js) filtered to the drawable ones, so the list and the bar
-// can never disagree about what a mode offers. A shape the mode lacks is greyed, not dropped.
+// can never disagree about what a mode offers. A shape the mode lacks is greyed, not dropped, except
+// on the world map, which has no Effects to switch to, so there it is absent.
 const SHAPE_FAMILY = ['poly', 'rect', 'circle', 'cone', 'line', 'ring'];
 const SHAPE_ROWS = { poly: ['Polygon', 'P'], rect: ['Rectangle', 'R'], circle: ['Circle', 'O'],
                      cone: ['Cone', 'C'], line: ['Line', ''], ring: ['Ring', ''] };
@@ -69,7 +70,8 @@ function _tbOpenList(kind) {
   dd.id = 'tb-dd';
   const picked = _tbPickedRow(kind);
   const rows = kind === 'shape'
-    ? SHAPE_FAMILY.map(s => ['btn-' + s, SHAPE_ROWS[s][0], SHAPE_ROWS[s][1], !shapeInMode(s, placeMode)])
+    ? SHAPE_FAMILY.filter(s => !worldMapOpen || shapeInMode(s, placeMode))
+        .map(s => ['btn-' + s, SHAPE_ROWS[s][0], SHAPE_ROWS[s][1], !shapeInMode(s, placeMode)])
     : Object.keys(OPS_ROWS).map(id => [id, OPS_ROWS[id], '', false]);
   for (const [id, name, key, off] of rows) {
     const row = document.createElement('button');

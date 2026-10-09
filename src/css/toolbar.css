@@ -3,12 +3,12 @@
   /* Outer wrapper: full-width fixed row, centers children, no zoom on the
      wrapper itself (avoids hit-area mismatch from zoom + translateX(-50%));
      zoom lives on the inner bar + sub-panel. */
-  /* Its two edges come from dock.js, which keeps it still whatever the dock's pane does. */
+  /* Centred on the window, whatever the dock's pane or the notes panel do. */
   #tools-wrapper {
     position: fixed;
     bottom: 16px;
-    left: var(--tb-left, 0px);
-    right: var(--tb-right, 0px);
+    left: 0;
+    right: 0;
     z-index: 100;
     display: flex;
     flex-direction: column;

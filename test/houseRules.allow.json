@@ -21,7 +21,6 @@
     "src/combat/combatTracker.js": 647,
     "src/fog/fog.js": 740,
     "src/fog/fogGeometry.js": 757,
-    "src/i18n/ru.js": 866,
     "src/rooms/vttPlan.js": 621,
     "src/shapes/shapeSelect.js": 888
   },

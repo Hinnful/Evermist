@@ -7,7 +7,7 @@
 // ⚠ H.264 is required, not preferred: there is no hardware VP9 encoder, and the codec string must
 // be High 5.1 or 5.2 — a lower level caps resolution below the box and MediaRecorder rejects it.
 //
-// Loaded after mapLoader.js and before sceneManager.js, its only caller.
+// Loaded after mapLoader.js and before mapImport.js, its only caller.
 
 // ─── The box fit (pure) ──────────────────────────────────────────────────────
 // Fits srcW×srcH inside boxW×boxH, preserving aspect. changed:false lets the caller skip the

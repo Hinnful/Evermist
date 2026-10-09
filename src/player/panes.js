@@ -104,7 +104,7 @@ function selectPane(id) {
   const v = paneScope().minimapView;
   if (v) minimapSetView(v);
   if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
-  refreshRoomPanel();   // the Room tab follows the selected column's room
+  refreshRoomPanel();   // the left panel follows the selected column's room
 }
 
 function refreshPaneSelection() {
@@ -207,7 +207,7 @@ async function enterPanes(sceneIdA, sceneIdB) {
   panes.B.camera = sceneIdB ? entryCamera : null;
   for (const id of PANE_IDS) { panes[id].ready = false; panes[id].mapW = 0; panes[id].mapH = 0; }
   _paneSplit = null;
-  // ⚠ THE EMPTY COLUMN IS SELECTED, because the library's next click is what fills it.
+  // ⚠ THE EMPTY COLUMN IS SELECTED, because the world map's next double-click is what fills it.
   panesSelected = sceneIdB ? 'A' : 'B';
 
   // ⚠ The pending autosave is cancelled, not left to fire: it would write the parent's snapshot
@@ -222,7 +222,7 @@ async function enterPanes(sceneIdA, sceneIdB) {
   // The DM's own Player window held a map that no longer exists, so the shell takes its place.
   // With no Player up, the shell is warmed hidden instead, so the button has nothing left to boot.
   if (hadPlayer) toggleStageWindow(); else prewarmStage();
-  renderSceneManager();   // the toggle lights and the trigger starts naming two maps
+  sceneListChanged();   // the toggle lights and the trigger starts naming two maps
 }
 
 function livePanes() {
@@ -271,7 +271,13 @@ async function exitPanes(keepSceneId) {
 async function closePaneColumn(id) {
   if (!panesActive || !panes[id].frame) return;
   const other = PANE_IDS.find(x => x !== id && panes[x].frame);
-  await exitPanes(panes[other || id].sceneId);
+  await exitPanes(paneSceneToKeep(other || id));
+}
+
+// ⚠ LEAVING TWO MAPS ALWAYS KEEPS A MAP: the given column's scene, else the other's. An empty column
+// handed on lands the DM on no map with the TV blank.
+function paneSceneToKeep(id) {
+  return panes[id].sceneId || panes[PANE_IDS.find(x => x !== id)].sceneId;
 }
 
 // ⚠ Hiding the map frees no decoder and no GPU texture, which is why entering tears it down.
@@ -295,7 +301,7 @@ function teardownParentMap() {
   pixiDestroyFog();
   pixiFlushTexturePool();
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
-  renderSceneManager();
+  sceneListChanged();
 }
 
 // ─── What the columns say back ───────────────────────────────────────────────
@@ -319,17 +325,20 @@ function initPanes() {
       // ⚠ Or the chrome keeps the torn-down scene's settings and pushes them into this column.
       if (msg.pane === panesSelected) paneAdoptSelectedSettings();
       sendToPane({ type: 'pane-room-labels', on: showRoomLabels }, msg.pane);
-      renderSceneManager();
+      sceneListChanged();
       return;
     }
     if (msg.type === 'pane-picture') { paneRelayPicture(msg.pane, msg.blob); return; }
-    if (msg.type === 'pane-room') { paneRoomReported(msg.pane, msg.room, msg.blobs); return; }
-    if (msg.type === 'pane-clicked') { selectPane(msg.pane); return; }
+    if (msg.type === 'pane-room') { paneRoomReported(msg.pane, msg.room, msg.blobs, msg.scene); return; }
+    if (msg.type === 'pane-clicked') { selectPane(msg.pane); notesPanelFollow(); return; }
     if (msg.type === 'pane-labels-key') { toggleRoomLabels(); return; }
+    // M from inside a column. The column's frame gives up focus, or the world map's keys stay in it.
+    if (msg.type === 'pane-world-key') { if (document.activeElement === p.frame) p.frame.blur(); worldMapToggle(); return; }
     if (msg.type === 'pane-tool') { if (shape !== msg.shape) setShape(msg.shape); setPreset(msg.preset); return; }
     if (msg.type === 'pane-scene-result') {
       p.sceneId = msg.sceneId || null;
-      renderSceneManager();
+      sceneListChanged();
+      notesPanelFollow();
       return;
     }
     if (msg.type === 'pane-repaint') {
@@ -349,7 +358,7 @@ function initPanes() {
       // After the split, so the column is already at its final width. One shot: the camera belongs
       // to the map that entered two-column mode, not to whatever the column is given next.
       if (p.camera) { sendToPane({ type: 'pane-adopt-view', view: p.camera }, msg.pane); p.camera = null; }
-      renderSceneManager();
+      sceneListChanged();
       if (msg.pane === panesSelected) { paneAdoptSelectedSettings(); minimapSeedView(); }
     }
   });
@@ -383,7 +392,7 @@ function paneColumnOf(sceneId) {
   return PANE_IDS.find(id => panes[id].sceneId === sceneId) || null;
 }
 
-// ⚠ Two columns on one scene record autosave over each other, so the library refuses.
+// ⚠ Two columns on one scene record autosave over each other, so the world map refuses.
 function paneHoldingScene(sceneId, exceptId) {
   for (const id of PANE_IDS) {
     if (id !== exceptId && panes[id].sceneId === sceneId) return id;
@@ -391,7 +400,7 @@ function paneHoldingScene(sceneId, exceptId) {
   return null;
 }
 
-// The library's click while two-column mode is on: the scene lands in the selected column.
+// The world map's double-click while two-column mode is on: the scene lands in the selected column.
 function loadSceneIntoSelectedPane(sceneId) {
   if (paneHoldingScene(sceneId, panesSelected)) {
     messageDialog({

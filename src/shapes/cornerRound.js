@@ -20,14 +20,16 @@ function _cornerAt(poly, flat) {
   let offset = 0;
   for (let r = 0; r < ref.ring; r++) offset += rings[r].length;
   const verts = rings[ref.ring];
-  const h = cornerHandle(verts, poly.handles, offset, ref.i, cornerRadiusAt(poly, flat), CORNER_INSET_PX / zoom);
+  const h = cornerHandle(verts, poly.handles, offset, ref.i, cornerRadiusAt(poly, flat), CORNER_INSET_PX / zoom, !!poly.open);
   return h && { ...h, flat, v: verts[ref.i] };
 }
 
 function cornerCircles(poly) {
   if (isPlayer || shape !== 'select' || !poly) return [];
   const b = getPolyBBox(poly.vertices);
-  if (Math.min(b.maxX - b.minX, b.maxY - b.minY) * zoom < CORNER_MIN_SHAPE_PX) return [];
+  // A line is long and thin, so it is its longer side that must be big enough to hold a circle.
+  const span = poly.open ? Math.max(b.maxX - b.minX, b.maxY - b.minY) : Math.min(b.maxX - b.minX, b.maxY - b.minY);
+  if (span * zoom < CORNER_MIN_SHAPE_PX) return [];
   let flats;
   if (shapeEditMode) {
     if (selectedVertexIndex < 0) return [];
@@ -78,9 +80,19 @@ function drawCornerCircles(poly) {
 }
 
 // From selectHoverCursor: tracks the pointer over the focused shape and answers a cursor over a circle.
+// A line has no inside, so its circles show while the pointer is near it or on one of them.
+function _cornerHoverOnLine(poly, pos) {
+  if (wrNearest(wrSamples(poly), pos).d < 24 / zoom) return true;
+  const was = cornerHover;
+  cornerHover = true;
+  const on = !!_cornerHitAt(poly, pos);
+  cornerHover = was;
+  return on;
+}
+
 function cornerRoundHover(poly, pos, e) {
   const was = [cornerHover, cornerHot, cornerAlt].join();
-  cornerHover = !!poly && !shapeEditMode && pointInShape(pos.x, pos.y, poly);
+  cornerHover = !!poly && !shapeEditMode && (poly.open ? _cornerHoverOnLine(poly, pos) : pointInShape(pos.x, pos.y, poly));
   cornerAlt = !!(e && e.altKey);
   const h = poly ? _cornerHitAt(poly, pos) : null;
   cornerHot = h ? h.flat : -1;
@@ -202,7 +214,7 @@ function cornerFieldClose(keep) {
     if (!keep) {
       if (f.before.r === undefined) delete poly.cornerRadius; else poly.cornerRadius = f.before.r;
       if (f.before.radii) poly.cornerRadii = f.before.radii; else delete poly.cornerRadii;
-      undoStack.pop();
+      if (worldMapOpen) worldUndoDropLast(); else undoStack.pop();
       shapeGeometryChanged();
       fogDirty = true;
       scheduleRender();

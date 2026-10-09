@@ -264,6 +264,9 @@ module.exports = async function helpAndAboutFeature(rig) {
     'Ctrl C X V', 'Ctrl D', // the clipboard, covered by clipboard.js
     'Double-click',       // a mouse gesture, covered by editing.js and curves.js
     'Ctrl Middle-click',  // a mouse gesture, covered by ping.js
+    'M', 'Ctrl F',        // the world map's keys, covered by world-map.js
+    'Shift Click', 'Shift Drag', // picking more scenes, covered by world-map.js
+    'Enter',              // finishing a road, covered by world-roads.js
   ]);
   const unchecked = advertised.filter(k => COVERED.indexOf(k) === -1);
   rig.note('the panel advertises ' + advertised.length + ' keys: ' + advertised.join(' '));
@@ -495,7 +498,6 @@ module.exports = async function helpAndAboutFeature(rig) {
       const el = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       return !!(el && t.contains(el)); };
     const out = {};
-    openDropdown(); out.library = hitOn(); closeDropdown();
     bestiarySetOpen(true); out.bestiary = hitOn(); bestiarySetOpen(false);
     toggleLegend(); out.shortcuts = hitOn(); toggleLegend();
     openModuleTextModal(); out.moduleText = hitOn(); closeModuleTextModal();

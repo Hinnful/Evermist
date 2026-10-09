@@ -57,7 +57,7 @@ function leaveShapeEditMode() {
 }
 
 function clearShapeSelection() {
-  selectedPolygonId = null;
+  selectedPolygonId = null; notesLevelPick = null;
   leaveShapeEditMode();
 }
 
@@ -147,7 +147,7 @@ function deleteShapeVertex(poly, flat) {
   const ref = flatVertexRef(poly, flat);
   if (!ref) return false;
   const ring = polyRings(poly)[ref.ring];
-  if (ref.ring === 0 && ring.length <= 3) return false;
+  if (ref.ring === 0 && ring.length <= (poly.open ? 2 : 3)) return false;
   const dropRing = ref.ring > 0 && ring.length <= 3;
   // A dropped ring takes every index from its first; a single delete takes only its own.
   const at = dropRing ? flat - ref.i : flat;
@@ -253,7 +253,7 @@ function selectMouseDown(raw, e) {
 
   // ⚠ FIRST, because a box handle sits OUTSIDE the shape and every test below starts from a hit
   // on the shape itself.
-  if (selPoly) {
+  if (selPoly && !selPoly.open) {
     const bh = findBoxHandleAt(selPoly, raw.x, raw.y);
     if (bh) { startBoxDrag(selPoly, bh, raw); return; }
   }
@@ -332,7 +332,7 @@ function selectMouseDown(raw, e) {
 function selectHoverCursor(pos, e) {
   const selPoly = findActiveShape();
   const cc = cornerRoundHover(selPoly, pos, e);
-  if (selPoly) {
+  if (selPoly && !selPoly.open) {
     const bc = boxHoverCursor(selPoly, pos);
     if (bc) return bc;
   }
@@ -408,8 +408,9 @@ function selectMouseMove(pos, screenX, screenY, e) {
     if (ref) {
       const ring = polyRings(poly)[ref.ring];
       const n    = ring.length;
-      const prev = ring[(ref.i - 1 + n) % n];
-      const next = ring[(ref.i + 1) % n];
+      // An open line's ends have one neighbour, and the other is that one.
+      const prev = poly.open && ref.i === 0 ? ring[1] : ring[(ref.i - 1 + n) % n];
+      const next = poly.open && ref.i === n - 1 ? ring[n - 2] : ring[(ref.i + 1) % n];
       // Straighten against BOTH ring neighbours, so either adjoining wall can go square.
       const p = axisLock ? snapToAxis(pos, [prev, next], AXIS_LOCK_PX / zoom) : pos;
       const VERT_EPSILON = 0.5; // map units — prevents coincident/zero-length edges
@@ -685,6 +686,7 @@ function escapeShapeSelection() {
 function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   const verts = poly.vertices;
   if (verts.length < 2) return;
+  if (poly.open) { drawOpenLineChrome(poly, isSelected, selectedVertIdx); return; }
   const holeRings = polyHoleRings(poly);
   const editing = isSelected && shapeEditMode;
   const holeSel = editing && selectedHoleIndex >= 0 && selectedHoleIndex < holeRings.length
@@ -788,38 +790,13 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
     drawCorner(x, y, true, isSelVert, isSelVert ? SHAPE_PART_SELECTED : '#ffffff');
   }
 
-  // Curve handles, for the SELECTED vertex alone. Drawn last so a handle sitting over a wall or a
-  // neighbouring corner stays grabbable.
-  for (const h of selectedHandlePoints(poly)) {
-    const a = toScreen(h.anchor.x, h.anchor.y);
-    const c = toScreen(h.x, h.y);
-    cursorCtx.strokeStyle = 'rgba(255,255,255,0.5)';
-    cursorCtx.lineWidth = 1;
-    cursorCtx.beginPath();
-    cursorCtx.moveTo(a.sx, a.sy);
-    cursorCtx.lineTo(c.sx, c.sy);
-    cursorCtx.stroke();
-    // A rhombus, not a circle — a curve handle is never mistaken for a corner even at a glance.
-    const r = 5.5;
-    cursorCtx.beginPath();
-    cursorCtx.moveTo(c.sx, c.sy - r);
-    cursorCtx.lineTo(c.sx + r, c.sy);
-    cursorCtx.lineTo(c.sx, c.sy + r);
-    cursorCtx.lineTo(c.sx - r, c.sy);
-    cursorCtx.closePath();
-    cursorCtx.fillStyle = SHAPE_PART_SELECTED;
-    cursorCtx.fill();
-    cursorCtx.strokeStyle = '#ffffff';
-    cursorCtx.lineWidth = 1.5;
-    cursorCtx.stroke();
-  }
-
+  drawHandleMarkers(poly);
   cursorCtx.restore();
 }
 
 // startFogTransition() takes no argument: the polygon is gone, so no mode survives to fade to.
 function deletePolygonById(id) {
-  if (id == null) return;
+  if (id == null || worldMapOpen) { if (id != null) worldPlaceDelete(id); return; }   // a place goes by the world map's delete
   pushUndo();
   if (placeMode !== 'rooms') {
     setShapeListNamed(placeMode, activeShapeList().filter(e => e.id !== id));

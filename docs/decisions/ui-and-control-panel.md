@@ -46,13 +46,14 @@ The − / % / + stepper in the Player tab duplicated the minimap's wheel, which 
 moved to the bottom-left corner, square, with Sync View and Lock on it and the TV's edges dotted
 across it.
 
-### The room card became the dock's Room tab · `SETTLED` (2026-10-02)
+### The room card became the dock's Room tab · `REVERTED` (2026-10-08, the left panel)
 Name as the header, Delete where Close was, the notes, pictures inline below them, the corner
 radius. Reverses the card's automatic placement and its drag (clampPanelPosition is deleted),
 "The card shows everything" (the fog pill left for the toolbar), the stored description height
 (the notes grow with their text; `evermist.roomDescHeight` is no longer read) and "A destructive
 button should keep the standard shape" for this one button: Delete is a header icon now, and a
-room delete is undoable. The tab still follows the selection alone.
+room delete is undoable. The tab still follows the selection alone. The tab itself went on
+2026-10-08: its name, notes and pictures live in the left panel, and the dock has no Room tab.
 
 ### The fog trio is the selected room's fog while Select is in hand · `SETTLED` (2026-10-02)
 With Select in hand and a room selected, Reveal / Half / Shroud above the toolbar show and set
@@ -63,7 +64,7 @@ direction, as before. The room card's pill had been a second control for the fir
 A column has no dock, so it reports its selected room to the DM window and every edit goes back to
 that column alone, aimed at the column the fields were filled from rather than the one selected
 now. A column refuses an edit once its selection has moved on. Two columns number rooms alike, so
-the tab tells rooms apart by column too.
+the tab tells rooms apart by column too. The left panel is that tab now.
 
 ### The toolbar follows Figma: chevron lists and one operations button · `SETTLED` (2026-10-02)
 Select, Shape ▾, Merge / Cut out / Split ▾, Brush, Door, then snap, straighten and Rooms/Effects,
@@ -73,9 +74,10 @@ picking Split disarms the other two. Reverses the corner tick and the right-clic
 "A helper that is on no longer wears the picked tool's box": its underline went with the outlined
 pick. Blue now means on or in use: solid for the tool in hand, a tint for a switch.
 
-### On the narrowest window the toolbar gives way into the minimap's corner · `SETTLED` (2026-10-02)
+### On the narrowest window the toolbar gives way into the minimap's corner · `REVERTED` (2026-10-08)
 The toolbar centres between the minimap and the dock. On a window too narrow for both, such as the
-rig's 1008px, it slides over the minimap's right edge and never under the dock.
+rig's 1008px, it slides over the minimap's right edge and never under the dock. Reversed by "The
+toolbar is centred on the window, always" below.
 
 ### Settings gathers what applies to every scene · `SETTLED` (2026-10-02)
 Language, Shrink big maps, Half and Feather, and the About block with the version and What's new.
@@ -115,13 +117,54 @@ runs out. Pop-outs that are panels (a colour picker, Custom movement) still open
 ### The toolbar never moves with the dock's pane · `SETTLED` (2026-10-02)
 Its place comes from the window alone, and the pane stops at it. A rail border that only appeared
 with the pane open, and a zoom read off the dock's own snapped border, each moved it a pixel;
-the rail border is now always there and the zoom is read off a rail button.
+the rail border is now always there and the zoom is read off a rail button. Its place is now the
+window's centre, not the gap between the minimap and the dock (see the left panel, below).
 
 ### Grid and fog colour are undoable · `SETTLED` (2026-10-02)
 They never were, 3.11.0 included: a focused field's own text undo made it look so. They ride the
 same history as light entries with no fog image, one per drag or scrub. With two maps, Ctrl+Z
 reaches the selected column. A successful undo says "Undone", because a note or a colour can
 change with nothing on screen showing it.
+
+## The left panel (2026-10-08)
+
+Notes for the campaign, the scene and the room, and the room itself, moved to a panel on the left.
+Backlog item 140 part 1; the spec was gitignored and is not needed to pick the work up.
+
+### Notes live in a left panel, and the Room tab is gone · `SETTLED` (2026-10-08)
+A scene with no rooms had nowhere to keep notes, and neither did the campaign. A full-height panel
+on the left, the dock's mirror, holds breadcrumbs Campaign › Scene › Room over one level's notes. The
+selected room's name, module dropdown, Delete, notes and pictures render in it, so the dock lost
+its Room tab and `dockSyncRoom`. Picking a room opens a shut panel without changing what the DM
+keeps open. The room's logic stayed in `roomCard.js` and `roomPictures.js`; only the host moved.
+Reverses "The room card became the dock's Room tab". Nothing in the panel reaches the TV.
+
+### The three levels never merge, and a crumb only picks a level · `SETTLED` (2026-10-08)
+The panel follows the selection: the room if one is selected, else the scene. A crumb picks a level
+(`notesLevelPick`) and changes nothing else, so the room keeps its crumb while the scene's notes
+show. A new room pick, a deselect or a scene switch returns to following. Rejected: a crumb that
+deselects the room. Never trust the `hidden` attribute on `#panel-room`: `.dk-room` sets `display`,
+which beats it, and both levels then showed at once until `notesPanel.css` ruled it out.
+
+### The toolbar is centred on the window, always · `SETTLED` (2026-10-08)
+No dock pane, notes panel or minimap moves it. Each panel stops short of it where the window allows,
+and only a panel's narrowest width may cover it, as the dock can on the rig's 1008px. Reverses the
+toolbar's slide between the minimap and the dock, and the `--tb-left` and `--tb-right` that did it.
+
+### The shut panel is a floating icon, not a rail · `REJECTED` (2026-10-08)
+A 44px rail with one button was built first and read as an empty strip. The panel now shuts to a
+36px plate at the top left, and a chevron in its header shuts it. The minimap sits to the panel's
+right and moves with it.
+
+### Notes are stored as a scene field and one campaign value · `SETTLED` (2026-10-08)
+Scene notes are a `notes` string on the scene record, never snapshotted in `doAutoSave` or an edit
+made while the fog encodes is overwritten. Campaign notes are `localStorage` `evermist.campaignNotes`.
+The IndexedDB version did not move, because the previous release cannot open a newer one. A backup
+carries `notes` per scene and the campaign's as `campaign.json` at the zip root. A restore adds the
+backup's campaign notes below the DM's, once, and names anything unreadable in one dialog. Pictures
+stay on rooms until the gallery (backlog 161).
+
+---
 
 ## The windows (2026-10-03)
 
@@ -668,3 +711,223 @@ the picked corner's alone. Focus hides them until the pointer is on the shape, b
 what the DM uses at the table. The Room tab's and the Effects row's radius fields were removed
 rather than kept beside the circles: a double-click on a circle opens the one number field. A
 corner that barely turns (a circle's or an arc's own points) shows no circle.
+
+### The world map v1 · `SETTLED` (2026-10-08)
+A map of the campaign beside the Scene library, which stays as it is. A place IS a scene group, so
+making, renaming or emptying one is the same act in both views, and a scene stores only its own
+position (`worldPos`). Positions are written once on the first open. A scene opens on a double-click; a
+single click picks it and the notes panel shows its place. Add a scene imports off screen and never
+opens: the TV and the open scene stay as they are. With two maps on, a double-click fills the selected
+column and every change reaches the column that holds the scene, because a column saves its whole
+record. With no scene open, Esc does nothing. Place notes follow their group on a rename. A right-click
+menu carries delete, rename and take-out; the open scene cannot be deleted there, since that would switch
+the TV. Roads, the fight flag and a background image are later. The place outline derived from its
+scenes, the corner-scaling resize and the pushing apart of outlines were built here, then replaced.
+**Later entries replace parts of this one:** the library is gone ("The Scene library is removed"), places are drawn polygons ("Places are polygons"), and roads and the background are built ("Roads are open lines", "The world map wears the scene's toolbar").
+
+### Places are polygons, and the geometry decides who belongs · `SETTLED` (2026-10-08)
+Replaces the place whose outline was derived from the scenes inside it, and with it the corner-scaling
+resize and the pushing apart of outlines (both built, then removed). A place is a named polygon, drawn
+with a rectangle, circle or polygon tool beside the existing way of dropping one scene on another, which
+now makes the rectangle that fits both. A scene belongs to the smallest polygon holding all of its card;
+one pixel out takes it out, so every move and edit re-files the scenes, and the library's group follows.
+A group with no polygon gets the rectangle that fits its scenes, and a scene filed in the library is
+moved inside its polygon. Polygons live under `evermist.placeShapes` and ride a backup in `campaign.json`.
+Overlapping polygons are the DM's call: the smaller one wins a scene.
+
+### A place is edited by the room's own code, and keeps its polygon zoomed out · `SETTLED` (2026-10-08)
+Replaces the world map's own corner handles. A place is stored as a room-shaped record (vertices, corner
+radii, curve handles), and while the map is up the room's selection code runs on it: rounding circles,
+Ctrl+drag bends, curve handles, corner points, the scaling box, Escape's levels and Ctrl+Z are the
+room's, not a copy. The room code reads its camera from globals, so each call borrows the world's for one
+synchronous step; three of its release paths and `pushUndo` stand down for places. A copy on SVG was the
+alternative and was refused, because two editors drift. A scene belongs to the outline as drawn, rounded
+corners and curved walls included. Zoomed out, the polygon stays. (The scenes' shrinking to a count was replaced by the Mist look, below.)
+
+
+### The world map wears the scene's toolbar, its names the room's plate, its background lives in Settings · `SETTLED` (2026-10-08)
+Replaces the world map's own four tool buttons. The bar is the scene's: Select, Shape (rectangle, circle,
+polygon), Merge / Cut out / Split, Straighten, then Add a scene and Find. The Rooms/Effects switch and Snap
+are gone, and so are Brush and Door, which act on fog and walls a place does not have. The tool in hand is
+the toolbar's own `shape` and `shapeOp`; the layer reads them, so a tool, a key and an armed repair mean
+the same thing here as on the map. The scene's tool, mode and repair are put away on opening and given
+back on closing. Merge, Cut out and Split run the room kernel on places: the first place keeps its name,
+and a merged-away place hands its notes to it. A result with a hole in it is refused, since a place keeps
+no holes. Picking a drawing tool no longer zooms the map in. A place's name uses the room label's plate,
+size rule and top-left placement, and stays visible when the place is picked, because it is how a place is
+renamed. The background image is one picture chosen in Settings, behind the places, with a size, an
+opacity and a Move switch; its file sits in a database of its own and a backup does not carry it yet.
+Roads wait for a spec.
+**Later entries replace parts of this one:** a backup of everything carries the background ("With two maps on, the world map fills columns"), roads are built ("Roads are open lines"), the bar's order is "The world map's toolbar reads in three clusters", and a place's name is the room's label ("Zoomed out, the world map shows no scenes").
+
+### The world map shows one level of name at a time · `SETTLED` (2026-10-08)
+Refines the entry above. Zoomed out, the places wear their names and no scene in a place has one. Zoomed in,
+the scenes wear their names and the places have none. A scene with no place is the exception: its name
+shows at every zoom, over a bare marker. The count chip and the place marker are gone. Rename is off while
+the name it would edit is hidden.
+
+### A place's name is a small black plate inside its top left · `SETTLED` (2026-10-08)
+Tried and replaced, in order: a plate that scaled with the zoom, a Figma-style name above the outline, and
+bare shadowed text. White text over the picture was unreadable and bare text had no edge, so the plate
+returned: 12px type on solid black with a hairline, inside the outline where a room's name sits. It is laid
+by the room's own `fitLabelBox`, which finds the highest row the plate fits in against the left wall; the
+earlier "highest vertex" rule jumped to the right on a slanted top. One size on screen at every zoom, cut
+short where the shape narrows, and left out under 48px wide. The focus colour marks a picked place. Scene
+names wear the same plate.
+**Replaced by** "Zoomed out, the world map shows no scenes; a place's plate is a room's label".
+
+### A place is drawn as a room is, in black · `SETTLED` (2026-10-08)
+A slight black line, a slight black wash, a soft inner edge, and the gold line when picked. White, colour
+and heavy casings were refused as foreign to a black and blue app. The wash is a layer of its own under the
+scene cards, so a card sits on its place and is never tinted by it; the line and the edge stay on the
+overlay canvas above.
+**Replaced by** "The world map wears the Mist look": the outline is white and 2px, and the wash is gone.
+
+### The world map wears the Mist look · `SETTLED` (2026-10-08)
+Replaces three things. Scenes no longer shrink and hide when zoomed out: they stay as prints, with no names.
+Places are no longer black outlines over a dark wash: the outline is white, 2px, and the wash is gone. Cards
+are no longer 200x140: they are 110x77 framed prints with the name plate inside at the top left, so a module
+with 200 scenes fits. The DM picked the look from a prototype and set its values: mist cleared 90%, colour
+inside 70%, outline at full strength, edge softness 20. The mist drifts over the whole map with no setting,
+and over the dark ground when there is no backdrop, where the places are clearings. The backdrop is greyed
+outside the places, and 70% of its colour returns inside them. The zoom split moved from 0.5 to 0.75, where
+a name plate fits in a print. A scene with no place is a black diamond with a white rim when zoomed out.
+A card that used to sit inside an outline may now need re-filing on the next edit, because the card is smaller.
+The mist is one svg built once, so the drift never restarts. If it stutters on a large layout, the fallback
+is to render the masked mist to a canvas once per place edit and move only the texture.
+
+### Zoomed out, a place shows its prints in a grid; the camera stays on the map · `SETTLED` (2026-10-08)
+Refines the Mist look after the DM's first look at it. The prints sat where the DM had put them, so they ran under
+the place's name plate and looked small in the old, wide spacing. Now, below the zoom split, each place seats its
+prints in a grid inside its outline at the largest size that fits, up to 1.5 times the card, with its plate's
+space kept clear at the smallest zoom the map allows. The grid is a view only: the stored positions do not change,
+and zoomed in the prints are back where they were put. The prints cannot be picked or dragged zoomed out. Zoomed
+out is also limited: no further than the layout with a margin fills the window; a small map stops where the places
+level opens. With a backdrop picture the camera may go a fifth of the map's size past it, so far places are easy
+to reach, and the mist stops at the picture's edge.
+Plates and prints follow the interface zoom (`--ui-zoom`), because they read small next to the rest of the app at 1.2.
+**The grid is replaced by** "Zoomed out, the world map shows no scenes", which also stops the interface zoom scaling the plate. The camera limits above still stand.
+
+### The grid is one block; a place's plate sits a fixed gap from its top left corner · `SETTLED` (2026-10-08)
+Refines the entry above after the DM saw nine grids in a prototype and picked the block. Zoomed out, a place's
+prints stand in one rectangular block of rows and columns, centred in the roomiest part of the place, the last row
+centred. The whole block is tested against the walls
+and the plate, not each cell, so no print crosses a wall. A print's frame reaches outside its box, and the first
+grid ignored that, so frames stuck out of the outline; the margin now counts the frame and keeps 8 screen px clear
+of walls and plate. Refused after a look: fit in reading order, centred rows, keep-the-map, tight, mosaic,
+honeycomb, centre cluster and a stack with a count. The plate no longer takes the highest row the room code finds,
+which put it under the top-right corner of a place with a sloping top. It takes the spot nearest the top-left
+corner of the place's bounds, 8 screen px from the walls, so the gap is the same in every place.
+**Replaced by** "Zoomed out, the world map shows no scenes; a place's plate is a room's label".
+
+### Every grid print is one size, and the plate's reach counts every zoom · `SETTLED` (2026-10-08)
+Refines the entry above. The block no longer shrinks its prints for a small place: every print is the size of a
+card and every block uses the same gaps, so places differ only in how many prints fit. A place too small for all
+its scenes shows the first that fit, in reading order, and hides the rest zoomed out. A plate laid for one zoom
+alone was overlapped at another, because the plate keeps its size on screen, grows in world units as the camera
+moves out, and on a sloping or round wall its spot moves. The grid now keeps clear of the rect that holds the
+plate at every zoom from the smallest the map allows up to the split.
+**Replaced by** "Zoomed out, the world map shows no scenes; a place's plate is a room's label".
+
+### Zoomed out, the world map shows no scenes; a place's plate is a room's label · `SETTLED` (2026-10-08)
+Replaces the grid of prints. Three attempts at a grid (reading order, block, block of one size) each failed in
+use: prints crossed walls, a plate was overlapped at some zoom, and a place showed none of its scenes. The plate's
+spot moves with the zoom and the grid needs a layout for every zoom, so the cost of keeping them apart was a
+kernel the DM could not trust. Now zoomed out only the places show, with the mist and the white outlines; scenes
+appear at the zoom split, standing where the DM put them. A scene with no place is still a diamond. A place's plate
+takes the room label's own type size (by zoom, clamped), weight, padding, radius, fill and gap from `roomPanel.js`,
+and differs from a room's only in that a double click renames it. It sits at the top left of the place a fixed gap
+from its walls. The interface zoom no longer scales the plate, because a room label is not scaled by it either.
+
+### Roads are open lines the room editor edits, kept by a stored id · `SETTLED` (2026-10-09)
+A road joins a scene with no place, a place, or nothing. Two scenes inside one place get no road; the DM said they
+are not needed. A road end keeps the spot it was drawn at, relative to the place's centre, and moves with the
+place; a reshape that leaves the spot outside puts it on the nearest point of the outline. Deleting a scene or a
+place leaves its roads with an open end, and a scene's delete opens it only when the undo toast ends, so the toast
+can still bring it back. A road scene is ungrouped in the library and held by the road's own list, so no scene
+record gains a field and `/rollback` loses nothing. A scene dropped where a road runs inside a place belongs to the
+place. Roads are keyed by a stored id and their notes by the same id, so a rename moves nothing and names need not
+be unique.
+The editor is the room's own, run on a record flagged `open`: no inside, no closing wall, two points at least, no
+box and no corner circles. A second editor was refused again ("two editors drift"). An end dragged by hand sticks to
+what it lands on when the drag ends. The road is drawn in the layer as an svg line with a wide hit stroke, and the
+overlay canvas draws only the picked road's corners and curve handles.
+
+### The Road tool draws as Figma's pen does · `SETTLED` (2026-10-09)
+The first build drew a road by bare clicks, shown only as a dashed rubber band, with the name field opening at once.
+The DM found it poor and asked for Figma's behaviour. Figma's help pages confirm only a click adding a point, Esc
+leaving the path open, and a small circle over a point that closes it; the rest below is from memory of the app and
+was not checked against it. A press puts a point and shows it. A drag out of the point bends the line through it,
+the two sides mirrored, and the next stretch follows the pointer. Shift locks 45 degrees. The scene or place an end
+will stick to is ringed before the press. Enter, a double-click or Esc finishes, and the road stays picked with its
+points open; the name is set by double-click on its plate or the menu. A press on the open end of a road picks it up
+again, walking the road so that end is last. An end that sticks to a scene or a place is not offered for pick-up,
+because a click there starts a second road from that thing, which is how a junction is made.
+
+### A road's corners round with the room's own circle · `SETTLED` (2026-10-09)
+A road corner rounds exactly as a place's does: a circle shows while the pointer is near the road (a line has no
+inside, so near stands in for over), and edit mode shows the picked corner's. Dragging it sets that corner's radius,
+Alt or edit mode keeps it to one corner, and a double-click on it opens the number field. The fillet is the room's
+own (`computeFillet`), so a corner between curved segments rounds as on a wall. The two ends have no corner and no
+circle. The radius is stored per point (`cornerRadii`), beside the road's `cornerRadius` for all of them, and a rounded
+road is drawn as its sampled line instead of exact curves.
+
+### Scenes are picked together with Shift; the pick is scenes only · `SETTLED` (2026-10-09)
+Shift-click toggles a scene in or out of the pick, and Shift-drag on the ground draws a box that adds every scene it
+touches (zoomed out, only the diamonds, which are all that is shown). A plain click picks one scene and drops the rest.
+A picked scene is dragged with the whole pick, and the right-click menu on a pick exports or deletes all of it. A place
+or a road is always picked alone. The last scene clicked is the one the notes panel follows. The pick is a list in
+`state.js` that counts only while that scene is in it, so a stale list can never act on scenes the DM is not looking at.
+
+### The backup lives in Settings' World map section, and the pick is its scope · `SETTLED` (2026-10-09)
+Settings' "World map" section holds the Background and, below it, the Backup: one line saying what a backup would hold,
+Export and Restore. Export wears the pick ("Export 3 scenes") and, with nothing picked, saves everything. There is no
+scope window. A backup of picked scenes carries the places that hold them, and a road only when it holds one of them,
+so a scene keeps the road it stood on; a road end that points at something left out comes back open. The campaign note
+stays out of a partial backup. Restore is a file picker, or a .zip dropped on the world map, and it is the library's
+own restore, which merges and never replaces. A preview window before the merge was prototyped and not built.
+
+### Settings is three sections in Scene control's own parts · `SETTLED` (2026-10-09)
+Settings was five stacked headers with a sub-header inside World map and a header over a single switch. It is now
+Interface (language, shrink big maps), Fog in every scene (Half shroud and Feather) and World map (background, position,
+backup), each a section title over small sub-headers, in the parts Scene control uses. The background is the Sources
+pattern: the picture's name in a field and a trash icon at its right that asks first, since the stored file cannot come
+back. Half shroud, Feather, Size and Opacity are scrub fields, dragged by their icon, with no slider. Three layouts were
+built in a lab (rows, an accordion, a drill-in page) and the rows won. The accordion stays the first thing to try if
+Settings grows long.
+
+### With two maps on, the world map fills columns; the app launches on the world map · `SETTLED` (2026-10-09)
+Two maps opens the world map with a Left and a Right chip, the active one blue, each naming the scene its column holds.
+A double-click on a scene fills the active column and the map closes on the columns; to change the other column,
+reopen the map and pick its chip. A scene a column holds wears an L or an R. Esc, M and the button close the map and leave both columns as
+they are. The app now launches on the world map with the last scene open underneath, flying out from it; two maps are
+not kept across a launch, so a launch is always one map. The rig and the stress and memory probes ask for the scene's
+own screen. A backup of everything always carries the background image (a tick to leave it out was built and removed), and a
+restore adopts it only when the DM has none.
+**The launch half is reversed by** "The app starts on the scene it was left on". The two-maps half stands.
+
+### The app starts on the scene it was left on, not on the world map · `SETTLED` (2026-10-09)
+This reverses the launch half of "With two maps on, the world map fills columns". The app opens on the last scene, as it
+always did, and the world map is one press of M or its rail button away. The DM did not want the map between them and
+the scene at every start. Part 3 of item 140 is dropped.
+
+### The Scene library is removed; the world map is where scenes are made, found and deleted · `SETTLED` (2026-10-09)
+The rail button, the window and its two modules are gone. Everything the library did has a place on the map: add, rename,
+delete with undo (any scene, and deleting the open one switches to the first, as before), file into a place by outline,
+find, export and restore, and the Live badge is the L or R chip. Dropped on purpose: collapsing groups, an empty named group,
+dragging to reorder (a scene's place is where it sits), and duplicating a scene, which the library never had. The group
+names stay a scene field and `sceneGroups.js` keeps their order and the pure kernel the music groups share. The code is in
+git if any of it is wanted back.
+
+### The world map's toolbar reads in three clusters · `SETTLED` (2026-10-09)
+Select, the drawing tools, the boolean operations and Road; then Add a scene and Find; then Straighten, set apart as the
+scene's bar sets its groups, with no dividers. Add a scene wears a plus, since not every scene is a picture. Road is a
+tool in hand, so it wears the solid blue like a shape. Find is still the old field and is the next piece (item 163).
+**Find is replaced by** "Find lists places, scenes and roads under the field".
+
+### Find lists places, scenes and roads under the field, best match first · `SETTLED` (2026-10-09)
+Find was a field that dimmed what did not match and flew to one hit. It now shows a list above the field: a count, then
+Places, Scenes (with a thumbnail and the place they sit in) and Roads, six rows a group, the whole name first, then a
+name's start, a word's start, any part. Arrow keys walk it, Enter or a click flies to the row and picks it, and Esc closes.
+The map still dims what does not match. It finds a scene wherever it sits, in view or not. Names only for now; searching the
+notes text is the next step if the DM wants it.

@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 11 open items; IDs run to 159."
+description: "Open work only. 12 open items; IDs run to 163."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **3.13.0** (lights). **4.0.0 lands when every item under 4.0 below is
+`package.json` is at **3.13.3**. **4.0.0 lands when every item under 4.0 below is
 built** (PRODUCT.md). Items under ANY TIME ship as 3.x patches and never hold 4.0 up. 2.12.0 to 2.15.3 are the
 vector editing epic, now closed: two selection levels, curved walls, the bounding box,
 copy/paste/duplicate, a radius on a curved corner, and shapes drawn as coloured areas.
@@ -71,7 +71,7 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 ---
 
-# 4.0 - PLAY AT THE TABLE
+# ANY TIME
 
 ### 46. A second effect material needs a look, not a code change
 The shader reads all six colour stops from the material record (`src/render/effectMaterials.js`),
@@ -81,18 +81,7 @@ like, and what its button says. `acid` was deleted rather than shipped last time
 The second material also brings the searchable material palette settled in item 113's prototype
 (`.claude/private/design/item-113/effect-presets.html`): the flame button with a corner tick opens
 it above the row. Not built with one material, per CLAUDE.md.
-**Play · 4.0 if the DM picks a material · DM + Player**
-
-### 121. Re-record the README GIFs
-Filed 2026-09-24. The DM records these by hand; nothing to build. `tools.gif` shows reveal and
-shroud drawing under "Draw rooms of any shape", and no GIF covers two floors at once, map effects
-or music. `draw-rooms.gif` is no longer used by the README.
-It lands with the README rewrite that marks 4.0.0, the way 3.0.0 did.
-**Upkeep · 4.0 · README only**
-
----
-
-# ANY TIME
+**Play · any time · DM + Player**
 
 ### 144. A phone remote for the DM
 Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in
@@ -124,44 +113,83 @@ restructuring task on the DM's yes, one file at a time, taken when a feature alr
 file; the unused imports ride the next release. Done when both lists are empty.
 **Upkeep · any time · no visible change**
 
-### 158. Split one topic out of ARCHITECTURE.md
-Filed 2026-10-07. `docs/ARCHITECTURE.md` is about 61 KB against a 45 KB soft ceiling, past the
-point where it is read whole. Move its largest subject into `docs/architecture/<topic>.md` and leave
-a pointer, as the ledgers do. Docs only.
-**Upkeep · any time · no visible change**
+### 162. Release 4.0.0 in four stages
+Filed 2026-10-08, rewritten 2026-10-09 as the handoff for the 4.0 release. Everything since 3.13.3 sits on branch
+`wip/notes-left-panel`, committed locally and never pushed: the notes panel, the world map with places and roads,
+Two maps, and the Scene library's removal. PRODUCT.md's "4.0.0 also carries the world map" says why it is 4.0.
+The DM's order. Commit to the working branch freely; push nothing before stage 4. The rig is the DM's to allow per session.
+- **Stage 1, analysis: DONE 2026-10-09.** A UX audit found 7 blockers and about 15 gaps. All are fixed, each proved red
+  then green. Before the fixes the full rig regression passed 36 of 45. The "after 4.0" gaps the audit found are not
+  filed; propose them to the DM in stage 3.
+- **Stage 2, code review: DONE 2026-10-09.** Four Sonnet reviewers and a fifth sorting the rig reds. Five app bugs
+  fixed, each proved red then green: a scene opened from the world map came up with the last scene's room picked; the
+  right-click Delete on the open scene switched the TV; a Two maps column filled from the map had its notes overwritten
+  by the previous scene's; moving a scene card or reshaping a place cut the road ends stuck to it; Ctrl+Z on a place
+  dropped it instead of keeping it picked as a room does. Rollback to 3.13.3 and backup round-trips were traced clean.
+  The rest of the reds were stale checks, now repaired: `world-map`, `world-roads`, `notes-panel`, `two-maps` and
+  smoke all pass.
+- **Stage 3, README and docs: DONE 2026-10-09.** README rewritten for 4.0 with five animated WebP clips recorded off-screen
+  on the DM's own maps; item 121 closed. Item 140 cut to what is left after 4.0, the ledger's early world map entries point
+  at their replacements, and two comments name the right files. The recording found one bug, fixed: a module fill left the
+  room's notes field at its old height. The stage 1 audit's "after 4.0" list was lost with that session.
+- **Stage 4, release.** 4.0.0 on a `release/4.0.0` branch through `/commit`, one commit; watch CI, fix, amend, push
+  again. `npm test` fails the changelog version check until CI regenerates `changelogData.js`; that is expected.
+**Upkeep · 4.0 · Both**
 
-### 159. The linter ignores the private design folder
-Filed 2026-10-07. `npm run lint` reports hundreds of errors on a working copy that has the
-gitignored `.claude/private/` and `tools/fire-proto/` prototypes, so a local run is always red
-while CI, on a clean checkout, is green. Add both to the ignores in `eslint.config.js`.
-**Upkeep · any time · no visible change**
+### 163. World map toolbar polish
+Filed 2026-10-09 at the DM's word: the world map's toolbar, as built, is a no-go. It is the scene's own bar with tools
+swapped in: Select, Shape, Merge or Cut out or Split, Straighten, then Add a scene, Road and Find.
+Agreed 2026-10-09 and built: three clusters, as the scene's bar groups its tools - Select, the drawing tools, the boolean
+operations and Road; then Add a scene and Find; then Straighten. Add a scene wears a plus. Road is a tool, so it wears
+the solid blue. Find is built too: a result list under the field, grouped Places, Scenes and Roads, with a count, finding
+scenes outside the view. It matches names only; notes text is a later step.
+**Polish · 4.0 · DM only**
+
+### 160. "Walk only" stays English in the Russian bestiary
+Filed 2026-10-08. The bestiary's Movement filter shows "Walk only" in Russian mode, while Fly,
+Swim, Climb and Burrow are translated. The string is missing from `src/i18n/ru.js`; add it there.
+**Polish · any time · DM only**
 
 ---
 
 # 5.0 - CAMPAIGNS
 
-### 119. Notes for a scene with no rooms
-Filed 2026-09-24. Notes live only on rooms, so a wilderness or any map with no rooms has nowhere
-to keep DM notes, and the general notes for a scene live outside the app. It is its own piece of
-work, not part of the combat helper (PRODUCT.md, 2026-09-28).
+### 161. The gallery: one app-wide store of images
+Filed 2026-10-08. A window of every image the DM keeps, linked to no scene. It replaces today's room
+pictures, which each scene stores in its own record and which the previous release's autosave trims
+when no room uses them.
+- **One store, every picture once.** Rooms, scenes and places link to a picture and never hold its
+  bytes, so one picture of a castle serves many. Today's room pictures move into it in a one-time
+  migration. A backup carries the store once.
+- **The DM adds, names, finds and removes pictures there**, and drops a file on the window to add one.
+  A picture can go to the TV from the gallery without belonging to any room.
+- **The old room-picture strip and its "Add a picture" button are removed**, replaced by picking from
+  the gallery. The TV's picture mode stays.
+- Open for /spec: how a room, scene or place picks and shows a linked picture; whether deleting a
+  picture that is linked asks first; `/rollback` must keep room pictures visible to the previous release.
 **Campaign · 5.0 · DM only**
 
-### 140. World map with places
-Filed 2026-09-29. A World map button opens a DM-only map of the campaign. Places on it are
-folders holding scenes, fights and notes; roads connect places; a fight marker can stand alone.
-**The TV never shows it** - it shows fights and secret places. Prototype in gitignored
-`.claude/private/design/world-map/`. Item 119 may fold into it: a scene note and a place note may
-be one thing. Auto-filling places from the module is NOT a promise.
-**Needs /spec:** what a road carries, whether the module offers place names, what the first
-screen on opening is, and that the backup carries all of it.
-The library's structure is costly to change once campaigns are saved.
+### 140. The world map after 4.0: the party flag and the rough edges
+Filed 2026-09-29, cut down 2026-10-09: the world map, places, roads, the notes panel and the Scene library's removal ship
+in 4.0.0. Every settled call is in decisions/ui-and-control-panel.md, from "The world map v1" on. What is left:
+- **The party flag.** The DM drags a flag onto the scene or place the party is in. It is apart from the open scene, since
+  the DM preps scenes the party is not in. Scenes the party has visited look different. **Look, settled 2026-10-08:** the
+  Ping tool's bezel pared down to a thin gold ring with four diamonds, turning slowly around the scene, and the mist thins
+  around it.
+- **A switch to turn the world map's mist off**, at the DM's word.
+- **Pictures on a place** wait for the gallery (item 161).
+- **Rough edges found while building**, each a small fix or a UX call: a scene card over a corner handle blocks it until
+  the map pans; a card dropped partly outside a place is out with no hint of how far; Alt+drag does not copy a place.
+
+**The TV never shows the world map, a place or a road.** Auto-filling places from the module is
+NOT a promise.
 **Campaign · 5.0 · DM only**
 
 ### 142. An MCP server, so an AI can prepare a session
 Filed 2026-09-29 as a DISCUSSION. An AI client reads and writes the campaign: import a module,
 place rooms, fill notes, build fights. The app works fully without it, which is what the
-DECISIONS.md \"LLM in the loop\" rejection asked for. Waits for 140, because it exposes the
-campaign's shape.
+DECISIONS.md \"LLM in the loop\" rejection asked for. Waits for 140 part 2, because it exposes the
+campaign's shape: world map › place › scene › room, notes at each level, and roads.
 **Campaign · 5.0 · DM only**
 
 ---

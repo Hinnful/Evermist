@@ -8,6 +8,15 @@ let smUndoTimer = null;
 // The trash removes scenes from the list at once but DEFERS the real IndexedDB deletion so Undo
 // can cancel it. A new delete finalises the previous one, as does beforeunload.
 function deleteScenesWithUndo(ids) {
+  // ⚠ REFUSED, NOT EMPTIED: a column keeps autosaving the scene it shows, which would write the record
+  // back after the delete, and Undo cannot put a map back into a column.
+  if (panesActive && ids.some(id => paneColumnOf(id))) {
+    messageDialog({
+      title: 'That map is open in a column',
+      message: 'Close its column first (the cross at its top right), then delete it.',
+    });
+    return;
+  }
   const items = ids
     .map(id => ({ id, index: allScenes.findIndex(s => s.id === id), meta: allScenes.find(s => s.id === id) }))
     .filter(x => x.index !== -1 && x.meta)
@@ -18,7 +27,6 @@ function deleteScenesWithUndo(ids) {
 
   const idset = new Set(items.map(x => x.id));
   allScenes = allScenes.filter(s => !idset.has(s.id));
-  smSelectedIds.clear();
 
   // If the loaded scene was among those deleted, switch away (data stays in IDB
   // until the delete is committed, so Undo can still bring it back).
@@ -28,7 +36,7 @@ function deleteScenesWithUndo(ids) {
   showUndoToast(items.length === 1 ? t('"{name}" removed', { name: items[0].meta.name }) : t.plural(items.length, '{n} scene removed', '{n} scenes removed'));
   clearTimeout(smUndoTimer);
   smUndoTimer = setTimeout(commitPendingDelete, 4200);
-  renderSceneManager();
+  sceneListChanged();
 }
 
 function handleCurrentDeleted() {
@@ -47,6 +55,20 @@ function handleCurrentDeleted() {
   if (allScenes.length) switchScene(allScenes[0].id).catch(err => console.error('switchScene failed:', err));
 }
 
+// The in-memory record moves too, or the next wholesale autosave reverts the sortOrder. One transaction per
+// scene, and no write at all where the record is already right.
+function persistSceneOrder() {
+  for (const s of allScenes) {
+    const g = sanitizeGroupName(s.group);
+    if (currentScene && currentScene.id === s.id) { currentScene.sortOrder = s.sortOrder; currentScene.group = g; }
+    sceneStore.updateScene(s.id, sc => {
+      if (sc.sortOrder === s.sortOrder && sanitizeGroupName(sc.group) === g) return false;
+      sc.sortOrder = s.sortOrder;
+      sc.group = g;
+    }).catch(console.error);
+  }
+}
+
 function undoDelete() {
   if (!smPending) return;
   clearTimeout(smUndoTimer);
@@ -57,7 +79,7 @@ function undoDelete() {
   persistSceneOrder();
   smPending = null;
   hideUndoToast();
-  renderSceneManager();
+  sceneListChanged();
 }
 
 function commitPendingDelete() {
@@ -66,11 +88,19 @@ function commitPendingDelete() {
   smPending = null;
   clearTimeout(smUndoTimer);
   hideUndoToast();
+  worldRoadsSceneGone(ids);   // an end on a deleted scene opens only once the toast can no longer bring it back
   for (const id of ids) {
     sceneStore.deleteScene(id).catch(() => {});
     if (window.electronAPI) window.electronAPI.deleteVideoFile(id).catch(() => {});
     if (thumbURLs.has(id)) { URL.revokeObjectURL(thumbURLs.get(id)); thumbURLs.delete(id); }
   }
+}
+
+// The undo toast's two buttons, and the delete that is still pending when the window goes.
+function sceneDeleteInit() {
+  document.querySelector('#scene-undo-toast .undo-btn').onclick = undoDelete;
+  document.querySelector('#scene-undo-toast .undo-x').onclick = commitPendingDelete;
+  window.addEventListener('beforeunload', commitPendingDelete);
 }
 
 function showUndoToast(msg) {

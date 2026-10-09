@@ -1,18 +1,16 @@
 'use strict';
 
 // ─── Scene groups ─────────────────────────────────────────────────────────────
-// A group is a NAME a scene carries, never a container. The scene's own `group` field is the only
-// truth, and it rides the record through IndexedDB and the backup zip.
+// A group is a NAME a scene carries, never a container; on the world map it is a place. The scene's own
+// `group` field is the only truth, and it rides the record through IndexedDB and the backup zip.
 //
-// This module keeps the three things that field cannot express: heading order, which are collapsed,
-// and a group made before anything was dragged into it. Those live in localStorage, where losing
-// them costs a collapse state, never a map.
+// This module keeps what that field cannot express: the order the names came in, and a name made before
+// anything was filed under it. That lives in localStorage, where losing it costs an order, never a map.
 
 const SM_GROUPS_KEY  = 'evermist-scene-groups';
 const SM_GROUP_MAXLEN = 40;
 
-let smGroupOrder = [];   // group names, in display order (Ungrouped is not one of them)
-let smGroupShut  = {};   // name → true while collapsed
+let smGroupOrder = [];   // group names, in the order they came
 
 // ── Pure kernel (unit-tested) ────────────────────────────────────────────────
 
@@ -77,19 +75,13 @@ function loadGroupPrefs() {
     if (!raw) return;
     const saved = JSON.parse(raw);
     smGroupOrder = Array.isArray(saved.order) ? saved.order.map(sanitizeGroupName).filter(Boolean) : [];
-    smGroupShut  = (saved.shut && typeof saved.shut === 'object') ? saved.shut : {};
   } catch (e) { /* a corrupt preference is one flat list, not an error */ }
 }
 
 function saveGroupPrefs() {
   try {
-    localStorage.setItem(SM_GROUPS_KEY, JSON.stringify({ order: smGroupOrder, shut: smGroupShut }));
+    localStorage.setItem(SM_GROUPS_KEY, JSON.stringify({ order: smGroupOrder }));
   } catch (e) { /* storage full or blocked; the group field itself is already safe */ }
-}
-
-function sceneGroupSections(scenes) {
-  smGroupOrder = mergeGroupOrder(smGroupOrder, (scenes || []).map(s => sanitizeGroupName(s && s.group)));
-  return buildGroupSections(scenes, smGroupOrder);
 }
 
 function addGroup(name) {
@@ -105,7 +97,6 @@ function renameGroupInOrder(from, to) {
   const a = sanitizeGroupName(from), b = sanitizeGroupName(to);
   if (!a || !b || a === b) return a;
   smGroupOrder = smGroupOrder.map(n => (n === a ? b : n)).filter((n, i, arr) => arr.indexOf(n) === i);
-  if (smGroupShut[a]) { smGroupShut[b] = true; delete smGroupShut[a]; }
   saveGroupPrefs();
   return b;
 }
@@ -114,15 +105,6 @@ function renameGroupInOrder(from, to) {
 function forgetGroup(name) {
   const n = sanitizeGroupName(name);
   smGroupOrder = smGroupOrder.filter(g => g !== n);
-  delete smGroupShut[n];
-  saveGroupPrefs();
-}
-
-function isGroupShut(name) { return !!smGroupShut[sanitizeGroupName(name)]; }
-
-function toggleGroupShut(name) {
-  const n = sanitizeGroupName(name);
-  if (smGroupShut[n]) delete smGroupShut[n]; else smGroupShut[n] = true;
   saveGroupPrefs();
 }
 

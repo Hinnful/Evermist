@@ -121,11 +121,12 @@ const SHAPE_PART_SELECTED_RGB  = '96,160,255';
 
 // Item 102: a wash carries the fog state; reveal alone carries no fill and no soft edge, since it
 // is the one state with nothing left to erode. Read by drawPolyOutline and drawActivePolyPreview.
-const POLY_STATE_RGB = { reveal: '50,220,110', half: '70,190,210', shroud: '150,80,255' };
+const POLY_STATE_RGB = { reveal: '50,220,110', half: '70,190,210', shroud: '150,80,255', place: '255,255,255' };
 const POLY_LOOK = {
   shroud: { fillA: 0.11, edgeA: 0.12, edgeW: 3, lineA: 0.40, lineW: 1.3 },
   half:   { fillA: 0.07, edgeA: 0.10, edgeW: 3, lineA: 0.42, lineW: 1.3 },
   reveal: { fillA: 0,    edgeA: 0,    edgeW: 0, lineA: 0.55, lineW: 1.3 },
+  place:  { fillA: 0,    edgeA: 0,    edgeW: 0, lineA: 1,    lineW: 2 },     // a place on the world map: a white 2px line; the mist is the layer under the cards (worldMist.js)
 };
 // The list the placement mode is NOT showing: wash halves, soft edge drops, line falls to a hair.
 const POLY_LOOK_DIM = { fillMul: 0.5, lineA: 0.12 };
@@ -142,6 +143,17 @@ const HOLE_HATCH_PITCH = 7;
 
 // ─── The selection ── read by a dozen modules, owned by shapeSelect.js ───────
 let selectedPolygonId = null;
+// The level the DM picked on the left panel's crumbs: 'campaign', 'scene', or null to follow the
+// selection (the room if one is selected, else the scene). A new room pick, a deselect or a scene
+// switch puts it back to null (notesPanel.js).
+let notesLevelPick = null;
+// The world map (src/world/worldMap.js): whether it covers the map, and what is picked on it. The
+// notes panel and the map's own keys read both, so they live here.
+let worldMapOpen = false;
+let worldMapSel = { sceneId: null, place: '' };
+// The scenes a Shift-click or a Shift-dragged box picked, the last one being worldMapSel.sceneId. Only
+// valid while that scene is in it: worldMapPicked() (worldMapPick.js) is the one reader.
+let worldMapPick = [];
 // -1 = no vertex selected. Also the room card's radius target: roomPanel.js derives "this corner
 // vs all corners" straight from this, so there is no separate mode flag to keep in step.
 let selectedVertexIndex = -1;

@@ -216,6 +216,7 @@ function cutSelectedShape() {
 // A copy laid over the selection, which then becomes the selection the drag moves.
 // ⚠ NO UNDO OF ITS OWN: the drag pushed one, so one Ctrl+Z takes the copy and its move together.
 function dragCopyOfSelection() {
+  if (worldMapOpen) return false;   // a place is not copied by dragging
   const clip = _clipRead();
   if (!clip) return false;
   if (clip.kind === 'hole') {

@@ -65,7 +65,7 @@ module.exports = async function picturesFeature(rig) {
     " polygons = [{ id: 1, vertices: [{ x: 200, y: 200 }, { x: 700, y: 200 }, { x: 700, y: 600 }," +
     " { x: 200, y: 600 }], mode: 'reveal', cornerRadius: 0, name: 'Parlour' }]; nextPolygonId = 2;" +
     ' selectedPolygonId = 1; rebuildFogFromPolygons(); refreshRoomPanel(); scheduleRender(); 0');
-  await lib.settle(dm, 'dockActivePane() === "room"', 6000);
+  await lib.settle(dm, '!document.getElementById("notes-panel").hidden && document.getElementById("panel-room").offsetParent !== null', 6000);
   const tv = await rig.player();
   await dm.evaluate('sendToPlayer(); 0');
   await tv.waitFor('mapWidth > 0 && fogCoverT === 0', 30000, 'the map to reach the TV');
@@ -115,7 +115,7 @@ module.exports = async function picturesFeature(rig) {
   // RED BY DESIGN: written against the feature, never re-proved
   const scenes0 = await dm.evaluate('allScenes.length');
   await dm.evaluate(`(async () => { const f = await __picFile('letter.png', 600, 800, false);
-    __picDrop(document.getElementById('panel-room'), [f]); return 0; })()`);
+    __picDrop(document.getElementById('notes-panel'), [f]); return 0; })()`);
   await lib.settle(dm, '__picIds().length === 3', 20000);
   rig.check(await dm.evaluate('__picIds().length === 3'), 'a picture dropped on the card was not added');
   await dm.evaluate(`(async () => { const f = await __picFile('stray.png', 600, 800, false);

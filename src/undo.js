@@ -50,6 +50,7 @@ function _undoSnapshot() {
 }
 
 function pushUndo() {
+  if (worldMapOpen) { worldUndoPush(); return; }
   if (!baseFogCanvas) return;
   undoStack.push(_undoSnapshot());
   redoStack = [];

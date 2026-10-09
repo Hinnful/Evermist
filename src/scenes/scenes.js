@@ -70,10 +70,10 @@ function onSwitchSceneError(prevId, isRecovery, err) {
   if (willRecover) {
     setTimeout(() => switchScene(prevId, true).catch(err2 => {
       console.error('Scene recovery also failed:', err2);
-      renderSceneManager();
+      sceneListChanged();
     }), 0);
   } else {
-    renderSceneManager();
+    sceneListChanged();
   }
 }
 
@@ -128,6 +128,8 @@ function doAutoSave() {
       scene.baseFogBlob   = blob;
       scene.gridConfig    = snap.gridConfig;
       scene.fogSettings   = snap.fogSettings;
+      // Never snapshotted: an edit made while the fog encodes would be overwritten with the old text.
+      if (typeof scene.notes !== 'string') scene.notes = '';
       sceneStore.saveScene(scene).catch(console.error).then(resolve, resolve);
     }, 'image/png');
   });

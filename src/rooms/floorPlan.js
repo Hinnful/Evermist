@@ -221,6 +221,15 @@ function offerStoredFloorPlan() {
   showFloorPlanNotice(currentScene.name, derived);
 }
 
+// A scene added on the world map was never open, so its plan waits for the first open: the grid size
+// from the plan, then the offer. The flag clears with the save.
+function takePlanOffer() {
+  if (!currentScene || !currentScene.planOfferPending) return;
+  delete currentScene.planOfferPending;
+  if (applyPlanGridSize() == null) doAutoSave();
+  if (!isPane) offerStoredFloorPlan();
+}
+
 // What the Fog tab button does: draw, with the replacement guard if rooms are there.
 function drawStoredFloorPlan() {
   if (!currentScene) return;

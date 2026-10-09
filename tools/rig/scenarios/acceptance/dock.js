@@ -13,17 +13,18 @@
 //      key is never written.
 //   B. Each pane tab opens its pane alone and lights its tab alone. Its second click shuts the
 //      pane and leaves the rail on screen.
-//   C. The Room tab does nothing while no room is selected.
+//   C. (Retired: the Room tab moved to the left panel, notes-panel.js.)
 //   D. The window tabs open and shut the scene library, the Bestiary and the fight table, and
 //      the rail shows which are open.
 //   E. Dragging the dock's inner edge resizes the pane between a minimum and a maximum, and the
-//      dock never covers the toolbar at this window size.
+//      pane stops short of the toolbar; only its narrowest width may cover it.
 //   F. The dock sits over the map: opening or shutting a pane changes neither the map's canvas
 //      nor the region sent to the Player.
 //   G. The open pane and the width survive a restart, and so does a pane left shut. So does the
 //      fog's Feather, set in Settings.
 //   H. The Player window shows no dock and no rail.
-//   I. The toolbar stays where it is while the pane opens, shuts or is dragged wider or narrower.
+//   I. The toolbar stays where it is, centred on the window, while the pane opens, shuts or is
+//      dragged wider or narrower.
 //   J. The Fog colour, Grid colour and Custom movement pop-outs close with the scene library
 //      window's close button, and each button still closes its pop-out.
 //
@@ -68,17 +69,10 @@ module.exports = async function dockFeature(rig) {
   const railShut = await box('dock-rail');
   rig.check(railShut.width > 0 && railShut.height > 0, 'B: shutting the pane took the rail with it');
 
-  // ── C ──
-  // RED ON: the rail's `off` guard gated off with false && (dock.js) — 2026-10-02
-  await tab('room');
-  rig.check(await pane() === null, 'C: the Room tab opened with no room selected');
-  rig.check(await dm.evaluate('document.getElementById("dock-tab-room").classList.contains("off")'),
-            'C: the Room tab does not look unavailable with no room selected');
-
   // ── D ──
   // RED ON: toggleDropdown() in _dockToggleWindow gated off with false && (dock.js) — 2026-10-02
+  // (the library row is gone with the library; the Bestiary and fight rows keep the check)
   const winOpen = {
-    library: 'smIsOpen()',
     bestiary: 'document.getElementById("bs-modal").style.display !== "none"',
     combat: 'document.getElementById("cb-fight").style.display === "block"',
   };
@@ -115,7 +109,8 @@ module.exports = async function dockFeature(rig) {
   const covers = await dm.evaluate('(() => { const d = document.getElementById("dock").getBoundingClientRect();' +
     ' return ["toolbar-bottom", "context-row"].map(id => document.getElementById(id).getBoundingClientRect())' +
     '.filter(b => b.width > 0).some(b => b.right > d.left); })()');
-  rig.check(!covers, 'E: the dock covers the toolbar at this window size');
+  // The toolbar never moves, so a pane stops short of it, and only the narrowest pane may cover it.
+  rig.check(!covers || wBig === w0, 'E: the dock covers the toolbar although the pane could be narrower');
   rig.check(+(await dm.evaluate('localStorage.getItem("evermist.dockWidth")')) === Math.round(wBig),
             'E: the dragged width was not stored');
 
@@ -127,6 +122,9 @@ module.exports = async function dockFeature(rig) {
   await dragEdge(-2000);
   rig.check(barShut === barWide && barWide === barNarrow,
             'I: the toolbar moved with the pane: shut ' + barShut + ', wide ' + barWide + ', narrow ' + barNarrow);
+  const centred = await dm.evaluate('(() => { const r = document.getElementById("toolbar-bottom").getBoundingClientRect();' +
+    ' return Math.abs((r.left + r.right) / 2 - innerWidth / 2); })()');
+  rig.check(centred < 2, 'I: the toolbar is not centred on the window: off by ' + centred + 'px');
 
   // ── F ──
   // RED ON: body:has(#dock.open) #canvas-container given margin-right: 300px (dock.css) — 2026-10-02
@@ -161,9 +159,10 @@ module.exports = async function dockFeature(rig) {
     { name: 'Custom movement', open: 'document.getElementById("btn-anim-advanced").click()',
       pop: 'anim-advanced-panel', close: 'document.getElementById("cp-adv-close")' },
   ];
-  const ref = await closeLook('sm-close');
+  // RED BY DESIGN: written against the change, never re-proved (the reference was the scene library's close button)
+  const ref = await closeLook('btn-mt-close');
   rig.check(!!ref && ref.w === '28px' && ref.h === '28px',
-            'J: the scene library close button, the pattern to match, did not read 28px: ' + JSON.stringify(ref));
+            'J: the module text close button, the pattern to match, did not read 28px: ' + JSON.stringify(ref));
   for (const p of POPS) {
     await dm.evaluate(p.open + '; 0');
     await lib.settle(dm, 'document.getElementById("' + p.pop + '").hidden === false', 5000);
@@ -172,7 +171,7 @@ module.exports = async function dockFeature(rig) {
     rig.check(!!look && /\bsm-x\b/.test(look.cls) && !!ref && look.svg === ref.svg &&
               Math.abs(parseFloat(look.w) - parseFloat(ref.w)) < 0.1 &&
               Math.abs(parseFloat(look.h) - parseFloat(ref.h)) < 0.1,
-              'J: the ' + p.name + ' pop-out close button is not the scene library window\'s: ' +
+              'J: the ' + p.name + ' pop-out close button is not the module text window\'s: ' +
               JSON.stringify(look) + ' against ' + JSON.stringify(ref));
     await dm.evaluate(p.close + '.click(); 0');
     await lib.settle(dm, 'document.getElementById("' + p.pop + '").hidden === true', 5000);

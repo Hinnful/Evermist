@@ -64,7 +64,7 @@ module.exports = async function boot(rig) {
   await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   const sceneOne = await dm.evaluate('currentScene.id');
   await dm.evaluate('(() => { const s = allScenes.find(x => x.id === "' + sceneOne + '");' +
-                    ' commitSceneName(s, { value: "The Sunken Abbey" }); return 0; })()');
+                    ' renameScene(s.id, "The Sunken Abbey"); return 0; })()');
 
   await dm.evaluate('__rigDrawShroud(300, 300, 700, 700); 0');
   await dm.evaluate('setPlaceMode("effects"); setShape("rect"); __rigDrag(800, 300, 1000, 500);' +
@@ -81,8 +81,8 @@ module.exports = async function boot(rig) {
   await lib.openMap(rig, { w: MAP2_W, h: MAP2_H });
   const sceneTwo = await dm.evaluate('currentScene.id');
   await dm.evaluate('(() => { const s = allScenes.find(x => x.id === "' + sceneTwo + '");' +
-                    ' commitSceneName(s, { value: "The Drowned Stair" }); return 0; })()');
-  await dm.evaluate('smAssignGroup(' + JSON.stringify([sceneTwo]) + ', "Chapter One"); 0');
+                    ' renameScene(s.id, "The Drowned Stair"); return 0; })()');
+  await dm.evaluate('worldSceneSet(' + JSON.stringify(sceneTwo) + ', { group: "Chapter One" }); 0');
 
   // Back to the first, so IT is the scene the app has to reopen.
   await dm.evaluate('switchScene("' + sceneOne + '"); 0', 120000);
@@ -213,29 +213,18 @@ module.exports = async function boot(rig) {
       names: allScenes.map(s => s.name),
       groups: allScenes.map(s => s.group || null),
       onDisk: stored.length,
-      // A named group's heading is an <input>, so its name is in .value. textContent there is
-      // the count span alone, and every heading reads as a number.
-      headings: Array.from(document.querySelectorAll('#sm-list .sm-group-name'))
-        .map(h => (h.value != null ? h.value : h.textContent).trim()),
-      cards: document.querySelectorAll('#sm-list .sm-card').length,
     };
   })()`, 30000);
   rig.note('the library after the restart: ' + JSON.stringify(library));
   rig.check(library.count === 2 && library.onDisk === 2,
             'the library came back with ' + library.count + ' scenes in memory and ' +
             library.onDisk + ' on disk, against the 2 that were left there');
-  rig.check(library.cards === 2,
-            'the library holds 2 scenes and painted ' + library.cards +
-            ' cards, so a map the DM saved is not reachable after a restart');
   rig.check(JSON.stringify(library.order) === JSON.stringify(before.order),
             'the library came back in a different order from the one it was left in: ' +
             JSON.stringify(library.names));
   rig.check(library.groups.filter(g => g === 'Chapter One').length === 1,
             'the group a scene was filed under did not survive the restart, so a filed library ' +
             'comes back flat: ' + JSON.stringify(library.groups));
-  rig.check(library.headings.indexOf('Chapter One') !== -1,
-            'the library painted no "Chapter One" heading after the restart, so the group is in ' +
-            'the record and not on screen: ' + JSON.stringify(library.headings));
 
   // ── E. The module text outlives the app ──────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
@@ -306,7 +295,6 @@ module.exports = async function boot(rig) {
   const orphan = await dm.evaluate(`({
     scene: currentScene ? currentScene.id : null,
     count: allScenes.length,
-    cards: document.querySelectorAll('#sm-list .sm-card').length,
     // The anchor is built by the first dialog, so a clean startup has none at all - which
     // is the answer this criterion wants.
     dialog: (() => { const a = document.getElementById('cd-anchor');
@@ -315,8 +303,8 @@ module.exports = async function boot(rig) {
   rig.note('after a restart onto a scene that is gone: ' + JSON.stringify(orphan));
   rig.check(orphan.scene === null,
             'the app claims to have opened "' + orphan.scene + '", which is not in the library');
-  rig.check(orphan.count === 2 && orphan.cards === 2,
-            'the library did not paint after the remembered scene turned out to be missing, so ' +
+  rig.check(orphan.count === 2,
+            'the library did not load after the remembered scene turned out to be missing, so ' +
             'the DM comes up with no way to pick a map at all: ' + JSON.stringify(orphan));
   rig.check(orphan.dialog !== 'flex',
             'a remembered scene that is simply gone put a dialog in front of the DM on startup');

@@ -39,6 +39,8 @@ const PANE_CONTROLS = {
   'pane-door-size':       m => _paneField(m.id, m.value, 'change'),
 
   'pane-room-edit':   m => paneApplyRoomEdit(m),
+  'pane-scene-notes': m => paneApplySceneNotes(m),
+  'pane-scene-place': m => paneApplyScenePlace(m),
   'pane-reveal-all':  () => revealAllRooms(),
   'pane-shroud-all':  () => shroudAllRooms(),
   'pane-floorplan':   () => drawStoredFloorPlan(),
@@ -115,10 +117,10 @@ function applyPaneAnimParams(m) {
 function initPane() {
   reportPaneClicks();
   if (parent !== window) parent.postMessage({ type: 'pane-hello', pane: paneId }, '*');
-  // A column opened empty has no scene menu of its own, so the card cannot tell the DM to use one.
+  // A column opened empty is filled from the world map, which M opens from inside the column too.
   if (!new URLSearchParams(location.search).get('scene')) {
     const line = landing && landing.querySelector('p');
-    if (line) line.innerHTML = t('Pick a map from <strong>Scenes</strong>');
+    if (line) line.innerHTML = t('Double-click a scene on the <strong>world map</strong> (M)');
   }
   window.addEventListener('message', e => {
     const msg = e.data;

@@ -7,13 +7,11 @@
 // panel on a tab it does not have.
 const DOCK_PANE_KEY = 'evermist.dockPane';
 const DOCK_WIDTH_KEY = 'evermist.dockWidth';
-const DOCK_PANES = ['scene', 'room', 'music', 'sounds', 'settings'];
+const DOCK_PANES = ['scene', 'music', 'sounds', 'settings'];
 const DOCK_MIN_W = 230, DOCK_MAX_W = 420;   // the pane, in the dock's pre-zoom px
 const DOCK_TOOLBAR_GAP = 16;                // screen px kept clear either side of the toolbar
 
 let _dockPane = null;        // the open pane, or null with the rail alone
-let _dockBeforeRoom = null;  // what the Room tab replaced, for a deselect to go back to
-let _dockRoomPid = null;
 let _dockWantW = DOCK_MIN_W;
 
 const _dockEl = () => document.getElementById('dock');
@@ -23,7 +21,6 @@ function initDock() {
   if (!dock) return;
   dock.addEventListener('mousedown', e => e.stopPropagation());
   dock.querySelectorAll('[data-dock-pane]').forEach(b => b.addEventListener('click', () => {
-    if (b.classList.contains('off')) return;
     dockOpen(_dockPane === b.dataset.dockPane ? null : b.dataset.dockPane);
   }));
   dock.querySelectorAll('[data-dock-win]').forEach(b => b.addEventListener('click', () => {
@@ -39,7 +36,7 @@ function initDock() {
 
   let saved = 'scene';
   try { const v = localStorage.getItem(DOCK_PANE_KEY); if (v !== null) saved = v; } catch (_) {}
-  dockOpen(DOCK_PANES.includes(saved) && saved !== 'room' ? saved : null);
+  dockOpen(DOCK_PANES.includes(saved) ? saved : null);
 }
 
 function dockActivePane() { return _dockPane; }
@@ -48,52 +45,37 @@ function dockActivePane() { return _dockPane; }
 function dockOpen(name) {
   const dock = _dockEl();
   if (!dock) return;
-  if (name === 'room' && _dockPane !== 'room') _dockBeforeRoom = _dockPane;
   _dockPane = name;
   dockClosePop();
   dock.classList.toggle('open', !!name);
   dock.querySelectorAll('.dk-sec').forEach(s => { s.hidden = s.dataset.pane !== name; });
-  const keep = name === 'room' ? _dockBeforeRoom : name;
-  try { localStorage.setItem(DOCK_PANE_KEY, keep || ''); } catch (_) {}
+  try { localStorage.setItem(DOCK_PANE_KEY, name || ''); } catch (_) {}
   dockRefreshRail();
   dockLayout();
   document.dispatchEvent(new CustomEvent('dockpane', { detail: name }));
 }
 
-// Called on every repaint with the selected room's id, or null. Only a CHANGE moves the pane, so
-// a DM who shut the dock on a room is not handed it back on the next frame.
-function dockSyncRoom(pid) {
-  if (pid === _dockRoomPid) return;
-  _dockRoomPid = pid;
-  if (pid != null) dockOpen('room');
-  else if (_dockPane === 'room') dockOpen(_dockBeforeRoom);
-  else dockRefreshRail();
-}
-
 function _dockWindowOpen(name) {
   const shown = id => { const el = document.getElementById(id); return !!el && el.style.display !== 'none' && el.style.display !== ''; };
-  if (name === 'library') return typeof smIsOpen === 'function' && smIsOpen();
+  if (name === 'world') return worldMapOpen;
   if (name === 'bestiary') { const m = document.getElementById('bs-modal'); return !!m && m.style.display !== 'none'; }
   if (name === 'combat') return shown('cb-fight');
   return false;
 }
 
-// Bestiary, the fight table and Help wire their own rail buttons; the library is the dock's.
+// Bestiary, the fight table and Help wire their own rail buttons; the world map is the dock's.
 function _dockToggleWindow(name) {
-  if (name === 'library') toggleDropdown();
+  if (name === 'world') worldMapToggle();
 }
 
 function dockRefreshRail() {
   const dock = _dockEl();
   if (!dock) return;
   dock.querySelectorAll('[data-dock-pane]').forEach(b => {
-    const off = b.dataset.dockPane === 'room' && _dockRoomPid == null;
     b.classList.toggle('active', b.dataset.dockPane === _dockPane);
-    b.classList.toggle('off', off);
-    if (b.dataset.dockPane === 'room') b.title = off ? t('Room · click one on the map') : t('Room');
   });
-  const lib = document.getElementById('dock-tab-library');
-  if (lib) lib.classList.toggle('active', _dockWindowOpen('library'));
+  const world = document.getElementById('btn-world');
+  if (world) world.classList.toggle('active', worldMapOpen);
   const fight = document.getElementById('btn-combat');
   if (fight) fight.classList.toggle('win', _dockWindowOpen('combat'));
 }
@@ -174,6 +156,28 @@ function dockHoldForCalibration(on) {
 }
 function _dockForgetCal() { _dockBeforeCal = null; }
 
+// ─── The world map ────────────────────────────────────────────────────────────
+// The TV never changes while it is open, so Scene control and the fog that every scene shares go
+// dark; the pane comes back on closing unless a tab was picked meanwhile.
+let _dockBeforeWorld = null;
+
+function dockHoldForWorld(on) {
+  const tab = document.getElementById('dock-tab-scene');
+  const fog = document.getElementById('fog-half-alpha-num');
+  if (tab) tab.disabled = on;
+  if (fog) fog.closest('.cp-group').inert = on;
+  if (on) {
+    _dockBeforeWorld = _dockPane === 'scene' ? 'scene' : null;
+    if (_dockBeforeWorld) dockOpen(null);
+    document.addEventListener('dockpane', _dockForgetWorld, { once: true });
+  } else {
+    document.removeEventListener('dockpane', _dockForgetWorld);
+    if (_dockBeforeWorld && !_dockPane) dockOpen(_dockBeforeWorld);
+    _dockBeforeWorld = null;
+  }
+}
+function _dockForgetWorld() { _dockBeforeWorld = null; }
+
 // The dock's zoom as the browser applied it. ⚠ OFF A BORDERLESS BUTTON, never the dock: a 1px border is snapped, not zoomed, and skews the
 // ratio by a different amount with the pane open, which nudged the toolbar a pixel.
 function _dockZoom(dock) {
@@ -187,25 +191,11 @@ function _dockBarW() {
     return el ? el.getBoundingClientRect().width : 0;
   }));
 }
-function _dockMinimapRight() {
-  const mm = document.getElementById('minimap-panel');
-  return mm ? mm.getBoundingClientRect().right : 0;
-}
-
-// ⚠ THE TOOLBAR'S PLACE DEPENDS ON THE WINDOW ALONE, never on the pane: centred between the
-// minimap and the rail, and moved left only as far as the narrowest pane needs. The pane then
-// stops at the toolbar, so opening, shutting or dragging it never moves the bar.
-function _dockToolbarBox(dock) {
-  const W = window.innerWidth, rail = dock.querySelector('.dk-rail').getBoundingClientRect().width;
-  const bar = _dockBarW(), minPane = DOCK_MIN_W * _dockZoom(dock);
-  const left = Math.max(0, Math.min(_dockMinimapRight(), W - rail - minPane - bar - 2 * DOCK_TOOLBAR_GAP));
-  const centre = Math.min((left + W - rail) / 2, W - rail - minPane - DOCK_TOOLBAR_GAP - bar / 2);
-  return { left, right: W - (2 * centre - left), barRight: centre + bar / 2, rail };
-}
-
+// ⚠ THE TOOLBAR IS CENTRED ON THE WINDOW, ALWAYS. No pane, panel or minimap moves it; the pane
+// stops short of it instead, and only the narrowest width a pane can take ever covers it.
 function _dockMaxW(dock) {
-  const box = _dockToolbarBox(dock);
-  const room = (window.innerWidth - box.rail - box.barRight - DOCK_TOOLBAR_GAP) / _dockZoom(dock);
+  const rail = dock.querySelector('.dk-rail').getBoundingClientRect().width;
+  const room = (window.innerWidth / 2 - _dockBarW() / 2 - DOCK_TOOLBAR_GAP - rail) / _dockZoom(dock);
   return Math.max(DOCK_MIN_W, Math.min(DOCK_MAX_W, room));
 }
 
@@ -216,9 +206,6 @@ function dockLayout() {
   if (!dock) return;
   const w = Math.max(DOCK_MIN_W, Math.min(_dockMaxW(dock), _dockWantW));
   dock.style.setProperty('--dock-pane-w', w + 'px');
-  const box = _dockToolbarBox(dock);
-  document.documentElement.style.setProperty('--tb-left', box.left + 'px');
-  document.documentElement.style.setProperty('--tb-right', box.right + 'px');
 }
 
 function _dockInitEdge(edge) {

@@ -127,13 +127,17 @@ function _rpSyncEntryFields(poly) {
   if (descEl) {
     const d = poly.desc == null ? '' : poly.desc;
     descEl.value = d; descEl.dataset.orig = d;
+    _rpFitNotes();   // a value set here fires no input event, so the field would keep its old height
   }
   _rpFieldPid = poly.id;
   drawCursor(lastScreenX, lastScreenY);   // repaints the map label under its new name
 }
 
-// Commit on blur, revert on Escape, and swallow keydown so the global map shortcuts don't fire
+// Commit on blur, and swallow keydown so the global map shortcuts don't fire
 // while typing — without that, writing a description switches tool and can delete the room.
+//
+// Escape leaves the field. A name (opts.escapeReverts) goes back to what it was; notes keep what was
+// typed, because losing a paragraph to one key is worse than a name typo.
 //
 // opts.onKeyDown gets first refusal and returns true when it consumed the key, which is how the
 // dropdown claims Enter and Escape on the same element.
@@ -146,7 +150,11 @@ function _rpWireField(el, opts) {
     e.stopPropagation();
     if (opts.onKeyDown && opts.onKeyDown(e)) return;
     if (e.key === 'Enter' && opts.enterCommits) { e.preventDefault(); el.blur(); }
-    else if (e.key === 'Escape') { el.value = el.dataset.orig || ''; el.blur(); }
+    else if (e.key === 'Escape') {
+      if (opts.escapeReverts) el.value = el.dataset.orig || '';
+      commit();   // ⚠ not left to blur, which a window without OS focus never fires
+      el.blur();
+    }
   });
 }
 
@@ -157,7 +165,7 @@ function initRoomPanel() {
 
   // Enter commits the name (one line); in the description it inserts a newline.
   _rpWireField(_rpEl('rp-name'), {
-    commit: _rpCommitName, enterCommits: true,
+    commit: _rpCommitName, enterCommits: true, escapeReverts: true,
     // The dropdown claims ↑/↓ and, with a row highlighted, Enter and Escape.
     onKeyDown: typeof mtNameKeyDown === 'function' ? mtNameKeyDown : null,
   });
@@ -167,8 +175,6 @@ function initRoomPanel() {
   // Last of the field wiring, so the dropdown is appended after the fields exist.
   if (typeof initModuleText === 'function') initModuleText(_rpEl('rp-name'));
 
-  initRoomPictures(panel);
-  document.addEventListener('dockpane', e => { if (e.detail === 'room') _rpFitNotes(); });
 
   _rpEl('rp-delete').onclick = () => {
     if (paneRoomEdit('delete')) return;
@@ -200,6 +206,7 @@ function refreshRoomPanel() {
   if (typeof gridCalArmed !== 'undefined' && gridCalArmed) {
     if (_rpFieldPid != null) _rpCommitFields();
     if (typeof mtCloseDropdown === 'function') mtCloseDropdown();
+    notesPanelSync(null);
     return;
   }
 
@@ -207,9 +214,8 @@ function refreshRoomPanel() {
   const linked = paneSelectedRoom();
   const room = linked || (poly && !poly.material && !poly.light ? poly : null);
   if (isPane) paneReportRoom(room);
+  notesPanelSync(room);
   if (roomTabKey(room) !== _rpTrioPid) { _rpTrioPid = roomTabKey(room); updateContextPanels(); }
-
-  dockSyncRoom(roomTabKey(room));
 
   // ⚠ AN EFFECT OR A LIGHT GETS NO TAB: it has no name, notes or module text. It leaves by the SAME path as
   // a deselect, or the tab can go without committing what was typed into a real room.

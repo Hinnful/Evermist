@@ -15,9 +15,9 @@ function cornerMaxRadius(verts, i) {
 }
 
 // `inset` keeps the circle off the corner's own dot while the fillet centre is nearer than that.
-function cornerHandle(verts, handles, offset, i, r, inset) {
+function cornerHandle(verts, handles, offset, i, r, inset, open) {
   const n = verts.length;
-  if (n < 3) return null;
+  if (n < 3 || (open && (i === 0 || i === n - 1))) return null;   // an open line's ends have no corner
   const wrap = k => ((k % n) + n) % n;
   const at = k => verts[wrap(k)];
   const curvedWall = k => edgeIsCurved(handles, offset + wrap(k), offset + wrap(k + 1));
@@ -37,7 +37,7 @@ function cornerHandle(verts, handles, offset, i, r, inset) {
   const sinH = probe.radius / toCentre;
   // ⚠ A REFLEX CORNER'S FILLET CENTRE IS OUTSIDE THE SHAPE: its circle sits inside, dragged the other way.
   const cross = (v.x - at(i - 1).x) * (at(i + 1).y - v.y) - (v.y - at(i - 1).y) * (at(i + 1).x - v.x);
-  if (Math.sign(cross) !== polygonWindingSign(verts)) {
+  if (!open && Math.sign(cross) !== polygonWindingSign(verts)) {
     return { x: v.x - dir.x * inset, y: v.y - dir.y * inset, dir: { x: -dir.x, y: -dir.y }, sinH, maxR };
   }
   const f = r > 0 ? computeFillet(at, curvedWall, wallCubic, () => r, i) : null;

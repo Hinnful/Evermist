@@ -39,8 +39,9 @@ async function dataURLToArrayBuffer(dataURL) {
 
 // ── Export logic ──────────────────────────────────────────────────────────────
 
-// Scene SELECTION is the scene dropdown's job: it passes the checked ids straight in.
-async function doExport(selectedIds) {
+// Scene SELECTION is the caller's job: it passes the ids straight in. `opts.partial` keeps only the places,
+// roads and notes that belong to those scenes (worldPickPlan.js), and leaves the campaign note out.
+async function doExport(selectedIds, opts) {
   if (!window.electronAPI) return;
 
   const now = new Date();
@@ -99,6 +100,7 @@ async function doExport(selectedIds) {
           id:            scene.id,
           name:          scene.name,
           group:         scene.group || '',
+          worldPos:      scene.worldPos,
           mapType:       scene.mapType || 'image',
           mapWidth:      scene.mapWidth,
           mapHeight:     scene.mapHeight,
@@ -106,6 +108,7 @@ async function doExport(selectedIds) {
           mapExt,
           polygons:      scene.polygons || [],
           nextPolygonId: scene.nextPolygonId || 1,
+          notes:         scene.notes,
           pictures:      picList,
           effects:       scene.effects || [],
           nextEffectId:  scene.nextEffectId || 1,
@@ -133,7 +136,14 @@ async function doExport(selectedIds) {
     const moduleTextJson = typeof mtBackupPayload === 'function' ? mtBackupPayload() : null;
 
     const combatJson = typeof cbBackupPayload === 'function' ? cbBackupPayload() : null;
-    const wrote = await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson, combatJson);
+    const sub = opts && opts.partial
+      ? wpSubset(selectedIds, allScenes.map(s => ({ id: s.id, group: sanitizeGroupName(s.group) })), worldPlacesExport(), worldRoadsExport(), notesPlacesAll(), notesRoadsAll())
+      : null;
+    const campaignJson = sub
+      ? notesCampaignPayload('', sub.placeNotes, sub.shapes, sub.roads, sub.roadNotes)
+      : notesCampaignPayload(notesCampaignGet(), notesPlacesAll(), worldPlacesExport(), worldRoadsExport(), notesRoadsAll());
+    const worldBg = opts && opts.partial ? null : await worldBackgroundBackupPayload();
+    const wrote = await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson, combatJson, campaignJson, worldBg);
     hideMapProgress();
     if (wrote && wrote.cancelled) return;
     // ⚠ REPORTED, NEVER DROPPED: the record still exports, so the backup looks complete.
@@ -173,6 +183,45 @@ async function adoptCombatFromZip(zipPath) {
   if (!json || typeof cbMergePayload !== 'function') return;
   const st = cbMergePayload(json);
   if (!st.ok) messageDialog({ title: 'Fight table not restored', message: t('The scenes came back, but the fight table did not.') + '\n\n' + st.error });
+}
+
+// The campaign's notes never replace the DM's own: they join below a separator, once. Anything that
+// could not come back is named in one dialog with the scenes whose notes were dropped.
+async function adoptCampaignNotesFromZip(zipPath, droppedScenes, shift, sceneMap) {
+  let raw = null, readFailed = false;
+  try {
+    raw = await window.electronAPI.readBackupCampaign(zipPath);
+  } catch (err) {
+    console.error('Reading the campaign notes from backup failed:', err);
+    readFailed = true;
+  }
+  const parsed = notesParseCampaign(raw);
+  const merged = notesMergeCampaign(notesCampaignGet(), parsed.text);
+  if (merged.text !== notesCampaignGet()) notesCampaignSet(merged.text);
+  const places = notesParsePlaces(raw);
+  const placesMerged = notesMergePlaces(notesPlacesAll(), places.places);
+  notesPlacesWrite(placesMerged.map);
+  // The places move with the restored scenes, and a place the DM already has keeps its own.
+  const incoming = wmParseShapes(raw);
+  const adopted = worldPlacesMerge(incoming.shapes, shift ? shift.dx : 0, shift ? shift.dy : 0);
+  // The roads follow the scenes and places that came back as the backup's own copies: a scene is now under
+  // a new id, and a place the DM already had under that name is not the backup's.
+  const roads = wrParseRoads(raw), roadNotes = notesParseRoadNotes(raw);
+  const roadKeys = worldRoadsMerge(roads.roads, sceneMap || Object.create(null), adopted, shift ? shift.dx : 0, shift ? shift.dy : 0);
+  notesRoadsWrite(Object.assign(notesPlacesNew(), notesRoadsAll(), notesRekey(roadNotes.notes, roadKeys)));
+  if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
+
+  const nl = String.fromCharCode(10);
+  const parts = [];
+  if (droppedScenes.length) parts.push(t('These scenes had notes Evermist could not read, so they came back without them:') + nl + droppedScenes.join(nl));
+  if (parsed.broken || readFailed) parts.push(t('The campaign notes in this backup could not be read, so yours stay as they are.'));
+  else if (merged.tooLong) parts.push(t('The campaign notes in this backup would not fit beside yours, so yours stay as they are.'));
+  if (incoming.broken) parts.push(t('Some place outlines in this backup could not be read, so those places come back as rectangles.'));
+  if (roads.broken) parts.push(t('Some roads in this backup could not be read, so they came back without them.'));
+  if (roadNotes.broken) parts.push(t('Some road notes in this backup could not be read, so those roads came back without them.'));
+  if (places.broken) parts.push(t('Some place notes in this backup could not be read, so those places came back without them.'));
+  if (placesMerged.tooLong.length) parts.push(t('These places had notes that would not fit beside yours, so yours stay as they are:') + nl + placesMerged.tooLong.join(nl));
+  if (parts.length) messageDialog({ title: 'Some notes were not restored', message: parts.join(nl + nl) });
 }
 
 // Adopt the campaign's module text out of a restored zip. ⚠ Runs only AFTER every scene is saved
@@ -221,6 +270,11 @@ async function adoptModuleTextFromZip(zipPath) {
   });
 }
 
+function _restoredPos(raw, shift) {
+  const p = wmCleanPos(raw);
+  return p ? { x: p.x + shift.dx, y: p.y + shift.dy } : undefined;
+}
+
 function _restoredPictures(list, buffers) {
   const out = {};
   for (const p of Array.isArray(list) ? list : []) {
@@ -243,7 +297,7 @@ async function restoreFromZipPath(zipPath) {
   });
 
   setMapProgressRun('', zipPath.split(/[\\/]/).pop());
-  const job = mapJobStart({ title: 'Stop restoring?', message: 'The library goes back to how it was before the restore.' },
+  const job = mapJobStart({ title: 'Stop restoring?', message: 'Your scenes go back to how they were before the restore.' },
     () => window.electronAPI.cancelBackup());
   // A stopped restore leaves nothing: every scene saved so far and every map file written.
   let assignments = [];
@@ -303,11 +357,17 @@ async function restoreFromZipPath(zipPath) {
     const extractMap = {};
     extracted.forEach(e => { extractMap[e.newId] = e; });
     const noMap = [];   // names, which is what the DM is told at the end
+    const noNotes = [];   // scenes whose notes were not a string
 
     showMapProgress('Saving scenes…');
     updateMapProgress(0);
 
     const newSceneMeta = [];
+    let restoreShift = { dx: 0, dy: 0 };
+    // ⚠ A restore into a library with a layout lands beside it as one block, never on top of it.
+    const shift = wmBesideOffset(existingScenes.filter(s => wmCleanPos(s.worldPos)).map(s => s.worldPos),
+                                 manifest.map(e => wmCleanPos(e && e.worldPos)).filter(Boolean));
+    restoreShift = shift;
 
     for (let i = 0; i < assignments.length; i++) {
       if (job.stopped) return undo();
@@ -328,11 +388,15 @@ async function restoreFromZipPath(zipPath) {
         mapBlob = new Blob([ex.mapBuffer], { type: entry.mapMimeType || 'image/jpeg' });
       }
 
+      const notes = notesSanitize(entry.notes);
+      if (notes.dropped) noNotes.push(resolvedName);
+
       const scene = {
         id:            newId,
         name:          resolvedName,
         // Absent in every zip written before groups existed, which restores as Ungrouped.
         group:         entry.group || '',
+        worldPos:      _restoredPos(entry.worldPos, shift),
         mapType:       entry.mapType  || 'image',
         mapWidth:      entry.mapWidth  || 0,
         mapHeight:     entry.mapHeight || 0,
@@ -340,6 +404,7 @@ async function restoreFromZipPath(zipPath) {
         mapPath,
         polygons:      entry.polygons      || [],
         nextPolygonId: entry.nextPolygonId || 1,
+        notes:         notes.text,
         // Absent in every zip written before pictures, and a room's refs then point at nothing.
         pictureBlobs:  _restoredPictures(entry.pictures, ex.pictures),
         // Absent in every zip written before effects existed, which restores as a scene with
@@ -362,7 +427,7 @@ async function restoreFromZipPath(zipPath) {
 
       await sceneStore.saveScene(scene);
       saved.push(newId);
-      newSceneMeta.push({ id: newId, name: resolvedName, group: scene.group, thumbnail: thumbBlob, sortOrder, createdAt: scene.createdAt, mapType: scene.mapType });
+      newSceneMeta.push({ id: newId, name: resolvedName, group: scene.group, thumbnail: thumbBlob, sortOrder, createdAt: scene.createdAt, mapType: scene.mapType, worldPos: scene.worldPos });
       updateMapProgress(Math.round(((i + 1) / assignments.length) * 100));
     }
 
@@ -372,7 +437,7 @@ async function restoreFromZipPath(zipPath) {
       allScenes.push(...newSceneMeta);
       allScenes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     }
-    if (typeof renderSceneManager === 'function') renderSceneManager();
+    sceneListChanged();
 
     hideMapProgress();
 
@@ -386,6 +451,10 @@ async function restoreFromZipPath(zipPath) {
     // this can ask a question or report a storage failure without either being in the way.
     await adoptModuleTextFromZip(zipPath);
     await adoptCombatFromZip(zipPath);
+    const sceneMap = Object.create(null);
+    for (const a of assignments) sceneMap[a.originalId] = a.newId;
+    await adoptCampaignNotesFromZip(zipPath, noNotes, restoreShift, sceneMap);
+    await worldBackgroundAdopt(zipPath, restoreShift);
   } catch (err) {
     if (job.stopped) return undo();
     hideMapProgress();

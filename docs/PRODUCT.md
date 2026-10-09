@@ -279,6 +279,13 @@ remote is play too but stays out of the gate, because its size is unknown. 5.0.0
 from running sessions to running a campaign: the world map, notes beyond rooms, and an MCP server.
 Polish and prep items ship as 3.x patches and never hold a major version up.
 
+### 4.0.0 also carries the world map · `SETTLED` (2026-10-09)
+Supersedes the 5.0.0 half of the entry above. The world map replaced the Scene library, so it
+cannot wait for 5.0.0: without it there is no way to pick a scene. 4.0.0 ships play at the
+table plus the world map, its places and roads, and the left notes panel with campaign, place
+and scene notes. 5.0.0 keeps what is left of campaigns: the party flag, the gallery and the MCP
+server.
+
 ### Size releases conservatively · `SETTLED`
 2.0.0 skipped 1.8 and 1.9 and landed on a docs-only commit, because a release tag has to match
 `package.json` and that release published five versions together. A major version marking a
@@ -347,10 +354,15 @@ this file, because a reader can disagree with the reasoning and still want the a
 no roadmap, since a promised feature goes stale on a date nobody set. The boundary block names
 only what stays out for good: tokens and dice, and anything on the TV besides the map.
 
+### The README's clips are animated WebP of real animated maps · `SETTLED` (2026-10-09)
+Every clip is recorded off-screen by the rig on a DM's own animated map, and encoded as animated WebP at 30 frames a
+second: a GIF of the drifting fog is three times the size at half the frame rate and a fraction of the colours. Because
+every clip shows a moving map, no section explains that animated maps are supported. A clip that shows the TV puts the
+TV first, with the laptop as a small window or left out, since two full screens side by side read as one busy picture.
+Room and place names in a clip are real names, never the app's numbered defaults.
+
 ### README conventions that look like mistakes · `SETTLED`
-Three things a later edit would plausibly "fix" and should not:
+Two things a later edit would plausibly "fix" and should not:
 - **"Room" is the only word for a drawn area**, never "shape" or "outline"; `Draw Rooms` is the
   button label, so docs and UI have to agree.
-- **`assets/dm-window.png` shows no visible fog, deliberately.** DM fog sits at low opacity by
-  design and the Player fog is already carried by `reveal.gif`.
 - **No image splits a paragraph**, and paragraphs carry no trailing full stop.
