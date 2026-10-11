@@ -1,37 +1,50 @@
 'use strict';
-// effectMaterials.js — what an effect is made of: the colour ramp its fire burns through, its
-// warmth, and the swatch the picker shows. One record per material.
+// effectMaterials.js — what an effect is made of: the colour ramp it burns through, its warmth,
+// the grid colour inside it, and the look its shader passes draw. One record per material.
 
-// A material is a warmth (0 = red ember, 1 = white-hot), the swatch colours the picker shows, and
-// the six-stop ramp its fire burns through: coolest first, then three rising stops, then the two
-// the hottest core mixes between under `warm`.
+// A material is a warmth (0 = red ember, 1 = white-hot), the six-stop ramp its border burns
+// through (coolest first, then three rising stops, then the two the hottest core mixes between
+// under `warm`), the grid relight colour, and `look`: the uniforms effectShader.js reads.
 //
-// ⚠ A NEW MATERIAL IS A RECORD HERE AND NOTHING ELSE. The shader reads every colour from `ramp`,
-// so the entry alone decides what its fire looks like. `glow` and `core` reach the swatch only.
+// ⚠ EVERY NUMBER HERE IS A LOOK THE DM PICKED in `.claude/private/design/item-46/acid-lab.html`.
+// Change one only on a fresh look call. A term a material does not use is 0, which skips it.
 const EFFECT_MATERIALS = {
   fire: {
-    warm: 0.30, glow: 0xff5a1e, core: 0xffe0a0,
-    ramp: [[0.05, 0.01, 0.0], [0.55, 0.06, 0.01], [1.0, 0.36, 0.05],
-           [1.0, 0.72, 0.22], [1.0, 0.85, 0.5], [1.0, 0.97, 0.85]],
+    warm: 0.30, grid: '#ffa040',
+    ramp: [[0.06, 0.0, 0.0], [0.62, 0.05, 0.0], [1.0, 0.30, 0.03],
+           [1.0, 0.64, 0.14], [1.0, 0.84, 0.42], [1.0, 0.97, 0.85]],
+    look: { heightMul: 0.80, diss: 0.60, smoke: 0.35, haze: 0, spark: 0,
+            sparkCol: [1.0, 0.66, 0.28], smokeCol: [0.035, 0.03, 0.03],
+            steam: 0.95, steamCol: [0.055, 0.05, 0.045], liquid: 0, bub: 0, bubSize: 0,
+            toon: 0.8, core: 0.45, spill: 0.35, flicker: 0.6, scorch: 0.6, drift: 1.0 },
+  },
+  acid: {
+    warm: 0.45, grid: '#d8f040',
+    ramp: [[0.04, 0.03, 0.0], [0.25, 0.30, 0.02], [0.60, 0.80, 0.05],
+           [0.85, 1.0, 0.2], [0.95, 1.0, 0.5], [1.0, 1.0, 0.85]],
+    look: { heightMul: 0.28, diss: 0.30, smoke: 0.20, haze: 0, spark: 0.45,
+            sparkCol: [0.94, 1.0, 0.5], smokeCol: [0.05, 0.05, 0.0],
+            steam: 0.95, steamCol: [0.75, 0.8, 0.45], liquid: 0.28, bub: 0.35, bubSize: 0.55,
+            toon: 0, core: 0, spill: 0, flicker: 0, scorch: 0, drift: 0 },
   },
 };
 
-// The ramp as the shader wants it: six vec3s end to end. An unknown material burns as fire.
+// The record for a stored name. An unknown one, from a newer release, burns as fire.
+function effectMaterial(name) { return EFFECT_MATERIALS[name] || EFFECT_MATERIALS.fire; }
+
+// The ramp as the shader wants it: six vec3s end to end.
 function effectRamp(name) {
-  const m = EFFECT_MATERIALS[name] || EFFECT_MATERIALS.fire;
+  const stops = effectMaterial(name).ramp;
   const out = new Float32Array(18);
-  const stops = m.ramp || EFFECT_MATERIALS.fire.ramp;
   for (let i = 0; i < 6; i++) {
     out[i * 3] = stops[i][0]; out[i * 3 + 1] = stops[i][1]; out[i * 3 + 2] = stops[i][2];
   }
   return out;
 }
 
-// The settled look — the "Cinder seam" border plus the interior and atmosphere. ⚠ The app's one
-// look, with no UI that edits it. Change a value only on a fresh look call from the DM.
-// The grid relight is separate, in grid.js, because the map grid is a canvas above this layer.
-const FX_LOOK = { heightMul: 0.50, speed: 1.00, diss: 0.55, fill: 0.20,
-                  spark: 1.00, smoke: 0.40, haze: 0.70, gridGlow: 0.60 };
+// What every material shares. The grid relight is separate, in grid.js, because the map grid is
+// a canvas above this layer.
+const FX_LOOK = { speed: 1.00, fill: 0.20, gridGlow: 0.60 };
 
 // The editing outline for a selected or previewed effect, separate from the burning render. A
 // different colour family from POLY_EDGE_COLORS, so an effect never reads as a fourth fog state.

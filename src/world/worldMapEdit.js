@@ -89,6 +89,9 @@ function _wmDown(e) {
   if (d.kind === 'none' && e.shiftKey) { worldMapMarqueeStart(d); _wmDrag = d; return; }
   if (d.kind === 'none') { _wmGroundDown(e, d); return; }
   if (d.kind === 'road') { _wmRoadDown(e, d); return; }
+  // An open place's corners, walls and corner circles win over a card printed on top of them.
+  if (d.kind === 'card' && selectedPolygonId != null && worldPlaceNameOfId(selectedPolygonId) &&
+      _wmWithCamera(() => selectHandleHit(_wmToWorld(e.clientX, e.clientY)))) { _wmGroundDown(e, d); return; }
   if (d.kind === 'card') {
     const w = _wmToWorld(e.clientX, e.clientY), s = _wmAt(d.id);
     if (!s) return;

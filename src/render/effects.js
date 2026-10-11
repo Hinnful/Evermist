@@ -1,8 +1,7 @@
 'use strict';
 
-// effects.js — map effects: the `effects` array's model, its flaming-border render path, and the
-// material swatches the toolbar picker paints itself with. The array and its id counter live in
-// state.js beside `polygons`.
+// effects.js — map effects: the `effects` array's model and its meshes. The array and its id
+// counter live in state.js beside `polygons`.
 //
 // AN EFFECT IS A POLYGON: the same record as a room, carrying a `material` where a room carries a
 // fog `mode`. That is what lets the Select tool, vertex and edge dragging, corner rounding and
@@ -25,8 +24,8 @@
 // Flame reach INTO the zone, in map units, tied to the grid so the fire stays proportional to the
 // map whatever its resolution. Tongues pack about one grid cell apart, for the same reason.
 function _gridCell() { return (typeof gridSize !== 'undefined' && gridSize) ? gridSize : 70; }
-// About a quarter of a grid cell of inward reach at the tuned heightMul.
-function _flameHeight() { return Math.max(20, Math.min(140, _gridCell() * 0.55 * FX_LOOK.heightMul)); }
+// Inward reach scales with the material's heightMul: a tall fire, a low acid rim.
+function _flameHeight(mat) { return Math.max(20, Math.min(140, _gridCell() * 0.55 * effectMaterial(mat).look.heightMul)); }
 // Cinder seam packs tongues about a third of a cell apart along the edge.
 function _flameAlong()  { return 2.2 / Math.max(24, _gridCell()); }
 
@@ -122,14 +121,15 @@ function _fxQuad(verts, cell) {
 }
 
 function _fxGeomKey(e) {
-  // Corner radius is part of the shape now, so a rounding change reloads the outline.
+  // Corner radius is part of the shape now, so a rounding change reloads the outline. The material
+  // ends the key, or picking Acid for a placed fire keeps its fire uniforms.
   let k = (e.cornerRadius || 0) + '|' + (e.cornerRadii ? e.cornerRadii.join(',') : '') + '|' +
           (e.handles ? JSON.stringify(e.handles) : '') + '|';
   for (const ring of polyRings(e)) {
     for (const v of ring) k += (v.x | 0) + ',' + (v.y | 0) + ';';
     k += '/';
   }
-  return k;
+  return k + e.material;
 }
 
 function _destroyFxInstance(inst) {
@@ -156,7 +156,7 @@ function _loadFxGeometry(inst, e) {
       inst.verts[n * 2] = v.x; inst.verts[n * 2 + 1] = v.y; n++;
     }
   }
-  const warm = (EFFECT_MATERIALS[e.material] || EFFECT_MATERIALS.fire).warm;
+  const mat = effectMaterial(e.material), L = mat.look;
   const ramp = effectRamp(e.material);
   let cx = 0, cy = 0;
   for (const v of e.vertices) { cx += v.x; cy += v.y; }
@@ -164,7 +164,11 @@ function _loadFxGeometry(inst, e) {
   for (const m of [inst.meshLight, inst.meshDark]) {
     const u = m.shader.uniforms;
     u.uVerts = inst.verts; u.uBreak = inst.breaks; u.uCount = n;
-    u.uWarm = warm; u.uCentroid = cen; u.uRamp = ramp;
+    u.uWarm = mat.warm; u.uCentroid = cen; u.uRamp = ramp;
+    u.uDiss = L.diss; u.uSpark = L.spark; u.uSmoke = L.smoke; u.uHaze = L.haze;
+    u.uSparkCol = L.sparkCol; u.uSmokeCol = L.smokeCol; u.uSteamCol = L.steamCol; u.uSteam = L.steam;
+    u.uLiquid = L.liquid; u.uBub = L.bub; u.uBubSize = L.bubSize; u.uToon = L.toon; u.uCore = L.core;
+    u.uSpill = L.spill; u.uFlicker = L.flicker; u.uScorch = L.scorch; u.uDrift = L.drift;
   }
   inst.geom.getBuffer('aVertexPosition').update(_fxQuad(rings[0] || e.vertices, _gridCell()));
 }
@@ -187,13 +191,18 @@ function _syncFxInstances() {
       const mkShader = frag => PIXI.Shader.from(_FX_VERT, frag, {
         uVerts: verts, uBreak: breaks,
         uCount: 0, uTime: 0, uHeight: 40, uSpeed: FX_LOOK.speed, uAlong: 0.03,
-        uDiss: FX_LOOK.diss, uWarm: 0.30, uFill: FX_LOOK.fill, uG: 70, uRamp: effectRamp('fire'),
-        uSpark: FX_LOOK.spark, uSmoke: FX_LOOK.smoke, uHaze: FX_LOOK.haze, uCentroid: [0, 0],
+        uDiss: 0, uWarm: 0.30, uFill: FX_LOOK.fill, uG: 70, uRamp: effectRamp('fire'),
+        uSpark: 0, uSmoke: 0, uHaze: 0, uCentroid: [0, 0],
+        uSparkCol: [0, 0, 0], uSmokeCol: [0, 0, 0], uSteamCol: [0, 0, 0], uSteam: 0, uLiquid: 0,
+        uBub: 0, uBubSize: 0, uToon: 0, uCore: 0, uSpill: 0, uFlicker: 0, uScorch: 0, uDrift: 0,
       });
-      // Two meshes over one shape: the light pass adds fire/sparks, the dark pass (on top) darkens
+      // Two meshes over one shape: the light pass paints fire/sparks, the dark pass (on top) darkens
       // with smoke/haze. Dark last so its smoke reads over the fire.
+      // ⚠ BOTH PASSES BLEND NORMALLY. An animated map is a <video> under this canvas on the DM and a
+      // sprite inside it on the Player, so ADD only added to the map on the Player: the same effect
+      // came out see-through and hue-shifted on the TV. Painted over, it is one look on both.
       const meshLight = new PIXI.Mesh(geom, mkShader(_FX_FRAG_LIGHT));
-      meshLight.blendMode = PIXI.BLEND_MODES.ADD;
+      meshLight.blendMode = PIXI.BLEND_MODES.NORMAL;
       const meshDark = new PIXI.Mesh(geom, mkShader(_FX_FRAG_DARK));
       meshDark.blendMode = PIXI.BLEND_MODES.NORMAL;
       pixiEffectsLayer.addChild(meshLight);
@@ -221,12 +230,13 @@ function pumpEffects() {
   if (!_fxInstances.size) return;
 
   const t = performance.now() / 1000;
-  const height = _flameHeight(), along = _flameAlong(), cell = _gridCell();
+  const along = _flameAlong(), cell = _gridCell();
   for (const e of effects) {
     const inst = _fxInstances.get(e.id);
     if (!inst) continue;
+    const height = _flameHeight(e.material);
     // Only the four that move: the clock, and the three tied to grid size, which the DM can change
-    // under a placed effect. FX_LOOK is seeded once in mkShader.
+    // under a placed effect. The material's look is loaded with the geometry.
     for (const m of [inst.meshLight, inst.meshDark]) {
       const u = m.shader.uniforms;
       u.uTime = t; u.uHeight = height; u.uAlong = along; u.uG = cell;

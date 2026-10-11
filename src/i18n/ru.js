@@ -76,6 +76,7 @@ const RU = {
   'Half-shrouded - explored, but the party isn\'t there now': 'Полумгла - исследовано, но группы здесь сейчас нет',
   'Shrouded': 'Скрыто',
   'Fire - burning ground': 'Огонь - горящая земля',
+  'Acid - a corrosive pool': 'Кислота - едкая лужа',
   'Door width, as a percent of one grid square': 'Ширина двери в процентах от клетки сетки',
   'How far a door reaches either side of the wall, as a percent of one grid square': 'Насколько дверь выступает по обе стороны стены, в процентах от клетки сетки',
   'W': 'Ш',

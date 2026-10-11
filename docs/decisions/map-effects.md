@@ -180,3 +180,31 @@ outline was NaN and nothing drew on either screen, though a sprite existed and t
 rig now reads the light texture's pixels, not only that a sprite is there.
 
 ---
+
+### Acid joined Fire, and both took a toon look · `SETTLED` (2026-10-11)
+
+Picked in a lab prototype (`.claude/private/design/item-46/acid-lab.html`) by mixing rows, then judged
+in the app. A material is now a record carrying its whole look, not a colour ramp alone: acid adds a
+flowing pool, bubbles that pop and coloured steam; fire adds flat-banded toon flames in clumps, char,
+tiny drift sparks, a hot inner tongue and a soft glow past its edge. Toon is the effects' look from
+here on. The flames' clumps lower the flame threshold rather than gate it: gated, a small zone sat
+empty for seconds whenever the empty part of the clump pattern drifted over it. Their sway is a noise
+field, because a sine of height or time moved every flame the same way at once.
+
+---
+
+### Both passes blend normally, and an unpicked effect carries no chrome · `SETTLED` (2026-10-11)
+
+The light pass was additive. An animated map is a `<video>` under the canvas on the DM and a sprite
+inside it on the Player, so ADD added to the map on the TV alone: the same effect came out see-through
+and hue-shifted there. Painted over the map, it is one look on both screens. The DM's orange wash and
+edge over every effect went for the same reason; a picked effect keeps its gold outline.
+
+---
+
+### Effect looks tried in the lab and dropped · `REJECTED` (2026-10-11)
+
+Realistic flame patches, cartoon flame icons, inward waves, rising ribbons, glowing lava cracks,
+streaked sparks (they read as lanterns) and stepped or boiled frames (they read as low frame rate).
+A colour picker per effect was refused too: an effect is typed by material, and three clouds
+(Darkness, poison, fog) are one future look with three materials, not a picker.

@@ -26,6 +26,11 @@
 //   K. All three repairs act on an EFFECT, from the Effects bar's own buttons, and never touch
 //      the rooms list. A repair armed in one mode survives the switch to the other.
 //   L. Bending an effect's wall redraws its outline, with no other change to the effect.
+//   M. Acid is a material of its own: picked, it draws an effect named after it with acid's own
+//      ramp, and switching a placed effect between Fire and Acid redraws it in the new one.
+//   N. The grid inside acid relights in acid's yellow-green, never in ember.
+//   O. The DM and the TV paint an effect the same way, and the DM draws no chrome over an effect
+//      that is not picked, so the fire or acid the DM sees is the one the players see.
 //
 // ⚠ EFFECTS ARE NOT ROOMS AND NOT TOKENS. An effect is the same record as a room carrying a
 // `material` where a room has a fog `mode` (CLAUDE.md). They live in two arrays because array
@@ -35,9 +40,7 @@
 // flame was in, not how brightly the ground burns. Everything here reads the PEAK across a
 // spread of frames, which converges on the flame's envelope and is stable run to run.
 //
-// ⚠ ONLY ONE MATERIAL EXISTS TODAY. The fire ramp is hardcoded, so a second material would
-// paint orange whatever its button claimed, and the picker holds one entry on purpose. The
-// checks below are written against that; a second material makes C and the picker worth more.
+// ⚠ A TO L ARE WRITTEN AGAINST FIRE. Acid, the second material, is M to O.
 
 const path = require('path');
 
@@ -203,6 +206,14 @@ module.exports = async function effectsFeature(rig) {
   const ROUND_R = 120;
   const cornerBox = [RB.x1 + 2, RB.y1 + 2, RB.x1 + 22, RB.y1 + 22];
   const edgeBox   = [(RB.x1 + RB.x2) / 2 - 20, RB.y1 + 4, (RB.x1 + RB.x2) / 2 + 20, RB.y1 + 40];
+  // ⚠ THE SPILL GOES OFF FOR THESE READS, on this mesh alone. Fire throws light 0.8 of a cell past
+  // its outline, which still reaches the rounded corner, so with it on this measures the glow round
+  // the shape rather than the flame inside it. The mesh reloads its uniforms on the rounding, so
+  // it is switched off again after that wait.
+  const noSpill = () => dm.evaluate('(i => { for (const m of [i.meshLight, i.meshDark]) m.shader.uniforms.uSpill = 0; return 0; })' +
+                                    '(_fxInstances.get(' + roundId + '))');
+  await dm.waitFor('!!_fxInstances.get(' + roundId + ')', 15000, 'the mesh for the probe effect itself');
+  await noSpill();
   const cSharp = await peak(cornerBox), eSharp = await peak(edgeBox);
   await dm.evaluate('(() => { const e = effects.find(x => x.id === ' + roundId + ');' +
                     ' selectedPolygonId = e.id; selectedVertexIndex = -1; e.cornerRadius = ' +
@@ -214,6 +225,7 @@ module.exports = async function effectsFeature(rig) {
   await dm.waitFor('_fxInstances.get(' + roundId + ') && ' +
                    '_fxInstances.get(' + roundId + ').geomKey.startsWith("' + ROUND_R + '|")',
                    10000, 'the rounded outline to reach the mesh');
+  await noSpill();
   const cRound = await peak(cornerBox), eRound = await peak(edgeBox);
   rig.note('corner brightness sharp ' + cSharp + ' → rounded ' + cRound +
            ';  straight edge ' + eSharp + ' → ' + eRound);
@@ -451,6 +463,76 @@ module.exports = async function effectsFeature(rig) {
     ' gridDirty = true; scheduleRender(); 0');
   await lib.settle(dm, '!gridDirty && !viewportDirty', 8000);
 
+  // ══ M. Acid is a material of its own ══
+  const rampAt = (session, id) => session.evaluate('(i => i ? Array.from(i.meshLight.shader.uniforms.uRamp).slice(6, 9)' +
+    '.map(x => Math.round(x * 100)) : null)(_fxInstances.get(' + id + '))');
+  const want = m => dm.evaluate('EFFECT_MATERIALS.' + m + '.ramp[2].map(x => Math.round(x * 100))');
+  await dm.evaluate('selectedPolygonId = null; setPlaceMode("effects"); setMaterial("acid"); setShape("rect");' +
+                    ' __rigDrag(600, 380, 1000, 640); setShape("select"); 0');
+  const acid = await dm.evaluate('effects[effects.length - 1]');
+  rig.check(acid.material === 'acid' && /^Acid \d+$/.test(acid.name || ''),
+            'picking Acid did not draw an acid effect named after it: ' + JSON.stringify([acid.material, acid.name]));
+  const acidRamp = JSON.stringify(await want('acid'));
+  rig.check(JSON.stringify(await lib.poll(async () => {
+    const r = await rampAt(dm, acid.id); return JSON.stringify(r) === acidRamp ? r : null; }, 8000)) === acidRamp,
+            'the acid effect does not burn with acid\'s own ramp');
+  // RED ON: the material dropped from _fxGeomKey (effects.js) — 2026-10-11
+  await dm.evaluate('selectedPolygonId = ' + acid.id + '; setMaterial("fire"); 0');
+  const fireRamp = JSON.stringify(await want('fire'));
+  rig.check(JSON.stringify(await lib.poll(async () => {
+    const r = await rampAt(dm, acid.id); return JSON.stringify(r) === fireRamp ? r : null; }, 8000)) === fireRamp,
+            'switching a placed acid to Fire left it burning with acid\'s colours');
+  await dm.evaluate('setMaterial("acid"); selectedPolygonId = null; selectedVertexIndex = -1; drawCursor(null, null); 0');
+
+  // ══ N. The grid inside acid relights in acid's colour ══
+  // RED ON: the relight drawn in the fixed ember colour again (grid.js) — 2026-10-11
+  await dm.evaluate('globalThis.__rigSavedFx = effects; globalThis.__rigSavedGrid = captureGridConfig();' +
+    ' effects = [{ id: 901, vertices: [{x:600,y:380},{x:1000,y:380},{x:1000,y:640},{x:600,y:640}],' +
+    ' material: "acid", cornerRadius: 0, name: "Acid probe" }];' +
+    ' gridEnabled = true; gridMode = "square"; gridSize = 70; gridOffsetX = 0; gridOffsetY = 0;' +
+    ' gridColor = "#2060ff"; gridOpacity = 0.3; gridLineWidth = 2; gridDirty = true; scheduleRender(); 0');
+  await lib.settle(dm, '!gridDirty', 8000);
+  const tint = await dm.evaluate(`(() => {
+    const x1 = Math.round(620 * zoom + panX), y1 = Math.round(400 * zoom + panY);
+    const w = Math.max(1, Math.round(360 * zoom)), h = Math.max(1, Math.round(220 * zoom));
+    const d = gridCtx.getImageData(x1, y1, w, h).data;
+    let acid = 0, ember = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 20) continue;
+      if (d[i + 1] > 170 && d[i + 1] - d[i + 2] > 60 && d[i + 1] >= d[i] - 20) acid++;
+      else if (d[i] > 170 && d[i] - d[i + 1] > 50) ember++;
+    }
+    return { acid, ember };
+  })()`);
+  rig.note('acid grid: ' + JSON.stringify(tint));
+  rig.check(tint.acid > 50 && tint.ember === 0,
+            'the grid inside acid does not relight in acid\'s yellow-green: ' + JSON.stringify(tint));
+  await dm.evaluate('effects = __rigSavedFx; effectsChanged(); applyGridConfig(__rigSavedGrid); gridDirty = true; scheduleRender(); 0');
+  await lib.settle(dm, '!gridDirty && !viewportDirty', 8000);
+
+  // ══ O. One look on both screens, and no chrome over an effect that is not picked ══
+  // RED ON: the light pass back on BLEND_MODES.ADD (effects.js) — 2026-10-11
+  await dm.evaluate('sendToPlayer(); 0');
+  await lib.poll(() => player.evaluate('effects.some(e => e.material === "acid") && _fxInstances.size === effects.length || null'), 20000);
+  const blends = async s => s.evaluate('[..._fxInstances.values()].map(i => [i.meshLight.blendMode, i.meshDark.blendMode])');
+  const normal = await dm.evaluate('PIXI.BLEND_MODES.NORMAL');
+  for (const [who, s] of [['DM', dm], ['TV', player]]) {
+    const b = await blends(s);
+    rig.check(b.length > 0 && b.every(p => p[0] === normal && p[1] === normal),
+              'the ' + who + ' does not paint its effects over the map: blend modes ' + JSON.stringify(b) +
+              '. Added instead, an effect turns see-through and changes hue over a coloured floor');
+  }
+  // RED ON: the early return for an unpicked material removed from drawPolyOutline (shapeSelect.js) — 2026-10-11
+  await dm.evaluate('selectedPolygonId = null; selectedVertexIndex = -1; setMaterial("fire"); drawCursor(null, null); 0');
+  const chrome = await dm.evaluate(`(() => {
+    const x1 = Math.round(600 * zoom + panX), y1 = Math.round(380 * zoom + panY);
+    const d = cursorCtx.getImageData(x1, y1, Math.max(1, Math.round(400 * zoom)), Math.max(1, Math.round(260 * zoom))).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++;
+    return n;
+  })()`);
+  rig.check(chrome === 0, 'the DM draws editing chrome over an effect nobody picked (' + chrome + ' px), so its ' +
+            'fire or acid looks different from the TV\'s');
+
   // ══ The look, which is the DM's call and not the rig's ══
   await dm.evaluate('selectedPolygonId = null; selectedVertexIndex = -1; drawCursor(null, null); 0');
   await lib.settle(dm, '!viewportDirty', 8000);
@@ -463,9 +545,9 @@ module.exports = async function effectsFeature(rig) {
   const tvShot = path.join(rig.outDir, 'player-effects.png');
   await player.screenshot(tvShot);
   rig.note('Player screenshot: ' + tvShot);
-  rig.byEye('whether the fire in ' + tvShot + ' reads as a flaming frame — the outline burning ' +
-            'with flames licking off it, over a faint tint. Judged live, since the motion is the ' +
-            'point and a still cannot show it');
+  rig.byEye('whether the fire in ' + tvShot + ' reads as the toon fire and the acid as the acid ' +
+            'picked in .claude/private/design/item-46/acid-lab.html. Judged live, since the motion is ' +
+            'the point and a still cannot show it');
 
   // ══ K. All three repairs act on an effect, from the bar's own buttons ══
   // RED BY DESIGN: written against the fix, never re-proved

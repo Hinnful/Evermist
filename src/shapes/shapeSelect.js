@@ -329,6 +329,15 @@ function selectMouseDown(raw, e) {
   }
 }
 
+// True when a press at pos lands on the open shape's own handles: a curve handle, corner, wall or corner circle.
+function selectHandleHit(pos) {
+  const selPoly = findActiveShape();
+  if (!selPoly) return false;
+  if (_cornerHitAt(selPoly, pos)) return true;
+  return shapeEditMode && (!!findHandleAt(selPoly, pos.x, pos.y) || findVertexAt(selPoly, pos.x, pos.y) >= 0 ||
+    findEdgeAt(selPoly, pos.x, pos.y) >= 0);
+}
+
 function selectHoverCursor(pos, e) {
   const selPoly = findActiveShape();
   const cc = cornerRoundHover(selPoly, pos, e);
@@ -686,6 +695,9 @@ function escapeShapeSelection() {
 function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   const verts = poly.vertices;
   if (verts.length < 2) return;
+  // A material draws its own area, so it carries no chrome until picked: a wash or an edge over it
+  // would make the DM's fire or acid a different colour from the TV's.
+  if (poly.material && !isSelected) return;
   if (poly.open) { drawOpenLineChrome(poly, isSelected, selectedVertIdx); return; }
   const holeRings = polyHoleRings(poly);
   const editing = isSelected && shapeEditMode;
@@ -697,7 +709,7 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
   const isEffect = !!poly.material || !!poly.light;
   const baseRgb = poly.light ? LIGHT_OUTLINE_RGB : isEffect ? EFFECT_RGB : (POLY_STATE_RGB[poly.mode] || POLY_STATE_RGB.shroud);
   const look = isEffect ? EFFECT_LOOK : (POLY_LOOK[poly.mode] || POLY_LOOK.shroud);
-  let fillA = look.fillA;
+  let fillA = poly.material ? 0 : look.fillA;
   let lineRgb = baseRgb, lineA = look.lineA, lineW = look.lineW;
   let softRgb = baseRgb, softA = look.edgeA, softW = look.edgeW;
   if (dimmed) { fillA *= POLY_LOOK_DIM.fillMul; lineA = POLY_LOOK_DIM.lineA; softA = 0; }

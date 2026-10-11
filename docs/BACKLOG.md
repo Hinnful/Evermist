@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 11 open items; IDs run to 169."
+description: "Open work only. 8 open items; IDs run to 169."
 metadata: 
   node_type: memory
   type: project
@@ -81,6 +81,12 @@ like, and what its button says. `acid` was deleted rather than shipped last time
 The second material also brings the searchable material palette settled in item 113's prototype
 (`.claude/private/design/item-113/effect-presets.html`): the flame button with a corner tick opens
 it above the row. Not built with one material, per CLAUDE.md.
+**Acid's look, settled 2026-10-11** in `.claude/private/design/item-46/acid-lab.html`: Corrosive colour, Low rim edge,
+Few bubbles, Heavy steam, and the grid relit in the acid's yellow-green. Bubbles, the liquid surface and steam are new
+shader terms, so acid is more than a record. **Fire is redone in the same lab, toon style** (2026-10-11): Toon flames
+(Sparse, Medium size, All movement, Medium speed, 3 bands, no outline), Scorched ground, Drift sparks, Heavy smoke, Soft
+glow. Toon is the effects' look from here on. Both ship in 4.2.0; the searchable palette is not built yet, so Acid
+is a third button beside Fire and Light.
 **Play · any time · DM + Player**
 
 ### 144. A phone remote for the DM
@@ -110,26 +116,8 @@ Filed 2026-10-07. `test/houseRules.allow.json` and `eslint-suppressions.json` li
 limit when the limits became tests: six files over 600 lines, eight functions over 120, thirteen
 comment blocks over 8 lines and four unused imports in `electron/`. Each split is its own
 restructuring task on the DM's yes, one file at a time, taken when a feature already touches that
-file; the unused imports go out in 4.0.1 with item 160. Done when both lists are empty.
+file; the unused imports go out with the next patch. Done when both lists are empty.
 **Upkeep · any time · no visible change**
-
-### 160. "Walk only" stays English in the Russian bestiary
-Filed 2026-10-08. The bestiary's Movement filter shows "Walk only" in Russian mode, while Fly,
-Swim, Climb and Burrow are translated. The string is missing from `src/i18n/ru.js`; add it there.
-Ships as 4.0.1 with 157's unused imports.
-**Polish · any time · DM only**
-
-### 166. A scene card over a place's corner blocks the corner
-Filed 2026-10-08 in item 140, split out 2026-10-09. When a scene's print sits over a corner handle of a place being
-edited, a press grabs the card and the corner cannot be dragged until the map pans. The corner should win while the
-place is open for editing.
-**Polish · 4.x · DM only**
-
-### 167. A hint when a scene card is dropped partly outside a place
-Filed 2026-10-08 in item 140, split out 2026-10-09. A card belongs to a place only when all of it sits inside the
-outline, so a card dropped a few pixels over the edge leaves the place with no sign of why. **Open:** the cue - the
-outline lighting while the card is fully in, or the card nudged inside on drop.
-**Polish · 4.x · DM only**
 
 ---
 

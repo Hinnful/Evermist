@@ -85,10 +85,9 @@ function renderGrid(vp) {
   drawEffectGridGlow(gridCtx, vp);
 }
 
-// Relight the grid in ember inside an effect zone, so the cells a hazard covers stay countable.
-// ⚠ It has to live HERE, on the grid's own canvas: the fire is a PixiJS layer below it. Hex grids
-// relight too — drawGridLines applies the style override before it branches on gridMode.
-const EFFECT_GRID_EMBER = '#ff9a3c';
+// Relight the grid in the material's colour inside an effect zone, so the cells a hazard covers stay
+// countable. ⚠ It has to live HERE, on the grid's own canvas: the effect is a PixiJS layer below it.
+// Hex grids relight too — drawGridLines applies the style override before it branches on gridMode.
 function drawEffectGridGlow(ctx, vp) {
   if (typeof effects === 'undefined' || !effects.length) return;
   const scale = vp.dstW / vp.srcW;
@@ -130,7 +129,7 @@ function drawEffectGridGlow(ctx, vp) {
     buildRoundedPolyPath(ctx, sv, cr, pvR, svHoles, scaleHandles(e.handles, scale));
     ctx.clip();
     const emberAlpha = (typeof FX_LOOK !== 'undefined') ? FX_LOOK.gridGlow : 0.6;
-    drawGridLines(ctx, sub, { color: EFFECT_GRID_EMBER, alpha: emberAlpha, widthMul: 1.8 });
+    drawGridLines(ctx, sub, { color: effectMaterial(e.material).grid, alpha: emberAlpha, widthMul: 1.8 });
     ctx.restore();
   }
 }

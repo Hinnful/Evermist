@@ -79,7 +79,8 @@
   #dock .cp-btn:hover, .dk-pop .cp-btn:hover { background: var(--g-hover); }
   #dock .cp-btn-live { gap: 7px; }
   #dock .cp-btn-live.live { background: var(--b-tint); color: var(--b-icon); }
-  #dock .cp-btnrow { gap: 6px; }
+  #dock .cp-btnrow { gap: 6px; flex-wrap: wrap; }
+  #dock .cp-btnrow .cp-btn { flex: 1 1 auto; width: auto; }
 
   #dock .cp-tabs, #dock .cp-seg { padding: 2px; gap: 2px; border: 0; border-radius: 5px; background: var(--g-field); }
   #dock .cp-segtab { height: 22px; border: 0; border-radius: 4px; color: var(--g-dim);

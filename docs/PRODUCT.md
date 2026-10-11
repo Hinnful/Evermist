@@ -246,10 +246,19 @@ switch in Settings and as "later, if wanted", and refused both times.
 A place is defined by the scenes inside it, so a copy would either duplicate those scenes or be an empty outline with
 the same shape. Neither is something a campaign needs: no town is prepared twice. Rooms keep Alt+drag and Ctrl+D.
 
+### A card across a place's edge is a stray · `SETTLED` (2026-10-11)
+A scene belongs to a place only when its whole card sits inside the outline. A card dropped across the edge is a
+stray by design, so the drop carries no hint, glow or nudge to pull it inside.
+
 ### Pictures belong to the gallery, never to a room, scene or place · `SETTLED` (2026-10-09)
 A picture shown on the TV is linked to nothing on the map, so one picture serves every scene it is needed in, such as
 a creature that follows the party from map to map. Once the gallery exists, room pictures move into it and the
 room's picture strip goes. No place, scene or room gains a picture of its own.
+
+### Effects share one toon look · `SETTLED` (2026-10-11)
+Every material is drawn in the same style: flat colour bands, crisp edges and clear motion, legible
+from across a table on a TV and at home on painted maps. A new material joins that style rather than
+bringing its own.
 
 ### Drawing and editing copy Figma · `SETTLED` (2026-09-17)
 When a drawing or editing choice is open, Figma's model is the answer: anchors, bezier handles,

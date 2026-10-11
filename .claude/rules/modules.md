@@ -56,7 +56,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in `scenes/dragDrop.js`** |
 | `undo.js` | Undo/redo for fog edits |
 | `render/effects.js` | Map effects: the `effects` array's model and its meshes |
-| `render/effectMaterials.js` | One record per material: ramp, warmth, swatch |
+| `render/effectMaterials.js` | One record per material: ramp, warmth, grid colour, look |
 | `render/effectShader.js` | An effect's two fragment passes and their vertex cap |
 | `render/grid.js` | Grid config + render |
 | `render/gridCalibrate.js` | The calibration square that fits the grid to the map |

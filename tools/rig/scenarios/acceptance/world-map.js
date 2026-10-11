@@ -35,7 +35,8 @@
 //      library is brought inside its place.
 //  13. A place edits exactly like a room, because the room's own code edits it: corners, a corner
 //      circle that rounds, a wall bent into a curve, a corner added or deleted, the box that scales,
-//      Escape one level at a time, and Ctrl+Z. It is kept across a restart.
+//      Escape one level at a time, and Ctrl+Z. It is kept across a restart. A scene's card lying over
+//      an open place's corner does not take the press: the corner moves and the card stays.
 //  14. Zoomed out, a place keeps its polygon, in white.
 //  15. The right-click menu offers the scene's, the place's or the ground's actions; Delete is off
 //      for the open scene.
@@ -474,6 +475,29 @@ module.exports = async function worldMapFeature(rig) {
             'a click inside a place did not pick it as a room is picked');
   await dm.evaluate('__wmGround("dblclick", ' + JSON.stringify(inside) + '); 0');
   rig.check(await dm.evaluate('shapeEditMode'), 'a double-click did not open the place to its corners');
+  // A card over an open place's corner gives the press to the corner.
+  // RED ON: the selectHandleHit route in _wmDown removed (worldMapEdit.js) — 2026-10-11
+  {
+    const fp = await frost();
+    const pos0 = await dm.evaluate('JSON.stringify(allScenes.find(s => s.name === "Frostmere Pass").worldPos)');
+    await dm.evaluate('worldSceneSet(allScenes.find(s => s.name === "Frostmere Pass").id, { worldPos: { x: ' + (fp.v[2].x - 20) +
+                      ', y: ' + (fp.v[2].y - 15) + ' } }); worldMapRefresh(); 0');
+    await lib.settle(dm, SETTLED, 5000);
+    const cp = await scr(fp.v[2].x, fp.v[2].y);
+    const onCard = await dm.evaluate('(() => { const el = document.elementFromPoint(' + cp.x + ', ' + cp.y + '); return !!(el && el.closest(".wm-card")); })()');
+    rig.check(onCard, 'the probe card does not cover the corner, so the press below proves nothing');
+    await dm.evaluate('(() => { const card = __wmCard("Frostmere Pass"), p = ' + JSON.stringify(cp) + ', to = { x: p.x + 30, y: p.y + 30 };' +
+                      ' __wmE("mousedown", card, p); __wmE("mousemove", window, { x: p.x + 15, y: p.y + 15 }); __wmE("mousemove", window, to);' +
+                      ' __wmE("mouseup", window, to); return 0; })()');
+    const moved = (await frost()).v[2];
+    rig.check(moved.x > fp.v[2].x + 5 && moved.y > fp.v[2].y + 5,
+              'a press on a corner under a scene card did not move the corner: ' + JSON.stringify([fp.v[2], moved]));
+    rig.check(await dm.evaluate('JSON.stringify(allScenes.find(s => s.name === "Frostmere Pass").worldPos)') ===
+              JSON.stringify({ x: fp.v[2].x - 20, y: fp.v[2].y - 15 }), 'the card moved instead of the corner');
+    await dm.evaluate('__rigKey("KeyZ", { ctrlKey: true }); worldSceneSet(allScenes.find(s => s.name === "Frostmere Pass").id, { worldPos: ' + pos0 +
+                      ' }); worldAssignAll(); worldMapRefresh(); 0');
+    rig.check(JSON.stringify((await frost()).v) === JSON.stringify(fp.v), 'Ctrl+Z did not put the dragged corner back');
+  }
   // A corner picked shows its rounding circle; dragging it rounds that corner.
   let f = await frost();
   const c0 = await scr(f.v[0].x, f.v[0].y);
