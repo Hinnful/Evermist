@@ -149,7 +149,6 @@
   .cp-btn:disabled:hover { border-color: rgba(255,255,255,0.1); background: transparent; }
   .cp-row { display: flex; align-items: center; gap: 6px; }
   .cp-btn-icon { width: 30px; flex: none; padding: 0; }
-  .cp-dim { opacity: 0.45; }
   .cp-btn-danger { border: 1.5px solid rgba(200,70,60,0.22); background: rgba(200,50,40,0.07); color: rgba(240,100,90,0.85); }
   .cp-btn-danger:hover { border-color: rgba(200,70,60,0.4); background: rgba(200,50,40,0.15); color: rgba(240,100,90,0.95); }
 

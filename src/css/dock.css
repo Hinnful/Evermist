@@ -57,8 +57,6 @@
   /* ===== THE SKIN: the app's stock controls, grey and borderless inside the dock ===== */
   .dk-head .cp-row { gap: 2px; }
   .dk-scene { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .dk-live { width: 7px; height: 7px; border-radius: 50%; flex: none; background: #4a4d54; }
-  .dk-live.on { background: var(--b-icon); box-shadow: 0 0 0 3px rgba(110, 168, 255, 0.16); }
 
   #dock .cp-group { padding: 10px 10px 14px 14px; gap: 8px; border-bottom: 1px solid var(--g-line); }
   #dock .cp-label { font: 600 12px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0;
@@ -165,15 +163,18 @@
   .dk-menu .sep { height: 1px; background: var(--g-line); margin: 4px 2px 4px 22px; }
   .dk-pop.dk-drop { width: auto; }
 
-  /* ===== THE MINIMAP: bottom left, square, an opaque frame ===== */
+  /* ===== THE MINIMAP: bottom left, the TV's shape; minimap.js sets its width and height ===== */
   #minimap-panel {
-    position: fixed; left: calc(var(--np-right, 0px) + 16px); bottom: 16px; z-index: 100; zoom: var(--ui-zoom, 1.2);
-    width: 168px; aspect-ratio: 1; border-radius: 8px;
-    border: 1px solid #3a3c42; box-shadow: none;
+    position: fixed; left: 16px; bottom: 16px; z-index: 100; zoom: var(--ui-zoom, 1.2);
+    width: 240px; height: 135px; border-radius: 10px; background: #0d0e12;
+    --tv-halo: 0 12px 34px 6px rgba(0, 0, 0, 0.72), 0 0 70px 26px rgba(0, 0, 0, 0.45);
+    pointer-events: all; user-select: none; transition: box-shadow .3s;
   }
-  #minimap-panel .cp-ovbtn { width: 24px; height: 24px; top: 5px; right: 5px; border: 0; border-radius: 6px;
-                             box-shadow: none; background: var(--g-bg); color: #b9bec6; }
-  #minimap-panel .cp-ovbtn.left { left: 5px; right: auto; }
-  #minimap-panel .cp-ovbtn:hover { background: var(--g-hover); color: var(--g-text); }
-  #minimap-panel .cp-ovbtn.active { background: #1b2a3c; color: var(--b-icon); }
+  /* Off: a faint blue glow. Live: the same glow, breathing. */
+  #minimap-panel.tv-off { box-shadow: 0 0 0 1px rgba(12, 140, 233, 0.35), 0 0 14px 1px rgba(12, 140, 233, 0.22), var(--tv-halo); }
+  #minimap-panel.tv-live { animation: tvBreathe 2.6s ease-in-out infinite; }
+  @keyframes tvBreathe {
+    0%, 100% { box-shadow: 0 0 0 2px var(--b-solid), 0 0 6px 0 rgba(12, 140, 233, 0.3), var(--tv-halo); }
+    50% { box-shadow: 0 0 0 2px var(--b-solid), 0 0 26px 5px rgba(12, 140, 233, 0.7), var(--tv-halo); }
+  }
   body.pane-mode #minimap-panel { display: none !important; }

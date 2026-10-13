@@ -3,14 +3,15 @@
 // control-panel.js — THE DOCK'S SCENE CONTROL PANE.
 //
 // THE GOAL OF THIS FEATURE: everything the Fog, Grid and Player tabs did sits in one pane, laid
-// out the way Figma lays out its right panel: Player, Fog, Rooms, Lights, Grid, My seat. Every control
+// out the way Figma lays out its right panel: Fog, Rooms, Lights, Grid, My seat. Every control
 // drives the same hidden back end the tabs drove, so each check here asserts what a control
 // DOES, never only where it sits.
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter.
 //
-//   A. The pane holds Player, Fog, Rooms, Lights, Grid and My seat, in that order, and no zoom stepper.
+//   A. The pane holds Fog, Rooms, Lights, Grid and My seat, in that order, no Player section, no
+//      "On the TV" dot in its header, and no zoom stepper.
 //   B. A colour field opens its picker beside the dock, level with its row. A colour picked there
 //      reaches the fog and the field, and a click elsewhere puts the picker away.
 //   C. The movement dropdown sets each preset and says which is set. The eye switches movement
@@ -21,8 +22,7 @@
 //   E. The grid's eye switches the grid and dims the section. The type segment sets the type and
 //      switches the grid on. Scrubbing the cell size's icon changes the cell, and a typed size is
 //      clamped.
-//   F. Every Player control reaches the button it mirrors; Lock and Auto / Manual hold their
-//      state; My seat turns the DM's map.
+//   F. The minimap's Lock and the TV menu's Auto / Manual hold their state; My seat turns the DM's map.
 //   G. Every panel that floats over the map wears the SAME edge, read from the --panel-*
 //      variables in base.css, and those variables still resolve to a real edge.
 
@@ -37,12 +37,15 @@ module.exports = async function sceneControlFeature(rig) {
 
   // ── A ──
   // RED ON: the Rooms section moved below Grid (index.html) — 2026-10-02
+  // RED BY DESIGN: written against the removal, never re-proved
   const sections = await dm.evaluate('[...document.querySelectorAll("#dock-pane-scene .cp-group > .dk-sh .cp-label")]' +
                                      '.map(l => l.textContent.trim()).join(",")');
-  rig.check(sections === 'Player,Fog,Rooms,Lights,Grid,My seat',
+  rig.check(sections === 'Fog,Rooms,Lights,Grid,My seat',
             'A: Scene control holds the wrong sections, or in the wrong order: ' + sections);
   rig.check(await dm.evaluate('!document.querySelector("[id^=cp-zoom]") && typeof minimapNudgeZoom === "undefined"'),
             'A: the TV zoom stepper is still in the app');
+  rig.check(await dm.evaluate('!document.getElementById("cp-pane-player") && !document.getElementById("dock-live")'),
+            'A: Scene control still has its Player section or the "On the TV" dot');
 
   // ── B ──
   // RED ON: dockPlacePop gated off in _dockInitPops (dock.js), and separately the FEEDS listener in _cpInitFields (controlPanel.js) — 2026-10-02
@@ -146,42 +149,28 @@ module.exports = async function sceneControlFeature(rig) {
             'E: a typed cell size over the maximum was not clamped to 400');
 
   // ── F ──
-  // RED ON: proxy()'s forward gated off with `if (target && false)` (controlPanel.js) — 2026-09-19
-  // ⚠ THE FORWARD IS WHAT IS UNDER TEST, not what the legacy button then does. Four of these open
-  // a window, fullscreen a display or push to a Player that is not up, so the button's onclick
-  // is swapped for a recorder and put back.
-  const forwards = (fromId, toId) => dm.evaluate(`(() => {
-    const target = document.getElementById(${JSON.stringify(toId)});
-    const source = document.getElementById(${JSON.stringify(fromId)});
-    if (!target || !source) return { err: 'missing #' + (!target ? ${JSON.stringify(toId)} : ${JSON.stringify(fromId)}) };
-    const was = target.onclick;
-    let hits = 0;
-    target.onclick = () => { hits++; };
-    source.click();
-    target.onclick = was;
-    return { hits };
-  })()`);
-  for (const [from, to, what] of [['cp-player-golive', 'btn-player', 'Open Window'],
-                                  ['cp-player-fullscreen', 'btn-fullscreen-player', 'Fullscreen'],
-                                  ['cp-player-syncview', 'btn-sync-view', 'Sync View'],
-                                  ['cp-player-send', 'btn-send', 'Send']]) {
-    const f = await forwards(from, to);
-    rig.check(!f.err && f.hits === 1,
-              'F: ' + what + ' does not reach the button it mirrors: ' + JSON.stringify(f));
-  }
+  // RED ON: the Lock handler in tvControl.js clicking nothing - 2026-10-13
+  // The Player's controls are the minimap's now (show-on-tv.js checks each one); this keeps the two
+  // whose state the old pane held. Lock is the first tool on the picture, Auto / Manual a segment in the TV menu.
+  const lockBtn = '#tv-ui .tv-row.tl .tv-ov';
   const lockWas = await dm.evaluate('minimapLocked === true');
-  await click('cp-player-lock');
+  await dm.evaluate('document.querySelector(' + JSON.stringify(lockBtn) + ').click(); 0');
   rig.check(await dm.evaluate('minimapLocked === true') !== lockWas &&
-            await on('cp-player-lock') !== lockWas, 'F: Lock on the minimap did not lock it and say so');
-  await click('cp-player-lock');
+            await dm.evaluate('document.querySelector(' + JSON.stringify(lockBtn) + ').classList.contains("active")') !== lockWas,
+            'F: Lock on the minimap did not lock it and say so');
+  await dm.evaluate('document.querySelector(' + JSON.stringify(lockBtn) + ').click(); 0');
   rig.check(await dm.evaluate('minimapLocked === true') === lockWas, 'F: Lock would not let go again');
   // ⚠ TWO SEGMENTS OVER ONE TOGGLE: pressing the lit one must not flip it away.
-  const seg = want => dm.evaluate('document.querySelector(\'#cp-pane-player [data-sync="' + want + '"]\').click(); 0');
-  await seg('manual');
-  await seg('manual');
+  const seg = async want => {
+    await dm.evaluate('_tvOpen("tv"); 0');
+    await dm.evaluate('[...document.querySelectorAll("#tv-pop .seg button")].find(b => b.textContent === ' + JSON.stringify(want) + ').click(); 0');
+  };
+  await seg('Manual');
+  await seg('Manual');
   rig.check(await dm.evaluate('autoSync') === false, 'F: a second press on Manual flipped the gate back to Auto');
-  await seg('auto');
+  await seg('Auto');
   rig.check(await dm.evaluate('autoSync') === true, 'F: Auto would not switch the send gate back on');
+  await dm.evaluate('_tvClose(); 0');
   await dm.evaluate('document.querySelector(\'#cp-sec-seat [data-seat="90"]\').click(); 0');
   rig.check(await dm.evaluate('seatTurn') === 90 &&
             await dm.evaluate('document.querySelector("#cp-sec-seat [data-seat].active").dataset.seat') === '90',

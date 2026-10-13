@@ -1,12 +1,14 @@
-/* notesPanel.css — the left panel: full height, the dock's mirror, shut to a floating icon. Its notes wear
-   the dock's grey. The minimap sits to its right (--np-right, set by notesPanel.js). */
+/* notesPanel.css — the left panel: the dock's mirror, ending above the minimap (--mm-top, set by
+   minimap.js), shut to a floating icon. Its notes wear the dock's grey. */
   .np {
-    position: fixed; left: 0; top: 0; bottom: 0; z-index: 100;
+    position: fixed; left: 0; top: 0; bottom: calc(var(--mm-top, 0px) + 12px); z-index: 100;
     zoom: var(--ui-zoom, 1.2);
     width: var(--np-pane-w, 220px); display: flex; flex-direction: column; min-height: 0;
     background: var(--g-bg); border-right: 1px solid var(--g-line); color: var(--g-text);
   }
   .np[hidden], .np-fab[hidden] { display: none; }
+  /* The world map hides the minimap, so the panel takes the whole height there. */
+  body.world { --mm-top: -12px; }
   body.player-mode .np, body.pane-mode .np, body.player-mode .np-fab, body.pane-mode .np-fab { display: none !important; }
 
   #np-edge { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 2; }

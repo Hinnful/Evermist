@@ -151,6 +151,19 @@ No dock pane, notes panel or minimap moves it. Each panel stops short of it wher
 and only a panel's narrowest width may cover it, as the dock can on the rig's 1008px. Reverses the
 toolbar's slide between the minimap and the dock, and the `--tb-left` and `--tb-right` that did it.
 
+### The minimap stays in its corner and the notes end above it · `SETTLED` (2026-10-13)
+Reverses the minimap moving with the notes panel, and the notes panel as a full-height pane. The
+minimap is fixed to the window's bottom-left corner; the panel's bottom edge is the minimap's top
+(`--mm-top`, set by `minimap.js`). On the world map, which hides the minimap, the panel takes the
+whole height.
+
+### Scene control has no Player section · `SETTLED` (2026-10-13)
+Opening the Player, Fullscreen, Sync View, Lock, Send and Auto / Manual moved onto the minimap
+(`tvControl.js`), and the dock header's "On the TV" dot went with them. The hidden legacy buttons in
+`#cp-legacy` stay as the back end the minimap clicks, because the rig opens the Player through
+`#btn-player`. The TV is every screen but the one holding the DM window; a picked screen is
+remembered in `evermist.tvScreen`, which the previous release never reads.
+
 ### The shut panel is a floating icon, not a rail · `REJECTED` (2026-10-08)
 A 44px rail with one button was built first and read as an empty strip. The panel now shuts to a
 36px plate at the top left, and a chevron in its header shuts it. The minimap sits to the panel's

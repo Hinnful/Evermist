@@ -8,7 +8,6 @@
     "src/dev/memProbe.js": 14,
     "src/dev/stress.js": 11,
     "src/fog/fogGeometry.js": 15,
-    "src/player/minimap.js": 9,
     "src/player/paneRuntime.js": 10,
     "src/player/playerWindow.js": 10,
     "src/render/effects.js": 21,

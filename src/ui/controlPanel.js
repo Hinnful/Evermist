@@ -23,7 +23,7 @@ function initControlPanel() {
   _cpInitFields();
   _cpInitResets();
   _cpInitAdvPanel();
-  _cpInitPlayer();
+  _cpInitSeat();
   _cpInitCalibrate();
 
   refreshFogControlUI();
@@ -333,36 +333,10 @@ function _cpSyncFancy(ids) {
   });
 }
 
-// ─── Player ───────────────────────────────────────────────────────────────────
-// Every visible control is a proxy that forwards its click to the hidden button in #cp-legacy, so
-// the existing handlers and the Player protocol are untouched. Nothing here mutates player state.
-function _cpInitPlayer() {
-  const proxy = (fromId, toId) => {
-    const el = _cpEl(fromId);
-    if (!el) return;
-    el.addEventListener('click', () => {
-      const target = _cpEl(toId);
-      if (target) target.click();
-      refreshPlayerControlUI();
-    });
-  };
-  proxy('cp-player-lock',       'btn-minimap-lock');
-  proxy('cp-player-fullscreen', 'btn-fullscreen-player');
-  proxy('cp-player-syncview',   'btn-sync-view');
-  proxy('cp-player-send',       'btn-send');
-  proxy('cp-player-golive',     'btn-player');
-
-  // Auto / Manual is one legacy toggle behind two segments — only click it when the
-  // pressed segment isn't already the live one, so the toggle can't be flipped away.
-  document.querySelectorAll('#cp-pane-player [data-sync]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const wantAuto = btn.dataset.sync === 'auto';
-      if (wantAuto !== _cpOn('btn-auto-sync')) _cpEl('btn-auto-sync').click();
-      refreshPlayerControlUI();
-    });
-  });
-
-  // My seat turns the laptop map only; the TV never sees it.
+// ─── My seat ──────────────────────────────────────────────────────────────────
+// The map turns on the laptop only; the TV never sees it. The Player's own controls are the
+// minimap's (tvControl.js), which drives the hidden legacy buttons.
+function _cpInitSeat() {
   document.querySelectorAll('#cp-sec-seat [data-seat]').forEach(btn => {
     btn.addEventListener('click', () => { setSeatTurn(+btn.dataset.seat); refreshPlayerControlUI(); });
   });
@@ -385,55 +359,9 @@ function refreshGridControlUI() {
   setGridTypeUI();
 }
 
-// Mirrors player state onto the pane and the minimap. Reads only — the legacy buttons remain
+// Mirrors player state onto My seat and the minimap. Reads only — the legacy buttons remain
 // the source of truth (their .active classes are set by minimap.js / toolbar.js).
 function refreshPlayerControlUI() {
-  if (!_cpEl('cp-pane-player')) return;
-
-  const locked = _cpOn('btn-minimap-lock');
-  const lock = _cpEl('cp-player-lock');
-  if (lock) {
-    lock.classList.toggle('active', locked);
-    lock.title = locked
-      ? 'Minimap locked. Click to unlock'
-      : "Lock the minimap so a stray drag can't move the view";
-  }
-  const panel = _cpEl('minimap-panel');
-  if (panel) panel.classList.toggle('minimap-locked', locked);
-
-  // Auto / Manual — Send is dimmed (still clickable) while Auto makes it redundant.
-  const auto = _cpOn('btn-auto-sync');
-  document.querySelectorAll('#cp-pane-player [data-sync]').forEach(b => {
-    b.classList.toggle('active', (b.dataset.sync === 'auto') === auto);
-  });
-  const send = _cpEl('cp-player-send');
-  if (send) send.classList.toggle('cp-dim', auto);
   document.querySelectorAll('#cp-sec-seat [data-seat]').forEach(b => b.classList.toggle('active', +b.dataset.seat === seatTurn));
-
-  // One Player screen serves both columns, so in two-map mode these describe the shell.
-  const scope = typeof paneScope === 'function' ? paneScope() : {};
-  const live = (typeof panesActive !== 'undefined' && panesActive)
-    ? stageIsOpen()
-    : (!!scope.playerWindow && !scope.playerWindow.closed);
-
-  // Fullscreen is a toggle, so it wears the on tint. A closed Player is never fullscreen
-  // whatever the last report said.
-  const fullscreen = live && !!scope.playerIsFullscreen;
-  const fs = _cpEl('cp-player-fullscreen');
-  if (fs) {
-    fs.classList.toggle('active', fullscreen);
-    fs.title = fullscreen
-      ? 'Player window is fullscreen. Click to leave'
-      : 'Fullscreen the Player window';
-  }
-
-  const go = _cpEl('cp-player-golive');
-  if (go) {
-    go.classList.toggle('live', live);
-    go.title = live ? 'Close the Player window' : 'Open the Player window';
-  }
-  const lbl = _cpEl('cp-golive-lbl');
-  if (lbl) lbl.textContent = live ? 'Close Window' : 'Open Window';
-  const dot = _cpEl('dock-live');
-  if (dot) dot.classList.toggle('on', live);
+  tvRefresh();
 }

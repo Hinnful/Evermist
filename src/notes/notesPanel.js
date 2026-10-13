@@ -20,7 +20,6 @@ let _npFilled = '';              // the text the field was filled with, so a col
 let _npKey = null;
 let _npOpen = true;
 let _npWantW = NOTES_MIN_W;
-let _npShown = false;
 let _npHadRoom = false;
 let _npRoomKey = null;
 
@@ -252,7 +251,7 @@ function notesPanelFollow() {
   refreshRoomPanel();
 }
 
-// ─── Showing, width, and the minimap beside it ───────────────────────────────
+// ─── Showing and width ───────────────────────────────────────────────────────
 
 function _npCalibrating() { return typeof gridCalArmed !== 'undefined' && gridCalArmed; }
 
@@ -261,7 +260,6 @@ function _npApplyVisible() {
   const away = (!worldMapOpen && !_npScene()) || _npCalibrating();
   _npEl('notes-panel').hidden = away || !_npOpen;
   _npEl('np-fab').hidden = away || _npOpen;
-  _npLayoutIfMoved(!_npEl('notes-panel').hidden);
 }
 
 // The ui zoom as the browser applied it, off a borderless button of the panel or the icon.
@@ -273,28 +271,19 @@ function _npZoom() {
   return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1;
 }
 
-// ⚠ THE TOOLBAR NEVER MOVES (dock.js): the pane stops where the minimap beside it meets the toolbar's
-// left edge, and only its narrowest width goes past.
+// ⚠ THE TOOLBAR NEVER MOVES (dock.js): the pane stops where it meets the toolbar's left edge, and
+// only its narrowest width goes past.
 function _npMaxW() {
   const z = _npZoom();
-  const room = window.innerWidth / 2 - _dockBarW() / 2 - DOCK_TOOLBAR_GAP - (168 + 16) * z;
+  const room = window.innerWidth / 2 - _dockBarW() / 2 - DOCK_TOOLBAR_GAP;
   return Math.max(NOTES_MIN_W, Math.min(NOTES_MAX_W, room / z));
 }
 
-// Sets the pane's width, then hands the minimap the edge it sits against. The minimap moves with the
-// panel, so opening or shutting one moves the other.
+// The pane's width, as far as the window allows. Its bottom edge is the minimap's (--mm-top).
 function _npLayout() {
   const panel = _npEl('notes-panel');
   if (!panel) return;
   panel.style.setProperty('--np-pane-w', Math.max(NOTES_MIN_W, Math.min(_npMaxW(), _npWantW)) + 'px');
-  const right = panel.hidden ? 0 : panel.getBoundingClientRect().right / _npZoom();
-  document.documentElement.style.setProperty('--np-right', right + 'px');
-}
-
-function _npLayoutIfMoved(shown) {
-  if (shown === _npShown) return;
-  _npShown = shown;
-  _npLayout();
 }
 
 function _npInitEdge(edge, panel) {

@@ -118,8 +118,7 @@ function seatTurnLayout() {
 
 // ⚠ CAPTURE BEFORE syncSize, which is what swaps the view's width and height.
 function applySeatTurn() {
-  const mini = document.getElementById('minimap-canvas');
-  if (mini) mini.style.transform = seatTurn ? 'rotate(' + seatTurn + 'deg)' : '';
+  minimapLayout();
   // The shell's own map is hidden behind the columns; each column turns its own.
   if (paneBroadcast('seat-turn', { deg: seatTurn })) return;
   const held = mapWidth > 0 ? captureCamera() : null;

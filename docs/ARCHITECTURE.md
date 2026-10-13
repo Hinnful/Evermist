@@ -34,7 +34,7 @@ the bottom-left corner, and **the dock** on the right edge.
 
 The dock is an icon rail with one pane open beside it. The rail opens the world map, the
 Bestiary as a centred window, and the fight table as a free window. Its panes are **Scene
-control** (the Player window, fog, rooms, lights, grid, My seat), **Music**,
+control** (fog, rooms, lights, grid, My seat), **Music**,
 **Sounds** and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
 dock sits over the map rather than beside it, so opening a pane never moves the map or changes
 what the TV is sent. Its inner edge drags to resize it, and it gives way so the toolbar stays
@@ -58,9 +58,9 @@ imports a map off screen and never opens it. A right-click menu (`worldMapMenu.j
 own handlers see it, and while it is up the map's keys are held back so nothing reaches the TV. Place notes
 live in `evermist.placeNotes` by name and ride a backup in `campaign.json`.
 
-**The left panel** (`notesPanel.js`) mirrors the dock: a full-height pane, dragged wider on its inner
-edge, that shuts to a floating icon. The minimap sits to its right and moves when the panel opens,
-shuts or widens. It holds the notes and the selected room, whose name, Delete, notes and pictures
+**The left panel** (`notesPanel.js`) mirrors the dock: a pane, dragged wider on its inner
+edge, that shuts to a floating icon. It runs from the top down to the minimap, which stays in the
+corner whatever the panel does. It holds the notes and the selected room, whose name, Delete, notes and pictures
 used to be the dock's Room tab; picking a room opens a shut panel. Breadcrumbs Campaign › Scene › Room sit on top,
 and below them the notes of one level. By default the panel follows the selection: the room if one is
 selected, otherwise the scene. A crumb picks a level without touching the selection, so the room keeps
@@ -277,15 +277,25 @@ it was taken back out.
 ### The minimap
 
 The bottom-left corner carries a small live preview of what the Player camera is framing,
-and dragging or scrolling it **drives** the TV. Sync View sits on its top-left corner and Lock,
-which stops a stray drag moving the players, on its top-right. It's a remote control rather than a second
+and dragging or scrolling it **drives** the TV. It's a remote control rather than a second
 independent camera: it feeds the same camera message the Player already listens for. Each
 camera move on the TV travels back to it, from a Send and a new map to a finished snap.
 
-One thing to know before trusting it: **the preview is deliberately wider than the TV.** It's
-a square canvas showing extra context around the Player's frame, and the actual TV is only
-the band between the two dotted lines. At a 16:9 Player, roughly a third of the preview's
-height is padding. It's a rough sketch for aiming, not evidence of what the players see.
+One thing to know before trusting it: **the preview is deliberately wider than the TV.** Its box
+has the TV's shape (16:9 with no TV known), and the actual TV is only the dotted rectangle in
+the middle, which takes 60% of each side. The rest is context. It's a rough sketch for aiming,
+not evidence of what the players see. My seat swaps the box's sides at 90 and 270 and turns the
+picture inside it; the buttons never turn. With two maps both columns are drawn side by side,
+split where the TV splits them, and a press on a half selects its column.
+
+**Show on TV** (`tvControl.js`) is the control over the picture. Off, it is one blue button and
+the name of the screen it will use. The TV is every screen but the one holding the DM window,
+decided by `tvPick.js` from the list `electron/displays.js` reports: one candidate is used, several
+ask once and are remembered, none opens a help box. Pressing it opens the Player and moves it onto
+that screen in fullscreen. Live, the minimap's edge breathes blue and a pill reads "Live on TV" or
+"Live in a window", turning to "Stop showing" under the pointer; Send, Fullscreen, Lock and Sync
+sit beside it as they apply, and the pill drops words until it fits. Unplugging the TV takes the
+map off it. Under the rig's `--offscreen` no window is moved and the window route is taken.
 
 ### My seat
 

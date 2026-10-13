@@ -21,6 +21,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // The window NAME, so main shows the right one: two-column mode opens a Player per column.
   playerReveal: (name) => ipcRenderer.send('player-reveal', name),
 
+  // Show on TV (src/player/tvControl.js). Main owns the screens; the DM window only asks.
+  listDisplays: () => ipcRenderer.invoke('displays-list'),
+  placePlayer: (name, displayId) => ipcRenderer.invoke('player-place', name, displayId),
+  extendDisplay: () => ipcRenderer.invoke('display-extend'),
+  onDisplaysChanged: (callback) => {
+    const handler = (_event, data) => callback(data);
+    ipcRenderer.on('displays-changed', handler);
+    return () => ipcRenderer.removeListener('displays-changed', handler);
+  },
+
   // Native window fullscreen fires no DOM event, so main pushes the state instead. The
   // Player relays it to the DM, which is the only window with a button to reflect it on.
   onFullscreenState: (callback) => {

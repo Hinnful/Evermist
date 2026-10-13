@@ -38,7 +38,7 @@ const TICK = 'new Promise(r => setTimeout(r, 30))';
 const SAMPLES = `(() => ({
   tab: document.querySelector('#cp-sec-fog .cp-label').textContent.trim(),
   help: document.getElementById('btn-help').title,
-  golive: document.getElementById('cp-player-golive').title,
+  showOnTv: document.querySelector('#tv-ui .tv-go').textContent,
   gridReset: document.getElementById('cp-grid-reset').title,
   lang: document.documentElement.lang,
 }))()`;
@@ -91,11 +91,12 @@ module.exports = async function language(rig) {
     'C: after the restart the screen is not Russian: ' + JSON.stringify(russian));
   await rig.player();
   await dm.evaluate('refreshPlayerControlUI(); ' + TICK);
-  const live = await dm.evaluate('({ title: document.getElementById("cp-player-golive").title,' +
-                                 ' label: document.getElementById("cp-golive-lbl").textContent })');
+  const live = await dm.evaluate('({ title: document.querySelector("#tv-ui .tv-grp .lv").title,' +
+                                 ' label: document.querySelector("#tv-ui .tv-grp .lv .st").textContent })');
   // RED ON: attribute watching turned off in the observer (i18n.js) - 2026-09-29
-  rig.check(live.title === 'Закрыть окно игроков' && live.label === 'Закрыть окно',
-    'C: the Player button the app rewrites stayed English: ' + JSON.stringify(live));
+  // ⚠ THE PILL DROPS ITS WORDS TO FIT, so a narrower runner reads the short label; the tooltip keeps the whole one.
+  rig.check(live.title === 'Идёт показ в окне. Остановить показ' && /^(Идёт показ в окне|Показ)$/.test(live.label),
+    'C: the live pill the app rewrites stayed English: ' + JSON.stringify(live));
 
   // ── D ─────────────────────────────────────────────────────────────────────
   await dm.evaluate('document.getElementById("cp-grid-reset").click(); ' + TICK);

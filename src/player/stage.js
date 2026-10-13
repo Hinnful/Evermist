@@ -75,8 +75,18 @@ function initStage() {
     if (msg.type === 'fullscreen' && window.electronAPI) window.electronAPI.toggleFullscreen();
   });
 
+  // The halves handle these themselves while the pointer is in one; this covers the chasm between.
+  let fullScreen = false;
+  const toggle = () => { if (window.electronAPI) window.electronAPI.toggleFullscreen(); };
+  document.addEventListener('keydown', e => {
+    if (e.code === 'F11') { e.preventDefault(); toggle(); }
+    else if (e.code === 'Escape' && fullScreen) toggle();
+  });
+  document.addEventListener('dblclick', toggle);
+
   if (window.electronAPI && window.electronAPI.onFullscreenState) {
     window.electronAPI.onFullscreenState(data => {
+      fullScreen = !!(data && data.fullScreen);
       if (!window.opener) return;
       window.opener.postMessage({ type: 'PLAYER_FULLSCREEN', fullScreen: !!(data && data.fullScreen) }, '*');
     });

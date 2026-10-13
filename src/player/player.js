@@ -41,6 +41,21 @@ function onPlayerMapShown() {
   if (mapOffscreen) landing.style.display = 'none';
 }
 
+// F11 and a double-click toggle the window's fullscreen, and Esc leaves it. The Player shows no UI,
+// so these are the only way to reach it from the TV's own keyboard and mouse.
+function initPlayerFullscreenKeys() {
+  const toggle = () => {
+    if (window.electronAPI) window.electronAPI.toggleFullscreen();
+    else if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen().catch(() => {});
+  };
+  document.addEventListener('keydown', e => {
+    if (e.code === 'F11') { e.preventDefault(); toggle(); }
+    else if (e.code === 'Escape' && (playerIsFullscreen || document.fullscreenElement)) toggle();
+  });
+  document.addEventListener('dblclick', toggle);
+}
+
 function initPlayer() {
   fogAnimEnabled = true; // player view always animates
   if (paneId) document.body.classList.add('stage-half');
@@ -60,6 +75,7 @@ function initPlayer() {
   // from main.js, so this window has nothing to read it from either — main pushes it here.
   if (window.electronAPI && window.electronAPI.onFullscreenState) {
     window.electronAPI.onFullscreenState((data) => {
+      playerIsFullscreen = !!(data && data.fullScreen);
       if (!playerReplyTarget()) return;
       playerReplyTarget().postMessage({
         type: 'PLAYER_FULLSCREEN', fullScreen: !!(data && data.fullScreen),
@@ -85,6 +101,7 @@ function initPlayer() {
   });
 
   initPlayerMessages();
+  initPlayerFullscreenKeys();
 
   // Player pan/zoom (free-look)
   let playerIsPanning = false;

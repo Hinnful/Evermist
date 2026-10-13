@@ -86,11 +86,14 @@ function paneAdoptSelectedSettings() {
   showFogSettings(f.pickedHex, f.tintAlpha, f.anim);
 }
 
-function paneScope() {
-  if (!panesActive) return window.paneView;
-  const f = panes[panesSelected].frame;
+function paneScopeOf(id) {
+  const f = panes[id].frame;
   const view = f && f.contentWindow && f.contentWindow.paneView;
   return view || window.paneView;
+}
+
+function paneScope() {
+  return panesActive ? paneScopeOf(panesSelected) : window.paneView;
 }
 
 // ─── Selection ───────────────────────────────────────────────────────────────
@@ -341,13 +344,12 @@ function initPanes() {
       notesPanelFollow();
       return;
     }
-    if (msg.type === 'pane-repaint') {
-      if (msg.pane === panesSelected) { minimapDirty = true; scheduleRender(); }
-      return;
-    }
-    // A column's Player looking elsewhere on its own; only the selected one's report counts.
+    // The one minimap draws both columns, so either one's picture changing repaints it.
+    if (msg.type === 'pane-repaint') { minimapDirty = true; scheduleRender(); return; }
+    // A column's Player looking elsewhere on its own; the selected one's report is the minimap's view.
     if (msg.type === 'pane-player-view') {
       if (msg.pane === panesSelected && msg.view) minimapSetView(msg.view);
+      else { minimapDirty = true; scheduleRender(); }
       return;
     }
     if (msg.type === 'pane-map-size') {

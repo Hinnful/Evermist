@@ -9,9 +9,9 @@
 // letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. The panel shows Campaign › Scene › Room, and the Room crumb exists only while a room is
-//      selected. It runs the full height, and the minimap sits to its right.
+//      selected. It runs down the left edge and ends above the minimap, which stays in the corner.
 //   I. The pane's width is dragged on its inner edge and remembered; collapsing the panel leaves a
-//      floating icon and moves the minimap with it; the toolbar stays centred on the window; the
+//      floating icon, and the minimap stays where it is; the toolbar stays centred on the window; the
 //      notes area carries the app's own scrollbar.
 //   B. A click on empty map selects the scene and shows its notes.
 //   C. A click on a crumb shows that level's notes and nothing else changes: the room stays
@@ -139,15 +139,16 @@ module.exports = async function notesPanelFeature(rig) {
   rig.check(inRoom.roomField === 'Two acolytes.' && inRoom.field === null,
             "the room's notes are not what the panel shows for a selected room: " + JSON.stringify(inRoom));
 
-  // The panel runs the full height, and the minimap sits to its right, bottom left of the map.
+  // The panel runs down from the top and ends above the minimap, which sits in the bottom-left corner.
   const geoNow = () => dm.evaluate(`(() => {
     const p = document.getElementById('notes-panel').getBoundingClientRect();
     const m = document.getElementById('minimap-panel').getBoundingClientRect();
-    return { panelTop: p.top, panelBottom: p.bottom, panelRight: p.right, miniLeft: m.left, miniBottom: m.bottom, h: innerHeight };
+    return { panelTop: p.top, panelBottom: p.bottom, panelRight: p.right, miniLeft: m.left, miniTop: m.top, miniBottom: m.bottom, h: innerHeight };
   })()`);
   const geo = await geoNow();
-  rig.check(geo.panelTop <= 1 && geo.panelBottom >= geo.h - 1 && geo.miniLeft >= geo.panelRight && geo.miniLeft - geo.panelRight < 40 && geo.miniBottom > geo.h - 40,
-            'the panel is not full height, or the minimap is not stuck to its right edge: ' + JSON.stringify(geo));
+  // RED ON: --mm-top left unset, so the panel runs to the window's bottom (minimap.js, notesPanel.css) - 2026-10-13
+  rig.check(geo.panelTop <= 1 && geo.panelBottom <= geo.miniTop && geo.miniTop - geo.panelBottom < 40 && geo.miniLeft > 0 && geo.miniLeft < 40 && geo.miniBottom > geo.h - 40,
+            'the panel does not end above the minimap, or the minimap has left the corner: ' + JSON.stringify(geo));
 
   // ── I. Width, collapse and scrollbar ──────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
@@ -163,11 +164,11 @@ module.exports = async function notesPanelFeature(rig) {
   const room = await dm.evaluate('_npMaxW(document.getElementById("notes-panel")) - 220');
   rig.note('room to widen the pane in this window: ' + Math.round(room) + 'px');
   if (room > 30) {
-    rig.check(wide.panelRight > geo.panelRight + 20 && wide.miniLeft >= wide.panelRight && wide.miniLeft - wide.panelRight < 40,
-              'dragging the panel edge did not widen it, or the minimap did not follow: ' + JSON.stringify([geo, wide]));
+    rig.check(wide.panelRight > geo.panelRight + 20 && Math.abs(wide.miniLeft - geo.miniLeft) < 1,
+              'dragging the panel edge did not widen it, or it moved the minimap: ' + JSON.stringify([geo, wide]));
     rig.check(await dm.evaluate('+localStorage.getItem("evermist.notesWidth") > 220'), 'the dragged width was not remembered');
   } else {
-    rig.check(wide.panelRight <= geo.panelRight + 1 && wide.miniLeft >= wide.panelRight,
+    rig.check(wide.panelRight <= geo.panelRight + 1 && Math.abs(wide.miniLeft - geo.miniLeft) < 1,
               'the pane grew past where the toolbar still fits: ' + JSON.stringify([geo, wide]));
   }
   const bar = await dm.evaluate('getComputedStyle(document.getElementById("np-body"), "::-webkit-scrollbar").width');
@@ -180,8 +181,8 @@ module.exports = async function notesPanelFeature(rig) {
   rig.check((await panel()).fab && await centred() < 2,
             'collapsing the panel left no floating icon, or moved the toolbar: ' + JSON.stringify(await panel()));
   const shut = await geoNow();
-  rig.check(shut.panelRight < wide.panelRight - 20 && shut.panelRight < 60 && shut.miniLeft >= shut.panelRight && shut.miniLeft < wide.miniLeft - 20,
-            'collapsing the panel did not leave the rail alone and bring the minimap with it: ' + JSON.stringify([wide, shut]));
+  rig.check(shut.panelRight < wide.panelRight - 20 && shut.panelRight < 60 && Math.abs(shut.miniLeft - wide.miniLeft) < 1,
+            'collapsing the panel did not leave the icon alone, or it moved the minimap: ' + JSON.stringify([wide, shut]));
   await dm.evaluate('document.getElementById("np-fab").click(); 0');
   await lib.settle(dm, '!document.getElementById("notes-panel").hidden', 6000);
 

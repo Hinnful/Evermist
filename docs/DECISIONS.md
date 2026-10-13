@@ -568,6 +568,14 @@ come into view while giving a bigger drag target. Do not "restore the mirror".
 An earlier pass dimmed everything outside the frame and stroked it solid. Both were rejected
 as obstructing the map.
 
+### The minimap takes the TV's shape · `SETTLED` (2026-10-13)
+Reverses "the square-plus-dotted-frame shape is not the thing to change". The box has the TV's aspect
+(16:9 with no TV known), 240px wide, and the dotted frame is a full rectangle with an even margin of
+map on every side. Drag, wheel and the view-centre pivot stay as they were. My seat swaps the box's
+sides and turns only the picture, so the buttons stay upright. A whole-map overview with a draggable
+frame was rejected on product grounds. A narrow window shrinks the box, never below 160px on its
+long side, rather than cover the centred toolbar.
+
 ### Minimap zoom pivots about the view centre, never the cursor · `SETTLED`
 Cursor-pivot zoom cannot change zoom without shifting `mapCX/mapCY`, so zooming off-centre
 also panned what the players were watching. Cursor-pivot is still correct on the DM's own
@@ -578,7 +586,7 @@ It is a square canvas that deliberately shows more map than the TV does; the rea
 the band between the two dotted lines, which at a 16:9 Player is roughly a third of the
 preview's height. So the preview is the wrong instrument for judging sync fidelity - read the
 Player's own viewport for numbers, or judge it on the TV itself. The square-plus-dotted-frame
-shape is a deliberate reversal and is not the thing to change.
+shape was a deliberate reversal; "The minimap takes the TV's shape" supersedes it.
 
 ### Lock blocks accidental movement, not deliberate driving · `SETTLED`
 Sync View intentionally still moves a locked Player. Lock only disables the Player's own

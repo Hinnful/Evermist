@@ -2,25 +2,30 @@
 // minimap.js — DM-window live mirror + remote control for the Player camera.
 //
 // Owns minimapView {mapCX, mapCY, zoom} — the triple that IS the Player's intended view — and a
-// square <canvas> composite of map and fog, with the Player's own frame marked in dotted
-// lines. Drag and wheel update the triple and post view-snap to playerWindow live; the lock gates
-// pointer input so the DM cannot nudge the Player mid-reveal.
-//
-// Called once from index.html. toolbar.js also calls minimapSetView, minimapSyncFromPlayer and
-// minimapRefreshAspect.
+// <canvas> of map and fog in the TV's shape, the TV's frame dotted in the middle with an even
+// margin of map around it. Drag and wheel update the triple and post view-snap to playerWindow
+// live; the lock gates pointer input. tvControl.js owns what sits over the picture. Called once
+// from index.html; toolbar.js and mapTurn.js call minimapSetView, ...SyncFromPlayer, ...Layout.
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const MINIMAP_W        = 176; // px — square canvas side (before zoom)
+const MINIMAP_W        = 240;  // px — the box's width at seat 0/180 (before zoom)
+const MINIMAP_MIN_LONG = 160;  // px — the box never shrinks below this on its long side
+const MINIMAP_EDGE     = 16;   // px — the gap to the window's bottom and left edges
+const MINIMAP_BACKING  = 1.25; // backing store px per CSS px
 const MINIMAP_ZOOM_MIN = 0.02;
 const MINIMAP_ZOOM_MAX = 20;
-// The preview is square and shows MORE map than the Player sees. Its side is the TV frame's
-// LONGEST edge, so the extra room is all vertical context and none is spent on padding. The TV's
-// edges are dotted lines only, with no fill or dimming, so the map stays readable.
+// The TV's frame takes this share of the box on each axis, so the map around it is an even margin.
+const MINIMAP_FRAME    = 0.6;
+// Two maps: the gap between the halves, as a share of the TV's width (stage.js's chasm).
+const MINIMAP_CHASM    = 46 / 1920;
 
 // ─── Module-local state ───────────────────────────────────────────────────────
 let _canvas  = null;
 let _ctx     = null;
 let _inited  = false;
+
+// The chosen TV's size while none is open, so the box takes its shape before the Player exists.
+let _mmShape = null;
 
 // Scratch canvas for the fog composite, reused across redraws — allocating one per frame
 // churned a canvas on every minimap repaint. Resized only when the preview's size changes.
@@ -34,37 +39,89 @@ let _dragStartX    = 0;
 let _dragStartY    = 0;
 let _dragStartCX   = 0;
 let _dragStartCY   = 0;
+let _dragHalf      = null;
 
 // rAF-throttled view-snap posting
 let _snapPending = false;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function _visibleExtent() {
-  // Map-space dimensions visible to the Player at the current triple — i.e. the TV frame.
-  const w = paneScope().playerScreenW || 1920;
-  const h = paneScope().playerScreenH || 1080;
-  const z = minimapView.zoom;
-  return { visW: w / z, visH: h / z };
+function _uiZoom() {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1;
 }
 
-// Side of the square map-space region the preview draws, in map px: exactly the TV
-// frame's longest edge, so the frame fills that axis and can never overflow.
-function _frameExtent() {
-  const w = paneScope().playerScreenW || 1920;
-  const h = paneScope().playerScreenH || 1080;
-  return Math.max(w, h) / minimapView.zoom;
+// Two maps: the left column's share of the Player screen, as the DM's divider has it.
+function _mmSplit() {
+  const row = document.getElementById('panes-row');
+  const a = row && row.querySelector('.pane-col[data-pane="A"]');
+  const w = row ? row.getBoundingClientRect().width : 0;
+  return a && w > 0 ? Math.max(0.15, Math.min(0.85, a.getBoundingClientRect().width / w)) : 0.5;
+}
+
+// The TV's size in Player px: the chosen screen, else what the open Player reports, else 16:9.
+function _mmTv() {
+  if (_mmShape) return _mmShape;
+  if (panesActive) {
+    if (!stageIsOpen()) return { w: 1920, h: 1080 };
+    const a = paneScopeOf('A'), b = paneScopeOf('B');
+    return { w: ((a.playerScreenW || 960) + (b.playerScreenW || 960)) / (1 - MINIMAP_CHASM), h: a.playerScreenH || 1080 };
+  }
+  const s = paneScope();
+  return { w: s.playerScreenW || 1920, h: s.playerScreenH || 1080 };
+}
+
+// Everything the draw and the pointer share: the canvas, and each picture in it with its own view,
+// the TV size it is measured in, and the rectangle it fills. One entry, or two with two maps.
+function _mmGeom() {
+  const cw = _canvas.width, ch = _canvas.height;
+  const tv = _mmTv();
+  let halves;
+  if (!panesActive) {
+    halves = [{ id: null, scope: paneScope(), view: minimapView, tv, dst: { x: 0, y: 0, w: cw, h: ch } }];
+  } else {
+    const gap = Math.round(cw * MINIMAP_CHASM);
+    const frac = _mmSplit();
+    const wA = Math.round((cw - gap) * frac);
+    const live = stageIsOpen() && !_mmShape;
+    halves = PANE_IDS.map((id, i) => {
+      const scope = paneScopeOf(id);
+      const share = i ? 1 - frac : frac;
+      return {
+        id, scope,
+        view: id === panesSelected ? minimapView : (scope.minimapView || minimapView),
+        tv: live ? { w: scope.playerScreenW || 960, h: scope.playerScreenH || 1080 }
+                 : { w: tv.w * (1 - MINIMAP_CHASM) * share, h: tv.h },
+        dst: i ? { x: wA + gap, y: 0, w: cw - gap - wA, h: ch } : { x: 0, y: 0, w: wA, h: ch },
+      };
+    });
+  }
+  return { cw, ch, tv, halves };
+}
+
+// The map-space size one picture draws: the TV's own view, grown by the margin.
+function _mmRegion(half) {
+  return { w: half.tv.w / half.view.zoom / MINIMAP_FRAME, h: half.tv.h / half.view.zoom / MINIMAP_FRAME };
 }
 
 // The canvas's ON-SCREEN size, in the same space as pointer clientX/clientY. ⚠ Never _canvas.width
 // (the backing store) and never getBoundingClientRect() (the layout box, while clientX/Y are
 // zoomed — the trap documented in controlPanel.js). offsetWidth × --ui-zoom is engine-agnostic.
 function _canvasScreenSize() {
-  const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1;
+  const z = _uiZoom();
   return {
     w: (_canvas.offsetWidth  || 1) * z,
     h: (_canvas.offsetHeight || 1) * z,
   };
+}
+
+// The picture under a pointer: its place is the panel's centre turned back by My seat.
+function _halfAt(geom, e) {
+  if (geom.halves.length === 1) return geom.halves[0];
+  const r = document.getElementById('minimap-panel').getBoundingClientRect();
+  const d = turnDelta(e.clientX - (r.left + r.right) / 2, e.clientY - (r.top + r.bottom) / 2);
+  const fx = (d.x + _canvasScreenSize().w / 2) / _canvasScreenSize().w;
+  const [a, b] = geom.halves;
+  return fx < (a.dst.w + (b.dst.x - a.dst.w) / 2) / geom.cw ? a : b;
 }
 
 function _postSnapThrottled() {
@@ -107,12 +164,45 @@ function minimapSyncFromPlayer(v) {
   _markDirty();
 }
 
-// The canvas is always square: the Player's aspect shows as the stroked TV frame inside it. Still
-// called when playerScreenW/H arrive, so that frame is redrawn at the right proportions.
+// The box takes the TV's shape. Still called when playerScreenW/H arrive.
 function minimapRefreshAspect() {
-  if (!_canvas) return;
-  _canvas.width  = MINIMAP_W;
-  _canvas.height = MINIMAP_W;
+  minimapLayout();
+}
+
+// The size of the screen the TV will be, or null once the open Player reports its own.
+function minimapSetShape(dims) {
+  const same = (!dims && !_mmShape) || (dims && _mmShape && dims.w === _mmShape.w && dims.h === _mmShape.h);
+  if (same) return;
+  _mmShape = dims ? { w: dims.w, h: dims.h } : null;
+  minimapLayout();
+}
+
+// The panel is the TV as the DM sees it from their seat: at 90/270 its sides swap and the canvas
+// turns inside it. On a window too narrow it shrinks rather than cover the centred toolbar.
+function minimapLayout() {
+  const panel = document.getElementById('minimap-panel');
+  if (!_canvas || !panel) return;
+  const tv = _mmTv();
+  const turned = seatTurn % 180 !== 0;
+  let w = MINIMAP_W, h = w * tv.h / tv.w;
+  const z = _uiZoom();
+  const room = (window.innerWidth / 2 - _dockBarW() / 2 - DOCK_TOOLBAR_GAP) / z - MINIMAP_EDGE;
+  const across = turned ? h : w;
+  if (across > room) {
+    const k = Math.max(room / across, MINIMAP_MIN_LONG / Math.max(w, h));
+    w *= k; h *= k;
+  }
+  w = Math.round(w); h = Math.round(h);
+  const bw = turned ? h : w, bh = turned ? w : h;
+  panel.style.width = bw + 'px';
+  panel.style.height = bh + 'px';
+  _canvas.style.width = w + 'px';
+  _canvas.style.height = h + 'px';
+  _canvas.style.transform = seatTurn ? 'rotate(' + seatTurn + 'deg)' : '';
+  const bw2 = Math.round(w * MINIMAP_BACKING), bh2 = Math.round(h * MINIMAP_BACKING);
+  if (_canvas.width !== bw2 || _canvas.height !== bh2) { _canvas.width = bw2; _canvas.height = bh2; }
+  // The notes panel ends above the box.
+  document.documentElement.style.setProperty('--mm-top', (MINIMAP_EDGE + bh) + 'px');
   _markDirty();
 }
 
@@ -130,6 +220,71 @@ function minimapSetZoom(z) {
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 
+// One picture: map, the fog over it, and the TV's frame dotted in the middle.
+function _drawHalf(half) {
+  const s = half.scope;
+  if (!s.mapOffscreen || !s.mapWidth || !s.mapHeight || !(half.view.zoom > 0)) return false;
+  const { dst } = half;
+  const reg = _mmRegion(half);
+  const srcX = half.view.mapCX - reg.w / 2;
+  const srcY = half.view.mapCY - reg.h / 2;
+
+  _ctx.save();
+  _ctx.beginPath();
+  _ctx.rect(dst.x, dst.y, dst.w, dst.h);
+  _ctx.clip();
+  _ctx.drawImage(s.mapOffscreen, srcX, srcY, reg.w, reg.h, dst.x, dst.y, dst.w, dst.h);
+  _ctx.restore();
+
+  // fogBlurCanvas is always current after rebuildFogBlur(). A CSS blur plus a source-atop
+  // fog-colour fill keeps it misty rather than a flat block.
+  if (s.fogBlurCanvas && s.fogBlurCanvas.width > 0) {
+    if (!_mmFogScratch) _mmFogScratch = document.createElement('canvas');
+    if (_mmFogScratch.width !== _canvas.width || _mmFogScratch.height !== _canvas.height) {
+      _mmFogScratch.width  = _canvas.width;
+      _mmFogScratch.height = _canvas.height;
+      _mmFogScratchCtx = null; // a resize resets the context state anyway
+    }
+    if (!_mmFogScratchCtx) _mmFogScratchCtx = _mmFogScratch.getContext('2d');
+    const sc = _mmFogScratchCtx;
+    // ⚠ MUST reset on EVERY reuse, not just after a resize: this function exits with source-atop
+    // and alpha still set, so the next frame's mask draw lands tinted over the last.
+    sc.globalCompositeOperation = 'source-over';
+    sc.globalAlpha = 1;
+    sc.clearRect(0, 0, _canvas.width, _canvas.height);
+    sc.filter = 'blur(3px)';
+    sc.drawImage(s.fogBlurCanvas, srcX / FOG_SCALE, srcY / FOG_SCALE, reg.w / FOG_SCALE, reg.h / FOG_SCALE,
+                 0, 0, dst.w, dst.h);
+    sc.filter = 'none';
+    sc.globalCompositeOperation = 'source-in';
+    sc.fillStyle = s.fogBaseColor;
+    sc.fillRect(0, 0, dst.w, dst.h);
+    // ⚠ MUST be source-atop: source-over ignores the mask and washes fogTintColor over the whole
+    // preview, veiling revealed map.
+    sc.globalCompositeOperation = 'source-atop';
+    sc.globalAlpha = 0.35;
+    sc.fillStyle = s.fogTintColor;
+    sc.fillRect(0, 0, dst.w, dst.h);
+
+    _ctx.save();
+    _ctx.globalAlpha = 0.92;
+    _ctx.drawImage(_mmFogScratch, 0, 0, dst.w, dst.h, dst.x, dst.y, dst.w, dst.h);
+    _ctx.restore();
+  }
+
+  // The TV's edges: dotted, no fill or dimming, so the map stays readable. The .5 offsets keep the
+  // 1px lines on the pixel grid instead of straddling two rows at half alpha.
+  const fw = dst.w * MINIMAP_FRAME, fh = dst.h * MINIMAP_FRAME;
+  _ctx.save();
+  _ctx.strokeStyle = 'rgba(140,180,255,0.85)';
+  _ctx.lineWidth = 1;
+  _ctx.setLineDash([3, 3]);
+  _ctx.strokeRect(Math.round(dst.x + (dst.w - fw) / 2) + 0.5, Math.round(dst.y + (dst.h - fh) / 2) + 0.5,
+                  Math.round(fw) - 1, Math.round(fh) - 1);
+  _ctx.restore();
+  return true;
+}
+
 function drawMinimap() {
   minimapDirty = false;
   // ⚠ A COLUMN DRAWS NO PREVIEW OF ITS OWN; it tells the parent its picture changed, because
@@ -140,108 +295,11 @@ function drawMinimap() {
   }
   if (!_ctx || !_canvas) return;
 
-  const s = paneScope();
-  const mW = _canvas.width;
-  const mH = _canvas.height;
-
-  _ctx.clearRect(0, 0, mW, mH);
-
-  if (!s.mapOffscreen || !s.mapWidth || !s.mapHeight) {
-    // No map loaded — leave blank (panel shows via CSS background).
-    const panel = document.getElementById('minimap-panel');
-    if (panel) panel.classList.add('minimap-no-map');
-    return;
-  }
+  _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+  let drew = false;
+  for (const half of _mmGeom().halves) drew = _drawHalf(half) || drew;
   const panel = document.getElementById('minimap-panel');
-  if (panel) panel.classList.remove('minimap-no-map');
-
-  // Everything below draws the SQUARE region (side × side), which is taller than the TV
-  // frame — the frame itself is marked over the top in step 4.
-  const side = _frameExtent();
-  const srcX = minimapView.mapCX - side / 2;
-  const srcY = minimapView.mapCY - side / 2;
-
-  // ── 1. Map layer ──────────────────────────────────────────────────────────
-  _ctx.save();
-  _ctx.beginPath();
-  _ctx.rect(0, 0, mW, mH);
-  _ctx.clip();
-  _ctx.drawImage(s.mapOffscreen, srcX, srcY, side, side, 0, 0, mW, mH);
-  _ctx.restore();
-
-  // ── 2. Fog approximation ─────────────────────────────────────────────────
-  // fogBlurCanvas is always current after rebuildFogBlur(). A CSS blur plus a source-atop
-  // fog-colour fill keeps it misty rather than a flat block.
-  if (s.fogBlurCanvas && s.fogBlurCanvas.width > 0) {
-    const fSrcX = srcX / FOG_SCALE;
-    const fSrcY = srcY / FOG_SCALE;
-    const fSrcW = side / FOG_SCALE;
-    const fSrcH = side / FOG_SCALE;
-
-    // Draw the blur mask into the reused offscreen scratch so we can composite.
-    if (!_mmFogScratch) {
-      _mmFogScratch = document.createElement('canvas');
-    }
-    if (_mmFogScratch.width !== mW || _mmFogScratch.height !== mH) {
-      _mmFogScratch.width  = mW;
-      _mmFogScratch.height = mH;
-      _mmFogScratchCtx = null; // a resize resets the context state anyway
-    }
-    if (!_mmFogScratchCtx) _mmFogScratchCtx = _mmFogScratch.getContext('2d');
-    const sc = _mmFogScratchCtx;
-    // ⚠ MUST reset on EVERY reuse, not just after a resize: this function exits with source-atop
-    // and alpha still set, so the next frame's mask draw lands tinted over the last.
-    sc.globalCompositeOperation = 'source-over';
-    sc.globalAlpha = 1;
-    sc.clearRect(0, 0, mW, mH);
-    sc.filter = 'blur(3px)';
-    sc.drawImage(s.fogBlurCanvas, fSrcX, fSrcY, fSrcW, fSrcH, 0, 0, mW, mH);
-    sc.filter = 'none';
-
-    // Fill fog base color under the mask, then composite over map.
-    _ctx.save();
-    _ctx.globalAlpha = 0.92;
-    // First: paint fog base color clipped to the blurred mask shape.
-    sc.globalCompositeOperation = 'source-in';
-    sc.fillStyle = s.fogBaseColor;
-    sc.fillRect(0, 0, mW, mH);
-    // Tint pass, clipped to the mask. ⚠ MUST be source-atop: source-over ignores the mask and
-    // washes fogTintColor over the whole preview, veiling revealed map.
-    sc.globalCompositeOperation = 'source-atop';
-    sc.globalAlpha = 0.35;
-    sc.fillStyle = s.fogTintColor;
-    sc.fillRect(0, 0, mW, mH);
-
-    _ctx.drawImage(_mmFogScratch, 0, 0);
-    _ctx.restore();
-  }
-
-  // ── 3. TV frame ───────────────────────────────────────────────────────────
-  // Two dotted lines. The frame already spans the preview's long axis, so only its inner edges
-  // need marking. Always centred: the view triple is the TV centre and the square shares it.
-  const { visW, visH } = _visibleExtent();
-  _ctx.save();
-  _ctx.strokeStyle = 'rgba(140,180,255,0.85)';
-  _ctx.lineWidth = 1;
-  _ctx.setLineDash([3, 3]);
-  _ctx.beginPath();
-  if (visW >= visH) {
-    // Landscape TV: full width, so mark the horizontal edges. The .5 offsets keep the
-    // 1px lines on the pixel grid instead of straddling two rows at half alpha.
-    const rh = (visH / side) * mH;
-    const yTop = Math.round((mH - rh) / 2) + 0.5;
-    const yBot = Math.round((mH + rh) / 2) - 0.5;
-    _ctx.moveTo(0, yTop); _ctx.lineTo(mW, yTop);
-    _ctx.moveTo(0, yBot); _ctx.lineTo(mW, yBot);
-  } else {
-    const rw = (visW / side) * mW;
-    const xL = Math.round((mW - rw) / 2) + 0.5;
-    const xR = Math.round((mW + rw) / 2) - 0.5;
-    _ctx.moveTo(xL, 0); _ctx.lineTo(xL, mH);
-    _ctx.moveTo(xR, 0); _ctx.lineTo(xR, mH);
-  }
-  _ctx.stroke();
-  _ctx.restore();
+  if (panel) panel.classList.toggle('minimap-no-map', !drew);
 }
 
 // ─── Input ────────────────────────────────────────────────────────────────────
@@ -249,6 +307,10 @@ function drawMinimap() {
 function _onPointerDown(e) {
   if (minimapLocked || !paneScope().mapOffscreen) return;
   e.preventDefault();
+  // With two maps a press on a half selects its column, so the drag below drives that one.
+  const half = _halfAt(_mmGeom(), e);
+  if (half.id && half.id !== panesSelected) selectPane(half.id);
+  _dragHalf      = half.id;
   _isDragging    = true;
   _dragPointerId = e.pointerId;
   _dragStartX    = e.clientX;
@@ -261,14 +323,16 @@ function _onPointerDown(e) {
 function _onPointerMove(e) {
   if (!_isDragging || e.pointerId !== _dragPointerId) return;
   e.preventDefault();
-  // Screen px → map px against the square region actually on screen, so the map tracks the cursor
+  // Screen px → map px against the picture actually on screen, so the map tracks the cursor
   // 1:1. ⚠ Dividing by _canvas.width, the backing store, over-shoots every drag.
   const { w: scrW, h: scrH } = _canvasScreenSize();
-  const side = _frameExtent();
+  const geom = _mmGeom();
+  const half = geom.halves.find(h => h.id === _dragHalf) || geom.halves[0];
+  const reg = _mmRegion(half);
   // The preview turns with the DM map, so the drag is turned back into the map's own axes.
   const d  = turnDelta(e.clientX - _dragStartX, e.clientY - _dragStartY);
-  const dx = d.x / scrW * side;
-  const dy = d.y / scrH * side;
+  const dx = d.x / (scrW * half.dst.w / geom.cw) * reg.w;
+  const dy = d.y / (scrH * half.dst.h / geom.ch) * reg.h;
   minimapView = {
     mapCX: _dragStartCX - dx,
     mapCY: _dragStartCY - dy,
@@ -290,6 +354,8 @@ function _onPointerUp(e) {
 function _onWheel(e) {
   e.preventDefault();
   if (minimapLocked || !paneScope().mapOffscreen) return;
+  const half = _halfAt(_mmGeom(), e);
+  if (half.id && half.id !== panesSelected) selectPane(half.id);
   minimapSetZoom(minimapView.zoom * (e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR));
 }
 
@@ -302,9 +368,6 @@ function initMinimap() {
   _canvas = document.getElementById('minimap-canvas');
   _ctx    = _canvas.getContext('2d');
 
-  // Set initial aspect from playerScreenW/H (may still be defaults).
-  minimapRefreshAspect();
-
   // Seed view: fit the whole map if dimensions are known, else leave default.
   if (mapWidth && mapHeight) {
     _seedView();
@@ -314,7 +377,8 @@ function initMinimap() {
     minimapLocked = !minimapLocked;
     document.getElementById('btn-minimap-lock').classList.toggle('active', minimapLocked);
     document.getElementById('btn-minimap-lock').textContent = minimapLocked ? 'Locked' : 'Lock';
-    if (paneForward('player-lock', { locked: minimapLocked })) return;
+    // Both columns' Players, so the lock holds whichever half the DM drags.
+    if (paneBroadcast('player-lock', { locked: minimapLocked })) return;
     if (playerWindow && !playerWindow.closed) {
       playerWindow.postMessage({ type: 'player-lock', locked: minimapLocked }, '*');
     }
@@ -328,7 +392,12 @@ function initMinimap() {
 
   _canvas.addEventListener('wheel', _onWheel, { passive: false });
 
-  _markDirty();
+  // The toolbar's width and the window's decide how wide the box may be.
+  const bars = new ResizeObserver(minimapLayout);
+  bars.observe(document.documentElement);
+  ['toolbar-bottom', 'context-row'].forEach(id => { const el = document.getElementById(id); if (el) bars.observe(el); });
+
+  minimapLayout();
 }
 
 // Seed minimapView to fit the whole map (like fitToScreen but for the minimap).

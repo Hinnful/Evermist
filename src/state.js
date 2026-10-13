@@ -254,6 +254,8 @@ let lightPolys = [];         // what is drawn: per light, its rings as flat [x, 
 // ─── Auto-Sync ───────────────────────────────────────────────────────────────
 let autoSync = false;
 let autoSyncTimer = null;
+// Manual mode: a change has been made that the Player has not been sent. Send clears it.
+let playerUnsent = false;
 
 // ─── Scene management ────────────────────────────────────────────────────────
 let currentScene    = null;   // full scene record in memory (includes mapBlob ref)

@@ -112,6 +112,12 @@ function createDMWindow() {
   // here instead — lets it pause the PixiJS ticker / flush the texture pool while hidden.
   win.on('minimize', () => sendTo(win, 'window-visibility', { visible: false }));
   win.on('restore',  () => sendTo(win, 'window-visibility', { visible: true  }));
+  // Moving this window to another screen fires no screen event, and Show on TV picks the TV as
+  // every screen but the one holding this window, so it is told once the window settles.
+  let movedTimer = null;
+  const tellMoved = () => { clearTimeout(movedTimer); movedTimer = setTimeout(() => sendTo(win, 'displays-changed', { kind: 'moved' }), 300); };
+  win.on('move', tellMoved);
+  win.on('resize', tellMoved);
   // Hand off from splash to app once the renderer has painted. A minimum keeps it from flashing,
   // and a cap keeps a slow init from leaving the splash up.
   const MIN_SPLASH_MS = 1000;
@@ -274,6 +280,7 @@ const IPC = [
   require('./electron/backupZip.js'),
   require('./electron/statBlockFetch.js'),
   require('./electron/sounds.js'),
+  require('./electron/displays.js'),
   ipcMcp,
 ];
 const [, ipcMusic, , ipcDiagLog, ipcUpdates] = IPC;   // the three with a call of their own
@@ -313,7 +320,11 @@ app.whenReady().then(() => {
 
   // ⚠ AFTER THE FOLDERS EXIST AND BEFORE ANY WINDOW OPENS. A handler registered on require
   // reads its path from here, so one that fires before this line has nowhere to write.
-  const ctx = { mapsDir, musicDir, logsDir, sendTo, isSafeId, getDmWin: () => dmWin };
+  const ctx = {
+    mapsDir, musicDir, logsDir, sendTo, isSafeId, offscreen,
+    getDmWin: () => dmWin,
+    getPlayerWin: (key) => playerWins.get(key || 'evermist-player'),
+  };
   for (const mod of IPC) mod.register(ctx);
 
   ipcDiagLog._rotateDiagLogs();
@@ -322,8 +333,11 @@ app.whenReady().then(() => {
   // Re-push display info when the user moves/resizes the Player window or the
   // OS display configuration changes (resolution, scale factor, plugged-in TV).
   const onDisplayChange = () => pushPlayerDisplay();
-  screen.on('display-added',   onDisplayChange);
-  screen.on('display-removed', onDisplayChange);
+  // The DM window also hears the list change: Show on TV waits on a screen appearing and
+  // notes one going.
+  const tellDm = (kind) => () => { onDisplayChange(); sendTo(dmWin, 'displays-changed', { kind }); };
+  screen.on('display-added',   tellDm('added'));
+  screen.on('display-removed', tellDm('removed'));
   screen.on('display-metrics-changed', onDisplayChange);
 
   createDMWindow();

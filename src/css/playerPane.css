@@ -1,58 +1,128 @@
-/* playerPane.css — the minimap and the Player rows' controls: the overlay button, the stepper,
-   the go-live button. The minimap's place and frame are dock.css's. */
-  /* Square frame; the canvas keeps the Player screen's aspect and centres inside it
-     (letterboxed). The canvas must not be squared off — it is a 1:1 mirror of what the
-     Player sees, so stretching it would make the viewport rectangle lie. */
-  #minimap-panel {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: all;
-    user-select: none;
-    border-radius: 8px;
-    overflow: hidden;
+/* playerPane.css — what sits in the minimap: the picture's clip, Show on TV and its states, the pill,
+   the TV menu and the help box (tvControl.js builds them); then the stepper and the go-live button
+   other panes reuse. The minimap's place, size and glow are dock.css's. */
+  #tv-clip {
+    position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
     background-color: #131417;
     background-image:
       linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
     background-size: 22px 22px;
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
   }
-  #minimap-canvas {
-    display: block;
-    width: 100%;
-    height: auto;
-    background: transparent;
-    cursor: grab;
-  }
+  /* minimap.js sizes the canvas and turns it with My seat; the buttons over it never turn. */
+  #minimap-canvas { position: absolute; left: 50%; top: 50%; translate: -50% -50%; display: block; background: transparent; cursor: grab; transition: filter .25s; }
   #minimap-panel.minimap-locked #minimap-canvas,
   #minimap-panel.minimap-no-map #minimap-canvas { cursor: default; }
   #minimap-panel.minimap-no-map #minimap-canvas { opacity: 0.3; }
+  #minimap-panel.tv-off #minimap-canvas { filter: brightness(0.8) saturate(0.7); }
 
-  /* Floating overlay button on the preview (Lock). OPAQUE on the app's panel surface, not a
-     scrim: at 0.72 alpha it took the colour of whatever map was under it and vanished against
-     a dark one. It floats over a picture, so it has to bring its own background. */
-  .cp-ovbtn {
-    position: absolute; top: 6px; right: 6px;
-    width: 26px; height: 26px; padding: 0;
-    display: flex; align-items: center; justify-content: center;
-    border: 1px solid rgba(255,255,255,0.12); border-radius: 7px;
-    background: #1a1a1c; color: #9aa0aa;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.45);
-    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+  #tv-ui { position: absolute; inset: 0; pointer-events: none; }
+  #tv-ui button { font-family: system-ui, -apple-system, sans-serif; }
+  #tv-ui .tv-ic { display: inline-flex; flex: none; }
+  .tv-row { position: absolute; z-index: 5; display: flex; gap: 5px; align-items: center; }
+  .tv-row.tl { top: 7px; left: 7px; }
+  .tv-row.tr { top: 7px; right: 7px; }
+  .tv-row.bl { bottom: 7px; left: 7px; right: 7px; }
+
+  /* The picture's tools: faint at rest, full under the pointer. A Lock that is on stays, because it
+     changes what a drag does. */
+  .tv-ov {
+    pointer-events: auto; position: relative; height: 28px; min-width: 28px; padding: 0; border-radius: 7px;
+    border: 1px solid var(--g-pick); background: var(--g-hover); color: var(--g-text);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55); opacity: 0.4; transition: opacity .15s;
   }
-  .cp-ovbtn:hover { color: #cdd2da; border-color: rgba(255,255,255,0.2); }
-  .cp-ovbtn.active {
-    border-color: rgba(90,140,235,0.6);
-    background: linear-gradient(rgba(70,120,220,0.22), rgba(70,120,220,0.22)), #1a1a1c;
-    color: #8fb6ff;
+  #minimap-panel:hover .tv-ov, .tv-ov.active { opacity: 1; }
+  .tv-ov:hover { background: var(--g-pick); }
+  .tv-ov.active { background: linear-gradient(var(--b-tint), var(--b-tint)), var(--g-hover); color: var(--b-icon); }
+
+  /* Off: the one button the DM needs, and the screen it will use. */
+  .tv-cta { position: absolute; z-index: 5; left: 50%; top: 52%; transform: translate(-50%, -50%);
+            display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: calc(100% - 16px); }
+  .tv-go {
+    pointer-events: auto; height: 36px; padding: 0 16px 0 14px; border-radius: 7px; border: 0;
+    background: var(--b-solid); color: #fff; white-space: nowrap; font: 600 13.5px/1 system-ui;
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   }
-  .cp-ovbtn .cp-ico-on { display: none; }
-  .cp-ovbtn.active .cp-ico-on { display: block; }
-  .cp-ovbtn.active .cp-ico-off { display: none; }
+  .tv-go:hover { background: var(--b-icon); }
+  .tv-go.small { height: 28px; padding: 0 10px; font-size: 12px; box-shadow: none; }
+  .tv-sub {
+    pointer-events: auto; display: inline-flex; align-items: center; gap: 5px; max-width: 100%; border: 0; background: none;
+    padding: 3px 5px; border-radius: 4px; cursor: pointer; color: #fff; font: 500 11.5px/1 system-ui;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+  }
+  .tv-sub:hover { background: rgba(0, 0, 0, 0.5); }
+  .tv-sub .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .tv-sub .car { flex: none; font-size: 8px; color: var(--g-dim); }
+
+  /* Live: the state and its way back in one pill. At rest it states the fact; under the pointer it
+     offers Stop, and both words share one cell so the pill keeps its width. */
+  .tv-grp { pointer-events: auto; display: inline-flex; align-items: stretch; height: 30px; max-width: 100%; border-radius: 8px;
+            overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6); }
+  .tv-grp > * { border: 0; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; font: 600 12px/1 system-ui;
+                cursor: pointer; white-space: nowrap; position: relative; }
+  .tv-grp.tight > * { padding: 0 7px; }
+  .tv-grp .lv { background: linear-gradient(var(--b-tint-h), var(--b-tint-h)), var(--g-bg); color: #fff;
+                border: 1.5px solid var(--b-solid); border-right: 0; border-radius: 8px 0 0 8px; }
+  .tv-grp .lv.solo { border-right: 1.5px solid var(--b-solid); border-radius: 8px; }
+  .tv-grp .lv.sw { display: inline-grid; align-items: center; justify-items: center; }
+  .tv-grp .sw .st, .tv-grp .sw .ac { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 7px; }
+  .tv-grp .sw .ac { visibility: hidden; }
+  .tv-grp .sw:hover .st { visibility: hidden; }
+  .tv-grp .sw:hover .ac { visibility: visible; }
+  .tv-grp .lv.sw:hover { background: var(--b-solid); }
+  .tv-grp .lv i { width: 7px; height: 7px; border-radius: 50%; background: var(--b-icon); animation: tvPulse 2.6s ease-in-out infinite; }
+  .tv-grp .sd { background: var(--g-hover); color: var(--g-text); border-left: 1px solid var(--g-pick); }
+  .tv-grp .sd:hover { background: var(--g-pick); }
+  .tv-grp .sd:last-child { border-radius: 0 8px 8px 0; }
+  .tv-grp .unsent { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--b-icon); }
+  @keyframes tvPulse { 50% { opacity: 0.3; } }
+
+  .tv-wait {
+    pointer-events: auto; position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 10px; background: rgba(14, 14, 18, 0.72); color: var(--g-text); font: 500 12px/1.3 system-ui;
+  }
+  .tv-spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--g-pick); border-top-color: var(--b-icon); animation: tvSpin .8s linear infinite; }
+  @keyframes tvSpin { to { transform: rotate(360deg); } }
+  .tv-note { pointer-events: auto; position: absolute; z-index: 6; left: 8px; right: 8px; bottom: 8px; padding: 7px 9px; border-radius: 6px;
+             background: var(--g-bg); color: var(--g-text); font: 400 11.5px/1.35 system-ui; }
+  .tv-btn { pointer-events: auto; height: 28px; padding: 0 10px; border-radius: 6px; border: 0; background: var(--g-field);
+            color: var(--g-text); font: 500 12px/1 system-ui; cursor: pointer; }
+  .tv-btn:hover { background: var(--g-hover); }
+
+  /* The menu and the help box open above the picture, in Scene control's type. */
+  #tv-pop {
+    position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 20; width: 236px; overflow: hidden;
+    background: var(--g-bg); border: 1px solid var(--g-line); border-radius: var(--panel-radius);
+    box-shadow: var(--pop-shadow); color: var(--g-text);
+  }
+  #tv-pop[hidden] { display: none; }
+  #tv-pop.help { width: 290px; }
+  .tv-menu { padding: 12px 12px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .tv-menu .ttl, .tv-menu .q { font: 600 12px/1.3 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .tv-menu .blk { display: flex; flex-direction: column; gap: 6px; }
+  .tv-menu .lbl { font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
+  .tv-row2 { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px; border: 0; border-radius: 5px;
+             background: var(--g-field); color: var(--g-text); font: 500 11.5px/1 system-ui, sans-serif; cursor: pointer;
+             text-align: left; min-width: 0; }
+  .tv-row2:hover { background: var(--g-hover); }
+  .tv-row2.on { background: var(--g-pick); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+  .tv-row2 .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .tv-row2 .mt { margin-left: auto; flex: none; color: var(--g-dim); font: 400 11px/1 system-ui, sans-serif; }
+  .tv-row2.none { background: none; color: var(--g-dim); cursor: default; padding: 0; }
+  .tv-menu .seg { display: flex; gap: 2px; padding: 2px; border-radius: 5px; background: var(--g-field); }
+  .tv-menu .seg button { flex: 1; height: 22px; border: 0; border-radius: 4px; background: none; color: var(--g-dim);
+                         font: 500 11px/1 system-ui, sans-serif; cursor: pointer; }
+  .tv-menu .seg button.on { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+  .tv-menu .seg button:hover:not(.on) { background: var(--g-hover); color: var(--g-text); }
+  .tv-menu .hint { color: var(--g-dim); font: 400 11px/1.4 system-ui, sans-serif; }
+  .tv-help { padding: 12px; font: 400 12px/1.45 system-ui; color: var(--g-text); }
+  .tv-help .t { display: block; font: 600 12px/1 system-ui; margin-bottom: 7px; }
+  .tv-help .b { font-weight: 600; }
+  .tv-help .kbd { font: 600 11px/1 system-ui; padding: 2px 5px; border-radius: 4px; background: var(--g-field); }
+  .tv-help .act { display: flex; gap: 6px; margin-top: 10px; }
+  .tv-lnk { margin-top: 10px; border: 0; background: none; padding: 0; color: var(--g-dim); font: 400 11.5px/1 system-ui;
+            cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 
   /* Row of controls: a flexible group on the left, independent buttons trailing it.
      Buttons are centred against a taller toggle pill rather than stretched. */

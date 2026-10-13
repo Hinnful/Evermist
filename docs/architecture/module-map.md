@@ -65,6 +65,8 @@ language, present tense. The terse version every session carries is in
 | `lights.js` | A scene's lights, which are polygons in a list of their own. It seeds them from the floor plan on request, draws a faint warm line round the lit areas under the fog on both screens, and sends the outlines to the Player. |
 | `playerWindow.js` | The DM's side of the Player window: opening it, keeping a warm one ready so the next press is instant, and deciding what is sent to it and when. |
 | `minimap.js` | The DM's live preview of the Player camera in the bottom-left corner, and the remote control that drives it. |
+| `tvPick.js` | Which screen is the TV, decided from the display list and the pick the DM made last time. No screen of its own; unit-tested. |
+| `tvControl.js` | Show on TV: the control on the minimap that puts the map on the TV. It owns the off, waiting and live states, the pill under the picture, the TV menu and the help box for a machine with one screen. |
 | `stageWindow.js` | The DM side of the Player screen while two maps are up: opening that window, keeping a warm one ready so the next press is instant, wiring each column to its own half, and closing it. |
 | `paneRuntime.js` | The other end of every command the DM shell sends a column. Each message presses the control that column already has, so a column behaves like the DM window it is, and no behaviour is written twice. |
 | `panes.js` | Two-column mode, where the DM window's map area splits in two and each half holds a whole second copy of the app running in an `<iframe>` with its chrome hidden. Owns the two frames, which column is selected, the draggable divider, and every command the DM's chrome sends into a column. A column therefore has its own scene, camera, grid, rooms, fog, undo history and Player window with nothing written for it. Also the small piece that runs INSIDE a column: Electron gives a subframe no bridge to the shell, so the column borrows the parent window's. |
@@ -152,6 +154,7 @@ language, present tense. The terse version every session carries is in
 | `electron/videoFiles.js` | An animated map's own file on disk: written as it imports, read back for the Player to play its own copy, listed for the memory probe, deleted with its scene. |
 | `electron/music.js` | The music folder, which is the whole library - no database. What is in it, what a pasted link resolves to, and the downloader that fills it. |
 | `electron/sounds.js` | The soundboard's built-in sound files, which ship inside the app. It hands the renderer a file's bytes by name, and only a bare file name in that folder passes. |
+| `electron/displays.js` | The screens: the list the DM's window picks the TV from, moving the Player onto one in fullscreen, and switching a mirrored TV to a second screen. Does nothing under the rig's `--offscreen`. |
 | `electron/floorPlan.js` | Looks beside a map on disk for the `.dd2vtt` that came with it. |
 | `electron/diagLog.js` | The playback log every window writes into, rotated on each start, with a few past runs kept. |
 | `electron/updates.js` | Asks whether a newer release exists, downloads it, and holds the state the About line and the toast read. |

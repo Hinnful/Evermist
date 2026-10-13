@@ -79,6 +79,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `player/stageWindow.js` | The two-map Player window, DM side |
 | `player/stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
 | `player/minimap.js` | Minimap render, drag/zoom remote, two-way view sync |
+| `player/tvPick.js` | Pure kernel: which screen is the TV, from the display list and the remembered pick. Tested |
+| `player/tvControl.js` | Show on TV: the minimap's off, waiting and live states, the pill, the TV menu, the help box |
 | `render/video.js` | Animated-map handling |
 | `render/videoDiag.js` | Video diagnostics overlay and disk log |
 | `render/display.js` | Display detection |
@@ -166,6 +168,7 @@ the windows, the display push and the app lifecycle, and hands every module its 
 | `electron/videoFiles.js` | An animated map's file on disk |
 | `electron/music.js` | The music folder as the library, and the downloader that fills it |
 | `electron/sounds.js` | The built-in sound files, read for the soundboard |
+| `electron/displays.js` | The display list, placing the Player on a screen, switching the TV to a second screen |
 | `electron/floorPlan.js` | The `.dd2vtt` sitting beside a map on disk |
 | `electron/diagLog.js` | The playback log every window writes to, and its rotation |
 | `electron/updates.js` | The update check, download, About's state |
@@ -198,7 +201,7 @@ render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWin
 scenes/backup.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
 render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
-dev/stress.js → dev/memProbe.js → render/render.js → render/gridCalibrate.js → player/minimap.js →
+dev/stress.js → dev/memProbe.js → render/render.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvControl.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/picturePlan.js → rooms/roomCard.js →
 rooms/pictureDecode.js → rooms/roomPictures.js → rooms/roomLink.js → notes/notesPanel.js →

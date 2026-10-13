@@ -232,34 +232,12 @@
     <div id="dock-edge" title="Drag to resize"></div>
     <section class="dk-sec" id="dock-pane-scene" data-pane="scene" hidden>
       <div class="dk-head">
-        <span class="dk-scene"><span class="dk-live" id="dock-live" title="On the TV"></span><span id="scene-dd-name" class="cp-adv-title" data-no-i18n>No scene</span></span>
+        <span class="dk-scene"><span id="scene-dd-name" class="cp-adv-title" data-no-i18n>No scene</span></span>
         <button id="btn-two-maps" class="cp-adv-close" title="Two maps: show a second map beside this one">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>
         </button>
       </div>
       <div class="dk-scroll">
-
-        <div class="cp-group" id="cp-pane-player">
-          <div class="dk-sh"><span class="cp-label">Player</span><span id="display-info-readout" class="cp-hint"></span></div>
-          <div class="dk-blk"><span class="dk-sub">Window</span>
-            <div class="dk-r">
-              <button id="cp-player-golive" class="cp-btn cp-btn-live" title="Open the Player window">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3.2" width="10" height="7" rx="1.2"/><line x1="7" y1="10.2" x2="7" y2="11.8"/><line x1="4.8" y1="11.8" x2="9.2" y2="11.8"/></svg>
-                <span id="cp-golive-lbl">Open Window</span>
-              </button>
-              <button class="cp-adv-close" id="cp-player-fullscreen" title="Fullscreen the Player window"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5 V2 H5.5"/><path d="M8.5 2 H12 V5.5"/><path d="M12 8.5 V12 H8.5"/><path d="M5.5 12 H2 V8.5"/></svg></button>
-            </div>
-          </div>
-          <div class="dk-blk"><span class="dk-sub">Updates</span>
-            <div class="dk-r">
-              <div class="cp-tabs">
-                <button class="cp-segtab" data-sync="auto" title="Send fog changes as you paint them">Auto</button>
-                <button class="cp-segtab" data-sync="manual" title="Hold changes until you press Send">Manual</button>
-              </div>
-              <button class="cp-adv-close" id="cp-player-send" title="Send to the Player now"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="3.5,2.3 11.8,7 3.5,11.7"/></svg></button>
-            </div>
-          </div>
-        </div>
 
         <div class="cp-group" id="cp-sec-fog">
           <div class="dk-sh"><span class="cp-label">Fog</span>
@@ -610,16 +588,14 @@
   </div>
 </div>
 
-<!-- The minimap: what the TV shows, bottom left. Drag or wheel it to move the Player's view. -->
+<!-- The minimap: what the TV shows, bottom left. Drag or wheel it to move the Player's view.
+     tvControl.js fills #tv-ui (buttons, pill, states) and #tv-pop (the TV menu and the help box). -->
 <div id="minimap-panel">
-  <canvas id="minimap-canvas" width="176" height="176"></canvas>
-  <button id="cp-player-syncview" class="cp-ovbtn left" title="Push this view to the Player">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M2.2 7 a4.8 4.8 0 0 1 8.1 -3.5 L11.8 5"/><polyline points="11.8,1.6 11.8,5 8.4,5"/><path d="M11.8 7 a4.8 4.8 0 0 1 -8.1 3.5 L2.2 9"/><polyline points="2.2,12.4 2.2,9 5.6,9"/></svg>
-  </button>
-  <button id="cp-player-lock" class="cp-ovbtn" title="Lock the minimap so a stray drag can't move the view">
-    <svg class="cp-ico-off" width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.3" width="8" height="5.4" rx="1"/><path d="M4.7 6.3 V4.6 a2.3 2.3 0 0 1 4.6 0"/></svg>
-    <svg class="cp-ico-on" width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.3" width="8" height="5.4" rx="1"/><path d="M4.7 6.3 V4.6 a2.3 2.3 0 0 1 4.6 0 V6.3"/></svg>
-  </button>
+  <div id="tv-clip">
+    <canvas id="minimap-canvas" width="300" height="169"></canvas>
+    <div id="tv-ui"></div>
+  </div>
+  <div id="tv-pop" hidden></div>
 </div>
 
 <!-- CUSTOM MOVEMENT — the real animation dials, beside the dock. Custom… in the movement
@@ -946,6 +922,8 @@
 <script src="src/render/render.js"></script>
 <script src="src/render/gridCalibrate.js"></script>
 <script src="src/player/minimap.js"></script>
+<script src="src/player/tvPick.js"></script>
+<script src="src/player/tvControl.js"></script>
 <script src="src/ui/colorPicker.js"></script>
 <script src="src/ui/controlPanel.js"></script>
 <script src="src/ui/dock.js"></script>
@@ -1078,7 +1056,7 @@ if (isPlayer) {
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
 if (!isPlayer) initToolbar();
 if (!isPlayer) initShapeMenu();   // the shape button's flyout → shapeMenu.js
-if (!isPlayer) initMinimap();
+if (!isPlayer) { initMinimap(); if (!isPane) initTvControl(); }   // Show on TV → tvControl.js
 
 // Player runtime (message handler, pan/zoom, init) lives in player.js.
 if (isPlayer) initPlayer();

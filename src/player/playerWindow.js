@@ -137,6 +137,7 @@ function onSceneLoaded() {
 
 function sendToPlayer(fogOnly = false, sceneChange = false) {
   if (!canSendToPlayer()) return;
+  playerUnsent = false;
 
   // Fog sent at 1/4 scale (native fogDataCanvas size) — much smaller than upscaling.
   const fogDataUrl = fogDataCanvas.toDataURL('image/png');
@@ -223,7 +224,7 @@ function syncFogColorToPlayer(pickedHex) {
 // Debounces an auto-save + Player fog push after every fog-changing operation.
 function scheduleAutoSync() {
   scheduleAutoSave();
-  if (!autoSync) return;
+  if (!autoSync) { playerUnsent = true; return; }
   clearTimeout(autoSyncTimer);
   autoSyncTimer = setTimeout(() => sendToPlayer(true), 300);
 }
