@@ -7,25 +7,18 @@
 
 let _rlSent = null;
 
-// From the column's refreshRoomPanel on every repaint; a report goes up only when it changed,
-// and the picture blobs only when the set did.
+// From the column's refreshRoomPanel on every repaint; a report goes up only when it changed.
 function paneReportRoom(room) {
   if (!isPane || parent === window) return;
   const snap = room ? {
     id: room.id, name: room.name != null ? room.name : _rpFallbackName(room),
     desc: room.desc != null ? room.desc : '', mode: room.mode,
-    pictures: roomPictureRefs(room, pictureBlobs).map(p => ({ id: p.id, name: p.name })),
-    onTv: tvPicture && tvPicture.roomId === room.id ? tvPicture.picId : '',
   } : null;
   const scene = currentScene ? { id: currentScene.id, name: currentScene.name, notes: currentScene.notes || '' } : null;
   const key = JSON.stringify({ snap, scene });
   if (key === _rlSent) return;
-  const before = _rlSent && JSON.parse(_rlSent).snap;
-  const picsChanged = !before || !snap || JSON.stringify(before.pictures) !== JSON.stringify(snap.pictures);
   _rlSent = key;
-  const blobs = {};
-  if (snap && picsChanged) snap.pictures.forEach(p => { blobs[p.id] = pictureBlobs[p.id]; });
-  parent.postMessage({ type: 'pane-room', pane: paneId, room: snap, scene, blobs }, '*');
+  parent.postMessage({ type: 'pane-room', pane: paneId, room: snap, scene }, '*');
 }
 
 // What the DM window asks of this column's selected room. ⚠ Refused when the selection moved on
@@ -40,10 +33,6 @@ function paneApplyRoomEdit(m) {
   } else if (m.op === 'mode') setPolygonMode(room.id, m.mode);
   else if (m.op === 'delete') deleteSelectedPolygon();
   else if (m.op === 'entry') applyModuleEntryToRoom(m.entry);
-  else if (m.op === 'add-pictures') addRoomPictures(room.id, m.files);
-  else if (m.op === 'drop-picture') _rpPicEdit(room.id, list => picturesWithout(list, m.pic));
-  else if (m.op === 'move-picture') _rpPicEdit(room.id, list => picturesMoved(list, m.from, m.to));
-  else if (m.op === 'tv') { if (m.pic) showTvPicture(room.id, m.pic); else hideTvPicture(); }
   drawCursor(lastScreenX, lastScreenY);
 }
 
@@ -53,10 +42,9 @@ const _rlRooms = { A: null, B: null };
 const _rlScenes = { A: null, B: null };
 
 // `scene` is absent when the caller only knows the room moved on.
-function paneRoomReported(id, room, blobs, scene) {
+function paneRoomReported(id, room, scene) {
   _rlRooms[id] = room;
   if (scene !== undefined) _rlScenes[id] = scene;
-  for (const k in blobs) if (blobs[k]) pictureBlobs[k] = blobs[k];
   // ⚠ refreshRoomPanel, never drawCursor: the DM window holds no map in two-map mode, and
   // drawCursor returns before it reaches the tab.
   if (id === panesSelected) refreshRoomPanel();

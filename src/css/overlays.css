@@ -73,7 +73,7 @@
   #scene-fade.dark  { opacity: 1; }
   #scene-fade.blind { background: #1a1a2e; }
 
-  /* A room picture on the TV (tvPicture.js). Under the scene cover: a switch takes it down.
+  /* A gallery picture on the TV (tvPicture.js). Under the scene cover.
      The map dims first on the way in and last on the way out. */
   #tv-picture {
     position: fixed; inset: 0; z-index: 998; pointer-events: none;

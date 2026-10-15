@@ -7,7 +7,7 @@
 // panel on a tab it does not have.
 const DOCK_PANE_KEY = 'evermist.dockPane';
 const DOCK_WIDTH_KEY = 'evermist.dockWidth';
-const DOCK_PANES = ['scene', 'music', 'sounds', 'settings'];
+const DOCK_PANES = ['scene', 'music', 'sounds', 'gallery', 'settings'];
 const DOCK_MIN_W = 230, DOCK_MAX_W = 420;   // the pane, in the dock's pre-zoom px
 const DOCK_TOOLBAR_GAP = 16;                // screen px kept clear either side of the toolbar
 

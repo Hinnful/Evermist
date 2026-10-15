@@ -281,7 +281,7 @@ function initInput() {
       // Merge, Trim or Cut has no other way out from the keyboard.
       case 'Escape':
         if (legendVisible) { toggleLegend(); break; }
-        if (takeDownTvPicture()) break;
+        if (galleryTakeDown()) break;
         if (dropPreset()) break;
         // Door is a tool the room's switcher armed, and Esc ends it before it drops the room.
         if (shape === 'door') { setShape('select'); break; }

@@ -1,0 +1,42 @@
+/* gallery.css — the Gallery pane in the dock: the find field, the grid of pictures, the empty well. */
+  #dock-pane-gallery { position: relative; }
+  .ga-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px 8px; padding: 6px 12px 16px 14px; }
+  .ga-tile { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .ga-th { position: relative; aspect-ratio: 1; border-radius: 5px; overflow: hidden; cursor: pointer; background: var(--g-field); }
+  .ga-th img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .ga-th:hover { box-shadow: 0 0 0 1px var(--g-pick); }
+  /* On the TV: the room picture's green and its TV tag, so a picture on the TV reads one way everywhere. */
+  .ga-tile.on .ga-th { box-shadow: 0 0 0 2px #5fbf8a; }
+  .ga-tile.on .ga-th::after {
+    content: "TV"; position: absolute; left: 5px; bottom: 5px; padding: 2px 6px; border-radius: 3px;
+    background: #5fbf8a; color: #0d1a12; font: 600 10px/1.2 system-ui, sans-serif;
+  }
+  .ga-x {
+    position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 0; border-radius: 5px; background: rgba(0, 0, 0, 0.65); color: #e6e7e9; cursor: pointer; opacity: 0;
+  }
+  .ga-th:hover .ga-x { opacity: 1; }
+  .ga-x:hover { color: #ff6b70; }
+  .ga-name { font: 500 11px/1.2 system-ui, -apple-system, sans-serif; color: #c7cad0;
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
+  .ga-name-edit { width: 100%; min-width: 0; height: 20px; margin: -3px 0 -2px; padding: 0 5px; border: 0; border-radius: 4px;
+                  outline: none; background: var(--g-field); box-shadow: 0 0 0 1px var(--b-solid); color: var(--g-text);
+                  font: 500 11px/1 system-ui, -apple-system, sans-serif; }
+  .ga-none { grid-column: 1 / -1; padding: 24px 0; text-align: center; color: var(--g-dim);
+             font: 500 11.5px/1.4 system-ui, -apple-system, sans-serif; }
+
+  .ga-grid.ga-empty { display: block; padding: 14px 12px 16px 14px; }
+  .ga-well {
+    display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 14px; text-align: center;
+    border: 1.5px dashed #3a3c42; border-radius: 8px; color: var(--g-dim); cursor: pointer;
+    font: 400 11.5px/1.4 system-ui, -apple-system, sans-serif;
+  }
+  .ga-well:hover { border-color: #50535a; color: #9aa0aa; }
+  .ga-well b { color: var(--g-text); font: 600 12px/1.2 system-ui, -apple-system, sans-serif; }
+
+  .ga-drop { position: absolute; inset: 0; z-index: 3; display: none; align-items: center; justify-content: center;
+             padding: 20px; text-align: center; pointer-events: none;
+             background: rgba(12, 140, 233, 0.12); box-shadow: inset 0 0 0 2px var(--b-icon); color: var(--b-icon);
+             font: 600 12px/1.4 system-ui, -apple-system, sans-serif; }
+  #dock-pane-gallery.ga-dragging .ga-drop { display: flex; }

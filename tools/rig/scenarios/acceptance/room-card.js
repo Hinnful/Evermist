@@ -15,8 +15,8 @@
 //   B. The tab holds the room's name and notes, and what the DM types reaches the room.
 //   C. A name is trimmed and never left empty; notes are kept as typed, including newlines.
 //   D. The tab's shape: the name as its header with Delete beside it, and nothing else of the
-//      room's own. The notes and the pictures sit in the left panel, notes above pictures. No fog
-//      pill, no drag bar, no Close.
+//      room's own. The notes sit in the left panel and the room holds no picture strip and no
+//      "Add a picture" button. No fog pill, no drag bar, no Close.
 //   E. The fog trio shows and sets the selected room's fog while Select is in hand, and T cycles
 //      it; with a drawing tool in hand it is the paint direction again.
 //   G. Delete in the tab removes that room and nothing else.
@@ -172,15 +172,13 @@ module.exports = async function roomCardFeature(rig) {
   const shape = await dm.evaluate(`(() => {
     const p = document.getElementById('panel-room');
     const name = document.getElementById('rp-name'), del = document.getElementById('rp-delete');
-    const order = ['rp-desc', 'rp-pic-add']
-      .map(id => document.getElementById(id).getBoundingClientRect().top);
     const left = document.getElementById('notes-panel');
     return {
       headRow: Math.abs(name.getBoundingClientRect().top - del.getBoundingClientRect().top) < 12 &&
                del.getBoundingClientRect().left > name.getBoundingClientRect().left,
-      ordered: order.every((t, i) => i === 0 || t > order[i - 1]),
-      notesHome: ['rp-desc', 'rp-pics', 'rp-pic-add', 'rp-pic-input'].every(id => left.contains(document.getElementById(id))),
-      notesLeftBehind: ['rp-desc', 'rp-pics', 'rp-pic-add', 'rp-pic-input'].filter(id => document.getElementById('dock').contains(document.getElementById(id))),
+      notesHome: left.contains(document.getElementById('rp-desc')),
+      notesLeftBehind: document.getElementById('dock').contains(document.getElementById('rp-desc')),
+      pictureParts: ['rp-pics', 'rp-pic-add', 'rp-pic-input'].filter(id => document.getElementById(id)),
       gone: ['rp-mode', 'rp-head', 'rp-close', 'rp-radius-field'].filter(id => document.getElementById(id)),
       inPanel: !!p.closest('#notes-panel'),
       railTab: !!document.getElementById('dock-tab-room') || !!document.getElementById('dock-pane-room'),
@@ -189,8 +187,11 @@ module.exports = async function roomCardFeature(rig) {
   rig.note('the tab\'s shape: ' + JSON.stringify(shape));
   rig.check(shape.inPanel && shape.headRow && !shape.railTab,
             'the room is not the name with Delete beside it in the left panel, or the dock still has a Room tab: ' + JSON.stringify(shape));
-  rig.check(shape.notesHome && shape.notesLeftBehind.length === 0 && shape.ordered,
-            'the room\'s notes and pictures are not in the left panel, notes above pictures: ' + JSON.stringify(shape));
+  rig.check(shape.notesHome && !shape.notesLeftBehind,
+            "the room's notes are not in the left panel: " + JSON.stringify(shape));
+  // RED ON: <div id="rp-pics"> put back in index.html's #panel-room - 2026-10-16
+  rig.check(shape.pictureParts.length === 0,
+            'the room card still carries a picture strip or an Add a picture button: ' + JSON.stringify(shape.pictureParts));
   rig.check(shape.gone.length === 0, 'the floating card\'s parts are still in the page: ' + shape.gone.join(', '));
 
   // ── E. The room's own eyes, and the bar's paint direction ─────────────────

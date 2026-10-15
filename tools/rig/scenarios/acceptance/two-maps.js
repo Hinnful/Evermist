@@ -43,9 +43,8 @@
 //   O. An update announces itself in the DM window alone. A column is the same page in an
 //      iframe, and a toast raised there would sit over a map and eat the one announcement.
 //   Q. A ping in a column reaches that column's half of the Player screen and not the other.
-//   R. A room picture shown from a column covers the whole Player screen, both halves. One shown
-//      from the other column replaces it and clears the first column's mark, and Escape in the
-//      DM window takes it down.
+//   R. A gallery picture clicked in the DM window covers the whole Player screen, both halves. A
+//      second one replaces it, and Escape takes it down, typed in the DM window or inside a column.
 //   S. A room selected in either column is edited in the DM window's left panel - name, notes, fog
 //      and Delete - and every edit lands in that column and never the other. A
 //      column window shows no dock and no rail of its own.
@@ -345,43 +344,52 @@ module.exports = async function twoMapsFeature(rig) {
   const pingB = await tvB.evaluate('typeof _pings === "undefined" ? 0 : _pings.length');
   rig.check(pingB === 0, "a ping in column A also showed on column B's half: " + pingB);
 
-  // ── R. one room picture covers the whole TV ─────────────────────────────
+  // ── R. one gallery picture covers the whole TV ──────────────────────────
   // ⚠ THE SHELL DRAWS IT, not a half: a half's `parent` is the shell, which is where it must land.
-  const putPic = (pane, w, h) => pane.evaluate(`(async () => {
+  // The gallery lives in the DM window, which holds no map of its own in two-map mode.
+  const addPic = (name, w, h) => dm.evaluate(`(async () => {
     const c = document.createElement('canvas'); c.width = ${w}; c.height = ${h};
     c.getContext('2d').fillRect(0, 0, ${w}, ${h});
     const blob = await new Promise(r => c.toBlob(r, 'image/png'));
-    const id = 'rig' + ${w} + 'x' + ${h}, roomId = nextPolygonId++;
-    pictureBlobs[id] = blob;
-    polygons.push({ id: roomId, vertices: [{ x: 10, y: 10 }, { x: 60, y: 10 }, { x: 60, y: 60 }],
-                    mode: 'shroud', cornerRadius: 0, name: 'Rig', pictures: [{ id, name: 'rig' }] });
-    showTvPicture(roomId, id); return roomId; })()`);
+    const id = 'rig' + ${w} + 'x' + ${h};
+    await galleryStore.put({ id, name: '${name}', blob, added: Date.now() });
+    await galleryReload(); return id; })()`);
+  const tile = id => dm.evaluate(`(() => { const i = _gaPics.findIndex(p => p.id === '${id}');
+    const t = i < 0 ? null : _gaTile(_gaPics[i]); if (t) t.querySelector('.ga-th').click(); return !!t; })()`);
   const shellPic = () => tvA.evaluate(`(() => { const el = parent.document.getElementById('tv-picture');
     const imgs = el ? Array.from(el.querySelectorAll('img')).filter(i => i.getAttribute('src')) : [];
     const r = el && el.getBoundingClientRect();
     return { up: !!el && el.classList.contains('up'), widths: imgs.map(i => i.naturalWidth),
              covers: !!r && r.width >= parent.innerWidth - 1 && r.height >= parent.innerHeight - 1,
              inHalf: !!document.getElementById('tv-picture') }; })()`);
-  // RED ON: the column's parent.postMessage in _picSend gated off with false && (roomPictures.js) - 2026-09-30
-  const roomA = await putPic(paneA, 300, 200);
+  const esc = win => win.evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true })); 0");
+  // RED BY DESIGN: written against the feature, never re-proved
+  const picA = await addPic('wide', 300, 200);
+  const picB = await addPic('tall', 200, 300);
+  await tile(picA);
   const upA = await lib.poll(async () => { const s = await shellPic(); return s.up && s.widths.includes(300) ? { s } : null; }, 10000);
-  rig.note('picture from column A: ' + JSON.stringify(upA && upA.s));
-  rig.check(!!upA, 'a picture shown from column A never reached the Player screen');
+  rig.note('gallery picture with two maps on: ' + JSON.stringify(upA && upA.s));
+  rig.check(!!upA, 'a gallery picture clicked in the DM window never reached the two-map Player window');
   rig.check(!!upA && upA.s.covers && !upA.s.inHalf,
-            'the picture from column A sits inside one half instead of covering the whole TV');
-  // RED ON: the pane-picture-replaced send in paneRelayPicture gated off with false && (panes.js) - 2026-09-30
-  const roomB = await putPic(paneB, 200, 300);
+            'the gallery picture sits inside one half instead of covering the whole TV');
+  // RED BY DESIGN: written against the feature, never re-proved
+  await tile(picB);
   const upB = await lib.poll(async () => { const s = await shellPic(); return s.up && s.widths.join() === '200' ? { s } : null; }, 10000);
-  rig.check(!!upB, "a picture from column B did not replace column A's on the TV");
-  rig.check(!!(await lib.poll(async () => (await paneA.evaluate('tvPicture === null')) ? { ok: 1 } : null, 5000)),
-            "column A still marks its picture as on the TV after column B's replaced it");
-  // RED ON: paneTakeDownPicture in takeDownTvPicture gated off with false && (roomPictures.js) - 2026-09-30
-  await dm.evaluate("document.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true })); 0");
+  rig.check(!!upB, 'a second gallery picture did not replace the first on the TV');
+  // RED BY DESIGN: written against the feature, never re-proved
+  await esc(dm);
   const down = await lib.poll(async () => { const s = await shellPic(); return s.up ? null : { s }; }, 5000);
-  rig.check(!!down, 'Escape in the DM window did not take the picture off the TV');
-  rig.check(await paneB.evaluate('tvPicture === null'), 'column B still marks its picture as on the TV after Escape');
-  await paneA.evaluate('polygons = polygons.filter(p => p.id !== ' + roomA + '); 0');
-  await paneB.evaluate('polygons = polygons.filter(p => p.id !== ' + roomB + '); 0');
+  rig.check(!!down, 'Escape in the DM window did not take the gallery picture off the TV');
+  rig.check(await dm.evaluate('_gaLive === null'), 'the gallery still marks a picture as on the TV after Escape');
+  // RED BY DESIGN: written against the feature, never re-proved
+  await tile(picA);
+  await lib.poll(async () => { const s = await shellPic(); return s.up ? { s } : null; }, 10000);
+  await lib.settle(paneB, '_gaPaneLive === true', 5000);
+  await esc(paneB);
+  const downB = await lib.poll(async () => { const s = await shellPic(); return s.up ? null : { s }; }, 5000);
+  rig.check(!!downB, 'Escape typed inside a column did not take the gallery picture off the TV');
+  rig.check(await dm.evaluate('_gaLive === null'), 'the gallery still marks a picture as on the TV after Escape in a column');
+  await dm.evaluate(`Promise.all(['${picA}', '${picB}'].map(id => galleryStore.remove(id))).then(galleryReload)`);
 
   // ── P. the log says which of the four windows wrote each line ───────────
   // RED BY DESIGN: written against the fix, never re-proved

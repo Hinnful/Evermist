@@ -1,7 +1,7 @@
 # Architecture - rooms
 
 Split out of [ARCHITECTURE.md](../ARCHITECTURE.md). How a room is drawn, selected, repaired,
-given doors and pictures, and drawn from the map's own floor plan, in the present tense.
+given doors, and drawn from the map's own floor plan, in the present tense.
 
 A "room" is a polygon the DM draws on the map. It carries a fog mode (Revealed, Half, or
 Shrouded), an optional name and description, optional per-corner rounding, and optional curves on
@@ -156,7 +156,7 @@ cut into the same fog stencil that crosses to the TV.
 ## The room in the left panel
 
 Select a room and the left panel shows its level: the name as the header, Delete beside it, the
-notes and the pictures. A shut panel opens on the pick without changing what the DM keeps open. It
+notes. A shut panel opens on the pick without changing what the DM keeps open. It
 stays on the room when you switch tools, so you can read the notes while painting fog. **Drawing a
 room doesn't select it** - a new room is created with nothing selected, so the panel stays on the
 scene while you draw the next one. The notes grow with what is written in them. Corners are rounded
@@ -169,24 +169,6 @@ Shroud above the bar show and set that room's fog, and T cycles it.
 Room names are also drawn on the DM map itself, sized relative to zoom and placed inside the
 room's outline rather than at its bounding box corner, which is what makes circles and
 heavily-rounded rectangles work without special cases. `L` toggles them.
-
-## Room pictures
-
-A room can hold pictures: a portrait, a letter, a drawing of an item. They show in the left
-panel below the room's notes, added with Add a picture or by dropping files on the panel. A
-click puts one on the TV over the dimmed map, and a second click or Escape takes it down. The
-picture comes and goes in soft patches of cloud noise, drawn on a canvas that hands back to the
-plain image once it is whole, so an animated GIF plays throughout and a picture that is up costs
-the TV nothing.
-
-A still picture shrinks to the Compression size on the way in (4K when Compression is off), and
-stays PNG only when it has transparency. An animated GIF, WebP or PNG and an SVG are kept as they
-came, since a canvas would keep one frame of the first and blur the second.
-
-The bytes belong to the scene, never to a room. A room holds only each picture's id and name, so
-its record stays plain data an older build can save and back up. The TV loses the picture whenever
-what it came from goes: the picture, its room, or the scene. In two-map mode one picture covers the
-whole TV, and a column showing a second one replaces the first.
 
 ## Drawing the rooms from the map's own floor plan
 

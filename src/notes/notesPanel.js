@@ -1,9 +1,8 @@
 'use strict';
 // notesPanel.js — the left panel: breadcrumbs, and the notes of the campaign, the scene or the room.
 //
-// The room's own field (#rp-desc) and its pictures live inside this panel, but their logic stays in
-// roomCard.js and roomPictures.js. The level shown is derived each repaint: the room if one is
-// selected, a crumb the DM clicked, otherwise the scene. A scene in a group has a Place level between
+// The room's own field (#rp-desc) lives inside this panel, but its logic stays in roomCard.js.
+// The level shown is derived each repaint: the room if one is selected, a crumb the DM clicked, otherwise the scene. A scene in a group has a Place level between
 // the campaign and itself. With the world map up the panel follows what is picked there instead.
 
 const NOTES_OPEN_KEY = 'evermist.notesPanelOpen';
@@ -325,7 +324,6 @@ function initNotesPanel() {
   _npInitEdge(_npEl('np-edge'), panel);
   new ResizeObserver(_npLayout).observe(document.documentElement);
   try { _npOpen = localStorage.getItem(NOTES_OPEN_KEY) !== '0'; } catch (_) {}
-  initRoomPictures(panel);
   // ⚠ REGISTERED BEFORE index.html's own listeners, which save: the commit has to land first.
   window.addEventListener('beforeunload', notesPanelFlush);
   document.addEventListener('visibilitychange', () => { if (document.hidden) notesPanelFlush(); });

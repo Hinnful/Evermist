@@ -1,5 +1,5 @@
 'use strict';
-// roomCard.js — the dock's Room tab: the selected room's name, notes and pictures.
+// roomCard.js — the dock's Room tab: the selected room's name and notes.
 //
 // Called once from initToolbar() (DM only). The name labels on the map are roomPanel.js.
 
@@ -197,7 +197,6 @@ function refreshRoomPanel() {
   if (typeof isPlayer !== 'undefined' && isPlayer) return;
   const panel = _rpEl('panel-room');
   if (!panel) return;
-  reconcileTvPicture();
   refreshFogTrio();
 
   // Calibration takes the map's mouse and puts the pane away (dock.js). SELECTION IS UNTOUCHED,
@@ -241,7 +240,6 @@ function refreshRoomPanel() {
   _rpFieldPid = room.id;
   paneRoomAim(room);
 
-  refreshRoomPictures(room, linked ? linked.onTv : null);
   if (!sameRoom) _rpFitNotes();
 }
 

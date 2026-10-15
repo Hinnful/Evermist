@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 13 open items; IDs run to 180."
+description: "Open work only. 12 open items; IDs run to 181."
 metadata: 
   node_type: memory
   type: project
@@ -92,14 +92,6 @@ epic. The same path must not slow an experienced DM or hide the deeper features.
 **Out of this epic:** what a DM sees before installing. That is distribution, and it comes later.
 **First use · DM + Player**
 
-### 175. Revealing fits none of the three kinds of map
-Filed 2026-10-12, widened 2026-10-13. A new map opens fully shrouded, which is right. Three cases need a way to
-reveal, and each needs a different one: **a forest** with no rooms, which is the first evening; **a dungeon** of many
-rooms, which works today once the DM finds rooms; and **a town**, open streets with buildings to reveal one by one.
-"Reveal all" and "Shroud all" act on the whole map, with or without rooms, yet sit under the Rooms heading with a
-tooltip that says "every room", so a DM with no rooms reads them as not theirs. **Needs /spec**, forest first.
-**First use · DM only**
-
 ### 161. The gallery: one app-wide store of images
 Filed 2026-10-08, rewritten 2026-10-09, moved into the epic 2026-10-13: the first new DM asked how to show a picture
 over the map, and today a picture needs a room. A window of every image the DM keeps, still or animated (GIF and WebP
@@ -145,13 +137,6 @@ table is very costly: Reveal all shows the players what they must not see, and n
 guard is wanted, such as a confirmation popup, a hold-to-confirm, or an undo toast that is quick enough. Undo already
 restores the map for the DM, which is not the TV. **Needs /spec:** which guard, and whether Hide all needs one at all.
 **Play · DM only**
-
-### 170. A better way to pick a material
-Filed 2026-10-11. Fire, Acid and Light sit as three buttons in Effects mode, and the row grows by one per material.
-The DM wants a picker that still works with a dozen: search, a grid, or whatever reads fastest. Item 113's prototype
-(`.claude/private/design/item-113/effect-presets.html`) has one shape: the flame button with a corner tick opens a
-searchable palette above the row. **Needs /spec:** the shape, and how a picked material shows on the bar.
-**Polish · DM only**
 
 ### 171. Acid's outline preview is fire-orange while drawing
 Filed 2026-10-11. While an acid shape is being drawn or a preset is under the cursor, its preview outline and tint are

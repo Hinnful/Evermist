@@ -1,6 +1,6 @@
 'use strict';
-// tvPicture.js — a room picture on the TV: centred, the map dimmed behind it. Runs in the Player
-// window and in the two-map shell, which covers both halves. roomPictures.js sends it.
+// tvPicture.js — a gallery picture on the TV: centred, the map dimmed behind it. Runs in the Player
+// window and in the two-map shell, which covers both halves. gallery.js sends it.
 // It comes and goes in patches of cloud noise on a canvas over the hidden img, which takes back
 // over once whole. A CSS mask swapped per frame flashes the bare picture while each one decodes.
 

@@ -325,3 +325,9 @@ Moving the list's generation to build time left the suite's check that it opens 
 updates, so every release would have gone red at its unit tests. The test and release workflows
 now run `tools/build-changelog.js` on a full-history checkout before `npm test`. Locally the
 check stays red on a bump until the release commit exists, as before.
+
+### A brainstorm ends at the proposal · `SETTLED` (2026-10-16)
+A brainstorm on the gallery ended with the strongest model building the pane inside the app, unasked, which spent a
+large share of a session on work a smaller model does as well. Building now waits for an explicit "build it" and goes
+to a fresh session on a smaller model. It is a habit in `CLAUDE.md`, not a hook: no check can tell a brainstorm's
+edit from a build's, and the cost of a slip is tokens, not data.

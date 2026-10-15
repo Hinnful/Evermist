@@ -260,7 +260,6 @@ async function exitPanes(keepSceneId) {
     panes[id].sceneId = null;
     panes[id].camera = null;
   }
-  _paneTvPicture = null;
   paneRoomsClear();
   syncSize();
   if (!hadPlayer) prewarmPlayer();   // warming would navigate the live window away
@@ -328,11 +327,12 @@ function initPanes() {
       // ⚠ Or the chrome keeps the torn-down scene's settings and pushes them into this column.
       if (msg.pane === panesSelected) paneAdoptSelectedSettings();
       sendToPane({ type: 'pane-room-labels', on: showRoomLabels }, msg.pane);
+      galleryTellPane(msg.pane);
       sceneListChanged();
       return;
     }
-    if (msg.type === 'pane-picture') { paneRelayPicture(msg.pane, msg.blob); return; }
-    if (msg.type === 'pane-room') { paneRoomReported(msg.pane, msg.room, msg.blobs, msg.scene); return; }
+    if (msg.type === 'pane-gallery-down') { galleryTakeDown(); return; }
+    if (msg.type === 'pane-room') { paneRoomReported(msg.pane, msg.room, msg.scene); return; }
     if (msg.type === 'pane-clicked') { selectPane(msg.pane); notesPanelFollow(); return; }
     if (msg.type === 'pane-labels-key') { toggleRoomLabels(); return; }
     // M from inside a column. The column's frame gives up focus, or the world map's keys stay in it.
@@ -365,30 +365,6 @@ function initPanes() {
       if (msg.pane === panesSelected) { paneAdoptSelectedSettings(); minimapSeedView(); }
     }
   });
-}
-
-// ─── The room picture on the TV ──────────────────────────────────────────────
-// One picture covers the whole screen, so the shell shows it and one column owns it at a time.
-
-let _paneTvPicture = null;   // { pane, blob }
-
-function paneRelayPicture(id, blob) {
-  const prev = _paneTvPicture;
-  _paneTvPicture = blob ? { pane: id, blob } : null;
-  if (blob && prev && prev.pane !== id) sendToPane({ type: 'pane-picture-replaced' }, prev.pane);
-  if (!blob && prev && prev.pane !== id) { _paneTvPicture = prev; return; }
-  paneResendPicture(true);
-}
-
-function paneResendPicture(evenNone) {
-  if (!stageIsOpen() || (!_paneTvPicture && !evenNone)) return;
-  _stageWindow.postMessage({ type: 'tv-picture', blob: _paneTvPicture ? _paneTvPicture.blob : null }, '*');
-}
-
-function paneTakeDownPicture() {
-  if (!_paneTvPicture) return false;
-  sendToPane({ type: 'pane-picture-down' }, _paneTvPicture.pane);
-  return true;
 }
 
 function paneColumnOf(sceneId) {

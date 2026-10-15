@@ -96,7 +96,7 @@ function bindStageHalves() {
     half.postMessage({ type: 'player-hello' }, '*');
   }
   sendStageSplit();
-  paneResendPicture();
+  galleryResend();
   if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
 }
 

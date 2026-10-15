@@ -255,6 +255,11 @@ A picture shown on the TV is linked to nothing on the map, so one picture serves
 a creature that follows the party from map to map. Once the gallery exists, room pictures move into it and the
 room's picture strip goes. No place, scene or room gains a picture of its own.
 
+### The gallery finds a picture by name alone · `SETTLED` (2026-10-16)
+A dock pane beside Music and Sounds: a grid with names under it, newest first, and one find field over the names.
+Tags, filters and sorting were drawn and refused, because a DM's library is expected to stay well under a hundred
+pictures. Tags come back on the table if libraries grow past that.
+
 ### Effects share one toon look · `SETTLED` (2026-10-11)
 Every material is drawn in the same style: flat colour bands, crisp edges and clear motion, legible
 from across a table on a TV and at home on painted maps. A new material joins that style rather than

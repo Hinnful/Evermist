@@ -9,7 +9,7 @@ const yauzl = require('yauzl');
 
 let mapsDir, sendTo, isSafeId;
 
-// The renderer names each picture from its id (picturePlan.js); anything else is refused here.
+// The renderer names each picture from its id (galleryPlan.js); anything else is refused here.
 const PICTURE_NAME_RE = /^pic-[a-z0-9]{1,32}\.(jpg|png|gif|webp|svg)$/;
 
 function register(ctx) {
@@ -30,8 +30,8 @@ ipcMain.handle('show-save-dialog', async (event, opts) => {
 
 // Video maps are read from mapsDir by id; image, fog and thumb arrive as ArrayBuffers.
 // moduleText, combat and campaign are campaign-level, so they land at the zip root beside manifest.json.
-// worldBg is the world map's backdrop, { meta, buffer }, or null.
-ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText, combat, campaign, worldBg) => {
+// worldBg is the world map's backdrop, { meta, buffer }, or null. gallery is { meta, files: [{ name, buffer }] }, or null.
+ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText, combat, campaign, worldBg, gallery) => {
   let cancelled = false;
   stopZip = () => { cancelled = true; };
   for (const s of scenesData) {
@@ -62,6 +62,12 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleTe
     if (worldBg && worldBg.meta && worldBg.buffer) {
       archive.append(worldBg.meta, { name: 'world-background.json' });
       archive.append(Buffer.from(worldBg.buffer), { name: 'world-background.img' });
+    }
+    if (gallery && gallery.meta) {
+      archive.append(gallery.meta, { name: 'gallery.json' });
+      for (const p of gallery.files || []) {
+        if (p && PICTURE_NAME_RE.test(p.name) && p.buffer) archive.append(Buffer.from(p.buffer), { name: `gallery/${p.name}` });
+      }
     }
 
     scenesData.forEach((s, idx) => {
@@ -151,6 +157,35 @@ ipcMain.handle('read-backup-world-background', async (_event, zipPath) => {
   const img = meta ? await readRootEntry(zipPath, 'world-background.img', true) : null;
   return meta && img ? { meta, buffer: img } : null;
 });
+
+// The gallery: its list and each picture's bytes by zip name, or null when the backup has none.
+ipcMain.handle('read-backup-gallery', (_event, zipPath) => new Promise((resolve, reject) => {
+  yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
+    if (err) return reject(err);
+    let meta = null;
+    const files = {};
+    zipfile.readEntry();
+    zipfile.on('entry', entry => {
+      const m = /^gallery\/([^/]+)$/.exec(entry.fileName);
+      const isMeta = entry.fileName === 'gallery.json';
+      if (!isMeta && !(m && PICTURE_NAME_RE.test(m[1]))) { zipfile.readEntry(); return; }
+      zipfile.openReadStream(entry, (err2, rs) => {
+        if (err2) { zipfile.close(); return reject(err2); }
+        const chunks = [];
+        rs.on('data', c => chunks.push(c));
+        rs.on('end', () => {
+          const buf = Buffer.concat(chunks);
+          if (isMeta) meta = buf.toString('utf8');
+          else files[m[1]] = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+          zipfile.readEntry();
+        });
+        rs.on('error', e => { zipfile.close(); reject(e); });
+      });
+    });
+    zipfile.on('end', () => { zipfile.close(); resolve(meta ? { meta, files } : null); });
+    zipfile.on('error', reject);
+  });
+}));
 
 // assignments: [{newId, originalId, mapType, mapExt}]
 // Video maps are written to mapsDir/{newId}.ext; all others returned as ArrayBuffers.

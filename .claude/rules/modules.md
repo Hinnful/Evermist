@@ -117,12 +117,14 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `world/worldMapMenu.js` | The right-click menu on the world map: a scene, a place, or the ground |
 | `rooms/roomPanel.js` | Map room labels and the pure geometry that places them |
 | `rooms/roomCard.js` | The selected room's fields, in the left panel |
-| `rooms/picturePlan.js` | Pure room-picture kernel: size, order, backup names. Tested |
-| `rooms/pictureDecode.js` | A file turned into a room picture: shrunk, or kept whole if animated or SVG |
-| `rooms/roomPictures.js` | The left panel's room pictures and the one on the TV |
 | `rooms/roomSwitcher.js` | The selected room's clouds and door button, on the map above it |
 | `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the left panel |
-| `player/tvPicture.js` | A room picture drawn on the TV, Player and two-map shell |
+| `gallery/galleryPlan.js` | Pure gallery kernel: picture size, names, the migration list, the backup list, what a scene's rooms still hold. Tested |
+| `gallery/pictureDecode.js` | A file turned into a gallery picture: shrunk, or kept whole if animated or SVG |
+| `gallery/galleryStore.js` | The gallery's own IndexedDB: pictures under their id |
+| `gallery/galleryMigrate.js` | The pictures rooms used to hold, copied into the gallery once |
+| `gallery/gallery.js` | The Gallery pane: the grid, adding, renaming, removing, the backup payload, and the picture on the TV |
+| `player/tvPicture.js` | A gallery picture drawn on the TV, Player and two-map shell |
 | `content/moduleText.js` | Module parsing, storage, name-field dropdown |
 | `content/moduleTextPanel.js` | The import panel and the name-field dropdown. Parses nothing |
 | `content/pdfLayout.js` | Pure PDF reading-order kernel. Tested, dependency-free |
@@ -209,8 +211,8 @@ render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js 
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvControl.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/confirmDialog.js → rooms/floorPlan.js →
-content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/picturePlan.js → rooms/roomCard.js →
-rooms/pictureDecode.js → rooms/roomPictures.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js →
+content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/roomCard.js →
+gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js →
 world/worldMapPlan.js → world/worldRoadPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → world/worldFindPlan.js → world/worldMapFind.js → world/worldMapColumns.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →

@@ -16,7 +16,7 @@
 //   B. A click on empty map selects the scene and shows its notes.
 //   C. A click on a crumb shows that level's notes and nothing else changes: the room stays
 //      selected with its crumb, and the TV does not change. The levels never merge.
-//   D. The room's notes and pictures are in the panel; module text still fills the room's notes
+//   D. The room's notes are in the panel and it holds no pictures; module text still fills the room's notes
 //      and still asks before it replaces them.
 //   E. The Player shows nothing of it.
 //   F. In two-map mode the panel follows the selected column. Opening another scene brings that
@@ -278,17 +278,18 @@ module.exports = async function notesPanelFeature(rig) {
   const tvMsgs = (await player.evaluate('__npMsgs')).filter(m => TV_CHANGES.includes(m));
   rig.check(tvMsgs.length === 0, 'a crumb click, a room pick or a note changed what the TV shows: ' + JSON.stringify(tvMsgs));
 
-  // ── D. The room's notes and pictures live here; module text still asks ────
+  // ── D. The room's notes live here, with no picture control; module text still asks ────
   // RED BY DESIGN: written against the feature, never re-proved
   await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
   await lib.settle(dm, 'selectedPolygonId === 1', 6000);
   const home = await dm.evaluate(`(() => {
     const p = document.getElementById('notes-panel');
-    return { notes: p.contains(document.getElementById('rp-desc')), pics: p.contains(document.getElementById('rp-pic-add')),
-             tab: document.getElementById('dock').contains(document.getElementById('rp-desc')) || document.getElementById('dock').contains(document.getElementById('rp-pic-add')) };
+    return { notes: p.contains(document.getElementById('rp-desc')),
+             pics: ['rp-pics', 'rp-pic-add', 'rp-pic-input'].filter(id => document.getElementById(id)),
+             tab: document.getElementById('dock').contains(document.getElementById('rp-desc')) };
   })()`);
-  rig.check(home.notes && home.pics && !home.tab,
-            'the room notes and the picture button are not in the left panel alone: ' + JSON.stringify(home));
+  rig.check(home.notes && home.pics.length === 0 && !home.tab,
+            'the room notes are not in the left panel alone, or a picture control is still in the page: ' + JSON.stringify(home));
   await typeInto('rp-desc', 'Two acolytes and a font.');
   await lib.settle(dm, 'polygons[0].desc === "Two acolytes and a font."', 6000);
 

@@ -115,7 +115,7 @@ module.exports = async function language(rig) {
   const clipped = await dm.evaluate(`(async () => {
     localStorage.setItem('evermist.dockWidth', '230'); _dockWantW = 230; dockLayout();
     const SEL = '.cp-label, .dk-sub, .cp-btn, .cp-segtab, .dk-src .nm, .dk-dd span, .cp-advlbl, ' +
-                '.dk-addpic span, .dk-head .cp-adv-title, .pl-sub span, .sb-name';
+                '.dk-head .cp-adv-title, .pl-sub span, .sb-name';
     const out = [];
     for (const p of ['scene', 'music', 'sounds', 'settings']) {
       dockOpen(p);

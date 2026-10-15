@@ -68,8 +68,8 @@ the `width: 0` on `.cp-chip-pre input` and `.cp-stepval input` through any resty
 
 The room card's module renders into the left panel's room level; there is no floating card and no Room tab.
 
-- **Name as the header, Delete where Close was**, then the notes and the pictures inline below
-  them, inside `#notes-panel` (`notesPanel.js`), which wears the dock's grey and type. No boxes.
+- **Name as the header, Delete where Close was**, then the notes below
+  it, inside `#notes-panel` (`notesPanel.js`), which wears the dock's grey and type. No boxes.
 - **No corner radius in the tab or on the Effects row.** Corners round on the map by their circles
   (`cornerRound.js`), and the typed radius is the `#corner-field` a double-click on a circle opens.
 - **The module dropdown stays on the name field.**
@@ -101,8 +101,7 @@ The room card's module renders into the left panel's room level; there is no flo
   (`evermist.notesWidth`) and stops short of the toolbar. **The minimap sits to its right**
   (`--np-right`) and moves with it. The notes area carries the app's own 8px scrollbar. It is put away
   while grid calibration is armed, as the dock pane is.
-- **`#rp-desc` and the pictures render inside it**, but their logic stays in `roomCard.js` and
-  `roomPictures.js`. Scene and campaign notes are the separate `#np-field`, with the field's own undo.
+- **`#rp-desc` renders inside it**, but its logic stays in `roomCard.js`. Scene and campaign notes are the separate `#np-field`, with the field's own undo.
   It fills the panel and scrolls itself, under the app's own 8px scrollbar; the room level scrolls the body.
 - In two-map mode the panel follows the selected column. A notes edit goes to the column it was
   filled from with `sendToPane`, never `paneForward`.

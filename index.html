@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="src/css/sceneManager.css">
 <link rel="stylesheet" href="src/css/about.css">
 <link rel="stylesheet" href="src/css/music.css">
+<link rel="stylesheet" href="src/css/gallery.css">
 <link rel="stylesheet" href="src/css/panes.css">
 <link rel="stylesheet" href="src/css/combat.css">
 <link rel="stylesheet" href="src/css/dock.css">
@@ -240,6 +241,9 @@
     <button class="rail-btn" id="dock-tab-sounds" data-dock-pane="sounds" title="Sounds">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>
     </button>
+    <button class="rail-btn" id="dock-tab-gallery" data-dock-pane="gallery" title="Gallery">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-9 9"/></svg>
+    </button>
     <button class="rail-btn" id="btn-combat" title="The fight table">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
     </button>
@@ -437,6 +441,23 @@
       <!-- Left click plays one more copy, right click stops the newest. soundboard.js. -->
       <div class="dk-scroll"><div id="sb-cols" class="dk-sbgroups" data-no-i18n></div></div>
     </section>
+    <section class="dk-sec" id="dock-pane-gallery" data-pane="gallery" hidden>
+      <div class="dk-head"><span class="cp-adv-title">Gallery</span><div class="cp-row">
+        <button id="btn-ga-add" class="cp-adv-close" title="Add pictures">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button></div>
+        <input type="file" id="ga-input" accept="image/*" multiple hidden>
+      </div>
+      <div class="mu-toprow" id="ga-top">
+        <div class="cp-field mu-filterfield">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
+          <input id="ga-filter" type="text" spellcheck="false" placeholder="Find a picture">
+        </div>
+      </div>
+      <!-- A click shows a picture on the TV, a second click takes it down. gallery.js. -->
+      <div class="dk-scroll"><div id="ga-grid" class="ga-grid" data-no-i18n></div></div>
+      <div class="ga-drop">Drop to add to the gallery</div>
+    </section>
     <section class="dk-sec" id="dock-pane-settings" data-pane="settings" hidden>
       <div class="dk-head"><span class="cp-adv-title">Settings</span></div>
       <div class="dk-scroll">
@@ -445,7 +466,7 @@
           <!-- Filled by about.js's language switch. -->
           <div class="dk-blk" id="settings-lang"><span class="dk-sub">Language</span></div>
           <div class="dk-blk"><span class="dk-sub">Shrink big maps</span>
-            <div id="sm-compress" class="cp-tabs" title="Animated maps bigger than the size picked here are re-encoded to fit it on import, and room pictures are shrunk to it. Improves performance on low-end machines.">
+            <div id="sm-compress" class="cp-tabs" title="Animated maps bigger than the size picked here are re-encoded to fit it on import, and pictures in the Gallery are shrunk to it. Improves performance on low-end machines.">
               <button class="cp-segtab" data-size="0">Off</button>
               <button class="cp-segtab" data-size="1080">1080p</button>
               <button class="cp-segtab" data-size="1440">2K</button>
@@ -589,7 +610,7 @@
   <div class="np-body" id="np-body">
     <textarea id="np-field" class="rp-desc" spellcheck="false" rows="1" hidden></textarea>
     <!-- The selected room, Notion's way: the name is the header, Delete sits where Close was, then the
-         notes and the pictures. roomCard.js fills it. -->
+         notes. roomCard.js fills it. -->
     <div id="panel-room" class="dk-room">
       <div class="dk-rhead rp-ident">
         <input id="rp-name" class="rp-name" type="text" spellcheck="false" autocomplete="off"
@@ -600,12 +621,6 @@
       </div>
       <textarea id="rp-desc" class="rp-desc" spellcheck="false" rows="1"
                 placeholder="What's in here, what the party sees, what's hidden…"></textarea>
-      <div class="rp-pics" id="rp-pics" style="display:none"></div>
-      <button class="dk-addpic" id="rp-pic-add" title="Pick a picture, or drop one here">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 7.5V11A1.5 1.5 0 0 1 11 12.5H3A1.5 1.5 0 0 1 1.5 11V3A1.5 1.5 0 0 1 3 1.5h4.5"/><circle cx="4.8" cy="5" r="1.1"/><path d="M12.5 9.6 10.4 7.5a1 1 0 0 0-1.4 0L4 12.5"/><path d="M11 .8v4M9 2.8h4"/></svg>
-        <span>Add a picture</span>
-      </button>
-      <input type="file" id="rp-pic-input" accept="image/*,.avif,.svg,.webp,.gif,.bmp,.ico,.jfif" multiple hidden>
     </div>
   </div>
 </div>
@@ -964,10 +979,12 @@
 <script src="src/content/moduleTextPanel.js"></script>
 <script src="src/notes/notesPlan.js"></script>
 <script src="src/rooms/roomPanel.js"></script>
-<script src="src/rooms/picturePlan.js"></script>
 <script src="src/rooms/roomCard.js"></script>
-<script src="src/rooms/pictureDecode.js"></script>
-<script src="src/rooms/roomPictures.js"></script>
+<script src="src/gallery/galleryPlan.js"></script>
+<script src="src/gallery/pictureDecode.js"></script>
+<script src="src/gallery/galleryStore.js"></script>
+<script src="src/gallery/galleryMigrate.js"></script>
+<script src="src/gallery/gallery.js"></script>
 <script src="src/rooms/roomLink.js"></script>
 <script src="src/rooms/roomSwitcher.js"></script>
 <script src="src/notes/notesPanel.js"></script>
@@ -1103,6 +1120,7 @@ if (!isPlayer) initAbout();   // About block inside the shortcuts panel → abou
 if (!isPlayer) initUpdater(); // Update line + toast → updater.js (needs About's slot)
 if (!isPlayer) initMusic();   // The music bubble → music.js
 if (!isPlayer) initSoundboard();   // The Sounds pill → soundboard.js
+if (!isPlayer && !isPane) initGallery();       // The Gallery pane → gallery.js
 if (!isPlayer && !isPane) initCombatTracker(); // The fight table → combatTracker.js
 if (!isPlayer && !isPane) initDock();          // The dock → dock.js
 if (!isPlayer && !isPane) initNotesPanel();    // The left panel → notesPanel.js

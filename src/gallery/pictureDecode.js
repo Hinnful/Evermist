@@ -1,5 +1,5 @@
 'use strict';
-// pictureDecode.js — a dropped or picked file turned into the Blob a room keeps. roomPictures.js
+// pictureDecode.js — a dropped or picked file turned into the Blob the gallery keeps. gallery.js
 // calls it.
 
 async function _picHasAlpha(canvas) {
@@ -32,7 +32,7 @@ function _picViaImg(file) {
 }
 
 // Resolves a Blob, or null for a file that will not decode.
-async function decodeRoomPicture(file) {
+async function decodePicture(file) {
   if (file.type === 'image/svg+xml') return (await _picViaImg(file)) ? file : null;
   if (await _picAnimated(file)) return file;
   let src;

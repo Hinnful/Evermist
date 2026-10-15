@@ -374,7 +374,7 @@ function initToolbar() {
       }
       onPlayerResyncRequest();
       syncAnimToPlayer(true);
-      resendTvPicture();
+      galleryResend();
       if (playerWindow && !playerWindow.closed) {
         playerWindow.postMessage({ type: 'player-lock', locked: minimapLocked }, '*');
       }

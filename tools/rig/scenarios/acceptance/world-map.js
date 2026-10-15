@@ -656,13 +656,13 @@ module.exports = async function worldMapFeature(rig) {
   const calls = await dm.evaluate(`(() => {
     const seen = [];
     worldMapSelect({ sceneId: null, place: '' });   // Delete on a picked scene is the map's own, and would remove it
-    for (const n of ['sendToPlayer', 'takeDownTvPicture', 'deleteSelectedPart', 'setShape']) {
+    for (const n of ['sendToPlayer', 'galleryTakeDown', 'deleteSelectedPart', 'setShape']) {
       const real = globalThis[n]; globalThis[n] = (...a) => { seen.push(n); return real.apply(globalThis, a); };
       globalThis['__real_' + n] = real;
     }
     for (const c of ['Space', 'Delete', 'KeyB']) __rigKey(c);
     __rigKey('KeyS', { shiftKey: true });
-    for (const n of ['sendToPlayer', 'takeDownTvPicture', 'deleteSelectedPart', 'setShape']) globalThis[n] = globalThis['__real_' + n];
+    for (const n of ['sendToPlayer', 'galleryTakeDown', 'deleteSelectedPart', 'setShape']) globalThis[n] = globalThis['__real_' + n];
     return seen;
   })()`);
   rig.check(calls.length === 0, 'the world map let a key reach the hidden scene: ' + JSON.stringify(calls));

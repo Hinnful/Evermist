@@ -35,10 +35,23 @@ the bottom-left corner, and **the dock** on the right edge.
 The dock is an icon rail with one pane open beside it. The rail opens the world map, the
 Bestiary as a centred window, and the fight table as a free window. Its panes are **Scene
 control** (fog, rooms, lights, grid, My seat), **Music**,
-**Sounds** and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
+**Sounds**, **Gallery** and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
 dock sits over the map rather than beside it, so opening a pane never moves the map or changes
 what the TV is sent. Its inner edge drags to resize it, and it gives way so the toolbar stays
 clear. The toolbar stays centred on the window whatever either side does.
+
+**The Gallery** (`gallery.js`) is the only place pictures live: portraits, monsters, letters, kept
+under a name with no scene or room attached, in a database of their own (`galleryStore.js`). A
+find field narrows the grid by name, `+` or a drop adds, a double-click renames, the trash asks
+before it removes. A click puts the picture on the TV over the dimmed map (`tvPicture.js`), a second
+click or Escape takes it down, and a Player that opens or reconnects gets the picture that is up.
+With Two maps on, the DM window has no Player of its own, so the picture goes to the shared Player
+window and covers both halves; Escape typed inside a column asks the DM window to take it down.
+A still picture shrinks to the Compression size on the way in (4K when it is off) and stays PNG only
+when it has transparency; an animated GIF, WebP or PNG and an SVG are kept whole. The first launch
+of a build with the gallery copies every picture the rooms of any saved scene hold into it under
+the picture's own id (`galleryMigrate.js`), once. Scenes keep their rooms' `pictures` and
+`pictureBlobs` through every save, undo, paste and backup, so the previous release still shows them.
 
 **The world map** (`worldMap.js`, `worldMapEdit.js`) is a DOM layer over the map. It replaced the Scene library, which is gone.
 A place IS a scene group (`scene.group`) and each scene stores where it sits as `worldPos`, written by one
@@ -60,13 +73,13 @@ live in `evermist.placeNotes` by name and ride a backup in `campaign.json`.
 
 **The left panel** (`notesPanel.js`) mirrors the dock: a pane, dragged wider on its inner
 edge, that shuts to a floating icon. It runs from the top down to the minimap, which stays in the
-corner whatever the panel does. It holds the notes and the selected room, whose name, Delete, notes and pictures
+corner whatever the panel does. It holds the notes and the selected room, whose name, Delete and notes
 used to be the dock's Room tab; picking a room opens a shut panel. Breadcrumbs Campaign › Scene › Room sit on top,
 and below them the notes of one level. By default the panel follows the selection: the room if one is
 selected, otherwise the scene. A crumb picks a level without touching the selection, so the room keeps
 its crumb while the scene's or the campaign's notes show. A new room pick, a deselect or a scene
-switch goes back to following. Room notes and room pictures render in the panel but
-keep their logic in `roomCard.js` and `roomPictures.js`. Scene notes are a `notes` string on the scene
+switch goes back to following. Room notes render in the panel but
+keep their logic in `roomCard.js`. Scene notes are a `notes` string on the scene
 record, written by `doAutoSave`; campaign notes are one `localStorage` value; both ride in a backup,
 the campaign's as `campaign.json` at the zip root. Nothing in the panel reaches the TV. In two-map mode
 a column reports its scene's name and notes with its room, and a notes edit goes back to the column it
@@ -407,7 +420,7 @@ different map, and one Player window on the TV showing both.
 ## Rooms
 
 Moved to [architecture/rooms.md](architecture/rooms.md) - drawing and selecting rooms, repair,
-doors, the room in the left panel, room pictures and the floor-plan import.
+doors, the room in the left panel and the floor-plan import.
 
 ## Reading a published module
 
@@ -532,8 +545,11 @@ between PCs.
 
 - **Export** bundles the scenes you pick into a single `.zip`: the fog, the polygons, the
   thumbnails, and the actual map and video files. The imported module text goes in too, once
-  for the whole campaign rather than once per scene. Room pictures travel as files beside
-  their scene, named from their own id, never from anything the zip claims.
+  for the whole campaign rather than once per scene. The gallery goes in too, a list and one file per
+  picture under `gallery/`, and a restore adds the pictures whose id is not already there and
+  removes none. A backup of picked scenes leaves the gallery out. The pictures a scene's rooms
+  still hold travel beside the scene, so a backup restores in the previous release; they join the
+  gallery on restore. File names come from a picture's own id, never from anything the zip claims.
 - **Restore** reads that zip back and merges it into your current library rather than
   overwriting. If a name already exists you get a "Name (2)" style rename, so importing the
   same backup twice is safe.

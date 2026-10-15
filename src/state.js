@@ -302,12 +302,11 @@ let playerScreenH = 1080;
 // from main.js — native fullscreen fires no DOM event, so nothing else can tell.
 let playerIsFullscreen = false;
 
-// ─── Room pictures (roomPictures.js) ─────────────────────────────────────────
-// The open scene's picture bytes by id. A room carries only { id, name }, so its record stays
-// plain data an older build can back up. Never pruned mid-session, so an undo finds its bytes.
+// ─── The pictures a room still carries (galleryPlan.js) ──────────────────────
+// The open scene's picture bytes by id. Rooms hold no pictures in the app any more, but a room's
+// { id, name } and the scene's bytes ride through every save for the previous release. Never
+// pruned mid-session, so an undo finds its bytes.
 let pictureBlobs = {};
-// The picture on the TV: { sceneId, roomId, picId }, or null.
-let tvPicture = null;
 
 // ─── Minimap state ───────────────────────────────────────────────────────────
 // minimapView IS the intended Player camera: seeded on map load, updated by drag on the

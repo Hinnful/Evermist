@@ -44,8 +44,9 @@ or two maps at a time.
 - **Prove a fix both ways**: the check fails without the fix and passes with it.
 - **A check that flakes is suspect first.** Rule out the check before changing the app for it.
 - **When a fix fails, say so and re-diagnose** from the evidence, never a second guess on the first.
-- **Look-and-feel work is a throwaway prototype**, one at a time, for the DM to pick. It skips
-  the rig and test gates until it is picked.
+- **A brainstorm ends at the proposal.** Build only on the DM's "build it", in a fresh session
+  on a smaller model. Look-and-feel work is a throwaway prototype outside the app, one at a time,
+  for the DM to pick, exempt from the rig and test gates until picked.
 
 ## Tech constraints
 

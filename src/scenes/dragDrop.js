@@ -1,7 +1,7 @@
 'use strict';
 // dragDrop.js — what a file dropped on the DM window becomes: a floor plan on its own attaches to
 // the open scene. A map dropped here imports nothing; maps come in through "+". A picture dropped
-// on the room card is roomPictures.js's and never reaches this handler.
+// on the Gallery pane is gallery.js's and never reaches this handler.
 
 function initDragDrop() {
   document.addEventListener('dragover', e => e.preventDefault());

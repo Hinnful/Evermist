@@ -334,3 +334,9 @@ assets, which is the only shape where nothing public precedes green.
 
 `.github/check-version.js` was deleted with this. It compared a pushed tag against `package.json`,
 and the tag is now derived from `package.json` rather than compared to it.
+
+### Room pictures are copied into the gallery, never moved · `SETTLED` (2026-10-16)
+The first start of the gallery copies every room's pictures into its own database once, under their ids, and leaves
+each scene's `pictureBlobs` and its rooms' `pictures` in place, so the previous release still shows them. A restore
+copies the restored scenes' room pictures in the same way, because an old backup holds no other copy. The cost,
+accepted as small: a picture removed from the gallery returns if a backup holding it is restored.

@@ -143,7 +143,9 @@ async function doExport(selectedIds, opts) {
       ? notesCampaignPayload('', sub.placeNotes, sub.shapes, sub.roads, sub.roadNotes)
       : notesCampaignPayload(notesCampaignGet(), notesPlacesAll(), worldPlacesExport(), worldRoadsExport(), notesRoadsAll());
     const worldBg = opts && opts.partial ? null : await worldBackgroundBackupPayload();
-    const wrote = await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson, combatJson, campaignJson, worldBg);
+    // The gallery belongs to no scene, so a backup of picked scenes leaves it out like the backdrop.
+    const gallery = opts && opts.partial ? null : await galleryBackupPayload();
+    const wrote = await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson, combatJson, campaignJson, worldBg, gallery);
     hideMapProgress();
     if (wrote && wrote.cancelled) return;
     // ⚠ REPORTED, NEVER DROPPED: the record still exports, so the backup looks complete.
@@ -363,6 +365,7 @@ async function restoreFromZipPath(zipPath) {
     updateMapProgress(0);
 
     const newSceneMeta = [];
+    const restoredPictures = [];
     let restoreShift = { dx: 0, dy: 0 };
     // ⚠ A restore into a library with a layout lands beside it as one block, never on top of it.
     const shift = wmBesideOffset(existingScenes.filter(s => wmCleanPos(s.worldPos)).map(s => s.worldPos),
@@ -427,6 +430,7 @@ async function restoreFromZipPath(zipPath) {
 
       await sceneStore.saveScene(scene);
       saved.push(newId);
+      restoredPictures.push({ polygons: scene.polygons, pictureBlobs: scene.pictureBlobs });
       newSceneMeta.push({ id: newId, name: resolvedName, group: scene.group, thumbnail: thumbBlob, sortOrder, createdAt: scene.createdAt, mapType: scene.mapType, worldPos: scene.worldPos });
       updateMapProgress(Math.round(((i + 1) / assignments.length) * 100));
     }
@@ -455,6 +459,11 @@ async function restoreFromZipPath(zipPath) {
     for (const a of assignments) sceneMap[a.originalId] = a.newId;
     await adoptCampaignNotesFromZip(zipPath, noNotes, restoreShift, sceneMap);
     await worldBackgroundAdopt(zipPath, restoreShift);
+    // The backup's own gallery first, then whatever its scenes' rooms still hold from before the gallery.
+    try {
+      await galleryAdoptBackup(zipPath);
+      await galleryAdoptScenes(restoredPictures);
+    } catch (err) { console.error('Restoring the gallery failed:', err); }
   } catch (err) {
     if (job.stopped) return undo();
     hideMapProgress();

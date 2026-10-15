@@ -1,4 +1,4 @@
-/* roomCard.css — the left panel's room level: the selected room's name, notes and pictures, and the module-text dropdown under the name. */
+/* roomCard.css — the left panel's room level: the selected room's name and notes, and the module-text dropdown under the name. */
   /* Notion's way: the dock is the only box. Name and notes sit on its background, share one left
      and one right edge, and a field shows itself only on hover and while typing. */
   .dk-room { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }
@@ -18,31 +18,6 @@
   .rp-name:hover, .rp-desc:hover { background: rgba(255, 255, 255, 0.03); }
   .rp-name:focus, .rp-desc:focus { background: rgba(255, 255, 255, 0.04); }
   .rp-name::placeholder, .rp-desc::placeholder { color: #5d626a; font-weight: 400; }
-
-  /* Pictures inline below the notes, the way Notion shows images in a page. */
-  .rp-pics { display: flex; flex-direction: column; gap: 10px; padding: 4px 16px 0; }
-  .rp-pic { position: relative; border-radius: 4px; overflow: hidden; cursor: pointer; background: var(--g-field); }
-  .rp-pic img { width: 100%; display: block; pointer-events: none; }
-  .rp-pic.on { box-shadow: 0 0 0 2px #5fbf8a; }
-  .rp-pic.on::after {
-    content: "TV"; position: absolute; left: 6px; bottom: 6px; padding: 2px 6px; border-radius: 3px;
-    background: #5fbf8a; color: #0d1a12; font: 600 10px/1.2 system-ui, sans-serif;
-  }
-  .rp-pic.drag { opacity: .35; }
-  .rp-pic.over { box-shadow: 0 -3px 0 var(--b-icon); }
-  .rp-pic-x {
-    position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; padding: 0;
-    border: none; border-radius: 4px; background: rgba(0, 0, 0, 0.65); color: #e6e7e9;
-    font: 13px/20px system-ui, sans-serif; cursor: pointer; opacity: 0;
-  }
-  .rp-pic:hover .rp-pic-x { opacity: 1; }
-  .rp-pic-x:hover { background: #e8595f; }
-  .dk-addpic {
-    display: flex; align-items: center; gap: 6px; margin: 8px 16px 4px; padding: 4px 0;
-    border: 0; background: none; color: #5d626a; cursor: pointer; text-align: left;
-    font: 400 12.5px/1.4 system-ui, sans-serif;
-  }
-  .dk-addpic:hover { color: #9aa0aa; }
 
 
   /* ===== MODULE TEXT DROPDOWN (the book, inside the name field) ===== */
