@@ -7,9 +7,11 @@
 
 let legendVisible = false;
 
-// The strip above the toolbar, which carries ONLY what the picked tool uses. ONE function owns
-// every visibility decision, called from setShape and setPlaceMode. Fog state is a ROOM's
-// property; Select and Split take no options at all. The trio and the brush size never split up.
+// The options row above the toolbar, which carries ONLY what the picked tool uses: the fog clouds and
+// the brush size over the Brush; over a shape the clouds in Fog mode or the material and size in
+// Effects, then Snap, Straight walls and the repair icon; the door's fields while Door is armed.
+// Select shows no row. ONE function owns every visibility decision, called from setShape,
+// setShapeOp and setPlaceMode; fogBar.js then places the row over the tool it belongs to.
 function updateContextPanels() {
   const show = (id, on) => {
     const el = document.getElementById(id);
@@ -19,14 +21,21 @@ function updateContextPanels() {
   // beside it - a strip offering brush size while a drag sets the grid describes nothing. Its own
   // count rides the map in #gridcal-hud, not this row.
   const cal    = gridCalArmed;
-  const closed = shape === 'poly' || shape === 'rect' || shape === 'circle' || shape === 'cone' ||
-                 shape === 'line' || shape === 'ring';
-  const rooms  = !cal && placeMode === 'rooms' && (closed || shape === 'brush');
+  const closed = SHAPE_FAMILY.indexOf(shape) >= 0;
+  const brush  = !cal && placeMode === 'rooms' && shape === 'brush';
   const fx     = !cal && placeMode === 'effects' && closed;
   const door   = !cal && shape === 'door';
-  const room   = !cal && !!fogTrioRoom();   // the selected room's fog, with Select in hand
-  show('ctx-rooms', rooms || room);
-  show('panel-brush-bottom', rooms);
+  const aids   = !cal && (closed || shape === 'cut');
+  const clouds = !cal && placeMode === 'rooms' && (closed || shape === 'brush');
+  show('wa-mode', clouds);
+  show('panel-brush-bottom', brush);
+  show('div-brush', brush);
+  show('div-aids', aids && (clouds || fx));
+  show('fx-aids', aids);
+  show('div-op', aids);
+  show('op-sw', aids);
+  refreshFogBar();
+  document.body.classList.toggle('aids-up', aids && worldMapOpen);
   show('ctx-effects', fx);
   show('ctx-presets', fx && !!EFFECT_PRESETS[shape]);
   refreshPresetRow();
@@ -34,9 +43,10 @@ function updateContextPanels() {
   // ⚠ visibility, NEVER display. A hidden box keeps its place, so the bar below does not jump up
   // by this strip's height every time the DM picks Select and drop back on the next shape.
   const row = document.getElementById('context-row');
-  if (row) row.style.visibility = (rooms || fx || door || room) ? '' : 'hidden';
+  if (row) row.style.visibility = (brush || fx || door || aids) ? '' : 'hidden';
   const cellLabel = document.getElementById('door-cell-label');
   if (cellLabel) cellLabel.textContent = Math.round(gridSize);
+  placeContextRow();
 }
 
 function setShape(s) {
@@ -52,7 +62,7 @@ function setShape(s) {
     setModeShape(placeMode, s);
   }
   presetArmed = presetForShape(s);
-  ['brush', 'rect', 'poly', 'circle', 'cone', 'line', 'ring', 'select', 'door', 'cut'].forEach(sh => {
+  ['brush', 'rect', 'poly', 'circle', 'cone', 'line', 'wall', 'ring', 'select', 'door', 'cut'].forEach(sh => {
     const el = document.getElementById('btn-' + sh);
     if (el) el.classList.toggle('active', sh === s);
   });
@@ -104,10 +114,13 @@ function initInput() {
       if (!mapOffscreen) return;
       const raw = screenToMap(e.clientX, e.clientY);
       if (e.button === 1 && e.ctrlKey) { e.preventDefault(); pingAt(raw.x, raw.y); return; }
-      // Alt on a shape under the Select tool drags a copy of it; Alt anywhere else pans.
+      // Alt on a shape under the Select tool drags a copy of it, and under a shape tool it cuts the
+      // shape out of the rooms it touches (repairKeys.js); under any other tool it pans, as the
+      // middle button always does.
       const altCopy = e.button === 0 && e.altKey && shape === 'select' && !gridCalArmed &&
                       selectGrabsAt(raw);
-      if (e.button === 1 || (e.button === 0 && e.altKey && !altCopy)) {
+      const altPan = e.button === 0 && e.altKey && !altCopy && SHAPE_FAMILY.indexOf(shape) < 0;
+      if (e.button === 1 || altPan) {
         isPanning = true;
         panStartX = e.clientX; panStartY = e.clientY;
         panStartPanX = panX;   panStartPanY = panY;
@@ -197,7 +210,7 @@ function initInput() {
       if (!mapOffscreen) return;
       // A cut path has no closing vertex to click, so the double-click IS its finish. The two
       // mousedowns underneath it have already placed the last point.
-      if (shape === 'cut') { commitCutPath(); return; }
+      if (shape === 'cut' || (activePolygon && activePolygon.cut)) { commitCutPath(); return; }
       if (shape !== 'select') return;
       selectDblClick(screenToMap(e.clientX, e.clientY));
     });
@@ -270,6 +283,8 @@ function initInput() {
         if (legendVisible) { toggleLegend(); break; }
         if (takeDownTvPicture()) break;
         if (dropPreset()) break;
+        // Door is a tool the room's switcher armed, and Esc ends it before it drops the room.
+        if (shape === 'door') { setShape('select'); break; }
         if (activePolygon) {
           activePolygon = null;
           drawCursor(null, null);
@@ -283,10 +298,12 @@ function initInput() {
       case 'KeyT':
         if (selectedPolygonId != null) toggleSelectedPolygon();
         break;
-      case 'BracketLeft':  brushSize = Math.max(5, brushSize - 10);
+      case 'BracketLeft':  if (stepPresetKey(-1)) break;
+                brushSize = Math.max(5, brushSize - 10);
                 document.getElementById('brush-size').value = brushSize;
                 document.getElementById('brush-size-label').textContent = brushSize; break;
-      case 'BracketRight': brushSize = Math.min(300, brushSize + 10);
+      case 'BracketRight': if (stepPresetKey(1)) break;
+                brushSize = Math.min(300, brushSize + 10);
                 document.getElementById('brush-size').value = brushSize;
                 document.getElementById('brush-size-label').textContent = brushSize; break;
       case 'KeyS': if (e.shiftKey && !autoSync) { e.preventDefault(); sendToPlayer(); } break;

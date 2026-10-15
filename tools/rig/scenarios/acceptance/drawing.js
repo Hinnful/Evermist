@@ -165,33 +165,23 @@ module.exports = async function drawing(rig) {
     chevron.click();
     return { rows, gone: !document.getElementById('tb-dd') };
   })()`);
-  rig.check(chev.rows.length === 6 && chev.rows.filter(r => r.off).map(r => r.id).join() === 'btn-cone,btn-line,btn-ring' && chev.gone,
-            'the chevron does not open the six shapes with the Effects-only three greyed, or a second ' +
+  const SEVEN = ['btn-poly', 'btn-rect', 'btn-circle', 'btn-cone', 'btn-line', 'btn-wall', 'btn-ring'];
+  // RED BY DESIGN: written against the shapes-only Shape list, never re-proved
+  rig.check(chev.rows.map(r => r.id).join() === SEVEN.join() && chev.rows.filter(r => r.off).map(r => r.id).join() === 'btn-cone,btn-line,btn-wall,btn-ring' &&
+            chev.gone,
+            'the chevron does not open the shapes alone with the Effects-only four greyed, or a second ' +
             'click does not shut it: ' + JSON.stringify(chev));
-
-  // The operations button wears the last pick: Split is a tool in hand, Merge and Cut out are
-  // switches, and picking one off the list disarms the others.
-  // RED ON: setShapeOp('new') gated off in _tbPick's Split branch (shapeMenu.js) — 2026-10-02
-  const opsShown = () => dm.evaluate('["btn-op-join", "btn-op-trim", "btn-cut"]' +
-    '.filter(id => getComputedStyle(document.getElementById(id)).display !== "none")');
-  const pickOp = id => dm.evaluate('document.querySelector("[data-chev=ops]").click();' +
-    ' document.querySelector("#tb-dd [data-dd=' + id + ']").click(); ({ shape, shapeOp })');
-  // Merge armed first, or Split has nothing to disarm and the check below cannot see it fail to.
-  await dm.evaluate('setShapeOp("join"); 0');
-  let op = await pickOp('btn-cut');
-  rig.check(op.shape === 'cut' && op.shapeOp === 'new' && (await opsShown()).join() === 'btn-cut',
-            'picking Split did not put Split in hand and on the bar alone: ' + JSON.stringify(op));
-  op = await pickOp('btn-op-trim');
-  rig.check(op.shape === 'select' && op.shapeOp === 'trim' && (await opsShown()).join() === 'btn-op-trim',
-            'picking Cut out did not arm it, put Split down, and wear it: ' + JSON.stringify(op));
-  await dm.evaluate('document.getElementById("btn-op-trim").click(); 0');
-  rig.check(await dm.evaluate('shapeOp') === 'new' && (await opsShown()).join() === 'btn-op-trim',
-            'pressing the lit Cut out did not disarm it, or the button left the bar');
+  // The repairs are keys and the repair icon now (fog-toolbar.js walks them), so picking a shape here
+  // only ever drops one that was armed.
+  await dm.evaluate('setShapeOp("trim"); document.querySelector("[data-chev=shape]").click();' +
+    ' document.querySelector("#tb-dd [data-dd=btn-rect]").click(); 0');
+  rig.check(await dm.evaluate('shapeOp') === 'new' && await dm.evaluate('shape') === 'rect',
+            'picking a shape from the list did not drop an armed Cut out');
   await dm.evaluate('setShapeOp("new"); 0');
 
   // ⚠ THE BUTTON MUST PICK THE SHAPE IT IS SHOWING. It wears the last shape this mode drew with,
   // and a left click from any other tool - the Brush included - has to land on that same one.
-  const glyph = await dm.evaluate('setShape("brush");' +
+  const glyph = await dm.evaluate('setShape("circle"); setShape("brush");' +
     ' document.getElementById("btn-shape").querySelector(".tb-shape-glyph").innerHTML');
   const after = await dm.evaluate('document.getElementById("btn-shape").click();' +
     ' ({ shape, glyph: document.getElementById("btn-" + shape).innerHTML })');
@@ -542,32 +532,38 @@ module.exports = async function drawing(rig) {
             'name and notes the DM wrote for themselves');
 
   // ══ J. The bar shows the mode, and picking a tool never moves the bar ══
-  // RED ON: #tb-grp-ops moved after #btn-door (index.html) — 2026-10-02
-  // Every button drawn on the bar, in the order it is drawn, and whether any is greyed.
+  // RED BY DESIGN: written against the fog switcher bar, never re-proved
+  // Every button drawn on the bar, in the order it is drawn, and whether any is greyed. The fog
+  // switcher's selectors have no id, so they read as dir-<direction>.
   const BAR = `(() => {
     const bs = [...document.querySelectorAll('#toolbar-bottom button:not(.tb-chev)')]
-      .filter(b => !b.closest('#shape-menu') && getComputedStyle(b).display !== 'none');
-    return { shown: bs.map(b => b.id), greyed: bs.filter(b => b.disabled).map(b => b.id) };
+      .filter(b => !b.closest('#shape-menu') && b.getClientRects().length > 0);
+    const name = b => b.id || 'dir-' + b.dataset.dir;
+    return { shown: bs.map(name), greyed: bs.filter(b => b.disabled).map(name),
+             width: Math.round(document.getElementById('toolbar-bottom').getBoundingClientRect().width) };
   })()`;
   await dm.evaluate('setPlaceMode("rooms"); setShapeOp("join"); setShapeOp("new"); setShape("rect"); 0');
   const barRooms = await dm.evaluate(BAR);
-  rig.check(barRooms.shown.join() ===
-            'btn-select,btn-shape,btn-op-join,btn-brush,btn-door,btn-snap,btn-axislock,btn-place-rooms,btn-place-effects',
-            'the Rooms bar is not Select, Shape, the operations, Brush, Door, then the switches: ' +
-            barRooms.shown.join(' '));
+  rig.check(barRooms.shown.join() === 'btn-select,btn-brush,btn-shape,tb-reveal-all,tb-hide-all',
+            'the Fog bar is not Select, Brush, Shape, then Reveal all and Hide all: ' + barRooms.shown.join(' '));
+  // The bar never changes width while the DM works: not across a tool pick, and not across a map with no rooms.
+  const widths = [barRooms.width];
+  for (const pick of ['setShape("brush")', 'setShape("select")', 'setShapeOp("join")', 'setShapeOp("new")', 'setShape("door")', 'setShape("select")']) {
+    widths.push((await dm.evaluate(pick + '; ' + BAR)).width);
+  }
+  rig.check(widths.every(w => w === widths[0]), 'the Fog bar changed width while tools were picked: ' + widths.join(' '));
   rig.check(barRooms.greyed.length === 0,
             'the Rooms bar greys a tool instead of leaving it off: ' + barRooms.greyed.join(' '));
   await dm.evaluate('setPlaceMode("effects"); 0');
   const barFx = await dm.evaluate(BAR);
-  rig.check(barFx.shown.join() ===
-            'btn-select,btn-shape,btn-op-join,btn-snap,btn-axislock,btn-place-rooms,btn-place-effects',
-            'the Effects bar is not Select, Shape, the operations, then the switches: ' + barFx.shown.join(' '));
+  rig.check(barFx.shown.join() === 'btn-select,btn-shape,tb-reveal-all,tb-hide-all',
+            'the Effects bar is not Select, Shape, then Reveal all and Hide all: ' + barFx.shown.join(' '));
   rig.check(barFx.greyed.length === 0,
             'the Effects bar greys a tool instead of leaving it off: ' + barFx.greyed.join(' '));
 
   // The strip above carries the picked tool's group and nothing else.
   const STRIP = `(() => {
-    const ids = ['ctx-rooms', 'ctx-effects', 'ctx-presets', 'ctx-door', 'panel-brush-bottom'];
+    const ids = ['wa-mode', 'ctx-rooms', 'ctx-effects', 'ctx-presets', 'ctx-door', 'panel-brush-bottom', 'fx-aids', 'op-sw'];
     const row = document.getElementById('context-row');
     return { groups: ids.filter(id => {
                const el = document.getElementById(id);
@@ -577,13 +573,16 @@ module.exports = async function drawing(rig) {
              top: Math.round(document.getElementById('toolbar-bottom').getBoundingClientRect().top) };
   })()`;
   const stripFx = await dm.evaluate('setShape("rect"); ' + STRIP);
-  rig.check(stripFx.groups.join() === 'ctx-effects,ctx-presets',
-            'a shape in Effects mode does not show the materials and the preset sizes, and nothing else: ' + stripFx.groups.join(' '));
+  rig.check(stripFx.groups.join() === 'ctx-effects,ctx-presets,fx-aids,op-sw',
+            'a shape in Effects mode does not show the material, the size, the aids and the repair icon, and nothing else: ' + stripFx.groups.join(' '));
   await dm.evaluate('setPlaceMode("rooms"); 0');
   const stripShape = await dm.evaluate('setShape("rect"); ' + STRIP);
-  rig.check(stripShape.groups.join() === 'ctx-rooms,panel-brush-bottom',
-            'a shape in Rooms mode does not show the fog trio and the brush size together: ' +
+  rig.check(stripShape.groups.join() === 'wa-mode,fx-aids,op-sw',
+            'a shape in Rooms mode does not show the clouds, Snap to grid, Straight walls and the repair icon: ' +
             stripShape.groups.join(' '));
+  const stripBrush = await dm.evaluate('setShape("brush"); ' + STRIP);
+  rig.check(stripBrush.groups.join() === 'wa-mode,panel-brush-bottom',
+            'the Brush does not show the clouds and its size alone: ' + stripBrush.groups.join(' '));
   const stripDoor = await dm.evaluate('setShape("door"); ' + STRIP);
   rig.check(stripDoor.groups.join() === 'ctx-door',
             'the Door tool shows more than the door fields: ' + stripDoor.groups.join(' '));
@@ -592,8 +591,8 @@ module.exports = async function drawing(rig) {
   const stripSplit  = await dm.evaluate('setShape("cut"); ' + STRIP);
   rig.check(stripSelect.groups.length === 0 && stripSelect.row === 'hidden',
             'the strip is not blank and hidden on Select: ' + JSON.stringify(stripSelect));
-  rig.check(stripSplit.groups.length === 0 && stripSplit.row === 'hidden',
-            'the strip is not blank and hidden on Split: ' + JSON.stringify(stripSplit));
+  rig.check(stripSplit.groups.join() === 'fx-aids,op-sw' && stripSplit.row === 'visible',
+            'Split, a repair, does not show the aids and the lit repair icon: ' + JSON.stringify(stripSplit));
   // ⚠ THE BOX IS WHAT THIS GUARDS, and reading the bar's position does not guard it. #tools-wrapper
   // is fixed to the screen's bottom edge, so the bar sits the same distance up whether the strip
   // holds its box or leaves the layout entirely. A blank strip measuring 0 tall is the failure —

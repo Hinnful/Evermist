@@ -1,6 +1,8 @@
 'use strict';
-// shapeMenu.js — the bar's two lists: the shape button's and the operations button's. A chevron
-// beside each button opens its list, and so does a right-click on the button (dm-ui skill).
+// shapeMenu.js — the bar's chevron lists. One list component serves them all: the shapes (this file),
+// the repairs (repairBar.js) and an effect's sizes (effectsRow.js) each hand it rows and what a pick
+// does. A chevron beside a button opens its list, and so does a right-click on the Shape button
+// (dm-ui skill).
 //
 // ⚠ THE RIGHT CLICK MUST SUPPRESS ITS OWN CONTEXT MENU. Nothing upstream does: index.html's
 // handler is inside `if (isPlayer)` and input.js's covers #canvas-container, a sibling of
@@ -9,135 +11,167 @@
 // The shapes are MODE_SHAPES (toolbar.js) filtered to the drawable ones, so the list and the bar
 // can never disagree about what a mode offers. A shape the mode lacks is greyed, not dropped, except
 // on the world map, which has no Effects to switch to, so there it is absent.
-const SHAPE_FAMILY = ['poly', 'rect', 'circle', 'cone', 'line', 'ring'];
+const SHAPE_FAMILY = ['poly', 'rect', 'circle', 'cone', 'line', 'wall', 'ring'];
 const SHAPE_ROWS = { poly: ['Polygon', 'P'], rect: ['Rectangle', 'R'], circle: ['Circle', 'O'],
-                     cone: ['Cone', 'C'], line: ['Line', ''], ring: ['Ring', ''] };
+                     cone: ['Cone', 'C'], line: ['Line', ''], wall: ['Wall', ''], ring: ['Ring', ''] };
+// The world map's Shape list keeps its Repair section; the scene bar's repairs are keys and an icon.
 const OPS_ROWS = { 'btn-op-join': 'Merge', 'btn-op-trim': 'Cut out', 'btn-cut': 'Split' };
 
-let _opsPick = 'btn-op-join';   // the repair the operations button wears
-let _tbOpen = null;             // 'shape' | 'ops' | null
+let _opsPick = 'btn-op-join';   // the world map's last repair armed or picked
+let _pickKind = 'shape';        // what the world map's Shape button wears when no repair is armed
+let _worn = 'btn-poly';         // the row the Shape button wears, and the list checks
+let _tbOpen = null;             // the kind of the list that is open, or null
+let _tbPickFn = null;           // what a pick in the open list does
 
 function shapeMenuItems() {
   return MODE_SHAPES[placeMode].filter(s => SHAPE_FAMILY.indexOf(s) >= 0);
 }
 
-// The button wears the glyph of the shape this mode last used, and leaves it alone when that
-// shape is not in this mode's list, so it never goes blank.
+// Effects lists the shapes in the order a DM reaches for them; Fog opens with the Polygon.
+function _shapeOrder() {
+  return placeMode === 'effects' ? ['rect', 'circle', 'cone', 'line', 'wall', 'ring', 'poly'] : SHAPE_FAMILY;
+}
+
+function _shapeName(s) {
+  return placeMode === 'effects' && s === 'rect' ? 'Square' : SHAPE_ROWS[s][0];
+}
+
+// A repair needs something to act on: a room, an effect, or on the world map a place.
+function repairsAvailable() { return activeShapeList().length > 0; }
+
+// The scene bar's button wears the shape drawn with, always. The world map's also wears the last
+// repair picked from its list, and a shape the mode lacks is never worn, so the button never goes blank.
 function refreshShapeButton() {
   const btn = document.getElementById('btn-shape');
   if (!btn) return;
   const items = shapeMenuItems();
-  const want  = items.indexOf(shape) >= 0
-    ? shape
-    : modeShape(placeMode);
-  const src = document.getElementById('btn-' + want);
-  const box = btn.querySelector('.tb-shape-glyph');
-  if (src && box && items.indexOf(want) >= 0) box.innerHTML = src.innerHTML;
-  btn.classList.toggle('active', items.indexOf(shape) >= 0);
-  refreshOpsButton();
-}
-
-// One of the three repairs is on the bar at a time: the last one armed or picked. Split is a
-// tool in hand; Merge and Cut out are switches that stay armed.
-function refreshOpsButton() {
-  if (shape === 'cut') _opsPick = 'btn-cut';
-  else if (shapeOp !== 'new') _opsPick = 'btn-op-' + shapeOp;
-  for (const id in OPS_ROWS) {
-    const el = document.getElementById(id);
-    if (el) el.style.display = id === _opsPick ? '' : 'none';
+  let repair = false;
+  if (worldMapOpen) {
+    if (shape === 'cut') { _opsPick = 'btn-cut'; _pickKind = 'repair'; }
+    else if (shapeOp !== 'new') { _opsPick = 'btn-op-' + shapeOp; _pickKind = 'repair'; }
+    else if (items.indexOf(shape) >= 0) _pickKind = 'shape';
+    const armed = shape === 'cut' || shapeOp !== 'new';
+    repair = armed || (_pickKind === 'repair' && repairsAvailable());
   }
-}
-
-function _tbPickedRow(kind) {
-  if (kind === 'ops') return _opsPick;
-  const items = shapeMenuItems();
-  return 'btn-' + (items.indexOf(shape) >= 0 ? shape : modeShape(placeMode));
+  const want = repair ? _opsPick : 'btn-' + (items.indexOf(shape) >= 0 ? shape : modeShape(placeMode));
+  _worn = want;
+  const src = document.getElementById(want);
+  const box = btn.querySelector('.tb-shape-glyph');
+  if (src && box && (repair || items.indexOf(want.slice(4)) >= 0)) box.innerHTML = src.querySelector('svg').outerHTML;
+  btn.classList.toggle('active', items.indexOf(shape) >= 0 || shape === 'cut');
 }
 
 function _tbCloseList() {
   const dd = document.getElementById('tb-dd');
   if (dd) dd.remove();
-  document.querySelectorAll('.tb-chev.open').forEach(c => c.classList.remove('open'));
+  document.querySelectorAll('.tb-chev.open, .op-chev.open').forEach(c => c.classList.remove('open'));
   _tbOpen = null;
+  _tbPickFn = null;
 }
 
-function _tbOpenList(kind) {
+// Rows are [id, name, key, off, iconSvg] or a string for a heading, or null for a divider.
+function _tbRows() {
+  const svgOf = id => { const src = document.getElementById(id); return src ? src.querySelector('svg').outerHTML : ''; };
+  const shapes = _shapeOrder().filter(s => !worldMapOpen || shapeInMode(s, placeMode))
+    .map(s => ['btn-' + s, _shapeName(s), !shapeInMode(s, placeMode) ? t('Effects') : SHAPE_ROWS[s][1], !shapeInMode(s, placeMode), svgOf('btn-' + s)]);
+  if (!worldMapOpen) return shapes;
+  const none = !repairsAvailable();
+  const repairs = Object.keys(OPS_ROWS).map(id => [id, OPS_ROWS[id], none ? t('Needs a room') : '', none, svgOf(id)]);
+  return shapes.concat([null, 'Repair'], repairs);
+}
+
+// Opens a list over `anchor`, above it and kept inside the window. `kind` names it so a second click on
+// the same chevron closes it; `onPick(id)` is what a row does.
+function openBarList(kind, anchor, chevEl, rows, picked, onPick, shapeRows) {
   _tbCloseList();
   _tbOpen = kind;
-  const group = document.getElementById('tb-grp-' + kind);
-  group.querySelector('.tb-chev').classList.add('open');
+  _tbPickFn = onPick;
+  if (chevEl) chevEl.classList.add('open');
   const dd = document.createElement('div');
   dd.id = 'tb-dd';
-  const picked = _tbPickedRow(kind);
-  const rows = kind === 'shape'
-    ? SHAPE_FAMILY.filter(s => !worldMapOpen || shapeInMode(s, placeMode))
-        .map(s => ['btn-' + s, SHAPE_ROWS[s][0], SHAPE_ROWS[s][1], !shapeInMode(s, placeMode)])
-    : Object.keys(OPS_ROWS).map(id => [id, OPS_ROWS[id], '', false]);
-  for (const [id, name, key, off] of rows) {
+  // No tick column when nothing in the list is picked, or the rows start with empty space.
+  dd.classList.toggle('nock', !rows.some(r => Array.isArray(r) && r[0] === picked));
+  for (const r of rows) {
+    if (r === null) { const sep = document.createElement('div'); sep.className = 'dd-sep'; dd.appendChild(sep); continue; }
+    if (typeof r === 'string') { const h = document.createElement('div'); h.className = 'dd-lbl'; h.textContent = t(r); dd.appendChild(h); continue; }
+    const [id, name, key, off, icon] = r;
     const row = document.createElement('button');
     row.className = 'dd-it' + (off ? ' off' : '');
     row.dataset.dd = id;
     row.disabled = off;
-    if (off) row.title = t('Effects only');
-    const src = document.getElementById(id);
+    if (off && shapeRows && SHAPE_FAMILY.indexOf(id.slice(4)) >= 0) row.title = t('Effects only');
     row.innerHTML = '<span class="ck"></span><span class="ic"></span><span class="nm"></span><span class="ky"></span>';
     row.querySelector('.ck').textContent = id === picked ? '✓' : '';
-    row.querySelector('.ic').innerHTML = src ? src.querySelector('svg').outerHTML : '';
-    row.querySelector('.nm').textContent = t(name);
-    row.querySelector('.ky').textContent = off ? t('Effects') : key;
+    row.querySelector('.ic').innerHTML = icon || '';
+    row.querySelector('.nm').textContent = name;
+    row.querySelector('.ky').textContent = key;
     dd.appendChild(row);
   }
   document.body.appendChild(dd);
-  const r = group.getBoundingClientRect(), box = dd.getBoundingClientRect();
-  const st = _rpScreenToStyle(dd, r.left - 6, r.top - 10 - box.height);
+  const r = anchor.getBoundingClientRect(), box = dd.getBoundingClientRect();
+  const left = Math.max(8, Math.min(innerWidth - 8 - box.width, r.left - 6));
+  const st = _rpScreenToStyle(dd, left, r.top - 10 - box.height);
   dd.style.left = st.left + 'px';
   dd.style.top = st.top + 'px';
 }
 
-// A pick goes through the button's own handler, so each repair keeps exactly the arming it had.
-// ⚠ Picking Split disarms Merge and Cut out, whose button then leaves the bar (dm-ui skill).
-function _tbPick(id) {
-  if (_tbOpen === 'shape') { setShape(id.slice(4)); return; }
+function _tbOpenShapeList() {
+  const group = document.getElementById('tb-grp-shape');
+  const rows = _tbRows().map(r => (r && typeof r !== 'string') ? [r[0], t(r[1]), r[2], r[3], r[4]] : r);
+  openBarList('shape', group, group.querySelector('.tb-chev'), rows, _worn, _tbPick, true);
+}
+
+// The world map's Shape list arms a repair through the button's own handler, so each keeps exactly the
+// arming it had, and it draws with the shape picked last. ⚠ Picking Split disarms Merge and Cut out.
+function _tbArmRepair(id) {
   if (id === 'btn-cut') { setShapeOp('new'); if (shape !== 'cut') setShape('cut'); return; }
-  if (shape === 'cut') setShape('select');
   const op = id === 'btn-op-join' ? 'join' : 'trim';
   if (shapeOp !== op) setShapeOp(op);
+  if (shapeMenuItems().indexOf(shape) < 0) {
+    const last = modeShape(placeMode);
+    setShape(shapeMenuItems().indexOf(last) >= 0 ? last : 'poly');
+  }
+}
+
+function _tbPick(id) {
+  if (OPS_ROWS[id]) { _tbArmRepair(id); return; }
+  // A plain shape is a new room, so it drops an armed Merge or Cut out.
+  if (shapeOp !== 'new') setShapeOp('new');
+  setShape(id.slice(4));
 }
 
 function initShapeMenu() {
   const btn = document.getElementById('btn-shape');
 
   btn.onclick = () => {
+    if (btn.classList.contains('active') && shape !== 'cut') return;   // already the tool in hand
+    if (worldMapOpen && _pickKind === 'repair' && repairsAvailable()) { _tbArmRepair(_opsPick); return; }
     const items = shapeMenuItems();
-    if (items.indexOf(shape) >= 0) return;   // already on the shape showing
     const want = modeShape(placeMode);
+    if (shapeOp !== 'new') setShapeOp('new');
     setShape(items.indexOf(want) >= 0 ? want : 'poly');
   };
   SHAPE_FAMILY.forEach(s => {
     document.getElementById('btn-' + s).onclick = () => setShape(s);
   });
 
-  document.querySelectorAll('.tb-chev').forEach(c => c.addEventListener('click', e => {
+  document.querySelector('#tb-grp-shape .tb-chev').addEventListener('click', e => {
     e.stopPropagation();
-    if (_tbOpen === c.dataset.chev) _tbCloseList(); else _tbOpenList(c.dataset.chev);
-  }));
-  ['btn-shape', ...Object.keys(OPS_ROWS)].forEach(id => {
-    document.getElementById(id).addEventListener('contextmenu', e => {
-      e.preventDefault();
-      _tbOpenList(id === 'btn-shape' ? 'shape' : 'ops');
-    });
+    if (_tbOpen === 'shape') _tbCloseList(); else _tbOpenShapeList();
   });
+  btn.addEventListener('contextmenu', e => { e.preventDefault(); _tbOpenShapeList(); });
 
   // Picks on click; mousedown only keeps the list from closing under the pointer.
   document.addEventListener('mousedown', e => {
-    if (!_tbOpen || e.target.closest('#tb-dd, .tb-chev')) return;
+    if (!_tbOpen || e.target.closest('#tb-dd, .tb-chev, .op-ic, .op-chev')) return;
     _tbCloseList();
   }, true);
   document.addEventListener('click', e => {
     const row = e.target.closest('#tb-dd [data-dd]');
     if (!row || row.disabled) return;
-    _tbPick(row.dataset.dd);
+    const pick = _tbPickFn;
     _tbCloseList();
+    if (pick) pick(row.dataset.dd);
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && _tbOpen) { _tbCloseList(); e.stopImmediatePropagation(); }

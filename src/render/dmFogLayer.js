@@ -111,7 +111,7 @@ function pixiInitFog(fogDataCvs, fogBlurCvs, cloudBlendCvs, mapW, mapH) {
     pixiFogLayer.addChild(pixiFogBrushSpr);
   }
 
-  pixiFogLayer.alpha = FOG_OPACITY_DM;
+  pixiFogLayer.alpha = playersViewOn ? 1 : FOG_OPACITY_DM;
 }
 
 // Called on mouseup / polygon rebuild — uploads new fogBlurCanvas to GPU.

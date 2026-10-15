@@ -1,19 +1,21 @@
 'use strict';
-// toolPreset.js — effect presets: the size row in #context-row, the outline that follows the
-// pointer, the wheel through the sizes, and the click or aiming drag that places one.
+// toolPreset.js — effect presets: the outline that follows the pointer, the wheel and [ ] through the
+// sizes, and the click or aiming drag that places one. The size field is effectsRow.js's.
 
-// Line and Ring have no hand tool, so picking one arms a size straight away.
-const PRESET_DEFAULT = { line: 1, ring: 0 };
-const PRESET_AIMS = { cone: true, line: true };
+// Line, Wall and Ring have no hand tool, so picking one arms a size straight away, in feet.
+const PRESET_DEFAULT = { line: 60, wall: 30, ring: 20 };
+const PRESET_AIMS = { cone: true, line: true, wall: true };
 let _presetShift = false;
 document.addEventListener('keydown', e => { if (e.key === 'Shift' && !isPlayer) { _presetShift = true; drawCursor(lastScreenX, lastScreenY); } });
 document.addEventListener('keyup',   e => { if (e.key === 'Shift' && !isPlayer) { _presetShift = false; drawCursor(lastScreenX, lastScreenY); } });
 
-function presetPxPerFt() { return gridSize / 5; }
+// One grid cell is 5 ft. A square cell is gridSize across; a hex cell's gridSize is its corner radius,
+// so the cell is gridSize * sqrt(3) across the flats (grid.js).
+function presetPxPerFt() { return (gridMode === 'square' ? gridSize : gridSize * Math.sqrt(3)) / 5; }
 
 function presetForShape(s) {
   const list = EFFECT_PRESETS[s];
-  return list && PRESET_DEFAULT[s] != null ? { kind: s, ...list[PRESET_DEFAULT[s]] } : null;
+  return list && PRESET_DEFAULT[s] != null ? { kind: s, ...list.find(z => z.s === PRESET_DEFAULT[s]) } : null;
 }
 
 function setPreset(p) {
@@ -29,46 +31,23 @@ function reportPaneTool() {
   parent.postMessage({ type: 'pane-tool', pane: paneId, shape, preset: presetArmed }, '*');
 }
 
-// The row's look is settled in docs/decisions/ui-and-control-panel.md.
-function refreshPresetRow() {
-  const row = document.getElementById('ctx-presets');
-  if (!row) return;
-  const list = placeMode === 'effects' ? EFFECT_PRESETS[shape] : null;
-  if (!list) { row.innerHTML = ''; row.dataset.kind = ''; return; }
-  if (row.dataset.kind !== shape) {
-    row.innerHTML = '';
-    row.dataset.kind = shape;
-    if (PRESET_DEFAULT[shape] == null) {
-      const hand = document.createElement('button');
-      hand.className = 'mode-btn';
-      hand.dataset.preset = 'hand';
-      hand.title = 'Draw it by hand';
-      hand.innerHTML = document.getElementById('btn-' + shape).innerHTML;
-      const svg = hand.querySelector('svg');
-      if (svg) svg.setAttribute('stroke-dasharray', '2.6 2.4');
-      hand.onclick = () => setPreset(null);
-      row.appendChild(hand);
-    }
-    list.forEach((z, i) => {
-      const b = document.createElement('button');
-      b.className = 'mode-btn';
-      b.dataset.preset = String(i);
-      b.textContent = z.w ? z.s + '×' + z.w : String(z.s);
-      b.title = presetLabel(shape, z.s, z.w, t);
-      b.onclick = () => setPreset({ kind: row.dataset.kind, ...z });
-      row.appendChild(b);
-    });
-  }
-  const on = presetArmed ? String(list.findIndex(z => z.s === presetArmed.s && z.w === presetArmed.w)) : 'hand';
-  row.querySelectorAll('[data-preset]').forEach(b => b.classList.toggle('active', b.dataset.preset === on));
+// One grid square a step, stopping at both ends. A shape with a hand tool has one step below the
+// smallest size, which is drawing it by hand.
+function stepPreset(dir) {
+  const kind = presetArmed ? presetArmed.kind : shape;
+  const list = EFFECT_PRESETS[kind];
+  if (!list) return;
+  const i = presetArmed ? list.findIndex(z => z.s === presetArmed.s && z.w === presetArmed.w) : -1;
+  const j = stepPresetIndex(i, list.length, dir, !!PRESET_HAS_HAND[kind]);
+  setPreset(j < 0 ? null : { kind, ...list[j] });
+  reportPaneTool();
 }
 
-// The wheel steps through the list and wraps at both ends; up is the next size.
-function stepPreset(dir) {
-  const list = EFFECT_PRESETS[presetArmed.kind];
-  const i = list.findIndex(z => z.s === presetArmed.s && z.w === presetArmed.w);
-  setPreset({ kind: presetArmed.kind, ...list[stepPresetIndex(Math.max(0, i), list.length, dir)] });
-  reportPaneTool();
+// [ and ] step the size of the shape in hand; with no size to step they belong to the brush.
+function stepPresetKey(dir) {
+  if (placeMode !== 'effects' || !EFFECT_PRESETS[shape]) return false;
+  stepPreset(dir);
+  return true;
 }
 
 // Escape drops the size. A shape with no hand tool goes back to Select with it.

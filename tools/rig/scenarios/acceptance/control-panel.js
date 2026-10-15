@@ -17,7 +17,7 @@
 //   C. The movement dropdown sets each preset and says which is set. The eye switches movement
 //      off and on, and follows the A key. Custom… opens the dials beside the dock.
 //   D. The Rooms eye shows and hides the room names on the DM's map and follows the L key.
-//      Reveal all and Shroud all reach every room's fog. The sources say what is loaded, and the
+//      Reveal all and Hide all reach every room's fog. The sources say what is loaded, and the
 //      module text row opens its panel.
 //   E. The grid's eye switches the grid and dims the section. The type segment sets the type and
 //      switches the grid on. Scrubbing the cell size's icon changes the cell, and a typed size is
@@ -110,7 +110,7 @@ module.exports = async function sceneControlFeature(rig) {
   await dm.evaluate('polygons = [{ id: 1, vertices: [{x:100,y:100},{x:300,y:100},{x:300,y:260},{x:100,y:260}],' +
                     ' mode: "reveal", cornerRadius: 0, name: "Hall" }]; nextPolygonId = 2; 0');
   await click('btn-fill-fog');
-  rig.check(await dm.evaluate('polygons[0].mode') === 'shroud', 'D: Shroud all did not reach the room');
+  rig.check(await dm.evaluate('polygons[0].mode') === 'shroud', 'D: Hide all did not reach the room');
   await click('btn-clear-fog');
   rig.check(await dm.evaluate('polygons[0].mode') === 'reveal', 'D: Reveal all did not reach the room');
   rig.check(await dm.evaluate('document.querySelector("#cp-src-plan .nm").textContent') === 'Load floor plan…' &&

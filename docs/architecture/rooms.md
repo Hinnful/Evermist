@@ -71,20 +71,23 @@ is no separate display order, and no room list UI to need one.
 ## Repairing a room
 
 The floor-plan import draws most rooms correctly, and the rest need fixing rather than redrawing.
-Three repairs cover it, and none of them asks you to select anything first: you pick what the
-next shape should do, then draw it over the rooms you mean. All three stay armed until you press
-the lit button again, so a run of repairs is drawn without re-arming between rooms. Split is a
-tool in the pick-one row and stays picked like any other.
+Three repairs cover it, and none of them asks you to select anything first: you draw a shape over
+the rooms you mean and say what it does while you draw it. Hold Shift to merge it in, Alt to cut it
+out, Ctrl to split along it. The repair icon at the end of the shape's row arms the same three for
+whoever does not know the keys, and an armed repair stays armed until the lit icon is clicked, so a
+run of repairs needs no re-arming. Bare, a shape draws a room, and one that touches nothing changes
+nothing.
 
 **Join**, which the bar calls Merge, unions the shape you draw with every room it lands on, so
 one rectangle straddling two rooms leaves one room. The result keeps the name and notes of the earlier of the two, and takes
 the *most hidden* fog mode of the pair - joining a revealed room to a shrouded one gives a
 shrouded room, so a repair can never uncover ground on the TV by accident. **Trim** subtracts the
 shape instead, and the bar calls it Cut out. One rectangle over a wall cuts a notch; one drawn
-clean across a room splits it in two; one covering a room whole deletes it. **Cut**, called Split
-on the bar, takes a clicked path rather than a shape: the
-room becomes two rooms whose edges touch exactly, with no strip removed between them. That
-distinction matters in a cave, where a Trim strip would leave a fogged line across open rock.
+clean across a room splits it in two; one covering a room whole deletes it. **Split** has two shapes. With a Rectangle or Circle it divides every room along the shape's edge:
+the part inside becomes a room of its own and the rest keeps the original, which `splitShapes`
+computes with the library's difference and intersection. With the Polygon it is an open line,
+finished by a double-click, that divides every room it crosses into two whose edges touch exactly
+(`cutRing`). That is the Cut tool's geometry, and in a cave it leaves no fogged strip across open rock.
 
 All three are one undo step, save with the scene, and reach the Player like any other room,
 because a room's outline *is* the fog stencil.

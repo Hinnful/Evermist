@@ -128,19 +128,23 @@
   /* The toolbar trades its tools while the world map is up. The bar and its row keep their places:
      the row hides with visibility, as everywhere else, so the bar does not jump. */
   body:not(.world) .wm-tool, body:not(.world) #ctx-wm-search { display: none !important; }
-  body.world #toolbar-bottom > :not(.wm-tool):not(#btn-select):not(#tb-grp-shape):not(#tb-grp-ops):not(#btn-axislock) { display: none !important; }
-  /* The bar reads in three clusters: Select, the drawing tools, the boolean operations and Road; then Add a scene and
-     Find; then Straighten. `order` sets it without moving the scene's own buttons in the page. */
+  body.world #toolbar-bottom > :not(.wm-tool):not(#btn-select):not(#tb-grp-shape) { display: none !important; }
+  /* No Fog / Effects tab: the world map has neither. */
+  body.world .tb-seg { display: none !important; }
+  /* The bar reads in clusters: Select, Shape (its list holds the repairs) and Road; then Add a scene and
+     Find. `order` sets it without moving the scene's own buttons in the page. */
   body.world #btn-select { order: 1; }
   body.world #tb-grp-shape { order: 2; }
-  body.world #tb-grp-ops { order: 3; }
   body.world #wm-road { order: 4; }
   body.world #wm-add { order: 5; margin-left: 8px; }
   body.world #wm-find { order: 6; }
-  body.world #btn-axislock { order: 7; margin-left: 8px; }
-  body.world #context-row > :not(#ctx-wm-search) { display: none !important; }
-  body.world:not(.searching) #context-row { visibility: hidden !important; }
-  body.world.searching #context-row { visibility: visible !important; }
+  /* The options row carries Straight walls over a drawing tool, and Find while it is searching.
+     Snap to grid has no grid to snap to up here. */
+  body.world #context-row > :not(#ctx-wm-search):not(#fx-aids) { display: none !important; }
+  body.world #btn-snap { display: none !important; }
+  body.world:not(.searching):not(.aids-up) #context-row { visibility: hidden !important; }
+  body.world.searching #context-row, body.world.aids-up #context-row { visibility: visible !important; }
+  body.world:not(.searching) #ctx-wm-search { display: none !important; }
   body.world #minimap-panel { display: none !important; }
   #wm-search {
     width: 220px; height: 30px; box-sizing: border-box; padding: 0 10px; border: 0; border-radius: 6px; outline: none;

@@ -1,6 +1,6 @@
 'use strict';
 
-// roomOps.js — the pure kernel for "change a room's shape": Join, Trim and Cut. Every entry
+// roomOps.js — the pure kernel for "change a room's shape": Join, Trim, Split and Cut. Every entry
 // point answers with `pieces`/`groups` or a `reason` string, and never calls a dialog.
 
 // polygon-clipping 0.15.7: the vendored UMD build in the browser, the devDependency under Node.
@@ -143,6 +143,24 @@ function trimShapes(rooms, drawn, minArea) {
   return { groups };
 }
 
+// ─── Split along an edge ──────────────────────────────────────────────────────
+// The drawn shape's edge cuts every room it crosses in two: the part outside stays the room, the part
+// inside is a room of its own. `groups` aligns to `rooms`; a room the shape does not divide (it lies
+// wholly inside the shape, or only touches it) answers null, so the caller leaves it as it is.
+function splitShapes(rooms, drawn, minArea) {
+  const groups = [];
+  for (const room of rooms) {
+    const out = runClip(() => clip.difference(toRings(room), toRings(drawn)));
+    const inn = runClip(() => clip.intersection(toRings(room), toRings(drawn)));
+    if (out.reason || inn.reason) return { reason: REASON_FAILED };
+    const outside = resultPieces(out.multi, minArea), inside = resultPieces(inn.multi, minArea);
+    if (outside.reason || inside.reason) return { reason: REASON_FAILED };
+    const pieces = outside.pieces.concat(inside.pieces);
+    groups.push(outside.pieces.length && inside.pieces.length ? pieces : null);
+  }
+  return { groups };
+}
+
 // ─── Cut ──────────────────────────────────────────────────────────────────────
 // Its own geometry, not the library's, because a cut is ZERO WIDTH: both pieces carry the same
 // path points, so their edges touch exactly.
@@ -277,7 +295,7 @@ function cutRing(src, path, minArea) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     toRings, fromRings, ringToVerts, ringArea, resultPieces, shapesOverlap,
-    joinShapes, trimShapes, cutRing, mostHiddenMode, roomOpMinArea,
+    joinShapes, trimShapes, splitShapes, cutRing, mostHiddenMode, roomOpMinArea,
     crossSegments, ringPathCrossings, arcForward, dedupeRing,
     pointInRing, ringHomePiece, splitHoleAcrossPieces,
     ROOM_OP_MIN_AREA, REASON_FAILED, REASON_CUT,

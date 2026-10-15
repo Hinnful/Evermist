@@ -9,8 +9,10 @@ function setPaintDirection(dir) {
   refreshFogTrio();
 }
 
-// The fog trio means two things. With Select in hand and a room selected it is that room's fog;
-// with a drawing tool or the Brush in hand it is what gets drawn next.
+// The old fog trio (#ctx-rooms) is the back end behind the row's fog clouds and the selected
+// room's own clouds. Pressed with Select in hand and a room selected it sets that room's fog, and
+// with a drawing tool or the Brush in hand it sets what gets drawn next. The row's clouds never
+// take the first meaning: their click only ever sets the direction (fogBar.js).
 function fogTrioRoom() {
   if (shape !== 'select' || placeMode !== 'rooms') return null;
   const linked = paneSelectedRoom();
@@ -50,11 +52,13 @@ function refreshPaintAvailability() {
   if (!btn) return;
   const brushPicked = shape === 'brush';
   btn.disabled = opPicked || brushPicked;
-  if (brushPicked && tool === 'half') setPaintDirection('shroud');
+  if (brushPicked && tool === 'half') { setPaintDirection('shroud'); return; }
+  refreshFogBar();   // the row's clouds grey and light from the same two values
 }
 
-// What a drawn shape does: 'new' makes one, 'join' merges, 'trim' cuts out. ONE helper owns the
-// value and the highlight. There is no 'new' button; a lit Merge or Cut out is the way back.
+// What a drawn shape does when no key is held: 'new' makes one, 'join' merges, 'trim' cuts out, 'split'
+// divides along its edge. ONE helper owns the value and the highlight. There is no 'new' button; the
+// lit repair icon is the way back (repairBar.js).
 function setShapeOp(op) {
   shapeOp = op;
   paneBroadcast('shape-op', { op });
@@ -63,7 +67,9 @@ function setShapeOp(op) {
     if (el) el.classList.toggle('active', k === op);
   });
   refreshPaintAvailability();
-  refreshOpsButton();
+  refreshShapeButton();     // on the world map an armed repair is what the Shape button wears
+  refreshRepairIcon();      // and on the scene bar the repair icon wears it
+  updateContextPanels();    // and its options row shows while one is armed
   if (worldMapOpen) worldMapToolSync();   // an armed repair changes what the world map's next shape does
 }
 
@@ -79,6 +85,7 @@ function setPlaceMode(m) {
     activePolygon = null;
   }
   placeMode = m;
+  document.body.classList.toggle('mode-fx', m === 'effects');   // the sliding thumb under the mode in force
   if (m !== 'effects') presetArmed = null;   // a size is an effect's or a light's; Rooms draws by hand
   ['rooms', 'effects'].forEach(k => {
     const el = document.getElementById('btn-place-' + k);
@@ -100,7 +107,7 @@ function setPlaceMode(m) {
 // and stays centred. Half is the one control left that greys.
 const MODE_SHAPES = {
   rooms:   ['select', 'poly', 'rect', 'circle', 'brush', 'door', 'cut'],
-  effects: ['select', 'poly', 'rect', 'circle', 'cone', 'line', 'ring', 'cut'],
+  effects: ['select', 'poly', 'rect', 'circle', 'cone', 'line', 'wall', 'ring', 'cut'],
 };
 
 // The shape each mode last drew with, so a mode switch puts the DM back where they were.
@@ -108,14 +115,14 @@ function modeShape(m) { return m === 'effects' ? effectsShape : roomsShape; }
 function setModeShape(m, s) { if (m === 'effects') effectsShape = s; else roomsShape = s; }
 function shapeInMode(s, m) { return MODE_SHAPES[m].indexOf(s) >= 0; }
 
-// Rooms-only buttons. The brush needs fog to paint and a door needs a wall, so neither has
-// anything to act on in Effects. All three repairs work on either list and stay on both bars.
+// Rooms-only controls. The brush needs fog to paint, a door needs a wall and the fog clouds set
+// what they do, so none has anything to act on in Effects. The repairs work on either list.
 const ROOMS_ONLY = ['btn-brush', 'btn-door'];
 function refreshModeTools() {
   const fx = placeMode === 'effects';
   const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
   ROOMS_ONLY.forEach(id => show(id, placeMode === 'rooms'));
-  ['btn-cone', 'btn-line', 'btn-ring'].forEach(id => show(id, fx));
+  ['btn-cone', 'btn-line', 'btn-wall', 'btn-ring'].forEach(id => show(id, fx));
   refreshShapeButton();
 }
 
@@ -124,8 +131,8 @@ function refreshModeTools() {
 // highlight. Picking one with an effect SELECTED edits that effect, and takes the full path -
 // undo, repaint, push, save - because it is a real edit to a stored shape.
 //
-// ⚠ The button carries a PLAIN SVG GLYPH like every other button on this bar. A painted swatch of
-// the real material draws a box inside the button's selected box inside the row's pill.
+// ⚠ The buttons in #material-row are the back end: their glyph, name and data-material feed the one
+// material button and its palette (effectsRow.js), which is all the DM sees.
 function initMaterialPicker() {
   document.querySelectorAll('#material-row [data-material]').forEach(btn => {
     btn.onclick = () => setMaterial(btn.dataset.material);
@@ -136,6 +143,7 @@ function initMaterialPicker() {
 function setMaterial(m) {
   if (isPlayer || (m !== 'light' && !EFFECT_MATERIALS[m])) return;
   currentMaterial = m;
+  if (typeof refreshMaterialButton === 'function') refreshMaterialButton();
   if (paneForward('material', { material: m })) {
     document.querySelectorAll('#material-row [data-material]').forEach(b =>
       b.classList.toggle('active', b.dataset.material === m));
@@ -154,6 +162,17 @@ function setMaterial(m) {
   scheduleAutoSave();
 }
 
+// Reveal all and Hide all act on the whole map, every room included, through one path whoever asks:
+// the bar's eyes (fogBar.js) and the hidden Scene control buttons. Undo and the transition ride along.
+function revealAllMap() {
+  if (paneForward('reveal-all')) return;
+  revealAllRooms();
+}
+function hideAllMap() {
+  if (paneForward('shroud-all')) return;
+  shroudAllRooms();
+}
+
 function initToolbar() {
   // The scene list, the delete's undo and Two maps wire themselves.
   sceneListInit();
@@ -168,7 +187,13 @@ function initToolbar() {
   document.getElementById('btn-brush').onclick  = () => setShape('brush');
   document.getElementById('btn-select').onclick = () => setShape('select');
   document.getElementById('btn-door').onclick    = () => setShape('door');
-  document.getElementById('btn-cut').onclick     = () => setShape('cut');
+  // On the scene bar the hidden Split button arms Ctrl with the Polygon (repairKeys.js); the world map
+  // keeps Split as a tool of its own.
+  document.getElementById('btn-cut').onclick     = () => {
+    if (worldMapOpen) { setShape('cut'); return; }
+    setShape(shapeMenuItems().indexOf('poly') >= 0 ? 'poly' : modeShape(placeMode));
+    setShapeOp('split');
+  };
   // The four shapes and the button that stands for them are shapeMenu.js's; it owns the flyout.
   // Pressing a lit repair disarms it, which is the only way back to 'new' now.
   document.getElementById('btn-op-join').onclick = () => setShapeOp(shapeOp === 'join' ? 'new' : 'join');
@@ -199,14 +224,8 @@ function initToolbar() {
     paneBroadcast('brush-size', { size: brushSize });
   };
 
-  document.getElementById('btn-fill-fog').onclick = () => {
-    if (paneForward('shroud-all')) return;
-    shroudAllRooms();
-  };
-  document.getElementById('btn-clear-fog').onclick = () => {
-    if (paneForward('reveal-all')) return;
-    revealAllRooms();
-  };
+  document.getElementById('btn-fill-fog').onclick = hideAllMap;
+  document.getElementById('btn-clear-fog').onclick = revealAllMap;
 
   // Draws the rooms from the floor plan the map came with. Enabled only where this scene
   // has one; refreshFloorPlanButton() owns that, on every scene switch.
@@ -406,6 +425,10 @@ function initToolbar() {
   // The Room tab → roomCard.js.
   if (typeof initRoomPanel === 'function') initRoomPanel();
   initCornerField();
+  initRoomSwitcher();   // the selected room's own clouds and door → roomSwitcher.js
+  initPlayersView();    // hold H: the map as the TV shows it → playersView.js
+  initRepairKeys();     // Shift, Alt and Ctrl while a shape is drawn → repairKeys.js
+  if (!isPane) { initFogBar(); initRepairBar(); initEffectsRow(); }   // the bar and its row, which a column does not show
 
   updateContextPanels(); // init: Select is the tool at load, so the strip starts blank
 

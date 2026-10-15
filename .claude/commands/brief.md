@@ -66,15 +66,14 @@ every time. Never let the user infer backlog size from an ID.
 
 Then one table, every open item, one row each, no omissions:
 
-| # | Item | Category | Release | Spec | State |
-|---|------|----------|---------|------|-------|
+| # | Item | Category | Spec | State |
+|---|------|----------|------|-------|
 
 - **#** - the backlog's own ID.
 - **Item** - a short phrase in plain language, not the backlog's heading verbatim if that heading
   is jargon.
-- **Category** - the item's own tag from `docs/BACKLOG.md`: Prep, Play, Campaign, Polish,
+- **Category** - the item's own tag from `docs/BACKLOG.md`: First use, Prep, Play, Campaign, Polish,
   Upkeep or Bug, at most two. Upkeep means nothing the DM sees ships.
-- **Release** - the item's own release tag (`4.0`, `4.x`, `5.0`), or blank.
 - **Spec** - whether the idea is settled enough to hand to a build session. `ready` when the
   item already says what to build and every open call in it has an answer. `needed` when a
   choice is still open - a shape to settle, a scope question, a look-and-feel call. `needed`
@@ -83,7 +82,7 @@ Then one table, every open item, one row each, no omissions:
 - **State** - blank when ready to pick up. Otherwise the one word that stops it: `blocked`,
   `needs-a-call`, `parked`, `discussion`, `lead-only`.
 
-Sort the table by release, then by category, in the same order the detail below uses, so the
+Sort the table by backlog section, then by category, in the same order the detail below uses, so the
 two read together. **No effort or risk column**: the backlog is for prioritising, and the DM
 weighs size and risk only once an item is picked.
 
@@ -93,7 +92,7 @@ first without your filter on it.
 
 ## Step 4 - Analyze, score, group
 
-After the table, expand the same items **grouped by release, then category**. Lead each group with its highest-value item.
+After the table, expand the same items **grouped by backlog section, then category**. Lead each group with its highest-value item.
 
 **The detail covers every row in the table.** Items you would not recommend get a line or two rather than a paragraph, but none disappears between the table and the detail.
 
@@ -110,7 +109,7 @@ risk only when it changes what to pick.
 Recommend a chunk sized to roughly **one session, or even one chat**. Sizing is deliberately fuzzy - aim small enough to finish *and verify* in a single sitting. Prefer items that:
 - group naturally (same area, same file, same de-blob trigger) so the work compounds,
 - are unblocked,
-- serve the next release first (the items tagged with it in the backlog), and respect any agreed roadmap order (if you deviate, say why),
+- serve the backlog's current focus first (the section it names as next), and respect any agreed order inside it (if you deviate, say why),
 - honor freeze/constraint notes (don't recommend ship-gated work while a freeze is on).
 
 Give a **primary recommendation** with a one-line why, plus a **backup pick for a different mood** (e.g. "if you'd rather do visible work than plumbing"). Two or three options total is plenty - don't hide the recommendation under ten.

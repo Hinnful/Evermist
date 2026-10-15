@@ -32,13 +32,14 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `shapes/doorGeometry.js` | Pure door-notch kernel. Tested |
 | `rooms/vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Tested, dependency-free |
 | `fog/lightGeometry.js` | Pure light kernel: a plan's lights and the polygon each starts as. Tested |
-| `shapes/roomOps.js` | Pure Join/Trim/Cut kernel. Tested |
+| `shapes/roomOps.js` | Pure Join/Trim/Split/Cut kernel. Tested |
 | `shapes/shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Tested |
 | `shapes/tools.js` | The tool in hand, shared tool state, the click registry |
 | `shapes/shapeCommit.js` | A drawn shape into a room, an effect or a repair; every refusal |
 | `shapes/toolPoly.js` | The Polygon tool: a vertex per click, and the two ways it closes |
+| `shapes/repairKeys.js` | Shift, Alt and Ctrl while a shape is drawn: Merge, Cut out, Split; the tag and the icon |
 | `shapes/presetGeometry.js` | Pure effect-preset kernel: sizes, outlines, labels. Tested |
-| `shapes/toolPreset.js` | Effect presets: the size row, the cursor preview, the wheel, placing |
+| `shapes/toolPreset.js` | Effect presets: the cursor preview, the wheel and [ ], placing |
 | `shapes/toolShapes.js` | The drag-a-shape tools: rectangle, circle, cone |
 | `shapes/toolBrush.js` | The fog brush: the queued stroke and the pass that paints it |
 | `shapes/toolDoor.js` | The Door tool and its notch in the fog |
@@ -52,7 +53,10 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `shapes/cornerGeometry.js` | Pure corner-rounding kernel: the circle's place, the drag's radius. Tested |
 | `shapes/cornerRound.js` | The corner-rounding circles, their drag, label and number field |
 | `shapes/shapeClipboard.js` | Copy, paste, duplicate, across scene switches |
-| `shapes/shapeMenu.js` | The bar's two chevron lists: the shapes, and the repair the operations button wears |
+| `shapes/shapeMenu.js` | The bar's chevron list: the Shape list, and the one component the repair and size lists use |
+| `ui/fogBar.js` | Reveal all and Hide all, the fog clouds in the tool's row, and the row's place over its tool |
+| `ui/repairBar.js` | The repair icon at the end of a shape's row, and its list |
+| `ui/effectsRow.js` | Effects row: the material button and palette, the size field |
 | `ui/input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in `scenes/dragDrop.js`** |
 | `undo.js` | Undo/redo for fog edits |
 | `render/effects.js` | Map effects: the `effects` array's model and its meshes |
@@ -78,6 +82,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `player/panes.js` | Two-column mode: the columns, the divider, the messages sent to them |
 | `player/stageWindow.js` | The two-map Player window, DM side |
 | `player/stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
+| `render/playersView.js` | The players' view: held H or the minimap's eye |
 | `player/minimap.js` | Minimap render, drag/zoom remote, two-way view sync |
 | `player/tvPick.js` | Pure kernel: which screen is the TV, from the display list and the remembered pick. Tested |
 | `player/tvControl.js` | Show on TV: the minimap's off, waiting and live states, the pill, the TV menu, the help box |
@@ -115,6 +120,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `rooms/picturePlan.js` | Pure room-picture kernel: size, order, backup names. Tested |
 | `rooms/pictureDecode.js` | A file turned into a room picture: shrunk, or kept whole if animated or SVG |
 | `rooms/roomPictures.js` | The left panel's room pictures and the one on the TV |
+| `rooms/roomSwitcher.js` | The selected room's clouds and door button, on the map above it |
 | `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the left panel |
 | `player/tvPicture.js` | A room picture drawn on the TV, Player and two-map shell |
 | `content/moduleText.js` | Module parsing, storage, name-field dropdown |
@@ -190,7 +196,7 @@ i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → lib/pixi.mi
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
 fog/fogGeometry.js → fog/fogColor.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → fog/lightGeometry.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → shapes/roomOps.js →
-shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/toolShapes.js →
+shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/repairKeys.js → shapes/toolShapes.js →
 shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →
 shapes/toolPreview.js →
 shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/openLine.js → shapes/shapeBox.js → shapes/cornerGeometry.js → shapes/cornerRound.js →
@@ -199,12 +205,12 @@ scenes/sceneGroups.js → scenes/sceneStore.js → scenes/scenes.js → scenes/s
 scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
 render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/twoMaps.js → player/stageWindow.js →
 scenes/backup.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
-render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → player/player.js →
+render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → ui/repairBar.js → ui/effectsRow.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
-dev/stress.js → dev/memProbe.js → render/render.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvControl.js →
+dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvControl.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/picturePlan.js → rooms/roomCard.js →
-rooms/pictureDecode.js → rooms/roomPictures.js → rooms/roomLink.js → notes/notesPanel.js →
+rooms/pictureDecode.js → rooms/roomPictures.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js →
 world/worldMapPlan.js → world/worldRoadPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → world/worldFindPlan.js → world/worldMapFind.js → world/worldMapColumns.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →

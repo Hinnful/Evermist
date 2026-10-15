@@ -283,22 +283,21 @@ module.exports = async function roomRepair(rig) {
   const onBar = ids => '(() => ({' + ids.map(id =>
     '"' + id + '": (() => { const b = document.getElementById("' + id + '");' +
     ' return !!b && getComputedStyle(b).display !== "none"; })()').join(', ') + '}))()';
-  const REPAIR_BTNS = ['btn-cut', 'btn-op-join', 'btn-op-trim'];
-  const FOG_BTNS = ['btn-brush', 'btn-door'];
+  const REPAIR_IDS = ['join', 'trim', 'split'];
+  const FOG_BTNS = ['btn-brush', 'wa-mode'];
   await dm.evaluate('setPlaceMode("effects"); 0');
-  // The three stand behind one operations button, so each is on the bar when its list offers it.
-  const listed = () => dm.evaluate('(() => { document.querySelector("[data-chev=ops]").click();' +
-    ' const ids = [...document.querySelectorAll("#tb-dd .dd-it:not(.off)")].map(r => r.dataset.dd);' +
-    ' document.querySelector("[data-chev=ops]").click(); return ids.join(); })()');
+  // The three stand behind the repair icon at the end of a shape's row.
+  const listed = () => dm.evaluate('(() => { setShape("rect"); document.querySelector("#op-sw .op-chev").click();' +
+    ' const ids = [...document.querySelectorAll("#tb-dd .dd-it")].map(r => r.dataset.dd);' +
+    ' document.querySelector("#op-sw .op-chev").click(); return ids.join(); })()');
   const gFx = await listed();
-  rig.check(gFx === REPAIR_BTNS.slice(1).concat('btn-cut').join() &&
-            Object.values(await dm.evaluate(onBar(REPAIR_BTNS))).filter(Boolean).length === 1,
-            'Split, Merge or Cut out is missing from the bar in Effects mode, so the only way ' +
+  rig.check(gFx === REPAIR_IDS.join(),
+            'Split, Merge or Cut out is missing from the list in Effects mode, so the only way ' +
             'to repair an effect is to call setShapeOp by hand: ' + gFx);
   const gFxOff = await dm.evaluate(onBar(FOG_BTNS));
   rig.check(Object.values(gFxOff).every(v => v === false),
-            'the Brush or the Door is on the bar in Effects mode, where there is no fog to ' +
-            'paint and no wall to sit on: ' + JSON.stringify(gFxOff));
+            'the Brush or the fog switcher is on the bar in Effects mode, where there is no fog to ' +
+            'paint: ' + JSON.stringify(gFxOff));
   // A repair armed in one mode survives the switch, because its button is on both bars.
   await dm.evaluate('setShapeOp("join"); setPlaceMode("rooms"); 0');
   rig.check(await dm.evaluate('shapeOp') === 'join',

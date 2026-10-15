@@ -193,25 +193,27 @@ module.exports = async function roomCardFeature(rig) {
             'the room\'s notes and pictures are not in the left panel, notes above pictures: ' + JSON.stringify(shape));
   rig.check(shape.gone.length === 0, 'the floating card\'s parts are still in the page: ' + shape.gone.join(', '));
 
-  // ── E. The fog trio, split by the tool in hand ────────────────────────────
-  // RED ON: fogTrioRoom made to return null (toolbar.js), and separately setPolygonMode gated off in pressFogTrio — 2026-10-02
-  const lit = () => dm.evaluate('[...document.querySelectorAll("#ctx-rooms .active")].map(b => b.id).join()');
+  // ── E. The room's own eyes, and the bar's paint direction ─────────────────
+  // RED BY DESIGN: written against the room's switcher on the map, never re-proved
+  const lit = () => dm.evaluate('[...document.querySelectorAll("#room-fog .fx-dir.active")].map(b => b.dataset.dir).join()');
+  const barLit = () => dm.evaluate('[...document.querySelectorAll("#wa-mode .fx-dir.active")].map(b => b.dataset.dir).join()');
   await dm.evaluate('setShape("select"); setShapeOp("new"); setPaintDirection("reveal"); 0');
-  rig.check(await dm.evaluate('document.getElementById("context-row").style.visibility') !== 'hidden' &&
-            await lit() === 'btn-' + (await room(1)).mode,
-            'with Select in hand the trio does not show the selected room\'s fog: lit ' + await lit());
-  await dm.evaluate('document.getElementById("btn-half").click(); 0');
-  rig.check((await room(1)).mode === 'half' && await lit() === 'btn-half' &&
-            await dm.evaluate('tool') === 'reveal',
-            'the trio did not set the selected room\'s fog, or it moved the paint direction too');
+  rig.check(await dm.evaluate('getComputedStyle(document.getElementById("room-fog")).display') !== 'none' &&
+            await lit() === (await room(1)).mode,
+            'with Select in hand the selected room does not show its own fog on the map: lit ' + await lit());
+  await dm.evaluate('document.querySelector("#room-fog .fx-dir[data-dir=half]").click(); 0');
+  rig.check((await room(1)).mode === 'half' && await lit() === 'half' &&
+            await dm.evaluate('tool') === 'reveal' && await barLit() === 'reveal',
+            'the room\'s eye did not set its own fog, or it moved the bar\'s paint direction too');
   await dm.evaluate('__rigKey("KeyT"); 0');
-  rig.check((await room(1)).mode === 'reveal' && await lit() === 'btn-reveal',
-            'T did not cycle the selected room\'s fog, or the trio did not follow it');
-  await dm.evaluate('setShape("rect"); 0');
-  await dm.evaluate('document.getElementById("btn-shroud").click(); 0');
-  rig.check(await dm.evaluate('tool') === 'shroud' && (await room(1)).mode === 'reveal',
-            'with a drawing tool in hand the trio did not go back to being the paint direction');
-  await dm.evaluate('setShape("select"); 0');
+  rig.check((await room(1)).mode === 'reveal' && await lit() === 'reveal',
+            'T did not cycle the selected room\'s fog, or its eyes did not follow it');
+  await dm.evaluate('document.querySelector("#room-fog .fx-dir[data-dir=reveal]").click(); 0');
+  // With Select in hand a click on the bar's switcher sets the direction and nothing else.
+  await dm.evaluate('document.querySelector("#wa-mode .fx-dir[data-dir=shroud]").click(); 0');
+  rig.check(await dm.evaluate('tool') === 'shroud' && (await room(1)).mode === 'reveal' && await dm.evaluate('shape') === 'select',
+            'a click on the bar\'s switcher with Select in hand changed the room or the tool, not just the direction');
+  await dm.evaluate('setPaintDirection("reveal"); setShape("select"); 0');
 
   // ── H. The notes grow, and no height is stored ────────────────────────────
   // RED ON: _rpFitNotes made to return first (roomCard.js) — 2026-10-02

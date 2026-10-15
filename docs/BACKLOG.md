@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 8 open items; IDs run to 169."
+description: "Open work only. 13 open items; IDs run to 180."
 metadata: 
   node_type: memory
   type: project
@@ -36,10 +36,11 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.0.0**: play at the table plus the world map (PRODUCT.md). **5.0.0 is campaigns**, the
-items under 5.0 below. Items under ANY TIME ship as 4.x patches and never hold 5.0 up. 2.12.0 to 2.15.3 are the
-vector editing epic, now closed: two selection levels, curved walls, the bounding box,
-copy/paste/duplicate, a radius on a curved corner, and shapes drawn as coloured areas.
+`package.json` is at **4.2.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
+shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
+levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
+coloured areas.
 
 **A version is no longer a decision to release; it IS the release.** Bump `package.json` and the
 change ships once the gate is green. Docs and tooling commits bump nothing.
@@ -59,49 +60,117 @@ shows only LOCAL tags, which once cost a day of believing a shipped release was 
 
 ## Categories
 
-Each item ends with its tags: category, release, then where it shows. An item takes at most two
+Each item ends with its tags: category, then where it shows. An item takes at most two
 categories. Effort and risk are judged once an item is picked, not here.
 
 - **Prep** - makes getting a session ready faster, more scalable or easier to maintain.
 - **Play** - the same, at the table during a session.
-- **Campaign** - spans sessions: the world, its places, its notes. The 5.0 work.
+- **Campaign** - spans sessions: the world, its places, its notes.
 - **Polish** - a visible gap or small QoL fix the DM would notice.
 - **Upkeep** - checks, CI, docs: nothing the DM sees ships.
 - **Bug** - the app does something wrong.
+- **First use** - lowers what a new DM must learn before the first session.
 
 ---
 
-# ANY TIME
+# FIRST USER EXPERIENCE - THE NEXT FOCUS
 
-### 46. A second effect material needs a look, not a code change
-The shader reads all six colour stops from the material record (`src/render/effectMaterials.js`),
-so a new material is a record and nothing else - ramp, warmth, swatch.
-**WHAT IS LEFT IS A LOOK CALL, and it is the DM's.** What the second material is, what it burns
-like, and what its button says. `acid` was deleted rather than shipped last time.
-The second material also brings the searchable material palette settled in item 113's prototype
-(`.claude/private/design/item-113/effect-presets.html`): the flame button with a corner tick opens
-it above the row. Not built with one material, per CLAUDE.md.
-**Acid's look, settled 2026-10-11** in `.claude/private/design/item-46/acid-lab.html`: Corrosive colour, Low rim edge,
-Few bubbles, Heavy steam, and the grid relit in the acid's yellow-green. Bubbles, the liquid surface and steam are new
-shader terms, so acid is more than a record. **Fire is redone in the same lab, toon style** (2026-10-11): Toon flames
-(Sparse, Medium size, All movement, Medium speed, 3 bands, no outline), Scorched ground, Drift sparks, Heavy smoke, Soft
-glow. Toon is the effects' look from here on. Both ship in 4.2.0; the searchable palette is not built yet, so Acid
-is a third button beside Fire and Light.
-**Play · any time · DM + Player**
+### 172. The epic: a new DM finds what Evermist already has
+Filed 2026-10-12, diagnosis rewritten 2026-10-13 from the first new DM's questions while preparing a one-shot.
+Evermist is about to go to other DMs, for their feedback and requests. **The features a new DM needs exist; the DM
+cannot find them or read what they do.** Every question that DM asked had an answer in the app. Three causes repeat:
+Scene Control groups its controls by the app's objects (Player, Fog, Rooms, Lights), not by the DM's tasks; the
+labels use the app's words, not the DM's ("TV", "what the players see"); and every control carries the same visual
+weight, so the one that matters sits unmarked among the ones that do not. A tutorial does not fix it: the interface
+stays as heavy.
+**The test for every item below.** Sasha has played for two years and DMs for the first time. They bring four
+JPEGs of poor quality with no grid and no floor plan, a TV with an HDMI cable, a playlist, and a module PDF or rough
+notes. With no help and no reading, Sasha gets the four maps in, puts one on the TV fogged, reveals part of it, plays
+music, and switches to another map. Anything Sasha meets on the way that does not serve that path counts against the
+epic. The same path must not slow an experienced DM or hide the deeper features.
+**Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later.
+**Out of this epic:** what a DM sees before installing. That is distribution, and it comes later.
+**First use · DM + Player**
+
+### 175. Revealing fits none of the three kinds of map
+Filed 2026-10-12, widened 2026-10-13. A new map opens fully shrouded, which is right. Three cases need a way to
+reveal, and each needs a different one: **a forest** with no rooms, which is the first evening; **a dungeon** of many
+rooms, which works today once the DM finds rooms; and **a town**, open streets with buildings to reveal one by one.
+"Reveal all" and "Shroud all" act on the whole map, with or without rooms, yet sit under the Rooms heading with a
+tooltip that says "every room", so a DM with no rooms reads them as not theirs. **Needs /spec**, forest first.
+**First use · DM only**
+
+### 161. The gallery: one app-wide store of images
+Filed 2026-10-08, rewritten 2026-10-09, moved into the epic 2026-10-13: the first new DM asked how to show a picture
+over the map, and today a picture needs a room. A window of every image the DM keeps, still or animated (GIF and WebP
+included), tied to no map, place, scene or room. It answers a monster that chases the party through several scenes:
+its picture goes to the TV from the gallery, wherever the party is, without being placed in every room it passes.
+- **The DM adds, names, finds and removes pictures there**, and drops a file on the window to add one. Any picture goes
+  to the TV from the gallery. The TV's picture mode stays.
+- **Room pictures go.** The room's picture strip and its "Add a picture" button are removed, and the pictures rooms
+  hold today move into the gallery in a one-time migration. A backup carries the gallery once.
+- Open for /spec: the window's look and where it opens from; whether removing a picture asks first; `/rollback` must
+  leave the previous release able to open a scene whose room pictures moved out.
+**First use · Campaign · DM only**
+
+### 178. My seat reads as turning the map
+Filed 2026-10-13. My seat turns the DM window only, for a DM sitting at a right angle to the TV, which is most DMs.
+The first new DM used it to fix a sideways map, expected the TV to turn too, and took it for a bug. Turning the map
+for the players is a separate feature (item 179). The two must never be confused: different names, different places.
+**Needs /spec.**
+**First use · DM only**
+
+---
+
+# EVERYTHING ELSE
+
+### 179. Turning the map for the players
+Filed 2026-10-13. A map drawn sideways for the TV has to be turned in an image editor before it goes in; the first new
+DM did exactly that. Turning it inside Evermist, for the Player, is a feature apart from My seat (item 178), and its
+name and place must not be confused with it. An animated map is the hard case: turning a video means re-encoding it,
+or turning it on screen. **Needs /spec.**
+**Prep · DM + Player**
+
+### 180. The toolbar shows which mode it is in
+Filed 2026-10-13 from item 175's sketch. The sketch moves Fog / Effects into a side tab at the right end of the toolbar,
+a cloud over a flame, and a new DM may not read either icon. A glow around the whole toolbar, cool for Fog and the
+effect outlines' orange for Effects, would say the mode without the DM reading the switch. The glow was tried in the
+sketch (`.claude/private/design/item-175/fog-home.html`) and set aside until there is time to judge its look.
+**Needs /spec:** the look of each mode, and how strong it is on dark and bright maps.
+**Polish · DM only**
+
+### 181. Guard Reveal all and Hide all
+Filed 2026-10-16. The two eyes on the bar act on the whole map in one click, every room included, and a misclick at the
+table is very costly: Reveal all shows the players what they must not see, and nothing takes it back from the TV. A
+guard is wanted, such as a confirmation popup, a hold-to-confirm, or an undo toast that is quick enough. Undo already
+restores the map for the DM, which is not the TV. **Needs /spec:** which guard, and whether Hide all needs one at all.
+**Play · DM only**
+
+### 170. A better way to pick a material
+Filed 2026-10-11. Fire, Acid and Light sit as three buttons in Effects mode, and the row grows by one per material.
+The DM wants a picker that still works with a dozen: search, a grid, or whatever reads fastest. Item 113's prototype
+(`.claude/private/design/item-113/effect-presets.html`) has one shape: the flame button with a corner tick opens a
+searchable palette above the row. **Needs /spec:** the shape, and how a picked material shows on the bar.
+**Polish · DM only**
+
+### 171. Acid's outline preview is fire-orange while drawing
+Filed 2026-10-11. While an acid shape is being drawn or a preset is under the cursor, its preview outline and tint are
+the fire's orange (`effectPreviewRgb` and `effectPreviewEdge` in `src/render/lights.js` know only fire and light). The
+placed acid draws in its own colours. The preview should take the picked material's colour.
+**Polish · DM only**
 
 ### 144. A phone remote for the DM
 Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in
 hand for a few controls: sounds, reveals, a scene change. **Open:** which controls, and how a phone
 reaches an offline desktop app. Nothing on the phone reaches the TV except through the app.
-Kept out of the 4.0 gate because its size is unknown.
-**Play · 4.x · Phone**
+**Play · Phone**
 
 ### 116. Clouds drifting over the map
 Filed 2026-09-24. Purely visual, for mood: cloud shadows passing over the revealed map on the TV.
 **Needs /spec:** the look, whether it is per scene, and whether the DM sees it. **It adds GPU cost
 on the Player**, and split view with an animated map is where the Player has stalled before, so
 judge it in that case too.
-Mood, not speed: no release until the DM decides.
+Mood, not speed.
 **Play · Player**
 
 ### 152. The logo mark without violet
@@ -117,23 +186,7 @@ limit when the limits became tests: six files over 600 lines, eight functions ov
 comment blocks over 8 lines and four unused imports in `electron/`. Each split is its own
 restructuring task on the DM's yes, one file at a time, taken when a feature already touches that
 file; the unused imports go out with the next patch. Done when both lists are empty.
-**Upkeep · any time · no visible change**
-
----
-
-# 5.0 - CAMPAIGNS
-
-### 161. The gallery: one app-wide store of images
-Filed 2026-10-08, rewritten 2026-10-09. A window of every image the DM keeps, still or animated (GIF and WebP included),
-tied to no map, place, scene or room. It answers a monster that chases the party through several scenes: its picture
-goes to the TV from the gallery, wherever the party is, without being placed in every room it passes.
-- **The DM adds, names, finds and removes pictures there**, and drops a file on the window to add one. Any picture goes
-  to the TV from the gallery. The TV's picture mode stays.
-- **Room pictures go.** The room's picture strip and its "Add a picture" button are removed, and the pictures rooms
-  hold today move into the gallery in a one-time migration. A backup carries the gallery once.
-- Open for /spec: the window's look and where it opens from; whether removing a picture asks first; `/rollback` must
-  leave the previous release able to open a scene whose room pictures moved out.
-**Campaign · 5.0 · DM only**
+**Upkeep · no visible change**
 
 ### 164. The party flag on the world map
 Filed 2026-09-29 in item 140, split out 2026-10-09. The DM drags a flag onto the scene or place the party is in. It is
@@ -141,14 +194,7 @@ apart from the open scene, since the DM preps scenes the party is not in, and sc
 different. **Look, settled 2026-10-08:** the Ping tool's bezel pared down to a thin gold ring with four diamonds,
 turning slowly around the scene, with the mist thinning around it. **Open for /spec:** what "visited" looks like, and
 whether the flag rides a backup. The TV never shows it.
-**Campaign · 5.0 · DM only**
-
-### 142. An MCP server, so an AI can prepare a session
-Filed 2026-09-29. The first cut ships in 4.x (PRODUCT.md, 2026-10-09): Claude lists the campaign,
-reads and adds notes, creates places and creates fights from the bestiary. **Still open:** rooms,
-roads, moving places, importing a module, adding monsters to the bestiary, and undo for notes and
-fights.
-**Campaign · 5.0 · DM only**
+**Campaign · DM only**
 
 ---
 

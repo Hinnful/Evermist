@@ -419,7 +419,7 @@ module.exports = async function worldMapFeature(rig) {
 
   const list = await dm.evaluate('(() => { document.querySelector("#tb-grp-shape .tb-chev").click(); const r = [...document.querySelectorAll("#tb-dd [data-dd]")].map(b => b.dataset.dd); _tbCloseList(); return r; })()');
   // RED ON: the worldMapOpen filter removed from _tbOpenList (shapeMenu.js) — 2026-10-09
-  rig.check(!list.some(r => /cone|line|ring/.test(r)) && list.includes('btn-rect'), 'the world map\'s Shape list carries Effects shapes: ' + JSON.stringify(list));
+  rig.check(!list.some(r => /cone|line|wall|ring/.test(r)) && list.includes('btn-rect'), 'the world map\'s Shape list carries Effects shapes: ' + JSON.stringify(list));
   const blue = await dm.evaluate('(() => { document.getElementById("wm-road").click(); const o = { sel: document.getElementById("btn-select").classList.contains("active"), road: document.getElementById("wm-road").classList.contains("active") }; setShape("select"); o.back = document.getElementById("btn-select").classList.contains("active"); return o; })()');
   // RED ON: btn-select's toggle removed from worldMapRoadButtonSync (worldMapRoads.js) — 2026-10-09
   rig.check(!blue.sel && blue.road && blue.back, 'with Road in hand Select is still blue, or Select did not come back: ' + JSON.stringify(blue));
@@ -616,8 +616,8 @@ module.exports = async function worldMapFeature(rig) {
     .filter(el => getComputedStyle(el).display !== 'none')
     .map((el, i) => ({ id: el.id, i, o: parseInt(getComputedStyle(el).order, 10) || 0 }))
     .sort((a, b) => a.o - b.o || a.i - b.i).map(x => x.id)`);
-  rig.check(JSON.stringify(bar) === JSON.stringify(['btn-select', 'tb-grp-shape', 'tb-grp-ops', 'wm-road', 'wm-add', 'wm-find', 'btn-axislock']),
-            'the toolbar does not read Select, Shape, repairs and Road, then Add a scene and Find, then Straighten: ' + JSON.stringify(bar));
+  rig.check(JSON.stringify(bar) === JSON.stringify(['btn-select', 'tb-grp-shape', 'wm-road', 'wm-add', 'wm-find']),
+            'the toolbar does not read Select, Shape and Road, then Add a scene and Find: ' + JSON.stringify(bar));
   await dm.evaluate('__rigKey("KeyF", { ctrlKey: true }); 0');
   rig.check(await dm.evaluate('document.body.classList.contains("searching") && getComputedStyle(document.getElementById("context-row")).visibility === "visible" && document.getElementById("wm-search").getClientRects().length > 0'),
             'Ctrl+F did not open the Find field in the context row');

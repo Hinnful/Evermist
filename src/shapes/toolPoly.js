@@ -4,7 +4,10 @@
 
 // ⚠ NEVER SELECTS OR DRAGS AN EXISTING SHAPE. A click while this tool is in hand is always a
 // vertex, which is what lets a room be drawn over one that is already there.
-function toolPolyDown(raw) {
+// Ctrl on the first click, or an armed Split, makes the path an open line that splits every room it
+// crosses (toolCut.js); once started it is that line's, whatever the keys do after.
+function toolPolyDown(raw, e) {
+  if (activePolygon && activePolygon.cut || !activePolygon && repairNow(e) === 'split') { cutMouseDown(raw.x, raw.y); return; }
   let pos = snapVertex(raw.x, raw.y);
   if (!activePolygon) {
     activePolygon = { vertices: [pos], mode: tool };
@@ -17,7 +20,7 @@ function toolPolyDown(raw) {
     if (activePolygon.vertices.length >= 3) {
       const first = activePolygon.vertices[0];
       if (Math.hypot(raw.x - first.x, raw.y - first.y) < POLY_CLOSE_RADIUS / zoom) {
-        closeActivePolygon(); return;
+        closeActivePolygon(e); return;
       }
       // Close by self-intersection — keep only the loop, drop the tail
       const verts = activePolygon.vertices;
@@ -27,7 +30,7 @@ function toolPolyDown(raw) {
         if (pt) {
           activePolygon.vertices = verts.slice(i + 1);
           activePolygon.vertices.push(pt);
-          closeActivePolygon(); return;
+          closeActivePolygon(e); return;
         }
       }
     }
@@ -37,12 +40,12 @@ function toolPolyDown(raw) {
 
 // ─── Polygon lifecycle ────────────────────────────────────────────────────────
 
-function closeActivePolygon() {
+function closeActivePolygon(e) {
   if (!activePolygon || activePolygon.vertices.length < 3) { activePolygon = null; drawCursor(null, null); return; }
   const verts = activePolygon.vertices;
   const mode  = activePolygon.mode;
   activePolygon = null;
-  const shape = commitClosedShape(verts);
+  const shape = commitClosedShape(verts, repairNow(e));
   drawCursor(null, null);
   // The polygon tool paints its own fog below rather than going through toolMouseUp's block,
   // so the flag that block reads must not be left set for the next release to act on.

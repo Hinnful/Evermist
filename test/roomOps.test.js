@@ -7,12 +7,13 @@ const path = require('path');
 
 const {
   toRings, fromRings, ringArea, resultPieces, shapesOverlap,
-  joinShapes, trimShapes, cutRing, mostHiddenMode, roomOpMinArea,
+  joinShapes, trimShapes, splitShapes, cutRing, mostHiddenMode, roomOpMinArea,
   crossSegments, ringPathCrossings, arcForward, dedupeRing,
-  ROOM_OP_MIN_AREA, REASON_CUT,
+  ROOM_OP_MIN_AREA, REASON_CUT, pointInRing,
 } = require('../src/shapes/roomOps.js');
 
 const { vttDerivePlan } = require('../src/rooms/vttPlan.js');
+const { restoreGroupDetail } = require('../src/shapes/shapeDetail.js');
 
 // ⚠ THE SYNTHETIC CASES BELOW PROVE ONLY THE SHAPES ALREADY KNOWN. The real cave export at the
 // bottom of this file is what catches a kernel that works on rectangles and not on a floor plan.
@@ -483,6 +484,83 @@ function findNeighbours() {
   }
   return null;
 }
+
+describe('roomOps — Split along the drawn shape edge', () => {
+  const area = verts => ringArea(verts);
+
+  it('splits a room the shape crosses into the part outside and the part inside', () => {
+    const room = { vertices: rect(0, 0, 100, 100) };
+    const out = splitShapes([room], rect(60, -20, 140, 120), FLOOR);
+    assert.equal(out.groups.length, 1);
+    const [outside, inside] = out.groups[0];
+    assert.equal(area(pv(outside)), 6000);
+    assert.equal(area(pv(inside)), 4000);
+  });
+
+  it('a shape wholly inside a room leaves the room with a hole and the shape as a room', () => {
+    const out = splitShapes([{ vertices: rect(0, 0, 100, 100) }], rect(30, 30, 60, 60), FLOOR);
+    const [outside, inside] = out.groups[0];
+    assert.equal(ph(outside).length, 1);
+    assert.equal(area(pv(inside)), 900);
+  });
+
+  it('answers null for a room the shape covers or only touches', () => {
+    const out = splitShapes([{ vertices: rect(10, 10, 40, 40) }, { vertices: rect(200, 0, 300, 100) }],
+                            rect(0, 0, 100, 100), FLOOR);
+    assert.deepEqual(out.groups, [null, null]);
+  });
+
+  it('splits every room the shape crosses and leaves the area unchanged', () => {
+    const rooms = [{ vertices: rect(0, 0, 100, 100) }, { vertices: rect(0, 120, 100, 220) }];
+    const out = splitShapes(rooms, rect(50, -10, 150, 230), FLOOR);
+    let total = 0;
+    for (const g of out.groups) { assert.equal(g.length, 2); for (const p of g) total += area(pv(p)); }
+    assert.equal(total, 20000);
+  });
+
+  it('refuses nothing and edits nothing it read', () => {
+    const room = { vertices: rect(0, 0, 100, 100), holes: [rect(40, 40, 60, 60)] };
+    const before = JSON.stringify(room);
+    const out = splitShapes([room], rect(50, -10, 150, 110), FLOOR);
+    assert.equal(out.reason, undefined);
+    assert.equal(JSON.stringify(room), before);
+  });
+
+  it('carries a curved wall, a hole and a door from a real cave room onto its pieces', () => {
+    const room0 = caveRooms.reduce((a, b) => ringArea(a) > ringArea(b) ? a : b);
+    const b = bbox(room0);
+    // A square hole, wider than the sliver floor, wholly inside the room, found by scanning its bounding box.
+    const H = 90;
+    let spot = null;
+    for (let y = b.y0; y < b.y1 && !spot; y += 20) {
+      for (let x = b.x0; x < b.x1 && !spot; x += 20) {
+        const sq = rect(x - H, y - H, x + H, y + H);
+        if (sq.every(v => pointInRing(v.x, v.y, room0)) && shapesOverlap(room0, sq)) spot = { x, y };
+      }
+    }
+    assert.ok(spot, 'no interior spot in the largest cave room');
+    const handles = room0.map(() => null);
+    handles[0] = { ox: 0, oy: -40, ix: 0, iy: 0 };
+    const room = {
+      vertices: room0.map(v => ({ ...v })),
+      holes: [rect(spot.x - H, spot.y - H, spot.x + H, spot.y + H)],
+      handles,
+      doors: [{ edge: 1, t: 0.5 }],
+    };
+    const drawn = rect(spot.x + 200, b.y0 - 200, b.x1 + 200, b.y1 + 200);   // the hole stays wholly outside it
+    const split = splitShapes([room], drawn, CAVE_FLOOR);
+    assert.equal(split.reason, undefined);
+    const pieces = split.groups[0];
+    assert.ok(pieces && pieces.length >= 2, 'the real room was not split');
+    const kept = restoreGroupDetail([room], pieces);
+    assert.equal(kept.pieces.length, pieces.length);
+    // The hole sits wholly on one side, so exactly one piece keeps it whole.
+    const holeArea = kept.pieces.reduce((s, p) => s + (p.holes || []).reduce((h, r) => h + area(r), 0), 0);
+    assert.ok(Math.abs(holeArea - 4 * H * H) < 1, 'hole area ' + holeArea);
+    assert.ok(kept.pieces.some(p => p.handles), 'the curved wall was dropped');
+    assert.equal(kept.pieces.reduce((n, p) => n + (p.doors ? p.doors.length : 0), 0) + kept.droppedDoors, 1);
+  });
+});
 
 test('the library is pinned to the version the kernel was written against', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));

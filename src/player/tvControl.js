@@ -240,6 +240,8 @@ function _tvTools(live) {
     minimapLocked ? t('Minimap locked. Click to unlock') : t("Lock the minimap so a stray drag can't move the view"),
     [_tvIcon(TV_ICON.lock)], () => _tvLegacy('btn-minimap-lock')));
   const tr = _tvMake('div', 'tv-row tr tv-tools');
+  tr.append(_tvBtn('tv-ov sq' + (playersViewOn ? ' active' : ''), t("Players' view (hold H) - see your map the way the TV shows it"),
+    [_tvIcon(TV_ICON.tv)], togglePlayersView));
   if (live) tr.append(_tvBtn('tv-ov sq', t('Push this view to the Player'), [_tvIcon(TV_ICON.sync)], () => _tvLegacy('btn-sync-view')));
   tr.append(_tvBtn('tv-ov sq', t('Screen and updates'), [_tvIcon(TV_ICON.more)], () => (_tvMenu === 'tv' ? _tvClose() : _tvOpen('tv'))));
   return [tl, tr];
@@ -316,7 +318,7 @@ function tvRefresh() {
   panel.classList.toggle('tv-live', live);
   panel.classList.toggle('tv-off', !live);
   panel.classList.toggle('minimap-locked', minimapLocked);
-  const base = [live, !!_tvWaitSince, _tvRoute, live ? '' : _tvCaption(pick), autoSync, playerUnsent, minimapLocked,
+  const base = [live, !!_tvWaitSince, _tvRoute, live ? '' : _tvCaption(pick), autoSync, playerUnsent, minimapLocked, playersViewOn,
     live && !!paneScope().playerIsFullscreen, _tvNote, _tvMenu, panel.offsetWidth, _tvScreenId, _tvDisplays.length].join('|');
   if (base === _tvKey) return;
   _tvFit = 0;

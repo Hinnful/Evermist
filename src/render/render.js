@@ -247,11 +247,13 @@ function drawCursor(screenX, screenY) {
   // roomPanel.js loads after this file, hence the guards.
   if (typeof drawRoomLabels === 'function') drawRoomLabels();
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
+  if (typeof refreshRoomSwitcher === 'function') refreshRoomSwitcher();
 
   // Calibration owns the map's mouse, so its square and magnifier replace every cursor shape below
   // rather than sharing the canvas with them.
   if (gridCalArmed) { drawGridCalibration(); return; }
 
+  drawRepairTag(screenX, screenY);   // repairKeys.js: the repair in force, by the pointer
   if (activePolygon && activePolygon.vertices.length > 0) {
     drawActivePolyPreview(screenX, screenY);
     return; // skip other cursor shapes while drawing polygon
@@ -265,8 +267,10 @@ function drawCursor(screenX, screenY) {
   // drag lands is a toolbar button the DM is not looking at.
   const drawingEffect = placeMode === 'effects' &&
                        (shape === 'rect' || shape === 'circle' || shape === 'cone');
-  const color = drawingEffect ? effectPreviewEdge()
-                              : (POLY_EDGE_COLORS[tool] || POLY_EDGE_COLORS.shroud);
+  const repair = SHAPE_FAMILY.indexOf(shape) >= 0 ? repairShown() : null;   // a held key or an armed repair outlines the shape in its colour
+  const color = repair ? `rgb(${REPAIR_RGB[repair]})`
+              : drawingEffect ? effectPreviewEdge()
+              : (POLY_EDGE_COLORS[tool] || POLY_EDGE_COLORS.shroud);
   cursorCtx.save();
   cursorCtx.strokeStyle = color;
   cursorCtx.lineWidth = 1.5;

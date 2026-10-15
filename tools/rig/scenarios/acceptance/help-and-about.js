@@ -267,6 +267,7 @@ module.exports = async function helpAndAboutFeature(rig) {
     'M', 'Ctrl F',        // the world map's keys, covered by world-map.js
     'Shift Click', 'Shift Drag', // picking more scenes, covered by world-map.js
     'Enter',              // finishing a road, covered by world-roads.js
+    'Shift', 'Alt', 'Ctrl', // the repairs while drawing, covered by fog-toolbar.js
   ]);
   const unchecked = advertised.filter(k => COVERED.indexOf(k) === -1);
   rig.note('the panel advertises ' + advertised.length + ' keys: ' + advertised.join(' '));

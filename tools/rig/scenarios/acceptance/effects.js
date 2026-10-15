@@ -112,25 +112,25 @@ module.exports = async function effectsFeature(rig) {
               ' return !!b && getComputedStyle(b).display === "none"; })()') === true,
             'the brush button is still on the bar in Effects mode, where it can paint nothing');
 
-  // Exactly one of Rooms/Effects is picked, and the pair sits in a sunken .tb-seg track inside
-  // the bar — a pick-one group reads as one control or it reads as two toggles.
+  // Exactly one of Fog/Effects is picked, and the pair is the .tb-seg side tab joined to the bar's
+  // right end — a pick-one group reads as one control or it reads as two toggles.
   const seg = await dm.evaluate(`(() => {
     const on = id => document.getElementById(id).classList.contains('active');
     const b = document.getElementById('btn-place-effects');
     const r = document.getElementById('btn-place-rooms');
     const bar = document.getElementById('toolbar-bottom');
     return { effects: on('btn-place-effects'), rooms: on('btn-place-rooms'),
-             track: !!(b && b.parentElement && b.parentElement.classList.contains('tb-seg')),
+             track: !!(b && b.closest('.tb-seg') && b.closest('.ms-well')),
              shared: !!(b && r && b.parentElement === r.parentElement),
-             inBar: !!(b && bar && bar.contains(b)) };
+             joined: !!(b && bar && !bar.contains(b) &&
+                        Math.abs(b.closest('.tb-seg').getBoundingClientRect().left - bar.getBoundingClientRect().right) < 2) };
   })()`);
   rig.check(seg.effects && !seg.rooms,
             'the toolbar does not show exactly one of Rooms/Effects picked: ' + JSON.stringify(seg));
   // The switch governs every tool to its left, so it wears the one shape nothing else on the bar
-  // does: a sunken track at the end of it. Outside the bar in a pill of its own it was a second
-  // object on screen and pushed the bar off centre.
-  rig.check(seg.track && seg.shared && seg.inBar,
-            'the Rooms/Effects pair is not in a .tb-seg track inside the toolbar: ' +
+  // does: a darker tab joined to the bar's right end, hung off it so the bar stays centred.
+  rig.check(seg.track && seg.shared && seg.joined,
+            'the Fog/Effects pair is not a .tb-seg tab joined to the right end of the toolbar: ' +
             JSON.stringify(seg));
 
   const SHAPES = [

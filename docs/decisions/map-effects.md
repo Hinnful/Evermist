@@ -90,6 +90,8 @@ outline reads as a second smoke ring rather than as air over the area, so it cov
 interior; and a look value edited on the DM reached nothing, because each window holds its own copy.
 
 ### The material picker is a glyph, not a painted swatch · `SETTLED` (2026-08-26)
+**Reversed in part 2026-10-16 (see "The fog and the toolbar are rebuilt for a first-time DM"):** the three material buttons leave the row; one material button
+wears the picked material's glyph and opens a palette of the materials that exist. The glyph-not-swatch rule holds.
 
 The picker button was painted with a canvas showing the real material - a rounded box burning at
 its own edge - on the reasoning that an icon OF fire is a drawing of the thing rather than the

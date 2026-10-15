@@ -175,8 +175,9 @@ function commitShapeOpFog(toShroud) {
   scheduleAutoSync();
 }
 
-// The drawn shape combines with every shape it lands on, and makes none of its own.
-function commitShapeOp(verts) {
+// The drawn shape combines with every shape it lands on, and makes none of its own. `op` is 'join'
+// (Merge), 'trim' (Cut out) or 'split' (the shape's edge divides each room it crosses in two).
+function commitShapeOp(verts, op) {
   // Effects mode holds fires and lights: a repair acts on the kind being drawn.
   const hits = activeShapeList().filter(s => s.vertices && s.vertices.length >= 3 &&
                                              (placeMode === 'rooms' || !!s.light === (currentMaterial === 'light')) &&
@@ -186,12 +187,19 @@ function commitShapeOp(verts) {
   const rooms = placeMode === 'rooms';
   let plan, mode = null, toShroud;
 
-  if (shapeOp === 'join') {
+  if (op === 'join') {
     const out = joinShapes(hits, verts, minArea);
     if (out.reason) return refuseShapeOp(out.reason);
     plan = [{ shapes: hits, pieces: out.pieces }];
     if (rooms) mode = mostHiddenMode(hits.map(s => s.mode));
     toShroud = mode === 'shroud';
+  } else if (op === 'split') {
+    const out = splitShapes(hits, verts, minArea);
+    if (out.reason) return refuseShapeOp(out.reason);
+    // A room the shape does not divide stays as it is, and a shape that divides none changes nothing.
+    plan = hits.map((s, i) => out.groups[i] && { shapes: [s], pieces: out.groups[i] }).filter(Boolean);
+    if (!plan.length) return false;
+    toShroud = null;   // each piece paints exactly the fog its parent did
   } else {
     const out = trimShapes(hits, verts, minArea);
     if (out.reason) return refuseShapeOp(out.reason);
@@ -206,12 +214,13 @@ function commitShapeOp(verts) {
   return true;
 }
 
-// THE ONE PLACE A FINISHED CLOSED SHAPE GOES. `new` makes a record; Join and Trim make none and
-// stay armed for the next shape.
-// ⚠ RETURNS NULL FOR EVERY MODE BUT 'new', a refusal included, so no caller may reach into it.
-function commitClosedShape(verts) {
-  if (shapeOp === 'new') return commitDrawnShape(verts);
+// THE ONE PLACE A FINISHED CLOSED SHAPE GOES. `op` is what the shape was drawn as (repairNow, in
+// repairKeys.js): 'new' makes a record; the three repairs make none, and an armed one stays armed.
+// ⚠ RETURNS NULL FOR EVERY OP BUT 'new', a refusal included, so no caller may reach into it.
+function commitClosedShape(verts, op) {
+  const as = op || shapeOp;
+  if (as === 'new') return commitDrawnShape(verts);
   clearShapeSelection();
-  commitShapeOp(verts);
+  commitShapeOp(verts, as);
   return null;
 }

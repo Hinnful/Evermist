@@ -67,6 +67,9 @@ And rounding and door marks were dropped rather than remapped — **reversed 202
 repair carries the curve, the radius and the door" below.**
 
 ### Cut is its own geometry, not a thin Trim · `SETTLED` (2026-09-02)
+**Reversed in part 2026-10-16 (see "The fog and the toolbar are rebuilt for a first-time DM" in decisions/ui-and-control-panel.md):** Split is Ctrl on a shape.
+With a Rectangle or Circle it divides along the shape's edge (`splitShapes`, the library's difference and intersection);
+with the Polygon it is the open line below. Today's line split survives as that Ctrl-with-Polygon path.
 Trim can already split a room by removing a strip, so a separate Cut looks redundant. It is not:
 the strip leaves a gap, which is correct on a dungeon where the gap is the wall, and wrong in a
 cave where it puts a fogged line across open rock. A repair that leaves no gap whatsoever is not

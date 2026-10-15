@@ -26,45 +26,35 @@
 <div id="tools-wrapper">
 
   <!-- CONTEXT ROW — what the toolbar below is currently set to. ONE pill, whatever is in it:
-       the fog trio in Rooms mode, the material picker and corner radius in Effects mode, brush
-       size alongside either. Its occupants change with the placement mode and the tool, and more
-       than one can be up at once. input.js's updateContextPanels() owns every visibility
-       decision here; nothing in this row hides itself.
+       the fog clouds in Fog mode, the material and size in Effects mode, brush size over the Brush,
+       then Snap, Straight walls and the repair icon over a shape. Its occupants change with the
+       placement mode and the tool, and more than one can be up at once. input.js's
+       updateContextPanels() owns every visibility decision here; nothing in this row hides itself.
        ⚠ THE GROUPS INSIDE CARRY NO PILL OF THEIR OWN. A pill inside a pill was what shipped
        first, and the two rounded boxes at different heights read as a mistake. The row IS the
        pick-exactly-one pill; every button that can appear in it belongs to one such group, so
        nothing here needs a second one. -->
   <div id="context-row">
 
-    <!-- Rooms mode: the fog state a newly drawn room gets. Half is shape-tools only —
-         input.js disables it while the brush is picked. -->
-    <div class="tb-group" id="ctx-rooms">
-      <button id="btn-reveal" class="mode-btn active" title="Revealed">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg>
-      </button>
-      <button id="btn-half" class="mode-btn" title="Half-shrouded - explored, but the party isn't there now">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="currentColor" stroke="none"/></svg>
-      </button>
-      <button id="btn-shroud" class="mode-btn" title="Shrouded">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8" fill="currentColor" stroke="none"/></svg>
-      </button>
+    <!-- THE FOG MODE, first in the row of the Brush and of every shape in Fog mode: a well of three
+         clouds (struck out Reveal, striped Half, solid Hide), built by fogBar.js. -->
+    <div class="tb-group" id="wa-mode"></div>
+
+    <!-- The old fog trio, never shown: the clouds above drive the same paint direction, and these ids
+         stay in the page as the back end a .click() still reaches. -->
+    <div class="tb-group tb-backend" id="ctx-rooms">
+      <button id="btn-reveal" class="mode-btn active" title="Revealed"></button>
+      <button id="btn-half" class="mode-btn" title="Half-shrouded - explored, but the party isn't there now"></button>
+      <button id="btn-shroud" class="mode-btn" title="Shrouded"></button>
     </div>
 
-    <!-- Effects mode: what the next effect is made of, and the corners of the selected one.
-         The material buttons are pick-exactly-one, the same grammar AND the same look as the
-         fog trio they stand in for: a plain glyph that goes blue when picked, no box of its own.
-         A canvas painted with the real material was tried here and rejected - it drew a rounded
-         box, inside the button's selected box, inside the row's pill.
-         The glyph is a WIDE LOW FLAME ON THE GROUND. The ground line is what separates it from
-         the tall narrow flame on the Rooms/Effects switch below - both go blue at once
-         whenever Effects mode is on, so they must not be the same shape. An angular crest
-         read as a mountain range and three thin licks read as heat haze; neither shipped.
-         A shader material is a button here plus its record in EFFECT_MATERIALS, which carries
-         everything it draws. Light is not a material of that kind: it is not in EFFECT_MATERIALS,
-         and the commit paths send it to the lights list (lights.js) instead of the effects array.
-         The radius field is here because an effect has no card to carry it. -->
+    <!-- Effects mode: one material button with its palette (effectsRow.js), and the buttons below, never
+         shown, that hold the materials' names, glyphs and ids for setMaterial. A shader material is a
+         button here plus its record in EFFECT_MATERIALS. Light is not in EFFECT_MATERIALS: the commit
+         paths send it to the lights list (lights.js) instead of the effects array. -->
     <div class="tb-group" id="ctx-effects">
-      <div class="tb-group" id="material-row">
+      <span class="tb-group" id="mat-pick"></span>
+      <div class="tb-group tb-backend" id="material-row">
         <button class="mode-btn mat-btn active" data-material="fire" title="Fire - burning ground">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 18.6c-2.6-1.5-3.2-4.4-1.4-6.4.3 1 .9 1.6 1.7 1.9-1-2.6.3-5.2 3-6.9-.5 2.4.2 3.7 1.7 5 1.2 1 2 2 2 3.4a4.6 4.6 0 01-2.6 3"/><path d="M3.5 20.6h17"/></svg>
         </button>
@@ -76,7 +66,8 @@
         </button>
       </div>
     </div>
-    <!-- Effect preset sizes, built by toolPreset.js for the picked shape. -->
+    <!-- The size field of the picked effect shape: scrub, type or scroll, one grid square a step. Built by
+         effectsRow.js. -->
     <div class="tb-group" id="ctx-presets"></div>
 
     <!-- Brush size — shown only when Brush is active, in the same pill as whatever else is up -->
@@ -94,6 +85,24 @@
     <!-- The world map's Find field. -->
     <div class="tb-group" id="ctx-wm-search"><input id="wm-search" placeholder="Find a scene, place or road" spellcheck="false" autocomplete="off"></div>
 
+    <!-- A divider runs the full height of its strip with 8px clear each side (toolbar.css).
+         updateContextPanels shows each only between two groups that are both up. -->
+    <i class="tb-mdiv" id="div-aids"></i>
+
+    <!-- Independent switches for the shapes: snap to grid, straighten walls. They work in either mode
+         and keep their state across a mode switch. Icons with no words, their names in the tooltip, bare
+         .tb-toggle buttons, never gathered into a pill. -->
+    <div class="tb-group" id="fx-aids">
+      <button id="btn-snap" class="tb-toggle" title="Snap to grid (N) - corners land on the grid"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" opacity=".55"/><circle cx="15" cy="9" r="2.6" fill="currentColor" stroke="none"/></svg></button>
+      <button id="btn-axislock" class="tb-toggle" title="Straight walls - walls stay horizontal or vertical while you draw and edit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4v15h15"/><path d="M5 14h5v5"/></svg></button>
+    </div>
+
+    <!-- The repair icon, last in the row of every shape (repairBar.js): Merge, Cut out and Split on keys,
+         and the icon for whoever does not know them. -->
+    <i class="tb-mdiv" id="div-op"></i>
+    <span class="tb-group" id="op-sw"></span>
+
+    <i class="tb-mdiv" id="div-brush"></i>
     <div class="tb-group" id="panel-brush-bottom">
       <input type="range" id="brush-size" min="5" max="300" value="40">
       <div class="brush-chip">
@@ -119,6 +128,10 @@
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transform:translate(1px,1px)"><path d="M5 3l6.4 15.6 2.1-6.1 6.1-2.1L5 3z"/></svg>
     </button>
 
+    <button id="btn-brush" class="tool-btn" title="Brush (B) - paint to reveal or hide">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 3.5c-2 .4-6.6 4.6-8.7 7.4l2.3 2.3c2.8-2.1 7-6.7 6.4-9.7z"/><path d="M10.9 12.4c-1.9-.3-3.6 1-3.9 3-.2 1.6-1 2.6-3.5 3.1 3.6 1.9 8.3.6 9.2-2.6.3-1.3-.2-2.6-1.8-3.5z"/></svg>
+    </button>
+
     <!-- ONE BUTTON FOR THE WHOLE SHAPE FAMILY, wearing the shape this mode last used. Left click
          picks what is showing; the chevron or a right-click lists the others (shapeMenu.js). -->
     <span class="tb-grp" id="tb-grp-shape">
@@ -133,16 +146,25 @@
         <button id="btn-rect" class="mode-btn" title="Rectangle (R)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/></svg></button>
         <button id="btn-circle" class="mode-btn" title="Circle (O)"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/></svg></button>
         <button id="btn-cone" class="mode-btn" title="Cone (C) - drag from the point of origin"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4l14 7-14 7z"/><circle cx="5" cy="4" r="1.6" fill="currentColor" stroke="none"/></svg></button>
-        <button id="btn-line" class="mode-btn" title="Line - pick a length and width, drag to aim"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9.5" width="18" height="5" rx="1"/><circle cx="3" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></button>
-        <button id="btn-ring" class="mode-btn" title="Ring - pick its width across and its thickness"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/></svg></button>
+        <button id="btn-line" class="mode-btn" title="Line - pick a length, drag to aim; one square wide"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h16"/><circle cx="3.6" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></button>
+        <button id="btn-wall" class="mode-btn" title="Wall - pick a length, drag to aim; one foot thick"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="3" y="8" width="18" height="8" rx="1" fill="currentColor" fill-opacity=".3"/><path d="M3 12h18M9 8v4M15 8v4M6 12v4M12 12v4M18 12v4"/></svg></button>
+        <button id="btn-ring" class="mode-btn" title="Ring - a wall bent into a circle; pick its width across"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/></svg></button>
       </div>
     </div>
     <button class="tb-chev" data-chev="shape" title="Shapes"><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3l2.5 2.5L6.5 3"/></svg></button>
     </span>
 
-    <!-- The three repairs behind ONE button that wears the last pick. Merge and Cut out arm a
-         MODE the next drawn shape runs in; Split is a tool. All three stay in the page so each
-         keeps its id and its handler; shapeMenu.js shows the one picked. -->
+    <!-- The whole map in one click: Reveal all and Hide all, bare eyes after a divider (fogBar.js). They
+         stay on the bar in Effects mode too. -->
+    <i class="tb-mdiv" id="div-whole"></i>
+    <span class="tb-grp" id="tb-whole">
+      <button id="tb-reveal-all" class="tool-btn" title="Reveal all - show the players the whole map, every room included"></button>
+      <button id="tb-hide-all" class="tool-btn" title="Hide all - hide the whole map from the players, every room included"></button>
+    </span>
+
+    <!-- The three repairs, never shown: Merge and Cut out arm a mode the next drawn shape runs in, Split
+         is a tool, and each keeps its id and its handler. The repair icon in the options row and the
+         world map's Shape list drive them (repairBar.js, shapeMenu.js). -->
     <span class="tb-grp" id="tb-grp-ops">
     <button id="btn-op-join" class="tool-btn" title="Merge - the shape you draw merges every room or effect it lands on into one">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h10v4h4v10H9v-4H5z"/></svg>
@@ -153,24 +175,14 @@
     <button id="btn-cut" class="tool-btn" title="Split - click a path across a room or effect to split it in two, double-click to finish">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5.5" width="15" height="13" rx="1.6"/><path d="M8.5 3.5l3.5 8-2.5 4.5 2.5 4.5" stroke-dasharray="3 2.5"/></svg>
     </button>
-    <button class="tb-chev" data-chev="ops" title="Merge, Cut out or Split"><svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 3l2.5 2.5L6.5 3"/></svg></button>
     </span>
 
-    <button id="btn-brush" class="tool-btn" title="Brush (B)">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8.6 8.6-4 1 1-4L15 4z"/><path d="M13.4 5.6l5 5"/></svg>
-    </button>
+    <!-- The Door tool's own button, never shown: a selected room's switcher on the map arms it
+         (roomSwitcher.js), and a .click() here still does. -->
     <button id="btn-door" class="tool-btn" title="Door - click a room's outline to mark an exit, click a mark to remove it">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 20V10.5a5.5 5.5 0 0 1 11 0V20"/><path d="M3.5 20h17"/><circle cx="14.6" cy="14" r="1.05" fill="currentColor" stroke="none"/></svg>
     </button>
 
-    <!-- Independent switches: snap to grid, straighten walls. Both work in either mode and keep
-         their state across a mode switch. Bare .tb-toggle buttons, never gathered into a pill. -->
-    <button id="btn-snap" class="tb-toggle" title="Snap to grid (N)">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
-    </button>
-    <button id="btn-axislock" class="tb-toggle" title="Straighten walls while drawing and editing">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19V6h13"/><circle cx="5" cy="19" r="1.7" fill="currentColor" stroke="none"/><circle cx="5" cy="6" r="1.7" fill="currentColor" stroke="none"/><circle cx="18" cy="6" r="1.7" fill="currentColor" stroke="none"/></svg>
-    </button>
 
     <button id="wm-add" class="tool-btn wm-tool" title="Add a scene - pick a map file">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -182,21 +194,31 @@
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
     </button>
 
-    <!-- Placement switch: which array the next shape lands in. A SUNKEN TRACK at the end of the
-         bar; .tb-seg exists for this and nothing else. -->
-    <div class="tb-seg">
-      <button id="btn-place-rooms" class="mode-btn active" title="Draw rooms">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg>
+
+  </div>
+
+  <!-- The mode: a darker tab joined to the bar's right end holding one well, the cloud and the flame, with
+       a thumb under the mode in force. .tb-seg is for this tab and nothing else. -->
+  <div class="tb-seg">
+    <span class="ms-well">
+      <span class="ms-thumb"></span>
+      <button id="btn-place-rooms" class="mode-btn active" title="Fog - reveal and hide the map">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.2 4.2 0 0 0 7 18z"/></svg>
       </button>
-      <button id="btn-place-effects" class="mode-btn" title="Draw effects - burning ground and light">
+      <button id="btn-place-effects" class="mode-btn" title="Effects - fire, acid and light on the map">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 3c.6 3-1.2 4.3-2.7 5.8C8.1 10.5 7 12 7 14.2A5 5 0 0017 14.4c0-2.6-1.6-4.2-2.6-5.6-.5.9-1.2 1.4-2 1.7.9-2.6.6-5.4.1-7.5z"/></svg>
       </button>
-    </div>
-
+    </span>
   </div>
 
   </div>
 </div>
+
+<!-- The selected room's own switcher, on the map just above it. roomSwitcher.js. -->
+<div id="room-fog"></div>
+
+<!-- The players' view's frame while it is on. playersView.js. -->
+<div id="pv-frame"><span>Players' view - this is what the TV shows</span></div>
 
 <!-- THE DOCK: an icon rail on the right edge and one pane beside it, over the map. dock.js. -->
 <div id="dock" class="dk">
@@ -243,6 +265,12 @@
           <div class="dk-sh"><span class="cp-label">Fog</span>
             <button id="cp-fog-reset" class="cp-adv-close" title="Reset fog settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
           </div>
+          <div class="dk-blk tb-backend"><span class="dk-sub">Whole map</span>
+            <div class="cp-btnrow">
+              <button id="btn-clear-fog" class="cp-btn" title="Show the players the whole map, every room included">Reveal all</button>
+              <button id="btn-fill-fog" class="cp-btn" title="Hide the whole map from the players, every room included">Hide all</button>
+            </div>
+          </div>
           <div class="dk-blk"><span class="dk-sub">Colour</span>
             <div class="cp-field dk-colour" id="cp-fog-field" data-dock-pop="cp-pop-fog" title="Fog colour and tint strength">
               <span class="cp-swatch"></span><span class="cp-hash">#</span><span class="cp-hex"></span><span class="cp-fdiv"></span><span class="cp-alphanum"></span><span class="cp-pct">%</span>
@@ -259,12 +287,6 @@
         <div class="cp-group" id="cp-sec-rooms">
           <div class="dk-sh"><span class="cp-label">Rooms</span>
             <button class="dk-eye" id="cp-labels-eye" title="Room names on my map (L)"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
-          </div>
-          <div class="dk-blk"><span class="dk-sub">All rooms</span>
-            <div class="cp-btnrow">
-              <button id="btn-clear-fog" class="cp-btn" title="Clear fog from every room">Reveal all</button>
-              <button id="btn-fill-fog" class="cp-btn" title="Fog every room">Shroud all</button>
-            </div>
           </div>
           <div class="dk-blk"><span class="dk-sub">Sources</span>
             <div class="dk-r">
@@ -655,7 +677,7 @@
         <div class="lg-row">Polygon<span class="k"><kbd>P</kbd></span></div>
         <div class="lg-row">Cone, in Effects<span class="k"><kbd>C</kbd></span></div>
         <div class="lg-row">Brush, in Rooms<span class="k"><kbd>B</kbd></span></div>
-        <div class="lg-row">Brush size<span class="k"><kbd>[</kbd><kbd>]</kbd></span></div>
+        <div class="lg-row">Brush or effect size<span class="k"><kbd>[</kbd><kbd>]</kbd></span></div>
         <div class="lg-row">Snap to grid<span class="k"><kbd>N</kbd></span></div>
       </div>
       <div>
@@ -668,6 +690,10 @@
         <div class="lg-row">Add a point on an edge<span class="k"><kbd>Double-click</kbd></span></div>
         <div class="lg-row">Finish a Split path<span class="k"><kbd>Double-click</kbd></span></div>
         <div class="lg-row">Drop the selection<span class="k"><kbd>Esc</kbd></span></div>
+        <div class="sm-sub">While drawing</div>
+        <div class="lg-row">Merge<span class="k"><kbd>Shift</kbd></span></div>
+        <div class="lg-row">Cut out<span class="k"><kbd>Alt</kbd></span></div>
+        <div class="lg-row">Split<span class="k"><kbd>Ctrl</kbd></span></div>
       </div>
       <div>
         <div class="sm-sub">Map</div>
@@ -871,6 +897,7 @@
 <script src="src/shapes/shapeDetail.js"></script>
 <script src="src/shapes/shapeCommit.js"></script>
 <script src="src/shapes/toolPoly.js"></script>
+<script src="src/shapes/repairKeys.js"></script>
 <script src="src/shapes/toolShapes.js"></script>
 <script src="src/shapes/toolPreset.js"></script>
 <script src="src/shapes/toolBrush.js"></script>
@@ -912,6 +939,9 @@
 <script src="src/scenes/dragDrop.js"></script>
 <script src="src/ui/toolbar.js"></script>
 <script src="src/shapes/shapeMenu.js"></script>
+<script src="src/ui/fogBar.js"></script>
+<script src="src/ui/repairBar.js"></script>
+<script src="src/ui/effectsRow.js"></script>
 <script src="src/player/player.js"></script>
 <script src="src/player/playerMap.js"></script>
 <script src="src/player/playerMessages.js"></script>
@@ -920,6 +950,7 @@
 <script src="src/dev/stress.js"></script>
 <script src="src/dev/memProbe.js"></script>
 <script src="src/render/render.js"></script>
+<script src="src/render/playersView.js"></script>
 <script src="src/render/gridCalibrate.js"></script>
 <script src="src/player/minimap.js"></script>
 <script src="src/player/tvPick.js"></script>
@@ -938,6 +969,7 @@
 <script src="src/rooms/pictureDecode.js"></script>
 <script src="src/rooms/roomPictures.js"></script>
 <script src="src/rooms/roomLink.js"></script>
+<script src="src/rooms/roomSwitcher.js"></script>
 <script src="src/notes/notesPanel.js"></script>
 <script src="src/world/worldMapPlan.js"></script>
 <script src="src/world/worldRoadPlan.js"></script>

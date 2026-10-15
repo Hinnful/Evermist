@@ -229,8 +229,9 @@ let placeMode = 'rooms';
 let roomsShape = 'poly';
 let effectsShape = 'poly';
 
-// What a drawn shape DOES: 'new' makes one, 'join' unions it with every shape it lands on, 'trim'
-// subtracts it from them. Runtime-only, like placeMode. Cut is a `shape`, not a value here.
+// What a drawn shape DOES when no key is held: 'new' makes one, 'join' unions it with every shape it
+// lands on, 'trim' subtracts it from them, 'split' divides them along its edge (an open line, with
+// the Polygon). Runtime-only, like placeMode. The Cut tool (`shape === 'cut'`) is the world map's.
 let shapeOp = 'new';
 
 // What a newly drawn effect is made of, and what the material picker in the context row has lit.
@@ -241,6 +242,10 @@ let currentMaterial = 'fire';
 // The effect preset the next click places: { kind, s, w } in feet, or null when the shape tool
 // draws by hand. Runtime-only, like placeMode; toolPreset.js owns the value and the highlight.
 let presetArmed = null;
+
+// The players' view (render/playersView.js): the DM's map with the fog at the strength the TV shows,
+// held on H or toggled by the minimap's eye. Runtime-only; dmFogLayer.js reads it when it builds.
+let playersViewOn = false;
 
 // ─── Lights (render/lights.js) ───────────────────────────────────────────────
 // A light is a polygon like a room or an effect, in a list of its own: {id, vertices, light: true,

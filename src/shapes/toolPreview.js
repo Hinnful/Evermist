@@ -6,12 +6,13 @@ function drawActivePolyPreview(screenX, screenY) {
   const verts = activePolygon.vertices;
   if (verts.length === 0) return;
   const mode = activePolygon.mode || tool;
-  // A cut path is gold, the colour of a selected room, because it edits rooms already there
-  // rather than making one in a fog state.
+  // A repair is outlined in its own colour, because it edits rooms already there rather than making
+  // one in a fog state; an open split path is that repair's, whatever key is down.
   const cut = !!activePolygon.cut;
+  const repair = cut ? 'split' : repairShown();
   // Same table drawPolyOutline reads, so closing the polygon changes only the line's WEIGHT,
   // never its colour.
-  const baseRgb = cut ? HELD_RGB
+  const baseRgb = repair ? REPAIR_RGB[repair]
     : (placeMode === 'effects' ? effectPreviewRgb() : (POLY_STATE_RGB[mode] || POLY_STATE_RGB.shroud));
   cursorCtx.save();
 

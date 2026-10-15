@@ -35,7 +35,9 @@ library open from the rail as centred windows. All three wear the dock's grey.
 
 ### Scene control follows Figma's right panel · `SETTLED` (2026-10-02)
 Fog, Rooms, Grid, Player and My seat, one section each. An eye means shown or hidden and ends its
-row; a closed eye wears the blue tint. Numbers are fields with a leading icon you drag to scrub,
+row; a closed eye wears the blue tint. **Reversed in part by** "The fog and the toolbar are rebuilt for a first-time DM": on the bar an eye
+acts at once (Reveal all, Hide all), Scene control's layer eyes keep this meaning, and the minimap's
+players' view button wears a TV icon so an eye never means "view". Numbers are fields with a leading icon you drag to scrub,
 with no slider and no label. Movement is a preset dropdown and an eye, and Custom… opens the dials
 beside the dock. Reverses "The Animation and Grid Type rows carry no pill": both rows are gone,
 into the dropdown and a two-way segment. Reverses PRODUCT.md's "Cell size keeps its slider": the
@@ -59,6 +61,8 @@ room delete is undoable. The tab still follows the selection alone. The tab itse
 With Select in hand and a room selected, Reveal / Half / Shroud above the toolbar show and set
 that room's fog, and T cycles it. With a drawing tool or the Brush in hand the trio is the paint
 direction, as before. The room card's pill had been a second control for the first meaning.
+**Reversed by** "The fog and the toolbar are rebuilt for a first-time DM": the row's clouds are the paint direction only, and a selected room
+carries its own popup of the same clouds on the map.
 
 ### Two maps: the Room tab edits the room in its column · `SETTLED` (2026-10-02)
 A column has no dock, so it reports its selected room to the DM window and every edit goes back to
@@ -73,6 +77,8 @@ as three buttons: they are still on both bars, behind one button wearing the las
 picking Split disarms the other two. Reverses the corner tick and the right-click-only flyout, and
 "A helper that is on no longer wears the picked tool's box": its underline went with the outlined
 pick. Blue now means on or in use: solid for the tool in hand, a tint for a switch.
+**Reversed in part by** "The fog and the toolbar are rebuilt for a first-time DM": the operations button and Door leave the bar. The repairs are
+keys while a shape is drawn and one icon at the end of the row; the Shape list holds shapes only.
 
 ### On the narrowest window the toolbar gives way into the minimap's corner · `REVERTED` (2026-10-08)
 The toolbar centres between the minimap and the dock. On a window too narrow for both, such as the
@@ -343,6 +349,8 @@ to edge. Numbered copies share one stat block. A backup restore merges the fight
 asking, because the module-text question may already be on screen.
 
 ### Every repair is on both bars · `SETTLED` (2026-09-13)
+**Reversed in part 2026-10-16 by** "The fog and the toolbar are rebuilt for a first-time DM": the repairs leave the scene bar's buttons for three keys and one
+icon, and they still act on whichever list the mode names. The world map keeps its own list and repairs.
 
 Merge, Cut out and Split were Rooms-only buttons while `commitShapeOp` already read `placeMode`,
 so the reach was there and the gesture was not: putting a hole in an effect meant calling
@@ -359,6 +367,8 @@ The clipping kernel's refusals name a room, and `refuseShapeOp` swaps the noun i
 `roomOps.js` stays pure and its unit tests keep comparing against the constant.
 
 ### A repair stays armed until it is pressed again · `REVERTED` (2026-09-13)
+**Holds, with a new button, 2026-10-16:** an armed repair stays armed until the repair icon, lit, is clicked. A held
+key is not armed; it lasts as long as the key.
 
 Merge and Cut out spent themselves on one shape for a day, on the reasoning that a mode set
 correctly reads as armed twenty minutes later and eats the next room drawn. Use answered it:
@@ -480,6 +490,7 @@ of its kind in the app and is meant to look unlike everything to its right. Rule
 The 1px `.tb-div` read as a scratch on the real monitor, which no amount of correctness in the
 grouping argument survives. The gap it occupied is preserved as a margin on the first switch, so
 the switches still read as their own group. **Don't reintroduce a divider on this bar.**
+**Reversed 2026-10-16 by** "The fog and the toolbar are rebuilt for a first-time DM": full-height dividers.
 
 ### The alpha slider's 1px edge fringe was `background-origin` · `SETTLED` (2026-08-06)
 The opacity track painted a 1px column of the fully opaque colour on its left edge and of the
@@ -653,6 +664,8 @@ rather than joining them. `.tb-seg` is restored **for this switch and nothing el
 group inside `#context-row` stays a bare `.tb-group`, which is the rule that deleted the class the
 first time. The bar sizes itself to whichever mode's tools are up, and `#bar-row` keeps it centred
 while it changes width.
+**Reversed by** "The fog and the toolbar are rebuilt for a first-time DM": the switch is a sliding thumb in a well in a darker tab joined to the
+bar's right end, and `.tb-seg` is that tab.
 
 ### A helper that is on no longer wears the picked tool's box · `REOPENED` (2026-09-04)
 Snap and Straighten took the outlined blue box when on, the same mark the picked tool wears, and
@@ -661,6 +674,8 @@ mode, that reading failed: a lit helper read as one more tool. `.tb-toggle.activ
 `border-color` and takes a soft fill plus a 20px blue underline instead. **Nothing else on this
 bar carries an underline**, so the outlined box belongs to the picked tool alone. The 1px divider
 stays rejected - it read as a scratch on the TV, and the on-state is what was wrong, not the gap.
+**Reversed by** "The fog and the toolbar are rebuilt for a first-time DM": Snap and Straighten leave the bar for the options row, as icons with no
+words.
 
 ### A tool a mode cannot use leaves the bar rather than greying · `SETTLED` (2026-09-04)
 Two of eight tools greyed out on whichever placement mode was not theirs, so a dead control held
@@ -696,6 +711,9 @@ reachable by dragging a wall inward past it - drags free until it is home, or it
 recovered. Marked reversible on product grounds.
 
 ### Ctrl+click means one thing per level, and Alt+drag copies on the first movement · `SETTLED` (2026-09-24)
+**Reversed in part 2026-10-16 by** "The fog and the toolbar are rebuilt for a first-time DM": Alt+drag no longer pans under a shape tool, where Alt cuts
+the shape out of the rooms it touches. The middle button pans, and Alt+drag still pans under the Brush, Door
+and Split and copies under Select.
 Ctrl+click on a shape that is not open opens its corners, as Figma's Cmd+click reaches past a
 group. Inside an open shape it keeps straightening a wall, as Figma straightens inside edit mode.
 The two never meet, because each answers at one level only. Ctrl+click opens without starting a
@@ -705,6 +723,9 @@ under Alt drags as it would without it.
 
 
 ### Effect presets: a size row above the bar, the wheel steps it, a click places · `SETTLED` (2026-09-29)
+**Reversed in part 2026-10-16 by** "The fog and the toolbar are rebuilt for a first-time DM": one size field replaces the row of numbers. Each step is one
+grid square (5 ft), the wheel, the scrub and [ ] stop at both ends instead of wrapping, and a typed size lands on a
+square. A click places and a drag aims, as before.
 A shape with preset sizes lists them in `#context-row` as bare pick-one numbers, with no unit (the
 cursor label names it). The picked size wears the tool row's outlined box, so the
 pick reads at a glance; the dashed shape glyph first means draw by hand. Line and Ring have no
@@ -944,3 +965,61 @@ Places, Scenes (with a thumbnail and the place they sit in) and Roads, six rows 
 name's start, a word's start, any part. Arrow keys walk it, Enter or a click flies to the row and picks it, and Esc closes.
 The map still dims what does not match. It finds a scene wherever it sits, in view or not. Names only for now; searching the
 notes text is the next step if the DM wants it.
+
+## The fog and the toolbar for a first-time DM (2026-10-16)
+
+The 13 October build of this work never shipped and is replaced, not kept beside it.
+
+### The fog and the toolbar are rebuilt for a first-time DM · `SETTLED` (2026-10-16)
+Two first-time DMs could not get the fog off the TV: the controls sat under Rooms, or behind icons that did nothing when
+clicked, and the bars showed repairs, eight size chips and one button per material to someone who had not met them. The
+three first steps are now in front: Reveal all and Hide all as two bare eyes on the bar, the fog mode as three clouds that
+open every tool's row, and a room's own clouds in a popup over it. The advanced tools sit one step away: the repairs are
+three keys while a shape is drawn and one icon, the sizes are one field, the materials are one button and its palette. The
+bar, the row and the popup share one visual system. Built from throwaway prototypes the DM picked piece by piece.
+
+### The settled rules it reverses, by title · `SETTLED` (2026-10-16)
+- "Don't reintroduce a divider on this bar" (REVERTED 2026-08-09): the bar has full-height dividers.
+- Scene control's "the eye means shown/hidden": on the bar an eye acts at once; Scene control's layer eyes keep their
+  meaning, and the minimap's players' view moves to a TV icon.
+- "Effect presets: a size row above the bar, the wheel steps it" (2026-09-29): one grid-step size field; the wheel and
+  scrub stop at both ends instead of wrapping, and sizes snap to grid squares.
+- "Cut is its own geometry, not a thin Trim" (2026-09-02): Split is Ctrl on a shape, along the edge for Rectangle and Circle
+  and along an open line for Polygon, so today's line split survives. It lives in `roomOps.js` (`splitShapes`, `cutRing`).
+- "Every repair is on both bars" (2026-09-13) and "A repair stays armed until it is pressed again" (2026-09-13): the
+  repairs leave the scene bar for keys and one icon; arming from the icon stays sticky.
+- Alt+drag pans under any tool but Select (2026-09-24): it no longer pans under a shape tool.
+- Reveal all / Hide all under Rooms or in Scene control: they are on the bar as bare actions.
+- "The material picker is a glyph, not a painted swatch" (2026-08-26): the material buttons leave the row; one material
+  button wears the picked material's glyph and opens a palette. The glyph rule holds.
+
+### The fog mode lives in the tool's row · `SETTLED` (2026-10-16)
+The fog mode is the first thing in the picked tool's row, a well of three clouds: struck out is Reveal, striped is Half
+(shapes only, absent under the Brush), solid is Hide. The lit cloud wears the room-outline colour it will draw: green, teal,
+purple. A click sets the paint direction and touches no room. A selected room's popup holds the same clouds, and a click
+there sets that room's fog at once. The bar's eye switcher and its chevron are gone. Rejected in the prototype: eyes
+for the modes (an eye now means "act now"), plus and minus, a tick, a slash and a cross, an eraser, and dots in the cloud.
+
+### Figma's pick-two-then-boolean is rejected · `REJECTED` (2026-10-16)
+Figma merges, subtracts or intersects the shapes you picked. Evermist has no layers, and the drawn shape is not a record
+until it is committed, so the repair is a choice made while drawing: Shift, Alt or Ctrl, or the repair icon. A shape that
+touches nothing changes nothing.
+
+### Line, Wall and Ring · `SETTLED` (2026-10-16)
+Line is one square wide, a Wall is 1 ft thick, and a Ring is a Wall bent into a circle, 1 ft thick. Each takes a length
+(for a Ring, the width across) alone, and each has no hand tool. A wider line or wall is a Polygon. Rejected: a ten-foot
+line and other widths as sizes, which put a second axis in the size field.
+
+### Fog / Effects is a sliding thumb · `SETTLED` (2026-10-16)
+One well holds the cloud and the flame, and a thumb slides under the mode in force, at the bar's right end in the darker
+tab. Stacking the two at 16px, a switch with a knob, and one button that flips were built and rejected.
+
+### One rule for every well and divider · `SETTLED` (2026-10-16)
+A well is 30px tall, field grey, 8px radius, 2px padding, 26px items with a 6px radius, the pick lifted with a soft shadow.
+Every divider runs the full height of its strip with 8px clear on each side, and the row's notch never sits under one. The
+fog clouds, the size field, the material button and the mode switch all wear it. Scene control's field dividers
+(`.cp-fdiv`) follow in a later pass.
+
+### The first-map toast is dropped · `SETTLED` (2026-10-16)
+The line over the first fully hidden map is gone, and its saved flag is left unread. The row of clouds and the two eyes put
+the fix where the DM is looking; the players' view (hold H, the minimap's TV button) stays.

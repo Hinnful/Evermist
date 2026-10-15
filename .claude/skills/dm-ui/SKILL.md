@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/shapes/shapeMenu.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the operations button, which tools a placement mode shows, the fog trio, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's Sync and Lock, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/ui/fogBar.js, src/ui/repairBar.js, src/ui/effectsRow.js, src/rooms/roomSwitcher.js, src/render/playersView.js, src/shapes/shapeMenu.js, src/shapes/repairKeys.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the repair icon, the size field, the material palette, which tools a placement mode shows, the fog clouds, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's Sync and Lock, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -38,8 +38,10 @@ One dock on the right edge holds every control that is not on the map or the too
   in `base.css`; a control that writes its own hex drifts.
 - **Blue means on or in use, and nothing else.** Solid blue (`--b-solid`) with a white icon is
   the tool in hand: one thing on screen. A blue tint (`--b-tint`) with a blue icon is a switch
-  that is on: snap, straighten, Rooms/Effects, Two maps, Lock, the open rail tab, an armed
-  Merge or Cut out, a closed eye. Pick-one segments, fields and an open eye stay grey.
+  that is on: snap, straighten, Two maps, Lock, the open rail tab, the Door button on a room's popup
+  while Door is armed, a closed eye. Pick-one wells (the fog clouds, the Fog / Effects switch),
+  fields and an open eye stay grey. A repair in force wears its own colour: Merge green, Cut out
+  red, Split yellow.
 - **Two levels of type**: a 12px bold section title, and an 11px dim sub-header over a group.
 
 ## Scene control pane
@@ -72,10 +74,10 @@ The room card's module renders into the left panel's room level; there is no flo
   (`cornerRound.js`), and the typed radius is the `#corner-field` a double-click on a circle opens.
 - **The module dropdown stays on the name field.**
 - **A click on the map takes focus off the tab's fields**; the fields stop their own events.
-- **The fog state is NOT in the tab.** It is the toolbar's fog trio (below).
+- **The fog state is NOT in the tab.** It is the selected room's own popup on the map (below).
 - `refreshRoomPanel()` is the reflection hook. Called from `drawCursor()` and the paths that
   rewrite modes or reset polygons wholesale. **Not** from `setPolygonMode()`, which updates the
-  trio in place so a rebuild can't steal field focus mid-edit.
+  room's popup in place so a rebuild can't steal field focus mid-edit.
 - **In two-map mode the selected room lives in a column.** The column reports it to the shell,
   the tab edits it, and every edit goes back to that column only through `paneForward`.
 - Room labels (`roomPanel.js`): `roomLabelFontPx(zoom)` is screen px and **clamped at both
@@ -109,9 +111,10 @@ The room card's module renders into the left panel's room level; there is no flo
 ## The world map (`worldMap.js`, `worldMapEdit.js`, `worldMap.css`)
 
 A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolbar is the scene's own: Select, Shape
-(rectangle, circle, polygon: V, R, O, P), Merge / Cut out / Split, Straighten, then Add a scene and Find. Brush,
-Door, Snap and the Rooms/Effects switch are hidden, and the tool, mode and repair the scene held are put
-away on opening and given back on closing. The context row hides with `visibility` so the bar does not move.
+(rectangle, circle, polygon: V, R, O, P; its list holds the Repair section), Road, then Add a scene and Find; Straight walls
+sits in the options row over a drawing tool. The Brush, the fog clouds, Reveal all and Hide all, the Fog / Effects switch and Snap are hidden, and the
+tool, mode and repair the scene held are put away on opening and given back on closing. The context row hides with
+`visibility` so the bar does not move.
 One level of name shows at a time: zoomed out only the place plates, zoomed in only the scene names (the split is `WM_SPLIT`, 0.75). A scene is a 110x77 framed print shown only zoomed in, its name a plate inside it at the top left; zoomed out no scene in a place is shown (a grid was built and removed, see the ledger), and a scene with no place is a black diamond with a white rim and its name beside it. Under the prints sits the mist (`worldMist.js`): a drifting veil that clears 90% inside a place, over a backdrop greyed outside the places and 70% in colour inside them, a 20 soft edge. A place's outline is white, 2px (`POLY_LOOK.place`). A place's name is a small black plate inside its top left (`_wmLayoutLabels`, via the room's `fitLabelBox`), blue when picked, boxed in edit colours while edited. Rename is off while its name is hidden, and the backdrop image is set in Settings
 (`worldBackground.js`).
 
@@ -162,41 +165,94 @@ partial erase can't re-fog ground already clear, i.e. the room the party just le
   of value under `evermist.fogFeather`, except Fog Reset does set it back.
 - The Player needs nothing new: the stencil crosses as a PNG and partial alpha propagates.
 - **Half is a shape-tools-only paint direction.** The brush paints into a cleared-or-opaque
-  fog canvas with no third value, so `#btn-half` disables while the brush is picked and a live
-  `tool === 'half'` falls back to `'shroud'` - the highlight moving is the DM's only signal, so
-  never make that fallback silent.
+  fog canvas with no third value, so the row's Half cloud (and `#btn-half`) is absent while the
+  brush is picked and a live `tool === 'half'` falls back to `'shroud'` - the highlight moving
+  is the DM's only signal, so never make that fallback silent.
 - **Reverting this feature requires a data sweep**, not just a code revert. See DECISIONS.md.
 
-## The fog trio (`#ctx-rooms`)
+## The fog on the bar, the room's popup and the one system
 
-Reveal / Half / Shroud above the toolbar means one of two things, decided by the tool in hand:
+Three controls, one meaning each (`fogBar.js`, `roomSwitcher.js`). The fog is a cloud, in three
+states: struck out is Reveal (green), striped is Half (teal), solid is Hide (purple); the lit one
+wears the colour of the room outline it will draw. An eye means "act now" and is on the bar only.
 
-- **Select in hand and a room selected**: the trio shows that room's fog and sets it, and `T`
-  cycles it.
-- **A drawing tool or the Brush in hand**: the trio is the paint direction, as
-  `setPaintDirection` sets it, with Half greying under the Brush and the trio disabling under
-  Merge and Cut out.
+- **Reveal all and Hide all are two bare eyes on the bar**, after a divider, right after Select,
+  Brush and Shape. One click acts on the whole map, every room included (`revealAllMap`,
+  `hideAllMap`), and undo restores it. They stay in Effects mode. `#btn-clear-fog` and
+  `#btn-fill-fog` stay in Scene control as the hidden back end, not shown.
+- **The fog mode is the first thing in the picked tool's row**: the three clouds in a well. It is
+  the paint direction and nothing else: a click calls `setPaintDirection`, never changes the tool
+  and never touches a room. Half is shapes only and is ABSENT under the Brush. The clouds grey
+  while a repair is lit. Select shows no row.
+- **A selected room carries its own popup, on the map just above it**: the same three clouds in a
+  well (a click sets that room's fog at once; `T` still cycles it), a divider, then the door as a
+  bare button. It is hidden while the room is dragged, in the players' view and on the world map,
+  and `drawCursor` is what places it. The door button arms Door; Esc or Select ends it and the
+  room stays selected.
+- **The old trio (`#ctx-rooms`) and its ids are the hidden back end.** Pressed with Select in hand
+  and a room selected it still sets that room, which is what the rig clicks.
+- **The players' view** (`playersView.js`): holding H, or the minimap's TV button, puts the fog at
+  full strength and hides the cursor canvas (outlines and labels), inside a blue frame. Its button
+  wears a TV icon, never an eye.
+- **One rule for every pick-one control and divider.** A well is 30px tall, field grey, 8px radius,
+  2px padding, 26px items with a 6px radius, the pick lifted with a soft shadow. A divider runs the
+  full height of its strip with 8px clear on each side. The row's pointer never sits under one:
+  `placeContextRow` slides the row until it clears. A bare icon is an action or a tool.
+
+## The repairs
+
+A drawn shape draws a room. Held while it is drawn, Shift merges it into every room it touches,
+Alt cuts it out of them, Ctrl splits them (`repairKeys.js`). The keys are read from the press or
+release event; the key listeners only feed the outline, a tag by the pointer (Merge green, Cut out
+red, Split yellow) and the bar's repair icon.
+
+- **Ctrl with Rectangle or Circle splits along the shape's edge**: the part inside becomes a room of
+  its own. **Ctrl with Polygon draws an open line**, finished by a double-click, which splits every
+  room it crosses (`cutRing`). A shape that touches nothing changes nothing.
+- **The repair icon ends the row of every shape** (`repairBar.js`): two overlapping squares at rest,
+  the held or armed repair's glyph and colour otherwise. Its list, "Change the rooms it touches",
+  arms Merge, Cut out or Split and greys "Needs a room" on a map with none. An armed repair stays
+  armed until its lit icon is clicked. The hidden Split button arms Ctrl with the Polygon.
+- **A shape from a size (Effects) takes no key**: Shift snaps its angle there, and the keys act on
+  shapes drawn by hand. An armed repair still applies to it.
+- **Alt+drag no longer pans under a shape tool**; the middle button pans. Under Select Alt+drag
+  copies, and under any other tool Alt still pans.
+- **In two-map mode** a column reports the held key up (`pane-repair-key`) and the bar's icon lights.
+- **The world map keeps its own Shape list**, with a Repair heading over Merge, Cut out and Split,
+  and its own repairs, until its own pass.
 
 ## The bottom toolbar
 
-- **Order**: Select, Shape ▾, Merge / Cut out / Split ▾, Brush, Door, then snap, straighten and
-  Rooms/Effects. Every button id stays.
+- **Order**: Select, Brush, Shape ▾, a divider, Reveal all, Hide all. The Fog / Effects switch is
+  hung off the bar's right end in a darker tab: one well holding the cloud and the flame, a thumb
+  sliding under the mode in force. `.tb-seg` is for that tab and nothing else. Every old button id
+  stays, as the hidden back end the new controls drive (Merge, Cut out, Split, Door, the fog trio).
 - **Sizes**: a 36px box around a 22px icon on screen. A button and its chevron form one group,
-  2px apart; groups sit about 11px apart. **No hairline dividers on this bar.**
-- **Each chevron opens Figma's list**: a check on the current pick, the icon, the name, the
-  key; the row under the pointer turns solid blue; an Effects-only shape is greyed in Rooms
-  mode. A right-click on the button opens the same list.
-- **The operations button wears the last pick.** Split is a tool in hand (solid blue); Merge
-  and Cut out are switches that stay armed (tint). Each keeps its arming behaviour.
-- **Snap and straighten are bare `.tb-toggle`s** and keep their state across a mode switch.
-  **Never gather toggles into a pill.** The Rooms/Effects switch is the `.tb-seg` track at the
-  right-hand end; `.tb-seg` is for that switch and nothing else.
-- **A tool a mode cannot use is ABSENT, not greyed.** Rooms shows every tool; Effects drops
-  Brush and Door. Half is the one control that greys, and only under the Brush.
+  2px apart; groups sit 8px apart.
+- **Each chevron opens Figma's list** (`openBarList`, `shapeMenu.js`): a check on the current pick,
+  the icon, the name, the key; the row under the pointer turns solid blue; an Effects-only shape is
+  greyed in Rooms mode. A right-click on the Shape button opens the same list.
+- **The Shape list holds shapes only, and the Shape button always wears the shape you draw with.**
+  In Effects it offers Square, Circle, Cone, Line (one square wide), Wall (1 ft thick), Ring (a
+  Wall bent into a circle) and Polygon. Line, Wall and Ring take a length alone.
+- **Effects' row**: one material button with a chevron, then the size field with no divider between
+  them, a divider, Snap, Straight walls, the repair icon. The material button opens a palette above
+  the row, a "Find a material" field over glyph and name, listing only the materials that exist
+  (Fire, Acid, Light). The size field steps one grid square (5 ft): drag its arrows, type, scroll or
+  [ ]; it stops at both ends. Its chevron lists the sizes largest first, "N ft · N squares", and "By
+  hand" last for the shapes that have it.
+- **Snap and Straight walls are icons with no words**, their names in tooltips, and keep their
+  state across a mode switch. **Never gather toggles into a pill.**
+- **The options row hangs over the tool it belongs to with a pointer down to it** (`placeContextRow`):
+  the clouds and brush size over the Brush; over a shape the clouds in Fog mode (or the material
+  and size in Effects), Snap, Straight walls and the repair icon; the door fields centred with no
+  pointer. Select shows no row.
+- **A tool a mode cannot use is ABSENT, not greyed.** Fog shows every tool; Effects drops Brush.
+  The one control that is absent inside a row is Half under the Brush.
 - **Taking a button off a mode's bar means disarming what it held.** An armed mode with no
   button on screen swallows the next shape the DM draws.
 - **`#context-row` hides with `visibility`, never `display`**, or the cluster jumps by the row
-  plus its gap on every Select. A pick-one group inside it gets NO pill of its own.
+  plus its gap on every Select.
 
 ## The calibration HUD (`gridCalibrate.js`, `#gridcal-hud` in `toolbar.css`)
 

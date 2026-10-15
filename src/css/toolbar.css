@@ -24,12 +24,15 @@
     pointer-events: all;
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 8px;
     padding: 6px 8px;
-    border-radius: var(--panel-radius);
+    border-radius: var(--panel-radius) 0 0 var(--panel-radius);
     background: var(--panel-bg);
     border: var(--panel-border);
   }
+  /* The Merge, Cut out and Split buttons and the Door button are the back end the shape list and a
+     room's switcher drive; the bar never shows them. */
+  #tb-grp-ops, #btn-door, .tb-backend { display: none !important; }
   #toolbar-bottom button > svg, #toolbar-bottom .tb-shape-glyph svg { width: 18.5px; height: 18.5px; }
 
   /* Tool buttons. Solid blue with a white icon is the tool in hand: one thing on screen. */
@@ -71,12 +74,13 @@
      is the 6px padding on 30px children this row already computed to. A floor rather than a
      fixed size, so a control taller than 30px grows the row instead of being clipped by it. */
   #context-row {
+    position: relative;
     min-height: 42px;
     zoom: var(--ui-zoom, 1.2);
     pointer-events: all;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     padding: 6px;
     border-radius: var(--panel-radius);
     background: var(--panel-bg);
@@ -92,14 +96,83 @@
   /* ⚠ ONLY THESE FOUR HIDE THEMSELVES, and only until init. updateContextPanels() writes an
      inline display on exactly this list; a group not on it — #material-row — must not start
      hidden, because nothing will ever turn it back on. */
-  #ctx-rooms, #ctx-effects, #ctx-door, #ctx-presets, #panel-brush-bottom { display: none; }
-  /* Preset sizes (toolPreset.js). */
-  #ctx-presets { margin-left: 4px; }
-  #ctx-presets .mode-btn {
-    width: auto; min-width: 30px; padding: 0 5px; border: 1.5px solid transparent; border-radius: 8px;
-    font: 500 12.5px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; color: #9aa0aa;
+  #ctx-rooms, #ctx-effects, #ctx-door, #ctx-presets, #panel-brush-bottom, #fx-aids { display: none; }
+
+  /* The row hangs over the tool it belongs to, with a small pointer down to it. fogBar.js sets the
+     offset; a row with no tool under it (Door's fields) wears no pointer. */
+  #context-row::after {
+    content: ''; position: absolute; left: calc(50% + var(--fx-caret, 0px) - 6px); bottom: -6px;
+    width: 10px; height: 10px; background: var(--panel-bg);
+    border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg);
   }
-  #ctx-presets .mode-btn.active { color: var(--g-text); background: var(--g-pick); }
+  #context-row.no-caret::after { display: none; }
+  /* Snap and Straight walls: an icon each, the name in the tooltip. */
+  #fx-aids { gap: 2px; }
+  #fx-aids .tb-toggle svg { width: 16px; height: 16px; flex: none; }
+
+  /* ===== ONE SYSTEM for every pick-one control and divider =====
+     A well: 30px tall, field grey, 8px radius, 2px padding, 26px items with a 6px radius, the pick lifted
+     with a soft shadow. A bare icon is an action or a tool. Every gap between groups is 8px, and a divider
+     sits in the middle of one: 8px clear on each side, the full height of its strip. The row's pointer
+     never sits under one (fogBar.js placeContextRow). */
+  .tb-mdiv { display: none; flex: none; width: 1px; align-self: stretch; margin: -6px 0; background: rgba(255, 255, 255, 0.08); }
+  #toolbar-bottom > .tb-mdiv { display: block; }
+  .fx-track { display: flex; align-items: center; gap: 2px; padding: 2px; height: 30px; box-sizing: border-box; border-radius: 8px; background: var(--g-field); }
+  .fx-track .mode-btn { width: 26px; height: 26px; border-radius: 6px; color: #8b9099; }
+  .fx-track .mode-btn:hover { background: none; color: var(--g-text); }
+  .fx-track .mode-btn.active, .fx-track .mode-btn.active:hover { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+  .fx-track .mode-btn:disabled, .fx-track .mode-btn:disabled:hover { color: #4d5158; background: none; box-shadow: none; cursor: default; }
+  .fx-track .mode-btn svg { width: 18px; height: 18px; }
+  /* The lit cloud wears the colour of the room outline it will draw: green, teal, purple. */
+  .fx-track .fx-dir[data-dir="reveal"].active, .fx-track .fx-dir[data-dir="reveal"].active:hover { background: rgba(50, 220, 110, 0.2); color: #5fe39a; box-shadow: none; }
+  .fx-track .fx-dir[data-dir="half"].active, .fx-track .fx-dir[data-dir="half"].active:hover { background: rgba(70, 190, 210, 0.2); color: #6fd3e4; box-shadow: none; }
+  .fx-track .fx-dir[data-dir="shroud"].active, .fx-track .fx-dir[data-dir="shroud"].active:hover { background: rgba(150, 80, 255, 0.24); color: #b48cff; box-shadow: none; }
+  .fx-track .fx-dir.active:disabled, .fx-track .fx-dir.active:disabled:hover { background: none; color: #4d5158; }
+
+  /* The repair icon, last in the row of a shape: two overlapping squares at rest, the held or armed
+     repair's own glyph and colour otherwise (repairBar.js). */
+  #op-sw { display: none; align-items: center; }
+  #op-sw .op-wrap { display: inline-flex; align-items: center; height: 30px; border-radius: 6px; color: #a3a8b0; }
+  #op-sw .op-ic, #op-sw .op-chev { display: inline-flex; align-items: center; justify-content: center; height: 30px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+  #op-sw .op-ic { width: 28px; border-radius: 6px 0 0 6px; }
+  #op-sw .op-chev { width: 16px; border-radius: 0 6px 6px 0; }
+  #op-sw .op-ic:hover, #op-sw .op-chev:hover, #op-sw .op-chev.open { background: var(--g-field); color: var(--g-text); }
+  #op-sw .op-ic svg { width: 17px; height: 17px; }
+  #op-sw .op-chev svg { width: 8px; height: 8px; }
+  #op-sw .op-wrap.op-join { background: rgba(50, 220, 110, 0.18); color: #5fe39a; }
+  #op-sw .op-wrap.op-trim { background: rgba(240, 80, 80, 0.18); color: #ff8a8a; }
+  #op-sw .op-wrap.op-split { background: rgba(255, 208, 96, 0.16); color: #ffd060; }
+  #op-sw .op-wrap:is(.op-join, .op-trim, .op-split) .op-ic:hover, #op-sw .op-wrap:is(.op-join, .op-trim, .op-split) .op-chev:hover { background: rgba(255, 255, 255, 0.08); color: inherit; }
+
+  /* The material button and its size field are one control in two halves: 2px apart, no divider. */
+  #ctx-effects { margin-right: -6px; }
+  #mat-pick .mt-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: none; cursor: pointer; }
+  #mat-pick .mt-btn:hover { background: var(--g-field); }
+  #mat-pick .mt-btn svg { width: 18px; height: 18px; }
+  #fx-sizes { display: flex; align-items: center; }
+  #fx-sizes .sz-field { display: inline-flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 2px 0 8px; border-radius: 8px; background: var(--g-field); }
+  #fx-sizes .sz-scrub { display: inline-flex; color: #8b9099; cursor: ew-resize; padding-right: 6px; }
+  #fx-sizes .sz-scrub svg { width: 14px; height: 14px; }
+  #fx-sizes .sz-in { width: 38px; height: 28px; padding: 0; border: 0; background: none; color: var(--g-text); font: 600 13px/1 system-ui, -apple-system, sans-serif; outline: none; }
+  #fx-sizes .sz-handv { display: inline-flex; align-items: center; width: 38px; height: 28px; color: var(--g-text); }
+  #fx-sizes .sz-handv svg { width: 17px; height: 17px; }
+  #fx-sizes .sz-unit { color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; padding-right: 2px; }
+  #fx-sizes .tb-chev { height: 28px; }
+  #fx-sizes .sz-field.hand .sz-in, #fx-sizes .sz-field.hand .sz-unit { display: none; }
+  #fx-sizes .sz-field:not(.hand) .sz-handv { display: none; }
+  #mat-pal { position: absolute; left: 0; bottom: calc(100% + 10px); width: 300px; padding: 8px; border-radius: 10px; background: var(--panel-bg);
+    border: var(--panel-border); box-shadow: var(--panel-shadow); z-index: 5; }
+  #mat-pal[hidden] { display: none; }
+  #mat-find { width: 100%; box-sizing: border-box; height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: var(--g-field); color: var(--g-text);
+    font: 500 12.5px/1 system-ui, -apple-system, sans-serif; outline: none; margin-bottom: 6px; }
+  #mat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; max-height: 300px; overflow-y: auto; }
+  #mat-grid .mt-tile { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: var(--g-text);
+    font: 500 12px/1 system-ui, -apple-system, sans-serif; text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; }
+  #mat-grid .mt-tile svg { width: 18px; height: 18px; flex: none; }
+  #mat-grid .mt-tile:hover { background: var(--g-field); }
+  #mat-grid .mt-tile.on { background: var(--g-pick); }
+  #mat-grid .mt-none { grid-column: 1 / -1; padding: 10px 6px; color: var(--g-dim); font: 500 12px/1 system-ui, -apple-system, sans-serif; }
+
   #ctx-door { gap: 6px; }
   /* The door fields are stock .cp-chip-pre, which is flex:1 because the control panel gives it a
      column to fill. Nothing does here, and its input is width:0, so the chip needs its own size. */
@@ -113,7 +186,7 @@
   }
   /* Brush size is a second group in the same pill, so it needs the wider gap to read as its own
      thing rather than as more of the trio beside it. */
-  #panel-brush-bottom { gap: 11px; margin-left: 4px; }
+  #panel-brush-bottom { gap: 11px; }
   /* The calibration HUD: the app's floating surface, placed over the map beside the square by
      gridCalibrate.js. Same fixed + zoom pair as the room card, so style px are pre-zoom px and
      _rpScreenToStyle is the only correct way to write left/top. It never takes the map's mouse
@@ -165,31 +238,63 @@
   /* Layout only: no surface and no zoom, because the bar carries its own and a zoom here as well
      would compound. It is what keeps the bar centred while the bar changes width with the mode. */
   #bar-row {
+    position: relative;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     pointer-events: none;   /* pass-through; the bar opts back in */
   }
-  /* Rooms vs Effects — a SUNKEN TRACK at the end of the bar. It governs every tool to its left,
-     so it has to look unlike all of them, and a well cut into the bar is the one shape nothing
-     else here wears. Sitting beside the bar in a pill of its own was tried and read as a second
-     object on screen.
-     ⚠ .tb-seg IS FOR THIS SWITCH AND NOTHING ELSE. A pick-one group inside #context-row stays a
-     bare .tb-group; two nested rounded boxes at different heights is what deleted this class the
-     first time.
-     34 tall to match a tool button: 3px padding on 28px buttons. */
+  /* Fog vs Effects, at the bar's right end in a darker tab: ONE well holding the cloud and the flame,
+     a thumb under the mode in force. It governs every tool to its left, so it has to look unlike all of
+     them. ⚠ .tb-seg IS FOR THIS TAB AND NOTHING ELSE.
+     ⚠ HUNG OFF THE BAR'S RIGHT EDGE, NOT BESIDE IT IN THE FLOW. The bar is centred on the window
+     whatever is around it, and a tab in the flow would push it left by the tab's own width. */
   .tb-seg {
+    position: absolute; left: 100%; top: 0; bottom: 0;
+    zoom: var(--ui-zoom, 1.2);
+    pointer-events: all;
     display: flex;
     align-items: center;
-    gap: 2px;
-    padding: 2px;
-    border-radius: 8px;
-    background: #141416;
-    box-shadow: inset 0 0 0 1px var(--g-line);
-    margin-left: 6px;
+    padding: 0 8px;
+    border-radius: 0 var(--panel-radius) var(--panel-radius) 0;
+    background: #18181b;
+    border: var(--panel-border);
+    border-left: 0;
   }
-  .tb-seg .mode-btn { width: 28px; height: 28px; border-radius: 6px; }
-  .tb-seg .mode-btn.active, .tb-seg .mode-btn.active:hover { background: var(--b-tint); color: var(--b-icon); }
+  .ms-well { position: relative; display: flex; gap: 2px; padding: 2px; height: 30px; box-sizing: border-box; border-radius: 8px; background: var(--g-field); }
+  .ms-well .mode-btn { position: relative; width: 26px; height: 26px; border-radius: 6px; color: #8b9099; background: none; }
+  .ms-well .mode-btn:hover { background: none; color: var(--g-text); }
+  .ms-well .mode-btn.active, .ms-well .mode-btn.active:hover { background: none; color: var(--g-text); }
+  .ms-well .mode-btn svg { width: 16px; height: 16px; }
+  .ms-thumb { position: absolute; left: 2px; top: 2px; width: 26px; height: 26px; border-radius: 6px; background: var(--g-pick);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); transition: transform 0.18s ease; }
+  body.mode-fx .ms-thumb { transform: translateX(28px); }
+
+  /* Reveal all and Hide all: bare eyes after a divider, tools like any other. */
+  #tb-whole { gap: 2px; }
+
+  /* The selected room's own fog and door, on the map just above it. Zoomed like every floating
+     surface here, so only _rpScreenToStyle places it. */
+  #room-fog {
+    position: fixed; left: 0; top: 0; z-index: 60; zoom: var(--ui-zoom, 1.2); display: none; padding: 6px; gap: 0; align-items: center;
+    border-radius: var(--panel-radius); background: var(--panel-bg); border: var(--panel-border); box-shadow: var(--panel-shadow);
+  }
+  #room-fog .tb-mdiv { display: block; margin: -6px 8px; }
+  #room-fog .rf-door { width: 30px; height: 30px; border-radius: 6px; color: #a3a8b0; }
+  #room-fog .rf-door:hover { background: var(--g-field); color: var(--g-text); }
+  #room-fog .rf-door svg { width: 17px; height: 17px; }
+  #room-fog .rf-door.active, #room-fog .rf-door.active:hover { background: var(--b-tint); color: var(--b-icon); }
+  body.player-mode #room-fog, body.world #room-fog, body.players-view #room-fog { display: none !important; }
+
+  /* The players' view: the DM's map as the TV shows it, inside a blue frame while it is on. */
+  #pv-frame { position: fixed; inset: 0; z-index: 50; pointer-events: none; display: none; box-shadow: inset 0 0 0 3px var(--b-solid); }
+  #pv-frame span {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%); zoom: var(--ui-zoom, 1.2); padding: 6px 12px;
+    border-radius: 7px; background: var(--b-solid); color: #fff; font: 600 12px/1 system-ui, -apple-system, sans-serif; white-space: nowrap;
+  }
+  body.players-view #pv-frame { display: block; }
+  /* The editing chrome and the labels ride the cursor canvas, so the TV's view has neither. */
+  body.players-view #cursor-canvas { visibility: hidden; }
 
   /* Independent on/off switches — snap to grid, straighten walls. Each is unrelated to the
      other, so they sit bare on the bar rather than in a pill. On is the blue tint, which is a
@@ -209,7 +314,6 @@
     padding: 0;
     flex-shrink: 0;
   }
-  #btn-snap { margin-left: 8px; }
   .tb-toggle:hover { background: var(--g-field); color: var(--g-text); }
   .tb-toggle.active, .tb-toggle.active:hover { background: var(--b-tint); color: var(--b-icon); }
 
@@ -247,6 +351,10 @@
   .dd-it .ky { margin-left: 24px; color: var(--g-dim); font-weight: 500; }
   .dd-it:hover:not(.off) { background: var(--b-solid); color: #fff; }
   .dd-it:hover:not(.off) .ky { color: rgba(255, 255, 255, 0.85); }
+  .dd-lbl { padding: 6px 10px 4px 28px; color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; }
+  #tb-dd.nock .ck { display: none; }
+  #tb-dd.nock .dd-lbl { padding-left: 10px; }
+  #tb-dd .dd-sep { height: 1px; margin: 4px 2px; background: var(--g-line); }
   .dd-it.off { color: #5d626a; cursor: default; }
   .dd-it.off .ky { color: #5d626a; font-weight: 400; }
   body.player-mode #tb-dd { display: none !important; }
@@ -269,8 +377,6 @@
   }
   .mode-btn:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
   .mode-btn.active { color: var(--b-icon); }
-  /* A pick-one group in the context row: the picked one is the grey plate. */
-  #context-row .mode-btn.active { background: var(--g-pick); color: var(--g-text); }
   /* Unavailable fog mode — Half-shrouded while the brush is picked, which can't paint it */
   .mode-btn:disabled { color: #565b62; cursor: default; }
   .mode-btn:disabled:hover { background: transparent; color: #565b62; }

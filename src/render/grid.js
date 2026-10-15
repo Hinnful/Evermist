@@ -157,6 +157,7 @@ function commitGridChange() {
   // A door is one cell wide, so the cell changing resizes every door already placed.
   rebuildFogForGridChange();
   if (typeof updateContextPanels === 'function') updateContextPanels();
+  if (presetArmed) drawCursor(lastScreenX, lastScreenY);   // a size follows the cell, so its outline does too
   scheduleRender();
   scheduleAutoSync();
 }

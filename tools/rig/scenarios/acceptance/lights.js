@@ -162,7 +162,9 @@ module.exports = async function lightsFeature(rig) {
   // The size presets place a light too, once the Light material is picked.
   await dm.evaluate('setMaterial("light"); setShape("circle"); 0');
   const px = await dm.evaluate('presetPxPerFt()');
-  await dm.evaluate('[...document.querySelectorAll("#ctx-presets [data-preset]")].find(b => b.textContent === "30").click(); __rigClick(300, 600); 0');   // 30 ft
+  await dm.evaluate('(() => { const i = document.querySelector("#ctx-presets .sz-in"); i.value = "30";' +
+                    ' i.dispatchEvent(new Event("change", { bubbles: true })); return 0; })()');   // 30 ft, typed into the size field
+  await dm.evaluate('__rigClick(300, 600); 0');
   const placed = await dm.evaluate('(l => ({ r: Math.max(...l.vertices.map(v => Math.hypot(v.x - 300, v.y - 600))), n: lightShapes.length, sel: selectedPolygonId === l.id, shape, fx: effects.length }))(lightShapes[lightShapes.length - 1])');
   rig.check(Math.abs(placed.r - 30 * px) < 1 && placed.n === PLAN_LIGHTS + 2 && placed.sel && placed.shape === 'select' && placed.fx === 0,
             'the 30 ft circle preset with the Light material did not place a picked light there: ' + JSON.stringify(placed));

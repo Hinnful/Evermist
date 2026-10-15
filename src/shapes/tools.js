@@ -70,13 +70,13 @@ function segmentsIntersect(p1, p2, p3, p4) {
 // A new tool is a file plus a row here, and nothing in this file learns its name.
 const TOOLS = {
   select: { down: (raw, e) => selectMouseDown(raw, e) },
-  poly:   { down: raw => toolPolyDown(raw) },
+  poly:   { down: (raw, e) => toolPolyDown(raw, e) },
   door:   { down: raw => doorMouseDown(raw.x, raw.y) },
   cut:    { down: raw => cutMouseDown(raw.x, raw.y) },
   brush:  { drags: true, start: pos => toolBrushStart(pos),  move: pos => toolBrushMove(pos) },
-  rect:   { drags: true, start: pos => toolRectStart(pos),   finish: pos => toolRectFinish(pos) },
-  circle: { drags: true, start: pos => toolCircleStart(pos), finish: pos => toolCircleFinish(pos) },
-  cone:   { drags: true, start: pos => toolConeStart(pos),   finish: pos => toolConeFinish(pos) },
+  rect:   { drags: true, start: pos => toolRectStart(pos),   finish: (pos, e) => toolRectFinish(pos, e) },
+  circle: { drags: true, start: pos => toolCircleStart(pos), finish: (pos, e) => toolCircleFinish(pos, e) },
+  cone:   { drags: true, start: pos => toolConeStart(pos),   finish: (pos, e) => toolConeFinish(pos, e) },
   preset: { drags: true, start: pos => toolPresetStart(pos), finish: (pos, e) => toolPresetFinish(pos, e) },
 };
 

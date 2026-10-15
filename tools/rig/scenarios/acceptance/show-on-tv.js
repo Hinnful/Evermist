@@ -141,7 +141,8 @@ module.exports = async function showOnTv(rig) {
   })()`);
   rig.check(tools.lockLeft < 20 && tools.lockTop < 20 && tools.menuRight < 20 && tools.menuTop < 20,
             'E: Lock is not top-left, or the menu is not top-right: ' + JSON.stringify(tools));
-  rig.check(tools.sync === 1, 'E: Sync is on the minimap while the map is not on the TV: ' + JSON.stringify(tools));
+  // The top-right row holds the players' view and the menu at rest; Sync joins them only while live.
+  rig.check(tools.sync === 2, 'E: Sync is on the minimap while the map is not on the TV: ' + JSON.stringify(tools));
   rig.check(tools.faint < 0.6, 'E: the tools are not faint at rest: ' + JSON.stringify(tools));
   await dm.evaluate(q('#tv-ui .tv-row.tl .tv-ov') + '.click(); 0');
   const locked = await dm.evaluate(`(() => {
@@ -243,7 +244,7 @@ module.exports = async function showOnTv(rig) {
             'H: the live minimap has no breathing edge or says the wrong thing: ' + JSON.stringify(live));
   rig.check(live.stop === 'Stop showing' && live.acHidden === 'hidden' && live.wide,
             'H: the pill does not hold both of its words in one width: ' + JSON.stringify(live));
-  rig.check(live.sync === 2, 'H: Sync is not on the minimap while live: ' + JSON.stringify(live));
+  rig.check(live.sync === 3, 'H: Sync is not on the minimap while live: ' + JSON.stringify(live));
 
   // ── I ──
   // RED ON: playerUnsent never set in scheduleAutoSync (playerWindow.js) - 2026-10-13

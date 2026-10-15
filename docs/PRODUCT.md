@@ -308,6 +308,12 @@ table plus the world map, its places and roads, and the left notes panel with ca
 and scene notes. 5.0.0 keeps what is left of campaigns: the party flag, the gallery and the MCP
 server.
 
+### No release has a planned scope · `SETTLED` (2026-10-13)
+Supersedes the release halves of the three entries above. Backlog items carry no release tag, and no
+major version waits on a list of items. The DM bumps the major when they decide a state is worth
+marking. The 5.0.0 campaign scope is dropped with it; the party flag stays an open item, the gallery
+joined the First User Experience epic, and more MCP tools come when the DM asks for one.
+
 ### Claude writes prep into Evermist from 4.x · `SETTLED` (2026-10-09)
 Supersedes the MCP half of the entry above. The DM brainstorms in the Claude desktop app and says
 "write that down in Evermist". The first cut lists the campaign, reads and adds notes at the
