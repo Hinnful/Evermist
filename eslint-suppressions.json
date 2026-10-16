@@ -19,11 +19,6 @@
       "count": 1
     }
   },
-  "src/scenes/backup.js": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "src/scenes/mapConvert.js": {
     "max-lines-per-function": {
       "count": 2

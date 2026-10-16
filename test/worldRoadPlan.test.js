@@ -338,3 +338,11 @@ describe('a road with a rounded corner', () => {
     assert.deepEqual(R.wrReverse(four).cornerRadii, [null, 9, 5, null]);
   });
 });
+
+describe('wrCleanRoad: part times', () => {
+  it('keeps the times of the parts a merge compares, and drops the rest', () => {
+    const c = R.wrCleanRoad(road({ edits: { shape: 3, text: 8, junk: 1 } }));
+    assert.deepEqual(c.edits, { shape: 3, text: 8 });
+    assert.equal(R.wrCleanRoad(road({ edits: { shape: 'x' } })).edits, undefined);
+  });
+});

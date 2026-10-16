@@ -422,21 +422,25 @@ module.exports = async function gridFeature(rig) {
         mapWidth: sc.mapWidth, mapHeight: sc.mapHeight, mapExt,
         mapMimeType: sc.mapBlob ? (sc.mapBlob.type || 'image/jpeg') : 'video/mp4',
         polygons: [], nextPolygonId: 1, effects: [], nextEffectId: 1,
-        gridConfig: { ...sc.gridConfig, mode: 'hex-flat' }, fogSettings: sc.fogSettings },
+        gridConfig: { ...sc.gridConfig, mode: 'hex-flat' }, fogSettings: sc.fogSettings,
+        // A time past the import's moment counts as that moment, so the file is newer than the autosave the import starts with.
+        edits: { scene: { grid: Date.now() + 5000 } } },
       mapBuffer: sc.mapType !== 'video' ? await blobToArrayBuffer(sc.mapBlob) : null,
       fogBuffer: fog, thumbBuffer: await blobToArrayBuffer(sc.thumbnail),
     }], mtBackupPayload());
-    const before = allScenes.map(x => x.id);
+    // The scene is in the library, so the import updates it: the file's grid is the newer part.
     await restoreFromZipPath(${JSON.stringify(flatZip)});
-    const added = allScenes.find(x => !before.includes(x.id));
-    return added ? { id: added.id, stored: (await sceneStore.loadScene(added.id)).gridConfig.mode } : null;
+    const a = document.getElementById('cd-anchor');
+    for (let i = 0; i < 20 && a && a.style.display === 'flex'; i++) document.getElementById(a.classList.contains('cd-solo') ? 'cd-ok' : 'cd-cancel').click();
+    if (worldMapOpen) worldMapHide();
+    return { id: sc.id, stored: (await sceneStore.loadScene(sc.id)).gridConfig.mode };
   })()`, 300000);
-  rig.note('the flat-top backup restored as: ' + JSON.stringify(zipped));
-  if (rig.check(!!zipped, 'a backup holding a flat-top grid restored no scene at all')) {
+  rig.note('the flat-top export imported as: ' + JSON.stringify(zipped));
+  if (rig.check(!!zipped && zipped.stored === 'hex-flat', 'an export holding a flat-top grid did not reach the scene it matched: ' + JSON.stringify(zipped))) {
     await switchTo(zipped.id);
     const fromZip = await gridShown();
     rig.check(fromZip.mode === 'hex-pointy' && fromZip.legacy.join() === 'btn-grid-hptop',
-              'a backup saved with a flat-top grid did not load as pointy-top: ' +
+              'an export saved with a flat-top grid did not load as pointy-top: ' +
               JSON.stringify(fromZip));
   }
   await switchTo(gamma);

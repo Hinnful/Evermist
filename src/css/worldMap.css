@@ -44,6 +44,11 @@
   /* A place's polygon is painted on the cursor canvas by the room code, which rides above this layer while
      the map is up. Its name sits at the highest corner. */
   body.world #cursor-canvas { z-index: 60; }
+  /* My seat turns every canvas in the container, but the world map is never turned: the overlay lies upright over the window. */
+  body.world #canvas-container.seat-turned > #cursor-canvas {
+    inset: 0 !important; left: 0 !important; top: 0 !important;
+    width: 100% !important; height: 100% !important; transform: none;
+  }
   /* With two maps on the map's container is hidden, and the overlay canvas inside it with it. It is laid back over the
      whole window, its other canvases kept unseen, so the places are drawn. */
   body.panes-on.world #canvas-container { display: block !important; position: fixed; inset: 0; z-index: 60; visibility: hidden; pointer-events: none; }

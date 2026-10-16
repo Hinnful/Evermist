@@ -73,7 +73,7 @@ function cbBackupPayload() {
 
 function cbMergePayload(json) {
   let d;
-  try { d = JSON.parse(json); } catch (err) { return { ok: false, error: t('The fight in this backup could not be read.') }; }
+  try { d = JSON.parse(json); } catch (err) { return { ok: false, error: t('The fight in this file could not be read.') }; }
   cbState = combatMerge(cbState, { rows: Array.isArray(d.rows) ? d.rows : [], blocks: d.blocks || {},
     fights: Array.isArray(d.fights) ? d.fights : [], openId: d.openId }, combatFightId);
   cbSave();

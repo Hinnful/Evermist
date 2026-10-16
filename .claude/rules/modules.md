@@ -70,7 +70,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/mapImport.js` | Import: accepted kinds, the batch loop, video maps to disk |
 | `scenes/sceneSwitch.js` | `switchScene` and each of its steps |
 | `scenes/sceneGroups.js` | Group names on scenes; heading order + collapse. Tested |
-| `scenes/sceneStore.js` | IndexedDB read/write |
+| `scenes/editStamps.js` | Pure edit-time kernel: the time each part of a scene, room, effect last changed, from a save's diff, and the uids that match rooms across machines. Tested |
+| `scenes/transferPlan.js` | Pure import kernel: per part, which copy of a scene, room, effect, place, road and the backdrop wins. Tested |
+| `scenes/sceneStore.js` | IndexedDB read/write, stamping each save |
 | `scenes/mapLoader.js` | Image-map loading + progress-bar helpers |
 | `scenes/mapConvert.js` | Animated-map shrink at import. `fitInsideBox` tested |
 | `render/viewport.js` | Pan/zoom, fit, Sync View, the camera a push carries |
@@ -89,7 +91,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `render/video.js` | Animated-map handling |
 | `render/videoDiag.js` | Video diagnostics overlay and disk log |
 | `render/display.js` | Display detection |
-| `scenes/backup.js` | Zip backup/restore, including a picked or dropped `.zip` |
+| `scenes/backup.js` | Zip export, and the module text and fights an import adopts |
+| `scenes/transferImport.js` | Import: a picked or dropped `.zip` merged into the library, the report, and undoing a stopped one |
 | `scenes/dragDrop.js` | What a file dropped on the DM window becomes |
 | `ui/toolbar.js` | DM UI wiring. Calls `initRoomPanel` and `initControlPanel` last |
 | `ui/colorPicker.js` | The fog colour picker: square, hue strip, hex field, HSV maths |
@@ -203,10 +206,10 @@ shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/t
 shapes/toolPreview.js →
 shapes/tools.js → shapes/shapeHit.js → shapes/shapeSelect.js → shapes/openLine.js → shapes/shapeBox.js → shapes/cornerGeometry.js → shapes/cornerRound.js →
 shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → undo.js →
-scenes/sceneGroups.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneList.js →
+scenes/sceneGroups.js → scenes/editStamps.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneList.js →
 scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
 render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/twoMaps.js → player/stageWindow.js →
-scenes/backup.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
+scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
 render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → ui/repairBar.js → ui/effectsRow.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvControl.js →

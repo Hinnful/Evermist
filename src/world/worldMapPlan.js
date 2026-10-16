@@ -204,8 +204,17 @@ function wmCleanShape(raw) {
 
 const _wmNum = v => typeof v === 'number' && Number.isFinite(v);
 
-// A stored place as a clean record { vertices, cornerRadius?, cornerRadii?, handles? }, the fields a
-// room carries for its outline, or null. A bare array of points is a place from before rounding.
+// The times an edit stamped on a record's parts: only the listed keys, each a positive finite number.
+function wmCleanEdits(raw, keys) {
+  if (!raw || typeof raw !== 'object') return null;
+  const out = {};
+  for (const k of keys) if (_wmNum(raw[k]) && raw[k] > 0) out[k] = raw[k];
+  return Object.keys(out).length ? out : null;
+}
+
+// A stored place as a clean record { vertices, cornerRadius?, cornerRadii?, handles?, uid?, edits? }, the fields a
+// room carries for its outline plus the id and part times that match it across machines, or null. A bare
+// array of points is a place from before rounding.
 function wmCleanPlace(raw) {
   if (Array.isArray(raw)) raw = { vertices: raw };
   if (!raw || typeof raw !== 'object') return null;
@@ -219,6 +228,9 @@ function wmCleanPlace(raw) {
   if (Array.isArray(raw.handles) && raw.handles.length === vertices.length && raw.handles.every(okH)) {
     out.handles = raw.handles.map(h => (h ? { ix: h.ix, iy: h.iy, ox: h.ox, oy: h.oy } : null));
   }
+  if (typeof raw.uid === 'string' && raw.uid && raw.uid.length <= 80) out.uid = raw.uid;
+  const edits = wmCleanEdits(raw.edits, ['shape', 'name', 'notes']);
+  if (edits) out.edits = edits;
   return out;
 }
 
@@ -392,7 +404,7 @@ if (typeof module !== 'undefined' && module.exports) {
     WM_CARD_W, WM_CARD_H, WM_PAD, WM_LABEL, WM_SPLIT, WM_STEP_X, WM_STEP_Y,
     wmCleanPos, wmBesideOffset, wmPlanPositions, wmHullRect, wmRectCentre, wmFillZoom,
     wmCardRect, wmPointInPoly, wmRectInPoly, wmPolyArea, wmPolyBounds, wmPolyCentre, wmRectShape, wmCircleShape,
-    wmCleanShape, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmLabelSpot,
+    wmCleanShape, wmCleanEdits, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmLabelSpot,
     wmPlateSpot, wmExtent, wmZoomFloor, wmClampCamera,
     wmOverviewCamera, wmPlaceCamera, wmLevelFor, wmZoomAround, wmSideBySide, wmFreeSpot, wmMatches,
   };

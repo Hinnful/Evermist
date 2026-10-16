@@ -1,7 +1,7 @@
 'use strict';
 // worldBackground.js — the world map's backdrop: one image behind the places, chosen in Settings. The
 // picture lives in its own IndexedDB (up to 30MB cannot sit in localStorage); where it sits, its size
-// and its opacity live in localStorage. The TV never sees it. A backup of everything carries it.
+// and its opacity live in localStorage. The TV never sees it. Every export carries it.
 //
 // ⚠ A SEPARATE DATABASE, never the scenes' store: that store lists every record as a scene.
 
@@ -32,7 +32,9 @@ async function _wbStore(mode, fn) {
   });
 }
 
-function _wbMetaSave() {
+// ⚠ STAMPS `at`, the time an import compares. An import passes its own `at` and keeps it.
+function _wbMetaSave(keepAt) {
+  if (_wbMeta && !keepAt) _wbMeta.at = Date.now();
   try { localStorage.setItem(WB_META_KEY, JSON.stringify(_wbMeta)); } catch (_) { /* full or blocked */ }
 }
 
@@ -73,7 +75,7 @@ function _wbApply() {
 
 // ─── In a backup ─────────────────────────────────────────────────────────────
 
-// What a backup of everything carries: the numbers and the picture, or null with none.
+// What an export carries: the numbers and the picture, or null with none.
 async function worldBackgroundBackupPayload() {
   if (!_wbMeta || !_wbUrl) return null;
   try {
@@ -83,35 +85,36 @@ async function worldBackgroundBackupPayload() {
   } catch (_) { return null; }
 }
 
-// A restored backdrop joins only when there is none: the DM's own picture is never replaced.
-async function worldBackgroundAdopt(zipPath, shift) {
+// An imported backdrop: the one edited later wins, and an empty spot takes it. It keeps the time it arrived
+// with. Answers 'took', 'kept' or '' (the file had none).
+async function worldBackgroundImport(zipPath, shift, moment) {
   let got = null;
   try { got = await window.electronAPI.readBackupWorldBackground(zipPath); } catch (err) {
-    console.error('Reading the background from backup failed:', err);
-    return;
+    console.error('Reading the background from the file failed:', err);
+    return '';
   }
-  if (!got) return;
-  if (_wbMeta) {
-    messageDialog({ title: 'Background image kept', message: t('This backup carries a world map background, and you already have one, so yours stays.') });
-    return;
-  }
+  if (!got) return '';
   let m = null;
   try { m = JSON.parse(got.meta); } catch (_) { m = null; }
   const ok = k => m && typeof m[k] === 'number' && isFinite(m[k]);
-  if (!(ok('x') && ok('y') && ok('scale') && ok('alpha') && ok('w') && ok('h') && m.w > 0 && m.h > 0)) return;
+  if (!(ok('x') && ok('y') && ok('scale') && ok('alpha') && ok('w') && ok('h') && m.w > 0 && m.h > 0)) return '';
+  const plan = tpMergeBackground(_wbMeta, m, moment);
+  if (plan.act !== 'take') return 'kept';
   const blob = new Blob([got.buffer], { type: typeof m.type === 'string' ? m.type : '' });
-  if (blob.size > WB_MAX_BYTES) return;
+  if (blob.size > WB_MAX_BYTES) return '';
   try { await _wbStore('readwrite', s => s.put(blob, 'image')); } catch (_) {
     messageDialog({ title: 'Nothing changed', message: t('The image could not be saved.') });
-    return;
+    return '';
   }
+  if (_wbUrl) URL.revokeObjectURL(_wbUrl);
   _wbUrl = URL.createObjectURL(blob);
   _wbMeta = {
     x: m.x + (shift ? shift.dx : 0), y: m.y + (shift ? shift.dy : 0), scale: m.scale, alpha: m.alpha, w: m.w, h: m.h,
-    name: typeof m.name === 'string' ? m.name.slice(0, 120) : '',
+    name: typeof m.name === 'string' ? m.name.slice(0, 120) : '', at: plan.at,
   };
-  _wbMetaSave();
+  _wbMetaSave(true);
   _wbApply();
+  return 'took';
 }
 
 // The picture where it sits, in world units, for the mist's own copy of it.

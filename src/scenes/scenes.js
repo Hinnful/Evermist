@@ -91,6 +91,9 @@ function doAutoSave() {
   if (!currentScene || !baseFogCanvas) return Promise.resolve();
   clearTimeout(autoSaveTimer);
   const scene = currentScene;
+  esAssignUids(polygons); esAssignUids(effects);
+  const fogEdited = fogEditedSinceSave;
+  fogEditedSinceSave = false;
   const snap = {
     // encodeShapeForSave is what makes an older build fail closed on a held room.
     polygons:      polygons.map(p => encodeShapeForSave(copyShapeRings(p))),
@@ -118,7 +121,7 @@ function doAutoSave() {
   return new Promise(resolve => {
     baseFogCanvas.toBlob(blob => {
       // ⚠ A null currentScene means a teardown asked for this flush, so it still counts.
-      if (!blob || (currentScene !== null && currentScene !== scene)) { resolve(); return; }
+      if (!blob || (currentScene !== null && currentScene !== scene)) { fogEditedSinceSave = fogEditedSinceSave || fogEdited; resolve(); return; }
       scene.polygons      = snap.polygons;
       scene.nextPolygonId = snap.nextPolygonId;
       scene.pictureBlobs  = snap.pictureBlobs;
@@ -130,7 +133,7 @@ function doAutoSave() {
       scene.fogSettings   = snap.fogSettings;
       // Never snapshotted: an edit made while the fog encodes would be overwritten with the old text.
       if (typeof scene.notes !== 'string') scene.notes = '';
-      sceneStore.saveScene(scene).catch(console.error).then(resolve, resolve);
+      sceneStore.saveScene(scene, { fogEdited }).catch(console.error).then(resolve, resolve);
     }, 'image/png');
   });
 }

@@ -22,8 +22,8 @@
 //   6. A scene dropped on a road snaps onto the line, belongs to the road and is ungrouped in the library,
 //      after a restart and with two maps on. A scene dropped where the road runs inside a place belongs to
 //      the place. A scene dragged off the line leaves the road.
-//   7. Undo, backup and restore carry roads, their notes and their scenes. A restore into a library that
-//      already holds scenes and places keeps every road attached to the restored copies.
+//   7. Undo, export and import carry roads, their notes and their scenes. An import into the library the
+//      file came from adds no second copy of a road, and a road deleted here comes back on its own scene.
 //   8. The previous release opens this data safely: roads sit in keys of their own and no scene record
 //      gains a field.
 //   9. (the look is the DM's eye: dashed line on a dark casing, blue when picked, a black diamond for a
@@ -31,7 +31,7 @@
 //  10. The TV shows no road.
 //  11. Ctrl+drag bends a road segment, with curve handles and Escape's levels as on a room wall.
 //
-// ⚠ THE BACKUP IN 7 IS RESTORED FROM A PREPARED FILE: the save dialog is native (see the rig skill), so the
+// ⚠ THE EXPORT IN 7 IS IMPORTED FROM A PREPARED FILE: the save dialog is native (see the rig skill), so the
 // zip is built by the app's own archiver from the payload doExport builds, and restoreFromZipPath runs
 // untouched. doExport's own source is read for the road fields.
 // ⚠ 6's RESTART AND TWO MAPS RUN LAST, since both end the page the rest of this file drives.
@@ -390,9 +390,9 @@ module.exports = async function worldRoadsFeature(rig) {
   await dm.evaluate('__rigKey("KeyZ", { ctrlKey: true }); worldMapHide(); 0');
   await dm.evaluate('notesRoadSet(' + JSON.stringify(r2uid) + ', "Mud after rain."); 0');
 
-  const src = await dm.evaluate('({ exp: doExport.toString(), res: adoptCampaignNotesFromZip.toString() })');
-  rig.check(/worldRoadsExport/.test(src.exp) && /notesRoadsAll/.test(src.exp), 'the backup export carries no roads or no road notes');
-  rig.check(/worldRoadsMerge/.test(src.res) && /notesRekey/.test(src.res), 'the restore does not remap roads and road notes');
+  const src = await dm.evaluate('({ exp: doExport.toString(), res: worldRoadsImport.toString() })');
+  rig.check(/worldRoadsExport/.test(src.exp) && /notesRoadsAll/.test(src.exp), 'the export carries no roads or no road notes');
+  rig.check(/wrRemap/.test(src.res) && /notesRoadSet/.test(src.res), 'the import does not remap roads and road notes');
 
   // The prepared file: the library as the export builds it, through the app's own archiver.
   const zip = path.join(rig.outDir, 'roads.zip');
@@ -415,36 +415,35 @@ module.exports = async function worldRoadsFeature(rig) {
       notesCampaignPayload(notesCampaignGet(), notesPlacesAll(), worldPlacesExport(), worldRoadsExport(), notesRoadsAll()));
     return 0;
   })()`, 300000);
-  rig.check(fs.existsSync(zip) && fs.statSync(zip).size > 0, 'the backup archiver produced no file');
+  rig.check(fs.existsSync(zip) && fs.statSync(zip).size > 0, 'the export archiver produced no file');
   const raw = await dm.evaluate('window.electronAPI.readBackupCampaign(' + JSON.stringify(zip) + ')');
   const carried = JSON.parse(raw);
   rig.check(Object.keys(carried.roads || {}).length === 2 && carried.roadNotes && carried.roadNotes[r1uid] === 'Wolves at dusk.' && carried.roadNotes[r2uid] === 'Mud after rain.',
             'campaign.json does not carry both roads and their notes: ' + raw.slice(0, 400));
   const had = JSON.parse(await dm.evaluate('JSON.stringify({ scenes: allScenes.map(s => s.id), roads: worldRoadRecords().map(r => r.uid), places: Object.keys(worldPlacesAll()) })'));
+
+  // Importing the file back into the library it came from adds no copy of a scene, a road or a place. A road
+  // deleted here comes back, since no deletion travels for a road, with its note and its end on the same scene.
+  await dm.evaluate('worldRoadDelete(' + JSON.stringify(r1uid) + '); notesRoadSet(' + JSON.stringify(r1uid) + ', ""); 0');
+  rig.check(await dm.evaluate('worldRoadRecords().length === ' + (had.roads.length - 1)), 'the road was not deleted before the import');
   await dm.evaluate('(async () => { await restoreFromZipPath(' + JSON.stringify(zip) + '); return 0; })()', 300000);
-  await dm.waitFor('allScenes.length === ' + (had.scenes.length * 2), 60000, 'the restored scenes to join the library');
   const restored = JSON.parse(await dm.evaluate(`JSON.stringify((() => {
-    const old = new Set(${JSON.stringify(had.scenes)}), oldRoads = new Set(${JSON.stringify(had.roads)});
-    const fresh = worldRoadRecords().filter(r => !oldRoads.has(r.uid));
-    return { count: worldRoadRecords().length, places: Object.keys(worldPlacesAll()).length, fresh: fresh.map(r => ({
-      name: r.name, note: notesRoadGet(r.uid),
-      ends: r.ends.map(e => ({ kind: e.kind, copy: e.kind === 'scene' ? !old.has(e.ref) && allScenes.some(s => s.id === e.ref) : null, ref: e.ref })),
-      scenes: r.scenes.map(s => ({ copy: !old.has(s.id) && allScenes.some(x => x.id === s.id), t: s.t })),
-      onScene: r.ends.map((e, k) => { if (e.kind !== 'scene') return null; const s = allScenes.find(x => x.id === e.ref), v = r.vertices[k ? r.vertices.length - 1 : 0]; return Math.hypot(v.x - s.worldPos.x, v.y - s.worldPos.y); }),
-      stray: r.scenes.map(s => { const x = allScenes.find(a => a.id === s.id); return x ? __wrDist(r.uid, x.worldPos) : null; }),
-    })) };
+    const r = worldRoadByUid(${JSON.stringify(r1uid)}), h = worldRoadByUid(${JSON.stringify(r2uid)});
+    const ends = x => x.ends.map(e => ({ kind: e.kind, known: e.kind === 'scene' ? allScenes.some(s => s.id === e.ref) : null }));
+    return { scenes: allScenes.length, count: worldRoadRecords().length, places: Object.keys(worldPlacesAll()).length,
+      back: r && { name: r.name, note: notesRoadGet(r.uid), ends: ends(r), held: r.scenes.map(s => allScenes.some(x => x.id === s.id)) },
+      hamlet: h && { note: notesRoadGet(h.uid) } };
   })())`));
-  rig.check(restored.count === had.roads.length * 2 && restored.fresh.length === had.roads.length,
-            'a restore into a library that already has roads did not add each road once: ' + JSON.stringify(restored));
-  rig.check(restored.places === had.places.length, 'a restore duplicated a place the DM already had');
-  const rb = restored.fresh.find(r => r.name === 'The Old Road'), rh = restored.fresh.find(r => r.name === 'Hamlet Lane');
-  rig.check(rb && rb.ends[0].kind === 'scene' && rb.ends[0].copy === true && rb.ends[1].kind === null,
-            'a restored road\'s end did not attach to the restored copy of its scene, or kept the id of the original: ' + JSON.stringify(rb));
-  rig.check(rb && rb.onScene[0] !== null && rb.onScene[0] < 1.5, 'a restored road\'s end is not on the restored scene: ' + JSON.stringify(rb));
-  rig.check(rb && rb.scenes.length === 1 && rb.scenes[0].copy === true && rb.stray[0] < 1.5,
-            'a restored road does not hold the restored copy of its scene on its line: ' + JSON.stringify(rb));
-  rig.check(rh && rh.ends[0].kind === null, 'a restored road kept an end on a place the DM already had under that name: ' + JSON.stringify(rh));
-  rig.check(rb && rh && rb.note === 'Wolves at dusk.' && rh.note === 'Mud after rain.', 'the restored roads did not bring their notes: ' + JSON.stringify([rb && rb.note, rh && rh.note]));
+  rig.check(restored.scenes === had.scenes.length, 'an import into the library the file came from added a copy of a scene: ' + JSON.stringify(restored));
+  rig.check(restored.count === had.roads.length && restored.places === had.places.length,
+            'an import added a second copy of a road or a place the library already held: ' + JSON.stringify(restored));
+  rig.check(restored.back && restored.back.name === 'The Old Road' && restored.back.ends[0].kind === 'scene' && restored.back.ends[0].known === true && restored.back.ends[1].kind === null,
+            'a road brought back by an import did not keep its end on its own scene: ' + JSON.stringify(restored.back));
+  rig.check(restored.back && restored.back.held.length === 1 && restored.back.held[0] === true,
+            'a road brought back by an import lost the scene sitting on its line: ' + JSON.stringify(restored.back));
+  rig.check(restored.back && restored.back.note === 'Wolves at dusk.' && restored.hamlet && restored.hamlet.note === 'Mud after rain.',
+            'the roads did not bring their notes: ' + JSON.stringify([restored.back && restored.back.note, restored.hamlet && restored.hamlet.note]));
+  await dm.evaluate('(() => { const a = document.getElementById("cd-anchor"); for (let i = 0; i < 20 && a && a.style.display === "flex"; i++) document.getElementById(a.classList.contains("cd-solo") ? "cd-ok" : "cd-cancel").click(); if (worldMapOpen) worldMapHide(); return 0; })()');
 
   // ── 8. The previous release opens this safely ───────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved

@@ -9,12 +9,11 @@
 //      directions. Both scenes are generated at runtime, so this no longer skips itself.
 //   3. An imported map reaches disk through the app's real save-video-blob IPC, inside the rig's
 //      own profile and not the DM's real library.
-//   4. A zip export and restore survives a round trip through the real archiver/yauzl IPC.
+//   4. A zip export and import survives a round trip through the real archiver/yauzl IPC.
 //
 // ⚠ THE EXPORT'S SAVE DIALOG IS THE ONE SEAM THE RIG CANNOT CROSS. doExport opens a native
-// showSaveDialog, and `window.electronAPI` cannot be stubbed. Block 4 therefore builds the same
-// payload doExport builds and hands it to the real createBackupZip; the RESTORE side runs the
-// app's own restoreFromZipPath untouched. Export changes still need the DM's own hand test.
+// showSaveDialog, and `window.electronAPI` cannot be stubbed, so block 4 passes doExport its destPath option
+// and the import runs the app's own restoreFromZipPath. The native dialog itself still needs the DM's hand test.
 
 const lib = require('../lib');
 const fs = require('fs');
@@ -292,45 +291,33 @@ module.exports = async function smoke(rig) {
             'the animated map is frozen on the TV: the map picture never changed over ' + samples +
             ' samples in six seconds (' + first + '), while the DM plays it normally');
 
-  // ── Block 4: a backup zip round trip, through the real archiver and yauzl ──
+  // ── Block 4: an export and import round trip, through the real archiver and yauzl ──
+  // doExport runs untouched: its destPath option skips the native save dialog, the one seam nothing crosses.
   const zipPath = path.join(rig.outDir, 'roundtrip.zip');
   const exported = await dm.evaluate(`(async () => {
-    // The same payload doExport builds, using the app's own helpers. The metadata list mirrors
-    // backup.js and is a WHITELIST there too — floorPlan has to survive it.
-    const scenesData = [];
-    for (const meta of allScenes) {
-      const scene = await sceneStore.loadScene(meta.id);
-      if (!scene) continue;
-      const mapExt = mapExtFromScene(scene);
-      const mapBuffer = scene.mapType !== 'video' ? await blobToArrayBuffer(scene.mapBlob) : null;
-      let fogBuffer = null;
-      if (scene.baseFogBlob) fogBuffer = await blobToArrayBuffer(scene.baseFogBlob);
-      else if (scene.baseFogPNG) fogBuffer = await dataURLToArrayBuffer(scene.baseFogPNG);
-      const thumbBuffer = await blobToArrayBuffer(scene.thumbnail);
-      const mapMimeType = scene.mapBlob ? (scene.mapBlob.type || 'image/jpeg')
-                                        : (mapExt === '.mp4' ? 'video/mp4' : 'video/webm');
-      scenesData.push({
-        id: scene.id, mapType: scene.mapType || 'image', mapExt,
-        metadata: {
-          id: scene.id, name: scene.name, mapType: scene.mapType || 'image',
-          mapWidth: scene.mapWidth, mapHeight: scene.mapHeight, mapMimeType, mapExt,
-          polygons: scene.polygons || [], nextPolygonId: scene.nextPolygonId || 1,
-          floorPlan: scene.floorPlan, gridConfig: scene.gridConfig || {},
-          fogSettings: scene.fogSettings, createdAt: scene.createdAt || 0,
-          sortOrder: scene.sortOrder || 0,
-        },
-        mapBuffer, fogBuffer, thumbBuffer,
-      });
-    }
-    await window.electronAPI.createBackupZip(${JSON.stringify(zipPath)}, scenesData,
-      typeof mtBackupPayload === 'function' ? mtBackupPayload() : null);
-    return { count: scenesData.length, before: allScenes.length };
+    const before = allScenes.length;
+    await doExport(allScenes.map(s => s.id), { destPath: ${JSON.stringify(zipPath)} });
+    return { count: before, before, names: allScenes.map(s => s.name) };
   })()`, 300000);
   rig.check(fs.existsSync(zipPath) && fs.statSync(zipPath).size > 0,
-            'create-backup-zip produced no file at ' + zipPath);
+            'doExport produced no file at ' + zipPath);
   rig.note('exported ' + exported.count + ' scenes -> ' + Math.round(fs.statSync(zipPath).size / 1024) + ' KB zip');
+  const videoSize = saved.abs ? fs.statSync(saved.abs).size : 0;
 
+  // Importing the file into the library it came from changes nothing: no copy appears.
+  const again = await dm.evaluate(`(async () => {
+    await restoreFromZipPath(${JSON.stringify(zipPath)});
+    return allScenes.map(s => s.name);
+  })()`, 300000);
+  rig.check(JSON.stringify(again) === JSON.stringify(exported.names),
+            'importing a file into the library it came from changed the list of scenes: ' + JSON.stringify(again));
+
+  // And a library emptied first comes back whole, from the zip alone.
   const restored = await dm.evaluate(`(async () => {
+    const ids = allScenes.map(s => s.id);
+    deleteScenesWithUndo(ids);
+    commitPendingDelete();
+    for (const id of ids) { await sceneStore.deleteScene(id); await window.electronAPI.deleteVideoFile(id).catch(() => {}); }
     await restoreFromZipPath(${JSON.stringify(zipPath)});
     const names = allScenes.map(s => s.name);
     const out = [];
@@ -343,21 +330,18 @@ module.exports = async function smoke(rig) {
     return { names, scenes: out };
   })()`, 300000);
 
-  rig.check(restored.scenes.length === exported.before + exported.count,
-            'restore did not add ' + exported.count + ' scenes: library is now ' + restored.scenes.length);
-  // The copies land beside the originals under a de-duplicated name, which is what tells us the
-  // manifest, the names and the extraction all came back rather than half of them.
-  const copies = restored.scenes.filter(s => / \(2\)$/.test(s.name));
-  rig.check(copies.length === exported.count,
-            'the restored scenes are not named as copies: ' + JSON.stringify(restored.names));
-  const copiedVideo = copies.find(s => s.mapType === 'video');
+  rig.check(restored.scenes.length === exported.before,
+            'the import did not bring back ' + exported.count + ' scenes: library is now ' + restored.scenes.length);
+  rig.check(JSON.stringify(restored.names) === JSON.stringify(exported.names),
+            'the imported scenes are not named as they were, which means the manifest, the names and the extraction did not all come back: ' + JSON.stringify(restored.names));
+  const copiedVideo = restored.scenes.find(s => s.mapType === 'video');
   rig.check(!!copiedVideo && copiedVideo.w === saved.w && copiedVideo.h === saved.h,
-            'the restored animated map came back at the wrong size: ' + JSON.stringify(copiedVideo));
+            'the imported animated map came back at the wrong size: ' + JSON.stringify(copiedVideo));
   rig.check(!!copiedVideo && !!copiedVideo.abs && fs.existsSync(copiedVideo.abs) &&
-            fs.statSync(copiedVideo.abs).size === fs.statSync(saved.abs).size,
-            'the restored animated map is not on disk at its original size');
-  const copiedStill = copies.find(s => s.mapType === 'image');
+            fs.statSync(copiedVideo.abs).size === videoSize,
+            'the imported animated map is not on disk at its original size');
+  const copiedStill = restored.scenes.find(s => s.mapType === 'image');
   rig.check(!!copiedStill && copiedStill.hasFog && copiedStill.hasThumb,
-            'the restored still map lost its fog or its thumbnail');
+            'the imported still map lost its fog or its thumbnail');
   rig.note('round trip: ' + restored.names.join(', '));
 };

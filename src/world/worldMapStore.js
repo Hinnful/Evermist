@@ -56,8 +56,7 @@ function renameGroup(from, to) {
   notesPanelSettle();
   const final = renameGroupInOrder(a, to);
   for (const s of allScenes.filter(x => sanitizeGroupName(x.group) === a)) worldSceneSet(s.id, { group: final });
-  notesPlacesWrite(notesRenamePlace(notesPlacesAll(), a, final).map);
-  worldShapeRename(a, final);
+  worldShapeRenameWithNotes(a, final, () => notesPlacesWrite(notesRenamePlace(notesPlacesAll(), a, final).map));
   if (worldMapSel.place === a) worldMapSel.place = final;
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
   sceneListChanged();

@@ -40,8 +40,8 @@ async function _importMapFiles(files) {
   const zip = list.find(isZipFile);
   if (zip) {
     messageDialog({
-      title: 'Import the backup on its own',
-      message: t('“{name}” is a backup, and restoring one is its own job. Import it by ' +
+      title: 'Import the file on its own',
+      message: t('“{name}” is an export, and importing one is its own job. Import it by ' +
                  'itself, then come back for the maps.', { name: zip.name }),
     });
     return;

@@ -13,8 +13,8 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ### Cancel in the progress window, and what each stop leaves · `SETTLED` (2026-10-07)
 Item 151. The progress window's Cancel always asks first (Stop or Keep going), so a stray click
-costs nothing. A stopped restore leaves the library as it was: the scenes it
-saved and the map files it wrote are deleted, and the backup's fights and module text are never
+costs nothing. A stopped import leaves the library as it was: the scenes it
+added and the map files it wrote are deleted, the scenes it matched are put back, and the backup's fights and module text are never
 offered, since a stop usually means the wrong file was picked. A stopped batch import keeps the
 maps already in, because each is complete on its own. A stopped backup deletes its half-written
 zip. A stopped shrink imports nothing. Steps of a few seconds carry no Cancel. Stop is the

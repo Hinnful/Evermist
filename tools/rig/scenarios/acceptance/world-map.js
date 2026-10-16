@@ -739,10 +739,10 @@ module.exports = async function worldMapFeature(rig) {
   // ── 9. It survives two maps, a backup and a restart ───────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   // The backup, mirrored: the file lists read as text, and the place notes through the zip's own payload.
-  const lists = await dm.evaluate('({ list: sceneStore.listScenes.toString(), exp: doExport.toString(), res: restoreFromZipPath.toString() })');
+  const lists = await dm.evaluate('({ list: sceneStore.listScenes.toString(), exp: doExport.toString(), res: _tiNewRecord.toString() + _tiWrite.toString() })');
   rig.check(/worldPos/.test(lists.list), 'sceneStore.listScenes drops the position, so a restart forgets the layout');
   rig.check(/worldPos/.test(lists.exp) && /notesPlacesAll/.test(lists.exp), 'the backup export carries no position or no place notes');
-  rig.check((lists.res.match(/worldPos/g) || []).length >= 2, 'the restore does not rebuild the position into the scene and the library list');
+  rig.check((lists.res.match(/worldPos/g) || []).length >= 2, 'the import does not rebuild the position into the scene and the library list');
   const trip = await dm.evaluate(`(() => {
     const raw = notesCampaignPayload(notesCampaignGet(), notesPlacesAll());
     const back = notesParsePlaces(raw);

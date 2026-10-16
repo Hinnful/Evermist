@@ -1,6 +1,6 @@
 'use strict';
 
-// backup.js — BACKUP AND RESTORE, as far as anything but a person can reach it.
+// backup.js — EXPORT AND IMPORT, as far as anything but a person can reach it.
 //
 // THE GOAL OF THIS FEATURE: the DM's whole library — maps, fog, rooms, effects, grids and the
 // campaign's module text — leaves one machine as a single .zip and arrives on another with nothing
@@ -9,13 +9,13 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
-//   A. A restore ADDS to the library. It never replaces it, and it never disturbs the scene the
-//      DM has open.
+//   A. Importing a scene the library does not hold ADDS it, and never disturbs the scene the DM
+//      has open. (A scene it does hold is updated, which transfer.js proves.)
 //   B. A restored scene comes back whole: its map at its own size, its fog, its grid and its fog
 //      look.
 //   C. Rooms and effects come back with their own fields, corner radii included.
 //   D. A restored scene keeps its floor plan, so Draw Rooms still works on it.
-//   E. A name already in the library comes back de-duplicated rather than overwriting.
+//   E. A new scene whose name is already taken comes in de-duplicated rather than overwriting.
 //   F. The module text rides at the zip ROOT and is adopted on restore; a zip without it leaves
 //      the loaded book alone. The campaign's notes ride there too, as campaign.json: a restore
 //      never overwrites the notes the DM has, restoring one backup twice adds nothing the second
@@ -36,14 +36,14 @@
 //   O. A backup carrying a notes field that is not text, or a damaged campaign.json, still
 //      restores its scenes, keeps the DM's campaign notes, and names both in ONE message.
 //
-// ⚠ THE EXPORT'S SAVE DIALOG IS THE ONE SEAM NOTHING CAN CROSS. doExport opens a native
-// showSaveDialog as its FIRST act, and `window.electronAPI` comes through contextBridge, so it is
-// non-writable, non-configurable, and its methods cannot be replaced either. There is no way to
-// reach the payload builder behind it. So:
+// ⚠ THE EXPORT'S SAVE DIALOG IS THE ONE SEAM NOTHING CAN CROSS, and doExport's destPath option goes
+// round it. The zips here still come from createBackupZip with a hand-built payload, because the
+// scenes in them need FRESH ids: a scene id the library holds is a match, which updates and adds
+// nothing, and these sections are about what an import ADDS. transfer.js drives doExport itself.
 //
-//   • the zip here is built by handing the app's own createBackupZip the same payload doExport
-//     builds, through the real archiver IPC;
-//   • the RESTORE side runs the app's own restoreFromZipPath completely untouched;
+//   • each zip is built by handing the app's own createBackupZip a payload like doExport's, under a
+//     fresh scene id, through the real archiver IPC (stageZip);
+//   • the IMPORT side runs the app's own restoreFromZipPath completely untouched;
 //   • section G reads doExport's OWN source for its whitelist, because that is the only way to
 //     see the list the export really uses rather than the copy this file writes.
 //
@@ -82,6 +82,48 @@ const MODULE = [
   'K2. The Chapel',
   'A font of black water sits at the far end. Drinking from it is a very bad idea.',
 ].join('\n');
+
+// A zip holding the scene `fromId` under the fresh id `id`, so an import ADDS it. The archiver reads a video
+// from the maps folder by scene id, so the file is copied to the fresh name for the write and removed after.
+async function stageZip(rig, dm, zipPath, id, fromId, over) {
+  const info = await dm.evaluate(`(async () => {
+    const sc = await sceneStore.loadScene(${JSON.stringify(fromId)});
+    return { ext: mapExtFromScene(sc), video: sc.mapType === 'video' };
+  })()`);
+  const maps = path.join(rig.profileDir, 'maps');
+  const staged = path.join(maps, id + info.ext);
+  if (info.video) fs.copyFileSync(path.join(maps, fromId + info.ext), staged);
+  try {
+    await dm.evaluate(`(async () => {
+      const scene = await sceneStore.loadScene(${JSON.stringify(fromId)});
+      const mapExt = mapExtFromScene(scene);
+      const mapBuffer = scene.mapType !== 'video' ? await blobToArrayBuffer(scene.mapBlob) : null;
+      let fogBuffer = null;
+      if (scene.baseFogBlob) fogBuffer = await blobToArrayBuffer(scene.baseFogBlob);
+      else if (scene.baseFogPNG) fogBuffer = await dataURLToArrayBuffer(scene.baseFogPNG);
+      const thumbBuffer = await blobToArrayBuffer(scene.thumbnail);
+      const mapMimeType = scene.mapBlob ? (scene.mapBlob.type || 'image/jpeg')
+                                        : (mapExt === '.mp4' ? 'video/mp4' : 'video/webm');
+      await window.electronAPI.createBackupZip(${JSON.stringify(zipPath)}, [{
+        id: ${JSON.stringify(id)}, mapType: scene.mapType || 'image', mapExt,
+        metadata: Object.assign({
+          id: ${JSON.stringify(id)}, name: scene.name, mapType: scene.mapType || 'image',
+          mapWidth: scene.mapWidth, mapHeight: scene.mapHeight, mapMimeType, mapExt,
+          polygons: scene.polygons || [], nextPolygonId: scene.nextPolygonId || 1,
+          notes: scene.notes,
+          effects: scene.effects || [], nextEffectId: scene.nextEffectId || 1,
+          floorPlan: scene.floorPlan, gridConfig: scene.gridConfig || {},
+          fogSettings: scene.fogSettings, createdAt: scene.createdAt || 0,
+          sortOrder: scene.sortOrder || 0,
+        }, ${JSON.stringify(over || {})}),
+        mapBuffer, fogBuffer, thumbBuffer,
+      }], mtBackupPayload(), null, notesCampaignPayload(notesCampaignGet()));
+      return 0;
+    })()`, 300000);
+  } finally {
+    if (info.video && fs.existsSync(staged)) fs.unlinkSync(staged);
+  }
+}
 
 module.exports = async function backupFeature(rig) {
   const dm = rig.dm;
@@ -145,45 +187,14 @@ module.exports = async function backupFeature(rig) {
 
   // ── Building the zip, through the app's own archiver ──────────────────────
   const zipPath = path.join(rig.outDir, 'library.zip');
-  const exported = await dm.evaluate(`(async () => {
-    const scenesData = [];
-    for (const meta of allScenes) {
-      const scene = await sceneStore.loadScene(meta.id);
-      if (!scene) continue;
-      const mapExt = mapExtFromScene(scene);
-      const mapBuffer = scene.mapType !== 'video' ? await blobToArrayBuffer(scene.mapBlob) : null;
-      let fogBuffer = null;
-      if (scene.baseFogBlob) fogBuffer = await blobToArrayBuffer(scene.baseFogBlob);
-      else if (scene.baseFogPNG) fogBuffer = await dataURLToArrayBuffer(scene.baseFogPNG);
-      const thumbBuffer = await blobToArrayBuffer(scene.thumbnail);
-      const mapMimeType = scene.mapBlob ? (scene.mapBlob.type || 'image/jpeg')
-                                        : (mapExt === '.mp4' ? 'video/mp4' : 'video/webm');
-      scenesData.push({
-        id: scene.id, mapType: scene.mapType || 'image', mapExt,
-        metadata: {
-          id: scene.id, name: scene.name, mapType: scene.mapType || 'image',
-          mapWidth: scene.mapWidth, mapHeight: scene.mapHeight, mapMimeType, mapExt,
-          polygons: scene.polygons || [], nextPolygonId: scene.nextPolygonId || 1,
-          notes: scene.notes,
-          effects: scene.effects || [], nextEffectId: scene.nextEffectId || 1,
-          floorPlan: scene.floorPlan, gridConfig: scene.gridConfig || {},
-          fogSettings: scene.fogSettings, createdAt: scene.createdAt || 0,
-          sortOrder: scene.sortOrder || 0,
-        },
-        mapBuffer, fogBuffer, thumbBuffer,
-      });
-    }
-    await window.electronAPI.createBackupZip(${JSON.stringify(zipPath)}, scenesData,
-      mtBackupPayload(), null, notesCampaignPayload(notesCampaignGet()));
-    return { count: scenesData.length, before: allScenes.length,
-             openId: currentScene.id, openName: currentScene.name };
-  })()`, 300000);
+  const exported = await dm.evaluate('({ count: 1, before: allScenes.length, openId: currentScene.id, openName: currentScene.name })');
+  await stageZip(rig, dm, zipPath, 'rig-copy-1', exported.openId);
   rig.check(fs.existsSync(zipPath) && fs.statSync(zipPath).size > 0,
-            'the backup archiver produced no file at ' + zipPath);
+            'the export archiver produced no file at ' + zipPath);
   rig.note('exported ' + exported.count + ' scene(s) → ' +
            Math.round(fs.statSync(zipPath).size / 1024) + ' KB');
 
-  // ── A. A restore adds, and leaves the open scene alone ────────────────────
+  // ── A. An import adds a new scene, and leaves the open scene alone ────────
   // RED BY DESIGN: written against the fix, never re-proved
   const restored = await dm.evaluate(`(async () => {
     // Wrapped like maps.js does: a restore stage can pass faster than any sampler ticks.
@@ -231,7 +242,7 @@ module.exports = async function backupFeature(rig) {
   rig.note('the library after the restore: ' +
            JSON.stringify(restored.scenes.map(s => s.name)));
   rig.check(restored.scenes.length === exported.before + exported.count,
-            'the restore did not ADD ' + exported.count + ' scene(s): the library holds ' +
+            'the import did not ADD ' + exported.count + ' scene(s): the library holds ' +
             restored.scenes.length + ' where it held ' + exported.before);
   rig.check(restored.openId === exported.openId,
             'the restore switched the DM off the map they had open: ' + restored.openId +
@@ -382,15 +393,21 @@ module.exports = async function backupFeature(rig) {
     const raw = await window.electronAPI.readBackupCampaign(${JSON.stringify(zipPath)});
     const none = await window.electronAPI.readBackupCampaign(${JSON.stringify(plainZip)});
     const sep = NOTES_SEPARATOR;
+    const adopt = async zip => {
+      const text = await window.electronAPI.readBackupCampaign(zip), now = Date.now(), inc = _tiRead(text);
+      const plans = { places: tpMergePlaces(_tiLocalPlaces(), inc.places, now),
+                      roads: tpMergeRoads(_tiRoadMap(worldRoadsExport(), notesRoadsAll()), inc.roads, now), broken: inc.broken };
+      await _tiAdoptCampaign(text, false, plans, { dx: 0, dy: 0 }, [], []);
+    };
     notesCampaignSet('');
-    await adoptCampaignNotesFromZip(${JSON.stringify(zipPath)}, []);
+    await adopt(${JSON.stringify(zipPath)});
     const empty = notesCampaignGet();
     notesCampaignSet('Mine.');
-    await adoptCampaignNotesFromZip(${JSON.stringify(zipPath)}, []);
+    await adopt(${JSON.stringify(zipPath)});
     const once = notesCampaignGet();
-    await adoptCampaignNotesFromZip(${JSON.stringify(zipPath)}, []);
+    await adopt(${JSON.stringify(zipPath)});
     const twice = notesCampaignGet();
-    await adoptCampaignNotesFromZip(${JSON.stringify(plainZip)}, []);
+    await adopt(${JSON.stringify(plainZip)});
     return { raw, none, empty, once, twice, afterPlain: notesCampaignGet(), want: 'Mine.' + sep + 'Campaign lore.' };
   })()`, 60000);
   rig.note('the campaign notes in the zip: ' + JSON.stringify(campaign));
@@ -408,12 +425,12 @@ module.exports = async function backupFeature(rig) {
   const badZip = path.join(rig.outDir, 'bad-notes.zip');
   const bad = await dm.evaluate(`(async () => {
     const scene = await sceneStore.loadScene(${JSON.stringify(exported.openId)});
-    const meta = { id: scene.id, name: 'Notes broke here', mapType: 'image',
+    const meta = { id: 'rig-bad-1', name: 'Notes broke here', mapType: 'image',
                    mapWidth: scene.mapWidth, mapHeight: scene.mapHeight,
                    mapMimeType: 'image/png', mapExt: '.png', polygons: [], nextPolygonId: 1,
                    notes: 5, effects: [], nextEffectId: 1, gridConfig: {}, createdAt: 0, sortOrder: 0 };
     await window.electronAPI.createBackupZip(${JSON.stringify(badZip)},
-      [{ id: scene.id, mapType: 'image', mapExt: '.png', metadata: meta, mapBuffer: null, fogBuffer: null, thumbBuffer: null }],
+      [{ id: 'rig-bad-1', mapType: 'image', mapExt: '.png', metadata: meta, mapBuffer: null, fogBuffer: null, thumbBuffer: null }],
       null, null, '{not json');
     // The module-text question from an earlier restore may still be on screen.
     const open = document.getElementById('cd-anchor');
@@ -470,7 +487,7 @@ module.exports = async function backupFeature(rig) {
     const block = src.slice(at, end);
     const want = ['polygons', 'nextPolygonId', 'effects', 'nextEffectId', 'floorPlan',
                   'gridConfig', 'fogSettings', 'name', 'mapWidth', 'mapHeight', 'mapType',
-                  'mapMimeType', 'mapExt', 'createdAt', 'sortOrder', 'notes'];
+                  'mapMimeType', 'mapExt', 'createdAt', 'sortOrder', 'notes', 'edits'];
     const missing = want.filter(k => !new RegExp('(^|[\\\\s{,])' + k + '\\\\s*[:,}\\\\n]').test(block));
     return { missing, carriesModuleText: src.indexOf('mtBackupPayload') !== -1,
              carriesCampaign: src.indexOf('notesCampaignPayload') !== -1 };
@@ -506,11 +523,10 @@ module.exports = async function backupFeature(rig) {
     if (!meta) return { err: 'no animated scene to take the file from' };
     const scene = await sceneStore.loadScene(meta.id);
     if (!scene) return { err: 'the scene vanished' };
-    // The file goes, the record stays — exactly the state a moved or deleted map leaves behind.
-    await window.electronAPI.deleteVideoFile(scene.id);
+    // No file lies under the fresh id, which is exactly the state a moved or deleted map leaves behind.
     const wrote = await window.electronAPI.createBackupZip(${JSON.stringify(gapZip)}, [{
-      id: scene.id, mapType: 'video', mapExt: mapExtFromScene(scene),
-      metadata: { id: scene.id, name: scene.name, mapType: 'video',
+      id: 'rig-gap-1', mapType: 'video', mapExt: mapExtFromScene(scene),
+      metadata: { id: 'rig-gap-1', name: scene.name, mapType: 'video',
                   mapWidth: scene.mapWidth, mapHeight: scene.mapHeight,
                   mapMimeType: 'video/mp4', mapExt: mapExtFromScene(scene),
                   polygons: [], nextPolygonId: 1, effects: [], nextEffectId: 1,
@@ -530,7 +546,7 @@ module.exports = async function backupFeature(rig) {
     const before = allScenes.length;
     await restoreFromZipPath(${JSON.stringify(gapZip)});
     const added = allScenes.slice(before);
-    if (!added.length) return { err: 'the gap backup restored nothing at all' };
+    if (!added.length) return { err: 'the gap export imported nothing at all' };
     const sc = await sceneStore.loadScene(added[added.length - 1].id);
     return { name: sc.name, mapPath: sc.mapPath === undefined ? null : sc.mapPath,
              mapType: sc.mapType };
@@ -559,10 +575,13 @@ module.exports = async function backupFeature(rig) {
             'a map import after the restore still showed a file name, the backup file: ' +
             JSON.stringify(after));
 
-  // ── L. A restore stopped from the progress window ────────────────────────
+  // ── L. An import stopped from the progress window ────────────────────────
   // RED ON: undo()'s deleteScene and deleteVideoFile loops gated off with if (false) in restoreFromZipPath (backup.js) — 2026-10-07
   const mapsDir = path.join(rig.profileDir, 'maps');
   const mapFiles = () => fs.existsSync(mapsDir) ? fs.readdirSync(mapsDir).sort() : [];
+  const keepZip = path.join(rig.outDir, 'keep.zip'), haltZip = path.join(rig.outDir, 'halt.zip');
+  await stageZip(rig, dm, keepZip, 'rig-keep-1', exported.openId);
+  await stageZip(rig, dm, haltZip, 'rig-halt-1', exported.openId);
   const filesBefore = mapFiles();
   // ⚠ The sections above leave their own dialogs queued, and a question asked now waits behind them.
   const drainDialogs = `(() => {
@@ -592,7 +611,7 @@ module.exports = async function backupFeature(rig) {
     };
     const before = (await sceneStore.listScenes()).length;
     const keep = ask('Extracting scenes…', 'cd-cancel');
-    await restoreFromZipPath(${JSON.stringify(zipPath)});
+    await restoreFromZipPath(${JSON.stringify(keepZip)});
     keep.done();
     const afterKeep = (await sceneStore.listScenes()).length;
     ${drainDialogs};
@@ -607,24 +626,24 @@ module.exports = async function backupFeature(rig) {
       halt.out.hiddenWhileAsking = shown() === 'none';
       document.getElementById('cd-ok').click();
     };
-    await restoreFromZipPath(${JSON.stringify(zipPath)});
+    await restoreFromZipPath(${JSON.stringify(haltZip)});
     halt.done();
     updateMapProgress = origPct;
     return { before, afterKeep, afterStop: (await sceneStore.listScenes()).length, shownAfter: shown(),
              keep: keep.out, halt: halt.out, dialogs: document.querySelectorAll('#cd-anchor').length &&
              document.getElementById('cd-anchor').style.display };
   })()`, 300000);
-  rig.note('stopping a restore: ' + JSON.stringify(stop));
+  rig.note('stopping an import: ' + JSON.stringify(stop));
   const filesAfter = mapFiles();
-  rig.check(stop.keep.asked && stop.keep.stoppable && stop.keep.title === 'Stop restoring?' && stop.keep.hiddenWhileAsking,
-            'Cancel did not ask before stopping the restore, or the progress window stayed over the question: ' + JSON.stringify(stop.keep));
+  rig.check(stop.keep.asked && stop.keep.stoppable && stop.keep.title === 'Stop importing?' && stop.keep.hiddenWhileAsking,
+            'Cancel did not ask before stopping the import, or the progress window stayed over the question: ' + JSON.stringify(stop.keep));
   rig.check(stop.keep.backAfter === 'flex' && stop.afterKeep === stop.before + exported.count,
-            'Keep going did not bring the progress window back and let the restore finish: ' + JSON.stringify(stop));
-  rig.check(stop.halt.title === 'Stop restoring?' && stop.afterStop === stop.afterKeep,
-            'a stopped restore left scenes in the library: ' + stop.afterKeep + ' before, ' + stop.afterStop + ' after');
+            'Keep going did not bring the progress window back and let the import finish: ' + JSON.stringify(stop));
+  rig.check(stop.halt.title === 'Stop importing?' && stop.afterStop === stop.afterKeep,
+            'a stopped import left scenes in the library: ' + stop.afterKeep + ' before, ' + stop.afterStop + ' after');
   rig.check(filesAfter.length === filesBefore.length + exported.count,
-            'a stopped restore left its map files on disk: ' + JSON.stringify({ before: filesBefore, after: filesAfter }));
-  rig.check(stop.shownAfter === 'none', 'the progress window stayed up after the restore stopped');
+            'a stopped import left its map files on disk: ' + JSON.stringify({ before: filesBefore, after: filesAfter }));
+  rig.check(stop.shownAfter === 'none', 'the progress window stayed up after the import stopped');
 
   // ── M. A backup stopped while it is written ───────────────────────────────
   // RED ON: the unlink after a cancelled write gated off with if (false) in create-backup-zip (electron/backupZip.js) — 2026-10-07

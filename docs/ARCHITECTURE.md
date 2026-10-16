@@ -537,7 +537,7 @@ world map and takes one world-map undo step; a new fight is built from monsters 
 bestiary and leaves the DM's open fight alone. A note for a scene held in a column goes through that
 column, so its autosave keeps it. Nothing reaches the Player.
 
-## Backing up your maps
+## Exporting and importing your maps
 
 Everything you make lives in the browser's local database, and for video maps, on disk next
 to the app. That's fast but tied to one machine, so there's a backup feature for moving
@@ -550,9 +550,18 @@ between PCs.
   removes none. A backup of picked scenes leaves the gallery out. The pictures a scene's rooms
   still hold travel beside the scene, so a backup restores in the previous release; they join the
   gallery on restore. File names come from a picture's own id, never from anything the zip claims.
-- **Restore** reads that zip back and merges it into your current library rather than
-  overwriting. If a name already exists you get a "Name (2)" style rename, so importing the
-  same backup twice is safe.
+  The world map's background image goes in with every export, a picked one included. Every scene,
+  room, effect, place and road also carries the time each of its parts last changed, and the uid
+  that identifies a room or effect on every machine.
+- **Import** reads that zip back and merges it into your library part by part. A scene the library
+  already holds is matched by its id and updated: the part edited later wins, a part with no time is
+  the oldest, and a tie goes to the file. Rooms and effects match by uid, so a room new from the file
+  arrives hidden after the local rooms, and a room deleted on one machine goes on the other unless
+  that one edited it later. Places match by uid and then by name, roads by their key, and the
+  background follows the same rule. A scene the library does not hold is added, and a name already
+  taken gets a "Name (2)" style rename. Where nothing matched, the new scenes land beside the
+  existing layout. Afterwards the world map opens on what came in and a report names what was added,
+  updated and kept, and each edit the file overwrote.
 - **A map file that has gone is named, both ways.** A scene whose video was moved or deleted
   still exports its record, so the export says which scenes went out without a map, and a
   restore says which came back without one rather than producing a scene that fails on opening.
@@ -561,10 +570,13 @@ between PCs.
   storage for it, the scenes still restore and the app says the text didn't. A zip written
   before this existed carries no module text and restores exactly as it always did.
 - **Cancel stops either one, after asking.** A stopped export deletes its half-written zip. A
-  stopped restore deletes the scenes and map files it had written, so the library is as it was.
+  stopped import puts the scenes it had matched back as they were and deletes the scenes and map
+  files it had added, so the library is as it was.
   The same Cancel stops a batch import after the map in hand, and a shrink before it imports.
 
-The zip reading and writing happens in the Electron shell, driven by `backup.js` on the page.
+The zip reading and writing happens in the Electron shell, driven by `backup.js` (export) and
+`transferImport.js` (import) on the page. `editStamps.js` times the parts at each save and
+`transferPlan.js` decides which copy of each part wins; both are pure and tested.
 `moduleText.js` owns the module-text format at both ends: `backup.js` asks it for a payload
 and hands one back, and never touches storage itself.
 

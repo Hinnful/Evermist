@@ -87,7 +87,7 @@ function combatMerge(cur, incoming, newId) {
   const renumber = rs => (rs || []).map(r => Object.assign({}, r, { id: nextId++ }));
   const inFights = Array.isArray(incoming.fights) && incoming.fights.length
     ? incoming.fights.map(f => Object.assign({}, f, { rows: f.id === incoming.openId ? incoming.rows : f.rows }))
-    : ((incoming.rows || []).length ? [{ id: newId(), name: 'Restored fight', rows: incoming.rows }] : []);
+    : ((incoming.rows || []).length ? [{ id: newId(), name: 'Imported fight', rows: incoming.rows }] : []);
   const have = new Set(cur.fights.map(f => f.id));
   const added = inFights.filter(f => !have.has(f.id)).map(f => ({ id: f.id, name: f.name, rows: renumber(f.rows) }));
   const st = Object.assign({}, cur, { blocks, fights: cur.fights.map(f => Object.assign({}, f)), rows: cur.rows });

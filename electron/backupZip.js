@@ -187,22 +187,27 @@ ipcMain.handle('read-backup-gallery', (_event, zipPath) => new Promise((resolve,
   });
 }));
 
-// assignments: [{newId, originalId, mapType, mapExt}]
-// Video maps are written to mapsDir/{newId}.ext; all others returned as ArrayBuffers.
+const MAP_EXT_RE = /^\.[a-z0-9]{1,5}$/;
+
+// assignments: [{newId, originalId, mapType, mapExt, want?, temp?}]. `want` says which of map, fog and thumb to
+// read (all when absent). Video maps are written to mapsDir/{newId}.ext, or with `temp` to {newId}.ext.import, which
+// settle-import-video renames into place once the scene's record is saved. All others return as ArrayBuffers.
 ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
   for (const a of assignments) {
     if (!isSafeId(a.newId))      throw new Error(`Invalid newId: ${a.newId}`);
-    if (!isSafeId(a.originalId)) throw new Error(`Invalid originalId: ${a.originalId}`);
+    // The original id only names zip entries, never a file on disk, so any text will do.
+    if (typeof a.originalId !== 'string' || !a.originalId || a.originalId.length > 200) throw new Error(`Invalid originalId: ${a.originalId}`);
+    if (!MAP_EXT_RE.test(a.mapExt)) throw new Error(`Invalid mapExt: ${a.mapExt}`);
   }
 
   // Map zip entry path → assignment role
   const pics = a => (Array.isArray(a.pictures) ? a.pictures : []).filter(n => PICTURE_NAME_RE.test(n));
+  const wants = a => ['map', 'fog', 'thumb'].filter(k => !a.want || a.want[k]);
   const pathMap = {};
   assignments.forEach(a => {
     const base = `scenes/${a.originalId}`;
-    pathMap[`${base}/map${a.mapExt}`] = { newId: a.newId, type: 'map', a };
-    pathMap[`${base}/fog.png`]        = { newId: a.newId, type: 'fog', a };
-    pathMap[`${base}/thumb.jpg`]      = { newId: a.newId, type: 'thumb', a };
+    const entry = { map: `${base}/map${a.mapExt}`, fog: `${base}/fog.png`, thumb: `${base}/thumb.jpg` };
+    for (const k of wants(a)) pathMap[entry[k]] = { newId: a.newId, type: k, a };
     for (const name of pics(a)) pathMap[`${base}/${name}`] = { newId: a.newId, type: 'pic:' + name, a };
   });
 
@@ -211,8 +216,8 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
   assignments.forEach(a => {
     results[a.newId] = { newId: a.newId, mapBuffer: null, fogBuffer: null, thumbBuffer: null,
                          // false until an entry turns up; a zip can carry none for a video.
-                         mapWritten: a.mapType !== 'video', pictures: {} };
-    pending[a.newId] = ['map', 'fog', 'thumb'].concat(pics(a).map(n => 'pic:' + n));
+                         mapWritten: a.mapType !== 'video' || !wants(a).includes('map'), pictures: {} };
+    pending[a.newId] = wants(a).concat(pics(a).map(n => 'pic:' + n));
   });
   let doneScenes = 0;
 
@@ -246,7 +251,7 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
           if (err2) { zipfile.close(); return reject(err2); }
 
           if (type === 'map' && a.mapType === 'video') {
-            const dest = path.join(mapsDir, newId + a.mapExt);
+            const dest = path.join(mapsDir, newId + a.mapExt + (a.temp ? '.import' : ''));
             const ws = fs.createWriteStream(dest);
             writing = ws;
             rs.pipe(ws);
@@ -288,6 +293,14 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
   }).finally(() => { stopZip = null; });
 
   return Object.values(results);
+});
+
+// An imported video written under a temporary name: moved over the old file, or deleted.
+ipcMain.handle('settle-import-video', async (_event, id, ext, keep) => {
+  if (!isSafeId(id) || !MAP_EXT_RE.test(ext)) throw new Error('Invalid video name');
+  const tmp = path.join(mapsDir, id + ext + '.import');
+  if (keep) await fs.promises.rename(tmp, path.join(mapsDir, id + ext));
+  else await fs.promises.unlink(tmp).catch(() => {});
 });
 
 module.exports = { register };

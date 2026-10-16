@@ -9,6 +9,8 @@ let _wpRecs = null;              // name → record: the live truth, edited in p
 const _wpIds = Object.create(null);
 let _wpNextId = WM_PLACE_ID0;
 let _wpUndo = [], _wpRedo = [];
+let _wpSeen = Object.create(null);   // uid → the parts as last saved, which a save compares against
+let _wpQuiet = false;                // an import keeps the times that arrive, so its writes stamp nothing
 
 const _wsOwn = (map, k) => Object.prototype.hasOwnProperty.call(map, k);
 
@@ -17,6 +19,7 @@ function _wpAdopt(name, rec) {
   rec.name = name;
   rec.id = _wpIds[name];
   rec.mode = 'place';
+  if (!rec.uid) rec.uid = 'legacy-' + name;
   _wpRecs[name] = rec;
 }
 
@@ -29,16 +32,34 @@ function _wpLoad() {
       for (const k of Object.keys(raw)) { const c = wmCleanPlace(raw[k]); if (c) _wpAdopt(k, c); }
     }
   } catch (_) { /* a corrupt entry is no places, and the default rectangles come back */ }
+  _wpMarkSeen();
   return _wpRecs;
 }
 
-// Only what a place needs to come back, never the runtime id and look.
-function _wpStrip(rec) {
+// A place's outline alone: what `shape` stamps.
+function _wpShape(rec) {
   const out = { vertices: rec.vertices.map(v => ({ x: Math.round(v.x), y: Math.round(v.y) })) };
   if (rec.cornerRadius > 0) out.cornerRadius = rec.cornerRadius;
   if (rec.cornerRadii && rec.cornerRadii.some(r => r != null)) out.cornerRadii = rec.cornerRadii;
   if (rec.handles && rec.handles.some(Boolean)) out.handles = rec.handles;
   return out;
+}
+
+// Only what a place needs to come back, never the runtime id and look.
+function _wpStrip(rec) {
+  const out = _wpShape(rec);
+  out.uid = rec.uid;
+  if (rec.edits && Object.keys(rec.edits).length) out.edits = rec.edits;
+  return out;
+}
+
+function _wpParts(rec, notes) {
+  return { shape: esCanon(_wpShape(rec)), name: rec.name, notes: _wsOwn(notes, rec.name) ? notes[rec.name] : '' };
+}
+
+function _wpMarkSeen() {
+  const notes = notesPlacesAll();
+  _wpSeen = esSeen(Object.keys(_wpRecs).map(k => _wpRecs[k]), r => _wpParts(r, notes));
 }
 
 // name → record, the LIVE map: the room editing code writes into these objects.
@@ -55,13 +76,16 @@ function worldPlacesExport() {
 }
 
 function worldPlacesSave() {
+  if (!_wpQuiet) { const notes = notesPlacesAll(); esStampRecords(worldPlaceRecords(), _wpSeen, r => _wpParts(r, notes), Date.now()); }
   try { localStorage.setItem(WM_SHAPES_KEY, JSON.stringify(worldPlacesExport())); } catch (_) { /* full or blocked */ }
 }
 
 // A record, or bare vertices, kept under `name`.
 function worldPlaceSet(name, rec) {
-  _wpLoad();
-  _wpAdopt(name, wmCleanPlace(rec) || { vertices: rec.vertices || rec });
+  const m = _wpLoad();
+  const c = wmCleanPlace(rec) || { vertices: rec.vertices || rec };
+  if (!c.uid) c.uid = _wsOwn(m, name) ? m[name].uid : 'pl' + esRandomUid();
+  _wpAdopt(name, c);
   worldPlacesSave();
 }
 
@@ -71,6 +95,17 @@ function worldShapeDelete(name) {
   delete m[name];
   worldPlacesSave();
   worldRoadsOpenPlace(name);
+}
+
+// A rename that carries the place's notes along: only the name is stamped, since the notes were not edited.
+// An import renames through here too and keeps the times it arrived with.
+function worldShapeRenameWithNotes(from, to, moveNotes) {
+  const was = _wpQuiet;
+  _wpQuiet = true;
+  try { moveNotes(); worldShapeRename(from, to); } finally { _wpQuiet = was; }
+  const rec = worldPlaceByName(to);
+  if (rec && !was) rec.edits = { ...rec.edits, name: Date.now() };
+  if (!was) { _wpMarkSeen(); worldPlacesSave(); }
 }
 
 // A rename onto a place that exists keeps that place; the other one goes.
@@ -83,19 +118,34 @@ function worldShapeRename(from, to) {
   worldRoadsRenamePlace(from, to);
 }
 
-// A backup's places: the ones the DM does not have yet, moved with the scenes they came with. Answers the
-// names that came back as the backup's own.
-function worldPlacesMerge(incoming, dx, dy) {
-  const m = _wpLoad(), adopted = Object.create(null);
-  for (const name of Object.keys(incoming)) {
-    if (_wsOwn(m, name)) continue;
-    const c = incoming[name];
-    c.vertices = c.vertices.map(v => ({ x: v.x + dx, y: v.y + dy }));
-    _wpAdopt(name, c);
-    adopted[name] = true;
-  }
-  worldPlacesSave();
-  return adopted;
+// An import's places, from tpMergePlaces: new ones are added moved by (dx, dy), matched ones take the parts
+// the plan says, and every place keeps the times that arrived. A rename goes through the usual path, so the
+// scenes in the place and its notes follow; onto a name another place wears it is skipped.
+function worldPlacesImport(plan, dx, dy) {
+  const m = _wpLoad();
+  _wpQuiet = true;
+  try {
+    for (const p of plan.add) {
+      const c = wmCleanPlace(p.rec);
+      c.vertices = c.vertices.map(v => ({ x: v.x + dx, y: v.y + dy }));
+      c.uid = tpPlaceUid(p.rec, p.name);
+      _wpAdopt(p.name, c);
+      if (p.note) notesPlaceSet(p.name, p.note);
+    }
+    for (const u of plan.update) {
+      const rec = m[u.name];
+      if (!rec) continue;
+      if (u.shape) {
+        const c = wmCleanPlace(u.shape);
+        for (const k of ['vertices', 'cornerRadius', 'cornerRadii', 'handles']) { if (c[k] === undefined) delete rec[k]; else rec[k] = c[k]; }
+      }
+      if (u.note !== undefined) notesPlaceSet(u.name, u.note);
+      rec.edits = u.edits;
+      if (u.rename && !_wsOwn(m, u.rename)) renameGroup(u.name, u.rename);
+    }
+    _wpMarkSeen();
+    worldPlacesSave();
+  } finally { _wpQuiet = false; }
 }
 
 const _wsGroup = s => sanitizeGroupName(s.group);

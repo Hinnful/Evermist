@@ -162,15 +162,15 @@ async function switchScene(id, _isRecovery = false) {
 
   // normalizeRoomFields backfills `name` on scenes saved before rooms had names (roomPanel.js),
   // copyShapeRings spreads additively, and decodeShapeFromSave gives a held room its mode back.
-  polygons      = normalizeRoomFields(scene.polygons || [], id => t('Room {n}', { n: id }))
-                    .map(p => decodeShapeFromSave(copyShapeRings(p)));
+  polygons      = esWithUids(normalizeRoomFields(scene.polygons || [], id => t('Room {n}', { n: id }))
+                    .map(p => decodeShapeFromSave(copyShapeRings(p))));
   nextPolygonId = scene.nextPolygonId || 1;
   pictureBlobs = picturesReferenced(polygons, scene.pictureBlobs || {});
   clearShapeSelection();
   activePolygon = null;
   // Same additive spread the rooms above take: a field whitelist drops cornerRadii from every
   // saved effect on load. A scene predating effects carries none, clearing the outgoing scene's.
-  setEffects(scene.effects || []);
+  setEffects(esWithUids(scene.effects || []));
   nextEffectId = scene.nextEffectId || 1;
   if (scene.gridConfig) applyGridConfig(scene.gridConfig);
 
@@ -182,6 +182,7 @@ async function switchScene(id, _isRecovery = false) {
   if (!isPlayer) restoreSceneFogSettings(scene); // fog.js
 
   clearUndo();
+  fogEditedSinceSave = false;
   playerMapSent = false;
   currentScene = scene;
   loadSceneLights(scene);   // after currentScene: the plan's lights come from it

@@ -59,7 +59,25 @@ const sceneStore = (() => {
     });
   }
 
-  async function saveScene(scene) {
+  // ⚠ STAMPS BY DIFF against the stored record, in the same transaction, so every save path times its
+  // own edits. An import writes with putScene, which keeps the times that arrive.
+  function saveScene(scene, opts) {
+    const fogEdited = !!(opts && opts.fogEdited);
+    return new Promise((resolve, reject) => {
+      const { tx, store } = getTx('readwrite');
+      const req = store.get(scene.id);
+      req.onerror = e => reject(e.target.error);
+      req.onsuccess = e => {
+        const stored = e.target.result;
+        scene.edits = esStamp(stored ? esSnapshot(stored) : null, scene, Date.now(), fogEdited);
+        store.put(scene);
+      };
+      tx.oncomplete = () => resolve();
+      tx.onabort    = e => reject(e.target.error);
+    });
+  }
+
+  async function putScene(scene) {
     const { store } = getTx('readwrite');
     await idbWrite(store.put(scene));
   }
@@ -84,7 +102,10 @@ const sceneStore = (() => {
       req.onsuccess = e => {
         const rec = e.target.result;
         if (!rec) return;
-        if (mutate(rec) !== false) store.put(rec);
+        const before = { scene: esSceneParts(rec), edits: rec.edits };
+        if (mutate(rec) === false) return;
+        rec.edits = esStampScene(before, rec, Date.now());
+        store.put(rec);
       };
       tx.oncomplete = () => resolve();
       tx.onabort    = e => reject(e.target.error);
@@ -114,5 +135,5 @@ const sceneStore = (() => {
     });
   }
 
-  return { initSceneDB, saveScene, updateScene, loadScene, deleteScene, listScenes };
+  return { initSceneDB, saveScene, putScene, updateScene, loadScene, deleteScene, listScenes };
 })();

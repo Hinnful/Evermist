@@ -505,7 +505,7 @@ function mtLoadedSourceName() {
 function mtRestorePayload(json) {
   const got = mtDeserialize(json);
   if (!got || !got.entries.length) {
-    return { ok: false, error: 'The module text in that backup could not be read.' };
+    return { ok: false, error: 'The module text in that file could not be read.' };
   }
   const st = mtStore(got.entries, got.sourceName || 'Module text');
   if (!st.ok) return st;

@@ -518,7 +518,7 @@ module.exports = async function fightTableFeature(rig) {
     out.ghoul = named('Ghoul').length;
     out.fights = __cfNames();
     out.openRows = cbState.rows.map(r => r.name);
-    const restored = cbState.fights.find(f => f.name === 'Restored fight');
+    const restored = cbState.fights.find(f => f.name === 'Imported fight');
     out.restoredRows = restored ? combatFightRows(cbState, restored).map(r => r.name) : [];
     return out;
   })()`);
@@ -529,7 +529,7 @@ module.exports = async function fightTableFeature(rig) {
   // RED ON: cbMergePayload overwriting blocks the DM has (combatTracker.js) — 2026-09-24
   rig.check(merged.dex === '14', 'the backup overwrote the Skeleton entry the DM already had: ' + merged.dex);
   rig.check(merged.ghoul === 1, "the backup's Ghoul block was not added once");
-  rig.check(JSON.stringify(merged.fights) === JSON.stringify(['Fight', 'Strahd', 'Restored fight']) && merged.openRows.includes('Wight'),
+  rig.check(JSON.stringify(merged.fights) === JSON.stringify(['Fight', 'Strahd', 'Imported fight']) && merged.openRows.includes('Wight'),
             'a backup from before the list did not arrive as one more fight beside the open one: ' + JSON.stringify(merged));
   rig.check(JSON.stringify(merged.restoredRows) === '["Ghoul 1"]', 'the restored fight does not hold the backup\'s rows: ' + JSON.stringify(merged.restoredRows));
 
@@ -618,7 +618,7 @@ module.exports = async function fightTableFeature(rig) {
   rig.check(back.rows.includes('Wight|- 9 - 12|enemy'), 'the open fight did not come back after a restart: ' + JSON.stringify(back.rows));
   rig.check(back.dex === '14', 'the stat block did not come back after a restart: DEX is ' + back.dex);
   // RED ON: the evermist.combatFights read gated off in _cbLoad (combatTracker.js) — 2026-09-26
-  rig.check(JSON.stringify(back.fights) === JSON.stringify(['Fight', 'Strahd', 'Restored fight']) && JSON.stringify(back.strahd) === '["Strahd"]',
+  rig.check(JSON.stringify(back.fights) === JSON.stringify(['Fight', 'Strahd', 'Imported fight']) && JSON.stringify(back.strahd) === '["Strahd"]',
             'the list of fights did not come back whole after a restart: ' + JSON.stringify(back));
   // RED ON: the statW read in initCombatStatBlock gated off with false && (combatStatBlock.js) — 2026-09-29
   const popBack = await dm.evaluate(`(() => {

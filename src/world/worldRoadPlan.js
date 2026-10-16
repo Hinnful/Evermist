@@ -60,6 +60,11 @@ function wrCleanRoad(raw) {
   if (_wrNum(raw.cornerRadius) && raw.cornerRadius > 0) out.cornerRadius = raw.cornerRadius;
   if (Array.isArray(raw.cornerRadii) && raw.cornerRadii.length === vertices.length &&
       raw.cornerRadii.every(r => r === null || (_wrNum(r) && r >= 0)) && raw.cornerRadii.some(r => r !== null)) out.cornerRadii = raw.cornerRadii.slice();
+  if (raw.edits && typeof raw.edits === 'object') {
+    const edits = {};
+    for (const k of ['shape', 'text']) if (_wrNum(raw.edits[k]) && raw.edits[k] > 0) edits[k] = raw.edits[k];
+    if (Object.keys(edits).length) out.edits = edits;
+  }
   const seen = Object.create(null);
   for (const s of Array.isArray(raw.scenes) ? raw.scenes : []) {
     if (!s || typeof s.id !== 'string' || !s.id || !_wrNum(s.t) || seen[s.id]) continue;

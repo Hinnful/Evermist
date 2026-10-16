@@ -73,6 +73,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Resolves null when the zip carries no gallery, which is every backup written before it shipped.
   readBackupGallery: (zipPath) => ipcRenderer.invoke('read-backup-gallery', zipPath),
   extractBackupScenes: (zipPath, assignments) => ipcRenderer.invoke('extract-backup-scenes', zipPath, assignments),
+  settleImportVideo: (id, ext, keep) => ipcRenderer.invoke('settle-import-video', id, ext, keep),
   cancelBackup: () => ipcRenderer.invoke('cancel-backup'),
   onBackupProgress: (callback) => {
     const handler = (_event, data) => callback(data);

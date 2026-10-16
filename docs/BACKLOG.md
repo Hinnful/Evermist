@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 12 open items; IDs run to 181."
+description: "Open work only. 12 open items; IDs run to 182."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.2.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.5.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
 shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -91,19 +91,6 @@ epic. The same path must not slow an experienced DM or hide the deeper features.
 **Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later.
 **Out of this epic:** what a DM sees before installing. That is distribution, and it comes later.
 **First use · DM + Player**
-
-### 161. The gallery: one app-wide store of images
-Filed 2026-10-08, rewritten 2026-10-09, moved into the epic 2026-10-13: the first new DM asked how to show a picture
-over the map, and today a picture needs a room. A window of every image the DM keeps, still or animated (GIF and WebP
-included), tied to no map, place, scene or room. It answers a monster that chases the party through several scenes:
-its picture goes to the TV from the gallery, wherever the party is, without being placed in every room it passes.
-- **The DM adds, names, finds and removes pictures there**, and drops a file on the window to add one. Any picture goes
-  to the TV from the gallery. The TV's picture mode stays.
-- **Room pictures go.** The room's picture strip and its "Add a picture" button are removed, and the pictures rooms
-  hold today move into the gallery in a one-time migration. A backup carries the gallery once.
-- Open for /spec: the window's look and where it opens from; whether removing a picture asks first; `/rollback` must
-  leave the previous release able to open a scene whose room pictures moved out.
-**First use · Campaign · DM only**
 
 ### 178. My seat reads as turning the map
 Filed 2026-10-13. My seat turns the DM window only, for a DM sitting at a right angle to the TV, which is most DMs.
@@ -185,7 +172,10 @@ whether the flag rides a backup. The TV never shows it.
 
 # BUGS
 
-None open.
+### 182. Escape leaves a Gallery picture up with Two maps on and an empty column
+Filed 2026-10-16. With Two maps on and one column still empty, the world map is open and keeps Escape, so a Gallery
+picture on the TV stays up. A second click on the picture in the Gallery still takes it down.
+**Bug · DM only**
 
 ---
 

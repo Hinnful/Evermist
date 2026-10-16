@@ -7,6 +7,8 @@ const WR_KEY = 'evermist.worldRoads';
 let _wrRecs = null;              // uid → record: the live truth, edited in place by the room code
 const _wrIds = Object.create(null);
 let _wrNextId = WR_ID0;
+let _wrSeen = Object.create(null);   // uid → the parts as last saved, which a save compares against
+let _wrQuiet = false;                // an import keeps the times that arrive, so its writes stamp nothing
 
 function _wrAdopt(uid, rec) {
   if (!_wrOwn(_wrIds, uid)) _wrIds[uid] = _wrNextId++;
@@ -26,11 +28,29 @@ function _wrLoad() {
       for (const k of Object.keys(raw)) { const c = wrCleanRoad(raw[k]); if (c) _wrAdopt(k, c); }
     }
   } catch (_) { /* a corrupt entry is no roads */ }
+  _wrMarkSeen();
   return _wrRecs;
+}
+
+function _wrParts(rec, notes) {
+  const shape = { ..._wrShape(rec) };
+  delete shape.name;
+  return { shape: esCanon(shape), text: esCanon([rec.name, _wrOwn(notes, rec.uid) ? notes[rec.uid] : '']) };
+}
+
+function _wrMarkSeen() {
+  const notes = notesRoadsAll();
+  _wrSeen = esSeen(Object.keys(_wrRecs).map(k => _wrRecs[k]), r => _wrParts(r, notes));
 }
 
 // Only what a road needs to come back, never the runtime id and look.
 function _wrStrip(rec) {
+  const out = _wrShape(rec);
+  if (rec.edits && Object.keys(rec.edits).length) out.edits = rec.edits;
+  return out;
+}
+
+function _wrShape(rec) {
   const r1 = n => Math.round(n * 10) / 10;
   const out = {
     name: rec.name,
@@ -54,7 +74,9 @@ function worldRoadsExport() {
   return out;
 }
 
+// The notes writer calls this too: a road's notes live apart from its record.
 function worldRoadsSave() {
+  if (!_wrQuiet && _wrRecs) { const notes = notesRoadsAll(); esStampRecords(worldRoadRecords(), _wrSeen, r => _wrParts(r, notes), Date.now()); }
   try { localStorage.setItem(WR_KEY, JSON.stringify(worldRoadsExport())); } catch (_) { /* full or blocked */ }
 }
 
@@ -227,16 +249,30 @@ function worldRoadsSceneGone(ids) {
   worldRoadsSave();
 }
 
-// A backup's roads, moved with the restored scenes. `sceneMap` is { backupId: newId }, `places` the names
-// of the backup's own places that came back. A road whose key the DM already uses takes a new one.
-// Answers { backupKey: key } for the notes that follow.
-function worldRoadsMerge(incoming, sceneMap, places, dx, dy) {
-  const m = _wrLoad(), keys = Object.create(null);
-  for (const old of Object.keys(incoming)) {
-    const uid = _wrOwn(m, old) ? wrNewUid(m) : old;
-    _wrAdopt(uid, wrRemap(incoming[old], sceneMap, places, dx, dy));
-    keys[old] = uid;
-  }
-  worldRoadsSave();
-  return keys;
+// An import's roads, from tpMergeRoads: `sceneMap` is { id: id } for the scenes an end may keep, `places` the names
+// of the places an end may keep. A new road is moved by (dx, dy); a matched one takes the parts the plan says
+// and every road keeps the times that arrived.
+function worldRoadsImport(plan, sceneMap, places, dx, dy) {
+  const m = _wrLoad();
+  _wrQuiet = true;
+  try {
+    for (const r of plan.add) {
+      const rec = wrRemap(r.rec, sceneMap, places, dx, dy);
+      rec.edits = r.rec.edits;
+      _wrAdopt(r.key, rec);
+      if (r.note) notesRoadSet(r.key, r.note);
+    }
+    for (const u of plan.update) {
+      const rec = m[u.key];
+      if (!rec) continue;
+      if (u.shape) {
+        const c = wrRemap(u.shape, sceneMap, places, 0, 0);
+        for (const k of ['vertices', 'ends', 'scenes', 'handles', 'cornerRadius', 'cornerRadii']) { if (c[k] === undefined) delete rec[k]; else rec[k] = c[k]; }
+      }
+      if (u.text) { rec.name = u.text.name; notesRoadSet(u.key, u.text.note); }
+      rec.edits = u.edits;
+    }
+    _wrMarkSeen();
+    worldRoadsSave();
+  } finally { _wrQuiet = false; }
 }

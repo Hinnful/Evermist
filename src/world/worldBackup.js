@@ -1,7 +1,7 @@
 'use strict';
-// worldBackup.js — Export and Restore in Settings' World map section. Export saves the scenes picked on
-// the map, or everything when none is picked, in the library's own backup (backup.js); Restore takes a
-// .zip from a picker, or dropped on the world map.
+// worldBackup.js — Export and Import in Settings' World map section. Export saves the scenes picked on
+// the map, or everything when none is picked, to a .zip (backup.js); Import takes a .zip from a picker,
+// or dropped on the world map (transferImport.js).
 
 function _wbkIds() { return worldMapOpen ? worldMapPicked() : []; }
 
@@ -18,8 +18,8 @@ function worldBackupSync() {
   if (c.places) parts.push(t.plural(c.places, '{n} place', '{n} places'));
   if (c.roads) parts.push(t.plural(c.roads, '{n} road', '{n} roads'));
   line.textContent = allScenes.length
-    ? t('A backup would hold {what}, with their notes.', { what: parts.join(', ') })
-    : t('Nothing to back up yet.');
+    ? t('An export would hold {what}, with their notes.', { what: parts.join(', ') })
+    : t('Nothing to export yet.');
 }
 
 // `ids` is a pick, or empty for the whole world. A pick that is every scene is the whole world too.
@@ -28,8 +28,8 @@ function worldBackupExport(ids) {
   doExport(pick, { partial: pick.length < all.length });
 }
 
-// A dropped file counts only when it could be a backup: drag events do not show a name, so an unnamed
-// type passes and the restore itself refuses what is not a zip.
+// A dropped file counts only when it could be an export: drag events do not show a name, so an unnamed
+// type passes and the import itself refuses what is not a zip.
 function _wbkMayBeZip(e) {
   const items = Array.from((e.dataTransfer && e.dataTransfer.items) || []);
   return items.length === 1 && items[0].kind === 'file' && (!items[0].type || /zip/.test(items[0].type));
@@ -44,7 +44,7 @@ function worldBackupInit() {
 
   const veil = document.createElement('div');
   veil.id = 'wm-dropveil';
-  veil.textContent = t('Drop to restore this backup');
+  veil.textContent = t('Drop to import this file');
   _wm.appendChild(veil);
   _wm.addEventListener('dragover', e => {
     if (!_wbkMayBeZip(e)) return;

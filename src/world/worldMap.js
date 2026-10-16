@@ -283,9 +283,9 @@ function _wmDrawPre() {
   c.restore();
 }
 
-// With two maps on nothing sizes the overlay (its container is hidden), so it is sized to the window here.
+// The overlay is the window's size and unturned (worldMap.css), whatever My seat does to the scene's canvases;
+// with two maps on nothing else sizes it either, its container being hidden.
 function _wmFitOverlay() {
-  if (!panesActive) return;
   const w = container.clientWidth, h = container.clientHeight;
   if (cursorCanvas.width !== w || cursorCanvas.height !== h) { cursorCanvas.width = w; cursorCanvas.height = h; }
 }
@@ -436,7 +436,8 @@ function worldMapFlyToPlace(name) {
 
 // ─── Opening and closing ─────────────────────────────────────────────────────
 
-function worldMapShow() {
+// `cam` opens it framed there, with no flight back from the open scene.
+function worldMapShow(cam) {
   if (worldMapOpen || !_wm) return;
   worldMapOpen = true;
   worldMapSel = { sceneId: null, place: '' };
@@ -447,8 +448,8 @@ function worldMapShow() {
   _wm.hidden = false;
   worldEnsurePositions();
   worldReconcile();
-  const open = _wmReturnScene();
-  _wmCam = open ? { cx: open.worldPos.x, cy: open.worldPos.y, z: wmFillZoom(_wmView()) } : _wmOverview();
+  const open = cam ? null : _wmReturnScene();
+  _wmCam = cam || (open ? { cx: open.worldPos.x, cy: open.worldPos.y, z: wmFillZoom(_wmView()) } : _wmOverview());
   _wm.classList.add('notrans');
   worldMapRefresh();
   _wmApplyCam();
@@ -458,6 +459,16 @@ function worldMapShow() {
   dockRefreshRail();
   dockHoldForWorld(true);
   if (open) _wmFly(_wmOverview(), 1100);
+}
+
+// The map opens on these scenes, framed and picked: where an import's report points.
+function worldMapShowScenes(ids) {
+  const at = allScenes.filter(s => ids.includes(s.id) && wmCleanPos(s.worldPos));
+  if (!_wm) return;
+  if (!at.length) { worldMapShow(); return; }
+  const cam = wmOverviewCamera(at.map(s => s.worldPos), _wmView());
+  if (worldMapOpen) _wmFly(cam, 650); else worldMapShow(cam);
+  worldMapPickSet(at.map(s => s.id), at[0].id);
 }
 
 function worldMapHide() {
@@ -471,6 +482,7 @@ function worldMapHide() {
   _wmReturnTools();
   _wmRestoreSelection();
   document.body.classList.remove('world');
+  if (!panesActive) syncSize();   // the overlay was sized to the window; the scene's turned layout comes back
   _wm.classList.remove('shown');
   setTimeout(() => { if (!worldMapOpen) _wm.hidden = true; }, 260);
   dockRefreshRail();

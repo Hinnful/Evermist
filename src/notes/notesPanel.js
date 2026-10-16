@@ -42,7 +42,9 @@ function notesPlacesAll() {
 }
 
 function notesPlacesWrite(map) {
-  try { localStorage.setItem(NOTES_PLACES_KEY, JSON.stringify(map)); return true; } catch (_) { return false; }
+  try { localStorage.setItem(NOTES_PLACES_KEY, JSON.stringify(map)); } catch (_) { return false; }
+  if (typeof worldPlacesSave === 'function') worldPlacesSave();
+  return true;
 }
 
 function notesPlaceGet(name) {
@@ -65,7 +67,9 @@ function notesRoadsAll() {
 }
 
 function notesRoadsWrite(map) {
-  try { localStorage.setItem(NOTES_ROADS_KEY, JSON.stringify(map)); return true; } catch (_) { return false; }
+  try { localStorage.setItem(NOTES_ROADS_KEY, JSON.stringify(map)); } catch (_) { return false; }
+  if (typeof worldRoadsSave === 'function') worldRoadsSave();
+  return true;
 }
 
 function notesRoadGet(uid) {

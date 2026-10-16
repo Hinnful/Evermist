@@ -52,6 +52,7 @@ function _undoSnapshot() {
 function pushUndo() {
   if (worldMapOpen) { worldUndoPush(); return; }
   if (!baseFogCanvas) return;
+  fogEditedSinceSave = true;
   undoStack.push(_undoSnapshot());
   redoStack = [];
   evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES);
@@ -102,6 +103,7 @@ function _undoApplySettings(s) {
 
 function restoreState(snapshot) {
   if (snapshot.settings) { _undoApplySettings(snapshot.settings); return; }
+  fogEditedSinceSave = true;
   baseFogCanvas = cloneCanvas(snapshot.baseFog);
   baseFogCtx = baseFogCanvas.getContext('2d');
   polygons = snapshot.polygons.map(copyShapeRings);

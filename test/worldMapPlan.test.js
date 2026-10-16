@@ -357,3 +357,18 @@ describe('how far the map reaches', () => {
     assert.equal(W.wmClampCamera({ cx: 2000, cy: 1000, z: 0.01 }, view, ext).z, 0.3);
   });
 });
+
+describe('wmCleanPlace: the id and times a merge matches by', () => {
+  const sq = [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 9 }];
+  it('keeps the uid and the part times, and nothing else a file might carry', () => {
+    const c = W.wmCleanPlace({ vertices: sq, uid: 'p1', edits: { shape: 5, name: 7, notes: 0, junk: 9 }, extra: 1 });
+    assert.equal(c.uid, 'p1');
+    assert.deepEqual(c.edits, { shape: 5, name: 7 });
+    assert.equal(c.extra, undefined);
+  });
+  it('drops a uid that is not text and times that are not numbers', () => {
+    const c = W.wmCleanPlace({ vertices: sq, uid: 4, edits: { shape: 'x', name: -2 } });
+    assert.equal(c.uid, undefined);
+    assert.equal(c.edits, undefined);
+  });
+});

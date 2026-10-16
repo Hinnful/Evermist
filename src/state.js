@@ -196,6 +196,7 @@ let lastScreenX = null, lastScreenY = null;
 // IS fog compositing precedence.
 let polygons = [];
 let nextPolygonId = 1;
+let fogEditedSinceSave = false;   // set by every fog edit's undo step; doAutoSave stamps the fog picture from it
 let showRoomLabels = true;   // roomPanel.js drawRoomLabels, toggled with L
 
 // Door size, as a percent of one grid cell. Global, never per door: a doorway is one square almost

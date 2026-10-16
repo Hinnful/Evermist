@@ -516,10 +516,10 @@
               <span id="wm-bg-hint" class="cp-hint" hidden>Drag the empty ground on the world map.</span>
             </div>
           </div>
-          <div class="dk-blk"><span class="dk-sub">Backup</span>
+          <div class="dk-blk"><span class="dk-sub">Export / Import</span>
             <div class="cp-btnrow">
               <button id="wm-bk-export" class="cp-btn" title="Shift-click scenes on the world map, or Shift-drag a box around them, to export only those.">Export everything</button>
-              <button id="wm-bk-restore" class="cp-btn" title="Pick a backup .zip, or drop one on the world map.">Restore</button>
+              <button id="wm-bk-restore" class="cp-btn" title="Pick an export .zip, or drop one on the world map.">Import</button>
             </div>
             <input type="file" id="wm-bk-file" accept=".zip,application/zip" hidden>
             <span id="wm-bk-line" class="cp-hint"></span>
@@ -932,6 +932,7 @@
 <script src="src/scenes/mapConvert.js"></script>
 <script src="src/undo.js"></script>
 <script src="src/scenes/sceneGroups.js"></script>
+<script src="src/scenes/editStamps.js"></script>
 <script src="src/scenes/sceneStore.js"></script>
 <script src="src/scenes/scenes.js"></script>
 <script src="src/scenes/sceneList.js"></script>
@@ -945,7 +946,9 @@
 <script src="src/player/panes.js"></script>
 <script src="src/player/twoMaps.js"></script>
 <script src="src/player/stageWindow.js"></script>
+<script src="src/scenes/transferPlan.js"></script>
 <script src="src/scenes/backup.js"></script>
+<script src="src/scenes/transferImport.js"></script>
 <script src="src/render/grid.js"></script>
 <script src="src/render/effectMaterials.js"></script>
 <script src="src/render/effectShader.js"></script>

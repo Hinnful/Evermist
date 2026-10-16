@@ -920,6 +920,7 @@ scope window. A backup of picked scenes carries the places that hold them, and a
 so a scene keeps the road it stood on; a road end that points at something left out comes back open. The campaign note
 stays out of a partial backup. Restore is a file picker, or a .zip dropped on the world map, and it is the library's
 own restore, which merges and never replaces. A preview window before the merge was prototyped and not built.
+**Reversed by** "Export and Import merge scene by scene, and the newer edit wins": the buttons are Export and Import, and an import updates what it matches.
 
 ### Settings is three sections in Scene control's own parts · `SETTLED` (2026-10-09)
 Settings was five stacked headers with a sub-header inside World map and a header over a single switch. It is now
@@ -939,6 +940,7 @@ not kept across a launch, so a launch is always one map. The rig and the stress 
 own screen. A backup of everything always carries the background image (a tick to leave it out was built and removed), and a
 restore adopts it only when the DM has none.
 **The launch half is reversed by** "The app starts on the scene it was left on". The two-maps half stands.
+**The backdrop half is reversed by** "Export and Import merge scene by scene, and the newer edit wins": every export carries it, and an import takes the later one.
 
 ### The app starts on the scene it was left on, not on the world map · `SETTLED` (2026-10-09)
 This reverses the launch half of "With two maps on, the world map fills columns". The app opens on the last scene, as it
@@ -1023,3 +1025,16 @@ fog clouds, the size field, the material button and the mode switch all wear it.
 ### The first-map toast is dropped · `SETTLED` (2026-10-16)
 The line over the first fully hidden map is gone, and its saved flag is left unread. The row of clouds and the two eyes put
 the fix where the DM is looking; the players' view (hold H, the minimap's TV button) stays.
+
+### Export and Import merge scene by scene, and the newer edit wins · `SETTLED` (2026-10-16)
+A second trip between two machines copied every scene and lost what the table had revealed. An import matches a scene by its
+id, a room and an effect by a stored `uid`, a place by `uid` then name, a road by its key. Each part carries the time of its
+last change, stamped by diff at save: a scene's name, grid, map, fog picture, notes, fog settings and lights; a room's shape,
+notes and revealed state; an effect; a place's shape, name and notes; a road's shape and text; the backdrop. The later part
+wins, a part with no time is oldest, a tie goes to the file, and a time past the import's moment counts as that moment. A
+room or effect deleted on one machine goes on the other unless that one edited it later; a whole scene or place deleted does
+not travel. A file from 4.5 matches by scene id and `legacy-<id>`. The backdrop rides with every export, a picked one
+included. A stopped import puts matched scenes back and removes only what it created. The world map then opens on what came
+in, with a report. Replace-everything was left out, and copies the laptop already holds stay unlinked: one clean start.
+**Reverses** the Restore that "merges and never replaces", "a restore adopts it only when the DM has none", and a picked
+export leaving the backdrop out.
