@@ -2,7 +2,7 @@
 // pdfText.js — a campaign PDF turned into plain text in a utilityProcess, so a malformed file
 // cannot take the app down with it.
 
-const { ipcMain, app, utilityProcess } = require('electron');
+const { ipcMain, utilityProcess } = require('electron');
 const path = require('path');
 
 function register(ctx) {

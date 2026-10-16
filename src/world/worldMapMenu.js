@@ -23,7 +23,7 @@ function _wmSceneRows(id) {
   if (worldRoadOfScene(id)) rows.push({ label: 'Take off the road', run: () => worldMapRoadLeave(id) });
   rows.push({ label: 'Export this scene', run: () => worldBackupExport([id]) });
   rows.push({ sep: true });
-  rows.push({ label: 'Delete scene', danger: true, off: _wmIsOpen(id), run: () => _wmDeletePicked([id]) });
+  rows.push({ label: 'Delete scene', danger: true, run: () => _wmDeletePicked([id]) });
   return rows;
 }
 

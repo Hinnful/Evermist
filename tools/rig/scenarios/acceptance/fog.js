@@ -192,7 +192,7 @@ module.exports = async function fogFeature(rig) {
   const modes = () => dm.evaluate('polygons.map(p => p.mode)');
 
   const beforeReveal = await undoDepth();
-  await dm.evaluate('document.getElementById("btn-clear-fog").click(); 0');
+  await dm.evaluate('document.getElementById("btn-clear-fog").click(); document.getElementById("cd-ok").click(); 0');
   await lib.settle(dm, DM_SAMPLE + '(' + UNTOUCHED.x + ',' + UNTOUCHED.y + ') === 0', 15000);
   rig.check(await dmFog(UNTOUCHED.x, UNTOUCHED.y) === 0,
             'Reveal All left fog on the map: alpha ' + await dmFog(UNTOUCHED.x, UNTOUCHED.y));

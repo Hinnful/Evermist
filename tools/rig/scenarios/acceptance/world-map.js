@@ -410,14 +410,14 @@ module.exports = async function worldMapFeature(rig) {
     const n0 = allScenes.length;
     __wmClick(__wmCard('Attic').firstChild); __rigKey('Delete'); const n1 = allScenes.length;
     document.querySelector('#scene-undo-toast .undo-btn').click(); worldMapRefresh();
-    __wmClick(__wmCard(currentScene.name).firstChild); __rigKey('Backspace'); const n2 = allScenes.length;
+    const n2 = allScenes.length;   // Delete on the open scene is delete-open-scene.js
     const real = worldMapOpenScene; let got = null; worldMapOpenScene = i => { got = i; };
     __wmClick(__wmCard('Attic').firstChild); __rigKey('Enter'); worldMapOpenScene = real;
     return { n0, n1, n2, n3: allScenes.length, enter: got === allScenes.find(s => s.name === 'Attic').id };
   })()`);
   // RED ON: the Delete and Enter branches for picked scenes removed from worldMapKeys (worldMap.js) — 2026-10-09
   rig.check(keys.n1 === keys.n0 - 1 && keys.n2 === keys.n0 && keys.n3 === keys.n0 && keys.enter,
-            'Delete on a picked scene, Delete held off the open scene, or Enter opening the pick failed: ' + JSON.stringify(keys));
+            'Delete on a picked scene, its undo, or Enter opening the pick failed: ' + JSON.stringify(keys));
 
   const legend = await dm.evaluate(`(() => { worldMapSelect({ sceneId: null, place: '' }); __rigKey('Slash', { shiftKey: true }); const up = legendVisible;
     __rigKey('Escape'); return { up, down: !legendVisible, open: worldMapOpen }; })()`);
@@ -603,8 +603,8 @@ module.exports = async function worldMapFeature(rig) {
   const open = await dm.evaluate('currentScene.name');
   await rclick('__wmCard(' + JSON.stringify(open) + ').firstChild');
   const openRows = await rows();
-  // RED ON: the open-scene off removed from the Delete scene row in _wmSceneRows (worldMapMenu.js) — 2026-10-09
-  rig.check(openRows[openRows.length - 1] === 'Delete scene (off)', 'the open scene can be deleted from the map, which would switch the TV: ' + JSON.stringify(openRows));
+  // RED ON: `off: _wmIsOpen(id)` put back on the Delete scene row in _wmSceneRows (worldMapMenu.js) - 2026-10-16
+  rig.check(openRows[openRows.length - 1] === 'Delete scene', 'the open scene cannot be deleted from the map: ' + JSON.stringify(openRows));
   await dm.evaluate('__rigKey("Escape"); 0');
   rig.check(await dm.evaluate('worldMapOpen && !document.querySelector(".wm-menu")'), 'Esc did not close the menu first, or left the map');
   await rclick('__wmHead("The Watcherhouse")');

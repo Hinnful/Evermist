@@ -112,6 +112,7 @@ module.exports = async function sceneControlFeature(rig) {
   await click('btn-fill-fog');
   rig.check(await dm.evaluate('polygons[0].mode') === 'shroud', 'D: Hide all did not reach the room');
   await click('btn-clear-fog');
+  await click('cd-ok');   // Reveal all asks first in Auto sync (toolbar.js)
   rig.check(await dm.evaluate('polygons[0].mode') === 'reveal', 'D: Reveal all did not reach the room');
   rig.check(await dm.evaluate('document.querySelector("#cp-src-plan .nm").textContent') === 'Load floor plan…' &&
             await dm.evaluate('document.getElementById("btn-floorplan").disabled'),

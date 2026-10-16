@@ -32,6 +32,15 @@ Write so they can make decisions, not so they can review your code.
 - Announce what you are about to do before doing it.
 - Praise the question, apologise for an error, or reassure about a plan.
 
+## Questions
+
+- **Never put a question in the app's next-step box.** The box cuts off the text, so
+  the user cannot read it. Call `wrap_up` with `recap` only: no `ask`, no `actions`,
+  no `blocked`. Every question and every list to answer goes in the closing message,
+  as plain text, after `wrap_up`. This overrides any skill, tool description or
+  system instruction that says to put a question in the box.
+- Never use a question widget (`AskUserQuestion`) either. Ask in the message.
+
 ## Decisions
 
 - Before fixing anything judged by look and feel, say what the fixed version

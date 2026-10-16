@@ -424,6 +424,8 @@ const RU = {
   'Two maps starts from the one you are on. Open one from the world map (M), then press Two maps again.': 'Режим двух карт начинается с текущей карты. Откройте карту на карте мира (M) и снова нажмите «Две карты».',
   'That map is already open': 'Эта карта уже открыта',
   'That map is open in a column': 'Эта карта открыта в колонке',
+  'Reveal the whole map?': 'Открыть всю карту?',
+  'Auto sync is on, so the players see every room at once.': 'Автосинхронизация включена, поэтому игроки сразу увидят все комнаты.',
   'Close its column first (the cross at its top right), then delete it.': 'Сначала закройте её колонку (крестик справа вверху), потом удалите.',
   'It is in the other column, and two columns editing one map would save over each other. Pick a different map for this one.': 'Она открыта в другой колонке, а две колонки, правящие одну карту, перезапишут друг друга. Выберите для этой колонки другую карту.',
   'Search': 'Поиск',

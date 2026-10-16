@@ -538,6 +538,18 @@ down plus the bonus. Without it the reader took the next number in the text, a d
 
 ## Player sync and the minimap
 
+### Reveal all asks first, in Auto sync only · `SETTLED` (2026-10-16)
+In Auto sync one click on the eye shows every room on the TV at once, and nothing takes it back from
+the TV. So Reveal all asks through `confirmDialog`. In Manual sync the TV does not change until the DM
+pushes, so there is no dialog. Hide all gets no guard: it only hides, and Undo restores it. A hold-to-confirm
+and an undo toast were set aside, since neither stops the first frame reaching the TV.
+
+### Deleting the open scene leaves the TV on its waiting screen · `SETTLED` (2026-10-16)
+The world map's Delete works on the open scene. The DM's window opens the first scene in the list, or the
+world map when none is left. The TV gets `scene-clear`: its fog closes over the old map and the drifting
+waiting screen stays, because the fallback is the DM's pick and not the table's, and showing it could spoil a
+scene. `tvHeld` blocks every automatic push (Auto sync, the resync a reopened Player asks for) until the DM
+opens a scene, the fallback one included, or pushes by hand with Send, Space or Shift+S. Undo brings the scene back to the list only.
 ### A view crosses the wire as a region, not a zoom · `SETTLED`
 Syncing centre plus zoom across two different-sized canvases meant a bigger TV showed *more
 map* rather than the same map. Now `mapCX`/`mapCY` plus `viewW`/`viewH` in map units, and

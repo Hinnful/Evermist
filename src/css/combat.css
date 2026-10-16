@@ -137,7 +137,7 @@
   .cb-atk.editing { display: block; width: 100%; min-height: 1.4em; outline: none; cursor: text; user-select: text; }
   .cb-atk.editing:empty::before { content: attr(data-ph); color: #5c6168; }
   /* Tints alone separate a pill's segments: no outline, no divider. */
-  .cb-atk.pills:not(.editing) { display: flex; flex-wrap: wrap; gap: 4px; white-space: normal; }
+  .cb-atk.pills:not(.editing) { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; white-space: normal; }
   .cb-pill {
     display: inline-flex; border-radius: 6px; overflow: hidden; white-space: nowrap;
     font: 500 12px/1.2 system-ui, sans-serif; font-variant-numeric: tabular-nums;

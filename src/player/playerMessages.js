@@ -9,6 +9,7 @@ function initPlayerMessages() {
 
     if (msg.type === 'fog-color') { handleFogColorMessage(msg); return; }
     if (msg.type === 'anim-params') { applyPlayerAnimParams(msg); return; }
+    if (msg.type === 'scene-clear') { applyPlayerSceneClear(); return; }
     if (msg.type === 'scene-transition') { applyPlayerSceneTransition(msg); return; }
     // ⚠ A pre-warmed window's PLAYER_READY was dropped — the DM was not holding it yet.
     if (msg.type === 'player-hello') {

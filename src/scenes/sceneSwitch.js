@@ -3,9 +3,11 @@
 // ⚠ EVERY PATH INTO A LOADED MAP COMES THROUGH HERE. A direct load leaves the PixiJS fog and the
 // video uninitialised, so the map renders fully revealed and shroud does nothing.
 
-async function switchScene(id, _isRecovery = false) {
-  if (currentScene && currentScene.id === id) return;
+async function switchScene(id, _isRecovery = false, keepTvClear = false) {
+  // Opening the scene the DM already has is how a held TV gets it after the open scene was deleted.
+  if (currentScene && currentScene.id === id) { if (tvHeld && !keepTvClear) sendToPlayerNow(); return; }
   const myGen = ++switchGeneration;
+  if (!keepTvClear) tvHeld = false;   // the DM opening a scene is what lifts the hold
   if (typeof notesPanelFlush === 'function') notesPanelFlush();
   // ⚠ AWAITED, or a switch BACK reads the store before these edits land. DECISIONS.md
   if (currentScene) await doAutoSave();
@@ -15,7 +17,7 @@ async function switchScene(id, _isRecovery = false) {
   // Abort the outgoing crossfade, so its tick cannot run against orphaned snapshots. The drifting
   // anim loop is idempotent - leave it running.
   stopFogTransition();
-  if (!isPlayer && playerWindow && !playerWindow.closed) {
+  if (!isPlayer && !tvHeld && playerWindow && !playerWindow.closed) {
     playerWindow.postMessage({ type: 'scene-transition', phase: 'out' }, '*');
     _sceneOutPostedAt = Date.now();
   }
@@ -26,7 +28,7 @@ async function switchScene(id, _isRecovery = false) {
 
   // The destination fog colour, AS SOON AS IT IS KNOWN, so the Player reaches it while the fog is
   // still closing. ⚠ Must beat applyFogSettingsFromScene, which would land it a frame later.
-  if (!isPlayer && playerWindow && !playerWindow.closed) {
+  if (!isPlayer && !tvHeld && playerWindow && !playerWindow.closed) {
     const destHex = scene.fogSettings && scene.fogSettings.pickedHex;
     if (destHex) playerWindow.postMessage({ type: 'scene-transition', phase: 'tint', pickedHex: destHex }, '*');
   }
@@ -209,7 +211,7 @@ async function switchScene(id, _isRecovery = false) {
   // ⚠ HOLD THE PAYLOAD until the Player's fog has closed over the outgoing map. The Player rewrites
   // its map size and camera the moment this lands, and under a half-closed cover that shows the
   // swap. A cached scene loads well inside the close, so the race is the common case.
-  if (autoSync) {
+  if (autoSync && !tvHeld) {
     const closedIn = _sceneOutPostedAt
       ? Math.max(0, FOG_SCENE_COVER_MS - (Date.now() - _sceneOutPostedAt))
       : 0;

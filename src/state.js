@@ -185,6 +185,9 @@ let isPanning = false;
 let panStartX, panStartY, panStartPanX, panStartPanY;
 let playerWindow = null;
 let playerMapSent = false;
+// The open scene was deleted: the TV shows its waiting screen and nothing reaches it until the DM opens a
+// scene or pushes by hand (sendToPlayerNow).
+let tvHeld = false;
 let lastScreenX = null, lastScreenY = null;
 
 // ─── Rooms (called polygons in code) ─────────────────────────────────────────

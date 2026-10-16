@@ -52,7 +52,9 @@ function handleCurrentDeleted() {
   landing.style.display = '';
   if (!isPlayer) container.style.cursor = 'default';
   localStorage.removeItem('evermist-current-scene-id');
-  if (allScenes.length) switchScene(allScenes[0].id).catch(err => console.error('switchScene failed:', err));
+  // The fallback is for the DM's eyes: the TV must not show a scene the DM did not open.
+  holdTvClear();
+  if (allScenes.length) switchScene(allScenes[0].id, false, true).catch(err => console.error('switchScene failed:', err));
   else worldMapShow();
 }
 

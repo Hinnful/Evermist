@@ -121,11 +121,16 @@ jobs:
         if: matrix.shard == 2
         run: ${{ matrix.platform.run }} npm run rig -- --exe "${{ matrix.platform.exe }}"
 
-      # Every fourth scenario by name, so a new file joins a shard with no edit here.
+      # Every fourth scenario, so a new file joins a shard with no edit here. ⚠ THE SLOWEST ARE DEALT
+      # FIRST: dealt by name alone, one shard drew transfer, maps, grid, backup and boot together, and its
+      # last scenarios ran past the 300s limit on a slow runner.
       - name: Drive the packaged app through a quarter of the regression set
         if: success() || failure()
         run: |
-          NAMES=$(ls tools/rig/scenarios/acceptance/*.js | xargs -n1 basename | sed 's/\.js$//' |
+          SLOW="transfer backup maps grid boot gallery notes-panel fog"
+          ALL=$(ls tools/rig/scenarios/acceptance/*.js | xargs -n1 basename | sed 's/\.js$//')
+          NAMES=$({ for s in $SLOW; do echo "$ALL" | grep -qx "$s" && echo "$s"; done
+                    echo "$ALL" | grep -vxF -f <(printf '%s\n' $SLOW); } |
                   awk -v i=${{ matrix.shard }} -v skip="${{ matrix.platform.skip }}" \
                       '(NR - 1) % 4 == i - 1 && $0 != skip' | tr '\n' ' ')
           echo "this shard: $NAMES"

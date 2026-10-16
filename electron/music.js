@@ -2,17 +2,17 @@
 // music.js — the music folder as the library: what is in it, what a paste of a link finds, and
 // the downloader that fills it.
 
-const { ipcMain, shell, app } = require('electron');
+const { ipcMain, app } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const fs = require('fs');
 const https = require('https');
 const { spawn } = require('child_process');
 
-let sendTo, isSafeId;
+let sendTo;
 
 function register(ctx) {
-  ({ sendTo, isSafeId } = ctx);
+  ({ sendTo } = ctx);
   musicDir = ctx.musicDir;
 }
 

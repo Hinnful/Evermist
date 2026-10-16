@@ -107,7 +107,21 @@ function initPlayerMapRetry() {
 
 // The one condition under which a push can go out at all. Shared with sendToPlayer's own guard.
 function canSendToPlayer() {
-  return !!(mapOffscreen && fogDataCanvas && playerWindow && !playerWindow.closed);
+  return !!(mapOffscreen && fogDataCanvas && playerWindow && !playerWindow.closed && !tvHeld);
+}
+
+// The DM's own push (Send, Space, Shift+S) lifts a hold; every automatic path stays behind it.
+function sendToPlayerNow() {
+  tvHeld = false;
+  sendToPlayer();
+}
+
+// The open scene is gone: the TV closes its fog over it and falls back to its waiting screen.
+function holdTvClear() {
+  tvHeld = true;
+  playerMapSent = false;
+  clearTimeout(autoSyncTimer);
+  if (playerWindow && !playerWindow.closed) playerWindow.postMessage({ type: 'scene-clear' }, '*');
 }
 
 // Sends immediately if mapOffscreen is ready, and defers to onSceneLoaded() if not.

@@ -66,7 +66,7 @@ const shippedRules = { ...rules, 'max-lines-per-function': ['error', { max: 120,
 
 module.exports = [
   // The two prototype folders are gitignored, so CI never sees them; linting them reds every local run.
-  { ignores: ['lib/**', 'node_modules/**', 'dist/**', 'src/ui/changelogData.js', '.claude/private/**', 'tools/fire-proto/**'] },
+  { ignores: ['lib/**', 'node_modules/**', 'dist/**', 'src/ui/changelogData.js', '.claude/private/**', '.claude/worktrees/**', 'tools/fire-proto/**'] },
   {
     files: ['src/**/*.js'],
     languageOptions: {

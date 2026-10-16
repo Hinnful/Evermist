@@ -587,10 +587,9 @@ function worldMapKeys(e) {
   else if (e.code === 'KeyF' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); worldMapFindOpen(); }
 }
 
-// The menu's delete, with its undo toast. The open scene stays: deleting it would switch the TV.
+// The menu's delete, with its undo toast. Deleting the open scene opens the first one for the DM and leaves
+// the TV on its waiting screen (sceneDelete.js).
 function _wmDeletePicked(ids) {
-  const gone = ids.filter(id => !_wmIsOpen(id));
-  if (!gone.length) return;
   worldMapSelect({ sceneId: null, place: '' });
-  deleteScenesWithUndo(gone);
+  deleteScenesWithUndo(ids);
 }

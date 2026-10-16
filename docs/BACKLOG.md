@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 11 open items; IDs run to 185."
+description: "Open work only. 11 open items; IDs run to 188."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.5.3**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.5.5**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
 shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -109,6 +109,13 @@ looks stranded. Decide what that row is for on the world map: give it company th
 somewhere else, or drop the row. **Needs a look-and-feel pass.**
 **Polish · DM only**
 
+### 187. Two new effect materials: a plain area, and difficult terrain
+Filed 2026-10-16. An area that only marks where something happens, such as Slow or Silence, and Difficult terrain.
+Vines, snow and mud look different but play the same, so Difficult terrain may be one material. Each is its own
+material record (`effectMaterials.js`), since a colour picker per effect was rejected. **Needs /spec:** the look of
+each, and whether Difficult terrain needs an effect at all.
+**Play · DM + Player**
+
 ### 179. Turning the map for the players
 Filed 2026-10-13. A map drawn sideways for the TV has to be turned in an image editor before it goes in; the first new
 DM did exactly that. Turning it inside Evermist, for the Player, is a feature apart from My seat (item 178), and its
@@ -123,13 +130,6 @@ effect outlines' orange for Effects, would say the mode without the DM reading t
 sketch (`.claude/private/design/item-175/fog-home.html`) and set aside until there is time to judge its look.
 **Needs /spec:** the look of each mode, and how strong it is on dark and bright maps.
 **Polish · DM only**
-
-### 181. Guard Reveal all and Hide all
-Filed 2026-10-16. The two eyes on the bar act on the whole map in one click, every room included, and a misclick at the
-table is very costly: Reveal all shows the players what they must not see, and nothing takes it back from the TV. A
-guard is wanted, such as a confirmation popup, a hold-to-confirm, or an undo toast that is quick enough. Undo already
-restores the map for the DM, which is not the TV. **Needs /spec:** which guard, and whether Hide all needs one at all.
-**Play · DM only**
 
 ### 144. A phone remote for the DM
 Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in
@@ -154,10 +154,10 @@ together, so the installed icon and the in-app mark stay one picture.
 
 ### 157. Bring the frozen files under the house-rule limits
 Filed 2026-10-07. `test/houseRules.allow.json` and `eslint-suppressions.json` list what was over a
-limit when the limits became tests: six files over 600 lines, eight functions over 120, thirteen
-comment blocks over 8 lines and four unused imports in `electron/`. Each split is its own
+limit when the limits became tests: six files over 600 lines, eight functions over 120 and thirteen
+comment blocks over 8 lines. Each split is its own
 restructuring task on the DM's yes, one file at a time, taken when a feature already touches that
-file; the unused imports go out with the next patch. Done when both lists are empty.
+file; the unused imports are done. Done when both lists are empty.
 **Upkeep · no visible change**
 
 ### 164. The party flag on the world map

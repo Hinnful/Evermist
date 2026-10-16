@@ -1,19 +1,4 @@
 {
-  "electron/diagLog.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
-  "electron/music.js": {
-    "no-unused-vars": {
-      "count": 2
-    }
-  },
-  "electron/pdfText.js": {
-    "no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/combat/statBlockBook.js": {
     "max-lines-per-function": {
       "count": 1

@@ -164,9 +164,17 @@ function setMaterial(m) {
 
 // Reveal all and Hide all act on the whole map, every room included, through one path whoever asks:
 // the bar's eyes (fogBar.js) and the hidden Scene control buttons. Undo and the transition ride along.
+// In Auto sync the TV follows at once and nothing takes a reveal back from it, so Auto asks first; in Manual
+// the TV waits for the push. Hide all takes no guard.
 function revealAllMap() {
-  if (paneForward('reveal-all')) return;
-  revealAllRooms();
+  const go = () => { if (!paneForward('reveal-all')) revealAllRooms(); };
+  if (!autoSync) { go(); return; }
+  confirmDialog({
+    title: 'Reveal the whole map?',
+    message: 'Auto sync is on, so the players see every room at once.',
+    confirmLabel: 'Reveal all',
+    onConfirm: go,
+  });
 }
 function hideAllMap() {
   if (paneForward('shroud-all')) return;
@@ -419,7 +427,7 @@ function initToolbar() {
   // sendToPlayer's fogOnly parameter and is truthy, so the button would send fog without the view.
   document.getElementById('btn-send').onclick = () => {
     if (paneForward('send')) return;
-    sendToPlayer();
+    sendToPlayerNow();
   };
 
   // The Room tab → roomCard.js.

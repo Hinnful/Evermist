@@ -2,7 +2,7 @@
 // diagLog.js — the playback log every window writes to, its rotation on start and the archives
 // it keeps.
 
-const { ipcMain, app } = require('electron');
+const { ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 

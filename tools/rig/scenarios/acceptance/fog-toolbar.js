@@ -296,7 +296,20 @@ module.exports = async function fogToolbarFeature(rig) {
             'Hide all did not hide every room and the ground under them: ' + JSON.stringify(hidden));
   await undo();
   rig.check(await dm.evaluate('polygons.map(p => p.mode).join()') === keep, 'undo did not put the rooms back after Hide all');
-  await dm.evaluate('document.getElementById("tb-reveal-all").click(); 0');
+  // RED ON: revealAllMap's confirmDialog removed (toolbar.js) - 2026-10-16
+  const asked = await dm.evaluate('(() => { document.getElementById("tb-reveal-all").click();' +
+    ' return { up: !!_cdRoot && _cdRoot.style.display === "flex", kept: polygons.map(p => p.mode).join() }; })()');
+  rig.check(asked.up && asked.kept === keep, 'Reveal all in Auto sync acted without asking: ' + JSON.stringify(asked));
+  await dm.evaluate('document.getElementById("cd-cancel").click(); 0');
+  rig.check(await dm.evaluate('polygons.map(p => p.mode).join()') === keep, 'Cancel on the Reveal all question revealed anyway');
+  // RED ON: `if (!autoSync)` dropped from revealAllMap (toolbar.js) - 2026-10-16
+  const manual = await dm.evaluate('(() => { autoSync = false; document.getElementById("tb-reveal-all").click();' +
+    ' const r = { up: _cdRoot.style.display === "flex", modes: polygons.map(p => p.mode).join() };' +
+    ' if (r.up) document.getElementById("cd-cancel").click(); undo(); autoSync = true; return r; })()');
+  rig.check(!manual.up && /^(reveal,?)+$/.test(manual.modes), 'Reveal all in Manual sync asked, or did not reveal: ' + JSON.stringify(manual));
+  await lib.settle(dm, '!fogTransRafId', 10000);
+  rig.check(await dm.evaluate('polygons.map(p => p.mode).join()') === keep, 'undo did not put the rooms back after the Manual Reveal all');
+  await dm.evaluate('document.getElementById("tb-reveal-all").click(); document.getElementById("cd-ok").click(); 0');
   await lib.settle(dm, '!fogTransRafId', 10000);
   const shown = await dm.evaluate('({ modes: polygons.map(p => p.mode).join(), fog: __rigFog(1400, 500) })');
   rig.check(/^(reveal,?)+$/.test(shown.modes) && shown.fog < 60, 'Reveal all did not reveal every room: ' + JSON.stringify(shown));

@@ -21,6 +21,25 @@ function dropPendingPlayerVideo() {
   if (v.parentNode) v.parentNode.removeChild(v);
 }
 
+// The DM deleted the open scene: close the fog over it, drop it, and wait the way a Player does before its
+// first map. The cover stays closed, which is where the next map's arrival expects it.
+function applyPlayerSceneClear() {
+  const done = () => {
+    dropPendingPlayerVideo();
+    cleanupVideo();
+    stopFogTransition();
+    if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
+    mapOffscreen = null; mapWidth = 0; mapHeight = 0;
+    fogDataCanvas = null; fogDataCtx = null;
+    baseFogCanvas = null; baseFogCtx = null;
+    setEffects([]);
+    pixiClearMap();
+    landing.style.display = '';
+    startLoadingFog();
+  };
+  if (!closeFogOverMap(done)) done();
+}
+
 function applyFogUpdate(msg) {
   if (msg.pickedHex) handleFogColorMessage({ pickedHex: msg.pickedHex, fogTintAlpha: msg.fogTintAlpha });
   // (retry loop in initPlayerMapRetry stops itself when mapOffscreen is set — no timer to clear)
