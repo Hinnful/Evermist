@@ -171,14 +171,10 @@
   body.world #wm-div { order: 4; }
   body.world #wm-find { order: 5; }
   body.world #wm-road { display: none !important; }
-  /* Solid blue is press this, the blue tint is picked: Add is the one thing to press, and the tool in hand and
-     the row under the pointer in a list wear the tint. Scoped here so the scene's bar keeps its look. */
+  /* Add is the one thing to press on the world map. */
   body.world #wm-add { background: var(--b-solid); color: #fff; box-shadow: none; }
-  body.world #wm-add:hover { background: #2a9cf0; color: #fff; }
-  body.world #toolbar-bottom .tool-btn.active, body.world #toolbar-bottom .tool-btn.active:hover { background: var(--b-tint); color: var(--b-icon); box-shadow: none; }
+  body.world #wm-add:hover { background: var(--b-solid-h); color: #fff; }
   body.world #toolbar-bottom .tb-chev.open { color: var(--b-icon); }
-  body.world #tb-dd .dd-it:hover:not(.off) { background: var(--b-tint); color: var(--b-icon); }
-  body.world #tb-dd .dd-it:hover:not(.off) .ky, body.world #tb-dd .dd-it .ck { color: var(--b-icon); }
   /* The options row carries Straight walls over a drawing tool. Places take no repairs, and Snap to grid has no grid up here. */
   body.world #context-row > :not(#fx-aids) { display: none !important; }
   body.world #btn-snap { display: none !important; }
@@ -214,10 +210,10 @@
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
   }
   #wm-cols button:hover { background: #1a1b1f; }
-  #wm-cols button.active, #wm-cols button.active:hover { background: var(--b-solid); color: #fff; }
+  #wm-cols button.active, #wm-cols button.active:hover { background: var(--b-tint); color: var(--b-icon); }
   .wm-col-side { font-weight: 600; flex: none; }
   .wm-col-nm { color: #9aa0aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #wm-cols button.active .wm-col-nm { color: #fff; }
+  #wm-cols button.active .wm-col-nm { color: var(--b-icon); }
   .wm-card[data-col]:not([data-col=""])::after, .wm-lm[data-col]:not([data-col=""])::after {
     content: attr(data-col); position: absolute; z-index: 2; box-sizing: border-box; min-width: calc(18px * var(--wz)); height: calc(18px * var(--wz)); padding: 0 calc(5px * var(--wz));
     display: flex; align-items: center; justify-content: center; border-radius: calc(5px * var(--wz));

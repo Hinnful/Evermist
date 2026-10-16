@@ -80,7 +80,7 @@ module.exports = async function worldMapToolbar(rig) {
   const tint = await dm.evaluate(`(() => { const probe = document.createElement('i'); probe.style.background = 'var(--b-tint)'; document.body.appendChild(probe);
     const t = getComputedStyle(probe).backgroundColor; probe.remove();
     return { tint: t, bg: getComputedStyle(document.getElementById('btn-shape')).backgroundColor, repairs: __tbVis(document.getElementById('op-sw')), walls: __tbVis(document.getElementById('btn-axislock')) }; })()`);
-  // RED BY DESIGN: written against the feature, never re-proved
+  // RED ON: `.tool-btn.active` back to `background: var(--b-solid)` (toolbar.css) - 2026-10-16
   rig.check(tint.bg === tint.tint, 'the tool in hand does not wear the blue tint: ' + JSON.stringify(tint));
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(!tint.repairs && tint.walls, 'the options row over a place tool shows the repair icon, or lacks Straight walls: ' + JSON.stringify(tint));

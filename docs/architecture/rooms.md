@@ -60,8 +60,8 @@ Two toggles sit between the tools and the mode switch. **Snap to grid** pulls ea
 the nearest grid intersection. **Straighten walls** pulls a corner level with the one before it
 when it's already nearly level, so a wall comes out square without a steady hand - it's an
 alignment nudge, not a lock, so a wall you genuinely want diagonal stays diagonal. It works while
-dragging a corner of a finished room too. Each shows it is on with a blue tint, which is a
-different mark from the solid blue the tool in hand wears. Neither setting
+dragging a corner of a finished room too. Each shows it is on with the blue tint, the same mark
+the tool in hand wears. Neither setting
 is saved, both are off when the app starts, and both keep their state across a mode switch.
 
 **Array order is fog compositing order.** The fog rebuild walks the room list in reverse, so

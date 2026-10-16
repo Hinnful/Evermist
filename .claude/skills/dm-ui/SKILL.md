@@ -36,10 +36,11 @@ One dock on the right edge holds every control that is not on the map or the too
 - **Grey surfaces, no outlines.** Fields and buttons are filled grey (`--g-field`), hover one
   step lighter, a pick inside a segment is the lighter `--g-pick` plate. Defined once on `:root`
   in `base.css`; a control that writes its own hex drifts.
-- **Blue means on or in use, and nothing else.** Solid blue (`--b-solid`) with a white icon is
-  the tool in hand: one thing on screen. A blue tint (`--b-tint`) with a blue icon is a switch
-  that is on: snap, straighten, Two maps, Lock, the open rail tab, the Door button on a room's popup
-  while Door is armed, a closed eye. Pick-one wells (the fog clouds, the Fog / Effects switch),
+- **Solid blue is press this, the blue tint is picked** (`test/blueMeaning.test.js` holds the list of
+  what may be solid). The tint (`--b-tint`) with a blue icon (`--b-icon`) marks what is on or in hand:
+  the tool, the row under the pointer in any list, a ticked box, the active column chip, snap,
+  straighten, Two maps, Lock, the open rail tab, the Door button on a room's popup while Door is
+  armed, a closed eye. Pick-one wells (the fog clouds, the Fog / Effects switch),
   fields and an open eye stay grey. A repair in force wears its own colour: Merge green, Cut out
   red, Split yellow.
 - **Two levels of type**: a 12px bold section title, and an 11px dim sub-header over a group.
@@ -110,8 +111,7 @@ The room card's module renders into the left panel's room level; there is no flo
 ## The world map (`worldMap.js`, `worldMapEdit.js`, `worldMap.css`)
 
 A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolbar is the scene's own, with no words: Select (always leftmost), Add a scene,
-Place, a divider, Find. Add is solid blue with no glow (the one thing to press); the tool in hand and the row under the pointer in a list wear the blue
-tint (`--b-tint`), scoped to `body.world` so the scene's bar keeps its look. Place's list holds Rectangle (R), Circle (O), Polygon (P), then Road (L),
+Place, a divider, Find. Add is solid blue with no glow, the one thing to press. Place's list holds Rectangle (R), Circle (O), Polygon (P), then Road (L),
 and its button wears the last pick; V, R, O and P put Road down, and L takes it on the world map only. Road's own button (`#wm-road`) stays in the page as
 the back end. Places take no Merge, Cut out or Split: the options row over a place tool holds Straight walls alone. The Brush, the fog
 clouds, Reveal all and Hide all, the Fog / Effects switch and Snap are hidden, and the
@@ -124,8 +124,8 @@ One level of name shows at a time: zoomed out only the place plates, zoomed in o
 - **The TV never changes while it is open.** Its keys are caught at the document in the capture phase,
   and `input.js` stands down on `worldMapOpen`. A field and a dialog keep their own keys.
 - **Esc, M and the button return to the open scene. With none open they do nothing; with two maps on they close the map.**
-- **With two maps on the world map shows a Left and a Right chip** (`worldMapColumns.js`): the active one solid blue, the other
-  solid black. A double-click fills the active column and closes the map.
+- **With two maps on the world map shows a Left and a Right chip** (`worldMapColumns.js`): the active one wears the tint, the other
+  is solid black. A double-click fills the active column and closes the map.
 - **The notes panel follows the world map's pick**, Campaign › Place, and shows with no scene open.
 - **Add a scene adds and never opens**: the open scene and the TV stay as they are.
 - **A place is a room-shaped record, and the polygons decide membership.** A scene belongs to the smallest
@@ -232,7 +232,7 @@ red, Split yellow) and the bar's repair icon.
 - **Sizes**: a 36px box around a 22px icon on screen. A button and its chevron form one group,
   2px apart; groups sit 8px apart.
 - **Each chevron opens Figma's list** (`openBarList`, `shapeMenu.js`): a check on the current pick,
-  the icon, the name, the key; the row under the pointer turns solid blue; an Effects-only shape is
+  the icon, the name, the key; the row under the pointer wears the tint; an Effects-only shape is
   greyed in Rooms mode. A right-click on the Shape button opens the same list.
 - **The Shape list holds shapes only, and the Shape button always wears the shape you draw with.**
   In Effects it offers Square, Circle, Cone, Line (one square wide), Wall (1 ft thick), Ring (a

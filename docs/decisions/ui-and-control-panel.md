@@ -1070,6 +1070,14 @@ last in the bar's own cluster); "The world map wears the scene's toolbar" (its S
 scenes and roads under the field" (a field with a list above it; the matching and the keys stay); "Solid blue is press this, the
 blue tint is picked" (its entry is the rule this one applies, on the world map first).
 
+### The press-or-picked rule covers the whole app · `SETTLED` (2026-10-16)
+Every pick that wore solid blue now wears the tint: the scene toolbar's tool in hand, the row under the pointer in every
+list, ticked boxes, and the active Left or Right chip. Each window's main button turns solid, since it is the action to
+take next. A window may show more than one solid button; the rule marks what to press, not one per screen.
+`test/blueMeaning.test.js` holds the list of what may be solid. **Reverses, by title:** "Buttons are three kinds and an
+icon button" (the primary's tint and "one per window"); "The toolbar follows Figma" (solid for the tool in hand).
+**Ends** the world map scoping in "The world map's bar has no words".
+
 ### Places take no Merge, Cut out or Split · `SETTLED` (2026-10-16)
 The DM found the place repairs did not work and had no first-evening use. The world map's options row loses the repair
 icon, the Split tool goes, and the place-repair code goes with them; the keys already stood down on the world map. A place

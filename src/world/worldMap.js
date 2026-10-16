@@ -563,13 +563,10 @@ function worldMapKeys(e) {
     return;
   }
   if (_wmMenu && e.code === 'Escape') { e.stopPropagation(); worldMapMenuClose(); return; }
-  if (_wmEditing) {
-    e.stopPropagation();
-    worldMapEditKey(e);
-    return;
-  }
+  if (_wmEditing) { e.stopPropagation(); worldMapEditKey(e); return; }
   if (_wmOwnKeys(e.target)) return;
   e.stopPropagation();
+  if (e.code === 'Escape' && galleryTakeDown()) return;   // a picture on the TV goes first, as in input.js
   if (worldMapToolKey(e)) return;
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.code === 'KeyZ') { e.preventDefault(); if (e.shiftKey) worldRedo(); else worldUndo(); return; }

@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 12 open items; IDs run to 182."
+description: "Open work only. 11 open items; IDs run to 185."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.5.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.5.3**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
 shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -99,15 +99,6 @@ for the players is a separate feature (item 179). The two must never be confused
 **Needs /spec.**
 **First use · DM only**
 
-### 183. Solid blue means "press this"; the blue tint means "picked"
-Filed 2026-10-16 from the world map toolbar lab. Solid blue does two jobs today: the tool in hand, the picked list row
-and the picked well item wear it, and so do Show on TV and the actions a DM should press next. A new DM cannot tell
-"this is on" from "do this". The rail already shows the fix: its open tab wears the blue tint. The rule: a solid blue
-fill, with no glow, is the one action to take next; the blue tint is what is picked or in hand. Every toolbar, options
-row, popup, chevron list, popover and button that marks a pick with solid blue moves to the tint. The world map's
-toolbar already follows it.
-**Polish · DM only**
-
 ---
 
 # EVERYTHING ELSE
@@ -139,12 +130,6 @@ table is very costly: Reveal all shows the players what they must not see, and n
 guard is wanted, such as a confirmation popup, a hold-to-confirm, or an undo toast that is quick enough. Undo already
 restores the map for the DM, which is not the TV. **Needs /spec:** which guard, and whether Hide all needs one at all.
 **Play · DM only**
-
-### 171. Acid's outline preview is fire-orange while drawing
-Filed 2026-10-11. While an acid shape is being drawn or a preset is under the cursor, its preview outline and tint are
-the fire's orange (`effectPreviewRgb` and `effectPreviewEdge` in `src/render/lights.js` know only fire and light). The
-placed acid draws in its own colours. The preview should take the picked material's colour.
-**Polish · DM only**
 
 ### 144. A phone remote for the DM
 Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in
@@ -182,15 +167,6 @@ different. **Look, settled 2026-10-08:** the Ping tool's bezel pared down to a t
 turning slowly around the scene, with the mist thinning around it. **Open for /spec:** what "visited" looks like, and
 whether the flag rides a backup. The TV never shows it.
 **Campaign · DM only**
-
----
-
-# BUGS
-
-### 182. Escape leaves a Gallery picture up with Two maps on and an empty column
-Filed 2026-10-16. With Two maps on and one column still empty, the world map is open and keeps Escape, so a Gallery
-picture on the TV stays up. A second click on the picture in the Gallery still takes it down.
-**Bug · DM only**
 
 ---
 

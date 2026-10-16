@@ -310,10 +310,6 @@ module.exports = async function galleryFeature(rig) {
   tv = await rig.player();
   await dm.evaluate('document.getElementById("btn-two-maps").click(); 0');
   await dm.waitFor('panesActive && panes.A.ready && panes.B.ready', 180000, 'both columns to come up');
-  // ⚠ THE EMPTY COLUMN OPENS THE WORLD MAP, which keeps Escape for itself: fill it first.
-  const other = await dm.evaluate('allScenes.find(s => s.id !== panes.A.sceneId && s.id !== "rig-seed-scene").id');
-  await dm.evaluate('worldMapColumnFill(' + JSON.stringify(other) + '); 0');
-  await dm.waitFor('panes.B.sceneId === ' + JSON.stringify(other) + ' && panes.B.mapW > 0', 60000, 'the second map to land in column B');
   const tvA = await rig.player('A');
   await lib.settle(tvA, 'typeof applyTvPicture === "function"', 20000);
   const shell = () => tvA.evaluate(`(() => { const el = parent.document.getElementById('tv-picture');
@@ -322,6 +318,21 @@ module.exports = async function galleryFeature(rig) {
     return { up: !!el && el.classList.contains('up'), widths: imgs.map(i => i.naturalWidth),
              covers: !!r && r.width >= parent.innerWidth - 1 && r.height >= parent.innerHeight - 1,
              inHalf: !!document.getElementById('tv-picture') }; })()`);
+  // ⚠ THE EMPTY COLUMN OPENS THE WORLD MAP, which used to keep Escape for itself.
+  // RED ON: the galleryTakeDown line in worldMapKeys removed (worldMap.js) - 2026-10-16
+  await dm.waitFor('worldMapOpen', 20000, 'the world map to open over the empty column');
+  await dm.evaluate('__gaClick("portrait"); 0');
+  rig.check(!!(await lib.poll(async () => { const s = await shell(); return s.up ? { s } : null; }, 15000)),
+            'a picture did not reach the TV with the world map open');
+  await dm.evaluate('__gaEsc()');
+  rig.check(!!(await lib.poll(async () => { const s = await shell(); return s.up ? null : { s }; }, 8000)),
+            'Escape did not take the picture off the TV while the world map held it');
+  rig.check(await dm.evaluate('worldMapOpen && _gaLive === null'),
+            'Escape closed the world map or left the tile marked while a picture was up');
+  // Now fill it, so the click below runs with both columns holding a scene.
+  const other = await dm.evaluate('allScenes.find(s => s.id !== panes.A.sceneId && s.id !== "rig-seed-scene").id');
+  await dm.evaluate('worldMapColumnFill(' + JSON.stringify(other) + '); 0');
+  await dm.waitFor('panes.B.sceneId === ' + JSON.stringify(other) + ' && panes.B.mapW > 0', 60000, 'the second map to land in column B');
   await dm.evaluate('__gaClick("portrait"); 0');
   const two = await lib.poll(async () => { const s = await shell(); return s.up && s.widths.includes(810) ? { s } : null; }, 15000);
   rig.note('with two maps on: ' + JSON.stringify(two && two.s));

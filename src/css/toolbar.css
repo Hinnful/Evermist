@@ -52,9 +52,7 @@
     flex-shrink: 0;
   }
   .tool-btn:hover { background: var(--g-field); color: var(--g-text); }
-  .tool-btn.active, .tool-btn.active:hover { background: var(--b-solid); color: #fff; }
-  /* Merge and Cut out are switches that stay armed, so they wear the tint, never the solid. */
-  #btn-op-join.active, #btn-op-trim.active { background: var(--b-tint); color: var(--b-icon); }
+  .tool-btn.active, .tool-btn.active:hover { background: var(--b-tint); color: var(--b-icon); }
   /* Unavailable tool — the Brush in Effects mode, which paints fog and an effect has none.
      Same grey as a disabled .mode-btn, so "can't do that here" reads the same on both rows. */
   .tool-btn:disabled { color: #565b62; cursor: default; }
@@ -349,8 +347,8 @@
   .dd-it .ic svg { width: 16px; height: 16px; }
   .dd-it .nm { flex: 1; white-space: nowrap; }
   .dd-it .ky { margin-left: 24px; color: var(--g-dim); font-weight: 500; }
-  .dd-it:hover:not(.off) { background: var(--b-solid); color: #fff; }
-  .dd-it:hover:not(.off) .ky { color: rgba(255, 255, 255, 0.85); }
+  .dd-it:hover:not(.off) { background: var(--b-tint); color: var(--b-icon); }
+  .dd-it:hover:not(.off) .ky, .dd-it .ck { color: var(--b-icon); }
   .dd-lbl { padding: 6px 10px 4px 28px; color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; }
   #tb-dd.nock .ck { display: none; }
   #tb-dd.nock .dd-lbl { padding-left: 10px; }

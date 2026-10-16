@@ -15,8 +15,8 @@ function selectedLightShape() {
     ? lightShapes.find(l => l.id === selectedPolygonId) || null : null;
 }
 
-function effectPreviewRgb() { return currentMaterial === 'light' ? LIGHT_OUTLINE_RGB : EFFECT_RGB; }
-function effectPreviewEdge() { return currentMaterial === 'light' ? LIGHT_RGB : EFFECT_EDGE_COLOR; }
+function effectPreviewRgb() { return currentMaterial === 'light' ? LIGHT_OUTLINE_RGB : effectEdgeRgb(currentMaterial); }
+function effectPreviewEdge() { return currentMaterial === 'light' ? LIGHT_RGB : effectEdgeColor(currentMaterial); }
 
 // ⚠ NOT `flattenRing`: fogGeometry.js owns that name and returns points, which made every outline NaN.
 function _flatPoints(pts) {

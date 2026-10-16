@@ -35,9 +35,9 @@
     --g-pick: #45474e;
     --g-text: #e4e6ea;
     --g-dim: #8b9099;
-    /* Blue means on or in use. Solid: the tool in hand, one thing on screen. Tint: a switch
-       that is on, the open rail tab, a closed eye. */
+    /* Solid blue is press this; the tint is what is picked or on. test/blueMeaning.test.js lists what may be solid. */
     --b-solid: #0c8ce9;
+    --b-solid-h: #2a9cf0;
     --b-tint: rgba(12, 140, 233, 0.2);
     --b-tint-h: rgba(12, 140, 233, 0.28);
     --b-icon: #5cb1ff;

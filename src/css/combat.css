@@ -188,8 +188,8 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
   #cb-suggest .src { margin-left: auto; padding-left: 14px; color: var(--g-dim); font-weight: 400; font-size: 11px; }
-  /* On the solid blue of the focused row, the source reads light. */
-  #cb-suggest div.on .src, #cb-suggest div:hover .src { color: rgba(255,255,255,0.75); }
+  /* On the tint of the focused row, the source reads as the label does. */
+  #cb-suggest div.on .src, #cb-suggest div:hover .src { color: var(--b-icon); opacity: .75; }
 
   /* ===== The stat block ===== */
   .cb-side-switch { margin-right: auto; padding: 3px; }
@@ -452,15 +452,13 @@
     width: 16px; height: 16px; flex: none; border: 0; border-radius: 4px; background: var(--g-pick);
     display: inline-grid; place-items: center;
   }
-  .bs-cb.on, .cb-menu .box.on { background: var(--b-solid); border: 0; }
-  .bs-cb.on::after {
-    content: ''; width: 8px; height: 4px; border: 2px solid #fff; border-top: 0; border-right: 0;
+  .bs-cb.on, .cb-menu .box.on { background: var(--b-tint); border: 0; }
+  .bs-cb.on::after, .cb-menu .box.on::after {
+    content: ''; width: 8px; height: 4px; border: 2px solid var(--b-icon); border-top: 0; border-right: 0;
     transform: translateY(-1px) rotate(-45deg);
   }
-  /* On the solid blue of a hovered row, a ticked box turns white and its tick blue. */
-  .cb-menu div:hover .box { background: rgba(255,255,255,0.28); }
-  .cb-menu div:hover .box.on { background: #fff; }
-  .cb-menu div:hover .box.on::after { border-color: var(--b-solid); }
+  /* On a hovered row's tint, a ticked box takes the next step up so it still reads. */
+  .cb-menu div:hover .box.on { background: var(--b-tint-h); }
   .bs-src, .bs-new {
     height: 20px; padding: 0 7px; border: 0; border-radius: 4px; display: inline-flex; align-items: center;
     background: var(--g-field); color: #c8ccd3; font: 500 11px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0;
@@ -488,9 +486,9 @@
   .cf-item.on::before { content: '\2713'; }
   .cf-new::before { content: '+'; font-size: 14px; }
   .cf-item:hover, .cf-item.on:hover, .cb-menu div:hover, .bs-menu .it:hover, .bs-pop .o:hover, .cf-new:hover, #cb-suggest div.on {
-    background: var(--b-solid); color: #fff;
+    background: var(--b-tint); color: var(--b-icon);
   }
-  .cf-item:hover .meta, .bs-menu .it:hover small, .bs-pop .o:hover .c, .cb-menu div:hover .key { color: rgba(255,255,255,0.75); }
+  .cf-item:hover .meta, .bs-menu .it:hover small, .bs-pop .o:hover .c, .cb-menu div:hover .key { color: var(--b-icon); opacity: .75; }
   .cf-item.on { background: none; }
   .cf-item.on .nm { font-weight: 400; }
   .cf-item .meta, .cb-menu .key, .bs-pop .o .c { margin-left: auto; color: var(--g-dim); font-size: 11px; }

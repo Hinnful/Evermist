@@ -10,7 +10,7 @@
 // Change one only on a fresh look call. A term a material does not use is 0, which skips it.
 const EFFECT_MATERIALS = {
   fire: {
-    warm: 0.30, grid: '#ffa040',
+    warm: 0.30, grid: '#ffa040', edge: '#ff8a3d',
     ramp: [[0.06, 0.0, 0.0], [0.62, 0.05, 0.0], [1.0, 0.30, 0.03],
            [1.0, 0.64, 0.14], [1.0, 0.84, 0.42], [1.0, 0.97, 0.85]],
     look: { heightMul: 0.80, diss: 0.60, smoke: 0.35, haze: 0, spark: 0,
@@ -19,7 +19,7 @@ const EFFECT_MATERIALS = {
             toon: 0.8, core: 0.45, spill: 0.35, flicker: 0.6, scorch: 0.6, drift: 1.0 },
   },
   acid: {
-    warm: 0.45, grid: '#d8f040',
+    warm: 0.45, grid: '#d8f040', edge: '#d8f040',
     ramp: [[0.04, 0.03, 0.0], [0.25, 0.30, 0.02], [0.60, 0.80, 0.05],
            [0.85, 1.0, 0.2], [0.95, 1.0, 0.5], [1.0, 1.0, 0.85]],
     look: { heightMul: 0.28, diss: 0.30, smoke: 0.20, haze: 0, spark: 0.45,
@@ -46,6 +46,17 @@ function effectRamp(name) {
 // a canvas above this layer.
 const FX_LOOK = { speed: 1.00, fill: 0.20, gridGlow: 0.60 };
 
-// The editing outline for a selected or previewed effect, separate from the burning render. A
-// different colour family from POLY_EDGE_COLORS, so an effect never reads as a fourth fog state.
-const EFFECT_EDGE_COLOR = '#ff8a3d';
+// A material's editing outline and tint, for a selected or previewed effect: separate from the
+// burning render, and a different colour family from POLY_EDGE_COLORS so an effect never reads as
+// a fourth fog state.
+function effectEdgeColor(name) { return effectMaterial(name).edge; }
+
+// The same colour as "r,g,b", for the rgba() tint.
+function effectEdgeRgb(name) {
+  const h = effectEdgeColor(name);
+  return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(',');
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { EFFECT_MATERIALS, effectMaterial, effectEdgeColor, effectEdgeRgb };
+}
