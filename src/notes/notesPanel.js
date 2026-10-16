@@ -1,26 +1,21 @@
 'use strict';
-// notesPanel.js — the left panel: breadcrumbs, and the notes of the campaign, the scene or the room.
+// notesPanel.js — the Notes pane of the dock: breadcrumbs, and the notes of the campaign, a place, the scene or the room.
 //
-// The room's own field (#rp-desc) lives inside this panel, but its logic stays in roomCard.js.
+// The room's own field (#rp-desc) lives inside this pane, but its logic stays in roomCard.js.
 // The level shown is derived each repaint: the room if one is selected, a crumb the DM clicked, otherwise the scene. A scene in a group has a Place level between
-// the campaign and itself. With the world map up the panel follows what is picked there instead.
+// the campaign and itself. With the world map up the pane follows what is picked there instead.
 
-const NOTES_OPEN_KEY = 'evermist.notesPanelOpen';
 const NOTES_CAMPAIGN_KEY = 'evermist.campaignNotes';
-const NOTES_WIDTH_KEY = 'evermist.notesWidth';
 const NOTES_PLACES_KEY = 'evermist.placeNotes';
 const NOTES_ROADS_KEY = 'evermist.roadNotes';
-const NOTES_MIN_W = 220, NOTES_MAX_W = 420;   // the pane, in the panel's pre-zoom px
 
 // Where the scene/campaign field's text goes when it commits: filled for one level of one scene
 // (and one column), and written back there however the selection has moved since.
 let _npAim = null;
 let _npFilled = '';              // the text the field was filled with, so a column is sent only an edit
 let _npKey = null;
-let _npOpen = true;
-let _npWantW = NOTES_MIN_W;
-let _npHadRoom = false;
 let _npRoomKey = null;
+let _npPickedKey = null;         // the room last picked on the scene, for the dock's room-pick rule
 
 function _npEl(id) { return document.getElementById(id); }
 
@@ -85,14 +80,14 @@ function notesRoadSet(uid, text) {
 
 // ─── Which scene ─────────────────────────────────────────────────────────────
 
-// The scene whose notes the panel shows: this window's, or the selected column's in two-map mode.
+// The scene whose notes the pane shows: this window's, or the selected column's in two-map mode.
 function _npScene() {
   if (isPane) return null;
   if (panesActive) return paneSelectedScene();
   return currentScene ? { key: currentScene.id, name: currentScene.name, notes: currentScene.notes || '' } : null;
 }
 
-// The place the panel shows: the world map's pick while it is up, else the shown scene's own group.
+// The place the pane shows: the world map's pick while it is up, else the shown scene's own group.
 function _npPlace(scene) {
   if (worldMapOpen) return worldMapPlaceName();
   if (!scene) return '';
@@ -185,21 +180,23 @@ function _npDrawCrumbs(scene, place, road, room, level) {
 
 // From refreshRoomPanel on every repaint, with the selected room or null.
 function notesPanelSync(room) {
-  const panel = _npEl('notes-panel');
-  if (!panel || isPane) return;
-  // ⚠ THE WORLD MAP COVERS THE SCENE, so its room and its notes are not shown, and the panel shows
+  if (!_npEl('np-crumbs') || isPane) return;
+  // ⚠ THE WORLD MAP COVERS THE SCENE, so its room and its notes are not shown, and the pane works
   // with no scene open at all.
   const scene = worldMapOpen ? null : _npScene();
   if (worldMapOpen) room = null;
   if ((!scene && !worldMapOpen) || _npCalibrating()) {
     if (_npAim) { _npCommit(); _npAim = null; _npKey = null; }
-    _npApplyVisible();
+    dockRefreshRail();
     return;
   }
-  // Picking a room opens a shut panel without changing what the DM chose to keep.
-  if (room && !_npHadRoom && !_npOpen) _npSetOpen(true, true);
-  _npHadRoom = !!room;
-  _npApplyVisible();
+  // A new room, or a switch from one room to another, brings the Notes up (dock.js).
+  if (!worldMapOpen) {
+    const pk = room ? roomTabKey(room) : null;
+    if (pk !== null && pk !== _npPickedKey) dockRoomPicked();
+    _npPickedKey = pk;
+  }
+  dockRefreshRail();
   const roomKey = room ? roomTabKey(room) : null;
   if (roomKey !== _npRoomKey) { _npRoomKey = roomKey; notesLevelPick = null; }
   const place = _npPlace(scene), road = _npRoad();
@@ -231,7 +228,7 @@ function notesPanelSync(room) {
   }
 }
 
-// What is typed goes to the level it was typed for, and the panel forgets it, so a rename that moves
+// What is typed goes to the level it was typed for, and the pane forgets it, so a rename that moves
 // the notes under it is not undone by the next repaint writing the old text back.
 function notesPanelSettle() {
   _npCommit();
@@ -254,80 +251,16 @@ function notesPanelFollow() {
   refreshRoomPanel();
 }
 
-// ─── Showing and width ───────────────────────────────────────────────────────
+// ─── Showing ─────────────────────────────────────────────────────────────────
 
 function _npCalibrating() { return typeof gridCalArmed !== 'undefined' && gridCalArmed; }
 
-// The panel while it is open, the floating icon while it is shut, neither with no scene.
-function _npApplyVisible() {
-  const away = (!worldMapOpen && !_npScene()) || _npCalibrating();
-  _npEl('notes-panel').hidden = away || !_npOpen;
-  _npEl('np-fab').hidden = away || _npOpen;
-}
-
-// The ui zoom as the browser applied it, off a borderless button of the panel or the icon.
-function _npZoom() {
-  for (const id of ['np-toggle', 'np-fab']) {
-    const b = _npEl(id);
-    if (b && b.offsetWidth > 0) return b.getBoundingClientRect().width / b.offsetWidth;
-  }
-  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1;
-}
-
-// ⚠ THE TOOLBAR NEVER MOVES (dock.js): the pane stops where it meets the toolbar's left edge, and
-// only its narrowest width goes past.
-function _npMaxW() {
-  const z = _npZoom();
-  const room = window.innerWidth / 2 - _dockBarW() / 2 - DOCK_TOOLBAR_GAP;
-  return Math.max(NOTES_MIN_W, Math.min(NOTES_MAX_W, room / z));
-}
-
-// The pane's width, as far as the window allows. Its bottom edge is the minimap's (--mm-top).
-function _npLayout() {
-  const panel = _npEl('notes-panel');
-  if (!panel) return;
-  panel.style.setProperty('--np-pane-w', Math.max(NOTES_MIN_W, Math.min(_npMaxW(), _npWantW)) + 'px');
-}
-
-function _npInitEdge(edge, panel) {
-  edge.addEventListener('mousedown', e => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const z = _npZoom(), x0 = e.clientX, w0 = panel.offsetWidth;
-    panel.classList.add('resizing');
-    const move = m => { _npWantW = w0 + (m.clientX - x0) / z; _npLayout(); };
-    const up = () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
-      panel.classList.remove('resizing');
-      try { localStorage.setItem(NOTES_WIDTH_KEY, String(Math.round(_npWantW))); } catch (_) {}
-    };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-  });
-}
-
-// `transient` opens without remembering it, for a room pick.
-function _npSetOpen(open, transient) {
-  _npOpen = open;
-  if (!transient) { try { localStorage.setItem(NOTES_OPEN_KEY, open ? '1' : '0'); } catch (_) {} }
-  _npApplyVisible();
-  _npLayout();
-  if (open) _rpFitNotes();
-}
-
 function initNotesPanel() {
-  const panel = _npEl('notes-panel');
-  if (!panel) return;
-  panel.addEventListener('mousedown', e => e.stopPropagation());
-  _npEl('np-fab').addEventListener('mousedown', e => e.stopPropagation());
   const field = _npEl('np-field');
+  if (!field) return;
   _rpWireField(field, { commit: _npCommit, enterCommits: false });
-  for (const id of ['np-toggle', 'np-fab']) _npEl(id).addEventListener('click', () => _npSetOpen(!_npOpen));
-  try { _npWantW = parseFloat(localStorage.getItem(NOTES_WIDTH_KEY)) || NOTES_MIN_W; } catch (_) {}
-  _npInitEdge(_npEl('np-edge'), panel);
-  new ResizeObserver(_npLayout).observe(document.documentElement);
-  try { _npOpen = localStorage.getItem(NOTES_OPEN_KEY) !== '0'; } catch (_) {}
+  // The room's field grows with its text, which needs the pane on screen to measure.
+  document.addEventListener('dockpane', e => { if (e.detail === 'notes') _rpFitNotes(); });
   // ⚠ REGISTERED BEFORE index.html's own listeners, which save: the commit has to land first.
   window.addEventListener('beforeunload', notesPanelFlush);
   document.addEventListener('visibilitychange', () => { if (document.hidden) notesPanelFlush(); });

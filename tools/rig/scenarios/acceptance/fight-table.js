@@ -600,7 +600,7 @@ module.exports = async function fightTableFeature(rig) {
     floating: ['scene-dd', 'music-anchor'].filter(id => document.getElementById(id)),
   }))()`);
   rig.check(rail.floating.length === 0, 'a button still floats over the top of the map: ' + rail.floating.join(', '));
-  rig.check(rail.order.join() === 'btn-world,btn-bestiary,dock-tab-scene,dock-tab-music,' +
+  rig.check(rail.order.join() === 'btn-world,btn-bestiary,dock-tab-scene,dock-tab-notes,dock-tab-music,' +
             'dock-tab-sounds,dock-tab-gallery,btn-combat,dock-tab-settings,btn-help',
             'the rail is not in the order the DM picked: ' + rail.order.join());
   rig.byEye('the fight table and the Bestiary wear the dock\'s grey');

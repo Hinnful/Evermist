@@ -99,7 +99,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/controlPanel.js` | The dock's Scene control pane over the hidden legacy controls |
 | `ui/dock.js` | The dock: the icon rail, the one open pane, its width |
 | `notes/notesPlan.js` | Pure notes kernel: the crumb list, a notes string cleaned, a restored campaign note merged in. Tested |
-| `notes/notesPanel.js` | The left panel: breadcrumbs, and the notes of the campaign, a place, the scene or the room |
+| `notes/notesPanel.js` | The dock's Notes pane: breadcrumbs, and the notes of the campaign, a place, the scene or the room |
 | `world/worldMapPlan.js` | Pure world-map kernel: starting layout, polygon geometry and which polygon holds a card, the camera. Tested |
 | `world/worldMapStore.js` | Where a scene sits on the world map, its place and its name: the one writer, and a column's inbox for it |
 | `world/worldRoadPlan.js` | Pure road kernel: a road cleaned and parsed, its line sampled, an end laid on its scene or place, what deleting, renaming and restoring do to it. Tested |
@@ -121,9 +121,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `world/worldBackup.js` | Settings' World map backup: Export the pick or everything, Restore from a picker or a dropped .zip |
 | `world/worldMapMenu.js` | The right-click menu on the world map: a scene, a place, or the ground |
 | `rooms/roomPanel.js` | Map room labels and the pure geometry that places them |
-| `rooms/roomCard.js` | The selected room's fields, in the left panel |
+| `rooms/roomCard.js` | The selected room's fields, in the Notes pane |
 | `rooms/roomSwitcher.js` | The selected room's clouds and door button, on the map above it |
-| `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the left panel |
+| `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the Notes pane |
 | `gallery/galleryPlan.js` | Pure gallery kernel: picture size, names, the migration list, the backup list, what a scene's rooms still hold. Tested |
 | `gallery/pictureDecode.js` | A file turned into a gallery picture: shrunk, or kept whole if animated or SVG |
 | `gallery/galleryStore.js` | The gallery's own IndexedDB: pictures under their id |

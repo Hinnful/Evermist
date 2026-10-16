@@ -21,6 +21,7 @@ const {
   nearestOutlinePoint,
   doorPoint,
   pointInDoorNotch,
+  doorClickPlan,
   doorModeRank,
   doorResolvedMode,
   sharedWallSpans,
@@ -448,5 +449,32 @@ describe('flat edge numbers', () => {
     const near = nearestOutlinePoint(rect(0, 0, 100, 100), 50, 2, 10);
     assert.equal(near.edge, 0);
     assert.equal(doorEdgeFrame(rect(0, 0, 100, 100), 0).ei, 0);
+  });
+});
+
+describe('doorClickPlan', () => {
+  const room = () => ({ mode: 'reveal', vertices: rect(0, 0, 100, 100) });
+  const opts = { cell: 20, slack: 8, size: { width: 20, depth: 10 }, offsetX: 0, offsetY: 0, square: true };
+  it('plans an add snapped to the cell on a wall, and nothing away from walls', () => {
+    const r = room();
+    const plan = doorClickPlan([r], 33, 2, opts);
+    assert.equal(plan.action, 'add');
+    assert.equal(plan.poly, r);
+    assert.equal(doorClickPlan([r], 50, 50, opts), null);
+  });
+  it('plans a remove when a door already sits in that cell', () => {
+    const r = room();
+    r.doors = [doorClickPlan([r], 33, 2, opts).door];
+    const plan = doorClickPlan([r], 31, 1, opts);
+    assert.equal(plan.action, 'remove');
+    assert.equal(plan.index, 0);
+  });
+  it('prefers a revealed room over a shrouded one sharing the wall', () => {
+    const shroud = { mode: 'shroud', vertices: rect(0, 0, 100, 100) };
+    const open = { mode: 'reveal', vertices: rect(0, 0, 100, 100) };
+    assert.equal(doorClickPlan([shroud, open], 33, 2, opts).poly, open);
+  });
+  it('plans nothing without a grid cell', () => {
+    assert.equal(doorClickPlan([room()], 33, 2, { ...opts, cell: 0 }), null);
   });
 });

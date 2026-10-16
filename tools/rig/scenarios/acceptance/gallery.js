@@ -175,7 +175,9 @@ module.exports = async function galleryFeature(rig) {
   await waitTv(false);
 
   // ── E. the room card carries no pictures ───────────────────────────────────
-  await lib.settle(dm, '!document.getElementById("notes-panel").hidden && document.getElementById("panel-room").offsetParent !== null', 8000);
+  // The Gallery pane is open, and the room card lives in the Notes pane.
+  await dm.evaluate('dockOpen("notes"); 0');
+  await lib.settle(dm, 'dockActivePane() === "notes" && document.getElementById("panel-room").offsetParent !== null', 8000);
   // RED ON: <div id="rp-pics"> put back in index.html's #panel-room - 2026-10-16
   const card = await dm.evaluate(`({ parts: ['rp-pics', 'rp-pic-add', 'rp-pic-input'].filter(id => document.getElementById(id)),
     room: !!document.getElementById('panel-room') && document.getElementById('panel-room').offsetParent !== null })`);

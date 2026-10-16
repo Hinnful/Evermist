@@ -30,11 +30,11 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 ### The DM screen
 
 The map fills the DM window. Over it sit three things: the toolbar at the bottom, the minimap in
-the bottom-left corner, and **the dock** on the right edge.
+the bottom-left corner, and **the dock** on the right edge. The left side of the window is empty.
 
 The dock is an icon rail with one pane open beside it. The rail opens the world map, the
 Bestiary as a centred window, and the fight table as a free window. Its panes are **Scene
-control** (fog, rooms, lights, grid, My seat), **Music**,
+control** (fog, rooms, lights, grid, My seat), **Notes**, **Music**,
 **Sounds**, **Gallery** and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
 dock sits over the map rather than beside it, so opening a pane never moves the map or changes
 what the TV is sent. Its inner edge drags to resize it, and it gives way so the toolbar stays
@@ -70,24 +70,27 @@ take no Merge, Cut out or Split (`worldMapShapes.js` draws them). Find opens a l
 (`worldBackground.js`, its own IndexedDB). A double-click, or the Open bar over the one picked map
 (`worldMapOpenBar.js`), opens a scene. Add imports maps off screen, frames them and picks the first, and never opens
 one. With no maps the app starts on the world map, which shows a callout over Add (`worldMapEmpty.js`). Opening the
-map frames everything on it in the part of the window the panels leave clear, and with no place drawn it stays at the
+map frames everything on it in the part of the window the dock leaves clear, and with no place drawn it stays at the
 prints. A right-click menu (`worldMapMenu.js`) offers each thing's actions, a place is a room-shaped record (`worldPlaces.js`) drawn with the rectangle, circle or polygon tool and edited by the room's own selection code, and a scene belongs to the outline that holds all of its card. The room code reads the camera from globals, so each of its calls is made inside `_wmWithCamera`, which lends it the world's. The layer is a sibling of the canvas, so none of the map's
 own handlers see it, and while it is up the map's keys are held back so nothing reaches the TV. Place notes
 live in `evermist.placeNotes` by name and ride a backup in `campaign.json`.
 
-**The left panel** (`notesPanel.js`) mirrors the dock: a pane, dragged wider on its inner
-edge, that shuts to a floating icon. It runs from the top down to the minimap, which stays in the
-corner whatever the panel does. It holds the notes and the selected room, whose name, Delete and notes
-used to be the dock's Room tab; picking a room opens a shut panel. Breadcrumbs Campaign › Scene › Room sit on top,
-and below them the notes of one level. By default the panel follows the selection: the room if one is
+**The Notes tab** (`notesPanel.js`) is a rail tab like the others, placed after Scene control, and
+uses the dock's width. It holds the notes and the selected room, whose name, Delete and notes
+used to be the dock's Room tab. A new room pick, or a switch to another room, brings Notes up when
+the dock is open on another pane (`dockRoomPicked`, `dock.js`); with the dock shut it stays shut and
+the Notes tab wears the open tint until it is clicked, another tab is picked or the dock is shut. A
+deselect does nothing to the dock. The tab is disabled, and its pane put away, with no scene open
+(the world map excepted), while grid calibration is armed and on an empty world map. Breadcrumbs Campaign › Scene › Room sit on top,
+and below them the notes of one level. By default the pane follows the selection: the room if one is
 selected, otherwise the scene. A crumb picks a level without touching the selection, so the room keeps
 its crumb while the scene's or the campaign's notes show. A new room pick, a deselect or a scene
-switch goes back to following. Room notes render in the panel but
+switch goes back to following. Room notes render in the pane but
 keep their logic in `roomCard.js`. Scene notes are a `notes` string on the scene
 record, written by `doAutoSave`; campaign notes are one `localStorage` value; both ride in a backup,
-the campaign's as `campaign.json` at the zip root. Nothing in the panel reaches the TV. In two-map mode
+the campaign's as `campaign.json` at the zip root. Nothing in the pane reaches the TV. In two-map mode
 a column reports its scene's name and notes with its room, and a notes edit goes back to the column it
-was filled from. Grid calibration puts the panel away, as it does the dock pane.
+was filled from. Grid calibration puts the pane away like any dock pane.
 
 ## The files
 
@@ -386,7 +389,7 @@ different map, and one Player window on the TV showing both.
   a column both selects it and does whatever the click was for, in the one press. The selected
   column wears a blue frame.
 - **The selected room is edited in the DM window.** A column reports the room selected in it,
-  and the left panel shows the selected column's room. Every edit goes back to that column alone.
+  and the Notes pane shows the selected column's room. Every edit goes back to that column alone.
 - **Every button sends a message.** The toolbar, Scene control and the minimap all
   reach a column the same way the DM window reaches the Player window: by `postMessage`. A
   column then presses the control it already has, so nothing is implemented twice.
@@ -424,7 +427,7 @@ different map, and one Player window on the TV showing both.
 ## Rooms
 
 Moved to [architecture/rooms.md](architecture/rooms.md) - drawing and selecting rooms, repair,
-doors, the room in the left panel and the floor-plan import.
+doors, the room in the Notes pane and the floor-plan import.
 
 ## Reading a published module
 
@@ -432,7 +435,7 @@ The biggest prep cost for a DM isn't typing a room description, it's finding the
 400-page book eighty times. So the app reads the book once.
 
 Point it at a published module (`.txt` or `.pdf`), and it parses out the numbered locations:
-`K12. The Chapel`, and so on. After that the room's name field in the left panel becomes a **searchable
+`K12. The Chapel`, and so on. After that the room's name field in the Notes pane becomes a **searchable
 dropdown** over those entries. Pick one, and it fills the name and the description together.
 A counter shows how many are placed, because a finite shrinking list is a different
 psychological object than an open-ended chore.

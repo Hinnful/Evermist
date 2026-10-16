@@ -95,7 +95,7 @@ module.exports = async function sizes(rig) {
   for (const s of DM_SIZES.concat([{ w: 1100, h: 560, what: 'a short window' }])) {
     await rig.resizeDm(s.w, s.h);
     await lib.settle(dm, 'container.clientWidth === ' + s.w, 8000);
-    await lib.settle(dm, '!document.getElementById("notes-panel").hidden', 3000);
+    await lib.settle(dm, 'dockActivePane() === "notes"', 3000);
     const box = await dm.evaluate(`(() => {
       const r = document.getElementById('panel-room').getBoundingClientRect();
       const del = document.getElementById('rp-delete').getBoundingClientRect();
@@ -104,12 +104,12 @@ module.exports = async function sizes(rig) {
                rt: Math.round(r.right), b: Math.round(r.bottom),
                w: Math.round(r.width), h: Math.round(r.height),
                del: del.width > 0 && del.left >= 0 && del.right <= innerWidth && del.top >= 0 && del.bottom <= innerHeight,
-               off: Math.abs((bar.left + bar.right) / 2 - innerWidth / 2), shown: !document.getElementById('notes-panel').hidden,
+               off: Math.abs((bar.left + bar.right) / 2 - innerWidth / 2), shown: dockActivePane() === 'notes',
                winW: innerWidth, winH: innerHeight };
     })()`);
     rig.note('the room at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
     rig.check(box.shown && box.w > 0 && box.h > 0,
-              'the left panel is not showing the selected room at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
+              'the Notes pane is not showing the selected room at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));
     rig.check(box.l >= 0 && box.t >= 0 && box.rt <= box.winW && box.b <= box.winH && box.del,
               'the room or its Delete is off screen at ' + s.w + 'x' + s.h + ' (' + s.what + '): ' +
               JSON.stringify(box));

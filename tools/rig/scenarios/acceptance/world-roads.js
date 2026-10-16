@@ -18,7 +18,7 @@
 //   2. An end drawn on a scene or a place sticks to it; moving or reshaping that thing moves the end.
 //   3. Deleting a scene or a place leaves an open end; undoing the delete reattaches it.
 //   4. A road is picked, renamed and deleted like a place.
-//   5. A road's notes open in the left panel, survive a rename, and open for a scene on the road.
+//   5. A road's notes open in the Notes pane, survive a rename, and open for a scene on the road.
 //   6. A scene dropped on a road snaps onto the line, belongs to the road and is ungrouped in the library,
 //      after a restart and with two maps on. A scene dropped where the road runs inside a place belongs to
 //      the place. A scene dragged off the line leaves the road.

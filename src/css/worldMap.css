@@ -126,7 +126,7 @@
     outline: 1.5px solid var(--b-icon, #8fb6ff); background: #111 !important; color: #fff !important;
     cursor: text !important; user-select: text; text-overflow: clip !important;
   }
-  /* An empty map: a callout over Add (worldMapEmpty.js), and the bar and the notes panel keep only what can act. */
+  /* An empty map: a callout over Add (worldMapEmpty.js), and the bar keeps only what can act and the Notes tab is disabled. */
   #wm-empty {
     position: absolute; z-index: 70; width: 220px; padding: 10px 12px; zoom: var(--ui-zoom, 1.2); pointer-events: none;
     border-radius: var(--panel-radius); background: var(--panel-bg); border: var(--panel-border); box-shadow: var(--panel-shadow);
@@ -140,7 +140,6 @@
     border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg);
   }
   body.wm-empty #tb-grp-shape, body.wm-empty #wm-div, body.wm-empty #wm-find { display: none !important; }
-  body.wm-empty #notes-panel, body.wm-empty #np-fab { visibility: hidden !important; }
 
   /* The bar over the picked map (worldMapOpenBar.js): Open is solid blue with no glow, More is quiet. */
   #wm-bar {

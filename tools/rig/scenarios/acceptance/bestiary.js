@@ -10,7 +10,7 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter.
 //
-//   A. The Bestiary button opens and closes the window and is lit while it is open.
+//   A. The Bestiary button opens and closes the window and wears the dot while it is open.
 //   B. New monster adds an entry and opens its page in the editor, name ready to type over; a
 //      name typed there renames its row in the table.
 //   C. The name search and a Type tick narrow the table and say how many of how many; Clear all
@@ -91,9 +91,13 @@ module.exports = async function bestiaryFeature(rig) {
     label: document.getElementById('btn-bestiary').title })`);
   rig.check(opened.open && opened.lit, 'the Bestiary button did not open the window, lit: ' + JSON.stringify(opened));
   rig.check(opened.label === 'Bestiary', 'the rail button is not named Bestiary: ' + opened.label);
+  // RED ON: the bestiary line removed from dockRefreshRail (dock.js) - 2026-10-16
+  rig.check(await dm.evaluate('document.getElementById("btn-bestiary").classList.contains("win")'),
+            'the open Bestiary wears no dot on its rail button, which marks a window open outside the rail');
   await dm.evaluate('__bsAct("close"); 0');
   rig.check(await dm.evaluate('!bsIsOpen() && !document.getElementById("btn-bestiary").classList.contains("active")'),
             'the close button left the bestiary open or lit');
+  rig.check(await dm.evaluate('!document.getElementById("btn-bestiary").classList.contains("win")'), 'the shut Bestiary still wears the dot');
   await dm.evaluate('document.getElementById("btn-bestiary").click(); 0');
 
   // ── B. New monster ────────────────────────────────────────────────────────

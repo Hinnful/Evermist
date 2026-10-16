@@ -123,7 +123,7 @@ function scanJs(src, where) {
       const before = code.slice(lineStart, m.index), after = code.slice(m.index + raw.length + 2, lineEnd < 0 ? code.length : lineEnd);
       if (/\bt\.plural\([^()]*(\([^()]*\)[^()]*)*$/.test(before) || /[=!]==?\s*$/.test(before)) continue;
       if (/\bt\([^()]*$/.test(before)) { add(v, where); continue; }
-      if (QUIET.test(line)) continue;
+      if (QUIET.test(line) && !/\blabel:\s*$/.test(before)) continue;
       if (/<\w[^>]*>/.test(v)) {
         if (!tpl || !v.includes('${')) scanHtml(v, where);
         else for (const part of v.split(/\$\{(?:[^{}]|\{[^{}]*\})*\}/)) scanHtml(part.replace(/^[^<>]*>/, ''), where);

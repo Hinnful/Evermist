@@ -57,7 +57,7 @@ function paneSelectedRoom() {
   return panesActive && !isPane ? _rlRooms[panesSelected] : null;
 }
 
-// The selected column's scene as it last reported it, for the left panel. Null in single-map mode.
+// The selected column's scene as it last reported it, for the Notes pane. Null in single-map mode.
 function paneSelectedScene() {
   const s = panesActive && !isPane ? _rlScenes[panesSelected] : null;
   return s ? { key: s.id, name: s.name, notes: s.notes } : null;

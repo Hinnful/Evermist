@@ -15,10 +15,10 @@ One dock on the right edge holds every control that is not on the map or the too
 - **It sits OVER the map and never narrows it.** The canvas keeps the whole window; a window
   resize keeps the map where it is.
 - **The rail is icons only, in three groups split by dividers**: World map and Bestiary
-  (windows), Scene control (pane), Music, Sounds and Combat. Settings and Help sit at
-  the bottom. The open pane's tab wears the blue tint; a window that is open wears a dot.
+  (windows), Scene control and Notes (panes), Music, Sounds, Gallery and Combat. Settings and Help sit at
+  the bottom. The open pane's tab wears the blue tint; a window that is open outside the rail wears a dot (the fight table and the Bestiary, nothing else).
 - **Clicking the open tab again closes the pane, leaving the rail.** The rail never hides.
-- **One pane at a time.** The dock has no Room tab: the selected room lives in the left panel.
+- **One pane at a time.** The dock has no Room tab: the selected room lives in the Notes tab.
 - **The open pane and the width persist under `evermist.dockPane` and `evermist.dockWidth`.**
   Never write `evermist.cpPane`: the previous release reads it and would open a panel on a tab
   that no longer exists.
@@ -65,12 +65,12 @@ Rules from Figma's right panel, and they bind every section:
 elements, and the pane mirrors their state. Keep the colour picker's zoom-safe box reads and
 the `width: 0` on `.cp-chip-pre input` and `.cp-stepval input` through any restyle.
 
-## The room in the left panel (`roomCard.js`)
+## The room in the Notes tab (`roomCard.js`)
 
-The room card's module renders into the left panel's room level; there is no floating card and no Room tab.
+The room card's module renders into the Notes pane's room level; there is no floating card and no Room tab.
 
 - **Name as the header, Delete where Close was**, then the notes below
-  it, inside `#notes-panel` (`notesPanel.js`), which wears the dock's grey and type. No boxes.
+  it, inside `#dock-pane-notes` (`notesPanel.js`), which wears the dock's grey and type. No boxes.
 - **No corner radius in the tab or on the Effects row.** Corners round on the map by their circles
   (`cornerRound.js`), and the typed radius is the `#corner-field` a double-click on a circle opens.
 - **The module dropdown stays on the name field.**
@@ -88,23 +88,25 @@ The room card's module renders into the left panel's room level; there is no flo
 - Pure kernel (unit-tested): `normalizeRoomFields`, `sanitizeRoomName`, `sanitizeRoomDesc`,
   `ellipsizeToWidth`, `roomLabelFontPx`, `polygonRowSpans`, `cornerInsetAt`, `fitLabelBox`.
 
-## The left panel (`notesPanel.js`, `notesPanel.css`)
+## The Notes tab (`notesPanel.js`, `notesPanel.css`)
 
 - **Breadcrumbs Campaign › Place › Scene › Room, then one level's notes.** The levels never merge. The
   Place crumb exists for a scene in a group and holds that place's notes (`evermist.placeNotes`, by name).
-  By default the panel follows the selection: the room if one is selected, else the scene. A crumb picks
+  By default the pane follows the selection: the room if one is selected, else the scene. A crumb picks
   a level (`notesLevelPick`, `state.js`) and changes nothing else: the room stays selected and keeps its
   crumb. A new room pick, a deselect or a scene switch puts the pick back to following.
 - **A crumb never touches the TV.**
-- **It is the dock's mirror: a full-height pane, shut to a floating icon** (`#np-fab`, top left).
-  The chevron in its header shuts it and the icon opens it (`evermist.notesPanelOpen`); picking a
-  room opens a shut panel without changing what is kept. Its width is dragged on its inner edge
-  (`evermist.notesWidth`) and stops short of the toolbar. **The minimap sits to its right**
-  (`--np-right`) and moves with it. The notes area carries the app's own 8px scrollbar. It is put away
-  while grid calibration is armed, as the dock pane is.
+- **It is a rail tab like the others** (`#dock-tab-notes`, right after Scene control), with the dock's
+  width and one pane at a time. **A new room pick, or a switch from one room to another, brings Notes
+  up if the dock is open on another pane** (`dockRoomPicked`). With the dock shut it stays shut and the
+  tab wears the open tint with no pane (a state in `dock.js`, never persisted); a click on it opens
+  Notes, another tab or shutting clears it. A deselect does nothing, and a DM who switched away is not
+  pulled back until the next new pick. The notes area carries the app's own 8px scrollbar.
+- **The tab is disabled, and its pane put away, with no scene open (the world map excepted), while grid
+  calibration is armed and on an empty world map.** The left side of the window is empty.
 - **`#rp-desc` renders inside it**, but its logic stays in `roomCard.js`. Scene and campaign notes are the separate `#np-field`, with the field's own undo.
-  It fills the panel and scrolls itself, under the app's own 8px scrollbar; the room level scrolls the body.
-- In two-map mode the panel follows the selected column. A notes edit goes to the column it was
+  It fills the pane and scrolls itself, under the app's own 8px scrollbar; the room level scrolls the body.
+- In two-map mode the pane follows the selected column. A notes edit goes to the column it was
   filled from with `sendToPane`, never `paneForward`.
 - **Hidden in `body.player-mode` and `body.pane-mode`**, and absent from `stage.html`.
 
@@ -126,7 +128,7 @@ One level of name shows at a time: zoomed out only the place plates, zoomed in o
 - **Esc, M and the button return to the open scene. With none open they do nothing; with two maps on they close the map.**
 - **With two maps on the world map shows a Left and a Right chip** (`worldMapColumns.js`): the active one wears the tint, the other
   is solid black. A double-click fills the active column and closes the map.
-- **The notes panel follows the world map's pick**, Campaign › Place, and shows with no scene open.
+- **The Notes pane follows the world map's pick**, Campaign › Place, and works with no scene open.
 - **Add a scene adds and never opens**: the open scene and the TV stay as they are.
 - **A place is a room-shaped record, and the polygons decide membership.** A scene belongs to the smallest
   outline that holds ALL of its card (rounded corners and curved walls count); one pixel outside takes it
@@ -269,10 +271,10 @@ A floating row over the map, borrowing the app's controls.
 - No entry animation: `cpAdvIn` slides on `translateX`, and the placer measures the box every
   frame.
 
-**Arming calibration puts the dock pane and the left panel away and gives them back.** The pane
+**Arming calibration puts the dock pane away, Notes included, and gives it back.** The pane
 shuts, **without touching `selectedPolygonId`**, and leaving restores the pane that was open,
 unless the DM picked another tab meanwhile. The rail never hides, so that is a real click and
-it wins. The panel commits its fields on the way out, the same as the deselect path.
+it wins. Notes commits its fields on the way out, the same as the deselect path.
 
 ## Music and Sounds panes
 

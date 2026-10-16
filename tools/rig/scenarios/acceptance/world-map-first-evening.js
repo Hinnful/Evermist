@@ -10,9 +10,9 @@
 //
 //   1. With no maps the app opens on the world map. With maps it opens on the last map.
 //   2. Deleting the last map lands on the empty world map.
-//   3. An empty world map shows a callout over Add. The bar holds Select and Add only; the notes panel is hidden.
-//   4. Four loose maps are framed as prints (never below the scenes level), inside the part of the window the notes
-//      panel and the dock leave clear, and no closer than 2.6x.
+//   3. An empty world map shows a callout over Add. The bar holds Select and Add only; the Notes tab is disabled.
+//   4. Four loose maps are framed as prints (never below the scenes level), inside the part of the window the dock
+//      leaves clear, and no closer than 2.6x.
 //   5. After adding, the first map is the one picked, nothing opens, and the open scene is unchanged.
 //   6. One picked map has a bar above it: Open (an arrow, solid blue, no glow) and More, whose menu hangs from the button. The
 //      bar hides while dragging, zoomed out to places, and while searching.
@@ -51,9 +51,9 @@ module.exports = async function worldMapFirstEvening(rig) {
   await lib.settle(dm, SETTLED, 8000);
   const empty = await dm.evaluate(`(() => {
     const call = document.getElementById('wm-empty'), add = document.getElementById('wm-add');
-    const c = call.getBoundingClientRect(), a = add.getBoundingClientRect(), np = document.getElementById('notes-panel');
+    const c = call.getBoundingClientRect(), a = add.getBoundingClientRect(), np = document.getElementById('dock-tab-notes');
     return { shown: __feVis(call), text: call.textContent, dx: Math.abs((c.left + c.width / 2) - (a.left + a.width / 2)), above: c.bottom <= a.top + 1,
-      bar: __feBar(), panel: __feVis(np) || __feVis(document.getElementById('np-fab')) };
+      bar: __feBar(), panel: !np.disabled };
   })()`);
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(empty.shown && /Start with your maps/.test(empty.text) && /Double-click one to open it/.test(empty.text),
@@ -62,7 +62,7 @@ module.exports = async function worldMapFirstEvening(rig) {
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(JSON.stringify(empty.bar) === JSON.stringify(['btn-select', 'wm-add']),
             'the empty map\'s bar is not Select and Add alone: ' + JSON.stringify(empty.bar));
-  rig.check(!empty.panel, 'the notes panel shows over an empty world map');
+  rig.check(!empty.panel, 'the Notes tab is enabled over an empty world map');
 
   // ── 4 and 5. Four loose maps are added: framed, the first picked, nothing opened ──
   const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });
@@ -76,8 +76,8 @@ module.exports = async function worldMapFirstEvening(rig) {
   await lib.settle(dm, SETTLED, 8000);
   const added = await dm.evaluate(`(() => {
     const first = allScenes.find(s => s.name === ${JSON.stringify(NAMES[0])}) || {};
-    const np = document.getElementById('notes-panel'), dk = document.getElementById('dock');
-    const left = __feVis(np) ? np.getBoundingClientRect().right : 0, right = dk.getBoundingClientRect().left;
+    const dk = document.getElementById('dock');
+    const left = 0, right = dk.getBoundingClientRect().left;
     const cards = [...document.querySelectorAll('.wm-card')].map(c => c.getBoundingClientRect());
     return { picked: worldMapPicked(), first: first.id, cur: currentScene === null, z: _wmCam.z, split: WM_SPLIT, scenes: document.getElementById('wm').classList.contains('scenes'),
       open: worldMapOpen, n: cards.length, left, right,

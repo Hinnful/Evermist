@@ -107,7 +107,7 @@ function selectPane(id) {
   const v = paneScope().minimapView;
   if (v) minimapSetView(v);
   if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
-  refreshRoomPanel();   // the left panel follows the selected column's room
+  refreshRoomPanel();   // the Notes pane follows the selected column's room
 }
 
 function refreshPaneSelection() {

@@ -7,12 +7,15 @@
 // panel on a tab it does not have.
 const DOCK_PANE_KEY = 'evermist.dockPane';
 const DOCK_WIDTH_KEY = 'evermist.dockWidth';
-const DOCK_PANES = ['scene', 'music', 'sounds', 'gallery', 'settings'];
+const DOCK_PANES = ['scene', 'notes', 'music', 'sounds', 'gallery', 'settings'];
 const DOCK_MIN_W = 230, DOCK_MAX_W = 420;   // the pane, in the dock's pre-zoom px
 const DOCK_TOOLBAR_GAP = 16;                // screen px kept clear either side of the toolbar
 
 let _dockPane = null;        // the open pane, or null with the rail alone
 let _dockWantW = DOCK_MIN_W;
+let _dockNotesSel = false;   // Notes wears the open tint with no pane: a room was picked while the dock was shut
+let _dockResumeNotes = false; // Notes was open when it became unavailable; it comes back with the scene
+let _dockCalibrating = false;
 
 const _dockEl = () => document.getElementById('dock');
 
@@ -42,14 +45,16 @@ function initDock() {
 function dockActivePane() { return _dockPane; }
 
 // The one way to open, switch or shut the pane; `name` is a pane, or null for the rail alone.
-function dockOpen(name) {
+function dockOpen(name, forced) {
   const dock = _dockEl();
   if (!dock) return;
   _dockPane = name;
+  _dockNotesSel = false;
+  if (!forced) _dockResumeNotes = false;
   dockClosePop();
   dock.classList.toggle('open', !!name);
   dock.querySelectorAll('.dk-sec').forEach(s => { s.hidden = s.dataset.pane !== name; });
-  try { localStorage.setItem(DOCK_PANE_KEY, name || ''); } catch (_) {}
+  if (!forced) { try { localStorage.setItem(DOCK_PANE_KEY, name || ''); } catch (_) {} }
   dockRefreshRail();
   dockLayout();
   document.dispatchEvent(new CustomEvent('dockpane', { detail: name }));
@@ -68,16 +73,38 @@ function _dockToggleWindow(name) {
   if (name === 'world') worldMapToggle();
 }
 
+// Notes works wherever there is something to take notes on: a scene, or the world map once it holds one.
+function _dockNotesAvailable() {
+  if (_dockCalibrating) return false;
+  if (worldMapOpen) return !document.body.classList.contains('wm-empty');
+  return !!_npScene();
+}
+
+// A room picked: the dock open on another pane switches to Notes; a shut dock stays shut and Notes
+// wears the open tint until the DM clicks it or any other tab.
+function dockRoomPicked() {
+  if (!_dockNotesAvailable()) return;
+  if (!_dockPane) { _dockNotesSel = true; dockRefreshRail(); }
+  else if (_dockPane !== 'notes') dockOpen('notes');
+}
+
 function dockRefreshRail() {
   const dock = _dockEl();
   if (!dock) return;
+  const notes = document.getElementById('dock-tab-notes'), can = _dockNotesAvailable();
+  if (notes) notes.disabled = !can;
+  if (!can && _dockPane === 'notes') { _dockResumeNotes = !_dockCalibrating; dockOpen(null, true); return; }
+  if (!can) _dockNotesSel = false;
+  if (can && _dockResumeNotes && !_dockPane) { dockOpen('notes', true); return; }
   dock.querySelectorAll('[data-dock-pane]').forEach(b => {
-    b.classList.toggle('active', b.dataset.dockPane === _dockPane);
+    b.classList.toggle('active', b.dataset.dockPane === _dockPane || (b.dataset.dockPane === 'notes' && _dockNotesSel));
   });
   const world = document.getElementById('btn-world');
   if (world) world.classList.toggle('active', worldMapOpen);
   const fight = document.getElementById('btn-combat');
   if (fight) fight.classList.toggle('win', _dockWindowOpen('combat'));
+  const bestiary = document.getElementById('btn-bestiary');
+  if (bestiary) bestiary.classList.toggle('win', _dockWindowOpen('bestiary'));
 }
 
 // ─── Pop-outs ─────────────────────────────────────────────────────────────────
@@ -143,6 +170,7 @@ function dockPlacePop(el, row) {
 let _dockBeforeCal = null;
 
 function dockHoldForCalibration(on) {
+  _dockCalibrating = on;
   if (on) {
     _dockBeforeCal = _dockPane;
     dockOpen(null);
@@ -153,12 +181,13 @@ function dockHoldForCalibration(on) {
     _dockBeforeCal = null;
     if (back && !_dockPane) dockOpen(back);
   }
+  dockRefreshRail();
 }
 function _dockForgetCal() { _dockBeforeCal = null; }
 
 // ─── The world map ────────────────────────────────────────────────────────────
 // The TV never changes while it is open, so Scene control and the fog that every scene shares go
-// dark; the pane comes back on closing unless a tab was picked meanwhile.
+// dark; the pane comes back on closing unless a tab was picked meanwhile. Notes stays: place and road notes live there.
 let _dockBeforeWorld = null;
 
 function dockHoldForWorld(on) {
@@ -175,6 +204,7 @@ function dockHoldForWorld(on) {
     if (_dockBeforeWorld && !_dockPane) dockOpen(_dockBeforeWorld);
     _dockBeforeWorld = null;
   }
+  dockRefreshRail();
 }
 function _dockForgetWorld() { _dockBeforeWorld = null; }
 

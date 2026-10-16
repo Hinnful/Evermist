@@ -33,7 +33,7 @@ language, present tense. The terse version every session carries is in
 | `toolPreset.js` | Effect presets: the outline and label that follow the cursor, the wheel and [ ] that step sizes, and placing one with a click or an aiming drag. The size field is `effectsRow.js`'s. |
 | `toolShapes.js` | The three tools drawn by dragging: rectangle, circle and cone. Each starts on the press and commits what it has on release. |
 | `toolBrush.js` | The fog brush. Strokes queue while the pointer moves and land in one pass, so painting stays smooth on a big map. |
-| `toolDoor.js` | The Door tool: which wall a click belongs to, where along it the door sits, and the notch that opens in the fog there. |
+| `toolDoor.js` | The Door tool: which wall a click belongs to, where along it the door sits, the notch that opens in the fog there, and the ghost of that door under the pointer before the click. |
 | `toolCut.js` | The Cut tool: a free path drawn across a shape, and the two pieces it leaves. |
 | `shapeMarkers.js` | Draws one corner (square at object level, circle in edit mode, an optional coloured ring or stroke) and one hole's hatch fill. Read by shapeSelect.js, shapeBox.js and toolPreview.js alike, so it belongs to none of them. |
 | `toolPreview.js` | The outline a tool shows while the DM is still drawing, before anything is committed. |
@@ -90,10 +90,10 @@ language, present tense. The terse version every session carries is in
 | `colorPicker.js` | The fog colour control: a saturation square, a hue strip and a hex field, kept in step with each other. It writes into the same hidden colour input the rest of the app listens to. |
 | `dock.js` | The dock on the right edge of the DM screen: an icon rail and one pane beside it, over the map. A rail tab opens its pane and the open tab's second click shuts it; the window tabs open the scene library, the Bestiary, the fight table and the shortcuts. The open pane and the width the DM dragged it to are remembered, and the width gives way so the toolbar, which stays centred on the window, stays clear. |
 | `roomSwitcher.js` | The selected room's own controls, on the map just above it: the three clouds in a well that set that room's fog at once, a divider and a bare door button that arms the Door tool. |
-| `roomLink.js` | Two-map mode's room. A column has no dock, so it reports its selected room and its scene's name and notes to the DM window: the room's name, notes, fog and corner radius. The left panel shows the selected column's room, and every edit made there goes back to that column alone, which refuses it if its selection has moved on. |
+| `roomLink.js` | Two-map mode's room. A column has no dock, so it reports its selected room and its scene's name and notes to the DM window: the room's name, notes, fog and corner radius. The Notes pane shows the selected column's room, and every edit made there goes back to that column alone, which refuses it if its selection has moved on. |
 | `controlPanel.js` | The dock's Scene control pane: Fog, Rooms, Grid, Player and My seat. A presentational layer over the older hidden controls: colour fields that open their picker beside the dock, the movement dropdown, the eyes, and number fields scrubbed by dragging their icon. |
 | `notesPlan.js` | The notes rules that need no screen: the breadcrumb list, a notes string cleaned and capped, and a restored campaign note merged in beside the one the DM has. Unit-tested. |
-| `notesPanel.js` | The left panel: breadcrumbs over the notes of the campaign, a place, the scene or the room. The campaign and scene notes are its own field; the room's field sits inside it but keeps its logic in `roomCard.js`. |
+| `notesPanel.js` | The dock's Notes pane: breadcrumbs over the notes of the campaign, a place, the scene or the room. The campaign and scene notes are its own field; the room's field sits inside it but keeps its logic in `roomCard.js`. |
 | `worldMapPlan.js` | The world map's rules that need no screen: where scenes start, polygon geometry and which polygon holds a card, and the camera. Unit-tested. |
 | `worldRoadPlan.js` | The roads' rules that need no screen: a road cleaned and parsed, its line sampled and measured, an end laid on its scene or place, and what deleting, renaming and restoring do to a road. Unit-tested. |
 | `worldMapStore.js` | Where a scene sits on the world map, which place it belongs to and its name, written in one place: the open scene, the store and a column all take the same change. |
@@ -115,7 +115,7 @@ language, present tense. The terse version every session carries is in
 | `worldMapRoads.js` | Roads in the world map's layer: the dashed line on its casing, its name plate, the Road tool, and deleting. Editing a picked road is the room's own code on an `open` record. |
 | `worldMapMenu.js` | The world map's right-click menu: open, rename, take out of its place or delete a scene; rename, fit or delete a place; add a scene or show everything from the ground. |
 | `roomPanel.js` | The names drawn on the DM's map over each room, and the arithmetic that finds a spot inside the shape where a name fits. |
-| `roomCard.js` | The selected room's name and notes in the left panel, committed as they are typed. It follows the selection alone. |
+| `roomCard.js` | The selected room's name and notes in the Notes pane, committed as they are typed. It follows the selection alone. |
 | `galleryPlan.js` | The rules for the gallery that need no screen: how big a picture may be, the name a file gives it, the list the migration copies out of the scenes, what a backup carries and what a restore adds. It also reads the pictures a room still holds for the previous release, and edits none of them. |
 | `pictureDecode.js` | Turns a picked or dropped file into a gallery picture. A still picture shrinks to the compression size; an animated one or a vector drawing is kept as it is. |
 | `galleryStore.js` | The gallery's pictures on disk, in a database of their own so the scene store never lists them as scenes. A restore adds the ones whose id is not held yet. |

@@ -1,4 +1,4 @@
-/* roomCard.css — the left panel's room level: the selected room's name and notes, and the module-text dropdown under the name. */
+/* roomCard.css — the Notes pane's room level: the selected room's name and notes, and the module-text dropdown under the name. */
   /* Notion's way: the dock is the only box. Name and notes sit on its background, share one left
      and one right edge, and a field shows itself only on hover and while typing. */
   .dk-room { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; }

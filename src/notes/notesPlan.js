@@ -1,5 +1,5 @@
 'use strict';
-// notesPlan.js — the pure rules behind the left panel's notes: the crumb list, the cleaning of a
+// notesPlan.js — the pure rules behind the Notes pane's notes: the crumb list, the cleaning of a
 // notes string, and the merge of a restored campaign note into the one the DM has.
 
 const NOTES_SEPARATOR = '\n\n---\n\n';

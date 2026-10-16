@@ -45,7 +45,7 @@
 //   Q. A ping in a column reaches that column's half of the Player screen and not the other.
 //   R. A gallery picture clicked in the DM window covers the whole Player screen, both halves. A
 //      second one replaces it, and Escape takes it down, typed in the DM window or inside a column.
-//   S. A room selected in either column is edited in the DM window's left panel - name, notes, fog
+//   S. A room selected in either column is edited in the DM window's Notes pane - name, notes, fog
 //      and Delete - and every edit lands in that column and never the other. A
 //      column window shows no dock and no rail of its own.
 //   T. Hiding the room names hides them in both columns, from the Rooms eye and from L pressed
@@ -790,9 +790,9 @@ module.exports = async function twoMapsFeature(rig) {
   for (const [id, pane, other, was] of [['A', paneA, paneB, 'Upper hall'], ['B', paneB, paneA, 'Cellar']]) {
     await dm.evaluate('selectPane(' + JSON.stringify(id) + '); 0');
     await lib.settle(dm, 'document.getElementById("rp-name").value === ' + JSON.stringify(was), 8000);
-    rig.check(await dm.evaluate('!document.getElementById("notes-panel").hidden && document.getElementById("panel-room").offsetParent !== null') &&
+    rig.check(await dm.evaluate('dockActivePane() === "notes" && document.getElementById("panel-room").offsetParent !== null') &&
               await dm.evaluate('document.getElementById("rp-name").value') === was,
-              'S: the left panel does not show the room selected in column ' + id);
+              'S: the Notes pane does not show the room selected in column ' + id);
     const otherName = await roomIn(other, 'name');
     const otherMode = await roomIn(other, 'mode');
     await typeName(was + ' (' + id + ')');

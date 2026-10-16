@@ -137,7 +137,7 @@ change with nothing on screen showing it.
 Notes for the campaign, the scene and the room, and the room itself, moved to a panel on the left.
 Backlog item 140 part 1; the spec was gitignored and is not needed to pick the work up.
 
-### Notes live in a left panel, and the Room tab is gone · `SETTLED` (2026-10-08)
+### Notes live in a left panel, and the Room tab is gone · `REVERTED` (2026-10-16, Notes on the rail)
 A scene with no rooms had nowhere to keep notes, and neither did the campaign. A full-height panel
 on the left, the dock's mirror, holds breadcrumbs Campaign › Scene › Room over one level's notes. The
 selected room's name, module dropdown, Delete, notes and pictures render in it, so the dock lost
@@ -157,7 +157,7 @@ No dock pane, notes panel or minimap moves it. Each panel stops short of it wher
 and only a panel's narrowest width may cover it, as the dock can on the rig's 1008px. Reverses the
 toolbar's slide between the minimap and the dock, and the `--tb-left` and `--tb-right` that did it.
 
-### The minimap stays in its corner and the notes end above it · `SETTLED` (2026-10-13)
+### The minimap stays in its corner and the notes end above it · `REVERTED` (2026-10-16, Notes on the rail)
 Reverses the minimap moving with the notes panel, and the notes panel as a full-height pane. The
 minimap is fixed to the window's bottom-left corner; the panel's bottom edge is the minimap's top
 (`--mm-top`, set by `minimap.js`). On the world map, which hides the minimap, the panel takes the
@@ -184,6 +184,32 @@ backup's campaign notes below the DM's, once, and names anything unreadable in o
 stay on rooms until the gallery (backlog 161).
 
 ---
+
+## Notes on the rail (2026-10-16)
+
+The left panel moved into the dock. It clashed with the minimap for the bottom-left corner and took a
+full-height strip of the map.
+
+### Notes is a dock tab like any other · `SETTLED` (2026-10-16)
+A rail tab under Scene control opens the same breadcrumbs, notes and room header as a pane; one pane at
+a time, the dock's width, no chevron, no floating icon. The left side holds the minimap alone. Nothing
+about the notes themselves changed: the same storage, so the previous release still shows them in its
+panel. `evermist.notesPanelOpen` and `evermist.notesWidth` are no longer read or written.
+
+### A room pick switches an open dock to Notes and never opens a shut one · `SETTLED` (2026-10-16)
+With another pane open, a new room pick, or a switch to another room, opens Notes. With the dock shut it
+stays shut and the Notes tab wears the open tint; a click on it opens Notes. A deselect does nothing.
+Rejected: returning to the earlier pane on deselect, which closed scene or campaign notes read from the
+breadcrumbs while a room was picked, and was one more rule to learn.
+
+### Notes stacked over the open pane · `REJECTED` (2026-10-16)
+Prototyped so Notes and Sounds could show together: Notes as an on/off tab taking the top of the dock,
+any other pane below it, a line between them to drag. Rejected as too complicated for what is meant to
+be the easiest thing in the app to understand.
+
+### The rail's dot marks a window open outside the rail · `SETTLED` (2026-10-16)
+The fight table and the Bestiary wear it while open, and neither wears the tab's tint. No pane tab
+wears a dot.
 
 ## The windows (2026-10-03)
 

@@ -9,55 +9,53 @@ const DOOR_HIT_PX = 8;
 
 function doorCellSize() { return gridSize > 0 ? gridSize : 0; }
 
-// Click-to-toggle: removing is tested before placing, or a click on a door stacks a second one.
-// ⚠ Toggling is decided by CELL, never by whether the click hit a door's rectangle: a boundary
-// click belongs to two rectangles and to neither, and the tool ticks those boundaries.
-// ⚠ EVERY room whose wall is under the click is a candidate, not just the nearest — two rooms
-// share a doorway's wall. A revealed room wins, because a door on a shrouded one draws nothing.
-function doorMouseDown(mapX, mapY) {
+// The one decision both the click and the hover ghost read; see doorClickPlan.
+function doorPlanAt(mapX, mapY) {
   const cell = doorCellSize();
-  if (!(cell > 0)) return;
-  const slack = DOOR_HIT_PX / zoom;
-  const size = doorSizeForCell(cell, doorWidthPct, doorDepthPct);
+  if (!(cell > 0)) return null;
+  return doorClickPlan(activeShapeList(), mapX, mapY, {
+    cell, slack: DOOR_HIT_PX / zoom, size: doorSizeForCell(cell, doorWidthPct, doorDepthPct),
+    offsetX: gridOffsetX, offsetY: gridOffsetY, square: gridMode === 'square',
+  });
+}
 
-  const cands = [];
-  for (const poly of activeShapeList()) {
-    if (poly.vertices.length < 3) continue;
-    const near = nearestOutlinePoint(poly, mapX, mapY, slack * 2);
-    if (!near) continue;
-    const door = doorCellSnap(poly, near.edge, mapX, mapY, cell,
-                              gridOffsetX, gridOffsetY, gridMode === 'square');
-    if (door) cands.push({ poly, door, dist: near.dist });
-  }
-  if (!cands.length) return;
-
-  for (const c of cands) {
-    const doors = c.poly.doors;
-    if (!doors || !doors.length) continue;
-    const centre = doorPoint(c.poly, c.door);
-    let hit = doors.findIndex(d => {
-      if (d.edge !== c.door.edge || !centre) return false;
-      const p = doorPoint(c.poly, d);
-      return p && Math.hypot(p.x - centre.x, p.y - centre.y) < cell * 0.25;
-    });
-    // A door placed before the grid changed no longer sits on a cell centre, so pointing straight
-    // at it is the only way left to take it away.
-    if (hit < 0) hit = doors.findIndex(d =>
-      pointInDoorNotch(c.poly, d, size.width, size.depth, mapX, mapY, slack));
-    if (hit < 0) continue;
-    pushUndo();
+function doorMouseDown(mapX, mapY) {
+  const plan = doorPlanAt(mapX, mapY);
+  if (!plan) return;
+  pushUndo();
+  if (plan.action === 'remove') {
     // Replaced, never spliced: pushUndo copies a room shallowly, so its snapshot holds THIS array
     // and an in-place edit would rewrite the undo state too.
-    c.poly.doors = doors.filter((_, k) => k !== hit);
-    commitDoorChange();
-    return;
+    plan.poly.doors = plan.poly.doors.filter((_, k) => k !== plan.index);
+  } else {
+    plan.poly.doors = (plan.poly.doors || []).concat([plan.door]);
   }
-
-  cands.sort((a, b) => (a.poly.mode === 'shroud') - (b.poly.mode === 'shroud') || a.dist - b.dist);
-  const pick = cands[0];
-  pushUndo();
-  pick.poly.doors = (pick.poly.doors || []).concat([pick.door]);
   commitDoorChange();
+}
+
+// Hover ghost: the door a click here would place, half-strength, in the outline style of a placed
+// one. Nothing where a click would remove a door or hit no wall. DM-only: it paints the cursor canvas.
+function drawDoorGhost(screenX, screenY) {
+  if (screenX == null || isPlayer || shape !== 'door' || placeMode !== 'rooms') return;
+  const plan = doorPlanAt((screenX - panX) / zoom, (screenY - panY) / zoom);
+  if (!plan || plan.action !== 'add') return;
+  const size = doorSizeForCell(gridSize, doorWidthPct, doorDepthPct);
+  const c = doorNotchCorners(plan.poly, plan.door, size.width, size.depth, size.depth);
+  if (!c) return;
+  cursorCtx.save();
+  cursorCtx.globalAlpha = 0.5;
+  cursorCtx.lineWidth = 1.5;
+  cursorCtx.strokeStyle = 'rgba(255,255,255,0.95)';
+  cursorCtx.fillStyle = 'rgba(255,255,255,0.25)';
+  cursorCtx.beginPath();
+  for (const [i, k] of ['innerL', 'outerL', 'outerR', 'innerR'].entries()) {
+    const x = c[k].x * zoom + panX, y = c[k].y * zoom + panY;
+    if (i === 0) cursorCtx.moveTo(x, y); else cursorCtx.lineTo(x, y);
+  }
+  cursorCtx.closePath();
+  cursorCtx.fill();
+  cursorCtx.stroke();
+  cursorCtx.restore();
 }
 
 function commitDoorChange() {

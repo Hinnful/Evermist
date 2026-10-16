@@ -21,6 +21,8 @@
 //   F. The two size fields are how a door is made wider or deeper, and out-of-range typing is
 //      clamped rather than taken. Everything else in this file sets the two globals directly,
 //      so the fields themselves were the half nothing pressed.
+//   G. With the Door tool in hand and nothing clicked, the pointer on a wall shows a ghost of the door
+//      a click there would place; off the wall it shows none.
 //   E. A door stays on its wall when a vertex is added to the room or taken away. Adding one to
 //      the door's OWN wall splits that wall in two, and the door holds the map point it was
 //      placed on, moving onto whichever half now carries it.
@@ -134,6 +136,25 @@ module.exports = async function doorsFeature(rig) {
   // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('setShape("door"); 0');
   rig.check(await dm.evaluate('shape') === 'door', 'the Door tool did not take');
+  // ── G. Before the click, a ghost shows the door the click would place ───────
+  // RED ON: drawDoorGhost's call removed from drawCursor (render.js) - 2026-10-16
+  // ⚠ THE ROOM'S OUTLINE IS ON THE CURSOR CANVAS TOO, on the same pixels as the door. So the alpha is
+  // summed over a box in the door's cell, away from the pointer, and held against the pointer off the map.
+  const ghostSum = (px, py) => dm.evaluate(`(() => {
+    drawCursor(${px === null ? 'null' : px + ' * zoom + panX'}, ${py === null ? 'null' : py + ' * zoom + panY'});
+    const k = cursorCanvas.width / cursorCanvas.clientWidth;
+    const x = Math.round((${wall.right} * zoom + panX) * k), y = Math.round((${FIRST_DOOR_Y + 30} * zoom + panY) * k);
+    const d = cursorCtx.getImageData(x - 8, y - 3, 17, 7).data;
+    let a = 0; for (let i = 3; i < d.length; i += 4) a += d[i];
+    return a;
+  })()`);
+  const bare = await ghostSum(null, null);
+  const onWall = await ghostSum(wall.right, FIRST_CLICK_Y), offWall = await ghostSum(wall.right - 200, FIRST_CLICK_Y);
+  rig.note('alpha in the door cell: no pointer ' + bare + ', on the wall ' + onWall + ', off it ' + offWall);
+  rig.check(onWall > bare + 100, 'the pointer on a wall with the Door tool shows no ghost of the door a click would place');
+  rig.check(offWall < bare + 100, 'a ghost door shows with the pointer away from every wall');
+  rig.check((await dm.evaluate('__rigDoors()')).length === 0, 'hovering placed a door');
+
   await dm.evaluate('__rigClick(' + wall.right + ', ' + FIRST_CLICK_Y + ')');
 
   const first = await dm.evaluate('__rigDoors()');

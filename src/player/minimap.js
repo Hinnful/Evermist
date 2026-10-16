@@ -201,8 +201,6 @@ function minimapLayout() {
   _canvas.style.transform = seatTurn ? 'rotate(' + seatTurn + 'deg)' : '';
   const bw2 = Math.round(w * MINIMAP_BACKING), bh2 = Math.round(h * MINIMAP_BACKING);
   if (_canvas.width !== bw2 || _canvas.height !== bh2) { _canvas.width = bw2; _canvas.height = bh2; }
-  // The notes panel ends above the box.
-  document.documentElement.style.setProperty('--mm-top', (MINIMAP_EDGE + bh) + 'px');
   _markDirty();
 }
 

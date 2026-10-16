@@ -1,18 +1,20 @@
 'use strict';
 
-// notes-panel.js — THE LEFT PANEL: BREADCRUMBS AND NOTES AT EVERY LEVEL.
+// notes-panel.js — THE NOTES TAB OF THE DOCK: BREADCRUMBS AND NOTES AT EVERY LEVEL.
 //
 // THE GOAL OF THIS FEATURE: the DM keeps notes for the campaign, for a scene and for a room in one
-// panel on the left, and a scene with no rooms has somewhere to put them. None of it reaches the TV.
+// pane of the dock, and a scene with no rooms has somewhere to put them. None of it reaches the TV.
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
-//   A. The panel shows Campaign › Scene › Room, and the Room crumb exists only while a room is
-//      selected. It runs down the left edge and ends above the minimap, which stays in the corner.
-//   I. The pane's width is dragged on its inner edge and remembered; collapsing the panel leaves a
-//      floating icon, and the minimap stays where it is; the toolbar stays centred on the window; the
-//      notes area carries the app's own scrollbar.
+//   A. The pane shows Campaign › Scene › Room, and the Room crumb exists only while a room is
+//      selected. The left side of the window is empty and the minimap stays in its corner.
+//   I. Notes is a rail tab like any other: a click opens it, a second click shuts the dock, and the
+//      toolbar stays centred on the window; the notes area carries the app's own scrollbar.
+//   J. The room-pick rule: a new room, or a switch to another, opens Notes when the dock is open on
+//      another pane; with the dock shut it stays shut and the Notes tab wears the open tint; a click
+//      on it opens Notes, a click on another tab clears it, and a deselect does nothing.
 //   B. A click on empty map selects the scene and shows its notes.
 //   C. A click on a crumb shows that level's notes and nothing else changes: the room stays
 //      selected with its crumb, and the TV does not change. The levels never merge.
@@ -21,10 +23,9 @@
 //   E. The Player shows nothing of it.
 //   F. In two-map mode the panel follows the selected column. Opening another scene brings that
 //      scene's notes, and the scene's notes scroll when they are long.
-//   G. Grid calibration puts the panel away and gives it back.
+//   G. Grid calibration puts the pane away, disables the Notes tab and gives the pane back.
 //   H. Campaign, scene and room notes survive a restart, the saved scene keeps every room's
-//      `vertices` and `desc` with `notes` a top-level string, and the panel remembers whether it
-//      was open. This is the shape the previous release reads.
+//      `vertices` and `desc` with `notes` a top-level string, and a dock left shut stays shut. This is the shape the previous release reads.
 //
 // ⚠ H RESTARTS THE APP, so it runs last: rig.restart() hands back a new DM session and the `dm`
 // taken at the top is a dead socket after it.
@@ -54,21 +55,26 @@ module.exports = async function notesPanelFeature(rig) {
   const sceneId = await dm.evaluate('currentScene.id');
 
   const panel = () => dm.evaluate(`(() => {
-    const p = document.getElementById('notes-panel');
+    const p = document.getElementById('dock-pane-notes');
     const on = p.querySelector('.np-crumb.on');
     const f = document.getElementById('np-field'), r = document.getElementById('rp-desc');
     const shown = el => !!el && el.offsetParent !== null;
     return {
       shown: shown(p) && p.getBoundingClientRect().width > 0,
+      tab: document.getElementById('dock-tab-notes').className,
+      tabOff: document.getElementById('dock-tab-notes').disabled,
       labels: [...p.querySelectorAll('.np-crumb')].map(b => b.textContent),
       levels: [...p.querySelectorAll('.np-crumb')].map(b => b.dataset.level),
       on: on ? on.dataset.level : null,
       field: shown(f) ? f.value : null,
       roomField: shown(r) ? r.value : null,
-      collapsed: p.hidden,
-      fab: !document.getElementById('np-fab').hidden,
+      collapsed: !shown(p),
     };
   })()`);
+  const openNotes = async () => {
+    if (await dm.evaluate('dockActivePane()') !== 'notes') await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
+    await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
+  };
   const crumb = lv => dm.evaluate('document.querySelector("#np-crumbs .np-crumb[data-level=" + ' + JSON.stringify(lv) + ' + "]").click(); 0');
   // ⚠ THE COMMIT IS ON THE FIELD'S OWN blur LISTENER, and el.blur() does not reliably fire one in a
   // window the OS has not focused, so the events go at the listeners directly.
@@ -98,8 +104,9 @@ module.exports = async function notesPanelFeature(rig) {
 
   // ── A. The crumbs ─────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
+  await openNotes();
   const bare = await panel();
-  rig.check(bare.shown, 'the left panel is not on screen with a scene open');
+  rig.check(bare.shown, 'the Notes pane is not on screen after a click on its tab with a scene open');
   rig.check(bare.labels.length === 2 && bare.levels.join() === 'campaign,scene' && bare.labels[1] === sceneName,
             'with no room selected the crumbs are not Campaign › Scene: ' + JSON.stringify(bare));
   // RED BY DESIGN: written against the fix, never re-proved
@@ -139,52 +146,29 @@ module.exports = async function notesPanelFeature(rig) {
   rig.check(inRoom.roomField === 'Two acolytes.' && inRoom.field === null,
             "the room's notes are not what the panel shows for a selected room: " + JSON.stringify(inRoom));
 
-  // The panel runs down from the top and ends above the minimap, which sits in the bottom-left corner.
-  const geoNow = () => dm.evaluate(`(() => {
-    const p = document.getElementById('notes-panel').getBoundingClientRect();
+  // The left side of the window is empty: the minimap sits in the bottom-left corner on its own.
+  const geo = await dm.evaluate(`(() => {
     const m = document.getElementById('minimap-panel').getBoundingClientRect();
-    return { panelTop: p.top, panelBottom: p.bottom, panelRight: p.right, miniLeft: m.left, miniTop: m.top, miniBottom: m.bottom, h: innerHeight };
+    return { miniLeft: m.left, miniBottom: m.bottom, h: innerHeight, np: !!document.getElementById('notes-panel') };
   })()`);
-  const geo = await geoNow();
-  // RED ON: --mm-top left unset, so the panel runs to the window's bottom (minimap.js, notesPanel.css) - 2026-10-13
-  rig.check(geo.panelTop <= 1 && geo.panelBottom <= geo.miniTop && geo.miniTop - geo.panelBottom < 40 && geo.miniLeft > 0 && geo.miniLeft < 40 && geo.miniBottom > geo.h - 40,
-            'the panel does not end above the minimap, or the minimap has left the corner: ' + JSON.stringify(geo));
+  rig.check(!geo.np && geo.miniLeft > 0 && geo.miniLeft < 40 && geo.miniBottom > geo.h - 40,
+            'the left panel is still in the page, or the minimap has left the corner: ' + JSON.stringify(geo));
 
-  // ── I. Width, collapse and scrollbar ──────────────────────────────────────
+  // ── I. Tab, scrollbar and toolbar ─────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
-  const edge = await dm.evaluate('(() => { const r = document.getElementById("np-edge").getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()');
-  await dm.evaluate(`(() => {
-    const e = document.getElementById('np-edge');
-    const at = (t, x, tgt) => tgt.dispatchEvent(new MouseEvent(t, { clientX: x, clientY: ${edge.y}, bubbles: true, button: 0 }));
-    at('mousedown', ${edge.x}, e); at('mousemove', ${edge.x} + 60, window); at('mouseup', ${edge.x} + 60, window);
-    return 0;
-  })()`);
-  const wide = await geoNow();
-  // The pane stops where the toolbar would no longer fit, so a small window may allow no growth at all.
-  const room = await dm.evaluate('_npMaxW(document.getElementById("notes-panel")) - 220');
-  rig.note('room to widen the pane in this window: ' + Math.round(room) + 'px');
-  if (room > 30) {
-    rig.check(wide.panelRight > geo.panelRight + 20 && Math.abs(wide.miniLeft - geo.miniLeft) < 1,
-              'dragging the panel edge did not widen it, or it moved the minimap: ' + JSON.stringify([geo, wide]));
-    rig.check(await dm.evaluate('+localStorage.getItem("evermist.notesWidth") > 220'), 'the dragged width was not remembered');
-  } else {
-    rig.check(wide.panelRight <= geo.panelRight + 1 && Math.abs(wide.miniLeft - geo.miniLeft) < 1,
-              'the pane grew past where the toolbar still fits: ' + JSON.stringify([geo, wide]));
-  }
   const bar = await dm.evaluate('getComputedStyle(document.getElementById("np-body"), "::-webkit-scrollbar").width');
   rig.check(bar === '8px', 'the notes area has no visible scrollbar of the app\'s own: ' + bar);
   const centred = () => dm.evaluate('(() => { const r = document.getElementById("toolbar-bottom").getBoundingClientRect();' +
     ' return Math.abs((r.left + r.right) / 2 - innerWidth / 2); })()');
-  rig.check(await centred() < 2, 'the toolbar is not centred on the window with the panel open: off by ' + await centred());
-  await dm.evaluate('document.getElementById("np-toggle").click(); 0');
-  await lib.settle(dm, 'document.getElementById("notes-panel").hidden', 6000);
-  rig.check((await panel()).fab && await centred() < 2,
-            'collapsing the panel left no floating icon, or moved the toolbar: ' + JSON.stringify(await panel()));
-  const shut = await geoNow();
-  rig.check(shut.panelRight < wide.panelRight - 20 && shut.panelRight < 60 && Math.abs(shut.miniLeft - wide.miniLeft) < 1,
-            'collapsing the panel did not leave the icon alone, or it moved the minimap: ' + JSON.stringify([wide, shut]));
-  await dm.evaluate('document.getElementById("np-fab").click(); 0');
-  await lib.settle(dm, '!document.getElementById("notes-panel").hidden', 6000);
+  rig.check(await centred() < 2, 'the toolbar is not centred on the window with Notes open: off by ' + await centred());
+  rig.check((await panel()).tab.includes('active'),
+            'the Notes tab does not wear the open tint while its pane is open: ' + JSON.stringify(await panel()));
+  await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
+  await lib.settle(dm, 'dockActivePane() === null', 6000);
+  rig.check((await panel()).collapsed && !(await panel()).tab.includes('active') && await centred() < 2 &&
+            await dm.evaluate('document.getElementById("dock-rail").getBoundingClientRect().width') > 0,
+            'a second click on Notes did not shut the dock and leave the rail, or it moved the toolbar: ' + JSON.stringify(await panel()));
+  await openNotes();
 
   // ── B. An empty-map click selects the scene ───────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
@@ -283,13 +267,13 @@ module.exports = async function notesPanelFeature(rig) {
   await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
   await lib.settle(dm, 'selectedPolygonId === 1', 6000);
   const home = await dm.evaluate(`(() => {
-    const p = document.getElementById('notes-panel');
+    const p = document.getElementById('dock-pane-notes');
     return { notes: p.contains(document.getElementById('rp-desc')),
              pics: ['rp-pics', 'rp-pic-add', 'rp-pic-input'].filter(id => document.getElementById(id)),
-             tab: document.getElementById('dock').contains(document.getElementById('rp-desc')) };
+             tab: document.getElementById('dock-pane-scene').contains(document.getElementById('rp-desc')) };
   })()`);
   rig.check(home.notes && home.pics.length === 0 && !home.tab,
-            'the room notes are not in the left panel alone, or a picture control is still in the page: ' + JSON.stringify(home));
+            'the room notes are not in the Notes pane alone, or a picture control is still in the page: ' + JSON.stringify(home));
   await typeInto('rp-desc', 'Two acolytes and a font.');
   await lib.settle(dm, 'polygons[0].desc === "Two acolytes and a font."', 6000);
 
@@ -324,24 +308,24 @@ module.exports = async function notesPanelFeature(rig) {
   // ── E. The Player shows nothing of it ─────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   const tv = await player.evaluate(`({
-    shown: (() => { const p = document.getElementById('notes-panel'); return !!p && p.getBoundingClientRect().width > 0; })(),
+    shown: (() => { const p = document.getElementById('dock-pane-notes'); return !!p && p.getBoundingClientRect().width > 0; })(),
     leaked: [...document.querySelectorAll('textarea')].some(t => /lich|floods|acolyte/i.test(t.value)),
   })`);
   rig.check(!tv.shown && !tv.leaked, 'the Player shows the notes panel, or holds what was typed into it: ' + JSON.stringify(tv));
   rig.check(await tvDom() === tvDomBefore, 'the Player page gained or lost elements or text while the notes were edited');
 
-  // ── G. Calibration puts the panel away ────────────────────────────────────
+  // ── G. Calibration puts the pane away ─────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
   await lib.settle(dm, 'gridCalArmed === true', 8000);
-  await lib.settle(dm, 'document.getElementById("notes-panel").hidden', 6000);
-  rig.check(await dm.evaluate('document.getElementById("notes-panel").hidden') && await dm.evaluate('selectedPolygonId') === 1,
-            'the panel stayed over the map that calibration has to be dragged on, or calibration dropped the selection');
+  await lib.settle(dm, 'dockActivePane() === null', 6000);
+  rig.check(await dm.evaluate('document.getElementById("dock-tab-notes").disabled') && await dm.evaluate('selectedPolygonId') === 1,
+            'Notes stayed over the map that calibration has to be dragged on, its tab stayed enabled, or calibration dropped the selection');
   await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
   await lib.settle(dm, 'gridCalArmed === false', 8000);
-  await lib.settle(dm, '!document.getElementById("notes-panel").hidden', 6000);
-  rig.check((await panel()).shown && (await panel()).on === 'room',
-            'the panel did not come back on the same room after calibration: ' + JSON.stringify(await panel()));
+  await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
+  rig.check((await panel()).shown && (await panel()).on === 'room' && !(await panel()).tabOff,
+            'the pane did not come back on the same room after calibration: ' + JSON.stringify(await panel()));
   await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
   await lib.settle(dm, 'selectedPolygonId === null', 6000);
 
@@ -432,9 +416,10 @@ module.exports = async function notesPanelFeature(rig) {
   rig.check(!!closed, 'notes typed with the cursor still in the field were lost when the app closed');
   await dm.evaluate('document.getElementById("np-field").blur(); 0');
   // RED BY DESIGN: written against the feature, never re-proved
-  await dm.evaluate('document.getElementById("np-toggle").click(); 0');
-  rig.check((await panel()).collapsed && await dm.evaluate('localStorage.getItem("evermist.notesPanelOpen")') === '0',
-            'the collapse button did not collapse the panel and remember it');
+  await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
+  await lib.settle(dm, 'dockActivePane() === null', 6000);
+  rig.check((await panel()).collapsed && await dm.evaluate('localStorage.getItem("evermist.dockPane")') === '',
+            'shutting the dock from the Notes tab did not shut it and remember it');
   await dm.evaluate('doAutoSave()', 60000);
   dm = await rig.restart();
   await lib.installHelpers(dm);
@@ -453,8 +438,8 @@ module.exports = async function notesPanelFeature(rig) {
             'the campaign notes did not survive the restart');
 
   const back = await panel();
-  rig.check(back.collapsed, 'the panel came up open after the DM left it collapsed');
-  await dm.evaluate('document.getElementById("np-fab").click(); 0');
+  rig.check(back.collapsed, 'the dock came up open after the DM left it shut');
+  await openNotes();
   await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
   await lib.settle(dm, '!document.getElementById("np-field").hidden && document.getElementById("np-field").value !== ""', 8000);
   rig.check((await panel()).field === 'A: the floor is wet. The door sticks.',
@@ -463,5 +448,49 @@ module.exports = async function notesPanelFeature(rig) {
   await lib.settle(dm, 'document.getElementById("np-field").value === "The duke is a lich."', 8000);
   rig.check((await panel()).field === 'The duke is a lich.', 'after a restart the campaign level does not show its notes');
 
-  rig.byEye('the panel sits bottom-left above the minimap, with the toolbar still centred between them');
+  
+  // ── J. The room-pick rule ─────────────────────────────────────────────────
+  // RED ON: dockRoomPicked() never called from notesPanelSync (notesPanel.js) — 2026-10-16
+  await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === null', 6000);
+  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
+  await lib.settle(dm, 'dockActivePane() === "music"', 6000);
+  await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
+  await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
+  rig.check(await dm.evaluate('dockActivePane()') === 'notes', 'picking a room did not bring Notes up over another open pane');
+  // A deselect does nothing, and the DM's own switch away is not undone while the room stays picked.
+  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
+  await lib.settle(dm, 'dockActivePane() === "music"', 6000);
+  await lib.hold(500, 'long enough for a repaint to wrongly switch back, then prove it did not');
+  rig.check(await dm.evaluate('dockActivePane()') === 'music', 'the dock switched back to Notes while the same room stayed picked');
+  await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === null', 6000);
+  rig.check(await dm.evaluate('dockActivePane()') === 'music', 'a deselect changed the dock');
+  // With the dock shut: it stays shut and the tab is selected, with no pane.
+  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
+  await lib.settle(dm, 'dockActivePane() === null', 6000);
+  await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
+  await lib.settle(dm, 'document.getElementById("dock-tab-notes").classList.contains("active")', 6000);
+  const picked = await panel();
+  rig.check(picked.collapsed && picked.tab.includes('active') && await dm.evaluate('dockActivePane()') === null,
+            'a room picked with the dock shut opened it, or left the Notes tab unlit: ' + JSON.stringify(picked));
+  // A click on another tab clears the selection.
+  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
+  await lib.settle(dm, 'dockActivePane() === "music"', 6000);
+  rig.check(!(await panel()).tab.includes('active'), 'the Notes tab stayed lit after another tab was picked');
+  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
+  await lib.settle(dm, 'dockActivePane() === null', 6000);
+  rig.check(!(await panel()).tab.includes('active'), 'the Notes tab stayed lit after the dock was shut');
+  // A new pick with the dock shut, then a click on the selected tab, opens Notes.
+  await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === null', 6000);
+  await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
+  await lib.settle(dm, 'document.getElementById("dock-tab-notes").classList.contains("active")', 6000);
+  await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
+  await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
+  rig.check((await panel()).shown && (await panel()).on === 'room', 'a click on the selected Notes tab did not open Notes on the room');
+
+  rig.byEye('the Notes pane wears the dock\'s grey beside the rail, with the left side empty and the toolbar still centred');
 };

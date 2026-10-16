@@ -244,6 +244,9 @@
     <button class="rail-btn" id="dock-tab-scene" data-dock-pane="scene" title="Scene control">
       <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><line x1="1.5" y1="4" x2="12.5" y2="4"/><circle cx="8.5" cy="4" r="1.5"/><line x1="1.5" y1="7.5" x2="12.5" y2="7.5"/><circle cx="4.5" cy="7.5" r="1.5"/><line x1="1.5" y1="11" x2="12.5" y2="11"/><circle cx="9.5" cy="11" r="1.5"/></svg>
     </button>
+    <button class="rail-btn" id="dock-tab-notes" data-dock-pane="notes" title="Notes">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 17h5"/></svg>
+    </button>
     <div class="rail-sep"></div>
     <button class="rail-btn" id="dock-tab-music" data-dock-pane="music" title="Music">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 18V5l12-2v13"/></svg>
@@ -391,6 +394,28 @@
           <button id="anim-preset-fast" class="anim-preset-btn"></button>
           <button id="btn-anim-advanced"></button>
           <button id="btn-anim-reset"></button>
+        </div>
+      </div>
+    </section>
+    <!-- The notes: breadcrumbs, and the notes of the campaign, a place, the scene or the room. notesPanel.js. -->
+    <section class="dk-sec" id="dock-pane-notes" data-pane="notes" hidden>
+      <div class="dk-head np-head">
+        <div class="np-crumbs" id="np-crumbs"></div>
+      </div>
+      <div class="np-body" id="np-body">
+        <textarea id="np-field" class="rp-desc" spellcheck="false" rows="1" hidden></textarea>
+        <!-- The selected room, Notion's way: the name is the header, Delete sits where Close was, then the
+             notes. roomCard.js fills it. -->
+        <div id="panel-room" class="dk-room">
+          <div class="dk-rhead rp-ident">
+            <input id="rp-name" class="rp-name" type="text" spellcheck="false" autocomplete="off"
+                   maxlength="60" placeholder="Room name" title="Room name. The module's locations drop down here.">
+            <button id="rp-delete" class="cp-adv-close" title="Delete room (Del)">
+              <svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
+          <textarea id="rp-desc" class="rp-desc" spellcheck="false" rows="1"
+                    placeholder="What's in here, what the party sees, what's hidden…"></textarea>
         </div>
       </div>
     </section>
@@ -602,36 +627,6 @@
     <button data-anim="fast">Fast drift</button>
     <div class="sep"></div>
     <button data-anim="advanced">Custom…</button>
-  </div>
-</div>
-
-<!-- THE LEFT PANEL: breadcrumbs, and the notes of the campaign, the scene or the room. notesPanel.js. -->
-<button id="np-fab" class="np-fab" title="Open the notes" hidden>
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 17h5"/></svg>
-</button>
-<div id="notes-panel" class="np" hidden>
-  <div id="np-edge" title="Drag to resize"></div>
-  <div class="np-head">
-    <div class="np-crumbs" id="np-crumbs"></div>
-    <button id="np-toggle" class="np-toggle" title="Collapse the notes">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="7.5,2.5 4,6 7.5,9.5"/></svg>
-    </button>
-  </div>
-  <div class="np-body" id="np-body">
-    <textarea id="np-field" class="rp-desc" spellcheck="false" rows="1" hidden></textarea>
-    <!-- The selected room, Notion's way: the name is the header, Delete sits where Close was, then the
-         notes. roomCard.js fills it. -->
-    <div id="panel-room" class="dk-room">
-      <div class="dk-rhead rp-ident">
-        <input id="rp-name" class="rp-name" type="text" spellcheck="false" autocomplete="off"
-               maxlength="60" placeholder="Room name" title="Room name. The module's locations drop down here.">
-        <button id="rp-delete" class="cp-adv-close" title="Delete room (Del)">
-          <svg width="12" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-        </button>
-      </div>
-      <textarea id="rp-desc" class="rp-desc" spellcheck="false" rows="1"
-                placeholder="What's in here, what the party sees, what's hidden…"></textarea>
-    </div>
   </div>
 </div>
 
@@ -1138,7 +1133,7 @@ if (!isPlayer) initSoundboard();   // The Sounds pill → soundboard.js
 if (!isPlayer && !isPane) initGallery();       // The Gallery pane → gallery.js
 if (!isPlayer && !isPane) initCombatTracker(); // The fight table → combatTracker.js
 if (!isPlayer && !isPane) initDock();          // The dock → dock.js
-if (!isPlayer && !isPane) initNotesPanel();    // The left panel → notesPanel.js
+if (!isPlayer && !isPane) initNotesPanel();    // The Notes pane → notesPanel.js
 if (!isPlayer && !isPane) worldMapInit();      // The world map → worldMap.js
 if (!isPlayer && !isPane) initMcp();           // The Claude connection → mcpTools.js
 

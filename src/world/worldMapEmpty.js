@@ -1,11 +1,12 @@
 'use strict';
-// worldMapEmpty.js — the world map with no scenes: a callout over Add says where to begin, and the bar and the notes
-// panel put away what has nothing to act on (worldMap.css, body.wm-empty).
+// worldMapEmpty.js — the world map with no scenes: a callout over Add says where to begin, and the bar and the Notes tab
+// put away what has nothing to act on (worldMap.css, body.wm-empty; dock.js).
 
 function worldMapEmptySync() {
   const empty = worldMapOpen && !allScenes.length;
   document.body.classList.toggle('wm-empty', empty);
   document.getElementById('wm-empty').hidden = !empty;
+  dockRefreshRail();
 }
 
 // The callout hangs over Add, centred on it, and follows it.

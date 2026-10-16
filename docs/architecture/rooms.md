@@ -153,14 +153,14 @@ revealed of every room whose wall runs through it - which stops the choice of ow
 wall two rooms share, and gives half-shroud an answer. Doors reach the Player for free: they are
 cut into the same fog stencil that crosses to the TV.
 
-## The room in the left panel
+## The room in the Notes pane
 
-Select a room and the left panel shows its level: the name as the header, Delete beside it, the
-notes. A shut panel opens on the pick without changing what the DM keeps open. It
+Select a room and the Notes pane shows its level: the name as the header, Delete beside it, the
+notes. A new pick brings Notes up when the dock is open on another pane; a shut dock stays shut and the Notes tab lights. It
 stays on the room when you switch tools, so you can read the notes while painting fog. **Drawing a
-room doesn't select it** - a new room is created with nothing selected, so the panel stays on the
+room doesn't select it** - a new room is created with nothing selected, so the pane stays on the
 scene while you draw the next one. The notes grow with what is written in them. Corners are rounded
-on the map by their circles, not in the panel. The panel's other levels, the scene's and the
+on the map by their circles, not in the pane. The pane's other levels, the scene's and the
 campaign's notes, are in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 The room's fog is set from the toolbar: with Select in hand and a room selected, Reveal, Half and

@@ -424,12 +424,12 @@ function _wmFly(t, ms, done) {
   step();
 }
 
-// What the notes panel and the dock leave clear. ⚠ THE PANEL IS SHOWN FIRST: this runs as the layer opens, before its refresh.
+// What the dock leaves clear. ⚠ THE RAIL IS REFRESHED FIRST: this runs as the layer opens, before its refresh, and Notes may come back with it.
 function _wmClear() {
-  const v = _wmView(), np = document.getElementById('notes-panel'), dk = document.getElementById('dock');
-  _npApplyVisible();
-  const left = allScenes.length && np && !np.hidden ? np.getBoundingClientRect().right : 0, right = dk && dk.offsetWidth ? dk.getBoundingClientRect().left : v.w;
-  return { w: Math.max(200, right - left), h: v.h, shift: (left + right) / 2 - v.w / 2 };
+  const v = _wmView(), dk = document.getElementById('dock');
+  dockRefreshRail();
+  const right = dk && dk.offsetWidth ? dk.getBoundingClientRect().left : v.w;
+  return { w: Math.max(200, right), h: v.h, shift: right / 2 - v.w / 2 };
 }
 
 function _wmOverview() {

@@ -243,6 +243,7 @@ function drawCursor(screenX, screenY) {
   // Editing chrome, never sent to the Player; the notch itself is fog and reads the same on both
   // screens. Effects mode has no doors to show.
   if (!isPlayer && roomsLive) drawDoorHandles(shape === 'door');
+  drawDoorGhost(screenX, screenY);
   // Second pass, so labels paint above every outline rather than under the next room's.
   // roomPanel.js loads after this file, hence the guards.
   if (typeof drawRoomLabels === 'function') drawRoomLabels();

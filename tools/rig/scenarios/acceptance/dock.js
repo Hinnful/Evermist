@@ -13,7 +13,7 @@
 //      key is never written.
 //   B. Each pane tab opens its pane alone and lights its tab alone. Its second click shuts the
 //      pane and leaves the rail on screen.
-//   C. (Retired: the Room tab moved to the left panel, notes-panel.js.)
+//   C. (Retired: the Room tab moved into the Notes tab, notes-panel.js.)
 //   D. The window tabs open and shut the scene library, the Bestiary and the fight table, and
 //      the rail shows which are open.
 //   E. Dragging the dock's inner edge resizes the pane between a minimum and a maximum, and the

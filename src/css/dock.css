@@ -30,8 +30,8 @@
     content: ''; position: absolute; top: 3px; right: 3px;
     width: 5px; height: 5px; border-radius: 50%; background: var(--b-icon);
   }
-  /* The fight table is a free window: open, it wears the dot alone, never the tab's tint. */
-  #btn-combat.active:not(:hover) { background: transparent; color: #8b9098; }
+  /* The fight table and the Bestiary are free windows: open, they wear the dot alone, never the tab's tint. */
+  #btn-combat.active:not(:hover), #btn-bestiary.active:not(:hover) { background: transparent; color: #8b9098; }
   .rail-sep { width: 18px; height: 1px; background: rgba(255, 255, 255, 0.08); margin: 4px 0; }
   .rail-end { margin-top: auto; }
 

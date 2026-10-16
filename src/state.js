@@ -143,7 +143,7 @@ const HOLE_HATCH_PITCH = 7;
 
 // ─── The selection ── read by a dozen modules, owned by shapeSelect.js ───────
 let selectedPolygonId = null;
-// The level the DM picked on the left panel's crumbs: 'campaign', 'scene', or null to follow the
+// The level the DM picked on the Notes pane's crumbs: 'campaign', 'scene', or null to follow the
 // selection (the room if one is selected, else the scene). A new room pick, a deselect or a scene
 // switch puts it back to null (notesPanel.js).
 let notesLevelPick = null;

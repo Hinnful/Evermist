@@ -244,6 +244,47 @@ function pointInDoorNotch(verts, door, width, depth, mx, my, slack) {
   return Math.abs(along) < Math.min(width, f.len) / 2 && perp >= -depth - s && perp <= depth + s;
 }
 
+// What a click at (mx,my) does to the doors: take one away, or put one in a room. The Door tool's
+// click and its hover ghost both read this, so the ghost can never show a door the click would not
+// place. `opts` = {cell, slack, size:{width,depth}, offsetX, offsetY, square}.
+// ⚠ Toggling is decided by CELL, never by whether the click hit a door's rectangle: a boundary
+// click belongs to two rectangles and to neither, and the tool ticks those boundaries.
+// ⚠ EVERY room whose wall is under the click is a candidate, not just the nearest - two rooms
+// share a doorway's wall. A revealed room wins, because a door on a shrouded one draws nothing.
+function doorClickPlan(rooms, mx, my, opts) {
+  const { cell, slack, size, offsetX, offsetY, square } = opts;
+  if (!(cell > 0)) return null;
+  const cands = [];
+  for (const poly of rooms) {
+    if (poly.vertices.length < 3) continue;
+    const near = nearestOutlinePoint(poly, mx, my, slack * 2);
+    if (!near) continue;
+    const door = doorCellSnap(poly, near.edge, mx, my, cell, offsetX, offsetY, square);
+    if (door) cands.push({ poly, door, dist: near.dist });
+  }
+  if (!cands.length) return null;
+
+  // Removing is tested before placing, or a click on a door stacks a second one.
+  for (const c of cands) {
+    const doors = c.poly.doors;
+    if (!doors || !doors.length) continue;
+    const centre = doorPoint(c.poly, c.door);
+    let hit = doors.findIndex(d => {
+      if (d.edge !== c.door.edge || !centre) return false;
+      const p = doorPoint(c.poly, d);
+      return p && Math.hypot(p.x - centre.x, p.y - centre.y) < cell * 0.25;
+    });
+    // A door placed before the grid changed no longer sits on a cell centre, so pointing straight
+    // at it is the only way left to take it away.
+    if (hit < 0) hit = doors.findIndex(d =>
+      pointInDoorNotch(c.poly, d, size.width, size.depth, mx, my, slack));
+    if (hit >= 0) return { action: 'remove', poly: c.poly, index: hit };
+  }
+
+  cands.sort((a, b) => (a.poly.mode === 'shroud') - (b.poly.mode === 'shroud') || a.dist - b.dist);
+  return { action: 'add', poly: cands[0].poly, door: cands[0].door };
+}
+
 // ─── Shared walls ─────────────────────────────────────────────────────────────
 // Which stretches of a wall another room's outline runs along, as {from, to} distances from the
 // wall's start vertex. Two rooms sharing a wall each feather INWARD from it, so neither reaches a
@@ -391,6 +432,7 @@ if (typeof module !== 'undefined' && module.exports) {
     nearestOutlinePoint,
     doorPoint,
     pointInDoorNotch,
+    doorClickPlan,
     doorModeRank,
     doorResolvedMode,
     sharedWallSpans,
