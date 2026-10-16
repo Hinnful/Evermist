@@ -3,14 +3,14 @@
 // control-panel.js — THE DOCK'S SCENE CONTROL PANE.
 //
 // THE GOAL OF THIS FEATURE: everything the Fog, Grid and Player tabs did sits in one pane, laid
-// out the way Figma lays out its right panel: Fog, Rooms, Lights, Grid, My seat. Every control
+// out the way Figma lays out its right panel: Fog, Rooms, Lights, Grid. Every control
 // drives the same hidden back end the tabs drove, so each check here asserts what a control
 // DOES, never only where it sits.
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter.
 //
-//   A. The pane holds Fog, Rooms, Lights, Grid and My seat, in that order, no Player section, no
+//   A. The pane holds Fog, Rooms, Lights, Grid, in that order, no Player section, no
 //      "On the TV" dot in its header, and no zoom stepper.
 //   B. A colour field opens its picker beside the dock, level with its row. A colour picked there
 //      reaches the fog and the field, and a click elsewhere puts the picker away.
@@ -22,7 +22,7 @@
 //   E. The grid's eye switches the grid and dims the section. The type segment sets the type and
 //      switches the grid on. Scrubbing the cell size's icon changes the cell, and a typed size is
 //      clamped.
-//   F. The minimap's Lock and the TV menu's Auto / Manual hold their state; My seat turns the DM's map.
+//   F. The minimap's Lock and the TV menu's Auto / Manual hold their state; Seat alignment turns the DM's map.
 //   G. Every panel that floats over the map wears the SAME edge, read from the --panel-*
 //      variables in base.css, and those variables still resolve to a real edge.
 
@@ -40,7 +40,7 @@ module.exports = async function sceneControlFeature(rig) {
   // RED BY DESIGN: written against the removal, never re-proved
   const sections = await dm.evaluate('[...document.querySelectorAll("#dock-pane-scene .cp-group > .dk-sh .cp-label")]' +
                                      '.map(l => l.textContent.trim()).join(",")');
-  rig.check(sections === 'Fog,Rooms,Lights,Grid,My seat',
+  rig.check(sections === 'Fog,Rooms,Lights,Grid',
             'A: Scene control holds the wrong sections, or in the wrong order: ' + sections);
   rig.check(await dm.evaluate('!document.querySelector("[id^=cp-zoom]") && typeof minimapNudgeZoom === "undefined"'),
             'A: the TV zoom stepper is still in the app');
@@ -172,11 +172,12 @@ module.exports = async function sceneControlFeature(rig) {
   await seg('Auto');
   rig.check(await dm.evaluate('autoSync') === true, 'F: Auto would not switch the send gate back on');
   await dm.evaluate('_tvClose(); 0');
-  await dm.evaluate('document.querySelector(\'#cp-sec-seat [data-seat="90"]\').click(); 0');
-  rig.check(await dm.evaluate('seatTurn') === 90 &&
-            await dm.evaluate('document.querySelector("#cp-sec-seat [data-seat].active").dataset.seat') === '90',
-            'F: My seat 90° did not turn the DM map and say so');
-  await dm.evaluate('document.querySelector(\'#cp-sec-seat [data-seat="0"]\').click(); 0');
+  // A chair is an SVG shape, which has no click(); a dispatched click is what the mouse sends.
+  const chair = deg => dm.evaluate('document.querySelector(".sa-hit[data-seat-pick=\\"' + deg + '\\"]")' +
+                                   '.dispatchEvent(new MouseEvent("click", { bubbles: true })); 0');
+  await chair(90);
+  rig.check(await dm.evaluate('seatTurn') === 90, 'F: the 90° chair did not turn the DM map');
+  await chair(0);
 
   // ── G ──
   // RED ON: a .dk-pop { border-radius: 4px } rule appended (dock.css) — 2026-10-02

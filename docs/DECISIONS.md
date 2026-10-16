@@ -574,12 +574,12 @@ A real answer needs a different shape, such as making the panel collapsible or t
 the DM's readable area and the canvas agree. There is a comment in `dmVisibleRegion()`
 saying not to re-add the trim.
 
-### The minimap is overview+frame, not a pure mirror · `SETTLED` — a deliberate reversal
+### The minimap is overview+frame, not a pure mirror · `REVERTED` (2026-10-17, the minimap is the TV)
 The old rule was "mirror flavour, shows ONLY the live zoomed slice". Reversed on purpose: a
 square frame was a lie under the pure-mirror rule, and the padding shows what is about to
 come into view while giving a bigger drag target. Do not "restore the mirror".
 
-### TV frame is dotted lines only · `SETTLED`
+### TV frame is dotted lines only · `REVERTED` (2026-10-17, the minimap is the TV)
 An earlier pass dimmed everything outside the frame and stroked it solid. Both were rejected
 as obstructing the map.
 
@@ -590,6 +590,14 @@ map on every side. Drag, wheel and the view-centre pivot stay as they were. My s
 sides and turns only the picture, so the buttons stay upright. A whole-map overview with a draggable
 frame was rejected on product grounds. A narrow window shrinks the box, never below 160px on its
 long side, rather than cover the centred toolbar.
+
+### The minimap is the TV · `SETTLED` (2026-10-17)
+Reverses the margin and the dotted frame in the three entries above. The box keeps the TV's shape and
+turns with Seat alignment, and the picture fills it edge to edge with exactly what the TV shows. The
+margin spent 40% of each axis on what was about to come into view, which the DM's own map already
+shows, and left the TV's real picture the cramped part. Drag, wheel, Lock and Sync are unchanged, so a
+drag across the box now moves the TV one screen rather than about 1.7. A band that appears only while
+dragging was prototyped and dropped for the same reason.
 
 ### Minimap zoom pivots about the view centre, never the cursor · `SETTLED`
 Cursor-pivot zoom cannot change zoom without shifting `mapCX/mapCY`, so zooming off-centre

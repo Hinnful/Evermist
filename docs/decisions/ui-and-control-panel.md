@@ -170,6 +170,14 @@ Opening the Player, Fullscreen, Sync View, Lock, Send and Auto / Manual moved on
 `#btn-player`. The TV is every screen but the one holding the DM window; a picked screen is
 remembered in `evermist.tvScreen`, which the previous release never reads.
 
+### My seat became Seat alignment, in Settings · `SETTLED` (2026-10-17)
+In Scene control, labelled 0° to 270°, it read as turning the map: a first-time DM used it to fix a
+sideways map and expected the TV to turn. It moved to Settings as the TV seen from above, holding the
+open map dimmed, with a chair on each side; the DM's chair turns the laptop map exactly as before, from
+the same `evermist.seatTurn`. Two pictures were prototyped and dropped: the map on a laptop at the
+chair, and a DM screen on the TV's edge. Explaining what the setting does is left to a later
+first-time hint, since it is an advanced setting.
+
 ### The shut panel is a floating icon, not a rail · `REJECTED` (2026-10-08)
 A 44px rail with one button was built first and read as an empty strip. The panel now shuts to a
 36px plate at the top left, and a chevron in its header shuts it. The minimap sits to the panel's

@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 11 open items; IDs run to 188."
+description: "Open work only. 12 open items; IDs run to 189."
 metadata: 
   node_type: memory
   type: project
@@ -167,6 +167,13 @@ different. **Look, settled 2026-10-08:** the Ping tool's bezel pared down to a t
 turning slowly around the scene, with the mist thinning around it. **Open for /spec:** what "visited" looks like, and
 whether the flag rides a backup. The TV never shows it.
 **Campaign · DM only**
+
+### 189. Doors follow a hex grid
+Filed 2026-10-17, low priority. On a square grid a door snaps to the map's own grid cells. On a hex grid, and on any
+diagonal wall, the Door tool cuts the wall into cell-sized steps from the room's corner instead, so a door can sit
+across two hexes. Decide what a door one hex wide means on a hex wall, then make the preview and the click follow it.
+**Needs /spec.**
+**Polish · DM + Player**
 
 ---
 

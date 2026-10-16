@@ -360,16 +360,6 @@
           </div>
         </div>
 
-        <div class="cp-group" id="cp-sec-seat">
-          <div class="dk-sh"><span class="cp-label">My seat</span></div>
-          <div class="cp-tabs">
-            <button class="cp-segtab" data-seat="0" title="The laptop map as it is">0°</button>
-            <button class="cp-segtab" data-seat="90" title="Turn the laptop map a quarter clockwise">90°</button>
-            <button class="cp-segtab" data-seat="180" title="Turn the laptop map upside down">180°</button>
-            <button class="cp-segtab" data-seat="270" title="Turn the laptop map a quarter anticlockwise">270°</button>
-          </div>
-        </div>
-
         <!-- The back end the pane drives: the fog, grid and player wiring reads and clicks these. -->
         <div id="cp-legacy" aria-hidden="true">
           <input type="color" id="fog-color" value="#3a3a8c">
@@ -509,6 +499,7 @@
             </div>
           </div>
         </div>
+        <div class="cp-group" id="cp-sec-seat-align"></div>   <!-- Filled by seatAlignment.js -->
         <!-- One value for every scene, never stored in one. Judge Half on the PLAYER window: the
              DM view draws fog at FOG_OPACITY_DM, so 50 reads as ~27% here and 50% on the TV. The two
              ranges are the back end fogControls.js drives; the fields above them are what the DM sees. -->
@@ -981,6 +972,7 @@
 <script src="src/ui/colorPicker.js"></script>
 <script src="src/ui/controlPanel.js"></script>
 <script src="src/ui/dock.js"></script>
+<script src="src/ui/seatAlignment.js"></script>
 <script src="src/ui/confirmDialog.js"></script>
 <script src="src/rooms/floorPlan.js"></script>
 <script src="src/content/moduleText.js"></script>
@@ -1122,7 +1114,7 @@ if (isPlayer) initPlayer();
 // Two-column mode: the parent owns the columns, a column answers the parent → panes.js.
 if (!isPlayer && !isPane) initPanes();
 if (isPane) initPane();
-initSeatTurn();   // My seat → mapTurn.js
+initSeatTurn();   // My seat and Seat alignment → mapTurn.js
 
 // Mouse events, keyboard shortcuts, shape helpers, and legend → input.js.
 initInput();

@@ -77,24 +77,16 @@ module.exports = async function showOnTv(rig) {
   rig.check(Math.abs(withNotes - place.left) < 1, 'B: opening the notes moved the minimap: ' + place.left + ' → ' + withNotes);
 
   // ── C ──
-  // RED ON: strokeRect removed from _drawHalf, applySeatTurn's minimapLayout call removed (mapTurn.js), and a remembered TV's match returned null (tvPick.js) - 2026-10-13
+  // RED ON: a margin returned to _mmRegion, applySeatTurn's minimapLayout call removed (mapTurn.js), and a remembered TV's match returned null (tvPick.js) - 2026-10-13
   const wide = await ratio();
   rig.check(Math.abs(wide - 16 / 9) < 0.04, 'C: with no TV known the minimap is not 16:9: ' + wide);
   await lib.settle(dm, '!minimapDirty', 10000);
   const frame = await dm.evaluate(`(() => {
-    const c = document.getElementById('minimap-canvas'), x = c.getContext('2d');
-    const d = _mmGeom().halves[0].dst;
-    const left = Math.round(d.x + (d.w - d.w * MINIMAP_FRAME) / 2);
-    const count = xx => {
-      const px = x.getImageData(xx, Math.round(d.h * 0.3), 1, Math.round(d.h * 0.4)).data;
-      let n = 0;
-      for (let i = 0; i < px.length; i += 4) if (px[i + 2] > 190 && px[i + 2] > px[i] + 40) n++;
-      return n;
-    };
-    return { on: count(left), outside: count(left - 8) };
+    const h = _mmGeom().halves[0], r = _mmRegion(h);
+    return { w: r.w * h.view.zoom / h.tv.w, h: r.h * h.view.zoom / h.tv.h, hasFrame: typeof MINIMAP_FRAME !== 'undefined' };
   })()`);
-  rig.check(frame.on > frame.outside + 8,
-            "C: the TV's dotted frame is not drawn in the middle of the picture: " + JSON.stringify(frame));
+  rig.check(Math.abs(frame.w - 1) < 1e-6 && Math.abs(frame.h - 1) < 1e-6 && !frame.hasFrame,
+            "C: the minimap shows more map than the TV does, or still has a frame: " + JSON.stringify(frame));
   await dm.evaluate('setSeatTurn(90); 0');
   await lib.settle(dm, 'document.getElementById("minimap-panel").offsetWidth < document.getElementById("minimap-panel").offsetHeight', 6000);
   const turned = await dm.evaluate(`(() => {

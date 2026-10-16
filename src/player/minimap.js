@@ -2,8 +2,8 @@
 // minimap.js — DM-window live mirror + remote control for the Player camera.
 //
 // Owns minimapView {mapCX, mapCY, zoom} — the triple that IS the Player's intended view — and a
-// <canvas> of map and fog in the TV's shape, the TV's frame dotted in the middle with an even
-// margin of map around it. Drag and wheel update the triple and post view-snap to playerWindow
+// <canvas> of map and fog that IS the TV: the box has the TV's shape and the picture fills it
+// edge to edge. Drag and wheel update the triple and post view-snap to playerWindow
 // live; the lock gates pointer input. tvControl.js owns what sits over the picture. Called once
 // from index.html; toolbar.js and mapTurn.js call minimapSetView, ...SyncFromPlayer, ...Layout.
 
@@ -14,8 +14,6 @@ const MINIMAP_EDGE     = 16;   // px — the gap to the window's bottom and left
 const MINIMAP_BACKING  = 1.25; // backing store px per CSS px
 const MINIMAP_ZOOM_MIN = 0.02;
 const MINIMAP_ZOOM_MAX = 20;
-// The TV's frame takes this share of the box on each axis, so the map around it is an even margin.
-const MINIMAP_FRAME    = 0.6;
 // Two maps: the gap between the halves, as a share of the TV's width (stage.js's chasm).
 const MINIMAP_CHASM    = 46 / 1920;
 
@@ -98,9 +96,9 @@ function _mmGeom() {
   return { cw, ch, tv, halves };
 }
 
-// The map-space size one picture draws: the TV's own view, grown by the margin.
+// The map-space size one picture draws: the TV's own view.
 function _mmRegion(half) {
-  return { w: half.tv.w / half.view.zoom / MINIMAP_FRAME, h: half.tv.h / half.view.zoom / MINIMAP_FRAME };
+  return { w: half.tv.w / half.view.zoom, h: half.tv.h / half.view.zoom };
 }
 
 // The canvas's ON-SCREEN size, in the same space as pointer clientX/clientY. ⚠ Never _canvas.width
@@ -218,7 +216,7 @@ function minimapSetZoom(z) {
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 
-// One picture: map, the fog over it, and the TV's frame dotted in the middle.
+// One picture: map and the fog over it.
 function _drawHalf(half) {
   const s = half.scope;
   if (!s.mapOffscreen || !s.mapWidth || !s.mapHeight || !(half.view.zoom > 0)) return false;
@@ -270,16 +268,6 @@ function _drawHalf(half) {
     _ctx.restore();
   }
 
-  // The TV's edges: dotted, no fill or dimming, so the map stays readable. The .5 offsets keep the
-  // 1px lines on the pixel grid instead of straddling two rows at half alpha.
-  const fw = dst.w * MINIMAP_FRAME, fh = dst.h * MINIMAP_FRAME;
-  _ctx.save();
-  _ctx.strokeStyle = 'rgba(140,180,255,0.85)';
-  _ctx.lineWidth = 1;
-  _ctx.setLineDash([3, 3]);
-  _ctx.strokeRect(Math.round(dst.x + (dst.w - fw) / 2) + 0.5, Math.round(dst.y + (dst.h - fh) / 2) + 0.5,
-                  Math.round(fw) - 1, Math.round(fh) - 1);
-  _ctx.restore();
   return true;
 }
 

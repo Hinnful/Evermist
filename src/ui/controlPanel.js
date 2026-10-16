@@ -1,5 +1,5 @@
 'use strict';
-// controlPanel.js — the dock's Scene control pane: Fog, Rooms, Grid, Player and My seat.
+// controlPanel.js — the dock's Scene control pane: Fog, Rooms, Grid and Player.
 //
 // ⚠ A UI LAYER over the existing fog and grid wiring, never new logic. Every control drives the
 // hidden input or button in #cp-legacy, so state mutation, scene persistence and player sync
@@ -23,7 +23,7 @@ function initControlPanel() {
   _cpInitFields();
   _cpInitResets();
   _cpInitAdvPanel();
-  _cpInitSeat();
+  _cpInitPlayerPoll();
   _cpInitCalibrate();
 
   refreshFogControlUI();
@@ -333,17 +333,8 @@ function _cpSyncFancy(ids) {
   });
 }
 
-// ─── My seat ──────────────────────────────────────────────────────────────────
-// The map turns on the laptop only; the TV never sees it. The Player's own controls are the
-// minimap's (tvControl.js), which drives the hidden legacy buttons.
-function _cpInitSeat() {
-  document.querySelectorAll('#cp-sec-seat [data-seat]').forEach(btn => {
-    btn.addEventListener('click', () => { setSeatTurn(+btn.dataset.seat); refreshPlayerControlUI(); });
-  });
-
-  // A Player window can close without telling us, so poll. Read-only.
-  setInterval(refreshPlayerControlUI, 1000);
-}
+// A Player window can close without telling us, so poll. Read-only.
+function _cpInitPlayerPoll() { setInterval(refreshPlayerControlUI, 1000); }
 
 // ─── Reflection hooks (called from scene-restore paths) ───────────────────────
 function refreshFogControlUI() {
@@ -359,9 +350,8 @@ function refreshGridControlUI() {
   setGridTypeUI();
 }
 
-// Mirrors player state onto My seat and the minimap. Reads only — the legacy buttons remain
+// Mirrors player state onto the minimap. Reads only — the legacy buttons remain
 // the source of truth (their .active classes are set by minimap.js / toolbar.js).
 function refreshPlayerControlUI() {
-  document.querySelectorAll('#cp-sec-seat [data-seat]').forEach(b => b.classList.toggle('active', +b.dataset.seat === seatTurn));
   tvRefresh();
 }

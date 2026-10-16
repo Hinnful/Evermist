@@ -34,7 +34,7 @@ the bottom-left corner, and **the dock** on the right edge. The left side of the
 
 The dock is an icon rail with one pane open beside it. The rail opens the world map, the
 Bestiary as a centred window, and the fight table as a free window. Its panes are **Scene
-control** (fog, rooms, lights, grid, My seat), **Notes**, **Music**,
+control** (fog, rooms, lights, grid), **Notes**, **Music**,
 **Sounds**, **Gallery** and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
 dock sits over the map rather than beside it, so opening a pane never moves the map or changes
 what the TV is sent. Its inner edge drags to resize it, and it gives way so the toolbar stays
@@ -301,10 +301,8 @@ and dragging or scrolling it **drives** the TV. It's a remote control rather tha
 independent camera: it feeds the same camera message the Player already listens for. Each
 camera move on the TV travels back to it, from a Send and a new map to a finished snap.
 
-One thing to know before trusting it: **the preview is deliberately wider than the TV.** Its box
-has the TV's shape (16:9 with no TV known), and the actual TV is only the dotted rectangle in
-the middle, which takes 60% of each side. The rest is context. It's a rough sketch for aiming,
-not evidence of what the players see. My seat swaps the box's sides at 90 and 270 and turns the
+The preview **is the TV**: its box has the TV's shape (16:9 with no TV known) and the picture
+fills it edge to edge, with no frame and no margin of map around it. Seat alignment swaps the box's sides at 90 and 270 and turns the
 picture inside it; the buttons never turn. With two maps both columns are drawn side by side,
 split where the TV splits them, and a press on a half selects its column.
 
@@ -317,9 +315,11 @@ that screen in fullscreen. Live, the minimap's edge breathes blue and a pill rea
 sit beside it as they apply, and the pill drops words until it fits. Unplugging the TV takes the
 map off it. Under the rig's `--offscreen` no window is moved and the window route is taken.
 
-### My seat
+### Seat alignment
 
-The Player tab's My seat control turns the DM's map 0°, 90°, 180° or 270°, so the laptop shows
+Settings' Seat alignment (`seatAlignment.js`) draws the TV from above, holding the open scene's
+map dimmed, with a chair on each side. The DM's chair is solid blue and says "You". A click on a
+chair turns the DM's map 0°, 90°, 180° or 270°, so the laptop shows
 the map the way the table shows it from the DM's chair. It is a setting of the laptop, kept in
 local storage, never in a scene or a backup, and the TV never sees it.
 

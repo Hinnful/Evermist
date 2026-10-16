@@ -187,6 +187,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   fogEditedSinceSave = false;
   playerMapSent = false;
   currentScene = scene;
+  if (typeof refreshSeatAlignment === 'function') refreshSeatAlignment();   // Settings' TV picture
   loadSceneLights(scene);   // after currentScene: the plan's lights come from it
   // ⚠ A column must not write this: the parent restores from it at startup, so column B's map
   // would be the one that came back.

@@ -76,7 +76,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/mapLoader.js` | Image-map loading + progress-bar helpers |
 | `scenes/mapConvert.js` | Animated-map shrink at import. `fitInsideBox` tested |
 | `render/viewport.js` | Pan/zoom, fit, Sync View, the camera a push carries |
-| `render/mapTurn.js` | My seat: the DM map turned in quarter steps, and client ↔ view conversion |
+| `render/mapTurn.js` | The seat: the DM map turned in quarter steps, and client ↔ view conversion |
 | `render/ping.js` | The ping at a map point, drawn in both views |
 | `render/lights.js` | A scene's light polygons: model, seeding from the plan, the outline texture under the fog |
 | `player/playerWindow.js` | The Player window: opening, warming, what it gets |
@@ -98,6 +98,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/colorPicker.js` | The fog colour picker: square, hue strip, hex field, HSV maths |
 | `ui/controlPanel.js` | The dock's Scene control pane over the hidden legacy controls |
 | `ui/dock.js` | The dock: the icon rail, the one open pane, its width |
+| `ui/seatAlignment.js` | Settings' Seat alignment: the TV from above, four chairs, the laptop map's turn |
 | `notes/notesPlan.js` | Pure notes kernel: the crumb list, a notes string cleaned, a restored campaign note merged in. Tested |
 | `notes/notesPanel.js` | The dock's Notes pane: breadcrumbs, and the notes of the campaign, a place, the scene or the room |
 | `world/worldMapPlan.js` | Pure world-map kernel: starting layout, polygon geometry and which polygon holds a card, the camera. Tested |
@@ -215,7 +216,7 @@ scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → ren
 render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → ui/repairBar.js → ui/effectsRow.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvControl.js →
-ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/confirmDialog.js → rooms/floorPlan.js →
+ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/roomCard.js →
 gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js →
 world/worldMapPlan.js → world/worldRoadPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → world/worldFindPlan.js → world/worldMapFind.js → world/worldMapColumns.js → world/worldMapEmpty.js → world/worldMapOpenBar.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →

@@ -119,6 +119,7 @@ function seatTurnLayout() {
 // ⚠ CAPTURE BEFORE syncSize, which is what swaps the view's width and height.
 function applySeatTurn() {
   minimapLayout();
+  if (typeof refreshSeatAlignment === 'function') refreshSeatAlignment();
   // The shell's own map is hidden behind the columns; each column turns its own.
   if (paneBroadcast('seat-turn', { deg: seatTurn })) return;
   const held = mapWidth > 0 ? captureCamera() : null;
@@ -143,6 +144,8 @@ function setSeatTurn(deg) {
 
 function initSeatTurn() {
   if (isPlayer) return;
+  // Settings' Seat alignment is this setting's control; a column has no Settings of its own.
+  if (!isPane) initSeatAlignment();
   let saved = 0;
   try { saved = parseInt(localStorage.getItem(SEAT_TURN_KEY), 10) || 0; } catch (e) {}
   if (!SEAT_TURNS.includes(saved) || !saved) return;

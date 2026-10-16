@@ -6,7 +6,7 @@
 // laptop map to match it and a hand movement on the laptop goes the same way on the table. The TV
 // never changes. Every check below serves that sentence.
 //
-//   1. The Player tab has a My seat control with 0°, 90°, 180° and 270°.
+//   1. Settings' Seat alignment has a chair at 0°, 90°, 180° and 270°, and Scene control has no My seat.
 //   2. Picking an angle snaps the DM map at once, and the app remembers it after a restart.
 //   3. At every angle the map, the animated map, the fog and the effects sit on each other.
 //   4. At every angle each grid square covers the same map square as at 0°.
@@ -59,7 +59,7 @@ globalThis.__seatClientBox = (x0, y0, x1, y1) => {
   return { left: Math.min(...pts.map(p => p.x)), right: Math.max(...pts.map(p => p.x)),
            top: Math.min(...pts.map(p => p.y)), bottom: Math.max(...pts.map(p => p.y)) };
 };
-globalThis.__seatPick = (deg) => { document.querySelector('[data-seat="' + deg + '"]').click(); return 0; };
+globalThis.__seatPick = (deg) => { document.querySelector('.sa-hit[data-seat-pick="' + deg + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true })); return 0; };
 0`;
 
 module.exports = async function seatTurn(rig) {
@@ -73,20 +73,19 @@ module.exports = async function seatTurn(rig) {
   await lib.settle(dm, '!fogTransRafId && !viewportDirty', 8000);
 
   // ── 1. the control ───────────────────────────────────────────────────────
-  // RED ON: data-seat="270" changed to 2700, and separately the seat pill's cp-tabs class renamed (index.html) — 2026-10-02
+  // RED ON: data-seat-pick="270" changed to 2700 (seatAlignment.js), and My seat put back in index.html - 2026-10-17
   const control = await dm.evaluate(`(() => {
-    const pane = document.getElementById('cp-sec-seat');
-    const b = [...pane.querySelectorAll('[data-seat]')];
-    return { seats: b.map(x => +x.dataset.seat), lit: b.filter(x => x.classList.contains('active'))
-      .map(x => +x.dataset.seat), pill: !!b[0] && b[0].parentElement.classList.contains('cp-tabs') };
+    const hits = [...document.querySelectorAll('#cp-sec-seat-align .sa-hit')];
+    const labels = [...document.querySelectorAll('#dock-pane-settings .cp-group > .dk-sh .cp-label')].map(l => l.textContent.trim());
+    return { seats: hits.map(x => +x.dataset.seatPick), labels, scene: document.getElementById('dock-pane-scene').textContent,
+      inSettings: !!document.querySelector('#dock-pane-settings #cp-sec-seat-align') };
   })()`);
-  rig.check(JSON.stringify(control.seats) === '[0,90,180,270]',
-            'Scene control does not offer the four seats: ' + JSON.stringify(control));
-  rig.check(control.pill, 'the seats are not a pick-one pill, so they read as four separate buttons');
-  // refreshPlayerControlUI lights the pick; it runs on a tab switch and on every click.
-  await dm.evaluate('refreshPlayerControlUI(); 0');
-  rig.check(JSON.stringify(await dm.evaluate(`[...document.querySelectorAll('[data-seat].active')]
-    .map(x => +x.dataset.seat)`)) === '[0]', 'a fresh app does not show 0° as the seat it is at');
+  rig.check(JSON.stringify(control.seats) === '[0,90,180,270]' && control.inSettings,
+            'Settings does not offer the four chairs: ' + JSON.stringify(control));
+  rig.check(control.labels[1] === 'Seat alignment', 'Seat alignment is not right under Interface: ' + control.labels);
+  rig.check(!/My seat/.test(control.scene) && !(await dm.evaluate('!!document.querySelector("#dock-pane-scene [data-seat]")')),
+            'My seat is still in Scene control');
+  rig.check(JSON.stringify(await dm.evaluate(`[...document.querySelectorAll('.sa-chair.on')].map(x => +x.dataset.seat)`)) === '[0]', 'a fresh app does not show the bottom chair as the seat');
 
   // ── 2, 3, 4, 5, 6 at every angle ─────────────────────────────────────────
   const camAt0 = await dm.evaluate('captureCamera()');
@@ -95,10 +94,10 @@ module.exports = async function seatTurn(rig) {
     // delta left unturned (input.js), and localStorage.setItem gated off (mapTurn.js) — 2026-09-29
     await dm.evaluate('__seatPick(' + deg + ')');
     const state = await dm.evaluate(`({ seat: seatTurn,
-      lit: [...document.querySelectorAll('[data-seat].active')].map(x => +x.dataset.seat),
+      lit: [...document.querySelectorAll('.sa-chair.on')].map(x => +x.dataset.seat),
       saved: localStorage.getItem('evermist.seatTurn'), cam: captureCamera() })`);
     rig.check(state.seat === deg && JSON.stringify(state.lit) === '[' + deg + ']',
-              'picking ' + deg + '° did not turn the map, or the pill lit another seat: ' +
+              'picking ' + deg + '° did not turn the map, or the chair lit was another: ' +
               JSON.stringify(state));
     rig.check(state.saved === String(deg), 'the ' + deg + '° seat was not kept for the next launch');
     // The snap keeps the point the DM was looking at in the middle, at the same zoom.
@@ -493,7 +492,7 @@ module.exports = async function seatTurn(rig) {
   await dm.evaluate(SEAT_HELPERS);
   const back = await dm.evaluate(`({ seat: seatTurn,
     t: getComputedStyle(document.getElementById('cursor-canvas')).transform,
-    lit: (refreshPlayerControlUI(), [...document.querySelectorAll('[data-seat].active')].map(x => +x.dataset.seat)) })`);
+    lit: [...document.querySelectorAll('.sa-chair.on')].map(x => +x.dataset.seat) })`);
   rig.check(back.seat === 90 && back.t !== 'none' && JSON.stringify(back.lit) === '[90]',
             'the app came back up at another seat than the one picked: ' + JSON.stringify(back));
   await dm.evaluate('__seatPick(0); 0');
