@@ -14,11 +14,10 @@
 const SHAPE_FAMILY = ['poly', 'rect', 'circle', 'cone', 'line', 'wall', 'ring'];
 const SHAPE_ROWS = { poly: ['Polygon', 'P'], rect: ['Rectangle', 'R'], circle: ['Circle', 'O'],
                      cone: ['Cone', 'C'], line: ['Line', ''], wall: ['Wall', ''], ring: ['Ring', ''] };
-// The world map's Shape list keeps its Repair section; the scene bar's repairs are keys and an icon.
-const OPS_ROWS = { 'btn-op-join': 'Merge', 'btn-op-trim': 'Cut out', 'btn-cut': 'Split' };
+// The world map's Place list holds the three place shapes, then Road. Places take no repairs.
+const WORLD_SHAPES = ['rect', 'circle', 'poly'];
 
-let _opsPick = 'btn-op-join';   // the world map's last repair armed or picked
-let _pickKind = 'shape';        // what the world map's Shape button wears when no repair is armed
+let _roadWorn = false;          // the world map's Place button wears Road, the last pick, over the last shape
 let _worn = 'btn-poly';         // the row the Shape button wears, and the list checks
 let _tbOpen = null;             // the kind of the list that is open, or null
 let _tbPickFn = null;           // what a pick in the open list does
@@ -39,26 +38,23 @@ function _shapeName(s) {
 // A repair needs something to act on: a room, an effect, or on the world map a place.
 function repairsAvailable() { return activeShapeList().length > 0; }
 
-// The scene bar's button wears the shape drawn with, always. The world map's also wears the last
-// repair picked from its list, and a shape the mode lacks is never worn, so the button never goes blank.
+// The scene bar's button wears the shape drawn with, always. The world map's wears Road when that was the
+// last pick, and a shape the mode lacks is never worn, so the button never goes blank.
 function refreshShapeButton() {
   const btn = document.getElementById('btn-shape');
   if (!btn) return;
   const items = shapeMenuItems();
-  let repair = false;
   if (worldMapOpen) {
-    if (shape === 'cut') { _opsPick = 'btn-cut'; _pickKind = 'repair'; }
-    else if (shapeOp !== 'new') { _opsPick = 'btn-op-' + shapeOp; _pickKind = 'repair'; }
-    else if (items.indexOf(shape) >= 0) _pickKind = 'shape';
-    const armed = shape === 'cut' || shapeOp !== 'new';
-    repair = armed || (_pickKind === 'repair' && repairsAvailable());
+    if (_wmTool === 'road') _roadWorn = true;
+    else if (items.indexOf(shape) >= 0) _roadWorn = false;
   }
-  const want = repair ? _opsPick : 'btn-' + (items.indexOf(shape) >= 0 ? shape : modeShape(placeMode));
+  const road = worldMapOpen && _roadWorn;
+  const want = road ? 'wm-road' : 'btn-' + (items.indexOf(shape) >= 0 ? shape : modeShape(placeMode));
   _worn = want;
   const src = document.getElementById(want);
   const box = btn.querySelector('.tb-shape-glyph');
-  if (src && box && (repair || items.indexOf(want.slice(4)) >= 0)) box.innerHTML = src.querySelector('svg').outerHTML;
-  btn.classList.toggle('active', items.indexOf(shape) >= 0 || shape === 'cut');
+  if (src && box && (road || items.indexOf(want.slice(4)) >= 0)) box.innerHTML = src.querySelector('svg').outerHTML;
+  btn.classList.toggle('active', worldMapOpen ? (_wmTool === 'road' || items.indexOf(shape) >= 0) : (items.indexOf(shape) >= 0 || shape === 'cut'));
 }
 
 function _tbCloseList() {
@@ -72,12 +68,10 @@ function _tbCloseList() {
 // Rows are [id, name, key, off, iconSvg] or a string for a heading, or null for a divider.
 function _tbRows() {
   const svgOf = id => { const src = document.getElementById(id); return src ? src.querySelector('svg').outerHTML : ''; };
-  const shapes = _shapeOrder().filter(s => !worldMapOpen || shapeInMode(s, placeMode))
-    .map(s => ['btn-' + s, _shapeName(s), !shapeInMode(s, placeMode) ? t('Effects') : SHAPE_ROWS[s][1], !shapeInMode(s, placeMode), svgOf('btn-' + s)]);
+  const order = worldMapOpen ? WORLD_SHAPES : _shapeOrder();
+  const shapes = order.map(s => ['btn-' + s, _shapeName(s), !shapeInMode(s, placeMode) ? t('Effects') : SHAPE_ROWS[s][1], !shapeInMode(s, placeMode), svgOf('btn-' + s)]);
   if (!worldMapOpen) return shapes;
-  const none = !repairsAvailable();
-  const repairs = Object.keys(OPS_ROWS).map(id => [id, OPS_ROWS[id], none ? t('Needs a room') : '', none, svgOf(id)]);
-  return shapes.concat([null, 'Repair'], repairs);
+  return shapes.concat([null, ['wm-road', 'Road', 'L', false, svgOf('wm-road')]]);
 }
 
 // Opens a list over `anchor`, above it and kept inside the window. `kind` names it so a second click on
@@ -121,21 +115,10 @@ function _tbOpenShapeList() {
   openBarList('shape', group, group.querySelector('.tb-chev'), rows, _worn, _tbPick, true);
 }
 
-// The world map's Shape list arms a repair through the button's own handler, so each keeps exactly the
-// arming it had, and it draws with the shape picked last. ⚠ Picking Split disarms Merge and Cut out.
-function _tbArmRepair(id) {
-  if (id === 'btn-cut') { setShapeOp('new'); if (shape !== 'cut') setShape('cut'); return; }
-  const op = id === 'btn-op-join' ? 'join' : 'trim';
-  if (shapeOp !== op) setShapeOp(op);
-  if (shapeMenuItems().indexOf(shape) < 0) {
-    const last = modeShape(placeMode);
-    setShape(shapeMenuItems().indexOf(last) >= 0 ? last : 'poly');
-  }
-}
-
+// A plain shape is a new room, so it drops an armed Merge or Cut out. On the world map the Road row takes the
+// road tool, and every other row puts it down (setShape does).
 function _tbPick(id) {
-  if (OPS_ROWS[id]) { _tbArmRepair(id); return; }
-  // A plain shape is a new room, so it drops an armed Merge or Cut out.
+  if (id === 'wm-road') { if (_wmTool !== 'road') worldMapRoadToolToggle(); return; }
   if (shapeOp !== 'new') setShapeOp('new');
   setShape(id.slice(4));
 }
@@ -145,7 +128,7 @@ function initShapeMenu() {
 
   btn.onclick = () => {
     if (btn.classList.contains('active') && shape !== 'cut') return;   // already the tool in hand
-    if (worldMapOpen && _pickKind === 'repair' && repairsAvailable()) { _tbArmRepair(_opsPick); return; }
+    if (worldMapOpen && _roadWorn) { if (_wmTool !== 'road') worldMapRoadToolToggle(); return; }
     const items = shapeMenuItems();
     const want = modeShape(placeMode);
     if (shapeOp !== 'new') setShapeOp('new');

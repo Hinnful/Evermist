@@ -99,9 +99,24 @@ for the players is a separate feature (item 179). The two must never be confused
 **Needs /spec.**
 **First use · DM only**
 
+### 183. Solid blue means "press this"; the blue tint means "picked"
+Filed 2026-10-16 from the world map toolbar lab. Solid blue does two jobs today: the tool in hand, the picked list row
+and the picked well item wear it, and so do Show on TV and the actions a DM should press next. A new DM cannot tell
+"this is on" from "do this". The rail already shows the fix: its open tab wears the blue tint. The rule: a solid blue
+fill, with no glow, is the one action to take next; the blue tint is what is picked or in hand. Every toolbar, options
+row, popup, chevron list, popover and button that marks a pick with solid blue moves to the tint. The world map's
+toolbar already follows it.
+**Polish · DM only**
+
 ---
 
 # EVERYTHING ELSE
+
+### 184. Straight walls sits alone over the world map's drawing tools
+Filed 2026-10-16. With the repairs gone from places, the row over a place tool holds one icon, Straight walls, and it
+looks stranded. Decide what that row is for on the world map: give it company that earns its place, fold Straight walls
+somewhere else, or drop the row. **Needs a look-and-feel pass.**
+**Polish · DM only**
 
 ### 179. Turning the map for the players
 Filed 2026-10-13. A map drawn sideways for the TV has to be turned in an image editor before it goes in; the first new

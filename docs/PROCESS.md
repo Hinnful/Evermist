@@ -141,6 +141,8 @@ The reply style in `.claude/output-styles/steering.md` governs every reply. On t
 - **Ask only questions whose answers look different at the table.** When every option gives the
   same screen, pick one and say which.
 - **Offer a recommendation with every option** so the DM can accept a batch in one word.
+- **Every question goes in the message, never in the app's next-step box.** The box hides what was written before it,
+  and the DM turned it off: `wrap_up` carries a recap only, with no question and no buttons.
 - **Report against the DM's Definition of Done by number** when asked where things stand.
 - **Size honestly and correct a bad estimate out loud.**
 - **When the DM says "I'm lost", cut scope** instead of explaining harder.

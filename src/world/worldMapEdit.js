@@ -32,8 +32,8 @@ function worldMapEditInit() {
   file.addEventListener('cancel', () => { _wmAddAt = null; });
 }
 
-// New scenes land one by one in the next clear spot, then the last is picked and brought into view at a zoom
-// where scenes show.
+// New scenes land one by one in the next clear spot, then the first is picked and they are all brought into view, at a
+// zoom where scenes show. Nothing opens: the Open bar over the picked map is the next step.
 function _wmAddLand(ids, from) {
   const taken = allScenes.filter(s => !ids.includes(s.id) && s.worldPos).map(s => wmCardRect(s.worldPos));
   let at = from.at, beside = from.beside;
@@ -46,11 +46,9 @@ function _wmAddLand(ids, from) {
   worldAssignAll();
   if (!worldMapOpen) return;
   if (!ids.length) { worldMapRefresh(); return; }
-  worldMapPickSet(ids, ids[ids.length - 1]);
-  const v = _wmView(), z = _wmCam.z < WM_SPLIT ? 1 : _wmCam.z;
-  const sx = v.w / 2 + (at.x - _wmCam.cx) * _wmCam.z, sy = v.h / 2 + (at.y - _wmCam.cy) * _wmCam.z;
-  const seen = Math.abs(sx - v.w / 2) < v.w / 2 - WM_CARD_W * _wmCam.z && Math.abs(sy - v.h / 2) < v.h / 2 - WM_CARD_H * _wmCam.z;
-  if (_wmCam.z < WM_SPLIT || !seen) _wmFly({ cx: at.x, cy: at.y, z }, 500);
+  worldMapPickSet([ids[0]], ids[0]);
+  const spots = ids.map(id => allScenes.find(s => s.id === id)).filter(s => s && s.worldPos).map(s => s.worldPos);
+  _wmFly(wmFrameCamera(wmContentBox(spots, [], null), _wmClear(), false), 600);
 }
 
 // ─── The pointer ─────────────────────────────────────────────────────────────
@@ -270,7 +268,7 @@ function _wmWheel(e) {
 
 function _wmDbl(e) {
   e.stopPropagation();
-  if (_wmTool === 'poly' || _wmTool === 'cut' || _wmTool === 'road') { worldMapPathFinish(); return; }
+  if (_wmTool === 'poly' || _wmTool === 'road') { worldMapPathFinish(); return; }
   const name = e.target.closest('.wm-nm, .wm-lbl, .wm-hl, .wm-rn');
   if (name) {
     const host = name.closest('.wm-card, .wm-lm, .wm-hl, .wm-rn');

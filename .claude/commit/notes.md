@@ -88,6 +88,9 @@ node .claude/commit/check-notes.js
 
 CI runs the same checker on the commit before anything is published.
 
+**Show the notes in the closing message, after `wrap_up`**, and send `notes.txt` with `SendUserFile`. The push
+question goes in that message, never in the next-step box (`docs/PROCESS.md`, Talking with the DM).
+
 **Then STOP.** The notes are a proposal. Do not stage, commit or push in the same turn. The user is
 the only reviewer this repo has, and reading the Summary is where they do it. End with one short
 line offering to push.

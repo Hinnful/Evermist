@@ -53,6 +53,7 @@ function handleCurrentDeleted() {
   if (!isPlayer) container.style.cursor = 'default';
   localStorage.removeItem('evermist-current-scene-id');
   if (allScenes.length) switchScene(allScenes[0].id).catch(err => console.error('switchScene failed:', err));
+  else worldMapShow();
 }
 
 // The in-memory record moves too, or the next wholesale autosave reverts the sortOrder. One transaction per

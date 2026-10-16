@@ -44,6 +44,7 @@ function worldMapInit() {
   worldBackupInit();
   worldMapColumnsInit();
   worldMapFindInit();
+  worldMapOpenBarInit();
 }
 
 const _wmView = () => ({ w: _wm.clientWidth || innerWidth, h: _wm.clientHeight || innerHeight });
@@ -249,7 +250,7 @@ function _wmDraw() {
   for (const s of allScenes) _wmDrawScene(s, places);
   for (const [k, e] of _wmEls) if (!e.dataset.live) { e.remove(); _wmEls.delete(k); }
   _wmLayoutLabels();
-  document.getElementById('wm-empty').hidden = allScenes.length > 0;
+  worldMapEmptySync();
   worldMapDrawOverlay();
 }
 
@@ -423,8 +424,17 @@ function _wmFly(t, ms, done) {
   step();
 }
 
+// What the notes panel and the dock leave clear. ⚠ THE PANEL IS SHOWN FIRST: this runs as the layer opens, before its refresh.
+function _wmClear() {
+  const v = _wmView(), np = document.getElementById('notes-panel'), dk = document.getElementById('dock');
+  _npApplyVisible();
+  const left = allScenes.length && np && !np.hidden ? np.getBoundingClientRect().right : 0, right = dk && dk.offsetWidth ? dk.getBoundingClientRect().left : v.w;
+  return { w: Math.max(200, right - left), h: v.h, shift: (left + right) / 2 - v.w / 2 };
+}
+
 function _wmOverview() {
-  return wmOverviewCamera(allScenes.map(_wmPos), _wmView());
+  const places = worldPlaceRecords();
+  return wmFrameCamera(wmContentBox(allScenes.map(_wmPos).filter(Boolean), places.map(r => wmPolyBounds(wmOutline(r))), worldBackgroundPicture()), _wmClear(), places.length > 0);
 }
 
 function worldMapFlyToPlace(name) {
@@ -459,6 +469,7 @@ function worldMapShow(cam) {
   dockRefreshRail();
   dockHoldForWorld(true);
   if (open) _wmFly(_wmOverview(), 1100);
+  worldMapFollow();
 }
 
 // The map opens on these scenes, framed and picked: where an import's report points.
@@ -466,7 +477,7 @@ function worldMapShowScenes(ids) {
   const at = allScenes.filter(s => ids.includes(s.id) && wmCleanPos(s.worldPos));
   if (!_wm) return;
   if (!at.length) { worldMapShow(); return; }
-  const cam = wmOverviewCamera(at.map(s => s.worldPos), _wmView());
+  const cam = wmFrameCamera(wmContentBox(at.map(s => s.worldPos), [], null), _wmClear(), false);
   if (worldMapOpen) _wmFly(cam, 650); else worldMapShow(cam);
   worldMapPickSet(at.map(s => s.id), at[0].id);
 }
@@ -476,6 +487,7 @@ function worldMapHide() {
   if (typeof cornerFieldClose === 'function') cornerFieldClose(true);
   worldMapOpen = false;
   worldMapSel = { sceneId: null, place: '' };
+  worldMapEmptySync();
   worldMapFindClose();
   worldMapMenuClose();
   worldBackgroundMoveSet(false);

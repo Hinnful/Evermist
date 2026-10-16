@@ -83,9 +83,6 @@
       <span class="tb-hint">of <span id="door-cell-label">70</span> px cell</span>
     </div>
 
-    <!-- The world map's Find field. -->
-    <div class="tb-group" id="ctx-wm-search"><input id="wm-search" placeholder="Find a scene, place or road" spellcheck="false" autocomplete="off"></div>
-
     <!-- A divider runs the full height of its strip with 8px clear each side (toolbar.css).
          updateContextPanels shows each only between two groups that are both up. -->
     <i class="tb-mdiv" id="div-aids"></i>
@@ -191,7 +188,8 @@
     <button id="wm-road" class="tool-btn wm-tool" title="Road - click points along the way, double-click to finish">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c5-1 2-7 7-8s3-6 7-7" stroke-dasharray="3 2.5"/><circle cx="5" cy="19" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="4" r="1.7" fill="currentColor" stroke="none"/></svg>
     </button>
-    <button id="wm-find" class="tb-toggle wm-tool" title="Find a scene, place or road (Ctrl+F)">
+    <i class="tb-mdiv wm-tool" id="wm-div"></i>
+    <button id="wm-find" class="tool-btn wm-tool" title="Find a map, place or road (Ctrl+F)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
     </button>
 
@@ -217,6 +215,18 @@
 
 <!-- The selected room's own switcher, on the map just above it. roomSwitcher.js. -->
 <div id="room-fog"></div>
+
+<!-- The world map's Find: a large search over a dimmed map. worldMapFind.js. -->
+<div id="wm-finder">
+  <div class="sm-win w-l">
+    <div class="wf-head">
+      <span class="wf-glass"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.5-4.5"/></svg></span>
+      <input id="wm-search" placeholder="Find a map, a place or a road" spellcheck="false" autocomplete="off">
+    </div>
+    <div id="wm-find-list"></div>
+    <div class="wf-keys"><span><kbd>&uarr;</kbd><kbd>&darr;</kbd>to move</span><span><kbd>Enter</kbd>to go there</span><span><kbd>Esc</kbd>to close</span></div>
+  </div>
+</div>
 
 <!-- The players' view's frame while it is on. playersView.js. -->
 <div id="pv-frame"><span>Players' view - this is what the TV shows</span></div>
@@ -780,7 +790,7 @@
     <svg id="wm-roads" width="1" height="1"></svg>
     <div id="wm-card"></div><div id="wm-mark"></div><div id="wm-rn"></div><div id="wm-edit"></div>
   </div>
-  <div id="wm-empty" hidden>No scenes yet. Add a map with the button below.</div>
+  <div id="wm-empty" hidden><b>Start with your maps</b><span>Add the maps for your game here. Double-click one to open it.</span></div>
 </div>
 
 <div id="landing">
@@ -1004,6 +1014,8 @@
 <script src="src/world/worldMapShapes.js"></script>
 <script src="src/world/worldMapRoads.js"></script>
 <script src="src/world/worldMapColumns.js"></script>
+<script src="src/world/worldMapEmpty.js"></script>
+<script src="src/world/worldMapOpenBar.js"></script>
 <script src="src/world/worldFindPlan.js"></script>
 <script src="src/world/worldMapFind.js"></script>
 <script src="src/world/worldPickPlan.js"></script>

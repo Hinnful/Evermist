@@ -68,6 +68,11 @@ globalThis.__rigKeyState = () => ({
 module.exports = async function helpAndAboutFeature(rig) {
   const dm = rig.dm;
 
+  // ⚠ AN EMPTY LIBRARY LAUNCHES ONTO THE WORLD MAP, which keeps its own keys and covers the page. The panel is read over the
+  // plain app, as a DM meets it with a map open.
+  await dm.waitFor('worldMapOpen', 30000, 'the empty library to open the world map');
+  await dm.evaluate('worldMapHide(); 0');
+  await lib.settle(dm, '!worldMapOpen && document.getElementById("wm").hidden', 8000);
   await lib.installHelpers(dm);
   await dm.evaluate(OWN_HELPERS);
 

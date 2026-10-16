@@ -448,11 +448,11 @@ module.exports = async function fogToolbarFeature(rig) {
     return { bar, tab: document.querySelector('.tb-seg').getClientRects().length, brush: document.getElementById('btn-brush').getClientRects().length,
              eyes: document.getElementById('tb-whole').getClientRects().length };
   })()`);
-  rig.check(world.bar.join() === 'btn-select,tb-grp-shape,wm-road,wm-add,wm-find' && world.tab === 0 && world.brush === 0 && world.eyes === 0,
-            'the world map\'s bar is not Select, Shape, Road, Add a scene and Find, with no eyes, tab or Brush: ' + JSON.stringify(world));
+  rig.check(world.bar.join() === 'btn-select,wm-add,tb-grp-shape,wm-div,wm-find' && world.tab === 0 && world.brush === 0 && world.eyes === 0,
+            'the world map\'s bar is not Select, Add, Place, a divider and Find, with no eyes, tab or Brush: ' + JSON.stringify(world));
   const worldList = await dm.evaluate('__rigList("shape")');
-  rig.check(['btn-op-join', 'btn-op-trim', 'btn-cut'].every(id => worldList.some(r => r.id === id)),
-            'the world map\'s Shape list has lost its Repair section: ' + JSON.stringify(worldList.map(r => r.id)));
+  rig.check(worldList.filter(Boolean).map(r => r.id).filter(Boolean).join() === 'btn-rect,btn-circle,btn-poly,wm-road',
+            'the world map\'s Place list is not Rectangle, Circle, Polygon and Road: ' + JSON.stringify(worldList.map(r => r.id)));
   await dm.evaluate('document.getElementById("btn-world").click(); 0');
   await lib.settle(dm, '!worldMapOpen', 10000);
 

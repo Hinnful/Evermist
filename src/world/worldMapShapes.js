@@ -1,12 +1,11 @@
 'use strict';
-// worldMapShapes.js — drawing a place on the world map with the toolbar's own tools, and repairing the
-// places already there with Merge, Cut out and Split. The tool is the toolbar's `shape` and `shapeOp`
-// (input.js and toolbar.js); this file reads them. Editing a place afterwards is the room's own code
-// (worldMapEdit.js runs it on the world's camera).
+// worldMapShapes.js — drawing a place on the world map with the toolbar's own tools. The tool is the
+// toolbar's `shape` (input.js and toolbar.js); this file reads it. Places take no Merge, Cut out or Split.
+// Editing a place afterwards is the room's own code (worldMapEdit.js runs it on the world's camera).
 
-let _wmPoly = null;              // the path being clicked out, for a polygon or a split: { pts, cur }
+let _wmPoly = null;              // the polygon being clicked out: { pts, cur }
 const WM_MIN_PLACE = 30;         // a dragged rectangle or circle smaller than this is a slip, not a place
-const WM_DRAWN = ['rect', 'circle', 'poly', 'cut'];
+const WM_DRAWN = ['rect', 'circle', 'poly'];
 
 // What the layer does follows the tool in hand. setShape (input.js) calls this once `shape` is set.
 function worldMapToolSync() {
@@ -17,9 +16,10 @@ function worldMapToolSync() {
   if (worldMapOpen) worldMapRefresh();
 }
 
-// V, R, O and P pick the tool, as on the map; Enter closes a path, Escape drops it, then the tool.
+// V, R, O and P pick the tool, as on the map, and L takes Road (the world map only); Enter closes a path, Escape drops it, then the tool.
 function worldMapToolKey(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) return false;
+  if (e.code === 'KeyL') { if (_wmTool !== 'road') worldMapRoadToolToggle(); return true; }
   const tool = { KeyV: 'select', KeyR: 'rect', KeyO: 'circle', KeyP: 'poly' }[e.code];
   if (tool) { setShape(tool); return true; }
   if ((_wmPoly || _wmRoadPath) && (e.code === 'Enter' || e.code === 'NumpadEnter')) { e.preventDefault(); worldMapPathFinish(); return true; }
@@ -61,7 +61,7 @@ function _wmDragShape(d, p) {
     : wmCircleShape(d.w0.x, d.w0.y, Math.hypot(p.x - d.w0.x, p.y - d.w0.y), 40);
 }
 
-const _wmClicked = tool => tool === 'poly' || tool === 'cut';
+const _wmClicked = tool => tool === 'poly';
 
 function worldMapDrawMove(e, d) {
   if (d.tool === 'road') { worldMapRoadDrag(e); return; }
@@ -76,7 +76,7 @@ function worldMapDrawUp(e, d) {
     _wmPreview(null);
     if (!d.moved) return;
     const verts = _wmDragShape(d, p), b = wmPolyBounds(verts);
-    if (b.w >= WM_MIN_PLACE && b.h >= WM_MIN_PLACE) _wmFinished(verts);
+    if (b.w >= WM_MIN_PLACE && b.h >= WM_MIN_PLACE) _wmCreatePlace(verts);
     return;
   }
   if (d.moved) return;
@@ -102,95 +102,6 @@ function worldMapPathFinish() {
   if (_wmRoadPath) { worldMapRoadFinish(); return; }
   if (!_wmPoly) return;
   const pts = _wmPoly.pts.filter((p, i, a) => !i || Math.hypot(p.x - a[i - 1].x, p.y - a[i - 1].y) > 2);
-  const tool = _wmTool;
   worldMapDrawCancel();
-  if (tool === 'cut') { if (pts.length >= 2) _wmSplit(pts); return; }
-  if (pts.length >= 3) _wmFinished(pts);
-}
-
-// A closed shape the DM drew: a new place, or what an armed Merge or Cut out does to the places it lands on.
-function _wmFinished(verts) {
-  if (shapeOp === 'new') { _wmCreatePlace(verts); return; }
-  _wmRepair(verts);
-}
-
-// ─── Repairs ─────────────────────────────────────────────────────────────────
-// The geometry is roomOps.js, the same kernel the room tools use. A place keeps its name and notes
-// through a repair: the first one of a Merge, the one a Cut out shrinks, and the first piece of a split.
-
-const WM_REASONS = {
-  [REASON_FAILED]: 'Those places could not be combined. Nothing changed.',
-  [REASON_CUT]: 'A cut has to enter and leave the place once each. Nothing changed.',
-};
-
-function _wmRefuse(reason) {
-  messageDialog({ title: 'Nothing changed', message: t(WM_REASONS[reason] || reason) });
-}
-
-const WM_REASON_HOLE = 'A place cannot have a hole in it. Draw the shape so it touches the edge, or use Split.';
-
-// Vertices, rounding and curves of a piece, the only things a place keeps.
-function _wmPlacePieces(shapes, pieces) {
-  const kept = restoreGroupDetail(shapes, pieces);
-  return kept.pieces.length ? kept.pieces : pieces.map(p => ({ vertices: p.verts, holes: p.holes }));
-}
-
-// A merged-away place hands its notes to the one that stays, and its scenes fall to whichever outline holds them.
-function _wmRetire(rec, into) {
-  if (into) {
-    const gone = notesPlaceGet(rec.name), keep = notesPlaceGet(into.name);
-    if (gone) notesPlaceSet(into.name, [keep, gone].filter(Boolean).join('\n\n'));
-    notesPlaceSet(rec.name, '');
-  }
-  forgetGroup(rec.name);
-  worldShapeDelete(rec.name);
-}
-
-function _wmApplyPlan(plan) {
-  worldUndoPush();
-  for (const g of plan) {
-    const base = g.shapes[0];
-    for (let i = 1; i < g.shapes.length; i++) _wmRetire(g.shapes[i], base);
-    if (!g.pieces.length) { _wmRetire(base, null); continue; }
-    const parts = _wmPlacePieces(g.shapes, g.pieces);
-    base.vertices = parts[0].vertices;
-    if (parts[0].cornerRadii) base.cornerRadii = parts[0].cornerRadii; else delete base.cornerRadii;
-    if (parts[0].handles) base.handles = parts[0].handles; else delete base.handles;
-    for (let i = 1; i < parts.length; i++) {
-      worldPlaceSet(addGroup(t('New place')), { vertices: parts[i].vertices, cornerRadii: parts[i].cornerRadii, handles: parts[i].handles });
-    }
-  }
-  clearShapeSelection();
-  worldPlaceCommit();
-}
-
-function _wmRepair(verts) {
-  const hits = worldPlaceRecords().filter(r => r.vertices.length >= 3 && shapesOverlap(r, verts));
-  if (!hits.length) return;
-  const minArea = roomOpMinArea(WM_MIN_PLACE);
-  let plan;
-  if (shapeOp === 'join') {
-    const out = joinShapes(hits, verts, minArea);
-    if (out.reason) { _wmRefuse(out.reason); return; }
-    plan = [{ shapes: hits, pieces: out.pieces }];
-  } else {
-    const out = trimShapes(hits, verts, minArea);
-    if (out.reason) { _wmRefuse(out.reason); return; }
-    plan = hits.map((r, i) => ({ shapes: [r], pieces: out.groups[i] }));
-  }
-  if (plan.some(g => g.pieces.some(p => p.holes && p.holes.length))) { messageDialog({ title: 'Nothing changed', message: t(WM_REASON_HOLE) }); return; }
-  _wmApplyPlan(plan);
-}
-
-// ⚠ EVERY PLACE THE PATH TOUCHES IS IN OR THE WHOLE SPLIT IS REFUSED, as with rooms.
-function _wmSplit(path) {
-  const minArea = roomOpMinArea(WM_MIN_PLACE), plan = [];
-  for (const rec of worldPlaceRecords()) {
-    if (rec.vertices.length < 3 || !ringPathCrossings(rec.vertices, path).length) continue;
-    const out = cutRing(rec, path, minArea);
-    if (out.reason) { _wmRefuse(out.reason); return; }
-    plan.push({ shapes: [rec], pieces: out.pieces });
-  }
-  if (!plan.length) { _wmRefuse(REASON_CUT); return; }
-  _wmApplyPlan(plan);
+  if (pts.length >= 3) _wmCreatePlace(pts);
 }

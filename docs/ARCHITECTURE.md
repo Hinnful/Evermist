@@ -63,11 +63,15 @@ a black diamond with its name beside it. The camera cannot leave the map: zoomed
 layout, with a fifth of the map's size beyond, fill the window. The mist stops at the picture's edge. a scene with no place is a black diamond with its name beside it. Zoomed in the prints wear their
 names and the places have none. Under the prints sits the mist (`worldMist.js`): a drifting veil that thins
 inside the places, over the backdrop, which is greyed outside them. A place's white 2px line is painted above by
-the room code. The bar is the scene's own toolbar (Select, Shape,
-Merge / Cut out / Split, Straighten) lent to the layer and given back on closing, and Merge, Cut out and Split run
-the room kernel on places (`worldMapShapes.js`). One backdrop image, set in Settings, sits behind the places
-(`worldBackground.js`, its own IndexedDB). A double-click opens a scene; Add a scene
-imports a map off screen and never opens it. A right-click menu (`worldMapMenu.js`) offers each thing's actions, a place is a room-shaped record (`worldPlaces.js`) drawn with the rectangle, circle or polygon tool and edited by the room's own selection code, and a scene belongs to the outline that holds all of its card. The room code reads the camera from globals, so each of its calls is made inside `_wmWithCamera`, which lends it the world's. The layer is a sibling of the canvas, so none of the map's
+the room code. The bar is the scene's own toolbar lent to the layer and given back on closing,
+with no words: Select, Add (the one solid blue button), Place (the place shapes, then Road), a divider, Find. Places
+take no Merge, Cut out or Split (`worldMapShapes.js` draws them). Find opens a large search over a dimmed map
+(`worldMapFind.js`). One backdrop image, set in Settings, sits behind the places
+(`worldBackground.js`, its own IndexedDB). A double-click, or the Open bar over the one picked map
+(`worldMapOpenBar.js`), opens a scene. Add imports maps off screen, frames them and picks the first, and never opens
+one. With no maps the app starts on the world map, which shows a callout over Add (`worldMapEmpty.js`). Opening the
+map frames everything on it in the part of the window the panels leave clear, and with no place drawn it stays at the
+prints. A right-click menu (`worldMapMenu.js`) offers each thing's actions, a place is a room-shaped record (`worldPlaces.js`) drawn with the rectangle, circle or polygon tool and edited by the room's own selection code, and a scene belongs to the outline that holds all of its card. The room code reads the camera from globals, so each of its calls is made inside `_wmWithCamera`, which lends it the world's. The layer is a sibling of the canvas, so none of the map's
 own handlers see it, and while it is up the map's keys are held back so nothing reaches the TV. Place notes
 live in `evermist.placeNotes` by name and ride a backup in `campaign.json`.
 

@@ -109,11 +109,15 @@ The room card's module renders into the left panel's room level; there is no flo
 
 ## The world map (`worldMap.js`, `worldMapEdit.js`, `worldMap.css`)
 
-A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolbar is the scene's own: Select, Shape
-(rectangle, circle, polygon: V, R, O, P; its list holds the Repair section), Road, then Add a scene and Find; Straight walls
-sits in the options row over a drawing tool. The Brush, the fog clouds, Reveal all and Hide all, the Fog / Effects switch and Snap are hidden, and the
+A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolbar is the scene's own, with no words: Select (always leftmost), Add a scene,
+Place, a divider, Find. Add is solid blue with no glow (the one thing to press); the tool in hand and the row under the pointer in a list wear the blue
+tint (`--b-tint`), scoped to `body.world` so the scene's bar keeps its look. Place's list holds Rectangle (R), Circle (O), Polygon (P), then Road (L),
+and its button wears the last pick; V, R, O and P put Road down, and L takes it on the world map only. Road's own button (`#wm-road`) stays in the page as
+the back end. Places take no Merge, Cut out or Split: the options row over a place tool holds Straight walls alone. The Brush, the fog
+clouds, Reveal all and Hide all, the Fog / Effects switch and Snap are hidden, and the
 tool, mode and repair the scene held are put away on opening and given back on closing. The context row hides with
-`visibility` so the bar does not move.
+`visibility` so the bar does not move. Find (or Ctrl+F) opens a large search in the middle of the window over a dimmed map (`#wm-finder`): every map as
+a picture while nothing is typed, result cards while typing, with its own fade-and-rise (the window's pop-in would fight its centring).
 One level of name shows at a time: zoomed out only the place plates, zoomed in only the scene names (the split is `WM_SPLIT`, 0.75). A scene is a 110x77 framed print shown only zoomed in, its name a plate inside it at the top left; zoomed out no scene in a place is shown (a grid was built and removed, see the ledger), and a scene with no place is a black diamond with a white rim and its name beside it. Under the prints sits the mist (`worldMist.js`): a drifting veil that clears 90% inside a place, over a backdrop greyed outside the places and 70% in colour inside them, a 20 soft edge. A place's outline is white, 2px (`POLY_LOOK.place`). A place's name is a small black plate inside its top left (`_wmLayoutLabels`, via the room's `fitLabelBox`), blue when picked, boxed in edit colours while edited. Rename is off while its name is hidden, and the backdrop image is set in Settings
 (`worldBackground.js`).
 
@@ -217,8 +221,7 @@ red, Split yellow) and the bar's repair icon.
 - **Alt+drag no longer pans under a shape tool**; the middle button pans. Under Select Alt+drag
   copies, and under any other tool Alt still pans.
 - **In two-map mode** a column reports the held key up (`pane-repair-key`) and the bar's icon lights.
-- **The world map keeps its own Shape list**, with a Repair heading over Merge, Cut out and Split,
-  and its own repairs, until its own pass.
+- **Places take no repairs.** The keys stand down while the world map is open, and its options row has no repair icon.
 
 ## The bottom toolbar
 

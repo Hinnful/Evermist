@@ -9,6 +9,8 @@ if (typeof module !== 'undefined' && module.exports) ({ roundEffectRing, flatten
 
 const WM_CARD_W = 110, WM_CARD_H = 77;
 const WM_PAD = 34, WM_LABEL = 22;
+const WM_FRAME_FILL = 0.7;             // the share of the clear window a framed map takes
+const WM_FRAME_MAX = 2.6;              // and the closest it is framed
 const WM_SPLIT = 0.75;                  // below this zoom the scenes carry no names and the places do
 const WM_ZOOM_MIN = 0.06, WM_ZOOM_MAX = 5;
 const WM_STEP_X = 132, WM_STEP_Y = 100;
@@ -94,7 +96,8 @@ function _wmLateArrivals(all, missing, placed) {
     const mates = g ? placed.filter(s => _wmGroupOf(s) === g).map(s => s.worldPos) : [];
     if (mates.length) rowBelow(mates, byGroup[g]); else rest.push(...byGroup[g]);
   }
-  if (rest.length) rowBelow(placed.map(s => s.worldPos), rest);
+  // Under every spot already taken, the rows just planned for a group's newcomers included.
+  if (rest.length) rowBelow(placed.map(s => s.worldPos).concat(Object.values(out)), rest);
   return out;
 }
 
@@ -345,14 +348,23 @@ function wmClampCamera(cam, view, ext) {
 
 function wmFillZoom(view) { return Math.max(view.w / WM_CARD_W, view.h / WM_CARD_H); }
 
-// Every scene in view, zoomed out far enough that the places level shows. An empty library sits on
-// the origin at the same zoom.
-function wmOverviewCamera(positions, view) {
-  const zMax = WM_SPLIT * 0.85;
-  if (!positions || !positions.length) return { cx: 0, cy: 0, z: zMax };
-  const b = _wmBounds(positions);
-  const w = b.x1 - b.x0 + 900, h = b.y1 - b.y0 + 900;
-  return { cx: (b.x0 + b.x1) / 2, cy: (b.y0 + b.y1) / 2, z: Math.min(view.w / w, view.h / h, zMax) };
+// What the map holds: every card, every place and the backdrop picture, as one rectangle. Null when empty.
+function wmContentBox(positions, placeBounds, pic) {
+  const pts = [];
+  for (const p of positions || []) pts.push({ x: p.x - WM_CARD_W / 2, y: p.y - WM_CARD_H / 2 }, { x: p.x + WM_CARD_W / 2, y: p.y + WM_CARD_H / 2 });
+  for (const b of placeBounds || []) pts.push({ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y + b.h });
+  if (pic) pts.push({ x: pic.x, y: pic.y }, { x: pic.x + pic.w, y: pic.y + pic.h });
+  return pts.length ? _wmBounds(pts) : null;
+}
+
+// The camera that frames `box` in 70% of `clear`, the part of the window the panels leave free: { w, h, shift }, shift
+// being how far its centre sits right of the window's. Never closer than 2.6x. With no place drawn it stays at the
+// scenes level, where the maps are prints and not diamonds. An empty map sits on the origin.
+function wmFrameCamera(box, clear, hasPlaces) {
+  if (!box) return { cx: 0, cy: 0, z: 1 };
+  let z = Math.min(WM_FRAME_MAX, clear.w * WM_FRAME_FILL / Math.max(1, box.x1 - box.x0), clear.h * WM_FRAME_FILL / Math.max(1, box.y1 - box.y0));
+  if (!hasPlaces) z = Math.max(z, WM_SPLIT);
+  return { cx: (box.x0 + box.x1) / 2 - clear.shift / z, cy: (box.y0 + box.y1) / 2, z };
 }
 
 function wmPlaceCamera(rect, view) {
@@ -401,11 +413,11 @@ function wmMatches(query, sceneName, groupName) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    WM_CARD_W, WM_CARD_H, WM_PAD, WM_LABEL, WM_SPLIT, WM_STEP_X, WM_STEP_Y,
+    WM_CARD_W, WM_CARD_H, WM_PAD, WM_LABEL, WM_SPLIT, WM_FRAME_FILL, WM_FRAME_MAX, WM_STEP_X, WM_STEP_Y,
     wmCleanPos, wmBesideOffset, wmPlanPositions, wmHullRect, wmRectCentre, wmFillZoom,
     wmCardRect, wmPointInPoly, wmRectInPoly, wmPolyArea, wmPolyBounds, wmPolyCentre, wmRectShape, wmCircleShape,
     wmCleanShape, wmCleanEdits, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmLabelSpot,
     wmPlateSpot, wmExtent, wmZoomFloor, wmClampCamera,
-    wmOverviewCamera, wmPlaceCamera, wmLevelFor, wmZoomAround, wmSideBySide, wmFreeSpot, wmMatches,
+    wmContentBox, wmFrameCamera, wmPlaceCamera, wmLevelFor, wmZoomAround, wmSideBySide, wmFreeSpot, wmMatches,
   };
 }

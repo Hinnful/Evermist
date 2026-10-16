@@ -1,24 +1,22 @@
 'use strict';
-// worldMapFind.js — Find on the world map: a field above the toolbar and, under what is typed, a list of the
-// places, scenes and roads whose names fit it, best first, with a count. Arrow keys walk the list, Enter or a
-// click flies to the row and picks it, Esc closes. The scenes and places that do not match dim on the map while
-// the field is open. The matching itself is worldFindPlan.js.
+// worldMapFind.js — Find on the world map: a large search in the middle of the window over a dimmed map. With nothing
+// typed every map shows as a picture; typing turns them into cards for the places, scenes and roads whose names fit,
+// best first, with a count. Arrow keys walk the cards, Enter or a click flies to one and picks it, Esc closes. The
+// scenes and places that do not match dim on the map behind. The matching itself is worldFindPlan.js.
 //
 // ⚠ NAMES REACH THE DOM THROUGH textContent ONLY: a name is the DM's own text.
 
-let _wmFindList = null;          // the results panel, in the field's group
-let _wmFindRows = [];            // the rows as shown, in key order
-let _wmFindAt = 0;               // the row the keys are on
+let _wmFindList = null;          // the cards' grid, in the finder
+let _wmFindRows = [];            // the cards as shown, in key order
+let _wmFindAt = 0;               // the card the keys are on
 
 function worldMapFindInit() {
   const find = document.getElementById('wm-find'), search = document.getElementById('wm-search');
   find.addEventListener('click', () => (document.body.classList.contains('searching') ? worldMapFindClose() : worldMapFindOpen()));
   search.addEventListener('input', _wmFindInput);
   search.addEventListener('keydown', _wmFindKey);
-  _wmFindList = document.createElement('div');
-  _wmFindList.id = 'wm-find-list';
-  _wmFindList.hidden = true;
-  // A press on the list must not take the focus from the field, or the keys stop walking it.
+  _wmFindList = document.getElementById('wm-find-list');
+  // A press on a card must not take the focus from the field, or the keys stop walking the cards.
   _wmFindList.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); });
   _wmFindList.addEventListener('mousemove', e => {
     const row = e.target.closest('.wf-row');
@@ -28,20 +26,23 @@ function worldMapFindInit() {
     const row = e.target.closest('.wf-row');
     if (row) _wmFindPick(_wmFindRows[+row.dataset.i]);
   });
-  document.getElementById('ctx-wm-search').appendChild(_wmFindList);
+  // A press on the dimmed map around the window closes the search.
+  const finder = document.getElementById('wm-finder');
+  finder.addEventListener('mousedown', e => { if (e.target === finder) worldMapFindClose(); });
 }
 
 function worldMapFindOpen() {
   document.body.classList.add('searching');
   document.getElementById('wm-find').classList.add('active');
   document.getElementById('wm-search').focus();
+  _wmFindShow();
 }
 
 function worldMapFindClose() {
   document.body.classList.remove('searching');
   document.getElementById('wm-find').classList.remove('active');
   document.getElementById('wm-search').value = '';
-  _wmFindList.hidden = true;
+  _wmFindList.textContent = '';
   _wmFindRows = [];
   if (_wmQuery) { _wmQuery = ''; worldMapRefresh(); }
 }
@@ -52,10 +53,21 @@ function _wmFindInput() {
   _wmFindShow();
 }
 
-// What the field holds, matched against every place, scene and road, never only what is in view.
+// What the field holds, matched against every place, scene and road, never only what is in view. Nothing typed
+// lists every map.
 function _wmFindShow() {
   _wmFindList.textContent = '';
-  if (!_wmQuery) { _wmFindList.hidden = true; _wmFindRows = []; return; }
+  _wmFindAt = 0;
+  const count = document.createElement('div');
+  count.className = 'wf-n';
+  _wmFindList.appendChild(count);
+  if (!_wmQuery) {
+    _wmFindRows = allScenes.map(s => ({ kind: 'scene', id: s.id, name: s.name, place: sanitizeGroupName(s.group) }));
+    count.textContent = t.plural(_wmFindRows.length, '{n} map', '{n} maps');
+    _wmFindRows.forEach((r, i) => _wmFindList.appendChild(_wmFindRow(r, i)));
+    _wmFindPaintOn();
+    return;
+  }
   const found = wfSearch(
     _wmQuery,
     _wmPlaces().map(p => ({ name: p.name, count: p.ids.length })),
@@ -63,11 +75,7 @@ function _wmFindShow() {
     worldRoadRecords().map(r => ({ uid: r.uid, name: r.name })),
   );
   _wmFindRows = wfFlat(found);
-  _wmFindAt = 0;
-  const count = document.createElement('div');
-  count.className = 'wf-n';
   count.textContent = found.total ? t.plural(found.total, '{n} match', '{n} matches') : t('No match for “{q}”', { q: _wmQuery });
-  _wmFindList.appendChild(count);
   let i = 0;
   for (const [heading, kind] of [['Places', 'place'], ['Scenes', 'scene'], ['Roads', 'road']]) {
     const rows = _wmFindRows.filter(r => r.kind === kind);
@@ -78,7 +86,6 @@ function _wmFindShow() {
     _wmFindList.appendChild(h);
     for (const r of rows) _wmFindList.appendChild(_wmFindRow(r, i++));
   }
-  _wmFindList.hidden = false;
   _wmFindPaintOn();
 }
 
@@ -92,7 +99,7 @@ function _wmFindRow(r, i) {
   else ic.innerHTML = r.kind === 'place' ? WM_ICON_PLACE : WM_ICON_ROAD;
   const nm = document.createElement('span');
   nm.className = 'wf-nm';
-  const hit = wfHit(r.name, _wmQuery);
+  const hit = _wmQuery ? wfHit(r.name, _wmQuery) : null;
   if (hit) {
     nm.append(r.name.slice(0, hit.at));
     const b = document.createElement('b');
@@ -135,13 +142,23 @@ function _wmFindPick(row) {
   worldMapFindClose();
 }
 
+// How many cards sit on the first line of the grid, so Up and Down move by a line.
+function _wmFindColumns() {
+  const rows = _wmFindList.querySelectorAll('.wf-row');
+  if (!rows.length) return 1;
+  let n = 0;
+  for (const r of rows) { if (r.offsetTop !== rows[0].offsetTop) break; n++; }
+  return Math.max(1, n);
+}
+
 function _wmFindKey(e) {
   e.stopPropagation();
   if (e.code === 'Escape') { worldMapFindClose(); return; }
-  if (e.code === 'ArrowDown' || e.code === 'ArrowUp') {
+  const step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: _wmFindColumns(), ArrowUp: -_wmFindColumns() }[e.code];
+  if (step) {
     if (!_wmFindRows.length) return;
     e.preventDefault();
-    _wmFindAt = (_wmFindAt + (e.code === 'ArrowDown' ? 1 : -1) + _wmFindRows.length) % _wmFindRows.length;
+    _wmFindAt = Math.max(0, Math.min(_wmFindRows.length - 1, _wmFindAt + step));
     _wmFindPaintOn();
   } else if (e.code === 'Enter' || e.code === 'NumpadEnter') {
     e.preventDefault();

@@ -48,6 +48,14 @@ describe('wmPlanPositions', () => {
     assert.equal(out.l.x, 0);
   });
 
+  it('never puts a loose late arrival on a spot just given to a group late arrival', () => {
+    const list = [sc('a', 'Hall', { x: 0, y: 0 }), sc('b', 'Hall'), sc('c', 'Hall'), sc('l', '')];
+    const out = W.wmPlanPositions(list);
+    const spots = [{ x: 0, y: 0 }, ...Object.values(out)].map(p => p.x + ',' + p.y);
+    assert.equal(new Set(spots).size, spots.length, JSON.stringify(out));
+    assert.ok(out.l.y > out.b.y, 'the loose one sits below the new row of the group');
+  });
+
   it('places a late arrival whose group has nothing placed under the layout', () => {
     const out = W.wmPlanPositions([sc('a', 'Vallaki', { x: 0, y: 0 }), sc('n', 'Brand new')]);
     assert.ok(out.n.y > 0);
@@ -70,21 +78,41 @@ describe('wmHullRect', () => {
 describe('the camera', () => {
   const view = { w: 1000, h: 600 };
 
+  const clear = { w: 1000, h: 600, shift: 0 };
+
   it('frames an empty library on the origin', () => {
-    const c = W.wmOverviewCamera([], view);
+    const c = W.wmFrameCamera(W.wmContentBox([], [], null), clear, false);
     assert.deepEqual([c.cx, c.cy], [0, 0]);
-    assert.ok(c.z < W.WM_SPLIT, 'the overview reads as places');
   });
 
-  it('centres on the scenes and fits them', () => {
-    const c = W.wmOverviewCamera([{ x: 0, y: 0 }, { x: 10000, y: 4000 }], view);
+  it('boxes the cards, the places and the backdrop together', () => {
+    const b = W.wmContentBox([{ x: 0, y: 0 }], [{ x: 500, y: -50, w: 100, h: 100 }], { x: -300, y: 0, w: 100, h: 900 });
+    assert.deepEqual(b, { x0: -300, y0: -50, x1: 600, y1: 900 });
+  });
+
+  it('centres on the content and fits it in 70% of the clear window', () => {
+    const box = { x0: 0, y0: 0, x1: 10000, y1: 4000 };
+    const c = W.wmFrameCamera(box, clear, true);
     assert.deepEqual([c.cx, c.cy], [5000, 2000]);
-    assert.ok(c.z * (10000 + 900) <= view.w + 1e-9);
-    assert.ok(c.z * (4000 + 900) <= view.h + 1e-9);
+    assert.ok(c.z * 10000 <= clear.w * 0.7 + 1e-9);
+    assert.ok(c.z * 4000 <= clear.h * 0.7 + 1e-9);
   });
 
-  it('never zooms in past the place level in the overview', () => {
-    assert.ok(W.wmOverviewCamera([{ x: 0, y: 0 }], view).z < W.WM_SPLIT);
+  it('never frames closer than 2.6x', () => {
+    const c = W.wmFrameCamera(W.wmContentBox([{ x: 0, y: 0 }], [], null), clear, true);
+    assert.equal(c.z, W.WM_FRAME_MAX);
+  });
+
+  it('keeps loose maps at the scenes level when no place is drawn', () => {
+    const wide = { x0: 0, y0: 0, x1: 20000, y1: 8000 };
+    assert.equal(W.wmFrameCamera(wide, clear, false).z, W.WM_SPLIT);
+    assert.ok(W.wmFrameCamera(wide, clear, true).z < W.WM_SPLIT);
+  });
+
+  it('centres on the clear part of the window, not the window', () => {
+    const box = { x0: 0, y0: 0, x1: 1000, y1: 1000 };
+    const c = W.wmFrameCamera(box, { w: 800, h: 600, shift: 100 }, true);
+    assert.equal(c.cx, 500 - 100 / c.z);
   });
 
   it('fills the view with one card', () => {

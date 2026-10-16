@@ -132,8 +132,8 @@ module.exports = async function worldRoadsFeature(rig) {
 
   // ── 1. The Road tool draws by clicks ────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
-  rig.check(await dm.evaluate('(b => !!b && getComputedStyle(b).display !== "none")(document.getElementById("wm-road"))'),
-            'the world bar has no Road button');
+  rig.check(await dm.evaluate('(b => !!b && getComputedStyle(b).display === "none")(document.getElementById("wm-road"))'),
+            'Road is on the world bar as a button of its own: it lives in the Place list now');
   await dm.evaluate('document.getElementById("wm-road").click(); 0');
   rig.check(await dm.evaluate('_wmTool === "road" && document.getElementById("wm-road").classList.contains("active")'),
             'the Road button did not arm the road tool');

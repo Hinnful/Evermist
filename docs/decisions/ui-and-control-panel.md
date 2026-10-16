@@ -1038,3 +1038,40 @@ included. A stopped import puts matched scenes back and removes only what it cre
 in, with a report. Replace-everything was left out, and copies the laptop already holds stay unlinked: one clean start.
 **Reverses** the Restore that "merges and never replaces", "a restore adopts it only when the DM has none", and a picked
 export leaving the backdrop out.
+
+### A first evening opens on the world map, and one picked map gets an Open bar · `SETTLED` (2026-10-16)
+A first-time DM landed on a screen of directions to an icon, on a world map where nothing said what to press. The app now
+opens on the world map when the library is empty, and deleting the last map lands there too. An empty map shows a callout
+over Add ("Start with your maps") and a bar of Select and Add only, with no notes panel. Maps added there are framed in
+the part of the window the notes panel and the dock leave clear, and the first is picked; nothing opens and the TV does not
+change. One picked map carries a small bar over it: Open (an arrow, solid blue, no glow; an arrow into a box read as a download) and More, which hangs
+the map's menu from the button. The bar hides while dragging, zoomed out to places and while searching. The overview frames
+maps, places and the backdrop at 70% of the clear area, at most 2.6x, and with no place never below the scenes level, so
+loose maps are prints and not diamonds. Searching no longer shows the hidden level through the dim.
+**Refines** "The app starts on the scene it was left on": a library with maps still opens on the last one.
+**Refines** "The world map v1" and "Zoomed out, the world map shows no scenes": the overview framing and the empty state;
+the camera limits stand. **Refines** "The first-map toast is dropped": the callout is the first-evening guide, not a toast.
+The Show on TV step is unchanged. The look of the bar is Spec B.
+
+### Solid blue is "press this", the blue tint is "picked" · `SETTLED` (2026-10-16)
+Solid blue marked both the pick (the tool in hand, a list row, a well item) and the action to take next (Show on TV).
+The DM settled one meaning each: a solid blue fill, with no glow, asks to be pressed; the blue tint, as on the rail's open
+tab, shows what is picked or in hand. The app-wide pass is BACKLOG 183.
+
+### The world map's bar has no words, and Find is a large search in the middle · `SETTLED` (2026-10-16)
+The bar reads Select, Add, Place, a divider, Find, with no words and Select always leftmost. Solid blue means "press this" and
+is Add alone, with no glow; the blue tint means "picked", worn by the tool in hand and the row under the pointer in a list.
+Place's list holds Rectangle, Circle, Polygon, then Road, its button wears the last pick, and L takes Road on the world map
+only. The repairs leave that list for the options row's icon, beside Straight walls, as on the scene's bar. Find opens a large
+search over a dimmed map: every map as a picture while nothing is typed, result cards while typing. The tint is scoped to the
+world map; the rest of the app waits on BACKLOG 183.
+**Reverses, by title:** "The world map's toolbar reads in three clusters" (the bar's order, Road as a button of its own, Find
+last in the bar's own cluster); "The world map wears the scene's toolbar" (its Shape list's Repair section); "Find lists places,
+scenes and roads under the field" (a field with a list above it; the matching and the keys stay); "Solid blue is press this, the
+blue tint is picked" (its entry is the rule this one applies, on the world map first).
+
+### Places take no Merge, Cut out or Split · `SETTLED` (2026-10-16)
+The DM found the place repairs did not work and had no first-evening use. The world map's options row loses the repair
+icon, the Split tool goes, and the place-repair code goes with them; the keys already stood down on the world map. A place
+is reshaped by editing its outline, as a room is. **Replaces** the repairs in "The world map wears the scene's toolbar" and the options-row
+icon in "The world map's bar has no words".

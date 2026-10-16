@@ -19,6 +19,7 @@ function worldMapRoadsInit() {
 function worldMapRoadButtonSync() {
   document.getElementById('wm-road').classList.toggle('active', _wmTool === 'road');
   document.getElementById('btn-select').classList.toggle('active', shape === 'select' && _wmTool !== 'road');
+  refreshShapeButton();   // the Place button wears Road while it is in hand
 }
 
 // The Road tool is a switch beside the bar's shapes: picking any shape tool puts it away.

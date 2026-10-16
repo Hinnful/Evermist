@@ -43,7 +43,7 @@
 //  16. Pre-4.0 fixes: the dock goes dark but for what never reaches the TV; no invisible rename; every
 //      scene move is one undo step; Esc, Delete, Enter and ? on the map; Effects shapes absent; only the
 //      tool in hand is blue; a place delete asks nothing and its notes go and come back with it; a taken
-//      place name is refused; the Split refusal reads as a place in Russian.
+//      place name is refused.
 //
 // ⚠ THE BACKUP IN 9 IS MIRRORED, NOT EXERCISED: the save dialog is native (see the rig skill). The
 // file lists are read as text and the place notes go through the same payload and parser the zip uses.
@@ -141,7 +141,7 @@ module.exports = async function worldMapFeature(rig) {
   rig.check(opened.stamped, 'opening the map left scenes with no position');
   rig.check(Math.abs(opened.z - opened.fill) < 1e-6 * opened.fill && Math.abs(opened.cx - opened.at.x) < 1e-6 && Math.abs(opened.cy - opened.at.y) < 1e-6,
             'the map did not start on the open scene\'s card to zoom out from it: ' + JSON.stringify(opened));
-  await lib.settle(dm, '!_wmAnim && _wmCam.z < WM_SPLIT', 15000);
+  await lib.settle(dm, '!_wmAnim', 15000);
   const onStore = await poll(() => stored(id.Cellar), v => v && v.pos, 12000);
   rig.check(onStore && onStore.pos && typeof onStore.pos.x === 'number',
             'the first-open layout was not written to the store, so it is lost on restart: ' + JSON.stringify(onStore));
@@ -151,10 +151,14 @@ module.exports = async function worldMapFeature(rig) {
             'Esc did not close the world map back onto the open scene');
   await dm.evaluate('__rigKey("KeyM"); 0');
   rig.check(await dm.evaluate('worldMapOpen'), 'M did not open the world map');
-  await lib.settle(dm, '!_wmAnim && _wmCam.z < WM_SPLIT', 15000);
+  await lib.settle(dm, '!_wmAnim', 15000);
 
   // ── 2. Prints and plates by level ──────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
+  // ⚠ THE OVERVIEW FRAMES WHAT IS ON THE MAP in the window the panels leave clear, so it may sit at either level. The
+  // places level is set by hand, over the place.
+  const pc = JSON.parse(await dm.evaluate('JSON.stringify(_wmPlaces().find(p => p.name === "Watcherhouse").centre)'));
+  await dm.evaluate('__wmCam(' + pc.x + ', ' + pc.y + ', 0.5); 0');
   await lib.settle(dm, SETTLED, 8000);
   const out = await dm.evaluate(`(() => ({
     level: document.getElementById('wm').className,
@@ -172,7 +176,6 @@ module.exports = async function worldMapFeature(rig) {
   rig.check(out.prints.length === 3 && out.prints.every(o => o === '0'), 'zoomed out, the scenes of a place still show: ' + JSON.stringify(out.prints));
   rig.check(out.mist, 'the mist is not cut by every place');
   // A place's plate is a room's label: its type size by zoom and clamped, its weight, its padding.
-  const pc = JSON.parse(await dm.evaluate('JSON.stringify(_wmPlaces().find(p => p.name === "Watcherhouse").centre)'));
   for (const zz of [0.3, 0.45, 0.6, 0.7]) {
     await dm.evaluate('__wmCam(' + pc.x + ', ' + pc.y + ', ' + zz + ')');
     const at = await dm.evaluate(`(() => { const h = __wmHead('Watcherhouse'), cs = getComputedStyle(h), z = _wmCam.z;
@@ -207,17 +210,23 @@ module.exports = async function worldMapFeature(rig) {
             'the Mist look changed how a room is drawn on the battlemap');
 
   // ── 3. Pan, zoom, and a left drag that does nothing ───────────────────────
+  // ⚠ CLOSE ENOUGH THAT THE MAP OUTRUNS THE WINDOW: further out the camera is held inside what the map reaches, and a
+  // small map stops the pan short.
+  await dm.evaluate('__wmCam(' + pc.x + ', ' + pc.y + ', 2); 0');
   // RED BY DESIGN: written against the feature, never re-proved
   const pan = await dm.evaluate(`(() => {
     const wm = document.getElementById('wm'), z = _wmCam.z, c0 = { ..._wmCam };
     __wmE('mousedown', wm, { x: 500, y: 300 }, { button: 1 });
     __wmE('mousemove', window, { x: 560, y: 340 }, { button: 1 });
     __wmE('mouseup', window, { x: 560, y: 340 }, { button: 1 });
+    const c1x = _wmCam.cx, c1y = _wmCam.cy;
+    // The left drag runs back at the overview's zoom, where its spot is empty ground and not a print.
+    __wmCam(${pc.x}, ${pc.y}, 0.9);
     const c1 = { ..._wmCam };
     __wmE('mousedown', wm, { x: 400, y: 600 });
     __wmE('mousemove', window, { x: 440, y: 620 });
     __wmE('mouseup', window, { x: 440, y: 620 });
-    return { z, dx: c1.cx - c0.cx, dy: c1.cy - c0.cy, still: _wmCam.cx === c1.cx && _wmCam.cy === c1.cy };
+    return { z, dx: c1x - c0.cx, dy: c1y - c0.cy, still: _wmCam.cx === c1.cx && _wmCam.cy === c1.cy };
   })()`);
   rig.check(Math.abs(pan.dx + 60 / pan.z) < 0.01 && Math.abs(pan.dy + 40 / pan.z) < 0.01,
             'the middle button did not pan the map by the drag: ' + JSON.stringify(pan));
@@ -445,10 +454,6 @@ module.exports = async function worldMapFeature(rig) {
   // RED ON: renameGroupAsking's refusal swapped back for the merge confirm (worldMapStore.js) — 2026-10-09
   rig.check(dup.dlg && dup.both, 'a rename onto a place name already taken was not refused: ' + JSON.stringify(dup));
 
-  const refusal = await dm.evaluate(`(() => { const real = messageDialog; let got = null; messageDialog = o => { got = o.message; };
-    _wmSplit([{ x: 90000, y: 90000 }, { x: 90100, y: 90000 }]); messageDialog = real; return { msg: got, ru: !!got && i18nLookup(RU, got) !== got }; })()`);
-  // RED ON: _wmRefuse back to splitting "room" into "place" (worldMapShapes.js) — 2026-10-09
-  rig.check(/place/.test(refusal.msg || '') && refusal.ru, 'the Split refusal is not a place string with a Russian entry: ' + JSON.stringify(refusal));
 
   // ── 12. One pixel out is out ───────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
@@ -616,15 +621,15 @@ module.exports = async function worldMapFeature(rig) {
     .filter(el => getComputedStyle(el).display !== 'none')
     .map((el, i) => ({ id: el.id, i, o: parseInt(getComputedStyle(el).order, 10) || 0 }))
     .sort((a, b) => a.o - b.o || a.i - b.i).map(x => x.id)`);
-  rig.check(JSON.stringify(bar) === JSON.stringify(['btn-select', 'tb-grp-shape', 'wm-road', 'wm-add', 'wm-find']),
-            'the toolbar does not read Select, Shape and Road, then Add a scene and Find: ' + JSON.stringify(bar));
+  rig.check(JSON.stringify(bar) === JSON.stringify(['btn-select', 'wm-add', 'tb-grp-shape', 'wm-div', 'wm-find']),
+            'the toolbar does not read Select, Add, Place, a divider and Find: ' + JSON.stringify(bar));
   await dm.evaluate('__rigKey("KeyF", { ctrlKey: true }); 0');
-  rig.check(await dm.evaluate('document.body.classList.contains("searching") && getComputedStyle(document.getElementById("context-row")).visibility === "visible" && document.getElementById("wm-search").getClientRects().length > 0'),
-            'Ctrl+F did not open the Find field in the context row');
+  rig.check(await dm.evaluate('document.body.classList.contains("searching") && document.getElementById("wm-search").getClientRects().length > 0'),
+            'Ctrl+F did not open the search');
   // RED BY DESIGN: written against the change, never re-proved
   await dm.evaluate('(() => { const i = document.getElementById("wm-search"); i.value = "watcher"; i.dispatchEvent(new Event("input", { bubbles: true })); return 0; })()');
   const found = await dm.evaluate(`(() => { const l = document.getElementById('wm-find-list');
-    return { shown: !l.hidden, rows: [...l.querySelectorAll('.wf-row .wf-nm')].map(e => e.textContent), count: (l.querySelector('.wf-n') || {}).textContent }; })()`);
+    return { shown: l.getClientRects().length > 0, rows: [...l.querySelectorAll('.wf-row .wf-nm')].map(e => e.textContent), count: (l.querySelector('.wf-n') || {}).textContent }; })()`);
   rig.check(found.shown && found.rows.includes('The Watcherhouse') && /match/.test(found.count || ''),
             'Find did not list the place with a count: ' + JSON.stringify(found));
   await dm.evaluate('document.getElementById("wm-search").dispatchEvent(new KeyboardEvent("keydown", { code: "Enter", key: "Enter", bubbles: true, cancelable: true })); 0');

@@ -103,6 +103,8 @@ language, present tense. The terse version every session carries is in
 | `worldFindPlan.js` | The Find rules that need no screen: which places, scenes and roads a query matches, how well, and where in the name. Unit-tested. |
 | `worldMapFind.js` | Find on the world map: a field above the toolbar with a list under what is typed, grouped Places, Scenes and Roads, with a count. Arrow keys walk it, Enter or a click flies to the row and picks it, Esc closes. |
 | `worldMapColumns.js` | Two maps on the world map: a Left and a Right chip at the top, the active one blue and each naming the scene its column holds. A double-click on a scene fills the active column and closes the map; a scene a column holds wears an L or R. Esc, M and the button close the map and leave both columns alone. |
+| `worldMapEmpty.js` | The world map with no scenes: a callout over Add, and the bar's Select-and-Add-only state. |
+| `worldMapOpenBar.js` | The bar over the one picked map: Open, and More for its menu. It follows the print and hides while dragging, zoomed out to places and while searching. |
 | `worldPickPlan.js` | The multi-pick's rules that need no screen: a Shift-click toggled, which scenes a Shift-dragged box touches, and which places, roads and notes a backup of only the picked scenes carries. Unit-tested. |
 | `worldMapPick.js` | More than one scene picked on the world map: a Shift-click toggles a scene, and a Shift-drag on the ground draws a box that adds what it touches. The pick moves together and has its own menu. |
 | `worldBackup.js` | Export and Restore in Settings' World map section. Export saves the scenes picked on the map, or everything when none is picked; Restore takes a .zip from a picker or one dropped on the world map. |

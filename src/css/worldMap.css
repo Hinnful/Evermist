@@ -118,43 +118,73 @@
   }
   .wm-rn:empty:not([contenteditable="true"]) { display: none !important; }
   .wm-lm.stn .wm-lbl { display: none; }
+  /* A match dims to .15, but the level that is hidden stays hidden: it must not come back through the dim. */
   #wm .dim { opacity: .15 !important; }
+  #wm.scenes .wm-lm.dim, #wm.scenes .wm-hl.dim, #wm.places .wm-card.dim { opacity: 0 !important; }
   #wm.moving *, #wm.notrans * { transition: none !important; }
   #wm [contenteditable="true"] {
     outline: 1.5px solid var(--b-icon, #8fb6ff); background: #111 !important; color: #fff !important;
     cursor: text !important; user-select: text; text-overflow: clip !important;
   }
+  /* An empty map: a callout over Add (worldMapEmpty.js), and the bar and the notes panel keep only what can act. */
   #wm-empty {
-    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #7f858e;
-    font: 13px system-ui, sans-serif; pointer-events: none;
+    position: absolute; z-index: 70; width: 220px; padding: 10px 12px; zoom: var(--ui-zoom, 1.2); pointer-events: none;
+    border-radius: var(--panel-radius); background: var(--panel-bg); border: var(--panel-border); box-shadow: var(--panel-shadow);
+    transform: translate(-50%, -100%);
   }
   #wm-empty[hidden] { display: none; }
+  #wm-empty b { display: block; margin-bottom: 4px; font: 600 12px/1.2 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  #wm-empty span { font: 400 11px/1.4 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
+  #wm-empty::after {
+    content: ''; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; margin-left: -5px; background: var(--panel-bg);
+    border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg);
+  }
+  body.wm-empty #tb-grp-shape, body.wm-empty #wm-div, body.wm-empty #wm-find { display: none !important; }
+  body.wm-empty #notes-panel, body.wm-empty #np-fab { visibility: hidden !important; }
+
+  /* The bar over the picked map (worldMapOpenBar.js): Open is solid blue with no glow, More is quiet. */
+  #wm-bar {
+    position: absolute; z-index: 40; display: none; align-items: center; gap: 2px; padding: 3px; zoom: var(--ui-zoom, 1.2);
+    transform: translate(-50%, -100%); border-radius: 9px; background: var(--panel-bg); border: var(--panel-border); box-shadow: var(--panel-shadow);
+  }
+  #wm-bar.on { display: flex; }
+  #wm-bar button { width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--g-dim); cursor: pointer; display: grid; place-items: center; }
+  #wm-bar button:hover { background: var(--g-field); color: var(--g-text); }
+  #wm-bar .wm-bar-open, #wm-bar .wm-bar-open:hover { background: var(--b-solid); color: #fff; box-shadow: none; }
+  #wm-bar::after {
+    content: ''; position: absolute; left: 50%; bottom: -5px; width: 8px; height: 8px; margin-left: -4px; background: var(--panel-bg);
+    border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg);
+  }
 
   /* The toolbar trades its tools while the world map is up. The bar and its row keep their places:
      the row hides with visibility, as everywhere else, so the bar does not jump. */
-  body:not(.world) .wm-tool, body:not(.world) #ctx-wm-search { display: none !important; }
+  body:not(.world) .wm-tool { display: none !important; }
   body.world #toolbar-bottom > :not(.wm-tool):not(#btn-select):not(#tb-grp-shape) { display: none !important; }
   /* No Fog / Effects tab: the world map has neither. */
   body.world .tb-seg { display: none !important; }
-  /* The bar reads in clusters: Select, Shape (its list holds the repairs) and Road; then Add a scene and
-     Find. `order` sets it without moving the scene's own buttons in the page. */
+  body.world #toolbar-bottom { border-radius: var(--panel-radius); }
+  /* No words: Select, Add, Place, a divider, Find. Select is always leftmost. Road is a tool of the Place list now,
+     so its own button stays in the page as the back end. `order` sets the bar without moving the scene's buttons. */
   body.world #btn-select { order: 1; }
-  body.world #tb-grp-shape { order: 2; }
-  body.world #wm-road { order: 4; }
-  body.world #wm-add { order: 5; margin-left: 8px; }
-  body.world #wm-find { order: 6; }
-  /* The options row carries Straight walls over a drawing tool, and Find while it is searching.
-     Snap to grid has no grid to snap to up here. */
-  body.world #context-row > :not(#ctx-wm-search):not(#fx-aids) { display: none !important; }
+  body.world #wm-add { order: 2; }
+  body.world #tb-grp-shape { order: 3; }
+  body.world #wm-div { order: 4; }
+  body.world #wm-find { order: 5; }
+  body.world #wm-road { display: none !important; }
+  /* Solid blue is press this, the blue tint is picked: Add is the one thing to press, and the tool in hand and
+     the row under the pointer in a list wear the tint. Scoped here so the scene's bar keeps its look. */
+  body.world #wm-add { background: var(--b-solid); color: #fff; box-shadow: none; }
+  body.world #wm-add:hover { background: #2a9cf0; color: #fff; }
+  body.world #toolbar-bottom .tool-btn.active, body.world #toolbar-bottom .tool-btn.active:hover { background: var(--b-tint); color: var(--b-icon); box-shadow: none; }
+  body.world #toolbar-bottom .tb-chev.open { color: var(--b-icon); }
+  body.world #tb-dd .dd-it:hover:not(.off) { background: var(--b-tint); color: var(--b-icon); }
+  body.world #tb-dd .dd-it:hover:not(.off) .ky, body.world #tb-dd .dd-it .ck { color: var(--b-icon); }
+  /* The options row carries Straight walls over a drawing tool. Places take no repairs, and Snap to grid has no grid up here. */
+  body.world #context-row > :not(#fx-aids) { display: none !important; }
   body.world #btn-snap { display: none !important; }
-  body.world:not(.searching):not(.aids-up) #context-row { visibility: hidden !important; }
-  body.world.searching #context-row, body.world.aids-up #context-row { visibility: visible !important; }
-  body.world:not(.searching) #ctx-wm-search { display: none !important; }
+  body.world:not(.aids-up) #context-row { visibility: hidden !important; }
+  body.world.aids-up #context-row { visibility: visible !important; }
   body.world #minimap-panel { display: none !important; }
-  #wm-search {
-    width: 220px; height: 30px; box-sizing: border-box; padding: 0 10px; border: 0; border-radius: 6px; outline: none;
-    background: var(--g-field, #2a2c31); color: var(--g-text, #e3e6ea); font: 13px system-ui, sans-serif;
-  }
 
   /* The right-click menu: the library's own menu, over everything on the map. A delete row wears no
      red until the pointer is on it. */
@@ -196,28 +226,41 @@
   .wm-card[data-col]:not([data-col=""])::after { right: calc(-6px * var(--wz)); top: calc(-6px * var(--wz)); }
   .wm-lm[data-col]:not([data-col=""])::after { left: calc(6px * var(--wz)); top: calc(-24px * var(--wz)); }
 
-  /* Find: the results open upward from the field, a list in the app's menu look - the row under the pointer or the
-     keys is solid blue. */
-  #ctx-wm-search { position: relative; }
+  /* Find: a large search in the middle of the window over a dimmed map. Its own fade and rise: the window's pop-in
+     would fight the centring. Every map is a picture while nothing is typed; typing turns them into result cards. */
+  #wm-finder { position: fixed; inset: 0; z-index: 200; display: none; background: rgba(6, 7, 10, 0.62); animation: wfVeil .18s ease-out; }
+  body.world.searching #wm-finder { display: block; }
+  @keyframes wfVeil { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes wfRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  #wm-finder .sm-win {
+    position: absolute; left: 0; right: 0; top: 9vh; margin: 0 auto; width: 760px; max-width: calc(100vw / var(--ui-zoom, 1.2) - 48px);
+    animation: wfRise .2s cubic-bezier(.2, .8, .2, 1);
+  }
+  .wf-head { position: relative; padding: 14px 16px 10px; }
+  .wf-glass { position: absolute; left: 30px; top: 50%; transform: translateY(-38%); color: var(--g-dim); pointer-events: none; display: flex; }
+  #wm-search {
+    width: 100%; height: 40px; box-sizing: border-box; padding: 0 14px 0 42px; border: 0; border-radius: 8px; outline: none;
+    background: var(--g-field, #2a2c31); color: var(--g-text, #e3e6ea); font: 400 15px/1 system-ui, -apple-system, sans-serif;
+  }
+  #wm-search::placeholder { color: var(--g-dim); }
+  .wf-keys { padding: 8px 16px 12px; border-top: 1px solid var(--g-line); color: var(--g-dim); font: 400 11px/1 system-ui, -apple-system, sans-serif; display: flex; gap: 14px; }
+  .wf-keys kbd { font: 600 10px/1 system-ui, sans-serif; color: var(--g-text); background: var(--g-field); border-radius: 4px; padding: 3px 5px; margin-right: 4px; }
   #wm-find-list {
-    position: absolute; left: 0; bottom: calc(100% + 10px); width: 320px; max-height: 330px; overflow-y: auto; padding: 4px;
-    border-radius: var(--panel-radius, 10px); background: var(--g-bg); box-shadow: var(--panel-shadow, 0 5px 16px rgba(0, 0, 0, 0.28)), 0 0 0 1px var(--g-line);
-    scrollbar-width: none;
+    max-height: min(58vh, 560px); overflow-y: auto; padding: 2px 16px 14px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; align-content: start;
   }
-  #wm-find-list::-webkit-scrollbar { width: 0; }
-  #wm-find-list[hidden] { display: none; }
-  .wf-n, .wf-h { padding: 6px 8px 3px; font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
-  .wf-h { padding-top: 9px; }
+  #wm-find-list:empty { display: none; }
+  .wf-n, .wf-h { grid-column: 1 / -1; padding: 6px 2px 0; font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
   .wf-row {
-    display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 5px; cursor: pointer;
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text);
+    display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px; border-radius: 8px; cursor: pointer;
+    background: var(--g-field); font: 500 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text);
   }
-  .wf-row.on { background: var(--b-solid); color: #fff; }
-  .wf-ic { width: 20px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--g-dim); }
-  .wf-ic svg { width: 16px; height: 16px; }
-  .wf-ic.thumb { width: 30px; height: 21px; border-radius: 3px; background: #222 center / cover; }
-  .wf-row.on .wf-ic { color: #fff; }
-  .wf-nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wf-row:hover { background: var(--g-hover); }
+  .wf-row.on, .wf-row.on:hover { background: var(--b-tint); color: var(--b-icon); box-shadow: inset 0 0 0 1px rgba(92, 177, 255, 0.35); }
+  .wf-ic { width: 100%; aspect-ratio: 16 / 10; border-radius: 5px; background: var(--g-bg) center / cover; display: flex; align-items: center; justify-content: center; color: var(--g-dim); }
+  .wf-ic svg { width: 28px; height: 28px; }
+  .wf-ic.thumb { background-color: #222; }
+  .wf-nm { padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .wf-nm b { font-weight: 700; }
-  .wf-sub { flex: none; max-width: 40%; color: var(--g-dim); font-size: 11px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wf-row.on .wf-sub { color: rgba(255, 255, 255, 0.78); }
+  .wf-sub { padding: 0 2px 2px; color: var(--g-dim); font-size: 11px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wf-row.on .wf-sub { color: var(--b-icon); opacity: .75; }

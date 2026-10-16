@@ -114,6 +114,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `world/worldFindPlan.js` | Pure Find kernel: which places, scenes and roads a query matches, best first. Tested |
 | `world/worldMapFind.js` | Find on the world map: the field's result list, its keys, and flying to a pick |
 | `world/worldMapColumns.js` | Two maps on the world map: the Left and Right chips, filling the active column, the L or R on a held scene |
+| `world/worldMapEmpty.js` | The world map with no scenes: a callout over Add, and the bar's Select-and-Add-only state |
+| `world/worldMapOpenBar.js` | The bar over the one picked map: Open, and More for its menu |
 | `world/worldPickPlan.js` | Pure pick kernel: a Shift-click toggled, what a Shift-dragged box touches, what a backup of picked scenes carries. Tested |
 | `world/worldMapPick.js` | More than one scene picked on the world map: Shift-click and the Shift-dragged box |
 | `world/worldBackup.js` | Settings' World map backup: Export the pick or everything, Restore from a picker or a dropped .zip |
@@ -216,7 +218,7 @@ dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/roomCard.js →
 gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js →
-world/worldMapPlan.js → world/worldRoadPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → world/worldFindPlan.js → world/worldMapFind.js → world/worldMapColumns.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →
+world/worldMapPlan.js → world/worldRoadPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → world/worldFindPlan.js → world/worldMapFind.js → world/worldMapColumns.js → world/worldMapEmpty.js → world/worldMapOpenBar.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →
 combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →

@@ -252,8 +252,10 @@ module.exports = async function fogFeature(rig) {
   await fire('fog-color', '#c02020');
   await fire('fog-tint-alpha', 60);
   await lib.settle(dm, '!fogColorRafId', 10000);
-  await repaintPlayer();
-  const coloured = await painted(UNTOUCHED.x, UNTOUCHED.y);
+  // ⚠ THE TV CATCHES UP ON ITS OWN TIME: the settle above is the DM window's fog, and a slow runner reads the TV before
+  // Hide all reaches it. Read until the ground there is fogged, then judge the colour.
+  let coloured = { a: 0 };
+  await lib.poll(async () => { await repaintPlayer(); coloured = await painted(UNTOUCHED.x, UNTOUCHED.y); return coloured.a > 200 ? { ok: true } : null; }, 10000, 250);
   rig.note('painted fog colour after dialling in #c02020: ' + JSON.stringify(coloured));
   rig.check(coloured.a > 200, 'the sample is not on fogged ground any more: ' + JSON.stringify(coloured));
   rig.check(coloured.r > 40 || coloured.g > 40 || coloured.b > 40,

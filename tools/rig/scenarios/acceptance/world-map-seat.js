@@ -52,6 +52,8 @@ module.exports = async function worldMapSeat(rig) {
     await lib.settle(dm, '!viewportDirty', 8000);
     await dm.evaluate('worldMapShow(); 0');
     await lib.settle(dm, 'worldMapOpen && !_wmAnim', 15000);
+    // ⚠ AT THE PLACES LEVEL: with no place drawn the map opens on the prints, where a place's name is hidden by design.
+    await dm.evaluate('_wmCam = { ..._wmCam, z: WM_SPLIT * 0.8 }; _wmApplyCam(); 0');
     await dm.evaluate('document.getElementById("btn-rect").click(); 0');
     const box = await dm.evaluate(`(() => {
       const r = container.getBoundingClientRect();
