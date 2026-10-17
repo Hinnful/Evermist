@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="src/css/dock.css">
 <link rel="stylesheet" href="src/css/notesPanel.css">
 <link rel="stylesheet" href="src/css/worldMap.css">
+<link rel="stylesheet" href="src/css/hints.css">
 <link rel="stylesheet" href="src/css/overlays.css">
 </head>
 <body>
@@ -498,6 +499,7 @@
               <button class="cp-segtab" data-size="1">4K</button>
             </div>
           </div>
+          <div class="dk-blk" id="settings-hints"></div>   <!-- Filled by hints.js -->
         </div>
         <div class="cp-group" id="cp-sec-seat-align"></div>   <!-- Filled by seatAlignment.js -->
         <!-- One value for every scene, never stored in one. Judge Half on the PLAYER window: the
@@ -974,6 +976,7 @@
 <script src="src/ui/controlPanel.js"></script>
 <script src="src/ui/dock.js"></script>
 <script src="src/ui/seatAlignment.js"></script>
+<script src="src/ui/hints.js"></script>
 <script src="src/ui/confirmDialog.js"></script>
 <script src="src/rooms/floorPlan.js"></script>
 <script src="src/content/moduleText.js"></script>
@@ -1128,6 +1131,7 @@ if (!isPlayer && !isPane) initCombatTracker(); // The fight table → combatTrac
 if (!isPlayer && !isPane) initDock();          // The dock → dock.js
 if (!isPlayer && !isPane) initNotesPanel();    // The Notes pane → notesPanel.js
 if (!isPlayer && !isPane) worldMapInit();      // The world map → worldMap.js
+if (!isPlayer && !isPane) initHints();         // First-time hints → hints.js
 if (!isPlayer && !isPane) initMcp();           // The Claude connection → mcpTools.js
 
 window.addEventListener('resize', () => {

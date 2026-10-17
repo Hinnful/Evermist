@@ -528,6 +528,7 @@ function selectDragging() {
 function selectMouseUp() {
   if (cornerRoundUp()) return true;
   if (!selectDragging()) return false;
+  scheduleRender();   // brings back the room switcher the press hid; a click with no drag schedules nothing else
   if (boxDragging()) {
     endBoxDrag();
     if (_dragUndoPushed) commitShapeDrag();

@@ -450,6 +450,7 @@ function worldMapFlyToPlace(name) {
 function worldMapShow(cam) {
   if (worldMapOpen || !_wm) return;
   worldMapOpen = true;
+  hintsRoomsDone();
   worldMapSel = { sceneId: null, place: '' };
   _wmKeepSelection();
   _wmHoldTools();

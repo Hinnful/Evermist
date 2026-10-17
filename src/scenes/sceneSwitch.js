@@ -13,6 +13,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   if (currentScene) await doAutoSave();
   const prevId = currentScene ? currentScene.id : null;
   currentScene = null;
+  hintsRoomsDone();
   cleanupVideo();
   // Abort the outgoing crossfade, so its tick cannot run against orphaned snapshots. The drifting
   // anim loop is idempotent - leave it running.

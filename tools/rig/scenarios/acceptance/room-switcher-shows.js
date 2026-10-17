@@ -27,8 +27,11 @@ module.exports = async function roomSwitcherShows(rig) {
   await lib.settle(dm, '!' + SHOWN + ' && !viewportDirty && !cursorDirty', 8000);
   rig.check(!(await dm.evaluate(SHOWN)), 'the switcher shows with no room selected, so the checks below prove nothing');
 
-  // A. RED BY DESIGN: written against the fix, never re-proved
-  await dm.evaluate('__rigClick(600, 550); 0');
+  // A. RED ON: selectMouseUp's scheduleRender() gated off with 0 && (shapeSelect.js) - 2026-10-18
+  // ⚠ The click must ask for the repaint itself. Waiting for the switcher alone passes on any
+  // other repaint inside the wait, and shipped 4.6.1 with the bug still in it.
+  rig.check(await dm.evaluate('renderScheduled = false; __rigClick(600, 550); renderScheduled'),
+            'a click on a room scheduled no repaint, so its switcher waits for a mouse move');
   await lib.settle(dm, SHOWN, 8000);
   rig.check(await dm.evaluate('selectedPolygonId') === 1 && await dm.evaluate(SHOWN),
             'a click selected the room but the switcher did not show until the mouse moved');

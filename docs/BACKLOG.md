@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 15 open items; IDs run to 195."
+description: "Open work only. 11 open items; IDs run to 195."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.5.5**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.6.2**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
 shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -91,27 +91,6 @@ epic. The same path must not slow an experienced DM or hide the deeper features.
 **Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later.
 **Out of this epic:** what a DM sees before installing. That is distribution, and it comes later.
 **First use · DM + Player**
-
-### 190. A first-time hint for Seat alignment
-Filed 2026-10-17. Seat alignment in Settings shows where the DM sits at the TV, but not what a chair does: a first
-reader took it as "where you sit" and could not say what changes. The first time it matters, one line should say that
-the laptop map turns to face the DM's chair and the TV never turns. **Needs /spec:** when it appears and how it goes
-away.
-**First use · DM only**
-
-### 192. The room's clouds and door wait for a mouse move
-Filed 2026-10-17 from a first-timer test. The clouds and door over a selected room appear only once the mouse moves
-after the click, because the switcher updates on cursor moves alone. It also never shows while a shape tool is in hand,
-so a DM who has just drawn a rectangle sees no way to change that room's fog. The tester, asked to show part of a map
-with a rectangle, drew it, then tried Reveal All and took about 20 seconds to find the room's own clouds.
-**Bug · First use · DM only**
-
-### 193. Targeted first-time hints
-Filed 2026-10-17. Single hints on a first-timer's path, at the moment they matter, to ease the learning curve. They
-must never annoy. Item 172 already rules out a tutorial; the first-evening callout and item 190 are hints of this kind.
-**Needs /spec:** one rule for every hint (how many at once, when one shows, what makes it go), then the first set. A
-candidate from the same test: Reveal All, reached for a second time, could point at the room's own clouds.
-**First use · DM only**
 
 ---
 
@@ -181,12 +160,6 @@ diagonal wall, the Door tool cuts the wall into cell-sized steps from the room's
 across two hexes. Decide what a door one hex wide means on a hex wall, then make the preview and the click follow it.
 **Needs /spec.**
 **Polish · DM + Player**
-
-### 194. An empty lab for testing
-Filed 2026-10-17. The DM tests on the real campaign because there is nowhere else. A lab is a launch of the app on its
-own empty library that never touches the campaign, as the rig already does with a throwaway data folder. **Needs a
-discussion:** how the DM starts it, and whether it keeps its contents between launches.
-**Upkeep · DM only**
 
 ### 195. Notes as linked Markdown files
 Filed 2026-10-17 as a DESIGN DISCUSSION. Keep notes in `.md` files, Obsidian-style, so they can grow links between

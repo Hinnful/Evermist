@@ -1123,3 +1123,17 @@ The switcher over a room appears the moment the room is selected, by click or ot
 it waited for a mouse move before. It still shows only with Select or Door in hand, so a room just drawn with a shape tool
 gets none. A first-time tester who drew a rectangle then looked for its fog switch for about 20 seconds; showing it on draw
 was considered and left for later, open to reversal.
+
+### A click on a room repaints, so its clouds and door show at once · `SETTLED` (2026-10-18)
+**Refines** "A room's clouds and door show on select, never on draw": a plain click selected the room but scheduled no
+render, so the switcher still waited for a mouse move. The release of a select press now schedules one. The 4.6.1 rig check
+waited eight seconds for the switcher and passed on an unrelated repaint; the check now requires the click itself to ask
+for the repaint.
+
+### First-time hints are callout toasts at the moment a feature matters · `SETTLED` (2026-10-18)
+Two shapes were prototyped and dropped: a bubble explaining what the DM had just done, read as a tutorial, and a one-line
+chip, read as too faint. A hint uses the "Start with your maps" callout with a Got it button, triggered by an action and
+never at startup. It shows once ever and at most one per run, and Settings' Hints switch turns all of them off. Rooms
+follows the first brush stroke or either answer to Reveal all, over the Shape button, which blinks three times. Seat
+alignment shows beside its section the first time Settings opens; a two-step chain through a "go to Settings" toast was
+rejected as a tour, and the map's proportions as a trigger, since the chair does not depend on the map.

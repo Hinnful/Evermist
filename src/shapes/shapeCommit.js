@@ -77,6 +77,7 @@ function commitDrawnShape(verts) {
     const pid = nextPolygonId++;
     shape = { id: pid, vertices: verts, mode: tool, cornerRadius: 0, name: t('Room {n}', { n: pid }) };
     polygons.push(shape);
+    hintsRoomsDone();
   }
   // Deliberately NOT selected: drawing leaves the card closed so it cannot cover the map, and
   // naming is a second pass with the Select tool.

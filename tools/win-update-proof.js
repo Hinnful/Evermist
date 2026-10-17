@@ -37,7 +37,9 @@ const NEW = pointerVersion(NEW_DIR);
 const OLD = pointerVersion(OLD_DIR);
 const installer = (dir, v) => path.join(dir, 'Evermist-Setup-' + v + '.exe');
 
-const ps = cmd => execFileSync('powershell', ['-NoProfile', '-Command', cmd], { encoding: 'utf8' }).trim();
+// ⚠ EVERY WAIT HAS A LIMIT. A hung PowerShell or an app that never quits otherwise runs to the job's 60
+// minutes, which GitHub reports as cancelled rather than failed, and nothing says which step stuck.
+const ps = cmd => execFileSync('powershell', ['-NoProfile', '-Command', cmd], { encoding: 'utf8', timeout: 60000 }).trim();
 const installed = () => {
   if (!fs.existsSync(APP)) return 'nothing';
   try {
@@ -56,7 +58,7 @@ const pids = () => {
 };
 const killAll = async () => {
   for (const p of pids()) { try { execFileSync('taskkill', ['/pid', p, '/T', '/F'], { stdio: 'ignore' }); } catch (_) {} }
-  while (pids().length) await cdp.sleep(500);
+  await waitFor(() => !pids().length, 60000, 'Evermist to die after taskkill');
 };
 
 // The feed the app reads from, switched between the two dirs as the proof walks.
@@ -78,7 +80,11 @@ async function launch() {
   return { proc, dm };
 }
 
-const exited = proc => new Promise(r => proc.exitCode != null ? r() : proc.once('exit', r));
+const exited = (proc, what) => new Promise((resolve, reject) => {
+  if (proc.exitCode != null) { resolve(); return; }
+  const t = setTimeout(() => reject(new Error('timed out after 120s waiting for ' + what)), 120000);
+  proc.once('exit', () => { clearTimeout(t); resolve(); });
+});
 
 async function waitFor(test, ms, what) {
   const deadline = Date.now() + ms;
@@ -96,7 +102,7 @@ async function hop(want) {
   const { proc, dm } = await launch();
   await dm.waitFor(READY, 600000, 'version ' + want + ' to be ready');
   await dm.evaluate("document.querySelector('#about-update .about-update-btn').click()");
-  await exited(proc);
+  await exited(proc, 'the app to quit for Restart to ' + want);
   await waitFor(() => installed() === want, 180000, 'the swap to ' + want);
   expect(installed(), want, 'Restart swaps in ' + want);
   await waitFor(() => pids().length > 0, 90000, 'the swapped copy to open');
@@ -120,7 +126,7 @@ async function main() {
   const first = await launch();
   await first.dm.waitFor(READY, 600000, 'version ' + OLD + ' to be ready');
   try { await first.dm.evaluate('window.close(); 0'); } catch (_) {}
-  await exited(first.proc);
+  await exited(first.proc, 'the app to quit after its window closed');
   await cdp.sleep(15000);
   expect(installed(), NEW, 'a quit leaves ' + NEW + ' in place');
   await killAll();

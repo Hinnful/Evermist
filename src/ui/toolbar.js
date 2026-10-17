@@ -168,12 +168,13 @@ function setMaterial(m) {
 // the TV waits for the push. Hide all takes no guard.
 function revealAllMap() {
   const go = () => { if (!paneForward('reveal-all')) revealAllRooms(); };
-  if (!autoSync) { go(); return; }
+  if (!autoSync) { go(); hintsRoomsAsk(); return; }
   confirmDialog({
     title: 'Reveal the whole map?',
     message: 'Auto sync is on, so the players see every room at once.',
     confirmLabel: 'Reveal all',
-    onConfirm: go,
+    onConfirm: () => { go(); hintsRoomsAsk(); },
+    onCancel: hintsRoomsAsk,   // either answer shows the hint
   });
 }
 function hideAllMap() {
