@@ -1117,3 +1117,9 @@ The DM found the place repairs did not work and had no first-evening use. The wo
 icon, the Split tool goes, and the place-repair code goes with them; the keys already stood down on the world map. A place
 is reshaped by editing its outline, as a room is. **Replaces** the repairs in "The world map wears the scene's toolbar" and the options-row
 icon in "The world map's bar has no words".
+
+### A room's clouds and door show on select, never on draw · `SETTLED` (2026-10-17)
+The switcher over a room appears the moment the room is selected, by click or otherwise, since `doRender` now refreshes it;
+it waited for a mouse move before. It still shows only with Select or Door in hand, so a room just drawn with a shape tool
+gets none. A first-time tester who drew a rectangle then looked for its fog switch for about 20 seconds; showing it on draw
+was considered and left for later, open to reversal.

@@ -9,6 +9,9 @@
 //   npm run rig -- --exe "dist/Evermist.exe"          drive a built installer instead
 //   npm run rig -- --shot "#world-map" --shot-setup "worldMapShow()"
 //   npm run rig -- --dm-size 1280x800 --player-size 1920x1080   run at a size other than the default
+//   npm run rig -- regression --report rig-report.json --coverage   CI: per-scenario timings, flakes and
+//                                                                   the app files each scenario ran
+//   npm run rig -- smoke fog --low-priority          /commit: below-normal priority, the DM's own apps win
 //
 // EVERY RUN USES THE SAME GEOMETRY, here and in CI — see RUNNER_DM below. The two size flags
 // override it; nothing else varies between machines.
@@ -30,6 +33,7 @@ const net = require('net');
 const os = require('os');
 const path = require('path');
 const cdp = require('./cdp');
+const coverage = require('./coverage');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -57,6 +61,12 @@ const TIMEOUT_PER_SCENARIO_MS = 150000;
 // prevent. maps.js takes 260-300s on a Linux runner, so 300s cut it off on slow days; 480s still
 // trips a hung scenario in minutes.
 const SCENARIO_TIMEOUT_MS = 480000;
+
+// ⚠ A FAILED SCENARIO RUNS AGAIN, ONCE, in a fresh app on a fresh profile. Pass on the rerun and the
+// run does not fail: the scenario is recorded as a flake (a ::warning, a summary line, an entry in
+// the --report file) and /commit's monitor counts them. Fail twice and the failure stands.
+// Capped per run, so an app that is simply broken doubles nothing past the third scenario.
+const MAX_RERUNS = 3;
 
 // Consecutive boots that fail before the run gives up. One is a scenario's own problem; three in
 // a row is the machine, and the remaining boot timeouts would only spend the budget saying so.
@@ -93,6 +103,7 @@ const RUNNER_SCREEN = { w: 1024, h: 768 };
 
 function parseArgs(argv) {
   const a = { scenarios: [], exe: null, out: null, shot: null, shotSetup: '', visible: false,
+              report: null, coverage: false, lowPriority: false,
               dmSize: RUNNER_DM, playerSize: RUNNER_SCREEN, screenSize: RUNNER_SCREEN };
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
@@ -110,6 +121,9 @@ function parseArgs(argv) {
       else { a.playerSize = size; a.screenSize = size; }
     }
     else if (t === '--visible') a.visible = true;
+    else if (t === '--report') a.report = path.resolve(argv[++i] || '');
+    else if (t === '--coverage') a.coverage = true;
+    else if (t === '--low-priority') a.lowPriority = true;
     else if (t.startsWith('--')) throw new Error('unknown flag ' + t);
     else a.scenarios.push(t);
   }
@@ -453,6 +467,26 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true) {
            playerSize: args.playerSize, screenSize: args.screenSize };
 }
 
+// ─── Recording which app files a scenario ran ────────────────────────────────
+// inst.cov is null unless --coverage was passed. A page's sessions are tracked as they are attached
+// and harvested before they close, because a closed page takes its coverage with it.
+// Best-effort: a profiler that refuses costs a scenario's coverage, never the scenario.
+function newCoverage() { return { sessions: new Set(), ran: new Map(), loaded: new Set() }; }
+
+async function trackCoverage(inst, session) {
+  if (!inst.cov || inst.cov.sessions.has(session)) return;
+  try { await coverage.startCoverage(session); inst.cov.sessions.add(session); } catch (_) {}
+}
+
+async function harvestCoverage(inst, session) {
+  if (!inst.cov || !inst.cov.sessions.delete(session)) return;
+  try {
+    const got = await coverage.takeCoverage(session);
+    coverage.mergeRan(inst.cov.ran, got.ran);
+    got.loaded.forEach(f => inst.cov.loaded.add(f));
+  } catch (_) {}
+}
+
 // ─── The rig handed to a scenario ────────────────────────────────────────────
 
 // THE PLAYER USED TO BE FORCED FULLSCREEN, and it no longer is. It opens inside the DM's
@@ -526,6 +560,7 @@ function makeRig(inst, dirs, tally, args) {
         .concat(Array.from(inst.players.values()).filter(s => s !== inst.stage));
       // The console errors of the outgoing windows belong to this scenario, not to nothing.
       for (const s of old) tally.consoleErrors.push(...(s.errors || []));
+      for (const s of old) await harvestCoverage(inst, s);
       await quitApp(inst);
       for (const s of old) s.close();
 
@@ -538,6 +573,7 @@ function makeRig(inst, dirs, tally, args) {
       inst.players = next.players;
       inst.stage = next.stage;
       rig.dm = next.dm;
+      await trackCoverage(inst, next.dm);
       return next.dm;
     },
 
@@ -616,6 +652,7 @@ function makeRig(inst, dirs, tally, args) {
         }
         session.targetId = target.id;
         await assertPreloadRan(session);
+        await trackCoverage(inst, session);
         await showPlayer(session, 20000);
         // The shell is the page, so the TV-sized viewport is set once here and each half then
         // re-reads its own box.
@@ -685,6 +722,7 @@ function makeRig(inst, dirs, tally, args) {
         // electronAPI any more, so without this a Player with no IPC would run green and quietly
         // lose readVideoFile on every animated map.
         await assertPreloadRan(session);
+        await trackCoverage(inst, session);
         // The TV is a big screen and the window is parked off-screen at its default size, so the
         // renderer's viewport is overridden to the real display instead. Player rendering is
         // size-dependent — its fog is a Canvas-2D layer composited over the map with an edge
@@ -751,10 +789,48 @@ async function takeShot(rig, dm, selector, setup) {
   return true;
 }
 
+// ─── What CI is told ─────────────────────────────────────────────────────────
+// Annotations and the job summary only exist under GitHub Actions. RIG_ADVISORY marks a platform whose
+// red does not block the release (Linux): its failures are annotated as warnings, not errors, and
+// the summary says so.
+
+const ON_ACTIONS = !!process.env.GITHUB_ACTIONS;
+const ADVISORY = process.env.RIG_ADVISORY === 'true';
+
+function platformName() {
+  return process.env.RUNNER_OS || ({ win32: 'Windows', darwin: 'macOS', linux: 'Linux' }[process.platform] || process.platform);
+}
+
+// A workflow command's message may not hold a raw newline or percent sign.
+function annotate(level, title, message) {
+  if (!ON_ACTIONS) return;
+  const esc = v => String(v).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+  console.log('::' + level + ' title=' + esc(title).replace(/:/g, '%3A').replace(/,/g, '%2C') + '::' + esc(message));
+}
+
+function summarize(markdown) {
+  if (!process.env.GITHUB_STEP_SUMMARY) return;
+  try { fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown + '\n'); } catch (_) {}
+}
+
+function writeReport(args, report) {
+  if (!args.report) return;
+  try {
+    fs.mkdirSync(path.dirname(args.report), { recursive: true });
+    fs.writeFileSync(args.report, JSON.stringify(report, null, 2));
+  } catch (err) { console.log('could not write ' + args.report + ': ' + err.message); }
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  // ⚠ BELOW NORMAL, so a local run never takes the CPU from what the DM is doing. The app and the
+  // parker are children and inherit it.
+  if (args.lowPriority) {
+    try { os.setPriority(0, os.constants.priority.PRIORITY_BELOW_NORMAL); }
+    catch (err) { console.log('could not lower the priority: ' + err.message); }
+  }
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const outDir = args.out ? path.resolve(args.out) : path.join(TEMP_ROOT, stamp);
   assertOutputCannotBeCommitted(outDir);
@@ -771,34 +847,23 @@ async function main() {
   // Before the first app, so no window is ever on screen long enough to take focus.
   // Armed here, not at module scope: the budget depends on how many scenarios were asked for,
   // and the parker outlives the run by the same amount so no window can surface at the end.
-  const budgetMs = armWatchdog(plan.length);
+  // A rerun is a whole second scenario, so the budget carries room for the capped number of them.
+  const budgetMs = armWatchdog(plan.length + MAX_RERUNS);
   const parker = await startParker(args, outDir, budgetMs);
   const stopParker = () => { if (parker) try { parker.kill(); } catch (_) {} };
   process.once('exit', stopParker);
 
   let bootFailures = 0;
+  let rerunsLeft = MAX_RERUNS;
+  const report = { platform: platformName(), scenarios: {}, flakes: [], failed: [] };
 
-  for (const file of plan) {
-    const name = file ? path.basename(file, '.js') : 'shot';
-    const dirs = {
-      fixtures: fixtureDir,
-      scenario: path.join(outDir, name),
-      profile: path.join(outDir, name, 'profile'),
-    };
+  // One attempt at one scenario: boot, run, tear down. Everything it reports goes into `tally`; the
+  // caller reads what this attempt added by the lengths taken before it. `booted` is false when the
+  // app never came up, which is the machine's fault more often than the scenario's.
+  async function attemptScenario(file, name, profile) {
+    const dirs = { fixtures: fixtureDir, scenario: path.join(outDir, name), profile };
     fs.mkdirSync(dirs.scenario, { recursive: true });
-
-    // ⚠ PRINTED AS THE RUN GOES, not gathered for the end. A regression set runs for minutes,
-    // and a report that exists only afterwards says nothing about a run that hangs, nor about
-    // WHICH scenario a random failure landed in. The end-of-run report keeps the verdict alone.
-    console.log('── ' + name);
-    const firstNote = tally.notes.length;
-    const firstFail = tally.fails.length;
-    const firstErr = tally.consoleErrors.length;
     const warnings = [];
-
-    // ⚠ A BOOT THAT FAILS IS THIS SCENARIO'S FAILURE, not the run's — with one exception. The
-    // same fault three times running is the machine, not the scenarios, and marching 28 boot
-    // timeouts to say so wastes the whole budget.
     let inst = null;
     try {
       inst = await startInstance(args, dirs.profile);
@@ -806,14 +871,15 @@ async function main() {
     } catch (err) {
       bootFailures++;
       tally.fails.push(name + ' never booted: ' + (err && err.message ? err.message : err));
-      for (const f of tally.fails.slice(firstFail)) console.log('  FAILED: ' + f);
       if (bootFailures >= MAX_BOOT_FAILURES) {
         throw new Error(MAX_BOOT_FAILURES + ' scenarios in a row could not start the app, so the ' +
           'fault is the machine and not the scenarios. Last: ' + (err && err.message ? err.message : err));
       }
-      continue;
+      return { warnings, cov: null };
     }
 
+    inst.cov = args.coverage ? newCoverage() : null;
+    await trackCoverage(inst, inst.dm);
     const rig = makeRig(inst, dirs, tally, args);
     try {
       await withTimeout((async () => {
@@ -837,13 +903,72 @@ async function main() {
         .concat(Array.from(inst.players.values()).filter(s => s !== inst.stage));
       for (const s of sessions) tally.consoleErrors.push(...(s.errors || []));
       for (const s of sessions) warnings.push(...(s.warnings || []));
+      for (const s of sessions) await harvestCoverage(inst, s);
       for (const s of sessions) s.close();
       killApp(inst.proc);
     }
-    for (const n of tally.notes.slice(firstNote)) console.log(n);
-    for (const f of tally.fails.slice(firstFail)) console.log('  FAILED: ' + f);
-    for (const e of tally.consoleErrors.slice(firstErr)) console.log('  CONSOLE ERROR: ' + e);
-    if (tally.fails.length > firstFail) for (const w of warnings) console.log('  CONSOLE WARN: ' + w);
+    return { warnings, cov: inst.cov };
+  }
+
+  for (const file of plan) {
+    const name = file ? path.basename(file, '.js') : 'shot';
+
+    // ⚠ PRINTED AS THE RUN GOES, not gathered for the end. A regression set runs for minutes,
+    // and a report that exists only afterwards says nothing about a run that hangs, nor about
+    // WHICH scenario a random failure landed in. The end-of-run report keeps the verdict alone.
+    console.log('── ' + name);
+
+    let firstFailure = null;     // what the first attempt said, once a rerun is under way
+    for (let attempt = 1; ; attempt++) {
+      const firstNote = tally.notes.length;
+      const firstFail = tally.fails.length;
+      const firstErr = tally.consoleErrors.length;
+      const firstEye = tally.byEye.length;
+      const startedAt = Date.now();
+
+      // ⚠ A BOOT THAT FAILS IS THIS SCENARIO'S FAILURE, not the run's — with one exception, which
+      // attemptScenario throws: the same fault three times running is the machine.
+      const done = await attemptScenario(file, name, path.join(outDir, name, attempt === 1 ? 'profile' : 'profile-rerun'));
+      const failed = tally.fails.length > firstFail;
+      const lines = tally.fails.slice(firstFail);
+
+      if (failed && attempt === 1 && file && rerunsLeft > 0) {
+        rerunsLeft--;
+        firstFailure = lines.join('; ');
+        for (const f of lines) console.log('  FAILED (rerunning once in a fresh app): ' + f);
+        tally.fails.length = firstFail;
+        tally.notes.length = firstNote;
+        tally.consoleErrors.length = firstErr;
+        tally.byEye.length = firstEye;
+        continue;
+      }
+
+      for (const n of tally.notes.slice(firstNote)) console.log(n);
+      for (const f of lines) console.log('  FAILED: ' + f);
+      for (const e of tally.consoleErrors.slice(firstErr)) console.log('  CONSOLE ERROR: ' + e);
+      if (failed) for (const w of done.warnings) console.log('  CONSOLE WARN: ' + w);
+
+      const entry = { ms: Date.now() - startedAt };
+      if (done.cov) {
+        entry.fns = Object.fromEntries(Array.from(done.cov.ran).sort(([x], [y]) => (x < y ? -1 : 1)));
+        entry.loaded = Array.from(done.cov.loaded).sort();
+      }
+      report.scenarios[name] = entry;
+
+      if (failed) {
+        const said = lines.join('; ');
+        report.failed.push({ scenario: name, fail: said, afterRerun: firstFailure !== null });
+        annotate(ADVISORY ? 'warning' : 'error', 'Rig scenario ' + name + (ADVISORY ? ' (advisory on ' + platformName() + ')' : ''), said);
+        summarize('### ' + (ADVISORY ? 'Advisory failure' : 'Failed') + ': `' + name + '` on ' + platformName() +
+                  (firstFailure !== null ? ' (failed twice)' : '') + '\n\n```\n' + said + '\n```\n');
+      } else if (firstFailure !== null) {
+        report.flakes.push({ scenario: name, firstFail: firstFailure });
+        console.log('  FLAKE: ' + name + ' failed once and passed on the rerun. First failure: ' + firstFailure);
+        annotate('warning', 'Rig flake ' + name, 'Failed once and passed on the rerun on ' + platformName() + '. First failure: ' + firstFailure);
+        summarize('### Flake: `' + name + '` on ' + platformName() + '\n\nFailed once, passed on the rerun. First failure:\n\n```\n' + firstFailure + '\n```\n');
+      }
+      break;
+    }
   }
 
   if (tally.consoleErrors.length) console.log('CONSOLE ERRORS:\n  ' + tally.consoleErrors.join('\n  '));
@@ -852,8 +977,10 @@ async function main() {
   if (fails.length) console.log('FAIL ' + fails.join('; '));
   else console.log('PASS — ' + tally.checked + ' checks');
   for (const item of tally.byEye) console.log('UNCHECKED (yours to judge): ' + item);
+  if (report.flakes.length) console.log('FLAKES (passed on rerun): ' + report.flakes.map(f => f.scenario).join(', '));
   console.log('output: ' + outDir);
 
+  writeReport(args, report);
   killAll();
   process.exit(fails.length ? 1 : 0);
 }

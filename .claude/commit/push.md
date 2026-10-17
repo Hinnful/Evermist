@@ -41,6 +41,9 @@ next commit. Read it first so you match its structure and do not duplicate an en
 
 - **Close what shipped.** Delete every item this change built and update the open count in the
   header. A dead end the work paid for goes to the decisions ledger, never to the backlog.
+- **Propose repeat flakes.** If `node tools/rig-ci.js flakes` named a scenario that needed a rerun
+  three times across recent runs, list it as an item to fix or retire. Same rule: the DM strikes
+  what they do not want before anything is written.
 - **File what was deferred.** Anything discovered, skipped, or left as a follow-up. Use the
   backlog's own fields - plain-language *what it is*, *where it shows* (DM/Player/both), rough
   effort, risk, any blocker. This is the shape `/brief` reads back.

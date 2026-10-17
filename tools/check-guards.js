@@ -34,6 +34,8 @@ for (const c of CHECKS) {
       encoding: 'utf8',
     });
     if (run.status === 2) blocked.push(run.stderr.trim());
+    // A guard that crashed or never started has judged nothing, and a quiet pass would say it had.
+    else if (run.status !== 0) blocked.push(c.hook + ' did not run to a verdict (' + (run.error ? run.error.message : 'exit ' + run.status) + ')');
   }
   if (blocked.length === 0) {
     console.log('PASS  ' + c.what);

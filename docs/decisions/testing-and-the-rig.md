@@ -12,6 +12,42 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### A commit runs the scenarios that executed what it changed, and a map says which · `SETTLED` (2026-10-17)
+CI went red about thirty times in three weeks for two or three real bugs; each red cost twenty minutes
+and most were a test still expecting old behaviour or a cheap check nobody ran locally. The local pass
+now picks from a map the full CI regression records: V8 precise coverage over CDP, in the DM and Player
+windows, says which functions of which `src/` file each scenario called (`tools/rig/coverage.js`). `/commit`
+downloads the latest green run's map and covers the changed files greedily by functions reached per
+second, capped near ten minutes, at below-normal priority. A changed script no scenario runs blocks the
+commit. Stylesheets, `main.js` and `electron/` cannot be recorded (the profiler reads a page), so smoke plus
+the header-named scenarios stands in. **Reverses** "picks the scenarios covering what the diff touched" by
+reading headers (process ledger, 2026-08-28): headers stay only as the fallback. Declaring coverage by hand
+was rejected: it rots the day a module is renamed.
+
+### A failed scenario reruns once, and Linux only advises · `SETTLED` (2026-10-17)
+Most reds were one platform only, and a rerun of the whole gate costs twenty minutes. The rig now reruns a
+failed scenario once in a fresh app on a fresh profile. A pass is a flake: a warning, a summary line and a
+record the monitor counts, and a scenario that needs three reruns across recent runs is proposed for a fix
+or retirement. At most three scenarios rerun per run. Linux, where software GL is the slow and noisy leg,
+no longer blocks: its legs are `continue-on-error`, so `land` sees success, and a failure prints a warning
+naming the scenario. **Reverses** "A flaky gate is measured on six runners, not rerun" (a rerun answers
+nothing): `soak.yml` and `probe.yml` stay for finding why, the rerun is for not stopping a release on it.
+**Reverses** "Keeping Mac and Linux as report-only was rejected": that was before the failures were
+counted per platform. Windows and Mac still block.
+
+### Windows is dealt six ways · `SETTLED` (2026-10-17)
+**Reverses** the four-way split for Windows only: it was the slowest blocking platform, and six jobs cost
+nothing on a public repo. Mac stays at four because a free account runs five Mac jobs at once and the
+update proof takes one; Linux gains nothing from more. Not eight: four of the thirty reds were the app
+failing to start, which more jobs would multiply, so start-up failures are measured first.
+
+### A scenario drives the app and never reads its source text · `SETTLED` (2026-10-17)
+Three criteria (backup, world map, world roads) searched a function's `toString()` for field names, and
+passed while the behaviour was broken or failed on a rename. They now call `sceneBackupMeta` with a
+sentinel in every field, and run `doExport` through its `destPath` option and read the zip back. The other
+files that call `readFileSync` read the profile's output, a fixture or a log, never `src/`.
+
+
 ### The gate runs on all three platforms, split four ways · `SETTLED` (2026-09-28)
 The rig had only ever driven the Windows build, so a Mac or Linux break reached users unseen. Mac
 and Linux joined the gate after two clean runs in a row; the random failures on the way were rig
@@ -311,3 +347,10 @@ tests and the rig, four unused imports in `electron/`, and eight functions past 
 first group was cut and the rest sit in `eslint-suppressions.json`, which may only shrink. What it
 guards is a misspelt or deleted global, which no test reads and which throws only when its line
 runs. A type check was measured at about 2,000 errors from the same shared scope and stays out.
+
+### The lab is a launch of this checkout on its own library, and never ships · `SETTLED` (2026-10-17)
+Testing on the real campaign was the only option. `npm start lab` now runs this checkout with `--user-data-dir` on an
+`Evermist Lab` folder beside the real library, so it always carries the latest code and runs beside the installed app;
+`npm start lab:reset` empties that folder first, for a first-time DM's view. `tools/lab.js` does both; plain `npm start`
+is unchanged. A first build put the lab in the shipped app, with a `--lab` flag, a second installer shortcut and a Reset
+lab button in Settings; it was rejected on product grounds, since a test library means nothing to an end user.

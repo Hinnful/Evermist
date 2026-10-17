@@ -700,8 +700,14 @@ straight to the landing step and builds nothing.
 What happens then, in order. The unit tests run first, on one machine, because there is no point
 building anything if the arithmetic is wrong. Then the gate (`gate.yml`) runs on Windows, macOS
 and Linux at once. On each platform one machine builds the installer and checks its update
-pointer, and four more build the packaged app and drive it through the rig: smoke once, and a
-quarter of the acceptance scenarios each, dealt out by name. Every scenario runs against the real
+pointer, and more build the packaged app and drive it through the rig: smoke once, and an equal
+share of the acceptance scenarios each, dealt out by name, slowest first (six shares on Windows,
+four elsewhere). A scenario that fails runs once more in a fresh app, and a pass on the rerun is
+recorded as a flake instead of a red. Windows and Mac block the release; Linux is advisory, so its
+failure prints a warning and a summary and does not stop the landing. Windows also records, with V8
+coverage over the DevTools protocol, which functions each scenario ran, and a last job merges the
+shards' reports into a coverage map and a flake record that the run keeps. `/commit` reads the map to
+pick its local scenarios and the flake records to find scenarios worth fixing or retiring. Every scenario runs against the real
 packaged application rather than the loose source files, which catches a file that works during
 development and is simply missing from the installer. Linux leaves out `playback`: its runner has
 no graphics card, so the app draws at five frames a second and its video stalls and recovers on

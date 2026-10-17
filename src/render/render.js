@@ -114,6 +114,7 @@ function doRender() {
 
   // Ahead of the early returns so the flag always clears — drawCursor() guards the no-map case.
   if (cursorDirty) drawCursor(_cursorX, _cursorY);
+  if (!isPlayer && typeof refreshRoomSwitcher === 'function') refreshRoomSwitcher();   // selection, tool and view changes need no mouse move
 
   // ⚠ AHEAD OF THE NO-MAP RETURN. In two-map mode this window holds no map at all and the
   // preview draws a COLUMN's, so below the return it froze on its last paint - a drag moved the

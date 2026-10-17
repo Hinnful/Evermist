@@ -319,6 +319,23 @@ pushes. **Dropped:** `run.json` (a leftover `notes.txt` is the resume signal), t
 report (the CI monitor wakes the session on red), the humanizer pass, and the merged-branch cleanup
 of 2026-09-28, which a release does not need.
 
+### A red that CI caused is fixed without a message, and a patched test is disclosed · `SETTLED` (2026-10-17)
+Reds that a scenario, a workflow or a guard caused interrupted the DM for work they cannot judge. The
+session now diagnoses, fixes, proves, amends and re-pushes without a message; the DM hears once when the
+release lands and once if the red was a real app bug. A test edited to turn a run green gets one line in
+`.claude/commit/disclosure.txt`, carried by the release report, so a loosened test cannot pass unseen.
+**Reverses** "fixed and re-pushed without asking" with a report afterwards (2026-09-09): the report is
+now one line, and only when a test changed.
+
+### `/commit`'s guards ran nowhere until 4.6.0 · `SETTLED` (2026-10-17)
+The `guards` job went red on 3.13.0, 4.3.0, 4.5.0 and 4.5.6 because `/commit` ran `npm test` and lint but
+never `tools/check-guards.js`, and `npm test` does not run it; the edit hook that would have caught the
+inline script growing fires only inside an editor session. 4.6.0 added the call to `ship.js`. What was
+left open: a guard that crashed passed quietly, and a guarded file edited after the guards ran (or one a
+guard ratcheted down) was judged but absent from the commit. `check-guards.js` now fails a guard that
+gives no verdict, and `ship.js` refuses a guarded file the commit would not carry. The unit-test gate also
+runs `tools/build-changelog.js` first, as CI does, since the committed list is always stale.
+
 ### CI writes the What's new list before the unit tests too · `SETTLED` (2026-10-07)
 Moving the list's generation to build time left the suite's check that it opens with
 `package.json`'s version running against the committed copy, which a bump commit no longer

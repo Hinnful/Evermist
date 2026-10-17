@@ -32,6 +32,7 @@ evermist-data/
 # /commit's per-run state: where a stopped run resumes, and the notes awaiting a yes
 .claude/commit/run.json
 .claude/commit/notes.txt
+.claude/commit/disclosure.txt
 
 # Private working files: specs, design prototypes, personal fixtures, archived memory
 .claude/private/

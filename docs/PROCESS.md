@@ -80,8 +80,12 @@ A bug report is an ordinary message and needs no command.
   the app's own code**, the proposal as overrides on top, and checks its own rules with a script.
 - **Correctness work gets its check during the build.** A shipped behaviour needs a unit test or
   a rig scenario behind it, and Claude writes it without asking.
-- **On this machine the rig runs once, at `/commit`, or when the DM asks.** A cloud session runs
-  it freely. The rig skill carries how to write and run a scenario.
+- **On this machine the rig runs once, at `/commit`, or when the DM asks.** At `/commit` it runs the
+  scenarios that executed the changed files, picked from a map CI recorded, at below-normal priority
+  and capped near ten minutes. A cloud session runs it freely. The rig skill carries how to write and
+  run a scenario.
+- **A changed `src/` script that no scenario runs blocks `/commit`** until a scenario whose header
+  names the file exists.
 - **Never ask the DM to hand-verify, run a build, or open Chrome.** The DM runs `npm start` and
   the installed app and judges look, feel and speed.
 
@@ -97,9 +101,10 @@ A bug report is an ordinary message and needs no command.
 - **Stage only the paths the notes describe.** A path nobody named is a path nobody reviewed.
 - **Never merge the pull request.** The `land` job fast-forwards `main` to the gated commit, and
   the PR closes as merged by itself.
-- **A red gate caused by the rig, a workflow or a guard is fixed and pushed back without
-  asking**, then reported. A red gate that found a real app bug goes back through the notes and
-  the DM's yes.
+- **A red gate caused by the rig, a workflow, a guard or a stale test is fixed and pushed back with no
+  message to the DM.** The DM hears once when the release lands, and once if the red was a real app
+  bug, which goes back through the notes and the DM's yes. A test edited to turn a run green adds one
+  line to the release report: which test, and why.
 - **A red gate keeps the version number.** The fix amends the version commit and force-pushes
   the same branch.
 - **A failure that comes and goes gets `probe.yml`**, one scenario in many parallel copies,
@@ -120,7 +125,11 @@ A push to `release/**` or `change/**` runs `.github/workflows/release.yml`:
    the files agree?
 2. **Unit tests and guards**, side by side.
 3. **The gate**, only for a new version or a rig change: Windows, Mac and Linux each build the
-   installer, and the rig drives it through every scenario in four shards per platform.
+   installer, and the rig drives it through every scenario, in six shards on Windows and four on
+   Mac and Linux. A failed scenario reruns once in a fresh app; a pass on the rerun is a flake, a
+   warning and a record, not a red. **Windows and Mac block the release. Linux only warns**, naming
+   the scenario and its FAIL line in the run summary. Windows also records which functions each
+   scenario ran, and the run keeps that map for `/commit`.
 4. **Update proofs**, only for a new version: each platform steps back to an older build and
    forward again through its Restart button.
 5. **Land.** `main` fast-forwards to the gated commit.
@@ -169,7 +178,8 @@ The reply style in `.claude/output-styles/steering.md` governs every reply. On t
 | `tools/check-guards.js` | CI, every push | The blocking guards over the whole tree, whoever edited it |
 | `npm test` | CI, every push; `/commit` | App logic, packaging, and the prose rules in `test/rules.test.js` |
 | `tools/check-release.js` | CI, `decide` | Branch, version and release-title agreement |
-| The rig | `/commit` locally; CI on three platforms | What the app does in both windows |
+| The rig | `/commit` locally (the scenarios the map picks); CI on three platforms (all of them) | What the app does in both windows |
+| `tools/rig-ci.js flakes` | `/commit` | Scenarios that needed a rerun in three recent runs, proposed for a fix or retirement |
 | `check-notes.js` | `/commit` | Release-note mechanics |
 | `permissions.deny` in `.claude/settings.json` | Always | No Chrome browser tool |
 
