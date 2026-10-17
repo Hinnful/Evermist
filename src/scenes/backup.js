@@ -25,6 +25,39 @@ function mapExtFromScene(scene) {
   return '.jpg';
 }
 
+// What one scene writes to the zip's manifest.
+// ⚠ A WHITELIST: a field missing from it is silently dropped on export. The floor plan
+// has to survive, or a restored scene loses its Draw Rooms button.
+function sceneBackupMeta(scene, mapExt, mapMimeType, picList) {
+  return {
+    id:            scene.id,
+    name:          scene.name,
+    group:         scene.group || '',
+    worldPos:      scene.worldPos,
+    mapType:       scene.mapType || 'image',
+    mapWidth:      scene.mapWidth,
+    mapHeight:     scene.mapHeight,
+    mapMimeType,
+    mapExt,
+    polygons:      esWithUids(scene.polygons),
+    nextPolygonId: scene.nextPolygonId || 1,
+    notes:         scene.notes,
+    pictures:      picList,
+    effects:       esWithUids(scene.effects),
+    nextEffectId:  scene.nextEffectId || 1,
+    lightsHidden:  !!scene.lightsHidden,
+    lightShapes:   scene.lightShapes || [],
+    floorPlan:     scene.floorPlan,
+    gridConfig:    scene.gridConfig || {},
+    fogSettings:   scene.fogSettings,
+    tvFit:         scene.tvFit,
+    createdAt:     scene.createdAt || 0,
+    sortOrder:     scene.sortOrder || 0,
+    // The part times an import compares. Absent on a record never saved since they existed.
+    edits:         scene.edits,
+  };
+}
+
 async function blobToArrayBuffer(blob) {
   if (!blob) return null;
   return blob.arrayBuffer();
@@ -97,34 +130,7 @@ async function doExport(selectedIds, opts) {
         id: scene.id,
         mapType: scene.mapType || 'image',
         mapExt,
-        metadata: {
-          id:            scene.id,
-          name:          scene.name,
-          group:         scene.group || '',
-          worldPos:      scene.worldPos,
-          mapType:       scene.mapType || 'image',
-          mapWidth:      scene.mapWidth,
-          mapHeight:     scene.mapHeight,
-          mapMimeType,
-          mapExt,
-          polygons:      esWithUids(scene.polygons),
-          nextPolygonId: scene.nextPolygonId || 1,
-          notes:         scene.notes,
-          pictures:      picList,
-          effects:       esWithUids(scene.effects),
-          nextEffectId:  scene.nextEffectId || 1,
-          lightsHidden:  !!scene.lightsHidden,
-          lightShapes:   scene.lightShapes || [],
-          // ⚠ A WHITELIST: a field missing from it is silently dropped on export. The floor plan
-          // has to survive, or a restored scene loses its Draw Rooms button.
-          floorPlan:     scene.floorPlan,
-          gridConfig:    scene.gridConfig || {},
-          fogSettings:   scene.fogSettings,
-          createdAt:     scene.createdAt || 0,
-          sortOrder:     scene.sortOrder || 0,
-          // The part times an import compares. Absent on a record never saved since they existed.
-          edits:         scene.edits,
-        },
+        metadata:      sceneBackupMeta(scene, mapExt, mapMimeType, picList),
         mapBuffer,
         fogBuffer,
         thumbBuffer,
@@ -251,4 +257,4 @@ function restorePickedZip(f) {
   }
 }
 
-if (typeof module !== 'undefined') module.exports = { resolveSceneName, mapExtFromScene };
+if (typeof module !== 'undefined') module.exports = { resolveSceneName, mapExtFromScene, sceneBackupMeta };

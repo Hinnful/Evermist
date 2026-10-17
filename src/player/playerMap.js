@@ -60,6 +60,8 @@ function applyFogUpdate(msg) {
     void fade.offsetWidth;        // force reflow so the instant cover "sticks"
     fade.style.transition = '';   // restore so revealPlayer's removal animates
   }
+  // The scene's own Fit to TV, taken behind the cover with everything else about the new map.
+  if (msg.mapUrl && msg.tvTurn !== undefined) setPlayerTurn(msg.tvTurn);
   // ⚠ THE CARD IS THE LOADING STATE and sits ABOVE the cover (overlays.css). It holds through the
   // first map's decode; onPlayerMapShown() takes it down once the map is on screen.
   if (mapOffscreen) landing.style.display = 'none';

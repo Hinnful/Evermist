@@ -21,6 +21,7 @@ function initPlayerMessages() {
 
     if (msg.type === 'player-lock') { playerInputLocked = msg.locked; return; }
     if (msg.type === 'ping') { showPing(msg.x, msg.y); return; }
+    if (msg.type === 'tv-fit') { setPlayerTurn(msg.turn); return; }
     if (msg.type === 'tv-picture') { applyTvPicture(msg.blob); return; }
 
     if (msg.type === 'view-snap') {

@@ -126,8 +126,7 @@ function initPlayer() {
   container.addEventListener('mousemove', e => {
     if (playerInputLocked) return;
     if (!playerIsPanning || !mapOffscreen) return;
-    const dx = e.clientX - playerPanStartX;
-    const dy = e.clientY - playerPanStartY;
+    const { x: dx, y: dy } = turnDelta(e.clientX - playerPanStartX, e.clientY - playerPanStartY);
     if (playerFollowDM && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
       playerFollowDM = false;
       notifyDMOfMode();
@@ -151,9 +150,7 @@ function initPlayer() {
     if (!mapOffscreen) return;
     const factor  = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
     const newZoom = Math.max(0.02, Math.min(20, zoom * factor));
-    const rect    = container.getBoundingClientRect();
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
+    const { x: mx, y: my } = clientToView(e.clientX, e.clientY);
     panX = mx - (mx - panX) * (newZoom / zoom);
     panY = my - (my - panY) * (newZoom / zoom);
     zoom = newZoom;

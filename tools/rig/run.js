@@ -43,19 +43,20 @@ const TEMP_ROOT = path.join(os.tmpdir(), 'evermist-rig');
 // ⚠ A WATCHDOG AGAINST A HANG, NOT A BUDGET, so it scales with how much was asked for. A flat
 // 900s was ample for the smoke set and four minutes clear of a 19-scenario regression pass — and
 // a blocking release gate that refuses a good release on a slow runner day is worse than no gate.
-// Per-scenario, one hung boot still trips it in a few minutes rather than half an hour.
+// Per-scenario, one hung boot still trips it in a few minutes rather than half an hour. A Linux
+// runner averages about 105s a scenario, so 90s cut a healthy 13-scenario shard off in its last file.
 const TIMEOUT_BASE_MS = 180000;
-const TIMEOUT_PER_SCENARIO_MS = 90000;
+const TIMEOUT_PER_SCENARIO_MS = 150000;
 
 // ⚠ THE LIMIT THAT ACTUALLY FIRES, and the reason the one above is now only a backstop. The
 // run-wide watchdog kills the process, so a single scenario that hung at file 3 of 29 spent the
 // whole budget and the other 26 went unread — the same fault the per-scenario try/catch already
 // fixed for a scenario that THROWS. One that hangs never throws, so it slipped past.
 //
-// Generous on purpose. A green 29-file set runs in well under half this per file even on a
-// runner, so a scenario reaching 300s is stuck rather than slow. Too tight a limit here would
-// manufacture exactly the random gate failure it exists to prevent.
-const SCENARIO_TIMEOUT_MS = 300000;
+// Generous on purpose: too tight a limit manufactures exactly the random gate failure it exists to
+// prevent. maps.js takes 260-300s on a Linux runner, so 300s cut it off on slow days; 480s still
+// trips a hung scenario in minutes.
+const SCENARIO_TIMEOUT_MS = 480000;
 
 // Consecutive boots that fail before the run gives up. One is a scenario's own problem; three in
 // a row is the machine, and the remaining boot timeouts would only spend the budget saying so.

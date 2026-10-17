@@ -49,7 +49,7 @@ function _pingTick() {
   for (let i = _pings.length - 1; i >= 0; i--) {
     const t = (now - _pings[i].t0) / 1000;
     if (t > PING_LIFE) { _pings.splice(i, 1); continue; }
-    _drawPing(ctx, _pings[i], t, h);
+    _drawPing(ctx, _pings[i], t, container.clientHeight);
   }
   if (!_pings.length && pixiApp) pixiApp.ticker.remove(_pingTick);
   return _pings.length > 0;

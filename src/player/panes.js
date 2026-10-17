@@ -59,6 +59,7 @@ window.paneView = {
   get playerWindow()      { return playerWindow; },
   get playerIsFullscreen() { return playerIsFullscreen; },
   get minimapView()       { return minimapView; },
+  get tvFit()             { return tvFit; },
   get gridCalArmed()      { return gridCalArmed; },
   get lightsHidden()      { return lightsHidden; },
   get planLights()        { return planLightCount(); },

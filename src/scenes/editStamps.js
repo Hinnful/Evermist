@@ -3,7 +3,7 @@
 // is stored with what is about to be written and gives every changed part the save's time. Import
 // reads these times to decide which copy of a part wins. Tested.
 
-const ES_SCENE_PARTS = ['name', 'grid', 'map', 'fog', 'notes', 'fogSettings', 'lights'];
+const ES_SCENE_PARTS = ['name', 'grid', 'map', 'fog', 'notes', 'fogSettings', 'lights', 'tvFit'];
 const ES_ROOM_OWN = ['id', 'uid', 'name', 'desc', 'mode', 'modeWithHoles'];
 const ES_GONE_MAX = 300;
 
@@ -34,6 +34,8 @@ function esSceneParts(s) {
     grid: esCanon(s.gridConfig || {}),
     notes: esCanon(typeof s.notes === 'string' ? s.notes : ''),
     fogSettings: esCanon(s.fogSettings),
+    // Off is absent, so a scene saved before the field and one stepped back to Off match.
+    tvFit: esCanon(s.tvFit && s.tvFit.step ? { step: s.tvFit.step, turn: s.tvFit.turn } : null),
     lights: esCanon([!!s.lightsHidden, s.lightShapes || []]),
     map: esCanon([s.mapType || 'image', s.mapPath || '', s.mapWidth || 0, s.mapHeight || 0, s.mapBlob && s.mapBlob.size ? s.mapBlob.size : 0]),
   };

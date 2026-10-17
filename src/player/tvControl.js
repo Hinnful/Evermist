@@ -192,8 +192,35 @@ function _tvTvMenu(asking) {
   blk.append(_tvRow(live && _tvRoute === 'window' ? 'on' : '', [_tvText('nm', t('A window I place myself'))], () => _tvGoLive(null)));
   if (!pick.candidates.length) blk.append(_tvRow('', [_tvText('nm', t('How do I connect a TV?'))], () => _tvOpen('help')));
   menu.append(blk);
-  if (!asking) menu.append(_tvUpdates());
+  if (!asking) {
+    const fit = _tvFitBlock();
+    if (fit) menu.append(fit);
+    menu.append(_tvUpdates());
+  }
   return menu;
+}
+
+// Fit to TV: the open map's own turn of the TV picture, stepped Off, Fitted, Flipped (tvFit.js). With
+// two maps it acts on the selected column's map, against that column's half of the TV.
+function _tvFitBlock() {
+  const s = paneScope();
+  if (!(s.mapWidth > 0) || !s.tvFit) return null;
+  const tv = minimapSelectedHalf().tv;
+  const fits = fitDisabled(s.tvFit, crossesTv(s.mapWidth, s.mapHeight, tv.w, tv.h, s.tvFit.turn));
+  const state = [t('Off'), t('Fitted'), t('Flipped')][s.tvFit.step];
+  const hint = [t('Lays a tall map along the TV, upright from your seat.'), t('Click again to turn it the other way.'),
+                t('Click again to put the map back as it was.')][s.tvFit.step];
+  const blk = _tvMake('div', 'blk');
+  blk.append(_tvText('lbl', t('This map')));
+  const row = _tvRow(s.tvFit.step ? 'on' : '', [_tvText('nm', t('Fit to TV')), _tvText('mt', fits ? t('Already fits') : state)], () => {
+    stepSceneFit();
+    _tvOpen('tv');
+    // A column answers a message later; its state is read again once it has.
+    if (panesActive) setTimeout(() => { if (_tvMenu === 'tv') _tvOpen('tv'); }, 150);
+  });
+  row.disabled = fits;
+  blk.append(row, _tvText('hint', fits ? t('The map already lies along the TV.') : hint));
+  return blk;
 }
 
 function _tvUpdates() {

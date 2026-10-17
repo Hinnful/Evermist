@@ -1,7 +1,8 @@
 'use strict';
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { resolveSceneName, mapExtFromScene } = require('../src/scenes/backup.js');
+global.esWithUids = require('../src/scenes/editStamps.js').esWithUids;
+const { resolveSceneName, mapExtFromScene, sceneBackupMeta } = require('../src/scenes/backup.js');
 
 describe('resolveSceneName', () => {
   test('fresh name returned as-is and added to Set', () => {
@@ -72,5 +73,13 @@ describe('mapExtFromScene', () => {
 
   test('image with no blob → .jpg', () => {
     assert.equal(mapExtFromScene({}), '.jpg');
+  });
+});
+
+describe('sceneBackupMeta', () => {
+  test('carries the TV fit into the zip, and leaves an Off scene without one', () => {
+    const scene = { id: 'a', name: 'Tall', tvFit: { step: 2, turn: 270 } };
+    assert.deepEqual(sceneBackupMeta(scene, '.jpg', 'image/jpeg', []).tvFit, { step: 2, turn: 270 });
+    assert.equal(sceneBackupMeta({ id: 'b' }, '.jpg', 'image/jpeg', []).tvFit, undefined);
   });
 });

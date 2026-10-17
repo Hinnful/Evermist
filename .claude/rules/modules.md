@@ -87,6 +87,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `render/playersView.js` | The players' view: held H or the minimap's eye |
 | `player/minimap.js` | Minimap render, drag/zoom remote, two-way view sync |
 | `player/tvPick.js` | Pure kernel: which screen is the TV, from the display list and the remembered pick. Tested |
+| `player/tvFit.js` | Pure kernel: Fit to TV, a scene's turn of the TV picture: the cycle, the seat's choice, when the row is disabled. Tested |
 | `player/tvControl.js` | Show on TV: the minimap's off, waiting and live states, the pill, the TV menu, the help box |
 | `render/video.js` | Animated-map handling |
 | `render/videoDiag.js` | Video diagnostics overlay and disk log |
@@ -215,7 +216,7 @@ render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWin
 scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
 render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → ui/repairBar.js → ui/effectsRow.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
-dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvControl.js →
+dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvControl.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/roomCard.js →
 gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js →

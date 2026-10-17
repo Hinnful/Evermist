@@ -96,9 +96,21 @@ function _mmGeom() {
   return { cw, ch, tv, halves };
 }
 
-// The map-space size one picture draws: the TV's own view.
+// A picture's Fit to TV: the turn the TV draws that map by (tvFit.js). It is the same turn the
+// Player's canvas stack takes, so the picture below turns inside its half by it, on top of the seat.
+function _mmFitTurn(scope) { return scope.tvFit ? scope.tvFit.turn : 0; }
+function _mmFitSideways(scope) { return _mmFitTurn(scope) % 180 !== 0; }
+
+// The map-space size one picture draws: the TV's own view, its sides swapped under a sideways fit.
 function _mmRegion(half) {
-  return { w: half.tv.w / half.view.zoom, h: half.tv.h / half.view.zoom };
+  const z = half.view.zoom;
+  return _mmFitSideways(half.scope) ? { w: half.tv.h / z, h: half.tv.w / z } : { w: half.tv.w / z, h: half.tv.h / z };
+}
+
+// The picture the DM has selected, for the TV menu's Fit to TV row: its TV size and its map.
+function minimapSelectedHalf() {
+  const geom = _mmGeom();
+  return geom.halves.find(h => h.id === panesSelected) || geom.halves[0];
 }
 
 // The canvas's ON-SCREEN size, in the same space as pointer clientX/clientY. ⚠ Never _canvas.width
@@ -225,20 +237,32 @@ function _drawHalf(half) {
   const srcX = half.view.mapCX - reg.w / 2;
   const srcY = half.view.mapCY - reg.h / 2;
 
+  // The picture is laid out in map axes (pw × ph) and turned about its half's centre by its own fit.
+  const fit = _mmFitTurn(s);
+  const pw = _mmFitSideways(s) ? dst.h : dst.w, ph = _mmFitSideways(s) ? dst.w : dst.h;
+  const place = c => {
+    c.translate(dst.x + dst.w / 2, dst.y + dst.h / 2);
+    c.rotate(fit * Math.PI / 180);
+    c.translate(-pw / 2, -ph / 2);
+  };
+
   _ctx.save();
   _ctx.beginPath();
   _ctx.rect(dst.x, dst.y, dst.w, dst.h);
   _ctx.clip();
-  _ctx.drawImage(s.mapOffscreen, srcX, srcY, reg.w, reg.h, dst.x, dst.y, dst.w, dst.h);
+  place(_ctx);
+  _ctx.drawImage(s.mapOffscreen, srcX, srcY, reg.w, reg.h, 0, 0, pw, ph);
   _ctx.restore();
 
   // fogBlurCanvas is always current after rebuildFogBlur(). A CSS blur plus a source-atop
   // fog-colour fill keeps it misty rather than a flat block.
   if (s.fogBlurCanvas && s.fogBlurCanvas.width > 0) {
     if (!_mmFogScratch) _mmFogScratch = document.createElement('canvas');
-    if (_mmFogScratch.width !== _canvas.width || _mmFogScratch.height !== _canvas.height) {
-      _mmFogScratch.width  = _canvas.width;
-      _mmFogScratch.height = _canvas.height;
+    // Square, so a half turned a quarter still fits.
+    const side = Math.max(_canvas.width, _canvas.height);
+    if (_mmFogScratch.width !== side || _mmFogScratch.height !== side) {
+      _mmFogScratch.width  = side;
+      _mmFogScratch.height = side;
       _mmFogScratchCtx = null; // a resize resets the context state anyway
     }
     if (!_mmFogScratchCtx) _mmFogScratchCtx = _mmFogScratch.getContext('2d');
@@ -247,24 +271,28 @@ function _drawHalf(half) {
     // and alpha still set, so the next frame's mask draw lands tinted over the last.
     sc.globalCompositeOperation = 'source-over';
     sc.globalAlpha = 1;
-    sc.clearRect(0, 0, _canvas.width, _canvas.height);
+    sc.clearRect(0, 0, _mmFogScratch.width, _mmFogScratch.height);
     sc.filter = 'blur(3px)';
     sc.drawImage(s.fogBlurCanvas, srcX / FOG_SCALE, srcY / FOG_SCALE, reg.w / FOG_SCALE, reg.h / FOG_SCALE,
-                 0, 0, dst.w, dst.h);
+                 0, 0, pw, ph);
     sc.filter = 'none';
     sc.globalCompositeOperation = 'source-in';
     sc.fillStyle = s.fogBaseColor;
-    sc.fillRect(0, 0, dst.w, dst.h);
+    sc.fillRect(0, 0, pw, ph);
     // ⚠ MUST be source-atop: source-over ignores the mask and washes fogTintColor over the whole
     // preview, veiling revealed map.
     sc.globalCompositeOperation = 'source-atop';
     sc.globalAlpha = 0.35;
     sc.fillStyle = s.fogTintColor;
-    sc.fillRect(0, 0, dst.w, dst.h);
+    sc.fillRect(0, 0, pw, ph);
 
     _ctx.save();
+    _ctx.beginPath();
+    _ctx.rect(dst.x, dst.y, dst.w, dst.h);
+    _ctx.clip();
     _ctx.globalAlpha = 0.92;
-    _ctx.drawImage(_mmFogScratch, 0, 0, dst.w, dst.h, dst.x, dst.y, dst.w, dst.h);
+    place(_ctx);
+    _ctx.drawImage(_mmFogScratch, 0, 0, pw, ph, 0, 0, pw, ph);
     _ctx.restore();
   }
 
@@ -315,10 +343,14 @@ function _onPointerMove(e) {
   const geom = _mmGeom();
   const half = geom.halves.find(h => h.id === _dragHalf) || geom.halves[0];
   const reg = _mmRegion(half);
-  // The preview turns with the DM map, so the drag is turned back into the map's own axes.
-  const d  = turnDelta(e.clientX - _dragStartX, e.clientY - _dragStartY);
-  const dx = d.x / (scrW * half.dst.w / geom.cw) * reg.w;
-  const dy = d.y / (scrH * half.dst.h / geom.ch) * reg.h;
+  // The preview turns with the DM's seat and then with this picture's fit, so the drag is turned
+  // back through both into the map's own axes.
+  const c = turnDelta(e.clientX - _dragStartX, e.clientY - _dragStartY);
+  const d = turnVec(c.x, c.y, unturn(_mmFitTurn(half.scope)));
+  const picW = scrW * half.dst.w / geom.cw, picH = scrH * half.dst.h / geom.ch;
+  const sideways = _mmFitSideways(half.scope);
+  const dx = d.x / (sideways ? picH : picW) * reg.w;
+  const dy = d.y / (sideways ? picW : picH) * reg.h;
   minimapView = {
     mapCX: _dragStartCX - dx,
     mapCY: _dragStartCY - dy,
@@ -397,8 +429,9 @@ function minimapSeedView() {
 
 function _seedView() {
   const s = paneScope();
-  const w = s.playerScreenW || 1920;
-  const h = s.playerScreenH || 1080;
+  const sideways = _mmFitSideways(s);
+  const w = sideways ? (s.playerScreenH || 1080) : (s.playerScreenW || 1920);
+  const h = sideways ? (s.playerScreenW || 1920) : (s.playerScreenH || 1080);
   const z = Math.min(w / s.mapWidth, h / s.mapHeight) * 0.95;
   minimapView = { mapCX: s.mapWidth / 2, mapCY: s.mapHeight / 2, zoom: z };
 }

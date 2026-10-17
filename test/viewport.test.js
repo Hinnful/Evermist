@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { calcViewportRect, zoomToFitRegion, visibleMapRegion } = require('../src/render/viewport.js');
+const { calcViewportRect, zoomToFitRegion, visibleMapRegion, regionSwaps } = require('../src/render/viewport.js');
 
 describe('calcViewportRect', () => {
 
@@ -292,4 +292,19 @@ describe('visibleMapRegion', () => {
     near(r.cy, (vpH / 2 - panY) / z, 'cy');
   });
 
+});
+
+describe('regionSwaps', () => {
+  it('swaps only when exactly one of the seat and the fit is sideways', () => {
+    assert.equal(regionSwaps(0, 0), false);
+    assert.equal(regionSwaps(180, 180), false);
+    assert.equal(regionSwaps(90, 0), true);
+    assert.equal(regionSwaps(0, 90), true);
+    assert.equal(regionSwaps(270, 180), true);
+    assert.equal(regionSwaps(180, 270), true);
+  });
+  it('does not swap for seat 90 with fit 270, where both views lie sideways', () => {
+    assert.equal(regionSwaps(90, 270), false);
+    assert.equal(regionSwaps(270, 90), false);
+  });
 });

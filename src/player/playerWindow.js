@@ -176,6 +176,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
         lights: lightPolys,
         gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
         pickedHex: fogPickedHex, fogTintAlpha: FOG_TINT_ALPHA,
+        tvTurn: tvFit.turn,
       }, '*');
       playerMapSent = true;
       // THE ONE PLACE A FIRST DELIVERY ACTUALLY HAPPENS, so it is the one place the Player's
@@ -219,6 +220,19 @@ function syncAnimToPlayer(includeWarp) {
   if (paneForward('anim', msg)) return;
   if (!playerWindow || playerWindow.closed) return;
   playerWindow.postMessage(msg, '*');
+}
+
+// Fit to TV: one click of the TV menu's row steps the open scene's fit and tells the Player at once.
+// ⚠ ITS OWN MESSAGE, NEVER A fog-update: that carries the live fog, so in Manual mode it would hand the
+// TV every pending reveal. A held or not-yet-mapped Player gets the fit with its next map instead.
+function stepSceneFit() {
+  if (paneForward('tv-fit-step')) return;   // two maps: the selected column owns the scene
+  if (!currentScene) return;
+  tvFit = nextFit(tvFit, seatTurn);
+  doAutoSave();
+  minimapSeedView();
+  if (canSendToPlayer() && playerMapSent) playerWindow.postMessage({ type: 'tv-fit', turn: tvFit.turn }, '*');
+  minimapLayout();
 }
 
 // Sends the current fog color to the Player window without a full fog re-send.

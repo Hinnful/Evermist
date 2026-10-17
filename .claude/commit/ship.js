@@ -85,6 +85,12 @@ function stageBase() {
   return 'contains origin/main';
 }
 
+// CI's guards job runs the same script; a red one there costs a whole gate and an amend.
+function stageGuards() {
+  execFileSync(process.execPath, [path.join(ROOT, 'tools', 'check-guards.js')], { cwd: ROOT, stdio: 'pipe' });
+  return 'pass';
+}
+
 function stageAgree({ branch }) {
   execFileSync(process.execPath, [path.join(ROOT, 'tools', 'check-release.js'), branch], { cwd: ROOT, stdio: 'pipe' });
   return 'branch, version and files agree';
@@ -118,6 +124,7 @@ function main() {
   const notes = readNotes();
   const stages = [
     ['base', stageBase],
+    ['guards', stageGuards],
     ['commit', () => stageCommit(opts, notes)],
     ['agree', () => stageAgree(opts)],
     ['push', () => stagePush(opts)],

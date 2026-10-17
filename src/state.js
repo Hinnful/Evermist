@@ -180,7 +180,8 @@ let videoLastRenderTs = 0;
 
 let mapWidth = 0, mapHeight = 0;
 let zoom = 1, panX = 0, panY = 0;
-let seatTurn = 0;   // degrees the DM map is turned clockwise (mapTurn.js); always 0 on the Player
+let seatTurn = 0;   // degrees the map is turned clockwise (mapTurn.js): the DM's seat; on the Player, the scene's Fit to TV
+let tvFit = { step: 0, turn: 0 };   // the open scene's Fit to TV (tvFit.js); the DM keeps it, the Player only its turn
 let isPanning = false;
 let panStartX, panStartY, panStartPanX, panStartPanY;
 let playerWindow = null;

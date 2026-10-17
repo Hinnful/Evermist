@@ -366,7 +366,9 @@ function initToolbar() {
     playerWindow.postMessage({ type: 'view-snap', ...v }, '*');
     // ⚠ minimapView.zoom is ALWAYS in Player-canvas terms, so convert before handing it over.
     // Passing the DM's own zoom leaves the dotted TV frame wrong until the next drag.
-    const playerZoom = zoomToFitRegion(v.viewW, v.viewH, playerScreenW, playerScreenH);
+    const tvSideways = tvFit.turn % 180 !== 0;
+    const playerZoom = tvSideways ? zoomToFitRegion(v.viewW, v.viewH, playerScreenH, playerScreenW)
+                                  : zoomToFitRegion(v.viewW, v.viewH, playerScreenW, playerScreenH);
     minimapSetView({ mapCX: v.mapCX, mapCY: v.mapCY, zoom: playerZoom ?? v.zoom });
   };
 

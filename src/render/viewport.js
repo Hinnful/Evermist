@@ -44,12 +44,17 @@ function visibleMapRegion(panX, panY, zoom, mapW, mapH, vpW, vpH) {
 // through here, so they cannot drift apart.
 // ⚠ NEVER subtract the strip hidden behind the control panel. It crops the TV to the DM's
 // readable area, which shifts the framing and takes content away from the players.
-// ⚠ A sideways seat sends the region the laptop would show UNTURNED around the same centre, or the
-// TV gets a tall slice of map and letterboxes it.
+// ⚠ The region is sent in the TV's own orientation, around the same centre, or the TV gets a slice
+// of the wrong shape and letterboxes it. The laptop and the TV each lay their view out sideways or
+// not, so it swaps only when exactly one of them is: seat 90 with fit 270 is two sideways views.
+function regionSwaps(seat, fitTurn) {
+  return (seat % 180 !== 0) !== (fitTurn % 180 !== 0);
+}
+
 function dmVisibleRegion() {
   const { w: vpW, h: vpH } = getViewportSize();
   let r;
-  if (seatSideways(seatTurn)) {
+  if (regionSwaps(seatTurn, tvFit.turn)) {
     const cx = (vpW / 2 - panX) / zoom, cy = (vpH / 2 - panY) / zoom;
     r = visibleMapRegion(vpH / 2 - cx * zoom, vpW / 2 - cy * zoom, zoom, mapWidth, mapHeight, vpH, vpW);
   } else {
@@ -185,4 +190,4 @@ function updatePlayerModeIndicator() {
 }
 
 
-if (typeof module !== 'undefined') module.exports = { calcViewportRect, zoomToFitRegion, visibleMapRegion };
+if (typeof module !== 'undefined') module.exports = { calcViewportRect, zoomToFitRegion, visibleMapRegion, regionSwaps };

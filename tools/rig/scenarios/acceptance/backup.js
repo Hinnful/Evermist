@@ -468,26 +468,31 @@ module.exports = async function backupFeature(rig) {
 
   // ── G. The export whitelist ──────────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
-  // Read off doExport itself. Nothing else can see the list the export really uses: the payload
-  // above is this file's own copy of it, so the two agreeing proves nothing.
-  // ⚠ READ INSIDE THE `metadata:` LITERAL, NOT THE WHOLE FUNCTION. Several of these names are
-  // also local consts a few lines above it, so a search over the whole source finds them whether
-  // or not they are ever written into the zip. And the keys may be shorthand (`mapExt,`) as well
-  // as `key: value`, so the match is on the name, not on a colon.
+  // Read off the export's own code. Nothing else can see the list the export really uses: the
+  // payload above is this file's own copy of it, so the two agreeing proves nothing. doExport hands
+  // each scene to sceneBackupMeta, whose returned literal is the list.
+  // ⚠ READ INSIDE THAT LITERAL, NOT THE WHOLE FUNCTION. Several of these names are its arguments,
+  // so a search over the whole source finds them whether or not they are ever written into the
+  // zip. And the keys may be shorthand (`mapExt,`) as well as `key: value`, so the match is on the
+  // name, not on a colon.
   const whitelist = await dm.evaluate(`(() => {
     const src = doExport.toString();
-    const at = src.indexOf('metadata: {');
-    if (at === -1) return { err: 'doExport has no metadata literal any more' };
+    if (src.indexOf('metadata:      sceneBackupMeta(') === -1 && src.indexOf('metadata: sceneBackupMeta(') === -1) {
+      return { err: 'doExport no longer writes each scene through sceneBackupMeta' };
+    }
+    const meta = sceneBackupMeta.toString();
+    const at = meta.indexOf('return {');
+    if (at === -1) return { err: 'sceneBackupMeta returns no literal any more' };
     let depth = 0, end = -1;
-    for (let i = src.indexOf('{', at); i < src.length; i++) {
-      if (src[i] === '{') depth++;
-      else if (src[i] === '}') { depth--; if (!depth) { end = i; break; } }
+    for (let i = meta.indexOf('{', at); i < meta.length; i++) {
+      if (meta[i] === '{') depth++;
+      else if (meta[i] === '}') { depth--; if (!depth) { end = i; break; } }
     }
     if (end === -1) return { err: 'the metadata literal does not close' };
-    const block = src.slice(at, end);
+    const block = meta.slice(at, end);
     const want = ['polygons', 'nextPolygonId', 'effects', 'nextEffectId', 'floorPlan',
                   'gridConfig', 'fogSettings', 'name', 'mapWidth', 'mapHeight', 'mapType',
-                  'mapMimeType', 'mapExt', 'createdAt', 'sortOrder', 'notes', 'edits'];
+                  'mapMimeType', 'mapExt', 'createdAt', 'sortOrder', 'notes', 'edits', 'tvFit'];
     const missing = want.filter(k => !new RegExp('(^|[\\\\s{,])' + k + '\\\\s*[:,}\\\\n]').test(block));
     return { missing, carriesModuleText: src.indexOf('mtBackupPayload') !== -1,
              carriesCampaign: src.indexOf('notesCampaignPayload') !== -1 };

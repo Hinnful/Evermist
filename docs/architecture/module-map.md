@@ -70,6 +70,7 @@ language, present tense. The terse version every session carries is in
 | `playersView.js` | The players' view: holding H, or the minimap's eye, shows the DM's own map with the fog at full strength, the room outlines hidden and a blue frame around it. |
 | `minimap.js` | The DM's live preview of the Player camera in the bottom-left corner, and the remote control that drives it. |
 | `tvPick.js` | Which screen is the TV, decided from the display list and the pick the DM made last time. No screen of its own; unit-tested. |
+| `tvFit.js` | Fit to TV: a scene's own turn of the TV picture, kept as a step and a quarter-turn. The cycle, the seat's choice of direction and when the menu row is disabled; no screen of its own; unit-tested. |
 | `tvControl.js` | Show on TV: the control on the minimap that puts the map on the TV. It owns the off, waiting and live states, the pill under the picture, the TV menu and the help box for a machine with one screen. |
 | `stageWindow.js` | The DM side of the Player screen while two maps are up: opening that window, keeping a warm one ready so the next press is instant, wiring each column to its own half, and closing it. |
 | `paneRuntime.js` | The other end of every command the DM shell sends a column. Each message presses the control that column already has, so a column behaves like the DM window it is, and no behaviour is written twice. |

@@ -78,6 +78,9 @@
     transform: rotate(var(--seat-a));
   }
 
+  /* The Player's own <video> feeds the region texture; a turned stack leaves it unturned and hidden. */
+  body.player-mode #canvas-container.seat-turned > video { visibility: hidden; }
+
   /* ===== PLAYER MODE ===== */
   body.player-mode #tools-wrapper,
   body.player-mode #minimap-panel { display: none !important; }

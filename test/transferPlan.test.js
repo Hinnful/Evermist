@@ -26,6 +26,23 @@ describe('tpSceneIds', () => {
   });
 });
 
+describe('tpMergeScene: TV fit', () => {
+  it('takes an incoming fit edited later and keeps a local one edited later', () => {
+    const fit = { step: 1, turn: 90 };
+    const take = T.tpMergeScene(scene([], { scene: { tvFit: 100 } }), scene([], { scene: { tvFit: 300 } }, { tvFit: fit }), NOW);
+    assert.deepEqual(take.record.tvFit, fit);
+    assert.deepEqual(take.report.changed, [{ room: '', part: 'tvFit' }]);
+    const keep = T.tpMergeScene(scene([], { scene: { tvFit: 500 } }, { tvFit: fit }), scene([], { scene: { tvFit: 300 } }), NOW);
+    assert.equal(keep.take.tvFit, false);
+    assert.equal(keep.record.tvFit, undefined);
+  });
+  it('reads a scene with no fit and one stepped back to Off as the same', () => {
+    const m = T.tpMergeScene(scene([], undefined), scene([], undefined, { tvFit: { step: 0, turn: 0 } }), NOW);
+    assert.equal(m.touched, false);
+  });
+  it('has a label for the part', () => assert.equal(T.TP_PART_LABEL.tvFit, 'TV fit'));
+});
+
 describe('tpMergeScene: parts', () => {
   it('takes an incoming part edited later and keeps a local part edited later', () => {
     const local = scene([], { scene: { name: 100, notes: 500 } }, { name: 'Local', notes: 'local' });

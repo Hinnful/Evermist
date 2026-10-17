@@ -36,6 +36,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
   mapWidth   = scene.mapWidth;
   mapHeight  = scene.mapHeight;
+  if (!isPlayer) tvFit = cleanFit(scene.tvFit);   // before the minimap seeds its view
 
   // Lazy migration: move legacy IDB video blob to filesystem on first access
   if (scene.mapType === 'video' && scene.mapBlob && !scene.mapPath && window.electronAPI) {

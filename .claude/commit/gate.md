@@ -17,7 +17,9 @@ go to `rig.byEye`. Correctness is yours.
 
 Then the gate:
 
-- **`npm test` and `npm run lint` once, whatever the diff touched.** They cost seconds. The house
+- **`npm test`, `npm run lint` and `node tools/check-guards.js` once, whatever the diff touched.**
+  They cost seconds, and the guards are a CI job of their own that `npm test` does not run.
+  `ship.js` runs the guards again before it commits. The house
   rules on comments, file size, the module maps and the public docs are tests, so a red here can
   be one of those; its message says what to fix.
 - **A SMOKE pass, never the full regression set.** CI runs regression against the packaged `.exe`

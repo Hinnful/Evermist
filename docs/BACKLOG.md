@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 12 open items; IDs run to 189."
+description: "Open work only. 12 open items; IDs run to 191."
 metadata: 
   node_type: memory
   type: project
@@ -92,11 +92,11 @@ epic. The same path must not slow an experienced DM or hide the deeper features.
 **Out of this epic:** what a DM sees before installing. That is distribution, and it comes later.
 **First use · DM + Player**
 
-### 178. My seat reads as turning the map
-Filed 2026-10-13. My seat turns the DM window only, for a DM sitting at a right angle to the TV, which is most DMs.
-The first new DM used it to fix a sideways map, expected the TV to turn too, and took it for a bug. Turning the map
-for the players is a separate feature (item 179). The two must never be confused: different names, different places.
-**Needs /spec.**
+### 190. A first-time hint for Seat alignment
+Filed 2026-10-17. Seat alignment in Settings shows where the DM sits at the TV, but not what a chair does: a first
+reader took it as "where you sit" and could not say what changes. The first time it matters, one line should say that
+the laptop map turns to face the DM's chair and the TV never turns. **Needs /spec:** when it appears and how it goes
+away.
 **First use · DM only**
 
 ---
@@ -115,13 +115,6 @@ Vines, snow and mud look different but play the same, so Difficult terrain may b
 material record (`effectMaterials.js`), since a colour picker per effect was rejected. **Needs /spec:** the look of
 each, and whether Difficult terrain needs an effect at all.
 **Play · DM + Player**
-
-### 179. Turning the map for the players
-Filed 2026-10-13. A map drawn sideways for the TV has to be turned in an image editor before it goes in; the first new
-DM did exactly that. Turning it inside Evermist, for the Player, is a feature apart from My seat (item 178), and its
-name and place must not be confused with it. An animated map is the hard case: turning a video means re-encoding it,
-or turning it on screen. **Needs /spec.**
-**Prep · DM + Player**
 
 ### 180. The toolbar shows which mode it is in
 Filed 2026-10-13 from item 175's sketch. The sketch moves Fog / Effects into a side tab at the right end of the toolbar,
@@ -174,6 +167,15 @@ diagonal wall, the Door tool cuts the wall into cell-sized steps from the room's
 across two hexes. Decide what a door one hex wide means on a hex wall, then make the preview and the click follow it.
 **Needs /spec.**
 **Polish · DM + Player**
+
+### 191. CI goes red far more often than the app breaks
+Filed 2026-10-17. 4.5.6 and 4.6.0 together went red six times and none was a bug a DM would meet: a size guard
+CI runs and the local gate did not, two runners that could not start the app, a scenario past its time limit, and two
+scenarios that read the app's source code rather than drive it, broken when that code moved. Each red costs a re-run
+or an amend and an hour's wait. Look at the whole process: which scenarios check the code's shape rather than what the
+DM sees, which failures are the runners, what a local pass could catch before the push, and what to retire.
+**Needs a discussion.**
+**Upkeep · no visible change**
 
 ---
 

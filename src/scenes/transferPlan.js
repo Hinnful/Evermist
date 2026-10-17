@@ -13,7 +13,7 @@ const _TP_FG = typeof decodeShapeFromSave === 'function'
 
 const TP_ROOM_PARTS = ['shape', 'notes', 'mode'];
 const TP_PART_LABEL = {
-  name: 'name', grid: 'grid', map: 'map', fog: 'fog', notes: 'notes', fogSettings: 'fog settings', lights: 'lights',
+  name: 'name', grid: 'grid', map: 'map', fog: 'fog', notes: 'notes', fogSettings: 'fog settings', lights: 'lights', tvFit: 'TV fit',
   shape: 'shape', mode: 'revealed state', text: 'name and notes', effect: 'effect', deleted: 'room deleted',
 };
 
@@ -195,6 +195,7 @@ function tpMergeScene(local, incoming, moment, opts) {
   if (take.grid) record.gridConfig = incoming.gridConfig || {};
   if (take.notes) record.notes = incoming.notes;
   if (take.fogSettings) record.fogSettings = incoming.fogSettings;
+  if (take.tvFit) record.tvFit = incoming.tvFit;
   if (take.lights) { record.lightsHidden = !!incoming.lightsHidden; record.lightShapes = incoming.lightShapes || []; }
   const touched = rep.changed.length > 0 || rep.roomsAdded.length > 0 || rep.roomsRemoved.length > 0
     || rep.effectsAdded > 0 || rep.effectsRemoved > 0;

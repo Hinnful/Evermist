@@ -331,6 +331,24 @@ map turns back to read upright. Sync View sends the TV the region the laptop wou
 around the same centre, so the TV's framing does not change with the seat. In two-map mode each
 column turns its own map.
 
+### Fit to TV
+
+The TV menu's "This map" block holds Fit to TV, a turn of the TV picture kept per scene as
+`tvFit: {step, turn}` (absent is Off). Each click steps Off, Fitted, Flipped, Off through `tvFit.js`.
+Fitted turns the picture so the map lies along the TV and reads upright from the DM's chair; Flipped
+adds 180°. The seat only picks the direction at the moment of the click, so a later seat change leaves a
+fit as it was, and the laptop never follows the fit. A map that already lies along the TV, read from the
+minimap's own TV shape (a column's half in two-map mode), shows "Already fits" while the fit is Off.
+
+The Player takes the turn the way the DM takes My seat: one turn of the whole canvas stack, so the
+map, fog, grid, effects and ping cannot drift, with `seatTurn` set directly from the fit and never
+through `setSeatTurn`, which writes the key the DM window reads. The Player's own pan and wheel convert
+through `mapTurn.js`, and the animated map's region texture is rebuilt after a turn. A click sends the
+Player a `tv-fit` message of its own, never a `fog-update`, so Manual mode hands over no pending reveal;
+a new map's payload carries the scene's turn and the Player applies it behind the transition cover. The
+minimap turns each half's picture by its own fit on top of the seat, and Sync View swaps the region it
+sends only when exactly one of the seat and the fit is sideways.
+
 ### The ping
 
 Ctrl+middle-click on the DM map sends a map point to the TV, and both windows draw the same gold

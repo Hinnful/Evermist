@@ -104,6 +104,7 @@ function doAutoSave() {
     nextEffectId,
     lights:        lightsSceneFields(),
     gridConfig:    captureGridConfig(),
+    tvFit:         tvFit.step ? { step: tvFit.step, turn: tvFit.turn } : undefined,
     fogSettings:   {
       pickedHex: fogPickedHex,
       tintAlpha: FOG_TINT_ALPHA,
@@ -131,6 +132,7 @@ function doAutoSave() {
       scene.baseFogBlob   = blob;
       scene.gridConfig    = snap.gridConfig;
       scene.fogSettings   = snap.fogSettings;
+      if (snap.tvFit) scene.tvFit = snap.tvFit; else delete scene.tvFit;
       // Never snapshotted: an edit made while the fog encodes would be overwritten with the old text.
       if (typeof scene.notes !== 'string') scene.notes = '';
       sceneStore.saveScene(scene, { fogEdited }).catch(console.error).then(resolve, resolve);

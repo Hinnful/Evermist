@@ -1,5 +1,5 @@
 'use strict';
-// mapTurn.js — My seat, the DM window only (docs/ARCHITECTURE.md).
+// mapTurn.js — My seat on the DM window, and Fit to TV on the Player (docs/ARCHITECTURE.md).
 //
 // ⚠ TWO COORDINATE SPACES. Drawing code works in VIEW space, the turned canvas's own pixels, and
 // never converts. A mouse event or a panel placed beside the map is in CLIENT space, where the
@@ -140,6 +140,27 @@ function setSeatTurn(deg) {
   seatTurn = deg;
   try { localStorage.setItem(SEAT_TURN_KEY, String(deg)); } catch (e) {}
   applySeatTurn();
+}
+
+// ─── The Player ───────────────────────────────────────────────────────────────
+
+// Fit to TV turns the Player's whole canvas stack through the same layout My seat gives the DM.
+// ⚠ NEVER setSeatTurn here: it writes localStorage['evermist.seatTurn'], which the DM window reads.
+// The region texture is sized to the viewport and rebuilt only on a resize, so a turn rebuilds it.
+function setPlayerTurn(deg) {
+  if (!isPlayer) return;
+  const turn = SEAT_TURNS.includes(deg) ? deg : 0;
+  if (turn === seatTurn) return;
+  seatTurn = turn;
+  syncSize();
+  if (mapWidth > 0 && (mapOffscreen || mapBitmap)) {
+    fitToScreen();
+    if (mapVideo) initPlayerMapRegionTexture();
+    reportPlayerView();
+  }
+  viewportDirty = true;
+  gridDirty = true;
+  scheduleRender();
 }
 
 function initSeatTurn() {

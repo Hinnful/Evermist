@@ -1244,6 +1244,16 @@ to the handful of places that meet a mouse position. Free angles for a round tab
 later: at 30° the rectangle tool drags along the map's diagonal on screen, which is a design
 question, not a code one.
 
+### Fit to TV turns the TV's picture, never the laptop and never the file · `SETTLED` (2026-10-17)
+A sideways map is turned per scene from the minimap's menu: Off, Fitted, Flipped. The TV draws the turn
+with the whole-canvas turn My seat uses on the laptop, so an animated map needs no re-encoding and
+rooms, fog and effects keep their coordinates. Fitted reads the DM's seat to pick its direction:
+upright from a side chair, clockwise from a long side, where no quarter turn reads upright. The laptop
+follows the seat alone, so with a fit on it no longer matches the TV as seen from the chair; turning
+both was rejected, since a DM at a right angle would still sit at a right angle. A later seat change
+leaves a fit as it was. In Manual mode the fit reaches the TV at once in its own message, so it never
+carries an unsent reveal.
+
 ## Sounds
 
 ### The soundboard plays decoded buffers through Web Audio · `SETTLED` (2026-10-01)
