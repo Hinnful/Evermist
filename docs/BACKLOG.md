@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 12 open items; IDs run to 191."
+description: "Open work only. 15 open items; IDs run to 195."
 metadata: 
   node_type: memory
   type: project
@@ -99,6 +99,20 @@ the laptop map turns to face the DM's chair and the TV never turns. **Needs /spe
 away.
 **First use · DM only**
 
+### 192. The room's clouds and door wait for a mouse move
+Filed 2026-10-17 from a first-timer test. The clouds and door over a selected room appear only once the mouse moves
+after the click, because the switcher updates on cursor moves alone. It also never shows while a shape tool is in hand,
+so a DM who has just drawn a rectangle sees no way to change that room's fog. The tester, asked to show part of a map
+with a rectangle, drew it, then tried Reveal All and took about 20 seconds to find the room's own clouds.
+**Bug · First use · DM only**
+
+### 193. Targeted first-time hints
+Filed 2026-10-17. Single hints on a first-timer's path, at the moment they matter, to ease the learning curve. They
+must never annoy. Item 172 already rules out a tutorial; the first-evening callout and item 190 are hints of this kind.
+**Needs /spec:** one rule for every hint (how many at once, when one shows, what makes it go), then the first set. A
+candidate from the same test: Reveal All, reached for a second time, could point at the room's own clouds.
+**First use · DM only**
+
 ---
 
 # EVERYTHING ELSE
@@ -168,14 +182,19 @@ across two hexes. Decide what a door one hex wide means on a hex wall, then make
 **Needs /spec.**
 **Polish · DM + Player**
 
-### 191. CI goes red far more often than the app breaks
-Filed 2026-10-17. 4.5.6 and 4.6.0 together went red six times and none was a bug a DM would meet: a size guard
-CI runs and the local gate did not, two runners that could not start the app, a scenario past its time limit, and two
-scenarios that read the app's source code rather than drive it, broken when that code moved. Each red costs a re-run
-or an amend and an hour's wait. Look at the whole process: which scenarios check the code's shape rather than what the
-DM sees, which failures are the runners, what a local pass could catch before the push, and what to retire.
-**Needs a discussion.**
-**Upkeep · no visible change**
+### 194. An empty lab for testing
+Filed 2026-10-17. The DM tests on the real campaign because there is nowhere else. A lab is a launch of the app on its
+own empty library that never touches the campaign, as the rig already does with a throwaway data folder. **Needs a
+discussion:** how the DM starts it, and whether it keeps its contents between launches.
+**Upkeep · DM only**
+
+### 195. Notes as linked Markdown files
+Filed 2026-10-17 as a DESIGN DISCUSSION. Keep notes in `.md` files, Obsidian-style, so they can grow links between
+notes, references and mentions. References to read first: Obsidian and Morrow (github.com/Aarav2709/Morrow). Notes
+today live in the app's database (DECISIONS, "Notes are stored as a scene field and one campaign value"), so files on
+disk mean a new storage design that the previous release can still roll back over. Waits for the First User
+Experience epic.
+**Campaign · DM only**
 
 ---
 

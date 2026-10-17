@@ -3,6 +3,26 @@
 **Nothing public happened.** No tag, no release page, users untouched on the last release. `main`
 keeps the last release and the next change is free to go, so do not report a red as an outage.
 
+### The DM hears about a red only when it is an app bug
+
+A red caused by CI, a scenario, a workflow or a guard is yours to fix, and the DM is not pinged
+mid-run. Diagnose, fix, prove, amend and push, then wait for the next run. **The DM hears twice at
+most: once when the release lands, and once if the red was a real app bug.**
+
+- **Already handled for you:** the rig reruns a failed scenario once in a fresh app, so a red you
+  read failed twice. A pass on the rerun is a flake: a `::warning`, a line in the job summary, and a
+  record the monitor counts. It never reaches you as a red. **Linux is advisory**: a Linux scenario
+  red prints a warning and a summary section and does not stop the release. Read them, and treat a
+  Linux-only failure as a reason to look, not to block.
+- **A test edited to make a run green is disclosed.** When the fix changes a scenario's or a unit
+  test's expectation (not the rig, a workflow or a guard), append one line to
+  `.claude/commit/disclosure.txt`: which test, and why the old expectation was wrong. The release
+  report carries that line, and `/commit` Step 0 shows a leftover one. A fix to the rig's plumbing
+  needs no line. A test loosened to hide an app change needs more than a line: it is an app bug, so
+  it goes to the DM.
+- **A real app bug is the DM's.** It changes what installs, so it goes back through the notes and
+  the DM's yes (below), in plain language, with what was found.
+
 - Read the log (`gh run view <id> --log`) and say which job failed and what its FAIL line said.
 - **Classify it before proposing a fix:** app bug, scenario fault, or infrastructure. Do not report
   a scenario fault as the app being broken.
@@ -38,5 +58,6 @@ first, and say which branches need a rebase.
 
 **Who says yes depends on what the fix touches.** A fix outside `build.files` - a scenario, a
 workflow, a guard - changes nothing users get: prove it at the runner's window size, push it
-straight back with `--amend`, and report afterwards. A fix to a real APP bug changes what
-installs, so it goes back through the notes (`notes.md`) and the user's yes.
+straight back with `--amend`, and say nothing until the release lands (with the disclosure line
+above if a test changed). A fix to a real APP bug changes what installs, so it goes back through
+the notes (`notes.md`) and the user's yes.

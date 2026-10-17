@@ -390,9 +390,13 @@ module.exports = async function worldRoadsFeature(rig) {
   await dm.evaluate('__rigKey("KeyZ", { ctrlKey: true }); worldMapHide(); 0');
   await dm.evaluate('notesRoadSet(' + JSON.stringify(r2uid) + ', "Mud after rain."); 0');
 
-  const src = await dm.evaluate('({ exp: doExport.toString(), res: worldRoadsImport.toString() })');
-  rig.check(/worldRoadsExport/.test(src.exp) && /notesRoadsAll/.test(src.exp), 'the export carries no roads or no road notes');
-  rig.check(/wrRemap/.test(src.res) && /notesRoadSet/.test(src.res), 'the import does not remap roads and road notes');
+  // The export, driven: doExport writes a real zip (destPath goes round the save dialog) and the app's own
+  // reader says what the campaign file carries. The import side is the restore further down.
+  const exportZip = path.join(rig.outDir, 'roads-export.zip');
+  const exported = JSON.parse(await dm.evaluate('(async () => { await doExport(allScenes.map(s => s.id), { destPath: ' + JSON.stringify(exportZip) +
+    ' }); return await window.electronAPI.readBackupCampaign(' + JSON.stringify(exportZip) + '); })()', 300000) || '{}');
+  rig.check(Object.keys(exported.roads || {}).length === 2 && exported.roadNotes && exported.roadNotes[r2uid] === 'Mud after rain.',
+            'the export carries no roads or no road notes: ' + JSON.stringify(exported).slice(0, 300));
 
   // The prepared file: the library as the export builds it, through the app's own archiver.
   const zip = path.join(rig.outDir, 'roads.zip');

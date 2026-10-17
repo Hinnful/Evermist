@@ -30,16 +30,28 @@ build step goes back to running nothing.
 **In a cloud session, run it freely.** `CLAUDE_CODE_REMOTE=true` marks one, and no screen there
 belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `gate.yml` does.
 
-**A commit gets a SMOKE pass; the full sweep runs in CI.** `/commit` Step 2 settles where the
-change's criteria live, then picks `smoke` plus the scenarios covering what the diff touched, and
-blocks on red. **`.github/workflows/gate.yml` then runs `smoke` and `regression` against the
-built app on Windows, Mac and Linux, and a red gate on any of them means no tag, no release and no installers.** So the full set is
-never run by hand: reach for one scenario to answer a question, and let CI own the sweep.
+**A commit gets the scenarios that run what it changed; the full sweep runs in CI.** `/commit`
+Step 2 runs `node tools/rig-ci.js pick`, which reads the map CI recorded (which functions of which
+file each scenario executed, per `tools/rig/coverage.js`) and picks `smoke` plus a greedy cover of the
+changed files, capped at about ten minutes, at below-normal priority. A changed `src/` script no
+scenario runs blocks the commit until one is written. **`.github/workflows/gate.yml` then runs
+`smoke` and `regression` against the built app on Windows, Mac and Linux. A red Windows or Mac leg
+means no tag, no release and no installers; Linux only warns.** So the full set is never run by
+hand: reach for one scenario to answer a question, and let CI own the sweep.
+
+**A failed scenario runs once more, in a fresh app on a fresh profile.** A pass on the rerun is a
+flake: the run stays green, prints a `::warning`, writes a summary line and adds the scenario to the
+run's flake record. Fail twice and it is red. At most three scenarios rerun per run, so a broken app
+does not double the run. The count is how `/commit` finds the scenarios worth fixing or retiring.
+
+**A scenario drives the app. It never reads the app's source text.** A check over a function's
+`toString()` or a `readFileSync` of `src/` passes while the behaviour is broken and fails on a rename.
+`doExport` takes a `destPath` that goes round the save dialog; call it, then read the zip it wrote.
 
 **A failure that comes and goes gets a PROBE, not another gate run.** `.github/workflows/probe.yml`
 runs one scenario in many copies at once on any platform; edit its matrix and push to `probe/**`.
-Ten copies answer "how often, and why" in five minutes. The gate splits each platform into four
-jobs, and Linux skips `playback` (see `gate.yml`).
+Ten copies answer "how often, and why" in five minutes. The gate splits Windows into six jobs and the
+other platforms into four, and Linux skips `playback` (see `gate.yml`).
 
 **The gate also runs when `tools/rig/**` changed, bump or no bump.** `tools/` ships nothing, so a
 rig change takes no version and the gate used to be skipped entirely - the one change nobody
@@ -74,7 +86,10 @@ npm run rig -- --shot "#sel" --shot-setup "openDropdown()"   a cropped screensho
 npm run rig -- name-one name-two         several by name, in that order
 ```
 
-That is every flag there is, and an unrecognised one stops the run rather than being ignored.
+`--report <file>` writes the run's per-scenario time, flakes and failures as JSON, and `--coverage` adds
+the functions each scenario ran (CI passes both on Windows; `--low-priority` runs the rig and the app
+at below-normal priority, which `/commit` passes). That is every flag there is, and an unrecognised
+one stops the run rather than being ignored.
 
 **EVERY RUN USES ONE GEOMETRY, HERE AND IN CI: the DM at 1008x681 on a 1024x768 screen.** Those
 are a GitHub runner's own numbers, so a local run and a gate run are the same run, digit for

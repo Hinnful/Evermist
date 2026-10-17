@@ -51,6 +51,7 @@
 // ⚠ 9 RESTARTS THE APP, so it runs last.
 // ⚠ NEVER PASS AN ASYNC EXPRESSION TO waitFor; the store is read from Node with lib.poll.
 
+const path = require('path');
 const lib = require('../../lib');
 const MAP_W = 900, MAP_H = 600;
 // ⚠ THE PRINTS FADE AND GLIDE for 0.3s after every camera move, and a slow runner reads or drops on them mid-flight.
@@ -743,11 +744,33 @@ module.exports = async function worldMapFeature(rig) {
 
   // ── 9. It survives two maps, a backup and a restart ───────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
-  // The backup, mirrored: the file lists read as text, and the place notes through the zip's own payload.
-  const lists = await dm.evaluate('({ list: sceneStore.listScenes.toString(), exp: doExport.toString() + sceneBackupMeta.toString(), res: _tiNewRecord.toString() + _tiWrite.toString() })');
-  rig.check(/worldPos/.test(lists.list), 'sceneStore.listScenes drops the position, so a restart forgets the layout');
-  rig.check(/worldPos/.test(lists.exp) && /notesPlacesAll/.test(lists.exp), 'the backup export carries no position or no place notes');
-  rig.check((lists.res.match(/worldPos/g) || []).length >= 2, 'the import does not rebuild the position into the scene and the library list');
+  // The backup, driven: doExport writes a real zip (destPath goes round the save dialog), the app's
+  // own readers read it back, and an import brings a deleted scene home with its place on the map.
+  const wmZip = path.join(rig.outDir, 'world-layout.zip');
+  const lists = await dm.evaluate(`(async () => {
+    const listed = (await sceneStore.listScenes()).filter(s => s.worldPos).length;
+    await doExport(allScenes.map(s => s.id), { destPath: ${JSON.stringify(wmZip)} });
+    const manifest = await window.electronAPI.readBackupManifest(${JSON.stringify(wmZip)});
+    const campaign = JSON.parse(await window.electronAPI.readBackupCampaign(${JSON.stringify(wmZip)}) || '{}');
+    return { total: allScenes.length, listed, inZip: manifest.filter(e => (e.metadata || e).worldPos).length,
+             placeNotes: Object.values(campaign.places || {}).length };
+  })()`, 300000);
+  rig.check(lists.listed === lists.total, 'sceneStore.listScenes drops the position, so a restart forgets the layout: ' + JSON.stringify(lists));
+  rig.check(lists.inZip === lists.total, 'the backup export carries no position for some scenes: ' + JSON.stringify(lists));
+  rig.check(lists.placeNotes > 0, 'the backup export carries no place notes: ' + JSON.stringify(lists));
+  const wmBack = await dm.evaluate(`(async () => {
+    const victim = allScenes.find(s => s.id !== currentScene.id && s.worldPos);
+    const had = { id: victim.id, pos: { ...victim.worldPos } };
+    deleteScenesWithUndo([victim.id]); await commitPendingDelete();
+    await restoreFromZipPath(${JSON.stringify(wmZip)});
+    for (let i = 0; i < 20 && document.getElementById('cd-anchor') && document.getElementById('cd-anchor').style.display === 'flex'; i++) {
+      document.getElementById(document.getElementById('cd-anchor').classList.contains('cd-solo') ? 'cd-ok' : 'cd-cancel').click();
+    }
+    const back = await sceneStore.loadScene(had.id);
+    const meta = (await sceneStore.listScenes()).find(s => s.id === had.id);
+    return { had, rec: back && back.worldPos, list: meta && meta.worldPos };
+  })()`, 300000);
+  rig.check(wmBack.rec && wmBack.list, 'an import does not rebuild the position into the scene and the library list: ' + JSON.stringify(wmBack));
   const trip = await dm.evaluate(`(() => {
     const raw = notesCampaignPayload(notesCampaignGet(), notesPlacesAll());
     const back = notesParsePlaces(raw);

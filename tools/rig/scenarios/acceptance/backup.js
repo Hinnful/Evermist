@@ -44,8 +44,8 @@
 //   • each zip is built by handing the app's own createBackupZip a payload like doExport's, under a
 //     fresh scene id, through the real archiver IPC (stageZip);
 //   • the IMPORT side runs the app's own restoreFromZipPath completely untouched;
-//   • section G reads doExport's OWN source for its whitelist, because that is the only way to
-//     see the list the export really uses rather than the copy this file writes.
+//   • section G calls sceneBackupMeta with a sentinel in every field and runs doExport itself
+//     (destPath), so the whitelist it checks is the one the export really uses.
 //
 // Backup and restore therefore still get the DM's own hand test, whatever this file reports. That
 // is the one exception to "never ask the DM to hand-verify what the rig can check".
@@ -467,46 +467,38 @@ module.exports = async function backupFeature(rig) {
   await dm.evaluate('document.getElementById("cd-ok").click(); notesCampaignSet("Campaign lore."); 0');
 
   // ── G. The export whitelist ──────────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
-  // Read off the export's own code. Nothing else can see the list the export really uses: the
-  // payload above is this file's own copy of it, so the two agreeing proves nothing. doExport hands
-  // each scene to sceneBackupMeta, whose returned literal is the list.
-  // ⚠ READ INSIDE THAT LITERAL, NOT THE WHOLE FUNCTION. Several of these names are its arguments,
-  // so a search over the whole source finds them whether or not they are ever written into the
-  // zip. And the keys may be shorthand (`mapExt,`) as well as `key: value`, so the match is on the
-  // name, not on a colon.
-  const whitelist = await dm.evaluate(`(() => {
-    const src = doExport.toString();
-    if (src.indexOf('metadata:      sceneBackupMeta(') === -1 && src.indexOf('metadata: sceneBackupMeta(') === -1) {
-      return { err: 'doExport no longer writes each scene through sceneBackupMeta' };
-    }
-    const meta = sceneBackupMeta.toString();
-    const at = meta.indexOf('return {');
-    if (at === -1) return { err: 'sceneBackupMeta returns no literal any more' };
-    let depth = 0, end = -1;
-    for (let i = meta.indexOf('{', at); i < meta.length; i++) {
-      if (meta[i] === '{') depth++;
-      else if (meta[i] === '}') { depth--; if (!depth) { end = i; break; } }
-    }
-    if (end === -1) return { err: 'the metadata literal does not close' };
-    const block = meta.slice(at, end);
+  // RED ON: tvFit removed from sceneBackupMeta (src/scenes/backup.js) — 2026-10-17
+  // Driven, not read. sceneBackupMeta is called with a sentinel in every field and must hand each
+  // one back, and doExport (through its destPath option, round the save dialog) writes a real zip
+  // whose campaign and module text are read back through the app's own readers. A field the whitelist
+  // forgets comes back undefined; the zip stays valid and the loss shows up as a room without its radii.
+  const exportZip = path.join(rig.outDir, 'whitelist.zip');
+  const whitelist = await dm.evaluate(`(async () => {
     const want = ['polygons', 'nextPolygonId', 'effects', 'nextEffectId', 'floorPlan',
                   'gridConfig', 'fogSettings', 'name', 'mapWidth', 'mapHeight', 'mapType',
-                  'mapMimeType', 'mapExt', 'createdAt', 'sortOrder', 'notes', 'edits', 'tvFit'];
-    const missing = want.filter(k => !new RegExp('(^|[\\\\s{,])' + k + '\\\\s*[:,}\\\\n]').test(block));
-    return { missing, carriesModuleText: src.indexOf('mtBackupPayload') !== -1,
-             carriesCampaign: src.indexOf('notesCampaignPayload') !== -1 };
-  })()`);
-  if (whitelist.err) rig.check(false, 'the export whitelist could not be read: ' + whitelist.err);
-  rig.note('the export whitelist: ' + JSON.stringify(whitelist));
-  rig.check(!whitelist.err && whitelist.missing.length === 0,
+                  'createdAt', 'sortOrder', 'notes', 'edits', 'tvFit', 'worldPos', 'group'];
+    const probe = {};
+    want.forEach(k => { probe[k] = ['polygons', 'effects'].includes(k) ? [] : 'probe-' + k; });
+    probe.nextPolygonId = 7; probe.nextEffectId = 8; probe.createdAt = 9; probe.sortOrder = 10;
+    probe.gridConfig = { probe: 1 }; probe.mapType = 'image'; probe.mapWidth = 11; probe.mapHeight = 12;
+    const out = sceneBackupMeta(probe, '.png', 'image/png', []);
+    const missing = want.filter(k => ['polygons', 'effects'].includes(k) ? !Array.isArray(out[k])
+      : JSON.stringify(out[k]) !== JSON.stringify(probe[k]));
+    missing.push(...['mapExt', 'mapMimeType'].filter(k => !out[k]));
+    await doExport([currentScene.id], { destPath: ${JSON.stringify(exportZip)} });
+    return { missing,
+             mtZip: await window.electronAPI.readBackupModuleText(${JSON.stringify(exportZip)}),
+             campaign: await window.electronAPI.readBackupCampaign(${JSON.stringify(exportZip)}) };
+  })()`, 300000);
+  rig.note('the export whitelist: ' + JSON.stringify({ missing: whitelist.missing }));
+  rig.check(whitelist.missing.length === 0,
             'the export drops ' + JSON.stringify(whitelist.missing) + ' — a field missing from ' +
             "that list goes silently, the zip stays valid, and the loss shows up as a room " +
             'without its radii or a scene without its Draw Rooms button');
-  rig.check(whitelist.carriesModuleText,
+  rig.check(!!whitelist.mtZip,
             'the export no longer puts the module text in the zip, so a restored library comes ' +
             'back without the campaign');
-  rig.check(whitelist.carriesCampaign,
+  rig.check(!!whitelist.campaign && JSON.parse(whitelist.campaign).notes === 'Campaign lore.',
             'the export no longer puts the campaign notes in the zip, so a restored library comes back without them');
 
   // ── H. What only a person can check ──────────────────────────────────────

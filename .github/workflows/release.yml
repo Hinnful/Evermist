@@ -143,6 +143,11 @@ jobs:
   # that fails never reaches main, so main holds nothing but commits that passed.
   # ⚠ FAST-FORWARD, never a merge, rebase or squash. Those all mint a new commit, and main would
   # then carry a tree no gate ever drove. The commit main gets is the commit the gate proved.
+  #
+  # ⚠ WINDOWS AND MAC BLOCK, LINUX ADVISES. gate.yml marks the Linux rig legs continue-on-error, so
+  # a Linux red reaches this job as `gate.result == 'success'` and lands anyway, while the run keeps
+  # a ::warning and a summary section naming the scenario. A Windows or Mac red is `failure` here
+  # and stops everything below. Linux's installer build is a separate job and still blocks.
   land:
     needs: [decide, verify, guards, gate, update]
     if: >-

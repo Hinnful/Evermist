@@ -12,7 +12,8 @@ the version heads the notes, and the notes wait for the user's yes. **The turn e
 **⚠ A SHIPPING COMMIT IS A RELEASE.** `.github/workflows/release.yml` fires on a push to
 `release/**` or `change/**`. When `package.json` carries a version with no tag, it runs the unit
 tests, builds all three installers, drives the packaged app through the full regression set on
-Windows, Mac and Linux, proves each platform's update, then fast-forwards `main`, tags and publishes. **The commit message
+Windows, Mac and Linux (Windows and Mac block, Linux only warns), proves each platform's update, then
+fast-forwards `main`, tags and publishes. **The commit message
 becomes the release notes verbatim.** Nothing public exists until the gate is green. **You never tag
 and never publish** - the workflow does both, or neither.
 
@@ -31,12 +32,13 @@ found:
 
 | State | Go to |
 | --- | --- |
+| `.claude/commit/disclosure.txt` present | Show its lines to the DM as part of the next report, then delete it |
 | `.claude/commit/notes.txt` present | A run stopped at the notes or the push. Show the notes again and ask; a yes never carries across sessions. On a yes, re-run `ship.js`, which skips finished stages |
 | Dirty tree | Step 1, a fresh run |
 | Anything else | Nothing in flight. Say so and stop |
 
 A failed release wakes the session that pushed it through the CI monitor, so Step 0 never goes
-looking for one.
+looking for one. A red that CI or a test caused is fixed without a message to the DM.
 
 ## Step 1 - Read the diff
 

@@ -91,6 +91,18 @@ function stageGuards() {
   return 'pass';
 }
 
+// ⚠ THE GUARDS READ THE WORKING TREE, and CI reads the commit. A guarded file edited after the notes
+// were agreed, or one a guard just ratcheted down, passes here and is absent from the commit.
+const GUARDED = ['index.html', 'CLAUDE.md', '.claude/hooks/blob-baseline.json', '.claude/hooks/claudemd-baseline.json'];
+
+function stageGuardInputs({ paths }) {
+  // git() trims its output, so the first line's status column may be gone: take the path after the status.
+  const dirtyFiles = git(['status', '--porcelain', '--', ...GUARDED]).split('\n').filter(Boolean).map((l) => l.replace(/^\s*\S+\s+/, ''));
+  const left = dirtyFiles.filter((f) => !paths.some((p) => p.replace(/\\/g, '/') === f));
+  if (left.length) throw new Error('the guards just judged edits the commit will not carry: ' + left.join(', ') + '. Pass them to ship.js, or revert them.');
+  return 'the commit carries every guarded edit';
+}
+
 function stageAgree({ branch }) {
   execFileSync(process.execPath, [path.join(ROOT, 'tools', 'check-release.js'), branch], { cwd: ROOT, stdio: 'pipe' });
   return 'branch, version and files agree';
@@ -125,6 +137,7 @@ function main() {
   const stages = [
     ['base', stageBase],
     ['guards', stageGuards],
+    ['guard inputs', () => stageGuardInputs(opts)],
     ['commit', () => stageCommit(opts, notes)],
     ['agree', () => stageAgree(opts)],
     ['push', () => stagePush(opts)],

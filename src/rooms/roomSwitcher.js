@@ -3,7 +3,7 @@
 // three clouds the tool row holds, in a well, a divider, and the door as a bare button. A click on a
 // cloud sets THIS room's fog at once (T still cycles it); the door button arms the Door tool, which then
 // works on any room's wall, as the tool always did. The row's clouds (fogBar.js) set what is drawn next
-// and touch no room. drawCursor calls refreshRoomSwitcher.
+// and touch no room. doRender calls refreshRoomSwitcher.
 
 const RF_TIPS = {
   reveal: 'Revealed - the players see this room (T cycles)',
@@ -42,7 +42,7 @@ function _rfSetMode(mode) {
 
 // Placed over the room's top edge, centred on it and kept in the window; under the room when there
 // is no space above. A drag of the room, or of one of its corners, puts it away until the drop.
-let _rfKey = '';   // what the switcher was last laid out for; drawCursor runs on every mouse move
+let _rfKey = '';   // what the switcher was last laid out for; doRender runs it every dirty frame
 function refreshRoomSwitcher() {
   const el = document.getElementById('room-fog');
   if (!el) return;

@@ -42,6 +42,11 @@ const REFUSE = [
     why: 'it opens the app in front and then holds it there for the length of the probe',
   },
   {
+    re: /^(?:(?:npm|yarn|pnpm)\s+run\s+lab(?::[a-z-]+)?|node\s+tools[\\/]lab\.js)\b/,
+    what: 'the lab',
+    why: 'it opens the DM window in front, on the lab library',
+  },
+  {
     // A bare electron launch, however it is spelled. The rig's own `node run.js` is allowed
     // by RIG_RUN below, which is checked first.
     re: /^(?:npx\s+)?electron(?:\.exe)?\s+\./,
