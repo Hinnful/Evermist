@@ -46,8 +46,7 @@ function _wmistTile(seed) {
 function worldMistInit() {
   _wmistSvg = document.getElementById('wm-mist');
   if (!_wmistSvg) return;
-  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const drift = to => calm ? '' : '<animateTransform attributeName="patternTransform" type="translate" from="0 0" to="' + to + '" dur="' + (to.startsWith('1100') ? 80 : 110) + 's" repeatCount="indefinite"/>';
+  const drift = to => '<animateTransform attributeName="patternTransform" type="translate" from="0 0" to="' + to + '" dur="' + (to.startsWith('1100') ? 80 : 110) + 's" repeatCount="indefinite"/>';
   _wmistSvg.innerHTML =
     '<defs>' +
       '<pattern id="wmist-a" patternUnits="userSpaceOnUse" width="1100" height="1100"><image href="' + _wmistTile(12345) + '" width="1100" height="1100" preserveAspectRatio="none"/>' + drift('1100 0') + '</pattern>' +
@@ -64,6 +63,12 @@ function worldMistInit() {
     inner: q('.wmist-inner-places'), clear: q('.wmist-clear-places'), picture: q('.wmist-picture'),
     soft: q('#wmist-soft'), masks: [q('#wmist-inner'), q('#wmist-veil')], all: _wmistSvg.querySelectorAll('.wmist-all'),
   };
+}
+
+// A SMIL clock started while the layer was hidden ticks but never repaints until it is set; setting it to its own
+// time wakes it without restarting the drift.
+function worldMistWake() {
+  if (_wmistSvg) _wmistSvg.setCurrentTime(_wmistSvg.getCurrentTime());
 }
 
 // The backdrop's own colour, laid over the greyed one and shown only inside the places.

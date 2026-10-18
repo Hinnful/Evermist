@@ -70,4 +70,5 @@ function refreshRoomSwitcher() {
   const st = _rpScreenToStyle(el, left, y);
   el.style.left = st.left + 'px';
   el.style.top = st.top + 'px';
+  hintsFirstPlace();
 }

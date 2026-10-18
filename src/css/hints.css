@@ -1,26 +1,30 @@
-/* hints.css — the first-time hint toast (hints.js). The look of #wm-empty (worldMap.css); it takes a click only on its own button. */
+/* hints.css — the first-time hint toast (hints.js). The app toast's skin (.sm-toast, sceneManager.css) plus a title and an
+   arrow; #wm-empty (worldMap.css) wears the same. It takes a click only on its own button. */
   .hintcall {
-    position: fixed; z-index: 105; width: 220px; padding: 10px 12px; zoom: var(--ui-zoom, 1.2); pointer-events: none; box-sizing: border-box;
-    border-radius: var(--panel-radius); background: var(--panel-bg); border: var(--panel-border); box-shadow: var(--panel-shadow);
+    position: fixed; z-index: 105; width: 240px; padding: 10px 6px 6px 12px; zoom: var(--ui-zoom, 1.2); pointer-events: none; box-sizing: border-box;
+    border-radius: 8px; background: var(--g-raised); border: 1px solid var(--g-line); box-shadow: var(--pop-shadow);
     opacity: 0; transition: opacity 0.2s;
   }
   .hintcall.vis { opacity: 1; }
-  .hintcall b { display: block; margin-bottom: 4px; font: 600 12px/1.2 system-ui, -apple-system, sans-serif; color: var(--g-text); }
-  .hintcall span { display: block; font: 400 11px/1.4 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
+  .hintcall b { display: block; margin: 0 6px 2px 0; font: 600 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .hintcall span { display: block; margin-right: 6px; font: 400 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
   .hintcall::after {
-    content: ''; position: absolute; width: 10px; height: 10px; background: var(--panel-bg);
+    content: ''; position: absolute; width: 10px; height: 10px; background: var(--g-raised);
   }
-  .hintcall-ok {
-    display: block; margin: 6px 0 0 auto; padding: 2px 4px; border: 0; background: none; cursor: pointer; pointer-events: auto;
-    font: 500 11px/1.2 system-ui, -apple-system, sans-serif; color: var(--b-icon);
-  }
-  .hintcall-ok:hover { text-decoration: underline; }
+  /* Got it is the toast's action: blue text, the tint only under the pointer. */
+  .hintcall .hintcall-ok { display: flex; margin: 4px 0 0 auto; pointer-events: auto; background: none; color: var(--b-icon); font-weight: 600; padding: 0 10px; }
+  .hintcall .hintcall-ok:hover { background: var(--b-tint); color: var(--b-icon); }
   /* Over a button, pointer down to it. */
-  .hintcall-rooms { transform: translate(-50%, -100%); }
-  .hintcall-rooms::after { left: 50%; bottom: -6px; margin-left: -5px; border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg); }
+  .hintcall-rooms, .hintcall-reveal { transform: translate(-50%, -100%); }
+  .hintcall-rooms::after, .hintcall-reveal::after { left: 50%; bottom: -6px; margin-left: -5px; border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg); }
   /* Left of the dock, pointer on the right edge pointing right. */
-  .hintcall-seat { transform: translate(-100%, -50%); }
-  .hintcall-seat::after { right: -6px; top: 50%; margin-top: -5px; border-top: var(--panel-border); border-right: var(--panel-border); transform: rotate(45deg); }
+  .hintcall-seat, .hintcall-next-map { transform: translateX(-100%); }
+  .hintcall-seat::after, .hintcall-next-map::after { right: -6px; top: var(--a); margin-top: -5px; border-top: var(--panel-border); border-right: var(--panel-border); transform: rotate(45deg); }
+  /* Beside the spot it points at (hintsFirstMap.js): the side it sits on names the arrow's edge, --a slides it along. */
+  .hc-above::after { left: var(--a); bottom: -6px; margin-left: -5px; border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg); }
+  .hc-below::after { left: var(--a); top: -6px; margin-left: -5px; border-left: var(--panel-border); border-top: var(--panel-border); transform: rotate(45deg); }
+  .hc-right::after { top: var(--a); left: -6px; margin-top: -5px; border-left: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg); }
+  .hc-left::after { top: var(--a); right: -6px; margin-top: -5px; border-top: var(--panel-border); border-right: var(--panel-border); transform: rotate(45deg); }
   /* Three pulses, then it stops by itself; hints.js drops the class on animationend. */
   .hintcall-blink { animation: hintcallBlink 0.7s ease-in-out 3; }
   @keyframes hintcallBlink {

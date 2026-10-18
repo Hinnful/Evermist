@@ -74,10 +74,12 @@ function commitDrawnShape(verts) {
   } else {
     pushUndo();
     fogModifiedThisStroke = true;
+    const touches = polygons.some(s => s.vertices && s.vertices.length >= 3 && shapesOverlap(s, verts));
     const pid = nextPolygonId++;
     shape = { id: pid, vertices: verts, mode: tool, cornerRadius: 0, name: t('Room {n}', { n: pid }) };
     polygons.push(shape);
     hintsRoomsDone();
+    hintsRoomDrawn(shape, touches);
   }
   // Deliberately NOT selected: drawing leaves the card closed so it cannot cover the map, and
   // naming is a second pass with the Select tool.

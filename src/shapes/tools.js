@@ -147,6 +147,7 @@ function settleFogAfterStroke() {
   fogModifiedThisStroke = false;
   fogDirty = true;
   scheduleRender();
+  if (shape === 'brush') hintsRoomsAsk();   // once the stroke is done, never mid-stroke
 }
 
 if (typeof module !== 'undefined' && module.exports) {

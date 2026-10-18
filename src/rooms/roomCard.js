@@ -213,6 +213,7 @@ function refreshRoomPanel() {
   const linked = paneSelectedRoom();
   const room = linked || (poly && !poly.material && !poly.light ? poly : null);
   if (isPane) paneReportRoom(room);
+  hintsFirstSync(room);
   notesPanelSync(room);
   if (roomTabKey(room) !== _rpTrioPid) { _rpTrioPid = roomTabKey(room); updateContextPanels(); }
 

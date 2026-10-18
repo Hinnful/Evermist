@@ -5,7 +5,7 @@
 //
 //   A. Opening Settings shows the toast left of the dock, level with the Seat alignment section, recorded as seen.
 //   B. Leaving Settings closes it.
-//   C. Opening Settings again in the same run shows nothing.
+//   C. Opening Settings again after it was seen shows nothing.
 //   D. A click on a chair closes it.
 
 const lib = require('../../lib');
@@ -18,7 +18,7 @@ module.exports = async function hintsSeat(rig) {
   await lib.openMap(rig, { w: 2400, h: 1500 });
   await dm.waitFor('fogCoverT === 0', 30000, 'the scene cover to lift');
   await dm.evaluate('if (dockActivePane() === "settings") dockOpen("scene");' +
-    ' localStorage.removeItem("evermist.hintsSeen"); localStorage.removeItem("evermist.hintsOff"); _hintRun = false; 0');
+    ' localStorage.removeItem("evermist.hintsSeen"); localStorage.removeItem("evermist.hintsOff"); 0');
   rig.check(!(await dm.evaluate(SHOWN)), 'a hint is up before Settings opened, so the checks below prove nothing');
 
   // A. RED ON: _hintSeat returning at once (hints.js) - 2026-10-18
@@ -45,7 +45,7 @@ module.exports = async function hintsSeat(rig) {
 
   // D. RED ON: the .sa-hit click listener gated off (hints.js) - 2026-10-18
   await tab('scene');
-  await dm.evaluate('_hintRun = false; localStorage.removeItem("evermist.hintsSeen"); 0');
+  await dm.evaluate('localStorage.removeItem("evermist.hintsSeen"); 0');
   await tab('settings');
   await lib.settle(dm, SHOWN, 8000);
   await dm.evaluate('document.querySelector("#cp-sec-seat-align .sa-hit").dispatchEvent(new MouseEvent("click", { bubbles: true })); 0');

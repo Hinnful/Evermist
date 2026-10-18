@@ -465,6 +465,7 @@ function worldMapShow(cam) {
   worldMapRefresh();
   _wmApplyCam();
   void _wm.offsetWidth;
+  worldMistWake();
   _wm.classList.remove('notrans');
   _wm.classList.add('shown');
   dockRefreshRail();

@@ -51,7 +51,6 @@ function flushBrushOps() {
 
 // The press itself paints: a click with no movement still clears a circle of fog.
 function toolBrushStart(pos) {
-  hintsRoomsAsk();
   pushUndo();
   fogModifiedThisStroke = true;
   const mapRadius = (brushSize / 2) / zoom;

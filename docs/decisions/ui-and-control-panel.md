@@ -1137,3 +1137,21 @@ never at startup. It shows once ever and at most one per run, and Settings' Hint
 follows the first brush stroke or either answer to Reveal all, over the Shape button, which blinks three times. Seat
 alignment shows beside its section the first time Settings opens; a two-step chain through a "go to Settings" toast was
 rejected as a tour, and the map's proportions as a trigger, since the chair does not depend on the map.
+**Reversed in part by** "First-time hints sit at the action, in one run": no limit per run, Rooms follows the end of a stroke.
+
+### First-time hints sit at the action, in one run · `SETTLED` (2026-10-18)
+The one-per-run limit spread a first evening's hints over four launches, so it is gone: each hint still shows once ever,
+and a hint falling due replaces the one on screen. Every hint sits as close to its action as it can. Reveal waits over the
+Brush on the first map opened, since it says where to start. Rooms follows the END of a brush stroke, never mid-stroke, and
+skips a map that already has rooms. A room just drawn gets Edit this room, or Cut, merge or split rooms when it overlaps
+another; one hint after one action kept the two apart, and the second blinks the repair icon. Both sit BELOW the room: a
+toast above it jumped when the room's popup came up on the next pick. A room moved onto another raises nothing, since the
+keys act only while drawing. Next map points at the world map button after ten unbroken minutes on the TV with other maps
+waiting; tying it to Show on TV was rejected, as that moment is about showing, not switching. Placing toasts at the
+pointer was tried and dropped as forced. Hints wear the app toast's skin.
+
+### The world map's mist drifts whatever the system's motion setting · `SETTLED` (2026-10-18)
+It stood still for a first-time DM. The mist skipped its drift under the system's reduce-motion setting, which Windows sets
+with animation effects off, the default in VMs and remote desktops; nothing else in the app reads that setting, and the
+mist is the world map's life, so the check is gone. Built while the layer was hidden, its SMIL clock also ticked without
+repainting on any machine, so opening the world map sets the clock to its own time.

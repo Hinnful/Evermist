@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 11 open items; IDs run to 195."
+description: "Open work only. 21 open items; IDs run to 205."
 metadata: 
   node_type: memory
   type: project
@@ -92,6 +92,67 @@ epic. The same path must not slow an experienced DM or hide the deeper features.
 **Out of this epic:** what a DM sees before installing. That is distribution, and it comes later.
 **First use · DM + Player**
 
+### 203. First-time hints for Music and Sounds
+Filed 2026-10-18 as a DESIGN DISCUSSION. **First of the hint items**: music is part of almost every game. No hint
+says how to get a track in, play it, or that a sound plays over the music. Built on the first-time hints
+(`hints.js`): one toast per action, where the action happens, each shown once ever. **Open:** which moments earn a
+hint (the pane opened empty, the first track added, the first sound), what each says, and how it fits item 199.
+**First use · DM only**
+
+### 204. First-time hints for the Bestiary and the fight table
+Filed 2026-10-18 as a DESIGN DISCUSSION, wanted but not urgent. Neither says what it is for or where to start: adding
+a monster, putting it in a fight, reading its stat block. **Open:** which moments earn a hint, and what each says.
+**First use · DM only**
+
+### 205. First-time hints for places on the world map
+Filed 2026-10-18 as a DESIGN DISCUSSION, wanted but not urgent. Nothing says the world map can group maps into
+places: drawing one, a map dropped inside it belonging to it, its name and notes. **Open:** which moments earn a hint,
+and what each says.
+**First use · DM only**
+
+### 197. The empty world map's callout says several maps go in at once
+Filed 2026-10-18 from the item 172 audit. The "+" picker takes several files at once, and nothing says so, so Sasha
+may add four maps one by one. Change the callout's line (`#wm-empty` in `index.html`) to say so, something like "Add
+the maps for your game here, one or several at once." Dropping maps on the window stays out: the app teaches no drag
+pattern anywhere, and DECISIONS ("Maps no longer import by a drop on the window") has why.
+**First use · DM only**
+
+### 198. A first-time hint shows how to reveal part of the map
+Filed 2026-10-18 from the item 172 audit. A map opens with Select in hand, and Select shows no fog clouds, so nothing
+points at the Brush or the Shape tool. The open eye, Reveal all, is the most visible fog control. The only reveal hint
+("Show one room at a time") comes after the first brush stroke. Add a hint the usual way (`hints.js`): a toast, with
+the tool's button blinking as Shape does for the Rooms hint. **Needs /spec:** what triggers it (the first map opened,
+or the first map on the TV), which button it points at, and how it shares the one-hint-per-run rule with Rooms.
+**First use · DM only**
+
+### 199. Local music files can get into the app
+Filed 2026-10-18 from the item 172 audit. The empty Music pane says "drop audio files into the app's music folder",
+and nothing says where that folder is. The pane takes no drop and has no add button, so a DM with local files has no
+way in. YouTube links work. **Needs /spec:** a picker that copies files into the music folder, a button that opens
+the folder, or both. The folder stays flat (PRODUCT, "Music groups are made in the app").
+**First use · DM only**
+
+### 200. Opening a map does not put it on the TV
+Filed 2026-10-18 from the item 172 audit; the DM has met it too. In Auto sync, opening a map sends it to the TV at
+once (`sceneSwitch.js`), so a DM cannot look at the next map privately. Manual sync holds it, but Manual sits behind
+the minimap's "…" menu and also holds every reveal. **Needs /spec:** how the DM opens a map without the TV following,
+and how the map then goes to the TV.
+**First use · Play · DM + Player**
+
+### 201. A first-time hint says a room can be edited
+Filed 2026-10-18. DMs do not know a drawn room can be reshaped: a double-click on it opens edit mode
+(`shapeSelect.js`), where its corners move and a double-click on a wall adds one. Add a hint the usual way
+(`hints.js`). **Needs /spec:** what triggers it (a room selected for the first time is the likely one) and where it
+points.
+**First use · DM only**
+
+### 202. An advanced hint names the repair keys once a room is in edit mode
+Filed 2026-10-18. When a DM first edits a room, a hint says a drawn shape can change the rooms it touches: Shift
+merges, Alt cuts out, Ctrl splits (`repairKeys.js`). Today only the bar's repair icon and its tooltip say so. Follows
+item 201, since this hint shows inside edit mode. **Needs /spec:** the wording, and whether it shows in the same run
+as 201 under the one-hint-per-run rule.
+**First use · DM only**
+
 ---
 
 # EVERYTHING ELSE
@@ -168,6 +229,15 @@ today live in the app's database (DECISIONS, "Notes are stored as a scene field 
 disk mean a new storage design that the previous release can still roll back over. Waits for the First User
 Experience epic.
 **Campaign · DM only**
+
+### 196. Balance the Linux rig shards
+Filed 2026-10-18. A release waits about 23 minutes, and Linux sets that time. In the 4.6.2 run one Linux shard took 21
+minutes while the others took 10 to 18, and every Windows and Mac shard finished within 11. The dealing in
+`gate.yml` deals named slow scenarios first, then every Nth by name, so it ignores how long each scenario takes.
+Linux only advises, but `land` still waits for it. More Linux jobs was rejected (DECISIONS, "Windows is dealt six
+ways": its time is software GL, not queueing), so this is about dealing the same scenarios more evenly, for example
+by the times the shard reports already record. Done when the slowest Linux shard sits near the others.
+**Upkeep · no visible change**
 
 ---
 
