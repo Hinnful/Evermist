@@ -14,29 +14,105 @@ const { spawn } = require('child_process');
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const CLOSED = 'Evermist is not open. Ask the DM to start Evermist on this computer, then try again.';
 
+// MCP annotations: Claude's app asks the DM before a tool marked destructive.
+const READ = { readOnlyHint: true };
+const EDIT = { readOnlyHint: false, destructiveHint: false };
+
+const DELETE = { readOnlyHint: false, destructiveHint: true };
+
+const INSTRUCTIONS = [
+  'Evermist is the DM\'s map and campaign app. Use these tools when the DM asks to prep "in Evermist". Call list_campaign first.',
+  'How it fits together: the campaign holds places (regions on the world map that hold scenes). A scene is one map, an image or a video, with its own fog, grid, rooms and notes. A room is a named area on a scene with notes, and is hidden, half or revealed. A scene needs a map file. When the DM asks for a scene, make a scene, never a place. Fights and the bestiary are separate from scenes. Call guide to teach a new DM what any of these is.',
+  'Claude preps and never runs the game: nothing you do reaches the TV, and a change to the scene the TV shows is refused. Every change is one step that undo_last_change takes back. Before you delete anything, tell the DM in chat what goes and get their yes.',
+].join('\n\n');
+
 const NAME = { type: 'string', description: 'The name as the DM sees it in Evermist.' };
+const PLACE_OF = { type: 'string', description: 'The scene\'s place, when two scenes share a name.' };
 const TOOLS = [
-  { name: 'list_campaign', description: 'List what the DM\'s Evermist campaign holds: places on the world map with their scenes, scenes in no place, fights, and how many bestiary monsters there are. Call this first.',
+  { name: 'list_campaign', annotations: READ, description: 'List what the DM\'s Evermist campaign holds: places on the world map with their scenes, scenes in no place, fights, and how many bestiary monsters there are. Call this first.',
     inputSchema: { type: 'object', properties: {} } },
-  { name: 'read_notes', description: 'Read notes from Evermist: the campaign\'s, a place\'s, or a scene\'s (with each room\'s notes).',
+  { name: 'read_notes', annotations: READ, description: 'Read notes from Evermist: the campaign\'s, a place\'s, or a scene\'s (with each room\'s notes).',
     inputSchema: { type: 'object', required: ['level'], properties: {
       level: { type: 'string', enum: ['campaign', 'place', 'scene'] }, name: NAME,
       place: { type: 'string', description: 'For a scene: its place, when two scenes share a name.' } } } },
-  { name: 'add_notes', description: 'Add text to the notes of the campaign, a place, or an existing scene. The text goes below what is there; nothing is replaced. Claude cannot create scenes.',
+  { name: 'add_notes', annotations: EDIT, description: 'Add text to the notes of the campaign, a place, or a scene. The text goes below what is there.',
     inputSchema: { type: 'object', required: ['level', 'text'], properties: {
       level: { type: 'string', enum: ['campaign', 'place', 'scene'] }, name: NAME,
       place: { type: 'string', description: 'For a scene: its place, when two scenes share a name.' },
       text: { type: 'string', description: 'Plain text to add.' } } } },
-  { name: 'create_place', description: 'Create a new place on the world map, in an empty spot, with optional notes. The DM drags it into position later.',
+  { name: 'set_notes', annotations: EDIT, description: 'Replace the notes of the campaign, a place, or a scene with new text. The old text is kept in Claude\'s history, so undo_last_change brings it back. Use add_notes to add without replacing.',
+    inputSchema: { type: 'object', required: ['level', 'text'], properties: {
+      level: { type: 'string', enum: ['campaign', 'place', 'scene'] }, name: NAME,
+      place: { type: 'string', description: 'For a scene: its place, when two scenes share a name.' },
+      text: { type: 'string', description: 'The full new notes. Empty text clears them.' } } } },
+  { name: 'create_place', annotations: EDIT, description: 'Create a new place on the world map, in an empty spot, with optional notes. A place starts with no scenes; it gets them when maps are added into it. The DM drags it into position later.',
     inputSchema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, notes: { type: 'string' } } } },
-  { name: 'create_fight', description: 'Create a new fight in the fight table from monsters already in the bestiary. A monster the bestiary lacks is left out and named in the reply. The DM\'s open fight is not changed.',
+  { name: 'create_fight', annotations: EDIT, description: 'Create a new fight in the fight table from monsters already in the bestiary. A monster the bestiary lacks is left out and named in the reply. The DM\'s open fight is not changed.',
     inputSchema: { type: 'object', required: ['name', 'monsters'], properties: {
       name: { type: 'string' },
       monsters: { type: 'array', items: { type: 'object', required: ['name'], properties: {
         name: { type: 'string', description: 'The bestiary name.' }, count: { type: 'integer', minimum: 1, maximum: 20 },
         side: { type: 'string', enum: ['enemy', 'ally'] } } } } } } },
-  { name: 'list_bestiary', description: 'Search the DM\'s bestiary by name. An empty query lists the first 60 monsters.',
+  { name: 'list_bestiary', annotations: READ, description: 'Search the DM\'s bestiary by name. An empty query lists the first 60 monsters.',
     inputSchema: { type: 'object', properties: { query: { type: 'string' } } } },
+  { name: 'find_map_files', annotations: READ, description: 'Search the DM\'s Downloads, Desktop, Documents and Pictures (two folders deep) for images, videos and zips, newest first, at most 50. Use it to find a map file for create_scene.',
+    inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'Part of the file name.' } } } },
+  { name: 'create_scene', annotations: EDIT, description: 'Make a new scene from a map file, or one scene per map in a folder. The scene starts fully fogged with no rooms. It is never opened and never sent to the TV. Without a place it lands in no place; with one it lands inside that place\'s outline.',
+    inputSchema: { type: 'object', required: ['path'], properties: {
+      path: { type: 'string', description: 'The full path of an image or video file, or of a folder of them.' },
+      name: { type: 'string', description: 'The scene\'s name, for a single file. Default: the file name.' },
+      place: { type: 'string', description: 'An existing place to put the scene in.' } } } },
+  { name: 'rename_scene', annotations: EDIT, description: 'Rename a scene.',
+    inputSchema: { type: 'object', required: ['name', 'newName'], properties: { name: NAME, place: PLACE_OF, newName: { type: 'string' } } } },
+  { name: 'move_scene', annotations: EDIT, description: 'Move a scene into a place, onto a free spot inside its outline, or out of every place when toPlace is empty.',
+    inputSchema: { type: 'object', required: ['name'], properties: { name: NAME, place: PLACE_OF, toPlace: { type: 'string', description: 'The place to move into. Empty: no place.' } } } },
+  { name: 'set_scene', annotations: EDIT, description: 'Change a scene\'s fog colour or its grid cell size. Refused for the scene the TV shows and for the one the DM has open.',
+    inputSchema: { type: 'object', required: ['name'], properties: { name: NAME, place: PLACE_OF,
+      fogColor: { type: 'string', description: 'A hex colour such as #8899aa.' },
+      gridCellSize: { type: 'integer', minimum: 10, maximum: 400, description: 'The size of one grid square in map pixels.' } } } },
+  { name: 'delete_scene', annotations: DELETE, description: 'Delete a scene with its map, fog and rooms. Tell the DM what goes and get their yes first. undo_last_change brings it back. Animated maps cannot be deleted by Claude.',
+    inputSchema: { type: 'object', required: ['name'], properties: { name: NAME, place: PLACE_OF } } },
+  { name: 'rename_place', annotations: EDIT, description: 'Rename a place. Its notes, scenes and roads come with it.',
+    inputSchema: { type: 'object', required: ['name', 'newName'], properties: { name: NAME, newName: { type: 'string' } } } },
+  { name: 'reshape_place', annotations: EDIT, description: 'Make a place a rectangle in world-map units (list_campaign shows each place\'s bounds). At least 150 wide and 110 high. Scenes in the place stay in it.',
+    inputSchema: { type: 'object', required: ['name', 'x', 'y', 'w', 'h'], properties: { name: NAME,
+      x: { type: 'number', description: 'Left edge.' }, y: { type: 'number', description: 'Top edge.' },
+      w: { type: 'number', description: 'Width.' }, h: { type: 'number', description: 'Height.' } } } },
+  { name: 'delete_place', annotations: DELETE, description: 'Delete a place and its notes. Its scenes stay, as scenes in no place. Tell the DM what goes and get their yes first. undo_last_change brings it back.',
+    inputSchema: { type: 'object', required: ['name'], properties: { name: NAME } } },
+  { name: 'create_road', annotations: EDIT, description: 'Draw a road between two places on the world map.',
+    inputSchema: { type: 'object', required: ['from', 'to'], properties: { from: { type: 'string', description: 'A place name.' }, to: { type: 'string', description: 'A place name.' }, name: { type: 'string' } } } },
+  { name: 'set_backdrop', annotations: EDIT, description: 'Set the picture behind the world map from an image file (up to 30 MB). It replaces the current backdrop; undo_last_change brings that back.',
+    inputSchema: { type: 'object', required: ['path'], properties: { path: { type: 'string', description: 'The full path of an image file.' } } } },
+  { name: 'read_fight', annotations: READ, description: 'Read a fight: its monsters with side, AC and HP.',
+    inputSchema: { type: 'object', required: ['name'], properties: { name: { type: 'string', description: 'The fight\'s name.' } } } },
+  { name: 'edit_fight', annotations: EDIT, description: 'Change a fight: rename it, remove monsters, set a monster\'s count, change a side, or add monsters from the bestiary. Refused for the fight open at the table. Monsters are named without their number ("Goblin", not "Goblin 2").',
+    inputSchema: { type: 'object', required: ['name'], properties: {
+      name: { type: 'string', description: 'The fight\'s name.' }, newName: { type: 'string' },
+      add: { type: 'array', items: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, count: { type: 'integer', minimum: 1, maximum: 20 }, side: { type: 'string', enum: ['enemy', 'ally'] } } } },
+      remove: { type: 'array', items: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, count: { type: 'integer', minimum: 1, description: 'How many, from the last. Default: all.' } } } },
+      counts: { type: 'array', items: { type: 'object', required: ['name', 'count'], properties: { name: { type: 'string' }, count: { type: 'integer', minimum: 0, maximum: 20, description: 'The number of that monster the fight should hold.' } } } },
+      sides: { type: 'array', items: { type: 'object', required: ['name', 'side'], properties: { name: { type: 'string' }, side: { type: 'string', enum: ['enemy', 'ally'] } } } } } } },
+  { name: 'delete_fight', annotations: DELETE, description: 'Delete a fight with its rows. Tell the DM what goes and get their yes first. undo_last_change brings it back. Refused for the fight open at the table.',
+    inputSchema: { type: 'object', required: ['name'], properties: { name: { type: 'string', description: 'The fight\'s name.' } } } },
+  { name: 'read_stat_block', annotations: READ, description: 'Read one bestiary monster\'s full stat block.',
+    inputSchema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, source: { type: 'string', description: 'When two monsters share a name.' } } } },
+  { name: 'add_monster', annotations: EDIT, description: 'Add one monster to the bestiary from pasted stat block text (name first). The text goes through the same reader an import uses; a block that does not read cleanly is refused.',
+    inputSchema: { type: 'object', required: ['text'], properties: { text: { type: 'string', description: 'One monster\'s stat block.' }, source: { type: 'string', description: 'Where it is from. Default: Claude.' } } } },
+  { name: 'import_monsters', annotations: EDIT, description: 'Import monsters into the bestiary from up to 10 web pages (one monster each) or from a PDF book on disk. Never replaces an entry. A block that does not read cleanly is left out and named.',
+    inputSchema: { type: 'object', properties: { urls: { type: 'array', items: { type: 'string' } }, path: { type: 'string', description: 'The full path of a PDF book.' } } } },
+  { name: 'list_gallery', annotations: READ, description: 'List the pictures in the DM\'s gallery (handouts, portraits), optionally by name.',
+    inputSchema: { type: 'object', properties: { query: { type: 'string' } } } },
+  { name: 'add_picture', annotations: EDIT, description: 'Add an image file, or every image in a folder, to the gallery. It is never shown on the TV.',
+    inputSchema: { type: 'object', required: ['path'], properties: { path: { type: 'string', description: 'The full path of an image file or a folder.' }, name: { type: 'string', description: 'The picture\'s name, for a single file. Default: the file name.' } } } },
+  { name: 'rename_picture', annotations: EDIT, description: 'Rename a gallery picture.',
+    inputSchema: { type: 'object', required: ['name', 'newName'], properties: { name: { type: 'string' }, newName: { type: 'string' } } } },
+  { name: 'delete_picture', annotations: DELETE, description: 'Delete a gallery picture. Tell the DM what goes and get their yes first. undo_last_change brings it back. Refused for the picture the TV shows.',
+    inputSchema: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } } },
+  { name: 'guide', annotations: READ, description: 'Plain-language how-to text for a topic, to teach a new DM what it is. Topics: scenes, places, rooms, fog, notes, fights, bestiary, gallery. An unknown topic lists them.',
+    inputSchema: { type: 'object', properties: { topic: { type: 'string' } } } },
+  { name: 'undo_last_change', annotations: EDIT, description: 'Undo the newest change Claude made in Evermist (the last 30 are kept, until Evermist closes). Call it again for the one before.',
+    inputSchema: { type: 'object', properties: {} } },
 ];
 
 const START_MS = 60000;
@@ -50,7 +126,7 @@ function postOnce(tool, args) {
   if (!at || !at.port || !at.token) return Promise.resolve({ closed: true, text: CLOSED, isError: true });
   const body = JSON.stringify({ tool, args });
   return new Promise(resolve => {
-    const req = http.request({ host: '127.0.0.1', port: at.port, path: '/call', method: 'POST', timeout: 30000,
+    const req = http.request({ host: '127.0.0.1', port: at.port, path: '/call', method: 'POST', timeout: 330000,
       headers: { 'content-type': 'application/json', 'x-evermist-token': at.token, 'content-length': Buffer.byteLength(body) } }, res => {
       let out = '';
       res.setEncoding('utf8');
@@ -106,7 +182,7 @@ async function handle(msg) {
     case 'initialize':
       return { protocolVersion: PROTOCOLS.includes(p.protocolVersion) ? p.protocolVersion : PROTOCOLS[0],
         capabilities: { tools: {} }, serverInfo: { name: 'evermist', version: '1' },
-        instructions: 'Evermist is the DM\'s map and campaign app. Use these tools when the DM asks to write prep "into Evermist". Read list_campaign first.' };
+        instructions: INSTRUCTIONS };
     case 'ping': return {};
     case 'tools/list': return { tools: TOOLS };
     case 'tools/call': {

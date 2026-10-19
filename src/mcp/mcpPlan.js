@@ -1,12 +1,15 @@
 'use strict';
 // mcpPlan.js — pure rules behind what Claude writes through the MCP connection: a note appended, an
-// empty spot for a new place, and a fight built from the bestiary. No DOM. Tested.
+// empty spot for a new place, a fight built from the bestiary, Claude's history of changes and the guard
+// that keeps it off the TV. No DOM. Tested.
 
 const MP = (typeof module !== 'undefined' && module.exports) ? require('../combat/combatPlan.js')
-  : { combatRowFromEntry, combatSearchBlocks };
+  : { combatRowFromEntry, combatSearchBlocks, combatBaseName, combatDuplicateRow };
 
 const MCP_PLACE_W = 360, MCP_PLACE_H = 260, MCP_GAP = 60;
 const MCP_MAX_COUNT = 20;
+const MCP_HISTORY_MAX = 30;
+const MCP_PLACE_MIN_W = 150, MCP_PLACE_MIN_H = 110;
 
 // Claude's text goes below the DM's, after a blank line, and never replaces it. Over `cap` it is refused whole.
 function mcpAppend(existing, add, cap) {
@@ -15,6 +18,47 @@ function mcpAppend(existing, add, cap) {
   if (!more) return { text: cur, empty: true };
   const text = cur ? cur + '\n\n' + more : more;
   return text.length > cap ? { text: cur, tooLong: true } : { text };
+}
+
+// A note replaced whole. Over `cap` it is refused; empty text clears the notes.
+function mcpReplace(text, cap) {
+  const next = typeof text === 'string' ? text.trim() : '';
+  return next.length > cap ? { tooLong: true } : { text: next };
+}
+
+// Claude's history: a step is { label, undo }. The newest `max` stay, the oldest fall off.
+function mcpHistoryPush(list, step, max) {
+  list.push(step);
+  while (list.length > (max || MCP_HISTORY_MAX)) list.shift();
+  return list;
+}
+
+// Whether the TV shows a scene now: a Player window is open, nothing holds it clear, and the scene is the
+// open one (one map) or in a column (two maps).
+function mcpOnTv(s) {
+  return !!(s.playerOpen && !s.held && (s.panes ? s.inColumn : s.isOpen));
+}
+
+// A colour as '#rrggbb' in lower case from '#abc', 'abc' or '#aabbcc', else null.
+function mcpCleanHex(raw) {
+  const s = String(raw || '').trim().replace(/^#/, '').toLowerCase();
+  if (/^[0-9a-f]{3}$/.test(s)) return '#' + s.split('').map(c => c + c).join('');
+  return /^[0-9a-f]{6}$/.test(s) ? '#' + s : null;
+}
+
+// A grid cell size in map pixels, rounded and held to the grid control's range (10 to 400), else null.
+function mcpGridSize(raw) {
+  const n = Math.round(Number(raw));
+  return Number.isFinite(n) && n >= 10 && n <= 400 ? n : null;
+}
+
+// A place's rectangle from { x, y, w, h } in world-map units, rounded, or null when a number is missing or the
+// rectangle is too small to hold a scene's card.
+function mcpRectArg(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = { x: Math.round(Number(raw.x)), y: Math.round(Number(raw.y)), w: Math.round(Number(raw.w)), h: Math.round(Number(raw.h)) };
+  if (!Object.values(r).every(Number.isFinite)) return null;
+  return r.w >= MCP_PLACE_MIN_W && r.h >= MCP_PLACE_MIN_H ? r : null;
 }
 
 const _mpHit = (a, b) => a.x < b.x + b.w + MCP_GAP && b.x < a.x + a.w + MCP_GAP && a.y < b.y + b.h + MCP_GAP && b.y < a.y + a.h + MCP_GAP;
@@ -72,6 +116,53 @@ function mcpFightRows(blocks, monsters, nextId) {
   return { rows, missing, nextId: id };
 }
 
+// A fight's rows after the edits in `ops`, in this order: remove [{ name, count }] (the last copies; all when no
+// count), counts [{ name, count }] (a monster's copies made to that many), sides [{ name, side }], then add
+// [{ name, count, side }] from the bestiary. A monster is named without its number: "Goblin" for "Goblin 2".
+// Returns { rows, nextId, changed, missing, notes }; `rows` passed in are not touched.
+function mcpEditRows(blocks, rows, ops, nextId) {
+  let list = (rows || []).map(r => Object.assign({}, r));
+  const out = { missing: [], notes: [], changed: false };
+  let id = nextId;
+  const key = s => String(s || '').trim().toLowerCase();
+  const copies = name => list.filter(r => key(MP.combatBaseName(r.name)) === key(name));
+  const drop = (name, n) => {
+    const gone = new Set(copies(name).slice(-n));
+    list = list.filter(r => !gone.has(r));
+    return gone.size;
+  };
+  const o = ops || {};
+  for (const x of Array.isArray(o.remove) ? o.remove : []) {
+    const have = copies(x && x.name).length;
+    if (!have) { out.notes.push('"' + ((x && x.name) || '') + '" is not in the fight.'); continue; }
+    out.changed = drop(x.name, x.count ? Math.max(1, Math.floor(Number(x.count)) || 1) : have) > 0 || out.changed;
+  }
+  for (const x of Array.isArray(o.counts) ? o.counts : []) {
+    const have = copies(x && x.name);
+    const want = Math.max(0, Math.min(MCP_MAX_COUNT, Math.floor(Number(x && x.count))));
+    if (!have.length || !Number.isFinite(want)) { out.notes.push('"' + ((x && x.name) || '') + '" is not in the fight, so its count was not set. Use add.'); continue; }
+    if (want < have.length) { drop(x.name, have.length - want); out.changed = true; continue; }
+    for (let i = have.length; i < want; i++) {
+      const last = copies(x.name).pop();
+      list.splice(list.indexOf(last) + 1, 0, MP.combatDuplicateRow(last, list, id++));
+      out.changed = true;
+    }
+  }
+  for (const x of Array.isArray(o.sides) ? o.sides : []) {
+    const side = x && x.side === 'ally' ? 'ally' : 'enemy';
+    const hit = copies(x && x.name).filter(r => (r.side || 'enemy') !== side);
+    hit.forEach(r => { r.side = side; });
+    if (!copies(x && x.name).length) out.notes.push('"' + ((x && x.name) || '') + '" is not in the fight.');
+    out.changed = hit.length > 0 || out.changed;
+  }
+  const built = mcpFightRows(blocks, o.add, id);
+  list.push(...built.rows);
+  id = built.nextId;
+  out.missing = built.missing;
+  out.changed = out.changed || built.rows.length > 0;
+  return Object.assign(out, { rows: list, nextId: id });
+}
+
 // The scenes a name points at, narrowed by place when one is given. Case is ignored.
 function mcpFindScenes(scenes, name, place) {
   const q = String(name || '').trim().toLowerCase(), p = String(place || '').trim().toLowerCase();
@@ -80,6 +171,6 @@ function mcpFindScenes(scenes, name, place) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { MCP_PLACE_W, MCP_PLACE_H, MCP_GAP, mcpAppend, mcpFreeRect, mcpMatchMonster, mcpSuggest,
-    mcpFightRows, mcpFindScenes };
+  module.exports = { MCP_PLACE_W, MCP_PLACE_H, MCP_GAP, MCP_HISTORY_MAX, MCP_PLACE_MIN_W, MCP_PLACE_MIN_H, mcpRectArg, mcpCleanHex, mcpGridSize, mcpAppend, mcpReplace, mcpHistoryPush, mcpOnTv, mcpFreeRect, mcpMatchMonster, mcpSuggest,
+    mcpFightRows, mcpEditRows, mcpFindScenes };
 }

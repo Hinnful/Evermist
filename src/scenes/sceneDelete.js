@@ -3,6 +3,7 @@
 
 let smPending = null;            // deferred delete: { items:[{id,index,meta}], ids:[…] }
 let smUndoTimer = null;
+let smToastUndo = null;          // the undo a toast not from the trash runs (Claude's changes, mcpHistory.js)
 
 // ── Delete with undo ──────────────────────────────────────────────────────────
 // The trash removes scenes from the list at once but DEFERS the real IndexedDB deletion so Undo
@@ -101,14 +102,15 @@ function commitPendingDelete() {
 
 // The undo toast's two buttons, and the delete that is still pending when the window goes.
 function sceneDeleteInit() {
-  document.querySelector('#scene-undo-toast .undo-btn').onclick = undoDelete;
+  document.querySelector('#scene-undo-toast .undo-btn').onclick = () => (smToastUndo ? smToastUndo() : undoDelete());
   document.querySelector('#scene-undo-toast .undo-x').onclick = commitPendingDelete;
   window.addEventListener('beforeunload', commitPendingDelete);
 }
 
-function showUndoToast(msg) {
+function showUndoToast(msg, onUndo) {
   const t = document.getElementById('scene-undo-toast');
   if (!t) return;
+  smToastUndo = onUndo || null;
   t.querySelector('.undo-msg').textContent = msg;
   showToast(t);
   const bar = t.querySelector('.undo-bar');
@@ -118,6 +120,7 @@ function showUndoToast(msg) {
 }
 
 function hideUndoToast() {
+  smToastUndo = null;
   const t = document.getElementById('scene-undo-toast');
   if (t) t.style.display = 'none';
 }

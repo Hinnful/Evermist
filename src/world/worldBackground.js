@@ -197,6 +197,30 @@ async function _wbClear() {
   _wbApply();
 }
 
+// The picture and where it sits as one value, and back, for a caller with a history of its own (mcpHistory.js).
+async function worldBackgroundTake() {
+  if (!_wbMeta) return null;
+  const blob = await _wbStore('readonly', s => s.get('image')).catch(() => null);
+  return blob ? { blob, meta: { ..._wbMeta } } : null;
+}
+
+async function worldBackgroundPut(was) {
+  if (!was) { await _wbClear(); return; }
+  await _wbStore('readwrite', s => s.put(was.blob, 'image'));
+  if (_wbUrl) URL.revokeObjectURL(_wbUrl);
+  _wbUrl = URL.createObjectURL(was.blob);
+  _wbMeta = { ...was.meta };
+  _wbMetaSave(true);
+  _wbApply();
+}
+
+// The picture from `file` as the backdrop, or false when it would not take.
+async function worldBackgroundSet(file) {
+  const before = _wbMeta;
+  await _wbChoose(file);
+  return _wbMeta !== before;
+}
+
 // A typed or scrubbed number, clamped to its range.
 function _wbBind(numId, key, min, max, toValue) {
   const num = document.getElementById(numId);

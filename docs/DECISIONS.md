@@ -367,10 +367,12 @@ embedded links), which kept the room note to the five seconds when the party ope
 Reopened by the one-stop positioning in PRODUCT.md: a feature is judged by the work it takes
 off the DM, not by another tool doing the job better, so notes on a scene or a place are in scope.
 
-### Auto-assigning entries in click order (a queue) · `REJECTED`
+### Auto-assigning entries in click order (a queue) · `REJECTED` (reopened 2026-10-19 for Claude only)
 Killed by the real text: sub-locations mean one heading covers several polygons, so it
 desyncs within a few rooms. The DM picking is the irreducible step, because only they know
 which blob on the map is K12.
+Reopened for Claude only: it may name a room from a module or notes, because it reads both and the DM
+reviews the result. The app itself still never assigns.
 
 ### Importing a DM's own Notion prep notes · `REJECTED`
 They are unstructured and often do not exist. The bulk input is the module, which is highly

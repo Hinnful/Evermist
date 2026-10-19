@@ -42,7 +42,21 @@ describe('mcpShim', () => {
     assert.equal(init.result.protocolVersion, '2025-06-18');
     assert.deepEqual(init.result.capabilities, { tools: {} });
     assert.deepEqual(list.result.tools.map(t => t.name).sort(),
-      ['add_notes', 'create_fight', 'create_place', 'list_bestiary', 'list_campaign', 'read_notes']);
+      ['add_monster', 'add_notes', 'add_picture', 'create_fight', 'create_place', 'create_road', 'create_scene', 'delete_fight', 'delete_picture', 'delete_place', 'delete_scene', 'edit_fight', 'find_map_files', 'guide', 'import_monsters', 'list_bestiary', 'list_campaign', 'list_gallery', 'move_scene', 'read_fight', 'read_notes', 'read_stat_block', 'rename_picture', 'rename_place', 'rename_scene', 'reshape_place', 'set_backdrop', 'set_notes', 'set_scene', 'undo_last_change']);
+  });
+
+  it('explains what Evermist holds and that Claude only preps', async () => {
+    const [init] = await talk(path.join(dir, 'none.json'), [{ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }]);
+    const text = init.result.instructions;
+    for (const word of ['places', 'scenes', 'rooms', 'never a place', 'never runs the game', 'undo_last_change', 'yes']) assert.match(text, new RegExp(word));
+  });
+
+  it('marks every tool read-only, an edit or a delete, and every delete destructive', async () => {
+    const [, list] = await talk(path.join(dir, 'none.json'), [{ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }, { id: 2, method: 'tools/list' }]);
+    for (const t of list.result.tools) {
+      assert.ok(t.annotations && typeof t.annotations.readOnlyHint === 'boolean', t.name + ' has no annotations');
+      assert.equal(!!t.annotations.destructiveHint, t.name.startsWith('delete_'), t.name);
+    }
   });
 
   it('says Evermist must be open when it is not', async () => {

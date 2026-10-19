@@ -557,10 +557,29 @@ and no Player warmed. The app holds one copy per library, so the DM opening Ever
 same app, which reloads its page as a normal start and shows it. Unseen, it quits after fifteen
 minutes with no call.
 
-Claude only adds. Its text goes below the DM's notes; a new place lands in an empty spot on the
-world map and takes one world-map undo step; a new fight is built from monsters already in the
-bestiary and leaves the DM's open fight alone. A note for a scene held in a column goes through that
-column, so its autosave keeps it. Nothing reaches the Player.
+Claude does the DM's prep and none of the play. Its tools make, rename, move, change and delete
+scenes, places, roads, the world map's backdrop, fights, bestiary monsters and gallery pictures, and
+add to or replace notes at the campaign, place and scene levels. The shim's `instructions` tell it
+what a place, a scene and a room are, and a `guide` tool returns plain-language how-to text per topic
+from `mcpGuideText.js`, which the in-app guides can read too. Tools are grouped one file per subject in
+`src/mcp/`, and `mcpTools.js` is the dispatcher.
+
+A scene is made from a map file or a folder of them. Main finds the files (`mapScan.js`, searching
+Downloads, Desktop, Documents and Pictures two folders deep) and reads their bytes, and the window runs
+the quiet import that the world map's Add uses. The scene is never opened and never sent to the TV.
+
+Every change records how to put it back before it returns, in a history of the last 30 steps held
+in memory (`mcpHistory.js`). `undo_last_change` reverts the newest. Each change shows the undo toast
+naming it, whose button runs the same undo. A deleted scene, place, fight or picture is kept whole in the
+step, so undo restores it. Delete tools carry MCP's destructive hint, so Claude's app asks the DM before
+each one runs, and the shim's instructions tell Claude to name what goes in chat first.
+
+Nothing Claude does reaches the TV. A change to fog, fog colour, the map or a delete is refused for a scene
+the Player window shows (`mcpOnTv` in `mcpPlan.js`), and a scene the DM has open is not changed under
+them. The fight open at the table is never edited or deleted, and a picture on the TV is not removed.
+An animated map is not deleted by Claude, since its file on disk cannot come back. A note for a scene
+held in a column goes through that column, so its autosave keeps it. A call that reads a PDF book or imports
+a folder of maps gets five minutes to answer; the rest get twenty seconds.
 
 ## Exporting and importing your maps
 

@@ -14,6 +14,8 @@ const { mcpManifest } = require('./mcpConfig.js');
 const { TOOLS } = require('./mcpShim.js');
 
 const REPLY_MS = 20000;
+const SLOW_MS = 300000;   // a PDF book is read, a folder of maps imported
+const SLOW = new Set(['import_monsters', 'create_scene', 'set_backdrop']);
 const MAX_BODY = 1024 * 1024;
 const pending = new Map();
 let getDmWin = () => null;
@@ -40,7 +42,7 @@ function askDmWindow(tool, args) {
   if (!ready || !win || win.isDestroyed()) return Promise.resolve({ starting: true, text: 'Evermist is still starting. Try again in a moment.', isError: true });
   const id = nextId++;
   return new Promise(resolve => {
-    const timer = setTimeout(() => { pending.delete(id); resolve({ text: 'Evermist did not answer in time.', isError: true }); }, REPLY_MS);
+    const timer = setTimeout(() => { pending.delete(id); resolve({ text: 'Evermist did not answer in time.', isError: true }); }, SLOW.has(tool) ? SLOW_MS : REPLY_MS);
     pending.set(id, (r) => { clearTimeout(timer); resolve(r || { text: 'Evermist gave no answer.', isError: true }); });
     sendTo(win, 'mcp-request', { id, tool, args });
   });

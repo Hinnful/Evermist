@@ -70,15 +70,19 @@ function galleryTakeDown() {
 
 // ─── Adding, renaming, removing ──────────────────────────────────────────────
 
+// A file kept as a picture, or null when it will not read as one. The caller redraws the grid.
+async function _gaAddOne(f) {
+  const blob = await decodePicture(f);
+  if (!blob) return null;
+  const p = { id: _gaNewId(), name: galleryNameFromFile(f.name) || t('Picture'), blob, added: Date.now() };
+  await galleryStore.put(p);
+  _gaPics.unshift(p);
+  return p;
+}
+
 async function _gaAdd(files) {
   const failed = [];
-  for (const f of files) {
-    const blob = await decodePicture(f);
-    if (!blob) { failed.push(f.name); continue; }
-    const p = { id: _gaNewId(), name: galleryNameFromFile(f.name) || t('Picture'), blob, added: Date.now() };
-    await galleryStore.put(p);
-    _gaPics.unshift(p);
-  }
+  for (const f of files) if (!await _gaAddOne(f)) failed.push(f.name);
   _gaRender();
   if (failed.length) messageDialog({
     title: t.plural(failed.length, 'One picture was not added', '{n} pictures were not added'),
@@ -108,6 +112,43 @@ function _gaRemove(p) {
       _gaRender();
     },
   });
+}
+
+// What Claude's picture tools (src/mcp/mcpGallery.js) use. None of them touches the TV: a picture on the TV is
+// never removed from here.
+function galleryList() { return _gaPics.map(p => ({ id: p.id, name: p.name, added: p.added, type: p.blob.type, size: p.blob.size })); }
+function galleryOnTv(id) { return _gaLive === id; }
+
+async function galleryAddFile(f) {
+  const p = await _gaAddOne(f);
+  if (p) _gaRender();
+  return p;
+}
+
+function galleryRenameTo(id, name) {
+  const p = _gaPics.find(x => x.id === id);
+  if (!p) return;
+  p.name = name;
+  galleryStore.put(p);
+  _gaRender();
+}
+
+// A picture taken out, and the whole entry back for an undo.
+async function galleryDrop(id) {
+  const p = _gaPics.find(x => x.id === id);
+  if (!p) return null;
+  await galleryStore.remove(id);
+  _gaPics = _gaPics.filter(x => x !== p);
+  if (_gaUrls[id]) { URL.revokeObjectURL(_gaUrls[id]); delete _gaUrls[id]; }
+  delete _gaTiles[id];
+  _gaRender();
+  return p;
+}
+
+async function galleryRestore(p) {
+  await galleryStore.put(p);
+  _gaPics = [..._gaPics.filter(x => x.id !== p.id), p].sort((a, b) => b.added - a.added);
+  _gaRender();
 }
 
 // Pictures that arrived from outside the pane: the migration, a restored backup.

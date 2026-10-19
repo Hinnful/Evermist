@@ -274,6 +274,7 @@ const IPC = [
   require('./electron/videoFiles.js'),
   require('./electron/music.js'),
   require('./electron/floorPlan.js'),
+  require('./electron/mapFiles.js'),
   require('./electron/diagLog.js'),
   require('./electron/updates.js'),
   require('./electron/pdfText.js'),
@@ -283,7 +284,7 @@ const IPC = [
   require('./electron/displays.js'),
   ipcMcp,
 ];
-const [, ipcMusic, , ipcDiagLog, ipcUpdates] = IPC;   // the three with a call of their own
+const [, ipcMusic, , , ipcDiagLog, ipcUpdates] = IPC;   // the three with a call of their own
 
 // The About box's version line. Reads package.json via Electron, so a version bump can
 // never leave a stale number hardcoded in the renderer.

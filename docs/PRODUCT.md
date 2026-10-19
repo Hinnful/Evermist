@@ -327,6 +327,16 @@ adds, never replaces. It works whenever the PC is on: a closed Evermist starts u
 The DM installs it once from Settings' Connect to Claude. Undo covers new places alone. Without
 Claude the app is unchanged, which keeps the "LLM in the loop" test in DECISIONS.md.
 
+### Claude preps, and never plays · `SETTLED` (2026-10-19)
+Supersedes "Claude writes prep into Evermist from 4.x". A new DM asked Claude for scenes and got places,
+because Claude could not make a scene and nothing said what a place or a scene is. Claude
+does every prep task the DM can and no play task. Prep is scenes, places, roads, the backdrop, notes, fights,
+the bestiary and the gallery. Play is anything on the TV, music and sounds, the fight table in use, two
+maps, Seat and Fit to TV, backup, restore and settings. Claude may change and delete anything in prep, so
+"Claude only adds" no longer holds. Each delete asks the DM first, and every Claude call is one undo step.
+Nothing Claude does reaches the TV. Claude may name a room from a module or notes. Effects and lights
+wait until Claude can see the map. Without Claude the app is unchanged.
+
 ### Size releases conservatively · `SETTLED`
 2.0.0 skipped 1.8 and 1.9 and landed on a docs-only commit, because a release tag has to match
 `package.json` and that release published five versions together. A major version marking a

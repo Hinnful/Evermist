@@ -16,6 +16,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // arbitrary path. Resolves to { name, text } or null.
   findFloorPlan: (mapPath) => ipcRenderer.invoke('find-floor-plan', mapPath),
 
+  // Claude's map tools (src/mcp/mcpScenes.js): a search of the usual folders, and the bytes of a map or a folder's maps.
+  findMapFiles: (query) => ipcRenderer.invoke('find-map-files', query),
+  readMapFiles: (path) => ipcRenderer.invoke('read-map-files', path),
+
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
 
   // The window NAME, so main shows the right one: two-column mode opens a Player per column.

@@ -172,7 +172,18 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `player/paneRuntime.js` | A column's inbox from the shell |
 | `mcp/mcpPlan.js` | Pure Claude-connection kernel: a note appended, a free spot for a place, a fight from the bestiary. Tested |
 | `mcp/mcpConnect.js` | Settings' Connect to Claude: the extension handed to Claude to install |
-| `mcp/mcpTools.js` | What Claude may read and write, answered in the DM window |
+| `mcp/mcpGuideText.js` | Plain-language how-to text per topic, as data. Tested |
+| `mcp/mcpShared.js` | What every Claude tool group reads: reply shapes, name lookups, a scene's record |
+| `mcp/mcpHistory.js` | Claude's own undo: the last 30 steps, and the toast naming each |
+| `mcp/mcpMeta.js` | Claude's guide and undo_last_change tools |
+| `mcp/mcpScenes.js` | Claude's scene tools: find maps on disk, make, rename, move, change and delete a scene |
+| `mcp/mcpNotes.js` | Claude's notes tools |
+| `mcp/mcpWorld.js` | Claude's campaign list and place tools |
+| `mcp/mcpWorldMap.js` | Claude's road and backdrop tools |
+| `mcp/mcpFights.js` | Claude's fight tools and the bestiary search |
+| `mcp/mcpGallery.js` | Claude's gallery tools: list, add, rename, delete a picture |
+| `mcp/mcpBestiary.js` | Claude's stat block, add-monster and import tools |
+| `mcp/mcpTools.js` | The dispatcher for Claude's tool groups, answered in the DM window |
 | `dev/stress.js` | `?stress=1` harness |
 | `dev/memProbe.js` | `?memprobe=1` memory probe |
 
@@ -194,6 +205,8 @@ the windows, the display push and the app lifecycle, and hands every module its 
 | `electron/pdfText.js` | PDF text extraction, in a process of its own |
 | `electron/backupZip.js` | What goes into a backup zip, and what comes back out |
 | `electron/statBlockFetch.js` | A monster page, in a hidden window |
+| `electron/mapScan.js` | Pure: map files found in a folder or the DM's usual folders, and the bytes of a map or a folder's maps. Tested |
+| `electron/mapFiles.js` | The IPC behind Claude's map tools: the folder search and the map bytes |
 | `electron/mcpBridge.js` | The Claude connection's localhost door, its key, and the extension Connect to Claude builds |
 | `electron/mcpConfig.js` | Pure: the Claude extension's manifest. Tested |
 | `electron/mcpShim.js` | The stdio MCP server inside the extension: the tool list, each call relayed to the app, which it starts unseen when closed. Run by its test as Claude runs it |
@@ -230,5 +243,5 @@ combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → com
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
 combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js →
-mcp/mcpPlan.js → mcp/mcpConnect.js → mcp/mcpTools.js → inline <script>
+mcp/mcpPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpTools.js → inline <script>
 ```

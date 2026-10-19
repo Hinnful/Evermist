@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 17 open items; IDs run to 205."
+description: "Open work only. 19 open items; IDs run to 207."
 metadata: 
   node_type: memory
   type: project
@@ -110,6 +110,12 @@ places: drawing one, a map dropped inside it belonging to it, its name and notes
 and what each says.
 **First use · DM only**
 
+### 206. A ping without a middle button
+Filed 2026-10-19, deferred from the touchpad release (4.6.4). A ping needs Ctrl+middle-click, and a touchpad has no
+middle button, so a DM on a laptop cannot ping. `P` pings the map at the cursor (`ui/input.js`, `render/ping.js`).
+The shortcut list in `index.html` names it.
+**Play · First use · DM + Player**
+
 ### 199. Local music files can get into the app
 Filed 2026-10-18 from the item 172 audit. The empty Music pane says "drop audio files into the app's music folder",
 and nothing says where that folder is. The pane takes no drop and has no add button, so a DM with local files has no
@@ -123,6 +129,23 @@ once (`sceneSwitch.js`), so a DM cannot look at the next map privately. Manual s
 the minimap's "…" menu and also holds every reveal. **Needs /spec:** how the DM opens a map without the TV following,
 and how the map then goes to the TV.
 **First use · Play · DM + Player**
+
+---
+
+# CLAUDE DOES THE PREP
+
+### 207. Claude sees the map and preps its rooms
+Filed 2026-10-19, the part of the Claude prep work 4.6.5 left. Claude can make scenes but cannot yet see them, so it
+cannot draw rooms or place anything on a map. Prep only; nothing reaches the TV, every change takes one undo step.
+- **Test first:** Claude gets a small picture of a scene with its rooms drawn on it, positions in percent of the map.
+  On three of the DM's real maps, check how close Claude's room outlines land. The result sizes the rest.
+- **Rooms and fog:** Claude creates, reshapes and deletes rooms, names them and writes their notes from a module or
+  the DM's notes, and sets each one hidden, half or revealed. Claude reveals or hides the whole map or an area. It
+  works on a scene that is not open, through the saved scene.
+- **Floor plan and module:** Claude loads a .dd2vtt floor plan (rooms, lights, grid) and uses it before its own
+  outlines. Claude imports a module PDF and links rooms to its entries; the app itself still never assigns.
+- **Effects and lights:** Claude places, changes and deletes them.
+**Prep · DM only**
 
 ---
 

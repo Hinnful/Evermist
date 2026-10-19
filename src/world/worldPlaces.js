@@ -228,6 +228,10 @@ function _wpRestoreNotes(before, snap) {
   }
 }
 
+// The whole world map's state as one value and back, for a caller with a history of its own (mcpHistory.js).
+function worldSnapshotTake() { return _wpSnapshot(); }
+function worldSnapshotPut(snap) { _wpRestore(snap); }
+
 function worldUndoPush() {
   _wpUndo.push(_wpSnapshot());
   if (_wpUndo.length > 50) _wpUndo.shift();

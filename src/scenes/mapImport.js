@@ -270,26 +270,29 @@ async function persistVideoMap(file, sceneId, mimeType) {
 
 // The world map's Add a scene. ⚠ NEVER THE LIVE MAP: no autosave, no cleanupVideo, no switchScene, so
 // the open scene and the TV stay as they are. Each file lands loose, side by side around `at`.
-function addMapsToLibrary(files, at) {
-  const run = _importQueue.then(() => _addMaps(Array.from(files || []), at));
+// `quiet` (Claude's create_scene) raises no dialog and answers { ids, failures } instead.
+function addMapsToLibrary(files, at, quiet) {
+  const run = _importQueue.then(() => _addMaps(Array.from(files || []), at, quiet));
   _importQueue = run.catch(() => {});
   return run;
 }
 
-async function _addMaps(list, at) {
+async function _addMaps(list, at, quiet) {
   const queue = list.filter(f => isImportableMapFile(f) && !isZipFile(f));
   const failures = list.filter(f => !queue.includes(f))
     .map(f => t('“{name}” {reason}', { name: f.name, reason: t('is not an image or an animated map.') }));
   const spots = wmSideBySide(at.x, at.y, queue.length);
   const batch = queue.length > 1;
-  const job = batch ? mapJobStart({ title: 'Stop importing?', message: 'The maps already imported stay. The rest are skipped.' }) : null;
+  const ids = [];
+  const job = batch && !quiet ? mapJobStart({ title: 'Stop importing?', message: 'The maps already imported stay. The rest are skipped.' }) : null;
   try {
     for (let i = 0; i < queue.length; i++) {
       if (job && job.stopped) break;
-      if (batch) { setMapProgressRun(t('{i} of {n}', { i: i + 1, n: queue.length }), queue[i].name); showMapProgress('Reading the map…'); }
+      if (batch && !quiet) { setMapProgressRun(t('{i} of {n}', { i: i + 1, n: queue.length }), queue[i].name); showMapProgress('Reading the map…'); }
       let r = null;
       try { r = await _addOneMap(queue[i], spots[i], batch); }
       catch (err) { console.error('[addMapsToLibrary] failed', err); }
+      if (r && r.ok) ids.push(r.id);
       if (!(r && (r.ok || r.stopped))) failures.push(t('“{name}” {reason}', { name: queue[i].name, reason: (r && r.reason) || t('would not open.') }));
     }
   } finally {
@@ -297,6 +300,7 @@ async function _addMaps(list, at) {
     setMapProgressRun('');
     hideMapProgress();
   }
+  if (quiet) return { ids, failures };
   if (failures.length) messageDialog({
     title: t.plural(failures.length, 'One map did not make it', '{n} maps did not make it'),
     message: failures.join('\n'),
