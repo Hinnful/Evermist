@@ -1155,3 +1155,11 @@ It stood still for a first-time DM. The mist skipped its drift under the system'
 with animation effects off, the default in VMs and remote desktops; nothing else in the app reads that setting, and the
 mist is the world map's life, so the check is gone. Built while the layer was hidden, its SMIL clock also ticked without
 repainting on any machine, so opening the world map sets the clock to its own time.
+
+### A touchpad scroll pans, a pinch zooms, a mouse wheel still zooms · `SETTLED` (2026-10-19)
+Each wheel event is read as a mouse, a touchpad or a pinch (`wheelPlan.js`): a touchpad event
+carries a deltaX or a small or fractional deltaY, and the gesture stays touchpad until a 150ms
+gap. A Settings switch between touchpad and mouse was rejected until a real device is misread.
+A Magic Mouse reads as a touchpad and pans; accepted. On the minimap a two-finger scroll does
+nothing, so a scroll cannot zoom the TV by accident; a pinch zooms it. A ping without a middle
+button is deferred.

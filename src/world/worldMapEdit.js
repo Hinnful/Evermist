@@ -108,13 +108,13 @@ function _wmDown(e) {
 }
 
 // A road is picked by its line. Once it is open, its line is the room code's ground: corners, walls, bends.
-// Ctrl+click opens it in one press, as it opens a place.
+// Ctrl+click (Cmd on a Mac) opens it in one press, as it opens a place.
 function _wmRoadDown(e, d) {
   const rec = worldRoadByUid(d.uid);
   if (!rec) return;
   const onCircle = rec.id === selectedPolygonId && _wmWithCamera(() => !!_cornerHitAt(rec, _wmToWorld(e.clientX, e.clientY)));
   if (rec.id === selectedPolygonId && (shapeEditMode || onCircle)) { _wmGroundDown(e, d); return; }
-  if (e.ctrlKey) {
+  if (e.ctrlKey || e.metaKey) {
     worldMapSelect({ sceneId: null, place: '', road: d.uid });
     enterShapeEditMode(rec.id);
     worldMapRefresh();
@@ -255,12 +255,21 @@ function _wmDrop(d, e, target) {
   if (fresh && _wmNameShown(fresh)) _wmRenameStart(_wmEls.get('h' + fresh), 'place', fresh);
 }
 
+const _wmWheelSt = wheelState();
 function _wmWheel(e) {
   e.preventDefault();
   e.stopPropagation();
   if (_wmAnim) return;
+  const kind = classifyWheel(e, _wmWheelSt, e.timeStamp);
+  if (kind === 'touchpad') {
+    _wmCam.cx += e.deltaX / _wmCam.z;
+    _wmCam.cy += e.deltaY / _wmCam.z;
+    _wmApplyCam();
+    return;
+  }
   const r = _wm.getBoundingClientRect();
-  _wmCam = wmZoomAround(_wmCam, _wmView(), e.clientX - r.left, e.clientY - r.top, e.deltaY, _wmFloor());
+  const dy = kind === 'pinch' ? -Math.log(wheelZoomFactor('pinch', e.deltaY)) / WHEEL_SCROLL_K : e.deltaY;
+  _wmCam = wmZoomAround(_wmCam, _wmView(), e.clientX - r.left, e.clientY - r.top, dy, _wmFloor());
   _wmApplyCam();
 }
 

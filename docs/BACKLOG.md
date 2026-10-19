@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 21 open items; IDs run to 205."
+description: "Open work only. 17 open items; IDs run to 205."
 metadata: 
   node_type: memory
   type: project
@@ -110,21 +110,6 @@ places: drawing one, a map dropped inside it belonging to it, its name and notes
 and what each says.
 **First use · DM only**
 
-### 197. The empty world map's callout says several maps go in at once
-Filed 2026-10-18 from the item 172 audit. The "+" picker takes several files at once, and nothing says so, so Sasha
-may add four maps one by one. Change the callout's line (`#wm-empty` in `index.html`) to say so, something like "Add
-the maps for your game here, one or several at once." Dropping maps on the window stays out: the app teaches no drag
-pattern anywhere, and DECISIONS ("Maps no longer import by a drop on the window") has why.
-**First use · DM only**
-
-### 198. A first-time hint shows how to reveal part of the map
-Filed 2026-10-18 from the item 172 audit. A map opens with Select in hand, and Select shows no fog clouds, so nothing
-points at the Brush or the Shape tool. The open eye, Reveal all, is the most visible fog control. The only reveal hint
-("Show one room at a time") comes after the first brush stroke. Add a hint the usual way (`hints.js`): a toast, with
-the tool's button blinking as Shape does for the Rooms hint. **Needs /spec:** what triggers it (the first map opened,
-or the first map on the TV), which button it points at, and how it shares the one-hint-per-run rule with Rooms.
-**First use · DM only**
-
 ### 199. Local music files can get into the app
 Filed 2026-10-18 from the item 172 audit. The empty Music pane says "drop audio files into the app's music folder",
 and nothing says where that folder is. The pane takes no drop and has no add button, so a DM with local files has no
@@ -138,20 +123,6 @@ once (`sceneSwitch.js`), so a DM cannot look at the next map privately. Manual s
 the minimap's "…" menu and also holds every reveal. **Needs /spec:** how the DM opens a map without the TV following,
 and how the map then goes to the TV.
 **First use · Play · DM + Player**
-
-### 201. A first-time hint says a room can be edited
-Filed 2026-10-18. DMs do not know a drawn room can be reshaped: a double-click on it opens edit mode
-(`shapeSelect.js`), where its corners move and a double-click on a wall adds one. Add a hint the usual way
-(`hints.js`). **Needs /spec:** what triggers it (a room selected for the first time is the likely one) and where it
-points.
-**First use · DM only**
-
-### 202. An advanced hint names the repair keys once a room is in edit mode
-Filed 2026-10-18. When a DM first edits a room, a hint says a drawn shape can change the rooms it touches: Shift
-merges, Alt cuts out, Ctrl splits (`repairKeys.js`). Today only the bar's repair icon and its tooltip say so. Follows
-item 201, since this hint shows inside edit mode. **Needs /spec:** the wording, and whether it shows in the same run
-as 201 under the one-hint-per-run rule.
-**First use · DM only**
 
 ---
 

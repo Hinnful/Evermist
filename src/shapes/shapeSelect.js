@@ -281,7 +281,7 @@ function selectMouseDown(raw, e) {
     }
     const ei = findEdgeAt(selPoly, raw.x, raw.y);
     if (ei >= 0) {
-      if (e && e.ctrlKey && startBend(selPoly, ei, raw)) return;
+      if (e && (e.ctrlKey || e.metaKey) && startBend(selPoly, ei, raw)) return;
       armDragUndo();
       isDraggingEdge = true;
       edgeDragIndex = ei;
@@ -309,7 +309,7 @@ function selectMouseDown(raw, e) {
   const hit = findPolygonAt(raw.x, raw.y);
   // Ctrl+click opens a shape's corners in one press, as Figma's Cmd+click reaches past a group.
   // Inside the open shape Ctrl keeps its own job, bending and straightening a wall.
-  if (hit && e && e.ctrlKey && !(shapeEditMode && hit.id === selectedPolygonId)) {
+  if (hit && e && (e.ctrlKey || e.metaKey) && !(shapeEditMode && hit.id === selectedPolygonId)) {
     enterShapeEditMode(hit.id);
     drawCursor(lastScreenX, lastScreenY);
     scheduleRender();

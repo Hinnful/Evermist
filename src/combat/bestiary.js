@@ -300,7 +300,7 @@ function _bsKey(e) {
   else if (mod && e.code === 'KeyC') _bsClip = _bsTargets().map(combatSnapshot);
   else if (mod && e.code === 'KeyV') _bsAdd(_bsClip);
   else if (mod && e.code === 'KeyD') { e.preventDefault(); _bsAdd(_bsTargets()); }
-  else if (e.code === 'Delete') _bsDelete(_bsTargets().map(b => b.id));
+  else if ((e.code === 'Delete' || e.code === 'Backspace')) _bsDelete(_bsTargets().map(b => b.id));
 }
 
 function initBestiary() {

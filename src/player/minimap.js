@@ -369,12 +369,15 @@ function _onPointerUp(e) {
 // ⚠ Zoom about the view CENTRE, never the cursor. This canvas is a remote control for the TV, and
 // pivoting about an off-centre cursor shifts mapCX/mapCY, so zooming would also pan what the
 // players see.
+const _wheelSt = wheelState();
 function _onWheel(e) {
   e.preventDefault();
   if (minimapLocked || !paneScope().mapOffscreen) return;
   const half = _halfAt(_mmGeom(), e);
   if (half.id && half.id !== panesSelected) selectPane(half.id);
-  minimapSetZoom(minimapView.zoom * (e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR));
+  const kind = classifyWheel(e, _wheelSt, e.timeStamp);
+  if (kind === 'touchpad') return;   // a two-finger scroll is not a zoom
+  minimapSetZoom(minimapView.zoom * wheelZoomFactor(kind, e.deltaY, ZOOM_FACTOR));
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────

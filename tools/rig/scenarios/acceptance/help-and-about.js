@@ -265,7 +265,8 @@ module.exports = async function helpAndAboutFeature(rig) {
   const COVERED = KEYS.map(k => k.label).concat([
     'Ctrl Z', 'Ctrl Y',   // exercised just above
     '[ ]',                // both brackets, each pressed above
-    'T', 'Space', 'Shift S', 'Del',
+    'T', 'Space', 'Shift S',
+    'Del Backspace',      // Del just above, Backspace by touchpad.js
     'Ctrl C X V', 'Ctrl D', // the clipboard, covered by clipboard.js
     'Double-click',       // a mouse gesture, covered by editing.js and curves.js
     'Ctrl Middle-click',  // a mouse gesture, covered by ping.js

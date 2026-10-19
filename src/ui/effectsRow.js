@@ -109,7 +109,14 @@ function _buildSizeField(row) {
   const input = field.querySelector('.sz-in');
   input.onchange = () => _typeSize(input);
   input.onkeydown = e => { if (e.key === 'Enter') input.blur(); };
-  field.onwheel = e => { e.preventDefault(); stepPreset(e.deltaY < 0 ? 1 : -1); };
+  const wheelSt = wheelState();
+  let wheelAcc = 0;
+  field.onwheel = e => {
+    e.preventDefault();
+    const r = wheelSteps(classifyWheel(e, wheelSt, e.timeStamp), e.deltaY, wheelAcc);
+    wheelAcc = r.acc;
+    for (let i = 0; i < Math.abs(r.steps); i++) stepPreset(r.steps > 0 ? 1 : -1);
+  };
   field.querySelector('.sz-scrub').onmousedown = e => {
     e.preventDefault();
     let x0 = e.clientX;

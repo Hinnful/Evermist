@@ -187,12 +187,31 @@ function initInput() {
       if (isPanning) { isPanning = false; }
     });
 
+    // A mouse wheel zooms in fixed steps; a pinch zooms in proportion; a two-finger scroll pans.
+    const wheelSt = wheelState();
+    let sizeAcc = 0;
     container.addEventListener('wheel', (e) => {
       if (!mapOffscreen) return;
       e.preventDefault();
-      // An armed preset takes the wheel for its sizes; Ctrl+wheel still zooms.
-      if (presetArmed && !e.ctrlKey) { stepPreset(e.deltaY < 0 ? 1 : -1); return; }
-      const factor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+      const kind = classifyWheel(e, wheelSt, e.timeStamp);
+      // An armed preset takes the wheel for its sizes; a pinch still zooms.
+      if (presetArmed && kind !== 'pinch') {
+        const r = wheelSteps(kind, e.deltaY, sizeAcc);
+        sizeAcc = r.acc;
+        for (let i = 0; i < Math.abs(r.steps); i++) stepPreset(r.steps > 0 ? 1 : -1);
+        return;
+      }
+      if (kind === 'touchpad') {
+        const d = turnDelta(-e.deltaX, -e.deltaY);
+        panX += d.x;
+        panY += d.y;
+        pixiSetViewport(zoom, panX, panY);
+        viewportDirty = true;
+        boostRender();
+        scheduleCursor(lastScreenX, lastScreenY);
+        return;
+      }
+      const factor = wheelZoomFactor(kind, e.deltaY, ZOOM_FACTOR);
       const newZoom = Math.max(0.02, Math.min(20, zoom * factor));
       const { x: mx, y: my } = clientToView(e.clientX, e.clientY);
       panX = mx - (mx - panX) * (newZoom / zoom);
@@ -275,6 +294,7 @@ function initInput() {
         break;
       case 'KeyF': if (mapOffscreen) { fitToScreen(); viewportDirty = true; scheduleRender(); } break;
       case 'Delete':
+      case 'Backspace':   // a MacBook's delete key
         deleteSelectedPart();
         break;
       // One press drops one thing, most local first, then puts the bar back to rest - an armed

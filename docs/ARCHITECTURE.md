@@ -353,7 +353,7 @@ sends only when exactly one of the seat and the fit is sideways.
 
 Ctrl+middle-click on the DM map sends a map point to the TV, and both windows draw the same gold
 mark there for about two and a half seconds, sized to the window and not the map. A plain middle
-drag still pans. In two-map mode a column sends to its own half. The ping rides the PixiJS ticker
+drag still pans, as does a two-finger scroll on a touchpad, where a pinch zooms. In two-map mode a column sends to its own half. The ping rides the PixiJS ticker
 only while one is showing, and nothing of it is stored.
 
 ### Lights
