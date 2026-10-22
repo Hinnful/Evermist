@@ -17,10 +17,8 @@ go to `rig.byEye`. Correctness is yours.
 
 Then the gate:
 
-- **Cheap checks first, whatever the diff touched.** Run `node tools/build-changelog.js` (CI writes
-  the What's new list before its tests, and the committed copy is stale, so `npm test` is red
-  without it), then `npm test`, `npm run lint` and `node tools/check-guards.js`. Restore the generated
-  file afterwards with `git checkout -- src/ui/changelogData.js`; it never rides in a commit. The
+- **Cheap checks first, whatever the diff touched.** Run `npm test`, `npm run lint` and
+  `node tools/check-guards.js`. `npm test` regenerates the gitignored What's new list first. The
   guards are a CI job of their own that `npm test` does not run, and `ship.js` runs them again and
   refuses a guarded file the commit would not carry. The house rules on comments, file size, the
   module maps and the public docs are tests, so a red here can be one of those; its message says
@@ -49,7 +47,7 @@ node tools/rig-ci.js pick
   a set of several minutes outlives a foreground tool call.
 - **The repeat-flake check, once:** `node tools/rig-ci.js flakes`. A scenario that needed a rerun in
   three or more recent runs is a proposed backlog item (fix it, or retire it), reported to the DM
-  with the push report. Never write the backlog without a yes.
+  with the notes. Never write the backlog without a yes.
 
 **BLOCK on red.** Report which scenario failed and what its FAIL line said. The rig has already
 rerun it once in a fresh app, so a red here failed twice. Do not set the version and do not write

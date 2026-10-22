@@ -161,7 +161,7 @@ async function doExport(selectedIds, opts) {
     const gone = (wrote && wrote.missingVideos) || [];
     if (gone.length) messageDialog({
       title: t.plural(gone.length, 'One map is not in the export', '{n} maps are not in the export'),
-      message: t('Everything else was saved. These scenes had no map file left on disk, so they ' +
+      message: t('Everything else was saved. These maps had no image file left on disk, so they ' +
                  'went into the export without one:') + String.fromCharCode(10, 10) + gone.join(String.fromCharCode(10)),
     });
   } catch (err) {
@@ -193,7 +193,7 @@ async function adoptCombatFromZip(zipPath) {
   }
   if (!json || typeof cbMergePayload !== 'function') return;
   const st = cbMergePayload(json);
-  if (!st.ok) messageDialog({ title: 'Fight table not imported', message: t('The scenes came in, but the fight table did not.') + '\n\n' + st.error });
+  if (!st.ok) messageDialog({ title: 'Fight table not imported', message: t('The maps came in, but the fight table did not.') + '\n\n' + st.error });
 }
 
 // Adopt the campaign's module text out of a restored zip. ⚠ Runs only AFTER every scene is saved
@@ -223,7 +223,7 @@ async function adoptModuleTextFromZip(zipPath) {
     // The scenes are already saved, so this is a footnote and not a failure.
     messageDialog({
       title: 'Module text not imported',
-      message: t('The scenes came in, but the module text did not.') + '\n\n' + st.error,
+      message: t('The maps came in, but the module text did not.') + '\n\n' + st.error,
     });
   };
 

@@ -44,8 +44,8 @@ or two maps at a time.
 - **Prove a fix both ways**: the check fails without the fix and passes with it.
 - **A check that flakes is suspect first.** Rule out the check before changing the app for it.
 - **When a fix fails, say so and re-diagnose** from the evidence, never a second guess on the first.
-- **A brainstorm ends at the proposal.** Build only on the DM's "build it", in a fresh session
-  on a smaller model. Look-and-feel work is a throwaway prototype outside the app, one at a time,
+- **A brainstorm ends at the proposal.** On the DM's "build it", `builder` builds it and
+  this session checks. Look-and-feel work is a throwaway prototype outside the app, one at a time,
   for the DM to pick, exempt from the rig and test gates until picked.
 
 ## Tech constraints
@@ -221,8 +221,7 @@ amends that commit.
 
 **Never tag or publish by hand.** The workflow owns both, or neither.
 
-**Never write `src/ui/changelogData.js` by hand.** CI writes it from the release commits at
-build time.
+**Never write or commit `src/ui/changelogData.js`.** `build-changelog.js` writes it.
 
 **Pipeline rules:**
 - **Upload with `softprops/action-gh-release@v2`, NOT `electron-builder --publish`.**

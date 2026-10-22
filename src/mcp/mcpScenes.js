@@ -22,12 +22,12 @@ function _mcpSpot(place, skip) {
 function _mcpPlaceArg(raw) {
   if (!raw) return { name: '' };
   const name = _mcpPlaceName(raw);
-  return name ? { name } : { error: 'No place is called "' + raw + '". Use create_place to make one.' };
+  return name ? { name } : { error: 'No group is called "' + raw + '". Use create_place to make one.' };
 }
 
 // Scenes taken out for good: the list, the road ends, the store and an animated map's file.
 async function _mcpRemoveScenes(ids) {
-  if (panesActive && ids.some(id => paneColumnOf(id))) throw new Error('A scene is open in a column. Ask the DM to close the column first.');
+  if (panesActive && ids.some(id => paneColumnOf(id))) throw new Error('A map is open in a column. Ask the DM to close the column first.');
   commitPendingDelete();
   const gone = new Set(ids);
   allScenes = allScenes.filter(s => !gone.has(s.id));
@@ -74,18 +74,18 @@ async function _mcpCreateScene(args) {
   sceneListChanged();
   const names = made.map(s => '"' + s.name + '"');
   const left = [...read.skipped.map(s => '"' + s.name + '" ' + s.reason), ...done.failures];
-  const crowded = spots.length < ids.length ? ' The place had no free spot for ' + (ids.length - spots.length) + ' of them; the DM can drag them into position.' : '';
+  const crowded = spots.length < ids.length ? ' The group had no free spot for ' + (ids.length - spots.length) + ' of them; the DM can drag them into position.' : '';
   return mcpDone('created ' + names.join(', '), async () => { await _mcpRemoveScenes(ids); worldSnapshotPut(snap); },
-    'Created ' + names.join(', ') + (place.name ? ' in the place "' + place.name + '"' : ' in no place') + '. The DM has not opened it and the TV does not show it. It starts fully fogged with no rooms.' + crowded + (left.length ? ' Not made: ' + left.join(' ') : ''));
+    'Created ' + names.join(', ') + (place.name ? ' in the group "' + place.name + '"' : ' in no group') + '. The DM has not opened it and the TV does not show it. It starts fully fogged with no rooms.' + crowded + (left.length ? ' Not made: ' + left.join(' ') : ''));
 }
 
 async function _mcpRename(args) {
   const found = _mcpScene(args);
   if (found.error) return _mcpNo(found.error);
   const s = found.scene, old = s.name;
-  if (!String(args.newName || '').trim()) return _mcpNo('A scene needs a name.');
+  if (!String(args.newName || '').trim()) return _mcpNo('A map needs a name.');
   const now = renameScene(s.id, args.newName);
-  return mcpDone('renamed the scene "' + old + '" to "' + now + '"', async () => { renameScene(s.id, old); }, 'Renamed the scene "' + old + '" to "' + now + '".');
+  return mcpDone('renamed the map "' + old + '" to "' + now + '"', async () => { renameScene(s.id, old); }, 'Renamed the map "' + old + '" to "' + now + '".');
 }
 
 async function _mcpMove(args) {
@@ -95,19 +95,19 @@ async function _mcpMove(args) {
   if (place.error) return _mcpNo(place.error);
   const s = found.scene;
   const at = _mcpSpot(place.name, new Set([s.id]));
-  if (!at) return _mcpNo(place.name ? 'The place "' + place.name + '" has no free spot for the scene. Reshape it bigger first.' : 'No free spot on the world map.');
+  if (!at) return _mcpNo(place.name ? 'The group "' + place.name + '" has no free spot for the map. Reshape it bigger first.' : 'No free spot on the Campaign.');
   const snap = worldSnapshotTake();
   await worldSceneSet(s.id, { worldPos: at, group: place.name });
   _mcpWorldRefresh();
-  return mcpDone('moved the scene "' + s.name + '"', async () => { worldSnapshotPut(snap); _mcpWorldRefresh(); },
-    'Moved the scene "' + s.name + '" ' + (place.name ? 'into the place "' + place.name + '"' : 'out of its place') + '.');
+  return mcpDone('moved the map "' + s.name + '"', async () => { worldSnapshotPut(snap); _mcpWorldRefresh(); },
+    'Moved the map "' + s.name + '" ' + (place.name ? 'into the group "' + place.name + '"' : 'out of its group') + '.');
 }
 
 // What stops a call from touching a scene's record: the TV shows it, or the DM window holds it open.
 function _mcpScenePinned(scene, what) {
   const tv = _mcpTvRefuse(scene, what);
   if (tv) return tv;
-  return _mcpHolder(scene.id) ? _mcpNo('Not done: the DM has "' + scene.name + '" open, and ' + what + ' would change it under them. Ask the DM to open another scene first.') : null;
+  return _mcpHolder(scene.id) ? _mcpNo('Not done: the DM has "' + scene.name + '" open, and ' + what + ' would change it under them. Ask the DM to open another map first.') : null;
 }
 
 async function _mcpSetScene(args) {
@@ -129,12 +129,12 @@ async function _mcpSetScene(args) {
     if (size) rec.gridConfig = { ...(rec.gridConfig || captureGridConfig()), cellSize: size };
   });
   const said = [hex && 'fog colour ' + hex, size && 'grid cell size ' + size + ' px'].filter(Boolean).join(' and ');
-  return mcpDone('set the ' + said + ' of the scene "' + s.name + '"', async () => {
+  return mcpDone('set the ' + said + ' of the map "' + s.name + '"', async () => {
     await put(rec => {
       if (prev.fogSettings === undefined) delete rec.fogSettings; else rec.fogSettings = prev.fogSettings;
       if (prev.gridConfig === undefined) delete rec.gridConfig; else rec.gridConfig = prev.gridConfig;
     });
-  }, 'Set the ' + said + ' of the scene "' + s.name + '".');
+  }, 'Set the ' + said + ' of the map "' + s.name + '".');
 }
 
 async function _mcpDeleteScene(args) {
@@ -144,18 +144,18 @@ async function _mcpDeleteScene(args) {
   const pinned = _mcpScenePinned(s, 'deleting it');
   if (pinned) return pinned;
   const rec = await sceneStore.loadScene(s.id);
-  if (!rec) return _mcpNo('The scene "' + s.name + '" is no longer in the library.');
+  if (!rec) return _mcpNo('The map "' + s.name + '" is no longer in the library.');
   if (rec.mapType === 'video') return _mcpNo('Not deleted: "' + s.name + '" is an animated map, and Claude cannot bring one back after deleting it. Ask the DM to delete it in Evermist.');
   const index = allScenes.findIndex(x => x.id === s.id), meta = { ...allScenes[index] }, snap = worldSnapshotTake();
   await _mcpRemoveScenes([s.id]);
-  return mcpDone('deleted the scene "' + s.name + '"', async () => {
+  return mcpDone('deleted the map "' + s.name + '"', async () => {
     await sceneStore.saveScene(rec);
     allScenes.splice(Math.min(index, allScenes.length), 0, meta);
     allScenes.forEach((x, i) => { x.sortOrder = i; });
     persistSceneOrder();
     worldSnapshotPut(snap);
     sceneListChanged();
-  }, 'Deleted the scene "' + s.name + '" with its map, fog and rooms.');
+  }, 'Deleted the map "' + s.name + '" with its map, fog and rooms.');
 }
 
 const MCP_SCENES_TOOLS = { find_map_files: _mcpFind, create_scene: _mcpCreateScene, rename_scene: _mcpRename,

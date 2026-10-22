@@ -607,13 +607,13 @@ module.exports = async function backupFeature(rig) {
       return { out, done: () => { showMapProgress = orig; } };
     };
     const before = (await sceneStore.listScenes()).length;
-    const keep = ask('Extracting scenes…', 'cd-cancel');
+    const keep = ask('Extracting maps…', 'cd-cancel');
     await restoreFromZipPath(${JSON.stringify(keepZip)});
     keep.done();
     const afterKeep = (await sceneStore.listScenes()).length;
     ${drainDialogs};
     // Stopped once a scene is saved, so the undo has a scene to take back as well as a file.
-    const halt = ask('Saving scenes…', null);
+    const halt = ask('Saving maps…', null);
     const origPct = updateMapProgress;
     updateMapProgress = function (pct) {
       origPct(pct);

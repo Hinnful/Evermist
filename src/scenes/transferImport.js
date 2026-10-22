@@ -60,13 +60,13 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes) {
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 
   const nl = String.fromCharCode(10), b = plans.broken, parts = [];
-  if (noNotes.length) parts.push(t('These scenes had notes Evermist could not read, so they came back without them:') + nl + noNotes.join(nl));
+  if (noNotes.length) parts.push(t('These maps had notes Evermist could not read, so they came back without them:') + nl + noNotes.join(nl));
   if (parsed.broken || readFailed) parts.push(t('The campaign notes in this file could not be read, so yours stay as they are.'));
   else if (merged.tooLong) parts.push(t('The campaign notes in this file would not fit beside yours, so yours stay as they are.'));
-  if (b.places) parts.push(t('Some place outlines in this file could not be read, so those places are left out.'));
+  if (b.places) parts.push(t('Some group outlines in this file could not be read, so those groups are left out.'));
   if (b.roads) parts.push(t('Some roads in this file could not be read, so they are left out.'));
   if (b.roadNotes) parts.push(t('Some road notes in this file could not be read, so those roads came without them.'));
-  if (b.placeNotes) parts.push(t('Some place notes in this file could not be read, so those places came without them.'));
+  if (b.placeNotes) parts.push(t('Some group notes in this file could not be read, so those groups came without them.'));
   if (parts.length) messageDialog({ title: 'Some notes were not imported', message: parts.join(nl + nl) });
 }
 
@@ -74,10 +74,10 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes) {
 function _tiReport(r) {
   const nl = String.fromCharCode(10), lines = [];
   const n = (count, one, many) => { if (count) lines.push(t.plural(count, one, many)); };
-  n(r.added.length, '{n} scene added', '{n} scenes added');
-  n(r.updated.length, '{n} scene updated', '{n} scenes updated');
-  n(r.kept.length, '{n} scene kept newer edits made here', '{n} scenes kept newer edits made here');
-  n(r.places.added + r.places.updated, '{n} place changed', '{n} places changed');
+  n(r.added.length, '{n} map added', '{n} maps added');
+  n(r.updated.length, '{n} map updated', '{n} maps updated');
+  n(r.kept.length, '{n} map kept newer edits made here', '{n} maps kept newer edits made here');
+  n(r.places.added + r.places.updated, '{n} group changed', '{n} groups changed');
   n(r.roads.added + r.roads.updated, '{n} road changed', '{n} roads changed');
   if (!lines.length) lines.push(t('Everything in the file was already here.'));
   const over = r.overwritten.map(o => o.scene + (o.room ? ' - ' + o.room : '') + ': ' + t(TP_PART_LABEL[o.part] || o.part));
@@ -101,7 +101,7 @@ async function _tiPlan(zipPath, manifest) {
     const local = x.matched ? await sceneStore.loadScene(x.id) : null;
     if (x.matched && !local) x.matched = false;
     const n = notesSanitize(x.entry.notes);
-    if (n.dropped) noNotes.push(x.entry.name || t('Imported Scene'));
+    if (n.dropped) noNotes.push(x.entry.name || t('Imported Map'));
     x.entry = { ...x.entry, notes: n.dropped && local ? local.notes : n.text };
     if (!local) continue;
     const missing = x.entry.mapType === 'video' ? !(await window.electronAPI.getVideoFilePath(x.id)) : !local.mapBlob;
@@ -179,7 +179,7 @@ async function _tiWrite(plan, ex, run, job) {
   const existing = allScenes, usedNames = new Set(existing.map(s => s.name));
   let order = existing.length ? Math.max(...existing.map(s => s.sortOrder ?? 0)) : -1;
   const out = { noMap: [], newMeta: [], pictured: [], added: [], updated: [], kept: [], overwritten: [] };
-  showMapProgress('Saving scenes…');
+  showMapProgress('Saving maps…');
   updateMapProgress(0);
   for (let i = 0; i < plan.items.length; i++) {
     if (job.stopped) return null;
@@ -197,7 +197,7 @@ async function _tiWrite(plan, ex, run, job) {
       for (const o of x.plan.report.overwritten) out.overwritten.push({ scene: rec.name, room: o.room, part: o.part });
     } else {
       order++;
-      const name = resolveSceneName(x.entry.name || t('Imported Scene'), usedNames);
+      const name = resolveSceneName(x.entry.name || t('Imported Map'), usedNames);
       const scene = _tiNewRecord(x, got, name, order, plan.shift);
       if (x.entry.mapType === 'video') { if (got.mapWritten === false) out.noMap.push(name); else run.createdVideos.push(x.id); }
       await sceneStore.putScene(scene);
@@ -214,12 +214,12 @@ async function _tiWrite(plan, ex, run, job) {
 // Once the scenes are in: the file's other parts, the open scene reloaded, and the report.
 async function _tiFinish(zipPath, plan, done) {
   if (done.noMap.length) messageDialog({
-    title: t.plural(done.noMap.length, 'One scene came back without its map', '{n} scenes came back without their maps'),
-    message: t('The file carried no map for these, so they came in empty. Everything else came in:') + String.fromCharCode(10, 10) + done.noMap.join(String.fromCharCode(10)),
+    title: t.plural(done.noMap.length, 'One map came back without its image', '{n} maps came back without their images'),
+    message: t('The file carried no image for these, so they came in empty. Everything else came in:') + String.fromCharCode(10, 10) + done.noMap.join(String.fromCharCode(10)),
   });
   if (done.mapFailed.length) messageDialog({
     title: 'A map could not be replaced',
-    message: t('The file had a newer map for these scenes, but it could not be put in place, so they kept their old map:') + String.fromCharCode(10, 10) + done.mapFailed.join(String.fromCharCode(10)),
+    message: t('The file had a newer image for these maps, but it could not be put in place, so they kept their old one:') + String.fromCharCode(10, 10) + done.mapFailed.join(String.fromCharCode(10)),
   });
   await adoptModuleTextFromZip(zipPath);
   await adoptCombatFromZip(zipPath);
@@ -254,7 +254,7 @@ async function restoreFromZipPath(zipPath) {
 
   const unsubProgress = window.electronAPI.onBackupProgress(({ done, total }) => updateMapProgress(Math.round((done / total) * 100)));
   setMapProgressRun('', zipPath.split(/[\\/]/).pop());
-  const job = mapJobStart({ title: 'Stop importing?', message: 'Your scenes stay as they were before the import.' },
+  const job = mapJobStart({ title: 'Stop importing?', message: 'Your maps stay as they were before the import.' },
     () => window.electronAPI.cancelBackup());
   // What a stop puts back: matched records as they were, and only what this import created.
   const run = { snapshots: new Map(), created: [], createdVideos: [], temps: [], toSettle: [] };
@@ -271,12 +271,12 @@ async function restoreFromZipPath(zipPath) {
     const manifest = await window.electronAPI.readBackupManifest(zipPath);
     if (!Array.isArray(manifest) || !manifest.length) {
       hideMapProgress();
-      messageDialog({ title: 'Nothing in this file', message: 'The file holds no scenes, or it did not come from Evermist.' });
+      messageDialog({ title: 'Nothing in this file', message: 'The file holds no maps, or it did not come from Evermist.' });
       return;
     }
     const plan = await _tiPlan(zipPath, manifest);
     if (job.stopped) return undo();
-    showMapProgress('Extracting scenes…');
+    showMapProgress('Extracting maps…');
     updateMapProgress(0);
     for (const x of plan.items) if (x.matched && x.entry.mapType === 'video' && x.plan.take.map) run.temps.push({ id: x.id, ext: x.entry.mapExt || '.webm' });
     const ex = await _tiExtract(zipPath, plan.items);
@@ -311,8 +311,8 @@ async function restoreFromZipPath(zipPath) {
     if (!committed) await undo();
     messageDialog({
       title: 'Import failed',
-      message: (committed ? t('The scenes came in, but Evermist stopped before the rest of the file.')
-                          : t('Evermist stopped partway through the file and put your scenes back as they were.')) + '\n\n' + (err.message || err),
+      message: (committed ? t('The maps came in, but Evermist stopped before the rest of the file.')
+                          : t('Evermist stopped partway through the file and put your maps back as they were.')) + '\n\n' + (err.message || err),
     });
   } finally {
     mapJobEnd(job);

@@ -84,7 +84,7 @@
 
   /* The import panel's way in from here: the one moment a DM wants the module is the moment
      they are looking at this list. Scene control's Sources row is the other. */
-  .rp-mt-foot { border-top: 1px solid rgba(255,255,255,0.06); padding: 4px; }
+  .rp-mt-foot { border-top: 1px solid var(--g-divider); padding: 4px; }
   .rp-mt-foot button {
     width: 100%; padding: 6px 8px;
     border: none; border-radius: 6px; background: none;

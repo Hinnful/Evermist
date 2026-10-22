@@ -3,14 +3,14 @@
 // control-panel.js — THE DOCK'S SCENE CONTROL PANE.
 //
 // THE GOAL OF THIS FEATURE: everything the Fog, Grid and Player tabs did sits in one pane, laid
-// out the way Figma lays out its right panel: Fog, Rooms, Lights, Grid. Every control
+// out the way Figma lays out its right panel: Grid, Fog, Rooms, Lights. Every control
 // drives the same hidden back end the tabs drove, so each check here asserts what a control
 // DOES, never only where it sits.
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter.
 //
-//   A. The pane holds Fog, Rooms, Lights, Grid, in that order, no Player section, no
+//   A. The pane holds Grid, Fog, Rooms, Lights, in that order, no Player section, no
 //      "On the TV" dot in its header, and no zoom stepper.
 //   B. A colour field opens its picker beside the dock, level with its row. A colour picked there
 //      reaches the fog and the field, and a click elsewhere puts the picker away.
@@ -40,7 +40,7 @@ module.exports = async function sceneControlFeature(rig) {
   // RED BY DESIGN: written against the removal, never re-proved
   const sections = await dm.evaluate('[...document.querySelectorAll("#dock-pane-scene .cp-group > .dk-sh .cp-label")]' +
                                      '.map(l => l.textContent.trim()).join(",")');
-  rig.check(sections === 'Fog,Rooms,Lights,Grid',
+  rig.check(sections === 'Grid,Fog,Rooms,Lights',
             'A: Scene control holds the wrong sections, or in the wrong order: ' + sections);
   rig.check(await dm.evaluate('!document.querySelector("[id^=cp-zoom]") && typeof minimapNudgeZoom === "undefined"'),
             'A: the TV zoom stepper is still in the app');

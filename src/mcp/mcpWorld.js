@@ -35,8 +35,8 @@ function _mcpTaken() {
 
 function _mcpCreatePlace(args) {
   const want = sanitizeGroupName(args.name);
-  if (!want) return _mcpNo('A place needs a name.');
-  if (_mcpPlaceName(want)) return _mcpNo('A place called "' + want + '" already exists. Use add_notes to add to it.');
+  if (!want) return _mcpNo('A group needs a name.');
+  if (_mcpPlaceName(want)) return _mcpNo('A group called "' + want + '" already exists. Use add_notes to add to it.');
   const notes = String(args.notes || '').trim();
   if (notes.length > _mcpCap()) return _mcpNo('Nothing was created: the notes pass ' + _mcpCap() + ' characters.');
   const r = mcpFreeRect(_mcpTaken());
@@ -46,39 +46,39 @@ function _mcpCreatePlace(args) {
   worldAssignAll();
   if (notes) notesPlaceSet(name, notes);
   _mcpWorldRefresh();
-  return mcpDone('created the place "' + name + '"', async () => { worldSnapshotPut(snap); forgetGroup(name); _mcpWorldRefresh(); },
-    'Created the place "' + name + '" in an empty spot on the world map' + (notes ? ', with its notes' : '') + '. The DM can drag it into position. The place holds no scenes yet: it gets them when the DM or Claude adds maps into it.');
+  return mcpDone('created the group "' + name + '"', async () => { worldSnapshotPut(snap); forgetGroup(name); _mcpWorldRefresh(); },
+    'Created the group "' + name + '" in an empty spot on the Campaign' + (notes ? ', with its notes' : '') + '. The DM can drag it into position. The group holds no maps yet: it gets them when the DM or Claude adds maps into it.');
 }
 
 // The place a call names, as { name }, or { error }.
 function _mcpPlaceFor(raw) {
   const name = _mcpPlaceName(raw);
-  return name ? { name } : { error: 'No place is called "' + (raw || '') + '".' };
+  return name ? { name } : { error: 'No group is called "' + (raw || '') + '".' };
 }
 
 function _mcpRenamePlace(args) {
   const p = _mcpPlaceFor(args.name);
   if (p.error) return _mcpNo(p.error);
   const to = sanitizeGroupName(args.newName);
-  if (!to) return _mcpNo('A place needs a name.');
-  if (to !== p.name && _mcpPlaceName(to)) return _mcpNo('A place called "' + to + '" already exists.');
+  if (!to) return _mcpNo('A group needs a name.');
+  if (to !== p.name && _mcpPlaceName(to)) return _mcpNo('A group called "' + to + '" already exists.');
   const now = renameGroup(p.name, to);
   _mcpWorldRefresh();
-  return mcpDone('renamed the place "' + p.name + '" to "' + now + '"', async () => { renameGroup(now, p.name); _mcpWorldRefresh(); },
-    'Renamed the place "' + p.name + '" to "' + now + '". Its notes, scenes and roads came with it.');
+  return mcpDone('renamed the group "' + p.name + '" to "' + now + '"', async () => { renameGroup(now, p.name); _mcpWorldRefresh(); },
+    'Renamed the group "' + p.name + '" to "' + now + '". Its notes, maps and roads came with it.');
 }
 
 function _mcpReshapePlace(args) {
   const p = _mcpPlaceFor(args.name);
   if (p.error) return _mcpNo(p.error);
   const r = mcpRectArg(args);
-  if (!r) return _mcpNo('x, y, w and h are needed, in world-map units, at least ' + MCP_PLACE_MIN_W + ' wide and ' + MCP_PLACE_MIN_H + ' high. list_campaign shows each place\'s bounds.');
+  if (!r) return _mcpNo('x, y, w and h are needed, in Campaign units, at least ' + MCP_PLACE_MIN_W + ' wide and ' + MCP_PLACE_MIN_H + ' high. list_campaign shows each group\'s bounds.');
   const snap = worldSnapshotTake();
   worldPlaceSet(p.name, { vertices: wmRectShape(r.x, r.y, r.x + r.w, r.y + r.h) });
   worldReconcile();
   _mcpWorldRefresh();
-  return mcpDone('reshaped the place "' + p.name + '"', async () => { worldSnapshotPut(snap); _mcpWorldRefresh(); },
-    'The place "' + p.name + '" is now a rectangle at ' + r.x + ',' + r.y + ', ' + r.w + ' by ' + r.h + '. Scenes in it were pulled inside; a scene whose card now lies in another place or none was filed there.');
+  return mcpDone('reshaped the group "' + p.name + '"', async () => { worldSnapshotPut(snap); _mcpWorldRefresh(); },
+    'The group "' + p.name + '" is now a rectangle at ' + r.x + ',' + r.y + ', ' + r.w + ' by ' + r.h + '. Maps in it were pulled inside; a map whose card now lies in another group or none was filed there.');
 }
 
 function _mcpDeletePlace(args) {
@@ -92,12 +92,12 @@ function _mcpDeletePlace(args) {
   for (const s of kept) worldSceneSet(s.id, { group: '' });
   sceneListChanged();
   _mcpWorldRefresh();
-  return mcpDone('deleted the place "' + p.name + '"', async () => {
+  return mcpDone('deleted the group "' + p.name + '"', async () => {
     worldSnapshotPut(snap);
     if (!knownGroupNames().includes(p.name)) addGroup(p.name);
     sceneListChanged();
     _mcpWorldRefresh();
-  }, 'Deleted the place "' + p.name + '" and its notes. ' + (kept.length ? kept.length + ' scene(s) stay, now in no place.' : 'It held no scenes.'));
+  }, 'Deleted the group "' + p.name + '" and its notes. ' + (kept.length ? kept.length + ' map(s) stay, now in no group.' : 'It held no maps.'));
 }
 
 const MCP_WORLD_TOOLS = { list_campaign: _mcpList, create_place: _mcpCreatePlace, rename_place: _mcpRenamePlace,

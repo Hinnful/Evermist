@@ -229,9 +229,9 @@ let nextEffectId = 1;
 let placeMode = 'rooms';
 
 // The shape each mode was last drawing with, so a mode switch off an unavailable tool puts the
-// DM back where they were. Runtime-only like placeMode; a restart starts both on Polygon.
+// DM back where they were. Runtime-only like placeMode; a restart starts Rooms (and the Campaign's groups, which share it) on Rectangle and Effects on Polygon.
 // ⚠ ONLY A SHAPE GOES IN HERE - never Select, Brush, Door or Split. See setShape (input.js).
-let roomsShape = 'poly';
+let roomsShape = 'rect';
 let effectsShape = 'poly';
 
 // What a drawn shape DOES when no key is held: 'new' makes one, 'join' unions it with every shape it
@@ -262,7 +262,7 @@ let lightsHidden = false;    // the Scene control eye: every light in the scene
 let lightPolys = [];         // what is drawn: per light, its rings as flat [x, y, …] lists
 
 // ─── Auto-Sync ───────────────────────────────────────────────────────────────
-let autoSync = false;
+let autoSync = true;   // Auto until the DM saves Manual (toolbar.js reads 'evermist-auto-sync')
 let autoSyncTimer = null;
 // Manual mode: a change has been made that the Player has not been sent. Send clears it.
 let playerUnsent = false;

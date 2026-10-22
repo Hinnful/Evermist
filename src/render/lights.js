@@ -157,7 +157,7 @@ function drawPlanLights() {
   if (!lightShapes.length) { applyPlanLights(); return; }
   confirmDialog({
     title: 'Replace existing lights?',
-    message: t('This scene has {n} drawn. Drawing from the floor plan removes them.',
+    message: t('This map has {n} drawn. Drawing from the floor plan removes them.',
                { n: t.plural(lightShapes.length, '{n} light', '{n} lights') }),
     confirmLabel: 'Replace them',
     cancelLabel: 'Keep them',

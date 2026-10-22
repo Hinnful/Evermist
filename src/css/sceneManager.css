@@ -16,11 +16,13 @@
     cursor: pointer; white-space: nowrap;
     transition: background .12s, color .12s;
   }
+  /* A flex container is no block container, so text-box trims only the span the text sits in: the word centres on its capitals. */
+  .sm-hbtn, .sm-hbtn > span:not(.sm-chev) { text-box: trim-both cap alphabetic; }
   .sm-hbtn:hover { background: var(--g-hover); color: var(--g-text); }
   .sm-hbtn > svg:first-child { margin-left: -2px; }
   .sm-hbtn svg { flex: none; width: 14px; height: 14px; transform: translateY(var(--icon-nudge)); }
-  /* The trash's lid carries its weight at the top, so it reads low once nudged: it stays centred. */
-  .sm-hbtn svg.i-trash { transform: none; }
+  /* The trash's lid carries its weight at the top, so it sits 1.25px above the trimmed label's optical line (windows.js). */
+  .sm-hbtn svg.i-trash { transform: translateY(-0.64px); }
   .sm-hbtn.primary { background: var(--b-solid); color: #fff; }
   .sm-hbtn.primary:hover { background: var(--b-solid-h); color: #fff; }
   .sm-hbtn:disabled { opacity: 0.4; cursor: default; }
@@ -196,6 +198,6 @@
   #key-hint { display: none; }
   #key-hint.on { display: flex; }
 
-  .sm-msep { border: 0; height: 1px; flex: none; background: var(--g-line); margin: 4px 2px; }
+  .sm-msep { border: 0; height: 1px; flex: none; background: var(--g-divider); margin: 4px -4px; }
 
   body.player-mode #sm-toasts { display: none !important; }

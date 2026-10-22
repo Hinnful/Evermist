@@ -50,15 +50,15 @@ module.exports = async function worldMapFirstEvening(rig) {
   // ── 3. The empty map says where to begin ──────────────────────────────────
   await lib.settle(dm, SETTLED, 8000);
   const empty = await dm.evaluate(`(() => {
-    const call = document.getElementById('wm-empty'), add = document.getElementById('wm-add');
-    const c = call.getBoundingClientRect(), a = add.getBoundingClientRect(), np = document.getElementById('dock-tab-notes');
-    return { shown: __feVis(call), text: call.textContent, dx: Math.abs((c.left + c.width / 2) - (a.left + a.width / 2)), above: c.bottom <= a.top + 1,
+    const call = document.getElementById('wm-empty'), layer = document.getElementById('wm');
+    const c = call.getBoundingClientRect(), a = layer.getBoundingClientRect(), np = document.getElementById('dock-tab-notes');
+    return { shown: __feVis(call), text: call.textContent, dx: Math.abs((c.left + c.width / 2) - (a.left + a.width / 2)), button: !!call.querySelector('#wm-empty-add'),
       bar: __feBar(), panel: !np.disabled };
   })()`);
   // RED BY DESIGN: written against the feature, never re-proved
-  rig.check(empty.shown && /Start with your maps/.test(empty.text) && /Double-click one to open it/.test(empty.text),
-            'the empty map shows no callout saying where to start: ' + JSON.stringify(empty));
-  rig.check(empty.above && empty.dx < 3, 'the callout is not centred over Add: ' + JSON.stringify(empty));
+  rig.check(empty.shown && /Add your first map/.test(empty.text) && /Dungeon Alchemist/.test(empty.text) && empty.button,
+            'the empty map shows no Add a map call to action: ' + JSON.stringify(empty));
+  rig.check(empty.dx < 3, 'the call to action is not centred on the layer: ' + JSON.stringify(empty));
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(JSON.stringify(empty.bar) === JSON.stringify(['btn-select', 'wm-add']),
             'the empty map\'s bar is not Select and Add alone: ' + JSON.stringify(empty.bar));

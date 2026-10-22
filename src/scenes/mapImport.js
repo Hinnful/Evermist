@@ -99,7 +99,7 @@ async function _importMapFiles(files) {
 
 // The scene name a file will get, so a batch's progress label and the scene it creates agree.
 function sceneNameForFile(file) {
-  return file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim() || t('New Scene');
+  return file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim() || t('New Map');
 }
 
 // What an import does before it touches a map.

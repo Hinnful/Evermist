@@ -163,7 +163,7 @@ describe('packaging', () => {
   it('carries the package.json version as the newest changelog entry', () => {
     const list = vm.runInNewContext(read('src/ui/changelogData.js') + '\nCHANGELOG');
     assert.equal(list[0] && list[0].version, pkg.version, 'src/ui/changelogData.js:1 does not open with the version ' +
-      'package.json holds. Run node tools/build-changelog.js after the bump commit and amend it; never edit it by hand.');
+      'package.json holds. Run node tools/build-changelog.js, which npm test runs first; never edit it by hand.');
   });
 });
 

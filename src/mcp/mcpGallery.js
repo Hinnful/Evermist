@@ -20,7 +20,7 @@ async function _mcpAddPicture(args) {
   const read = await window.electronAPI.readMapFiles(String(args.path || ''));
   if (read.error) return _mcpNo(read.error);
   const images = read.files.filter(f => /^image\//.test(f.type));
-  if (!images.length) return _mcpNo('The gallery holds pictures, and no image was found at that path.');
+  if (!images.length) return _mcpNo('Pictures holds images, and no image was found at that path.');
   const added = [], failed = [];
   for (const f of images) {
     const p = await galleryAddFile(new File([f.bytes], f.name, { type: f.type }));
@@ -30,8 +30,8 @@ async function _mcpAddPicture(args) {
   if (args.name && added.length === 1) galleryRenameTo(added[0].id, String(args.name).trim() || added[0].name);
   const now = added.map(p => '"' + galleryList().find(x => x.id === p.id).name + '"');
   const left = [...failed, ...read.files.filter(f => !/^image\//.test(f.type)).map(f => '"' + f.name + '" is not an image.'), ...read.skipped.map(s => '"' + s.name + '" ' + s.reason)];
-  return mcpDone('added ' + now.join(', ') + ' to the gallery', async () => { for (const p of added) await galleryDrop(p.id); },
-    'Added ' + now.join(', ') + ' to the gallery. Nothing was shown on the TV.' + (left.length ? ' Left out: ' + left.join(' ') : ''));
+  return mcpDone('added ' + now.join(', ') + ' to Pictures', async () => { for (const p of added) await galleryDrop(p.id); },
+    'Added ' + now.join(', ') + ' to Pictures. Nothing was shown on the TV.' + (left.length ? ' Left out: ' + left.join(' ') : ''));
 }
 
 function _mcpRenamePicture(args) {

@@ -126,19 +126,18 @@
     outline: 1.5px solid var(--b-icon, #8fb6ff); background: #111 !important; color: #fff !important;
     cursor: text !important; user-select: text; text-overflow: clip !important;
   }
-  /* An empty map: a callout over Add (worldMapEmpty.js), and the bar keeps only what can act and the Notes tab is disabled. */
+  /* An empty library: a call to action in the middle of the layer (worldMapEmpty.js). The card lets drags through to the layer
+     under it; its button is the one thing to press. The bar keeps only what can act and the Notes tab is disabled. */
   #wm-empty {
-    position: absolute; z-index: 70; width: 240px; padding: 10px 12px; zoom: var(--ui-zoom, 1.2); pointer-events: none;
+    position: absolute; z-index: 70; left: 50%; top: 46%; width: 260px; max-width: calc(100% - 48px); padding: 12px 12px 12px 14px; zoom: var(--ui-zoom, 1.2);
+    display: flex; flex-direction: column; box-sizing: border-box;
+    transform: translate(-50%, -50%); pointer-events: none;
     border-radius: 8px; background: var(--g-raised); border: 1px solid var(--g-line); box-shadow: var(--pop-shadow);
-    transform: translate(-50%, -100%);
   }
   #wm-empty[hidden] { display: none; }
-  #wm-empty b { display: block; margin-bottom: 2px; font: 600 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
-  #wm-empty span { font: 400 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
-  #wm-empty::after {
-    content: ''; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; margin-left: -5px; background: var(--g-raised);
-    border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg);
-  }
+  #wm-empty b { margin-bottom: 4px; font: 600 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  #wm-empty > span { font: 400 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  #wm-empty .sm-hbtn { align-self: flex-end; margin-top: 12px; pointer-events: auto; }
   body.wm-empty #tb-grp-shape, body.wm-empty #wm-div, body.wm-empty #wm-find { display: none !important; }
 
   /* The bar over the picked map (worldMapOpenBar.js): Open is solid blue with no glow, More is quiet. */
@@ -162,7 +161,7 @@
   /* No Fog / Effects tab: the world map has neither. */
   body.world .tb-seg { display: none !important; }
   body.world #toolbar-bottom { border-radius: var(--panel-radius); }
-  /* No words: Select, Add, Place, a divider, Find. Select is always leftmost. Road is a tool of the Place list now,
+  /* Select, + Map, Group, a divider, Find; only Map and Group carry a word. Select is always leftmost. Road is a tool of the Place list now,
      so its own button stays in the page as the back end. `order` sets the bar without moving the scene's buttons. */
   body.world #btn-select { order: 1; }
   body.world #wm-add { order: 2; }
@@ -170,9 +169,6 @@
   body.world #wm-div { order: 4; }
   body.world #wm-find { order: 5; }
   body.world #wm-road { display: none !important; }
-  /* Add is the one thing to press on the world map. */
-  body.world #wm-add { background: var(--b-solid); color: #fff; box-shadow: none; }
-  body.world #wm-add:hover { background: var(--b-solid-h); color: #fff; }
   body.world #toolbar-bottom .tb-chev.open { color: var(--b-icon); }
   /* The options row carries Straight walls over a drawing tool. Places take no repairs, and Snap to grid has no grid up here. */
   body.world #context-row > :not(#fx-aids) { display: none !important; }

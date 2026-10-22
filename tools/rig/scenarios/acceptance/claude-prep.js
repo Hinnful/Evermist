@@ -130,7 +130,7 @@ module.exports = async function claudePrep(rig) {
   // ── H. Replace, guide, and the scene the DM has open ──────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   const guide = await call('guide', { topic: 'scenes' });
-  rig.check(!guide.isError && /one map/.test(guide.text), 'the guide gave no text for scenes: ' + JSON.stringify(guide));
+  rig.check(!guide.isError && /A map is an image or a video/.test(guide.text), 'the guide gave no text for scenes: ' + JSON.stringify(guide));
   const kept = await dm.evaluate('notesCampaignGet()');
   const replaced = await call('set_notes', { level: 'campaign', text: 'Fresh start.' });
   rig.check(!replaced.isError && await dm.evaluate('notesCampaignGet()') === 'Fresh start.', 'set_notes did not replace the campaign notes: ' + JSON.stringify(replaced));

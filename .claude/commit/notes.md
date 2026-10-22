@@ -88,8 +88,34 @@ node .claude/commit/check-notes.js
 
 CI runs the same checker on the commit before anything is published.
 
-**Show the notes in the closing message, after `wrap_up`**, and send `notes.txt` with `SendUserFile`. The push
-question goes in that message, never in the next-step box (`docs/PROCESS.md`, Talking with the DM).
+**Rename the chat to the Summary line** with `mcp__ccd_session_mgmt__set_session_title`, so the
+session list names each release.
+
+### The backlog proposal goes out with the notes
+
+The backlog lives at `docs/BACKLOG.md`. Read it first so you match its structure and do not
+duplicate an entry. Nothing is written yet; Step 6 writes it on the yes, so it rides in this commit.
+
+- **Close what shipped.** Delete every item this change built and update the open count in the
+  header. A dead end the work paid for goes to the decisions ledger, never to the backlog.
+- **Propose repeat flakes.** If `node tools/rig-ci.js flakes` named a scenario that needed a rerun
+  three times across recent runs, list it as an item to fix or retire.
+- **File what was deferred.** Anything discovered, skipped, or left as a follow-up. Use the
+  backlog's own fields - plain-language *what it is*, *where it shows* (DM/Player/both), rough
+  effort, risk, any blocker. This is the shape `/brief` reads back.
+
+**Never touch the backlog silently.** List what you intend to close and what you intend to add, in
+plain language, and let the user strike any of them in the same answer as the push.
+
+**An item earns its place only if someone could pick it up and do it.** Convert relative dates to
+absolute. Nothing already decided, shipped or refused belongs there.
+
+A red gate does not invalidate this. The fix keeps the same version and amends the same commit, so
+what the backlog recorded still shipped. Only an abandoned change needs an edit.
+
+**Show the notes and the backlog proposal in the closing message, after `wrap_up`**, and send
+`notes.txt` with `SendUserFile`. The push question goes in that message, never in the next-step
+box (`docs/PROCESS.md`, Talking with the DM).
 
 **Then STOP.** The notes are a proposal. Do not stage, commit or push in the same turn. The user is
 the only reviewer this repo has, and reading the Summary is where they do it. End with one short

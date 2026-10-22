@@ -6,9 +6,9 @@ async function _mcpRead(args) {
   if (args.level === 'campaign') return _mcpOk(notesCampaignGet() || '(no campaign notes yet)');
   if (args.level === 'place') {
     const name = _mcpPlaceName(args.name);
-    return name ? _mcpOk(notesPlaceGet(name) || '(no notes for this place yet)') : _mcpNo('No place is called "' + (args.name || '') + '".');
+    return name ? _mcpOk(notesPlaceGet(name) || '(no notes for this group yet)') : _mcpNo('No group is called "' + (args.name || '') + '".');
   }
-  if (args.level !== 'scene') return _mcpNo('level must be campaign, place or scene.');
+  if (args.level !== 'scene') return _mcpNo('level must be campaign, group or map.');
   const found = _mcpScene(args);
   if (found.error) return _mcpNo(found.error);
   const rec = await _mcpSceneRecord(found.scene.id);
@@ -34,18 +34,18 @@ function _mcpNotesTarget(args) {
   if (args.level === 'campaign') return { where: 'the campaign', get: async () => notesCampaignGet(), put: async text => notesCampaignSet(text) };
   if (args.level === 'place') {
     const name = _mcpPlaceName(args.name);
-    if (!name) return { error: 'No place is called "' + (args.name || '') + '". Use create_place to make one.' };
-    return { where: 'the place "' + name + '"', get: async () => notesPlaceGet(name), put: async text => notesPlaceSet(name, text) };
+    if (!name) return { error: 'No group is called "' + (args.name || '') + '". Use create_place to make one.' };
+    return { where: 'the group "' + name + '"', get: async () => notesPlaceGet(name), put: async text => notesPlaceSet(name, text) };
   }
   if (args.level === 'scene') {
     const found = _mcpScene(args);
     if (found.error) return { error: found.error };
     const s = found.scene;
-    return { where: 'the scene "' + s.name + '"',
+    return { where: 'the map "' + s.name + '"',
       get: async () => (await _mcpSceneRecord(s.id)).notes || '',
-      put: async text => { if (!await _mcpPutSceneNotes(s.id, text)) throw new Error('The scene "' + s.name + '" is no longer in the library.'); } };
+      put: async text => { if (!await _mcpPutSceneNotes(s.id, text)) throw new Error('The map "' + s.name + '" is no longer in the library.'); } };
   }
-  return { error: 'level must be campaign, place or scene.' };
+  return { error: 'level must be campaign, group or map.' };
 }
 
 // `make(old)` is mcpAppend or mcpReplace on the old text; `verb` fills the reply and the toast.

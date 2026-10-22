@@ -77,7 +77,7 @@ function _wmFindShow() {
   _wmFindRows = wfFlat(found);
   count.textContent = found.total ? t.plural(found.total, '{n} match', '{n} matches') : t('No match for “{q}”', { q: _wmQuery });
   let i = 0;
-  for (const [heading, kind] of [['Places', 'place'], ['Scenes', 'scene'], ['Roads', 'road']]) {
+  for (const [heading, kind] of [['Groups', 'place'], ['Maps', 'scene'], ['Roads', 'road']]) {
     const rows = _wmFindRows.filter(r => r.kind === kind);
     if (!rows.length) continue;
     const h = document.createElement('div');
@@ -108,7 +108,7 @@ function _wmFindRow(r, i) {
   } else nm.textContent = r.name;
   const sub = document.createElement('span');
   sub.className = 'wf-sub';
-  sub.textContent = r.kind === 'place' ? t.plural(r.count, '{n} scene', '{n} scenes') : r.kind === 'road' ? t('Road') : (r.place || t('No place'));
+  sub.textContent = r.kind === 'place' ? t.plural(r.count, '{n} map', '{n} maps') : r.kind === 'road' ? t('Road') : (r.place || t('No group'));
   row.append(ic, nm, sub);
   return row;
 }

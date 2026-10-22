@@ -39,7 +39,8 @@ function _cdShowConfirm(o) {
   _cdEl('cd-msg').textContent     = o.message || '';
   _cdEl('cd-ok').innerHTML = (o.danger ? uiIcon('trash') : '') + '<span></span>';
   _cdEl('cd-ok').lastChild.textContent = o.confirmLabel || 'OK';
-  _cdEl('cd-cancel').textContent  = o.cancelLabel  || 'Cancel';
+  _cdEl('cd-cancel').innerHTML = '<span></span>';
+  _cdEl('cd-cancel').lastChild.textContent = o.cancelLabel || 'Cancel';
   // Danger is about the ACTION, not the dialog: a question is not destructive, the
   // button that answers it yes might be.
   _cdEl('cd-ok').className = 'sm-hbtn ' + (o.danger ? 'danger' : 'primary');
@@ -62,7 +63,8 @@ function _cdShowMessage(o) {
   _cdBuild();
   _cdEl('cd-title').textContent = o.title   || 'Something went wrong';
   _cdEl('cd-msg').textContent   = o.message || '';
-  _cdEl('cd-ok').textContent    = o.buttonLabel || 'OK';
+  _cdEl('cd-ok').innerHTML = '<span></span>';
+  _cdEl('cd-ok').lastChild.textContent = o.buttonLabel || 'OK';
   _cdEl('cd-ok').className      = 'sm-hbtn primary';
   // Both slots hold the same handler: with nothing to decline, every way out is the same way out.
   const fn = typeof o.onClose === 'function' ? o.onClose : null;

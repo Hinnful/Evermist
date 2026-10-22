@@ -120,7 +120,7 @@ function initPane() {
   // A column opened empty is filled from the world map, which M opens from inside the column too.
   if (!new URLSearchParams(location.search).get('scene')) {
     const line = landing && landing.querySelector('p');
-    if (line) line.innerHTML = t('Double-click a scene on the <strong>world map</strong> (M)');
+    if (line) line.innerHTML = t('Double-click a map on the <strong>Campaign</strong> (M)');
   }
   window.addEventListener('message', e => {
     const msg = e.data;

@@ -1,13 +1,16 @@
-## Step 6 - On their yes: push, arm the monitor, close the backlog
+## Step 6 - On their yes: write the backlog, push, arm the monitor
 
 **A yes covers the commit in front of them and nothing else.** Not the next one, not a follow-up
 fix, not a re-push after an edit. Anything ambiguous is a no - a question, a new task, or silence.
 If they answer with an edit to the notes, make it and offer again.
 
+**Write the backlog first**, without the items they struck, so `docs/BACKLOG.md` rides in this
+commit and the tree is clean after the push.
+
 Then run the tail. `ship.js` does all of it, in order, and each stage checks whether it is
 already done before acting, so a re-run after a stop finishes the tail and repeats nothing:
 
-- **Stage exactly the paths the notes and Step 4 describe**, never `git add -A`. A path nobody
+- **Stage exactly the paths the notes and Step 4 describe, plus `docs/BACKLOG.md`**, never `git add -A`. A path nobody
   named is one nobody reviewed. Pass them to the script; it stages nothing else.
 - **Commit** with the Summary as subject and the Description below it, read from `notes.txt`. No
   `Co-Authored-By` trailer.
@@ -30,29 +33,5 @@ broke. CI writes the in-app What's new list when it builds, so nothing is amende
 - **Arm the CI monitor.** Read `mcp__ccd_pr__get_status` to confirm the app picked the PR up, bind
   it by URL if it did not, then `mcp__ccd_pr__set_monitor` with `auto_fix: true`. **It wakes this
   session on failure only.** A green run notifies nobody here, which is why the backlog is closed
-  below rather than after the gate.
-- Report the short hash and the pull request URL **together with the backlog proposal below**,
-  then **end the turn**. No `gh run watch`. Write the backlog on the user's answer.
-
-### The backlog proposal goes out with the push report
-
-The backlog lives at `docs/BACKLOG.md`. This edit comes after the push, so it rides into the
-next commit. Read it first so you match its structure and do not duplicate an entry.
-
-- **Close what shipped.** Delete every item this change built and update the open count in the
-  header. A dead end the work paid for goes to the decisions ledger, never to the backlog.
-- **Propose repeat flakes.** If `node tools/rig-ci.js flakes` named a scenario that needed a rerun
-  three times across recent runs, list it as an item to fix or retire. Same rule: the DM strikes
-  what they do not want before anything is written.
-- **File what was deferred.** Anything discovered, skipped, or left as a follow-up. Use the
-  backlog's own fields - plain-language *what it is*, *where it shows* (DM/Player/both), rough
-  effort, risk, any blocker. This is the shape `/brief` reads back.
-
-**Never touch the backlog silently.** List what you intend to close and what you intend to add, in
-plain language, and let the user strike any of them before you write.
-
-**An item earns its place only if someone could pick it up and do it.** Convert relative dates to
-absolute. Nothing already decided, shipped or refused belongs there.
-
-A red gate does not invalidate this. The fix keeps the same version and amends the same commit, so
-what the backlog recorded still shipped. Only an abandoned change needs an edit.
+  before the push rather than after the gate.
+- Report the short hash and the pull request URL, then **end the turn**. No `gh run watch`.

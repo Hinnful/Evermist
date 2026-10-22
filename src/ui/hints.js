@@ -35,11 +35,11 @@ function _hintShow(id, title, body, blink, place) {
   if (!_hintsMayShow(id)) return;
   const el = document.createElement('div');
   el.className = 'hintcall hintcall-' + id;
-  el.innerHTML = '<b></b><span></span><button type="button" class="sm-hbtn primary hintcall-ok" tabindex="-1"></button>';
+  el.innerHTML = '<b></b><span></span><button type="button" class="sm-hbtn primary hintcall-ok" tabindex="-1"><span></span></button>';
   el.children[0].textContent = t(title);
   el.children[1].textContent = t(body);
   const ok = el.querySelector('.hintcall-ok');
-  ok.textContent = t('Got it');
+  ok.firstChild.textContent = t('Got it');
   ok.onclick = () => hintClose(id);
   el.addEventListener('mousedown', e => e.preventDefault());   // a hint never takes focus
   const prev = _hintCur;

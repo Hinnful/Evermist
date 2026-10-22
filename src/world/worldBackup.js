@@ -12,10 +12,10 @@ function worldBackupSync() {
   const btn = document.getElementById('wm-bk-export'), line = document.getElementById('wm-bk-line');
   if (!btn || !line) return;
   const ids = _wbkIds(), c = wpCounts(ids, _wbkScenes(), worldPlacesExport(), worldRoadsExport());
-  btn.textContent = ids.length ? t.plural(ids.length, 'Export {n} scene', 'Export {n} scenes') : t('Export everything');
+  btn.textContent = ids.length ? t.plural(ids.length, 'Export {n} map', 'Export {n} maps') : t('Export everything');
   btn.disabled = !allScenes.length;
-  const parts = [t.plural(c.scenes, '{n} scene', '{n} scenes')];
-  if (c.places) parts.push(t.plural(c.places, '{n} place', '{n} places'));
+  const parts = [t.plural(c.scenes, '{n} map', '{n} maps')];
+  if (c.places) parts.push(t.plural(c.places, '{n} group', '{n} groups'));
   if (c.roads) parts.push(t.plural(c.roads, '{n} road', '{n} roads'));
   line.textContent = allScenes.length
     ? t('An export would hold {what}, with their notes.', { what: parts.join(', ') })

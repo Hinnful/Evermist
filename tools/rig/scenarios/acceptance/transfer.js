@@ -274,7 +274,7 @@ module.exports = async function transfer(rig) {
   rig.check(after.mapOpen && JSON.stringify(after.picked.slice().sort()) === JSON.stringify([s1, home.s2id].sort()),
             'the world map did not open with the added and updated scenes picked: ' + JSON.stringify([after.mapOpen, after.picked]));
   const report = after.dialogs.find(d => d.startsWith('Import finished')) || '';
-  rig.check(/1 scene added/.test(report) && /1 scene updated/.test(report) && /Deep Cave/.test(report) && /Crypt/.test(report),
+  rig.check(/1 map added/.test(report) && /1 map updated/.test(report) && /Deep Cave/.test(report) && /Crypt/.test(report),
             'the report does not count what was added and updated, or name the scene and room where an edit was overwritten: ' + JSON.stringify(after.dialogs));
 
   // ── G. Export and Import in Settings ─────────────────────────────────────
@@ -363,7 +363,7 @@ module.exports = async function transfer(rig) {
   const recBefore = await ev(`(async () => { const s = await sceneStore.loadScene(${JSON.stringify(s1)}); return JSON.stringify({ name: s.name, notes: s.notes, edits: s.edits, polygons: s.polygons }); })()`);
   const stopped = await ev(`(async () => {
     const origShow = showMapProgress, origPct = updateMapProgress, state = {};
-    showMapProgress = function (label) { origShow(label); if (label === 'Saving scenes…') state.asked = true; };
+    showMapProgress = function (label) { origShow(label); if (label === 'Saving maps…') state.asked = true; };
     updateMapProgress = function (pct) {
       origPct(pct);
       if (!state.asked || state.title || pct < 100) return;

@@ -14,9 +14,16 @@ One dock on the right edge holds every control that is not on the map or the too
 
 - **It sits OVER the map and never narrows it.** The canvas keeps the whole window; a window
   resize keeps the map where it is.
-- **The rail is icons only, in three groups split by dividers**: World map and Bestiary
-  (windows), Scene control and Notes (panes), Music, Sounds, Gallery and Combat. Settings and Help sit at
-  the bottom. The open pane's tab wears the blue tint; a window that is open outside the rail wears a dot (the fight table and the Bestiary, nothing else).
+- **Every rail icon carries its name in text under it**, because a first-time DM read none of the
+  icons. Three groups split by dividers: Campaign and Bestiary (windows), Map settings and Notes
+  (panes), Music, Sounds, Pictures and Fights. Settings and Help sit at the bottom.
+- **The rail is 60px with 12px between items; each button is the whole hit area, and the ONLY
+  highlight is a 34x30 rounded square (radius 8) behind the 17px icon**, so hover and the open tint
+  have one shape. The label sits 5px below it, 9.5px on one line trimmed to its capitals
+  (`text-box`); Map settings alone breaks onto two lines (`width: min-content`, so it survives
+  translation). The open pane's tab tints the indicator and turns icon and label blue; a window open
+  outside the rail wears a dot on the indicator's corner (the fight table and the Bestiary, nothing
+  else). Dividers run edge to edge with no margin of their own.
 - **Clicking the open tab again closes the pane, leaving the rail.** The rail never hides.
 - **One pane at a time.** The dock has no Room tab: the selected room lives in the Notes tab.
 - **The open pane and the width persist under `evermist.dockPane` and `evermist.dockWidth`.**
@@ -32,6 +39,10 @@ One dock on the right edge holds every control that is not on the map or the too
   opens under the dropdown, Figma's way**, the check on the left.
 
 ## The dock's skin
+
+- **One divider rule app-wide**: a divider runs edge to edge across its container (a bar's full height, a
+  menu's or the rail's full width, a field's full height), 1px, `--g-divider`. A menu's padding is
+  cancelled with negative side margins so the line touches both edges.
 
 - **Grey surfaces, no outlines.** Fields and buttons are filled grey (`--g-field`), hover one
   step lighter, a pick inside a segment is the lighter `--g-pick` plate. Defined once on `:root`
@@ -112,8 +123,8 @@ The room card's module renders into the Notes pane's room level; there is no flo
 
 ## The world map (`worldMap.js`, `worldMapEdit.js`, `worldMap.css`)
 
-A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolbar is the scene's own, with no words: Select (always leftmost), Add a scene,
-Place, a divider, Find. Add is solid blue with no glow, the one thing to press. Place's list holds Rectangle (R), Circle (O), Polygon (P), then Road (L),
+A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolbar is the scene's own, with words only on + Map and Group: Select (always leftmost), + Map,
+Group, a divider, Find. Add is a grey labelled "Map" button like Group (plus icon, word), never solid blue. Place's list holds Rectangle (R), Circle (O), Polygon (P), then Road (L),
 and its button wears the last pick; V, R, O and P put Road down, and L takes it on the world map only. Road's own button (`#wm-road`) stays in the page as
 the back end. Places take no Merge, Cut out or Split: the options row over a place tool holds Straight walls alone. The Brush, the fog
 clouds, Reveal all and Hide all, the Fog / Effects switch and Snap are hidden, and the
@@ -236,6 +247,8 @@ red, Split yellow) and the bar's repair icon.
 - **Each chevron opens Figma's list** (`openBarList`, `shapeMenu.js`): a check on the current pick,
   the icon, the name, the key; the row under the pointer wears the tint; an Effects-only shape is
   greyed in Rooms mode. A right-click on the Shape button opens the same list.
+- **A labelled button** (Room, Group, + Map: `.tb-labeled`) is as tall as the others, padding 0 11px 0 9px, 6px
+  between a 16px block icon and a 12px word trimmed to its capitals, so both centre on the button.
 - **The Shape list holds shapes only, and the Shape button always wears the shape you draw with.**
   In Effects it offers Square, Circle, Cone, Line (one square wide), Wall (1 ft thick), Ring (a
   Wall bent into a circle) and Polygon. Line, Wall and Ring take a length alone.

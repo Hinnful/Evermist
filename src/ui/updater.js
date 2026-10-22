@@ -134,7 +134,8 @@ function upToast(message, ctaLabel, onCta, hideMs) {
   const cta = document.createElement('button');
   cta.type = 'button';
   cta.className = 'sm-hbtn primary';
-  cta.textContent = ctaLabel;
+  cta.innerHTML = '<span></span>';
+  cta.firstChild.textContent = ctaLabel;
   cta.addEventListener('click', () => { hideUpdateToast(); onCta(); });
 
   const x = document.createElement('button');

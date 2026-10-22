@@ -19,8 +19,8 @@ function _mcpPlaceName(name) {
 function _mcpScene(args) {
   const hits = mcpFindScenes(allScenes, args.name, args.place);
   if (hits.length === 1) return { scene: hits[0] };
-  if (!hits.length) return { error: 'No scene is called "' + (args.name || '') + '"' + (args.place ? ' in "' + args.place + '"' : '') + '. Use create_scene to add one from a map file.' };
-  return { error: 'More than one scene is called "' + args.name + '". Name its place too: ' + hits.map(s => s.group || '(no place)').join(', ') + '.' };
+  if (!hits.length) return { error: 'No map is called "' + (args.name || '') + '"' + (args.place ? ' in "' + args.place + '"' : '') + '. Use create_scene to add one from a map file.' };
+  return { error: 'More than one map is called "' + args.name + '". Name its group too: ' + hits.map(s => s.group || '(no group)').join(', ') + '.' };
 }
 
 // Where a scene's live copy is: this window's open scene, a column in two-map mode, or only the store.
@@ -44,5 +44,5 @@ async function _mcpSceneRecord(id) {
 function _mcpTvRefuse(scene, what) {
   const onTv = mcpOnTv({ playerOpen: !!(playerWindow && !playerWindow.closed), held: tvHeld, panes: panesActive,
     isOpen: !!(currentScene && currentScene.id === scene.id), inColumn: panesActive && !!paneColumnOf(scene.id) });
-  return onTv ? _mcpNo('Not done: the TV shows "' + scene.name + '" now, and ' + what + ' would change what the players see. Ask the DM to open another scene first or close the Player window.') : null;
+  return onTv ? _mcpNo('Not done: the TV shows "' + scene.name + '" now, and ' + what + ' would change what the players see. Ask the DM to open another map first or close the Player window.') : null;
 }

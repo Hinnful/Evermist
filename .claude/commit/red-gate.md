@@ -23,7 +23,8 @@ most: once when the release lands, and once if the red was a real app bug.**
 - **A real app bug is the DM's.** It changes what installs, so it goes back through the notes and
   the DM's yes (below), in plain language, with what was found.
 
-- Read the log (`gh run view <id> --log`) and say which job failed and what its FAIL line said.
+- Have the `scout` agent read the log (`gh run view <id> --log`), then say which job failed and
+  what its FAIL line said.
 - **Classify it before proposing a fix:** app bug, scenario fault, or infrastructure. Do not report
   a scenario fault as the app being broken.
 - **Reproduce a geometry or layout failure locally rather than by pushing again.** A runner has a

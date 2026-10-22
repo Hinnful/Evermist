@@ -44,3 +44,6 @@ desktop.ini
 
 # Fire look prototype (throwaway harness + recovered/downloaded assets)
 tools/fire-proto/
+
+# The What's new list, regenerated from the release commits before every test, start, rig and build
+src/ui/changelogData.js

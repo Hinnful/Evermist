@@ -11,28 +11,47 @@
 
   /* ===== THE RAIL ===== */
   .dk-rail {
-    width: 44px; flex: none; padding: 8px 0;
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    width: 60px; flex: none; padding: 10px 0;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    overflow-y: auto; scrollbar-width: none;   /* a short window scrolls the rail rather than clipping its end */
     border-left: 1px solid transparent;   /* always there, or opening the pane widens the rail and shifts the toolbar */
   }
   #dock.open .dk-rail { border-left-color: var(--g-line); }
+  /* The button is the whole hit area; only the indicator behind the icon is ever highlighted. */
   .rail-btn {
-    position: relative; width: 32px; height: 32px; flex: none; padding: 0;
+    position: relative; width: 60px; flex: none; padding: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    border: 0; background: transparent; color: #a3a8b0; cursor: pointer;
+  }
+  .rail-ind {
+    width: 34px; height: 30px; border-radius: 8px; flex: none;
     display: flex; align-items: center; justify-content: center;
-    border: 0; border-radius: 7px; background: transparent; color: #8b9098; cursor: pointer;
     transition: background .12s, color .12s;
   }
-  .rail-btn:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
-  .rail-btn.active, .rail-btn.active:hover { background: var(--b-tint); color: var(--b-icon); }
-  .rail-btn:disabled, .rail-btn:disabled:hover { opacity: 0.35; cursor: default; background: transparent; }
+  .rail-btn svg { width: 17px; height: 17px; display: block; flex: none; }
+  .rail-lbl {
+    font: 500 9.5px/11px system-ui, -apple-system, sans-serif; color: #8b9099; text-align: center;
+    white-space: nowrap; text-box: trim-both cap alphabetic;
+  }
+  /* min-content puts each word of the one two-line label on its own line, in either language. */
+  .rail-lbl-2 { white-space: normal; width: min-content; }
+  .rail-btn:hover:not(.active):not(:disabled) { color: #e4e6ea; }
+  .rail-btn:hover:not(.active):not(:disabled) .rail-ind { background: rgba(255, 255, 255, 0.07); }
+  .rail-btn:hover:not(.active):not(:disabled) .rail-lbl { color: #c3c8cf; }
+  .rail-btn.active, .rail-btn.active:hover { color: var(--b-icon); }
+  .rail-btn.active .rail-ind { background: var(--b-tint); }
+  .rail-btn.active .rail-lbl, .rail-btn.active:hover .rail-lbl { color: var(--b-icon); }
+  .rail-btn:disabled, .rail-btn:disabled:hover { opacity: 0.35; cursor: default; }
   #dock [inert] { opacity: 0.35; }
   .rail-btn.win::after {
-    content: ''; position: absolute; top: 3px; right: 3px;
+    content: ''; position: absolute; top: 0; left: calc(50% + 11px);
     width: 5px; height: 5px; border-radius: 50%; background: var(--b-icon);
   }
   /* The fight table and the Bestiary are free windows: open, they wear the dot alone, never the tab's tint. */
-  #btn-combat.active:not(:hover), #btn-bestiary.active:not(:hover) { background: transparent; color: #8b9098; }
-  .rail-sep { width: 18px; height: 1px; background: rgba(255, 255, 255, 0.08); margin: 4px 0; }
+  #btn-combat.active:not(:hover), #btn-bestiary.active:not(:hover) { color: #a3a8b0; }
+  #btn-combat.active .rail-ind, #btn-bestiary.active .rail-ind { background: transparent; }
+  #btn-combat.active:hover .rail-ind, #btn-bestiary.active:hover .rail-ind { background: rgba(255, 255, 255, 0.07); }
+  .rail-sep { align-self: stretch; height: 1px; background: var(--g-divider); margin: 0; flex: none; }
   .rail-end { margin-top: auto; }
 
   /* ===== THE PANE ===== */
@@ -160,7 +179,7 @@
   .dk-menu button:hover { background: var(--b-tint); color: var(--b-icon); }
   .dk-menu button::before { content: ''; width: 12px; flex: none; text-align: center; }
   .dk-menu button.on::before { content: '\2713'; }
-  .dk-menu .sep { height: 1px; background: var(--g-line); margin: 4px 2px 4px 22px; }
+  .dk-menu .sep { height: 1px; background: var(--g-divider); margin: 4px -4px; }
   .dk-pop.dk-drop { width: auto; }
 
   /* ===== THE MINIMAP: bottom left, the TV's shape; minimap.js sets its width and height ===== */

@@ -61,7 +61,7 @@ const BS_ICONS = {
 function _bsPageHtml(b) {
   const head = bs.editing
     ? `<div class="bs-page-head editing"><div class="t"><span class="bs-mode">Editing</span><h2 data-no-i18n>${_cbEsc(b.name)}</h2></div>
-        <button class="sm-hbtn primary bs-done" data-a="edit">${BS_ICONS.done} Done</button></div>`
+        <button class="sm-hbtn primary bs-done" data-a="edit">${BS_ICONS.done}<span>Done</span></button></div>`
     : `<div class="bs-page-head"><div class="t"><h2 data-no-i18n>${_cbEsc(b.name)}<span class="bs-src">${_cbEsc(b.source || t('no source'))}</span></h2></div>
         <div class="bs-tools"><button class="bs-ib" data-a="edit" title="Edit">${BS_ICONS.edit}</button>
           <button class="bs-ib" data-a="dup-open" title="Duplicate (Ctrl+D)">${uiIcon('dup')}</button>
@@ -313,21 +313,21 @@ function initBestiary() {
     <div class="bs-head">
       <span class="bs-title">Bestiary</span><span class="bs-sp"></span>
       <label class="sm-field">${uiIcon('search')}<input id="bs-search" placeholder="Search by name" spellcheck="false" autocomplete="off"></label>
-      <button class="sm-hbtn" data-a="new">${uiIcon('plus')}New monster</button>
-      <button class="sm-hbtn primary" data-a="import">Import<span class="sm-chev"></span></button>
+      <button class="sm-hbtn" data-a="new">${uiIcon('plus')}<span>New monster</span></button>
+      <button class="sm-hbtn primary" data-a="import"><span>Import</span><span class="sm-chev"></span></button>
       <button class="sm-x" data-a="close" title="Close (Esc)">${uiIcon('x')}</button>
     </div>
     <div class="bs-importbar">
       <textarea id="bs-links" spellcheck="false" placeholder="Paste one or more monster page links, one per line"></textarea>
-      <div class="col"><button class="sm-hbtn primary" data-a="go">Import</button><button class="sm-hbtn" data-a="no-import">Cancel</button></div>
+      <div class="col"><button class="sm-hbtn primary" data-a="go"><span>Import</span></button><button class="sm-hbtn" data-a="no-import"><span>Cancel</span></button></div>
     </div>
     <div class="sm-ltb bs-filters">
       <span class="sm-tick" id="bs-tickall"></span>
       <span class="bs-fbtns"></span>
       <span class="bs-acts"><span class="cnt on bs-picked"></span>
-        <button class="sm-hbtn" data-a="dup">${uiIcon('dup')}Duplicate</button>
-        <button class="sm-hbtn" data-a="export">${uiIcon('export')}Export</button>
-        <button class="sm-hbtn danger" data-a="del">${uiIcon('trash')}Delete</button></span>
+        <button class="sm-hbtn" data-a="dup">${uiIcon('dup')}<span>Duplicate</span></button>
+        <button class="sm-hbtn" data-a="export">${uiIcon('export')}<span>Export</span></button>
+        <button class="sm-hbtn danger" data-a="del">${uiIcon('trash')}<span>Delete</span></button></span>
       <span class="end bs-shown"></span>
     </div>
     <div id="bs-queue" class="bs-queue" style="display:none"></div>

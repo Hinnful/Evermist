@@ -19,7 +19,7 @@
 //      return; with no scene open Esc does nothing. With two maps on it fills the selected column.
 //      A scene opened from the map starts with no room picked, and a column it fills keeps its own notes.
 //   5. Dragging a scene: within its place moves it; onto a loose scene makes a place, a rectangle that
-//      fits both, picked as "New place" (its name is hidden zoomed in, so no rename opens); out of the
+//      fits both, picked as "New group" (its name is hidden zoomed in, so no rename opens); out of the
 //      polygon takes it out. Dragging a place's name moves the polygon and its scenes.
 //   6. A double-click on a name renames it, and the library shows the new name.
 //   7. The toolbar holds Select, Add a scene and Find. Add puts the scene in the next clear spot beside
@@ -274,16 +274,16 @@ module.exports = async function worldMapFeature(rig) {
     a: allScenes.find(s => s.name === 'Attic').group, f: allScenes.find(s => s.name === 'Frostmere Pass').group })`);
   fresh.aimed = aimed;
   // RED ON: the _wmNameShown guard removed from _wmDrop (worldMapEdit.js), which opened a rename on a hidden plate — 2026-10-09
-  rig.check(!fresh.editing && fresh.picked === 'New place' && fresh.a === 'New place' && fresh.f === 'New place',
+  rig.check(!fresh.editing && fresh.picked === 'New group' && fresh.a === 'New group' && fresh.f === 'New group',
             'dropping a scene on a loose scene did not make a picked place, or opened a rename on its hidden name: ' + JSON.stringify(fresh));
   // One Ctrl+Z takes back the place AND the move; Ctrl+Shift+Z puts both back.
   const undone = await dm.evaluate(`(() => { __rigKey('KeyZ', { ctrlKey: true });
-    const a = allScenes.find(s => s.name === 'Attic'), out = { place: !!worldPlaceByName('New place'), g: a.group, pos: { ...a.worldPos } };
+    const a = allScenes.find(s => s.name === 'Attic'), out = { place: !!worldPlaceByName('New group'), g: a.group, pos: { ...a.worldPos } };
     __rigKey('KeyZ', { ctrlKey: true, shiftKey: true }); out.back = allScenes.find(s => s.name === 'Attic').group; return out; })()`);
   // RED ON: worldUndoDropLast() removed after the drop's worldPlaceCreate (worldMapEdit.js) — 2026-10-09
-  rig.check(!undone.place && undone.g === attic0.g && undone.pos.x === attic0.x && undone.pos.y === attic0.y && undone.back === 'New place',
+  rig.check(!undone.place && undone.g === attic0.g && undone.pos.x === attic0.x && undone.pos.y === attic0.y && undone.back === 'New group',
             'one Ctrl+Z after a drop on a loose scene did not take back both the place and the move: ' + JSON.stringify(undone));
-  await dm.evaluate('renameGroupAsking("New place", "Pass"); 0');
+  await dm.evaluate('renameGroupAsking("New group", "Pass"); 0');
   rig.check(await dm.evaluate('allScenes.filter(s => s.group === "Pass").length') === 2, 'naming the new place did not keep both scenes in it');
 
   await layout();
@@ -344,7 +344,7 @@ module.exports = async function worldMapFeature(rig) {
     ' __wmPress(a, b); return 0; })()');
   rig.check(await drawn() === n0 + 1, 'the rectangle tool did not draw a place');
   // RED ON: the _wmNameShown guard removed from _wmCreatePlace (worldMapShapes.js) — 2026-10-09
-  rig.check(await dm.evaluate('!_wmEditing && _wmTool === "select" && /^New place/.test(worldMapSel.place)'),
+  rig.check(await dm.evaluate('!_wmEditing && _wmTool === "select" && /^New group/.test(worldMapSel.place)'),
             'a new place drawn zoomed in opened a rename on its hidden name, or was not picked, or kept the tool');
   await dm.evaluate('renameGroupAsking(worldMapSel.place, "Frost"); 0');
   rig.check(await dm.evaluate('allScenes.find(s => s.name === "Frostmere Pass").group') === 'Frost',
@@ -400,7 +400,7 @@ module.exports = async function worldMapFeature(rig) {
   await dm.evaluate('worldUndoClear(); _wmTakeOut(allScenes.find(s => s.name === "Attic").id, allScenes.find(s => s.name === "Attic").group); __rigKey("KeyZ", { ctrlKey: true }); 0');
   const at2 = await at('Attic');
   // RED ON: worldUndoPush() removed from _wmTakeOut (worldMapMenu.js) — 2026-10-09
-  rig.check(at2.x === at0.x && at2.y === at0.y && at2.g === at0.g, 'Ctrl+Z after Take out of its place did not put it back: ' + JSON.stringify([at0, at2]));
+  rig.check(at2.x === at0.x && at2.y === at0.y && at2.g === at0.g, 'Ctrl+Z after Take out of its group did not put it back: ' + JSON.stringify([at0, at2]));
 
   await dm.evaluate('__wmClick(__wmCard("Attic").firstChild); __rigKey("Escape"); 0');
   // RED ON: Escape's pick test back to `> 1` (worldMap.js) — 2026-10-09
@@ -586,17 +586,17 @@ module.exports = async function worldMapFeature(rig) {
   await layout();
   await rclick('__wmCard("Attic").firstChild');
   const sceneRows = await rows();
-  rig.check(JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its place', 'Export this scene', 'Delete scene']) ||
-            JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its place', 'Export this scene', 'Delete scene (off)']),
-            'a scene\'s menu is not Open, Rename, Take out of its place, Export, Delete: ' + JSON.stringify(sceneRows));
+  rig.check(JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', 'Export this map', 'Delete map']) ||
+            JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', 'Export this map', 'Delete map (off)']),
+            'a scene\'s menu is not Open, Rename, Take out of its group, Export, Delete: ' + JSON.stringify(sceneRows));
   await press('Rename');
   rig.check(await dm.evaluate('!!_wmEditing'), 'Rename in the menu did not start editing the name');
   await dm.evaluate('_wmEditing.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true, cancelable: true })); 0');
   await rclick('__wmCard("Frostmere Pass").firstChild');
   const pass = await rows();
-  rig.check(pass[pass.length - 1] === 'Delete scene', 'the delete row is off for a scene that is not open: ' + JSON.stringify(pass));
+  rig.check(pass[pass.length - 1] === 'Delete map', 'the delete row is off for a scene that is not open: ' + JSON.stringify(pass));
   const nBefore = await dm.evaluate('allScenes.length');
-  await press('Delete scene');
+  await press('Delete map');
   rig.check(await dm.evaluate('allScenes.length') === nBefore - 1 && await dm.evaluate('worldMapOpen'),
             'Delete in the menu did not remove the scene, or closed the map');
   await dm.evaluate('document.querySelector("#scene-undo-toast .undo-btn").click(); 0');
@@ -605,14 +605,14 @@ module.exports = async function worldMapFeature(rig) {
   await rclick('__wmCard(' + JSON.stringify(open) + ').firstChild');
   const openRows = await rows();
   // RED ON: `off: _wmIsOpen(id)` put back on the Delete scene row in _wmSceneRows (worldMapMenu.js) - 2026-10-16
-  rig.check(openRows[openRows.length - 1] === 'Delete scene', 'the open scene cannot be deleted from the map: ' + JSON.stringify(openRows));
+  rig.check(openRows[openRows.length - 1] === 'Delete map', 'the open scene cannot be deleted from the map: ' + JSON.stringify(openRows));
   await dm.evaluate('__rigKey("Escape"); 0');
   rig.check(await dm.evaluate('worldMapOpen && !document.querySelector(".wm-menu")'), 'Esc did not close the menu first, or left the map');
   await rclick('__wmHead("The Watcherhouse")');
-  rig.check(JSON.stringify((await rows()).map(r => r.replace(/^Rename \(off\)$/, 'Rename'))) === JSON.stringify(['Rename', 'Fit in view', 'Delete place']), 'a place\'s menu is wrong: ' + JSON.stringify(await rows()));
+  rig.check(JSON.stringify((await rows()).map(r => r.replace(/^Rename \(off\)$/, 'Rename'))) === JSON.stringify(['Rename', 'Fit in view', 'Delete group']), 'a place\'s menu is wrong: ' + JSON.stringify(await rows()));
   await dm.evaluate('__wmE("mousedown", document.getElementById("wm"), { x: 5, y: 5 }); 0');
   await dm.evaluate('(() => { const wm = document.getElementById("wm"); wm.dispatchEvent(new MouseEvent("contextmenu", { clientX: 700, clientY: 40, button: 2, bubbles: true, cancelable: true })); return 0; })()');
-  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add a scene here', 'Show everything']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
+  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add a map here', 'Show everything']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
   await dm.evaluate('__wmE("mousedown", document.getElementById("wm"), { x: 5, y: 5 }); 0');
   rig.check(await dm.evaluate('!document.querySelector(".wm-menu")'), 'a click elsewhere left the menu up');
 

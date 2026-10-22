@@ -66,7 +66,7 @@ function renameGroup(from, to) {
 // ⚠ A NAME ANOTHER PLACE WEARS IS REFUSED: a merge would drop one outline and leave its scenes on bare ground.
 function renameGroupAsking(from, next) {
   if (!worldPlaceByName(next) && !knownGroupNames().some(n => n !== from && n === next)) { renameGroup(from, next); return; }
-  messageDialog({ title: 'Nothing changed', message: t('There is already a place called “{name}”. Pick another name.', { name: next }) });
+  messageDialog({ title: 'Nothing changed', message: t('There is already a group called “{name}”. Pick another name.', { name: next }) });
 }
 
 // Deletes the place, never the maps: its scenes are left with no place. Ctrl+Z brings back the place, its

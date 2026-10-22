@@ -72,7 +72,7 @@ module.exports = async function worldMapSeat(rig) {
               'at ' + deg + '° the place outline is not under the drawn spot: ' + JSON.stringify(edges));
 
     const plate = await dm.evaluate(`(() => {
-      const h = [...document.querySelectorAll('.wm-hl')].find(e => /^New place/.test(e.textContent));
+      const h = [...document.querySelectorAll('.wm-hl')].find(e => /^New group/.test(e.textContent));
       if (!h) return null;
       const r = h.getBoundingClientRect();
       return { dx: r.left - ${box.a.x}, dy: r.top - ${box.a.y} };

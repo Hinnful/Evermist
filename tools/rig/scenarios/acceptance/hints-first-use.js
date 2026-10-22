@@ -3,7 +3,7 @@
 // hints-first-use.js — THE FIRST-USE HINTS: the empty world map's callout, then the toasts a first map teaches.
 // Covers src/ui/hintsFirstMap.js, hints.js and hints.css.
 //
-//   A. The empty world map's callout says maps go in one or several at once.
+//   A. The empty Campaign's call to action says what a map can be.
 //   B. A first map opened shows "Reveal part of the map" centred above the Brush, which blinks, recorded as seen.
 //   C. Picking another tool closes it and stops the blink.
 //   C3. The Rooms hint stays away while a brush stroke is still going.
@@ -81,7 +81,7 @@ module.exports = async function hintsFirstUse(rig) {
   // A. RED ON: the callout's line reverted to "Add the maps for your game here. Double-click one…" (index.html)
   await lib.settle(dm, 'worldMapOpen && !_wmAnim', 30000);
   const callout = await dm.evaluate('document.getElementById("wm-empty").textContent');
-  rig.check(/one or several at once\. Double-click one to open it/.test(callout), 'the empty world map\'s callout does not say several maps go in at once: ' + callout);
+  rig.check(/Any image or video of a map/.test(callout), 'the empty Campaign call to action does not say what a map can be: ' + callout);
 
   await dm.evaluate(PAGE);
   await lib.openMap(rig, { w: 2400, h: 1500 });

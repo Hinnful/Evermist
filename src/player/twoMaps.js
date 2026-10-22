@@ -12,7 +12,7 @@ async function toggleTwoMaps() {
   if (!openId) {
     messageDialog({
       title: 'Open a map first',
-      message: 'Two maps starts from the one you are on. Open one from the world map (M), then press Two maps again.',
+      message: 'Two maps starts from the one you are on. Open one from the Campaign (M), then press Two maps again.',
     });
     return;
   }

@@ -48,7 +48,7 @@ describe('mcpShim', () => {
   it('explains what Evermist holds and that Claude only preps', async () => {
     const [init] = await talk(path.join(dir, 'none.json'), [{ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }]);
     const text = init.result.instructions;
-    for (const word of ['places', 'scenes', 'rooms', 'never a place', 'never runs the game', 'undo_last_change', 'yes']) assert.match(text, new RegExp(word));
+    for (const word of ['groups', 'maps', 'rooms', 'never a group', 'never runs the game', 'undo_last_change', 'yes']) assert.match(text, new RegExp(word));
   });
 
   it('marks every tool read-only, an edit or a delete, and every delete destructive', async () => {

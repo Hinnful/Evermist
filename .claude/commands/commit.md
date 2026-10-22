@@ -1,7 +1,7 @@
 ---
 description: Gate the change, file what it settled, write the notes as public release notes, then push on the user's yes and arm the CI monitor
 argument-hint: "[optional emphasis, or an explicit version to use]"
-allowed-tools: Read, Grep, Glob, Bash, Edit, Write
+allowed-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__ccd_session_mgmt__set_session_title
 ---
 
 # Mode: Ship This Change
@@ -56,18 +56,19 @@ Read `.claude/commit/version.md` now.
 
 ## Step 4 - File what the work settled
 
-Read `.claude/commit/docs.md` now. It finishes before the notes, so its edits ride into
-this commit.
+Hand this step to the `filer` agent: list every call the session settled and every behaviour
+that changed, and it follows `.claude/commit/docs.md`. Check its edits in `git diff` before the
+notes. It finishes before the notes, so its edits ride into this commit.
 
-## Step 5 - Hand over the notes, then stop
+## Step 5 - Hand over the notes and the backlog proposal, then stop
 
 Read `.claude/commit/notes.md` now. The notes go to `notes.txt` and pass
 `check-notes.js` before the user sees them. **Then STOP** and offer to push.
 
-## Step 6 - On their yes: push, arm the monitor, close the backlog
+## Step 6 - On their yes: write the backlog, push, arm the monitor
 
-Read `.claude/commit/push.md` now. `ship.js` runs the tail. Once the backlog is written
-on the user's answer, delete `notes.txt`.
+Read `.claude/commit/push.md` now. `ship.js` runs the tail. Once it has pushed, delete
+`notes.txt`.
 
 ## When the monitor wakes you on red
 

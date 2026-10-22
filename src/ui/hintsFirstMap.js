@@ -120,7 +120,7 @@ function _hnmTick() {
   if (allScenes.length < 2) { _hnmHeld = 0; return; }
   _hnmHeld += Math.min(dt, 5000);   // a sleeping laptop is not time on the TV
   if (_hnmHeld >= _hintNextMapMs) {
-    _hintShow('next-map', 'Ready for the next map?', 'Your other maps are on the world map. Press M or click here.',
+    _hintShow('next-map', 'Ready for the next map?', 'Your other maps are in the Campaign. Press M or click here.',
       'btn-world', _hintPlaceBeside('btn-world', true));
   }
 }

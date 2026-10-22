@@ -37,7 +37,7 @@ function updateTriggerName() {
       .join('  ·  ');
     return;
   }
-  el.textContent = currentScene ? currentScene.name : t(allScenes.length ? 'Select a scene' : 'No scenes');
+  el.textContent = currentScene ? currentScene.name : t(allScenes.length ? 'Select a map' : 'No maps');
 }
 
 // What every change to the list does: the dock's names, the thumbnails, the world map.
@@ -60,8 +60,8 @@ async function initScenes() {
     // ⚠ REPORTED, NEVER JUST LOGGED. Every save and every import fails from here on, and a DM
     // who is told nothing finds out when a session's reveals are gone.
     messageDialog({
-      title: 'Evermist cannot reach its saved scenes',
-      message: t('The scene database would not open, so maps cannot be saved or loaded this ' +
+      title: 'Evermist cannot reach its saved maps',
+      message: t('The map library would not open, so maps cannot be saved or loaded this ' +
                  'session. Restarting the app usually clears it.') + ' (' + ((err && err.message) || err) + ')',
     });
     return;

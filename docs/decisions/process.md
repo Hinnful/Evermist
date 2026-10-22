@@ -348,3 +348,29 @@ A brainstorm on the gallery ended with the strongest model building the pane ins
 large share of a session on work a smaller model does as well. Building now waits for an explicit "build it" and goes
 to a fresh session on a smaller model. It is a habit in `CLAUDE.md`, not a hook: no check can tell a brainstorm's
 edit from a build's, and the cost of a slip is tokens, not data.
+
+### The What's new list is generated, never committed · `SETTLED` (2026-10-22)
+The committed `src/ui/changelogData.js` was always stale, because CI wrote the real one at build
+time, so `npm test` went red on every local run. The file is now gitignored, and `npm test`,
+`start`, `lab`, `rig` and every `build` regenerate it first. On a bump with no release commit yet, a
+local run lists the bumped version from the pending notes; CI skips that, so a missing release
+commit still fails there. **Reverses** "`/commit`'s own gate cannot be green on a version bump"
+(2026-09-19): the gate is green on a bump now.
+
+### The backlog is written inside the release commit · `SETTLED` (2026-10-22)
+The backlog edit came after the push and rode into the next commit, so every release left the
+tree dirty. The proposal now goes out with the notes, the DM strikes items in the same answer as
+the push, and Step 6 writes it before `ship.js` stages. Rejected: a separate docs-only push after
+the release, which CI would read as a second release of the same untagged version. Step 5 also
+renames the chat to the Summary line.
+
+### Subagents carry their own model and thinking level · `SETTLED` (2026-10-22)
+Three definitions in `.claude/agents/` let the main session hand off work a smaller model does as
+well: `scout` on Haiku for searches and CI logs, `builder` on Sonnet for a written spec, `filer` on
+Sonnet for `/commit`'s Step 4. Diagnosis, design and release notes stay with the main session.
+
+### "Build it" goes to the `builder` agent · `SETTLED` (2026-10-22)
+A build used to wait for a fresh session on a smaller model, which needed a written spec and a
+manual hand-off. The main session now briefs the `builder` agent from the conversation and checks
+what it returns, so "build it" alone runs the build on Sonnet. "Build it here" keeps it in the main
+session.

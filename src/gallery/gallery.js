@@ -100,7 +100,7 @@ function _gaRename(p, name) {
 function _gaRemove(p) {
   confirmDialog({
     title: t('Remove this picture?'),
-    message: t('“{name}” leaves the gallery for good.', { name: p.name }),
+    message: t('“{name}” leaves Pictures for good.', { name: p.name }),
     confirmLabel: t('Remove'),
     danger: true,
     onConfirm: async () => {

@@ -19,11 +19,11 @@ function _wmSceneRows(id) {
     { label: 'Open', run: () => worldMapOpenScene(id) },
     { label: 'Rename', off: far && placed, run: () => _wmRenameStart(el, 'scene', id) },
   ];
-  if (group) rows.push({ label: 'Take out of its place', run: () => _wmTakeOut(id, group) });
+  if (group) rows.push({ label: 'Take out of its group', run: () => _wmTakeOut(id, group) });
   if (worldRoadOfScene(id)) rows.push({ label: 'Take off the road', run: () => worldMapRoadLeave(id) });
-  rows.push({ label: 'Export this scene', run: () => worldBackupExport([id]) });
+  rows.push({ label: 'Export this map', run: () => worldBackupExport([id]) });
   rows.push({ sep: true });
-  rows.push({ label: 'Delete scene', danger: true, run: () => _wmDeletePicked([id]) });
+  rows.push({ label: 'Delete map', danger: true, run: () => _wmDeletePicked([id]) });
   return rows;
 }
 
@@ -39,9 +39,9 @@ function _wmTakeOut(id, group) {
 // Several scenes picked: what can be done to them all.
 function _wmPickRows(ids) {
   return [
-    { label: t.plural(ids.length, 'Export {n} scene', 'Export {n} scenes'), run: () => worldBackupExport(ids), raw: true },
+    { label: t.plural(ids.length, 'Export {n} map', 'Export {n} maps'), run: () => worldBackupExport(ids), raw: true },
     { sep: true },
-    { label: t.plural(ids.length, 'Delete {n} scene', 'Delete {n} scenes'), danger: true, raw: true, run: () => _wmDeletePicked(ids) },
+    { label: t.plural(ids.length, 'Delete {n} map', 'Delete {n} maps'), danger: true, raw: true, run: () => _wmDeletePicked(ids) },
   ];
 }
 
@@ -50,7 +50,7 @@ function _wmPlaceRows(name) {
     { label: 'Rename', off: !_wmNameShown(name), run: () => _wmRenameStart(_wmEls.get('h' + name), 'place', name) },
     { label: 'Fit in view', run: () => worldMapFlyToPlace(name) },
     { sep: true },
-    { label: 'Delete place', danger: true, run: () => worldPlaceDelete(worldPlaceByName(name).id) },
+    { label: 'Delete group', danger: true, run: () => worldPlaceDelete(worldPlaceByName(name).id) },
   ];
 }
 
@@ -73,7 +73,7 @@ function _wmCornerRows(flat) {
 
 function _wmGroundRows(at) {
   return [
-    { label: 'Add a scene here', run: () => { _wmAddAt = at; document.getElementById('wm-add').click(); } },
+    { label: 'Add a map here', run: () => { _wmAddAt = at; document.getElementById('wm-add').click(); } },
     { label: 'Show everything', run: () => _wmFly(_wmOverview(), 650) },
   ];
 }

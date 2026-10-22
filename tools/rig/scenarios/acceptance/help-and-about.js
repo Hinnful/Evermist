@@ -119,7 +119,7 @@ module.exports = async function helpAndAboutFeature(rig) {
   rig.check(!afterClose.panel && !afterClose.back,
             'the shortcut list\'s close button does not shut it: ' + JSON.stringify(afterClose));
 
-  // ⚠ THE RATIO A RAIL BUTTON PROVES, never --ui-zoom read back: the dock's zoom is what the DM
+  // ⚠ THE RATIO A RAIL BUTTON'S FIXED 34x30 SQUARE PROVES (the button's own height is fractional, which offsetHeight rounds), never --ui-zoom read back: the dock's zoom is what the DM
   // sees, and the list drew smaller than every other window for as long as it read neither.
   // RED ON: zoom dropped from .sm-win (sceneManager.css) — 2026-10-03
   await dm.evaluate('document.getElementById("btn-help").click(); 0');
@@ -127,7 +127,7 @@ module.exports = async function helpAndAboutFeature(rig) {
     // ⚠ The window opens on a scale animation, which a rect reads; it is finished first.
     const k = el => { el.getAnimations().forEach(a => a.finish()); return el.getBoundingClientRect().height / el.offsetHeight; };
     const rows = [...document.querySelectorAll('#shortcut-legend .lg-row')].map(r => r.firstChild.textContent.trim());
-    return { list: +k(document.getElementById('legend-win')).toFixed(3), dock: +k(document.getElementById('btn-help')).toFixed(3), rows };
+    return { list: +k(document.getElementById('legend-win')).toFixed(3), dock: +k(document.querySelector('#btn-help .rail-ind')).toFixed(3), rows };
   })()`);
   await dm.evaluate('document.getElementById("btn-help").click(); 0');
   rig.check(Math.abs(scale.list - scale.dock) < 0.01,

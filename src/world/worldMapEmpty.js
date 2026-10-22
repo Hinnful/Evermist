@@ -1,5 +1,5 @@
 'use strict';
-// worldMapEmpty.js — the world map with no scenes: a callout over Add says where to begin, and the bar and the Notes tab
+// worldMapEmpty.js — the Campaign with no maps: a call to action in the middle of the layer, and the bar and the Notes tab
 // put away what has nothing to act on (worldMap.css, body.wm-empty; dock.js).
 
 function worldMapEmptySync() {
@@ -9,12 +9,9 @@ function worldMapEmptySync() {
   dockRefreshRail();
 }
 
-// The callout hangs over Add, centred on it, and follows it.
-function worldMapEmptyPlace() {
-  const call = document.getElementById('wm-empty');
-  if (call.hidden) return;
-  const a = document.getElementById('wm-add').getBoundingClientRect();
-  const z = parseFloat(getComputedStyle(call).zoom) || 1;
-  call.style.left = (a.left + a.width / 2) / z + 'px';
-  call.style.top = (a.top - 14) / z + 'px';
+// The button does what the bar's Add does. Its mousedown stops short of the layer, which would drop the pick and close menus.
+function worldMapEmptyInit() {
+  const btn = document.getElementById('wm-empty-add');
+  btn.addEventListener('mousedown', e => e.stopPropagation());
+  btn.addEventListener('click', () => document.getElementById('wm-add').click());
 }

@@ -35,7 +35,7 @@ function worldMapInit() {
   _wmWorld = document.getElementById('wm-world');
   for (const k of ['hull', 'card', 'mark', 'rn', 'edit']) _wmLayers[k] = document.getElementById('wm-' + k);
   window.addEventListener('resize', () => { if (worldMapOpen) _wmApplyCam(); });
-  worldMistInit();
+  worldMistInit(); worldMapEmptyInit();
   worldMapEditInit();
   worldMapRoadsInit();
   worldMapMenuInit();
@@ -456,6 +456,7 @@ function worldMapShow(cam) {
   _wmHoldTools();
   worldUndoClear();
   document.body.classList.add('world');
+  refreshShapeButton();
   _wm.hidden = false;
   worldEnsurePositions();
   worldReconcile();
@@ -496,6 +497,7 @@ function worldMapHide() {
   _wmReturnTools();
   _wmRestoreSelection();
   document.body.classList.remove('world');
+  refreshShapeButton();
   if (!panesActive) syncSize();   // the overlay was sized to the window; the scene's turned layout comes back
   _wm.classList.remove('shown');
   setTimeout(() => { if (!worldMapOpen) _wm.hidden = true; }, 260);

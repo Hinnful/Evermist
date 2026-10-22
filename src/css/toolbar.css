@@ -113,7 +113,7 @@
      with a soft shadow. A bare icon is an action or a tool. Every gap between groups is 8px, and a divider
      sits in the middle of one: 8px clear on each side, the full height of its strip. The row's pointer
      never sits under one (fogBar.js placeContextRow). */
-  .tb-mdiv { display: none; flex: none; width: 1px; align-self: stretch; margin: -6px 0; background: rgba(255, 255, 255, 0.08); }
+  .tb-mdiv { display: none; flex: none; width: 1px; align-self: stretch; margin: -6px 0; background: var(--g-divider); }
   #toolbar-bottom > .tb-mdiv { display: block; }
   .fx-track { display: flex; align-items: center; gap: 2px; padding: 2px; height: 30px; box-sizing: border-box; border-radius: 8px; background: var(--g-field); }
   .fx-track .mode-btn { width: 26px; height: 26px; border-radius: 6px; color: #8b9099; }
@@ -319,6 +319,12 @@
   /* A button and its chevron are one group, 2px apart; the bar's gap sits between groups. */
   .tb-grp, .tb-shape-wrap { display: flex; align-items: center; gap: 2px; }
   .tb-shape-glyph { display: flex; }
+  /* A labelled button: Room on the scene bar, Group and + Map on the Campaign's (.tb-labeled; shapeMenu.js sets it on the shape button).
+     The icon is a 16px block and the word is trimmed to its capitals, so both centre on the button. */
+  .tb-shape-label { display: none; }
+  .tool-btn.tb-labeled { width: auto; padding: 0 11px 0 9px; gap: 6px; }
+  .tool-btn.tb-labeled svg { width: 16px; height: 16px; display: block; }
+  .tool-btn.tb-labeled .tb-shape-label { display: block; font: 400 12px/1 system-ui, -apple-system, sans-serif; white-space: nowrap; text-box: trim-both cap alphabetic; }
   /* The shapes are never shown; a .click() on one still picks it. */
   #shape-menu { display: none; }
   .tb-chev {
@@ -352,7 +358,7 @@
   .dd-lbl { padding: 6px 10px 4px 28px; color: var(--g-dim); font: 500 11px/1 system-ui, -apple-system, sans-serif; }
   #tb-dd.nock .ck { display: none; }
   #tb-dd.nock .dd-lbl { padding-left: 10px; }
-  #tb-dd .dd-sep { height: 1px; margin: 4px 2px; background: var(--g-line); }
+  #tb-dd .dd-sep { height: 1px; margin: 4px -6px; background: var(--g-divider); }
   .dd-it.off { color: #5d626a; cursor: default; }
   .dd-it.off .ky { color: #5d626a; font-weight: 400; }
   body.player-mode #tb-dd { display: none !important; }

@@ -30,6 +30,7 @@
     /* The dock's skin: grey surfaces and fields with no outline, a pick one step lighter. */
     --g-bg: #1e1e21;
     --g-line: #2c2d31;
+    --g-divider: rgba(255, 255, 255, 0.08);
     --g-field: #2a2b2f;
     --g-hover: #313237;
     --g-pick: #45474e;

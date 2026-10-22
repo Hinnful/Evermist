@@ -33,6 +33,7 @@ The split itself is in CLAUDE.md, "Who owns what". In practice:
 | Reply style | `.claude/output-styles/steering.md`, set in `.claude/settings.json`; `~/.claude/output-styles/` holds the copy other projects use | Public |
 | Why the process has this shape | `docs/decisions/process.md` | Public |
 | Slash commands | `.claude/commands/` | Public |
+| Subagents, each with its model and thinking level | `.claude/agents/` | Public |
 | `/commit`'s step rules and scripts | `.claude/commit/` | Public |
 | What comes next | `docs/BACKLOG.md` | Public |
 | Specs waiting to be built | `.claude/private/specs/` | Gitignored, this machine only |
@@ -62,7 +63,9 @@ becomes a rule in one of the public files above, where a check or a reader can f
    nothing and stops at the recommendation.
 2. **`/spec`** drills the pick into a Definition of Ready and a Definition of Done in plain
    language, one question at a time, and writes a spec file.
-3. **A fresh session builds it** from the spec file.
+3. **On "build it", the `builder` agent builds it** from the spec file or a brief the main
+   session writes, and the main session checks the result. "Build it here" keeps the build in
+   the main session.
 4. **`/commit`** gates the change, files what it settled into the docs, writes the notes, and
    pushes on the DM's yes.
 5. **CI** gates, lands and releases it. See [The pipeline](#the-pipeline).
@@ -74,6 +77,9 @@ A bug report is an ordinary message and needs no command.
 ## Building
 
 - **Read the owning skill before editing its files.** `guard-skill-hint.js` names it.
+- **The main session keeps diagnosis, design and release notes, and hands the rest to a
+  subagent.** `scout` (Haiku) searches the code and reads CI logs and long test output. `builder`
+  (Sonnet) builds a spec or a fully stated change. `filer` (Sonnet) runs `/commit`'s Step 4.
 - **Before look-and-feel work starts,** state what the result should look like and get the DM's
   agreement. The prototype rule is in CLAUDE.md.
 - **A prototype of a window that already exists loads the app's stylesheets and renders it with

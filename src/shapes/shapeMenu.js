@@ -14,11 +14,11 @@
 const SHAPE_FAMILY = ['poly', 'rect', 'circle', 'cone', 'line', 'wall', 'ring'];
 const SHAPE_ROWS = { poly: ['Polygon', 'P'], rect: ['Rectangle', 'R'], circle: ['Circle', 'O'],
                      cone: ['Cone', 'C'], line: ['Line', ''], wall: ['Wall', ''], ring: ['Ring', ''] };
-// The world map's Place list holds the three place shapes, then Road. Places take no repairs.
+// The Campaign's Group list holds the three group shapes, then Road. Places take no repairs.
 const WORLD_SHAPES = ['rect', 'circle', 'poly'];
 
 let _roadWorn = false;          // the world map's Place button wears Road, the last pick, over the last shape
-let _worn = 'btn-poly';         // the row the Shape button wears, and the list checks
+let _worn = 'btn-rect';         // the row the Shape button wears, and the list checks
 let _tbOpen = null;             // the kind of the list that is open, or null
 let _tbPickFn = null;           // what a pick in the open list does
 
@@ -26,7 +26,7 @@ function shapeMenuItems() {
   return MODE_SHAPES[placeMode].filter(s => SHAPE_FAMILY.indexOf(s) >= 0);
 }
 
-// Effects lists the shapes in the order a DM reaches for them; Fog opens with the Polygon.
+// Effects lists the shapes in the order a DM reaches for them; Fog opens with the Rectangle.
 function _shapeOrder() {
   return placeMode === 'effects' ? ['rect', 'circle', 'cone', 'line', 'wall', 'ring', 'poly'] : SHAPE_FAMILY;
 }
@@ -54,6 +54,16 @@ function refreshShapeButton() {
   const src = document.getElementById(want);
   const box = btn.querySelector('.tb-shape-glyph');
   if (src && box && (road || items.indexOf(want.slice(4)) >= 0)) box.innerHTML = src.querySelector('svg').outerHTML;
+  // The scene bar's button is the Room tool and the Campaign's is the Group tool, and each says so; Road keeps its own
+  // icon and tip, and Effects (which place effects) keep the icon alone.
+  const label = road ? '' : worldMapOpen ? 'Group' : placeMode === 'rooms' ? 'Room' : '';
+  btn.classList.toggle('tb-labeled', !!label);
+  const text = btn.querySelector('.tb-shape-label');
+  if (text) text.textContent = label === 'Group' ? t('Group') : label === 'Room' ? t('Room') : '';
+  btn.title = road ? t('Road - click points along the way, double-click to finish')
+    : label === 'Group' ? t('Group - gathers maps together: a kingdom, a village or one tavern. The arrow picks the shape')
+    : label ? t('Room - hides part of the map from the players until you reveal it. The arrow picks the shape')
+    : t('Shape - the arrow beside it, or a right-click, lists the others');
   btn.classList.toggle('active', worldMapOpen ? (_wmTool === 'road' || items.indexOf(shape) >= 0) : (items.indexOf(shape) >= 0 || shape === 'cut'));
 }
 

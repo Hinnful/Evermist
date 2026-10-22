@@ -66,7 +66,7 @@ function _wbApply() {
   const pick = document.getElementById('wm-bg-pick');
   pick.classList.toggle('none', !have);
   pick.querySelector('.nm').textContent = have ? (typeof _wbMeta.name === 'string' && _wbMeta.name ? _wbMeta.name : t('Background image')) : t('Choose image…');
-  pick.title = t(have ? 'Replace the image' : 'Choose a picture for behind the places. The TV never shows it.');
+  pick.title = t(have ? 'Replace the image' : 'Choose a picture for behind the groups. The TV never shows it.');
   if (have) {
     document.getElementById('wm-bg-scale-num').value = Math.round(_wbMeta.scale * 100);
     document.getElementById('wm-bg-alpha-num').value = Math.round(_wbMeta.alpha * 100);
@@ -239,7 +239,7 @@ async function worldBackgroundInit() {
   file.addEventListener('change', () => { const f = file.files && file.files[0]; file.value = ''; _wbChoose(f); });
   document.getElementById('wm-bg-clear').addEventListener('click', () => confirmDialog({
     title: 'Remove the background image?',
-    message: t('The picture is deleted from Evermist and cannot be brought back. Your places, scenes and roads stay as they are.'),
+    message: t('The picture is deleted from Evermist and cannot be brought back. Your groups, maps and roads stay as they are.'),
     confirmLabel: 'Remove', danger: true, onConfirm: _wbClear,
   }));
   document.getElementById('wm-bg-move').addEventListener('click', () => {

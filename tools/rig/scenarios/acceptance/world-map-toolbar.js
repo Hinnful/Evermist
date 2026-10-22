@@ -2,14 +2,14 @@
 
 // world-map-toolbar.js — THE WORLD MAP'S TOOLBAR AND ITS SEARCH.
 //
-// THE GOAL OF THIS FEATURE: the bar says what to press with no words - Add is the one solid blue button, the tool in hand
-// wears the blue tint - and Find opens a large search over a dimmed map.
+// THE GOAL OF THIS FEATURE: the bar names what it adds - Map and Group carry their words, the tool in hand wears the
+// blue tint - and Find opens a large search over a dimmed map.
 //
 // THE CRITERIA ARE THIS HEADER, one per line of the spec's Definition of Done
 // (.claude/private/specs/world-map-toolbar-look.md).
 //
-//   10. The bar reads Select, Add, Place, a divider, Find. No words.
-//   11. Add is solid blue with no glow. The tool in hand on this bar wears the blue tint.
+//   10. The bar reads Select, Add, Group, a divider, Find. Add says Map and Group says Group; nothing else has words.
+//   11. Add is grey, not solid blue, with no glow. The tool in hand on this bar wears the blue tint.
 //   12. Place's list holds Rectangle (R), Circle (O), Polygon (P), then Road (L). The button wears the last pick.
 //       Places take no repairs: the options row holds Straight walls alone.
 //   13. L takes Road on the world map only; R, O, P and V put it down.
@@ -57,8 +57,8 @@ module.exports = async function worldMapToolbar(rig) {
   rig.check(JSON.stringify(bar) === JSON.stringify(['btn-select', 'wm-add', 'tb-grp-shape', 'wm-div', 'wm-find']),
             'the bar does not read Select, Add, Place, a divider, Find: ' + JSON.stringify(bar));
   // RED BY DESIGN: written against the feature, never re-proved
-  rig.check(await dm.evaluate('[...document.querySelectorAll("#toolbar-bottom > *")].filter(__tbVis).every(el => !el.textContent.trim())'),
-            'the bar carries words');
+  const words = await dm.evaluate('__tbBar().map(id => id + ":" + document.getElementById(id).textContent.trim()).join()');
+  rig.check(words === 'btn-select:,wm-add:Map,tb-grp-shape:Group,wm-div:,wm-find:', 'the bar does not read Map and Group, with no other words: ' + words);
   const add = await dm.evaluate(`(() => {
     const probe = document.createElement('i'); probe.style.background = 'var(--b-solid)'; document.body.appendChild(probe);
     const solid = getComputedStyle(probe).backgroundColor; probe.remove();
@@ -66,7 +66,7 @@ module.exports = async function worldMapToolbar(rig) {
     return { bg: s.backgroundColor, solid, shadow: s.boxShadow };
   })()`);
   // RED BY DESIGN: written against the feature, never re-proved
-  rig.check(add.bg === add.solid && add.shadow === 'none', 'Add is not solid blue with no glow: ' + JSON.stringify(add));
+  rig.check(add.bg !== add.solid && add.shadow === 'none', 'Add is solid blue, or glows: ' + JSON.stringify(add));
   rig.byEye('the bar, Add and the blue tint');
 
   // ── 12. The Place list, and what the button wears ─────────────────────────

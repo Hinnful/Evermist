@@ -203,7 +203,7 @@ function worldReconcile() {
 // A new place from vertices: named, entered in the library's groups, and filled with the scenes inside.
 function worldPlaceCreate(verts) {
   worldUndoPush();
-  const name = addGroup(t('New place'));
+  const name = addGroup(t('New group'));
   worldPlaceSet(name, { vertices: verts });
   worldAssignAll();
   return name;

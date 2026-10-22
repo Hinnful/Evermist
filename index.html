@@ -135,8 +135,9 @@
          picks what is showing; the chevron or a right-click lists the others (shapeMenu.js). -->
     <span class="tb-grp" id="tb-grp-shape">
     <div class="tb-shape-wrap">
-      <button id="btn-shape" class="tool-btn" title="Shape - the arrow beside it, or a right-click, lists the others">
+      <button id="btn-shape" class="tool-btn" title="Room - hides part of the map from the players until you reveal it. The arrow picks the shape">
         <span class="tb-shape-glyph"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+        <span class="tb-shape-label">Room</span>
       </button>
       <!-- The shapes themselves, never shown: the button borrows their glyphs and the list its
            rows, and a .click() on one still picks it (the rig drives them by id). -->
@@ -183,14 +184,15 @@
     </button>
 
 
-    <button id="wm-add" class="tool-btn wm-tool" title="Add a scene - pick a map file">
+    <button id="wm-add" class="tool-btn tb-labeled wm-tool" title="Add a map - pick a file">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="tb-shape-label">Map</span>
     </button>
     <button id="wm-road" class="tool-btn wm-tool" title="Road - click points along the way, double-click to finish">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c5-1 2-7 7-8s3-6 7-7" stroke-dasharray="3 2.5"/><circle cx="5" cy="19" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="4" r="1.7" fill="currentColor" stroke="none"/></svg>
     </button>
     <i class="tb-mdiv wm-tool" id="wm-div"></i>
-    <button id="wm-find" class="tool-btn wm-tool" title="Find a map, place or road (Ctrl+F)">
+    <button id="wm-find" class="tool-btn wm-tool" title="Find a map, group or road (Ctrl+F)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
     </button>
 
@@ -222,7 +224,7 @@
   <div class="sm-win w-l">
     <div class="wf-head">
       <span class="wf-glass"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.5-4.5"/></svg></span>
-      <input id="wm-search" placeholder="Find a map, a place or a road" spellcheck="false" autocomplete="off">
+      <input id="wm-search" placeholder="Find a map, a group or a road" spellcheck="false" autocomplete="off">
     </div>
     <div id="wm-find-list"></div>
     <div class="wf-keys"><span><kbd>&uarr;</kbd><kbd>&darr;</kbd>to move</span><span><kbd>Enter</kbd>to go there</span><span><kbd>Esc</kbd>to close</span></div>
@@ -235,49 +237,88 @@
 <!-- THE DOCK: an icon rail on the right edge and one pane beside it, over the map. dock.js. -->
 <div id="dock" class="dk">
   <nav id="dock-rail" class="dk-rail">
-    <button class="rail-btn" id="btn-world" data-dock-win="world" title="World map (M)">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9S14.6 18.4 12 21c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3z"/></svg>
+    <button class="rail-btn" id="btn-world" data-dock-win="world" title="Campaign (M)">
+      <span class="rail-ind"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.9 5.6 3.9 9S14.6 18.4 12 21c-2.6-2.6-3.9-5.6-3.9-9S9.4 5.6 12 3z"/></svg></span>
+      <span class="rail-lbl">Campaign</span>
     </button>
     <button class="rail-btn" id="btn-bestiary" title="Bestiary">
-      <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg>
+      <span class="rail-ind"><svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg></span>
+      <span class="rail-lbl">Bestiary</span>
     </button>
     <div class="rail-sep"></div>
-    <button class="rail-btn" id="dock-tab-scene" data-dock-pane="scene" title="Scene control">
-      <svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><line x1="1.5" y1="4" x2="12.5" y2="4"/><circle cx="8.5" cy="4" r="1.5"/><line x1="1.5" y1="7.5" x2="12.5" y2="7.5"/><circle cx="4.5" cy="7.5" r="1.5"/><line x1="1.5" y1="11" x2="12.5" y2="11"/><circle cx="9.5" cy="11" r="1.5"/></svg>
+    <button class="rail-btn" id="dock-tab-scene" data-dock-pane="scene" title="Map settings">
+      <span class="rail-ind"><svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><line x1="1.5" y1="4" x2="12.5" y2="4"/><circle cx="8.5" cy="4" r="1.5"/><line x1="1.5" y1="7.5" x2="12.5" y2="7.5"/><circle cx="4.5" cy="7.5" r="1.5"/><line x1="1.5" y1="11" x2="12.5" y2="11"/><circle cx="9.5" cy="11" r="1.5"/></svg></span>
+      <span class="rail-lbl rail-lbl-2">Map settings</span>
     </button>
     <button class="rail-btn" id="dock-tab-notes" data-dock-pane="notes" title="Notes">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 17h5"/></svg>
+      <span class="rail-ind"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h10l4 4v14H5z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 17h5"/></svg></span>
+      <span class="rail-lbl">Notes</span>
     </button>
     <div class="rail-sep"></div>
     <button class="rail-btn" id="dock-tab-music" data-dock-pane="music" title="Music">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 18V5l12-2v13"/></svg>
+      <span class="rail-ind"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/><path d="M9 18V5l12-2v13"/></svg></span>
+      <span class="rail-lbl">Music</span>
     </button>
     <button class="rail-btn" id="dock-tab-sounds" data-dock-pane="sounds" title="Sounds">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>
+      <span class="rail-ind"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg></span>
+      <span class="rail-lbl">Sounds</span>
     </button>
-    <button class="rail-btn" id="dock-tab-gallery" data-dock-pane="gallery" title="Gallery">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-9 9"/></svg>
+    <button class="rail-btn" id="dock-tab-gallery" data-dock-pane="gallery" title="Pictures">
+      <span class="rail-ind"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-9 9"/></svg></span>
+      <span class="rail-lbl">Pictures</span>
     </button>
-    <button class="rail-btn" id="btn-combat" title="The fight table">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg>
+    <button class="rail-btn" id="btn-combat" title="Fights">
+      <span class="rail-ind"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M19 21l2-2"/></svg></span>
+      <span class="rail-lbl">Fights</span>
     </button>
     <button class="rail-btn rail-end" id="dock-tab-settings" data-dock-pane="settings" title="Settings">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span class="rail-ind"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span>
+      <span class="rail-lbl">Settings</span>
     </button>
     <button class="rail-btn" id="btn-help" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.1 2.4c-.7.2-1.2.9-1.2 1.6v.3"/><circle cx="11.5" cy="16.9" r=".9" fill="currentColor" stroke="none"/></svg>
+      <span class="rail-ind"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.1 2.4c-.7.2-1.2.9-1.2 1.6v.3"/><circle cx="11.5" cy="16.9" r=".9" fill="currentColor" stroke="none"/></svg></span>
+      <span class="rail-lbl">Help</span>
     </button>
   </nav>
   <div id="dock-pane" class="dk-pw">
     <div id="dock-edge" title="Drag to resize"></div>
     <section class="dk-sec" id="dock-pane-scene" data-pane="scene" hidden>
       <div class="dk-head">
-        <span class="dk-scene"><span id="scene-dd-name" class="cp-adv-title" data-no-i18n>No scene</span></span>
+        <span class="dk-scene"><span id="scene-dd-name" class="cp-adv-title" data-no-i18n>No map</span></span>
         <button id="btn-two-maps" class="cp-adv-close" title="Two maps: show a second map beside this one">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>
         </button>
       </div>
       <div class="dk-scroll">
+
+        <div class="cp-group" id="cp-sec-grid">
+          <div class="dk-sh"><span class="cp-label">Grid</span>
+            <div class="cp-row">
+              <button class="dk-eye" id="cp-grid-eye" title="Grid (G)"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
+              <button id="cp-grid-reset" class="cp-adv-close" title="Reset grid settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
+            </div>
+          </div>
+          <div class="dk-secbody" id="cp-grid-body">
+            <div class="dk-blk"><span class="dk-sub">Type</span>
+              <div class="cp-iconrow cp-seg" id="cp-gridtype-row">
+                <button class="cp-iconbtn" data-gtype="square" title="Square"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="11" height="11" rx="1"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="1.5" y1="9" x2="12.5" y2="9"/><line x1="5.5" y1="1.5" x2="5.5" y2="12.5"/><line x1="9" y1="1.5" x2="9" y2="12.5"/></svg></button>
+                <button class="cp-iconbtn" data-gtype="hex-pointy" title="Hex"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="7,1 12,4 12,10 7,13 2,10 2,4"/></svg></button>
+              </div>
+            </div>
+            <div class="dk-blk"><span class="dk-sub">Cells</span>
+              <div class="dk-r">
+                <label class="dk-num" title="Cell size. Drag the icon to change it."><span class="pre" data-scrub="grid-size-num" data-min="10" data-max="400" data-per="2"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05"><rect x="2.5" y="2.5" width="9" height="9" rx="1"/></svg></span><input type="text" id="grid-size-num" inputmode="numeric" value="70"><span class="u">px</span></label>
+                <label class="dk-num" title="Line width. Drag the icon to change it."><span class="pre" data-scrub="grid-thickness-num" data-min="1" data-max="10" data-per="12"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M2 4h10" stroke-width="0.9"/><path d="M2 7h10" stroke-width="1.6"/><path d="M2 10.5h10" stroke-width="2.4"/></svg></span><input type="text" id="grid-thickness-num" inputmode="numeric" value="1"><span class="u">px</span></label>
+                <button id="cp-grid-calibrate" class="cp-adv-close" title="Fit the grid to the map: drag a square across the map's own cells"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5v-3h3"/><path d="M9.5 1.5h3v3"/><path d="M12.5 9.5v3h-3"/><path d="M4.5 12.5h-3v-3"/><line x1="7" y1="4.2" x2="7" y2="9.8"/><line x1="4.2" y1="7" x2="9.8" y2="7"/></svg></button>
+              </div>
+            </div>
+            <div class="dk-blk"><span class="dk-sub">Lines</span>
+              <div class="cp-field dk-colour" id="cp-grid-field" data-dock-pop="cp-pop-grid" title="Grid colour and opacity">
+                <span class="cp-swatch"></span><span class="cp-hash">#</span><span class="cp-hex"></span><span class="cp-fdiv"></span><span class="cp-alphanum"></span><span class="cp-pct">%</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div class="cp-group" id="cp-sec-fog">
           <div class="dk-sh"><span class="cp-label">Fog</span>
@@ -328,35 +369,6 @@
               <button class="dk-src" id="cp-src-lights" disabled title="Load a floor plan (.dd2vtt) and draw its lights"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"><path d="M3 1.5h5.5L11 4v8.5H3z"/><path d="M8.5 1.5V4H11"/></svg></span><span class="nm">Floor plan</span></button>
               <input type="file" id="cp-lights-plan-input" accept=".dd2vtt" hidden>
               <button id="btn-lights-redraw" class="cp-adv-close" title="Redraw the lights from the floor plan" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></button>
-            </div>
-          </div>
-        </div>
-
-        <div class="cp-group" id="cp-sec-grid">
-          <div class="dk-sh"><span class="cp-label">Grid</span>
-            <div class="cp-row">
-              <button class="dk-eye" id="cp-grid-eye" title="Grid (G)"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
-              <button id="cp-grid-reset" class="cp-adv-close" title="Reset grid settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
-            </div>
-          </div>
-          <div class="dk-secbody" id="cp-grid-body">
-            <div class="dk-blk"><span class="dk-sub">Type</span>
-              <div class="cp-iconrow cp-seg" id="cp-gridtype-row">
-                <button class="cp-iconbtn" data-gtype="square" title="Square"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="1.5" width="11" height="11" rx="1"/><line x1="1.5" y1="5.5" x2="12.5" y2="5.5"/><line x1="1.5" y1="9" x2="12.5" y2="9"/><line x1="5.5" y1="1.5" x2="5.5" y2="12.5"/><line x1="9" y1="1.5" x2="9" y2="12.5"/></svg></button>
-                <button class="cp-iconbtn" data-gtype="hex-pointy" title="Hex"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="7,1 12,4 12,10 7,13 2,10 2,4"/></svg></button>
-              </div>
-            </div>
-            <div class="dk-blk"><span class="dk-sub">Cells</span>
-              <div class="dk-r">
-                <label class="dk-num" title="Cell size. Drag the icon to change it."><span class="pre" data-scrub="grid-size-num" data-min="10" data-max="400" data-per="2"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05"><rect x="2.5" y="2.5" width="9" height="9" rx="1"/></svg></span><input type="text" id="grid-size-num" inputmode="numeric" value="70"><span class="u">px</span></label>
-                <label class="dk-num" title="Line width. Drag the icon to change it."><span class="pre" data-scrub="grid-thickness-num" data-min="1" data-max="10" data-per="12"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M2 4h10" stroke-width="0.9"/><path d="M2 7h10" stroke-width="1.6"/><path d="M2 10.5h10" stroke-width="2.4"/></svg></span><input type="text" id="grid-thickness-num" inputmode="numeric" value="1"><span class="u">px</span></label>
-                <button id="cp-grid-calibrate" class="cp-adv-close" title="Fit the grid to the map: drag a square across the map's own cells"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5v-3h3"/><path d="M9.5 1.5h3v3"/><path d="M12.5 9.5v3h-3"/><path d="M4.5 12.5h-3v-3"/><line x1="7" y1="4.2" x2="7" y2="9.8"/><line x1="4.2" y1="7" x2="9.8" y2="7"/></svg></button>
-              </div>
-            </div>
-            <div class="dk-blk"><span class="dk-sub">Lines</span>
-              <div class="cp-field dk-colour" id="cp-grid-field" data-dock-pop="cp-pop-grid" title="Grid colour and opacity">
-                <span class="cp-swatch"></span><span class="cp-hash">#</span><span class="cp-hex"></span><span class="cp-fdiv"></span><span class="cp-alphanum"></span><span class="cp-pct">%</span>
-              </div>
             </div>
           </div>
         </div>
@@ -468,7 +480,7 @@
       <div class="dk-scroll"><div id="sb-cols" class="dk-sbgroups" data-no-i18n></div></div>
     </section>
     <section class="dk-sec" id="dock-pane-gallery" data-pane="gallery" hidden>
-      <div class="dk-head"><span class="cp-adv-title">Gallery</span><div class="cp-row">
+      <div class="dk-head"><span class="cp-adv-title">Pictures</span><div class="cp-row">
         <button id="btn-ga-add" class="cp-adv-close" title="Add pictures">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
         </button></div>
@@ -482,7 +494,7 @@
       </div>
       <!-- A click shows a picture on the TV, a second click takes it down. gallery.js. -->
       <div class="dk-scroll"><div id="ga-grid" class="ga-grid" data-no-i18n></div></div>
-      <div class="ga-drop">Drop to add to the gallery</div>
+      <div class="ga-drop">Drop to add to Pictures</div>
     </section>
     <section class="dk-sec" id="dock-pane-settings" data-pane="settings" hidden>
       <div class="dk-head"><span class="cp-adv-title">Settings</span></div>
@@ -492,7 +504,7 @@
           <!-- Filled by about.js's language switch. -->
           <div class="dk-blk" id="settings-lang"><span class="dk-sub">Language</span></div>
           <div class="dk-blk"><span class="dk-sub">Shrink big maps</span>
-            <div id="sm-compress" class="cp-tabs" title="Animated maps bigger than the size picked here are re-encoded to fit it on import, and pictures in the Gallery are shrunk to it. Improves performance on low-end machines.">
+            <div id="sm-compress" class="cp-tabs" title="Animated maps bigger than the size picked here are re-encoded to fit it on import, and your pictures are shrunk to it. Improves performance on low-end machines.">
               <button class="cp-segtab" data-size="0">Off</button>
               <button class="cp-segtab" data-size="1080">1080p</button>
               <button class="cp-segtab" data-size="1440">2K</button>
@@ -506,7 +518,7 @@
              DM view draws fog at FOG_OPACITY_DM, so 50 reads as ~27% here and 50% on the TV. The two
              ranges are the back end fogControls.js drives; the fields above them are what the DM sees. -->
         <div class="cp-group">
-          <div class="dk-sh"><span class="cp-label">Fog in every scene</span></div>
+          <div class="dk-sh"><span class="cp-label">Fog in every map</span></div>
           <div class="dk-r">
             <div class="dk-blk"><span class="dk-sub">Half shroud</span>
               <label class="dk-num" title="How much fog remains in a half room. Drag the icon to change it."><span class="pre" data-scrub="fog-half-alpha-num" data-min="0" data-max="100" data-per="2" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"/><path d="M7 2a5 5 0 010 10z" fill="currentColor"/></svg></span><input type="text" id="fog-half-alpha-num" inputmode="numeric" value="50"><span class="u">%</span></label>
@@ -522,10 +534,10 @@
         </div>
         <!-- The world map's settings: the backdrop (worldBackground.js) and the backup (worldBackup.js). Never on the TV. -->
         <div class="cp-group" id="wm-bg-group">
-          <div class="dk-sh"><span class="cp-label">World map</span></div>
+          <div class="dk-sh"><span class="cp-label">Campaign</span></div>
           <div class="dk-blk"><span class="dk-sub">Background</span>
             <div class="dk-r">
-              <button class="dk-src none" id="wm-bg-pick" title="Choose a picture for behind the places. The TV never shows it."><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="9" rx="1.2"/><circle cx="5" cy="6" r="1"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 2.5 2.5"/></svg></span><span class="nm" data-no-i18n>Choose image…</span></button>
+              <button class="dk-src none" id="wm-bg-pick" title="Choose a picture for behind the groups. The TV never shows it."><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="9" rx="1.2"/><circle cx="5" cy="6" r="1"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 2.5 2.5"/></svg></span><span class="nm" data-no-i18n>Choose image…</span></button>
               <input type="file" id="wm-bg-file" accept="image/*" hidden>
               <button id="wm-bg-clear" class="cp-adv-close" title="Remove the image" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
             </div>
@@ -533,21 +545,21 @@
           <div id="wm-bg-controls" class="dk-secbody" hidden>
             <div class="dk-r">
               <div class="dk-blk"><span class="dk-sub">Size</span>
-                <label class="dk-num" title="Size of the image on the world map. Drag the icon to change it."><span class="pre" data-scrub="wm-bg-scale-num" data-min="5" data-max="400" data-per="1.5" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l8-8M7 3h4v4"/></svg></span><input type="text" id="wm-bg-scale-num" inputmode="numeric" value="100"><span class="u">%</span></label>
+                <label class="dk-num" title="Size of the image in the Campaign. Drag the icon to change it."><span class="pre" data-scrub="wm-bg-scale-num" data-min="5" data-max="400" data-per="1.5" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l8-8M7 3h4v4"/></svg></span><input type="text" id="wm-bg-scale-num" inputmode="numeric" value="100"><span class="u">%</span></label>
               </div>
               <div class="dk-blk"><span class="dk-sub">Opacity</span>
                 <label class="dk-num" title="How strongly the image shows. Drag the icon to change it."><span class="pre" data-scrub="wm-bg-alpha-num" data-min="5" data-max="100" data-per="2" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.8s4 4.2 4 6.6a4 4 0 01-8 0c0-2.4 4-6.6 4-6.6z"/></svg></span><input type="text" id="wm-bg-alpha-num" inputmode="numeric" value="60"><span class="u">%</span></label>
               </div>
             </div>
             <div class="dk-blk"><span class="dk-sub">Position</span>
-              <button id="wm-bg-move" class="cp-btn cp-btn-live" aria-pressed="false" title="Open the world map, then drag the empty ground to move the image"><span id="wm-bg-move-label">Move on the map</span></button>
-              <span id="wm-bg-hint" class="cp-hint" hidden>Drag the empty ground on the world map.</span>
+              <button id="wm-bg-move" class="cp-btn cp-btn-live" aria-pressed="false" title="Open the Campaign, then drag the empty ground to move the image"><span id="wm-bg-move-label">Move on the map</span></button>
+              <span id="wm-bg-hint" class="cp-hint" hidden>Drag the empty ground on the Campaign screen.</span>
             </div>
           </div>
           <div class="dk-blk"><span class="dk-sub">Export / Import</span>
             <div class="cp-btnrow">
-              <button id="wm-bk-export" class="cp-btn" title="Shift-click scenes on the world map, or Shift-drag a box around them, to export only those.">Export everything</button>
-              <button id="wm-bk-restore" class="cp-btn" title="Pick an export .zip, or drop one on the world map.">Import</button>
+              <button id="wm-bk-export" class="cp-btn" title="Shift-click maps in the Campaign, or Shift-drag a box around them, to export only those.">Export everything</button>
+              <button id="wm-bk-restore" class="cp-btn" title="Pick an export .zip, or drop one on the Campaign screen.">Import</button>
             </div>
             <input type="file" id="wm-bk-file" accept=".zip,application/zip" hidden>
             <span id="wm-bk-line" class="cp-hint"></span>
@@ -721,10 +733,10 @@
         <div class="lg-row">Send to the TV<span class="k"><kbd>Space</kbd></span></div>
         <div class="lg-row">Send, with Sync off<span class="k"><kbd>Shift</kbd><kbd>S</kbd></span></div>
         <div class="lg-row">Ping a point<span class="k"><kbd>Ctrl</kbd><kbd>Middle-click</kbd></span></div>
-        <div class="sm-sub">World map</div>
+        <div class="sm-sub">Campaign</div>
         <div class="lg-row">Open or close<span class="k"><kbd>M</kbd></span></div>
-        <div class="lg-row">Open a scene<span class="k"><kbd>Double-click</kbd></span></div>
-        <div class="lg-row">Pick more scenes<span class="k"><kbd>Shift</kbd><kbd>Click</kbd></span></div>
+        <div class="lg-row">Open a map<span class="k"><kbd>Double-click</kbd></span></div>
+        <div class="lg-row">Pick more maps<span class="k"><kbd>Shift</kbd><kbd>Click</kbd></span></div>
         <div class="lg-row">Pick with a box<span class="k"><kbd>Shift</kbd><kbd>Drag</kbd></span></div>
         <div class="lg-row">Find<span class="k"><kbd>Ctrl</kbd><kbd>F</kbd></span></div>
         <div class="lg-row">Finish a road<span class="k"><kbd>Enter</kbd></span></div>
@@ -780,13 +792,17 @@
     <svg id="wm-roads" width="1" height="1"></svg>
     <div id="wm-card"></div><div id="wm-mark"></div><div id="wm-rn"></div><div id="wm-edit"></div>
   </div>
-  <div id="wm-empty" hidden><b>Start with your maps</b><span>Add the maps for your game here, one or several at once. Double-click one to open it.</span></div>
+  <div id="wm-empty" hidden>
+    <b>Add your first map</b>
+    <span>Any image or video of a map: a Dungeon Alchemist export, a scan, a photo of a sketch.</span>
+    <button id="wm-empty-add" class="sm-hbtn primary" type="button"><span>Add a map</span></button>
+  </div>
 </div>
 
 <div id="landing">
   <canvas id="landing-fog"></canvas>
   <h2>Evermist</h2>
-  <p>Open the <strong>world map</strong> (top of the dock, right) to get started</p>
+  <p>Press the <strong>Campaign</strong> button (top of the dock, right) to get started</p>
   <div id="landing-loading">Loading map…</div>
 </div>
 
@@ -799,7 +815,7 @@
       <div class="sm-track" id="map-progress-track"><i id="map-progress-bar"></i></div>
       <div class="sm-dim mp-file" id="map-progress-file" data-no-i18n></div>
     </div>
-    <div class="sm-wfoot" id="map-progress-foot"><button type="button" class="sm-hbtn" id="map-progress-stop">Cancel</button></div>
+    <div class="sm-wfoot" id="map-progress-foot"><button type="button" class="sm-hbtn" id="map-progress-stop"><span>Cancel</span></button></div>
   </div>
 </div>
 
@@ -810,7 +826,7 @@
   <div id="key-hint" class="sm-toast solo"><svg class="i-undo" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></svg><span class="m"></span></div>
   <div id="scene-undo-toast" class="sm-toast" style="display:none">
     <svg class="i-trash" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg><span class="m undo-msg"></span>
-    <button class="sm-hbtn primary undo-btn">Undo</button>
+    <button class="sm-hbtn primary undo-btn"><span>Undo</span></button>
     <button class="sm-x undo-x" title="Dismiss"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <i class="timer undo-bar"></i>
   </div>
@@ -836,7 +852,7 @@
     <div id="mt-list" class="mt-list" style="display:none"></div>
   </div>
   <div class="sm-wfoot" id="mt-foot" style="display:none">
-    <button id="btn-mt-remove" class="sm-hbtn danger"><svg class="i-trash" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>Remove module text</button>
+    <button id="btn-mt-remove" class="sm-hbtn danger"><svg class="i-trash" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg><span>Remove module text</span></button>
   </div>
 </div>
 </div><!-- /#mt-anchor -->
@@ -870,7 +886,7 @@
   <!-- Update downloader shows only when a newer yt-dlp release exists. Nothing installs without
        this button being pressed. -->
   <div class="sm-wfoot" id="mu-foot" style="display:none">
-    <button id="btn-mu-updater" class="sm-hbtn" style="display:none">Update downloader</button>
+    <button id="btn-mu-updater" class="sm-hbtn" style="display:none"><span>Update downloader</span></button>
     <button id="btn-mu-get" class="sm-hbtn primary"><svg class="i-download" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span id="mu-getlabel">Download</span></button>
   </div>
 </div>

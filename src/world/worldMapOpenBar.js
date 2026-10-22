@@ -45,7 +45,7 @@ function worldMapOpenBarPlace() {
   _wmBar.style.top = Math.max(_wmBar.offsetHeight + 6, (r.top - w.top - 10) / z) + 'px';
 }
 
-// The things laid over the layer that follow what it shows: the callout over Add, the bar over the picked map. They
+// The things laid over the layer that follow what it shows: the bar over the picked map. They
 // move with a flight, a drag and the prints' own glide, so they are placed every frame while the layer is up.
 let _wmFollowing = false;
 function worldMapFollow() {
@@ -53,7 +53,6 @@ function worldMapFollow() {
   _wmFollowing = true;
   const step = () => {
     if (!worldMapOpen) { _wmFollowing = false; return; }
-    worldMapEmptyPlace();
     worldMapOpenBarPlace();
     requestAnimationFrame(step);
   };

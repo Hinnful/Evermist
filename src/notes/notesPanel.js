@@ -218,7 +218,7 @@ function notesPanelSync(room) {
   const moved = !_npAim || _npAim.level !== level || _npAim.pane !== pane || _npAim.sceneKey !== sceneKey || _npAim.place !== aim.place || _npAim.road !== aim.road;
   if (moved) {
     if (_npAim) _npCommit();
-    field.placeholder = t(level === 'campaign' ? 'Notes for the whole campaign…' : level === 'place' ? 'Notes for this place…' : level === 'road' ? 'Notes for this road…' : 'Notes for this scene…');
+    field.placeholder = t(level === 'campaign' ? 'Notes for the whole campaign…' : level === 'place' ? 'Notes for this group…' : level === 'road' ? 'Notes for this road…' : 'Notes for this map…');
   }
   _npAim = aim;
   if (moved || field !== document.activeElement) {

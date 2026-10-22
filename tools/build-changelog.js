@@ -6,7 +6,7 @@
 // description GitHub publishes verbatim. Both are copied here, so the panel in the app and the
 // page on GitHub carry the same words and nobody maintains a second copy.
 //
-// Run it after the version-bump commit and amend: the newest entry is that commit's own message.
+// The output is gitignored: npm test, start, rig and build regenerate it, and CI runs it itself.
 // Output is a plain <script> global, not JSON — fetch() of a local file is blocked on file://.
 
 const { execFileSync } = require('child_process');
@@ -38,6 +38,18 @@ for (const record of git(['log', '--pretty=format:%ad' + UNIT + '%s' + UNIT + '%
   // released, and a link to it would 404 from inside the app.
   if (tags.has('v' + m[1])) entry.tag = 'v' + m[1];
   entries.push(entry);
+}
+
+// A bump has no release commit until /commit makes one, so a local run lists the bumped version
+// from the pending notes. CI skips this: there the commit exists, and a missing one is a fault.
+const version = require(path.join(ROOT, 'package.json')).version;
+if (!process.env.CI && !entries.some(e => e.version === version)) {
+  const notes = path.join(ROOT, '.claude', 'commit', 'notes.txt');
+  const lines = fs.existsSync(notes) ? fs.readFileSync(notes, 'utf8').replace(/\r/g, '').trim().split('\n') : [];
+  const m = (lines[0] || '').match(RELEASE);
+  const pending = m && m[1] === version;
+  entries.unshift({ version: version, date: new Date().toISOString().slice(0, 10),
+    note: pending ? m[2] : 'Not released yet', body: pending ? lines.slice(1).join('\n').trim() : '' });
 }
 
 if (!entries.length) {

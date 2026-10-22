@@ -71,7 +71,7 @@ function cbOpenStat(row) {
         <button class="cp-segtab ${row.side === 'enemy' ? 'active' : ''}" data-side="enemy">Enemy</button>
         <button class="cp-segtab ${row.side === 'ally' ? 'active' : ''}" data-side="ally">Ally</button>
       </div>
-      <button class="sm-hbtn cb-save" data-save ${row.sbChanged ? '' : 'disabled'}>Save to Bestiary</button>
+      <button class="sm-hbtn cb-save" data-save ${row.sbChanged ? '' : 'disabled'}><span>Save to Bestiary</span></button>
       <button class="cb-iconbtn" data-close title="Close">${uiIcon('x')}</button>
     </div>
     ${cbEditorHtml(cbRowBlock(row))}

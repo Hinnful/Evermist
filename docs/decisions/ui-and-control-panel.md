@@ -1163,3 +1163,36 @@ gap. A Settings switch between touchpad and mouse was rejected until a real devi
 A Magic Mouse reads as a touchpad and pans; accepted. On the minimap a two-finger scroll does
 nothing, so a scroll cannot zoom the TV by accident; a pinch zooms it. A ping without a middle
 button is deferred.
+
+### The interface says map, Campaign, group, Pictures; the code keeps its old words · `SETTLED` (2026-10-22)
+At a table one scene holds one map that never changes, so the DM sees one thing; a scene as a
+container of layers is an online-VTT idea. The UI says "map" for "scene", "Campaign" for "World map",
+"group" for "place" (maps at any scale: a kingdom, a village, one tavern), "Pictures" for "Gallery",
+"Fights" for "Fight", and the rail tab "Map settings" (on two lines) for "Scene control". Code, ids,
+saved data and the MCP tool and parameter names keep the old words; the MCP reply text uses the new.
+Rejected names: "Atlas" and "Place"/"Location" (abstract; "Location" competes with "map"),
+"Properties" (does not say of what), "Portraits" (implies monsters only), "Illustrations" (too long
+for the rail). The Grid section comes first in Map settings, since the grid was not found.
+
+### Every rail icon carries its name, as a small highlighted square · `SETTLED` (2026-10-22)
+The icon-only rail could not be read. The rail is 60px, buttons 12px apart, the label under the icon,
+and the only highlight is a 34x30 rounded square behind the icon, blue tint for the picked tab.
+Rejected in order: 48x44 full tiles (label touching the edge), a 44x26 pill (an unclear oval), a
+side bar (an extra element doing what colouring icon and word does), labels beside the icon (wider,
+changes the UX), and hover names alone. Button text is trimmed to cap height and baseline so it
+sits on the optical centre beside an icon. One divider rule app-wide: edge to edge, 1px, `--g-divider`.
+
+### The shape button is labelled, and rooms and groups start on Rectangle · `SETTLED` (2026-10-22)
+A square icon means "a square" only to someone who knows they are in a vector editor. The bottom
+toolbar's shape button carries a word for what it draws, "Room" on a map and "Group" on the Campaign,
+and a tooltip with the purpose. In Effects it stays icon-only. This breaks the icon-only toolbar
+on purpose. Rooms and groups start on Rectangle, not Polygon. Auto is the default show mode.
+
+### An empty Campaign shows one card, never a tutorial · `SETTLED` (2026-10-22)
+A centred card in the hint skin: "Add your first map", one line on which files work, one primary
+"Add a map" button. No skip: it blocks nothing and goes with the first map; the toolbar and rail stay
+usable since Settings (language, backup Import) is needed first. The add button is a grey labelled
+"+ Map", no longer solid blue. Rejected: an onboarding slide overlay and a glossary (skipped, and a
+tester misdescribed the core concept anyway), showing the hierarchy, a movable toolbar, decorative
+group frames, an "unsent changes" badge (the minimap shows the state), moving Fit to TV, a DM-only
+large picture preview (a new feature). State-driven hints wait for the interface rework.

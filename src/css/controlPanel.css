@@ -115,7 +115,7 @@
     font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
   }
   .cp-hex:focus { outline: none; }
-  .cp-fdiv { width: 1px; height: 16px; background: rgba(255,255,255,0.08); flex: none; }
+  .cp-fdiv { width: 1px; align-self: stretch; background: var(--g-divider); flex: none; }
   .cp-alphanum {
     width: 26px; flex: none; border: none; background: transparent; color: #c4c8ce; text-align: right;
     font: 500 12px/1 system-ui, -apple-system, sans-serif; font-variant-numeric: tabular-nums;

@@ -168,7 +168,7 @@ module.exports = async function windowsFeature(rig) {
   await dm.waitFor('!!document.getElementById("cl-modal") && document.getElementById("cl-anchor").style.display !== "none"', 10000, 'What\'s new to open');
   await audit('What\'s new', 'const r = [...document.querySelectorAll("#cl-body .cl-row")].find(x => x.querySelector(".sm-chev")); if (r) r.click()',
               '#cl-modal', {}, 'closeChangelog()');
-  await audit('Progress', 'setMapProgressRun("7 of 12", "Backup.zip"); showMapProgress("Extracting scenes…")', '#map-progress',
+  await audit('Progress', 'setMapProgressRun("7 of 12", "Backup.zip"); showMapProgress("Extracting maps…")', '#map-progress',
               {}, 'hideMapProgress(); setMapProgressRun("")');
 
   await dm.evaluate(`(() => {

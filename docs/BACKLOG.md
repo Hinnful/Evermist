@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 19 open items; IDs run to 207."
+description: "Open work only. 25 open items; IDs run to 213."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.6.2**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.6.6**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
 shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -104,9 +104,9 @@ Filed 2026-10-18 as a DESIGN DISCUSSION, wanted but not urgent. Neither says wha
 a monster, putting it in a fight, reading its stat block. **Open:** which moments earn a hint, and what each says.
 **First use · DM only**
 
-### 205. First-time hints for places on the world map
-Filed 2026-10-18 as a DESIGN DISCUSSION, wanted but not urgent. Nothing says the world map can group maps into
-places: drawing one, a map dropped inside it belonging to it, its name and notes. **Open:** which moments earn a hint,
+### 205. First-time hints for groups on the Campaign
+Filed 2026-10-18 as a DESIGN DISCUSSION, wanted but not urgent. Nothing says the Campaign can gather maps into
+groups: drawing one, a map dropped inside it belonging to it, its name and notes. **Open:** which moments earn a hint,
 and what each says.
 **First use · DM only**
 
@@ -129,6 +129,39 @@ once (`sceneSwitch.js`), so a DM cannot look at the next map privately. Manual s
 the minimap's "…" menu and also holds every reveal. **Needs /spec:** how the DM opens a map without the TV following,
 and how the map then goes to the TV.
 **First use · Play · DM + Player**
+
+### 208. The TV is not found when its cable was plugged in before Evermist started
+Filed 2026-10-22 from a new DM's first evening on a Mac. With HDMI already connected, Evermist starts and reports no
+TV; unplugging, starting Evermist, then plugging in finds it. The display list is likely read once and never
+listens for the screen that was there at launch (`electron/displays.js`, `player/tvControl.js`).
+**Bug · DM + Player**
+
+### 209. The Campaign does not zoom out far enough, or pan, to reach every map
+Filed 2026-10-22 from a new DM on a touchpad. Maps beyond the window could only be found by shrinking the window;
+zoom out should reach about 130% of all maps. **Check first** whether the touchpad support in 4.6.4 fixed it.
+**Bug · DM only**
+
+### 210. Hints follow what the library holds, not the DM's first action
+Filed 2026-10-22. A DM whose maps Claude made never sees the first-map hints, because they start from a hand-made
+first action. A hint that reads the state (a map with no rooms, rooms never shown on the TV) reaches that DM too.
+**Waits for the interface rework**; the hint set will change with it.
+**First use · DM only**
+
+### 211. Right-click actions on a map, a group and the empty Campaign
+Filed 2026-10-22. A new DM looks for actions on the object: create a group here, add maps into a group, open a
+map's notes. The Campaign has a right-click menu (`world/worldMapMenu.js`); **Needs /spec:** what each object's
+menu holds, with every item still reachable from a visible button.
+**First use · DM only**
+
+### 212. A new DM does not find effects
+Filed 2026-10-22. Fire, acid and light sit behind the Fog / Effects switch at the bar's end, and a new DM never
+meets them during prep. **Open:** where effects show themselves to a DM who has never switched modes.
+**First use · DM only**
+
+### 213. Show on TV stays a live button while no TV is found
+Filed 2026-10-22. The minimap's solid blue Show on TV sits above "No TV found", so pressing it says nothing about
+what it will do (`player/tvControl.js`).
+**Polish · DM only**
 
 ---
 

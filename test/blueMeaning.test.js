@@ -10,7 +10,6 @@ const ALLOWED = [
   /^\.sm-hbtn\.primary(:hover)?$/,           // each window's main button
   /^\.tv-go$/,                               // Show on TV
   /^\.tv-grp \.lv\.sw:hover$/,               // the TV pill's Stop, a press target
-  /^body\.world #wm-add(:hover)?$/,          // the world map's Add
   /^#wm-bar \.wm-bar-open(:hover)?$/,        // the world map's Open
   /^\.sm-track i$/,                          // progress fill
   /^#pv-frame span$/,                        // the Player-view label

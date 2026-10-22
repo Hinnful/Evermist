@@ -57,7 +57,7 @@
   }
   .cf-item .meta { flex: none; color: #7f858e; font-size: 12px; }
   .cf-new {
-    display: block; width: 100%; border: 0; border-top: 1px solid rgba(255,255,255,0.07); background: none;
+    display: block; width: 100%; border: 0; border-top: 1px solid var(--g-divider); background: none;
     padding: 11px 12px; text-align: left; cursor: pointer; color: #9aa0aa; font: 600 13px/1 system-ui, sans-serif;
   }
   .cf-new:hover { background: rgba(255,255,255,0.03); color: #d5d8dd; }
@@ -180,7 +180,7 @@
   .cb-menu div:hover { background: rgba(90,140,235,0.22); }
   .cb-menu div.danger { color: #f0857a; }
   .cb-menu div.danger:hover { background: rgba(240,100,90,0.16); }
-  .cb-menu hr { border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 4px 6px; }
+  .cb-menu hr { border: 0; height: 1px; background: var(--g-divider); margin: 4px -4px; }
   .cb-menu .key { margin-left: auto; padding-left: 18px; color: #7f858e; font-size: 12px; }
   .cb-menu .box { flex: none; width: 15px; height: 15px; box-sizing: border-box; border: 1.5px solid rgba(255,255,255,0.32); border-radius: 4px; }
   .cb-menu .box.on {
@@ -350,7 +350,7 @@
   .bs-ib { flex: none; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: none; color: #9aa0aa; cursor: pointer; }
   .bs-ib:hover { background: rgba(255,255,255,0.07); color: #eceef1; }
   .bs-ib.danger:hover { background: rgba(200,50,40,0.14); color: #f09088; }
-  .bs-div { width: 1px; height: 22px; margin: 0 2px; background: rgba(255,255,255,0.1); }
+  .bs-div { width: 1px; align-self: stretch; margin: 0 2px; background: var(--g-divider); }
   .bs-page-head.editing { background: rgba(90,140,235,0.1); border-bottom-color: rgba(90,140,235,0.4); }
   .bs-mode { display: block; margin-bottom: 3px; color: #8fb6ff; font: 700 10.5px/1 system-ui, sans-serif; letter-spacing: .6px; text-transform: uppercase; }
   .bs-done { display: inline-flex; align-items: center; gap: 6px; }
@@ -557,7 +557,7 @@
   .bs-t tr.open td { background: rgba(12,140,233,0.12); }
   .bs-t tr.sel td { background: var(--g-field); }
   .bs-tools { gap: 2px; padding: 0; border: 0; border-radius: 0; background: none; }
-  .bs-div { height: 16px; margin: 0 4px; background: var(--g-line); }
+  .bs-div { margin: 0 4px; background: var(--g-divider); }
   .bs-page-head { padding: 12px 10px 12px 28px; border-bottom: 1px solid var(--g-line); }
   .bs-page-head.editing { background: var(--b-tint); border-bottom-color: var(--g-line); }
   .bs-mode { color: var(--b-icon); }

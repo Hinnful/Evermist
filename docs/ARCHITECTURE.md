@@ -32,15 +32,15 @@ pan and zoom smoothly. The fog, grid, and cursor are drawn separately and stacke
 The map fills the DM window. Over it sit three things: the toolbar at the bottom, the minimap in
 the bottom-left corner, and **the dock** on the right edge. The left side of the window is empty.
 
-The dock is an icon rail with one pane open beside it. The rail opens the world map, the
-Bestiary as a centred window, and the fight table as a free window. Its panes are **Scene
-control** (fog, rooms, lights, grid), **Notes**, **Music**,
-**Sounds**, **Gallery** and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
+The dock is an icon rail with one pane open beside it. The rail opens the Campaign (the world map), the
+Bestiary as a centred window, and the fight table as a free window. Its panes are **Map
+settings** (grid first, then fog, rooms, lights), **Notes**, **Music**,
+**Sounds**, **Pictures** (`gallery.js`) and **Settings**. Clicking the open tab again shuts the pane and leaves the rail. The
 dock sits over the map rather than beside it, so opening a pane never moves the map or changes
 what the TV is sent. Its inner edge drags to resize it, and it gives way so the toolbar stays
 clear. The toolbar stays centred on the window whatever either side does.
 
-**The Gallery** (`gallery.js`) is the only place pictures live: portraits, monsters, letters, kept
+**Pictures** (`gallery.js`) is the only place pictures live: portraits, monsters, letters, kept
 under a name with no scene or room attached, in a database of their own (`galleryStore.js`). A
 find field narrows the grid by name, `+` or a drop adds, a double-click renames, the trash asks
 before it removes. A click puts the picture on the TV over the dimmed map (`tvPicture.js`), a second
@@ -53,7 +53,7 @@ of a build with the gallery copies every picture the rooms of any saved scene ho
 the picture's own id (`galleryMigrate.js`), once. Scenes keep their rooms' `pictures` and
 `pictureBlobs` through every save, undo, paste and backup, so the previous release still shows them.
 
-**The world map** (`worldMap.js`, `worldMapEdit.js`) is a DOM layer over the map. It replaced the Scene library, which is gone.
+**The Campaign** (the world map; `worldMap.js`, `worldMapEdit.js`) is a DOM layer over the map. It replaced the Scene library, which is gone.
 A place IS a scene group (`scene.group`) and each scene stores where it sits as `worldPos`, written by one
 helper (`worldMapStore.js`) to the store, the open scene and, with two maps on, the column holding it. Scenes are
 framed 110x77 prints, shown only zoomed in, where they stand as the DM put them and wear their names inside the
@@ -69,7 +69,7 @@ take no Merge, Cut out or Split (`worldMapShapes.js` draws them). Find opens a l
 (`worldMapFind.js`). One backdrop image, set in Settings, sits behind the places
 (`worldBackground.js`, its own IndexedDB). A double-click, or the Open bar over the one picked map
 (`worldMapOpenBar.js`), opens a scene. Add imports maps off screen, frames them and picks the first, and never opens
-one. With no maps the app starts on the world map, which shows a callout over Add (`worldMapEmpty.js`). Opening the
+one. With no maps the app starts on the Campaign, which shows one centred card, "Add your first map" (`worldMapEmpty.js`); a place is called a group in the UI. Opening the
 map frames everything on it in the part of the window the dock leaves clear, and with no place drawn it stays at the
 prints. A right-click menu (`worldMapMenu.js`) offers each thing's actions, a place is a room-shaped record (`worldPlaces.js`) drawn with the rectangle, circle or polygon tool and edited by the room's own selection code, and a scene belongs to the outline that holds all of its card. The room code reads the camera from globals, so each of its calls is made inside `_wmWithCamera`, which lends it the world's. The layer is a sibling of the canvas, so none of the map's
 own handlers see it, and while it is up the map's keys are held back so nothing reaches the TV. Place notes

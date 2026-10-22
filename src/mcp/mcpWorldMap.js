@@ -5,8 +5,8 @@
 function _mcpCreateRoad(args) {
   const a = _mcpPlaceName(args.from), b = _mcpPlaceName(args.to);
   const ra = a && worldPlaceByName(a), rb = b && worldPlaceByName(b);
-  if (!ra || !rb) return _mcpNo('A road joins two places that have outlines on the world map. ' + (!a ? '"' + (args.from || '') + '"' : !b ? '"' + (args.to || '') + '"' : 'One of them') + ' is not one. Use list_campaign to see the places.');
-  if (a === b) return _mcpNo('A road joins two different places.');
+  if (!ra || !rb) return _mcpNo('A road joins two groups that have outlines on the Campaign. ' + (!a ? '"' + (args.from || '') + '"' : !b ? '"' + (args.to || '') + '"' : 'One of them') + ' is not one. Use list_campaign to see the groups.');
+  if (a === b) return _mcpNo('A road joins two different groups.');
   const snap = worldRoadsSnapshot();
   const ca = wmPolyCentre(wmOutline(ra)), cb = wmPolyCentre(wmOutline(rb));
   const name = String(args.name || '').trim() || 'Road from ' + a + ' to ' + b;
@@ -25,8 +25,8 @@ async function _mcpSetBackdrop(args) {
   const was = await worldBackgroundTake();
   if (!await worldBackgroundSet(new File([f.bytes], f.name, { type: f.type }))) return _mcpNo('The picture would not open as an image.');
   _mcpWorldRefresh();
-  return mcpDone('set the world map backdrop to "' + f.name + '"', async () => { await worldBackgroundPut(was); _mcpWorldRefresh(); },
-    'The world map backdrop is now "' + f.name + '", centred over the scenes. The DM can move and fade it in Settings.');
+  return mcpDone('set the Campaign backdrop to "' + f.name + '"', async () => { await worldBackgroundPut(was); _mcpWorldRefresh(); },
+    'The Campaign backdrop is now "' + f.name + '", centred over the maps. The DM can move and fade it in Settings.');
 }
 
 const MCP_WORLDMAP_TOOLS = { create_road: _mcpCreateRoad, set_backdrop: _mcpSetBackdrop };

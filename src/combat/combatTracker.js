@@ -466,7 +466,7 @@ function initCombatTracker() {
   fight.className = 'cb-panel';
   fight.innerHTML = `
     <div class="cb-head" data-drag><span id="cb-fightslot"></span>
-      <button class="sm-hbtn primary" id="cb-add" data-add>${uiIcon('plus')}Add creature</button>
+      <button class="sm-hbtn primary" id="cb-add" data-add>${uiIcon('plus')}<span>Add creature</span></button>
       <button class="cb-iconbtn" id="cb-close" title="Close">${uiIcon('x')}</button></div>
     <div class="cb-colhdr"><span class="c sortable" id="cb-sort" title="Sort by initiative">Init ↓</span>${_cbColHead('Name', 'name')}${
       _cbColHead('HP', 'hp')}<span class="c">AC</span>${_cbColHead('Conditions', 'cond')}${_cbColHead('Attacks', 'atk')}</div>

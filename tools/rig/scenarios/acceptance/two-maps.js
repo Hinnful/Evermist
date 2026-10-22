@@ -141,8 +141,8 @@ module.exports = async function twoMapsFeature(rig) {
             'the empty column is not the one the library would fill');
   // RED ON: the empty column's card left saying 'Pick a map from Scenes' (paneRuntime.js) — 2026-10-09
   const emptyCard = await paneB.evaluate('document.querySelector("#landing p").textContent');
-  rig.check(/world map/i.test(emptyCard) && !/Scenes/.test(emptyCard),
-            'the empty column does not send the DM to the world map: "' + emptyCard + '"');
+  rig.check(/campaign/i.test(emptyCard) && !/Scenes/.test(emptyCard),
+            'the empty column does not send the DM to the Campaign: "' + emptyCard + '"');
   rig.check((await dm.evaluate('document.getElementById("scene-dd-name").textContent'))
               .includes('Pick a map'),
             'the top-left button does not say the second column is waiting for a map');

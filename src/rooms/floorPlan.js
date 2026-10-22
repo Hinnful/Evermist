@@ -161,7 +161,7 @@ function applyPlanWithGuard(derived) {
   if (!existing) { applyPlanToScene(derived); return; }
   confirmDialog({
     title: 'Replace existing rooms?',
-    message: t('This scene has {rooms} drawn. Importing the floor plan removes them and draws {fresh}{doors}.', {
+    message: t('This map has {rooms} drawn. Importing the floor plan removes them and draws {fresh}{doors}.', {
       rooms: t.plural(existing, '{n} room', '{n} rooms'),
       fresh: t.plural(derived.rooms.length, '{n} new one', '{n} new ones'),
       doors: _fpDoorTail(derived),
@@ -182,7 +182,7 @@ function _fpBuildNotice() {
   const root = toastEl('fp-notice', 'plan');
   root.querySelector('.m').id = 'fp-notice-msg';
   root.insertAdjacentHTML('beforeend',
-    '<button type="button" class="sm-hbtn primary" id="fp-notice-cta">Draw them</button>' +
+    '<button type="button" class="sm-hbtn primary" id="fp-notice-cta"><span>Draw them</span></button>' +
     '<button type="button" class="sm-x" id="fp-notice-x" title="Dismiss" aria-label="Dismiss">' + uiIcon('x') + '</button>');
   _fpNoticeRoot = root;
   document.getElementById('fp-notice-x').addEventListener('click', hideFloorPlanNotice);
