@@ -34,6 +34,7 @@ function initMusic() {
   bind('btn-mu-pause', 'click', _muTogglePause);
   bind('mu-filter', 'input', _muRenderList);
   bind('mu-filter', 'keydown', e => e.stopPropagation());
+  bind('btn-mu-files', 'click', _muPickFiles);
   bind('btn-mu-add', 'click', () => openMusicDownload());
   bind('btn-mu-group', 'click', newMusicGroup);
   loadMusicGroups();
@@ -73,6 +74,35 @@ async function _muRefreshTracks() {
   }
   _muRenderList();
   _muScanDurations();
+}
+
+// The picker is native, so the copy is its own function, handed paths.
+async function _muPickFiles() {
+  if (!window.electronAPI || !window.electronAPI.pickMusicFiles) return;
+  try {
+    const paths = await window.electronAPI.pickMusicFiles();
+    if (paths && paths.length) await _muAddFiles(paths);
+  } catch (err) {
+    messageDialog({ title: 'Music files could not be added', message: (err && err.message) || String(err) });
+  }
+}
+
+async function _muAddFiles(paths) {
+  let res;
+  try {
+    res = await window.electronAPI.copyMusicFiles(paths);
+  } catch (err) {
+    messageDialog({ title: 'Music files could not be added', message: (err && err.message) || String(err) });
+    return null;
+  }
+  await _muRefreshTracks();
+  if (res && res.failed && res.failed.length) {
+    messageDialog({
+      title: 'Music files could not be added',
+      message: res.failed.map(f => f.name + ': ' + f.message).join('\n'),
+    });
+  }
+  return res;
 }
 
 // Durations come off the files rather than a store, because a store means a database.
@@ -132,7 +162,7 @@ function _muRenderList() {
   if (!_muTracks.length) {
     const empty = document.createElement('div');
     empty.className = 'mt-status mu-empty';
-    empty.textContent = t('No music yet. Add from YouTube, or drop audio files into the app’s music folder.');
+    empty.textContent = t('No music yet. Add files, or add from YouTube.');
     list.appendChild(empty);
     _muRenderCount();
     return;

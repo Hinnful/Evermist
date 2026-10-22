@@ -197,12 +197,12 @@ module.exports = async function worldMapFeature(rig) {
             'zoomed in, the scene name is not a plate inside the print at its top left: ' + JSON.stringify(inn));
   rig.check(inn.plates, 'zoomed in, a place name plate still shows');
 
-  // The camera cannot leave the map: far out, the window is still inside what the map reaches.
+  // Zoomed all the way out, every card and place is in the window (the floor frames the content, it does not cover the extent).
   await dm.evaluate('for (let i = 0; i < 40; i++) document.getElementById("wm").dispatchEvent(new WheelEvent("wheel", { deltaY: 600, clientX: 400, clientY: 300, bubbles: true, cancelable: true })); 0');
   const WM_SPLIT_ = await dm.evaluate('WM_SPLIT');
-  const far = JSON.parse(await dm.evaluate('JSON.stringify((e => { const a = _wmToWorld(0, 0), b = _wmToWorld(_wmView().w, _wmView().h); return { z: _wmCam.z, floor: _wmFloor(), a, b, e }; })(_wmExtent()))'));
-  rig.check(far.z >= far.floor - 1e-9 && (far.floor >= WM_SPLIT_ * 0.85 - 1e-9 || far.a.x >= far.e.x0 - 1 && far.a.y >= far.e.y0 - 1 && far.b.x <= far.e.x1 + 1 && far.b.y <= far.e.y1 + 1),
-            'zoomed far out, the window shows ground beyond the map: ' + JSON.stringify(far));
+  const far = JSON.parse(await dm.evaluate('JSON.stringify((e => { const a = _wmToWorld(0, 0), b = _wmToWorld(_wmView().w, _wmView().h); return { z: _wmCam.z, floor: _wmFloor(), a, b, box: e.box }; })(_wmExtent()))'));
+  rig.check(far.z >= far.floor - 1e-9 && (far.floor >= WM_SPLIT_ * 0.85 - 1e-9 || far.a.x <= far.box.x0 + 1 && far.a.y <= far.box.y0 + 1 && far.b.x >= far.box.x1 - 1 && far.b.y >= far.box.y1 - 1),
+            'zoomed far out, part of the map is off screen: ' + JSON.stringify(far));
   await dm.evaluate('__wmCam(' + pc.x + ', ' + pc.y + ', 0.9); 0');
   // The outline's look is read from the table the room code draws from; a room's own look is untouched.
   rig.check(await dm.evaluate('POLY_LOOK.place.lineW === 2 && POLY_LOOK.place.lineA === 1 && POLY_LOOK.place.edgeA === 0 && POLY_STATE_RGB.place === "255,255,255"'),

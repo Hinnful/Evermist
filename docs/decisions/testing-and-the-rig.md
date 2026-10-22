@@ -41,6 +41,16 @@ nothing on a public repo. Mac stays at four because a free account runs five Mac
 update proof takes one; Linux gains nothing from more. Not eight: four of the thirty reds were the app
 failing to start, which more jobs would multiply, so start-up failures are measured first.
 
+### Scenarios are dealt to shards by measured time · `SETTLED` (2026-10-22)
+**Supersedes** dealing by name, a fixed slow list first and then every Nth, which once put transfer, maps,
+grid, backup and boot on one shard. `tools/rig-deal.js` deals each platform's scenarios longest-first into
+the lightest shard from `tools/rig/timings.json`; ties break by name so every shard computes the same split,
+and a scenario with no recorded time costs the median, so a new file needs no edit. The timings are
+refreshed by hand from a run's `rig-coverage-map` artifact (`node tools/rig-deal.js refresh`), never
+automatically: stale times cost balance, never coverage. Expected slowest shard: Windows 731 s to 504 s,
+Mac 656 s to 442 s, Linux 1188 s to 1064 s. Linux stays at four shards and gains little, since software GL
+is its time on every shard; more Linux jobs stays rejected (above).
+
 ### A scenario drives the app and never reads its source text · `SETTLED` (2026-10-17)
 Three criteria (backup, world map, world roads) searched a function's `toString()` for field names, and
 passed while the behaviour was broken or failed on a rename. They now call `sceneBackupMeta` with a

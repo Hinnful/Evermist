@@ -12,6 +12,7 @@ const {
   ytdlpOutdated,
   formatDuration,
   formatBytes,
+  uniqueMusicName,
 } = require('../src/ui/musicPlan');
 
 describe('parseMusicUrl', () => {
@@ -238,5 +239,20 @@ describe('formatBytes', () => {
     assert.equal(formatBytes(0), '');
     assert.equal(formatBytes(null), '');
     assert.equal(formatBytes('x'), '');
+  });
+});
+
+describe('uniqueMusicName', () => {
+  it('keeps a free name as it is', () => {
+    assert.equal(uniqueMusicName('Tavern.mp3', ['Other.mp3']), 'Tavern.mp3');
+  });
+  it('numbers a taken name before the extension', () => {
+    assert.equal(uniqueMusicName('Tavern.mp3', ['Tavern.mp3']), 'Tavern (2).mp3');
+  });
+  it('skips numbers already taken, and matches case-insensitively', () => {
+    assert.equal(uniqueMusicName('Tavern.mp3', ['tavern.MP3', 'Tavern (2).mp3']), 'Tavern (3).mp3');
+  });
+  it('handles a name with no extension', () => {
+    assert.equal(uniqueMusicName('Tavern', ['Tavern']), 'Tavern (2)');
   });
 });

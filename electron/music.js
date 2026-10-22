@@ -2,12 +2,13 @@
 // music.js — the music folder as the library: what is in it, what a paste of a link finds, and
 // the downloader that fills it.
 
-const { ipcMain, app } = require('electron');
+const { ipcMain, app, dialog, BrowserWindow } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const fs = require('fs');
 const https = require('https');
 const { spawn } = require('child_process');
+const { uniqueMusicName } = require('../src/ui/musicPlan.js');
 
 let sendTo;
 
@@ -59,6 +60,42 @@ ipcMain.handle('music-list', async () => {
     out.sort((a, b) => a.name.localeCompare(b.name));
     return out;
   } catch { return []; }
+});
+
+ipcMain.handle('music-pick-files', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Audio', extensions: MUSIC_EXTS.map(e => e.slice(1)) }],
+  });
+  return canceled ? [] : filePaths;
+});
+
+// Copies the given files into the flat music folder, never over one already there. The one place
+// the dialog's paths and a rig's fixture paths meet. A bad file does not stop the rest.
+ipcMain.handle('music-copy-files', async (_event, paths) => {
+  const added = [], failed = [];
+  if (!Array.isArray(paths)) return { added, failed };
+  let taken = [];
+  try { taken = await fs.promises.readdir(musicDir); } catch {}
+  for (const src of paths) {
+    const base = typeof src === 'string' ? path.basename(src) : '';
+    try {
+      if (!base || MUSIC_EXTS.indexOf(path.extname(base).toLowerCase()) === -1) throw new Error('Not an audio file.');
+      for (;;) {
+        const name = uniqueMusicName(base, taken);
+        taken.push(name);
+        try {
+          await fs.promises.copyFile(src, path.join(musicDir, name), fs.constants.COPYFILE_EXCL);
+          added.push(name);
+          break;
+        } catch (err) { if (!err || err.code !== 'EEXIST') throw err; }
+      }
+    } catch (err) {
+      failed.push({ name: base || String(src), message: (err && err.message) || String(err) });
+    }
+  }
+  return { added, failed };
 });
 
 ipcMain.handle('music-delete', async (_event, name) => {

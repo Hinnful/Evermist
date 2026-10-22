@@ -33,6 +33,9 @@
 //   O. New group adds a group below Ungrouped. A track dragged onto it is filed there and its file
 //      stays put. A click on the heading folds it, a filter opens it, its tracks play, and deleting
 //      it hands them back.
+//   P. Add files copies the given audio files into the music folder: they show in the pane, and a
+//      second copy of a same-named file lands as "Name (2)" and never over the first. The native
+//      picker is bypassed: the scenario hands the copy its paths, and byEye covers the button.
 //
 // ⚠ THE TRACKS ARE WRITTEN HERE AS WAV, not downloaded. A scenario must never reach YouTube: it
 // needs the network, a real video and a 50MB transfer. L and M are therefore rig.byEye, and
@@ -544,6 +547,36 @@ module.exports = async function musicFeature(rig) {
   })()`);
   rig.check(await dm.evaluate("!document.getElementById('music-bubble').classList.contains('mu-downloading')"),
     'the progress bar stayed under the player after the queue emptied');
+
+  // ══ P. Add files copies into the folder, and never over a file ═══════════
+  // RED BY DESIGN: written against the fix, never re-proved (uniqueMusicName in the music-copy-files handler, electron/music.js)
+  rig.check(await dm.evaluate("(() => { const b = document.getElementById('btn-mu-files'); return !!b && b.title === 'Add files'; })()"),
+    'the Music pane header has no Add files button');
+  const srcDir = path.join(require('os').tmpdir(), 'evermist-rig-music-' + process.pid);
+  fs.mkdirSync(srcDir, { recursive: true });
+  const fixture = path.join(srcDir, 'Fixture Tune.wav');
+  fs.writeFileSync(fixture, wav(3));
+  await dm.evaluate("dockOpen('music'); 0");
+  const first = await dm.evaluate('_muAddFiles(' + JSON.stringify([fixture]) + ')');
+  rig.check(first && first.added.length === 1 && first.added[0] === 'Fixture Tune.wav' && first.failed.length === 0,
+    'copying a fixture did not add it under its own name: ' + JSON.stringify(first));
+  rig.check(fs.existsSync(path.join(musicDir, 'Fixture Tune.wav')), 'the copied file is not in the music folder');
+  const second = await dm.evaluate('_muAddFiles(' + JSON.stringify([fixture]) + ')');
+  rig.check(second && second.added[0] === 'Fixture Tune (2).wav',
+    'a same-named second copy was not given a numbered suffix: ' + JSON.stringify(second));
+  rig.check(fs.statSync(path.join(musicDir, 'Fixture Tune.wav')).size === fs.statSync(fixture).size &&
+            fs.existsSync(path.join(musicDir, 'Fixture Tune (2).wav')),
+    'the second copy overwrote the first or never landed');
+  const shownNames = await dm.evaluate("[...document.querySelectorAll('#mu-list .mu-row-name')].map(e => e.textContent)");
+  rig.check(shownNames.some(n => n.indexOf('Fixture Tune (2)') !== -1) && shownNames.filter(n => n.indexOf('Fixture Tune') !== -1).length === 2,
+    'the pane does not list both copies: ' + JSON.stringify(shownNames));
+  const bad = path.join(srcDir, 'notes.txt');
+  fs.writeFileSync(bad, 'x');
+  const refused = await dm.evaluate('window.electronAPI.copyMusicFiles(' + JSON.stringify([bad]) + ')');
+  rig.check(refused && refused.added.length === 0 && refused.failed.length === 1 && !fs.existsSync(path.join(musicDir, 'notes.txt')),
+    'a non-audio file was copied into the music folder: ' + JSON.stringify(refused));
+  fs.rmSync(srcDir, { recursive: true, force: true });
+  rig.byEye('P. The Add files button opens the OS picker and a pick lands in the list. The dialog is native and cannot be driven.');
 
   // ══ N. The downloader is found on disk ═══════════════════════════════════
   // RED BY DESIGN: written against the fix, never re-proved

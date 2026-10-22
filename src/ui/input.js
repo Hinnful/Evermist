@@ -6,6 +6,8 @@
 // ─── Shape tool helpers ───────────────────────────────────────────────────────
 
 let legendVisible = false;
+// Where the pointer last was over the map, in client pixels; null once it leaves, so Q pings only what it is over.
+let mapPointerClient = null;
 
 // The options row above the toolbar, which carries ONLY what the picked tool uses: the fog clouds and
 // the brush size over the Brush; over a shape the clouds in Fog mode or the material and size in
@@ -137,6 +139,7 @@ function initInput() {
       const v = clientToView(e.clientX, e.clientY);
       lastScreenX = v.x;
       lastScreenY = v.y;
+      mapPointerClient = { x: e.clientX, y: e.clientY };
       // ⚠ Panning is checked BEFORE the hover repaint, and hands the overlay to the render clock
       // rather than painting here. Otherwise the hover paint fires on every pan event with stale
       // pan values, and the pan branch repaints a second time — two off-clock overlay repaints per
@@ -170,6 +173,7 @@ function initInput() {
     container.addEventListener('mouseleave', () => {
       // The brush ring goes: the cursor is no longer over the map.
       drawCursor(null, null);
+      mapPointerClient = null;
       // ⚠ NEITHER A STROKE NOR A PAN ENDS HERE, and lastMapX/lastMapY are kept so a drag that
       // leaves the map and comes back is one continuous stroke. A drag follows the mouse BUTTON,
       // and the bottom toolbar floats over the map, so every stroke along the lower edge crosses it.
@@ -286,6 +290,13 @@ function initInput() {
         else if (!isPane) worldMapToggle();
         break;
       case 'KeyG': document.getElementById('btn-grid').click(); break;
+      // The touchpad's ping: Ctrl+middle-click has no button there.
+      case 'KeyQ':
+        if (mapOffscreen && mapPointerClient) {
+          const m = screenToMap(mapPointerClient.x, mapPointerClient.y);
+          pingAt(m.x, m.y);
+        }
+        break;
       case 'KeyA': document.getElementById('btn-anim').click(); break;
       // In a column, L asks the DM window, which keeps the eye and both columns in step.
       case 'KeyL':

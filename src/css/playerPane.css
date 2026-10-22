@@ -45,6 +45,9 @@
     display: inline-flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   }
   .tv-go:hover { background: var(--b-icon); }
+  /* No TV found: the same button, quiet, still clickable for the help box. */
+  .tv-go.none { background: var(--g-field); color: var(--g-text); }
+  .tv-go.none:hover { background: var(--g-hover); }
   .tv-go.small { height: 28px; padding: 0 10px; font-size: 12px; box-shadow: none; }
   .tv-sub {
     pointer-events: auto; display: inline-flex; align-items: center; gap: 5px; max-width: 100%; border: 0; background: none;

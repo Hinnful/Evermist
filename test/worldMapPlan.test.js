@@ -367,22 +367,39 @@ describe('how far the map reaches', () => {
 
   it('is the layout with a margin, or the picture with the layout and a fifth of it beyond', () => {
     const e = W.wmExtent([{ x: 0, y: 0 }, { x: 1000, y: 500 }], null);
-    assert.deepEqual(e, { x0: -450, y0: -450, x1: 1450, y1: 950 });
+    assert.deepEqual(e, { x0: -450, y0: -450, x1: 1450, y1: 950, box: { x0: 0, y0: 0, x1: 1000, y1: 500 } });
     const p = W.wmExtent([{ x: 0, y: 0 }, { x: 1000, y: 500 }], { x: -200, y: -100, w: 2000, h: 900 });
-    assert.deepEqual(p, { x0: -600, y0: -500, x1: 2200, y1: 1200 });
+    assert.deepEqual(p, { x0: -600, y0: -500, x1: 2200, y1: 1200, box: { x0: -200, y0: -100, x1: 1800, y1: 800 } });
   });
 
-  it('floors the zoom where the extent fills the window, and never above the places level', () => {
-    const ext = { x0: 0, y0: 0, x1: 4000, y1: 2000 };
-    assert.equal(W.wmZoomFloor(ext, view), Math.max(1000 / 4000, 600 / 2000));
-    assert.equal(W.wmZoomFloor({ x0: 0, y0: 0, x1: 100, y1: 100 }, view), W.WM_SPLIT * 0.85);
+  it('floors the zoom where all the content fits with room, and never above the places level', () => {
+    const ext = { x0: -450, y0: -450, x1: 4450, y1: 2450, box: { x0: 0, y0: 0, x1: 4000, y1: 2000 } };
+    assert.equal(W.wmZoomFloor(ext, view), Math.min(1000 / 5200, 600 / 2600));
+    assert.equal(W.wmZoomFloor({ x0: 0, y0: 0, x1: 100, y1: 100, box: { x0: 0, y0: 0, x1: 100, y1: 100 } }, view), W.WM_SPLIT * 0.85);
+  });
+
+  it('shows every card and place at the floor, for a wide map in a tall window and a tall map in a wide one', () => {
+    const cases = [
+      { view: { w: 600, h: 1000 }, pts: [{ x: 0, y: 0 }, { x: 6000, y: 300 }] },
+      { view: { w: 1000, h: 600 }, pts: [{ x: 0, y: 0 }, { x: 300, y: 6000 }] },
+    ];
+    for (const c of cases) {
+      const ext = W.wmExtent(c.pts, null), box = ext.box;
+      const z = W.wmZoomFloor(ext, c.view);
+      assert.ok((box.x1 - box.x0) * z < c.view.w && (box.y1 - box.y0) * z < c.view.h, 'the content overflows the window at the floor');
+      // the camera the clamp allows at the floor still has the whole box on screen
+      const cam = W.wmClampCamera({ cx: 99999, cy: 99999, z: 0.001 }, c.view, ext);
+      assert.equal(cam.z, z);
+      const hw = c.view.w / 2 / z, hh = c.view.h / 2 / z;
+      assert.ok(cam.cx - hw <= box.x0 && cam.cx + hw >= box.x1 && cam.cy - hh <= box.y0 && cam.cy + hh >= box.y1, 'the clamped camera cuts the content off');
+    }
   });
 
   it('moves the camera the least that keeps the window inside', () => {
     const ext = { x0: 0, y0: 0, x1: 4000, y1: 2000 };
     const c = W.wmClampCamera({ cx: -500, cy: 5000, z: 0.5 }, view, ext);
     assert.deepEqual(c, { cx: 1000, cy: 1400, z: 0.5 });
-    assert.equal(W.wmClampCamera({ cx: 2000, cy: 1000, z: 0.01 }, view, ext).z, 0.3);
+    assert.equal(W.wmClampCamera({ cx: 2000, cy: 1000, z: 0.01 }, view, ext).z, W.wmZoomFloor(ext, view));
   });
 });
 

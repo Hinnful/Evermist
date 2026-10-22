@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 25 open items; IDs run to 213."
+description: "Open work only. 20 open items; IDs run to 214."
 metadata: 
   node_type: memory
   type: project
@@ -110,36 +110,12 @@ groups: drawing one, a map dropped inside it belonging to it, its name and notes
 and what each says.
 **First use · DM only**
 
-### 206. A ping without a middle button
-Filed 2026-10-19, deferred from the touchpad release (4.6.4). A ping needs Ctrl+middle-click, and a touchpad has no
-middle button, so a DM on a laptop cannot ping. `P` pings the map at the cursor (`ui/input.js`, `render/ping.js`).
-The shortcut list in `index.html` names it.
-**Play · First use · DM + Player**
-
-### 199. Local music files can get into the app
-Filed 2026-10-18 from the item 172 audit. The empty Music pane says "drop audio files into the app's music folder",
-and nothing says where that folder is. The pane takes no drop and has no add button, so a DM with local files has no
-way in. YouTube links work. **Needs /spec:** a picker that copies files into the music folder, a button that opens
-the folder, or both. The folder stays flat (PRODUCT, "Music groups are made in the app").
-**First use · DM only**
-
 ### 200. Opening a map does not put it on the TV
 Filed 2026-10-18 from the item 172 audit; the DM has met it too. In Auto sync, opening a map sends it to the TV at
 once (`sceneSwitch.js`), so a DM cannot look at the next map privately. Manual sync holds it, but Manual sits behind
 the minimap's "…" menu and also holds every reveal. **Needs /spec:** how the DM opens a map without the TV following,
 and how the map then goes to the TV.
 **First use · Play · DM + Player**
-
-### 208. The TV is not found when its cable was plugged in before Evermist started
-Filed 2026-10-22 from a new DM's first evening on a Mac. With HDMI already connected, Evermist starts and reports no
-TV; unplugging, starting Evermist, then plugging in finds it. The display list is likely read once and never
-listens for the screen that was there at launch (`electron/displays.js`, `player/tvControl.js`).
-**Bug · DM + Player**
-
-### 209. The Campaign does not zoom out far enough, or pan, to reach every map
-Filed 2026-10-22 from a new DM on a touchpad. Maps beyond the window could only be found by shrinking the window;
-zoom out should reach about 130% of all maps. **Check first** whether the touchpad support in 4.6.4 fixed it.
-**Bug · DM only**
 
 ### 210. Hints follow what the library holds, not the DM's first action
 Filed 2026-10-22. A DM whose maps Claude made never sees the first-map hints, because they start from a hand-made
@@ -158,10 +134,12 @@ Filed 2026-10-22. Fire, acid and light sit behind the Fog / Effects switch at th
 meets them during prep. **Open:** where effects show themselves to a DM who has never switched modes.
 **First use · DM only**
 
-### 213. Show on TV stays a live button while no TV is found
-Filed 2026-10-22. The minimap's solid blue Show on TV sits above "No TV found", so pressing it says nothing about
-what it will do (`player/tvControl.js`).
-**Polish · DM only**
+### 214. A screen log for when no TV is found on a Mac
+Filed 2026-10-22 after 4.6.7. 4.6.7 re-reads the screen list every second, but the reported Mac case (HDMI connected
+before launch, "No TV found") is unconfirmed, and CI's Mac runners have one virtual screen. For the first seconds after
+launch, Evermist writes the screens it sees into its log, so the next report shows whether macOS hid the TV or Evermist
+missed it (`electron/displays.js`, the diagnostic log).
+**Bug · DM + Player**
 
 ---
 
@@ -256,15 +234,6 @@ today live in the app's database (DECISIONS, "Notes are stored as a scene field 
 disk mean a new storage design that the previous release can still roll back over. Waits for the First User
 Experience epic.
 **Campaign · DM only**
-
-### 196. Balance the Linux rig shards
-Filed 2026-10-18. A release waits about 23 minutes, and Linux sets that time. In the 4.6.2 run one Linux shard took 21
-minutes while the others took 10 to 18, and every Windows and Mac shard finished within 11. The dealing in
-`gate.yml` deals named slow scenarios first, then every Nth by name, so it ignores how long each scenario takes.
-Linux only advises, but `land` still waits for it. More Linux jobs was rejected (DECISIONS, "Windows is dealt six
-ways": its time is software GL, not queueing), so this is about dealing the same scenarios more evenly, for example
-by the times the shard reports already record. Done when the slowest Linux shard sits near the others.
-**Upkeep · no visible change**
 
 ---
 

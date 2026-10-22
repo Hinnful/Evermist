@@ -870,7 +870,7 @@ the place's name plate and looked small in the old, wide spacing. Now, below the
 prints in a grid inside its outline at the largest size that fits, up to 1.5 times the card, with its plate's
 space kept clear at the smallest zoom the map allows. The grid is a view only: the stored positions do not change,
 and zoomed in the prints are back where they were put. The prints cannot be picked or dragged zoomed out. Zoomed
-out is also limited: no further than the layout with a margin fills the window; a small map stops where the places
+out is also limited: no further than the layout with a margin fills the window (**superseded** by the contain floor below); a small map stops where the places
 level opens. With a backdrop picture the camera may go a fifth of the map's size past it, so far places are easy
 to reach, and the mist stops at the picture's edge.
 Plates and prints follow the interface zoom (`--ui-zoom`), because they read small next to the rest of the app at 1.2.
@@ -1196,3 +1196,24 @@ usable since Settings (language, backup Import) is needed first. The add button 
 tester misdescribed the core concept anyway), showing the hierarchy, a movable toolbar, decorative
 group frames, an "unsent changes" badge (the minimap shows the state), moving Fit to TV, a DM-only
 large picture preview (a new feature). State-driven hints wait for the interface rework.
+
+### The Campaign zooms out to contain, not cover · `SETTLED` (2026-10-22)
+The zoom floor was "cover": the layout filled the window, so any map whose shape differed from the window's
+always had part of it off screen (a new DM on a touchpad could not see it all). Now `wmZoomFloor` zooms out until
+every card, place and the backdrop picture fit with about 30% room (`WM_FLOOR_ROOM` 1.3 over the extent's box). A
+small map still stops at the zoom split times 0.85. Supersedes the "fills the window" limit in the entries above.
+
+### Show on TV goes grey while no TV is found; Q pings · `SETTLED` (2026-10-22)
+With no TV found the button takes the grey secondary style (`.tv-go.none`) and stays clickable, opening the "sees
+only this screen" help; blue means a TV is found or several screens can be picked, so blue no longer sits above
+"No TV found". While the Player is not live the screen list is re-read every second, so a TV the OS was still
+configuring at launch is found without a plug event; the macOS cause is unconfirmed and CI cannot check it
+(one virtual screen). Q pings at the pointer like Ctrl+middle-click, for touchpads with no middle button, only over
+an open map and not in a field. G was rejected: it toggles the grid. The shortcut legend lists Q.
+
+### The Music pane has an Add files button · `SETTLED` (2026-10-22)
+An icon button between New group and Add from YouTube opens a native multi-file picker filtered to the music
+list's audio extensions and copies the files flat into the music folder, never overwriting: a taken name becomes
+"Name (2).ext", compared case-insensitively (`uniqueMusicName`). Non-audio files are refused and reported through
+`messageDialog`. The folder stays flat; groups are made in the app. The empty state no longer says to drop files into
+the folder: "No music yet. Add files, or add from YouTube."

@@ -59,8 +59,8 @@ helper (`worldMapStore.js`) to the store, the open scene and, with two maps on, 
 framed 110x77 prints, shown only zoomed in, where they stand as the DM put them and wear their names inside the
 print. Zoomed out no scene in a place is shown: the places show, each with a name plate that is a room's label
 (its type size by zoom and clamped, its weight, padding and gap) at the top left of the outline. A scene with no place is
-a black diamond with its name beside it. The camera cannot leave the map: zoomed out no further than the picture and
-layout, with a fifth of the map's size beyond, fill the window. The mist stops at the picture's edge. a scene with no place is a black diamond with its name beside it. Zoomed in the prints wear their
+a black diamond with its name beside it. The camera cannot leave the map: zoomed out until every card, place and the picture fit the window with about 30% room (a small map stops at the zoom split times 0.85), and the
+camera may go a fifth of the map's size beyond. The mist stops at the picture's edge. a scene with no place is a black diamond with its name beside it. Zoomed in the prints wear their
 names and the places have none. Under the prints sits the mist (`worldMist.js`): a drifting veil that thins
 inside the places, over the backdrop, which is greyed outside them. A place's white 2px line is painted above by
 the room code. The bar is the scene's own toolbar lent to the layer and given back on closing,
@@ -309,7 +309,7 @@ split where the TV splits them, and a press on a half selects its column.
 **Show on TV** (`tvControl.js`) is the control over the picture. Off, it is one blue button and
 the name of the screen it will use. The TV is every screen but the one holding the DM window,
 decided by `tvPick.js` from the list `electron/displays.js` reports: one candidate is used, several
-ask once and are remembered, none opens a help box. Pressing it opens the Player and moves it onto
+ask once and are remembered, none opens a help box. While none is found the button is grey but still opens that box, and the list is re-read every second until the Player is live. Pressing it opens the Player and moves it onto
 that screen in fullscreen. Live, the minimap's edge breathes blue and a pill reads "Live on TV" or
 "Live in a window", turning to "Stop showing" under the pointer; Send, Fullscreen, Lock and Sync
 sit beside it as they apply, and the pill drops words until it fits. Unplugging the TV takes the
@@ -351,7 +351,7 @@ sends only when exactly one of the seat and the fit is sideways.
 
 ### The ping
 
-Ctrl+middle-click on the DM map sends a map point to the TV, and both windows draw the same gold
+Ctrl+middle-click, or Q with the pointer over an open map, on the DM map sends a map point to the TV, and both windows draw the same gold
 mark there for about two and a half seconds, sized to the window and not the map. A plain middle
 drag still pans, as does a two-finger scroll on a touchpad, where a pinch zooms. In two-map mode a column sends to its own half. The ping rides the PixiJS ticker
 only while one is showing, and nothing of it is stored.
@@ -720,8 +720,8 @@ What happens then, in order. The unit tests run first, on one machine, because t
 building anything if the arithmetic is wrong. Then the gate (`gate.yml`) runs on Windows, macOS
 and Linux at once. On each platform one machine builds the installer and checks its update
 pointer, and more build the packaged app and drive it through the rig: smoke once, and an equal
-share of the acceptance scenarios each, dealt out by name, slowest first (six shares on Windows,
-four elsewhere). A scenario that fails runs once more in a fresh app, and a pass on the rerun is
+share of the acceptance scenarios each, dealt by measured time (`tools/rig-deal.js`, times in
+`tools/rig/timings.json`): longest first into the lightest share, six shares on Windows, four elsewhere. A scenario that fails runs once more in a fresh app, and a pass on the rerun is
 recorded as a flake instead of a red. Windows and Mac block the release; Linux is advisory, so its
 failure prints a warning and a summary and does not stop the landing. Windows also records, with V8
 coverage over the DevTools protocol, which functions each scenario ran, and a last job merges the

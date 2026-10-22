@@ -114,9 +114,24 @@ function formatBytes(bytes) {
   return (b / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
 }
 
+// A name for a file copied into the flat music folder: the file's own name, or "Name (2).ext" when
+// that is taken. Case-insensitive, since Windows and macOS folders are.
+function uniqueMusicName(name, taken) {
+  const used = new Set((taken || []).map(n => String(n).toLowerCase()));
+  if (!used.has(name.toLowerCase())) return name;
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : '';
+  for (let n = 2; ; n++) {
+    const cand = stem + ' (' + n + ')' + ext;
+    if (!used.has(cand.toLowerCase())) return cand;
+  }
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     parseMusicUrl, videoIdFromFileName, displayName, filterTracks,
     fadeLevel, fadePhase, ytdlpOutdated, formatDuration, formatBytes,
+    uniqueMusicName,
   };
 }

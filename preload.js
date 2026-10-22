@@ -124,6 +124,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Music (src/ui/music.js). Each entry carries a file:// URL main built with pathToFileURL; a
   // path joined in the renderer breaks on the spaces and Cyrillic downloaded titles carry.
   listMusicFiles: () => ipcRenderer.invoke('music-list'),
+  pickMusicFiles: () => ipcRenderer.invoke('music-pick-files'),
+  copyMusicFiles: (paths) => ipcRenderer.invoke('music-copy-files', paths),
   deleteMusicFile: (name) => ipcRenderer.invoke('music-delete', name),
 
   // ⚠ Main rebuilds the address and never trusts `raw` as a bare argument — see ytdlpTarget.

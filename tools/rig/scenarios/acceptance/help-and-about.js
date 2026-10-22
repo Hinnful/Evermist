@@ -270,6 +270,7 @@ module.exports = async function helpAndAboutFeature(rig) {
     'Ctrl C X V', 'Ctrl D', // the clipboard, covered by clipboard.js
     'Double-click',       // a mouse gesture, covered by editing.js and curves.js
     'Ctrl Middle-click',  // a mouse gesture, covered by ping.js
+    'Q',                  // the touchpad's ping, covered by ping.js
     'M', 'Ctrl F',        // the world map's keys, covered by world-map.js
     'Shift Click', 'Shift Drag', // picking more scenes, covered by world-map.js
     'Enter',              // finishing a road, covered by world-roads.js

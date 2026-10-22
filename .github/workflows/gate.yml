@@ -142,18 +142,14 @@ jobs:
         if: matrix.shard == 2
         run: ${{ matrix.run }} npm run rig -- --exe "${{ matrix.exe }}" --report rig-report-${{ matrix.os }}-${{ matrix.shard }}-smoke.json ${{ matrix.record }}
 
-      # Every Nth scenario, so a new file joins a shard with no edit here. ⚠ THE SLOWEST ARE DEALT
-      # FIRST: dealt by name alone, one shard drew transfer, maps, grid, backup and boot together, and its
-      # last scenarios ran past the limit on a slow runner.
+      # ⚠ DEALT BY MEASURED TIME, not by name. tools/rig-deal.js hands each scenario, longest first, to
+      # the lightest shard, from tools/rig/timings.json (its header says how to refresh it). A scenario
+      # with no recorded time costs the median, so a new file joins a shard with no edit here. Dealt by
+      # name alone, one Linux shard took 21 minutes while the others took 10 to 18.
       - name: Drive the packaged app through its share of the regression set
         if: success() || failure()
         run: |
-          SLOW="transfer backup maps grid boot gallery notes-panel fog"
-          ALL=$(ls tools/rig/scenarios/acceptance/*.js | xargs -n1 basename | sed 's/\.js$//')
-          NAMES=$({ for s in $SLOW; do echo "$ALL" | grep -qx "$s" && echo "$s"; done
-                    echo "$ALL" | grep -vxF -f <(printf '%s\n' $SLOW); } |
-                  awk -v i=${{ matrix.shard }} -v n=${{ matrix.of }} -v skip="${{ matrix.skip }}" \
-                      '(NR - 1) % n == i - 1 && $0 != skip' | tr '\n' ' ')
+          NAMES=$(node tools/rig-deal.js --shard ${{ matrix.shard }} --of ${{ matrix.of }} --platform ${{ runner.os }} --skip "${{ matrix.skip }}" --totals)
           echo "this shard: $NAMES"
           ${{ matrix.run }} npm run rig -- $NAMES --exe "${{ matrix.exe }}" --report rig-report-${{ matrix.os }}-${{ matrix.shard }}-shard.json ${{ matrix.record }}
 

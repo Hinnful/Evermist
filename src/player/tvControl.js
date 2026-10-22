@@ -147,10 +147,12 @@ async function _tvOnDisplays(e) {
   _tvTick();
 }
 
-// Waiting for a second screen: the first candidate that shows up takes the map.
+// Every second: the screen list is read again while the Player is not live, so a TV the OS was still
+// configuring at launch is found without a plug event. While waiting for a second screen, the first
+// candidate that shows up takes the map.
 async function _tvTick() {
+  if (_tvWaitSince || !_tvLive()) await _tvLoadDisplays();
   if (_tvWaitSince) {
-    await _tvLoadDisplays();
     const pick = _tvPickNow();
     if (pick.kind === 'one') _tvGoLive(pick.display);
     else if (pick.kind === 'ask') { _tvWaitSince = 0; _tvOpen('ask'); }
@@ -285,7 +287,7 @@ function _tvCta(pick) {
   const label = _tvText('nm', cap);
   if (pick.kind === 'one') label.setAttribute('data-no-i18n', '');
   const sub = _tvBtn('tv-sub', cap, [label, _tvText('car', '▼')], () => (_tvMenu === 'tv' ? _tvClose() : _tvOpen('tv')));
-  cta.append(_tvBtn('tv-go', '', [_tvIcon(TV_ICON.tv), document.createTextNode(t('Show on TV'))], _tvShow), sub);
+  cta.append(_tvBtn('tv-go' + (pick.kind === 'none' ? ' none' : ''), '', [_tvIcon(TV_ICON.tv), document.createTextNode(t('Show on TV'))], _tvShow), sub);
   return cta;
 }
 
@@ -346,7 +348,7 @@ function tvRefresh() {
   panel.classList.toggle('tv-off', !live);
   panel.classList.toggle('minimap-locked', minimapLocked);
   const base = [live, !!_tvWaitSince, _tvRoute, live ? '' : _tvCaption(pick), autoSync, playerUnsent, minimapLocked, playersViewOn,
-    live && !!paneScope().playerIsFullscreen, _tvNote, _tvMenu, panel.offsetWidth, _tvScreenId, _tvDisplays.length].join('|');
+    live && !!paneScope().playerIsFullscreen, _tvNote, _tvMenu, panel.offsetWidth, _tvScreenId, _tvDisplays.map(d => d.id).join(','), pick.kind].join('|');
   if (base === _tvKey) return;
   _tvFit = 0;
   _tvKey = base;

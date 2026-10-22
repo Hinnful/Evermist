@@ -321,22 +321,25 @@ function wmPlateSpot(outline, w, h, gap, minW) {
 
 // ─── How far the map reaches ─────────────────────────────────────────────────
 // What the camera may show: the picture with the layout and a fifth of its larger side beyond, or the layout with
-// a margin. Zoomed out no further than the extent fills the window.
-const WM_EXTENT_MARGIN = 450, WM_EXTENT_OVER = 0.2;
+// a margin. `box` is what the map holds inside it, which the zoom floor frames.
+const WM_EXTENT_MARGIN = 450, WM_EXTENT_OVER = 0.2, WM_FLOOR_ROOM = 1.3;
 
 function wmExtent(points, pic) {
   const b = points && points.length ? _wmBounds(points) : { x0: -1000, y0: -1000, x1: 1000, y1: 1000 };
   if (pic) {
     const u = { x0: Math.min(b.x0, pic.x), y0: Math.min(b.y0, pic.y), x1: Math.max(b.x1, pic.x + pic.w), y1: Math.max(b.y1, pic.y + pic.h) };
     const o = Math.max(u.x1 - u.x0, u.y1 - u.y0) * WM_EXTENT_OVER;
-    return { x0: u.x0 - o, y0: u.y0 - o, x1: u.x1 + o, y1: u.y1 + o };
+    return { x0: u.x0 - o, y0: u.y0 - o, x1: u.x1 + o, y1: u.y1 + o, box: u };
   }
-  return { x0: b.x0 - WM_EXTENT_MARGIN, y0: b.y0 - WM_EXTENT_MARGIN, x1: b.x1 + WM_EXTENT_MARGIN, y1: b.y1 + WM_EXTENT_MARGIN };
+  return { x0: b.x0 - WM_EXTENT_MARGIN, y0: b.y0 - WM_EXTENT_MARGIN, x1: b.x1 + WM_EXTENT_MARGIN, y1: b.y1 + WM_EXTENT_MARGIN, box: b };
 }
 
-// The smallest zoom: the extent fills the window. A small map stops at the zoom where the places level opens.
+// The smallest zoom: everything the map holds fits the window with room around it (contain, never cover, so no
+// shape of map leaves part of it off screen). A small map stops at the zoom where the places level opens.
 function wmZoomFloor(ext, view) {
-  return Math.max(WM_ZOOM_MIN, Math.min(Math.max(view.w / (ext.x1 - ext.x0), view.h / (ext.y1 - ext.y0)), WM_SPLIT * 0.85));
+  const b = ext.box || ext;
+  const fit = Math.min(view.w / (Math.max(1, b.x1 - b.x0) * WM_FLOOR_ROOM), view.h / (Math.max(1, b.y1 - b.y0) * WM_FLOOR_ROOM));
+  return Math.max(WM_ZOOM_MIN, Math.min(fit, WM_SPLIT * 0.85));
 }
 
 // The camera moved the least that puts the window inside the extent.

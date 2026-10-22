@@ -14,8 +14,8 @@
 //      narrow for it to stay clear of the toolbar it shrinks instead of covering it.
 //   C. The minimap takes the TV's shape (16:9 with no TV known), keeps its dotted frame in the
 //      middle, and My seat turns the box and its picture while the buttons stay upright.
-//   D. Before the map is on the TV the minimap shows the blue Show on TV button, the caption
-//      with its arrow, and a dimmed picture with a faint blue edge.
+//   D. Before the map is on the TV the minimap shows the Show on TV button (grey while no TV is found,
+//      see tv-rescan.js), the caption with its arrow, and a dimmed picture with a faint blue edge.
 //   E. Lock is top-left; Sync (live only) and the menu are top-right; faint until hovered; a
 //      Lock that is on stays fully visible, in the quiet tint and not solid blue.
 //   F. With several other screens and none remembered, Show on TV asks which; the answer is
@@ -113,8 +113,8 @@ module.exports = async function showOnTv(rig) {
     edge: getComputedStyle(document.getElementById('minimap-panel')).boxShadow,
     screens: _tvDisplays.length,
   }))()`);
-  rig.check(off.cls.includes('tv-off') && off.go === 'Show on TV' && off.goBg === 'rgb(12, 140, 233)' && off.car,
-            'D: the off state has no solid blue Show on TV button with its arrow: ' + JSON.stringify(off));
+  rig.check(off.cls.includes('tv-off') && off.go === 'Show on TV' && off.goBg !== 'rgb(12, 140, 233)' && off.car,
+            'D: the off state has no Show on TV button with its arrow, or it is solid blue with no TV found: ' + JSON.stringify(off));
   rig.check(off.screens > 1 || off.caption === 'No TV found', 'D: with one screen the caption does not say "No TV found": ' + off.caption);
   rig.check(/brightness\(0\.8\)/.test(off.filter) && off.edge.includes('rgba(12, 140, 233'),
             'D: the off picture is not dimmed, or has no faint blue edge: ' + JSON.stringify(off));

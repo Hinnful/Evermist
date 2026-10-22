@@ -11,6 +11,8 @@
 //   D. The ping ends on its own on both screens, and nothing of it is saved in the scene.
 //   E. With My seat turned, the ping lands on the map point under the pointer.
 //   F. The shortcut legend lists the ping.
+//   G. Q pings at the pointer over the map: the same ping on both screens; nothing when the pointer is off
+//      the map, or while a field has focus.
 //   (Two-map mode: two-maps.js Q.)
 
 const lib = require('../../lib');
@@ -30,6 +32,15 @@ globalThis.__pingClient = (mx, my) => {
 globalThis.__pingPress = (mx, my, ctrl) => {
   const p = __pingClient(mx, my);
   container.dispatchEvent(new MouseEvent('mousedown', { clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, button: 1, ctrlKey: ctrl }));
+  return 0;
+};
+globalThis.__pingMove = (mx, my) => {
+  const p = __pingClient(mx, my);
+  container.dispatchEvent(new MouseEvent('mousemove', { clientX: p.x, clientY: p.y, bubbles: true }));
+  return 0;
+};
+globalThis.__pingKeyQ = (target) => {
+  (target || document.body).dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyQ', key: 'q', bubbles: true, cancelable: true }));
   return 0;
 };
 globalThis.__pingLast = () => { const p = _pings[_pings.length - 1]; return p ? { x: p.mx, y: p.my, n: _pings.length } : null; };
@@ -105,4 +116,26 @@ module.exports = async function pingFeature(rig) {
   // RED ON: the legend row's text changed (index.html) — 2026-09-29
   rig.check(await dm.evaluate('document.getElementById("shortcut-legend").textContent.includes("Ping a point")'),
             'the shortcut legend does not list the ping');
+
+  // ── G. Q pings at the pointer ─────────────────────────────────────────────
+  // RED BY DESIGN: written against the fix, never re-proved (KeyQ case in input.js)
+  await lib.poll(async () => (await dm.evaluate('_pings.length')) === 0 && (await tv.evaluate('_pings.length')) === 0 ? { done: true } : null, 8000);
+  await dm.evaluate('container.dispatchEvent(new MouseEvent("mouseleave")); __pingKeyQ(); 0');
+  rig.check(await dm.evaluate('_pings.length') === 0, 'Q pinged with the pointer off the map');
+  await dm.evaluate('__pingMove(800, 450); __pingKeyQ(); 0');
+  const qPing = await dm.evaluate('__pingLast()');
+  // A mousemove carries whole client pixels, so the ping lands within one pixel of the point at this zoom.
+  const qTol = Math.max(2, 1.5 / await dm.evaluate('zoom'));
+  rig.check(qPing && Math.abs(qPing.x - 800) < qTol && Math.abs(qPing.y - 450) < qTol,
+            'Q showed no ping at the pointer on the DM map: ' + JSON.stringify(qPing));
+  await lib.settle(tv, 'typeof _pings !== "undefined" && _pings.length > 0', 5000);
+  const qTv = await tv.evaluate('_pings[0] && { x: _pings[0].mx, y: _pings[0].my }');
+  rig.check(qTv && Math.abs(qTv.x - 800) < qTol && Math.abs(qTv.y - 450) < qTol,
+            'the TV did not get the Q ping at the same point: ' + JSON.stringify(qTv));
+  // A focused field keeps its letters.
+  // RED BY DESIGN: written against the fix, never re-proved (INPUT/TEXTAREA return in input.js)
+  await lib.poll(async () => (await dm.evaluate('_pings.length')) === 0 ? { done: true } : null, 8000);
+  const typed = await dm.evaluate(`(() => { const i = document.createElement('input'); document.body.appendChild(i); i.focus();
+    __pingMove(500, 500); __pingKeyQ(i); const n = _pings.length; i.remove(); return n; })()`);
+  rig.check(typed === 0, 'Q pinged while a field had focus');
 };
