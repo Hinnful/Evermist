@@ -23,7 +23,7 @@
 //   F. An import that updates the open scene shows the merged scene on the DM window and the TV, and the
 //      next autosave keeps it. The world map then opens on what came in with those scenes picked, and
 //      one report names each scene and room where an edit was overwritten.
-//   G. Settings say Export and Import, never Backup or Restore.
+//   G. Settings say Back up everything and Import a backup, never Restore.
 //   H. A file from the previous release (no uids, no times) matches by scene id. A part with no time
 //      is the oldest, a tie goes to the file, and a time past the moment of import counts as that moment.
 //   I. A room deleted on one machine disappears on the other unless that one edited it later, and an
@@ -279,10 +279,11 @@ module.exports = async function transfer(rig) {
 
   // ── G. Export and Import in Settings ─────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
-  const words = await ev(`(() => { const blk = document.getElementById('wm-bk-export').closest('.dk-blk'); return { text: blk.textContent, title: document.getElementById('wm-bk-restore').title, veil: (document.getElementById('wm-dropveil') || {}).textContent || '' }; })()`);
-  rig.check(!/backup|restore/i.test(words.text + words.title + words.veil) && /Import/.test(words.text) && /Export/.test(words.text),
-            'Settings still say Backup or Restore: ' + JSON.stringify(words));
-  rig.byEye('Settings, the progress window and the report read as Export and Import, in English and in Russian');
+  // With maps picked the button reads "Export N maps"; the rename is of the nothing-picked label.
+  const words = await ev(`(() => { worldMapSelect({ sceneId: null, place: '' }); worldBackupSync(); const blk = document.getElementById('wm-bk-export').closest('.dk-blk'); return { text: blk.textContent, title: document.getElementById('wm-bk-restore').title, veil: (document.getElementById('wm-dropveil') || {}).textContent || '' }; })()`);
+  rig.check(!/restore/i.test(words.text + words.title + words.veil) && /Import a backup/.test(words.text) && /Back up everything/.test(words.text),
+            'Settings do not read Back up everything and Import a backup, or still say Restore: ' + JSON.stringify(words));
+  rig.byEye('Settings, the progress window and the report read as Back up and Import, in English and in Russian');
   rig.byEye('the world map opens framed on what came in, with those scenes picked, and the report sits clear of the map');
 
   // ── E. An import that matches nothing lands beside the layout ────────────

@@ -147,7 +147,8 @@ function settleFogAfterStroke() {
   fogModifiedThisStroke = false;
   fogDirty = true;
   scheduleRender();
-  if (shape === 'brush') hintsRoomsAsk();   // once the stroke is done, never mid-stroke
+  // Once the stroke is done, never mid-stroke. Show on TV goes first, and Rooms waits for the next stroke.
+  if (shape === 'brush' && !hintsShowOnTvAsk()) hintsRoomsAsk();
 }
 
 if (typeof module !== 'undefined' && module.exports) {

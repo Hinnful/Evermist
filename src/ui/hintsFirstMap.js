@@ -72,7 +72,7 @@ function hintsRoomDrawn(room, touches) {
   hintClose('repair-keys');
   _hfNewId = null;
   if (touches) {
-    _hintShow('repair-keys', 'Cut, merge or split rooms',
+    _hintShow('repair-keys', 'Merge, cut out or split rooms',
       'Hold Shift while you draw to merge a shape into the rooms it touches, Alt to cut it out, or Ctrl to split them.',
       _hfRepairShown() ? 'op-sw' : 'btn-shape', _hfAtRoom(room.id));
   } else {
@@ -95,9 +95,10 @@ function hintsFirstSync(room) {
        (cur === 'room-edit' && shapeEditMode && selectedPolygonId === _hfNewId) ||
        (cur === 'repair-keys' && SHAPE_FAMILY.indexOf(shape) < 0))) hintClose(cur);
   hintsFirstPlace();
+  hintsCuesSync();
   if (select && !room && !_hintsSeen().includes('reveal')) {
     _hintShow('reveal', 'Reveal part of the map',
-      'Pick the Brush and paint over the map to show that part on the TV.', 'btn-brush', _hintPlaceOver('btn-brush'));
+      'Pick the Brush and paint over the map to reveal that part to the players.', 'btn-brush', _hintPlaceOver('btn-brush'));
   }
 }
 

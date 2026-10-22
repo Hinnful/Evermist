@@ -85,6 +85,7 @@ function setPlaceMode(m) {
     activePolygon = null;
   }
   placeMode = m;
+  if (m === 'effects') hintClose('effects');
   document.body.classList.toggle('mode-fx', m === 'effects');   // the sliding thumb under the mode in force
   if (m !== 'effects') presetArmed = null;   // a size is an effect's or a light's; Rooms draws by hand
   ['rooms', 'effects'].forEach(k => {
@@ -171,7 +172,7 @@ function revealAllMap() {
   if (!autoSync) { go(); hintsRoomsAsk(); return; }
   confirmDialog({
     title: 'Reveal the whole map?',
-    message: 'Auto sync is on, so the players see every room at once.',
+    message: 'Updates are Auto, so the players see every room at once.',
     confirmLabel: 'Reveal all',
     onConfirm: () => { go(); hintsRoomsAsk(); },
     onCancel: hintsRoomsAsk,   // either answer shows the hint

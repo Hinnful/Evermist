@@ -270,9 +270,9 @@ module.exports = async function worldRoadsFeature(rig) {
             'a scene dropped on a road did not snap onto its line, belong to it and leave its group: ' + JSON.stringify(onRoad));
   rig.check(onRoad.card === AMB, 'the road\'s scene is not drawn as a road scene');
   await dm.evaluate('__wmE("mousedown", __wmCard(' + JSON.stringify(AMB) + ').firstChild, __wmC(__wmCard(' + JSON.stringify(AMB) + ').firstChild)); __wmE("mouseup", window, __wmC(__wmCard(' + JSON.stringify(AMB) + ').firstChild)); 0');
-  await lib.settle(dm, 'document.querySelectorAll("#np-crumbs .np-crumb").length === 2', 8000);
+  await lib.settle(dm, 'document.querySelectorAll("#np-crumbs .np-crumb").length === 3', 8000);
   const sceneOnRoad = await panel();
-  rig.check(JSON.stringify(sceneOnRoad.crumbs) === JSON.stringify(['campaign', 'road']) && sceneOnRoad.field === 'Wolves at dusk.',
+  rig.check(JSON.stringify(sceneOnRoad.crumbs) === JSON.stringify(['campaign', 'road', 'scene']) && sceneOnRoad.field === 'Wolves at dusk.',
             'picking a scene on a road does not show the road\'s notes: ' + JSON.stringify(sceneOnRoad));
   // Zoomed out it is a black diamond on the line with no name beside it.
   await dm.evaluate('__wmCam(450, 330, 0.3); 0');

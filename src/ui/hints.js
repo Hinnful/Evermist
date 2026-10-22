@@ -59,6 +59,29 @@ function _hintShow(id, title, body, blink, place) {
 
 function _hintReplace() { if (_hintCur) _hintCur.place(_hintCur.el); }
 
+// ─── Beside a button, on any side ────────────────────────────────────────────
+
+// The button's box in client px, or null while it is missing or not laid out.
+const _hintRectOf = id => () => { const el = document.getElementById(id), r = el && el.getBoundingClientRect(); return r && r.width ? r : null; };
+
+// The toast on `side` of the box `rectOf` returns, kept inside the window, its arrow sliding to the box's centre.
+function _hintNear(rectOf, side) {
+  return el => {
+    const a = rectOf(), box = el.getBoundingClientRect(), W = box.width, H = box.height;
+    if (!a || !W) return false;
+    const z = parseFloat(getComputedStyle(el).zoom) || 1, G = 12, M = 8;
+    const cx = (a.left + a.right) / 2, cy = (a.top + a.bottom) / 2, vert = side === 'above' || side === 'below';
+    const fit = (v, size, max) => Math.max(M, Math.min(max - size - M, v));
+    const x = fit(vert ? cx - W / 2 : side === 'right' ? a.right + G : a.left - G - W, W, innerWidth);
+    const y = fit(!vert ? cy - H / 2 : side === 'below' ? a.bottom + G : a.top - G - H, H, innerHeight);
+    el.classList.remove('hc-above', 'hc-below', 'hc-right', 'hc-left');
+    el.classList.add('hintcall-at', 'hc-' + side);
+    el.style.left = x / z + 'px';
+    el.style.top = y / z + 'px';
+    el.style.setProperty('--a', Math.max(12, Math.min((vert ? W : H) - 12, vert ? cx - x : cy - y)) / z + 'px');
+  };
+}
+
 // ─── Rooms: the first brush stroke, or the answer to Reveal all ──────────────
 
 // left/top live in the toast's own zoomed space, so the zoom is divided out.
@@ -79,7 +102,7 @@ function hintsRoomsAsk() {
   if (isPane || worldMapOpen || panesActive) return;
   if (polygons.some(p => !p.material && !p.light)) return;   // a map that has rooms already needs no telling
   _hintShow('rooms', 'Show one room at a time',
-    'Draw a room with the Shape tool, then use its clouds to reveal just that room.', 'btn-shape', _hintPlaceRooms);
+    'Draw a room with the Room button, then use its clouds to reveal just that room.', 'btn-shape', _hintPlaceRooms);
 }
 
 // A drawn shape became a room (commitDrawnShape), or the screen changed under the toast (world map, scene switch).
@@ -135,6 +158,7 @@ function initHints() {
   document.addEventListener('dockpane', e => { if (e.detail === 'settings') _hintSeat(); else hintClose('seat'); });
   window.addEventListener('resize', _hintReplace);
   hintsNextMapInit();
+  hintsCuesInit();
   const seat = document.getElementById('cp-sec-seat-align');
   if (seat) seat.addEventListener('click', e => { if (e.target.closest('.sa-hit')) hintClose('seat'); });
 }

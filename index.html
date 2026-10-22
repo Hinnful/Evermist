@@ -523,7 +523,7 @@
         <div class="cp-group">
           <div class="dk-sh"><span class="cp-label">Fog in every map</span></div>
           <div class="dk-r">
-            <div class="dk-blk"><span class="dk-sub">Half shroud</span>
+            <div class="dk-blk"><span class="dk-sub">Fog in a half room</span>
               <label class="dk-num" title="How much fog remains in a half room. Drag the icon to change it."><span class="pre" data-scrub="fog-half-alpha-num" data-min="0" data-max="100" data-per="2" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"/><path d="M7 2a5 5 0 010 10z" fill="currentColor"/></svg></span><input type="text" id="fog-half-alpha-num" inputmode="numeric" value="50"><span class="u">%</span></label>
             </div>
             <div class="dk-blk"><span class="dk-sub">Feather</span>
@@ -561,8 +561,8 @@
           </div>
           <div class="dk-blk"><span class="dk-sub">Export / Import</span>
             <div class="cp-btnrow">
-              <button id="wm-bk-export" class="cp-btn" title="Shift-click maps in the Campaign, or Shift-drag a box around them, to export only those.">Export everything</button>
-              <button id="wm-bk-restore" class="cp-btn" title="Pick an export .zip, or drop one on the Campaign screen.">Import</button>
+              <button id="wm-bk-export" class="cp-btn" title="Shift-click maps in the Campaign, or Shift-drag a box around them, to export only those.">Back up everything</button>
+              <button id="wm-bk-restore" class="cp-btn" title="Pick an export .zip, or drop one on the Campaign screen.">Import a backup</button>
             </div>
             <input type="file" id="wm-bk-file" accept=".zip,application/zip" hidden>
             <span id="wm-bk-line" class="cp-hint"></span>
@@ -704,7 +704,7 @@
         <div class="lg-row">Circle<span class="k"><kbd>O</kbd></span></div>
         <div class="lg-row">Polygon<span class="k"><kbd>P</kbd></span></div>
         <div class="lg-row">Cone, in Effects<span class="k"><kbd>C</kbd></span></div>
-        <div class="lg-row">Brush, in Rooms<span class="k"><kbd>B</kbd></span></div>
+        <div class="lg-row">Brush, in Fog<span class="k"><kbd>B</kbd></span></div>
         <div class="lg-row">Brush or effect size<span class="k"><kbd>[</kbd><kbd>]</kbd></span></div>
         <div class="lg-row">Snap to grid<span class="k"><kbd>N</kbd></span></div>
       </div>
@@ -727,6 +727,7 @@
         <div class="sm-sub">Map</div>
         <div class="lg-row">Scroll with two fingers - pan</div>
         <div class="lg-row">Pinch - zoom</div>
+        <div class="lg-row">Pan with a mouse<span class="k"><kbd>Middle-drag</kbd><kbd>Alt+Drag</kbd></span></div>
         <div class="lg-row">Fit to screen<span class="k"><kbd>F</kbd></span></div>
         <div class="lg-row">Grid<span class="k"><kbd>G</kbd></span></div>
         <div class="lg-row">Fog animation<span class="k"><kbd>A</kbd></span></div>
@@ -734,7 +735,7 @@
         <div class="lg-row">Room names<span class="k"><kbd>L</kbd></span></div>
         <div class="sm-sub">TV</div>
         <div class="lg-row">Send to the TV<span class="k"><kbd>Space</kbd></span></div>
-        <div class="lg-row">Send, with Sync off<span class="k"><kbd>Shift</kbd><kbd>S</kbd></span></div>
+        <div class="lg-row">Send, in Manual<span class="k"><kbd>Shift</kbd><kbd>S</kbd></span></div>
         <div class="lg-row">Ping a point<span class="k"><kbd>Ctrl</kbd><kbd>Middle-click</kbd></span></div>
         <div class="lg-row">Ping a point<span class="k"><kbd>Q</kbd></span></div>
         <div class="sm-sub">Campaign</div>
@@ -999,8 +1000,10 @@
 <script src="src/ui/controlPanel.js"></script>
 <script src="src/ui/dock.js"></script>
 <script src="src/ui/seatAlignment.js"></script>
+<script src="src/ui/hintsPlan.js"></script>
 <script src="src/ui/hints.js"></script>
 <script src="src/ui/hintsFirstMap.js"></script>
+<script src="src/ui/hintsCues.js"></script>
 <script src="src/ui/confirmDialog.js"></script>
 <script src="src/rooms/floorPlan.js"></script>
 <script src="src/content/moduleText.js"></script>

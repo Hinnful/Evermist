@@ -488,7 +488,7 @@ function worldMapShowScenes(ids) {
 function worldMapHide() {
   if (!worldMapOpen) return;
   if (typeof cornerFieldClose === 'function') cornerFieldClose(true);
-  worldMapOpen = false;
+  worldMapOpen = false; hintsCuesSync();   // its hints end with it
   worldMapSel = { sceneId: null, place: '' };
   worldMapEmptySync();
   worldMapFindClose();

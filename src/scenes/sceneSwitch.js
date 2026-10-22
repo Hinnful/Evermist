@@ -221,6 +221,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
       : 0;
     setTimeout(() => sendToPlayer(false, true), Math.max(150, closedIn));
   }
+  hintsMapOpened();      // hintsCues.js
   onSceneLoaded(); // viewport.js: flush pending player resync if Player asked while loading
   reportPaneMapSize();   // panes.js: the parent sizes the columns from the two maps' shapes
   takePlanOffer();       // floorPlan.js: a scene added on the world map settles its plan now

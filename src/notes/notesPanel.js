@@ -16,6 +16,8 @@ let _npFilled = '';              // the text the field was filled with, so a col
 let _npKey = null;
 let _npRoomKey = null;
 let _npPickedKey = null;         // the room last picked on the scene, for the dock's room-pick rule
+let _npWorld = null;             // { key, notes }: the stored notes of the map picked on the Campaign, read once per pick
+let _npWorldLoading = null;      // the map id being read
 
 function _npEl(id) { return document.getElementById(id); }
 
@@ -87,6 +89,25 @@ function _npScene() {
   return currentScene ? { key: currentScene.id, name: currentScene.name, notes: currentScene.notes || '' } : null;
 }
 
+// The map picked on the Campaign, open or not: its notes come off the stored record, so the first sync after a
+// pick answers null and the pane repaints when the read lands. A map a column holds is saved first.
+function _npWorldScene() {
+  const id = worldMapSel.sceneId, s = id && allScenes.find(x => x.id === id);
+  if (!s) { _npWorld = null; return null; }
+  if (!panesActive && currentScene && currentScene.id === id) return { key: id, name: s.name, notes: currentScene.notes || '' };
+  if (_npWorld && _npWorld.key === id) return { key: id, name: s.name, notes: _npWorld.notes };
+  if (_npWorldLoading === id) return null;
+  _npWorldLoading = id;
+  const held = panesActive ? paneColumnOf(id) : null;
+  (held ? flushPaneScene(held) : Promise.resolve()).then(() => sceneStore.loadScene(id)).then(rec => {
+    if (_npWorldLoading !== id) return;
+    _npWorldLoading = null;
+    _npWorld = { key: id, notes: notesSanitize(rec && rec.notes).text };
+    if (worldMapOpen && worldMapSel.sceneId === id) refreshRoomPanel();
+  }).catch(() => { if (_npWorldLoading === id) _npWorldLoading = null; });
+  return null;
+}
+
 // The place the pane shows: the world map's pick while it is up, else the shown scene's own group.
 function _npPlace(scene) {
   if (worldMapOpen) return worldMapPlaceName();
@@ -104,8 +125,8 @@ function _npRoad() {
 
 // A pick that names a crumb that is not there (the scene left its place) falls back to following. A road
 // and a place never show together: a road's scene is in no place.
-function _npLevel(room, place, road) {
-  const have = worldMapOpen ? (road ? ['campaign', 'road'] : place ? ['campaign', 'place'] : ['campaign'])
+function _npLevel(room, place, road, world) {
+  const have = worldMapOpen ? (road ? ['campaign', 'road'] : place ? ['campaign', 'place'] : ['campaign']).concat(world ? ['scene'] : [])
     : ['campaign', ...(place ? ['place'] : []), 'scene', ...(room ? ['room'] : [])];
   if (notesLevelPick && have.includes(notesLevelPick)) return notesLevelPick;
   if (worldMapOpen) return road ? 'road' : place ? 'place' : 'campaign';
@@ -125,6 +146,9 @@ function _npCommit() {
     if (v !== notesPlaceGet(aim.place)) notesPlaceSet(aim.place, v);
   } else if (aim.level === 'road') {
     if (v !== notesRoadGet(aim.road)) notesRoadSet(aim.road, v);
+  } else if (aim.world) {
+    if (v !== _npFilled) _npCommitWorldScene(aim.sceneKey, v);
+    _npFilled = v;
   } else if (aim.pane) {
     // ⚠ THE SHELL'S COPY OF A COLUMN'S SCENE LAGS: until the column reports, the field holds the scene
     // it showed before, and sending that unedited text would write it over the new scene's notes.
@@ -132,6 +156,15 @@ function _npCommit() {
   } else if (currentScene && currentScene.id === aim.sceneKey) {
     if (v !== (currentScene.notes || '')) { currentScene.notes = v; scheduleAutoSave(); }
   }
+}
+
+// A map picked on the Campaign: written where its live copy is, as when it is open.
+function _npCommitWorldScene(key, v) {
+  if (!panesActive && currentScene && currentScene.id === key) { currentScene.notes = v; scheduleAutoSave(); return; }
+  const col = panesActive ? paneColumnOf(key) : null;
+  if (col) sendToPane({ type: 'pane-scene-notes', value: v }, col);
+  else sceneStore.updateScene(key, rec => { rec.notes = v; });
+  if (_npWorld && _npWorld.key === key) _npWorld.notes = v;
 }
 
 // The column's side of a notes edit from the shell.
@@ -183,7 +216,8 @@ function notesPanelSync(room) {
   if (!_npEl('np-crumbs') || isPane) return;
   // ⚠ THE WORLD MAP COVERS THE SCENE, so its room and its notes are not shown, and the pane works
   // with no scene open at all.
-  const scene = worldMapOpen ? null : _npScene();
+  const scene = worldMapOpen ? _npWorldScene() : _npScene();
+  if (!worldMapOpen) { _npWorld = null; _npWorldLoading = null; }
   if (worldMapOpen) room = null;
   if ((!scene && !worldMapOpen) || _npCalibrating()) {
     if (_npAim) { _npCommit(); _npAim = null; _npKey = null; }
@@ -200,7 +234,7 @@ function notesPanelSync(room) {
   const roomKey = room ? roomTabKey(room) : null;
   if (roomKey !== _npRoomKey) { _npRoomKey = roomKey; notesLevelPick = null; }
   const place = _npPlace(scene), road = _npRoad();
-  const level = _npLevel(room, place, road);
+  const level = _npLevel(room, place, road, worldMapOpen && !!scene);
 
   const key = [scene ? scene.name : '', place, road ? road.uid + road.name : '', level, room ? room.name : ''].join('\u0001');
   if (key !== _npKey) { _npKey = key; _npDrawCrumbs(scene, place, road, room, level); }
@@ -214,8 +248,8 @@ function notesPanelSync(room) {
   }
   const pane = panesActive ? panesSelected : null;
   const sceneKey = scene ? scene.key : null;
-  const aim = { level, pane, sceneKey, place: level === 'place' ? place : '', road: level === 'road' ? road.uid : '' };
-  const moved = !_npAim || _npAim.level !== level || _npAim.pane !== pane || _npAim.sceneKey !== sceneKey || _npAim.place !== aim.place || _npAim.road !== aim.road;
+  const aim = { level, pane: worldMapOpen ? null : pane, world: worldMapOpen && level === 'scene', sceneKey, place: level === 'place' ? place : '', road: level === 'road' ? road.uid : '' };
+  const moved = !_npAim || _npAim.level !== level || _npAim.world !== aim.world || _npAim.pane !== aim.pane || _npAim.sceneKey !== sceneKey || _npAim.place !== aim.place || _npAim.road !== aim.road;
   if (moved) {
     if (_npAim) _npCommit();
     field.placeholder = t(level === 'campaign' ? 'Notes for the whole campaign…' : level === 'place' ? 'Notes for this group…' : level === 'road' ? 'Notes for this road…' : 'Notes for this map…');

@@ -74,6 +74,7 @@ async function _muRefreshTracks() {
   }
   _muRenderList();
   _muScanDurations();
+  hintsMusicSync(_muTracks.length);
 }
 
 // The picker is native, so the copy is its own function, handed paths.
@@ -304,6 +305,7 @@ function _muPlay(track) {
   _muPaused = false;
   _muRenderPill();
   _muRenderList();
+  hintsMusicStarted();
 }
 
 function _muTogglePause() {

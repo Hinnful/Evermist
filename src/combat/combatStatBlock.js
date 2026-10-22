@@ -63,6 +63,7 @@ function cbEditorHtml(b) {
 }
 
 function cbOpenStat(row) {
+  hintClose('stat-block');
   _cbStatRowId = row.id;
   const el = document.getElementById('cb-stat');
   el.innerHTML = `

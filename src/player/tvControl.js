@@ -271,7 +271,7 @@ function _tvTools(live) {
   const tr = _tvMake('div', 'tv-row tr tv-tools');
   tr.append(_tvBtn('tv-ov sq' + (playersViewOn ? ' active' : ''), t("Players' view (hold H) - see your map the way the TV shows it"),
     [_tvIcon(TV_ICON.tv)], togglePlayersView));
-  if (live) tr.append(_tvBtn('tv-ov sq', t('Push this view to the Player'), [_tvIcon(TV_ICON.sync)], () => _tvLegacy('btn-sync-view')));
+  if (live) tr.append(_tvBtn('tv-ov sq', t('Match the TV to my view'), [_tvIcon(TV_ICON.sync)], () => _tvLegacy('btn-sync-view')));
   tr.append(_tvBtn('tv-ov sq', t('Screen and updates'), [_tvIcon(TV_ICON.more)], () => (_tvMenu === 'tv' ? _tvClose() : _tvOpen('tv'))));
   return [tl, tr];
 }
@@ -287,7 +287,9 @@ function _tvCta(pick) {
   const label = _tvText('nm', cap);
   if (pick.kind === 'one') label.setAttribute('data-no-i18n', '');
   const sub = _tvBtn('tv-sub', cap, [label, _tvText('car', '▼')], () => (_tvMenu === 'tv' ? _tvClose() : _tvOpen('tv')));
-  cta.append(_tvBtn('tv-go' + (pick.kind === 'none' ? ' none' : ''), '', [_tvIcon(TV_ICON.tv), document.createTextNode(t('Show on TV'))], _tvShow), sub);
+  const go = _tvBtn('tv-go' + (pick.kind === 'none' ? ' none' : ''), '', [_tvIcon(TV_ICON.tv), document.createTextNode(t('Show on TV'))], _tvShow);
+  go.id = 'tv-go';   // the show-on-tv hint points at it
+  cta.append(go, sub);
   return cta;
 }
 
@@ -344,6 +346,7 @@ function tvRefresh() {
   const live = _tvLive();
   const pick = _tvPickNow();
   minimapSetShape(live ? null : (pick.kind === 'one' ? { w: pick.display.size.width, h: pick.display.size.height } : null));
+  if (live) hintClose('show-on-tv');
   panel.classList.toggle('tv-live', live);
   panel.classList.toggle('tv-off', !live);
   panel.classList.toggle('minimap-locked', minimapLocked);

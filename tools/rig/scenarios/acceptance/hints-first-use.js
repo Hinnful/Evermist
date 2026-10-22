@@ -7,13 +7,13 @@
 //   B. A first map opened shows "Reveal part of the map" centred above the Brush, which blinks, recorded as seen.
 //   C. Picking another tool closes it and stops the blink.
 //   C3. The Rooms hint stays away while a brush stroke is still going.
-//   C2. There is no one-per-run limit: the Rooms hint shows in the same run, once the first brush stroke ends.
+//   C2. There is no one-per-run limit: the Rooms hint shows in the same run, once the second brush stroke ends (the first teaches Show on TV).
 //   D. A first room that touches no other shows "Edit this room" with its arrow touching it, Select blinking.
 //   D2. It follows the room when the camera pans.
 //   D3. Picking the room with Select lays out its fog-clouds popup, and the toast stays off it.
 //   D4. Nor does the toast move when that popup comes up: it sits below the room from the start.
 //   E. Double-clicking into the room closes it, and no repair-keys toast shows on entering edit mode.
-//   R. A second room drawn over the first shows "Cut, merge or split rooms" with its arrow touching that room, off the dock, bar
+//   R. A second room drawn over the first shows "Merge, cut out or split rooms" with its arrow touching that room, off the dock, bar
 //      and minimap, the repair icon blinking (not the Shape button), and no room-edit toast beside it.
 //   R2. Picking a tool that is not a shape closes it.
 //   R3. Drawing the next shape closes it.
@@ -73,6 +73,10 @@ globalThis.__hfRoomBox = id => {
 // Distance from a point to a box, 0 inside it.
 const away = (p, b) => Math.hypot(Math.max(b.l - p.x, 0, p.x - b.r), Math.max(b.t - p.y, 0, p.y - b.b));
 
+// What the toasts under test recorded. open-map (the Campaign the app starts on) and show-on-tv (the first stroke) are
+// first-use-path.js's own, so they are left out of every comparison here.
+const core = s => JSON.stringify(JSON.parse(s).filter(i => i !== 'open-map' && i !== 'show-on-tv'));
+
 module.exports = async function hintsFirstUse(rig) {
   const dm = rig.dm;
   const gone = id => lib.settle(dm, '!' + up(id), 8000);
@@ -93,7 +97,7 @@ module.exports = async function hintsFirstUse(rig) {
   rig.check(reveal && /Reveal part of the map/.test(reveal.text) && /Pick the Brush and paint/.test(reveal.text),
     'opening a first map showed no reveal toast: ' + JSON.stringify(reveal));
   rig.check(reveal && reveal.above && reveal.dx < 3, 'the reveal toast is not centred just above the Brush: ' + JSON.stringify(reveal));
-  rig.check(reveal && reveal.seen === '["reveal"]' && reveal.blink, 'the reveal toast was not recorded as seen, or the Brush does not blink: ' + JSON.stringify(reveal));
+  rig.check(reveal && core(reveal.seen) === '["reveal"]' && reveal.blink, 'the reveal toast was not recorded as seen, or the Brush does not blink: ' + JSON.stringify(reveal));
 
   // C. RED ON: hintsFirstSync's if (!select) hintClose('reveal') removed (hintsFirstMap.js)
   await dm.evaluate('setShape("brush"); 0');
@@ -109,9 +113,12 @@ module.exports = async function hintsFirstUse(rig) {
 
   // C2. RED ON: _hintsMayShow refusing once any hint is recorded as seen (hints.js)
   await dm.evaluate('__rigMouse("mousemove", 420, 360); __rigMouse("mouseup", 420, 360); 0');
+  // The first stroke teaches Show on TV, and the Rooms hint waits for the next (first-use-cues-path.js holds that toast's own checks).
+  await lib.settle(dm, up('show-on-tv'), 8000);
+  await dm.evaluate('__rigDrag(500, 400, 560, 430); 0');
   await lib.settle(dm, up('rooms'), 8000);
   const rooms = await dm.evaluate('__hfOver("rooms", "btn-shape")');
-  rig.check(rooms && /Show one room at a time/.test(rooms.text) && rooms.seen === '["reveal","rooms"]',
+  rig.check(rooms && /Show one room at a time/.test(rooms.text) && core(rooms.seen) === '["reveal","rooms"]',
     'the Rooms hint did not show in the same run as the reveal hint: ' + JSON.stringify(rooms));
 
   // D. RED ON: hintsRoomDrawn's room-edit _hintShow removed (hintsFirstMap.js)
@@ -123,7 +130,7 @@ module.exports = async function hintsFirstUse(rig) {
     'drawing a room showed no room-edit toast: ' + JSON.stringify(edit));
   rig.check(edit && away(edit.tip, box) <= TIP_MAX, 'the room-edit toast\'s arrow does not touch the room: ' + JSON.stringify({ edit, box }));
   rig.check(edit && edit.inside && !edit.onChrome, 'the room-edit toast sits outside the map or over the dock, bar or minimap: ' + JSON.stringify(edit));
-  rig.check(edit && edit.seen === '["reveal","rooms","room-edit"]' && edit.blink, 'the room-edit toast was not recorded, or Select does not blink: ' + JSON.stringify(edit));
+  rig.check(edit && core(edit.seen) === '["reveal","rooms","room-edit"]' && edit.blink, 'the room-edit toast was not recorded, or Select does not blink: ' + JSON.stringify(edit));
   rig.check(!(await dm.evaluate(up('repair-keys'))), 'a room touching no other showed the repair-keys toast');
 
   // D2. RED ON: hintsFirstPlace() removed from hintsFirstSync (hintsFirstMap.js)
@@ -160,11 +167,11 @@ module.exports = async function hintsFirstUse(rig) {
   await lib.settle(dm, up('repair-keys'), 8000);
   const repair = await dm.evaluate('__hfRead("repair-keys", "op-sw")');
   const obox = await dm.evaluate('__hfRoomBox(' + over + ')');
-  rig.check(repair && /Cut, merge or split rooms/.test(repair.text) && /Hold Shift while you draw to merge a shape into the rooms it touches, Alt to cut it out, or Ctrl to split them/.test(repair.text),
+  rig.check(repair && /Merge, cut out or split rooms/.test(repair.text) && /Hold Shift while you draw to merge a shape into the rooms it touches, Alt to cut it out, or Ctrl to split them/.test(repair.text),
     'a room drawn over another showed no repair-keys toast: ' + JSON.stringify(repair));
   rig.check(repair && away(repair.tip, obox) <= TIP_MAX, 'the repair-keys toast\'s arrow does not touch the new room: ' + JSON.stringify({ repair, obox }));
   rig.check(repair && repair.inside && !repair.onChrome, 'the repair-keys toast sits outside the map or over the dock, bar or minimap: ' + JSON.stringify(repair));
-  rig.check(repair && repair.seen === '["reveal","rooms","room-edit","repair-keys"]' && repair.blink,
+  rig.check(repair && core(repair.seen) === '["reveal","rooms","room-edit","repair-keys"]' && repair.blink,
     'the repair-keys toast was not recorded, or the repair icon does not blink: ' + JSON.stringify(repair));
   // R4. RED ON: the repair-keys blink target reverted to 'btn-shape' (hintsFirstMap.js)
   rig.check(!(await dm.evaluate('document.getElementById("btn-shape").classList.contains("hintcall-blink")')),

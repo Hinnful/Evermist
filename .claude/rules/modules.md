@@ -102,7 +102,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/dock.js` | The dock: the icon rail, the one open pane, its width |
 | `ui/seatAlignment.js` | Settings' Seat alignment: the TV from above, four chairs, the laptop map's turn |
 | `ui/hints.js` | First-time hints: the callout toast, shown once ever and once per run, and Settings' Hints switch |
+| `ui/hintsPlan.js` | Pure hint kernel: when each first-use cue is due, and the count of maps opened. Tested |
 | `ui/hintsFirstMap.js` | The first-map hints: reveal, room-edit and repair-keys, each shown from what the DM holds |
+| `ui/hintsCues.js` | The first-use cues: the Campaign's Open and Group, Show on TV, Effects, Music, Sounds and the fight table |
 | `notes/notesPlan.js` | Pure notes kernel: the crumb list, a notes string cleaned, a restored campaign note merged in. Tested |
 | `notes/notesPanel.js` | The dock's Notes pane: breadcrumbs, and the notes of the campaign, a place, the scene or the room |
 | `world/worldMapPlan.js` | Pure world-map kernel: starting layout, polygon geometry and which polygon holds a card, the camera. Tested |
@@ -198,6 +200,7 @@ the windows, the display push and the app lifecycle, and hands every module its 
 | `electron/music.js` | The music folder as the library, and the downloader that fills it |
 | `electron/sounds.js` | The built-in sound files, read for the soundboard |
 | `electron/displays.js` | The display list, placing the Player on a screen, switching the TV to a second screen |
+| `electron/screenLog.js` | `screens.log`: the screen lists read in the first ten seconds, one line per change. Tested |
 | `electron/floorPlan.js` | The `.dd2vtt` sitting beside a map on disk |
 | `electron/diagLog.js` | The playback log every window writes to, and its rotation |
 | `electron/updates.js` | The update check, download, About's state |
@@ -233,7 +236,7 @@ scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → ren
 render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → ui/repairBar.js → ui/wheelPlan.js → ui/effectsRow.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvControl.js →
-ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hints.js → ui/hintsFirstMap.js → ui/confirmDialog.js → rooms/floorPlan.js →
+ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hintsPlan.js → ui/hints.js → ui/hintsFirstMap.js → ui/hintsCues.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/roomCard.js →
 gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js →
 world/worldMapPlan.js → world/worldRoadPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → world/worldFindPlan.js → world/worldMapFind.js → world/worldMapColumns.js → world/worldMapEmpty.js → world/worldMapOpenBar.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →

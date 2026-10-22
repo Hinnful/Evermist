@@ -18,8 +18,8 @@
   .hintcall-rooms, .hintcall-reveal { transform: translate(-50%, -100%); }
   .hintcall-rooms::after, .hintcall-reveal::after { left: 50%; bottom: -6px; margin-left: -5px; border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg); }
   /* Left of the dock, pointer on the right edge pointing right. */
-  .hintcall-seat, .hintcall-next-map { transform: translateX(-100%); }
-  .hintcall-seat::after, .hintcall-next-map::after { right: -6px; top: var(--a); margin-top: -5px; border-top: var(--panel-border); border-right: var(--panel-border); transform: rotate(45deg); }
+  .hintcall-seat, .hintcall-next-map, .hintcall-music, .hintcall-sounds { transform: translateX(-100%); }
+  .hintcall-seat::after, .hintcall-next-map::after, .hintcall-music::after, .hintcall-sounds::after { right: -6px; top: var(--a); margin-top: -5px; border-top: var(--panel-border); border-right: var(--panel-border); transform: rotate(45deg); }
   /* Beside the spot it points at (hintsFirstMap.js): the side it sits on names the arrow's edge, --a slides it along. */
   .hc-above::after { left: var(--a); bottom: -6px; margin-left: -5px; border-right: var(--panel-border); border-bottom: var(--panel-border); transform: rotate(45deg); }
   .hc-below::after { left: var(--a); top: -6px; margin-left: -5px; border-left: var(--panel-border); border-top: var(--panel-border); transform: rotate(45deg); }
@@ -31,4 +31,6 @@
     0%, 100% { background-color: transparent; box-shadow: none; }
     50% { background-color: var(--b-tint); box-shadow: 0 0 0 2px var(--b-icon); }
   }
+  /* Over the fight table (z-index 160), which the two fight hints point into. */
+  .hintcall-fight, .hintcall-stat-block { z-index: 165; }
   body.player-mode .hintcall, body.pane-mode .hintcall { display: none; }

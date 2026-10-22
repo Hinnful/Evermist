@@ -12,7 +12,7 @@ function worldBackupSync() {
   const btn = document.getElementById('wm-bk-export'), line = document.getElementById('wm-bk-line');
   if (!btn || !line) return;
   const ids = _wbkIds(), c = wpCounts(ids, _wbkScenes(), worldPlacesExport(), worldRoadsExport());
-  btn.textContent = ids.length ? t.plural(ids.length, 'Export {n} map', 'Export {n} maps') : t('Export everything');
+  btn.textContent = ids.length ? t.plural(ids.length, 'Export {n} map', 'Export {n} maps') : t('Back up everything');
   btn.disabled = !allScenes.length;
   const parts = [t.plural(c.scenes, '{n} map', '{n} maps')];
   if (c.places) parts.push(t.plural(c.places, '{n} group', '{n} groups'));

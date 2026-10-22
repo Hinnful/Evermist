@@ -22,14 +22,15 @@ function worldMapEditInit() {
   file.addEventListener('change', () => {
     const files = Array.from(file.files || []);
     file.value = '';
-    const spot = _wmAddAt, last = allScenes.find(s => s.id === worldMapPicked().slice(-1)[0]);
+    const into = worldPlaceByName(_wmAddIn), spot = into ? wmPolyCentre(wmOutline(into)) : _wmAddAt, last = allScenes.find(s => s.id === worldMapPicked().slice(-1)[0]);
     _wmAddAt = null;
+    _wmAddIn = '';
     if (!files.length) return;
-    const from = { at: spot || (last ? last.worldPos : { x: _wmCam.cx, y: _wmCam.cy }), beside: !spot && !!last };
+    const from = { at: spot || (last ? last.worldPos : { x: _wmCam.cx, y: _wmCam.cy }), beside: !spot && !!last, into };
     const before = new Set(allScenes.map(s => s.id));
     addMapsToLibrary(files, from.at).then(() => _wmAddLand(allScenes.filter(s => !before.has(s.id)).map(s => s.id), from));
   });
-  file.addEventListener('cancel', () => { _wmAddAt = null; });
+  file.addEventListener('cancel', () => { _wmAddAt = null; _wmAddIn = ''; });
 }
 
 // New scenes land one by one in the next clear spot, then the first is picked and they are all brought into view, at a
@@ -37,8 +38,10 @@ function worldMapEditInit() {
 function _wmAddLand(ids, from) {
   const taken = allScenes.filter(s => !ids.includes(s.id) && s.worldPos).map(s => wmCardRect(s.worldPos));
   let at = from.at, beside = from.beside;
+  const outline = from.into ? wmOutline(from.into) : null;
   for (const id of ids) {
-    at = wmFreeSpot(at, taken, beside);
+    // Into a group: the next clear spot inside its outline, so the geometry files the map under it.
+    at = (outline && wmSlotInPoly(outline, taken)) || wmFreeSpot(at, taken, beside);
     worldSceneSet(id, { worldPos: at });
     taken.push(wmCardRect(at));
     beside = true;

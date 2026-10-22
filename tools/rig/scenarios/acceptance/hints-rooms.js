@@ -59,7 +59,7 @@ module.exports = async function hintsRooms(rig) {
   await dm.evaluate('localStorage.removeItem("evermist.hintsOff"); 0');
 
   // E. RED ON: the rooms check removed from hintsRoomsAsk (hints.js)
-  await dm.evaluate('__rigDrawRoom("reveal", 300, 300, 800, 700); localStorage.setItem("evermist.hintsSeen", \'["reveal","room-edit","repair-keys"]\');' +
+  await dm.evaluate('__rigDrawRoom("reveal", 300, 300, 800, 700); localStorage.setItem("evermist.hintsSeen", \'["reveal","room-edit","repair-keys","show-on-tv"]\');' +
     ' hintClose(); setShape("brush"); __rigDrag(1200, 900, 1500, 1000); 0');
   await lib.hold(1000, 'a toast, if a map with rooms let one show, would be up by now');
   rig.check(!(await dm.evaluate(SHOWN)), 'a brush stroke on a map that already has rooms showed the rooms toast');

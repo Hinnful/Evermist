@@ -1217,3 +1217,12 @@ list's audio extensions and copies the files flat into the music folder, never o
 "Name (2).ext", compared case-insensitively (`uniqueMusicName`). Non-audio files are refused and reported through
 `messageDialog`. The folder stays flat; groups are made in the app. The empty state no longer says to drop files into
 the folder: "No music yet. Add files, or add from YouTube."
+
+### First-use cues are hints and one name per concept · `REOPENED` (2026-10-22)
+Reopens three rejections in "An empty Campaign shows one card": the unsent-changes badge and moving Fit to TV
+go to BACKLOG 217 (minimap rework: Auto/Manual, filling the TV, looking before the TV follows; absorbs 200),
+and state-driven hints no longer wait, as 210. Cues are hints on the `hints.js` contract plus labels; a slide
+tutorial and glossary stay rejected. Own-action hints replace the toast up, screen-read ones wait. One name per
+concept: "Updates" (Auto/Manual) and "Match the TV to my view" replace both meanings of "Sync"; the bar mode is
+"Fog"; backup reads "Back up everything" / "Import a backup"; Half shroud reads "Fog in a half room". The eye
+icon's differing behaviour is left to a look pass.

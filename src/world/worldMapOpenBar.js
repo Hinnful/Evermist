@@ -9,7 +9,7 @@ function worldMapOpenBarInit() {
   _wmBar.id = 'wm-bar';
   _wmBar.dataset.noI18n = '';
   _wmBar.innerHTML =
-    '<button class="wm-bar-open" title="' + t('Open') + '">' + uiIcon('open', 16, 1.9) + '</button>' +
+    '<button class="wm-bar-open" title="' + t('Open') + '">' + uiIcon('open', 16, 1.9) + '<span>' + t('Open') + '</span></button>' +
     '<button class="wm-bar-more" title="' + t('More') + '">' + uiIcon('more', 16) + '</button>';
   _wmBar.addEventListener('mousedown', e => e.stopPropagation());
   _wmBar.querySelector('.wm-bar-open').addEventListener('click', () => {
@@ -54,6 +54,7 @@ function worldMapFollow() {
   const step = () => {
     if (!worldMapOpen) { _wmFollowing = false; return; }
     worldMapOpenBarPlace();
+    hintsCuesSync();
     requestAnimationFrame(step);
   };
   requestAnimationFrame(step);

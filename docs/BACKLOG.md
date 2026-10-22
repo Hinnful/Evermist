@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 20 open items; IDs run to 214."
+description: "Open work only. 17 open items; IDs run to 220."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.6.6**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.7.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
 shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -76,70 +76,55 @@ categories. Effort and risk are judged once an item is picked, not here.
 # FIRST USER EXPERIENCE - THE NEXT FOCUS
 
 ### 172. The epic: a new DM finds what Evermist already has
-Filed 2026-10-12, diagnosis rewritten 2026-10-13 from the first new DM's questions while preparing a one-shot.
+Filed 2026-10-12, diagnosis rewritten 2026-10-22 from three first-time testers and the first-use report.
 Evermist is about to go to other DMs, for their feedback and requests. **The features a new DM needs exist; the DM
-cannot find them or read what they do.** Every question that DM asked had an answer in the app. Three causes repeat:
-Scene Control groups its controls by the app's objects (Player, Fog, Rooms, Lights), not by the DM's tasks; the
-labels use the app's words, not the DM's ("TV", "what the players see"); and every control carries the same visual
-weight, so the one that matters sits unmarked among the ones that do not. A tutorial does not fix it: the interface
-stays as heavy.
+cannot find them or read what they do.** Of 51 tester issues, 39 of the 45 where it applies asked about something the
+app already had, fully or partly. Concepts not understood are the largest type (17), controls not found the next (12).
+Three causes repeat: nothing tells the DM what a map, a group and a room are; the labels use the app's words and one
+concept carries several names; and a DM who starts through Claude skips every hint.
 **The test for every item below.** Sasha has played for two years and DMs for the first time. They bring four
 JPEGs of poor quality with no grid and no floor plan, a TV with an HDMI cable, a playlist, and a module PDF or rough
 notes. With no help and no reading, Sasha gets the four maps in, puts one on the TV fogged, reveals part of it, plays
 music, and switches to another map. Anything Sasha meets on the way that does not serve that path counts against the
 epic. The same path must not slow an experienced DM or hide the deeper features.
+**Done when** a new DM on the current version, with no Claude and no help in chat, completes Sasha's path and can then
+say what a map, a group and a room are. No tester has run this: each met an older version and had the DM's help.
+**Order.** 217, then 210, then 218.
 **Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later.
 **Out of this epic:** what a DM sees before installing. That is distribution, and it comes later.
 **First use · DM + Player**
 
-### 203. First-time hints for Music and Sounds
-Filed 2026-10-18 as a DESIGN DISCUSSION. **First of the hint items**: music is part of almost every game. No hint
-says how to get a track in, play it, or that a sound plays over the music. Built on the first-time hints
-(`hints.js`): one toast per action, where the action happens, each shown once ever. **Open:** which moments earn a
-hint (the pane opened empty, the first track added, the first sound), what each says, and how it fits item 199.
-**First use · DM only**
+## The first evening
 
-### 204. First-time hints for the Bestiary and the fight table
-Filed 2026-10-18 as a DESIGN DISCUSSION, wanted but not urgent. Neither says what it is for or where to start: adding
-a monster, putting it in a fight, reading its stat block. **Open:** which moments earn a hint, and what each says.
-**First use · DM only**
-
-### 205. First-time hints for groups on the Campaign
-Filed 2026-10-18 as a DESIGN DISCUSSION, wanted but not urgent. Nothing says the Campaign can gather maps into
-groups: drawing one, a map dropped inside it belonging to it, its name and notes. **Open:** which moments earn a hint,
-and what each says.
-**First use · DM only**
-
-### 200. Opening a map does not put it on the TV
-Filed 2026-10-18 from the item 172 audit; the DM has met it too. In Auto sync, opening a map sends it to the TV at
-once (`sceneSwitch.js`), so a DM cannot look at the next map privately. Manual sync holds it, but Manual sits behind
-the minimap's "…" menu and also holds every reveal. **Needs /spec:** how the DM opens a map without the TV following,
-and how the map then goes to the TV.
+### 217. Rework the minimap: how a map reaches the TV
+Filed 2026-10-22, absorbs item 200. The minimap holds every control that sends a map to the TV, and testers needed
+help with each of them. This reopens two calls of 2026-10-22 (DECISIONS, "An empty Campaign shows one card"): no
+badge for the show state, and Fit to TV staying where it is.
+- **Auto / Manual.** The switch sits in the minimap's "…" menu. A tester landed in Manual, expected changes to reach
+  the TV at once, and could not find the switch.
+- **Fill the TV.** Two testers did not find how to make the map fill the TV: one looked for fullscreen, the other
+  for a way to stretch the map. Zoom and drag on the minimap do it, along with the camera push, and Fit to TV sits in the "…"
+  menu.
+- **Look before the TV follows.** In Auto, opening a map sends it to the TV at once (`sceneSwitch.js`), so a DM cannot
+  look at the next map privately. Manual holds it, but Manual also holds every reveal.
+**Needs /spec:** what the minimap shows and holds, how the DM opens a map without the TV following, and how that map
+then goes to the TV.
 **First use · Play · DM + Player**
 
 ### 210. Hints follow what the library holds, not the DM's first action
 Filed 2026-10-22. A DM whose maps Claude made never sees the first-map hints, because they start from a hand-made
-first action. A hint that reads the state (a map with no rooms, rooms never shown on the TV) reaches that DM too.
-**Waits for the interface rework**; the hint set will change with it.
+first action. A tester started that way and in three days never met rooms or effects. A hint that reads the state (a map
+with no rooms, rooms never shown on the TV) reaches that DM too. Item 207 sends more DMs down this road. **Needs
+/spec:** which states earn a hint, and how they fit the first-use hints in `hintsCues.js`.
 **First use · DM only**
 
-### 211. Right-click actions on a map, a group and the empty Campaign
-Filed 2026-10-22. A new DM looks for actions on the object: create a group here, add maps into a group, open a
-map's notes. The Campaign has a right-click menu (`world/worldMapMenu.js`); **Needs /spec:** what each object's
-menu holds, with every item still reachable from a visible button.
-**First use · DM only**
-
-### 212. A new DM does not find effects
-Filed 2026-10-22. Fire, acid and light sit behind the Fog / Effects switch at the bar's end, and a new DM never
-meets them during prep. **Open:** where effects show themselves to a DM who has never switched modes.
-**First use · DM only**
-
-### 214. A screen log for when no TV is found on a Mac
-Filed 2026-10-22 after 4.6.7. 4.6.7 re-reads the screen list every second, but the reported Mac case (HDMI connected
-before launch, "No TV found") is unconfirmed, and CI's Mac runners have one virtual screen. For the first seconds after
-launch, Evermist writes the screens it sees into its log, so the next report shows whether macOS hid the TV or Evermist
-missed it (`electron/displays.js`, the diagnostic log).
-**Bug · DM + Player**
+### 218. A group shows the maps it holds
+Filed 2026-10-22 from a tester's request. Zoomed out, a group on the Campaign shows only its outline and name, and its maps
+disappear until the DM zooms in. A tester asked for small thumbnails of a group's maps with their count, so the DM sees
+what a group holds and how much without zooming in. The Campaign drew more tester issues than any other area.
+**Needs /spec:** how many thumbnails before "+N", whether a click on one opens that map, and the tester's reading of a
+group as a container the DM steps into.
+**First use · Campaign · DM only**
 
 ---
 
@@ -161,6 +146,18 @@ cannot draw rooms or place anything on a map. Prep only; nothing reaches the TV,
 ---
 
 # EVERYTHING ELSE
+
+### 219. A map added to a full group can land outside it
+Filed 2026-10-22. "Add maps here…" on a group puts each new map in the next clear spot inside the group's outline. When
+the group has no clear spot left, the map falls back to the Campaign's free-spot search, lands outside the outline and
+does not join the group (`worldMapEdit.js`, `wmSlotInPoly`).
+**Bug · DM only**
+
+### 220. The eye icon behaves one way everywhere
+Filed 2026-10-22 from tester feedback. The eye in Map settings' grid section changes its look when pressed; the two eyes
+on the fog bar (Reveal all, Hide all) are actions and do not. A tester read the difference as a fault. **Needs a
+look-and-feel pass:** whether the fog bar's actions keep the eye at all.
+**Polish · DM only**
 
 ### 184. Straight walls sits alone over the world map's drawing tools
 Filed 2026-10-16. With the repairs gone from places, the row over a place tool holds one icon, Straight walls, and it

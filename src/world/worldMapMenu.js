@@ -4,6 +4,7 @@
 
 let _wmMenu = null;
 let _wmAddAt = null;             // where Add a scene puts the next scene, once, when the menu chose it
+let _wmAddIn = '';               // the group the next maps are added into, once, when its menu chose it
 
 function worldMapMenuClose() {
   if (_wmMenu) { _wmMenu.remove(); _wmMenu = null; }
@@ -22,6 +23,7 @@ function _wmSceneRows(id) {
   if (group) rows.push({ label: 'Take out of its group', run: () => _wmTakeOut(id, group) });
   if (worldRoadOfScene(id)) rows.push({ label: 'Take off the road', run: () => worldMapRoadLeave(id) });
   rows.push({ label: 'Export this map', run: () => worldBackupExport([id]) });
+  rows.push({ label: 'Notes', run: () => _wmOpenNotes('scene') });
   rows.push({ sep: true });
   rows.push({ label: 'Delete map', danger: true, run: () => _wmDeletePicked([id]) });
   return rows;
@@ -49,6 +51,8 @@ function _wmPlaceRows(name) {
   return [
     { label: 'Rename', off: !_wmNameShown(name), run: () => _wmRenameStart(_wmEls.get('h' + name), 'place', name) },
     { label: 'Fit in view', run: () => worldMapFlyToPlace(name) },
+    { label: 'Add maps here…', run: () => { _wmAddIn = name; document.getElementById('wm-add').click(); } },
+    { label: 'Notes', run: () => _wmOpenNotes('place') },
     { sep: true },
     { label: 'Delete group', danger: true, run: () => worldPlaceDelete(worldPlaceByName(name).id) },
   ];
@@ -71,9 +75,23 @@ function _wmCornerRows(flat) {
            run: () => { selectedVertexIndex = flat; _wmWithCamera(deleteSelectedPart); } }];
 }
 
+// The Notes pane on what the menu was opened on, which is already picked. A map's own level is a crumb the pick must name.
+function _wmOpenNotes(level) {
+  notesLevelPick = level === 'scene' ? 'scene' : null;
+  dockOpen('notes');
+  refreshRoomPanel();
+}
+
+// One map's room in a group of its own, centred on the click, named and ready to rename like one drawn by hand.
+function _wmNewGroupAt(at) {
+  const r = wmGroupRectAt(at);
+  _wmCreatePlace(wmRectShape(r.x, r.y, r.x + r.w, r.y + r.h));
+}
+
 function _wmGroundRows(at) {
   return [
     { label: 'Add a map here', run: () => { _wmAddAt = at; document.getElementById('wm-add').click(); } },
+    { label: 'New group here', run: () => _wmNewGroupAt(at) },
     { label: 'Show everything', run: () => _wmFly(_wmOverview(), 650) },
   ];
 }

@@ -417,3 +417,21 @@ describe('wmCleanPlace: the id and times a merge matches by', () => {
     assert.equal(c.edits, undefined);
   });
 });
+
+describe('wmGroupRectAt', () => {
+  const { wmGroupRectAt, wmCardRect, wmRectInPoly, wmRectShape, WM_CARD_W, WM_PAD } = require('../src/world/worldMapPlan.js');
+
+  it('is centred on the click and holds a card there with the margin to spare', () => {
+    const at = { x: 500, y: -200 }, r = wmGroupRectAt(at);
+    assert.equal(r.x + r.w / 2, at.x);
+    assert.equal(r.y + r.h / 2, at.y);
+    const verts = wmRectShape(r.x, r.y, r.x + r.w, r.y + r.h);
+    assert.equal(wmRectInPoly(wmCardRect(at), verts), true);
+    assert.equal(r.w, WM_CARD_W + 2 * WM_PAD);
+  });
+
+  it('is no larger than one card with its margin and name', () => {
+    const r = wmGroupRectAt({ x: 0, y: 0 });
+    assert.ok(r.h < 2 * (77 + 22 + 2 * 34));
+  });
+});

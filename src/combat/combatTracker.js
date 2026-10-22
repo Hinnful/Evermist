@@ -133,7 +133,7 @@ function _cbAddRow(side) {
   cbState.rows.push(r);
   cbSave();
   cbRender();
-  cbFightsTitle();
+  cbFightsTitle(); hintsFightRowAdded(cbState.rows.length - 1, r.id);
   const inp = document.querySelector(`#cb-list .cb-row[data-id="${r.id}"] [data-f="name"]`);
   inp.focus();
   inp.scrollIntoView({ block: 'nearest' });
@@ -449,9 +449,8 @@ function cbSetOpen(open) {
   el.style.display = open ? 'block' : 'none';
   document.getElementById('btn-combat').classList.toggle('active', open);
   dockRefreshRail();
-  if (open) { cbRender(); _cbPlaceFight(el); return; }
-  cbCloseMenu();
-  cbCloseFights();
+  if (open) { cbRender(); _cbPlaceFight(el); hintsFightOpened(cbState.rows.length); return; }
+  cbCloseMenu(); cbCloseFights(); hintsFightClosed();
   if (cbStatRowId()) cbCloseStat();
 }
 

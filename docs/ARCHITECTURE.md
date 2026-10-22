@@ -212,6 +212,18 @@ The fog is the heart of the app, so it's worth understanding.
    Two layers meeting at the map's edge leave a faint seam on animated maps, and one
    window-wide pass has no edge for a seam to sit on. See [DECISIONS.md](DECISIONS.md).
 
+## First-use hints
+
+Cues ride the `hints.js` contract: once ever, one at a time, off with Hints Off. `hintsPlan.js` holds the
+pure triggers and `hintsCues.js` the cues. A hint the DM's own action triggers (a stroke, a pane opening)
+replaces the toast up; one read off the screen (the Campaign, a map opened) waits while another is up. The
+first brush stroke with no TV live shows "Put it on the TV", and the Rooms hint moves to the next stroke.
+The effects hint shows on the second map open, counted across launches in localStorage `evermist.mapOpens`
+(restoring at launch counts). `electron/screenLog.js` writes `screens.log` for the first 10 s after launch,
+on change only, replaced each launch. On the Campaign, right-click menus offer New group here, Add maps
+here... and Notes for a group or map, and picking a map offers its own Notes level without opening it.
+The Open button over a picked map reads "Open"; the Help sheet lists "Pan with a mouse".
+
 ## How the render loop works
 
 Everything the app draws rides **one clock**: the PixiJS ticker.
@@ -248,10 +260,12 @@ The DM window is the boss. The Player window follows.
   Two-map mode opens four documents at once on one thread, and four builds stalled every window.
 - The map image or video is sent as a **URL** rather than copied pixel by pixel, so opening
   the Player window doesn't double the memory used.
+- **Names.** The Auto/Manual switch reads "Updates"; the camera push reads "Match the TV to my view"
+  (the old "Sync View"). "Sync" no longer means both.
 - **Auto vs Manual.** With Auto on, every change the DM makes appears on the TV instantly.
   With Auto off, the DM can prep the next reveal privately and push it with **Send** when
   the party is ready.
-- **Sync View** snaps the Player's camera to match the DM's. The Player camera glides to
+- **Match the TV to my view** (Sync View in the code) snaps the Player's camera to match the DM's. The Player camera glides to
   new positions rather than jumping.
 - The Player reports a few things back, so DM controls can show what is actually true rather
   than what was last asked for: its screen size, whether it has been panned away from the

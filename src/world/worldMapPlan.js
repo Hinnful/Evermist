@@ -110,6 +110,12 @@ function wmHullRect(positions) {
   return { x: x0 - WM_PAD, y: y0 - WM_PAD, w: x1 - x0 + 2 * WM_PAD, h: y1 - y0 + 2 * WM_PAD };
 }
 
+// A new group's rectangle centred on `at`: one card, the name above it and the usual margin, so the card fits inside.
+function wmGroupRectAt(at) {
+  const w = WM_CARD_W + 2 * WM_PAD, h = WM_CARD_H + WM_LABEL + 2 * WM_PAD;
+  return { x: at.x - w / 2, y: at.y - h / 2, w, h };
+}
+
 function wmRectCentre(r) { return { x: r.x + r.w / 2, y: r.y + r.h / 2 }; }
 
 // ─── Places are polygons ─────────────────────────────────────────────────────
@@ -418,7 +424,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     WM_CARD_W, WM_CARD_H, WM_PAD, WM_LABEL, WM_SPLIT, WM_FRAME_FILL, WM_FRAME_MAX, WM_STEP_X, WM_STEP_Y,
     wmCleanPos, wmBesideOffset, wmPlanPositions, wmHullRect, wmRectCentre, wmFillZoom,
-    wmCardRect, wmPointInPoly, wmRectInPoly, wmPolyArea, wmPolyBounds, wmPolyCentre, wmRectShape, wmCircleShape,
+    wmCardRect, wmGroupRectAt, wmPointInPoly, wmRectInPoly, wmPolyArea, wmPolyBounds, wmPolyCentre, wmRectShape, wmCircleShape,
     wmCleanShape, wmCleanEdits, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmLabelSpot,
     wmPlateSpot, wmExtent, wmZoomFloor, wmClampCamera,
     wmContentBox, wmFrameCamera, wmPlaceCamera, wmLevelFor, wmZoomAround, wmSideBySide, wmFreeSpot, wmMatches,

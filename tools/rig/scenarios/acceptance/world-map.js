@@ -586,9 +586,9 @@ module.exports = async function worldMapFeature(rig) {
   await layout();
   await rclick('__wmCard("Attic").firstChild');
   const sceneRows = await rows();
-  rig.check(JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', 'Export this map', 'Delete map']) ||
-            JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', 'Export this map', 'Delete map (off)']),
-            'a scene\'s menu is not Open, Rename, Take out of its group, Export, Delete: ' + JSON.stringify(sceneRows));
+  rig.check(JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', 'Export this map', 'Notes', 'Delete map']) ||
+            JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', 'Export this map', 'Notes', 'Delete map (off)']),
+            'a scene\'s menu is not Open, Rename, Take out of its group, Export, Notes, Delete: ' + JSON.stringify(sceneRows));
   await press('Rename');
   rig.check(await dm.evaluate('!!_wmEditing'), 'Rename in the menu did not start editing the name');
   await dm.evaluate('_wmEditing.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true, cancelable: true })); 0');
@@ -609,10 +609,10 @@ module.exports = async function worldMapFeature(rig) {
   await dm.evaluate('__rigKey("Escape"); 0');
   rig.check(await dm.evaluate('worldMapOpen && !document.querySelector(".wm-menu")'), 'Esc did not close the menu first, or left the map');
   await rclick('__wmHead("The Watcherhouse")');
-  rig.check(JSON.stringify((await rows()).map(r => r.replace(/^Rename \(off\)$/, 'Rename'))) === JSON.stringify(['Rename', 'Fit in view', 'Delete group']), 'a place\'s menu is wrong: ' + JSON.stringify(await rows()));
+  rig.check(JSON.stringify((await rows()).map(r => r.replace(/^Rename \(off\)$/, 'Rename'))) === JSON.stringify(['Rename', 'Fit in view', 'Add maps here…', 'Notes', 'Delete group']), 'a place\'s menu is wrong: ' + JSON.stringify(await rows()));
   await dm.evaluate('__wmE("mousedown", document.getElementById("wm"), { x: 5, y: 5 }); 0');
   await dm.evaluate('(() => { const wm = document.getElementById("wm"); wm.dispatchEvent(new MouseEvent("contextmenu", { clientX: 700, clientY: 40, button: 2, bubbles: true, cancelable: true })); return 0; })()');
-  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add a map here', 'Show everything']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
+  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add a map here', 'New group here', 'Show everything']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
   await dm.evaluate('__wmE("mousedown", document.getElementById("wm"), { x: 5, y: 5 }); 0');
   rig.check(await dm.evaluate('!document.querySelector(".wm-menu")'), 'a click elsewhere left the menu up');
 
@@ -690,9 +690,11 @@ module.exports = async function worldMapFeature(rig) {
   rig.check(await dm.evaluate('worldMapSel.sceneId === allScenes.find(s => s.name === "Attic").id && document.querySelectorAll(".wm-card.sel").length === 1'),
             'a single click did not pick the scene with a ring');
   rig.check(await dm.evaluate('currentScene.id') === openBefore && await dm.evaluate('worldMapOpen'), 'a single click opened the scene');
+  // The map's own level is offered once its notes are read (first-use-cues-menus.js holds its own checks).
+  await lib.settle(dm, 'document.querySelectorAll("#np-crumbs .np-crumb").length === 3', 8000);
   const crumbs1 = await dm.evaluate('[...document.querySelectorAll("#np-crumbs .np-crumb")].map(b => b.textContent)');
-  rig.check(JSON.stringify(crumbs1) === JSON.stringify(['Campaign', 'The Watcherhouse']),
-            'with a scene picked the panel does not show its place: ' + JSON.stringify(crumbs1));
+  rig.check(JSON.stringify(crumbs1) === JSON.stringify(['Campaign', 'The Watcherhouse', 'Attic']),
+            'with a scene picked the panel does not show its place and the map: ' + JSON.stringify(crumbs1));
   await dm.evaluate('__wmDbl(__wmCard("Attic").firstChild); 0');
   await lib.settle(dm, 'currentScene && currentScene.id === allScenes.find(s => s.name === "Attic").id && !worldMapOpen', 60000);
   rig.check(await dm.evaluate('currentScene.name') === 'Attic' && await dm.evaluate('!worldMapOpen'),

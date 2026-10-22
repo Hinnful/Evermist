@@ -148,6 +148,7 @@
   #wm-bar.on { display: flex; }
   #wm-bar button { width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--g-dim); cursor: pointer; display: grid; place-items: center; }
   #wm-bar button:hover { background: var(--g-field); color: var(--g-text); }
+  #wm-bar .wm-bar-open { width: auto; padding: 0 10px 0 8px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; line-height: 1; }
   #wm-bar .wm-bar-open, #wm-bar .wm-bar-open:hover { background: var(--b-solid); color: #fff; box-shadow: none; }
   #wm-bar::after {
     content: ''; position: absolute; left: 50%; bottom: -5px; width: 8px; height: 8px; margin-left: -4px; background: var(--panel-bg);
