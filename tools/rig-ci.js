@@ -20,7 +20,7 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { pickScenarios, DEFAULT_CAP_MS } = require('./rig/pick.js');
+const { pickScenarios, diffIdentifiers, DEFAULT_CAP_MS } = require('./rig/pick.js');
 const { mergeCoverage, collectFlakes, repeatFlakes } = require('./rig/reports.js');
 
 const ROOT = path.join(__dirname, '..');
@@ -46,6 +46,14 @@ function readHeaders() {
   add(path.join(SCEN, 'smoke.js'));
   for (const f of fs.readdirSync(path.join(SCEN, 'acceptance')).filter(n => n.endsWith('.js'))) add(path.join(SCEN, 'acceptance', f));
   return headers;
+}
+
+function readTexts() {
+  const texts = {};
+  const add = file => { texts[path.basename(file, '.js')] = fs.readFileSync(file, 'utf8'); };
+  add(path.join(SCEN, 'smoke.js'));
+  for (const f of fs.readdirSync(path.join(SCEN, 'acceptance')).filter(n => n.endsWith('.js'))) add(path.join(SCEN, 'acceptance', f));
+  return texts;
 }
 
 function changedFiles() {
@@ -87,6 +95,9 @@ function pick(argv) {
     changed: changedArg ? changedArg.split(',') : changedFiles(),
     map,
     headers: readHeaders(),
+    texts: readTexts(),
+    identifiers: diffIdentifiers(out(['git', 'diff', 'HEAD', '-U0', '--', 'src', 'index.html']),
+      fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')),
     capMs: capArg ? Number(capArg) * 60000 : DEFAULT_CAP_MS,
   });
   answer.notes = notes.concat(answer.notes);
