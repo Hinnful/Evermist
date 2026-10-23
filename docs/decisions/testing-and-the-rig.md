@@ -378,3 +378,16 @@ Testing on the real campaign was the only option. `npm start lab` now runs this 
 `npm start lab:reset` empties that folder first, for a first-time DM's view. `tools/lab.js` does both; plain `npm start`
 is unchanged. A first build put the lab in the shipped app, with a `--lab` flag, a second installer shortcut and a Reset
 lab button in Settings; it was rejected on product grounds, since a test library means nothing to an end user.
+
+### The Linux rig leaves the release's blocking path · `SETTLED` (2026-10-23)
+Software GL made Linux the slowest rig leg by about ten minutes, and its red never blocked, so the
+landing waited for nothing. `release.yml` calls `gate.yml` with `skip-linux: true`, and the Linux rig
+runs as its own job, `gate-linux`, which `land`, `publish` and `cleanup` do not need. Linux's installer
+build still blocks, since publish uploads its AppImage. The rig matrix and shard dealing live once in
+`rig.yml`, called by both workflows so the two cannot drift; the coverage and flake report is
+`rig-report.yml`, after the last rig job. A push to `platformrig/**` runs `gate.yml` alone, Linux
+included. Trap: putting `gate-linux` in a `needs` of a blocking job makes it block again.
+
+### Bringing frozen files under the house-rule limits is off the backlog · `REJECTED` (2026-10-23)
+The backlog item to bring frozen files under the house-rule limits was dropped during a backlog
+reduction; no further reason is recorded. The allow-lists may still only shrink.

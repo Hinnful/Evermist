@@ -1,0 +1,44 @@
+name: Rig report
+
+# Merges every shard's report from this run into the two things other steps read: the map of which
+# scenario runs which app function (/commit picks its local scenarios from the latest green one, and
+# its per-platform times are what tools/rig-deal.js refreshes from) and the record of scenarios that
+# needed a rerun (the monitor counts repeats). Never holds anything up: a failure here costs a stale
+# map, not a release. Called after the last rig job of a run, Linux included.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          path: reports
+          pattern: rig-report-*
+      - run: node tools/rig-ci.js merge reports merged --sha "$GITHUB_SHA" --run "$GITHUB_RUN_ID"
+      # 90 days is the longest GitHub keeps one; a map older than that is simply absent and /commit
+      # falls back to the scenario headers.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rig-coverage-map
+          path: merged/rig-coverage-map.json
+          overwrite: true
+          retention-days: 90
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rig-flakes-attempt-${{ github.run_attempt }}
+          path: merged/rig-flakes.json
+          overwrite: true
+          retention-days: 90
+          if-no-files-found: error

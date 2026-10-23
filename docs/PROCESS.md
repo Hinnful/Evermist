@@ -134,7 +134,8 @@ A push to `release/**` or `change/**` runs `.github/workflows/release.yml`:
    installer, and the rig drives it through every scenario, in six shards on Windows and four on
    Mac and Linux. A failed scenario reruns once in a fresh app; a pass on the rerun is a flake, a
    warning and a record, not a red. **Windows and Mac block the release. Linux only warns**, naming
-   the scenario and its FAIL line in the run summary. Windows also records which functions each
+   the scenario and its FAIL line in the run summary; its rig is a separate job the landing never
+   waits for. Windows also records which functions each
    scenario ran, and the run keeps that map for `/commit`.
 4. **Update proofs**, only for a new version: each platform steps back to an older build and
    forward again through its Restart button.

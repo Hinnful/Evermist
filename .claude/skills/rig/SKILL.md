@@ -34,7 +34,7 @@ belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `gat
 Step 2 runs `node tools/rig-ci.js pick`, which reads the map CI recorded (which functions of which
 file each scenario executed, per `tools/rig/coverage.js`) and picks `smoke` plus a greedy cover of the
 changed files, capped at about ten minutes, at below-normal priority. A changed `src/` script no
-scenario runs blocks the commit until one is written. **`.github/workflows/gate.yml` then runs
+scenario runs blocks the commit until one is written. **`.github/workflows/gate.yml` and `rig.yml` then run
 `smoke` and `regression` against the built app on Windows, Mac and Linux. A red Windows or Mac leg
 means no tag, no release and no installers; Linux only warns.** So the full set is never run by
 hand: reach for one scenario to answer a question, and let CI own the sweep.
@@ -51,7 +51,7 @@ does not double the run. The count is how `/commit` finds the scenarios worth fi
 **A failure that comes and goes gets a PROBE, not another gate run.** `.github/workflows/probe.yml`
 runs one scenario in many copies at once on any platform; edit its matrix and push to `probe/**`.
 Ten copies answer "how often, and why" in five minutes. The gate splits Windows into six jobs and the
-other platforms into four, and Linux skips `playback` (see `gate.yml`).
+other platforms into four, and Linux skips `playback` (see `rig.yml`).
 
 **The gate also runs when `tools/rig/**` changed, bump or no bump.** `tools/` ships nothing, so a
 rig change takes no version and the gate used to be skipped entirely - the one change nobody

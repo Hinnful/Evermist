@@ -1,0 +1,145 @@
+name: Rig
+
+# The rig's smoke and regression on one set of platforms, dealt into shards. gate.yml calls it for the
+# platforms that block a release (Windows, Mac) and release.yml calls it again for Linux, which only
+# advises. The matrix and the dealing live here once, so the two calls cannot drift apart.
+on:
+  workflow_call:
+    inputs:
+      platforms:
+        description: runner labels to run, space separated
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.legs.outputs.matrix }}
+    steps:
+      # ⚠ SIX ON WINDOWS, FOUR ELSEWHERE. A free account runs five Mac jobs at once and the update
+      # proof takes one, and Linux gains nothing from more jobs: its time is software GL, not
+      # queueing. `of` is the shard count the dealing below divides by.
+      - id: legs
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          node - <<'JS'
+          const legs = [
+            // NEVER dist/Evermist.exe - see the rig skill.
+            // Only Windows records which app functions each scenario runs: one platform is enough for
+            // the map /commit picks from, and the profiler costs time the slow runners cannot spare.
+            { os: 'windows-latest', build: '--win dir', exe: 'dist/win-unpacked/Evermist.exe', run: '', skip: '', of: 6, advisory: false, record: '--coverage' },
+            { os: 'macos-latest', build: '--mac dir --universal', exe: 'dist/mac-universal/Evermist.app/Contents/MacOS/Evermist', run: '', skip: '', of: 4, advisory: false, record: '' },
+            // xvfb at the Windows runner's screen size, so every geometry check reads the same.
+            // NO PLAYBACK ON LINUX. The runner has no GPU, so the app draws at 5fps and its video
+            // stalls and recovers by itself twice a second, which undoes every stall playback fakes.
+            // LINUX IS ADVISORY: software GL under xvfb is the slowest and least trustworthy leg, so
+            // its red does not stop the release. It still prints a ::warning and a summary section
+            // naming the scenario and its FAIL line (run.js, RIG_ADVISORY).
+            { os: 'ubuntu-latest', build: '--linux dir', exe: 'dist/linux-unpacked/evermist', run: 'xvfb-run -a -s "-screen 0 1024x768x24"', skip: 'playback', of: 4, advisory: true, record: '' },
+          ];
+          const want = process.env.PLATFORMS.split(/\s+/).filter(Boolean);
+          const include = [];
+          for (const l of legs.filter(l => want.includes(l.os))) {
+            for (let shard = 1; shard <= l.of; shard++) include.push({ ...l, shard });
+          }
+          if (!include.length) throw new Error('no platform matches: ' + process.env.PLATFORMS);
+          require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'matrix=' + JSON.stringify({ include }) + '\n');
+          JS
+
+  rig:
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    # ⚠ THE ADVISORY LEG COUNTS AS PASSING TO EVERYTHING THAT NEEDS IT. continue-on-error turns this
+    # leg's failure into a success for `needs` and for the workflow, so a Linux red leaves the run
+    # green and shows only as a warning. What keeps Linux off the release path is that release.yml
+    # runs it as its own job, which `land` does not need.
+    continue-on-error: ${{ matrix.advisory }}
+    # The rig abandons a scenario at 480s (SCENARIO_TIMEOUT_MS in tools/rig/run.js), reruns a failed
+    # one once, and the build sits in front.
+    timeout-minutes: 45
+    env:
+      RIG_ADVISORY: ${{ matrix.advisory }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node tools/build-changelog.js
+
+      # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs, and the app then exits
+      # at launch.
+      - name: Let Chromium sandbox itself
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      # ⚠ THE GATE DRIVES THE PACKAGED APP, not the repo. A file missing from build.files works
+      # under `npm start` and is simply absent from the package, where a missing stylesheet
+      # renders unstyled rather than erroring.
+      - name: Build the packaged app
+        run: npx electron-builder ${{ matrix.build }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # ⚠ SMOKE AGAINST THE PACKAGED APP. It holds the video-to-disk IPC and the archiver/yauzl
+      # zip round trip, the two paths most likely to break in packaging. Shard 2 is the lightest.
+      # A failed scenario reruns once in a fresh app (run.js); a pass on the rerun is a flake, not a red.
+      - name: Drive the packaged app through the smoke set
+        if: matrix.shard == 2
+        run: ${{ matrix.run }} npm run rig -- --exe "${{ matrix.exe }}" --report rig-report-${{ matrix.os }}-${{ matrix.shard }}-smoke.json ${{ matrix.record }}
+
+      # ⚠ DEALT BY MEASURED TIME, not by name. tools/rig-deal.js hands each scenario, longest first, to
+      # the lightest shard, from tools/rig/timings.json (its header says how to refresh it). A scenario
+      # with no recorded time costs the median, so a new file joins a shard with no edit here. Dealt by
+      # name alone, one Linux shard took 21 minutes while the others took 10 to 18.
+      - name: Drive the packaged app through its share of the regression set
+        if: success() || failure()
+        run: |
+          NAMES=$(node tools/rig-deal.js --shard ${{ matrix.shard }} --of ${{ matrix.of }} --platform ${{ runner.os }} --skip "${{ matrix.skip }}" --totals)
+          echo "this shard: $NAMES"
+          ${{ matrix.run }} npm run rig -- $NAMES --exe "${{ matrix.exe }}" --report rig-report-${{ matrix.os }}-${{ matrix.shard }}-shard.json ${{ matrix.record }}
+
+      # What this shard timed, flaked on and (Windows) covered, for the report job.
+      - uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: rig-report-${{ runner.os }}-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: rig-report-*.json
+          retention-days: 14
+          if-no-files-found: ignore
+
+      # ⚠ A RED RUN KEEPS ITS EVIDENCE. The rig writes under the OS temp dir, which the job throws
+      # away, so a flaky red used to leave nothing but its FAIL line.
+      - name: Collect the rig's evidence
+        if: failure()
+        run: |
+          ROOT="$(node -p "require('path').join(require('os').tmpdir(), 'evermist-rig')")"
+          if command -v cygpath >/dev/null; then ROOT="$(cygpath -u "$ROOT")"; fi
+          if [ -d "$ROOT" ]; then
+            cd "$ROOT"
+            find . -type f \( -name '*.log' -o -name '*.png' \) \
+              ! -path '*IndexedDB*' ! -path '*Local Storage*' ! -path '*Session Storage*' \
+              -exec sh -c 'mkdir -p "$0/$(dirname "$1")" && cp "$1" "$0/$1"' "$GITHUB_WORKSPACE/rig-evidence" {} \;
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: rig-evidence-${{ runner.os }}-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
+          path: rig-evidence/
+          retention-days: 14
+          if-no-files-found: warn

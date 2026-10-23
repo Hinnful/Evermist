@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 19 open items; IDs run to 223."
+description: "Open work only. 17 open items; IDs run to 223."
 metadata: 
   node_type: memory
   type: project
@@ -75,9 +75,8 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 # FIRST USER EXPERIENCE - THE NEXT FOCUS
 
-### 172. The epic: a new DM finds what Evermist already has
-Filed 2026-10-12, diagnosis rewritten 2026-10-22 from three first-time testers and the first-use report.
-Evermist is about to go to other DMs, for their feedback and requests. **The features a new DM needs exist; the DM
+A new DM finds what Evermist already has. Opened 2026-10-12, diagnosis rewritten 2026-10-22 from three first-time
+testers and the first-use report. Evermist is about to go to other DMs, for their feedback and requests. **The features a new DM needs exist; the DM
 cannot find them or read what they do.** Of 51 tester issues, 39 of the 45 where it applies asked about something the
 app already had, fully or partly. Concepts not understood are the largest type (17), controls not found the next (12).
 Three causes repeat: nothing tells the DM what a map, a group and a room are; the labels use the app's words and one
@@ -89,10 +88,20 @@ music, and switches to another map. Anything Sasha meets on the way that does no
 epic. The same path must not slow an experienced DM or hide the deeper features.
 **Done when** a new DM on the current version, with no Claude and no help in chat, completes Sasha's path and can then
 say what a map, a group and a room are. No tester has run this: each met an older version and had the DM's help.
-**Order.** 210, then 218.
-**Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later.
-**Out of this epic:** what a DM sees before installing. That is distribution, and it comes later.
-**First use · DM + Player**
+**Order.** 180, then 210, then 218.
+**Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later,
+and finds them unaided: item 180 is the first of these.
+**Out of this section:** what a DM sees before installing. That is distribution, and it comes later.
+
+## Effects a DM can find and place
+
+### 180. Rework Fog/Effects switch and Effects Toolbar
+Filed 2026-10-13, renamed and made the next focus 2026-10-23. Testers do not find effects at all, and a tester who
+reaches them cannot work out how to place one. Today the only way in is the small cloud-and-flame switch at the
+toolbar's right end, then a shape, a material and a size before the first click on the map. A glow around the toolbar
+that says the mode was sketched for item 175 (`.claude/private/design/item-175/fog-home.html`) and is one input here.
+**Needs /spec:** how the DM finds Effects, and what the first placement asks of them.
+**First use · Play · DM only**
 
 ## The first evening
 
@@ -174,14 +183,6 @@ material record (`effectMaterials.js`), since a colour picker per effect was rej
 each, and whether Difficult terrain needs an effect at all.
 **Play · DM + Player**
 
-### 180. The toolbar shows which mode it is in
-Filed 2026-10-13 from item 175's sketch. The sketch moves Fog / Effects into a side tab at the right end of the toolbar,
-a cloud over a flame, and a new DM may not read either icon. A glow around the whole toolbar, cool for Fog and the
-effect outlines' orange for Effects, would say the mode without the DM reading the switch. The glow was tried in the
-sketch (`.claude/private/design/item-175/fog-home.html`) and set aside until there is time to judge its look.
-**Needs /spec:** the look of each mode, and how strong it is on dark and bright maps.
-**Polish · DM only**
-
 ### 144. A phone remote for the DM
 Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in
 hand for a few controls: sounds, reveals, a scene change. **Open:** which controls, and how a phone
@@ -202,14 +203,6 @@ the start screen, and left the logo mark violet in About and on the splash, wher
 app icon file. Redrawing it means the mark in `about.js` and `splash.html` and the icon files
 together, so the installed icon and the in-app mark stay one picture.
 **Polish · Both**
-
-### 157. Bring the frozen files under the house-rule limits
-Filed 2026-10-07. `test/houseRules.allow.json` and `eslint-suppressions.json` list what was over a
-limit when the limits became tests: six files over 600 lines, eight functions over 120 and thirteen
-comment blocks over 8 lines. Each split is its own
-restructuring task on the DM's yes, one file at a time, taken when a feature already touches that
-file; the unused imports are done. Done when both lists are empty.
-**Upkeep · no visible change**
 
 ### 164. The party flag on the world map
 Filed 2026-09-29 in item 140, split out 2026-10-09. The DM drags a flag onto the scene or place the party is in. It is

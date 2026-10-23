@@ -5,7 +5,7 @@
  * Which regression scenarios this gate shard runs, dealt by how long each one took.
  *
  *   node tools/rig-deal.js --shard 2 --of 4 --platform Linux [--skip "playback"] [--totals]
- *       Prints this shard's scenario names on one line. gate.yml calls it. The scenarios are the
+ *       Prints this shard's scenario names on one line. rig.yml calls it. The scenarios are the
  *       files in tools/rig/scenarios/acceptance/; the times are tools/rig/timings.json. --platform
  *       defaults to $RUNNER_OS (Linux, Windows, macOS), the name the rig's reports carry.
  *       --totals prints every shard's expected time on stderr instead of staying quiet.

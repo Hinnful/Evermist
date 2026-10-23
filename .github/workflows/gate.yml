@@ -1,16 +1,28 @@
 name: Gate
 
 # THE GATE, on all three platforms at once. One job per platform builds the installer users get and
-# checks its update pointer; six on Windows and four elsewhere drive the packaged app through smoke
-# and their share of the regression, so the slowest platform finishes in minutes rather than half
-# an hour. Windows and Mac block the release; Linux is advisory (see the rig job).
-# release.yml calls it; a push to any `platformrig/**` branch runs it alone and ships nothing.
+# checks its update pointer; the rig (rig.yml) then drives the packaged app through smoke and its
+# share of the regression, six shards on Windows and four on Mac and Linux, so the slowest platform
+# finishes in minutes rather than half an hour.
+#
+# ⚠ WINDOWS AND MAC BLOCK THE RELEASE; LINUX'S RIG IS ADVISORY AND NOT PART OF THIS WORKFLOW WHEN
+# release.yml CALLS IT. A caller waits for every job here, so a Linux rig job in this file would hold
+# `land` for the slowest leg (software GL, 16 to 20 minutes) even though its failure never blocks.
+# release.yml passes skip-linux and runs the Linux rig as its own job instead. Linux's installer
+# build stays here and still blocks: publish uploads its AppImage and latest-linux.yml.
+#
+# A push to any `platformrig/**` branch runs this alone, ships nothing, and runs Linux as well.
 #
 # ⚠ THE GATE DRIVES THE PACKAGED APP, not the repo. A file missing from build.files works under
 # `npm start` and is simply absent from the installer, where a missing stylesheet renders unstyled
 # rather than erroring. That class is invisible to every other check.
 on:
   workflow_call:
+    inputs:
+      skip-linux:
+        description: the caller runs the Linux rig and the report itself, off the blocking path
+        type: boolean
+        default: false
   push:
     branches:
       - 'platformrig/**'
@@ -69,153 +81,21 @@ jobs:
             dist/*.blockmap
           if-no-files-found: error
 
+  # The platforms that block.
   rig:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-        shard: [1, 2, 3, 4, 5, 6]
-        # ⚠ SIX ON WINDOWS, FOUR ELSEWHERE. A free account runs five Mac jobs at once and the update
-        # proof takes one, and Linux gains nothing from more jobs: its time is software GL, not
-        # queueing. `of` is the shard count the dealing below divides by.
-        exclude:
-          - { os: macos-latest, shard: 5 }
-          - { os: macos-latest, shard: 6 }
-          - { os: ubuntu-latest, shard: 5 }
-          - { os: ubuntu-latest, shard: 6 }
-        include:
-          # NEVER dist/Evermist.exe - see the rig skill.
-          # Only Windows records which app functions each scenario runs: one platform is enough for
-          # the map /commit picks from, and the profiler costs time the slow runners cannot spare.
-          - { os: windows-latest, build: --win dir, exe: dist/win-unpacked/Evermist.exe, run: '', skip: '', of: 6, advisory: false, record: --coverage }
-          - { os: macos-latest, build: --mac dir --universal, exe: dist/mac-universal/Evermist.app/Contents/MacOS/Evermist, run: '', skip: '', of: 4, advisory: false, record: '' }
-          # xvfb at the Windows runner's screen size, so every geometry check reads the same.
-          # ⚠ NO PLAYBACK ON LINUX. The runner has no GPU, so the app draws at 5fps and its video
-          # stalls and recovers by itself twice a second, which undoes every stall playback fakes.
-          # Windows and Mac still run it.
-          # ⚠ LINUX IS ADVISORY: software GL under xvfb is the slowest and least trustworthy leg, so
-          # its red does not stop the release. It still prints a ::warning and a summary section
-          # naming the scenario and its FAIL line (run.js, RIG_ADVISORY). Windows and Mac block.
-          - { os: ubuntu-latest, build: --linux dir, exe: dist/linux-unpacked/evermist, run: 'xvfb-run -a -s "-screen 0 1024x768x24"', skip: playback, of: 4, advisory: true, record: '' }
-    runs-on: ${{ matrix.os }}
-    # ⚠ THE ADVISORY LEG COUNTS AS PASSING TO EVERYTHING THAT NEEDS IT. A job that needs a failed job
-    # is skipped unless its `if` says otherwise; continue-on-error turns this leg's failure into a
-    # success for `needs` and for the workflow, so release.yml's `land` is not held up by Linux.
-    continue-on-error: ${{ matrix.advisory }}
-    # The rig abandons a scenario at 480s (SCENARIO_TIMEOUT_MS in tools/rig/run.js), reruns a failed
-    # one once, and the build sits in front.
-    timeout-minutes: 45
-    env:
-      RIG_ADVISORY: ${{ matrix.advisory }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: node tools/build-changelog.js
+    uses: ./.github/workflows/rig.yml
+    with:
+      platforms: windows-latest macos-latest
 
-      # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs, and the app then exits
-      # at launch.
-      - name: Let Chromium sandbox itself
-        if: runner.os == 'Linux'
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+  # Only for a push to platformrig/**; a release runs Linux from release.yml (see the top).
+  rig-linux:
+    if: ${{ !inputs.skip-linux }}
+    uses: ./.github/workflows/rig.yml
+    with:
+      platforms: ubuntu-latest
 
-      # ⚠ THE GATE DRIVES THE PACKAGED APP, not the repo. A file missing from build.files works
-      # under `npm start` and is simply absent from the package, where a missing stylesheet
-      # renders unstyled rather than erroring.
-      - name: Build the packaged app
-        run: npx electron-builder ${{ matrix.build }} --publish never
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-
-      # ⚠ SMOKE AGAINST THE PACKAGED APP. It holds the video-to-disk IPC and the archiver/yauzl
-      # zip round trip, the two paths most likely to break in packaging. Shard 2 is the lightest.
-      # A failed scenario reruns once in a fresh app (run.js); a pass on the rerun is a flake, not a red.
-      - name: Drive the packaged app through the smoke set
-        if: matrix.shard == 2
-        run: ${{ matrix.run }} npm run rig -- --exe "${{ matrix.exe }}" --report rig-report-${{ matrix.os }}-${{ matrix.shard }}-smoke.json ${{ matrix.record }}
-
-      # ⚠ DEALT BY MEASURED TIME, not by name. tools/rig-deal.js hands each scenario, longest first, to
-      # the lightest shard, from tools/rig/timings.json (its header says how to refresh it). A scenario
-      # with no recorded time costs the median, so a new file joins a shard with no edit here. Dealt by
-      # name alone, one Linux shard took 21 minutes while the others took 10 to 18.
-      - name: Drive the packaged app through its share of the regression set
-        if: success() || failure()
-        run: |
-          NAMES=$(node tools/rig-deal.js --shard ${{ matrix.shard }} --of ${{ matrix.of }} --platform ${{ runner.os }} --skip "${{ matrix.skip }}" --totals)
-          echo "this shard: $NAMES"
-          ${{ matrix.run }} npm run rig -- $NAMES --exe "${{ matrix.exe }}" --report rig-report-${{ matrix.os }}-${{ matrix.shard }}-shard.json ${{ matrix.record }}
-
-      # What this shard timed, flaked on and (Windows) covered, for the report job below.
-      - uses: actions/upload-artifact@v4
-        if: success() || failure()
-        with:
-          name: rig-report-${{ runner.os }}-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
-          path: rig-report-*.json
-          retention-days: 14
-          if-no-files-found: ignore
-
-      # ⚠ A RED RUN KEEPS ITS EVIDENCE. The rig writes under the OS temp dir, which the job throws
-      # away, so a flaky red used to leave nothing but its FAIL line.
-      - name: Collect the rig's evidence
-        if: failure()
-        run: |
-          ROOT="$(node -p "require('path').join(require('os').tmpdir(), 'evermist-rig')")"
-          if command -v cygpath >/dev/null; then ROOT="$(cygpath -u "$ROOT")"; fi
-          if [ -d "$ROOT" ]; then
-            cd "$ROOT"
-            find . -type f \( -name '*.log' -o -name '*.png' \) \
-              ! -path '*IndexedDB*' ! -path '*Local Storage*' ! -path '*Session Storage*' \
-              -exec sh -c 'mkdir -p "$0/$(dirname "$1")" && cp "$1" "$0/$1"' "$GITHUB_WORKSPACE/rig-evidence" {} \;
-          fi
-
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: rig-evidence-${{ runner.os }}-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
-          path: rig-evidence/
-          retention-days: 14
-          if-no-files-found: warn
-
-  # Merges the shards' reports into the two things other steps read: the map of which scenario runs
-  # which app function (/commit picks its local scenarios from the latest green one) and the record
-  # of scenarios that needed a rerun (the monitor counts repeats). Never holds the gate up: a failure
-  # here costs a stale map, not a release.
+  # Only when this workflow is the whole run. A release calls the same report after its own Linux job.
   report:
-    needs: rig
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - uses: actions/download-artifact@v4
-        with:
-          path: reports
-          pattern: rig-report-*
-      - run: node tools/rig-ci.js merge reports merged --sha "$GITHUB_SHA" --run "$GITHUB_RUN_ID"
-      # 90 days is the longest GitHub keeps one; a map older than that is simply absent and /commit
-      # falls back to the scenario headers.
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rig-coverage-map
-          path: merged/rig-coverage-map.json
-          overwrite: true
-          retention-days: 90
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rig-flakes-attempt-${{ github.run_attempt }}
-          path: merged/rig-flakes.json
-          overwrite: true
-          retention-days: 90
-          if-no-files-found: error
+    needs: [rig, rig-linux]
+    if: ${{ !cancelled() && !inputs.skip-linux }}
+    uses: ./.github/workflows/rig-report.yml

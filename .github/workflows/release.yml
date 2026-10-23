@@ -127,11 +127,31 @@ jobs:
           node-version: 22
       - run: node tools/check-guards.js
 
-  # THE GATE: Windows, Mac and Linux in parallel, each driving the installer it built (gate.yml).
+  # THE GATE: all three installers are built and Windows and Mac drive theirs through the rig (gate.yml).
   gate:
     needs: [decide, verify]
     if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
     uses: ./.github/workflows/gate.yml
+    with:
+      skip-linux: true
+
+  # ⚠ THE LINUX RIG IS ITS OWN JOB, AND NOTHING ON THE LAND PATH NEEDS IT. It runs on the same trigger
+  # as the gate and reports the same way (a ::warning and a summary section naming the failed
+  # scenario), but `land`, `publish` and `cleanup` never wait for it: software GL made it the slowest
+  # leg by ten minutes, and its failure never blocks. The run itself stays open until it finishes.
+  # Put it in a `needs` of a blocking job and it blocks again.
+  gate-linux:
+    needs: [decide, verify]
+    if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
+    uses: ./.github/workflows/rig.yml
+    with:
+      platforms: ubuntu-latest
+
+  # The coverage map and flake record cover every platform, so this waits for Linux and holds nothing.
+  report:
+    needs: [gate, gate-linux]
+    if: ${{ !cancelled() && (needs.gate.result != 'skipped' || needs.gate-linux.result != 'skipped') }}
+    uses: ./.github/workflows/rig-report.yml
 
   # Every platform walks back and forward through its own update path, which the rig never touches.
   update:
@@ -144,10 +164,10 @@ jobs:
   # ⚠ FAST-FORWARD, never a merge, rebase or squash. Those all mint a new commit, and main would
   # then carry a tree no gate ever drove. The commit main gets is the commit the gate proved.
   #
-  # ⚠ WINDOWS AND MAC BLOCK, LINUX ADVISES. gate.yml marks the Linux rig legs continue-on-error, so
-  # a Linux red reaches this job as `gate.result == 'success'` and lands anyway, while the run keeps
-  # a ::warning and a summary section naming the scenario. A Windows or Mac red is `failure` here
-  # and stops everything below. Linux's installer build is a separate job and still blocks.
+  # ⚠ WINDOWS AND MAC BLOCK, LINUX ADVISES. `gate` holds the Windows and Mac rig and all three installer
+  # builds; the Linux rig is `gate-linux`, which this job does not need, so it lands without waiting
+  # for it. A Windows or Mac red is `failure` here and stops everything below. Linux's installer build
+  # is in `gate` and still blocks, because publish uploads its AppImage.
   land:
     needs: [decide, verify, guards, gate, update]
     if: >-
