@@ -1247,7 +1247,7 @@ later: at 30° the rectangle tool drags along the map's diagonal on screen, whic
 question, not a code one.
 
 ### Fit to TV turns the TV's picture, never the laptop and never the file · `SETTLED` (2026-10-17)
-A sideways map is turned per scene from the minimap's menu: Off, Fitted, Flipped. The TV draws the turn
+**Reshaped 2026-10-23:** the menu became TV setup's three-picture Turn, offered for every map, and Manual holds the turn until Send (see "TV setup is one window" in decisions/ui-and-control-panel.md); the saved `{step, turn}` and the whole-canvas turn stand. A sideways map is turned per scene from the minimap's menu: Off, Fitted, Flipped. The TV draws the turn
 with the whole-canvas turn My seat uses on the laptop, so an animated map needs no re-encoding and
 rooms, fog and effects keep their coordinates. Fitted reads the DM's seat to pick its direction:
 upright from a side chair, clockwise from a long side, where no quarter turn reads upright. The laptop

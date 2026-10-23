@@ -107,12 +107,6 @@ function _mmRegion(half) {
   return _mmFitSideways(half.scope) ? { w: half.tv.h / z, h: half.tv.w / z } : { w: half.tv.w / z, h: half.tv.h / z };
 }
 
-// The picture the DM has selected, for the TV menu's Fit to TV row: its TV size and its map.
-function minimapSelectedHalf() {
-  const geom = _mmGeom();
-  return geom.halves.find(h => h.id === panesSelected) || geom.halves[0];
-}
-
 // The canvas's ON-SCREEN size, in the same space as pointer clientX/clientY. ⚠ Never _canvas.width
 // (the backing store) and never getBoundingClientRect() (the layout box, while clientX/Y are
 // zoomed — the trap documented in controlPanel.js). offsetWidth × --ui-zoom is engine-agnostic.
@@ -141,6 +135,8 @@ function _postSnapThrottled() {
     _snapPending = false;
     // One minimap, and it drives whichever column is selected. Its Player is that column's.
     if (paneForward('player-view', { view: minimapView })) return;
+    // Manual: the framing goes with the next Send.
+    if (!autoSync) { tvWait.view = true; playerUnsent = true; return; }
     if (playerWindow && !playerWindow.closed) {
       // No viewW/viewH on purpose: minimapView.zoom is already in Player-canvas terms, so
       // resolveView's plain-zoom fallback replays it exactly. A region is only needed when the

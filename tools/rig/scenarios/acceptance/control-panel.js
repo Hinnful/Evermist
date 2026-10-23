@@ -22,7 +22,7 @@
 //   E. The grid's eye switches the grid and dims the section. The type segment sets the type and
 //      switches the grid on. Scrubbing the cell size's icon changes the cell, and a typed size is
 //      clamped.
-//   F. The minimap's Lock and the TV menu's Auto / Manual hold their state; Seat alignment turns the DM's map.
+//   F. The minimap's Lock and TV setup's Auto / Manual hold their state; Seat alignment turns the DM's map.
 //   G. Every panel that floats over the map wears the SAME edge, read from the --panel-*
 //      variables in base.css, and those variables still resolve to a real edge.
 
@@ -152,7 +152,7 @@ module.exports = async function sceneControlFeature(rig) {
   // ── F ──
   // RED ON: the Lock handler in tvControl.js clicking nothing - 2026-10-13
   // The Player's controls are the minimap's now (show-on-tv.js checks each one); this keeps the two
-  // whose state the old pane held. Lock is the first tool on the picture, Auto / Manual a segment in the TV menu.
+  // whose state the old pane held. Lock is the first tool on the picture, Auto / Manual a segment in TV setup.
   const lockBtn = '#tv-ui .tv-row.tl .tv-ov';
   const lockWas = await dm.evaluate('minimapLocked === true');
   await dm.evaluate('document.querySelector(' + JSON.stringify(lockBtn) + ').click(); 0');
@@ -163,15 +163,16 @@ module.exports = async function sceneControlFeature(rig) {
   rig.check(await dm.evaluate('minimapLocked === true') === lockWas, 'F: Lock would not let go again');
   // ⚠ TWO SEGMENTS OVER ONE TOGGLE: pressing the lit one must not flip it away.
   const seg = async want => {
-    await dm.evaluate('_tvOpen("tv"); 0');
-    await dm.evaluate('[...document.querySelectorAll("#tv-pop .seg button")].find(b => b.textContent === ' + JSON.stringify(want) + ').click(); 0');
+    await dm.evaluate('if (!document.getElementById("tv-setup")) _tvSetupOpen(); 0');
+    await dm.evaluate('[...document.querySelectorAll("#tv-setup .cp-segtab")].find(b => b.textContent === ' + JSON.stringify(want) + ').click(); 0');
   };
   await seg('Manual');
   await seg('Manual');
   rig.check(await dm.evaluate('autoSync') === false, 'F: a second press on Manual flipped the gate back to Auto');
   await seg('Auto');
   rig.check(await dm.evaluate('autoSync') === true, 'F: Auto would not switch the send gate back on');
-  await dm.evaluate('_tvClose(); 0');
+  await dm.evaluate('_tvSetupClose(); 0');
+  await lib.settle(dm, '!document.getElementById("tv-setup")', 3000);
   // A chair is an SVG shape, which has no click(); a dispatched click is what the mouse sends.
   const chair = deg => dm.evaluate('document.querySelector(".sa-hit[data-seat-pick=\\"' + deg + '\\"]")' +
                                    '.dispatchEvent(new MouseEvent("click", { bubbles: true })); 0');

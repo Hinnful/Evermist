@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 17 open items; IDs run to 220."
+description: "Open work only. 19 open items; IDs run to 223."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.7.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.8.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
 shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -89,27 +89,12 @@ music, and switches to another map. Anything Sasha meets on the way that does no
 epic. The same path must not slow an experienced DM or hide the deeper features.
 **Done when** a new DM on the current version, with no Claude and no help in chat, completes Sasha's path and can then
 say what a map, a group and a room are. No tester has run this: each met an older version and had the DM's help.
-**Order.** 217, then 210, then 218.
+**Order.** 210, then 218.
 **Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later.
 **Out of this epic:** what a DM sees before installing. That is distribution, and it comes later.
 **First use · DM + Player**
 
 ## The first evening
-
-### 217. Rework the minimap: how a map reaches the TV
-Filed 2026-10-22, absorbs item 200. The minimap holds every control that sends a map to the TV, and testers needed
-help with each of them. This reopens two calls of 2026-10-22 (DECISIONS, "An empty Campaign shows one card"): no
-badge for the show state, and Fit to TV staying where it is.
-- **Auto / Manual.** The switch sits in the minimap's "…" menu. A tester landed in Manual, expected changes to reach
-  the TV at once, and could not find the switch.
-- **Fill the TV.** Two testers did not find how to make the map fill the TV: one looked for fullscreen, the other
-  for a way to stretch the map. Zoom and drag on the minimap do it, along with the camera push, and Fit to TV sits in the "…"
-  menu.
-- **Look before the TV follows.** In Auto, opening a map sends it to the TV at once (`sceneSwitch.js`), so a DM cannot
-  look at the next map privately. Manual holds it, but Manual also holds every reveal.
-**Needs /spec:** what the minimap shows and holds, how the DM opens a map without the TV following, and how that map
-then goes to the TV.
-**First use · Play · DM + Player**
 
 ### 210. Hints follow what the library holds, not the DM's first action
 Filed 2026-10-22. A DM whose maps Claude made never sees the first-map hints, because they start from a hand-made
@@ -158,6 +143,23 @@ Filed 2026-10-22 from tester feedback. The eye in Map settings' grid section cha
 on the fog bar (Reveal all, Hide all) are actions and do not. A tester read the difference as a fault. **Needs a
 look-and-feel pass:** whether the fog bar's actions keep the eye at all.
 **Polish · DM only**
+
+### 221. Fullscreen in TV setup can miss on a slow machine
+Filed 2026-10-23. With the screen set to a window and Fullscreen on, TV setup asks the new window to go fullscreen about
+0.7 seconds after it opens (`tvControl.js`). A window that loads later stays windowed. Ask once the window reports it
+has loaded.
+**Bug · DM + Player**
+
+### 222. No scenario checks the minimap's Russian labels on a side seat
+Filed 2026-10-23. On a narrow minimap the Russian Show on TV shortens to "Показать на ТВ" and then goes small, and the
+pill drops Stop's word. The steps are built (`tvControl.js`, `tvRefresh`) but no rig scenario switches the language,
+which applies only after a restart. Add one that restarts in Russian and checks seats 90 and 270, live and off.
+**Upkeep · DM only**
+
+### 223. Space sends in both modes, Shift+S only in Manual
+Filed 2026-10-23. The two Send keys disagree: Space sends to the TV in Auto too, Shift+S does nothing there. Pick one
+rule for both keys (`input.js`) and match the help sheet.
+**Bug · DM only**
 
 ### 184. Straight walls sits alone over the world map's drawing tools
 Filed 2026-10-16. With the repairs gone from places, the row over a place tool holds one icon, Straight walls, and it

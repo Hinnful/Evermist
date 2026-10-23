@@ -1,6 +1,7 @@
 'use strict';
 // tvControl.js — Show on TV: what sits over the minimap's picture. The off, waiting and live
-// states, the buttons, the pill, the TV menu and the help box for a machine with one screen.
+// states, the buttons, the pill, TV setup, the screen question and the help box for a machine with
+// one screen.
 // tvPick.js decides which screen; electron/displays.js moves the window. The legacy buttons in
 // #cp-legacy stay the back end: this clicks them, so toolbar.js and the rig keep working.
 //
@@ -27,10 +28,20 @@ let _tvDmId = null;          // the screen holding this window
 let _tvRoute = null;         // how the open Player was started: 'tv' (placed) or 'window'
 let _tvScreenId = null;      // the screen the Player was placed on
 let _tvWaitSince = 0;        // nonzero while waiting for a second screen to appear
-let _tvMenu = null;          // the open menu: 'tv', 'ask' or 'help'
+let _tvMenu = null;          // the open box in #tv-pop: 'ask' or 'help'
 let _tvNote = '';
-let _tvFit = 0;              // pill words dropped: 0 none, 1 Fullscreen's, 2 Send's, 3 the label shortens
+let _tvFit = 0;              // pill words dropped: 0 none, 1 Fullscreen's, 2 Send's, 3 the label shortens, 4 Stop's
+let _tvSyncIcon = false;     // Sync has dropped its word
+let _tvGoFit = 0;            // Show on TV: 1 its icon gone, 2 the short label, 3 small
 let _tvKey = '';
+let _tvSetup = false;        // TV setup is open
+let _tvSetupSeen = false;    // it has opened once this launch; in memory, never saved
+let _tvSetupDd = false;      // its screen list is open
+let _tvSetupBusy = false;    // it is flying into the ··· button
+let _tvHot = false;          // the ··· button glows for a moment after it
+let _tvScreenPick = null;    // before the map is live: a display id, 'window', or null for the default
+let _tvWantFull = false;     // before the map is live: the window opens fullscreen
+let _tvFullAt = 0;           // when a window just opened is asked to go fullscreen
 
 const _tvEl = id => document.getElementById(id);
 const _tvLegacy = id => { const b = _tvEl(id); if (b) b.click(); refreshPlayerControlUI(); };
@@ -91,10 +102,13 @@ function _tvClose() { _tvMenu = null; _tvEl('tv-pop').hidden = true; }
 // `skipped`, and the Player then stays a window.
 function _tvGoLive(display) {
   _tvWaitSince = 0;
+  _tvSetupSeen = true;
   _tvClose();
-  if (!_tvLive()) _tvLegacy('btn-player');
+  const wasOpen = _tvLive();
+  if (!wasOpen) _tvLegacy('btn-player');
   const api = window.electronAPI;
   const place = !!display && !!api && !!api.placePlayer;
+  if (!place && !wasOpen && _tvWantFull) _tvFullAt = Date.now() + 700;
   _tvRoute = place ? 'tv' : 'window';
   _tvScreenId = place ? display.id : null;
   if (place) {
@@ -114,12 +128,34 @@ function _tvStop() {
   tvRefresh();
 }
 
+// What the screen choice is now: where the map is, or before it is live, the pick or the default.
+function _tvSelected() {
+  const pick = _tvPickNow();
+  if (_tvLive()) {
+    if (_tvRoute !== 'tv') return { kind: 'win' };
+    const d = _tvDisplays.find(x => x.id === _tvScreenId);
+    return d ? { kind: 'display', display: d } : { kind: 'none', pick };
+  }
+  if (_tvScreenPick === 'window') return { kind: 'win' };
+  const chosen = pick.candidates.find(d => d.id === _tvScreenPick);
+  if (chosen) return { kind: 'display', display: chosen };
+  if (pick.kind === 'one') return { kind: 'display', display: pick.display };
+  return { kind: 'none', pick };
+}
+
+function _tvGoSelected(sel) {
+  if (sel.kind === 'none') _tvOpen(sel.pick.kind === 'ask' ? 'ask' : 'help');
+  else _tvGoLive(sel.kind === 'win' ? null : sel.display);
+}
+
+// The first Show on TV of a launch opens TV setup; later ones go straight to the TV.
 async function _tvShow() {
   if (_tvLive()) return;
   await _tvLoadDisplays();
-  const pick = _tvPickNow();
-  if (pick.kind === 'one') _tvGoLive(pick.display);
-  else _tvOpen(pick.kind === 'ask' ? 'ask' : 'help');
+  const sel = _tvSelected();
+  if (sel.kind === 'none') _tvGoSelected(sel);
+  else if (!_tvSetupSeen) _tvSetupOpen();
+  else _tvGoSelected(sel);
 }
 
 async function _tvSwitch() {
@@ -158,86 +194,45 @@ async function _tvTick() {
     else if (pick.kind === 'ask') { _tvWaitSince = 0; _tvOpen('ask'); }
     else if (Date.now() - _tvWaitSince > TV_WAIT_MS) { _tvWaitSince = 0; _tvOpen('help'); }
   }
+  // A window the DM wanted fullscreen is asked once, when it has had time to load.
+  if (_tvFullAt && Date.now() >= _tvFullAt) {
+    _tvFullAt = 0;
+    if (_tvLive() && _tvRoute === 'window' && !paneScope().playerIsFullscreen) _tvLegacy('btn-fullscreen-player');
+  }
   // A Player window can close without telling us.
   if (!_tvLive() && _tvRoute) { _tvRoute = null; _tvScreenId = null; }
   tvRefresh();
 }
 
-// ─── The menus ───────────────────────────────────────────────────────────────
+// ─── The screen question and the help box ────────────────────────────────────
 
 function _tvOpen(kind) {
   _tvMenu = kind;
   const pop = _tvEl('tv-pop');
   pop.textContent = '';
   pop.classList.toggle('help', kind === 'help');
-  pop.append(kind === 'help' ? _tvHelp() : _tvTvMenu(kind === 'ask'));
+  pop.append(kind === 'help' ? _tvHelp() : _tvAsk());
   pop.hidden = false;
   tvRefresh();
 }
 
 function _tvRow(cls, kids, onClick) { return _tvBtn('tv-row2' + (cls ? ' ' + cls : ''), '', kids, onClick); }
 
-function _tvTvMenu(asking) {
+// Several screens and none remembered: which is the TV?
+function _tvAsk() {
   const pick = _tvPickNow();
-  const live = _tvLive();
   const menu = _tvMake('div', 'tv-menu');
-  menu.append(_tvText(asking ? 'q' : 'ttl', asking ? t('Which screen is the TV?') : t('TV')));
+  menu.append(_tvText('q', t('Which screen is the TV?')));
   const blk = _tvMake('div', 'blk');
   blk.append(_tvText('lbl', t('Show the map on')));
-  if (!pick.candidates.length) blk.append(_tvText('tv-row2 none', t('No second screen found')));
   for (const d of pick.candidates) {
-    const on = !asking && ((live && _tvRoute === 'tv') ? d.id === _tvScreenId : (!live && pick.display && pick.display.id === d.id));
-    const row = _tvRow(on ? 'on' : '', [_tvName(d), _tvText('mt', _tvRes(d))], () => _tvGoLive(d));
+    const row = _tvRow('', [_tvName(d), _tvText('mt', _tvRes(d))], () => _tvGoLive(d));
     row.title = _tvScreenLabel(d);
     blk.append(row);
   }
-  blk.append(_tvRow(live && _tvRoute === 'window' ? 'on' : '', [_tvText('nm', t('A window I place myself'))], () => _tvGoLive(null)));
-  if (!pick.candidates.length) blk.append(_tvRow('', [_tvText('nm', t('How do I connect a TV?'))], () => _tvOpen('help')));
+  blk.append(_tvRow('', [_tvText('nm', t('A window I place myself'))], () => _tvGoLive(null)));
   menu.append(blk);
-  if (!asking) {
-    const fit = _tvFitBlock();
-    if (fit) menu.append(fit);
-    menu.append(_tvUpdates());
-  }
   return menu;
-}
-
-// Fit to TV: the open map's own turn of the TV picture, stepped Off, Fitted, Flipped (tvFit.js). With
-// two maps it acts on the selected column's map, against that column's half of the TV.
-function _tvFitBlock() {
-  const s = paneScope();
-  if (!(s.mapWidth > 0) || !s.tvFit) return null;
-  const tv = minimapSelectedHalf().tv;
-  const fits = fitDisabled(s.tvFit, crossesTv(s.mapWidth, s.mapHeight, tv.w, tv.h, s.tvFit.turn));
-  const state = [t('Off'), t('Fitted'), t('Flipped')][s.tvFit.step];
-  const hint = [t('Lays a tall map along the TV, upright from your seat.'), t('Click again to turn it the other way.'),
-                t('Click again to put the map back as it was.')][s.tvFit.step];
-  const blk = _tvMake('div', 'blk');
-  blk.append(_tvText('lbl', t('This map')));
-  const row = _tvRow(s.tvFit.step ? 'on' : '', [_tvText('nm', t('Fit to TV')), _tvText('mt', fits ? t('Already fits') : state)], () => {
-    stepSceneFit();
-    _tvOpen('tv');
-    // A column answers a message later; its state is read again once it has.
-    if (panesActive) setTimeout(() => { if (_tvMenu === 'tv') _tvOpen('tv'); }, 150);
-  });
-  row.disabled = fits;
-  blk.append(row, _tvText('hint', fits ? t('The map already lies along the TV.') : hint));
-  return blk;
-}
-
-function _tvUpdates() {
-  const blk = _tvMake('div', 'blk');
-  blk.append(_tvText('lbl', t('Updates')));
-  const seg = _tvMake('div', 'seg');
-  for (const [on, label] of [[true, t('Auto')], [false, t('Manual')]]) {
-    const b = _tvBtn(autoSync === on ? 'on' : '', '', [document.createTextNode(label)], () => {
-      if (autoSync !== on) _tvLegacy('btn-auto-sync');
-      _tvOpen('tv');
-    });
-    seg.append(b);
-  }
-  blk.append(seg, _tvText('hint', autoSync ? t('Every reveal reaches the TV as you make it.') : t('Changes wait until you press Send.')));
-  return blk;
 }
 
 function _tvHelp() {
@@ -261,6 +256,193 @@ function _tvHelp() {
   return box;
 }
 
+// ─── TV setup ────────────────────────────────────────────────────────────────
+
+function _tvSetupOpen() {
+  if (_tvSetup) return;
+  _tvClose();
+  _tvSetup = true;
+  _tvSetupDd = false;
+  _tvSetupBusy = false;
+  const veil = _tvMake('div', 'tvs');
+  veil.id = 'tv-setup';
+  veil.style.right = _tvEl('dock-rail').getBoundingClientRect().width + 'px';
+  veil.addEventListener('mousedown', e => { if (e.target === veil) _tvSetupClose(); });
+  document.body.append(veil);
+  tvRefresh();
+  if (!veil.querySelector('.sm-win')) _tvSetupRender();
+}
+
+// Closing shrinks the window into the ··· button, which glows for a moment.
+function _tvSetupClose(then) {
+  if (!_tvSetup || _tvSetupBusy) return;
+  _tvSetupBusy = true;
+  _tvSetupSeen = true;
+  _tvSetupDd = false;
+  const veil = _tvEl('tv-setup');
+  const win = veil && veil.querySelector('.sm-win');
+  const more = document.querySelector('#tv-ui [data-tv-more]');
+  const finish = () => {
+    if (veil) veil.remove();
+    _tvSetup = false;
+    _tvSetupBusy = false;
+    if (then) then();
+    _tvHot = true;
+    tvRefresh();
+    setTimeout(() => { _tvHot = false; tvRefresh(); }, 900);
+  };
+  if (!win || !more) { finish(); return; }
+  const a = win.getBoundingClientRect(), b = more.getBoundingClientRect(), z = _uiZoom();
+  const dx = (b.left + b.width / 2 - (a.left + a.width / 2)) / z, dy = (b.top + b.height / 2 - (a.top + a.height / 2)) / z;
+  win.classList.add('fly');
+  win.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.06)';
+  veil.style.background = 'transparent';
+  setTimeout(finish, 450);
+}
+
+function _tvSetupGo() {
+  _tvSetupClose(() => _tvGoSelected(_tvSelected()));
+}
+
+function _tvSeg(a, b, on, pick) {
+  const seg = _tvMake('div', 'cp-tabs');
+  for (const [label, val] of [[a, false], [b, true]]) {
+    seg.append(_tvBtn('cp-segtab' + (on === val ? ' active' : ''), '', [document.createTextNode(label)], () => pick(val)));
+  }
+  return seg;
+}
+
+// A picture of the open map as the TV draws it with this turn. The tile is the TV's own 16:9 box and
+// the seat turns it, so a side chair sees the TV the way it sits in the room.
+function _tvTilePicture(scope, turn, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w * 2; c.height = h * 2;
+  c.className = 'tvp';
+  c.style.rotate = seatTurn + 'deg';
+  if (!scope.mapOffscreen || !scope.mapWidth || !scope.mapHeight) return c;
+  const ctx = c.getContext('2d');
+  const side = turn % 180 !== 0;
+  const k = Math.min((side ? c.height : c.width) / scope.mapWidth, (side ? c.width : c.height) / scope.mapHeight);
+  const mw = Math.max(1, Math.round(scope.mapWidth * k)), mh = Math.max(1, Math.round(scope.mapHeight * k));
+  ctx.translate(c.width / 2, c.height / 2);
+  ctx.rotate(turn * Math.PI / 180);
+  ctx.drawImage(scope.mapOffscreen, -mw / 2, -mh / 2, mw, mh);
+  if (scope.fogBlurCanvas && scope.fogBlurCanvas.width > 0) {
+    const f = document.createElement('canvas');
+    f.width = mw; f.height = mh;
+    const fc = f.getContext('2d');
+    fc.drawImage(scope.fogBlurCanvas, 0, 0, mw, mh);
+    fc.globalCompositeOperation = 'source-in';
+    fc.fillStyle = scope.fogBaseColor;
+    fc.fillRect(0, 0, mw, mh);
+    ctx.globalAlpha = 0.95;
+    ctx.drawImage(f, -mw / 2, -mh / 2);
+  }
+  return c;
+}
+
+function _tvTurnRow() {
+  const s = paneScope();
+  const cur = fitTile(s.tvFit);
+  const sideSeat = seatTurn % 180 !== 0;
+  const row = _tvMake('div', 'tv-turn' + (sideSeat ? ' side' : ''));
+  for (let i = 0; i < 3; i++) {
+    const b = _tvBtn(i === cur ? 'on' : '', '', [_tvTilePicture(s, fitForTile(i).turn, sideSeat ? 107 : 102, sideSeat ? 60 : 57)], () => {
+      setSceneFit(i);
+      _tvSetupRender();
+      // A column answers a message later; its state is read again once it has.
+      if (panesActive) setTimeout(() => { if (_tvSetup) _tvSetupRender(); }, 150);
+    });
+    b.setAttribute('data-tv-turn', i);
+    row.append(b);
+  }
+  return row;
+}
+
+function _tvSetupRender() {
+  const veil = _tvEl('tv-setup');
+  if (!veil) return;
+  const live = _tvLive();
+  const sel = _tvSelected();
+  const sub = text => _tvText('sm-sub', text);
+  const win = _tvMake('div', 'sm-win w-s');
+  // The pop-in plays once, when the window first appears, not on each rebuild of its parts.
+  if (veil.querySelector('.sm-win')) win.style.animation = 'none';
+  const x = _tvBtn('sm-x', t('Close'), [], () => _tvSetupClose());
+  x.innerHTML = uiIcon('x');
+  win.append(_tvMake('div', 'sm-whead', [_tvText('sm-wtitle', t('TV setup')), _tvMake('span', 'sm-sp'), x]));
+  win.addEventListener('mousedown', e => {
+    const dd = _tvEl('tb-dd');
+    if (_tvSetupDd && dd && !e.target.closest('.ddw')) { _tvSetupDd = false; dd.remove(); }
+  });
+
+  const body = _tvMake('div', 'sm-wbody');
+  body.append(sub(t('Screen')));
+  const label = sel.kind === 'win' ? t('A window') : sel.kind === 'display' ? _tvScreenLabel(sel.display)
+    : _tvPickNow().kind === 'ask' ? t('Pick a screen') : t('No TV found');
+  const name = _tvText('', label);
+  if (sel.kind === 'display') name.setAttribute('data-no-i18n', '');
+  const kids = [name];
+  if (sel.kind === 'display') kids.push(_tvText('sm-dim', _tvRes(sel.display)));
+  kids.push(_tvMake('span', 'sm-sp'), _tvMake('span', 'sm-chev'));
+  const ddw = _tvMake('div', 'ddw');
+  const trigger = _tvBtn('sm-hbtn dd', '', kids, () => { _tvSetupDd = !_tvSetupDd; _tvSetupRender(); });
+  trigger.setAttribute('data-tv-screen', '');
+  ddw.append(trigger);
+  if (_tvSetupDd) {
+    const list = _tvMake('div');
+    list.id = 'tb-dd';
+    const item = (on, nm, mt, go) => {
+      list.append(_tvBtn('dd-it', '', [_tvText('ck', on ? '✓' : ''), nm, _tvText('ky', mt)], () => {
+        _tvSetupDd = false;
+        go();
+        _tvSetupRender();
+      }));
+    };
+    for (const d of _tvPickNow().candidates) {
+      item(sel.kind === 'display' && sel.display.id === d.id, _tvName(d), _tvRes(d), () => (live ? _tvGoLive(d) : (_tvScreenPick = d.id)));
+    }
+    item(sel.kind === 'win', _tvText('nm', t('A window')), '', () => (live ? _tvGoLive(null) : (_tvScreenPick = 'window')));
+    ddw.append(list);
+  }
+  body.append(ddw);
+
+  if (sel.kind === 'win') {
+    body.append(sub(t('Fullscreen')));
+    const on = live ? !!paneScope().playerIsFullscreen : _tvWantFull;
+    body.append(_tvSeg(t('Off'), t('On'), on, v => {
+      if (live) { if (v !== on) _tvLegacy('btn-fullscreen-player'); } else _tvWantFull = v;
+      _tvSetupRender();
+    }));
+  }
+
+  body.append(sub(t('Updates')));
+  body.append(_tvSeg(t('Auto'), t('Manual'), !autoSync, v => {
+    if (autoSync === v) _tvLegacy('btn-auto-sync');
+    _tvSetupRender();
+  }));
+
+  body.append(sub(t('Turn')), _tvTurnRow());
+  const note = _tvMake('p', 'tvs-note');
+  const parts = t('You can open this again with {more} on the minimap.').split('{more}');
+  const more = _tvMake('span', 'kmore');
+  more.innerHTML = TV_ICON.more;
+  note.append(document.createTextNode(parts[0]), more, document.createTextNode(parts[1] || ''));
+  body.append(note);
+  win.append(body);
+
+  const foot = _tvMake('div', 'sm-wfoot');
+  if (live) foot.append(_tvBtn('sm-hbtn primary', '', [document.createTextNode(t('Done'))], () => _tvSetupClose()));
+  else {
+    foot.append(_tvBtn('sm-hbtn', '', [document.createTextNode(t('Cancel'))], () => _tvSetupClose()),
+      _tvBtn('sm-hbtn primary', '', [_tvIcon(TV_ICON.tv), document.createTextNode(t('Show on TV'))], _tvSetupGo));
+  }
+  win.append(foot);
+
+  const old = veil.querySelector('.sm-win');
+  if (old) old.replaceWith(win); else veil.append(win);
+}
+
 // ─── The picture's controls ──────────────────────────────────────────────────
 
 function _tvTools(live) {
@@ -269,15 +451,21 @@ function _tvTools(live) {
     minimapLocked ? t('Minimap locked. Click to unlock') : t("Lock the minimap so a stray drag can't move the view"),
     [_tvIcon(TV_ICON.lock)], () => _tvLegacy('btn-minimap-lock')));
   const tr = _tvMake('div', 'tv-row tr tv-tools');
-  tr.append(_tvBtn('tv-ov sq' + (playersViewOn ? ' active' : ''), t("Players' view (hold H) - see your map the way the TV shows it"),
-    [_tvIcon(TV_ICON.tv)], togglePlayersView));
-  if (live) tr.append(_tvBtn('tv-ov sq', t('Match the TV to my view'), [_tvIcon(TV_ICON.sync)], () => _tvLegacy('btn-sync-view')));
-  tr.append(_tvBtn('tv-ov sq', t('Screen and updates'), [_tvIcon(TV_ICON.more)], () => (_tvMenu === 'tv' ? _tvClose() : _tvOpen('tv'))));
+  if (live) {
+    const word = _tvSyncIcon ? [] : [document.createTextNode(t('Sync'))];
+    tr.append(_tvBtn(_tvSyncIcon ? 'tv-ov sq' : 'tv-ov wd', t('Match the TV to my view'), [_tvIcon(TV_ICON.sync)].concat(word),
+      () => _tvLegacy('btn-sync-view')));
+  }
+  const more = _tvBtn('tv-ov sq' + (_tvHot ? ' hot' : '') + (_tvSetup ? ' active' : ''), t('TV setup'), [_tvIcon(TV_ICON.more)], _tvSetupOpen);
+  more.setAttribute('data-tv-more', '');
+  tr.append(more);
   return [tl, tr];
 }
 
 function _tvCaption(pick) {
-  if (pick.kind === 'one') return _tvScreenLabel(pick.display);
+  const sel = _tvSelected();
+  if (sel.kind === 'win') return t('A window');
+  if (sel.kind === 'display') return _tvScreenLabel(sel.display);
   return pick.kind === 'ask' ? t('Pick a screen') : t('No TV found');
 }
 
@@ -285,9 +473,10 @@ function _tvCta(pick) {
   const cta = _tvMake('div', 'tv-cta');
   const cap = _tvCaption(pick);
   const label = _tvText('nm', cap);
-  if (pick.kind === 'one') label.setAttribute('data-no-i18n', '');
-  const sub = _tvBtn('tv-sub', cap, [label, _tvText('car', '▼')], () => (_tvMenu === 'tv' ? _tvClose() : _tvOpen('tv')));
-  const go = _tvBtn('tv-go' + (pick.kind === 'none' ? ' none' : ''), '', [_tvIcon(TV_ICON.tv), document.createTextNode(t('Show on TV'))], _tvShow);
+  if (_tvSelected().kind === 'display') label.setAttribute('data-no-i18n', '');
+  const sub = _tvBtn('tv-sub', cap, [label, _tvText('car', '▼')], _tvSetupOpen);
+  const go = _tvBtn('tv-go' + (pick.kind === 'none' ? ' none' : '') + (_tvGoFit >= 3 ? ' small' : ''), '',
+    (_tvGoFit >= 1 ? [] : [_tvIcon(TV_ICON.tv)]).concat(document.createTextNode(_tvGoFit >= 2 && I18N_LANG === 'ru' ? t('Show on TV short') : t('Show on TV'))), _tvShow);
   go.id = 'tv-go';   // the show-on-tv hint points at it
   cta.append(go, sub);
   return cta;
@@ -318,7 +507,7 @@ function _tvPill() {
   const lv = _tvBtn(['lv', 'sw', parts.length ? '' : 'solo'].join(' ').trim(),
     [full, screen && !window_ ? _tvScreenLabel(screen) : ''].filter(Boolean).join(' - ') + '. ' + t('Stop showing'),
     [_tvMake('span', 'st', [_tvMake('i'), document.createTextNode(where)]),
-     _tvMake('span', 'ac', [_tvIcon(TV_ICON.stop), document.createTextNode(stop)])], _tvStop);
+     _tvMake('span', 'ac', [_tvIcon(TV_ICON.stop)].concat(_tvFit >= 4 ? [] : [document.createTextNode(stop)]))], _tvStop);
   grp.append(lv, ...parts);
   const row = _tvMake('div', 'tv-row bl');
   row.append(grp);
@@ -335,25 +524,29 @@ function _tvWait() {
 
 function _tvTooWide() {
   const grp = document.querySelector('#tv-ui .tv-grp');
-  return !!grp && grp.scrollWidth > _tvEl('minimap-panel').offsetWidth - 14;
+  // ⚠ scrollWidth stops inside the outline, so the outline's own width is added back.
+  return !!grp && grp.scrollWidth + grp.offsetWidth - grp.clientWidth > _tvEl('minimap-panel').offsetWidth - 14;
 }
 
 // Rebuilds only when something it shows has changed, so a button is never replaced between the
-// press and the release of a click.
+// press and the release of a click. The words drop in steps until each row fits: Sync before it
+// touches Lock, the pill's words, then Show on TV's icon, its long label, its size.
 function tvRefresh() {
   if (!_tvInited) return;
   const panel = _tvEl('minimap-panel');
   const live = _tvLive();
   const pick = _tvPickNow();
-  minimapSetShape(live ? null : (pick.kind === 'one' ? { w: pick.display.size.width, h: pick.display.size.height } : null));
+  const sel = _tvSelected();
+  minimapSetShape(live ? null : (sel.kind === 'display' ? { w: sel.display.size.width, h: sel.display.size.height } : null));
   if (live) hintClose('show-on-tv');
   panel.classList.toggle('tv-live', live);
   panel.classList.toggle('tv-off', !live);
   panel.classList.toggle('minimap-locked', minimapLocked);
-  const base = [live, !!_tvWaitSince, _tvRoute, live ? '' : _tvCaption(pick), autoSync, playerUnsent, minimapLocked, playersViewOn,
-    live && !!paneScope().playerIsFullscreen, _tvNote, _tvMenu, panel.offsetWidth, _tvScreenId, _tvDisplays.map(d => d.id).join(','), pick.kind].join('|');
+  const base = [live, !!_tvWaitSince, _tvRoute, live ? '' : _tvCaption(pick), autoSync, paneScope().playerUnsent, minimapLocked,
+    live && !!paneScope().playerIsFullscreen, _tvNote, _tvMenu, panel.offsetWidth, _tvScreenId, _tvDisplays.map(d => d.id).join(','),
+    pick.kind, _tvSetup, _tvHot, I18N_LANG, seatTurn].join('|');
   if (base === _tvKey) return;
-  _tvFit = 0;
+  _tvFit = 0; _tvSyncIcon = false; _tvGoFit = 0;
   _tvKey = base;
   const ui = _tvEl('tv-ui');
   for (;;) {
@@ -362,9 +555,18 @@ function tvRefresh() {
     else if (live) ui.append(..._tvTools(true), _tvPill());
     else ui.append(..._tvTools(false), _tvCta(pick));
     if (_tvNote) ui.append(_tvText('tv-note', _tvNote));
-    if (!live || !_tvTooWide() || _tvFit >= 3) break;
-    _tvFit++;
+    if (_tvWaitSince && !live) break;
+    if (!live) {
+      const go = ui.querySelector('.tv-go');
+      if (go && _tvGoFit < 3 && go.offsetWidth > panel.offsetWidth - 24) { _tvGoFit++; continue; }
+      break;
+    }
+    const l = ui.querySelector('.tv-row.tl').getBoundingClientRect(), r = ui.querySelector('.tv-row.tr').getBoundingClientRect();
+    if (!_tvSyncIcon && l.right + 4 > r.left) { _tvSyncIcon = true; continue; }
+    if (_tvTooWide() && _tvFit < 4) { _tvFit++; continue; }
+    break;
   }
+  if (_tvSetup && !_tvSetupBusy) _tvSetupRender();
 }
 
 function initTvControl() {
@@ -376,6 +578,13 @@ function initTvControl() {
   document.addEventListener('keydown', e => {
     if (e.code === 'Escape' && _tvMenu) { _tvClose(); tvRefresh(); }
   });
+  // Captured, so Esc ends the window and does not also drop the room the DM had picked.
+  document.addEventListener('keydown', e => {
+    if (e.code !== 'Escape' || !_tvSetup) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (_tvSetupDd) { _tvSetupDd = false; _tvSetupRender(); } else _tvSetupClose();
+  }, true);
   new ResizeObserver(tvRefresh).observe(_tvEl('minimap-panel'));
   if (window.electronAPI && window.electronAPI.onDisplaysChanged) window.electronAPI.onDisplaysChanged(_tvOnDisplays);
   setInterval(_tvTick, 1000);

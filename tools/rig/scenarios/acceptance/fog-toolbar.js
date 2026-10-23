@@ -17,8 +17,8 @@
 //       the Brush and the next shape draw. Half is absent under the Brush. Select shows no row.
 //   3.  A picked room's popup: the same three clouds (a click sets that room's fog), a divider, then
 //       the door as a bare button.
-//   4.  The first-map toast is gone. The players' view stays (hold H, the minimap button), and that
-//       button wears a TV icon.
+//   4.  The first-map toast is gone. The players' view stays (hold H); the minimap
+//       carries no button for it.
 //   5.  The Shape list holds shapes only, and the Shape button always wears the shape drawn with.
 //   6.  Shift merges a drawn shape into every room it touches, Alt cuts it out, Ctrl splits along its
 //       edge (Rectangle, Circle) or along an open line (Polygon). Bare, it draws a room. A shape that
@@ -109,15 +109,10 @@ module.exports = async function fogToolbarFeature(rig) {
             'holding H did not put the fog at full strength and hide the room outlines: ' + JSON.stringify([working, held]));
   await dm.evaluate('document.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyH", key: "h", bubbles: true })); 0');
   await lib.settle(dm, '!playersViewOn', 3000);
-  const tvBtn = '#tv-ui .tv-row.tr .tv-ov';
-  const tvIcon = await dm.evaluate('(() => { const b = document.querySelector("' + tvBtn + '"); return { rect: !!b.querySelector("svg rect"), circle: !!b.querySelector("svg circle"), eye: !!b.querySelector("svg path") }; })()');
-  rig.check(tvIcon.rect && !tvIcon.circle && !tvIcon.eye, 'the players view button does not wear a TV icon: ' + JSON.stringify(tvIcon));
-  await dm.evaluate('document.querySelector("' + tvBtn + '").click(); 0');
-  await lib.settle(dm, 'playersViewOn', 3000);
-  rig.check(await dm.evaluate('playersViewOn && document.querySelector("' + tvBtn + '").classList.contains("active")'),
-            'the minimap\'s players\' view button did not turn the view on and light');
-  await dm.evaluate('document.querySelector("' + tvBtn + '").click(); 0');
-  await lib.settle(dm, '!playersViewOn', 3000);
+  // RED BY DESIGN: written against item 217, never re-proved
+  // The minimap has no players' view button any more: its right row holds the ··· button, and Sync while live.
+  const tvBtns = await dm.evaluate('[...document.querySelectorAll("#tv-ui .tv-row.tr .tv-ov")].map(b => b.title)');
+  rig.check(!tvBtns.some(t => /Players/.test(t)), 'the minimap still carries a players view button: ' + JSON.stringify(tvBtns));
   await dm.evaluate('(() => { const i = document.getElementById("door-width-num"); i.focus();' +
                     ' i.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyH", key: "h", bubbles: true })); return 0; })()');
   rig.check(await dm.evaluate('!playersViewOn'), 'H typed in a field turned the players\' view on');

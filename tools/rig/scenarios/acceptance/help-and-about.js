@@ -216,9 +216,11 @@ module.exports = async function helpAndAboutFeature(rig) {
   // for a change would pass whenever auto-sync had already delivered it.
   await dm.evaluate(`(() => {
     globalThis.__rigSends = 0;
-    const real = sendToPlayer;
-    sendToPlayer = function () { globalThis.__rigSends++; return real.apply(this, arguments); };
-    window.sendToPlayer = sendToPlayer;
+    // ⚠ The DM's own Send, which the keys call. sendToPlayer under it bails before the count when no
+    // Player window is open, so it cannot tell a pressed key from a dead one.
+    const real = sendToPlayerNow;
+    sendToPlayerNow = function () { globalThis.__rigSends++; return real.apply(this, arguments); };
+    window.sendToPlayerNow = sendToPlayerNow;
     return 0;
   })()`);
   await dm.evaluate('setPlaceMode("rooms"); __rigDrawShroud(300, 300, 700, 700);' +
@@ -272,6 +274,7 @@ module.exports = async function helpAndAboutFeature(rig) {
     'Ctrl Middle-click',  // a mouse gesture, covered by ping.js
     'Middle-drag Alt+Drag', // panning with a mouse, covered by view.js and first-use-path.js
     'Q',                  // the touchpad's ping, covered by ping.js
+    'H',                  // the players' view, held, covered by fog-toolbar.js
     'M', 'Ctrl F',        // the world map's keys, covered by world-map.js
     'Shift Click', 'Shift Drag', // picking more scenes, covered by world-map.js
     'Enter',              // finishing a road, covered by world-roads.js

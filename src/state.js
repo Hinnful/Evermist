@@ -266,6 +266,11 @@ let autoSync = true;   // Auto until the DM saves Manual (toolbar.js reads 'ever
 let autoSyncTimer = null;
 // Manual mode: a change has been made that the Player has not been sent. Send clears it.
 let playerUnsent = false;
+// Manual mode: what is held back besides fog. scene: a map opened that the TV has not been given;
+// view: a minimap drag the TV has not framed; turn: a Turn pick; anim: fog animation settings.
+// Send delivers all four; Manual to Auto does the same (playerWindow.js).
+const tvWait = { scene: false, view: false, turn: false, anim: false };
+let tvSceneSendTimer = 0;   // a held map change is covering the TV, then sends
 
 // ─── Scene management ────────────────────────────────────────────────────────
 let currentScene    = null;   // full scene record in memory (includes mapBlob ref)

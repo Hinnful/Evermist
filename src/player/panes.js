@@ -60,6 +60,7 @@ window.paneView = {
   get playerIsFullscreen() { return playerIsFullscreen; },
   get minimapView()       { return minimapView; },
   get tvFit()             { return tvFit; },
+  get playerUnsent()      { return playerUnsent; },
   get gridCalArmed()      { return gridCalArmed; },
   get lightsHidden()      { return lightsHidden; },
   get planLights()        { return planLightCount(); },

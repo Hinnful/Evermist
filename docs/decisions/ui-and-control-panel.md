@@ -37,7 +37,7 @@ library open from the rail as centred windows. All three wear the dock's grey.
 Fog, Rooms, Grid, Player and My seat, one section each. An eye means shown or hidden and ends its
 row; a closed eye wears the blue tint. **Reversed in part by** "The fog and the toolbar are rebuilt for a first-time DM": on the bar an eye
 acts at once (Reveal all, Hide all), Scene control's layer eyes keep this meaning, and the minimap's
-players' view button wears a TV icon so an eye never means "view". Numbers are fields with a leading icon you drag to scrub,
+players' view button wears a TV icon so an eye never means "view" (**the minimap button was removed 2026-10-23**; see "TV setup is one window"). Numbers are fields with a leading icon you drag to scrub,
 with no slider and no label. Movement is a preset dropdown and an eye, and Custom… opens the dials
 beside the dock. Reverses "The Animation and Grid Type rows carry no pill": both rows are gone,
 into the dropdown and a two-way segment. Reverses PRODUCT.md's "Cell size keeps its slider": the
@@ -1017,7 +1017,7 @@ bar, the row and the popup share one visual system. Built from throwaway prototy
 ### The settled rules it reverses, by title · `SETTLED` (2026-10-16)
 - "Don't reintroduce a divider on this bar" (REVERTED 2026-08-09): the bar has full-height dividers.
 - Scene control's "the eye means shown/hidden": on the bar an eye acts at once; Scene control's layer eyes keep their
-  meaning, and the minimap's players' view moves to a TV icon.
+  meaning, and the minimap's players' view moves to a TV icon (**reversed 2026-10-23**: the button is gone, hold H stays).
 - "Effect presets: a size row above the bar, the wheel steps it" (2026-09-29): one grid-step size field; the wheel and
   scrub stop at both ends instead of wrapping, and sizes snap to grid squares.
 - "Cut is its own geometry, not a thin Trim" (2026-09-02): Split is Ctrl on a shape, along the edge for Rectangle and Circle
@@ -1195,7 +1195,7 @@ usable since Settings (language, backup Import) is needed first. The add button 
 "+ Map", no longer solid blue. Rejected: an onboarding slide overlay and a glossary (skipped, and a
 tester misdescribed the core concept anyway), showing the hierarchy, a movable toolbar, decorative
 group frames, an "unsent changes" badge (the minimap shows the state), moving Fit to TV, a DM-only
-large picture preview (a new feature). State-driven hints wait for the interface rework.
+large picture preview (a new feature). **Reversed in part 2026-10-23:** the show-state badge and Fit to TV's place were taken up, see "TV setup is one window". State-driven hints wait for the interface rework.
 
 ### The Campaign zooms out to contain, not cover · `SETTLED` (2026-10-22)
 The zoom floor was "cover": the layout filled the window, so any map whose shape differed from the window's
@@ -1226,3 +1226,15 @@ tutorial and glossary stay rejected. Own-action hints replace the toast up, scre
 concept: "Updates" (Auto/Manual) and "Match the TV to my view" replace both meanings of "Sync"; the bar mode is
 "Fog"; backup reads "Back up everything" / "Import a backup"; Half shroud reads "Fog in a half room". The eye
 icon's differing behaviour is left to a look pass.
+
+### TV setup is one window; Manual holds the map until Send · `SETTLED` (2026-10-23)
+Shipped in 4.8.0 (item 217). One centred window holds the screen, Fullscreen, Updates Auto/Manual and Turn as
+three pictures; it opens on the first Show on TV of each launch and on every "..." or screen-name click. Rejected:
+a "Don't show again" (a per-launch prompt is not a setting) and a small menu in the minimap corner (too small, too
+wordy). The minimap keeps what play uses many times: Lock, Sync with its word, "...", Show on TV or the live pill
+with Send; "Match my view" went into the menu briefly and came back. Reverses the minimap's players' view TV icon
+(2026-10-16): hold H stays in the help sheet; revisit only if more than one or two people ask. Turn is offered for
+every map, never disabled. Manual holds opening a map, minimap drag and zoom, Sync, Turn and the fog animation until
+Send, which solves looking at the next map privately (backlog 200, 217) with no new mode. Ping stays live but does
+nothing while the TV shows another map. Two-map mode keeps Send per column. Labels are short words ("When I press
+Send" and "Match my view" rejected as too long); Russian Sync is "Подогнать".

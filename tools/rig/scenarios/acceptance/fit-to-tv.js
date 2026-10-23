@@ -1,24 +1,23 @@
 'use strict';
 
-// fit-to-tv.js — FIT TO TV: a scene's own turn of the TV picture, in the minimap's ··· menu.
+// fit-to-tv.js — TURN: a scene's own turn of the TV picture, three tiles in TV setup.
 //
-// THE GOAL OF THIS FEATURE: a tall map on a wide TV is laid along the TV by one click, upright from
-// the DM's chair, with no image editor and no re-encoding. The laptop never turns with it. Every
-// check below serves that sentence.
+// THE GOAL OF THIS FEATURE: a tall map on a wide TV is laid along the TV by one click on a picture of
+// it, with no image editor and no re-encoding. The laptop never turns with it. Every check below
+// serves that sentence. (The file keeps its name; the feature began as Fit to TV.)
 //
-//   5. The menu has "This map" with a "Fit to TV" row: Off, Fitted, Flipped, back to Off, a hint
-//      that changes with each. A map that already lies along the TV reads "Already fits" and the
-//      row is disabled, only while the fit is Off; a column reads it from its own half.
-//   6. Fitted turns the Player by the seat's rule (90 from the bottom or top chair, 360 minus the
-//      seat from a side chair), Flipped adds 180. The laptop's seat never moves with it, and a
-//      later seat change leaves the fit as it was.
+//   5. TV setup has a Turn row of three pictures, upright and a quarter turn each way, offered for
+//      every map, a tall one and a wide one alike. The current one wears the ring.
+//   6. A tile turns the Player by the same amount whatever the seat (270 and 90). The laptop's seat
+//      never moves with it, and a later seat change leaves the turn as it was.
 //   7. Map, fog, grid and an effect turn together, on the Player's own painted pixels, on an
 //      animated map. The ping keeps its size. Pictures on the TV stay upright.
 //   8. The minimap shows the turned picture and a drag on it goes the way the hand goes. Sync View
-//      frames the TV right with seat 90 and fit 270, where both views lie sideways.
-//   9. The fit is kept per scene, survives a restart, and a scene switch brings the new scene's.
-//  12. In Manual mode a fit reaches the TV at once and carries no pending reveal with it.
-//  10. In two-map mode each half fits its own map.
+//      frames the TV right with seat 90 and turn 270, where both views lie sideways.
+//   9. The turn is kept per scene, survives a restart, and a scene switch brings the new scene's.
+//      An older save holding step 2 shows as the tile with its turn.
+//  12. In Manual mode a turn waits for Send, and Send carries it with the pending reveal.
+//  10. In two-map mode each half turns its own map.
 //
 // ⚠ THE PLAYER'S PIXELS ARE READ FROM A SCREENSHOT, and the expected place of each map point is
 // worked out from the pixi canvas's computed CSS matrix, never from the app's own conversion, so a
@@ -37,20 +36,16 @@ const QUAD = { TL: [150, 520, 141, 85, 36], TR: [850, 520, 58, 107, 53], BL: [15
 
 const DM_HELPERS = `
 globalThis.__fitPick = deg => { document.querySelector('.sa-hit[data-seat-pick="' + deg + '"]').dispatchEvent(new MouseEvent('click', { bubbles: true })); return 0; };
-globalThis.__fitRow = () => {
-  _tvOpen('tv');
-  const pop = document.getElementById('tv-pop');
-  const blk = [...pop.querySelectorAll('.blk')].find(b => (b.querySelector('.lbl') || {}).textContent === 'This map');
-  if (!blk) return null;
-  const row = blk.querySelector('.tv-row2');
-  return { state: row.querySelector('.mt').textContent, hint: blk.querySelector('.hint').textContent,
-           disabled: row.disabled, on: row.classList.contains('on') };
-};
-globalThis.__fitClickRow = () => {
-  __fitRow();
-  const blk = [...document.getElementById('tv-pop').querySelectorAll('.blk')].find(b => (b.querySelector('.lbl') || {}).textContent === 'This map');
-  blk.querySelector('.tv-row2').click();
+globalThis.__fitTile = i => {
+  if (!document.getElementById('tv-setup')) _tvSetupOpen();
+  document.querySelector('#tv-setup [data-tv-turn="' + i + '"]').click();
   return 0;
+};
+globalThis.__fitState = () => {
+  if (!document.getElementById('tv-setup')) _tvSetupOpen();
+  _tvSetupRender();
+  const tiles = [...document.querySelectorAll('#tv-setup [data-tv-turn]')];
+  return { n: tiles.length, on: tiles.findIndex(b => b.classList.contains('on')), disabled: tiles.some(b => b.disabled) };
 };
 globalThis.__fitDrag = () => {
   const c = document.getElementById('minimap-canvas'), r = c.getBoundingClientRect();
@@ -130,52 +125,52 @@ module.exports = async function fitToTv(rig) {
 
   const turnIs = async (sess, want) => !!(await lib.poll(
     async () => ((await sess.evaluate('seatTurn')) === want ? { ok: 1 } : null), 12000));
-  const row = () => dm.evaluate('__fitRow()');
-  const step = async () => { await dm.evaluate('__fitClickRow()'); return row(); };
+  const tile = i => dm.evaluate('__fitTile(' + i + ')');
   const tvState = () => dm.evaluate('({ seat: seatTurn, fit: tvFit })');
+  const TURN = { 1: 270, 2: 90 };
 
-  // ── 5. the menu ──────────────────────────────────────────────────────────
-  // RED ON: the _tvFitBlock append removed from _tvTvMenu (tvControl.js) - 2026-10-17
-  const r0 = await row();
-  rig.check(!!r0 && r0.state === 'Off' && !r0.disabled && !r0.on,
-            'the TV menu has no enabled "Fit to TV" row reading Off for a tall map: ' + JSON.stringify(r0));
-  // RED ON: nextFit's cycle skipping Flipped (tvFit.js) - 2026-10-17
-  const seq = [r0];
-  for (let i = 0; i < 3; i++) seq.push(await step());
-  rig.check(seq.map(s => s && s.state).join() === 'Off,Fitted,Flipped,Off',
-            'three clicks did not step Off, Fitted, Flipped, Off: ' + JSON.stringify(seq));
-  rig.check(new Set(seq.slice(0, 3).map(s => s.hint)).size === 3 && seq[1].on && seq[2].on && !seq[3].on,
-            'the hint under the row does not change with each state, or the row is not lit while a fit is on');
+  // ── 5. the window ────────────────────────────────────────────────────────
+  // RED BY DESIGN: written against item 217, never re-proved
+  const s0 = await dm.evaluate('__fitState()');
+  rig.check(s0.n === 3 && s0.on === 0 && !s0.disabled,
+            'TV setup has no three enabled Turn tiles with upright ringed for a tall map: ' + JSON.stringify(s0));
+  await tile(1);
+  rig.check((await dm.evaluate('__fitState()')).on === 1 && (await tvState()).fit.step === 1,
+            'the first turned tile did not take the ring and the turn');
+  await tile(2);
+  rig.check((await dm.evaluate('__fitState()')).on === 2, 'the second turned tile did not take the ring');
+  await tile(0);
+  const s5 = await dm.evaluate('__fitState()');
+  rig.check(s5.on === 0 && (await tvState()).fit.step === 0, 'the upright tile did not put the turn back: ' + JSON.stringify(s5));
 
-  // ── 6. the turn follows the seat's rule, and only the Player turns ───────
-  // RED ON: fitTurn answering 90 for every seat (tvFit.js) - 2026-10-17
-  const WANT = { 0: 90, 90: 270, 180: 90, 270: 90 };
+  // ── 6. the turn is the same from every seat, and only the Player turns ───
+  // RED BY DESIGN: written against item 217, never re-proved
   for (const seat of [0, 90, 180, 270]) {
     await dm.evaluate('__fitPick(' + seat + ')');
     const keyBefore = await dm.evaluate('localStorage.getItem("evermist.seatTurn")');
-    await step();
-    const got = await turnIs(player, WANT[seat]);
-    const st = await tvState();
-    rig.check(got, 'seat ' + seat + ': Fitted did not turn the Player to ' + WANT[seat] + ', it is at ' + await player.evaluate('seatTurn'));
-    rig.check(st.seat === seat && st.fit.turn === WANT[seat] && st.fit.step === 1,
-              'seat ' + seat + ': the laptop turned with the fit, or the fit is not what the menu says: ' + JSON.stringify(st));
+    for (const i of [1, 2]) {
+      await tile(i);
+      const got = await turnIs(player, TURN[i]);
+      const st = await tvState();
+      rig.check(got, 'seat ' + seat + ': tile ' + i + ' did not turn the Player to ' + TURN[i] + ', it is at ' + await player.evaluate('seatTurn'));
+      rig.check(st.seat === seat && st.fit.turn === TURN[i] && st.fit.step === 1,
+                'seat ' + seat + ': the laptop turned with the tile, or the saved turn is not {1, ' + TURN[i] + '}: ' + JSON.stringify(st));
+    }
     rig.check(await player.evaluate('localStorage.getItem("evermist.seatTurn")') === keyBefore,
               'seat ' + seat + ': the Player wrote the seat key the DM window reads, so the next launch turns the laptop');
-    await step();
-    rig.check(await turnIs(player, (WANT[seat] + 180) % 360), 'seat ' + seat + ': Flipped did not add 180 to the Player');
-    await step();
-    rig.check(await turnIs(player, 0), 'seat ' + seat + ': the third click did not put the Player back to 0');
+    await tile(0);
+    rig.check(await turnIs(player, 0), 'seat ' + seat + ': the upright tile did not put the Player back to 0');
   }
   await dm.evaluate('__fitPick(0)');
-  await step();
+  await tile(2);
   await turnIs(player, 90);
   await dm.evaluate('__fitPick(180)');
-  await lib.hold(800, 'long enough for a seat change that wrongly reached the fit to turn the Player');
+  await lib.hold(800, 'long enough for a seat change that wrongly reached the turn to move the Player');
   const kept = await tvState();
   rig.check(kept.fit.turn === 90 && await player.evaluate('seatTurn') === 90,
-            'a later seat change moved the fit: ' + JSON.stringify(kept));
+            'a later seat change moved the turn: ' + JSON.stringify(kept));
   await dm.evaluate('__fitPick(0)');
-  await step(); await step();
+  await tile(0);
 
   // ── 7. everything on the TV turns together, on the Player's own pixels ───
   await dm.evaluate(`revealCircle(500, 800, 1000); revealCircle(850, 1850, 200); rebuildFogEffect(); fogDirty = true;
@@ -202,8 +197,8 @@ module.exports = async function fitToTv(rig) {
   rig.check(base.ok, 'the probes do not read the untouched TV, so the turned reads below prove nothing: ' + JSON.stringify(base.last));
 
   // RED ON: the seat-turned canvas rule broken in base.css, and separately setPlayerTurn's initPlayerMapRegionTexture call removed (mapTurn.js) - 2026-10-17
-  for (const [label, want] of [['Fitted', 90], ['Flipped', 270]]) {
-    await step();
+  for (const [label, want, i] of [['A quarter turn one way', 270, 1], ['A quarter turn the other way', 90, 2]]) {
+    await tile(i);
     await turnIs(player, want);
     await lib.settle(player, '!viewportDirty && !fogDirty', 8000);
     const shot = await shoot(painted(want));
@@ -217,7 +212,7 @@ module.exports = async function fitToTv(rig) {
       return v ? getComputedStyle(v).visibility : 'none'; })()`);
     rig.check(video === 'hidden' || video === 'none', label + ': the Player\'s own <video> shows unturned under the map: ' + video);
   }
-  await step();
+  await tile(0);
   await turnIs(player, 0);
 
   // ── 7b. the ping keeps its size ──────────────────────────────────────────
@@ -230,7 +225,7 @@ module.exports = async function fitToTv(rig) {
     return hs ? hs.a[0] : -1;
   };
   const hOff = await pingH();
-  await step();
+  await tile(2);
   await turnIs(player, 90);
   const hFit = await pingH();
   const ch = await player.evaluate('container.clientHeight');
@@ -262,7 +257,7 @@ module.exports = async function fitToTv(rig) {
   // RED ON: the minimap drag left unturned through the fit (minimap.js) - 2026-10-17
   const drag = await dm.evaluate('__fitDrag()');
   rig.check(Math.abs(drag.dx) < 1 && drag.dy > 5,
-            'at fit 90 a drag to the right on the minimap moved the view ' + JSON.stringify(drag) + ', not the way the hand went');
+            'at turn 90 a drag to the right on the minimap moved the view ' + JSON.stringify(drag) + ', not the way the hand went');
 
   // The players' own hands on the TV: a drag carries the map with it and the wheel zooms about the pointer.
   // RED ON: the Player's pan delta left unturned and its wheel anchor read from the rect (player.js) - 2026-10-17
@@ -283,7 +278,7 @@ module.exports = async function fitToTv(rig) {
 
   // RED ON: regionSwaps gated on the seat alone (viewport.js), and the minimap-zoom swap in toolbar.js forced off - 2026-10-17
   await dm.evaluate('__fitPick(90); 0');
-  await step();
+  await tile(1);
   await turnIs(player, 270);
   const st90 = await tvState();
   await dm.evaluate('applyCamera({ mapCX: 500, mapCY: 1000, zoom: 1 }); viewportDirty = true; document.getElementById("btn-sync-view").click(); 0');
@@ -301,26 +296,26 @@ module.exports = async function fitToTv(rig) {
   const wantMz = Math.min(sv.ph / sv.r.viewW, sv.pw / sv.r.viewH);
   rig.check(Math.abs(sv.mz - wantMz) < wantMz * 0.03, 'the minimap frame did not take the turned TV\'s zoom after Sync View: ' + sv.mz.toFixed(3) + ', wanted ' + wantMz.toFixed(3));
 
-  // ── 12. Manual mode: the fit reaches the TV, a pending reveal does not ───
-  // RED ON: sendToPlayer(true) added to stepSceneFit (playerWindow.js) - 2026-10-17
+  // ── 12. Manual mode: a turn waits for Send and arrives with the pending reveal ───
+  // RED BY DESIGN: written against item 217, never re-proved
   await dm.evaluate('document.getElementById("btn-auto-sync").click(); 0');
   rig.check(await dm.evaluate('autoSync === false'), 'Manual mode did not switch on');
   await dm.evaluate('revealCircle(500, 1950, 150); rebuildFogEffect(); fogDirty = true; scheduleAutoSync(); 0');
   rig.check(await dm.evaluate('playerUnsent === true'), 'a reveal in Manual mode did not wait for Send');
   const tvFog = 'fogDataCtx.getImageData(Math.round(500 / FOG_SCALE), Math.round(1950 / FOG_SCALE), 1, 1).data[3]';
-  await step();
-  rig.check(await turnIs(player, 0), 'in Manual mode the fit did not reach the TV');
-  await lib.hold(1200, 'long enough for a fog-update riding with the fit to land');
-  rig.check(await player.evaluate(tvFog) > 200 && await dm.evaluate('playerUnsent === true'),
-            'the fit carried the pending reveal to the TV, or marked it sent');
+  await tile(0);
+  await lib.hold(1200, 'long enough for a turn that wrongly went out at once to reach the Player');
+  rig.check(await player.evaluate('seatTurn') === 270 && await player.evaluate(tvFog) > 200 && await dm.evaluate('playerUnsent === true'),
+            'in Manual the turn reached the TV before Send, or the reveal did');
   await dm.evaluate('sendToPlayerNow(); 0');
+  rig.check(await turnIs(player, 0), 'Send did not carry the turn to the TV');
   const sent = await lib.poll(async () => { const a = await player.evaluate(tvFog); return a < 60 ? { a } : null; }, 15000);
-  rig.check(!!sent, 'Send never delivered the reveal, so the check above could not have seen a leak');
+  rig.check(!!sent, 'Send never delivered the reveal');
   await dm.evaluate('document.getElementById("btn-auto-sync").click(); 0');
 
   // ── 9. the fit is kept per scene ─────────────────────────────────────────
   // RED ON: the tvFit line removed from doAutoSave (scenes.js) - 2026-10-17
-  await step();
+  await tile(1);
   const saved = await dm.evaluate('({ step: tvFit.step, turn: tvFit.turn })');
   await turnIs(player, saved.turn);
   const stored = await lib.poll(async () => {
@@ -336,11 +331,12 @@ module.exports = async function fitToTv(rig) {
   const wideId = await dm.evaluate('currentScene.id');
   rig.check(await turnIs(player, 0) && (await dm.evaluate('tvFit.step')) === 0,
             'a scene with no fit came up with the previous scene\'s turn');
-  const wide = await row();
-  rig.check(wide && wide.disabled && wide.state === 'Already fits', 'a wide map on a wide TV does not read "Already fits": ' + JSON.stringify(wide));
+  const wide = await dm.evaluate('__fitState()');
+  rig.check(wide.n === 3 && wide.on === 0 && !wide.disabled, 'a wide map on a wide TV does not offer all three tiles: ' + JSON.stringify(wide));
   await dm.evaluate('tvFit = { step: 1, turn: 90 }; 0');
-  const wideOn = await row();
-  rig.check(wideOn && !wideOn.disabled && wideOn.state === 'Fitted', 'a fit that is on is stuck behind a disabled row: ' + JSON.stringify(wideOn));
+  rig.check((await dm.evaluate('__fitState()')).on === 2, 'a saved {1, 90} does not show as the second turned tile');
+  await dm.evaluate('tvFit = cleanFit({ step: 2, turn: 270 }); 0');
+  rig.check((await dm.evaluate('__fitState()')).on === 1, 'an older save holding step 2 does not show as the tile with its turn');
   await dm.evaluate('tvFit = { step: 0, turn: 0 }; 0');
   await dm.evaluate('switchScene(' + JSON.stringify(tallId) + '); 0');
   await dm.waitFor('currentScene && currentScene.id === ' + JSON.stringify(tallId) + ' && fogCoverT === 0', 30000, 'the tall scene to come back');
@@ -363,7 +359,7 @@ module.exports = async function fitToTv(rig) {
   rig.check(await turnIs(player, saved.turn), 'the Player did not come up turned after a restart');
 
   // ── 10. two maps ─────────────────────────────────────────────────────────
-  // RED ON: the pane-tv-fit-step handler removed (paneRuntime.js) - 2026-10-17
+  // RED BY DESIGN: the pane-tv-fit handler removed (paneRuntime.js); rewritten for item 217
   await dm.waitFor('fogCoverT === 0', 30000, 'the scene cover to lift');
   await dm.evaluate('document.getElementById("btn-two-maps").click(); 0');
   await dm.waitFor('panesActive && panes.A.ready && panes.B.ready', 180000, 'both columns to come up');
@@ -377,34 +373,19 @@ module.exports = async function fitToTv(rig) {
   await dm.evaluate(DM_HELPERS);
   rig.check(await turnIs(tvA, saved.turn) && await turnIs(tvB, 0),
             'the two halves did not come up with their own maps\' fits: A ' + await tvA.evaluate('seatTurn') + ', B ' + await tvB.evaluate('seatTurn'));
+  // RED BY DESIGN: written against item 217, never re-proved
   await dm.evaluate('selectPane("A"); 0');
-  const aRow = async () => { await lib.hold(250, 'a column answers a message later'); return row(); };
-  await dm.evaluate('__fitClickRow()');
-  await aRow();
-  await dm.evaluate('__fitClickRow()');
-  const aOff = await aRow();
-  rig.check(await turnIs(tvA, 0), 'column A\'s own fit did not step back to Off on its half');
-  rig.check(aOff && aOff.disabled && aOff.state === 'Already fits',
-            'a tall map in a column\'s narrow half does not read "Already fits" from that half: ' + JSON.stringify(aOff));
-  // The default split gives each map a half shaped like itself, so nothing crosses. Dragging the
-  // divider is what makes a half cross: A wide enough for the tall map to lie across, B too narrow
-  // for the wide one.
-  await dm.evaluate('_paneSplit = 0.85; applyPaneSplit(); broadcastToPanes({ type: "pane-refit" }); sendStageSplit(); 0');
-  const aCross = await lib.poll(async () => { const r = await row(); return r && !r.disabled ? { r } : null; }, 15000);
-  rig.check(!!aCross && aCross.r.state === 'Off', "after the divider moved, column A's half did not read the tall map as crossing it: " + JSON.stringify(aCross));
-  await dm.evaluate('__fitClickRow()');
-  const aTurn = WANT[(await dm.evaluate('seatTurn'))];
-  rig.check(await turnIs(tvA, aTurn), 'column A did not fit its own half: ' + await tvA.evaluate('seatTurn') + ', wanted ' + aTurn);
+  await tile(0);
+  rig.check(await turnIs(tvA, 0), 'column A\'s own turn did not step back to upright on its half');
+  await tile(2);
+  rig.check(await turnIs(tvA, 90), 'column A did not turn its own half');
+  rig.check(await tvB.evaluate('seatTurn') === 0, 'a turn picked for column A turned column B\'s half too');
   await dm.evaluate('selectPane("B"); 0');
-  const bCross = await lib.poll(async () => { const r = await row(); return r && !r.disabled && r.state === 'Off' ? { r } : null; }, 15000);
-  rig.check(!!bCross, "column B's narrow half did not read the wide map as crossing it: " + JSON.stringify(await row()));
-  await dm.evaluate('__fitClickRow()');
-  await dm.evaluate('__fitClickRow()');
-  const bTurn = (aTurn + 180) % 360;
-  rig.check(await turnIs(tvB, bTurn), 'column B did not fit its own half: ' + await tvB.evaluate('seatTurn') + ', wanted ' + bTurn);
-  rig.check(await tvA.evaluate('seatTurn') === aTurn, "a fit stepped on column B turned column A's half too");
-  const halves = await dm.evaluate('_mmGeom().halves.map(h => h.scope.tvFit.step)');
-  rig.check(JSON.stringify(halves) === '[1,2]', "the minimap does not read each half's own fit: " + JSON.stringify(halves));
+  await tile(1);
+  rig.check(await turnIs(tvB, 270), 'column B did not turn its own half');
+  rig.check(await tvA.evaluate('seatTurn') === 90, 'a turn picked for column B turned column A\'s half too');
+  const halves = await dm.evaluate('_mmGeom().halves.map(h => h.scope.tvFit.turn)');
+  rig.check(JSON.stringify(halves) === '[90,270]', "the minimap does not read each half's own turn: " + JSON.stringify(halves));
   await dm.evaluate('document.querySelector(`.pane-col[data-pane="B"] .pane-close`).click(); 0');
   await dm.waitFor('!panesActive', 30000, 'two-map mode to close');
 };

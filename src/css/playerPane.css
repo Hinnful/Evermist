@@ -1,5 +1,5 @@
 /* playerPane.css — what sits in the minimap: the picture's clip, Show on TV and its states, the pill,
-   the TV menu and the help box (tvControl.js builds them); then the stepper and the go-live button
+   the screen question, the help box and TV setup (tvControl.js builds them); then the stepper and the go-live button
    other panes reuse. The minimap's place, size and glow are dock.css's. */
   #tv-clip {
     position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
@@ -34,6 +34,10 @@
   }
   #minimap-panel:hover .tv-ov, .tv-ov.active { opacity: 1; }
   .tv-ov:hover { background: var(--g-pick); }
+  /* Sync carries its word, at the buttons' height. */
+  .tv-ov.wd { padding: 0 9px 0 8px; gap: 6px; font: 500 12px/1 system-ui, -apple-system, sans-serif; }
+  /* The ··· button glows for a moment when TV setup has flown into it. */
+  .tv-ov.hot { opacity: 1; box-shadow: 0 0 0 2px var(--b-icon), 0 0 14px 3px rgba(92, 177, 255, 0.6); }
   .tv-ov.active { background: linear-gradient(var(--b-tint), var(--b-tint)), var(--g-hover); color: var(--b-icon); }
 
   /* Off: the one button the DM needs, and the screen it will use. */
@@ -61,13 +65,11 @@
   /* Live: the state and its way back in one pill. At rest it states the fact; under the pointer it
      offers Stop, and both words share one cell so the pill keeps its width. */
   .tv-grp { pointer-events: auto; display: inline-flex; align-items: stretch; height: 30px; max-width: 100%; border-radius: 8px;
-            overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6); }
+            overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6); border: 1.5px solid var(--b-solid); }
   .tv-grp > * { border: 0; display: inline-flex; align-items: center; gap: 7px; padding: 0 10px; font: 600 12px/1 system-ui;
                 cursor: pointer; white-space: nowrap; position: relative; }
   .tv-grp.tight > * { padding: 0 7px; }
-  .tv-grp .lv { background: linear-gradient(var(--b-tint-h), var(--b-tint-h)), var(--g-bg); color: #fff;
-                border: 1.5px solid var(--b-solid); border-right: 0; border-radius: 8px 0 0 8px; }
-  .tv-grp .lv.solo { border-right: 1.5px solid var(--b-solid); border-radius: 8px; }
+  .tv-grp .lv { background: linear-gradient(var(--b-tint-h), var(--b-tint-h)), var(--g-bg); color: #fff; }
   .tv-grp .lv.sw { display: inline-grid; align-items: center; justify-items: center; }
   .tv-grp .sw .st, .tv-grp .sw .ac { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: 7px; }
   .tv-grp .sw .ac { visibility: hidden; }
@@ -75,9 +77,8 @@
   .tv-grp .sw:hover .ac { visibility: visible; }
   .tv-grp .lv.sw:hover { background: var(--b-solid); }
   .tv-grp .lv i { width: 7px; height: 7px; border-radius: 50%; background: var(--b-icon); animation: tvPulse 2.6s ease-in-out infinite; }
-  .tv-grp .sd { background: var(--g-hover); color: var(--g-text); border-left: 1px solid var(--g-pick); }
+  .tv-grp .sd { background: var(--g-hover); color: var(--g-text); border-left: 1px solid rgba(12, 140, 233, 0.45); }
   .tv-grp .sd:hover { background: var(--g-pick); }
-  .tv-grp .sd:last-child { border-radius: 0 8px 8px 0; }
   .tv-grp .unsent { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--b-icon); }
   @keyframes tvPulse { 50% { opacity: 0.3; } }
 
@@ -93,7 +94,7 @@
             color: var(--g-text); font: 500 12px/1 system-ui; cursor: pointer; }
   .tv-btn:hover { background: var(--g-hover); }
 
-  /* The menu and the help box open above the picture, in Scene control's type. */
+  /* The screen question and the help box open above the picture, in Scene control's type. */
   #tv-pop {
     position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 20; width: 236px; overflow: hidden;
     background: var(--g-bg); border: 1px solid var(--g-line); border-radius: var(--panel-radius);
@@ -102,24 +103,15 @@
   #tv-pop[hidden] { display: none; }
   #tv-pop.help { width: 290px; }
   .tv-menu { padding: 12px 12px 14px 14px; display: flex; flex-direction: column; gap: 12px; }
-  .tv-menu .ttl, .tv-menu .q { font: 600 12px/1.3 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .tv-menu .q { font: 600 12px/1.3 system-ui, -apple-system, sans-serif; color: var(--g-text); }
   .tv-menu .blk { display: flex; flex-direction: column; gap: 6px; }
   .tv-menu .lbl { font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
   .tv-row2 { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px; border: 0; border-radius: 5px;
              background: var(--g-field); color: var(--g-text); font: 500 11.5px/1 system-ui, sans-serif; cursor: pointer;
              text-align: left; min-width: 0; }
   .tv-row2:hover { background: var(--g-hover); }
-  .tv-row2:disabled { background: var(--g-field); color: var(--g-dim); cursor: default; }
-  .tv-row2.on { background: var(--g-pick); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
   .tv-row2 .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .tv-row2 .mt { margin-left: auto; flex: none; color: var(--g-dim); font: 400 11px/1 system-ui, sans-serif; }
-  .tv-row2.none { background: none; color: var(--g-dim); cursor: default; padding: 0; }
-  .tv-menu .seg { display: flex; gap: 2px; padding: 2px; border-radius: 5px; background: var(--g-field); }
-  .tv-menu .seg button { flex: 1; height: 22px; border: 0; border-radius: 4px; background: none; color: var(--g-dim);
-                         font: 500 11px/1 system-ui, sans-serif; cursor: pointer; }
-  .tv-menu .seg button.on { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
-  .tv-menu .seg button:hover:not(.on) { background: var(--g-hover); color: var(--g-text); }
-  .tv-menu .hint { color: var(--g-dim); font: 400 11px/1.4 system-ui, sans-serif; }
   .tv-help { padding: 12px; font: 400 12px/1.45 system-ui; color: var(--g-text); }
   .tv-help .t { display: block; font: 600 12px/1 system-ui; margin-bottom: 7px; }
   .tv-help .b { font-weight: 600; }
@@ -127,6 +119,37 @@
   .tv-help .act { display: flex; gap: 6px; margin-top: 10px; }
   .tv-lnk { margin-top: 10px; border: 0; background: none; padding: 0; color: var(--g-dim); font: 400 11.5px/1 system-ui;
             cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+  /* ===== TV SETUP (tvControl.js): an .sm-win at the question width, centred over the map ===== */
+  .tvs { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center;
+         background: var(--veil); transition: background .45s; }
+  .tvs .sm-wbody { overflow: visible; display: flex; flex-direction: column; padding: 14px 16px 16px; }
+  .tvs .sm-sub { margin: 16px 0 6px; }
+  .tvs .sm-sub:first-child { margin-top: 0; }
+  .tvs .tv-ic { display: inline-flex; flex: none; }
+  .tvs .sm-hbtn.dd { width: 100%; padding: 0 9px; }
+  .tvs .sm-hbtn.dd .sm-dim { font-weight: 400; }
+  .tvs .ddw { position: relative; }
+  .tvs #tb-dd { position: absolute; zoom: 1; left: 0; right: 0; top: calc(100% + 4px); min-width: 0; }
+  /* The pick-one pill, in the skin the fight table's window wears. */
+  .tvs .cp-tabs { padding: 2px; gap: 2px; border: 0; border-radius: 6px; background: var(--g-field); }
+  .tvs .cp-segtab { height: 24px; border: 0; border-radius: 4px; color: var(--g-dim); font: 500 12px/16px system-ui, -apple-system, sans-serif; }
+  .tvs .cp-segtab:hover:not(.active) { background: var(--g-hover); color: var(--g-text); }
+  .tvs .cp-segtab.active { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+  /* Turn: the TV three ways, as the seat sees it. */
+  .tv-turn { display: flex; justify-content: center; gap: 10px; }
+  .tv-turn button { position: relative; flex: none; width: 102px; height: 57px; padding: 0; border: 0; border-radius: 6px; overflow: hidden;
+                    background: var(--fog-base); cursor: pointer; box-shadow: inset 0 0 0 1px var(--g-line); }
+  .tv-turn button:hover { box-shadow: inset 0 0 0 1px var(--g-pick); }
+  .tv-turn button.on { box-shadow: 0 0 0 2px var(--b-solid); }
+  .tv-turn.side button { width: 60px; height: 107px; }
+  .tv-turn .tvp { position: absolute; left: 50%; top: 50%; width: 102px; height: 57px; translate: -50% -50%; }
+  .tv-turn.side .tvp { width: 107px; height: 60px; }
+  .tvs .sm-win.fly { transition: transform .45s cubic-bezier(.5, 0, .3, 1), opacity .45s; opacity: 0; }
+  .tvs-note { margin-top: 16px; color: var(--g-dim); font: 400 11px/1.4 system-ui, -apple-system, sans-serif; }
+  .tvs-note .kmore { display: inline-grid; place-items: center; width: 18px; height: 16px; margin: 0 1px; border-radius: 4px;
+                     background: var(--g-field); color: var(--g-text); vertical-align: -3px; }
+  .tvs-note .kmore svg { width: 11px; height: 11px; }
 
   /* Row of controls: a flexible group on the left, independent buttons trailing it.
      Buttons are centred against a taller toggle pill rather than stretched. */

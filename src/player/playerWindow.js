@@ -110,10 +110,44 @@ function canSendToPlayer() {
   return !!(mapOffscreen && fogDataCanvas && playerWindow && !playerWindow.closed && !tvHeld);
 }
 
-// The DM's own push (Send, Space, Shift+S) lifts a hold; every automatic path stays behind it.
+// The DM's own push (Send, Space, Shift+S) lifts a hold; every automatic path stays behind it. In
+// Manual it also delivers what was held besides fog (tvWait): animation and Turn first, then a map
+// change the way Auto does it - cover, tint, and the new map once the fog has closed.
 function sendToPlayerNow() {
   tvHeld = false;
-  sendToPlayer();
+  deliverToPlayer();
+}
+
+function deliverToPlayer() {
+  if (!canSendToPlayer() || tvSceneSendTimer) return;
+  if (tvWait.anim) syncAnimToPlayer(true, true);
+  if (tvWait.scene) {
+    tvWait.scene = false;
+    playerWindow.postMessage({ type: 'scene-transition', phase: 'out' }, '*');
+    playerWindow.postMessage({ type: 'scene-transition', phase: 'tint', pickedHex: fogPickedHex }, '*');
+    tvSceneSendTimer = setTimeout(() => { tvSceneSendTimer = 0; deliverHeld(true); }, FOG_SCENE_COVER_MS);
+    return;
+  }
+  deliverHeld(false);
+}
+
+function deliverHeld(sceneChange) {
+  if (!canSendToPlayer()) return;
+  // A first delivery carries the turn in its map message; a map already there is told apart.
+  if (tvWait.turn && !sceneChange) playerWindow.postMessage({ type: 'tv-fit', turn: tvFit.turn }, '*');
+  // The drag's own framing, and the message that makes the Player follow the DM again.
+  if (tvWait.view) playerWindow.postMessage({ type: 'view-snap', ...minimapView }, '*');
+  sendToPlayer(false, sceneChange);
+}
+
+// The TV shows a map other than the one open here: a ping would point at the wrong place.
+function tvShowsOtherMap() { return tvWait.scene || !!tvSceneSendTimer; }
+
+// A map change the DM left on the laptop is cancelled by opening another map.
+function dropHeldSceneSend() {
+  if (!tvSceneSendTimer) return;
+  clearTimeout(tvSceneSendTimer);
+  tvSceneSendTimer = 0;
 }
 
 // The open scene is gone: the TV closes its fog over it and falls back to its waiting screen.
@@ -152,6 +186,8 @@ function onSceneLoaded() {
 function sendToPlayer(fogOnly = false, sceneChange = false) {
   if (!canSendToPlayer()) return;
   playerUnsent = false;
+  const viewHeld = tvWait.view;
+  tvWait.scene = tvWait.view = tvWait.turn = false;
 
   // Fog sent at 1/4 scale (native fogDataCanvas size) — much smaller than upscaling.
   const fogDataUrl = fogDataCanvas.toDataURL('image/png');
@@ -159,7 +195,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
   // fogOnly=true (Auto-sync): omit view so player keeps its pan/zoom.
   // fogOnly=false (manual Send/Sync): include view so player follows DM viewport.
   let view;
-  if (!fogOnly) view = dmVisibleRegion();
+  if (!fogOnly) view = viewHeld ? { ...minimapView } : dmVisibleRegion();
 
   const isShroud   = fogTransIsShroud;
   // Only trigger a Player transition when fog actually changed.
@@ -212,26 +248,32 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
 
 // Syncs fog-animation and video-frame-rate params to the Player window.
 // pass includeWarp=true when cloud warp params changed (triggers regen on Player).
-function syncAnimToPlayer(includeWarp) {
+function syncAnimToPlayer(includeWarp, deliver) {
   const msg = { type: 'anim-params', fogAnimEnabled, fogAnimSpeed, driftScale, cloudFrameSpeed, alphaPulseAmp };
   if (includeWarp) { msg.cloudWarpStrength = cloudWarpStrength; msg.cloudWarpRadius = cloudWarpRadius; }
   // The same parameter set every animation control ends in, so one forward covers the presets,
   // the advanced sliders and the on/off button together.
   if (paneForward('anim', msg)) return;
+  // Manual holds a change until Send. `deliver` is Send itself and the Player's own hello.
+  if (!autoSync && !deliver) { tvWait.anim = true; playerUnsent = true; return; }
+  tvWait.anim = false;
   if (!playerWindow || playerWindow.closed) return;
   playerWindow.postMessage(msg, '*');
 }
 
-// Fit to TV: one click of the TV menu's row steps the open scene's fit and tells the Player at once.
-// ⚠ ITS OWN MESSAGE, NEVER A fog-update: that carries the live fog, so in Manual mode it would hand the
-// TV every pending reveal. A held or not-yet-mapped Player gets the fit with its next map instead.
-function stepSceneFit() {
-  if (paneForward('tv-fit-step')) return;   // two maps: the selected column owns the scene
+// Turn: the open scene's picture of the TV, one of the three tiles (tvFit.js). Its own message, never a
+// fog-update: that carries the live fog, so in Manual it would hand the TV every pending reveal. In
+// Manual it waits for Send; a held or not-yet-mapped Player gets it with its next map.
+function setSceneFit(tile) {
+  if (paneForward('tv-fit', { tile })) return;   // two maps: the selected column owns the scene
   if (!currentScene) return;
-  tvFit = nextFit(tvFit, seatTurn);
+  const next = fitForTile(tile);
+  if (next.step === tvFit.step && next.turn === tvFit.turn) return;
+  tvFit = next;
   doAutoSave();
   minimapSeedView();
-  if (canSendToPlayer() && playerMapSent) playerWindow.postMessage({ type: 'tv-fit', turn: tvFit.turn }, '*');
+  if (!autoSync) { tvWait.turn = true; playerUnsent = true; }
+  else if (canSendToPlayer() && playerMapSent) playerWindow.postMessage({ type: 'tv-fit', turn: tvFit.turn }, '*');
   minimapLayout();
 }
 
@@ -240,7 +282,7 @@ function stepSceneFit() {
 // The DM sees the ping too, so they know what the TV got. A column's playerWindow is its own half.
 function pingAt(mx, my) {
   showPing(mx, my);
-  if (canSendToPlayer()) playerWindow.postMessage({ type: 'ping', x: mx, y: my }, '*');
+  if (canSendToPlayer() && !tvShowsOtherMap()) playerWindow.postMessage({ type: 'ping', x: mx, y: my }, '*');
 }
 
 function syncFogColorToPlayer(pickedHex) {

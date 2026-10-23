@@ -19,7 +19,13 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   // Abort the outgoing crossfade, so its tick cannot run against orphaned snapshots. The drifting
   // anim loop is idempotent - leave it running.
   stopFogTransition();
-  if (!isPlayer && !tvHeld && playerWindow && !playerWindow.closed) {
+  dropHeldSceneSend();
+  // ⚠ MANUAL POSTS NOTHING: the TV keeps the old map, uncovered, until Send runs the whole change.
+  if (!isPlayer && !autoSync && !tvHeld && playerWindow && !playerWindow.closed) {
+    tvWait.scene = true;
+    playerUnsent = true;
+  }
+  if (!isPlayer && autoSync && !tvHeld && playerWindow && !playerWindow.closed) {
     playerWindow.postMessage({ type: 'scene-transition', phase: 'out' }, '*');
     _sceneOutPostedAt = Date.now();
   }
@@ -30,7 +36,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
 
   // The destination fog colour, AS SOON AS IT IS KNOWN, so the Player reaches it while the fog is
   // still closing. ⚠ Must beat applyFogSettingsFromScene, which would land it a frame later.
-  if (!isPlayer && !tvHeld && playerWindow && !playerWindow.closed) {
+  if (!isPlayer && autoSync && !tvHeld && playerWindow && !playerWindow.closed) {
     const destHex = scene.fogSettings && scene.fogSettings.pickedHex;
     if (destHex) playerWindow.postMessage({ type: 'scene-transition', phase: 'tint', pickedHex: destHex }, '*');
   }

@@ -85,11 +85,11 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `player/panes.js` | Two-column mode: the columns, the divider, the messages sent to them |
 | `player/stageWindow.js` | The two-map Player window, DM side |
 | `player/stage.js` | The Player window in two-map mode: a Player in each half, the chasm between |
-| `render/playersView.js` | The players' view: held H or the minimap's eye |
+| `render/playersView.js` | The players' view: held H |
 | `player/minimap.js` | Minimap render, drag/zoom remote, two-way view sync |
 | `player/tvPick.js` | Pure kernel: which screen is the TV, from the display list and the remembered pick. Tested |
-| `player/tvFit.js` | Pure kernel: Fit to TV, a scene's turn of the TV picture: the cycle, the seat's choice, when the row is disabled. Tested |
-| `player/tvControl.js` | Show on TV: the minimap's off, waiting and live states, the pill, the TV menu, the help box |
+| `player/tvFit.js` | Pure kernel: Turn, a scene's turn of the TV picture: the three tiles and the saved form each reads as. Tested |
+| `player/tvControl.js` | Show on TV: the minimap's off, waiting and live states, the pill, TV setup, the help box |
 | `render/video.js` | Animated-map handling |
 | `render/videoDiag.js` | Video diagnostics overlay and disk log |
 | `render/display.js` | Display detection |

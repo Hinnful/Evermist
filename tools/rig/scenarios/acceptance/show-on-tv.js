@@ -16,7 +16,7 @@
 //      middle, and My seat turns the box and its picture while the buttons stay upright.
 //   D. Before the map is on the TV the minimap shows the Show on TV button (grey while no TV is found,
 //      see tv-rescan.js), the caption with its arrow, and a dimmed picture with a faint blue edge.
-//   E. Lock is top-left; Sync (live only) and the menu are top-right; faint until hovered; a
+//   E. Lock is top-left; Sync (live only) and ··· are top-right; faint until hovered; a
 //      Lock that is on stays fully visible, in the quiet tint and not solid blue.
 //   F. With several other screens and none remembered, Show on TV asks which; the answer is
 //      remembered, and next time it goes straight there. A screen with no name is "Screen N",
@@ -25,7 +25,7 @@
 //   H. Live: a breathing blue edge and a pill that reads "Live in a window"; Stop closes the Player.
 //   I. In Manual a Send part joins the pill, with a dot while changes wait; Send clears it.
 //   J. On the window route a Fullscreen part joins the pill, its tooltip names the F11 key.
-//   K. No label is cut at seat 0 or seat 90, with every part on the pill.
+//   K. No label is cut at any seat, with every part on the pill, and Sync never touches Lock.
 //   L. With two maps the minimap holds both pictures in one TV shape, a press on a half selects
 //      its column, and there is one pill with one Stop.
 //
@@ -132,8 +132,8 @@ module.exports = async function showOnTv(rig) {
   })()`);
   rig.check(tools.lockLeft < 20 && tools.lockTop < 20 && tools.menuRight < 20 && tools.menuTop < 20,
             'E: Lock is not top-left, or the menu is not top-right: ' + JSON.stringify(tools));
-  // The top-right row holds the players' view and the menu at rest; Sync joins them only while live.
-  rig.check(tools.sync === 2, 'E: Sync is on the minimap while the map is not on the TV: ' + JSON.stringify(tools));
+  // The top-right row holds ··· alone at rest; Sync joins it only while live. No players' view button.
+  rig.check(tools.sync === 1, 'E: Sync is on the minimap while the map is not on the TV: ' + JSON.stringify(tools));
   rig.check(tools.faint < 0.6, 'E: the tools are not faint at rest: ' + JSON.stringify(tools));
   await dm.evaluate(q('#tv-ui .tv-row.tl .tv-ov') + '.click(); 0');
   const locked = await dm.evaluate(`(() => {
@@ -235,11 +235,11 @@ module.exports = async function showOnTv(rig) {
             'H: the live minimap has no breathing edge or says the wrong thing: ' + JSON.stringify(live));
   rig.check(live.stop === 'Stop showing' && live.acHidden === 'hidden' && live.wide,
             'H: the pill does not hold both of its words in one width: ' + JSON.stringify(live));
-  rig.check(live.sync === 3, 'H: Sync is not on the minimap while live: ' + JSON.stringify(live));
+  rig.check(live.sync === 2, 'H: Sync is not on the minimap while live: ' + JSON.stringify(live));
 
   // ── I ──
   // RED ON: playerUnsent never set in scheduleAutoSync (playerWindow.js) - 2026-10-13
-  await dm.evaluate('_tvOpen("tv"); [...document.querySelectorAll("#tv-pop .seg button")].find(b => b.textContent === "Manual").click(); _tvClose(); 0');
+  await dm.evaluate('if (autoSync) document.getElementById("btn-auto-sync").click(); 0');
   await refresh();
   const sendPart = () => dm.evaluate(`(() => { const s = [...document.querySelectorAll('#tv-ui .tv-grp .sd')].find(b => /Send/.test(b.title));
     return s ? { word: s.textContent, dot: !!s.querySelector('.unsent') } : null; })()`);
@@ -270,16 +270,23 @@ module.exports = async function showOnTv(rig) {
         [...e.children].map(k => k.className + '=' + k.offsetWidth).join(','));
     return { bad, fits: grp.scrollWidth <= p.offsetWidth, fit: _tvFit };
   })()`);
-  for (const seat of [0, 90]) {
+  // RED BY DESIGN: the Sync and Stop steps are written against item 217, never re-proved
+  const crowd = () => dm.evaluate(`(() => {
+    const l = ${q('#tv-ui .tv-row.tl')}.getBoundingClientRect(), r = ${q('#tv-ui .tv-row.tr')}.getBoundingClientRect();
+    return { gap: r.left - l.right, syncWord: !!${q('#tv-ui .tv-ov.wd')}, stopWord: /Stop/.test(${q('#tv-ui .tv-grp .lv .ac')}.textContent) };
+  })()`);
+  for (const seat of [0, 90, 180, 270]) {
     await dm.evaluate('setSeatTurn(' + seat + '); 0');
-    await lib.settle(dm, '(document.getElementById("minimap-panel").offsetWidth < document.getElementById("minimap-panel").offsetHeight) === ' + (seat === 90), 6000);
+    await lib.settle(dm, '(document.getElementById("minimap-panel").offsetWidth < document.getElementById("minimap-panel").offsetHeight) === ' + (seat % 180 === 90), 6000);
     await refresh();
     const c = await cut();
     rig.check(c.bad.length === 0 && c.fits, 'K: at seat ' + seat + ' a label on the pill is cut: ' + JSON.stringify(c));
+    const g = await crowd();
+    rig.check(g.gap >= 4 - 1e-6, 'K: at seat ' + seat + ' Sync runs into Lock: ' + JSON.stringify(g));
   }
   await dm.evaluate('setSeatTurn(0); 0');
   await lib.settle(dm, 'seatTurn === 0', 6000);
-  await dm.evaluate('_tvOpen("tv"); [...document.querySelectorAll("#tv-pop .seg button")].find(b => b.textContent === "Auto").click(); _tvClose(); 0');
+  await dm.evaluate('if (!autoSync) document.getElementById("btn-auto-sync").click(); 0');
 
   // ── L ──
   // RED ON: _halfAt always answering the first half (minimap.js) - 2026-10-13

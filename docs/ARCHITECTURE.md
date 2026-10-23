@@ -263,8 +263,11 @@ The DM window is the boss. The Player window follows.
 - **Names.** The Auto/Manual switch reads "Updates"; the camera push reads "Match the TV to my view"
   (the old "Sync View"). "Sync" no longer means both.
 - **Auto vs Manual.** With Auto on, every change the DM makes appears on the TV instantly.
-  With Auto off, the DM can prep the next reveal privately and push it with **Send** when
-  the party is ready.
+  With Auto off, the DM holds everything about the map until **Send**: opening a map (the TV
+  keeps the old one, with no fog cover), minimap drag and zoom, Sync, Turn and the fog animation.
+  `state.tvWait` {scene, view, turn, anim} records what waits and Send delivers it in one go;
+  Manual to Auto sends it too. The ping stays live but does nothing while the TV shows a different
+  map from the open one; a gallery picture on the TV stays live.
 - **Match the TV to my view** (Sync View in the code) snaps the Player's camera to match the DM's. The Player camera glides to
   new positions rather than jumping.
 - The Player reports a few things back, so DM controls can show what is actually true rather
@@ -325,8 +328,15 @@ the name of the screen it will use. The TV is every screen but the one holding t
 decided by `tvPick.js` from the list `electron/displays.js` reports: one candidate is used, several
 ask once and are remembered, none opens a help box. While none is found the button is grey but still opens that box, and the list is re-read every second until the Player is live. Pressing it opens the Player and moves it onto
 that screen in fullscreen. Live, the minimap's edge breathes blue and a pill reads "Live on TV" or
-"Live in a window", turning to "Stop showing" under the pointer; Send, Fullscreen, Lock and Sync
-sit beside it as they apply, and the pill drops words until it fits. Unplugging the TV takes the
+"Live in a window", turning to "Stop showing" under the pointer; one blue outline runs round the pill and Send.
+The minimap keeps only what play uses many times: Lock, Sync (with its word), "…", and Show on TV or the live pill
+with Send. On a narrow minimap Sync drops its word first, Show on TV drops its icon, then shortens, then goes
+small; the pill's last step leaves Stop as its icon. In two-map mode Send acts on the selected column only.
+
+**TV setup** is one centred window: the screen, Fullscreen when the screen is a window, Updates Auto/Manual,
+and Turn as three pictures, with a note that "…" reopens it. It opens on the first Show on TV of each launch and on
+every "…" click or click on the screen name. The TV menu (`#tv-pop`) carries only the "which screen is the TV?"
+question and the no-TV help box. The Players' view has no minimap button; hold H is its only way in. Unplugging the TV takes the
 map off it. Under the rig's `--offscreen` no window is moved and the window route is taken.
 
 ### Seat alignment
@@ -347,18 +357,16 @@ column turns its own map.
 
 ### Fit to TV
 
-The TV menu's "This map" block holds Fit to TV, a turn of the TV picture kept per scene as
-`tvFit: {step, turn}` (absent is Off). Each click steps Off, Fitted, Flipped, Off through `tvFit.js`.
-Fitted turns the picture so the map lies along the TV and reads upright from the DM's chair; Flipped
-adds 180°. The seat only picks the direction at the moment of the click, so a later seat change leaves a
-fit as it was, and the laptop never follows the fit. A map that already lies along the TV, read from the
-minimap's own TV shape (a column's half in two-map mode), shows "Already fits" while the fit is Off.
+TV setup's Turn is a turn of the TV picture kept per scene as `tvFit: {step, turn}` (absent is upright),
+offered for every map, square ones included, and never disabled. It is three pictures: upright and the two
+quarter-turns, mapped by `fitTile` and `fitForTile` in `tvFit.js`. The saved form stays `{step, turn}` so
+4.7.0 reads it, and `cleanFit` still reads an older step 2. The laptop never follows the turn.
 
 The Player takes the turn the way the DM takes My seat: one turn of the whole canvas stack, so the
 map, fog, grid, effects and ping cannot drift, with `seatTurn` set directly from the fit and never
 through `setSeatTurn`, which writes the key the DM window reads. The Player's own pan and wheel convert
-through `mapTurn.js`, and the animated map's region texture is rebuilt after a turn. A click sends the
-Player a `tv-fit` message of its own, never a `fog-update`, so Manual mode hands over no pending reveal;
+through `mapTurn.js`, and the animated map's region texture is rebuilt after a turn. A pick sends the
+Player a `tv-fit` message of its own in Auto; in Manual it waits in `tvWait.turn` until Send;
 a new map's payload carries the scene's turn and the Player applies it behind the transition cover. The
 minimap turns each half's picture by its own fit on top of the seat, and Sync View swaps the region it
 sends only when exactly one of the seat and the fit is sideways.

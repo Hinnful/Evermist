@@ -339,6 +339,8 @@ function initToolbar() {
 
   function setAutoSync(enabled) {
     autoSync = enabled;
+    // Manual to Auto with anything waiting sends it all at once; a deleted scene's hold stays.
+    if (enabled && playerUnsent && !tvHeld) deliverToPlayer();
     // ⚠ MANUAL CANCELS A PUSH ALREADY QUEUED. scheduleAutoSync debounces by 300ms, so a reveal
     // made just after the switch used to ride out on the timer the previous edit armed.
     if (!enabled) clearTimeout(autoSyncTimer);
@@ -365,7 +367,9 @@ function initToolbar() {
     // Send the REGION the DM can read, never the DM's zoom: the Player refits it, so a bigger TV
     // shows the same map rather than more of it. Same helper as a manual Send.
     const v = dmVisibleRegion();
-    playerWindow.postMessage({ type: 'view-snap', ...v }, '*');
+    // ⚠ Manual: the framing waits for Send, which sends the DM's region itself.
+    if (!autoSync) { tvWait.view = false; playerUnsent = true; }
+    else playerWindow.postMessage({ type: 'view-snap', ...v }, '*');
     // ⚠ minimapView.zoom is ALWAYS in Player-canvas terms, so convert before handing it over.
     // Passing the DM's own zoom leaves the dotted TV frame wrong until the next drag.
     const tvSideways = tvFit.turn % 180 !== 0;
@@ -385,7 +389,7 @@ function initToolbar() {
         minimapRefreshAspect();
       }
       onPlayerResyncRequest();
-      syncAnimToPlayer(true);
+      syncAnimToPlayer(true, true);
       galleryResend();
       if (playerWindow && !playerWindow.closed) {
         playerWindow.postMessage({ type: 'player-lock', locked: minimapLocked }, '*');
