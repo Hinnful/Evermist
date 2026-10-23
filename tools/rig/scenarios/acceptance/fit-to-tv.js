@@ -281,8 +281,11 @@ module.exports = async function fitToTv(rig) {
   await tile(1);
   await turnIs(player, 270);
   const st90 = await tvState();
-  await dm.evaluate('applyCamera({ mapCX: 500, mapCY: 1000, zoom: 1 }); viewportDirty = true; document.getElementById("btn-sync-view").click(); 0');
-  const sv = await dm.evaluate('({ r: dmVisibleRegion(), a: mapAreaSize(), pw: playerScreenW, ph: playerScreenH, mz: minimapView.zoom })');
+  // ⚠ READ IN THE CLICK'S OWN TASK. The turn's refit sends a PLAYER_VIEW that can land after the
+  // click and put the old zoom back on the minimap until the snap's own report arrives.
+  const sv = await dm.evaluate(`(() => { applyCamera({ mapCX: 500, mapCY: 1000, zoom: 1 }); viewportDirty = true;
+    document.getElementById("btn-sync-view").click();
+    return { r: dmVisibleRegion(), a: mapAreaSize(), pw: playerScreenW, ph: playerScreenH, mz: minimapView.zoom }; })()`);
   rig.check(st90.seat === 90 && st90.fit.turn === 270, 'the setup for seat 90 with fit 270 is wrong: ' + JSON.stringify(st90));
   rig.check(Math.abs(sv.r.viewW - sv.a.w) < 2 && Math.abs(sv.r.viewH - sv.a.h) < 2,
             'Sync View swapped the region although the laptop and the TV both lie sideways: ' + JSON.stringify(sv.r));
@@ -295,6 +298,13 @@ module.exports = async function fitToTv(rig) {
   rig.check(!!landed, 'Sync View at seat 90 with fit 270 did not frame the TV as the laptop is framed, wanted zoom ' + wantZ.toFixed(3));
   const wantMz = Math.min(sv.ph / sv.r.viewW, sv.pw / sv.r.viewH);
   rig.check(Math.abs(sv.mz - wantMz) < wantMz * 0.03, 'the minimap frame did not take the turned TV\'s zoom after Sync View: ' + sv.mz.toFixed(3) + ', wanted ' + wantMz.toFixed(3));
+  // RED ON: a stale PLAYER_VIEW dispatched after the click, with the lerp-end reportPlayerView removed (viewport.js) - 2026-10-23
+  let mzEnd = null;
+  const mmLanded = await lib.poll(async () => {
+    mzEnd = await dm.evaluate('minimapView.zoom');
+    return Math.abs(mzEnd - wantMz) < wantMz * 0.03 ? { ok: 1 } : null;
+  }, 10000);
+  rig.check(!!mmLanded, 'the minimap frame did not end on the turned TV\'s zoom once the Player landed: ' + mzEnd + ', wanted ' + wantMz.toFixed(3));
 
   // ── 12. Manual mode: a turn waits for Send and arrives with the pending reveal ───
   // RED BY DESIGN: written against item 217, never re-proved

@@ -397,3 +397,11 @@ reduction; no further reason is recorded. The allow-lists may still only shrink.
 the rig never fullscreens. A capture listener on `window` does not run ahead of the app's own `message`
 listener in this Electron, so the load cannot be delayed; the scenario compares the event's own
 `timeStamp` to the recorded ask instead.
+
+### A stubbed screen list waits out the app's own read first · `SETTLED` (2026-10-23)
+`tv-ru-side-seat.js` replaces `_tvLoadDisplays` with a fixed list, and failed about one run in three: a
+read the app started before the stub answered after it and put the machine's own screens back. The
+scenario now awaits one real read before stubbing; reads answer in order, so it outlasts the earlier
+ones. `fit-to-tv.js` flaked because the turn's refit sends a PLAYER_VIEW that can land between Sync View
+and the minimap read; the click and the read now share one evaluate, and a second check polls for the
+zoom the minimap ends on.
