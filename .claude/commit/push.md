@@ -34,4 +34,8 @@ broke. CI writes the in-app What's new list when it builds, so nothing is amende
   it by URL if it did not, then `mcp__ccd_pr__set_monitor` with `auto_fix: true`. **It wakes this
   session on failure only.** A green run notifies nobody here, which is why the backlog is closed
   before the push rather than after the gate.
+- **Remove every worktree this commit carries the work of**, with its branch: a builder's, and the one
+  the commit was shipped from. ⚠ Unlink a `node_modules` junction first (`cmd /c rmdir`), or the
+  removal deletes the real `node_modules` through it. A worktree holding work this commit lacks
+  stays, and the report names it.
 - Report the short hash and the pull request URL, then **end the turn**. No `gh run watch`.

@@ -25,7 +25,8 @@
 // behind them has its own scenario.
 //
 // ⚠ THE ICON CHECK IS THE DM'S PLATFORM ONLY. The 1px nudge is Segoe UI's baseline, so on the
-// Mac and Linux fonts it is noted rather than held.
+// Mac and Linux fonts it is noted rather than held. For the same reason a toast button's baseline
+// is held to 0.5px on Windows and 1px elsewhere: Linux's system font lands it 0.51px off.
 
 const lib = require('../../lib');
 
@@ -122,7 +123,7 @@ globalThis.__winAudit = (root, name, opts) => {
       const li = baseline(b);
       if (li && mi && m.getBoundingClientRect().height < 20 * z) {
         checks++;
-        if (Math.abs(li.base - mi.base) > 0.5 * z) out.push('a toast button sits ' + ((li.base - mi.base) / z).toFixed(2) + 'px off the message baseline: ' + t.id);
+        if (Math.abs(li.base - mi.base) > (o.baseSlack || 0.5) * z) out.push('a toast button sits ' + ((li.base - mi.base) / z).toFixed(2) + 'px off the message baseline: ' + t.id);
       }
     }
   }
@@ -203,5 +204,5 @@ module.exports = async function windowsFeature(rig) {
   // RED ON: .sm-toast .sm-hbtn given margin-top: 4px (sceneManager.css) — 2026-10-03
   await audit('Toasts', `undoHint('Undone'); showUndoToast('"Goblin Caves" removed'); noticeToast('One door was removed with the wall it was on.');
       upToast('Version 9.9.9 is ready to install', 'Restart now', () => {}, 0)`,
-              '#sm-toasts', {}, 'hideUndoToast(); hideUpdateToast(); document.getElementById("notice-toast").style.display = "none"');
+              '#sm-toasts', { baseSlack: onWindows ? 0.5 : 1 }, 'hideUndoToast(); hideUpdateToast(); document.getElementById("notice-toast").style.display = "none"');
 };

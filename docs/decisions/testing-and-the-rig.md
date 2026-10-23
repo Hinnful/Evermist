@@ -24,6 +24,15 @@ the header-named scenarios stands in. **Reverses** "picks the scenarios covering
 reading headers (process ledger, 2026-08-28): headers stay only as the fallback. Declaring coverage by hand
 was rejected: it rots the day a module is renamed.
 
+### The pick also runs scenarios that wrap a changed function or read the shortcut sheet · `SETTLED` (2026-10-23)
+In 4.8.0, `help-and-about.js` wrapped `sendToPlayer` and read `#shortcut-legend`; the greedy cover skipped
+it because other scenarios reached the same functions, and it failed on CI twice on Windows and Mac. The
+pick (`tools/rig/pick.js`, `tools/rig-ci.js pick`) now adds every scenario that assigns to a function the
+diff changed (`sendToPlayer = function…`, a replace or a wrap), and every scenario that reads
+`#shortcut-legend` when a diff line falls inside that element of `index.html`, found by line range. Plain
+calls stay with the greedy cover. **Rejected:** matching any mention of a changed name; it picked 40 of 70
+scenarios on the 4.8.0 diff. On a replay of that diff the rule adds help-and-about and first-use-path.
+
 ### A failed scenario reruns once, and Linux only advises · `SETTLED` (2026-10-17)
 Most reds were one platform only, and a rerun of the whole gate costs twenty minutes. The rig now reruns a
 failed scenario once in a fresh app on a fresh profile. A pass is a flake: a warning, a summary line and a
@@ -34,6 +43,11 @@ naming the scenario. **Reverses** "A flaky gate is measured on six runners, not 
 nothing): `soak.yml` and `probe.yml` stay for finding why, the rerun is for not stopping a release on it.
 **Reverses** "Keeping Mac and Linux as report-only was rejected": that was before the failures were
 counted per platform. Windows and Mac still block.
+
+### A toast button's baseline is held to 0.5px on Windows and 1px elsewhere · `SETTLED` (2026-10-23)
+`windows.js` checks the baseline tighter on Windows, for the same reason its icon check is Windows-only:
+Linux's system font lands the button 0.51px off, and it failed only there, where the gate is advisory.
+Mac and Linux get 1px.
 
 ### Windows is dealt six ways · `SETTLED` (2026-10-17)
 **Reverses** the four-way split for Windows only: it was the slowest blocking platform, and six jobs cost
