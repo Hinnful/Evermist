@@ -374,3 +374,10 @@ A build used to wait for a fresh session on a smaller model, which needed a writ
 manual hand-off. The main session now briefs the `builder` agent from the conversation and checks
 what it returns, so "build it" alone runs the build on Sonnet. "Build it here" keeps it in the main
 session.
+
+### A release removes the worktrees it ships · `SETTLED` (2026-10-23)
+Builders work in worktrees and never commit, and their work was copied into the main checkout to
+ship, so every build left a worktree behind with the same changes uncommitted. Ten such worktrees
+and their branches had piled up by 4.8.0, and two held work that never shipped. `/commit` now lists
+every worktree with work `origin/main` lacks at Step 0, and removes the worktrees its commit carries
+after the push (`.claude/commit/push.md`).

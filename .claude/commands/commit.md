@@ -37,6 +37,10 @@ found:
 | Dirty tree | Step 1, a fresh run |
 | Anything else | Nothing in flight. Say so and stop |
 
+**Then list the other worktrees** (`git worktree list`). Name each one that holds uncommitted work
+or a commit `origin/main` lacks, in one line: what it is, and whether it ships in this run, ships
+next, or goes. Work left in a worktree is work the DM believes is in the app.
+
 A failed release wakes the session that pushed it through the CI monitor, so Step 0 never goes
 looking for one. A red that CI or a test caused is fixed without a message to the DM.
 
