@@ -391,3 +391,9 @@ included. Trap: putting `gate-linux` in a `needs` of a blocking job makes it blo
 ### Bringing frozen files under the house-rule limits is off the backlog · `REJECTED` (2026-10-23)
 The backlog item to bring frozen files under the house-rule limits was dropped during a backlog
 reduction; no further reason is recorded. The allow-lists may still only shrink.
+
+### A scenario cannot hold back a Player message, so it reads the event's timeStamp · `SETTLED` (2026-10-23)
+`tv-fullscreen.js` checks the fullscreen ask with the Fullscreen handler replaced by a recorder, since
+the rig never fullscreens. A capture listener on `window` does not run ahead of the app's own `message`
+listener in this Electron, so the load cannot be delayed; the scenario compares the event's own
+`timeStamp` to the recorded ask instead.

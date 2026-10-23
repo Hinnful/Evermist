@@ -41,7 +41,7 @@ let _tvSetupBusy = false;    // it is flying into the ··· button
 let _tvHot = false;          // the ··· button glows for a moment after it
 let _tvScreenPick = null;    // before the map is live: a display id, 'window', or null for the default
 let _tvWantFull = false;     // before the map is live: the window opens fullscreen
-let _tvFullAt = 0;           // when a window just opened is asked to go fullscreen
+let _tvFullAsk = false;      // a window just opened is to go fullscreen once it reports loaded
 
 const _tvEl = id => document.getElementById(id);
 const _tvLegacy = id => { const b = _tvEl(id); if (b) b.click(); refreshPlayerControlUI(); };
@@ -94,6 +94,14 @@ async function _tvLoadDisplays() {
   } catch (_) {}
 }
 
+// The Player window reported loaded (toolbar.js PLAYER_READY, stageWindow.js halves bound): a window
+// the DM wanted fullscreen is asked once, now.
+function tvPlayerLoaded() {
+  if (!_tvFullAsk) return;
+  _tvFullAsk = false;
+  if (_tvLive() && _tvRoute === 'window' && !paneScope().playerIsFullscreen) _tvLegacy('btn-fullscreen-player');
+}
+
 // ─── Actions ─────────────────────────────────────────────────────────────────
 
 function _tvClose() { _tvMenu = null; _tvEl('tv-pop').hidden = true; }
@@ -108,7 +116,7 @@ function _tvGoLive(display) {
   if (!wasOpen) _tvLegacy('btn-player');
   const api = window.electronAPI;
   const place = !!display && !!api && !!api.placePlayer;
-  if (!place && !wasOpen && _tvWantFull) _tvFullAt = Date.now() + 700;
+  if (!place && !wasOpen && _tvWantFull) _tvFullAsk = true;
   _tvRoute = place ? 'tv' : 'window';
   _tvScreenId = place ? display.id : null;
   if (place) {
@@ -193,11 +201,6 @@ async function _tvTick() {
     if (pick.kind === 'one') _tvGoLive(pick.display);
     else if (pick.kind === 'ask') { _tvWaitSince = 0; _tvOpen('ask'); }
     else if (Date.now() - _tvWaitSince > TV_WAIT_MS) { _tvWaitSince = 0; _tvOpen('help'); }
-  }
-  // A window the DM wanted fullscreen is asked once, when it has had time to load.
-  if (_tvFullAt && Date.now() >= _tvFullAt) {
-    _tvFullAt = 0;
-    if (_tvLive() && _tvRoute === 'window' && !paneScope().playerIsFullscreen) _tvLegacy('btn-fullscreen-player');
   }
   // A Player window can close without telling us.
   if (!_tvLive() && _tvRoute) { _tvRoute = null; _tvScreenId = null; }

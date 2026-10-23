@@ -388,6 +388,7 @@ function initToolbar() {
         playerScreenH = msg.screenH;
         minimapRefreshAspect();
       }
+      if (typeof tvPlayerLoaded === 'function') tvPlayerLoaded();
       onPlayerResyncRequest();
       syncAnimToPlayer(true, true);
       galleryResend();

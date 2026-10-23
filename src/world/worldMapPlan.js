@@ -296,6 +296,23 @@ function wmSlotInPoly(verts, taken) {
   return null;
 }
 
+// A spot for a card that must join the polygon: the next clear slot, else the centre nudged down-right step by step
+// until no card in `taken` sits on it, so a full outline still holds every card and each stays visible.
+function wmSpotInOutline(verts, taken) {
+  const slot = wmSlotInPoly(verts, taken);
+  if (slot) return slot;
+  const c = wmPolyCentre(verts), rects = taken || [];
+  let best = { x: Math.round(c.x), y: Math.round(c.y) };
+  for (let k = 0; k < 40; k++) {
+    const p = { x: Math.round(c.x + k * 24), y: Math.round(c.y + k * 24) };
+    if (k && !wmPointInPoly(p, verts)) break;
+    const r = wmCardRect(p);
+    if (!rects.some(t => t.x === r.x && t.y === r.y)) return p;
+    best = p;
+  }
+  return best;
+}
+
 // Where a picked place's name goes: just inside its highest corner.
 function wmLabelSpot(verts) {
   let top = verts[0];
@@ -425,7 +442,7 @@ if (typeof module !== 'undefined' && module.exports) {
     WM_CARD_W, WM_CARD_H, WM_PAD, WM_LABEL, WM_SPLIT, WM_FRAME_FILL, WM_FRAME_MAX, WM_STEP_X, WM_STEP_Y,
     wmCleanPos, wmBesideOffset, wmPlanPositions, wmHullRect, wmRectCentre, wmFillZoom,
     wmCardRect, wmGroupRectAt, wmPointInPoly, wmRectInPoly, wmPolyArea, wmPolyBounds, wmPolyCentre, wmRectShape, wmCircleShape,
-    wmCleanShape, wmCleanEdits, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmLabelSpot,
+    wmCleanShape, wmCleanEdits, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmSpotInOutline, wmLabelSpot,
     wmPlateSpot, wmExtent, wmZoomFloor, wmClampCamera,
     wmContentBox, wmFrameCamera, wmPlaceCamera, wmLevelFor, wmZoomAround, wmSideBySide, wmFreeSpot, wmMatches,
   };

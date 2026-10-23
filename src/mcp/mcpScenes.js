@@ -11,7 +11,7 @@ function _mcpSpot(place, skip) {
     const rec = worldPlaceByName(place);
     if (!rec) return null;
     const inside = others.filter(s => sanitizeGroupName(s.group) === place).map(s => wmCardRect(s.worldPos));
-    return wmSlotInPoly(wmOutline(rec), inside);
+    return wmSpotInOutline(wmOutline(rec), inside);
   }
   const taken = [...worldPlaceRecords().map(r => wmPolyBounds(wmOutline(r))), ...others.map(s => wmCardRect(s.worldPos))];
   const r = mcpFreeRect(taken, WM_CARD_W, WM_CARD_H);

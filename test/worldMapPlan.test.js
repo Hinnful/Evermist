@@ -275,6 +275,21 @@ describe('polygon helpers', () => {
     assert.ok(next && (next.x !== slot.x || next.y !== slot.y));
     assert.equal(W.wmSlotInPoly(W.wmRectShape(0, 0, 100, 100), []), null);
   });
+
+  it('a full outline still yields a spot inside it, a different one for each card', () => {
+    const full = W.wmRectShape(0, 0, 600, 400);
+    const taken = [];
+    for (let y = 0; y <= 400; y += 40) for (let x = 0; x <= 600; x += 40) taken.push(W.wmCardRect({ x, y }));
+    assert.equal(W.wmSlotInPoly(full, taken), null);
+    const spots = [];
+    for (let i = 0; i < 3; i++) {
+      const s = W.wmSpotInOutline(full, taken);
+      assert.ok(W.wmPointInPoly(s, full));
+      assert.ok(!spots.some(p => p.x === s.x && p.y === s.y));
+      spots.push(s);
+      taken.push(W.wmCardRect(s));
+    }
+  });
 });
 
 describe('a place built like a room', () => {

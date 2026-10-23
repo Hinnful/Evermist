@@ -337,7 +337,7 @@ small; the pill's last step leaves Stop as its icon. In two-map mode Send acts o
 and Turn as three pictures, with a note that "…" reopens it. It opens on the first Show on TV of each launch and on
 every "…" click or click on the screen name. The TV menu (`#tv-pop`) carries only the "which screen is the TV?"
 question and the no-TV help box. The Players' view has no minimap button; hold H is its only way in. Unplugging the TV takes the
-map off it. Under the rig's `--offscreen` no window is moved and the window route is taken.
+map off it. Under the rig's `--offscreen` no window is moved and the window route is taken. A window the DM wanted fullscreen is asked once, when the Player reports loaded.
 
 ### Seat alignment
 

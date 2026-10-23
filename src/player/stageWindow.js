@@ -95,6 +95,7 @@ function bindStageHalves() {
     half.bindReplyTarget(col);
     half.postMessage({ type: 'player-hello' }, '*');
   }
+  if (_stageBound.A || _stageBound.B) tvPlayerLoaded();
   sendStageSplit();
   galleryResend();
   if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();

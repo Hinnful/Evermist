@@ -179,7 +179,7 @@ function worldPullIn() {
     if (!name || !_wsOwn(outlines, name) || !wmCleanPos(s.worldPos) || worldRoadOfScene(s.id)) continue;
     if (wmRectInPoly(wmCardRect(s.worldPos), outlines[name])) continue;
     const taken = allScenes.filter(o => o !== s && _wsGroup(o) === name && wmCleanPos(o.worldPos)).map(o => wmCardRect(o.worldPos));
-    const spot = wmSlotInPoly(outlines[name], taken) || wmPolyCentre(outlines[name]);
+    const spot = wmSpotInOutline(outlines[name], taken);
     worldSceneSet(s.id, { worldPos: { x: Math.round(spot.x), y: Math.round(spot.y) } });
   }
 }

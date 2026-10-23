@@ -41,7 +41,7 @@ function _wmAddLand(ids, from) {
   const outline = from.into ? wmOutline(from.into) : null;
   for (const id of ids) {
     // Into a group: the next clear spot inside its outline, so the geometry files the map under it.
-    at = (outline && wmSlotInPoly(outline, taken)) || wmFreeSpot(at, taken, beside);
+    at = (outline && wmSpotInOutline(outline, taken)) || wmFreeSpot(at, taken, beside);
     worldSceneSet(id, { worldPos: at });
     taken.push(wmCardRect(at));
     beside = true;

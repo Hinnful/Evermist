@@ -1238,3 +1238,12 @@ every map, never disabled. Manual holds opening a map, minimap drag and zoom, Sy
 Send, which solves looking at the next map privately (backlog 200, 217) with no new mode. Ping stays live but does
 nothing while the TV shows another map. Two-map mode keeps Send per column. Labels are short words ("When I press
 Send" and "Match my view" rejected as too long); Russian Sync is "Подогнать".
+
+### Fullscreen is asked when the Player reports loaded, and a map added to a group stays inside it · `SETTLED` (2026-10-23)
+A Player window the DM wanted fullscreen is asked once, through `tvPlayerLoaded()` in `tvControl.js`,
+when it reports loaded (PLAYER_READY or need-map, or a stage half binding). A fixed 700 ms timer in
+`_tvTick` was rejected: it fired before a slow Player had loaded and left the window windowed. A map
+added to a group always lands inside its outline (`wmSpotInOutline`): the next clear slot, else the
+centre stepped down-right 24px until no card sits exactly there. Before, a full group sent the map to
+a free spot outside it, so it did not join. Cost accepted: in a full group cards overlap and the outline
+does not grow.
