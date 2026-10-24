@@ -144,8 +144,8 @@ A push to `release/**` or `change/**` runs `.github/workflows/release.yml`:
    is checked, and only then does the release go public and the tag appear.
 7. **Clean up.** The staging branch is deleted.
 
-A red step stops everything after it, so nothing public exists for a change that failed. The
-Tests workflow runs the unit tests and guards on every push to any branch. `soak/**`, `probe/**`
+A red step stops everything after it, so nothing public exists for a change that failed. No other
+workflow runs on a release or change push. `soak/**`, `probe/**`
 and `platformrig/**` run rig experiments and ship nothing.
 
 ## Talking with the DM

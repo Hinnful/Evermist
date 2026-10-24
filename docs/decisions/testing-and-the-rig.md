@@ -227,6 +227,7 @@ on a verify job running the same suite plus a tag-versus-`package.json` check. B
 mismatch built and uploaded in silence and shipped an installer whose About box reported a version
 that was never released. Both test paths skip the Electron binary download; the build jobs still
 fetch it.
+**Reversed in part by** "One run per push: the Tests workflow is gone" (2026-10-25).
 
 ESLint ships in the fork this pattern came from and was refused here. It needs a triage pass over
 several hundred existing complaints before its gate could go green, and what it finds is not what
@@ -422,3 +423,9 @@ things, "Unit tests and lint" and "Size guards".
 Branch protection on `main` requires "Unit tests and lint", the `verify` job's display name, not
 `verify`. Trap: renaming that job's `name:` must move the protection rule in the same step, or `main`
 refuses to land anything.
+
+### One run per push: the Tests workflow is gone · `SETTLED` (2026-10-25)
+Each push showed three runs: the Tests workflow from the push, again from its pull request, and Build & Release, whose
+own jobs run the same unit tests, lint and guards. The Tests workflow is deleted, so a release or change push shows one
+run. `main`'s protected check was already Build & Release's unit-test job. Experiment branches (`soak/**`, `probe/**`,
+`platformrig/**`) get no unit-test run; they ship nothing.
