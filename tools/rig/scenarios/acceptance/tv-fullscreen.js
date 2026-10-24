@@ -27,13 +27,14 @@ module.exports = async function tvFullscreen(rig) {
   }
   await lib.settle(dm, '!playerWindow || playerWindow.closed', 8000);
   await dm.evaluate(`(() => {
-    window.__fsAsks = []; window.__readyAt = 0;
+    window.__fsAsks = []; window.__readyAt = 0; window.__readyRan = 0;
     document.getElementById('btn-fullscreen-player').onclick = () => window.__fsAsks.push(performance.now());
-    // ⚠ The event's own timestamp: the app's listener, added first, has already asked by the time this
-    // one runs, and a capture listener here does not run ahead of it, so the report cannot be held back.
+    // ⚠ The app's listener, added first, has already asked by the time this one runs, so an ask between the
+    // event's own timestamp and this listener's clock was made inside the report's dispatch. A slow runner queues
+    // the message for a while before either listener runs, so no fixed gap from the timestamp can hold.
     window.addEventListener('message', e => {
       if (!playerWindow || e.source !== playerWindow || !e.data || window.__readyAt) return;
-      if (e.data.type === 'PLAYER_READY' || e.data.type === 'need-map') window.__readyAt = e.timeStamp;
+      if (e.data.type === 'PLAYER_READY' || e.data.type === 'need-map') { window.__readyAt = e.timeStamp; window.__readyRan = performance.now(); }
     });
     _tvSetupSeen = true; _tvScreenPick = 'window'; _tvWantFull = true; _tvKey = ''; tvRefresh(); return 0;
   })()`);
@@ -44,12 +45,13 @@ module.exports = async function tvFullscreen(rig) {
   await lib.settle(dm, '_tvLive()', 15000);
   await lib.settle(dm, 'window.__fsAsks.length > 0', 15000);
   await dm.evaluate('new Promise(r => setTimeout(r, 2000))');
-  const r = await dm.evaluate('({ live: _tvLive(), route: _tvRoute, asks: window.__fsAsks, readyAt: window.__readyAt })');
+  const r = await dm.evaluate('({ live: _tvLive(), route: _tvRoute, asks: window.__fsAsks, readyAt: window.__readyAt, readyRan: window.__readyRan })');
   rig.check(r.live && r.route === 'window' && r.asks.length === 1,
             'A: Show on TV with Fullscreen picked did not ask for fullscreen exactly once: ' + JSON.stringify(r));
 
   // ── B ──
   // RED ON: tvControl.js, stageWindow.js and toolbar.js put back to the 700 ms timer in _tvTick - 2026-10-23
-  rig.check(r.readyAt > 0 && r.asks.length > 0 && r.asks[0] >= r.readyAt && r.asks[0] - r.readyAt < 100,
+  // RED ON: the ask in tvPlayerLoaded deferred by setTimeout 0 (tvControl.js) - 2026-10-24
+  rig.check(r.readyAt > 0 && r.asks.length > 0 && r.asks[0] >= r.readyAt && r.asks[0] <= r.readyRan,
             'B: fullscreen was not asked the moment the Player reported loaded: ' + JSON.stringify(r));
 };

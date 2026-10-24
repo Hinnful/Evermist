@@ -387,6 +387,8 @@ build still blocks, since publish uploads its AppImage. The rig matrix and shard
 `rig.yml`, called by both workflows so the two cannot drift; the coverage and flake report is
 `rig-report.yml`, after the last rig job. A push to `platformrig/**` runs `gate.yml` alone, Linux
 included. Trap: putting `gate-linux` in a `needs` of a blocking job makes it block again.
+The `skip-linux` structure here is **superseded** by "The Windows and Mac rig runs from release.yml"
+below; the Linux leg still never blocks.
 
 ### Bringing frozen files under the house-rule limits is off the backlog · `REJECTED` (2026-10-23)
 The backlog item to bring frozen files under the house-rule limits was dropped during a backlog
@@ -405,3 +407,18 @@ scenario now awaits one real read before stubbing; reads answer in order, so it 
 ones. `fit-to-tv.js` flaked because the turn's refit sends a PLAYER_VIEW that can land between Sync View
 and the minimap read; the click and the read now share one evaluate, and a second check polls for the
 zoom the minimap ends on.
+
+### The Windows and Mac rig runs from release.yml, and every CI job is named for what it does · `SETTLED` (2026-10-24)
+A rig shard called through `gate.yml` showed two levels deep. The Windows and Mac rig now sits in its
+own `release.yml` job, `gate-rig`, shown as "Gate", so a shard reads "Gate / <Platform> · N of M" and
+every Linux shard adds " · Warn only" as a trailing tag, since brackets carry a platform everywhere
+else. `gate.yml` builds the installers only and its `skip-linux` input is gone; a push to
+`platformrig/**` runs `.github/workflows/platformrig.yml`, and releases no longer show two skipped
+"platformrig only" rows. Nothing on the land path needs `gate-linux`. Job names are instructions
+("Check version, branch and notes", "Prove updates", "Publish the release"), except two names for
+things, "Unit tests and lint" and "Size guards".
+
+### Main's required check is the job's display name · `SETTLED` (2026-10-24)
+Branch protection on `main` requires "Unit tests and lint", the `verify` job's display name, not
+`verify`. Trap: renaming that job's `name:` must move the protection rule in the same step, or `main`
+refuses to land anything.

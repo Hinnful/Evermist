@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.8.1**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.9.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
 shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
