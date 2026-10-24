@@ -74,10 +74,10 @@ module.exports = async function firstUseHints(rig) {
   await dm.evaluate('hintClose(); switchScene(' + JSON.stringify(ids[1]) + '); 0', 120000);
   await lib.settle(dm, 'currentScene && currentScene.id === ' + JSON.stringify(ids[1]) + ' && fogCoverT === 0', 60000);
   await lib.settle(dm, up('effects'), 8000);
-  const fx = await geo('effects', '#btn-place-effects');
-  rig.check(fx && /Fire, acid and light/.test(fx.text) && /Switch to Effects to draw a fire, a cone of acid or a light\. The players see it on the TV\./.test(fx.text),
+  const fx = await geo('effects', '#btn-effects');
+  rig.check(fx && /Fire, acid and light/.test(fx.text) && /Click Effects to draw a fire, a cone of acid or a light\. The players see it on the TV\./.test(fx.text),
             'the second map opened showed no effects hint with its words: ' + JSON.stringify(fx));
-  rig.check(fx && fx.above && fx.blink && /effects/.test(fx.seen), 'the effects hint is not above the Fog / Effects switch, or it does not blink: ' + JSON.stringify(fx));
+  rig.check(fx && fx.above && fx.blink && /effects/.test(fx.seen), 'the effects hint is not above the Effects button, or it does not blink: ' + JSON.stringify(fx));
   rig.check(await dm.evaluate('localStorage.getItem("evermist.mapOpens")') === '2', 'the count of maps opened was not kept in localStorage');
   await dm.evaluate('setPlaceMode("effects"); 0');
   await gone('effects');

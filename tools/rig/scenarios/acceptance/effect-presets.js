@@ -8,14 +8,14 @@
 //      size lands on a grid square.
 //   C. Line, Wall and Ring have no hand tool, so picking one arms its default size: a line one square
 //      wide, a wall and a ring one foot thick.
-//   D. The map's wheel steps the size one grid square at a time and stops at the largest; Ctrl+wheel
+//   D. The map's wheel steps the size one grid square at a time and stops at the smallest and the largest; Ctrl+wheel
 //      still zooms.
 //   E. A click places the effect at the exact size, where it was clicked, never snapped; it
 //      arrives selected, the bar returns to Select, Undo removes it.
 //   F. A drag aims a cone from the press point.
 //   G. Changing the grid leaves a placed preset alone; the next one takes the new grid.
 //   H. A Ring is a band one foot thick around a real hole, and it reaches the TV with that hole.
-//   I. Escape drops a picked size.
+//   I. Escape puts a picked size down: back to Select, and Effects mode stays.
 
 const lib = require('../../lib');
 
@@ -32,18 +32,16 @@ module.exports = async function effectPresets(rig) {
 
   // ══ A ══
   // RED ON: shapeInMode's greying gated off with false && in the shape list (shapeMenu.js) — 2026-10-16
-  const offered = async () => {
-    await dm.evaluate('document.querySelector("[data-chev=shape]").click(); 0');
+  const offered = async chev => {
+    await dm.evaluate('document.querySelector("[data-chev=' + chev + ']").click(); 0');
     const rows = await dm.evaluate('[...document.querySelectorAll("#tb-dd .dd-it")].map(r => ({ id: r.dataset.dd, off: r.disabled }))');
     return id => rows.some(r => r.id === id && !r.off);
   };
-  let has = await offered();
-  rig.check(has('btn-line') && has('btn-wall') && has('btn-ring'), 'the Effects shape list does not offer Line, Wall and Ring');
-  await dm.evaluate('document.querySelector("[data-chev=shape]").click(); setPlaceMode("rooms"); 0');
-  has = await offered();
+  const well = await dm.evaluate('[...document.querySelectorAll("#fx-shapes .fx-shape")].map(b => b.dataset.fxshape).join()');
+  rig.check(well === 'rect,circle,cone,line,wall,ring,poly', 'the Effects row shape well is not Square, Circle, Cone, Line, Wall, Ring, Polygon: ' + well);
+  await dm.evaluate('setPlaceMode("rooms"); 0');
+  let has = await offered('shape');
   rig.check(!has('btn-line') && !has('btn-wall') && !has('btn-ring'), 'the Rooms shape list offers Line, Wall or Ring, which no room is');
-  await dm.evaluate('document.querySelector("[data-chev=shape]").click(); setPlaceMode("effects");' +
-                    ' document.querySelector("[data-chev=shape]").click(); 0');
   const surf = await dm.evaluate(`(() => {
     const m = getComputedStyle(document.getElementById('tb-dd'));
     const b = getComputedStyle(document.getElementById('toolbar-bottom'));
@@ -51,7 +49,7 @@ module.exports = async function effectPresets(rig) {
   })()`);
   rig.check(surf.m === surf.b && surf.bw !== '0px',
             'the shape list does not wear the bar\'s surface: ' + JSON.stringify(surf));
-  await dm.evaluate('document.querySelector("[data-chev=shape]").click(); 0');
+  await dm.evaluate('document.querySelector("[data-chev=shape]").click(); setPlaceMode("effects"); setShape("select"); 0');
 
   // ══ B ══
   // RED BY DESIGN: written against the size field, never re-proved
@@ -86,7 +84,11 @@ module.exports = async function effectPresets(rig) {
   rig.check(await wheel(-100, true) === 60 && (await dm.evaluate('zoom')) > z0,
             'Ctrl+wheel did not zoom, or it changed the size');
   await typeSize(5);
-  rig.check(await wheel(100) === null, 'the wheel down from the smallest size did not step to drawing by hand');
+  const z1 = await dm.evaluate('zoom');
+  rig.check(await wheel(100) === 5 && (await dm.evaluate('zoom')) === z1 && await dm.evaluate('shape === "circle"'),
+            'the wheel down from the smallest size did not stop at 5 (it must never reach drawing by hand or zoom)');
+  await dm.evaluate('setPreset(null); 0');
+  rig.check(await dm.evaluate('presetArmed === null'), 'By hand is not reachable by the size field alone');
   await typeSize(20);
 
   // ══ E ══
@@ -188,8 +190,8 @@ module.exports = async function effectPresets(rig) {
   await dm.evaluate('setShape("circle"); 0');
   await typeSize(10);
   await dm.evaluate('__rigKey("Escape"); 0');
-  rig.check(await dm.evaluate('presetArmed === null && shape === "circle"'),
-            'Escape did not drop the picked size back to hand drawing');
+  rig.check(await dm.evaluate('presetArmed === null && shape === "select" && placeMode === "effects"'),
+            'Escape did not put the picked size down to Select with Effects mode kept');
   await dm.evaluate('setShape("ring"); __rigKey("Escape"); 0');
   rig.check(await dm.evaluate('presetArmed === null && shape === "select"'),
             'Escape on a Ring did not return the bar to Select');

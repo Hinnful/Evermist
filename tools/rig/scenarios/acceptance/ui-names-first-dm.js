@@ -83,7 +83,9 @@ module.exports = async function uiNamesFirstDm(rig) {
   await lib.settle(dm, 'placeMode === "effects"', 8000);
   const fx = await dm.evaluate('__unShape()');
   // RED BY DESIGN: written against the feature, never re-proved
-  rig.check(fx.label === '', 'A: the Effects shape button shows a label: ' + JSON.stringify(fx));
+  rig.check(fx.label === 'Room' && fx.title.startsWith('Room - leave Effects'), 'A: the Room button changed in Effects mode: ' + JSON.stringify(fx));
+  rig.check(await dm.evaluate('(() => { const b = document.getElementById("btn-effects"), l = b.querySelector(".tb-shape-label"); return __unVis(l) && l.textContent.trim() === "Effects" && b.title.startsWith("Effects (E)"); })()'),
+            'A: the Effects button is not labelled Effects');
   await dm.evaluate('setPlaceMode("rooms"); 0');
 
   // ── D ─────────────────────────────────────────────────────────────────────

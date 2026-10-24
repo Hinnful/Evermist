@@ -35,7 +35,8 @@
 //       first and ends with By hand for the shapes that have it.
 //   15. Effects' Shape list: Square, Circle, Cone, Line, Wall, Ring, Polygon; Line and Wall and
 //       Ring take a length alone.
-//   16. Fog / Effects is a sliding thumb in the darker tab at the bar's right end.
+//   16. The Effects tool sits right after Room, labelled, blue while the mode is on and its flame in the fire colour
+//       while off; the old tab is gone.
 //   17. Every well is 30px tall, every divider runs the full height of its strip.
 //   20. Every old toolbar button id still exists and still works when clicked.
 //
@@ -121,11 +122,11 @@ module.exports = async function fogToolbarFeature(rig) {
   // ── 1. The bar: Select, Brush, Shape, a divider, two eyes ─────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   const bar0 = await dm.evaluate('__rigBar()');
-  rig.check(bar0.shown.join() === 'btn-select,btn-brush,btn-shape,tb-reveal-all,tb-hide-all',
-            'the Fog bar is not Select, Brush, Shape, then Reveal all and Hide all: ' + bar0.shown.join(' '));
+  rig.check(bar0.shown.join() === 'btn-select,btn-brush,btn-shape,btn-effects,tb-reveal-all,tb-hide-all',
+            'the Fog bar is not Select, Brush, Room, Effects, then Reveal all and Hide all: ' + bar0.shown.join(' '));
   const order = await dm.evaluate(`(() => [...document.getElementById('toolbar-bottom').children]
     .filter(e => e.getClientRects().length).map(e => e.id || e.className).join())()`);
-  rig.check(/tb-grp-shape,div-whole,tb-whole/.test(order), 'the eyes do not follow Shape after a divider: ' + order);
+  rig.check(/tb-grp-shape,tb-grp-fx,div-whole,tb-whole/.test(order), 'the eyes do not follow Room and Effects after a divider: ' + order);
   const scene = await dm.evaluate(`(() => { const b = document.getElementById('btn-clear-fog');
     return { hidden: b.getClientRects().length === 0, ids: !!document.getElementById('btn-fill-fog') }; })()`);
   rig.check(scene.hidden && scene.ids, 'Scene control still shows the Whole map row, or its ids went: ' + JSON.stringify(scene));
@@ -337,10 +338,10 @@ module.exports = async function fogToolbarFeature(rig) {
     const z = row.width / t('context-row').offsetWidth || 1;
     return { words: t('btn-snap').textContent.trim() + t('btn-axislock').textContent.trim(), tips: [t('btn-snap').title, t('btn-axislock').title],
              wellH: Math.round(well.height / z), divFull: divs.length > 0 && divs.every(d => Math.abs(d.height - (row.height - 2 * z)) <= 2 * z),
-             track: Math.round(document.querySelector('.ms-well').getBoundingClientRect().height / z) };
+           };
   })()`);
   rig.check(look.words === '' && look.tips.every(Boolean), 'Snap and Straight walls carry words, or lost their tooltips: ' + JSON.stringify(look));
-  rig.check(look.wellH === 30 && look.track === 30, 'a well is not 30px tall: ' + JSON.stringify(look));
+  rig.check(look.wellH === 30, 'a well is not 30px tall: ' + JSON.stringify(look));
   rig.check(look.divFull, 'a divider in the row does not run the full height of the row');
   rig.byEye('11, 17: the snap and straight-wall icons read as a grid with a point and a right angle; wells and dividers share one rhythm');
   await dm.evaluate('setShape("select"); 0');
@@ -348,14 +349,17 @@ module.exports = async function fogToolbarFeature(rig) {
   // ── 12, 14, 15. Effects' row ──────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   await dm.evaluate('document.getElementById("btn-place-effects").click(); 0');
-  rig.check(await dm.evaluate('__rigBar().shown.join()') === 'btn-select,btn-shape,tb-reveal-all,tb-hide-all',
-            'Effects did not drop the Brush and keep the whole-map eyes: ' + await dm.evaluate('__rigBar().shown.join()'));
-  const fxList = await dm.evaluate('__rigList("shape")');
-  rig.check(fxList.map(r => r.text.replace(/^✓\s*/, '').replace(/\s*(R|O|C|P)?$/, '')).join() === 'Square,Circle,Cone,Line,Wall,Ring,Polygon',
-            'the Effects Shape list is not Square, Circle, Cone, Line, Wall, Ring, Polygon: ' + JSON.stringify(fxList.map(r => r.text)));
+  rig.check(await dm.evaluate('__rigBar().shown.join()') === 'btn-select,btn-brush,btn-shape,btn-effects,tb-reveal-all,tb-hide-all',
+            'Effects changed the set of tools on the bar: ' + await dm.evaluate('__rigBar().shown.join()'));
+  // Room's arrow is greyed and inert in Effects; the shapes are the row's well, and Effects has no arrow.
+  rig.check(await dm.evaluate('document.querySelector("[data-chev=shape]").click(); !document.getElementById("tb-dd")'),
+            'Room\'s arrow opened a list in Effects mode, where it is greyed');
+  const fxWell = await dm.evaluate('[...document.querySelectorAll("#fx-shapes .fx-shape")].map(b => b.title.replace(/ \\(.\\)$/, "")).join()');
+  rig.check(fxWell === 'Square,Circle,Cone,Line,Wall,Ring,Polygon' && await dm.evaluate('!document.querySelector("#tb-grp-fx .tb-chev")'),
+            'the Effects row well is not Square, Circle, Cone, Line, Wall, Ring, Polygon, or Effects kept an arrow: ' + fxWell);
   await dm.evaluate('setShape("circle"); 0');
-  rig.check((await dm.evaluate('__rigRow()')).join() === 'ctx-effects,ctx-presets,div-aids,fx-aids,div-op,op-sw',
-            'Effects\' row is not the material, the size, a divider, Snap, Straight walls, a divider and the repair icon: ' + (await dm.evaluate('__rigRow()')).join(' '));
+  rig.check((await dm.evaluate('__rigRow()')).join() === 'fx-shapes,div-fx-shapes,ctx-effects,ctx-presets,div-aids,fx-aids,div-op,op-sw',
+            'Effects\' row is not the shape well, a divider, the material, the size, a divider, Snap, Straight walls, a divider and the repair icon: ' + (await dm.evaluate('__rigRow()')).join(' '));
   rig.check(await dm.evaluate('document.querySelector("#material-row").getClientRects().length === 0 && document.querySelectorAll("#mat-pick button").length === 2'),
             'the material buttons are still in the row, or the one button and its chevron are not');
   await dm.evaluate('document.querySelector("#mat-pick .mt-btn").click(); 0');
@@ -397,28 +401,31 @@ module.exports = async function fogToolbarFeature(rig) {
             'a placed Wall is not 1 ft thick and its length long: ' + JSON.stringify(wallDrawn));
   await dm.evaluate('document.getElementById("btn-select").click(); 0');
 
-  // ── 16. The switch ────────────────────────────────────────────────────────
+  // ── 16. The Effects tool ──────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   const tab = await dm.evaluate(`(() => {
-    const seg = document.querySelector('.tb-seg'), bar = document.getElementById('toolbar-bottom');
-    const s = seg.getBoundingClientRect(), b = bar.getBoundingClientRect();
-    return { outside: !bar.contains(seg), joined: Math.abs(s.left - b.right) < 2, ids: [...seg.querySelectorAll('button')].map(x => x.id).join(),
-             thumb: !!seg.querySelector('.ms-well .ms-thumb'), mode: document.body.classList.contains('mode-fx'),
-             barC: (b.left + b.right) / 2, win: innerWidth };
+    const seg = document.querySelector('.tb-seg'), fx = document.getElementById('btn-effects'), room = document.getElementById('btn-shape');
+    const f = fx.getBoundingClientRect(), r = room.getBoundingClientRect(), bar = document.getElementById('toolbar-bottom').getBoundingClientRect();
+    return { seg: seg.getClientRects().length, word: fx.querySelector('.tb-shape-label').textContent.trim(), labeled: fx.classList.contains('tb-labeled'),
+             after: f.left > r.right && f.left - r.right < 40, inside: f.left >= bar.left && f.right <= bar.right,
+             flame: getComputedStyle(fx.querySelector('.tb-shape-glyph')).color, ids: !!document.getElementById('btn-place-rooms') && !!document.getElementById('btn-place-effects'),
+             barC: (bar.left + bar.right) / 2, win: innerWidth };
   })()`);
-  rig.check(tab.outside && tab.joined && tab.ids === 'btn-place-rooms,btn-place-effects' && tab.thumb && tab.mode,
-            'Fog / Effects is not a thumb in a well in the tab joined to the bar\'s right end: ' + JSON.stringify(tab));
-  rig.check(Math.abs(tab.barC - tab.win / 2) < 2, 'the tab pushed the bar off the window\'s centre: ' + JSON.stringify(tab));
+  rig.check(tab.seg === 0 && tab.word === 'Effects' && tab.labeled && tab.after && tab.inside && tab.ids,
+            'the Effects tool is not a labelled flame button right after Room, with the old switch gone: ' + JSON.stringify(tab));
+  rig.check(Math.abs(tab.barC - tab.win / 2) < 2, 'the bar is off the window\'s centre: ' + JSON.stringify(tab));
   await dm.evaluate('document.getElementById("btn-place-rooms").click(); 0');
-  rig.check(await dm.evaluate('!document.body.classList.contains("mode-fx")'), 'the thumb did not return to Fog');
-  rig.byEye('16: the thumb slides under the mode in force, in a tab a shade darker than the bar');
+  rig.check(await dm.evaluate('!document.body.classList.contains("mode-fx") && placeMode === "rooms"'), 'the hidden Fog back end did not return to Fog');
+  rig.check(await dm.evaluate('getComputedStyle(document.querySelector("#btn-effects .tb-shape-glyph")).color') === 'rgb(255, 138, 61)',
+            'the Effects flame does not wear the fire colour with the mode off');
+  rig.byEye('16: Effects wears a flame in the fire colour and the word; while the mode is on the bar burns, and Brush and Room are grey in place');
 
   // ── 20. Every old id still exists and still works ─────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   const old = await dm.evaluate(`(() => {
     const ids = ['btn-select', 'btn-brush', 'btn-shape', 'btn-poly', 'btn-rect', 'btn-circle', 'btn-cone', 'btn-line', 'btn-ring',
       'btn-reveal', 'btn-half', 'btn-shroud', 'btn-door', 'btn-cut', 'btn-op-join', 'btn-op-trim', 'btn-snap', 'btn-axislock',
-      'btn-place-rooms', 'btn-place-effects', 'btn-clear-fog', 'btn-fill-fog', 'brush-size'];
+      'btn-effects', 'btn-place-rooms', 'btn-place-effects', 'btn-clear-fog', 'btn-fill-fog', 'brush-size'];
     return { missing: ids.filter(id => !document.getElementById(id)) };
   })()`);
   rig.check(old.missing.length === 0, 'toolbar ids that went missing: ' + old.missing.join(', '));

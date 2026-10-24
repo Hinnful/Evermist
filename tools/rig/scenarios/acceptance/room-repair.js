@@ -17,8 +17,8 @@
 //   E. A refusal changes nothing, says so, and spends no undo. A cut entering a room more than
 //      once is the refusal left: a Trim inside a room makes a hole (rooms-with-holes.js).
 //   F. A shape drawn over nothing does nothing. Join and Trim never create a room.
-//   G. Effects mode carries all three repairs on its bar, and leaves the Brush and the Door
-//      off it - a tool a mode cannot use is absent, never greyed.
+//   G. Effects mode carries all three repairs on its bar, and greys the Brush in place and leaves
+//      the Door off it.
 //   H. EVERY ONE OF THOSE REACHES THE TV. A repaired room the players still see in its old
 //      shape is the failure this feature exists to prevent.
 //   I. A repair STAYS ARMED after the shape it ran on, applied or landing on nothing, and the
@@ -278,13 +278,13 @@ module.exports = async function roomRepair(rig) {
 
   // ══ G. Effects carries all three repairs, and leaves the Brush and the Door off ══
   // RED ON: the Cut out row disabled in _tbOpenList's ops list (shapeMenu.js) — 2026-10-02
-  // ABSENT, not greyed: a dead control in prime position on a bar it can do nothing on is what
-  // this replaced. The repairs read placeMode, so they act on whichever list is up.
+  // The repairs read placeMode, so they act on whichever list is up. Brush greys in place in Effects and the
+  // fog clouds are not in its row.
   const onBar = ids => '(() => ({' + ids.map(id =>
     '"' + id + '": (() => { const b = document.getElementById("' + id + '");' +
     ' return !!b && getComputedStyle(b).display !== "none"; })()').join(', ') + '}))()';
   const REPAIR_IDS = ['join', 'trim', 'split'];
-  const FOG_BTNS = ['btn-brush', 'wa-mode'];
+  const FOG_BTNS = ['wa-mode'];
   await dm.evaluate('setPlaceMode("effects"); 0');
   // The three stand behind the repair icon at the end of a shape's row.
   const listed = () => dm.evaluate('(() => { setShape("rect"); document.querySelector("#op-sw .op-chev").click();' +
@@ -296,8 +296,10 @@ module.exports = async function roomRepair(rig) {
             'to repair an effect is to call setShapeOp by hand: ' + gFx);
   const gFxOff = await dm.evaluate(onBar(FOG_BTNS));
   rig.check(Object.values(gFxOff).every(v => v === false),
-            'the Brush or the fog switcher is on the bar in Effects mode, where there is no fog to ' +
+            'the fog switcher is in the row in Effects mode, where there is no fog to ' +
             'paint: ' + JSON.stringify(gFxOff));
+  rig.check(await dm.evaluate('document.getElementById("btn-brush").classList.contains("tb-off")'),
+            'the Brush is not greyed in Effects mode, where there is no fog to paint');
   // A repair armed in one mode survives the switch, because its button is on both bars.
   await dm.evaluate('setShapeOp("join"); setPlaceMode("rooms"); 0');
   rig.check(await dm.evaluate('shapeOp') === 'join',

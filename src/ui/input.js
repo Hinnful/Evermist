@@ -10,9 +10,8 @@ let legendVisible = false;
 let mapPointerClient = null;
 
 // The options row above the toolbar, which carries ONLY what the picked tool uses: the fog clouds and
-// the brush size over the Brush; over a shape the clouds in Fog mode or the material and size in
-// Effects, then Snap, Straight walls and the repair icon; the door's fields while Door is armed.
-// Select shows no row. ONE function owns every visibility decision, called from setShape,
+// the brush size over the Brush; over a shape the clouds in Fog mode; in Effects mode the shape well, the material and size, then Snap, Straight walls and the repair icon; the door's fields while Door is armed.
+// Select shows no row, except in Effects mode, whose row stays up with every tool. ONE function owns every visibility decision, called from setShape,
 // setShapeOp and setPlaceMode; fogBar.js then places the row over the tool it belongs to.
 function updateContextPanels() {
   const show = (id, on) => {
@@ -25,9 +24,9 @@ function updateContextPanels() {
   const cal    = gridCalArmed;
   const closed = SHAPE_FAMILY.indexOf(shape) >= 0;
   const brush  = !cal && placeMode === 'rooms' && shape === 'brush';
-  const fx     = !cal && placeMode === 'effects' && closed;
+  const fx     = !cal && placeMode === 'effects' && !worldMapOpen;   // the mode owns the row, whatever tool is in hand
   const door   = !cal && shape === 'door';
-  const aids   = !cal && (closed || shape === 'cut');
+  const aids   = !cal && (closed || shape === 'cut' || fx);
   const clouds = !cal && placeMode === 'rooms' && (closed || shape === 'brush');
   show('wa-mode', clouds);
   show('panel-brush-bottom', brush);
@@ -38,6 +37,8 @@ function updateContextPanels() {
   show('op-sw', aids);
   refreshFogBar();
   document.body.classList.toggle('aids-up', aids && worldMapOpen);
+  show('fx-shapes', fx);
+  show('div-fx-shapes', fx);
   show('ctx-effects', fx);
   show('ctx-presets', fx && !!EFFECT_PRESETS[shape]);
   refreshPresetRow();
@@ -69,6 +70,7 @@ function setShape(s) {
     if (el) el.classList.toggle('active', sh === s);
   });
   refreshShapeButton();   // the one shape button wears whichever of the four is picked
+  refreshEffectsTool();   // and the Effects tool is lit while a shape of its own is in hand
   // ⚠ The Polygon tool and Cut both click their shape out through activePolygon, and a leftover
   // cut path closes as a room on the next Polygon click, so only its owner keeps it.
   if (s !== (activePolygon && activePolygon.cut ? 'cut' : 'poly')) activePolygon = null;
@@ -198,11 +200,12 @@ function initInput() {
       if (!mapOffscreen) return;
       e.preventDefault();
       const kind = classifyWheel(e, wheelSt, e.timeStamp);
-      // An armed preset takes the wheel for its sizes; a pinch still zooms.
+      // An armed preset takes the wheel for its sizes and keeps it at both ends, never reaching "by hand" and
+      // never falling through to the zoom; a pinch (Ctrl+wheel) still zooms.
       if (presetArmed && kind !== 'pinch') {
         const r = wheelSteps(kind, e.deltaY, sizeAcc);
         sizeAcc = r.acc;
-        for (let i = 0; i < Math.abs(r.steps); i++) stepPreset(r.steps > 0 ? 1 : -1);
+        for (let i = 0; i < Math.abs(r.steps); i++) stepPreset(r.steps > 0 ? 1 : -1, true);
         return;
       }
       if (kind === 'touchpad') {
@@ -279,6 +282,7 @@ function initInput() {
       // message, because the bar carries no button for it either. Reveal and Shroud have no key
       // at all: a bare letter means a tool.
       case 'KeyV': setShape('select'); break;
+      case 'KeyE': effectsToolToggle(); break;
       case 'KeyR': pickShapeByKey('rect');   break;
       case 'KeyO': pickShapeByKey('circle'); break;
       case 'KeyP': pickShapeByKey('poly');   break;
@@ -322,8 +326,10 @@ function initInput() {
         } else if (escapeShapeSelection()) {
           // one level per press, handled in shapeSelect.js
         } else {
-          if (shapeOp !== 'new') setShapeOp('new');
+          const hadOp = shapeOp !== 'new';
+          if (hadOp) setShapeOp('new');
           if (shape !== 'select') setShape('select');
+          else if (placeMode === 'effects' && !hadOp) effectsToolLeave();   // Select in hand: the next Esc leaves the mode
         }
         break;
       case 'KeyT':

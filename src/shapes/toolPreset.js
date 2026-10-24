@@ -21,6 +21,7 @@ function presetForShape(s) {
 function setPreset(p) {
   paneBroadcast('preset', { preset: p });
   presetArmed = p;
+  if (p) effectsSize = p.s;
   refreshPresetRow();
   drawCursor(lastScreenX, lastScreenY);
 }
@@ -28,17 +29,17 @@ function setPreset(p) {
 // A column that changed its own preset tells the shell, which repaints its row and the other column.
 function reportPaneTool() {
   if (typeof isPane === 'undefined' || !isPane || parent === window) return;
-  parent.postMessage({ type: 'pane-tool', pane: paneId, shape, preset: presetArmed }, '*');
+  parent.postMessage({ type: 'pane-tool', pane: paneId, shape, preset: presetArmed, placeMode }, '*');
 }
 
 // One grid square a step, stopping at both ends. A shape with a hand tool has one step below the
-// smallest size, which is drawing it by hand.
-function stepPreset(dir) {
+// smallest size, which is drawing it by hand; the wheel passes `stayArmed` and never takes that step.
+function stepPreset(dir, stayArmed) {
   const kind = presetArmed ? presetArmed.kind : shape;
   const list = EFFECT_PRESETS[kind];
   if (!list) return;
   const i = presetArmed ? list.findIndex(z => z.s === presetArmed.s && z.w === presetArmed.w) : -1;
-  const j = stepPresetIndex(i, list.length, dir, !!PRESET_HAS_HAND[kind]);
+  const j = stepPresetIndex(i, list.length, dir, !!PRESET_HAS_HAND[kind] && !stayArmed);
   setPreset(j < 0 ? null : { kind, ...list[j] });
   reportPaneTool();
 }
@@ -50,10 +51,10 @@ function stepPresetKey(dir) {
   return true;
 }
 
-// Escape drops the size. A shape with no hand tool goes back to Select with it.
+// Escape puts an armed size down: back to Select, the mode stays (effectsTool.js owns leaving it).
 function dropPreset() {
   if (!presetArmed) return false;
-  if (PRESET_DEFAULT[shape] != null) setShape('select'); else setPreset(null);
+  setShape('select');
   reportPaneTool();
   return true;
 }

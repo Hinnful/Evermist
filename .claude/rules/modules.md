@@ -57,7 +57,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/fogBar.js` | Reveal all and Hide all, the fog clouds in the tool's row, and the row's place over its tool |
 | `ui/repairBar.js` | The repair icon at the end of a shape's row, and its list |
 | `ui/wheelPlan.js` | Pure wheel kernel: mouse, touchpad or pinch, the zoom a delta is worth, the size steps a scroll adds up to. Tested |
-| `ui/effectsRow.js` | Effects row: the material button and palette, the size field |
+| `ui/effectsRow.js` | Effects row: the shape well, the material button and palette, the size field |
+| `ui/effectsTool.js` | The Effects switch on the bar: the way in and out of Effects mode, its material glyph, the greyed Brush and Room |
+| `ui/effectsBarFire.js` | The bar burning while Effects mode is on: its own small canvas, the current material's passes, a fade |
 | `ui/input.js` | DM mouse/wheel/keyboard, legend. **Drag-drop is in `scenes/dragDrop.js`** |
 | `undo.js` | Undo/redo for fog edits |
 | `render/effects.js` | Map effects: the `effects` array's model and its meshes |
@@ -233,7 +235,7 @@ scenes/sceneGroups.js → scenes/editStamps.js → scenes/sceneStore.js → scen
 scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
 render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/twoMaps.js → player/stageWindow.js →
 scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
-render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → ui/repairBar.js → ui/wheelPlan.js → ui/effectsRow.js → player/player.js →
+render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → ui/repairBar.js → ui/wheelPlan.js → ui/effectsRow.js → ui/effectsTool.js → ui/effectsBarFire.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvControl.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hintsPlan.js → ui/hints.js → ui/hintsFirstMap.js → ui/hintsCues.js → ui/confirmDialog.js → rooms/floorPlan.js →

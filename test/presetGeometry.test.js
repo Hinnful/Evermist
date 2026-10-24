@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert');
-const { EFFECT_PRESETS, GRID_FT, PRESET_HAS_HAND, presetRings, presetLabel, stepPresetIndex, presetSizeText } = require('../src/shapes/presetGeometry');
+const { EFFECT_PRESETS, GRID_FT, PRESET_HAS_HAND, presetRings, presetLabel, stepPresetIndex, presetSizeText, presetForSize } = require('../src/shapes/presetGeometry');
 const { i18nFill } = require('../src/i18n/i18nPlan');
 
 const O = { x: 500, y: 400 };
@@ -104,4 +104,13 @@ test('the cursor label names the unit', () => {
   assert.strictEqual(presetLabel('rect', 10, 0, i18nFill), '10 × 10 ft');
   assert.strictEqual(presetLabel('ring', 20, 1, i18nFill), '20 ft ring');
   assert.strictEqual(presetLabel('wall', 30, 1, i18nFill), '30 ft wall');
+});
+
+test('the Effects tool arms a shape at the nearest size it has, and the Polygon at none', () => {
+  assert.deepStrictEqual(presetForSize('circle', 20), { kind: 'circle', s: 20, w: 0 });
+  assert.strictEqual(presetForSize('rect', 20).s, 20);
+  assert.strictEqual(presetForSize('rect', 60).s, 30);
+  assert.strictEqual(presetForSize('ring', 5).s, 10);
+  assert.strictEqual(presetForSize('line', 20).w, 5);
+  assert.strictEqual(presetForSize('poly', 20), null);
 });

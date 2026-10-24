@@ -48,13 +48,13 @@ function refreshFogBar() {
 }
 
 // The row hangs over the tool it belongs to, kept inside the window, with a pointer down to it:
-// the Brush for brush size, Shape for everything a shape takes. The Door's fields have no tool under
+// the Brush for brush size, Room for everything a room shape takes, Effects for what an effect takes. The Door's fields have no tool under
 // them and sit centred with no pointer. The pointer never sits under a divider, so a row with one
 // near it slides sideways until the pointer is clear.
 function placeContextRow() {
   const row = document.getElementById('context-row');
   if (!row) return;
-  const anchor = shape === 'door' ? null : document.getElementById(shape === 'brush' ? 'btn-brush' : 'btn-shape');
+  const anchor = shape === 'door' ? null : document.getElementById(shape === 'brush' ? 'btn-brush' : placeMode === 'effects' ? 'btn-effects' : 'btn-shape');
   row.classList.toggle('no-caret', !anchor);
   row.style.left = '0px';
   row.style.setProperty('--fx-caret', '0px');

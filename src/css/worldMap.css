@@ -159,8 +159,6 @@
      the row hides with visibility, as everywhere else, so the bar does not jump. */
   body:not(.world) .wm-tool { display: none !important; }
   body.world #toolbar-bottom > :not(.wm-tool):not(#btn-select):not(#tb-grp-shape) { display: none !important; }
-  /* No Fog / Effects tab: the world map has neither. */
-  body.world .tb-seg { display: none !important; }
   body.world #toolbar-bottom { border-radius: var(--panel-radius); }
   /* Select, + Map, Group, a divider, Find; only Map and Group carry a word. Select is always leftmost. Road is a tool of the Place list now,
      so its own button stays in the page as the back end. `order` sets the bar without moving the scene's buttons. */

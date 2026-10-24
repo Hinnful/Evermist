@@ -67,6 +67,15 @@ function stepPresetIndex(i, n, dir, hasHand) {
   return Math.max(hasHand ? -1 : 0, Math.min(n - 1, i + dir));
 }
 
+// The preset of `kind` nearest `size` feet, or null for a shape with no sizes (the Polygon).
+function presetForSize(kind, size) {
+  const list = EFFECT_PRESETS[kind];
+  if (!list) return null;
+  let best = list[0];
+  for (const z of list) if (Math.abs(z.s - size) < Math.abs(best.s - size)) best = z;
+  return { kind: kind, s: best.s, w: best.w };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { EFFECT_PRESETS, GRID_FT, PRESET_HAS_HAND, presetRings, presetLabel, presetSizeText, stepPresetIndex };
+  module.exports = { EFFECT_PRESETS, GRID_FT, PRESET_HAS_HAND, presetRings, presetLabel, presetSizeText, stepPresetIndex, presetForSize };
 }

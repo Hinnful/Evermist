@@ -1046,7 +1046,7 @@ Line is one square wide, a Wall is 1 ft thick, and a Ring is a Wall bent into a 
 (for a Ring, the width across) alone, and each has no hand tool. A wider line or wall is a Polygon. Rejected: a ten-foot
 line and other widths as sizes, which put a second axis in the size field.
 
-### Fog / Effects is a sliding thumb · `SETTLED` (2026-10-16)
+### Fog / Effects is a sliding thumb · `REVERTED` (2026-10-24, the Effects button)
 One well holds the cloud and the flame, and a thumb slides under the mode in force, at the bar's right end in the darker
 tab. Stacking the two at 16px, a switch with a knob, and one button that flips were built and rejected.
 
@@ -1247,3 +1247,13 @@ added to a group always lands inside its outline (`wmSpotInOutline`): the next c
 centre stepped down-right 24px until no card sits exactly there. Before, a full group sent the map to
 a free spot outside it, so it did not join. Cost accepted: in a full group cards overlap and the outline
 does not grow.
+
+### Effects is a button beside Room, and stays a mode · `SETTLED` (2026-10-24)
+Testers did not find the sliding thumb, so Effects is a button beside Room (E); the old `.tb-seg` buttons stay hidden as
+the back end. A click with Select in hand arms the last effect again, since a placement ends on Select; with an effect
+armed it leaves the mode. While on, the button wears the blue of a switch that is on, glyph included. The bar burns on
+its own border in the material's colour, and Fire, Acid and Light are the only coloured glyphs. Rejected: a modeless
+Effects tool where Select picks rooms, effects and lights together, because a .dd2vtt import brings every candle as a
+light (87 on one inn floor, covering the map almost ten times) and Select would land on a light on nearly every room
+click; lights stay plain polygons, and an outline shown only under the pointer was dropped with it. Also rejected: a
+material well of three icons, which does not scale past 20 materials; the palette with its search field stays the picker.

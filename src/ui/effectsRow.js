@@ -1,12 +1,11 @@
 'use strict';
-// effectsRow.js — Effects mode's row: one material button with a chevron, then the size field of the
-// picked shape, with no divider between them. The material button opens a palette of the materials that
-// exist, over a "Find a material" field. The size field steps one grid square (5 ft) at a time: drag its
+// effectsRow.js — Effects mode's row: the effect shapes as a pick-one well, a divider, the material field (a button
+// and its chevron on one grey field), then the size field of the picked shape, with no divider between them. The
+// material field opens a palette of the materials that exist, over a "Find a material" field. The size field steps one grid square (5 ft) at a time: drag its
 // arrows, type, scroll, or [ ]; it stops at both ends. Its chevron lists the sizes largest first, "By
 // hand" last for the shapes that have it. The buttons in #material-row are the back end that holds each
 // material's name, glyph and id; setMaterial (toolbar.js) is what a pick calls.
 
-const FX_MATERIAL_TINT = { fire: '#ff8a3d', acid: '#9be33a', light: '#ffe9a8' };
 const SIZE_SCRUB_PX = 14;   // pointer travel for one step while scrubbing
 
 function initEffectsRow() {
@@ -21,7 +20,27 @@ function initEffectsRow() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !pal.hidden) { pal.hidden = true; e.stopImmediatePropagation(); }
   }, true);
+  _buildShapeWell();
   refreshMaterialButton();
+}
+
+// The effect shapes as the pick-one well the fog clouds use, glyphs borrowed from the hidden #shape-menu
+// buttons. A click arms the shape at the current size (effectsTool.js); Select in hand lights none.
+function _buildShapeWell() {
+  const box = document.getElementById('fx-shapes');
+  if (!box) return;
+  box.innerHTML = '<span class="fx-track">' + FX_SHAPE_ORDER.map(s => {
+    const key = SHAPE_ROWS[s][1];
+    return '<button type="button" class="mode-btn fx-shape" data-fxshape="' + s + '" title="' +
+      t(s === 'rect' ? 'Square' : SHAPE_ROWS[s][0]) + (key ? ' (' + key + ')' : '') + '">' +
+      document.getElementById('btn-' + s).querySelector('svg').outerHTML + '</button>';
+  }).join('') + '</span>';
+  box.querySelectorAll('.fx-shape').forEach(b => { b.onclick = () => effectsToolArm(b.dataset.fxshape); });
+}
+
+function refreshFxShapeWell() {
+  const lit = placeMode === 'effects' ? shape : null;
+  document.querySelectorAll('#fx-shapes .fx-shape').forEach(b => b.classList.toggle('active', b.dataset.fxshape === lit));
 }
 
 // The materials that exist, read off the back-end buttons: [id, name, glyph].
@@ -35,8 +54,9 @@ function refreshMaterialButton() {
   if (!box) return;
   const m = _materials().find(x => x[0] === currentMaterial) || _materials()[0];
   if (!m) return;
-  box.innerHTML = '<button type="button" class="mt-btn" title="' + t(m[1]) + ' - ' + t('click for every material') + '" style="color:' + FX_MATERIAL_TINT[m[0]] + '">' + m[2] + '</button>' +
+  box.innerHTML = '<button type="button" class="mt-btn mt-named" title="' + t(m[1]) + ' - ' + t('click for every material') + '" style="color:' + effectsMaterialColor(m[0]) + '">' + m[2] + '<span></span></button>' +
     '<button type="button" class="tb-chev mt-chev" title="' + t('Every material') + '">' + uiIcon('chev', 8, 2.2) + '</button>';
+  box.querySelector('.mt-btn span').textContent = t(m[1]);
   box.querySelectorAll('button').forEach(b => b.onclick = e => { e.stopPropagation(); _togglePalette(); });
 }
 
@@ -61,7 +81,7 @@ function _renderPalette() {
     b.type = 'button';
     b.className = 'mt-tile' + (id === currentMaterial ? ' on' : '');
     b.dataset.material = id;
-    b.innerHTML = '<span style="color:' + FX_MATERIAL_TINT[id] + '">' + glyph + '</span><span></span>';
+    b.innerHTML = '<span style="color:' + effectsMaterialColor(id) + '">' + glyph + '</span><span></span>';
     b.lastChild.textContent = t(name);
     b.onclick = () => { setMaterial(id); pal.hidden = true; };
     grid.appendChild(b);
@@ -115,7 +135,7 @@ function _buildSizeField(row) {
     e.preventDefault();
     const r = wheelSteps(classifyWheel(e, wheelSt, e.timeStamp), e.deltaY, wheelAcc);
     wheelAcc = r.acc;
-    for (let i = 0; i < Math.abs(r.steps); i++) stepPreset(r.steps > 0 ? 1 : -1);
+    for (let i = 0; i < Math.abs(r.steps); i++) stepPreset(r.steps > 0 ? 1 : -1, true);
   };
   field.querySelector('.sz-scrub').onmousedown = e => {
     e.preventDefault();

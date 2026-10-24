@@ -154,6 +154,7 @@ module.exports = async function helpAndAboutFeature(rig) {
     { key: 'KeyP', label: 'P', field: 'shape',  setup: 'setShape("select")' },
     { key: 'KeyB', label: 'B', field: 'shape',  setup: 'setShape("select")' },
     { key: 'KeyC', label: 'C', field: 'shape',  setup: 'setPlaceMode("effects"); setShape("select")' },
+    { key: 'KeyE', label: 'E', field: 'shape', setup: 'setPlaceMode("rooms"); setShape("select")' },
     // ⚠ EVERYTHING ESCAPE DROPS FIRST HAS TO BE EMPTY. Its cascade takes the selection before it
     // touches the tool, so a room left selected by an earlier check reports Escape as dead.
     { key: 'Escape', label: 'Esc', field: 'shape',

@@ -229,10 +229,12 @@ let nextEffectId = 1;
 let placeMode = 'rooms';
 
 // The shape each mode was last drawing with, so a mode switch off an unavailable tool puts the
-// DM back where they were. Runtime-only like placeMode; a restart starts Rooms (and the Campaign's groups, which share it) on Rectangle and Effects on Polygon.
+// DM back where they were. Runtime-only like placeMode; a restart starts Rooms (and the Campaign's groups, which share it) on Rectangle and Effects on Circle.
 // ⚠ ONLY A SHAPE GOES IN HERE - never Select, Brush, Door or Split. See setShape (input.js).
 let roomsShape = 'rect';
-let effectsShape = 'poly';
+let effectsShape = 'circle';
+// The size, in feet, the Effects tool arms its shape at: the last one picked. Runtime-only.
+let effectsSize = 20;
 
 // What a drawn shape DOES when no key is held: 'new' makes one, 'join' unions it with every shape it
 // lands on, 'trim' subtracts it from them, 'split' divides them along its edge (an open line, with

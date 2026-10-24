@@ -339,7 +339,12 @@ function initPanes() {
     if (msg.type === 'pane-labels-key') { toggleRoomLabels(); return; }
     // M from inside a column. The column's frame gives up focus, or the world map's keys stay in it.
     if (msg.type === 'pane-world-key') { if (document.activeElement === p.frame) p.frame.blur(); worldMapToggle(); return; }
-    if (msg.type === 'pane-tool') { if (shape !== msg.shape) setShape(msg.shape); setPreset(msg.preset); return; }
+    if (msg.type === 'pane-tool') {
+      if (msg.placeMode && placeMode !== msg.placeMode) setPlaceMode(msg.placeMode);
+      if (shape !== msg.shape) setShape(msg.shape);
+      setPreset(msg.preset);
+      return;
+    }
     if (msg.type === 'pane-repair-key') { setRemoteRepairKey(msg.repair); return; }   // repairKeys.js: the bar's icon lights
     if (msg.type === 'pane-scene-result') {
       p.sceneId = msg.sceneId || null;

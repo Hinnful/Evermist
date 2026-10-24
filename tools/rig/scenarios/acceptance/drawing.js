@@ -539,13 +539,13 @@ module.exports = async function drawing(rig) {
     const bs = [...document.querySelectorAll('#toolbar-bottom button:not(.tb-chev)')]
       .filter(b => !b.closest('#shape-menu') && b.getClientRects().length > 0);
     const name = b => b.id || 'dir-' + b.dataset.dir;
-    return { shown: bs.map(name), greyed: bs.filter(b => b.disabled).map(name),
+    return { shown: bs.map(name), greyed: bs.filter(b => b.disabled || b.classList.contains('tb-off')).map(name),
              width: Math.round(document.getElementById('toolbar-bottom').getBoundingClientRect().width) };
   })()`;
   await dm.evaluate('setPlaceMode("rooms"); setShapeOp("join"); setShapeOp("new"); setShape("rect"); 0');
   const barRooms = await dm.evaluate(BAR);
-  rig.check(barRooms.shown.join() === 'btn-select,btn-brush,btn-shape,tb-reveal-all,tb-hide-all',
-            'the Fog bar is not Select, Brush, Shape, then Reveal all and Hide all: ' + barRooms.shown.join(' '));
+  rig.check(barRooms.shown.join() === 'btn-select,btn-brush,btn-shape,btn-effects,tb-reveal-all,tb-hide-all',
+            'the Fog bar is not Select, Brush, Room, Effects, then Reveal all and Hide all: ' + barRooms.shown.join(' '));
   // The bar never changes width while the DM works: not across a tool pick, and not across a map with no rooms.
   const widths = [barRooms.width];
   for (const pick of ['setShape("brush")', 'setShape("select")', 'setShapeOp("join")', 'setShapeOp("new")', 'setShape("door")', 'setShape("select")']) {
@@ -553,17 +553,19 @@ module.exports = async function drawing(rig) {
   }
   rig.check(widths.every(w => w === widths[0]), 'the Fog bar changed width while tools were picked: ' + widths.join(' '));
   rig.check(barRooms.greyed.length === 0,
-            'the Rooms bar greys a tool instead of leaving it off: ' + barRooms.greyed.join(' '));
+            'the Rooms bar greys a tool: ' + barRooms.greyed.join(' '));
   await dm.evaluate('setPlaceMode("effects"); 0');
   const barFx = await dm.evaluate(BAR);
-  rig.check(barFx.shown.join() === 'btn-select,btn-shape,tb-reveal-all,tb-hide-all',
-            'the Effects bar is not Select, Shape, then Reveal all and Hide all: ' + barFx.shown.join(' '));
-  rig.check(barFx.greyed.length === 0,
-            'the Effects bar greys a tool instead of leaving it off: ' + barFx.greyed.join(' '));
+  // The same tools in both modes: Brush and Room grey in place, and the bar keeps its width.
+  rig.check(barFx.shown.join() === barRooms.shown.join(),
+            'the Effects bar is not the same set of tools as the Fog bar: ' + barFx.shown.join(' '));
+  rig.check(barFx.greyed.join() === 'btn-brush,btn-shape',
+            'the Effects bar does not grey exactly Brush and Room: ' + barFx.greyed.join(' '));
+  rig.check(barFx.width === barRooms.width, 'the bar changed width on entering Effects: ' + barRooms.width + ' to ' + barFx.width);
 
   // The strip above carries the picked tool's group and nothing else.
   const STRIP = `(() => {
-    const ids = ['wa-mode', 'ctx-rooms', 'ctx-effects', 'ctx-presets', 'ctx-door', 'panel-brush-bottom', 'fx-aids', 'op-sw'];
+    const ids = ['wa-mode', 'ctx-rooms', 'fx-shapes', 'ctx-effects', 'ctx-presets', 'ctx-door', 'panel-brush-bottom', 'fx-aids', 'op-sw'];
     const row = document.getElementById('context-row');
     return { groups: ids.filter(id => {
                const el = document.getElementById(id);
@@ -573,8 +575,11 @@ module.exports = async function drawing(rig) {
              top: Math.round(document.getElementById('toolbar-bottom').getBoundingClientRect().top) };
   })()`;
   const stripFx = await dm.evaluate('setShape("rect"); ' + STRIP);
-  rig.check(stripFx.groups.join() === 'ctx-effects,ctx-presets,fx-aids,op-sw',
-            'a shape in Effects mode does not show the material, the size, the aids and the repair icon, and nothing else: ' + stripFx.groups.join(' '));
+  rig.check(stripFx.groups.join() === 'fx-shapes,ctx-effects,ctx-presets,fx-aids,op-sw',
+            'a shape in Effects mode does not show the shape well, the material, the size, the aids and the repair icon, and nothing else: ' + stripFx.groups.join(' '));
+  const stripFxSelect = await dm.evaluate('setShape("select"); ' + STRIP);
+  rig.check(stripFxSelect.groups.join() === 'fx-shapes,ctx-effects,fx-aids,op-sw' && stripFxSelect.row === 'visible',
+            'Select in Effects mode hides the options row or part of it: ' + JSON.stringify(stripFxSelect));
   await dm.evaluate('setPlaceMode("rooms"); 0');
   const stripShape = await dm.evaluate('setShape("rect"); ' + STRIP);
   rig.check(stripShape.groups.join() === 'wa-mode,fx-aids,op-sw',

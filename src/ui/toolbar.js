@@ -104,8 +104,8 @@ function setPlaceMode(m) {
   drawCursor(lastScreenX, lastScreenY);   // the shape preview takes the mode's colour
 }
 
-// ⚠ A TOOL A MODE CANNOT USE IS ABSENT, NOT GREYED. The bar sizes itself to whichever set is up
-// and stays centred. Half is the one control left that greys.
+// ⚠ A TOOL A MODE CANNOT USE GREYS IN PLACE AND DOES NOTHING (effectsTool.js): Brush and Room in Effects.
+// The bar never changes width. These are the SHAPES each mode draws with.
 const MODE_SHAPES = {
   rooms:   ['select', 'poly', 'rect', 'circle', 'brush', 'door', 'cut'],
   effects: ['select', 'poly', 'rect', 'circle', 'cone', 'line', 'wall', 'ring', 'cut'],
@@ -116,15 +116,15 @@ function modeShape(m) { return m === 'effects' ? effectsShape : roomsShape; }
 function setModeShape(m, s) { if (m === 'effects') effectsShape = s; else roomsShape = s; }
 function shapeInMode(s, m) { return MODE_SHAPES[m].indexOf(s) >= 0; }
 
-// Rooms-only controls. The brush needs fog to paint, a door needs a wall and the fog clouds set
-// what they do, so none has anything to act on in Effects. The repairs work on either list.
-const ROOMS_ONLY = ['btn-brush', 'btn-door'];
+// The Door has no wall to mark in Effects, and the Brush is greyed on the bar (effectsTool.js). The repairs work on either list.
+const ROOMS_ONLY = ['btn-door'];
 function refreshModeTools() {
   const fx = placeMode === 'effects';
   const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
   ROOMS_ONLY.forEach(id => show(id, placeMode === 'rooms'));
   ['btn-cone', 'btn-line', 'btn-wall', 'btn-ring'].forEach(id => show(id, fx));
   refreshShapeButton();
+  refreshEffectsTool();
 }
 
 // ─── Materials ────────────────────────────────────────────────────────────────
@@ -145,6 +145,7 @@ function setMaterial(m) {
   if (isPlayer || (m !== 'light' && !EFFECT_MATERIALS[m])) return;
   currentMaterial = m;
   if (typeof refreshMaterialButton === 'function') refreshMaterialButton();
+  if (typeof refreshEffectsTool === 'function') refreshEffectsTool();   // the Effects button wears the material
   if (paneForward('material', { material: m })) {
     document.querySelectorAll('#material-row [data-material]').forEach(b =>
       b.classList.toggle('active', b.dataset.material === m));
@@ -194,7 +195,7 @@ function initToolbar() {
   document.getElementById('btn-reveal').onclick = () => pressFogTrio('reveal');
   document.getElementById('btn-half').onclick   = () => pressFogTrio('half');
   document.getElementById('btn-shroud').onclick = () => pressFogTrio('shroud');
-  document.getElementById('btn-brush').onclick  = () => setShape('brush');
+  document.getElementById('btn-brush').onclick  = () => { if (placeMode !== 'effects') setShape('brush'); };
   document.getElementById('btn-select').onclick = () => setShape('select');
   document.getElementById('btn-door').onclick    = () => setShape('door');
   // On the scene bar the hidden Split button arms Ctrl with the Polygon (repairKeys.js); the world map
@@ -446,6 +447,8 @@ function initToolbar() {
   initPlayersView();    // hold H: the map as the TV shows it → playersView.js
   initRepairKeys();     // Shift, Alt and Ctrl while a shape is drawn → repairKeys.js
   if (!isPane) { initFogBar(); initRepairBar(); initEffectsRow(); }   // the bar and its row, which a column does not show
+  initEffectsTool();   // the Effects switch
+  initEffectsBarFire();   // the bar burns in Effects mode (returns at once in a column)
 
   updateContextPanels(); // init: Select is the tool at load, so the strip starts blank
 

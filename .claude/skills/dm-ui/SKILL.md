@@ -51,7 +51,7 @@ One dock on the right edge holds every control that is not on the map or the too
   what may be solid). The tint (`--b-tint`) with a blue icon (`--b-icon`) marks what is on or in hand:
   the tool, the row under the pointer in any list, a ticked box, the active column chip, snap,
   straighten, Two maps, Lock, the open rail tab, the Door button on a room's popup while Door is
-  armed, a closed eye. Pick-one wells (the fog clouds, the Fog / Effects switch),
+  armed, a closed eye. Pick-one wells (the fog clouds),
   fields and an open eye stay grey. A repair in force wears its own colour: Merge green, Cut out
   red, Split yellow.
 - **Two levels of type**: a 12px bold section title, and an 11px dim sub-header over a group.
@@ -127,7 +127,7 @@ A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolba
 Group, a divider, Find. Add is a grey labelled "Map" button like Group (plus icon, word), never solid blue. Place's list holds Rectangle (R), Circle (O), Polygon (P), then Road (L),
 and its button wears the last pick; V, R, O and P put Road down, and L takes it on the world map only. Road's own button (`#wm-road`) stays in the page as
 the back end. Places take no Merge, Cut out or Split: the options row over a place tool holds Straight walls alone. The Brush, the fog
-clouds, Reveal all and Hide all, the Fog / Effects switch and Snap are hidden, and the
+clouds, Reveal all and Hide all, the Effects tool and Snap are hidden, and the
 tool, mode and repair the scene held are put away on opening and given back on closing. The context row hides with
 `visibility` so the bar does not move. Find (or Ctrl+F) opens a large search in the middle of the window over a dimmed map (`#wm-finder`): every map as
 a picture while nothing is typed, result cards while typing, with its own fade-and-rise (the window's pop-in would fight its centring).
@@ -238,34 +238,49 @@ red, Split yellow) and the bar's repair icon.
 
 ## The bottom toolbar
 
-- **Order**: Select, Brush, Shape ▾, a divider, Reveal all, Hide all. The Fog / Effects switch is
-  hung off the bar's right end in a darker tab: one well holding the cloud and the flame, a thumb
-  sliding under the mode in force. `.tb-seg` is for that tab and nothing else. Every old button id
-  stays, as the hidden back end the new controls drive (Merge, Cut out, Split, Door, the fog trio).
+- **Order**: Select, Brush, Room ▾, Effects, a divider, Reveal all, Hide all. There is no Fog / Effects switch on the
+  screen: Effects is a tool beside Room (below). Every old button id stays, as the hidden back end the new controls drive
+  (Merge, Cut out, Split, Door, the fog trio, and `#btn-place-rooms` / `#btn-place-effects` in the hidden `.tb-seg`).
 - **Sizes**: a 36px box around a 22px icon on screen. A button and its chevron form one group,
   2px apart; groups sit 8px apart.
 - **Each chevron opens Figma's list** (`openBarList`, `shapeMenu.js`): a check on the current pick,
   the icon, the name, the key; the row under the pointer wears the tint; an Effects-only shape is
-  greyed in Rooms mode. A right-click on the Shape button opens the same list.
+  greyed in the Room list. A right-click on the Room or Effects button opens its list.
 - **A labelled button** (Room, Group, + Map: `.tb-labeled`) is as tall as the others, padding 0 11px 0 9px, 6px
   between a 16px block icon and a 12px word trimmed to its capitals, so both centre on the button.
-- **The Shape list holds shapes only, and the Shape button always wears the shape you draw with.**
-  In Effects it offers Square, Circle, Cone, Line (one square wide), Wall (1 ft thick), Ring (a
-  Wall bent into a circle) and Polygon. Line, Wall and Ring take a length alone.
-- **Effects' row**: one material button with a chevron, then the size field with no divider between
-  them, a divider, Snap, Straight walls, the repair icon. The material button opens a palette above
-  the row, a "Find a material" field over glyph and name, listing only the materials that exist
-  (Fire, Acid, Light). The size field steps one grid square (5 ft): drag its arrows, type, scroll or
-  [ ]; it stops at both ends. Its chevron lists the sizes largest first, "N ft · N squares", and "By
-  hand" last for the shapes that have it.
+- **The Room list holds room shapes only, and the Room button always wears the room shape you draw with.**
+  Effects has no list: its shapes are the row's well, Square, Circle, Cone, Line (one square wide), Wall (1 ft thick),
+  Ring (a Wall bent into a circle) and Polygon. Line, Wall and Ring take a length alone.
+- **Effects' row**: the shape well (icons built as the fog clouds' `.fx-track`, the lit one `.active` and tinted in the material's
+  colour as a lit cloud wears its own, none lit with Select; a click arms the shape at the current size), a divider, the
+  material field (glyph, name and arrow on one grey field, like the size field), the size field at the row's 8px gap, a divider,
+  Snap, Straight walls, the repair icon. The material palette opens above the row, a "Find a material" field over glyph
+  and name (Fire, Acid, Light). **The material glyphs alone carry colour and depth**, a gradient fill under the
+  outline; their gradients are defined once in `index.html` outside any hidden element, because the glyphs are copied and a
+  copied id resolves to the first copy. Every other bar icon stays a flat outline. The size field steps one grid square (5 ft) by drag, typing, scroll or [ ]; it stops at
+  both ends, and its chevron lists the sizes largest first with "By hand" last for the shapes that have it.
+- **The map's wheel never leaves the size.** While an effect shape with a size is armed it steps the size and stops at the
+  smallest and the largest: never "by hand", never the zoom (Ctrl+wheel still zooms). By hand is the size list's or typing's.
 - **Snap and Straight walls are icons with no words**, their names in tooltips, and keep their
   state across a mode switch. **Never gather toggles into a pill.**
 - **The options row hangs over the tool it belongs to with a pointer down to it** (`placeContextRow`):
-  the clouds and brush size over the Brush; over a shape the clouds in Fog mode (or the material
-  and size in Effects), Snap, Straight walls and the repair icon; the door fields centred with no
+  the clouds and brush size over the Brush; over a shape the clouds in Fog mode; in Effects mode (any tool, Select too) the shape well, material and size, over the Effects
+  button, then Snap, Straight walls and the repair icon; the door fields centred with no
   pointer. Select shows no row.
-- **A tool a mode cannot use is ABSENT, not greyed.** Fog shows every tool; Effects drops Brush.
-  The one control that is absent inside a row is Half under the Brush.
+- **A tool a mode cannot use GREYS IN PLACE and does nothing**, so nothing on the bar moves or changes width: Effects
+  mode greys Brush and Room with its arrow, whose tips say why ("Room - leave Effects to draw a room"). The Room button
+  stays Room, with the room shape and the word, in both modes. The one control that is absent inside a row is Half
+  under the Brush.
+- **Effects is a switch, the Room button's twin** (`#btn-effects`, `effectsTool.js`): the word and the glyph and colour of the
+  current material (fire, acid or light, `effectEdgeColor`; Light its own outline colour), no arrow. A click or E turns Effects
+  mode on with the last effect shape armed at the last size (Circle, 20 ft at first). In the mode, a click or E with Select in
+  hand arms that effect again, because a placement ends on Select; with an effect armed it turns the mode off (Fog, Select).
+  It owns its sub-toolbar: while on, the button wears the blue tint of a switch that is on (`.fx-on`), its glyph blue with it,
+  and `#context-row` stays up with every tool, Select included. Esc puts an armed effect down (Select; mode and row stay), a
+  second Esc with Select leaves the mode.
+- **The bar burns while the mode is on** (`effectsBarFire.js`): a band of the current material's real effect ON the bar's border, 2px either side of it with
+  flames sized by an 8px cell, and the border itself in the material's colour (Light has a soft record of its own there), on
+  a small canvas of its own under the bar, fading with the mode and running no frame loop while it is off.
 - **Taking a button off a mode's bar means disarming what it held.** An armed mode with no
   button on screen swallows the next shape the DM draws.
 - **`#context-row` hides with `visibility`, never `display`**, or the cluster jumps by the row

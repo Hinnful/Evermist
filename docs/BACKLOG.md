@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 17 open items; IDs run to 223."
+description: "Open work only. 13 open items; IDs run to 223."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.8.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.8.1**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
 shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -88,20 +88,10 @@ music, and switches to another map. Anything Sasha meets on the way that does no
 epic. The same path must not slow an experienced DM or hide the deeper features.
 **Done when** a new DM on the current version, with no Claude and no help in chat, completes Sasha's path and can then
 say what a map, a group and a room are. No tester has run this: each met an older version and had the DM's help.
-**Order.** 180, then 210, then 218.
+**Order.** 210, then 218.
 **Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later,
-and finds them unaided: item 180 is the first of these.
+and finds them unaided.
 **Out of this section:** what a DM sees before installing. That is distribution, and it comes later.
-
-## Effects a DM can find and place
-
-### 180. Rework Fog/Effects switch and Effects Toolbar
-Filed 2026-10-13, renamed and made the next focus 2026-10-23. Testers do not find effects at all, and a tester who
-reaches them cannot work out how to place one. Today the only way in is the small cloud-and-flame switch at the
-toolbar's right end, then a shape, a material and a size before the first click on the map. A glow around the toolbar
-that says the mode was sketched for item 175 (`.claude/private/design/item-175/fog-home.html`) and is one input here.
-**Needs /spec:** how the DM finds Effects, and what the first placement asks of them.
-**First use · Play · DM only**
 
 ## The first evening
 
@@ -141,29 +131,11 @@ cannot draw rooms or place anything on a map. Prep only; nothing reaches the TV,
 
 # EVERYTHING ELSE
 
-### 219. A map added to a full group can land outside it
-Filed 2026-10-22. "Add maps here…" on a group puts each new map in the next clear spot inside the group's outline. When
-the group has no clear spot left, the map falls back to the Campaign's free-spot search, lands outside the outline and
-does not join the group (`worldMapEdit.js`, `wmSlotInPoly`).
-**Bug · DM only**
-
 ### 220. The eye icon behaves one way everywhere
 Filed 2026-10-22 from tester feedback. The eye in Map settings' grid section changes its look when pressed; the two eyes
 on the fog bar (Reveal all, Hide all) are actions and do not. A tester read the difference as a fault. **Needs a
 look-and-feel pass:** whether the fog bar's actions keep the eye at all.
 **Polish · DM only**
-
-### 221. Fullscreen in TV setup can miss on a slow machine
-Filed 2026-10-23. With the screen set to a window and Fullscreen on, TV setup asks the new window to go fullscreen about
-0.7 seconds after it opens (`tvControl.js`). A window that loads later stays windowed. Ask once the window reports it
-has loaded.
-**Bug · DM + Player**
-
-### 222. No scenario checks the minimap's Russian labels on a side seat
-Filed 2026-10-23. On a narrow minimap the Russian Show on TV shortens to "Показать на ТВ" and then goes small, and the
-pill drops Stop's word. The steps are built (`tvControl.js`, `tvRefresh`) but no rig scenario switches the language,
-which applies only after a restart. Add one that restarts in Russian and checks seats 90 and 270, live and off.
-**Upkeep · DM only**
 
 ### 223. Space sends in both modes, Shift+S only in Manual
 Filed 2026-10-23. The two Send keys disagree: Space sends to the TV in Auto too, Shift+S does nothing there. Pick one

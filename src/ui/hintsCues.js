@@ -42,8 +42,8 @@ function hintsCuesSync() {
   hintClose('groups');
   if (_hintCur || !hintEffectsDue({ opens: _hcOpenCount(), fogMode: placeMode === 'rooms', sceneOpen: !!currentScene })) return;
   _hintShow('effects', 'Fire, acid and light',
-    'Switch to Effects to draw a fire, a cone of acid or a light. The players see it on the TV.',
-    'btn-place-effects', _hintNear(_hintRectOf('btn-place-effects'), 'above'));
+    'Click Effects to draw a fire, a cone of acid or a light. The players see it on the TV.',
+    'btn-effects', _hintNear(_hintRectOf('btn-effects'), 'above'));
 }
 
 function _hcCampaign() {

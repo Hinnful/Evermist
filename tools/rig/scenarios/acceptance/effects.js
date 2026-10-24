@@ -9,8 +9,7 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
-//   A. Every shape tool draws an effect in Effects mode, the brush is not on the bar there,
-//      and the Rooms/Effects switch is one sunken track inside the bar with one side picked.
+//   A. Every shape tool draws an effect in Effects mode, and Brush and Room grey in place there.
 //   B. Effects and rooms are two lists that never mix, and an effect paints NO fog.
 //   C. An effect carries a material and a name of its own.
 //   D. An effect actually burns on the DM. It is not an empty layer.
@@ -31,6 +30,10 @@
 //   N. The grid inside acid relights in acid's yellow-green, never in ember.
 //   O. The DM and the TV paint an effect the same way, and the DM draws no chrome over an effect
 //      that is not picked, so the fire or acid the DM sees is the one the players see.
+//   P. Effects beside Room is the way in and out. A click or E enters with the last shape armed (Circle, 20 ft
+//      at first). With Select in hand it arms the next effect; with an effect armed it leaves. While on, the bar's
+//      border and the picked shape wear the material's colour and the band burns on the border; off, the band
+//      requests no frame at all (effectsTool.js, effectsBarFire.js).
 //
 // ⚠ EFFECTS ARE NOT ROOMS AND NOT TOKENS. An effect is the same record as a room carrying a
 // `material` where a room has a fog `mode` (CLAUDE.md). They live in two arrays because array
@@ -106,32 +109,82 @@ module.exports = async function effectsFeature(rig) {
   rig.check(await dm.evaluate('placeMode') === 'effects', 'Effects mode did not take');
   rig.check(await dm.evaluate('shape') !== 'brush',
             'the brush survived into Effects mode, where there is no fog for it to paint');
-  // ABSENT, not greyed. A greyed button keeps prime position on a bar it can do nothing on.
-  rig.check(await dm.evaluate(
-              '(() => { const b = document.getElementById("btn-brush");' +
-              ' return !!b && getComputedStyle(b).display === "none"; })()') === true,
-            'the brush button is still on the bar in Effects mode, where it can paint nothing');
-
-  // Exactly one of Fog/Effects is picked, and the pair is the .tb-seg side tab joined to the bar's
-  // right end — a pick-one group reads as one control or it reads as two toggles.
-  const seg = await dm.evaluate(`(() => {
-    const on = id => document.getElementById(id).classList.contains('active');
-    const b = document.getElementById('btn-place-effects');
-    const r = document.getElementById('btn-place-rooms');
-    const bar = document.getElementById('toolbar-bottom');
-    return { effects: on('btn-place-effects'), rooms: on('btn-place-rooms'),
-             track: !!(b && b.closest('.tb-seg') && b.closest('.ms-well')),
-             shared: !!(b && r && b.parentElement === r.parentElement),
-             joined: !!(b && bar && !bar.contains(b) &&
-                        Math.abs(b.closest('.tb-seg').getBoundingClientRect().left - bar.getBoundingClientRect().right) < 2) };
+  // GREYED IN PLACE, not absent: the bar keeps its width in both modes, and the tip says why.
+  const grey = await dm.evaluate(`(() => {
+    const q = id => document.getElementById(id), shown = el => !!el && el.getClientRects().length > 0;
+    const brush = q('btn-brush'), room = q('btn-shape'), chev = document.querySelector('#tb-grp-shape .tb-chev');
+    return { brush: shown(brush) && brush.classList.contains('tb-off'), room: shown(room) && room.classList.contains('tb-off'),
+             chev: shown(chev) && chev.classList.contains('tb-off'),
+             roomWord: room.querySelector('.tb-shape-label').textContent.trim(),
+             roomGlyph: room.querySelector('.tb-shape-glyph svg').outerHTML === q('btn-' + modeShape('rooms')).querySelector('svg').outerHTML,
+             roomTip: room.title, seg: shown(document.querySelector('.tb-seg')) };
   })()`);
-  rig.check(seg.effects && !seg.rooms,
-            'the toolbar does not show exactly one of Rooms/Effects picked: ' + JSON.stringify(seg));
-  // The switch governs every tool to its left, so it wears the one shape nothing else on the bar
-  // does: a darker tab joined to the bar's right end, hung off it so the bar stays centred.
-  rig.check(seg.track && seg.shared && seg.joined,
-            'the Fog/Effects pair is not a .tb-seg tab joined to the right end of the toolbar: ' +
-            JSON.stringify(seg));
+  rig.check(grey.brush && grey.room && grey.chev,
+            'Brush, Room and the Room arrow are not all greyed in place in Effects mode: ' + JSON.stringify(grey));
+  rig.check(grey.roomWord === 'Room' && grey.roomGlyph && /leave Effects/.test(grey.roomTip),
+            'the Room button does not stay Room, with the room shape and a tip that says why, in Effects mode: ' + JSON.stringify(grey));
+  rig.check(!grey.seg, 'the old Fog / Effects switch is still on screen');
+  // A click on a greyed Brush does nothing.
+  await dm.evaluate('document.getElementById("btn-brush").click(); 0');
+  rig.check(await dm.evaluate('shape') !== 'brush', 'the greyed Brush took the tool in Effects mode');
+
+  // The Effects tool is lit while its shape is in hand, and the mode's way in and out is its own.
+  await dm.evaluate('setShape("select"); setPlaceMode("rooms"); document.getElementById("btn-effects").click(); 0');
+  const tool = await dm.evaluate('({ mode: placeMode, shape, armed: presetArmed && presetArmed.s, lit: document.getElementById("btn-effects").classList.contains("fx-on") })');
+  rig.check(tool.mode === 'effects' && tool.shape === 'circle' && tool.armed === 20 && tool.lit,
+            'a click on Effects did not enter the mode with the Circle armed at 20 ft: ' + JSON.stringify(tool));
+  // ══ P. On, the band runs and the border and the picked shape wear the material ══
+  // RED BY DESIGN: written against the fix, never re-proved
+  const band = await dm.evaluate('({ raf: _bfRaf !== 0, broken: _bfBroken, border: document.getElementById("toolbar-bottom").style.borderColor, ' +
+    'col: document.getElementById("fx-shapes").style.getPropertyValue("--fx-col"), want: effectsMaterialColor(currentMaterial) })');
+  rig.check(band.raf && !band.broken, 'the bar band is not running with Effects on: ' + JSON.stringify(band));
+  rig.check(band.border !== '' && band.col === band.want,
+            'the bar border or the picked shape does not wear the material colour with Effects on: ' + JSON.stringify(band));
+  rig.byEye('the band reads as a stroke on the bar border, and the Fire, Acid and Light icons read with depth');
+  // The switch owns its row: with Select in hand the row stays, the button stays pressed, no shape is lit.
+  await dm.evaluate('document.getElementById("btn-select").click(); 0');
+  const sel = await dm.evaluate('(() => { const b = document.getElementById("btn-effects"), r = document.getElementById("context-row"); ' +
+    'return { row: r.style.visibility !== "hidden" && getComputedStyle(r).visibility !== "hidden", well: !!document.querySelector("#fx-shapes .fx-shape") && getComputedStyle(document.getElementById("fx-shapes")).display !== "none", ' +
+    'lit: document.querySelectorAll("#fx-shapes .fx-shape.active").length, pressed: b.classList.contains("fx-on") && !b.classList.contains("active"), mode: placeMode, chev: !!document.querySelector("#tb-grp-fx .tb-chev") }; })()');
+  rig.check(sel.row && sel.well && sel.lit === 0 && sel.pressed && sel.mode === 'effects' && !sel.chev,
+            'Select in Effects mode did not keep the row, the pressed button and an unlit well, or Effects still has a chevron: ' + JSON.stringify(sel));
+  await dm.evaluate('document.querySelector("#fx-shapes [data-fxshape=ring]").click(); 0');
+  const wellPick = await dm.evaluate('({ shape, armed: presetArmed && presetArmed.kind, lit: document.querySelector("#fx-shapes .fx-shape.active").dataset.fxshape })');
+  rig.check(wellPick.shape === 'ring' && wellPick.armed === 'ring' && wellPick.lit === 'ring',
+            'a click on a shape in the row did not arm it and light it: ' + JSON.stringify(wellPick));
+  // On, the button is blue, glyph included; off, the glyph wears the material colour (checked after leaving, below).
+  await dm.evaluate('setMaterial("acid"); 0');
+  rig.check(await dm.evaluate('document.querySelector("#btn-effects .tb-shape-glyph").style.color') === '' &&
+            await dm.evaluate('document.querySelector("#btn-effects .tb-shape-glyph svg").outerHTML === document.querySelector("#material-row [data-material=acid] svg").outerHTML'),
+            'the Effects button does not wear the picked material glyph');
+  await dm.evaluate('setMaterial("fire"); document.getElementById("btn-effects").click(); document.getElementById("btn-effects").click(); 0');
+  await dm.evaluate('document.getElementById("btn-effects").click(); 0');
+  rig.check(await dm.evaluate('placeMode') === 'rooms' && await dm.evaluate('shape') === 'select',
+            'a second click on Effects did not return to Fog with Select');
+  await dm.evaluate('__rigKey("KeyE"); 0');
+  // The Ring was the last shape picked, and Effects comes back with it.
+  rig.check(await dm.evaluate('placeMode') === 'effects' && await dm.evaluate('shape') === 'ring',
+            'E did not enter Effects with the last shape armed');
+  await dm.evaluate('__rigKey("Escape"); 0');
+  rig.check(await dm.evaluate('placeMode') === 'effects' && await dm.evaluate('shape') === 'select',
+            'Esc with an effect armed did not put it down and keep the mode');
+  // A placement ends on Select, so the next click on Effects places another one: it arms, it does not leave.
+  // RED ON: the shape === 'select' branch of effectsToolToggle removed (effectsTool.js) — 2026-10-24
+  await dm.evaluate('document.getElementById("btn-effects").click(); 0');
+  const again = await dm.evaluate('({ mode: placeMode, shape, glyph: document.querySelector("#btn-effects .tb-shape-glyph").style.color })');
+  rig.check(again.mode === 'effects' && again.shape === 'ring' && again.glyph === '',
+            'a click on Effects with Select in hand did not arm the next effect, or the lit button kept the material colour: ' + JSON.stringify(again));
+  await dm.evaluate('__rigKey("Escape"); 0');
+  await dm.evaluate('__rigKey("Escape"); 0');
+  rig.check(await dm.evaluate('placeMode') === 'rooms', 'Esc with Select in Effects did not leave the mode');
+  rig.check(await dm.evaluate('document.querySelector("#btn-effects .tb-shape-glyph").style.color') !== '',
+            'the Effects glyph does not wear the material colour once the mode is off');
+  // P. Off, the band fades out and then asks for no frame; the border drops the material colour at once.
+  await lib.settle(dm, '_bfRaf === 0', 5000);
+  rig.check(await dm.evaluate('_bfRaf') === 0, 'the bar band still requests frames with Effects off');
+  rig.check(await dm.evaluate('document.getElementById("toolbar-bottom").style.borderColor') === '',
+            'the bar border kept the material colour with Effects off');
+  await dm.evaluate('setPlaceMode("effects"); 0');
 
   const SHAPES = [
     { s: 'rect',   draw: '__rigDrag(600, 300, 800, 450)' },

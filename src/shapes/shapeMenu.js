@@ -9,8 +9,9 @@
 // #tools-wrapper.
 
 // The shapes are MODE_SHAPES (toolbar.js) filtered to the drawable ones, so the list and the bar
-// can never disagree about what a mode offers. A shape the mode lacks is greyed, not dropped, except
-// on the world map, which has no Effects to switch to, so there it is absent.
+// can never disagree about what a mode offers. The Room list is always the rooms': a shape only Effects
+// has is greyed, not dropped, except on the world map, which has no Effects, so there it is absent.
+// The Effects switch has no list: its shapes are a well in the options row (effectsRow.js).
 const SHAPE_FAMILY = ['poly', 'rect', 'circle', 'cone', 'line', 'wall', 'ring'];
 const SHAPE_ROWS = { poly: ['Polygon', 'P'], rect: ['Rectangle', 'R'], circle: ['Circle', 'O'],
                      cone: ['Cone', 'C'], line: ['Line', ''], wall: ['Wall', ''], ring: ['Ring', ''] };
@@ -26,14 +27,7 @@ function shapeMenuItems() {
   return MODE_SHAPES[placeMode].filter(s => SHAPE_FAMILY.indexOf(s) >= 0);
 }
 
-// Effects lists the shapes in the order a DM reaches for them; Fog opens with the Rectangle.
-function _shapeOrder() {
-  return placeMode === 'effects' ? ['rect', 'circle', 'cone', 'line', 'wall', 'ring', 'poly'] : SHAPE_FAMILY;
-}
-
-function _shapeName(s) {
-  return placeMode === 'effects' && s === 'rect' ? 'Square' : SHAPE_ROWS[s][0];
-}
+function _shapeName(s) { return SHAPE_ROWS[s][0]; }
 
 // A repair needs something to act on: a room, an effect, or on the world map a place.
 function repairsAvailable() { return activeShapeList().length > 0; }
@@ -49,22 +43,25 @@ function refreshShapeButton() {
     else if (items.indexOf(shape) >= 0) _roadWorn = false;
   }
   const road = worldMapOpen && _roadWorn;
-  const want = road ? 'wm-road' : 'btn-' + (items.indexOf(shape) >= 0 ? shape : modeShape(placeMode));
+  // The Room button stays Room in Effects mode: it wears the room shape, never the effect shape in hand.
+  const inRooms = placeMode === 'rooms';
+  const worn = inRooms && items.indexOf(shape) >= 0 ? shape : modeShape('rooms');
+  const want = road ? 'wm-road' : 'btn-' + worn;
   _worn = want;
   const src = document.getElementById(want);
   const box = btn.querySelector('.tb-shape-glyph');
-  if (src && box && (road || items.indexOf(want.slice(4)) >= 0)) box.innerHTML = src.querySelector('svg').outerHTML;
+  if (src && box) box.innerHTML = src.querySelector('svg').outerHTML;
   // The scene bar's button is the Room tool and the Campaign's is the Group tool, and each says so; Road keeps its own
-  // icon and tip, and Effects (which place effects) keep the icon alone.
-  const label = road ? '' : worldMapOpen ? 'Group' : placeMode === 'rooms' ? 'Room' : '';
+  // icon and tip.
+  const label = road ? '' : worldMapOpen ? 'Group' : 'Room';
   btn.classList.toggle('tb-labeled', !!label);
   const text = btn.querySelector('.tb-shape-label');
   if (text) text.textContent = label === 'Group' ? t('Group') : label === 'Room' ? t('Room') : '';
   btn.title = road ? t('Road - click points along the way, double-click to finish')
     : label === 'Group' ? t('Group - gathers maps together: a kingdom, a village or one tavern. The arrow picks the shape')
-    : label ? t('Room - hides part of the map from the players until you reveal it. The arrow picks the shape')
-    : t('Shape - the arrow beside it, or a right-click, lists the others');
-  btn.classList.toggle('active', worldMapOpen ? (_wmTool === 'road' || items.indexOf(shape) >= 0) : (items.indexOf(shape) >= 0 || shape === 'cut'));
+    : placeMode === 'effects' ? t('Room - leave Effects to draw a room')
+    : t('Room - hides part of the map from the players until you reveal it. The arrow picks the shape');
+  btn.classList.toggle('active', worldMapOpen ? (_wmTool === 'road' || items.indexOf(shape) >= 0) : (inRooms && (items.indexOf(shape) >= 0 || shape === 'cut')));
 }
 
 function _tbCloseList() {
@@ -78,8 +75,8 @@ function _tbCloseList() {
 // Rows are [id, name, key, off, iconSvg] or a string for a heading, or null for a divider.
 function _tbRows() {
   const svgOf = id => { const src = document.getElementById(id); return src ? src.querySelector('svg').outerHTML : ''; };
-  const order = worldMapOpen ? WORLD_SHAPES : _shapeOrder();
-  const shapes = order.map(s => ['btn-' + s, _shapeName(s), !shapeInMode(s, placeMode) ? t('Effects') : SHAPE_ROWS[s][1], !shapeInMode(s, placeMode), svgOf('btn-' + s)]);
+  const order = worldMapOpen ? WORLD_SHAPES : SHAPE_FAMILY;
+  const shapes = order.map(s => ['btn-' + s, _shapeName(s), !shapeInMode(s, 'rooms') ? t('Effects') : SHAPE_ROWS[s][1], !shapeInMode(s, 'rooms'), svgOf('btn-' + s)]);
   if (!worldMapOpen) return shapes;
   return shapes.concat([null, ['wm-road', 'Road', 'L', false, svgOf('wm-road')]]);
 }
@@ -137,6 +134,7 @@ function initShapeMenu() {
   const btn = document.getElementById('btn-shape');
 
   btn.onclick = () => {
+    if (placeMode === 'effects') return;   // greyed: Room does nothing while Effects is the mode
     if (btn.classList.contains('active') && shape !== 'cut') return;   // already the tool in hand
     if (worldMapOpen && _roadWorn) { if (_wmTool !== 'road') worldMapRoadToolToggle(); return; }
     const items = shapeMenuItems();
@@ -150,9 +148,10 @@ function initShapeMenu() {
 
   document.querySelector('#tb-grp-shape .tb-chev').addEventListener('click', e => {
     e.stopPropagation();
+    if (placeMode === 'effects') return;
     if (_tbOpen === 'shape') _tbCloseList(); else _tbOpenShapeList();
   });
-  btn.addEventListener('contextmenu', e => { e.preventDefault(); _tbOpenShapeList(); });
+  btn.addEventListener('contextmenu', e => { e.preventDefault(); if (placeMode !== 'effects') _tbOpenShapeList(); });
 
   // Picks on click; mousedown only keeps the list from closing under the pointer.
   document.addEventListener('mousedown', e => {
