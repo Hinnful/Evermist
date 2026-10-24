@@ -739,7 +739,7 @@ version has no tag yet, it treats the push as a release. A change that bumps not
 straight to the landing step and builds nothing.
 
 What happens then, in order. The unit tests run first, on one machine, because there is no point
-building anything if the arithmetic is wrong. Then the gate (`gate.yml`) runs on Windows, macOS
+building anything if the arithmetic is wrong. Then the gate (`gate.yml` builds the installers, `rig.yml` drives the app) runs on Windows, macOS
 and Linux at once. On each platform one machine builds the installer and checks its update
 pointer, and more build the packaged app and drive it through the rig: smoke once, and an equal
 share of the acceptance scenarios each, dealt by measured time (`tools/rig-deal.js`, times in

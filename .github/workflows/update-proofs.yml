@@ -15,11 +15,13 @@ permissions:
 
 jobs:
   prove:
+    name: ${{ matrix.label }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - label: Windows
+            os: windows-latest
             new: --win nsis
             old: --win nsis
             script: tools/win-update-proof.js
@@ -27,12 +29,14 @@ jobs:
           # The Mac updates outside electron-updater (electron/macUpdate.js). The zip users
           # receive is universal; the older build is only something to walk back to, so the
           # runner's own arch is enough.
-          - os: macos-latest
+          - label: Mac
+            os: macos-latest
             new: --mac zip --universal
             old: --mac zip --arm64
             script: tools/mac-update-proof.js
             run: ''
-          - os: ubuntu-latest
+          - label: Linux
+            os: ubuntu-latest
             new: --linux AppImage
             old: --linux AppImage
             script: tools/linux-update-proof.js

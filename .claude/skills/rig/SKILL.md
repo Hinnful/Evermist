@@ -28,13 +28,13 @@ show, in which case it is a single run to see what is wrong. Neither lifts this 
 build step goes back to running nothing.
 
 **In a cloud session, run it freely.** `CLAUDE_CODE_REMOTE=true` marks one, and no screen there
-belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `gate.yml` does.
+belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `rig.yml` does.
 
 **A commit gets the scenarios that run what it changed; the full sweep runs in CI.** `/commit`
 Step 2 runs `node tools/rig-ci.js pick`, which reads the map CI recorded (which functions of which
 file each scenario executed, per `tools/rig/coverage.js`) and picks `smoke` plus a greedy cover of the
 changed files, capped at about ten minutes, at below-normal priority. A changed `src/` script no
-scenario runs blocks the commit until one is written. **`.github/workflows/gate.yml` and `rig.yml` then run
+scenario runs blocks the commit until one is written. **`.github/workflows/rig.yml` then runs
 `smoke` and `regression` against the built app on Windows, Mac and Linux. A red Windows or Mac leg
 means no tag, no release and no installers; Linux only warns.** So the full set is never run by
 hand: reach for one scenario to answer a question, and let CI own the sweep.

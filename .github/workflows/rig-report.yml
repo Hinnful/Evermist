@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   report:
+    name: Report results
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     continue-on-error: true

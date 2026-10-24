@@ -12,6 +12,8 @@ permissions:
 
 jobs:
   probe:
+    # The 10 is the length of `copy` below.
+    name: Repeat a scenario · ${{ matrix.copy }} of 10
     strategy:
       fail-fast: false
       matrix:

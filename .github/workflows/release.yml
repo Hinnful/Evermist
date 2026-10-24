@@ -9,8 +9,8 @@ name: Build & Release
 # end, not by a person up front, so a red gate leaves no tag, no release page and no installers -
 # users stay on the last release and never see that anything happened.
 #
-# ⚠ MAIN IS PROTECTED and requires this workflow's `verify` check, so a commit it never ran on
-# cannot be pushed to main by anyone. The branch is the only way in. /commit carries the steps.
+# ⚠ MAIN IS PROTECTED and requires this workflow's `verify` job's check, shown as "Unit tests and lint",
+# so a commit it never ran on cannot be pushed to main by anyone. The branch is the only way in. /commit carries the steps.
 #
 # Rollback is not a revert: delete the release and its tag, and `allowDowngrade` in
 # electron/updates.js walks installed copies back through their own Restart button.
@@ -33,6 +33,7 @@ concurrency:
 jobs:
   # Cheap and first: is there anything to release at all?
   decide:
+    name: Check version, branch and notes
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.check.outputs.version }}
@@ -96,7 +97,10 @@ jobs:
   # Unit tests before anything is built, on one runner.
   # ⚠ RUNS ON EVERY CHANGE, bump or not. It is the status check main is protected by, so a commit
   # it never reported on cannot be landed - by the pipeline or by anyone.
+  # ⚠ THE PROTECTION RULE CARRIES THIS EXACT NAME. Rename it here and the rule must change with it, or
+  # main waits forever for a check that no longer exists.
   verify:
+    name: Unit tests and lint
     needs: decide
     runs-on: ubuntu-latest
     steps:
@@ -118,6 +122,7 @@ jobs:
   # The ratchet guards over the whole tree. The hooks only meet an edit made in a Claude session,
   # so this is what catches the rest.
   guards:
+    name: Size guards
     needs: decide
     runs-on: ubuntu-latest
     steps:
@@ -127,13 +132,23 @@ jobs:
           node-version: 22
       - run: node tools/check-guards.js
 
-  # THE GATE: all three installers are built and Windows and Mac drive theirs through the rig (gate.yml).
+  # THE GATE, in three jobs that all display as "Gate": the three installers (gate.yml), the Windows and
+  # Mac rig, and the Linux rig below. GitHub shows a called job as "<this name> / <its name>".
   gate:
+    name: Gate
     needs: [decide, verify]
     if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
     uses: ./.github/workflows/gate.yml
+
+  # The platforms that block: Windows and Mac drive the packaged app through the rig (rig.yml).
+  gate-rig:
+    name: Gate
+    needs: [decide, verify]
+    if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
+    uses: ./.github/workflows/rig.yml
     with:
-      skip-linux: true
+      platforms: windows-latest macos-latest
+      label: Windows, Mac
 
   # ⚠ THE LINUX RIG IS ITS OWN JOB, AND NOTHING ON THE LAND PATH NEEDS IT. It runs on the same trigger
   # as the gate and reports the same way (a ::warning and a summary section naming the failed
@@ -141,20 +156,24 @@ jobs:
   # leg by ten minutes, and its failure never blocks. The run itself stays open until it finishes.
   # Put it in a `needs` of a blocking job and it blocks again.
   gate-linux:
+    name: Gate
     needs: [decide, verify]
     if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
     uses: ./.github/workflows/rig.yml
     with:
       platforms: ubuntu-latest
+      label: Linux
 
   # The coverage map and flake record cover every platform, so this waits for Linux and holds nothing.
   report:
-    needs: [gate, gate-linux]
-    if: ${{ !cancelled() && (needs.gate.result != 'skipped' || needs.gate-linux.result != 'skipped') }}
+    name: Gate
+    needs: [gate-rig, gate-linux]
+    if: ${{ !cancelled() && (needs.gate-rig.result != 'skipped' || needs.gate-linux.result != 'skipped') }}
     uses: ./.github/workflows/rig-report.yml
 
   # Every platform walks back and forward through its own update path, which the rig never touches.
   update:
+    name: Prove updates
     needs: [decide, verify]
     if: needs.decide.outputs.release == 'true'
     uses: ./.github/workflows/update-proofs.yml
@@ -164,18 +183,20 @@ jobs:
   # ⚠ FAST-FORWARD, never a merge, rebase or squash. Those all mint a new commit, and main would
   # then carry a tree no gate ever drove. The commit main gets is the commit the gate proved.
   #
-  # ⚠ WINDOWS AND MAC BLOCK, LINUX ADVISES. `gate` holds the Windows and Mac rig and all three installer
-  # builds; the Linux rig is `gate-linux`, which this job does not need, so it lands without waiting
-  # for it. A Windows or Mac red is `failure` here and stops everything below. Linux's installer build
-  # is in `gate` and still blocks, because publish uploads its AppImage.
+  # ⚠ WINDOWS AND MAC BLOCK, LINUX ADVISES. `gate-rig` holds the Windows and Mac rig and `gate` all three
+  # installer builds; the Linux rig is `gate-linux`, which this job does not need, so it lands without
+  # waiting for it. A Windows or Mac red is `failure` here and stops everything below. Linux's installer
+  # build is in `gate` and still blocks, because publish uploads its AppImage.
   land:
-    needs: [decide, verify, guards, gate, update]
+    name: Move main to this commit
+    needs: [decide, verify, guards, gate, gate-rig, update]
     if: >-
       always() &&
       needs.decide.result == 'success' &&
       needs.verify.result == 'success' &&
       needs.guards.result == 'success' &&
       needs.gate.result != 'failure' && needs.gate.result != 'cancelled' &&
+      needs.gate-rig.result != 'failure' && needs.gate-rig.result != 'cancelled' &&
       needs.update.result != 'failure' && needs.update.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
@@ -199,6 +220,7 @@ jobs:
   # Only reachable with the gate green and main already landed. Creates the tag as a side effect
   # of creating the release, which is why no tag exists on a failure.
   publish:
+    name: Publish the release
     needs: [decide, land]
     if: needs.decide.outputs.release == 'true'
     runs-on: ubuntu-latest
@@ -307,6 +329,7 @@ jobs:
   # land, because publish checks out the branch ref to read the notes off it.
   # ⚠ Never delete on a red gate. The fix amends that commit and force-pushes the same branch.
   cleanup:
+    name: Delete the release branch
     needs: [land, publish]
     if: >-
       always() &&

@@ -1,44 +1,30 @@
 name: Gate
 
-# THE GATE, on all three platforms at once. One job per platform builds the installer users get and
-# checks its update pointer; the rig (rig.yml) then drives the packaged app through smoke and its
-# share of the regression, six shards on Windows and four on Mac and Linux, so the slowest platform
-# finishes in minutes rather than half an hour.
-#
-# ⚠ WINDOWS AND MAC BLOCK THE RELEASE; LINUX'S RIG IS ADVISORY AND NOT PART OF THIS WORKFLOW WHEN
-# release.yml CALLS IT. A caller waits for every job here, so a Linux rig job in this file would hold
-# `land` for the slowest leg (software GL, 16 to 20 minutes) even though its failure never blocks.
-# release.yml passes skip-linux and runs the Linux rig as its own job instead. Linux's installer
-# build stays here and still blocks: publish uploads its AppImage and latest-linux.yml.
-#
-# A push to any `platformrig/**` branch runs this alone, ships nothing, and runs Linux as well.
+# The installers, one job per platform: builds the one users get and checks its update pointer.
+# Callers run it beside the rig (rig.yml), which drives the packaged app through smoke and its share
+# of the regression. The rig is never part of this file: a caller waits for every job here, and the
+# Linux rig must not hold `land` (see release.yml). Linux's installer build blocks all the same,
+# because publish uploads its AppImage and latest-linux.yml.
 #
 # ⚠ THE GATE DRIVES THE PACKAGED APP, not the repo. A file missing from build.files works under
 # `npm start` and is simply absent from the installer, where a missing stylesheet renders unstyled
 # rather than erroring. That class is invisible to every other check.
 on:
   workflow_call:
-    inputs:
-      skip-linux:
-        description: the caller runs the Linux rig and the report itself, off the blocking path
-        type: boolean
-        default: false
-  push:
-    branches:
-      - 'platformrig/**'
 
 permissions:
   contents: read
 
 jobs:
   package:
+    name: Build installer (${{ matrix.label }})
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-latest, flag: --win, meta: dist/latest.yml, name: dist-windows }
-          - { os: macos-latest, flag: --mac, meta: dist/latest-mac.yml, name: dist-macos }
-          - { os: ubuntu-latest, flag: --linux, meta: dist/latest-linux.yml, name: dist-linux }
+          - { label: Windows, os: windows-latest, flag: --win, meta: dist/latest.yml, name: dist-windows }
+          - { label: Mac, os: macos-latest, flag: --mac, meta: dist/latest-mac.yml, name: dist-macos }
+          - { label: Linux, os: ubuntu-latest, flag: --linux, meta: dist/latest-linux.yml, name: dist-linux }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -80,22 +66,3 @@ jobs:
             dist/latest*.yml
             dist/*.blockmap
           if-no-files-found: error
-
-  # The platforms that block.
-  rig:
-    uses: ./.github/workflows/rig.yml
-    with:
-      platforms: windows-latest macos-latest
-
-  # Only for a push to platformrig/**; a release runs Linux from release.yml (see the top).
-  rig-linux:
-    if: ${{ !inputs.skip-linux }}
-    uses: ./.github/workflows/rig.yml
-    with:
-      platforms: ubuntu-latest
-
-  # Only when this workflow is the whole run. A release calls the same report after its own Linux job.
-  report:
-    needs: [rig, rig-linux]
-    if: ${{ !cancelled() && !inputs.skip-linux }}
-    uses: ./.github/workflows/rig-report.yml

@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   build:
+    name: Build the Windows app
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +33,8 @@ jobs:
   # Parallel jobs, each on a fresh runner, because a flake that depends on the machine only shows
   # across machines.
   run:
+    # The 6 is the length of `n` below.
+    name: Run every scenario · ${{ matrix.n }} of 6
     needs: build
     runs-on: windows-latest
     timeout-minutes: 60
@@ -77,6 +80,7 @@ jobs:
           retention-days: 14
 
   summary:
+    name: Report results
     needs: run
     if: always()
     runs-on: ubuntu-latest

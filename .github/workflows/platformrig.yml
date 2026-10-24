@@ -1,0 +1,30 @@
+name: Platform rig
+
+# A push to any `platformrig/**` branch: the three installers, the rig on all three platforms, and the
+# report after them. Ships nothing and never lands. Linux's rig is advisory here as in a release.
+# update-proofs.yml has its own trigger on the same branches.
+on:
+  push:
+    branches:
+      - 'platformrig/**'
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Gate
+    uses: ./.github/workflows/gate.yml
+
+  rig:
+    name: Gate
+    uses: ./.github/workflows/rig.yml
+    with:
+      platforms: windows-latest macos-latest ubuntu-latest
+      label: Windows, Mac, Linux
+
+  report:
+    name: Gate
+    needs: rig
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/rig-report.yml

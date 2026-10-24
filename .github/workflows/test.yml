@@ -10,6 +10,7 @@ on:
 
 jobs:
   test:
+    name: Unit tests and lint
     runs-on: ubuntu-latest
 
     steps:
@@ -44,6 +45,7 @@ jobs:
 
   # The ratchet guards over the whole tree, beside the suite rather than after it.
   guards:
+    name: Size guards
     runs-on: ubuntu-latest
 
     steps:

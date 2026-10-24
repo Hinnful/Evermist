@@ -1,13 +1,17 @@
 name: Rig
 
-# The rig's smoke and regression on one set of platforms, dealt into shards. gate.yml calls it for the
-# platforms that block a release (Windows, Mac) and release.yml calls it again for Linux, which only
-# advises. The matrix and the dealing live here once, so the two calls cannot drift apart.
+# The rig's smoke and regression on one set of platforms, dealt into shards. release.yml calls it for the
+# platforms that block a release (Windows, Mac) and again for Linux, which only advises; platformrig.yml
+# calls it for all three. The matrix and the dealing live here once, so the calls cannot drift apart.
 on:
   workflow_call:
     inputs:
       platforms:
         description: runner labels to run, space separated
+        required: true
+        type: string
+      label:
+        description: the platforms' display names, comma separated, for the plan job's title
         required: true
         type: string
 
@@ -16,6 +20,7 @@ permissions:
 
 jobs:
   plan:
+    name: Split scenarios (${{ inputs.label }})
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.legs.outputs.matrix }}
@@ -32,15 +37,15 @@ jobs:
             // NEVER dist/Evermist.exe - see the rig skill.
             // Only Windows records which app functions each scenario runs: one platform is enough for
             // the map /commit picks from, and the profiler costs time the slow runners cannot spare.
-            { os: 'windows-latest', build: '--win dir', exe: 'dist/win-unpacked/Evermist.exe', run: '', skip: '', of: 6, advisory: false, record: '--coverage' },
-            { os: 'macos-latest', build: '--mac dir --universal', exe: 'dist/mac-universal/Evermist.app/Contents/MacOS/Evermist', run: '', skip: '', of: 4, advisory: false, record: '' },
+            { label: 'Windows', os: 'windows-latest', build: '--win dir', exe: 'dist/win-unpacked/Evermist.exe', run: '', skip: '', of: 6, advisory: false, record: '--coverage' },
+            { label: 'Mac', os: 'macos-latest', build: '--mac dir --universal', exe: 'dist/mac-universal/Evermist.app/Contents/MacOS/Evermist', run: '', skip: '', of: 4, advisory: false, record: '' },
             // xvfb at the Windows runner's screen size, so every geometry check reads the same.
             // NO PLAYBACK ON LINUX. The runner has no GPU, so the app draws at 5fps and its video
             // stalls and recovers by itself twice a second, which undoes every stall playback fakes.
             // LINUX IS ADVISORY: software GL under xvfb is the slowest and least trustworthy leg, so
             // its red does not stop the release. It still prints a ::warning and a summary section
             // naming the scenario and its FAIL line (run.js, RIG_ADVISORY).
-            { os: 'ubuntu-latest', build: '--linux dir', exe: 'dist/linux-unpacked/evermist', run: 'xvfb-run -a -s "-screen 0 1024x768x24"', skip: 'playback', of: 4, advisory: true, record: '' },
+            { label: 'Linux', os: 'ubuntu-latest', build: '--linux dir', exe: 'dist/linux-unpacked/evermist', run: 'xvfb-run -a -s "-screen 0 1024x768x24"', skip: 'playback', of: 4, advisory: true, record: '' },
           ];
           const want = process.env.PLATFORMS.split(/\s+/).filter(Boolean);
           const include = [];
@@ -51,7 +56,9 @@ jobs:
           require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'matrix=' + JSON.stringify({ include }) + '\n');
           JS
 
+  # The title is the platform, the shard and, on the advisory leg, a reminder that its red only warns.
   rig:
+    name: ${{ matrix.label }} · ${{ matrix.shard }} of ${{ matrix.of }}${{ matrix.advisory && ' · Warn only' || '' }}
     needs: plan
     strategy:
       fail-fast: false
@@ -60,7 +67,7 @@ jobs:
     # ⚠ THE ADVISORY LEG COUNTS AS PASSING TO EVERYTHING THAT NEEDS IT. continue-on-error turns this
     # leg's failure into a success for `needs` and for the workflow, so a Linux red leaves the run
     # green and shows only as a warning. What keeps Linux off the release path is that release.yml
-    # runs it as its own job, which `land` does not need.
+    # calls it as its own job, which `land` does not need.
     continue-on-error: ${{ matrix.advisory }}
     # The rig abandons a scenario at 480s (SCENARIO_TIMEOUT_MS in tools/rig/run.js), reruns a failed
     # one once, and the build sits in front.
