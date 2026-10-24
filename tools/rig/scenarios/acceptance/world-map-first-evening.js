@@ -56,7 +56,7 @@ module.exports = async function worldMapFirstEvening(rig) {
       bar: __feBar(), panel: !np.disabled };
   })()`);
   // RED BY DESIGN: written against the feature, never re-proved
-  rig.check(empty.shown && /Add your first map/.test(empty.text) && /Dungeon Alchemist/.test(empty.text) && empty.button,
+  rig.check(empty.shown && /Add your maps/.test(empty.text) && /Dungeon Alchemist/.test(empty.text) && empty.button,
             'the empty map shows no Add a map call to action: ' + JSON.stringify(empty));
   rig.check(empty.dx < 3, 'the call to action is not centred on the layer: ' + JSON.stringify(empty));
   // RED BY DESIGN: written against the feature, never re-proved

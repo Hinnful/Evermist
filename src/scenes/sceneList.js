@@ -75,7 +75,7 @@ async function initScenes() {
     ? new URLSearchParams(window.location.search).get('scene')
     : localStorage.getItem('evermist-current-scene-id');
   if (lastId && !appInBackground && allScenes.find(s => s.id === lastId)) await switchScene(lastId);
-  else if (!isPane && !allScenes.length) worldMapShow();   // a first evening starts on the map that says where to begin
+  else if (!isPane && !appInBackground) worldMapShow();   // no last map opens the Campaign; the hidden background window never does, so first-use hints cannot fire unseen
 }
 
 if (typeof module !== 'undefined') module.exports = { escHtml };

@@ -90,8 +90,9 @@ function _wmNewGroupAt(at) {
 
 function _wmGroundRows(at) {
   return [
-    { label: 'Add a map here', run: () => { _wmAddAt = at; document.getElementById('wm-add').click(); } },
+    { label: 'Add maps here…', run: () => { _wmAddAt = at; document.getElementById('wm-add').click(); } },
     { label: 'New group here', run: () => _wmNewGroupAt(at) },
+    { label: 'Background picture…', run: () => document.getElementById('wm-bg-pick').click() },
     { label: 'Show everything', run: () => _wmFly(_wmOverview(), 650) },
   ];
 }

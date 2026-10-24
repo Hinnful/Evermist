@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 13 open items; IDs run to 223."
+description: "Open work only. 13 open items; IDs run to 224."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.9.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.9.1**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
 shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -117,8 +117,12 @@ group as a container the DM steps into.
 ### 207. Claude sees the map and preps its rooms
 Filed 2026-10-19, the part of the Claude prep work 4.6.5 left. Claude can make scenes but cannot yet see them, so it
 cannot draw rooms or place anything on a map. Prep only; nothing reaches the TV, every change takes one undo step.
-- **Test first:** Claude gets a small picture of a scene with its rooms drawn on it, positions in percent of the map.
-  On three of the DM's real maps, check how close Claude's room outlines land. The result sizes the rest.
+- **Test first, done:** tracing rooms from a picture alone on three Dungeon Alchemist interiors, against the rooms
+  their .dd2vtt floor plans give: clearly walled rooms overlapped 80-97% with walls within about half a grid square;
+  one-square closets, rooms split by walls hard to see from above, and halls and corridors were missed. 14 of 35 rooms
+  matched closely, 20 of 35 at half or better. So Claude's outlines are a first draft for maps with no floor plan and
+  the floor plan stays first. The picture tool needs a percent grid over the map and a way to zoom into an area. The
+  check was a one-off measurement and stays out of CI. **Still needs /spec.**
 - **Rooms and fog:** Claude creates, reshapes and deletes rooms, names them and writes their notes from a module or
   the DM's notes, and sets each one hidden, half or revealed. Claude reveals or hides the whole map or an area. It
   works on a scene that is not open, through the saved scene.
@@ -131,16 +135,17 @@ cannot draw rooms or place anything on a map. Prep only; nothing reaches the TV,
 
 # EVERYTHING ELSE
 
+### 224. The fit-to-tv rig scenario reruns too often
+Filed 2026-10-25. In 4 recent Windows gate runs, `fit-to-tv` failed once and passed on its rerun: the minimap frame did
+not take the turned TV's zoom after Sync View (0.486, wanted 1.016). Find whether the scenario reads too early or the
+app lands late, then fix the check or the app, or retire the check.
+**Upkeep · DM + Player**
+
 ### 220. The eye icon behaves one way everywhere
 Filed 2026-10-22 from tester feedback. The eye in Map settings' grid section changes its look when pressed; the two eyes
 on the fog bar (Reveal all, Hide all) are actions and do not. A tester read the difference as a fault. **Needs a
 look-and-feel pass:** whether the fog bar's actions keep the eye at all.
 **Polish · DM only**
-
-### 223. Space sends in both modes, Shift+S only in Manual
-Filed 2026-10-23. The two Send keys disagree: Space sends to the TV in Auto too, Shift+S does nothing there. Pick one
-rule for both keys (`input.js`) and match the help sheet.
-**Bug · DM only**
 
 ### 184. Straight walls sits alone over the world map's drawing tools
 Filed 2026-10-16. With the repairs gone from places, the row over a place tool holds one icon, Straight walls, and it

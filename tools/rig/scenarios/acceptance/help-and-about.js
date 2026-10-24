@@ -240,14 +240,16 @@ module.exports = async function helpAndAboutFeature(rig) {
   await dm.evaluate('__rigKey("Space")');
   rig.check(await dm.evaluate('globalThis.__rigSends') > sendsBefore,
             'Space is on the panel as Send to player and sent nothing');
-  // ⚠ SHIFT+S ONLY SENDS WHEN AUTO IS OFF - it IS the manual Send, and the panel says so.
-  // Pressed with Auto on it is correctly inert, and the check would report it as dead.
-  await dm.evaluate('(() => { const b = document.getElementById("btn-auto-sync");' +
-                    ' if (autoSync) b.click(); return 0; })()');
-  const sendsMid = await dm.evaluate('globalThis.__rigSends');
-  await dm.evaluate('__rigKey("KeyS", { shiftKey: true })');
-  rig.check(await dm.evaluate('globalThis.__rigSends') > sendsMid,
-            'Shift+S is on the panel as the manual Send and sent nothing with Auto off');
+  // Shift+S sends like Space in both modes, so it is pressed once in each.
+  for (const auto of [true, false]) {
+    await dm.evaluate('(() => { const b = document.getElementById("btn-auto-sync");' +
+                      ' if (autoSync !== ' + auto + ') b.click(); return 0; })()');
+    const sendsMid = await dm.evaluate('globalThis.__rigSends');
+    await dm.evaluate('__rigKey("KeyS", { shiftKey: true })');
+    // RED ON: Shift+S gated on !autoSync again (input.js) — 2026-10-25, the Auto pass
+    rig.check(await dm.evaluate('globalThis.__rigSends') > sendsMid,
+              'Shift+S is on the panel as Send and sent nothing with Auto ' + (auto ? 'on' : 'off'));
+  }
   await dm.evaluate('(() => { const b = document.getElementById("btn-auto-sync");' +
                     ' if (!autoSync) b.click(); return 0; })()');
 
@@ -268,7 +270,7 @@ module.exports = async function helpAndAboutFeature(rig) {
   const COVERED = KEYS.map(k => k.label).concat([
     'Ctrl Z', 'Ctrl Y',   // exercised just above
     '[ ]',                // both brackets, each pressed above
-    'T', 'Space', 'Shift S',
+    'T', 'Space Shift+S',
     'Del Backspace',      // Del just above, Backspace by touchpad.js
     'Ctrl C X V', 'Ctrl D', // the clipboard, covered by clipboard.js
     'Double-click',       // a mouse gesture, covered by editing.js and curves.js

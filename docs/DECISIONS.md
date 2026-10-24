@@ -552,6 +552,19 @@ world map when none is left. The TV gets `scene-clear`: its fog closes over the 
 waiting screen stays, because the fallback is the DM's pick and not the table's, and showing it could spoil a
 scene. `tvHeld` blocks every automatic push (Auto sync, the resync a reopened Player asks for) until the DM
 opens a scene, the fallback one included, or pushes by hand with Send, Space or Shift+S. Undo brings the scene back to the list only.
+
+### Both Send keys work in both modes · `SETTLED` (2026-10-25)
+Space sent to the TV in Auto as well as Manual while Shift+S sent only in Manual. One rule now: both keys send in
+either mode, and the help sheet has one row, "Send to the TV", with both keys.
+
+### The app does not explain undo in its hints · `REJECTED` (2026-10-25)
+A "Ctrl+Z undoes" line in the reveal hint was proposed and rejected on product grounds: undo is not something the
+app teaches. The reveal hint stays as it was.
+
+### A fix that opens no pane needs no hint to move · `SETTLED` (2026-10-25)
+Moving the Seat hint off Settings was dropped as moot: the Campaign's "Background picture..." row presses the Choose
+image picker directly, so Settings never opens and the hint cannot fire.
+
 ### A view crosses the wire as a region, not a zoom · `SETTLED`
 Syncing centre plus zoom across two different-sized canvases meant a bigger TV showed *more
 map* rather than the same map. Now `mapCX`/`mapCY` plus `viewW`/`viewH` in map units, and

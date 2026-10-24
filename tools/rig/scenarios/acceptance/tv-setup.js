@@ -14,7 +14,7 @@
 //   D. The second Show on TV of the same launch goes straight to the TV, with no window.
 //   E. ··· opens it again, live or not, and the screen name under Show on TV opens it too. Live, its
 //      footer holds Done. Esc closes it.
-//   F. Changing Updates there reaches the app's Auto / Manual.
+//   F. Changing Updates there reaches the app's Auto / Manual, and the line under it says what each does.
 //
 // Unchecked here: the flight into ··· (by eye), and a window that opens fullscreen.
 
@@ -111,8 +111,13 @@ module.exports = async function tvSetup(rig) {
   // RED BY DESIGN: written against item 217, never re-proved
   await dm.evaluate('[...document.querySelectorAll("#tv-setup .cp-segtab")].find(b => b.textContent === "Manual").click(); 0');
   rig.check(await dm.evaluate('autoSync === false'), 'F: Manual in TV setup did not switch the app to Manual');
+  const caption = () => dm.evaluate('[...document.querySelectorAll("#tv-setup .sm-dim")].map(e => e.textContent).join("|")');
+  // RED ON: the Updates caption line removed from _tvSetupRender (tvControl.js) — 2026-10-25
+  rig.check((await caption()).includes('Changes wait until you press Send.'), 'F: Manual carries no line saying changes wait for Send: ' + await caption());
   await dm.evaluate('[...document.querySelectorAll("#tv-setup .cp-segtab")].find(b => b.textContent === "Auto").click(); 0');
   rig.check(await dm.evaluate('autoSync === true'), 'F: Auto in TV setup did not switch the app back');
+  // RED ON: the Updates caption line removed from _tvSetupRender (tvControl.js) — 2026-10-25
+  rig.check((await caption()).includes('Every change reaches the TV at once.'), 'F: Auto carries no line saying changes reach the TV at once: ' + await caption());
   await dm.evaluate(q('#tv-setup .sm-wfoot button') + '.click(); 0');
   await closed();
 };

@@ -343,7 +343,7 @@ function initInput() {
                 brushSize = Math.min(300, brushSize + 10);
                 document.getElementById('brush-size').value = brushSize;
                 document.getElementById('brush-size-label').textContent = brushSize; break;
-      case 'KeyS': if (e.shiftKey && !autoSync) { e.preventDefault(); sendToPlayerNow(); } break;
+      case 'KeyS': if (e.shiftKey) { e.preventDefault(); sendToPlayerNow(); } break;
       // Space is the live Send at the table, so it must mean one thing wherever focus sits. A
       // toolbar button keeps focus after a click and Space would press it again, so hand focus back
       // to the map first.

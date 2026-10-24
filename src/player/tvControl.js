@@ -424,6 +424,7 @@ function _tvSetupRender() {
     if (autoSync === v) _tvLegacy('btn-auto-sync');
     _tvSetupRender();
   }));
+  body.append(_tvText('sm-dim', t(autoSync ? 'Every change reaches the TV at once.' : 'Changes wait until you press Send.')));
 
   body.append(sub(t('Turn')), _tvTurnRow());
   const note = _tvMake('p', 'tvs-note');

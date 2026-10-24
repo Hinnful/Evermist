@@ -17,8 +17,8 @@
 //      filed under.
 //   E. The campaign's module text outlives the app, not just the scene.
 //   F. The Player opened after a restart gets the restored map, fog and all.
-//   G. A remembered scene that is no longer in the library leaves the DM on no map, with the
-//      library still painted - not on a half-loaded scene and not behind an error.
+//   G. A remembered scene that is no longer in the library leaves the DM on no map, on the open
+//      Campaign - not on a half-loaded scene, not on the bare start screen and not behind an error.
 //
 // ⚠ EVERY OTHER SCENARIO BOOTS ONTO AN EMPTY LIBRARY, and run.js refuses to start against one
 // that is not empty - that refusal is how profile isolation is PROVEN. So nothing else in the
@@ -295,6 +295,7 @@ module.exports = async function boot(rig) {
   const orphan = await dm.evaluate(`({
     scene: currentScene ? currentScene.id : null,
     count: allScenes.length,
+    campaign: worldMapOpen,
     // The anchor is built by the first dialog, so a clean startup has none at all - which
     // is the answer this criterion wants.
     dialog: (() => { const a = document.getElementById('cd-anchor');
@@ -306,6 +307,9 @@ module.exports = async function boot(rig) {
   rig.check(orphan.count === 2,
             'the library did not load after the remembered scene turned out to be missing, so ' +
             'the DM comes up with no way to pick a map at all: ' + JSON.stringify(orphan));
+  // RED ON: the Campaign opened only on an empty library (sceneList.js initScenes) — 2026-10-25
+  rig.check(orphan.campaign === true,
+            'no map opened and the Campaign stayed shut, so the DM lands on the bare start screen: ' + JSON.stringify(orphan));
   rig.check(orphan.dialog !== 'flex',
             'a remembered scene that is simply gone put a dialog in front of the DM on startup');
 };

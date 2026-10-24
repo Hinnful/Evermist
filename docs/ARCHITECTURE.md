@@ -221,8 +221,9 @@ first brush stroke with no TV live shows "Put it on the TV", and the Rooms hint 
 The effects hint shows on the second map open, counted across launches in localStorage `evermist.mapOpens`
 (restoring at launch counts). `electron/screenLog.js` writes `screens.log` for the first 10 s after launch,
 on change only, replaced each launch. On the Campaign, right-click menus offer New group here, Add maps
-here... and Notes for a group or map, and picking a map offers its own Notes level without opening it.
-The Open button over a picked map reads "Open"; the Help sheet lists "Pan with a mouse".
+here..., Background picture... (presses Settings' Choose image... picker directly, no pane opens) and Notes for a group or map, and picking a map offers its own Notes level without opening it.
+On launch with no last map to open (none remembered, or it is gone) the Campaign opens, empty library or not; a hidden
+background window (`?background=1`) never opens it, so first-use hints cannot fire unseen. The Open button over a picked map reads "Open"; the Help sheet lists "Pan with a mouse".
 
 ## How the render loop works
 
@@ -266,7 +267,8 @@ The DM window is the boss. The Player window follows.
   With Auto off, the DM holds everything about the map until **Send**: opening a map (the TV
   keeps the old one, with no fog cover), minimap drag and zoom, Sync, Turn and the fog animation.
   `state.tvWait` {scene, view, turn, anim} records what waits and Send delivers it in one go;
-  Manual to Auto sends it too. The ping stays live but does nothing while the TV shows a different
+  Manual to Auto sends it too. Both Send keys, Space and Shift+S, send in either mode. TV setup states the rule under
+  Updates in one line. The ping stays live but does nothing while the TV shows a different
   map from the open one; a gallery picture on the TV stays live.
 - **Match the TV to my view** (Sync View in the code) snaps the Player's camera to match the DM's. The Player camera glides to
   new positions rather than jumping.

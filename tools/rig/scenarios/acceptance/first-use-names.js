@@ -5,7 +5,7 @@
 // and src/world/worldBackup.js. Item 7 of the first-use-cues spec. Strings only: no control moved.
 //
 //   A. The minimap's push button reads "Match the TV to my view", never "Push this view to the Player".
-//   B. The Help sheet reads "Brush, in Fog" and "Send, in Manual", never "Brush, in Rooms" or "Send, with Sync off".
+//   B. The Help sheet reads "Brush, in Fog" and "Send to the TV", never "Brush, in Rooms" or "Send, with Sync off".
 //   C. Reveal all in Auto asks "Updates are Auto, so the players see every room at once.", and the Rooms hint that follows
 //      says "Draw a room with the Room button, then use its clouds to reveal just that room."
 //   D. Settings reads "Fog in a half room", "Back up everything" and "Import a backup", never "Half shroud" or "Export everything".
@@ -33,8 +33,8 @@ module.exports = async function firstUseNames(rig) {
 
   // B. RED BY DESIGN: written against the fix, never re-proved
   const rows = await dm.evaluate('[...document.querySelectorAll("#shortcut-legend .lg-row")].map(r => r.firstChild.textContent.trim())');
-  rig.check(rows.includes('Brush, in Fog') && rows.includes('Send, in Manual') && !rows.includes('Brush, in Rooms') && !rows.includes('Send, with Sync off'),
-            'the Help sheet does not read "Brush, in Fog" and "Send, in Manual": ' + JSON.stringify(rows));
+  rig.check(rows.includes('Brush, in Fog') && rows.includes('Send to the TV') && !rows.includes('Send, in Manual') && !rows.includes('Brush, in Rooms') && !rows.includes('Send, with Sync off'),
+            'the Help sheet does not read "Brush, in Fog" and "Send to the TV": ' + JSON.stringify(rows));
 
   // C. RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('autoSync = true; setPlaceMode("rooms"); setShape("select"); document.getElementById("tb-reveal-all").click(); 0');

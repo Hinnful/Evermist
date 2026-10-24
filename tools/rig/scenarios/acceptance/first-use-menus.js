@@ -4,8 +4,9 @@
 // Covers src/world/worldMapMenu.js, worldMapEdit.js (_wmAddLand), worldMapPlan.js (wmGroupRectAt) and src/notes/notesPanel.js
 // (a map picked on the Campaign). Item 211 of the first-use-cues spec.
 //
-//   A. Empty ground reads Add a map here, New group here, Show everything. New group here makes a rectangle group centred on the click,
+//   A. Empty ground reads Add maps here…, New group here, Background picture…, Show everything. New group here makes a rectangle group centred on the click,
 //      sized for one map card, named as a group drawn by hand, with rename started where its name shows. One undo removes it.
+//      Background picture… presses Settings' own Choose image… button.
 //   B. A group reads Rename, Fit in view, Add maps here…, Notes, then Delete group. Add maps here… puts the maps added next inside that group.
 //   C. Notes on a group opens the Notes pane on that group's level.
 //   D. A map reads Open, Rename, (Take out of its group), Export this map, Notes, then Delete map. Notes picks it and opens the Notes
@@ -44,7 +45,7 @@ module.exports = async function firstUseMenus(rig) {
   // A. RED BY DESIGN: written against the fix, never re-proved
   const click = JSON.parse(await dm.evaluate('JSON.stringify(_wmToWorld(60, 140))'));
   await dm.evaluate('__fmMenuAt(60, 140); 0');
-  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add a map here', 'New group here', 'Show everything']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
+  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add maps here…', 'New group here', 'Background picture…', 'Show everything']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
   await dm.evaluate('__fmPress("New group here"); 0');
   const made = JSON.parse(await dm.evaluate(`JSON.stringify((() => { const rec = worldPlaceRecords()[0]; if (!rec) return null; const b = wmPolyBounds(wmOutline(rec)), r = wmGroupRectAt({ x: 0, y: 0 });
     return { n: worldPlaceRecords().length, name: rec.name, cx: b.x + b.w / 2, cy: b.y + b.h / 2, w: b.w, h: b.h, rw: r.w, rh: r.h, editing: !!_wmEditing, shown: _wmNameShown(rec.name) }; })())`));
@@ -55,6 +56,11 @@ module.exports = async function firstUseMenus(rig) {
   if (made && made.editing) await dm.evaluate('_wmEditing.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true, cancelable: true })); 0');
   await dm.evaluate('worldUndo(); 0');
   rig.check(await dm.evaluate('worldPlaceRecords().length') === 0, 'one undo did not remove the new group');
+  // The picker is native, so the press is caught on its way down and stopped before it opens one.
+  await dm.evaluate(`globalThis.__fmBg = 0; window.addEventListener('click', e => { if (e.target.closest && e.target.closest('#wm-bg-pick')) { globalThis.__fmBg++; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+    __fmMenuAt(60, 140); __fmPress("Background picture…"); 0`);
+  // RED ON: the Background picture… row removed (worldMapMenu.js _wmGroundRows) — 2026-10-25
+  rig.check(await dm.evaluate('globalThis.__fmBg') === 1, 'Background picture… did not press Settings\' Choose image… button');
 
   // B. RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('__fmMenuAt(60, 140); __fmPress("New group here"); if (_wmEditing) _wmEditing.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true, cancelable: true })); 0');
