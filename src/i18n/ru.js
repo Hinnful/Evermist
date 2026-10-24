@@ -245,6 +245,8 @@ const RU = {
   'Draw a room with the Room button, then use its clouds to reveal just that room.': 'Нарисуйте комнату кнопкой «Комната», затем откройте только её облаками.',
   'Reveal part of the map': 'Откройте часть карты',
   'Pick the Brush and paint over the map to reveal that part to the players.': 'Возьмите кисть и закрасьте карту, чтобы открыть эту часть игрокам.',
+  'Show a room': 'Покажите комнату',
+  'Click a room, then its clouds to show it to the players.': 'Щёлкните по комнате, затем по её облакам, чтобы показать её игрокам.',
   'Edit this room': 'Измените эту комнату',
   'Pick Select, then double-click the room to move its corners. In there, double-click a wall to add one.': 'Возьмите «Выбор», затем дважды щёлкните по комнате, чтобы двигать её углы. Там двойной щелчок по стене добавит угол.',
   'Merge, cut out or split rooms': 'Объединяйте, вырезайте или разрезайте комнаты',

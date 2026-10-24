@@ -63,6 +63,45 @@ describe('effects: the second map opened, on a map in Fog mode', () => {
   });
 });
 
+describe('effects: a map holding an effect gets no hint', () => {
+  it('is not due once an effect exists', () => {
+    assert.equal(P.hintEffectsDue({ opens: 2, fogMode: true, sceneOpen: true, hasEffect: true }), false);
+    assert.equal(P.hintEffectsDue({ opens: 2, fogMode: true, sceneOpen: true, hasEffect: false }), true);
+  });
+});
+
+describe('reveal: a map already showing something', () => {
+  it('is due only while nothing is revealed', () => {
+    assert.equal(P.hintRevealDue({ revealed: false }), true);
+    assert.equal(P.hintRevealDue({ revealed: true }), false);
+  });
+});
+
+describe('show-on-tv on a map open: something revealed, TV not live', () => {
+  it('is due only then', () => {
+    assert.equal(P.hintShowOnTvOpenDue({ revealed: true, tvLive: false }), true);
+    assert.equal(P.hintShowOnTvOpenDue({ revealed: true, tvLive: true }), false);
+    assert.equal(P.hintShowOnTvOpenDue({ revealed: false, tvLive: false }), false);
+  });
+});
+
+describe('room-reveal: rooms exist and all are in shroud', () => {
+  it('is due only then', () => {
+    assert.equal(P.hintRoomRevealDue({ rooms: 3, shroudRooms: 3 }), true);
+    assert.equal(P.hintRoomRevealDue({ rooms: 3, shroudRooms: 2 }), false);
+    assert.equal(P.hintRoomRevealDue({ rooms: 0, shroudRooms: 0 }), false);
+  });
+});
+
+describe('the quiet gap after a hint closes', () => {
+  it('holds a screen-read hint for the whole gap', () => {
+    const s = { lastClosedAt: 1000, gapMs: 60000 };
+    assert.equal(P.hintQuietOver({ ...s, now: 60999 }), false);
+    assert.equal(P.hintQuietOver({ ...s, now: 61000 }), true);
+    assert.equal(P.hintQuietOver({ ...s, now: 500000 }), true);
+  });
+});
+
 describe('the count of maps opened', () => {
   it('adds one, and starts again from anything that is not a count', () => {
     assert.equal(P.hintOpensNext('1'), 2);

@@ -20,8 +20,20 @@ function hintStatBlockDue(s) { return s.before === 0 && s.after >= 1; }
 // The Campaign is up with three or more maps and no group.
 function hintGroupsDue(s) { return !!s.campaignUp && s.maps >= 3 && s.groups === 0; }
 
-// The DM has opened a map twice, and stands on a map in Fog mode.
-function hintEffectsDue(s) { return s.opens >= 2 && !!s.fogMode && !!s.sceneOpen; }
+// The DM has opened a map twice, stands on a map in Fog mode, and the map holds no effect yet.
+function hintEffectsDue(s) { return s.opens >= 2 && !!s.fogMode && !!s.sceneOpen && !s.hasEffect; }
+
+// The map shows nothing revealed yet: no brushed area, and every room still in shroud.
+function hintRevealDue(s) { return !s.revealed; }
+
+// A map opened (or repainted) with something revealed while the TV is not live.
+function hintShowOnTvOpenDue(s) { return !!s.revealed && !s.tvLive; }
+
+// The map has rooms (no effects, no lights) and every one is in shroud.
+function hintRoomRevealDue(s) { return s.rooms >= 1 && s.shroudRooms === s.rooms; }
+
+// A screen-read hint may show only once the quiet gap has passed since any hint closed.
+function hintQuietOver(s) { return s.now - s.lastClosedAt >= s.gapMs; }
 
 // The stored count of maps opened, one more: anything that is not a whole count starts again at one.
 function hintOpensNext(raw) {
@@ -30,5 +42,5 @@ function hintOpensNext(raw) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { hintOpenMapDue, hintShowOnTvDue, hintMusicDue, hintFightDue, hintStatBlockDue, hintGroupsDue, hintEffectsDue, hintOpensNext };
+  module.exports = { hintOpenMapDue, hintShowOnTvDue, hintMusicDue, hintFightDue, hintStatBlockDue, hintGroupsDue, hintEffectsDue, hintRevealDue, hintShowOnTvOpenDue, hintRoomRevealDue, hintQuietOver, hintOpensNext };
 }

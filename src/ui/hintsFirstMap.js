@@ -4,10 +4,48 @@
 // Every close but a scene switch is read off the state here, on the next repaint.
 // Also the next-map hint, which counts TV time on a one-second tick.
 
-const _HF_IDS = ['reveal', 'room-edit', 'repair-keys'];
+const _HF_IDS = ['reveal', 'room-edit', 'repair-keys', 'room-reveal'];
 const _HF_GAP = 10, _HF_MARGIN = 8;
 
 let _hfNewId = null;       // the room whose toast is up
+let _hfBrushed = false;    // the map opened with a brushed revealed area; read once per open
+
+// Read once when a map opens (hintsMapOpened): any clear pixel in the brush layer, shrunk to 64px so a 10000px map costs nothing.
+function hintsScanBrush() {
+  _hfBrushed = false;
+  if (!baseFogCanvas) return;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(baseFogCanvas, 0, 0, 64, 64);
+  const d = g.getImageData(0, 0, 64, 64).data;
+  for (let i = 3; i < d.length; i += 4) if (d[i] < 255) { _hfBrushed = true; return; }
+}
+
+// The room (no material, no light) whose screen box centre is nearest the centre of the map view.
+function _hfCentralRoom() {
+  const c = document.getElementById('canvas-container').getBoundingClientRect(), mx = (c.left + c.right) / 2, my = (c.top + c.bottom) / 2;
+  let best = null, bestD = Infinity;
+  for (const p of polygons) {
+    if (p.material || p.light) continue;
+    let l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
+    for (const v of p.vertices) {
+      const s = toScreen(v.x, v.y), q = viewToClient(s.sx, s.sy);
+      l = Math.min(l, q.x); r = Math.max(r, q.x); t = Math.min(t, q.y); b = Math.max(b, q.y);
+    }
+    const d = Math.hypot((l + r) / 2 - mx, (t + b) / 2 - my);
+    if (d < bestD) { best = p; bestD = d; }
+  }
+  return best;
+}
+
+// What the map shows now: the brushed area read at open, and the rooms' fog modes live.
+function _hfFacts() {
+  const rooms = polygons.filter(p => !p.material && !p.light);
+  return { revealed: _hfBrushed || rooms.some(p => p.mode !== 'shroud'), rooms: rooms.length,
+    shroudRooms: rooms.filter(p => p.mode === 'shroud').length, tvLive: _tvLive() };
+}
 
 // Rooms mode and a scene on screen: the DM window's own map, not the world map or a column.
 function _hfLive() { return !isPane && !panesActive && !worldMapOpen && !!currentScene && placeMode === 'rooms'; }
@@ -94,9 +132,15 @@ function hintsFirstSync(room) {
       (!live || !polygons.some(p => p.id === _hfNewId) ||
        (cur === 'room-edit' && shapeEditMode && selectedPolygonId === _hfNewId) ||
        (cur === 'repair-keys' && SHAPE_FAMILY.indexOf(shape) < 0))) hintClose(cur);
+  const f = _hfFacts(), roomReveal = hintRoomRevealDue(f);
+  if (cur === 'room-reveal' && (!live || !roomReveal)) hintClose('room-reveal');
   hintsFirstPlace();
   hintsCuesSync();
-  if (select && !room && !_hintsSeen().includes('reveal')) {
+  if (live && roomReveal && !_hintCur && _hintQuiet()) {
+    _hintShow('room-reveal', 'Show a room', 'Click a room, then its clouds to show it to the players.', null, _hfAtRoom(_hfCentralRoom().id));
+  }
+  if (live && !_hintCur && _hintQuiet() && hintShowOnTvOpenDue(f)) hintsShowOnTvShow();
+  if (select && !room && hintRevealDue(f) && !roomReveal && _hintQuiet() && !_hintsSeen().includes('reveal')) {
     _hintShow('reveal', 'Reveal part of the map',
       'Pick the Brush and paint over the map to reveal that part to the players.', 'btn-brush', _hintPlaceOver('btn-brush'));
   }
@@ -120,7 +164,7 @@ function _hnmTick() {
   if (worldMapOpen || panesActive || !currentScene || !_tvLive()) { _hnmHeld = 0; hintClose('next-map'); return; }
   if (allScenes.length < 2) { _hnmHeld = 0; return; }
   _hnmHeld += Math.min(dt, 5000);   // a sleeping laptop is not time on the TV
-  if (_hnmHeld >= _hintNextMapMs) {
+  if (_hnmHeld >= _hintNextMapMs && _hintQuiet()) {
     _hintShow('next-map', 'Ready for the next map?', 'Your other maps are in the Campaign. Press M or click here.',
       'btn-world', _hintPlaceBeside('btn-world', true));
   }

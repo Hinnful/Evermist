@@ -21,6 +21,7 @@ function _hcOpenCount() {
 function hintsMapOpened() {
   if (isPane || isPlayer) return;   // a column or the TV opening a scene is not the DM opening a map
   _hcOpened = true;
+  hintsScanBrush();   // hintsFirstMap.js
   hintClose('open-map');
   _hcOpens = _hcOpenCount() + 1;
   try { localStorage.setItem(HC_OPENS_KEY, String(_hcOpens)); } catch (_) {}
@@ -36,11 +37,13 @@ const _hcFirstCard = () => {
 
 // Every frame while the Campaign is up (worldMapFollow), and on each repaint of the map (hintsFirstSync).
 function hintsCuesSync() {
+  if (_tvLive()) hintClose('show-on-tv');
   if (!_hcLive()) return;
   if (worldMapOpen) { _hcCampaign(); return; }
   hintClose('open-map');
   hintClose('groups');
-  if (_hintCur || !hintEffectsDue({ opens: _hcOpenCount(), fogMode: placeMode === 'rooms', sceneOpen: !!currentScene })) return;
+  if (_hintCur || !_hintQuiet() ||
+      !hintEffectsDue({ opens: _hcOpenCount(), fogMode: placeMode === 'rooms', sceneOpen: !!currentScene, hasEffect: effects.length > 0 })) return;
   _hintShow('effects', 'Fire, acid and light',
     'Click Effects to draw a fire, a cone of acid or a light. The players see it on the TV.',
     'btn-effects', _hintNear(_hintRectOf('btn-effects'), 'above'));
@@ -56,6 +59,7 @@ function _hcCampaign() {
   if (!openDue) hintClose('open-map');
   if (!group) hintClose('groups');
   if (_hintCur) { if (_hintCur.id === 'open-map' || _hintCur.id === 'groups') _hintReplace(); return; }
+  if (!_hintQuiet()) return;
   if (open && !_hcFirstCard()) return;
   if (!open && group && !_hintRectOf('btn-shape')()) return;
   if (open) {
@@ -67,15 +71,20 @@ function _hcCampaign() {
   }
 }
 
-// ─── Show on TV: the first brush stroke ──────────────────────────────────────
+// ─── Show on TV: the first brush stroke, or a map that shows something ──────────────────────────────────────
 
 // A brush stroke ended (settleFogAfterStroke). True when the hint showed, so the Rooms hint waits for the next stroke.
 function hintsShowOnTvAsk() {
   if (!_hcLive() || worldMapOpen || !currentScene || !hintShowOnTvDue({ tvLive: _tvLive() })) return false;
   if (!_hintsMayShow('show-on-tv')) return false;   // spent: a toast still up from the first stroke is not this stroke's
+  hintsShowOnTvShow();
+  return !!_hintCur && _hintCur.id === 'show-on-tv';
+}
+
+// Shared by the stroke's answer and the map open's screen read (hintsFirstSync).
+function hintsShowOnTvShow() {
   _hintShow('show-on-tv', 'Put it on the TV', 'Press Show on TV. The players see only what you reveal.',
     'tv-go', _hintNear(_hintRectOf('tv-go'), 'above'));
-  return !!_hintCur && _hintCur.id === 'show-on-tv';
 }
 
 // ─── Music and Sounds ────────────────────────────────────────────────────────

@@ -105,7 +105,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/seatAlignment.js` | Settings' Seat alignment: the TV from above, four chairs, the laptop map's turn |
 | `ui/hints.js` | First-time hints: the callout toast, shown once ever and once per run, and Settings' Hints switch |
 | `ui/hintsPlan.js` | Pure hint kernel: when each first-use cue is due, and the count of maps opened. Tested |
-| `ui/hintsFirstMap.js` | The first-map hints: reveal, room-edit and repair-keys, each shown from what the DM holds |
+| `ui/hintsFirstMap.js` | The first-map hints: reveal, room-reveal, room-edit and repair-keys, each shown from what the DM holds |
 | `ui/hintsCues.js` | The first-use cues: the Campaign's Open and Group, Show on TV, Effects, Music, Sounds and the fight table |
 | `notes/notesPlan.js` | Pure notes kernel: the crumb list, a notes string cleaned, a restored campaign note merged in. Tested |
 | `notes/notesPanel.js` | The dock's Notes pane: breadcrumbs, and the notes of the campaign, a place, the scene or the room |

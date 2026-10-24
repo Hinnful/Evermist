@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 13 open items; IDs run to 224."
+description: "Open work only. 12 open items; IDs run to 224."
 metadata: 
   node_type: memory
   type: project
@@ -88,19 +88,12 @@ music, and switches to another map. Anything Sasha meets on the way that does no
 epic. The same path must not slow an experienced DM or hide the deeper features.
 **Done when** a new DM on the current version, with no Claude and no help in chat, completes Sasha's path and can then
 say what a map, a group and a room are. No tester has run this: each met an older version and had the DM's help.
-**Order.** 210, then 218.
+**Order.** 220, then 218. The done test waits for a new DM, and none is available (2026-10-25).
 **Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later,
 and finds them unaided.
 **Out of this section:** what a DM sees before installing. That is distribution, and it comes later.
 
 ## The first evening
-
-### 210. Hints follow what the library holds, not the DM's first action
-Filed 2026-10-22. A DM whose maps Claude made never sees the first-map hints, because they start from a hand-made
-first action. A tester started that way and in three days never met rooms or effects. A hint that reads the state (a map
-with no rooms, rooms never shown on the TV) reaches that DM too. Item 207 sends more DMs down this road. **Needs
-/spec:** which states earn a hint, and how they fit the first-use hints in `hintsCues.js`.
-**First use · DM only**
 
 ### 218. A group shows the maps it holds
 Filed 2026-10-22 from a tester's request. Zoomed out, a group on the Campaign shows only its outline and name, and its maps
@@ -109,6 +102,12 @@ what a group holds and how much without zooming in. The Campaign drew more teste
 **Needs /spec:** how many thumbnails before "+N", whether a click on one opens that map, and the tester's reading of a
 group as a container the DM steps into.
 **First use · Campaign · DM only**
+
+### 220. The eye icon behaves one way everywhere
+Filed 2026-10-22 from tester feedback. The eye in Map settings' grid section changes its look when pressed; the two eyes
+on the fog bar (Reveal all, Hide all) are actions and do not. A tester read the difference as a fault. **Needs a
+look-and-feel pass:** whether the fog bar's actions keep the eye at all.
+**First use · Polish · DM only**
 
 ---
 
@@ -140,12 +139,6 @@ Filed 2026-10-25. In 4 recent Windows gate runs, `fit-to-tv` failed once and pas
 not take the turned TV's zoom after Sync View (0.486, wanted 1.016). Find whether the scenario reads too early or the
 app lands late, then fix the check or the app, or retire the check.
 **Upkeep · DM + Player**
-
-### 220. The eye icon behaves one way everywhere
-Filed 2026-10-22 from tester feedback. The eye in Map settings' grid section changes its look when pressed; the two eyes
-on the fog bar (Reveal all, Hide all) are actions and do not. A tester read the difference as a fault. **Needs a
-look-and-feel pass:** whether the fog bar's actions keep the eye at all.
-**Polish · DM only**
 
 ### 184. Straight walls sits alone over the world map's drawing tools
 Filed 2026-10-16. With the repairs gone from places, the row over a place tool holds one icon, Straight walls, and it

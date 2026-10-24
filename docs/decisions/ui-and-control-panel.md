@@ -1257,3 +1257,14 @@ Effects tool where Select picks rooms, effects and lights together, because a .d
 light (87 on one inn floor, covering the map almost ten times) and Select would land on a light on nearly every room
 click; lights stay plain polygons, and an outline shown only under the pointer was dropped with it. Also rejected: a
 material well of three icons, which does not scale past 20 materials; the palette with its search field stays the picker.
+
+### A hint stays away from a map that already holds what it teaches · `SETTLED` (2026-10-25)
+Extends the three first-use hint entries above, decided case by case. "Reveal part of the map" skips a map with a revealed
+area (brushed, or any room not in shroud); the Effects hint skips a map holding an effect. New "Show a room" appears beside
+the room nearest the view's centre (the first in the list can be off screen) on a map whose rooms are all in shroud, closes
+when any room's fog changes, and wins over Reveal there. "Put it on the TV" also shows on opening a map with something
+revealed and the TV not live, and closes as soon as the TV goes live. Quiet gap: a hint read off the screen waits one minute
+after Got it; one answering the DM's own action shows at once; any other close (the action done, a replace, a scene switch)
+starts no wait. Rejected: a gap after any close, since a first map opened from "Open a map" would show Reveal a minute late.
+Each hint still shows once ever and never two at once. No special case for a library prepared by Claude. Accepted cost: the
+brush layer is read once per map open on a 64px copy, so a tiny revealed area on a very large map can be missed.

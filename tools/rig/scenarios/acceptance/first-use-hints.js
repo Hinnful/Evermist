@@ -37,6 +37,7 @@ function wav(seconds) {
 
 module.exports = async function firstUseHints(rig) {
   const dm = rig.dm;
+  await dm.evaluate("_hintQuietMs = 0; 0");   // Got it on open-map is followed at once by groups
   const gone = id => lib.settle(dm, '!' + up(id), 8000);
   const geo = (id, anchor) => dm.evaluate(`(() => { const h = document.querySelector('.hintcall-${id}'), a = document.querySelector(${JSON.stringify(anchor)});
     if (!h || !a) return null; const r = h.getBoundingClientRect(), b = a.getBoundingClientRect();

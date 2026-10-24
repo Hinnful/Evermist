@@ -7,6 +7,8 @@ const HINTS_SEEN_KEY = 'evermist.hintsSeen';
 const HINTS_OFF_KEY = 'evermist.hintsOff';
 
 let _hintCur = null;    // { id, el, place, blink } while one is up
+let _hintClosedAt = 0;  // when the DM last pressed Got it
+let _hintQuietMs = 60 * 1000;   // a hint read off the screen waits this long after Got it
 
 function _hintsSeen() {
   try { const a = JSON.parse(localStorage.getItem(HINTS_SEEN_KEY)); return Array.isArray(a) ? a : []; } catch (_) { return []; }
@@ -17,6 +19,9 @@ function _hintsOff() {
 }
 
 function _hintsMayShow(id) { return !_hintsOff() && !_hintsSeen().includes(id); }
+
+// True once the quiet gap since the last Got it has passed; hints that answer the DM's own action skip it.
+function _hintQuiet() { return hintQuietOver({ now: Date.now(), lastClosedAt: _hintClosedAt, gapMs: _hintQuietMs }); }
 
 function _hintDrop(cur) {
   cur.el.remove();
@@ -40,7 +45,8 @@ function _hintShow(id, title, body, blink, place) {
   el.children[1].textContent = t(body);
   const ok = el.querySelector('.hintcall-ok');
   ok.firstChild.textContent = t('Got it');
-  ok.onclick = () => hintClose(id);
+  // Only Got it starts the quiet gap. Screen-read hints are checked on a repaint, so one is forced when the gap ends.
+  ok.onclick = () => { _hintClosedAt = Date.now(); hintClose(id); setTimeout(refreshRoomPanel, _hintQuietMs + 50); };
   el.addEventListener('mousedown', e => e.preventDefault());   // a hint never takes focus
   const prev = _hintCur;
   _hintCur = { id, el, place, blink: null };
