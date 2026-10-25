@@ -36,9 +36,21 @@ function _clKeys(e) {
   if (e.code === 'Escape') closeChangelog();
 }
 
-// A body written one point a line reads as a list; an older one, wrapped mid-sentence, stays prose.
+// A body of "* " points under an intro reads as both; an older one, one point a line, as a list;
+// older still, wrapped mid-sentence, as prose.
 function _clBodyEl(body) {
   const lines = body.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.some(l => l.startsWith('* '))) {
+    const box = document.createElement('div');
+    const ul = document.createElement('ul');
+    for (const l of lines) {
+      const el = document.createElement(l.startsWith('* ') ? 'li' : 'div');
+      el.textContent = l.startsWith('* ') ? l.slice(2) : l;
+      if (el.tagName === 'DIV') { el.className = 'cl-text'; box.appendChild(el); } else ul.appendChild(el);
+    }
+    box.appendChild(ul);
+    return box;
+  }
   if (lines.some(l => /^[a-z]/.test(l))) {
     const text = document.createElement('div');
     text.className = 'cl-text';

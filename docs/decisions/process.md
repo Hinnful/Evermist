@@ -402,3 +402,12 @@ keeps `notes.txt` and `disclosure.txt` in `.claude/commit/runs/$CLAUDE_CODE_SESS
 strict clean-tree refusal** (built and dropped the same day, it blocked any commit while another
 session was mid-edit) and **a per-session file-ownership ledger** (more machinery than the problem
 needs). `fetch.prune` is on locally; stale `origin/*` refs were leftovers, not a workflow gap.
+
+### Release notes changed register · `SETTLED` (2026-10-25)
+The notes read as acceptance criteria: no reader, equal weight per line, button labels as sentence
+subjects, odd verbs. The cause was `notes.md`'s own rules. **Reverses** its earlier bans on the
+reader as subject, on reasons and comparisons, and on "now", "instead" and "already" as filler. New
+shape: a plain-words Summary, one intro sentence on line 2, a blank line, then up to 7 `* ` points,
+one piece of news each, saying what changed rather than how to operate it. The draft goes through
+`/voice`; `check-notes.js` enforces the shape. The What's new panel draws the intro above a list
+without the markers, and the `help-and-about` scenario compares the two.

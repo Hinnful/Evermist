@@ -1,63 +1,76 @@
 ## Step 5 - Hand over the notes, then stop
 
-Output exactly two blocks, formatted for GitHub Desktop's Summary + Description fields:
+The notes are a short message from whoever builds Evermist to a DM who just updated it. Three
+parts, formatted for GitHub Desktop's Summary + Description fields:
 
-1. **Summary** - one line, at most 70 characters. See the shape below.
-2. **Description** - one line per concern, at most 8 lines. No sub-bullets, no headings, no
-   sections. More than 8 concerns means the commit is a batch: say what the batch is and list only
-   the parts a future reader would search for.
+1. **Summary** - one line, at most 70 characters: the version, then what changed for the DM, in
+   plain words.
+2. **Intro** - the first Description line: one sentence saying what the release is about.
+3. **Points** - one `* ` line each, at most 7. More than that is a batch: keep the ones a DM would
+   notice.
 
-**Summary plus Description stay under ~12 lines.** If the change is one thing, a Summary alone is
-right. Do not pad it.
-
-### Both blocks name the part of Evermist that changed
-
-**Every rule below binds each Description line exactly as it binds the Summary.** A Description is
-not a looser register; it is the same sentence shape, one per concern.
-
-**The subject is the thing in the app, called by its name on screen.** A control, a mode, a tool, a
-panel. Declarative, present tense. A verb is optional in the Summary.
+A one-thing change is a Summary and an Intro, or a Summary alone. Do not pad it.
 
 ```
-Merge, Cut out and Split work on effects
-Split Map mode for two scenes at once
-Repairs stay armed after an action
+4.9.2 - Hints are no longer annoying
+Hints now don't suggest things you've already done
+
+* "Reveal part of the map" no longer shows on maps that already have something revealed
+* Effects hint skips maps that already have effects
+* After "Got it", the next hint now waits a minute
 ```
 
-**Never the reader as subject.** "You can drag a scene out of a group" becomes "A scene drags out
-of its group". "Marks the one you are running" becomes "marks the running version". Rewrite with
-the app as subject rather than dropping the fact.
+```
+4.9.0 - Effects got their own button
+Effects is now a separate mode next to Room
 
-**Never an instruction to the reader.** "Repair an effect the way you repair a room" and "Read what
-each version changed" are the shape this replaced.
+* E is the new hotkey for Effects
+* Effects button is now blue while it's on. Toolbar border glows in the selected material's color
+* Esc drops the current effect. Second Esc leaves Effects
+```
 
-**No filler.** Cut every word in this list, and every adverb that survives deletion.
-`check-notes.js` reads this block, so it is the list's only home:
+### How a point reads
+
+**One piece of news per sentence: "X is now Y", "X no longer Z", "X now does Y".** Short sentences
+joined by a full stop, never chained by commas and dashes. The article can go: "Toolbar border
+glows" reads fine.
+
+**Say what changed, not how to operate it.** "Effects button is now blue" is the news. "Press E or
+click Effects - it turns blue" is a manual. Name a key or a click only when the key IS the news.
+
+**The thing in the app, called by its name on screen.** Quote a label when it would otherwise read
+as part of the sentence: `"Reveal part of the map" no longer shows`.
+
+**Plain words over exact ones.** "Groups now display maps inside them at high zoom-out", not "a
+group shows its first three maps as a fan of cards". A verb like "wears", "burns" or "carries" for a
+button is a tell: say "has", "is", "shows".
+
+**"you" is fine, "now", "no longer" and "already" are the point.** A short reason is fine when a DM
+would ask why. An opinion is not: "much better", "finally".
+
+**No filler.** `check-notes.js` reads this block, so it is the list's only home:
 
 ```filler-words
-too
 as well
-now
-instead
-already
 finally
 delve
 robust
 seamless
 ```
 
-**No reason, no comparison, no opinion, no example.** Say what changed. Not why, not what it used
-to do, not what it is better than, not which release it reverses.
-
 **Evermist's own vocabulary only.** An effect is an effect, never a burn or a flame. A room is a
-room. Nothing from a table, a session or a campaign enters either block.
+room. Nothing from a table, a session or a campaign enters the notes.
+
+### Run it through /voice
+
+**Once the draft passes the checker, run `/voice` on it** and keep the rewrite if it still passes.
+The skill rewrites toward how the DM writes; the checker and the rules here still win.
 
 ### The reader is a stranger who just downloaded the app
 
 **These notes land on a public release page, permanently.** Never include:
 
-- **The author, in any form.** No name, no "he", no "your test map". The subject rule above already
-  keeps the reader out of the subject slot, so *you* survives only as an object or a possessive.
+- **The author, in any form.** No name, no "he", no "your test map". "you" means any DM reading.
 - **Their content.** Campaign, map, place and character names. A map used to find a bug is not a
   feature.
 - **Their words, quoted.**
@@ -67,19 +80,15 @@ room. Nothing from a table, a session or a campaign enters either block.
 When a bug's story needs a specific map, describe the map's *kind*: "a map mixing caves with built
 rooms".
 
-**"In the author's voice" means register, not subject matter.** Borrow the plainness, not the
-vocabulary for their own belongings.
+**Never an em-dash** - use " - ". Nothing from the `filler-words` list.
 
-**Never an em-dash in the Summary or Description** - use " - ". No "not X but Y", no rule-of-three
-triples, nothing from the `filler-words` list.
+**Cut:** a diff restated in prose, test counts, docs churn that rides along, anything `git diff`
+shows more precisely.
 
-**Cut:** rationale, a diff restated in prose, test counts, docs churn that rides along, anything
-`git diff` shows more precisely.
+State the version you set, or that you set none and why, in one line above the notes.
 
-State the version you set, or that you set none and why, in one line above the two blocks.
-
-**Write both blocks to `notes.txt` in `.claude/commit/runs/$CLAUDE_CODE_SESSION_ID/`** - line 1 the Summary, then the
-Description lines - and run the checker. It fails loudly with each offending line; fix and re-run
+**Write the notes to `notes.txt` in `.claude/commit/runs/$CLAUDE_CODE_SESSION_ID/`** - line 1 the Summary, line 2 the
+Intro, a blank line, then the points - and run the checker. It fails loudly with each offending line; fix and re-run
 until it passes, then show the notes. It cannot judge the privacy rules above; you do.
 
 ```

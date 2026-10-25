@@ -381,9 +381,11 @@ module.exports = async function helpAndAboutFeature(rig) {
   //
   // ⚠ THE FIRST ROW WITH A BODY, never rows[0] and never merely the first with a chevron. A
   // one-line release has no body, and once it is tagged its chevron opens a GitHub link alone.
-  // ⚠ A BODY READS AS A LIST OR AS PROSE, so both sides are compared line by line.
+  // ⚠ A BODY READS AS AN INTRO OVER A LIST, A LIST, OR PROSE, so both sides are compared line by
+  // line, and a "* " marker counts as drawn only if the panel took it off.
   const expanded = await dm.evaluate(`(() => {
     const lines = s => String(s).split('\\n').map(l => l.trim()).filter(Boolean).join('\\n');
+    const unmarked = s => String(s).split('\\n').map(l => l.trim().replace(/^\\* /, '')).join('\\n');
     const more = r => !!r.querySelector('.cl-row .sm-chev');
     const rows = Array.from(document.querySelectorAll('#cl-body .cl-entry'));
     const i = rows.findIndex((r, n) => more(r) && CHANGELOG[n].body);
@@ -399,8 +401,8 @@ module.exports = async function helpAndAboutFeature(rig) {
     return {
       i,
       open: !full.hidden && full.getClientRects().length > 0,
-      text: lines(li.length ? li.join('\\n') : (row.querySelector('.cl-text') || {}).textContent || ''),
-      want: lines(CHANGELOG[i].body),
+      text: lines(Array.from(full.querySelectorAll('.cl-text')).map(t => t.textContent).concat(li).join('\\n')),
+      want: lines(unmarked(CHANGELOG[i].body)),
       tag: CHANGELOG[i].tag || '',
       github: !!gh,
       githubHit: gh ? (gh.scrollIntoView({ block: 'center' }), hitAt(gh)) : false,

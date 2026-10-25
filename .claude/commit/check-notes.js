@@ -26,7 +26,10 @@ const faults = [];
 
 if (!summary.trim()) faults.push('line 1: no Summary');
 if (summary.length > 70) faults.push(`line 1: Summary is ${summary.length} characters, limit 70`);
-if (description.length > 8) faults.push(`Description is ${description.length} lines, limit 8`);
+if (description.length > 8) faults.push(`Description is ${description.length} lines, limit 8: an intro and 7 points`);
+// An intro sentence, then "* " points: the What's new panel draws the intro above a list.
+if (description[0] && description[0].startsWith('* ')) faults.push('line 2: the first Description line is the intro sentence, not a point');
+description.slice(1).forEach(l => { if (!l.startsWith('* ')) faults.push(`a line after the intro is not a "* " point: ${l}`); });
 lines.forEach((l, i) => {
   if (/[—–]/.test(l)) faults.push(`line ${i + 1}: em-dash or en-dash, use " - ": ${l}`);
   for (const m of l.matchAll(fillerRe)) faults.push(`line ${i + 1}: filler "${m[1]}": ${l}`);
