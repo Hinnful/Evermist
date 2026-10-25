@@ -203,6 +203,24 @@ function killApp(proc) {
   }
 }
 
+// A boot that failed says what was running, so a CI-only failure is read off the log, not guessed.
+function bootDiagnosis(proc, port, spawnedAt, tail) {
+  const lines = ['', '  boot diagnosis: pid ' + proc.pid + (proc.exitCode == null ? ' still running' : ' exited ' + proc.exitCode) +
+    ' after ' + Math.round((Date.now() - spawnedAt) / 1000) + 's, port ' + port + ', ' + live.size + ' live app(s) in this rig'];
+  if (process.platform === 'win32') {
+    try {
+      const out = spawnSync('tasklist', ['/FO', 'CSV', '/NH'], { encoding: 'utf8', timeout: 15000 }).stdout || '';
+      const apps = out.split(/\r?\n/).filter(l => /^"(?:Evermist|electron)\.exe"/i.test(l));
+      lines.push('  app processes on the machine: ' + apps.length);
+      const net = spawnSync('netstat', ['-ano', '-p', 'TCP'], { encoding: 'utf8', timeout: 15000 }).stdout || '';
+      const onPort = net.split(/\r?\n/).filter(l => l.includes(':' + port + ' ')).map(l => l.trim().replace(/\s+/g, ' '));
+      lines.push('  port ' + port + ': ' + (onPort.join(' | ') || 'nothing listening'));
+    } catch (_) {}
+  }
+  lines.push('  app output tail: ' + (tail.trim().replace(/\s*\n\s*/g, ' / ') || '(none)'));
+  return lines.join('\n');
+}
+
 function killAll() { for (const p of Array.from(live)) killApp(p); }
 
 // ⚠ A RESTART HAS TO QUIT THE APP THE WAY THE DM DOES, not kill it. `taskkill /F` takes the
@@ -413,8 +431,11 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true) {
     detached: process.platform !== 'win32',   // so the whole group can be killed at once
   });
   live.add(proc);
-  proc.stdout.on('data', () => {});
-  proc.stderr.on('data', () => {});
+  let tail = '';
+  const keep = d => { tail = (tail + d).slice(-1500); };
+  proc.stdout.on('data', keep);
+  proc.stderr.on('data', keep);
+  const spawnedAt = Date.now();
   let diedEarly = null;
   proc.once('exit', code => { live.delete(proc); diedEarly = code; });
 
@@ -426,8 +447,8 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true) {
     dmTarget = await cdp.waitForTarget(port,
       t => t.url.includes('index.html') && !t.url.includes('mode=player'), 90000, 'the DM window');
   } catch (err) {
-    if (diedEarly != null) throw new Error('the app exited on its own (code ' + diedEarly + ')');
-    throw err;
+    const why = diedEarly != null ? 'the app exited on its own (code ' + diedEarly + ')' : err.message;
+    throw new Error(why + bootDiagnosis(proc, port, spawnedAt, tail));
   }
   const browser = await cdp.connectBrowser(port);
   const dm = await cdp.connect(dmTarget.webSocketDebuggerUrl, 'dm');

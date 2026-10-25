@@ -19,7 +19,7 @@ jobs:
       matrix:
         # `scenario` empty is the smoke set. A free account runs five Mac jobs at once.
         target:
-          - { os: windows-latest, build: --win dir, exe: dist/win-unpacked/Evermist.exe, run: '', scenario: '' }
+          - { os: windows-latest, build: --win dir, exe: dist/win-unpacked/Evermist.exe, run: '', scenario: 'fog transfer rooms-with-holes scenes seat-turn effect-presets tv-ru-side-seat dock sizes module-text corner-rounding bestiary help-and-about' }
         copy: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     runs-on: ${{ matrix.target.os }}
     timeout-minutes: 30
@@ -28,6 +28,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the rig's prerig reads the What's new list off the release commits
       - uses: actions/setup-node@v4
         with:
           node-version: 22

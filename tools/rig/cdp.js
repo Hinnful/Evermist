@@ -58,15 +58,20 @@ async function listTargets(port) {
 async function waitForTarget(port, match, timeoutMs, what) {
   const deadline = Date.now() + timeoutMs;
   let lastErr = null;
+  let seen = null;
   while (Date.now() < deadline) {
     try {
-      const hit = (await listTargets(port)).find(match);
+      const targets = await listTargets(port);
+      seen = targets.map(t => t.type + ' ' + t.url.split(/[\\/]/).pop()).join(', ') || 'none';
+      const hit = targets.find(match);
       if (hit) return hit;
     } catch (err) { lastErr = err; }
     await sleep(150);
   }
+  // Whether the endpoint ever answered splits "Chromium never came up" from "it came up without the page".
   throw new Error('timed out after ' + (timeoutMs / 1000) + 's waiting for ' + what +
-                  (lastErr ? ' (last endpoint error: ' + lastErr.message + ')' : ''));
+                  (seen === null ? ' (the debug endpoint never answered' : ' (last targets: ' + seen) +
+                  (lastErr ? '; last endpoint error: ' + lastErr.message + ')' : ')'));
 }
 
 // The browser-level session, which is where the Browser domain lives. Only the window-moving
