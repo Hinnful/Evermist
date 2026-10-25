@@ -30,6 +30,9 @@
 //   K. Claude edits a fight's monsters and deletes it, and undo restores it; the open fight is refused.
 //   L. Claude adds a monster from stat block text and refuses text that is not one.
 //   M. Claude adds, renames and deletes a gallery picture, and undo brings the picture back.
+//   N. Every delete without confirmed changes nothing and says what goes; the claude guide topic and the Settings
+//      line carry the ground rules; the open fight takes additions only, in its table and its save, and undo
+//      removes them.
 
 const fs = require('fs');
 const path = require('path');
@@ -164,7 +167,10 @@ module.exports = async function claudePrep(rig) {
             'the scene was not renamed, or its fog colour and grid were not kept: ' + JSON.stringify({ tuned, rec }));
   await call('move_scene', { name: 'Drowned Crypt', toPlace: '' });
   rig.check(await dm.evaluate('allScenes.find(x => x.name === "Drowned Crypt").group === ""'), 'move_scene did not take the scene out of its place');
-  await call('delete_scene', { name: 'Drowned Crypt' });
+  const dryScene = await call('delete_scene', { name: 'Drowned Crypt' });
+  rig.check(!dryScene.isError && /Would delete the map "Drowned Crypt"/.test(dryScene.text) && /image, fog and \d+ room/.test(dryScene.text) && await dm.evaluate('allScenes.some(x => x.name === "Drowned Crypt")'),
+            'delete_scene without confirmed changed something or did not say what goes: ' + JSON.stringify(dryScene));
+  await call('delete_scene', { name: 'Drowned Crypt', confirmed: true });
   rig.check(await dm.evaluate('!allScenes.some(x => x.name === "Drowned Crypt")') && await dm.evaluate('sceneStore.loadScene(' + JSON.stringify(crypt && crypt.id) + ').then(r => !r)'),
             'delete_scene left the scene in the list or the store');
   await call('undo_last_change');
@@ -187,7 +193,10 @@ module.exports = async function claudePrep(rig) {
   rig.check(!road.isError && await dm.evaluate('worldRoadRecords().length') === roads + 1, 'create_road drew no road: ' + JSON.stringify(road));
   await call('undo_last_change');
   rig.check(await dm.evaluate('worldRoadRecords().length') === roads, 'undo_last_change did not take the road away');
-  await call('delete_place', { name: 'Fen' });
+  const dryPlace = await call('delete_place', { name: 'Fen' });
+  rig.check(/Would delete the group "Fen"/.test(dryPlace.text) && /notes/.test(dryPlace.text) && await dm.evaluate('!!worldPlaceByName("Fen")'),
+            'delete_place without confirmed changed something or did not say what goes: ' + JSON.stringify(dryPlace));
+  await call('delete_place', { name: 'Fen', confirmed: true });
   rig.check(await dm.evaluate('!worldPlaceByName("Fen") && notesPlaceGet("Fen") === ""'), 'delete_place left the place or its notes');
   await call('undo_last_change');
   rig.check(await dm.evaluate('!!worldPlaceByName("Fen") && notesPlaceGet("Fen") === "Fog and frogs."'), 'undo_last_change did not bring the place and its notes back');
@@ -200,10 +209,37 @@ module.exports = async function claudePrep(rig) {
   const openName = await dm.evaluate('cbState.fights.find(f => f.id === cbState.openId).name');
   const refused = await call('delete_fight', { name: openName });
   rig.check(refused.isError && /open at the table/.test(refused.text), 'the fight open at the table was not refused: ' + JSON.stringify(refused));
-  await call('delete_fight', { name: 'Ambush at the gate' });
+  const dryFight = await call('delete_fight', { name: 'Ambush at the gate' });
+  rig.check(/Would delete the fight "Ambush at the gate" with its 3 rows/.test(dryFight.text) && await rows() === 'Goblin,Goblin 2,Goblin 3',
+            'delete_fight without confirmed changed something or did not say what goes: ' + JSON.stringify(dryFight));
+  await call('delete_fight', { name: 'Ambush at the gate', confirmed: true });
   rig.check(await dm.evaluate('!cbState.fights.some(x => x.name === "Ambush at the gate")'), 'delete_fight left the fight');
   await call('undo_last_change');
   rig.check(await rows() === 'Goblin,Goblin 2,Goblin 3', 'undo_last_change did not bring the fight back with its rows');
+
+  // ── N. Ground rules: the claude guide, the Settings line, additions to the open fight ──
+  // RED BY DESIGN: written against the feature, never re-proved
+  const claudeGuide = await call('guide', { topic: 'claude' });
+  rig.check(/ask/i.test(claudeGuide.text) && /Undo works until/.test(claudeGuide.text) && /never touches what the TV shows/.test(claudeGuide.text),
+            'the claude guide topic lacks the three facts and the TV rule: ' + JSON.stringify(claudeGuide));
+  rig.check(await dm.evaluate('document.getElementById("mcp-rules") && /The AI assistant can change and delete your prep\. It asks before each delete\. Undo works until you close Evermist\./.test(document.getElementById("mcp-rules").textContent)'),
+            'Connect to Claude in Settings does not carry the ground-rules line');
+  const openFightName = await dm.evaluate('cbState.fights.find(f => f.id === cbState.openId).name');
+  const openRows = () => dm.evaluate('({ table: cbState.rows.map(r => r.name).join(), shown: document.querySelectorAll("#cb-list .cb-row").length, saved: JSON.parse(localStorage.getItem("evermist.combatFights")) })');
+  const beforeOpen = await dm.evaluate('cbState.rows.map(r => r.name).join()');
+  const addOpen = await call('edit_fight', { name: openFightName, add: [{ name: 'Goblin', count: 2 }] });
+  const afterOpen = await openRows();
+  const wantRows = (beforeOpen ? beforeOpen + ',' : '') + (await dm.evaluate('cbState.rows.slice(-2).map(r => r.name).join()'));
+  rig.check(!addOpen.isError && afterOpen.table === wantRows && afterOpen.shown === afterOpen.table.split(',').length && afterOpen.table.split(',').length === beforeOpen.split(',').filter(Boolean).length + 2
+              && JSON.stringify(afterOpen.saved).includes(afterOpen.table.split(',').pop()),
+            'adding to the open fight did not put the rows in the table and the saved fight: ' + JSON.stringify({ addOpen, afterOpen }));
+  for (const bad of [{ newName: 'Other' }, { remove: [{ name: 'Goblin' }] }, { sides: [{ name: 'Goblin', side: 'ally' }] }, { counts: [{ name: 'Goblin', count: 1 }] }]) {
+    const no = await call('edit_fight', Object.assign({ name: openFightName }, bad));
+    rig.check(no.isError && /open at the table/.test(no.text) && await dm.evaluate('cbState.rows.map(r => r.name).join()') === afterOpen.table,
+              'an edit other than an addition to the open fight was not refused: ' + JSON.stringify({ bad, no }));
+  }
+  await call('undo_last_change');
+  rig.check(await dm.evaluate('cbState.rows.map(r => r.name).join()') === beforeOpen, 'undo_last_change did not remove the rows added to the open fight');
 
   // ── L. A monster from text ────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
@@ -225,7 +261,10 @@ module.exports = async function claudePrep(rig) {
   rig.check(!pic.isError && await dm.evaluate('galleryList().some(p => p.name === "Old map")'), 'add_picture did not add the picture: ' + JSON.stringify(pic));
   await call('rename_picture', { name: 'Old map', newName: 'Torn map' });
   rig.check(await dm.evaluate('galleryList().some(p => p.name === "Torn map")'), 'rename_picture did not rename the picture');
-  await call('delete_picture', { name: 'Torn map' });
+  const dryPic = await call('delete_picture', { name: 'Torn map' });
+  rig.check(/Would delete the picture "Torn map"/.test(dryPic.text) && await dm.evaluate('galleryList().some(p => p.name === "Torn map")'),
+            'delete_picture without confirmed changed something or did not say what goes: ' + JSON.stringify(dryPic));
+  await call('delete_picture', { name: 'Torn map', confirmed: true });
   rig.check(await dm.evaluate('!galleryList().some(p => p.name === "Torn map")'), 'delete_picture left the picture');
   await call('undo_last_change');
   rig.check(await dm.evaluate('galleryList().some(p => p.name === "Torn map")'), 'undo_last_change did not bring the picture back');

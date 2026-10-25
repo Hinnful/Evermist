@@ -47,13 +47,17 @@ function _mcpEditFight(args) {
   const found = _mcpFight(args.name);
   if (found.error) return _mcpNo(found.error);
   const f = found.fight;
-  const refuse = _mcpOpenRefuse(f, 'editing it');
-  if (refuse) return refuse;
+  const open = f.id === cbState.openId;
+  if (open) {
+    const why = mcpOpenFightRefusal(args, cbState.rows);
+    if (why) return _mcpNo('Not done: "' + f.name + '" is the fight open at the table, and ' + why + ' would change it under the DM. Only adding monsters and raising a count are allowed there. Ask the DM to open another fight first.');
+  }
   const newName = args.newName === undefined ? null : String(args.newName).trim();
   if (newName === '') return _mcpNo('A fight needs a name.');
-  const edit = mcpEditRows(cbState.blocks, f.rows || [], args, cbState.nextId);
+  const edit = mcpEditRows(cbState.blocks, open ? cbState.rows : (f.rows || []), args, cbState.nextId);
   const changed = edit.changed || (newName && newName !== f.name);
   if (!changed) return _mcpNo('Nothing changed.' + (edit.notes.length ? ' ' + edit.notes.join(' ') : ''));
+  if (open) return _mcpEditOpen(f, edit);
   const was = { name: f.name, rows: f.rows || [], nextId: cbState.nextId };
   if (newName) f.name = newName;
   f.rows = edit.rows;
@@ -67,12 +71,28 @@ function _mcpEditFight(args) {
   }, 'Edited the fight "' + (newName || was.name) + '": now ' + edit.rows.length + ' rows.' + (notes.length ? ' ' + notes.join(' ') : ''));
 }
 
+// Additions to the open fight go into the table's own rows in place; undo takes those rows out again.
+function _mcpEditOpen(f, edit) {
+  const have = new Map(cbState.rows.map(r => [r.id, r]));
+  const added = edit.rows.filter(r => !have.has(r.id)).map(r => r.id);
+  cbState.rows.splice(0, cbState.rows.length, ...edit.rows.map(r => have.get(r.id) || r));
+  cbState.nextId = edit.nextId;
+  _mcpFightsShown();
+  const notes = [...edit.notes, ...(edit.missing.length ? ['Left out, not in the bestiary: ' + _mcpMissing(edit.missing).join('; ') + '.'] : [])];
+  return mcpDone('added ' + added.length + ' row(s) to the open fight "' + f.name + '"', async () => {
+    const gone = new Set(added), rows = combatFightRows(cbState, f);
+    for (let i = rows.length - 1; i >= 0; i--) if (gone.has(rows[i].id)) rows.splice(i, 1);
+    _mcpFightsShown();
+  }, 'Added ' + added.length + ' row(s) to "' + f.name + '", the fight open at the table: now ' + edit.rows.length + ' rows.' + (notes.length ? ' ' + notes.join(' ') : ''));
+}
+
 function _mcpDeleteFight(args) {
   const found = _mcpFight(args.name);
   if (found.error) return _mcpNo(found.error);
   const f = found.fight;
   const refuse = _mcpOpenRefuse(f, 'deleting it');
   if (refuse) return refuse;
+  if (args.confirmed !== true) return _mcpOk(mcpWouldDelete('fight', { name: f.name, rows: (f.rows || []).length }));
   const index = cbState.fights.indexOf(f), kept = { ...f, rows: f.rows || [] };
   combatDeleteFight(cbState, f.id, combatFightId);
   _mcpFightsShown();

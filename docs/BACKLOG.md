@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 19 open items; IDs run to 235."
+description: "Open work only. 17 open items; IDs run to 235."
 metadata: 
   node_type: memory
   type: project
@@ -36,9 +36,9 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.9.1**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
-they decide to, so items carry no release tag. **The First User Experience epic comes first**: Evermist is about to be
-shared, and new features wait while it runs. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
+`package.json` is at **4.11.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+they decide to, so items carry no release tag. **The MCP epic comes first.** The First User Experience
+epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
 coloured areas.
 
@@ -73,32 +73,6 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 ---
 
-# FIRST USER EXPERIENCE - THE NEXT FOCUS
-
-A new DM finds what Evermist already has. Opened 2026-10-12, diagnosis rewritten 2026-10-22 from three first-time
-testers and the first-use report. Evermist is about to go to other DMs, for their feedback and requests. **The features a new DM needs exist; the DM
-cannot find them or read what they do.** Of 51 tester issues, 39 of the 45 where it applies asked about something the
-app already had, fully or partly. Concepts not understood are the largest type (17), controls not found the next (12).
-Three causes repeat: nothing tells the DM what a map, a group and a room are; the labels use the app's words and one
-concept carries several names; and a DM who starts through Claude skips every hint.
-**The test for every item below.** Sasha has played for two years and DMs for the first time. They bring four
-JPEGs of poor quality with no grid and no floor plan, a TV with an HDMI cable, a playlist, and a module PDF or rough
-notes. With no help and no reading, Sasha gets the four maps in, puts one on the TV fogged, reveals part of it, plays
-music, and switches to another map. Anything Sasha meets on the way that does not serve that path counts against the
-epic. The same path must not slow an experienced DM or hide the deeper features.
-**Done when** a new DM on the current version, with no Claude and no help in chat, completes Sasha's path and can then
-say what a map, a group and a room are. No tester has run this: each met an older version and had the DM's help.
-**Order.** Nothing queued; 218 shipped in 4.10.0. The done test waits for a new DM, and none is available (2026-10-25).
-**Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later,
-and finds them unaided.
-**Out of this section:** what a DM sees before installing. That is distribution, and it comes later.
-
-## The first evening
-
-No item is queued here.
-
----
-
 # CLAUDE DOES THE PREP - THE MCP EPIC
 
 Opened 2026-10-25. **The endgame:** Claude does everything a DM can do in Evermist except play. Play is what
@@ -108,67 +82,52 @@ doubtful case is settled case by case from that logic. A fight is prep while it 
 prep, taking away is play. **Deletes are allowed, with no trash:** the DM is told plainly that Claude can delete,
 each delete waits for their yes, and undo lasts until Evermist closes. A trash and a saved history were rejected
 as overengineering. Today Claude covers about two fifths of prep. The chapters go one at a time, in this order.
-**Open calls, settled when their chapter comes up:** map-look settings (shrink on import, half-room fog,
-feather) as prep; the DM's machine settings (language, hints, seat, updates) and backup, restore and export left
-out; the map open on the DM's screen but not on the TV.
-
-### 226. Ground rules for Claude's changes
-A delete call changes nothing until it says it is confirmed; without that it answers with what would go. Connect
-to Claude and the guide tell the DM that Claude can delete and that undo lasts until Evermist closes. Claude may
-add monsters to the fight open at the table, and only add. The rule above goes into PRODUCT.md.
-**Prep · DM only**
+The open calls on scope are settled in PRODUCT.md, "Claude's ground rules".
 
 ### 207. Claude sees a map
 Claude looks at any map as a picture with a percent grid over it, zooms into an area, and reads the map's whole
 contents: rooms, fog, effects, grid and floor plan. Measured 2026-10-19 on three Dungeon Alchemist interiors:
 outlines traced from a picture alone matched clearly walled rooms closely and missed closets, halls and walls hard
-to see from above, so they are a first draft and a floor plan comes first. **Needs /spec.**
+to see from above, so they are a first draft and a floor plan comes first.
 **Prep · DM only**
 
 ### 227. Claude draws rooms and doors
 Claude draws, names, writes notes for, reshapes and deletes rooms, merges, cuts and splits them, and marks doors,
-on a map that is not on the TV. Each change is one undo step. **Needs /spec.**
+on a map that is not on the TV. Each change is one undo step.
 **Prep · DM only**
 
 ### 228. Claude sets the fog
 Claude sets each room hidden, half or revealed, opens or closes an area, reveals or hides the whole map, and sets
-the fog's drift and tint, on a map that is not on the TV. **Needs /spec.**
+the fog's drift and tint, on a map that is not on the TV.
 **Prep · DM only**
 
 ### 229. Claude loads floor plans and module text
 Claude loads a .dd2vtt floor plan and takes rooms, doors, lights and grid from it before its own outlines. It loads
-a module text or PDF and links rooms to its entries; the app itself still never assigns. **Needs /spec.**
+a module text or PDF and links rooms to its entries; the app itself still never assigns.
 **Prep · DM only**
 
 ### 230. Claude sets the grid, effects and lights
 Grid on or off, its type and look, fitting it to the map; placing, changing and deleting effects; drawing lights
-or taking them from a floor plan, and turning them on or off. **Needs /spec.**
+or taking them from a floor plan, and turning them on or off.
 **Prep · DM only**
 
 ### 231. Claude fills the Campaign gaps
 Groups of any shape, a map at an exact spot, editing, renaming and deleting roads, a map on or off a road, road
-notes, the backdrop's size, opacity and position, and adding maps from a zip. **Needs /spec.**
+notes, the backdrop's size, opacity and position, and adding maps from a zip.
 **Prep · DM only**
 
 ### 232. Claude fills the fight and bestiary gaps
 Duplicating a fight, a row's details before the fight starts, and editing, deleting, duplicating and importing
-bestiary monsters from an Evermist file. **Needs /spec.**
+bestiary monsters from an Evermist file.
 **Prep · DM only**
 
 ### 233. Claude keeps the music library
-Adding tracks from files or YouTube links, deleting tracks, and music groups. Playing stays play. **Needs /spec.**
+Adding tracks from files or YouTube links, deleting tracks, and music groups. Playing stays play.
 **Prep · DM only**
 
 ---
 
 # EVERYTHING ELSE
-
-### 225. The fit-to-tv check fails at random
-Filed 2026-10-25. The rig scenario `fit-to-tv` needed a rerun in 3 recent CI runs on Windows. It fails on the
-minimap's frame after Sync View with the TV turned: the frame keeps the old zoom (0.486 where 1.016 is wanted). Find
-whether the check reads the frame before it repaints or the app misses a repaint, then fix the check or retire it.
-Small effort; no risk to what installs.
-**Tests · DM only**
 
 ### 234. The hints-next-map check fails at random
 Filed 2026-10-25. The rig scenario `hints-next-map` needed a rerun in 3 recent CI runs on Windows. It fails on the

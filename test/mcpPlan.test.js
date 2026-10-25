@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { combatBlankBlock } = require('../src/combat/combatPlan.js');
-const { MCP_GAP, MCP_HISTORY_MAX, mcpRectArg, mcpCleanHex, mcpGridSize, mcpReplace, mcpHistoryPush, mcpOnTv, mcpAppend, mcpFreeRect, mcpMatchMonster, mcpSuggest, mcpFightRows, mcpEditRows, mcpFindScenes } = require('../src/mcp/mcpPlan.js');
+const { MCP_GAP, MCP_HISTORY_MAX, mcpRectArg, mcpCleanHex, mcpGridSize, mcpReplace, mcpHistoryPush, mcpOnTv, mcpAppend, mcpFreeRect, mcpMatchMonster, mcpSuggest, mcpFightRows, mcpEditRows, mcpFindScenes, mcpOpenFightRefusal, mcpWouldDelete } = require('../src/mcp/mcpPlan.js');
 
 const block = (id, name, extra) => Object.assign(combatBlankBlock(id, name), { ac: '15 (leather armor)' }, extra);
 const blocks = { b1: block('b1', 'Goblin'), b2: block('b2', 'Goblin Boss'), b3: block('b3', 'Owlbear'), b4: block('b4', 'Wolf') };
@@ -195,5 +195,27 @@ describe('mcpEditRows', () => {
     const before = JSON.stringify(start.rows);
     mcpEditRows(blocks, start.rows, { remove: [{ name: 'Goblin' }], sides: [{ name: 'Wolf', side: 'ally' }] }, start.nextId);
     assert.equal(JSON.stringify(start.rows), before);
+  });
+});
+
+describe('mcpOpenFightRefusal', () => {
+  const rows = [{ name: 'Goblin' }, { name: 'Goblin 2' }];
+  it('allows additions and a higher count', () => {
+    assert.equal(mcpOpenFightRefusal({ add: [{ name: 'Wolf' }], counts: [{ name: 'Goblin', count: 3 }] }, rows), null);
+  });
+  it('refuses rename, remove, side change and a lower count', () => {
+    assert.match(mcpOpenFightRefusal({ newName: 'x' }, rows), /renam/);
+    assert.match(mcpOpenFightRefusal({ remove: [{ name: 'Goblin' }] }, rows), /remov/);
+    assert.match(mcpOpenFightRefusal({ sides: [{ name: 'Goblin', side: 'ally' }] }, rows), /side/);
+    assert.match(mcpOpenFightRefusal({ counts: [{ name: 'Goblin', count: 1 }] }, rows), /lower/);
+  });
+});
+
+describe('mcpWouldDelete', () => {
+  it('names what goes and asks for confirmed', () => {
+    assert.match(mcpWouldDelete('scene', { name: 'Crypt', rooms: 2 }), /"Crypt" with its image, fog and 2 rooms.*confirmed: true/);
+    assert.match(mcpWouldDelete('place', { name: 'Fen', notes: 5, maps: 1 }), /notes \(5 characters\).*1 map in it/);
+    assert.match(mcpWouldDelete('fight', { name: 'Gate', rows: 3 }), /3 rows/);
+    assert.match(mcpWouldDelete('picture', { name: 'Map' }), /picture "Map"/);
   });
 });

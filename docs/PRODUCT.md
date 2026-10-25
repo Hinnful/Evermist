@@ -321,6 +321,10 @@ table plus the world map, its places and roads, and the left notes panel with ca
 and scene notes. 5.0.0 keeps what is left of campaigns: the party flag, the gallery and the MCP
 server.
 
+### The First User Experience epic is closed · `SETTLED` (2026-10-25)
+The DM closed it with its done test unrun: no new DM is available to run Sasha's path. The MCP epic is the focus
+now. A first-use gap a new DM reports comes back as its own item.
+
 ### No release has a planned scope · `SETTLED` (2026-10-13)
 Supersedes the release halves of the three entries above. Backlog items carry no release tag, and no
 major version waits on a list of items. The DM bumps the major when they decide a state is worth
@@ -352,6 +356,14 @@ picture, playing music or sounds, TV setup, sync, ping, the open fight's HP, con
 case is settled from that logic. Building a fight is prep (placing monsters is prep, taking away is play). Deletes are
 allowed with no trash: the DM is told plainly and each delete waits for a yes. A trash and a saved history of Claude's
 changes were rejected as overengineering for the MCP server.
+
+### Claude's ground rules · `SETTLED` (2026-10-25)
+A delete call deletes nothing until it carries `confirmed: true`; without it the call answers with what would go, so
+the yes is enforced by the app and not only asked for in a tool description. The line under Connect to Claude in Settings and the
+`claude` guide topic both say that the assistant can delete, asks first, and that undo lasts until Evermist closes. On the
+fight open at the table Claude may only add monsters or raise a count. Three calls the epic left open: map-look
+settings (shrink on import, half-room fog, feather) are prep; the DM's machine settings, backup, restore and export
+stay out; a map open on the DM's screen but not on the TV is prep, and Claude may change it.
 
 ### Size releases conservatively · `SETTLED`
 2.0.0 skipped 1.8 and 1.9 and landed on a docs-only commit, because a release tag has to match

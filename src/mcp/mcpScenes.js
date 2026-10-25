@@ -146,6 +146,7 @@ async function _mcpDeleteScene(args) {
   const rec = await sceneStore.loadScene(s.id);
   if (!rec) return _mcpNo('The map "' + s.name + '" is no longer in the library.');
   if (rec.mapType === 'video') return _mcpNo('Not deleted: "' + s.name + '" is an animated map, and Claude cannot bring one back after deleting it. Ask the DM to delete it in Evermist.');
+  if (args.confirmed !== true) return _mcpOk(mcpWouldDelete('scene', { name: s.name, rooms: (rec.polygons || []).length }));
   const index = allScenes.findIndex(x => x.id === s.id), meta = { ...allScenes[index] }, snap = worldSnapshotTake();
   await _mcpRemoveScenes([s.id]);
   return mcpDone('deleted the map "' + s.name + '"', async () => {

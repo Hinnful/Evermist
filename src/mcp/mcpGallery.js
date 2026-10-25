@@ -49,6 +49,7 @@ async function _mcpDeletePicture(args) {
   if (found.error) return _mcpNo(found.error);
   const id = found.pic.id;
   if (galleryOnTv(id)) return _mcpNo('Not deleted: the TV shows "' + found.pic.name + '" now. Ask the DM to take it down first.');
+  if (args.confirmed !== true) return _mcpOk(mcpWouldDelete('picture', { name: found.pic.name }));
   const kept = await galleryDrop(id);
   return mcpDone('deleted the picture "' + found.pic.name + '"', () => galleryRestore(kept), 'Deleted the picture "' + found.pic.name + '".');
 }

@@ -103,15 +103,15 @@ function mcpSuggest(blocks, name) {
 }
 
 // A fight's rows from [{ name, count, side }], each row as the fight table builds one from a pick. Ids start at `nextId`.
-function mcpFightRows(blocks, monsters, nextId) {
-  const rows = [], missing = [];
+function mcpFightRows(blocks, monsters, nextId, existing) {
+  const rows = [], missing = [], have = existing || [];
   let id = nextId;
   for (const m of Array.isArray(monsters) ? monsters : []) {
     const entry = mcpMatchMonster(blocks, m && m.name);
     if (!entry) { missing.push({ name: String((m && m.name) || ''), suggest: mcpSuggest(blocks, m && m.name) }); continue; }
     const n = Math.max(1, Math.min(MCP_MAX_COUNT, Math.floor(Number(m.count) || 1)));
     const side = m.side === 'ally' ? 'ally' : 'enemy';
-    for (let i = 0; i < n; i++) rows.push(Object.assign({ id: id++, init: '', side }, MP.combatRowFromEntry(entry, rows)));
+    for (let i = 0; i < n; i++) rows.push(Object.assign({ id: id++, init: '', side }, MP.combatRowFromEntry(entry, have.concat(rows))));
   }
   return { rows, missing, nextId: id };
 }
@@ -155,12 +155,38 @@ function mcpEditRows(blocks, rows, ops, nextId) {
     if (!copies(x && x.name).length) out.notes.push('"' + ((x && x.name) || '') + '" is not in the fight.');
     out.changed = hit.length > 0 || out.changed;
   }
-  const built = mcpFightRows(blocks, o.add, id);
+  const built = mcpFightRows(blocks, o.add, id, list);
   list.push(...built.rows);
   id = built.nextId;
   out.missing = built.missing;
   out.changed = out.changed || built.rows.length > 0;
   return Object.assign(out, { rows: list, nextId: id });
+}
+
+// Why the fight open at the table refuses an edit, or null when it only adds: monsters from the bestiary and
+// a higher count. Rename, remove, a lower count and a side change alter what the DM is running.
+function mcpOpenFightRefusal(args, rows) {
+  const a = args || {};
+  const list = arr => (Array.isArray(arr) ? arr : []);
+  if (a.newName !== undefined) return 'renaming it';
+  if (list(a.remove).length) return 'removing monsters';
+  if (list(a.sides).length) return 'changing a side';
+  const key = s => String(s || '').trim().toLowerCase();
+  for (const x of list(a.counts)) {
+    const have = (rows || []).filter(r => key(MP.combatBaseName(r.name)) === key(x && x.name)).length;
+    if (Math.floor(Number(x && x.count)) < have) return 'lowering a count';
+  }
+  return null;
+}
+
+// What a delete would take, in the DM's words. `d` carries { name, rooms, notes, maps, rows } for the kind.
+function mcpWouldDelete(kind, d) {
+  const q = '"' + d.name + '"', n = (c, w) => c + ' ' + w + (c === 1 ? '' : 's');
+  const what = kind === 'scene' ? 'Would delete the map ' + q + ' with its image, fog and ' + n(d.rooms || 0, 'room') + '.'
+    : kind === 'place' ? 'Would delete the group ' + q + (d.notes ? ' and its notes (' + n(d.notes, 'character') + ')' : ' (it has no notes)') + '. ' + (d.maps ? n(d.maps, 'map') + ' in it would stay, in no group.' : 'It holds no maps.')
+    : kind === 'fight' ? 'Would delete the fight ' + q + ' with its ' + n(d.rows || 0, 'row') + '.'
+    : 'Would delete the picture ' + q + '.';
+  return what + ' Nothing was deleted. Tell the DM what goes and, on their yes, call again with confirmed: true.';
 }
 
 // The scenes a name points at, narrowed by place when one is given. Case is ignored.
@@ -172,5 +198,5 @@ function mcpFindScenes(scenes, name, place) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { MCP_PLACE_W, MCP_PLACE_H, MCP_GAP, MCP_HISTORY_MAX, MCP_PLACE_MIN_W, MCP_PLACE_MIN_H, mcpRectArg, mcpCleanHex, mcpGridSize, mcpAppend, mcpReplace, mcpHistoryPush, mcpOnTv, mcpFreeRect, mcpMatchMonster, mcpSuggest,
-    mcpFightRows, mcpEditRows, mcpFindScenes };
+    mcpFightRows, mcpEditRows, mcpFindScenes, mcpOpenFightRefusal, mcpWouldDelete };
 }

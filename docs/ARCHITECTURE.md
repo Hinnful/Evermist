@@ -623,11 +623,16 @@ Every change records how to put it back before it returns, in a history of the l
 in memory (`mcpHistory.js`). `undo_last_change` reverts the newest. Each change shows the undo toast
 naming it, whose button runs the same undo. A deleted scene, place, fight or picture is kept whole in the
 step, so undo restores it. Delete tools carry MCP's destructive hint, so Claude's app asks the DM before
-each one runs, and the shim's instructions tell Claude to name what goes in chat first.
+each one runs, and the shim's instructions tell Claude to name what goes in chat first. The app enforces
+the yes too: delete_scene, delete_place, delete_fight and delete_picture delete nothing unless called with
+`confirmed: true`, and without it answer with what would go (`mcpWouldDelete` in `mcpPlan.js`). Settings
+shows these rules under Connect to Claude, and the guide's `claude` topic states them.
 
 Nothing Claude does reaches the TV. A change to fog, fog colour, the map or a delete is refused for a scene
 the Player window shows (`mcpOnTv` in `mcpPlan.js`), and a scene the DM has open is not changed under
-them. The fight open at the table is never edited or deleted, and a picture on the TV is not removed.
+them. The fight open at the table is never deleted, and an edit to it may only add monsters or raise a count,
+written into the live table rows in place so existing rows keep their HP; rename, remove, side change
+and a lower count are refused (`mcpOpenFightRefusal`), and undo removes the added rows. A picture on the TV is not removed.
 An animated map is not deleted by Claude, since its file on disk cannot come back. A note for a scene
 held in a column goes through that column, so its autosave keeps it. A call that reads a PDF book or imports
 a folder of maps gets five minutes to answer; the rest get twenty seconds.

@@ -11,6 +11,7 @@ const MCP_GUIDE = {
   fights: 'A fight is a named list of monsters for the Fights tab, each row with a side (enemy or ally). Fights are built from the bestiary and are separate from maps. The DM runs a fight at the table; Claude only prepares it.',
   bestiary: 'The bestiary is the DM\'s library of stat blocks. Monsters come from stat block text, a web page or a PDF the DM imports. A fight can only use monsters that are in the bestiary.',
   gallery: 'Pictures is a tab that holds handouts, portraits, maps of a room\'s furniture. The DM can show a picture on the TV during play. Claude can add, rename and delete pictures but never shows one.',
+  claude: 'Claude can change and delete the DM\'s prep. It asks before each delete: it lists what goes, gets the DM\'s yes, then deletes. Undo works until the DM closes Evermist. Claude never touches what the TV shows.',
 };
 
 // The text for a topic, or the list of topics when the name is empty or unknown.

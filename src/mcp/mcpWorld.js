@@ -84,8 +84,9 @@ function _mcpReshapePlace(args) {
 function _mcpDeletePlace(args) {
   const p = _mcpPlaceFor(args.name);
   if (p.error) return _mcpNo(p.error);
-  const snap = worldSnapshotTake();
   const kept = allScenes.filter(s => sanitizeGroupName(s.group) === p.name);
+  if (args.confirmed !== true) return _mcpOk(mcpWouldDelete('place', { name: p.name, notes: notesPlaceGet(p.name).length, maps: kept.length }));
+  const snap = worldSnapshotTake();
   forgetGroup(p.name);
   worldShapeDelete(p.name);
   notesPlaceSet(p.name, '');
