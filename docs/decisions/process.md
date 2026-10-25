@@ -381,3 +381,24 @@ ship, so every build left a worktree behind with the same changes uncommitted. T
 and their branches had piled up by 4.8.0, and two held work that never shipped. `/commit` now lists
 every worktree with work `origin/main` lacks at Step 0, and removes the worktrees its commit carries
 after the push (`.claude/commit/push.md`).
+
+### All work happens in the one checkout, on main · `SETTLED` (2026-10-25)
+Work parked on side branches and worktrees (a `wip/item-180` branch, agent branches) was forgotten
+and invisible in the desktop app, and an instruction alone was ignored. `.claude/hooks/guard-main.js`
+now refuses a local branch, branch switch, worktree, stash, worktree-isolated agent, worktree
+session or cloud session. `session-status.js` names uncommitted edits, local branches, extra
+worktrees, stashes and commits `origin/main` lacks at session start, and is silent when clean; it
+also sets skip-worktree on `src/ui/changelogData.js`, tracked from before it was ignored and
+rewritten by every `npm test`. **Reverses** "A release removes the worktrees it ships" (2026-10-23):
+builders no longer use worktrees, and that `push.md` step is gone.
+
+### `ship.js` serves a checkout shared by several sessions · `SETTLED` (2026-10-25)
+Two or more sessions work in the checkout at once and queue commits while one is in CI. `ship.js`
+therefore does not refuse a dirty tree; it names every edit left behind, and the session tells the
+DM which are another session's. It picks the release or change branch from the version in HEAD
+unless the commit carries `package.json`, commits only the named paths (the index is shared), and
+keeps `notes.txt` and `disclosure.txt` in `.claude/commit/runs/$CLAUDE_CODE_SESSION_ID/`;
+`build-changelog.js` reads pending notes from every run folder plus the legacy file. **Rejected: a
+strict clean-tree refusal** (built and dropped the same day, it blocked any commit while another
+session was mid-edit) and **a per-session file-ownership ledger** (more machinery than the problem
+needs). `fetch.prune` is on locally; stale `origin/*` refs were leftovers, not a workflow gap.

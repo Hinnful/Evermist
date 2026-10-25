@@ -1,14 +1,14 @@
 'use strict';
 
 // check-notes.js - refuses release notes that break a rule a machine can check.
-// Usage: node .claude/commit/check-notes.js [notes-file]   (default: notes.txt beside it)
+// Usage: node .claude/commit/check-notes.js [notes-file]   (default: this session's runs/<id>/notes.txt)
 // The privacy rules in notes.md are not checkable here; the session still owns them.
 
 const fs = require('fs');
 const path = require('path');
 
 const RULES = path.join(__dirname, 'notes.md');
-const file = process.argv[2] || path.join(__dirname, 'notes.txt');
+const file = process.argv[2] || path.join(__dirname, 'runs', process.env.CLAUDE_CODE_SESSION_ID || 'local', 'notes.txt');
 
 const block = fs.readFileSync(RULES, 'utf8').replace(/\r/g, '').match(/```filler-words\n([\s\S]*?)```/);
 if (!block) {

@@ -104,7 +104,8 @@ A bug report is an ordinary message and needs no command.
   can now do. It never names the DM, the DM's maps or campaign, a fixture, or an internal tool.
   `/commit` carries the full rules and `check-notes.js` enforces the mechanical ones.
 - **A yes covers one push.** A follow-up that changes what ships needs a new yes.
-- **Stage only the paths the notes describe.** A path nobody named is a path nobody reviewed.
+- **All work happens on main, in one checkout, and every edit ships.** Stage only the paths the
+  notes describe, and ship every edit of your own. `ship.js` names any edit it leaves behind.
 - **Never merge the pull request.** The `land` job fast-forwards `main` to the gated commit, and
   the PR closes as merged by itself.
 - **A red gate caused by the rig, a workflow, a guard or a stale test is fixed and pushed back with no
@@ -181,7 +182,7 @@ The reply style in `.claude/output-styles/steering.md` governs every reply. On t
 
 | Check | Runs | Enforces |
 |---|---|---|
-| Guard hooks in `.claude/hooks/` | On every edit in a Claude session | Doc size and shape, the inline script, comment share, repeated sentences, module size, skill hints, the screen |
+| Guard hooks in `.claude/hooks/` | On every edit in a Claude session | Doc size and shape, the inline script, comment share, repeated sentences, module size, skill hints, the screen, work kept off main |
 | `tools/check-guards.js` | CI, every push | The blocking guards over the whole tree, whoever edited it |
 | `npm test` | CI, every push; `/commit` | App logic, packaging, and the prose rules in `test/rules.test.js` |
 | `tools/check-release.js` | CI, `decide` | Branch, version and release-title agreement |

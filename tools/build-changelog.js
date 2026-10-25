@@ -44,10 +44,14 @@ for (const record of git(['log', '--pretty=format:%ad' + UNIT + '%s' + UNIT + '%
 // from the pending notes. CI skips this: there the commit exists, and a missing one is a fault.
 const version = require(path.join(ROOT, 'package.json')).version;
 if (!process.env.CI && !entries.some(e => e.version === version)) {
-  const notes = path.join(ROOT, '.claude', 'commit', 'notes.txt');
-  const lines = fs.existsSync(notes) ? fs.readFileSync(notes, 'utf8').replace(/\r/g, '').trim().split('\n') : [];
+  // Any session's run folder may hold the pending notes, and so may the shared file it replaced.
+  const dir = path.join(ROOT, '.claude', 'commit');
+  const runs = fs.existsSync(path.join(dir, 'runs')) ? fs.readdirSync(path.join(dir, 'runs')).map(r => path.join(dir, 'runs', r, 'notes.txt')) : [];
+  const read = f => fs.existsSync(f) ? fs.readFileSync(f, 'utf8').replace(/\r/g, '').trim().split('\n') : [];
+  const lines = runs.concat(path.join(dir, 'notes.txt')).map(read)
+    .find(l => { const m = (l[0] || '').match(RELEASE); return m && m[1] === version; }) || [];
   const m = (lines[0] || '').match(RELEASE);
-  const pending = m && m[1] === version;
+  const pending = !!m;
   entries.unshift({ version: version, date: new Date().toISOString().slice(0, 10),
     note: pending ? m[2] : 'Not released yet', body: pending ? lines.slice(1).join('\n').trim() : '' });
 }

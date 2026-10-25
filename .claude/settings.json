@@ -18,6 +18,15 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-screen.js\""
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell|Agent|Task|EnterWorktree|mcp__ccd_session__start_session",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-main.js\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -31,6 +40,16 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-claudemd.js\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-status.js\""
           }
         ]
       }

@@ -16,13 +16,15 @@ most: once when the release lands, and once if the red was a real app bug.**
   Linux-only failure as a reason to look, not to block.
 - **A test edited to make a run green is disclosed.** When the fix changes a scenario's or a unit
   test's expectation (not the rig, a workflow or a guard), append one line to
-  `.claude/commit/disclosure.txt`: which test, and why the old expectation was wrong. The release
+  `disclosure.txt` in this session's run folder: which test, and why the old expectation was wrong. The release
   report carries that line, and `/commit` Step 0 shows a leftover one. A fix to the rig's plumbing
   needs no line. A test loosened to hide an app change needs more than a line: it is an app bug, so
   it goes to the DM.
 - **A real app bug is the DM's.** It changes what installs, so it goes back through the notes and
   the DM's yes (below), in plain language, with what was found.
 
+- **Never ask the DM about a red.** Rerunning a failed job, amending, force-pushing the branch: all
+  yours. The DM is asked only for a product or look-and-feel call, or a real app bug's new notes.
 - Have the `scout` agent read the log (`gh run view <id> --log`), then say which job failed and
   what its FAIL line said.
 - **Classify it before proposing a fix:** app bug, scenario fault, or infrastructure. Do not report

@@ -32,8 +32,8 @@ found:
 
 | State | Go to |
 | --- | --- |
-| `.claude/commit/disclosure.txt` present | Show its lines to the DM as part of the next report, then delete it |
-| `.claude/commit/notes.txt` present | A run stopped at the notes or the push. Show the notes again and ask; a yes never carries across sessions. On a yes, re-run `ship.js`, which skips finished stages |
+| `disclosure.txt` in this session's run folder | Show its lines to the DM as part of the next report, then delete it |
+| `notes.txt` in this session's run folder | A run stopped at the notes or the push. Show the notes again and ask; a yes never carries across sessions. On a yes, re-run `ship.js`, which skips finished stages |
 | Dirty tree | Step 1, a fresh run |
 | Anything else | Nothing in flight. Say so and stop |
 
@@ -66,7 +66,8 @@ notes. It finishes before the notes, so its edits ride into this commit.
 
 ## Step 5 - Hand over the notes and the backlog proposal, then stop
 
-Read `.claude/commit/notes.md` now. The notes go to `notes.txt` and pass
+Read `.claude/commit/notes.md` now. The notes go to `notes.txt` in this session's run folder,
+`.claude/commit/runs/$CLAUDE_CODE_SESSION_ID/`, and pass
 `check-notes.js` before the user sees them. **Then STOP** and offer to push.
 
 ## Step 6 - On their yes: write the backlog, push, arm the monitor

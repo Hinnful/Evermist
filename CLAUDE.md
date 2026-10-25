@@ -36,6 +36,8 @@ or two maps at a time.
 
 ## Habits
 
+- **All work happens on main, and every edit ships.** No branch, worktree or stash
+  (`guard-main.js`).
 - **Check the ledger before re-proposing an idea or restoring removed code.** `docs/DECISIONS.md`
   and `docs/decisions/` hold every settled call.
 - **Prove code is dead before deleting it**: no caller, no string lookup, no HTML or IPC reference.
@@ -168,8 +170,8 @@ error goes through it; no `alert()` ships.
 
 ## Guard hooks
 
-Four fail-open hooks in `.claude/settings.json`: the screen guard, the skill hint, and the size
-ratchets on the inline script and this file. Every other house rule is a test, and each failure
+Fail-open hooks in `.claude/settings.json` guard the screen, keep work on main, name the skill
+and ratchet the inline script and this file. Every other house rule is a test, and each failure
 says how to fix it.
 
 ## Conventions

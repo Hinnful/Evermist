@@ -348,7 +348,48 @@ function pureCode(text) {
   return lines.filter((_, i) => kinds[i] === 'code').join('\n');
 }
 
+/*
+ * What a command guard is allowed to look at.
+ *
+ * A command that WRITES ABOUT these launches is not one of them: this file, CLAUDE.md and the
+ * rig skill all quote `npm start` in order to forbid it, and a heredoc carrying that text was
+ * refused as if it were the launch. So heredoc bodies are stripped before matching, and a match
+ * only counts at the START of a shell segment, where a command actually sits.
+ *
+ * Stripping is deliberately crude and that is safe: the failure mode is a refusal that should
+ * have fired, and a launch hidden inside a heredoc body is not a way anyone runs the app.
+ *
+ * KNOWN GAP, left open on purpose: a launch wrapped in another interpreter (`bash -c "npm
+ * start"`) is not seen, because the match is anchored at the start of a segment. Unwrapping
+ * every shell-in-a-shell form costs more code than the hole is worth — nobody reaches for that
+ * spelling by accident, and this guard exists to stop the accidental case.
+ */
+function commandsIn(text) {
+  const lines = text.split('\n');
+  const kept = [];
+  let marker = null;
+  for (const line of lines) {
+    if (marker !== null) {
+      if (line.trim() === marker) marker = null;
+      continue;
+    }
+    const h = line.match(/<<-?\s*(['"]?)([A-Za-z_][\w]*)\1/);
+    if (h) {
+      marker = h[2];
+      kept.push(line.slice(0, h.index)); // the part before the heredoc is still a command
+      continue;
+    }
+    kept.push(line);
+  }
+  // Segment on the operators that start a new command, then drop any leading env assignment.
+  return kept
+    .join('\n')
+    .split(/(?:&&|\|\||[;|\n])/)
+    .map((s) => s.trim().replace(/^(?:[A-Za-z_][\w]*=\S*\s+)*/, ''));
+}
+
 module.exports = {
+  commandsIn,
   ROOT,
   readStdin,
   toRel,

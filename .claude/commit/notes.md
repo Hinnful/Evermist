@@ -78,7 +78,7 @@ triples, nothing from the `filler-words` list.
 
 State the version you set, or that you set none and why, in one line above the two blocks.
 
-**Write both blocks to `.claude/commit/notes.txt`** - line 1 the Summary, then the
+**Write both blocks to `notes.txt` in `.claude/commit/runs/$CLAUDE_CODE_SESSION_ID/`** - line 1 the Summary, then the
 Description lines - and run the checker. It fails loudly with each offending line; fix and re-run
 until it passes, then show the notes. It cannot judge the privacy rules above; you do.
 

@@ -11,7 +11,8 @@ Then run the tail. `ship.js` does all of it, in order, and each stage checks whe
 already done before acting, so a re-run after a stop finishes the tail and repeats nothing:
 
 - **Stage exactly the paths the notes and Step 4 describe, plus `docs/BACKLOG.md`**, never `git add -A`. A path nobody
-  named is one nobody reviewed. Pass them to the script; it stages nothing else.
+  named is one nobody reviewed. Pass them to the script; it stages nothing else, and names every
+  edit it leaves behind. Name each one to the DM: another session's work in progress, or yours to ship.
 - **Commit** with the Summary as subject and the Description below it, read from `notes.txt`. No
   `Co-Authored-By` trailer.
 - **Refuse a HEAD that does not contain `origin/main`**, and **check the branch, the version and
@@ -34,8 +35,4 @@ broke. CI writes the in-app What's new list when it builds, so nothing is amende
   it by URL if it did not, then `mcp__ccd_pr__set_monitor` with `auto_fix: true`. **It wakes this
   session on failure only.** A green run notifies nobody here, which is why the backlog is closed
   before the push rather than after the gate.
-- **Remove every worktree this commit carries the work of**, with its branch: a builder's, and the one
-  the commit was shipped from. ⚠ Unlink a `node_modules` junction first (`cmd /c rmdir`), or the
-  removal deletes the real `node_modules` through it. A worktree holding work this commit lacks
-  stays, and the report names it.
 - Report the short hash and the pull request URL, then **end the turn**. No `gh run watch`.

@@ -14,7 +14,11 @@ const path = require('path');
 // script run from its real path would otherwise commit and push in the real repo.
 const ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
 const DIR = path.join(ROOT, '.claude', 'commit');
-const NOTES = path.join(DIR, 'notes.txt');
+// Each session keeps its own run folder: two sessions share this checkout, and one shared
+// notes.txt let the second overwrite or resume the first's release.
+const RUN = path.join(DIR, 'runs', process.env.CLAUDE_CODE_SESSION_ID || 'local');
+const LEGACY_NOTES = path.join(DIR, 'notes.txt');
+const NOTES = fs.existsSync(path.join(RUN, 'notes.txt')) || !fs.existsSync(LEGACY_NOTES) ? path.join(RUN, 'notes.txt') : LEGACY_NOTES;
 
 // Node on Windows runs the real gh.exe even with a stub earlier on PATH, so a test swaps gh here.
 const GH = process.env.EVERMIST_GH ? [process.execPath, process.env.EVERMIST_GH] : ['gh'];
@@ -30,8 +34,10 @@ function parseArgs(argv) {
   return { slug: si >= 0 ? flags[si + 1] : '', amend: flags.includes('--amend'), paths };
 }
 
-function branchFor(slug) {
-  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+// The version on disk may be another session's uncommitted bump; it counts only when this commit carries it.
+function branchFor(slug, paths) {
+  const own = paths.some((p) => p.replace(/\\/g, '/') === 'package.json');
+  const version = JSON.parse(own ? fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8') : git(['show', 'HEAD:package.json'])).version;
   if (!git(['tag', '-l', `v${version}`])) return `release/${version}`;
   if (!/^[\w.-]+$/.test(slug || '')) throw new Error(`v${version} is already released, so this goes to change/<slug>; pass --slug`);
   return `change/${slug}`;
@@ -53,7 +59,7 @@ function tmpFile(name, text) {
 
 const headMessage = () => git(['log', '-1', '--format=%B']).replace(/\r/g, '').trim();
 const dirty = (paths) => paths.length > 0 && git(['status', '--porcelain', '--', ...paths]) !== '';
-const staged = () => git(['diff', '--cached', '--name-only']) !== '';
+const staged = (paths) => paths.length > 0 && git(['diff', '--cached', '--name-only', '--', ...paths]) !== '';
 
 function remoteSha(branch) {
   const line = git(['ls-remote', '--heads', 'origin', `refs/heads/${branch}`]);
@@ -66,12 +72,14 @@ function stageCommit({ branch, paths, amend }, notes) {
   if (!amend && remoteSha(branch)) throw new Error(`${branch} is already on origin; a fix to it re-runs with --amend`);
   if (paths.length) git(['add', '--', ...paths]);
   const msg = tmpFile('msg', notes.message);
+  // Commit the named paths only: another session's staged edits share this index.
+  const only = paths.length ? ['--', ...paths] : [];
   if (amend) {
-    git(['commit', '--amend', '-F', msg]);
+    git(['commit', '--amend', '-F', msg, ...only]);
     return 'amended';
   }
-  if (!staged()) throw new Error('nothing staged for the paths given, and HEAD is not this commit');
-  git(['commit', '-F', msg]);
+  if (!staged(paths)) throw new Error('nothing staged for the paths given, and HEAD is not this commit');
+  git(['commit', '-F', msg, ...only]);
   return 'committed';
 }
 
@@ -103,6 +111,15 @@ function stageGuardInputs({ paths }) {
   return 'the commit carries every guarded edit';
 }
 
+// A second session may be mid-edit in this checkout, so what is left is reported, not refused.
+// The report names it to the DM: a left-behind edit nobody mentions is work that gets forgotten.
+function stageClean() {
+  const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
+  if (branch !== 'main') throw new Error(`HEAD is on ${branch}; all work ships from main`);
+  const left = git(['status', '--porcelain']).split('\n').filter(Boolean).map((l) => l.replace(/^\s*\S+\s+/, ''));
+  return left.length ? 'LEFT BEHIND, name each to the DM: ' + left.join(', ') : 'nothing left behind';
+}
+
 function stageAgree({ branch }) {
   execFileSync(process.execPath, [path.join(ROOT, 'tools', 'check-release.js'), branch], { cwd: ROOT, stdio: 'pipe' });
   return 'branch, version and files agree';
@@ -132,13 +149,14 @@ function stagePr({ branch }, notes) {
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   git(['fetch', '--prune', '--tags', 'origin'], { stdio: 'pipe' });
-  opts.branch = branchFor(opts.slug);
+  opts.branch = branchFor(opts.slug, opts.paths);
   const notes = readNotes();
   const stages = [
     ['base', stageBase],
     ['guards', stageGuards],
     ['guard inputs', () => stageGuardInputs(opts)],
     ['commit', () => stageCommit(opts, notes)],
+    ['clean', stageClean],
     ['agree', () => stageAgree(opts)],
     ['push', () => stagePush(opts)],
     ['pr', () => stagePr(opts, notes)],
