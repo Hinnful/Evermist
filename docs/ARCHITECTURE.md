@@ -57,8 +57,21 @@ the picture's own id (`galleryMigrate.js`), once. Scenes keep their rooms' `pict
 A place IS a scene group (`scene.group`) and each scene stores where it sits as `worldPos`, written by one
 helper (`worldMapStore.js`) to the store, the open scene and, with two maps on, the column holding it. Scenes are
 framed 110x77 prints, shown only zoomed in, where they stand as the DM put them and wear their names inside the
-print. Zoomed out no scene in a place is shown: the places show, each with a name plate that is a room's label
-(its type size by zoom and clamped, its weight, padding and gap) at the top left of the outline. A scene with no place is
+print. Zoomed out no scene in a place is shown: the places show, each with a name plate (the shared name plate below)
+at the top left of the outline, with a pill after the name counting its maps (none when it holds none; hidden while renaming). Each place holding maps also shows a hand of cards
+(`worldMapFan.js`): its first three maps as overlapping, slightly rotated cards and a "+N" card for the rest, seated by the
+pure kernel `wmFanSpot` (`worldMapPlan.js`) at the spot nearest the place's centre that is inside the outline and clear of the
+plate, shrinking through 0.85, 0.72, 0.6 and 0.5 before giving up (the place then shows its count only). The hand is hidden at
+the scenes level, while drawing, dragging or editing that place, and follows Find's dim. Hover lifts a card and names its map;
+a click picks the map and flies to it after a short delay a double-click cancels; a double-click opens it; "+N" flies into
+the place; a right-click opens the scene's menu.
+**One name plate** wears every renameable name: room labels (canvas), place plates, stray-map labels, road names, map-print names
+and picture names. Its look is the `--plate-*` tokens on `:root` in `base.css` ("NAME PLATES"), which the canvas room label reads
+through `rpPlateSkin()`. States: pointer, picked, renaming, Find's dim; room labels have none of the first and last-but-one (rooms
+are renamed in the Notes pane). One size rule, `roomLabelFontPx(z, uz, small)` in `roomPanel.js`: 12 x interface zoom x clamp(z^0.4, 1, 2.5)
+for map names, 11 for names inside a picture, so every label follows the interface zoom and print names grow with the Campaign zoom.
+In the Pictures pane a picture's name is a small plate at its bottom left, renamed in place (a click on it does not toggle the TV; a
+double-click renames), the TV tag sits top left, and the picture on the TV wears the picked look. A scene with no place is
 a black diamond with its name beside it. The camera cannot leave the map: zoomed out until every card, place and the picture fit the window with about 30% room (a small map stops at the zoom split times 0.85), and the
 camera may go a fifth of the map's size beyond. The mist stops at the picture's edge. a scene with no place is a black diamond with its name beside it. Zoomed in the prints wear their
 names and the places have none. Under the prints sits the mist (`worldMist.js`): a drifting veil that thins

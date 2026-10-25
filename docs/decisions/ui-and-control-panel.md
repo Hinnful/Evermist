@@ -906,6 +906,22 @@ appear at the zoom split, standing where the DM put them. A scene with no place 
 takes the room label's own type size (by zoom, clamped), weight, padding, radius, fill and gap from `roomPanel.js`,
 and differs from a room's only in that a double click renames it. It sits at the top left of the place a fixed gap
 from its walls. The interface zoom no longer scales the plate, because a room label is not scaled by it either.
+**The interface-zoom call is replaced by** "Every name wears one plate, and every label follows the interface zoom".
+
+### Zoomed out, a place shows a count and a hand of cards · `SETTLED` (2026-10-25)
+Refines the entry above, which left a place showing nothing of its maps. A count pill sits after the place's name (a count beside the
+name was a must). Prototypes compared side by side and rejected: a count chip alone (kept only as the count), thumbnails inside the
+name plate (a name is a control itself, thumbnails make it worse), a single-card deck (shows too little), a constellation of tiny
+prints at their spots (clutter at 10+ maps), a mosaic plate (good UI but it is the name), prints tucked into the outline's top edge
+(only its "+N" tile pattern kept), and a 2x2 mosaic that opens on hover. A hand of cards won after both were tried on a real campaign,
+because it suits irregular, oval places: the first three maps overlap, slightly rotated, with a "+N" card for the rest.
+
+### Every name wears one plate, and every label follows the interface zoom · `SETTLED` (2026-10-25)
+Replaces the 2026-10-08 call that the interface zoom does not scale the plate; labels now match the app's own type, so the floor is
+12px (map names) or 11px (names inside a picture) times the interface zoom. Three skins were mocked: A glass, B chip with a kind icon,
+C coloured edge stripe. A won, without the glass: a see-through dark fill, no blur (the app has none anywhere, and a canvas room label
+cannot blur the map beneath), a hairline, a soft shadow, the app's font. Icons and extra elements were refused as clutter that helps
+nothing. Room labels, place plates, stray-map labels, road names, print names and picture names all wear it.
 
 ### Roads are open lines the room editor edits, kept by a stored id · `SETTLED` (2026-10-09)
 A road joins a scene with no place, a place, or nothing. Two scenes inside one place get no road; the DM said they

@@ -30,13 +30,10 @@
   .wm-card.sel .wm-th { outline: calc(3px * var(--wz)) solid var(--b-icon, #8fb6ff); outline-offset: calc(3px * var(--wz)); }
   .wm-card.drop .wm-th { outline: calc(4px * var(--wz)) solid var(--b-icon, #8fb6ff); outline-offset: calc(3px * var(--wz)); }
   .wm-nm {
-    position: absolute; left: calc(4px * var(--wz)); top: calc(4px * var(--wz)); max-width: calc(100% - 8px * var(--wz)); box-sizing: border-box;
-    padding: calc(2px * var(--wz)) calc(6px * var(--wz)); border-radius: calc(4px * var(--wz)); background: #0b0b0d;
-    box-shadow: 0 calc(1px * var(--wz)) calc(4px * var(--wz)) rgba(0, 0, 0, 0.6), inset 0 0 0 calc(1px * var(--wz)) rgba(255, 255, 255, 0.26);
-    font: 500 calc(11px * var(--wz)) / 1.2 system-ui, sans-serif; color: #e6ebf5;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default;
+    position: absolute; left: calc(4px * var(--wz)); top: calc(4px * var(--wz)); max-width: calc(100% - 8px * var(--wz));
+    --plate-k: var(--iz); font-size: calc(var(--fs-sm, 11) * 1px * var(--iz));
+    overflow: hidden; text-overflow: ellipsis; cursor: default;
   }
-  .wm-card.sel .wm-nm, .wm-card.cur .wm-nm { color: var(--b-icon, #8fb6ff); }
   .wm-card.dragging { transition: none; pointer-events: none; z-index: 5; opacity: .9; }
   /* Zoomed out the scenes are not shown: only the places, and a scene with no place as a diamond. */
   #wm.places .wm-card { opacity: 0; pointer-events: none; }
@@ -53,18 +50,44 @@
      whole window, its other canvases kept unseen, so the places are drawn. */
   body.panes-on.world #canvas-container { display: block !important; position: fixed; inset: 0; z-index: 60; visibility: hidden; pointer-events: none; }
   body.panes-on.world #cursor-canvas { visibility: visible; }
-  /* A place's name is a room's label (roomPanel.js): its weight, padding, radius and fill, at the top left of the place,
-     the focus colour when its place is picked. The type size is the room label's, by zoom and clamped, in screen px;
-     --fs --lx --ly --lr are set by worldMap.js and laid in world units. */
+  /* A place's name is the plate (base.css), at the top left of the place. The type size is the plate rule's, by zoom,
+     in screen px; --fs and --fs-sm are set by worldMap.js and laid in world units. */
   .wm-hl {
-    position: absolute; left: 0; top: 0; box-sizing: border-box; max-width: calc(var(--hw, 9999) * 1px); overflow: hidden; text-overflow: ellipsis;
+    position: absolute; left: 0; top: 0; max-width: calc(var(--hw, 9999) * 1px); overflow: hidden;
+    display: flex; align-items: center;
     transform: translate(var(--hx), var(--hy)) translateY(-50%);
-    padding: calc(var(--ly, 8) * 1px * var(--iz)) calc(var(--lx, 13) * 1px * var(--iz)); border-radius: calc(var(--lr, 7) * 1px * var(--iz));
-    background: rgba(10, 9, 18, 0.75); box-shadow: inset 0 0 0 calc(1px * var(--iz)) rgba(255, 255, 255, 0.055); color: #fff;
-    font: 600 calc(var(--fs, 17) * 1px * var(--iz)) / 1 system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap; cursor: grab;
+    --plate-k: var(--iz); font-size: calc(var(--fs, 17) * 1px * var(--iz)); cursor: grab;
   }
   .wm-hl.off { opacity: 0; pointer-events: none; }
-  .wm-hl.sel { color: var(--b-icon, #8fb6ff); }
+  /* The name gives way (an ellipsis) before the count does. */
+  .wm-hn { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .wm-hc {
+    flex: none; margin: -1em 0 -1em .5em; padding: .25em .5em; border-radius: 999px;
+    background: var(--plate-count-bg); color: var(--plate-count-text); font-size: .72em; font-weight: 600; line-height: 1;
+  }
+  .wm-hc:empty, .wm-hl.editing .wm-hc { display: none; }
+  /* A place's maps as a hand of cards (worldMapFan.js), in screen px scaled by --gs (the interface zoom and the shrink). */
+  .wm-fan {
+    width: 0; height: 0; transform-origin: 0 0; z-index: 1;
+    transform: translate(var(--gx), var(--gy)) scale(calc(var(--iz) * var(--gs, 1)));
+  }
+  #wm.scenes .wm-fan, #wm.drawing .wm-fan, #wm.moving .wm-fan, .wm-fan.editing { display: none; }
+  .wm-fc {
+    position: absolute; left: var(--l); top: 4px; width: 78px; height: 54px; border-radius: 5px; background: #222 center / cover; cursor: pointer;
+    box-shadow: 0 0 0 2px #0b0b0d, 0 0 0 3px rgba(255, 255, 255, 0.26), 0 4px 12px rgba(0, 0, 0, 0.6);
+    transform: rotate(var(--r)) translateY(var(--ty)); transition: transform .2s cubic-bezier(.2, .8, .2, 1);
+  }
+  /* Reaches under the card, so the card lifting away from the pointer does not let it go. */
+  .wm-fc::before { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 10px; }
+  .wm-fc:hover { --ty: -10px; z-index: 5; }
+  .wm-fmore { display: grid; place-items: center; background: #15171c; font: 600 15px/1 system-ui, sans-serif; color: #dfe5ef; }
+  /* The hovered map's name: the small plate, upright, under the card. */
+  .wm-fcn {
+    display: none; position: absolute; left: 0; top: calc(100% + 6px); max-width: calc(180px / var(--gs, 1)); overflow: hidden; text-overflow: ellipsis;
+    --plate-k: calc(1 / var(--gs, 1)); font-size: calc(var(--fs-sm, 11) * 1px / var(--gs, 1));
+    transform-origin: 0 0; transform: rotate(calc(-1 * var(--r))); pointer-events: none;
+  }
+  .wm-fc:hover .wm-fcn { display: block; }
   /* One level of name at a time: places zoomed out, scenes zoomed in. */
   #wm.scenes .wm-hl { opacity: 0; pointer-events: none; }
   /* The mist rides above the backdrop and under the cards. The backdrop is greyed; the mist svg lays its own
@@ -86,15 +109,12 @@
     background: #0b0b0d; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.85), 0 2px 6px rgba(0, 0, 0, 0.6); cursor: pointer;
   }
   .wm-lm .wm-dot:hover { box-shadow: inset 0 0 0 2px #fff, 0 2px 6px rgba(0, 0, 0, 0.6); }
-  /* The name beside a stray scene is a place's plate (.wm-hl): the room label's size by zoom, weight, padding and
-     fill. This box is scaled by --wz already, so the plate's screen px are divided back out by --uz. */
+  /* The name beside a stray scene and a road's name are plates. This box is scaled by --wz already, so the plate's
+     screen px are divided back out by --uz. */
   .wm-lm .wm-lbl, .wm-rn {
-    padding: calc(var(--ly, 8) * 1px / var(--uz, 1)) calc(var(--lx, 13) * 1px / var(--uz, 1)); border-radius: calc(var(--lr, 7) * 1px / var(--uz, 1));
-    background: rgba(10, 9, 18, 0.75); box-shadow: inset 0 0 0 calc(1px / var(--uz, 1)) rgba(255, 255, 255, 0.055); color: #fff;
-    font: 600 calc(var(--fs, 17) * 1px / var(--uz, 1)) / 1 system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap;
+    --plate-k: calc(1 / var(--uz, 1)); font-size: calc(var(--fs, 17) * 1px / var(--uz, 1));
   }
   .wm-lm .wm-lbl { position: absolute; left: calc(15px + 4px / var(--uz, 1)); top: 0; transform: translateY(-50%); cursor: default; }
-  .wm-lm.sel .wm-lbl, .wm-rn.sel { color: var(--b-icon, #8fb6ff); }
   .wm-lm.cur .wm-dot { box-shadow: inset 0 0 0 2px var(--b-icon, #8fb6ff), 0 2px 6px rgba(0, 0, 0, 0.6); }
   .wm-lm.sel .wm-dot { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.85), 0 0 0 3px rgba(143, 182, 255, 0.35); }
   #wm.scenes .wm-lm { opacity: 0; pointer-events: none; }
@@ -122,10 +142,7 @@
   #wm .dim { opacity: .15 !important; }
   #wm.scenes .wm-lm.dim, #wm.scenes .wm-hl.dim, #wm.places .wm-card.dim { opacity: 0 !important; }
   #wm.moving *, #wm.notrans * { transition: none !important; }
-  #wm [contenteditable="true"] {
-    outline: 1.5px solid var(--b-icon, #8fb6ff); background: #111 !important; color: #fff !important;
-    cursor: text !important; user-select: text; text-overflow: clip !important;
-  }
+  #wm [contenteditable="true"] { cursor: text !important; user-select: text; text-overflow: clip !important; }
   /* An empty library: a call to action in the middle of the layer (worldMapEmpty.js). The card lets drags through to the layer
      under it; its button is the one thing to press. The bar keeps only what can act and the Notes tab is disabled. */
   #wm-empty {

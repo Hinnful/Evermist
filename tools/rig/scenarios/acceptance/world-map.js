@@ -64,7 +64,7 @@ globalThis.__wmC = el => { const r = el.getBoundingClientRect(); return { x: r.x
 globalThis.__wmE = (type, el, p, o) => (el || window).dispatchEvent(new MouseEvent(type,
   Object.assign({ clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, button: 0 }, o || {})));
 globalThis.__wmCard = name => [...document.querySelectorAll('.wm-card')].find(c => c.querySelector('.wm-nm').textContent === name);
-globalThis.__wmHead = name => [...document.querySelectorAll('.wm-hl')].find(e => e.textContent === name);
+globalThis.__wmHead = name => [...document.querySelectorAll('.wm-hl')].find(e => e.firstChild.textContent === name);
 globalThis.__wmDrag = (el, to, o) => {
   const a = __wmC(el);
   __wmE('mousedown', el, a, o);
@@ -163,7 +163,7 @@ module.exports = async function worldMapFeature(rig) {
   await lib.settle(dm, SETTLED, 8000);
   const out = await dm.evaluate(`(() => ({
     level: document.getElementById('wm').className,
-    places: [...document.querySelectorAll('.wm-hl')].filter(e => getComputedStyle(e).opacity === '1').map(e => e.textContent),
+    places: [...document.querySelectorAll('.wm-hl')].filter(e => getComputedStyle(e).opacity === '1').map(e => e.firstChild.textContent),
     loose: [...document.querySelectorAll('.wm-lm .wm-lbl')].map(e => e.textContent),
     dot: (d => d && { bg: getComputedStyle(d).backgroundColor, on: getComputedStyle(d.parentNode).opacity })(document.querySelector('.wm-lm .wm-dot')),
     prints: [...document.querySelectorAll('.wm-card.placed')].map(c => getComputedStyle(c).opacity),
@@ -176,13 +176,13 @@ module.exports = async function worldMapFeature(rig) {
   rig.check(out.dot && out.dot.bg === 'rgb(11, 11, 13)' && out.dot.on === '1', 'zoomed out, a scene with no place is not a black diamond: ' + JSON.stringify(out.dot));
   rig.check(out.prints.length === 3 && out.prints.every(o => o === '0'), 'zoomed out, the scenes of a place still show: ' + JSON.stringify(out.prints));
   rig.check(out.mist, 'the mist is not cut by every place');
-  // A place's plate is a room's label: its type size by zoom and clamped, its weight, its padding.
+  // A place's plate is the one plate: type 12px x interface zoom growing by zoom, weight 600, padding .75em and .45em, radius .5em.
   for (const zz of [0.3, 0.45, 0.6, 0.7]) {
     await dm.evaluate('__wmCam(' + pc.x + ', ' + pc.y + ', ' + zz + ')');
     const at = await dm.evaluate(`(() => { const h = __wmHead('Watcherhouse'), cs = getComputedStyle(h), z = _wmCam.z;
-      return { z, px: parseFloat(cs.fontSize) * z, want: roomLabelFontPx(_wmZq(z)), weight: cs.fontWeight, padX: parseFloat(cs.paddingLeft) * z, padY: parseFloat(cs.paddingTop) * z }; })()`);
-    rig.check(Math.abs(at.px - at.want) < 0.5 && at.weight === '600' && Math.abs(at.padX - 13) < 0.5 && Math.abs(at.padY - 8) < 0.5,
-              'at zoom ' + at.z.toFixed(2) + ' the place plate does not match the room label in size, weight and padding: ' + JSON.stringify(at));
+      return { z, px: parseFloat(cs.fontSize) * z, want: roomLabelFontPx(_wmZq(z), _wmUz), weight: cs.fontWeight, padX: parseFloat(cs.paddingLeft) * z, padY: parseFloat(cs.paddingTop) * z, rad: parseFloat(cs.borderTopLeftRadius) * z }; })()`);
+    rig.check(Math.abs(at.px - at.want) < 0.5 && at.weight === '600' && Math.abs(at.padX - 0.75 * at.want) < 0.5 && Math.abs(at.padY - 0.45 * at.want) < 0.5 && Math.abs(at.rad - 0.5 * at.want) < 0.5,
+              'at zoom ' + at.z.toFixed(2) + ' the place plate does not match the plate rule in size, weight, padding and radius: ' + JSON.stringify(at));
   }
   await dm.evaluate('__wmCam(' + pc.x + ', ' + pc.y + ', 0.9)');
   await lib.settle(dm, SETTLED, 8000);

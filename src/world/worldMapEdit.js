@@ -59,13 +59,14 @@ function _wmAddLand(ids, from) {
 // is the room code's (selectMouseDown and its kin), run on the world's camera.
 
 function _wmGrab(e) {
-  const t = e.target.closest('.wm-card, .wm-hl, .wm-lm');
+  const t = e.target.closest('.wm-card, .wm-hl, .wm-lm, .wm-fc[data-id]');
   if (!t) {
     const road = e.target.closest('.roadhit, .wm-rn');
     return road ? { kind: 'road', uid: road.dataset.uid } : { kind: 'none' };
   }
   const onName = !!e.target.closest('.wm-nm, .wm-lbl, .wm-hl'), onDot = !!e.target.closest('.wm-dot');
   const c = t.classList;
+  if (c.contains('wm-fc')) return { kind: 'card', id: t.dataset.id, onName, onDot };
   if (c.contains('wm-hl')) return { kind: 'place', name: t.dataset.place, onName, onDot };
   return { kind: c.contains('wm-card') ? 'card' : 'lm', id: t.dataset.id, onName, onDot };
 }
@@ -139,7 +140,7 @@ function _wmGroundDown(e, d) {
 // The cursor over the ground says what a press there would do, as it does on the map.
 function worldMapHover(e) {
   if (_wmTool !== 'select' || _wmAnim || !e.target.closest) return;
-  const ground = e.target === _wm || e.target === _wmWorld || !e.target.closest('.wm-card, .wm-hl, .wm-lm, .sm-menu, .roadhit, .wm-rn');
+  const ground = e.target === _wm || e.target === _wmWorld || !e.target.closest('.wm-card, .wm-hl, .wm-lm, .wm-fan, .sm-menu, .roadhit, .wm-rn');
   _wm.style.cursor = ground && _wm.contains(e.target) ? _wmWithCamera(() => selectHoverCursor(_wmToWorld(e.clientX, e.clientY), e)) : '';
 }
 
@@ -305,6 +306,9 @@ function _wmDbl(e) {
 
 function _wmRenameStart(el, kind, key) {
   if (_wmEdit) _wmRenameDone(true);
+  if (el.classList.contains('wm-hl')) el = el.firstChild;   // a place's plate holds the name and its count: the name alone is edited
+  const plate = el.closest('.wm-hl');
+  if (plate) plate.classList.add('editing');
   _wmEdit = { el, kind, key, old: el.textContent };
   _wmEditing = el;
   el.contentEditable = 'true';
@@ -324,6 +328,8 @@ function _wmRenameDone(commit) {
   _wmEditing = null;
   ed.el.onblur = null;
   ed.el.contentEditable = 'false';
+  const plate = ed.el.closest('.wm-hl');
+  if (plate) plate.classList.remove('editing');
   const text = ed.el.textContent;
   ed.el.textContent = ed.old;
   if (commit && ed.kind === 'scene') renameScene(ed.key, text);

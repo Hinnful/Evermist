@@ -57,15 +57,19 @@ function ellipsizeToWidth(text, maxPx, measureFn) {
 
 // ─── Label geometry (pure — unit-tested) ──────────────────────────────────────
 
-// Label size in SCREEN px, scaling gently with zoom and CLAMPED at both ends: map-locked type
-// vanishes when zoomed out, screen-fixed type looks lost inside a hall. The exponent is the dial.
-function roomLabelFontPx(zoomLevel, base, minPx, maxPx, exp) {
-  const b = base  == null ? 21  : base;
-  const lo = minPx == null ? 17  : minPx;
-  const hi = maxPx == null ? 38  : maxPx;
-  const e  = exp   == null ? 0.4 : exp;
+// Label size in SCREEN px for a surface at zoom z under interface zoom uz: the app's own type size
+// (12px, or 11px for a name inside a picture) growing gently with zoom, up to 2.5x. One rule for every plate.
+function roomLabelFontPx(zoomLevel, uiZoom, small) {
+  const uz = uiZoom > 0 ? uiZoom : 1;
   const z = zoomLevel > 0 ? zoomLevel : 1;
-  return Math.round(Math.max(lo, Math.min(hi, b * Math.pow(z, e))));
+  return Math.round((small ? 11 : 12) * uz * Math.max(1, Math.min(2.5, Math.pow(z, 0.4))));
+}
+
+// A plate's box for type of fontPx and text textW wide: padding and radius are fractions of the type
+// (em from the --plate-* tokens), so a plate keeps its shape at every size.
+function plateMetrics(fontPx, textW, skin) {
+  const padX = fontPx * skin.padX, padY = fontPx * skin.padY;
+  return { padX, padY, radius: fontPx * skin.radius, w: textW + padX * 2, h: fontPx + padY * 2 };
 }
 
 // Horizontal spans of a polygon's interior at height y. Even-odd scanline: each pair of edge
@@ -149,19 +153,31 @@ function resetRoomLabelCache() { _rpLabelCache.clear(); }
 // Placement is TOP-LEFT INSIDE the room. The bounding-box corner is outside the shape on a circle
 // or a heavily rounded rectangle, so the anchor comes from fitLabelBox().
 
-// Plate padding, generous relative to the type: tighter, it shrink-wraps the glyphs and reads as
-// a stray rectangle.
-const RP_LABEL_PAD_X = 13;
-const RP_LABEL_PAD_Y = 8;
-const RP_LABEL_RADIUS = 7;
-
 // Gap between the PLATE and the room's outline, one number for both axes. ⚠ The fit sizes the
-// whole plate, never the text: fitting the text makes the draw step subtract PAD_X back out and
+// whole plate, never the text: fitting the text makes the draw step subtract the padding back out and
 // collapses the left gap. Screen px, ÷ zoom on the way into the fit.
 const RP_LABEL_GAP = 10;
 
+// The plate skin lives once, as --plate-* tokens on :root (base.css); the canvas reads them here.
+let _rpSkin = null;
+function rpPlateSkin() {
+  if (_rpSkin) return _rpSkin;
+  const cs = getComputedStyle(document.documentElement);
+  const v = n => cs.getPropertyValue('--plate-' + n).trim();
+  return (_rpSkin = {
+    padX: parseFloat(v('pad-x')), padY: parseFloat(v('pad-y')), radius: parseFloat(v('radius')),
+    bg: v('bg'), line: v('line'), text: v('text'), family: v('family'), weight: v('weight'),
+    shadowColor: v('shadow-color'), shadowY: parseFloat(v('shadow-y')), shadowBlur: parseFloat(v('shadow-blur')),
+  });
+}
+
+function _rpUiZoom() {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui-zoom')) || 1;
+}
+
 function _rpLabelFont(px) {
-  return '600 ' + px + 'px system-ui, -apple-system, "Segoe UI", sans-serif';
+  const k = rpPlateSkin();
+  return k.weight + ' ' + px + 'px ' + k.family;
 }
 
 function drawRoomLabels() {
@@ -171,7 +187,8 @@ function drawRoomLabels() {
   if (!showRoomLabels || !polygons.length || !cursorCtx) return;
 
   const ctx = cursorCtx;
-  const fontPx = roomLabelFontPx(zoom);
+  const skin = rpPlateSkin();
+  const fontPx = roomLabelFontPx(zoom, _rpUiZoom());
   ctx.save();
   ctx.font         = _rpLabelFont(fontPx);
   ctx.textAlign    = 'left';
@@ -181,7 +198,7 @@ function drawRoomLabels() {
 
   const vw = cursorCanvas.width, vh = cursorCanvas.height;
   const measure = t => ctx.measureText(t).width;
-  const textH   = fontPx + RP_LABEL_PAD_Y * 2;   // backing height, screen px
+  const pm = plateMetrics(fontPx, 0, skin), padX = pm.padX, textH = pm.h;   // plate height, screen px
 
   for (const poly of polygons) {
     if (poly.id === selectedPolygonId) continue;         // its name is already in the card
@@ -210,13 +227,13 @@ function drawRoomLabels() {
       // A turned seat fits the plate against the room as the screen shows it, so it reads upright.
       const box = fitLabelBox(
         seatTurn ? turnShape(poly, seatTurn) : poly,
-        (measure(name) + RP_LABEL_PAD_X * 2) / zoom,   // map units — screen plate width ÷ zoom
+        (measure(name) + padX * 2) / zoom,   // map units — screen plate width ÷ zoom
         textH / zoom,
         RP_LABEL_GAP / zoom,
         cornerR,
       );
       if (!box) { _rpLabelCache.set(poly.id, { key, text: '' }); continue; }
-      const text = ellipsizeToWidth(name, box.avail * zoom - RP_LABEL_PAD_X * 2, measure);
+      const text = ellipsizeToWidth(name, box.avail * zoom - padX * 2, measure);
       // Auto-hide: a truncation leaving under two real characters names nothing and is dropped.
       // Only truncated text is judged, so a room genuinely called "A" keeps its label.
       const truncated = text !== name;
@@ -231,25 +248,30 @@ function drawRoomLabels() {
 
     // sx/sy is the plate's left edge and vertical centre; the glyphs start one PAD_X in.
     const { sx, sy } = toScreen(entry.mx, entry.my);
-    const bw = entry.w + RP_LABEL_PAD_X * 2;
+    const bw = entry.w + padX * 2;
     if (seatTurn ? (sx < -bw || sy < -bw || sx > vw + bw || sy > vh + bw)
                  : (sx < -bw || sy < -textH || sx > vw || sy > vh + textH)) continue;
 
-    // Opaque enough to read against bright map art, or the name dissolves into the texture. The
-    // hairline is the panel border colour, so the plate reads as app chrome.
     ctx.save();
     uprightAt(ctx, sx, sy);
+    const top = sy - textH / 2, r = pm.radius;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(sx, sy - textH / 2, bw, textH, RP_LABEL_RADIUS);
-    else ctx.rect(sx, sy - textH / 2, bw, textH);
-    ctx.fillStyle = 'rgba(10, 9, 18, 0.75)';
+    if (ctx.roundRect) ctx.roundRect(sx, top, bw, textH, r); else ctx.rect(sx, top, bw, textH);
+    ctx.shadowColor = skin.shadowColor;
+    ctx.shadowBlur = skin.shadowBlur;
+    ctx.shadowOffsetY = skin.shadowY;
+    ctx.fillStyle = skin.bg;
     ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(sx + 0.5, top + 0.5, bw - 1, textH - 1, Math.max(0, r - 0.5));
+    else ctx.rect(sx + 0.5, top + 0.5, bw - 1, textH - 1);
     ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+    ctx.strokeStyle = skin.line;
     ctx.stroke();
 
-    ctx.fillStyle = '#fff';
-    ctx.fillText(entry.text, sx + RP_LABEL_PAD_X, sy);
+    ctx.fillStyle = skin.text;
+    ctx.fillText(entry.text, sx + padX, sy);
     ctx.restore();
   }
 
@@ -267,7 +289,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     normalizeRoomFields, sanitizeRoomName, sanitizeRoomDesc,
     ellipsizeToWidth,
-    roomLabelFontPx, polygonRowSpans, cornerInsetAt, fitLabelBox,
+    roomLabelFontPx, plateMetrics, polygonRowSpans, cornerInsetAt, fitLabelBox,
     ROOM_NAME_MAX, ROOM_DESC_MAX,
   };
 }

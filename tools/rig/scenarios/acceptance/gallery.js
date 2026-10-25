@@ -24,6 +24,8 @@
 //      gallery restores as it always did.
 //   J. With Two maps on, a click in the DM window puts the picture over both halves of the shared
 //      Player window, and Escape takes it down.
+//   K. A picture's name sits inside the picture at its bottom left, and a click on the name puts
+//      nothing on the TV, since a double-click there renames.
 //   (The save dialog of a real backup is native and cannot be driven: byEye below.)
 
 const lib = require('../../lib');
@@ -173,6 +175,18 @@ module.exports = async function galleryFeature(rig) {
   }, 20000)), 'a Player that reloaded did not get the picture that is up');
   await dm.evaluate('__gaClick("token"); 0');
   await waitTv(false);
+
+  // ── K. the name inside the picture, and a click on it that shows nothing ────
+  // RED ON (inside): the name appended to the tile after .ga-th, not inside it (gallery.js) - 2026-10-25
+  // RED ON (click): the name's stopPropagation onclick removed (gallery.js) - 2026-10-25
+  const inside = await dm.evaluate(`(() => { const th = __gaTileOf('portrait').querySelector('.ga-th').getBoundingClientRect(),
+    n = __gaTileOf('portrait').querySelector('.ga-name').getBoundingClientRect();
+    return { left: n.left - th.left, bottom: th.bottom - n.bottom, within: n.left >= th.left && n.right <= th.right && n.top >= th.top && n.bottom <= th.bottom, h: n.height }; })()`);
+  rig.check(inside.within && inside.left <= 12 && inside.bottom <= 12 && inside.h > 0,
+            'a picture\'s name does not sit inside the picture at its bottom left: ' + JSON.stringify(inside));
+  await dm.evaluate("__gaTileOf('portrait').querySelector('.ga-name').click(); 0");
+  await lib.hold(800, 'long enough for a picture to have gone up, then prove it did not');
+  rig.check(await dm.evaluate('_gaLive === null'), 'a click on a picture\'s name put the picture on the TV');
 
   // ── E. the room card carries no pictures ───────────────────────────────────
   // The Gallery pane is open, and the room card lives in the Notes pane.

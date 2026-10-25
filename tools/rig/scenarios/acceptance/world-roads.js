@@ -48,7 +48,7 @@ globalThis.__wmC = el => { const r = el.getBoundingClientRect(); return { x: r.x
 globalThis.__wmE = (type, el, p, o) => (el || window).dispatchEvent(new MouseEvent(type,
   Object.assign({ clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, button: 0 }, o || {})));
 globalThis.__wmCard = name => [...document.querySelectorAll('.wm-card')].find(c => c.querySelector('.wm-nm').textContent === name);
-globalThis.__wmHead = name => [...document.querySelectorAll('.wm-hl')].find(e => e.textContent === name);
+globalThis.__wmHead = name => [...document.querySelectorAll('.wm-hl')].find(e => e.firstChild.textContent === name);
 globalThis.__wmDrag = (el, to, o) => {
   const a = __wmC(el);
   __wmE('mousedown', el, a, o);

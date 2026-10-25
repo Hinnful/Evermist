@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 10 open items; IDs run to 224."
+description: "Open work only. 10 open items; IDs run to 225."
 metadata: 
   node_type: memory
   type: project
@@ -88,20 +88,14 @@ music, and switches to another map. Anything Sasha meets on the way that does no
 epic. The same path must not slow an experienced DM or hide the deeper features.
 **Done when** a new DM on the current version, with no Claude and no help in chat, completes Sasha's path and can then
 say what a map, a group and a room are. No tester has run this: each met an older version and had the DM's help.
-**Order.** 218. The done test waits for a new DM, and none is available (2026-10-25).
+**Order.** Nothing queued; 218 shipped in 4.10.0. The done test waits for a new DM, and none is available (2026-10-25).
 **Out of the first evening:** floor plans, the bestiary, effects and light, vector editing. Sasha finds them later,
 and finds them unaided.
 **Out of this section:** what a DM sees before installing. That is distribution, and it comes later.
 
 ## The first evening
 
-### 218. A group shows the maps it holds
-Filed 2026-10-22 from a tester's request. Zoomed out, a group on the Campaign shows only its outline and name, and its maps
-disappear until the DM zooms in. A tester asked for small thumbnails of a group's maps with their count, so the DM sees
-what a group holds and how much without zooming in. The Campaign drew more tester issues than any other area.
-**Needs /spec:** how many thumbnails before "+N", whether a click on one opens that map, and the tester's reading of a
-group as a container the DM steps into.
-**First use · Campaign · DM only**
+No item is queued here.
 
 ---
 
@@ -127,6 +121,13 @@ cannot draw rooms or place anything on a map. Prep only; nothing reaches the TV,
 ---
 
 # EVERYTHING ELSE
+
+### 225. The fit-to-tv check fails at random
+Filed 2026-10-25. The rig scenario `fit-to-tv` needed a rerun in 3 recent CI runs on Windows. It fails on the
+minimap's frame after Sync View with the TV turned: the frame keeps the old zoom (0.486 where 1.016 is wanted). Find
+whether the check reads the frame before it repaints or the app misses a repaint, then fix the check or retire it.
+Small effort; no risk to what installs.
+**Tests · DM only**
 
 ### 184. Straight walls sits alone over the world map's drawing tools
 Filed 2026-10-16. With the repairs gone from places, the row over a place tool holds one icon, Straight walls, and it

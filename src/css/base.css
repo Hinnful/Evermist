@@ -49,11 +49,53 @@
     --win-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
     --pop-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
     --g-raised: #26272b;
+    /* The name plate: ONE skin for every name the DM can rename (a room, a place, a stray map, a road, a print, a
+       picture). Padding and radius are em, so a plate keeps its shape at every size; the canvas room label reads
+       these same values (roomPanel.js rpPlateSkin). */
+    --plate-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --plate-weight: 600;
+    --plate-bg: rgba(24, 25, 28, 0.72);
+    --plate-bg-hover: rgba(40, 41, 46, 0.82);
+    --plate-line: rgba(255, 255, 255, 0.09);
+    --plate-text: var(--g-text);
+    --plate-pad-y: 0.45em;
+    --plate-pad-x: 0.75em;
+    --plate-radius: 0.5em;
+    --plate-shadow-color: rgba(0, 0, 0, 0.35);
+    --plate-shadow-y: 2px;
+    --plate-shadow-blur: 8px;
+    --plate-sel-bg: rgba(12, 140, 233, 0.28);
+    --plate-sel-text: var(--b-icon);
+    --plate-sel-line: rgba(92, 177, 255, 0.45);
+    --plate-edit-bg: var(--g-field);
+    --plate-edit-ring: var(--b-solid);
+    --plate-edit-select: rgba(12, 140, 233, 0.55);
+    /* The count of maps a place holds, a pill after its name. */
+    --plate-count-bg: rgba(255, 255, 255, 0.14);
+    --plate-count-text: #dfe5ef;
     /* Segoe UI 12px sits its baseline 5px under the line's centre, so a label's visual centre
        is about 1px below a box-centred icon. Every icon beside a label moves down by this. */
     --icon-nudge: 1px;
     --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
+
+  /* ===== NAME PLATES ===== */
+  /* Each surface sets its own font-size and --plate-k (one screen px in its own units); the look is here. */
+  .wm-hl, .wm-lm .wm-lbl, .wm-rn, .wm-card .wm-nm, .wm-fcn, .ga-name, .ga-name-edit {
+    box-sizing: border-box; border: 0; padding: var(--plate-pad-y) var(--plate-pad-x); border-radius: var(--plate-radius);
+    background: var(--plate-bg); color: var(--plate-text);
+    font-family: var(--plate-family); font-weight: var(--plate-weight); line-height: 1; white-space: nowrap;
+    box-shadow: inset 0 0 0 calc(var(--plate-hair-w, 1) * 1px * var(--plate-k, 1)) var(--plate-hair, var(--plate-line)),
+                0 calc(var(--plate-shadow-y) * var(--plate-k, 1)) calc(var(--plate-shadow-blur) * var(--plate-k, 1)) var(--plate-shadow-color);
+  }
+  .wm-hl:hover, .wm-lm .wm-lbl:hover, .wm-rn:hover, .wm-card .wm-nm:hover, .wm-fcn:hover, .ga-name:hover { background: var(--plate-bg-hover); }
+  .wm-hl.sel, .wm-lm.sel .wm-lbl, .wm-rn.sel, .wm-card.sel .wm-nm, .wm-card.cur .wm-nm, .ga-tile.on .ga-name {
+    background: var(--plate-sel-bg); color: var(--plate-sel-text); --plate-hair: var(--plate-sel-line);
+  }
+  #wm [contenteditable="true"]:not(.wm-hn), .wm-hl.editing, .ga-name-edit {
+    background: var(--plate-edit-bg); color: var(--plate-text); --plate-hair: var(--plate-edit-ring); --plate-hair-w: 1.5; outline: none;
+  }
+  #wm [contenteditable="true"]::selection, .ga-name-edit::selection { background: var(--plate-edit-select); color: white; }
 
   /* ===== CANVAS LAYERS ===== */
   #canvas-container {

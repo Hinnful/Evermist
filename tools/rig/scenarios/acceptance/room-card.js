@@ -245,7 +245,7 @@ module.exports = async function roomCardFeature(rig) {
       out.push({ id: p.id, text: e.text, mx: Math.round(e.mx), my: Math.round(e.my),
                  inside: e.mx >= bb.minX && e.mx <= bb.maxX && e.my >= bb.minY && e.my <= bb.maxY });
     }
-    return { out, fontPx: roomLabelFontPx(zoom), zoom: +zoom.toFixed(4) };
+    return { out, uz: _rpUiZoom(), fontPx: roomLabelFontPx(zoom, _rpUiZoom()), zoom: +zoom.toFixed(4) };
   })()`);
   rig.note('room labels: ' + JSON.stringify(labels));
   // ⚠ COUNTED BEFORE IT IS JUDGED. Both checks below run `every` over a list built from
@@ -258,10 +258,10 @@ module.exports = async function roomCardFeature(rig) {
             'a room on the map carries no label at all: ' + JSON.stringify(labels.out));
   rig.check(labels.out.length > 0 && labels.out.every(l => l.inside),
             'a room label was placed outside the room it names: ' + JSON.stringify(labels.out));
-  rig.check(labels.fontPx >= 17 && labels.fontPx <= 38,
-            'the label size left its readable range: ' + labels.fontPx + 'px at zoom ' + labels.zoom);
-  const zoomedFont = await dm.evaluate('({ tiny: roomLabelFontPx(0.001), huge: roomLabelFontPx(500) })');
-  rig.check(zoomedFont.tiny >= 17 && zoomedFont.huge <= 38,
+  rig.check(labels.fontPx >= Math.round(12 * labels.uz) && labels.fontPx <= Math.round(30 * labels.uz),
+            'the label size left its range (12px to 2.5x, times the interface zoom): ' + labels.fontPx + 'px at zoom ' + labels.zoom);
+  const zoomedFont = await dm.evaluate('({ uz: _rpUiZoom(), tiny: roomLabelFontPx(0.001, _rpUiZoom()), huge: roomLabelFontPx(500, _rpUiZoom()) })');
+  rig.check(zoomedFont.tiny === Math.round(12 * zoomedFont.uz) && zoomedFont.huge === Math.round(30 * zoomedFont.uz),
             'the label size is not clamped at both ends, so it vanishes or swamps the map at ' +
             'extreme zooms: ' + JSON.stringify(zoomedFont));
 

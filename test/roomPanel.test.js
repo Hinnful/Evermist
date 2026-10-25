@@ -12,7 +12,7 @@ global.shapeBBox   = require('../src/fog/fogGeometry.js').shapeBBox;
 const {
   normalizeRoomFields, sanitizeRoomName, sanitizeRoomDesc,
   ellipsizeToWidth,
-  roomLabelFontPx, polygonRowSpans, cornerInsetAt, fitLabelBox,
+  roomLabelFontPx, plateMetrics, polygonRowSpans, cornerInsetAt, fitLabelBox,
   ROOM_NAME_MAX, ROOM_DESC_MAX,
 } = require('../src/rooms/roomPanel.js');
 
@@ -202,47 +202,68 @@ describe('ellipsizeToWidth', () => {
 });
 
 describe('roomLabelFontPx', () => {
-  test('is the base size at zoom 1', () => {
-    assert.equal(roomLabelFontPx(1), 21);
+  test('the floor is the app type size times the interface zoom', () => {
+    assert.equal(roomLabelFontPx(1, 1), 12);
+    assert.equal(roomLabelFontPx(1, 1.2), 14);
+    assert.equal(roomLabelFontPx(1, 1, true), 11);
+    assert.equal(roomLabelFontPx(1, 1.2, true), 13);
   });
 
   test('grows with zoom, but sub-linearly', () => {
-    const z1 = roomLabelFontPx(1), z4 = roomLabelFontPx(4);
+    const z1 = roomLabelFontPx(1, 1.2), z4 = roomLabelFontPx(4, 1.2);
     assert.ok(z4 > z1, 'should grow');
     assert.ok(z4 < z1 * 4, 'must not track zoom one-for-one, or a hall label would be huge');
   });
 
-  test('floors when zoomed out — a label must never become unreadable', () => {
-    // Zoomed out is exactly when the DM most needs to know which room is which.
-    assert.equal(roomLabelFontPx(0.2), 17);
-    assert.equal(roomLabelFontPx(0.02), 17);
+  test('never drops below the floor when zoomed out', () => {
+    assert.equal(roomLabelFontPx(0.2, 1.2), 14);
+    assert.equal(roomLabelFontPx(0.02, 1.2, true), 13);
   });
 
-  test('ceilings when zoomed in', () => {
-    assert.equal(roomLabelFontPx(50), 38);
+  test('stops at 2.5x when zoomed in', () => {
+    assert.equal(roomLabelFontPx(500, 1), 30);
+    assert.equal(roomLabelFontPx(500, 1.2), 36);
+    assert.equal(roomLabelFontPx(500, 1, true), 28);
+  });
+
+  test('follows 12 * uz * z^0.4 between the ends', () => {
+    assert.equal(roomLabelFontPx(4, 1.2), Math.round(12 * 1.2 * Math.pow(4, 0.4)));
   });
 
   test('is monotonic across the working zoom range', () => {
     let prev = 0;
     for (const z of [0.1, 0.25, 0.5, 1, 2, 4, 8, 20]) {
-      const px = roomLabelFontPx(z);
+      const px = roomLabelFontPx(z, 1.2);
       assert.ok(px >= prev, 'zoom ' + z + ' gave ' + px + ', below the previous ' + prev);
       prev = px;
     }
   });
 
   test('returns whole pixels', () => {
-    for (const z of [0.37, 1.3, 2.7, 6.1]) assert.equal(roomLabelFontPx(z) % 1, 0);
+    for (const z of [0.37, 1.3, 2.7, 6.1]) assert.equal(roomLabelFontPx(z, 1.2) % 1, 0);
   });
 
   test('a zero or negative zoom does not produce NaN', () => {
-    assert.equal(roomLabelFontPx(0), 21);
-    assert.equal(roomLabelFontPx(-3), 21);
+    assert.equal(roomLabelFontPx(0, 1), 12);
+    assert.equal(roomLabelFontPx(-3, 1), 12);
+    assert.equal(roomLabelFontPx(1, 0), 12);
   });
+});
 
-  test('exponent 0 is screen-fixed, 1 is fully map-locked', () => {
-    assert.equal(roomLabelFontPx(4, 15, 1, 999, 0), 15);
-    assert.equal(roomLabelFontPx(4, 15, 1, 999, 1), 60);
+describe('plateMetrics', () => {
+  const skin = { padX: 0.75, padY: 0.45, radius: 0.5 };
+  test('padding and radius are fractions of the type', () => {
+    const m = plateMetrics(20, 100, skin);
+    assert.equal(m.padX, 15);
+    assert.equal(m.padY, 9);
+    assert.equal(m.radius, 10);
+    assert.equal(m.w, 130);
+    assert.equal(m.h, 38);
+  });
+  test('the shape holds at every size', () => {
+    const a = plateMetrics(12, 0, skin), b = plateMetrics(24, 0, skin);
+    assert.equal(b.h / a.h, 2);
+    assert.equal(b.w / a.w, 2);
   });
 });
 

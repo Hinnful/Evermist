@@ -377,6 +377,70 @@ describe('the name plate', () => {
   });
 });
 
+describe('the count and the hand of maps', () => {
+  const inside = (r, outline, m) => W.wmRectInPoly({ x: r.x - m, y: r.y - m, w: r.w + 2 * m, h: r.h + 2 * m }, outline);
+  const box = (spot, size, k) => ({ x: spot.x, y: spot.y, w: size.w * spot.scale * k, h: size.h * spot.scale * k });
+  const hit = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+  it('shows up to three maps and a +N card for the rest', () => {
+    assert.deepEqual([1, 2, 3, 4, 9].map(n => W.wmFanCards(n).cards), [1, 2, 3, 4, 4]);
+    assert.deepEqual(W.wmFanCards(9), { shown: 3, cards: 4, more: 6 });
+    assert.deepEqual(W.wmFanCards(2), { shown: 2, cards: 2, more: 0 });
+    assert.ok(W.wmFanSize(4).w > W.wmFanSize(2).w);
+  });
+
+  it('adds the pill to the plate: its text, its padding and the gap before it', () => {
+    assert.equal(W.wmPillWidth(10, 20), 10 + 20 * 0.72 * 1.5);
+  });
+
+  it('sits at full size in the middle of a roomy place', () => {
+    const o = W.wmRectShape(0, 0, 1000, 800), size = W.wmFanSize(4), k = 1;
+    const s = W.wmFanSpot(o, size, null, k);
+    assert.equal(s.scale, 1);
+    const b = box(s, size, k);
+    assert.ok(Math.abs(b.x + b.w / 2 - 500) < 10 && Math.abs(b.y + b.h / 2 - 400) < 10, JSON.stringify(s));
+    assert.ok(inside(b, o, 6));
+  });
+
+  it('shrinks a step at a time when the place is small, and keeps a margin from the walls', () => {
+    const size = W.wmFanSize(4), o = W.wmRectShape(0, 0, size.w * 0.7 + 12, size.h * 0.7 + 12);
+    const s = W.wmFanSpot(o, size, null, 1);
+    assert.ok(s && s.scale < 1 && s.scale >= 0.5, JSON.stringify(s));
+    assert.ok(inside(box(s, size, 1), o, 6));
+  });
+
+  it('gives up when even half size does not fit', () => {
+    const size = W.wmFanSize(4);
+    assert.equal(W.wmFanSpot(W.wmRectShape(0, 0, size.w * 0.5, size.h * 0.5), size, null, 1), null);
+    assert.equal(W.wmFanSpot(null, size, null, 1), null);
+  });
+
+  it('keeps clear of the name plate', () => {
+    const o = W.wmRectShape(0, 0, 400, 300), size = W.wmFanSize(2), plate = { x: 120, y: 100, w: 160, h: 40 };
+    const s = W.wmFanSpot(o, size, plate, 1);
+    assert.ok(s);
+    assert.ok(!hit(box(s, size, 1), plate), 'the hand overlaps the plate: ' + JSON.stringify(s));
+    assert.ok(inside(box(s, size, 1), o, 6));
+  });
+
+  it('stays inside an oval and an L-shaped place', () => {
+    const size = W.wmFanSize(3);
+    const oval = W.wmCircleShape(300, 300, 200, 48);
+    const L = [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 200 }, { x: 900, y: 200 }, { x: 900, y: 500 }, { x: 0, y: 500 }];
+    for (const o of [oval, L]) {
+      const s = W.wmFanSpot(o, size, null, 1);
+      assert.ok(s, 'it fits somewhere');
+      assert.ok(inside(box(s, size, 1), o, 6), JSON.stringify(s));
+    }
+  });
+
+  it('scales its margin with the zoom: a screen px is k world units', () => {
+    const size = W.wmFanSize(2), o = W.wmRectShape(0, 0, 2000, 1500), k = 4;
+    const s = W.wmFanSpot(o, size, null, k);
+    assert.ok(inside(box(s, size, k), o, 6 * k));
+  });
+});
+
 describe('how far the map reaches', () => {
   const view = { w: 1000, h: 600 };
 

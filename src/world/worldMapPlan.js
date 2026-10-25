@@ -342,6 +342,54 @@ function wmPlateSpot(outline, w, h, gap, minW) {
   return null;
 }
 
+// ─── The count and the hand of maps ──────────────────────────────────────────
+// The count pill after a place's name: its type is WM_PILL.size of the plate's, its padding and the gap before it
+// WM_PILL.padX and .gap of its own (worldMap.css .wm-hc), so the plate's width must include them.
+const WM_PILL = { size: 0.72, padX: 0.5, gap: 0.5 };
+
+function wmPillWidth(countTextW, plateFontPx) {
+  return countTextW + plateFontPx * WM_PILL.size * (2 * WM_PILL.padX + WM_PILL.gap);
+}
+
+// What a place shows of the maps it holds, zoomed out: up to three cards and, past three, a "+N" card. Screen px at size 1.
+const WM_FAN = { cardW: 78, cardH: 54, step: 46, tilt: 6, lift: 3, shown: 3, boxH: 70, tilePad: 8, margin: 6 };
+const WM_FAN_SCALES = [1, 0.85, 0.72, 0.6, 0.5];
+
+function wmFanCards(n) {
+  const shown = Math.min(n, WM_FAN.shown);
+  return { shown, cards: shown + (n > WM_FAN.shown ? 1 : 0), more: Math.max(0, n - WM_FAN.shown) };
+}
+
+function wmFanSize(n) {
+  const { cards } = wmFanCards(n);
+  return { w: WM_FAN.cardW + (cards - 1) * WM_FAN.step + WM_FAN.tilePad, h: WM_FAN.boxH };
+}
+
+// The spot nearest the place's centre where the whole hand, a margin round it, lies inside the outline and clear of the
+// name plate (world units). `size` is the hand in screen px at its full size and `k` the world units of one screen px.
+// If it does not fit it is tried smaller, down to half; if none fits, none shows. Answers { x, y, scale } or null.
+function wmFanSpot(outline, size, plate, k, scales) {
+  if (!outline || outline.length < 3 || !size) return null;
+  const b = wmPolyBounds(outline), c = wmPolyCentre(outline), m = WM_FAN.margin * k, step = 8 * k;
+  const clear = plate ? { x: plate.x - m, y: plate.y - m, w: plate.w + 2 * m, h: plate.h + 2 * m } : null;
+  for (const scale of scales || WM_FAN_SCALES) {
+    const w = size.w * scale * k, h = size.h * scale * k;
+    let best = null, bd = Infinity;
+    for (let y = b.y; y + h <= b.y + b.h; y += step) {
+      for (let x = b.x; x + w <= b.x + b.w; x += step) {
+        const d = Math.hypot(x + w / 2 - c.x, y + h / 2 - c.y);
+        if (d >= bd) continue;
+        if (clear && x < clear.x + clear.w && x + w > clear.x && y < clear.y + clear.h && y + h > clear.y) continue;
+        if (!wmRectInPoly({ x: x - m, y: y - m, w: w + 2 * m, h: h + 2 * m }, outline)) continue;
+        bd = d;
+        best = { x, y, scale };
+      }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+
 // ─── How far the map reaches ─────────────────────────────────────────────────
 // What the camera may show: the picture with the layout and a fifth of its larger side beyond, or the layout with
 // a margin. `box` is what the map holds inside it, which the zoom floor frames.
@@ -443,7 +491,7 @@ if (typeof module !== 'undefined' && module.exports) {
     wmCleanPos, wmBesideOffset, wmPlanPositions, wmHullRect, wmRectCentre, wmFillZoom,
     wmCardRect, wmGroupRectAt, wmPointInPoly, wmRectInPoly, wmPolyArea, wmPolyBounds, wmPolyCentre, wmRectShape, wmCircleShape,
     wmCleanShape, wmCleanEdits, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmSpotInOutline, wmLabelSpot,
-    wmPlateSpot, wmExtent, wmZoomFloor, wmClampCamera,
+    wmPlateSpot, WM_PILL, wmPillWidth, WM_FAN, WM_FAN_SCALES, wmFanCards, wmFanSize, wmFanSpot, wmExtent, wmZoomFloor, wmClampCamera,
     wmContentBox, wmFrameCamera, wmPlaceCamera, wmLevelFor, wmZoomAround, wmSideBySide, wmFreeSpot, wmMatches,
   };
 }

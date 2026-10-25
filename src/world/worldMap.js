@@ -33,7 +33,7 @@ function worldMapInit() {
   _wm = document.getElementById('wm');
   if (!_wm) return;
   _wmWorld = document.getElementById('wm-world');
-  for (const k of ['hull', 'card', 'mark', 'rn', 'edit']) _wmLayers[k] = document.getElementById('wm-' + k);
+  for (const k of ['hull', 'fan', 'card', 'mark', 'rn', 'edit']) _wmLayers[k] = document.getElementById('wm-' + k);
   window.addEventListener('resize', () => { if (worldMapOpen) _wmApplyCam(); });
   worldMistInit(); worldMapEmptyInit();
   worldMapEditInit();
@@ -44,7 +44,7 @@ function worldMapInit() {
   worldBackupInit();
   worldMapColumnsInit();
   worldMapFindInit();
-  worldMapOpenBarInit();
+  worldMapOpenBarInit(); worldMapFanInit();
 }
 
 const _wmView = () => ({ w: _wm.clientWidth || innerWidth, h: _wm.clientHeight || innerHeight });
@@ -116,17 +116,17 @@ function _wmPlaceDim(name) {
 
 function _wmDrawPlace(p, selPlace) {
   const dim = _wmPlaceDim(p.name);
-  const h = _wmEl('h' + p.name, 'hull', 'wm-hl', '');
+  const h = _wmEl('h' + p.name, 'hull', 'wm-hl', '<span class="wm-hn"></span><span class="wm-hc"></span>');
   h.dataset.place = p.name;
   h.classList.toggle('sel', selPlace === p.name);
   h.classList.toggle('dim', dim);
-  _wmSetText(h, p.name);
+  _wmSetText(h.firstChild, p.name);
+  _wmSetText(h.lastChild, p.ids.length ? String(p.ids.length) : '');
 }
 
 // A place's name is seen from afar and never from inside: zoomed out it shows, zoomed in the scenes' own
-// names take over. It is a room's label (roomPanel.js): its type size by zoom and clamped, its weight, padding,
-// radius and gap, laid at the top left of the place a fixed gap from its walls (wmPlateSpot) and cut short
-// where the shape narrows. It is laid in world units, so it is laid again whenever the camera moves.
+// names take over. It is a room's label (roomPanel.js): its type size by zoom, its padding and radius in em, and its gap, laid at the top left of the place a fixed gap from its walls (wmPlateSpot) and cut short
+// where the shape narrows. After the name sits the count of its maps, which is part of the plate's width. It is laid in world units, so it is laid again whenever the camera moves.
 let _wmMeasure = null;
 
 function _wmTextWidth(text, px) {
@@ -142,13 +142,14 @@ const _wmZq = z => Math.exp(Math.round(Math.log(z) / 0.02) * 0.02);
 
 // A place's plate at zoom z: where it sits and how wide it can be, in world units, and the type size it is laid for.
 function _wmPlateAt(p, z, outline) {
-  const zq = _wmZq(z), fontPx = roomLabelFontPx(zq), textH = fontPx + RP_LABEL_PAD_Y * 2;
-  const measure = t => _wmTextWidth(t, fontPx), textW = measure(p.name) + RP_LABEL_PAD_X * 2;
-  const sig = [zq.toFixed(4), fontPx, p.name, outline.length, outline.reduce((t, v) => t + v.x * 7 + v.y * 13, 0).toFixed(1)].join('|');
+  const zq = _wmZq(z), fontPx = roomLabelFontPx(zq, _wmUz), pm = plateMetrics(fontPx, 0, rpPlateSkin()), textH = pm.h;
+  const n = p.ids.length, pillW = n ? wmPillWidth(_wmTextWidth(String(n), fontPx * WM_PILL.size), fontPx) : 0;
+  const measure = t => _wmTextWidth(t, fontPx) + 2, textW = measure(p.name) + pm.padX * 2 + pillW;  // ⚠ +2: the DOM draws a name up to 1px wider
+  const sig = [zq.toFixed(4), fontPx, p.name, n, outline.length, outline.reduce((t, v) => t + v.x * 7 + v.y * 13, 0).toFixed(1)].join('|');
   let got = _wmPlateMemo.get(p.name);
   if (!got || got.sig !== sig) {
-    const narrow = (measure(p.name.slice(0, 2) + '…') + RP_LABEL_PAD_X * 2) / zq;
-    got = { sig, fontPx, textH: textH / zq, spot: wmPlateSpot(outline, textW / zq, textH / zq, RP_LABEL_GAP / zq, narrow) };
+    const narrow = (measure(p.name.slice(0, 2) + '…') + pm.padX * 2 + pillW) / zq;
+    got = { sig, fontPx, padX: pm.padX, pillW, textH: textH / zq, spot: wmPlateSpot(outline, textW / zq, textH / zq, RP_LABEL_GAP / zq, narrow) };
     _wmPlateMemo.set(p.name, got);
   }
   return got;
@@ -163,22 +164,21 @@ function _wmNameShown(name) {
 function _wmLayoutLabels() {
   if (!_wmWorld) return;
   const z = _wmCam.z, zq = _wmZq(z);
-  _wmWorld.style.setProperty('--fs', roomLabelFontPx(zq));
-  _wmWorld.style.setProperty('--lx', RP_LABEL_PAD_X);
-  _wmWorld.style.setProperty('--ly', RP_LABEL_PAD_Y);
-  _wmWorld.style.setProperty('--lr', RP_LABEL_RADIUS);
+  _wmWorld.style.setProperty('--fs', roomLabelFontPx(zq, _wmUz));
+  _wmWorld.style.setProperty('--fs-sm', roomLabelFontPx(zq, _wmUz, true));
   if (z >= WM_SPLIT) return;
   for (const p of _wmPlaceList) {
     const h = _wmEls.get('h' + p.name);
     if (!h) continue;
-    const { spot, textH, fontPx } = _wmPlateAt(p, z, wmOutline(p.rec));
-    const shown = spot ? ellipsizeToWidth(p.name, spot.w * zq - RP_LABEL_PAD_X * 2, t => _wmTextWidth(t, fontPx)) : '';
+    const { spot, textH, fontPx, padX, pillW } = _wmPlateAt(p, z, wmOutline(p.rec));
+    const shown = spot ? ellipsizeToWidth(p.name, spot.w * zq - padX * 2 - pillW, t => _wmTextWidth(t, fontPx)) : '';
     h.classList.toggle('off', !spot || !shown || (shown !== p.name && shown.replace('…', '').trim().length < 2));
     if (!spot) continue;
     _wmPx(h, '--hx', spot.x);
     _wmPx(h, '--hy', spot.y + textH / 2);
     h.style.setProperty('--hw', spot.w);
   }
+  worldMapFanLayout();
 }
 
 // ─── What the map reaches ────────────────────────────────────────────────────

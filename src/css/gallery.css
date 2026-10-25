@@ -1,14 +1,14 @@
 /* gallery.css — the Gallery pane in the dock: the find field, the grid of pictures, the empty well. */
   #dock-pane-gallery { position: relative; }
   .ga-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px 8px; padding: 6px 12px 16px 14px; }
-  .ga-tile { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .ga-tile { min-width: 0; }
   .ga-th { position: relative; aspect-ratio: 1; border-radius: 5px; overflow: hidden; cursor: pointer; background: var(--g-field); }
   .ga-th img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
   .ga-th:hover { box-shadow: 0 0 0 1px var(--g-pick); }
   /* On the TV: the room picture's green and its TV tag, so a picture on the TV reads one way everywhere. */
   .ga-tile.on .ga-th { box-shadow: 0 0 0 2px #5fbf8a; }
   .ga-tile.on .ga-th::after {
-    content: "TV"; position: absolute; left: 5px; bottom: 5px; padding: 2px 6px; border-radius: 3px;
+    content: "TV"; position: absolute; left: 5px; top: 5px; padding: 2px 6px; border-radius: 3px;
     background: #5fbf8a; color: #0d1a12; font: 600 10px/1.2 system-ui, sans-serif;
   }
   .ga-x {
@@ -18,11 +18,10 @@
   }
   .ga-th:hover .ga-x { opacity: 1; }
   .ga-x:hover { color: #ff6b70; }
-  .ga-name { font: 500 11px/1.2 system-ui, -apple-system, sans-serif; color: #c7cad0;
-             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
-  .ga-name-edit { width: 100%; min-width: 0; height: 20px; margin: -3px 0 -2px; padding: 0 5px; border: 0; border-radius: 4px;
-                  outline: none; background: var(--g-field); box-shadow: 0 0 0 1px var(--b-solid); color: var(--g-text);
-                  font: 500 11px/1 system-ui, -apple-system, sans-serif; }
+  /* A picture's name is a Small plate inside the tile at its bottom left. The dock's own zoom already scales it. */
+  .ga-name, .ga-name-edit { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); font-size: 11px; }
+  .ga-name { overflow: hidden; text-overflow: ellipsis; cursor: default; }
+  .ga-name-edit { min-width: 0; field-sizing: content; text-overflow: ellipsis; }
   .ga-none { grid-column: 1 / -1; padding: 24px 0; text-align: center; color: var(--g-dim);
              font: 500 11.5px/1.4 system-ui, -apple-system, sans-serif; }
 

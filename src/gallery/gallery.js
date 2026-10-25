@@ -198,6 +198,7 @@ function _gaEditName(p, label) {
   const input = document.createElement('input');
   input.className = 'ga-name-edit';
   input.value = p.name;
+  input.style.minWidth = label.offsetWidth + 'px';
   label.replaceWith(input);
   delete _gaTiles[p.id];
   input.focus(); input.select();
@@ -261,16 +262,17 @@ function _gaTile(p) {
   x.className = 'ga-x';
   x.title = t('Remove picture');
   x.innerHTML = uiIcon('trash', 12);
-  th.append(img, x);
   const name = document.createElement('div');
   name.className = 'ga-name';
   name.title = t('Double-click to rename');
-  tile.append(th, name);
+  th.append(img, x, name);
+  tile.append(th);
   th.onclick = e => {
     if (e.target.closest('.ga-x')) return;
     if (p.id === _gaLive) galleryTakeDown(); else _gaShow(p);
   };
   x.onclick = e => { e.stopPropagation(); _gaRemove(p); };
+  name.onclick = e => e.stopPropagation();
   name.ondblclick = () => _gaEditName(p, name);
   return (_gaTiles[p.id] = tile);
 }
