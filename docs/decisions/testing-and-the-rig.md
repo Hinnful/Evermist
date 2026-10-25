@@ -457,3 +457,16 @@ a stand-in exe that never answers (old code left 1 then 2 live apps, new code 1 
 boot also prints a diagnosis (pid state, seconds, port, live apps, machine processes, output tail) so a
 CI-only failure reads off the log. `probe.yml` needs `fetch-depth 0` since prerig reads release commits,
 and its matrix repeats Windows shard 6 with coverage. `guard-rig.js` ignores shell redirections.
+
+### The parker watches for windows on screen · `SETTLED` (2026-10-25)
+App windows were seen flashing on the DM's screen during gate rig runs, yet a full smoke and regression run
+with an external window logger showed none, so the flash was not reproducible and a standing check replaced a
+one-time look. `offscreen.ps1` now also hooks WinEvent show, location change and foreground, and logs any
+window of this run (pid confirmed by the parker's own command-line marker scan; events wait up to 3s for the
+pid to be claimed, so a real Evermist is never blamed) that is visible inside the virtual screen or takes
+focus, to `.window-offences.log` in the run's output folder. `run.js` reads new lines after each scenario's
+teardown (300ms settle) and fails that scenario with `a window "<title>" showed on screen at x,y` or `took
+focus`; the normal rerun makes a one-off a flake. Proven both ways with a transparent, non-activating
+stand-in `Evermist.exe` opening at 200,200: the old parker logged nothing, the new one logged it, and a real
+scenario produced no false offence. Windows only; the foreground path is untested, since testing it would take
+focus.

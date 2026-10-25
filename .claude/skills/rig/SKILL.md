@@ -123,6 +123,11 @@ EVERY scenario. It signals through a ready file and `startParker` holds the firs
 that file appears. It matches on the run's own output directory, never on the process name, so
 it can only move this run's windows and never the DM's real Evermist.
 
+**The parker also watches, and a window on screen fails the scenario.** Any window of this run
+shown inside the screen bounds, or taking focus, is a line in `.window-offences.log` in the
+run's output folder, and `run.js` fails the scenario it landed in as `a window "…" showed on
+screen`. Windows only. A one-off is a flake through the normal rerun; twice is a real leak.
+
 **`--visible` is the DM's flag, not yours.** Do not pass it, and do not reach for `npm start`,
 `npm run stress` or `npm run memprobe` either - all three take the screen and all three are the
 DM's to run. `tools/window-state.ps1` reads the real OS window state from outside when a window

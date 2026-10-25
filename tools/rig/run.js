@@ -265,13 +265,24 @@ async function quitApp(inst, ms = 15000) {
 const OFFSCREEN_PS1 = path.join(__dirname, 'offscreen.ps1');
 const PARKER_READY_MS = 5000;
 
+// Every window of this run that showed on a screen or took focus, one line each, written by the parker.
+const offenceLog = outDir => path.join(outDir, '.window-offences.log');
+let offencesRead = 0;
+function newOffences(outDir) {
+  let text = '';
+  try { text = fs.readFileSync(offenceLog(outDir), 'utf8'); } catch (_) { return []; }
+  const fresh = text.slice(offencesRead);
+  offencesRead = text.length;
+  return fresh.split('\n').map(l => l.trim()).filter(Boolean);
+}
+
 async function startParker(args, outDir, budgetMs) {
   if (args.visible || process.platform !== 'win32') return null;
   const readyFile = path.join(outDir, '.parker-ready');
   let ps;
   try {
     ps = spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass',
-      '-File', OFFSCREEN_PS1, outDir, String(Math.ceil(budgetMs / 1000)), readyFile],
+      '-File', OFFSCREEN_PS1, outDir, String(Math.ceil(budgetMs / 1000)), readyFile, offenceLog(outDir)],
       { stdio: 'ignore', windowsHide: true });
     ps.on('error', () => {});
   } catch (_) { return null; }
@@ -934,6 +945,12 @@ async function main() {
       for (const s of sessions) await harvestCoverage(inst, s);
       for (const s of sessions) s.close();
       killApp(inst.proc);
+      // The DM works on this machine while the rig runs, so a window reaching the screen fails the
+      // scenario. The parker writes within its 40ms pump; the wait lets the last events land.
+      if (parker) {
+        await new Promise(r => setTimeout(r, 300));
+        for (const o of new Set(newOffences(outDir))) tally.fails.push(name + ': a window ' + o);
+      }
     }
     return { warnings, cov: inst.cov };
   }
