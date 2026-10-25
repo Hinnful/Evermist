@@ -12,6 +12,18 @@ Status tags and the paragraph budget: see the main ledger's header.
 
 ---
 
+### While building, the rig takes a look, never a set, and a hook enforces it · `SETTLED` (2026-10-25)
+A look is one scenario or one `--shot` screenshot, used only when code cannot answer "did it show,
+reach the Player, save". Refused while building: bare `npm run rig` (smoke), `regression`, a list of
+several names, reruns "to be sure", and repairing scenarios mid-build (a broken one waits for
+/commit). `.claude/hooks/guard-rig.js` (PreToolUse, Bash and PowerShell) enforces it; it allows the
+`--low-priority` line `rig-ci.js pick` prints for /commit, and everything when `CLAUDE_CODE_REMOTE=true`.
+**Relaxes** the earlier ban on any rig run while building: that rule was stricter than needed and
+pushed "did it work at all" checks onto the DM, while the era before it ran smoke and regression and
+repaired tests on every code change, so a colour tweak could take an hour. /commit's local pick is
+unchanged on purpose: the local machine is several times faster than the CI runners, so a 1px toast
+regression is cheaper found locally than an hour later in CI.
+
 ### A commit runs the scenarios that executed what it changed, and a map says which · `SETTLED` (2026-10-17)
 CI went red about thirty times in three weeks for two or three real bugs; each red cost twenty minutes
 and most were a test still expecting old behaviour or a cheap check nobody ran locally. The local pass

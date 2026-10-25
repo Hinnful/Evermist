@@ -161,18 +161,18 @@ error goes through it; no `alert()` ships.
   `fog.js`; its behavior is pixel output. New pure fog logic extends `fogGeometry.js`.
 - Never add unit tests for `render.js`, `scenes.js`, `state.js`, `renderer.js`, `toolbar.js`,
   `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`, `stress.js`.
-- **Never run a rig set on the DM's machine while building** - not even `smoke`. A run is the
-  DM's time. A cloud session runs it freely. `/commit`
-  gates the diff and CI runs the full set against the built app on all three platforms. See the `rig` skill.
+- **While building on the DM's machine, the rig takes a look, never a set**: one scenario or one
+  `--shot`, when code cannot answer. A cloud session runs it freely. `/commit` gates the diff, CI
+  runs the full set. See the `rig` skill.
 - **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance are
   theirs; correctness is yours. Backup, export and restore are the exception - the save dialog is
   native and cannot be driven.
 
 ## Guard hooks
 
-Fail-open hooks in `.claude/settings.json` guard the screen, keep work on main, name the skill
-and ratchet the inline script and this file. Every other house rule is a test, and each failure
-says how to fix it.
+Fail-open hooks in `.claude/settings.json` guard the screen, rig sets and work on main, name
+the skill and ratchet the inline script and this file. Every other house rule is a test, and each
+failure says how to fix it.
 
 ## Conventions
 

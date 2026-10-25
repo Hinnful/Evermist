@@ -109,9 +109,9 @@ function main() {
       'appearing in front takes their focus away from what they were doing. They asked for ' +
       'this to stop happening.\n\n' +
       'WHAT TO DO INSTEAD:\n' +
-      '  - to check behaviour, run the rig: `npm run rig` (smoke) or `npm run rig -- <name>`.\n' +
+      '  - to check behaviour, run the rig: `npm run rig -- <name>`, one scenario.\n' +
       '    It parks every window off-screen before it can appear.\n' +
-      '  - to check a packaging bug, `npm run rig -- --exe "dist/win-unpacked/Evermist.exe"`,\n' +
+      '  - to check a packaging bug, `npm run rig -- <name> --exe "dist/win-unpacked/Evermist.exe"`,\n' +
       '    which is parked too. NEVER the portable dist/Evermist.exe - it writes into the real\n' +
       '    map library.\n' +
       '  - for anything the rig genuinely cannot answer, ASK THE DM to run it themselves and\n' +

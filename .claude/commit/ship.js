@@ -38,7 +38,11 @@ function parseArgs(argv) {
 function branchFor(slug, paths) {
   const own = paths.some((p) => p.replace(/\\/g, '/') === 'package.json');
   const version = JSON.parse(own ? fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8') : git(['show', 'HEAD:package.json'])).version;
-  if (!git(['tag', '-l', `v${version}`])) return `release/${version}`;
+  if (!git(['tag', '-l', `v${version}`])) {
+    // A change pushed over an unreleased bump would release that version with this commit's notes.
+    if (!own) throw new Error(`${version} is committed but not released yet; ship this once release/${version} lands`);
+    return `release/${version}`;
+  }
   if (!/^[\w.-]+$/.test(slug || '')) throw new Error(`v${version} is already released, so this goes to change/<slug>; pass --slug`);
   return `change/${slug}`;
 }

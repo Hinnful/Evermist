@@ -182,7 +182,7 @@ The reply style in `.claude/output-styles/steering.md` governs every reply. On t
 
 | Check | Runs | Enforces |
 |---|---|---|
-| Guard hooks in `.claude/hooks/` | On every edit in a Claude session | Doc size and shape, the inline script, comment share, repeated sentences, module size, skill hints, the screen, work kept off main |
+| Guard hooks in `.claude/hooks/` | On every edit in a Claude session | Doc size and shape, the inline script, comment share, repeated sentences, module size, skill hints, the screen, rig sets while building, work kept off main |
 | `tools/check-guards.js` | CI, every push | The blocking guards over the whole tree, whoever edited it |
 | `npm test` | CI, every push; `/commit` | App logic, packaging, and the prose rules in `test/rules.test.js` |
 | `tools/check-release.js` | CI, `decide` | Branch, version and release-title agreement |
