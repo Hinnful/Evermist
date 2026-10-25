@@ -44,6 +44,13 @@ function initDock() {
 
 function dockActivePane() { return _dockPane; }
 
+// How far the map area stops short of the window's right edge: the dock's width, 0 where it is hidden.
+function dockMapInset() {
+  const dock = _dockEl();
+  const r = dock ? dock.getBoundingClientRect() : { width: 0, left: 0 };
+  return r.width ? Math.max(0, window.innerWidth - r.left) : 0;
+}
+
 // The one way to open, switch or shut the pane; `name` is a pane, or null for the rail alone.
 function dockOpen(name, forced) {
   const dock = _dockEl();

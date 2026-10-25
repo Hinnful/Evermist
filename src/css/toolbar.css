@@ -284,7 +284,7 @@
   body.player-mode #room-fog, body.world #room-fog, body.players-view #room-fog { display: none !important; }
 
   /* The players' view: the DM's map as the TV shows it, inside a blue frame while it is on. */
-  #pv-frame { position: fixed; inset: 0; z-index: 50; pointer-events: none; display: none; box-shadow: inset 0 0 0 3px var(--b-solid); }
+  #pv-frame { position: fixed; top: 0; left: 0; bottom: 0; right: 0; z-index: 50; pointer-events: none; display: none; box-shadow: inset 0 0 0 3px var(--b-solid); }
   #pv-frame span {
     position: absolute; top: 12px; left: 50%; transform: translateX(-50%); zoom: var(--ui-zoom, 1.2); padding: 6px 12px;
     border-radius: 7px; background: var(--b-solid); color: #fff; font: 600 12px/1 system-ui, -apple-system, sans-serif; white-space: nowrap;
@@ -433,3 +433,10 @@
      gone with their markup — the brush slider moved into #panel-brush-bottom above the
      toolbar, and the player controls into the dock's Scene control. The brush READOUT is
      styled by .brush-val, not by an id rule. */
+
+/* Hovering Reveal all or Hide all: a frame in the result's colour, ending at the dock (fogPreview.js). */
+#fp-frame { position: fixed; top: 0; left: 0; bottom: 0; right: 0; z-index: 50; pointer-events: none; box-sizing: border-box;
+  opacity: 0; transition: opacity 180ms ease; border: 2px solid var(--fp-c); box-shadow: inset 0 0 22px var(--fp-glow); }
+#fp-frame.on { opacity: 1; }
+#fp-frame[data-kind="reveal"] { --fp-c: #5fe39a; --fp-glow: rgba(95, 227, 154, 0.35); }
+#fp-frame[data-kind="hide"] { --fp-c: #b48cff; --fp-glow: rgba(180, 140, 255, 0.35); }

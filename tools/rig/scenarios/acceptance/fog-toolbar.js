@@ -10,7 +10,7 @@
 // THE CRITERIA ARE THIS HEADER, numbered as the definition of done they came from. Each has its
 // checks under a marker carrying its number, wherever in the file that state is cheapest to reach.
 //
-//   1.  Reveal all and Hide all are two bare eyes on the bar after a divider, right after Select,
+//   1.  Reveal all and Hide all are two bare clouds on the bar (struck out, solid) after a divider, right after Select,
 //       Brush and Shape. One click acts on the whole map, rooms included; undo restores it. Scene
 //       control no longer shows them. Effects mode keeps them.
 //   2.  The picked tool's row starts with the fog mode: three clouds in a well. The lit one sets what
@@ -119,14 +119,14 @@ module.exports = async function fogToolbarFeature(rig) {
   rig.check(await dm.evaluate('!playersViewOn'), 'H typed in a field turned the players\' view on');
   await dm.evaluate('document.activeElement.blur(); 0');
 
-  // ── 1. The bar: Select, Brush, Shape, a divider, two eyes ─────────────────
+  // ── 1. The bar: Select, Brush, Shape, a divider, two clouds────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   const bar0 = await dm.evaluate('__rigBar()');
   rig.check(bar0.shown.join() === 'btn-select,btn-brush,btn-shape,btn-effects,tb-reveal-all,tb-hide-all',
             'the Fog bar is not Select, Brush, Room, Effects, then Reveal all and Hide all: ' + bar0.shown.join(' '));
   const order = await dm.evaluate(`(() => [...document.getElementById('toolbar-bottom').children]
     .filter(e => e.getClientRects().length).map(e => e.id || e.className).join())()`);
-  rig.check(/tb-grp-shape,tb-grp-fx,div-whole,tb-whole/.test(order), 'the eyes do not follow Room and Effects after a divider: ' + order);
+  rig.check(/tb-grp-shape,tb-grp-fx,div-whole,tb-whole/.test(order), 'Reveal all and Hide all do not follow Room and Effects after a divider: ' + order);
   const scene = await dm.evaluate(`(() => { const b = document.getElementById('btn-clear-fog');
     return { hidden: b.getClientRects().length === 0, ids: !!document.getElementById('btn-fill-fog') }; })()`);
   rig.check(scene.hidden && scene.ids, 'Scene control still shows the Whole map row, or its ids went: ' + JSON.stringify(scene));

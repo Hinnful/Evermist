@@ -190,11 +190,11 @@ partial erase can't re-fog ground already clear, i.e. the room the party just le
 
 Three controls, one meaning each (`fogBar.js`, `roomSwitcher.js`). The fog is a cloud, in three
 states: struck out is Reveal (green), striped is Half (teal), solid is Hide (purple); the lit one
-wears the colour of the room outline it will draw. An eye means "act now" and is on the bar only.
+wears the colour of the room outline it will draw. Reveal all and Hide all wear the struck-out and solid clouds and act now.
 
-- **Reveal all and Hide all are two bare eyes on the bar**, after a divider, right after Select,
+- **Reveal all and Hide all are two bare clouds on the bar** (struck out, solid), after a divider, right after Select,
   Brush and Shape. One click acts on the whole map, every room included (`revealAllMap`,
-  `hideAllMap`), and undo restores it. They stay in Effects mode. `#btn-clear-fog` and
+  `hideAllMap`), and undo restores it. They stay in Effects mode. Hovering either previews its result on the DM's map alone (`fogPreview.js`). `#btn-clear-fog` and
   `#btn-fill-fog` stay in Scene control as the hidden back end, not shown.
 - **The fog mode is the first thing in the picked tool's row**: the three clouds in a well. It is
   the paint direction and nothing else: a click calls `setPaintDirection`, never changes the tool

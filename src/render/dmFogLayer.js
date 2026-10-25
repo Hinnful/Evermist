@@ -207,6 +207,7 @@ function pixiEndFogTransition() {
 }
 
 function pixiDestroyFog() {
+  fogPreviewEnd();
   // Release mask before destroying container to avoid PixiJS filter teardown warnings
   if (pixiFogCloudContainer) pixiFogCloudContainer.mask = null;
 

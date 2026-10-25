@@ -429,3 +429,7 @@ Each push showed three runs: the Tests workflow from the push, again from its pu
 own jobs run the same unit tests, lint and guards. The Tests workflow is deleted, so a release or change push shows one
 run. `main`'s protected check was already Build & Release's unit-test job. Experiment branches (`soak/**`, `probe/**`,
 `platformrig/**`) get no unit-test run; they ship nothing.
+
+### The fit-to-tv flake is closed · `SETTLED` (2026-10-25)
+Every recorded rerun of `fit-to-tv.js` predates commit d33dae4 (2026-10-23), the same-evaluate fix above, and none has
+failed in four release runs since. `node tools/rig-ci.js flakes` keeps flagging it until those runs leave its 15-run window.

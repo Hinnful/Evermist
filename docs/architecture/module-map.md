@@ -67,6 +67,7 @@ language, present tense. The terse version every session carries is in
 | `ping.js` | The ping: a gold ring with ticks, ripples and sparks at a map point for about two and a half seconds, drawn in the DM window and on the TV alike. It is sized to the window rather than the map and stored nowhere. |
 | `lights.js` | A scene's lights, which are polygons in a list of their own. It seeds them from the floor plan on request, draws a faint warm line round the lit areas under the fog on both screens, and sends the outlines to the Player. |
 | `playerWindow.js` | The DM's side of the Player window: opening it, keeping a warm one ready so the next press is instant, and deciding what is sent to it and when. |
+| `fogPreview.js` | The hover preview of Reveal all and Hide all: the DM's fog layer hidden or covered, inside a green or purple frame that ends at the dock. Render-only: no fog state, no undo, nothing to the Player. |
 | `playersView.js` | The players' view: holding H shows the DM's own map with the fog at full strength, the room outlines hidden and a blue frame around it. |
 | `minimap.js` | The DM's live preview of the Player camera in the bottom-left corner, and the remote control that drives it. |
 | `tvPick.js` | Which screen is the TV, decided from the display list and the pick the DM made last time. No screen of its own; unit-tested. |

@@ -1018,6 +1018,7 @@ bar, the row and the popup share one visual system. Built from throwaway prototy
 - "Don't reintroduce a divider on this bar" (REVERTED 2026-08-09): the bar has full-height dividers.
 - Scene control's "the eye means shown/hidden": on the bar an eye acts at once; Scene control's layer eyes keep their
   meaning, and the minimap's players' view moves to a TV icon (**reversed 2026-10-23**: the button is gone, hold H stays).
+  (**"On the bar an eye acts at once" reversed 2026-10-25** by "An eye is a switch, never an action".)
 - "Effect presets: a size row above the bar, the wheel steps it" (2026-09-29): one grid-step size field; the wheel and
   scrub stop at both ends instead of wrapping, and sizes snap to grid squares.
 - "Cut is its own geometry, not a thin Trim" (2026-09-02): Split is Ctrl on a shape, along the edge for Rectangle and Circle
@@ -1034,7 +1035,23 @@ The fog mode is the first thing in the picked tool's row, a well of three clouds
 (shapes only, absent under the Brush), solid is Hide. The lit cloud wears the room-outline colour it will draw: green, teal,
 purple. A click sets the paint direction and touches no room. A selected room's popup holds the same clouds, and a click
 there sets that room's fog at once. The bar's eye switcher and its chevron are gone. Rejected in the prototype: eyes
-for the modes (an eye now means "act now"), plus and minus, a tick, a slash and a cross, an eraser, and dots in the cloud.
+for the modes (an eye now means "act now", **reversed 2026-10-25**), plus and minus, a tick, a slash and a cross, an eraser, and dots in the cloud.
+
+### An eye is a switch, never an action; Reveal all and Hide all wear the room clouds · `SETTLED` (2026-10-25)
+Reverses "on the bar an eye acts at once" and the "act now" eye above. A first-time tester read the grid eye (changes the
+look when pressed) against the fog bar's eyes (do not) as a fault. An eye now means shown or hidden and is a switch only,
+as the dock's layer eyes are. The same action wears the same icon: Reveal all is the struck-out cloud and Hide all the solid
+cloud, as a room's Reveal and Hide in its popup; the bar's place and the hover preview say "whole map". Rejected: text
+labels, since the bar's one word should be Room and every extra word dilutes it; a map-frame-with-cloud glyph (prototype);
+icons alone without a preview, not enough to explain a whole-map action.
+
+### Hovering Reveal all or Hide all previews it on the DM's map · `SETTLED` (2026-10-25)
+`fogPreview.js` is render-only: Reveal all hides the DM fog layer, Hide all lays a flat fog-colour overlay at the DM fog
+opacity, with no drifting clouds. It changes no fog state, undo or save and sends nothing to the Player; it ends on leave,
+press, click, blur, any key and a fog rebuild, and does nothing in two-maps mode or on the world map. A frame around the map
+area takes the action's colour, green for Reveal and purple for Hide (the colours the lit clouds wear), so it never reads as
+the players' view frame, and fades over 180 ms. Both frames end at the dock's left edge (`dockMapInset`); the players' view
+frame had run under the dock rail.
 
 ### Figma's pick-two-then-boolean is rejected · `REJECTED` (2026-10-16)
 Figma merges, subtracts or intersects the shapes you picked. Evermist has no layers, and the drawn shape is not a record

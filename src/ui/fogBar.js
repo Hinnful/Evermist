@@ -26,8 +26,9 @@ function initFogBar() {
     b.onclick = () => { if (!b.disabled) setPaintDirection(b.dataset.dir); };
   });
   const reveal = document.getElementById('tb-reveal-all'), hide = document.getElementById('tb-hide-all');
-  reveal.innerHTML = uiIcon('eyeOpen', 18, 1.6);
-  hide.innerHTML = uiIcon('eyeShut', 18, 1.6);
+  reveal.innerHTML = uiIcon('cloudOff', 18, 1.6);
+  hide.innerHTML = uiIcon('cloudSolid', 18, 1.6);
+  fogPreviewInit(reveal, hide);
   reveal.onclick = revealAllMap;
   hide.onclick = hideAllMap;
   window.addEventListener('resize', placeContextRow);

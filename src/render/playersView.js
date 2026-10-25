@@ -24,6 +24,7 @@ function _pvApply() {
   if (on === playersViewOn) return;
   playersViewOn = on;
   document.body.classList.toggle('players-view', on);
+  if (on) document.getElementById('pv-frame').style.right = dockMapInset() + 'px';
   if (pixiFogLayer) pixiFogLayer.alpha = on ? 1 : FOG_OPACITY_DM;
   viewportDirty = true;
   scheduleRender();
