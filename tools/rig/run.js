@@ -439,53 +439,60 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true) {
   let diedEarly = null;
   proc.once('exit', code => { live.delete(proc); diedEarly = code; });
 
-  // The splash window is a page target too, so match on the DM's own document and exclude the
-  // Player's query string. This wait is also the app's boot: the debug endpoint does not answer
-  // at all until Chromium is up, so it polls rather than sleeping a guess.
-  let dmTarget;
+  // ⚠ A boot that fails after the spawn kills what it spawned. A hung app left alive kept a slow
+  // runner slower, so one slow boot became three in a row and the shard aborted.
   try {
-    dmTarget = await cdp.waitForTarget(port,
-      t => t.url.includes('index.html') && !t.url.includes('mode=player'), 90000, 'the DM window');
-  } catch (err) {
-    const why = diedEarly != null ? 'the app exited on its own (code ' + diedEarly + ')' : err.message;
-    throw new Error(why + bootDiagnosis(proc, port, spawnedAt, tail));
-  }
-  const browser = await cdp.connectBrowser(port);
-  const dm = await cdp.connect(dmTarget.webSocketDebuggerUrl, 'dm');
-  await dm.watch();
-  await dm.waitFor(DM_READY, 90000, 'the DM init chain');
-  await assertPreloadRan(dm);
-  // Before any scenario reads a rect. A no-op unless --dm-size was passed.
-  await sizeRendererTo(dm, args.dmSize, args.screenSize);
-
-  // ⚠ REFUSE TO RUN AGAINST A LIBRARY THAT ALREADY HAS SCENES IN IT. Scenarios import maps,
-  // switch scenes (which autosaves the outgoing one) and restore backups, so a rig run on real
-  // data damages it. The isolated --user-data-dir normally guarantees an empty library, but the
-  // portable build calls app.setPath('userData', …) from PORTABLE_EXECUTABLE_DIR and overrides
-  // the flag entirely — so with `--exe dist/Evermist.exe` the rig lands in the library beside
-  // that .exe. An empty library is the observable proof that isolation held; check it, do not
-  // assume it.
-  // Retried, because the scene database comes up inside initScenes and can still be null when
-  // the control panel (the DM_READY signal) has already been built. Waited for on a restart
-  // too, so a scenario reading the library back never races the store coming up.
-  const existing = await dm.evaluate(`(async () => {
-    for (let i = 0; i < 250; i++) {
-      try { return (await sceneStore.listScenes()).length; }
-      catch (_) { await new Promise(r => setTimeout(r, 200)); }
+    // The splash window is a page target too, so match on the DM's own document and exclude the
+    // Player's query string. This wait is also the app's boot: the debug endpoint does not answer
+    // at all until Chromium is up, so it polls rather than sleeping a guess.
+    let dmTarget;
+    try {
+      dmTarget = await cdp.waitForTarget(port,
+        t => t.url.includes('index.html') && !t.url.includes('mode=player'), 90000, 'the DM window');
+    } catch (err) {
+      const why = diedEarly != null ? 'the app exited on its own (code ' + diedEarly + ')' : err.message;
+      throw new Error(why + bootDiagnosis(proc, port, spawnedAt, tail));
     }
-    throw new Error('the scene database never came up');
-  })()`, 60000);
-  if (expectEmptyLibrary && existing > 0) {
-    throw new Error('the app opened a library that already holds ' + existing + ' scenes, so the ' +
-      'isolated profile did not take and a run would damage real maps. A portable build ignores ' +
-      '--user-data-dir and keeps its data beside the .exe; point --exe at dist/win-unpacked/' +
-      'Evermist.exe instead, which honours it.');
-  }
+    const browser = await cdp.connectBrowser(port);
+    const dm = await cdp.connect(dmTarget.webSocketDebuggerUrl, 'dm');
+    await dm.watch();
+    await dm.waitFor(DM_READY, 90000, 'the DM init chain');
+    await assertPreloadRan(dm);
+    // Before any scenario reads a rect. A no-op unless --dm-size was passed.
+    await sizeRendererTo(dm, args.dmSize, args.screenSize);
 
-  // One Player per column in two-column mode, so the sessions are keyed rather than held one
-  // at a time. '' is the single-map window.
-  return { proc, port, browser, dm, dmTargetId: dmTarget.id, players: new Map(), stage: null,
-           playerSize: args.playerSize, screenSize: args.screenSize };
+    // ⚠ REFUSE TO RUN AGAINST A LIBRARY THAT ALREADY HAS SCENES IN IT. Scenarios import maps,
+    // switch scenes (which autosaves the outgoing one) and restore backups, so a rig run on real
+    // data damages it. The isolated --user-data-dir normally guarantees an empty library, but the
+    // portable build calls app.setPath('userData', …) from PORTABLE_EXECUTABLE_DIR and overrides
+    // the flag entirely — so with `--exe dist/Evermist.exe` the rig lands in the library beside
+    // that .exe. An empty library is the observable proof that isolation held; check it, do not
+    // assume it.
+    // Retried, because the scene database comes up inside initScenes and can still be null when
+    // the control panel (the DM_READY signal) has already been built. Waited for on a restart
+    // too, so a scenario reading the library back never races the store coming up.
+    const existing = await dm.evaluate(`(async () => {
+      for (let i = 0; i < 250; i++) {
+        try { return (await sceneStore.listScenes()).length; }
+        catch (_) { await new Promise(r => setTimeout(r, 200)); }
+      }
+      throw new Error('the scene database never came up');
+    })()`, 60000);
+    if (expectEmptyLibrary && existing > 0) {
+      throw new Error('the app opened a library that already holds ' + existing + ' scenes, so the ' +
+        'isolated profile did not take and a run would damage real maps. A portable build ignores ' +
+        '--user-data-dir and keeps its data beside the .exe; point --exe at dist/win-unpacked/' +
+        'Evermist.exe instead, which honours it.');
+    }
+
+    // One Player per column in two-column mode, so the sessions are keyed rather than held one
+    // at a time. '' is the single-map window.
+    return { proc, port, browser, dm, dmTargetId: dmTarget.id, players: new Map(), stage: null,
+             playerSize: args.playerSize, screenSize: args.screenSize };
+  } catch (err) {
+    killApp(proc);
+    throw err;
+  }
 }
 
 // ─── Recording which app files a scenario ran ────────────────────────────────

@@ -28,6 +28,8 @@ function setIn(rest) {
   if (toks.includes('--low-priority')) return null;
   const names = [];
   for (let i = 0; i < toks.length; i++) {
+    // A redirection is not a name: `2>&1`, `>out.txt`, or a bare `>` before its file.
+    if (/^\d*[<>]/.test(toks[i])) { if (/^\d*[<>]+&?$/.test(toks[i])) i++; continue; }
     if (TAKES_VALUE.has(toks[i])) i++;
     else if (!toks[i].startsWith('--')) names.push(toks[i]);
   }

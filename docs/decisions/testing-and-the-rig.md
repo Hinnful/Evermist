@@ -445,3 +445,15 @@ run. `main`'s protected check was already Build & Release's unit-test job. Exper
 ### The fit-to-tv flake is closed · `SETTLED` (2026-10-25)
 Every recorded rerun of `fit-to-tv.js` predates commit d33dae4 (2026-10-23), the same-evaluate fix above, and none has
 failed in four release runs since. `node tools/rig-ci.js flakes` keeps flagging it until those runs leave its 15-run window.
+
+### A failed boot kills the app it spawned, and says why · `SETTLED` (2026-10-25)
+Windows CI shards aborted with "3 scenarios in a row could not start the app". When a boot timed out
+(a slow runner, slower under `--coverage`, which only Windows gate shards record), `startInstance`
+threw without killing the Electron process it had spawned. The hung app kept eating CPU, so the rerun
+and the next scenarios timed out too, and after three the shard aborted. Probe of Windows shard 6 in
+10 copies: 10/10 passed without coverage, 1/10 failed with it, live apps in the rig growing 2 then 3.
+`tools/rig/run.js` now kills what it spawned on any failure after the spawn; proven both ways against
+a stand-in exe that never answers (old code left 1 then 2 live apps, new code 1 each time). A failed
+boot also prints a diagnosis (pid state, seconds, port, live apps, machine processes, output tail) so a
+CI-only failure reads off the log. `probe.yml` needs `fetch-depth 0` since prerig reads release commits,
+and its matrix repeats Windows shard 6 with coverage. `guard-rig.js` ignores shell redirections.
