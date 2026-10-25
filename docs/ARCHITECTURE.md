@@ -88,6 +88,15 @@ prints. A right-click menu (`worldMapMenu.js`) offers each thing's actions, a pl
 own handlers see it, and while it is up the map's keys are held back so nothing reaches the TV. Place notes
 live in `evermist.placeNotes` by name and ride a backup in `campaign.json`.
 
+**The party marker** (`worldParty.js`, pure `worldPartyPlan.js`) is one per library, in localStorage `evermist.worldParty`
+as a point or a point tied to a map id. Right-click a map, group or the ground: "We're here" (hidden on the map that
+holds it); right-click the marker: "Take the marker off". Dragging moves it; released within a few screen pixels of a
+card it lands on that map (top edge centre), else it stays free. It follows its map, live during a card drag; a deleted
+map leaves it free at its last spot. World-map undo snapshots carry it. The mist thins in a soft circle of 280 world
+units around it (`worldMist.js`); the TV never shows it. "Back up everything" writes it to `campaign.json` as `party`,
+a pick export leaves it out, and import sets it only when the library has none, keeps the map link when that map came
+in, and shifts a free point with the layout.
+
 **The Notes tab** (`notesPanel.js`) is a rail tab like the others, placed after Scene control, and
 uses the dock's width. It holds the notes and the selected room, whose name, Delete and notes
 used to be the dock's Room tab. A new room pick, or a switch to another room, brings Notes up when

@@ -71,18 +71,20 @@ function notesPlacesClean(raw) {
 
 // The campaign.json at a backup's root. Null when there is nothing to carry, so the zip looks as it
 // always did.
-function notesCampaignPayload(text, places, shapes, roads, roadNotes) {
+function notesCampaignPayload(text, places, shapes, roads, roadNotes, party) {
   const hasText = typeof text === 'string' && !!text.trim();
   const named = notesPlacesNew();
   for (const k of Object.keys(places || {})) if (typeof places[k] === 'string' && places[k].trim()) named[k] = places[k];
   const hasPlaces = Object.keys(named).length > 0;
   const drawn = shapes && Object.keys(shapes).length > 0;
   const laid = roads && Object.keys(roads).length > 0;
-  if (!hasText && !hasPlaces && !drawn && !laid) return null;
+  const marked = !!party && typeof party === 'object' && Number.isFinite(party.x) && Number.isFinite(party.y);
+  if (!hasText && !hasPlaces && !drawn && !laid && !marked) return null;
   const out = {};
   if (hasText) out.notes = text;
   if (hasPlaces) out.places = named;
   if (drawn) out.placeShapes = shapes;
+  if (marked) out.party = party;
   if (laid) {
     out.roads = roads;
     // Only a road that is in the file carries notes, so a deleted road's note does not ride along.

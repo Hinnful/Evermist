@@ -57,6 +57,7 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes) {
   for (const s of allScenes) sceneMap[s.id] = s.id;
   for (const x of items) sceneMap[x.entry.id] = x.id;
   worldRoadsImport(plans.roads, sceneMap, placeSet, shift.dx, shift.dy);
+  worldPartyImport(wptParse(raw), sceneMap, shift.dx, shift.dy);
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 
   const nl = String.fromCharCode(10), b = plans.broken, parts = [];

@@ -44,7 +44,7 @@ function worldMapInit() {
   worldBackupInit();
   worldMapColumnsInit();
   worldMapFindInit();
-  worldMapOpenBarInit(); worldMapFanInit();
+  worldMapOpenBarInit(); worldMapFanInit(); worldPartyInit();
 }
 
 const _wmView = () => ({ w: _wm.clientWidth || innerWidth, h: _wm.clientHeight || innerHeight });
@@ -244,7 +244,7 @@ function _wmDraw() {
   const selPlace = selScene ? sanitizeGroupName(selScene.group) : worldMapSel.place;
   _wmExt = null;
   _wmPickSet = new Set(worldMapPicked());
-  worldMistDraw(places, allScenes);
+  worldMistDraw(places, allScenes); worldPartyDraw();
   for (const p of places) _wmDrawPlace(p, selPlace);
   worldMapRoadsDraw();
   for (const s of allScenes) _wmDrawScene(s, places);

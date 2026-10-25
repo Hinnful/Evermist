@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 10 open items; IDs run to 225."
+description: "Open work only. 19 open items; IDs run to 235."
 metadata: 
   node_type: memory
   type: project
@@ -99,23 +99,64 @@ No item is queued here.
 
 ---
 
-# CLAUDE DOES THE PREP
+# CLAUDE DOES THE PREP - THE MCP EPIC
 
-### 207. Claude sees the map and preps its rooms
-Filed 2026-10-19, the part of the Claude prep work 4.6.5 left. Claude can make scenes but cannot yet see them, so it
-cannot draw rooms or place anything on a map. Prep only; nothing reaches the TV, every change takes one undo step.
-- **Test first, done:** tracing rooms from a picture alone on three Dungeon Alchemist interiors, against the rooms
-  their .dd2vtt floor plans give: clearly walled rooms overlapped 80-97% with walls within about half a grid square;
-  one-square closets, rooms split by walls hard to see from above, and halls and corridors were missed. 14 of 35 rooms
-  matched closely, 20 of 35 at half or better. So Claude's outlines are a first draft for maps with no floor plan and
-  the floor plan stays first. The picture tool needs a percent grid over the map and a way to zoom into an area. The
-  check was a one-off measurement and stays out of CI. **Still needs /spec.**
-- **Rooms and fog:** Claude creates, reshapes and deletes rooms, names them and writes their notes from a module or
-  the DM's notes, and sets each one hidden, half or revealed. Claude reveals or hides the whole map or an area. It
-  works on a scene that is not open, through the saved scene.
-- **Floor plan and module:** Claude loads a .dd2vtt floor plan (rooms, lights, grid) and uses it before its own
-  outlines. Claude imports a module PDF and links rooms to its entries; the app itself still never assigns.
-- **Effects and lights:** Claude places, changes and deletes them.
+Opened 2026-10-25. **The endgame:** Claude does everything a DM can do in Evermist except play. Play is what
+changes the TV now or acts at the table: opening or sending a map, two maps, showing a picture, playing music or
+sounds, TV setup, sync, ping, and the open fight's HP, conditions and initiative. Anything else is prep, and a
+doubtful case is settled case by case from that logic. A fight is prep while it is built: placing monsters is
+prep, taking away is play. **Deletes are allowed, with no trash:** the DM is told plainly that Claude can delete,
+each delete waits for their yes, and undo lasts until Evermist closes. A trash and a saved history were rejected
+as overengineering. Today Claude covers about two fifths of prep. The chapters go one at a time, in this order.
+**Open calls, settled when their chapter comes up:** map-look settings (shrink on import, half-room fog,
+feather) as prep; the DM's machine settings (language, hints, seat, updates) and backup, restore and export left
+out; the map open on the DM's screen but not on the TV.
+
+### 226. Ground rules for Claude's changes
+A delete call changes nothing until it says it is confirmed; without that it answers with what would go. Connect
+to Claude and the guide tell the DM that Claude can delete and that undo lasts until Evermist closes. Claude may
+add monsters to the fight open at the table, and only add. The rule above goes into PRODUCT.md.
+**Prep · DM only**
+
+### 207. Claude sees a map
+Claude looks at any map as a picture with a percent grid over it, zooms into an area, and reads the map's whole
+contents: rooms, fog, effects, grid and floor plan. Measured 2026-10-19 on three Dungeon Alchemist interiors:
+outlines traced from a picture alone matched clearly walled rooms closely and missed closets, halls and walls hard
+to see from above, so they are a first draft and a floor plan comes first. **Needs /spec.**
+**Prep · DM only**
+
+### 227. Claude draws rooms and doors
+Claude draws, names, writes notes for, reshapes and deletes rooms, merges, cuts and splits them, and marks doors,
+on a map that is not on the TV. Each change is one undo step. **Needs /spec.**
+**Prep · DM only**
+
+### 228. Claude sets the fog
+Claude sets each room hidden, half or revealed, opens or closes an area, reveals or hides the whole map, and sets
+the fog's drift and tint, on a map that is not on the TV. **Needs /spec.**
+**Prep · DM only**
+
+### 229. Claude loads floor plans and module text
+Claude loads a .dd2vtt floor plan and takes rooms, doors, lights and grid from it before its own outlines. It loads
+a module text or PDF and links rooms to its entries; the app itself still never assigns. **Needs /spec.**
+**Prep · DM only**
+
+### 230. Claude sets the grid, effects and lights
+Grid on or off, its type and look, fitting it to the map; placing, changing and deleting effects; drawing lights
+or taking them from a floor plan, and turning them on or off. **Needs /spec.**
+**Prep · DM only**
+
+### 231. Claude fills the Campaign gaps
+Groups of any shape, a map at an exact spot, editing, renaming and deleting roads, a map on or off a road, road
+notes, the backdrop's size, opacity and position, and adding maps from a zip. **Needs /spec.**
+**Prep · DM only**
+
+### 232. Claude fills the fight and bestiary gaps
+Duplicating a fight, a row's details before the fight starts, and editing, deleting, duplicating and importing
+bestiary monsters from an Evermist file. **Needs /spec.**
+**Prep · DM only**
+
+### 233. Claude keeps the music library
+Adding tracks from files or YouTube links, deleting tracks, and music groups. Playing stays play. **Needs /spec.**
 **Prep · DM only**
 
 ---
@@ -128,6 +169,19 @@ minimap's frame after Sync View with the TV turned: the frame keeps the old zoom
 whether the check reads the frame before it repaints or the app misses a repaint, then fix the check or retire it.
 Small effort; no risk to what installs.
 **Tests · DM only**
+
+### 234. The hints-next-map check fails at random
+Filed 2026-10-25. The rig scenario `hints-next-map` needed a rerun in 3 recent CI runs on Windows. It fails on the
+"Ready for the next map?" toast: the Campaign button does not blink, or the toast was not recorded. Find whether the
+check reads too early or the app misses the blink, then fix the check or retire it.
+**Upkeep · DM only**
+
+### 235. The Campaign toolbar, redesigned
+Filed 2026-10-25. Roads sit under the Groups tool, which reads as if a road were a kind of group, and item 184's
+Straight walls sits alone over the drawing tools. Decide what the Campaign's toolbar holds and in what order, including
+whether the party marker gets a button there (today only the right-click menu places it). **Needs a look-and-feel
+pass.**
+**Polish · DM only**
 
 ### 184. Straight walls sits alone over the world map's drawing tools
 Filed 2026-10-16. With the repairs gone from places, the row over a place tool holds one icon, Straight walls, and it
@@ -162,14 +216,6 @@ the start screen, and left the logo mark violet in About and on the splash, wher
 app icon file. Redrawing it means the mark in `about.js` and `splash.html` and the icon files
 together, so the installed icon and the in-app mark stay one picture.
 **Polish · Both**
-
-### 164. The party flag on the world map
-Filed 2026-09-29 in item 140, split out 2026-10-09. The DM drags a flag onto the scene or place the party is in. It is
-apart from the open scene, since the DM preps scenes the party is not in, and scenes the party has visited look
-different. **Look, settled 2026-10-08:** the Ping tool's bezel pared down to a thin gold ring with four diamonds,
-turning slowly around the scene, with the mist thinning around it. **Open for /spec:** what "visited" looks like, and
-whether the flag rides a backup. The TV never shows it.
-**Campaign · DM only**
 
 ### 189. Doors follow a hex grid
 Filed 2026-10-17, low priority. On a square grid a door snaps to the map's own grid cells. On a hex grid, and on any

@@ -188,6 +188,7 @@ function _wmMove(e) {
   c.classList.add('dragging');
   _wmPx(c, '--px', w.x - d.ox - WM_CARD_W / 2);
   _wmPx(c, '--py', w.y - d.oy - WM_CARD_H / 2);
+  worldPartyFollow(d.id, { x: w.x - d.ox, y: w.y - d.oy });
   if (_wmDropEl) _wmDropEl.classList.remove('drop');
   const under = document.elementFromPoint(e.clientX, e.clientY);
   _wmDropEl = under && under.closest('.wm-card.loose');

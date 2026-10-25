@@ -250,6 +250,14 @@ the same shape. Neither is something a campaign needs: no town is prepared twice
 A scene belongs to a place only when its whole card sits inside the outline. A card dropped across the edge is a
 stray by design, so the drop carries no hint, glow or nudge to pull it inside.
 
+### The party marker is a flat blue compass star, and it tracks nothing · `SETTLED` (2026-10-25)
+The marker is a four-point compass star with a ring and a slow bob, in the app's blue, which already marks what is
+active; gold was rejected for that reason, and the first gold ring borrowed from the Ping bezel is superseded. Shaded 3D
+looks (dice, shield, crystal) were rejected as off the app's flat style, and a plain crystal as too close to a
+well-known game's marker. Tracking visited maps was rejected: a chore with no practical benefit. The mist lifting
+around the marker stays. A toolbar button to place it is `REJECTED` for now: the right-click menu is the only entry
+until the Campaign toolbar has its own redesign (roads sit under groups today).
+
 ### Pictures belong to the gallery, never to a room, scene or place · `SETTLED` (2026-10-09)
 A picture shown on the TV is linked to nothing on the map, so one picture serves every scene it is needed in, such as
 a creature that follows the party from map to map. Once the gallery exists, room pictures move into it and the
@@ -336,6 +344,14 @@ maps, Seat and Fit to TV, backup, restore and settings. Claude may change and de
 "Claude only adds" no longer holds. Each delete asks the DM first, and every Claude call is one undo step.
 Nothing Claude does reaches the TV. Claude may name a room from a module or notes. Effects and lights
 wait until Claude can see the map. Without Claude the app is unchanged.
+
+### Claude does everything a DM can do except play · `SETTLED` (2026-10-25, scope; not yet built)
+Supersedes the play list in "Claude preps, and never plays": music and sounds' library, settings and backup are now
+case by case. Play is what changes the TV now or acts at the table: opening or sending a map, two maps, showing a
+picture, playing music or sounds, TV setup, sync, ping, the open fight's HP, conditions and initiative. A doubtful
+case is settled from that logic. Building a fight is prep (placing monsters is prep, taking away is play). Deletes are
+allowed with no trash: the DM is told plainly and each delete waits for a yes. A trash and a saved history of Claude's
+changes were rejected as overengineering for the MCP server.
 
 ### Size releases conservatively · `SETTLED`
 2.0.0 skipped 1.8 and 1.9 and landed on a docs-only commit, because a release tag has to match

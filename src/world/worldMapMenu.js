@@ -22,6 +22,7 @@ function _wmSceneRows(id) {
   ];
   if (group) rows.push({ label: 'Take out of its group', run: () => _wmTakeOut(id, group) });
   if (worldRoadOfScene(id)) rows.push({ label: 'Take off the road', run: () => worldMapRoadLeave(id) });
+  if (!worldPartyOn(id)) rows.push({ label: "We're here", run: () => worldPartyPlace({ scene: id }) });
   rows.push({ label: 'Export this map', run: () => worldBackupExport([id]) });
   rows.push({ label: 'Notes', run: () => _wmOpenNotes('scene') });
   rows.push({ sep: true });
@@ -47,11 +48,12 @@ function _wmPickRows(ids) {
   ];
 }
 
-function _wmPlaceRows(name) {
+function _wmPlaceRows(name, at) {
   return [
     { label: 'Rename', off: !_wmNameShown(name), run: () => _wmRenameStart(_wmEls.get('h' + name), 'place', name) },
     { label: 'Fit in view', run: () => worldMapFlyToPlace(name) },
     { label: 'Add maps here…', run: () => { _wmAddIn = name; document.getElementById('wm-add').click(); } },
+    { label: "We're here", run: () => worldPartyPlace(at) },
     { label: 'Notes', run: () => _wmOpenNotes('place') },
     { sep: true },
     { label: 'Delete group', danger: true, run: () => worldPlaceDelete(worldPlaceByName(name).id) },
@@ -92,6 +94,7 @@ function _wmGroundRows(at) {
   return [
     { label: 'Add maps here…', run: () => { _wmAddAt = at; document.getElementById('wm-add').click(); } },
     { label: 'New group here', run: () => _wmNewGroupAt(at) },
+    { label: "We're here", run: () => worldPartyPlace(at) },
     { label: 'Background picture…', run: () => document.getElementById('wm-bg-pick').click() },
     { label: 'Show everything', run: () => _wmFly(_wmOverview(), 650) },
   ];
@@ -116,9 +119,22 @@ function worldMapMenuOpen(e) {
   else if (g.kind === 'card' || g.kind === 'lm') { worldMapSelect({ sceneId: g.id, place: '' }); rows = _wmSceneRows(g.id); }
   else if (g.kind === 'road') { worldMapSelect({ sceneId: null, place: '', road: g.uid }); rows = _wmRoadRows(g.uid); }
   else if (under && under.corner >= 0) rows = _wmCornerRows(under.corner);
-  else if (under && under.place) { worldMapSelect({ sceneId: null, place: under.place.name }); rows = _wmPlaceRows(under.place.name); }
-  else if (g.kind === 'place') { worldMapSelect({ sceneId: null, place: g.name }); rows = _wmPlaceRows(g.name); }
+  else if (under && under.place) { worldMapSelect({ sceneId: null, place: under.place.name }); rows = _wmPlaceRows(under.place.name, at); }
+  else if (g.kind === 'place') { worldMapSelect({ sceneId: null, place: g.name }); rows = _wmPlaceRows(g.name, at); }
   else rows = _wmGroundRows(at);
+  _wmMenuShow(rows, e);
+}
+
+// The marker's own menu holds one row: take it off.
+function worldMapPartyMenuOpen(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  worldMapMenuClose();
+  if (_wmAnim || _wmEditing) return;
+  _wmMenuShow([{ label: 'Take the marker off', run: worldPartyRemove }], e);
+}
+
+function _wmMenuShow(rows, e) {
   const menu = document.createElement('div');
   menu.className = 'sm-menu wm-menu';
   menu.dataset.noI18n = '';

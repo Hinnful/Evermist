@@ -271,3 +271,20 @@
   .wf-nm b { font-weight: 700; }
   .wf-sub { padding: 0 2px 2px; color: var(--g-dim); font-size: 11px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .wf-row.on .wf-sub { color: var(--b-icon); opacity: .75; }
+
+  /* The party marker (worldParty.js): a flat blue compass star that floats over its spot at one size on screen
+     (--iz undoes the layer's zoom), bobbing slowly. Only the star takes the pointer. A map it is dragged over lights
+     in the picked blue, as a card dropped on another does. */
+  #wm-party { pointer-events: none; }
+  .wp-here { position: absolute; width: 0; height: 0; transition: left .4s cubic-bezier(.2, .8, .2, 1), top .4s cubic-bezier(.2, .8, .2, 1); }
+  .wp-fix { position: absolute; left: 0; top: 0; transform: scale(calc(1.4 * var(--iz))); }
+  .wp-shadow { position: absolute; left: -11px; top: -4px; width: 22px; height: 8px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0)); }
+  .wp-body {
+    position: absolute; left: -18px; top: -56px; width: 36px; height: 44px; cursor: grab; pointer-events: auto;
+    filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.55)); animation: wpBob 2.6s ease-in-out infinite;
+  }
+  .wp-here.drag .wp-body { cursor: grabbing; animation: none; transform: translateY(-6px); }
+  @keyframes wpBob { 50% { transform: translateY(-3px); } }
+  @media (prefers-reduced-motion: reduce) { .wp-body { animation: none; } }
+  .wm-lm.drop .wm-dot { box-shadow: inset 0 0 0 2px var(--b-icon, #8fb6ff), 0 0 0 4px var(--b-icon, #8fb6ff); }
+  .wmist-hole { transition: cx .4s, cy .4s; }

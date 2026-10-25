@@ -73,7 +73,7 @@ async function dataURLToArrayBuffer(dataURL) {
 // ── Export logic ──────────────────────────────────────────────────────────────
 
 // Scene SELECTION is the caller's job: it passes the ids straight in. `opts.partial` keeps only the places,
-// roads and notes that belong to those scenes (worldPickPlan.js), and leaves the campaign note out.
+// roads and notes that belong to those scenes (worldPickPlan.js), and leaves the campaign note and the party marker out.
 // `opts.destPath` skips the save dialog, which no test can drive.
 async function doExport(selectedIds, opts) {
   if (!window.electronAPI) return;
@@ -150,7 +150,7 @@ async function doExport(selectedIds, opts) {
       : null;
     const campaignJson = sub
       ? notesCampaignPayload('', sub.placeNotes, sub.shapes, sub.roads, sub.roadNotes)
-      : notesCampaignPayload(notesCampaignGet(), notesPlacesAll(), worldPlacesExport(), worldRoadsExport(), notesRoadsAll());
+      : notesCampaignPayload(notesCampaignGet(), notesPlacesAll(), worldPlacesExport(), worldRoadsExport(), notesRoadsAll(), worldPartyExport());
     const worldBg = await worldBackgroundBackupPayload();
     // The gallery belongs to no scene, so an export of picked scenes leaves it out.
     const gallery = opts && opts.partial ? null : await galleryBackupPayload();

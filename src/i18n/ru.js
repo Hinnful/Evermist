@@ -898,6 +898,8 @@ const RU = {
   'Effects, on and off': 'Эффекты, вкл. и выкл.',
   'Click Effects to draw a fire, a cone of acid or a light. The players see it on the TV.': 'Нажмите «Эффекты», чтобы нарисовать огонь, конус кислоты или свет. Игроки увидят его на телевизоре.',
   'New group here': 'Новая группа здесь',
+  "We're here": 'Мы здесь',
+  'Take the marker off': 'Убрать метку',
   'Add maps here…': 'Добавить карты сюда…',
   'Pan with a mouse': 'Сдвиг мышью',
   'Middle-drag': 'Средняя кнопка + тянуть',

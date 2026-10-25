@@ -214,7 +214,7 @@ function worldPlaceCreate(verts) {
 // where every scene stands.
 function _wpSnapshot() {
   const places = JSON.stringify(worldPlaceRecords().map(r => [r.name, _wpStrip(r)]));
-  return { places, notes: notesPlacesAll(), roads: worldRoadsSnapshot(), scenes: allScenes.map(s => ({ id: s.id, pos: s.worldPos && { ...s.worldPos }, group: _wsGroup(s) })) };
+  return { places, notes: notesPlacesAll(), roads: worldRoadsSnapshot(), party: worldPartySnapshot(), scenes: allScenes.map(s => ({ id: s.id, pos: s.worldPos && { ...s.worldPos }, group: _wsGroup(s) })) };
 }
 
 // ⚠ ONLY A PLACE THE STEP BRINGS BACK OR TAKES AWAY has its notes touched; one that stays keeps what was typed since.
@@ -245,6 +245,7 @@ function _wpRestore(snap) {
   worldPlacesSave();
   _wpRestoreNotes(before, snap);
   worldRoadsRestore(snap.roads);
+  if (snap.party !== undefined) worldPartyRestore(snap.party);
   for (const s of snap.scenes) {
     const now = allScenes.find(x => x.id === s.id);
     if (now && (s.pos && (!now.worldPos || now.worldPos.x !== s.pos.x || now.worldPos.y !== s.pos.y) || _wsGroup(now) !== s.group)) {

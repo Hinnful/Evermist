@@ -592,8 +592,8 @@ module.exports = async function worldMapFeature(rig) {
   await layout();
   await rclick('__wmCard("Attic").firstChild');
   const sceneRows = await rows();
-  rig.check(JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', 'Export this map', 'Notes', 'Delete map']) ||
-            JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', 'Export this map', 'Notes', 'Delete map (off)']),
+  rig.check(JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', "We're here", 'Export this map', 'Notes', 'Delete map']) ||
+            JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', "We're here", 'Export this map', 'Notes', 'Delete map (off)']),
             'a scene\'s menu is not Open, Rename, Take out of its group, Export, Notes, Delete: ' + JSON.stringify(sceneRows));
   await press('Rename');
   rig.check(await dm.evaluate('!!_wmEditing'), 'Rename in the menu did not start editing the name');
@@ -615,10 +615,10 @@ module.exports = async function worldMapFeature(rig) {
   await dm.evaluate('__rigKey("Escape"); 0');
   rig.check(await dm.evaluate('worldMapOpen && !document.querySelector(".wm-menu")'), 'Esc did not close the menu first, or left the map');
   await rclick('__wmHead("The Watcherhouse")');
-  rig.check(JSON.stringify((await rows()).map(r => r.replace(/^Rename \(off\)$/, 'Rename'))) === JSON.stringify(['Rename', 'Fit in view', 'Add maps here…', 'Notes', 'Delete group']), 'a place\'s menu is wrong: ' + JSON.stringify(await rows()));
+  rig.check(JSON.stringify((await rows()).map(r => r.replace(/^Rename \(off\)$/, 'Rename'))) === JSON.stringify(['Rename', 'Fit in view', 'Add maps here…', "We're here", 'Notes', 'Delete group']), 'a place\'s menu is wrong: ' + JSON.stringify(await rows()));
   await dm.evaluate('__wmE("mousedown", document.getElementById("wm"), { x: 5, y: 5 }); 0');
   await dm.evaluate('(() => { const wm = document.getElementById("wm"); wm.dispatchEvent(new MouseEvent("contextmenu", { clientX: 700, clientY: 40, button: 2, bubbles: true, cancelable: true })); return 0; })()');
-  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add maps here…', 'New group here', 'Background picture…', 'Show everything']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
+  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add maps here…', 'New group here', "We're here", 'Background picture…', 'Show everything']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
   await dm.evaluate('__wmE("mousedown", document.getElementById("wm"), { x: 5, y: 5 }); 0');
   rig.check(await dm.evaluate('!document.querySelector(".wm-menu")'), 'a click elsewhere left the menu up');
 

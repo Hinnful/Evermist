@@ -8,6 +8,7 @@ const WMIST_INNER = 0.7;         // how much of the picture's own colour returns
 const WMIST_SOFT = 20;           // the soft edge of a place, as a blur's deviation
 const WMIST_REACH = 1500;        // how far past the layout the mist runs
 const WMIST_TILE = 256;
+const WMIST_HOLE = 280;          // the soft circle the party marker thins the mist in, in world units
 
 let _wmistSvg = null;
 let _wmistRef = null;
@@ -51,16 +52,17 @@ function worldMistInit() {
     '<defs>' +
       '<pattern id="wmist-a" patternUnits="userSpaceOnUse" width="1100" height="1100"><image href="' + _wmistTile(12345) + '" width="1100" height="1100" preserveAspectRatio="none"/>' + drift('1100 0') + '</pattern>' +
       '<pattern id="wmist-b" patternUnits="userSpaceOnUse" width="700" height="700"><image href="' + _wmistTile(777) + '" width="700" height="700" preserveAspectRatio="none"/>' + drift('-700 700') + '</pattern>' +
+      '<radialGradient id="wmist-holeg"><stop offset="0" stop-color="#000" stop-opacity=".8"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>' +
       '<filter id="wmist-soft" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="' + WMIST_SOFT + '"/></filter>' +
       '<mask id="wmist-inner" maskUnits="userSpaceOnUse"><g filter="url(#wmist-soft)" fill="#fff" class="wmist-inner-places"></g></mask>' +
       '<mask id="wmist-veil" maskUnits="userSpaceOnUse"><rect class="wmist-all" fill="#fff"/>' +
-        '<g filter="url(#wmist-soft)" fill="#000" fill-opacity="' + WMIST_CLEAR + '" class="wmist-clear-places"></g></mask>' +
+        '<g filter="url(#wmist-soft)" fill="#000" fill-opacity="' + WMIST_CLEAR + '" class="wmist-clear-places"></g><circle class="wmist-hole" r="' + WMIST_HOLE + '" fill="url(#wmist-holeg)" display="none"/></mask>' +
     '</defs>' +
     '<image class="wmist-picture" mask="url(#wmist-inner)" preserveAspectRatio="none"/>' +
     '<g mask="url(#wmist-veil)"><rect class="wmist-veil wmist-all"/><rect class="wmist-all" fill="url(#wmist-a)"/><rect class="wmist-all" fill="url(#wmist-b)" opacity="0.8"/></g>';
   const q = s => _wmistSvg.querySelector(s);
   _wmistRef = {
-    inner: q('.wmist-inner-places'), clear: q('.wmist-clear-places'), picture: q('.wmist-picture'),
+    inner: q('.wmist-inner-places'), hole: q('.wmist-hole'), clear: q('.wmist-clear-places'), picture: q('.wmist-picture'),
     soft: q('#wmist-soft'), masks: [q('#wmist-inner'), q('#wmist-veil')], all: _wmistSvg.querySelectorAll('.wmist-all'),
   };
 }
@@ -69,6 +71,14 @@ function worldMistInit() {
 // time wakes it without restarting the drift.
 function worldMistWake() {
   if (_wmistSvg) _wmistSvg.setCurrentTime(_wmistSvg.getCurrentTime());
+}
+
+// The party marker's spot, or null for none: the veil thins in a soft circle there.
+function worldMistParty(p) {
+  if (!_wmistRef) return;
+  const h = _wmistRef.hole;
+  h.setAttribute('display', p ? '' : 'none');
+  if (p) { h.setAttribute('cx', p.x); h.setAttribute('cy', p.y); }
 }
 
 // The backdrop's own colour, laid over the greyed one and shown only inside the places.
