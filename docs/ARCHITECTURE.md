@@ -615,6 +615,14 @@ what a place, a scene and a room are, and a `guide` tool returns plain-language 
 from `mcpGuideText.js`, which the in-app guides can read too. Tools are grouped one file per subject in
 `src/mcp/`, and `mcpTools.js` is the dispatcher.
 
+Claude sees a map through `view_scene` and `read_scene` (`mcpSee.js`, rules in `mcpSeePlan.js`). `view_scene` draws the
+map, or an area of it given in percent, offscreen with no fog: a still is decoded straight to the picture's size,
+the open map is cropped from its decoded canvas, an animated map gives one frame of its file. A percent grid
+(about ten lines across, at a round step) and the rooms' outlines go on top, and the JPEG comes back beside the text
+as `image` in the reply; the shim turns it into an MCP image content item. The picture stays under 750 KB, lowering
+JPEG quality before shrinking. `read_scene` answers the map's size, grid, rooms in polygons order with fog, outline
+and doors in percent, effects and floor-plan counts, from the window's live state when the map is open.
+
 A scene is made from a map file or a folder of them. Main finds the files (`mapScan.js`, searching
 Downloads, Desktop, Documents and Pictures two folders deep) and reads their bytes, and the window runs
 the quiet import that the world map's Add uses. The scene is never opened and never sent to the TV.

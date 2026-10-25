@@ -42,7 +42,7 @@ describe('mcpShim', () => {
     assert.equal(init.result.protocolVersion, '2025-06-18');
     assert.deepEqual(init.result.capabilities, { tools: {} });
     assert.deepEqual(list.result.tools.map(t => t.name).sort(),
-      ['add_monster', 'add_notes', 'add_picture', 'create_fight', 'create_place', 'create_road', 'create_scene', 'delete_fight', 'delete_picture', 'delete_place', 'delete_scene', 'edit_fight', 'find_map_files', 'guide', 'import_monsters', 'list_bestiary', 'list_campaign', 'list_gallery', 'move_scene', 'read_fight', 'read_notes', 'read_stat_block', 'rename_picture', 'rename_place', 'rename_scene', 'reshape_place', 'set_backdrop', 'set_notes', 'set_scene', 'undo_last_change']);
+      ['add_monster', 'add_notes', 'add_picture', 'create_fight', 'create_place', 'create_road', 'create_scene', 'delete_fight', 'delete_picture', 'delete_place', 'delete_scene', 'edit_fight', 'find_map_files', 'guide', 'import_monsters', 'list_bestiary', 'list_campaign', 'list_gallery', 'move_scene', 'read_fight', 'read_notes', 'read_scene', 'read_stat_block', 'rename_picture', 'rename_place', 'rename_scene', 'reshape_place', 'set_backdrop', 'set_notes', 'set_scene', 'undo_last_change', 'view_scene']);
   });
 
   it('explains what Evermist holds and that Claude only preps', async () => {
@@ -83,6 +83,19 @@ describe('mcpShim', () => {
     assert.equal(r.id, 7);
     assert.deepEqual(r.result, { content: [{ type: 'text', text: 'Added.' }], isError: false });
     assert.deepEqual(seen, { key: 'k1', origin: undefined, body: { tool: 'add_notes', args: { level: 'campaign', text: 'Hi' } } });
+  });
+
+  it('hands back a picture the app answers with as an image beside the text', async () => {
+    const server = http.createServer((req, res) => {
+      req.resume();
+      req.on('end', () => res.end(JSON.stringify({ text: 'Crypt, whole map.', image: { data: 'AAAA', mimeType: 'image/jpeg' } })));
+    });
+    await new Promise(r => server.listen(0, '127.0.0.1', r));
+    const file = path.join(dir, 'mcp-image.json');
+    fs.writeFileSync(file, JSON.stringify({ port: server.address().port, token: 'k1' }));
+    const [r] = await talk(file, [call(8, 'view_scene', { name: 'Crypt' })]);
+    server.close();
+    assert.deepEqual(r.result, { content: [{ type: 'text', text: 'Crypt, whole map.' }, { type: 'image', data: 'AAAA', mimeType: 'image/jpeg' }], isError: false });
   });
 
   it('still answers a call when its input closes before the app replies', async () => {

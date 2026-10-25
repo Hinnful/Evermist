@@ -15,7 +15,7 @@ const { TOOLS } = require('./mcpShim.js');
 
 const REPLY_MS = 20000;
 const SLOW_MS = 300000;   // a PDF book is read, a folder of maps imported
-const SLOW = new Set(['import_monsters', 'create_scene', 'set_backdrop']);
+const SLOW = new Set(['import_monsters', 'create_scene', 'set_backdrop', 'view_scene']);
 const MAX_BODY = 1024 * 1024;
 const pending = new Map();
 let getDmWin = () => null;

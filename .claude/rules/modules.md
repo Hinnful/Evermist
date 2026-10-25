@@ -191,6 +191,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `mcp/mcpFights.js` | Claude's fight tools and the bestiary search |
 | `mcp/mcpGallery.js` | Claude's gallery tools: list, add, rename, delete a picture |
 | `mcp/mcpBestiary.js` | Claude's stat block, add-monster and import tools |
+| `mcp/mcpSeePlan.js` | Pure map-sight kernel: an area in percent to pixels, the picture's size, the grid's step and labels, a scene's contents read as percent. Tested |
+| `mcp/mcpSee.js` | Claude's eyes: view_scene draws a map or an area offscreen with a percent grid and the room outlines, read_scene lists what a map holds |
 | `mcp/mcpTools.js` | The dispatcher for Claude's tool groups, answered in the DM window |
 | `dev/stress.js` | `?stress=1` harness |
 | `dev/memProbe.js` | `?memprobe=1` memory probe |
@@ -252,5 +254,5 @@ combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → com
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
 combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js →
-mcp/mcpPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpTools.js → inline <script>
+mcp/mcpPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpTools.js → inline <script>
 ```

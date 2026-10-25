@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 17 open items; IDs run to 235."
+description: "Open work only. 16 open items; IDs run to 235."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.11.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.12.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The MCP epic comes first.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -83,13 +83,6 @@ prep, taking away is play. **Deletes are allowed, with no trash:** the DM is tol
 each delete waits for their yes, and undo lasts until Evermist closes. A trash and a saved history were rejected
 as overengineering. Today Claude covers about two fifths of prep. The chapters go one at a time, in this order.
 The open calls on scope are settled in PRODUCT.md, "Claude's ground rules".
-
-### 207. Claude sees a map
-Claude looks at any map as a picture with a percent grid over it, zooms into an area, and reads the map's whole
-contents: rooms, fog, effects, grid and floor plan. Measured 2026-10-19 on three Dungeon Alchemist interiors:
-outlines traced from a picture alone matched clearly walled rooms closely and missed closets, halls and walls hard
-to see from above, so they are a first draft and a floor plan comes first.
-**Prep · DM only**
 
 ### 227. Claude draws rooms and doors
 Claude draws, names, writes notes for, reshapes and deletes rooms, merges, cuts and splits them, and marks doors,

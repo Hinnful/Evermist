@@ -109,6 +109,12 @@ const TOOLS = [
     inputSchema: { type: 'object', required: ['name', 'newName'], properties: { name: { type: 'string' }, newName: { type: 'string' } } } },
   { name: 'delete_picture', annotations: DELETE, description: 'Delete a picture from Pictures. List what goes, get the DM\'s yes, then call again with confirmed: true. Without confirmed nothing is deleted and the call only answers with what would go. undo_last_change brings it back. Refused for the picture the TV shows.',
     inputSchema: { type: 'object', required: ['name'], properties: { name: { type: 'string' }, confirmed: { type: 'boolean', description: 'true only after the DM said yes to the list of what goes.' } } } },
+  { name: 'view_scene', annotations: READ, description: 'Look at a map as a picture: the map with no fog, a percent grid over it (each line labelled with its map percent, x along the top and y down the left) and the existing rooms drawn as thin outlines with their names. Give area to zoom into part of the map; the grid gets finer. Read positions off the grid labels. Outlines traced from a picture alone are a first draft: they miss closets, halls and walls that are hard to see from above. Works for any map, open or not, and never changes what the DM or the TV sees.',
+    inputSchema: { type: 'object', required: ['name'], properties: { name: NAME, place: PLACE_OF,
+      area: { type: 'object', required: ['x', 'y', 'w', 'h'], description: 'The part to look at, in percent of the map (0 to 100): left x, top y, width w, height h. Default: the whole map.',
+        properties: { x: { type: 'number' }, y: { type: 'number' }, w: { type: 'number' }, h: { type: 'number' } } } } } },
+  { name: 'read_scene', annotations: READ, description: 'Read everything a map holds, in percent of the map: its size and type, whether the TV shows it, the grid, every room (name, notes, fog hidden, half or revealed, outline, doors), the effects, and whether a floor plan is loaded with its wall, door and light counts.',
+    inputSchema: { type: 'object', required: ['name'], properties: { name: NAME, place: PLACE_OF } } },
   { name: 'guide', annotations: READ, description: 'Plain-language how-to text for a topic, to teach a new DM what it is. Topics: scenes (maps), places (groups), rooms, fog, notes, fights, bestiary, gallery (Pictures), claude (what Claude may change and delete). An unknown topic lists them.',
     inputSchema: { type: 'object', properties: { topic: { type: 'string' } } } },
   { name: 'undo_last_change', annotations: EDIT, description: 'Undo the newest change Claude made in Evermist (the last 30 are kept, until Evermist closes). Call it again for the one before.',
@@ -188,7 +194,9 @@ async function handle(msg) {
     case 'tools/call': {
       if (!TOOLS.some(t => t.name === p.name)) throw Object.assign(new Error('Unknown tool ' + p.name), { code: -32602 });
       const r = await callApp(p.name, p.arguments || {});
-      return { content: [{ type: 'text', text: String(r.text) }], isError: !!r.isError };
+      const content = [{ type: 'text', text: String(r.text) }];
+      if (r.image && r.image.data) content.push({ type: 'image', data: r.image.data, mimeType: r.image.mimeType || 'image/jpeg' });
+      return { content, isError: !!r.isError };
     }
     default: throw Object.assign(new Error('Method not found'), { code: -32601 });
   }
