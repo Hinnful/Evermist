@@ -51,11 +51,11 @@
     --g-raised: #26272b;
     /* The name plate: ONE skin for every name the DM can rename (a room, a place, a stray map, a road, a print, a
        picture). Padding and radius are em, so a plate keeps its shape at every size; the canvas room label reads
-       these same values (roomPanel.js rpPlateSkin). */
+       these same values (roomPanel.js rpPlateSkin). The fills are solid, so nothing under a name shows through. */
     --plate-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     --plate-weight: 600;
-    --plate-bg: rgba(24, 25, 28, 0.72);
-    --plate-bg-hover: rgba(40, 41, 46, 0.82);
+    --plate-bg: rgb(24, 25, 28);
+    --plate-bg-hover: rgb(40, 41, 46);
     --plate-line: rgba(255, 255, 255, 0.09);
     --plate-text: var(--g-text);
     --plate-pad-y: 0.45em;
@@ -64,7 +64,7 @@
     --plate-shadow-color: rgba(0, 0, 0, 0.35);
     --plate-shadow-y: 2px;
     --plate-shadow-blur: 8px;
-    --plate-sel-bg: rgba(12, 140, 233, 0.28);
+    --plate-sel-bg: rgb(21, 57, 85);
     --plate-sel-text: var(--b-icon);
     --plate-sel-line: rgba(92, 177, 255, 0.45);
     --plate-edit-bg: var(--g-field);

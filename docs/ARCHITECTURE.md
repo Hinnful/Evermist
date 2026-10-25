@@ -67,7 +67,7 @@ a click picks the map and flies to it after a short delay a double-click cancels
 the place; a right-click opens the scene's menu.
 **One name plate** wears every renameable name: room labels (canvas), place plates, stray-map labels, road names, map-print names
 and picture names. Its look is the `--plate-*` tokens on `:root` in `base.css` ("NAME PLATES"), which the canvas room label reads
-through `rpPlateSkin()`. States: pointer, picked, renaming, Find's dim; room labels have none of the first and last-but-one (rooms
+through `rpPlateSkin()`. Every fill is opaque in every state, so no map line or art shows through a name. States: pointer, picked, renaming, Find's dim; room labels have none of the first and last-but-one (rooms
 are renamed in the Notes pane). One size rule, `roomLabelFontPx(z, uz, small)` in `roomPanel.js`: 12 x interface zoom x clamp(z^0.4, 1, 2.5)
 for map names, 11 for names inside a picture, so every label follows the interface zoom and print names grow with the Campaign zoom.
 In the Pictures pane a picture's name is a small plate at its bottom left, renamed in place (a click on it does not toggle the TV; a

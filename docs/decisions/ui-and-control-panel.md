@@ -1301,3 +1301,11 @@ after Got it; one answering the DM's own action shows at once; any other close (
 starts no wait. Rejected: a gap after any close, since a first map opened from "Open a map" would show Reveal a minute late.
 Each hint still shows once ever and never two at once. No special case for a library prepared by Claude. Accepted cost: the
 brush layer is read once per map open on a 64px copy, so a tiny revealed area on a very large map can be missed.
+
+### Every name plate has an opaque fill in every state · `SETTLED` (2026-10-25)
+Replaces the see-through fill in "Every name wears one plate". Names could not be read where a road or map line ran under
+them, worst on a picked road name, whose fill was 28% blue. The colours stay and only the transparency goes: each solid fill is
+the old fill as it looked over a dark map. Plain `rgb(24,25,28)`, hover `rgb(40,41,46)`, picked `rgb(21,57,85)` (the old
+`rgba(12,140,233,0.28)` tint composited over the plain plate). Accepted: over a bright map a plate reads slightly darker than
+before. The hairline, text, count pill, edit state and shadow keep their alpha, since they sit on a solid fill. The canvas room
+label reads the same tokens, so it is opaque too. The Campaign acceptance scenario checks the plain, picked and hover fills.

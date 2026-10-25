@@ -11,7 +11,7 @@
 //   1. A World map button sits on the rail under the Scene library. It and M open the map with a
 //      zoom-out from the open scene.
 //   2. The Mist look. Zoomed out no scene is shown, only the places; the places show their names, and a scene with no place is a black diamond with its name beside it. Zoomed in the scenes
-//      wear their names inside the print at the top left and the places have none. A place's outline is white
+//      wear their names inside the print at the top left and the places have none. Every name plate is solid, picked or not. A place's outline is white
 //      and 2px. The mist is cut by every place. The TV has none of it.
 //   3. The middle button pans, the wheel zooms around the pointer, a left drag on empty space does
 //      nothing.
@@ -184,6 +184,12 @@ module.exports = async function worldMapFeature(rig) {
     rig.check(Math.abs(at.px - at.want) < 0.5 && at.weight === '600' && Math.abs(at.padX - 0.75 * at.want) < 0.5 && Math.abs(at.padY - 0.45 * at.want) < 0.5 && Math.abs(at.rad - 0.5 * at.want) < 0.5,
               'at zoom ' + at.z.toFixed(2) + ' the place plate does not match the plate rule in size, weight, padding and radius: ' + JSON.stringify(at));
   }
+  // RED ON: --plate-bg and --plate-sel-bg back at 0.72 and 0.28 alpha (base.css) - 2026-10-25
+  const fills = await dm.evaluate(`(() => { const h = __wmHead('Watcherhouse'), plain = getComputedStyle(h).backgroundColor;
+    h.classList.add('sel'); const sel = getComputedStyle(h).backgroundColor; h.classList.remove('sel');
+    const hover = getComputedStyle(document.documentElement).getPropertyValue('--plate-bg-hover').trim();
+    return { plain, sel, hover }; })()`);
+  rig.check(Object.values(fills).every(c => /^rgb\(/.test(c)), 'a name plate fill is see-through, so the map shows through the name: ' + JSON.stringify(fills));
   await dm.evaluate('__wmCam(' + pc.x + ', ' + pc.y + ', 0.9)');
   await lib.settle(dm, SETTLED, 8000);
   const inn = await dm.evaluate(`(() => {
