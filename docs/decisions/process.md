@@ -283,6 +283,22 @@ network, a second display - which must be named or it reads as a hidden gap.
 **Under 400 words, one question at a time**, since four questions at once turn a drill into a
 form. **No file names in anything the DM reads**; paths belong in the spec file.
 
+### Claude uses the built-in browser only, and the Firefox setup is gone · `SETTLED` (2026-10-27)
+Firefox DevTools MCP drives Firefox through Marionette, which sets the same automation flag
+sites already flag in the built-in browser pane, so it fixed no CAPTCHA. A Firefox add-on bridge
+in a separate profile skips that flag but still sends simulated clicks, adds third-party code
+with every login in that profile, and offers fewer tools than the pane. Neither earned the setup.
+The `firefox` server, its Start menu shortcut and its output folder were removed. The Chrome
+tools stay denied.
+
+### Claude drives Firefox, and the Chrome tools stay denied · `REVERTED` (2026-10-26)
+`.claude/settings.json` denies every `mcp__claude-in-chrome` tool, on principle against Google.
+The built-in browser pane failed a sign-in CAPTCHA, so Claude needed a real browser. Mozilla's
+Firefox DevTools MCP attaches to the everyday Firefox profile, started with `--marionette` and
+`--remote-debugging-port`. Starting every Firefox that way was rejected: sites see a robot in
+control and raise more bot checks. A separate profile for Claude was offered and declined, so the
+everyday logins carry over.
+
 ### The whole process went public, and only specs, voice samples and memory stay private · `SETTLED` (2026-09-30)
 The slash commands, `/commit`'s steps and scripts, this ledger and the backlog moved out of
 gitignored folders into the repo, with every person reference removed. A cloud session clones the
@@ -411,3 +427,14 @@ shape: a plain-words Summary, one intro sentence on line 2, a blank line, then u
 one piece of news each, saying what changed rather than how to operate it. The draft goes through
 `/voice`; `check-notes.js` enforces the shape. The What's new panel draws the intro above a list
 without the markers, and the `help-and-about` scenario compares the two.
+
+### Habits that lived only in chat were written down · `SETTLED` (2026-10-27)
+A read of past sessions found habits the DM had set in chat and no file recorded, so a cloud
+session or a new account never saw them. How to talk and show work went into the reply style;
+working rules into CLAUDE.md; the spec and notes rules into `/brief` and `notes.md`. Only "no
+'Claude' in public notes" got a check, in `check-notes.js`; the rest are judgment a check cannot
+see. **Reverses** "one approach at a time, never variants side by side" for design work: it began
+as one fix at a time for a bug and spread to design, where the DM wants several options to pick.
+
+### A weekly scheduled `/code-review` · `REJECTED` (2026-10-27)
+Refused as overhead for a solo project. `/code-review` runs by hand when a change looks worth it.

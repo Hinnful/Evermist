@@ -46,9 +46,15 @@ or two maps at a time.
 - **Prove a fix both ways**: the check fails without the fix and passes with it.
 - **A check that flakes is suspect first.** Rule out the check before changing the app for it.
 - **When a fix fails, say so and re-diagnose** from the evidence, never a second guess on the first.
-- **A brainstorm ends at the proposal.** On the DM's "build it", `builder` builds it and
-  this session checks. Look-and-feel work is a throwaway prototype outside the app, one at a time,
-  for the DM to pick, exempt from the rig and test gates until picked.
+- **A brainstorm ends at the proposal, and an analysis ends at the answer**: no tests, rig runs or
+  commits. On the DM's "build it", `builder` builds it and this session checks. Look-and-feel work
+  is throwaway prototypes outside the app, several for the DM to pick, exempt from the rig and test
+  gates until picked.
+- **Research how other apps solve a UX problem before designing.** Don't reinvent the wheel.
+- **Finish the whole task.** A failed tool call is a reason to try another way, not to stop.
+- **A feature that replaces another keeps everything the old one did**, unless the DM drops it.
+- **Run `/redteam` only when the DM asks.**
+- **A rename of anything the DM sees, CI job names included, waits for the DM's yes.**
 
 ## Tech constraints
 

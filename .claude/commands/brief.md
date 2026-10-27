@@ -75,7 +75,8 @@ Then one table, every open item, one row each, no omissions:
 - **Category** - the item's own tag from `docs/BACKLOG.md`: First use, Prep, Play, Campaign, Polish,
   Upkeep or Bug, at most two. Upkeep means nothing the DM sees ships.
 - **Spec** - whether the idea is settled enough to hand to a build session. `ready` when the
-  item already says what to build and every open call in it has an answer. `needed` when a
+  item already says what to build and every open call in it has an answer, or when it is small
+  or the DM already talked it through. `needed` when a
   choice is still open - a shape to settle, a scope question, a look-and-feel call. `needed`
   means run `/spec` on it before building, and it is the normal answer for anything larger
   than a small fix.

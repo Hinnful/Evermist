@@ -32,6 +32,7 @@ if (description[0] && description[0].startsWith('* ')) faults.push('line 2: the 
 description.slice(1).forEach(l => { if (!l.startsWith('* ')) faults.push(`a line after the intro is not a "* " point: ${l}`); });
 lines.forEach((l, i) => {
   if (/[—–]/.test(l)) faults.push(`line ${i + 1}: em-dash or en-dash, use " - ": ${l}`);
+  if (/\bClaude\b/i.test(l)) faults.push(`line ${i + 1}: "Claude", say "AI assistant": ${l}`);
   for (const m of l.matchAll(fillerRe)) faults.push(`line ${i + 1}: filler "${m[1]}": ${l}`);
 });
 

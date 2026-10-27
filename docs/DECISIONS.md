@@ -28,6 +28,13 @@ cost") and move on.
 
 ---
 
+## Discoverability
+
+In [decisions/discoverability.md](decisions/discoverability.md) - which sites list Evermist,
+what each listing says, and what was ruled out.
+
+---
+
 ## Rendering and fog
 
 Moved to [decisions/rendering-and-fog.md](decisions/rendering-and-fog.md) - the two

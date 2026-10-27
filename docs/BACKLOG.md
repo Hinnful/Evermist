@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 16 open items; IDs run to 235."
+description: "Open work only. 17 open items; IDs run to 236."
 metadata: 
   node_type: memory
   type: project
@@ -123,7 +123,7 @@ Adding tracks from files or YouTube links, deleting tracks, and music groups. Pl
 # EVERYTHING ELSE
 
 ### 234. The hints-next-map check fails at random
-Filed 2026-10-25. The rig scenario `hints-next-map` needed a rerun in 3 recent CI runs on Windows. It fails on the
+Filed 2026-10-25. The rig scenario `hints-next-map` needed a rerun in 4 recent CI runs on Windows (count of 2026-10-27). It fails on the
 "Ready for the next map?" toast: the Campaign button does not blink, or the toast was not recorded. Find whether the
 check reads too early or the app misses the blink, then fix the check or retire it.
 **Upkeep · DM only**
@@ -134,6 +134,11 @@ Straight walls sits alone over the drawing tools. Decide what the Campaign's too
 whether the party marker gets a button there (today only the right-click menu places it). **Needs a look-and-feel
 pass.**
 **Polish · DM only**
+
+### 236. Move to Electron 45
+Filed 2026-10-27. Evermist runs on Electron 43, which stops getting security fixes when Electron 46 ships, about
+two months out. Move to 45, then run the full rig set and a packaged build before it ships.
+**Upkeep · DM and Player**
 
 ### 184. Straight walls sits alone over the world map's drawing tools
 Filed 2026-10-16. With the repairs gone from places, the row over a place tool holds one icon, Straight walls, and it

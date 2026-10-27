@@ -340,3 +340,12 @@ The first start of the gallery copies every room's pictures into its own databas
 each scene's `pictureBlobs` and its rooms' `pictures` in place, so the previous release still shows them. A restore
 copies the restored scenes' room pictures in the same way, because an old backup holds no other copy. The cost,
 accepted as small: a picture removed from the gallery returns if a backup holding it is restored.
+
+### Dependencies moved within the CommonJS main process; Electron 45 waits · `SETTLED` (2026-10-27)
+Electron 43.2 to 43.8.3 (same major, security patches), electron-builder 26.18, electron-updater 6.8.11, eslint 10 with
+espree 11 (eslint 9 is out of support), and `npm audit fix`. archiver went 5 to 7, not 8: 8 is ESM-only and cannot be
+required from the CommonJS main process, and 7 drops the deprecated inflight/glob 7 chain from the shipped app. The
+deprecation warnings left (rimraf, boolean, old glob) sit inside electron-builder and do not ship; lodash.isequal comes
+from electron-updater. Checked with lint, unit tests and the `backup` scenario against a packaged win-unpacked build.
+The jump to Electron 45 is not part of this: 43 stays supported until Electron 46 ships, and a major move needs a full
+rig run of its own.

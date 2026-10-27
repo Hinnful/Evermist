@@ -76,6 +76,7 @@ The skill rewrites toward how the DM writes; the checker and the rules here stil
 - **Their words, quoted.**
 - **Their process.** What they tested, when, what they judged by eye.
 - **Internal artefacts.** Fixtures, scratchpad tools, guard hooks, skill files.
+- **"Claude".** The feature is the "AI assistant".
 
 When a bug's story needs a specific map, describe the map's *kind*: "a map mixing caves with built
 rooms".
