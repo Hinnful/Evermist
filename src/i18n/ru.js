@@ -118,6 +118,8 @@ const RU = {
   'Shrouded': 'Скрыто',
   'Fire - burning ground': 'Огонь - горящая земля',
   'Acid - a corrosive pool': 'Кислота - едкая лужа',
+  'Area - marks where a spell holds': 'Область - отмечает, где держится заклинание',
+  'Difficult terrain - rough ground': 'Труднопроходимая местность - неровная земля',
   'Door width, as a percent of one grid square': 'Ширина двери в процентах от клетки сетки',
   'How far a door reaches either side of the wall, as a percent of one grid square': 'Насколько дверь выступает по обе стороны стены, в процентах от клетки сетки',
   'W': 'Ш',
@@ -152,6 +154,9 @@ const RU = {
   'Draw Rooms': 'Нарисовать комнаты',
   'Room': 'Комната',
   'Fire': 'Огонь',
+  'Area': 'Область',
+  'Acid': 'Кислота',
+  'Difficult terrain': 'Труднопроходимая местность',
   'Room {n}': 'Комната {n}',
   'Fire {n}': 'Огонь {n}',
 

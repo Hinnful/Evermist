@@ -30,8 +30,12 @@ module.exports = async function hintsNextMap(rig) {
   rig.check(!(await dm.evaluate(UP)), 'the next-map toast showed with only one map in the library');
 
   // A. RED ON: _hnmTick's _hintShow removed (hintsFirstMap.js)
+  // The button blinks for about 2s after the toast shows, so the toast must not fall due while the cover is still lifting:
+  // park the deadline, and start the count only once the scene is up.
+  await dm.evaluate('_hintNextMapMs = 1e9; 0');
   await lib.openMap(rig, { w: 1800, h: 1200 });
   await dm.waitFor('fogCoverT === 0', 30000, 'the second scene cover to lift');
+  await dm.evaluate('_hnmHeld = 0; _hintNextMapMs = 3000; 0');
   await lib.settle(dm, UP, 15000);
   const shown = await dm.evaluate('(() => { const h = document.querySelector(".hintcall-next-map"), b = document.getElementById("btn-world");' +
     ' if (!h) return null; const r = h.getBoundingClientRect(), a = b.getBoundingClientRect();' +

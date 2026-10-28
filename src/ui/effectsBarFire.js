@@ -153,6 +153,8 @@ function _bfDraw(now) {
   gl.viewport(0, 0, cv.width, cv.height);
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
+  // Only a flame burns on the bar; the other kinds leave the border in the material's colour.
+  if (currentMaterial !== 'light' && effectMaterial(currentMaterial).kind !== 'flame') return;
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE);
   _bfPass(_bf.light, rings, now / 1000, cssW, cssH);

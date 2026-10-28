@@ -38,7 +38,7 @@ function addEffect(vertices) {
   const id = nextEffectId++;
   const mat = EFFECT_MATERIALS[currentMaterial] ? currentMaterial : 'fire';
   const e = { id, vertices, material: mat, cornerRadius: 0,
-              name: mat.charAt(0).toUpperCase() + mat.slice(1) + ' ' + id };
+              name: EFFECT_MATERIALS[mat].label + ' ' + id };
   effects.push(e);
   effectsChanged();
   // Rides the Auto/Manual sync gate exactly as a fog reveal does. scheduleAutoSync sends fog and
@@ -132,8 +132,20 @@ function _fxGeomKey(e) {
   return k + e.material;
 }
 
+// A flame has two passes; the other kinds have one, in meshLight.
+function _fxMeshes(inst) { return inst.meshDark ? [inst.meshLight, inst.meshDark] : [inst.meshLight]; }
+
+function _ringLength(ring) {
+  let len = 0;
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i], b = ring[(i + 1) % ring.length];
+    len += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  return len;
+}
+
 function _destroyFxInstance(inst) {
-  for (const m of [inst.meshLight, inst.meshDark]) {
+  for (const m of _fxMeshes(inst)) {
     if (m.parent) m.parent.removeChild(m);
     m.destroy();          // leaves the shared geometry and the cached shader alone
   }
@@ -157,11 +169,20 @@ function _loadFxGeometry(inst, e) {
     }
   }
   const mat = effectMaterial(e.material), L = mat.look;
+  if (mat.kind !== 'flame') {
+    // The ticks wrap on the outer ring's length, which the shader cannot sum cheaply per pixel.
+    const u = inst.meshLight.shader.uniforms;
+    u.uVerts = inst.verts; u.uBreak = inst.breaks; u.uCount = n;
+    u.uPerim = rings[0] ? _ringLength(rings[0]) : 0;
+    u.uTint = mat.tint || [1, 1, 1];
+    inst.geom.getBuffer('aVertexPosition').update(_fxQuad(rings[0] || e.vertices, _gridCell()));
+    return;
+  }
   const ramp = effectRamp(e.material);
   let cx = 0, cy = 0;
   for (const v of e.vertices) { cx += v.x; cy += v.y; }
   const cen = [cx / e.vertices.length, cy / e.vertices.length];
-  for (const m of [inst.meshLight, inst.meshDark]) {
+  for (const m of _fxMeshes(inst)) {
     const u = m.shader.uniforms;
     u.uVerts = inst.verts; u.uBreak = inst.breaks; u.uCount = n;
     u.uWarm = mat.warm; u.uCentroid = cen; u.uRamp = ramp;
@@ -173,6 +194,38 @@ function _loadFxGeometry(inst, e) {
   inst.geom.getBuffer('aVertexPosition').update(_fxQuad(rings[0] || e.vertices, _gridCell()));
 }
 
+// A new effect's meshes over one shared geometry. A flame is two passes; any other kind is one.
+function _makeFxInstance(kind) {
+  const verts = new Float32Array(MAX_FX_VERTS * 2);
+  const breaks = new Float32Array(MAX_FX_VERTS);
+  const geom = new PIXI.Geometry()
+    .addAttribute('aVertexPosition', new Float32Array(8), 2)
+    .addIndex([0, 1, 2, 0, 2, 3]);
+  const mkShader = frag => PIXI.Shader.from(_FX_VERT, frag, {
+    uVerts: verts, uBreak: breaks,
+    uCount: 0, uTime: 0, uHeight: 40, uSpeed: FX_LOOK.speed, uAlong: 0.03,
+    uDiss: 0, uWarm: 0.30, uFill: FX_LOOK.fill, uG: 70, uRamp: effectRamp('fire'),
+    uSpark: 0, uSmoke: 0, uHaze: 0, uCentroid: [0, 0],
+    uSparkCol: [0, 0, 0], uSmokeCol: [0, 0, 0], uSteamCol: [0, 0, 0], uSteam: 0, uLiquid: 0,
+    uBub: 0, uBubSize: 0, uToon: 0, uCore: 0, uSpill: 0, uFlicker: 0, uScorch: 0, uDrift: 0,
+    uPerim: 0, uTint: [1, 1, 1],
+  });
+  // ⚠ EVERY PASS BLENDS NORMALLY. An animated map is a <video> under this canvas on the DM and a
+  // sprite inside it on the Player, so ADD only added to the map on the Player: the same effect
+  // came out see-through and hue-shifted on the TV. Painted over, it is one look on both.
+  const meshLight = new PIXI.Mesh(geom, mkShader(kind === 'flame' ? _FX_FRAG_LIGHT : _FX_KIND_FRAG[kind]));
+  meshLight.blendMode = PIXI.BLEND_MODES.NORMAL;
+  pixiEffectsLayer.addChild(meshLight);
+  // The dark pass goes on top so its smoke reads over the fire.
+  let meshDark = null;
+  if (kind === 'flame') {
+    meshDark = new PIXI.Mesh(geom, mkShader(_FX_FRAG_DARK));
+    meshDark.blendMode = PIXI.BLEND_MODES.NORMAL;
+    pixiEffectsLayer.addChild(meshDark);
+  }
+  return { meshLight, meshDark, geom, verts, breaks, geomKey: null, kind };
+}
+
 function _syncFxInstances() {
   _effectSpritesDirty = false;
   const live = new Set(effects.map(e => e.id));
@@ -181,35 +234,11 @@ function _syncFxInstances() {
   }
   for (const e of effects) {
     if (!e.vertices || e.vertices.length < 3) continue;
+    const kind = effectMaterial(e.material).kind;
     let inst = _fxInstances.get(e.id);
-    if (!inst) {
-      const verts = new Float32Array(MAX_FX_VERTS * 2);
-      const breaks = new Float32Array(MAX_FX_VERTS);
-      const geom = new PIXI.Geometry()
-        .addAttribute('aVertexPosition', new Float32Array(8), 2)
-        .addIndex([0, 1, 2, 0, 2, 3]);
-      const mkShader = frag => PIXI.Shader.from(_FX_VERT, frag, {
-        uVerts: verts, uBreak: breaks,
-        uCount: 0, uTime: 0, uHeight: 40, uSpeed: FX_LOOK.speed, uAlong: 0.03,
-        uDiss: 0, uWarm: 0.30, uFill: FX_LOOK.fill, uG: 70, uRamp: effectRamp('fire'),
-        uSpark: 0, uSmoke: 0, uHaze: 0, uCentroid: [0, 0],
-        uSparkCol: [0, 0, 0], uSmokeCol: [0, 0, 0], uSteamCol: [0, 0, 0], uSteam: 0, uLiquid: 0,
-        uBub: 0, uBubSize: 0, uToon: 0, uCore: 0, uSpill: 0, uFlicker: 0, uScorch: 0, uDrift: 0,
-      });
-      // Two meshes over one shape: the light pass paints fire/sparks, the dark pass (on top) darkens
-      // with smoke/haze. Dark last so its smoke reads over the fire.
-      // ⚠ BOTH PASSES BLEND NORMALLY. An animated map is a <video> under this canvas on the DM and a
-      // sprite inside it on the Player, so ADD only added to the map on the Player: the same effect
-      // came out see-through and hue-shifted on the TV. Painted over, it is one look on both.
-      const meshLight = new PIXI.Mesh(geom, mkShader(_FX_FRAG_LIGHT));
-      meshLight.blendMode = PIXI.BLEND_MODES.NORMAL;
-      const meshDark = new PIXI.Mesh(geom, mkShader(_FX_FRAG_DARK));
-      meshDark.blendMode = PIXI.BLEND_MODES.NORMAL;
-      pixiEffectsLayer.addChild(meshLight);
-      pixiEffectsLayer.addChild(meshDark);
-      inst = { meshLight, meshDark, geom, verts, breaks, geomKey: null };
-      _fxInstances.set(e.id, inst);
-    }
+    // A material of another kind draws with other shaders, so its meshes are built again.
+    if (inst && inst.kind !== kind) { _destroyFxInstance(inst); _fxInstances.delete(e.id); inst = null; }
+    if (!inst) { inst = _makeFxInstance(kind); _fxInstances.set(e.id, inst); }
     const key = _fxGeomKey(e);
     if (inst.geomKey !== key) { inst.geomKey = key; _loadFxGeometry(inst, e); }
   }
@@ -234,10 +263,10 @@ function pumpEffects() {
   for (const e of effects) {
     const inst = _fxInstances.get(e.id);
     if (!inst) continue;
-    const height = _flameHeight(e.material);
+    const height = inst.kind === 'flame' ? _flameHeight(e.material) : 0;
     // Only the four that move: the clock, and the three tied to grid size, which the DM can change
     // under a placed effect. The material's look is loaded with the geometry.
-    for (const m of [inst.meshLight, inst.meshDark]) {
+    for (const m of _fxMeshes(inst)) {
       const u = m.shader.uniforms;
       u.uTime = t; u.uHeight = height; u.uAlong = along; u.uG = cell;
     }

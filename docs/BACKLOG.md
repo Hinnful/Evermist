@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 10 open items; IDs run to 236."
+description: "Open work only. 8 open items; IDs run to 236."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.13.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+`package.json` is at **4.14.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
 they decide to, so items carry no release tag. **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
@@ -75,12 +75,6 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 # EVERYTHING ELSE
 
-### 234. The hints-next-map check fails at random
-Filed 2026-10-25. The rig scenario `hints-next-map` needed a rerun in 4 recent CI runs on Windows (count of 2026-10-27). It fails on the
-"Ready for the next map?" toast: the Campaign button does not blink, or the toast was not recorded. Find whether the
-check reads too early or the app misses the blink, then fix the check or retire it.
-**Upkeep · DM only**
-
 ### 235. The Campaign toolbar, redesigned
 Filed 2026-10-25. Roads sit under the Groups tool, which reads as if a road were a kind of group, and item 184's
 Straight walls sits alone over the drawing tools. Decide what the Campaign's toolbar holds and in what order, including
@@ -98,13 +92,6 @@ Filed 2026-10-16. With the repairs gone from places, the row over a place tool h
 looks stranded. Decide what that row is for on the world map: give it company that earns its place, fold Straight walls
 somewhere else, or drop the row. **Needs a look-and-feel pass.**
 **Polish · DM only**
-
-### 187. Two new effect materials: a plain area, and difficult terrain
-Filed 2026-10-16. An area that only marks where something happens, such as Slow or Silence, and Difficult terrain.
-Vines, snow and mud look different but play the same, so Difficult terrain may be one material. Each is its own
-material record (`effectMaterials.js`), since a colour picker per effect was rejected. **Needs /spec:** the look of
-each, and whether Difficult terrain needs an effect at all.
-**Play · DM + Player**
 
 ### 144. A phone remote for the DM
 Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in

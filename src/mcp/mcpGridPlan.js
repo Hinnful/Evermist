@@ -19,7 +19,7 @@ const MCP_FX_PRESETS = { square: 'rect', circle: 'circle', cone: 'cone', line: '
 const _mgPhase = (v, step) => ((v % step) + step) % step;
 const _mgR2 = n => Math.round(n * 100) / 100;
 const _mgNum = v => (v === null || v === undefined || v === '' ? NaN : Number(v));
-const mcpFxName = m => m.charAt(0).toUpperCase() + m.slice(1);
+const mcpFxName = m => (MG.EFFECT_MATERIALS[m] && MG.EFFECT_MATERIALS[m].label) || m.charAt(0).toUpperCase() + m.slice(1);
 
 // The stored phase that puts a grid crossing at (x, y) in map px, as gridCalWrite (gridCalibrate.js) stores a
 // calibration. A hex grid's crossing is a cell's top corner, so that cell's centre lies one side length below it.
@@ -136,7 +136,9 @@ function mcpFxShape(a, mapW, mapH, pxPerFt) {
 function mcpFxMaterial(raw) {
   const m = String(raw || '').trim().toLowerCase();
   if (m === 'light') return { error: 'Light is a light, not an effect: use create_light.' };
-  if (Object.prototype.hasOwnProperty.call(MG.EFFECT_MATERIALS, m)) return { material: m };
+  // The DM's name for a material (its label) names it as much as its key does.
+  const key = Object.keys(MG.EFFECT_MATERIALS).find(k => k === m || MG.EFFECT_MATERIALS[k].label.toLowerCase() === m);
+  if (key) return { material: key };
   return { error: 'material must be one of ' + Object.keys(MG.EFFECT_MATERIALS).map(mcpFxName).join(', ') + '.' };
 }
 

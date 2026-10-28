@@ -364,7 +364,8 @@ module.exports = async function fogToolbarFeature(rig) {
             'the material buttons are still in the row, or the one button and its chevron are not');
   await dm.evaluate('document.querySelector("#mat-pick .mt-btn").click(); 0');
   const pal = await dm.evaluate('({ names: [...document.querySelectorAll("#mat-grid .mt-tile")].map(b => b.textContent.trim()).join(), find: !!document.getElementById("mat-find") })');
-  rig.check(pal.names === 'Fire,Acid,Light' && pal.find, 'the palette is not a find field over Fire, Acid and Light: ' + JSON.stringify(pal));
+  rig.check(pal.names === 'Fire,Acid,Area,Difficult terrain,Light' && pal.find,
+            'the palette is not a find field over Fire, Acid, Area, Difficult terrain and Light: ' + JSON.stringify(pal));
   await dm.evaluate('document.querySelector("#mat-grid [data-material=acid]").click(); 0');
   rig.check(await dm.evaluate('currentMaterial') === 'acid', 'picking Acid in the palette did not set the material');
   await dm.evaluate('setMaterial("fire"); 0');

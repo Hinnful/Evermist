@@ -120,6 +120,8 @@ describe('effect and light shapes', () => {
 describe('materials and finding one', () => {
   it('names the materials and sends Light to create_light', () => {
     assert.deepEqual(mcpFxMaterial(' Acid '), { material: 'acid' });
+    assert.deepEqual(mcpFxMaterial('Difficult terrain'), { material: 'terrain' });
+    assert.deepEqual(mcpFxMaterial('area'), { material: 'area' });
     assert.match(mcpFxMaterial('light').error, /create_light/);
     assert.match(mcpFxMaterial('ice').error, /Fire, Acid/);
   });

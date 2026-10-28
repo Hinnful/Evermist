@@ -470,3 +470,10 @@ focus`; the normal rerun makes a one-off a flake. Proven both ways with a transp
 stand-in `Evermist.exe` opening at 200,200: the old parker logged nothing, the new one logged it, and a real
 scenario produced no false offence. Windows only; the foreground path is untested, since testing it would take
 focus.
+
+### hints-next-map raced its own toast timer · `SETTLED` (2026-10-28)
+The scenario failed at random on CI because of the check, not the app: the Campaign button blinks about 2.1s
+once the "Ready for the next map?" toast shows, and the scenario started the toast timer before the second
+map's cover lifted, so on a slow runner the blink ended before the read. It now parks the deadline (1e9)
+until the cover lifts, then restarts the count. Proved both ways: a forced 6s delay failed on the reported
+line, and 6 of 6 runs pass after.

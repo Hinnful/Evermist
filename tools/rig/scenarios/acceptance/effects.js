@@ -34,6 +34,9 @@
 //      at first). With Select in hand it arms the next effect; with an effect armed it leaves. While on, the bar's
 //      border and the picked shape wear the material's colour and the band burns on the border; off, the band
 //      requests no frame at all (effectsTool.js, effectsBarFire.js).
+//   Q. Area and Difficult terrain are materials of their own, drawn by one-pass shaders (effectShaderKinds.js):
+//      picked, each draws an effect named after its label; switching a placed effect between Fire and Area
+//      builds its meshes again in the new kind; both reach the TV in their own kind.
 //
 // ⚠ EFFECTS ARE NOT ROOMS AND NOT TOKENS. An effect is the same record as a room carrying a
 // `material` where a room has a fog `mode` (CLAUDE.md). They live in two arrays because array
@@ -648,4 +651,37 @@ module.exports = async function effectsFeature(rig) {
             'a Merge armed in Rooms was disarmed by the switch to Effects, where its button is ' +
             'now on the bar to show it and to cancel it');
   await dm.evaluate('setPlaceMode("rooms"); setShapeOp("new"); 0');
+
+  // ══ Q. Area and Difficult terrain ══
+  const kindOf = (s, id) => s.evaluate('(i => i ? [i.kind, !!i.meshDark] : null)(_fxInstances.get(' + id + '))');
+  await dm.evaluate('selectedPolygonId = null; setPlaceMode("effects"); setMaterial("area"); setShape("rect");' +
+                    ' __rigDrag(300, 300, 560, 520); setMaterial("terrain"); __rigDrag(900, 300, 1150, 560);' +
+                    ' setShape("select"); 0');
+  const [area, rough] = await dm.evaluate('effects.slice(-2)');
+  // RED ON: names built from the material key again in addEffect (effects.js) — 2026-10-28
+  rig.check(area.material === 'area' && /^Area \d+$/.test(area.name || '') &&
+            rough.material === 'terrain' && /^Difficult terrain \d+$/.test(rough.name || ''),
+            'picking Area and Difficult terrain did not draw effects named after them: ' +
+            JSON.stringify([area.material, area.name, rough.material, rough.name]));
+  rig.check(JSON.stringify(await lib.poll(() => kindOf(dm, area.id), 8000)) === '["ward",false]' &&
+            JSON.stringify(await lib.poll(() => kindOf(dm, rough.id), 8000)) === '["rough",false]',
+            'Area or Difficult terrain is not drawn by its own one-pass mesh');
+  // RED ON: the rebuild on a change of kind removed from _syncFxInstances (effects.js) — 2026-10-28
+  await dm.evaluate('selectedPolygonId = ' + area.id + '; setMaterial("fire"); 0');
+  rig.check(JSON.stringify(await lib.poll(async () => {
+    const k = await kindOf(dm, area.id); return k && k[0] === 'flame' ? k : null; }, 8000)) === '["flame",true]',
+            'switching a placed Area to Fire did not build the two flame passes');
+  await dm.evaluate('setMaterial("area"); 0');
+  rig.check(JSON.stringify(await lib.poll(async () => {
+    const k = await kindOf(dm, area.id); return k && k[0] === 'ward' ? k : null; }, 8000)) === '["ward",false]',
+            'switching it back to Area left it drawn as a flame');
+  await dm.evaluate('selectedPolygonId = null; selectedVertexIndex = -1; setMaterial("fire"); sendToPlayer(); 0');
+  const tvKinds = await lib.poll(async () => {
+    const a = await kindOf(player, area.id), r = await kindOf(player, rough.id);
+    return a && r ? [a[0], r[0]] : null; }, 20000);
+  rig.check(JSON.stringify(tvKinds) === '["ward","rough"]',
+            'the TV does not draw Area and Difficult terrain in their own kind: ' + JSON.stringify(tvKinds));
+  rig.byEye('Area: gold edge lines, ticks crawling along the edge, glyphs shimmering. Difficult terrain: ' +
+            'rough ground whose lumps rise and sink, with dark pools crawling over it');
+  await dm.evaluate('setPlaceMode("rooms"); 0');
 };

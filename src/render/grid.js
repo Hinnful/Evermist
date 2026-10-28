@@ -93,7 +93,7 @@ function drawEffectGridGlow(ctx, vp) {
   const scale = vp.dstW / vp.srcW;
   const vx2 = vp.srcX + vp.srcW, vy2 = vp.srcY + vp.srcH;
   for (const e of effects) {
-    if (!e.vertices || e.vertices.length < 3) continue;
+    if (!e.vertices || e.vertices.length < 3 || effectMaterial(e.material).kind !== 'flame') continue;
     // ⚠ HAND drawGridLines THIS EFFECT'S BOX, never the whole viewport. It walks every cell in
     // the region it is given, and a hex cell is a six-point subpath, so the viewport would rebuild
     // the entire grid once per effect to stroke the few cells this clip keeps.

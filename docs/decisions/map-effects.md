@@ -210,3 +210,21 @@ Realistic flame patches, cartoon flame icons, inward waves, rising ribbons, glow
 streaked sparks (they read as lanterns) and stepped or boiled frames (they read as low frame rate).
 A colour picker per effect was refused too: an effect is typed by material, and three clouds
 (Darkness, poison, fog) are one future look with three materials, not a picker.
+
+---
+
+### Area and Difficult terrain joined the materials, each a look of its own · `SETTLED` (2026-10-28)
+
+Picked over five rounds of throwaway prototypes (`.claude/private/design/item-187/`). **Area** marks where a
+spell like Slow or Silence holds: a gold bezel of two edge lines (light over dark, so it reads on snow and
+on dark stone), ticks crawling along the edge, a small glyph every sixth tick, a slow shimmer round the
+glyphs and a faint fill. Glyphs were chosen knowingly, though the ping refused a rune circle for tying a map
+to fantasy. **Difficult terrain** is one material for every ground: rough relief whose lumps rise and sink,
+dark pools crawling over it, a ragged edge with a faint ink line. A material record now carries `kind`
+(`flame`, `ward`, `rough`) and a `label`, the name the DM sees and the AI tools accept. Non-flame kinds draw
+one normal-blend pass from `effectShaderKinds.js`, no grid relight, lengths scaled by gridSize/36. Known
+limit: on an effect with a hole, ticks and glyphs follow the outer ring only. A rollback draws them as fire until the next update.
+Rejected, do not retry: a colour picker per effect; one terrain per ground type (vines, grass, bog,
+thornbrush; a bog on a snowy mountain reads wrong); static hatching and per-square triangle markers; shadow
+fingers from the edge (read as triangles); static or "too magical" Area looks (dashed wash, glow bands,
+aurora, caustics, soap film), one-colour tints, corner diamonds. Dark pools are faint on dark stone: accepted.
