@@ -1,7 +1,7 @@
 'use strict';
 // mcpScenes.js — Claude's scene tools: find map files, make a scene from one, rename, move, change and delete.
-// ⚠ NOTHING HERE OPENS A SCENE OR REACHES THE TV. A scene the DM has open or the TV shows is left alone for
-// anything that changes its fog, grid or map.
+// ⚠ NOTHING HERE OPENS A SCENE OR REACHES THE TV. A change to a map's fog or grid goes through mcpEditMap
+// (mcpMapEdit.js); a delete leaves alone the scene the DM has open or the TV shows.
 
 // Where a new card goes: inside the place's outline, or clear of every place and card when `place` is ''.
 // Null when the place has no outline or no room left. `skip` is the ids of scenes being placed.
@@ -88,9 +88,26 @@ async function _mcpRename(args) {
   return mcpDone('renamed the map "' + old + '" to "' + now + '"', async () => { renameScene(s.id, old); }, 'Renamed the map "' + old + '" to "' + now + '".');
 }
 
+// The card's centre exactly there: a road it lands on takes it, and its group follows from the outlines.
+async function _mcpMoveExact(s, spot, toPlace) {
+  if (toPlace) return _mcpNo('Give toPlace or an exact x and y, not both: the group follows from where the card lands.');
+  const snap = worldSnapshotTake();
+  const landed = worldRoadsSettleScene(s.id, spot);
+  await worldSceneSet(s.id, { worldPos: landed });
+  worldAssignAll();
+  worldRoadsSave();
+  _mcpWorldRefresh();
+  const now = sanitizeGroupName(allScenes.find(x => x.id === s.id).group);
+  return mcpDone('moved the map "' + s.name + '"', async () => { worldSnapshotPut(snap); _mcpWorldRefresh(); },
+    'Moved the map "' + s.name + '" to ' + landed.x + ',' + landed.y + ' on the Campaign. It is ' + (now ? 'in the group "' + now + '"' : worldRoadOfScene(s.id) ? 'on a road' : 'in no group') + '.');
+}
+
 async function _mcpMove(args) {
   const found = _mcpScene(args);
   if (found.error) return _mcpNo(found.error);
+  const exact = mcpSpotArg(args);
+  if (exact.error) return _mcpNo(exact.error);
+  if (exact.at) return _mcpMoveExact(found.scene, exact.at, args.toPlace);
   const place = _mcpPlaceArg(args.toPlace);
   if (place.error) return _mcpNo(place.error);
   const s = found.scene;
@@ -119,22 +136,15 @@ async function _mcpSetScene(args) {
   if (hex === null) return _mcpNo('fogColor must be a hex colour such as #8899aa.');
   if (size === null) return _mcpNo('gridCellSize must be a whole number of map pixels from 10 to 400.');
   if (hex === undefined && size === undefined) return _mcpNo('Nothing to change: give fogColor or gridCellSize.');
-  const pinned = _mcpScenePinned(s, 'changing its ' + [hex && 'fog colour', size && 'grid'].filter(Boolean).join(' and '));
-  if (pinned) return pinned;
-  let prev = null;
-  const put = fn => sceneStore.updateScene(s.id, fn);
-  await put(rec => {
-    prev = { fogSettings: rec.fogSettings && JSON.parse(JSON.stringify(rec.fogSettings)), gridConfig: rec.gridConfig && JSON.parse(JSON.stringify(rec.gridConfig)) };
-    if (hex) rec.fogSettings = { ...(rec.fogSettings || {}), pickedHex: hex };
-    if (size) rec.gridConfig = { ...(rec.gridConfig || captureGridConfig()), cellSize: size };
+  const parts = [hex && 'fogSettings', size && 'grid'].filter(Boolean);
+  const edit = await mcpEditMap(s, 'changing its ' + [hex && 'fog colour', size && 'grid'].filter(Boolean).join(' and '), parts, d => {
+    if (hex) d.fogSettings.pickedHex = hex;
+    if (size) d.gridConfig.cellSize = size;
   });
+  if (edit.no) return edit.no;
   const said = [hex && 'fog colour ' + hex, size && 'grid cell size ' + size + ' px'].filter(Boolean).join(' and ');
-  return mcpDone('set the ' + said + ' of the map "' + s.name + '"', async () => {
-    await put(rec => {
-      if (prev.fogSettings === undefined) delete rec.fogSettings; else rec.fogSettings = prev.fogSettings;
-      if (prev.gridConfig === undefined) delete rec.gridConfig; else rec.gridConfig = prev.gridConfig;
-    });
-  }, 'Set the ' + said + ' of the map "' + s.name + '".');
+  const open = _mcpHolder(s.id) === 'here' ? ' The DM has it open and sees the change now.' : '';
+  return mcpDone('set the ' + said + ' of the map "' + s.name + '"', edit.undo, 'Set the ' + said + ' of the map "' + s.name + '".' + open);
 }
 
 async function _mcpDeleteScene(args) {

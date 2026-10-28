@@ -8,7 +8,7 @@
 // _mcpSceneRecord carries only its notes and rooms.
 async function _mcpSeeRecord(scene) {
   if (_mcpHolder(scene.id) === 'here') {
-    return { live: true, mapWidth, mapHeight, mapType: currentScene.mapType, polygons, effects, gridConfig: captureGridConfig(),
+    return { live: true, mapWidth, mapHeight, mapType: currentScene.mapType, polygons, effects, ...lightsSceneFields(), gridConfig: captureGridConfig(),
       floorPlan: currentScene.floorPlan, canvas: mapOffscreen };
   }
   const rec = await _mcpSceneRecord(scene.id);
@@ -26,7 +26,8 @@ async function _mcpReadScene(args) {
   if (found.error) return _mcpNo(found.error);
   const s = found.scene, rec = await _mcpSeeRecord(s);
   return _mcpOk(mcpSeeJson(mcpSeeRead({ name: s.name, group: s.group, mapW: rec.mapWidth, mapH: rec.mapHeight, mapType: rec.mapType,
-    onTv: _mcpSeeOnTv(s), gridConfig: rec.gridConfig, polygons: rec.polygons, effects: rec.effects, floorPlan: rec.floorPlan })));
+    onTv: _mcpSeeOnTv(s), gridConfig: rec.gridConfig, polygons: rec.polygons, effects: rec.effects,
+    lightShapes: rec.lightShapes, lightsHidden: rec.lightsHidden, floorPlan: rec.floorPlan })));
 }
 
 // A frame of an animated map's file, in a video element no page holds, drawn to `ctx` over `crop`.

@@ -954,6 +954,8 @@ const RU = {
   'The maps came in, but the fight table did not.': 'Карты импортированы, а таблица боя - нет.',
   'Module text not imported': 'Текст модуля не импортирован',
   'The maps came in, but the module text did not.': 'Карты импортированы, а текст модуля - нет.',
+  'Module text kept': 'Текст модуля оставлен',
+  'This file carries “{incoming}”, and “{current}” stays loaded.': 'В файле есть «{incoming}», а загруженным остаётся «{current}».',
   'the module text in this file': 'текст модуля из этого файла',
   'This file carries “{incoming}”, and “{current}” is loaded now. Evermist holds one module at a time, so one of them goes. Room names and descriptions already written to your maps stay as they are either way.': 'В этом файле «{incoming}», а сейчас загружен «{current}». Evermist хранит один модуль, поэтому один из них уйдёт.\n\nНазвания и описания комнат, уже записанные на ваши карты, останутся в любом случае.',
   'Use the file’s': 'Взять из файла',

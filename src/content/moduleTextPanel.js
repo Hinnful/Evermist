@@ -117,9 +117,7 @@ function _mtBinaryKind(text) {
 // Parse and STORE in one step. ⚠ An empty parse writes nothing: that loss is unrecoverable.
 // The module's stat blocks go to the bestiary too; `blockText` is a PDF's copy laid out for them.
 function _mtImport(text, sourceName, blockText) {
-  const res = parseModuleText(text);
-  const n = res.entries.length;
-  const mon = cbImportBookText(blockText || text, sourceName || 'Module text');
+  const { n, mon, error } = mtImportText(text, sourceName, blockText);
   const monLine = mon.added.length ? ' ' + t.plural(mon.added.length, '{n} monster added to the bestiary.', '{n} monsters added to the bestiary.') : '';
   cbReportImport(mon);
   if (!n) {
@@ -128,9 +126,28 @@ function _mtImport(text, sourceName, blockText) {
                    'like “K12. Chapel”, so try one chapter at a time.', true);
     return;
   }
-  const st = mtStore(res.entries, sourceName || 'Module text');
-  if (!st.ok) { _mtRenderModal(st.error, true); return; }
+  if (error) { _mtRenderModal(error, true); return; }
   _mtRenderModal(monLine ? t.plural(n, '{n} location from {src}', '{n} locations from {src}', { src: mtSourceName }) + '.' + monLine : null);
+}
+
+// The import without the panel: { n, mon, error }, where `mon` is the bestiary's answer for the stat blocks.
+function mtImportText(text, sourceName, blockText) {
+  const res = parseModuleText(text);
+  const n = res.entries.length;
+  const mon = cbImportBookText(blockText || text, sourceName || 'Module text');
+  if (!n) return { n, mon, error: null };
+  const st = mtStore(res.entries, sourceName || 'Module text');
+  return { n, mon, error: st.ok ? null : st.error };
+}
+
+// A file's bytes that are not a PDF, as { text }, or { error } naming what they are instead.
+function mtBytesToText(buf) {
+  const text = _mtDecode(buf);
+  if (text == null) return { error: 'Could not read that file as text.' };
+  // Anything else that isn't prose gets NAMED, or a .docx lists as binary garbage.
+  const kind = _mtBinaryKind(text);
+  if (kind) return { error: t('That looks like {kind}, not plain text. Save it as .txt first, then load that.', { kind: t(kind) }) };
+  return { text };
 }
 
 function _mtInitModal() {
@@ -182,15 +199,9 @@ function _mtInitModal() {
         return;
       }
 
-      const text = _mtDecode(buf);
-      if (text == null) { _mtRenderModal('Could not read that file as text.', true); return; }
-      // Anything else that isn't prose gets NAMED, or a .docx lists as binary garbage.
-      const kind = _mtBinaryKind(text);
-      if (kind) {
-        _mtRenderModal(t('That looks like {kind}, not plain text. Save it as .txt first, then load that.', { kind: t(kind) }), true);
-        return;
-      }
-      _mtImport(text, f.name);
+      const read = mtBytesToText(buf);
+      if (read.error) { _mtRenderModal(read.error, true); return; }
+      _mtImport(read.text, f.name);
     };
     rd.onerror = () => _mtRenderModal('Could not read that file.', true);
     // ArrayBuffer, not readAsText: the encoding has to be decided by looking at the bytes.

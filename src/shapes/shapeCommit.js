@@ -98,8 +98,7 @@ function refuseShapeOp(reason) {
 }
 
 // A piece with no shape of its own: the parent's fields, a fresh id, a plain name, no notes.
-function newShapeFromPiece(base, piece) {
-  const id = takeShapeId(placeMode);
+function newShapeFromPiece(base, piece, id) {
   const s = { ...base, id };
   if (base.light) { delete s.name; } else {
     s.name = t((base.material ? base.material.charAt(0).toUpperCase() + base.material.slice(1) : 'Room') + ' {n}', { n: id });
@@ -119,7 +118,9 @@ function setShapeHoles(shape, holes) {
 // ⚠ ARRAY ORDER IS FOG COMPOSITING PRECEDENCE, so a group's first piece takes the slot its
 // earliest member already holds; only a second piece is appended. `mode` is handed in because a
 // join takes the most hidden of its contributors, not the earliest one's.
-function applyShapePlan(plan, mode) {
+// `list` is left as it was apart from the plan's own shapes, which change in place; `newId` numbers
+// each extra piece. Claude's room tools (mcpRooms.js) run it on a map that is not open.
+function shapePlanApplied(list, plan, mode, newId) {
   const drop = new Set();
   const extras = [];
   let lostDoors = 0;
@@ -134,12 +135,16 @@ function applyShapePlan(plan, mode) {
     const parts = kept.pieces.length ? kept.pieces : g.pieces.map(p => ({ vertices: p.verts, holes: p.holes }));
     applyPieceToShape(base, parts[0]);
     if (mode) base.mode = mode;
-    for (let i = 1; i < parts.length; i++) extras.push(newShapeFromPiece(base, parts[i]));
+    for (let i = 1; i < parts.length; i++) extras.push(newShapeFromPiece(base, parts[i], newId()));
   }
-  const kept = activeShapeList().filter(s => !drop.has(s.id)).concat(extras);
-  setShapeListNamed(placeMode, kept);
-  if (drop.has(selectedPolygonId)) clearShapeSelection();
-  if (lostDoors) reportLostDoors(lostDoors);
+  return { list: list.filter(s => !drop.has(s.id)).concat(extras), drop, lostDoors };
+}
+
+function applyShapePlan(plan, mode) {
+  const out = shapePlanApplied(activeShapeList(), plan, mode, () => takeShapeId(placeMode));
+  setShapeListNamed(placeMode, out.list);
+  if (out.drop.has(selectedPolygonId)) clearShapeSelection();
+  if (out.lostDoors) reportLostDoors(out.lostDoors);
 }
 
 // A door on a wall the repair removed has nothing left to sit on. Reported because the DM placed

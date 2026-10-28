@@ -20,6 +20,8 @@ async function mcpUndoLast() {
   const step = _mcpSteps.pop();
   if (!step) { noticeToast('Nothing from Claude to undo'); return null; }
   try { await step.undo(); } catch (err) {
+    // A refusal that changed nothing (mcpMapEdit.js) leaves the step to try again.
+    if (err && err.mcpKeep) _mcpSteps.push(step);
     noticeToast('Could not undo: ' + step.label);
     throw err;
   }

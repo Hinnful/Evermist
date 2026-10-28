@@ -256,6 +256,8 @@ function syncAnimToPlayer(includeWarp, deliver) {
   if (paneForward('anim', msg)) return;
   // Manual holds a change until Send. `deliver` is Send itself and the Player's own hello.
   if (!autoSync && !deliver) { tvWait.anim = true; playerUnsent = true; return; }
+  // A held TV waits too; the push that lifts the hold delivers it.
+  if (tvHeld && !deliver) { tvWait.anim = true; return; }
   tvWait.anim = false;
   if (!playerWindow || playerWindow.closed) return;
   playerWindow.postMessage(msg, '*');

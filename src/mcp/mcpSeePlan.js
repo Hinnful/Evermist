@@ -129,19 +129,26 @@ function mcpSeePlanCounts(text) {
   return { loaded: true, walls: n(plan.line_of_sight), doors: n(plan.portals), lights: n(plan.lights) };
 }
 
-// Everything read_scene tells, from `i`: { name, group, mapW, mapH, mapType, onTv, gridConfig, polygons, effects, floorPlan }.
+// Everything read_scene tells, from `i`: { name, group, mapW, mapH, mapType, onTv, gridConfig, polygons, effects, lightShapes,
+// lightsHidden, floorPlan }. Rooms, effects and lights carry the index (from 1) Claude's tools find them by.
 function mcpSeeRead(i) {
   const W = i.mapW, H = i.mapH;
-  const rooms = (i.polygons || []).map(p => {
+  const rooms = (i.polygons || []).map((p, k) => {
     const [outer, ...holes] = _msRings(p);
-    const room = { name: p.name || null, notes: p.desc || '', fog: mcpSeeFog(p.mode), outline: mcpSeeRing(outer, W, H) };
+    const room = { index: k + 1, name: p.name || null, notes: p.desc || '', fog: mcpSeeFog(p.mode), outline: mcpSeeRing(outer, W, H) };
     if (holes.length) room.holes = holes.map(h => mcpSeeRing(h, W, H));
     room.doors = (p.doors || []).map(d => mcpSeeDoorAt(p, d)).filter(Boolean).map(pt => [mcpSeeR1(pt.x / W * 100), mcpSeeR1(pt.y / H * 100)]);
     return room;
   });
-  const effects = (i.effects || []).map(e => ({ name: e.name || null, material: e.material || null, outline: mcpSeeRing(e.vertices, W, H) }));
+  const effects = (i.effects || []).map((e, k) => ({ index: k + 1, name: e.name || null, material: e.material || null, outline: mcpSeeRing(e.vertices, W, H) }));
+  const lights = (i.lightShapes || []).filter(l => l && Array.isArray(l.vertices)).map((l, k) => {
+    const out = { index: k + 1, outline: mcpSeeRing(l.vertices, W, H) };
+    if (l.holes && l.holes.length) out.holes = l.holes.map(h => mcpSeeRing(h, W, H));
+    return out;
+  });
   return { name: i.name, group: i.group || null, map: { widthPx: W, heightPx: H, type: i.mapType === 'video' ? 'video' : 'image' },
-    onTv: !!i.onTv, grid: mcpSeeGrid(i.gridConfig, W), rooms, effects, floorPlan: mcpSeePlanCounts(i.floorPlan) };
+    onTv: !!i.onTv, grid: mcpSeeGrid(i.gridConfig, W), rooms, effects,
+    lightsOn: !i.lightsHidden, lights, floorPlan: mcpSeePlanCounts(i.floorPlan) };
 }
 
 // JSON with each point pair on one line, so a room of forty points is not eighty lines.

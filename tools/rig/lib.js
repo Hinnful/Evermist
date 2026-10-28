@@ -286,4 +286,48 @@ async function poll(fn, ms, everyMs) {
   }
 }
 
-module.exports = { HELPERS, TV_FOG, SETTLE, openMap, installHelpers, settle, poll, hold, fire };
+// The address and key the app wrote for Claude's connection, and a `call(tool, args)` onto it. `null` when the app
+// wrote none, which the scenario reports as its own check.
+async function mcpClient(rig) {
+  const fs = require('fs'), path = require('path');
+  const address = await poll(async () => {
+    try { return JSON.parse(fs.readFileSync(path.join(rig.profileDir, 'mcp.json'), 'utf8')); } catch { return null; }
+  }, 15000);
+  if (!address || !address.port || !address.token) return null;
+  return async (tool, args) => (await fetch('http://127.0.0.1:' + address.port + '/call', {
+    method: 'POST', body: JSON.stringify({ tool, args: args || {} }),
+    headers: { 'content-type': 'application/json', 'x-evermist-token': address.token },
+  })).json();
+}
+
+// Three maps and the Player, then the map the TV shows deleted: the DM lands on one of the other two with the TV held
+// on its waiting screen (delete-open-scene.js), so that one is OPEN but not on the TV and the other is CLOSED.
+// Returns { player, open, closed }, each map as { id, name }. The Player's window messages are collected in __claudeHeard.
+async function openMapsOffTv(rig) {
+  const dm = rig.dm;
+  const sizes = {};
+  const made = [];
+  for (const [w, h] of [[1200, 800], [1000, 700], [900, 600]]) {
+    await openMap(rig, { w, h });
+    const id = await dm.evaluate('currentScene.id');
+    sizes[id] = w;
+    made.push({ id, name: await dm.evaluate('currentScene.name') });
+  }
+  const tv = made[2];
+  const player = await rig.player();
+  await player.waitFor('!!mapOffscreen && mapWidth === 900', 45000, 'the third map to reach the Player');
+  await player.evaluate('window.__claudeHeard = []; window.addEventListener("message", e => __claudeHeard.push(JSON.stringify(e.data || null))); 0');
+  await dm.evaluate('worldMapShow(); 0');
+  await settle(dm, 'worldMapOpen && !_wmAnim', 10000);
+  await dm.evaluate('_wmDeletePicked(["' + tv.id + '"]); 0');
+  await settle(dm, 'currentScene && currentScene.id !== "' + tv.id + '" && (' + JSON.stringify(sizes) + ')[currentScene.id] === mapWidth && tvHeld', 60000);
+  await dm.evaluate('worldMapHide(); 0');
+  await hold(2000, 'let the return from the Campaign send whatever it sends, so only what Claude does is heard after');
+  await player.evaluate('__claudeHeard.length = 0; 0');
+  const openId = await dm.evaluate('currentScene.id');
+  const open = made.find(m => m.id === openId);
+  const closed = made.find(m => m.id !== openId && m.id !== tv.id);
+  return { player, open, closed };
+}
+
+module.exports = { HELPERS, TV_FOG, SETTLE, openMap, installHelpers, settle, poll, hold, fire, mcpClient, openMapsOffTv };

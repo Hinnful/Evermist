@@ -21,8 +21,8 @@
 //   F. Claude creates a fight from bestiary monsters, leaves out one the bestiary lacks and names it,
 //      and the DM's open fight stays open.
 //   G. In two-map mode a note for a column's scene lands in that column and in the store.
-//   H. set_notes replaces and undo_last_change brings the old text back; the guide answers; a change to
-//      the scene the DM has open or the TV shows is refused.
+//   H. set_notes replaces and undo_last_change brings the old text back; the guide answers; a fog colour
+//      change to the scene the DM has open, with no TV, lands on it live and undo takes it back.
 //   I. Claude makes a scene from a map file inside a place without opening it, renames it, changes its
 //      fog colour and grid, moves it out of the place, deletes it and undo brings it back whole.
 //   J. Claude renames a place with its notes, reshapes it, draws a road to a second place, deletes it
@@ -139,8 +139,11 @@ module.exports = async function claudePrep(rig) {
   rig.check(!replaced.isError && await dm.evaluate('notesCampaignGet()') === 'Fresh start.', 'set_notes did not replace the campaign notes: ' + JSON.stringify(replaced));
   await call('undo_last_change');
   rig.check(await dm.evaluate('notesCampaignGet()') === kept, 'undo_last_change did not bring the old campaign notes back');
-  const pinned = await call('set_scene', { name: scene.name, fogColor: '#336699' });
-  rig.check(pinned.isError && /open|TV/.test(pinned.text), 'a fog colour change to the scene the DM has open was not refused: ' + JSON.stringify(pinned));
+  const hexBefore = await dm.evaluate('fogPickedHex');
+  const live = await call('set_scene', { name: scene.name, fogColor: '#336699' });
+  rig.check(!live.isError && await dm.evaluate('fogPickedHex') === '#336699', 'a fog colour change to the scene the DM has open did not land on it: ' + JSON.stringify(live));
+  await call('undo_last_change');
+  rig.check(await dm.evaluate('fogPickedHex') === hexBefore, 'undo_last_change did not put the open scene\'s fog colour back');
 
   // ── I. Scenes ─────────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved

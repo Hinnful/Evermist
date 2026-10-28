@@ -636,9 +636,19 @@ the yes too: delete_scene, delete_place, delete_fight and delete_picture delete 
 `confirmed: true`, and without it answer with what would go (`mcpWouldDelete` in `mcpPlan.js`). Settings
 shows these rules under Connect to Claude, and the guide's `claude` topic states them.
 
+Claude's map tools draw, edit, delete, merge, cut and split rooms and add or remove doors; set room fog,
+reveal or hide a rectangle or circle or the whole map, and set the drift preset and tint; load a .dd2vtt floor
+plan (asking before it replaces rooms or lights), module text or a PDF, and link rooms to entries one by one;
+merge an Evermist export zip (asking first with the plan, and refused when it would replace an existing animated
+map's video); fit and style the grid; place, edit and delete Fire and Acid effects and lights; keep the music
+library (files, YouTube up to 20 tracks per call that fill in the background, groups, delete with undo until
+Evermist closes; it never plays); and handle groups, map spots, roads, the backdrop, fights before they run
+and bestiary monsters. A new IPC reads prep files from a path, type-checked by extension.
+
 Nothing Claude does reaches the TV. A change to fog, fog colour, the map or a delete is refused for a scene
-the Player window shows (`mcpOnTv` in `mcpPlan.js`), and a scene the DM has open is not changed under
-them. The fight open at the table is never deleted, and an edit to it may only add monsters or raise a count,
+the Player window shows (`mcpOnTv` in `mcpPlan.js`), in a two-map column, and while the DM is mid-gesture. A map
+the DM has open but the TV does not show is changed live: `mcpEditMap` carries every map change, and the change
+also goes on the DM's own Ctrl+Z stack, so neither undo drops or resurrects the other. The fight open at the table is never deleted, and an edit to it may only add monsters or raise a count,
 written into the live table rows in place so existing rows keep their HP; rename, remove, side change
 and a lower count are refused (`mcpOpenFightRefusal`), and undo removes the added rows. A picture on the TV is not removed.
 An animated map is not deleted by Claude, since its file on disk cannot come back. A note for a scene

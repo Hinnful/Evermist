@@ -129,6 +129,7 @@ describe('mcpSeeRead', () => {
 
   it('keeps polygons order with fog, notes and outlines in percent', () => {
     assert.deepEqual(read.rooms.map(r => [r.name, r.fog]), [['Vestry', 'hidden'], [null, 'half'], ['Hall', 'revealed']]);
+    assert.deepEqual(read.rooms.map(r => r.index), [1, 2, 3]);
     assert.equal(read.rooms[0].notes, 'Two acolytes.');
     assert.deepEqual(read.rooms[0].outline, [[10, 10], [30, 10], [30, 30], [10, 30]]);
     assert.deepEqual(read.rooms[0].doors, [[30, 20]]);
@@ -141,8 +142,18 @@ describe('mcpSeeRead', () => {
     assert.equal(read.onTv, true);
     assert.equal(read.group, null);
     assert.equal(read.grid.cellPercentOfWidth, 5);
-    assert.deepEqual(read.effects, [{ name: 'Fire 4', material: 'fire', outline: [[0, 0], [10, 0], [10, 10], [0, 10]] }]);
+    assert.deepEqual(read.effects, [{ index: 1, name: 'Fire 4', material: 'fire', outline: [[0, 0], [10, 0], [10, 10], [0, 10]] }]);
     assert.equal(read.floorPlan.loaded, false);
+  });
+  it('lists the lights with an index, and whether they are on', () => {
+    const lit = mcpSeeRead({ name: 'Crypt', mapW: 1600, mapH: 1000, lightsHidden: true,
+      lightShapes: [{ id: 7, vertices: rect(0, 0, 160, 100), light: true }, { id: 8, vertices: rect(800, 500, 160, 100), holes: [rect(840, 525, 20, 20)] }] });
+    assert.equal(lit.lightsOn, false);
+    assert.deepEqual(lit.lights.map(l => l.index), [1, 2]);
+    assert.deepEqual(lit.lights[0], { index: 1, outline: [[0, 0], [10, 0], [10, 10], [0, 10]] });
+    assert.equal(lit.lights[1].holes.length, 1);
+    assert.equal(read.lightsOn, true);
+    assert.deepEqual(read.lights, []);
   });
   it('prints each point pair on one line', () => {
     const text = mcpSeeJson(read);

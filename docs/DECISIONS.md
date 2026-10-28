@@ -1045,6 +1045,16 @@ read at startup and dropped the entry, so it held only when Evermist launched wh
 closed. Replaced by a desktop extension (`.mcpb`) Settings hands to Claude, which Claude installs
 and keeps. Evermist never writes another app's files.
 
+### Claude's map tools: shapes and limits · `SHIPPED` (4.13.0)
+Positions are percent of the map; rooms, effects and lights are numbered from 1 in `read_scene`. Cut and
+split act on the named room only, where the DM's tools act on every room the shape crosses: a recorded
+departure. Lights have no per-light switch, so Claude toggles all of a map's lights at once. A YouTube
+download returns at once and fills in the background, since it outlasts the call's 330 s limit. A deleted
+music track waits in the music folder's `.removed` and goes for good when Evermist quits or next starts.
+One IPC reads prep files from a path, checked by extension (floor plans 150 MB, text and PDF 20 MB, bestiary
+.json 20 MB). One helper, `mcpEditMap`, carries every live map change, and the change also goes on the
+DM's Ctrl+Z stack so neither undo drops or resurrects the other.
+
 ### Moving the campaign out of the browser storage for a closed app · `REJECTED` (2026-10-10)
 Claude reaching the campaign with Evermist closed would have needed it in plain files. Rejected as
 a large change with risk to saved data. A closed Evermist starts unseen for the call instead, one

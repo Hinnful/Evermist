@@ -349,7 +349,7 @@ maps, Seat and Fit to TV, backup, restore and settings. Claude may change and de
 Nothing Claude does reaches the TV. Claude may name a room from a module or notes. Effects and lights
 wait until Claude can see the map. Without Claude the app is unchanged.
 
-### Claude does everything a DM can do except play · `SETTLED` (2026-10-25, scope; not yet built)
+### Claude does everything a DM can do except play · `SETTLED` (2026-10-25, scope; built in 4.13.0)
 Supersedes the play list in "Claude preps, and never plays": music and sounds' library, settings and backup are now
 case by case. Play is what changes the TV now or acts at the table: opening or sending a map, two maps, showing a
 picture, playing music or sounds, TV setup, sync, ping, the open fight's HP, conditions and initiative. A doubtful
@@ -364,6 +364,14 @@ the yes is enforced by the app and not only asked for in a tool description. The
 fight open at the table Claude may only add monsters or raise a count. Three calls the epic left open: map-look
 settings (shrink on import, half-room fog, feather) are prep; the DM's machine settings, backup, restore and export
 stay out; a map open on the DM's screen but not on the TV is prep, and Claude may change it.
+
+### Claude's edges on the map, fog, effects and music · `SETTLED` (2026-10-28)
+Claude places an effect only when the DM asks for a specific one. It sets the fog look through the named
+drift presets (slow, medium, fast) plus tint, never every slider, and the parked "fog identities" stays
+parked. It may fog any rectangle or circle, not only rooms. It may download from YouTube, at most 20 tracks
+per call, and never plays music. The app never assigns module entries to rooms for Claude; it links them one
+by one. After an update the DM presses Connect to Claude again, because the installed extension holds its
+own copy of the tool list.
 
 ### Size releases conservatively · `SETTLED`
 2.0.0 skipped 1.8 and 1.9 and landed on a docs-only commit, because a release tag has to match

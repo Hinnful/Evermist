@@ -45,7 +45,7 @@ function _tiRead(raw) {
 }
 
 // The campaign note joins below the DM's own, as it always has. The places and roads follow the plan.
-async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes) {
+async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, say) {
   const parsed = notesParseCampaign(raw);
   const merged = notesMergeCampaign(notesCampaignGet(), parsed.text);
   if (merged.text !== notesCampaignGet()) notesCampaignSet(merged.text);
@@ -68,7 +68,7 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes) {
   if (b.roads) parts.push(t('Some roads in this file could not be read, so they are left out.'));
   if (b.roadNotes) parts.push(t('Some road notes in this file could not be read, so those roads came without them.'));
   if (b.placeNotes) parts.push(t('Some group notes in this file could not be read, so those groups came without them.'));
-  if (parts.length) messageDialog({ title: 'Some notes were not imported', message: parts.join(nl + nl) });
+  if (parts.length) say({ title: 'Some notes were not imported', message: parts.join(nl + nl) });
 }
 
 // What the DM is told: counts first, then each edit the file overwrote, by scene and room.
@@ -213,19 +213,19 @@ async function _tiWrite(plan, ex, run, job) {
 }
 
 // Once the scenes are in: the file's other parts, the open scene reloaded, and the report.
-async function _tiFinish(zipPath, plan, done) {
-  if (done.noMap.length) messageDialog({
+async function _tiFinish(zipPath, plan, done, say, claude) {
+  if (done.noMap.length) say({
     title: t.plural(done.noMap.length, 'One map came back without its image', '{n} maps came back without their images'),
     message: t('The file carried no image for these, so they came in empty. Everything else came in:') + String.fromCharCode(10, 10) + done.noMap.join(String.fromCharCode(10)),
   });
-  if (done.mapFailed.length) messageDialog({
+  if (done.mapFailed.length) say({
     title: 'A map could not be replaced',
     message: t('The file had a newer image for these maps, but it could not be put in place, so they kept their old one:') + String.fromCharCode(10, 10) + done.mapFailed.join(String.fromCharCode(10)),
   });
-  await adoptModuleTextFromZip(zipPath);
-  await adoptCombatFromZip(zipPath);
-  await _tiAdoptCampaign(plan.raw, plan.readFailed, plan.plans, plan.shift, plan.items, plan.noNotes);
-  await worldBackgroundImport(zipPath, plan.shift, plan.moment);
+  await adoptModuleTextFromZip(zipPath, claude ? say : undefined);
+  await adoptCombatFromZip(zipPath, say);
+  await _tiAdoptCampaign(plan.raw, plan.readFailed, plan.plans, plan.shift, plan.items, plan.noNotes, say);
+  await worldBackgroundImport(zipPath, plan.shift, plan.moment, say);
   try {
     await galleryAdoptBackup(zipPath);
     await galleryAdoptScenes(done.pictured);
@@ -233,7 +233,7 @@ async function _tiFinish(zipPath, plan, done) {
   if (done.reopen) await switchScene(done.reopen);
   const names = id => (allScenes.find(s => s.id === id) || {}).name;
   if (done.added.length || done.updated.length) worldMapShowScenes(done.added.concat(done.updated));
-  messageDialog({
+  say({
     title: 'Import finished',
     message: _tiReport({
       added: done.added.map(names), updated: done.updated.map(names), kept: done.kept, overwritten: done.overwritten,
@@ -243,8 +243,27 @@ async function _tiFinish(zipPath, plan, done) {
   });
 }
 
-// Import a zip: the scene "+" button's route in for a .zip, and the world map's Import.
-async function restoreFromZipPath(zipPath) {
+// What importing the file would do, nothing written: the names of maps added and updated, the animated maps whose
+// video file it would replace, and the group and road counts. Null for a file with no maps.
+async function zipImportPreview(zipPath) {
+  const manifest = await window.electronAPI.readBackupManifest(zipPath);
+  if (!Array.isArray(manifest) || !manifest.length) return null;
+  const plan = await _tiPlan(zipPath, manifest);
+  const r = plan.plans;
+  return {
+    added: plan.items.filter(x => !x.matched).map(x => x.entry.name || t('Imported Map')),
+    updated: plan.items.filter(x => x.matched && x.plan.touched).map(x => x.id),
+    replacesVideo: plan.items.filter(x => x.matched && x.local && x.local.mapType === 'video' && x.plan.take && x.plan.take.map).map(x => x.local.name),
+    places: { added: r.places.report.added.length, updated: r.places.report.updated.length },
+    roads: { added: r.roads.report.added.length, updated: r.roads.report.updated.length },
+  };
+}
+
+// Import a zip: the scene "+" button's route in for a .zip, and the world map's Import. Claude passes `say`, which
+// takes every dialog instead (a question keeps what is there), and gets back { run, done } once the maps are in.
+async function restoreFromZipPath(zipPath, say) {
+  const claude = !!say;
+  say = say || messageDialog;
   if (!window.electronAPI || !zipPath) return;
   // ⚠ An import rewrites the library underneath whatever is open, and a column holds a scene record this
   // one is about to replace. Back to one map first.
@@ -272,7 +291,7 @@ async function restoreFromZipPath(zipPath) {
     const manifest = await window.electronAPI.readBackupManifest(zipPath);
     if (!Array.isArray(manifest) || !manifest.length) {
       hideMapProgress();
-      messageDialog({ title: 'Nothing in this file', message: 'The file holds no maps, or it did not come from Evermist.' });
+      say({ title: 'Nothing in this file', message: 'The file holds no maps, or it did not come from Evermist.' });
       return;
     }
     const plan = await _tiPlan(zipPath, manifest);
@@ -304,13 +323,14 @@ async function restoreFromZipPath(zipPath) {
     allScenes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     sceneListChanged();
     hideMapProgress();
-    await _tiFinish(zipPath, plan, done);
+    await _tiFinish(zipPath, plan, done, say, claude);
+    return { run, done };
   } catch (err) {
     if (job.stopped && !committed) return undo();
     hideMapProgress();
     console.error('Import failed:', err);
     if (!committed) await undo();
-    messageDialog({
+    say({
       title: 'Import failed',
       message: (committed ? t('The maps came in, but Evermist stopped before the rest of the file.')
                           : t('Evermist stopped partway through the file and put your maps back as they were.')) + '\n\n' + (err.message || err),

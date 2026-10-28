@@ -80,6 +80,9 @@ A bug report is an ordinary message and needs no command.
 - **The main session keeps diagnosis, design and release notes, and hands the rest to a
   subagent.** `scout` (Haiku) searches the code and reads CI logs and long test output. `builder`
   (Sonnet) builds a spec or a fully stated change. `filer` (Sonnet) runs `/commit`'s Step 4.
+- **Plan on the main model, build on a lower one.** A subagent never runs on a model above its
+  definition's without the DM's yes. A build too hard for Sonnet gets a more detailed plan,
+  not a stronger builder.
 - **Before look-and-feel work starts,** state what the result should look like and get the DM's
   agreement. The prototype rule is in CLAUDE.md.
 - **A prototype of a window that already exists loads the app's stylesheets and renders it with

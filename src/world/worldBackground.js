@@ -87,7 +87,7 @@ async function worldBackgroundBackupPayload() {
 
 // An imported backdrop: the one edited later wins, and an empty spot takes it. It keeps the time it arrived
 // with. Answers 'took', 'kept' or '' (the file had none).
-async function worldBackgroundImport(zipPath, shift, moment) {
+async function worldBackgroundImport(zipPath, shift, moment, say = messageDialog) {
   let got = null;
   try { got = await window.electronAPI.readBackupWorldBackground(zipPath); } catch (err) {
     console.error('Reading the background from the file failed:', err);
@@ -103,7 +103,7 @@ async function worldBackgroundImport(zipPath, shift, moment) {
   const blob = new Blob([got.buffer], { type: typeof m.type === 'string' ? m.type : '' });
   if (blob.size > WB_MAX_BYTES) return '';
   try { await _wbStore('readwrite', s => s.put(blob, 'image')); } catch (_) {
-    messageDialog({ title: 'Nothing changed', message: t('The image could not be saved.') });
+    say({ title: 'Nothing changed', message: t('The image could not be saved.') });
     return '';
   }
   if (_wbUrl) URL.revokeObjectURL(_wbUrl);
@@ -219,6 +219,15 @@ async function worldBackgroundSet(file) {
   const before = _wbMeta;
   await _wbChoose(file);
   return _wbMeta !== before;
+}
+
+// Numbers set from outside the controls (mcpWorldMap.js), already in range: false with no backdrop.
+function worldBackgroundNumbersSet(patch) {
+  if (!_wbMeta) return false;
+  Object.assign(_wbMeta, patch);
+  _wbMetaSave();
+  _wbApply();
+  return true;
 }
 
 // A typed or scrubbed number, clamped to its range.

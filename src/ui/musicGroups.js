@@ -31,6 +31,27 @@ function forgetMusicTrack(name) {
   _mgSave();
 }
 
+function musicGroupNames() { return _mgOrder.slice(); }
+
+// Puts tracks in a group, or in none when `group` is ''. The drag-and-drop and Claude both come here.
+function setMusicGroup(names, group) {
+  for (const n of names) if (group) _mgOf[n] = group; else delete _mgOf[n];
+  _mgSave();
+  _muRenderList();
+}
+
+// Claude's way to a group's end state: a name at a place in the order, with its tracks.
+function putMusicGroup(name, index, members) {
+  _mgOrder = _mgOrder.filter(n => n !== name);
+  _mgOrder.splice(Math.min(index, _mgOrder.length), 0, name);
+  for (const n of members) _mgOf[n] = name;
+  _mgSave();
+  _muRenderList();
+}
+
+function renameMusicGroup(from, to) { _mgRename(from, to); }
+function deleteMusicGroup(name) { _mgDelete(name); }
+
 function newMusicGroup() {
   const n = uniqueGroupName(t('New group'), _mgOrder);
   _mgOrder.push(n);
@@ -149,10 +170,9 @@ function buildMusicGroup(sec, filtering) {
   wrap.addEventListener('drop', e => {
     e.preventDefault();
     if (!_mgDrag) return;
-    if (g) _mgOf[_mgDrag] = g; else delete _mgOf[_mgDrag];
+    const dragged = _mgDrag;
     _mgDrag = null;
-    _mgSave();
-    _muRenderList();
+    setMusicGroup([dragged], g);
   });
   return wrap;
 }

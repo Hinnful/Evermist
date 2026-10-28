@@ -10,8 +10,8 @@ function mcpManifest({ version, tools, addressFile, launch }) {
     name: 'evermist',
     display_name: 'Evermist',
     version,
-    description: 'Prepare your sessions in Evermist: scenes, places, notes, fights and the bestiary.',
-    long_description: 'Lets Claude do your session prep in Evermist: notes, places and scenes, fights and the bestiary. Claude never touches what the TV shows, never runs the game, and asks you before it deletes anything. Every change it makes can be undone. Evermist starts in the background when it is closed.',
+    description: 'Prepare your sessions in Evermist: maps, rooms, fog, floor plans, module text, notes, fights and the bestiary.',
+    long_description: 'Lets Claude do your session prep in Evermist: notes, groups and maps, rooms and fog, floor plans and module text, the grid, effects and lights, the music library, fights and the bestiary. Claude never touches what the TV shows, never runs the game, and asks you before it deletes anything. Every change it makes can be undone. Evermist starts in the background when it is closed.',
     author: { name: 'Evermist' },
     server: {
       type: 'node',

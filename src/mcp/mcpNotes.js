@@ -8,7 +8,11 @@ async function _mcpRead(args) {
     const name = _mcpPlaceName(args.name);
     return name ? _mcpOk(notesPlaceGet(name) || '(no notes for this group yet)') : _mcpNo('No group is called "' + (args.name || '') + '".');
   }
-  if (args.level !== 'scene') return _mcpNo('level must be campaign, group or map.');
+  if (args.level === 'road') {
+    const f = _mcpRoadFor(args);
+    return f.error ? _mcpNo(f.error) : _mcpOk(notesRoadGet(f.road.uid) || '(no notes for this road yet)');
+  }
+  if (args.level !== 'scene') return _mcpNo('level must be campaign, group, road or map.');
   const found = _mcpScene(args);
   if (found.error) return _mcpNo(found.error);
   const rec = await _mcpSceneRecord(found.scene.id);
@@ -37,6 +41,12 @@ function _mcpNotesTarget(args) {
     if (!name) return { error: 'No group is called "' + (args.name || '') + '". Use create_place to make one.' };
     return { where: 'the group "' + name + '"', get: async () => notesPlaceGet(name), put: async text => notesPlaceSet(name, text) };
   }
+  if (args.level === 'road') {
+    const f = _mcpRoadFor(args);
+    if (f.error) return { error: f.error };
+    const uid = f.road.uid;
+    return { where: 'the road "' + f.road.name + '"', get: async () => notesRoadGet(uid), put: async text => notesRoadSet(uid, text) };
+  }
   if (args.level === 'scene') {
     const found = _mcpScene(args);
     if (found.error) return { error: found.error };
@@ -45,7 +55,7 @@ function _mcpNotesTarget(args) {
       get: async () => (await _mcpSceneRecord(s.id)).notes || '',
       put: async text => { if (!await _mcpPutSceneNotes(s.id, text)) throw new Error('The map "' + s.name + '" is no longer in the library.'); } };
   }
-  return { error: 'level must be campaign, group or map.' };
+  return { error: 'level must be campaign, group, road or map.' };
 }
 
 // `make(old)` is mcpAppend or mcpReplace on the old text; `verb` fills the reply and the toast.

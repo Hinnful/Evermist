@@ -182,8 +182,9 @@ async function doExport(selectedIds, opts) {
 // ── Import logic ──────────────────────────────────────────────────────────────
 
 // Merges rather than asks, because the module-text question may already be on screen: a stat
-// block the DM has keeps theirs, and the backup's fight lands only on an empty table.
-async function adoptCombatFromZip(zipPath) {
+// block the DM has keeps theirs, and the backup's fight lands only on an empty table. `say` stands in for
+// messageDialog when Claude imports (mcpImport.js).
+async function adoptCombatFromZip(zipPath, say = messageDialog) {
   let json = null;
   try {
     json = await window.electronAPI.readBackupCombat(zipPath);
@@ -193,14 +194,15 @@ async function adoptCombatFromZip(zipPath) {
   }
   if (!json || typeof cbMergePayload !== 'function') return;
   const st = cbMergePayload(json);
-  if (!st.ok) messageDialog({ title: 'Fight table not imported', message: t('The maps came in, but the fight table did not.') + '\n\n' + st.error });
+  if (!st.ok) say({ title: 'Fight table not imported', message: t('The maps came in, but the fight table did not.') + '\n\n' + st.error });
 }
 
 // Adopt the campaign's module text out of a restored zip. ⚠ Runs only AFTER every scene is saved
 // and the bar is down: a dialog must not open over the progress bar, and a module-text problem must
 // not strand a half-restore.
 
-async function adoptModuleTextFromZip(zipPath) {
+// With `say` (Claude's import) nothing is asked: what is loaded stays, and `say` is told.
+async function adoptModuleTextFromZip(zipPath, say) {
   let json = null;
   try {
     json = await window.electronAPI.readBackupModuleText(zipPath);
@@ -221,13 +223,17 @@ async function adoptModuleTextFromZip(zipPath) {
     const st = mtRestorePayload(json);
     if (st.ok) return;
     // The scenes are already saved, so this is a footnote and not a failure.
-    messageDialog({
+    (say || messageDialog)({
       title: 'Module text not imported',
       message: t('The maps came in, but the module text did not.') + '\n\n' + st.error,
     });
   };
 
   if (!current) { adopt(); return; }
+  if (say) {
+    say({ title: 'Module text kept', message: t('This file carries “{incoming}”, and “{current}” stays loaded.', { incoming: incomingName, current: current }) });
+    return;
+  }
 
   // Replace or keep, nothing in between - so name both books and let the DM choose.
   confirmDialog({

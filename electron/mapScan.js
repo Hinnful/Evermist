@@ -64,7 +64,7 @@ async function readMapFiles(p) {
   for (const name of names) {
     const kind = kindOf(name);
     if (!kind) { if (!st.isDirectory()) out.skipped.push({ name, reason: 'is not an image or an animated map.' }); continue; }
-    if (kind === 'zip') { out.skipped.push({ name, reason: 'is an export zip; the DM imports it in Evermist.' }); continue; }
+    if (kind === 'zip') { out.skipped.push({ name, reason: 'is an Evermist export zip; import_maps_zip merges it into the library.' }); continue; }
     if (out.files.length >= MAX_FOLDER_FILES) { out.skipped.push({ name, reason: 'was left out: a call takes at most ' + MAX_FOLDER_FILES + ' maps.' }); continue; }
     try {
       const full = path.join(dir, name);

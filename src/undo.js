@@ -101,6 +101,18 @@ function _undoApplySettings(s) {
   _undoSettingsAt = 0;
 }
 
+// A change the DM's hands did not make (Claude's, on the open scene), as steps the DM's Ctrl+Z takes back:
+// a snapshot for rooms, effects, lights and fog, a settings entry for the grid and the fog colour.
+// `apply` runs with the settings tracker paused, so the grid's own commit does not count it twice.
+function undoOutsideChange(shapes, settings, apply) {
+  if (settings) undoStack.push({ settings: _undoCaptureSettings() });
+  if (shapes && baseFogCanvas) undoStack.push(_undoSnapshot());
+  if (shapes || settings) { redoStack = []; evictUndoPair(undoStack, redoStack, UNDO_MAX_BYTES); }
+  _undoApplying = true;
+  try { apply(); } finally { _undoApplying = false; }
+  if (settings) { _undoSettings = _undoCaptureSettings(); _undoSettingsAt = 0; }
+}
+
 function restoreState(snapshot) {
   if (snapshot.settings) { _undoApplySettings(snapshot.settings); return; }
   fogEditedSinceSave = true;

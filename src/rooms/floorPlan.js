@@ -59,11 +59,38 @@ function floorPlanRoomCount() {
 // the count the DM is promised is the count that lands. No grid means no cells to snap to, and the
 // rooms still draw.
 function planDoorsFor(derived) {
-  if (!derived || !derived.rooms.length || !(gridSize > 0)) return [];
-  const rooms = vttScaleRooms(derived.rooms, mapWidth, derived.srcW);
-  const portals = vttScaleRooms([derived.portals || []], mapWidth, derived.srcW)[0];
-  return planDoorPlacements(rooms, portals, gridSize, gridOffsetX, gridOffsetY,
-                            gridMode === 'square');
+  return _planDoorsOn(derived, mapWidth, captureGridConfig());
+}
+
+// The same on a map `mapW` wide with grid `grid` (captureGridConfig's shape), open or not.
+function _planDoorsOn(derived, mapW, grid) {
+  if (!derived || !derived.rooms.length || !(grid.cellSize > 0)) return [];
+  const rooms = vttScaleRooms(derived.rooms, mapW, derived.srcW);
+  const portals = vttScaleRooms([derived.portals || []], mapW, derived.srcW)[0];
+  return planDoorPlacements(rooms, portals, grid.cellSize, grid.offsetX, grid.offsetY,
+                            grid.mode === 'square');
+}
+
+// The rooms Draw Rooms makes on a map `mapW` wide with grid `grid`, doors placed, open or not.
+function planPolygons(derived, mapW, grid) {
+  // ⚠ THE KERNEL'S COORDINATES ARE IN THE EXPORT'S PIXEL SPACE, NOT THIS MAP'S. vttPlan.js has no
+  // map-width term, so a map shrunk at import gets every room too large.
+  const rooms = vttScaleRooms(derived.rooms, mapW, derived.srcW);
+  // Numbered from 1 in the kernel's spatial order, so the names read down the map. Same shape the
+  // drawing tools produce, or the card and the fog rebuild would not recognise them.
+  const polys = rooms.map((verts, i) => ({
+    id: i + 1,
+    vertices: verts.map(v => ({ x: v.x, y: v.y })),
+    // A freshly prepped map starts hidden. Rooms get revealed at the table, not now.
+    mode: 'shroud',
+    cornerRadius: 0,
+    name: t('Room {n}', { n: i + 1 }),
+  }));
+  for (const p of _planDoorsOn(derived, mapW, grid)) {
+    const poly = polys[p.roomIndex];
+    if (poly) poly.doors = (poly.doors || []).concat([p.door]);
+  }
+  return polys;
 }
 
 function applyPlanToScene(derived) {
@@ -74,27 +101,8 @@ function applyPlanToScene(derived) {
   activePolygon = null;
   clearShapeSelection();
 
-  // ⚠ THE KERNEL'S COORDINATES ARE IN THE EXPORT'S PIXEL SPACE, NOT THIS MAP'S. vttPlan.js has no
-  // map-width term, so a map shrunk at import gets every room too large. Scaling here covers the
-  // import path and the attach-a-plan-later path with one rule.
-  const rooms = vttScaleRooms(derived.rooms, mapWidth, derived.srcW);
-
-  // Numbered from 1 in the kernel's spatial order, so the names read down the map. Same shape the
-  // drawing tools produce, or the card and the fog rebuild would not recognise them.
-  polygons = rooms.map((verts, i) => ({
-    id: i + 1,
-    vertices: verts.map(v => ({ x: v.x, y: v.y })),
-    // A freshly prepped map starts hidden. Rooms get revealed at the table, not now.
-    mode: 'shroud',
-    cornerRadius: 0,
-    name: t('Room {n}', { n: i + 1 }),
-  }));
+  polygons = planPolygons(derived, mapWidth, captureGridConfig());
   nextPolygonId = polygons.length + 1;
-
-  for (const p of planDoorsFor(derived)) {
-    const poly = polygons[p.roomIndex];
-    if (poly) poly.doors = (poly.doors || []).concat([p.door]);
-  }
 
   rebuildFogFromPolygons();
   rebuildFogEffect();

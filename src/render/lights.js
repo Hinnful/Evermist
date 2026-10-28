@@ -122,18 +122,25 @@ function planLightCount() {
 // One shape per light in the file, each as lightShapeFor works it out from the plan's rooms. The
 // shapes are the DM's from then on: nothing follows the plan afterwards.
 function applyPlanLights() {
-  const lights = planLights(currentScene.floorPlan, mapWidth);
-  if (!lights.length) return;
-  const derived = describePlan(currentScene.floorPlan);
-  const rooms = derived ? vttScaleRooms(derived.rooms, mapWidth, derived.srcW) : [];
-  const seeded = seedLightShapes(lights, rooms);
+  const shapes = planLightShapes(currentScene.floorPlan, mapWidth, nextEffectId);
+  if (!shapes.length) return;
   editLights(() => {
-    lightShapes = seeded.map((s, i) => ({
-      id: nextEffectId++, vertices: s.vertices, ...(s.holes ? { holes: s.holes } : {}), cornerRadius: 0, light: true,
-    }));
+    lightShapes = shapes;
+    nextEffectId += shapes.length;
     clearShapeSelection();
   });
   doAutoSave();
+}
+
+// The light shapes a plan draws on a map `mapW` wide, ids from `firstId`, open or not.
+function planLightShapes(planText, mapW, firstId) {
+  const lights = planLights(planText, mapW);
+  if (!lights.length) return [];
+  const derived = describePlan(planText);
+  const rooms = derived ? vttScaleRooms(derived.rooms, mapW, derived.srcW) : [];
+  return seedLightShapes(lights, rooms).map((s, i) => ({
+    id: firstId + i, vertices: s.vertices, ...(s.holes ? { holes: s.holes } : {}), cornerRadius: 0, light: true,
+  }));
 }
 
 // A .dd2vtt picked in the Lights row: it becomes the scene's plan, as in the Rooms row, and its

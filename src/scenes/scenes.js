@@ -83,6 +83,23 @@ function scheduleAutoSave() {
   autoSaveTimer = setTimeout(doAutoSave, 5000);
 }
 
+// The open scene's fog settings in the shape a scene record stores them.
+function captureFogSettings() {
+  return {
+    pickedHex: fogPickedHex,
+    tintAlpha: FOG_TINT_ALPHA,
+    anim: {
+      enabled:  fogAnimEnabled,
+      speed:    fogAnimSpeed,
+      drift:    driftScale,
+      morph:    cloudFrameSpeed,
+      warpStr:  cloudWarpStrength,
+      warpRad:  cloudWarpRadius,
+      pulse:    alphaPulseAmp,
+    },
+  };
+}
+
 // Non-blocking auto-save: captures a snapshot of current state synchronously,
 // then encodes fog asynchronously via toBlob so the main thread is never blocked.
 // ⚠ RESOLVES WHEN THE WRITE IS DONE, not when it is queued. Closing a column removes the frame,
@@ -105,19 +122,7 @@ function doAutoSave() {
     lights:        lightsSceneFields(),
     gridConfig:    captureGridConfig(),
     tvFit:         tvFit.step ? { step: tvFit.step, turn: tvFit.turn } : undefined,
-    fogSettings:   {
-      pickedHex: fogPickedHex,
-      tintAlpha: FOG_TINT_ALPHA,
-      anim: {
-        enabled:  fogAnimEnabled,
-        speed:    fogAnimSpeed,
-        drift:    driftScale,
-        morph:    cloudFrameSpeed,
-        warpStr:  cloudWarpStrength,
-        warpRad:  cloudWarpRadius,
-        pulse:    alphaPulseAmp,
-      },
-    },
+    fogSettings:   captureFogSettings(),
   };
   return new Promise(resolve => {
     baseFogCanvas.toBlob(blob => {

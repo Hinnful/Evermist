@@ -15,6 +15,11 @@ let sendTo;
 function register(ctx) {
   ({ sendTo } = ctx);
   musicDir = ctx.musicDir;
+  // ⚠ Claude's deleted tracks wait in `.removed` for its undo and go for good when Evermist quits;
+  // a crash leaves them, so the start clears them too.
+  const purge = () => { try { fs.rmSync(path.join(musicDir, '.removed'), { recursive: true, force: true }); } catch {} };
+  purge();
+  app.on('will-quit', purge);
 }
 
 // --- Music library + downloader IPC ---
@@ -78,7 +83,21 @@ ipcMain.handle('music-copy-files', async (_event, paths) => {
   if (!Array.isArray(paths)) return { added, failed };
   let taken = [];
   try { taken = await fs.promises.readdir(musicDir); } catch {}
-  for (const src of paths) {
+  // A folder stands for the audio files directly in it.
+  const srcs = [];
+  for (const p of paths) {
+    let isDir = false;
+    try { isDir = typeof p === 'string' && (await fs.promises.stat(p)).isDirectory(); } catch {}
+    if (!isDir) { srcs.push(p); continue; }
+    let found = 0;
+    for (const n of (await fs.promises.readdir(p)).sort()) {
+      if (MUSIC_EXTS.indexOf(path.extname(n).toLowerCase()) === -1) continue;
+      srcs.push(path.join(p, n));
+      found++;
+    }
+    if (!found) failed.push({ name: path.basename(p), message: 'No audio files in that folder.' });
+  }
+  for (const src of srcs) {
     const base = typeof src === 'string' ? path.basename(src) : '';
     try {
       if (!base || MUSIC_EXTS.indexOf(path.extname(base).toLowerCase()) === -1) throw new Error('Not an audio file.');
@@ -103,6 +122,26 @@ ipcMain.handle('music-delete', async (_event, name) => {
   if (!full) throw new Error('Not a track in the music folder.');
   await fs.promises.unlink(full);
   return true;
+});
+
+// A delete that can be taken back: the file moves aside and `music-unstash` returns it.
+ipcMain.handle('music-stash', async (_event, name) => {
+  const full = musicPath(name);
+  if (!full) throw new Error('Not a track in the music folder.');
+  const dir = path.join(musicDir, '.removed');
+  await fs.promises.mkdir(dir, { recursive: true });
+  const token = Date.now() + '-' + Math.random().toString(36).slice(2, 8) + path.extname(name);
+  await fs.promises.rename(full, path.join(dir, token));
+  return token;
+});
+
+ipcMain.handle('music-unstash', async (_event, token, name) => {
+  if (typeof token !== 'string' || !/^[\w.-]+$/.test(token) || !musicPath(name)) throw new Error('Not a track Claude removed.');
+  let taken = [];
+  try { taken = await fs.promises.readdir(musicDir); } catch {}
+  const back = uniqueMusicName(name, taken);
+  await fs.promises.rename(path.join(musicDir, '.removed', token), path.join(musicDir, back));
+  return back;
 });
 
 function ytdlpBundled() {

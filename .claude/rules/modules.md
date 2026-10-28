@@ -183,16 +183,30 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `mcp/mcpGuideText.js` | Plain-language how-to text per topic, as data. Tested |
 | `mcp/mcpShared.js` | What every Claude tool group reads: reply shapes, name lookups, a scene's record |
 | `mcp/mcpHistory.js` | Claude's own undo: the last 30 steps, and the toast naming each |
+| `mcp/mcpMapPlan.js` | Pure rules for Claude changing a map: the fields each part names, the copy before a change, a stored record read and written in the open map's shape. Tested |
+| `mcp/mcpMapEdit.js` | `mcpEditMap`: every Claude change to a map, live when the DM has it open, in the store when closed, refused on the TV, in a column or mid-gesture |
+| `mcp/mcpFogPlan.js` | Pure rules for Claude's fog tools: a room's fog word, rooms found by name, a rectangle or circle in percent as fog pixels clipped at the map's edge, the drift preset names. Tested |
+| `mcp/mcpFog.js` | Claude's fog tools: a room's fog, a rectangle or circle revealed or hidden, the whole map, the drift preset and tint |
 | `mcp/mcpMeta.js` | Claude's guide and undo_last_change tools |
 | `mcp/mcpScenes.js` | Claude's scene tools: find maps on disk, make, rename, move, change and delete a scene |
 | `mcp/mcpNotes.js` | Claude's notes tools |
 | `mcp/mcpWorld.js` | Claude's campaign list and place tools |
 | `mcp/mcpWorldMap.js` | Claude's road and backdrop tools |
+| `mcp/mcpWorldPlan.js` | Pure rules for the Campaign tools: a group outline, a card spot, a road found by name, the backdrop numbers. Tested |
 | `mcp/mcpFights.js` | Claude's fight tools and the bestiary search |
+| `mcp/mcpCombatPlan.js` | Pure rules for Claude's fight-row details, the open-fight refusal for them, and a bestiary monster found, replaced, copied and restored. Tested |
 | `mcp/mcpGallery.js` | Claude's gallery tools: list, add, rename, delete a picture |
-| `mcp/mcpBestiary.js` | Claude's stat block, add-monster and import tools |
+| `mcp/mcpBestiary.js` | Claude's stat block, add, edit, copy, delete and import monster tools |
 | `mcp/mcpSeePlan.js` | Pure map-sight kernel: an area in percent to pixels, the picture's size, the grid's step and labels, a scene's contents read as percent. Tested |
 | `mcp/mcpSee.js` | Claude's eyes: view_scene draws a map or an area offscreen with a percent grid and the room outlines, read_scene lists what a map holds |
+| `mcp/mcpMusicPlan.js` | Pure rules for Claude's music tools: tracks and groups found by name, the 20-track limit, the delete question. Tested |
+| `mcp/mcpMusic.js` | Claude's music library tools: list, add, download, delete tracks, and the groups. Never plays |
+| `mcp/mcpRoomsPlan.js` | Pure rules for Claude's room tools: percent points to map pixels, an outline or a cutting line checked, a room found by name and index, an outline replaced with its doors carried. Tested |
+| `mcp/mcpRooms.js` | Claude's room tools: draw, edit, delete, Merge, Cut out, Split, and a door added or taken away |
+| `mcp/mcpGridPlan.js` | Pure rules for Claude's grid, effect and light tools: a grid crossing in percent to the stored phase, the grid's look checked, an effect's shape from percent or a preset size, one found by index or material. Tested |
+| `mcp/mcpGrid.js` | Claude's grid, effect and light tools: the grid fitted and styled, effects and lights made, changed and deleted, lights on or off and from the floor plan |
+| `mcp/mcpImportPlan.js` | Pure rules for Claude's import tools: a module entry found by heading, a room filled from one, the replies counting what a floor plan or a zip would change. Tested |
+| `mcp/mcpImport.js` | Claude's import tools: a floor plan drawn onto a map, module text loaded and linked to rooms, an export zip merged into the library |
 | `mcp/mcpTools.js` | The dispatcher for Claude's tool groups, answered in the DM window |
 | `dev/stress.js` | `?stress=1` harness |
 | `dev/memProbe.js` | `?memprobe=1` memory probe |
@@ -254,5 +268,5 @@ combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → com
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
 combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js →
-mcp/mcpPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpTools.js → inline <script>
+mcp/mcpPlan.js → mcp/mcpCombatPlan.js → mcp/mcpWorldPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMapPlan.js → mcp/mcpMapEdit.js → mcp/mcpFogPlan.js → mcp/mcpFog.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpMusicPlan.js → mcp/mcpMusic.js → mcp/mcpRoomsPlan.js → mcp/mcpRooms.js → mcp/mcpGridPlan.js → mcp/mcpGrid.js → mcp/mcpImportPlan.js → mcp/mcpImport.js → mcp/mcpTools.js → inline <script>
 ```

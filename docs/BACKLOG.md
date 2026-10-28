@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 17 open items; IDs run to 236."
+description: "Open work only. 10 open items; IDs run to 236."
 metadata: 
   node_type: memory
   type: project
@@ -36,8 +36,8 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.12.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
-they decide to, so items carry no release tag. **The MCP epic comes first.** The First User Experience
+`package.json` is at **4.13.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
+they decide to, so items carry no release tag. **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
 coloured areas.
@@ -70,53 +70,6 @@ categories. Effort and risk are judged once an item is picked, not here.
 - **Upkeep** - checks, CI, docs: nothing the DM sees ships.
 - **Bug** - the app does something wrong.
 - **First use** - lowers what a new DM must learn before the first session.
-
----
-
-# CLAUDE DOES THE PREP - THE MCP EPIC
-
-Opened 2026-10-25. **The endgame:** Claude does everything a DM can do in Evermist except play. Play is what
-changes the TV now or acts at the table: opening or sending a map, two maps, showing a picture, playing music or
-sounds, TV setup, sync, ping, and the open fight's HP, conditions and initiative. Anything else is prep, and a
-doubtful case is settled case by case from that logic. A fight is prep while it is built: placing monsters is
-prep, taking away is play. **Deletes are allowed, with no trash:** the DM is told plainly that Claude can delete,
-each delete waits for their yes, and undo lasts until Evermist closes. A trash and a saved history were rejected
-as overengineering. Today Claude covers about two fifths of prep. The chapters go one at a time, in this order.
-The open calls on scope are settled in PRODUCT.md, "Claude's ground rules".
-
-### 227. Claude draws rooms and doors
-Claude draws, names, writes notes for, reshapes and deletes rooms, merges, cuts and splits them, and marks doors,
-on a map that is not on the TV. Each change is one undo step.
-**Prep · DM only**
-
-### 228. Claude sets the fog
-Claude sets each room hidden, half or revealed, opens or closes an area, reveals or hides the whole map, and sets
-the fog's drift and tint, on a map that is not on the TV.
-**Prep · DM only**
-
-### 229. Claude loads floor plans and module text
-Claude loads a .dd2vtt floor plan and takes rooms, doors, lights and grid from it before its own outlines. It loads
-a module text or PDF and links rooms to its entries; the app itself still never assigns.
-**Prep · DM only**
-
-### 230. Claude sets the grid, effects and lights
-Grid on or off, its type and look, fitting it to the map; placing, changing and deleting effects; drawing lights
-or taking them from a floor plan, and turning them on or off.
-**Prep · DM only**
-
-### 231. Claude fills the Campaign gaps
-Groups of any shape, a map at an exact spot, editing, renaming and deleting roads, a map on or off a road, road
-notes, the backdrop's size, opacity and position, and adding maps from a zip.
-**Prep · DM only**
-
-### 232. Claude fills the fight and bestiary gaps
-Duplicating a fight, a row's details before the fight starts, and editing, deleting, duplicating and importing
-bestiary monsters from an Evermist file.
-**Prep · DM only**
-
-### 233. Claude keeps the music library
-Adding tracks from files or YouTube links, deleting tracks, and music groups. Playing stays play.
-**Prep · DM only**
 
 ---
 

@@ -49,15 +49,18 @@ function _mcpEditFight(args) {
   const f = found.fight;
   const open = f.id === cbState.openId;
   if (open) {
-    const why = mcpOpenFightRefusal(args, cbState.rows);
+    const why = mcpOpenFightRefusal(args, cbState.rows) || mcpRowsRefusal(args);
     if (why) return _mcpNo('Not done: "' + f.name + '" is the fight open at the table, and ' + why + ' would change it under the DM. Only adding monsters and raising a count are allowed there. Ask the DM to open another fight first.');
   }
   const newName = args.newName === undefined ? null : String(args.newName).trim();
   if (newName === '') return _mcpNo('A fight needs a name.');
   const edit = mcpEditRows(cbState.blocks, open ? cbState.rows : (f.rows || []), args, cbState.nextId);
-  const changed = edit.changed || (newName && newName !== f.name);
+  if (open) return _mcpEditOpen(f, edit, newName);
+  const details = mcpRowEdits(edit.rows, args.rows);
+  edit.rows = details.rows;
+  edit.notes.push(...details.errors);
+  const changed = edit.changed || details.changed || (newName && newName !== f.name);
   if (!changed) return _mcpNo('Nothing changed.' + (edit.notes.length ? ' ' + edit.notes.join(' ') : ''));
-  if (open) return _mcpEditOpen(f, edit);
   const was = { name: f.name, rows: f.rows || [], nextId: cbState.nextId };
   if (newName) f.name = newName;
   f.rows = edit.rows;
@@ -72,7 +75,8 @@ function _mcpEditFight(args) {
 }
 
 // Additions to the open fight go into the table's own rows in place; undo takes those rows out again.
-function _mcpEditOpen(f, edit) {
+function _mcpEditOpen(f, edit, newName) {
+  if (!edit.changed && !newName) return _mcpNo('Nothing changed.' + (edit.notes.length ? ' ' + edit.notes.join(' ') : ''));
   const have = new Map(cbState.rows.map(r => [r.id, r]));
   const added = edit.rows.filter(r => !have.has(r.id)).map(r => r.id);
   cbState.rows.splice(0, cbState.rows.length, ...edit.rows.map(r => have.get(r.id) || r));
@@ -84,6 +88,23 @@ function _mcpEditOpen(f, edit) {
     for (let i = rows.length - 1; i >= 0; i--) if (gone.has(rows[i].id)) rows.splice(i, 1);
     _mcpFightsShown();
   }, 'Added ' + added.length + ' row(s) to "' + f.name + '", the fight open at the table: now ' + edit.rows.length + ' rows.' + (notes.length ? ' ' + notes.join(' ') : ''));
+}
+
+function _mcpDuplicateFight(args) {
+  const found = _mcpFight(args.name);
+  if (found.error) return _mcpNo(found.error);
+  const newName = args.newName === undefined ? null : String(args.newName).trim();
+  if (newName === '') return _mcpNo('A fight needs a name.');
+  const was = cbState.nextId, before = new Set(cbState.fights.map(f => f.id));
+  combatDuplicateFight(cbState, found.fight.id, combatFightId);
+  const copy = cbState.fights.find(f => !before.has(f.id));
+  if (newName) copy.name = newName;
+  _mcpFightsShown();
+  return mcpDone('duplicated the fight "' + found.fight.name + '"', async () => {
+    cbState.fights = cbState.fights.filter(f => f.id !== copy.id);
+    cbState.nextId = Math.max(was, cbState.nextId - copy.rows.length);
+    _mcpFightsShown();
+  }, 'Duplicated the fight "' + found.fight.name + '" as "' + copy.name + '" with ' + copy.rows.length + ' rows.');
 }
 
 function _mcpDeleteFight(args) {
@@ -108,4 +129,4 @@ function _mcpBestiary(args) {
 }
 
 const MCP_FIGHTS_TOOLS = { create_fight: _mcpCreateFight, read_fight: _mcpReadFight, edit_fight: _mcpEditFight,
-  delete_fight: _mcpDeleteFight, list_bestiary: _mcpBestiary };
+  duplicate_fight: _mcpDuplicateFight, delete_fight: _mcpDeleteFight, list_bestiary: _mcpBestiary };

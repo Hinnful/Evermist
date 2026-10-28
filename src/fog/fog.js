@@ -709,10 +709,10 @@ const ANIM_RUNTIME_DEFAULTS = {
   warpStr: 0.15, warpRad: 0.08, pulse: 0.30,
 };
 
+const SCENE_FOG_DEFAULTS = { hex: '#3a3a8c', alpha: 0.18, anim: ANIM_RUNTIME_DEFAULTS };
+
 function restoreSceneFogSettings(scene) {
-  const parsed = parseSceneFogSettings(scene, {
-    hex: '#3a3a8c', alpha: 0.18, anim: ANIM_RUNTIME_DEFAULTS,
-  });
+  const parsed = parseSceneFogSettings(scene, SCENE_FOG_DEFAULTS);
   const { hex, alpha, anim: an } = parsed;
   applyFogColor(hex);
   applyFogTintAlpha(alpha);
