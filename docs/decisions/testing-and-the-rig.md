@@ -477,3 +477,12 @@ once the "Ready for the next map?" toast shows, and the scenario started the toa
 map's cover lifted, so on a slow runner the blink ended before the read. It now parks the deadline (1e9)
 until the cover lifts, then restarts the count. Proved both ways: a forced 6s delay failed on the reported
 line, and 6 of 6 runs pass after.
+
+### A blink is latched by an observer, never sampled once · `SETTLED` (2026-10-30)
+The scenario still needed reruns on slow Windows runners after the timer fix above, and the cause was again the
+check, not the app. The app adds `hintcall-blink` to `btn-world` for three 0.7s pulses and drops it on
+`animationend`; the scenario read the class once after the toast appeared, and on a slow runner that read landed
+after the blink ended. It now installs a MutationObserver before the timer starts and latches
+`globalThis.__rigBlinked` when the class is added; check A asserts that flag or the live class. A transient class
+is latched, never sampled. The scenario stays: it alone checks the next-map toast's timing, placement, one-map
+guard and world-map restart. No app code changed.

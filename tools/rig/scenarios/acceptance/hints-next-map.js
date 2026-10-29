@@ -35,13 +35,16 @@ module.exports = async function hintsNextMap(rig) {
   await dm.evaluate('_hintNextMapMs = 1e9; 0');
   await lib.openMap(rig, { w: 1800, h: 1200 });
   await dm.waitFor('fogCoverT === 0', 30000, 'the second scene cover to lift');
-  await dm.evaluate('_hnmHeld = 0; _hintNextMapMs = 3000; 0');
+  // The blink is a transient: three 0.7s pulses, then the class drops. On a slow runner the sample below can land after
+  // it ends, so record the moment the class is added and assert that instead of the class at sample time.
+  await dm.evaluate('globalThis.__rigBlinked = false; new MutationObserver((_, o) => { if (document.getElementById("btn-world").classList.contains("hintcall-blink")) { globalThis.__rigBlinked = true; o.disconnect(); } })' +
+    '.observe(document.getElementById("btn-world"), { attributes: true, attributeFilter: ["class"] }); _hnmHeld = 0; _hintNextMapMs = 3000; 0');
   await lib.settle(dm, UP, 15000);
   const shown = await dm.evaluate('(() => { const h = document.querySelector(".hintcall-next-map"), b = document.getElementById("btn-world");' +
     ' if (!h) return null; const r = h.getBoundingClientRect(), a = b.getBoundingClientRect();' +
     ' const tip = { x: r.right + 6, y: r.top + parseFloat(h.style.getPropertyValue("--a")) * r.height / h.offsetHeight };' +
     ' return { text: h.textContent, left: r.right <= a.left, inWindow: r.top >= 0 && r.bottom <= innerHeight, tipAway: Math.hypot(Math.max(a.left - tip.x, 0, tip.x - a.right), Math.max(a.top - tip.y, 0, tip.y - a.bottom)),' +
-    ' blink: b.classList.contains("hintcall-blink"), seen: localStorage.getItem("evermist.hintsSeen") }; })()');
+    ' blink: globalThis.__rigBlinked || b.classList.contains("hintcall-blink"), seen: localStorage.getItem("evermist.hintsSeen") }; })()');
   rig.check(shown && /Ready for the next map\?/.test(shown.text) && /Press M or click here/.test(shown.text), 'no next-map toast after the timer: ' + JSON.stringify(shown));
   rig.check(shown && shown.left && shown.tipAway <= 24, 'the next-map toast is not left of the world map button with its arrow on the world map button: ' + JSON.stringify(shown));
   // A2. RED ON: _hintPlaceBeside centring on the button with no clamp to the window (hints.js)

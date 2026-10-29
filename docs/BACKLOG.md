@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 7 open items; IDs run to 237."
+description: "Open work only. 6 open items; IDs run to 237."
 metadata: 
   node_type: memory
   type: project
@@ -75,12 +75,6 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 # EVERYTHING ELSE
 
-### 237. The hints-next-map scenario needs reruns
-Filed 2026-10-30. The rig's `hints-next-map` scenario needed a second try in 5 recent Windows runs (the Campaign
-button's blink or its toast goes unrecorded). Find whether the check or the app is at fault, then fix the scenario or
-retire it.
-**Upkeep · DM only**
-
 ### 236. Move to Electron 45
 Filed 2026-10-27. Evermist runs on Electron 43, which stops getting security fixes when Electron 46 ships, about
 two months out. Move to 45, then run the full rig set and a packaged build before it ships.
@@ -105,6 +99,9 @@ Filed 2026-10-03 on the DM's instruction. 3.12.0 took violet out of every window
 the start screen, and left the logo mark violet in About and on the splash, where it matches the
 app icon file. Redrawing it means the mark in `about.js` and `splash.html` and the icon files
 together, so the installed icon and the in-app mark stay one picture.
+**In progress (2026-10-30):** the direction is a new mark, not a recolour: a hex grid of uneven lit tiles that fades
+into a solid edge. Still open: rounded square or circle, navy or app blue. Prototypes and the ruled-out directions
+are in `.claude/private/design/item-152/` on the DM's machine.
 **Polish · Both**
 
 ### 189. Doors follow a hex grid
