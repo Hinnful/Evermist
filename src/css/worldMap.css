@@ -155,7 +155,7 @@
   #wm-empty b { margin-bottom: 4px; font: 600 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
   #wm-empty > span { font: 400 12px/16px system-ui, -apple-system, sans-serif; color: var(--g-text); }
   #wm-empty .sm-hbtn { align-self: flex-end; margin-top: 12px; pointer-events: auto; }
-  body.wm-empty #tb-grp-shape, body.wm-empty #wm-div, body.wm-empty #wm-find { display: none !important; }
+  body.wm-empty #tb-grp-shape, body.wm-empty #wm-road, body.wm-empty #wm-marker, body.wm-empty #wm-div, body.wm-empty #wm-find { display: none !important; }
 
   /* The bar over the picked map (worldMapOpenBar.js): Open is solid blue with no glow, More is quiet. */
   #wm-bar {
@@ -177,20 +177,18 @@
   body:not(.world) .wm-tool { display: none !important; }
   body.world #toolbar-bottom > :not(.wm-tool):not(#btn-select):not(#tb-grp-shape) { display: none !important; }
   body.world #toolbar-bottom { border-radius: var(--panel-radius); }
-  /* Select, + Map, Group, a divider, Find; only Map and Group carry a word. Select is always leftmost. Road is a tool of the Place list now,
-     so its own button stays in the page as the back end. `order` sets the bar without moving the scene's buttons. */
+  /* Select, Map, Group, Road, Marker, a divider, Find; all but Select and Find carry a word. Select is always leftmost.
+     `order` sets the bar without moving the scene's buttons. */
   body.world #btn-select { order: 1; }
   body.world #wm-add { order: 2; }
   body.world #tb-grp-shape { order: 3; }
-  body.world #wm-div { order: 4; }
-  body.world #wm-find { order: 5; }
-  body.world #wm-road { display: none !important; }
+  body.world #wm-road { order: 4; }
+  body.world #wm-marker { order: 5; }
+  body.world #wm-div { order: 6; }
+  body.world #wm-find { order: 7; }
   body.world #toolbar-bottom .tb-chev.open { color: var(--b-icon); }
-  /* The options row carries Straight walls over a drawing tool. Places take no repairs, and Snap to grid has no grid up here. */
-  body.world #context-row > :not(#fx-aids) { display: none !important; }
-  body.world #btn-snap { display: none !important; }
-  body.world:not(.aids-up) #context-row { visibility: hidden !important; }
-  body.world.aids-up #context-row { visibility: visible !important; }
+  /* The options row is the scene's (Straight walls, Snap, the clouds): the Campaign has none of it. */
+  body.world #context-row { visibility: hidden !important; }
   body.world #minimap-panel { display: none !important; }
 
   /* The right-click menu: the library's own menu, over everything on the map. A delete row wears no
@@ -198,6 +196,9 @@
   .wm-menu { position: fixed; z-index: 120; min-width: 170px; }
   .wm-menu .sm-mi::before { display: none; }
   .wm-menu .sm-mi:disabled { opacity: .35; pointer-events: none; }
+  .wm-menu .sm-mi .nm { flex: 1; white-space: nowrap; }
+  .wm-menu .sm-mi .ky { margin-left: 24px; color: var(--g-dim); font-weight: 500; }
+  .wm-menu .sm-mi:hover .ky { color: var(--b-icon); }
   .wm-menu .sm-mi.danger:hover { background: #c0392b; }
 
   /* Settings' World map section wears Scene control's parts (dock.css). A hidden row must really hide. */

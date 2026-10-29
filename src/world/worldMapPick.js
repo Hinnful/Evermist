@@ -33,6 +33,14 @@ function worldMapPickToggle(id) {
   worldMapPickSet(next, next.includes(id) ? id : next[next.length - 1] || null);
 }
 
+// Ctrl+G: the rectangle that fits the picked maps, as a drop of one map on another makes one, named and
+// ready to type over. The places decide who joins (worldPlaceCreate files every map), so a loose map inside comes along.
+function worldMapGroupPicked() {
+  const at = worldMapPicked().map(id => allScenes.find(s => s.id === id)).filter(Boolean).map(_wmPos).filter(p => wmCleanPos(p));
+  const r = wmHullRect(at);
+  if (r) _wmCreatePlace(wmRectShape(r.x, r.y, r.x + r.w, r.y + r.h));
+}
+
 // ─── The box ─────────────────────────────────────────────────────────────────
 
 function worldMapMarqueeStart(d) {

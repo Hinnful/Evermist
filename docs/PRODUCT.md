@@ -255,8 +255,8 @@ The marker is a four-point compass star with a ring and a slow bob, in the app's
 active; gold was rejected for that reason, and the first gold ring borrowed from the Ping bezel is superseded. Shaded 3D
 looks (dice, shield, crystal) were rejected as off the app's flat style, and a plain crystal as too close to a
 well-known game's marker. Tracking visited maps was rejected: a chore with no practical benefit. The mist lifting
-around the marker stays. A toolbar button to place it is `REJECTED` for now: the right-click menu is the only entry
-until the Campaign toolbar has its own redesign (roads sit under groups today).
+around the marker stays. A toolbar button to place it was refused until the Campaign toolbar had its redesign; the
+"Marker" button now exists (2026-10-30, see "The Campaign bar names Group, Road and Marker" in docs/decisions/ui-and-control-panel.md).
 
 ### Pictures belong to the gallery, never to a room, scene or place · `SETTLED` (2026-10-09)
 A picture shown on the TV is linked to nothing on the map, so one picture serves every scene it is needed in, such as

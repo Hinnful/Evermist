@@ -1,15 +1,15 @@
 'use strict';
 
-// first-use-menus.js — THE CAMPAIGN'S RIGHT-CLICK MENUS GAIN NEW GROUP HERE, ADD MAPS HERE…, AND NOTES.
+// first-use-menus.js — THE CAMPAIGN'S RIGHT-CLICK MENUS GAIN NEW GROUP, ADD MAPS… AND SHOW NOTES (worded to the campaign toolbar's table).
 // Covers src/world/worldMapMenu.js, worldMapEdit.js (_wmAddLand), worldMapPlan.js (wmGroupRectAt) and src/notes/notesPanel.js
 // (a map picked on the Campaign). Item 211 of the first-use-cues spec.
 //
-//   A. Empty ground reads Add maps here…, New group here, We're here, Background picture…, Show everything. New group here makes a rectangle group centred on the click,
+//   A. Empty ground reads Add maps…, New group, Put the marker here, a separator, Zoom to fit, Background picture…. New group makes a rectangle group centred on the click,
 //      sized for one map card, named as a group drawn by hand, with rename started where its name shows. One undo removes it.
 //      Background picture… presses Settings' own Choose image… button.
-//   B. A group reads Rename, Fit in view, Add maps here…, We're here, Notes, then Delete group. Add maps here… puts the maps added next inside that group.
-//   C. Notes on a group opens the Notes pane on that group's level.
-//   D. A map reads Open, Rename, (Take out of its group), We're here, Export this map, Notes, then Delete map. Notes picks it and opens the Notes
+//   B. A group reads Add maps…, Rename, Show notes, Put the marker here, Zoom to group, Ungroup, in blocks. Add maps… puts the maps added next inside that group.
+//   C. Show notes on a group opens the Notes pane on that group's level.
+//   D. A map reads Open, Rename, Show notes, (Remove from group), Put the marker here, Export map…, then Delete map. Show notes picks it and opens the Notes
 //      pane on its level without opening it; the notes typed save to the map. A map in a group offers Campaign, group, map.
 //
 // ⚠ THE LIBRARY STARTS EMPTY, so the app opens on the Campaign. THE FILE PICKER CANNOT BE DRIVEN (the rig skill): the input's own click is
@@ -22,8 +22,9 @@ const MAP_W = 900, MAP_H = 600;
 const PAGE = `
 globalThis.__fmClient = (x, y) => { const v = _wmView(); return { x: (x - _wmCam.cx) * _wmCam.z + v.w / 2, y: (y - _wmCam.cy) * _wmCam.z + v.h / 2 }; };
 globalThis.__fmMenuAt = (cx, cy, el) => (el || document.getElementById('wm')).dispatchEvent(new MouseEvent('contextmenu', { clientX: cx, clientY: cy, button: 2, bubbles: true, cancelable: true }));
-globalThis.__fmRows = () => [...document.querySelectorAll('.wm-menu .sm-mi')].map(b => b.textContent + (b.disabled ? ' (off)' : ''));
-globalThis.__fmPress = label => [...document.querySelectorAll('.wm-menu .sm-mi')].find(b => b.textContent === label).click();
+globalThis.__fmRows = () => [...document.querySelectorAll('.wm-menu > *')].map(b => b.classList.contains('sm-msep') ? '---'
+  : (b.querySelector('.nm') ? b.querySelector('.nm').textContent + ' ' + b.querySelector('.ky').textContent : b.textContent) + (b.disabled ? ' (off)' : ''));
+globalThis.__fmPress = label => [...document.querySelectorAll('.wm-menu .sm-mi')].find(b => (b.querySelector('.nm') || b).textContent === label).click();
 globalThis.__fmCard = name => [...document.querySelectorAll('.wm-card')].find(c => c.querySelector('.wm-nm').textContent === name);
 globalThis.__fmFiles = names => { const inp = document.getElementById('wm-file-input'); const dt = new DataTransfer();
   names.forEach(n => dt.items.add(new File([globalThis.__fx], n + '.mp4', { type: globalThis.__fx.type }))); inp.files = dt.files; inp.dispatchEvent(new Event('change', { bubbles: true })); return 0; };
@@ -45,8 +46,8 @@ module.exports = async function firstUseMenus(rig) {
   // A. RED BY DESIGN: written against the fix, never re-proved
   const click = JSON.parse(await dm.evaluate('JSON.stringify(_wmToWorld(60, 140))'));
   await dm.evaluate('__fmMenuAt(60, 140); 0');
-  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add maps here…', 'New group here', "We're here", 'Background picture…', 'Show everything']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
-  await dm.evaluate('__fmPress("New group here"); 0');
+  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add maps…', 'New group', 'Put the marker here', '---', 'Zoom to fit Shift+1', 'Background picture…']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
+  await dm.evaluate('__fmPress("New group"); 0');
   const made = JSON.parse(await dm.evaluate(`JSON.stringify((() => { const rec = worldPlaceRecords()[0]; if (!rec) return null; const b = wmPolyBounds(wmOutline(rec)), r = wmGroupRectAt({ x: 0, y: 0 });
     return { n: worldPlaceRecords().length, name: rec.name, cx: b.x + b.w / 2, cy: b.y + b.h / 2, w: b.w, h: b.h, rw: r.w, rh: r.h, editing: !!_wmEditing, shown: _wmNameShown(rec.name) }; })())`));
   rig.check(made && made.n === 1 && Math.abs(made.cx - click.x) < 1 && Math.abs(made.cy - click.y) < 1, 'New group here did not make one group centred on the click: ' + JSON.stringify([made, click]));
@@ -63,12 +64,12 @@ module.exports = async function firstUseMenus(rig) {
   rig.check(await dm.evaluate('globalThis.__fmBg') === 1, 'Background picture… did not press Settings\' Choose image… button');
 
   // B. RED BY DESIGN: written against the fix, never re-proved
-  await dm.evaluate('__fmMenuAt(60, 140); __fmPress("New group here"); if (_wmEditing) _wmEditing.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true, cancelable: true })); 0');
+  await dm.evaluate('__fmMenuAt(60, 140); __fmPress("New group"); if (_wmEditing) _wmEditing.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true, cancelable: true })); 0');
   const group = await dm.evaluate('worldPlaceRecords()[0].name');
   await dm.evaluate('(() => { const p = __fmClient(' + click.x + ', ' + click.y + '); __fmMenuAt(p.x, p.y); return 0; })()');
-  rig.check(JSON.stringify((await rows()).map(r => r.replace(/^Rename \(off\)$/, 'Rename'))) === JSON.stringify(['Rename', 'Fit in view', 'Add maps here…', "We're here", 'Notes', 'Delete group']),
+  rig.check(JSON.stringify((await rows()).map(r => r.replace(/^Rename \(off\)$/, 'Rename'))) === JSON.stringify(['Add maps…', '---', 'Rename', 'Show notes', '---', 'Put the marker here', '---', 'Zoom to group Shift+2', '---', 'Ungroup Ctrl+Shift+G']),
             'a group\'s menu is wrong: ' + JSON.stringify(await rows()));
-  await dm.evaluate('__fmPress("Add maps here…"); 0');
+  await dm.evaluate('__fmPress("Add maps…"); 0');
   rig.check(await dm.evaluate('_wmAddIn') === group, 'Add maps here… did not aim the next maps at the group: ' + await dm.evaluate('_wmAddIn'));
   await dm.evaluate('__fmFiles(["Cave"]); 0', 180000);
   await dm.waitFor('allScenes.some(s => s.name === "Cave")', 180000, 'the added map to reach the library');
@@ -79,7 +80,7 @@ module.exports = async function firstUseMenus(rig) {
 
   // C. RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('(() => { const p = __fmClient(' + click.x + ', ' + (click.y - 70) + '); __fmMenuAt(p.x, p.y); return 0; })()');
-  await dm.evaluate('__fmPress("Notes"); 0');
+  await dm.evaluate('__fmPress("Show notes"); 0');
   await lib.settle(dm, 'dockActivePane() === "notes" && document.querySelector("#np-crumbs .np-crumb.on")', 8000);
   const gnotes = await dm.evaluate(`(() => ({ pane: dockActivePane(), on: (document.querySelector('#np-crumbs .np-crumb.on') || {}).dataset && document.querySelector('#np-crumbs .np-crumb.on').dataset.level,
     labels: [...document.querySelectorAll('#np-crumbs .np-crumb')].map(b => b.textContent), hidden: document.getElementById('np-field').hidden }))()`);
@@ -89,8 +90,8 @@ module.exports = async function firstUseMenus(rig) {
   const attic = await idOf('Attic');
   await dm.evaluate('__fmMenuAt(0, 0, __fmCard("Attic").firstChild); 0');
   const mrows = await rows();
-  rig.check(JSON.stringify(mrows.map(r => r.replace(/ \(off\)$/, ''))) === JSON.stringify(['Open', 'Rename', "We're here", 'Export this map', 'Notes', 'Delete map']), 'a map\'s menu is wrong: ' + JSON.stringify(mrows));
-  await dm.evaluate('__fmPress("Notes"); 0');
+  rig.check(JSON.stringify(mrows.map(r => r.replace(/ \(off\)$/, ''))) === JSON.stringify(['Open', 'Rename', 'Show notes', '---', 'Put the marker here', '---', 'Export map…', '---', 'Delete map']), 'a map\'s menu is wrong: ' + JSON.stringify(mrows));
+  await dm.evaluate('__fmPress("Show notes"); 0');
   await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb.on") && document.querySelector("#np-crumbs .np-crumb.on").dataset.level === "scene"', 8000);
   const mnotes = await dm.evaluate(`(() => ({ pane: dockActivePane(), on: (document.querySelector('#np-crumbs .np-crumb.on') || {}).dataset && document.querySelector('#np-crumbs .np-crumb.on').dataset.level,
     levels: [...document.querySelectorAll('#np-crumbs .np-crumb')].map(b => b.dataset.level), open: worldMapOpen, cur: currentScene === null, picked: worldMapPicked() }))()`);

@@ -7,6 +7,18 @@ let _wmPoly = null;              // the polygon being clicked out: { pts, cur }
 const WM_MIN_PLACE = 30;         // a dragged rectangle or circle smaller than this is a slip, not a place
 const WM_DRAWN = ['rect', 'circle', 'poly'];
 
+// Where groups overlap a press picks the smallest outline under it, so a group drawn inside another can be picked.
+// The later one wins a tie, as top-most does for rooms (findPolygonAt).
+function worldShapeAt(list, x, y) {
+  let best = null, area = Infinity;
+  for (const r of list) {
+    if (!pointInShape(x, y, r)) continue;
+    const a = wmPolyArea(wmOutline(r));
+    if (a <= area) { best = r; area = a; }
+  }
+  return best;
+}
+
 // What the layer does follows the tool in hand. setShape (input.js) calls this once `shape` is set.
 function worldMapToolSync() {
   worldMapDrawCancel();
@@ -27,6 +39,21 @@ function worldMapToolKey(e) {
   if (e.code === 'Escape' && _wmPoly) { worldMapDrawCancel(); return true; }
   if (e.code === 'Escape' && _wmTool !== 'select') { setShape('select'); return true; }
   return false;
+}
+
+// Ctrl+G groups the picked maps, Ctrl+Shift+G ungroups the picked group (or the picked map's), Shift+1 frames
+// everything and Shift+2 the picked group.
+function worldMapGroupKey(e) {
+  if (e.altKey) return false;
+  const mod = e.ctrlKey || e.metaKey, rec = worldPlaceByName(worldMapPlaceName());
+  if (mod && e.code === 'KeyG') {
+    e.preventDefault();
+    if (!e.shiftKey) worldMapGroupPicked(); else if (rec) worldPlaceUngroup(rec.id);
+    return true;
+  }
+  if (!e.shiftKey || mod || (e.code !== 'Digit1' && e.code !== 'Digit2')) return false;
+  if (e.code === 'Digit1') _wmFly(_wmOverview(), 650); else if (rec) worldMapFlyToPlace(rec.name);
+  return true;
 }
 
 function _wmPreview(verts, open) {
@@ -51,6 +78,7 @@ function _wmCreatePlace(verts) {
 }
 
 function worldMapDrawDown(e, base) {
+  if (_wmTool === 'marker') { worldMapMarkerDown(e); return; }
   const w = _wmToWorld(e.clientX, e.clientY);
   _wmDrag = { ...base, kind: 'draw', tool: _wmTool, w0: w };
   if (_wmTool === 'road') worldMapRoadDown(e, w);

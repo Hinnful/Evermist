@@ -89,7 +89,7 @@ function _wptPlaceEl(p) {
   _wptEl.style.top = p.y + 'px';
 }
 
-// "We're here": on a map (`scene`) at the top edge of its card, or at a point on the ground. The one marker moves.
+// "Put the marker here": on a map (`scene`) at the top edge of its card, or at a point on the ground. The one marker moves.
 function worldPartyPlace(where) {
   worldUndoPush();
   _wptLoad();
@@ -102,6 +102,23 @@ function worldPartyPlace(where) {
   }
   _wptSave();
   worldPartyDraw();
+}
+
+// The Marker tool, Road's twin: armed, the next click on the map puts the marker there (on a map's card, on that map)
+// and the bar goes back to Select. Esc and any other tool put it down (worldMapToolKey, setShape).
+function worldMapMarkerToolToggle() {
+  const was = _wmTool === 'marker';
+  setShape('select');
+  if (was) return;
+  _wmTool = 'marker';
+  _wm.classList.add('drawing');
+  worldMapRoadButtonSync();
+}
+
+function worldMapMarkerDown(e) {
+  const g = _wmGrab(e);
+  worldPartyPlace(g.kind === 'card' || g.kind === 'lm' ? { scene: g.id } : _wmToWorld(e.clientX, e.clientY));
+  setShape('select');
 }
 
 function worldPartyRemove() {
@@ -190,6 +207,7 @@ function worldPartyImport(rec, sceneMap, dx, dy) {
 }
 
 function worldPartyInit() {
+  document.getElementById('wm-marker').addEventListener('click', worldMapMarkerToolToggle);
   _wptHost = document.createElement('div');
   _wptHost.id = 'wm-party';
   _wmWorld.insertBefore(_wptHost, document.getElementById('wm-edit'));

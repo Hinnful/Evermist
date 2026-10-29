@@ -154,7 +154,7 @@
          picks what is showing; the chevron or a right-click lists the others (shapeMenu.js). -->
     <span class="tb-grp" id="tb-grp-shape">
     <div class="tb-shape-wrap">
-      <button id="btn-shape" class="tool-btn" title="Room - hides part of the map from the players until you reveal it. The arrow picks the shape">
+      <button id="btn-shape" class="tool-btn tb-labeled" title="Room - hides part of the map from the players until you reveal it. The arrow picks the shape">
         <span class="tb-shape-glyph"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></span>
         <span class="tb-shape-label">Room</span>
       </button>
@@ -219,8 +219,13 @@
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
       <span class="tb-shape-label">Map</span>
     </button>
-    <button id="wm-road" class="tool-btn wm-tool" title="Road - click points along the way, double-click to finish">
+    <button id="wm-road" class="tool-btn tb-labeled wm-tool" title="Road - click points along the way, double-click to finish">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c5-1 2-7 7-8s3-6 7-7" stroke-dasharray="3 2.5"/><circle cx="5" cy="19" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="4" r="1.7" fill="currentColor" stroke="none"/></svg>
+      <span class="tb-shape-label">Road</span>
+    </button>
+    <button id="wm-marker" class="tool-btn tb-labeled wm-tool" title="Party marker - where the party is now">
+      <svg width="17" height="17" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M18 2 L21.5 15.5 L34 19 L21.5 22.5 L18 36 L14.5 22.5 L2 19 L14.5 15.5Z"/><circle cx="18" cy="19" r="3.2" fill="currentColor" stroke="none"/></svg>
+      <span class="tb-shape-label">Marker</span>
     </button>
     <i class="tb-mdiv wm-tool" id="wm-div"></i>
     <button id="wm-find" class="tool-btn wm-tool" title="Find a map, group or road (Ctrl+F)">
@@ -778,6 +783,10 @@
         <div class="lg-row">Pick with a box<span class="k"><kbd>Shift</kbd><kbd>Drag</kbd></span></div>
         <div class="lg-row">Find<span class="k"><kbd>Ctrl</kbd><kbd>F</kbd></span></div>
         <div class="lg-row">Finish a road<span class="k"><kbd>Enter</kbd></span></div>
+        <div class="lg-row">Group the picked maps<span class="k"><kbd>Ctrl</kbd><kbd>G</kbd></span></div>
+        <div class="lg-row">Ungroup<span class="k"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>G</kbd></span></div>
+        <div class="lg-row">Zoom to fit<span class="k"><kbd>Shift</kbd><kbd>1</kbd></span></div>
+        <div class="lg-row">Zoom to group<span class="k"><kbd>Shift</kbd><kbd>2</kbd></span></div>
       </div>
       </div>
     </div>

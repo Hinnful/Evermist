@@ -90,7 +90,7 @@ module.exports = async function worldMapSeat(rig) {
     rig.check(lay.same && lay.plain && lay.bitmap,
               'at ' + deg + '° the overlay canvas is not upright over the window: ' + JSON.stringify(lay));
 
-    await dm.evaluate('worldPlaceDelete(worldMapSel.place ? worldPlaceByName(worldMapSel.place).id : null); worldMapHide(); 0');
+    await dm.evaluate('worldPlaceUngroup(worldMapSel.place ? worldPlaceByName(worldMapSel.place).id : null); worldMapHide(); 0');
     await lib.settle(dm, '!worldMapOpen', 15000);
     const back = await dm.evaluate(`(() => {
       const a = mapAreaSize(), cs = getComputedStyle(mapCanvas);

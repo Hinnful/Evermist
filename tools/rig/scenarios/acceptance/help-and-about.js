@@ -279,6 +279,7 @@ module.exports = async function helpAndAboutFeature(rig) {
     'Q',                  // the touchpad's ping, covered by ping.js
     'H',                  // the players' view, held, covered by fog-toolbar.js
     'M', 'Ctrl F',        // the world map's keys, covered by world-map.js
+    'Ctrl G', 'Ctrl Shift G', 'Shift 1', 'Shift 2', // the Campaign's group and zoom keys, covered by world-map.js
     'Shift Click', 'Shift Drag', // picking more scenes, covered by world-map.js
     'Enter',              // finishing a road, covered by world-roads.js
     'Shift', 'Alt', 'Ctrl', // the repairs while drawing, covered by fog-toolbar.js

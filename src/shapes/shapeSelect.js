@@ -63,6 +63,7 @@ function clearShapeSelection() {
 
 function findPolygonAt(mapX, mapY) {
   const list = activeShapeList();
+  if (worldMapOpen) return worldShapeAt(list, mapX, mapY);   // the Campaign picks the smallest group; rooms keep top-most
   for (let i = list.length - 1; i >= 0; i--) {
     if (pointInShape(mapX, mapY, list[i])) return list[i];
   }
@@ -809,7 +810,7 @@ function drawPolyOutline(poly, isSelected, selectedVertIdx, dimmed) {
 
 // startFogTransition() takes no argument: the polygon is gone, so no mode survives to fade to.
 function deletePolygonById(id) {
-  if (id == null || worldMapOpen) { if (id != null) worldPlaceDelete(id); return; }   // a place goes by the world map's delete
+  if (id == null || worldMapOpen) { if (id != null) worldPlaceUngroup(id); return; }   // a place goes by the world map's delete
   pushUndo();
   if (placeMode !== 'rooms') {
     setShapeListNamed(placeMode, activeShapeList().filter(e => e.id !== id));

@@ -18,7 +18,8 @@ function worldMapEditInit() {
   document.addEventListener('keydown', worldMapKeys, true);
 
   const file = document.getElementById('wm-file-input');
-  document.getElementById('wm-add').addEventListener('click', () => file.click());
+  // The menus name where the maps go before they click this; a plain click adds into the picked group, or the picked map's.
+  document.getElementById('wm-add').addEventListener('click', () => { if (!_wmAddIn && !_wmAddAt) _wmAddIn = worldMapPlaceName(); file.click(); });
   file.addEventListener('change', () => {
     const files = Array.from(file.files || []);
     file.value = '';

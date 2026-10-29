@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 8 open items; IDs run to 236."
+description: "Open work only. 7 open items; IDs run to 237."
 metadata: 
   node_type: memory
   type: project
@@ -75,23 +75,16 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 # EVERYTHING ELSE
 
-### 235. The Campaign toolbar, redesigned
-Filed 2026-10-25. Roads sit under the Groups tool, which reads as if a road were a kind of group, and item 184's
-Straight walls sits alone over the drawing tools. Decide what the Campaign's toolbar holds and in what order, including
-whether the party marker gets a button there (today only the right-click menu places it). **Needs a look-and-feel
-pass.**
-**Polish · DM only**
+### 237. The hints-next-map scenario needs reruns
+Filed 2026-10-30. The rig's `hints-next-map` scenario needed a second try in 5 recent Windows runs (the Campaign
+button's blink or its toast goes unrecorded). Find whether the check or the app is at fault, then fix the scenario or
+retire it.
+**Upkeep · DM only**
 
 ### 236. Move to Electron 45
 Filed 2026-10-27. Evermist runs on Electron 43, which stops getting security fixes when Electron 46 ships, about
 two months out. Move to 45, then run the full rig set and a packaged build before it ships.
 **Upkeep · DM and Player**
-
-### 184. Straight walls sits alone over the world map's drawing tools
-Filed 2026-10-16. With the repairs gone from places, the row over a place tool holds one icon, Straight walls, and it
-looks stranded. Decide what that row is for on the world map: give it company that earns its place, fold Straight walls
-somewhere else, or drop the row. **Needs a look-and-feel pass.**
-**Polish · DM only**
 
 ### 144. A phone remote for the DM
 Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in

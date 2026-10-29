@@ -1309,3 +1309,21 @@ the old fill as it looked over a dark map. Plain `rgb(24,25,28)`, hover `rgb(40,
 `rgba(12,140,233,0.28)` tint composited over the plain plate). Accepted: over a bright map a plate reads slightly darker than
 before. The hairline, text, count pill, edit state and shadow keep their alpha, since they sit on a solid fill. The canvas room
 label reads the same tokens, so it is opaque too. The Campaign acceptance scenario checks the plain, picked and hover fills.
+
+### The Campaign bar names Group, Road and Marker; its menus follow one pattern · `SETTLED` (2026-10-30)
+The bar reads Select, Map, Group (Rectangle, Circle, Polygon), Road, Marker, a divider, Find. Road has its own labelled
+button (L still picks it), so a road no longer reads as a kind of group and Group keeps its word. Marker places or
+moves the party marker with one click, then returns to Select. Straight walls is gone from the Campaign (BACKLOG 184); the
+scene's bar keeps it. Menus: every row starts with a verb, one action has one wording everywhere, "..." only where a file
+window opens next, fixed blocks (open or add, rename and notes, organise, view, export, delete last), a key shown on the
+right. "Delete group" is "Ungroup" (Ctrl+Shift+G): it removes the outline, keeps the maps, and Undo restores it. New keys:
+Ctrl+G groups the picked maps, Shift+1 fits, Shift+2 zooms to the group; "Map" adds into the picked group. A road's menu
+gains Show notes. Where outlines overlap, a Campaign click picks the smallest group; rooms keep top-most.
+**Reverses, by title:** "The world map's bar has no words" (Road inside Place's list). **Reopens** the party marker
+button refusal in PRODUCT.md.
+
+### Group membership stays "the smallest outline holding all of a map's card" · `REJECTED` (2026-10-30)
+Stored membership (the Figma and tldraw way) with reshapes blocked when they would leave a map outside, sticky membership
+with tether cues, and re-sorting by dropping were designed in full and rejected on product grounds: a rule change for its
+own sake. Today's rule is flat and visible on screen, and no DM has found it wrong. Do not re-propose without a real
+complaint about it.

@@ -36,7 +36,6 @@ function updateContextPanels() {
   show('div-op', aids);
   show('op-sw', aids);
   refreshFogBar();
-  document.body.classList.toggle('aids-up', aids && worldMapOpen);
   show('fx-shapes', fx);
   show('div-fx-shapes', fx);
   show('ctx-effects', fx);

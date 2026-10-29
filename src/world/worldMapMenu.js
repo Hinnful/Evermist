@@ -10,24 +10,30 @@ function worldMapMenuClose() {
   if (_wmMenu) { _wmMenu.remove(); _wmMenu = null; }
 }
 
+// The blocks of a menu in order, a block left empty dropped and one separator between those that stay.
+function _wmBlocks(...blocks) {
+  const rows = [];
+  for (const b of blocks.filter(x => x.length)) { if (rows.length) rows.push({ sep: true }); rows.push(...b); }
+  return rows;
+}
+
 function _wmSceneRows(id) {
   const s = allScenes.find(x => x.id === id);
   if (!s) return [];
   const group = sanitizeGroupName(s.group);
   const placed = !!group, far = _wm.classList.contains('places');
   const el = far && !placed ? _wmEls.get('l' + id).lastChild : _wmEls.get('c' + id).lastChild;
-  const rows = [
-    { label: 'Open', run: () => worldMapOpenScene(id) },
-    { label: 'Rename', off: far && placed, run: () => _wmRenameStart(el, 'scene', id) },
-  ];
-  if (group) rows.push({ label: 'Take out of its group', run: () => _wmTakeOut(id, group) });
-  if (worldRoadOfScene(id)) rows.push({ label: 'Take off the road', run: () => worldMapRoadLeave(id) });
-  if (!worldPartyOn(id)) rows.push({ label: "We're here", run: () => worldPartyPlace({ scene: id }) });
-  rows.push({ label: 'Export this map', run: () => worldBackupExport([id]) });
-  rows.push({ label: 'Notes', run: () => _wmOpenNotes('scene') });
-  rows.push({ sep: true });
-  rows.push({ label: 'Delete map', danger: true, run: () => _wmDeletePicked([id]) });
-  return rows;
+  const organise = [];
+  if (group) organise.push({ label: 'Remove from group', run: () => _wmTakeOut(id, group) });
+  if (worldRoadOfScene(id)) organise.push({ label: 'Remove from road', run: () => worldMapRoadLeave(id) });
+  if (!worldPartyOn(id)) organise.push({ label: 'Put the marker here', run: () => worldPartyPlace({ scene: id }) });
+  return _wmBlocks(
+    [{ label: 'Open', run: () => worldMapOpenScene(id) },
+     { label: 'Rename', off: far && placed, run: () => _wmRenameStart(el, 'scene', id) },
+     { label: 'Show notes', run: () => _wmOpenNotes('scene') }],
+    organise,
+    [{ label: 'Export map…', run: () => worldBackupExport([id]) }],
+    [{ label: 'Delete map', danger: true, run: () => _wmDeletePicked([id]) }]);
 }
 
 // Out of its place: moved just past the outline's right edge, which is what leaving a place is.
@@ -41,33 +47,29 @@ function _wmTakeOut(id, group) {
 
 // Several scenes picked: what can be done to them all.
 function _wmPickRows(ids) {
-  return [
-    { label: t.plural(ids.length, 'Export {n} map', 'Export {n} maps'), run: () => worldBackupExport(ids), raw: true },
-    { sep: true },
-    { label: t.plural(ids.length, 'Delete {n} map', 'Delete {n} maps'), danger: true, raw: true, run: () => _wmDeletePicked(ids) },
-  ];
+  return _wmBlocks(
+    [{ label: t.plural(ids.length, 'Group {n} map', 'Group {n} maps'), key: 'Ctrl+G', raw: true, run: worldMapGroupPicked }],
+    [{ label: t.plural(ids.length, 'Export {n} map…', 'Export {n} maps…'), run: () => worldBackupExport(ids), raw: true }],
+    [{ label: t.plural(ids.length, 'Delete {n} map', 'Delete {n} maps'), danger: true, raw: true, run: () => _wmDeletePicked(ids) }]);
 }
 
 function _wmPlaceRows(name, at) {
-  return [
-    { label: 'Rename', off: !_wmNameShown(name), run: () => _wmRenameStart(_wmEls.get('h' + name), 'place', name) },
-    { label: 'Fit in view', run: () => worldMapFlyToPlace(name) },
-    { label: 'Add maps here…', run: () => { _wmAddIn = name; document.getElementById('wm-add').click(); } },
-    { label: "We're here", run: () => worldPartyPlace(at) },
-    { label: 'Notes', run: () => _wmOpenNotes('place') },
-    { sep: true },
-    { label: 'Delete group', danger: true, run: () => worldPlaceDelete(worldPlaceByName(name).id) },
-  ];
+  return _wmBlocks(
+    [{ label: 'Add maps…', run: () => { _wmAddIn = name; document.getElementById('wm-add').click(); } }],
+    [{ label: 'Rename', off: !_wmNameShown(name), run: () => _wmRenameStart(_wmEls.get('h' + name), 'place', name) },
+     { label: 'Show notes', run: () => _wmOpenNotes('place') }],
+    [{ label: 'Put the marker here', run: () => worldPartyPlace(at) }],
+    [{ label: 'Zoom to group', key: 'Shift+2', run: () => worldMapFlyToPlace(name) }],
+    [{ label: 'Ungroup', key: 'Ctrl+Shift+G', run: () => worldPlaceUngroup(worldPlaceByName(name).id) }]);
 }
 
 function _wmRoadRows(uid) {
   const rec = worldRoadByUid(uid);
-  return [
-    { label: 'Rename', run: () => _wmRenameStart(_wmEls.get('r' + uid), 'road', uid) },
-    { label: 'Edit points', run: () => { worldMapSelect({ sceneId: null, place: '', road: uid }); enterShapeEditMode(rec.id); worldMapRefresh(); } },
-    { sep: true },
-    { label: 'Delete road', danger: true, run: () => worldMapRoadDelete(uid) },
-  ];
+  return _wmBlocks(
+    [{ label: 'Rename', run: () => _wmRenameStart(_wmEls.get('r' + uid), 'road', uid) },
+     { label: 'Show notes', run: () => _wmOpenNotes('road') },
+     { label: 'Edit points', run: () => { worldMapSelect({ sceneId: null, place: '', road: uid }); enterShapeEditMode(rec.id); worldMapRefresh(); } }],
+    [{ label: 'Delete road', danger: true, run: () => worldMapRoadDelete(uid) }]);
 }
 
 // A corner of the open place under the pointer: the room code's own delete, which keeps three.
@@ -77,7 +79,8 @@ function _wmCornerRows(flat) {
            run: () => { selectedVertexIndex = flat; _wmWithCamera(deleteSelectedPart); } }];
 }
 
-// The Notes pane on what the menu was opened on, which is already picked. A map's own level is a crumb the pick must name.
+// The Notes pane on what the menu was opened on, which is already picked. A map's own level is a crumb the pick must name;
+// a place's and a road's follow the pick.
 function _wmOpenNotes(level) {
   notesLevelPick = level === 'scene' ? 'scene' : null;
   dockOpen('notes');
@@ -91,13 +94,12 @@ function _wmNewGroupAt(at) {
 }
 
 function _wmGroundRows(at) {
-  return [
-    { label: 'Add maps here…', run: () => { _wmAddAt = at; document.getElementById('wm-add').click(); } },
-    { label: 'New group here', run: () => _wmNewGroupAt(at) },
-    { label: "We're here", run: () => worldPartyPlace(at) },
-    { label: 'Background picture…', run: () => document.getElementById('wm-bg-pick').click() },
-    { label: 'Show everything', run: () => _wmFly(_wmOverview(), 650) },
-  ];
+  return _wmBlocks(
+    [{ label: 'Add maps…', run: () => { _wmAddAt = at; document.getElementById('wm-add').click(); } },
+     { label: 'New group', run: () => _wmNewGroupAt(at) },
+     { label: 'Put the marker here', run: () => worldPartyPlace(at) }],
+    [{ label: 'Zoom to fit', key: 'Shift+1', run: () => _wmFly(_wmOverview(), 650) },
+     { label: 'Background picture…', run: () => document.getElementById('wm-bg-pick').click() }]);
 }
 
 function worldMapMenuOpen(e) {
@@ -125,13 +127,13 @@ function worldMapMenuOpen(e) {
   _wmMenuShow(rows, e);
 }
 
-// The marker's own menu holds one row: take it off.
+// The marker's own menu holds one row: remove it.
 function worldMapPartyMenuOpen(e) {
   e.preventDefault();
   e.stopPropagation();
   worldMapMenuClose();
   if (_wmAnim || _wmEditing) return;
-  _wmMenuShow([{ label: 'Take the marker off', run: worldPartyRemove }], e);
+  _wmMenuShow([{ label: 'Remove the marker', run: worldPartyRemove }], e);
 }
 
 function _wmMenuShow(rows, e) {
@@ -142,7 +144,13 @@ function _wmMenuShow(rows, e) {
     if (r.sep) { menu.insertAdjacentHTML('beforeend', '<div class="sm-msep"></div>'); continue; }
     const b = document.createElement('button');
     b.className = 'sm-mi' + (r.danger ? ' danger' : '');
-    b.textContent = r.raw ? r.label : t(r.label);
+    const text = r.raw ? r.label : t(r.label);
+    if (r.key) {
+      // The key sits at the right of its row, as in the bar's lists.
+      b.innerHTML = '<span class="nm"></span><span class="ky"></span>';
+      b.firstChild.textContent = text;
+      b.lastChild.textContent = r.key;
+    } else b.textContent = text;
     b.disabled = !!r.off;
     b.addEventListener('click', () => { worldMapMenuClose(); r.run(); });
     menu.appendChild(b);

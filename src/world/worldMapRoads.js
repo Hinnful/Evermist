@@ -15,11 +15,12 @@ function worldMapRoadsInit() {
   document.getElementById('wm-road').addEventListener('click', worldMapRoadToolToggle);
 }
 
-// Only the tool in hand is blue: with Road picked, the toolbar's Select is not.
+// Only the tool in hand is blue: with Road or Marker picked, the toolbar's Select is not.
 function worldMapRoadButtonSync() {
   document.getElementById('wm-road').classList.toggle('active', _wmTool === 'road');
-  document.getElementById('btn-select').classList.toggle('active', shape === 'select' && _wmTool !== 'road');
-  refreshShapeButton();   // the Place button wears Road while it is in hand
+  document.getElementById('wm-marker').classList.toggle('active', _wmTool === 'marker');
+  document.getElementById('btn-select').classList.toggle('active', shape === 'select' && _wmTool !== 'road' && _wmTool !== 'marker');
+  refreshShapeButton();
 }
 
 // The Road tool is a switch beside the bar's shapes: picking any shape tool puts it away.

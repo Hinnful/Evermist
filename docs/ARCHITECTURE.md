@@ -77,19 +77,19 @@ camera may go a fifth of the map's size beyond. The mist stops at the picture's 
 names and the places have none. Under the prints sits the mist (`worldMist.js`): a drifting veil that thins
 inside the places, over the backdrop, which is greyed outside them. A place's white 2px line is painted above by
 the room code. The bar is the scene's own toolbar lent to the layer and given back on closing,
-with no words: Select, Add (the one solid blue button), Place (the place shapes, then Road), a divider, Find. Places
+with words only on Map and Group: Select, Map (adds into the picked group), Group (Rectangle, Circle, Polygon), Road (L), Marker, a divider, Find. No Straight walls row. Places
 take no Merge, Cut out or Split (`worldMapShapes.js` draws them). Find opens a large search over a dimmed map
 (`worldMapFind.js`). One backdrop image, set in Settings, sits behind the places
 (`worldBackground.js`, its own IndexedDB). A double-click, or the Open bar over the one picked map
 (`worldMapOpenBar.js`), opens a scene. Add imports maps off screen, frames them and picks the first, and never opens
 one. With no maps the app starts on the Campaign, which shows one centred card, "Add your first map" (`worldMapEmpty.js`); a place is called a group in the UI. Opening the
 map frames everything on it in the part of the window the dock leaves clear, and with no place drawn it stays at the
-prints. A right-click menu (`worldMapMenu.js`) offers each thing's actions, a place is a room-shaped record (`worldPlaces.js`) drawn with the rectangle, circle or polygon tool and edited by the room's own selection code, and a scene belongs to the outline that holds all of its card. The room code reads the camera from globals, so each of its calls is made inside `_wmWithCamera`, which lends it the world's. The layer is a sibling of the canvas, so none of the map's
+prints. A right-click menu (`worldMapMenu.js`) offers each thing's actions (verb first, fixed blocks, keys shown; "Ungroup" Ctrl+Shift+G keeps the maps; Ctrl+G groups the picked maps, Shift+1 fits, Shift+2 zooms to group; a click on overlapping outlines picks the smallest group), a place is a room-shaped record (`worldPlaces.js`) drawn with the rectangle, circle or polygon tool and edited by the room's own selection code, and a scene belongs to the outline that holds all of its card. The room code reads the camera from globals, so each of its calls is made inside `_wmWithCamera`, which lends it the world's. The layer is a sibling of the canvas, so none of the map's
 own handlers see it, and while it is up the map's keys are held back so nothing reaches the TV. Place notes
 live in `evermist.placeNotes` by name and ride a backup in `campaign.json`.
 
 **The party marker** (`worldParty.js`, pure `worldPartyPlan.js`) is one per library, in localStorage `evermist.worldParty`
-as a point or a point tied to a map id. Right-click a map, group or the ground: "We're here" (hidden on the map that
+as a point or a point tied to a map id. The Marker button places or moves it with one click, then returns to Select. Right-click a map, group or the ground: "We're here" (hidden on the map that
 holds it); right-click the marker: "Take the marker off". Dragging moves it; released within a few screen pixels of a
 card it lands on that map (top edge centre), else it stays free. It follows its map, live during a card drag; a deleted
 map leaves it free at its last spot. World-map undo snapshots carry it. The mist thins in a soft circle of 280 world

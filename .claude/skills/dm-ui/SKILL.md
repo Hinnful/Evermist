@@ -123,10 +123,7 @@ The room card's module renders into the Notes pane's room level; there is no flo
 
 ## The world map (`worldMap.js`, `worldMapEdit.js`, `worldMap.css`)
 
-A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolbar is the scene's own, with words only on + Map and Group: Select (always leftmost), + Map,
-Group, a divider, Find. Add is a grey labelled "Map" button like Group (plus icon, word), never solid blue. Place's list holds Rectangle (R), Circle (O), Polygon (P), then Road (L),
-and its button wears the last pick; V, R, O and P put Road down, and L takes it on the world map only. Road's own button (`#wm-road`) stays in the page as
-the back end. Places take no Merge, Cut out or Split: the options row over a place tool holds Straight walls alone. The Brush, the fog
+A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolbar is the scene's own, with words only on Map, Group, Road and Marker: Select (always leftmost), Map, Group, Road, Marker, a divider, Find. Map is a grey labelled button (plus icon, word), never solid blue, and adds into the picked group or the picked map's group. Group's list holds Rectangle (R), Circle (O), Polygon (P) and its button wears the last pick; Road (L) is its own labelled button, and L takes it on the world map only. Marker (`Party marker - where the party is now`) places or moves the party marker with one click, then returns to Select. Places take no Merge, Cut out or Split and no Straight walls: there is no options row over a place tool. Right-click menus: every row starts with a verb, one action one wording, "..." only before a file window, a key shown on the right; "Ungroup" (Ctrl+Shift+G) removes the outline and keeps the maps. The Brush, the fog
 clouds, Reveal all and Hide all, the Effects tool and Snap are hidden, and the
 tool, mode and repair the scene held are put away on opening and given back on closing. The context row hides with
 `visibility` so the bar does not move. Find (or Ctrl+F) opens a large search in the middle of the window over a dimmed map (`#wm-finder`): every map as

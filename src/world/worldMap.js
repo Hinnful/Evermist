@@ -18,7 +18,7 @@ let _wmLive = {};                // id → position while a drag is under way
 let _wmRoadPos = Object.create(null);  // id → spot on its road, for every scene a road holds
 let _wmPre = null;               // the shape being drawn: { verts, open }
 let _wmKept = null;              // the room selection the map had when this layer opened
-let _wmTool = 'select';          // the toolbar's `shape` as the layer reads it: select, rect, circle, poly or cut
+let _wmTool = 'select';          // the toolbar's `shape` as the layer reads it: select, rect, circle, poly, road or marker
 let _wmHeld = null;              // the scene's tool, placement mode and repair, put back when the layer closes
 let _wmEditing = null;           // the element whose text is being edited
 let _wmExt = null;               // how far the map reaches, kept until a draw or the backdrop changes it
@@ -317,8 +317,8 @@ function worldPlaceCommit() {
   worldMapRefresh();
 }
 
-// Delete on a picked place: undoable, so it asks nothing.
-function worldPlaceDelete(id) {
+// Ungroup, and Delete on a picked place: the outline goes and its maps stay. Undoable, so it asks nothing.
+function worldPlaceUngroup(id) {
   const road = worldRoadById(id);
   if (road) { worldMapRoadDelete(road.uid); return; }
   const name = worldPlaceNameOfId(id);
@@ -571,7 +571,7 @@ function worldMapKeys(e) {
   if (_wmOwnKeys(e.target)) return;
   e.stopPropagation();
   if (e.code === 'Escape' && galleryTakeDown()) return;   // a picture on the TV goes first, as in input.js
-  if (worldMapToolKey(e)) return;
+  if (worldMapToolKey(e) || worldMapGroupKey(e)) return;
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.code === 'KeyZ') { e.preventDefault(); if (e.shiftKey) worldRedo(); else worldUndo(); return; }
   if (mod && e.code === 'KeyY') { e.preventDefault(); worldRedo(); return; }

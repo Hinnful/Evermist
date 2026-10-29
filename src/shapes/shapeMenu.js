@@ -15,10 +15,9 @@
 const SHAPE_FAMILY = ['poly', 'rect', 'circle', 'cone', 'line', 'wall', 'ring'];
 const SHAPE_ROWS = { poly: ['Polygon', 'P'], rect: ['Rectangle', 'R'], circle: ['Circle', 'O'],
                      cone: ['Cone', 'C'], line: ['Line', ''], wall: ['Wall', ''], ring: ['Ring', ''] };
-// The Campaign's Group list holds the three group shapes, then Road. Places take no repairs.
+// The Campaign's Group list holds the three group shapes alone: Road and Marker are buttons of their own. Places take no repairs.
 const WORLD_SHAPES = ['rect', 'circle', 'poly'];
 
-let _roadWorn = false;          // the world map's Place button wears Road, the last pick, over the last shape
 let _worn = 'btn-rect';         // the row the Shape button wears, and the list checks
 let _tbOpen = null;             // the kind of the list that is open, or null
 let _tbPickFn = null;           // what a pick in the open list does
@@ -32,36 +31,26 @@ function _shapeName(s) { return SHAPE_ROWS[s][0]; }
 // A repair needs something to act on: a room, an effect, or on the world map a place.
 function repairsAvailable() { return activeShapeList().length > 0; }
 
-// The scene bar's button wears the shape drawn with, always. The world map's wears Road when that was the
-// last pick, and a shape the mode lacks is never worn, so the button never goes blank.
+// The bar's button wears the shape drawn with, always, and a shape the mode lacks is never worn, so the button never goes blank.
 function refreshShapeButton() {
   const btn = document.getElementById('btn-shape');
   if (!btn) return;
   const items = shapeMenuItems();
-  if (worldMapOpen) {
-    if (_wmTool === 'road') _roadWorn = true;
-    else if (items.indexOf(shape) >= 0) _roadWorn = false;
-  }
-  const road = worldMapOpen && _roadWorn;
   // The Room button stays Room in Effects mode: it wears the room shape, never the effect shape in hand.
   const inRooms = placeMode === 'rooms';
   const worn = inRooms && items.indexOf(shape) >= 0 ? shape : modeShape('rooms');
-  const want = road ? 'wm-road' : 'btn-' + worn;
+  const want = 'btn-' + worn;
   _worn = want;
   const src = document.getElementById(want);
   const box = btn.querySelector('.tb-shape-glyph');
   if (src && box) box.innerHTML = src.querySelector('svg').outerHTML;
-  // The scene bar's button is the Room tool and the Campaign's is the Group tool, and each says so; Road keeps its own
-  // icon and tip.
-  const label = road ? '' : worldMapOpen ? 'Group' : 'Room';
-  btn.classList.toggle('tb-labeled', !!label);
+  // The scene bar's button is the Room tool and the Campaign's is the Group tool, and each says its word whatever was picked.
   const text = btn.querySelector('.tb-shape-label');
-  if (text) text.textContent = label === 'Group' ? t('Group') : label === 'Room' ? t('Room') : '';
-  btn.title = road ? t('Road - click points along the way, double-click to finish')
-    : label === 'Group' ? t('Group - gathers maps together: a kingdom, a village or one tavern. The arrow picks the shape')
+  if (text) text.textContent = worldMapOpen ? t('Group') : t('Room');
+  btn.title = worldMapOpen ? t('Group - gathers maps together: a kingdom, a village or one tavern. The arrow picks the shape')
     : placeMode === 'effects' ? t('Room - leave Effects to draw a room')
     : t('Room - hides part of the map from the players until you reveal it. The arrow picks the shape');
-  btn.classList.toggle('active', worldMapOpen ? (_wmTool === 'road' || items.indexOf(shape) >= 0) : (inRooms && (items.indexOf(shape) >= 0 || shape === 'cut')));
+  btn.classList.toggle('active', worldMapOpen ? items.indexOf(shape) >= 0 : (inRooms && (items.indexOf(shape) >= 0 || shape === 'cut')));
 }
 
 function _tbCloseList() {
@@ -76,9 +65,7 @@ function _tbCloseList() {
 function _tbRows() {
   const svgOf = id => { const src = document.getElementById(id); return src ? src.querySelector('svg').outerHTML : ''; };
   const order = worldMapOpen ? WORLD_SHAPES : SHAPE_FAMILY;
-  const shapes = order.map(s => ['btn-' + s, _shapeName(s), !shapeInMode(s, 'rooms') ? t('Effects') : SHAPE_ROWS[s][1], !shapeInMode(s, 'rooms'), svgOf('btn-' + s)]);
-  if (!worldMapOpen) return shapes;
-  return shapes.concat([null, ['wm-road', 'Road', 'L', false, svgOf('wm-road')]]);
+  return order.map(s => ['btn-' + s, _shapeName(s), !shapeInMode(s, 'rooms') ? t('Effects') : SHAPE_ROWS[s][1], !shapeInMode(s, 'rooms'), svgOf('btn-' + s)]);
 }
 
 // Opens a list over `anchor`, above it and kept inside the window. `kind` names it so a second click on
@@ -122,10 +109,8 @@ function _tbOpenShapeList() {
   openBarList('shape', group, group.querySelector('.tb-chev'), rows, _worn, _tbPick, true);
 }
 
-// A plain shape is a new room, so it drops an armed Merge or Cut out. On the world map the Road row takes the
-// road tool, and every other row puts it down (setShape does).
+// A plain shape is a new room, so it drops an armed Merge or Cut out; on the Campaign setShape puts Road and Marker down.
 function _tbPick(id) {
-  if (id === 'wm-road') { if (_wmTool !== 'road') worldMapRoadToolToggle(); return; }
   if (shapeOp !== 'new') setShapeOp('new');
   setShape(id.slice(4));
 }
@@ -136,7 +121,6 @@ function initShapeMenu() {
   btn.onclick = () => {
     if (placeMode === 'effects') return;   // greyed: Room does nothing while Effects is the mode
     if (btn.classList.contains('active') && shape !== 'cut') return;   // already the tool in hand
-    if (worldMapOpen && _roadWorn) { if (_wmTool !== 'road') worldMapRoadToolToggle(); return; }
     const items = shapeMenuItems();
     const want = modeShape(placeMode);
     if (shapeOp !== 'new') setShapeOp('new');

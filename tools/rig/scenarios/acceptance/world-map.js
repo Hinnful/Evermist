@@ -22,7 +22,7 @@
 //      fits both, picked as "New group" (its name is hidden zoomed in, so no rename opens); out of the
 //      polygon takes it out. Dragging a place's name moves the polygon and its scenes.
 //   6. A double-click on a name renames it, and the library shows the new name.
-//   7. The toolbar holds Select, Add a scene and Find. Add puts the scene in the next clear spot beside
+//   7. The toolbar holds Select, Map, Group, Road, Marker and Find. Add puts the scene in the next clear spot beside
 //      the picked one, picks it and shows it, and leaves the open scene alone; the new scene opens fully fogged.
 //   8. The notes panel gains a Place level, with notes per place that follow a rename.
 //   9. Positions and place notes survive a restart, a backup and a restore, and a move made with two
@@ -38,8 +38,11 @@
 //      Escape one level at a time, and Ctrl+Z. It is kept across a restart. A scene's card lying over
 //      an open place's corner does not take the press: the corner moves and the card stays.
 //  14. Zoomed out, a place keeps its polygon, in white.
-//  15. The right-click menu offers the scene's, the place's or the ground's actions; Delete is off
-//      for the open scene.
+//  15. The right-click menus (map, several maps, group, empty ground; the road's and the marker's are in
+//      world-roads.js and world-party.js) match the campaign toolbar spec's table: wording, order, separators, keys at the right.
+//  17. Campaign toolbar: Ctrl+G groups the picked maps and opens the name; Ctrl+Shift+G ungroups and Ctrl+Z brings it back;
+//      Map adds into the picked group; Shift+1 fits everything and Shift+2 the picked group; a click where groups overlap
+//      picks the smallest, and a name plate picks its group.
 //  16. Pre-4.0 fixes: the dock goes dark but for what never reaches the TV; no invisible rename; every
 //      scene move is one undo step; Esc, Delete, Enter and ? on the map; Effects shapes absent; only the
 //      tool in hand is blue; a place delete asks nothing and its notes go and come back with it; a taken
@@ -392,9 +395,9 @@ module.exports = async function worldMapFeature(rig) {
   const tiny = await dm.evaluate(`(() => { const name = worldPlaceCreate(wmRectShape(-6000, -6000, -5960, -5960)); worldMapRefresh(); __wmCam(-5980, -5980, 0.3);
     const p = __wmS(-5980, -5980); document.getElementById('wm').dispatchEvent(new MouseEvent('contextmenu', { clientX: p.x, clientY: p.y, button: 2, bubbles: true, cancelable: true }));
     const rows = [...document.querySelectorAll('.wm-menu .sm-mi')].map(b => b.textContent + (b.disabled ? ' (off)' : ''));
-    worldMapMenuClose(); const off = _wmEls.get('h' + name).classList.contains('off'); worldPlaceDelete(worldPlaceByName(name).id); return { off, rows }; })()`);
+    worldMapMenuClose(); const off = _wmEls.get('h' + name).classList.contains('off'); worldPlaceUngroup(worldPlaceByName(name).id); return { off, rows }; })()`);
   // RED ON: the plate .off test removed from Rename's off in _wmPlaceRows (worldMapMenu.js) — 2026-10-09
-  rig.check(tiny.off && tiny.rows[0] === 'Rename (off)', 'Rename is on for a place whose name is hidden: ' + JSON.stringify(tiny));
+  rig.check(tiny.off && tiny.rows[1] === 'Rename (off)', 'Rename is on for a place whose name is hidden: ' + JSON.stringify(tiny));
   await layout();
 
   await dm.evaluate('worldUndoClear(); 0');
@@ -406,7 +409,7 @@ module.exports = async function worldMapFeature(rig) {
   await dm.evaluate('worldUndoClear(); _wmTakeOut(allScenes.find(s => s.name === "Attic").id, allScenes.find(s => s.name === "Attic").group); __rigKey("KeyZ", { ctrlKey: true }); 0');
   const at2 = await at('Attic');
   // RED ON: worldUndoPush() removed from _wmTakeOut (worldMapMenu.js) — 2026-10-09
-  rig.check(at2.x === at0.x && at2.y === at0.y && at2.g === at0.g, 'Ctrl+Z after Take out of its group did not put it back: ' + JSON.stringify([at0, at2]));
+  rig.check(at2.x === at0.x && at2.y === at0.y && at2.g === at0.g, 'Ctrl+Z after Remove from group did not put it back: ' + JSON.stringify([at0, at2]));
 
   await dm.evaluate('__wmClick(__wmCard("Attic").firstChild); __rigKey("Escape"); 0');
   // RED ON: Escape's pick test back to `> 1` (worldMap.js) — 2026-10-09
@@ -443,7 +446,7 @@ module.exports = async function worldMapFeature(rig) {
   const del = await dm.evaluate(`(() => {
     const dlg = () => { const a = document.getElementById('cd-anchor'); return !!a && a.style.display !== 'none' && a.style.display !== ''; };
     notesPlaceSet('Frost', 'Wolves at night.');
-    worldPlaceDelete(worldPlaceByName('Frost').id);
+    worldPlaceUngroup(worldPlaceByName('Frost').id);
     const r = { dlg: dlg(), gone: !worldPlaceByName('Frost'), notes: notesPlaceGet('Frost') };
     __rigKey('KeyZ', { ctrlKey: true });
     Object.assign(r, { back: !!worldPlaceByName('Frost'), notesBack: notesPlaceGet('Frost'), g: allScenes.find(s => s.name === 'Frostmere Pass').group });
@@ -586,15 +589,16 @@ module.exports = async function worldMapFeature(rig) {
 
   // ── 15. The right-click menu ───────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
-  const rows = () => dm.evaluate('[...document.querySelectorAll(".wm-menu .sm-mi")].map(b => b.textContent + (b.disabled ? " (off)" : ""))');
+  const rows = () => dm.evaluate('[...document.querySelectorAll(".wm-menu > *")].map(b => b.classList.contains("sm-msep") ? "---" : ((b.querySelector(".nm") ? b.querySelector(".nm").textContent + " " + b.querySelector(".ky").textContent : b.textContent) + (b.disabled ? " (off)" : "")))');
   const rclick = (expr) => dm.evaluate('(() => { const el = ' + expr + '; const p = __wmC(el); el.dispatchEvent(new MouseEvent("contextmenu", { clientX: p.x, clientY: p.y, button: 2, bubbles: true, cancelable: true })); return 0; })()');
-  const press = label => dm.evaluate('[...document.querySelectorAll(".wm-menu .sm-mi")].find(b => b.textContent === ' + JSON.stringify(label) + ').click(); 0');
+  const press = label => dm.evaluate('[...document.querySelectorAll(".wm-menu .sm-mi")].find(b => (b.querySelector(".nm") || b).textContent === ' + JSON.stringify(label) + ').click(); 0');
   await layout();
   await rclick('__wmCard("Attic").firstChild');
   const sceneRows = await rows();
-  rig.check(JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', "We're here", 'Export this map', 'Notes', 'Delete map']) ||
-            JSON.stringify(sceneRows) === JSON.stringify(['Open', 'Rename', 'Take out of its group', "We're here", 'Export this map', 'Notes', 'Delete map (off)']),
-            'a scene\'s menu is not Open, Rename, Take out of its group, Export, Notes, Delete: ' + JSON.stringify(sceneRows));
+  const sceneWant = ['Open', 'Rename', 'Show notes', '---', 'Remove from group', 'Put the marker here', '---', 'Export map…', '---', 'Delete map'];
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(JSON.stringify(sceneRows) === JSON.stringify(sceneWant) || JSON.stringify(sceneRows) === JSON.stringify(sceneWant.slice(0, -1).concat('Delete map (off)')),
+            'a scene\'s menu does not match the table (Open, Rename, Show notes, Remove from group, Put the marker here, Export map…, Delete map): ' + JSON.stringify(sceneRows));
   await press('Rename');
   rig.check(await dm.evaluate('!!_wmEditing'), 'Rename in the menu did not start editing the name');
   await dm.evaluate('_wmEditing.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true, cancelable: true })); 0');
@@ -615,10 +619,11 @@ module.exports = async function worldMapFeature(rig) {
   await dm.evaluate('__rigKey("Escape"); 0');
   rig.check(await dm.evaluate('worldMapOpen && !document.querySelector(".wm-menu")'), 'Esc did not close the menu first, or left the map');
   await rclick('__wmHead("The Watcherhouse")');
-  rig.check(JSON.stringify((await rows()).map(r => r.replace(/^Rename \(off\)$/, 'Rename'))) === JSON.stringify(['Rename', 'Fit in view', 'Add maps here…', "We're here", 'Notes', 'Delete group']), 'a place\'s menu is wrong: ' + JSON.stringify(await rows()));
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(JSON.stringify((await rows()).map(r => r.replace(/^Rename \(off\)$/, 'Rename'))) === JSON.stringify(['Add maps…', '---', 'Rename', 'Show notes', '---', 'Put the marker here', '---', 'Zoom to group Shift+2', '---', 'Ungroup Ctrl+Shift+G']), 'a group\'s menu does not match the table: ' + JSON.stringify(await rows()));
   await dm.evaluate('__wmE("mousedown", document.getElementById("wm"), { x: 5, y: 5 }); 0');
   await dm.evaluate('(() => { const wm = document.getElementById("wm"); wm.dispatchEvent(new MouseEvent("contextmenu", { clientX: 700, clientY: 40, button: 2, bubbles: true, cancelable: true })); return 0; })()');
-  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add maps here…', 'New group here', "We're here", 'Background picture…', 'Show everything']), 'the ground\'s menu is wrong: ' + JSON.stringify(await rows()));
+  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Add maps…', 'New group', 'Put the marker here', '---', 'Zoom to fit Shift+1', 'Background picture…']), 'the ground\'s menu does not match the table: ' + JSON.stringify(await rows()));
   await dm.evaluate('__wmE("mousedown", document.getElementById("wm"), { x: 5, y: 5 }); 0');
   rig.check(await dm.evaluate('!document.querySelector(".wm-menu")'), 'a click elsewhere left the menu up');
 
@@ -628,8 +633,8 @@ module.exports = async function worldMapFeature(rig) {
     .filter(el => getComputedStyle(el).display !== 'none')
     .map((el, i) => ({ id: el.id, i, o: parseInt(getComputedStyle(el).order, 10) || 0 }))
     .sort((a, b) => a.o - b.o || a.i - b.i).map(x => x.id)`);
-  rig.check(JSON.stringify(bar) === JSON.stringify(['btn-select', 'wm-add', 'tb-grp-shape', 'wm-div', 'wm-find']),
-            'the toolbar does not read Select, Add, Place, a divider and Find: ' + JSON.stringify(bar));
+  rig.check(JSON.stringify(bar) === JSON.stringify(['btn-select', 'wm-add', 'tb-grp-shape', 'wm-road', 'wm-marker', 'wm-div', 'wm-find']),
+            'the toolbar does not read Select, Map, Group, Road, Marker, a divider and Find: ' + JSON.stringify(bar));
   await dm.evaluate('__rigKey("KeyF", { ctrlKey: true }); 0');
   rig.check(await dm.evaluate('document.body.classList.contains("searching") && document.getElementById("wm-search").getClientRects().length > 0'),
             'Ctrl+F did not open the search');
@@ -661,6 +666,118 @@ module.exports = async function worldMapFeature(rig) {
   const rec = await poll(() => stored(added.id), v => v, 12000);
   rig.check(rec && rec.fog === false && !rec.plan, 'the added scene was saved with a fog of its own or a pending plan: ' + JSON.stringify(rec));
   rig.check(await dm.evaluate('worldMapOpen && !!__wmCard("Wolf den")'), 'the new scene did not appear on the world map');
+
+
+  // ── 17. The campaign toolbar: Ctrl+G, Ungroup, Map into a group, Shift+1 and Shift+2, overlapping groups ──
+  // The two loose maps are carried far from everything and put back at the end, so the sections after this one see the map as it was.
+  const loose = ['Frostmere Pass', 'Wolf den'].map(n => ({ n, id: null, pos: null }));
+  for (const l of loose) { const s = await dm.evaluate('(s => ({ id: s.id, pos: { ...s.worldPos } }))(allScenes.find(s => s.name === ' + JSON.stringify(l.n) + '))'); l.id = s.id; l.pos = s.pos; }
+  const FAR = [{ x: 9000, y: 9000 }, { x: 9700, y: 9000 }];
+  // ⚠ AWAIT THE MOVES: worldSceneSet writes the position after a store round trip, and a camera laid before it lands clamps back to the old map.
+  await dm.evaluate('(async () => { ' + loose.map((l, i) => 'await worldSceneSet(' + JSON.stringify(l.id) + ', { worldPos: ' + JSON.stringify(FAR[i]) + ' });').join(' ') + ' worldAssignAll(); worldMapSelect({ sceneId: null, place: "" }); worldMapRefresh(); return 0; })()');
+  const looseIds = loose.map(l => l.id);
+  const farPlaces = () => dm.evaluate('worldPlaceRecords().map(r => r.name)');
+  const groupsOf = () => dm.evaluate('(' + JSON.stringify(looseIds) + ').map(i => allScenes.find(s => s.id === i).group)');
+  const placesBefore = await farPlaces();
+
+  // 8. Ctrl+G groups the picked maps in the rectangle that fits them, and opens the name for typing.
+  // ⚠ The previous section's fly to the added map is still running, and its last frame would overwrite this camera.
+  await lib.settle(dm, '!_wmAnim', 8000);
+  // The camera is laid again once anything still moving has stopped, and the press waits until the map shows group names.
+  const AT_FAR = '!_wmAnim && _wm.classList.contains("places") && Math.abs(_wmCam.cx - 9350) < 60 && Math.abs(_wmCam.cy - 9000) < 60';
+  await dm.evaluate('__wmCam(9350, 9000, 0.5); worldMapPickSet(' + JSON.stringify(looseIds) + ', ' + JSON.stringify(looseIds[1]) + '); 0');
+  await lib.settle(dm, SETTLED, 8000);
+  await dm.evaluate('__wmCam(9350, 9000, 0.5); 0');
+  await lib.settle(dm, AT_FAR, 8000);
+  await dm.evaluate('__rigKey("KeyG", { ctrlKey: true }); 0');
+  // RED BY DESIGN: written against the fix, never re-proved
+  const grouped = (await farPlaces()).filter(n => !placesBefore.includes(n));
+  rig.check(grouped.length === 1, 'Ctrl+G with two maps picked did not make exactly one group: ' + JSON.stringify(grouped));
+  const gname = grouped[0];
+  // RED BY DESIGN: written against the fix, never re-proved
+  const nameOpen = await dm.evaluate('!!_wmEditing');
+  rig.check(nameOpen, 'Ctrl+G did not open the new group\'s name for typing: ' + await dm.evaluate('JSON.stringify({ cam: _wmCam, places: _wm.classList.contains("places"), plate: (_wmEls.get("h" + ' + JSON.stringify(gname || '') + ') || {}).className, anim: _wmAnim })'));
+  // Renamed straight away when the name did not open, so the rest of the section still runs.
+  if (nameOpen) await dm.evaluate('__wmEnter("Trade Road Inn"); 0');
+  else await dm.evaluate('worldShapeRename(' + JSON.stringify(gname || '') + ', "Trade Road Inn"); worldMapRefresh(); 0');
+  const fits = await dm.evaluate('(() => { const o = wmOutline(worldPlaceByName("Trade Road Inn")); return ' + JSON.stringify(looseIds) + '.every(i => wmRectInPoly(wmCardRect(allScenes.find(s => s.id === i).worldPos), o)); })()');
+  rig.check(fits && JSON.stringify(await groupsOf()) === JSON.stringify(['Trade Road Inn', 'Trade Road Inn']),
+            'Ctrl+G did not make the rectangle that fits the picked maps and file both under it: ' + JSON.stringify(await groupsOf()));
+  rig.check(!(await farPlaces()).includes(gname), 'the renamed group is still listed under its old name');
+
+  // 9. Ctrl+Shift+G removes the outline and keeps the maps; Ctrl+Z brings it back; a picked map in a group works too.
+  await dm.evaluate('worldMapSelect({ sceneId: null, place: "Trade Road Inn" }); __rigKey("KeyG", { ctrlKey: true, shiftKey: true }); 0');
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(!(await farPlaces()).includes('Trade Road Inn') && JSON.stringify(await groupsOf()) === JSON.stringify(['', '']) &&
+            await dm.evaluate('allScenes.some(s => s.id === ' + JSON.stringify(looseIds[0]) + ') && allScenes.some(s => s.id === ' + JSON.stringify(looseIds[1]) + ')'),
+            'Ctrl+Shift+G did not remove the group and keep its maps: ' + JSON.stringify(await groupsOf()));
+  await dm.evaluate('__rigKey("KeyZ", { ctrlKey: true }); 0');
+  rig.check((await farPlaces()).includes('Trade Road Inn') && JSON.stringify(await groupsOf()) === JSON.stringify(['Trade Road Inn', 'Trade Road Inn']),
+            'Ctrl+Z did not bring the ungrouped group back with its maps');
+  await dm.evaluate('worldMapSelect({ sceneId: ' + JSON.stringify(looseIds[0]) + ', place: "" }); __rigKey("KeyG", { ctrlKey: true, shiftKey: true }); 0');
+  rig.check(!(await farPlaces()).includes('Trade Road Inn'), 'Ctrl+Shift+G with a map in the group picked did not ungroup it');
+  await dm.evaluate('__rigKey("KeyZ", { ctrlKey: true }); 0');
+
+  // 10. The Map button adds into the picked group, or into the group of the picked map; with nothing picked it adds as before.
+  // The file window is native, so the input's own click is stubbed and the group it was told is read.
+  const intoFor = pick => dm.evaluate('(() => { worldMapSelect(' + pick + '); _wmAddIn = ""; _wmAddAt = null; const f = document.getElementById("wm-file-input"); f.click = () => {};' +
+    ' document.getElementById("wm-add").click(); delete f.click; const r = _wmAddIn; _wmAddIn = ""; return r; })()');
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(await intoFor('{ sceneId: null, place: "Trade Road Inn" }') === 'Trade Road Inn', 'Map with a group picked did not add into that group');
+  rig.check(await intoFor('{ sceneId: ' + JSON.stringify(looseIds[0]) + ', place: "" }') === 'Trade Road Inn', 'Map with a map picked did not add into that map\'s group');
+  rig.check(await intoFor('{ sceneId: null, place: "" }') === '', 'Map with nothing picked did not add as before');
+
+  // 11. Shift+1 zooms to fit everything; Shift+2 to the picked group, or the picked map's group.
+  await dm.evaluate('__wmCam(9350, 9000, 1.2); worldMapSelect({ sceneId: null, place: "" }); 0');
+  await dm.evaluate('__rigKey("Digit1", { shiftKey: true }); 0');
+  await lib.settle(dm, '!_wmAnim', 8000);
+  // ⚠ The overview is compared clamped, as the camera is: a wide campaign's overview sits under the zoom floor.
+  // RED BY DESIGN: written against the fix, never re-proved
+  const fit = await dm.evaluate('(() => { const o = wmClampCamera(_wmOverview(), _wmView(), _wmExtent()); return { z: _wmCam.z, want: o.z }; })()');
+  rig.check(Math.abs(fit.z - fit.want) < 0.002 * fit.want + 1e-6, 'Shift+1 did not zoom to fit everything: ' + JSON.stringify(fit));
+  const toGroup = async pick => {
+    await dm.evaluate('worldMapSelect(' + pick + '); 0');
+    await dm.evaluate('__rigKey("Digit2", { shiftKey: true }); 0');
+    await lib.settle(dm, '!_wmAnim', 8000);
+    return dm.evaluate('(() => { const b = _wmPlaces().find(p => p.name === "Trade Road Inn").bounds; return { inside: _wmCam.cx >= b.x && _wmCam.cx <= b.x + b.w && _wmCam.cy >= b.y && _wmCam.cy <= b.y + b.h, z: _wmCam.z, floor: _wmOverview().z }; })()');
+  };
+  // RED BY DESIGN: written against the fix, never re-proved
+  const z2 = await toGroup('{ sceneId: null, place: "Trade Road Inn" }');
+  rig.check(z2.inside && z2.z > z2.floor * 1.5, 'Shift+2 did not zoom to the picked group: ' + JSON.stringify(z2));
+  await dm.evaluate('__wmCam(0, 0, ' + fit.want + '); 0');
+  const z3 = await toGroup('{ sceneId: ' + JSON.stringify(looseIds[1]) + ', place: "" }');
+  rig.check(z3.inside && z3.z > z3.floor * 1.5, 'Shift+2 with a map picked did not zoom to its group: ' + JSON.stringify(z3));
+
+  // 6 (several maps). The pick menu: Group {n} maps with its key, then export, then delete.
+  await dm.evaluate('worldPlaceUngroup(worldPlaceByName("Trade Road Inn").id); worldMapPickSet(' + JSON.stringify(looseIds) + ', ' + JSON.stringify(looseIds[1]) + '); __wmCam(9350, 9000, 0.9); 0');
+  await lib.settle(dm, SETTLED, 8000);
+  await rclick('__wmCard("Wolf den").firstChild');
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(JSON.stringify(await rows()) === JSON.stringify(['Group 2 maps Ctrl+G', '---', 'Export 2 maps…', '---', 'Delete 2 maps']),
+            'the menu of several maps is not Group, a separator, Export, a separator, Delete: ' + JSON.stringify(await rows()));
+  await press('Group 2 maps');
+  const made = (await farPlaces()).filter(n => !placesBefore.includes(n));
+  rig.check(made.length === 1 && (await groupsOf()).every(g => g === made[0]), 'Group {n} maps in the pick menu did not make a group of both maps: ' + JSON.stringify([made, await groupsOf()]));
+  await dm.evaluate('if (_wmEditing) _wmEditing.dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true, cancelable: true })); 0');
+
+  // 12. Where groups overlap a press picks the smallest; a press on a name plate picks that plate's group.
+  // The inner group is made first, so the outer one is top-most and the old rule would pick it.
+  const nest = await dm.evaluate('(() => { const a = worldPlaceCreate(wmRectShape(-9000, -9000, -8700, -8800)), b = worldPlaceCreate(wmRectShape(-9400, -9300, -8300, -8500)); worldMapRefresh(); return { inner: a, outer: b }; })()');
+  await dm.evaluate('__wmCam(-8850, -8900, 0.45); worldMapSelect({ sceneId: null, place: "" }); 0');
+  await lib.settle(dm, SETTLED, 8000);
+  const spot = await dm.evaluate('__wmS(-8850, -8900)');
+  await dm.evaluate('(() => { const p = ' + JSON.stringify(spot) + '; __wmGround("mousedown", p); __wmE("mouseup", window, p); return 0; })()');
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(await dm.evaluate('worldMapSel.place') === nest.inner, 'a click where two groups overlap did not pick the smaller one: ' + JSON.stringify([await dm.evaluate('worldMapSel.place'), nest]));
+  await dm.evaluate('worldMapSelect({ sceneId: null, place: "" }); __wmClick(__wmHead(' + JSON.stringify(nest.outer) + ')); 0');
+  rig.check(await dm.evaluate('worldMapSel.place') === nest.outer, 'a click on a group\'s name plate did not pick that group');
+  await dm.evaluate('(() => { const p = __wmS(-8400, -8600); __wmGround("mousedown", p); __wmE("mouseup", window, p); return 0; })()');
+  rig.check(await dm.evaluate('worldMapSel.place') === nest.outer, 'a click on ground only the outer group holds did not pick it');
+
+  // Put everything back.
+  await dm.evaluate('(async () => { for (const n of worldPlaceRecords().map(r => r.name).filter(n => !' + JSON.stringify(placesBefore) + '.includes(n))) worldPlaceUngroup(worldPlaceByName(n).id); ' +
+    loose.map(l => 'await worldSceneSet(' + JSON.stringify(l.id) + ', { worldPos: ' + JSON.stringify(l.pos) + ' });').join(' ') + ' worldAssignAll(); worldMapSelect({ sceneId: null, place: "" }); worldUndoClear(); return 0; })()');
+  await layout();
 
   // ── 10. The TV did not change ──────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved

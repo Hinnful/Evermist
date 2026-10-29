@@ -13,13 +13,15 @@
 // src/notes/notesPlan.js, src/scenes/backup.js, src/scenes/transferImport.js, src/css/worldMap.css,
 // src/i18n/ru.js.
 //
-//   1. Right-clicking a map, a group or the empty ground offers "We're here". Picking it puts the marker there:
+//   1. Right-clicking a map, a group or the empty ground offers "Put the marker here". Picking it puts the marker there:
 //      on a map centred on the card's top edge; on a group or the ground at the clicked point.
-//   2. Only one marker exists. "We're here" somewhere else moves it there.
+//   2. Only one marker exists. "Put the marker here" somewhere else moves it there.
 //   3. Dragging the marker moves it. Released over a map (within a few screen pixels of its card) it lands on that
 //      map, and the card lights while the drag is over it. Released elsewhere it stays where it was dropped.
 //      Dragging it never pans the map or moves a card.
-//   4. Right-clicking the marker offers "Take the marker off", which removes it, and nothing else.
+//   4. Right-clicking the marker offers "Remove the marker", which removes it, and nothing else.
+//   4b. The Marker tool (campaign toolbar, DoD 4): armed, one click on a map's card puts the marker on that map, one click
+//      on bare ground puts it there, and the bar returns to Select each time. Esc leaves it armed-off with nothing placed.
 //   5. A marker on a map follows that map when it is moved. When that map is deleted the marker stays at its
 //      last spot, free.
 //   6. Ctrl+Z and Ctrl+Shift+Z undo and redo placing, moving and removing it.
@@ -62,7 +64,7 @@ globalThis.__wpMenu = (el, p) => __wmE('contextmenu', el || document.getElementB
 globalThis.__wpRows = () => [...document.querySelectorAll('.wm-menu .sm-mi')].map(b => b.textContent);
 globalThis.__wpPick = text => [...document.querySelectorAll('.wm-menu .sm-mi')].find(x => x.textContent === text).click();
 globalThis.__wpAsk = (el, p, text) => { __wpMenu(el, p); const rows = __wpRows(); __wpPick(text); return rows; };
-globalThis.__wpHere = id => { const c = __wpCard(id); return __wpAsk(c.firstChild, __wmC(c), "We're here"); };
+globalThis.__wpHere = id => { const c = __wpCard(id); return __wpAsk(c.firstChild, __wmC(c), "Put the marker here"); };
 // The marker pressed and carried to a screen point in two moves; with hold the button stays down.
 globalThis.__wpCarry = (to, hold) => {
   const a = __wmC(__wpBody());
@@ -90,7 +92,7 @@ module.exports = async function worldPartyFeature(rig) {
   const at = w => '__wmS(' + w.x + ', ' + w.y + ')';
   const key = (code, o) => dm.evaluate('__rigKey(' + JSON.stringify(code) + ', ' + JSON.stringify(o) + '); 0');
   const ask = async (target, point, label) => JSON.parse(await dm.evaluate('JSON.stringify(__wpAsk(' + target + ', ' + point + ', ' + JSON.stringify(label) + '))'));
-  const HERE = "We're here";
+  const HERE = 'Put the marker here';
 
   const ID = {};
   for (const n of ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon']) ID[n] = await importAs(n);
@@ -111,20 +113,20 @@ module.exports = async function worldPartyFeature(rig) {
   rig.check(await dm.evaluate('!!worldPlaceByName("Hamlet") && worldPartyExport() === null && !document.querySelector(".wp-here")'),
             'the map did not open with the Hamlet group and no marker');
 
-  // ── 1. "We're here" on a map, a group and the ground ────────────────────────
+  // ── 1. "Put the marker here" on a map, a group and the ground ───────────────
   // RED BY DESIGN: written against the feature, never re-proved
   const alpha = '__wpCard(' + JSON.stringify(ID.Alpha) + ')';
   let rows = await ask(alpha + '.firstChild', '__wmC(' + alpha + ')', HERE);
-  rig.check(rows.includes(HERE), 'a map\'s menu does not offer "We\'re here": ' + JSON.stringify(rows));
+  rig.check(rows.includes(HERE), 'a map\'s menu does not offer "Put the marker here": ' + JSON.stringify(rows));
   let got = await party();
   rig.check(got && got.scene === ID.Alpha && near(got.x, 0) && near(got.y, -38.5), 'on a map the marker is not centred on the card\'s top edge: ' + JSON.stringify(got));
   const hc = await dm.evaluate('(() => { const c = wmPolyCentre(wmOutline(worldPlaceByName("Hamlet"))); return { x: c.x, y: c.y }; })()');
   rows = await ask('null', at(hc), HERE);
-  rig.check(rows.includes(HERE), 'a group\'s menu does not offer "We\'re here": ' + JSON.stringify(rows));
+  rig.check(rows.includes(HERE), 'a group\'s menu does not offer "Put the marker here": ' + JSON.stringify(rows));
   got = await party();
   rig.check(got && got.scene === undefined && near(got.x, hc.x, 2) && near(got.y, hc.y, 2), 'on a group the marker is not at the clicked point: ' + JSON.stringify([got, hc]));
   rows = await ask('null', at({ x: 400, y: 300 }), HERE);
-  rig.check(rows.includes(HERE), 'the ground\'s menu does not offer "We\'re here": ' + JSON.stringify(rows));
+  rig.check(rows.includes(HERE), 'the ground\'s menu does not offer "Put the marker here": ' + JSON.stringify(rows));
   got = await party();
   rig.check(got && got.scene === undefined && near(got.x, 400, 2) && near(got.y, 300, 2), 'on the ground the marker is not at the clicked point: ' + JSON.stringify(got));
 
@@ -134,9 +136,9 @@ module.exports = async function worldPartyFeature(rig) {
   await dm.evaluate('__wpHere(' + JSON.stringify(ID.Alpha) + '); 0');
   got = await party();
   rig.check(got && got.scene === ID.Alpha && await dm.evaluate('document.querySelectorAll(".wp-here").length') === 1,
-            '"We\'re here" somewhere else did not move the one marker: ' + JSON.stringify(got));
+            '"Put the marker here" somewhere else did not move the one marker: ' + JSON.stringify(got));
 
-  // A map that already holds the marker does not offer "We're here" again.
+  // A map that already holds the marker does not offer "Put the marker here" again.
   await dm.evaluate('__wpMenu(' + alpha + '.firstChild, __wmC(' + alpha + ')); 0');
   rows = JSON.parse(await dm.evaluate('JSON.stringify(__wpRows())'));
   rig.check(rows.length > 0 && !rows.includes(HERE), 'a map that holds the marker still offers the row: ' + JSON.stringify(rows));
@@ -167,9 +169,34 @@ module.exports = async function worldPartyFeature(rig) {
   // RED BY DESIGN: written against the feature, never re-proved
   await dm.evaluate('__wpMenu(__wpBody(), __wmC(__wpBody())); 0');
   rows = JSON.parse(await dm.evaluate('JSON.stringify(__wpRows())'));
-  rig.check(rows.length === 1 && rows[0] === 'Take the marker off', 'the marker\'s menu holds more than "Take the marker off": ' + JSON.stringify(rows));
-  await dm.evaluate('__wpPick("Take the marker off"); 0');
-  rig.check(await dm.evaluate('worldPartyExport() === null && !document.querySelector(".wp-here")'), '"Take the marker off" did not remove the marker');
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(rows.length === 1 && rows[0] === 'Remove the marker', 'the marker\'s menu holds more than "Remove the marker": ' + JSON.stringify(rows));
+  await dm.evaluate('__wpPick("Remove the marker"); 0');
+  rig.check(await dm.evaluate('worldPartyExport() === null && !document.querySelector(".wp-here")'), '"Remove the marker" did not remove the marker');
+
+  // ── 4b. The Marker tool ─────────────────────────────────────────────────────
+  // One click on a map's card, then one on bare ground; each puts the marker there and hands the bar back to Select.
+  const armMarker = () => dm.evaluate('document.getElementById("wm-marker").click(); 0');
+  const tool = () => dm.evaluate('({ tool: _wmTool, lit: document.getElementById("wm-marker").classList.contains("active"), select: document.getElementById("btn-select").classList.contains("active") })').then(x => JSON.stringify(x));
+  await armMarker();
+  rig.check(await tool() === JSON.stringify({ tool: 'marker', lit: true, select: false }), 'a click on Marker did not arm it');
+  await dm.evaluate('__wmE("mousedown", ' + alpha + '.firstChild, __wmC(' + alpha + ')); __wmE("mouseup", window, __wmC(' + alpha + ')); 0');
+  got = await party();
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(got && got.scene === ID.Alpha, 'a click on a map with the Marker tool armed did not put the marker on that map: ' + JSON.stringify(got));
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(await tool() === JSON.stringify({ tool: 'select', lit: false, select: true }), 'the bar did not return to Select after the marker was placed');
+  await armMarker();
+  await dm.evaluate('(() => { const p = ' + at({ x: 700, y: 300 }) + '; __wmE("mousedown", document.getElementById("wm"), p); __wmE("mouseup", window, p); return 0; })()');
+  got = await party();
+  rig.check(got && got.scene === undefined && near(got.x, 700, 2) && near(got.y, 300, 2), 'a click on bare ground with the Marker tool armed did not put the marker there: ' + JSON.stringify(got));
+  const kept = JSON.stringify(got);
+  await armMarker();
+  await key('Escape');
+  await dm.evaluate('(() => { const p = ' + at({ x: 200, y: 300 }) + '; __wmE("mousedown", document.getElementById("wm"), p); __wmE("mouseup", window, p); return 0; })()');
+  // RED BY DESIGN: written against the feature, never re-proved
+  rig.check(JSON.stringify(await party()) === kept, 'Esc did not cancel the Marker tool: the next click moved the marker');
+  await dm.evaluate('worldPartyRemove(); 0');
 
   // ── 6. Undo and redo ────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
@@ -185,7 +212,7 @@ module.exports = async function worldPartyFeature(rig) {
   await key('KeyZ', { ctrlKey: true, shiftKey: true });
   got = await party();
   rig.check(got && got.scene === undefined && near(got.x, 600, 2), 'Ctrl+Shift+Z did not redo moving the marker: ' + JSON.stringify(got));
-  await dm.evaluate('__wpMenu(__wpBody(), __wmC(__wpBody())); __wpPick("Take the marker off"); 0');
+  await dm.evaluate('__wpMenu(__wpBody(), __wmC(__wpBody())); __wpPick("Remove the marker"); 0');
   await key('KeyZ', { ctrlKey: true });
   rig.check(await dm.evaluate('worldPartyExport() !== null && !!document.querySelector(".wp-here")'), 'Ctrl+Z did not undo taking the marker off');
   await key('KeyZ', { ctrlKey: true, shiftKey: true });
@@ -235,8 +262,8 @@ module.exports = async function worldPartyFeature(rig) {
 
   // ── 10. The labels, in Russian ──────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
-  const ru = JSON.parse(await dm.evaluate('JSON.stringify([RU[i18nKey("We\'re here")], RU[i18nKey("Take the marker off")]])'));
-  rig.check(ru[0] === 'Мы здесь' && ru[1] === 'Убрать метку', 'the labels have no Russian: ' + JSON.stringify(ru));
+  const ru = JSON.parse(await dm.evaluate('JSON.stringify([RU[i18nKey("Put the marker here")], RU[i18nKey("Remove the marker")], RU[i18nKey("Marker")]])'));
+  rig.check(ru[0] === 'Поставить метку сюда' && ru[1] === 'Убрать метку' && ru[2] === 'Метка', 'the labels have no Russian: ' + JSON.stringify(ru));
 
   // ── 8. Backup and import ────────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved

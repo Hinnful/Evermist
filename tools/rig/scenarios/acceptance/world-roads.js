@@ -131,9 +131,9 @@ module.exports = async function worldRoadsFeature(rig) {
             'the map did not open with the Hamlet place and no roads');
 
   // ── 1. The Road tool draws by clicks ────────────────────────────────────────
-  // RED BY DESIGN: written against the feature, never re-proved
-  rig.check(await dm.evaluate('(b => !!b && getComputedStyle(b).display === "none")(document.getElementById("wm-road"))'),
-            'Road is on the world bar as a button of its own: it lives in the Place list now');
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(await dm.evaluate('(b => !!b && getComputedStyle(b).display !== "none" && b.textContent.trim() === "Road")(document.getElementById("wm-road"))'),
+            'Road is not on the Campaign bar as a labelled button of its own');
   await dm.evaluate('document.getElementById("wm-road").click(); 0');
   rig.check(await dm.evaluate('_wmTool === "road" && document.getElementById("wm-road").classList.contains("active")'),
             'the Road button did not arm the road tool');
@@ -216,11 +216,20 @@ module.exports = async function worldRoadsFeature(rig) {
             'Ctrl+Z did not bring the deleted road back under its own key');
   // The menu's rename, as a place has.
   await dm.evaluate('(() => { const p = __wrScreen(' + JSON.stringify(r1uid) + ', 0.7); __wmE("contextmenu", __wrHit(' + JSON.stringify(r1uid) + '), p); return 0; })()');
-  rig.check(await dm.evaluate('[...document.querySelectorAll(".wm-menu .sm-mi")].map(b => b.textContent).join("|")') === 'Rename|Edit points|Delete road',
-            'the road\'s right-click menu is not Rename, Edit points, Delete road');
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(await dm.evaluate('[...document.querySelectorAll(".wm-menu > *")].map(b => b.className.includes("sm-msep") ? "---" : b.textContent).join("|")') === 'Rename|Show notes|Edit points|---|Delete road',
+            'the road\'s right-click menu is not Rename, Show notes, Edit points, a separator, Delete road');
   await dm.evaluate('document.querySelector(".wm-menu .sm-mi").click(); 0');
   await dm.evaluate('__wmEnter("Old Svalich Road"); 0');
   rig.check(await dm.evaluate('worldRoadByUid(' + JSON.stringify(r1uid) + ').name') === 'Old Svalich Road', 'the menu\'s Rename did not rename the road');
+  // Show notes opens that road's notes (campaign toolbar, DoD 7), from the Campaign level the pane was left on.
+  await dm.evaluate('dockOpen(null); notesLevelPick = "campaign"; refreshRoomPanel(); (() => { const p = __wrScreen(' + JSON.stringify(r1uid) + ', 0.7); __wmE("contextmenu", __wrHit(' + JSON.stringify(r1uid) + '), p); return 0; })()');
+  await dm.evaluate('[...document.querySelectorAll(".wm-menu .sm-mi")].find(b => b.textContent === "Show notes").click(); 0');
+  await lib.settle(dm, '(b => !!b && b.dataset.level === "road")(document.querySelector("#np-crumbs .np-crumb.on"))', 8000);
+  // RED BY DESIGN: written against the fix, never re-proved
+  rig.check(await dm.evaluate('(b => !!b && b.dataset.level === "road" && document.getElementById("dock-pane-notes").getClientRects().length > 0)(document.querySelector("#np-crumbs .np-crumb.on"))'),
+            'Show notes on a road did not open the Notes pane on the road level');
+
 
   // ── 5. Notes ────────────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
