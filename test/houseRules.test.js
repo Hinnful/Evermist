@@ -160,6 +160,37 @@ describe('house rules: docs and maps', () => {
     assert.deepEqual(faults, []);
   });
 
+  it('reports a failed save of campaign data, in every writer', () => {
+    const writers = {
+      'src/notes/notesPanel.js': ['NOTES_CAMPAIGN_KEY', 'NOTES_PLACES_KEY', 'NOTES_ROADS_KEY'],
+      'src/world/worldPlaces.js': ['WM_SHAPES_KEY'],
+      'src/world/worldRoads.js': ['WR_KEY'],
+      'src/world/worldParty.js': ['WPT_KEY'],
+      'src/scenes/sceneGroups.js': ['SM_GROUPS_KEY'],
+    };
+    const faults = [];
+    for (const [rel, keys] of Object.entries(writers)) {
+      const text = read(rel);
+      for (const key of keys) {
+        const at = [];
+        for (let i = text.indexOf('localStorage.setItem(' + key); i >= 0; i = text.indexOf('localStorage.setItem(' + key, i + 1)) at.push({ index: i });
+        if (!at.length) faults.push(rel + ' no longer writes ' + key + ' - update this list');
+        for (const m of at) {
+          const c = text.indexOf('catch', m.index);
+          const open = c < 0 ? -1 : text.indexOf('{', c);
+          let depth = 0, end = open;
+          for (; end >= 0 && end < text.length; end++) {
+            if (text[end] === '{') depth++;
+            else if (text[end] === '}' && --depth === 0) break;
+          }
+          const body = open < 0 ? '' : text.slice(open, end);
+          if (!body.includes('notesSaveFailed(')) faults.push(rel + ': the save of ' + key + ' is not followed by a catch that calls notesSaveFailed');
+        }
+      }
+    }
+    assert.deepEqual(faults, [], 'a failed save of campaign data must reach the DM: call notesSaveFailed(kind, err)');
+  });
+
   it('keeps the backlog under ' + MAX_BACKLOG_BYTES / 1000 + ' KB', () => {
     const bytes = Buffer.byteLength(read('docs/BACKLOG.md'));
     assert.ok(bytes <= MAX_BACKLOG_BYTES,

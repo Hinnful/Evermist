@@ -150,6 +150,9 @@ function notesRenamePlace(map, from, to) {
   return { map: out, kept: false };
 }
 
+// A failed save of one kind of campaign data is reported once per launch: `reported` is the set of kinds already told.
+function notesSaveReportDue(kind, reported) { return !reported.has(kind); }
+
 // A missing file is normal. A file that does not parse, or whose notes are not a string, is broken
 // and says so, so the caller can name it.
 function notesParseCampaign(raw) {
@@ -165,6 +168,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     NOTES_SEPARATOR, notesCrumbs, notesSanitize, notesMergeCampaign, notesCampaignPayload, notesParseCampaign,
     notesPlacesNew, notesPlacesCopy, notesPlacesClean, notesParsePlaces, notesMergePlaces, notesRenamePlace,
-    notesParseRoadNotes, notesRekey,
+    notesParseRoadNotes, notesRekey, notesSaveReportDue,
   };
 }

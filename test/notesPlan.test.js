@@ -245,4 +245,12 @@ describe('road notes', () => {
     assert.equal(out.safe, 'note');
     assert.equal(Object.getPrototypeOf(out), null);
   });
+
+  it('reports a failed save once per kind per launch', () => {
+    const told = new Set();
+    assert.equal(N.notesSaveReportDue('places', told), true);
+    told.add('places');
+    assert.equal(N.notesSaveReportDue('places', told), false);
+    assert.equal(N.notesSaveReportDue('roads', told), true);
+  });
 });

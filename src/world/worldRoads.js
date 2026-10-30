@@ -77,7 +77,7 @@ function worldRoadsExport() {
 // The notes writer calls this too: a road's notes live apart from its record.
 function worldRoadsSave() {
   if (!_wrQuiet && _wrRecs) { const notes = notesRoadsAll(); esStampRecords(worldRoadRecords(), _wrSeen, r => _wrParts(r, notes), Date.now()); }
-  try { localStorage.setItem(WR_KEY, JSON.stringify(worldRoadsExport())); } catch (_) { /* full or blocked */ }
+  try { localStorage.setItem(WR_KEY, JSON.stringify(worldRoadsExport())); } catch (err) { notesSaveFailed('roads', err); }
 }
 
 // A new road from drawn points, with the curve each was dragged out to. Its ends stick to what they were drawn on.

@@ -77,7 +77,7 @@ function worldPlacesExport() {
 
 function worldPlacesSave() {
   if (!_wpQuiet) { const notes = notesPlacesAll(); esStampRecords(worldPlaceRecords(), _wpSeen, r => _wpParts(r, notes), Date.now()); }
-  try { localStorage.setItem(WM_SHAPES_KEY, JSON.stringify(worldPlacesExport())); } catch (_) { /* full or blocked */ }
+  try { localStorage.setItem(WM_SHAPES_KEY, JSON.stringify(worldPlacesExport())); } catch (err) { notesSaveFailed('places', err); }
 }
 
 // A record, or bare vertices, kept under `name`.

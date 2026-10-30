@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 14 open items; IDs run to 246."
+description: "Open work only. 13 open items; IDs run to 246."
 metadata: 
   node_type: memory
   type: project
@@ -83,14 +83,6 @@ worldbuilding tool: no timelines, calendars, family trees or relationship graphs
 for the DM. The items go one at a time, in this order, and the epic closes with 244, which marks 5.0.0. The look for
 239 to 241 is agreed in a clickable prototype, `.claude/private/design/item-195/notes-v2.html` on the DM's machine.
 
-### 238. Campaign data is lost without a word when browser storage is full
-Filed 2026-10-30. Places, roads, campaign notes, place notes and road notes are saved to browser storage, which holds
-about 10 MB, shared with the bestiary, fights and module text. When it is full, those saves fail and nothing tells the
-DM: the change is gone on the next launch. Module text and fights already say so in a dialog. Every save should say
-so, and the campaign data needs room to grow, kept where the previous release can still read it. **Needs /spec** for
-where it moves. Comes before 240, which adds more text.
-**Bug · DM only**
-
 ### 239. Search everything
 Filed 2026-10-30. Ctrl+F anywhere, or Find at the end of the map toolbar, as on the Campaign map, opens one search box
 in the middle of the window. Empty, it lists what was opened recently, on every view; typing shows a best match, then
@@ -117,7 +109,7 @@ selected column in two-map mode, and place, road, map and campaign notes. It ope
 tab does not. Factions and lore get storage the previous release ignores, and backups carry it. A room picked while the
 window is shut leaves it shut and lights Notes on the rail. Specced. **Blocked on a discussion:** how the Bestiary and
 Notes relate (which monsters the tree lists, and which of a monster's texts is its note), where roads sit in the tree,
-and what the tree's Delete removes. Waits for 238.
+and what the tree's Delete removes.
 **Campaign · Prep · DM only**
 
 ### 241. Mentions between notes

@@ -23,23 +23,52 @@ function _npEl(id) { return document.getElementById(id); }
 
 // ─── Campaign notes ──────────────────────────────────────────────────────────
 
+// A save that failed leaves the text here, so the field and the next read still hold it and the next save writes it.
+let _npPending = { campaign: null, places: null, roads: null };
+const _npSaveReported = new Set();
+
+const _NP_SAVE_WORDS = {
+  campaignNotes: () => [t('The campaign notes are not being saved'), t('Evermist could not write the campaign notes to disk, so they will be gone after a restart.')],
+  placeNotes: () => [t('The place notes are not being saved'), t('Evermist could not write the place notes to disk, so they will be gone after a restart.')],
+  roadNotes: () => [t('The road notes are not being saved'), t('Evermist could not write the road notes to disk, so they will be gone after a restart.')],
+  places: () => [t('The places are not being saved'), t('Evermist could not write the places to disk, so your last change will be gone after a restart.')],
+  roads: () => [t('The roads are not being saved'), t('Evermist could not write the roads to disk, so your last change will be gone after a restart.')],
+  party: () => [t('The party marker is not being saved'), t('Evermist could not write the party marker to disk, so it will be back where it was after a restart.')],
+  groups: () => [t('The order of the groups is not being saved'), t('Evermist could not write the order of the groups to disk, so it will be gone after a restart.')],
+};
+
+// Every writer of campaign data reports a failed save here, once per launch per kind. Always false, for `return`.
+function notesSaveFailed(kind, err) {
+  console.warn('Saving ' + kind + ' failed:', err);
+  if (!notesSaveReportDue(kind, _npSaveReported)) return false;
+  _npSaveReported.add(kind);
+  const w = _NP_SAVE_WORDS[kind]();
+  messageDialog({ title: w[0], message: w[1] + '\n\n' + ((err && err.message) || err) });
+  return false;
+}
+
 function notesCampaignGet() {
+  if (_npPending.campaign != null) return _npPending.campaign;
   try { return localStorage.getItem(NOTES_CAMPAIGN_KEY) || ''; } catch (_) { return ''; }
 }
 
 function notesCampaignSet(text) {
-  try { localStorage.setItem(NOTES_CAMPAIGN_KEY, text); return true; } catch (_) { return false; }
+  try { localStorage.setItem(NOTES_CAMPAIGN_KEY, text); } catch (err) { _npPending.campaign = text; return notesSaveFailed('campaignNotes', err); }
+  _npPending.campaign = null;
+  return true;
 }
 
 // ─── Place notes ─────────────────────────────────────────────────────────────
 
 function notesPlacesAll() {
+  if (_npPending.places) return notesPlacesCopy(_npPending.places);
   try { return notesPlacesClean(JSON.parse(localStorage.getItem(NOTES_PLACES_KEY) || '{}')).places; }
   catch (_) { return notesPlacesNew(); }
 }
 
 function notesPlacesWrite(map) {
-  try { localStorage.setItem(NOTES_PLACES_KEY, JSON.stringify(map)); } catch (_) { return false; }
+  try { localStorage.setItem(NOTES_PLACES_KEY, JSON.stringify(map)); } catch (err) { _npPending.places = map; return notesSaveFailed('placeNotes', err); }
+  _npPending.places = null;
   if (typeof worldPlacesSave === 'function') worldPlacesSave();
   return true;
 }
@@ -59,12 +88,14 @@ function notesPlaceSet(name, text) {
 // Keyed by the road's stored id, never its name, so a rename moves nothing.
 
 function notesRoadsAll() {
+  if (_npPending.roads) return notesPlacesCopy(_npPending.roads);
   try { return notesPlacesClean(JSON.parse(localStorage.getItem(NOTES_ROADS_KEY) || '{}')).places; }
   catch (_) { return notesPlacesNew(); }
 }
 
 function notesRoadsWrite(map) {
-  try { localStorage.setItem(NOTES_ROADS_KEY, JSON.stringify(map)); } catch (_) { return false; }
+  try { localStorage.setItem(NOTES_ROADS_KEY, JSON.stringify(map)); } catch (err) { _npPending.roads = map; return notesSaveFailed('roadNotes', err); }
+  _npPending.roads = null;
   if (typeof worldRoadsSave === 'function') worldRoadsSave();
   return true;
 }

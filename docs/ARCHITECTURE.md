@@ -114,6 +114,11 @@ the campaign's as `campaign.json` at the zip root. Nothing in the pane reaches t
 a column reports its scene's name and notes with its room, and a notes edit goes back to the column it
 was filled from. Grid calibration puts the pane away like any dock pane.
 
+Every writer of campaign data (campaign, place and road notes, places, roads, the party marker, the groups'
+order) reports a failed `localStorage` save through `notesSaveFailed` (`notesPanel.js`): one `messageDialog`
+per kind per launch, logged with `console.warn`. Notes keep a pending in-memory copy that reads prefer until
+the next successful save; the other records already live in memory. A house-rule test lists the writers.
+
 ## The files
 
 Moved to [architecture/module-map.md](architecture/module-map.md) - one row per file, what

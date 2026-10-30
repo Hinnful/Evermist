@@ -25,7 +25,7 @@ function _wptLoad() {
 function _wptSave() {
   try {
     if (_wpt) localStorage.setItem(WPT_KEY, JSON.stringify(_wpt)); else localStorage.removeItem(WPT_KEY);
-  } catch (_) { /* full or blocked */ }
+  } catch (err) { notesSaveFailed('party', err); }
 }
 
 // The marker as a backup carries it, or null.

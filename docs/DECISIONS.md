@@ -407,8 +407,8 @@ bigger change to the `file://` architecture than the residual risk justifies.
 ### Storage is localStorage, not IndexedDB · `SETTLED`
 `sceneStore.js` is one store keyed by scene id at `DB_VERSION 1`, so a campaign-level store
 would need a version bump plus an upgrade path on the database holding the user's maps, to
-buy nothing for a few hundred KB. Measured headroom is 2.3×, not the 10× an early comment
-claimed; the real guard is `mtStore`'s try/catch.
+buy nothing for a few hundred KB. The Electron store takes 52,428,705 characters in one key, measured
+by `storage-full.js`, far more than the campaign holds; a failed save is reported by `notesSaveFailed`.
 
 ### Module text is campaign-level, and belongs in the backup anyway · `SHIPPED` 1.7.6 (2026-08-08)
 Imported entries live in `localStorage`, deliberately outside any scene, because one book serves

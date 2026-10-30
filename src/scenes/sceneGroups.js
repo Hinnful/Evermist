@@ -81,7 +81,7 @@ function loadGroupPrefs() {
 function saveGroupPrefs() {
   try {
     localStorage.setItem(SM_GROUPS_KEY, JSON.stringify({ order: smGroupOrder }));
-  } catch (e) { /* storage full or blocked; the group field itself is already safe */ }
+  } catch (err) { notesSaveFailed('groups', err); }
 }
 
 function addGroup(name) {
