@@ -83,6 +83,26 @@ rooms".
 
 **Never an em-dash** - use " - ". Nothing from the `filler-words` list.
 
+**The checker also refuses these words and the DM's own names.** `check-notes.js` reads this block,
+and, while the app is open, the group, map, road and fight names from it. A false hit on a name goes
+in the second block.
+
+```private-words
+he
+she
+his
+her
+him
+my
+fixture
+scenario
+rig
+guard hook
+```
+
+```allowed-names
+```
+
 **Cut:** a diff restated in prose, test counts, docs churn that rides along, anything `git diff`
 shows more precisely.
 
@@ -90,16 +110,14 @@ State the version you set, or that you set none and why, in one line above the n
 
 **Write the notes to `notes.txt` in `.claude/commit/runs/$CLAUDE_CODE_SESSION_ID/`** - line 1 the Summary, line 2 the
 Intro, a blank line, then the points - and run the checker. It fails loudly with each offending line; fix and re-run
-until it passes, then show the notes. It cannot judge the privacy rules above; you do.
+until it passes, then show the notes. It catches the words above; the rest of the privacy rules are yours to judge. A pass is stamped, and
+`ship.js` refuses notes that were edited after it or sent before the DM's next message.
 
 ```
 node .claude/commit/check-notes.js
 ```
 
 CI runs the same checker on the commit before anything is published.
-
-**Rename the chat to the Summary line** with `mcp__ccd_session_mgmt__set_session_title`, so the
-session list names each release.
 
 ### The backlog proposal goes out with the notes
 

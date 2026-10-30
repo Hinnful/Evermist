@@ -10,6 +10,8 @@
  */
 
 const { execFileSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 const { ROOT } = require('./guard-lib');
 
 const git = (args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -40,6 +42,16 @@ function main() {
   let unlanded = '0';
   try { unlanded = git(['rev-list', '--count', 'origin/main..main']); } catch { /* no origin yet */ }
   if (unlanded !== '0') found.push('main holds ' + unlanded + ' commit(s) origin/main has not landed.');
+
+  // A run folder still holding notes.txt is a release that stopped before its push finished.
+  const runs = path.join(ROOT, '.claude', 'commit', 'runs');
+  for (const id of fs.existsSync(runs) ? fs.readdirSync(runs) : []) {
+    if (fs.existsSync(path.join(runs, id, 'notes.txt'))) found.push('A /commit run stopped with its notes unpushed (runs/' + id + '/notes.txt). Run /commit to resume; a yes never carries across sessions.');
+    try {
+      const text = fs.readFileSync(path.join(runs, id, 'disclosure.txt'), 'utf8').trim();
+      if (text) found.push('A test was edited to turn a run green (runs/' + id + '/disclosure.txt); tell the DM in the release report: ' + text.split(/\r?\n/).join(' / '));
+    } catch { /* none */ }
+  }
 
   if (!found.length) return;
   process.stdout.write(

@@ -924,8 +924,8 @@ cannot blur the map beneath), a hairline, a soft shadow, the app's font. Icons a
 nothing. Room labels, place plates, stray-map labels, road names, print names and picture names all wear it.
 
 ### Roads are open lines the room editor edits, kept by a stored id · `SETTLED` (2026-10-09)
-A road joins a scene with no place, a place, or nothing. Two scenes inside one place get no road; the DM said they
-are not needed. A road end keeps the spot it was drawn at, relative to the place's centre, and moves with the
+A road joins a scene with no place, a place, or nothing. Two scenes inside one place get no road: rejected on product
+grounds, they are not needed. A road end keeps the spot it was drawn at, relative to the place's centre, and moves with the
 place; a reshape that leaves the spot outside puts it on the nearest point of the outline. Deleting a scene or a
 place leaves its roads with an open end, and a scene's delete opens it only when the undo toast ends, so the toast
 can still bring it back. A road scene is ungrouped in the library and held by the road's own list, so no scene

@@ -1,7 +1,7 @@
 'use strict';
 
 // ship.js - /commit's tail: commit, the branch rules, push, pull request.
-// Usage: node .claude/commit/ship.js [--slug <name>] [--amend] -- <path>...
+// Usage: node .claude/commit/ship.js [--slug <name>] [--amend] [--no-backlog] -- <path>...
 // An untagged version goes to release/<version>; anything else to change/<slug>.
 // Every stage checks whether it is already done, so a re-run after a stop repeats nothing.
 
@@ -9,6 +9,8 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const rules = require('./shipRules.js');
+const { isPackaged } = require('../../tools/build-files.js');
 
 // The repo is the one this is run in, never the one this file sits in: a test copy of the
 // script run from its real path would otherwise commit and push in the real repo.
@@ -17,6 +19,8 @@ const DIR = path.join(ROOT, '.claude', 'commit');
 // Each session keeps its own run folder: two sessions share this checkout, and one shared
 // notes.txt let the second overwrite or resume the first's release.
 const RUN = path.join(DIR, 'runs', process.env.CLAUDE_CODE_SESSION_ID || 'local');
+const STAMP = path.join(RUN, 'notes-passed.json');
+const PUSHED = path.join(RUN, 'pushed.json');
 const LEGACY_NOTES = path.join(DIR, 'notes.txt');
 const NOTES = fs.existsSync(path.join(RUN, 'notes.txt')) || !fs.existsSync(LEGACY_NOTES) ? path.join(RUN, 'notes.txt') : LEGACY_NOTES;
 
@@ -31,7 +35,7 @@ function parseArgs(argv) {
   const flags = sep < 0 ? argv : argv.slice(0, sep);
   const paths = sep < 0 ? [] : argv.slice(sep + 1);
   const si = flags.indexOf('--slug');
-  return { slug: si >= 0 ? flags[si + 1] : '', amend: flags.includes('--amend'), paths };
+  return { slug: si >= 0 ? flags[si + 1] : '', amend: flags.includes('--amend'), noBacklog: flags.includes('--no-backlog'), paths };
 }
 
 // The version on disk may be another session's uncommitted bump; it counts only when this commit carries it.
@@ -143,6 +147,38 @@ function stagePush({ branch, amend }) {
   return 'force-pushed';
 }
 
+// What the end-of-release hooks read: the Summary, the branch and when it first went up. A re-push of the
+// same branch keeps the first time, so a fix amended in does not ask for the monitor and the rename again.
+function stageRecord({ branch }, notes) {
+  let first = new Date().toISOString();
+  try {
+    const old = JSON.parse(fs.readFileSync(PUSHED, 'utf8'));
+    if (old.branch === branch) first = old.time;
+  } catch { /* no earlier push */ }
+  fs.writeFileSync(PUSHED, JSON.stringify({ summary: notes.summary, branch, sha: git(['rev-parse', 'HEAD']), time: first }, null, 2) + '\n');
+  for (const f of [NOTES, STAMP]) fs.rmSync(f, { force: true });
+  return 'recorded; notes.txt cleared';
+}
+
+const readText = (f) => { try { return fs.readFileSync(f, 'utf8'); } catch { return ''; } };
+const must = (fault, ok) => { if (fault) throw new Error(fault); return ok; };
+
+// A re-run after the whole tail finished: notes.txt is gone, and pushed.json names HEAD.
+function alreadyShipped() {
+  if (fs.existsSync(NOTES)) return false;
+  try { return JSON.parse(readText(PUSHED)).sha === git(['rev-parse', 'HEAD']); } catch { return false; }
+}
+
+// The DM's yes guards the commit and the push. A re-run with both already done only opens the pull request.
+function stageYes({ branch, paths, amend }, notes) {
+  const committed = !dirty(paths) && headMessage() === notes.message.trim();
+  if (committed && remoteSha(branch) === git(['rev-parse', 'HEAD'])) return 'nothing left to approve';
+  let stamp = null;
+  try { stamp = JSON.parse(readText(STAMP)); } catch { /* never passed */ }
+  const last = Date.parse(readText(path.join(RUN, 'last-user-message')).trim());
+  return must(rules.yesCheck({ stamp, currentHash: rules.notesHash(readText(NOTES)), lastUserMs: last, amend, paths, isPackaged }), 'the DM said yes after the notes passed');
+}
+
 function stagePr({ branch }, notes) {
   const open = JSON.parse(gh(['pr', 'list', '--head', branch, '--state', 'open', '--json', 'url']) || '[]');
   if (open.length) return open[0].url;
@@ -154,8 +190,12 @@ function main() {
   const opts = parseArgs(process.argv.slice(2));
   git(['fetch', '--prune', '--tags', 'origin'], { stdio: 'pipe' });
   opts.branch = branchFor(opts.slug, opts.paths);
+  if (alreadyShipped()) { console.log('already shipped: ' + PUSHED); return; }
   const notes = readNotes();
   const stages = [
+    ['yes', () => stageYes(opts, notes)],
+    ['backlog', () => must(rules.backlogCheck(opts), 'carried')],
+    ['disclosure', () => must(rules.disclosureCheck({ ...opts, disclosure: readText(path.join(RUN, 'disclosure.txt')) }), 'none needed')],
     ['base', stageBase],
     ['guards', stageGuards],
     ['guard inputs', () => stageGuardInputs(opts)],
@@ -164,6 +204,7 @@ function main() {
     ['agree', () => stageAgree(opts)],
     ['push', () => stagePush(opts)],
     ['pr', () => stagePr(opts, notes)],
+    ['record', () => stageRecord(opts, notes)],
   ];
   let url = '';
   for (const [name, fn] of stages) {

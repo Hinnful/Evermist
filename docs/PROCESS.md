@@ -74,6 +74,25 @@ becomes a rule in one of the public files above, where a check or a reader can f
 
 A bug report is an ordinary message and needs no command.
 
+**`/commit`'s skippable rules are enforced by scripts and hooks.**
+- `check-notes.js` stamps notes that pass, and refuses private words and the campaign names read
+  from the running app. After a pass it lists repeat flakes.
+- A UserPromptSubmit hook records the time of each DM message. Subagent hand-backs, task
+  notifications and app events are ignored. `ship.js` refuses to push without a DM message after
+  the stamp; an amend that touches nothing shipped skips the check.
+- `ship.js` also refuses a release without `docs/BACKLOG.md` among its paths (unless
+  `--no-backlog`) and an amend that edits a test or scenario with no disclosure line naming it. It
+  clears `notes.txt` after the push.
+- A Stop hook holds the turn after a push until the CI monitor is armed and the chat carries the
+  Summary line as its title. It lets go after three reminders.
+- `guard-ship.js` refuses a hand-typed `git push`, `gh pr merge`, tag creation and
+  `gh release create/edit/upload`. `/rollback` runs through `tools/rollback.js`.
+- CI's `decide` job fails a change whose changed app file has no scenario that runs it
+  (`rig-ci pick --base`).
+- `session-status.js` names leftover run folders and disclosures.
+- Still prose: the test plan before the run, the bump size, what to file, `/voice`, and sending
+  `notes.txt` as a file.
+
 ## Building
 
 - **Read the owning skill before editing its files.** `guard-skill-hint.js` names it.

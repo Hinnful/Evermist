@@ -18,9 +18,10 @@ One heading, a status tag from the file's own vocabulary, at most a short paragr
 rejects an untagged entry and one over 14 lines. A style preference is a rule, and rules go to
 `CLAUDE.md` or `PRODUCT.md`.
 
-**Write about the decision, never about the people.** The repo is public. "the user said", "he
-ruled", "I recommended" and verbatim chat quotes read as leaked notes about a named person. Write
-"rejected on product grounds: …" instead. The same rule holds in `ARCHITECTURE.md` and `CLAUDE.md`.
+**Write about the decision, never about the people.** The repo is public. A phrase that reports
+who said, asked, ruled or recommended something, and a verbatim chat quote, read as leaked notes about
+a named person. Write "rejected on product grounds: …" instead. The same rule holds in
+`ARCHITECTURE.md` and `CLAUDE.md`; `test/houseRules.test.js` refuses the usual phrases in every doc.
 
 **Changed behaviour → `docs/ARCHITECTURE.md`.** A changed subsystem, or a description there this
 change made wrong. A bug fix that preserves behaviour needs no edit. A new, moved or renamed module

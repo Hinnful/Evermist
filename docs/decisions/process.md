@@ -438,3 +438,13 @@ as one fix at a time for a bug and spread to design, where the DM wants several 
 
 ### A weekly scheduled `/code-review` · `REJECTED` (2026-10-27)
 Refused as overhead for a solo project. `/code-review` runs by hand when a change looks worth it.
+
+### `/commit`'s skipped rules moved from prose into scripts and hooks · `SETTLED` (2026-10-30)
+Prose rules were skipped when they were side steps with no visible failure, buried mid-file, or far
+from the action; the chat rename was missed in sessions that began as other work. Each is now a
+script or hook (see PROCESS.md). The yes is checked by a stamp on passing notes plus a recorded
+time per DM message; counting subagent hand-backs, task notifications and app events was rejected
+because a finishing subagent could approve notes. A Stop hook holds the turn after a push until the
+monitor is armed. **Not enforced, judged not worth it:** the test plan before the run, bump size,
+what to file, `/voice`, sending `notes.txt` as a file. Step 0's list of other worktrees was dropped
+because `guard-main` already refuses worktrees.

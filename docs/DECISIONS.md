@@ -1060,6 +1060,29 @@ Claude reaching the campaign with Evermist closed would have needed it in plain 
 a large change with risk to saved data. A closed Evermist starts unseen for the call instead, one
 copy per library, and quits after fifteen idle minutes.
 
+### Notes as Markdown files on disk · `REJECTED` (2026-10-30)
+Proposed as BACKLOG 195. Editing notes in another tool helps no DM, and files bring two writers,
+sync gaps, renames that cut notes off their rooms, and a harder rollback. Links between notes are
+built inside the app instead.
+
+### Custom tags on notes · `REJECTED` (2026-10-30)
+A lore entry naming an arc, with mentions and its "Appears in" list, groups things across kinds
+without a second system.
+
+### Notes navigation is one tree with sections · `SETTLED` (2026-10-30)
+Places, with maps and rooms nested, then Monsters and NPCs, Factions, Lore. **Rejected:**
+browse-by-kind (separates rooms from their map and flattens nesting) and context-only breadcrumbs
+(prototyped, disorienting without a tree).
+
+### Notes live in a movable window like the fight table · `SETTLED` (2026-10-30)
+**Rejected:** a wide dock pane (covers about 600px of map), a stacked pane (the tree folds away),
+and tree-in-dock plus a note window (the dock would leave Music or Sounds at the table, and two
+surfaces open and close separately).
+
+### Global search is Ctrl+F, opened from Find on the map toolbar · `SETTLED` (2026-10-30)
+Ctrl+F is Figma's key and already the Campaign map's find. The button sits at the end of the map
+toolbar, matching the Campaign map's toolbar, not on the rail, which holds campaign elements.
+
 ---
 
 ## Corrections worth keeping

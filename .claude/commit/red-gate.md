@@ -14,7 +14,7 @@ most: once when the release lands, and once if the red was a real app bug.**
   record the monitor counts. It never reaches you as a red. **Linux is advisory**: a Linux scenario
   red prints a warning and a summary section and does not stop the release. Read them, and treat a
   Linux-only failure as a reason to look, not to block.
-- **A test edited to make a run green is disclosed.** When the fix changes a scenario's or a unit
+- **A test edited to make a run green is disclosed**, and `ship.js --amend` refuses without the line. When the fix changes a scenario's or a unit
   test's expectation (not the rig, a workflow or a guard), append one line to
   `disclosure.txt` in this session's run folder: which test, and why the old expectation was wrong. The release
   report carries that line, and `/commit` Step 0 shows a leftover one. A fix to the rig's plumbing
@@ -45,7 +45,7 @@ still yours to edit.
 node .claude/commit/ship.js --amend -- <paths>
 ```
 
-If `notes.txt` is gone, write it from `git log -1 --format=%B` first. `--amend` folds the paths into the commit instead of adding one, takes the message from
+`ship.js` clears `notes.txt` once it has pushed, so write it from `git log -1 --format=%B` first. `--amend` folds the paths into the commit instead of adding one, takes the message from
 `notes.txt`, and force-pushes the branch with a lease on the SHA it last saw. Without it the
 script refuses to push over a different commit.
 

@@ -33,13 +33,9 @@ found:
 | State | Go to |
 | --- | --- |
 | `disclosure.txt` in this session's run folder | Show its lines to the DM as part of the next report, then delete it |
-| `notes.txt` in this session's run folder | A run stopped at the notes or the push. Show the notes again and ask; a yes never carries across sessions. On a yes, re-run `ship.js`, which skips finished stages |
+| `notes.txt` in this session's run folder | A run stopped at the notes or the push. Show the notes again and ask; a yes never carries across sessions. On a yes, re-run `ship.js`, which skips finished stages. `session-status.js` names a `notes.txt` left in any run folder at session start |
 | Dirty tree | Step 1, a fresh run |
 | Anything else | Nothing in flight. Say so and stop |
-
-**Then list the other worktrees** (`git worktree list`). Name each one that holds uncommitted work
-or a commit `origin/main` lacks, in one line: what it is, and whether it ships in this run, ships
-next, or goes. Work left in a worktree is work the DM believes is in the app.
 
 A failed release wakes the session that pushed it through the CI monitor, so Step 0 never goes
 looking for one. A red that CI or a test caused is fixed without a message to the DM.
@@ -68,12 +64,12 @@ notes. It finishes before the notes, so its edits ride into this commit.
 
 Read `.claude/commit/notes.md` now. The notes go to `notes.txt` in this session's run folder,
 `.claude/commit/runs/$CLAUDE_CODE_SESSION_ID/`, and pass
-`check-notes.js` before the user sees them. **Then STOP** and offer to push.
+`check-notes.js` before the user sees them. **Then STOP** and offer to push. `ship.js` enforces the stop: it needs the DM's message after the notes passed.
 
 ## Step 6 - On their yes: write the backlog, push, arm the monitor
 
-Read `.claude/commit/push.md` now. `ship.js` runs the tail. Once it has pushed, delete
-`notes.txt`.
+Read `.claude/commit/push.md` now. `ship.js` runs the tail and clears `notes.txt` when it is done.
+Pushing, merging, tagging and releasing by hand are refused by `guard-ship.js`.
 
 ## When the monitor wakes you on red
 

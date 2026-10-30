@@ -24,6 +24,15 @@
         ]
       },
       {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-ship.js\""
+          }
+        ]
+      },
+      {
         "matcher": "Bash|PowerShell|Agent|Task|EnterWorktree|mcp__ccd_session__start_session",
         "hooks": [
           {
@@ -46,6 +55,15 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-claudemd.js\""
           }
         ]
+      },
+      {
+        "matcher": "mcp__ccd_pr__set_monitor|mcp__ccd_session_mgmt__set_session_title",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/record-markers.js\""
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -54,6 +72,26 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-status.js\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/record-user-message.js\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop-checklist.js\""
           }
         ]
       }

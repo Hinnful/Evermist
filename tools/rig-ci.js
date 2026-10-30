@@ -4,9 +4,10 @@
 /*
  * The rig's half of CI, in three commands.
  *
- *   node tools/rig-ci.js pick [--map file] [--cap-minutes 10] [--changed a,b] [--json]
+ *   node tools/rig-ci.js pick [--map file] [--cap-minutes 10] [--changed a,b] [--base ref] [--json]
  *       /commit's test plan: which scenarios the diff needs, from the coverage map of the latest
  *       green run. Exits 3 when a changed src file has no scenario that covers it.
+ *       CI's decide job runs it with --base origin/main and fails only on that exit 3.
  *   node tools/rig-ci.js merge <reportsDir> <outDir> [--sha X] [--run N]
  *       CI, after every rig shard: merges the shards' reports into rig-coverage-map.json and
  *       rig-flakes.json.
@@ -56,8 +57,10 @@ function readTexts() {
   return texts;
 }
 
-function changedFiles() {
+// CI has a clean checkout of the commit, so it names the ref the branch was cut from.
+function changedFiles(base) {
   const lines = s => s.split('\n').map(l => l.trim()).filter(Boolean);
+  if (base) return lines(out(['git', 'diff', '--name-only', base + '...HEAD']));
   return Array.from(new Set(lines(out(['git', 'diff', 'HEAD', '--name-only']))
     .concat(lines(out(['git', 'ls-files', '--others', '--exclude-standard'])))));
 }
@@ -91,12 +94,13 @@ function pick(argv) {
   const map = mapFile ? JSON.parse(fs.readFileSync(mapFile, 'utf8')) : downloadMap(notes);
   const capArg = flag(argv, '--cap-minutes');
   const changedArg = flag(argv, '--changed');
+  const base = flag(argv, '--base');
   const answer = pickScenarios({
-    changed: changedArg ? changedArg.split(',') : changedFiles(),
+    changed: changedArg ? changedArg.split(',') : changedFiles(base),
     map,
     headers: readHeaders(),
     texts: readTexts(),
-    identifiers: diffIdentifiers(out(['git', 'diff', 'HEAD', '-U0', '--', 'src', 'index.html']),
+    identifiers: diffIdentifiers(out(['git', 'diff', base ? base + '...HEAD' : 'HEAD', '-U0', '--', 'src', 'index.html']),
       fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')),
     capMs: capArg ? Number(capArg) * 60000 : DEFAULT_CAP_MS,
   });

@@ -102,7 +102,7 @@ error text, or anything quoted, where the exact wording is the content.
 - Say what a thing is, without contrasting it against what it is not.
 - Give as many items as there are. Never pad a list to three for rhythm.
 - Put file and line references at the end as links, not inside the sentences.
-- Under 250 words, unless the user asked for depth or the subject truly is long.
+- Under 250 words, unless depth is called for or the subject truly is long.
 
 
 ### Claudish

@@ -53,6 +53,15 @@ actions that change what the table sees. Those are in scope.
 
 ## The line it will not cross
 
+### Never automate a D&D session · `SETTLED` (2026-10-30)
+Players are unpredictable and DMs improvise, so no feature tracks the session or binds play to a
+fixed map or room: no boss music tied to a room, no fight stuck to one map. An automatic session
+log was rejected on this ground.
+
+### A map presenter, running assistant and prep pipeline, never a worldbuilding tool · `SETTLED` (2026-10-30)
+Evermist serves offline DMs. No timelines, calendars or family trees; the relationship graph was
+already rejected (2026-10-04, DECISIONS.md).
+
 ### The VTT line · `SETTLED` (2026-09-24, narrowed to what reaches the TV)
 **Nothing but the map, its effects and a picture the DM shows reaches the Player screen.** Map,
 fog, grid, effects, the DM's ping and a room's picture go to the TV. Rooms, notes, controls and
@@ -320,6 +329,12 @@ cannot wait for 5.0.0: without it there is no way to pick a scene. 4.0.0 ships p
 table plus the world map, its places and roads, and the left notes panel with campaign, place
 and scene notes. 5.0.0 keeps what is left of campaigns: the party flag, the gallery and the MCP
 server.
+
+### 5.0.0 is the prep pipeline · `SETTLED` (2026-10-30)
+Supersedes "4.0.0 is efficient play, 5.0.0 is campaigns" and "4.0.0 also carries the world map"
+where they set a 5.0.0 scope. 5.0.0 is the prep pipeline epic (BACKLOG 238-244): the AI assistant
+preps from a module PDF and maps, notes get a tree, mentions, factions and lore, and one search
+finds anything. The README and GIFs mark the release, the shape 3.0.0 and 4.0.0 took.
 
 ### The First User Experience epic is closed · `SETTLED` (2026-10-25)
 The DM closed it with its done test unrun: no new DM is available to run Sasha's path. The MCP epic is the focus

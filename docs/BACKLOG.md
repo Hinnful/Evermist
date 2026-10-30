@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 6 open items; IDs run to 237."
+description: "Open work only. 14 open items; IDs run to 246."
 metadata: 
   node_type: memory
   type: project
@@ -36,8 +36,9 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.14.0**. **No release has a planned scope** (2026-10-13): the DM bumps the major when
-they decide to, so items carry no release tag. **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
+`package.json` is at **4.14.1**. **The 5.0 epic comes first** (2026-10-30): the items under "The prep pipeline" below,
+in their order. They make Evermist a whole prep pipeline with the AI assistant, plus notes and search for play.
+Every other item carries no release tag. **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
 coloured areas.
@@ -73,7 +74,88 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 ---
 
+# THE PREP PIPELINE - THE 5.0 EPIC
+
+Opened 2026-10-30. **The endgame:** a DM hands the AI assistant a module PDF and a folder of maps and gets back maps in
+a group, with rooms, notes, fights and linked factions and lore, reviewed and undone as one run. At the table, one
+search finds anything and notes link to each other. Evermist stays a map presenter and prep pipeline, never a
+worldbuilding tool: no timelines, calendars, family trees or relationship graphs, and nothing that tracks the session
+for the DM. The items go one at a time, in this order, and the epic closes with 244, which marks 5.0.0. The look for
+239 to 241 is agreed in a clickable prototype, `.claude/private/design/item-195/notes-v2.html` on the DM's machine.
+
+### 238. Campaign data is lost without a word when browser storage is full
+Filed 2026-10-30. Places, roads, campaign notes, place notes and road notes are saved to browser storage, which holds
+about 10 MB, shared with the bestiary, fights and module text. When it is full, those saves fail and nothing tells the
+DM: the change is gone on the next launch. Module text and fights already say so in a dialog. Every save should say
+so, and the campaign data needs room to grow, kept where the previous release can still read it. **Needs /spec** for
+where it moves. Comes before 240, which adds more text.
+**Bug · DM only**
+
+### 239. Search everything
+Filed 2026-10-30. Ctrl+F anywhere, or Find at the end of the map toolbar, as on the Campaign map, opens one search box
+in the middle of the window. Empty, it lists what was opened recently; typing shows a best match, then results grouped
+as maps, rooms, places, monsters and NPCs, factions, lore, fights, music and pictures, with the matching words when the
+hit is inside a note. Picking a result does that thing's own action: a map opens on the DM's screen (Manual: the TV
+waits for Send; Auto: it asks first), a monster opens its stat block, a fight opens the fight table, a note opens in
+Notes. It replaces the Campaign map's own find and keeps what that does; the Bestiary keeps its list filter. Works on
+today's notes, so it needs nothing else first. **Needs /spec.**
+**Prep · Play · DM only**
+
+### 240. Notes in their own window, with a tree
+Filed 2026-10-30. The Notes pane becomes a window the DM moves and resizes, like the fight table, opened by Notes on
+the rail. The rail becomes Campaign, Notes, Bestiary; then Map settings alone, the one pane tied to the open map; then
+the table tools. The window's header holds hide-tree, back, forward and the breadcrumbs, whose middle levels fold into
+"…" when narrow. The tree shows the campaign, its places, maps and rooms as the Campaign map arranges them, then
+Monsters and NPCs (the bestiary), Factions and Lore, which nest freely and are new. The tree resizes and hides; the
+window remembers its size, place and tree. Every title renames its entry. "+ New" makes another of the selected kind
+beside it, and asks on a place, map or room. Rows get a right-click menu (Rename, New inside, Delete, Show on map),
+factions and lore drag to reorder and nest, Delete asks first, a monster's note has a Stat block button, and the tree
+takes arrows, Enter and Ctrl+R. Show on map moves the DM's screen: in Manual the TV waits, in Auto it asks first.
+**It keeps everything the pane does:** the room header (name, module dropdown, Delete), following the room pick, the
+selected column in two-map mode, and place, road, map and campaign notes. It opens with no map open, which today's
+tab does not. Factions and lore get storage the previous release ignores, and backups carry it. **Needs /spec.**
+Waits for 238.
+**Campaign · Prep · DM only**
+
+### 241. Mentions between notes
+Filed 2026-10-30. Typing @ in any note picks an entry, or creates a faction, lore or monster entry by that name, and
+leaves a blue label; one that names nothing yet is red, and a click creates it. A label opens its entry, and hovering
+shows a preview. Each note lists where it "Appears in", folded and counted. The note is always editable, with no edit
+mode. A mention stores readable text with a fixed ID, so a rename needs no rewrite and the previous release still shows
+the words; deleting an entry turns its mentions red. Module text writes room notes too, so the two are tested together.
+**Needs /spec.** Waits for 240.
+**Campaign · Play · DM only**
+
+### 242. The AI assistant fills the notes model
+Filed 2026-10-30. Tools for the AI assistant to create factions and lore, nest them, write mentions and read "Appears
+in", so a module PDF plus a map folder becomes maps in a group with rooms, notes, fights and linked entries. It preps one
+session's chapters at a time, never a whole book. Waits for 241.
+**Prep · DM only**
+
+### 243. One review and one undo for a big AI assistant prep run
+Filed 2026-10-30. A prep run is hundreds of changes, and the AI assistant's undo keeps the last 30. After a run the DM
+sees one summary of what it made and changed, and one button undoes the whole run. **Needs /spec** for the summary.
+**Prep · DM only**
+
+### 244. README and GIFs for 5.0
+Filed 2026-10-30. Rewrite the README and its GIFs around the prep pipeline once 238 to 243 have shipped. This release is
+5.0.0, the shape 3.0.0 and 4.0.0 took.
+**Upkeep · Both**
+
+---
+
 # EVERYTHING ELSE
+
+### 245. The music scenario needs a second try on Windows
+Filed 2026-10-30. It reran in 3 recent Windows gate runs: the DM window did not answer within 30s and the music read
+as stopped early. Find whether the scenario or the app stalls, then fix it or retire the check.
+**Upkeep · DM only**
+
+### 246. The claude-grid scenario needs a second try on macOS
+Filed 2026-10-30. It reran in 3 recent macOS gate runs: the Player received an `anim-params` message while the AI
+assistant changed the grid, effects or lights. Decide whether that message is allowed through, then fix the app or
+the check.
+**Upkeep · DM and Player**
 
 ### 236. Move to Electron 45
 Filed 2026-10-27. Evermist runs on Electron 43, which stops getting security fixes when Electron 46 ships, about
@@ -110,14 +192,6 @@ diagonal wall, the Door tool cuts the wall into cell-sized steps from the room's
 across two hexes. Decide what a door one hex wide means on a hex wall, then make the preview and the click follow it.
 **Needs /spec.**
 **Polish · DM + Player**
-
-### 195. Notes as linked Markdown files
-Filed 2026-10-17 as a DESIGN DISCUSSION. Keep notes in `.md` files, Obsidian-style, so they can grow links between
-notes, references and mentions. References to read first: Obsidian and Morrow (github.com/Aarav2709/Morrow). Notes
-today live in the app's database (DECISIONS, "Notes are stored as a scene field and one campaign value"), so files on
-disk mean a new storage design that the previous release can still roll back over. Waits for the First User
-Experience epic.
-**Campaign · DM only**
 
 ---
 

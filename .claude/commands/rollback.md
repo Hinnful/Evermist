@@ -38,10 +38,10 @@ Then **ask, and wait.** This is public and it takes installers away from a downl
 ## Step 3 — Pull it
 
 ```
-gh release delete v<X.Y.Z> --yes
-git push origin :refs/tags/v<X.Y.Z>
-git tag -d v<X.Y.Z>
+node tools/rollback.js v<X.Y.Z>
 ```
+
+It runs `gh release delete v<X.Y.Z> --yes`, `git push origin :refs/tags/v<X.Y.Z>` and `git tag -d v<X.Y.Z>`. It is a script because `guard-ship.js` refuses a hand-typed push.
 
 The release first, then the tag. A tag with no release confuses nothing; a release whose tag is gone still serves its assets.
 

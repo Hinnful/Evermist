@@ -35,6 +35,9 @@ jobs:
   decide:
     name: Check version, branch and notes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read   # the coverage map is downloaded from the latest green run
     outputs:
       version: ${{ steps.check.outputs.version }}
       release: ${{ steps.check.outputs.release }}
@@ -82,6 +85,22 @@ jobs:
         env:
           BRANCH: ${{ github.ref_name }}
         run: node tools/check-release.js "$BRANCH"
+
+      # A changed app file that no scenario runs is a hole in the gate. The same verdict /commit's
+      # pick gives (exit 3 = BLOCKED). Any other failure, such as no coverage map to read, falls back
+      # exactly as pick does locally and never fails this step.
+      - name: Does a scenario run every changed app file?
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          node tools/rig-ci.js pick --base origin/main
+          RC=$?
+          if [ "$RC" -eq 3 ]; then
+            echo "::error::a changed app file has no scenario that runs it. Write one whose header names the file."
+            exit 1
+          fi
+          exit 0
 
       # The same mechanical rules /commit checks, once more on the words that will be published.
       - name: Do the release notes pass their checker?

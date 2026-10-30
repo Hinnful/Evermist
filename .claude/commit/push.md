@@ -20,6 +20,10 @@ already done before acting, so a re-run after a stop finishes the tail and repea
 - **Push a BRANCH by refspec, never `main`, and never create the branch locally.** The script
   picks `release/<version>` for an untagged version and `change/<slug>` otherwise.
 - **Open a pull request**, so the run and every failed attempt before it keep a permanent page.
+- **Refuse without the yes, the backlog or a disclosure.** The script checks them itself: notes that
+  passed `check-notes.js` unchanged, then a message from the DM; `docs/BACKLOG.md` among the paths of
+  a new release (`--no-backlog` when it truly has nothing); a disclosure line for each test an amend edits.
+- **Record the push** in `pushed.json` in the run folder, and clear `notes.txt`.
 
 ```
 node .claude/commit/ship.js [--slug <short-slug>] -- <path> <path>
@@ -31,8 +35,11 @@ broke. CI writes the in-app What's new list when it builds, so nothing is amende
 - **Never merge the pull request yourself.** The `land` job fast-forwards `main` once the gate is
   green and the PR closes as merged; `cleanup` then deletes the branch. A merge, rebase or squash
   would put a tree on `main` that no gate drove.
+- **Rename the chat to the Summary line** with `mcp__ccd_session_mgmt__set_session_title` (load it
+  with ToolSearch), so the session list names each release.
 - **Arm the CI monitor.** Read `mcp__ccd_pr__get_status` to confirm the app picked the PR up, bind
   it by URL if it did not, then `mcp__ccd_pr__set_monitor` with `auto_fix: true`. **It wakes this
   session on failure only.** A green run notifies nobody here, which is why the backlog is closed
   before the push rather than after the gate.
-- Report the short hash and the pull request URL, then **end the turn**. No `gh run watch`.
+- Report the short hash and the pull request URL, then **end the turn**. No `gh run watch`. The Stop
+  hook (`stop-checklist.js`) holds the turn open until the monitor is armed and the chat renamed.

@@ -93,6 +93,20 @@ describe('house rules: shipped code', () => {
   });
 });
 
+// Phrases that report a person's words. A decision is written as a decision.
+const REPORTED_SPEECH = /\b(?:the user (?:said|asked)|the DM (?:said|ruled)|(?:he|she) ruled|I recommended)\b/gi;
+
+function markdownIn(dir, out = []) {
+  for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+    const rel = dir + '/' + e.name;
+    if (!e.isDirectory()) { if (e.name.endsWith('.md')) out.push(rel); } else if (rel !== '.claude/private' && rel !== '.claude/worktrees') markdownIn(rel, out);
+  }
+  return out;
+}
+
+// Reported speech in a text, found across a hard wrap.
+const reportedSpeech = (text) => Array.from(text.replace(/\s*\r?\n\s*/g, ' ').matchAll(REPORTED_SPEECH), (m) => m[0]);
+
 describe('house rules: docs and maps', () => {
   it('lists every module in both module maps, and nothing that is gone', () => {
     const namesIn = (text) => new Set([...text.matchAll(/`([A-Za-z0-9_./-]+\.js)`/g)].map((m) => m[1].split('/').pop().toLowerCase()));
@@ -166,6 +180,25 @@ describe('house rules: docs and maps', () => {
       }
     }
     assert.deepEqual(faults, []);
+  });
+
+  it('reports nobody\'s words in the docs', () => {
+    const files = ['CLAUDE.md', ...markdownIn('docs'), ...markdownIn('.claude')];
+    const ledger = /^docs\/(?:DECISIONS|PRODUCT)\.md$|^docs\/decisions\//;
+    const faults = [];
+    for (const rel of files) {
+      let text = read(rel);
+      // A ledger's preamble quotes the banned phrasing to rule it out, so only its entries are read.
+      if (ledger.test(rel)) text = lib.analyze(text).entries.map((e) => [e.heading, ...e.body.map((l) => l.text)].join('\n')).join('\n');
+      for (const h of reportedSpeech(text)) faults.push(rel + ': "' + h + '"');
+    }
+    assert.deepEqual(faults, [], 'write the decision ("rejected on product grounds: ..."), not who said it');
+  });
+
+  it('catches reported speech and passes a decision', () => {
+    assert.deepEqual(reportedSpeech('The DM said\nthey are not needed'), ['The DM said']);
+    assert.deepEqual(reportedSpeech('He ruled it out. I recommended it.'), ['He ruled', 'I recommended']);
+    assert.deepEqual(reportedSpeech('Rejected on product grounds: not needed.'), []);
   });
 
   it('names nobody in the public docs', () => {
