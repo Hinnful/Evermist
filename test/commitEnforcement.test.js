@@ -157,6 +157,11 @@ describe('release checklist hooks', () => {
     assert.deepEqual(rules.sessionIds({}, {}), []);
   });
 
+  it('hands the session a pull request command that survives quotes in the Summary', () => {
+    assert.equal(rules.prCreateCommand('change/x', "The DM's map", '.claude\\commit\\runs\\a\\pr-body.md'),
+      "gh pr create --base main --head 'change/x' --title 'The DM'\\''s map' --body-file '.claude/commit/runs/a/pr-body.md'");
+  });
+
   it('counts only the DM\'s own messages as a possible yes', () => {
     assert.equal(rules.isFromDm('yes, push it'), true);
     assert.equal(rules.isFromDm('Another Claude session sent a message:\n<agent-message from="x">done</agent-message>'), false);

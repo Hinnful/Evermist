@@ -448,3 +448,9 @@ because a finishing subagent could approve notes. A Stop hook holds the turn aft
 monitor is armed. **Not enforced, judged not worth it:** the test plan before the run, bump size,
 what to file, `/voice`, sending `notes.txt` as a file. Step 0's list of other worktrees was dropped
 because `guard-main` already refuses worktrees.
+
+### The session opens the pull request, never `ship.js` · `SETTLED` (2026-10-30)
+From 2026-10-28 the desktop app refused Auto-fix on every release (PRs 110 to 114): it arms the CI
+monitor only for a pull request it watched the session open, and `ship.js` opened it from inside
+node. Binding the pull request by URL and reporting it in a `<pr-created>` tag were tried and refused.
+`ship.js` now prints the `gh pr create` line and the session runs it as its own command.

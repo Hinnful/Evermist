@@ -19,7 +19,9 @@ already done before acting, so a re-run after a stop finishes the tail and repea
   the files agree** with the same rules CI applies.
 - **Push a BRANCH by refspec, never `main`, and never create the branch locally.** The script
   picks `release/<version>` for an untagged version and `change/<slug>` otherwise.
-- **Open a pull request**, so the run and every failed attempt before it keep a permanent page.
+- **Open a pull request yourself**, so the run and every failed attempt before it keep a permanent page.
+  The script prints the `gh pr create` line; run it in Bash, as its own command. The app arms Auto-fix
+  only for a pull request it watched this session open, never one a script opened.
 - **Refuse without the yes, the backlog or a disclosure.** The script checks them itself: notes that
   passed `check-notes.js` unchanged, then a message from the DM; `docs/BACKLOG.md` among the paths of
   a new release (`--no-backlog` when it truly has nothing); a disclosure line for each test an amend edits.
@@ -29,7 +31,7 @@ already done before acting, so a re-run after a stop finishes the tail and repea
 node .claude/commit/ship.js [--slug <short-slug>] -- <path> <path>
 ```
 
-It prints the branch, the short hash and the pull request URL, and fails loudly at the stage that
+It prints the branch, the short hash and the pull request URL or the line that opens it, and fails loudly at the stage that
 broke. CI writes the in-app What's new list when it builds, so nothing is amended after the commit.
 
 - **Never merge the pull request yourself.** The `land` job fast-forwards `main` once the gate is

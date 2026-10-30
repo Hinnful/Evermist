@@ -179,11 +179,14 @@ function stageYes({ branch, paths, amend }, notes) {
   return must(rules.yesCheck({ stamp, currentHash: rules.notesHash(readText(NOTES)), lastUserMs: last, amend, paths, isPackaged }), 'the DM said yes after the notes passed');
 }
 
+// ⚠ THE SESSION OPENS THE PULL REQUEST, NOT THIS SCRIPT. The app arms Auto-fix only for a pull request it
+// watched the session open; one opened from in here was refused on every release from 2026-10-28.
 function stagePr({ branch }, notes) {
   const open = JSON.parse(gh(['pr', 'list', '--head', branch, '--state', 'open', '--json', 'url']) || '[]');
   if (open.length) return open[0].url;
-  const body = tmpFile('body', notes.description);
-  return gh(['pr', 'create', '--base', 'main', '--head', branch, '--title', notes.summary, '--body-file', body]);
+  const body = path.join(RUN, 'pr-body.md');
+  fs.writeFileSync(body, notes.description + '\n');
+  return 'NOT OPEN YET - run this yourself in Bash: ' + rules.prCreateCommand(branch, notes.summary, path.relative(ROOT, body));
 }
 
 function main() {

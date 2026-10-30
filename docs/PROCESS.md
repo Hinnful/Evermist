@@ -82,7 +82,8 @@ A bug report is an ordinary message and needs no command.
   the stamp; an amend that touches nothing shipped skips the check.
 - `ship.js` also refuses a release without `docs/BACKLOG.md` among its paths (unless
   `--no-backlog`) and an amend that edits a test or scenario with no disclosure line naming it. It
-  clears `notes.txt` after the push.
+  clears `notes.txt` after the push. It opens no pull request: it prints the `gh pr create` line and
+  the session runs it, so the app can arm Auto-fix.
 - A Stop hook holds the turn after a push until the CI monitor is armed and the chat carries the
   Summary line as its title. It lets go after three reminders.
 - `guard-ship.js` refuses a hand-typed `git push`, `gh pr merge`, tag creation and

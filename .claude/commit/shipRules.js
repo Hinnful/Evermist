@@ -52,4 +52,9 @@ function disclosureCheck({ amend, paths, disclosure }) {
   return 'this amend edits ' + missing.join(', ') + ' without disclosing it. Write one line per file to disclosure.txt in this session\'s run folder: which test, and why the old expectation was wrong.';
 }
 
-module.exports = { notesHash, runDir, sessionIds, isFromDm, yesCheck, backlogCheck, disclosureCheck, isTestEdit };
+// The pull request command the session runs itself, quoted for a POSIX shell.
+const shq = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";
+const prCreateCommand = (branch, title, bodyFile) =>
+  ['gh pr create --base main --head', shq(branch), '--title', shq(title), '--body-file', shq(String(bodyFile).replace(/\\/g, '/'))].join(' ');
+
+module.exports = { prCreateCommand, notesHash, runDir, sessionIds, isFromDm, yesCheck, backlogCheck, disclosureCheck, isTestEdit };

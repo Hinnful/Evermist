@@ -93,12 +93,13 @@ where it moves. Comes before 240, which adds more text.
 
 ### 239. Search everything
 Filed 2026-10-30. Ctrl+F anywhere, or Find at the end of the map toolbar, as on the Campaign map, opens one search box
-in the middle of the window. Empty, it lists what was opened recently; typing shows a best match, then results grouped
-as maps, rooms, places, monsters and NPCs, factions, lore, fights, music and pictures, with the matching words when the
-hit is inside a note. Picking a result does that thing's own action: a map opens on the DM's screen (Manual: the TV
-waits for Send; Auto: it asks first), a monster opens its stat block, a fight opens the fight table, a note opens in
-Notes. It replaces the Campaign map's own find and keeps what that does; the Bestiary keeps its list filter. Works on
-today's notes, so it needs nothing else first. **Needs /spec.**
+in the middle of the window. Empty, it lists what was opened recently, on every view; typing shows a best match, then
+results grouped as maps, rooms, places, monsters and NPCs, factions, lore, fights, music and pictures, with the matching
+words when the hit is inside a note. Picking a result does that thing's own action: a map opens on the DM's screen
+(Manual: the TV waits for Send; Auto: it asks first), the Campaign map included, a monster opens its stat block, a fight
+opens the fight table, a note opens in Notes. It replaces the Campaign map's own find; the Bestiary keeps its list
+filter. Works on today's notes, so it needs nothing else first. Specced. **The DM picks the search box's look from a
+prototype before it is built.**
 **Prep · Play · DM only**
 
 ### 240. Notes in their own window, with a tree
@@ -113,8 +114,10 @@ factions and lore drag to reorder and nest, Delete asks first, a monster's note 
 takes arrows, Enter and Ctrl+R. Show on map moves the DM's screen: in Manual the TV waits, in Auto it asks first.
 **It keeps everything the pane does:** the room header (name, module dropdown, Delete), following the room pick, the
 selected column in two-map mode, and place, road, map and campaign notes. It opens with no map open, which today's
-tab does not. Factions and lore get storage the previous release ignores, and backups carry it. **Needs /spec.**
-Waits for 238.
+tab does not. Factions and lore get storage the previous release ignores, and backups carry it. A room picked while the
+window is shut leaves it shut and lights Notes on the rail. Specced. **Blocked on a discussion:** how the Bestiary and
+Notes relate (which monsters the tree lists, and which of a monster's texts is its note), where roads sit in the tree,
+and what the tree's Delete removes. Waits for 238.
 **Campaign · Prep · DM only**
 
 ### 241. Mentions between notes
@@ -123,7 +126,7 @@ leaves a blue label; one that names nothing yet is red, and a click creates it. 
 shows a preview. Each note lists where it "Appears in", folded and counted. The note is always editable, with no edit
 mode. A mention stores readable text with a fixed ID, so a rename needs no rewrite and the previous release still shows
 the words; deleting an entry turns its mentions red. Module text writes room notes too, so the two are tested together.
-**Needs /spec.** Waits for 240.
+Specced. **Blocked on the same discussion as 240:** the Bestiary and Notes are not linked today. Waits for 240.
 **Campaign · Play · DM only**
 
 ### 242. The AI assistant fills the notes model
@@ -134,12 +137,15 @@ session's chapters at a time, never a whole book. Waits for 241.
 
 ### 243. One review and one undo for a big AI assistant prep run
 Filed 2026-10-30. A prep run is hundreds of changes, and the AI assistant's undo keeps the last 30. After a run the DM
-sees one summary of what it made and changed, and one button undoes the whole run. **Needs /spec** for the summary.
+sees one summary of what it made and changed, and one button undoes the whole run. **Blocked on a discussion** of the
+whole item, starting from whether Evermist is even open while the AI assistant works.
 **Prep · DM only**
 
 ### 244. README and GIFs for 5.0
-Filed 2026-10-30. Rewrite the README and its GIFs around the prep pipeline once 238 to 243 have shipped. This release is
-5.0.0, the shape 3.0.0 and 4.0.0 took.
+Filed 2026-10-30. Once 238 to 243 have shipped, re-record every README GIF with the new interface, and add a new one
+only where it shows something the others do not. The README does not advertise the AI assistant's prep. "Nothing
+leaves your computer" stays, with one sentence: Evermist works fully offline, and connecting the AI assistant is
+optional. Claude records the GIFs with the test app off screen. This release is 5.0.0, the shape 3.0.0 and 4.0.0 took.
 **Upkeep · Both**
 
 ---
