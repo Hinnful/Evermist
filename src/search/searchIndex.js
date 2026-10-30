@@ -13,10 +13,23 @@ function searchStale(id) { _srRooms.delete(id); }
 
 function _srHere(id) { return !panesActive && currentScene && currentScene.id === id; }
 
+// Every room, named or not, in list order: the Notes tree's rooms. Effects and lights are not rooms.
+function _srRoomList(polys) {
+  return polys.filter(p => p && !p.material && !p.light).map(p => ({ id: p.id, name: p.name || '', desc: p.desc || '' }));
+}
+
+// A scene's rooms for the Notes tree: the open map live, a stored one from the read, null until it is read.
+function searchRoomsOf(id) {
+  if (_srHere(id)) return _srRoomList(polygons);
+  const r = _srRooms.get(id);
+  return r ? r.all : null;
+}
+
 function _srFromRecord(rec) {
   return {
     notes: String((rec && rec.notes) || ''),
     rooms: ((rec && rec.polygons) || []).filter(p => p && (p.name || p.desc)).map(p => ({ id: p.id, name: p.name || '', desc: p.desc || '' })),
+    all: _srRoomList((rec && rec.polygons) || []),
   };
 }
 
@@ -52,8 +65,9 @@ function searchEntries() {
   }
   for (const r of worldRoadRecords()) out.push({ key: 'road:' + r.uid, kind: 'road', id: r.uid, name: r.name, where: t('Road'), text: notesRoadGet(r.uid) });
   for (const b of Object.values(cbState.blocks)) {
-    out.push({ key: 'monster:' + b.id, kind: 'monster', id: b.id, name: b.name, where: t('CR {cr}', { cr: bsCr(b) }) + ' · ' + t(bsType(b)), text: '' });
+    out.push({ key: 'monster:' + b.id, kind: 'monster', id: b.id, name: b.name, where: t('CR {cr}', { cr: bsCr(b) }) + ' · ' + t(bsType(b)), text: b.notes || '' });
   }
+  out.push(...spNoteRows(notesEntriesAll(), k => t(k === 'faction' ? 'Factions' : 'Lore')));
   for (const f of cbState.fights) out.push({ key: 'fight:' + f.id, kind: 'fight', id: f.id, name: _cfName(f), where: _cfCount(f), text: '' });
   for (const m of _muTracks) out.push({ key: 'music:' + m.name, kind: 'music', id: m.name, name: displayName(m.name), where: musicGroupOf(m.name), text: '' });
   for (const p of galleryList()) out.push({ key: 'picture:' + p.id, kind: 'picture', id: p.id, name: p.name, where: '', text: '' });

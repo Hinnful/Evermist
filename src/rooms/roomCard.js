@@ -1,5 +1,5 @@
 'use strict';
-// roomCard.js — the dock's Room tab: the selected room's name and notes.
+// roomCard.js — the Notes window's room level: the selected room's name and notes.
 //
 // Called once from initToolbar() (DM only). The name labels on the map are roomPanel.js.
 
@@ -31,6 +31,7 @@ function _rpFallbackName(poly) {
 // pushUndo() runs BEFORE the write and only on a real change, so one Ctrl+Z reverts one edit.
 function _rpCommitName() {
   const el = _rpEl('rp-name');
+  if (el && notesForeignRoomEdit('name', { value: el.value })) return;
   if (el && paneRoomEdit('name', { value: el.value })) return;
   const poly = _rpFindRoom(_rpFieldPid);
   if (!el || !poly) return;
@@ -46,6 +47,7 @@ function _rpCommitName() {
 
 function _rpCommitDesc() {
   const el = _rpEl('rp-desc');
+  if (el && notesForeignRoomEdit('desc', { value: el.value })) return;
   if (el && paneRoomEdit('desc', { value: el.value })) return;
   const poly = _rpFindRoom(_rpFieldPid);
   if (!el || !poly) return;
@@ -57,6 +59,22 @@ function _rpCommitDesc() {
   pushUndo();
   poly.desc = v;
   scheduleAutoSave();
+}
+
+// A room's name or notes written by id, whether or not it is selected: the tree's rename and a column's inbox.
+function roomCardPatch(id, fields) {
+  const poly = _rpFindRoom(id);
+  if (!poly) return false;
+  const name = fields.name !== undefined ? sanitizeRoomName(fields.name, _rpFallbackName(poly)) : poly.name;
+  const desc = fields.desc !== undefined ? sanitizeRoomDesc(fields.desc) : poly.desc == null ? '' : poly.desc;
+  if (name === poly.name && desc === (poly.desc == null ? '' : poly.desc)) return true;
+  pushUndo();
+  poly.name = name;
+  poly.desc = desc;
+  _rpInvalidateLabel(poly.id);
+  scheduleAutoSave();
+  drawCursor(lastScreenX, lastScreenY);
+  return true;
 }
 
 function _rpCommitFields() {
@@ -73,6 +91,7 @@ function _rpCommitFields() {
 // front, because opening the dialog blurs the name field and runs its commit, which would write
 // the OLD text back over the pick.
 function applyModuleEntryToRoom(entry) {
+  if (entry && notesForeignRoomEdit('entry', { entry })) return true;
   if (entry && paneRoomEdit('entry', { entry })) return true;
   const poly = _rpFindPoly(selectedPolygonId);
   if (!poly || !entry) return false;
@@ -216,6 +235,7 @@ function refreshRoomPanel() {
   hintsFirstSync(room);
   notesPanelSync(room);
   if (roomTabKey(room) !== _rpTrioPid) { _rpTrioPid = roomTabKey(room); updateContextPanels(); }
+  if (notesForeignRoom()) return;   // the fields hold a room of another map
 
   // ⚠ AN EFFECT OR A LIGHT GETS NO TAB: it has no name, notes or module text. It leaves by the SAME path as
   // a deselect, or the tab can go without committing what was typed into a real room.

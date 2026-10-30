@@ -163,6 +163,7 @@ describe('house rules: docs and maps', () => {
   it('reports a failed save of campaign data, in every writer', () => {
     const writers = {
       'src/notes/notesPanel.js': ['NOTES_CAMPAIGN_KEY', 'NOTES_PLACES_KEY', 'NOTES_ROADS_KEY'],
+      'src/notes/notesEntries.js': ['NOTES_ENTRIES_KEY'],
       'src/world/worldPlaces.js': ['WM_SHAPES_KEY'],
       'src/world/worldRoads.js': ['WR_KEY'],
       'src/world/worldParty.js': ['WPT_KEY'],

@@ -79,13 +79,8 @@ function _wmCornerRows(flat) {
            run: () => { selectedVertexIndex = flat; _wmWithCamera(deleteSelectedPart); } }];
 }
 
-// The Notes pane on what the menu was opened on, which is already picked. A map's own level is a crumb the pick must name;
-// a place's and a road's follow the pick.
-function _wmOpenNotes(level) {
-  notesLevelPick = level === 'scene' ? 'scene' : null;
-  dockOpen('notes');
-  refreshRoomPanel();
-}
+// The Notes window on what the menu was opened on, which is already picked and so is what the window follows.
+function _wmOpenNotes() { notesShow(null); }
 
 // One map's room in a group of its own, centred on the click, named and ready to rename like one drawn by hand.
 function _wmNewGroupAt(at) {

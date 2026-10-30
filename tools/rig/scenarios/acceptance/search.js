@@ -243,39 +243,39 @@ module.exports = async function search(rig) {
   rig.check(await dm.evaluate('!_cdOpen'), 'a room asked in Manual');
   await dm.evaluate('switchScene(' + JSON.stringify(atticId) + '); 0');
   await dm.waitFor(isOn(atticId), 60000, 'the Attic');
-  // The dock shut: any room picked with a pane open switches it to Notes (dockRoomPicked), note hit or not.
-  await dm.evaluate('dockOpen(null); 0');
+  // The window shut: a room note hit opens it.
+  await dm.evaluate('nwHide(); 0');
   await pickFirst('lever');
   await dm.waitFor(isOn(cellarId) + ' && selectedPolygonId === 1', 60000, 'the room holding the lever note');
-  await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
-  // RED ON: dockOpen('notes') removed from _srSelectRoom (searchPick.js) — 2026-10-30
-  rig.check(await dm.evaluate('dockActivePane() === "notes"'), 'a room note hit did not show Notes');
+  await lib.settle(dm, 'nwIsOpen()', 6000);
+  // RED BY DESIGN: written against the feature, never re-proved
+  rig.check(await dm.evaluate('nwIsOpen()'), 'a room note hit did not show Notes');
   await dm.evaluate('switchScene(' + JSON.stringify(atticId) + '); 0');
   await dm.waitFor(isOn(atticId), 60000, 'the Attic');
-  await dm.evaluate('dockOpen("scene"); 0');
+  await dm.evaluate('nwHide(); 0');
   await pickFirst('ember');
   // A settle, not a waitFor: a waitFor on the same state threw before the check could name the failure.
-  await lib.settle(dm, isOn(cellarId) + ' && dockActivePane() === "notes" && notesLevelPick === "scene"', 60000);
-  // RED ON: a map note pick calls _srNotes(null) (searchPick.js); the wait before this check fails first — 2026-10-30
-  rig.check(await dm.evaluate(isOn(cellarId) + ' && dockActivePane() === "notes" && notesLevelPick === "scene"'), 'a map note hit did not show the map\'s notes');
-  await dm.evaluate('dockOpen("scene"); 0');
+  await lib.settle(dm, isOn(cellarId) + ' && nwIsOpen() && document.getElementById("nw-kind").textContent === "Map"', 60000);
+  // RED BY DESIGN: written against the feature, never re-proved
+  rig.check(await dm.evaluate(isOn(cellarId) + ' && nwIsOpen() && document.getElementById("nw-kind").textContent === "Map"'), 'a map note hit did not show the map\'s notes');
+  await dm.evaluate('nwHide(); 0');
   await pickFirst('lich');
-  await lib.settle(dm, 'notesLevelPick === "campaign" && dockActivePane() === "notes"', 6000);
-  // RED ON: _srCampaign calls _srNotes(null) (searchPick.js) — 2026-10-30
-  rig.check(await dm.evaluate('notesLevelPick === "campaign" && dockActivePane() === "notes"'), 'a campaign note hit did not show the campaign notes');
+  await lib.settle(dm, 'nwIsOpen() && document.getElementById("nw-kind").textContent === "Campaign"', 6000);
+  // RED BY DESIGN: written against the feature, never re-proved
+  rig.check(await dm.evaluate('nwIsOpen() && document.getElementById("nw-kind").textContent === "Campaign"'), 'a campaign note hit did not show the campaign notes');
 
   // ── 8 and 10. A group flies to it on the Campaign; its note shows its notes ──
-  await dm.evaluate('dockOpen("scene"); 0');
+  await dm.evaluate('nwHide(); 0');
   await pickFirst('frostmere');
   await lib.settle(dm, 'worldMapOpen && worldMapSel.place === "Frostmere"', 10000);
   // RED ON: _srPlace selects place '' (searchPick.js) — 2026-10-30
   rig.check(await dm.evaluate('worldMapOpen && worldMapSel.place === "Frostmere"'), 'a group did not open the Campaign with it picked');
-  await dm.evaluate('worldMapHide(); worldMapSel = { sceneId: null, place: "" }; dockOpen("scene"); 0');
+  await dm.evaluate('worldMapHide(); worldMapSel = { sceneId: null, place: "" }; nwHide(); 0');
   await lib.settle(dm, '!worldMapOpen', 6000);
   await pickFirst('howl');
-  await lib.settle(dm, 'worldMapOpen && worldMapSel.place === "Frostmere" && dockActivePane() === "notes"', 10000);
-  // RED ON: _srNotes removed from _srPlace (searchPick.js) — 2026-10-30
-  rig.check(await dm.evaluate('worldMapOpen && worldMapSel.place === "Frostmere" && dockActivePane() === "notes"'), 'a group note hit did not show the group\'s notes');
+  await lib.settle(dm, 'worldMapOpen && worldMapSel.place === "Frostmere" && nwIsOpen()', 10000);
+  // RED BY DESIGN: written against the feature, never re-proved
+  rig.check(await dm.evaluate('worldMapOpen && worldMapSel.place === "Frostmere" && nwIsOpen()'), 'a group note hit did not show the group\'s notes');
   await dm.evaluate('worldMapHide(); 0');
   await lib.settle(dm, '!worldMapOpen', 6000);
 

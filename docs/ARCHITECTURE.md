@@ -68,7 +68,7 @@ the place; a right-click opens the scene's menu.
 **One name plate** wears every renameable name: room labels (canvas), place plates, stray-map labels, road names, map-print names
 and picture names. Its look is the `--plate-*` tokens on `:root` in `base.css` ("NAME PLATES"), which the canvas room label reads
 through `rpPlateSkin()`. Every fill is opaque in every state, so no map line or art shows through a name. States: pointer, picked, renaming, Find's dim; room labels have none of the first and last-but-one (rooms
-are renamed in the Notes pane). One size rule, `roomLabelFontPx(z, uz, small)` in `roomPanel.js`: 12 x interface zoom x clamp(z^0.4, 1, 2.5)
+are renamed in the Notes window). One size rule, `roomLabelFontPx(z, uz, small)` in `roomPanel.js`: 12 x interface zoom x clamp(z^0.4, 1, 2.5)
 for map names, 11 for names inside a picture, so every label follows the interface zoom and print names grow with the Campaign zoom.
 In the Pictures pane a picture's name is a small plate at its bottom left, renamed in place (a click on it does not toggle the TV; a
 double-click renames), the TV tag sits top left, and the picture on the TV wears the picked look. A scene with no place is
@@ -97,22 +97,21 @@ units around it (`worldMist.js`); the TV never shows it. "Back up everything" wr
 a pick export leaves it out, and import sets it only when the library has none, keeps the map link when that map came
 in, and shifts a free point with the layout.
 
-**The Notes tab** (`notesPanel.js`) is a rail tab like the others, placed after Scene control, and
-uses the dock's width. It holds the notes and the selected room, whose name, Delete and notes
-used to be the dock's Room tab. A new room pick, or a switch to another room, brings Notes up when
-the dock is open on another pane (`dockRoomPicked`, `dock.js`); with the dock shut it stays shut and
-the Notes tab wears the open tint until it is clicked, another tab is picked or the dock is shut. A
-deselect does nothing to the dock. The tab is disabled, and its pane put away, with no scene open
-(the world map excepted), while grid calibration is armed and on an empty world map. Breadcrumbs Campaign › Scene › Room sit on top,
-and below them the notes of one level. By default the pane follows the selection: the room if one is
-selected, otherwise the scene. A crumb picks a level without touching the selection, so the room keeps
-its crumb while the scene's or the campaign's notes show. A new room pick, a deselect or a scene
-switch goes back to following. Room notes render in the pane but
-keep their logic in `roomCard.js`. Scene notes are a `notes` string on the scene
-record, written by `doAutoSave`; campaign notes are one `localStorage` value; both ride in a backup,
-the campaign's as `campaign.json` at the zip root. Nothing in the pane reaches the TV. In two-map mode
-a column reports its scene's name and notes with its room, and a notes edit goes back to the column it
-was filled from. Grid calibration puts the pane away like any dock pane.
+**The Notes window** (`notesWindow.js`, `notesTree.js`, `notesPanel.js`) is a free window the DM opens from the rail
+(Notes, after Campaign), moves by its header and resizes by its corner; its place, size, tree width and
+hidden tree are a viewing setting (`evermist.notesWin`). Left is the tree of the whole campaign (groups nested
+by the outline that holds them, maps and rooms, roads, the monsters with a DM note, factions and lore); right is
+the note of one thing, with its path as breadcrumbs in the header. What it shows is a target: what the DM picked, else
+what the selection follows (the Campaign's pick, the selected room, the open map, the campaign). A room pick with the
+window shut leaves it shut and the rail as it was. A map's notes go to whoever holds the map: the open map's
+live copy, a column's inbox, or the stored record for a map nobody holds (a room patched by id). Room notes
+render in the window but keep their logic in `roomCard.js`. Scene notes are a `notes` string on the scene record,
+written by `doAutoSave`; campaign notes are one `localStorage` value; a monster's note is its `notes` field in the
+Bestiary; factions and lore are `evermist.notesEntries` (`notesEntries.js`), which the previous release never
+reads. All ride in a backup, the campaign's, the entries and the roads' in `campaign.json` at the zip root; a restore
+adds the entries the library lacks and never replaces one. Nothing in the window reaches the TV. In two-map mode the
+window follows the selected column, and an edit goes back to the column it was filled from. Grid calibration puts
+the window away and brings it back.
 
 Every writer of campaign data (campaign, place and road notes, places, roads, the party marker, the groups'
 order) reports a failed `localStorage` save through `notesSaveFailed` (`notesPanel.js`): one `messageDialog`
@@ -463,7 +462,7 @@ different map, and one Player window on the TV showing both.
   a column both selects it and does whatever the click was for, in the one press. The selected
   column wears a blue frame.
 - **The selected room is edited in the DM window.** A column reports the room selected in it,
-  and the Notes pane shows the selected column's room. Every edit goes back to that column alone.
+  and the Notes window shows the selected column's room. Every edit goes back to that column alone.
 - **Every button sends a message.** The toolbar, Scene control and the minimap all
   reach a column the same way the DM window reaches the Player window: by `postMessage`. A
   column then presses the control it already has, so nothing is implemented twice.
@@ -501,7 +500,7 @@ different map, and one Player window on the TV showing both.
 ## Rooms
 
 Moved to [architecture/rooms.md](architecture/rooms.md) - drawing and selecting rooms, repair,
-doors, the room in the Notes pane and the floor-plan import.
+doors, the room in the Notes window and the floor-plan import.
 
 ## Reading a published module
 
@@ -509,7 +508,7 @@ The biggest prep cost for a DM isn't typing a room description, it's finding the
 400-page book eighty times. So the app reads the book once.
 
 Point it at a published module (`.txt` or `.pdf`), and it parses out the numbered locations:
-`K12. The Chapel`, and so on. After that the room's name field in the Notes pane becomes a **searchable
+`K12. The Chapel`, and so on. After that the room's name field in the Notes window becomes a **searchable
 dropdown** over those entries. Pick one, and it fills the name and the description together.
 A counter shows how many are placed, because a finite shrinking list is a different
 psychological object than an open-ended chore.

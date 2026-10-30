@@ -71,7 +71,7 @@ function notesPlacesClean(raw) {
 
 // The campaign.json at a backup's root. Null when there is nothing to carry, so the zip looks as it
 // always did.
-function notesCampaignPayload(text, places, shapes, roads, roadNotes, party) {
+function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, entries) {
   const hasText = typeof text === 'string' && !!text.trim();
   const named = notesPlacesNew();
   for (const k of Object.keys(places || {})) if (typeof places[k] === 'string' && places[k].trim()) named[k] = places[k];
@@ -79,12 +79,14 @@ function notesCampaignPayload(text, places, shapes, roads, roadNotes, party) {
   const drawn = shapes && Object.keys(shapes).length > 0;
   const laid = roads && Object.keys(roads).length > 0;
   const marked = !!party && typeof party === 'object' && Number.isFinite(party.x) && Number.isFinite(party.y);
-  if (!hasText && !hasPlaces && !drawn && !laid && !marked) return null;
+  const listed = Array.isArray(entries) && entries.length > 0;
+  if (!hasText && !hasPlaces && !drawn && !laid && !marked && !listed) return null;
   const out = {};
   if (hasText) out.notes = text;
   if (hasPlaces) out.places = named;
   if (drawn) out.placeShapes = shapes;
   if (marked) out.party = party;
+  if (listed) out.entries = entries;
   if (laid) {
     out.roads = roads;
     // Only a road that is in the file carries notes, so a deleted road's note does not ride along.
@@ -150,6 +152,16 @@ function notesRenamePlace(map, from, to) {
   return { map: out, kept: false };
 }
 
+// The factions and lore of a campaign.json. Older readers read by field and never see `entries`; a value that is
+// not a list is broken.
+function notesParseEntries(raw) {
+  if (raw == null) return { entries: [], broken: false };
+  let obj = null;
+  try { obj = JSON.parse(raw); } catch (_) { return { entries: [], broken: false }; }
+  if (!obj || typeof obj !== 'object' || !_notesOwn(obj, 'entries')) return { entries: [], broken: false };
+  return { entries: Array.isArray(obj.entries) ? obj.entries : [], broken: !Array.isArray(obj.entries) };
+}
+
 // A failed save of one kind of campaign data is reported once per launch: `reported` is the set of kinds already told.
 function notesSaveReportDue(kind, reported) { return !reported.has(kind); }
 
@@ -168,6 +180,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     NOTES_SEPARATOR, notesCrumbs, notesSanitize, notesMergeCampaign, notesCampaignPayload, notesParseCampaign,
     notesPlacesNew, notesPlacesCopy, notesPlacesClean, notesParsePlaces, notesMergePlaces, notesRenamePlace,
-    notesParseRoadNotes, notesRekey, notesSaveReportDue,
+    notesParseRoadNotes, notesParseEntries, notesRekey, notesSaveReportDue,
   };
 }

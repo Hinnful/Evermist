@@ -15,6 +15,8 @@ const SR_ICON = {
   monster: SR_SVG('<path d="M5 9c0-4 3-6 7-6s7 2 7 6v5l-3 3H8l-3-3z"/><circle cx="9.5" cy="10" r="1"/><circle cx="14.5" cy="10" r="1"/>'),
   fight: SR_SVG('<path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/>'),
   music: SR_SVG('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'),
+  faction: SR_SVG('<path d="M5 21V4h11l-2 4 2 4H5"/>'),
+  lore: SR_SVG('<path d="M6 3h10l4 4v14H6z"/><path d="M9 11h8M9 15h8"/>'),
   picture: SR_SVG('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/>'),
   warn: SR_SVG('<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>'),
 };

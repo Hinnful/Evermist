@@ -118,3 +118,27 @@ describe('the recent list', () => {
     assert.deepEqual(rows.map(r => r.key), ['map:1', 'room:2']);
   });
 });
+
+describe("factions, lore and a monster's DM note", () => {
+  const entries = [
+    { id: "f1", kind: "faction", name: "Vistani", note: "Travelling folk", parent: "faction", order: 0 },
+    { id: "l1", kind: "lore", name: "Artifacts", note: "", parent: "lore", order: 0 },
+    { id: "l2", kind: "lore", name: "Sunsword", note: "A blade of sunlight", parent: "l1", order: 0 },
+  ];
+  const rows = F.spNoteRows(entries, k => (k === "faction" ? "Factions" : "Lore"));
+  it("makes one row per entry, under its parent or its section", () => {
+    assert.deepEqual(rows.map(r => [r.key, r.kind, r.where]), [["entry:f1", "faction", "Factions"], ["entry:l1", "lore", "Lore"], ["entry:l2", "lore", "Artifacts"]]);
+  });
+  it("finds an entry by name and by its note, and a monster by its DM note", () => {
+    const all = rows.concat([{ key: "monster:b1", kind: "monster", id: "b1", name: "Lady Wachter", text: "Plots against the Baron" }]);
+    assert.deepEqual(F.spSearch("sunsword", all).groups.map(g => g.id), ["lore"]);
+    assert.equal(F.spSearch("travelling", all).groups[0].rows[0].rank, F.SP_NOTE);
+    const m = F.spSearch("baron", all).groups[0];
+    assert.equal(m.id, "monster");
+    assert.equal(m.rows[0].rank, F.SP_NOTE);
+  });
+  it("lists their groups after monsters and before fights", () => {
+    const ids = F.SP_GROUPS.map(g => g.id);
+    assert.deepEqual(ids.slice(ids.indexOf("monster"), ids.indexOf("monster") + 4), ["monster", "faction", "lore", "fight"]);
+  });
+});

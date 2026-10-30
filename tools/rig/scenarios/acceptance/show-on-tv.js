@@ -71,8 +71,8 @@ module.exports = async function showOnTv(rig) {
   rig.check(place.right <= place.tLeft + 1 || place.long <= 161,
             'B: the minimap covers the toolbar while it could have shrunk: ' + JSON.stringify(place));
   rig.check(place.long >= 160, 'B: the minimap shrank below 160px on its long side: ' + JSON.stringify(place));
-  if (await dm.evaluate('dockActivePane()') !== 'notes') await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
+  if (!(await dm.evaluate('nwIsOpen()'))) await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
+  await lib.settle(dm, 'nwIsOpen()', 6000);
   const withNotes = await dm.evaluate('document.getElementById("minimap-panel").getBoundingClientRect().left');
   rig.check(Math.abs(withNotes - place.left) < 1, 'B: opening the notes moved the minimap: ' + place.left + ' → ' + withNotes);
 

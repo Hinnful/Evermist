@@ -253,4 +253,23 @@ describe('road notes', () => {
     assert.equal(N.notesSaveReportDue('places', told), false);
     assert.equal(N.notesSaveReportDue('roads', told), true);
   });
+
+  it('carries factions and lore in campaign.json as entries, and only then', () => {
+    const list = [{ id: 'a', kind: 'lore', name: 'Sunsword', note: 'x', parent: 'lore', order: 0 }];
+    const raw = N.notesCampaignPayload('', null, null, null, null, null, list);
+    assert.deepEqual(JSON.parse(raw).entries, list);
+    assert.deepEqual(N.notesParseEntries(raw), { entries: list, broken: false });
+    assert.equal(N.notesCampaignPayload('', null, null, null, null, null, []), null);
+    assert.equal(N.notesParseEntries('{"entries":5}').broken, true);
+    assert.equal(N.notesParseEntries('{"notes":"x"}').broken, false);
+  });
+
+  it('is read by the previous release as before: the entries field is ignored', () => {
+    const list = [{ id: 'a', kind: 'faction', name: 'Vistani', note: '', parent: 'faction', order: 0 }];
+    const raw = N.notesCampaignPayload('The duke', places({ Vallaki: 'walled' }), null, null, null, null, list);
+    const bare = N.notesCampaignPayload('The duke', places({ Vallaki: 'walled' }));
+    assert.deepEqual(N.notesParseCampaign(raw), N.notesParseCampaign(bare));
+    assert.deepEqual({ ...N.notesParsePlaces(raw).places }, { ...N.notesParsePlaces(bare).places });
+    assert.equal(N.notesParseRoadNotes(raw).broken, false);
+  });
 });

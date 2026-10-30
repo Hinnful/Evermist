@@ -6,6 +6,7 @@
   .dk-rhead { position: relative; display: flex; align-items: flex-start; gap: 6px; padding: 14px 10px 0 12px; }
   .dk-rhead .cp-adv-close { margin-top: 5px; flex: none; }
   .dk-rhead .cp-adv-close:hover { color: rgba(240, 100, 90, 0.95); background: rgba(200, 50, 40, 0.12); }
+  .dk-rhead .cp-adv-close:disabled:hover { color: #b9bec6; background: transparent; }
 
   .rp-name, .rp-desc {
     width: 100%; box-sizing: border-box; padding: 4px; border: 0; border-radius: 5px;

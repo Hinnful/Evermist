@@ -58,6 +58,8 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, s
   for (const x of items) sceneMap[x.entry.id] = x.id;
   worldRoadsImport(plans.roads, sceneMap, placeSet, shift.dx, shift.dy);
   worldPartyImport(wptParse(raw), sceneMap, shift.dx, shift.dy);
+  const entries = notesParseEntries(raw);
+  notesEntriesAdopt(entries.entries);
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 
   const nl = String.fromCharCode(10), b = plans.broken, parts = [];
@@ -67,6 +69,7 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, s
   if (b.places) parts.push(t('Some group outlines in this file could not be read, so those groups are left out.'));
   if (b.roads) parts.push(t('Some roads in this file could not be read, so they are left out.'));
   if (b.roadNotes) parts.push(t('Some road notes in this file could not be read, so those roads came without them.'));
+  if (entries.broken) parts.push(t('The factions and lore in this file could not be read, so they are left out.'));
   if (b.placeNotes) parts.push(t('Some group notes in this file could not be read, so those groups came without them.'));
   if (parts.length) say({ title: 'Some notes were not imported', message: parts.join(nl + nl) });
 }

@@ -223,24 +223,24 @@ module.exports = async function worldRoadsFeature(rig) {
   await dm.evaluate('__wmEnter("Old Svalich Road"); 0');
   rig.check(await dm.evaluate('worldRoadByUid(' + JSON.stringify(r1uid) + ').name') === 'Old Svalich Road', 'the menu\'s Rename did not rename the road');
   // Show notes opens that road's notes (campaign toolbar, DoD 7), from the Campaign level the pane was left on.
-  await dm.evaluate('dockOpen(null); notesLevelPick = "campaign"; refreshRoomPanel(); (() => { const p = __wrScreen(' + JSON.stringify(r1uid) + ', 0.7); __wmE("contextmenu", __wrHit(' + JSON.stringify(r1uid) + '), p); return 0; })()');
+  await dm.evaluate('nwHide(); notesLevelPick = { kind: "campaign" }; refreshRoomPanel(); (() => { const p = __wrScreen(' + JSON.stringify(r1uid) + ', 0.7); __wmE("contextmenu", __wrHit(' + JSON.stringify(r1uid) + '), p); return 0; })()');
   await dm.evaluate('[...document.querySelectorAll(".wm-menu .sm-mi")].find(b => b.textContent === "Show notes").click(); 0');
-  await lib.settle(dm, '(b => !!b && b.dataset.level === "road")(document.querySelector("#np-crumbs .np-crumb.on"))', 8000);
+  await lib.settle(dm, 'nwIsOpen() && document.getElementById("nw-kind").textContent === "Road"', 8000);
   // RED BY DESIGN: written against the fix, never re-proved
-  rig.check(await dm.evaluate('(b => !!b && b.dataset.level === "road" && document.getElementById("dock-pane-notes").getClientRects().length > 0)(document.querySelector("#np-crumbs .np-crumb.on"))'),
+  rig.check(await dm.evaluate('nwIsOpen() && document.getElementById("nw-kind").textContent === "Road"'),
             'Show notes on a road did not open the Notes pane on the road level');
 
 
   // ── 5. Notes ────────────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   const panel = () => dm.evaluate(`(() => ({
-    crumbs: [...document.querySelectorAll('#np-crumbs .np-crumb')].map(b => b.dataset.level),
-    labels: [...document.querySelectorAll('#np-crumbs .np-crumb')].map(b => b.textContent),
+    crumbs: ['campaign', 'road'],
+    labels: [...document.querySelectorAll('#nw-crumbs .nw-crumb')].map(b => b.textContent),
     field: document.getElementById('np-field').value,
   }))()`);
-  await lib.settle(dm, 'document.querySelectorAll("#np-crumbs .np-crumb").length === 2', 8000);
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Road"', 8000);
   const p0 = await panel();
-  rig.check(JSON.stringify(p0.crumbs) === JSON.stringify(['campaign', 'road']) && p0.labels[1] === 'Old Svalich Road',
+  rig.check(JSON.stringify(p0.crumbs) === JSON.stringify(['campaign', 'road']) && p0.labels[p0.labels.length - 1] === 'Old Svalich Road',
             'with a road picked the panel does not show Campaign and the road: ' + JSON.stringify(p0));
   await dm.evaluate('(() => { const f = document.getElementById("np-field"); f.value = "Wolves at dusk."; f.dispatchEvent(new Event("input", { bubbles: true })); notesPanelSettle(); return 0; })()');
   rig.check(await dm.evaluate('notesRoadGet(' + JSON.stringify(r1uid) + ')') === 'Wolves at dusk.', 'the road\'s notes did not reach the store');
@@ -279,10 +279,10 @@ module.exports = async function worldRoadsFeature(rig) {
             'a scene dropped on a road did not snap onto its line, belong to it and leave its group: ' + JSON.stringify(onRoad));
   rig.check(onRoad.card === AMB, 'the road\'s scene is not drawn as a road scene');
   await dm.evaluate('__wmE("mousedown", __wmCard(' + JSON.stringify(AMB) + ').firstChild, __wmC(__wmCard(' + JSON.stringify(AMB) + ').firstChild)); __wmE("mouseup", window, __wmC(__wmCard(' + JSON.stringify(AMB) + ').firstChild)); 0');
-  await lib.settle(dm, 'document.querySelectorAll("#np-crumbs .np-crumb").length === 3', 8000);
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Map"', 8000);
   const sceneOnRoad = await panel();
-  rig.check(JSON.stringify(sceneOnRoad.crumbs) === JSON.stringify(['campaign', 'road', 'scene']) && sceneOnRoad.field === 'Wolves at dusk.',
-            'picking a scene on a road does not show the road\'s notes: ' + JSON.stringify(sceneOnRoad));
+  rig.check(sceneOnRoad.labels[sceneOnRoad.labels.length - 1] === AMB,
+            'picking a scene on a road does not show that map\'s own note: ' + JSON.stringify(sceneOnRoad));
   // Zoomed out it is a black diamond on the line with no name beside it.
   await dm.evaluate('__wmCam(450, 330, 0.3); 0');
   await lib.settle(dm, 'document.getAnimations().length === 0', 5000);

@@ -11,7 +11,7 @@ const SP_NOTE = 4;               // the rank of a hit inside a note, below every
 // The groups in the order a tie falls: maps first. A road sits with the groups; the campaign's own notes too.
 const SP_GROUPS = [
   { id: 'map', label: 'Maps' }, { id: 'room', label: 'Rooms' }, { id: 'place', label: 'Groups and roads' },
-  { id: 'monster', label: 'Monsters and NPCs' }, { id: 'fight', label: 'Fights' }, { id: 'music', label: 'Music' },
+  { id: 'monster', label: 'Monsters and NPCs' }, { id: 'faction', label: 'Factions' }, { id: 'lore', label: 'Lore' }, { id: 'fight', label: 'Fights' }, { id: 'music', label: 'Music' },
   { id: 'picture', label: 'Pictures' },
 ];
 
@@ -106,6 +106,16 @@ function spRecentRows(list, entries) {
   return (Array.isArray(list) ? list : []).map(k => by.get(k)).filter(Boolean).slice(0, SP_RECENT);
 }
 
+// The rows factions and lore add to the index: each entry by name, its note as the text a hit can land in, and
+// the entry it sits under (or its section) as where.
+function spNoteRows(entries, sectionName) {
+  const byId = new Map(entries.map(e => [e.id, e]));
+  return entries.map(e => ({
+    key: 'entry:' + e.id, kind: e.kind, id: e.id, name: e.name,
+    where: byId.has(e.parent) ? byId.get(e.parent).name : sectionName(e.kind), text: e.note || '',
+  }));
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { SP_PER_GROUP, SP_RECENT, SP_NOTE, SP_GROUPS, spGroupOf, wfRank, wfHit, spRank, spSearch, spFlat, spSnippet, spRecentAdd, spRecentRows };
+  module.exports = { SP_PER_GROUP, SP_RECENT, SP_NOTE, SP_GROUPS, spGroupOf, wfRank, wfHit, spRank, spSearch, spFlat, spSnippet, spRecentAdd, spRecentRows, spNoteRows };
 }

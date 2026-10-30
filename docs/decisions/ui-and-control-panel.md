@@ -204,7 +204,7 @@ a time, the dock's width, no chevron, no floating icon. The left side holds the 
 about the notes themselves changed: the same storage, so the previous release still shows them in its
 panel. `evermist.notesPanelOpen` and `evermist.notesWidth` are no longer read or written.
 
-### A room pick switches an open dock to Notes and never opens a shut one · `SETTLED` (2026-10-16)
+### A room pick switches an open dock to Notes and never opens a shut one · `REVERTED` (2026-10-30, Notes window)
 With another pane open, a new room pick, or a switch to another room, opens Notes. With the dock shut it
 stays shut and the Notes tab wears the open tint; a click on it opens Notes. A deselect does nothing.
 Rejected: returning to the earlier pane on deselect, which closed scene or campaign notes read from the
@@ -218,6 +218,42 @@ be the easiest thing in the app to understand.
 ### The rail's dot marks a window open outside the rail · `SETTLED` (2026-10-16)
 The fight table and the Bestiary wear it while open, and neither wears the tab's tint. No pane tab
 wears a dot.
+
+## The Notes window (2026-10-30)
+
+Notes left the dock for a free window with the whole campaign as a tree beside the note.
+
+### Notes is a window with a tree, and a room pick never lights the rail · `SETTLED` (2026-10-30)
+Supersedes the 2026-10-16 entries on Notes as a dock tab and on a room pick. A pick with the window
+shut first lit Notes on the rail with the open tint; that read as open with nothing on screen, so it was
+dropped. Notes behaves as the Bestiary and the fight table: a dot while open, no mark otherwise.
+Opening the window on a room pick stays an option to revisit after watching testers. The right-click
+menu opens at the pointer; the Campaign row's menu offers Expand all and Collapse all. The campaign
+title is not renamable, since the campaign has no name.
+
+### Monsters in the tree are the entries with a DM note or made with "+ New" · `SETTLED` (2026-10-30)
+A new `listed` field on the Bestiary entry marks the second kind; older releases ignore it. Search and
+the Stat block button reach the rest. Rejected: every entry folded in, because a book import puts
+hundreds in; only entries made from the window. A monster's note is its DM `notes`, one field shared with
+the Bestiary page, last edit wins, with the book's `lore` folded below read-only. Rejected: editable lore,
+because a re-import would overwrite the edits. Roads get their own Roads section, shown once one exists.
+
+### Every tree Delete asks, and a room of a map not held cannot be deleted · `SETTLED` (2026-10-30)
+Delete works on every kind and always asks with `confirmDialog`, maps, groups and roads included: off the
+Campaign map Ctrl+Z reaches the map's undo, not the world's. Map, group and road deletes run the Campaign
+map's own delete and keep its world undo. A monster's delete clears the DM note only; a faction or lore
+delete removes its children and says how many. On a room of a map not held (not on screen, not in a
+two-map column) Delete is greyed and its menu row reads "Open the map to delete", because a disabled
+button shows no tooltip and the room's undo exists only while its map is open.
+
+### A note goes through whoever holds the map, and search covers the new kinds · `SETTLED` (2026-10-30)
+A column's autosave would overwrite a store write, so a note goes to the screen, the column's inbox, or
+`sceneStore` by room id; both two-map columns count as open. Search indexes factions, lore and a monster's
+DM note, so the window needs no search of its own. Export map carries no factions or lore; a full backup
+does. Accepted: a map picked on the Campaign shows the map's own note, and a map on a road no longer shows
+the road's note (the road itself does).
+
+---
 
 ## The windows (2026-10-03)
 

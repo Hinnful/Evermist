@@ -1,0 +1,90 @@
+/* notesWindow.css — the Notes window: a free window over the map with the campaign tree beside the note, in the dock's grey. */
+  body.player-mode #notes-window, body.pane-mode #notes-window { display: none !important; }
+  .nw {
+    position: fixed; left: 90px; top: 40px; width: 560px; height: 400px; min-width: 300px; min-height: 220px;
+    zoom: var(--ui-zoom, 1.2); z-index: 120; resize: both; overflow: hidden;
+    display: flex; flex-direction: column;
+    background: var(--g-bg); border: 1px solid var(--g-line); border-radius: 10px; box-shadow: var(--win-shadow);
+    color: var(--g-text); font: 400 13px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; user-select: none;
+  }
+  .nw[hidden] { display: none; }
+  .nw input, .nw textarea { user-select: text; }
+  .nw-head { height: 38px; flex: none; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--g-line); cursor: move; }
+  .nw-ib {
+    width: 24px; height: 24px; flex: none; padding: 0; display: flex; align-items: center; justify-content: center;
+    border: 0; background: transparent; color: #7f858e; border-radius: 6px; cursor: pointer;
+  }
+  .nw-ib:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: #d5d8dd; }
+  .nw-ib:disabled { opacity: 0.3; cursor: default; }
+  .nw-ib.on { color: var(--b-icon); }
+  .nw-ib svg { width: 15px; height: 15px; }
+
+  .nw-crumbs { flex: 1; min-width: 0; display: flex; align-items: center; margin-left: 6px; overflow: hidden; white-space: nowrap; font: 500 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
+  .nw-crumb { flex: 0 0 auto; padding: 4px; border-radius: 5px; overflow: hidden; text-overflow: ellipsis; }
+  .nw-crumb[data-go], .nw-crumb.more { cursor: pointer; }
+  .nw-crumb[data-go]:hover, .nw-crumb.more:hover { color: var(--g-text); background: rgba(255, 255, 255, 0.06); }
+  .nw-crumb.last { flex: 0 1 auto; min-width: 40px; font-weight: 600; color: var(--g-text); }
+  .nw-sep { flex: none; padding: 0 1px; color: #5b5f66; }
+
+  .nw-body { display: flex; flex: 1; min-height: 0; }
+  .nw-tree { position: relative; width: 200px; flex: none; border-right: 1px solid var(--g-line); display: flex; flex-direction: column; min-height: 0; }
+  .nw-tree.hide { display: none; }
+  .nw-tedge { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 2; }
+  .nw-tedge:hover, .nw-tedge.drag { background: var(--b-tint); }
+  .nw-tl { flex: 1; overflow: auto; padding: 6px 4px; outline: none; }
+  .nw-row { display: flex; align-items: center; height: 24px; border-radius: 6px; cursor: pointer; color: #c3c8cf; padding-right: 4px; white-space: nowrap; font-size: 12px; }
+  .nw-row:hover, .nw-row.cur { background: var(--g-hover); }
+  .nw-row.sel { background: var(--plate-sel-bg); color: var(--b-icon); }
+  .nw-row.sel .nw-ti { color: var(--b-icon); }
+  .nw-row.sec { margin-top: 10px; cursor: default; font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .nw-row.sec:hover { background: none; }
+  .nw-tw { width: 18px; height: 18px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--g-dim); border-radius: 4px; }
+  .nw-tw[data-tog]:hover { color: var(--g-text); background: var(--g-pick); }
+  .nw-tw.shut svg, .nw-lore:not([open]) .nw-lore-chev svg { transform: rotate(-90deg); }
+  .nw-menu { position: fixed; min-width: 150px; }
+  .nw-menu .sm-mi::before { display: none; }
+  .nw-menu .sm-mi:disabled { opacity: .35; pointer-events: none; }
+  .nw-menu .sm-mi.why { opacity: 1; flex-direction: column; align-items: flex-start; gap: 1px; padding-top: 4px; padding-bottom: 4px; color: #6b7078; }
+  .nw-why { font-size: 11px; color: var(--g-dim); }
+  .nw-ti { width: 15px; flex: none; color: var(--g-dim); display: flex; }
+  .nw-ti svg { width: 12px; height: 12px; }
+  .nw-tn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: 5px; }
+  .nw-row.sec .nw-tn { margin-left: 0; }
+  .nw-tn input { width: 100%; font: inherit; color: var(--g-text); background: var(--g-field); border: 0; border-radius: 4px; padding: 0 4px; outline: 1px solid var(--b-solid); }
+  .nw-ta { visibility: hidden; flex: none; width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--g-dim); }
+  .nw-row:hover .nw-ta { visibility: visible; }
+  .nw-ta:hover { background: var(--g-pick); color: var(--g-text); }
+  .nw-row.over-in { background: var(--b-tint); }
+  .nw-row.over-before { box-shadow: inset 0 2px 0 var(--b-solid); }
+  .nw-row.over-after { box-shadow: inset 0 -2px 0 var(--b-solid); }
+  .nw-row.off { opacity: 0.4; }
+  .nw-newb { flex: none; margin: 6px; height: 28px; border: 1px dashed var(--g-line); border-radius: 6px; background: none; color: var(--g-dim); cursor: pointer; font: inherit; font-size: 12px; }
+  .nw-newb:hover { color: var(--g-text); border-color: var(--g-pick); }
+
+  .nw-note { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding: 12px 16px 12px; }
+  .nw-meta { min-height: 18px; margin-bottom: 2px; }
+  .nw-kind { font-size: 11px; color: var(--g-dim); background: var(--g-field); border-radius: 4px; padding: 1px 6px; }
+  .nw-title {
+    width: 100%; margin: 2px 0 6px -4px; padding: 1px 4px; border: 0; border-radius: 4px; background: transparent; outline: none;
+    color: var(--g-text); font: 600 16px/1.4 system-ui, -apple-system, sans-serif; text-overflow: ellipsis;
+  }
+  .nw-title:hover:not(:read-only) { background: var(--g-hover); }
+  .nw-title:focus:not(:read-only) { background: var(--g-field); box-shadow: 0 0 0 1px var(--b-solid); }
+  .nw-title[hidden], #np-field[hidden], .nw-monster[hidden] { display: none; }
+  /* The room's own name row and notes keep roomCard.css; here they sit flush in the window's padding. */
+  .nw-note .dk-room { flex: none; overflow: visible; }
+  .nw-note .dk-room[hidden] { display: none; }
+  .nw-note .dk-rhead { padding: 0; }
+  .nw-note .rp-desc { padding: 4px 0 12px; margin-top: 4px; }
+  #np-field { flex: 1 1 auto; min-height: 90px; overflow-y: auto; padding: 4px 0 12px; margin: 0; }
+  .nw-monster { flex: none; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .nw-lore { width: 100%; color: #b4b9c1; }
+  .nw-lore summary { list-style: none; display: flex; align-items: center; gap: 4px; margin-left: -4px; cursor: pointer; font: 600 12px/1.6 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .nw-lore summary::-webkit-details-marker { display: none; }
+  .nw-lore-chev { display: flex; color: var(--g-dim); }
+  .nw-lore-body { white-space: pre-wrap; user-select: text; padding: 4px 0 0; font-size: 12.5px; line-height: 1.55; }
+  .nw-tl::-webkit-scrollbar, .nw-note::-webkit-scrollbar, #np-field::-webkit-scrollbar { width: 8px; }
+  .nw-tl::-webkit-scrollbar-thumb, .nw-note::-webkit-scrollbar-thumb, #np-field::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 4px; }
+  .nw-tl::-webkit-scrollbar-thumb:hover, .nw-note::-webkit-scrollbar-thumb:hover, #np-field::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.26); }
+  .nw-tl::-webkit-scrollbar-track, .nw-note::-webkit-scrollbar-track, #np-field::-webkit-scrollbar-track { background: transparent; }
+  .nw-tl::-webkit-scrollbar-button, .nw-note::-webkit-scrollbar-button, #np-field::-webkit-scrollbar-button { display: none; }

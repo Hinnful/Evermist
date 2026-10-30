@@ -222,7 +222,7 @@ function worldMapRoadFinish() {
 function worldMapRoadDelete(uid) {
   if (!worldRoadByUid(uid)) return;
   worldUndoPush();
-  clearShapeSelection();
+  if (worldMapOpen) clearShapeSelection();
   worldMapSel = { sceneId: null, place: '', road: '' };
   worldRoadDelete(uid);
   worldMapRefresh();

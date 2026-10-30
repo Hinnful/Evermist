@@ -1,496 +1,233 @@
 'use strict';
 
-// notes-panel.js — THE NOTES TAB OF THE DOCK: BREADCRUMBS AND NOTES AT EVERY LEVEL.
+// notes-panel.js — WHAT THE NOTES WINDOW SHOWS AND SAVES, AT EVERY LEVEL AND ON EVERY ROUTE.
 //
-// THE GOAL OF THIS FEATURE: the DM keeps notes for the campaign, for a scene and for a room in one
-// pane of the dock, and a scene with no rooms has somewhere to put them. None of it reaches the TV.
+// THE GOAL OF THIS FEATURE: the DM keeps notes for the campaign, a group, a road, a map and a room in one
+// window, a map with no rooms has somewhere to put them, and none of it reaches the TV. A note reaches the map
+// that holds it, so no autosave writes the old text back.
 //
-// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
-// letter, wherever in the file that state is cheapest to reach - which is not letter order.
+// THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its letter.
 //
-//   A. The pane shows Campaign › Scene › Room, and the Room crumb exists only while a room is
-//      selected. The left side of the window is empty and the minimap stays in its corner.
-//   I. Notes is a rail tab like any other: a click opens it, a second click shuts the dock, and the
-//      toolbar stays centred on the window; the notes area carries the app's own scrollbar.
-//   J. The room-pick rule: a new room, or a switch to another, opens Notes when the dock is open on
-//      another pane; with the dock shut it stays shut and the Notes tab wears the open tint; a click
-//      on it opens Notes, a click on another tab clears it, and a deselect does nothing.
-//   B. A click on empty map selects the scene and shows its notes.
-//   C. A click on a crumb shows that level's notes and nothing else changes: the room stays
-//      selected with its crumb, and the TV does not change. The levels never merge.
-//   D. The room's notes are in the panel and it holds no pictures; module text still fills the room's notes
-//      and still asks before it replaces them.
-//   E. The Player shows nothing of it.
-//   F. In two-map mode the panel follows the selected column. Opening another scene brings that
-//      scene's notes, and the scene's notes scroll when they are long.
-//   G. Grid calibration puts the pane away, disables the Notes tab and gives the pane back.
-//   H. Campaign, scene and room notes survive a restart, the saved scene keeps every room's
-//      `vertices` and `desc` with `notes` a top-level string, and a dock left shut stays shut. This is the shape the previous release reads.
-//
-// ⚠ H RESTARTS THE APP, so it runs last: rig.restart() hands back a new DM session and the `dm`
-// taken at the top is a dead socket after it.
+//   A. A room's note shows its name as the title with the module dropdown on it, and Delete; a room pick
+//      shows its note while the window is open.
+//   B. A room pick with the window shut leaves it shut and Notes on the rail as it was, as the Bestiary and the
+//      fight table; a click on Notes opens the window on that room.
+//   C. Picking a group, a road or a map on the Campaign shows its note.
+//   D. Campaign, group, road, map and room notes show and save, a map's note never overwritten by an
+//      autosave that runs after it.
+//   E. A text field keeps its own undo: Ctrl+Z in it is not the map's.
+//   F. Nothing in the window reaches the TV, and the Player and a column carry no window.
+//   G. Grid calibration puts the window away and brings it back after.
+//   H. In two-map mode the window follows the selected column and an edit goes back to the column it came
+//      from; a room of the other column's map renamed from the tree survives that column's next autosave.
+//   I. Search's "Show notes" and the Campaign's right-click "Show notes" open the window on that level.
 
 const lib = require('../../lib');
 
 const MAP_W = 2400, MAP_H = 1500;
-const ROOM = { x1: 300, y1: 250, x2: 620, y2: 500 };
 const INSIDE = { x: 450, y: 380 };
 const EMPTY = { x: 1800, y: 1100 };
 const TALL = { w: 1200, h: 1500 };
 
 module.exports = async function notesPanelFeature(rig) {
-  let dm = rig.dm;
-
+  const dm = rig.dm;
+  const ev = (expr, ms) => dm.evaluate(expr, ms);
   await lib.openMap(rig, { w: MAP_W, h: MAP_H });
   await lib.settle(dm, 'fogCoverT === 0', 30000);
-
-  await dm.evaluate('polygons = [{ id: 1, vertices: [' +
-    '{ x: ' + ROOM.x1 + ', y: ' + ROOM.y1 + ' }, { x: ' + ROOM.x2 + ', y: ' + ROOM.y1 + ' },' +
-    '{ x: ' + ROOM.x2 + ', y: ' + ROOM.y2 + ' }, { x: ' + ROOM.x1 + ', y: ' + ROOM.y2 + ' }],' +
-    ' mode: "shroud", cornerRadius: 0, name: "The Vestry", desc: "Two acolytes." }];' +
-    ' nextPolygonId = 2; setShape("select"); selectedPolygonId = null;' +
-    ' rebuildFogFromPolygons(); refreshRoomPanel(); scheduleRender(); 0');
-
-  const sceneName = await dm.evaluate('currentScene.name');
-  const sceneId = await dm.evaluate('currentScene.id');
-
-  const panel = () => dm.evaluate(`(() => {
-    const p = document.getElementById('dock-pane-notes');
-    const on = p.querySelector('.np-crumb.on');
-    const f = document.getElementById('np-field'), r = document.getElementById('rp-desc');
-    const shown = el => !!el && el.offsetParent !== null;
-    return {
-      shown: shown(p) && p.getBoundingClientRect().width > 0,
-      tab: document.getElementById('dock-tab-notes').className,
-      tabOff: document.getElementById('dock-tab-notes').disabled,
-      labels: [...p.querySelectorAll('.np-crumb')].map(b => b.textContent),
-      levels: [...p.querySelectorAll('.np-crumb')].map(b => b.dataset.level),
-      on: on ? on.dataset.level : null,
-      field: shown(f) ? f.value : null,
-      roomField: shown(r) ? r.value : null,
-      collapsed: !shown(p),
-    };
-  })()`);
-  const openNotes = async () => {
-    if (await dm.evaluate('dockActivePane()') !== 'notes') await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
-    await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
-  };
-  const crumb = lv => dm.evaluate('document.querySelector("#np-crumbs .np-crumb[data-level=" + ' + JSON.stringify(lv) + ' + "]").click(); 0');
-  // ⚠ THE COMMIT IS ON THE FIELD'S OWN blur LISTENER, and el.blur() does not reliably fire one in a
-  // window the OS has not focused, so the events go at the listeners directly.
-  const typeInto = (id, value) => dm.evaluate(`(() => {
+  await ev('polygons = [{ id: 1, vertices: [{ x: 300, y: 250 }, { x: 620, y: 250 }, { x: 620, y: 500 }, { x: 300, y: 500 }], mode: "shroud", cornerRadius: 0, name: "The Vestry", desc: "Two acolytes." }];' +
+    ' nextPolygonId = 2; setShape("select"); selectedPolygonId = null; rebuildFogFromPolygons(); refreshRoomPanel(); scheduleRender(); 0');
+  const sceneId = await ev('currentScene.id'), sceneName = await ev('currentScene.name');
+  const typeInto = (id, value) => ev(`(() => {
     const el = document.getElementById(${JSON.stringify(id)});
-    if (!el) return { err: 'no field ' + ${JSON.stringify(id)} };
     el.dispatchEvent(new FocusEvent('focus'));
     el.value = ${JSON.stringify(value)};
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new FocusEvent('blur'));
-    return { ok: true };
+    return 0; })()`);
+  const win = () => ev(`(() => {
+    const w = document.getElementById('notes-window'), shown = el => !!el && el.offsetParent !== null;
+    const f = document.getElementById('np-field'), r = document.getElementById('rp-desc');
+    return { open: nwIsOpen(), visible: !w.hidden && w.getBoundingClientRect().width > 0, kind: document.getElementById('nw-kind').textContent,
+      crumbs: [...document.querySelectorAll('#nw-crumbs .nw-crumb')].map(c => c.textContent), field: shown(f) ? f.value : null,
+      roomName: shown(document.getElementById('rp-name')) ? document.getElementById('rp-name').value : null, roomField: shown(r) ? r.value : null,
+      title: document.getElementById('nw-title').hidden ? null : document.getElementById('nw-title').value,
+      tab: document.getElementById('dock-tab-notes').className, tabOff: document.getElementById('dock-tab-notes').disabled };
   })()`);
-  const ledger = () => dm.evaluate(`({
-    scene: currentScene ? currentScene.notes : null,
-    campaign: localStorage.getItem('evermist.campaignNotes'),
-    room: polygons.length ? polygons[0].desc : null,
-    selected: selectedPolygonId,
-  })`);
+  const openWin = async () => { if (!(await ev('nwIsOpen()'))) await ev('document.getElementById("dock-tab-notes").click(); 0'); await lib.settle(dm, 'nwIsOpen()', 6000); };
 
-  // A Player on the TV, and a record of every message it is sent from here on.
   const player = await rig.player();
   await player.waitFor('!!mapOffscreen', 45000, 'the Player to receive the map');
   await player.evaluate('globalThis.__npMsgs = []; window.addEventListener("message", e => __npMsgs.push(e.data && e.data.type)); 0');
-  // Text and element count, not the markup: the cover's classes change on their own timers.
   const tvDom = () => player.evaluate('document.body.querySelectorAll("*").length + "|" + document.body.textContent');
-  const tvDomBefore = await tvDom();
+  const tvBefore = await tvDom();
 
-  // ── A. The crumbs ─────────────────────────────────────────────────────────
+  // ── A. A room's note ──────────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
-  await openNotes();
-  const bare = await panel();
-  rig.check(bare.shown, 'the Notes pane is not on screen after a click on its tab with a scene open');
-  rig.check(bare.labels.length === 2 && bare.levels.join() === 'campaign,scene' && bare.labels[1] === sceneName,
-            'with no room selected the crumbs are not Campaign › Scene: ' + JSON.stringify(bare));
-  // RED BY DESIGN: written against the fix, never re-proved
-  const both = await dm.evaluate('["panel-room", "np-field"].map(id => getComputedStyle(document.getElementById(id)).display)');
-  rig.check(both[0] === 'none' && both[1] !== 'none',
-            'the scene level shows with the room level also on screen, so two notes are open at once: ' + JSON.stringify(both));
-  rig.check(bare.on === 'scene' && bare.field === '',
-            'with no room selected the scene level is not the one showing: ' + JSON.stringify(bare));
-
-  await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
-  const inRoom = await panel();
-  rig.check(inRoom.levels.join() === 'campaign,scene,room' && inRoom.labels[2] === 'The Vestry' && inRoom.on === 'room',
-            'selecting a room did not add its crumb and show its level: ' + JSON.stringify(inRoom));
-  // A crumb trail too long for the panel: the room's crumb reads in full, the ones before it give way,
-  // and each names itself on hover.
-  // RED ON: the shrink-first .np-crumb rules removed (notesPanel.css) — 2026-10-09
-  await dm.evaluate('polygons[0].name = "The Bell Vestry"; refreshRoomPanel(); 0');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb:last-child").textContent === "The Bell Vestry"', 6000);
-  const trail = await dm.evaluate(`(() => {
-    const box = document.getElementById('np-crumbs'), cs = [...box.querySelectorAll('.np-crumb')];
-    const natural = [...box.children].reduce((w, c) => w + (c.classList.contains('np-crumb') ? c.scrollWidth : c.offsetWidth), 0);
-    // In the crumb's own px, as min-width is: the on-screen rect carries the interface zoom.
-    const floor = parseFloat(getComputedStyle(cs[0]).minWidth) + 1;
-    return { tight: natural > box.clientWidth, crumbs: cs.map(b => ({ text: b.textContent, title: b.title, cut: b.scrollWidth > b.clientWidth + 1, atFloor: b.clientWidth <= floor })) };
-  })()`);
-  rig.note('the crumb trail: ' + JSON.stringify(trail));
-  rig.check(trail.tight, 'the crumb trail fits the panel, so it proves nothing about which crumb gives way: ' + JSON.stringify(trail));
-  // ⚠ A WIDER FONT (macOS) can leave too little room even with the earlier crumbs at their floor: the room's crumb may
-  // then be cut, but only once every crumb before it has given all it can.
-  rig.check((!trail.crumbs[trail.crumbs.length - 1].cut || trail.crumbs.slice(0, -1).every(c => c.atFloor)) && trail.crumbs.every(c => c.title === c.text),
-            "the current crumb is cut short while earlier ones are not, or a crumb has no full name on hover: " + JSON.stringify(trail));
-  await dm.evaluate('polygons[0].name = "The Vestry"; refreshRoomPanel(); 0');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb:last-child").textContent === "The Vestry"', 6000);
-  const onlyRoom = await dm.evaluate('["panel-room", "np-field"].map(id => getComputedStyle(document.getElementById(id)).display)');
-  rig.check(onlyRoom[0] !== 'none' && onlyRoom[1] === 'none', 'the room level shows with the scene level also on screen: ' + JSON.stringify(onlyRoom));
-  rig.check(inRoom.roomField === 'Two acolytes.' && inRoom.field === null,
-            "the room's notes are not what the panel shows for a selected room: " + JSON.stringify(inRoom));
-
-  // The left side of the window is empty: the minimap sits in the bottom-left corner on its own.
-  const geo = await dm.evaluate(`(() => {
-    const m = document.getElementById('minimap-panel').getBoundingClientRect();
-    return { miniLeft: m.left, miniBottom: m.bottom, h: innerHeight, np: !!document.getElementById('notes-panel') };
-  })()`);
-  rig.check(!geo.np && geo.miniLeft > 0 && geo.miniLeft < 40 && geo.miniBottom > geo.h - 40,
-            'the left panel is still in the page, or the minimap has left the corner: ' + JSON.stringify(geo));
-
-  // ── I. Tab, scrollbar and toolbar ─────────────────────────────────────────
-  // RED BY DESIGN: written against the feature, never re-proved
-  const bar = await dm.evaluate('getComputedStyle(document.getElementById("np-body"), "::-webkit-scrollbar").width');
-  rig.check(bar === '8px', 'the notes area has no visible scrollbar of the app\'s own: ' + bar);
-  const centred = () => dm.evaluate('(() => { const r = document.getElementById("toolbar-bottom").getBoundingClientRect();' +
-    ' return Math.abs((r.left + r.right) / 2 - innerWidth / 2); })()');
-  rig.check(await centred() < 2, 'the toolbar is not centred on the window with Notes open: off by ' + await centred());
-  rig.check((await panel()).tab.includes('active'),
-            'the Notes tab does not wear the open tint while its pane is open: ' + JSON.stringify(await panel()));
-  await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === null', 6000);
-  rig.check((await panel()).collapsed && !(await panel()).tab.includes('active') && await centred() < 2 &&
-            await dm.evaluate('document.getElementById("dock-rail").getBoundingClientRect().width') > 0,
-            'a second click on Notes did not shut the dock and leave the rail, or it moved the toolbar: ' + JSON.stringify(await panel()));
-  await openNotes();
-
-  // ── B. An empty-map click selects the scene ───────────────────────────────
-  // RED BY DESIGN: written against the feature, never re-proved
-  await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === null', 6000);
-  await lib.settle(dm, '!document.getElementById("np-field").hidden', 6000);
-  const empty = await panel();
-  rig.check(empty.levels.join() === 'campaign,scene' && empty.on === 'scene' && empty.field !== null,
-            'a click on empty map did not leave the scene level showing: ' + JSON.stringify(empty));
-  await typeInto('np-field', 'The crypt floods at midnight.');
-  await lib.settle(dm, 'currentScene.notes === "The crypt floods at midnight."', 6000);
-  rig.check((await ledger()).scene === 'The crypt floods at midnight.',
-            'scene notes typed into the panel never reached the scene: ' + JSON.stringify(await ledger()));
-
-  // The scene notes scroll when they are long, with the app's own scrollbar.
-  // RED BY DESIGN: written against the fix, never re-proved
-  await typeInto('np-field', Array.from({ length: 120 }, (_, i) => 'Line ' + i).join('\n'));
-  const scroll = await dm.evaluate(`(() => {
-    const f = document.getElementById('np-field');
-    f.scrollTop = 0; const top = f.scrollTop; f.scrollTop = 300;
-    return { tall: f.scrollHeight > f.clientHeight + 100, moved: f.scrollTop > top,
-             overflow: getComputedStyle(f).overflowY, bar: getComputedStyle(f, '::-webkit-scrollbar').width };
-  })()`);
-  rig.check(scroll.tall && scroll.moved && scroll.overflow === 'auto' && scroll.bar === '8px',
-            'long scene notes do not scroll, or carry no scrollbar of the app\'s own: ' + JSON.stringify(scroll));
-  await typeInto('np-field', 'The crypt floods at midnight.');
-  await lib.settle(dm, 'currentScene.notes === "The crypt floods at midnight."', 6000);
-
-  // Escape leaves the notes field and keeps what was typed.
-  // RED ON: Escape reverting every field to dataset.orig (_rpWireField, roomCard.js) — 2026-10-09
-  await dm.evaluate(`(() => { const el = document.getElementById('np-field');
-    el.dispatchEvent(new FocusEvent('focus')); el.value = 'The crypt floods at dawn.';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }));
-    el.dispatchEvent(new FocusEvent('blur')); return 0; })()`);
-  await lib.settle(dm, 'currentScene.notes === "The crypt floods at dawn."', 6000);
-  rig.check((await ledger()).scene === 'The crypt floods at dawn.' && (await panel()).field === 'The crypt floods at dawn.',
-            'Escape in the notes field threw away what was typed: ' + JSON.stringify(await ledger()));
-  await typeInto('np-field', 'The crypt floods at midnight.');
-  await lib.settle(dm, 'currentScene.notes === "The crypt floods at midnight."', 6000);
-
-  // ── C. A crumb picks a level and the TV does not change ───────────────────
-  // RED BY DESIGN: written against the feature, never re-proved
-  await player.evaluate('__npMsgs.length = 0; 0');
-  await crumb('campaign');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb.on").dataset.level === "campaign"', 6000);
-  const camp = await panel();
-  rig.check(camp.on === 'campaign' && camp.field === '',
-            'the Campaign crumb did not show the campaign level, empty on a first run: ' + JSON.stringify(camp));
-  await typeInto('np-field', 'The duke is a lich.');
-  await lib.settle(dm, 'localStorage.getItem("evermist.campaignNotes") === "The duke is a lich."', 6000);
-  rig.check((await ledger()).campaign === 'The duke is a lich.' && (await ledger()).scene === 'The crypt floods at midnight.',
-            'campaign notes did not land in their own store, or they overwrote the scene notes: ' + JSON.stringify(await ledger()));
-
-  await crumb('scene');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb.on").dataset.level === "scene"', 6000);
-  rig.check((await panel()).field === 'The crypt floods at midnight.',
-            'the Scene crumb did not bring the scene notes back: ' + JSON.stringify(await panel()));
-
-  // The levels are separate: a crumb picks one, and the room stays selected with its crumb.
-  await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
-  await crumb('scene');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb.on").dataset.level === "scene"', 6000);
-  const sceneBesideRoom = await panel();
-  rig.check(sceneBesideRoom.levels.join() === 'campaign,scene,room' && sceneBesideRoom.field === 'The crypt floods at midnight.' &&
-            sceneBesideRoom.roomField === null && await dm.evaluate('selectedPolygonId') === 1,
-            'the Scene crumb deselected the room, dropped its crumb, or merged the two levels: ' + JSON.stringify(sceneBesideRoom));
-  await crumb('room');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb.on").dataset.level === "room"', 6000);
-  const roomAgain = await panel();
-  rig.check(roomAgain.roomField === 'Two acolytes.' && roomAgain.field === null && await dm.evaluate('selectedPolygonId') === 1,
-            'the Room crumb did not bring the room notes back, alone: ' + JSON.stringify(roomAgain));
-  await crumb('campaign');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb.on").dataset.level === "campaign"', 6000);
-  const campBesideRoom = await panel();
-  rig.check(campBesideRoom.field === 'The duke is a lich.' && campBesideRoom.levels.length === 3 && await dm.evaluate('selectedPolygonId') === 1,
-            'the Campaign crumb deselected the room or dropped its crumb: ' + JSON.stringify(campBesideRoom));
-  // Picking a room again follows it, and an empty click leaves for the scene.
-  await dm.evaluate('selectedPolygonId = null; refreshRoomPanel(); __rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
-  rig.check((await panel()).on === 'room', 'picking a room while the campaign level showed did not move to the room');
-  await crumb('campaign');
-  await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === null', 6000);
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb.on").dataset.level === "scene"', 6000);
-  rig.check((await panel()).on === 'scene', 'an empty-map click left the campaign level showing');
-
-  await lib.hold(1500, 'long enough for a crumb click to have pushed something to the TV, then prove it did not');
-  const TV_CHANGES = ['fog-update', 'tv-picture', 'scene-transition', 'view-snap', 'fog-color'];
-  const tvMsgs = (await player.evaluate('__npMsgs')).filter(m => TV_CHANGES.includes(m));
-  rig.check(tvMsgs.length === 0, 'a crumb click, a room pick or a note changed what the TV shows: ' + JSON.stringify(tvMsgs));
-
-  // ── D. The room's notes live here, with no picture control; module text still asks ────
-  // RED BY DESIGN: written against the feature, never re-proved
-  await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
-  const home = await dm.evaluate(`(() => {
-    const p = document.getElementById('dock-pane-notes');
-    return { notes: p.contains(document.getElementById('rp-desc')),
-             pics: ['rp-pics', 'rp-pic-add', 'rp-pic-input'].filter(id => document.getElementById(id)),
-             tab: document.getElementById('dock-pane-scene').contains(document.getElementById('rp-desc')) };
-  })()`);
-  rig.check(home.notes && home.pics.length === 0 && !home.tab,
-            'the room notes are not in the Notes pane alone, or a picture control is still in the page: ' + JSON.stringify(home));
+  await openWin();
+  await ev('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === 1 && document.getElementById("nw-kind").textContent === "Room"', 6000);
+  const inRoom = await win();
+  rig.check(inRoom.roomName === 'The Vestry' && inRoom.roomField === 'Two acolytes.' && inRoom.field === null && inRoom.crumbs.join('>') === 'Campaign>' + sceneName + '>The Vestry',
+            'a room pick did not show its name, its note and its path in the open window: ' + JSON.stringify(inRoom));
+  rig.check(await ev('!!document.querySelector("#notes-window .rp-mt-dd") && document.getElementById("rp-delete").getBoundingClientRect().width > 0 && !document.getElementById("rp-delete").disabled'),
+            'the room does not carry its module dropdown on the name, or its Delete');
   await typeInto('rp-desc', 'Two acolytes and a font.');
   await lib.settle(dm, 'polygons[0].desc === "Two acolytes and a font."', 6000);
-
-  await dm.evaluate('applyModuleEntryToRoom({ title: "K1. The Gatehouse", body: "Two guards stand here." }); 0');
+  await ev('applyModuleEntryToRoom({ title: "K1. The Gatehouse", body: "Two guards stand here." }); 0');
   await lib.settle(dm, "document.getElementById('cd-anchor') && document.getElementById('cd-anchor').style.display === 'flex'", 6000);
-  const ask = await dm.evaluate(`({ title: document.getElementById('cd-title').textContent,
-    name: polygons[0].name, desc: polygons[0].desc })`);
-  rig.check(ask.title === 'Replace description?' && ask.desc === 'Two acolytes and a font.' && ask.name === 'K1. The Gatehouse',
-            'filling a room that has notes did not ask first, or it replaced them before the answer: ' + JSON.stringify(ask));
-  await dm.evaluate('document.getElementById("cd-cancel").click(); 0');
-  await lib.settle(dm, "document.getElementById('cd-anchor').style.display !== 'flex'", 6000);
-  rig.check(await dm.evaluate('polygons[0].desc') === 'Two acolytes and a font.',
-            'Keep mine still replaced the room notes');
-
-  await dm.evaluate('applyModuleEntryToRoom({ title: "K2. The Chapel", body: "A font of black water." }); 0');
-  await lib.settle(dm, "document.getElementById('cd-anchor').style.display === 'flex'", 6000);
-  await dm.evaluate('document.getElementById("cd-ok").click(); 0');
-  await lib.settle(dm, 'polygons[0].desc === "A font of black water."', 6000);
-  rig.check((await panel()).roomField === 'A font of black water.',
-            "the panel's room field did not show the module text that filled it: " + JSON.stringify(await panel()));
-  // A long entry shows whole: the field grows to the text it was filled with, as it does to typing.
-  // RED ON: _rpFitNotes() removed from _rpSyncEntryFields (roomCard.js) — 2026-10-09
-  await dm.evaluate('applyModuleEntryToRoom({ title: "K3. The Long Hall", body: Array.from({ length: 14 }, (_, i) => "Line " + i + " of a long room description.").join("\\n") }); 0');
-  await lib.settle(dm, "document.getElementById('cd-anchor').style.display === 'flex'", 6000);
-  await dm.evaluate('document.getElementById("cd-ok").click(); 0');
-  await lib.settle(dm, 'polygons[0].desc.startsWith("Line 0")', 6000);
-  const fit = await dm.evaluate('(el => ({ scroll: el.scrollHeight, client: el.clientHeight }))(document.getElementById("rp-desc"))');
-  rig.check(fit.scroll <= fit.client + 1, 'a long module entry is cut off in the room field until the DM types in it: ' + JSON.stringify(fit));
+  rig.check(await ev('document.getElementById("cd-title").textContent') === 'Replace description?' && await ev('polygons[0].name') === 'K1. The Gatehouse',
+            'module text over a room with notes did not ask first');
+  await ev('document.getElementById("cd-cancel").click(); 0');
+  await typeInto('rp-name', 'The Vestry');
   await typeInto('rp-desc', 'Two acolytes.');
-  await lib.settle(dm, 'polygons[0].desc === "Two acolytes."', 6000);
+  await ev('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === null && document.getElementById("nw-kind").textContent === "Map"', 6000);
+  rig.check((await win()).kind === 'Map' && (await win()).field === '', 'a click on empty map did not leave the map\'s note showing');
 
-  // ── E. The Player shows nothing of it ─────────────────────────────────────
-  // RED BY DESIGN: written against the feature, never re-proved
-  const tv = await player.evaluate(`({
-    shown: (() => { const p = document.getElementById('dock-pane-notes'); return !!p && p.getBoundingClientRect().width > 0; })(),
-    leaked: [...document.querySelectorAll('textarea')].some(t => /lich|floods|acolyte/i.test(t.value)),
-  })`);
-  rig.check(!tv.shown && !tv.leaked, 'the Player shows the notes panel, or holds what was typed into it: ' + JSON.stringify(tv));
-  rig.check(await tvDom() === tvDomBefore, 'the Player page gained or lost elements or text while the notes were edited');
+  // ── B. A pick with the window shut ────────────────────────────────────────
+  // RED ON: the pick lighting Notes with the open tint (dock.js) — 2026-10-30
+  await ev('document.getElementById("dock-tab-notes").click(); 0');
+  await lib.settle(dm, '!nwIsOpen()', 6000);
+  await ev('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
+  const shut = await win();
+  rig.check(!shut.open && !shut.visible && !shut.tab.includes('active') && !shut.tab.includes('win'), 'a room picked with the window shut opened it, or marked Notes on the rail: ' + JSON.stringify(shut));
+  await ev('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === null', 6000);
+  rig.check(!(await win()).tab.includes('active'), 'a deselect with the window shut marked Notes on the rail');
+  await ev('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
+  await ev('document.getElementById("dock-tab-notes").click(); 0');
+  await lib.settle(dm, 'nwIsOpen() && document.getElementById("nw-kind").textContent === "Room"', 6000);
+  const open = await win();
+  rig.check(open.roomName === 'The Vestry' && open.tab.includes('win') && !open.tab.includes('active'), 'a click on Notes did not open the window on the picked room with the dot alone: ' + JSON.stringify(open));
 
-  // ── G. Calibration puts the pane away ─────────────────────────────────────
+  // ── D. Every level shows and saves ────────────────────────────────────────
+  await ev('document.querySelector("#nw-crumbs .nw-crumb[data-go]").click(); 0');
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Campaign"', 6000);
+  await typeInto('np-field', 'The duke is a lich.');
+  await lib.settle(dm, 'localStorage.getItem("evermist.campaignNotes") === "The duke is a lich."', 6000);
+  await ev('document.querySelector(\'#nw-tl .nw-row[data-key="map:' + sceneId + '"]\').click(); 0');
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Map"', 6000);
+  // RED ON: _npCommitMap writing the stored record instead of the open scene (notesPanel.js) — 2026-10-30
+  await typeInto('np-field', 'The crypt floods at midnight.');
+  await lib.settle(dm, 'currentScene.notes === "The crypt floods at midnight."', 6000);
+  await ev('doAutoSave()', 60000);
+  const kept = await ev('sceneStore.loadScene(' + JSON.stringify(sceneId) + ').then(s => s.notes)', 30000);
+  rig.check(kept === 'The crypt floods at midnight.' && await ev('localStorage.getItem("evermist.campaignNotes")') === 'The duke is a lich.',
+            'a map\'s note, or the campaign\'s, was not kept by the next autosave: ' + JSON.stringify(kept));
+  await ev('(() => { const n = addGroup("Vallaki"); worldSceneSet(currentScene.id, { group: n }); sceneListChanged(); return 0; })()');
+  await ev('worldMapShow(); 0');
+  await lib.settle(dm, 'worldMapOpen', 6000);
+  await ev('worldMapSelect({ sceneId: null, place: "Vallaki" }); 0');
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Group"', 6000);
+  await typeInto('np-field', 'Walled town.');
+  await lib.settle(dm, 'notesPlaceGet("Vallaki") === "Walled town."', 6000);
+  // C. Picking a group, a map and a road on the Campaign shows its note.
+  // RED ON: _npFollow answering the campaign whatever the Campaign has picked (notesPanel.js) — 2026-10-30
+  rig.check((await win()).kind === 'Group' && (await win()).field === 'Walled town.' && (await win()).title === 'Vallaki', 'picking a group on the Campaign did not show its note: ' + JSON.stringify(await win()));
+  await ev('worldMapSelect({ sceneId: ' + JSON.stringify(sceneId) + ', place: "" }); 0');
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Map"', 6000);
+  rig.check((await win()).field === 'The crypt floods at midnight.', 'picking a map on the Campaign did not show its note: ' + JSON.stringify(await win()));
+  const roadUid = await ev('worldRoadCreate([{ x: 0, y: 0 }, { x: 300, y: 300 }], [null, null], [], [])');
+  await ev('worldMapSelect({ sceneId: null, place: "", road: ' + JSON.stringify(roadUid) + ' }); 0');
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Road"', 6000);
+  await typeInto('np-field', 'Ambush at the bridge.');
+  await lib.settle(dm, 'notesRoadGet(' + JSON.stringify(roadUid) + ') === "Ambush at the bridge."', 6000);
+  rig.check((await win()).kind === 'Road' && await ev('notesRoadGet(' + JSON.stringify(roadUid) + ')') === 'Ambush at the bridge.', 'a road\'s note did not show and save');
+  // I. The Campaign's right-click "Show notes" and search's open the window on that level.
+  // RED ON: _wmOpenNotes opening nothing (worldMapMenu.js) — 2026-10-30
+  await ev('nwHide(); worldMapSelect({ sceneId: null, place: "Vallaki" }); _wmOpenNotes(); 0');
+  await lib.settle(dm, 'nwIsOpen() && document.getElementById("nw-kind").textContent === "Group"', 6000);
+  rig.check((await win()).open && (await win()).kind === 'Group', 'Show notes in the Campaign\'s menu did not open the window on the group');
+  await ev('nwHide(); worldMapHide(); 0');
+  await lib.settle(dm, '!worldMapOpen', 8000);
   // RED BY DESIGN: written against the feature, never re-proved
-  await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
-  await lib.settle(dm, 'gridCalArmed === true', 8000);
-  await lib.settle(dm, 'dockActivePane() === null', 6000);
-  rig.check(await dm.evaluate('document.getElementById("dock-tab-notes").disabled') && await dm.evaluate('selectedPolygonId') === 1,
-            'Notes stayed over the map that calibration has to be dragged on, its tab stayed enabled, or calibration dropped the selection');
-  await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
-  await lib.settle(dm, 'gridCalArmed === false', 8000);
-  await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
-  rig.check((await panel()).shown && (await panel()).on === 'room' && !(await panel()).tabOff,
-            'the pane did not come back on the same room after calibration: ' + JSON.stringify(await panel()));
-  await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
+  await ev('searchPick({ entry: { key: "map:' + sceneId + '", kind: "map", id: "' + sceneId + '", name: ' + JSON.stringify(sceneName) + ' }, rank: SP_NOTE }); 0');
+  await lib.settle(dm, 'nwIsOpen() && document.getElementById("nw-kind").textContent === "Map"', 15000);
+  rig.check((await win()).open && (await win()).field === 'The crypt floods at midnight.', 'search\'s Show notes on a map did not open the window on its note: ' + JSON.stringify(await win()));
+  await ev('nwHide(); searchPick({ entry: { key: "campaign", kind: "campaign" }, rank: SP_NOTE }); 0');
+  await lib.settle(dm, 'nwIsOpen() && document.getElementById("nw-kind").textContent === "Campaign"', 6000);
+  rig.check((await win()).field === 'The duke is a lich.', 'search\'s Show notes on the campaign did not open its note');
+
+  // ── E. A field keeps its own undo ─────────────────────────────────────────
+  // RED BY DESIGN: written against the feature, never re-proved
+  const undo = await ev(`(() => { const f = document.getElementById('np-field'); let reached = false;
+    const spy = () => { reached = true; }; document.addEventListener('keydown', spy);
+    const e = new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true, cancelable: true });
+    f.dispatchEvent(e); document.removeEventListener('keydown', spy); return { reached, prevented: e.defaultPrevented }; })()`);
+  rig.check(!undo.reached && !undo.prevented, 'Ctrl+Z in a notes field reached the map\'s undo: ' + JSON.stringify(undo));
+
+  // ── F. The TV and the other windows ───────────────────────────────────────
+  await lib.hold(1200, 'long enough for a note to have pushed something to the TV, then prove it did not');
+  const tvMsgs = (await player.evaluate('__npMsgs')).filter(m => ['fog-update', 'tv-picture', 'scene-transition', 'view-snap', 'fog-color'].includes(m));
+  rig.check(tvMsgs.length === 0 && await tvDom() === tvBefore, 'a note, a pick or the window changed what the TV shows: ' + JSON.stringify(tvMsgs));
+  const tv = await player.evaluate('(() => { const w = document.getElementById("notes-window"); return !w || getComputedStyle(w).display === "none" || w.hidden; })()');
+  rig.check(tv, 'the Player carries the Notes window');
+
+  // ── G. Calibration ────────────────────────────────────────────────────────
+  // RED ON: dockHoldForCalibration not calling nwHoldForCalibration (dock.js) — 2026-10-30
+  await ev('selectedPolygonId = null; refreshRoomPanel(); 0');
+  await ev('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
+  await lib.settle(dm, 'selectedPolygonId === 1 && document.getElementById("nw-kind").textContent === "Room"', 6000);
+  await ev('document.getElementById("cp-grid-calibrate").click(); 0');
+  await lib.settle(dm, 'gridCalArmed === true && !nwIsOpen()', 8000);
+  rig.check(!(await ev('nwIsOpen()')) && await ev('document.getElementById("dock-tab-notes").disabled') && await ev('selectedPolygonId') === 1,
+            'calibration left the Notes window over the map, its rail button enabled, or dropped the selection');
+  await ev('document.getElementById("gridcal-done").click(); 0');
+  await lib.settle(dm, 'gridCalArmed === false && nwIsOpen()', 8000);
+  rig.check((await win()).open && (await win()).kind === 'Room' && !(await win()).tabOff, 'the window did not come back on the same room after calibration: ' + JSON.stringify(await win()));
+  await ev('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
   await lib.settle(dm, 'selectedPolygonId === null', 6000);
 
-  // ── F. Two maps: the panel follows the selected column ────────────────────
-  // RED BY DESIGN: written against the feature, never re-proved
-  // A room is showing when the scene changes, so the level has to fall to the new scene's notes.
-  await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
+  // ── H. Two maps ───────────────────────────────────────────────────────────
   const second = await rig.fixtures.tableMap(dm, rig.fixtureDir, TALL);
-  await dm.evaluate('createNewScene(' + await rig.fixtures.asFileExpr(dm, second) + ')', 180000);
+  await ev('createNewScene(' + await rig.fixtures.asFileExpr(dm, second) + ')', 180000);
   await dm.waitFor('currentScene && mapWidth === ' + TALL.w, 180000, 'the second map to load');
   await dm.waitFor('fogCoverT === 0', 30000, 'the scene cover to lift');
-  const otherId = await dm.evaluate('currentScene.id');
-  // RED BY DESIGN: written against the fix, never re-proved
-  await lib.settle(dm, 'document.getElementById("np-field").value === ""', 8000);
-  const other = await panel();
-  rig.check(other.labels[1] !== sceneName && other.on === 'scene' && other.field === '' && other.levels.length === 2,
-            "opening another scene left the first scene's notes, or its room, in the panel: " + JSON.stringify(other));
-  await dm.evaluate('switchScene(' + JSON.stringify(sceneId) + '); 0');
-  await dm.waitFor('currentScene && currentScene.id === ' + JSON.stringify(sceneId) + ' && fogCoverT === 0', 60000, 'the first scene');
-  await lib.settle(dm, 'document.getElementById("np-field").value === "The crypt floods at midnight."', 8000);
-  rig.check((await panel()).field === 'The crypt floods at midnight.' && (await panel()).labels[1] === sceneName,
-            'switching back to the first scene did not bring its notes back: ' + JSON.stringify(await panel()));
-
-  await dm.evaluate('document.getElementById("btn-two-maps").click(); 0');
+  const otherId = await ev('currentScene.id');
+  await ev('switchScene(' + JSON.stringify(sceneId) + '); 0');
+  await dm.waitFor('currentScene && currentScene.id === ' + JSON.stringify(sceneId) + ' && fogCoverT === 0', 60000, 'the first map');
+  await ev('document.getElementById("btn-two-maps").click(); 0');
   await dm.waitFor('panesActive && panes.A.ready && panes.B.ready', 180000, 'both columns to come up');
-  const paneA = await rig.pane('A');
-  const paneB = await rig.pane('B');
+  const paneA = await rig.pane('A'), paneB = await rig.pane('B');
   await paneA.waitFor('typeof currentScene !== "undefined" && currentScene && !!mapOffscreen', 60000, 'column A to hold a map');
-  await dm.evaluate('worldMapColumnFill(' + JSON.stringify(otherId) + '); 0');   // the double-click on the world map, which closes it
-  await dm.waitFor('panes.B.sceneId === ' + JSON.stringify(otherId), 60000, 'the second map to land in column B');
+  await ev('worldMapColumnFill(' + JSON.stringify(otherId) + '); 0');
+  await dm.waitFor('panes.B.sceneId === ' + JSON.stringify(otherId), 60000, 'the second map in column B');
   await paneB.waitFor('typeof currentScene !== "undefined" && currentScene && !!mapOffscreen', 60000, 'column B to hold a map');
-
-  const nameA = await paneA.evaluate('currentScene.name');
-  const nameB = await paneB.evaluate('currentScene.name');
-  await dm.evaluate('selectPane("A"); 0');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb:last-child").textContent === ' + JSON.stringify(nameA), 15000);
-  rig.check((await panel()).labels[1] === nameA && (await panel()).field === 'The crypt floods at midnight.',
-            "with column A selected the panel is not showing A's scene and its notes: " + JSON.stringify(await panel()));
+  rig.check(await paneA.evaluate('getComputedStyle(document.getElementById("notes-window")).display') === 'none', 'a column carries the Notes window');
+  await ev('selectPane("A"); document.getElementById("nw-tl").focus(); 0');
+  await ev('document.querySelector(\'#nw-tl .nw-row[data-key="map:' + sceneId + '"]\').click(); 0');
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Map" && document.getElementById("np-field").value === "The crypt floods at midnight."', 15000);
+  rig.check((await win()).title === sceneName && (await win()).field === 'The crypt floods at midnight.', 'with column A selected the window is not showing its map\'s note: ' + JSON.stringify(await win()));
   await typeInto('np-field', 'A: the floor is wet.');
   await lib.poll(async () => (await paneA.evaluate('currentScene.notes')) === 'A: the floor is wet.' ? { ok: 1 } : null, 8000);
-  rig.check(await paneA.evaluate('currentScene.notes') === 'A: the floor is wet.' && !(await paneB.evaluate('currentScene.notes')),
-            'scene notes typed with column A selected did not land in column A alone');
-
-  await dm.evaluate('selectPane("B"); 0');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb:last-child").textContent === ' + JSON.stringify(nameB), 15000);
-  rig.check((await panel()).labels[1] === nameB && (await panel()).field === '',
-            "with column B selected the panel is not showing B's scene, empty: " + JSON.stringify(await panel()));
+  rig.check(await paneA.evaluate('currentScene.notes') === 'A: the floor is wet.' && !(await paneB.evaluate('currentScene.notes')), 'a map note typed with column A selected did not land in column A alone');
+  await ev('selectPane("B"); 0');
+  const nameB = await paneB.evaluate('currentScene.name');
+  await lib.settle(dm, 'document.getElementById("nw-title").value === ' + JSON.stringify(nameB), 15000);
   await typeInto('np-field', 'B: dry as bone.');
   await lib.poll(async () => (await paneB.evaluate('currentScene.notes')) === 'B: dry as bone.' ? { ok: 1 } : null, 8000);
-  rig.check(await paneB.evaluate('currentScene.notes') === 'B: dry as bone.' && await paneA.evaluate('currentScene.notes') === 'A: the floor is wet.',
-            'scene notes typed with column B selected did not land in column B alone');
+  rig.check(await paneB.evaluate('currentScene.notes') === 'B: dry as bone.' && await paneA.evaluate('currentScene.notes') === 'A: the floor is wet.', 'a map note typed with column B selected did not land in column B alone: ' + JSON.stringify({ a: await paneA.evaluate('currentScene.notes'), b: await paneB.evaluate('currentScene.notes'), aim: await ev('_npAim'), colB: await ev('panes.B.sceneId'), other: otherId, sel: await ev('panesSelected'), win: await win() }));
 
-  // A room selected in column B: the Room crumb appears, and the Scene crumb leaves it selected there.
-  await paneB.evaluate('polygons.push({ id: 901, vertices: [{x:100,y:100},{x:420,y:100},{x:420,y:320},{x:100,y:320}],' +
-    ' mode: "shroud", cornerRadius: 0, name: "Cellar", desc: "Rats." }); nextPolygonId = 902; rebuildFogFromPolygons();' +
-    ' setShape("select"); selectedPolygonId = 901; drawCursor(lastScreenX, lastScreenY); 0');
-  await lib.settle(dm, 'document.querySelectorAll("#np-crumbs .np-crumb").length === 3', 15000);
-  rig.check((await panel()).labels[2] === 'Cellar' && (await panel()).roomField === 'Rats.',
-            "a room selected in the selected column did not reach the panel: " + JSON.stringify(await panel()));
-  await typeInto('rp-desc', 'Rats, and one very large rat.');
-  await lib.poll(async () => (await paneB.evaluate('polygons.find(p => p.id === 901).desc')) === 'Rats, and one very large rat.' ? { ok: 1 } : null, 8000);
-  rig.check(await paneB.evaluate('polygons.find(p => p.id === 901).desc') === 'Rats, and one very large rat.',
-            'room notes typed in the panel did not land in the selected column');
-  await crumb('scene');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb.on").dataset.level === "scene"', 15000);
-  rig.check((await panel()).field === 'B: dry as bone.' && (await panel()).levels.length === 3 && await paneB.evaluate('selectedPolygonId') === 901,
-            "the Scene crumb deselected column B's room, or did not show its scene's notes: " + JSON.stringify(await panel()));
-  await crumb('room');
-  await lib.settle(dm, 'document.getElementById("rp-desc").value === "Rats, and one very large rat."', 15000);
-  rig.check((await panel()).on === 'room', 'the Room crumb did not bring column B\'s room notes back');
+  // A room of column A's map, renamed from the tree while column B is the selected one, survives A's next autosave.
+  // RED ON: pane-room-patch left out of PANE_CONTROLS (paneRuntime.js) — 2026-10-30
+  await paneA.evaluate('polygons.push({ id: 901, vertices: [{x:100,y:100},{x:420,y:100},{x:420,y:320},{x:100,y:320}], mode: "shroud", cornerRadius: 0, name: "Cellar", desc: "Rats." }); nextPolygonId = 902; rebuildFogFromPolygons(); doAutoSave()', 60000);
+  await ev('searchStale(' + JSON.stringify(sceneId) + '); searchReadScenes()', 30000);
+  await ev('_ntSig = ""; refreshRoomPanel(); 0');
+  await lib.settle(dm, 'document.querySelector(\'#nw-tl .nw-row[data-key="room:' + sceneId + ':901"]\')', 10000);
+  await ev(`(() => { const r = document.querySelector('#nw-tl .nw-row[data-key="room:${sceneId}:901"]'); const b = r.getBoundingClientRect();
+    r.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: b.left + 20, clientY: b.top + 8 })); return 0; })()`);
+  await lib.settle(dm, 'document.querySelector(".nw-menu")', 4000);
+  await ev('[...document.querySelectorAll(".nw-menu .sm-mi")].find(b => b.textContent === "Rename").click(); 0');
+  await lib.settle(dm, 'document.querySelector("#nw-tl .nw-tn input")', 4000);
+  await ev(`(() => { const i = document.querySelector('#nw-tl .nw-tn input'); i.value = 'Wine cellar'; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 0; })()`);
+  await lib.poll(async () => (await paneA.evaluate('polygons.find(p => p.id === 901).name')) === 'Wine cellar' ? { ok: 1 } : null, 10000);
+  await paneA.evaluate('doAutoSave()', 60000);
+  const stored = await ev('sceneStore.loadScene(' + JSON.stringify(sceneId) + ').then(s => s.polygons.map(p => p.id + ":" + p.name).join())', 30000);
+  rig.check(/901:Wine cellar/.test(stored) && /^1:/.test(stored), 'a room renamed from the tree for the other column\'s map was lost at that column\'s next autosave, or the room list was reordered: ' + stored);
 
-  await dm.evaluate('document.querySelector(`.pane-col[data-pane="B"] .pane-close`).click(); 0');
+  await ev('document.querySelector(`.pane-col[data-pane="B"] .pane-close`).click(); 0');
   await dm.waitFor('!panesActive', 30000, 'closing a column to end two-map mode');
-  await dm.waitFor('currentScene && currentScene.id === ' + JSON.stringify(sceneId) + ' && fogCoverT === 0', 60000, 'the first scene to come back');
-
-  // ── H. Everything survives a restart ──────────────────────────────────────
-  // Notes still under the cursor when the app closes are saved: the close fires no blur.
-  // RED ON: the beforeunload listener in initNotesPanel removed (notesPanel.js) — 2026-10-09
-  await lib.settle(dm, '!document.getElementById("np-field").hidden', 8000);
-  await dm.evaluate(`(() => { const el = document.getElementById('np-field'); el.focus();
-    el.value = 'A: the floor is wet. The door sticks.'; el.dispatchEvent(new Event('input', { bubbles: true }));
-    window.dispatchEvent(new Event('beforeunload')); return 0; })()`);
-  const closed = await lib.poll(async () => {
-    const n = await dm.evaluate('sceneStore.loadScene(' + JSON.stringify(sceneId) + ').then(s => s && s.notes)');
-    return n === 'A: the floor is wet. The door sticks.' ? { n } : null;
-  }, 15000);
-  rig.check(!!closed, 'notes typed with the cursor still in the field were lost when the app closed');
-  await dm.evaluate('document.getElementById("np-field").blur(); 0');
-  // RED BY DESIGN: written against the feature, never re-proved
-  await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === null', 6000);
-  rig.check((await panel()).collapsed && await dm.evaluate('localStorage.getItem("evermist.dockPane")') === '',
-            'shutting the dock from the Notes tab did not shut it and remember it');
-  await dm.evaluate('doAutoSave()', 60000);
-  dm = await rig.restart();
-  await lib.installHelpers(dm);
-  await lib.settle(dm, 'currentScene && currentScene.id === ' + JSON.stringify(sceneId) + ' && fogCoverT === 0', 90000);
-
-  const record = await dm.evaluate(`(async () => {
-    const s = await sceneStore.loadScene(${JSON.stringify(sceneId)});
-    return { notes: s.notes, notesType: typeof s.notes,
-             polys: (s.polygons || []).map(p => ({ vertices: Array.isArray(p.vertices) && p.vertices.length, desc: p.desc })) };
-  })()`);
-  rig.check(record.notesType === 'string' && record.notes === 'A: the floor is wet. The door sticks.',
-            'the saved scene does not carry its notes as a top-level string: ' + JSON.stringify(record));
-  rig.check(record.polys.length === 1 && record.polys[0].vertices === 4 && record.polys[0].desc === 'Two acolytes.',
-            'a saved room lost its vertices or its desc, the shape the previous release reads: ' + JSON.stringify(record.polys));
-  rig.check(await dm.evaluate('localStorage.getItem("evermist.campaignNotes")') === 'The duke is a lich.',
-            'the campaign notes did not survive the restart');
-
-  const back = await panel();
-  rig.check(back.collapsed, 'the dock came up open after the DM left it shut');
-  await openNotes();
-  await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
-  await lib.settle(dm, '!document.getElementById("np-field").hidden && document.getElementById("np-field").value !== ""', 8000);
-  rig.check((await panel()).field === 'A: the floor is wet. The door sticks.',
-            'after a restart the scene level does not show the notes it was left with: ' + JSON.stringify(await panel()));
-  await crumb('campaign');
-  await lib.settle(dm, 'document.getElementById("np-field").value === "The duke is a lich."', 8000);
-  rig.check((await panel()).field === 'The duke is a lich.', 'after a restart the campaign level does not show its notes');
-
-  
-  // ── J. The room-pick rule ─────────────────────────────────────────────────
-  // RED ON: dockRoomPicked() never called from notesPanelSync (notesPanel.js) — 2026-10-16
-  await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === null', 6000);
-  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === "music"', 6000);
-  await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
-  await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
-  rig.check(await dm.evaluate('dockActivePane()') === 'notes', 'picking a room did not bring Notes up over another open pane');
-  // A deselect does nothing, and the DM's own switch away is not undone while the room stays picked.
-  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === "music"', 6000);
-  await lib.hold(500, 'long enough for a repaint to wrongly switch back, then prove it did not');
-  rig.check(await dm.evaluate('dockActivePane()') === 'music', 'the dock switched back to Notes while the same room stayed picked');
-  await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === null', 6000);
-  rig.check(await dm.evaluate('dockActivePane()') === 'music', 'a deselect changed the dock');
-  // With the dock shut: it stays shut and the tab is selected, with no pane.
-  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === null', 6000);
-  await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === 1', 6000);
-  await lib.settle(dm, 'document.getElementById("dock-tab-notes").classList.contains("active")', 6000);
-  const picked = await panel();
-  rig.check(picked.collapsed && picked.tab.includes('active') && await dm.evaluate('dockActivePane()') === null,
-            'a room picked with the dock shut opened it, or left the Notes tab unlit: ' + JSON.stringify(picked));
-  // A click on another tab clears the selection.
-  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === "music"', 6000);
-  rig.check(!(await panel()).tab.includes('active'), 'the Notes tab stayed lit after another tab was picked');
-  await dm.evaluate('document.getElementById("dock-tab-music").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === null', 6000);
-  rig.check(!(await panel()).tab.includes('active'), 'the Notes tab stayed lit after the dock was shut');
-  // A new pick with the dock shut, then a click on the selected tab, opens Notes.
-  await dm.evaluate('__rigClick(' + EMPTY.x + ', ' + EMPTY.y + '); 0');
-  await lib.settle(dm, 'selectedPolygonId === null', 6000);
-  await dm.evaluate('__rigClick(' + INSIDE.x + ', ' + INSIDE.y + '); 0');
-  await lib.settle(dm, 'document.getElementById("dock-tab-notes").classList.contains("active")', 6000);
-  await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
-  rig.check((await panel()).shown && (await panel()).on === 'room', 'a click on the selected Notes tab did not open Notes on the room');
-
-  rig.byEye('the Notes pane wears the dock\'s grey beside the rail, with the left side empty and the toolbar still centred');
+  rig.byEye('the window sits over the map in the dock\'s grey with the toolbar still centred');
 };

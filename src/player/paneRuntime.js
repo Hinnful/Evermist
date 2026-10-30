@@ -40,6 +40,8 @@ const PANE_CONTROLS = {
 
   'pane-room-edit':   m => paneApplyRoomEdit(m),
   'pane-scene-notes': m => paneApplySceneNotes(m),
+  'pane-room-patch':  m => paneApplyRoomPatch(m),
+  'pane-room-select': m => paneApplyRoomSelect(m),
   'pane-scene-place': m => paneApplyScenePlace(m),
   'pane-reveal-all':  () => revealAllRooms(),
   'pane-shroud-all':  () => shroudAllRooms(),

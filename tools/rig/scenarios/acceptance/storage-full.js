@@ -26,8 +26,8 @@ module.exports = async function storageFull(rig) {
   await lib.openMap(rig, { w: 2400, h: 1500 });
 
   await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === "notes"', 6000);
-  await dm.evaluate('document.querySelector("#np-crumbs .np-crumb[data-level=campaign]").click(); 0');
+  await lib.settle(dm, 'nwIsOpen()', 6000);
+  await dm.evaluate('document.querySelector("#nw-tl .nw-row[data-key=campaign]").click(); 0');
 
   // ⚠ The commit is on the field's own blur listener, and el.blur() does not reliably fire one in an
   // unfocused window, so the events go at the listeners directly.

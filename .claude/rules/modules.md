@@ -109,8 +109,13 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/hintsPlan.js` | Pure hint kernel: when each first-use cue is due, and the count of maps opened. Tested |
 | `ui/hintsFirstMap.js` | The first-map hints: reveal, room-reveal, room-edit and repair-keys, each shown from what the DM holds |
 | `ui/hintsCues.js` | The first-use cues: the Campaign's Open and Group, Show on TV, Effects, Music, Sounds and the fight table |
-| `notes/notesPlan.js` | Pure notes kernel: the crumb list, a notes string cleaned, a restored campaign note merged in. Tested |
-| `notes/notesPanel.js` | The dock's Notes pane: breadcrumbs, and the notes of the campaign, a place, the scene or the room |
+| `notes/notesPlan.js` | Pure notes kernel: a notes string cleaned, a restored campaign note merged in, the campaign.json writer and readers. Tested |
+| `notes/notesEntriesPlan.js` | Pure rules for factions and lore: a list cleaned, an entry added, renamed, moved, ordered, deleted with its children and merged on restore. Tested |
+| `notes/notesTreePlan.js` | Pure rules for the Notes window's tree: groups nested by outline, maps and rooms, roads, monsters with a note, factions and lore, a node's path, which crumbs fold. Tested |
+| `notes/notesPanel.js` | What the Notes window shows and saves: the notes of the campaign, a group, a road, a map, a room, a monster, a faction or lore, routed to whoever holds the map |
+| `notes/notesEntries.js` | Factions and lore in their own key: read, written and reported when a save fails |
+| `notes/notesTree.js` | The Notes window's tree: rows, clicks, keys, right-click menu, drag, and New, Rename, Delete and Show on map per kind |
+| `notes/notesWindow.js` | The Notes window's shell: open and shut, place, size, tree width, back and forward, breadcrumbs |
 | `world/worldMapPlan.js` | Pure world-map kernel: starting layout, polygon geometry and which polygon holds a card, the camera. Tested |
 | `world/worldMapStore.js` | Where a scene sits on the world map, its place and its name: the one writer, and a column's inbox for it |
 | `world/worldRoadPlan.js` | Pure road kernel: a road cleaned and parsed, its line sampled, an end laid on its scene or place, what deleting, renaming and restoring do to it. Tested |
@@ -137,9 +142,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `world/worldBackup.js` | Settings' World map backup: Export the pick or everything, Restore from a picker or a dropped .zip |
 | `world/worldMapMenu.js` | The right-click menu on the world map: a scene, a place, or the ground |
 | `rooms/roomPanel.js` | Map room labels and the pure geometry that places them |
-| `rooms/roomCard.js` | The selected room's fields, in the Notes pane |
+| `rooms/roomCard.js` | The selected room's fields, in the Notes window |
 | `rooms/roomSwitcher.js` | The selected room's clouds and door button, on the map above it |
-| `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the Notes pane |
+| `rooms/roomLink.js` | Two maps: a column's selected room, reported up and edited from the Notes window |
 | `gallery/galleryPlan.js` | Pure gallery kernel: picture size, names, the migration list, the backup list, what a scene's rooms still hold. Tested |
 | `gallery/pictureDecode.js` | A file turned into a gallery picture: shrunk, or kept whole if animated or SVG |
 | `gallery/galleryStore.js` | The gallery's own IndexedDB: pictures under their id |
@@ -262,8 +267,8 @@ render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js 
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvControl.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hintsPlan.js → ui/hints.js → ui/hintsFirstMap.js → ui/hintsCues.js → ui/confirmDialog.js → rooms/floorPlan.js →
-content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/roomCard.js →
-gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js →
+content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → notes/notesEntriesPlan.js → notes/notesTreePlan.js → rooms/roomPanel.js → rooms/roomCard.js →
+gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js → notes/notesEntries.js → notes/notesTree.js → notes/notesWindow.js →
 world/worldMapPlan.js → world/worldRoadPlan.js → world/worldPartyPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldParty.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → search/searchPlan.js → search/searchIndex.js → search/searchPick.js → search/search.js → world/worldMapColumns.js → world/worldMapEmpty.js → world/worldMapOpenBar.js → world/worldMapFan.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →

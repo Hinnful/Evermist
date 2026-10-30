@@ -7,14 +7,12 @@
 // panel on a tab it does not have.
 const DOCK_PANE_KEY = 'evermist.dockPane';
 const DOCK_WIDTH_KEY = 'evermist.dockWidth';
-const DOCK_PANES = ['scene', 'notes', 'music', 'sounds', 'gallery', 'settings'];
+const DOCK_PANES = ['scene', 'music', 'sounds', 'gallery', 'settings'];
 const DOCK_MIN_W = 230, DOCK_MAX_W = 420;   // the pane, in the dock's pre-zoom px
 const DOCK_TOOLBAR_GAP = 16;                // screen px kept clear either side of the toolbar
 
 let _dockPane = null;        // the open pane, or null with the rail alone
 let _dockWantW = DOCK_MIN_W;
-let _dockNotesSel = false;   // Notes wears the open tint with no pane: a room was picked while the dock was shut
-let _dockResumeNotes = false; // Notes was open when it became unavailable; it comes back with the scene
 let _dockCalibrating = false;
 
 const _dockEl = () => document.getElementById('dock');
@@ -56,8 +54,6 @@ function dockOpen(name, forced) {
   const dock = _dockEl();
   if (!dock) return;
   _dockPane = name;
-  _dockNotesSel = false;
-  if (!forced) _dockResumeNotes = false;
   dockClosePop();
   dock.classList.toggle('open', !!name);
   dock.querySelectorAll('.dk-sec').forEach(s => { s.hidden = s.dataset.pane !== name; });
@@ -72,40 +68,25 @@ function _dockWindowOpen(name) {
   if (name === 'world') return worldMapOpen;
   if (name === 'bestiary') { const m = document.getElementById('bs-modal'); return !!m && m.style.display !== 'none'; }
   if (name === 'combat') return shown('cb-fight');
+  if (name === 'notes') return nwIsOpen();
   return false;
 }
 
-// Bestiary, the fight table and Help wire their own rail buttons; the world map is the dock's.
+// Bestiary, the fight table and Help wire their own rail buttons; the world map and Notes are the dock's.
 function _dockToggleWindow(name) {
   if (name === 'world') worldMapToggle();
-}
-
-// Notes works wherever there is something to take notes on: a scene, or the world map once it holds one.
-function _dockNotesAvailable() {
-  if (_dockCalibrating) return false;
-  if (worldMapOpen) return !document.body.classList.contains('wm-empty');
-  return !!_npScene();
-}
-
-// A room picked: the dock open on another pane switches to Notes; a shut dock stays shut and Notes
-// wears the open tint until the DM clicks it or any other tab.
-function dockRoomPicked() {
-  if (!_dockNotesAvailable()) return;
-  if (!_dockPane) { _dockNotesSel = true; dockRefreshRail(); }
-  else if (_dockPane !== 'notes') dockOpen('notes');
+  else if (name === 'notes') nwToggle();
 }
 
 function dockRefreshRail() {
   const dock = _dockEl();
   if (!dock) return;
-  const notes = document.getElementById('dock-tab-notes'), can = _dockNotesAvailable();
-  if (notes) notes.disabled = !can;
-  if (!can && _dockPane === 'notes') { _dockResumeNotes = !_dockCalibrating; dockOpen(null, true); return; }
-  if (!can) _dockNotesSel = false;
-  if (can && _dockResumeNotes && !_dockPane) { dockOpen('notes', true); return; }
-  dock.querySelectorAll('[data-dock-pane]').forEach(b => {
-    b.classList.toggle('active', b.dataset.dockPane === _dockPane || (b.dataset.dockPane === 'notes' && _dockNotesSel));
-  });
+  const notes = document.getElementById('dock-tab-notes');
+  if (notes) {
+    notes.disabled = _dockCalibrating;
+    notes.classList.toggle('win', nwIsOpen());
+  }
+  dock.querySelectorAll('[data-dock-pane]').forEach(b => b.classList.toggle('active', b.dataset.dockPane === _dockPane));
   const world = document.getElementById('btn-world');
   if (world) world.classList.toggle('active', worldMapOpen);
   const fight = document.getElementById('btn-combat');
@@ -173,11 +154,12 @@ function dockPlacePop(el, row) {
 }
 
 // ─── Calibration ──────────────────────────────────────────────────────────────
-// Arming puts the pane away and leaving gives it back; a tab picked meanwhile wins (dm-ui skill).
+// Arming puts the pane and the Notes window away and leaving gives them back; a tab picked meanwhile wins (dm-ui skill).
 let _dockBeforeCal = null;
 
 function dockHoldForCalibration(on) {
   _dockCalibrating = on;
+  nwHoldForCalibration(on);
   if (on) {
     _dockBeforeCal = _dockPane;
     dockOpen(null);

@@ -10,7 +10,7 @@
 //
 //   1. With no maps the app opens on the world map. With maps it opens on the last map.
 //   2. Deleting the last map lands on the empty world map.
-//   3. An empty world map shows a callout over Add. The bar holds Select and Add only; the Notes tab is disabled.
+//   3. An empty world map shows a callout over Add. The bar holds Select and Add only; Notes stays usable, since the Notes window works with no maps.
 //   4. Four loose maps are framed as prints (never below the scenes level), inside the part of the window the dock
 //      leaves clear, and no closer than 2.6x.
 //   5. After adding, the first map is the one picked, nothing opens, and the open scene is unchanged.
@@ -62,7 +62,7 @@ module.exports = async function worldMapFirstEvening(rig) {
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(JSON.stringify(empty.bar) === JSON.stringify(['btn-select', 'wm-add']),
             'the empty map\'s bar is not Select and Add alone: ' + JSON.stringify(empty.bar));
-  rig.check(!empty.panel, 'the Notes tab is enabled over an empty world map');
+  rig.check(empty.panel, 'Notes is disabled over an empty world map, though its window works with no maps');
 
   // ── 4 and 5. Four loose maps are added: framed, the first picked, nothing opened ──
   const map = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: MAP_W, h: MAP_H });

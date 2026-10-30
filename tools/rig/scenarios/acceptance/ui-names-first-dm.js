@@ -17,7 +17,7 @@
 //      starting "Group - gathers maps together"; in Effects mode it shows no label.
 //   B. On a fresh start the Rooms shape and the Campaign's Group shape are the rectangle.
 //   C. The Campaign's add button shows the word Map and is not solid blue.
-//   D. Every rail button shows a text label, in order Campaign, Bestiary, Map settings, Notes, Music,
+//   D. Every rail button shows a text label, in order Campaign, Notes, Bestiary, Map settings, Music,
 //      Sounds, Pictures, Fights, Settings, Help; Map settings takes two lines.
 //   E. Grid is the first section of the Map settings pane.
 //   F. In Russian the rail and the shape button read Russian.
@@ -38,8 +38,8 @@ globalThis.__unRail = () => [...document.querySelectorAll('.rail-btn')].filter(_
 });
 `;
 
-const EN = ['Campaign', 'Bestiary', 'Map settings', 'Notes', 'Music', 'Sounds', 'Pictures', 'Fights', 'Settings', 'Help'];
-const RU = ['Кампания', 'Бестиарий', 'Настройки карты', 'Заметки', 'Музыка', 'Звуки', 'Картинки', 'Сражения', 'Настройки', 'Справка'];
+const EN = ['Campaign', 'Notes', 'Bestiary', 'Map settings', 'Music', 'Sounds', 'Pictures', 'Fights', 'Settings', 'Help'];
+const RU = ['Кампания', 'Заметки', 'Бестиарий', 'Настройки карты', 'Музыка', 'Звуки', 'Картинки', 'Сражения', 'Настройки', 'Справка'];
 
 module.exports = async function uiNamesFirstDm(rig) {
   let dm = rig.dm;

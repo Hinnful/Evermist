@@ -322,7 +322,7 @@ function worldPlaceUngroup(id) {
   if (road) { worldMapRoadDelete(road.uid); return; }
   const name = worldPlaceNameOfId(id);
   if (!name) return;
-  clearShapeSelection();
+  if (worldMapOpen) clearShapeSelection();   // off the Campaign the selection is a room of the open map
   worldMapSel = { sceneId: null, place: '' };
   deleteGroup({ name, scenes: allScenes.filter(s => sanitizeGroupName(s.group) === name) });
 }
@@ -550,7 +550,7 @@ function worldMapSelect(sel) {
 function _wmOwnKeys(target) {
   if (!target || !target.closest) return false;
   if (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return true;
-  return !!target.closest('#cd-anchor, #bs-modal, #cl-anchor, .sm-toast, #mt-modal');
+  return !!target.closest('#cd-anchor, #bs-modal, #cl-anchor, .sm-toast, #mt-modal, #notes-window, .nw-menu');
 }
 
 function _wmOverlayUp() {

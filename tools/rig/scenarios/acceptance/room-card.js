@@ -3,26 +3,26 @@
 // room-card.js — THE ROOM TAB AND THE ROOM LABELS, whole.
 //
 // THE GOAL OF THIS FEATURE: the DM clicks a room and reads what is in it — its name, the notes
-// they wrote during prep — in the Notes pane, while the map underneath stays visible and
+// they wrote during prep — in the Notes window, while the map underneath stays visible and
 // usable. It is the DM's own and none of it ever reaches the players.
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
-//   A. Selecting a room shows it in the Notes pane, and lights the Notes tab if the dock was shut without
+//   A. Selecting a room shows it in the Notes window, and lights the Notes tab if the dock was shut without
 //      changing what the DM keeps. A tool change does not put it away — it follows the selection
 //      and nothing else. Grid calibration puts it away and the same room comes back at Done.
 //   B. The tab holds the room's name and notes, and what the DM types reaches the room.
 //   C. A name is trimmed and never left empty; notes are kept as typed, including newlines.
 //   D. The tab's shape: the name as its header with Delete beside it, and nothing else of the
-//      room's own. The notes sit in the Notes pane and the room holds no picture strip and no
+//      room's own. The notes sit in the Notes window and the room holds no picture strip and no
 //      "Add a picture" button. No fog pill, no drag bar, no Close.
 //   E. The fog trio shows and sets the selected room's fog while Select is in hand, and T cycles
 //      it; with a drawing tool in hand it is the paint direction again.
 //   G. Delete in the tab removes that room and nothing else.
 //   H. The notes grow with their text, and no notes height is stored anywhere.
 //   I. A room wears its name on the map, inside its own outline, and never on the Player.
-//   J. An effect gets no Room tab at all, because it has none of what the tab is for.
+//   J. An effect gets no room level at all, because it has none of what the tab is for.
 //   K. The tab looks right.
 //
 // ⚠ VISIBILITY FOLLOWS THE SELECTION AND MUST STAY THAT WAY. Creating a room leaves nothing
@@ -51,7 +51,7 @@ module.exports = async function roomCardFeature(rig) {
     ' nextPolygonId = 3; selectedPolygonId = null;' +
     ' rebuildFogFromPolygons(); refreshRoomPanel(); scheduleRender(); 0');
 
-  const OPEN = '(dockActivePane() === "notes" && document.getElementById("panel-room").getBoundingClientRect().width > 0)';
+  const OPEN = '(nwIsOpen() && document.getElementById("panel-room").getBoundingClientRect().width > 0)';
   const select = async id => {
     await dm.evaluate('selectedPolygonId = ' + (id === null ? 'null' : id) +
       '; refreshRoomPanel(); scheduleRender(); 0');
@@ -60,7 +60,7 @@ module.exports = async function roomCardFeature(rig) {
 
   const card = () => dm.evaluate(`(() => {
     const p = document.getElementById('panel-room');
-    if (!p) return { err: 'the Room tab is not in the DOM' };
+    if (!p) return { err: 'the room level is not in the DOM' };
     const b = p.getBoundingClientRect();
     const nameEl = document.getElementById('rp-name');
     const descEl = document.getElementById('rp-desc');
@@ -89,9 +89,11 @@ module.exports = async function roomCardFeature(rig) {
 
   // ── A. The room follows the selection ─────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
-  rig.check(!(await card()).shown, 'the room is showing in the Notes pane with nothing selected');
+  await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
+  await lib.settle(dm, 'nwIsOpen()', 6000);
+  rig.check(!(await card()).shown, 'the room is showing in the Notes window with nothing selected');
   await select(1);
-  rig.check((await card()).shown, 'selecting a room did not show it in the Notes pane');
+  rig.check((await card()).shown, 'selecting a room did not show it in the Notes window');
   for (const [k, tool] of [['KeyB', 'brush'], ['KeyR', 'rect'], ['KeyV', 'select']]) {
     await dm.evaluate('__rigKey(' + JSON.stringify(k) + '); 0');
     await lib.settle(dm, 'shape === ' + JSON.stringify(tool), 6000);
@@ -99,13 +101,13 @@ module.exports = async function roomCardFeature(rig) {
               'changing the tool to ' + tool + ' put the room away, which must follow the selection alone');
   }
   await select(null);
-  rig.check(!(await card()).shown, 'deselecting left the room in the Notes pane');
+  rig.check(!(await card()).shown, 'deselecting left the room in the Notes window');
   // A shut dock stays shut on a pick and the Notes tab lights; the tab then opens the room.
   await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
-  await lib.settle(dm, 'dockActivePane() === null', 6000);
+  await lib.settle(dm, '!nwIsOpen()', 6000);
   await dm.evaluate('selectedPolygonId = 1; refreshRoomPanel(); scheduleRender(); 0');
   await lib.settle(dm, 'document.getElementById("dock-tab-notes").classList.contains("active")', 6000);
-  rig.check(!(await card()).shown && await dm.evaluate('dockActivePane()') === null,
+  rig.check(!(await card()).shown && !(await dm.evaluate("nwIsOpen()")),
             'selecting a room opened a shut dock, which must stay shut with the Notes tab lit');
   await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
   await lib.settle(dm, OPEN, 6000);
@@ -118,33 +120,33 @@ module.exports = async function roomCardFeature(rig) {
   await dm.evaluate('document.getElementById("cp-grid-calibrate").click(); 0');
   await lib.settle(dm, 'gridCalArmed === true', 8000);
   rig.check(await dm.evaluate('gridCalArmed === true') && !(await card()).shown,
-            'the Room tab stayed over the map that calibration has to be dragged on');
+            'the room level stayed over the map that calibration has to be dragged on');
   await dm.evaluate('document.getElementById("gridcal-done").click(); 0');
   await lib.settle(dm, 'gridCalArmed === false', 8000);
   rig.check((await card()).shown && await dm.evaluate('selectedPolygonId') === 1,
-            'the Room tab did not come back on the same room once calibration handed the map back');
+            'the room level did not come back on the same room once calibration handed the map back');
 
   // ── B. The fields reach the room ──────────────────────────────────────────
   // RED ON: poly.name = v gated off in _rpCommitName (roomCard.js) — 2026-10-02
   rig.check((await card()).name === 'The Vestry',
-            'the Room tab is not showing the name of the room that is selected: ' + (await card()).name);
+            'the room level is not showing the name of the room that is selected: ' + (await card()).name);
   await typeInto('rp-name', 'The Cold Vestry');
   await lib.settle(dm, 'polygons[0].name === "The Cold Vestry"', 6000);
   rig.check((await room(1)).name === 'The Cold Vestry',
-            'a name typed into the Room tab never reached the room: ' + (await room(1)).name);
+            'a name typed into the room level never reached the room: ' + (await room(1)).name);
 
   const NOTES = 'Two acolytes here.\nThe font is trapped.';
   await typeInto('rp-desc', NOTES);
   await lib.settle(dm, '!!polygons[0].desc', 6000);
   rig.check((await room(1)).desc === NOTES,
-            'notes typed into the Room tab did not reach the room as typed, newlines included: ' +
+            'notes typed into the room level did not reach the room as typed, newlines included: ' +
             JSON.stringify((await room(1)).desc));
 
   // Selecting another room and coming back must not carry the first room's text across.
   await select(2);
   const onBig = await card();
   rig.check(onBig.name === 'The Great Hall' && onBig.desc === '',
-            "the Room tab carried the previous room's name or notes onto the next room: " +
+            "the room level carried the previous room's name or notes onto the next room: " +
             JSON.stringify(onBig));
   await select(1);
   const backOnSmall = await card();
@@ -174,7 +176,7 @@ module.exports = async function roomCardFeature(rig) {
   const shape = await dm.evaluate(`(() => {
     const p = document.getElementById('panel-room');
     const name = document.getElementById('rp-name'), del = document.getElementById('rp-delete');
-    const left = document.getElementById('dock-pane-notes');
+    const left = document.getElementById("notes-window");
     return {
       headRow: Math.abs(name.getBoundingClientRect().top - del.getBoundingClientRect().top) < 12 &&
                del.getBoundingClientRect().left > name.getBoundingClientRect().left,
@@ -182,15 +184,15 @@ module.exports = async function roomCardFeature(rig) {
       notesLeftBehind: document.getElementById('dock-pane-scene').contains(document.getElementById('rp-desc')),
       pictureParts: ['rp-pics', 'rp-pic-add', 'rp-pic-input'].filter(id => document.getElementById(id)),
       gone: ['rp-mode', 'rp-head', 'rp-close', 'rp-radius-field'].filter(id => document.getElementById(id)),
-      inPanel: !!p.closest('#dock-pane-notes'),
+      inPanel: !!p.closest('#notes-window'),
       railTab: !!document.getElementById('dock-tab-room') || !!document.getElementById('dock-pane-room'),
     };
   })()`);
   rig.note('the tab\'s shape: ' + JSON.stringify(shape));
   rig.check(shape.inPanel && shape.headRow && !shape.railTab,
-            'the room is not the name with Delete beside it in the Notes pane, or the dock still has a Room tab: ' + JSON.stringify(shape));
+            'the room is not the name with Delete beside it in the Notes window, or the dock still has a room level: ' + JSON.stringify(shape));
   rig.check(shape.notesHome && !shape.notesLeftBehind,
-            "the room's notes are not in the Notes pane: " + JSON.stringify(shape));
+            "the room's notes are not in the Notes window: " + JSON.stringify(shape));
   // RED ON: <div id="rp-pics"> put back in index.html's #panel-room - 2026-10-16
   rig.check(shape.pictureParts.length === 0,
             'the room card still carries a picture strip or an Add a picture button: ' + JSON.stringify(shape.pictureParts));
@@ -225,7 +227,7 @@ module.exports = async function roomCardFeature(rig) {
   const grown = (await card()).descH;
   rig.check(grown > short + 100, 'the notes did not grow with their text: ' + short + ' → ' + grown);
   rig.check(await dm.evaluate('localStorage.getItem("evermist.roomDescHeight") === null'),
-            'a notes height was written to storage, which the Room tab has no use for');
+            'a notes height was written to storage, which the room level has no use for');
   await typeInto('rp-desc', NOTES);
 
   // ── I. Room labels ────────────────────────────────────────────────────────
@@ -280,9 +282,9 @@ module.exports = async function roomCardFeature(rig) {
   rig.check(onTV.rooms === 0 || onTV.rooms === 'undefined',
             'rooms reached the Player, so a room name and its notes are one bug away from the ' +
             'table: it holds ' + onTV.rooms);
-  rig.check(onTV.card === false, 'the Room tab is showing on the Player, which has no UI at all');
+  rig.check(onTV.card === false, 'the room level is showing on the Player, which has no UI at all');
 
-  // ── J. An effect gets no Room tab ─────────────────────────────────────────
+  // ── J. An effect gets no room level ─────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate(`(() => {
     setEffects([{ id: 1, vertices: [
@@ -297,7 +299,7 @@ module.exports = async function roomCardFeature(rig) {
   await lib.settle(dm, '!viewportDirty', 8000);
   const onEffect = await card();
   rig.check(!onEffect.shown,
-            'selecting an effect opened the Room tab, which is name, notes and module text — ' +
+            'selecting an effect opened the room level, which is name, notes and module text — ' +
             'none of which an effect has: ' + JSON.stringify(onEffect));
 
   // ── G. Delete ─────────────────────────────────────────────────────────────
@@ -322,12 +324,12 @@ module.exports = async function roomCardFeature(rig) {
   rig.check(afterDelete.ids.indexOf(2) !== -1,
             'Delete in the tab took a room it was not open on: ' + JSON.stringify(afterDelete));
   rig.check(!(await card()).shown,
-            'the Room tab stayed open after its room was deleted, so it is describing a ghost');
+            'the room level stayed open after its room was deleted, so it is describing a ghost');
 
   // ── K. The look ───────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
   await select(2);
-  rig.byEye('the room in a screenshot taken with --shot "#dock-pane-notes" — the name as the header, the ' +
+  rig.byEye('the room in a screenshot taken with --shot "#notes-window" — the name as the header, the ' +
             'notes on the pane\'s own background, and Delete reading as destructive only on hover');
   rig.byEye('room labels over real Dungeon Alchemist floor art, which is what the plate has to ' +
             'stay readable against');

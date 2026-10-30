@@ -150,7 +150,7 @@ async function doExport(selectedIds, opts) {
       : null;
     const campaignJson = sub
       ? notesCampaignPayload('', sub.placeNotes, sub.shapes, sub.roads, sub.roadNotes)
-      : notesCampaignPayload(notesCampaignGet(), notesPlacesAll(), worldPlacesExport(), worldRoadsExport(), notesRoadsAll(), worldPartyExport());
+      : notesCampaignPayload(notesCampaignGet(), notesPlacesAll(), worldPlacesExport(), worldRoadsExport(), notesRoadsAll(), worldPartyExport(), notesEntriesAll());
     const worldBg = await worldBackgroundBackupPayload();
     // The gallery belongs to no scene, so an export of picked scenes leaves it out.
     const gallery = opts && opts.partial ? null : await galleryBackupPayload();

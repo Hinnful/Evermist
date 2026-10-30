@@ -81,10 +81,10 @@ module.exports = async function firstUseMenus(rig) {
   // C. RED BY DESIGN: written against the fix, never re-proved
   await dm.evaluate('(() => { const p = __fmClient(' + click.x + ', ' + (click.y - 70) + '); __fmMenuAt(p.x, p.y); return 0; })()');
   await dm.evaluate('__fmPress("Show notes"); 0');
-  await lib.settle(dm, 'dockActivePane() === "notes" && document.querySelector("#np-crumbs .np-crumb.on")', 8000);
-  const gnotes = await dm.evaluate(`(() => ({ pane: dockActivePane(), on: (document.querySelector('#np-crumbs .np-crumb.on') || {}).dataset && document.querySelector('#np-crumbs .np-crumb.on').dataset.level,
-    labels: [...document.querySelectorAll('#np-crumbs .np-crumb')].map(b => b.textContent), hidden: document.getElementById('np-field').hidden }))()`);
-  rig.check(gnotes.pane === 'notes' && gnotes.on === 'place' && gnotes.labels[1] === group && !gnotes.hidden, 'Notes on a group did not open the Notes pane on that group: ' + JSON.stringify(gnotes));
+  await lib.settle(dm, 'nwIsOpen() && document.getElementById("nw-kind").textContent === "Group"', 8000);
+  const gnotes = await dm.evaluate(`(() => ({ pane: nwIsOpen() ? 'notes' : null, on: document.getElementById('nw-kind').textContent === 'Group' ? 'place' : null,
+    labels: [...document.querySelectorAll('#nw-crumbs .nw-crumb')].map(b => b.textContent), hidden: document.getElementById('np-field').hidden }))()`);
+  rig.check(gnotes.pane === 'notes' && gnotes.on === 'place' && gnotes.labels[gnotes.labels.length - 1] === group && !gnotes.hidden, 'Notes on a group did not open the Notes pane on that group: ' + JSON.stringify(gnotes));
 
   // D. RED BY DESIGN: written against the fix, never re-proved
   const attic = await idOf('Attic');
@@ -92,21 +92,21 @@ module.exports = async function firstUseMenus(rig) {
   const mrows = await rows();
   rig.check(JSON.stringify(mrows.map(r => r.replace(/ \(off\)$/, ''))) === JSON.stringify(['Open', 'Rename', 'Show notes', '---', 'Put the marker here', '---', 'Export map…', '---', 'Delete map']), 'a map\'s menu is wrong: ' + JSON.stringify(mrows));
   await dm.evaluate('__fmPress("Show notes"); 0');
-  await lib.settle(dm, 'document.querySelector("#np-crumbs .np-crumb.on") && document.querySelector("#np-crumbs .np-crumb.on").dataset.level === "scene"', 8000);
-  const mnotes = await dm.evaluate(`(() => ({ pane: dockActivePane(), on: (document.querySelector('#np-crumbs .np-crumb.on') || {}).dataset && document.querySelector('#np-crumbs .np-crumb.on').dataset.level,
-    levels: [...document.querySelectorAll('#np-crumbs .np-crumb')].map(b => b.dataset.level), open: worldMapOpen, cur: currentScene === null, picked: worldMapPicked() }))()`);
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Map"', 8000);
+  const mnotes = await dm.evaluate(`(() => ({ pane: nwIsOpen() ? 'notes' : null, on: document.getElementById('nw-kind').textContent === 'Map' ? 'scene' : null,
+    levels: ['campaign', 'scene'], open: worldMapOpen, cur: currentScene === null, picked: worldMapPicked() }))()`);
   rig.check(mnotes.pane === 'notes' && mnotes.on === 'scene' && mnotes.levels.join() === 'campaign,scene', 'Notes on a map did not open the Notes pane on that map: ' + JSON.stringify(mnotes));
   rig.check(mnotes.open && mnotes.cur && mnotes.picked.length === 1 && mnotes.picked[0] === attic, 'Notes on a map opened it, or did not pick it: ' + JSON.stringify(mnotes));
   await dm.evaluate('(() => { const f = document.getElementById("np-field"); f.value = "A damp stair."; f.dispatchEvent(new Event("input", { bubbles: true })); notesPanelSettle(); return 0; })()');
   const saved = await lib.poll(async () => { const n = await dm.evaluate('sceneStore.loadScene(' + JSON.stringify(attic) + ').then(r => r && r.notes)'); return n === 'A damp stair.' ? { n } : null; }, 8000);
   rig.check(!!saved, 'the notes typed for a map picked on the Campaign did not save to the map');
-  await dm.evaluate('worldMapSelect({ sceneId: null, place: "" }); worldMapSelect({ sceneId: ' + JSON.stringify(attic) + ', place: "" }); notesLevelPick = "scene"; refreshRoomPanel(); 0');
+  await dm.evaluate('worldMapSelect({ sceneId: null, place: "" }); worldMapSelect({ sceneId: ' + JSON.stringify(attic) + ', place: "" }); refreshRoomPanel(); 0');
   await lib.settle(dm, 'document.getElementById("np-field").value === "A damp stair."', 8000);
   rig.check(await dm.evaluate('document.getElementById("np-field").value') === 'A damp stair.', 'the map\'s saved notes do not come back when it is picked again');
   const inGroup = await idOf('Cave');
   await dm.evaluate('worldMapSelect({ sceneId: ' + JSON.stringify(inGroup) + ', place: "" }); 0');
-  await lib.settle(dm, 'document.querySelectorAll("#np-crumbs .np-crumb").length === 3', 8000);
-  rig.check(await dm.evaluate('[...document.querySelectorAll("#np-crumbs .np-crumb")].map(b => b.dataset.level).join()') === 'campaign,place,scene',
+  await lib.settle(dm, 'document.querySelectorAll("#nw-crumbs .nw-crumb").length === 3', 8000);
+  rig.check(await dm.evaluate('document.querySelectorAll("#nw-crumbs .nw-crumb").length') === 3,
             'a map in a group does not offer Campaign, group and map');
   rig.byEye('the new rows in Russian, and the rename box on a group made from the ground\'s menu');
 };

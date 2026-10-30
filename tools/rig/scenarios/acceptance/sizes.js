@@ -89,13 +89,13 @@ module.exports = async function sizes(rig) {
   // RED ON: the toolbar's left clamp in dockLayout made Infinity || (dock.js) — 2026-10-02
   // ⚠ DONE BEFORE THE PLAYER IS OPENED, so nothing below has to put the tab away again.
   await dm.evaluate('__rigDrawShroud(300, 300, 700, 700); 0');
-  await dm.evaluate('setShape("select"); __rigClick(500, 500); 0');
+  await dm.evaluate('setShape("select"); __rigClick(500, 500); nwShow(); 0');
   await lib.settle(dm, 'selectedPolygonId !== null', 8000);
 
   for (const s of DM_SIZES.concat([{ w: 1100, h: 560, what: 'a short window' }])) {
     await rig.resizeDm(s.w, s.h);
     await lib.settle(dm, 'container.clientWidth === ' + s.w, 8000);
-    await lib.settle(dm, 'dockActivePane() === "notes"', 3000);
+    await lib.settle(dm, 'nwIsOpen()', 3000);
     const box = await dm.evaluate(`(() => {
       const r = document.getElementById('panel-room').getBoundingClientRect();
       const del = document.getElementById('rp-delete').getBoundingClientRect();
@@ -104,7 +104,7 @@ module.exports = async function sizes(rig) {
                rt: Math.round(r.right), b: Math.round(r.bottom),
                w: Math.round(r.width), h: Math.round(r.height),
                del: del.width > 0 && del.left >= 0 && del.right <= innerWidth && del.top >= 0 && del.bottom <= innerHeight,
-               off: Math.abs((bar.left + bar.right) / 2 - innerWidth / 2), shown: dockActivePane() === 'notes',
+               off: Math.abs((bar.left + bar.right) / 2 - innerWidth / 2), shown: nwIsOpen(),
                winW: innerWidth, winH: innerHeight };
     })()`);
     rig.note('the room at ' + s.w + 'x' + s.h + ': ' + JSON.stringify(box));

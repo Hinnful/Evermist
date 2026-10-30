@@ -322,8 +322,12 @@ async function openMapsOffTv(rig) {
   await dm.evaluate('_wmDeletePicked(["' + tv.id + '"]); 0');
   await settle(dm, 'currentScene && currentScene.id !== "' + tv.id + '" && (' + JSON.stringify(sizes) + ')[currentScene.id] === mapWidth && tvHeld', 60000);
   await dm.evaluate('worldMapHide(); 0');
-  await hold(2000, 'let the return from the Campaign send whatever it sends, so only what Claude does is heard after');
-  await player.evaluate('__claudeHeard.length = 0; 0');
+  // A fixed wait let a slow runner's late anim-params from the return land after the clear, so wait for quiet.
+  for (let i = 0; i < 10; i++) {
+    await player.evaluate('__claudeHeard.length = 0; 0');
+    await hold(1500, 'let the return from the Campaign send whatever it sends, so only what Claude does is heard after');
+    if (await player.evaluate('__claudeHeard.length') === 0) break;
+  }
   const openId = await dm.evaluate('currentScene.id');
   const open = made.find(m => m.id === openId);
   const closed = made.find(m => m.id !== openId && m.id !== tv.id);

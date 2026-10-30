@@ -88,6 +88,11 @@ function bpWire(el, ed) {
     if (f.notes !== undefined) b.notes = e.target.value; else b.lore = e.target.value;
     cbSaveSoon();
   });
+  // The notes are one field with the Notes window's: read again on focus, and the last edit wins.
+  el.addEventListener('focusin', e => {
+    const b = ed.block();
+    if (b && e.target.dataset && e.target.dataset.notes !== undefined && e.target.value !== (b.notes || '')) e.target.value = b.notes || '';
+  });
   el.addEventListener('click', e => {
     const h = e.target.closest('.bp-sec-h');
     const sec = h && h.closest('[data-fold]');

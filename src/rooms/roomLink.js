@@ -36,6 +36,20 @@ function paneApplyRoomEdit(m) {
   drawCursor(lastScreenX, lastScreenY);
 }
 
+// A room's name or notes written by id while it is not the column's selection: the Notes window's tree.
+function paneApplyRoomPatch(m) { roomCardPatch(m.id, m.fields || {}); }
+
+// The Notes window picked a room of this column's map.
+function paneApplyRoomSelect(m) {
+  const p = polygons.find(x => x.id === m.id);
+  if (!p) return;
+  selectedPolygonId = p.id;
+  leaveShapeEditMode();
+  refreshRoomPanel();
+  drawCursor(lastScreenX, lastScreenY);
+  scheduleRender();
+}
+
 // ─── DM window side ──────────────────────────────────────────────────────────
 
 const _rlRooms = { A: null, B: null };

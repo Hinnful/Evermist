@@ -327,8 +327,11 @@ module.exports = async function worldMapFeature(rig) {
   rig.check(await dm.evaluate('allScenes.some(s => s.name === "Cellar below")'),
             'the scene\'s new name is not on its record in memory');
   // Place notes first, so the rename below has something to carry.
-  await dm.evaluate('__wmClick(__wmHead("Watcherhouse")); 0');
+  await dm.evaluate('nwShow(); __wmClick(__wmHead("Watcherhouse")); 0');
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Group"', 8000);
   await dm.evaluate('(() => { const f = document.getElementById("np-field"); f.value = "Mist off the river."; f.dispatchEvent(new Event("input", { bubbles: true })); f.dispatchEvent(new FocusEvent("blur")); return 0; })()');
+  // Shut again: the window sits over the map, where later checks press.
+  await dm.evaluate('nwHide(); 0');
   await dm.evaluate('__wmDbl(__wmHead("Watcherhouse")); __wmEnter("The Watcherhouse"); 0');
   const groups = await poll(() => dm.evaluate('JSON.stringify(allScenes.filter(s => s.group === "The Watcherhouse").length)'), v => v === '3', 12000);
   rig.check(groups === '3', 'renaming a place did not rename the group on its scenes: ' + groups);
@@ -813,8 +816,9 @@ module.exports = async function worldMapFeature(rig) {
             'a single click did not pick the scene with a ring');
   rig.check(await dm.evaluate('currentScene.id') === openBefore && await dm.evaluate('worldMapOpen'), 'a single click opened the scene');
   // The map's own level is offered once its notes are read (first-use-cues-menus.js holds its own checks).
-  await lib.settle(dm, 'document.querySelectorAll("#np-crumbs .np-crumb").length === 3', 8000);
-  const crumbs1 = await dm.evaluate('[...document.querySelectorAll("#np-crumbs .np-crumb")].map(b => b.textContent)');
+  await dm.evaluate('nwShow(); 0');
+  await lib.settle(dm, 'document.querySelectorAll("#nw-crumbs .nw-crumb").length === 3', 8000);
+  const crumbs1 = await dm.evaluate('[...document.querySelectorAll("#nw-crumbs .nw-crumb")].map(b => b.textContent)');
   rig.check(JSON.stringify(crumbs1) === JSON.stringify(['Campaign', 'The Watcherhouse', 'Attic']),
             'with a scene picked the panel does not show its place and the map: ' + JSON.stringify(crumbs1));
   await dm.evaluate('__wmDbl(__wmCard("Attic").firstChild); 0');
@@ -842,21 +846,22 @@ module.exports = async function worldMapFeature(rig) {
   await dm.evaluate('__rigKey("Escape"); 0');
   await lib.settle(dm, '!worldMapOpen', 15000);
   const levels = () => dm.evaluate(`(() => ({
-    crumbs: [...document.querySelectorAll('#np-crumbs .np-crumb')].map(b => b.dataset.level),
-    on: (document.querySelector('#np-crumbs .np-crumb.on') || {}).dataset && document.querySelector('#np-crumbs .np-crumb.on').dataset.level,
+    crumbs: [...document.querySelectorAll('#nw-crumbs .nw-crumb')].map((b, i, all) => i === 0 ? 'campaign' : i === all.length - 1 ? 'scene' : 'place'),
+    on: document.getElementById('nw-kind').textContent === 'Group' ? 'place' : 'scene',
     field: document.getElementById('np-field').value,
   }))()`);
-  await lib.settle(dm, 'document.querySelectorAll("#np-crumbs .np-crumb").length === 3', 8000);
+  await dm.evaluate('nwShow(); 0');
+  await lib.settle(dm, 'document.querySelectorAll("#nw-crumbs .nw-crumb").length === 3', 8000);
   const inGroup = await levels();
   rig.check(JSON.stringify(inGroup.crumbs) === JSON.stringify(['campaign', 'place', 'scene']),
             'a scene in a group does not show Campaign, Place, Scene: ' + JSON.stringify(inGroup));
-  await dm.evaluate('document.querySelector("#np-crumbs .np-crumb[data-level=place]").click(); 0');
+  await dm.evaluate('document.querySelector("#nw-crumbs .nw-crumb[data-go]:not(:first-child):not(.last)").click(); 0');
   await lib.settle(dm, 'document.getElementById("np-field").value === "Mist off the river."', 8000);
   rig.check((await levels()).field === 'Mist off the river.' && (await levels()).on === 'place',
             'the Place crumb does not show the place\'s notes: ' + JSON.stringify(await levels()));
   await dm.evaluate('switchScene(' + JSON.stringify(id['Frostmere Pass']) + '); 0', 120000);
   await dm.waitFor('currentScene && currentScene.id === ' + JSON.stringify(id['Frostmere Pass']) + ' && fogCoverT === 0', 90000, 'the loose scene');
-  await lib.settle(dm, 'document.querySelectorAll("#np-crumbs .np-crumb").length === 2', 8000);
+  await lib.settle(dm, 'document.querySelectorAll("#nw-crumbs .nw-crumb").length === 2', 8000);
   rig.check(JSON.stringify((await levels()).crumbs) === JSON.stringify(['campaign', 'scene']),
             'a scene with no group shows a Place crumb: ' + JSON.stringify(await levels()));
   await dm.evaluate('switchScene(' + JSON.stringify(added.id) + '); 0', 120000);

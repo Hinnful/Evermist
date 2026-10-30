@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 13 open items; IDs run to 248."
+description: "Open work only. 13 open items; IDs run to 249."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.14.1**. **The 5.0 epic comes first** (2026-10-30): the items under "The prep pipeline" below,
+`package.json` is at **4.16.0**. **The 5.0 epic comes first** (2026-10-30): the items under "The prep pipeline" below,
 in their order. They make Evermist a whole prep pipeline with the AI assistant, plus notes and search for play.
 Every other item carries no release tag. **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -83,31 +83,13 @@ worldbuilding tool: no timelines, calendars, family trees or relationship graphs
 for the DM. The items go one at a time, in this order, and the epic closes with 244, which marks 5.0.0. The look for
 240 and 241 is agreed in a clickable prototype, `.claude/private/design/item-195/notes-v2.html` on the DM's machine.
 
-### 240. Notes in their own window, with a tree
-Filed 2026-10-30. The Notes pane becomes a window the DM moves and resizes, like the fight table, opened by Notes on
-the rail. The rail becomes Campaign, Notes, Bestiary; then Map settings alone, the one pane tied to the open map; then
-the table tools. The window's header holds hide-tree, back, forward and the breadcrumbs, whose middle levels fold into
-"…" when narrow. The tree shows the campaign, its places, maps and rooms as the Campaign map arranges them, then
-Monsters and NPCs (the bestiary), Factions and Lore, which nest freely and are new. The tree resizes and hides; the
-window remembers its size, place and tree. Every title renames its entry. "+ New" makes another of the selected kind
-beside it, and asks on a place, map or room. Rows get a right-click menu (Rename, New inside, Delete, Show on map),
-factions and lore drag to reorder and nest, Delete asks first, a monster's note has a Stat block button, and the tree
-takes arrows, Enter and Ctrl+R. Show on map moves the DM's screen: in Manual the TV waits, in Auto it asks first.
-**It keeps everything the pane does:** the room header (name, module dropdown, Delete), following the room pick, the
-selected column in two-map mode, and place, road, map and campaign notes. It opens with no map open, which today's
-tab does not. Factions and lore get storage the previous release ignores, and backups carry it. A room picked while the
-window is shut leaves it shut and lights Notes on the rail. Specced. **Blocked on a discussion:** how the Bestiary and
-Notes relate (which monsters the tree lists, and which of a monster's texts is its note), where roads sit in the tree,
-and what the tree's Delete removes.
-**Campaign · Prep · DM only**
-
 ### 241. Mentions between notes
 Filed 2026-10-30. Typing @ in any note picks an entry, or creates a faction, lore or monster entry by that name, and
 leaves a blue label; one that names nothing yet is red, and a click creates it. A label opens its entry, and hovering
 shows a preview. Each note lists where it "Appears in", folded and counted. The note is always editable, with no edit
 mode. A mention stores readable text with a fixed ID, so a rename needs no rewrite and the previous release still shows
 the words; deleting an entry turns its mentions red. Module text writes room notes too, so the two are tested together.
-Specced. **Blocked on the same discussion as 240:** the Bestiary and Notes are not linked today. Waits for 240.
+Specced. The tree lists a monster once a note mentions it (240's settled rule).
 **Campaign · Play · DM only**
 
 ### 242. The AI assistant fills the notes model
@@ -132,6 +114,12 @@ optional. Claude records the GIFs with the test app off screen. This release is 
 ---
 
 # EVERYTHING ELSE
+
+### 249. Open the Notes window when a room is picked
+Filed 2026-10-30. Today a room picked with the Notes window shut leaves it shut and marks nothing on the rail, as the
+Bestiary and the fight table do. Opening the window on a pick is the other option. Decide after watching how the DM and
+testers use the window.
+**Polish · DM only**
 
 ### 247. The backup scenario needs a second try on Windows and macOS
 Filed 2026-10-30. It reran in 3 recent gate runs: a stopped backup left its file behind, or was not stopped. Find
