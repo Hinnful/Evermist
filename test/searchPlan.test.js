@@ -1,7 +1,7 @@
 'use strict';
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const F = require('../src/world/worldFindPlan.js');
+const F = require('../src/search/searchPlan.js');
 
 describe('wfRank', () => {
   it('ranks the whole name, its start, a word start and a middle in that order', () => {

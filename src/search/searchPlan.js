@@ -1,5 +1,5 @@
 'use strict';
-// worldFindPlan.js — what the world map's Find answers, in pure functions: which places, scenes and roads a
+// searchPlan.js — what the world map's Find answers, in pure functions: which places, scenes and roads a
 // query matches, best match first, and where in each name it hit. No DOM.
 
 const WF_PER_GROUP = 6;          // rows shown under each heading; the count still says how many matched

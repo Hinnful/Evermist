@@ -1,8 +1,8 @@
 'use strict';
-// worldMapFind.js — Find on the world map: a large search in the middle of the window over a dimmed map. With nothing
+// search.js — Find on the world map: a large search in the middle of the window over a dimmed map. With nothing
 // typed every map shows as a picture; typing turns them into cards for the places, scenes and roads whose names fit,
 // best first, with a count. Arrow keys walk the cards, Enter or a click flies to one and picks it, Esc closes. The
-// scenes and places that do not match dim on the map behind. The matching itself is worldFindPlan.js.
+// scenes and places that do not match dim on the map behind. The matching itself is searchPlan.js.
 //
 // ⚠ NAMES REACH THE DOM THROUGH textContent ONLY: a name is the DM's own text.
 
