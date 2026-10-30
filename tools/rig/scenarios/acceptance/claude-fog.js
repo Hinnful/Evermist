@@ -117,7 +117,7 @@ module.exports = async function claudeFog(rig) {
   // ── E ──
   // RED BY DESIGN: written against the feature, never re-proved
   await lib.hold(3000, 'long enough for a push of any of these changes to have reached the Player');
-  const heard = await player.evaluate('__claudeHeard');
+  const heard = await lib.claudeHeard(dm, player);
   rig.check(heard.length === 0 && await player.evaluate('fogPickedHex') !== '#336699',
             'E: the Player window received something of Claude\'s fog changes: ' + JSON.stringify(heard.slice(0, 5)));
 };

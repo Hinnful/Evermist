@@ -322,9 +322,13 @@ async function openMapsOffTv(rig) {
   await dm.evaluate('_wmDeletePicked(["' + tv.id + '"]); 0');
   await settle(dm, 'currentScene && currentScene.id !== "' + tv.id + '" && (' + JSON.stringify(sizes) + ')[currentScene.id] === mapWidth && tvHeld', 60000);
   await dm.evaluate('worldMapHide(); 0');
+  // The Player's own need-map or PLAYER_READY gets the DM's hello reply (toolbar.js), which is not Claude's doing.
+  // Count each one so claudeHeard can set its reply aside.
+  await dm.evaluate('globalThis.__claudeHellos = 0; { const o = onPlayerResyncRequest; onPlayerResyncRequest = function () { __claudeHellos++; return o.apply(this, arguments); }; } 0');
   // A fixed wait let a slow runner's late anim-params from the return land after the clear, so wait for quiet.
   for (let i = 0; i < 10; i++) {
     await player.evaluate('__claudeHeard.length = 0; 0');
+    await dm.evaluate('__claudeHellos = 0; 0');
     await hold(1500, 'let the return from the Campaign send whatever it sends, so only what Claude does is heard after');
     if (await player.evaluate('__claudeHeard.length') === 0) break;
   }
@@ -334,4 +338,17 @@ async function openMapsOffTv(rig) {
   return { player, open, closed };
 }
 
-module.exports = { HELPERS, TV_FOG, SETTLE, openMap, installHelpers, settle, poll, hold, fire, mcpClient, openMapsOffTv };
+// What the Player heard since openMapsOffTv, less one hello reply (anim-params with its warp, and player-lock) per
+// request the Player itself sent: on a slow runner its need-map retry lands mid-scenario.
+async function claudeHeard(dm, player) {
+  const heard = await player.evaluate('__claudeHeard');
+  let hellos = await dm.evaluate('__claudeHellos');
+  const drop = (pred) => { const i = heard.findIndex(pred); if (i >= 0) heard.splice(i, 1); };
+  for (; hellos > 0; hellos--) {
+    drop(m => m.includes('"type":"anim-params"') && m.includes('cloudWarpStrength'));
+    drop(m => m.includes('"type":"player-lock"'));
+  }
+  return heard;
+}
+
+module.exports = { HELPERS, TV_FOG, SETTLE, openMap, installHelpers, settle, poll, hold, fire, mcpClient, openMapsOffTv, claudeHeard };

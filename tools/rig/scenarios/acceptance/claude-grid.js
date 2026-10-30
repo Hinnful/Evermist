@@ -103,8 +103,8 @@ module.exports = async function claudeGrid(rig) {
   }
 
   // ── F ──
-  // RED BY DESIGN: written against the feature, never re-proved
+  // RED ON: syncAnimToPlayer(true, true) called on the DM before the hold, with no hello from the Player - 2026-10-31
   await lib.hold(3000, 'long enough for a push of any of these changes to have reached the Player');
-  const heard = await player.evaluate('__claudeHeard');
+  const heard = await lib.claudeHeard(dm, player);
   rig.check(heard.length === 0, 'F: the Player window received something of Claude\'s grid, effect or light changes: ' + JSON.stringify(heard.slice(0, 5)));
 };

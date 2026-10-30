@@ -225,8 +225,8 @@ module.exports = async function claudePrep(rig) {
   const claudeGuide = await call('guide', { topic: 'claude' });
   rig.check(/ask/i.test(claudeGuide.text) && /Undo works until/.test(claudeGuide.text) && /never touches what the TV shows/.test(claudeGuide.text),
             'the claude guide topic lacks the three facts and the TV rule: ' + JSON.stringify(claudeGuide));
-  rig.check(await dm.evaluate('document.getElementById("mcp-rules") && /The AI assistant can change and delete your prep\. It asks before each delete\. Undo works until you close Evermist\./.test(document.getElementById("mcp-rules").textContent)'),
-            'Connect to Claude in Settings does not carry the ground-rules line');
+  rig.check(await dm.evaluate('document.getElementById("mcp-rules") && /The AI assistant can change and delete your prep\. It asks before each delete\. Undo works until you close Evermist\. After an update, press Connect to Claude again\./.test(document.getElementById("mcp-rules").textContent)'),
+            'Connect to Claude in Settings does not carry the ground-rules line and the reconnect sentence');
   const openFightName = await dm.evaluate('cbState.fights.find(f => f.id === cbState.openId).name');
   const openRows = () => dm.evaluate('({ table: cbState.rows.map(r => r.name).join(), shown: document.querySelectorAll("#cb-list .cb-row").length, saved: JSON.parse(localStorage.getItem("evermist.combatFights")) })');
   const beforeOpen = await dm.evaluate('cbState.rows.map(r => r.name).join()');

@@ -1126,6 +1126,13 @@ and monster-note mentions; one that would pass a cap stays red and the summary c
 uid when no local entry shares it. The Bestiary notes field uses the same editor and cap as the Notes window.
 **Rejected:** numeric polygon ids and `b<n>` as targets (both reused); rewriting notes on rename; cutting an over-cap note.
 
+### The assistant fills the whole notes model · `SHIPPED` (4.18.0, 2026-10-31)
+Claude gets everything the Notes window offers: create, rename, nest, reorder and delete factions and lore, and read and write every note kind with mentions and "Appears in". Deletes keep `confirmed: true`, and deleting an entry lists its children. A module NPC with no stat block becomes a blank Bestiary entry with a note, as "+ New monster or NPC" does. `create_entry` refuses a name already in that kind and names the existing entry, so reuse comes before create. The assistant may add mentions to the DM's own notes, changing only the name into a link.
+**Link rule:** the first mention of a thing per note is linked, later ones stay plain, and an entry is never linked inside its own note. Per note and not per campaign, so "Appears in" lists every note naming it. This is guide text and not enforced by the app, as is "one session's chapters at a time", which has no size cap. **Rejected:** a per-campaign link rule; an app-side size cap. **Parked:** links to fights (BACKLOG 250).
+
+### The Settings line says to press Connect again after an update · `SETTLED` (2026-10-31)
+The sentence "After an update, press Connect to Claude again." is permanent under Connect to Claude, because the installed extension holds its own copy of the tools. **Rejected:** showing it only after pressing Connect, or only after an update.
+
 ---
 
 ## Corrections worth keeping

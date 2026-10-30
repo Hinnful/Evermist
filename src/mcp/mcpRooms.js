@@ -41,10 +41,21 @@ function _mcpRoomsPlan(d, plan, mode) {
 
 const _mcpRoomsMinArea = async s => roomOpMinArea((await _mcpRoomsGrid(s)).cellSize);
 
-async function _mcpCreateRoom(args) {
-  const mode = mcpRoomFog(args.fog);
+// A room's notes with their @{Name} resolved (mcpEntries.js). { args } carries them, or { no } says why not.
+async function _mcpRoomNotes(args) {
+  if (args.notes === undefined) return { args, say: '' };
+  const link = await mcpeLink(args.notes);
+  if (link.text !== String(args.notes) && link.text.length > _mcpCap()) return { no: _mcpNo('Nothing was changed: the notes would pass ' + _mcpCap() + ' characters. Send a shorter text.') };
+  return { args: { ...args, notes: link.text }, say: link.say };
+}
+
+async function _mcpCreateRoom(args0) {
+  const mode = mcpRoomFog(args0.fog);
   if (!mode) return _mcpNo('fog must be hidden, half or revealed.');
-  return _mcpRoomsEdit(args, 'drawing a room on it', d => {
+  const nt = await _mcpRoomNotes(args0);
+  if (nt.no) return nt.no;
+  const args = nt.args;
+  const r = await _mcpRoomsEdit(args, 'drawing a room on it', d => {
     const out = mcpRoomOutline(args.outline, d.mapWidth, d.mapHeight);
     if (out.error) return 'Not done: ' + out.error;
     const id = d.nextPolygonId++;
@@ -53,11 +64,16 @@ async function _mcpCreateRoom(args) {
     return { label: 'drew the room "' + room.name + '"',
       text: 'Drew the room "' + room.name + '" (' + mcpSeeFog(mode) + ', index ' + d.polygons.length + ').' };
   });
+  if (nt.say && !r.isError) r.text += nt.say;
+  return r;
 }
 
-async function _mcpEditRoom(args) {
-  if (args.newName === undefined && args.notes === undefined && args.outline === undefined) return _mcpNo('Nothing to change: give newName, notes or outline.');
-  return _mcpRoomsEdit(args, 'changing its rooms', (d, s) => {
+async function _mcpEditRoom(args0) {
+  if (args0.newName === undefined && args0.notes === undefined && args0.outline === undefined) return _mcpNo('Nothing to change: give newName, notes or outline.');
+  const nt = await _mcpRoomNotes(args0);
+  if (nt.no) return nt.no;
+  const args = nt.args;
+  const r = await _mcpRoomsEdit(args, 'changing its rooms', (d, s) => {
     const f = mcpRoomFind(d.polygons, args.room, args.index, s.name);
     if (f.error) return 'Not done: ' + f.error;
     const room = f.room, old = room.name || '', done = [];
@@ -76,6 +92,8 @@ async function _mcpEditRoom(args) {
     return { label: 'changed the room "' + old + '"',
       text: 'Changed the ' + done.join(', ') + ' of the room "' + old + '".' + now + _mcpDoorsGone(lost) };
   });
+  if (nt.say && !r.isError) r.text += nt.say;
+  return r;
 }
 
 async function _mcpDeleteRoom(args) {

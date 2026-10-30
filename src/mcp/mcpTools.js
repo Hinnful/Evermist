@@ -1,9 +1,9 @@
 'use strict';
 // mcpTools.js — the dispatcher for what Claude may do through the MCP connection, answered in the DM window.
 // Main relays each call (electron/mcpBridge.js), the tool list Claude sees lives in electron/mcpShim.js and
-// each group of tools in its own file (mcpMeta, mcpScenes, mcpNotes, mcpWorld, mcpWorldMap, mcpFights, mcpBestiary, mcpGallery, mcpSee, mcpRooms, mcpGrid, mcpImport).
+// each group of tools in its own file (mcpMeta, mcpScenes, mcpNotes, mcpEntries, mcpWorld, mcpWorldMap, mcpFights, mcpBestiary, mcpGallery, mcpSee, mcpRooms, mcpGrid, mcpImport).
 
-const MCP_TOOLS = Object.assign({}, MCP_META_TOOLS, MCP_SCENES_TOOLS, MCP_WORLD_TOOLS, MCP_WORLDMAP_TOOLS, MCP_NOTES_TOOLS, MCP_FIGHTS_TOOLS, MCP_BESTIARY_TOOLS, MCP_GALLERY_TOOLS, MCP_SEE_TOOLS, MCP_MUSIC_TOOLS, MCP_FOG_TOOLS, MCP_ROOMS_TOOLS, MCP_GRID_TOOLS, MCP_IMPORT_TOOLS);
+const MCP_TOOLS = Object.assign({}, MCP_META_TOOLS, MCP_SCENES_TOOLS, MCP_WORLD_TOOLS, MCP_WORLDMAP_TOOLS, MCP_NOTES_TOOLS, MCP_ENTRIES_TOOLS, MCP_FIGHTS_TOOLS, MCP_BESTIARY_TOOLS, MCP_GALLERY_TOOLS, MCP_SEE_TOOLS, MCP_MUSIC_TOOLS, MCP_FOG_TOOLS, MCP_ROOMS_TOOLS, MCP_GRID_TOOLS, MCP_IMPORT_TOOLS);
 
 async function _mcpAnswer(req) {
   const run = MCP_TOOLS[req.tool];

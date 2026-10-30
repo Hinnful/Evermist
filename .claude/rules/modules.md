@@ -202,6 +202,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `mcp/mcpMeta.js` | Claude's guide and undo_last_change tools |
 | `mcp/mcpScenes.js` | Claude's scene tools: find maps on disk, make, rename, move, change and delete a scene |
 | `mcp/mcpNotes.js` | Claude's notes tools |
+| `mcp/mcpEntriesPlan.js` | Pure rules for Claude's faction and lore tools: an entry found by name or nesting path, the refusal to make a second one, the delete question, and "@{Name}" resolved to the stored mention and read back. Tested |
+| `mcp/mcpEntries.js` | Claude's Notes-window tools: list, create, edit and delete factions and lore (and a blank Bestiary entry), where an entry appears, and the link and read-back every notes write goes through |
 | `mcp/mcpWorld.js` | Claude's campaign list and place tools |
 | `mcp/mcpWorldMap.js` | Claude's road and backdrop tools |
 | `mcp/mcpWorldPlan.js` | Pure rules for the Campaign tools: a group outline, a card spot, a road found by name, the backdrop numbers. Tested |
@@ -280,5 +282,5 @@ combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → com
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
 combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js →
-mcp/mcpPlan.js → mcp/mcpCombatPlan.js → mcp/mcpWorldPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMapPlan.js → mcp/mcpMapEdit.js → mcp/mcpFogPlan.js → mcp/mcpFog.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpMusicPlan.js → mcp/mcpMusic.js → mcp/mcpRoomsPlan.js → mcp/mcpRooms.js → mcp/mcpGridPlan.js → mcp/mcpGrid.js → mcp/mcpImportPlan.js → mcp/mcpImport.js → mcp/mcpTools.js → inline <script>
+mcp/mcpPlan.js → mcp/mcpCombatPlan.js → mcp/mcpWorldPlan.js → mcp/mcpEntriesPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMapPlan.js → mcp/mcpMapEdit.js → mcp/mcpFogPlan.js → mcp/mcpFog.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpEntries.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpMusicPlan.js → mcp/mcpMusic.js → mcp/mcpRoomsPlan.js → mcp/mcpRooms.js → mcp/mcpGridPlan.js → mcp/mcpGrid.js → mcp/mcpImportPlan.js → mcp/mcpImport.js → mcp/mcpTools.js → inline <script>
 ```

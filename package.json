@@ -1,6 +1,6 @@
 {
   "name": "evermist",
-  "version": "4.17.0",
+  "version": "4.18.0",
   "description": "D&D fog-of-war map viewer for TV display",
   "main": "main.js",
   "author": "Hinnful",

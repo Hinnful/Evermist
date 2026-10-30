@@ -37,11 +37,12 @@ function _mcpTaken() {
   return rects;
 }
 
-function _mcpCreatePlace(args) {
+async function _mcpCreatePlace(args) {
   const want = sanitizeGroupName(args.name);
   if (!want) return _mcpNo('A group needs a name.');
   if (_mcpPlaceName(want)) return _mcpNo('A group called "' + want + '" already exists. Use add_notes to add to it.');
-  const notes = String(args.notes || '').trim();
+  const linked = await mcpeLink(args.notes);
+  const notes = linked.text.trim();
   if (notes.length > _mcpCap()) return _mcpNo('Nothing was created: the notes pass ' + _mcpCap() + ' characters.');
   const r = mcpFreeRect(_mcpTaken());
   const snap = worldSnapshotTake();
@@ -51,7 +52,7 @@ function _mcpCreatePlace(args) {
   if (notes) notesPlaceSet(name, notes);
   _mcpWorldRefresh();
   return mcpDone('created the group "' + name + '"', async () => { worldSnapshotPut(snap); forgetGroup(name); _mcpWorldRefresh(); },
-    'Created the group "' + name + '" in an empty spot on the Campaign' + (notes ? ', with its notes' : '') + '. The DM can drag it into position. The group holds no maps yet: it gets them when the DM or Claude adds maps into it.');
+    'Created the group "' + name + '" in an empty spot on the Campaign' + (notes ? ', with its notes' : '') + '.' + linked.say + ' The DM can drag it into position. The group holds no maps yet: it gets them when the DM or Claude adds maps into it.');
 }
 
 // The place a call names, as { name }, or { error }.

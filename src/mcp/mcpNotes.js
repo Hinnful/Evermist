@@ -1,22 +1,29 @@
 'use strict';
-// mcpNotes.js — Claude's notes tools: read the notes of the campaign, a place or a scene, add to them, or
-// replace them. Each change records the old text first, so undo_last_change brings it back.
+// mcpNotes.js — Claude's notes tools: read the notes of the campaign, a group, a road, a map, a faction, a lore
+// entry or a monster, add to them, or replace them. Each change records the old text first, so undo_last_change
+// brings it back. Mentions read back as @{Name} and written text resolves @{Name} (mcpEntries.js).
 
 async function _mcpRead(args) {
-  if (args.level === 'campaign') return _mcpOk(notesCampaignGet() || '(no campaign notes yet)');
+  if (args.level === 'campaign') return _mcpOk(await mcpeShow(notesCampaignGet()) || '(no campaign notes yet)');
   if (args.level === 'place') {
     const name = _mcpPlaceName(args.name);
-    return name ? _mcpOk(notesPlaceGet(name) || '(no notes for this group yet)') : _mcpNo('No group is called "' + (args.name || '') + '".');
+    return name ? _mcpOk(await mcpeShow(notesPlaceGet(name)) || '(no notes for this group yet)') : _mcpNo('No group is called "' + (args.name || '') + '".');
   }
   if (args.level === 'road') {
     const f = _mcpRoadFor(args);
-    return f.error ? _mcpNo(f.error) : _mcpOk(notesRoadGet(f.road.uid) || '(no notes for this road yet)');
+    return f.error ? _mcpNo(f.error) : _mcpOk(await mcpeShow(notesRoadGet(f.road.uid)) || '(no notes for this road yet)');
   }
-  if (args.level !== 'scene') return _mcpNo('level must be campaign, group, road or map.');
+  if (args.level === 'faction' || args.level === 'lore' || args.level === 'monster') {
+    const target = _mcpNotesTarget(args);
+    return target.error ? _mcpNo(target.error) : _mcpOk(await mcpeShow(await target.get()) || '(no note yet)');
+  }
+  if (args.level !== 'scene') return _mcpNo('level must be campaign, group, road, map, faction, lore or monster.');
   const found = _mcpScene(args);
   if (found.error) return _mcpNo(found.error);
   const rec = await _mcpSceneRecord(found.scene.id);
-  return _mcpOk({ scene: found.scene.name, place: found.scene.group || null, notes: rec.notes || '', rooms: _mcpRooms(rec.polygons) });
+  const rooms = _mcpRooms(rec.polygons);
+  for (const r of rooms) r.notes = await mcpeShow(r.notes);
+  return _mcpOk({ scene: found.scene.name, place: found.scene.group || null, notes: await mcpeShow(rec.notes || ''), rooms });
 }
 
 // A scene's notes written wherever its live copy is. Returns false when the scene is gone.
@@ -55,7 +62,21 @@ function _mcpNotesTarget(args) {
       get: async () => (await _mcpSceneRecord(s.id)).notes || '',
       put: async text => { if (!await _mcpPutSceneNotes(s.id, text)) throw new Error('The map "' + s.name + '" is no longer in the library.'); } };
   }
-  return { error: 'level must be campaign, group, road or map.' };
+  if (args.level === 'faction' || args.level === 'lore') {
+    const f = mpeFind(notesEntriesAll(), args.level, args.name);
+    if (f.error) return { error: f.error };
+    const id = f.entry.id;
+    return { where: 'the ' + args.level + ' entry "' + f.entry.name + '"', get: async () => (notesEntryGet(id) || {}).note || '',
+      put: async text => { if (notesEntryGet(id)) { notesEntrySetNote(id, text); mxBump(); } } };
+  }
+  if (args.level === 'monster') {
+    const f = mcpFindMonster(cbState.blocks, args.name, args.source);
+    if (f.error) return { error: f.error };
+    const id = f.entry.id;
+    return { where: 'the monster "' + f.entry.name + '"', get: async () => (cbState.blocks[id] || {}).notes || '',
+      put: async text => { const b = cbState.blocks[id]; if (!b) return; b.notes = text; cbSave(); mxBump(); bestiaryRender(); } };
+  }
+  return { error: 'level must be campaign, group, road, map, faction, lore or monster.' };
 }
 
 // `make(old)` is mcpAppend or mcpReplace on the old text; `verb` fills the reply and the toast.
@@ -63,11 +84,13 @@ async function _mcpWriteNotes(args, make, verb) {
   const target = _mcpNotesTarget(args);
   if (target.error) return _mcpNo(target.error);
   const old = await target.get();
-  const m = make(old, String(args.text || ''), _mcpCap());
+  const linked = await mcpeLink(args.text);
+  const m = make(old, linked.text, _mcpCap());
   if (m.empty) return _mcpNo('The text is empty.');
   if (m.tooLong) return _mcpNo('Nothing was changed: the notes for ' + target.where + ' would pass ' + _mcpCap() + ' characters. Send a shorter text.');
   await target.put(m.text);
-  return mcpDone(verb + ' the notes of ' + target.where, () => target.put(old), verb + ' the notes of ' + target.where + '.');
+  mxBump();
+  return mcpDone(verb + ' the notes of ' + target.where, async () => { await target.put(old); mxBump(); }, verb + ' the notes of ' + target.where + '.' + linked.say);
 }
 
 const _mcpAdd = args => _mcpWriteNotes(args, (old, text, cap) => mcpAppend(old, text, cap), 'Added to');

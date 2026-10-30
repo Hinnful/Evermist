@@ -626,7 +626,11 @@ minutes with no call.
 
 Claude does the DM's prep and none of the play. Its tools make, rename, move, change and delete
 scenes, places, roads, the world map's backdrop, fights, bestiary monsters and gallery pictures, and
-add to or replace notes at the campaign, place and scene levels. The shim's `instructions` tell it
+add to or replace notes at every level the Notes window holds. `mcpEntries.js` (rules in
+`mcpEntriesPlan.js`) makes, nests and deletes factions and lore, makes a blank Bestiary entry for an NPC,
+and answers where an entry appears. Claude writes a mention as `@{Name}`; every tool that writes notes
+resolves it to the stored form and reads stored mentions back as `@{Name}`, or as the stored form when
+the entry is gone, so a read-then-write keeps a red label. The shim's `instructions` tell it
 what a place, a scene and a room are, and a `guide` tool returns plain-language how-to text per topic
 from `mcpGuideText.js`, which the in-app guides can read too. Tools are grouped one file per subject in
 `src/mcp/`, and `mcpTools.js` is the dispatcher.

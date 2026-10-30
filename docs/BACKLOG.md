@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 13 open items; IDs run to 249."
+description: "Open work only. 13 open items; IDs run to 250."
 metadata: 
   node_type: memory
   type: project
@@ -83,13 +83,6 @@ worldbuilding tool: no timelines, calendars, family trees or relationship graphs
 for the DM. The items go one at a time, in this order, and the epic closes with 244, which marks 5.0.0. The look for
 240 and 241 is agreed in a clickable prototype, `.claude/private/design/item-195/notes-v2.html` on the DM's machine.
 
-### 242. The AI assistant fills the notes model
-Filed 2026-10-30. Tools for the AI assistant to create factions and lore, nest them, write mentions and read "Appears
-in", so a module PDF plus a map folder becomes maps in a group with rooms, notes, fights and linked entries. It preps one
-session's chapters at a time, never a whole book. Its notes tools already read and write mentions in their stored form,
-`@[Name](kind:id)`, unchanged.
-**Prep · DM only**
-
 ### 243. One review and one undo for a big AI assistant prep run
 Filed 2026-10-30. A prep run is hundreds of changes, and the AI assistant's undo keeps the last 30. After a run the DM
 sees one summary of what it made and changed, and one button undoes the whole run. **Blocked on a discussion** of the
@@ -169,6 +162,12 @@ diagonal wall, the Door tool cuts the wall into cell-sized steps from the room's
 across two hexes. Decide what a door one hex wide means on a hex wall, then make the preview and the click follow it.
 **Needs /spec.**
 **Polish · DM + Player**
+
+### 250. A note links to a fight
+Filed 2026-10-31, low priority. A room note can say "the goblin ambush" but cannot point at that fight, because a fight
+is not a kind a mention can name. Add it as one: the @ picker lists fights, a fight shows "Appears in", and a click
+on the link opens the fight. The AI assistant writes the same link once the app has it.
+**Prep · DM only**
 
 ---
 
