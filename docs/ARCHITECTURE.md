@@ -78,8 +78,8 @@ names and the places have none. Under the prints sits the mist (`worldMist.js`):
 inside the places, over the backdrop, which is greyed outside them. A place's white 2px line is painted above by
 the room code. The bar is the scene's own toolbar lent to the layer and given back on closing,
 with words only on Map and Group: Select, Map (adds into the picked group), Group (Rectangle, Circle, Polygon), Road (L), Marker, a divider, Find. No Straight walls row. Places
-take no Merge, Cut out or Split (`worldMapShapes.js` draws them). Find opens a large search over a dimmed map
-(`search.js`). One backdrop image, set in Settings, sits behind the places
+take no Merge, Cut out or Split (`worldMapShapes.js` draws them). Find opens the search over a dimmed map
+(`search.js`: one box from any view, Ctrl+F or the toolbar's Find). One backdrop image, set in Settings, sits behind the places
 (`worldBackground.js`, its own IndexedDB). A double-click, or the Open bar over the one picked map
 (`worldMapOpenBar.js`), opens a scene. Add imports maps off screen, frames them and picks the first, and never opens
 one. With no maps the app starts on the Campaign, which shows one centred card, "Add your first map" (`worldMapEmpty.js`); a place is called a group in the UI. Opening the

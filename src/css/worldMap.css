@@ -234,45 +234,6 @@
   .wm-card[data-col]:not([data-col=""])::after { right: calc(-6px * var(--wz)); top: calc(-6px * var(--wz)); }
   .wm-lm[data-col]:not([data-col=""])::after { left: calc(6px * var(--wz)); top: calc(-24px * var(--wz)); }
 
-  /* Find: a large search in the middle of the window over a dimmed map. Its own fade and rise: the window's pop-in
-     would fight the centring. Every map is a picture while nothing is typed; typing turns them into result cards. */
-  #wm-finder { position: fixed; inset: 0; z-index: 200; display: none; background: rgba(6, 7, 10, 0.62); animation: wfVeil .18s ease-out; }
-  body.world.searching #wm-finder { display: block; }
-  @keyframes wfVeil { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes wfRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-  #wm-finder .sm-win {
-    position: absolute; left: 0; right: 0; top: 9vh; margin: 0 auto; width: 760px; max-width: calc(100vw / var(--ui-zoom, 1.2) - 48px);
-    animation: wfRise .2s cubic-bezier(.2, .8, .2, 1);
-  }
-  .wf-head { position: relative; padding: 14px 16px 10px; }
-  .wf-glass { position: absolute; left: 30px; top: 50%; transform: translateY(-38%); color: var(--g-dim); pointer-events: none; display: flex; }
-  #wm-search {
-    width: 100%; height: 40px; box-sizing: border-box; padding: 0 14px 0 42px; border: 0; border-radius: 8px; outline: none;
-    background: var(--g-field, #2a2c31); color: var(--g-text, #e3e6ea); font: 400 15px/1 system-ui, -apple-system, sans-serif;
-  }
-  #wm-search::placeholder { color: var(--g-dim); }
-  .wf-keys { padding: 8px 16px 12px; border-top: 1px solid var(--g-line); color: var(--g-dim); font: 400 11px/1 system-ui, -apple-system, sans-serif; display: flex; gap: 14px; }
-  .wf-keys kbd { font: 600 10px/1 system-ui, sans-serif; color: var(--g-text); background: var(--g-field); border-radius: 4px; padding: 3px 5px; margin-right: 4px; }
-  #wm-find-list {
-    max-height: min(58vh, 560px); overflow-y: auto; padding: 2px 16px 14px;
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; align-content: start;
-  }
-  #wm-find-list:empty { display: none; }
-  .wf-n, .wf-h { grid-column: 1 / -1; padding: 6px 2px 0; font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
-  .wf-row {
-    display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 6px; border-radius: 8px; cursor: pointer;
-    background: var(--g-field); font: 500 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text);
-  }
-  .wf-row:hover { background: var(--g-hover); }
-  .wf-row.on, .wf-row.on:hover { background: var(--b-tint); color: var(--b-icon); box-shadow: inset 0 0 0 1px rgba(92, 177, 255, 0.35); }
-  .wf-ic { width: 100%; aspect-ratio: 16 / 10; border-radius: 5px; background: var(--g-bg) center / cover; display: flex; align-items: center; justify-content: center; color: var(--g-dim); }
-  .wf-ic svg { width: 28px; height: 28px; }
-  .wf-ic.thumb { background-color: #222; }
-  .wf-nm { padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wf-nm b { font-weight: 700; }
-  .wf-sub { padding: 0 2px 2px; color: var(--g-dim); font-size: 11px; font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wf-row.on .wf-sub { color: var(--b-icon); opacity: .75; }
-
   /* The party marker (worldParty.js): a flat blue compass star that floats over its spot at one size on screen
      (--iz undoes the layer's zoom), bobbing slowly. Only the star takes the pointer. A map it is dragged over lights
      in the picked blue, as a card dropped on another does. */

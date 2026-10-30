@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 13 open items; IDs run to 246."
+description: "Open work only. 13 open items; IDs run to 248."
 metadata: 
   node_type: memory
   type: project
@@ -81,18 +81,7 @@ a group, with rooms, notes, fights and linked factions and lore, reviewed and un
 search finds anything and notes link to each other. Evermist stays a map presenter and prep pipeline, never a
 worldbuilding tool: no timelines, calendars, family trees or relationship graphs, and nothing that tracks the session
 for the DM. The items go one at a time, in this order, and the epic closes with 244, which marks 5.0.0. The look for
-239 to 241 is agreed in a clickable prototype, `.claude/private/design/item-195/notes-v2.html` on the DM's machine.
-
-### 239. Search everything
-Filed 2026-10-30. Ctrl+F anywhere, or Find at the end of the map toolbar, as on the Campaign map, opens one search box
-in the middle of the window. Empty, it lists what was opened recently, on every view; typing shows a best match, then
-results grouped as maps, rooms, places, monsters and NPCs, factions, lore, fights, music and pictures, with the matching
-words when the hit is inside a note. Picking a result does that thing's own action: a map opens on the DM's screen
-(Manual: the TV waits for Send; Auto: it asks first), the Campaign map included, a monster opens its stat block, a fight
-opens the fight table, a note opens in Notes. It replaces the Campaign map's own find; the Bestiary keeps its list
-filter. Works on today's notes, so it needs nothing else first. Specced. **The DM picks the search box's look from a
-prototype before it is built.**
-**Prep · Play · DM only**
+240 and 241 is agreed in a clickable prototype, `.claude/private/design/item-195/notes-v2.html` on the DM's machine.
 
 ### 240. Notes in their own window, with a tree
 Filed 2026-10-30. The Notes pane becomes a window the DM moves and resizes, like the fight table, opened by Notes on
@@ -143,6 +132,16 @@ optional. Claude records the GIFs with the test app off screen. This release is 
 ---
 
 # EVERYTHING ELSE
+
+### 247. The backup scenario needs a second try on Windows and macOS
+Filed 2026-10-30. It reran in 3 recent gate runs: a stopped backup left its file behind, or was not stopped. Find
+whether the scenario or the app is at fault, then fix it or retire the check.
+**Upkeep · DM only**
+
+### 248. Time how long search takes to open on a big library
+Filed 2026-10-30. Search reads every map's rooms and notes the first time it opens, and caches them. Item 239's spec
+asked for a rig note of that open time on a library of many maps, so a slowdown shows up; it was not added.
+**Upkeep · DM only**
 
 ### 245. The music scenario needs a second try on Windows
 Filed 2026-10-30. It reran in 3 recent Windows gate runs: the DM window did not answer within 30s and the music read

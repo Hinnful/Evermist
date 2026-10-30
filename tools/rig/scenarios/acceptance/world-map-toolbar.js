@@ -14,8 +14,8 @@
 //       picked (DoD 2). The Campaign shows no options row, so no Straight walls (DoD 5).
 //   13. Road is its own labelled button; L takes it, R, O, P and V put it down (DoD 3). Marker is a tool beside it:
 //       a click arms it, Esc and V put it down (DoD 4).
-//   14. Find, or Ctrl+F, opens a large search in the middle of the window: every map as a picture when nothing is typed,
-//       cards when typing. Arrow keys, Enter and Esc work.
+//   14. Find, or Ctrl+F, opens the search in the middle of the window, field focused; typing narrows the rows. Enter on a map asks
+//       first in Auto. Esc works. (The search's own scenario is search.js.)
 //
 // ⚠ THE LIBRARY STARTS EMPTY and opens on the world map; the picker's own handler is fed a real FileList (the rig skill).
 // ⚠ BY EYE: the bar, Add, the search and its fade.
@@ -126,24 +126,26 @@ module.exports = async function worldMapToolbar(rig) {
   // ── 14. Find ──────────────────────────────────────────────────────────────
   await dm.evaluate('document.getElementById("wm-find").click(); 0');
   await lib.settle(dm, 'document.body.classList.contains("searching")', 4000);
-  const grid = await dm.evaluate(`(() => { const f = document.querySelector('#wm-finder .sm-win').getBoundingClientRect(), v = innerWidth;
-    return { cards: document.querySelectorAll('#wm-find-list .wf-row').length, centred: Math.abs((f.left + f.right) / 2 - v / 2) < 3,
-      focus: document.activeElement === document.getElementById('wm-search') }; })()`);
+  const grid = await dm.evaluate(`(() => { const f = document.querySelector('#sr-box').getBoundingClientRect(), v = innerWidth;
+    return { cards: document.querySelectorAll('#sr-list .sr-row').length, centred: Math.abs((f.left + f.right) / 2 - v / 2) < 3,
+      focus: document.activeElement === document.getElementById('sr-input') }; })()`);
   // RED BY DESIGN: written against the feature, never re-proved
-  rig.check(grid.cards === NAMES.length && grid.centred && grid.focus, 'the empty search is not one card per map in the middle of the window: ' + JSON.stringify(grid));
+  rig.check(grid.centred && grid.focus, 'the empty search is not in the middle of the window with the field focused: ' + JSON.stringify(grid));
   rig.byEye('the search and its fade');
-  await dm.evaluate('document.getElementById("wm-search").dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true, cancelable: true })); 0');
+  await dm.evaluate('document.getElementById("sr-input").dispatchEvent(new KeyboardEvent("keydown", { code: "Escape", key: "Escape", bubbles: true, cancelable: true })); 0');
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(await dm.evaluate('!document.body.classList.contains("searching")'), 'Esc did not close the search');
   await dm.evaluate('__tbKey("KeyF", { ctrlKey: true }); 0');
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(await dm.evaluate('document.body.classList.contains("searching")'), 'Ctrl+F did not open the search');
-  await dm.evaluate('(() => { const i = document.getElementById("wm-search"); i.value = "att"; i.dispatchEvent(new Event("input", { bubbles: true })); })(); 0');
-  const typed = await dm.evaluate('[...document.querySelectorAll("#wm-find-list .wf-row .wf-nm")].map(e => e.textContent)');
+  await dm.evaluate('(() => { const i = document.getElementById("sr-input"); i.value = "att"; i.dispatchEvent(new Event("input", { bubbles: true })); })(); 0');
+  const typed = await dm.evaluate('[...document.querySelectorAll("#sr-list .sr-row .sr-nm")].map(e => e.textContent)');
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(typed.length === 1 && typed[0] === 'Attic', 'typing did not narrow the cards to the match: ' + JSON.stringify(typed));
-  await dm.evaluate('document.getElementById("wm-search").dispatchEvent(new KeyboardEvent("keydown", { code: "Enter", key: "Enter", bubbles: true, cancelable: true })); 0');
+  await dm.evaluate('document.getElementById("sr-input").dispatchEvent(new KeyboardEvent("keydown", { code: "Enter", key: "Enter", bubbles: true, cancelable: true })); 0');
   // RED BY DESIGN: written against the feature, never re-proved
-  rig.check(await dm.evaluate('!document.body.classList.contains("searching") && worldMapPicked().length === 1 && allScenes.find(s => s.id === worldMapPicked()[0]).name === "Attic"'),
-            'Enter on a result did not pick it and close the search');
+  // Auto is the default, so a map picked from the Campaign asks first (search.js; the search scenario covers both modes).
+  rig.check(await dm.evaluate('!document.body.classList.contains("searching") && autoSync && _cdOpen'),
+            'Enter on a map result did not close the search and ask before opening it');
+  await dm.evaluate('document.getElementById("cd-cancel").click(); 0');
 };

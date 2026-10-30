@@ -105,6 +105,7 @@ function _bsRenderPage() {
 
 // An import opens its page and keeps NEW; the DM's own click on a row is what clears it.
 function _bsShow(id, editing) {
+  searchRecentAdd('monster:' + id);
   bs.open = id;
   bs.editing = !!editing;
   _bsRenderPage();

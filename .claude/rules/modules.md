@@ -124,8 +124,10 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `world/worldMapEdit.js` | What the DM does on the world map: pick, drag, drop, rename, find, add |
 | `world/worldMapShapes.js` | Drawing a place with the toolbar's tools, and Merge, Cut out and Split on places |
 | `world/worldMapRoads.js` | Roads in the world map's layer: the line, its name, the Road tool, delete |
-| `search/searchPlan.js` | Pure Find kernel: which places, scenes and roads a query matches, best first. Tested |
-| `search/search.js` | Find on the world map: the field's result list, its keys, and flying to a pick |
+| `search/searchPlan.js` | Pure search kernel: a query's matches ranked, groups by their strongest result, five a group, a note hit's words, the recent list. Tested |
+| `search/searchIndex.js` | What the search finds: entries from app state and cached scene records, and the recent list |
+| `search/searchPick.js` | What a pick does per kind; a map or room opens by the Manual/Auto rule |
+| `search/search.js` | The search box from any view: its field, rows, keys and the loading and failure lines |
 | `world/worldMapColumns.js` | Two maps on the world map: the Left and Right chips, filling the active column, the L or R on a held scene |
 | `world/worldMapEmpty.js` | The world map with no scenes: a callout over Add, and the bar's Select-and-Add-only state |
 | `world/worldMapOpenBar.js` | The bar over the one picked map: Open, and More for its menu |
@@ -262,7 +264,7 @@ dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hintsPlan.js → ui/hints.js → ui/hintsFirstMap.js → ui/hintsCues.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → rooms/roomPanel.js → rooms/roomCard.js →
 gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js →
-world/worldMapPlan.js → world/worldRoadPlan.js → world/worldPartyPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldParty.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → search/searchPlan.js → search/search.js → world/worldMapColumns.js → world/worldMapEmpty.js → world/worldMapOpenBar.js → world/worldMapFan.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →
+world/worldMapPlan.js → world/worldRoadPlan.js → world/worldPartyPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldParty.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → search/searchPlan.js → search/searchIndex.js → search/searchPick.js → search/search.js → world/worldMapColumns.js → world/worldMapEmpty.js → world/worldMapOpenBar.js → world/worldMapFan.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →
 combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →

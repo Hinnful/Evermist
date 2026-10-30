@@ -54,6 +54,8 @@ const OWNERS = {
   'worldmapedit.js': 'dm-ui',
   'worldmist.js': 'dm-ui',
   'worldmap.css': 'dm-ui',
+  'search.js': 'dm-ui',
+  'search.css': 'dm-ui',
   'moduletext.js': 'module-text',
   'moduletextpanel.js': 'module-text',
   'pdflayout.js': 'module-text',

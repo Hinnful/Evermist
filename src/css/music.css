@@ -67,6 +67,7 @@
   .mu-row-meta { flex: none; font: 400 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim);
                  font-variant-numeric: tabular-nums; }
   .mu-row-on { background: var(--g-field); cursor: default; }
+  .mu-row-pick { background: var(--b-tint); }
   .mu-row-on .mu-row-name { color: var(--g-text); font-weight: 600; }
 
   /* Destructive, belongs to one row, wears no red, and asks through confirmDialog. Hidden

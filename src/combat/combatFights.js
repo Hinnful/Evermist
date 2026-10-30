@@ -21,6 +21,7 @@ function cbFightsTitle() {
 }
 
 function _cfSwitch(id) {
+  searchRecentAdd('fight:' + id);
   if (cbStatRowId()) cbCloseStat();
   cbCloseMenu();
   combatOpenFight(cbState, id);

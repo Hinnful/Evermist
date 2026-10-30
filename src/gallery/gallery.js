@@ -6,6 +6,7 @@ let _gaPics = [];          // { id, name, blob, added }, newest first
 let _gaLive = null;        // the id on the TV, or null
 let _gaPaneLive = false;   // a column's copy: whether the DM window holds one on the TV
 let _gaQuery = '';
+let _gaPicked = null;       // the picture the search picked: marked, never shown on the TV
 const _gaUrls = {};
 const _gaTiles = {};
 
@@ -45,6 +46,7 @@ function _gaSetLive(id) {
 }
 
 function _gaShow(p) {
+  searchRecentAdd('picture:' + p.id);
   _gaSend(p.blob);
   _gaSetLive(p.id);
 }
@@ -118,6 +120,17 @@ function _gaRemove(p) {
 // never removed from here.
 function galleryList() { return _gaPics.map(p => ({ id: p.id, name: p.name, added: p.added, type: p.blob.type, size: p.blob.size })); }
 function galleryOnTv(id) { return _gaLive === id; }
+
+// The search's pick: the filter cleared, the picture marked and scrolled to.
+function galleryPickPicture(id) {
+  _gaPicked = id;
+  _gaQuery = '';
+  const f = document.getElementById('ga-filter');
+  if (f) f.value = '';
+  _gaRender();
+  const tile = _gaTiles[id];
+  if (tile) tile.scrollIntoView({ block: 'center' });
+}
 
 async function galleryAddFile(f) {
   const p = await _gaAddOne(f);
@@ -243,6 +256,7 @@ function _gaRender() {
   grid.replaceChildren(...shown.map(p => {
     const tile = _gaTile(p);
     tile.classList.toggle('on', p.id === _gaLive);
+    tile.classList.toggle('picked', p.id === _gaPicked);
     tile.querySelector('.ga-name').textContent = p.name;
     return tile;
   }));
@@ -287,7 +301,7 @@ async function initGallery() {
     input.value = '';
     if (files.length) _gaAdd(files);
   };
-  filter.oninput = () => { _gaQuery = filter.value; _gaRender(); };
+  filter.oninput = () => { _gaQuery = filter.value; _gaPicked = null; _gaRender(); };
   filter.onkeydown = e => {
     e.stopPropagation();
     if (e.key === 'Escape') { filter.value = ''; _gaQuery = ''; _gaRender(); filter.blur(); }

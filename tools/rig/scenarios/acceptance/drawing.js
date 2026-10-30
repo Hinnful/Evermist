@@ -544,8 +544,8 @@ module.exports = async function drawing(rig) {
   })()`;
   await dm.evaluate('setPlaceMode("rooms"); setShapeOp("join"); setShapeOp("new"); setShape("rect"); 0');
   const barRooms = await dm.evaluate(BAR);
-  rig.check(barRooms.shown.join() === 'btn-select,btn-brush,btn-shape,btn-effects,tb-reveal-all,tb-hide-all',
-            'the Fog bar is not Select, Brush, Room, Effects, then Reveal all and Hide all: ' + barRooms.shown.join(' '));
+  rig.check(barRooms.shown.join() === 'btn-select,btn-brush,btn-shape,btn-effects,tb-reveal-all,tb-hide-all,tb-find',
+            'the Fog bar is not Select, Brush, Room, Effects, then Reveal all, Hide all and Find: ' + barRooms.shown.join(' '));
   // The bar never changes width while the DM works: not across a tool pick, and not across a map with no rooms.
   const widths = [barRooms.width];
   for (const pick of ['setShape("brush")', 'setShape("select")', 'setShapeOp("join")', 'setShapeOp("new")', 'setShape("door")', 'setShape("select")']) {

@@ -1,0 +1,54 @@
+/* Search (search.js): one box over a veil, from any view. It is the app's window parts: .sm-win, .sm-x, the .sm-field
+   skin, the window scroll bar and the menus' divider. The veil and the box fade and rise on their own, since the
+   window's pop-in would fight the centring. */
+  #sr-veil { position: fixed; inset: 0; z-index: 450; display: none; background: rgba(6, 7, 10, 0.62); animation: srVeil .18s ease-out; }
+  body.searching #sr-veil { display: block; }
+  @keyframes srVeil { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes srRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  #sr-box {
+    position: absolute; left: 0; right: 0; top: 9vh; margin: 0 auto; width: 520px; max-width: calc(100vw / var(--ui-zoom, 1.2) - 48px);
+    overflow: hidden; animation: srRise .2s cubic-bezier(.2, .8, .2, 1);
+  }
+  .sr-q { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 12px; border-bottom: 1px solid var(--g-line); }
+  .sr-q .sm-field { flex: 1; height: 36px; padding: 0 10px; gap: 8px; }
+  .sr-q .sm-field svg { width: 16px; height: 16px; }
+  .sr-q .sm-field input { height: 36px; font: 400 14px/36px system-ui, -apple-system, sans-serif; padding: 0; }
+  #sr-bar { flex: none; height: 2px; margin-top: -1px; position: relative; overflow: hidden; }
+  #sr-bar.load::after { content: ''; position: absolute; top: 0; bottom: 0; width: 35%; background: var(--b-icon); animation: srSlide 1.1s ease-in-out infinite; }
+  @keyframes srSlide { from { left: -35%; } to { left: 100%; } }
+  #sr-list { max-height: 400px; overflow-y: auto; padding: 4px; min-width: 0; }
+  #sr-list:empty { display: none; }
+
+  /* The divider between groups is the menus' rule: full width, 1px, --g-divider. */
+  .sr-sep { height: 1px; background: var(--g-divider); margin: 4px -4px; }
+  .sr-gh { display: flex; align-items: center; padding: 10px 8px 6px; font: 600 11px/1 system-ui, -apple-system, sans-serif; color: #c8ccd3; }
+  .sr-more { margin-left: auto; font-weight: 500; color: var(--g-dim); cursor: pointer; }
+  .sr-more:hover { color: var(--g-text); }
+  .sr-row { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--g-text); }
+  .sr-row.two { height: 44px; }
+  .sr-row.on { background: var(--b-tint); }
+  .sr-ti, .sr-thumb { width: 30px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--g-dim); }
+  .sr-ti svg { width: 14px; height: 14px; display: block; }
+  .sr-row.on .sr-ti { color: var(--b-icon); }
+  .sr-thumb { border-radius: 4px; background: #222 center / cover; }
+  .sr-tx { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .sr-l1 { display: flex; gap: 6px; align-items: baseline; min-width: 0; }
+  .sr-nm { flex: none; max-width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sr-wh, .sr-sn { color: var(--g-dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* The match is bold in its own line's colour, in a name and in a note excerpt alike. */
+  .sr-row b { font-weight: 700; }
+  .sr-act { margin-left: auto; flex: none; display: none; font-size: 11px; color: var(--b-icon); white-space: nowrap; }
+  .sr-row.on .sr-act { display: block; }
+  /* The map on the TV: the minimap pill's pulsing dot and its word. */
+  .sr-live { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 5px; color: var(--b-icon); font: 600 11px/1 system-ui, -apple-system, sans-serif; }
+  .sr-live i { width: 6px; height: 6px; border-radius: 50%; background: var(--b-icon); animation: tvPulse 2.6s ease-in-out infinite; }
+
+  .sr-msg { padding: 20px 16px; text-align: center; color: var(--g-dim); font-size: 12px; }
+  .sr-warn { margin: 4px 4px 2px; padding: 0 8px; height: 32px; border-radius: 6px; display: flex; gap: 8px; align-items: center; font-size: 12px; }
+  .sr-wi { display: flex; flex: none; transform: translateY(var(--icon-nudge)); }
+  .sr-warn.y { background: var(--y-tint); color: var(--y-text); }
+  .sr-warn.b { color: var(--g-dim); }
+  .sr-lnk { margin-left: auto; color: var(--g-text); cursor: pointer; font-weight: 500; }
+  .sr-lnk:hover { text-decoration: underline; }
+  .sr-keys { flex: none; display: flex; gap: 14px; align-items: center; padding: 8px 16px 10px; border-top: 1px solid var(--g-line); color: var(--g-dim); font: 400 11px/1 system-ui, -apple-system, sans-serif; }
+  .sr-keys kbd { font: 600 10px/1 system-ui, sans-serif; color: var(--g-text); background: var(--g-field); border-radius: 4px; padding: 3px 5px; margin-right: 4px; }

@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="src/css/dock.css">
 <link rel="stylesheet" href="src/css/notesPanel.css">
 <link rel="stylesheet" href="src/css/worldMap.css">
+<link rel="stylesheet" href="src/css/search.css">
 <link rel="stylesheet" href="src/css/hints.css">
 <link rel="stylesheet" href="src/css/overlays.css">
 </head>
@@ -193,6 +194,12 @@
       <button id="tb-hide-all" class="tool-btn" title="Hide all - hide the whole map from the players, every room included"></button>
     </span>
 
+    <!-- Find: the search for everything. Ctrl+F opens it too (search.js). -->
+    <i class="tb-mdiv" id="div-find"></i>
+    <button id="tb-find" class="tool-btn" title="Find - maps, rooms, notes, monsters, fights, music, pictures (Ctrl+F)">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+    </button>
+
     <!-- The three repairs, never shown: Merge and Cut out arm a mode the next drawn shape runs in, Split
          is a tool, and each keeps its id and its handler. The repair icon in the options row and the
          world map's Shape list drive them (repairBar.js, shapeMenu.js). -->
@@ -228,7 +235,7 @@
       <span class="tb-shape-label">Marker</span>
     </button>
     <i class="tb-mdiv wm-tool" id="wm-div"></i>
-    <button id="wm-find" class="tool-btn wm-tool" title="Find a map, group or road (Ctrl+F)">
+    <button id="wm-find" class="tool-btn wm-tool" title="Find (Ctrl+F)">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
     </button>
 
@@ -255,15 +262,19 @@
 <!-- The selected room's own switcher, on the map just above it. roomSwitcher.js. -->
 <div id="room-fog"></div>
 
-<!-- The world map's Find: a large search over a dimmed map. search.js. -->
-<div id="wm-finder">
-  <div class="sm-win w-l">
-    <div class="wf-head">
-      <span class="wf-glass"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.5-4.5"/></svg></span>
-      <input id="wm-search" placeholder="Find a map, a group or a road" spellcheck="false" autocomplete="off">
+<!-- Search: one box for everything, over a veil, from any view. search.js. -->
+<div id="sr-veil">
+  <div class="sm-win w-m" id="sr-box">
+    <div class="sr-q">
+      <label class="sm-field">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.5-4.5"/></svg>
+        <input id="sr-input" placeholder="Search maps, rooms, notes, monsters, fights, music" spellcheck="false" autocomplete="off">
+      </label>
+      <button class="sm-x" id="sr-x" title="Close (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
-    <div id="wm-find-list"></div>
-    <div class="wf-keys"><span><kbd>&uarr;</kbd><kbd>&darr;</kbd>to move</span><span><kbd>Enter</kbd>to go there</span><span><kbd>Esc</kbd>to close</span></div>
+    <div id="sr-bar"></div>
+    <div id="sr-list"></div>
+    <div class="sr-keys"><span><kbd>&uarr;</kbd><kbd>&darr;</kbd>to move</span><span><kbd>Enter</kbd>to open</span></div>
   </div>
 </div>
 
@@ -1085,6 +1096,8 @@
 <script src="src/world/worldMapOpenBar.js"></script>
 <script src="src/world/worldMapFan.js"></script>
 <script src="src/search/searchPlan.js"></script>
+<script src="src/search/searchIndex.js"></script>
+<script src="src/search/searchPick.js"></script>
 <script src="src/search/search.js"></script>
 <script src="src/world/worldPickPlan.js"></script>
 <script src="src/world/worldMapPick.js"></script>
@@ -1235,6 +1248,7 @@ if (!isPlayer && !isPane) initCombatTracker(); // The fight table → combatTrac
 if (!isPlayer && !isPane) initDock();          // The dock → dock.js
 if (!isPlayer && !isPane) initNotesPanel();    // The Notes pane → notesPanel.js
 if (!isPlayer && !isPane) worldMapInit();      // The world map → worldMap.js
+if (!isPlayer && !isPane) searchInit();        // The search box → search.js
 if (!isPlayer && !isPane) initHints();         // First-time hints → hints.js
 if (!isPlayer && !isPane) initMcp();           // The Claude connection → mcpTools.js
 

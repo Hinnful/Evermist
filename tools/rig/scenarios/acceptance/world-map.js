@@ -636,15 +636,14 @@ module.exports = async function worldMapFeature(rig) {
   rig.check(JSON.stringify(bar) === JSON.stringify(['btn-select', 'wm-add', 'tb-grp-shape', 'wm-road', 'wm-marker', 'wm-div', 'wm-find']),
             'the toolbar does not read Select, Map, Group, Road, Marker, a divider and Find: ' + JSON.stringify(bar));
   await dm.evaluate('__rigKey("KeyF", { ctrlKey: true }); 0');
-  rig.check(await dm.evaluate('document.body.classList.contains("searching") && document.getElementById("wm-search").getClientRects().length > 0'),
+  rig.check(await dm.evaluate('document.body.classList.contains("searching") && document.getElementById("sr-input").getClientRects().length > 0'),
             'Ctrl+F did not open the search');
   // RED BY DESIGN: written against the change, never re-proved
-  await dm.evaluate('(() => { const i = document.getElementById("wm-search"); i.value = "watcher"; i.dispatchEvent(new Event("input", { bubbles: true })); return 0; })()');
-  const found = await dm.evaluate(`(() => { const l = document.getElementById('wm-find-list');
-    return { shown: l.getClientRects().length > 0, rows: [...l.querySelectorAll('.wf-row .wf-nm')].map(e => e.textContent), count: (l.querySelector('.wf-n') || {}).textContent }; })()`);
-  rig.check(found.shown && found.rows.includes('The Watcherhouse') && /match/.test(found.count || ''),
-            'Find did not list the place with a count: ' + JSON.stringify(found));
-  await dm.evaluate('document.getElementById("wm-search").dispatchEvent(new KeyboardEvent("keydown", { code: "Enter", key: "Enter", bubbles: true, cancelable: true })); 0');
+  await dm.evaluate('(() => { const i = document.getElementById("sr-input"); i.value = "watcher"; i.dispatchEvent(new Event("input", { bubbles: true })); return 0; })()');
+  const found = await dm.evaluate(`(() => { const l = document.getElementById('sr-list');
+    return { shown: l.getClientRects().length > 0, rows: [...l.querySelectorAll('.sr-row .sr-nm')].map(e => e.textContent) }; })()`);
+  rig.check(found.shown && found.rows.includes('The Watcherhouse'), 'Find did not list the place: ' + JSON.stringify(found));
+  await dm.evaluate('_srAt = [...document.querySelectorAll("#sr-list .sr-row .sr-nm")].findIndex(e => e.textContent === "The Watcherhouse"); _srPaintOn(); document.getElementById("sr-input").dispatchEvent(new KeyboardEvent("keydown", { code: "Enter", key: "Enter", bubbles: true, cancelable: true })); 0');
   rig.check(await dm.evaluate('!document.body.classList.contains("searching") && worldMapSel.place === "The Watcherhouse"'),
             'Enter on a Find row did not pick it and put the field away');
   await dm.evaluate('document.getElementById("wm-find").click(); 0');

@@ -43,7 +43,6 @@ function worldMapInit() {
   worldMapPickInit();
   worldBackupInit();
   worldMapColumnsInit();
-  worldMapFindInit();
   worldMapOpenBarInit(); worldMapFanInit(); worldPartyInit();
 }
 
@@ -491,7 +490,7 @@ function worldMapHide() {
   worldMapOpen = false; hintsCuesSync();   // its hints end with it
   worldMapSel = { sceneId: null, place: '' };
   worldMapEmptySync();
-  worldMapFindClose();
+  searchClose();
   worldMapMenuClose();
   worldBackgroundMoveSet(false);
   _wmReturnTools();
@@ -588,7 +587,7 @@ function worldMapKeys(e) {
   if (e.code === 'Slash' && e.shiftKey) toggleLegend();
   else if (e.code === 'Escape') worldMapReturn();
   else if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) worldMapReturn();
-  else if (e.code === 'KeyF' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); worldMapFindOpen(); }
+  else if (e.code === 'KeyF' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); searchOpen(); }
 }
 
 // The menu's delete, with its undo toast. Deleting the open scene opens the first one for the DM and leaves

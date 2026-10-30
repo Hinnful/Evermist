@@ -122,7 +122,7 @@ module.exports = async function fogToolbarFeature(rig) {
   // ── 1. The bar: Select, Brush, Shape, a divider, two clouds────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   const bar0 = await dm.evaluate('__rigBar()');
-  rig.check(bar0.shown.join() === 'btn-select,btn-brush,btn-shape,btn-effects,tb-reveal-all,tb-hide-all',
+  rig.check(bar0.shown.join() === 'btn-select,btn-brush,btn-shape,btn-effects,tb-reveal-all,tb-hide-all,tb-find',
             'the Fog bar is not Select, Brush, Room, Effects, then Reveal all and Hide all: ' + bar0.shown.join(' '));
   const order = await dm.evaluate(`(() => [...document.getElementById('toolbar-bottom').children]
     .filter(e => e.getClientRects().length).map(e => e.id || e.className).join())()`);
@@ -349,7 +349,7 @@ module.exports = async function fogToolbarFeature(rig) {
   // ── 12, 14, 15. Effects' row ──────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
   await dm.evaluate('document.getElementById("btn-place-effects").click(); 0');
-  rig.check(await dm.evaluate('__rigBar().shown.join()') === 'btn-select,btn-brush,btn-shape,btn-effects,tb-reveal-all,tb-hide-all',
+  rig.check(await dm.evaluate('__rigBar().shown.join()') === 'btn-select,btn-brush,btn-shape,btn-effects,tb-reveal-all,tb-hide-all,tb-find',
             'Effects changed the set of tools on the bar: ' + await dm.evaluate('__rigBar().shown.join()'));
   // Room's arrow is greyed and inert in Effects; the shapes are the row's well, and Effects has no arrow.
   rig.check(await dm.evaluate('document.querySelector("[data-chev=shape]").click(); !document.getElementById("tb-dd")'),

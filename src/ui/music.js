@@ -13,9 +13,21 @@ let _muPaused = false;
 let _muDecks = null;       // exactly two, so a crossfade has somewhere to go
 let _muActive = 0;
 let _muVolume = 0.7;
+let _muSearchPick = null;      // the track the search picked: marked, never played
 let _muDurations = {};     // name → seconds, for this run only
 
 function _muEl(id) { return document.getElementById(id); }
+
+// The search's pick: the list cleared of its filter, the track marked and scrolled to, nothing played.
+function musicPickTrack(name) {
+  _muSearchPick = name;
+  _mgShut[musicGroupOf(name)] = false;   // its group opens, for this run
+  const f = _muEl('mu-filter');
+  if (f) f.value = '';
+  _muRenderList();
+  const row = [..._muEl('mu-list').querySelectorAll('.mu-row')].find(r => r.dataset.track === name);
+  if (row) row.scrollIntoView({ block: 'center' });
+}
 
 function initMusic() {
   if (!_muEl('dock-pane-music')) return;
@@ -32,7 +44,7 @@ function initMusic() {
 
   const bind = (id, ev, fn) => { const el = _muEl(id); if (el) el.addEventListener(ev, fn); };
   bind('btn-mu-pause', 'click', _muTogglePause);
-  bind('mu-filter', 'input', _muRenderList);
+  bind('mu-filter', 'input', () => { _muSearchPick = null; _muRenderList(); });
   bind('mu-filter', 'keydown', e => e.stopPropagation());
   bind('btn-mu-files', 'click', _muPickFiles);
   bind('btn-mu-add', 'click', () => openMusicDownload());
@@ -179,7 +191,8 @@ function _muRenderList() {
 
 function _muRenderRow(list, track) {
   const row = document.createElement('div');
-  row.className = 'mu-row' + (track.name === _muPlaying ? ' mu-row-on' : '');
+  row.className = 'mu-row' + (track.name === _muPlaying ? ' mu-row-on' : '') + (track.name === _muSearchPick ? ' mu-row-pick' : '');
+  row.dataset.track = track.name;
   musicRowDrag(row, track.name);
   if (track.name === _muPlaying) {
     const bars = document.createElement('span');
@@ -272,6 +285,7 @@ function _muTick(deck) {
 }
 
 function _muPlay(track) {
+  searchRecentAdd('music:' + track.name);
   _muEnsureDecks();
   const incoming = _muDecks[1 - _muActive];
   const outgoing = _muDecks[_muActive];

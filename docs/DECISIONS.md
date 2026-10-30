@@ -1083,6 +1083,34 @@ surfaces open and close separately).
 Ctrl+F is Figma's key and already the Campaign map's find. The button sits at the end of the map
 toolbar, matching the Campaign map's toolbar, not on the rail, which holds campaign elements.
 
+### The search box is one list of groups, with no best-match row · `SETTLED` (2026-10-30)
+One list under the field, built from the app's window parts (`sm-win`, `sm-x`, `sm-field`, the window scroll bar, the
+menus' divider between groups), the match bold in its own line's colour. Groups are ordered by their own strongest
+result; the first row of the first group is selected and Enter opens it, so a result appears once. Ties put maps first,
+then rooms, groups and roads, monsters and NPCs, fights, music, pictures. Five rows a group, so one big kind cannot push
+the others out; "N more" opens the rest of that group in place. Recent holds 6, with no Clear. The selected row names its
+action (Open, Open and send, Open map, Show on Campaign, Stat block, Fight table, Pick track, Open picture, Show notes).
+Text is one short line each, with no Manual/Auto hint in the footer.
+**Rejected:** a list with a preview pane (the map thumbnail in the row already identifies a map; search is a quick tool,
+not a table); filter tabs across the top; a pulled-out "Best match" row (it read as a duplicate of the rows below).
+**Reverses:** the Campaign map's Find showing every map as a picture when empty and cards when typing ("The world
+map's bar has no words, and Find is a large search in the middle", the picture and card part only). That Find is this search now.
+
+### Picking a map or a room follows Manual/Auto, and the map on the TV shows Live · `SETTLED` (2026-10-30)
+Switching the map is a change the players see, so it follows the rule on every view: Manual opens it and the TV waits
+for Send; Auto asks first. A room pick sends its map the same way. The map already on the TV wears the minimap pill's
+pulsing blue dot and "Live" (chosen over an "On TV" chip and a dot alone) and opens without the question. Auto asks only
+when the map is neither the open map nor already on the TV.
+
+### Search internals: DM-only, cached scene reads, marks without playing · `SETTLED` (2026-10-30)
+Search does nothing in Player and column windows. Rooms and notes are read from scene records once and cached per scene,
+dropped when that scene is saved, imported or deleted; the open scene is read from memory. Recent keys live in
+localStorage (`evermist.searchRecent`), a per-viewer convenience. Campaign notes are one row, "Campaign notes", in
+Groups and roads, with the action word "Show notes". In two-map mode a room pick opens its map in the selected column
+but does not select the room, since room selection there belongs to the column. Picking a track or picture marks it in
+Music or Pictures and does not play or show it on the TV. The loading bar is light blue (`--b-icon`), because solid blue
+means "press this" (`test/blueMeaning.test.js`).
+
 ---
 
 ## Corrections worth keeping

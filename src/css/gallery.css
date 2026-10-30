@@ -7,6 +7,7 @@
   .ga-th:hover { box-shadow: 0 0 0 1px var(--g-pick); }
   /* On the TV: the room picture's green and its TV tag, so a picture on the TV reads one way everywhere. */
   .ga-tile.on .ga-th { box-shadow: 0 0 0 2px #5fbf8a; }
+  .ga-tile.picked:not(.on) .ga-th { box-shadow: 0 0 0 2px var(--b-solid); }
   .ga-tile.on .ga-th::after {
     content: "TV"; position: absolute; left: 5px; top: 5px; padding: 2px 6px; border-radius: 3px;
     background: #5fbf8a; color: #0d1a12; font: 600 10px/1.2 system-ui, sans-serif;

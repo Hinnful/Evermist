@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/ui/fogBar.js, src/ui/repairBar.js, src/ui/effectsRow.js, src/rooms/roomSwitcher.js, src/render/playersView.js, src/shapes/shapeMenu.js, src/shapes/repairKeys.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the repair icon, the size field, the material palette, which tools a placement mode shows, the fog clouds, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's Sync and Lock, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/ui/fogBar.js, src/ui/repairBar.js, src/ui/effectsRow.js, src/rooms/roomSwitcher.js, src/render/playersView.js, src/shapes/shapeMenu.js, src/shapes/repairKeys.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/css/search.css, src/search/search.js, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the repair icon, the size field, the material palette, which tools a placement mode shows, the fog clouds, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's Sync and Lock, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -126,8 +126,7 @@ The room card's module renders into the Notes pane's room level; there is no flo
 A dark layer over the map, opened from `#btn-world` on the rail or M. Its toolbar is the scene's own, with words only on Map, Group, Road and Marker: Select (always leftmost), Map, Group, Road, Marker, a divider, Find. Map is a grey labelled button (plus icon, word), never solid blue, and adds into the picked group or the picked map's group. Group's list holds Rectangle (R), Circle (O), Polygon (P) and its button wears the last pick; Road (L) is its own labelled button, and L takes it on the world map only. Marker (`Party marker - where the party is now`) places or moves the party marker with one click, then returns to Select. Places take no Merge, Cut out or Split and no Straight walls: there is no options row over a place tool. Right-click menus: every row starts with a verb, one action one wording, "..." only before a file window, a key shown on the right; "Ungroup" (Ctrl+Shift+G) removes the outline and keeps the maps. The Brush, the fog
 clouds, Reveal all and Hide all, the Effects tool and Snap are hidden, and the
 tool, mode and repair the scene held are put away on opening and given back on closing. The context row hides with
-`visibility` so the bar does not move. Find (or Ctrl+F) opens a large search in the middle of the window over a dimmed map (`#wm-finder`): every map as
-a picture while nothing is typed, result cards while typing, with its own fade-and-rise (the window's pop-in would fight its centring).
+`visibility` so the bar does not move. Find (or Ctrl+F) opens the search (`search.js`, below), which things that do not match dim behind while typing.
 One level of name shows at a time: zoomed out only the place plates, zoomed in only the scene names (the split is `WM_SPLIT`, 0.75). A scene is a 110x77 framed print shown only zoomed in, its name a plate inside it at the top left; zoomed out no scene in a place is shown (a grid was built and removed, see the ledger), and a scene with no place is a black diamond with a white rim and its name beside it. Under the prints sits the mist (`worldMist.js`): a drifting veil that clears 90% inside a place, over a backdrop greyed outside the places and 70% in colour inside them, a 20 soft edge. A place's outline is white, 2px (`POLY_LOOK.place`). A place's name is a small black plate inside its top left (`_wmLayoutLabels`, via the room's `fitLabelBox`), blue when picked, boxed in edit colours while edited. Rename is off while its name is hidden, and the backdrop image is set in Settings
 (`worldBackground.js`).
 
@@ -233,9 +232,20 @@ red, Split yellow) and the bar's repair icon.
 - **In two-map mode** a column reports the held key up (`pane-repair-key`) and the bar's icon lights.
 - **Places take no repairs.** The keys stand down while the world map is open, and its options row has no repair icon.
 
+## Search (`search.js`, `search.css`)
+
+One box from any view: Ctrl+F (not while a text field has focus), the bar's last button (a divider, then Find) or the Campaign's Find. It is the window parts, not its own look: `.sm-win` and its scroll bar, `.sm-x` beside the field, the field in `.sm-field`'s skin, the menus' full-width `--g-divider` between groups, 32px rows, one 30px column for a map's thumbnail or a kind's icon, the match bold in its own line's colour in names and note excerpts alike.
+
+- **Empty it lists the 6 most recently opened things** on every view, no Clear; first use says "Type a name or words from a note".
+- **Typing lists groups by their own strongest result, ties maps first**; the best match is the first row of the first group, selected, and a result appears once. Five a group; "N more" opens the rest in place and typing again folds it. A note hit shows its words from a whole word.
+- **The selected row names its action in blue** (Open, Open and send in Auto, Open map, Show on Campaign, Stat block, Fight table, Pick track, Open picture, Show notes).
+- **A map or a room opens by the Manual/Auto rule on every view**: Manual opens it on the DM's screen and the TV waits for Send; Auto asks through `confirmDialog`. The map on the TV wears the minimap pill's pulsing dot and "Live" and opens without asking.
+- **Short text only**: "No results", "Reading maps, 14 of 40" with a thin bar under the field, "N maps could not be read" with Try again. The footer is "↑↓ to move", "Enter to open".
+- **A music track or a picture the search picks is marked blue and scrolled to, never played or shown on the TV.**
+
 ## The bottom toolbar
 
-- **Order**: Select, Brush, Room ▾, Effects, a divider, Reveal all, Hide all. There is no Fog / Effects switch on the
+- **Order**: Select, Brush, Room ▾, Effects, a divider, Reveal all, Hide all, a divider, Find. There is no Fog / Effects switch on the
   screen: Effects is a tool beside Room (below). Every old button id stays, as the hidden back end the new controls drive
   (Merge, Cut out, Split, Door, the fog trio, and `#btn-place-rooms` / `#btn-place-effects` in the hidden `.tb-seg`).
 - **Sizes**: a 36px box around a 22px icon on screen. A button and its chevron form one group,

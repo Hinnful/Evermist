@@ -1,8 +1,21 @@
 'use strict';
-// searchPlan.js — what the world map's Find answers, in pure functions: which places, scenes and roads a
-// query matches, best match first, and where in each name it hit. No DOM.
+// searchPlan.js — what the search answers, in pure functions: which entries a query matches, how well, the
+// groups ordered by their strongest result, five a group, the words around a note hit, the recent list. No DOM.
+//
+// An entry is { key, kind, name, where, text }: `key` is unique ("map:<id>"), `text` the note a hit can land in.
 
-const WF_PER_GROUP = 6;          // rows shown under each heading; the count still says how many matched
+const SP_PER_GROUP = 5;          // rows a group shows before "N more"
+const SP_RECENT = 6;             // recently opened things kept and shown
+const SP_NOTE = 4;               // the rank of a hit inside a note, below every kind of name hit
+
+// The groups in the order a tie falls: maps first. A road sits with the groups; the campaign's own notes too.
+const SP_GROUPS = [
+  { id: 'map', label: 'Maps' }, { id: 'room', label: 'Rooms' }, { id: 'place', label: 'Groups and roads' },
+  { id: 'monster', label: 'Monsters and NPCs' }, { id: 'fight', label: 'Fights' }, { id: 'music', label: 'Music' },
+  { id: 'picture', label: 'Pictures' },
+];
+
+function spGroupOf(kind) { return kind === 'road' || kind === 'campaign' ? 'place' : kind; }
 
 // How well a name fits the query: 0 is the whole name, 1 its start, 2 the start of a word in it, 3 anywhere in it,
 // -1 not at all. `q` is already trimmed and lower-cased.
@@ -22,32 +35,77 @@ function wfHit(name, q) {
   return q && at >= 0 ? { at, len: q.length } : null;
 }
 
-function _wfSort(rows) {
-  return rows.map((r, i) => ({ r, i })).sort((a, b) => a.r.rank - b.r.rank || a.i - b.i).map(x => x.r);
+function _spClean(query) { return String(query || '').trim().toLowerCase(); }
+
+// An entry's rank: its name's, else SP_NOTE when its note holds the query, else -1.
+function spRank(entry, q) {
+  const r = wfRank(entry.name, q);
+  if (r >= 0) return r;
+  return entry.text && String(entry.text).toLowerCase().includes(q) ? SP_NOTE : -1;
 }
 
-// places: { name, count }; scenes: { id, name, place }; roads: { uid, name }.
-// Answers { places, scenes, roads, total } with each list ranked and cut to WF_PER_GROUP, and `total` counting every match.
-function wfSearch(query, places, scenes, roads) {
-  const q = String(query || '').trim().toLowerCase();
-  const out = { places: [], scenes: [], roads: [], total: 0 };
+// Groups ordered by their own strongest result (ties by SP_GROUPS), each ranked, a result once.
+// `open` is the set of group ids shown whole. Answers { groups: [{ id, label, total, more, rows }], total } where a
+// row is { entry, rank }, and `more` counts the rows left out.
+function spSearch(query, entries, open) {
+  const q = _spClean(query);
+  const out = { groups: [], total: 0 };
   if (!q) return out;
-  const pick = (list, key) => _wfSort(list.map(x => ({ ...x, rank: wfRank(x[key], q) })).filter(x => x.rank >= 0));
-  const p = pick(places || [], 'name'), s = pick(scenes || [], 'name'), r = pick(roads || [], 'name');
-  out.total = p.length + s.length + r.length;
-  out.places = p.slice(0, WF_PER_GROUP);
-  out.scenes = s.slice(0, WF_PER_GROUP);
-  out.roads = r.slice(0, WF_PER_GROUP);
+  const seen = new Set(), by = new Map();
+  (entries || []).forEach((entry, i) => {
+    if (seen.has(entry.key)) return;
+    seen.add(entry.key);
+    const rank = spRank(entry, q);
+    if (rank < 0) return;
+    const id = spGroupOf(entry.kind);
+    if (!by.has(id)) by.set(id, []);
+    by.get(id).push({ entry, rank, i });
+  });
+  const groups = [...by.entries()].map(([id, list]) => {
+    list.sort((a, b) => a.rank - b.rank || a.i - b.i);
+    return { id, best: list[0].rank, list };
+  });
+  const at = id => SP_GROUPS.findIndex(g => g.id === id);
+  groups.sort((a, b) => a.best - b.best || at(a.id) - at(b.id));
+  for (const g of groups) {
+    const shown = open && open.has(g.id) ? g.list : g.list.slice(0, SP_PER_GROUP);
+    out.groups.push({ id: g.id, label: SP_GROUPS[at(g.id)].label, total: g.list.length, more: g.list.length - shown.length,
+      rows: shown.map(x => ({ entry: x.entry, rank: x.rank })) });
+    out.total += g.list.length;
+  }
   return out;
 }
 
-// The rows in the order the keys walk them: places, scenes, roads.
-function wfFlat(found) {
-  return [].concat(
-    found.places.map(x => ({ kind: 'place', ...x })),
-    found.scenes.map(x => ({ kind: 'scene', ...x })),
-    found.roads.map(x => ({ kind: 'road', ...x })),
-  );
+// The rows in the order the keys walk them.
+function spFlat(found) { return found.groups.flatMap(g => g.rows); }
+
+// The words around a note's hit: { pre, hit, post }, starting on a whole word, with an ellipsis where the note goes on.
+// Newlines and runs of spaces count as one space. null when the note does not hold the query.
+function spSnippet(text, query) {
+  const q = _spClean(query), s = String(text || '').replace(/\s+/g, ' ').trim();
+  const i = q ? s.toLowerCase().indexOf(q) : -1;
+  if (i < 0) return null;
+  let a = Math.max(0, i - 24);
+  if (a > 0) {
+    const sp = s.indexOf(' ', a);
+    a = sp >= 0 && sp < i ? sp + 1 : s.lastIndexOf(' ', a) + 1;
+    if (a > i) a = i;
+  }
+  const end = i + q.length + 50;
+  return { pre: (a > 0 ? '…' : '') + s.slice(a, i), hit: s.slice(i, i + q.length), post: s.slice(i + q.length, end) + (end < s.length ? '…' : '') };
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { WF_PER_GROUP, wfRank, wfHit, wfSearch, wfFlat };
+// The recent list after `key` was opened: first, once, at most SP_RECENT.
+function spRecentAdd(list, key) {
+  return [key].concat((Array.isArray(list) ? list : []).filter(k => k !== key)).slice(0, SP_RECENT);
+}
+
+// The recent keys as entries, dropping what is gone, so a deleted map leaves no dead row.
+function spRecentRows(list, entries) {
+  const by = new Map((entries || []).map(e => [e.key, e]));
+  return (Array.isArray(list) ? list : []).map(k => by.get(k)).filter(Boolean).slice(0, SP_RECENT);
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { SP_PER_GROUP, SP_RECENT, SP_NOTE, SP_GROUPS, spGroupOf, wfRank, wfHit, spRank, spSearch, spFlat, spSnippet, spRecentAdd, spRecentRows };
+}

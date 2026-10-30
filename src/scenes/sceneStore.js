@@ -72,7 +72,7 @@ const sceneStore = (() => {
         scene.edits = esStamp(stored ? esSnapshot(stored) : null, scene, Date.now(), fogEdited);
         store.put(scene);
       };
-      tx.oncomplete = () => resolve();
+      tx.oncomplete = () => { searchStale(scene.id); resolve(); };
       tx.onabort    = e => reject(e.target.error);
     });
   }
@@ -80,6 +80,7 @@ const sceneStore = (() => {
   async function putScene(scene) {
     const { store } = getTx('readwrite');
     await idbWrite(store.put(scene));
+    searchStale(scene.id);
   }
 
   async function loadScene(id) {
@@ -107,7 +108,7 @@ const sceneStore = (() => {
         rec.edits = esStampScene(before, rec, Date.now());
         store.put(rec);
       };
-      tx.oncomplete = () => resolve();
+      tx.oncomplete = () => { searchStale(id); resolve(); };
       tx.onabort    = e => reject(e.target.error);
     });
   }
@@ -115,6 +116,7 @@ const sceneStore = (() => {
   async function deleteScene(id) {
     const { store } = getTx('readwrite');
     await idbWrite(store.delete(id));
+    searchStale(id);
   }
 
   // Returns only lightweight metadata — never the map blob or full fog PNG.

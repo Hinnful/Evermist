@@ -125,12 +125,12 @@ module.exports = async function worldMapFirstEvening(rig) {
   rig.check(await dm.evaluate('document.getElementById("wm-bar").classList.contains("on")'), 'the Open bar did not come back when the drag ended');
 
   // Hidden zoomed out to places, and while searching.
-  await dm.evaluate('worldMapFindOpen(); 0');
+  await dm.evaluate('searchOpen(); 0');
   await lib.settle(dm, 'document.body.classList.contains("searching") && !document.getElementById("wm-bar").classList.contains("on")', 4000);
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(await dm.evaluate('document.body.classList.contains("searching") && !document.getElementById("wm-bar").classList.contains("on")'),
             'the Open bar stays up while the map is searching');
-  await dm.evaluate('worldMapFindClose(); 0');
+  await dm.evaluate('searchClose(); 0');
   await dm.evaluate('_wmCam = { cx: _wmCam.cx, cy: _wmCam.cy, z: 0.5 }; _wmApplyCam(); 0');
   await lib.settle(dm, '!_wmAnim && document.getElementById("wm").classList.contains("places") && !document.getElementById("wm-bar").classList.contains("on")', 4000);
   // RED BY DESIGN: written against the feature, never re-proved
@@ -139,7 +139,7 @@ module.exports = async function worldMapFirstEvening(rig) {
 
   // ── 8. Searching never shows the level that is hidden ─────────────────────
   const search = async () => {
-    await dm.evaluate('worldMapFindOpen(); (() => { const i = document.getElementById("wm-search"); i.value = "cel"; i.dispatchEvent(new Event("input", { bubbles: true })); })(); 0');
+    await dm.evaluate('searchOpen(); (() => { const i = document.getElementById("sr-input"); i.value = "cel"; i.dispatchEvent(new Event("input", { bubbles: true })); })(); 0');
     await lib.settle(dm, SETTLED, 8000);
     return dm.evaluate(`({ level: document.getElementById('wm').className,
       marks: [...document.querySelectorAll('.wm-lm')].map(e => getComputedStyle(e).opacity),
@@ -150,13 +150,13 @@ module.exports = async function worldMapFirstEvening(rig) {
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(/\bplaces\b/.test(far.level) && far.dimmed > 0 && far.cards.every(o => o === '0'),
             'at the places level a search shows a map card: ' + JSON.stringify(far));
-  await dm.evaluate('worldMapFindClose(); _wmCam = { cx: _wmCam.cx, cy: _wmCam.cy, z: 1 }; _wmApplyCam(); 0');
+  await dm.evaluate('searchClose(); _wmCam = { cx: _wmCam.cx, cy: _wmCam.cy, z: 1 }; _wmApplyCam(); 0');
   await lib.settle(dm, SETTLED, 8000);
   const near = await search();
   // RED BY DESIGN: written against the feature, never re-proved
   rig.check(/\bscenes\b/.test(near.level) && near.dimmed > 0 && near.marks.every(o => o === '0'),
             'at the scenes level a search shows a diamond over a map card: ' + JSON.stringify(near));
-  await dm.evaluate('worldMapFindClose(); 0');
+  await dm.evaluate('searchClose(); 0');
   await lib.settle(dm, '!document.body.classList.contains("searching")', 4000);
 
   // ── 6 and 7. More hangs the menu from its button; Open opens the map and closes the world map ──

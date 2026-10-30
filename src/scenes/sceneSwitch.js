@@ -33,6 +33,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   const scene = await sceneStore.loadScene(id);
   if (myGen !== switchGeneration) return;
   if (!scene) throw new Error('Scene not found.');
+  searchRecentAdd('map:' + id);
 
   // The destination fog colour, AS SOON AS IT IS KNOWN, so the Player reaches it while the fog is
   // still closing. ⚠ Must beat applyFogSettingsFromScene, which would land it a frame later.

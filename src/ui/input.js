@@ -274,6 +274,7 @@ function initInput() {
       else if (e.code === 'KeyV') { e.preventDefault(); pasteShapeAtCursor(); }
       else if (e.code === 'KeyD') { e.preventDefault(); duplicateSelectedShape(); }
       else if (e.code === 'KeyX') { e.preventDefault(); cutSelectedShape(); }
+      else if (e.code === 'KeyF' && !e.target.isContentEditable) { e.preventDefault(); searchOpen(); }
       return;
     }
     switch (e.code) {
