@@ -58,6 +58,8 @@ const OWNERS = {
   'search.css': 'dm-ui',
   'notespanel.js': 'dm-ui',
   'notestree.js': 'dm-ui',
+  'noteseditor.js': 'dm-ui',
+  'notesappears.js': 'dm-ui',
   'noteswindow.js': 'dm-ui',
   'noteswindow.css': 'dm-ui',
   'moduletext.js': 'module-text',

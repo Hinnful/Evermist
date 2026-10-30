@@ -1,6 +1,6 @@
 ---
 name: dm-ui
-description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/ui/fogBar.js, src/ui/repairBar.js, src/ui/effectsRow.js, src/rooms/roomSwitcher.js, src/render/playersView.js, src/shapes/shapeMenu.js, src/shapes/repairKeys.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/css/search.css, src/search/search.js, src/notes/notesPanel.js, src/notes/notesTree.js, src/notes/notesWindow.js, src/css/notesWindow.css, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the repair icon, the size field, the material palette, which tools a placement mode shows, the fog clouds, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's Sync and Lock, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
+description: Load BEFORE editing src/ui/dock.js, src/css/dock.css, src/rooms/roomCard.js, src/rooms/roomPanel.js, src/ui/controlPanel.js, src/ui/colorPicker.js, src/fog/fogControls.js, src/render/gridCalibrate.js, src/ui/toolbar.js, src/ui/fogBar.js, src/ui/repairBar.js, src/ui/effectsRow.js, src/rooms/roomSwitcher.js, src/render/playersView.js, src/shapes/shapeMenu.js, src/shapes/repairKeys.js, src/shapes/toolPreset.js, src/css/toolbar.css, src/css/roomCard.css, src/css/sceneManager.css, src/css/music.css, src/css/panes.css, src/css/worldMap.css, src/css/search.css, src/search/search.js, src/notes/notesPanel.js, src/notes/notesTree.js, src/notes/notesWindow.js, src/notes/notesEditor.js, src/notes/notesAppears.js, src/css/notesWindow.css, src/world/worldMap.js, src/world/worldMapEdit.js, src/world/worldMist.js, or the half-shroud paths in src/fog/fog.js. Also load when the task mentions the dock, its rail or a pane, the Room tab, Scene control, Settings, room labels, the notes field, corner radius, half-shroud or fogHalfAlpha, toolbar toggles, chevrons or their lists, the repair icon, the size field, the material palette, which tools a placement mode shows, the fog clouds, the music or sounds player, the world map's toolbar, the two-maps toggle, the minimap's Sync and Lock, or the calibration HUD and what arming calibration puts away. Carries layout and button-identity rules that are invisible in code review.
 ---
 
 # DM interface identity and layout
@@ -125,6 +125,13 @@ The room card's module renders into the Notes window's room level; there is no f
   block button. Factions and lore live under `evermist.notesEntries`, which the previous release never reads.
 - **`#rp-desc` renders inside it**, but its logic stays in `roomCard.js`. Other levels share the title and
   `#np-field`, with the field's own undo. The notes area carries the app's own 8px scrollbar.
+- **Notes are always editable and take mentions** (`notesEditor.js`): every field is the editor, with no edit mode. Typing @ opens the
+  picker at the caret (arrows, Enter or a click pick; Esc closes only the picker); a name that matches nothing offers Faction, Lore
+  and Monster or NPC, and the mention stays. A mention is a label, **blue while its entry exists and red when it does not**
+  (`--b-tint`, `--r-tint`); a click opens a blue one and offers the same three kinds on a red one; hovering shows kind and the first
+  lines of the note. The editor's `value` is the stored form, its Ctrl+Z is its own, paste is plain text. `input.js` treats a focused
+  `isContentEditable` as a text field, and `_nwEscape` and the Bestiary's Esc yield to an open picker.
+- **Each note ends with "Appears in"** (`notesAppears.js`): a count and the notes that mention it, folded state kept in `evermist.notesWin`.
 - **Hidden in `body.player-mode` and `body.pane-mode`**, and absent from `stage.html`.
 
 ## The world map (`worldMap.js`, `worldMapEdit.js`, `worldMap.css`)

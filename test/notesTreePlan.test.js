@@ -36,6 +36,11 @@ describe('notesTreeBuild', () => {
     assert.deepEqual(keys(T.notesTreeFind(root, 'sec:lore')), ['entry:l1']);
     assert.deepEqual(keys(T.notesTreeFind(root, 'entry:l1')), ['entry:l2']);
   });
+  it('lists a book monster some note mentions, so its Appears in has a row to open', () => {
+    const r = T.notesTreeBuild({ ...src, blocks: src.blocks.concat({ id: 'b9', name: 'Goblin', notes: '', mentioned: true }), roomLabel: n => 'Room ' + n });
+    assert.ok(keys(T.notesTreeFind(r, 'sec:monster')).includes('monster:b9'));
+    assert.ok(!keys(T.notesTreeFind(root, 'sec:monster')).includes('monster:b2'));
+  });
   it('keeps the empty sections and drops an empty Roads section', () => {
     const r = T.notesTreeBuild({ roomLabel: n => 'Room ' + n });
     assert.deepEqual(keys(r), ['sec:monster', 'sec:faction', 'sec:lore']);

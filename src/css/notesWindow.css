@@ -88,3 +88,32 @@
   .nw-tl::-webkit-scrollbar-thumb:hover, .nw-note::-webkit-scrollbar-thumb:hover, #np-field::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.26); }
   .nw-tl::-webkit-scrollbar-track, .nw-note::-webkit-scrollbar-track, #np-field::-webkit-scrollbar-track { background: transparent; }
   .nw-tl::-webkit-scrollbar-button, .nw-note::-webkit-scrollbar-button, #np-field::-webkit-scrollbar-button { display: none; }
+
+  /* ===== The editor: labels for mentions, the @ picker, the hover preview, "Appears in" ===== */
+  .nw .ne, .bp-notes.ne { user-select: text; cursor: text; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; }
+  .ne:empty::before { content: attr(placeholder); color: #5d626a; pointer-events: none; }
+  .ne[contenteditable="false"] { opacity: 0.5; }
+  .ne .mn { color: var(--b-icon); background: var(--b-tint); border-radius: 4px; padding: 0 4px; cursor: pointer; }
+  .ne .mn:hover { background: var(--b-tint-h); }
+  .ne .mn.miss { color: var(--r-text); background: var(--r-tint); }
+  .ne-pop, .ne-tip {
+    position: fixed; zoom: var(--ui-zoom, 1.2); z-index: 450; background: var(--g-raised); border: 1px solid var(--g-line);
+    border-radius: 8px; box-shadow: var(--pop-shadow); font: 400 12px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--g-text); user-select: none;
+  }
+  .ne-pop { padding: 4px; min-width: 200px; max-width: 320px; }
+  .ne-pop > div { padding: 4px 8px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
+  .ne-pop > div.on, .ne-pop > div:hover { background: var(--b-tint); }
+  .ne-pop small { color: var(--g-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ne-pop .hd { font-weight: 500; font-size: 11px; color: var(--g-dim); cursor: default; background: none !important; }
+  .ne-tip { padding: 8px 10px; width: 230px; display: none; pointer-events: none; }
+  .ne-tip p { margin: 4px 0 0; color: var(--g-dim); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .ne-kind { font-size: 11px; color: var(--g-dim); background: var(--g-field); border-radius: 4px; padding: 1px 6px; }
+  .nw-appears { flex: none; }
+  .nw-appears[hidden] { display: none; }
+  .nw-appears .aph { margin: 18px 0 4px; display: flex; align-items: center; gap: 6px; font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); cursor: pointer; }
+  .nw-appears .aph .n { font-weight: 500; color: var(--g-dim); }
+  .nw-appears .aph .car { color: var(--g-dim); font-size: 9px; width: 10px; }
+  .nw-appears .ap { padding: 3px 6px; margin: 0 -6px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; color: #c3c8cf; font-size: 12px; }
+  .nw-appears .ap:hover { background: var(--g-hover); }
+  .nw-appears .ap small { color: var(--g-dim); }
+  .nw-appears .hint { color: var(--g-dim); font-size: 11.5px; }

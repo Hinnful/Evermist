@@ -9,7 +9,7 @@ const NW_TREE_MIN = 140;
 
 let _nwOpen = false;
 let _nwHeldForCal = false;   // open before grid calibration put it away
-let _nwGeo = { treeW: 200, treeHidden: false };
+let _nwGeo = { treeW: 200, treeHidden: false, appearsShut: false };
 let _nwHist = [], _nwHi = -1;
 let _nwNav = false;          // a back or forward is moving the window, so it records nothing
 let _nwCrumbsKey = '';
@@ -23,7 +23,8 @@ function _nwSave() {
   const w = _nwEl();
   try {
     localStorage.setItem(NW_KEY, JSON.stringify({ left: parseFloat(w.style.left), top: parseFloat(w.style.top),
-      width: parseFloat(w.style.width), height: parseFloat(w.style.height), treeW: _nwGeo.treeW, treeHidden: _nwGeo.treeHidden }));
+      width: parseFloat(w.style.width), height: parseFloat(w.style.height), treeW: _nwGeo.treeW, treeHidden: _nwGeo.treeHidden,
+      appearsShut: _nwGeo.appearsShut }));
   } catch (_) {}
 }
 
@@ -35,7 +36,11 @@ function _nwLoad() {
   w.style.left = n(g.left); w.style.top = n(g.top); w.style.width = n(g.width); w.style.height = n(g.height);
   if (Number.isFinite(g.treeW)) _nwGeo.treeW = Math.max(NW_TREE_MIN, g.treeW);
   _nwGeo.treeHidden = g.treeHidden === true;
+  _nwGeo.appearsShut = g.appearsShut === true;
 }
+
+function nwAppearsShut() { return _nwGeo.appearsShut; }
+function nwSetAppearsShut(shut) { _nwGeo.appearsShut = !!shut; _nwSave(); }
 
 // Kept on screen: its header always reachable, whatever size the window was last.
 function _nwPlace() {
@@ -215,7 +220,8 @@ function _nwToggleTree() {
 function _nwEscape(e) {
   if (!_nwOpen || e.key !== 'Escape' || e.defaultPrevented) return;
   const a = document.activeElement, inside = _nwEl().contains(a);
-  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && inside) return;
+  if (nePickerOpen()) return;
+  if (a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable) && inside) return;
   if (document.querySelector('.sm-menu') || ['cd-anchor', 'cl-anchor', 'mt-modal'].some(id => { const el = document.getElementById(id); return el && el.style.display !== 'none' && el.style.display !== ''; })) return;
   if (searchIsOpen() || bsIsOpen() || (worldMapOpen && !inside)) return;
   if (!inside && (activePolygon || shape !== 'select' || shapeOp !== 'new' || selectedPolygonId != null)) return;

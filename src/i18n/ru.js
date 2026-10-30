@@ -1076,6 +1076,19 @@ const RU = {
   'Its note goes with it.': 'Вместе с ней уходит заметка.',
   'Show on map': 'Показать на карте',
   'The factions and lore in this file could not be read, so they are left out.': 'Фракции и описания в этом файле не удалось прочитать, поэтому они пропущены.',
+  'Appears in': 'Упоминается в',
+  'No note mentions this yet.': 'Пока ни одна заметка это не упоминает.',
+  'Reading maps…': 'Читаем карты…',
+  'A renamed entry no longer fits in this note. Shorten the note to show its new name.': 'Новое имя записи не помещается в эту заметку. Сократите заметку, чтобы оно появилось.',
+  'Create “{name}” in': 'Создать «{name}» в',
+  'Keep typing a name': 'Продолжайте вводить имя',
+  'This note is full, so the link was not added.': 'Заметка заполнена, поэтому ссылка не добавлена.',
+  'Not found': 'Не найдено',
+  'No note yet.': 'Заметки пока нет.',
+  'Nothing by this name exists any more.': 'Записи с таким именем больше нет.',
+  'This note is full. Shorten it to add more.': 'Заметка заполнена. Сократите её, чтобы дописать.',
+  'The links to groups are not being saved': 'Ссылки на группы не сохраняются',
+  'Evermist could not write the links to groups to disk, so a note that names a group may lose it after a restart.': 'Evermist не смог записать ссылки на группы на диск, поэтому заметка, упоминающая группу, может потерять её после перезапуска.',
 };
 
 // Counts: keyed by the English `one` string that t.plural() is called with.
@@ -1133,5 +1146,6 @@ const RU_PLURAL = {
   '{n} group changed': { one: '{n} группа изменена', few: '{n} группы изменены', many: '{n} групп изменено' },
   '{n} road changed': { one: '{n} дорога изменена', few: '{n} дороги изменены', many: '{n} дорог изменено' },
   'One map is not in the export': { one: '{n} карта не попала в экспорт', few: '{n} карты не попали в экспорт', many: '{n} карт не попали в экспорт' },
+  '{n} link in the imported notes still points at the old map or group, because its note is full.': { one: '{n} ссылка в импортированных заметках всё ещё ведёт на старую карту или группу, потому что заметка заполнена.', few: '{n} ссылки в импортированных заметках всё ещё ведут на старую карту или группу, потому что заметки заполнены.', many: '{n} ссылок в импортированных заметках всё ещё ведут на старую карту или группу, потому что заметки заполнены.' },
   'It and the {n} entry inside it go, with their notes.': { one: 'Она и {n} запись внутри неё удаляются вместе с заметками.', few: 'Она и {n} записи внутри неё удаляются вместе с заметками.', many: 'Она и {n} записей внутри неё удаляются вместе с заметками.' },
 };

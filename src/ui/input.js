@@ -107,9 +107,9 @@ function initInput() {
     // fields stop this bubbling, and it puts their commit ahead of the clicked control.
     document.addEventListener('mousedown', (e) => {
       const focused = document.activeElement;
-      if (!focused || (focused.tagName !== 'INPUT' && focused.tagName !== 'TEXTAREA')) return;
+      if (!focused || (focused.tagName !== 'INPUT' && focused.tagName !== 'TEXTAREA' && !focused.isContentEditable)) return;
       // A list that answers the field it hangs off (the fight's name suggestions) keeps its focus.
-      if (focused === e.target || e.target.closest('[data-keeps-focus]')) return;
+      if (focused.contains(e.target) || e.target.closest('[data-keeps-focus]')) return;
       focused.blur();
     }, true);
 
@@ -251,7 +251,7 @@ function initInput() {
   // ⚠ e.code, THE PHYSICAL KEY - never e.key, which is the character a layout produced.
   document.addEventListener('keydown', e => {
     // A FOCUSED FIELD OWNS ITS OWN UNDO, so it takes every key including the modifiers.
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
     if (isPlayer) {
       if (e.code === 'KeyF') {
         if (window.electronAPI) window.electronAPI.toggleFullscreen();

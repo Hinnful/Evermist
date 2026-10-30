@@ -47,12 +47,14 @@ function _rpCommitName() {
 
 function _rpCommitDesc() {
   const el = _rpEl('rp-desc');
-  if (el && notesForeignRoomEdit('desc', { value: el.value })) return;
-  if (el && paneRoomEdit('desc', { value: el.value })) return;
+  const raw = el ? neStoredText(el) : '';
+  if (el && notesForeignRoomEdit('desc', { value: raw })) return;
+  if (el && paneRoomEdit('desc', { value: raw })) return;
   const poly = _rpFindRoom(_rpFieldPid);
   if (!el || !poly) return;
-  const v = sanitizeRoomDesc(el.value);
-  el.value = v;
+  const v = sanitizeRoomDesc(raw);
+  if (el.value !== v) el.value = v;
+  mxBump();
   // `desc` is absent until typed, so missing and empty are one value — otherwise a blur on an
   // untouched field pushes a pointless undo.
   if (v === (poly.desc == null ? '' : poly.desc)) return;
@@ -71,6 +73,7 @@ function roomCardPatch(id, fields) {
   pushUndo();
   poly.name = name;
   poly.desc = desc;
+  mxBump();
   _rpInvalidateLabel(poly.id);
   scheduleAutoSave();
   drawCursor(lastScreenX, lastScreenY);
@@ -188,6 +191,7 @@ function initRoomPanel() {
     // The dropdown claims ↑/↓ and, with a row highlighted, Enter and Escape.
     onKeyDown: typeof mtNameKeyDown === 'function' ? mtNameKeyDown : null,
   });
+  neInit(_rpEl('rp-desc'));
   _rpWireField(_rpEl('rp-desc'), { commit: _rpCommitDesc, enterCommits: false });
   _rpEl('rp-desc').addEventListener('input', _rpFitNotes);
 
@@ -258,6 +262,7 @@ function refreshRoomPanel() {
   // Never clobber a field being typed in.
   if (!sameRoom || nameEl !== document.activeElement) nameEl.value = room.name != null ? room.name : _rpFallbackName(room);
   if (!sameRoom || descEl !== document.activeElement) descEl.value = room.desc != null ? room.desc : '';
+  neRefreshLabels(descEl);
   _rpFieldPid = room.id;
   paneRoomAim(room);
 

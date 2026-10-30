@@ -7,15 +7,16 @@
 const SR_RECENT_KEY = 'evermist.searchRecent';
 const _srRooms = new Map();       // scene id → { notes, rooms: [{ id, name, desc }] }
 let _srFailed = new Set();        // scene ids the last read could not open
+let _srReading = false;
 
 // A scene was saved, imported or deleted: its cached read is stale.
-function searchStale(id) { _srRooms.delete(id); }
+function searchStale(id) { _srRooms.delete(id); mxBump(); }
 
 function _srHere(id) { return !panesActive && currentScene && currentScene.id === id; }
 
 // Every room, named or not, in list order: the Notes tree's rooms. Effects and lights are not rooms.
 function _srRoomList(polys) {
-  return polys.filter(p => p && !p.material && !p.light).map(p => ({ id: p.id, name: p.name || '', desc: p.desc || '' }));
+  return polys.filter(p => p && !p.material && !p.light).map(p => ({ id: p.id, uid: p.uid || '', name: p.name || '', desc: p.desc || '' }));
 }
 
 // A scene's rooms for the Notes tree: the open map live, a stored one from the read, null until it is read.
@@ -38,12 +39,21 @@ async function searchReadScenes(onStep) {
   const todo = allScenes.filter(s => !_srHere(s.id) && !_srRooms.has(s.id));
   _srFailed = new Set();
   let done = 0;
-  for (const s of todo) {
-    try { _srRooms.set(s.id, _srFromRecord(await sceneStore.loadScene(s.id))); } catch (_) { _srFailed.add(s.id); }
-    if (onStep) onStep(++done, todo.length);
-  }
+  _srReading = true;
+  try {
+    for (const s of todo) {
+      try { _srRooms.set(s.id, _srFromRecord(await sceneStore.loadScene(s.id))); } catch (_) { _srFailed.add(s.id); }
+      if (onStep) onStep(++done, todo.length);
+    }
+  } finally { _srReading = false; }
   return [..._srFailed];
 }
+
+// True while stored scenes are being read, so what is built from them may still lack some.
+function searchReading() { return _srReading; }
+
+// A map's notes as stored, '' while it is unread.
+function searchSceneNotes(id) { return _srScene(id).notes; }
 
 function _srScene(id) {
   if (_srHere(id)) return _srFromRecord({ notes: currentScene.notes, polygons });

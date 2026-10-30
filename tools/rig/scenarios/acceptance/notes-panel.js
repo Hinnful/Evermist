@@ -156,7 +156,8 @@ module.exports = async function notesPanelFeature(rig) {
     const spy = () => { reached = true; }; document.addEventListener('keydown', spy);
     const e = new KeyboardEvent('keydown', { key: 'z', code: 'KeyZ', ctrlKey: true, bubbles: true, cancelable: true });
     f.dispatchEvent(e); document.removeEventListener('keydown', spy); return { reached, prevented: e.defaultPrevented }; })()`);
-  rig.check(!undo.reached && !undo.prevented, 'Ctrl+Z in a notes field reached the map\'s undo: ' + JSON.stringify(undo));
+  // The editor takes Ctrl+Z for its own history, so the key is never the map's.
+  rig.check(!undo.reached && undo.prevented, 'Ctrl+Z in a notes field reached the map\'s undo or was not taken by the editor: ' + JSON.stringify(undo));
 
   // ── F. The TV and the other windows ───────────────────────────────────────
   await lib.hold(1200, 'long enough for a note to have pushed something to the TV, then prove it did not');

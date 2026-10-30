@@ -114,6 +114,23 @@ describe('a backup merged in', () => {
     const again = combatMerge(m, inc, ids());
     assert.equal(again.fights.length, 3);
   });
+  it('matches an incoming entry by uid first and leaves the uid out of the comparison', () => {
+    const wolf = Object.assign(combatBlankBlock('b1', 'Wolf'), { uid: 'uw' });
+    const cur = { rows: [], blocks: { b1: wolf }, nextId: 1, fights: [{ id: 'fX', name: 'Here' }], openId: 'fX' };
+    const noUid = JSON.parse(JSON.stringify(wolf)); delete noUid.uid;
+    assert.equal(Object.keys(combatMerge(cur, { rows: [], blocks: { b1: noUid } }, ids()).blocks).length, 1);
+    assert.equal(Object.keys(combatMerge(cur, { rows: [], blocks: { b1: wolf } }, ids()).blocks).length, 1);
+    const edited = Object.assign({}, wolf, { ac: '99' });
+    const m = combatMerge(cur, { rows: [], blocks: { b1: edited } }, ids());
+    assert.equal(Object.keys(m.blocks).length, 2);
+    assert.notEqual(m.blocks.b2.uid, 'uw');
+  });
+  it('keeps the uid of an entry nothing here shares one with, so its mentions still find it', () => {
+    const bat = Object.assign(combatBlankBlock('b4', 'Bat'), { uid: 'ub' });
+    const cur = { rows: [], blocks: {}, nextId: 1, fights: [{ id: 'fX', name: 'Here' }], openId: 'fX' };
+    const m = combatMerge(cur, { rows: [], blocks: { b4: bat } }, ids());
+    assert.equal(Object.values(m.blocks)[0].uid, 'ub');
+  });
   it('restores a backup from before the list as one fight, even onto a migrated install', () => {
     const migrated = Object.assign(here(), combatFightsFrom(null, () => 'fM'));
     const m = combatMerge(migrated, { rows: [{ id: 7, name: 'Skeleton' }], blocks: {} }, () => 'fOld');

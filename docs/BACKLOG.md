@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.16.0**. **The 5.0 epic comes first** (2026-10-30): the items under "The prep pipeline" below,
+`package.json` is at **4.17.0**. **The 5.0 epic comes first** (2026-10-30): the items under "The prep pipeline" below,
 in their order. They make Evermist a whole prep pipeline with the AI assistant, plus notes and search for play.
 Every other item carries no release tag. **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -83,19 +83,11 @@ worldbuilding tool: no timelines, calendars, family trees or relationship graphs
 for the DM. The items go one at a time, in this order, and the epic closes with 244, which marks 5.0.0. The look for
 240 and 241 is agreed in a clickable prototype, `.claude/private/design/item-195/notes-v2.html` on the DM's machine.
 
-### 241. Mentions between notes
-Filed 2026-10-30. Typing @ in any note picks an entry, or creates a faction, lore or monster entry by that name, and
-leaves a blue label; one that names nothing yet is red, and a click creates it. A label opens its entry, and hovering
-shows a preview. Each note lists where it "Appears in", folded and counted. The note is always editable, with no edit
-mode. A mention stores readable text with a fixed ID, so a rename needs no rewrite and the previous release still shows
-the words; deleting an entry turns its mentions red. Module text writes room notes too, so the two are tested together.
-Specced. The tree lists a monster once a note mentions it (240's settled rule).
-**Campaign · Play · DM only**
-
 ### 242. The AI assistant fills the notes model
 Filed 2026-10-30. Tools for the AI assistant to create factions and lore, nest them, write mentions and read "Appears
 in", so a module PDF plus a map folder becomes maps in a group with rooms, notes, fights and linked entries. It preps one
-session's chapters at a time, never a whole book. Waits for 241.
+session's chapters at a time, never a whole book. Its notes tools already read and write mentions in their stored form,
+`@[Name](kind:id)`, unchanged.
 **Prep · DM only**
 
 ### 243. One review and one undo for a big AI assistant prep run
@@ -136,10 +128,10 @@ Filed 2026-10-30. It reran in 3 recent Windows gate runs: the DM window did not 
 as stopped early. Find whether the scenario or the app stalls, then fix it or retire the check.
 **Upkeep · DM only**
 
-### 246. The claude-grid scenario needs a second try on macOS
-Filed 2026-10-30. It reran in 3 recent macOS gate runs: the Player received an `anim-params` message while the AI
-assistant changed the grid, effects or lights. Decide whether that message is allowed through, then fix the app or
-the check.
+### 246. The claude-grid and claude-fog scenarios need a second try on macOS
+Filed 2026-10-30. claude-grid reran in 4 recent macOS gate runs and claude-fog in 3 (2026-10-31): the Player received
+an `anim-params` message while the AI assistant changed the grid, effects, lights or fog. Decide whether that message
+is allowed through, then fix the app or both checks.
 **Upkeep · DM and Player**
 
 ### 236. Move to Electron 45

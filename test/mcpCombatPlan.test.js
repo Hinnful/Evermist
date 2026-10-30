@@ -69,7 +69,9 @@ describe('bestiary monsters', () => {
   });
   it('copies under a new name and refuses a taken or empty one', () => {
     const bl = blocks();
-    const c = mcpCopiedEntry(bl, bl.b3, 'Cave Owlbear');
+    const c = mcpCopiedEntry(bl, Object.assign(bl.b3, { uid: 'keep' }), 'Cave Owlbear');
+    assert.ok(c.entry.uid && c.entry.uid !== 'keep');
+    assert.equal(mcpReplacedEntry(bl, bl.b3, combatBlankBlock('', 'Owlbear Alpha')).entry.uid, 'keep');
     assert.equal(c.entry.name, 'Cave Owlbear');
     assert.notEqual(c.entry.id, 'b3');
     assert.ok(mcpCopiedEntry(bl, bl.b3, 'Owlbear').error);

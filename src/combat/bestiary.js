@@ -99,6 +99,7 @@ function bestiaryRender() {
 function _bsRenderPage() {
   const page = _bsEl('bs-page'), b = cbState.blocks[bs.open];
   page.innerHTML = b ? _bsPageHtml(b) : '';
+  if (b) bpMount(page, b);
   page.style.display = b ? '' : 'none';
   bestiaryRender();
 }
@@ -294,6 +295,7 @@ function _bsEscape() {
 }
 
 function _bsKey(e) {
+  if (e.key === 'Escape' && nePickerOpen()) return;
   if (e.key === 'Escape') { e.preventDefault(); _bsEscape(); return; }
   if (e.target.closest('input, textarea, select, [contenteditable]')) return;
   const mod = e.ctrlKey || e.metaKey;

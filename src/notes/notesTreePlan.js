@@ -70,7 +70,7 @@ function notesTreeBuild(src) {
     root.children.push(sec);
   }
   const mon = _node('sec:monster', 'section', 'Monsters and NPCs', null, { sec: 'monster' });
-  mon.children = (src.blocks || []).filter(b => (b.notes || '').trim() || b.listed)
+  mon.children = (src.blocks || []).filter(b => (b.notes || '').trim() || b.listed || b.mentioned)
     .sort((a, b) => String(a.name).localeCompare(String(b.name))).map(b => _node('monster:' + b.id, 'monster', b.name, b.id));
   const fac = _node('sec:faction', 'section', 'Factions', null, { sec: 'faction' });
   fac.children = _entryNodes(src.entries || [], 'faction', 'faction');

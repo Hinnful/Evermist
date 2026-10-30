@@ -1111,6 +1111,21 @@ but does not select the room, since room selection there belongs to the column. 
 Music or Pictures and does not play or show it on the TV. The loading bar is light blue (`--b-icon`), because solid blue
 means "press this" (`test/blueMeaning.test.js`).
 
+### Mentions between notes are plain text with ids the app never reuses · `SETTLED` (2026-10-30)
+A mention is stored as `@[Shown name](kind:id)` inside the note's text, so the previous release shows it as words and
+no new persisted field is needed. Ids: a room is `room:<scene>:<uid>` (the numeric polygon id is reset by floor-plan
+import, MCP import and undo); a monster gets a new `uid` (`b<n>` is reused by `combatNextBlockId`); a group uses a uid
+from a name-to-uid map stored beside the place notes and carried by backups and transfer files (the place record's
+`legacy-<name>` uid fails the id rule and record-less groups have none). Every copy of a Bestiary entry mints a fresh
+uid, a re-read stat block keeps its own, and `combatMerge` matches by uid with uid out of its comparison, so an older
+backup adds no duplicate. Rename rewrites no note; the shown name refreshes on the note's next save. Caps are counted on
+the stored form and an over-cap edit is refused with a notice, never cut. A monster's label turns red only when it
+leaves the Bestiary; the tree's Delete on a monster clears its note and leaves labels blue. A group's uid is not pruned
+on delete or ungroup, so a same-named group or undo takes the old labels back. A transfer import remaps map, room, group
+and monster-note mentions; one that would pass a cap stays red and the summary counts it. An imported monster keeps its
+uid when no local entry shares it. The Bestiary notes field uses the same editor and cap as the Notes window.
+**Rejected:** numeric polygon ids and `b<n>` as targets (both reused); rewriting notes on rename; cutting an over-cap note.
+
 ---
 
 ## Corrections worth keeping

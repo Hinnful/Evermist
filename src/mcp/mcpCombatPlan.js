@@ -3,7 +3,7 @@
 // the open-fight refusal for them, and how a bestiary monster is found, replaced, copied and put back. No DOM. Tested.
 
 const MCC = (typeof module !== 'undefined' && module.exports) ? require('../combat/combatPlan.js')
-  : { combatSetFirstNum, combatBaseName, combatUniqueName, combatNextBlockId, combatSnapshot };
+  : { combatSetFirstNum, combatBaseName, combatUniqueName, combatNextBlockId, combatSnapshot, combatMintUid };
 
 const MCP_ROW_FIELDS = ['name', 'hp', 'ac', 'init'];
 const _key = s => String(s || '').trim().toLowerCase();
@@ -66,6 +66,8 @@ const _taken = (blocks, name, source, except) => Object.values(blocks).some(b =>
 // and lore kept. Refused when its name would clash with another entry of that source.
 function mcpReplacedEntry(blocks, old, parsed) {
   const entry = Object.assign(MCC.combatSnapshot(parsed), { id: old.id, source: old.source || '', notes: old.notes || '', lore: parsed.lore || old.lore || '' });
+  delete entry.uid;
+  if (old.uid) entry.uid = old.uid;
   if (_taken(blocks, entry.name, entry.source, old)) return { error: 'Another monster of the source "' + entry.source + '" is already called "' + entry.name + '", so nothing was changed.' };
   return { entry };
 }
@@ -75,7 +77,7 @@ function mcpCopiedEntry(blocks, old, newName) {
   const name = String(newName || '').trim();
   if (!name) return { error: 'A copy needs a name: give newName.' };
   if (_taken(blocks, name, old.source)) return { error: 'A monster of the source "' + (old.source || '') + '" is already called "' + name + '". Use another name.' };
-  return { entry: Object.assign(MCC.combatSnapshot(old), { id: MCC.combatNextBlockId(blocks), name }) };
+  return { entry: Object.assign(MCC.combatSnapshot(old), { id: MCC.combatNextBlockId(blocks), uid: MCC.combatMintUid(), name }) };
 }
 
 // Puts a deleted entry back under its old id, or a new one when another monster took it since.

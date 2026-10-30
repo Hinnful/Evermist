@@ -43,7 +43,7 @@ function _bpBig(label, v) {
 }
 
 function _bpNotes(b) {
-  return `<textarea class="bp-notes" data-notes spellcheck="false" placeholder="${_cbEsc(t('Tactics, where it lives in your campaign, what it knows'))}">${_cbEsc(b.notes || '')}</textarea>`;
+  return `<div class="bp-notes" data-notes placeholder="${_cbEsc(t('Tactics, where it lives in your campaign, what it knows'))}"></div>`;
 }
 
 function _bpRead(b) {
@@ -75,6 +75,15 @@ function _bpEdit(b) {
   </div>`;
 }
 
+// The notes field is the Notes window's editor, filled from the stored text after the page is drawn.
+function bpMount(page, b) {
+  const f = page.querySelector('[data-notes]');
+  if (!f) return;
+  neInit(f);
+  f.dataset.neKey = 'monster:' + b.id;
+  f.value = b.notes || '';
+}
+
 function bpHtml(b, editing) {
   return editing ? _bpEdit(b) : _bpRead(b);
 }
@@ -85,7 +94,7 @@ function bpWire(el, ed) {
   el.addEventListener('input', e => {
     const b = ed.block(), f = e.target.dataset;
     if (!b || !(f.notes !== undefined || f.lore !== undefined)) return;
-    if (f.notes !== undefined) b.notes = e.target.value; else b.lore = e.target.value;
+    if (f.notes !== undefined) { b.notes = neStoredText(e.target); mxBump(); } else b.lore = e.target.value;
     cbSaveSoon();
   });
   // The notes are one field with the Notes window's: read again on focus, and the last edit wins.

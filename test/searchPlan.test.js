@@ -142,3 +142,17 @@ describe("factions, lore and a monster's DM note", () => {
     assert.deepEqual(ids.slice(ids.indexOf("monster"), ids.indexOf("monster") + 4), ["monster", "faction", "lore", "fight"]);
   });
 });
+
+describe('a note with mentions', () => {
+  const note = 'A letter from @[Lady Wachter](monster:m3kq9z1a) is hidden in the desk.';
+  it('reads as plain words: the shown name is found, the markup is not', () => {
+    const e = { key: 'map:1', kind: 'map', name: 'Mansion', text: note };
+    assert.equal(F.spRank(e, 'lady wachter'), F.SP_NOTE);
+    assert.equal(F.spRank(e, 'monster:m3kq9z1a'), -1);
+    assert.equal(F.spRank(e, '](monster'), -1);
+  });
+  it('shows its snippet without the markup', () => {
+    const s = F.spSnippet(note, 'hidden');
+    assert.equal(s.pre + s.hit + s.post, '…from Lady Wachter is hidden in the desk.');
+  });
+});

@@ -113,6 +113,18 @@ adds the entries the library lacks and never replaces one. Nothing in the window
 window follows the selected column, and an edit goes back to the column it was filled from. Grid calibration puts
 the window away and brings it back.
 
+**Mentions** (`notesEditor.js`, `mentionPlan.js`, `mentionIndex.js`, `notesAppears.js`) link any note to any entry. A mention is
+stored inside the note's plain text as `@[Shown name](kind:id)`, so the field stays one string with its 20000 cap;
+`mentionPlan.js` parses, writes and remaps it, and a token that does not parse cleanly is plain words. Ids are ones the app
+never reuses: `room:<scene id>:<room uid>`, `monster:<uid>` (a `uid` on the Bestiary entry, fresh on every copy), `group:<uid>`
+(`evermist.groupUids`, name to uid, carried by backups), `road:<uid>`, `map:<scene id>`, `entry:<id>` and `campaign`. The id finds
+the entry, so a rename rewrites no note: a label shows the entry's current name and the stored name is refreshed when the note is
+next saved. A label is blue while its entry exists and red when it does not; a monster goes red only when it leaves the Bestiary.
+Every notes field in the window, room notes and the Bestiary page's included, is one contenteditable `plaintext-only` editor whose
+`value` speaks the stored form, with its own undo and plain-text paste. "Appears in" reads the notes search already gathers and
+finds the entry's ref in their stored form. A transfer import rewrites `map:`, `room:` and `group:` mentions to the ids it
+assigns, in every imported note.
+
 Every writer of campaign data (campaign, place and road notes, places, roads, the party marker, the groups'
 order) reports a failed `localStorage` save through `notesSaveFailed` (`notesPanel.js`): one `messageDialog`
 per kind per launch, logged with `console.warn`. Notes keep a pending in-memory copy that reads prefer until

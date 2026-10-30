@@ -45,9 +45,12 @@ function _tiRead(raw) {
 }
 
 // The campaign note joins below the DM's own, as it always has. The places and roads follow the plan.
-async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, say) {
+async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, say, mentions) {
   const parsed = notesParseCampaign(raw);
+  parsed.text = mentions.remap(parsed.text);
   const merged = notesMergeCampaign(notesCampaignGet(), parsed.text);
+  // Before the places come in: a rename there moves the uid with its group.
+  mxGroupUidsWrite(mentions.groupUids);
   if (merged.text !== notesCampaignGet()) notesCampaignSet(merged.text);
   worldPlacesImport(plans.places, shift.dx, shift.dy);
   const names = new Set(worldPlaceRecords().map(r => r.name));
@@ -59,7 +62,7 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, s
   worldRoadsImport(plans.roads, sceneMap, placeSet, shift.dx, shift.dy);
   worldPartyImport(wptParse(raw), sceneMap, shift.dx, shift.dy);
   const entries = notesParseEntries(raw);
-  notesEntriesAdopt(entries.entries);
+  notesEntriesAdopt(entries.entries.map(e => (e && typeof e.note === 'string' ? { ...e, note: mentions.remap(e.note) } : e)));
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 
   const nl = String.fromCharCode(10), b = plans.broken, parts = [];
@@ -71,6 +74,7 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, s
   if (b.roadNotes) parts.push(t('Some road notes in this file could not be read, so those roads came without them.'));
   if (entries.broken) parts.push(t('The factions and lore in this file could not be read, so they are left out.'));
   if (b.placeNotes) parts.push(t('Some group notes in this file could not be read, so those groups came without them.'));
+  if (mentions.skipped()) parts.push(t.plural(mentions.skipped(), '{n} link in the imported notes still points at the old map or group, because its note is full.', '{n} links in the imported notes still point at the old map or group, because their notes are full.'));
   if (parts.length) say({ title: 'Some notes were not imported', message: parts.join(nl + nl) });
 }
 
@@ -89,6 +93,26 @@ function _tiReport(r) {
   return lines.join(nl);
 }
 
+// A mention follows what it names: a map the import gives a new id, its rooms, and a group the library already holds
+// under another uid. `remap(text)` rewrites a note and counts the mentions a full note could not take.
+function _tiMentions(raw, items, incoming, moment) {
+  const maps = Object.create(null);
+  for (const x of items) if (x.entry && x.entry.id !== x.id) maps[x.entry.id] = x.id;
+  const first = tpMergePlaces(_tiLocalPlaces(), incoming.places, moment);
+  const renames = first.update.filter(u => u.rename).map(u => ({ from: u.name, to: u.rename }));
+  const merged = mpGroupUidsMerge(mxGroupUids(), mpParseGroupUids(raw), renames);
+  let skipped = 0;
+  const remap = text => {
+    if (typeof text !== 'string') return text;
+    const r = mpRemap(text, maps, merged.remap, notesCap());
+    skipped += r.skipped;
+    return r.text;
+  };
+  for (const p of incoming.places) p.note = remap(p.note);
+  for (const k of Object.keys(incoming.roads)) incoming.roads[k].note = remap(incoming.roads[k].note);
+  return { remap, skipped: () => skipped, groupUids: merged.keep };
+}
+
 // Everything read and decided before anything is written: the file's scenes against the library, the places
 // and roads, and where new things land.
 async function _tiPlan(zipPath, manifest) {
@@ -101,12 +125,14 @@ async function _tiPlan(zipPath, manifest) {
   const incoming = _tiRead(raw);
   const existing = allScenes, noNotes = [];
   const items = tpSceneIds(manifest, new Set(existing.map(s => s.id)), id => TI_SAFE_ID.test(id), _tiMint);
+  const mentions = _tiMentions(raw, items, incoming, moment);
   for (const x of items) {
     const local = x.matched ? await sceneStore.loadScene(x.id) : null;
     if (x.matched && !local) x.matched = false;
     const n = notesSanitize(x.entry.notes);
     if (n.dropped) noNotes.push(x.entry.name || t('Imported Map'));
-    x.entry = { ...x.entry, notes: n.dropped && local ? local.notes : n.text };
+    const polygons = Array.isArray(x.entry.polygons) ? x.entry.polygons.map(p => (p && typeof p.desc === 'string' ? { ...p, desc: mentions.remap(p.desc) } : p)) : x.entry.polygons;
+    x.entry = { ...x.entry, polygons, notes: n.dropped && local ? local.notes : mentions.remap(n.text) };
     if (!local) continue;
     const missing = x.entry.mapType === 'video' ? !(await window.electronAPI.getVideoFilePath(x.id)) : !local.mapBlob;
     x.local = local;
@@ -121,7 +147,7 @@ async function _tiPlan(zipPath, manifest) {
   const matchedAny = items.some(x => x.matched) || plans.places.matched || plans.roads.matched;
   const shift = matchedAny ? { dx: 0, dy: 0 }
     : wmBesideOffset(existing.filter(s => wmCleanPos(s.worldPos)).map(s => s.worldPos), manifest.map(e => wmCleanPos(e && e.worldPos)).filter(Boolean));
-  return { moment, raw, readFailed, items, plans, shift, noNotes };
+  return { moment, raw, readFailed, items, plans, shift, noNotes, mentions };
 }
 
 // The scene's own map, fog and thumbnail come out of the zip only where the plan takes them.
@@ -226,8 +252,8 @@ async function _tiFinish(zipPath, plan, done, say, claude) {
     message: t('The file had a newer image for these maps, but it could not be put in place, so they kept their old one:') + String.fromCharCode(10, 10) + done.mapFailed.join(String.fromCharCode(10)),
   });
   await adoptModuleTextFromZip(zipPath, claude ? say : undefined);
-  await adoptCombatFromZip(zipPath, say);
-  await _tiAdoptCampaign(plan.raw, plan.readFailed, plan.plans, plan.shift, plan.items, plan.noNotes, say);
+  await adoptCombatFromZip(zipPath, say, plan.mentions.remap);
+  await _tiAdoptCampaign(plan.raw, plan.readFailed, plan.plans, plan.shift, plan.items, plan.noNotes, say, plan.mentions);
   await worldBackgroundImport(zipPath, plan.shift, plan.moment, say);
   try {
     await galleryAdoptBackup(zipPath);

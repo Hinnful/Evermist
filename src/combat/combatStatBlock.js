@@ -14,7 +14,7 @@ let _cbStatRowId = null;
 
 function cbNewBlock(name) {
   const id = combatNextBlockId(cbState.blocks);
-  cbState.blocks[id] = combatBlankBlock(id, name);
+  cbState.blocks[id] = Object.assign(combatBlankBlock(id, name), { uid: combatMintUid() });
   return cbState.blocks[id];
 }
 

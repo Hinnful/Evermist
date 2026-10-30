@@ -114,6 +114,10 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `notes/notesTreePlan.js` | Pure rules for the Notes window's tree: groups nested by outline, maps and rooms, roads, monsters with a note, factions and lore, a node's path, which crumbs fold. Tested |
 | `notes/notesPanel.js` | What the Notes window shows and saves: the notes of the campaign, a group, a road, a map, a room, a monster, a faction or lore, routed to whoever holds the map |
 | `notes/notesEntries.js` | Factions and lore in their own key: read, written and reported when a save fails |
+| `notes/mentionPlan.js` | Pure rules for mentions between notes: the stored form parsed and written, shown names refreshed under the cap, a note's mentions of an id, ids remapped for a transfer import, plain words for search, the group uids. Tested |
+| `notes/mentionIndex.js` | What a mention points at: whether its entry exists and its name and note, the @ picker's entries and the ids minted on a pick, the notes that mention an entry, the group uids |
+| `notes/notesEditor.js` | The notes editor: a plain-text contenteditable with mention labels, its own undo, paste, the @ picker, create-from-name, the red label's menu, the hover preview |
+| `notes/notesAppears.js` | The "Appears in" list at the end of every note in the Notes window |
 | `notes/notesTree.js` | The Notes window's tree: rows, clicks, keys, right-click menu, drag, and New, Rename, Delete and Show on map per kind |
 | `notes/notesWindow.js` | The Notes window's shell: open and shut, place, size, tree width, back and forward, breadcrumbs |
 | `world/worldMapPlan.js` | Pure world-map kernel: starting layout, polygon geometry and which polygon holds a card, the camera. Tested |
@@ -267,8 +271,8 @@ render/effects.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js 
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvControl.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hintsPlan.js → ui/hints.js → ui/hintsFirstMap.js → ui/hintsCues.js → ui/confirmDialog.js → rooms/floorPlan.js →
-content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → notes/notesEntriesPlan.js → notes/notesTreePlan.js → rooms/roomPanel.js → rooms/roomCard.js →
-gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js → notes/notesEntries.js → notes/notesTree.js → notes/notesWindow.js →
+content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → notes/mentionPlan.js → notes/notesEntriesPlan.js → notes/notesTreePlan.js → rooms/roomPanel.js → rooms/roomCard.js →
+gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js → notes/notesEntries.js → notes/mentionIndex.js → notes/notesEditor.js → notes/notesAppears.js → notes/notesTree.js → notes/notesWindow.js →
 world/worldMapPlan.js → world/worldRoadPlan.js → world/worldPartyPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldParty.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → search/searchPlan.js → search/searchIndex.js → search/searchPick.js → search/search.js → world/worldMapColumns.js → world/worldMapEmpty.js → world/worldMapOpenBar.js → world/worldMapFan.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
 ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →

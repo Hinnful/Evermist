@@ -35,13 +35,18 @@ function wfHit(name, q) {
   return q && at >= 0 ? { at, len: q.length } : null;
 }
 
+// A note's words as a reader sees them: a mention is its shown name, never its stored markup.
+function _spPlain(text) {
+  return (typeof mpPlain === 'function' ? mpPlain : require('../notes/mentionPlan.js').mpPlain)(text);
+}
+
 function _spClean(query) { return String(query || '').trim().toLowerCase(); }
 
 // An entry's rank: its name's, else SP_NOTE when its note holds the query, else -1.
 function spRank(entry, q) {
   const r = wfRank(entry.name, q);
   if (r >= 0) return r;
-  return entry.text && String(entry.text).toLowerCase().includes(q) ? SP_NOTE : -1;
+  return entry.text && _spPlain(String(entry.text)).toLowerCase().includes(q) ? SP_NOTE : -1;
 }
 
 // Groups ordered by their own strongest result (ties by SP_GROUPS), each ranked, a result once.
@@ -82,7 +87,7 @@ function spFlat(found) { return found.groups.flatMap(g => g.rows); }
 // The words around a note's hit: { pre, hit, post }, starting on a whole word, with an ellipsis where the note goes on.
 // Newlines and runs of spaces count as one space. null when the note does not hold the query.
 function spSnippet(text, query) {
-  const q = _spClean(query), s = String(text || '').replace(/\s+/g, ' ').trim();
+  const q = _spClean(query), s = _spPlain(String(text || '')).replace(/\s+/g, ' ').trim();
   const i = q ? s.toLowerCase().indexOf(q) : -1;
   if (i < 0) return null;
   let a = Math.max(0, i - 24);

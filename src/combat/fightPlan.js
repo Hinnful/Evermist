@@ -76,12 +76,18 @@ function combatDeleteFight(st, id, newId) {
 function combatMerge(cur, incoming, newId) {
   const blocks = Object.assign({}, cur.blocks);
   const key = b => `${b.name}\u0000${b.source || ''}`;
-  const seen = new Map();
-  const note = b => { const k = key(b); seen.set(k, (seen.get(k) || new Set()).add(JSON.stringify(FP.combatSnapshot(b)))); };
+  // The uid is left out of the comparison, so an older backup of an entry that has one since adds no copy.
+  const same = b => { const c = FP.combatSnapshot(b); delete c.uid; return JSON.stringify(c); };
+  const seen = new Map(), byUid = new Map();
+  const note = b => { const k = key(b); seen.set(k, (seen.get(k) || new Set()).add(same(b))); if (b.uid) byUid.set(b.uid, b); };
   Object.values(blocks).forEach(note);
   for (const b of Object.values(incoming.blocks || {})) {
-    if ((seen.get(key(b)) || new Set()).has(JSON.stringify(FP.combatSnapshot(b)))) continue;
-    note(FP.combatAddEntry(blocks, b));
+    const mine = b.uid && byUid.get(b.uid);
+    if (mine ? same(mine) === same(b) : (seen.get(key(b)) || new Set()).has(same(b))) continue;
+    // An entry no local one shares a uid with keeps its own, so the notes that mention it in the same file still find it.
+    const added = FP.combatAddEntry(blocks, b);
+    if (b.uid && !byUid.has(b.uid)) added.uid = b.uid;
+    note(added);
   }
   let nextId = cur.nextId;
   const renumber = rs => (rs || []).map(r => Object.assign({}, r, { id: nextId++ }));

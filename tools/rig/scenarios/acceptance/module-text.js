@@ -458,6 +458,9 @@ module.exports = async function moduleTextFeature(rig) {
               "picking an entry did not write the room's name: " + JSON.stringify(written.name));
     rig.check(!!written.desc && written.desc.indexOf('Two guards stand here') !== -1,
               "picking an entry did not write the room's notes: " + JSON.stringify(written.desc));
+    // The notes field is the mentions editor; module text still writes plain words and it shows them as typed.
+    const shownDesc = await dm.evaluate('(() => { const f = document.getElementById("rp-desc"); return { value: f.value, labels: f.querySelectorAll(".mn").length, editable: f.isContentEditable }; })()');
+    rig.check(shownDesc.value === written.desc && shownDesc.labels === 0 && shownDesc.editable, 'the notes editor did not show the module text as plain words: ' + JSON.stringify(shownDesc));
     rig.check(written.desc.indexOf('K1.') === -1,
               'the heading was written into the notes as well as the name: ' +
               JSON.stringify(written.desc.slice(0, 40)));

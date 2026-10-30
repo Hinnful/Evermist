@@ -149,8 +149,8 @@ async function doExport(selectedIds, opts) {
       ? wpSubset(selectedIds, allScenes.map(s => ({ id: s.id, group: sanitizeGroupName(s.group) })), worldPlacesExport(), worldRoadsExport(), notesPlacesAll(), notesRoadsAll())
       : null;
     const campaignJson = sub
-      ? notesCampaignPayload('', sub.placeNotes, sub.shapes, sub.roads, sub.roadNotes)
-      : notesCampaignPayload(notesCampaignGet(), notesPlacesAll(), worldPlacesExport(), worldRoadsExport(), notesRoadsAll(), worldPartyExport(), notesEntriesAll());
+      ? notesCampaignPayload('', sub.placeNotes, sub.shapes, sub.roads, sub.roadNotes, undefined, undefined, mxGroupUidsOf(Object.keys(sub.shapes).concat(Object.keys(sub.placeNotes))))
+      : notesCampaignPayload(notesCampaignGet(), notesPlacesAll(), worldPlacesExport(), worldRoadsExport(), notesRoadsAll(), worldPartyExport(), notesEntriesAll(), mxGroupUids());
     const worldBg = await worldBackgroundBackupPayload();
     // The gallery belongs to no scene, so an export of picked scenes leaves it out.
     const gallery = opts && opts.partial ? null : await galleryBackupPayload();
@@ -184,7 +184,7 @@ async function doExport(selectedIds, opts) {
 // Merges rather than asks, because the module-text question may already be on screen: a stat
 // block the DM has keeps theirs, and the backup's fight lands only on an empty table. `say` stands in for
 // messageDialog when Claude imports (mcpImport.js).
-async function adoptCombatFromZip(zipPath, say = messageDialog) {
+async function adoptCombatFromZip(zipPath, say = messageDialog, remap) {
   let json = null;
   try {
     json = await window.electronAPI.readBackupCombat(zipPath);
@@ -193,6 +193,14 @@ async function adoptCombatFromZip(zipPath, say = messageDialog) {
     return;
   }
   if (!json || typeof cbMergePayload !== 'function') return;
+  // A transfer's monster notes follow the maps and groups they name.
+  if (remap) {
+    try {
+      const d = JSON.parse(json);
+      for (const b of Object.values(d.blocks || {})) if (b && typeof b.notes === 'string') b.notes = remap(b.notes);
+      json = JSON.stringify(d);
+    } catch (_) { /* cbMergePayload reports a file that does not parse */ }
+  }
   const st = cbMergePayload(json);
   if (!st.ok) say({ title: 'Fight table not imported', message: t('The maps came in, but the fight table did not.') + '\n\n' + st.error });
 }

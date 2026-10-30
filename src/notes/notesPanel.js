@@ -36,6 +36,7 @@ const _NP_SAVE_WORDS = {
   roads: () => [t('The roads are not being saved'), t('Evermist could not write the roads to disk, so your last change will be gone after a restart.')],
   party: () => [t('The party marker is not being saved'), t('Evermist could not write the party marker to disk, so it will be back where it was after a restart.')],
   entries: () => [t('The factions and lore are not being saved'), t('Evermist could not write the factions and lore to disk, so your last change will be gone after a restart.')],
+  groupUids: () => [t('The links to groups are not being saved'), t('Evermist could not write the links to groups to disk, so a note that names a group may lose it after a restart.')],
   groups: () => [t('The order of the groups is not being saved'), t('Evermist could not write the order of the groups to disk, so it will be gone after a restart.')],
 };
 
@@ -177,8 +178,9 @@ function _npMeta(tg, room) {
 function _npCommit() {
   const aim = _npAim, el = _npEl('np-field');
   if (!aim || !el) return;
-  const v = notesSanitize(el.value).text;
-  el.value = v;
+  const v = notesSanitize(neStoredText(el)).text;
+  if (el.value !== v) el.value = v;
+  mxBump();
   if (aim.kind === 'campaign') { if (v !== notesCampaignGet()) notesCampaignSet(v); return; }
   if (aim.kind === 'place') { if (v !== notesPlaceGet(aim.id)) notesPlaceSet(aim.id, v); return; }
   if (aim.kind === 'road') { if (v !== notesRoadGet(aim.id)) notesRoadSet(aim.id, v); return; }
@@ -203,6 +205,7 @@ function paneApplySceneNotes(m) {
   if (!currentScene) return;
   const v = notesSanitize(m.value).text;
   if (v === (currentScene.notes || '')) return;
+  mxBump();
   currentScene.notes = v;
   scheduleAutoSave();
   drawCursor(lastScreenX, lastScreenY);
@@ -307,9 +310,11 @@ function notesPanelSync(room) {
   ntSync(m.key);
   nwShown(m.key, ntPathOf(m));
   _npShowLevel(m);
+  naSync(m);
 
   if (m.kind === 'room') {
     if (_npAim) { _npCommit(); _npAim = null; }
+    _npEl('rp-desc').dataset.neKey = m.key;
     if (m.tg.own) _npForeignLeave(); else _npForeignFill(m);
     return;
   }
@@ -325,12 +330,14 @@ function notesPanelSync(room) {
     return;
   }
   field.disabled = false;
+  field.dataset.neKey = m.key;
   if (moved) field.placeholder = t({ campaign: 'Notes for the whole campaign…', place: 'Notes for this group…', road: 'Notes for this road…', map: 'Notes for this map…' }[m.tg.kind] || 'Write here…');
   _npAim = aim;
   if (moved || field !== document.activeElement) {
     if (field.value !== m.notes) field.value = m.notes;
     _npFilled = notesSanitize(m.notes).text;
   }
+  neRefreshLabels(field);
   if (title !== document.activeElement && title.value !== m.name) title.value = m.name;
   title.dataset.noI18n = '';
 }
@@ -380,6 +387,7 @@ function _npTitleCommit() {
 function initNotesPanel() {
   const field = _npEl('np-field');
   if (!field) return;
+  neInit(field);
   _rpWireField(field, { commit: _npCommit, enterCommits: false });
   _rpWireField(_npEl('nw-title'), { commit: _npTitleCommit, enterCommits: true, escapeReverts: true });
   // A monster's notes are one field in two places; the Bestiary page re-reads it the same way.
@@ -392,6 +400,7 @@ function initNotesPanel() {
   });
   nwInit();
   ntInit();
+  naInit();
   // ⚠ REGISTERED BEFORE index.html's own listeners, which save: the commit has to land first.
   window.addEventListener('beforeunload', notesPanelFlush);
   document.addEventListener('visibilitychange', () => { if (document.hidden) notesPanelFlush(); });

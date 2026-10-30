@@ -397,7 +397,7 @@ module.exports = async function backupFeature(rig) {
       const text = await window.electronAPI.readBackupCampaign(zip), now = Date.now(), inc = _tiRead(text);
       const plans = { places: tpMergePlaces(_tiLocalPlaces(), inc.places, now),
                       roads: tpMergeRoads(_tiRoadMap(worldRoadsExport(), notesRoadsAll()), inc.roads, now), broken: inc.broken };
-      await _tiAdoptCampaign(text, false, plans, { dx: 0, dy: 0 }, [], []);
+      await _tiAdoptCampaign(text, false, plans, { dx: 0, dy: 0 }, [], [], undefined, _tiMentions(text, [], inc, now));
     };
     notesCampaignSet('');
     await adopt(${JSON.stringify(zipPath)});

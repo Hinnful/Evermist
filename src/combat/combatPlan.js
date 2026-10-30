@@ -84,10 +84,16 @@ function combatSnapshot(b) {
   return c;
 }
 
-// A bestiary entry added as a new bestiary entry: a fresh id, and a name that does not clash.
+// A monster's uid is what a mention in a note points at. Unlike its `b<n>` id it is never reused, and every copy
+// takes a fresh one.
+function combatMintUid() {
+  return (typeof esRandomUid === 'function' ? esRandomUid : require('../scenes/editStamps.js').esRandomUid)();
+}
+
+// A bestiary entry added as a new bestiary entry: a fresh id and uid, and a name that does not clash.
 function combatAddEntry(blocks, b) {
   const id = combatNextBlockId(blocks);
-  const e = Object.assign(combatSnapshot(b), { id });
+  const e = Object.assign(combatSnapshot(b), { id, uid: combatMintUid() });
   e.name = combatUniqueName(blocks, e.name, e.source);
   blocks[id] = e;
   return e;
@@ -154,7 +160,7 @@ function combatSearchBlocks(blocks, query) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { combatHpSum, combatHpState, combatBaseName, combatSortByInit, combatAbilityMod,
-    combatBlankBlock, combatFirstNum, combatSetFirstNum, combatUniqueName, combatNextBlockId, combatSnapshot,
+    combatBlankBlock, combatFirstNum, combatSetFirstNum, combatUniqueName, combatNextBlockId, combatSnapshot, combatMintUid,
     combatAddEntry, combatRowFromEntry, combatRowHpState, combatSourceName, combatNewBlocks,
     combatSearchBlocks, combatNextName, combatDuplicateRow };
 }

@@ -115,6 +115,14 @@ describe('the bestiary', () => {
     assert.equal(e.name, 'Goblin (1)');
     assert.equal(blocks.b1.name, 'Goblin');
   });
+  it('gives every copy a fresh uid, so a mention never lands on another monster (Ctrl+C/V, Ctrl+D, Save to Bestiary, the backup merge)', () => {
+    const mine = Object.assign(combatBlankBlock('b1', 'Wolf'), { uid: 'u-wolf' });
+    const blocks = { b1: mine };
+    const a = combatAddEntry(blocks, mine), b = combatAddEntry(blocks, combatSnapshot(mine));
+    assert.equal(combatSnapshot(mine).uid, 'u-wolf');
+    assert.ok(a.uid && b.uid && a.uid !== 'u-wolf' && b.uid !== 'u-wolf' && a.uid !== b.uid);
+    assert.equal(combatAddEntry({}, combatBlankBlock('b1', 'Bat')).uid.length > 0, true);
+  });
   it('copies an entry so that no edit on either side reaches the other', () => {
     const c = combatSnapshot(goblin);
     c.secs.Actions = [{ n: 'Scimitar.', t: '' }];

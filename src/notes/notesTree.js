@@ -32,6 +32,7 @@ let _ntReadStarted = false;
 const _ntList = () => document.getElementById('nw-tl');
 
 function _ntInput() {
+  const mentioned = mxMentionedMonsters();
   const known = knownGroupNames(), recs = worldPlaceRecords();
   const names = known.concat(recs.map(r => r.name).filter(n => !known.includes(n)));
   const rooms = {};
@@ -40,7 +41,7 @@ function _ntInput() {
     scenes: allScenes.map(s => ({ id: s.id, name: s.name, group: sanitizeGroupName(s.group) })),
     groups: names.map(name => { const rec = worldPlaceByName(name); return { name, outline: rec ? wmOutline(rec) : [] }; }),
     roads: worldRoadRecords().map(r => ({ uid: r.uid, name: r.name })),
-    blocks: Object.values(cbState.blocks).map(b => ({ id: b.id, name: b.name, notes: (b.notes || '').trim() ? 'x' : '', listed: !!b.listed })),
+    blocks: Object.values(cbState.blocks).map(b => ({ id: b.id, name: b.name, notes: (b.notes || '').trim() ? 'x' : '', listed: !!b.listed, mentioned: !!b.uid && mentioned.has(b.uid) })),
     entries: notesEntriesAll(), rooms,
   };
 }
@@ -179,7 +180,11 @@ function ntGo(n) {
 function ntGoKey(key) {
   const n = _ntNode(key);
   if (n) ntGo(n);
+  return !!n;
 }
+
+// Changes whenever the tree's rows would: what the labels in a note repaint on.
+function ntSig() { return _ntSig; }
 
 // ─── Rename, delete, new ─────────────────────────────────────────────────────
 
