@@ -1,8 +1,12 @@
-# Evermist
+<p align="center"><img src="assets/icon.svg" width="128" alt="The Evermist logo: a mountain inside a twenty-sided die"></p>
 
-[![Latest release](https://img.shields.io/github/v/release/Hinnful/Evermist?label=download&sort=semver)](../../releases/latest)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-7c6fb0)](../../releases/latest)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+<h1 align="center">Evermist</h1>
+
+<p align="center">
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/Hinnful/Evermist?label=download&sort=semver" alt="Latest release"></a>
+  <a href="../../releases/latest"><img src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-2f62bd" alt="Platforms"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT"></a>
+</p>
 
 Evermist is for DMs who run their games in person, with a TV on the table and minis on the map. You prepare and run everything from your laptop. The TV shows your players the map with fog of war, grid and effects. Evermist is free, and it will stay free, forever
 
@@ -14,17 +18,17 @@ Evermist is built for D&D 5e, both the 2014 and the 2024 rules. A map from any g
 
 ## Prepare the session
 
-### Lay out your campaign on the world map
+### Lay out your campaign
 
-Every scene sits on one map of your campaign. Gather scenes into places, such as a town or a dungeon, and draw each place on the map with the same tools you use for rooms. Join places with roads, and put an encounter right on the road where it happens. Zoom out to see the whole campaign, and double-click a scene to open it. Find any place, scene or road by its name, and set a picture of your region behind it all
+Every map sits on one board, the Campaign. Gather maps into groups, such as a town or a dungeon, and draw each group with the same tools you use for rooms. Join groups with roads, and put an encounter right on the road where it happens. Zoom out to see the whole campaign, and double-click a map to open it. Set a picture of your region behind it all
 
-To move your prep to another computer, back up the whole campaign or only the scenes you pick into one `.zip`, and restore it there
+To move your prep to another computer, back up the whole campaign or only the maps you pick into one `.zip`, and restore it there
 
-![Zooming out to the campaign and into a scene on the road](assets/world-map.webp)
+![Zooming out to the campaign and into a map on the road](assets/world-map.webp)
 
 ### Draw rooms of any shape
 
-Draw a room with any outline you need. Double-click it to edit: drag corners and walls, curve a wall, round a corner, or cut a hole for a pillar. Join rooms together or cut one in two. Rooms can be copied, pasted, and moved between scenes
+Draw a room with any outline you need. Double-click it to edit: drag corners and walls, curve a wall, round a corner, or cut a hole for a pillar. Join rooms together or cut one in two. Rooms can be copied, pasted, and moved between maps
 
 ![Drawing a room and rounding its corners to fit the windmill](assets/draw-rooms.webp)
 
@@ -32,11 +36,15 @@ Draw a room with any outline you need. Double-click it to edit: drag corners and
 
 Some map editors can export a map's walls as a Universal VTT `.dd2vtt` file. Save that file in the same folder as the map, and Evermist offers to draw every room and door for you. It sizes the grid and places the map's lights from the same file
 
-### Write notes at every level
+### Keep every note in one place
 
-The panel on the left holds your notes for the whole campaign, a place, a road, a scene or a single room. Pick a room and its notes open. They stay on your laptop and never reach the TV. Room names also show on your map
+Notes open in their own window, next to a tree of your whole campaign: groups, maps, rooms, roads, monsters and NPCs, factions and lore. Pick anything in the tree, or a room on the map, and its note opens. Notes stay on your laptop and never reach the TV. Room names also show on your map
 
-A room can hold pictures too, such as a portrait or a handout. Show one on the TV when the party gets there
+Type `@` in any note to link it to a room, a map, an NPC or a faction. Click the link to jump there. Every note ends with the notes that link to it, so an NPC's note lists every room that mentions the NPC
+
+![Linking a room's note to the innkeeper with @ and following the link](assets/notes.webp)
+
+Keep pictures too, such as a portrait or a handout, and show one on the TV when the party gets there
 
 #### Auto-fill notes from the module
 
@@ -50,7 +58,7 @@ The bestiary holds every monster you use. Paste a link to a monster's page, or l
 
 ### Set up the fog, the grid and the light
 
-Each scene keeps its own fog colour and movement. A dungeon can sit under navy mist and a swamp under a sickly green one. The grid can be square or hex, in any colour or width. To calibrate it to the map, drag across a few of the map's own cells. Room corners can snap to the grid as you draw
+Each map keeps its own fog colour and movement. A dungeon can sit under navy mist and a swamp under a sickly green one. The grid can be square or hex, in any colour or width. To calibrate it to the map, drag across a few of the map's own cells. Room corners can snap to the grid as you draw
 
 Lights pool inside their rooms and show on the TV only once the room is revealed. Draw them yourself, or let the floor plan place them
 
@@ -58,9 +66,7 @@ Lights pool inside their rooms and show on the TV only once the room is revealed
 
 ### Put the map on the TV
 
-1. Connect the TV to your laptop over HDMI and set the display to extend your desktop
-2. Open Scene control on the right, click Open Window, and drag the window onto the TV
-3. Click Fullscreen
+Connect the TV to your laptop over HDMI and press Show on TV. Evermist finds the TV and puts the map on it. If the TV only copies your laptop's screen, Evermist tells you how to make it a second screen. You can also show the map in a window and place it yourself
 
 The minimap in the DM window shows which part of the map is on the TV. Drag it to move the TV's view. If you sit at the side of the table, My seat turns the map on your laptop to match your chair, and the TV stays as it is
 
@@ -71,6 +77,12 @@ Every room can be Shrouded, Revealed, or Half-shrouded for places the party visi
 Manual mode lets you prepare the next reveal in private. The TV doesn't update the picture until you press Send. Switching maps is animated with the fog, so the TV never goes black
 
 To point at something, Ctrl+middle-click the map. A gold mark shows in the same spot on the TV
+
+### Find anything with Ctrl+F
+
+Press Ctrl+F anywhere and type. One search finds maps, rooms, notes, monsters, fights, music and pictures. Words found inside a note show under it, and an empty search lists what you opened last. Pick a room and its map opens with the room selected. In Auto mode, Evermist asks before the players see it
+
+![One search finding a room, a fight, music, a monster and a map, then opening the monster](assets/search.webp)
 
 ### Show two maps at once
 
@@ -122,7 +134,9 @@ The OS remembers your choice, so this only happens once
 
 No account, no cloud, no tracking. Evermist goes online for three things only. The app checks GitHub for updates, a music link you paste downloads from YouTube, and a monster link you paste reads that page. Everything else works without an internet connection
 
-Your maps and scenes sit on your own disk. Module PDFs get read in a separate locked-down process that can't touch your files
+Evermist works fully offline, and connecting an AI assistant is optional
+
+Your maps and notes sit on your own disk. Module PDFs get read in a separate locked-down process that can't touch your files
 
 ## Running from source
 

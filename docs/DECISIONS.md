@@ -1133,6 +1133,9 @@ Claude gets everything the Notes window offers: create, rename, nest, reorder an
 ### The Settings line says to press Connect again after an update · `SETTLED` (2026-10-31)
 The sentence "After an update, press Connect to Claude again." is permanent under Connect to Claude, because the installed extension holds its own copy of the tools. **Rejected:** showing it only after pressing Connect, or only after an update.
 
+### One review and one undo for a whole assistant prep run · `REJECTED` (2026-10-31)
+Closed unbuilt (was BACKLOG 243). No real prep run has shown the need. The official MCP servers of Notion, Figma, Linear and GitHub have no run-level undo and lean on the host app's own history. The assistant can delete what it made (each delete asks), and a backup before a big run restores everything. **Gap left:** notes the assistant rewrites while Evermist is closed are recoverable only from a backup, and an Evermist started unseen for an AI call loses its undo history when it idle-quits or the DM opens the app, because the page reloads. Revisit only if a real prep run shows the problem. Summary-UI prototypes sit in `.claude/private/design/item-243/review.html`.
+
 ---
 
 ## Corrections worth keeping

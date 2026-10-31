@@ -486,3 +486,6 @@ after the blink ended. It now installs a MutationObserver before the timer start
 `globalThis.__rigBlinked` when the class is added; check A asserts that flag or the live class. A transient class
 is latched, never sampled. The scenario stays: it alone checks the next-map toast's timing, placement, one-map
 guard and world-map restart. No app code changed.
+
+### README animations are recorded through the rig, not captured by hand · `SETTLED` (2026-10-31)
+`node tools/rig/record.js <clip>` records one clip off screen and encodes an animated WebP (`--encode` re-encodes the last frames), so a re-record after a UI change is one command. Clips run about 10 s, the pointer moves straight to each target, and each clip uses one map with no repeats. Maps are copied from a local map folder and loaded through the app's own import, never the Evermist library. Demo text is Curse of Strahd canon with no spoilers (no Strahd stat block, no NPC secrets). The reveal clip waits for each fade to finish before the next room, because a pick inside a fade lifts the whole fog on the TV for a moment, a known app bug left unfixed. The two-maps clip kept its old recording.

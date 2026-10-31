@@ -1,6 +1,6 @@
 {
   "name": "evermist",
-  "version": "4.18.0",
+  "version": "5.0.0",
   "description": "D&D fog-of-war map viewer for TV display",
   "main": "main.js",
   "author": "Hinnful",
@@ -96,7 +96,8 @@
           "arch": "universal"
         }
       ],
-      "category": "public.app-category.entertainment"
+      "category": "public.app-category.entertainment",
+      "icon": "build/icon-mac.png"
     },
     "linux": {
       "target": "AppImage",

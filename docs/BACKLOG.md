@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 13 open items; IDs run to 250."
+description: "Open work only. 12 open items; IDs run to 253."
 metadata: 
   node_type: memory
   type: project
@@ -36,9 +36,9 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **4.17.0**. **The 5.0 epic comes first** (2026-10-30): the items under "The prep pipeline" below,
-in their order. They make Evermist a whole prep pipeline with the AI assistant, plus notes and search for play.
-Every other item carries no release tag. **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
+`package.json` is at **5.0.0**. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
+**The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
 levels, curved walls, the bounding box, copy/paste/duplicate, a radius on a curved corner, and shapes drawn as
 coloured areas.
@@ -74,31 +74,25 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 ---
 
-# THE PREP PIPELINE - THE 5.0 EPIC
-
-Opened 2026-10-30. **The endgame:** a DM hands the AI assistant a module PDF and a folder of maps and gets back maps in
-a group, with rooms, notes, fights and linked factions and lore, reviewed and undone as one run. At the table, one
-search finds anything and notes link to each other. Evermist stays a map presenter and prep pipeline, never a
-worldbuilding tool: no timelines, calendars, family trees or relationship graphs, and nothing that tracks the session
-for the DM. The items go one at a time, in this order, and the epic closes with 244, which marks 5.0.0. The look for
-240 and 241 is agreed in a clickable prototype, `.claude/private/design/item-195/notes-v2.html` on the DM's machine.
-
-### 243. One review and one undo for a big AI assistant prep run
-Filed 2026-10-30. A prep run is hundreds of changes, and the AI assistant's undo keeps the last 30. After a run the DM
-sees one summary of what it made and changed, and one button undoes the whole run. **Blocked on a discussion** of the
-whole item, starting from whether Evermist is even open while the AI assistant works.
-**Prep · DM only**
-
-### 244. README and GIFs for 5.0
-Filed 2026-10-30. Once 238 to 243 have shipped, re-record every README GIF with the new interface, and add a new one
-only where it shows something the others do not. The README does not advertise the AI assistant's prep. "Nothing
-leaves your computer" stays, with one sentence: Evermist works fully offline, and connecting the AI assistant is
-optional. Claude records the GIFs with the test app off screen. This release is 5.0.0, the shape 3.0.0 and 4.0.0 took.
-**Upkeep · Both**
-
----
-
 # EVERYTHING ELSE
+
+### 251. Catch a red gate before the push
+Filed 2026-10-31. Four of the last eight releases (4.11.0, 4.14.0, 4.16.0, 4.18.0) went red in CI and needed a
+scenario edited and the commit amended: three times a check still expected the old behaviour of an intended change, once
+a slow macOS runner. Find why the local gate in `/commit` misses these, and close the gap so the push goes green first
+time.
+**Upkeep · DM only**
+
+### 252. `ship.js` clears the run's notes after a push
+Filed 2026-10-31. After a push `ship.js` should clear the run's `notes.txt`, as `.claude/commit/push.md` says, but it
+leaves it. The session-start hook then reports every shipped run as "stopped with its notes unpushed", nine of them by
+4.18.0. Clear the file once the push is recorded, and have the hook check `pushed.json` before it warns.
+**Upkeep · DM only**
+
+### 253. The tv-setup scenario needs a second try on Windows and macOS
+Filed 2026-10-31. It reran in 3 recent gate runs: the ··· button did not glow after the TV window closed. Find whether
+the scenario or the app is at fault, then fix it or retire the check.
+**Upkeep · DM only**
 
 ### 249. Open the Notes window when a room is picked
 Filed 2026-10-30. Today a room picked with the Notes window shut leaves it shut and marks nothing on the rail, as the
@@ -121,12 +115,6 @@ Filed 2026-10-30. It reran in 3 recent Windows gate runs: the DM window did not 
 as stopped early. Find whether the scenario or the app stalls, then fix it or retire the check.
 **Upkeep · DM only**
 
-### 246. The claude-grid and claude-fog scenarios need a second try on macOS
-Filed 2026-10-30. claude-grid reran in 4 recent macOS gate runs and claude-fog in 3 (2026-10-31): the Player received
-an `anim-params` message while the AI assistant changed the grid, effects, lights or fog. Decide whether that message
-is allowed through, then fix the app or both checks.
-**Upkeep · DM and Player**
-
 ### 236. Move to Electron 45
 Filed 2026-10-27. Evermist runs on Electron 43, which stops getting security fixes when Electron 46 ships, about
 two months out. Move to 45, then run the full rig set and a packaged build before it ships.
@@ -145,16 +133,6 @@ on the Player**, and split view with an animated map is where the Player has sta
 judge it in that case too.
 Mood, not speed.
 **Play · Player**
-
-### 152. The logo mark without violet
-Filed 2026-10-03 on the DM's instruction. 3.12.0 took violet out of every window, the splash and
-the start screen, and left the logo mark violet in About and on the splash, where it matches the
-app icon file. Redrawing it means the mark in `about.js` and `splash.html` and the icon files
-together, so the installed icon and the in-app mark stay one picture.
-**In progress (2026-10-30):** the direction is a new mark, not a recolour: a hex grid of uneven lit tiles that fades
-into a solid edge. Still open: rounded square or circle, navy or app blue. Prototypes and the ruled-out directions
-are in `.claude/private/design/item-152/` on the DM's machine.
-**Polish · Both**
 
 ### 189. Doors follow a hex grid
 Filed 2026-10-17, low priority. On a square grid a door snaps to the map's own grid cells. On a hex grid, and on any
