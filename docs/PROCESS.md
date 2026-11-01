@@ -85,7 +85,7 @@ A bug report is an ordinary message and needs no command.
   clears `notes.txt` after the push. It opens no pull request: it prints the `gh pr create` line and
   the session runs it, so the app can arm Auto-fix.
 - A Stop hook holds the turn after a push until the CI monitor is armed and the chat carries the
-  Summary line as its title. It lets go after three reminders.
+  Summary line as its title. It reminds once per push, then lets the stop through.
 - `guard-ship.js` refuses a hand-typed `git push`, `gh pr merge`, tag creation and
   `gh release create/edit/upload`. `/rollback` runs through `tools/rollback.js`.
 - CI's `decide` job fails a change whose changed app file has no scenario that runs it

@@ -1128,13 +1128,19 @@ uid when no local entry shares it. The Bestiary notes field uses the same editor
 
 ### The assistant fills the whole notes model · `SHIPPED` (4.18.0, 2026-10-31)
 Claude gets everything the Notes window offers: create, rename, nest, reorder and delete factions and lore, and read and write every note kind with mentions and "Appears in". Deletes keep `confirmed: true`, and deleting an entry lists its children. A module NPC with no stat block becomes a blank Bestiary entry with a note, as "+ New monster or NPC" does. `create_entry` refuses a name already in that kind and names the existing entry, so reuse comes before create. The assistant may add mentions to the DM's own notes, changing only the name into a link.
-**Link rule:** the first mention of a thing per note is linked, later ones stay plain, and an entry is never linked inside its own note. Per note and not per campaign, so "Appears in" lists every note naming it. This is guide text and not enforced by the app, as is "one session's chapters at a time", which has no size cap. **Rejected:** a per-campaign link rule; an app-side size cap. **Parked:** links to fights (BACKLOG 250).
+**Link rule:** the first mention of a thing per note is linked, later ones stay plain, and an entry is never linked inside its own note. Per note and not per campaign, so "Appears in" lists every note naming it. This is guide text and not enforced by the app, as is "one session's chapters at a time", which has no size cap. **Rejected:** a per-campaign link rule; an app-side size cap. **Parked:** links to fights (BACKLOG 250). *Now built in 5.1.0, see "A fight is a mention kind".*
 
 ### The Settings line says to press Connect again after an update · `SETTLED` (2026-10-31)
 The sentence "After an update, press Connect to Claude again." is permanent under Connect to Claude, because the installed extension holds its own copy of the tools. **Rejected:** showing it only after pressing Connect, or only after an update.
 
 ### One review and one undo for a whole assistant prep run · `REJECTED` (2026-10-31)
 Closed unbuilt (was BACKLOG 243). No real prep run has shown the need. The official MCP servers of Notion, Figma, Linear and GitHub have no run-level undo and lean on the host app's own history. The assistant can delete what it made (each delete asks), and a backup before a big run restores everything. **Gap left:** notes the assistant rewrites while Evermist is closed are recoverable only from a backup, and an Evermist started unseen for an AI call loses its undo history when it idle-quits or the DM opens the app, because the page reloads. Revisit only if a real prep run shows the problem. Summary-UI prototypes sit in `.claude/private/design/item-243/review.html`.
+
+### A fight is a mention kind · `SHIPPED` (5.1.0, 2026-11-02)
+The @ picker lists fights and a link is `@[Name](fight:<fight id>)`, reusing the fight's existing id, so no persisted field is new and an older release shows the link as plain text. A click opens the fight table on that fight, hover shows the kind and "N enemies · N allies", a rename follows by id, and a deleted fight's link turns red and keeps its words. The fight table ends with "Appears in", the notes that mention the open fight, hidden when none. Claude writes `@{fight: Name}`; a bare `@{Name}` matching a fight and another entry stays plain and is reported ambiguous. **Rejected:** a new fight uid (the id already never repeats).
+
+### Timing the search's first open · `REJECTED` (2026-11-02)
+Dropped unbuilt (was BACKLOG 248): no user value. A real item comes only if a DM feels a lag on the first Ctrl+F.
 
 ---
 

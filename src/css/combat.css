@@ -593,6 +593,12 @@
   .cb-grp .gx { font: 500 12px/1 system-ui, sans-serif; }
   .cb-acts { background: linear-gradient(90deg, rgba(30, 30, 33, 0), var(--g-bg) 18px); }
   .cb-empty { color: var(--g-dim); border-bottom: 1px solid var(--g-line); }
+  .cb-appears { padding: 8px 16px 12px; border-top: 1px solid var(--g-divider); }
+  .cb-appears .aph { margin: 0 0 4px; font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .cb-appears .aph .n { font-weight: 500; color: var(--g-dim); }
+  .cb-appears .ap { padding: 3px 6px; margin: 0 -6px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; color: #c3c8cf; font-size: 12px; }
+  .cb-appears .ap:hover { background: var(--g-hover); }
+  .cb-appears .ap small { color: var(--g-dim); }
 
   /* ── One stat block: the popup reads at the Bestiary page's sizes. The book's order and
      blocks stay. ── */

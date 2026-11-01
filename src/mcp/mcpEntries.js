@@ -17,6 +17,7 @@ function _mcpePeek(c) {
   if (k === 'campaign') return mpRef('campaign', 'campaign');
   if (k.startsWith('map:')) return mpRef('map', k.slice(4));
   if (k.startsWith('entry:')) return mpRef('entry', k.slice(6));
+  if (k.startsWith('fight:')) return mpRef('fight', k.slice(6));
   if (k.startsWith('road:')) return mpRef('road', k.slice(5));
   if (k.startsWith('place:')) { const u = mxGroupUidPeek(k.slice(6)); return u ? mpRef('group', u) : null; }
   if (k.startsWith('monster:')) { const b = cbState.blocks[k.slice(8)]; return b && b.uid ? mpRef('monster', b.uid) : null; }
@@ -184,7 +185,7 @@ async function _mcpeDelete(args) {
 async function _mcpeAppearsIn(args) {
   await searchReadScenes();
   const { name, hits } = mpeMatch(_mcpeCands(), args.name, args.kind);
-  if (!hits.length) return _mcpNo('Nothing is called "' + name + '". Name a map, room, group, road, faction, lore entry or monster; a "kind:" before the name, or kind, narrows it.');
+  if (!hits.length) return _mcpNo('Nothing is called "' + name + '". Name a map, room, group, road, fight, faction, lore entry or monster; a "kind:" before the name, or kind, narrows it.');
   if (hits.length > 1) return _mcpNo('More than one thing is called "' + name + '": ' + hits.map(c => c.word + (c.where ? ' in "' + c.where + '"' : '')).join(', ') + '. Give kind, or write the name as "Map › Room".');
   const rows = mxAppearsIn(_mcpePeek(hits[0]), null);
   if (!rows.length) return _mcpOk('No note mentions "' + hits[0].name + '".');

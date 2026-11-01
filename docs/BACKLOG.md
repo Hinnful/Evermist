@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 7 open items; IDs run to 253."
+description: "Open work only. 5 open items; IDs run to 253."
 metadata: 
   node_type: memory
   type: project
@@ -82,11 +82,6 @@ Bestiary and the fight table do. Opening the window on a pick is the other optio
 testers use the window.
 **Polish · DM only**
 
-### 248. Time how long search takes to open on a big library
-Filed 2026-10-30. Search reads every map's rooms and notes the first time it opens, and caches them. Item 239's spec
-asked for a rig note of that open time on a library of many maps, so a slowdown shows up; it was not added.
-**Upkeep · DM only**
-
 ### 236. Move to Electron 45
 Filed 2026-10-27. Evermist runs on Electron 43, which stops getting security fixes when Electron 46 ships, about
 two months out. Move to 45, then run the full rig set and a packaged build before it ships.
@@ -112,12 +107,6 @@ diagonal wall, the Door tool cuts the wall into cell-sized steps from the room's
 across two hexes. Decide what a door one hex wide means on a hex wall, then make the preview and the click follow it.
 **Needs /spec.**
 **Polish · DM + Player**
-
-### 250. A note links to a fight
-Filed 2026-10-31, low priority. A room note can say "the goblin ambush" but cannot point at that fight, because a fight
-is not a kind a mention can name. Add it as one: the @ picker lists fights, a fight shows "Appears in", and a click
-on the link opens the fight. The AI assistant writes the same link once the app has it.
-**Prep · DM only**
 
 ---
 

@@ -132,3 +132,15 @@ describe('mpeReadBack', () => {
     assert.equal(mpeReadBack(undefined, shownAs), '');
   });
 });
+
+describe('the assistant links a fight', () => {
+  const fc = [{ kind: 'fight', word: 'fight', name: 'Goblin ambush', where: '' }, { kind: 'room', word: 'room', name: 'Goblin ambush', where: 'Cave' }];
+  it('writes a fight link by name, and by "fight:" when a room shares the name', () => {
+    const one = mpeResolve('Run @{fight: Goblin ambush}.', fc, () => 'fxyz1');
+    assert.equal(one.text, 'Run ' + mpToken('Goblin ambush', 'fight', 'fxyz1') + '.');
+    assert.equal(mpeResolve('Run @{Goblin ambush}.', fc, () => 'fxyz1').unresolved[0].why, 'ambiguous');
+  });
+  it('reads a fight link back as its name', () => {
+    assert.equal(mpeReadBack('See ' + mpToken('Goblin ambush', 'fight', 'fxyz1'), () => 'Goblin ambush'), 'See @{Goblin ambush}');
+  });
+});

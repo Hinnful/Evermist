@@ -7,7 +7,7 @@
 // only when it leaves the Bestiary; clearing its note in the tree leaves it blue.
 
 const MX_GROUP_UIDS_KEY = 'evermist.groupUids';
-const MX_WORDS = { campaign: 'Campaign', group: 'Group', road: 'Road', map: 'Map', room: 'Room', monster: 'Monster or NPC', faction: 'Faction', lore: 'Lore' };
+const MX_WORDS = { campaign: 'Campaign', group: 'Group', road: 'Road', map: 'Map', room: 'Room', monster: 'Monster or NPC', faction: 'Faction', lore: 'Lore', fight: 'Fight' };
 
 let _mxRev = 0;
 let _mxMentioned = { rev: -1, set: null };
@@ -119,6 +119,10 @@ function mxResolve(kind, id) {
     const b = Object.values(cbState.blocks).find(x => x.uid === id);
     return b ? _mxRes('monster', id, b.name, b.notes, 'monster:' + b.id, { kind: 'monster', id: b.id }) : null;
   }
+  if (kind === 'fight') {
+    const f = cbState.fights.find(x => x.id === id);
+    return f ? _mxRes('fight', id, _cfName(f), _cfCount(f), 'fight:' + id, { kind: 'fight', id }) : null;
+  }
   if (kind === 'entry') {
     const e = notesEntryGet(id);
     return e ? _mxRes(e.kind, id, e.name, e.note, 'entry:' + id, { kind: 'entry', id }) : null;
@@ -157,6 +161,7 @@ function mxCandidates(exceptKey) {
   }
   for (const r of worldRoadRecords()) add('road', r.name, 'road:' + r.uid, () => r.uid);
   for (const b of Object.values(cbState.blocks)) add('monster', b.name, 'monster:' + b.id, () => mxMonsterUid(b));
+  for (const f of cbState.fights) add('fight', _cfName(f), 'fight:' + f.id, () => f.id);
   for (const e of notesEntriesAll()) add('entry', e.name, 'entry:' + e.id, () => e.id, '', e.kind);
   return out;
 }

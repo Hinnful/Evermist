@@ -449,7 +449,7 @@ function cbSetOpen(open) {
   el.style.display = open ? 'block' : 'none';
   document.getElementById('btn-combat').classList.toggle('active', open);
   dockRefreshRail();
-  if (open) { cbRender(); _cbPlaceFight(el); hintsFightOpened(cbState.rows.length); return; }
+  if (open) { cbRender(); cbFightsTitle(); _cbPlaceFight(el); hintsFightOpened(cbState.rows.length); return; }
   cbCloseMenu(); cbCloseFights(); hintsFightClosed();
   if (cbStatRowId()) cbCloseStat();
 }

@@ -147,4 +147,5 @@ box (`docs/PROCESS.md`, Talking with the DM).
 
 **Then STOP.** The notes are a proposal. Do not stage, commit or push in the same turn. The user is
 the only reviewer this repo has, and reading the Summary is where they do it. End with one short
-line offering to push.
+line offering to push, open the pull request and watch CI. The DM's yes covers all three, so
+opening the PR and arming the monitor need no second ask.

@@ -6,7 +6,7 @@
 // Ids are ones the app never reuses (room: <scene id>:<room uid>, monster: <uid>, group: <uid>, road: <uid>,
 // map: <scene id>, entry: <id>, campaign). A token that does not parse cleanly to its closing ")" is plain words.
 
-const MP_KINDS = ['room', 'monster', 'group', 'road', 'map', 'entry', 'campaign'];
+const MP_KINDS = ['room', 'monster', 'group', 'road', 'map', 'entry', 'campaign', 'fight'];
 const MP_ID = /^[A-Za-z0-9_-]{1,80}$/;
 const MP_NAME_MAX = 200;
 

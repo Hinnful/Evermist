@@ -116,7 +116,7 @@ the window away and brings it back.
 **Mentions** (`notesEditor.js`, `mentionPlan.js`, `mentionIndex.js`, `notesAppears.js`) link any note to any entry. A mention is
 stored inside the note's plain text as `@[Shown name](kind:id)`, so the field stays one string with its 20000 cap;
 `mentionPlan.js` parses, writes and remaps it, and a token that does not parse cleanly is plain words. Ids are ones the app
-never reuses: `room:<scene id>:<room uid>`, `monster:<uid>` (a `uid` on the Bestiary entry, fresh on every copy), `group:<uid>`
+never reuses: `fight:<fight id>`, `room:<scene id>:<room uid>`, `monster:<uid>` (a `uid` on the Bestiary entry, fresh on every copy), `group:<uid>`
 (`evermist.groupUids`, name to uid, carried by backups), `road:<uid>`, `map:<scene id>`, `entry:<id>` and `campaign`. The id finds
 the entry, so a rename rewrites no note: a label shows the entry's current name and the stored name is refreshed when the note is
 next saved. A label is blue while its entry exists and red when it does not; a monster goes red only when it leaves the Bestiary.
@@ -551,7 +551,7 @@ test suite: synthetic fixtures validated the wrong parser twice.
 The Combat button opens a table for the fight in progress: a row per creature with initiative,
 name, HP, AC, conditions and attacks. The title is a picker over a list of fights (combatFights.js),
 none tied to a scene, and the open one stays put through a scene switch, two maps at once and a
-restart. AC and max HP come from the stat block and are fixed in the row. The HP cell keeps what was
+restart. Under the rows, "Appears in" lists the notes that mention the open fight, hidden when none. AC and max HP come from the stat block and are fixed in the row. The HP cell keeps what was
 typed after the max, "- 9 - 12", with "= 24" beside it, yellow below half and red at zero. An empty
 Init field hints the DEX bonus. A press that travels 5px drags a row, and a click on the Init header
 sorts them once. The Attacks cell shows each damaging action as a pill (attackLine.js reads it,
@@ -628,7 +628,7 @@ Claude does the DM's prep and none of the play. Its tools make, rename, move, ch
 scenes, places, roads, the world map's backdrop, fights, bestiary monsters and gallery pictures, and
 add to or replace notes at every level the Notes window holds. `mcpEntries.js` (rules in
 `mcpEntriesPlan.js`) makes, nests and deletes factions and lore, makes a blank Bestiary entry for an NPC,
-and answers where an entry appears. Claude writes a mention as `@{Name}`; every tool that writes notes
+and answers where an entry appears. Claude writes a mention as `@{Name}`, or `@{fight: Name}` for a fight; every tool that writes notes
 resolves it to the stored form and reads stored mentions back as `@{Name}`, or as the stored form when
 the entry is gone, so a read-then-write keeps a red label. The shim's `instructions` tell it
 what a place, a scene and a room are, and a `guide` tool returns plain-language how-to text per topic

@@ -64,7 +64,7 @@ notes. It finishes before the notes, so its edits ride into this commit.
 
 Read `.claude/commit/notes.md` now. The notes go to `notes.txt` in this session's run folder,
 `.claude/commit/runs/$CLAUDE_CODE_SESSION_ID/`, and pass
-`check-notes.js` before the user sees them. **Then STOP** and offer to push. `ship.js` enforces the stop: it needs the DM's message after the notes passed.
+`check-notes.js` before the user sees them. **Then STOP** and offer to push, open the pull request and watch CI (one yes covers all three). `ship.js` enforces the stop: it needs the DM's message after the notes passed.
 
 ## Step 6 - On their yes: write the backlog, push, arm the monitor
 

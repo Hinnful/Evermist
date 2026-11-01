@@ -156,3 +156,22 @@ describe('the campaign.json writer carries the group uids', () => {
     assert.equal(notesCampaignPayload('', {}, {}, {}, {}, null, [], {}), null);
   });
 });
+
+describe('a fight is a kind a mention can name', () => {
+  const ID = 'fm1abc2xk9q';
+  it('parses, writes and finds a fight mention by its id', () => {
+    const tok = M.mpToken('Goblin ambush', 'fight', ID);
+    assert.equal(tok, '@[Goblin ambush](fight:' + ID + ')');
+    assert.deepEqual(M.mpMentions('Before ' + tok).map(m => [m.kind, m.id]), [['fight', ID]]);
+    assert.ok(M.mpFindRef('Before ' + tok, M.mpRef('fight', ID)));
+    assert.ok(!M.mpFindRef('Before ' + tok, M.mpRef('monster', ID)));
+    assert.equal(M.mpPlain('Before ' + tok), 'Before Goblin ambush');
+  });
+
+  it('follows a rename by id and leaves a deleted fight alone', () => {
+    const tok = M.mpToken('Goblin ambush', 'fight', ID);
+    const r = M.mpRefresh(tok, (k, id) => (id === ID ? 'Ambush at the ford' : null), 20000);
+    assert.equal(r.text, '@[Ambush at the ford](fight:' + ID + ')');
+    assert.equal(M.mpRefresh(tok, () => null, 20000).changed, false);
+  });
+});

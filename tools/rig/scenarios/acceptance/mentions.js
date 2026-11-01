@@ -6,7 +6,8 @@
 // shows as a label that opens its entry, a hover shows its note in place, and each note ends with the notes that
 // mention it. Nothing reaches the TV.
 //
-// Drives src/notes/notesEditor.js, notesAppears.js, mentionIndex.js and mentionPlan.js. Keys are real CDP key
+// Drives src/notes/notesEditor.js, notesAppears.js, mentionIndex.js and mentionPlan.js, src/combat/combatFights.js
+// (a fight's Appears in) and src/mcp/mcpEntries.js (the assistant's link). Keys are real CDP key
 // events. Pure rules (parse, escape, caps, remap, uids) are test/mentionPlan.test.js.
 //
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its letter.
@@ -28,6 +29,11 @@
 //   M. Clicking the map after typing in a note saves the note.
 //   N. A group mentioned before it has an outline keeps its blue label after a restart.
 //   O. Nothing reaches the TV.
+//   P. A fight is a kind a mention names: the @ picker lists fights by name and inserts a fight link.
+//   Q. Clicking a fight link opens that fight in the fight table; the fight shows "Appears in" with the notes that
+//      mention it.
+//   R. A renamed fight changes its label, a deleted one turns it red with its words kept, and the AI assistant's
+//      @{fight: Name} writes the same link.
 
 const lib = require('../../lib');
 
@@ -250,6 +256,40 @@ module.exports = async function mentionsFeature(rig) {
   rig.check(await ev('notesCampaignGet()') === 'Typed then mapclick' && !(await ev('document.activeElement.isContentEditable')),
             'clicking the map after typing did not save the note and hand focus back: ' + await ev('notesCampaignGet()'));
 
+  // ── P. Q. R. A fight is a kind a mention names ────────────────────────────
+  // RED BY DESIGN: written against the feature, never re-proved
+  await ev('(() => { combatAddFight(cbState, combatFightId); combatRenameFight(cbState, cbState.openId, "Goblin ambush"); combatAddFight(cbState, combatFightId); cbSave(); 0; })()');
+  const fightId = await ev('cbState.fights.find(f => f.name === "Goblin ambush").id');
+  await setNote('');
+  await openCampaign();
+  await focusEnd();
+  await typeText('Beware the @Goblin a');
+  await lib.settle(dm, 'document.querySelector(".ne-pop")', 4000);
+  const pf = await pop();
+  rig.check(pf && pf.rows[0] === 'Goblin ambush', 'the @ picker did not list the fight Goblin ambush first: ' + JSON.stringify(pf));
+  await press('Enter');
+  await lib.settle(dm, 'document.querySelectorAll("#np-field .mn").length === 1', 4000);
+  rig.check((await val()).includes('@[Goblin ambush](fight:' + fightId + ')') && (await labels())[0].kind === 'fight' && !(await labels())[0].miss,
+            'picking the fight did not insert a blue fight link: ' + JSON.stringify(await val()));
+  await ev('(() => { const f = document.getElementById("np-field"); f.dispatchEvent(new FocusEvent("blur")); return 0; })()');
+  await ev('document.querySelector("#np-field .mn").click(); 0');
+  await lib.settle(dm, 'cbState.openId === ' + JSON.stringify(fightId) + ' && document.getElementById("cb-fight").style.display === "block"', 6000);
+  rig.check(await ev('cbState.openId') === fightId, 'clicking a fight link did not open that fight in the fight table');
+  await lib.settle(dm, 'document.querySelector("#cb-appears .ap")', 6000);
+  const fa = await ev('({ n: document.querySelector("#cb-appears .aph .n").textContent, rows: [...document.querySelectorAll("#cb-appears .ap")].map(r => r.firstChild.textContent) })');
+  rig.check(fa.n === '1' && fa.rows.join() === 'Campaign', 'the fight did not show Appears in with the campaign note that mentions it: ' + JSON.stringify(fa));
+  await ev('cbSetOpen(false); 0');
+  await ev('combatRenameFight(cbState, ' + JSON.stringify(fightId) + ', "Ford ambush"); cbSave(); _ntSig = ""; mxBump(); refreshRoomPanel(); 0');
+  await lib.settle(dm, 'document.querySelector("#np-field .mn") && document.querySelector("#np-field .mn").textContent === "Ford ambush"', 6000);
+  rig.check((await labels())[0].text === 'Ford ambush', 'a renamed fight did not change the label that shows it');
+  const linked = await ev('mcpeLink("Run @{fight: Ford ambush}.").then(r => r.text)', 20000);
+  rig.check(linked === 'Run @[Ford ambush](fight:' + fightId + ').', 'the assistant link @{fight: Name} did not write the fight link: ' + JSON.stringify(linked));
+  await ev('combatDeleteFight(cbState, ' + JSON.stringify(fightId) + ', combatFightId); cbSave(); _ntSig = ""; mxBump(); refreshRoomPanel(); 0');
+  await lib.settle(dm, 'document.querySelector("#np-field .mn.miss")', 6000);
+  const lr = (await labels())[0];
+  rig.check(lr.miss && lr.text === 'Goblin ambush', 'deleting a fight did not turn its label red with its words kept: ' + JSON.stringify(lr));
+  await setNote('');
+
   // ── O. The TV ─────────────────────────────────────────────────────────────
   await lib.hold(1200, 'long enough for a note to have pushed something to the TV, then prove it did not');
   const msgs = (await player.evaluate('__mnMsgs')).filter(m => ['fog-update', 'tv-picture', 'scene-transition', 'view-snap', 'fog-color'].includes(m));
@@ -271,7 +311,9 @@ module.exports = async function mentionsFeature(rig) {
   await lib.installHelpers(dm);
   await lib.settle(dm, 'typeof nwToggle === "function" && currentScene && fogCoverT === 0', 90000);
   await dm.evaluate('document.getElementById("dock-tab-notes").click(); 0');
-  await lib.settle(dm, 'nwIsOpen() && document.getElementById("nw-kind").textContent === "Campaign"', 8000);
+  await lib.settle(dm, 'nwIsOpen()', 8000);
+  await dm.evaluate('ntGoKey("campaign"); 0');
+  await lib.settle(dm, 'document.getElementById("nw-kind").textContent === "Campaign" && document.querySelectorAll("#np-field .mn").length === 1', 8000);
   const back = await dm.evaluate('[...document.querySelectorAll("#np-field .mn")].map(l => ({ text: l.textContent, miss: l.classList.contains("miss") }))');
   rig.check(back.length === 1 && back[0].text === 'Vallaki' && !back[0].miss, 'after a restart a group mentioned before it had an outline is no longer a blue label: ' + JSON.stringify(back));
 

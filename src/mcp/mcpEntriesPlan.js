@@ -8,7 +8,7 @@ const _mpeDeps = (typeof module !== 'undefined' && module.exports)
   : { neChildren, mpToken, mpParse };
 
 const MPE_SEP = ' › ';
-const MPE_WORDS = ['faction', 'lore', 'monster', 'group', 'map', 'room', 'road', 'campaign'];
+const MPE_WORDS = ['faction', 'lore', 'monster', 'group', 'map', 'room', 'road', 'campaign', 'fight'];
 const MPE_NAME_MAX = 200;
 
 const _mpeNorm = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase();
@@ -97,7 +97,7 @@ function mpeParse(text) {
 
 // The words a call may put before a name to pick a kind: "faction: Name". Else the whole text is the name.
 function _mpeSplit(name) {
-  const m = /^(faction|lore|monster|group|map|room|road|campaign)\s*:\s*(\S.*)$/i.exec(name);
+  const m = /^(faction|lore|monster|group|map|room|road|campaign|fight)\s*:\s*(\S.*)$/i.exec(name);
   return m ? { word: m[1].toLowerCase(), name: m[2].trim() } : { word: null, name };
 }
 

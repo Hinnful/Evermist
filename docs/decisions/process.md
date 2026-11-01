@@ -459,3 +459,9 @@ From 2026-10-28 the desktop app refused Auto-fix on every release (PRs 110 to 11
 monitor only for a pull request it watched the session open, and `ship.js` opened it from inside
 node. Binding the pull request by URL and reporting it in a `<pr-created>` tag were tried and refused.
 `ship.js` now prints the `gh pr create` line and the session runs it as its own command.
+
+### The DM's yes to push covers the pull request and the CI monitor · `SETTLED` (2026-11-02)
+After "go push" the auto-mode classifier refused `gh pr create` as an external write the yes did not
+cover, and the stop hook then blocked three times for a monitor that needed the PR. The offer now
+names pushing, opening the pull request and watching CI, so the yes visibly covers all three; the
+DM never runs a command for it. `stop-checklist.js` reminds once per push, then lets the stop through.

@@ -6,7 +6,7 @@
  * and the chat carries the release's Summary line as its title: both were prose in push.md and both
  * got skipped.
  *
- * Stop; exit 2 keeps the session working and feeds stderr to the model. After MAX_BLOCKS blocks for
+ * Stop; exit 2 keeps the session working and feeds stderr to the model. After one block for
  * the same push it lets go and says so, so a tool that cannot do its part never loops forever.
  * Fail-open on any internal error.
  */
@@ -15,7 +15,7 @@ const path = require('path');
 const { readStdin, readJson, writeJson, ROOT } = require('./guard-lib');
 const { runDir, sessionIds } = require('../commit/shipRules');
 
-const MAX_BLOCKS = 3;
+const MAX_BLOCKS = 1;
 
 // What is still undone for a push, as a list of instructions; empty when the checklist is complete.
 // `armed` and `renamed` are the markers' parsed JSON, or null when missing.

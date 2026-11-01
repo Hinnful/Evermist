@@ -19,9 +19,10 @@ already done before acting, so a re-run after a stop finishes the tail and repea
   the files agree** with the same rules CI applies.
 - **Push a BRANCH by refspec, never `main`, and never create the branch locally.** The script
   picks `release/<version>` for an untagged version and `change/<slug>` otherwise.
-- **Open a pull request yourself**, so the run and every failed attempt before it keep a permanent page.
+- **Open a pull request yourself** (the DM's yes to push covers it and the CI monitor), so the run and every failed attempt before it keep a permanent page.
   The script prints the `gh pr create` line; run it in Bash, as its own command. The app arms Auto-fix
-  only for a pull request it watched this session open, never one a script opened.
+  only for a pull request it watched this session open, never one a script opened. If the call is
+  refused anyway, say so to the DM in one line and end the turn; never ask the DM to run it.
 - **Refuse without the yes, the backlog or a disclosure.** The script checks them itself: notes that
   passed `check-notes.js` unchanged, then a message from the DM; `docs/BACKLOG.md` among the paths of
   a new release (`--no-backlog` when it truly has nothing); a disclosure line for each test an amend edits.
