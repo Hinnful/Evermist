@@ -32,9 +32,8 @@ Then the gate:
 node tools/rig-ci.js pick
 ```
 
-  It prints the scenarios to run with the time each took in CI, what it left to CI because the set
-  would pass about 10 minutes, and the one command to run. **Name the set, the time and anything left
-  to CI in one line**, so the DM sees what you decided not to run.
+  It prints every scenario the map relates to the change with the time each took in CI, and the one
+  command to run, in the background at low priority. **Name the set and its expected time in one line.**
 - **BLOCKED means a changed `src/` script has no scenario that runs it**, by the map or by a header
   that names the file. Write the scenario (its header names the file), then pick again. Do not
   hand-pick around it.

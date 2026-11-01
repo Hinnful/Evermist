@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 12 open items; IDs run to 253."
+description: "Open work only. 7 open items; IDs run to 253."
 metadata: 
   node_type: memory
   type: project
@@ -76,43 +76,15 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 # EVERYTHING ELSE
 
-### 251. Catch a red gate before the push
-Filed 2026-10-31. Four of the last eight releases (4.11.0, 4.14.0, 4.16.0, 4.18.0) went red in CI and needed a
-scenario edited and the commit amended: three times a check still expected the old behaviour of an intended change, once
-a slow macOS runner. Find why the local gate in `/commit` misses these, and close the gap so the push goes green first
-time.
-**Upkeep · DM only**
-
-### 252. `ship.js` clears the run's notes after a push
-Filed 2026-10-31. After a push `ship.js` should clear the run's `notes.txt`, as `.claude/commit/push.md` says, but it
-leaves it. The session-start hook then reports every shipped run as "stopped with its notes unpushed", nine of them by
-4.18.0. Clear the file once the push is recorded, and have the hook check `pushed.json` before it warns.
-**Upkeep · DM only**
-
-### 253. The tv-setup scenario needs a second try on Windows and macOS
-Filed 2026-10-31. It reran in 3 recent gate runs: the ··· button did not glow after the TV window closed. Find whether
-the scenario or the app is at fault, then fix it or retire the check.
-**Upkeep · DM only**
-
 ### 249. Open the Notes window when a room is picked
 Filed 2026-10-30. Today a room picked with the Notes window shut leaves it shut and marks nothing on the rail, as the
 Bestiary and the fight table do. Opening the window on a pick is the other option. Decide after watching how the DM and
 testers use the window.
 **Polish · DM only**
 
-### 247. The backup scenario needs a second try on Windows and macOS
-Filed 2026-10-30. It reran in 3 recent gate runs: a stopped backup left its file behind, or was not stopped. Find
-whether the scenario or the app is at fault, then fix it or retire the check.
-**Upkeep · DM only**
-
 ### 248. Time how long search takes to open on a big library
 Filed 2026-10-30. Search reads every map's rooms and notes the first time it opens, and caches them. Item 239's spec
 asked for a rig note of that open time on a library of many maps, so a slowdown shows up; it was not added.
-**Upkeep · DM only**
-
-### 245. The music scenario needs a second try on Windows
-Filed 2026-10-30. It reran in 3 recent Windows gate runs: the DM window did not answer within 30s and the music read
-as stopped early. Find whether the scenario or the app stalls, then fix it or retire the check.
 **Upkeep · DM only**
 
 ### 236. Move to Electron 45

@@ -76,10 +76,10 @@ module.exports = async function tvSetup(rig) {
   // RED BY DESIGN: written against item 217, never re-proved
   await dm.evaluate(q('#tv-setup .sm-wfoot .primary') + '.click(); 0');
   await lib.settle(dm, '_tvLive()', 15000);
-  await closed();
+  // The glow is a 900ms flash, so it is polled with the close, before any other round trip.
+  const hot = await lib.settle(dm, '!document.getElementById("tv-setup") && !!document.querySelector("#tv-ui [data-tv-more].hot")', 8000);
   rig.check(await dm.evaluate('_tvLive() && _tvRoute === "window"') && !(await open()), 'C: Show on TV in TV setup did not go live in a window and close it');
-  const hot = await lib.settle(dm, '!!document.querySelector("#tv-ui [data-tv-more].hot")', 3000);
-  rig.check(hot, 'C: the ··· button did not glow after the window closed');
+  rig.check(hot,'C: the ··· button did not glow after the window closed');
   rig.byEye('the window shrinking into the ··· button');
 
   // ── D ──

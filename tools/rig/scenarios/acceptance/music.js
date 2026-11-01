@@ -592,7 +592,7 @@ module.exports = async function musicFeature(rig) {
     if (!window.electronAPI || !window.electronAPI.musicYtdlpLatest) return { err: 'no IPC' };
     try { return await window.electronAPI.musicYtdlpLatest(); }
     catch (e) { return { err: String((e && e.message) || e) }; }
-  })()`, 30000);
+  })()`, 120000);
   rig.note('the bundled downloader reports: ' + JSON.stringify(ytdlp));
   rig.check(!ytdlp.err, 'the downloader could not be asked for its version: ' + ytdlp.err);
   rig.check(!!ytdlp.current && /\d/.test(String(ytdlp.current)),

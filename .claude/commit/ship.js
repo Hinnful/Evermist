@@ -156,7 +156,7 @@ function stageRecord({ branch }, notes) {
     if (old.branch === branch) first = old.time;
   } catch { /* no earlier push */ }
   fs.writeFileSync(PUSHED, JSON.stringify({ summary: notes.summary, branch, sha: git(['rev-parse', 'HEAD']), time: first }, null, 2) + '\n');
-  for (const f of [NOTES, STAMP]) fs.rmSync(f, { force: true });
+  for (const f of [NOTES, STAMP]) { try { fs.rmSync(f, { force: true }); } catch { /* a locked file must not fail the record */ } }
   return 'recorded; notes.txt cleared';
 }
 

@@ -46,7 +46,9 @@ function main() {
   // A run folder still holding notes.txt is a release that stopped before its push finished.
   const runs = path.join(ROOT, '.claude', 'commit', 'runs');
   for (const id of fs.existsSync(runs) ? fs.readdirSync(runs) : []) {
-    if (fs.existsSync(path.join(runs, id, 'notes.txt'))) found.push('A /commit run stopped with its notes unpushed (runs/' + id + '/notes.txt). Run /commit to resume; a yes never carries across sessions.');
+    // A locked notes.txt can outlive a finished push; pushed.json newer than it says the release went out.
+    const mtime = (f) => { try { return fs.statSync(path.join(runs, id, f)).mtimeMs; } catch { return 0; } };
+    if (mtime('notes.txt') && mtime('pushed.json') <= mtime('notes.txt')) found.push('A /commit run stopped with its notes unpushed (runs/' + id + '/notes.txt). Run /commit to resume; a yes never carries across sessions.');
     try {
       const text = fs.readFileSync(path.join(runs, id, 'disclosure.txt'), 'utf8').trim();
       if (text) found.push('A test was edited to turn a run green (runs/' + id + '/disclosure.txt); tell the DM in the release report: ' + text.split(/\r?\n/).join(' / '));

@@ -70,9 +70,3 @@ test('window.name assignment counts; the legend takes a plain mention', () => {
   assert.ok(r.run.some(x => x.name === 'caller'));
   assert.ok(r.run.some(x => x.name === 'doc' && x.why === 'names shortcut-legend from the diff'));
 });
-
-test('over the cap it still runs, with a note', () => {
-  const r = pickScenarios({ ...base, identifiers: ['sendToPlayer'], capMs: 1 });
-  assert.ok(r.run.some(x => x.name === 'wrap'));
-  assert.ok(r.notes.some(n => /exceeds/.test(n)));
-});

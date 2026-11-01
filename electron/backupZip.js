@@ -49,7 +49,8 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleTe
     if (cancelled) return resolve();
     const out = fs.createWriteStream(destPath);
     const archive = archiver('zip', { zlib: { level: 6 } });
-    stopZip = () => { cancelled = true; archive.abort(); out.destroy(); resolve(); };
+    stopZip = () => { cancelled = true; archive.abort(); out.destroy(); };
+    // 'close' settles a cancel too, after the file exists; resolving early lets the unlink below miss it.
     out.on('close', resolve);
     out.on('error', reject);
     archive.on('error', reject);

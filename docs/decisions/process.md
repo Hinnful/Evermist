@@ -15,6 +15,11 @@ ledgers.
 
 ---
 
+### A run folder whose `pushed.json` is newer than `notes.txt` counts as shipped · `SETTLED` (2026-11-02)
+The session status read a pushed run as unshipped whenever clearing `notes.txt` failed, and the repo sits
+under OneDrive, which can hold that file locked. `session-status.js` now compares the two timestamps, and
+`ship.js` tolerates a locked `notes.txt` when it clears it.
+
 ### A prototype of an existing window renders the app's own code, and audits itself · `SETTLED` (2026-10-03)
 Item 150's first round rebuilt each window by hand in a mock page. It drifted from the app twice:
 it lost the stat block's positioned lines and hints, and its parts disagreed with one another -

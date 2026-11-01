@@ -62,18 +62,17 @@ test('nothing runs for a diff that touches no app file', () => {
 });
 
 test('smoke goes first and the scenarios reaching the changed file follow, cheapest per function first', () => {
-  const a = pickScenarios({ changed: ['src/fog/fog.js'], map, headers, capMs: 3600000 });
+  const a = pickScenarios({ changed: ['src/fog/fog.js'], map, headers });
   assert.equal(names(a)[0], 'smoke');
   assert.ok(names(a).includes('fog') && names(a).includes('slow'));
   assert.ok(!names(a).includes('gone'), 'a scenario that no longer exists is never picked');
   assert.deepEqual(a.blocked, []);
 });
 
-test('the time cap leaves the slowest to CI and says so', () => {
-  const a = pickScenarios({ changed: ['src/fog/fog.js'], map, headers, capMs: 120000 });
-  assert.deepEqual(a.skipped.map(s => s.name), ['slow']);
-  assert.ok(a.notes.some(n => n.includes('left to CI')));
-  assert.ok(a.totalMs <= 120000);
+test('every scenario reaching a changed function is picked, however long the set runs', () => {
+  const a = pickScenarios({ changed: ['src/fog/fog.js'], map, headers });
+  assert.ok(names(a).includes('slow'));
+  assert.equal(a.skipped, undefined);
 });
 
 test('a changed scenario file runs itself even when no app file changed', () => {

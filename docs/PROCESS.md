@@ -111,7 +111,7 @@ A bug report is an ordinary message and needs no command.
   a rig scenario behind it, and Claude writes it without asking.
 - **On this machine the rig runs once, at `/commit`, or when the DM asks.** At `/commit` it runs the
   scenarios that executed the changed files, picked from a map CI recorded, at below-normal priority
-  and capped near ten minutes. A cloud session runs it freely. The rig skill carries how to write and
+  with no time cap. A cloud session runs it freely. The rig skill carries how to write and
   run a scenario.
 - **A changed `src/` script that no scenario runs blocks `/commit`** until a scenario whose header
   names the file exists.

@@ -4,7 +4,7 @@
 /*
  * The rig's half of CI, in three commands.
  *
- *   node tools/rig-ci.js pick [--map file] [--cap-minutes 10] [--changed a,b] [--base ref] [--json]
+ *   node tools/rig-ci.js pick [--map file] [--changed a,b] [--base ref] [--json]
  *       /commit's test plan: which scenarios the diff needs, from the coverage map of the latest
  *       green run. Exits 3 when a changed src file has no scenario that covers it.
  *       CI's decide job runs it with --base origin/main and fails only on that exit 3.
@@ -21,7 +21,7 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { pickScenarios, diffIdentifiers, DEFAULT_CAP_MS } = require('./rig/pick.js');
+const { pickScenarios, diffIdentifiers } = require('./rig/pick.js');
 const { mergeCoverage, collectFlakes, repeatFlakes } = require('./rig/reports.js');
 
 const ROOT = path.join(__dirname, '..');
@@ -92,7 +92,6 @@ function pick(argv) {
   const notes = [];
   const mapFile = flag(argv, '--map');
   const map = mapFile ? JSON.parse(fs.readFileSync(mapFile, 'utf8')) : downloadMap(notes);
-  const capArg = flag(argv, '--cap-minutes');
   const changedArg = flag(argv, '--changed');
   const base = flag(argv, '--base');
   const answer = pickScenarios({
@@ -102,14 +101,12 @@ function pick(argv) {
     texts: readTexts(),
     identifiers: diffIdentifiers(out(['git', 'diff', base ? base + '...HEAD' : 'HEAD', '-U0', '--', 'src', 'index.html']),
       fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')),
-    capMs: capArg ? Number(capArg) * 60000 : DEFAULT_CAP_MS,
   });
   answer.notes = notes.concat(answer.notes);
   if (argv.includes('--json')) { console.log(JSON.stringify(answer, null, 2)); process.exit(answer.blocked.length ? 3 : 0); }
 
   for (const n of answer.notes) console.log('note: ' + n);
   for (const r of answer.run) console.log('RUN   ' + r.name.padEnd(28) + String(Math.round(r.ms / 1000)).padStart(4) + 's  ' + r.why);
-  for (const r of answer.skipped) console.log('LEFT TO CI  ' + r.name.padEnd(22) + String(Math.round(r.ms / 1000)).padStart(4) + 's  ' + r.why);
   if (answer.blocked.length) {
     console.log('BLOCKED: no scenario covers ' + answer.blocked.join(', ') + '. Write one whose header names the file, then run again.');
     process.exit(3);

@@ -36,6 +36,14 @@ the header-named scenarios stands in. **Reverses** "picks the scenarios covering
 reading headers (process ledger, 2026-08-28): headers stay only as the fallback. Declaring coverage by hand
 was rejected: it rots the day a module is renamed.
 
+### The local pick has no time cap · `SETTLED` (2026-11-02)
+Of the red gates for 4.11.0, 4.14.0, 4.16.0 and 4.18.0, the real failures sat in scenarios the cap left to
+CI (4.16.0 needed about 24 minutes and ran 10) or the pick never chose (the claude-grid and claude-fog
+"Player heard something" reds, because the diff touched no MCP code; fixed in 4.18.0 with
+`lib.claudeHeard`). Two more were CI machines that never booted the app. `/commit` now runs every scenario
+the coverage map relates to the change, in the background at low priority. Cost accepted: a large release
+takes about 25 minutes locally. **Supersedes** the "capped near ten minutes" clause above; the rest stands.
+
 ### The pick also runs scenarios that wrap a changed function or read the shortcut sheet · `SETTLED` (2026-10-23)
 In 4.8.0, `help-and-about.js` wrapped `sendToPlayer` and read `#shortcut-legend`; the greedy cover skipped
 it because other scenarios reached the same functions, and it failed on CI twice on Windows and Mac. The

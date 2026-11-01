@@ -9,7 +9,7 @@
 // took and which functions of which src file it called. A file is covered by the scenarios that
 // called its functions. The pick is a greedy cover: the scenario reaching the most not-yet-reached
 // functions of the changed files per second goes next, until every function any scenario reaches is
-// reached or the time cap is spent. `smoke` always runs first.
+// reached. `smoke` always runs first.
 //
 // WHAT COVERAGE CANNOT SEE, and the answer for each:
 //   - main-process files (main.js, electron/): the profiler belongs to a page
@@ -20,7 +20,6 @@
 
 const path = require('path');
 
-const DEFAULT_CAP_MS = 10 * 60 * 1000;
 const UNKNOWN_MS = 90 * 1000;    // a scenario the map has not timed yet
 
 const isAppFile = f => /^(src\/|index\.html$|stage\.html$|splash\.html$|main\.js$|preload\.js$|electron\/)/.test(f);
@@ -104,13 +103,12 @@ function durationOf(entry) {
  *   map:       the parsed rig-coverage-map.json, or null,
  *   headers:   { scenarioName: header text } for every scenario that exists now,
  *   texts:     { scenarioName: whole file text }, searched for changed identifiers,
- *   identifiers: names the diff changed (diffIdentifiers); each scenario assigning to one (or naming the legend) runs,
- *   capMs:     the time the local run may take, smoke included
+ *   identifiers: names the diff changed (diffIdentifiers); each scenario assigning to one (or naming the legend) runs
  * }
- * answers: { run: [{ name, ms, why }], skipped: [{ name, ms, why }], blocked: [file],
+ * answers: { run: [{ name, ms, why }], blocked: [file],
  *            notes: [string], totalMs }
  */
-function pickScenarios({ changed, map, headers, texts = headers, identifiers = [], capMs = DEFAULT_CAP_MS }) {
+function pickScenarios({ changed, map, headers, texts = headers, identifiers = [] }) {
   const notes = [];
   const exists = name => Object.prototype.hasOwnProperty.call(headers, name);
   const recorded = (map && map.scenarios) || {};
@@ -124,10 +122,9 @@ function pickScenarios({ changed, map, headers, texts = headers, identifiers = [
     chosen.add(name);
     run.push({ name, ms: durationOf(recorded[name]), why });
   };
-  const skipped = [];
 
   if (!app.length && !edited.length) {
-    return { run: [], skipped: [], blocked: [], totalMs: 0,
+    return { run: [], blocked: [], totalMs: 0,
              notes: ['no app file and no scenario changed, so the rig does not run'] };
   }
   if (!map) notes.push('no coverage map from a green run was available: falling back to smoke plus the scenarios whose header names a changed file');
@@ -179,31 +176,16 @@ function pickScenarios({ changed, map, headers, texts = headers, identifiers = [
     take(best.n, 'reaches ' + best.gain + ' more functions of the changed files');
   }
 
-  // A scenario that names a changed identifier runs whatever the cover reached, cap or not.
   for (const id of identifiers) {
     for (const n of Object.keys(texts)) if (exists(n) && namesIdentifier(texts[n], id)) take(n, 'names ' + id + ' from the diff');
   }
 
-  // The cap. Smoke and an edited scenario are never dropped; the rest go in the order chosen.
-  let total = 0;
-  const kept = [];
-  for (const r of run) {
-    const must = r.name === 'smoke' || edited.includes(r.name) || r.why.startsWith('its header') || r.why.startsWith('names ');
-    if (must || total + r.ms <= capMs) { kept.push(r); total += r.ms; } else skipped.push(r);
-  }
-  if (skipped.length) {
-    notes.push('over the ' + Math.round(capMs / 60000) + ' minute cap, so ' + skipped.length +
-      ' scenario(s) are left to CI: ' + skipped.map(s => s.name).join(', '));
-  }
-  if (total > capMs && kept.some(r => r.why.startsWith('names '))) {
-    notes.push('scenarios naming a changed identifier always run, so the total exceeds the ' +
-      Math.round(capMs / 60000) + ' minute cap');
-  }
+  const totalMs = run.reduce((t, r) => t + r.ms, 0);
   const reachedKept = new Set();
-  for (const r of kept) for (const id of reach[r.name] || []) reachedKept.add(id);
+  for (const r of run) for (const id of reach[r.name] || []) reachedKept.add(id);
   if (wanted.size) notes.push('the picked set reaches ' + reachedKept.size + ' of the ' + wanted.size +
     ' functions any scenario ran in the changed files');
-  return { run: kept, skipped, blocked, notes, totalMs: total };
+  return { run, blocked, notes, totalMs };
 }
 
-module.exports = { pickScenarios, diffIdentifiers, headerNames, isAppFile, isRecordable, DEFAULT_CAP_MS };
+module.exports = { pickScenarios, diffIdentifiers, headerNames, isAppFile, isRecordable };
