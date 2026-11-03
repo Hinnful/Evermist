@@ -123,6 +123,7 @@ function doAutoSave() {
     gridConfig:    captureGridConfig(),
     tvFit:         tvFit.step ? { step: tvFit.step, turn: tvFit.turn } : undefined,
     fogSettings:   captureFogSettings(),
+    weather:       weatherId,
   };
   return new Promise(resolve => {
     baseFogCanvas.toBlob(blob => {
@@ -137,6 +138,8 @@ function doAutoSave() {
       scene.baseFogBlob   = blob;
       scene.gridConfig    = snap.gridConfig;
       scene.fogSettings   = snap.fogSettings;
+      // Absent means none, so a map without weather keeps the record the previous release wrote.
+      if (snap.weather !== 'none') scene.weather = snap.weather; else delete scene.weather;
       if (snap.tvFit) scene.tvFit = snap.tvFit; else delete scene.tvFit;
       // Never snapshotted: an edit made while the fog encodes would be overwritten with the old text.
       if (typeof scene.notes !== 'string') scene.notes = '';

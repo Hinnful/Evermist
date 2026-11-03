@@ -254,6 +254,9 @@ let presetArmed = null;
 // held on H or toggled by the minimap's eye. Runtime-only; dmFogLayer.js reads it when it builds.
 let playersViewOn = false;
 
+// The open map's weather preset id (render/weather.js, weatherPlan.js). Saved on the scene; absent means 'none'.
+let weatherId = 'none';
+
 // ─── Lights (render/lights.js) ───────────────────────────────────────────────
 // A light is a polygon like a room or an effect, in a list of its own: {id, vertices, light: true,
 // off?}. It is edited in Effects mode beside the fires and takes its id from nextEffectId, so a pick

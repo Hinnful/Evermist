@@ -11,7 +11,7 @@ describe('mcpMapKeys', () => {
   it('names each part\'s fields once, lights and effects sharing the effect id', () => {
     assert.deepEqual(mcpMapKeys(['effects', 'lights']), ['effects', 'nextEffectId', 'lightShapes', 'lightsHidden']);
     assert.deepEqual(mcpMapKeys(['rooms', 'fog']), ['polygons', 'nextPolygonId', 'fog']);
-    assert.deepEqual(mcpMapKeys(['grid', 'fogSettings']), ['gridConfig', 'fogSettings']);
+    assert.deepEqual(mcpMapKeys(['grid', 'fogSettings']), ['gridConfig', 'fogSettings', 'weather']);
   });
   it('throws on a part that does not exist', () => {
     assert.throws(() => mcpMapKeys(['tokens']), /tokens/);
@@ -75,5 +75,32 @@ describe('mcpMapRecordWrite', () => {
     mcpMapRecordWrite(rec, {}, ['fogSettings', 'fog']);
     assert.equal('fogSettings' in rec, false);
     assert.equal(rec.mapBlob, 'kept');
+  });
+});
+
+describe('weather in a Claude edit', () => {
+  it('is left alone by an edit of any part that does not name it', () => {
+    const rec = { id: 's', weather: 'storm', gridConfig: { cellSize: 40 } };
+    mcpMapRecordWrite(rec, { gridConfig: { cellSize: 70 } }, mcpMapKeys(['grid']));
+    mcpMapRecordWrite(rec, { polygons: [], nextPolygonId: 1 }, mcpMapKeys(['rooms']));
+    assert.equal(rec.weather, 'storm');
+  });
+  it('rides the part of the fog look, so the undo writes the same weather back', () => {
+    const rec = { id: 's', weather: 'blizzard', fogSettings: { pickedHex: '#000000' } };
+    const keys = mcpMapKeys(['fogSettings']);
+    const before = mcpMapSnapshot(mcpMapRecordRead(rec, keys, DEFAULTS), keys);
+    const edit = mcpMapRecordRead(rec, keys, DEFAULTS);
+    edit.fogSettings.pickedHex = '#ffffff';
+    mcpMapRecordWrite(rec, edit, keys);
+    assert.equal(rec.weather, 'blizzard');
+    mcpMapRecordWrite(rec, before, keys);
+    assert.equal(rec.weather, 'blizzard');
+    assert.equal(rec.fogSettings.pickedHex, '#000000');
+  });
+  it('reads an unknown id as none and writes none as absent', () => {
+    assert.equal(mcpMapRecordRead({ weather: 'mist' }, ['weather'], DEFAULTS).weather, 'none');
+    const rec = { weather: 'rain' };
+    mcpMapRecordWrite(rec, { weather: 'none' }, ['weather']);
+    assert.equal('weather' in rec, false);
   });
 });

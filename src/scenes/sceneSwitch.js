@@ -192,6 +192,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   if (!isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); }
 
   if (!isPlayer) restoreSceneFogSettings(scene); // fog.js
+  if (!isPlayer) { setWeather(weatherNormalize(scene.weather), true); if (typeof refreshWeatherUI === 'function') refreshWeatherUI(); }
 
   clearUndo();
   fogEditedSinceSave = false;

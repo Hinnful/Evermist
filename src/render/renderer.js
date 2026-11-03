@@ -8,6 +8,7 @@ let pixiMapSprite  = null;
 let pixiMapTexture = null;
 
 let pixiMapLayer     = null;
+let pixiWeatherLayer = null;
 let pixiEffectsLayer = null;
 let pixiFogLayer     = null;
 let pixiGridLayer    = null;
@@ -60,6 +61,7 @@ function initPixiRenderer(containerEl) {
   // ⚠ The effects layer sits ABOVE the map and BELOW the fog. That ordering is the whole reason an
   // effect in an unexplored room is hidden on both screens with no stripping guard.
   pixiMapLayer     = new PIXI.Container();
+  pixiWeatherLayer = new PIXI.Container();
   pixiEffectsLayer = new PIXI.Container();
   pixiFogLayer     = new PIXI.Container();
   pixiGridLayer    = new PIXI.Container();
@@ -68,6 +70,7 @@ function initPixiRenderer(containerEl) {
   pixiWorld = new PIXI.Container();
   pixiApp.stage.addChild(pixiWorld);
   pixiWorld.addChild(pixiMapLayer);
+  pixiWorld.addChild(pixiWeatherLayer);
   pixiWorld.addChild(pixiEffectsLayer);
   pixiWorld.addChild(pixiFogLayer);
   pixiWorld.addChild(pixiGridLayer);
@@ -237,6 +240,7 @@ function destroyPixiRenderer() {
   }
   pixiMapSprite    = null;
   pixiMapLayer     = null;
+  pixiWeatherLayer = null;
   pixiEffectsLayer = null;
   pixiFogLayer     = null;
   pixiGridLayer    = null;

@@ -1,5 +1,5 @@
 'use strict';
-// controlPanel.js — the dock's Scene control pane: Fog, Rooms, Grid and Player.
+// controlPanel.js — the dock's Scene control pane: Weather and fog, Rooms, Grid and Player.
 //
 // ⚠ A UI LAYER over the existing fog and grid wiring, never new logic. Every control drives the
 // hidden input or button in #cp-legacy, so state mutation, scene persistence and player sync
@@ -13,6 +13,7 @@ function initControlPanel() {
   if (!document.getElementById('dock-pane-scene')) return;
 
   _cpInitMovement();
+  _cpInitWeather();
   _cpInitGrid();
   _cpInitRooms();
   _cpInitLights();
@@ -27,6 +28,7 @@ function initControlPanel() {
   _cpInitCalibrate();
 
   refreshFogControlUI();
+  refreshWeatherUI();
   refreshGridControlUI();
   refreshPlayerControlUI();
   refreshRoomsControlUI();
@@ -99,6 +101,26 @@ function setAnimModeUI() {
   _cpEl('cp-move-row').classList.toggle('hidden', !on);
   _cpSetEye('cp-move-eye', on, 'Fog movement (A)');
   _cpUpdateAdvVisibility();
+}
+
+// ─── Weather: a preset dropdown under the title ──────────────────────────────
+const _CP_WX_LABEL = { none: 'No weather', rain: 'Rain', storm: 'Storm', snowfall: 'Snowfall', blizzard: 'Blizzard', fair: 'Fair weather' };
+
+function _cpInitWeather() {
+  document.querySelectorAll('#cp-pop-wx [data-wx]').forEach(btn => {
+    btn.addEventListener('click', () => { dockClosePop(); chooseWeather(btn.dataset.wx); });
+  });
+}
+
+// `id` is the selected column's preset in two-map mode, where the shell holds none of its own.
+function refreshWeatherUI(id) {
+  const lbl = _cpEl('cp-wx-lbl');
+  if (!lbl) return;
+  const w = weatherNormalize(id === undefined ? weatherId : id);
+  lbl.textContent = t(_CP_WX_LABEL[w]);
+  const src = document.querySelector('#cp-pop-wx [data-wx="' + w + '"] .ic');
+  if (src) _cpEl('cp-wx-ic').innerHTML = src.innerHTML;
+  document.querySelectorAll('#cp-pop-wx [data-wx]').forEach(b => b.classList.toggle('on', b.dataset.wx === w));
 }
 
 // ─── Grid: the eye on the title, the type, the cells ─────────────────────────
@@ -274,7 +296,7 @@ function _cpInitResets() {
 
   // Fog has no single legacy reset — compose one: default colour + tint + feather + Default preset.
   _cpEl('cp-fog-reset').addEventListener('click', () => {
-    ask('Fog colour, tint, feather and animation go back to their defaults.', () => {
+    ask('Weather goes back to No weather, and fog colour, tint, feather and animation go back to their defaults.', () => {
       const fire = (id, val) => { const el = _cpEl(id); if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); } };
       fire('fog-color', '#3a3a8c');
       fire('fog-tint-alpha', 18);
@@ -282,6 +304,7 @@ function _cpInitResets() {
       // ⚠ fog-half-alpha is NOT reset here: it persists, and a reset would overwrite a value
       // dialled in across sittings.
       _cpEl('anim-preset-default').click();
+      chooseWeather('none');
       refreshFogControlUI();
     });
   });

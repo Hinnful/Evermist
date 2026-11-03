@@ -54,7 +54,7 @@ module.exports = async function language(rig) {
   rig.note('navigator.language under the rig: ' + navLang);
   const english = await dm.evaluate(SAMPLES);
   // RED ON: the no-choice default set to 'ru' in i18n.js - 2026-09-29
-  rig.check(english.tab === 'Fog' && english.help === 'Keyboard shortcuts (?)' && english.lang === 'en',
+  rig.check(english.tab === 'Weather' && english.help === 'Keyboard shortcuts (?)' && english.lang === 'en',
     'A: a run with nothing stored did not come up in English: ' + JSON.stringify(english));
   rig.check(await dm.evaluate('document.querySelector(".about-lang .active").dataset.lang === "en"'),
     'A: the About switch does not show English picked');
@@ -66,7 +66,7 @@ module.exports = async function language(rig) {
   // RED ON: the switch writing to a different localStorage key (i18n.js) - 2026-09-29
   rig.check(stored === 'ru', 'B: picking Русский did not store the choice (' + stored + ')');
   rig.check(note.shown && note.text === 'Applies after restart', 'B: no "Applies after restart" note: ' + JSON.stringify(note));
-  rig.check((await dm.evaluate(SAMPLES)).tab === 'Fog', 'B: the screen changed before the restart');
+  rig.check((await dm.evaluate(SAMPLES)).tab === 'Weather', 'B: the screen changed before the restart');
 
   // Names that are dictionary words, set before the restart so they come back from storage.
   const sceneId = await dm.evaluate('currentScene.id');
@@ -87,7 +87,7 @@ module.exports = async function language(rig) {
   await dm.evaluate(TICK);
   const russian = await dm.evaluate(SAMPLES);
   // RED ON: the pass and t() forced to English in i18n.js - 2026-09-29
-  rig.check(russian.tab === 'Туман' && russian.help === 'Горячие клавиши (?)' && russian.lang === 'ru',
+  rig.check(russian.tab === 'Погода' && russian.help === 'Горячие клавиши (?)' && russian.lang === 'ru',
     'C: after the restart the screen is not Russian: ' + JSON.stringify(russian));
   await rig.player();
   await dm.evaluate('refreshPlayerControlUI(); ' + TICK);

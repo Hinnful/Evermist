@@ -43,6 +43,25 @@ describe('tpMergeScene: TV fit', () => {
   it('has a label for the part', () => assert.equal(T.TP_PART_LABEL.tvFit, 'TV fit'));
 });
 
+describe('tpMergeScene: weather', () => {
+  it('takes an incoming weather edited later and keeps a local one edited later', () => {
+    const take = T.tpMergeScene(scene([], { scene: { weather: 100 } }, { weather: 'rain' }), scene([], { scene: { weather: 300 } }, { weather: 'storm' }), NOW);
+    assert.equal(take.record.weather, 'storm');
+    assert.deepEqual(take.report.changed, [{ room: '', part: 'weather' }]);
+    const keep = T.tpMergeScene(scene([], { scene: { weather: 500 } }, { weather: 'rain' }), scene([], { scene: { weather: 300 } }, { weather: 'storm' }), NOW);
+    assert.equal(keep.take.weather, false);
+    assert.equal(keep.record.weather, undefined);
+  });
+  it('lets a file from before weather leave a dry-weather-stamped map alone, and labels the part', () => {
+    const m = T.tpMergeScene(scene([], { scene: { weather: 400 } }, { weather: 'fair' }), scene([], undefined), NOW);
+    assert.equal(m.take.weather, false);
+    assert.equal(T.TP_PART_LABEL.weather, 'weather');
+  });
+  it('reads a map with no weather and one set back to No weather as the same', () => {
+    assert.equal(T.tpMergeScene(scene([], undefined), scene([], undefined, { weather: 'none' }), NOW).touched, false);
+  });
+});
+
 describe('tpMergeScene: parts', () => {
   it('takes an incoming part edited later and keeps a local part edited later', () => {
     const local = scene([], { scene: { name: 100, notes: 500 } }, { name: 'Local', notes: 'local' });

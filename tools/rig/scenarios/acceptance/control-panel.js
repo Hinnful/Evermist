@@ -10,9 +10,9 @@
 // THE CRITERIA ARE THIS HEADER. Each lettered line has its checks under a marker carrying its
 // letter.
 //
-//   A. The pane holds Grid, Fog, Rooms, Lights, in that order, no Player section, no
+//   A. The pane holds Grid, Weather, Rooms, Lights, in that order, no Player section, no
 //      "On the TV" dot in its header, and no zoom stepper.
-//   B. A colour field opens its picker beside the dock, level with its row. A colour picked there
+//   B. A colour field opens its picker beside the dock, level with its row, or as near as the window allows. A colour picked there
 //      reaches the fog and the field, and a click elsewhere puts the picker away.
 //   C. The movement dropdown sets each preset and says which is set. The eye switches movement
 //      off and on, and follows the A key. Custom… opens the dials beside the dock.
@@ -40,7 +40,7 @@ module.exports = async function sceneControlFeature(rig) {
   // RED BY DESIGN: written against the removal, never re-proved
   const sections = await dm.evaluate('[...document.querySelectorAll("#dock-pane-scene .cp-group > .dk-sh .cp-label")]' +
                                      '.map(l => l.textContent.trim()).join(",")');
-  rig.check(sections === 'Grid,Fog,Rooms,Lights',
+  rig.check(sections === 'Grid,Weather,Rooms,Lights',
             'A: Scene control holds the wrong sections, or in the wrong order: ' + sections);
   rig.check(await dm.evaluate('!document.querySelector("[id^=cp-zoom]") && typeof minimapNudgeZoom === "undefined"'),
             'A: the TV zoom stepper is still in the app');
@@ -54,7 +54,9 @@ module.exports = async function sceneControlFeature(rig) {
     const p = document.getElementById('cp-pop-fog').getBoundingClientRect();
     const d = document.getElementById('dock').getBoundingClientRect();
     const f = document.getElementById('cp-fog-field').closest('.dk-blk').getBoundingClientRect();
-    return { shown: p.width > 0, gap: d.left - p.right, dy: p.top - f.top };
+    // dockPlacePop keeps the picker on screen, so a short window lifts it off its row.
+    const want = Math.max(8, Math.min(innerHeight - p.height - 8, f.top));
+    return { shown: p.width > 0, gap: d.left - p.right, dy: p.top - want };
   })()`);
   rig.check(pop.shown && pop.gap > 0 && pop.gap < 20 && Math.abs(pop.dy) < 2,
             'B: the fog colour picker did not open beside the dock, level with its row: ' + JSON.stringify(pop));

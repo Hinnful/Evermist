@@ -82,4 +82,8 @@ describe('sceneBackupMeta', () => {
     assert.deepEqual(sceneBackupMeta(scene, '.jpg', 'image/jpeg', []).tvFit, { step: 2, turn: 270 });
     assert.equal(sceneBackupMeta({ id: 'b' }, '.jpg', 'image/jpeg', []).tvFit, undefined);
   });
+  test('carries the weather of each map into the zip, and leaves a dry map without one', () => {
+    assert.equal(sceneBackupMeta({ id: 'a', weather: 'storm' }, '.jpg', 'image/jpeg', []).weather, 'storm');
+    assert.equal(sceneBackupMeta({ id: 'b' }, '.jpg', 'image/jpeg', []).weather, undefined);
+  });
 });

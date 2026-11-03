@@ -409,8 +409,11 @@
         </div>
 
         <div class="cp-group" id="cp-sec-fog">
-          <div class="dk-sh"><span class="cp-label">Fog</span>
-            <button id="cp-fog-reset" class="cp-adv-close" title="Reset fog settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
+          <div class="dk-sh"><span class="cp-label">Weather</span>
+            <button id="cp-fog-reset" class="cp-adv-close" title="Reset weather and fog settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
+          </div>
+          <div class="dk-r" id="cp-wx-row">
+            <button class="dk-dd" id="cp-wx-dd" data-dock-pop="cp-pop-wx" title="Weather on this map"><span class="dk-cur"><span class="ic" id="cp-wx-ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg></span><span id="cp-wx-lbl">No weather</span></span><span class="car">▼</span></button>
           </div>
           <div class="dk-blk tb-backend"><span class="dk-sub">Whole map</span>
             <div class="cp-btnrow">
@@ -418,12 +421,10 @@
               <button id="btn-fill-fog" class="cp-btn" title="Hide the whole map from the players, every room included">Hide all</button>
             </div>
           </div>
-          <div class="dk-blk"><span class="dk-sub">Colour</span>
+          <div class="dk-blk"><span class="dk-sub">Fog</span>
             <div class="cp-field dk-colour" id="cp-fog-field" data-dock-pop="cp-pop-fog" title="Fog colour and tint strength">
               <span class="cp-swatch"></span><span class="cp-hash">#</span><span class="cp-hex"></span><span class="cp-fdiv"></span><span class="cp-alphanum"></span><span class="cp-pct">%</span>
             </div>
-          </div>
-          <div class="dk-blk"><span class="dk-sub">Movement</span>
             <div class="dk-r" id="cp-move-row">
               <button class="dk-dd" id="cp-move-dd" data-dock-pop="cp-pop-move" title="Movement preset"><span id="cp-move-lbl">Medium drift</span><span class="car">▼</span></button>
               <button class="dk-eye" id="cp-move-eye" title="Fog movement (A)"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
@@ -693,6 +694,17 @@
           <span class="cp-pct">%</span>
         </div>
       </div>
+  </div>
+</div>
+<div class="dk-pop dk-drop" id="cp-pop-wx" hidden>
+  <div class="dk-menu">
+    <button data-wx="none"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg></span>No weather</button>
+    <div class="sep"></div>
+    <button data-wx="rain"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M4.5 9.5h7a2.7 2.7 0 0 0 .3-5.4 3.6 3.6 0 0 0-6.9.9A2.3 2.3 0 0 0 4.5 9.5z"/><path d="M5.5 11.5l-.8 2M8.5 11.5l-.8 2M11.5 11.5l-.8 2"/></svg></span>Rain</button>
+    <button data-wx="storm"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5h7a2.7 2.7 0 0 0 .3-5.4 3.6 3.6 0 0 0-6.9.9A2.3 2.3 0 0 0 4.5 9.5z"/><path d="M8.5 10.5l-1.5 2.5h2l-1.5 2.5"/></svg></span>Storm</button>
+    <button data-wx="snowfall"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M8 1.5v13M2.4 4.75l11.2 6.5M2.4 11.25l11.2-6.5"/></svg></span>Snowfall</button>
+    <button data-wx="blizzard"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1.5v9M2.1 3.75l7.8 4.5M2.1 8.25l7.8-4.5"/><path d="M8.5 12h6M10.5 14.5h4"/></svg></span>Blizzard</button>
+    <button data-wx="fair"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5.5" r="2.3"/><path d="M5.5 1v1M1 5.5h1M2.3 2.3l.7.7M8.7 2.3l-.7.7"/><path d="M6 13.5h6.5a2.3 2.3 0 0 0 .2-4.6 3 3 0 0 0-5.7.7A2 2 0 0 0 6 13.5z"/></svg></span>Fair weather</button>
   </div>
 </div>
 <div class="dk-pop dk-drop" id="cp-pop-move" hidden>
@@ -994,6 +1006,7 @@
 <script src="src/render/videoDiag.js"></script>
 <script src="src/fog/fogGeometry.js"></script>
 <script src="src/fog/fogColor.js"></script>
+<script src="src/render/weatherPlan.js"></script>
 <script src="src/shapes/doorGeometry.js"></script>
 <script src="src/shapes/presetGeometry.js"></script>
 <script src="src/rooms/vttPlan.js"></script>
@@ -1048,6 +1061,8 @@
 <script src="src/render/effectShader.js"></script>
 <script src="src/render/effectShaderKinds.js"></script>
 <script src="src/render/effects.js"></script>
+<script src="src/render/weatherShader.js"></script>
+<script src="src/render/weather.js"></script>
 <script src="src/render/lights.js"></script>
 <script src="src/scenes/dragDrop.js"></script>
 <script src="src/ui/toolbar.js"></script>

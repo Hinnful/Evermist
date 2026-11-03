@@ -55,6 +55,7 @@ const PANE_CONTROLS = {
   'pane-fog-feather': m => _paneField('fog-feather-num', m.radius, 'change'),
   'pane-fog-half':    m => _paneField('fog-half-alpha-num', m.pct, 'change'),
   'pane-anim':        m => applyPaneAnimParams(m),
+  'pane-weather':     m => applyWeatherChoice(m.id),
 
   'pane-grid':      m => { applyGridConfig(m.config); commitGridChange(); },
   'pane-calibrate': m => armGridCalibration(!!m.on),

@@ -79,6 +79,7 @@ function applyFogUpdate(msg) {
   // list is meaningful, which is why this checks for undefined rather than truthiness.
   if (msg.effects !== undefined) setEffects(msg.effects);
   if (msg.lights !== undefined) setLightPolys(msg.lights);
+  if (msg.mapUrl && msg.weather !== undefined) applyWeatherMessage({ weather: msg.weather, mask: msg.weatherMask, instant: true });
   if (msg.gridEnabled !== undefined) {
     gridEnabled   = msg.gridEnabled;
     gridSize      = msg.gridSize      || gridSize;

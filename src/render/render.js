@@ -65,6 +65,7 @@ function pumpDirtyRender() {
   // Map effects animate continuously, so they ride the ticker rather than the dirty flags.
   // pumpEffects returns on a size check when nothing is placed.
   pumpEffects();
+  pumpWeather();
   pumpLights();
   if (renderScheduled) doRender(); // doRender clears renderScheduled
 }

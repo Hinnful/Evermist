@@ -151,6 +151,10 @@
            font: 500 11.5px/1 system-ui, sans-serif; cursor: pointer; text-align: left; }
   .dk-dd:hover, .dk-dd.open { background: var(--g-hover); }
   .dk-dd .car { font-size: 8px; color: var(--g-dim); }
+  /* The weather list: a glyph before each name, in the dropdown and in its menu. */
+  .dk-dd .dk-cur { display: flex; align-items: center; gap: 7px; }
+  .dk-dd .ic, .dk-menu .ic { display: grid; color: var(--g-dim); }
+  .dk-menu button:hover .ic { color: inherit; }
 
   /* A source: what is loaded, in a field, with its one action at the right. */
   .dk-src { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px; border-radius: 5px;

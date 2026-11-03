@@ -250,6 +250,31 @@ The fog is the heart of the app, so it's worth understanding.
    Two layers meeting at the map's edge leave a faint seam on animated maps, and one
    window-wide pass has no edge for a seam to sit on. See [DECISIONS.md](DECISIONS.md).
 
+## Weather
+
+Each map carries one weather preset: No weather, Rain, Storm, Snowfall, Blizzard or Fair weather. The
+DM picks the preset and nothing else; there is no strength or wind control. `weather.js` draws it with
+one shader (`weatherShader.js`), a full-screen mesh between the map and the fog, so it shows on
+revealed ground only. `weatherPlan.js` holds the numbers.
+
+- **Strength wanders on its own.** Rain and snow swell and ease every minute or two, and soft heavy
+  patches drift across. Lightning belongs to Storm. Fair weather has light cloud shadows, slow sunbeams
+  and one small gust of short wind streaks every 20 to 40 seconds.
+- **The ground follows the sky.** Puddles fill in about a minute and dry in about 2.5; settled snow builds
+  in about 3 minutes and melts in about 5, faster under rain. Spots come from noise, a brown dirt colour
+  and darkness, because maps carry no height data. A map that opens with a preset starts at its settled
+  level; build-up happens only on a change during play.
+- **Never inside a room**, whatever its fog mode, and rooms carry no switch. The Player gets a PNG
+  room mask at the fog stencil's scale, geometry only, and still receives no room records. Storm and
+  Blizzard darkness still dims a room's inside.
+- **Two strengths.** The DM screen shows a third of full; the players' view (held H) shows full. On an
+  animated map the DM screen draws rough puddle and snow shapes and the TV the exact ones.
+- **A change fades over 8 seconds** and reaches the TV at once, like a fog colour change, never held for
+  Send.
+- **Saved** as the scene field `weather`; absent means none. It is its own edit-stamp part and rides in
+  the backup manifest. For Claude's map edits and undo it joins the fog look's part. The previous release
+  ignores the field, so a backup made on it drops the weather.
+
 ## First-use hints
 
 Cues ride the `hints.js` contract: once ever, one at a time, off with Hints Off. `hintsPlan.js` holds the

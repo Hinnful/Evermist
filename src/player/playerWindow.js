@@ -213,6 +213,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
         gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
         pickedHex: fogPickedHex, fogTintAlpha: FOG_TINT_ALPHA,
         tvTurn: tvFit.turn,
+        ...weatherPayload(),
       }, '*');
       playerMapSent = true;
       // THE ONE PLACE A FIRST DELIVERY ACTUALLY HAPPENS, so it is the one place the Player's

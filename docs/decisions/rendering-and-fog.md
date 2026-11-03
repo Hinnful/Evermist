@@ -331,3 +331,19 @@ which is what makes taking it safe.
 **Two dead ends, both paid for.** It is not GPU texture work and not document loading. And the probe
 measuring it was cancelling the work it measured: a timing wrapper hid `generateCloudFrames._genId`,
 so the continuation read NaN and returned, which looked like the probe's poll curing the stall.
+
+### Weather is six presets and a shader, under the fog, never in a room · `SETTLED` (2026-11-04)
+Six presets (No weather, Rain, Storm, Snowfall, Blizzard, Fair weather) and no intensity or wind control;
+more come on request. Strength wanders by itself so nothing settles into a still picture. Weather is drawn
+under the fog on both screens and never inside a room, so rooms carry no Indoors switch; the Player gets a
+geometry-only room mask instead of room records. Darkness from Storm and Blizzard still dims a room. The DM
+screen shows a third of the strength. The Map settings Fog section was retitled Weather, with the preset
+first. A wrong preset for a map (Fair weather on a night map, snow in a cave) is the DM's call, not the
+app's to prevent; a separate Time of day was floated and not taken up. Mist left the presets for a fog
+theme, which should seep into rooms (BACKLOG item 254).
+
+### Weather shapes tried and dropped · `REJECTED` (2026-11-04)
+Drops on glass (looked bad), drifting leaves (too specific), swaying plants (the map moving made the DM
+dizzy), ground drift streams (could not be seen), gust bands (read as lines), drifting seeds (read as snow),
+constant wind lines (too many; one rare gust replaced them). A video overlay was also rejected: a second
+video decode is what stalled the Player.

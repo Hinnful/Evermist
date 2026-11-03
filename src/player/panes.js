@@ -65,6 +65,7 @@ window.paneView = {
   get lightsHidden()      { return lightsHidden; },
   get planLights()        { return planLightCount(); },
   get gridConfig()        { return captureGridConfig(); },
+  get weather()           { return weatherId; },
   get fogSettings()       {
     return { pickedHex: fogPickedHex, tintAlpha: FOG_TINT_ALPHA,
              anim: { enabled: fogAnimEnabled, speed: fogAnimSpeed, drift: driftScale,
@@ -79,6 +80,7 @@ function paneAdoptSelectedSettings() {
   const s = paneScope();
   if (s.gridConfig) applyGridConfig(s.gridConfig);
   refreshLightsControlUI();
+  if (s.weather !== undefined) refreshWeatherUI(s.weather);
   const f = s.fogSettings;
   if (!f || !f.anim) return;
   // ⚠ THE ADVANCED PANEL IS AIMED AT ONE COLUMN: left open, the mode row reads "advanced"

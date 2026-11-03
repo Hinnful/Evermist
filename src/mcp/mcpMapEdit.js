@@ -45,7 +45,7 @@ async function _mcpFogCanvas(src, w, h) {
 async function _mcpMapRead(scene, keys) {
   if (_mcpHolder(scene.id) === 'here') {
     const d = mcpMapSnapshot({ polygons, nextPolygonId, effects, nextEffectId, ...lightsSceneFields(),
-      gridConfig: captureGridConfig(), fogSettings: captureFogSettings(), floorPlan: currentScene.floorPlan }, keys);
+      gridConfig: captureGridConfig(), fogSettings: captureFogSettings(), weather: weatherId, floorPlan: currentScene.floorPlan }, keys);
     if (keys.includes('fog')) d.fog = cloneCanvas(baseFogCanvas);
     return Object.assign(d, { mapWidth, mapHeight });
   }
@@ -78,6 +78,7 @@ function _mcpLiveWrite(keys, d) {
     }
     if (has('gridConfig')) { applyGridConfig(d.gridConfig); commitGridChange(); }
     if (has('fogSettings')) restoreSceneFogSettings({ fogSettings: d.fogSettings });
+    if (has('weather')) applyWeatherChoice(d.weather);
   });
   if (has('floorPlan')) { currentScene.floorPlan = d.floorPlan; refreshFloorPlanUI(); }
   scheduleAutoSave();

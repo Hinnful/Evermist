@@ -3,8 +3,8 @@
 // names, the copy taken before a change, and a stored record read into the plain shape and written back. No DOM. Tested.
 
 const MM = (typeof module !== 'undefined' && module.exports)
-  ? Object.assign({}, require('../fog/fogGeometry.js'), require('../fog/fogColor.js'), require('../scenes/editStamps.js'))
-  : { copyShapeRings, decodeShapeFromSave, encodeShapeForSave, parseSceneFogSettings, esAssignUids };
+  ? Object.assign({}, require('../fog/fogGeometry.js'), require('../fog/fogColor.js'), require('../scenes/editStamps.js'), require('../render/weatherPlan.js'))
+  : { copyShapeRings, decodeShapeFromSave, encodeShapeForSave, parseSceneFogSettings, esAssignUids, weatherNormalize };
 
 // The fields a change may touch, per part. Lights share their id space with effects, so both carry nextEffectId.
 const MCP_MAP_PARTS = {
@@ -12,7 +12,7 @@ const MCP_MAP_PARTS = {
   effects: ['effects', 'nextEffectId'],
   lights: ['lightShapes', 'lightsHidden', 'nextEffectId'],
   grid: ['gridConfig'],
-  fogSettings: ['fogSettings'],
+  fogSettings: ['fogSettings', 'weather'],
   fog: ['fog'],
   plan: ['floorPlan'],
 };
@@ -51,6 +51,7 @@ function mcpMapRecordRead(rec, keys, defaults) {
     const f = MM.parseSceneFogSettings(rec, defaults.fog);
     out.fogSettings = { pickedHex: f.hex, tintAlpha: f.alpha, anim: f.anim };
   }
+  if (has('weather')) out.weather = MM.weatherNormalize(rec.weather);
   return out;
 }
 
@@ -60,7 +61,8 @@ function mcpMapRecordWrite(rec, data, keys) {
   for (const k of keys) {
     if (k === 'fog') continue;
     const v = data[k];
-    if (v === undefined) { delete rec[k]; continue; }
+    // Absent is none, the way a save writes it.
+    if (v === undefined || (k === 'weather' && v === 'none')) { delete rec[k]; continue; }
     if (k === 'polygons') rec.polygons = MM.esAssignUids(v.map(p => MM.copyShapeRings(structuredClone(p)))).map(MM.encodeShapeForSave);
     else rec[k] = structuredClone(v);
   }

@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 5 open items; IDs run to 253."
+description: "Open work only. 10 open items; IDs run to 259."
 metadata: 
   node_type: memory
   type: project
@@ -93,12 +93,42 @@ hand for a few controls: sounds, reveals, a scene change. **Open:** which contro
 reaches an offline desktop app. Nothing on the phone reaches the TV except through the app.
 **Play · Phone**
 
-### 116. Clouds drifting over the map
-Filed 2026-09-24. Purely visual, for mood: cloud shadows passing over the revealed map on the TV.
-**Needs /spec:** the look, whether it is per scene, and whether the DM sees it. **It adds GPU cost
-on the Player**, and split view with an animated map is where the Player has stalled before, so
-judge it in that case too.
-Mood, not speed.
+### 254. Fog themes
+Filed 2026-11-04. Named looks for the map's fog, picked from a list under Weather in Map settings: mist, a necrotic
+fog for a dungeon. Unlike weather, a fog theme may seep into rooms, which is why Mist left the weather presets. This unparks the
+"per-preset fog identities" of `docs/decisions/rendering-and-fog.md`; the DM saving their own fog colours as themes
+is the rejected "named theme library" beside it, and stays rejected.
+**Open:** what seeping into rooms does to revealed and half rooms, and which themes ship.
+**Needs /spec.**
+**Play · Player**
+
+### 255. Map settings a DM can read
+Filed 2026-11-04. The Map settings pane follows Figma's right panel: numbers scrubbed by an unlabelled icon, eyes,
+small sub-headers. A DM is not a UI designer and has to learn all of it. Redo the pane in plain words and plain
+controls; this reopens the pane's rules in the `dm-ui` skill. Weather shipped in 5.2.0 in today's pane, as the Fog
+section turned Weather, and moves with the redo.
+**Needs a design round.**
+**First use · Polish · DM only**
+
+### 256. The TV setup check keeps needing a rerun
+Filed 2026-11-04. The rig's TV setup scenario needed a rerun in 3 recent CI runs, on Windows and Mac: the first Show on
+TV of a launch reads a label that is not there yet. Fix the scenario's timing or retire it.
+**Upkeep · DM only**
+
+### 257. The music check keeps needing a rerun
+Filed 2026-11-04. The rig's music scenario needed a rerun in 3 recent CI runs on Windows: the DM window stops answering
+for 30 seconds. Find what blocks it, or retire the scenario.
+**Upkeep · DM only**
+
+### 258. The AI assistant sets a map's weather
+Filed 2026-11-04. The AI assistant preps maps but cannot pick a map's weather preset. Add it beside the fog look, for a
+map that is not on the TV, the same way the fog's drift preset is set. Small.
+**Prep · DM only**
+
+### 259. Time of day
+Filed 2026-11-04. A list of its own beside Weather (day, dusk, night), so a sunny preset on a night map stops being a
+mismatch the DM has to avoid. Floated by the DM while weather was settled; nothing about it is designed yet.
+**Needs a design round.**
 **Play · Player**
 
 ### 189. Doors follow a hex grid
