@@ -54,15 +54,6 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs, and an AppImage needs
-      # FUSE to mount itself.
-      - name: Let Chromium sandbox itself, and AppImages mount
-        if: runner.os == 'Linux'
-        run: |
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          sudo apt-get update
-          sudo apt-get install -y libfuse2t64
-
       # ⚠ The port must match FEED_PORT in all three proof scripts.
       - name: Point the update feed at this machine
         run: |
@@ -77,6 +68,21 @@ jobs:
         run: npx electron-builder ${{ matrix.old }} --publish never -c.directories.output=dist-old -c.extraMetadata.version=0.0.1
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # ⚠ BEFORE THE STEP BELOW: a DM's stock Ubuntu blocks the sandbox's user namespaces and has no
+      # libfuse2, and that step changes both. The AppImage's own launcher drops the sandbox where it
+      # is blocked, and the static runtime (build.toolsets) needs no FUSE library.
+      - name: Open the AppImage on a stock Ubuntu
+        if: runner.os == 'Linux'
+        run: ${{ matrix.run }} node tools/linux-first-launch.js dist-new
+
+      # The walk below drives installs the stock check above already proved can start.
+      - name: Let Chromium sandbox itself, and AppImages mount
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo apt-get update
+          sudo apt-get install -y libfuse2t64
 
       - name: Walk the installed app back and forward
         run: ${{ matrix.run }} node ${{ matrix.script }} dist-new dist-old

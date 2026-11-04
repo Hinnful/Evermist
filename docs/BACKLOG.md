@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 14 open items; IDs run to 263."
+description: "Open work only. 13 open items; IDs run to 263."
 metadata: 
   node_type: memory
   type: project
@@ -138,13 +138,6 @@ can fail; the animated-map freeze, effects-under-fog, backup-whitelist, window-g
 holes. Full list in `.claude/private/reviews/2026-11-04/findings/16-tools-rig.md`. Ships as its own change, so a red CI
 run points at the rig alone.
 **Upkeep · Both**
-
-### 261. The Linux AppImage does not start on Ubuntu 24.04
-Filed 2026-11-04. Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs, so the AppImage quits at launch; the
-CI legs change that kernel setting and hide it. Either the README gives Linux DMs the command that allows the sandbox,
-or the Linux build turns the sandbox off. A stock 22.04/24.04 also needs `libfuse2`.
-**Needs the DM's choice of fix.**
-**First use · DM only**
 
 ### 262. Two maps: the Notes window shows a column's older map notes
 Filed 2026-11-04. In two-map mode the Notes window answers a map's notes from its cached read before asking the column

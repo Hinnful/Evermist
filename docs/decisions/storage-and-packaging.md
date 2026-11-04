@@ -375,3 +375,14 @@ call never waits behind a slow import past the bridge's 20 s reply timeout.
 ### The release check counts every shipped input · `SETTLED` (2026-11-04)
 `tools/check-release.js` counts the devDependencies electron and electron-builder, the lockfile versions of runtime
 dependencies and of those two, the `build/` icons and `tools/fetch-ytdlp.js` as shipped inputs.
+
+### The AppImage is static, and the sandbox is left to its launcher · `SETTLED` (2026-11-04)
+`build.toolsets.appimage: "1.0.3"` selects electron-builder's static-runtime AppImage, which needs no `libfuse2`; a stock
+Ubuntu 22.04+ lacks it, so the FUSE2 build would not mount. An in-app `no-sandbox` switch in `main.js` was built, then
+removed: electron-builder's AppRun already adds `--no-sandbox` when `unshare -Ur true` fails (Ubuntu 23.10+ blocking
+unprivileged user namespaces), and a control run without the switch still opened on a stock runner.
+
+### First launch on stock Ubuntu is a CI check · `SETTLED` (2026-11-04)
+`tools/linux-first-launch.js` runs in the Linux job of `update-proofs.yml` before the step that sets the sysctl and
+installs `libfuse2t64`, and passes when the DM window loads `index.html`. The earlier legs changed that kernel setting
+first, which hid the failure.

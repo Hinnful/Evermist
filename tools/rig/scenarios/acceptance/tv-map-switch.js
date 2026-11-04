@@ -76,17 +76,21 @@ module.exports = async function tvMapSwitch(rig) {
 
   // ── D. Nothing goes out while the DM's switch is loading ─────────────────
   // RED ON: currentScene removed from canSendToPlayer (playerWindow.js) — 2026-11-04
-  await player.evaluate('(() => { window.__rigUpdates = []; const f = applyFogUpdate; applyFogUpdate = function (m) { window.__rigUpdates.push(Date.now()); return f.apply(this, arguments); }; return 0; })()');
+  // Each update the TV takes, with what it carries: the switch's own map push is the one that may come.
+  await player.evaluate('(() => { window.__rigUpdates = []; const f = applyFogUpdate; applyFogUpdate = function (m) {' +
+    ' window.__rigUpdates.push({ t: Date.now(), map: !!m.mapUrl, scene: m.mapSceneId || null, change: !!m.sceneChange }); return f.apply(this, arguments); }; return 0; })()');
   await dm.evaluate('(() => { const orig = sceneStore.loadScene; sceneStore.loadScene = (id) => { sceneStore.loadScene = orig;' +
     ' return new Promise(r => setTimeout(r, 1500)).then(() => orig(id)); }; return 0; })()');
-  const t0 = await dm.evaluate('Date.now()');
   await dm.evaluate('(window.__rigSwitch = switchScene(' + JSON.stringify(cId) + ')), 0');
-  await lib.settle(dm, 'currentScene === null', 2000);
+  // Counted from the moment the open map is let go, so a send made just before the switch is not this check's.
+  const t0 = await lib.poll(() => dm.evaluate('currentScene === null ? Date.now() : null'), 3000, 20);
+  rig.check(!!t0, 'setup: the DM never let go of the open map during the switch');
   await dm.evaluate('sendToPlayerNow(); 0');
-  await lib.settle(dm, 'currentScene !== null', 10000);
-  const t1 = await dm.evaluate('Date.now()');
-  const during = await player.evaluate('window.__rigUpdates.filter(t => t >= ' + t0 + ' && t <= ' + t1 + ').length');
-  rig.check(during === 0, 'the TV received ' + during + ' update(s) while the DM\'s map switch was still loading');
+  // ...and up to the moment the new one is held, read the same way.
+  const t1 = await lib.poll(() => dm.evaluate('currentScene !== null ? Date.now() : null'), 10000, 20);
+  const stray = await player.evaluate('window.__rigUpdates.filter(u => u.t >= ' + (t0 || 0) + ' && u.t <= ' + (t1 || Date.now()) +
+    ' && !(u.map && u.change && u.scene === ' + JSON.stringify(cId) + '))');
+  rig.check(stray.length === 0, 'the TV received an update other than the new map while the DM\'s map switch was loading: ' + JSON.stringify(stray));
   await dm.evaluate('window.__rigSwitch');
 
   // ── E. A drop never navigates the TV away ─────────────────────────────────
