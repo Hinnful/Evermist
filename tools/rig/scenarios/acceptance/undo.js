@@ -25,7 +25,7 @@
 //   I. A per-corner radius comes back on Ctrl+Z, the second one set on a room included.
 //   J. A field the DM has looked away from does not keep their Ctrl+Z. A click anywhere
 //      outside it hands focus back, not only a click on the map.
-//   K. Grid and fog colour changes are undoable: one Ctrl+Z takes back one whole scrub, Ctrl+Y
+//   K. Grid and fog theme changes are undoable: one Ctrl+Z takes back one whole scrub, Ctrl+Y
 //      puts it back, the fields follow, and the hint says the step happened.
 //
 // The byte-arithmetic of eviction is unit-tested (test/, evictUndoStack and evictUndoPair). What
@@ -470,7 +470,7 @@ module.exports = async function undoFeature(rig) {
               'undo that was reported dead at the table: ' + JSON.stringify(after));
   }
 
-  // ── K. Grid and fog colour ride the history ───────────────────────────────
+  // ── K. Grid and fog theme ride the history ───────────────────────────────
   // RED ON: noteSettingsChange gated off in commitGridChange (grid.js) — 2026-10-02
   await dm.evaluate('document.activeElement && document.activeElement.blur(); 0');
   const size0 = await dm.evaluate('gridSize');
@@ -484,11 +484,10 @@ module.exports = async function undoFeature(rig) {
   await redoKey();
   rig.check(await dm.evaluate('gridSize') === 150, 'K: Ctrl+Y did not put the cell size back');
   await undoKey();
-  const hex0 = await dm.evaluate('fogPickedHex');
-  await lib.fire(dm, 'fog-color', '#aa2233', 'input');
-  rig.check(await dm.evaluate('fogPickedHex') === '#aa2233', 'K: the fog colour field did not set the fog');
+  const theme0 = await dm.evaluate('fogTheme');
+  await dm.evaluate('setFogTheme("ice"); 0');
+  rig.check(await dm.evaluate('fogTheme') === 'ice', 'K: picking Ice did not set the fog theme');
   await undoKey();
-  rig.check(await dm.evaluate('fogPickedHex') === hex0 &&
-            (await dm.evaluate('document.getElementById("fog-color").value')).toLowerCase() === hex0.toLowerCase(),
-            'K: Ctrl+Z did not take back the fog colour: ' + await dm.evaluate('fogPickedHex'));
+  rig.check(await dm.evaluate('fogTheme') === theme0 && await dm.evaluate('document.getElementById("cp-fogtheme-lbl").textContent') === 'Default',
+            'K: Ctrl+Z did not take back the fog theme: ' + await dm.evaluate('fogTheme'));
 };

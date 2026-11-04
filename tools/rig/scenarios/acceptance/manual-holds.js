@@ -12,7 +12,7 @@
 //   D. In Manual, a Turn reaches the TV only on Send.
 //   E. A ping does nothing while the TV shows a different map from the open one, and works again
 //      after Send.
-//   F. Fog animation settings change on the DM and reach the TV only on Send.
+//   F. A fog theme pick changes on the DM and reaches the TV, colour and motion together, only on Send.
 //   G. Manual to Auto with a change waiting sends it at once.
 //
 // ⚠ THE TV IS READ ON THE PLAYER'S OWN GLOBALS (mapWidth, panX, zoom, seatTurn, fogCoverT). The two
@@ -102,13 +102,14 @@ module.exports = async function manualHolds(rig) {
   // ── F ──
   // RED BY DESIGN: written against item 217, never re-proved
   const speed = await player.evaluate('fogAnimSpeed');
-  await dm.evaluate('fogAnimSpeed = ' + (speed + 0.37) + '; syncAnimToPlayer(); 0');
-  await lib.hold(800, 'long enough for an anim-params that wrongly went out at once to land');
-  rig.check(await player.evaluate('fogAnimSpeed') === speed, 'F: in Manual a fog animation change reached the TV before Send');
-  rig.check(await dm.evaluate('tvWait.anim === true && playerUnsent === true'), 'F: the held animation change did not mark Send as waiting');
+  await dm.evaluate('setFogTheme("ice"); 0');
+  await lib.hold(1500, 'long enough for a fog-theme that wrongly went out at once to land and ease in');
+  rig.check(await player.evaluate('fogTheme === "default" && fogAnimSpeed') === speed, 'F: in Manual a fog theme pick reached the TV before Send');
+  rig.check(await dm.evaluate('tvWait.theme === true && playerUnsent === true'), 'F: the held fog theme did not mark Send as waiting');
   await dm.evaluate('document.getElementById("btn-send").click(); 0');
-  rig.check(await lib.settle(player, 'Math.abs(fogAnimSpeed - ' + (speed + 0.37) + ') < 1e-9', 8000), 'F: Send did not carry the animation settings');
-  await dm.evaluate('fogAnimSpeed = ' + speed + '; syncAnimToPlayer(); document.getElementById("btn-send").click(); 0');
+  rig.check(await lib.settle(player, 'fogTheme === "ice" && fogAnimSpeed < 0.2', 15000), 'F: Send did not carry the fog theme, colour and motion together');
+  await dm.evaluate('setFogTheme("default"); document.getElementById("btn-send").click(); 0');
+  await lib.settle(player, 'fogTheme === "default"', 15000);
 
   // ── G ──
   // RED BY DESIGN: written against item 217, never re-proved

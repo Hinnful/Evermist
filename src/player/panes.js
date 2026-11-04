@@ -66,12 +66,7 @@ window.paneView = {
   get planLights()        { return planLightCount(); },
   get gridConfig()        { return captureGridConfig(); },
   get weather()           { return weatherId; },
-  get fogSettings()       {
-    return { pickedHex: fogPickedHex, tintAlpha: FOG_TINT_ALPHA,
-             anim: { enabled: fogAnimEnabled, speed: fogAnimSpeed, drift: driftScale,
-                     morph: cloudFrameSpeed, warpStr: cloudWarpStrength,
-                     warpRad: cloudWarpRadius, pulse: alphaPulseAmp } };
-  },
+  get fogTheme()          { return fogTheme; },
 };
 
 // ⚠ THE CHROME MUST SHOW THE SELECTED COLUMN'S OWN SETTINGS. The grid and the animation set
@@ -81,13 +76,8 @@ function paneAdoptSelectedSettings() {
   if (s.gridConfig) applyGridConfig(s.gridConfig);
   refreshLightsControlUI();
   if (s.weather !== undefined) refreshWeatherUI(s.weather);
-  const f = s.fogSettings;
-  if (!f || !f.anim) return;
-  // ⚠ THE ADVANCED PANEL IS AIMED AT ONE COLUMN: left open, the mode row reads "advanced"
-  // whichever preset the newly selected column is on.
-  const adv = document.getElementById('btn-anim-advanced');
-  if (adv && adv.classList.contains('active')) adv.click();
-  showFogSettings(f.pickedHex, f.tintAlpha, f.anim);
+  // The dropdown shows the selected column's own theme.
+  if (s.fogTheme !== undefined) refreshFogThemeUI(s.fogTheme);
 }
 
 function paneScopeOf(id) {

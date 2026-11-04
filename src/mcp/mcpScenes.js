@@ -139,18 +139,14 @@ async function _mcpSetScene(args) {
   const found = _mcpScene(args);
   if (found.error) return _mcpNo(found.error);
   const s = found.scene;
-  const hex = args.fogColor === undefined ? undefined : mcpCleanHex(args.fogColor);
+  // An extension still on the old tool list sends fogColor, which no longer exists.
+  if (args.fogColor !== undefined) return _mcpNo(MCP_OLD_TOOLS);
   const size = args.gridCellSize === undefined ? undefined : mcpGridSize(args.gridCellSize);
-  if (hex === null) return _mcpNo('fogColor must be a hex colour such as #8899aa.');
   if (size === null) return _mcpNo('gridCellSize must be a whole number of map pixels from 10 to 400.');
-  if (hex === undefined && size === undefined) return _mcpNo('Nothing to change: give fogColor or gridCellSize.');
-  const parts = [hex && 'fogSettings', size && 'grid'].filter(Boolean);
-  const edit = await mcpEditMap(s, 'changing its ' + [hex && 'fog colour', size && 'grid'].filter(Boolean).join(' and '), parts, d => {
-    if (hex) d.fogSettings.pickedHex = hex;
-    if (size) d.gridConfig.cellSize = size;
-  });
+  if (size === undefined) return _mcpNo('Nothing to change: give gridCellSize.');
+  const edit = await mcpEditMap(s, 'changing its grid', ['grid'], d => { d.gridConfig.cellSize = size; });
   if (edit.no) return edit.no;
-  const said = [hex && 'fog colour ' + hex, size && 'grid cell size ' + size + ' px'].filter(Boolean).join(' and ');
+  const said = 'grid cell size ' + size + ' px';
   const open = _mcpHolder(s.id) === 'here' ? ' The DM has it open and sees the change now.' : '';
   return mcpDone('set the ' + said + ' of the map "' + s.name + '"', edit.undo, 'Set the ' + said + ' of the map "' + s.name + '".' + open);
 }

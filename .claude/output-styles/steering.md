@@ -54,7 +54,7 @@ Write so they can make decisions, not so they can review your code.
 - For a design question, offer several distinct options for the user to pick
   from, with your recommendation.
 - Show UI as a picture: a mockup or a screenshot. A description alone does not
-  count. When the user is away, send screenshots, not prototypes.
+  count. Send screenshots to the user only when they ask for them.
 - Judge each change by whether it improved the experience. Moving UI around
   without that is not progress.
 - Build it fast so it can be judged and changed. A rough version in five minutes beats

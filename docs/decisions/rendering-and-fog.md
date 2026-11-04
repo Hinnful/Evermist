@@ -129,8 +129,20 @@ one was correct in itself but is not the cause. The change is kept on its own me
 attempt starts from a fresh diagnosis, not from either.
 
 ### Fog "named theme library" · `REJECTED`
-Save/apply named fog themes was descoped out of the fog-colour epic. Distinct from
-per-preset fog identities, which are parked separately.
+Save/apply named fog themes was descoped out of the fog-colour epic. Distinct from the fixed fog
+themes, which shipped (see below); the DM's own saved themes stay rejected.
+
+### Fog themes replace the fog's look controls · `SETTLED` (2026-11-04)
+Map settings' Fog row is one dropdown of named themes (Default, Ice; Blood, Toxic, Fire follow). The
+custom colour, tint %, Calm/Medium/Fast/Custom movement and the movement eye (key A) were removed on
+product grounds, since a tuned fog could come out worse; no slider and no per-theme switches. Existing
+maps open on Default, a new look (#1A1A2E base plus the shared base), so every fog changes on update.
+`fogTheme` is saved beside `weather`, Default as an absent field; `fogSettings` passes through
+untouched so /rollback keeps each map's old colour. Themes stay inside fogged rooms. The Player gets
+one shader per theme with the theme baked in, because one shader holding every theme fell to about 1
+fps (the driver runs every branch that samples a texture); edge effects read three CPU-blurred mask
+copies at a capped 960x540. All themes share Default's cloud warp so a switch rebuilds no frames.
+Shrouded rooms grow by a 2px stroke in the mask so shared walls leave no seam.
 
 ### A scene switch is covered by the fog itself · `SETTLED` (2026-08-09)
 The Player's switch used to be a black DOM layer fading in and out. It is now the fog: it
@@ -339,8 +351,8 @@ under the fog on both screens and never inside a room, so rooms carry no Indoors
 geometry-only room mask instead of room records. Darkness from Storm and Blizzard still dims a room. The DM
 screen shows a third of the strength. The Map settings Fog section was retitled Weather, with the preset
 first. A wrong preset for a map (Fair weather on a night map, snow in a cave) is the DM's call, not the
-app's to prevent; a separate Time of day was floated and not taken up. Mist left the presets for a fog
-theme, which should seep into rooms (BACKLOG item 254).
+app's to prevent; a separate Time of day was floated and not taken up. Mist left the presets and is not one
+of the fog themes either; a mist drifting into revealed rooms is a separate idea, not built.
 
 ### Weather shapes tried and dropped · `REJECTED` (2026-11-04)
 Drops on glass (looked bad), drifting leaves (too specific), swaying plants (the map moving made the DM

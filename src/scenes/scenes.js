@@ -84,20 +84,10 @@ function scheduleAutoSave() {
 }
 
 // The open scene's fog settings in the shape a scene record stores them.
+// ⚠ The record the map was opened with, untouched: the theme drives the look now, and the previous
+// release (/rollback) still reads its colour from here.
 function captureFogSettings() {
-  return {
-    pickedHex: fogPickedHex,
-    tintAlpha: FOG_TINT_ALPHA,
-    anim: {
-      enabled:  fogAnimEnabled,
-      speed:    fogAnimSpeed,
-      drift:    driftScale,
-      morph:    cloudFrameSpeed,
-      warpStr:  cloudWarpStrength,
-      warpRad:  cloudWarpRadius,
-      pulse:    alphaPulseAmp,
-    },
-  };
+  return fogSettingsKept || undefined;
 }
 
 async function _sameBlob(a, b) {
@@ -131,6 +121,7 @@ function doAutoSave() {
     tvFit:         tvFit.step ? { step: tvFit.step, turn: tvFit.turn } : undefined,
     fogSettings:   captureFogSettings(),
     weather:       weatherId,
+    fogTheme,
   };
   return new Promise(resolve => {
     baseFogCanvas.toBlob(async blob => {
@@ -150,6 +141,8 @@ function doAutoSave() {
       scene.fogSettings   = snap.fogSettings;
       // Absent means none, so a map without weather keeps the record the previous release wrote.
       if (snap.weather !== 'none') scene.weather = snap.weather; else delete scene.weather;
+      // The same for the fog theme: absent is Default, which the previous release never reads.
+      if (snap.fogTheme !== 'default') scene.fogTheme = snap.fogTheme; else delete scene.fogTheme;
       if (snap.tvFit) scene.tvFit = snap.tvFit; else delete scene.tvFit;
       // Never snapshotted: an edit made while the fog encodes would be overwritten with the old text.
       if (typeof scene.notes !== 'string') scene.notes = '';

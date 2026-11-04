@@ -48,13 +48,11 @@ const PANE_CONTROLS = {
   'pane-floorplan':   () => drawStoredFloorPlan(),
   // ⚠ The push to the TV goes with them: the picker's own handler runs in the DM window, which
   // has no Player of its own while two maps are up.
-  'pane-fog-color':   m => { applyFogColor(m.pickedHex); syncFogColorToPlayer(m.pickedHex); noteSettingsChange(); },
-  'pane-fog-tint':    m => { applyFogTintAlpha(m.alpha); syncFogColorToPlayer(fogPickedHex); noteSettingsChange(); },
+  'pane-fog-theme':   m => setFogTheme(m.id),
   'pane-undo':        () => undo(),
   'pane-redo':        () => redo(),
   'pane-fog-feather': m => _paneField('fog-feather-num', m.radius, 'change'),
   'pane-fog-half':    m => _paneField('fog-half-alpha-num', m.pct, 'change'),
-  'pane-anim':        m => applyPaneAnimParams(m),
   'pane-weather':     m => applyWeatherChoice(m.id),
 
   'pane-grid':      m => { applyGridConfig(m.config); commitGridChange(); },
@@ -99,23 +97,6 @@ function _paneField(id, value, evt) {
 function _paneClick(id) {
   const el = document.getElementById(id);
   if (el) el.click();
-}
-
-// One message carries every animation parameter, because every control that changes one ends in
-// syncAnimToPlayer. A warp change alone rebuilds the frames. The Player's copy is playerMessages.js.
-function applyPaneAnimParams(m) {
-  const warpChanged = (m.cloudWarpStrength != null && m.cloudWarpStrength !== cloudWarpStrength)
-                   || (m.cloudWarpRadius   != null && m.cloudWarpRadius   !== cloudWarpRadius);
-  fogAnimSpeed      = m.fogAnimSpeed      ?? fogAnimSpeed;
-  driftScale        = m.driftScale        ?? driftScale;
-  cloudFrameSpeed   = m.cloudFrameSpeed   ?? cloudFrameSpeed;
-  alphaPulseAmp     = m.alphaPulseAmp     ?? alphaPulseAmp;
-  cloudWarpStrength = m.cloudWarpStrength ?? cloudWarpStrength;
-  cloudWarpRadius   = m.cloudWarpRadius   ?? cloudWarpRadius;
-  fogAnimEnabled    = m.fogAnimEnabled    ?? fogAnimEnabled;
-  _paneToggle('btn-anim', fogAnimEnabled);
-  if (fogAnimEnabled) startFogAnim(); else stopFogAnim();
-  if (warpChanged) regenCloudFrames(); else syncAnimToPlayer();
 }
 
 function initPane() {

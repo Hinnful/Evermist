@@ -12,10 +12,9 @@
 //
 //   A. The pane holds Grid, Weather, Rooms, Lights, in that order, no Player section, no
 //      "On the TV" dot in its header, and no zoom stepper.
-//   B. A colour field opens its picker beside the dock, level with its row, or as near as the window allows. A colour picked there
-//      reaches the fog and the field, and a click elsewhere puts the picker away.
-//   C. The movement dropdown sets each preset and says which is set. The eye switches movement
-//      off and on, and follows the A key. Custom… opens the dials beside the dock.
+//   B. The Fog row's dropdown opens its list under it; a pick sets the theme and the dropdown says so, and a click
+//      elsewhere puts the list away.
+//   C. A theme carries its own motion, and the A key does nothing.
 //   D. The Rooms eye shows and hides the room names on the DM's map and follows the L key.
 //      Reveal all and Hide all reach every room's fog. The sources say what is loaded, and the
 //      module text row opens its panel.
@@ -32,7 +31,6 @@ module.exports = async function sceneControlFeature(rig) {
   const dm = rig.dm;
   await lib.openMap(rig, { w: 900, h: 600 });
   const click = id => dm.evaluate('document.getElementById(' + JSON.stringify(id) + ').click(); 0');
-  const on = id => dm.evaluate('document.getElementById(' + JSON.stringify(id) + ').classList.contains("active")');
   if (await dm.evaluate('dockActivePane()') !== 'scene') await click('dock-tab-scene');
 
   // ── A ──
@@ -48,52 +46,36 @@ module.exports = async function sceneControlFeature(rig) {
             'A: Scene control still has its Player section or the "On the TV" dot');
 
   // ── B ──
-  // RED ON: dockPlacePop gated off in _dockInitPops (dock.js), and separately the FEEDS listener in _cpInitFields (controlPanel.js) — 2026-10-02
-  await click('cp-fog-field');
+  // RED ON: the data-fogtheme click handler gated off in _cpInitFogTheme (controlPanel.js) - 2026-11-04
+  await click('cp-fogtheme-dd');
   const pop = await dm.evaluate(`(() => {
-    const p = document.getElementById('cp-pop-fog').getBoundingClientRect();
-    const d = document.getElementById('dock').getBoundingClientRect();
-    const f = document.getElementById('cp-fog-field').closest('.dk-blk').getBoundingClientRect();
-    // dockPlacePop keeps the picker on screen, so a short window lifts it off its row.
-    const want = Math.max(8, Math.min(innerHeight - p.height - 8, f.top));
-    return { shown: p.width > 0, gap: d.left - p.right, dy: p.top - want };
+    const p = document.getElementById('cp-pop-fogtheme').getBoundingClientRect();
+    const d = document.getElementById('cp-fogtheme-dd').getBoundingClientRect();
+    return { shown: p.width > 0, under: p.top >= d.bottom - 2, left: Math.abs(p.left - d.left) < 24 };
   })()`);
-  rig.check(pop.shown && pop.gap > 0 && pop.gap < 20 && Math.abs(pop.dy) < 2,
-            'B: the fog colour picker did not open beside the dock, level with its row: ' + JSON.stringify(pop));
-  await lib.fire(dm, 'fog-color', '#22aa44', 'input');
-  const field = await dm.evaluate('document.querySelector("#cp-fog-field .cp-hex").textContent');
-  rig.check(field === '22AA44',
-            'B: a colour picked in the pop-out did not reach the field: ' + field);
+  rig.check(pop.shown && pop.under && pop.left,
+            'B: the fog theme list did not open under its dropdown: ' + JSON.stringify(pop));
+  await dm.evaluate('document.querySelector("#cp-pop-fogtheme [data-fogtheme=ice]").click(); 0');
+  rig.check(await dm.evaluate('fogTheme') === 'ice' &&
+            await dm.evaluate('document.getElementById("cp-fogtheme-lbl").textContent') === 'Ice' &&
+            await dm.evaluate('document.querySelector("#cp-pop-fogtheme [data-fogtheme=ice]").classList.contains("on")'),
+            'B: picking Ice did not set the theme and say so');
+  rig.check(await dm.evaluate('document.getElementById("cp-pop-fogtheme").hidden'),
+            'B: picking a theme left the list open');
+  await click('cp-fogtheme-dd');
   await dm.evaluate('document.getElementById("canvas-container").dispatchEvent(' +
                     'new MouseEvent("mousedown", { bubbles: true })); 0');
-  rig.check(await dm.evaluate('document.getElementById("cp-pop-fog").hidden'),
-            'B: a click on the map left the colour picker open');
+  rig.check(await dm.evaluate('document.getElementById("cp-pop-fogtheme").hidden'),
+            'B: a click on the map left the theme list open');
 
   // ── C ──
-  // RED ON: lbl.textContent gated off in setAnimModeUI, and separately the btn-anim click listener (controlPanel.js) — 2026-10-02
-  const pickMove = m => dm.evaluate('document.getElementById("cp-move-dd").click();' +
-    ' document.querySelector("#cp-pop-move [data-anim=' + m + ']").click(); 0');
-  for (const [m, preset, label] of [['slow', 'calm', 'Slow drift'], ['fast', 'fast', 'Fast drift'],
-                                    ['medium', 'default', 'Medium drift']]) {
-    await pickMove(m);
-    rig.check(await on('anim-preset-' + preset) && await dm.evaluate('document.getElementById("cp-move-lbl").textContent') === label,
-              'C: picking ' + label + ' did not set its preset and say so');
-  }
-  await click('cp-move-eye');
-  rig.check(await dm.evaluate('fogAnimEnabled') === false &&
-            await dm.evaluate('document.getElementById("cp-move-eye").classList.contains("off")'),
-            'C: the movement eye did not switch the fog movement off');
+  // RED ON: applyFogThemeMotion not called from applyFogThemeLook (fogTheme.js) - 2026-11-04
+  const iceSpeed = await dm.evaluate('fogAnimSpeed');
+  await dm.evaluate('setFogTheme("default"); 0');
+  rig.check(await dm.evaluate('fogAnimSpeed') > iceSpeed && await dm.evaluate('fogAnimEnabled') === true,
+            'C: a theme does not carry its own motion: Ice ' + iceSpeed + ', Default ' + await dm.evaluate('fogAnimSpeed'));
   await dm.evaluate('__rigKey("KeyA"); 0');
-  rig.check(await dm.evaluate('fogAnimEnabled') === true &&
-            !(await dm.evaluate('document.getElementById("cp-move-eye").classList.contains("off")')),
-            'C: the A key switched movement back on but the eye did not follow');
-  await pickMove('advanced');
-  const adv = await dm.evaluate('(() => { const p = document.getElementById("anim-advanced-panel").getBoundingClientRect();' +
-    ' return { shown: p.width > 0, beside: p.right < document.getElementById("dock").getBoundingClientRect().left }; })()');
-  rig.check(adv.shown && adv.beside, 'C: Custom… did not open the dials beside the dock: ' + JSON.stringify(adv));
-  await click('cp-adv-close');
-  rig.check(!(await on('btn-anim-advanced')) && await dm.evaluate('document.getElementById("anim-advanced-panel").hidden'),
-            'C: closing the dials left Custom movement armed or on screen');
+  rig.check(await dm.evaluate('fogAnimEnabled') === true, 'C: the A key still switches the fog movement');
 
   // ── D ──
   // RED ON: refreshRoomsControlUI gated off in toggleRoomLabels (roomPanel.js), and separately the KeyL case bypassing toggleRoomLabels (input.js); the Sources module row's click listener gated off (controlPanel.js) — 2026-10-02
@@ -222,7 +204,6 @@ module.exports = async function sceneControlFeature(rig) {
     try { await shut(); } catch (err) { rig.note('#' + id + ' would not close again: ' + err.message); }
   };
   await measure('cp-pop-grid', () => click('cp-grid-field'), () => dm.evaluate('dockClosePop(); 0'));
-  await measure('anim-advanced-panel', () => pickMove('advanced'), () => click('cp-adv-close'));
   await measure('mt-modal', () => dm.evaluate('openModuleTextModal(); 0'), () => dm.evaluate('closeModuleTextModal(); 0'));
   await measure('cd-modal', () => dm.evaluate('confirmDialog({ title: "Edge probe", message: "Measuring the shell." }); 0'),
                 () => click('cd-cancel'));

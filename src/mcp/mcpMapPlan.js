@@ -3,8 +3,9 @@
 // names, the copy taken before a change, and a stored record read into the plain shape and written back. No DOM. Tested.
 
 const MM = (typeof module !== 'undefined' && module.exports)
-  ? Object.assign({}, require('../fog/fogGeometry.js'), require('../fog/fogColor.js'), require('../scenes/editStamps.js'), require('../render/weatherPlan.js'))
-  : { copyShapeRings, decodeShapeFromSave, encodeShapeForSave, parseSceneFogSettings, esAssignUids, weatherNormalize };
+  ? (require('../fog/themes/default.js'), require('../fog/themes/ice.js'),
+     Object.assign({}, require('../fog/fogGeometry.js'), require('../scenes/editStamps.js'), require('../render/weatherPlan.js'), require('../fog/themes/fogThemes.js')))
+  : { copyShapeRings, decodeShapeFromSave, encodeShapeForSave, esAssignUids, weatherNormalize, fogThemeNormalize };
 
 // The fields a change may touch, per part. Lights share their id space with effects, so both carry nextEffectId.
 const MCP_MAP_PARTS = {
@@ -12,7 +13,7 @@ const MCP_MAP_PARTS = {
   effects: ['effects', 'nextEffectId'],
   lights: ['lightShapes', 'lightsHidden', 'nextEffectId'],
   grid: ['gridConfig'],
-  fogSettings: ['fogSettings', 'weather'],
+  fogSettings: ['fogTheme', 'weather'],
   fog: ['fog'],
   plan: ['floorPlan'],
 };
@@ -34,8 +35,8 @@ function mcpMapSnapshot(data, keys) {
   return out;
 }
 
-// A stored record's named fields in the shape the open map holds them: rooms decoded, fog settings complete.
-// `defaults` is { grid, fog } for a record saved before either existed. The painted fog is the caller's.
+// A stored record's named fields in the shape the open map holds them: rooms decoded, the fog theme known.
+// `defaults` is { grid } for a record saved before it existed. The painted fog is the caller's.
 function mcpMapRecordRead(rec, keys, defaults) {
   const out = {};
   const has = k => keys.includes(k);
@@ -47,10 +48,7 @@ function mcpMapRecordRead(rec, keys, defaults) {
   if (has('lightsHidden')) out.lightsHidden = !!rec.lightsHidden;
   if (has('floorPlan')) out.floorPlan = rec.floorPlan;
   if (has('gridConfig')) out.gridConfig = structuredClone(rec.gridConfig || defaults.grid);
-  if (has('fogSettings')) {
-    const f = MM.parseSceneFogSettings(rec, defaults.fog);
-    out.fogSettings = { pickedHex: f.hex, tintAlpha: f.alpha, anim: f.anim };
-  }
+  if (has('fogTheme')) out.fogTheme = MM.fogThemeNormalize(rec.fogTheme);
   if (has('weather')) out.weather = MM.weatherNormalize(rec.weather);
   return out;
 }
@@ -62,7 +60,7 @@ function mcpMapRecordWrite(rec, data, keys) {
     if (k === 'fog') continue;
     const v = data[k];
     // Absent is none, the way a save writes it.
-    if (v === undefined || (k === 'weather' && v === 'none')) { delete rec[k]; continue; }
+    if (v === undefined || (k === 'weather' && v === 'none') || (k === 'fogTheme' && v === 'default')) { delete rec[k]; continue; }
     if (k === 'polygons') rec.polygons = MM.esAssignUids(v.map(p => MM.copyShapeRings(structuredClone(p)))).map(MM.encodeShapeForSave);
     else rec[k] = structuredClone(v);
   }

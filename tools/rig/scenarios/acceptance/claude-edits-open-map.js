@@ -9,9 +9,9 @@
 // The TV is held off the open map the way the app holds it: the open map is deleted, the DM lands on the
 // first map, and the TV shows its waiting screen (delete-open-scene.js).
 //
-//   A. set_scene changes the fog colour of the open map that the TV does not show, and the DM window shows it.
-//   B. undo_last_change puts the old colour back on the DM window.
-//   C. The Player window never received the new colour.
+//   A. set_fog_look changes the fog theme of the open map that the TV does not show, and the DM window shows it.
+//   B. undo_last_change puts the old theme back on the DM window.
+//   C. The Player window never received the new theme.
 
 const fs = require('fs');
 const path = require('path');
@@ -19,7 +19,7 @@ const lib = require('../../lib');
 
 const ONE_W = 1200, ONE_H = 800;
 const TWO_W = 1000, TWO_H = 700;
-const HEX = '#c0ffee';
+const THEME = 'ice';
 
 module.exports = async function claudeEditsOpenMap(rig) {
   const dm = rig.dm;
@@ -52,22 +52,22 @@ module.exports = async function claudeEditsOpenMap(rig) {
 
   // ── A ──
   // RED BY DESIGN: written against the feature, never re-proved
-  const before = await dm.evaluate('fogPickedHex');
-  const set = await call('set_scene', { name, fogColor: HEX });
-  const shown = await dm.evaluate('({ hex: fogPickedHex, field: document.getElementById("fog-color").value })');
-  rig.check(!set.isError && shown.hex === HEX && shown.field === HEX,
-            'A: the open map\'s fog colour did not change on the DM window: ' + JSON.stringify({ set, shown }));
+  const before = await dm.evaluate('fogTheme');
+  const set = await call('set_fog_look', { name, theme: THEME });
+  const shown = await dm.evaluate('({ theme: fogTheme, label: document.getElementById("cp-fogtheme-lbl").textContent })');
+  rig.check(!set.isError && shown.theme === THEME && shown.label === 'Ice',
+            'A: the open map\'s fog theme did not change on the DM window: ' + JSON.stringify({ set, shown }));
 
   // ── B ──
   // RED BY DESIGN: written against the feature, never re-proved
   const undone = await call('undo_last_change');
-  rig.check(!undone.isError && await dm.evaluate('fogPickedHex') === before,
-            'B: undo_last_change did not put the old fog colour back: ' + JSON.stringify(undone));
+  rig.check(!undone.isError && await dm.evaluate('fogTheme') === before,
+            'B: undo_last_change did not put the old fog theme back: ' + JSON.stringify(undone));
 
   // ── C ──
   // RED BY DESIGN: written against the feature, never re-proved
-  await lib.hold(3000, 'long enough for a push of the colour to have reached the Player');
-  const heard = await player.evaluate('__claudeHeard.filter(m => m.toLowerCase().includes("' + HEX + '"))');
-  rig.check(heard.length === 0 && await player.evaluate('fogPickedHex') !== HEX,
-            'C: the Player window received Claude\'s fog colour: ' + JSON.stringify(heard));
+  await lib.hold(3000, 'long enough for a push of the theme to have reached the Player');
+  const heard = await player.evaluate('__claudeHeard.filter(m => m.includes(' + JSON.stringify('"theme":"' + THEME + '"') + '))');
+  rig.check(heard.length === 0 && await player.evaluate('fogTheme') !== THEME,
+            'C: the Player window received Claude\'s fog theme: ' + JSON.stringify(heard));
 };

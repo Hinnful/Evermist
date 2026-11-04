@@ -219,16 +219,27 @@ The fog is the heart of the app, so it's worth understanding.
    across the screen, it also slowly changes shape, which is what stops the fog reading as one
    repeating pattern on a conveyor belt.
 
-4. **Any colour you want.** The cloud texture itself is neutral grey. The colour comes from
-   a base fill plus a glow tint picked in the Fog panel, so the same fog can be
-   dungeon-navy, blood-red, or swamp-green. Each scene remembers its own colour, and the
-   choice rides along through Export/Import. Picking a new colour recolours everything
-   live, including areas already shrouded, and on the Player it also recolours the area
-   around the map, so the map does not sit in a differently coloured surround.
+4. **A fog theme, picked by name.** Map settings' Fog row is one dropdown of fixed themes
+   (Default and Ice; Blood, Toxic and Fire follow). There is no custom colour, tint, movement
+   preset or movement switch; each theme carries its own colour, tint and motion. Every theme shares
+   one base: cloud volume lit from the top left, a living edge, depth layers, clouds at room size
+   and fog darker against walls. Default adds slow breathing and pale depth haze (base #1A1A2E); Ice
+   adds a honeycomb icy edge, near-still motion, soft glints, crystal growth and a light sweep.
+   Each scene remembers its theme as `fogTheme`, saved beside `weather` (Default is an absent
+   field), and it rides through Export/Import. `fogSettings` is passed through untouched. A theme
+   stays inside fogged rooms and never seeps into revealed ones. All themes share Default's cloud
+   warp, so a switch never rebuilds cloud frames. The Player has one shader per theme, the theme
+   baked in as a constant, compiled and drawn once at launch; edge effects read three blurred
+   copies of the fog mask built on the CPU at a capped 960x540, and the shader returns early on
+   clear ground. Shrouded rooms are grown by a 2px stroke in the mask so two hidden rooms sharing a
+   wall leave no seam. A pick reaches the TV like a colour change, colour and motion together (in
+   Manual it waits for Send, a held TV holds it, and on a map switch it changes during the close),
+   and on the Player it also recolours the area around the map.
 
 5. **The DM sees through it, players don't.** On the DM screen the fog is semi-transparent
    so you can plan. On the Player screen it's fully opaque. This matters when judging any
-   fog setting by eye: the DM window shows roughly half the density the TV does.
+   fog setting by eye: the DM window shows roughly half the density the TV does. It shows the
+   theme's colour only; holding H shows it at full strength, and the full theme draws on the TV only.
 
 6. **A third state: half-shroud.** A room can be marked Half, which leaves it at partial
    fog density instead of clearing it. It's an absolute setting, not a partial erase: the
@@ -240,7 +251,7 @@ The fog is the heart of the app, so it's worth understanding.
    the next map loads, then clears off the new one - about seven seconds end to end. While it
    is fully closed nothing is revealed at all, which is what lets the map underneath change
    size, shape and camera without anything showing. Two things ride the closing half so they
-   never happen in open view: the new scene's fog colour, which crosses while the fog thickens,
+   never happen in open view: the new scene's fog theme, which crosses while the fog thickens,
    and the cloud texture, which holds its size and position across the swap instead of
    resizing to the new map. Nothing is written on screen during a switch - the scene's name was
    shown there for a while and was taken back out.
@@ -682,7 +693,7 @@ the yes too: delete_scene, delete_place, delete_fight and delete_picture delete 
 shows these rules under Connect to Claude, and the guide's `claude` topic states them.
 
 Claude's map tools draw, edit, delete, merge, cut and split rooms and add or remove doors; set room fog,
-reveal or hide a rectangle or circle or the whole map, and set the drift preset and tint; load a .dd2vtt floor
+reveal or hide a rectangle or circle or the whole map, and set the fog theme by name (an old extension still sending preset, tint or fogColor is told to press Connect to Claude again); load a .dd2vtt floor
 plan (asking before it replaces rooms or lights), module text or a PDF, and link rooms to entries one by one;
 merge an Evermist export zip (asking first with the plan, and refused when it would replace an existing animated
 map's video); fit and style the grid; place, edit and delete Fire and Acid effects and lights; keep the music

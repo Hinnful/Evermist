@@ -42,8 +42,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   // The destination fog colour, AS SOON AS IT IS KNOWN, so the Player reaches it while the fog is
   // still closing. ⚠ Must beat applyFogSettingsFromScene, which would land it a frame later.
   if (!isPlayer && autoSync && !tvHeld && playerWindow && !playerWindow.closed) {
-    const destHex = scene.fogSettings && scene.fogSettings.pickedHex;
-    if (destHex) playerWindow.postMessage({ type: 'scene-transition', phase: 'tint', pickedHex: destHex }, '*');
+    playerWindow.postMessage({ type: 'scene-transition', phase: 'tint', theme: fogThemeNormalize(scene.fogTheme) }, '*');
   }
 
   if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }

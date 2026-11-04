@@ -146,18 +146,14 @@ module.exports = async function dockFeature(rig) {
             'H: the Player window shows the dock');
 
   // ── J ──
-  // RED ON: the Fog pop-out button's class put back to cp-adv-close, its data-pop-close and the Custom movement click handler gated off (index.html, controlPanel.js) — 2026-10-03
+  // RED BY DESIGN: the Fog colour and Custom movement pop-outs this guarded are gone (item 254); the Grid colour one is what is left
   await tab('scene');
   const closeLook = id => dm.evaluate('(() => { const b = document.getElementById(' + JSON.stringify(id) + ');' +
     ' if (!b) return null; const s = getComputedStyle(b);' +
     ' return { svg: b.innerHTML.trim(), w: s.width, h: s.height }; })()');
   const POPS = [
-    { name: 'Fog colour', open: 'document.querySelector("[data-dock-pop=cp-pop-fog]").click()',
-      pop: 'cp-pop-fog', close: 'document.querySelector("#cp-pop-fog .cp-adv-head button")' },
     { name: 'Grid colour', open: 'document.querySelector("[data-dock-pop=cp-pop-grid]").click()',
       pop: 'cp-pop-grid', close: 'document.querySelector("#cp-pop-grid .cp-adv-head button")' },
-    { name: 'Custom movement', open: 'document.getElementById("btn-anim-advanced").click()',
-      pop: 'anim-advanced-panel', close: 'document.getElementById("cp-adv-close")' },
   ];
   // RED BY DESIGN: written against the change, never re-proved (the reference was the scene library's close button)
   const ref = await closeLook('btn-mt-close');

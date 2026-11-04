@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { mcpFogRoomMode, mcpFogPresetKey, mcpFogApplyPreset, mcpFogFindRooms, mcpFogArea, mcpFogPixels, mcpFogRoomsOverriding, mcpFogBox } = require('../src/mcp/mcpFogPlan.js');
+const { mcpFogRoomMode, mcpFogThemeId, mcpFogFindRooms, mcpFogArea, mcpFogPixels, mcpFogRoomsOverriding, mcpFogBox } = require('../src/mcp/mcpFogPlan.js');
 
 const sq = (x, y, w) => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + w }, { x, y: y + w }];
 
@@ -16,18 +16,13 @@ describe('mcpFogRoomMode', () => {
   });
 });
 
-describe('mcpFogPresetKey', () => {
-  it('finds a preset by the name the panel shows', () => {
-    assert.equal(mcpFogPresetKey('slow'), 'calm');
-    assert.equal(mcpFogPresetKey('Medium drift'), 'default');
-    assert.equal(mcpFogPresetKey('FAST'), 'fast');
-    assert.equal(mcpFogPresetKey('calm'), 'calm');
-    assert.equal(mcpFogPresetKey('wild'), null);
-  });
-  it('applies a preset with its speed as a fraction and the movement on', () => {
-    const out = mcpFogApplyPreset({ enabled: false, speed: 1, drift: 1, morph: 1, warpStr: 1, warpRad: 1, pulse: 1 },
-      { speed: 40, drift: 0.3, morph: 0.12, warpStr: 0.08, warpRad: 0.05, pulse: 0.1 });
-    assert.deepEqual(out, { enabled: true, speed: 0.4, drift: 0.3, morph: 0.12, warpStr: 0.08, warpRad: 0.05, pulse: 0.1 });
+describe('mcpFogThemeId', () => {
+  it('finds a theme by its id or the name the dropdown shows', () => {
+    assert.equal(mcpFogThemeId('ice'), 'ice');
+    assert.equal(mcpFogThemeId(' Ice '), 'ice');
+    assert.equal(mcpFogThemeId('DEFAULT'), 'default');
+    assert.equal(mcpFogThemeId('slow'), null);
+    assert.equal(mcpFogThemeId(undefined), null);
   });
 });
 

@@ -1,31 +1,26 @@
 'use strict';
 // mcpFogPlan.js — pure rules behind Claude setting a map's fog: a room's fog word, rooms found by name, a rectangle
-// or circle in percent turned into fog-canvas pixels and clipped at the map's edge, and a drift preset by the name the
-// panel shows. No DOM. Tested.
+// or circle in percent turned into fog-canvas pixels and clipped at the map's edge, and a fog theme by the name the
+// dropdown shows. No DOM. Tested.
+
+const MFP = (typeof module !== 'undefined' && module.exports)
+  ? (require('../fog/themes/default.js'), require('../fog/themes/ice.js'), require('../fog/themes/fogThemes.js'))
+  : { FOG_THEMES };
 
 // The words a call uses for a room's fog, as the app stores them (shroud, half, reveal).
 const MCP_FOG_ROOM_MODE = { hidden: 'shroud', half: 'half', revealed: 'reveal' };
 
-// The panel's names for the drift presets, each the key of ANIM_PRESETS (fogControls.js).
-const MCP_FOG_PRESET_KEY = { slow: 'calm', medium: 'default', fast: 'fast' };
 
 function mcpFogRoomMode(raw) {
   const s = String(raw || '').trim().toLowerCase();
   return MCP_FOG_ROOM_MODE[s] || null;
 }
 
-// The ANIM_PRESETS key for a name such as "slow", "Medium drift" or the key itself, else null.
-function mcpFogPresetKey(raw) {
-  const s = String(raw || '').trim().toLowerCase().replace(/\s+drift$/, '');
-  if (MCP_FOG_PRESET_KEY[s]) return MCP_FOG_PRESET_KEY[s];
-  return Object.values(MCP_FOG_PRESET_KEY).includes(s) ? s : null;
-}
-
-// The animation block with a preset's numbers on it and the movement on, as the panel's preset buttons leave it.
-// `preset` is one ANIM_PRESETS entry (speed in percent).
-function mcpFogApplyPreset(anim, preset) {
-  return { ...anim, enabled: true, speed: preset.speed / 100, drift: preset.drift, morph: preset.morph,
-    warpStr: preset.warpStr, warpRad: preset.warpRad, pulse: preset.pulse };
+// The id of the fog theme a name such as "ice" or "Ice" names, else null.
+function mcpFogThemeId(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  const hit = MFP.FOG_THEMES.find(t => t.id === s || t.label.toLowerCase() === s);
+  return hit ? hit.id : null;
 }
 
 // Rooms by name, case and edge spaces ignored. { index: [...polygon indexes], error } where an error says which name
@@ -104,6 +99,6 @@ function mcpFogBox(shape, mapW, mapH) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { MCP_FOG_ROOM_MODE, MCP_FOG_PRESET_KEY, mcpFogRoomMode, mcpFogPresetKey, mcpFogApplyPreset, mcpFogFindRooms,
+  module.exports = { MCP_FOG_ROOM_MODE, mcpFogRoomMode, mcpFogThemeId, mcpFogFindRooms,
     mcpFogArea, mcpFogPixels, mcpFogRoomsOverriding, mcpFogBox };
 }

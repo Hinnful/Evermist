@@ -52,6 +52,9 @@ async function _mcpSceneRecord(id) {
   return (await sceneStore.loadScene(id)) || {};
 }
 
+// What a call answers when it still sends a tool field the app no longer has: the DM's extension is older.
+const MCP_OLD_TOOLS = 'This Evermist has a newer set of tools than the Claude extension that sent this call. Ask the DM to press Connect to Claude again in Settings, then try again.';
+
 // A refusal when the TV shows this scene, else null. Fog, fog colour, the map and a delete all alter the TV's picture.
 function _mcpTvRefuse(scene, what) {
   const onTv = mcpOnTv({ playerOpen: !!(playerWindow && !playerWindow.closed), held: tvHeld, panes: panesActive,

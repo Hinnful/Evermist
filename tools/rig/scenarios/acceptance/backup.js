@@ -113,7 +113,7 @@ async function stageZip(rig, dm, zipPath, id, fromId, over) {
           notes: scene.notes,
           effects: scene.effects || [], nextEffectId: scene.nextEffectId || 1,
           floorPlan: scene.floorPlan, gridConfig: scene.gridConfig || {},
-          fogSettings: scene.fogSettings, createdAt: scene.createdAt || 0,
+          fogSettings: scene.fogSettings, fogTheme: scene.fogTheme, createdAt: scene.createdAt || 0,
           sortOrder: scene.sortOrder || 0,
         }, ${JSON.stringify(over || {})}),
         mapBuffer, fogBuffer, thumbBuffer,
@@ -132,12 +132,11 @@ module.exports = async function backupFeature(rig) {
   await dm.waitFor('fogCoverT === 0', 30000, 'the scene cover to lift');
 
   // Everything a backup has to carry, put onto the one scene: a named room with per-corner radii,
-  // an effect, a hand-set grid, a dialled-in fog colour, real fog, and a floor plan.
+  // an effect, a hand-set grid, a picked fog theme, real fog, and a floor plan.
   const prepared = await dm.evaluate(`(async () => {
     const s = document.getElementById('grid-size');
     s.value = 137; s.dispatchEvent(new Event('input', { bubbles: true }));
-    const c = document.getElementById('fog-color');
-    c.value = '#c02020'; c.dispatchEvent(new Event('input', { bubbles: true }));
+    setFogTheme('ice');
 
     polygons = [{
       id: 1,
@@ -220,7 +219,7 @@ module.exports = async function backupFeature(rig) {
           : !!sc.mapBlob,
         hasFog: !!sc.baseFogBlob, hasThumb: !!sc.thumbnail,
         grid: sc.gridConfig ? sc.gridConfig.cellSize : null,
-        fogHex: sc.fogSettings ? sc.fogSettings.pickedHex : null,
+        fogTheme: sc.fogTheme || null,
         plan: !!sc.floorPlan,
         rooms: (sc.polygons || []).map(p => ({ name: p.name, desc: p.desc, mode: p.mode,
                  cr: p.cornerRadius, radii: p.cornerRadii, verts: p.vertices.length })),
@@ -291,8 +290,8 @@ module.exports = async function backupFeature(rig) {
     rig.check(copy.hasThumb, 'the restored scene has no thumbnail, so its card in the library is blank');
     rig.check(copy.grid === 137,
               'the restored scene lost the grid it was fitted to: ' + copy.grid);
-    rig.check(copy.fogHex === '#c02020',
-              'the restored scene lost the fog colour the DM dialled in: ' + copy.fogHex);
+    rig.check(copy.fogTheme === 'ice',
+              'the restored scene lost the fog theme the DM picked: ' + copy.fogTheme);
 
     // ── C. Rooms and effects, with their own fields ──────────────────────────
     // RED BY DESIGN: written against the fix, never re-proved

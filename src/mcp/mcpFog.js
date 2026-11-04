@@ -90,18 +90,15 @@ async function _mcpSetFogLook(args) {
   const found = _mcpScene(args);
   if (found.error) return _mcpNo(found.error);
   const s = found.scene;
-  const key = args.preset === undefined ? undefined : mcpFogPresetKey(args.preset);
-  const hex = args.tint === undefined ? undefined : mcpCleanHex(args.tint);
-  if (key === null) return _mcpNo('preset must be slow, medium or fast, the drift names in Scene control.');
-  if (hex === null) return _mcpNo('tint must be a hex colour such as #8899aa.');
-  if (key === undefined && hex === undefined) return _mcpNo('Nothing to change: give preset or tint.');
-  const edit = await mcpEditMap(s, 'changing its fog look', ['fogSettings'], d => {
-    if (key) d.fogSettings.anim = mcpFogApplyPreset(d.fogSettings.anim, ANIM_PRESETS[key]);
-    if (hex) d.fogSettings.pickedHex = hex;
-  });
+  // An extension still on the old tool list sends preset and tint, which no longer exist.
+  if (args.preset !== undefined || args.tint !== undefined) return _mcpNo(MCP_OLD_TOOLS);
+  const id = args.theme === undefined ? undefined : mcpFogThemeId(args.theme);
+  if (id === undefined) return _mcpNo('Nothing to change: give theme.');
+  if (id === null) return _mcpNo('theme must be one of: ' + FOG_THEMES.map(t => t.id).join(', ') + '.');
+  const edit = await mcpEditMap(s, 'changing its fog look', ['fogSettings'], d => { d.fogTheme = id; });
   if (edit.no) return edit.no;
-  const said = [key && Object.keys(MCP_FOG_PRESET_KEY).find(k => MCP_FOG_PRESET_KEY[k] === key) + ' drift', hex && 'tint ' + hex].filter(Boolean).join(' and ');
-  return mcpDone('set the fog look of the map "' + s.name + '"', edit.undo, 'Set the fog of the map "' + s.name + '" to ' + said + '.' + _mcpFogSay(s));
+  return mcpDone('set the fog theme of the map "' + s.name + '"', edit.undo,
+    'Set the fog of the map "' + s.name + '" to the ' + fogThemeRecord(id).label + ' theme.' + _mcpFogSay(s));
 }
 
 const MCP_FOG_TOOLS = { set_room_fog: _mcpSetRoomFog, set_fog_area: _mcpSetFogArea, set_fog_all: _mcpSetFogAll, set_fog_look: _mcpSetFogLook };

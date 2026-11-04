@@ -33,7 +33,8 @@ function esSceneParts(s) {
     name: esCanon(s.name),
     grid: esCanon(s.gridConfig || {}),
     notes: esCanon(typeof s.notes === 'string' ? s.notes : ''),
-    fogSettings: esCanon(s.fogSettings),
+    // The fog look is the old settings and the theme together; Default is absent.
+    fogSettings: esCanon([s.fogSettings, s.fogTheme && s.fogTheme !== 'default' ? s.fogTheme : null]),
     // Absent is none, so a scene saved before the field and one set back to No weather match.
     weather: esCanon(s.weather && s.weather !== 'none' ? s.weather : null),
     // Off is absent, so a scene saved before the field and one stepped back to Off match.

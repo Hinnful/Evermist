@@ -45,13 +45,13 @@ async function _mcpFogCanvas(src, w, h) {
 async function _mcpMapRead(scene, keys) {
   if (_mcpHolder(scene.id) === 'here') {
     const d = mcpMapSnapshot({ polygons, nextPolygonId, effects, nextEffectId, ...lightsSceneFields(),
-      gridConfig: captureGridConfig(), fogSettings: captureFogSettings(), weather: weatherId, floorPlan: currentScene.floorPlan }, keys);
+      gridConfig: captureGridConfig(), fogTheme, weather: weatherId, floorPlan: currentScene.floorPlan }, keys);
     if (keys.includes('fog')) d.fog = cloneCanvas(baseFogCanvas);
     return Object.assign(d, { mapWidth, mapHeight });
   }
   const rec = await sceneStore.loadScene(scene.id);
   if (!rec) throw new Error('The map "' + scene.name + '" is no longer in the library.');
-  const d = mcpMapRecordRead(rec, keys, { grid: captureGridConfig(), fog: SCENE_FOG_DEFAULTS });
+  const d = mcpMapRecordRead(rec, keys, { grid: captureGridConfig() });
   if (keys.includes('fog')) {
     const src = rec.baseFogBlob || (rec.baseFogPNG ? await (await fetch(rec.baseFogPNG)).blob() : null);
     d.fog = await _mcpFogCanvas(src, Math.ceil(rec.mapWidth / FOG_SCALE), Math.ceil(rec.mapHeight / FOG_SCALE));
@@ -63,8 +63,7 @@ async function _mcpMapRead(scene, keys) {
 function _mcpLiveWrite(keys, d) {
   const has = k => keys.includes(k);
   const shapes = ['polygons', 'effects', 'lightShapes', 'fog'].some(has);
-  const settings = has('gridConfig') || (has('fogSettings') &&
-    (d.fogSettings.pickedHex !== fogPickedHex || d.fogSettings.tintAlpha !== FOG_TINT_ALPHA));
+  const settings = has('gridConfig') || (has('fogTheme') && d.fogTheme !== fogTheme);
   undoOutsideChange(shapes, settings, () => {
     if (shapes) {
       restoreState({
@@ -77,7 +76,7 @@ function _mcpLiveWrite(keys, d) {
       });
     }
     if (has('gridConfig')) { applyGridConfig(d.gridConfig); commitGridChange(); }
-    if (has('fogSettings')) restoreSceneFogSettings({ fogSettings: d.fogSettings });
+    if (has('fogTheme')) restoreSceneFogSettings({ fogTheme: d.fogTheme, fogSettings: fogSettingsKept });
     if (has('weather')) applyWeatherChoice(d.weather);
   });
   if (has('floorPlan')) { currentScene.floorPlan = d.floorPlan; refreshFloorPlanUI(); }

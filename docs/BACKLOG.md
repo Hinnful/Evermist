@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 13 open items; IDs run to 263."
+description: "Open work only. 14 open items; IDs run to 264."
 metadata: 
   node_type: memory
   type: project
@@ -93,13 +93,16 @@ hand for a few controls: sounds, reveals, a scene change. **Open:** which contro
 reaches an offline desktop app. Nothing on the phone reaches the TV except through the app.
 **Play · Phone**
 
-### 254. Fog themes
-Filed 2026-11-04. Named looks for the map's fog, picked from a list under Weather in Map settings: mist, a necrotic
-fog for a dungeon. Unlike weather, a fog theme may seep into rooms, which is why Mist left the weather presets. This unparks the
-"per-preset fog identities" of `docs/decisions/rendering-and-fog.md`; the DM saving their own fog colours as themes
-is the rejected "named theme library" beside it, and stays rejected.
-**Open:** what seeping into rooms does to revealed and half rooms, and which themes ship.
-**Needs /spec.**
+### 254. Fog themes: Blood, Toxic and Fire
+Filed 2026-11-04. 5.3.0 shipped fog themes with Default and Ice. Blood, Toxic and Fire follow as three more theme
+records, built as the prototype `.claude/private/design/item-254/fog-themes.html` shows them. Spec:
+`.claude/private/specs/fog-themes.md`, release 2.
+**Play · Player**
+
+### 264. Mist that drifts into revealed rooms
+Filed 2026-11-04. A light mist over revealed rooms as atmosphere, unlike a fog theme, which stays inside fogged rooms.
+Mist left the weather presets for this and was not made a fog theme. Nothing about it is designed yet.
+**Needs a design round.**
 **Play · Player**
 
 ### 255. Map settings a DM can read

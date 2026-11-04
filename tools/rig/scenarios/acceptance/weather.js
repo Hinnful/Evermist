@@ -12,7 +12,7 @@
 // letter, wherever in the file that state is cheapest to reach - which is not letter order.
 //
 //   A. Map settings opens on a Weather section: the preset list straight under its title, six entries
-//      (No weather and five presets), then a Fog sub-header over the fog colour and the movement row.
+//      (No weather and five presets), then a Fog sub-header over the fog theme dropdown.
 //   B. Picking a preset starts an 8 second fade on both screens; the DM draws it at a third of the TV's
 //      strength. The look itself is the DM's eye.
 //   C. A map keeps its preset across an app restart, and No weather leaves no field on the record.
@@ -84,8 +84,7 @@ module.exports = async function weatherFeature(rig) {
       title, subs,
       listUnderTitle: kids[1] && kids[1].id === 'cp-wx-row',
       entries: Array.from(document.querySelectorAll('#cp-pop-wx [data-wx]')).map(b => b.dataset.wx),
-      fogOverColour: after(fogSub, document.getElementById('cp-fog-field')),
-      fogOverMove: after(fogSub, document.getElementById('cp-move-row')),
+      fogOverTheme: after(fogSub, document.getElementById('cp-fogtheme-row')),
       listBeforeFog: after(document.getElementById('cp-wx-row'), fogSub),
       label: document.getElementById('cp-wx-lbl').textContent.trim(),
     };
@@ -95,8 +94,8 @@ module.exports = async function weatherFeature(rig) {
   rig.check(layout.listUnderTitle, 'the preset dropdown is not straight under the section title');
   rig.check(layout.entries.join() === 'none,rain,storm,snowfall,blizzard,fair',
             'the preset list holds ' + layout.entries.join() + ', not No weather and the five presets');
-  rig.check(layout.listBeforeFog && layout.fogOverColour && layout.fogOverMove,
-            'the Fog sub-header does not sit over the colour field and the movement row, after the list');
+  rig.check(layout.listBeforeFog && layout.fogOverTheme,
+            'the Fog sub-header does not sit over the fog theme dropdown, after the list');
   rig.check(layout.label === 'No weather', 'a fresh map shows "' + layout.label + '" instead of No weather');
 
   // Two rooms of different fog modes, so the mask is proved for every mode and not one.

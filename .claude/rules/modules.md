@@ -26,8 +26,11 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `fog/fogClouds.js` | The drifting noise texture, built once and shared |
 | `fog/fog.js` | Fog canvases, the blur + cloud pipeline, reveal/hide |
 | `fog/fogAnim.js` | Fog on a clock: the drift, the reveal crossfade, the scene cover, the colour ease |
-| `fog/fogControls.js` | The fog's controls: anim presets, dials, colour, feather, half-shroud, doors |
+| `fog/fogControls.js` | The fog's controls: feather, half-shroud, doors |
 | `fog/fogGeometry.js` | Pure fog geometry kernel. Tested |
+| `fog/fogTheme.js` | The fog theme on a live window: the DM's pick, a map's restore, and the Player taking the theme it is sent |
+| `fog/themes/fogThemes.js` | The fog themes' registry and the pure `fogThemeNormalize`. Tested |
+| `fog/themes/default.js` | The Default fog theme record: colour, tint, motion, its shader branch. One file per theme, `ice.js` beside it |
 | `fog/fogColor.js` | Pure fog colour kernel: base, tint, the step between two, a scene's settings. Tested |
 | `shapes/doorGeometry.js` | Pure door-notch kernel. Tested |
 | `rooms/vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Tested, dependency-free |
@@ -105,7 +108,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/transferImport.js` | Import: a picked or dropped `.zip` merged into the library, the report, and undoing a stopped one |
 | `scenes/dragDrop.js` | What a file dropped on the DM window becomes |
 | `ui/toolbar.js` | DM UI wiring. Calls `initRoomPanel` and `initControlPanel` last |
-| `ui/colorPicker.js` | The fog colour picker: square, hue strip, hex field, HSV maths |
+| `ui/colorPicker.js` | The grid colour picker: square, hue strip, hex field, HSV maths |
 | `ui/controlPanel.js` | The dock's Scene control pane over the hidden legacy controls |
 | `ui/dock.js` | The dock: the icon rail, the one open pane, its width |
 | `ui/seatAlignment.js` | Settings' Seat alignment: the TV from above, four chairs, the laptop map's turn |
@@ -201,8 +204,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `mcp/mcpHistory.js` | Claude's own undo: the last 30 steps, and the toast naming each |
 | `mcp/mcpMapPlan.js` | Pure rules for Claude changing a map: the fields each part names, the copy before a change, a stored record read and written in the open map's shape. Tested |
 | `mcp/mcpMapEdit.js` | `mcpEditMap`: every Claude change to a map, live when the DM has it open, in the store when closed, refused on the TV, in a column or mid-gesture |
-| `mcp/mcpFogPlan.js` | Pure rules for Claude's fog tools: a room's fog word, rooms found by name, a rectangle or circle in percent as fog pixels clipped at the map's edge, the drift preset names. Tested |
-| `mcp/mcpFog.js` | Claude's fog tools: a room's fog, a rectangle or circle revealed or hidden, the whole map, the drift preset and tint |
+| `mcp/mcpFogPlan.js` | Pure rules for Claude's fog tools: a room's fog word, rooms found by name, a rectangle or circle in percent as fog pixels clipped at the map's edge, a fog theme by its name. Tested |
+| `mcp/mcpFog.js` | Claude's fog tools: a room's fog, a rectangle or circle revealed or hidden, the whole map, the fog theme |
 | `mcp/mcpMeta.js` | Claude's guide and undo_last_change tools |
 | `mcp/mcpScenes.js` | Claude's scene tools: find maps on disk, make, rename, move, change and delete a scene |
 | `mcp/mcpNotes.js` | Claude's notes tools |
@@ -262,8 +265,8 @@ repo root:
 ```
 i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
-fog/fogGeometry.js → fog/fogColor.js → render/weatherPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → rooms/vttHoles.js → fog/lightGeometry.js →
-fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → shapes/roomOps.js →
+fog/fogGeometry.js → fog/fogColor.js → fog/themes/fogThemes.js → fog/themes/default.js → fog/themes/ice.js → render/weatherPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → rooms/vttHoles.js → fog/lightGeometry.js →
+fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogTheme.js → fog/fogControls.js → shapes/roomOps.js →
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/repairKeys.js → shapes/toolShapes.js →
 shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →
 shapes/toolPreview.js →

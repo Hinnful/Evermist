@@ -194,7 +194,7 @@ function tpMergeScene(local, incoming, moment, opts) {
   if (take.name) record.name = incoming.name;
   if (take.grid) record.gridConfig = incoming.gridConfig || {};
   if (take.notes) record.notes = incoming.notes;
-  if (take.fogSettings) record.fogSettings = incoming.fogSettings;
+  if (take.fogSettings) { record.fogSettings = incoming.fogSettings; record.fogTheme = incoming.fogTheme; }
   if (take.weather) record.weather = incoming.weather;
   if (take.tvFit) record.tvFit = incoming.tvFit;
   if (take.lights) { record.lightsHidden = !!incoming.lightsHidden; record.lightShapes = incoming.lightShapes || []; }

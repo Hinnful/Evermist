@@ -5,29 +5,26 @@
 // hidden input or button in #cp-legacy, so state mutation, scene persistence and player sync
 // behave exactly as before. Called once from initToolbar(), DM only.
 
-let _cpFogPicker = null;
 let _cpGridPicker = null;
 
 function initControlPanel() {
   if (typeof isPlayer !== 'undefined' && isPlayer) return;
   if (!document.getElementById('dock-pane-scene')) return;
 
-  _cpInitMovement();
+  _cpInitFogTheme();
   _cpInitWeather();
   _cpInitGrid();
   _cpInitRooms();
   _cpInitLights();
   _cpInitScrubs();
   _cpInitCompress();
-  _cpFogPicker  = _cpMakePicker('fog',  'fog-color');
   _cpGridPicker = _cpMakePicker('grid', 'grid-color');
   _cpInitFields();
   _cpInitResets();
-  _cpInitAdvPanel();
   _cpInitPlayerPoll();
   _cpInitCalibrate();
 
-  refreshFogControlUI();
+  refreshFogThemeUI();
   refreshWeatherUI();
   refreshGridControlUI();
   refreshPlayerControlUI();
@@ -64,43 +61,21 @@ function _cpInitCalibrate() {
   initGridCalibrate();
 }
 
-// ─── Fog movement: a preset dropdown, then the eye ────────────────────────────
-const _CP_PRESET_OF = { slow: 'calm', medium: 'default', fast: 'fast' };
-const _CP_MOVE_LABEL = { slow: 'Slow drift', medium: 'Medium drift', fast: 'Fast drift', advanced: 'Custom' };
-
-function _cpInitMovement() {
-  const btnAdv = () => _cpEl('btn-anim-advanced');
-  const closeAdv = () => { if (_cpOn('btn-anim-advanced')) btnAdv().click(); };
-  document.querySelectorAll('#cp-pop-move [data-anim]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const mode = btn.dataset.anim;
-      dockClosePop();
-      if (mode === 'advanced') { if (!_cpOn('btn-anim-advanced')) btnAdv().click(); }
-      else { closeAdv(); _cpEl('anim-preset-' + _CP_PRESET_OF[mode]).click(); }
-      setAnimModeUI();
-    });
+// ─── Fog theme: one dropdown, built like Weather's ───────────────────────────
+function _cpInitFogTheme() {
+  document.querySelectorAll('#cp-pop-fogtheme [data-fogtheme]').forEach(btn => {
+    btn.addEventListener('click', () => { dockClosePop(); setFogTheme(btn.dataset.fogtheme); });
   });
-  _cpEl('cp-move-eye').addEventListener('click', () => _cpEl('btn-anim').click());
-  // The A key clicks the legacy button too, so the pane follows the button rather than the eye.
-  _cpEl('btn-anim').addEventListener('click', setAnimModeUI);
 }
 
-function _cpMoveMode() {
-  if (_cpOn('btn-anim-advanced')) return 'advanced';
-  const preset = document.querySelector('.anim-preset-btn.active');
-  if (!preset) return 'advanced';   // dialled in by hand
-  return preset.id.endsWith('calm') ? 'slow' : preset.id.endsWith('default') ? 'medium' : 'fast';
-}
-
-function setAnimModeUI() {
-  const lbl = _cpEl('cp-move-lbl');
+// `id` is the selected column's theme in two-map mode, where the shell holds none of its own.
+function refreshFogThemeUI(id) {
+  const lbl = _cpEl('cp-fogtheme-lbl');
   if (!lbl) return;
-  const mode = _cpMoveMode(), on = _cpOn('btn-anim');
-  lbl.textContent = t(_CP_MOVE_LABEL[mode]);
-  document.querySelectorAll('#cp-pop-move [data-anim]').forEach(b => b.classList.toggle('on', b.dataset.anim === mode));
-  _cpEl('cp-move-row').classList.toggle('hidden', !on);
-  _cpSetEye('cp-move-eye', on, 'Fog movement (A)');
-  _cpUpdateAdvVisibility();
+  const rec = fogThemeRecord(id === undefined ? fogTheme : id);
+  lbl.textContent = t(rec.label);
+  _cpEl('cp-fogtheme-sw').style.background = rec.swatch;
+  document.querySelectorAll('#cp-pop-fogtheme [data-fogtheme]').forEach(b => b.classList.toggle('on', b.dataset.fogtheme === rec.id));
 }
 
 // ─── Weather: a preset dropdown under the title ──────────────────────────────
@@ -259,18 +234,16 @@ function _cpPaintField(fieldId, colorId, alphaId) {
 }
 
 function _cpPaintFields() {
-  _cpPaintField('cp-fog-field', 'fog-color', 'fog-tint-alpha');
   _cpPaintField('cp-grid-field', 'grid-color', 'grid-opacity');
 }
 
 function _cpInitFields() {
   // The picker writes the hidden inputs in #cp-legacy, so the field listens for them by id.
-  const FEEDS = ['fog-color', 'fog-tint-alpha', 'fog-tint-alpha-num', 'grid-color', 'grid-opacity', 'grid-opacity-num'];
+  const FEEDS = ['grid-color', 'grid-opacity', 'grid-opacity-num'];
   ['input', 'change'].forEach(ev => document.addEventListener(ev, e => {
     if (FEEDS.includes(e.target.id)) _cpPaintFields();
   }));
   document.addEventListener('dockpop', e => {
-    if (e.detail === 'cp-pop-fog') _cpFogPicker.refresh();
     if (e.detail === 'cp-pop-grid') _cpGridPicker.refresh();
   });
 }
@@ -294,65 +267,16 @@ function _cpInitResets() {
     });
   });
 
-  // Fog has no single legacy reset — compose one: default colour + tint + feather + Default preset.
+  // Weather, fog theme and feather go back together. Fog's half-shroud is not reset: it persists.
   _cpEl('cp-fog-reset').addEventListener('click', () => {
-    ask('Weather goes back to No weather, and fog colour, tint, feather and animation go back to their defaults.', () => {
+    ask('Weather goes back to No weather, and the fog theme and feather go back to Default and 12.', () => {
       const fire = (id, val) => { const el = _cpEl(id); if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); } };
-      fire('fog-color', '#3a3a8c');
-      fire('fog-tint-alpha', 18);
       fire('fog-feather', 12);
       // ⚠ fog-half-alpha is NOT reset here: it persists, and a reset would overwrite a value
       // dialled in across sittings.
-      _cpEl('anim-preset-default').click();
+      setFogTheme('default');
       chooseWeather('none');
-      refreshFogControlUI();
     });
-  });
-}
-
-// ─── Custom movement: the dials, beside the dock ─────────────────────────────
-function _cpInitAdvPanel() {
-  _cpEl('cp-adv-close').addEventListener('click', () => {
-    if (_cpOn('btn-anim-advanced')) _cpEl('btn-anim-advanced').click();
-    setAnimModeUI();
-  });
-  document.addEventListener('dockpane', _cpUpdateAdvVisibility);
-  window.addEventListener('resize', _cpUpdateAdvVisibility);
-}
-
-const _CP_DIALS = ['anim-speed', 'anim-morph-speed', 'anim-drift', 'anim-warp-str', 'anim-warp-rad', 'anim-alpha-amp'];
-const _CP_DIAL_NUM = { 'anim-morph-speed': 'anim-morph-num', 'anim-warp-str': 'anim-warp-num' };
-
-function _cpUpdateAdvVisibility() {
-  const panel = _cpEl('anim-advanced-panel');
-  if (!panel) return;
-  const show = _cpOn('btn-anim-advanced') && dockActivePane() === 'scene';
-  panel.hidden = !show;
-  if (!show) return;
-  dockPlacePop(panel, _cpEl('cp-move-row'));
-  _cpSyncFancy(_CP_DIALS);
-}
-
-// ─── Slider fill/knob overlays ────────────────────────────────────────────────
-// The <input type="range"> sits transparent over the wrapper and keeps its own value and wiring;
-// these divs draw the visible track fill and knob. Bound on first sight.
-function _cpSyncFancy(ids) {
-  ids.forEach(id => {
-    const range = _cpEl(id);
-    const wrap = range && range.closest('.cp-slider');
-    if (!wrap) return;
-    if (!range._cpSync) {
-      range._cpSync = () => {
-        const min = +range.min || 0, max = +range.max || 100;
-        const pct = max > min ? ((+range.value - min) / (max - min)) * 100 : 0;
-        wrap.querySelector('.cp-slider-fill').style.width = pct + '%';
-        wrap.querySelector('.cp-slider-knob').style.left = pct + '%';
-      };
-      range.addEventListener('input', range._cpSync);
-      const num = _cpEl(_CP_DIAL_NUM[id] || id + '-num');
-      if (num) ['input', 'change'].forEach(ev => num.addEventListener(ev, range._cpSync));
-    }
-    range._cpSync();
   });
 }
 
@@ -360,13 +284,6 @@ function _cpSyncFancy(ids) {
 function _cpInitPlayerPoll() { setInterval(refreshPlayerControlUI, 1000); }
 
 // ─── Reflection hooks (called from scene-restore paths) ───────────────────────
-function refreshFogControlUI() {
-  if (_cpFogPicker) _cpFogPicker.refresh();
-  _cpPaintFields();
-  _cpSyncFancy(_CP_DIALS);
-  setAnimModeUI();
-}
-
 function refreshGridControlUI() {
   if (_cpGridPicker) _cpGridPicker.refresh();
   _cpPaintFields();

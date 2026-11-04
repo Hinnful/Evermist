@@ -50,6 +50,7 @@ function sceneBackupMeta(scene, mapExt, mapMimeType, picList) {
     floorPlan:     scene.floorPlan,
     gridConfig:    scene.gridConfig || {},
     fogSettings:   scene.fogSettings,
+    fogTheme:      scene.fogTheme,
     weather:       scene.weather,
     tvFit:         scene.tvFit,
     createdAt:     scene.createdAt || 0,

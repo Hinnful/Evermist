@@ -65,7 +65,7 @@ const UNDO_SETTINGS_GAP_MS = 800;
 let _undoSettings = null, _undoSettingsAt = 0, _undoApplying = false;
 
 function _undoCaptureSettings() {
-  return { grid: captureGridConfig(), fogHex: fogPickedHex, fogTint: FOG_TINT_ALPHA };
+  return { grid: captureGridConfig(), fogTheme };
 }
 
 function clearUndo() {
@@ -91,10 +91,7 @@ function _undoApplySettings(s) {
   try {
     applyGridConfig(s.grid);
     commitGridChange();
-    // Through the fields' own handlers, so the Player and the dock hear it the usual way.
-    const fire = (id, v) => { const el = document.getElementById(id); if (el) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } };
-    fire('fog-color', s.fogHex);
-    fire('fog-tint-alpha-num', Math.round(s.fogTint * 100));
+    setFogTheme(s.fogTheme, true);
     if (typeof refreshGridControlUI === 'function') refreshGridControlUI();
   } finally { _undoApplying = false; }
   _undoSettings = s;

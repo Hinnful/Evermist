@@ -122,11 +122,11 @@ function sendToPlayerNow() {
 
 function deliverToPlayer() {
   if (!canSendToPlayer() || tvSceneSendTimer) return;
-  if (tvWait.anim) syncAnimToPlayer(true, true);
+  if (tvWait.theme) syncFogThemeToPlayer(true);
   if (tvWait.scene) {
     tvWait.scene = false;
     playerWindow.postMessage({ type: 'scene-transition', phase: 'out' }, '*');
-    playerWindow.postMessage({ type: 'scene-transition', phase: 'tint', pickedHex: fogPickedHex }, '*');
+    playerWindow.postMessage({ type: 'scene-transition', phase: 'tint', theme: fogTheme }, '*');
     tvSceneSendTimer = setTimeout(() => { tvSceneSendTimer = 0; deliverHeld(true); }, FOG_SCENE_COVER_MS);
     return;
   }
@@ -213,7 +213,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
         effects,
         lights: lightPolys,
         gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
-        pickedHex: fogPickedHex, fogTintAlpha: FOG_TINT_ALPHA,
+        fogTheme,
         tvTurn: tvFit.turn,
         ...weatherPayload(),
       }, '*');
@@ -249,21 +249,16 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
   }
 }
 
-// Syncs fog-animation and video-frame-rate params to the Player window.
-// pass includeWarp=true when cloud warp params changed (triggers regen on Player).
-function syncAnimToPlayer(includeWarp, deliver) {
-  const msg = { type: 'anim-params', fogAnimEnabled, fogAnimSpeed, driftScale, cloudFrameSpeed, alphaPulseAmp };
-  if (includeWarp) { msg.cloudWarpStrength = cloudWarpStrength; msg.cloudWarpRadius = cloudWarpRadius; }
-  // The same parameter set every animation control ends in, so one forward covers the presets,
-  // the advanced sliders and the on/off button together.
-  if (paneForward('anim', msg)) return;
+// Sends the open map's fog theme to the Player: colour, tint and motion travel as one message, and
+// the Player derives the rest from its own copy of the theme.
+function syncFogThemeToPlayer(deliver) {
   // Manual holds a change until Send. `deliver` is Send itself and the Player's own hello.
-  if (!autoSync && !deliver) { tvWait.anim = true; playerUnsent = true; return; }
+  if (!autoSync && !deliver) { tvWait.theme = true; playerUnsent = true; return; }
   // A held TV waits too; the push that lifts the hold delivers it.
-  if (tvHeld && !deliver) { tvWait.anim = true; return; }
-  tvWait.anim = false;
+  if (tvHeld && !deliver) { tvWait.theme = true; return; }
+  tvWait.theme = false;
   if (!playerWindow || playerWindow.closed) return;
-  playerWindow.postMessage(msg, '*');
+  playerWindow.postMessage({ type: 'fog-theme', theme: fogTheme }, '*');
 }
 
 // Turn: the open scene's picture of the TV, one of the three tiles (tvFit.js). Its own message, never a
@@ -282,17 +277,10 @@ function setSceneFit(tile) {
   minimapLayout();
 }
 
-// Sends the current fog color to the Player window without a full fog re-send.
-// pickedHex: the raw value from the DM's fog-color input (Player derives base+tint itself).
 // The DM sees the ping too, so they know what the TV got. A column's playerWindow is its own half.
 function pingAt(mx, my) {
   showPing(mx, my);
   if (canSendToPlayer() && !tvShowsOtherMap()) playerWindow.postMessage({ type: 'ping', x: mx, y: my }, '*');
-}
-
-function syncFogColorToPlayer(pickedHex) {
-  if (!playerWindow || playerWindow.closed) return;
-  playerWindow.postMessage({ type: 'fog-color', pickedHex, fogTintAlpha: FOG_TINT_ALPHA }, '*');
 }
 
 // ─── Auto-Sync helper ─────────────────────────────────────────────────────────

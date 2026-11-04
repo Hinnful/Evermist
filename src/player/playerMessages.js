@@ -7,8 +7,7 @@ function initPlayerMessages() {
     if (!msg) return;
     startPlayerMapRetryOnce();   // anything from the DM means it is holding this window
 
-    if (msg.type === 'fog-color') { handleFogColorMessage(msg); return; }
-    if (msg.type === 'anim-params') { applyPlayerAnimParams(msg); return; }
+    if (msg.type === 'fog-theme') { applyPlayerFogTheme(msg.theme); return; }
     if (msg.type === 'scene-clear') { applyPlayerSceneClear(); return; }
     if (msg.type === 'scene-transition') { applyPlayerSceneTransition(msg); return; }
     // ⚠ A pre-warmed window's PLAYER_READY was dropped — the DM was not holding it yet.
@@ -43,29 +42,6 @@ function initPlayerMessages() {
   });
 }
 
-function applyPlayerAnimParams(msg) {
-  fogAnimSpeed      = msg.fogAnimSpeed      ?? fogAnimSpeed;
-  driftScale        = msg.driftScale        ?? driftScale;
-  cloudFrameSpeed   = msg.cloudFrameSpeed   ?? cloudFrameSpeed;
-  alphaPulseAmp     = msg.alphaPulseAmp     ?? alphaPulseAmp;
-  // ⚠ COMPARE, NEVER JUST CHECK THE FIELDS ARE PRESENT. Every scene load carries warp numbers the
-  // Player already has, and rebuilding all sixteen cloud frames on each one is the freeze on
-  // opening the Player and on every switch. A column applies the same set in paneRuntime.js.
-  const warpChanged = (msg.cloudWarpStrength != null && msg.cloudWarpStrength !== cloudWarpStrength)
-                   || (msg.cloudWarpRadius   != null && msg.cloudWarpRadius   !== cloudWarpRadius);
-  if (warpChanged) {
-    cloudWarpStrength = msg.cloudWarpStrength ?? cloudWarpStrength;
-    cloudWarpRadius   = msg.cloudWarpRadius  ?? cloudWarpRadius;
-    generateCloudFrames(512, CLOUD_FRAME_COUNT);
-    cloudFramePos = 0;
-    rebuildFogEffect();
-  }
-  fogAnimEnabled        = msg.fogAnimEnabled        ?? fogAnimEnabled;
-  fogDirty = true;
-  scheduleRender();
-  if (fogAnimEnabled) startFogAnim(); else stopFogAnim();
-}
-
 function applyPlayerSceneTransition(msg) {
   if (msg.phase === 'out') {
     const fade = document.getElementById('scene-fade');
@@ -88,6 +64,6 @@ function applyPlayerSceneTransition(msg) {
   } else if (msg.phase === 'tint') {
     // The incoming scene's fog colour, sent ahead of its map. Eased into over what is
     // left of the close, so the colour change happens inside thickening fog.
-    startFogColorEase(msg.pickedHex);
+    applyPlayerFogTheme(msg.theme);
   }
 }

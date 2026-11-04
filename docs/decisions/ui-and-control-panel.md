@@ -38,8 +38,7 @@ Fog, Rooms, Grid, Player and My seat, one section each. An eye means shown or hi
 row; a closed eye wears the blue tint. **Reversed in part by** "The fog and the toolbar are rebuilt for a first-time DM": on the bar an eye
 acts at once (Reveal all, Hide all), Scene control's layer eyes keep this meaning, and the minimap's
 players' view button wears a TV icon so an eye never means "view" (**the minimap button was removed 2026-10-23**; see "TV setup is one window"). Numbers are fields with a leading icon you drag to scrub,
-with no slider and no label. Movement is a preset dropdown and an eye, and Custom… opens the dials
-beside the dock. Reverses "The Animation and Grid Type rows carry no pill": both rows are gone,
+with no slider and no label. Movement was a preset dropdown and an eye (**superseded 2026-11-04** by "Fog themes replace the fog's look controls"). Reverses "The Animation and Grid Type rows carry no pill": both rows are gone,
 into the dropdown and a two-way segment. Reverses PRODUCT.md's "Cell size keeps its slider": the
 cell size is a scrub field. The pane drives `#cp-legacy`, so no behaviour code changed.
 

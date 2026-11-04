@@ -162,7 +162,6 @@ module.exports = async function helpAndAboutFeature(rig) {
              ' activePolygon = null; setShape("rect")' },
     { key: 'KeyN', label: 'N', field: 'snap',   setup: '0' },
     { key: 'KeyG', label: 'G', field: 'grid',   setup: '0' },
-    { key: 'KeyA', label: 'A', field: 'anim',   setup: '0' },
     { key: 'KeyL', label: 'L', field: 'labels', setup: '0' },
     { key: 'BracketLeft',  label: '[', field: 'brush', setup: 'brushSize = 100' },
     { key: 'BracketRight', label: ']', field: 'brush', setup: 'brushSize = 100' },

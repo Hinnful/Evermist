@@ -70,7 +70,7 @@ function applyPlayerSceneClear() {
 }
 
 function applyFogUpdate(msg) {
-  if (msg.pickedHex) handleFogColorMessage({ pickedHex: msg.pickedHex, fogTintAlpha: msg.fogTintAlpha });
+  if (msg.fogTheme !== undefined) applyPlayerFogTheme(msg.fogTheme, true);
   // (retry loop in initPlayerMapRetry stops itself when mapOffscreen is set — no timer to clear)
 
   // Stay dark until map and fog are decoded and a render is queued, or the players see the old

@@ -410,7 +410,7 @@
 
         <div class="cp-group" id="cp-sec-fog">
           <div class="dk-sh"><span class="cp-label">Weather</span>
-            <button id="cp-fog-reset" class="cp-adv-close" title="Reset weather and fog settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
+            <button id="cp-fog-reset" class="cp-adv-close" title="Reset weather and the fog theme"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
           </div>
           <div class="dk-r" id="cp-wx-row">
             <button class="dk-dd" id="cp-wx-dd" data-dock-pop="cp-pop-wx" title="Weather on this map"><span class="dk-cur"><span class="ic" id="cp-wx-ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg></span><span id="cp-wx-lbl">No weather</span></span><span class="car">▼</span></button>
@@ -422,12 +422,8 @@
             </div>
           </div>
           <div class="dk-blk"><span class="dk-sub">Fog</span>
-            <div class="cp-field dk-colour" id="cp-fog-field" data-dock-pop="cp-pop-fog" title="Fog colour and tint strength">
-              <span class="cp-swatch"></span><span class="cp-hash">#</span><span class="cp-hex"></span><span class="cp-fdiv"></span><span class="cp-alphanum"></span><span class="cp-pct">%</span>
-            </div>
-            <div class="dk-r" id="cp-move-row">
-              <button class="dk-dd" id="cp-move-dd" data-dock-pop="cp-pop-move" title="Movement preset"><span id="cp-move-lbl">Medium drift</span><span class="car">▼</span></button>
-              <button class="dk-eye" id="cp-move-eye" title="Fog movement (A)"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
+            <div class="dk-r" id="cp-fogtheme-row">
+              <button class="dk-dd" id="cp-fogtheme-dd" data-dock-pop="cp-pop-fogtheme" title="Fog theme for this map"><span class="dk-cur"><span class="ic"><i class="dk-sw" id="cp-fogtheme-sw"></i></span><span id="cp-fogtheme-lbl">Default</span></span><span class="car">▼</span></button>
             </div>
           </div>
         </div>
@@ -464,7 +460,6 @@
 
         <!-- The back end the pane drives: the fog, grid and player wiring reads and clicks these. -->
         <div id="cp-legacy" aria-hidden="true">
-          <input type="color" id="fog-color" value="#3a3a8c">
           <input type="color" id="grid-color" value="#ffffff">
           <input type="range" id="grid-size" min="10" max="400" value="70">
           <input type="range" id="grid-thickness" min="1" max="10" value="1">
@@ -480,12 +475,6 @@
           <button id="btn-grid-sq" class="grid-mode-btn active"></button>
           <button id="btn-grid-hptop" class="grid-mode-btn"></button>
           <button id="btn-grid-reset"></button>
-          <button id="btn-anim"></button>
-          <button id="anim-preset-calm" class="anim-preset-btn"></button>
-          <button id="anim-preset-default" class="anim-preset-btn active"></button>
-          <button id="anim-preset-fast" class="anim-preset-btn"></button>
-          <button id="btn-anim-advanced"></button>
-          <button id="btn-anim-reset"></button>
         </div>
       </div>
     </section>
@@ -654,27 +643,6 @@
 </div>
 
 <!-- The dock's pop-outs, placed to its left level with the row that opened them (dock.js). -->
-<div class="dk-pop" id="cp-pop-fog" hidden>
-  <div class="cp-adv-head"><span class="cp-adv-title">Fog colour</span><button class="sm-x" data-pop-close title="Close"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-  <div class="cp-adv-body">
-      <div class="cp-picker" data-picker="fog">
-        <div class="cp-sv">
-          <canvas class="cp-sv-canvas" width="222" height="130"></canvas>
-          <div class="cp-sv-cursor"></div>
-        </div>
-        <input type="range" class="ev-slider cp-hue" min="0" max="360" value="0" title="Hue">
-        <input type="range" id="fog-tint-alpha" class="ev-slider cp-alpha" min="0" max="100" value="18" title="Tint strength">
-        <div class="cp-field">
-          <span class="cp-swatch"></span>
-          <span class="cp-hash">#</span>
-          <input class="cp-hex" type="text" spellcheck="false" autocomplete="off" maxlength="7">
-          <span class="cp-fdiv"></span>
-          <input id="fog-tint-alpha-num" class="cp-alphanum" type="text" inputmode="numeric" value="18">
-          <span class="cp-pct">%</span>
-        </div>
-      </div>
-  </div>
-</div>
 <div class="dk-pop" id="cp-pop-grid" hidden>
   <div class="cp-adv-head"><span class="cp-adv-title">Grid colour</span><button class="sm-x" data-pop-close title="Close"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="cp-adv-body">
@@ -707,13 +675,10 @@
     <button data-wx="fair"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5.5" r="2.3"/><path d="M5.5 1v1M1 5.5h1M2.3 2.3l.7.7M8.7 2.3l-.7.7"/><path d="M6 13.5h6.5a2.3 2.3 0 0 0 .2-4.6 3 3 0 0 0-5.7.7A2 2 0 0 0 6 13.5z"/></svg></span>Fair weather</button>
   </div>
 </div>
-<div class="dk-pop dk-drop" id="cp-pop-move" hidden>
+<div class="dk-pop dk-drop" id="cp-pop-fogtheme" hidden>
   <div class="dk-menu">
-    <button data-anim="slow">Slow drift</button>
-    <button data-anim="medium">Medium drift</button>
-    <button data-anim="fast">Fast drift</button>
-    <div class="sep"></div>
-    <button data-anim="advanced">Custom…</button>
+    <button data-fogtheme="default"><span class="ic"><i class="dk-sw" style="background:#1a1a2e"></i></span>Default</button>
+    <button data-fogtheme="ice"><span class="ic"><i class="dk-sw" style="background:#22344a"></i></span>Ice</button>
   </div>
 </div>
 
@@ -725,47 +690,6 @@
     <div id="tv-ui"></div>
   </div>
   <div id="tv-pop" hidden></div>
-</div>
-
-<!-- CUSTOM MOVEMENT — the real animation dials, beside the dock. Custom… in the movement
-     dropdown arms it; controlPanel.js shows and places it. -->
-<div id="anim-advanced-panel" hidden>
-  <div class="cp-adv-head">
-    <span class="cp-adv-title">Custom movement</span>
-    <button id="cp-adv-close" class="sm-x" title="Close"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-  </div>
-  <div class="cp-adv-body">
-    <div class="cp-advrow">
-      <span class="cp-advlbl">Speed</span>
-      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-speed" min="0" max="300" value="100" title="How fast everything below runs"></div>
-      <input type="text" id="anim-speed-num" class="cp-chip cp-chip-num" inputmode="numeric" value="100">
-    </div>
-    <div class="cp-advrow">
-      <span class="cp-advlbl">Morph</span>
-      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-morph-speed" min="0" max="1000" value="500" title="How fast the fog changes shape"></div>
-      <input type="text" id="anim-morph-num" class="cp-chip cp-chip-num" inputmode="numeric" value="0.35">
-    </div>
-    <div class="cp-advrow">
-      <span class="cp-advlbl">Drift</span>
-      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-drift" min="0" max="1000" value="500" title="How fast the fog travels across the map"></div>
-      <input type="text" id="anim-drift-num" class="cp-chip cp-chip-num" inputmode="numeric" value="1.00">
-    </div>
-    <div class="cp-advrow">
-      <span class="cp-advlbl">Warp</span>
-      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-warp-str" min="0" max="1000" value="500" title="How much the fog swirls"></div>
-      <input type="text" id="anim-warp-num" class="cp-chip cp-chip-num" inputmode="numeric" value="0.15">
-    </div>
-    <div class="cp-advrow">
-      <span class="cp-advlbl">WarpR</span>
-      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-warp-rad" min="0" max="1000" value="500" title="How wide those swirls are"></div>
-      <input type="text" id="anim-warp-rad-num" class="cp-chip cp-chip-num" inputmode="numeric" value="0.08">
-    </div>
-    <div class="cp-advrow">
-      <span class="cp-advlbl">Pulse</span>
-      <div class="cp-slider"><div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div><input type="range" id="anim-alpha-amp" min="0" max="1000" value="500" title="How much the fog breathes lighter and darker"></div>
-      <input type="text" id="anim-alpha-amp-num" class="cp-chip cp-chip-num" inputmode="numeric" value="0.30">
-    </div>
-  </div>
 </div>
 
 <!-- SHORTCUT LEGEND (DM only) -->
@@ -810,7 +734,6 @@
         <div class="lg-row">Pan with a mouse<span class="k"><kbd>Middle-drag</kbd><kbd>Alt+Drag</kbd></span></div>
         <div class="lg-row">Fit to screen<span class="k"><kbd>F</kbd></span></div>
         <div class="lg-row">Grid<span class="k"><kbd>G</kbd></span></div>
-        <div class="lg-row">Fog animation<span class="k"><kbd>A</kbd></span></div>
         <div class="lg-row">Room fog<span class="k"><kbd>T</kbd></span></div>
         <div class="lg-row">Room names<span class="k"><kbd>L</kbd></span></div>
         <div class="sm-sub">TV</div>
@@ -1006,6 +929,9 @@
 <script src="src/render/videoDiag.js"></script>
 <script src="src/fog/fogGeometry.js"></script>
 <script src="src/fog/fogColor.js"></script>
+<script src="src/fog/themes/fogThemes.js"></script>
+<script src="src/fog/themes/default.js"></script>
+<script src="src/fog/themes/ice.js"></script>
 <script src="src/render/weatherPlan.js"></script>
 <script src="src/shapes/doorGeometry.js"></script>
 <script src="src/shapes/presetGeometry.js"></script>
@@ -1015,6 +941,7 @@
 <script src="src/fog/fogClouds.js"></script>
 <script src="src/fog/fog.js"></script>
 <script src="src/fog/fogAnim.js"></script>
+<script src="src/fog/fogTheme.js"></script>
 <script src="src/fog/fogControls.js"></script>
 <script src="src/shapes/roomOps.js"></script>
 <script src="src/shapes/shapeDetail.js"></script>

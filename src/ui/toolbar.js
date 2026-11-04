@@ -391,7 +391,7 @@ function initToolbar() {
       }
       if (typeof tvPlayerLoaded === 'function') tvPlayerLoaded();
       onPlayerResyncRequest();
-      syncAnimToPlayer(true, true);
+      syncFogThemeToPlayer(true);
       galleryResend();
       if (playerWindow && !playerWindow.closed) {
         playerWindow.postMessage({ type: 'player-lock', locked: minimapLocked }, '*');

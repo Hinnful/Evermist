@@ -242,10 +242,10 @@ Grid Reset still returns the phase to zero, so nothing is a one-way door. Cell s
 control of its own, because a size is a quantity someone can hold an opinion about and a phase is
 not; since the dock (2026-10-02) it is a field scrubbed by its icon rather than a slider.
 
-### Distinctive fog identities · `PARKED`
-The most interesting idea in its batch and too big for now. The shape when it lands: "bloody /
-icy / acidic / rusty" are not tint values, they are combinations of knobs the cloud engine
-already has (cell size, warp radius, warp strength, anim speed, base and tint colour, opacity).
+### Distinctive fog identities · `SETTLED` (2026-11-04)
+Built as fixed fog themes, one dropdown in Map settings (Default and Ice now; Blood, Toxic and Fire
+follow). The custom fog colour, tint, movement presets and dials and the movement switch are gone: a
+tuned fog could only come out worse. The DM's own saved themes stay rejected.
 
 ### The world map's mist has no off switch · `REJECTED` (2026-10-09)
 The mist is the world map's look, and a map without it is a different design rather than a setting. Proposed twice, as a
@@ -381,9 +381,8 @@ settings (shrink on import, half-room fog, feather) are prep; the DM's machine s
 stay out; a map open on the DM's screen but not on the TV is prep, and Claude may change it.
 
 ### Claude's edges on the map, fog, effects and music · `SETTLED` (2026-10-28)
-Claude places an effect only when the DM asks for a specific one. It sets the fog look through the named
-drift presets (slow, medium, fast) plus tint, never every slider, and the parked "fog identities" stays
-parked. It may fog any rectangle or circle, not only rooms. It may download from YouTube, at most 20 tracks
+Claude places an effect only when the DM asks for a specific one. It sets the fog look by fog theme name
+and nothing else; there is no colour, tint or drift to set. It may fog any rectangle or circle, not only rooms. It may download from YouTube, at most 20 tracks
 per call, and never plays music. The app never assigns module entries to rooms for Claude; it links them one
 by one. After an update the DM presses Connect to Claude again, because the installed extension holds its
 own copy of the tool list.

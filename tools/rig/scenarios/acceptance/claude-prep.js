@@ -139,11 +139,11 @@ module.exports = async function claudePrep(rig) {
   rig.check(!replaced.isError && await dm.evaluate('notesCampaignGet()') === 'Fresh start.', 'set_notes did not replace the campaign notes: ' + JSON.stringify(replaced));
   await call('undo_last_change');
   rig.check(await dm.evaluate('notesCampaignGet()') === kept, 'undo_last_change did not bring the old campaign notes back');
-  const hexBefore = await dm.evaluate('fogPickedHex');
-  const live = await call('set_scene', { name: scene.name, fogColor: '#336699' });
-  rig.check(!live.isError && await dm.evaluate('fogPickedHex') === '#336699', 'a fog colour change to the scene the DM has open did not land on it: ' + JSON.stringify(live));
+  const themeBefore = await dm.evaluate('fogTheme');
+  const live = await call('set_fog_look', { name: scene.name, theme: 'ice' });
+  rig.check(!live.isError && await dm.evaluate('fogTheme') === 'ice', 'a fog theme change to the scene the DM has open did not land on it: ' + JSON.stringify(live));
   await call('undo_last_change');
-  rig.check(await dm.evaluate('fogPickedHex') === hexBefore, 'undo_last_change did not put the open scene\'s fog colour back');
+  rig.check(await dm.evaluate('fogTheme') === themeBefore, 'undo_last_change did not put the open scene\'s fog theme back');
 
   // ── I. Scenes ─────────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved
@@ -164,10 +164,11 @@ module.exports = async function claudePrep(rig) {
   rig.check(!made2.isError && crypt && crypt.group === 'Marsh' && crypt.inside && crypt.open === open,
             'the scene was not made inside its place, or it was opened: ' + JSON.stringify({ made2, crypt }));
   await call('rename_scene', { name: 'Sunken Crypt', newName: 'Drowned Crypt' });
-  const tuned = await call('set_scene', { name: 'Drowned Crypt', fogColor: '#336699', gridCellSize: 55 });
-  const rec = await dm.evaluate('sceneStore.loadScene(' + JSON.stringify(crypt && crypt.id) + ').then(r => ({ name: r.name, hex: r.fogSettings && r.fogSettings.pickedHex, cell: r.gridConfig && r.gridConfig.cellSize }))');
-  rig.check(!tuned.isError && rec.name === 'Drowned Crypt' && rec.hex === '#336699' && rec.cell === 55,
-            'the scene was not renamed, or its fog colour and grid were not kept: ' + JSON.stringify({ tuned, rec }));
+  const tuned = await call('set_scene', { name: 'Drowned Crypt', gridCellSize: 55 });
+  const themed = await call('set_fog_look', { name: 'Drowned Crypt', theme: 'ice' });
+  const rec = await dm.evaluate('sceneStore.loadScene(' + JSON.stringify(crypt && crypt.id) + ').then(r => ({ name: r.name, theme: r.fogTheme, cell: r.gridConfig && r.gridConfig.cellSize }))');
+  rig.check(!tuned.isError && !themed.isError && rec.name === 'Drowned Crypt' && rec.theme === 'ice' && rec.cell === 55,
+            'the scene was not renamed, or its fog theme and grid were not kept: ' + JSON.stringify({ tuned, themed, rec }));
   await call('move_scene', { name: 'Drowned Crypt', toPlace: '' });
   rig.check(await dm.evaluate('allScenes.find(x => x.name === "Drowned Crypt").group === ""'), 'move_scene did not take the scene out of its place');
   const dryScene = await call('delete_scene', { name: 'Drowned Crypt' });
@@ -177,8 +178,8 @@ module.exports = async function claudePrep(rig) {
   rig.check(await dm.evaluate('!allScenes.some(x => x.name === "Drowned Crypt")') && await dm.evaluate('sceneStore.loadScene(' + JSON.stringify(crypt && crypt.id) + ').then(r => !r)'),
             'delete_scene left the scene in the list or the store');
   await call('undo_last_change');
-  const back = await dm.evaluate('sceneStore.loadScene(' + JSON.stringify(crypt && crypt.id) + ').then(r => r && r.fogSettings && r.fogSettings.pickedHex)');
-  rig.check(back === '#336699' && await dm.evaluate('allScenes.some(x => x.name === "Drowned Crypt")'), 'undo_last_change did not bring the deleted scene back whole');
+  const back = await dm.evaluate('sceneStore.loadScene(' + JSON.stringify(crypt && crypt.id) + ').then(r => r && r.fogTheme)');
+  rig.check(back === 'ice' && await dm.evaluate('allScenes.some(x => x.name === "Drowned Crypt")'), 'undo_last_change did not bring the deleted scene back whole');
 
   // ── J. Places ─────────────────────────────────────────────────────────────
   // RED BY DESIGN: written against the feature, never re-proved

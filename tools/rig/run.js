@@ -73,10 +73,10 @@ const MAX_RERUNS = 3;
 const MAX_BOOT_FAILURES = 3;
 
 // initControlPanel is the LAST thing the init chain runs (called from toolbar.js), and
-// _cpFogPicker is the last thing it assigns — so this is the app saying it is fully up. Polled,
+// _cpGridPicker is the last thing it assigns — so this is the app saying it is fully up. Polled,
 // never slept through: boot takes about ten seconds here and a fixed wait is either a lie or a
 // waste.
-const DM_READY = 'typeof _cpFogPicker !== "undefined" && !!_cpFogPicker';
+const DM_READY = 'typeof _cpGridPicker !== "undefined" && !!_cpGridPicker';
 const PLAYER_READY = 'typeof isPlayer !== "undefined" && isPlayer && !!pixiApp';
 
 // ─── The one geometry every run uses ─────────────────────────────────────────

@@ -17,22 +17,17 @@
 //   D. The Player carries no DM controls, and still has a cursor to drag its view with.
 //   E. Reveal All and Shroud All do what they say — on the fog, on every room's mode, on the TV —
 //      and each is one undo step.
-//   F. The fog is never flat black: the colour the DM dials in is the colour the table sees.
+//   F. The fog is never flat black: the colour of the DM's theme is the colour the table sees.
 //   G. The feathered edge is a dial. A wider one softens the edge without moving it.
 //   H. Half-shroud is a density the DM sets, it lands between revealed and shrouded, and it is
 //      ABSOLUTE — a half room reads the same whatever was under it.
-//   I. The drift switches on and off, its three presets are exclusive, and the fog really moves.
+//   I. The fog really moves, whatever the theme.
 //   J. Reset Fog Settings restores the look and deliberately leaves half-shroud alone.
 //   K. The fog looks right on the TV.
-//   L. The colour picker is the only way the DM reaches the fog colour, so the hex field, the
-//      hue strip and the saturation square each have to set it, and each has to move the
-//      other two.
 //   M. The Auto/Manual gate holds for FOG. With Auto off nothing the DM reveals reaches the
 //      table until Send is pressed, which is how a room is prepared before the players see it.
-//   N. Every fog dial answers from its number chip as well as its slider, and the five behind
-//      Advanced answer at all. The chip was the half nothing pressed: a DM who types 18 into a
+//   N. Every fog dial answers from its number chip as well as its slider. The chip was the half nothing pressed: a DM who types 18 into a
 //      box and watches the slider stay put has a panel that lies about the fog it is showing.
-//      Reset puts the advanced dials back, and the close button shuts the panel that opened.
 //
 // ⚠ THE PLAYER'S FOG IS ONE FULL-SCREEN PIXIJS PASS, so its painted fog is read by extracting
 // that mesh from the renderer rather than off a DOM canvas. The extract is in CSS pixels, as the
@@ -249,29 +244,25 @@ module.exports = async function fogFeature(rig) {
   // is a transparent pixel.
   await dm.evaluate('document.getElementById("btn-fill-fog").click(); 0');
   await lib.settle(dm, DM_SAMPLE + '(' + UNTOUCHED.x + ',' + UNTOUCHED.y + ') === 255', 15000);
-  await fire('fog-color', '#c02020');
-  await fire('fog-tint-alpha', 60);
-  await lib.settle(dm, '!fogColorRafId', 10000);
-  // ⚠ THE TV CATCHES UP ON ITS OWN TIME: the settle above is the DM window's fog, and a slow runner reads the TV before
-  // Hide all reaches it. Read until the ground there is fogged, then judge the colour.
-  let coloured = { a: 0 };
-  await lib.poll(async () => { await repaintPlayer(); coloured = await painted(UNTOUCHED.x, UNTOUCHED.y); return coloured.a > 200 ? { ok: true } : null; }, 10000, 250);
-  rig.note('painted fog colour after dialling in #c02020: ' + JSON.stringify(coloured));
+  const sampleTheme = async id => {
+    await dm.evaluate('setFogTheme("' + id + '"); 0');
+    await lib.settle(player, 'fogTheme === "' + id + '" && !fogColorRafId', 20000);
+    // ⚠ THE TV CATCHES UP ON ITS OWN TIME: read until the ground there is fogged, then judge the colour.
+    let c = { a: 0 };
+    await lib.poll(async () => { await repaintPlayer(); c = await painted(UNTOUCHED.x, UNTOUCHED.y); return c.a > 200 ? { ok: true } : null; }, 10000, 250);
+    return c;
+  };
+  // RED ON: applyFogThemeLook's applyFogColor removed (fogTheme.js) — 2026-11-04
+  const coloured = await sampleTheme('default');
+  rig.note('painted fog colour on Default: ' + JSON.stringify(coloured));
   rig.check(coloured.a > 200, 'the sample is not on fogged ground any more: ' + JSON.stringify(coloured));
-  rig.check(coloured.r > 40 || coloured.g > 40 || coloured.b > 40,
-            'the fog on the TV is flat black, which the app must never paint: ' +
-            JSON.stringify(coloured));
-  rig.check(coloured.r > coloured.b + 10,
-            'a red fog colour did not reach the fog the table sees: ' + JSON.stringify(coloured));
-
-  await fire('fog-color', '#2030c0');
-  await lib.settle(dm, '!fogColorRafId', 10000);
-  await repaintPlayer();
-  const blueish = await painted(UNTOUCHED.x, UNTOUCHED.y);
-  rig.note('painted fog colour after dialling in #2030c0: ' + JSON.stringify(blueish));
-  rig.check(blueish.b > blueish.r + 10,
-            'changing the fog colour a second time changed nothing on the TV: ' +
-            JSON.stringify(blueish));
+  rig.check(coloured.r > 20 || coloured.g > 20 || coloured.b > 20,
+            'the fog on the TV is flat black, which the app must never paint: ' + JSON.stringify(coloured));
+  const icy = await sampleTheme('ice');
+  rig.note('painted fog colour on Ice: ' + JSON.stringify(icy));
+  rig.check(Math.abs(icy.r - coloured.r) + Math.abs(icy.g - coloured.g) + Math.abs(icy.b - coloured.b) > 12,
+            'picking Ice changed nothing on the TV: ' + JSON.stringify({ coloured, icy }));
+  await sampleTheme('default');
 
   // ── G. The feathered edge is a dial ──────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
@@ -370,86 +361,42 @@ module.exports = async function fogFeature(rig) {
   await fire('fog-half-alpha', 50);
 
   // ── I. The drift ─────────────────────────────────────────────────────────
-  // RED ON: the .on toggle gated off with false && in setAnimModeUI (controlPanel.js) — 2026-10-02
-  const animState = () => dm.evaluate(`(() => {
-    const seg = [...document.querySelectorAll('#cp-pop-move [data-anim]')]
-      .filter(b => b.classList.contains('on')).map(b => b.dataset.anim);
-    const presets = [...document.querySelectorAll('.anim-preset-btn')]
-      .filter(b => b.classList.contains('active')).map(b => b.id);
-    return { on: fogAnimEnabled, speed: fogAnimSpeed, seg, presets,
-             offsets: fogAnimOffsets.map(o => +(o.x + o.y).toFixed(3)) };
-  })()`);
-
-  // Movement is a preset dropdown, then the eye; Off is the eye.
-  const segAnim = m => dm.evaluate(m === 'off'
-    ? '(() => { if (fogAnimEnabled) document.getElementById("cp-move-eye").click(); return "clicked"; })()'
-    : '(() => { document.getElementById("cp-move-dd").click(); const b = document.querySelector(' +
-      JSON.stringify('#cp-pop-move [data-anim="' + m + '"]') + ');' +
-      ' if (!b) return "missing"; b.click(); return "clicked"; })()');
-
-  for (const [mode, preset] of [['slow', 'anim-preset-calm'], ['medium', 'anim-preset-default'],
-                                ['fast', 'anim-preset-fast']]) {
-    rig.check(await segAnim(mode) === 'clicked', 'the panel has no ' + mode + ' drift button');
-    const a = await animState();
-    rig.check(a.on === true, 'picking the ' + mode + ' drift did not switch the fog animation on');
-    rig.check(a.presets.length === 1 && a.presets[0] === preset,
-              'the ' + mode + ' drift chose the wrong preset, or more than one: ' +
-              JSON.stringify(a.presets));
-    rig.check(a.seg.length === 1 && a.seg[0] === mode,
-              'the movement dropdown shows the wrong preset chosen: ' + JSON.stringify(a.seg));
+  // RED ON: applyFogThemeMotion's startFogAnim() removed (fogTheme.js) — 2026-11-04
+  // Moving, not merely enabled: every theme carries a drift, and the offsets only advance on the animation's own tick, so
+  // this has to cross real time. The movement has no switch any more.
+  const offsets = () => dm.evaluate('fogAnimOffsets.map(o => +(o.x + o.y).toFixed(3))');
+  for (const id of ['default', 'ice']) {
+    await dm.evaluate('setFogTheme("' + id + '"); 0');
+    const t0 = await offsets();
+    const t1 = (await lib.poll(async () => {
+      const now = await offsets();
+      return t0.some((v, i) => v !== now[i]) ? { offsets: now } : null;
+    }, 15000)) || { offsets: await offsets() };
+    rig.note(id + ' drift offsets: ' + JSON.stringify(t0) + ' → ' + JSON.stringify(t1.offsets));
+    rig.check(t0.some((v, i) => v !== t1.offsets[i]), 'the ' + id + ' fog is not moving: the offsets are still ' + JSON.stringify(t1.offsets));
   }
-
-  // Moving, not merely enabled. The offsets only advance on the animation's own tick, so this
-  // has to cross real time.
-  const t0 = (await animState()).offsets;
-  const t1 = (await lib.poll(async () => {
-    const now = (await animState()).offsets;
-    return t0.some((v, i) => v !== now[i]) ? { offsets: now } : null;
-  }, 15000)) || { offsets: (await animState()).offsets };
-  const t1o = t1.offsets;
-  rig.note('drift offsets: ' + JSON.stringify(t0) + ' → ' + JSON.stringify(t1o));
-  rig.check(t0.some((v, i) => v !== t1o[i]),
-            'the fog animation is switched on and the clouds are not moving: the offsets are ' +
-            'still ' + JSON.stringify(t1o));
-
-  await segAnim('off');
-  const stopped = await animState();
-  rig.check(stopped.on === false, 'the movement eye did not switch the animation off');
-  const s0 = stopped.offsets;
-  await lib.hold(900, 'the drift is off, so there is no state to poll for - long enough for ' +
-    'a running animation to have moved the offsets, then prove it did not');
-  const s1 = (await animState()).offsets;
-  rig.check(s0.every((v, i) => v === s1[i]),
-            'the fog is still drifting after the animation was switched off: ' +
-            JSON.stringify(s0) + ' → ' + JSON.stringify(s1));
+  await dm.evaluate('setFogTheme("default"); 0');
 
   // ── J. Reset Fog Settings ────────────────────────────────────────────────
   // RED BY DESIGN: written against the fix, never re-proved
-  await fire('fog-color', '#c02020');
-  await fire('fog-tint-alpha', 70);
+  await dm.evaluate('setFogTheme("ice"); 0');
   await fire('fog-feather', 3);
   await fire('fog-half-alpha', 77);
-  await lib.settle(dm, '!fogColorRafId', 10000);
   // ⚠ Reset ASKS FIRST, and confirmDialog answers asynchronously — reading the dials straight
   // after the click reads them before anyone said yes.
   await dm.evaluate('document.getElementById("cp-fog-reset").click(); 0');
   await dm.waitFor('document.getElementById("cd-ok")', 5000, 'the reset confirmation');
   await dm.evaluate('document.getElementById("cd-ok").click(); 0');
-  await lib.settle(dm, 'fogFeatherRadius === 12 && !fogColorRafId', 10000);
+  await lib.settle(dm, 'fogFeatherRadius === 12 && fogTheme === "default"', 10000);
   const afterReset = await dm.evaluate(`({
-    color: document.getElementById('fog-color').value,
-    tint: +document.getElementById('fog-tint-alpha').value,
+    theme: fogTheme,
     feather: fogFeatherRadius,
     halfPct: Math.round(fogHalfAlpha * 100),
     halfSlider: +document.getElementById('fog-half-alpha').value,
-    preset: (document.querySelector('.anim-preset-btn.active') || {}).id || null,
   })`);
   rig.note('after Reset Fog Settings: ' + JSON.stringify(afterReset));
-  rig.check(afterReset.color === '#3a3a8c' && afterReset.tint === 18,
-            'Reset did not put the fog colour and tint back: ' + JSON.stringify(afterReset));
+  rig.check(afterReset.theme === 'default', 'Reset did not put the fog theme back on Default: ' + JSON.stringify(afterReset));
   rig.check(afterReset.feather === 12, 'Reset did not put Feather back to 12: ' + afterReset.feather);
-  rig.check(afterReset.preset === 'anim-preset-default',
-            'Reset did not put the drift back on the default preset: ' + afterReset.preset);
   // The one dial Reset must not touch. It persists across restarts because the DM tunes it over
   // several sittings, so resetting it would throw that away rather than restore a default.
   rig.check(afterReset.halfPct === 77 && afterReset.halfSlider === 77,
@@ -468,126 +415,6 @@ module.exports = async function fogFeature(rig) {
             'a hole cut in felt — fog quality is a look-and-feel call, not a pixel one');
   rig.byEye('whether the drift at each of the three speeds reads as weather rather than as a ' +
             'texture sliding — speed is a feel call at the table, on a TV');
-
-  // ── L. The colour picker itself ───────────────────────────────────────────
-  // RED BY DESIGN: written against the fix, never re-proved
-  // ⚠ EVERY CHECK ABOVE SETS THE HIDDEN `fog-color` INPUT DIRECTLY, which is not a thing the DM
-  // can do. The square, the hue strip and the hex field are the only way they reach the colour,
-  // and none of them had a check: a dead hex field would ship.
-  //
-  // ⚠ THE PICKER HAS TO BE OPEN. An element inside `display:none` has zero-sized rects, so a
-  // click on the square lands nowhere and the picker correctly does nothing - which reads as the
-  // picker being broken. dockOpen, never a tab click: the tab toggles, and a click on the open
-  // one shuts the pane.
-  await dm.evaluate('dockOpen("scene"); if (document.getElementById("cp-pop-fog").hidden)' +
-                    ' document.getElementById("cp-fog-field").click(); 0');
-  await lib.settle(dm,
-    'document.querySelector(\'.cp-picker[data-picker="fog"] .cp-sv-canvas\')' +
-    '.getBoundingClientRect().width > 0', 8000);
-
-  const picker = () => dm.evaluate(`(() => {
-    const root = document.querySelector('.cp-picker[data-picker="fog"]');
-    if (!root) return { err: 'the fog tab carries no colour picker' };
-    const sv = root.querySelector('.cp-sv-canvas');
-    const box = sv.getBoundingClientRect();
-    const cur = root.querySelector('.cp-sv-cursor');
-    return {
-      hex: (root.querySelector('.cp-hex') || {}).value || '',
-      hue: +(root.querySelector('.cp-hue') || {}).value,
-      swatch: getComputedStyle(root.querySelector('.cp-swatch')).backgroundColor,
-      cursorLeft: parseFloat(cur.style.left), cursorTop: parseFloat(cur.style.top),
-      input: document.getElementById('fog-color').value,
-      picked: fogPickedHex,
-      box: { w: Math.round(box.width), h: Math.round(box.height) },
-    };
-  })()`);
-
-  const typeHex = v => dm.evaluate(`(() => {
-    const el = document.querySelector('.cp-picker[data-picker="fog"] .cp-hex');
-    el.value = ${JSON.stringify(v)};
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-    return 0;
-  })()`);
-
-  const start = await picker();
-  rig.note('the fog picker: ' + JSON.stringify(start));
-  rig.check(!start.err && start.box.w > 0 && start.box.h > 0,
-            'the fog colour picker has no saturation square to click: ' + JSON.stringify(start));
-
-  // The hex field, which is the one control that takes a value the DM can read off a palette.
-  await typeHex('2E8B57');
-  const typed = await picker();
-  rig.note('after typing 2E8B57: ' + JSON.stringify(typed));
-  rig.check(typed.input.toLowerCase() === '#2e8b57',
-            'a hex typed into the picker did not reach the fog colour: ' + typed.input);
-  rig.check(typed.picked.toLowerCase() === '#2e8b57',
-            'the app did not take the typed colour as the fog colour: ' + typed.picked);
-  rig.check(typed.swatch === 'rgb(46, 139, 87)',
-            'the swatch does not show the colour that was typed: ' + typed.swatch);
-  rig.check(typed.hue > 130 && typed.hue < 160,
-            'the hue strip did not move to the typed colour: ' + typed.hue);
-
-  // Three digits is how a hex is written half the time, and it has to expand rather than be
-  // taken as a colour of its own.
-  await typeHex('F0C');
-  const short = await picker();
-  rig.check(short.input.toLowerCase() === '#ff00cc',
-            'a three-digit hex did not expand to six: ' + short.input);
-
-  // Nonsense must leave the colour alone and put the field back to what is actually set. A field
-  // that keeps the typing and a colour that did not change is how the DM loses track of both.
-  await typeHex('zzzz');
-  const junk = await picker();
-  rig.note('after typing nonsense: ' + JSON.stringify(junk));
-  rig.check(junk.input.toLowerCase() === '#ff00cc',
-            'nonsense in the hex field changed the fog colour: ' + junk.input);
-  rig.check(junk.hex.toLowerCase() === 'ff00cc',
-            'the hex field kept the nonsense instead of showing the colour that is set: ' +
-            junk.hex);
-
-  // The hue strip, dragged. Saturation and value stay where they were, which is the whole point
-  // of a hue strip beside a square.
-  await dm.evaluate(`(() => {
-    const el = document.querySelector('.cp-picker[data-picker="fog"] .cp-hue');
-    el.value = '210';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    return 0;
-  })()`);
-  const hued = await picker();
-  rig.note('after dragging the hue to 210: ' + JSON.stringify(hued));
-  rig.check(hued.input.toLowerCase() === '#0080ff',
-            'the hue strip did not set the fog colour to the hue it was dragged to: ' + hued.input);
-  rig.check(Math.abs(hued.cursorLeft - junk.cursorLeft) < 1 &&
-            Math.abs(hued.cursorTop - junk.cursorTop) < 1,
-            'changing the hue moved the saturation square as well, so the DM cannot pick a hue ' +
-            'without losing the shade: ' + JSON.stringify([junk.cursorLeft, junk.cursorTop]) +
-            ' → ' + JSON.stringify([hued.cursorLeft, hued.cursorTop]));
-
-  // The square, pressed a quarter across and a fifth down. The picker reads the pointer against
-  // the canvas box it captured on mousedown, so this is the real gesture.
-  await dm.evaluate(`(() => {
-    const sv = document.querySelector('.cp-picker[data-picker="fog"] .cp-sv-canvas');
-    const b = sv.getBoundingClientRect();
-    const at = (type, fx, fy) => sv.dispatchEvent(new MouseEvent(type, {
-      clientX: b.left + b.width * fx, clientY: b.top + b.height * fy,
-      bubbles: true, cancelable: true, button: 0 }));
-    at('mousedown', 0.25, 0.20);
-    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-    return 0;
-  })()`);
-  const square = await picker();
-  rig.note('after pressing the square at 25%, 20%: ' + JSON.stringify(square));
-  rig.check(Math.abs(square.cursorLeft - 25) < 3 && Math.abs(square.cursorTop - 20) < 3,
-            'the square did not take the press where it was aimed: the marker sits at ' +
-            square.cursorLeft + '%, ' + square.cursorTop + '%');
-  rig.check(square.input.toLowerCase() !== hued.input.toLowerCase(),
-            'pressing the saturation square changed no colour at all, so the square is dead: ' +
-            square.input);
-  rig.check(square.hue === hued.hue,
-            'pressing the square moved the hue as well: ' + hued.hue + ' → ' + square.hue);
-  rig.check(square.picked.toLowerCase() === square.input.toLowerCase(),
-            'the colour the square set never reached the app: field ' + square.input +
-            ' against ' + square.picked);
 
   // ── M. The Auto/Manual gate, on fog ──────────────────────────────────────
   // ⚠ THIS GATE WAS ONLY EVER CHECKED ON EFFECTS. It is a fog control - "let me open the next
@@ -661,54 +488,5 @@ module.exports = async function fogFeature(rig) {
             'slider ' + await dm.evaluate('document.getElementById("fog-half-alpha").value') +
             ', alpha ' + await dm.evaluate('fogHalfAlpha'));
 
-  // ⚠ THE TINT CHIP COMMITS ON 'input', not 'change' — it is the one chip in this panel wired
-  // the other way, so a shared helper here would read the old value and pass.
-  await lib.fire(dm, 'fog-tint-alpha-num', 44, 'input');
-  rig.check(await dm.evaluate('+document.getElementById("fog-tint-alpha").value') === 44 &&
-            Math.abs(await dm.evaluate('FOG_TINT_ALPHA') - 0.44) < 0.0001,
-            'a tint strength typed into the chip did not drive the fog and the slider: slider ' +
-            await dm.evaluate('document.getElementById("fog-tint-alpha").value') + ', alpha ' +
-            await dm.evaluate('FOG_TINT_ALPHA'));
-
-  // The five behind Advanced. Their sliders are logarithmic, so what is asserted is that the
-  // dial reaches its global and that the chip shows what the global holds — never a number
-  // read off the slider's own scale.
-  await dm.evaluate('dockOpen("scene"); document.getElementById("cp-move-dd").click();' +
-                    ' document.querySelector("#cp-pop-move [data-anim=advanced]").click(); 0');
-  await lib.settle(dm, 'document.getElementById("anim-advanced-panel").hidden === false', 10000);
-
-  const ADV = [['anim-speed', 'anim-speed-num', 'Math.round(fogAnimSpeed * 100)', 140, 1],
-               ['anim-morph-speed', 'anim-morph-num', 'cloudFrameSpeed', 1.7, 0.01],
-               ['anim-warp-str', 'anim-warp-num', 'cloudWarpStrength', 2.4, 0.01],
-               ['anim-warp-rad', 'anim-warp-rad-num', 'cloudWarpRadius', 3.1, 0.01],
-               ['anim-alpha-amp', 'anim-alpha-amp-num', 'alphaPulseAmp', 0.35, 0.01]];
-  for (const [sliderId, numId, global, want, tol] of ADV) {
-    await lib.fire(dm, numId, want, 'change');
-    const got = await dm.evaluate(global);
-    rig.check(Math.abs(got - want) < tol,
-              'the ' + numId + ' chip did not reach the fog: typed ' + want + ', the app holds ' + got);
-    const onSlider = await dm.evaluate('+document.getElementById(' + JSON.stringify(sliderId) + ').value');
-    rig.check(isFinite(onSlider),
-              'the ' + sliderId + ' slider holds no number after its chip was typed into');
-  }
-  rig.note('the advanced dials after typing: ' +
-           JSON.stringify(await dm.evaluate('({ speed: fogAnimSpeed, morph: cloudFrameSpeed, ' +
-             'warpStr: cloudWarpStrength, warpRad: cloudWarpRadius, pulse: alphaPulseAmp })')));
-
-  // ⚠ RESET GOES BACK TO THE ACTIVE PRESET, not to zero. Typing into a chip clears the preset
-  // highlight, so Reset here restores Default — which is what the DM presses it for.
-  await dm.evaluate('document.getElementById("btn-anim-reset").click(); 0');
-  const advAfterReset = await dm.evaluate('({ speed: fogAnimSpeed, morph: cloudFrameSpeed, ' +
-    'warpStr: cloudWarpStrength, warpRad: cloudWarpRadius, pulse: alphaPulseAmp })');
-  rig.note('the advanced dials after Reset: ' + JSON.stringify(advAfterReset));
-  rig.check(Math.abs(advAfterReset.morph - 1.7) > 0.01 && Math.abs(advAfterReset.warpStr - 2.4) > 0.01,
-            'Reset left the typed-in advanced values on the fog, so there is no way back from a ' +
-            'dial the DM has pulled too far: ' + JSON.stringify(advAfterReset));
-
-  await dm.evaluate('document.getElementById("cp-adv-close").click(); 0');
-  rig.check(await dm.evaluate('document.getElementById("anim-advanced-panel").hidden') === true,
-            "the advanced panel's own close button left it floating over the map");
-  rig.check(!(await dm.evaluate('document.getElementById("btn-anim-advanced").classList.contains("active")')),
-            'the close button only hid the advanced panel, so it reopens on the next pane switch');
 
 };

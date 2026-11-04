@@ -301,7 +301,6 @@ function initInput() {
           pingAt(m.x, m.y);
         }
         break;
-      case 'KeyA': document.getElementById('btn-anim').click(); break;
       // In a column, L asks the DM window, which keeps the eye and both columns in step.
       case 'KeyL':
         if (isPane && parent !== window) parent.postMessage({ type: 'pane-labels-key', pane: paneId }, '*');

@@ -45,7 +45,7 @@ const MAP2_H = 600;
 const REVEAL = { x: 1150, y: 250, r: 110 };
 const UNTOUCHED = { x: 1200, y: 800 };
 const GRID_SIZE = 93;
-const FOG_HEX = '#7a2f2f';
+const FOG_THEME = 'ice';   // not Default, so the restored theme is not the one a fresh map opens on
 
 // The shape module-text.js proved the parser takes: a heading, prose, a blank line.
 const BOOK = [
@@ -74,7 +74,7 @@ module.exports = async function boot(rig) {
   await dm.evaluate('(() => { if (!gridEnabled) document.getElementById("btn-grid").click();' +
                     ' return 0; })()');
   await lib.fire(dm, 'grid-size-num', GRID_SIZE);
-  await lib.fire(dm, 'fog-color', FOG_HEX);
+  await dm.evaluate('setFogTheme("' + FOG_THEME + '"); 0');
 
   // A second scene, filed under a group, so the library has both an order and a heading to
   // restore.
@@ -96,7 +96,7 @@ module.exports = async function boot(rig) {
   const before = await dm.evaluate(`({
     fogAt: __rigFog(${REVEAL.x}, ${REVEAL.y}),
     rooms: polygons.length, effects: effects.length,
-    grid: gridSize, hex: fogPickedHex,
+    grid: gridSize, theme: fogTheme,
     order: allScenes.map(s => s.id),
     remembered: localStorage.getItem('evermist-current-scene-id'),
   })`);
@@ -104,8 +104,8 @@ module.exports = async function boot(rig) {
   rig.check(before.fogAt === 0 && before.rooms === 1 && before.effects === 1,
             'the session never reached the state this file restarts from, so nothing below is ' +
             'about a restart: ' + JSON.stringify(before));
-  rig.check(before.grid === GRID_SIZE && before.hex === FOG_HEX,
-            'the grid and the fog colour were not dialled off their defaults, so criterion C ' +
+  rig.check(before.grid === GRID_SIZE && before.theme === FOG_THEME,
+            'the grid and the fog theme were not dialled off their defaults, so criterion C ' +
             'would pass on a fresh app: ' + JSON.stringify(before));
   rig.check(before.remembered === sceneOne,
             'the app did not remember the open scene before it was closed, so criterion A would ' +
@@ -132,7 +132,7 @@ module.exports = async function boot(rig) {
         return { fog: true, at: at, rooms: (s.polygons || []).length,
                  effects: (s.effects || []).length,
                  grid: s.gridConfig ? s.gridConfig.cellSize : null,
-                 hex: s.fogSettings ? s.fogSettings.pickedHex : null };
+                 theme: s.fogTheme || null };
       } catch (e) { return { err: String(e) }; }
     })()`, 30000);
     return (got && got.fog && got.at === 0 && got.rooms === 1 && got.grid === GRID_SIZE)
@@ -187,7 +187,7 @@ module.exports = async function boot(rig) {
   const carried = await dm.evaluate(`({
     rooms: polygons.length, effects: effects.length,
     mode: polygons[0] ? polygons[0].mode : null,
-    grid: gridSize, hex: fogPickedHex,
+    grid: gridSize, theme: fogTheme,
   })`);
   rig.note('what the reopened scene carried: ' + JSON.stringify(carried));
   rig.check(carried.rooms === 1 && carried.mode === 'shroud',
@@ -199,9 +199,9 @@ module.exports = async function boot(rig) {
   rig.check(carried.grid === GRID_SIZE,
             'the grid came back at ' + carried.grid + ' instead of the ' + GRID_SIZE +
             ' the DM fitted to this map');
-  rig.check(carried.hex === FOG_HEX,
-            'the fog colour came back as ' + carried.hex + ' instead of the ' + FOG_HEX +
-            ' the DM dialled in');
+  rig.check(carried.theme === FOG_THEME,
+            'the fog theme came back as ' + carried.theme + ' instead of the ' + FOG_THEME +
+            ' the DM picked');
 
   // ── D. The library comes back whole, in order, under its group ───────────
   // RED BY DESIGN: written against the fix, never re-proved

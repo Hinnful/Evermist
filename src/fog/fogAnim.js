@@ -51,8 +51,10 @@ function fogAnimTick(ts) {
     const tile = cloudBlendCanvas ? cloudBlendCanvas.width : 512;
     for (let i = 0; i < CLOUD_PASSES.length; i++) {
       const p = CLOUD_PASSES[i];
-      const nx = fogAnimOffsets[i].x + p.driftX * driftScale * dt * fogAnimSpeed;
-      const ny = fogAnimOffsets[i].y + p.driftY * driftScale * dt * fogAnimSpeed;
+      // Depth layers drift at their own pace on the Player.
+      const dd = isPlayer ? FOG_DEPTH.drift[i] : 1;
+      const nx = fogAnimOffsets[i].x + p.driftX * dd * driftScale * dt * fogAnimSpeed;
+      const ny = fogAnimOffsets[i].y + p.driftY * dd * driftScale * dt * fogAnimSpeed;
       fogAnimOffsets[i].x = wrapOffset(nx, tile);
       fogAnimOffsets[i].y = wrapOffset(ny, tile);
 
@@ -310,6 +312,8 @@ function openFogFromCover() {
 // so it is never a snap.
 let fogColorFromHex = null, fogColorToHex = null;
 let fogColorStart = 0, fogColorDur = 0, fogColorRafId = null;
+// The theme whose effects switch on when the ease lands (applyPlayerFogTheme).
+let fogThemePending = null;
 const FOG_COLOR_EASE_MIN_MS = 700;
 
 // How much of the close is still to run. 0 once the cover has landed.
@@ -341,4 +345,5 @@ function endFogColorEase() {
   if (fogColorRafId) { cancelAnimationFrame(fogColorRafId); fogColorRafId = null; }
   if (fogColorToHex) applyFogColor(fogColorToHex);
   fogColorFromHex = fogColorToHex = null;
+  if (fogThemePending) { fogTheme = fogThemePending; fogThemePending = null; fogDirty = true; scheduleRender(); }
 }

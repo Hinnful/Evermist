@@ -5,13 +5,13 @@ const assert = require('node:assert/strict');
 const { mcpMapKeys, mcpMapSnapshot, mcpMapRecordRead, mcpMapRecordWrite } = require('../src/mcp/mcpMapPlan.js');
 
 const sq = (x, y, w) => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + w }, { x, y: y + w }];
-const DEFAULTS = { grid: { enabled: false, cellSize: 50 }, fog: { hex: '#3a3a8c', alpha: 0.18, anim: { enabled: true, speed: 1, drift: 1, morph: 0.35, warpStr: 0.15, warpRad: 0.08, pulse: 0.3 } } };
+const DEFAULTS = { grid: { enabled: false, cellSize: 50 } };
 
 describe('mcpMapKeys', () => {
   it('names each part\'s fields once, lights and effects sharing the effect id', () => {
     assert.deepEqual(mcpMapKeys(['effects', 'lights']), ['effects', 'nextEffectId', 'lightShapes', 'lightsHidden']);
     assert.deepEqual(mcpMapKeys(['rooms', 'fog']), ['polygons', 'nextPolygonId', 'fog']);
-    assert.deepEqual(mcpMapKeys(['grid', 'fogSettings']), ['gridConfig', 'fogSettings', 'weather']);
+    assert.deepEqual(mcpMapKeys(['grid', 'fogSettings']), ['gridConfig', 'fogTheme', 'weather']);
   });
   it('throws on a part that does not exist', () => {
     assert.throws(() => mcpMapKeys(['tokens']), /tokens/);
@@ -41,9 +41,11 @@ describe('mcpMapRecordRead', () => {
     d.polygons[0].vertices[0].x = 7;
     assert.equal(rec.polygons[0].vertices[0].x, 0);
   });
-  it('fills fog settings and the grid for a record saved before either', () => {
-    const d = mcpMapRecordRead({ fogSettings: { pickedHex: '#112233' } }, ['fogSettings', 'gridConfig'], DEFAULTS);
-    assert.deepEqual(d.fogSettings, { pickedHex: '#112233', tintAlpha: 0.18, anim: DEFAULTS.fog.anim });
+  it('reads the fog theme as Default when unknown or missing, and fills the grid for an old record', () => {
+    assert.equal(mcpMapRecordRead({ fogTheme: 'ice' }, ['fogTheme'], DEFAULTS).fogTheme, 'ice');
+    assert.equal(mcpMapRecordRead({ fogTheme: 'lava' }, ['fogTheme'], DEFAULTS).fogTheme, 'default');
+    const d = mcpMapRecordRead({ fogSettings: { pickedHex: '#112233' } }, ['fogTheme', 'gridConfig'], DEFAULTS);
+    assert.equal(d.fogTheme, 'default');
     assert.deepEqual(d.gridConfig, DEFAULTS.grid);
     assert.notEqual(d.gridConfig, DEFAULTS.grid);
   });
@@ -72,8 +74,8 @@ describe('mcpMapRecordWrite', () => {
     assert.equal(rec.gridConfig.cellSize, 70);
     mcpMapRecordWrite(rec, before, ['gridConfig']);
     assert.deepEqual(rec.gridConfig, { cellSize: 40 });
-    mcpMapRecordWrite(rec, {}, ['fogSettings', 'fog']);
-    assert.equal('fogSettings' in rec, false);
+    mcpMapRecordWrite(rec, {}, ['fogTheme', 'fog']);
+    assert.equal('fogTheme' in rec, false);
     assert.equal(rec.mapBlob, 'kept');
   });
 });
@@ -86,15 +88,18 @@ describe('weather in a Claude edit', () => {
     assert.equal(rec.weather, 'storm');
   });
   it('rides the part of the fog look, so the undo writes the same weather back', () => {
-    const rec = { id: 's', weather: 'blizzard', fogSettings: { pickedHex: '#000000' } };
+    const rec = { id: 's', weather: 'blizzard', fogTheme: 'ice', fogSettings: { pickedHex: '#000000' } };
     const keys = mcpMapKeys(['fogSettings']);
     const before = mcpMapSnapshot(mcpMapRecordRead(rec, keys, DEFAULTS), keys);
     const edit = mcpMapRecordRead(rec, keys, DEFAULTS);
-    edit.fogSettings.pickedHex = '#ffffff';
+    edit.fogTheme = 'default';
     mcpMapRecordWrite(rec, edit, keys);
     assert.equal(rec.weather, 'blizzard');
+    assert.equal('fogTheme' in rec, false);
     mcpMapRecordWrite(rec, before, keys);
     assert.equal(rec.weather, 'blizzard');
+    assert.equal(rec.fogTheme, 'ice');
+    // The old settings are never rewritten: the previous release still reads them.
     assert.equal(rec.fogSettings.pickedHex, '#000000');
   });
   it('reads an unknown id as none and writes none as absent', () => {

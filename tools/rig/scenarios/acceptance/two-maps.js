@@ -523,70 +523,28 @@ module.exports = async function twoMapsFeature(rig) {
             'ground the players never see: alpha ' + tvAfterAuto + ' where ' + beforeAuto +
             ' was the shrouded reading');
 
-  // ── I. the fog controls belong to the column they are aimed at ───────────
+  // ── I. the fog theme belongs to the column it is aimed at ───────────
   // RED BY DESIGN: written against the fix, never re-proved
-  const HEX_A = '#c04010';
-  await dm.evaluate('selectPane("A"); 0');
-  await dm.evaluate('(() => { const el = document.getElementById("fog-color");' +
-    ' el.value = ' + JSON.stringify(HEX_A) + ';' +
-    ' el.dispatchEvent(new Event("input", { bubbles: true })); return 0; })()');
-  await paneA.waitFor('fogPickedHex === ' + JSON.stringify(HEX_A), 8000,
-                      'the fog colour to reach column A');
-  rig.check(await paneB.evaluate('fogPickedHex') !== HEX_A,
-            'the fog colour set on column A also changed column B');
+  await dm.evaluate('selectPane("A"); dockOpen("scene"); document.getElementById("cp-fogtheme-dd").click();' +
+                    ' document.querySelector("#cp-pop-fogtheme [data-fogtheme=ice]").click(); 0');
+  await paneA.waitFor('fogTheme === "ice"', 8000, 'the fog theme to reach column A');
+  rig.check(await paneB.evaluate('fogTheme') !== 'ice',
+            'the fog theme set on column A also changed column B');
   // ⚠ THE TV IS THE POINT. The DM window has no Player of its own while two maps are up, so the
-  // push the picker's own handler makes there reaches nothing.
-  await tvA.waitFor('fogPickedHex === ' + JSON.stringify(HEX_A), 10000,
-                    "the fog colour to reach column A's half of the Player screen");
-  rig.check(await tvB.evaluate('fogPickedHex') !== HEX_A,
-            "the fog colour set on column A also changed column B's half");
+  // push the dropdown's own handler makes there reaches nothing: the column sends it to its half.
+  await tvA.waitFor('fogTheme === "ice"', 15000, "the fog theme to reach column A's half of the Player screen");
+  rig.check(await tvB.evaluate('fogTheme') !== 'ice',
+            "the fog theme set on column A also changed column B's half");
 
-  // Animation is a SCENE setting, so turning it off on one column must leave the other running,
-  // and the panel must show the column it is now aimed at rather than the one it left.
-  await dm.evaluate(`(() => {
-    const b = document.getElementById('btn-anim');
-    if (b.classList.contains('active')) b.click();
-    return 0;
-  })()`);
-  await paneA.waitFor('fogAnimEnabled === false', 8000, 'the animation to stop on column A');
-  rig.check(await paneB.evaluate('fogAnimEnabled') === true,
-            'stopping the animation on column A stopped it on column B too');
-
-  // ⚠ THE SLIDERS, NOT JUST THE BUTTON. The advanced numbers are what the DM reads before
-  // nudging one, and a stale slider sends the OTHER column's value into this one.
-  // The panel is OPENED first, because the mode row reading "advanced" for a column that is on
-  // a preset is the fault this covers.
-  await dm.evaluate('dockOpen("scene"); document.getElementById("cp-move-dd").click();' +
-                    ' document.querySelector(`#cp-pop-move [data-anim="advanced"]`).click(); 0');
-  await dm.evaluate(`(() => {
-    const n = document.getElementById('anim-drift-num');
-    n.value = '2.50';
-    n.dispatchEvent(new Event('change', { bubbles: true }));
-    return 0;
-  })()`);
-  await paneA.waitFor('Math.abs(driftScale - 2.5) < 0.01', 8000, 'the drift to reach column A');
-  rig.check(Math.abs(await paneB.evaluate('driftScale') - 2.5) > 0.01,
-            'the drift set on column A also changed column B');
-
+  // The dropdown shows the column it is now aimed at, not the one it left.
   await dm.evaluate('selectPane("B"); 0');
   await lib.settle(dm, '!minimapDirty', 10000);
-  rig.check(await dm.evaluate('document.getElementById("btn-anim").classList.contains("active")'),
-            'the panel still shows animation OFF after selecting the column where it is ON');
-  const driftShown = await dm.evaluate('+document.getElementById("anim-drift-num").value');
-  rig.check(Math.abs(driftShown - (await paneB.evaluate('driftScale'))) < 0.02,
-            'the advanced sliders still show the other column: panel ' + driftShown +
-            ' against column B at ' + await paneB.evaluate('driftScale'));
-  const animMode = await dm.evaluate(
-    '(document.querySelector("#cp-pop-move [data-anim].on") || {}).dataset?.anim || "none"');
-  rig.check(animMode !== 'advanced' && animMode !== 'none',
-            'the animation row still reads "' + animMode + '" after selecting a column that is ' +
-            'on a preset, because the Advanced panel was left open and aimed at the other one');
+  const shownB = await dm.evaluate('document.getElementById("cp-fogtheme-lbl").textContent');
+  rig.check(shownB === 'Default', 'the fog theme dropdown shows "' + shownB + '" after selecting column B, which is on Default');
   await dm.evaluate('selectPane("A"); 0');
   await lib.settle(dm, '!minimapDirty', 10000);
-  rig.check(!(await dm.evaluate('document.getElementById("btn-anim").classList.contains("active")')),
-            'the panel shows animation ON after selecting the column where it is OFF');
-  await dm.evaluate('selectPane("A"); document.getElementById("btn-anim").click(); 0');
-  await paneA.waitFor('fogAnimEnabled === true', 8000, 'the animation to start again on column A');
+  const shownA = await dm.evaluate('document.getElementById("cp-fogtheme-lbl").textContent');
+  rig.check(shownA === 'Ice', 'the fog theme dropdown shows "' + shownA + '" after selecting column A, which is on Ice');
 
   // A column that changes width refits its half of the Player screen, so the preview's zoom has
   // to follow it. Nothing else reports that resize.

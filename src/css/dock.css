@@ -155,6 +155,8 @@
   .dk-dd .dk-cur { display: flex; align-items: center; gap: 7px; }
   .dk-dd .ic, .dk-menu .ic { display: grid; color: var(--g-dim); }
   .dk-menu button:hover .ic { color: inherit; }
+  /* A fog theme's swatch, in the dropdown and its menu. */
+  .dk-sw { display: block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.16); }
 
   /* A source: what is loaded, in a field, with its one action at the right. */
   .dk-src { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px; border-radius: 5px;

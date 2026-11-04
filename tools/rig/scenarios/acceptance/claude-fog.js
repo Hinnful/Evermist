@@ -14,7 +14,7 @@
 //   A. set_room_fog turns a room to revealed, on the open map and on the closed one, and undo puts it back to hidden.
 //   B. set_fog_area reveals a rectangle: the painted fog there turns clear, the fog outside it stays, undo repaints it.
 //   C. set_fog_all reveals the whole map, every room included, and undo takes the whole change back.
-//   D. set_fog_look sets the drift and the tint, and undo puts the old look back.
+//   D. set_fog_look sets the fog theme, undo puts the old one back, and a call still sending the old preset or tint is told to press Connect to Claude again.
 //   E. The Player window received no message about any of it.
 
 const lib = require('../../lib');
@@ -48,12 +48,11 @@ module.exports = async function claudeFog(rig) {
       },
       state: async id => {
         if (currentScene && currentScene.id === id) {
-          return { rooms: polygons.map(p => ({ name: p.name, mode: p.modeWithHoles || p.mode })), hex: fogPickedHex, speed: fogAnimSpeed };
+          return { rooms: polygons.map(p => ({ name: p.name, mode: p.modeWithHoles || p.mode })), theme: fogTheme };
         }
         const rec = await sceneStore.loadScene(id);
-        const f = rec.fogSettings || {};
         return { rooms: (rec.polygons || []).map(p => ({ name: p.name, mode: p.modeWithHoles || p.mode })),
-                 hex: f.pickedHex || null, speed: f.anim ? f.anim.speed : null };
+                 theme: fogThemeNormalize(rec.fogTheme) };
       },
     };
     return 0;
@@ -102,22 +101,24 @@ module.exports = async function claudeFog(rig) {
     // ── D ──
     // RED BY DESIGN: written against the feature, never re-proved
     const before = await state(map.id);
-    const look = await call('set_fog_look', { ...at, preset: 'fast', tint: '#336699' });
+    const look = await call('set_fog_look', { ...at, theme: 'ice' });
     const now = await state(map.id);
-    rig.check(!look.isError && now.hex === '#336699' && Math.abs(now.speed - 1) < 0.01,
-              'D: ' + where + ': set_fog_look did not set the tint and the fast drift: ' + JSON.stringify({ look, now }));
+    rig.check(!look.isError && now.theme === 'ice',
+              'D: ' + where + ': set_fog_look did not set the Ice theme: ' + JSON.stringify({ look, now }));
     const undoneLook = await call('undo_last_change');
     const back = await state(map.id);
-    // a map saved before it had a look reads back as the default look, so only a stored one is compared to the digit
-    // fast's speed is the default's, so the tint alone tells the undone look from the set one
-    rig.check(!undoneLook.isError && back.hex !== '#336699' && (before.hex === null || (back.hex === before.hex && back.speed === before.speed)),
-              'D: ' + where + ': undo_last_change did not put the old fog look back: ' + JSON.stringify({ before, back, undoneLook }));
+    rig.check(!undoneLook.isError && back.theme === before.theme,
+              'D: ' + where + ': undo_last_change did not put the old fog theme back: ' + JSON.stringify({ before, back, undoneLook }));
+    // An extension still on the old tool list sends preset and tint: it is told to connect again, and nothing changes.
+    const old = await call('set_fog_look', { ...at, preset: 'fast', tint: '#336699' });
+    rig.check(old.isError && /Connect to Claude again/.test(JSON.stringify(old)) && (await state(map.id)).theme === before.theme,
+              'D: ' + where + ': a call with the old preset and tint was not refused with the Connect again answer: ' + JSON.stringify(old));
   }
 
   // ── E ──
   // RED BY DESIGN: written against the feature, never re-proved
   await lib.hold(3000, 'long enough for a push of any of these changes to have reached the Player');
   const heard = await lib.claudeHeard(dm, player);
-  rig.check(heard.length === 0 && await player.evaluate('fogPickedHex') !== '#336699',
+  rig.check(heard.length === 0 && await player.evaluate('fogTheme') !== 'ice',
             'E: the Player window received something of Claude\'s fog changes: ' + JSON.stringify(heard.slice(0, 5)));
 };

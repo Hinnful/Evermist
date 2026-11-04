@@ -9,7 +9,11 @@ let FOG_TINT_ALPHA = 0.18;
 // Live fog colours, set by applyFogColor() in fog.js and synced to the Player.
 // Not baked into fogDataCanvas/baseFogCanvas — those carry alpha only, and their
 // #1a1a2e fills are an alpha-carrier convention rather than a display colour.
-let fogPickedHex = '#3a3a8c';
+let fogPickedHex = '#1a1a2e';
+// The open map's fog theme (fog/themes/), and the fogSettings its record held, passed through
+// untouched so the previous release still finds each map's old colour.
+let fogTheme = 'default';
+let fogSettingsKept = null;
 let fogBaseColor = '#1a1a2e';   // solid fill on the Player's full display
 let fogTintColor = '#7050e0';   // glow drawn source-atop on both views
 
@@ -276,7 +280,7 @@ let playerUnsent = false;
 // Manual mode: what is held back besides fog. scene: a map opened that the TV has not been given;
 // view: a minimap drag the TV has not framed; turn: a Turn pick; anim: fog animation settings.
 // Send delivers all four; Manual to Auto does the same (playerWindow.js).
-const tvWait = { scene: false, view: false, turn: false, anim: false };
+const tvWait = { scene: false, view: false, turn: false, theme: false };
 let tvSceneSendTimer = 0;   // a held map change is covering the TV, then sends
 
 // ─── Scene management ────────────────────────────────────────────────────────

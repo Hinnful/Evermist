@@ -15,11 +15,13 @@ const CLOUD_PASSES = [
   { scale: 0.61, angle: -0.29, alpha: 0.3, driftX:  7,  driftY: -14, alphaFreq: 0.06, alphaPhase: 3.5 },
 ];
 const CLOUD_FRAME_COUNT   = 16;
-let   cloudFrameSpeed     = 0.35;  // frames per second → full cycle ~46s
-let   cloudWarpRadius     = 0.08;  // small steps → near-identical consecutive frames
-let   cloudWarpStrength   = 0.15;  // gentle warp so crossfade looks like smooth morphing
-let   driftScale          = 1.0;   // multiplier on all drift speeds
-let   alphaPulseAmp       = 0.30;  // ±30% alpha oscillation
+// The motion and warp are Default theme's; a theme sets them (applyFogThemeLook) and every theme
+// shares its warp, so a theme switch never rebuilds the cloud frames.
+let   cloudFrameSpeed     = 0.20;  // frames per second → full cycle ~46s
+let   cloudWarpRadius     = 0.06;  // small steps → near-identical consecutive frames
+let   cloudWarpStrength   = 0.10;  // gentle warp so crossfade looks like smooth morphing
+let   driftScale          = 0.5;   // multiplier on all drift speeds
+let   alphaPulseAmp       = 0.15;  // ±15% alpha oscillation
 
 // ─── Fog canvases (offscreen, 1/FOG_SCALE) ───────────────────────────────────
 let fogDataCanvas = null, fogDataCtx = null; // 1/FOG_SCALE, source of truth
@@ -30,7 +32,7 @@ let cloudCanvas = null, cloudPattern = null;
 
 // ─── Fog animation settings ───────────────────────────────────────────────────
 let fogAnimEnabled = false;
-let fogAnimSpeed   = 1.0;
+let fogAnimSpeed   = 0.6;
 // The drift and transition state, and every loop that moves them, live in fogAnim.js.
 
 // ─── Cloud frame cycling ─────────────────────────────────────────────────────
@@ -107,6 +109,11 @@ function applyPolygonToFog(poly) {
     buildRoundedPolyPath(fogDataCtx, fogScaledVerts, crFog, pvRFog, fogHoles, fogH);
     fogDataCtx.fillStyle = '#1a1a2e';
     fogDataCtx.fill();
+    // Grown a pixel, so two hidden rooms that share a wall leave no hairline of the map between them.
+    fogDataCtx.lineWidth = 2;
+    fogDataCtx.lineJoin = 'round';
+    fogDataCtx.strokeStyle = '#1a1a2e';
+    fogDataCtx.stroke();
     fogDataCtx.restore();
   } else {
     // Feathered reveal: draw polygon blurred on scratch, then destination-out onto fog.
@@ -530,6 +537,14 @@ function drawLoadingFog(ctx, cw, ch) {
 const _pfogM = new Float32Array(12);
 const _pfogO = new Float32Array(6);
 const _pfogA = new Float32Array(3);
+const _pfogC = new Float32Array(9);
+const _pfogRes = new Float32Array(2);
+const _pfogPScale = new Float32Array(2);
+const _pfogRim = new Float32Array(3);
+// Depth layers: the far pass drifts slower, the near pass faster, denser and darker.
+const FOG_DEPTH = { drift: [1, 0.35, 2.4], alpha: [1, 1, 1.6], col: [1, 1.1, 0.7] };
+// One pattern unit is this many map pixels: about a screen height at 1:1.
+const FOG_PATTERN_UNIT = 1000;
 const _pfogRGB = new Float32Array(3);
 const _pfogRGB2 = new Float32Array(3);
 const _pfogMaskM = new Float32Array(2);
@@ -567,16 +582,20 @@ function renderFog(vp) {
 
   // Screen pixel → cloud UV, per pass: the context's translate/rotate/scale chain, inverted.
   const tile = cloudBlendCanvas ? cloudBlendCanvas.width : 512;
+  const rec = fogThemeRecord(fogTheme);
   for (let i = 0; i < CLOUD_PASSES.length; i++) {
     const p = CLOUD_PASSES[i];
     const off = fogAnimOffsets[i];
-    const d  = s * p.scale * tile;
+    const d  = s * p.scale * tile * PLAYER_FOG_CLOUD_SIZE;
     const ct = Math.cos(p.angle) / d, st = Math.sin(p.angle) / d;
     _pfogM[i * 4]     =  ct; _pfogM[i * 4 + 1] = st;
     _pfogM[i * 4 + 2] = -st; _pfogM[i * 4 + 3] = ct;
     _pfogO[i * 2]     =  ct * cx + st * cy + (-hw + off.x) / tile;
     _pfogO[i * 2 + 1] = -st * cx + ct * cy + (-hh + off.y) / tile;
-    _pfogA[i] = fogAnimEnabled ? fogAnimAlphas[i] : p.alpha;
+    const a = fogAnimEnabled ? fogAnimAlphas[i] : p.alpha;
+    // Depth layers: the near pass is denser and darker than the far one.
+    _pfogA[i] = Math.min(1, a * FOG_DEPTH.alpha[i]);
+    for (let c = 0; c < 3; c++) _pfogC[i * 3 + c] = rec.passCol[i][c] * FOG_DEPTH.col[i];
   }
 
   // Screen pixel → reveal-mask UV. ⚠ Scaled by the BLUR CANVAS's own size, not the map's: its
@@ -599,8 +618,16 @@ function renderFog(vp) {
     transT  = fogTransT;
   }
 
+  _pfogRes[0] = window.innerWidth; _pfogRes[1] = window.innerHeight;
+  _pfogPScale[0] = bw * FOG_SCALE / FOG_PATTERN_UNIT;
+  _pfogPScale[1] = bh * FOG_SCALE / FOG_PATTERN_UNIT;
+  _pfogRim.set(rec.rim);
+
   pixiUpdatePlayerFog({
-    cloudM: _pfogM, cloudO: _pfogO, cloudA: _pfogA,
+    theme: rec.id,
+    cloudM: _pfogM, cloudO: _pfogO, cloudA: _pfogA, cloudC: _pfogC,
+    res: _pfogRes, pScale: _pfogPScale, rim: _pfogRim,
+    tile: s * tile * PLAYER_FOG_CLOUD_SIZE, time: performance.now() / 1000,
     maskM: _pfogMaskM, maskO: _pfogMaskO, maskLim: _pfogMaskLim,
     base: hexToRGBFloat(fogBaseColor, _pfogRGB),
     tint: hexToRGBFloat(fogTintColor, _pfogRGB2),
@@ -651,7 +678,6 @@ function _wholeMapFog(fill, isShroud) {
 
 // Derives base+tint from the raw picked colour and repaints both render paths.
 function applyFogColor(pickedHex) {
-  if (paneForward('fog-color', { pickedHex })) return;
   fogPickedHex = pickedHex;
   const { base, tint } = deriveFogColors(pickedHex);
   fogBaseColor = base;
@@ -677,7 +703,6 @@ function applyFogColor(pickedHex) {
 
 // Updates the tint alpha strength on both render paths.
 function applyFogTintAlpha(alpha) {
-  if (paneForward('fog-tint', { alpha })) return;
   FOG_TINT_ALPHA = alpha;
   if (!isPlayer) {
     if (typeof pixiUpdateFogTintColor === 'function') pixiUpdateFogTintColor(fogTintColor);
@@ -690,48 +715,3 @@ function applyFogTintAlpha(alpha) {
   }
 }
 
-// Handles the Player-side fog-color postMessage.
-function handleFogColorMessage(msg) {
-  if (msg.fogTintAlpha != null) FOG_TINT_ALPHA = msg.fogTintAlpha;
-  // ⚠ A switch's colour ease OWNS the colour until it lands, or the DM's mid-close push snaps to
-  // the destination in one frame. Retarget rather than ignore, so a colour picked DURING a switch
-  // still arrives.
-  if (fogColorToHex) { fogColorToHex = msg.pickedHex; return; }
-  applyFogColor(msg.pickedHex);
-}
-
-// Restores fog colour + tint from a scene record on the DM side, syncing the Fog-panel DOM.
-// Defaults cover scenes that predate fog persistence.
-const ANIM_RUNTIME_DEFAULTS = {
-  enabled: true, speed: 1.0, drift: 1.0, morph: 0.35,
-  warpStr: 0.15, warpRad: 0.08, pulse: 0.30,
-};
-
-const SCENE_FOG_DEFAULTS = { hex: '#3a3a8c', alpha: 0.18, anim: ANIM_RUNTIME_DEFAULTS };
-
-function restoreSceneFogSettings(scene) {
-  const parsed = parseSceneFogSettings(scene, SCENE_FOG_DEFAULTS);
-  const { hex, alpha, anim: an } = parsed;
-  applyFogColor(hex);
-  applyFogTintAlpha(alpha);
-  // ⚠ Never call syncFogColorToPlayer here: the colour rides the sendToPlayer fog-update, and
-  // sending it early paints the new colour over the old scene's fog.
-
-  const prevWarpStr = cloudWarpStrength;
-  const prevWarpRad = cloudWarpRadius;
-  showFogSettings(hex, alpha, an);
-
-  if (cloudWarpStrength !== prevWarpStr || cloudWarpRadius !== prevWarpRad) {
-    regenCloudFrames();
-  } else {
-    syncAnimToPlayer(false);
-  }
-  if (fogAnimEnabled) startFogAnim(); else stopFogAnim();
-}
-
-function regenCloudFrames() {
-  generateCloudFrames(512, CLOUD_FRAME_COUNT);
-  cloudFramePos = 0;
-  if (fogEffectCanvas) { recompositeCloudEffect(fogAnimEnabled ? fogAnimOffsets : null); fogDirty = true; scheduleRender(); }
-  syncAnimToPlayer(true);
-}
