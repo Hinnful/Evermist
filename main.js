@@ -46,6 +46,17 @@ function sendTo(target, channel, payload) {
 
 // Window/taskbar icon for `npm start`. A packaged build uses the icon embedded in the .exe, so a
 // missing file here is harmless — fall back to undefined.
+// A file or link dropped on a window navigates it, and on the TV that shows the raw, unfogged map.
+// Only the app's own pages may load in a DM or Player window.
+const APP_PAGES = new Set(['index.html', 'stage.html'].map(f => path.join(__dirname, f).toLowerCase()));
+function keepOnAppPages(wc) {
+  wc.on('will-navigate', (ev, url) => {
+    let file = null;
+    try { file = url.startsWith('file:') ? require('url').fileURLToPath(url).toLowerCase() : null; } catch (_) { /* not a path */ }
+    if (!file || !APP_PAGES.has(file)) ev.preventDefault();
+  });
+}
+
 const devIcon = path.join(__dirname, 'build', 'icon.png');
 const windowIcon = fs.existsSync(devIcon) ? devIcon : undefined;
 
@@ -91,6 +102,7 @@ function createDMWindow() {
   });
 
   win.setMenu(null);
+  keepOnAppPages(win.webContents);
   const q = {};
   if (stressMode) {
     q.stress = '1';
@@ -167,6 +179,7 @@ function createDMWindow() {
   // alone doesn't fully strip it on all platforms. Also track it for display pushes.
   win.webContents.on('did-create-window', (childWin, details) => {
     childWin.setMenu(null);
+    keepOnAppPages(childWin.webContents);
     // ⚠ ONE HANDLE PER WINDOW NAME. The DM can have a Player window and a warm one at once, and
     // a single handle overwritten on each creation left the first never shown and never told the
     // TV's resolution. The name is the renderer's own (playerWindowName in viewport.js).

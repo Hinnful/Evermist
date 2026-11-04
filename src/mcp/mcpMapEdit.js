@@ -112,7 +112,11 @@ async function _mcpMapWrite(id, keys, data, what, from) {
 // ends the TV refusal ("… and changing its rooms would change what the players see"). `change(data)` edits the
 // plain shape in place, may be async, and returns a string to refuse with that text, nothing written.
 // Resolves { no } with the reply, or { undo } for mcpDone; the undo writes the fields back through here.
-async function mcpEditMap(scene, what, parts, change) {
+function mcpEditMap(scene, what, parts, change) {
+  return mcpInTurn('map:' + scene.id, () => _mcpEditMapNow(scene, what, parts, change));
+}
+
+async function _mcpEditMapNow(scene, what, parts, change) {
   const keys = mcpMapKeys(parts);
   const why = _mcpMapBlocked(scene, what);
   if (why) return { no: _mcpNo(why) };
@@ -124,8 +128,8 @@ async function mcpEditMap(scene, what, parts, change) {
   if (typeof refused === 'string') return { no: _mcpNo(refused) };
   const failed = await _mcpMapWrite(scene.id, keys, data, what, from);
   if (failed) return { no: _mcpNo(failed) };
-  return { undo: async () => {
+  return { undo: () => mcpInTurn('map:' + scene.id, async () => {
     const no = await _mcpMapWrite(scene.id, keys, before, 'undoing Claude\'s change');
     if (no) throw Object.assign(new Error(no), { mcpKeep: true });
-  } };
+  }) };
 }

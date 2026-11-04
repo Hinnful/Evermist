@@ -99,13 +99,21 @@ describe('uids', () => {
   });
 });
 
-describe('esStampScene', () => {
-  it('stamps a changed scene part and carries the room times over', () => {
-    const rec = scene([room(1)], { edits: { rooms: { 'legacy-1': { mode: 40 } }, goneRooms: { x: 9 } } });
-    const before = { scene: E.esSceneParts(rec), edits: rec.edits };
-    const st = E.esStampScene(before, { ...rec, name: 'Deeper' }, 300);
-    assert.deepEqual(st.scene, { name: 300 });
+describe('esStamp - a write to one field of a stored record', () => {
+  it('keeps the fog time when only the name changes', () => {
+    const rec = scene([room(1)], { edits: { scene: { fog: 50 }, rooms: { 'legacy-1': { mode: 40 } }, goneRooms: { x: 9 } } });
+    const st = E.esStamp(E.esSnapshot(rec), { ...rec, name: 'Deeper' }, 300, false);
+    assert.equal(st.scene.name, 300);
+    assert.equal(st.scene.fog, 50);
     assert.deepEqual(st.rooms, { 'legacy-1': { mode: 40 } });
     assert.deepEqual(st.goneRooms, { x: 9 });
+  });
+
+  it('times a room note changed on a map that is not open', () => {
+    const rec = scene([room(1)], { edits: { scene: { fog: 50 } } });
+    const next = { ...rec, polygons: [{ ...rec.polygons[0], desc: 'A new note' }] };
+    const st = E.esStamp(E.esSnapshot(rec), next, 300, false);
+    assert.equal(st.rooms['legacy-1'].notes, 300);
+    assert.equal(st.scene.fog, 50);
   });
 });

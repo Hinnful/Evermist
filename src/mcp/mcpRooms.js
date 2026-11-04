@@ -160,7 +160,7 @@ async function _mcpSplitRoom(args) {
     if (f.error) return 'Not done: ' + f.error;
     const line = mcpRoomLine(args.line, d.mapWidth, d.mapHeight);
     if (line.error) return 'Not done: ' + line.error;
-    if (!ringPathCrossings(f.room.vertices, line.path).length) return 'Not done: the line does not cross the room "' + (f.room.name || '') + '"\'s walls.';
+    if (!ringPathCrossings(cutRings(f.room)[0], line.path).length) return 'Not done: the line does not cross the room "' + (f.room.name || '') + '"\'s walls.';
     const out = cutRing(f.room, line.path, await _mcpRoomsMinArea(s));
     if (out.reason) return out.reason;
     const first = d.polygons.length;

@@ -165,15 +165,14 @@ function applyPolygonToFog(poly) {
     const stepIn = insetPolyRings({ vertices: fogScaledVerts, holes: fogHoles }, feather);
     const insetVerts = stepIn.vertices;
     const insetHoles = stepIn.holes;
-    if (isHalf && insetVerts.length >= 3) {
-      sCtx.save();
-      sCtx.beginPath();
-      buildRoundedPolyPath(sCtx, shift(insetVerts), Math.max(0, crFog - feather), null,
-                           insetHoles.map(shift), fogH);
-      sCtx.fillStyle = 'white';
-      sCtx.fill();
-      sCtx.restore();
-    }
+    // ⚠ CLIPPED TO THE ROOM FIRST: an arm thinner than the feather insets inside out, and a curve's handles can
+    // carry the inset past the wall. Each corner keeps its own radius less the feather, or it pokes past the arc.
+    const insetPath = (ctx, sh) => {
+      ctx.beginPath(); buildRoundedPolyPath(ctx, sh(fogScaledVerts), crFog, pvRFog, fogHoles.map(sh), fogH); ctx.clip();
+      ctx.beginPath(); buildRoundedPolyPath(ctx, sh(insetVerts), Math.max(0, crFog - feather),
+        pvRFog && pvRFog.map(r => Math.max(0, r - feather)), insetHoles.map(sh), fogH);
+    };
+    if (isHalf && insetVerts.length >= 3) { sCtx.save(); insetPath(sCtx, shift); sCtx.fillStyle = 'white'; sCtx.fill(); sCtx.restore(); }
 
     flattenSharedWalls(sCtx, poly, fogScaledVerts, fogHoles, feather, bx, by);
 
@@ -201,9 +200,8 @@ function applyPolygonToFog(poly) {
     // Clip to the inset polygon so the feathered edge band survives and only the interior clears.
     if (!isHalf && insetVerts.length >= 3) {
       fogDataCtx.save();
-      fogDataCtx.beginPath();
       // The clearRect below keeps its OUTER box: the clip path now excludes each hole.
-      buildRoundedPolyPath(fogDataCtx, insetVerts, Math.max(0, crFog - feather), null, insetHoles, fogH);
+      insetPath(fogDataCtx, r => r);
       fogDataCtx.clip();
       fogDataCtx.clearRect(bb.minX / FOG_SCALE - 1, bb.minY / FOG_SCALE - 1,
                            (bb.maxX - bb.minX) / FOG_SCALE + 2, (bb.maxY - bb.minY) / FOG_SCALE + 2);

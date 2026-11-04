@@ -19,7 +19,7 @@ function commitCutPath() {
   const plan = [];
   for (const poly of activeShapeList()) {
     if (!poly.vertices || poly.vertices.length < 3) continue;
-    if (!ringPathCrossings(poly.vertices, path).length) continue;
+    if (!ringPathCrossings(cutRings(poly)[0], path).length) continue;
     const out = cutRing(poly, path, minArea);
     if (out.reason) { refuseShapeOp(out.reason); return; }
     plan.push({ shapes: [poly], pieces: out.pieces });

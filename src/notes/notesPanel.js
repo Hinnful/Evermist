@@ -37,6 +37,7 @@ const _NP_SAVE_WORDS = {
   party: () => [t('The party marker is not being saved'), t('Evermist could not write the party marker to disk, so it will be back where it was after a restart.')],
   entries: () => [t('The factions and lore are not being saved'), t('Evermist could not write the factions and lore to disk, so your last change will be gone after a restart.')],
   groupUids: () => [t('The links to groups are not being saved'), t('Evermist could not write the links to groups to disk, so a note that names a group may lose it after a restart.')],
+  maps: () => [t('Your maps are not being saved'), t('Evermist could not write a map to disk, so changes to it since the last save will be gone after a restart. Freeing disk space usually clears it.')],
   groups: () => [t('The order of the groups is not being saved'), t('Evermist could not write the order of the groups to disk, so it will be gone after a restart.')],
 };
 
@@ -127,7 +128,11 @@ function _npScene() {
 // first call after a pick answers null and the window repaints when the read lands.
 function _npMapNotes(id) {
   if (!allScenes.some(x => x.id === id)) { _npMap = null; return null; }
-  if (!panesActive && currentScene && currentScene.id === id) return currentScene.notes || '';
+  if (!panesActive && currentScene && currentScene.id === id) {
+    // Edits now go to the live copy, so the stored read is stale from here on.
+    if (_npMap && _npMap.key === id) _npMap = null;
+    return currentScene.notes || '';
+  }
   if (_npMap && _npMap.key === id) return _npMap.notes;
   if (_npMapLoading === id) return null;
   _npMapLoading = id;
@@ -188,7 +193,18 @@ function _npCommit() {
   _npFilled = v;
   if (aim.kind === 'map') _npCommitMap(aim.id, v);
   else if (aim.kind === 'entry') notesEntrySetNote(aim.id, v);
-  else if (aim.kind === 'monster' && cbState.blocks[aim.id]) { cbState.blocks[aim.id].notes = v; cbSaveSoon(); }
+  else if (aim.kind === 'monster' && cbState.blocks[aim.id]) { cbState.blocks[aim.id].notes = v; cbSave(); }   // at once: a commit is often the app closing
+}
+
+// A save from elsewhere (an AI assistant edit, an undo) to the map whose stored notes the window holds.
+// The held copy stays until the new read lands, so a field being typed in is never emptied.
+function notesMapStale(id) {
+  if (!_npMap || _npMap.key !== id) return;
+  sceneStore.loadScene(id).then(rec => {
+    if (!rec || !_npMap || _npMap.key !== id) return;
+    _npMap.notes = notesSanitize(rec.notes).text;
+    refreshRoomPanel();
+  }).catch(console.error);
 }
 
 // A map's notes written where its live copy is, so no autosave of it writes the old text back.

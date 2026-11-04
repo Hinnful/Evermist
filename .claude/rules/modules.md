@@ -31,6 +31,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `fog/fogColor.js` | Pure fog colour kernel: base, tint, the step between two, a scene's settings. Tested |
 | `shapes/doorGeometry.js` | Pure door-notch kernel. Tested |
 | `rooms/vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Tested, dependency-free |
+| `rooms/vttHoles.js` | Pure kernel: the free-standing buildings a floor-plan room encloses, as its holes. Tested |
 | `fog/lightGeometry.js` | Pure light kernel: a plan's lights and the polygon each starts as. Tested |
 | `shapes/roomOps.js` | Pure Join/Trim/Split/Cut kernel. Tested |
 | `shapes/shapeDetail.js` | Pure kernel: curves, radii and doors across a repair. Tested |
@@ -261,7 +262,7 @@ repo root:
 ```
 i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
-fog/fogGeometry.js → fog/fogColor.js → render/weatherPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → fog/lightGeometry.js →
+fog/fogGeometry.js → fog/fogColor.js → render/weatherPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → rooms/vttHoles.js → fog/lightGeometry.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogControls.js → shapes/roomOps.js →
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/repairKeys.js → shapes/toolShapes.js →
 shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →

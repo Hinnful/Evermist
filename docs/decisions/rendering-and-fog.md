@@ -347,3 +347,14 @@ Drops on glass (looked bad), drifting leaves (too specific), swaying plants (the
 dizzy), ground drift streams (could not be seen), gust bands (read as lines), drifting seeds (read as snow),
 constant wind lines (too many; one rare gust replaced them). A video overlay was also rejected: a second
 video decode is what stalled the Player.
+
+### The Player never shows a half-applied map, and never navigates away · `SETTLED` (2026-11-04)
+A fog-only update arriving while a map payload decodes is held, never revealed over the old map, and the newest fog applies
+on landing. Image loads carry a generation like video loads, so a superseded decode never lands. The DM sends nothing to the
+TV while `currentScene` is null (a switch or import in flight); a switch cancels the pending auto-send timer and the previous
+switch's delayed push (`scenePushTimer`). The main process refuses any navigation of the DM or Player window to anything but
+the app's own `index.html` or `stage.html` (`keepOnAppPages`), so a file dropped on the TV cannot replace it with the raw map.
+
+### Room clears are clipped to the true outline · `SETTLED` (2026-11-04)
+A revealed or half room's interior clear is clipped to the room's outline first, and the inset keeps each corner's own radius
+less the feather. An arm thinner than the feather or a steep curve inverted the inset and cleared outside the room.

@@ -59,6 +59,13 @@ const sceneStore = (() => {
     });
   }
 
+  // ⚠ REPORTED, NEVER JUST LOGGED: every caller only logs a failed write, and a full disk would lose a
+  // session's reveals unseen. Once per launch, through the notes' own dialog.
+  function _writeFailed(err) {
+    if (typeof notesSaveFailed === 'function') notesSaveFailed('maps', err);
+    return err;
+  }
+
   // ⚠ STAMPS BY DIFF against the stored record, in the same transaction, so every save path times its
   // own edits. An import writes with putScene, which keeps the times that arrive.
   function saveScene(scene, opts) {
@@ -73,13 +80,13 @@ const sceneStore = (() => {
         store.put(scene);
       };
       tx.oncomplete = () => { searchStale(scene.id); resolve(); };
-      tx.onabort    = e => reject(e.target.error);
+      tx.onabort    = e => reject(_writeFailed(e.target.error));
     });
   }
 
   async function putScene(scene) {
     const { store } = getTx('readwrite');
-    await idbWrite(store.put(scene));
+    try { await idbWrite(store.put(scene)); } catch (err) { throw _writeFailed(err); }
     searchStale(scene.id);
   }
 
@@ -103,13 +110,15 @@ const sceneStore = (() => {
       req.onsuccess = e => {
         const rec = e.target.result;
         if (!rec) return;
-        const before = { scene: esSceneParts(rec), edits: rec.edits };
+        // ⚠ THE FULL STAMP, rooms and effects included: a note on a closed map's room and Claude's rooms on
+        // it come through here, and an untimed edit loses to the other machine's older copy on import.
+        const before = esSnapshot(rec), fogBefore = rec.baseFogBlob;
         if (mutate(rec) === false) return;
-        rec.edits = esStampScene(before, rec, Date.now());
+        rec.edits = esStamp(before, rec, Date.now(), rec.baseFogBlob !== fogBefore);
         store.put(rec);
       };
       tx.oncomplete = () => { searchStale(id); resolve(); };
-      tx.onabort    = e => reject(e.target.error);
+      tx.onabort    = e => reject(_writeFailed(e.target.error));
     });
   }
 

@@ -98,7 +98,7 @@ A bug report is an ordinary message and needs no command.
 
 - **Read the owning skill before editing its files.** `guard-skill-hint.js` names it.
 - **The main session keeps diagnosis, design and release notes, and hands the rest to a
-  subagent.** `scout` (Haiku) searches the code and reads CI logs and long test output. `builder`
+  subagent.** `scout` (Sonnet) searches the code and reads CI logs and long test output. `builder`
   (Sonnet) builds a spec or a fully stated change. `filer` (Sonnet) runs `/commit`'s Step 4.
 - **Plan on the main model, build on a lower one.** A subagent never runs on a model above its
   definition's without the DM's yes. A build too hard for Sonnet gets a more detailed plan,

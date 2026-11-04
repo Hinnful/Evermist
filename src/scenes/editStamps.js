@@ -136,19 +136,9 @@ function esStampRecords(recs, seen, partsOf, now) {
   }
 }
 
-// A save by a writer that only touches scene-level fields (a rename, a place, a note): the scene parts are
-// compared and the rooms' and effects' times carry over untouched, with no pass over every room.
-function esStampScene(before, next, now) {
-  const pe = before.edits || {};
-  return {
-    scene: esDiff(pe.scene, before.scene, esSceneParts(next), now),
-    rooms: pe.rooms || {}, goneRooms: pe.goneRooms || {}, effects: pe.effects || {}, goneEffects: pe.goneEffects || {},
-  };
-}
-
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ES_SCENE_PARTS, ES_ROOM_OWN, esCanon, esRoomParts, esEffectPart, esSceneParts, esLegacyUid, esWithUids,
-    esRandomUid, esAssignUids, esSnapshot, esDiff, esStamp, esStampScene, esSeen, esStampRecords,
+    esRandomUid, esAssignUids, esSnapshot, esDiff, esStamp, esSeen, esStampRecords,
   };
 }

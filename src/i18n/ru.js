@@ -674,6 +674,8 @@ const RU = {
   'Evermist could not write the places to disk, so your last change will be gone after a restart.': 'Evermist не смог записать места на диск, поэтому последнее изменение пропадёт после перезапуска.',
   'The roads are not being saved': 'Дороги не сохраняются',
   'Evermist could not write the roads to disk, so your last change will be gone after a restart.': 'Evermist не смог записать дороги на диск, поэтому последнее изменение пропадёт после перезапуска.',
+  'Your maps are not being saved': 'Карты не сохраняются',
+  'Evermist could not write a map to disk, so changes to it since the last save will be gone after a restart. Freeing disk space usually clears it.': 'Evermist не смог записать карту на диск, поэтому изменения с последнего сохранения пропадут после перезапуска. Обычно помогает освободить место на диске.',
   'The party marker is not being saved': 'Маркер отряда не сохраняется',
   'Evermist could not write the party marker to disk, so it will be back where it was after a restart.': 'Evermist не смог записать маркер отряда на диск, поэтому после перезапуска он вернётся на прежнее место.',
   'The order of the groups is not being saved': 'Порядок групп не сохраняется',

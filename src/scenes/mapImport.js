@@ -152,18 +152,26 @@ async function createNewScene(file, opts) {
 
   if (!isVid) showMapProgress('Loading map…');
   // ⚠ AWAITED: the save is dropped once the new scene is current, which a slow decode wins.
+  if (typeof roomCardLeaveScene === 'function') roomCardLeaveScene();
   if (currentScene) await doAutoSave();
+  // ⚠ Detached before the loader swaps in the new map's globals: an autosave in between would
+  // write them into the old map. A failure reopens the old map from the store.
+  const prevId = currentScene ? currentScene.id : null;
+  currentScene = null;
   cleanupVideo();
   const maxOrder = allScenes.length > 0 ? Math.max(...allScenes.map(s => s.sortOrder ?? 0)) : -1;
 
   // One deferred, settled by whichever of the paths below gets there first.
   let settle = null;
   const settled = new Promise(r => { settle = r; });
-  const finish = result => {
+  const finish = async result => {
     if (!settle) return;
     const answer = settle; settle = null;
     if (!result.ok) {
       hideMapProgress();
+      if (prevId && !currentScene && allScenes.some(s => s.id === prevId)) {
+        try { await switchScene(prevId); } catch (err) { console.error('[createNewScene] reopening the previous map failed', err); }
+      }
       if (!o.quiet) messageDialog({
         title: isVid ? 'Animated map would not play' : 'Map would not open',
         message: t('“{name}” {reason}', { name: file.name, reason: result.reason }),
@@ -221,12 +229,11 @@ async function createNewScene(file, opts) {
       createdAt:     Date.now(),
       sortOrder:     maxOrder + 1,
     };
-    allScenes.push({ id, name, group: '', thumbnail: thumb, sortOrder: scene.sortOrder, createdAt: scene.createdAt, mapType: scene.mapType, worldPos: scene.worldPos });
     await sceneStore.saveScene(scene);
+    allScenes.push({ id, name, group: '', thumbnail: thumb, sortOrder: scene.sortOrder, createdAt: scene.createdAt, mapType: scene.mapType, worldPos: scene.worldPos });
     hideMapProgress();
     // ⚠ Reload through switchScene. The direct drop-load path leaves the PixiJS fog and video
     // uninitialised: the map renders fully revealed, shroud does nothing, video is frozen.
-    currentScene = null;
     await switchScene(id);
     // AFTER the switch, never before: mapWidth is unknown until the map loads, and switchScene
     // applies the stored gridConfig on its way in. Import only — Draw Rooms later leaves the grid.

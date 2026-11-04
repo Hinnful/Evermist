@@ -264,10 +264,19 @@ function splitHoleAcrossPieces(hole, pieces, minArea) {
   return true;
 }
 
+// ⚠ A BENT WALL IS CUT WHERE IT IS DRAWN, never along its chord: crossings on the chord leave both
+// halves straight, with the ground the curve hid inside them. A plain point list is one ring.
+function cutRings(src) {
+  if (Array.isArray(src)) return [src];
+  if (!src) return [];
+  return src.handles ? flattenShapeForClip(src) : [src.vertices].concat(src.holes || []);
+}
+
 // The path cuts the OUTER ring only; each hole rides onto whichever piece it landed in.
 function cutRing(src, path, minArea) {
-  const ring = Array.isArray(src) ? src : (src && src.vertices);
-  const holes = (Array.isArray(src) ? null : (src && src.holes)) || [];
+  const rings = cutRings(src);
+  const ring = rings[0];
+  const holes = rings.slice(1);
   if (!Array.isArray(ring) || ring.length < 3) return { reason: REASON_CUT };
   if (!Array.isArray(path) || path.length < 2) return { reason: REASON_CUT };
   const hits = ringPathCrossings(ring, path);
@@ -295,7 +304,7 @@ function cutRing(src, path, minArea) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     toRings, fromRings, ringToVerts, ringArea, resultPieces, shapesOverlap,
-    joinShapes, trimShapes, splitShapes, cutRing, mostHiddenMode, roomOpMinArea,
+    joinShapes, trimShapes, splitShapes, cutRings, cutRing, mostHiddenMode, roomOpMinArea,
     crossSegments, ringPathCrossings, arcForward, dedupeRing,
     pointInRing, ringHomePiece, splitHoleAcrossPieces,
     ROOM_OP_MIN_AREA, REASON_FAILED, REASON_CUT,

@@ -206,18 +206,27 @@ function restoreRing(index, ring, tol) {
 
   for (let i = 0; i < kept.length; i++) {
     const A = kept[i], B = kept[(i + 1) % kept.length];
-    const wall = onWall(A.at, tol) ? A.at.wall : null;
+    let wall = onWall(A.at, tol) ? A.at.wall : null;
     // Both ends must sit on the SAME source wall, or this output wall is new and stays straight.
-    const ends = onWall(B.at, tol) && (B.at.wall === wall ||
-                                       (B.at.anchor && wall && B.at.flat === wall.fb));
+    let ends = onWall(B.at, tol) && (B.at.wall === wall ||
+                                     (B.at.anchor && wall && B.at.flat === wall.fb));
+    // ⚠ THE CLIPPER WINDS EVERY RING ONE WAY, so a room drawn the other way is walked BACKWARDS, fb to fa:
+    // A sits on the wall's far end or along it, B on its start or along it.
+    let rev = false;
+    if (wall && !ends && onWall(B.at, tol)) {
+      const w = B.at.wall;
+      const aOn = A.at.wall === w || (A.at.anchor && A.at.flat === w.fb);
+      if (aOn && (!B.at.anchor || B.at.flat === w.fa)) { wall = w; ends = true; rev = true; }
+    }
     if (!wall || !ends) { spans.push(null); continue; }
-    const t0 = A.at.anchor ? 0 : A.at.t;
-    const t1 = B.at.anchor ? 1 : B.at.t;
-    const s0 = A.at.anchor ? 0 : A.at.s;
-    const s1 = B.at.anchor ? 1 : B.at.s;
+    const t0 = A.at.anchor ? (rev ? 1 : 0) : A.at.t;
+    const t1 = B.at.anchor ? (rev ? 0 : 1) : B.at.t;
+    const s0 = A.at.anchor ? (rev ? 1 : 0) : A.at.s;
+    const s1 = B.at.anchor ? (rev ? 0 : 1) : B.at.s;
     spans.push({ wall, t0, t1, s0, s1 });
-    if (!wall.curved || !(t1 > t0)) continue;
-    const sub = subCubic(wall.c, t0, t1);
+    if (!wall.curved || !(rev ? t0 > t1 : t1 > t0)) continue;
+    // Walked backwards, the output wall is the sub-curve read from its end: its handles swap places.
+    const sub = rev ? subCubic(wall.c, t1, t0).reverse() : subCubic(wall.c, t0, t1);
     const j = (i + 1) % kept.length;
     handles[i] = setPart(handles[i], 'out', sub[1].x - verts[i].x, sub[1].y - verts[i].y);
     handles[j] = setPart(handles[j], 'in', sub[2].x - verts[j].x, sub[2].y - verts[j].y);
@@ -249,7 +258,8 @@ function restoreDoors(index, pieces) {
           if (!sp || sp.wall !== w) continue;
           const lo = Math.min(sp.s0, sp.s1), hi = Math.max(sp.s0, sp.s1);
           if (d.t < lo || d.t > hi || hi <= lo) continue;
-          doors.push({ ...d, piece: pi, edge: e, t: (d.t - lo) / (hi - lo) });
+          // Along the output wall, which runs from s0 to s1 whichever way that is.
+          doors.push({ ...d, piece: pi, edge: e, t: (d.t - sp.s0) / (sp.s1 - sp.s0) });
           placed = true;
           break;
         }

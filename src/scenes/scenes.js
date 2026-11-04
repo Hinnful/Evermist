@@ -100,6 +100,13 @@ function captureFogSettings() {
   };
 }
 
+async function _sameBlob(a, b) {
+  if (!(b instanceof Blob) || a.size !== b.size) return false;
+  const [x, y] = (await Promise.all([a.arrayBuffer(), b.arrayBuffer()])).map(v => new Uint8Array(v));
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
+  return true;
+}
+
 // Non-blocking auto-save: captures a snapshot of current state synchronously,
 // then encodes fog asynchronously via toBlob so the main thread is never blocked.
 // ⚠ RESOLVES WHEN THE WRITE IS DONE, not when it is queued. Closing a column removes the frame,
@@ -126,9 +133,12 @@ function doAutoSave() {
     weather:       weatherId,
   };
   return new Promise(resolve => {
-    baseFogCanvas.toBlob(blob => {
+    baseFogCanvas.toBlob(async blob => {
       // ⚠ A null currentScene means a teardown asked for this flush, so it still counts.
       if (!blob || (currentScene !== null && currentScene !== scene)) { fogEditedSinceSave = fogEditedSinceSave || fogEdited; resolve(); return; }
+      // Every undo step raises the flag, room names and notes included. A picture that did not change
+      // keeps its edit time, or an import keeps this machine's fog over the other's newer reveals.
+      const fogChanged = fogEdited && !(await _sameBlob(blob, scene.baseFogBlob));
       scene.polygons      = snap.polygons;
       scene.nextPolygonId = snap.nextPolygonId;
       scene.pictureBlobs  = snap.pictureBlobs;
@@ -143,7 +153,7 @@ function doAutoSave() {
       if (snap.tvFit) scene.tvFit = snap.tvFit; else delete scene.tvFit;
       // Never snapshotted: an edit made while the fog encodes would be overwritten with the old text.
       if (typeof scene.notes !== 'string') scene.notes = '';
-      sceneStore.saveScene(scene, { fogEdited }).catch(console.error).then(resolve, resolve);
+      sceneStore.saveScene(scene, { fogEdited: fogChanged }).catch(console.error).then(resolve, resolve);
     }, 'image/png');
   });
 }

@@ -7,8 +7,12 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   // Opening the scene the DM already has is how a held TV gets it after the open scene was deleted.
   if (currentScene && currentScene.id === id) { if (tvHeld && !keepTvClear) sendToPlayerNow(); return; }
   const myGen = ++switchGeneration;
+  // A push queued for the outgoing map would fire mid-switch, carrying half of each map.
+  clearTimeout(scenePushTimer); scenePushTimer = 0;
+  clearTimeout(autoSyncTimer);
   if (!keepTvClear) tvHeld = false;   // the DM opening a scene is what lifts the hold
   if (typeof notesPanelFlush === 'function') notesPanelFlush();
+  if (typeof roomCardLeaveScene === 'function') roomCardLeaveScene();
   // ⚠ AWAITED, or a switch BACK reads the store before these edits land. DECISIONS.md
   if (currentScene) await doAutoSave();
   const prevId = currentScene ? currentScene.id : null;
@@ -227,7 +231,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
     const closedIn = _sceneOutPostedAt
       ? Math.max(0, FOG_SCENE_COVER_MS - (Date.now() - _sceneOutPostedAt))
       : 0;
-    setTimeout(() => sendToPlayer(false, true), Math.max(150, closedIn));
+    scenePushTimer = setTimeout(() => { scenePushTimer = 0; sendToPlayer(false, true); }, Math.max(150, closedIn));
   }
   hintsMapOpened();      // hintsCues.js
   onSceneLoaded(); // viewport.js: flush pending player resync if Player asked while loading

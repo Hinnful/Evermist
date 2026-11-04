@@ -228,3 +228,9 @@ Rejected, do not retry: a colour picker per effect; one terrain per ground type 
 thornbrush; a bog on a snowy mountain reads wrong); static hatching and per-square triangle markers; shadow
 fingers from the edge (read as triangles); static or "too magical" Area looks (dashed wash, glow bands,
 aurora, caustics, soap film), one-colour tints, corner diamonds. Dark pools are faint on dark stone: accepted.
+
+### Floor-plan holes and curve-keeping shape ops · `SETTLED` (2026-11-04)
+Floor-plan rooms get the free-standing buildings they enclose as holes (`vttHoles.js`, used by `planPolygons`), because the
+face walk emits only outer rings and a hall covered its vault. Merge, Cut out and Split restore curves and doors on a wall
+walked backwards, so an anticlockwise room keeps them; a Split line cuts the flattened outline (`cutRings`), so its
+crossings land on a bent wall rather than its chord.

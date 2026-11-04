@@ -84,8 +84,11 @@ function saveGroupPrefs() {
   } catch (err) { notesSaveFailed('groups', err); }
 }
 
+// ⚠ UNIQUE AGAINST EVERY NAME IN USE, not the saved order alone: a place restored from a backup never
+// enters the order, and a new group taking its name overwrites its outline.
 function addGroup(name) {
-  const n = uniqueGroupName(name, smGroupOrder);
+  const places = typeof worldPlaceRecords === 'function' ? worldPlaceRecords().map(r => r.name) : [];
+  const n = uniqueGroupName(name, smGroupOrder.concat(places));
   smGroupOrder.push(n);
   saveGroupPrefs();
   return n;

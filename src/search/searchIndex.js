@@ -9,10 +9,42 @@ const _srRooms = new Map();       // scene id → { notes, rooms: [{ id, name, d
 let _srFailed = new Set();        // scene ids the last read could not open
 let _srReading = false;
 
-// A scene was saved, imported or deleted: its cached read is stale.
-function searchStale(id) { _srRooms.delete(id); mxBump(); }
-
 function _srHere(id) { return !panesActive && currentScene && currentScene.id === id; }
+
+// A scene was saved, imported or deleted: its cached read is stale. ⚠ READ AGAIN, NEVER JUST DROPPED: the Notes
+// tree, a mention and "Appears in" read this cache and never ask for a read, so a dropped scene lost its
+// rooms there until the search box opened. The open map is read live and needs none.
+const _srRereadGen = new Map(), _srPending = new Set();
+function searchStale(id) {
+  const gen = (_srRereadGen.get(id) || 0) + 1;
+  _srRereadGen.set(id, gen);
+  mxBump();
+  if (typeof notesMapStale === 'function') notesMapStale(id);
+  // The old read stays until the new one lands, or a room being edited from the tree vanishes under the DM.
+  if (_srHere(id) || !allScenes.some(s => s.id === id)) { _srRooms.delete(id); return; }
+  _srReadOne(id, gen);
+}
+
+// One scene read in the background; the window repaints once it lands. A newer save's read wins.
+function _srReadOne(id, gen) {
+  _srPending.add(id);
+  sceneStore.loadScene(id).then(rec => {
+    if (!rec || (_srRereadGen.get(id) || 0) !== gen || _srHere(id)) return;
+    _srRooms.set(id, _srFromRecord(rec));
+    mxBump();
+    if (typeof nwIsOpen === 'function' && nwIsOpen()) refreshRoomPanel();
+  }).catch(err => { _srFailed.add(id); console.error(err); }).finally(() => _srPending.delete(id));
+}
+
+// A scene nobody holds and nothing has read, typically the map just left, whose last save landed while it
+// was still open: read it now, once.
+function _srWant(id) {
+  if (_srHere(id) || _srRooms.has(id) || _srPending.has(id) || _srFailed.has(id) || _srReading) return;
+  if (!allScenes.some(s => s.id === id)) return;
+  const gen = (_srRereadGen.get(id) || 0) + 1;
+  _srRereadGen.set(id, gen);
+  _srReadOne(id, gen);
+}
 
 // Every room, named or not, in list order: the Notes tree's rooms. Effects and lights are not rooms.
 function _srRoomList(polys) {
@@ -22,6 +54,7 @@ function _srRoomList(polys) {
 // A scene's rooms for the Notes tree: the open map live, a stored one from the read, null until it is read.
 function searchRoomsOf(id) {
   if (_srHere(id)) return _srRoomList(polygons);
+  _srWant(id);
   const r = _srRooms.get(id);
   return r ? r.all : null;
 }
@@ -57,6 +90,7 @@ function searchSceneNotes(id) { return _srScene(id).notes; }
 
 function _srScene(id) {
   if (_srHere(id)) return _srFromRecord({ notes: currentScene.notes, polygons });
+  _srWant(id);
   return _srRooms.get(id) || { notes: '', rooms: [] };
 }
 

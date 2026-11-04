@@ -465,3 +465,7 @@ After "go push" the auto-mode classifier refused `gh pr create` as an external w
 cover, and the stop hook then blocked three times for a monitor that needed the PR. The offer now
 names pushing, opening the pull request and watching CI, so the yes visibly covers all three; the
 DM never runs a command for it. `stop-checklist.js` reminds once per push, then lets the stop through.
+
+### The `scout` subagent moved from Haiku to Sonnet · `SETTLED` (2026-11-04)
+`scout` now runs on Sonnet instead of Haiku. **Reverses** the `scout` on Haiku part of "Subagents carry
+their own model and thinking level"; `builder` and `filer` keep the models that entry gave them.

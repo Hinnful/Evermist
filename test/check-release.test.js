@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { judge } = require('../tools/check-release.js');
+const { judge, runtimeOf } = require('../tools/check-release.js');
 
 const base = { changed: [], packageChanged: false, bump: false, version: '3.11.0', subject: '' };
 const run = (o) => judge(Object.assign({}, base, o));
@@ -64,5 +64,26 @@ describe('the release branch rules', () => {
     const out = run({ branch: 'change/docs', changed: ['docs/PROCESS.md'], strangers: ['50eec30'] });
     assert.equal(out.length, 1);
     assert.match(out[0], /50eec30/);
+  });
+});
+
+describe('what counts as shipped', () => {
+  const pkg = (dev, deps) => ({ main: 'main.js', dependencies: deps || { yauzl: '^3' }, build: {}, devDependencies: dev || { electron: '^43', eslint: '^9' } });
+  const lock = (v) => ({ packages: { 'node_modules/yauzl': { version: v || '3.1.0' }, 'node_modules/electron': { version: '43.0.1' } } });
+
+  it('counts an Electron upgrade as a release', () => {
+    assert.notEqual(runtimeOf(pkg(), lock()), runtimeOf(pkg({ electron: '^44', eslint: '^9' }), lock()));
+  });
+
+  it('counts a lock-only move of a runtime library as a release', () => {
+    assert.notEqual(runtimeOf(pkg(), lock('3.1.0')), runtimeOf(pkg(), lock('3.2.0')));
+  });
+
+  it('lets a lint tool upgrade through as no release', () => {
+    assert.equal(runtimeOf(pkg(), lock()), runtimeOf(pkg({ electron: '^43', eslint: '^10' }), lock()));
+  });
+
+  it('counts the app icon as shipped', () => {
+    assert.equal(run({ branch: 'change/icon', changed: ['build/icon.png'] }).length, 1);
   });
 });

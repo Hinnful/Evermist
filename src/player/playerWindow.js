@@ -106,8 +106,10 @@ function initPlayerMapRetry() {
 }
 
 // The one condition under which a push can go out at all. Shared with sendToPlayer's own guard.
+// ⚠ currentScene is null while a switch or an import swaps the globals, and a push then carries
+// the old map with the new map's size and a blank fog. A deferred resync flushes once it lands.
 function canSendToPlayer() {
-  return !!(mapOffscreen && fogDataCanvas && playerWindow && !playerWindow.closed && !tvHeld);
+  return !!(currentScene && mapOffscreen && fogDataCanvas && playerWindow && !playerWindow.closed && !tvHeld);
 }
 
 // The DM's own push (Send, Space, Shift+S) lifts a hold; every automatic path stays behind it. In

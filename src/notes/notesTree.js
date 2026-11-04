@@ -162,6 +162,8 @@ function _ntGoRoom(n) {
     notesLevelPick = null;
     return;
   }
+  // ⚠ Ids are numbered per list: picked in Effects mode, the room's id selects an effect.
+  if (placeMode !== 'rooms') setPlaceMode('rooms');
   selectedPolygonId = n.id;
   leaveShapeEditMode();
   notesLevelPick = null;
@@ -269,7 +271,7 @@ function _ntDoDelete(n) {
       const col = paneColumnOf(n.scene);
       sendToPane({ type: 'pane-room-select', id: n.id }, col);
       sendToPane({ type: 'pane-room-edit', op: 'delete', id: n.id }, col);
-    } else { selectedPolygonId = n.id; deleteSelectedPolygon(); }
+    } else { if (placeMode !== 'rooms') setPlaceMode('rooms'); selectedPolygonId = n.id; deleteSelectedPolygon(); }
   } else if (n.kind === 'monster') {
     const b = cbState.blocks[n.id];
     if (b) { b.notes = ''; delete b.listed; cbSave(); }
@@ -292,7 +294,7 @@ function _ntDeleteWords(n) {
 }
 
 function ntDelete(n) {
-  if (n.kind === 'campaign' || n.kind === 'section' || (n.kind === 'room' && !_ntHeld(n.scene))) return;
+  if (n.kind === 'campaign' || n.kind === 'section' || (n.kind === 'room' && (!_ntHeld(n.scene) || worldMapOpen))) return;
   const w = _ntDeleteWords(n);
   confirmDialog({ title: w[0], message: w[1], confirmLabel: 'Delete', danger: true, onConfirm: () => _ntDoDelete(n) });
 }

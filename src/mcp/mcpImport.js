@@ -173,6 +173,7 @@ async function _mcpUndoZip(run, done, snap, rest) {
     if (why) throw Object.assign(new Error(why), { mcpKeep: true });
   }
   if (panesActive && run.created.some(id => paneColumnOf(id))) throw Object.assign(new Error('A map the import made is open in a column. Ask the DM to close the column first.'), { mcpKeep: true });
+  mcpRefuseRemovingOpen(run.created, 'undoing the import');
   const reopen = currentScene && back.some(r => r.id === currentScene.id) ? currentScene.id : null;
   // ⚠ The open map's copy is dropped first, as the import drops it, or an autosave writes it over the record put back.
   if (reopen) { clearTimeout(autoSaveTimer); currentScene = null; }

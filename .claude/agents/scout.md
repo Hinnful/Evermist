@@ -2,7 +2,7 @@
 name: scout
 description: Read-only lookups that return a short answer - find where something lives in the codebase, read a CI run's log (gh run view --log) or a long test output and name what failed, check what git history says about a file. Use it whenever answering means reading a lot to report a little. It never edits.
 tools: Read, Grep, Glob, Bash
-model: haiku
+model: sonnet
 effort: low
 ---
 

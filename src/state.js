@@ -97,6 +97,8 @@ let fogCloudAdj  = { k: 1, dx: 0, dy: 0, hw: null, hh: null };
 // DM side: when the Player was told to start closing, so the scene payload can be held back
 // until that close has finished. 0 = no Player, send immediately.
 let _sceneOutPostedAt = 0;
+// The scene payload's own send once the close has had its time; a newer switch cancels it.
+let scenePushTimer = 0;
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const ZOOM_FACTOR       = 1.1;

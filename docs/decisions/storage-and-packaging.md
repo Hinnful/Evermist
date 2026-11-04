@@ -349,3 +349,29 @@ deprecation warnings left (rimraf, boolean, old glob) sit inside electron-builde
 from electron-updater. Checked with lint, unit tests and the `backup` scenario against a packaged win-unpacked build.
 The jump to Electron 45 is not part of this: 43 stays supported until Electron 46 ships, and a major move needs a full
 rig run of its own.
+
+### Map import and switch leave no half-state; saves stamp by what changed · `SETTLED` (2026-11-04)
+Import detaches the open map (`currentScene = null`) before the loader swaps globals; a failed import reopens the previous
+map from the store, and the new map's card is listed only after its save succeeds. A switch commits the room card and
+forgets its room before polygons are replaced, because room ids restart at 1 per map. `updateScene` stamps with the full
+`esStamp` diff (rooms, effects, the fog time kept); `esStampScene` was removed, since it dropped the fog time and never
+timed rooms edited through `updateScene`. `doAutoSave` stamps the fog only when the encoded fog picture's bytes differ from
+the last save, because every undo step raised the fog flag. A failed scene-store write is reported once per launch.
+The fight table flushes its save timer on `pagehide`, and a row's side is written into the class only as ally or enemy.
+
+### Notes and search caches re-read after a save · `SETTLED` (2026-11-04)
+The Notes window's cached read of a closed map is re-read after any save of that map and dropped when the map becomes the
+open one. The search cache is re-read after a save, keeping the old read until the new lands, and a map nobody holds and
+nothing has read is read on demand, because the Notes tree, mentions and "Appears in" never ask for a read. A room picked
+or deleted from the tree or search switches to Rooms mode first (ids are per list); deleting a room from the tree is
+refused while the Campaign is open. A new group's name is made unique against place names too, because a place restored
+from a backup never enters the saved order.
+
+### AI-assistant undo and edits are serialised per target · `SETTLED` (2026-11-04)
+Undo of an assistant-created map (`create_scene`, `import_maps_zip`) is refused while the map is open, in a column or on the
+TV, and the step is kept. Map edits and notes writes run one at a time per target (`mcpInTurn`), not globally, so a quick
+call never waits behind a slow import past the bridge's 20 s reply timeout.
+
+### The release check counts every shipped input · `SETTLED` (2026-11-04)
+`tools/check-release.js` counts the devDependencies electron and electron-builder, the lockfile versions of runtime
+dependencies and of those two, the `build/` icons and `tools/fetch-ytdlp.js` as shipped inputs.

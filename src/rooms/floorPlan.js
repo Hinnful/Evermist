@@ -86,6 +86,10 @@ function planPolygons(derived, mapW, grid) {
     cornerRadius: 0,
     name: t('Room {n}', { n: i + 1 }),
   }));
+  // A building standing inside a room is cut out of it, or revealing the room reveals the building.
+  vttRoomHoles(derived.rooms, derived.boundaries).forEach((hs, i) => {
+    if (hs.length) polys[i].holes = vttScaleRooms(hs, mapW, derived.srcW);
+  });
   for (const p of _planDoorsOn(derived, mapW, grid)) {
     const poly = polys[p.roomIndex];
     if (poly) poly.doors = (poly.doors || []).concat([p.door]);

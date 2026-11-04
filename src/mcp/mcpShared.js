@@ -6,6 +6,18 @@ const _mcpOk = (value) => ({ text: typeof value === 'string' ? value : JSON.stri
 const _mcpNo = (text) => ({ text, isError: true });
 const _mcpCap = () => ROOM_DESC_MAX;
 
+// ⚠ ONE CHANGE AT A TIME PER TARGET. Claude sends calls in parallel, and each reads a map or a note,
+// awaits, then writes the whole field back: the last writer wins and the others vanish while every
+// reply says it worked. Per target, so a quick call never waits behind a slow import.
+const _mcpTurns = new Map();
+function mcpInTurn(key, fn) {
+  const run = (_mcpTurns.get(key) || Promise.resolve()).then(fn);
+  const tail = run.catch(() => {});
+  _mcpTurns.set(key, tail);
+  tail.then(() => { if (_mcpTurns.get(key) === tail) _mcpTurns.delete(key); });
+  return run;
+}
+
 function _mcpPlaceNames() {
   return [...new Set([...worldPlaceRecords().map(r => r.name), ...knownGroupNames()])];
 }

@@ -68,6 +68,7 @@ const OWNERS = {
   'pdfextract.js': 'module-text',
   'pdftext.js': 'module-text',
   'vttplan.js': 'floor-plan',
+  'vttholes.js': 'floor-plan',
   'floorplan.js': 'floor-plan',
   'doorgeometry.js': 'floor-plan',
 };

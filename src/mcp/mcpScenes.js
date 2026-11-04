@@ -40,6 +40,14 @@ async function _mcpRemoveScenes(ids) {
   sceneListChanged();
 }
 
+// ⚠ A MAP CLAUDE MADE BECOMES THE DM'S ONCE THEY OPEN IT. Undoing its creation while it is open, in a
+// column or on the TV deletes a map in play with every reveal on it, so it is refused and the step kept.
+function mcpRefuseRemovingOpen(ids, what) {
+  const s = allScenes.find(x => ids.includes(x.id) && _mcpHolder(x.id));
+  if (!s) return;
+  throw Object.assign(new Error('Not undone: the DM has "' + s.name + '" open, and ' + what + ' would delete it. Ask the DM to open another map first.'), { mcpKeep: true });
+}
+
 async function _mcpFind(args) {
   const files = await window.electronAPI.findMapFiles(String(args.query || ''));
   if (!files.length) return _mcpOk('No image, video or zip' + (args.query ? ' named like "' + args.query + '"' : '') + ' in Downloads, Desktop, Documents or Pictures.');
@@ -75,7 +83,7 @@ async function _mcpCreateScene(args) {
   const names = made.map(s => '"' + s.name + '"');
   const left = [...read.skipped.map(s => '"' + s.name + '" ' + s.reason), ...done.failures];
   const crowded = spots.length < ids.length ? ' The group had no free spot for ' + (ids.length - spots.length) + ' of them; the DM can drag them into position.' : '';
-  return mcpDone('created ' + names.join(', '), async () => { await _mcpRemoveScenes(ids); worldSnapshotPut(snap); },
+  return mcpDone('created ' + names.join(', '), async () => { mcpRefuseRemovingOpen(ids, 'undoing its creation'); await _mcpRemoveScenes(ids); worldSnapshotPut(snap); },
     'Created ' + names.join(', ') + (place.name ? ' in the group "' + place.name + '"' : ' in no group') + '. The DM has not opened it and the TV does not show it. It starts fully fogged with no rooms.' + crowded + (left.length ? ' Not made: ' + left.join(' ') : ''));
 }
 

@@ -85,6 +85,15 @@ function _rpCommitFields() {
   _rpCommitDesc();
 }
 
+// The map is about to change. Room ids restart at 1 on every map, so a commit after the swap
+// would resolve this id against the next map's rooms and overwrite one of them.
+function roomCardLeaveScene() {
+  if (_rpFieldPid == null) return;
+  _rpCommitFields();
+  _rpFieldPid = null;
+  _rpTabKey = null;
+}
+
 // Fill name AND description from one module-text entry, when the DM picks from the dropdown.
 //
 // ONE pushUndo() for the pair: a pick is a single act. Pushed lazily, on the first real write, so

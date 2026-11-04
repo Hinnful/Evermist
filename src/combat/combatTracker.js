@@ -47,6 +47,7 @@ function cbSaveSoon() {
   clearTimeout(_cbSaveTimer);
   _cbSaveTimer = setTimeout(cbSave, 400);
 }
+for (const e of ['beforeunload', 'pagehide']) window.addEventListener(e, () => { if (_cbSaveTimer) cbSave(true); });   // no timer fires while closing
 
 function _cbRead(key) {
   try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; } catch (err) {
@@ -110,7 +111,7 @@ function cbRender() {
   list.innerHTML = (cbState.rows.length ? '' : '<div class="cb-empty">No creatures yet.</div>') + cbState.rows.map(r => {
     const sb = cbRowBlock(r), max = combatFirstNum(sb.hp), ac = combatFirstNum(sb.ac);
     const hp = combatRowHpState(max, r.hp), hint = max || ac ? combatAbilityMod(sb.abil[1]) : '';
-    const cls = ['cb-row', 'side-' + r.side, _cbHpClass(hp), r.id === shown ? 'shown' : ''].join(' ');
+    const cls = ['cb-row', 'side-' + (r.side === 'ally' ? 'ally' : 'enemy'), _cbHpClass(hp), r.id === shown ? 'shown' : ''].join(' ');
     return `<div class="${cls}" data-id="${r.id}">
       <div class="cb-cell num init"><input data-f="init" value="${_cbEsc(r.init)}" placeholder="${_cbEsc(hint)}" inputmode="numeric" spellcheck="false"></div>
       <div class="cb-cell name"><input data-f="name" value="${_cbEsc(r.name)}" placeholder="Name" spellcheck="false"></div>

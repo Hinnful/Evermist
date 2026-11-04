@@ -9,6 +9,34 @@
 var _playerVideoGen = 0;
 var _playerPendingVideo = null;
 
+// The map payload still decoding, image or video, and the newest fog-only update that arrived meanwhile.
+// ⚠ A FOG-ONLY UPDATE DURING A LOAD NEVER REVEALS: the old map is still under the cover, and the new
+// map's mask punched into it shows ground the players never earned. The landing applies it instead.
+var _playerMapGen = 0;
+var _playerMapLoad = null;   // { gen, img, url, fog }
+
+function _playerMapLoadDrop() {
+  const l = _playerMapLoad;
+  _playerMapLoad = null;
+  if (!l || !l.img) return;
+  // Released once the decode ends: revoking a URL mid-read fails the read with ERR_FILE_NOT_FOUND.
+  l.img.onload = l.img.onerror = () => { if (l.url) URL.revokeObjectURL(l.url); };
+}
+
+function _playerMapLoadStart(img, url) {
+  _playerMapLoadDrop();
+  _playerMapLoad = { gen: ++_playerMapGen, img, url, fog: null };
+  return _playerMapGen;
+}
+
+// The fog the landing applies: the newest that arrived while it decoded. Null when a newer load replaced it.
+function _playerMapLoadEnd(gen, msg) {
+  if (!_playerMapLoad || _playerMapLoad.gen !== gen) return null;
+  const fog = _playerMapLoad.fog || msg;
+  _playerMapLoad = null;
+  return fog;
+}
+
 function dropPendingPlayerVideo() {
   const v = _playerPendingVideo;
   _playerPendingVideo = null;
@@ -25,6 +53,7 @@ function dropPendingPlayerVideo() {
 // first map. The cover stays closed, which is where the next map's arrival expects it.
 function applyPlayerSceneClear() {
   const done = () => {
+    _playerMapLoadDrop();
     dropPendingPlayerVideo();
     cleanupVideo();
     stopFogTransition();
@@ -146,9 +175,11 @@ function startPlayerVideoMap(msg) {
   // streaming. Two <video> elements on one file starve Chromium's media pipeline and both
   // windows stall. Falls back to the shared URL if the in-memory read fails.
   const _gen = ++_playerVideoGen;
+  const mapGen = _playerMapLoadStart(null, null);
 
   const beginPlayerVideo = (srcUrl) => {
-    if (_gen !== _playerVideoGen) {          // a newer scene switch superseded this
+    // A newer scene switch superseded this, video or image.
+    if (_gen !== _playerVideoGen || !_playerMapLoad || _playerMapLoad.gen !== mapGen) {
       if (srcUrl && srcUrl.startsWith('blob:')) URL.revokeObjectURL(srcUrl);
       return;
     }
@@ -163,7 +194,8 @@ function startPlayerVideoMap(msg) {
       video.onerror = null; video.oncanplay = null;
       video.pause(); video.src = '';
       if (video.parentNode) video.parentNode.removeChild(video);
-      cleanupVideo(); revealPlayer();
+      cleanupVideo();
+      if (_playerMapLoadEnd(mapGen, msg)) revealPlayer();
     };
     video.oncanplay = function() {
       if (settled) return;
@@ -171,6 +203,8 @@ function startPlayerVideoMap(msg) {
       video.onerror = null; video.oncanplay = null;
 
       function finishPlayerVideo() {
+        const fogMsg = _playerMapLoadEnd(mapGen, msg);
+        if (!fogMsg) return;
         const extractCanvas = document.createElement('canvas');
         extractCanvas.width = mapWidth; extractCanvas.height = mapHeight;
         extractCanvas.getContext('2d').drawImage(video, 0, 0, mapWidth, mapHeight);
@@ -195,13 +229,14 @@ function startPlayerVideoMap(msg) {
         });
         attachVideoListeners(video);
         fitToScreen();
-        if (playerFollowDM && msg.view) applyView(msg.view);
+        const view = fogMsg.view || msg.view;
+        if (playerFollowDM && view) applyView(view);
         reportPlayerView();
         // After the camera is settled, so the first texture holds the region the players will
         // see. Viewport-sized, never map-sized — the same cost on any map, and that figure is
         // also the per-frame GPU upload.
         initPlayerMapRegionTexture();
-        loadPlayerFog(msg, !!msg.sceneChange).then(() => {
+        loadPlayerFog(fogMsg, !!msg.sceneChange).then(() => {
           // loadFog already ran rebuildFogEffect(), which syncs the fog pass to the GPU.
           viewportDirty = true;
           scheduleRender();
@@ -242,8 +277,15 @@ function startPlayerImageMap(msg) {
   // costs correctness: a map that fails to decode leaves the previous one on screen, and the
   // incoming scene's reveals would be punched into it - ground the players must not see.
   const img = new Image();
-  img.onerror = () => { URL.revokeObjectURL(msg.mapUrl); revealPlayer(); };
+  const gen = _playerMapLoadStart(img, msg.mapUrl);
+  img.onerror = () => {
+    URL.revokeObjectURL(msg.mapUrl);
+    if (_playerMapLoadEnd(gen, msg)) revealPlayer();
+  };
   img.onload = () => {
+    // ⚠ A superseded decode must not land: mapWidth is already the newer map's.
+    const fogMsg = _playerMapLoadEnd(gen, msg);
+    if (!fogMsg) { URL.revokeObjectURL(msg.mapUrl); return; }
     mapOffscreen = document.createElement('canvas');
     mapOffscreen.width  = mapWidth;
     mapOffscreen.height = mapHeight;
@@ -252,9 +294,10 @@ function startPlayerImageMap(msg) {
     if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
     pixiSetMap(prepareTextureCanvas(mapOffscreen, mapWidth, mapHeight), mapWidth, mapHeight);
     fitToScreen();
-    if (playerFollowDM && msg.view) applyView(msg.view);
+    const view = fogMsg.view || msg.view;
+    if (playerFollowDM && view) applyView(view);
     reportPlayerView();
-    loadPlayerFog(msg, !!msg.sceneChange).then(() => {
+    loadPlayerFog(fogMsg, !!msg.sceneChange).then(() => {
       viewportDirty = true;
       scheduleRender();
       revealPlayer();
@@ -264,6 +307,7 @@ function startPlayerImageMap(msg) {
 }
 
 function applyPlayerFogOnly(msg) {
+  if (_playerMapLoad) { _playerMapLoad.fog = msg; return; }
   if (playerFollowDM && msg.view) { applyView(msg.view); reportPlayerView(); }
   loadPlayerFog(msg, !!msg.sceneChange).then(() => {
     viewportDirty = true;

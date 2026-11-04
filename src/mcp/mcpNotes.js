@@ -80,9 +80,13 @@ function _mcpNotesTarget(args) {
 }
 
 // `make(old)` is mcpAppend or mcpReplace on the old text; `verb` fills the reply and the toast.
-async function _mcpWriteNotes(args, make, verb) {
+function _mcpWriteNotes(args, make, verb) {
   const target = _mcpNotesTarget(args);
   if (target.error) return _mcpNo(target.error);
+  return mcpInTurn('notes:' + target.where, () => _mcpWriteNotesNow(target, args, make, verb));
+}
+
+async function _mcpWriteNotesNow(target, args, make, verb) {
   const old = await target.get();
   const linked = await mcpeLink(args.text);
   const m = make(old, linked.text, _mcpCap());

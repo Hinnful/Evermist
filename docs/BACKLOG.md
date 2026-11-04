@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 10 open items; IDs run to 259."
+description: "Open work only. 14 open items; IDs run to 263."
 metadata: 
   node_type: memory
   type: project
@@ -130,6 +130,31 @@ Filed 2026-11-04. A list of its own beside Weather (day, dusk, night), so a sunn
 mismatch the DM has to avoid. Floated by the DM while weather was settled; nothing about it is designed yet.
 **Needs a design round.**
 **Play · Player**
+
+### 260. Rig checks that cannot fail
+Filed 2026-11-04. The 2026-11-04 code review found about eleven rig criteria that pass whatever the app does: the shared
+settle step rebuilds the DM's fog and pushes to the TV itself, so no "the fog followed the edit" or Auto-delivery check
+can fail; the animated-map freeze, effects-under-fog, backup-whitelist, window-guard and notes-field checks have their own
+holes. Full list in `.claude/private/reviews/2026-11-04/findings/16-tools-rig.md`. Ships as its own change, so a red CI
+run points at the rig alone.
+**Upkeep · Both**
+
+### 261. The Linux AppImage does not start on Ubuntu 24.04
+Filed 2026-11-04. Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs, so the AppImage quits at launch; the
+CI legs change that kernel setting and hide it. Either the README gives Linux DMs the command that allows the sandbox,
+or the Linux build turns the sandbox off. A stock 22.04/24.04 also needs `libfuse2`.
+**Needs the DM's choice of fix.**
+**First use · DM only**
+
+### 262. Two maps: the Notes window shows a column's older map notes
+Filed 2026-11-04. In two-map mode the Notes window answers a map's notes from its cached read before asking the column
+that holds the map, so notes typed in that column can show as the older text there. Single-map mode is fixed in 5.2.1.
+**Prep · DM only**
+
+### 263. The review's medium findings
+Filed 2026-11-04. The 2026-11-04 code review left about a hundred medium findings unfixed; 5.2.1 fixed the critical and
+high ones. Sort them into fix, file or drop. Findings in `.claude/private/reviews/2026-11-04/findings/`.
+**Upkeep · Both**
 
 ### 189. Doors follow a hex grid
 Filed 2026-10-17, low priority. On a square grid a door snaps to the map's own grid cells. On a hex grid, and on any

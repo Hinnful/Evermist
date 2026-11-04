@@ -378,3 +378,60 @@ describe('a corner the repair created on a wall', () => {
               'a corner the repair invented on a curved wall was dropped as sampling');
   });
 });
+
+describe('restoreGroupDetail - a room drawn anticlockwise', () => {
+  const { trimShapes } = require('../src/shapes/roomOps.js');
+  const { doorPoint } = require('../src/shapes/doorGeometry.js');
+  const { edgeCubic } = require('../src/fog/fogGeometry.js');
+  // (0,0) -> (0,100) -> (200,100) -> (200,0): the top wall is edge 3, bowed upward; a door on the bottom wall.
+  const room = {
+    vertices: [{ x: 0, y: 0 }, { x: 0, y: 100 }, { x: 200, y: 100 }, { x: 200, y: 0 }],
+    handles: [H(-40, -40, 0, 0), null, null, H(0, 0, -40, -40)],
+    doors: [{ edge: 1, t: 0.75 }],
+  };
+  const topMid = shape => {
+    const n = shape.vertices.length;
+    for (let i = 0; i < n; i++) {
+      const a = shape.vertices[i], b = shape.vertices[(i + 1) % n];
+      if (a.y !== 0 || b.y !== 0) continue;
+      const c = edgeCubic(a, b, (shape.handles || [])[i], (shape.handles || [])[(i + 1) % n]);
+      return splitCubic(c[0], c[1], c[2], c[3], 0.5).left[3];
+    }
+    return null;
+  };
+
+  it('keeps the door and the bowed wall through a Cut out far from both', () => {
+    const before = doorPoint(room, room.doors[0]);
+    const out = trimShapes([room], rect(180, 40, 260, 60), 1);
+    const kept = restoreGroupDetail([room], out.groups[0]);
+    const p = kept.pieces[0];
+    assert.equal(kept.droppedDoors, 0);
+    const after = doorPoint(p, p.doors[0]);
+    assert.ok(near(after.x, before.x, 1e-6) && near(after.y, before.y, 1e-6), JSON.stringify([before, after]));
+    const was = topMid(room), now = topMid(p);
+    assert.ok(now && near(now.x, was.x, 1e-6) && near(now.y, was.y, 1e-6), 'the bow kept its shape: ' + JSON.stringify([was, now]));
+  });
+});
+
+describe('cutRing - a split line through a bent wall', () => {
+  const { cutRing } = require('../src/shapes/roomOps.js');
+  // A square whose top wall bends into the room, to about y = 41 at its middle.
+  const room = {
+    vertices: rect(0, 0, 100, 100),
+    handles: [H(0, 0, 30, 55), H(-30, 55, 0, 0), null, null],
+  };
+
+  it('cuts where the wall is drawn, and both halves keep their part of the curve', () => {
+    const out = cutRing(room, [{ x: 50, y: -20 }, { x: 50, y: 120 }], 1);
+    assert.ok(!out.reason, out.reason);
+    const top = Math.min(...out.pieces.flatMap(p => p.verts.filter(v => near(v.x, 50, 1e-6)).map(v => v.y)));
+    assert.ok(top > 40, 'the cut meets the bent wall, not its chord: ' + top);
+    const kept = restoreGroupDetail([room], out.pieces);
+    assert.equal(kept.pieces.length, 2);
+    assert.ok(kept.pieces.every(p => p.handles && p.handles.some(Boolean)), 'both halves keep a curve');
+  });
+
+  it('accepts a line that crosses the bent wall but stops short of its chord', () => {
+    assert.ok(!cutRing(room, [{ x: 50, y: 120 }, { x: 50, y: 20 }], 1).reason);
+  });
+});
