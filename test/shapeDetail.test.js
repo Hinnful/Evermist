@@ -335,6 +335,22 @@ describe('what a repair must not lose', () => {
     }
   });
 
+  it('writes out a radius set on every corner at once, and 0 for a corner of the other room', () => {
+    const A = { vertices: rect(0, 0, 100, 100) };
+    const B = { vertices: rect(200, 0, 300, 100), cornerRadius: 30 };
+    const out = restoreGroupDetail([B, A], [{ verts: A.vertices, holes: [] }, { verts: B.vertices, holes: [] }]);
+    assert.deepEqual(out.pieces[0].cornerRadii, [0, 0, 0, 0], 'the sharp room would round at the survivor\'s 30');
+    assert.deepEqual(out.pieces[1].cornerRadii, [30, 30, 30, 30]);
+  });
+
+  it('leaves a corner the repair made sharp on a room rounded all at once', () => {
+    const s = { vertices: rect(0, 0, 100, 100), cornerRadius: 20 };
+    // The left half of a Split: (50,0) and (50,100) are new corners on the cut.
+    const half = [{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 100 }, { x: 0, y: 100 }];
+    const out = restoreGroupDetail([s], [{ verts: half, holes: [] }]).pieces[0];
+    assert.deepEqual(out.cornerRadii, [20, 0, 0, 20]);
+  });
+
   it('gives a shared corner back to the room its walls came from', () => {
     const A = { vertices: rect(0, 0, 100, 100), cornerRadii: [null, null, 40, null] };
     const B = { vertices: rect(100, 100, 200, 200), cornerRadii: [7, null, null, null] };

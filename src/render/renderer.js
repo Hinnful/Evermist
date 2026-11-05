@@ -178,13 +178,15 @@ function pixiUpdateMapTexture() {
 // Player video playback: the map is a PixiJS sprite, so its texture is refreshed from the video
 // every rendered frame. ⚠ Hooked to the PixiJS ticker, never the dirty-flag loop, which fires on
 // demand and would leave the video frozen between viewport changes.
+// ⚠ AHEAD OF pumpDirtyRender: the weather pass draws the map through the sprite's region, and a region
+// moved after it lets the map slide against the fog during a glide.
 let _pixiVideoSyncFn = null;
 function _pixiVideoTick() { if (_pixiVideoSyncFn) _pixiVideoSyncFn(); }
 function pixiStartVideoTextureSync(fn) {
   pixiStopVideoTextureSync();
   if (!pixiApp || !fn) return;
   _pixiVideoSyncFn = fn;
-  pixiApp.ticker.add(_pixiVideoTick);
+  pixiApp.ticker.add(_pixiVideoTick, null, PIXI.UPDATE_PRIORITY.INTERACTION);
 }
 function pixiStopVideoTextureSync() {
   if (pixiApp && _pixiVideoSyncFn) pixiApp.ticker.remove(_pixiVideoTick);

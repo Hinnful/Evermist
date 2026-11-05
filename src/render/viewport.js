@@ -157,10 +157,13 @@ let _playerReplyTo = null;
 function bindReplyTarget(w) { _playerReplyTo = w; }
 function playerReplyTarget() { return _playerReplyTo || window.opener; }
 
-// The other end: a column is told which half of the Player screen is its own.
-function bindPlayerWindow(w) {
+// The other end: a column is told which half of the Player screen is its own. `waitForSend`: Two maps
+// turned on in Manual, where the half keeps its fog until this column's Send.
+function bindPlayerWindow(w, waitForSend) {
   playerWindow = w;
   playerMapSent = false;
+  tvSceneId = null;
+  if (w && waitForSend) { tvWait.scene = true; playerUnsent = true; }
   if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
 }
 

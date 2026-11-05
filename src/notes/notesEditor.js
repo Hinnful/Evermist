@@ -279,6 +279,7 @@ function _neHideTip() {
 }
 
 function _neShowTip(label) {
+  if (!label.isConnected) return;   // re-rendered meanwhile: a detached label measures at the corner
   const r = mxResolve(label.dataset.kind, label.dataset.id);
   if (!_neTip) {
     _neTip = document.createElement('div');
@@ -330,6 +331,10 @@ function _nePaste(el, e) {
   e.preventDefault();
   const text = (e.clipboardData && e.clipboardData.getData('text/plain')) || '';
   if (!text) return;
+  // ⚠ execCommand fires no beforeinput, so the cap check there never sees a paste.
+  const sel = getSelection();
+  const gone = sel.rangeCount && !sel.isCollapsed && el.contains(sel.anchorNode) ? _neText(sel.getRangeAt(0).cloneContents()).length : 0;
+  if (!mpFits(_neValue(el).slice(gone), text, notesCap())) { noticeToast(t('This note is full. Shorten it to add more.')); return; }
   document.execCommand('insertText', false, text);
   if (text.includes('@[')) {
     const off = _neOffset(el);
@@ -363,7 +368,7 @@ function neInit(el) {
     if (e.inputType === 'historyUndo') { e.preventDefault(); _neStep(el, -1); return; }
     if (e.inputType === 'historyRedo') { e.preventDefault(); _neStep(el, 1); return; }
     if (!/^insert/.test(e.inputType)) return;
-    const add = e.data != null ? e.data : /Paragraph|LineBreak/.test(e.inputType) ? '\n' : '';
+    const add = e.data != null ? e.data : e.dataTransfer ? e.dataTransfer.getData('text/plain') : /Paragraph|LineBreak/.test(e.inputType) ? '\n' : '';
     if (!mpFits(_neValue(el), add, notesCap())) { e.preventDefault(); noticeToast(t('This note is full. Shorten it to add more.')); }
   });
   el.addEventListener('input', () => {

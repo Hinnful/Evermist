@@ -49,15 +49,23 @@ async function _mcpSceneRecord(id) {
   const at = _mcpHolder(id);
   if (at === 'here') return { notes: currentScene.notes || '', polygons };
   if (at) await flushPaneScene(at);
-  return (await sceneStore.loadScene(id)) || {};
+  const rec = (await sceneStore.loadScene(id)) || {};
+  // A held room is stored as shroud with its real mode beside it (fogGeometry.js); read it as the open map holds it.
+  if (rec.polygons) rec.polygons = rec.polygons.map(decodeShapeFromSave);
+  return rec;
 }
 
 // What a call answers when it still sends a tool field the app no longer has: the DM's extension is older.
 const MCP_OLD_TOOLS = 'This Evermist has a newer set of tools than the Claude extension that sent this call. Ask the DM to press Connect to Claude again in Settings, then try again.';
 
+// Whether the TV shows this scene now. In Manual a map the DM opens waits for Send, and the TV keeps the last one sent.
+function _mcpOnTv(id) {
+  const shown = tvShowsOtherMap() ? tvSceneId === id : !!(currentScene && currentScene.id === id);
+  return mcpOnTv({ playerOpen: !!(playerWindow && !playerWindow.closed), held: tvHeld, panes: panesActive,
+    isOpen: shown, inColumn: panesActive && !!paneColumnOf(id) });
+}
+
 // A refusal when the TV shows this scene, else null. Fog, fog colour, the map and a delete all alter the TV's picture.
 function _mcpTvRefuse(scene, what) {
-  const onTv = mcpOnTv({ playerOpen: !!(playerWindow && !playerWindow.closed), held: tvHeld, panes: panesActive,
-    isOpen: !!(currentScene && currentScene.id === scene.id), inColumn: panesActive && !!paneColumnOf(scene.id) });
-  return onTv ? _mcpNo('Not done: the TV shows "' + scene.name + '" now, and ' + what + ' would change what the players see. Ask the DM to open another map first or close the Player window.') : null;
+  return _mcpOnTv(scene.id) ? _mcpNo('Not done: the TV shows "' + scene.name + '" now, and ' + what + ' would change what the players see. Ask the DM to open another map first or close the Player window.') : null;
 }

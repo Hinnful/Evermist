@@ -282,7 +282,7 @@ function _mtPick(i) {
 function _mtRender() {
   if (!_mtDD) return;
   const q = _mtNameEl ? _mtNameEl.value : '';
-  const names = mtCurrentRoomNames();
+  const { room: poly, names } = mtCardRoom();
   const prog = mtProgress(mtEntries, names);
   const placed = mtPlacedTitles(mtEntries, names);
 
@@ -292,8 +292,6 @@ function _mtRender() {
     : 'No module text loaded';
 
   // Filter on the typed text ONLY once it differs from the field's own, or one row shows.
-  const poly = (typeof polygons !== 'undefined' && typeof selectedPolygonId !== 'undefined')
-    ? polygons.find(p => p.id === selectedPolygonId) : null;
   const isExisting = poly && q === (poly.name != null ? poly.name : '');
   _mtShown = mtFilterEntries(mtEntries, isExisting ? '' : q);
 

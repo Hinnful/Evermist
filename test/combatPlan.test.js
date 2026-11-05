@@ -222,3 +222,39 @@ describe('importing a book or a module', () => {
     assert.deepEqual(combatNewBlocks([sample, combatBlankBlock(null, 'Бес'), own], {}, 'MM').map(b => b.hp || b.name), ['Бес', '65 (10d8 + 20)']);
   });
 });
+
+describe('a pick replacing a row', () => {
+  const { combatRowIsFresh } = require('../src/combat/combatPlan.js');
+  it('counts a row as fresh only while it holds no damage, conditions or stat edits', () => {
+    assert.equal(combatRowIsFresh({ name: 'Ork', hp: '', conds: [] }), true);
+    assert.equal(combatRowIsFresh({ name: 'Ork', hp: '-12 -7', conds: [] }), false);
+    assert.equal(combatRowIsFresh({ name: 'Ork', hp: '', conds: ['Poisoned'] }), false);
+    assert.equal(combatRowIsFresh({ name: 'Ork', hp: '', conds: [], sbChanged: true }), false);
+  });
+});
+
+describe('a monster or row from a file or backup', () => {
+  const { combatCleanBlock, combatCleanRow, combatBlankBlock: blank } = require('../src/combat/combatPlan.js');
+  it('lays a malformed monster over the blank shape, keeping what it carries', () => {
+    const c = combatCleanBlock({ name: 'Ogre', source: 7, abil: ['19', 8], secs: { Actions: 'Club', Traits: [null, { n: 'Big', t: 3 }] }, uid: 'u1' });
+    assert.equal(c.source, '7');
+    assert.deepEqual(c.abil, ['19', '8', '10', '10', '10', '10']);
+    assert.deepEqual(c.secs, { Traits: [{ n: 'Big', t: '3' }] });
+    assert.equal(c.uid, 'u1');
+    assert.equal(c.lore, '');
+    assert.equal('id' in c, false);
+  });
+  it('changes nothing in a whole monster', () => {
+    const b = Object.assign(blank('b2', 'Wolf'), { secs: { Actions: [{ n: 'Bite', t: '+4 to hit' }] }, quick: 'Bite +4' });
+    assert.deepEqual(combatCleanBlock(b), b);
+  });
+  it('refuses what is no monster', () => {
+    assert.equal(combatCleanBlock(null), null);
+    assert.equal(combatCleanBlock({ name: 5 }), null);
+  });
+  it('gives a row a list of conditions and drops a broken copy of its stat block', () => {
+    const r = combatCleanRow({ id: 3, name: 'Ogre', hp: 12, conds: 'Prone', sb: 'x' });
+    assert.deepEqual(r, { id: 3, init: '', name: 'Ogre', hp: '12', ac: '', conds: [] });
+    assert.equal(combatCleanRow(null), null);
+  });
+});

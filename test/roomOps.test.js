@@ -571,3 +571,32 @@ test('the library is pinned to the version the kernel was written against', () =
   assert.ok(fs.existsSync(path.join(__dirname, '..', 'lib', 'polygon-clipping.umd.js')),
             'the UMD build is not vendored into lib/');
 });
+
+// A Ring size placed with a repair armed arrives as a record: the band, not the disc, is the drawn shape.
+describe('roomOps — a ring as the drawn shape', () => {
+  const ring = { vertices: rect(0, 0, 100, 100), holes: [rect(30, 30, 70, 70)] };
+
+  it('Cut out takes only the band and leaves the middle', () => {
+    const out = trimShapes([{ vertices: rect(20, 20, 80, 80) }], ring, FLOOR);
+    assert.equal(out.groups[0].length, 1);
+    assert.equal(ringArea(pv(out.groups[0][0])), 1600);
+  });
+
+  it('Merge adds only the band, and a middle nothing filled stays open', () => {
+    const tab = joinShapes([{ vertices: rect(-20, 40, 10, 60) }], ring, FLOOR);
+    assert.equal(tab.pieces.length, 1);
+    assert.equal(ph(tab.pieces[0]).length, 1, 'the merged ring lost its middle');
+    const filled = joinShapes([{ vertices: rect(20, 20, 80, 80) }], ring, FLOOR);
+    assert.equal(ph(filled.pieces[0]).length, 0);
+  });
+
+  it('a shape sitting in the middle is not touched by the band', () => {
+    assert.equal(shapesOverlap({ vertices: rect(40, 40, 60, 60) }, ring), false);
+  });
+
+  it('Split divides along both of the band\'s edges', () => {
+    const out = splitShapes([{ vertices: rect(20, 20, 80, 80) }], ring, FLOOR);
+    const areas = out.groups[0].map(p => ringArea(pv(p)) - ph(p).reduce((s, h) => s + ringArea(h), 0)).sort((a, b) => a - b);
+    assert.deepEqual(areas, [1600, 2000]);
+  });
+});

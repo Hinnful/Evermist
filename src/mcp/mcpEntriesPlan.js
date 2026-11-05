@@ -137,15 +137,18 @@ function mpeUnresolvedSay(list) {
   return ' Left as plain words, not linked: ' + list.map(u => '"' + u.name + '" (' + why(u) + ')').join('; ') + '.';
 }
 
-// A note's stored text as Claude reads it: each mention as "@{Name}". `describe(kind, id)` answers the name to show
-// ("Map › Room" for a room) or null when the entry is gone. A gone entry's mention reads as its stored form, which a
-// write passes through untouched, so a read-then-set keeps the DM's red label.
-function mpeReadBack(text, describe) {
+// A note's stored text as Claude reads it: each mention as "@{Name}". `describe(kind, id)` answers { name, word }: the
+// name to show ("Map › Room" for a room) and its kind word, or null when the entry is gone. A name that is not exactly
+// one of `cands` reads as "@{word: Name}", or a read-then-set finds it ambiguous and unlinks it. A gone entry's mention
+// reads as its stored form, which a write passes through untouched, so a read-then-set keeps the DM's red label.
+function mpeReadBack(text, describe, cands) {
   if (typeof text !== 'string' || text.indexOf('@[') < 0) return typeof text === 'string' ? text : '';
   return _mpeDeps.mpParse(text).map(p => {
     if (p.text !== undefined) return p.text;
     const d = describe(p.kind, p.id);
-    return d == null ? p.raw : '@{' + _mpeEscape(d) + '}';
+    if (d == null) return p.raw;
+    const bare = mpeMatch(cands, d.name).hits.length === 1;
+    return '@{' + (bare ? '' : d.word + ': ') + _mpeEscape(d.name) + '}';
   }).join('');
 }
 

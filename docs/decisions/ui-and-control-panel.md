@@ -1138,6 +1138,9 @@ room or effect deleted on one machine goes on the other unless that one edited i
 not travel. A file from 4.5 matches by scene id and `legacy-<id>`. The backdrop rides with every export, a picked one
 included. A stopped import puts matched scenes back and removes only what it created. The world map then opens on what came
 in, with a report. Replace-everything was left out, and copies the laptop already holds stay unlinked: one clean start.
+**Extended 2026-11-05:** the rule also covers monsters and fights (matched by id, the newer copy replaces the old, so no
+"Goblin 2"), factions, lore, picture names, the party marker and a map's group and Campaign spot. The newer campaign note
+replaces the old one instead of being appended. Deletions of these still do not sync.
 **Reverses** the Restore that "merges and never replaces", "a restore adopts it only when the DM has none", and a picked
 export leaving the backdrop out.
 
@@ -1365,3 +1368,9 @@ complaint about it.
 
 ### The logo is a twenty-sided die with a mountain in its centre face · `SETTLED` (2026-10-31)
 A d20 seen face-on as a pointy-top hexagon, its faces cut apart by gaps one width wide along every edge. A mountain's summit is the apex of the centre face, so its slopes run along that face's sides at the die's own 60 degrees; snow only on the lit upper facet; brighter blue faces, the shaded slope darker than the die. A dark navy backing sits behind the gaps, because see-through gaps read white on a light taskbar. Windows and Linux get the bare hexagon (a square tile shrank the die on the taskbar); the Mac gets the same mark on a night-blue rounded square, because macOS 26 puts any non-square icon on a grey tile. `tools/render-icon.js` renders both PNGs. **Reverses "no dice in the logo"** (a die promised a dice roller): the die is a frame with no numbers, chosen knowingly. **Rejected:** a compass or plain four-point star (reads as Safari small), a star over the summit, a snow plume (read as blots), flat two-colour graphics, warm dawn or pink colours, a lit hex grid fading into the edge, a square tile on every platform. Rounds are in `.claude/private/design/item-152/README.md`.
+
+### In Manual, a first map and Two maps both wait for Send; a Ring acts on its band · `SETTLED` (2026-11-05)
+In Manual the first map opened while the TV shows none waits on fog until Send, because sending it at once broke the
+rule that Manual holds everything. Show on TV with nothing waiting still shows it. Turning Two maps on or off is not a
+Send: each TV half waits for its own, and the single TV after leaving waits too. In Effects, a Ring with Cut out, Merge
+or Split armed acts only on the band its preview shows, not the full circle.

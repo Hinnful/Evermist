@@ -250,8 +250,10 @@ function initInput() {
 
   // ⚠ e.code, THE PHYSICAL KEY - never e.key, which is the character a layout produced.
   document.addEventListener('keydown', e => {
-    // A FOCUSED FIELD OWNS ITS OWN UNDO, so it takes every key including the modifiers.
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+    // A FOCUSED FIELD OWNS ITS OWN UNDO, so it takes every key including the modifiers. A slider or
+    // a tick box is no field: it has no undo and no use for letters, so keys still reach the map.
+    const tg = e.target;
+    if ((tg.tagName === 'INPUT' && !/^(range|checkbox|radio|button|color)$/.test(tg.type)) || tg.tagName === 'TEXTAREA' || tg.isContentEditable) return;
     if (isPlayer) {
       if (e.code === 'KeyF') {
         if (window.electronAPI) window.electronAPI.toggleFullscreen();
@@ -337,21 +339,24 @@ function initInput() {
       case 'BracketLeft':  if (stepPresetKey(-1)) break;
                 brushSize = Math.max(5, brushSize - 10);
                 document.getElementById('brush-size').value = brushSize;
-                document.getElementById('brush-size-label').textContent = brushSize; break;
+                document.getElementById('brush-size-label').textContent = brushSize;
+                paneBroadcast('brush-size', { size: brushSize }); break;
       case 'BracketRight': if (stepPresetKey(1)) break;
                 brushSize = Math.min(300, brushSize + 10);
                 document.getElementById('brush-size').value = brushSize;
-                document.getElementById('brush-size-label').textContent = brushSize; break;
-      case 'KeyS': if (e.shiftKey) { e.preventDefault(); sendToPlayerNow(); } break;
+                document.getElementById('brush-size-label').textContent = brushSize;
+                paneBroadcast('brush-size', { size: brushSize }); break;
+      // With two maps the Player is the selected column's, as for the Send button.
+      case 'KeyS': if (e.shiftKey) { e.preventDefault(); if (!paneForward('send')) sendToPlayerNow(); } break;
       // Space is the live Send at the table, so it must mean one thing wherever focus sits. A
-      // toolbar button keeps focus after a click and Space would press it again, so hand focus back
-      // to the map first.
+      // toolbar button or a slider keeps focus after a click and Space would press it again, so hand
+      // focus back to the map first.
       case 'Space':
         e.preventDefault();
-        if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+        if (document.activeElement && /^(BUTTON|INPUT)$/.test(document.activeElement.tagName)) {
           document.activeElement.blur();
         }
-        sendToPlayerNow();
+        if (!paneForward('send')) sendToPlayerNow();
         break;
       case 'Slash': if (e.shiftKey) toggleLegend(); break;
     }

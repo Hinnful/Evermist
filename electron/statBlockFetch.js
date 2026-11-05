@@ -34,9 +34,18 @@ function readPage(url) {
       if (done) return;
       done = true;
       clearInterval(poll);
+      clearTimeout(cutoff);
+      session.removeListener('will-download', onDownload);
       if (!win.isDestroyed()) win.destroy();
       resolve(r);
     };
+    // ⚠ A PAGE THAT NEVER STOPS LOADING holds executeJavaScript, so the poll's own time check is never reached.
+    const cutoff = setTimeout(() => finish({ ok: false, error: 'The page did not load in 20 seconds.' }), LIMIT_MS + 5000);
+    // A link to a file starts a download, and an unhandled one opens a Save dialog on the DM's screen.
+    // Cancelled, it comes back as a page with no stat block on it.
+    const session = win.webContents.session, wc = win.webContents;
+    const onDownload = (_e, item, from) => { if (from === wc) { item.cancel(); finish({ ok: true, text: '' }); } };
+    session.on('will-download', onDownload);
     const run = (js) => win.webContents.executeJavaScript(js);
     const poll = setInterval(async () => {
       if (busy || done) return;

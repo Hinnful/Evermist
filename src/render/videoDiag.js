@@ -131,8 +131,10 @@ if (typeof document !== 'undefined') _diagStartFps();
 
 if (typeof document !== 'undefined' && !(typeof isPlayer !== 'undefined' && isPlayer)) {
   document.addEventListener('keydown', function(e) {
-    // The same field guard input.js carries: a backtick typed into a room name belongs there.
-    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    // The field guard playersView.js carries: a backtick, or a Russian ё on the same key, belongs to the
+    // room name or note it is typed into.
+    const el = e.target;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
     if (e.code === 'Backquote') _diagToggle();
   });
 }

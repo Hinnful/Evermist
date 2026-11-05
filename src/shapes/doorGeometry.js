@@ -321,7 +321,8 @@ function sharedWallSpans(verts, edge, others, tol, step) {
     const px = q.x, py = q.y;
     let hit = false;
     for (const o of near) {
-      if (nearestOutlinePoint(o, px, py, tol)) { hit = true; break; }
+      const at = nearestOutlinePoint(o, px, py, tol);
+      if (at && !wallFacesSameWay(o, at, q)) { hit = true; break; }
     }
     // Closed at the last point that HIT, not at the first that missed, or a span that ends
     // mid-wall runs a whole step past the neighbour it was following.
@@ -333,6 +334,15 @@ function sharedWallSpans(verts, edge, others, tol, step) {
     from: Math.max(0, sp.from - half),
     to: Math.min(f.len, sp.to + half),
   }));
+}
+
+// ⚠ A ROOM NESTED ON THE SAME SIDE of the wall runs along it facing the same way: it is no
+// neighbour across it, and counting it pushes a cleared band into the ground beyond the wall.
+function wallFacesSameWay(other, at, q) {
+  const f = doorEdgeFrame(other, at.edge);
+  if (!f) return false;
+  const p = doorFramePoint(f, at.t);
+  return p.nx * q.nx + p.ny * q.ny > 0.5;
 }
 
 // Least to most revealed. Anything unset paints like a reveal, matching applyPolygonToFog.
@@ -399,13 +409,16 @@ function planDoorPlacements(rooms, portals, cell, offsetX, offsetY, squareGrid) 
 // EDGE being split, `splitT` how far along it the new vertex landed; on a delete `at` is the
 // vertex index and a door on either edge it joined goes, having no wall left.
 // ⚠ `t` is a fraction of the edge it NAMES, so the insert halving that edge moves the door.
-function remapDoorsForVertexChange(doors, at, delta, splitT) {
+// ⚠ A ring's first vertex joins that ring's CLOSING edge, not `at - 1`, so a delete needs the
+// ring's flat start and length.
+function remapDoorsForVertexChange(doors, at, delta, splitT, ringStart, ringLen) {
   if (!doors || !doors.length) return doors || [];
   const s = (splitT > 0 && splitT < 1) ? splitT : 0.5;
+  const prev = at === ringStart ? ringStart + ringLen - 1 : at - 1;
   const out = [];
   for (const d of doors) {
     if (delta < 0) {
-      if (d.edge === at || d.edge === at - 1) continue;
+      if (d.edge === at || d.edge === prev) continue;
       out.push({ ...d, edge: d.edge > at ? d.edge - 1 : d.edge });
     } else if (d.edge === at) {
       out.push(d.t < s

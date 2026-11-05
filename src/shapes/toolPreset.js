@@ -82,7 +82,8 @@ function toolPresetFinish(pos, e) {
     placed = currentMaterial === 'light' ? addLightShape(r.vertices) : addEffect(r.vertices);
     if (r.holes) { setShapeHoles(placed, r.holes); shapeListChanged('effects'); }
   } else {
-    commitClosedShape(r.vertices);
+    // A Ring repairs with its band only, as its preview shows: the hole goes along as a record.
+    commitClosedShape(r.holes ? { vertices: r.vertices, holes: r.holes } : r.vertices);
   }
   setShape('select');
   if (placed) selectedPolygonId = placed.id;

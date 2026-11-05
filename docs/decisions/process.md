@@ -460,6 +460,12 @@ monitor only for a pull request it watched the session open, and `ship.js` opene
 node. Binding the pull request by URL and reporting it in a `<pr-created>` tag were tried and refused.
 `ship.js` now prints the `gh pr create` line and the session runs it as its own command.
 
+### `/commit`'s push keeps an open pull request only if this session pushed its branch · `SETTLED` (2026-11-05)
+The push script used to reuse any open pull request on the branch. The app arms Auto-fix only for a pull request it
+watched this session open, so a reused one from another session never got the monitor. The script now keeps the pull
+request only when this session pushed the branch before; otherwise it prints a command that closes the other
+session's pull request and opens one from this session (`.claude/commit/push.md`).
+
 ### The DM's yes to push covers the pull request and the CI monitor · `SETTLED` (2026-11-02)
 After "go push" the auto-mode classifier refused `gh pr create` as an external write the yes did not
 cover, and the stop hook then blocked three times for a monitor that needed the PR. The offer now

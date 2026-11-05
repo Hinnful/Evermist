@@ -15,7 +15,10 @@ const { TOOLS } = require('./mcpShim.js');
 
 const REPLY_MS = 20000;
 const SLOW_MS = 300000;   // a PDF book is read, a folder of maps imported
-const SLOW = new Set(['import_monsters', 'create_scene', 'set_backdrop', 'view_scene']);
+// ⚠ A TOOL THAT READS FILES BELONGS HERE. Past REPLY_MS Claude is told it failed while the work goes on, and its retry
+// does it twice.
+const SLOW = new Set(['import_monsters', 'create_scene', 'set_backdrop', 'view_scene', 'load_module_text', 'import_maps_zip',
+  'load_floor_plan', 'add_picture', 'add_music', 'add_music_from_youtube']);
 const MAX_BODY = 1024 * 1024;
 const pending = new Map();
 let getDmWin = () => null;
@@ -76,9 +79,16 @@ function serve(token) {
 
 // How Claude starts this same app unseen: the installed executable, or Electron on this folder under `npm start`.
 // ⚠ AN APPIMAGE RUNS FROM A MOUNT THAT IS GONE ONCE IT QUITS, so the .AppImage file itself is what starts it.
+// ⚠ A MAC COPY OUTSIDE Applications runs from the .dmg or a random read-only path that is gone once it quits,
+// so it names the copy in Applications, where the update's move puts it.
 function launchCommand() {
   if (process.env.APPIMAGE) return [process.env.APPIMAGE];
-  return app.isPackaged ? [process.execPath] : [process.execPath, app.getAppPath()];
+  if (!app.isPackaged) return [process.execPath, app.getAppPath()];
+  if (process.platform === 'darwin' && !app.isInApplicationsFolder()) {
+    const bundle = path.resolve(process.execPath, '..', '..', '..');
+    return [path.join('/Applications', path.basename(bundle), 'Contents', 'MacOS', path.basename(process.execPath))];
+  }
+  return [process.execPath];
 }
 
 // The extension is a zip Claude installs: the manifest, and the shim as its server.
@@ -90,6 +100,8 @@ function buildExtension(addressFile) {
     const stream = fs.createWriteStream(out);
     const zip = archiver('zip', { zlib: { level: 6 } });
     stream.on('close', () => resolve(out));
+    // Windows refuses the write while Claude still holds the last extension open.
+    stream.on('error', reject);
     zip.on('error', reject);
     zip.pipe(stream);
     zip.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
@@ -120,4 +132,13 @@ function register(ctx) {
   });
 }
 
-module.exports = { register, notReady: () => { ready = false; }, lastCallAt: () => lastCall };
+// The page Claude was talking to is going, so a call still waiting on it is answered now, not after its timer.
+function notReady() {
+  ready = false;
+  for (const [id, answer] of pending) {
+    pending.delete(id);
+    answer({ text: 'Evermist reloaded or closed its window in the middle of this call, so the change may have only partly happened. Check what is there before trying again.', isError: true });
+  }
+}
+
+module.exports = { register, notReady, lastCallAt: () => lastCall };

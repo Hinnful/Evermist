@@ -111,6 +111,15 @@ function forgetGroup(name) {
   saveGroupPrefs();
 }
 
+// A name coming back with its place (an undo or redo) re-enters the order as it was: addGroup would
+// see the restored place and hand out "New group 2".
+function restoreGroupName(name) {
+  const n = sanitizeGroupName(name);
+  if (!n || smGroupOrder.includes(n)) return;
+  smGroupOrder.push(n);
+  saveGroupPrefs();
+}
+
 function knownGroupNames() { return smGroupOrder.slice(); }
 
 if (typeof module !== 'undefined') {

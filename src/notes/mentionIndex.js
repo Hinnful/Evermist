@@ -75,7 +75,8 @@ function mxRoomUid(sceneId, r) {
   }
   if (r.uid) return r.uid;
   if (panesActive && paneColumnOf(sceneId)) return null;
-  const uid = esRandomUid();
+  // The uid every machine already reads it by, or the other laptop's copy no longer matches on import.
+  const uid = esLegacyUid(r);
   r.uid = uid;
   sceneStore.updateScene(sceneId, rec => {
     const p = (rec.polygons || []).find(x => x && x.id === r.id);

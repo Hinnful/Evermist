@@ -35,8 +35,10 @@ function initMusicDownload() {
     clearTimeout(_muLookupTimer);
     _muLookupTimer = setTimeout(_muDoLookup, MU_LOOKUP_DEBOUNCE_MS);
   });
-  // Escape clears a selection first and closes on the second press, as the Bestiary does.
+  // Escape clears a selection first and closes on the second press, as the Bestiary does. The map
+  // listens on the document; nothing pressed in here is the map's.
   bind('mu-modal', 'keydown', (e) => {
+    e.stopPropagation();
     if (e.key !== 'Escape') return;
     if (_muPicked.size) { _muPicked.clear(); _muRenderLookup(); }
     else _muCloseDownload();

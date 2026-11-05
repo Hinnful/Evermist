@@ -108,7 +108,7 @@ function galleryMissing(haveIds, incoming) {
 // The list a backup writes beside the picture files.
 function galleryBackupMeta(pics) {
   return (pics || []).filter(p => p && pictureZipName(p.id, p.blob && p.blob.type))
-    .map(p => ({ id: p.id, name: p.name, added: p.added || 0, type: pictureType(p.blob.type) }));
+    .map(p => Object.assign({ id: p.id, name: p.name, added: p.added || 0, type: pictureType(p.blob.type) }, p.named > 0 ? { named: p.named } : {}));
 }
 
 // The list a backup holds, or [] when it is not one. An entry with a bad id or no name is dropped.
@@ -117,11 +117,25 @@ function galleryParseMeta(raw) {
   try { list = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (_) { return []; }
   if (!Array.isArray(list)) return [];
   return list.filter(p => p && pictureZipName(p.id, p.type) && typeof p.name === 'string' && p.name.trim())
-    .map(p => ({ id: p.id, name: p.name.trim().slice(0, 200), added: Number(p.added) || 0, type: pictureType(p.type) }));
+    .map(p => Object.assign({ id: p.id, name: p.name.trim().slice(0, 200), added: Number(p.added) || 0, type: pictureType(p.type) },
+      Number.isFinite(p.named) && p.named > 0 ? { named: p.named } : {}));
+}
+
+// The pictures both hold whose name was changed later in the file: [{ id, name, named }]. `named` is when a name was
+// last edited, none the oldest, so a picture never renamed anywhere keeps its name here.
+function galleryRenames(have, incoming, moment) {
+  const at = v => (Number.isFinite(v) && v > 0 ? Math.min(v, moment) : 0);
+  const mine = new Map((have || []).map(p => [p.id, p]));
+  const out = [];
+  for (const p of incoming || []) {
+    const h = mine.get(p.id), ti = at(p.named);
+    if (h && h.name !== p.name && ti > 0 && ti >= at(h.named)) out.push({ id: p.id, name: p.name, named: ti });
+  }
+  return out;
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { PICTURE_MAX_BOX, pictureBox, pictureFit, pictureType, pictureZipName,
     galleryNameFromFile, roomPictureRefs, picturesReferenced, pictureBackupList,
-    galleryFromScenes, galleryMissing, galleryBackupMeta, galleryParseMeta };
+    galleryFromScenes, galleryMissing, galleryBackupMeta, galleryParseMeta, galleryRenames };
 }

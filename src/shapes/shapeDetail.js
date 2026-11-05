@@ -154,7 +154,10 @@ function onWall(at, tol) {
   return !!at && (at.anchor || (at.dist != null && at.dist <= tol));
 }
 
-function restoreRing(index, ring, tol) {
+// `full` writes every radius out (a corner the repair made gets 0), for a group where a shape rounds
+// by its `cornerRadius` alone: a null left behind falls back to the surviving room's own value.
+function restoreRing(index, ring, tol, full) {
+  const unset = full ? 0 : null;
   const kept = [];
   // TWO PASSES: place every point, then re-place a shared corner against its neighbours' shape.
   const first = ring.map(p => locatePoint(index, p));
@@ -190,17 +193,19 @@ function restoreRing(index, ring, tol) {
   if (kept.length < 3) {
     return {
       verts: ring.map(p => ({ x: p.x, y: p.y })),
-      radii: ring.map(() => null),
+      radii: ring.map(() => unset),
       handles: ring.map(() => null),
       spans: ring.map(() => null),
     };
   }
 
   const verts = kept.map(k => ({ x: k.p.x, y: k.p.y }));
-  const radii = kept.map(k => (k.at && k.at.anchor && k.at.wall.shape.cornerRadii)
-                               ? (k.at.wall.shape.cornerRadii[k.at.wall.fa] != null
-                                  ? k.at.wall.shape.cornerRadii[k.at.wall.fa] : null)
-                               : null);
+  const radii = kept.map(k => {
+    if (!k.at || !k.at.anchor) return unset;
+    const sh = k.at.wall.shape;
+    const r = sh.cornerRadii ? sh.cornerRadii[k.at.wall.fa] : null;
+    return r != null ? r : (full ? (sh.cornerRadius || 0) : null);
+  });
   const handles = kept.map(() => null);
   const spans = [];                                 // one per output wall, for the doors
 
@@ -274,10 +279,11 @@ function restoreDoors(index, pieces) {
 function restoreGroupDetail(shapes, pieces, tol) {
   const index = buildDetailIndex(shapes);
   const limit = tol != null ? tol : 1e-6;
+  const full = shapes.some(s => s.cornerRadius > 0);
   const built = [];
   for (const piece of pieces) {
     const rings = [piece.verts].concat(piece.holes || []);
-    const parts = rings.map(r => restoreRing(index, r, limit));
+    const parts = rings.map(r => restoreRing(index, r, limit, full));
     if (!parts[0]) continue;
     // Flat across the outer ring then each hole, as every other per-vertex array is.
     const kept = parts.filter(Boolean);

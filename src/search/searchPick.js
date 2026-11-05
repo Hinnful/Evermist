@@ -31,7 +31,12 @@ function _srSelectRoom(id, notes) {
 
 // Opens a scene, then `after`. The Campaign's own open keeps its zoom when nothing follows.
 async function _srGoScene(id, after) {
-  if (panesActive) { if (loadSceneIntoSelectedPane(id) && worldMapOpen) worldMapHide(); return; }
+  if (panesActive) {
+    if (!loadSceneIntoSelectedPane(id)) return;
+    if (worldMapOpen) worldMapHide();
+    if (after) after();   // a room pick selects nothing in a column (_srSelectRoom); a note hit still shows its note
+    return;
+  }
   if (worldMapOpen && !after) { worldMapOpenScene(id); return; }
   await switchScene(id).catch(err => console.error('switchScene failed:', err));
   if (worldMapOpen) worldMapHide();

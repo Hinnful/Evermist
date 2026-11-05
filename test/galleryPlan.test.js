@@ -113,4 +113,20 @@ describe('galleryBackupMeta / galleryParseMeta', () => {
     assert.deepEqual(P.galleryParseMeta([{ id: 'a', name: ' ' }, { id: '../a', name: 'x' }, { id: 'b', name: 'ok', type: 'image/bmp' }]),
       [{ id: 'b', name: 'ok', added: 0, type: 'image/jpeg' }]);
   });
+  it('carries when a name was last edited', () => {
+    const meta = P.galleryBackupMeta([{ id: 'a', name: 'King', added: 5, named: 9, blob: blob('image/png') }]);
+    assert.equal(P.galleryParseMeta(JSON.stringify(meta))[0].named, 9);
+  });
+});
+
+describe('galleryRenames', () => {
+  const have = [{ id: 'a', name: 'King', named: 100 }, { id: 'b', name: 'Map' }];
+  it('takes a name edited later in the file, and keeps one edited later here', () => {
+    assert.deepEqual(P.galleryRenames(have, [{ id: 'a', name: 'Old king', named: 200 }], 1000), [{ id: 'a', name: 'Old king', named: 200 }]);
+    assert.deepEqual(P.galleryRenames(have, [{ id: 'a', name: 'Old king', named: 50 }], 1000), []);
+  });
+  it('keeps the name here when the file has no time, and lets a timed one beat an untimed one', () => {
+    assert.deepEqual(P.galleryRenames(have, [{ id: 'b', name: 'Handout' }], 1000), []);
+    assert.deepEqual(P.galleryRenames(have, [{ id: 'b', name: 'Handout', named: 5 }], 1000), [{ id: 'b', name: 'Handout', named: 5 }]);
+  });
 });

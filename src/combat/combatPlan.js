@@ -118,6 +118,40 @@ function combatRowFromEntry(entry, rows) {
     hp: '', conds: [], sb: combatSnapshot(entry), sbChanged: false };
 }
 
+// A row with no damage, conditions or stat edits loses nothing when a pick replaces it.
+function combatRowIsFresh(row) {
+  return !String(row.hp || '').trim() && !(row.conds || []).length && !row.sbChanged;
+}
+
+// A monster from a file or a backup laid over the blank shape, so a part missing or of the wrong
+// type reads as empty instead of breaking the page and the table. Null for what has no name.
+const CB_TEXT_KEYS = ['name', 'source', 'meta', 'ac', 'hp', 'speed', 'saves', 'skills', 'vuln', 'resist', 'immune',
+  'senses', 'languages', 'cr', 'lore', 'notes'];
+function combatCleanBlock(b) {
+  if (!b || typeof b !== 'object' || typeof b.name !== 'string') return null;
+  const c = Object.assign(combatBlankBlock(b.id, ''), b);
+  if (c.id === undefined) delete c.id;
+  for (const k of CB_TEXT_KEYS) if (typeof c[k] !== 'string') c[k] = c[k] == null ? '' : String(c[k]);
+  if (c.quick !== undefined && typeof c.quick !== 'string') c.quick = String(c.quick);
+  const abil = Array.isArray(b.abil) ? b.abil : [];
+  c.abil = [0, 1, 2, 3, 4, 5].map(i => (abil[i] == null ? '10' : String(abil[i])));
+  c.secs = {};
+  for (const [s, v] of Object.entries(b.secs && typeof b.secs === 'object' ? b.secs : {})) {
+    if (Array.isArray(v)) c.secs[s] = v.filter(e => e && typeof e === 'object').map(e => Object.assign({}, e, { n: String(e.n == null ? '' : e.n), t: String(e.t == null ? '' : e.t) }));
+  }
+  return c;
+}
+
+// A fight row from a backup, cleaned the same way; its copy of the stat block too.
+function combatCleanRow(r) {
+  if (!r || typeof r !== 'object') return null;
+  const c = Object.assign({}, r);
+  for (const k of ['init', 'name', 'hp', 'ac']) c[k] = c[k] == null ? '' : String(c[k]);
+  c.conds = Array.isArray(r.conds) ? r.conds.filter(x => typeof x === 'string') : [];
+  if (c.sb !== undefined) { c.sb = combatCleanBlock(c.sb); if (!c.sb) delete c.sb; }
+  return c;
+}
+
 // A row's copy with full HP and no conditions, meant to sit straight after it.
 function combatDuplicateRow(row, rows, id) {
   const c = Object.assign(JSON.parse(JSON.stringify(row)), { id, hp: '', conds: [] });
@@ -161,6 +195,6 @@ function combatSearchBlocks(blocks, query) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { combatHpSum, combatHpState, combatBaseName, combatSortByInit, combatAbilityMod,
     combatBlankBlock, combatFirstNum, combatSetFirstNum, combatUniqueName, combatNextBlockId, combatSnapshot, combatMintUid,
-    combatAddEntry, combatRowFromEntry, combatRowHpState, combatSourceName, combatNewBlocks,
+    combatAddEntry, combatRowFromEntry, combatRowIsFresh, combatCleanBlock, combatCleanRow, combatRowHpState, combatSourceName, combatNewBlocks,
     combatSearchBlocks, combatNextName, combatDuplicateRow };
 }

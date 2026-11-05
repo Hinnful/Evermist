@@ -54,6 +54,21 @@ function weatherFadeCurve(k) {
   return x * x * (3 - 2 * x);
 }
 
+// The incoming preset's alpha under an outgoing one that started at `level`: full under a full one,
+// up the curve from nothing.
+function weatherInAlpha(level, e) {
+  return 1 - (1 - e) * (1 - level);
+}
+
+// A switch picked inside a fade starts from what is on screen. Of the two layers up, `prev` going
+// out over `cur`, the one showing more goes out from its level and the other is dropped.
+function weatherHandover(prev, cur, prevLevel, e) {
+  if (!prev) return { out: cur, level: cur === 'none' ? 0 : 1 };
+  const aOld = prev === 'none' ? 0 : prevLevel * (1 - e);
+  const aCur = cur === 'none' ? 0 : weatherInAlpha(prevLevel, e);
+  return aOld >= aCur * (1 - aOld) ? { out: prev, level: aOld } : { out: cur, level: aCur };
+}
+
 // Lightning: k is seconds since the flash began.
 function weatherFlashAmp(k) {
   if (k < 0 || k > 1.2) return 0;
@@ -88,5 +103,6 @@ function weatherRoomsKey(polygons) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { WEATHER_FADE_MS, WEATHER_IDS, WEATHER_PRESETS, weatherNormalize, weatherStrength, weatherToward,
-    weatherStepGround, weatherStartLevels, weatherFadeCurve, weatherFlashAmp, weatherGustAt, weatherRoomsKey };
+    weatherStepGround, weatherStartLevels, weatherFadeCurve, weatherInAlpha, weatherHandover, weatherFlashAmp,
+    weatherGustAt, weatherRoomsKey };
 }

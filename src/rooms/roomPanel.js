@@ -209,8 +209,10 @@ function drawRoomLabels() {
 
     // Neither measureText nor the row scan may run per room per frame. The fit is in MAP units, so
     // the cached anchor is pan-independent.
+    // ⚠ The zoom is in the key, in 2% steps: below 100% fontPx stops changing while the fit, made in
+    // map units, still does.
     const bb  = shapeBBox(poly);
-    const key = name + '|' + fontPx + '|' + flatVertexCount(poly) + '|' +
+    const key = name + '|' + fontPx + '|' + Math.round(Math.log(zoom) * 50) + '|' + flatVertexCount(poly) + '|' +
                 Math.round(bb.minX) + ',' + Math.round(bb.minY) + ',' +
                 Math.round(bb.maxX) + ',' + Math.round(bb.maxY) + '|' +
                 (poly.cornerRadius || 0) + '|' + (poly.cornerRadii ? poly.cornerRadii.join(',') : '') +

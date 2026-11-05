@@ -49,8 +49,12 @@ async function findMapFiles(roots, opts) {
 }
 
 // The files a path stands for: itself, or the maps directly inside a folder (never a zip, never deeper).
-// `files` carry their bytes; `skipped` say why a file did not come.
-async function readMapFiles(p) {
+// `files` carry their bytes; `skipped` say why a file did not come. `opts.only` 'image' leaves videos out and
+// `opts.maxMB` lowers the size cap, both before a byte is read: a folder's maps all cross IPC in one message.
+async function readMapFiles(p, opts) {
+  const o = opts || {};
+  const imagesOnly = o.only === 'image';
+  const maxBytes = Number(o.maxMB) > 0 ? Math.min(MAX_FILE_BYTES, Number(o.maxMB) * 1024 * 1024) : MAX_FILE_BYTES;
   const out = { files: [], skipped: [] };
   let st;
   try { st = await fs.promises.stat(p); } catch { return { ...out, error: 'There is no file or folder at "' + p + '".' }; }
@@ -65,11 +69,12 @@ async function readMapFiles(p) {
     const kind = kindOf(name);
     if (!kind) { if (!st.isDirectory()) out.skipped.push({ name, reason: 'is not an image or an animated map.' }); continue; }
     if (kind === 'zip') { out.skipped.push({ name, reason: 'is an Evermist export zip; import_maps_zip merges it into the library.' }); continue; }
+    if (imagesOnly && kind === 'video') { out.skipped.push({ name, reason: 'is not an image.' }); continue; }
     if (out.files.length >= MAX_FOLDER_FILES) { out.skipped.push({ name, reason: 'was left out: a call takes at most ' + MAX_FOLDER_FILES + ' maps.' }); continue; }
     try {
       const full = path.join(dir, name);
       const size = (await fs.promises.stat(full)).size;
-      if (size > MAX_FILE_BYTES) { out.skipped.push({ name, reason: 'is over 500 MB.' }); continue; }
+      if (size > maxBytes) { out.skipped.push({ name, reason: 'is over ' + Math.round(maxBytes / 1048576) + ' MB.' }); continue; }
       out.files.push({ name, type: mimeOf(name), bytes: await fs.promises.readFile(full) });
     } catch { out.skipped.push({ name, reason: 'could not be read.' }); }
   }

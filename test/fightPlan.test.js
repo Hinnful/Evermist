@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { combatBlankBlock } = require('../src/combat/combatPlan.js');
 const {
   combatFightId, combatFightsFrom, combatFightRows, combatOpenFight, combatAddFight, combatDuplicateFight,
-  combatRenameFight, combatDeleteFight, combatMerge, combatSavedParts, combatBackupData,
+  combatRenameFight, combatDeleteFight, combatMerge, combatSavedParts, combatBackupData, combatStampEdits,
 } = require('../src/combat/fightPlan.js');
 
 const ids = () => { let n = 0; return () => 'id' + (++n); };
@@ -157,5 +157,72 @@ describe('a backup merged in', () => {
   it('adds an entry whose only difference is its Table line', () => {
     const m = combatMerge(here(), { rows: [], blocks: { b9: Object.assign({}, goblin, { id: 'b9', quick: 'Scimitar +4 5' }) } }, ids());
     assert.equal(Object.keys(m.blocks).length, 2);
+  });
+});
+
+describe('edit times', () => {
+  const wolf = (ac) => Object.assign(combatBlankBlock('b1', 'Wolf'), { uid: 'uw', ac });
+  const lib = (ac, t, rows, ft) => {
+    const st = { rows: rows || [], blocks: { b1: wolf(ac) }, nextId: 5, openId: 'fX', fights: [{ id: 'fX', name: 'Here' }] };
+    combatStampEdits(st, 1);
+    if (t) st.edits.blocks.uw.t = t;
+    if (ft) st.edits.fights.fX.t = ft;
+    return st;
+  };
+  it('times a monster or fight only when it changes, and starts one first seen at 0', () => {
+    const st = lib('13');
+    assert.deepEqual([st.edits.blocks.uw.t, st.edits.fights.fX.t], [0, 0]);
+    combatStampEdits(st, 50);
+    assert.equal(st.edits.blocks.uw.t, 0);
+    st.blocks.b1.ac = '15';
+    st.rows.push({ id: 1, name: 'Wolf', hp: '- 3' });
+    combatStampEdits(st, 60);
+    assert.deepEqual([st.edits.blocks.uw.t, st.edits.fights.fX.t], [60, 60]);
+  });
+  it('replaces a monster with the copy edited later, in place, with no second one', () => {
+    const m = combatMerge(lib('13', 100), combatBackupData(lib('15', 200)), ids(), 1000);
+    assert.deepEqual(Object.values(m.blocks).map(b => [b.id, b.uid, b.ac]), [['b1', 'uw', '15']]);
+    assert.equal(m.edits.blocks.uw.t, 200);
+    assert.equal(combatStampEdits(m, 2000).edits.blocks.uw.t, 200, 'the copy taken is not an edit here');
+  });
+  it('keeps a monster edited later here, and adds a copy only when neither side has a time', () => {
+    const kept = combatMerge(lib('13', 300), combatBackupData(lib('15', 200)), ids(), 1000);
+    assert.deepEqual(Object.values(kept.blocks).map(b => b.ac), ['13']);
+    const untimed = combatMerge(lib('13'), combatBackupData(lib('15')), ids(), 1000);
+    assert.equal(Object.keys(untimed.blocks).length, 2);
+    const timedHere = combatMerge(lib('13', 300), combatBackupData(lib('15')), ids(), 1000);
+    assert.equal(Object.keys(timedHere.blocks).length, 1);
+  });
+  it('takes the HP and rows of a fight edited later at the table, and keeps one edited later here', () => {
+    const table = lib('13', 0, [{ id: 1, name: 'Wolf', hp: '- 5', conds: [] }], 400);
+    const m = combatMerge(lib('13', 0, [{ id: 1, name: 'Wolf', hp: '', conds: [] }], 100), combatBackupData(table), ids(), 1000);
+    assert.equal(m.fights.length, 1);
+    assert.deepEqual(m.rows.map(r => [r.name, r.hp]), [['Wolf', '- 5']]);
+    assert.equal(m.edits.fights.fX.t, 400);
+    const keep = combatMerge(lib('13', 0, [{ id: 1, name: 'Wolf', hp: '', conds: [] }], 500), combatBackupData(table), ids(), 1000);
+    assert.equal(keep.rows[0].hp, '');
+    const untimed = combatMerge(lib('13', 0, [{ id: 1, name: 'Wolf', hp: '', conds: [] }]), combatBackupData(lib('13', 0, [{ id: 1, name: 'Wolf', hp: '- 5', conds: [] }])), ids(), 1000);
+    assert.equal(untimed.rows[0].hp, '');
+  });
+  it('counts a time past the import moment as that moment', () => {
+    const m = combatMerge(lib('13', 900), combatBackupData(lib('15', 5000)), ids(), 1000);
+    assert.equal(m.edits.blocks.uw.t, 1000);
+  });
+  it('lets the build before times open the save and keep the rest of it', () => {
+    const p = combatSavedParts(lib('13', 100));
+    const old = oldLoad(JSON.stringify(p.combat));
+    assert.deepEqual(Object.keys(old.blocks), ['b1']);
+  });
+});
+
+describe('a malformed backup merged in', () => {
+  it('skips a null block and row, and cleans the rest instead of throwing', () => {
+    const cur = { rows: [], blocks: {}, nextId: 1, openId: 'fX', fights: [{ id: 'fX', name: 'Here' }] };
+    const inc = { rows: [], blocks: { b1: null, b2: { name: 'Ogre', abil: 'x' } }, openId: 'fA',
+      fights: [null, { id: 'fA', name: 'A' }, { id: 'fB', name: 'B', rows: [null, { name: 'Ogre', conds: 3 }] }] };
+    const m = combatMerge(cur, inc, ids());
+    assert.deepEqual(Object.values(m.blocks).map(b => b.abil.length), [6]);
+    assert.deepEqual(m.fights.map(f => f.name), ['Here', 'A', 'B']);
+    assert.deepEqual(m.fights[2].rows.map(r => r.conds), [[]]);
   });
 });

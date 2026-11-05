@@ -220,10 +220,15 @@ function _wpSnapshot() {
 // ⚠ ONLY A PLACE THE STEP BRINGS BACK OR TAKES AWAY has its notes touched; one that stays keeps what was typed since.
 function _wpRestoreNotes(before, snap) {
   const after = new Set(worldPlaceRecords().map(r => r.name));
-  for (const name of before) if (!after.has(name)) notesPlaceSet(name, '');
+  for (const name of before) {
+    if (after.has(name)) continue;
+    notesPlaceSet(name, '');
+    // A group the step takes away that no map wears leaves no empty heading behind.
+    if (!snap.scenes.some(s => s.group === name)) forgetGroup(name);
+  }
   for (const name of after) {
     if (before.has(name)) continue;
-    if (!knownGroupNames().includes(name)) addGroup(name);   // or the next new place could take its name
+    restoreGroupName(name);
     if (_wsOwn(snap.notes, name)) notesPlaceSet(name, snap.notes[name]);
   }
 }

@@ -107,6 +107,41 @@ async function _mcpMapWrite(id, keys, data, what, from) {
   return null;
 }
 
+// The part as undo compares it, to tell whether the DM changed it since Claude's step. Uids are left out (a save
+// adds them) and so are the id counters, which only grow; the painted fog counts by its alpha alone, since a PNG
+// round trip keeps alpha exact but not colour.
+function _mcpMapPrint(d, keys) {
+  const plain = {};
+  for (const k of keys) {
+    if (k === 'fog' || k === 'nextPolygonId' || k === 'nextEffectId') continue;
+    plain[k] = Array.isArray(d[k]) ? d[k].map(x => { const c = copyShapeRings(x); delete c.uid; return c; }) : d[k];
+  }
+  let text = esCanon(plain);
+  if (keys.includes('fog')) {
+    const px = d.fog.getContext('2d').getImageData(0, 0, d.fog.width, d.fog.height).data;
+    let h = 0x811c9dc5;
+    for (let i = 3; i < px.length; i += 4) h = Math.imul(h ^ px[i], 16777619);
+    text += '|' + (h >>> 0);
+  }
+  return text;
+}
+
+// `before` written back, unless the part changed since Claude's step left it as `after`: undoing would erase the
+// DM's later rooms or reveals with it.
+async function _mcpMapUndo(id, keys, before, after) {
+  const scene = allScenes.find(s => s.id === id);
+  if (!scene) return 'Not done: the map is no longer in the library.';
+  const why = _mcpMapBlocked(scene, 'undoing Claude\'s change');
+  if (why) return why;
+  const from = _mcpHolder(id);
+  const now = await _mcpMapRead(scene, keys);
+  if (_mcpMapPrint(now, keys) !== after) return 'Not undone: "' + scene.name + '" has changed there since Claude\'s change, and undoing it would erase that too.';
+  const back = { ...before };
+  // Ids only grow, or a room, effect or light made since would share one with the next.
+  for (const k of ['nextPolygonId', 'nextEffectId']) if (keys.includes(k)) back[k] = Math.max(before[k] || 1, now[k] || 1);
+  return _mcpMapWrite(id, keys, back, 'undoing Claude\'s change', from);
+}
+
 // Changes one map wherever it lives. `parts` names what `change` may touch (MCP_MAP_PARTS, mcpMapPlan.js); `what`
 // ends the TV refusal ("… and changing its rooms would change what the players see"). `change(data)` edits the
 // plain shape in place, may be async, and returns a string to refuse with that text, nothing written.
@@ -127,8 +162,9 @@ async function _mcpEditMapNow(scene, what, parts, change) {
   if (typeof refused === 'string') return { no: _mcpNo(refused) };
   const failed = await _mcpMapWrite(scene.id, keys, data, what, from);
   if (failed) return { no: _mcpNo(failed) };
+  const after = _mcpMapPrint(await _mcpMapRead(scene, keys), keys);
   return { undo: () => mcpInTurn('map:' + scene.id, async () => {
-    const no = await _mcpMapWrite(scene.id, keys, before, 'undoing Claude\'s change');
+    const no = await _mcpMapUndo(scene.id, keys, before, after);
     if (no) throw Object.assign(new Error(no), { mcpKeep: true });
   }) };
 }

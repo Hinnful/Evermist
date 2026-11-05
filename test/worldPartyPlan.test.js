@@ -63,3 +63,21 @@ describe('the marker in a backup', () => {
     assert.deepEqual(N.notesParseCampaign(json), { text: 'lore', broken: false });
   });
 });
+
+describe('wptTake', () => {
+  it('keeps the time a marker was put down, and drops a bad one', () => {
+    assert.equal(P.wptClean({ x: 1, y: 2, at: 50 }).at, 50);
+    assert.equal(P.wptClean({ x: 1, y: 2, at: 'x' }).at, undefined);
+  });
+  it('takes the file\'s marker when none is here or it was put down later, and keeps one put down later here', () => {
+    assert.equal(P.wptTake(null, { x: 1, y: 1 }, 1000), true);
+    assert.equal(P.wptTake({ x: 0, y: 0, at: 100 }, { x: 1, y: 1, at: 200 }, 1000), true);
+    assert.equal(P.wptTake({ x: 0, y: 0, at: 300 }, { x: 1, y: 1, at: 200 }, 1000), false);
+    assert.equal(P.wptTake({ x: 0, y: 0, at: 300 }, null, 1000), false);
+  });
+  it('keeps the marker here when neither has a time, and lets a timed one beat an untimed one', () => {
+    assert.equal(P.wptTake({ x: 0, y: 0 }, { x: 1, y: 1 }, 1000), false);
+    assert.equal(P.wptTake({ x: 0, y: 0 }, { x: 1, y: 1, at: 5 }, 1000), true);
+    assert.equal(P.wptTake({ x: 0, y: 0, at: 900 }, { x: 1, y: 1, at: 5000 }, 1000), true, 'a time past the import counts as the import');
+  });
+});

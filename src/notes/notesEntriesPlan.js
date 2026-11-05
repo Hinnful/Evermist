@@ -101,19 +101,48 @@ function neFallback(entries, id) {
   return e && neById(entries, e.parent) ? e.parent : null;
 }
 
-// A restore adds the entries the library lacks and never replaces one. An added entry whose parent did not come
-// along goes under its section.
-function neMerge(existing, incoming) {
-  const have = new Set(existing.map(e => e.id));
-  const fresh = neClean(incoming).entries.filter(e => !have.has(e.id));
-  const all = existing.concat(fresh);
-  const ids = new Set(all.map(e => e.id));
+const _neContent = e => JSON.stringify([e.name, e.note, e.parent]);
+
+// `edited` is when an entry's name, note or place last changed; one with none is the oldest. `before` is the list as
+// stored, `after` the one about to be.
+function neStamp(before, after, now) {
+  const was = new Map(before.map(e => [e.id, e]));
+  return after.map(e => {
+    const b = was.get(e.id);
+    return !b || _neContent(b) !== _neContent(e) ? { ...e, edited: now } : e;
+  });
+}
+
+function _neTime(e, moment) { return Number.isFinite(e.edited) && e.edited > 0 ? Math.min(e.edited, moment) : 0; }
+
+// A restore adds the entries the library lacks, and an entry both hold takes the copy edited later; with no time on
+// either side the one here stays. An added entry whose parent did not come along goes under its section, and so does
+// a taken one whose parent is not here or sits inside it.
+function neMerge(existing, incoming, now) {
+  const moment = now || Date.now();
+  const have = new Map(existing.map(e => [e.id, e]));
+  const inc = neClean(incoming).entries;
+  const fresh = inc.filter(e => !have.has(e.id));
+  const ids = new Set(existing.concat(fresh).map(e => e.id));
   const added = fresh.map(e => {
     return ids.has(e.parent) || e.parent === e.kind ? e : { ...e, parent: e.kind };
   });
-  return { entries: existing.concat(added), added: added.length };
+  let entries = existing.concat(added), updated = 0;
+  for (const e of inc) {
+    const mine = have.get(e.id);
+    if (!mine || mine.kind !== e.kind || _neContent(mine) === _neContent(e)) continue;
+    const ti = _neTime(e, moment);
+    if (!(ti > 0 && ti >= _neTime(mine, moment))) continue;
+    const into = neById(entries, e.parent);
+    const okParent = e.parent === e.kind || (into && into.kind === e.kind && e.parent !== e.id && !neDescendants(entries, e.id).includes(e.parent));
+    const parent = okParent ? e.parent : e.kind;
+    const order = parent === mine.parent ? mine.order : _neNextOrder(entries, parent);
+    entries = entries.map(x => (x.id === e.id ? { ...x, name: e.name, note: e.note, parent, order, edited: ti } : x));
+    updated++;
+  }
+  return { entries, added: added.length, updated };
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { NE_KINDS, neCleanName, neClean, neChildren, neById, neDescendants, neAdd, neRename, neSetNote, neMove, neDelete, neFallback, neMerge };
+  module.exports = { NE_KINDS, neCleanName, neClean, neChildren, neById, neDescendants, neAdd, neRename, neSetNote, neMove, neDelete, neFallback, neStamp, neMerge };
 }

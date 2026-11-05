@@ -118,18 +118,24 @@ describe('mpeMatch', () => {
 
 describe('mpeReadBack', () => {
   const stored = 'Allied with ' + mpToken('Lady Vex', 'monster', 'm1') + ' in ' + mpToken('Hall', 'room', 's1:u1') + ' and ' + mpToken('Gone', 'entry', 'x1') + '.';
-  const shownAs = (kind, id) => (id === 'm1' ? 'Lady Vex' : id === 's1:u1' ? 'Keep › Hall' : null);
+  const shownAs = (kind, id) => (id === 'm1' ? { name: 'Lady Vex', word: 'monster' } : id === 's1:u1' ? { name: 'Keep › Hall', word: 'room' } : null);
   const gone = mpToken('Gone', 'entry', 'x1');
   it('reads each mention as @{Name}, a room as Map › Room, and keeps the stored mention of a gone entry', () => {
-    assert.equal(mpeReadBack(stored, shownAs), 'Allied with @{Lady Vex} in @{Keep › Hall} and ' + gone + '.');
+    assert.equal(mpeReadBack(stored, shownAs, cands), 'Allied with @{Lady Vex} in @{Keep › Hall} and ' + gone + '.');
   });
   it('round-trips through mpeResolve', () => {
-    const shown = mpeReadBack(stored, shownAs);
+    const shown = mpeReadBack(stored, shownAs, cands);
     assert.equal(mpeResolve(shown, cands, mint).text, 'Allied with ' + mpToken('Lady Vex', 'monster', 'm1') + ' in ' + mpToken('Hall', 'room', 's1:u1') + ' and ' + gone + '.');
   });
   it('passes plain text through', () => {
-    assert.equal(mpeReadBack('nothing here', shownAs), 'nothing here');
-    assert.equal(mpeReadBack(undefined, shownAs), '');
+    assert.equal(mpeReadBack('nothing here', shownAs, cands), 'nothing here');
+    assert.equal(mpeReadBack(undefined, shownAs, cands), '');
+  });
+  it('reads a name two kinds share with its kind, so a read-then-set keeps the link', () => {
+    const both = [{ kind: 'group', word: 'group', name: 'Barovia', where: '' }, { kind: 'map', word: 'map', name: 'Barovia', where: '' }];
+    const shown = mpeReadBack('In ' + mpToken('Barovia', 'group', 'g7') + '.', () => ({ name: 'Barovia', word: 'group' }), both);
+    assert.equal(shown, 'In @{group: Barovia}.');
+    assert.equal(mpeResolve(shown, both, () => 'g7').text, 'In ' + mpToken('Barovia', 'group', 'g7') + '.');
   });
 });
 
@@ -141,6 +147,7 @@ describe('the assistant links a fight', () => {
     assert.equal(mpeResolve('Run @{Goblin ambush}.', fc, () => 'fxyz1').unresolved[0].why, 'ambiguous');
   });
   it('reads a fight link back as its name', () => {
-    assert.equal(mpeReadBack('See ' + mpToken('Goblin ambush', 'fight', 'fxyz1'), () => 'Goblin ambush'), 'See @{Goblin ambush}');
+    assert.equal(mpeReadBack('See ' + mpToken('Goblin ambush', 'fight', 'fxyz1'), () => ({ name: 'Goblin ambush', word: 'fight' }), [fc[0]]), 'See @{Goblin ambush}');
+    assert.equal(mpeReadBack('See ' + mpToken('Goblin ambush', 'fight', 'fxyz1'), () => ({ name: 'Goblin ambush', word: 'fight' }), fc), 'See @{fight: Goblin ambush}');
   });
 });

@@ -28,7 +28,8 @@ function _mcpPlaceArg(raw) {
 // Scenes taken out for good: the list, the road ends, the store and an animated map's file.
 async function _mcpRemoveScenes(ids) {
   if (panesActive && ids.some(id => paneColumnOf(id))) throw new Error('A map is open in a column. Ask the DM to close the column first.');
-  commitPendingDelete();
+  // Only a delete of one of these ends the DM's undo window; another stays theirs to take back.
+  if (smPending && smPending.ids.some(id => ids.includes(id))) commitPendingDelete();
   const gone = new Set(ids);
   allScenes = allScenes.filter(s => !gone.has(s.id));
   if (currentScene && gone.has(currentScene.id)) handleCurrentDeleted();
@@ -164,7 +165,8 @@ async function _mcpDeleteScene(args) {
   const index = allScenes.findIndex(x => x.id === s.id), meta = { ...allScenes[index] }, snap = worldSnapshotTake();
   await _mcpRemoveScenes([s.id]);
   return mcpDone('deleted the map "' + s.name + '"', async () => {
-    await sceneStore.saveScene(rec);
+    // putScene keeps the record's own edit times; saveScene would stamp every part as edited now.
+    await sceneStore.putScene(rec);
     allScenes.splice(Math.min(index, allScenes.length), 0, meta);
     allScenes.forEach((x, i) => { x.sortOrder = i; });
     persistSceneOrder();

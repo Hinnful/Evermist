@@ -290,7 +290,10 @@ function _muPlay(track) {
   const incoming = _muDecks[1 - _muActive];
   const outgoing = _muDecks[_muActive];
 
-  const failed = () => {
+  let src = '';
+  // A pick made before this play() settled reuses the deck and aborts it: that is no failure of this track.
+  const failed = err => {
+    if ((err && err.name === 'AbortError') || incoming.el.src !== src) return;
     incoming.el.onerror = null;
     incoming.target = 0;
     messageDialog({
@@ -308,6 +311,7 @@ function _muPlay(track) {
   // never open on two elements at once.
   incoming.el.onerror = failed;
   incoming.el.src = track.url;
+  src = incoming.el.src;
   incoming.el.volume = fadeLevel(incoming.phase) * _muVolume;
   const started = incoming.el.play();
   if (started && typeof started.catch === 'function') started.catch(failed);

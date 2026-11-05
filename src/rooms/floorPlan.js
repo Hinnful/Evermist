@@ -28,8 +28,18 @@ async function findPlanForFile(file) {
 
 // Reads a plan's text and derives it. ⚠ A truncated file must behave EXACTLY like no plan, and
 // throw nothing into the import path, where an unhandled rejection strands the progress overlay.
+// ⚠ The last answer is kept for its text, since a scene switch or an L press asks several times and a
+// big plan takes most of a second to derive. Every caller only reads it; one that wrote into it
+// would change the next caller's plan.
+let _fpLast = { text: null, derived: null };
 function describePlan(planText) {
   if (typeof planText !== 'string' || !planText.trim()) return null;
+  if (_fpLast.text === planText) return _fpLast.derived;
+  _fpLast = { text: planText, derived: _derivePlan(planText) };
+  return _fpLast.derived;
+}
+
+function _derivePlan(planText) {
   let parsed;
   try { parsed = JSON.parse(planText); } catch (_) { return null; }
   try {

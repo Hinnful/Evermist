@@ -42,6 +42,22 @@ function notesMergeCampaign(existing, incoming) {
   return { text: joined, tooLong: false };
 }
 
+// An import's campaign note against the one here. `at` is when each was last edited, 0 for none. The note edited later
+// wins whole. With no time on either side the old rule holds: the file's text joins below, once, when it fits.
+// `replaced` says text written here was given up, `tooLong` that a join did not fit.
+function notesPickCampaign(cur, curAt, inc, incAt, moment) {
+  const at = v => (Number.isFinite(v) && v > 0 ? Math.min(v, moment) : 0);
+  const tl = at(curAt), ti = at(incAt), text = typeof cur === 'string' ? cur : '';
+  const add = notesSanitize(inc).text;
+  const keep = { text, at: Math.max(tl, ti), replaced: false, tooLong: false };
+  if (!add || add === text) return keep;
+  if (!text.trim()) return tl > ti ? keep : { text: add, at: ti, replaced: false, tooLong: false };
+  if (ti > 0 && ti >= tl) return { text: add, at: ti, replaced: true, tooLong: false };
+  if (tl > 0 || ti > 0) return keep;
+  const j = notesMergeCampaign(text, add);
+  return { text: j.text, at: j.text !== text ? moment : 0, replaced: false, tooLong: j.tooLong };
+}
+
 // Place notes are a map of place name to text. ⚠ NULL-PROTOTYPE, and only ever read with an own-key
 // test: a place named "constructor" or "__proto__" is an ordinary name.
 function notesPlacesNew() { return Object.create(null); }
@@ -71,7 +87,7 @@ function notesPlacesClean(raw) {
 
 // The campaign.json at a backup's root. Null when there is nothing to carry, so the zip looks as it
 // always did.
-function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, entries, groupUids) {
+function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, entries, groupUids, textAt) {
   const hasText = typeof text === 'string' && !!text.trim();
   const named = notesPlacesNew();
   for (const k of Object.keys(places || {})) if (typeof places[k] === 'string' && places[k].trim()) named[k] = places[k];
@@ -84,6 +100,7 @@ function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, ent
   if (!hasText && !hasPlaces && !drawn && !laid && !marked && !listed && !uided) return null;
   const out = {};
   if (hasText) out.notes = text;
+  if (hasText && textAt > 0) out.notesAt = textAt;
   if (hasPlaces) out.places = named;
   if (drawn) out.placeShapes = shapes;
   if (marked) out.party = party;
@@ -175,12 +192,13 @@ function notesParseCampaign(raw) {
   try { obj = JSON.parse(raw); } catch (_) { return { text: '', broken: true }; }
   if (!obj || typeof obj !== 'object') return { text: '', broken: true };
   const s = notesSanitize(obj.notes);
-  return { text: s.text, broken: s.dropped };
+  // `at`, when the file says when its note was last edited.
+  return Number.isFinite(obj.notesAt) && obj.notesAt > 0 ? { text: s.text, broken: s.dropped, at: obj.notesAt } : { text: s.text, broken: s.dropped };
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    NOTES_SEPARATOR, notesCrumbs, notesSanitize, notesMergeCampaign, notesCampaignPayload, notesParseCampaign,
+    NOTES_SEPARATOR, notesCrumbs, notesSanitize, notesMergeCampaign, notesPickCampaign, notesCampaignPayload, notesParseCampaign,
     notesPlacesNew, notesPlacesCopy, notesPlacesClean, notesParsePlaces, notesMergePlaces, notesRenamePlace,
     notesParseRoadNotes, notesParseEntries, notesRekey, notesSaveReportDue,
   };

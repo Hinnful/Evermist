@@ -45,6 +45,9 @@
     /* Red only under the pointer, on a destructive control. */
     --r-text: #ff8a8a;
     --r-tint: rgba(240, 82, 82, 0.16);
+    /* Amber: something did not work and the rest still did. */
+    --y-text: #f2c46d;
+    --y-tint: rgba(242, 176, 60, 0.14);
     --veil: rgba(6, 7, 9, 0.62);
     --win-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
     --pop-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);

@@ -280,7 +280,8 @@ function pumpLights() {
   if (_lightLayerRef !== pixiEffectsLayer) {
     _lightLayerRef = pixiEffectsLayer; _lightSprite = null; _lightsTexDirty = true;
   }
-  if (isPlayer && _lightsFogDirty) _refreshLightReveal();
+  // A whole-fog readback: left dirty on a map with no lights, where it would hitch every reveal for nothing.
+  if (isPlayer && _lightsFogDirty && lightPolys.length) _refreshLightReveal();
   const gridKey = mapWidth * 1e6 + mapHeight * 1e3 + gridSize;
   if (gridKey !== _lightGridKey) { _lightGridKey = gridKey; _lightsTexDirty = true; }
   if (_lightStrength() !== _lightStrengthNow) { _lightStrengthNow = _lightStrength(); _lightsTexDirty = true; }

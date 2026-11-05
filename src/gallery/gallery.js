@@ -96,6 +96,7 @@ function _gaRename(p, name) {
   name = name.trim();
   if (!name || name === p.name) return;
   p.name = name;
+  p.named = Date.now();   // an import takes the name edited later
   galleryStore.put(p);
 }
 
@@ -108,7 +109,7 @@ function _gaRemove(p) {
     onConfirm: async () => {
       if (_gaLive === p.id) galleryTakeDown();
       await galleryStore.remove(p.id);
-      _gaPics = _gaPics.filter(x => x !== p);
+      _gaPics = _gaPics.filter(x => x.id !== p.id);
       if (_gaUrls[p.id]) { URL.revokeObjectURL(_gaUrls[p.id]); delete _gaUrls[p.id]; }
       delete _gaTiles[p.id];
       _gaRender();
@@ -142,6 +143,7 @@ function galleryRenameTo(id, name) {
   const p = _gaPics.find(x => x.id === id);
   if (!p) return;
   p.name = name;
+  p.named = Date.now();
   galleryStore.put(p);
   _gaRender();
 }
@@ -168,6 +170,7 @@ async function galleryRestore(p) {
 async function galleryReload() {
   try { _gaPics = (await galleryStore.all()).sort((a, b) => b.added - a.added); }
   catch (_) { _gaPics = []; }
+  for (const id of Object.keys(_gaTiles)) delete _gaTiles[id];   // ⚠ a kept tile's clicks hold the old object
   _gaRender();
 }
 
@@ -185,17 +188,20 @@ async function galleryBackupPayload() {
   return meta.length ? { meta: JSON.stringify(meta), files } : null;
 }
 
-// Adds the backup's pictures the gallery does not hold. Never removes or replaces one.
+// Adds the backup's pictures the gallery does not hold, and takes a name renamed later in the file. Never removes one.
 async function galleryAdoptBackup(zipPath) {
   const got = await window.electronAPI.readBackupGallery(zipPath);
   if (!got) return 0;
-  const list = [];
-  for (const m of galleryParseMeta(got.meta)) {
+  const list = [], meta = galleryParseMeta(got.meta);
+  for (const m of meta) {
     const buf = got.files[pictureZipName(m.id, m.type)];
-    if (buf) list.push({ id: m.id, name: m.name, added: m.added || Date.now(), blob: new Blob([buf], { type: m.type }) });
+    if (buf) list.push({ id: m.id, name: m.name, added: m.added || Date.now(), named: m.named, blob: new Blob([buf], { type: m.type }) });
   }
+  const have = await galleryStore.all();
   const added = await galleryStore.addMissing(list);
-  if (added.length) await galleryReload();
+  const renamed = galleryRenames(have, meta, Date.now());
+  for (const r of renamed) await galleryStore.put(Object.assign(have.find(p => p.id === r.id), { name: r.name, named: r.named }));
+  if (added.length || renamed.length) await galleryReload();
   return added.length;
 }
 

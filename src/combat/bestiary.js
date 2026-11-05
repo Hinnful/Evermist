@@ -182,9 +182,11 @@ function bestiaryMarkNew(ids) {
   bestiaryRender();
 }
 
-// An import has landed: its row is marked NEW and its page opens so the DM sees what was read.
+// An import has landed: its row is marked NEW and its page opens so the DM sees what was read,
+// unless another page is open, which the DM may be editing.
 function _bsImported(id) {
-  if (id) { bs.fresh.add(id); _bsShow(id); } else bestiaryRender();
+  if (id) bs.fresh.add(id);
+  if (id && !bs.open) _bsShow(id); else bestiaryRender();
 }
 
 function _bsStartImport() {
@@ -365,8 +367,10 @@ function initBestiary() {
   // The map listens on the document; nothing pressed in here is the map's.
   modal.addEventListener('keydown', e => { _bsKey(e); e.stopPropagation(); });
   // A key pressed with nothing focused lands on the body, outside the window, while it is open.
+  // The fight table, its menus and a dialog sit above the veil and keep their own keys.
   document.addEventListener('keydown', e => {
     if (!bsIsOpen() || modal.contains(e.target) || (bs.pop && bs.pop.contains(e.target))) return;
+    if (e.target.closest && e.target.closest('#cb-fight, #cb-stat, #cf-menu, #cb-menu, #cd-anchor')) return;
     _bsKey(e);
     e.stopPropagation();
   }, true);

@@ -11,7 +11,7 @@ let _wmWorld = null;             // #wm-world, the layer that pans and scales
 const _wmLayers = {};            // hull, card and mark
 const _wmEls = new Map();        // key → element, kept across renders so a move can animate
 let _wmCam = { cx: 0, cy: 0, z: 1 };
-let _wmAnim = false;
+let _wmAnim = false, _wmFlyGen = 0, _wmFlyEnds = false;   // a new fly stops the running one, unless that one ends by leaving
 let _wmQuery = '';
 let _wmPlaceList = [];           // the places as the last draw found them
 let _wmLive = {};                // id → position while a drag is under way
@@ -407,10 +407,11 @@ function _wmToWorld(px, py) {
 // Zoom is eased on its logarithm and the centre on the inverse scale, so a fly in or out stays on
 // the point it is heading for.
 function _wmFly(t, ms, done) {
-  _wmAnim = true;
+  if (_wmAnim && _wmFlyEnds) return;
+  const gen = ++_wmFlyGen; _wmAnim = true; _wmFlyEnds = !!done;
   const s = { ..._wmCam }, t0 = performance.now();
   const ease = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
-  const step = () => {
+  const step = () => { if (gen !== _wmFlyGen) return;
     const k = Math.min(1, (performance.now() - t0) / ms), e = ease(k);
     _wmCam.z = Math.exp(Math.log(s.z) + (Math.log(t.z) - Math.log(s.z)) * e);
     const span = 1 / t.z - 1 / s.z;
@@ -418,7 +419,7 @@ function _wmFly(t, ms, done) {
     _wmCam.cx = s.cx + (t.cx - s.cx) * u;
     _wmCam.cy = s.cy + (t.cy - s.cy) * u;
     _wmApplyCam();
-    if (k < 1) requestAnimationFrame(step); else { _wmAnim = false; if (done) done(); }
+    if (k < 1) requestAnimationFrame(step); else { _wmAnim = false; _wmFlyEnds = false; if (done) done(); }
   };
   step();
 }

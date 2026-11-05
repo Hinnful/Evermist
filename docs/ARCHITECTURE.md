@@ -350,7 +350,9 @@ The DM window is the boss. The Player window follows.
   With Auto off, the DM holds everything about the map until **Send**: opening a map (the TV
   keeps the old one, with no fog cover), minimap drag and zoom, Sync, Turn and the fog animation.
   `state.tvWait` {scene, view, turn, anim} records what waits and Send delivers it in one go;
-  Manual to Auto sends it too. Both Send keys, Space and Shift+S, send in either mode. TV setup states the rule under
+  Manual to Auto sends it too. The first map opened while the TV shows none (a fresh TV, or one cleared
+  by a delete) waits for Send, though Show on TV with nothing waiting shows it at once. Turning Two maps
+  on or off is not a Send: each TV half waits for its own, and the single TV after leaving waits too. Both Send keys, Space and Shift+S, send in either mode. TV setup states the rule under
   Updates in one line. The ping stays live but does nothing while the TV shows a different
   map from the open one; a gallery picture on the TV stays live.
 - **Match the TV to my view** (Sync View in the code) snaps the Player's camera to match the DM's. The Player camera glides to
@@ -471,7 +473,7 @@ fire lands on it and not on the large lit area beneath. Both take their ids from
 Every tool a room has works on a light: draw, select, move, reshape, round corners, rotate, scale,
 Merge, Cut out, Split, copy and paste. Light is an effect type, a material beside Fire: pick a shape, pick the Light material, place it,
 by hand or with the size presets. A repair acts on the kind being drawn,
-fires or lights, never both. The Lights eye in Scene control hides them all; a single light is
+fires or lights, never both. With Cut out, Merge or Split armed, a Ring acts only on the band its preview shows. The Lights eye in Scene control hides them all; a single light is
 deleted, not switched off.
 
 A floor plan seeds lights once. The Lights row in Scene control loads a .dd2vtt as the Rooms row
@@ -738,7 +740,12 @@ between PCs.
   that one edited it later. Places match by uid and then by name, roads by their key, and the
   background follows the same rule. A scene the library does not hold is added, and a name already
   taken gets a "Name (2)" style rename. Where nothing matched, the new scenes land beside the
-  existing layout. Afterwards the world map opens on what came in and a report names what was added,
+  existing layout. A monster or fight matches by id and the newer copy replaces the old, so no "Goblin 2".
+  Factions, lore, picture names, the party marker and a map's group and Campaign spot follow the same
+  newer-wins rule. The newer campaign note replaces the old one, and is never appended under it.
+  Where neither copy has an edit time, a differing monster still arrives as a copy once. Stopping an
+  import puts the Campaign cards' names, thumbnails, groups and spots back.
+  Afterwards the world map opens on what came in and a report names what was added,
   updated and kept, and each edit the file overwrote.
 - **A map file that has gone is named, both ways.** A scene whose video was moved or deleted
   still exports its record, so the export says which scenes went out without a map, and a

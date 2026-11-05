@@ -45,15 +45,19 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleTe
   const missingVideos = scenesData.filter(s2 => s2.mapType === 'video' && !s2._videoExists)
                                   .map(s2 => (s2.metadata && s2.metadata.name) || s2.id);
 
+  // A failed export leaves no half-written zip under the DM's name, but never deletes a file it could not open.
+  let opened = false, failed = null;
   await new Promise((resolve, reject) => {
     if (cancelled) return resolve();
     const out = fs.createWriteStream(destPath);
     const archive = archiver('zip', { zlib: { level: 6 } });
     stopZip = () => { cancelled = true; archive.abort(); out.destroy(); };
-    // 'close' settles a cancel too, after the file exists; resolving early lets the unlink below miss it.
-    out.on('close', resolve);
-    out.on('error', reject);
-    archive.on('error', reject);
+    // 'close' settles a cancel or a failure too, after the file exists; settling early lets the unlink below miss it.
+    out.on('open', () => { opened = true; });
+    out.on('close', () => (failed ? reject(failed) : resolve()));
+    const fail = (err) => { failed = failed || err; archive.abort(); out.destroy(); };
+    out.on('error', fail);
+    archive.on('error', fail);
     archive.pipe(out);
 
     archive.append(JSON.stringify(scenesData.map(s => s.metadata), null, 2), { name: 'manifest.json' });
@@ -87,6 +91,9 @@ ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleTe
     });
 
     archive.finalize();
+  }).catch(async (err) => {
+    if (opened) await fs.promises.unlink(destPath).catch(() => {});
+    throw err;
   }).finally(() => { stopZip = null; });
 
   if (cancelled) {
@@ -300,8 +307,19 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
 ipcMain.handle('settle-import-video', async (_event, id, ext, keep) => {
   if (!isSafeId(id) || !MAP_EXT_RE.test(ext)) throw new Error('Invalid video name');
   const tmp = path.join(mapsDir, id + ext + '.import');
-  if (keep) await fs.promises.rename(tmp, path.join(mapsDir, id + ext));
-  else await fs.promises.unlink(tmp).catch(() => {});
+  if (!keep) { await fs.promises.unlink(tmp).catch(() => {}); return; }
+  const dest = path.join(mapsDir, id + ext);
+  await fs.promises.rename(tmp, dest);
+  // ⚠ The readers try .webm before .mp4, so a map whose file type changed would go on playing the old file.
+  // One that cannot go (being played) fails the settle, and the import keeps the old map whole.
+  for (const other of ['.webm', '.mp4']) {
+    if (other === ext) continue;
+    try { await fs.promises.unlink(path.join(mapsDir, id + other)); } catch (e) {
+      if (e.code === 'ENOENT') continue;
+      await fs.promises.rename(dest, tmp);
+      throw e;
+    }
+  }
 });
 
 module.exports = { register };

@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Claude's map tools (src/mcp/mcpScenes.js): a search of the usual folders, and the bytes of a map or a folder's maps.
   findMapFiles: (query) => ipcRenderer.invoke('find-map-files', query),
-  readMapFiles: (path) => ipcRenderer.invoke('read-map-files', path),
+  readMapFiles: (path, opts) => ipcRenderer.invoke('read-map-files', path, opts),
   readBestiaryFile: (path) => ipcRenderer.invoke('read-bestiary-file', path),
   // Claude's import tools (src/mcp/mcpImport.js): a floor plan or module text named by path.
   readPrepFile: (path, kind) => ipcRenderer.invoke('read-prep-file', path, kind),

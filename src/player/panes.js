@@ -193,8 +193,17 @@ function startDividerDrag(e) {
 
 // ─── Entering and leaving ────────────────────────────────────────────────────
 
+// ⚠ SET BEFORE THE FIRST AWAIT of entering or leaving: panesActive flips only after a save, and a
+// second click inside it builds a second row of columns and toggles the TV shut.
+let panesBusy = false;
+
 async function enterPanes(sceneIdA, sceneIdB) {
-  if (panesActive) return;
+  if (panesActive || panesBusy) return;
+  panesBusy = true;
+  try { await _enterPanes(sceneIdA, sceneIdB); } finally { panesBusy = false; }
+}
+
+async function _enterPanes(sceneIdA, sceneIdB) {
   // ⚠ Read before the teardown below, which drops the handle without closing the window.
   const hadPlayer = !!(playerWindow && !playerWindow.closed);
   // The column taking this scene adopts it, so pressing Two maps keeps the DM's framing.
@@ -219,7 +228,8 @@ async function enterPanes(sceneIdA, sceneIdB) {
   buildPaneRow();
   // The DM's own Player window held a map that no longer exists, so the shell takes its place.
   // With no Player up, the shell is warmed hidden instead, so the button has nothing left to boot.
-  if (hadPlayer) toggleStageWindow(); else prewarmStage();
+  // Manual: turning Two maps on is not a Send, so each half keeps its fog until its column's Send.
+  if (hadPlayer) { _stageWaitsForSend = !autoSync; toggleStageWindow(); } else prewarmStage();
   sceneListChanged();   // the toggle lights and the trigger starts naming two maps
 }
 
@@ -235,7 +245,12 @@ function flushPaneScene(id) {
 }
 
 async function exitPanes(keepSceneId) {
-  if (!panesActive) return;
+  if (!panesActive || panesBusy) return;
+  panesBusy = true;
+  try { await _exitPanes(keepSceneId); } finally { panesBusy = false; }
+}
+
+async function _exitPanes(keepSceneId) {
   // ⚠ THE PLAYER'S WINDOW IS KEPT, not closed: navigating it back carries its fullscreen.
   const hadPlayer = stageIsOpen();
   unbindStageHalves();
@@ -243,6 +258,7 @@ async function exitPanes(keepSceneId) {
   // below would navigate it instead of opening its own.
   closePrewarmedStage();
   _stageWindow = null;
+  _stageWaitsForSend = false;
   await Promise.all(livePanes().map(flushPaneScene));
   panesActive = false;
   document.body.classList.remove('panes-on');
@@ -260,7 +276,12 @@ async function exitPanes(keepSceneId) {
   if (!hadPlayer) prewarmPlayer();   // warming would navigate the live window away
   // The map comes back out of the store, which is where the column has been saving it all along.
   if (keepSceneId) await switchScene(keepSceneId).catch(console.error);
-  if (hadPlayer) { playerWindow = null; revealPlayerWindow(); }
+  if (hadPlayer) {
+    playerWindow = null;
+    // Manual: leaving Two maps is not a Send either. The TV keeps its fog until Send brings this map.
+    if (!autoSync) { tvWait.scene = true; playerUnsent = true; }
+    revealPlayerWindow();
+  }
 }
 
 // ⚠ CLOSING A COLUMN ENDS TWO-MAP MODE. One column full width looked exactly like one map, was
@@ -282,6 +303,7 @@ function teardownParentMap() {
   // ⚠ THE PLAYER'S WINDOW IS LEFT ALONE: entering navigates it to the shell instead.
   playerWindow = null;
   closePrewarmedPlayer();
+  armGridCalibration(false);   // it holds the dock and a still of a map that is going
   cleanupVideo();
   stopFogTransition();
   stopFogAnim();
@@ -291,9 +313,11 @@ function teardownParentMap() {
   baseFogCanvas = null; baseFogCtx = null;
   polygons = [];
   setEffects([]);
+  setWeather('none', true);   // or the hidden canvas keeps drawing it every frame
   clearUndo();
   currentScene = null;
   playerMapSent = false;
+  tvSceneId = null;
   pixiClearMap();
   pixiDestroyFog();
   pixiFlushTexturePool();
@@ -339,6 +363,14 @@ function initPanes() {
       return;
     }
     if (msg.type === 'pane-repair-key') { setRemoteRepairKey(msg.repair); return; }   // repairKeys.js: the bar's icon lights
+    // Calibration ends inside the column (Done, Esc, a tool), so only its report puts the DM's pane back.
+    if (msg.type === 'pane-calibrate') {
+      dockHoldForCalibration(!!msg.on);
+      const btn = document.getElementById('cp-grid-calibrate');
+      if (btn) btn.classList.toggle('active', !!msg.on);
+      return;
+    }
+    if (msg.type === 'pane-saved') { searchStale(msg.sceneId); return; }
     if (msg.type === 'pane-scene-result') {
       p.sceneId = msg.sceneId || null;
       sceneListChanged();

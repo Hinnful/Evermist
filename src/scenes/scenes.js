@@ -12,13 +12,16 @@ function fogToBlob() {
 
 // Load baseFog from a scene record into the initialised fogDataCanvas / baseFogCanvas pair. Handles
 // both Blob and legacy data-URL storage, and fills solid navy if neither is present.
+// ⚠ The canvases are taken at the call: a decode that lands after a newer switch made its own would
+// otherwise draw this map's fog into that map's, and its next save would keep the blend.
 function loadFogFromScene(scene) {
+  const targets = [fogDataCtx, baseFogCtx];
   return new Promise(resolve => {
     const fill = () => {
-      fogDataCtx.fillStyle = '#1a1a2e';
-      fogDataCtx.fillRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
-      baseFogCtx.fillStyle = '#1a1a2e';
-      baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
+      for (const ctx of targets) {
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      }
       resolve();
     };
     const src = scene.baseFogBlob
@@ -27,8 +30,7 @@ function loadFogFromScene(scene) {
     if (!src) { fill(); return; }
     const img = new Image();
     img.onload = () => {
-      fogDataCtx.drawImage(img, 0, 0, fogDataCanvas.width, fogDataCanvas.height);
-      baseFogCtx.drawImage(img, 0, 0, baseFogCanvas.width, baseFogCanvas.height);
+      for (const ctx of targets) ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height);
       if (scene.baseFogBlob) URL.revokeObjectURL(src);
       resolve();
     };
@@ -97,6 +99,11 @@ async function _sameBlob(a, b) {
   return true;
 }
 
+// Every save still writing. A teardown's null still lets one land (see doAutoSave), so a detach that must not
+// be written over, an import's, awaits these.
+const _autoSavesInFlight = new Set();
+function autoSavesSettled() { return Promise.all([..._autoSavesInFlight]); }
+
 // Non-blocking auto-save: captures a snapshot of current state synchronously,
 // then encodes fog asynchronously via toBlob so the main thread is never blocked.
 // ⚠ RESOLVES WHEN THE WRITE IS DONE, not when it is queued. Closing a column removes the frame,
@@ -123,13 +130,13 @@ function doAutoSave() {
     weather:       weatherId,
     fogTheme,
   };
-  return new Promise(resolve => {
+  const run = new Promise(resolve => {
     baseFogCanvas.toBlob(async blob => {
       // ⚠ A null currentScene means a teardown asked for this flush, so it still counts.
       if (!blob || (currentScene !== null && currentScene !== scene)) { fogEditedSinceSave = fogEditedSinceSave || fogEdited; resolve(); return; }
       // Every undo step raises the flag, room names and notes included. A picture that did not change
       // keeps its edit time, or an import keeps this machine's fog over the other's newer reveals.
-      const fogChanged = fogEdited && !(await _sameBlob(blob, scene.baseFogBlob));
+      const fogChanged = fogEdited && !(await _sameBlob(blob, scene.baseFogBlob).catch(() => false));
       scene.polygons      = snap.polygons;
       scene.nextPolygonId = snap.nextPolygonId;
       scene.pictureBlobs  = snap.pictureBlobs;
@@ -139,14 +146,19 @@ function doAutoSave() {
       scene.baseFogBlob   = blob;
       scene.gridConfig    = snap.gridConfig;
       scene.fogSettings   = snap.fogSettings;
-      // Absent means none, so a map without weather keeps the record the previous release wrote.
-      if (snap.weather !== 'none') scene.weather = snap.weather; else delete scene.weather;
+      // Absent means none, so a map without weather keeps the record the previous release wrote. A value
+      // this build cannot read (a newer release's, after /rollback) stays until the DM picks another.
+      if (snap.weather !== weatherNormalize(scene.weather)) { if (snap.weather !== 'none') scene.weather = snap.weather; else delete scene.weather; }
       // The same for the fog theme: absent is Default, which the previous release never reads.
-      if (snap.fogTheme !== 'default') scene.fogTheme = snap.fogTheme; else delete scene.fogTheme;
+      if (snap.fogTheme !== fogThemeNormalize(scene.fogTheme)) { if (snap.fogTheme !== 'default') scene.fogTheme = snap.fogTheme; else delete scene.fogTheme; }
       if (snap.tvFit) scene.tvFit = snap.tvFit; else delete scene.tvFit;
       // Never snapshotted: an edit made while the fog encodes would be overwritten with the old text.
       if (typeof scene.notes !== 'string') scene.notes = '';
-      sceneStore.saveScene(scene, { fogEdited: fogChanged }).catch(console.error).then(resolve, resolve);
+      // ⚠ Settles even when the store throws: an import and a switch wait on this.
+      Promise.resolve().then(() => sceneStore.saveScene(scene, { fogEdited: fogChanged })).catch(console.error).then(resolve, resolve);
     }, 'image/png');
   });
+  _autoSavesInFlight.add(run);
+  run.then(() => _autoSavesInFlight.delete(run));
+  return run;
 }

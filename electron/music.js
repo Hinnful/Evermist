@@ -7,7 +7,7 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 const fs = require('fs');
 const https = require('https');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const { uniqueMusicName } = require('../src/ui/musicPlan.js');
 
 let sendTo;
@@ -151,17 +151,25 @@ function ytdlpBundled() {
     : path.join(__dirname, '..', 'vendor', 'yt-dlp', YTDLP_ASSET);
 }
 
+// ⚠ A MAC COPY KEEPS THE SOURCE'S QUARANTINE MARK, which a browser-downloaded .dmg carries, and
+// Gatekeeper then blocks the unsigned tool. A copy made by an older version is cleared on start too.
+function unquarantine(file) {
+  if (process.platform !== 'darwin') return;
+  try { execFileSync('/usr/bin/xattr', ['-d', 'com.apple.quarantine', file], { stdio: 'ignore' }); } catch (_) { /* no mark */ }
+}
+
 // ⚠ THE APP RUNS THE COPY IN userData, never the one inside the install - see DECISIONS.
 function ensureYtdlp() {
   const dir = path.join(app.getPath('userData'), 'bin');
   const dest = path.join(dir, YTDLP_ASSET);
   try {
-    if (fs.statSync(dest).size > 1024 * 1024) { ytdlpBin = dest; return; }
+    if (fs.statSync(dest).size > 1024 * 1024) { unquarantine(dest); ytdlpBin = dest; return; }
   } catch (_) {}
   try {
     fs.mkdirSync(dir, { recursive: true });
     fs.copyFileSync(ytdlpBundled(), dest);
     if (process.platform !== 'win32') fs.chmodSync(dest, 0o755);
+    unquarantine(dest);
     ytdlpBin = dest;
   } catch (err) {
     ytdlpBin = null;
@@ -264,6 +272,10 @@ ipcMain.handle('music-lookup', async (_event, req) => {
 // need ffmpeg to join.
 const MUSIC_FORMAT = 'bestaudio[protocol^=http]';
 
+// A download Claude started runs on with no call coming in, and the unseen app's idle quit (main.js) reads this.
+let downloadsRunning = 0, downloadEndedAt = 0;
+const musicActiveAt = () => (downloadsRunning ? Date.now() : downloadEndedAt);
+
 ipcMain.handle('music-download', async (event, req) => {
   const id = req && req.id;
   const target = ytdlpTarget('video', id, req && req.url);
@@ -282,10 +294,16 @@ ipcMain.handle('music-download', async (event, req) => {
     '-o', '%(title)s [%(id)s].%(ext)s',
     '--', target,
   ]);
-  await runYtdlp(args, line => {
-    const m = /^EVMPROGRESS\s+([\d.]+)%/.exec(line.trim());
-    if (m) sendTo(event.sender, 'music-progress', { id: id, percent: parseFloat(m[1]) });
-  });
+  downloadsRunning++;
+  try {
+    await runYtdlp(args, line => {
+      const m = /^EVMPROGRESS\s+([\d.]+)%/.exec(line.trim());
+      if (m) sendTo(event.sender, 'music-progress', { id: id, percent: parseFloat(m[1]) });
+    });
+  } finally {
+    downloadsRunning--;
+    downloadEndedAt = Date.now();
+  }
   return true;
 });
 
@@ -318,4 +336,4 @@ ipcMain.handle('music-ytdlp-update', async () => {
   return String(out).trim().split(/\r?\n/).slice(-2).join(' ').slice(0, 200);
 });
 
-module.exports = { register, ensureYtdlp };
+module.exports = { register, ensureYtdlp, musicActiveAt };

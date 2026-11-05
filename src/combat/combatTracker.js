@@ -30,7 +30,7 @@ function cbSave(quiet) {
   clearTimeout(_cbSaveTimer);
   _cbSaveTimer = null;
   try {
-    const p = combatSavedParts(cbState);
+    const p = combatSavedParts(combatStampEdits(cbState, Date.now()));
     localStorage.setItem(CB_KEY, JSON.stringify(p.combat));
     localStorage.setItem(CB_FIGHTS_KEY, JSON.stringify(p.fights));
     return true;
@@ -58,7 +58,7 @@ function _cbRead(key) {
 
 function _cbLoad() {
   const d = _cbRead(CB_KEY) || {};
-  cbState = Object.assign({ rows: Array.isArray(d.rows) ? d.rows : [], blocks: d.blocks || {}, nextId: d.nextId || 1 },
+  cbState = Object.assign({ rows: Array.isArray(d.rows) ? d.rows : [], blocks: d.blocks || {}, nextId: d.nextId || 1, edits: d.edits },
     combatFightsFrom(_cbRead(CB_FIGHTS_KEY), combatFightId));
   // Entries imported before statBlockJoinHp read a split HP as its first half.
   const copies = cbState.fights.flatMap(f => combatFightRows(cbState, f)).map(r => r.sb).filter(Boolean);
@@ -74,9 +74,9 @@ function cbBackupPayload() {
 
 function cbMergePayload(json) {
   let d;
-  try { d = JSON.parse(json); } catch (err) { return { ok: false, error: t('The fight in this file could not be read.') }; }
+  try { d = JSON.parse(json); if (!d || typeof d !== 'object') throw d; } catch (err) { return { ok: false, error: t('The fight in this file could not be read.') }; }
   cbState = combatMerge(cbState, { rows: Array.isArray(d.rows) ? d.rows : [], blocks: d.blocks || {},
-    fights: Array.isArray(d.fights) ? d.fights : [], openId: d.openId }, combatFightId);
+    fights: Array.isArray(d.fights) ? d.fights : [], openId: d.openId, edits: d.edits }, combatFightId, Date.now());
   cbSave();
   cbRender();
   cbFightsTitle();
@@ -415,7 +415,7 @@ function _cbEditAttacks(cell, r) {
     span.removeEventListener('blur', blur);
     const t = span.textContent.trim();
     if (keep && t !== before) {
-      sb.quick = t;
+      if (t) sb.quick = t; else delete sb.quick;
       r.sbChanged = true;
       cbSave();
       if (cbStatRowId() === r.id) cbOpenStat(r);
@@ -594,9 +594,9 @@ function _cbSuggest(input, row) {
   const el = document.createElement('div');
   el.className = 'cb-menu';
   el.id = 'cb-suggest';
-  el.dataset.noI18n = '';
-  el.dataset.keepsFocus = '';
-  el.innerHTML = items.map((b, i) => `<div data-i="${i}" class="${i ? '' : 'on'}">${_cbEsc(b.name)}<span class="src">${_cbEsc(b.source || '')}</span></div>`).join('');
+  el.dataset.noI18n = ''; el.dataset.keepsFocus = '';
+  const at = combatRowIsFresh(row) ? 0 : -1;   // Enter picks only once the DM moves onto one, unless a pick wipes nothing
+  el.innerHTML = items.map((b, i) => `<div data-i="${i}" class="${i === at ? 'on' : ''}">${_cbEsc(b.name)}<span class="src">${_cbEsc(b.source || '')}</span></div>`).join('');
   // mousedown, not click: the field's blur would close the list first.
   el.addEventListener('mousedown', e => {
     e.preventDefault(); e.stopPropagation();
@@ -613,7 +613,7 @@ function _cbSuggest(input, row) {
   const z = cbZoom(), r = input.getBoundingClientRect();
   el.style.left = (r.left / z) + 'px';
   el.style.top = ((r.bottom + 4) / z) + 'px';
-  _cbSug = { row, items, at: 0, el };
+  _cbSug = { row, items, at, el };
 }
 
 function _cbSuggestClose() {
@@ -625,11 +625,11 @@ function _cbSuggestKey(e) {
   if (!_cbSug) return false;
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     e.preventDefault();
-    _cbSug.at = (_cbSug.at + (e.key === 'ArrowDown' ? 1 : -1) + _cbSug.items.length) % _cbSug.items.length;
+    _cbSug.at = ((_cbSug.at < 0 && e.key === 'ArrowUp' ? 0 : _cbSug.at) + (e.key === 'ArrowDown' ? 1 : -1) + _cbSug.items.length) % _cbSug.items.length;
     _cbSug.el.querySelectorAll('[data-i]').forEach((d, i) => d.classList.toggle('on', i === _cbSug.at));
     return true;
   }
-  if (e.key === 'Enter') { e.preventDefault(); _cbSuggestPick(_cbSug.at); return true; }
+  if (e.key === 'Enter' && _cbSug.at >= 0) { e.preventDefault(); _cbSuggestPick(_cbSug.at); return true; }
   if (e.key === 'Escape') { e.stopPropagation(); _cbSuggestClose(); return true; }
   return false;
 }

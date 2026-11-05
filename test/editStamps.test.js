@@ -99,6 +99,45 @@ describe('uids', () => {
   });
 });
 
+describe('esSeen and esStampRecords - places and roads', () => {
+  const partsOf = r => ({ name: E.esCanon(r.name), shape: E.esCanon(r.vertices) });
+
+  it('times only the part edited since the last stamp, and moves seen on', () => {
+    const place = { uid: 'p1', name: 'Town', vertices: [1, 2] };
+    const seen = E.esSeen([place], partsOf);
+    E.esStampRecords([place], seen, partsOf, 100);
+    assert.deepEqual(place.edits, {});
+    place.name = 'City';
+    E.esStampRecords([place], seen, partsOf, 200);
+    assert.deepEqual(place.edits, { name: 200 });
+    place.vertices = [3, 4];
+    E.esStampRecords([place], seen, partsOf, 300);
+    assert.deepEqual(place.edits, { name: 200, shape: 300 });
+    E.esStampRecords([place], seen, partsOf, 400);
+    assert.deepEqual(place.edits, { name: 200, shape: 300 });
+  });
+
+  it('stamps every part of a record the last stamp never saw', () => {
+    const seen = E.esSeen([], partsOf);
+    const road = { uid: 'r1', name: 'North road', vertices: [] };
+    E.esStampRecords([road], seen, partsOf, 500);
+    assert.deepEqual(road.edits, { name: 500, shape: 500 });
+  });
+});
+
+describe('esStamp - deletion records', () => {
+  it('keeps the newest 300 deletions and drops the oldest', () => {
+    const goneRooms = {};
+    for (let i = 0; i < 300; i++) goneRooms['g' + i] = i + 1;
+    const rec = scene([room(1)], { edits: { goneRooms } });
+    const st = E.esStamp(E.esSnapshot(rec), scene([]), 1000, false);
+    assert.equal(Object.keys(st.goneRooms).length, 300);
+    assert.equal(st.goneRooms['legacy-1'], 1000);
+    assert.equal(st.goneRooms.g0, undefined);
+    assert.equal(st.goneRooms.g1, 2);
+  });
+});
+
 describe('esStamp - a write to one field of a stored record', () => {
   it('keeps the fog time when only the name changes', () => {
     const rec = scene([room(1)], { edits: { scene: { fog: 50 }, rooms: { 'legacy-1': { mode: 40 } }, goneRooms: { x: 9 } } });
@@ -107,6 +146,21 @@ describe('esStamp - a write to one field of a stored record', () => {
     assert.equal(st.scene.fog, 50);
     assert.deepEqual(st.rooms, { 'legacy-1': { mode: 40 } });
     assert.deepEqual(st.goneRooms, { x: 9 });
+  });
+
+  it('keeps the times of parts a newer release stamped, which this build does not know', () => {
+    const rec = scene([room(1)], { edits: { scene: { fog: 50, smell: 60 }, rooms: { 'legacy-1': { scent: 70 } }, later: { a: 1 } } });
+    const st = E.esStamp(E.esSnapshot(rec), { ...rec, name: 'Deeper' }, 300, false);
+    assert.equal(st.scene.smell, 60);
+    assert.equal(st.rooms['legacy-1'].scent, 70);
+    assert.deepEqual(st.later, { a: 1 });
+  });
+
+  it('times a map moved to another group or spot, and nothing else', () => {
+    const rec = scene([], { group: 'Town', worldPos: { x: 1, y: 2 }, edits: { scene: { fog: 50 } } });
+    assert.deepEqual(E.esStamp(E.esSnapshot(rec), { ...rec, group: 'Keep' }, 300, false).scene, { fog: 50, place: 300 });
+    assert.deepEqual(E.esStamp(E.esSnapshot(rec), { ...rec, worldPos: { x: 4, y: 2 } }, 300, false).scene, { fog: 50, place: 300 });
+    assert.deepEqual(E.esStamp(E.esSnapshot(rec), { ...rec }, 300, false).scene, { fog: 50 });
   });
 
   it('times a room note changed on a map that is not open', () => {

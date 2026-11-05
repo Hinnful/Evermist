@@ -19,18 +19,24 @@ function _mcpOpenRefuse(fight, what) {
   return fight.id === cbState.openId ? _mcpNo('Not done: "' + fight.name + '" is the fight open at the table, and ' + what + ' would change it under the DM. Ask the DM to open another fight first.') : null;
 }
 
+// An undo refused, its step kept, while the fight is the one at the table: its rows live there, not on the fight.
+function _mcpOpenKeep(fight) {
+  if (fight.id === cbState.openId) throw Object.assign(new Error('Not undone: "' + fight.name + '" is the fight open at the table, and undoing would change it under the DM. Ask the DM to open another fight first.'), { mcpKeep: true });
+}
+
 function _mcpCreateFight(args) {
   const name = String(args.name || '').trim() || 'New fight';
   const built = mcpFightRows(cbState.blocks, args.monsters, cbState.nextId);
   const left = built.missing.length ? ' Left out, not in the bestiary: ' + _mcpMissing(built.missing).join('; ') + '.' : '';
   if (!built.rows.length) return _mcpNo('No fight was created: none of the monsters is in the bestiary.' + left);
-  const was = cbState.nextId, id = combatFightId();
+  const fight = { id: combatFightId(), name, rows: built.rows };
   cbState.nextId = built.nextId;
-  cbState.fights.push({ id, name, rows: built.rows });
+  cbState.fights.push(fight);
   _mcpFightsShown();
+  // Row ids only grow on undo, or a row added since would share one with the next.
   return mcpDone('created the fight "' + name + '"', async () => {
-    cbState.fights = cbState.fights.filter(f => f.id !== id);
-    cbState.nextId = was;
+    _mcpOpenKeep(fight);
+    cbState.fights = cbState.fights.filter(f => f.id !== fight.id);
     _mcpFightsShown();
   }, 'Created the fight "' + name + '" with ' + built.rows.length + ' rows.' + left);
 }
@@ -68,6 +74,7 @@ function _mcpEditFight(args) {
   _mcpFightsShown();
   const notes = [...edit.notes, ...(edit.missing.length ? ['Left out, not in the bestiary: ' + _mcpMissing(edit.missing).join('; ') + '.'] : [])];
   return mcpDone('edited the fight "' + was.name + '"', async () => {
+    _mcpOpenKeep(f);
     Object.assign(f, { name: was.name, rows: was.rows });
     cbState.nextId = Math.max(cbState.nextId, was.nextId);
     _mcpFightsShown();
@@ -95,14 +102,14 @@ function _mcpDuplicateFight(args) {
   if (found.error) return _mcpNo(found.error);
   const newName = args.newName === undefined ? null : String(args.newName).trim();
   if (newName === '') return _mcpNo('A fight needs a name.');
-  const was = cbState.nextId, before = new Set(cbState.fights.map(f => f.id));
+  const before = new Set(cbState.fights.map(f => f.id));
   combatDuplicateFight(cbState, found.fight.id, combatFightId);
   const copy = cbState.fights.find(f => !before.has(f.id));
   if (newName) copy.name = newName;
   _mcpFightsShown();
   return mcpDone('duplicated the fight "' + found.fight.name + '"', async () => {
+    _mcpOpenKeep(copy);
     cbState.fights = cbState.fights.filter(f => f.id !== copy.id);
-    cbState.nextId = Math.max(was, cbState.nextId - copy.rows.length);
     _mcpFightsShown();
   }, 'Duplicated the fight "' + found.fight.name + '" as "' + copy.name + '" with ' + copy.rows.length + ' rows.');
 }

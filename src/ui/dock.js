@@ -49,7 +49,8 @@ function dockMapInset() {
   return r.width ? Math.max(0, window.innerWidth - r.left) : 0;
 }
 
-// The one way to open, switch or shut the pane; `name` is a pane, or null for the rail alone.
+// The one way to open, switch or shut the pane; `name` is a pane, or null for the rail alone. A hold
+// (calibration, the Campaign) is `forced` and leaves the pane the next launch opens on.
 function dockOpen(name, forced) {
   const dock = _dockEl();
   if (!dock) return;
@@ -162,13 +163,13 @@ function dockHoldForCalibration(on) {
   nwHoldForCalibration(on);
   if (on) {
     _dockBeforeCal = _dockPane;
-    dockOpen(null);
+    dockOpen(null, true);
     document.addEventListener('dockpane', _dockForgetCal, { once: true });
   } else {
     document.removeEventListener('dockpane', _dockForgetCal);
     const back = _dockBeforeCal;
     _dockBeforeCal = null;
-    if (back && !_dockPane) dockOpen(back);
+    if (back && !_dockPane) dockOpen(back, true);
   }
   dockRefreshRail();
 }
@@ -186,11 +187,11 @@ function dockHoldForWorld(on) {
   if (fog) fog.closest('.cp-group').inert = on;
   if (on) {
     _dockBeforeWorld = _dockPane === 'scene' ? 'scene' : null;
-    if (_dockBeforeWorld) dockOpen(null);
+    if (_dockBeforeWorld) dockOpen(null, true);
     document.addEventListener('dockpane', _dockForgetWorld, { once: true });
   } else {
     document.removeEventListener('dockpane', _dockForgetWorld);
-    if (_dockBeforeWorld && !_dockPane) dockOpen(_dockBeforeWorld);
+    if (_dockBeforeWorld && !_dockPane) dockOpen(_dockBeforeWorld, true);
     _dockBeforeWorld = null;
   }
   dockRefreshRail();

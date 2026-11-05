@@ -82,6 +82,28 @@ describe('sceneBackupMeta', () => {
     assert.deepEqual(sceneBackupMeta(scene, '.jpg', 'image/jpeg', []).tvFit, { step: 2, turn: 270 });
     assert.equal(sceneBackupMeta({ id: 'b' }, '.jpg', 'image/jpeg', []).tvFit, undefined);
   });
+  // Every field a saved scene record holds, but the files the zip carries beside the manifest.
+  const FULL = {
+    id: 'a', name: 'Crypt', group: 'g1', worldPos: { x: 10, y: 20 }, mapType: 'video', mapWidth: 4000, mapHeight: 3000,
+    polygons: [{ id: 1, uid: 'r1', name: 'Hall', mode: 'shroud', vertices: [{ x: 0, y: 0 }], cornerRadii: [2] }],
+    nextPolygonId: 7, notes: 'DM notes',
+    effects: [{ id: 1, uid: 'e1', material: 'water', vertices: [{ x: 1, y: 1 }] }], nextEffectId: 4,
+    lightsHidden: true, lightShapes: [{ id: 1, vertices: [{ x: 5, y: 5 }] }], floorPlan: { format: 0.3, walls: [] },
+    gridConfig: { size: 70, offsetX: 3 }, fogSettings: { blur: 5 }, fogTheme: 'ice', weather: 'rain',
+    tvFit: { step: 1, turn: 90 }, createdAt: 123, sortOrder: 5, edits: { scene: { fog: 100 } },
+  };
+  const FILES = ['mapBlob', 'mapPath', 'baseFogBlob', 'thumbnail', 'pictureBlobs'];
+
+  test('carries every persisted scene field into the zip unchanged', () => {
+    const meta = sceneBackupMeta({ ...FULL, mapBlob: {}, baseFogBlob: {}, thumbnail: {}, pictureBlobs: {} }, '.webm', 'video/webm', ['p.png']);
+    for (const [k, v] of Object.entries(FULL)) assert.deepEqual(meta[k], v, k);
+    assert.equal(meta.mapExt, '.webm');
+    assert.equal(meta.mapMimeType, 'video/webm');
+    assert.deepEqual(meta.pictures, ['p.png']);
+    for (const k of FILES) assert.equal(meta[k], undefined, k + ' goes in the zip as a file');
+    assert.deepEqual(Object.keys(meta).filter(k => !(k in FULL)).sort(), ['mapExt', 'mapMimeType', 'pictures']);
+  });
+
   test('carries the weather of each map into the zip, and leaves a dry map without one', () => {
     assert.equal(sceneBackupMeta({ id: 'a', weather: 'storm' }, '.jpg', 'image/jpeg', []).weather, 'storm');
     assert.equal(sceneBackupMeta({ id: 'b' }, '.jpg', 'image/jpeg', []).weather, undefined);

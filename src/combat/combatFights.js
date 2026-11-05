@@ -5,8 +5,8 @@ let _cfMenu = null;
 
 function _cfOpen() { return cbState.fights.find(f => f.id === cbState.openId); }
 
-// The name fightPlan.js gives a fight nobody has named yet is the app's word, not the DM's.
-const _cfName = f => f.name === 'Fight' ? t('Fight') : f.name;
+// The names fightPlan.js gives a fight nobody has named yet are the app's words, not the DM's.
+const _cfName = f => f.name === 'Fight' || f.name === 'Imported fight' ? t(f.name) : f.name;
 
 function _cfCount(f) {
   const rows = combatFightRows(cbState, f), en = rows.filter(r => r.side === 'enemy').length, al = rows.length - en;

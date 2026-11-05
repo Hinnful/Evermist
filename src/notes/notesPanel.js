@@ -7,6 +7,7 @@
 // follows. A map nobody holds is read and written through the store; one a column holds, through that column.
 
 const NOTES_CAMPAIGN_KEY = 'evermist.campaignNotes';
+const NOTES_CAMPAIGN_AT_KEY = 'evermist.campaignNotesAt';   // when it was last edited; the previous release never reads it
 const NOTES_PLACES_KEY = 'evermist.placeNotes';
 const NOTES_ROADS_KEY = 'evermist.roadNotes';
 
@@ -56,10 +57,16 @@ function notesCampaignGet() {
   try { return localStorage.getItem(NOTES_CAMPAIGN_KEY) || ''; } catch (_) { return ''; }
 }
 
-function notesCampaignSet(text) {
+// `at` is an import's or an undo's: the time the text already carries. Every other write is an edit now.
+function notesCampaignSet(text, at) {
   try { localStorage.setItem(NOTES_CAMPAIGN_KEY, text); } catch (err) { _npPending.campaign = text; return notesSaveFailed('campaignNotes', err); }
   _npPending.campaign = null;
+  try { localStorage.setItem(NOTES_CAMPAIGN_AT_KEY, String(at === undefined ? Date.now() : at)); } catch (_) { /* the text is saved; only its time is not */ }
   return true;
+}
+
+function notesCampaignAt() {
+  try { return Number(localStorage.getItem(NOTES_CAMPAIGN_AT_KEY)) || 0; } catch (_) { return 0; }
 }
 
 // ─── Place notes ─────────────────────────────────────────────────────────────
@@ -184,7 +191,7 @@ function _npCommit() {
   const aim = _npAim, el = _npEl('np-field');
   if (!aim || !el) return;
   const v = notesSanitize(neStoredText(el)).text;
-  if (el.value !== v) el.value = v;
+  if (el.value !== v && el !== document.activeElement) el.value = v;   // ⚠ a rewrite throws the caret of a DM still typing to the start
   mxBump();
   if (aim.kind === 'campaign') { if (v !== notesCampaignGet()) notesCampaignSet(v); return; }
   if (aim.kind === 'place') { if (v !== notesPlaceGet(aim.id)) notesPlaceSet(aim.id, v); return; }
@@ -260,6 +267,9 @@ function notesForeignRoomEdit(op, payload) {
   }
   return true;
 }
+
+// The room of a map that is not held, while the room level shows one: { scene, id }, else null.
+function notesForeignRoom() { return _npForeign; }
 
 function _npForeignFill(m) {
   const nameEl = _npEl('rp-name'), descEl = _npEl('rp-desc');
@@ -338,6 +348,8 @@ function notesPanelSync(room) {
   const aim = { kind: m.tg.kind, id: m.tg.id || '', key: m.key };
   const field = _npEl('np-field'), title = _npEl('nw-title');
   const moved = !_npAim || _npAim.key !== aim.key;
+  // After a settle the same note comes back as a move; a field being typed in that still says the same is left alone.
+  const typing = field === document.activeElement && field.dataset.neKey === m.key;
   if (moved && _npAim) _npCommit();
   if (m.notes === null) {   // a map's notes still being read: nothing to edit, nothing to write
     _npAim = null;
@@ -350,7 +362,8 @@ function notesPanelSync(room) {
   if (moved) field.placeholder = t({ campaign: 'Notes for the whole campaign…', place: 'Notes for this group…', road: 'Notes for this road…', map: 'Notes for this map…' }[m.tg.kind] || 'Write here…');
   _npAim = aim;
   if (moved || field !== document.activeElement) {
-    if (field.value !== m.notes) field.value = m.notes;
+    const same = typing && notesSanitize(field.value).text === notesSanitize(m.notes).text;
+    if (field.value !== m.notes && !same) field.value = m.notes;
     _npFilled = notesSanitize(m.notes).text;
   }
   neRefreshLabels(field);

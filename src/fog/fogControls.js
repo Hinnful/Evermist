@@ -20,7 +20,7 @@ function initFogControls() {
     scheduleAutoSync();
   };
   featherNum.onchange = function() {
-    const v = Math.max(0, Math.min(24, Math.round(+this.value)));
+    const v = Math.max(0, Math.min(24, Math.round(+this.value) || 0));
     this.value = v;
     featherSlider.value = v;
     saveFeather(v);

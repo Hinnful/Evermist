@@ -115,6 +115,13 @@ describe('a save and the export file', () => {
     assert.equal(back[0].name, 'Goblin');
     assert.equal(back[0].id, undefined);
   });
+  it('reads a malformed monster as the blank shape, and drops one with no name', () => {
+    const back = B.bsReadFile(JSON.stringify({ evermist: 'bestiary', monsters: [{ name: 'Ogre', source: 3, secs: { Actions: 'x' } }, { name: 1 }, null] }));
+    assert.equal(back.length, 1);
+    assert.equal(back[0].source, '3');
+    assert.deepEqual(back[0].secs, {});
+    assert.equal(back[0].abil.length, 6);
+  });
   it('refuses a file that is not an exported bestiary', () => {
     assert.equal(B.bsReadFile('{"rows":[]}'), null);
     assert.equal(B.bsReadFile('not json'), null);

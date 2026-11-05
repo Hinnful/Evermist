@@ -72,6 +72,7 @@ function renameGroupAsking(from, next) {
 // Deletes the place, never the maps: its scenes are left with no place. Ctrl+Z brings back the place, its
 // roads' ends and its notes, so it asks nothing.
 function deleteGroup(sec) {
+  notesPanelSettle();   // as renameGroup: or the Notes field writes the deleted group's notes back
   worldUndoPush();
   forgetGroup(sec.name);
   worldShapeDelete(sec.name);

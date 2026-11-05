@@ -48,12 +48,10 @@ function _cpInitCalibrate() {
   // The gesture draws the shape the grid is made of, so every grid type calibrates. Switched OFF
   // is not a type: gridMode keeps its value and renderGrid shows the grid for the gesture anyway.
   btn.addEventListener('click', () => {
-    // ⚠ THE DM'S PANE HAS TO GO TOO: armGridCalibration runs inside the column, where the
-    // dock it shuts is that column's own hidden one.
+    // ⚠ armGridCalibration runs inside the column, whose dock is its own hidden one; the column
+    // reports back (`pane-calibrate`, panes.js) and that report holds the DM's pane.
     if (typeof panesActive !== 'undefined' && panesActive) {
-      const on = !paneScope().gridCalArmed;
-      paneForward('calibrate', { on });
-      dockHoldForCalibration(on);
+      paneForward('calibrate', { on: !paneScope().gridCalArmed });
       return;
     }
     armGridCalibration(!gridCalArmed);

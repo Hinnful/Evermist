@@ -14,7 +14,18 @@ function wptClean(raw) {
   if (!_wptNum(raw.x) || !_wptNum(raw.y) || Math.abs(raw.x) > 1e7 || Math.abs(raw.y) > 1e7) return null;
   const out = { x: Math.round(raw.x * 10) / 10, y: Math.round(raw.y * 10) / 10 };
   if (typeof raw.scene === 'string' && raw.scene && raw.scene.length <= 200) out.scene = raw.scene;
+  if (_wptNum(raw.at) && raw.at > 0) out.at = raw.at;   // when the DM last put it down
   return out;
+}
+
+// Whether an import's marker replaces the one here: when there is none here, or the file's was put down later. With
+// no time on either side the one here stays.
+function wptTake(local, incoming, moment) {
+  if (!incoming) return false;
+  if (!local) return true;
+  const at = r => (_wptNum(r.at) && r.at > 0 ? Math.min(r.at, moment) : 0);
+  const ti = at(incoming);
+  return ti > 0 && ti >= at(local);
 }
 
 // The spot a marker takes on a map: centred on the top edge of its card. `pos` is the card's centre.
@@ -41,4 +52,4 @@ function wptParse(raw) {
   return obj && typeof obj === 'object' ? wptClean(obj.party) : null;
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { WPT_HIT_PX, wptClean, wptAnchor, wptSceneAt, wptParse };
+if (typeof module !== 'undefined' && module.exports) module.exports = { WPT_HIT_PX, wptClean, wptTake, wptAnchor, wptSceneAt, wptParse };

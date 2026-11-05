@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, screen, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, screen, powerSaveBlocker } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -49,12 +49,13 @@ function sendTo(target, channel, payload) {
 // A file or link dropped on a window navigates it, and on the TV that shows the raw, unfogged map.
 // Only the app's own pages may load in a DM or Player window.
 const APP_PAGES = new Set(['index.html', 'stage.html'].map(f => path.join(__dirname, f).toLowerCase()));
+function isAppPage(url) {
+  let file = null;
+  try { file = url.startsWith('file:') ? require('url').fileURLToPath(url).toLowerCase() : null; } catch (_) { /* not a path */ }
+  return !!file && APP_PAGES.has(file);
+}
 function keepOnAppPages(wc) {
-  wc.on('will-navigate', (ev, url) => {
-    let file = null;
-    try { file = url.startsWith('file:') ? require('url').fileURLToPath(url).toLowerCase() : null; } catch (_) { /* not a path */ }
-    if (!file || !APP_PAGES.has(file)) ev.preventDefault();
-  });
+  wc.on('will-navigate', (ev, url) => { if (!isAppPage(url)) ev.preventDefault(); });
 }
 
 const devIcon = path.join(__dirname, 'build', 'icon.png');
@@ -119,7 +120,8 @@ function createDMWindow() {
   if (Object.keys(q).length) win.loadFile('index.html', { query: q });
   else win.loadFile('index.html');
   dmWin = win;
-  win.once('closed', () => { if (dmWin === win) dmWin = null; });
+  // A Mac keeps running with no window, and a Claude call sent to this one would wait out its timer.
+  win.once('closed', () => { if (dmWin === win) { dmWin = null; ipcMcp.notReady(); } });
   // visibilitychange does not fire on Windows OS-minimize, so signal the renderer
   // here instead — lets it pause the PixiJS ticker / flush the texture pool while hidden.
   win.on('minimize', () => sendTo(win, 'window-visibility', { visible: false }));
@@ -151,10 +153,10 @@ function createDMWindow() {
   win.once('ready-to-show', handOff);
   setTimeout(handOff, 6000); // safety cap
 
-  // Allow window.open() in the renderer to create the player BrowserWindow.
+  // Allow window.open() in the renderer to create the player BrowserWindow, and nothing else: a new window gets the preload.
   // ⚠ EVERY Player window is created HIDDEN until the DM presses the button: one is pre-warmed at
   // startup, and showing that would put an empty window on the TV all session.
-  win.webContents.setWindowOpenHandler(() => ({
+  win.webContents.setWindowOpenHandler(({ url }) => (!isAppPage(url) ? { action: 'deny' } : {
     action: 'allow',
     overrideBrowserWindowOptions: {
       width: 1200,
@@ -180,6 +182,7 @@ function createDMWindow() {
   win.webContents.on('did-create-window', (childWin, details) => {
     childWin.setMenu(null);
     keepOnAppPages(childWin.webContents);
+    childWin.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     // ⚠ ONE HANDLE PER WINDOW NAME. The DM can have a Player window and a warm one at once, and
     // a single handle overwritten on each creation left the first never shown and never told the
     // TV's resolution. The name is the renderer's own (playerWindowName in viewport.js).
@@ -355,10 +358,18 @@ app.whenReady().then(() => {
   screen.on('display-removed', tellDm('removed'));
   screen.on('display-metrics-changed', onDisplayChange);
 
+  // ⚠ A MAC GETS ELECTRON'S DEFAULT MENU when none is set, and setMenu(null) does not remove it there:
+  // Cmd+R would reload the DM window and Cmd+W close the TV mid-game. Edit stays for copy and paste.
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' },
+      { role: 'window', submenu: [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'front' }] }]));
+  }
+
   createDMWindow();
   ipcUpdates.initAutoUpdate();
   // Unseen, the app leaves once Claude has been quiet a while. Shown, it is the DM's to close.
-  setInterval(() => { if (inBackground && Date.now() - ipcMcp.lastCallAt() > IDLE_QUIT_MS) app.quit(); }, 60000);
+  const lastActive = () => Math.max(ipcMcp.lastCallAt(), ipcMusic.musicActiveAt());
+  setInterval(() => { if (inBackground && Date.now() - lastActive() > IDLE_QUIT_MS) app.quit(); }, 60000);
 
   app.on('activate', bringToFront);
 }).catch(err => {

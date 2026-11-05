@@ -9,7 +9,7 @@ global.polyRings = _fg.polyRings;
 global.polyHoleRings = _fg.polyHoleRings;
 global.flatVertexRef = _fg.flatVertexRef;
 global.flatVertexCount = _fg.flatVertexCount;
-global.remapDoorsForVertexChange = _fg.remapDoorsForVertexChange;
+global.remapDoorsForVertexChange = require('../src/shapes/doorGeometry.js').remapDoorsForVertexChange;
 global.edgeCubic = _fg.edgeCubic;
 global.handleAt = _fg.handleAt;
 let undoPushes = 0;
@@ -218,6 +218,16 @@ describe('deleteShapeVertex', () => {
     assert.deepEqual(p.cornerRadii, [1, 2, 3, 4, 8, 9, 10, 11]);
     // The door on the dropped ring is gone; the one past it moves down by three, not by one.
     assert.deepEqual(p.doors, [{ edge: 1, t: 0.5 }, { edge: 5, t: 0.5 }]);
+  });
+
+  test('a first corner takes its ring\'s closing wall with it, never another ring\'s', () => {
+    const p = { vertices: rect(0, 0, 100, 100), holes: [rect(30, 30, 70, 70)],
+                doors: [{ edge: 3, t: 0.5 }, { edge: 5, t: 0.5 }, { edge: 7, t: 0.5 }] };
+    assert.equal(deleteShapeVertex(p, 4), true);
+    assert.deepEqual(p.doors, [{ edge: 3, t: 0.5 }, { edge: 4, t: 0.5 }]);
+    const q = { vertices: rect(0, 0, 100, 100), doors: [{ edge: 1, t: 0.5 }, { edge: 3, t: 0.5 }] };
+    assert.equal(deleteShapeVertex(q, 0), true);
+    assert.deepEqual(q.doors, [{ edge: 0, t: 0.5 }]);
   });
 
   test('takes one point off a hole that can spare it', () => {

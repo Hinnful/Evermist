@@ -162,6 +162,15 @@ describe('release checklist hooks', () => {
       "gh pr create --base main --head 'change/x' --title 'The DM'\\''s map' --body-file '.claude/commit/runs/a/pr-body.md'");
   });
 
+  it('keeps a pull request only when this session pushed its branch, so the monitor can be armed', () => {
+    const base = { branch: 'release/5.3.0', title: '5.3.0 - Fog themes', bodyFile: 'b.md' };
+    const open = { url: 'https://github.com/o/r/pull/127', number: 127 };
+    assert.deepEqual(rules.prStep({ ...base, open, ownBranch: 'release/5.3.0' }), { url: open.url });
+    assert.match(rules.prStep({ ...base, open, ownBranch: null }).run, /^gh pr close 127 --comment '.+' && gh pr create --base main --head 'release\/5\.3\.0'/);
+    assert.match(rules.prStep({ ...base, open, ownBranch: 'release/5.2.2' }).run, /^gh pr close 127 /);
+    assert.equal(rules.prStep({ ...base, open: null, ownBranch: null }).run.startsWith('gh pr create'), true);
+  });
+
   it('counts only the DM\'s own messages as a possible yes', () => {
     assert.equal(rules.isFromDm('yes, push it'), true);
     assert.equal(rules.isFromDm('Another Claude session sent a message:\n<agent-message from="x">done</agent-message>'), false);

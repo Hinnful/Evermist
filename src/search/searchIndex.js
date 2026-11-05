@@ -16,6 +16,8 @@ function _srHere(id) { return !panesActive && currentScene && currentScene.id ==
 // rooms there until the search box opened. The open map is read live and needs none.
 const _srRereadGen = new Map(), _srPending = new Set();
 function searchStale(id) {
+  // A column's store writes happen in its own frame; the shell's tree and search read their own cache.
+  if (isPane && parent !== window) parent.postMessage({ type: 'pane-saved', pane: paneId, sceneId: id }, '*');
   const gen = (_srRereadGen.get(id) || 0) + 1;
   _srRereadGen.set(id, gen);
   mxBump();

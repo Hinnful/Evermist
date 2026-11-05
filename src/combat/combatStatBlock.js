@@ -131,7 +131,8 @@ function _cbCopyEdited(row, field) {
     const btn = document.querySelector('#cb-stat [data-save]');
     if (btn) { btn.disabled = false; btn.textContent = 'Save to Bestiary'; }
   }
-  if (field === 'name' || field === 'ac' || field === 'hp' || field === 'quick') cbRender();
+  // An action's text and DEX feed the row's pills and Init hint.
+  if (field === 'name' || field === 'ac' || field === 'hp' || field === 'quick' || field === 'secs' || field === 'abil') cbRender();
 }
 
 function _cbSaveToBestiary(row) {
@@ -152,6 +153,8 @@ function cbWireEditor(el, ed) {
     let o = b;
     for (let i = 0; i < parts.length - 1; i++) o = o[parts[i]];
     o[parts[parts.length - 1]] = e.target.textContent;
+    // An emptied Table line is no line of the DM's own, so the pills come back.
+    if (p === 'quick' && !b.quick.trim()) delete b.quick;
     if (parts[0] === 'abil') el.querySelector(`[data-mod="${parts[1]}"]`).textContent = `(${combatAbilityMod(e.target.textContent)})`;
     ed.edited(parts[0]);
     cbSaveSoon();

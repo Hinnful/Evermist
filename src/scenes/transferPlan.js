@@ -14,7 +14,7 @@ const _TP_FG = typeof decodeShapeFromSave === 'function'
 const TP_ROOM_PARTS = ['shape', 'notes', 'mode'];
 const TP_PART_LABEL = {
   name: 'name', grid: 'grid', map: 'map', fog: 'fog', notes: 'notes', fogSettings: 'fog settings', weather: 'weather', lights: 'lights', tvFit: 'TV fit',
-  shape: 'shape', mode: 'revealed state', text: 'name and notes', effect: 'effect', deleted: 'room deleted',
+  place: 'Group', shape: 'shape', mode: 'revealed state', text: 'name and notes', effect: 'effect', deleted: 'room deleted',
 };
 
 function tpTime(times, key, moment) {
@@ -173,7 +173,9 @@ function tpMergeScene(local, incoming, moment, opts) {
   for (const part of _TP_ES.ES_SCENE_PARTS) {
     const tl = tpTime(le.scene, part, moment), ti = tpTime(ie.scene, part, moment);
     scene[part] = Math.max(tl, ti);
-    take[part] = part === 'map' ? ti > tl || !!o.localMapMissing : ti >= tl;
+    // ⚠ A map's place moves only on a newer time: every map saved before the part existed has none, and a tie
+    // would hand every card the file's group.
+    take[part] = part === 'map' ? ti > tl || !!o.localMapMissing : part === 'place' ? ti > tl : ti >= tl;
     const blob = part === 'map' || part === 'fog';
     const differs = blob ? ti !== tl : lp[part] !== ip[part];
     if (!differs) continue;
@@ -197,6 +199,7 @@ function tpMergeScene(local, incoming, moment, opts) {
   if (take.fogSettings) { record.fogSettings = incoming.fogSettings; record.fogTheme = incoming.fogTheme; }
   if (take.weather) record.weather = incoming.weather;
   if (take.tvFit) record.tvFit = incoming.tvFit;
+  if (take.place) { record.group = incoming.group || ''; record.worldPos = incoming.worldPos; }
   if (take.lights) { record.lightsHidden = !!incoming.lightsHidden; record.lightShapes = incoming.lightShapes || []; }
   const touched = rep.changed.length > 0 || rep.roomsAdded.length > 0 || rep.roomsRemoved.length > 0
     || rep.effectsAdded > 0 || rep.effectsRemoved > 0;

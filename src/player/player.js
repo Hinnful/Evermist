@@ -35,10 +35,32 @@ function startLoadingFog() {
 // NO MAP: the error paths reveal too, and a map that never decodes would leave the TV reading
 // "Loading map…" all session. The card goes only when there IS a map.
 function onPlayerMapShown() {
-  if (!landing) return;
+  if (!landing || _playerGlLost) return;
   if (_loadingFogRaf) { cancelAnimationFrame(_loadingFogRaf); _loadingFogRaf = null; }
   landing.classList.remove('loading');
   if (mapOffscreen) landing.style.display = 'none';
+}
+
+// ⚠ A LOST WEBGL CONTEXT TAKES THE FOG WITH IT, and an animated map's <video> under the clear canvas
+// shows whole. The card's own 2D fog covers until the context is back and has drawn a frame.
+var _playerGlLost = false;
+function initPlayerContextLoss() {
+  const cv = pixiApp && pixiApp.view;
+  if (!cv) return;
+  cv.addEventListener('webglcontextlost', () => {
+    _playerGlLost = true;
+    landing.style.display = '';
+    startLoadingFog();
+  });
+  cv.addEventListener('webglcontextrestored', () => {
+    if (fogDataCanvas) rebuildFogEffect();
+    viewportDirty = true; gridDirty = true;
+    scheduleRender();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      _playerGlLost = false;
+      if (mapOffscreen) onPlayerMapShown();   // with no map yet the card is the waiting screen
+    }));
+  });
 }
 
 // F11 and a double-click toggle the window's fullscreen, and Esc leaves it. The Player shows no UI,
@@ -102,6 +124,7 @@ function initPlayer() {
 
   initPlayerMessages();
   initPlayerFullscreenKeys();
+  initPlayerContextLoss();
 
   // Player pan/zoom (free-look)
   let playerIsPanning = false;

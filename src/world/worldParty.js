@@ -100,6 +100,7 @@ function worldPartyPlace(where) {
   } else {
     _wpt = wptClean({ x: where.x, y: where.y });
   }
+  _wpt.at = Date.now();
   _wptSave();
   worldPartyDraw();
 }
@@ -188,18 +189,19 @@ function _wptUp() {
   _wptEl.classList.remove('drag');
   const s = id && allScenes.find(x => x.id === id), pos = s && wmCleanPos(_wmPos(s));
   _wpt = pos ? { ...wptAnchor(pos, WM_CARD_H), scene: id } : wptClean({ x: d.at.x, y: d.at.y });
+  _wpt.at = Date.now();
   _wptSave();
   worldPartyDraw();
 }
 
 // ─── An import ───────────────────────────────────────────────────────────────
 
-// A backup's marker, taken only when the library holds none. A map it rode on keeps it when that map came in,
-// and a marker on bare ground moves with the layout the way an import's places do.
+// A backup's marker, taken when the library holds none or the file's was put down later (wptTake). A map it rode on
+// keeps it when that map came in, and a marker on bare ground moves with the layout the way an import's places do.
 function worldPartyImport(rec, sceneMap, dx, dy) {
   _wptLoad();
-  if (_wpt || !rec) return;
-  const out = { x: rec.x + dx, y: rec.y + dy };
+  if (!wptTake(_wpt, rec, Date.now())) return;
+  const out = { x: rec.x + dx, y: rec.y + dy, at: rec.at };
   if (rec.scene && sceneMap[rec.scene]) out.scene = sceneMap[rec.scene];
   _wpt = wptClean(out);
   _wptSave();

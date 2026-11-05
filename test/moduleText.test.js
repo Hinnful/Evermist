@@ -337,6 +337,14 @@ describe('mtHeadingCandidates', () => {
     assert.deepEqual(got, []);
   });
 
+  test('a list with blank lines between its items stays one list, and the rooms after it survive', () => {
+    // A .txt or .md export puts a blank line between paragraphs; item 2 must still chain to item 1.
+    const text = ['1. Ворота', 'Стражники носят с собой:', '1. Ржавый ключ', '2. Свисток', '3. Горсть монет',
+      '2. Двор', '3. Конюшня', '4. Казарма'].join('\n\n');
+    assert.deepEqual(mtHeadingCandidates(mtSplitLines(text)).map(g => g.num), [1, 2, 3, 4]);
+    assert.deepEqual(parseModuleText(text).entries.map(e => e.title), ['1. Ворота', '2. Двор', '3. Конюшня', '4. Казарма']);
+  });
+
   test('a heading after an ordinary sentence is kept — the page header that used to sit\n' +
        '     between them is already gone by this point', () => {
     const got = mtHeadingCandidates(mtSplitLines('Над входом висит герб.\n2. Главный холл'));

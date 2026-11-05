@@ -48,6 +48,7 @@ function armGridCalibration(on) {
   if (on === gridCalArmed) return;
   gridCalArmed = on;
   dockHoldForCalibration(on);
+  if (isPane && parent !== window) parent.postMessage({ type: 'pane-calibrate', pane: paneId, on }, '*');
   gridCalDrag = null;
   gridCalRefine = null;
   if (on) {

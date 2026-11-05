@@ -7,7 +7,8 @@ const _mcpSteps = [];
 // One step recorded, and the undo toast naming it. `undo` is async and puts back what the call changed.
 function mcpRecord(label, undo) {
   mcpHistoryPush(_mcpSteps, { label, undo });
-  showUndoToast('Claude: ' + label, mcpUndoLast);
+  // ⚠ NOT OVER THE DM'S OWN MAP DELETE: its toast's Undo is the only way back for that map.
+  if (!smPending) showUndoToast('Claude: ' + label, mcpUndoLast);
 }
 
 // A change made: its step recorded, then the reply that says how to take it back.
@@ -25,7 +26,7 @@ async function mcpUndoLast() {
     noticeToast('Could not undo: ' + step.label);
     throw err;
   }
-  hideUndoToast();
+  if (!smPending) hideUndoToast();
   noticeToast('Undone: ' + step.label);
   return step.label;
 }

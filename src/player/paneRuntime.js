@@ -72,7 +72,11 @@ const PANE_CONTROLS = {
     }
   },
   'pane-player-view': m => {
-    minimapSetView(m.view);
+    // Not minimapSetView, whose report back is this view again: landing after the parent's next wheel
+    // step or drag move, it would undo that step.
+    minimapView = { mapCX: m.view.mapCX, mapCY: m.view.mapCY, zoom: m.view.zoom };
+    minimapDirty = true;
+    scheduleRender();
     if (!autoSync) { tvWait.view = true; playerUnsent = true; return; }
     if (playerWindow && !playerWindow.closed) {
       playerWindow.postMessage({ type: 'view-snap', ...m.view }, '*');

@@ -94,12 +94,15 @@ function togglePlayerWindow() {
 let _playerResyncPending = false;
 
 // Retries need-map every 5s, up to 6 attempts, until mapOffscreen is populated.
+// ⚠ NOT WHILE A MAP IS LOADING (playerMap.js): the DM's answer restarts that load, and a slow one never ends.
 function initPlayerMapRetry() {
   let attempts = 0;
   function tryNeedMap() {
     if (mapOffscreen || !playerReplyTarget() || attempts >= 6) return;
-    attempts++;
-    playerReplyTarget().postMessage({ type: 'need-map' }, '*');
+    if (!_playerMapLoad) {
+      attempts++;
+      playerReplyTarget().postMessage({ type: 'need-map' }, '*');
+    }
     setTimeout(tryNeedMap, 5000);
   }
   setTimeout(tryNeedMap, 4000);
@@ -140,6 +143,7 @@ function deliverHeld(sceneChange) {
   // The drag's own framing, and the message that makes the Player follow the DM again.
   if (tvWait.view) playerWindow.postMessage({ type: 'view-snap', ...minimapView }, '*');
   sendToPlayer(false, sceneChange);
+  if (!sceneChange) weatherSendHeld();
 }
 
 // The TV shows a map other than the one open here: a ping would point at the wrong place.
@@ -156,6 +160,7 @@ function dropHeldSceneSend() {
 function holdTvClear() {
   tvHeld = true;
   playerMapSent = false;
+  tvSceneId = null;
   clearTimeout(autoSyncTimer);
   if (playerWindow && !playerWindow.closed) playerWindow.postMessage({ type: 'scene-clear' }, '*');
 }
@@ -173,15 +178,19 @@ function holdTvClear() {
 function onPlayerResyncRequest() {
   _playerResyncPending = true;
   playerMapSent = false;
+  tvSceneId = null;   // a Player asking holds no map
+  // Manual with a map change held: the asking TV keeps its fog until Send, like the change itself.
+  if (!autoSync && tvWait.scene) return;
   sendToPlayer();
 }
 
 // Called at the end of a successful switchScene load: if the Player asked for the map while the
-// scene was loading, send it now.
+// scene was loading, send it now. In Manual the TV waits on its fog for Send instead.
 // ⚠ DOES NOT CLEAR THE FLAG. sendMap() clears it when the payload goes out, so a flush that
 // delivers nothing leaves the request standing for the next scene load.
 function onSceneLoaded() {
   if (!_playerResyncPending) return;
+  if (!autoSync) { tvWait.scene = true; playerUnsent = true; return; }
   sendToPlayer();
 }
 
@@ -218,6 +227,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
         ...weatherPayload(),
       }, '*');
       playerMapSent = true;
+      tvSceneId = currentScene ? currentScene.id : null;
       // THE ONE PLACE A FIRST DELIVERY ACTUALLY HAPPENS, so it is the one place the Player's
       // outstanding request is answered. Every branch above this can bail without sending.
       _playerResyncPending = false;

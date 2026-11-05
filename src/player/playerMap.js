@@ -51,22 +51,34 @@ function dropPendingPlayerVideo() {
 
 // The DM deleted the open scene: close the fog over it, drop it, and wait the way a Player does before its
 // first map. The cover stays closed, which is where the next map's arrival expects it.
+// ⚠ A MAP STILL LOADING IS DROPPED BEFORE THE CLOSE, not after it: one landing mid-close reveals itself.
 function applyPlayerSceneClear() {
-  const done = () => {
-    _playerMapLoadDrop();
-    dropPendingPlayerVideo();
-    cleanupVideo();
-    stopFogTransition();
-    if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
-    mapOffscreen = null; mapWidth = 0; mapHeight = 0;
-    fogDataCanvas = null; fogDataCtx = null;
-    baseFogCanvas = null; baseFogCtx = null;
-    setEffects([]);
-    pixiClearMap();
-    landing.style.display = '';
-    startLoadingFog();
-  };
-  if (!closeFogOverMap(done)) done();
+  _playerMapLoadDrop();
+  dropPendingPlayerVideo();
+  if (!closeFogOverMap(_playerDropMap)) _playerDropMap();
+}
+
+function _playerDropMap() {
+  cleanupVideo();
+  stopFogTransition();
+  if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
+  mapOffscreen = null; mapWidth = 0; mapHeight = 0;
+  fogDataCanvas = null; fogDataCtx = null;
+  baseFogCanvas = null; baseFogCtx = null;
+  setEffects([]);
+  pixiClearMap();
+  landing.style.display = '';
+  startLoadingFog();
+}
+
+// ⚠ A MAP THAT FAILS TO DECODE NEVER REVEALS: the old map is still under the cover, and the new scene's
+// size, effects and later fog would land on it. It goes, the TV waits on its fog, and asks once again.
+let _playerMapAskedAgain = false;
+function _playerMapFailed() {
+  _playerDropMap();
+  if (_playerMapAskedAgain || !playerReplyTarget()) return;
+  _playerMapAskedAgain = true;
+  playerReplyTarget().postMessage({ type: 'need-map' }, '*');
 }
 
 function applyFogUpdate(msg) {
@@ -93,7 +105,7 @@ function applyFogUpdate(msg) {
   if (msg.mapUrl && msg.tvTurn !== undefined) setPlayerTurn(msg.tvTurn);
   // ⚠ THE CARD IS THE LOADING STATE and sits ABOVE the cover (overlays.css). It holds through the
   // first map's decode; onPlayerMapShown() takes it down once the map is on screen.
-  if (mapOffscreen) landing.style.display = 'none';
+  if (mapOffscreen && !_playerGlLost) landing.style.display = 'none';
   else if (msg.mapUrl) startLoadingFog();
 
   if (msg.view) lastDMView = msg.view;
@@ -195,7 +207,7 @@ function startPlayerVideoMap(msg) {
       video.pause(); video.src = '';
       if (video.parentNode) video.parentNode.removeChild(video);
       cleanupVideo();
-      if (_playerMapLoadEnd(mapGen, msg)) revealPlayer();
+      if (_playerMapLoadEnd(mapGen, msg)) _playerMapFailed();
     };
     video.oncanplay = function() {
       if (settled) return;
@@ -205,6 +217,7 @@ function startPlayerVideoMap(msg) {
       function finishPlayerVideo() {
         const fogMsg = _playerMapLoadEnd(mapGen, msg);
         if (!fogMsg) return;
+        _playerMapAskedAgain = false;
         const extractCanvas = document.createElement('canvas');
         extractCanvas.width = mapWidth; extractCanvas.height = mapHeight;
         extractCanvas.getContext('2d').drawImage(video, 0, 0, mapWidth, mapHeight);
@@ -280,12 +293,13 @@ function startPlayerImageMap(msg) {
   const gen = _playerMapLoadStart(img, msg.mapUrl);
   img.onerror = () => {
     URL.revokeObjectURL(msg.mapUrl);
-    if (_playerMapLoadEnd(gen, msg)) revealPlayer();
+    if (_playerMapLoadEnd(gen, msg)) _playerMapFailed();
   };
   img.onload = () => {
     // ⚠ A superseded decode must not land: mapWidth is already the newer map's.
     const fogMsg = _playerMapLoadEnd(gen, msg);
     if (!fogMsg) { URL.revokeObjectURL(msg.mapUrl); return; }
+    _playerMapAskedAgain = false;
     mapOffscreen = document.createElement('canvas');
     mapOffscreen.width  = mapWidth;
     mapOffscreen.height = mapHeight;
@@ -308,6 +322,7 @@ function startPlayerImageMap(msg) {
 
 function applyPlayerFogOnly(msg) {
   if (_playerMapLoad) { _playerMapLoad.fog = msg; return; }
+  if (!mapOffscreen) return;   // a map that failed: no ground to reveal, and the next payload brings the fog
   if (playerFollowDM && msg.view) { applyView(msg.view); reportPlayerView(); }
   loadPlayerFog(msg, !!msg.sceneChange).then(() => {
     viewportDirty = true;

@@ -153,6 +153,7 @@ function deleteShapeVertex(poly, flat) {
   // A dropped ring takes every index from its first; a single delete takes only its own.
   const at = dropRing ? flat - ref.i : flat;
   const gone = dropRing ? ring.length : 1;
+  const ringLen = ring.length;
   pushUndo();
   if (ref.ring === 0) poly.vertices.splice(ref.i, 1);
   else editHoles(poly, hs => { hs[ref.ring - 1].splice(ref.i, 1); });
@@ -162,7 +163,7 @@ function deleteShapeVertex(poly, flat) {
     poly.doors = dropRing
       ? poly.doors.filter(d => d.edge < at || d.edge >= at + gone)
                   .map(d => ({ ...d, edge: d.edge >= at + gone ? d.edge - gone : d.edge }))
-      : remapDoorsForVertexChange(poly.doors, flat, -1);
+      : remapDoorsForVertexChange(poly.doors, flat, -1, undefined, flat - ref.i, ringLen);
   }
   return true;
 }

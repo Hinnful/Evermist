@@ -84,6 +84,33 @@ describe('weatherFadeCurve', () => {
   });
 });
 
+describe('weatherHandover', () => {
+  it('a switch with no fade running fades the shown preset out from full, or the new one in from nothing', () => {
+    assert.deepEqual(W.weatherHandover(null, 'rain', 1, 1), { out: 'rain', level: 1 });
+    assert.deepEqual(W.weatherHandover(null, 'none', 1, 1), { out: 'none', level: 0 });
+    assert.equal(W.weatherInAlpha(1, 0), 1);
+    assert.ok(Math.abs(W.weatherInAlpha(0, 0.3) - 0.3) < 1e-9);
+  });
+  it('a second pick early in a fade-in carries the faint preset out from where it was, not from full', () => {
+    const e = 0.1;   // None -> Rain, Rain at 10%
+    const h = W.weatherHandover('none', 'rain', 0, e);
+    assert.equal(h.out, 'rain');
+    assert.ok(Math.abs(h.level - 0.1) < 1e-9);
+    assert.ok(Math.abs(W.weatherInAlpha(h.level, 0) - 0.1) < 1e-9, 'the newest starts at what was on screen');
+  });
+  it('a second pick early in a cross-fade keeps the mostly shown old preset going out from its level', () => {
+    const e = 0.1;   // Rain -> Storm, Rain still at 90% over Storm
+    const h = W.weatherHandover('rain', 'storm', 1, e);
+    assert.equal(h.out, 'rain');
+    assert.ok(Math.abs(h.level - 0.9) < 1e-9);
+  });
+  it('late in a cross-fade the incoming preset is the one carried out', () => {
+    const h = W.weatherHandover('rain', 'storm', 1, 0.9);
+    assert.equal(h.out, 'storm');
+    assert.equal(h.level, 1);
+  });
+});
+
 describe('lightning and gusts', () => {
   it('flashes within a second and a bit, then is dark', () => {
     assert.equal(W.weatherFlashAmp(-0.1), 0);

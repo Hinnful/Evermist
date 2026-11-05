@@ -251,8 +251,9 @@ function applyDoorsToFog(poly) {
   // it cannot be seen. It exists so the notch meets the reveal's ragged edge rather than leaving a
   // faint band. Applied to both sides it pinned the visible depth of every door whose owner is the
   // shrouded room of a shared wall — and which room owns a door is not something the DM aims at.
-  const inward = poly.mode === 'shroud' ? size.depth
-                                        : Math.max(size.depth, getScaledFeatherRadius() * 1.5 + 3);
+  const ownerCleared = poly.mode !== 'shroud' && poly.mode !== 'half';
+  const inward = ownerCleared ? Math.max(size.depth, getScaledFeatherRadius() * 1.5 + 3)
+                              : size.depth;
   if (open.length) carveDoorNotches(fogVerts, open, size, inward, feather, false);
   if (dim.length)  carveDoorNotches(fogVerts, dim,  size, inward, feather, true);
 }

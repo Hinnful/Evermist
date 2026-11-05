@@ -200,6 +200,7 @@
     transition: background .12s, color .12s;
   }
   .cp-adv-close:hover { background: rgba(255,255,255,0.05); color: #d5d8dd; }
+  .cp-adv-close[hidden] { display: none; }
   .cp-adv-body { padding: 8px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
   .cp-advrow { display: grid; grid-template-columns: 46px 1fr 46px; align-items: center; column-gap: 7px; }
   .cp-advlbl { font: 400 12px/1 system-ui, -apple-system, sans-serif; color: #9aa0aa; }

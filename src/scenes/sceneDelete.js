@@ -31,7 +31,10 @@ function deleteScenesWithUndo(ids) {
 
   // If the loaded scene was among those deleted, switch away (data stays in IDB
   // until the delete is committed, so Undo can still bring it back).
+  // Manual, with another map open: the TV's own map can go while the open one stays, or the other way.
+  const tvLost = tvShowsOtherMap() && idset.has(tvSceneId);
   if (currentScene && idset.has(currentScene.id)) handleCurrentDeleted();
+  if (tvLost) holdTvClear();
 
   smPending = { items, ids: items.map(x => x.id) };
   showUndoToast(items.length === 1 ? t('"{name}" removed', { name: items[0].meta.name }) : t.plural(items.length, '{n} map removed', '{n} maps removed'));
@@ -53,8 +56,9 @@ function handleCurrentDeleted() {
   landing.style.display = '';
   if (!isPlayer) container.style.cursor = 'default';
   localStorage.removeItem('evermist-current-scene-id');
-  // The fallback is for the DM's eyes: the TV must not show a scene the DM did not open.
-  holdTvClear();
+  // The fallback is for the DM's eyes: the TV must not show a scene the DM did not open. A TV on
+  // another map (Manual) keeps it.
+  if (!tvShowsOtherMap()) holdTvClear();
   if (allScenes.length) switchScene(allScenes[0].id, false, true).catch(err => console.error('switchScene failed:', err));
   else worldMapShow();
 }

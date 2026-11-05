@@ -107,8 +107,8 @@ function mtHeadingCandidates(lines, wrapWidth) {
     let prev = i - 1;
     while (prev >= 0 && !lines[prev]) prev--;      // skip blanks to the last line with text
     const introduced = prev >= 0 && /:$/.test(lines[prev]);
-    const above = i > 0 ? mtHeadingCandidate(lines[i - 1]) : null;
-    const continues = !!(above && isList[i - 1] && above.prefix === c.prefix &&
+    const above = prev >= 0 ? mtHeadingCandidate(lines[prev]) : null;
+    const continues = !!(above && isList[prev] && above.prefix === c.prefix &&
                          above.letter === c.letter && above.num === c.num - 1);
 
     if (introduced || continues) { isList[i] = true; continue; }
@@ -505,7 +505,7 @@ function mtLoadedSourceName() {
 function mtRestorePayload(json) {
   const got = mtDeserialize(json);
   if (!got || !got.entries.length) {
-    return { ok: false, error: 'The module text in that file could not be read.' };
+    return { ok: false, error: t('The module text in that file could not be read.') };
   }
   const st = mtStore(got.entries, got.sourceName || 'Module text');
   if (!st.ok) return st;
@@ -514,10 +514,18 @@ function mtRestorePayload(json) {
   return { ok: true };
 }
 
-// Every room name in the CURRENT scene. Reads `polygons`, so it is the kernel's boundary.
-function mtCurrentRoomNames() {
-  if (typeof polygons === 'undefined' || !Array.isArray(polygons)) return [];
-  return polygons.map(p => (p.name != null ? p.name : ''));
+// The room the name field edits and every room name on ITS map: a room of a map that is not open shown in the Notes
+// window, a column's selected room, else the open map's selection. Reads app state, so it is the kernel's boundary.
+function mtCardRoom() {
+  const foreign = typeof notesForeignRoom === 'function' ? notesForeignRoom() : null;
+  const col = !foreign && typeof paneSelectedRoom === 'function' ? paneSelectedRoom() : null;
+  const sceneId = foreign ? foreign.scene : col && paneSelectedScene() ? paneSelectedScene().key : null;
+  if (sceneId != null) {
+    const rooms = searchRoomsOf(sceneId) || [];
+    return { room: foreign ? rooms.find(r => r.id === foreign.id) || null : col, names: rooms.map(r => r.name) };
+  }
+  if (typeof polygons === 'undefined' || !Array.isArray(polygons)) return { room: null, names: [] };
+  return { room: polygons.find(p => p.id === selectedPolygonId) || null, names: polygons.map(p => (p.name != null ? p.name : '')) };
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -14,7 +14,7 @@ const WEATHER_MASK_CHECK_MS = 500;
 let _wxLayerRef = null;
 let _wxGeom = null, _wxMain = null, _wxOld = null;
 let _wxSize = '';
-let _wxPrev = null, _wxSwitchAt = 0;
+let _wxPrev = null, _wxPrevLevel = 1, _wxSwitchAt = 0;
 let _wxLast = performance.now(), _wxSim = 0;
 const _wxT0 = performance.now();
 let _wxLevels = { wet: 0, snow: 0 };
@@ -39,8 +39,11 @@ function setWeather(id, instant) {
     return true;
   }
   if (next === weatherId) return false;
-  _wxPrev = weatherId;
-  _wxSwitchAt = performance.now();
+  const now = performance.now();
+  const e = weatherFadeCurve((now - _wxSwitchAt) / WEATHER_FADE_MS);
+  const h = weatherHandover(_wxPrev, weatherId, _wxPrevLevel, e);
+  _wxPrev = h.out; _wxPrevLevel = h.level;
+  _wxSwitchAt = now;
   weatherId = next;
   _wxNextFlash = 0; _wxGustNext = 0;
   _wxSendPending = true;
@@ -133,17 +136,22 @@ function weatherPayload() {
   return { weather: weatherId, weatherMask: _wxMaskDataUrl() };
 }
 
-// A change in play reaches the TV the way a fog colour does: at once, never held for Send.
-function _wxFlushToPlayer() {
+// A preset change reaches the TV at once, never held for Send. ⚠ AN EDITED MASK IS HELD IN MANUAL like
+// the rooms' fog: it carries the outline of a room the DM is still prepping. `send` is Send itself.
+function _wxFlushToPlayer(send) {
   if (!_wxSendPending && !_wxMaskDirty) return;
   if (!playerWindow || playerWindow.closed || !playerMapSent || tvShowsOtherMap()) { _wxSendPending = false; return; }
-  const hasMask = _wxActive() && (!_wxMaskSent || _wxMaskDirty);
+  const hasMask = _wxActive() && (!_wxMaskSent || (_wxMaskDirty && (autoSync || send)));
+  if (!_wxSendPending && !hasMask) return;
   const msg = { type: 'weather', weather: weatherId };
   if (hasMask) msg.mask = _wxMaskDataUrl();
   _wxSendPending = false;
   playerWindow.postMessage(msg, '*');
   if (hasMask) { _wxMaskSent = true; _wxMaskDirty = false; }
 }
+
+// Send in Manual: the room outlines held since the last one.
+function weatherSendHeld() { _wxFlushToPlayer(true); }
 
 // Both ends of the push: the Player's inbox and the first delivery.
 function applyWeatherMessage(msg) {
@@ -206,7 +214,9 @@ function pumpWeather() {
   const now = performance.now();
   const dt = Math.min(0.1, (now - _wxLast) / 1000);
   _wxLast = now;
-  if (!isPlayer && _wxActive()) _wxRefreshMask(now);
+  // ⚠ NOT MID-DRAG: a drag edits the outlines live, and every rebuild re-encodes a map-sized PNG for
+  // the TV on this thread. The mask catches up when the gesture lands.
+  if (!isPlayer && _wxActive() && !selectDragging()) _wxRefreshMask(now);
   else _wxMaskCheckAt = 0;
   if (!isPlayer) _wxFlushToPlayer();
   if (!_wxActive() || !mapWidth || !mapHeight) {
@@ -248,9 +258,9 @@ function pumpWeather() {
   // The new preset lies under; fading in from nothing it is let through by the curve instead.
   const idle = weatherId === 'none' && _wxLevels.wet <= 0.001 && _wxLevels.snow <= 0.001;
   if (idle) _wxMain.visible = false;
-  else _wxDraw(_wxMain, p, I, flash, _wxPrev === 'none' ? e : 1, f);
+  else _wxDraw(_wxMain, p, I, flash, weatherInAlpha(_wxPrevLevel, e), f);
   if (_wxPrev && _wxPrev !== 'none') {
     const pp = WEATHER_PRESETS[_wxPrev];
-    _wxDraw(_wxOld, pp, weatherStrength(pp, _wxSim), 0, 1 - e, f);
+    _wxDraw(_wxOld, pp, weatherStrength(pp, _wxSim), 0, _wxPrevLevel * (1 - e), f);
   } else _wxOld.visible = false;
 }

@@ -49,7 +49,7 @@ function register() {
   ipcMain.handle('read-prep-file', (_event, p, kind) => readPrepFile(p, kind));
   ipcMain.handle('find-map-files', (_event, query) => findMapFiles(roots(), { query: typeof query === 'string' ? query : '' }).catch(() => []));
   ipcMain.handle('read-bestiary-file', (_event, p) => readBestiaryFile(p));
-  ipcMain.handle('read-map-files', (_event, p) => (typeof p === 'string' && p ? readMapFiles(p) : { files: [], skipped: [], error: 'A path is needed.' }));
+  ipcMain.handle('read-map-files', (_event, p, opts) => (typeof p === 'string' && p ? readMapFiles(p, opts && typeof opts === 'object' ? opts : undefined) : { files: [], skipped: [], error: 'A path is needed.' }));
 }
 
 module.exports = { register };

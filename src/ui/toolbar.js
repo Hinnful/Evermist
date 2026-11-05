@@ -270,11 +270,16 @@ function initToolbar() {
     document.getElementById('grid-size-num').value = gridSize;
     commitGridChange();
   };
-  document.getElementById('grid-size-num').oninput = e => {
+  // A typed size lands on change, or each keystroke ("7" on the way to "70") reaches the TV; the
+  // scrub's synthetic input still lands live.
+  const gridSizeTyped = e => {
+    if (e.type === 'input' && e.isTrusted) return;
     const v = Math.max(10, Math.min(400, parseInt(e.target.value) || 10));
     gridSize = v; gridSizeInput.value = v;
     commitGridChange();
   };
+  document.getElementById('grid-size-num').oninput = gridSizeTyped;
+  document.getElementById('grid-size-num').onchange = gridSizeTyped;
   // No offset FIELD any more - calibration sets the phase, and a typed number cannot be aimed.
   document.getElementById('grid-offset-x').oninput = e => {
     gridOffsetX = parseInt(e.target.value);

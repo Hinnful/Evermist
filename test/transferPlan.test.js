@@ -98,6 +98,76 @@ describe('tpMergeScene: parts', () => {
   });
 });
 
+describe('tpMergeScene: fog, grid, fog look and lights', () => {
+  const ES = require('../src/scenes/editStamps.js');
+  const at = (part, t) => ({ scene: { [part]: t } });
+
+  it('keeps fog painted at the table through an import of an older copy, and takes newer fog', () => {
+    const keep = T.tpMergeScene(scene([], at('fog', 500)), scene([], at('fog', 300)), NOW);
+    assert.equal(keep.take.fog, false);
+    assert.deepEqual(keep.report.kept, [{ room: '', part: 'fog' }]);
+    assert.equal(keep.record.edits.scene.fog, 500);
+    const take = T.tpMergeScene(scene([], at('fog', 300)), scene([], at('fog', 500)), NOW);
+    assert.equal(take.take.fog, true);
+    assert.deepEqual(take.report.overwritten, [{ room: '', part: 'fog' }]);
+  });
+
+  it('takes a newer grid, fog look and lights, and keeps local ones edited later', () => {
+    const mine = { gridConfig: { size: 50 }, fogSettings: { blur: 1 }, lightsHidden: false, lightShapes: [] };
+    const home = { gridConfig: { size: 70 }, fogSettings: { blur: 5 }, fogTheme: 'ice', lightsHidden: true, lightShapes: [{ id: 1 }] };
+    const old = { scene: { grid: 100, fogSettings: 100, lights: 100 } };
+    const newer = { scene: { grid: 300, fogSettings: 300, lights: 300 } };
+    const take = T.tpMergeScene(scene([], old, mine), scene([], newer, home), NOW).record;
+    assert.deepEqual(take.gridConfig, home.gridConfig);
+    assert.deepEqual(take.fogSettings, home.fogSettings);
+    assert.equal(take.fogTheme, 'ice');
+    assert.equal(take.lightsHidden, true);
+    assert.deepEqual(take.lightShapes, home.lightShapes);
+    const keep = T.tpMergeScene(scene([], newer, mine), scene([], old, home), NOW);
+    for (const f of ['gridConfig', 'fogSettings', 'fogTheme', 'lightsHidden', 'lightShapes']) assert.equal(keep.record[f], undefined, f);
+    assert.equal(keep.report.kept.length, 3);
+  });
+
+  it('labels every scene part and writes each one it takes onto the record', () => {
+    const mine = { name: 'Local', gridConfig: { size: 50 }, notes: 'local', fogSettings: { blur: 1 }, weather: 'rain',
+      lightsHidden: false, lightShapes: [], tvFit: { step: 1, turn: 0 }, group: 'Town', worldPos: { x: 1, y: 2 } };
+    const home = { name: 'Home', gridConfig: { size: 70 }, notes: 'home', fogSettings: { blur: 5 }, fogTheme: 'ice',
+      weather: 'storm', lightsHidden: true, lightShapes: [{ id: 1 }], tvFit: { step: 2, turn: 90 }, group: 'Keep', worldPos: { x: 5, y: 6 } };
+    for (const part of ES.ES_SCENE_PARTS) {
+      assert.ok(T.TP_PART_LABEL[part], part + ' has a label');
+      const local = scene([], { scene: Object.fromEntries(ES.ES_SCENE_PARTS.map(p => [p, p === part ? 100 : 500])) }, mine);
+      const inc = scene([], { scene: Object.fromEntries(ES.ES_SCENE_PARTS.map(p => [p, 300])) }, home);
+      const m = T.tpMergeScene(local, inc, NOW);
+      assert.deepEqual(ES.ES_SCENE_PARTS.filter(p => m.take[p]), [part]);
+      assert.ok(m.report.changed.some(c => c.part === part), part + ' is reported');
+      // Map and fog are files; the caller takes them from the zip on `take`.
+      if (part === 'map' || part === 'fog') continue;
+      assert.equal(ES.esSceneParts({ ...local, ...m.record })[part], ES.esSceneParts(inc)[part], part + ' is applied');
+    }
+  });
+});
+
+describe('tpMergeScene: the group and spot on the Campaign', () => {
+  const at = (group, x) => ({ group, worldPos: { x, y: 0 } });
+  it('takes a map moved later at home, and keeps one moved later here', () => {
+    const take = T.tpMergeScene(scene([], { scene: { place: 100 } }, at('Town', 1)), scene([], { scene: { place: 300 } }, at('Keep', 9)), NOW);
+    assert.equal(take.record.group, 'Keep');
+    assert.deepEqual(take.record.worldPos, { x: 9, y: 0 });
+    assert.ok(take.touched);
+    const keep = T.tpMergeScene(scene([], { scene: { place: 500 } }, at('Town', 1)), scene([], { scene: { place: 300 } }, at('Keep', 9)), NOW);
+    assert.equal(keep.record.group, undefined);
+    assert.deepEqual(keep.report.kept, [{ room: '', part: 'place' }]);
+  });
+  it('moves no card when neither copy has a time, and lets a timed move beat an untimed card', () => {
+    const none = T.tpMergeScene(scene([], undefined, at('Town', 1)), scene([], undefined, at('Keep', 9)), NOW);
+    assert.equal(none.take.place, false);
+    assert.equal(none.record.group, undefined);
+    const timed = T.tpMergeScene(scene([], undefined, at('Town', 1)), scene([], { scene: { place: 300 } }, at('Keep', 9)), NOW);
+    assert.equal(timed.record.group, 'Keep');
+  });
+  it('labels the part with a string the Russian dictionary already has', () => assert.equal(T.TP_PART_LABEL.place, 'Group'));
+});
+
 describe('tpMergeScene: rooms', () => {
   it('keeps a room the table revealed through an import of the untouched scene', () => {
     const local = scene([room(1, { mode: 'revealed' })], { rooms: { u1: { mode: 5000 } } });

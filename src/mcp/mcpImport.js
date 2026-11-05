@@ -140,7 +140,7 @@ async function _mcpLinkRoom(args) {
 // What an import changes beyond maps, groups and roads, as it is before: the campaign note, module text, the fight
 // table, the gallery's picture ids and the backdrop.
 async function _mcpZipParts() {
-  return { note: notesCampaignGet(), mod: { entries: mtEntries, src: mtSourceName }, fights: JSON.parse(JSON.stringify(cbState)),
+  return { note: notesCampaignGet(), noteAt: notesCampaignAt(), mod: { entries: mtEntries, src: mtSourceName }, fights: JSON.parse(JSON.stringify(cbState)),
     pics: new Set((await galleryStore.all()).map(p => p.id)), backdrop: await worldBackgroundTake() };
 }
 
@@ -149,15 +149,22 @@ async function _mcpZipPictures(before) {
   return (await galleryStore.all()).map(p => p.id).filter(id => !before.has(id));
 }
 
-async function _mcpUndoZipParts(rest) {
+// ⚠ CHECKED BEFORE ANY MAP IS WRITTEN BACK. A refusal keeps the step as if nothing changed, so one after the
+// writes leaves the DM on a map with no currentScene, where nothing saves.
+function _mcpZipPartsRefusal(rest) {
   const fights = mcpCombatUndoImport(cbState, rest.before.fights);
   if (fights.error) throw Object.assign(new Error(fights.error), { mcpKeep: true });
   const onTv = rest.pics.find(id => galleryOnTv(id));
   if (onTv) throw Object.assign(new Error('A picture the import added is on the TV. Ask the DM to take it down first.'), { mcpKeep: true });
+}
+
+async function _mcpUndoZipParts(rest) {
+  const fights = mcpCombatUndoImport(cbState, rest.before.fights);
+  if (fights.error) throw new Error(fights.error);
   cbState = fights.state;
   cbSave(); cbRender(); cbFightsTitle();
   for (const id of rest.pics) await galleryDrop(id);
-  notesCampaignSet(rest.before.note);
+  notesCampaignSet(rest.before.note, rest.before.noteAt);
   if (rest.before.mod.entries.length) mtStore(rest.before.mod.entries, rest.before.mod.src); else mtClearStored();
   _mtRenderModal();
   await worldBackgroundPut(rest.before.backdrop);
@@ -174,19 +181,24 @@ async function _mcpUndoZip(run, done, snap, rest) {
   }
   if (panesActive && run.created.some(id => paneColumnOf(id))) throw Object.assign(new Error('A map the import made is open in a column. Ask the DM to close the column first.'), { mcpKeep: true });
   mcpRefuseRemovingOpen(run.created, 'undoing the import');
+  _mcpZipPartsRefusal(rest);
   const reopen = currentScene && back.some(r => r.id === currentScene.id) ? currentScene.id : null;
   // ⚠ The open map's copy is dropped first, as the import drops it, or an autosave writes it over the record put back.
   if (reopen) { clearTimeout(autoSaveTimer); currentScene = null; }
-  for (const rec of back) {
-    await sceneStore.putScene(rec);
-    const meta = allScenes.find(x => x.id === rec.id);
-    if (meta) { meta.name = rec.name; meta.thumbnail = rec.thumbnail; }
-    if (thumbURLs.has(rec.id)) { URL.revokeObjectURL(thumbURLs.get(rec.id)); thumbURLs.delete(rec.id); }
+  // ⚠ Reopened even when a step below throws, or every later edit to the open map goes unsaved.
+  try {
+    for (const rec of back) {
+      await sceneStore.putScene(rec);
+      const meta = allScenes.find(x => x.id === rec.id);
+      if (meta) Object.assign(meta, { name: rec.name, thumbnail: rec.thumbnail, group: rec.group || '', worldPos: rec.worldPos });
+      if (thumbURLs.has(rec.id)) { URL.revokeObjectURL(thumbURLs.get(rec.id)); thumbURLs.delete(rec.id); }
+    }
+    await _mcpRemoveScenes(run.created.filter(id => allScenes.some(x => x.id === id)));
+    worldSnapshotPut(snap);
+    await _mcpUndoZipParts(rest);
+  } finally {
+    if (reopen && !currentScene) await switchScene(reopen);
   }
-  await _mcpRemoveScenes(run.created.filter(id => allScenes.some(x => x.id === id)));
-  worldSnapshotPut(snap);
-  await _mcpUndoZipParts(rest);
-  if (reopen) await switchScene(reopen);
   sceneListChanged();
   _mcpWorldRefresh();
 }

@@ -3,7 +3,7 @@
 // is stored with what is about to be written and gives every changed part the save's time. Import
 // reads these times to decide which copy of a part wins. Tested.
 
-const ES_SCENE_PARTS = ['name', 'grid', 'map', 'fog', 'notes', 'fogSettings', 'weather', 'lights', 'tvFit'];
+const ES_SCENE_PARTS = ['name', 'grid', 'map', 'fog', 'notes', 'fogSettings', 'weather', 'lights', 'tvFit', 'place'];
 const ES_ROOM_OWN = ['id', 'uid', 'name', 'desc', 'mode', 'modeWithHoles'];
 const ES_GONE_MAX = 300;
 
@@ -41,6 +41,8 @@ function esSceneParts(s) {
     tvFit: esCanon(s.tvFit && s.tvFit.step ? { step: s.tvFit.step, turn: s.tvFit.turn } : null),
     lights: esCanon([!!s.lightsHidden, s.lightShapes || []]),
     map: esCanon([s.mapType || 'image', s.mapPath || '', s.mapWidth || 0, s.mapHeight || 0, s.mapBlob && s.mapBlob.size ? s.mapBlob.size : 0]),
+    // Its group and its spot on the Campaign.
+    place: esCanon([s.group || '', s.worldPos ? { x: s.worldPos.x, y: s.worldPos.y } : null]),
   };
 }
 
@@ -75,8 +77,10 @@ function esSnapshot(rec) {
 }
 
 // The times of the parts that changed, kept where a part did not. `prev` null means all are new.
+// A part this build does not know (a newer release's, after /rollback) keeps its time: the record keeps its data.
 function esDiff(times, prev, next, now) {
   const out = {};
+  if (times) for (const k of Object.keys(times)) if (!(k in next) && times[k] > 0) out[k] = times[k];
   for (const k of Object.keys(next)) {
     if (!prev || prev[k] !== next[k]) out[k] = now;
     else if (times && times[k] > 0) out[k] = times[k];
@@ -118,7 +122,7 @@ function esStamp(prev, next, now, fogEdited) {
   else if (pe.scene && pe.scene.fog > 0) scene.fog = pe.scene.fog;
   const r = _esStampList(prev ? prev.rooms : {}, ns.rooms, pe.rooms, pe.goneRooms, now);
   const e = _esStampList(prev ? prev.effects : {}, ns.effects, pe.effects, pe.goneEffects, now, true);
-  return { scene, rooms: r.times, goneRooms: r.gone, effects: e.times, goneEffects: e.gone };
+  return { ...pe, scene, rooms: r.times, goneRooms: r.gone, effects: e.times, goneEffects: e.gone };
 }
 
 // Records that carry their own `edits` (places, roads). `seen` maps uid to the parts as last saved, and

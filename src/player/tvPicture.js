@@ -110,10 +110,13 @@ function _tvPicLayer() {
   return el;
 }
 
-// A whole picture has no state left, so its way out starts from a full mask.
+// A whole picture has no state left, so its way out starts from a full mask. One that never came in
+// (skipped past while it decoded) is still hidden, and fading it out would flash it.
 function _tvPicRetire(img) {
   if (!img.src) return;
-  if (!img.naturalWidth) { URL.revokeObjectURL(img.src); img.removeAttribute('src'); return; }
+  if (!img.naturalWidth || (!img._tv && img.style.visibility === 'hidden')) {
+    URL.revokeObjectURL(img.src); img.removeAttribute('src'); return;
+  }
   const s = img._tv || { t: 1, url: img.src, field: _tvPicField(img, (Math.random() * 1e6) | 0), img };
   s.in = false;
   _tvPicRun(img, s);

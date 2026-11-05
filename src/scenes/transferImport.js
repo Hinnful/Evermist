@@ -44,14 +44,16 @@ function _tiRead(raw) {
   };
 }
 
-// The campaign note joins below the DM's own, as it always has. The places and roads follow the plan.
-async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, say, mentions) {
+// The campaign note edited later wins (notesPickCampaign), and one that replaces text written here is reported
+// in `over`. The places and roads follow the plan.
+async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, say, mentions, over) {
   const parsed = notesParseCampaign(raw);
   parsed.text = mentions.remap(parsed.text);
-  const merged = notesMergeCampaign(notesCampaignGet(), parsed.text);
+  const merged = notesPickCampaign(notesCampaignGet(), notesCampaignAt(), parsed.text, parsed.at, plans.moment);
+  if (merged.replaced) over.push({ scene: t('Campaign'), room: '', part: 'notes' });
   // Before the places come in: a rename there moves the uid with its group.
   mxGroupUidsWrite(mentions.groupUids);
-  if (merged.text !== notesCampaignGet()) notesCampaignSet(merged.text);
+  if (merged.text !== notesCampaignGet()) notesCampaignSet(merged.text, merged.at);
   worldPlacesImport(plans.places, shift.dx, shift.dy);
   const names = new Set(worldPlaceRecords().map(r => r.name));
   const placeSet = Object.create(null);
@@ -184,6 +186,7 @@ function _tiMatchedRecord(x, got, run) {
     }
   }
   if (rec.floorPlan === undefined) rec.floorPlan = e.floorPlan;
+  if (take.place) { rec.group = sanitizeGroupName(rec.group); rec.worldPos = _tiRestoredPos(rec.worldPos, { dx: 0, dy: 0 }); }
   return rec;
 }
 
@@ -219,17 +222,17 @@ async function _tiWrite(plan, ex, run, job) {
       const rec = _tiMatchedRecord(x, got, run);
       await sceneStore.putScene(rec);
       const meta = existing.find(s => s.id === x.id);
-      if (meta) { meta.name = rec.name; meta.thumbnail = rec.thumbnail; }
+      if (meta) Object.assign(meta, { name: rec.name, thumbnail: rec.thumbnail, group: rec.group || '', worldPos: rec.worldPos });
       if (thumbURLs.has(x.id)) { URL.revokeObjectURL(thumbURLs.get(x.id)); thumbURLs.delete(x.id); }
       out.pictured.push({ polygons: rec.polygons, pictureBlobs: rec.pictureBlobs });
       if (x.plan.touched) out.updated.push(x.id);
       if (x.plan.report.kept.length) out.kept.push(rec.name);
-      for (const o of x.plan.report.overwritten) out.overwritten.push({ scene: rec.name, room: o.room, part: o.part });
+      for (const o of x.plan.report.overwritten) out.overwritten.push({ id: x.id, scene: rec.name, room: o.room, part: o.part });
     } else {
       order++;
       const name = resolveSceneName(x.entry.name || t('Imported Map'), usedNames);
       const scene = _tiNewRecord(x, got, name, order, plan.shift);
-      if (x.entry.mapType === 'video') { if (got.mapWritten === false) out.noMap.push(name); else run.createdVideos.push(x.id); }
+      if (x.entry.mapType === 'video' && got.mapWritten === false) out.noMap.push(name);
       await sceneStore.putScene(scene);
       run.created.push(x.id);
       out.added.push(x.id);
@@ -253,7 +256,7 @@ async function _tiFinish(zipPath, plan, done, say, claude) {
   });
   await adoptModuleTextFromZip(zipPath, claude ? say : undefined);
   await adoptCombatFromZip(zipPath, say, plan.mentions.remap);
-  await _tiAdoptCampaign(plan.raw, plan.readFailed, plan.plans, plan.shift, plan.items, plan.noNotes, say, plan.mentions);
+  await _tiAdoptCampaign(plan.raw, plan.readFailed, { ...plan.plans, moment: plan.moment }, plan.shift, plan.items, plan.noNotes, say, plan.mentions, done.overwritten);
   await worldBackgroundImport(zipPath, plan.shift, plan.moment, say);
   try {
     await galleryAdoptBackup(zipPath);
@@ -308,12 +311,24 @@ async function restoreFromZipPath(zipPath, say) {
   // What a stop puts back: matched records as they were, and only what this import created.
   const run = { snapshots: new Map(), created: [], createdVideos: [], temps: [], toSettle: [] };
   let committed = false;   // past this point the scenes are in, and a stop or a failure puts nothing back
+  // ⚠ The open scene, when the file updates it, is detached before the first write, so no autosave (a minimise)
+  // writes its old copy over the merged record. It comes back from the store however the import ends, or every
+  // later edit to it goes unsaved.
+  let reopen = null;
+  const reattach = async () => { if (reopen && !currentScene) await switchScene(reopen); };
   const undo = async () => {
-    for (const [, rec] of run.snapshots) await sceneStore.putScene(rec).catch(err => console.error('[import] undo', err));
+    for (const [, rec] of run.snapshots) {
+      await sceneStore.putScene(rec).catch(err => console.error('[import] undo', err));
+      // The card too: the write gave it the file's name, thumbnail, group and spot.
+      const meta = allScenes.find(s => s.id === rec.id);
+      if (meta) Object.assign(meta, { name: rec.name, thumbnail: rec.thumbnail, group: rec.group || '', worldPos: rec.worldPos });
+    }
     for (const id of run.created) await sceneStore.deleteScene(id).catch(err => console.error('[import] undo', err));
     for (const id of run.createdVideos) await window.electronAPI.deleteVideoFile(id);
     for (const x of run.temps) await window.electronAPI.settleImportVideo(x.id, x.ext, false).catch(() => {});
     hideMapProgress();
+    sceneListChanged();
+    await reattach();
   };
   showMapProgress('Reading export…');
   try {
@@ -325,28 +340,34 @@ async function restoreFromZipPath(zipPath, say) {
     }
     const plan = await _tiPlan(zipPath, manifest);
     if (job.stopped) return undo();
+    reopen = currentScene && plan.items.some(x => x.matched && x.plan.touched && x.id === currentScene.id) ? currentScene.id : null;
+    if (reopen) { clearTimeout(autoSaveTimer); currentScene = null; await autoSavesSettled(); }
     showMapProgress('Extracting maps…');
     updateMapProgress(0);
     for (const x of plan.items) if (x.matched && x.entry.mapType === 'video' && x.plan.take.map) run.temps.push({ id: x.id, ext: x.entry.mapExt || '.webm' });
+    // Before extraction writes them, so a stop or a failure partway deletes every new animated map's file.
+    for (const x of plan.items) if (!x.matched && x.entry.mapType === 'video') run.createdVideos.push(x.id);
     const ex = await _tiExtract(zipPath, plan.items);
     if (job.stopped) return undo();
     const done = await _tiWrite(plan, ex, run, job);
     if (!done || job.stopped) return undo();
     committed = true;
-    // A rename that fails (a video being played) puts that scene's record back, so record and file agree.
+    // A rename that fails (a video being played) puts that scene's whole record back, so record and file agree
+    // and the rooms and fog stay with the map they were drawn on. The report then leaves it out.
     done.mapFailed = [];
     for (const x of run.toSettle) {
       try { await window.electronAPI.settleImportVideo(x.id, x.ext, true); } catch (err) {
         console.error('[import] settle', err);
-        await sceneStore.putScene(run.snapshots.get(x.id));
+        const old = run.snapshots.get(x.id), meta = allScenes.find(s => s.id === x.id);
+        await sceneStore.putScene(old);
         await window.electronAPI.settleImportVideo(x.id, x.ext, false).catch(() => {});
-        done.mapFailed.push(allScenes.find(s => s.id === x.id).name);
+        if (meta) Object.assign(meta, { name: old.name, thumbnail: old.thumbnail, group: old.group || '', worldPos: old.worldPos });
+        done.updated = done.updated.filter(id => id !== x.id);
+        done.overwritten = done.overwritten.filter(o => o.id !== x.id);
+        done.mapFailed.push(old.name);
       }
     }
-    // ⚠ The open scene's in-memory copy is dropped now, so no autosave in the awaits that follow can write it
-    // over the merged record. _tiFinish reloads it from the store.
-    done.reopen = currentScene && done.updated.includes(currentScene.id) ? currentScene.id : null;
-    if (done.reopen) { clearTimeout(autoSaveTimer); currentScene = null; }
+    done.reopen = reopen;
     mapJobEnd(job);
     allScenes.push(...done.newMeta);
     allScenes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
@@ -359,6 +380,7 @@ async function restoreFromZipPath(zipPath, say) {
     hideMapProgress();
     console.error('Import failed:', err);
     if (!committed) await undo();
+    else await reattach();
     say({
       title: 'Import failed',
       message: (committed ? t('The maps came in, but Evermist stopped before the rest of the file.')

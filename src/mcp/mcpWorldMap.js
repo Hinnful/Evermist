@@ -108,8 +108,9 @@ async function _mcpSetBackdrop(args) {
     return mcpDone('changed the Campaign backdrop', async () => { await worldBackgroundPut(was); _mcpWorldRefresh(); },
       'Changed the Campaign backdrop: ' + Object.keys(nums).map(k => (k === 'alpha' ? 'opacity' : k) + ' ' + (k === 'scale' ? nums[k] * 100 + '%' : nums[k])).join(', ') + '.');
   }
-  const read = await window.electronAPI.readMapFiles(String(args.path));
+  const read = await window.electronAPI.readMapFiles(String(args.path), { only: 'image', maxMB: 30 });
   if (read.error) return _mcpNo(read.error);
+  if (!read.files.length && read.skipped.length === 1) return _mcpNo('The backdrop is one image file up to 30 MB, and "' + read.skipped[0].name + '" ' + read.skipped[0].reason);
   const f = read.files[0];
   if (read.files.length !== 1 || !/^image\//.test(f.type)) return _mcpNo('The backdrop is one image file, not a folder or a video.');
   if (f.bytes.length > 30 * 1024 * 1024) return _mcpNo('The backdrop can be up to 30 MB.');

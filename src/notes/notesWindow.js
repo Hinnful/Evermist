@@ -75,6 +75,7 @@ function nwHide() {
   if (!_nwOpen) return;
   notesPanelSettle();
   ntCloseMenu();
+  _neHideTip();
   _nwOpen = false;
   _nwEl().hidden = true;
   dockRefreshRail();

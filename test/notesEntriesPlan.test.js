@@ -90,4 +90,31 @@ describe('neMerge', () => {
     assert.equal(r.entries.find(e => e.id === 'c').parent, 'faction');
     assert.equal(r.entries.find(e => e.id === 'b').parent, 'a');
   });
+  it('takes an entry edited later elsewhere, and keeps one edited later here', () => {
+    const have = [E('a', 'lore', null, 0, { note: 'mine', edited: 100 }), E('b', 'lore', null, 1)];
+    const r = N.neMerge(have, [E('a', 'lore', 'b', 0, { note: 'theirs', name: 'A2', edited: 200 }), have[1]], 1000);
+    const a = r.entries.find(e => e.id === 'a');
+    assert.deepEqual([a.note, a.name, a.parent, a.edited, r.updated], ['theirs', 'A2', 'b', 200, 1]);
+    const keep = N.neMerge(have, [E('a', 'lore', null, 0, { note: 'theirs', edited: 50 })], 1000);
+    assert.equal(keep.entries.find(e => e.id === 'a').note, 'mine');
+    assert.equal(keep.updated, 0);
+  });
+  it('lets a timed copy beat an untimed one, and keeps the one here when neither has a time', () => {
+    const have = [E('a', 'faction', null, 0, { note: 'mine' })];
+    assert.equal(N.neMerge(have, [E('a', 'faction', null, 0, { note: 'theirs', edited: 5 })], 1000).entries[0].note, 'theirs');
+    assert.equal(N.neMerge(have, [E('a', 'faction', null, 0, { note: 'theirs' })], 1000).entries[0].note, 'mine');
+  });
+  it('puts a taken entry under its section when its new parent would loop', () => {
+    const have = [E('a', 'lore', null, 0), E('b', 'lore', 'a', 0)];
+    const r = N.neMerge(have, [E('a', 'lore', 'b', 0, { note: 'x', edited: 9 }), E('b', 'lore')], 1000);
+    assert.equal(r.entries.find(e => e.id === 'a').parent, 'lore');
+  });
+});
+
+describe('neStamp', () => {
+  it('times an entry whose name, note or place changed, and a new one, and nothing else', () => {
+    const before = [E('a', 'lore', null, 0, { edited: 5 }), E('b', 'lore', null, 1, { edited: 5 })];
+    const after = [{ ...before[0], order: 3 }, { ...before[1], note: 'new' }, E('c', 'lore')];
+    assert.deepEqual(N.neStamp(before, after, 70).map(e => e.edited), [5, 70, 70]);
+  });
 });

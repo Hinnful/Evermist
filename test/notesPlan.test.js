@@ -273,3 +273,30 @@ describe('road notes', () => {
     assert.equal(N.notesParseRoadNotes(raw).broken, false);
   });
 });
+
+describe('notesPickCampaign', () => {
+  it('replaces the note here with one edited later, and says text written here went', () => {
+    assert.deepEqual(N.notesPickCampaign('mine', 100, 'theirs', 200, 1000), { text: 'theirs', at: 200, replaced: true, tooLong: false });
+    assert.deepEqual(N.notesPickCampaign('mine', 300, 'theirs', 200, 1000), { text: 'mine', at: 300, replaced: false, tooLong: false });
+  });
+  it('lets a timed note beat an untimed one, both ways', () => {
+    assert.equal(N.notesPickCampaign('mine', 0, 'theirs', 200, 1000).text, 'theirs');
+    assert.equal(N.notesPickCampaign('mine', 200, 'theirs', 0, 1000).text, 'mine');
+  });
+  it('joins below, once, when neither side has a time, and never pastes a note under itself', () => {
+    const j = N.notesPickCampaign('mine', 0, 'theirs', 0, 1000);
+    assert.equal(j.text, 'mine' + N.NOTES_SEPARATOR + 'theirs');
+    assert.equal(j.at, 1000);
+    assert.equal(N.notesPickCampaign(j.text, j.at, 'theirs', 0, 2000).text, j.text);
+    assert.equal(N.notesPickCampaign('same', 5, 'same', 9, 1000).replaced, false);
+  });
+  it('fills an empty note, keeps one when the file has none, and caps a time past the import', () => {
+    assert.deepEqual(N.notesPickCampaign('', 0, 'theirs', 0, 1000), { text: 'theirs', at: 0, replaced: false, tooLong: false });
+    assert.equal(N.notesPickCampaign('mine', 0, '', 500, 1000).text, 'mine');
+    assert.equal(N.notesPickCampaign('mine', 0, 'theirs', 5000, 1000).at, 1000);
+  });
+  it('carries the time in the file, and an older file reads as untimed', () => {
+    assert.deepEqual(N.notesParseCampaign(N.notesCampaignPayload('lore', {}, {}, {}, {}, null, [], {}, 77)), { text: 'lore', broken: false, at: 77 });
+    assert.equal(N.notesParseCampaign('{"notes":"x"}').at, undefined);
+  });
+});

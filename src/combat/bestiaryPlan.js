@@ -120,7 +120,8 @@ function bsReadFile(text) {
   let d;
   try { d = JSON.parse(text); } catch (_) { return null; }
   if (!d || d.evermist !== 'bestiary' || !Array.isArray(d.monsters)) return null;
-  return d.monsters.filter(m => m && typeof m.name === 'string');
+  const clean = typeof combatCleanBlock === 'function' ? combatCleanBlock : require('./combatPlan.js').combatCleanBlock;
+  return d.monsters.map(clean).filter(Boolean);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

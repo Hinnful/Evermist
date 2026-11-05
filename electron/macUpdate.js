@@ -40,10 +40,12 @@ function get(url, onData, redirects = 5) {
       if (res.statusCode !== 200) { res.resume(); reject(new Error(url + ' answered ' + res.statusCode)); return; }
       const total = Number(res.headers['content-length']) || 0;
       const chunks = [];
-      res.on('data', c => { if (onData) onData(c, total); else chunks.push(c); });
+      res.on('data', c => { if (onData) onData(c, total, res); else chunks.push(c); });
       res.on('end', () => resolve(Buffer.concat(chunks)));
       res.on('error', reject);
-    }).on('error', reject);
+    }).on('error', reject)
+      // A link that goes quiet mid-download would otherwise leave About on "Downloading" for good.
+      .setTimeout(60000, function () { this.destroy(new Error(url + ' stalled')); });
   });
 }
 
@@ -86,10 +88,15 @@ async function check() {
   setStatus({ state: 'downloading', version: pointer.version });
   const hash = crypto.createHash('sha512');
   const out = fs.createWriteStream(zipPath);
+  // ⚠ A FULL DISK fails the write stream, and an unheard stream error takes the main process down.
+  let res = null;
+  out.on('error', err => { if (res) res.destroy(err); });
   let got = 0, shown = -1;
-  await get(new URL(pointer.url, FEED).href, (chunk, total) => {
+  await get(new URL(pointer.url, FEED).href, (chunk, total, from) => {
+    res = from;
+    if (out.errored) { from.destroy(out.errored); return; }
     hash.update(chunk);
-    out.write(chunk);
+    if (!out.write(chunk)) { from.pause(); out.once('drain', () => from.resume()); }
     got += chunk.length;
     const percent = total ? Math.floor(got * 100 / total) : null;
     if (percent !== null && percent !== shown) {

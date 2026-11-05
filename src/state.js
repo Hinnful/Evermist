@@ -192,6 +192,7 @@ let isPanning = false;
 let panStartX, panStartY, panStartPanX, panStartPanY;
 let playerWindow = null;
 let playerMapSent = false;
+let tvSceneId = null;   // the scene the TV was last given a map of
 // The open scene was deleted: the TV shows its waiting screen and nothing reaches it until the DM opens a
 // scene or pushes by hand (sendToPlayerNow).
 let tvHeld = false;

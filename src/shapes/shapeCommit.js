@@ -100,9 +100,10 @@ function refuseShapeOp(reason) {
 // A piece with no shape of its own: the parent's fields, a fresh id, a plain name, no notes.
 function newShapeFromPiece(base, piece, id) {
   const s = { ...base, id };
-  if (base.light) { delete s.name; } else {
-    s.name = t((base.material ? base.material.charAt(0).toUpperCase() + base.material.slice(1) : 'Room') + ' {n}', { n: id });
-  }
+  if (base.light) delete s.name;
+  // Named as addEffect names a new effect, from the material's label.
+  else if (base.material) s.name = (EFFECT_MATERIALS[base.material] ? EFFECT_MATERIALS[base.material].label : base.material) + ' ' + id;
+  else s.name = t('Room {n}', { n: id });
   applyPieceToShape(s, piece);
   delete s.desc;
   return s;
@@ -135,6 +136,11 @@ function shapePlanApplied(list, plan, mode, newId) {
     const parts = kept.pieces.length ? kept.pieces : g.pieces.map(p => ({ vertices: p.verts, holes: p.holes }));
     applyPieceToShape(base, parts[0]);
     if (mode) base.mode = mode;
+    // A merged-away room hands its notes to the one that stays, below its own, as a place does.
+    if (g.shapes.length > 1) {
+      const notes = g.shapes.map(s => typeof s.desc === 'string' ? s.desc.trim() : '').filter(Boolean).join('\n\n');
+      if (notes) base.desc = notes;
+    }
     for (let i = 1; i < parts.length; i++) extras.push(newShapeFromPiece(base, parts[i], newId()));
   }
   return { list: list.filter(s => !drop.has(s.id)).concat(extras), drop, lostDoors };
@@ -185,10 +191,11 @@ function commitShapeOpFog(toShroud) {
 
 // The drawn shape combines with every shape it lands on, and makes none of its own. `op` is 'join'
 // (Merge), 'trim' (Cut out) or 'split' (the shape's edge divides each room it crosses in two).
+// Effects mode holds fires and lights: a repair, the Split line included, acts on the kind being drawn.
+function isDrawnKind(s) { return placeMode === 'rooms' || !!s.light === (currentMaterial === 'light'); }
+
 function commitShapeOp(verts, op) {
-  // Effects mode holds fires and lights: a repair acts on the kind being drawn.
-  const hits = activeShapeList().filter(s => s.vertices && s.vertices.length >= 3 &&
-                                             (placeMode === 'rooms' || !!s.light === (currentMaterial === 'light')) &&
+  const hits = activeShapeList().filter(s => s.vertices && s.vertices.length >= 3 && isDrawnKind(s) &&
                                              shapesOverlap(s, verts));
   if (!hits.length) return false;
   const minArea = roomOpMinArea(gridSize);
@@ -225,6 +232,7 @@ function commitShapeOp(verts, op) {
 // THE ONE PLACE A FINISHED CLOSED SHAPE GOES. `op` is what the shape was drawn as (repairNow, in
 // repairKeys.js): 'new' makes a record; the three repairs make none, and an armed one stays armed.
 // ⚠ RETURNS NULL FOR EVERY OP BUT 'new', a refusal included, so no caller may reach into it.
+// A repair also takes a { vertices, holes } record (a Ring size); 'new' takes a point list only.
 function commitClosedShape(verts, op) {
   const as = op || shapeOp;
   if (as === 'new') return commitDrawnShape(verts);

@@ -10,6 +10,8 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   // A push queued for the outgoing map would fire mid-switch, carrying half of each map.
   clearTimeout(scenePushTimer); scenePushTimer = 0;
   clearTimeout(autoSyncTimer);
+  // Its span and held still belong to the outgoing map.
+  armGridCalibration(false);
   if (!keepTvClear) tvHeld = false;   // the DM opening a scene is what lifts the hold
   if (typeof notesPanelFlush === 'function') notesPanelFlush();
   if (typeof roomCardLeaveScene === 'function') roomCardLeaveScene();
@@ -23,11 +25,14 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   // Abort the outgoing crossfade, so its tick cannot run against orphaned snapshots. The drifting
   // anim loop is idempotent - leave it running.
   stopFogTransition();
-  dropHeldSceneSend();
   // ⚠ MANUAL POSTS NOTHING: the TV keeps the old map, uncovered, until Send runs the whole change.
-  if (!isPlayer && !autoSync && !tvHeld && playerWindow && !playerWindow.closed) {
-    tvWait.scene = true;
-    playerUnsent = true;
+  // Opening the map the TV holds again is no change, unless a Send had already started covering it.
+  const manualTv = !isPlayer && !autoSync && !tvHeld && playerWindow && !playerWindow.closed;
+  const backToTv = manualTv && id === tvSceneId && !tvSceneSendTimer;
+  dropHeldSceneSend();
+  if (manualTv) {
+    tvWait.scene = !backToTv;
+    if (!backToTv) playerUnsent = true;
   }
   if (!isPlayer && autoSync && !tvHeld && playerWindow && !playerWindow.closed) {
     playerWindow.postMessage({ type: 'scene-transition', phase: 'out' }, '*');
@@ -53,17 +58,19 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   // Lazy migration: move legacy IDB video blob to filesystem on first access
   if (scene.mapType === 'video' && scene.mapBlob && !scene.mapPath && window.electronAPI) {
     showMapProgress('Moving the animated map to disk…');
-    const ab = await scene.mapBlob.arrayBuffer();
-    if (myGen !== switchGeneration) return;
-    const mime = scene.mapBlob.type || 'video/webm';
-    const ext = mime === 'video/mp4' ? '.mp4' : '.webm';
-    await window.electronAPI.saveVideoBlob(scene.id, ab, mime);
-    if (myGen !== switchGeneration) return;
-    scene.mapPath = 'maps/' + scene.id + ext;
-    scene.mapBlob = undefined;
-    await sceneStore.saveScene(scene);
-    if (myGen !== switchGeneration) return;
-    hideMapProgress();
+    // ⚠ Hidden on every way out: the overlay sits above the error dialog, so a failed move left it up for good.
+    try {
+      const ab = await scene.mapBlob.arrayBuffer();
+      if (myGen !== switchGeneration) return;
+      const mime = scene.mapBlob.type || 'video/webm';
+      const ext = mime === 'video/mp4' ? '.mp4' : '.webm';
+      await window.electronAPI.saveVideoBlob(scene.id, ab, mime);
+      if (myGen !== switchGeneration) return;
+      scene.mapPath = 'maps/' + scene.id + ext;
+      scene.mapBlob = undefined;
+      await sceneStore.saveScene(scene);
+      if (myGen !== switchGeneration) return;
+    } finally { hideMapProgress(); }
   }
 
   if (scene.mapType === 'video') {
@@ -199,7 +206,8 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
 
   clearUndo();
   fogEditedSinceSave = false;
-  playerMapSent = false;
+  // Back on the TV's own map, the next push is fog only. Re-read: a Player asking mid-switch clears it.
+  playerMapSent = backToTv && tvSceneId === id;
   currentScene = scene;
   if (typeof refreshSeatAlignment === 'function') refreshSeatAlignment();   // Settings' TV picture
   loadSceneLights(scene);   // after currentScene: the plan's lights come from it

@@ -39,7 +39,8 @@ async function _mcpCreateEffect(args) {
     const r = await _mcpFxShapeOf(s, args, d);
     if (r.error) return r.error;
     const id = d.nextEffectId++;
-    index = d.effects.push({ id, vertices: r.vertices, ...(r.holes ? { holes: r.holes } : {}), material: mat.material,
+    // A uid now: a closed map's write assigns none, and two laptops' effect 3 would then match as one.
+    index = d.effects.push({ id, uid: esRandomUid(), vertices: r.vertices, ...(r.holes ? { holes: r.holes } : {}), material: mat.material,
       cornerRadius: 0, name: mcpFxName(mat.material) + ' ' + id });
   });
   if (edit.no) return edit.no;

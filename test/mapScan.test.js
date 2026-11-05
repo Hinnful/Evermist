@@ -53,6 +53,15 @@ describe('readMapFiles', () => {
     assert.deepEqual(r.files.map(f => f.name), ['new-cave.webp', 'old-cave.png']);
     assert.deepEqual(r.skipped.map(s => s.name), ['pack.zip']);
   });
+  it('leaves videos and files over the cap unread when asked', async () => {
+    put('mixed/hall.png', 'ab');
+    put('mixed/river.mp4', 'v');
+    put('mixed/huge.png', Buffer.alloc(1024 * 1024 + 1));
+    const r = await readMapFiles(path.join(root, 'mixed'), { only: 'image', maxMB: 1 });
+    assert.deepEqual(r.files.map(f => f.name), ['hall.png']);
+    assert.deepEqual(r.skipped.map(s => [s.name, s.reason]), [['huge.png', 'is over 1 MB.'], ['river.mp4', 'is not an image.']]);
+    assert.deepEqual((await readMapFiles(path.join(root, 'mixed'))).files.map(f => f.name), ['hall.png', 'huge.png', 'river.mp4']);
+  });
   it('takes at most the limit from one folder', async () => {
     const r = await readMapFiles(path.join(root, 'many'));
     assert.equal(r.files.length, MAX_FOLDER_FILES);

@@ -17,9 +17,9 @@ function _mcpListGallery(args) {
 }
 
 async function _mcpAddPicture(args) {
-  const read = await window.electronAPI.readMapFiles(String(args.path || ''));
+  const read = await window.electronAPI.readMapFiles(String(args.path || ''), { only: 'image' });
   if (read.error) return _mcpNo(read.error);
-  const images = read.files.filter(f => /^image\//.test(f.type));
+  const images = read.files;
   if (!images.length) return _mcpNo('Pictures holds images, and no image was found at that path.');
   const added = [], failed = [];
   for (const f of images) {
@@ -29,8 +29,11 @@ async function _mcpAddPicture(args) {
   if (!added.length) return _mcpNo('Nothing was added. ' + failed.join(' '));
   if (args.name && added.length === 1) galleryRenameTo(added[0].id, String(args.name).trim() || added[0].name);
   const now = added.map(p => '"' + galleryList().find(x => x.id === p.id).name + '"');
-  const left = [...failed, ...read.files.filter(f => !/^image\//.test(f.type)).map(f => '"' + f.name + '" is not an image.'), ...read.skipped.map(s => '"' + s.name + '" ' + s.reason)];
-  return mcpDone('added ' + now.join(', ') + ' to Pictures', async () => { for (const p of added) await galleryDrop(p.id); },
+  const left = [...failed, ...read.skipped.map(s => '"' + s.name + '" ' + s.reason)];
+  return mcpDone('added ' + now.join(', ') + ' to Pictures', async () => {
+    if (added.some(p => galleryOnTv(p.id))) throw Object.assign(new Error('Not undone: the TV shows a picture Claude added. Ask the DM to take it down first.'), { mcpKeep: true });
+    for (const p of added) await galleryDrop(p.id);
+  },
     'Added ' + now.join(', ') + ' to Pictures. Nothing was shown on the TV.' + (left.length ? ' Left out: ' + left.join(' ') : ''));
 }
 

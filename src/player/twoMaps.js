@@ -7,6 +7,7 @@ function twoMapsInit() {
 
 // ⚠ THE SECOND COLUMN OPENS EMPTY and waits to be picked - see docs/ARCHITECTURE.md.
 async function toggleTwoMaps() {
+  if (panesBusy) return;   // a double-click lands while the first one is still saving
   if (panesActive) { await exitPanes(paneSceneToKeep(panesSelected)); refreshTwoMapsButton(); return; }
   const openId = currentScene ? currentScene.id : null;
   if (!openId) {

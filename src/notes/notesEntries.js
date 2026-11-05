@@ -20,7 +20,9 @@ function notesEntriesAll() {
   return _neList;
 }
 
-function _neWrite(list) {
+// `stamped` is the import's: its entries keep the times they arrived with. Every other write times its changes.
+function _neWrite(list, stamped) {
+  if (!stamped) list = neStamp(notesEntriesAll(), list, Date.now());
   _neList = list;
   try { localStorage.setItem(NOTES_ENTRIES_KEY, JSON.stringify({ v: 1, entries: list })); } catch (err) { _nePending = true; return notesSaveFailed('entries', err); }
   _nePending = false;
@@ -48,7 +50,7 @@ function notesEntryDelete(id) {
 
 // A backup's entries, joined to the library's. Answers how many came in.
 function notesEntriesAdopt(raw) {
-  const r = neMerge(notesEntriesAll(), raw);
-  if (r.added) _neWrite(r.entries);
+  const r = neMerge(notesEntriesAll(), raw, Date.now());
+  if (r.added || r.updated) _neWrite(r.entries, true);
   return r.added;
 }

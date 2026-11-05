@@ -61,6 +61,7 @@ function toggleStageWindow() {
 }
 
 function closeStageWindow() {
+  _stageWaitsForSend = false;   // a shell the DM opens again is a fresh TV
   unbindStageHalves();
   const dying = _stageWindow;
   if (stageIsOpen()) _stageWindow.close();
@@ -81,6 +82,9 @@ function unbindStageHalves() {
 // must be idempotent: a `player-hello` costs a PLAYER_READY and a whole re-sent map. A half is
 // recorded as joined only once BOTH directions took.
 const _stageBound = { A: null, B: null };
+let _stagePictureShell = null;
+// Two maps turned on in Manual over a live TV: every half bound to this shell waits for its column's Send.
+let _stageWaitsForSend = false;
 
 function bindStageHalves() {
   if (!stageIsOpen() || typeof _stageWindow.stageFrameWindow !== 'function') return;
@@ -91,13 +95,17 @@ function bindStageHalves() {
     if (typeof half.bindReplyTarget !== 'function') continue;   // that half is not up yet
     if (_stageBound[id] === half) continue;
     _stageBound[id] = half;
-    col.bindPlayerWindow(half);
+    col.bindPlayerWindow(half, _stageWaitsForSend);
     half.bindReplyTarget(col);
     half.postMessage({ type: 'player-hello' }, '*');
   }
   if (_stageBound.A || _stageBound.B) tvPlayerLoaded();
   sendStageSplit();
-  galleryResend();
+  // Once per shell document, told apart by its own function: every resend replays the dissolve.
+  if (_stagePictureShell !== _stageWindow.stageFrameWindow) {
+    _stagePictureShell = _stageWindow.stageFrameWindow;
+    galleryResend();
+  }
   if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
 }
 

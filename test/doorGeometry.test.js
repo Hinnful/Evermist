@@ -239,7 +239,14 @@ describe('remapDoorsForVertexChange', () => {
   });
 
   it('drops the doors whose wall the deleted vertex took with it', () => {
-    assert.deepEqual(remapDoorsForVertexChange(doors, 3, -1).map(d => d.edge), [0]);
+    assert.deepEqual(remapDoorsForVertexChange(doors, 3, -1, undefined, 0, 4).map(d => d.edge), [0]);
+  });
+
+  it('drops the closing wall, not a wall of another ring, when a first corner goes', () => {
+    // Outer ring flats 0-3, hole flats 4-7: corner 0 joins edges 0 and 3, corner 4 joins 4 and 7.
+    assert.deepEqual(remapDoorsForVertexChange(doors, 0, -1, undefined, 0, 4).map(d => d.edge), [1]);
+    const ringDoors = [{ edge: 3, t: 0.5 }, { edge: 5, t: 0.5 }, { edge: 7, t: 0.5 }];
+    assert.deepEqual(remapDoorsForVertexChange(ringDoors, 4, -1, undefined, 4, 4).map(d => d.edge), [3, 4]);
   });
 
   it('holds a door on the same map point when its own wall is split', () => {
@@ -339,6 +346,18 @@ describe('sharedWallSpans', () => {
 
   it('leaves a free wall alone', () => {
     assert.deepEqual(sharedWallSpans(A, 0, [B], 1, 3), []);
+  });
+
+  it('ignores a room nested on the same side of the wall, either way round', () => {
+    // An alcove inside A against its top wall: no room lies beyond that wall.
+    const alcove = { vertices: [{ x: 3, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 4 }, { x: 3, y: 4 }] };
+    assert.deepEqual(sharedWallSpans(A, 0, [alcove], 1, 3), []);
+    assert.deepEqual(sharedWallSpans(alcove.vertices, 0, [{ vertices: A }], 1, 3), []);
+  });
+
+  it('still finds a neighbour across the wall from a room drawn the other way round', () => {
+    const ccwB = { vertices: B.vertices.slice().reverse() };
+    assert.equal(sharedWallSpans(A, bottomEdge, [ccwB], 1, 3).length, 1);
   });
 
   it('returns nothing rather than throwing on empty or degenerate input', () => {

@@ -57,4 +57,14 @@ const shq = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";
 const prCreateCommand = (branch, title, bodyFile) =>
   ['gh pr create --base main --head', shq(branch), '--title', shq(title), '--body-file', shq(String(bodyFile).replace(/\\/g, '/'))].join(' ');
 
-module.exports = { prCreateCommand, notesHash, runDir, sessionIds, isFromDm, yesCheck, backlogCheck, disclosureCheck, isTestEdit };
+// ⚠ THE APP ARMS AUTO-FIX ONLY FOR A PULL REQUEST IT WATCHED THIS SESSION OPEN. A release retried from
+// a new session found the old session's pull request still open, reused it, and could not arm the
+// monitor. Keep an open one only when this session pushed the branch before; close any other and open anew.
+function prStep({ open, ownBranch, branch, title, bodyFile }) {
+  if (open && ownBranch === branch) return { url: open.url };
+  const create = prCreateCommand(branch, title, bodyFile);
+  if (!open) return { run: create };
+  return { run: 'gh pr close ' + open.number + ' --comment ' + shq('Superseded by a pull request this session opens, so its CI monitor can be armed.') + ' && ' + create };
+}
+
+module.exports = { prStep, prCreateCommand, notesHash, runDir, sessionIds, isFromDm, yesCheck, backlogCheck, disclosureCheck, isTestEdit };

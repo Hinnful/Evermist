@@ -43,8 +43,8 @@ async function mcpeShow(text) {
     const r = mxResolve(kind, id);
     if (!r || r.name == null) return null;
     const scene = kind === 'room' ? allScenes.find(x => x.id === id.split(':')[0]) : null;
-    return scene ? scene.name + MPE_SEP + r.name : r.name;
-  });
+    return { name: scene ? scene.name + MPE_SEP + r.name : r.name, word: r.kind };
+  }, _mcpeCands());
 }
 
 const _mcpeMonsterHasNote = b => !!String(b.notes || '').trim();

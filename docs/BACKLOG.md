@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 14 open items; IDs run to 265."
+description: "Open work only. 14 open items; IDs run to 269."
 metadata: 
   node_type: memory
   type: project
@@ -114,16 +114,6 @@ section turned Weather, and moves with the redo.
 **Needs a design round.**
 **First use · Polish · DM only**
 
-### 256. The TV setup check keeps needing a rerun
-Filed 2026-11-04. The rig's TV setup scenario needed a rerun in 3 recent CI runs, on Windows and Mac: the first Show on
-TV of a launch reads a label that is not there yet. Fix the scenario's timing or retire it.
-**Upkeep · DM only**
-
-### 257. The music check keeps needing a rerun
-Filed 2026-11-04. The rig's music scenario needed a rerun in 3 recent CI runs on Windows: the DM window stops answering
-for 30 seconds. Find what blocks it, or retire the scenario.
-**Upkeep · DM only**
-
 ### 258. The AI assistant sets a map's weather
 Filed 2026-11-04. The AI assistant preps maps but cannot pick a map's weather preset. Add it beside the fog look, for a
 map that is not on the TV, the same way the fog's drift preset is set. Small.
@@ -135,24 +125,33 @@ mismatch the DM has to avoid. Floated by the DM while weather was settled; nothi
 **Needs a design round.**
 **Play · Player**
 
-### 260. Rig checks that cannot fail
-Filed 2026-11-04. The 2026-11-04 code review found about eleven rig criteria that pass whatever the app does: the shared
-settle step rebuilds the DM's fog and pushes to the TV itself, so no "the fog followed the edit" or Auto-delivery check
-can fail; the animated-map freeze, effects-under-fog, backup-whitelist, window-guard and notes-field checks have their own
-holes. Full list in `.claude/private/reviews/2026-11-04/findings/16-tools-rig.md`. Ships as its own change, so a red CI
-run points at the rig alone.
-**Upkeep · Both**
-
 ### 262. Two maps: the Notes window shows a column's older map notes
 Filed 2026-11-04. In two-map mode the Notes window answers a map's notes from its cached read before asking the column
 that holds the map, so notes typed in that column can show as the older text there. Single-map mode is fixed in 5.2.1.
 **Prep · DM only**
 
-### 263. The review's medium findings
-Filed 2026-11-04. The 2026-11-04 code review left about a hundred medium findings unfixed; 5.2.1 fixed the critical and
-high ones. Sort them into fix, file or drop. Findings in `.claude/private/reviews/2026-11-04/findings/`.
+
+### 266. Backups move every still map in one go
+Filed 2026-11-05. Backup export and import move every still map in one message, so a large library can run out of
+memory partway. Moving maps one at a time needs a rework of the backup pipeline and a rig run on a big library.
+**Data · DM only**
+
+### 267. Two module-text rules need a real book
+Filed 2026-11-05. Two PDF parsing rules from the 2026-11-04 review (findings 11#2 and 11#3) can only be tuned against a
+real published module PDF. Small once a book is at hand.
+**Prep · DM only**
+
+### 268. Finish the review's last pieces
+Filed 2026-11-05. Seven review fixes shipped in part in 5.3.1 because they needed files 5.3.0 held: Russian texts for
+the light-split refusal and new fights (03#11, 06#8, 11#7, 11#8), the AI assistant's fog-look edit erasing a newer
+theme (08#14, 05#10), stable room ids for its edits (14#5), and edit times for more records after a rollback (14#12).
+Details in `.claude/private/reviews/2026-11-04/status/`. Small each.
 **Upkeep · Both**
 
+### 269. Deletions don't sync between laptops
+Filed 2026-11-05. A monster, fight, faction, lore entry or picture deleted on one laptop comes back on Import from the
+other, and clearing the campaign note on one does not clear it on the other. Import has no record of a deletion yet.
+**Data · DM only**
 ### 189. Doors follow a hex grid
 Filed 2026-10-17, low priority. On a square grid a door snaps to the map's own grid cells. On a hex grid, and on any
 diagonal wall, the Door tool cuts the wall into cell-sized steps from the room's corner instead, so a door can sit
