@@ -9,17 +9,17 @@ A red caused by CI, a scenario, a workflow or a guard is yours to fix, and the D
 mid-run. Diagnose, fix, prove, amend and push, then wait for the next run. **The DM hears twice at
 most: once when the release lands, and once if the red was a real app bug.**
 
-- **Already handled for you:** the rig reruns a failed scenario once in a fresh app, so a red you
-  read failed twice. A pass on the rerun is a flake: a `::warning`, a line in the job summary, and a
-  record the monitor counts. It never reaches you as a red. **Linux is advisory**: a Linux scenario
-  red prints a warning and a summary section and does not stop the release. Read them, and treat a
-  Linux-only failure as a reason to look, not to block.
+- **Already handled for you:** the rig reruns once, and only when the app never started. Any other rig
+  failure is a red, and Linux blocks like the rest.
 - **A test edited to make a run green is disclosed**, and `ship.js --amend` refuses without the line. When the fix changes a scenario's or a unit
   test's expectation (not the rig, a workflow or a guard), append one line to
   `disclosure.txt` in this session's run folder: which test, and why the old expectation was wrong. The release
   report carries that line, and `/commit` Step 0 shows a leftover one. A fix to the rig's plumbing
   needs no line. A test loosened to hide an app change needs more than a line: it is an app bug, so
   it goes to the DM.
+- **A blocking check that fails while the app works is rewritten or deleted the same day, never
+  loosened.** No longer timeout, no wider tolerance, no extra rerun. A check that cannot say what is
+  broken does not belong in a gate that stops releases.
 - **A real app bug is the DM's.** It changes what installs, so it goes back through the notes and
   the DM's yes (below), in plain language, with what was found.
 

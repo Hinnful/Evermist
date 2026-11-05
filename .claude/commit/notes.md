@@ -45,6 +45,9 @@ as part of the sentence: `"Reveal part of the map" no longer shows`.
 group shows its first three maps as a fan of cards". A verb like "wears", "burns" or "carries" for a
 button is a tell: say "has", "is", "shows".
 
+**Never "it's X, not Y".** Say what the thing is now and stop. "The fog's look is now a theme"
+says it; adding "not colour settings" says it twice, and the DM refuses it.
+
 **"you" is fine, "now", "no longer" and "already" are the point.** A short reason is fine when a DM
 would ask why. An opinion is not: "much better", "finally".
 
@@ -126,8 +129,6 @@ duplicate an entry. Nothing is written yet; Step 6 writes it on the yes, so it r
 
 - **Close what shipped.** Delete every item this change built and update the open count in the
   header. A dead end the work paid for goes to the decisions ledger, never to the backlog.
-- **Propose repeat flakes.** If `node tools/rig-ci.js flakes` named a scenario that needed a rerun
-  three times across recent runs, list it as an item to fix or retire.
 - **File what was deferred.** Anything discovered, skipped, or left as a follow-up. Use the
   backlog's own fields - plain-language *what it is*, *where it shows* (DM/Player/both), rough
   effort, risk, any blocker. This is the shape `/brief` reads back.

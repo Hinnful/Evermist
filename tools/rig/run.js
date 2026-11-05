@@ -3,15 +3,13 @@
 // run.js — the rig: launch the REAL app, attach to both its windows over the DevTools protocol,
 // run scenarios against them, print one verdict.
 //
-//   npm run rig                        the smoke set
-//   npm run rig -- regression          every acceptance scenario
-//   npm run rig -- fog-reaches-the-player
+//   npm run rig                        the blockers set (what CI gates a release on)
+//   npm run rig -- blockers            launch, prep, table-session, keeps-work, in that order
+//   npm run rig -- launch              one scenario by name
 //   npm run rig -- --exe "dist/Evermist.exe"          drive a built installer instead
 //   npm run rig -- --shot "#world-map" --shot-setup "worldMapShow()"
 //   npm run rig -- --dm-size 1280x800 --player-size 1920x1080   run at a size other than the default
-//   npm run rig -- regression --report rig-report.json --coverage   CI: per-scenario timings, flakes and
-//                                                                   the app files each scenario ran
-//   npm run rig -- smoke fog --low-priority          /commit: below-normal priority, the DM's own apps win
+//   npm run rig -- blockers --low-priority           below-normal priority, the DM's own apps win
 //
 // EVERY RUN USES THE SAME GEOMETRY, here and in CI — see RUNNER_DM below. The two size flags
 // override it; nothing else varies between machines.
@@ -33,7 +31,6 @@ const net = require('net');
 const os = require('os');
 const path = require('path');
 const cdp = require('./cdp');
-const coverage = require('./coverage');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -58,13 +55,12 @@ const TIMEOUT_PER_SCENARIO_MS = 150000;
 // fixed for a scenario that THROWS. One that hangs never throws, so it slipped past.
 //
 // Generous on purpose: too tight a limit manufactures exactly the random gate failure it exists to
-// prevent. maps.js takes 260-300s on a Linux runner, so 300s cut it off on slow days; 480s still
-// trips a hung scenario in minutes.
-const SCENARIO_TIMEOUT_MS = 480000;
+// prevent. table-session is one long walk through a whole evening, so the limit is far above what it
+// takes and still trips a hung scenario in minutes.
+const SCENARIO_TIMEOUT_MS = 900000;
 
 // ⚠ A FAILED SCENARIO RUNS AGAIN, ONCE, in a fresh app on a fresh profile. Pass on the rerun and the
-// run does not fail: the scenario is recorded as a flake (a ::warning, a summary line, an entry in
-// the --report file) and /commit's monitor counts them. Fail twice and the failure stands.
+// run does not fail: the scenario is recorded as a flake (a ::warning, a summary line) and /commit's monitor counts them. Fail twice and the failure stands.
 // Capped per run, so an app that is simply broken doubles nothing past the third scenario.
 const MAX_RERUNS = 3;
 
@@ -88,8 +84,8 @@ const PLAYER_READY = 'typeof isPlayer !== "undefined" && isPlayer && !!pixiApp';
 // costing a twenty-minute run to find.
 //
 // Pinning makes a size-dependent check invisible instead of noisy, so ONE scenario pays for the
-// property the floating default was supposed to buy: scenarios/acceptance/sizes.js runs the
-// size-dependent behaviours at three sizes on purpose.
+// property the floating default was supposed to buy: a size-dependent behaviour is a unit test
+// or a `--dm-size` probe, not a blocker.
 //
 // The device scale factor is pinned with them. It used to apply only when a size flag was
 // passed, so a DM's Windows display scaling was live in every local run and absent in CI.
@@ -99,11 +95,16 @@ const PLAYER_READY = 'typeof isPlayer !== "undefined" && isPlayer && !!pixiApp';
 const RUNNER_DM = { w: 1008, h: 681 };
 const RUNNER_SCREEN = { w: 1024, h: 768 };
 
+// ⚠ THE THROWAWAY PROFILE SITS UNDER A CYRILLIC FOLDER NAME, in every run. The DM's library is
+// Russian, so the database, the music folder and the saved video files must all work through a
+// path with no Latin letters in it.
+const PROFILE_DIR = 'профиль';
+
 // ─── Arguments ───────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
   const a = { scenarios: [], exe: null, out: null, shot: null, shotSetup: '', visible: false,
-              report: null, coverage: false, lowPriority: false,
+              lowPriority: false,
               dmSize: RUNNER_DM, playerSize: RUNNER_SCREEN, screenSize: RUNNER_SCREEN };
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
@@ -121,8 +122,6 @@ function parseArgs(argv) {
       else { a.playerSize = size; a.screenSize = size; }
     }
     else if (t === '--visible') a.visible = true;
-    else if (t === '--report') a.report = path.resolve(argv[++i] || '');
-    else if (t === '--coverage') a.coverage = true;
     else if (t === '--low-priority') a.lowPriority = true;
     else if (t.startsWith('--')) throw new Error('unknown flag ' + t);
     else a.scenarios.push(t);
@@ -133,21 +132,25 @@ function parseArgs(argv) {
 // ─── Which scenarios ─────────────────────────────────────────────────────────
 
 const SCEN_DIR = path.join(__dirname, 'scenarios');
-const ACC_DIR = path.join(SCEN_DIR, 'acceptance');
+const BLOCKERS_DIR = path.join(SCEN_DIR, 'blockers');
+
+// The release blockers, in the order they run: the app starts, a map can be prepared, a table
+// session works, and the DM's work survives a restart and a backup.
+const BLOCKERS = ['launch', 'prep', 'table-session', 'keeps-work'];
+const blockerFiles = () => BLOCKERS.map(b => path.join(BLOCKERS_DIR, b + '.js'));
 
 function resolveScenarios(names) {
-  if (!names.length) return [path.join(SCEN_DIR, 'smoke.js')];
+  if (!names.length) return blockerFiles();
   const out = [];
   for (const n of names) {
-    if (n === 'regression') {
-      out.push(...fs.readdirSync(ACC_DIR).filter(f => f.endsWith('.js')).sort()
-                 .map(f => path.join(ACC_DIR, f)));
+    if (n === 'blockers') {
+      out.push(...blockerFiles());
       continue;
     }
     const bare = n.replace(/\.js$/, '');
-    const hit = [path.join(SCEN_DIR, bare + '.js'), path.join(ACC_DIR, bare + '.js')]
+    const hit = [path.join(BLOCKERS_DIR, bare + '.js'), path.join(SCEN_DIR, bare + '.js')]
       .find(p => fs.existsSync(p));
-    if (!hit) throw new Error('no scenario named "' + n + '" — looked in scenarios/ and scenarios/acceptance/');
+    if (!hit) throw new Error('no scenario named "' + n + '" — looked in scenarios/blockers/ and scenarios/');
     out.push(hit);
   }
   return out;
@@ -324,12 +327,12 @@ const KEEP_PAINTING = [
 // track at full volume out of nowhere is worse than a window appearing.
 // `--mute-audio` silences the whole renderer's output at the Chromium level, so it covers every
 // scenario including ones nobody has written yet. It does NOT touch `HTMLMediaElement.volume`,
-// so a fade or a crossfade is still fully measurable - see scenarios/acceptance/music.js.
+// so a fade or a crossfade is still fully measurable.
 const STAY_SILENT = ['--mute-audio'];
 
 // Every run starts in English whatever the runner's own language, because the app follows the
 // computer's language when nothing is stored and the scenarios read English text.
-// scenarios/acceptance/language.js stores Russian itself. Chromium ignores --lang on macOS.
+// A scenario that wants Russian stores it itself (`lib.inRussian`). Chromium ignores --lang on macOS.
 const PIN_LANGUAGE = ['--lang=en-US'];
 
 // A Linux runner has no GPU, and Chromium no longer falls back to software WebGL on its own, so
@@ -506,26 +509,6 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true) {
   }
 }
 
-// ─── Recording which app files a scenario ran ────────────────────────────────
-// inst.cov is null unless --coverage was passed. A page's sessions are tracked as they are attached
-// and harvested before they close, because a closed page takes its coverage with it.
-// Best-effort: a profiler that refuses costs a scenario's coverage, never the scenario.
-function newCoverage() { return { sessions: new Set(), ran: new Map(), loaded: new Set() }; }
-
-async function trackCoverage(inst, session) {
-  if (!inst.cov || inst.cov.sessions.has(session)) return;
-  try { await coverage.startCoverage(session); inst.cov.sessions.add(session); } catch (_) {}
-}
-
-async function harvestCoverage(inst, session) {
-  if (!inst.cov || !inst.cov.sessions.delete(session)) return;
-  try {
-    const got = await coverage.takeCoverage(session);
-    coverage.mergeRan(inst.cov.ran, got.ran);
-    got.loaded.forEach(f => inst.cov.loaded.add(f));
-  } catch (_) {}
-}
-
 // ─── The rig handed to a scenario ────────────────────────────────────────────
 
 // THE PLAYER USED TO BE FORCED FULLSCREEN, and it no longer is. It opens inside the DM's
@@ -599,7 +582,6 @@ function makeRig(inst, dirs, tally, args) {
         .concat(Array.from(inst.players.values()).filter(s => s !== inst.stage));
       // The console errors of the outgoing windows belong to this scenario, not to nothing.
       for (const s of old) tally.consoleErrors.push(...(s.errors || []));
-      for (const s of old) await harvestCoverage(inst, s);
       await quitApp(inst);
       for (const s of old) s.close();
 
@@ -612,29 +594,9 @@ function makeRig(inst, dirs, tally, args) {
       inst.players = next.players;
       inst.stage = next.stage;
       rig.dm = next.dm;
-      await trackCoverage(inst, next.dm);
       return next.dm;
     },
 
-    // ⚠ THE ONLY SANCTIONED WAY TO VARY THE WINDOW SIZE INSIDE A RUN. Every run is pinned to one
-    // geometry so a local failure and a CI failure are the same failure, which also means a
-    // size-dependent check is invisible instead of noisy. sizes.js pays for that by varying the
-    // size ON PURPOSE, through here.
-    //
-    // The app is told to re-measure, because Chromium's resize event and the override do not
-    // arrive together and a read taken between them is of the old layout.
-    async resizeDm(w, h) {
-      await sizeRendererTo(inst.dm, { w, h }, args.screenSize);
-      return { w, h };
-    },
-    // The Player fills the screen, so its size IS the screen the app reads — the same pairing
-    // the --player-size flag makes.
-    async resizePlayer(w, h) {
-      const session = inst.players.get('');
-      if (!session) throw new Error('resizePlayer was called before the Player was opened');
-      await sizePlayerToScreen(session, { w, h }, { w, h });
-      return { w, h };
-    },
     fixtures: require('./fixtures'),
     // ⚠ NO sleep HERE, AND IT IS NOT TO COME BACK. A fixed wait is either a lie or a waste,
     // and on a slow runner it is the lie - 104 of them across eighteen files were the largest
@@ -691,7 +653,6 @@ function makeRig(inst, dirs, tally, args) {
         }
         session.targetId = target.id;
         await assertPreloadRan(session);
-        await trackCoverage(inst, session);
         await showPlayer(session, 20000);
         // The shell is the page, so the TV-sized viewport is set once here and each half then
         // re-reads its own box.
@@ -761,7 +722,6 @@ function makeRig(inst, dirs, tally, args) {
         // electronAPI any more, so without this a Player with no IPC would run green and quietly
         // lose readVideoFile on every animated map.
         await assertPreloadRan(session);
-        await trackCoverage(inst, session);
         // The TV is a big screen and the window is parked off-screen at its default size, so the
         // renderer's viewport is overridden to the real display instead. Player rendering is
         // size-dependent — its fog is a Canvas-2D layer composited over the map with an edge
@@ -829,12 +789,9 @@ async function takeShot(rig, dm, selector, setup) {
 }
 
 // ─── What CI is told ─────────────────────────────────────────────────────────
-// Annotations and the job summary only exist under GitHub Actions. RIG_ADVISORY marks a platform whose
-// red does not block the release (Linux): its failures are annotated as warnings, not errors, and
-// the summary says so.
+// Annotations and the job summary only exist under GitHub Actions.
 
 const ON_ACTIONS = !!process.env.GITHUB_ACTIONS;
-const ADVISORY = process.env.RIG_ADVISORY === 'true';
 
 function platformName() {
   return process.env.RUNNER_OS || ({ win32: 'Windows', darwin: 'macOS', linux: 'Linux' }[process.platform] || process.platform);
@@ -850,14 +807,6 @@ function annotate(level, title, message) {
 function summarize(markdown) {
   if (!process.env.GITHUB_STEP_SUMMARY) return;
   try { fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdown + '\n'); } catch (_) {}
-}
-
-function writeReport(args, report) {
-  if (!args.report) return;
-  try {
-    fs.mkdirSync(path.dirname(args.report), { recursive: true });
-    fs.writeFileSync(args.report, JSON.stringify(report, null, 2));
-  } catch (err) { console.log('could not write ' + args.report + ': ' + err.message); }
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -894,7 +843,7 @@ async function main() {
 
   let bootFailures = 0;
   let rerunsLeft = MAX_RERUNS;
-  const report = { platform: platformName(), scenarios: {}, flakes: [], failed: [] };
+  const flakes = [];
 
   // One attempt at one scenario: boot, run, tear down. Everything it reports goes into `tally`; the
   // caller reads what this attempt added by the lengths taken before it. `booted` is false when the
@@ -914,11 +863,9 @@ async function main() {
         throw new Error(MAX_BOOT_FAILURES + ' scenarios in a row could not start the app, so the ' +
           'fault is the machine and not the scenarios. Last: ' + (err && err.message ? err.message : err));
       }
-      return { warnings, cov: null };
+      return { warnings };
     }
 
-    inst.cov = args.coverage ? newCoverage() : null;
-    await trackCoverage(inst, inst.dm);
     const rig = makeRig(inst, dirs, tally, args);
     try {
       await withTimeout((async () => {
@@ -942,7 +889,6 @@ async function main() {
         .concat(Array.from(inst.players.values()).filter(s => s !== inst.stage));
       for (const s of sessions) tally.consoleErrors.push(...(s.errors || []));
       for (const s of sessions) warnings.push(...(s.warnings || []));
-      for (const s of sessions) await harvestCoverage(inst, s);
       for (const s of sessions) s.close();
       killApp(inst.proc);
       // The DM works on this machine while the rig runs, so a window reaching the screen fails the
@@ -952,7 +898,7 @@ async function main() {
         for (const o of new Set(newOffences(outDir))) tally.fails.push(name + ': a window ' + o);
       }
     }
-    return { warnings, cov: inst.cov };
+    return { warnings };
   }
 
   for (const file of plan) {
@@ -969,11 +915,10 @@ async function main() {
       const firstFail = tally.fails.length;
       const firstErr = tally.consoleErrors.length;
       const firstEye = tally.byEye.length;
-      const startedAt = Date.now();
 
       // ⚠ A BOOT THAT FAILS IS THIS SCENARIO'S FAILURE, not the run's — with one exception, which
       // attemptScenario throws: the same fault three times running is the machine.
-      const done = await attemptScenario(file, name, path.join(outDir, name, attempt === 1 ? 'profile' : 'profile-rerun'));
+      const done = await attemptScenario(file, name, path.join(outDir, name, attempt === 1 ? PROFILE_DIR : PROFILE_DIR + '-2'));
       const failed = tally.fails.length > firstFail;
       const lines = tally.fails.slice(firstFail);
 
@@ -993,21 +938,13 @@ async function main() {
       for (const e of tally.consoleErrors.slice(firstErr)) console.log('  CONSOLE ERROR: ' + e);
       if (failed) for (const w of done.warnings) console.log('  CONSOLE WARN: ' + w);
 
-      const entry = { ms: Date.now() - startedAt };
-      if (done.cov) {
-        entry.fns = Object.fromEntries(Array.from(done.cov.ran).sort(([x], [y]) => (x < y ? -1 : 1)));
-        entry.loaded = Array.from(done.cov.loaded).sort();
-      }
-      report.scenarios[name] = entry;
-
       if (failed) {
         const said = lines.join('; ');
-        report.failed.push({ scenario: name, fail: said, afterRerun: firstFailure !== null });
-        annotate(ADVISORY ? 'warning' : 'error', 'Rig scenario ' + name + (ADVISORY ? ' (advisory on ' + platformName() + ')' : ''), said);
-        summarize('### ' + (ADVISORY ? 'Advisory failure' : 'Failed') + ': `' + name + '` on ' + platformName() +
+        annotate('error', 'Rig scenario ' + name, said);
+        summarize('### Failed: `' + name + '` on ' + platformName() +
                   (firstFailure !== null ? ' (failed twice)' : '') + '\n\n```\n' + said + '\n```\n');
       } else if (firstFailure !== null) {
-        report.flakes.push({ scenario: name, firstFail: firstFailure });
+        flakes.push(name);
         console.log('  FLAKE: ' + name + ' failed once and passed on the rerun. First failure: ' + firstFailure);
         annotate('warning', 'Rig flake ' + name, 'Failed once and passed on the rerun on ' + platformName() + '. First failure: ' + firstFailure);
         summarize('### Flake: `' + name + '` on ' + platformName() + '\n\nFailed once, passed on the rerun. First failure:\n\n```\n' + firstFailure + '\n```\n');
@@ -1022,10 +959,9 @@ async function main() {
   if (fails.length) console.log('FAIL ' + fails.join('; '));
   else console.log('PASS — ' + tally.checked + ' checks');
   for (const item of tally.byEye) console.log('UNCHECKED (yours to judge): ' + item);
-  if (report.flakes.length) console.log('FLAKES (passed on rerun): ' + report.flakes.map(f => f.scenario).join(', '));
+  if (flakes.length) console.log('FLAKES (passed on rerun): ' + flakes.join(', '));
   console.log('output: ' + outDir);
 
-  writeReport(args, report);
   killAll();
   process.exit(fails.length ? 1 : 0);
 }

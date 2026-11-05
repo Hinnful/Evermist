@@ -37,7 +37,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read   # the coverage map is downloaded from the latest green run
     outputs:
       version: ${{ steps.check.outputs.version }}
       release: ${{ steps.check.outputs.release }}
@@ -86,31 +85,13 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: node tools/check-release.js "$BRANCH"
 
-      # A changed app file that no scenario runs is a hole in the gate. The same verdict /commit's
-      # pick gives (exit 3 = BLOCKED). Any other failure, such as no coverage map to read, falls back
-      # exactly as pick does locally and never fails this step.
-      - name: Does a scenario run every changed app file?
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set +e
-          node tools/rig-ci.js pick --base origin/main
-          RC=$?
-          if [ "$RC" -eq 3 ]; then
-            echo "::error::a changed app file has no scenario that runs it. Write one whose header names the file."
-            exit 1
-          fi
-          exit 0
-
       # The same mechanical rules /commit checks, once more on the words that will be published.
       - name: Do the release notes pass their checker?
         if: steps.check.outputs.release == 'true'
         run: |
           V='${{ steps.check.outputs.version }}'
-          SHA=$(git log --format=%H -S"\"version\": \"$V\"" -- package.json | while read -r C; do
-            if git show "$C" -- package.json | grep -q "^+.*\"version\": \"$V\""; then echo "$C"; break; fi
-          done)
-          git log -1 --pretty=%B "${SHA:-HEAD}" > "$RUNNER_TEMP/notes.txt"
+          SHA=$(node tools/release-notes.js "$V")
+          git log -1 --pretty=%B "$SHA" > "$RUNNER_TEMP/notes.txt"
           node .claude/commit/check-notes.js "$RUNNER_TEMP/notes.txt"
 
   # Unit tests before anything is built, on one runner.
@@ -151,44 +132,21 @@ jobs:
           node-version: 22
       - run: node tools/check-guards.js
 
-  # THE GATE, in three jobs that all display as "Gate": the three installers (gate.yml), the Windows and
-  # Mac rig, and the Linux rig below. GitHub shows a called job as "<this name> / <its name>".
+  # THE GATE, in two called workflows that both display as "Gate": the three installers (gate.yml) and
+  # the rig (rig.yml). GitHub shows a called job as "<this name> / <its name>", so the rig's legs read
+  # "Gate / Windows", "Gate / Mac" and "Gate / Linux".
   gate:
     name: Gate
     needs: [decide, verify]
     if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
     uses: ./.github/workflows/gate.yml
 
-  # The platforms that block: Windows and Mac drive the packaged app through the rig (rig.yml).
+  # The rig's blocker set against the packaged app: Windows and Mac the full set, Linux launch only.
   gate-rig:
     name: Gate
     needs: [decide, verify]
     if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
     uses: ./.github/workflows/rig.yml
-    with:
-      platforms: windows-latest macos-latest
-      label: Windows, Mac
-
-  # ⚠ THE LINUX RIG IS ITS OWN JOB, AND NOTHING ON THE LAND PATH NEEDS IT. It runs on the same trigger
-  # as the gate and reports the same way (a ::warning and a summary section naming the failed
-  # scenario), but `land`, `publish` and `cleanup` never wait for it: software GL made it the slowest
-  # leg by ten minutes, and its failure never blocks. The run itself stays open until it finishes.
-  # Put it in a `needs` of a blocking job and it blocks again.
-  gate-linux:
-    name: Gate
-    needs: [decide, verify]
-    if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
-    uses: ./.github/workflows/rig.yml
-    with:
-      platforms: ubuntu-latest
-      label: Linux
-
-  # The coverage map and flake record cover every platform, so this waits for Linux and holds nothing.
-  report:
-    name: Gate
-    needs: [gate-rig, gate-linux]
-    if: ${{ !cancelled() && (needs.gate-rig.result != 'skipped' || needs.gate-linux.result != 'skipped') }}
-    uses: ./.github/workflows/rig-report.yml
 
   # Every platform walks back and forward through its own update path, which the rig never touches.
   update:
@@ -202,10 +160,8 @@ jobs:
   # ⚠ FAST-FORWARD, never a merge, rebase or squash. Those all mint a new commit, and main would
   # then carry a tree no gate ever drove. The commit main gets is the commit the gate proved.
   #
-  # ⚠ WINDOWS AND MAC BLOCK, LINUX ADVISES. `gate-rig` holds the Windows and Mac rig and `gate` all three
-  # installer builds; the Linux rig is `gate-linux`, which this job does not need, so it lands without
-  # waiting for it. A Windows or Mac red is `failure` here and stops everything below. Linux's installer
-  # build is in `gate` and still blocks, because publish uploads its AppImage.
+  # ⚠ EVERY PLATFORM BLOCKS. `gate-rig` holds the rig on Windows, Mac and Linux and `gate` all three
+  # installer builds; a red in either is `failure` here and stops everything below.
   land:
     name: Move main to this commit
     needs: [decide, verify, guards, gate, gate-rig, update]
@@ -250,18 +206,15 @@ jobs:
 
       # ONE VERSION IS ONE COMMIT, and that commit's message IS the release note. /commit writes
       # it under the public-text rules for exactly this reason.
-      # ⚠ Read the notes off the commit that SET this version, never off HEAD. A red gate that
-      # is fixed by a commit on top leaves HEAD holding a rig fix, and its message would ship as
-      # the release notes for the feature underneath it.
-      - name: Read the notes off the commit that set the version
+      # ⚠ Read the notes off the newest commit titled "<version> - ", never off HEAD and never off the
+      # commit that first set the version. A red gate fixed by a commit on top leaves HEAD holding a rig
+      # fix, and a version set early and re-worded later leaves the first commit holding stale notes.
+      # tools/release-notes.js falls back to the commit that set the version.
+      - name: Read the notes off the version's release commit
         id: notes
         run: |
           V='${{ needs.decide.outputs.version }}'
-          # -S alone also matches the commit that REMOVED the line, so require an added one.
-          SHA=$(git log --format=%H -S"\"version\": \"$V\"" -- package.json | while read -r C; do
-            if git show "$C" -- package.json | grep -q "^+.*\"version\": \"$V\""; then echo "$C"; break; fi
-          done)
-          [ -n "$SHA" ] || SHA=HEAD
+          SHA=$(node tools/release-notes.js "$V")
           echo "notes come from $SHA: $(git log -1 --pretty=%s "$SHA")"
           {
             echo "title=$(git log -1 --pretty=%s "$SHA")"

@@ -365,8 +365,7 @@ fight table stays a free window. Backup Export and Restore are in Settings' Worl
 - **Every toast goes in `#sm-toasts`**, built by `toastEl` (`confirmDialog.js`): an icon, the
   message, at most a blue-text action and a close. The stack sits above every veil, so the update
   toast stays clickable over any window.
-- `.claude/private/design/item-150/` holds the board the windows were built to, and
-  `tools/rig/scenarios/acceptance/windows.js` audits every window against it.
+- `.claude/private/design/item-150/` holds the board the windows were built to.
 
 ## Destructive actions
 

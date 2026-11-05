@@ -810,10 +810,11 @@ by anything but a person.
   that something does *not* happen, and each one has to say in writing why it waits as long as
   it does.
 
-Three tiers: a **smoke** set that always runs, one **acceptance** file per feature whose pass
-criteria are written in plain English at the top of the file, and the **regression** pass,
-which is every acceptance file together. A criterion that can only be judged by eye stays in
-the file and is reported as unchecked rather than quietly dropped.
+One set of scenarios gates a release: **blockers**, a few journeys whose failure would stop the DM at
+the table (the app launches, a map is prepared, a table session runs, work is kept). Each file's pass
+criteria are written in plain English at the top. A criterion that can only be judged by eye stays
+in the file and is reported as unchecked rather than quietly dropped. Any other scenario is a
+one-off probe run by name.
 
 Two scenarios stand apart from the rest. One closes the app and opens it again on a library
 that already has maps in it, which is what you do between sessions and what nothing else could
@@ -849,18 +850,12 @@ straight to the landing step and builds nothing.
 What happens then, in order. The unit tests run first, on one machine, because there is no point
 building anything if the arithmetic is wrong. Then the gate (`gate.yml` builds the installers, `rig.yml` drives the app) runs on Windows, macOS
 and Linux at once. On each platform one machine builds the installer and checks its update
-pointer, and more build the packaged app and drive it through the rig: smoke once, and an equal
-share of the acceptance scenarios each, dealt by measured time (`tools/rig-deal.js`, times in
-`tools/rig/timings.json`): longest first into the lightest share, six shares on Windows, four elsewhere. A scenario that fails runs once more in a fresh app, and a pass on the rerun is
-recorded as a flake instead of a red. Windows and Mac block the release; Linux is advisory, so its
-failure prints a warning and a summary and does not stop the landing. Windows also records, with V8
-coverage over the DevTools protocol, which functions each scenario ran, and a last job merges the
-shards' reports into a coverage map and a flake record that the run keeps. `/commit` reads the map to
-pick its local scenarios and the flake records to find scenarios worth fixing or retiring. Every scenario runs against the real
+pointer, and another builds the packaged app and drives it through the rig: the blocker set on
+Windows and Mac, `launch` alone on Linux, whose runner has no graphics card and draws at five
+frames a second. No sharding. A run whose app never started reruns once; any other failure is red,
+and all three platforms block the release. Every scenario runs against the real
 packaged application rather than the loose source files, which catches a file that works during
-development and is simply missing from the installer. Linux leaves out `playback`: its runner has
-no graphics card, so the app draws at five frames a second and its video stalls and recovers on
-its own, which undoes every stall that scenario fakes. Alongside the gate, `update-proofs.yml`
+development and is simply missing from the installer. Alongside the gate, `update-proofs.yml`
 proves each platform's update: it installs the new build, lets it walk back to an older one and
 forward again through the Restart button, and checks that each swapped copy opens.
 
@@ -873,16 +868,12 @@ failure anywhere leaves nothing behind: no tag, no release, no download, and not
 either. Whoever is running the app stays on the version they have and never learns anything was
 attempted. The branch keeps the failure, and the next change is free to go.
 
-A red gate also uploads what the rig left behind: each scenario's playback log and every
-screenshot, kept for two weeks under the run. A separate workflow, `soak.yml`, answers whether a
-red was the code or the machine. A push to any `soak/**` branch builds once, drives that build
-through the whole suite on six runners at the same time, and lists each scenario that failed in
-some runs as flaky and in all of them as broken. It ships nothing and never touches `main`.
-`probe.yml` is the narrow version: a push to any `probe/**` branch runs one scenario in many
-copies at once on one platform, which says how often a failure comes back, and why, in minutes.
+A red gate also uploads what the rig left behind: each scenario's logs and every
+screenshot, kept for two weeks under the run.
 
-The release notes are a commit message, and the publisher takes it from the commit that set the
-version rather than from whatever sits at the top of the branch. One version is one commit, so
+The release notes are a commit message, and the publisher takes it from the newest commit titled
+"<version> - " (`tools/release-notes.js`), falling back to the commit that set the version, rather
+than from whatever sits at the top of the branch. One version is one commit, so
 the message is written for the person reading the release page rather than for the person who
 wrote the code. When the gate goes red, the fix amends that same commit instead of landing on
 top of it, which keeps the notes and the passing checks on the commit the release is named

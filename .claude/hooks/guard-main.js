@@ -18,15 +18,34 @@
 const { readStdin, commandsIn } = require('./guard-lib');
 
 // Anchored at the start of one shell segment, like the screen guard, so text ABOUT these
-// commands in a heredoc or an echo is not refused.
+// commands in a heredoc or an echo is not refused. Matched after the `git -C dir` prefix.
+const GIT = /^git\s+(?:(?:-C|-c|--git-dir|--work-tree)\s+(?:"[^"]*"|'[^']*'|\S+)\s+)*/;
 const REFUSE = [
-  { re: /^git\s+(?:checkout|switch)\s+(?:[^\n]*\s)?(?:-b|-B|-c|-C|--create|--orphan)\b/, what: 'a new local branch' },
-  { re: /^git\s+switch\s+(?!main\b|-\s*$)[^-\s]/, what: 'a switch away from main' },
-  { re: /^git\s+branch\s+(?:--?(?:t|track|f|force|c|copy|C|m|move|M)\s+)*[^-\s]/, what: 'a new local branch' },
-  { re: /^git\s+worktree\s+add\b/, what: 'a worktree' },
+  { re: /^(?:checkout|switch)\s+(?:[^\n]*\s)?(?:-b|-B|-c|-C|--create|--orphan)\b/, what: 'a new local branch' },
+  { re: /^switch\s+(?!main\b|-\s*$)[^-\s]/, what: 'a switch away from main' },
+  { re: /^branch\s+(?:--?(?:t|track|f|force|c|copy|C|m|move|M)\s+)*[^-\s]/, what: 'a new local branch' },
+  { re: /^worktree\s+add\b/, what: 'a worktree' },
   // A bare stash, or push/save, hides changes; list, show, pop, apply and drop do not.
-  { re: /^git\s+stash(?:\s*$|\s+(?:push|save|-[-\w]*)\b)/, what: 'a stash' },
+  { re: /^stash(?:\s*$|\s+(?:push|save|-[-\w]*)\b)/, what: 'a stash' },
 ];
+
+// `git checkout <name>` cannot tell a branch from a file, so only `main` or paths after `--` pass.
+function checksOutAway(rest) {
+  const m = rest.match(/^checkout\b(.*)$/s);
+  if (!m) return false;
+  const argv = m[1].split(/\s+/).filter((a) => a && !/^\d*[<>]/.test(a));
+  if (argv.includes('--')) return false;
+  return argv.includes('--detach') || argv.some((a) => (a === '-' || !a.startsWith('-')) && a !== 'main');
+}
+
+function refusal(seg) {
+  const git = seg.match(GIT);
+  if (!git) return null;
+  const rest = seg.slice(git[0].length);
+  const m = REFUSE.find((r) => r.re.test(rest));
+  if (m) return m.what;
+  return checksOutAway(rest) ? 'a switch away from main (to restore files, name them after --)' : null;
+}
 
 function verdict(p) {
   const name = p.tool_name || '';
@@ -39,8 +58,8 @@ function verdict(p) {
   }
   if (typeof input.command === 'string') {
     for (const seg of commandsIn(input.command)) {
-      const m = seg && REFUSE.find((r) => r.re.test(seg));
-      if (m) return m.what;
+      const what = seg && refusal(seg);
+      if (what) return what;
     }
   }
   return null;
@@ -59,8 +78,12 @@ function main() {
   process.exit(2);
 }
 
-try {
-  main();
-} catch {
-  process.exit(0);
+if (require.main === module) {
+  try {
+    main();
+  } catch {
+    process.exit(0);
+  }
 }
+
+module.exports = { verdict };

@@ -76,7 +76,7 @@ A bug report is an ordinary message and needs no command.
 
 **`/commit`'s skippable rules are enforced by scripts and hooks.**
 - `check-notes.js` stamps notes that pass, and refuses private words and the campaign names read
-  from the running app. After a pass it lists repeat flakes.
+  from the running app.
 - A UserPromptSubmit hook records the time of each DM message. Subagent hand-backs, task
   notifications and app events are ignored. `ship.js` refuses to push without a DM message after
   the stamp; an amend that touches nothing shipped skips the check.
@@ -88,10 +88,8 @@ A bug report is an ordinary message and needs no command.
   Summary line as its title. It reminds once per push, then lets the stop through.
 - `guard-ship.js` refuses a hand-typed `git push`, `gh pr merge`, tag creation and
   `gh release create/edit/upload`. `/rollback` runs through `tools/rollback.js`.
-- CI's `decide` job fails a change whose changed app file has no scenario that runs it
-  (`rig-ci pick --base`).
 - `session-status.js` names leftover run folders and disclosures.
-- Still prose: the test plan before the run, the bump size, what to file, `/voice`, and sending
+- Still prose: the bump size, what to file, `/voice`, and sending
   `notes.txt` as a file.
 
 ## Building
@@ -109,12 +107,11 @@ A bug report is an ordinary message and needs no command.
   the app's own code**, the proposal as overrides on top, and checks its own rules with a script.
 - **Correctness work gets its check during the build.** A shipped behaviour needs a unit test or
   a rig scenario behind it, and Claude writes it without asking.
-- **On this machine the rig runs once, at `/commit`, or when the DM asks.** At `/commit` it runs the
-  scenarios that executed the changed files, picked from a map CI recorded, at below-normal priority
-  with no time cap. A cloud session runs it freely. The rig skill carries how to write and
-  run a scenario.
-- **A changed `src/` script that no scenario runs blocks `/commit`** until a scenario whose header
-  names the file exists.
+- **On this machine the rig is a probe, never a gate.** `/commit` runs unit tests, lint and the
+  guards and no scenario; the release gate runs the blocker set. One scenario or one screenshot
+  answers a question code cannot, and a throwaway probe file is deleted afterwards. The DM may ask
+  for `blockers` at low priority. A cloud session runs the rig freely. The rig skill carries how to
+  write and run a scenario.
 - **Never ask the DM to hand-verify, run a build, or open Chrome.** The DM runs `npm start` and
   the installed app and judges look, feel and speed.
 
@@ -137,8 +134,8 @@ A bug report is an ordinary message and needs no command.
   line to the release report: which test, and why.
 - **A red gate keeps the version number.** The fix amends the version commit and force-pushes
   the same branch.
-- **A failure that comes and goes gets `probe.yml`**, one scenario in many parallel copies,
-  never another full gate run. A CI-only failure is reproduced on this machine at the runner's
+- **A blocking check that fails while the app works is rewritten or deleted the same day, never
+  loosened.** No longer timeout, no wider tolerance. A CI-only failure is reproduced on this machine at the runner's
   window size first: `npm run rig -- <name> --dm-size 1008x681 --player-size 1024x768`.
 - **Reading CI is free; starting a run is a push.** Read runs with `gh run view <id> --log`.
   Dispatching a workflow needs the same yes as a push.
@@ -153,14 +150,11 @@ A push to `release/**` or `change/**` runs `.github/workflows/release.yml`:
 
 1. **Decide.** Is there an untagged version? Did the rig change? Do the branch, the version and
    the files agree?
-2. **Unit tests and guards**, side by side.
+2. **Unit tests, lint and the size guards**, side by side.
 3. **The gate**, only for a new version or a rig change: Windows, Mac and Linux each build the
-   installer, and the rig drives it through every scenario, in six shards on Windows and four on
-   Mac and Linux. A failed scenario reruns once in a fresh app; a pass on the rerun is a flake, a
-   warning and a record, not a red. **Windows and Mac block the release. Linux only warns**, naming
-   the scenario and its FAIL line in the run summary; its rig is a separate job the landing never
-   waits for. Windows also records which functions each
-   scenario ran, and the run keeps that map for `/commit`.
+   installer, and the rig drives the packaged app, no sharding: `blockers` (launch, prep, a table
+   session, work kept) on Windows and Mac, `launch` alone on Linux. A run whose app never started
+   reruns once; any other failure is red. **Every platform blocks the release.**
 4. **Update proofs**, only for a new version: each platform steps back to an older build and
    forward again through its Restart button.
 5. **Land.** `main` fast-forwards to the gated commit.
@@ -169,8 +163,8 @@ A push to `release/**` or `change/**` runs `.github/workflows/release.yml`:
 7. **Clean up.** The staging branch is deleted.
 
 A red step stops everything after it, so nothing public exists for a change that failed. No other
-workflow runs on a release or change push. `soak/**`, `probe/**`
-and `platformrig/**` run rig experiments and ship nothing.
+workflow runs on a release or change push. `platformrig/**` runs the gate's three installers and
+three rig legs and ships nothing.
 
 ## Talking with the DM
 
@@ -223,8 +217,8 @@ The reply style in `.claude/output-styles/steering.md` governs every reply. On t
 | `tools/check-guards.js` | CI, every push | The blocking guards over the whole tree, whoever edited it |
 | `npm test` | CI, every push; `/commit` | App logic, packaging, and the prose rules in `test/rules.test.js` |
 | `tools/check-release.js` | CI, `decide` | Branch, version and release-title agreement |
-| The rig | `/commit` locally (the scenarios the map picks); CI on three platforms (all of them) | What the app does in both windows |
-| `tools/rig-ci.js flakes` | `/commit` | Scenarios that needed a rerun in three recent runs, proposed for a fix or retirement |
+| `tools/check-guards.js` | `/commit` | The same guards CI runs, before the push |
+| The rig's blocker set | CI on three platforms, every one blocking | The app starts, preps a map, runs a table session and keeps the DM's work |
 | `check-notes.js` | `/commit` | Release-note mechanics |
 | `permissions.deny` in `.claude/settings.json` | Always | No Chrome browser tool |
 

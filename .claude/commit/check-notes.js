@@ -2,17 +2,15 @@
 
 // check-notes.js - refuses release notes that break a rule a machine can check.
 // Usage: node .claude/commit/check-notes.js [notes-file]   (default: this session's runs/<id>/notes.txt)
-// With no file (a session, not CI) a pass is stamped for ship.js's yes-check, and the repeat flakes are listed.
+// With no file (a session, not CI) a pass is stamped for ship.js's yes-check,.
 
 const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
 const { notesHash } = require('./shipRules.js');
 
 const RULES = path.join(__dirname, 'notes.md');
-const ROOT = path.join(__dirname, '..', '..');
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 function wordList(rulesText, tag) {
@@ -99,13 +97,6 @@ function notesFaults(text, { filler, privateWords = [], names = [], allowed = []
   return faults;
 }
 
-// The rig's repeat flakes, for the backlog proposal. Information only: no network is a warning, never a fail.
-function listFlakes() {
-  const run = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'rig-ci.js'), 'flakes'], { cwd: ROOT, encoding: 'utf8', timeout: 180000 });
-  if (run.error || run.status !== 0) { console.log('flakes: could not be read (' + ((run.error && run.error.message) || (run.stderr || '').trim().split('\n')[0] || 'exit ' + run.status) + ')'); return; }
-  console.log('flakes (information only):\n' + run.stdout.trim());
-}
-
 async function main() {
   const session = !process.argv[2];
   const id = process.env.CLAUDE_CODE_SESSION_ID || 'local';
@@ -127,7 +118,6 @@ async function main() {
   if (!session) return;
   fs.writeFileSync(path.join(path.dirname(file), 'notes-passed.json'), JSON.stringify({ time: new Date().toISOString(), hash: notesHash(text) }) + '\n');
   console.log('check-notes: pass');
-  listFlakes();
 }
 
 if (require.main === module) main();

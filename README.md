@@ -113,8 +113,8 @@ Download the latest version from [**Releases**](../../releases/latest):
 | System | File | Notes |
 |--------|------|-------|
 | Windows | `Evermist-Setup-<version>.exe` | Installs in one click, then keeps itself up to date |
-| macOS | `Evermist-<version>.dmg` | Universal (Intel and Apple Silicon). Drag it into Applications, then it keeps itself up to date |
-| Linux | `Evermist-<version>.AppImage` | Make the file executable, then run. Keeps itself up to date |
+| macOS | `Evermist.dmg` | Universal (Intel and Apple Silicon). Drag it into Applications, then it keeps itself up to date |
+| Linux | `Evermist.AppImage` | Make the file executable, then run. Keeps itself up to date |
 
 An update downloads in the background and installs only when you press Restart to update
 
@@ -124,8 +124,8 @@ Evermist isn't code-signed (signing certificates cost money), so your OS shows a
 <summary>Getting past the first-launch warning</summary>
 
 - **Windows:** if "Windows protected your PC" appears, click "More info", then "Run anyway"
-- **macOS:** if "Evermist can't be opened because Apple cannot check it…" appears, right-click the app, choose "Open", then "Open" again in the dialog. (A normal double-click won't offer this the first time.)
-- **Linux:** make the AppImage executable (`chmod +x Evermist-*.AppImage`, or Properties → Permissions → Allow executing file as program), then run it as usual
+- **macOS:** if a warning says Apple could not check Evermist, click "Done". Open System Settings → Privacy & Security, scroll down to the line about Evermist, click "Open Anyway" and confirm. (On macOS 14 or older, right-clicking the app and choosing "Open" also works.)
+- **Linux:** make the AppImage executable (`chmod +x Evermist.AppImage`, or Properties → Permissions → Allow executing file as program), then run it as usual
 
 The OS remembers your choice, so this only happens once
 </details>

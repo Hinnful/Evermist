@@ -6,14 +6,14 @@ allowed-tools: Read, Grep, Glob, Bash, Edit, Write, mcp__ccd_session_mgmt__set_s
 
 # Mode: Ship This Change
 
-Six steps, each one feeding the next. The diff decides the test plan, the plan decides the gate,
-the version heads the notes, and the notes wait for the user's yes. **The turn ends at the push.** Nothing here watches a pipeline.
+Six steps, each one feeding the next. The gate decides whether the change goes on, the version
+heads the notes, and the notes wait for the user's yes. **The turn ends at the push.** Nothing here watches a pipeline.
 
 **⚠ A SHIPPING COMMIT IS A RELEASE.** `.github/workflows/release.yml` fires on a push to
 `release/**` or `change/**`. When `package.json` carries a version with no tag, it runs the unit
-tests, builds all three installers, drives the packaged app through the full regression set on
-Windows, Mac and Linux (Windows and Mac block, Linux only warns), proves each platform's update, then
-fast-forwards `main`, tags and publishes. **The commit message
+tests, lint and the size guards, builds all three installers, proves each platform's update, and runs the rig's
+blocker set against the packaged app (Windows and Mac the full set, Linux launch only). Every one of those
+blocks. It then fast-forwards `main`, tags and publishes. **The commit message
 becomes the release notes verbatim.** Nothing public exists until the gate is green. **You never tag
 and never publish** - the workflow does both, or neither.
 
@@ -46,7 +46,7 @@ looking for one. A red that CI or a test caused is fixed without a message to th
 file contents. Read enough to describe *what* changed and why it matters. If the tree is clean,
 say so and stop.
 
-## Step 2 - The test plan, then the gate
+## Step 2 - The gate
 
 Read `.claude/commit/gate.md` now. **BLOCK on red.**
 

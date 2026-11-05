@@ -4,8 +4,8 @@
 // temp directory. NEVER COMMITTED: a fresh clone regenerates every one of them, and nothing
 // binary goes into git.
 //
-// This is what removes "point the rig at one of your real maps" as a precondition. The still map
-// is a canvas drawn in-page and saved as PNG; the animated one is recorded in-page with
+// This is what removes "point the rig at one of your real maps" as a precondition. The map
+// is recorded in-page with
 // MediaRecorder, at whatever size the caller asks for — so the oversized-import path is reachable
 // without a 40 MB Dungeon Alchemist export sitting in the repo.
 //
@@ -43,17 +43,11 @@ function _validMp4(buf) {
   return null;
 }
 
-function _validPng(buf) {
-  if (buf.length < 128) return 'it is only ' + buf.length + ' bytes';
-  if (buf.indexOf(Buffer.from('IEND')) === -1) return 'it has no IEND, so it was cut short';
-  return null;
-}
-
 // Cached ON DISK, not just in memory: the runner boots a fresh app per scenario, so an in-memory
 // cache would re-record every clip in real time for every file. The fixture directory is shared
 // across the whole run.
 async function _cached(file, meta, make) {
-  const check = meta.type === 'video/mp4' ? _validMp4 : _validPng;
+  const check = _validMp4;
   if (!fs.existsSync(file)) {
     // Four tries. A truncation is transient, so re-recording turns a red run into a second's
     // hiccup; a Mac runner's encoder writes nothing from a short clip often enough to need more
@@ -82,30 +76,6 @@ async function _cached(file, meta, make) {
                     '. It has been deleted; the next scenario will record a new one.');
   }
   return Object.assign({ path: file, base64: buf.toString('base64'), bytes: buf.length }, meta);
-}
-
-// ─── A still map ─────────────────────────────────────────────────────────────
-// Four distinct quadrants over a dark ground, so a fog assertion can name a place ("the
-// top-left quarter") and a screenshot is readable at a glance.
-
-async function stillMap(session, outDir, opts) {
-  const o = Object.assign({ w: 2000, h: 1200, name: 'rig-still.png' }, opts || {});
-  return _cached(path.join(outDir, o.name), { name: o.name, w: o.w, h: o.h, type: 'image/png' },
-    () => session.readBig(`(async () => {
-      const c = document.createElement('canvas');
-      c.width = ${o.w}; c.height = ${o.h};
-      const x = c.getContext('2d');
-      x.fillStyle = '#20242e'; x.fillRect(0, 0, c.width, c.height);
-      const quads = ['#8d5524', '#3a6b35', '#2f4b7c', '#7a2f4b'];
-      for (let i = 0; i < 4; i++) {
-        x.fillStyle = quads[i];
-        x.fillRect((i % 2) * c.width / 2, Math.floor(i / 2) * c.height / 2, c.width / 2, c.height / 2);
-      }
-      x.strokeStyle = 'rgba(255,255,255,0.22)'; x.lineWidth = 2;
-      for (let gx = 0; gx <= c.width; gx += 100) { x.beginPath(); x.moveTo(gx, 0); x.lineTo(gx, c.height); x.stroke(); }
-      for (let gy = 0; gy <= c.height; gy += 100) { x.beginPath(); x.moveTo(0, gy); x.lineTo(c.width, gy); x.stroke(); }
-      return c.toDataURL('image/png');
-    })()`));
 }
 
 // ─── An animated map ─────────────────────────────────────────────────────────
@@ -159,23 +129,19 @@ async function animatedMap(session, outDir, opts) {
 }
 
 
-// ─── The map every acceptance scenario imports ───────────────────────────────
-// ANIMATED, BECAUSE ANIMATED IS THE ONLY KIND THE DM EVER USES. Every acceptance scenario used to
-// generate a still PNG, so the whole suite proved the app worked in a case that never happens and
-// said nothing about the one that always does. The two paths genuinely differ: an animated map is
+// ─── The map a scenario imports ───────────────────────────────
+// ANIMATED, BECAUSE ANIMATED IS THE ONLY KIND THE DM EVER USES. A suite on still PNGs proved
+// the app worked in a case that never happens. The two paths genuinely differ: an animated map is
 // a composited DOM <video> on the DM rather than a GPU texture, the Player redraws its picture
 // from the video every frame, fog composites over a moving image, and pan and zoom move the video
 // with a CSS transform instead of the PixiJS camera.
 //
 // Deliberately SMALLER than the 4K compression box, so an import does not trigger the shrink. Exercising the
-// shrink is smoke.js's job and it costs a real-time re-encode; every scenario paying for that
-// would make the suite slow enough to stop being run.
+// shrink costs a real-time re-encode, which every scenario paying for would make too slow to run.
 //
 // One second, and cached on disk per size for the whole run: a scenario that wants the same size
 // as another pays nothing. `seconds` is real recording time, so it stays at the floor.
 //
-// A caller that needs a STILL map asks for one explicitly (stillMap), and smoke.js does — block 2
-// there holds the animated render path against the still one, which needs both.
 // Every recording option is a DEFAULT here, not a fixed value: a caller that wants a longer clip
 // says so and gets one. Forcing them silently meant a scenario could ask for four seconds, get
 // one, and read the mismatch as an app bug.
@@ -206,4 +172,4 @@ async function asFileExpr(session, fixture) {
   return '__rigMakeFile()';
 }
 
-module.exports = { stillMap, animatedMap, tableMap, asFileExpr, REC_MIME };
+module.exports = { animatedMap, tableMap, asFileExpr, REC_MIME };

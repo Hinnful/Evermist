@@ -53,6 +53,6 @@ The release first, then the tag. A tag with no release confuses nothing; a relea
 Then two lines the user needs:
 
 - **Anyone still on the bad version is offered the older one on their next start.** They press Restart to update, same as always.
-- **`package.json` still holds the pulled version.** Nothing publishes under a tagged version, and that number is now untagged, so the next `/commit` will try to release it again. Decide with them: bump past it, or fix the bug and let the same number ship properly. Do not edit `package.json` here.
+- **`package.json` still holds the pulled version, and the fix must ship under a higher number.** That number is now untagged, so the next `/commit` would release it again, and a copy that installed the bad build would then see the same number, call itself up to date and never get the fix. Bump past the pulled version, always. Do not edit `package.json` here.
 
 **No `git revert`, no new commit, no version edit.** This command deletes two things and reports.

@@ -26,6 +26,7 @@ const CORRECTED_BODY = {
 
 const git = (args) => execFileSync('git', args, { encoding: 'utf8', cwd: ROOT });
 
+const version = require(path.join(ROOT, 'package.json')).version;
 const tags = new Set(git(['tag']).split('\n').map(t => t.trim()).filter(Boolean));
 
 const entries = [];
@@ -33,16 +34,19 @@ for (const record of git(['log', '--pretty=format:%ad' + UNIT + '%s' + UNIT + '%
   const [date, subject, body] = record.replace(/^\n/, '').split(UNIT);
   const m = subject && subject.match(RELEASE);
   if (!m) continue;
+  // A version a red gate landed on main and its fix both carry the release subject; the newest wins.
+  if (entries.some(e => e.version === m[1])) continue;
   const entry = { version: m[1], date: date, note: m[2], body: CORRECTED_BODY[m[1]] || (body || '').trim() };
   // Only a TAGGED version has a page on GitHub. An untagged one is a version that never
-  // released, and a link to it would 404 from inside the app.
-  if (tags.has('v' + m[1])) entry.tag = 'v' + m[1];
+  // released, and a link to it would 404 from inside the app. CI builds the installer before
+  // publish tags it, so there the version being built counts as tagged: nobody installs it
+  // before its page exists.
+  if (tags.has('v' + m[1]) || (process.env.CI && m[1] === version)) entry.tag = 'v' + m[1];
   entries.push(entry);
 }
 
 // A bump has no release commit until /commit makes one, so a local run lists the bumped version
 // from the pending notes. CI skips this: there the commit exists, and a missing one is a fault.
-const version = require(path.join(ROOT, 'package.json')).version;
 if (!process.env.CI && !entries.some(e => e.version === version)) {
   // Any session's run folder may hold the pending notes, and so may the shared file it replaced.
   const dir = path.join(ROOT, '.claude', 'commit');

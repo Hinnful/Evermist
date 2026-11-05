@@ -359,11 +359,20 @@ function pureCode(text) {
  * Stripping is deliberately crude and that is safe: the failure mode is a refusal that should
  * have fired, and a launch hidden inside a heredoc body is not a way anyone runs the app.
  *
- * KNOWN GAP, left open on purpose: a launch wrapped in another interpreter (`bash -c "npm
- * start"`) is not seen, because the match is anchored at the start of a segment. Unwrapping
- * every shell-in-a-shell form costs more code than the hole is worth — nobody reaches for that
- * spelling by accident, and this guard exists to stop the accidental case.
+ * A wrapper in front of the command (`&`, a subshell, `cmd /c`, `bash -c "`, Start-Process,
+ * `start ""`) is peeled off, or the anchored match never sees what it runs.
  */
+const WRAPPER = new RegExp('^(?:[&({]\\s*|(?:call|exec|nohup|time)\\s+' +
+  '|(?:cmd(?:\\.exe)?\\s+\\/[ck]|(?:ba|z)?sh\\s+-l?c|(?:powershell|pwsh)(?:\\.exe)?\\s+(?:-\\w+\\s+)*?-c(?:ommand)?)\\s+["\']?' +
+  '|start-process\\s+(?:-filepath\\s+)?|start\\s+(?:\\/\\w+\\s+)*(?:""\\s+)?)', 'i');
+const ENV = /^(?:[A-Za-z_][\w]*=\S*\s+)*/;
+
+function unwrap(seg) {
+  let s = seg.replace(ENV, '');
+  for (let prev = null; s !== prev;) { prev = s; s = s.replace(WRAPPER, '').replace(ENV, ''); }
+  return s;
+}
+
 function commandsIn(text) {
   const lines = text.split('\n');
   const kept = [];
@@ -381,15 +390,35 @@ function commandsIn(text) {
     }
     kept.push(line);
   }
-  // Segment on the operators that start a new command, then drop any leading env assignment.
+  // Segment on the operators that start a new command, a lone `&` included but not the one in
+  // `2>&1` or `&>`, then drop any leading env assignment and wrapper.
   return kept
     .join('\n')
-    .split(/(?:&&|\|\||[;|\n])/)
-    .map((s) => s.trim().replace(/^(?:[A-Za-z_][\w]*=\S*\s+)*/, ''));
+    .split(/&&|\|\||(?<![<>&])&(?![>&])|[;|\n]/)
+    .map((s) => unwrap(s.trim()));
+}
+
+// One spelling per launch, so the screen and rig guards see `npm.cmd --silent run-script rig`,
+// `npx --yes electron .` or `node "C:\…\tools\lab.js"` as the forms their patterns name.
+const NPM_FLAGS = /^(?:(?:--prefix|-C|--workspace|-w|--cache|--userconfig|--loglevel)(?:=\S+|\s+\S+)\s+|-\S+\s+)*/;
+function launchForm(seg) {
+  let s = seg
+    .replace(/^npx(?:\.cmd)?\s+(?:-\S+\s+)*/, '')
+    .replace(/^(?:npm|pnpm)(?:\.cmd|\.ps1)?\s+exec\s+(?:-\S+\s+)*(?:--\s+)?/, '')
+    .replace(/^(?:node\s+)?(?:\.[\\/])?node_modules[\\/](?:\.bin[\\/]electron(?:\.cmd)?|electron[\\/]cli\.js)(?=\s|$)/, 'electron')
+    .replace(/^node\s+(?:"(?:[^"\n]*[\\/])?(tools[\\/][^"\n]+?\.js)"|'(?:[^'\n]*[\\/])?(tools[\\/][^'\n]+?\.js)'|(?:\S*?[\\/])?(tools[\\/]\S+?\.js)(?=\s|$))/,
+      (_, a, b, c) => 'node ' + (a || b || c));
+  const npm = s.match(/^(npm|yarn|pnpm)(?:\.cmd|\.ps1)?\s+/);
+  if (npm) {
+    const rest = s.slice(npm[0].length).replace(NPM_FLAGS, '').replace(/^run-script\b/, 'run');
+    s = npm[1] + ' ' + rest.replace(/^(run\s+)?(["'])([\w:-]+)\2/, '$1$3');
+  }
+  return s;
 }
 
 module.exports = {
   commandsIn,
+  launchForm,
   ROOT,
   readStdin,
   toRel,

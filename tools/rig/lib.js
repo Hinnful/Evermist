@@ -1,7 +1,7 @@
 'use strict';
 
-// lib.js — the one page-side helper set, and the one map preamble, that every acceptance
-// scenario uses. Nothing here asserts; it only puts the app into a state a scenario can read.
+// lib.js — the one page-side helper set, and the blockers' shared setup, that every
+// blocker scenario uses. Nothing here asserts; it only puts the app into a state a scenario can read.
 //
 // WHY THIS FILE EXISTS. The helpers used to be a `const HELPERS` template literal pasted into
 // each scenario. Fourteen files carried one, all fourteen differed, and `__rigDrag` alone had
@@ -23,10 +23,6 @@
 // the physical key, so a regression back to `e.key` goes red here instead of dying on a Russian
 // layout at the table. A NAMED key carries both, because code and key are the same string for it
 // and the fields still read `e.key`.
-//
-// ⚠ THE MAP IS ANIMATED unless a scenario says otherwise. Animated is the only kind the DM ever
-// uses, so a suite running on still PNGs proved the app worked in a case that never happens.
-// `openMap` records the clip once per run and caches it by size.
 //
 // ⚠ ROOMS DO NOT CROSS TO THE PLAYER (CLAUDE.md). What crosses is the fog they paint, so a check
 // on the Player reads fog over ground, never a room.
@@ -72,39 +68,6 @@ globalThis.__rigClick = (mx, my, opts) => {
   __rigMouse('mouseup', mx, my, opts);
 };
 
-// Edit mode is entered by a real double-click, not by setting the flag: the point of the check
-// is that the gesture reaches it. The leading click is part of the gesture the browser sends.
-globalThis.__rigDbl = (mx, my) => { __rigClick(mx, my); __rigMouse('dblclick', mx, my); };
-
-// A bare dblclick with no click in front of it, for a handler that must not see the click.
-globalThis.__rigDblOnly = (mx, my) => __rigMouse('dblclick', mx, my);
-
-// The pointer parked without pressing anything. This is what a paste aims at.
-globalThis.__rigPoint = (mx, my) => __rigMouse('mousemove', mx, my);
-
-// ── Corner rounding ──
-// The circle on corner \`flat\` of the selected shape, in map units, or null where none shows. A
-// focused shape shows its circles only while the pointer is on it, so park it there first.
-globalThis.__rigCornerCircle = flat => {
-  const s = activeShapeList().find(p => p.id === selectedPolygonId);
-  const h = s && cornerCircles(s).find(c => c.flat === flat);
-  return h ? { x: h.x, y: h.y } : null;
-};
-
-// A radius typed into the field a double-click on that circle opens, kept with Enter. False when
-// no circle showed to double-click.
-globalThis.__rigTypeCorner = (flat, value, mods) => {
-  const h = __rigCornerCircle(flat);
-  if (!h) return false;
-  __rigClick(h.x, h.y, { mods });
-  __rigMouse('dblclick', h.x, h.y, { mods });
-  const n = document.getElementById('corner-field-num');
-  n.value = String(value);
-  n.dispatchEvent(new Event('input', { bubbles: true }));
-  n.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-  return true;
-};
-
 // ── Keyboard ──
 globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('keydown',
   Object.assign({ code: c, key: /^(Key|Digit|Bracket|Slash|Backquote|Space)/.test(c) ? '' : c,
@@ -115,81 +78,14 @@ globalThis.__rigKey = (c, mods) => document.dispatchEvent(new KeyboardEvent('key
 globalThis.__rigFog = (mx, my) => fogDataCtx.getImageData(
   Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3];
 
-// ── Shapes ──
-globalThis.__rigById = (id) => polygons.find(p => p.id === id);
-globalThis.__rigOf = (list, id) => (list === 'effects' ? effects : polygons).find(s => s.id === id);
-
-globalThis.__rigRingBox = (ring) => ({
-  x0: Math.min(...ring.map(v => v.x)), x1: Math.max(...ring.map(v => v.x)),
-  y0: Math.min(...ring.map(v => v.y)), y1: Math.max(...ring.map(v => v.y)),
-});
-globalThis.__rigCentre = (b) => ({ x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 });
-
-// Unsigned area. __rigArea2 is the SIGNED double area, which carries winding as well as size —
-// two different quantities, and a check that wants winding cannot use the unsigned one.
-globalThis.__rigArea = (v) => {
-  let s = 0;
-  for (let i = 0, n = v.length; i < n; i++) { const a = v[i], b = v[(i + 1) % n]; s += a.x * b.y - b.x * a.y; }
-  return Math.abs(s) / 2;
-};
-globalThis.__rigArea2 = (ring) => {
-  let a = 0;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    a += ring[j].x * ring[i].y - ring[i].x * ring[j].y;
-  }
-  return a;
-};
-
-// One shape, by id, as plain data. Searches rooms and effects together unless a list is named,
-// because a scenario that cares WHICH list a shape landed in has to be able to say so.
-globalThis.__rigShape = (id, list) => {
-  const p = list ? __rigOf(list, id) : polygons.concat(effects).find(s => s.id === id);
-  if (!p) return null;
-  return {
-    id: p.id,
-    name: p.name,
-    desc: p.desc == null ? null : p.desc,
-    mode: p.mode == null ? null : p.mode,
-    material: p.material == null ? null : p.material,
-    n: p.vertices.length,
-    verts: p.vertices.map(v => ({ x: v.x, y: v.y })),
-    box: __rigRingBox(p.vertices),
-    area: __rigArea(p.vertices),
-    area2: __rigArea2(p.vertices),
-    holes: (p.holes || []).length,
-    holeArea: (p.holes || []).map(h => __rigArea(h)),
-    holeArea2: (p.holes || []).map(h => __rigArea2(h)),
-    holeBox: (p.holes || []).map(h => __rigRingBox(h)),
-    handles: p.handles ? p.handles.map(h => h && { ix: h.ix, iy: h.iy, ox: h.ox, oy: h.oy }) : null,
-    radii: p.cornerRadii ? p.cornerRadii.slice() : null,
-    // doorPoint is the app's own; guarded because a window that has no door module loaded would
-    // otherwise throw here and report the whole shape as missing.
-    doors: (p.doors || []).map(d => ({ edge: d.edge, t: d.t,
-      pt: typeof doorPoint === 'function' ? doorPoint(p.vertices, d) : null })),
-  };
-};
-
-// ── Drawing ──
-// setShapeOp('new') is explicit: a repair STAYS ARMED after the shape it ran on, so a room drawn
-// straight after one would otherwise be a second repair.
-globalThis.__rigDrawRoom = (mode, x1, y1, x2, y2, opts) => {
-  setShapeOp('new');
-  setShape('rect');
-  document.getElementById('btn-' + mode).click();
-  __rigDrag(x1, y1, x2, y2, opts);
-  setShape('select');
-  return polygons[polygons.length - 1].id;
-};
-globalThis.__rigDrawShroud = (x1, y1, x2, y2, opts) => __rigDrawRoom('shroud', x1, y1, x2, y2, opts);
-
-// A repair run as a rectangle, then disarmed. __rigOpRectRaw leaves it armed, for the check that
-// arming survives the shape.
-globalThis.__rigOpRect = (op, x1, y1, x2, y2) => {
-  setShapeOp(op); setShape('rect'); __rigDrag(x1, y1, x2, y2);
-  setShapeOp('new'); setShape('select'); return 0;
-};
-globalThis.__rigOpRectRaw = (op, x1, y1, x2, y2) => {
-  setShapeOp(op); setShape('rect'); __rigDrag(x1, y1, x2, y2); return 0;
+// The fog a window PAINTS at a map point, off the fog mesh the Player draws, through that window's own
+// camera. -1 where the point is off screen, so a caller can tell "clear" from "not on screen".
+globalThis.__rigPainted = (mx, my) => {
+  if (typeof pixiPFogMesh === 'undefined' || !pixiPFogMesh || !pixiApp) return -2;
+  const c = pixiApp.renderer.extract.canvas(pixiPFogMesh);
+  const sx = Math.round(mx * zoom + panX), sy = Math.round(my * zoom + panY);
+  if (sx < 0 || sy < 0 || sx >= c.width || sy >= c.height) return -1;
+  return c.getContext('2d').getImageData(sx, sy, 1, 1).data[3];
 };
 0`;
 
@@ -198,38 +94,9 @@ globalThis.__rigOpRectRaw = (op, x1, y1, x2, y2) => {
 const TV_FOG = `((mx, my) => fogDataCtx.getImageData(
   Math.round(mx / FOG_SCALE), Math.round(my / FOG_SCALE), 1, 1).data[3])`;
 
-// Settles the DM's fog and pushes it, so a TV reading is of the edit and not of the frame before
-// it. Every call is the app's own: nothing here is a rig-only path.
-const SETTLE = 'rebuildFogFromPolygons(); rebuildFogEffect(); fogDirty = true;' +
-               ' scheduleRender(); sendToPlayer(); 0';
-
 // ─── The preamble ────────────────────────────────────────────────────────────
 
-// Import a map and wait for it to land, then install the helpers. One line at the top of a
-// scenario, in place of the five it used to take.
-//
-// opts: { w, h, kind: 'animated' | 'still', session, name }
-// Returns the fixture record, so a caller that needs the bytes again has them.
-async function openMap(rig, opts) {
-  const o = Object.assign({ w: 1600, h: 1000, kind: 'animated' }, opts || {});
-  const session = o.session || rig.dm;
-  const still = o.kind === 'still';
-  const fixture = still
-    ? await rig.fixtures.stillMap(session, rig.fixtureDir,
-        { w: o.w, h: o.h, name: o.name || ('rig-still-' + o.w + 'x' + o.h + '.png') })
-    : await rig.fixtures.tableMap(session, rig.fixtureDir, { w: o.w, h: o.h });
-
-  await session.evaluate('createNewScene(' + (await rig.fixtures.asFileExpr(session, fixture)) + ')',
-                         180000);
-  await session.waitFor(
-    'currentScene && currentScene.mapType === ' + (still ? '"image"' : '"video"') +
-    ' && mapWidth === ' + o.w,
-    180000, 'the ' + o.kind + ' map to load on ' + session.label);
-  await session.evaluate(HELPERS);
-  return fixture;
-}
-
-// The helper set alone, for a window openMap did not load a map into — the Player, or a column.
+// The helper set alone, for a window, such as the Player, that no import loaded a map into.
 async function installHelpers(session) {
   await session.evaluate(HELPERS);
 }
@@ -244,15 +111,6 @@ async function installHelpers(session) {
 async function settle(session, expr, ms) {
   try { await session.waitFor(expr, ms || 8000, expr); } catch (_) { return false; }
   return true;
-}
-
-// Set a control's value and let the app hear about it. The app listens on the event, not on the
-// property, so an assignment alone changes the field and nothing else.
-function fire(session, id, value, ev) {
-  return session.evaluate('(() => { const el = document.getElementById(' + JSON.stringify(id) +
-    '); el.value = ' + JSON.stringify(String(value)) +
-    '; el.dispatchEvent(new Event(' + JSON.stringify(ev || 'input') + ', { bubbles: true }));' +
-    ' return 0; })()');
 }
 
 // A deliberate pause, for the one case a poll cannot serve: a check that something does NOT
@@ -286,69 +144,71 @@ async function poll(fn, ms, everyMs) {
   }
 }
 
-// The address and key the app wrote for Claude's connection, and a `call(tool, args)` onto it. `null` when the app
-// wrote none, which the scenario reports as its own check.
-async function mcpClient(rig) {
-  const fs = require('fs'), path = require('path');
-  const address = await poll(async () => {
-    try { return JSON.parse(fs.readFileSync(path.join(rig.profileDir, 'mcp.json'), 'utf8')); } catch { return null; }
-  }, 15000);
-  if (!address || !address.port || !address.token) return null;
-  return async (tool, args) => (await fetch('http://127.0.0.1:' + address.port + '/call', {
-    method: 'POST', body: JSON.stringify({ tool, args: args || {} }),
-    headers: { 'content-type': 'application/json', 'x-evermist-token': address.token },
-  })).json();
+// ─── The blockers' shared setup ──────────────────────────────────────────────
+
+// The DM's real maps are about this size (3110x2160, animated). It stays inside the 4K shrink box, so an import
+// costs no re-encode.
+const DM_MAP = { w: 3110, h: 2160 };
+
+// A Dungeon Alchemist plan in the DM's own shape: three halls in a row, a door between each pair and one to the
+// outside, drawn on 100px squares across 31 squares. Rooms come out left to right, 1 to 3.
+const _seg = (a, b, c, d) => [{ x: a, y: b }, { x: c, y: d }];
+const HALLS_PLAN = JSON.stringify({
+  format: 0.3,
+  resolution: { map_origin: { x: 0, y: 0 }, map_size: { x: 31, y: 21 }, pixels_per_grid: 100 },
+  line_of_sight: [
+    _seg(2, 2, 4, 2), _seg(5, 2, 29, 2), _seg(29, 2, 29, 19), _seg(29, 19, 2, 19), _seg(2, 19, 2, 2),
+    _seg(10, 2, 10, 9), _seg(10, 10, 10, 19), _seg(20, 2, 20, 9), _seg(20, 10, 20, 19),
+  ],
+  portals: [{ bounds: _seg(4, 2, 5, 2) }, { bounds: _seg(10, 9, 10, 10) }, { bounds: _seg(20, 9, 20, 10) }],
+});
+
+// The DM's language is Russian. The app reads the stored choice at start, so this stores it and restarts.
+// Returns the new DM session, with the helpers back in it.
+async function inRussian(rig) {
+  await rig.dm.evaluate('localStorage.setItem("evermist-lang", "ru"); 0');
+  const dm = await rig.restart();
+  await installHelpers(dm);
+  return dm;
 }
 
-// Three maps and the Player, then the map the TV shows deleted: the DM lands on one of the other two with the TV held
-// on its waiting screen (delete-open-scene.js), so that one is OPEN but not on the TV and the other is CLOSED.
-// Returns { player, open, closed }, each map as { id, name }. The Player's window messages are collected in __claudeHeard.
-async function openMapsOffTv(rig) {
+// A map named `name` imported with the floor plan its .dd2vtt would have carried. The disk lookup is the one
+// stub (a File built in the page has no path); the import, the plan reading and the grid are the app's own.
+// Returns the scene id.
+async function importWithPlan(rig, name, plan) {
   const dm = rig.dm;
-  const sizes = {};
-  const made = [];
-  for (const [w, h] of [[1200, 800], [1000, 700], [900, 600]]) {
-    await openMap(rig, { w, h });
-    const id = await dm.evaluate('currentScene.id');
-    sizes[id] = w;
-    made.push({ id, name: await dm.evaluate('currentScene.name') });
-  }
-  const tv = made[2];
-  const player = await rig.player();
-  await player.waitFor('!!mapOffscreen && mapWidth === 900', 45000, 'the third map to reach the Player');
-  await player.evaluate('window.__claudeHeard = []; window.addEventListener("message", e => __claudeHeard.push(JSON.stringify(e.data || null))); 0');
-  await dm.evaluate('worldMapShow(); 0');
-  await settle(dm, 'worldMapOpen && !_wmAnim', 10000);
-  await dm.evaluate('_wmDeletePicked(["' + tv.id + '"]); 0');
-  await settle(dm, 'currentScene && currentScene.id !== "' + tv.id + '" && (' + JSON.stringify(sizes) + ')[currentScene.id] === mapWidth && tvHeld', 60000);
-  await dm.evaluate('worldMapHide(); 0');
-  // The Player's own need-map or PLAYER_READY gets the DM's hello reply (toolbar.js), which is not Claude's doing.
-  // Count each one so claudeHeard can set its reply aside.
-  await dm.evaluate('globalThis.__claudeHellos = 0; { const o = onPlayerResyncRequest; onPlayerResyncRequest = function () { __claudeHellos++; return o.apply(this, arguments); }; } 0');
-  // A fixed wait let a slow runner's late fog-theme from the return land after the clear, so wait for quiet.
-  for (let i = 0; i < 10; i++) {
-    await player.evaluate('__claudeHeard.length = 0; 0');
-    await dm.evaluate('__claudeHellos = 0; 0');
-    await hold(1500, 'let the return from the Campaign send whatever it sends, so only what Claude does is heard after');
-    if (await player.evaluate('__claudeHeard.length') === 0) break;
-  }
-  const openId = await dm.evaluate('currentScene.id');
-  const open = made.find(m => m.id === openId);
-  const closed = made.find(m => m.id !== openId && m.id !== tv.id);
-  return { player, open, closed };
+  const base = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: DM_MAP.w, h: DM_MAP.h });
+  const file = await rig.fixtures.asFileExpr(dm, Object.assign({}, base, { name: name + '.mp4' }));
+  await dm.evaluate('globalThis.__rigPlanText = ' + JSON.stringify(plan || HALLS_PLAN) +
+    '; window.findPlanForFile = async () => globalThis.__rigPlanText; findPlanForFile = window.findPlanForFile; 0');
+  await dm.evaluate('createNewScene(' + file + ')', 240000);
+  await dm.waitFor('currentScene && currentScene.name === ' + JSON.stringify(name) + ' && mapWidth === ' + DM_MAP.w,
+                   240000, 'the import of ' + name);
+  await installHelpers(dm);
+  await settle(dm, 'fogCoverT === 0', 60000);
+  return dm.evaluate('currentScene.id');
 }
 
-// What the Player heard since openMapsOffTv, less one hello reply (fog-theme, and player-lock) per
-// request the Player itself sent: on a slow runner its need-map retry lands mid-scenario.
-async function claudeHeard(dm, player) {
-  const heard = await player.evaluate('__claudeHeard');
-  let hellos = await dm.evaluate('__claudeHellos');
-  const drop = (pred) => { const i = heard.findIndex(pred); if (i >= 0) heard.splice(i, 1); };
-  for (; hellos > 0; hellos--) {
-    drop(m => m.includes('"type":"fog-theme"'));
-    drop(m => m.includes('"type":"player-lock"'));
-  }
-  return heard;
+// The plan's rooms, drawn by the Draw Rooms button. Resolves with the rooms, left to right, each as
+// { id, name, mode, cx, cy } (the centre of its box, in map units).
+async function drawRooms(rig, want) {
+  const dm = rig.dm;
+  await dm.evaluate('document.getElementById("btn-floorplan").click(); 0');
+  await settle(dm, 'polygons.length >= ' + (want || 1), 30000);
+  return dm.evaluate(`polygons.map(p => {
+    const xs = p.vertices.map(v => v.x), ys = p.vertices.map(v => v.y);
+    return { id: p.id, name: p.name, mode: p.mode,
+             cx: (Math.min(...xs) + Math.max(...xs)) / 2, cy: (Math.min(...ys) + Math.max(...ys)) / 2,
+             x2: Math.max(...xs), y2: Math.max(...ys) };
+  }).sort((a, b) => a.cx - b.cx)`);
 }
 
-module.exports = { HELPERS, TV_FOG, SETTLE, openMap, installHelpers, settle, poll, hold, fire, mcpClient, openMapsOffTv, claudeHeard };
+// One step of a walk. A step that throws is a failed check naming it, and the walk goes on.
+async function step(rig, label, fn) {
+  try { await fn(); } catch (err) { rig.check(false, label + ' stopped: ' + (err && err.message ? err.message : err)); }
+}
+
+// The Player's fog data at a map point: 255 is hidden ground, 0 is clear.
+const tvFog = (player, x, y) => player.evaluate('(' + TV_FOG + ')(' + Math.round(x) + ',' + Math.round(y) + ')');
+
+module.exports = { DM_MAP, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog };

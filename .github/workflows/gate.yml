@@ -1,10 +1,8 @@
 name: Gate
 
 # The installers, one job per platform: builds the one users get and checks its update pointer.
-# Callers run it beside the rig (rig.yml), which drives the packaged app through smoke and its share
-# of the regression. The rig is never part of this file: a caller waits for every job here, and the
-# Linux rig must not hold `land` (see release.yml). Linux's installer build blocks all the same,
-# because publish uploads its AppImage and latest-linux.yml.
+# Callers run it beside the rig (rig.yml), which drives the packaged app through its blocker set. The
+# rig is a separate file so a rig red and an installer red read as different jobs.
 #
 # ⚠ THE GATE DRIVES THE PACKAGED APP, not the repo. A file missing from build.files works under
 # `npm start` and is simply absent from the installer, where a missing stylesheet renders unstyled

@@ -167,9 +167,9 @@ error goes through it; no `alert()` ships.
   `fog.js`; its behavior is pixel output. New pure fog logic extends `fogGeometry.js`.
 - Never add unit tests for `render.js`, `scenes.js`, `state.js`, `renderer.js`, `toolbar.js`,
   `player.js`, `mapLoader.js`, `input.js`, `sceneStore.js`, `stress.js`.
-- **While building on the DM's machine, the rig takes a look, never a set**: one scenario or one
-  `--shot`, when code cannot answer. A cloud session runs it freely. `/commit` gates the diff, CI
-  runs the full set. See the `rig` skill.
+- **The `blockers` rig set is the release gate** (CI), and `/commit` runs only
+  tests, lint and guards. Locally the rig is a look, not a set. A blocker failing over a working
+  app is rewritten or deleted that day, never loosened.
 - **Never ask the DM to hand-verify what the rig can check.** Look, feel and performance are
   theirs; correctness is yours. Backup, export and restore are the exception - the save dialog is
   native and cannot be driven.

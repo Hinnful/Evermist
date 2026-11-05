@@ -1,13 +1,13 @@
 ---
 name: rig
-description: Load BEFORE editing anything under tools/rig/, and whenever a task needs the running app to answer a question - reproducing a reported bug, confirming a fix, checking what reached the Player window, verifying a map actually saved, or writing an acceptance scenario. Also load when the task mentions the test rig, npm run rig, smoke, regression, acceptance scenarios, CDP, --remote-debugging-port, or driving both windows. Carries when to run it, when not to, and the traps that make a scenario silently pass.
+description: Load BEFORE editing anything under tools/rig/, and whenever a task needs the running app to answer a question - reproducing a reported bug, confirming a fix, checking what reached the Player window, verifying a map actually saved, or writing an acceptance scenario. Also load when the task mentions the test rig, npm run rig, the blocker set, scenarios, CDP, --remote-debugging-port, or driving both windows. Carries when to run it, when not to, and the traps that make a scenario silently pass.
 ---
 
 # The test rig
 
 `tools/rig/` launches the real app over the Chrome DevTools Protocol, drives both windows, and
 prints one PASS or FAIL. Boot to verdict is about ten seconds, but a run still costs the DM real
-time, so reach for it only at the two gates below.
+time, so reach for it only as the cases below allow.
 
 ## When to run it
 
@@ -17,41 +17,32 @@ reach for the rig only when code cannot answer the question. Two cases qualify:
 - **Seeing what code cannot show.** Did the map reach disk. Did the reveal reach the Player.
   Did switching scenes leave the old map underneath. Anything spanning both windows.
 - **Finding a bug nothing else catches.** Reading the code failed, so drive the DM's own repro
-  steps in a scenario and watch the failure happen.
+  steps in a throwaway probe file and watch the failure happen.
 
 **On the DM's machine, the rig takes a look while building, never a set.** A look is one
 scenario, or one `--shot` screenshot, to answer "did it work at all" where code cannot: did it
 show, did it reach the Player, did it save. A look-and-feel change gets one shot at most, then
-goes to the DM. Never `smoke`, `regression` or a list of names, never a rerun "to be sure", and
-never a scenario repaired mid-build: a scenario that breaks waits for `/commit`, which runs the set
-and fixes it once. `guard-rig.js` refuses a set, except the `--low-priority` line `/commit` prints.
-The DM can ask for more; that lifts the rule for that one run.
+goes to the DM. Never a list of names, never a rerun "to be sure". `guard-rig.js` refuses a set,
+except `blockers` or `launch` at `--low-priority`, which the DM may ask for. A probe file is deleted
+afterwards.
 
 **In a cloud session, run it freely.** `CLAUDE_CODE_REMOTE=true` marks one, and no screen there
 belongs to anyone. Linux has no display, so launch through `xvfb-run -a` as `rig.yml` does.
 
-**A commit gets the scenarios that run what it changed; the full sweep runs in CI.** `/commit`
-Step 2 runs `node tools/rig-ci.js pick`, which reads the map CI recorded (which functions of which
-file each scenario executed, per `tools/rig/coverage.js`) and picks `smoke` plus a greedy cover of the
-changed files, with no time cap, at below-normal priority. A changed `src/` script no
-scenario runs blocks the commit until one is written. **`.github/workflows/rig.yml` then runs
-`smoke` and `regression` against the built app on Windows, Mac and Linux. A red Windows or Mac leg
-means no tag, no release and no installers; Linux only warns.** So the full set is never run by
-hand: reach for one scenario to answer a question, and let CI own the sweep.
+**THE BLOCKER SET IS THE RELEASE GATE, and the only set there is.** `.github/workflows/rig.yml`
+builds the packaged app and runs `blockers` on Windows and Mac (`scenarios/blockers/`: launch, prep,
+a table session, work kept) and `launch` alone on Linux. All three block: a red means no tag, no
+release and no installers. `/commit` runs none of it; its gate is unit tests, lint and the guards.
 
-**A failed scenario runs once more, in a fresh app on a fresh profile.** A pass on the rerun is a
-flake: the run stays green, prints a `::warning`, writes a summary line and adds the scenario to the
-run's flake record. Fail twice and it is red. At most three scenarios rerun per run, so a broken app
-does not double the run. The count is how `/commit` finds the scenarios worth fixing or retiring.
+**The blocker set stays small, and a blocker that fails while the app works is rewritten or
+deleted the same day, never loosened.** No longer timeout, no wider tolerance, no rerun count. A
+scenario earns a place only if its failure would stop the DM at the table. Everything else is a
+unit test, or a one-off probe. The one rerun CI allows is for a run whose app never started
+("could not start the app"), because that says nothing about the app.
 
 **A scenario drives the app. It never reads the app's source text.** A check over a function's
 `toString()` or a `readFileSync` of `src/` passes while the behaviour is broken and fails on a rename.
 `doExport` takes a `destPath` that goes round the save dialog; call it, then read the zip it wrote.
-
-**A failure that comes and goes gets a PROBE, not another gate run.** `.github/workflows/probe.yml`
-runs one scenario in many copies at once on any platform; edit its matrix and push to `probe/**`.
-Ten copies answer "how often, and why" in five minutes. The gate splits Windows into six jobs and the
-other platforms into four, and Linux skips `playback` (see `rig.yml`).
 
 **The gate also runs when `tools/rig/**` changed, bump or no bump.** `tools/` ships nothing, so a
 rig change takes no version and the gate used to be skipped entirely - the one change nobody
@@ -78,18 +69,16 @@ them to re-test correctness is asking them to do your job.
 ## Running it
 
 ```
-npm run rig                              the smoke set
-npm run rig -- regression                every acceptance scenario
+npm run rig -- blockers --exe "<exe>"    the release gate's set, against a built app
+npm run rig -- launch --exe "<exe>"      the Linux leg: the app starts and shows its window
 npm run rig -- fog                       one by name
-npm run rig -- --exe "dist/Evermist.exe" a built installer, for packaging bugs npm start cannot see
+npm run rig -- --exe "dist/win-unpacked/Evermist.exe"   a built app, for packaging bugs npm start cannot see
 npm run rig -- --shot "#sel" --shot-setup "openDropdown()"   a cropped screenshot
 npm run rig -- name-one name-two         several by name, in that order
 ```
 
-`--report <file>` writes the run's per-scenario time, flakes and failures as JSON, and `--coverage` adds
-the functions each scenario ran (CI passes both on Windows; `--low-priority` runs the rig and the app
-at below-normal priority, which `/commit` passes). That is every flag there is, and an unrecognised
-one stops the run rather than being ignored.
+`--low-priority` runs the rig and the app at below-normal priority. An unrecognised flag stops the
+run rather than being ignored.
 
 **EVERY RUN USES ONE GEOMETRY, HERE AND IN CI: the DM at 1008x681 on a 1024x768 screen.** Those
 are a GitHub runner's own numbers, so a local run and a gate run are the same run, digit for
@@ -126,7 +115,7 @@ it can only move this run's windows and never the DM's real Evermist.
 **The parker also watches, and a window on screen fails the scenario.** Any window of this run
 shown inside the screen bounds, or taking focus, is a line in `.window-offences.log` in the
 run's output folder, and `run.js` fails the scenario it landed in as `a window "…" showed on
-screen`. Windows only. A one-off is a flake through the normal rerun; twice is a real leak.
+screen`. Windows only.
 
 **`--visible` is the DM's flag, not yours.** Do not pass it, and do not reach for `npm start`,
 `npm run stress` or `npm run memprobe` either - all three take the screen and all three are the
@@ -144,46 +133,16 @@ covers the same packaging bugs and needs no portable step.
 
 ## Writing a scenario
 
-`scenarios/smoke.js` is the fast always-run set. `scenarios/acceptance/*.js` is one file per
-feature, and running them all together is the regression pass.
+`scenarios/blockers/*.js` is the release set, one file per journey. Any other file under `scenarios/`
+is run by name as a one-scenario probe.
 
-**An acceptance file's criteria ARE its header.** Plain-language lines at the top, each with its
-check directly beneath, in the same order. There is no separate criteria document.
+**A file's criteria ARE its header.** Plain-language lines at the top, each with its check directly
+beneath, in the same order. There is no separate criteria document.
 
 **A scenario that has never been red has proven nothing.** Written before the fix, run it against
 the unfixed code and confirm it fails on the right line. Written after, break the thing it covers,
 confirm the FAIL names it, then put it back. A check that passes for some reason other than the
 code under it looks identical to one that works.
-
-**EVERY CRITERION CARRIES A LABEL, and a new one is not finished without it.** A criterion that
-says nothing about being proved is indistinguishable from one nobody ever ran.
-
-```js
-// RED ON: sendToPlayer() removed from the btn-send handler (toolbar.js) — 2026-09-19
-// RED BY DESIGN: written against the fix, never re-proved
-```
-
-`RED ON` names the edit, never just the date, so anyone can run it again in a minute and a rename
-makes it visibly wrong. `RED BY DESIGN` is the honest label for the suite written before this
-rule: the author meant it to fail and nobody has checked since. A criterion earns `RED ON` only
-when someone watched it go red.
-
-The label sits beside the check it describes, which may be well inside the section rather
-than at its head. Count where the suite stands with:
-
-```
-grep -rho "RED ON:" tools/rig/scenarios/ | wc -l          proved
-grep -rho "RED BY DESIGN:" tools/rig/scenarios/ | wc -l   written to fail, never re-checked
-```
-
-**Converting a criterion from `RED BY DESIGN` to `RED ON` is the only thing that moves that
-count.** It goes down as somebody proves one, and a new criterion arrives carrying `RED ON`
-because proving a new check red is already the rule above.
-
-**PROVE ON TOUCH, at `/commit`.** When the gate runs a scenario because the diff reached what it
-covers, each `RED BY DESIGN` criterion guarding the changed code is proved in that same gate: break
-the line, watch it go red, restore it, relabel it `RED ON`. Criteria the diff did not reach keep
-their label. There is no sweep; the count falls only as the code under it moves.
 
 **A file starts with `const lib = require('../../lib');` and opens its map in one line.**
 `tools/rig/lib.js` holds the page-side helper set, the map preamble, and the two waits. Nothing
@@ -194,17 +153,15 @@ across ten files.
 ```js
 const lib = require('../../lib');
 …
-  await lib.openMap(rig, { w: MAP_W, h: MAP_H });        // import a map, install the helpers
-  const map = await lib.openMap(rig, { kind: 'still' }); // the fixture, if the file needs the bytes
-  await lib.installHelpers(session);                     // a window openMap did not load into
+  await lib.importWithPlan(rig, 'name');                 // import the table map with a floor plan, install the helpers
+  await lib.installHelpers(session);                     // a window no import loaded a map into
   await lib.settle(dm, 'fogCoverT === 0', 30000);        // a bounded wait that never fails alone
   await lib.poll(fn, 20000);                             // a wait written in Node, for a store read
-  await lib.fire(dm, 'grid-size-num', 93, 'change');     // set a control and let the app hear it
 ```
 
 **A file that only needs the FIXTURE calls `rig.fixtures.tableMap` and imports nothing.** Several
-scenarios build their own named scenes from one recording; `openMap` would hand them a scene they
-never had, and every count after it would be one out.
+scenarios build their own named scenes from one recording, and a shared import would hand them a
+scene they never had, so every count after it would be one out.
 
 **The extras on a mouse helper travel in a NAMED options object**: `{ mods, onWindow, steps }`.
 The fourth argument used to mean modifier keys in three files and "dispatch on window" in two, so
@@ -245,18 +202,12 @@ A file exports one async function taking `rig`:
   thing no other scenario can reach: the app coming up with maps already in the library.
   **It returns the new DM session and closes the old one**, so a `const dm = rig.dm` taken at
   the top of the file is a dead socket afterwards. The helpers go back in with
-  `lib.installHelpers`, because the page is new. `scenarios/acceptance/boot.js` is its scenario.
-- `await rig.resizeDm(w, h)` / `await rig.resizePlayer(w, h)` — **`sizes.js` and nothing else.**
-  Every run is pinned to one geometry, and that file is what pays for it by varying the size on
-  purpose. A scenario that sets its own metrics leaves the next one at a size run.js did not
-  choose.
+  `lib.installHelpers`, because the page is new. `scenarios/blockers/keeps-work.js` uses it.
 - `rig.fixtures` — maps generated at runtime, cached on disk, never committed.
-  **`tableMap` is the map an acceptance scenario imports, and it is ANIMATED.** Animated is
+  **`tableMap` is the map a scenario imports, and it is ANIMATED.** Animated is
   the only kind the DM ever uses, so a suite on still PNGs proved the app worked in a case
   that never happens. It records one second, caches by size for the whole run, and stays
-  inside the shrink box so no scenario pays for a re-encode. `stillMap` is still there and
-  `smoke.js` is the one file that wants both — its block 2 holds the animated render path
-  against the still one.
+  inside the shrink box so no scenario pays for a re-encode.
 
 ## Traps
 

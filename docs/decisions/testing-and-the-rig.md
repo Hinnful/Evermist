@@ -13,6 +13,7 @@ Status tags and the paragraph budget: see the main ledger's header.
 ---
 
 ### While building, the rig takes a look, never a set, and a hook enforces it · `SETTLED` (2026-10-25)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": reversed in part: `regression` and `smoke` no longer exist, and `blockers` or `launch` at `--low-priority` is allowed. /commit runs no rig at all.
 A look is one scenario or one `--shot` screenshot, used only when code cannot answer "did it show,
 reach the Player, save". Refused while building: bare `npm run rig` (smoke), `regression`, a list of
 several names, reruns "to be sure", and repairing scenarios mid-build (a broken one waits for
@@ -25,6 +26,7 @@ unchanged on purpose: the local machine is several times faster than the CI runn
 regression is cheaper found locally than an hour later in CI.
 
 ### A commit runs the scenarios that executed what it changed, and a map says which · `SETTLED` (2026-10-17)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": the coverage map, the local pick and the BLOCK on an unrun `src/` script are gone; /commit runs unit tests, lint and the guards.
 CI went red about thirty times in three weeks for two or three real bugs; each red cost twenty minutes
 and most were a test still expecting old behaviour or a cheap check nobody ran locally. The local pass
 now picks from a map the full CI regression records: V8 precise coverage over CDP, in the DM and Player
@@ -37,6 +39,7 @@ reading headers (process ledger, 2026-08-28): headers stay only as the fallback.
 was rejected: it rots the day a module is renamed.
 
 ### The local pick has no time cap · `SETTLED` (2026-11-02)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": there is no local pick.
 Of the red gates for 4.11.0, 4.14.0, 4.16.0 and 4.18.0, the real failures sat in scenarios the cap left to
 CI (4.16.0 needed about 24 minutes and ran 10) or the pick never chose (the claude-grid and claude-fog
 "Player heard something" reds, because the diff touched no MCP code; fixed in 4.18.0 with
@@ -45,6 +48,7 @@ the coverage map relates to the change, in the background at low priority. Cost 
 takes about 25 minutes locally. **Supersedes** the "capped near ten minutes" clause above; the rest stands.
 
 ### The pick also runs scenarios that wrap a changed function or read the shortcut sheet · `SETTLED` (2026-10-23)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": there is no pick.
 In 4.8.0, `help-and-about.js` wrapped `sendToPlayer` and read `#shortcut-legend`; the greedy cover skipped
 it because other scenarios reached the same functions, and it failed on CI twice on Windows and Mac. The
 pick (`tools/rig/pick.js`, `tools/rig-ci.js pick`) now adds every scenario that assigns to a function the
@@ -54,6 +58,7 @@ calls stay with the greedy cover. **Rejected:** matching any mention of a change
 scenarios on the 4.8.0 diff. On a replay of that diff the rule adds help-and-about and first-use-path.
 
 ### A failed scenario reruns once, and Linux only advises · `SETTLED` (2026-10-17)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": Linux advisory is reversed, Linux blocks (launch only). The flake record and the three-rerun count are gone; the one rerun is for a run whose app never started.
 Most reds were one platform only, and a rerun of the whole gate costs twenty minutes. The rig now reruns a
 failed scenario once in a fresh app on a fresh profile. A pass is a flake: a warning, a summary line and a
 record the monitor counts, and a scenario that needs three reruns across recent runs is proposed for a fix
@@ -70,12 +75,14 @@ Linux's system font lands the button 0.51px off, and it failed only there, where
 Mac and Linux get 1px.
 
 ### Windows is dealt six ways · `SETTLED` (2026-10-17)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": there is no sharding.
 **Reverses** the four-way split for Windows only: it was the slowest blocking platform, and six jobs cost
 nothing on a public repo. Mac stays at four because a free account runs five Mac jobs at once and the
 update proof takes one; Linux gains nothing from more. Not eight: four of the thirty reds were the app
 failing to start, which more jobs would multiply, so start-up failures are measured first.
 
 ### Scenarios are dealt to shards by measured time · `SETTLED` (2026-10-22)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": `rig-deal.js` and `timings.json` are deleted.
 **Supersedes** dealing by name, a fixed slow list first and then every Nth, which once put transfer, maps,
 grid, backup and boot on one shard. `tools/rig-deal.js` deals each platform's scenarios longest-first into
 the lightest shard from `tools/rig/timings.json`; ties break by name so every shard computes the same split,
@@ -93,6 +100,7 @@ files that call `readFileSync` read the profile's output, a fixture or a log, ne
 
 
 ### The gate runs on all three platforms, split four ways · `SETTLED` (2026-09-28)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": the split is gone; Linux runs `launch` only, so the `playback` exclusion is moot.
 The rig had only ever driven the Windows build, so a Mac or Linux break reached users unseen. Mac
 and Linux joined the gate after two clean runs in a row; the random failures on the way were rig
 waits that read a state once while the app was still recovering, fixed with polls. Each platform's
@@ -314,6 +322,7 @@ network or a second display makes the control unreachable. Three controls stay u
 carry a `rig.byEye` line each - Export's save dialog, the YouTube field, the downloader updater.
 
 ### Two labels, because "proven" is a claim about a run · `SETTLED` (2026-09-19)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": the `RED ON` / `RED BY DESIGN` counting and prove-on-touch are dropped; a new check is still proven red once.
 289 criteria, and nothing recorded which had ever been watched failing. A single "proven" label
 would have been a lie on 272 of them, and the register exists to be trusted. So there are two:
 `RED ON: <the edit> — <date>` where someone broke the app and watched that criterion go red, and
@@ -357,6 +366,7 @@ corner fallback could be deleted outright while its test passed, because that ca
 landed inside a piece and the fallback never ran - a test that never reaches the branch it names.
 
 ### A flaky gate is measured on six runners, not rerun · `SETTLED` (2026-09-27)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": `soak.yml` and `probe.yml` are deleted; a flaky blocker is rewritten or deleted the same day.
 Reds that passed on a rerun had cost several releases, and each left only its FAIL line, because
 the rig writes under a temp folder the job discards. The gate now uploads the logs and screenshots
 of a red run, and `soak.yml` drives one build through the suite six times in parallel. A rerun
@@ -401,6 +411,7 @@ is unchanged. A first build put the lab in the shipped app, with a `--lab` flag,
 lab button in Settings; it was rejected on product grounds, since a test library means nothing to an end user.
 
 ### The Linux rig leaves the release's blocking path · `SETTLED` (2026-10-23)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": Linux blocks again, and `gate-linux` is merged into `gate-rig`.
 Software GL made Linux the slowest rig leg by about ten minutes, and its red never blocked, so the
 landing waited for nothing. `release.yml` calls `gate.yml` with `skip-linux: true`, and the Linux rig
 runs as its own job, `gate-linux`, which `land`, `publish` and `cleanup` do not need. Linux's installer
@@ -430,6 +441,7 @@ and the minimap read; the click and the read now share one evaluate, and a secon
 zoom the minimap ends on.
 
 ### The Windows and Mac rig runs from release.yml, and every CI job is named for what it does · `SETTLED` (2026-10-24)
+**Reversed 2026-11-05** by "The release gate is a small blocker set, and the full regression set is gone": the legs are now "Gate / Windows", "Gate / Mac" and "Gate / Linux", with no shard counts or Warn only tag.
 A rig shard called through `gate.yml` showed two levels deep. The Windows and Mac rig now sits in its
 own `release.yml` job, `gate-rig`, shown as "Gate", so a shard reads "Gate / <Platform> · N of M" and
 every Linux shard adds " · Warn only" as a trailing tag, since brackets carry a platform everywhere
@@ -497,3 +509,17 @@ guard and world-map restart. No app code changed.
 
 ### README animations are recorded through the rig, not captured by hand · `SETTLED` (2026-10-31)
 `node tools/rig/record.js <clip>` records one clip off screen and encodes an animated WebP (`--encode` re-encodes the last frames), so a re-record after a UI change is one command. Clips run about 10 s, the pointer moves straight to each target, and each clip uses one map with no repeats. Maps are copied from a local map folder and loaded through the app's own import, never the Evermist library. Demo text is Curse of Strahd canon with no spoilers (no Strahd stat block, no NPC secrets). The reveal clip waits for each fade to finish before the next room, because a pick inside a fade lifts the whole fog on the TV for a moment, a known app bug left unfixed. The two-maps clip kept its old recording.
+
+### The release gate is a small blocker set, and the full regression set is gone · `SETTLED` (2026-11-05)
+The regression set made a release take 60 to 90 minutes and went red mostly on CI machine faults: of the last
+month's 75 commits, 64 touched the rig or CI. The goal is no blockers and no critical bugs, not a perfect app,
+with less maintenance. The gate is now unit tests, lint and the guards; all three installers; the update and
+rollback proofs; and the rig's `blockers` set (launch, prep, a table session, work kept) against the packaged
+app on Windows and Mac, with `launch` alone on Linux. All of it blocks, Linux included. The research behind it:
+the test pyramid and the testing trophy keep full-app checks to a few critical journeys, VS Code runs a smoke test
+on every platform before a release, and Google and GitLab quarantine a flaky test rather than loosen it. So a
+blocking check that fails while the app works is rewritten or deleted the same day, never given a longer timeout
+or a wider tolerance. **Reverses** advisory Linux, the coverage-map pick, the flake record, prove-on-touch and
+sharding (each marked above); `rig-ci.js`, `rig-deal.js`, `soak.yml`, `probe.yml` and `rig-report.yml` went with
+them. Release notes now come from the newest commit titled "<version> - ", since a version set early and re-worded
+later would otherwise publish the stale notes.

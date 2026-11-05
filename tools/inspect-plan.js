@@ -49,11 +49,15 @@ console.log('  line_of_sight polyline point-counts, largest first:');
 console.log('    ' + lens.slice(0, 20).join(', ') + (lens.length > 20 ? ', … (' + (lens.length - 20) + ' more)' : ''));
 
 // ─── The faces, before classification ─────────────────────────────────────────
+// ⚠ THE SAME PIPELINE AS vttDerivePlan, snap and doorless avoid set included, or the faces
+// listed here are not the ones the import classifies.
+const snap = V.VTT_NODE_SNAP;
 const edges = V.vttCollectEdges(plan);
-const { nodes, pairs: raw } = V.vttBuildNodes(edges);
-const split = V.vttSplitAtJunctions(nodes, raw);
-const bridged = V.vttCloseGaps(nodes, split);
-const pairs = bridged.closed.length ? V.vttSplitAtJunctions(nodes, bridged.pairs) : bridged.pairs;
+const { nodes, pairs: raw } = V.vttBuildNodes(edges, snap);
+const doorless = V.vttDoorlessWalls(plan, snap);
+const split = V.vttSplitAtJunctions(nodes, raw, snap);
+const bridged = V.vttCloseGaps(nodes, split, undefined, snap, doorless, undefined);
+const pairs = bridged.closed.length ? V.vttSplitAtJunctions(nodes, bridged.pairs, snap) : bridged.pairs;
 
 console.log('── graph ' + '─'.repeat(59));
 console.log('  ' + edges.length + ' segments → ' + nodes.length + ' nodes, ' + raw.length +
@@ -62,9 +66,10 @@ console.log('  ' + edges.length + ' segments → ' + nodes.length + ' nodes, ' +
 
 const faces = [];
 for (const face of V.vttWalkFaces(nodes, pairs)) {
-  const ring = V.vttCleanRing(face.map(i => nodes[i]));
+  const rawRing = face.map(i => nodes[i]);
+  const ring = V.vttCleanRing(rawRing, undefined, snap);
   if (ring.length < 3) continue;
-  faces.push({ ring, area: V.vttSignedArea(ring) });
+  faces.push({ ring, area: V.vttSignedArea(ring), rock: V.vttRingOnDoorlessWall(rawRing, doorless, snap) });
 }
 faces.sort((a, b) => Math.abs(b.area) - Math.abs(a.area));
 
@@ -74,7 +79,8 @@ console.log('  ' + 'kind'.padEnd(10) + 'area(sq)'.padStart(11) + '%map'.padStart
 for (const f of faces) {
   const kind = f.area > 0 ? 'ROOM' : 'boundary';
   const pct = mapArea ? (Math.abs(f.area) / mapArea * 100).toFixed(1) : '?';
-  const refused = Math.abs(f.area) < V.VTT_MIN_FACE_AREA ? 'yes (min area)' : '';
+  const refused = Math.abs(f.area) < V.VTT_MIN_FACE_AREA ? 'yes (min area)'
+    : f.rock ? 'yes (doorless wall: rock)' : '';
   console.log('  ' + kind.padEnd(10) + Math.abs(f.area).toFixed(2).padStart(11) +
     pct.padStart(8) + String(f.ring.length).padStart(7) + '  ' + refused);
 }

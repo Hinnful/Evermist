@@ -16,64 +16,75 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const file = process.argv[2];
-if (!file) {
-  console.error('usage: node tools/check-update-metadata.js <path to latest*.yml>');
-  process.exit(1);
-}
 
-const problems = [];
-const abs = path.resolve(ROOT, file);
-const dir = path.dirname(abs);
+// What is wrong with the pointer at `abs` for package.json version `want`; empty when it is intact.
+function metadataProblems(abs, want) {
+  const problems = [];
+  const dir = path.dirname(abs);
+  const text = fs.readFileSync(abs, 'utf8');
+  // Flat `key: value` lines and a `files:` list. Regex rather than a YAML parser, because the rig
+  // and the tools take no dependencies.
+  const scalar = k => {
+    const m = new RegExp('^' + k + ':\\s*(.+?)\\s*$', 'm').exec(text);
+    return m ? m[1].replace(/^['"]|['"]$/g, '') : null;
+  };
 
-if (!fs.existsSync(abs)) {
-  console.error('MISSING: ' + file + ' was never written. electron-updater has nothing to read, ' +
-                'so every installed copy would silently stop finding updates.');
-  process.exit(1);
-}
-
-const text = fs.readFileSync(abs, 'utf8');
-// Flat `key: value` lines and a `files:` list. Regex rather than a YAML parser, because the rig
-// and the tools take no dependencies.
-const scalar = k => {
-  const m = new RegExp('^' + k + ':\\s*(.+?)\\s*$', 'm').exec(text);
-  return m ? m[1].replace(/^['"]|['"]$/g, '') : null;
-};
-
-const want = require(path.join(ROOT, 'package.json')).version;
-const got = scalar('version');
-if (got !== want) {
-  problems.push('version says ' + JSON.stringify(got) + ' where package.json says ' +
-                JSON.stringify(want) + '. An installed copy would compare against the wrong number.');
-}
-
-// Every installer named anywhere in the file has to be sitting beside it, or the download 404s
-// after the update prompt has already appeared.
-const named = new Set();
-for (const m of text.matchAll(/^\s*(?:-\s*)?(?:url|path):\s*(.+?)\s*$/gm)) {
-  named.add(m[1].replace(/^['"]|['"]$/g, ''));
-}
-if (!named.size) problems.push('names no installer at all, so there is nothing to download.');
-for (const name of named) {
-  if (!fs.existsSync(path.join(dir, decodeURIComponent(name)))) {
-    problems.push('names ' + name + ', which is not in ' + path.basename(dir) +
-                  ' — the update prompt would appear and the download would fail.');
+  const got = scalar('version');
+  if (got !== want) {
+    problems.push('version says ' + JSON.stringify(got) + ' where package.json says ' +
+                  JSON.stringify(want) + '. An installed copy would compare against the wrong number.');
   }
+
+  // Every installer named anywhere in the file has to be sitting beside it, or the download 404s
+  // after the update prompt has already appeared.
+  const named = new Set();
+  for (const m of text.matchAll(/^\s*(?:-\s*)?(?:url|path):\s*(.+?)\s*$/gm)) {
+    named.add(m[1].replace(/^['"]|['"]$/g, ''));
+  }
+  if (!named.size) problems.push('names no installer at all, so there is nothing to download.');
+  for (const name of named) {
+    if (!fs.existsSync(path.join(dir, decodeURIComponent(name)))) {
+      problems.push('names ' + name + ', which is not in ' + path.basename(dir) +
+                    ' — the update prompt would appear and the download would fail.');
+    } else if (/\.(exe|dmg|zip)$/i.test(name) && !fs.existsSync(path.join(dir, decodeURIComponent(name) + '.blockmap'))) {
+      // An AppImage carries its blockmap inside; the others need it beside them.
+      problems.push('names ' + name + ' with no ' + name + '.blockmap beside it, so every update ' +
+                    'would download the whole installer.');
+    }
+  }
+
+  // The Mac updates from the zip alone; a pointer naming only the .dmg leaves it nothing to swap in.
+  if (/latest-mac\.yml$/.test(abs) && ![...named].some(n => n.endsWith('.zip'))) {
+    problems.push('names no .zip, so a Mac would find the update and have nothing to install.');
+  }
+
+  if (!/sha512:\s*\S+/.test(text)) {
+    problems.push('carries no sha512, so a truncated download would install unchecked.');
+  }
+  return problems;
 }
 
-// The Mac updates from the zip alone; a pointer naming only the .dmg leaves it nothing to swap in.
-if (/latest-mac\.yml$/.test(file) && ![...named].some(n => n.endsWith('.zip'))) {
-  problems.push('names no .zip, so a Mac would find the update and have nothing to install.');
+function main() {
+  const file = process.argv[2];
+  if (!file) {
+    console.error('usage: node tools/check-update-metadata.js <path to latest*.yml>');
+    process.exit(1);
+  }
+  const abs = path.resolve(ROOT, file);
+  if (!fs.existsSync(abs)) {
+    console.error('MISSING: ' + file + ' was never written. electron-updater has nothing to read, ' +
+                  'so every installed copy would silently stop finding updates.');
+    process.exit(1);
+  }
+  const problems = metadataProblems(abs, require(path.join(ROOT, 'package.json')).version);
+  if (problems.length) {
+    console.error('UPDATE METADATA BROKEN in ' + file + ':');
+    for (const p of problems) console.error('  - ' + p);
+    process.exit(1);
+  }
+  console.log(file + ': installers, blockmaps and sha512 present.');
 }
 
-if (!/sha512:\s*\S+/.test(text)) {
-  problems.push('carries no sha512, so a truncated download would install unchecked.');
-}
+if (require.main === module) main();
 
-if (problems.length) {
-  console.error('UPDATE METADATA BROKEN in ' + file + ':');
-  for (const p of problems) console.error('  - ' + p);
-  process.exit(1);
-}
-
-console.log(file + ': version ' + got + ', ' + named.size + ' installer(s) present, sha512 set.');
+module.exports = { metadataProblems };

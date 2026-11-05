@@ -22,7 +22,8 @@
  */
 
 // Every pattern is ANCHORED, because it is matched against one shell segment whose leading
-// env assignments have already been stripped. An unanchored pattern refuses `echo "npm start"`
+// env assignments and wrappers have already been stripped, and which guard-lib's launchForm has
+// put in one spelling. An unanchored pattern refuses `echo "npm start"`
 // and every doc edit that quotes one of these commands.
 const REFUSE = [
   {
@@ -48,14 +49,15 @@ const REFUSE = [
   },
   {
     // A bare electron launch, however it is spelled. The rig's own `node run.js` is allowed
-    // by RIG_RUN below, which is checked first.
-    re: /^(?:npx\s+)?electron(?:\.exe)?\s+\./,
+    // by RIG_RUN below, which is checked first. Anything but --version or --help opens a window.
+    re: /^electron(?:\.exe|\.cmd)?(?=\s|$)(?![^\n]*\s--?(?:v|version|h|help)(?:\s|$))/,
     what: 'a direct electron launch',
     why: 'nothing parks its window, so it lands in front',
   },
   {
-    // Any built Evermist executable, including "Evermist Setup 2.4.0.exe" with its spaces.
-    re: /^["'.\\/\w:-]*Evermist[^\n"']*\.exe\b/i,
+    // Any built Evermist executable, including "Evermist Setup 2.4.0.exe" with its spaces, and a
+    // quoted absolute path, which here runs through the Cyrillic "Рабочий стол".
+    re: /^(?:"[^"\n]*|'[^'\n]*|(?:\\ |[^\s"'])*)Evermist[^\\/\n"']*\.exe\b/i,
     what: 'a built Evermist .exe',
     why: 'it opens in front, and the portable build writes into the real map library',
   },
@@ -70,36 +72,29 @@ const RIG_VISIBLE = /^(?:(?:npm|yarn|pnpm)\s+run\s+rig|node\s+tools[\\/]rig[\\/]
 // built app, and the .exe rule above would otherwise refuse the one safe way to drive it.
 const RIG_RUN = /^(?:(?:npm|yarn|pnpm)\s+run\s+rig|node\s+tools[\\/]rig[\\/]run\.js)\b/;
 
-function readStdin() {
-  try {
-    const fs = require('fs');
-    return JSON.parse(fs.readFileSync(0, 'utf8'));
-  } catch (_) {
-    return null;
-  }
-}
+const { readStdin, commandsIn, launchForm } = require('./guard-lib');
 
-const { commandsIn } = require('./guard-lib');
-
-function main() {
-  const payload = readStdin();
+function verdict(payload) {
   const cmd = payload && payload.tool_input && payload.tool_input.command;
-  if (!cmd || typeof cmd !== 'string') process.exit(0);
-
-  let hit = null;
-  for (const seg of commandsIn(cmd)) {
+  if (!cmd || typeof cmd !== 'string') return null;
+  for (const raw of commandsIn(cmd)) {
+    const seg = raw && launchForm(raw);
     if (!seg) continue;
     if (RIG_VISIBLE.test(seg)) {
-      hit = {
+      return {
         what: 'the rig with its visible flag',
         why: 'that flag turns the off-screen parking off, which is the whole protection',
       };
-      break;
     }
     if (RIG_RUN.test(seg)) continue; // the sanctioned launch; it parks itself
     const m = REFUSE.find((r) => r.re.test(seg));
-    if (m) { hit = m; break; }
+    if (m) return m;
   }
+  return null;
+}
+
+function main() {
+  const hit = verdict(readStdin());
   if (!hit) process.exit(0);
 
   process.stderr.write(
@@ -122,8 +117,12 @@ function main() {
   process.exit(2);
 }
 
-try {
-  main();
-} catch {
-  process.exit(0); // fail-open
+if (require.main === module) {
+  try {
+    main();
+  } catch {
+    process.exit(0); // fail-open
+  }
 }
+
+module.exports = { verdict };

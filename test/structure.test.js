@@ -25,6 +25,17 @@ const read = rel => fs.readFileSync(path.join(root, rel), 'utf8');
 
 const isPackaged = rel => buildFiles.isPackaged(rel, patterns);
 
+// ⚠ EXACT CASE, segment by segment. Windows and macOS find `src/css/Dock.css` for dock.css, so
+// the blocking rigs pass, and only the Linux build, case-sensitive and advisory, renders unstyled.
+function existsExactCase(rel) {
+  let dir = root;
+  for (const part of rel.replace(/[?#].*$/, '').split('/')) {
+    if (!fs.existsSync(dir) || !fs.readdirSync(dir).includes(part)) return false;
+    dir = path.join(dir, part);
+  }
+  return true;
+}
+
 // Local assets only. A CDN URL is not ours to package, and the app has none today.
 function assetsOf(html, attr, tag) {
   const re = new RegExp('<' + tag + '[^>]*\\b' + attr + '=["\']([^"\']+)["\']', 'g');
@@ -44,10 +55,10 @@ describe('what ships in the build', () => {
     const missing = [];
     for (const entry of HTML_ENTRIES) {
       for (const src of assetsOf(read(entry), 'src', 'script')) {
-        if (!isPackaged(src)) missing.push(entry + ' → ' + src);
+        if (!isPackaged(src) || !existsExactCase(src)) missing.push(entry + ' → ' + src);
       }
     }
-    assert.deepEqual(missing, [], 'scripts loaded but absent from build.files');
+    assert.deepEqual(missing, [], 'scripts loaded but absent from build.files, or from disk in that exact case');
   });
 
   it('packages every stylesheet the HTML entry points load', () => {
@@ -55,10 +66,10 @@ describe('what ships in the build', () => {
     for (const entry of HTML_ENTRIES) {
       for (const href of assetsOf(read(entry), 'href', 'link')) {
         if (!/\.css($|\?)/i.test(href)) continue;
-        if (!isPackaged(href)) missing.push(entry + ' → ' + href);
+        if (!isPackaged(href) || !existsExactCase(href)) missing.push(entry + ' → ' + href);
       }
     }
-    assert.deepEqual(missing, [], 'stylesheets loaded but absent from build.files');
+    assert.deepEqual(missing, [], 'stylesheets loaded but absent from build.files, or from disk in that exact case');
   });
 
   // The vendored copy is what the app actually runs; the devDependency only records which
@@ -83,13 +94,15 @@ describe('what ships in the build', () => {
 
 describe('the code parses', () => {
 
-  it('parses both inline scripts in index.html', () => {
-    const blocks = read('index.html').match(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g) || [];
-    assert.ok(blocks.length > 0, 'expected at least one inline script');
-    blocks.forEach((block, i) => {
-      const body = block.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
-      assert.doesNotThrow(() => new vm.Script(body), 'inline script #' + (i + 1));
-    });
+  it('parses the inline scripts in every page', () => {
+    for (const entry of HTML_ENTRIES) {
+      const blocks = read(entry).match(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g) || [];
+      blocks.forEach((block, i) => {
+        const body = block.replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+        assert.doesNotThrow(() => new vm.Script(body), entry + ' inline script #' + (i + 1));
+      });
+    }
+    assert.ok(/<script>/.test(read('index.html')), 'expected index.html to carry an inline script');
   });
 
   // Parse only - nothing runs, so browser globals never resolve and cost nothing.
@@ -115,8 +128,8 @@ describe('the code parses', () => {
   // SyntaxError that blanks the app on boot. Parsing them one at a time above cannot see it, and
   // neither can any other test - every module that would collide is DOM-coupled. Compiling them
   // in the page's own order reproduces the scope and surfaces the browser's own error.
-  it('loads every script into one shared scope without a name collision', () => {
-    const html = read('index.html');
+  for (const entry of ['index.html', 'stage.html']) it('loads every script ' + entry + ' loads into one shared scope without a name collision', () => {
+    const html = read(entry);
     const parts = [];
     const re = /<script\b([^>]*)>([\s\S]*?)<\/script>/g;
     let m;
