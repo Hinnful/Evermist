@@ -3,7 +3,7 @@
 // names, the copy taken before a change, and a stored record read into the plain shape and written back. No DOM. Tested.
 
 const MM = (typeof module !== 'undefined' && module.exports)
-  ? (require('../fog/themes/default.js'), require('../fog/themes/ice.js'),
+  ? (require('../fog/themes/default.js'), require('../fog/themes/blood.js'), require('../fog/themes/toxic.js'), require('../fog/themes/ice.js'), require('../fog/themes/fire.js'),
      Object.assign({}, require('../fog/fogGeometry.js'), require('../scenes/editStamps.js'), require('../render/weatherPlan.js'), require('../fog/themes/fogThemes.js')))
   : { copyShapeRings, decodeShapeFromSave, encodeShapeForSave, esAssignUids, weatherNormalize, fogThemeNormalize };
 

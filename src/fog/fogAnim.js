@@ -49,12 +49,16 @@ function fogAnimTick(ts) {
     var skipExpensiveWork = videoEnabled && ts < fogAnimThrottleNext;
 
     const tile = cloudBlendCanvas ? cloudBlendCanvas.width : 512;
+    const rise = !!fogThemeRecord(fogTheme).rise;
     for (let i = 0; i < CLOUD_PASSES.length; i++) {
       const p = CLOUD_PASSES[i];
       // Depth layers drift at their own pace on the Player.
       const dd = isPlayer ? FOG_DEPTH.drift[i] : 1;
-      const nx = fogAnimOffsets[i].x + p.driftX * dd * driftScale * dt * fogAnimSpeed;
-      const ny = fogAnimOffsets[i].y + p.driftY * dd * driftScale * dt * fogAnimSpeed;
+      // A rising theme (Fire) climbs instead of drifting sideways.
+      const dx = rise ? p.driftX * 0.25 : p.driftX;
+      const dy = rise ? -(Math.abs(p.driftY) + 10) : p.driftY;
+      const nx = fogAnimOffsets[i].x + dx * dd * driftScale * dt * fogAnimSpeed;
+      const ny = fogAnimOffsets[i].y + dy * dd * driftScale * dt * fogAnimSpeed;
       fogAnimOffsets[i].x = wrapOffset(nx, tile);
       fogAnimOffsets[i].y = wrapOffset(ny, tile);
 

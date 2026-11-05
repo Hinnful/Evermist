@@ -80,6 +80,18 @@ float heightAt(vec2 sp) {
   }
   return h;
 }
+
+// The same thickness at k times the clouds' frequency, shifted by c in cloud UV. ⚠ Scale the UV,
+// never the screen point: heightAt(sp * k) leaves the pan offset unscaled, so the pattern slides
+// against the map whenever the view moves.
+float heightAtK(vec2 sp, float k, vec2 c) {
+  float h = 0.;
+  for (int i = 0; i < 3; i++) {
+    vec2 uv = vec2(uCloudM[i].x * sp.x + uCloudM[i].y * sp.y, uCloudM[i].z * sp.x + uCloudM[i].w * sp.y) - uCloudO[i];
+    h += texture2D(uCloud, uv * k + c).a * uCloudA[i];
+  }
+  return h;
+}
 `;
 
 const PLAYER_FOG_MAIN = `
@@ -108,6 +120,7 @@ void main() {
     col = c.rgb * uCloudC[i] * uCloudA[i] + col * (1.0 - c.a * uCloudA[i]);
     dens += c.a * uCloudA[i];
   }
+  float cl = dot(col, vec3(.299, .587, .114));
   // Volume: the cloud lit from the top left, crests catching light and thin parts sinking darker.
   vec2 lo = normalize(vec2(-1., -1.3)) * uTile * .03;
   float h1 = heightAt(sp + lo);
@@ -125,7 +138,7 @@ void main() {
   // The living edge: the fog's own thickness nudges where the edge sits, so it curls as the clouds drift.
   float a = 1.0;
   if (inMap) {
-    vec2 w = (vec2(heightAt(sp * 1.8 + vec2(910., 370.)), heightAt(sp * 1.8 + vec2(130., 710.))) - 1.15) * .018 * uRes.y * uMaskM;
+    vec2 w = (vec2(heightAtK(sp, 1.8, vec2(.37, .81)), heightAtK(sp, 1.8, vec2(.63, .29))) - 1.15) * .018 * uRes.y * uMaskM;
     a = maskAt(muv + w);
   }
   float rim = smoothstep(.1, .4, a) * smoothstep(.78, .4, a) * (.65 + .35 * sin(t * .6 + dens * 7.));

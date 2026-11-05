@@ -3,7 +3,10 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const T = require('../src/fog/themes/fogThemes.js');
 require('../src/fog/themes/default.js');
+require('../src/fog/themes/blood.js');
+require('../src/fog/themes/toxic.js');
 require('../src/fog/themes/ice.js');
+require('../src/fog/themes/fire.js');
 const { parseSceneFogSettings } = require('../src/fog/fogColor.js');
 global.esWithUids = require('../src/scenes/editStamps.js').esWithUids;
 const E = require('../src/scenes/editStamps.js');
@@ -11,8 +14,8 @@ const TP = require('../src/scenes/transferPlan.js');
 const { sceneBackupMeta } = require('../src/scenes/backup.js');
 
 describe('the fog theme records', () => {
-  it('list Default first, then Ice, each with what the dropdown and the TV need', () => {
-    assert.deepEqual(T.FOG_THEMES.map(t => t.id), ['default', 'ice']);
+  it('list the five themes in the dropdown order, each with what the dropdown and the TV need', () => {
+    assert.deepEqual(T.FOG_THEMES.map(t => t.id), ['default', 'blood', 'toxic', 'ice', 'fire']);
     for (const t of T.FOG_THEMES) {
       assert.match(t.hex, /^#[0-9a-f]{6}$/);
       assert.equal(t.swatch, t.hex);
@@ -21,6 +24,10 @@ describe('the fog theme records', () => {
       assert.equal(t.rim.length, 3);
       assert.ok(t.shader.length > 0);
     }
+  });
+  it('let only Fire rise, and only Blood draw no rim', () => {
+    assert.deepEqual(T.FOG_THEMES.filter(t => t.rise).map(t => t.id), ['fire']);
+    assert.deepEqual(T.fogThemeRecord('blood').rim, [0, 0, 0]);
   });
   it('share Default\'s cloud warp, so a theme switch never rebuilds the cloud frames', () => {
     const d = T.fogThemeRecord('default').anim;

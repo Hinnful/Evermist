@@ -20,7 +20,7 @@ vec3 hexVor(vec2 x) { vec2 n = floor(x), f = fract(x); float d1 = 8., d2 = 8.; v
   return vec3(id, sqrt(d2) - sqrt(d1)); }
 `,
   shader: `
-    vec2 wq = vec2(heightAt(sp * 1.3 + vec2(300., 90.)), heightAt(sp * 1.3 + vec2(40., 520.))) * .5;
+    vec2 wq = vec2(heightAtK(sp, 1.3, vec2(.71, .17)), heightAtK(sp, 1.3, vec2(.09, .54))) * .5;
     vec3 hA = hexVor(p * 16. + wq);
     float brk = smoothstep(.3, .65, fbm3(p * 3. + t * .03));
     float side = smoothstep(0., .04, fg0 - m) * smoothstep(.35, .6, fg0);

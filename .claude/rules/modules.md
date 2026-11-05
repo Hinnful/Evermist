@@ -30,7 +30,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `fog/fogGeometry.js` | Pure fog geometry kernel. Tested |
 | `fog/fogTheme.js` | The fog theme on a live window: the DM's pick, a map's restore, and the Player taking the theme it is sent |
 | `fog/themes/fogThemes.js` | The fog themes' registry and the pure `fogThemeNormalize`. Tested |
-| `fog/themes/default.js` | The Default fog theme record: colour, tint, motion, its shader branch. One file per theme, `ice.js` beside it |
+| `fog/themes/default.js` | The Default fog theme record: colour, tint, motion, its shader branch. One file per theme: `blood.js`, `toxic.js`, `ice.js` and `fire.js` beside it |
 | `fog/fogColor.js` | Pure fog colour kernel: base, tint, the step between two, a scene's settings. Tested |
 | `shapes/doorGeometry.js` | Pure door-notch kernel. Tested |
 | `rooms/vttPlan.js` | Pure UVTT floor-plan → room-polygon kernel. Tested, dependency-free |
@@ -265,7 +265,7 @@ repo root:
 ```
 i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
-fog/fogGeometry.js → fog/fogColor.js → fog/themes/fogThemes.js → fog/themes/default.js → fog/themes/ice.js → render/weatherPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → rooms/vttHoles.js → fog/lightGeometry.js →
+fog/fogGeometry.js → fog/fogColor.js → fog/themes/fogThemes.js → fog/themes/default.js → fog/themes/blood.js → fog/themes/toxic.js → fog/themes/ice.js → fog/themes/fire.js → render/weatherPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → rooms/vttHoles.js → fog/lightGeometry.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogTheme.js → fog/fogControls.js → shapes/roomOps.js →
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/repairKeys.js → shapes/toolShapes.js →
 shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →

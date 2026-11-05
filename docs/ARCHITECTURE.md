@@ -220,11 +220,15 @@ The fog is the heart of the app, so it's worth understanding.
    repeating pattern on a conveyor belt.
 
 4. **A fog theme, picked by name.** Map settings' Fog row is one dropdown of fixed themes
-   (Default and Ice; Blood, Toxic and Fire follow). There is no custom colour, tint, movement
+   (Default, Blood, Toxic, Ice, Fire). There is no custom colour, tint, movement
    preset or movement switch; each theme carries its own colour, tint and motion. Every theme shares
    one base: cloud volume lit from the top left, a living edge, depth layers, clouds at room size
    and fog darker against walls. Default adds slow breathing and pale depth haze (base #1A1A2E); Ice
    adds a honeycomb icy edge, near-still motion, soft glints, crystal growth and a light sweep.
+   Blood is slow, with a wet sheen, dried patches, even blood vessels, a few hearts beating on their
+   own and a thin dark edge. Toxic has fumes, a glow from below, bubbles, sparse corroded patches and
+   a thin acid edge. Fire rises, lit from below, with a burning edge, rising sparks and rare small
+   flames. The Player's fog pass cannot read the map under it, so no theme distorts the map.
    Each scene remembers its theme as `fogTheme`, saved beside `weather` (Default is an absent
    field), and it rides through Export/Import. `fogSettings` is passed through untouched. A theme
    stays inside fogged rooms and never seeps into revealed ones. All themes share Default's cloud

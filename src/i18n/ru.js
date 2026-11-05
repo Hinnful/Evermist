@@ -171,6 +171,8 @@ const RU = {
   'Fog theme for this map': 'Тема тумана для этой карты',
   'Weather goes back to No weather, and the fog theme and feather go back to Default and 12.': 'Погода вернётся к «Без погоды», а тема тумана и растушёвка — к «Стандартный» и 12.',
   'Default': 'Стандартный',
+  'Blood': 'Кровь',
+  'Toxic': 'Яд',
   'Ice': 'Лёд',
   'Hue': 'Оттенок',
   'Tint strength': 'Сила оттенка',

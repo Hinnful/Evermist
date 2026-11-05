@@ -243,8 +243,7 @@ control of its own, because a size is a quantity someone can hold an opinion abo
 not; since the dock (2026-10-02) it is a field scrubbed by its icon rather than a slider.
 
 ### Distinctive fog identities · `SETTLED` (2026-11-04)
-Built as fixed fog themes, one dropdown in Map settings (Default and Ice now; Blood, Toxic and Fire
-follow). The custom fog colour, tint, movement presets and dials and the movement switch are gone: a
+Built as fixed fog themes, one dropdown in Map settings: Default, Blood, Toxic, Ice and Fire. The custom fog colour, tint, movement presets and dials and the movement switch are gone: a
 tuned fog could only come out worse. The DM's own saved themes stay rejected.
 
 ### The world map's mist has no off switch · `REJECTED` (2026-10-09)

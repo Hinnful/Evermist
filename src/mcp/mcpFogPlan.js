@@ -4,7 +4,7 @@
 // dropdown shows. No DOM. Tested.
 
 const MFP = (typeof module !== 'undefined' && module.exports)
-  ? (require('../fog/themes/default.js'), require('../fog/themes/ice.js'), require('../fog/themes/fogThemes.js'))
+  ? (require('../fog/themes/default.js'), require('../fog/themes/blood.js'), require('../fog/themes/toxic.js'), require('../fog/themes/ice.js'), require('../fog/themes/fire.js'), require('../fog/themes/fogThemes.js'))
   : { FOG_THEMES };
 
 // The words a call uses for a room's fog, as the app stores them (shroud, half, reveal).

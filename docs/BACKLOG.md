@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 14 open items; IDs run to 264."
+description: "Open work only. 14 open items; IDs run to 265."
 metadata: 
   node_type: memory
   type: project
@@ -93,11 +93,12 @@ hand for a few controls: sounds, reveals, a scene change. **Open:** which contro
 reaches an offline desktop app. Nothing on the phone reaches the TV except through the app.
 **Play · Phone**
 
-### 254. Fog themes: Blood, Toxic and Fire
-Filed 2026-11-04. 5.3.0 shipped fog themes with Default and Ice. Blood, Toxic and Fire follow as three more theme
-records, built as the prototype `.claude/private/design/item-254/fog-themes.html` shows them. Spec:
-`.claude/private/specs/fog-themes.md`, release 2.
-**Play · Player**
+### 265. Heat shimmer for the Fire fog theme
+Filed 2026-11-04. The prototype's Fire made the map just outside the fog waver; it did not ship in 5.3.0 because the
+Player's fog pass draws over the weather, effects and grid and cannot read the map under it. Find a way to distort
+the map beside fogged rooms (a pass that can read the map, or a displacement of the map layer itself), video maps
+included. Reference: `.claude/private/design/item-254/fog-themes.html`, Fire's heat shimmer.
+**Polish · Player**
 
 ### 264. Mist that drifts into revealed rooms
 Filed 2026-11-04. A light mist over revealed rooms as atmosphere, unlike a fog theme, which stays inside fogged rooms.

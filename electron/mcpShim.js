@@ -111,7 +111,7 @@ const TOOLS = [
   { name: 'set_fog_all', annotations: EDIT, description: 'Reveal or hide the whole map, every room included, as Reveal all and Hide all do.',
     inputSchema: { type: 'object', required: ['name', 'action'], properties: { name: NAME, place: PLACE_OF, action: { type: 'string', enum: ['reveal', 'hide'] } } } },
   { name: 'set_fog_look', annotations: EDIT, description: 'Set a map\'s fog theme, the same pick as the Fog dropdown in Map settings. A theme is the fog\'s whole look: colour, motion and effects.',
-    inputSchema: { type: 'object', required: ['name', 'theme'], properties: { name: NAME, place: PLACE_OF, theme: { type: 'string', enum: ['default', 'ice'] } } } },
+    inputSchema: { type: 'object', required: ['name', 'theme'], properties: { name: NAME, place: PLACE_OF, theme: { type: 'string', enum: ['default', 'blood', 'toxic', 'ice', 'fire'] } } } },
   { name: 'delete_scene', annotations: DELETE, description: 'Delete a map with its image, fog and rooms. List what goes, get the DM\'s yes, then call again with confirmed: true. Without confirmed nothing is deleted and the call only answers with what would go. undo_last_change brings it back. Animated maps cannot be deleted by Claude.',
     inputSchema: { type: 'object', required: ['name'], properties: { name: NAME, place: PLACE_OF, confirmed: { type: 'boolean', description: 'true only after the DM said yes to the list of what goes.' } } } },
   { name: 'rename_place', annotations: EDIT, description: 'Rename a group. Its notes, maps and roads come with it.',

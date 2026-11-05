@@ -133,7 +133,7 @@ Save/apply named fog themes was descoped out of the fog-colour epic. Distinct fr
 themes, which shipped (see below); the DM's own saved themes stay rejected.
 
 ### Fog themes replace the fog's look controls · `SETTLED` (2026-11-04)
-Map settings' Fog row is one dropdown of named themes (Default, Ice; Blood, Toxic, Fire follow). The
+Map settings' Fog row is one dropdown of named themes (Default, Blood, Toxic, Ice, Fire; Default and Ice in 5.3.0, the rest in 5.4.0). The
 custom colour, tint %, Calm/Medium/Fast/Custom movement and the movement eye (key A) were removed on
 product grounds, since a tuned fog could come out worse; no slider and no per-theme switches. Existing
 maps open on Default, a new look (#1A1A2E base plus the shared base), so every fog changes on update.
