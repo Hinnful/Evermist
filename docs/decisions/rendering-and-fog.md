@@ -373,4 +373,24 @@ less the feather. An arm thinner than the feather or a steep curve inverted the 
 
 ### Fire's heat shimmer stays inside the fog · `SETTLED` (2026-11-05)
 The Fire fog itself wavers; nothing outside the fog moves and revealed rooms never shimmer, because the Player's fog pass
-cannot read the map under it. Mist drifting into revealed rooms was dropped (was BACKLOG 264).
+cannot read the map under it. Mist drifting into revealed rooms was dropped (was BACKLOG 264). Shipped in 5.4.0.
+
+### TV fog changes run per pixel, not as a crossfade · `SETTLED` (2026-11-05)
+Each pixel has its own progress: a CPU rank (noise shaped per theme, rank-normalised over the changed region plus a ring
+round it) and a start time per change. Rejected on look or behaviour: a uniform crossfade (blinked, the blurred near copies
+jumped on frame 1), raw screen-space noise thresholds (a small room sat in one late blob and waited 1-2 s), a NEAREST
+order texture and 2x2 noise (blocky), a glowing front, and "Thin parts first", "From the walls in", "From the middle out"
+as the Default (read as slides). Default is "Clouds part". Ice is encroaching ice (a Voronoi crystal-snap was too smooth,
+then too regular), Fire burning paper (the old flame tongues are gone for good), Toxic rust in its own acid-green edge
+(a fumes variant and a rust-orange line were dropped), Blood drips. Timings: 1.5-3.2 s per theme, map-switch cover 3 s
+close and 4 s open (5 s and 4.5+6.7 s were too slow). Lines keep constant screen width via fwidth, so the Player's fog
+compiles as ESSL 3.00, since WebGL2 refuses GL_OES_standard_derivatives in ESSL 1.00.
+
+### The TV shares the DM's thread, so the DM defers its work · `SETTLED` (2026-11-05)
+The Player window comes from `window.open`, so the DM starting a new 4K video froze the TV about 90 ms as its fog began to
+close. The DM now defers loading the new map until the TV's cover has closed and dims its own map area at the click.
+Declined: a separate process for the TV (a big rework) and preloading (only moves the freeze). Fog goes as raw ImageData
+(the PNG encode cost ~65 ms), the DM fog canvases are CPU-backed and the room-edge erosion reads a CPU cloud tile, since
+a GPU readback stalled the shared thread. Discrete edits send at once; brush strokes keep the debounce. The first-map
+hint scan runs only while a hint reading it can show (it stalled each switch 35-140 ms); dropping `willReadFrequently`
+there did not help and was reverted.

@@ -529,14 +529,14 @@ function loadVideoFromFile(file, onVideoLoaded, onFail) {
       fogDataCanvas = document.createElement('canvas');
       fogDataCanvas.width  = Math.ceil(mapWidth  / FOG_SCALE);
       fogDataCanvas.height = Math.ceil(mapHeight / FOG_SCALE);
-      fogDataCtx = fogDataCanvas.getContext('2d');
+      fogDataCtx = fogDataCanvas.getContext('2d', FOG_CTX_OPTS);
       fogDataCtx.fillStyle = '#1a1a2e';
       fogDataCtx.fillRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
 
       baseFogCanvas = document.createElement('canvas');
       baseFogCanvas.width = fogDataCanvas.width;
       baseFogCanvas.height = fogDataCanvas.height;
-      baseFogCtx = baseFogCanvas.getContext('2d');
+      baseFogCtx = baseFogCanvas.getContext('2d', FOG_CTX_OPTS);
       baseFogCtx.fillStyle = '#1a1a2e';
       baseFogCtx.fillRect(0, 0, baseFogCanvas.width, baseFogCanvas.height);
 

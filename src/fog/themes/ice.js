@@ -43,4 +43,26 @@ vec3 hexVor(vec2 x) { vec2 n = floor(x), f = fract(x); float d1 = 8., d2 = 8.; v
     float tw = pow(max(0., sin(t * .8 + ghh * 60.)), 12.) * step(.988, ghh) * hd;
     col += vec3(.82, .92, 1.) * tw * smoothstep(.3, 0., length(gf)) * .35;
   `,
+  trans: {
+    dur: [3000, 2600],
+    front: [0.396, 0.473, 0.55],
+    tint: 0,
+    rank: (u, v, n, f, dir, w) => (dir > 0 ? 1 - w : w) * .9 + .1 * n,
+    glsl: `
+// A map switch has no room: frost closes in from the screen edges and thaws from the centre.
+float screenRank(vec2 sp, float n, float dir) { vec2 q = sp / uRes; float w = clamp(min(min(q.x, 1. - q.x), min(q.y, 1. - q.y)) * 2.6, 0., 1.); return (dir > 0. ? 1. - w : w) * .9 + .1 * n; }
+// Encroaching ice: spiky crystal fingers run ahead along ridges, a thin rim on the front, fresh veins behind it.
+float fogStep(float rk, float e, vec2 sp, float dir) {
+  vec2 p0 = sp * uPatM - uPatO;
+  vec2 wq = (vec2(fbm3(p0 * 4.), fbm3(p0 * 4. + 7.)) - .5) * .6;
+  float spikes = pow(ridge(p0 * 14. + wq * 6.), 4.) * .24 + pow(ridge(p0 * 33. + wq * 9. + 3.), 4.) * .12;
+  float r = .36 + rk * .64 - spikes;
+  float x = e * 1.02 - .01; float g = smoothstep(r - .006, r + .006, x);
+  gFront = max(gFront, lineAt(x - r, 2.) * .85);
+  float behind = dir > 0. ? r - x : x - r;
+  float veins = pow(ridge(p0 * 52. + wq * 12.), 9.);
+  gFront = max(gFront, veins * step(0., behind) * (1. - smoothstep(0., .24, behind)) * .45);
+  return g; }
+`,
+  },
 });

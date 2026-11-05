@@ -240,6 +240,20 @@ The fog is the heart of the app, so it's worth understanding.
    Manual it waits for Send, a held TV holds it, and on a map switch it changes during the close),
    and on the Player it also recolours the area around the map.
 
+   **A fog change on the TV is not a uniform crossfade.** Room reveal/hide, brush and Reveal/Hide
+   all give each pixel its own progress: a CPU rank (noise shaped per theme, rank-normalised over the
+   changed region plus a ring round it so edge effects follow) and a start time per change, so
+   overlapping changes run independently, and a change landing on pixels still moving bakes their
+   state first. `fogTransitionPlan.js` is the pure kernel, `playerFogTrans.js` holds the order
+   texture, the overlapping changes and the outgoing mask, and `playerFogShader.js` the shader
+   source. Each theme's `trans` record carries `dur` (about 1.5-3.2 s), `front`, `tint`, the GLSL
+   `fogStep`/`screenRank` and its CPU rank. Default parts like clouds with fuzzy edges and a soft
+   pale line; Ice creeps from the walls in on hide and thaws from the middle on reveal; Fire burns
+   like paper; Toxic rusts in ragged pits; Blood drips down in blots. Transition lines keep a constant
+   screen-pixel width (`fwidth`), so the Player's fog programs compile as ESSL 3.00 on WebGL2, with a
+   fixed-width fallback. Fire's fog also wavers (heat shimmer), strongest deep inside, zero at the
+   edges.
+
 5. **The DM sees through it, players don't.** On the DM screen the fog is semi-transparent
    so you can plan. On the Player screen it's fully opaque. This matters when judging any
    fog setting by eye: the DM window shows roughly half the density the TV does. It shows the
@@ -252,12 +266,17 @@ The fog is the heart of the app, so it's worth understanding.
 
 7. **The fog is also what covers a scene switch.** Changing scenes on the TV isn't a screen
    fading to black and back. The fog closes over the map the party is looking at, holds while
-   the next map loads, then clears off the new one - about seven seconds end to end. While it
+   the next map loads, then clears off the new one - the cover closes in 3 s and opens in 4 s. The
+   fog moves in the theme's own hide (close) and reveal (open) over the whole screen. While it
    is fully closed nothing is revealed at all, which is what lets the map underneath change
-   size, shape and camera without anything showing. Two things ride the closing half so they
-   never happen in open view: the new scene's fog theme, which crosses while the fog thickens,
-   and the cloud texture, which holds its size and position across the swap instead of
-   resizing to the new map. Nothing is written on screen during a switch - the scene's name was
+   size, shape and camera without anything showing; the cover reaches every mask read, the blurred
+   near copies included. Between two themes the incoming one washes over the outgoing in its own
+   hide style under the closed cover (1.8 s), the outgoing keeping its colours; a live theme pick
+   on one map still eases the colour and crossfades over 500 ms. The cloud texture and theme
+   patterns hold their size and position across the swap instead of resizing to the new map, and
+   theme effects fade with the fog. The Player shares the DM window's thread, so the DM window
+   defers loading the new map until the TV's cover has closed and dims its own map area at the
+   click. Nothing is written on screen during a switch - the scene's name was
    shown there for a while and was taken back out.
 
 8. **Both windows draw fog on the GPU, in different shapes.** The DM's fog is map-sized
@@ -323,7 +342,11 @@ leading the WebGL map, which looks like the grid sliding against the map during 
 clock keeps them registered to each other.
 
 The frame rate is capped at 30fps. There's no user-facing control for this. A tabletop map
-doesn't need 60, and the TVs barely support it.
+doesn't need 60, and the TVs barely support it. The Player's cap rises to 60 while a fog change
+or the cover moves, then returns to 30, and its fog uniforms refresh every ticker frame.
+
+Fog reaches the TV as raw ImageData, not a PNG. Discrete fog edits (room fog buttons, Reveal/Hide
+all, doors, undo/redo) send at once; brush strokes keep the 300 ms debounce.
 
 ## How the two windows stay in sync
 

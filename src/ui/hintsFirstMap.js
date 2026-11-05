@@ -11,9 +11,10 @@ let _hfNewId = null;       // the room whose toast is up
 let _hfBrushed = false;    // the map opened with a brushed revealed area; read once per open
 
 // Read once when a map opens (hintsMapOpened): any clear pixel in the brush layer, shrunk to 64px so a 10000px map costs nothing.
+// ⚠ Only while a hint that reads it can still show: the read stalls the window ~100 ms, and the TV shares it.
 function hintsScanBrush() {
   _hfBrushed = false;
-  if (!baseFogCanvas) return;
+  if (!baseFogCanvas || (!_hintsMayShow('reveal') && !_hintsMayShow('show-on-tv'))) return;
   const c = document.createElement('canvas');
   c.width = c.height = 64;
   const g = c.getContext('2d', { willReadFrequently: true });

@@ -25,6 +25,27 @@ describe('the fog theme records', () => {
       assert.ok(t.shader.length > 0);
     }
   });
+  it('give each theme its own transition: durations, a front, a rank and a fogStep with a screenRank', () => {
+    for (const t of T.FOG_THEMES) {
+      const tr = t.trans;
+      assert.ok(tr.dur.length === 2 && tr.dur.every(ms => ms >= 2000 && ms <= 4000), t.id);
+      assert.ok(tr.front.length === 3 && tr.front.every(c => c >= 0 && c <= 1), t.id);
+      assert.ok(tr.tint === 0 || tr.tint === 1);
+      assert.match(tr.glsl, /float fogStep\(float rk, float e, vec2 sp, float dir\)/);
+      assert.match(tr.glsl, /float screenRank\(vec2 sp, float n, float dir\)/);
+      const w = [0, .3, 1];
+      for (const dir of [1, -1]) for (const wd of w) {
+        const r = tr.rank(.4, .6, .5, .5, dir, wd, (x, y) => (x + y) % 1);
+        assert.ok(Number.isFinite(r) && r >= -.01 && r <= 1.01, t.id + ' ' + r);
+      }
+    }
+  });
+  it('shape the rank their own way: Ice from the walls in, Blood from the top down', () => {
+    const ice = T.fogThemeRecord('ice').trans.rank, blood = T.fogThemeRecord('blood').trans.rank, vn = () => .5;
+    assert.ok(ice(.5, .5, .5, .5, -1, 0) < ice(.5, .5, .5, .5, -1, 1));
+    assert.ok(ice(.5, .5, .5, .5, 1, 0) > ice(.5, .5, .5, .5, 1, 1));
+    assert.ok(blood(.5, 0, .5, .5, 1, .5, vn) < blood(.5, 1, .5, .5, 1, .5, vn));
+  });
   it('let only Fire rise, and only Blood draw no rim', () => {
     assert.deepEqual(T.FOG_THEMES.filter(t => t.rise).map(t => t.id), ['fire']);
     assert.deepEqual(T.fogThemeRecord('blood').rim, [0, 0, 0]);
@@ -37,7 +58,7 @@ describe('the fog theme records', () => {
     }
   });
   it('keep their shader source ASCII, which a driver may otherwise reject', () => {
-    for (const t of T.FOG_THEMES) assert.ok(/^[\x09\x0a\x0d\x20-\x7e]*$/.test(t.shaderFns + t.shader), t.id);
+    for (const t of T.FOG_THEMES) assert.ok(/^[\x09\x0a\x0d\x20-\x7e]*$/.test(t.shaderFns + t.shader + t.trans.glsl), t.id);
   });
 });
 

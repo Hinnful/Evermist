@@ -61,9 +61,7 @@ function applyPlayerSceneTransition(msg) {
       snapFogCover(1);
       covered();
     }
-  } else if (msg.phase === 'tint') {
-    // The incoming scene's fog colour, sent ahead of its map. Eased into over what is
-    // left of the close, so the colour change happens inside thickening fog.
-    applyPlayerFogTheme(msg.theme);
   }
+  // phase 'tint' (the incoming theme, sent ahead of the map) is left to the map's own payload: the
+  // outgoing theme keeps its colour through the close, and the swap under the cover is the change.
 }

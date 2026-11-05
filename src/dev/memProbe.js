@@ -96,7 +96,6 @@ function _mpCanvasInventory() {
   add('fogBlurCanvas',       typeof fogBlurCanvas       !== 'undefined' ? fogBlurCanvas       : null);
   add('fogEffectCanvas',     typeof fogEffectCanvas     !== 'undefined' ? fogEffectCanvas     : null);
   add('fogTransPrev',        typeof fogTransPrev        !== 'undefined' ? fogTransPrev        : null);
-  add('fogTransBlurPrev',    typeof fogTransBlurPrev    !== 'undefined' ? fogTransBlurPrev    : null);
   add('_fogScratch',         typeof _fogScratch         !== 'undefined' ? _fogScratch         : null);
 
   // Cloud texture set — 16 frames plus the blend target.

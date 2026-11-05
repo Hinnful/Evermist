@@ -795,6 +795,7 @@
   <canvas id="fog-canvas"></canvas>
   <canvas id="grid-canvas"></canvas>
   <canvas id="cursor-canvas"></canvas>
+  <div id="dm-switch-veil"></div>
 </div>
 
 <!-- THE WORLD MAP: a layer over the map, not inside #canvas-container, so none of the map's own pointer
@@ -924,13 +925,16 @@
 <script src="lib/pixi.min.js"></script>
 <script src="lib/polygon-clipping.umd.js"></script>
 <script src="src/render/renderer.js"></script>
+<script src="src/render/playerFogShader.js"></script>
 <script src="src/render/playerFogPass.js"></script>
+<script src="src/render/playerFogTrans.js"></script>
 <script src="src/render/dmFogLayer.js"></script>
 <script src="src/state.js"></script>
 <script src="src/render/display.js"></script>
 <script src="src/render/video.js"></script>
 <script src="src/render/videoDiag.js"></script>
 <script src="src/fog/fogGeometry.js"></script>
+<script src="src/fog/fogTransitionPlan.js"></script>
 <script src="src/fog/fogColor.js"></script>
 <script src="src/fog/themes/fogThemes.js"></script>
 <script src="src/fog/themes/default.js"></script>

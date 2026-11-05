@@ -29,10 +29,10 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # the What's new list is read off the release commits and tags
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -53,7 +53,7 @@ jobs:
       - name: Check the update pointer
         run: node tools/check-update-metadata.js ${{ matrix.meta }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.name }}
           path: |

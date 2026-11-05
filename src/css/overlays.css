@@ -73,6 +73,14 @@
   #scene-fade.dark  { opacity: 1; }
   #scene-fade.blind { background: #1a1a2e; }
 
+  /* The DM's map dimming at a switch while the TV's fog closes (sceneSwitch.js). Opacity only. */
+  #dm-switch-veil {
+    position: absolute; inset: 0; z-index: 50;
+    background: #07080b; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  #dm-switch-veil.up { opacity: 0.92; }
+
   /* A gallery picture on the TV (tvPicture.js). Under the scene cover.
      The map dims first on the way in and last on the way out. */
   #tv-picture {

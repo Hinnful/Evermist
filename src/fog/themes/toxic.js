@@ -44,4 +44,20 @@ float fxSteam(vec2 q) { float s1 = efbm(q * (1.2 / G) + vec2(sin(uTime * .2) * .
     col = mix(col, vec3(.015, .02, .01), hole); col += vec3(.75, 1., .15) * hr * .6;
     col += fxBubbles(p, .1, .45) * .7 * smoothstep(.15, .3, cl) * hd;
   `,
+  trans: {
+    dur: [2800, 2800],
+    front: [0.22, 0.4, 0.06],
+    tint: 0,
+    rank: (u, v, n, f, dir, w) => .6 * n + .4 * f,
+    glsl: `
+float screenRank(vec2 sp, float n, float dir) { return .6 * n + .4 * noise(sp / uRes.y * 20.); }
+// Rust: the fog is eaten through in ragged, pitted holes, edged with a thin acid-green line.
+float fogStep(float rk, float e, vec2 sp, float dir) {
+  vec2 p0 = sp * uPatM - uPatO;
+  float r = clamp(rk + rag(p0, 26., .5) + (noise(p0 * 90.) - .5) * .12, 0., 1.);
+  float x = e * 1.5 - .25; float g = smoothstep(r - .02, r + .02, x);
+  gFront = max(gFront, lineAt(x - r, 2.2) * .9);
+  return g; }
+`,
+  },
 });

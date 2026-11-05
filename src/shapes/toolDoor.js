@@ -63,7 +63,7 @@ function commitDoorChange() {
   rebuildFogEffect();
   fogDirty = true;
   scheduleRender();
-  scheduleAutoSync();
+  scheduleAutoSync(true);
 }
 
 // Every room's doors resize with the grid, so a scene whose grid was never calibrated is corrected

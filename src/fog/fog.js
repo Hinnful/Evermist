@@ -2,6 +2,8 @@
 
 // ─── Fog constants ────────────────────────────────────────────────────────────
 const FOG_SCALE          = 4;
+// The fog canvases are read back on every TV push (sendToPlayer), and a GPU canvas stalls the shared DM/TV thread ~65 ms per read.
+const FOG_CTX_OPTS = { willReadFrequently: true };
 const FOG_BLUR_RADIUS    = 8;   // px at 1/4 scale — tuned for ~6000px-wide maps
 const FOG_OPACITY_DM     = 0.55;
 const FOG_FEATHER_RADIUS = 12;  // px at FOG_SCALE — tuned for ~6000px-wide maps
@@ -128,7 +130,7 @@ function applyPolygonToFog(poly) {
     const by = Math.floor(bb.minY / FOG_SCALE) - pad;
     const bw = Math.ceil((bb.maxX - bb.minX) / FOG_SCALE) + pad * 2;
     const bh = Math.ceil((bb.maxY - bb.minY) / FOG_SCALE) + pad * 2;
-    if (!_fogScratch) { _fogScratch = document.createElement('canvas'); _fogScratchCtx = _fogScratch.getContext('2d'); }
+    if (!_fogScratch) { _fogScratch = document.createElement('canvas'); _fogScratchCtx = _fogScratch.getContext('2d', FOG_CTX_OPTS); }
     _fogScratch.width  = Math.max(1, bw);  // resize clears the canvas
     _fogScratch.height = Math.max(1, bh);
     const scratch = _fogScratch, sCtx = _fogScratchCtx;
@@ -145,12 +147,13 @@ function applyPolygonToFog(poly) {
       const tileSize = Math.max(8, Math.round(48 * getFogSizeScale()));
       const offX = ((bx % tileSize) + tileSize) % tileSize;
       const offY = ((by % tileSize) + tileSize) % tileSize;
+      const tile = _fogErodeTile(tileSize);
       sCtx.save();
       sCtx.globalCompositeOperation = 'destination-out';
       sCtx.globalAlpha = 0.22;
       for (let cx = -offX; cx < scratch.width; cx += tileSize) {
         for (let cy = -offY; cy < scratch.height; cy += tileSize) {
-          sCtx.drawImage(cloudCanvas, cx, cy, tileSize, tileSize);
+          sCtx.drawImage(tile, cx, cy);
         }
       }
       sCtx.restore();
@@ -278,7 +281,7 @@ function carveDoorNotches(fogVerts, doors, size, inward, feather, half) {
   const pad = Math.ceil(feather) + 2;
   const bx = Math.floor(minX) - pad, by = Math.floor(minY) - pad;
   const bw = Math.ceil(maxX - minX) + pad * 2, bh = Math.ceil(maxY - minY) + pad * 2;
-  if (!_fogScratch) { _fogScratch = document.createElement('canvas'); _fogScratchCtx = _fogScratch.getContext('2d'); }
+  if (!_fogScratch) { _fogScratch = document.createElement('canvas'); _fogScratchCtx = _fogScratch.getContext('2d', FOG_CTX_OPTS); }
   _fogScratch.width  = Math.max(1, bw);   // resize clears the canvas
   _fogScratch.height = Math.max(1, bh);
   const scratch = _fogScratch, sCtx = _fogScratchCtx;
@@ -366,6 +369,19 @@ function flattenSharedWalls(sCtx, poly, fogScaledVerts, fogHoles, feather, bx, b
   }
   sCtx.fill();
   sCtx.restore();
+}
+
+// The cloud tile the room edges are eroded with, as a CPU copy at the size it is drawn. ⚠ cloudCanvas lives on the
+// GPU: drawn into the CPU scratch canvas once per tile, it read the GPU back every time and stalled the click.
+let _fogErodeCvs = null, _fogErodeSrc = null;
+function _fogErodeTile(size) {
+  if (!_fogErodeCvs || _fogErodeSrc !== cloudCanvas || _fogErodeCvs.width !== size) {
+    _fogErodeCvs = document.createElement('canvas');
+    _fogErodeCvs.width = _fogErodeCvs.height = size;
+    _fogErodeCvs.getContext('2d', FOG_CTX_OPTS).drawImage(cloudCanvas, 0, 0, size, size);
+    _fogErodeSrc = cloudCanvas;
+  }
+  return _fogErodeCvs;
 }
 
 function rebuildFogFromPolygons() {
@@ -540,7 +556,9 @@ const _pfogO = new Float32Array(6);
 const _pfogA = new Float32Array(3);
 const _pfogC = new Float32Array(9);
 const _pfogRes = new Float32Array(2);
-const _pfogPScale = new Float32Array(2);
+const _pfogPatM = new Float32Array(2);
+const _pfogPatO = new Float32Array(2);
+const _pfogDur = new Float32Array(2);
 const _pfogRim = new Float32Array(3);
 // Depth layers: the far pass drifts slower, the near pass faster, denser and darker.
 const FOG_DEPTH = { drift: [1, 0.35, 2.4], alpha: [1, 1, 1.6], col: [1, 1.1, 0.7] };
@@ -578,8 +596,14 @@ function renderFog(vp) {
     s = fogCloudHold.s; cx = fogCloudHold.cx; cy = fogCloudHold.cy;
     hw = fogCloudHold.hw; hh = fogCloudHold.hh;
   }
+  // The theme patterns: screen pixel -> pattern unit, pinned and re-anchored like the clouds.
+  let pm = fogCloudAdj.pk / (zoom * FOG_PATTERN_UNIT);
+  let px = panX + fogCloudAdj.pdx, py = panY + fogCloudAdj.pdy;
+  if (fogCloudHold && fogCloudHold.pm) { pm = fogCloudHold.pm; px = fogCloudHold.px; py = fogCloudHold.py; }
+  _pfogPatM[0] = _pfogPatM[1] = pm;
+  _pfogPatO[0] = px * pm; _pfogPatO[1] = py * pm;
   // The transform AS DRAWN, banked so freeze/rebaseCloudTransform have something exact.
-  fogCloudLast = { s: s, cx: cx, cy: cy, hw: hw, hh: hh };
+  fogCloudLast = { s: s, cx: cx, cy: cy, hw: hw, hh: hh, pm: pm, px: px, py: py };
 
   // Screen pixel → cloud UV, per pass: the context's translate/rotate/scale chain, inverted.
   const tile = cloudBlendCanvas ? cloudBlendCanvas.width : 512;
@@ -612,29 +636,25 @@ function renderFog(vp) {
 
   // ⚠ A FULLY CLOSED COVER REVEALS NOTHING, whatever the mask says. That is what makes the cover
   // immune to the map changing size underneath it, which it does mid-switch.
-  let hasPrev = 0, transT = 1;
-  if (fogCoverT < 1 && fogTransBlurPrev) {
-    pixiSetPlayerFogPrevMask(fogTransBlurPrev);
-    hasPrev = 1;
-    transT  = fogTransT;
-  }
+  pixiPlayerFogTransStep();
+  const hasPrev = fogCoverT < 1 && pixiPlayerFogChanging() ? 1 : 0;
+  _pfogDur[0] = rec.trans.dur[0]; _pfogDur[1] = rec.trans.dur[1];
 
   _pfogRes[0] = window.innerWidth; _pfogRes[1] = window.innerHeight;
-  _pfogPScale[0] = bw * FOG_SCALE / FOG_PATTERN_UNIT;
-  _pfogPScale[1] = bh * FOG_SCALE / FOG_PATTERN_UNIT;
   _pfogRim.set(rec.rim);
 
   pixiUpdatePlayerFog({
     theme: rec.id,
     cloudM: _pfogM, cloudO: _pfogO, cloudA: _pfogA, cloudC: _pfogC,
-    res: _pfogRes, pScale: _pfogPScale, rim: _pfogRim,
+    res: _pfogRes, patM: _pfogPatM, patO: _pfogPatO, dur: _pfogDur, rim: _pfogRim,
     tile: s * tile * PLAYER_FOG_CLOUD_SIZE, time: performance.now() / 1000,
     maskM: _pfogMaskM, maskO: _pfogMaskO, maskLim: _pfogMaskLim,
     base: hexToRGBFloat(fogBaseColor, _pfogRGB),
     tint: hexToRGBFloat(fogTintColor, _pfogRGB2),
     tintA: FOG_TINT_ALPHA,
     cover: Math.min(1, fogCoverT),
-    transT, hasPrev,
+    coverDir: fogCoverTo >= 1 ? 1 : 0,
+    hasPrev,
   });
 }
 
@@ -672,7 +692,7 @@ function _wholeMapFog(fill, isShroud) {
   rebuildFogEffect();
   fogDirty = true;
   scheduleRender();
-  scheduleAutoSync();
+  scheduleAutoSync(true);
 }
 
 // ─── Live fog color ───────────────────────────────────────────────────────────

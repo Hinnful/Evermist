@@ -851,7 +851,7 @@ function setPolygonMode(id, mode) {
   rebuildFogEffect();
   fogDirty = true;
   scheduleRender();
-  scheduleAutoSync();
+  scheduleAutoSync(true);
 }
 
 function toggleSelectedPolygon() {
@@ -868,7 +868,7 @@ function toggleSelectedPolygon() {
   rebuildFogEffect();
   fogDirty = true;
   scheduleRender();
-  scheduleAutoSync();
+  scheduleAutoSync(true);
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -142,9 +142,7 @@ function applyFogUpdate(msg) {
 // skipTransition: scene switches must not blend old fog into new — show new state directly.
 function loadPlayerFog(msg, skipTransition) {
   return new Promise(resolve => {
-    const img = new Image();
-    img.onerror = () => resolve();
-    img.onload = () => {
+    const apply = () => {
       // BOTH dimensions, never the width alone: two maps can share a width and differ in
       // height, and the kept canvas then squashes the incoming mask into the old aspect.
       if (!fogDataCanvas ||
@@ -155,8 +153,16 @@ function loadPlayerFog(msg, skipTransition) {
         fogDataCanvas.height = Math.ceil(mapHeight / FOG_SCALE);
         fogDataCtx = fogDataCanvas.getContext('2d');
       }
-      fogDataCtx.clearRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
-      fogDataCtx.drawImage(img, 0, 0, fogDataCanvas.width, fogDataCanvas.height);
+      const px = msg.fogImage;
+      if (px.width === fogDataCanvas.width && px.height === fogDataCanvas.height) {
+        fogDataCtx.putImageData(px, 0, 0);   // replaces every pixel, alpha included
+      } else {
+        const c = document.createElement('canvas');
+        c.width = px.width; c.height = px.height;
+        c.getContext('2d').putImageData(px, 0, 0);
+        fogDataCtx.clearRect(0, 0, fogDataCanvas.width, fogDataCanvas.height);
+        fogDataCtx.drawImage(c, 0, 0, fogDataCanvas.width, fogDataCanvas.height);
+      }
       lightsFogChanged();   // lights.js: the TV draws a light only where the fog is cleared
       if (!cloudPattern) generateCloudFrames(512, CLOUD_FRAME_COUNT);
       if (!skipTransition && msg.fogChanged) startFogTransition(!!msg.isShroud);
@@ -175,7 +181,7 @@ function loadPlayerFog(msg, skipTransition) {
       // end of the hold at full fog, one frame before the reveal — see openFogFromCover().
       resolve();
     };
-    img.src = msg.fogDataUrl;
+    Promise.resolve().then(apply);   // after the caller has the promise, as the image's load event was
   });
 }
 

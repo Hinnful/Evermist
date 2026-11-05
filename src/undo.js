@@ -114,7 +114,7 @@ function restoreState(snapshot) {
   if (snapshot.settings) { _undoApplySettings(snapshot.settings); return; }
   fogEditedSinceSave = true;
   baseFogCanvas = cloneCanvas(snapshot.baseFog);
-  baseFogCtx = baseFogCanvas.getContext('2d');
+  baseFogCtx = baseFogCanvas.getContext('2d', FOG_CTX_OPTS);
   polygons = snapshot.polygons.map(copyShapeRings);
   nextPolygonId = snapshot.nextPolygonId;
   // Snapshots taken before effects existed carry neither field, so an undo across that point
@@ -144,7 +144,7 @@ function restoreState(snapshot) {
   rebuildFogEffect();
   fogDirty = true;
   scheduleRender();
-  scheduleAutoSync();   // carries fog and effects together, on the Auto/Manual gate
+  scheduleAutoSync(true);   // carries fog and effects together, on the Auto/Manual gate
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 }
 

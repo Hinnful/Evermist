@@ -51,6 +51,8 @@ const MAP_CONVERT_BITRATE = 15000000;
 // to break up. Deliberately no UI control and not persisted.
 const APP_MAX_FPS   = 30;
 const APP_FRAME_MS  = 1000 / APP_MAX_FPS;
+// The Player's cap for the length of a fog change or the cover moving, so the motion is smooth.
+const APP_TRANSITION_FPS = 60;
 
 // ─── Render boost (DM viewport gestures) ─────────────────────────────────────
 // A gesture lifts the cap for its duration, since 30fps reads as heavy mid-pan.
@@ -97,7 +99,7 @@ let fogCoverDone  = null;   // one-shot callback fired when an animation lands
 // texture never has a scale or origin change to travel across. hw/hh null = use the scene's own.
 let fogCloudLast = null;
 let fogCloudHold = null;
-let fogCloudAdj  = { k: 1, dx: 0, dy: 0, hw: null, hh: null };
+let fogCloudAdj  = { k: 1, dx: 0, dy: 0, hw: null, hh: null, pk: 1, pdx: 0, pdy: 0 };
 // DM side: when the Player was told to start closing, so the scene payload can be held back
 // until that close has finished. 0 = no Player, send immediately.
 let _sceneOutPostedAt = 0;

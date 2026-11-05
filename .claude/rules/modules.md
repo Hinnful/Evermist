@@ -20,7 +20,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `i18n/ru.js` | The Russian dictionary, keyed by the English text. Data only |
 | `i18n/i18n.js` | The interface language: `t()`, the pass that swaps on-screen English, the About switch |
 | `render/renderer.js` | PixiJS/WebGL wrapper: the context, the map sprite, the texture pool |
-| `render/playerFogPass.js` | The Player's fog: one full-screen GPU pass and its shaders |
+| `render/playerFogShader.js` | The Player's fog shaders. Data only |
+| `render/playerFogPass.js` | The Player's fog: one full-screen GPU pass and the textures it samples |
+| `render/playerFogTrans.js` | A fog change on the TV: the order texture, overlapping changes, the outgoing mask |
 | `render/dmFogLayer.js` | The DM's fog: map-sized sprites, crossfade, cloud mask |
 | `render/render.js` | Render orchestration: `doRender`, `syncSize`, `scheduleRender`, `drawCursor` |
 | `fog/fogClouds.js` | The drifting noise texture, built once and shared |
@@ -28,6 +30,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `fog/fogAnim.js` | Fog on a clock: the drift, the reveal crossfade, the scene cover, the colour ease |
 | `fog/fogControls.js` | The fog's controls: feather, half-shroud, doors |
 | `fog/fogGeometry.js` | Pure fog geometry kernel. Tested |
+| `fog/fogTransitionPlan.js` | Pure kernel: which pixels a TV fog change touches, their order, the progress at each, the exact bake. Tested |
 | `fog/fogTheme.js` | The fog theme on a live window: the DM's pick, a map's restore, and the Player taking the theme it is sent |
 | `fog/themes/fogThemes.js` | The fog themes' registry and the pure `fogThemeNormalize`. Tested |
 | `fog/themes/default.js` | The Default fog theme record: colour, tint, motion, its shader branch. One file per theme: `blood.js`, `toxic.js`, `ice.js` and `fire.js` beside it |
@@ -263,9 +266,9 @@ Declarations must precede use at init time. All under `src/` except `lib/`, whic
 repo root:
 
 ```
-i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogPass.js →
+i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogShader.js → render/playerFogPass.js → render/playerFogTrans.js →
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
-fog/fogGeometry.js → fog/fogColor.js → fog/themes/fogThemes.js → fog/themes/default.js → fog/themes/blood.js → fog/themes/toxic.js → fog/themes/ice.js → fog/themes/fire.js → render/weatherPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → rooms/vttHoles.js → fog/lightGeometry.js →
+fog/fogGeometry.js → fog/fogTransitionPlan.js → fog/fogColor.js → fog/themes/fogThemes.js → fog/themes/default.js → fog/themes/blood.js → fog/themes/toxic.js → fog/themes/ice.js → fog/themes/fire.js → render/weatherPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → rooms/vttHoles.js → fog/lightGeometry.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogTheme.js → fog/fogControls.js → shapes/roomOps.js →
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/repairKeys.js → shapes/toolShapes.js →
 shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →

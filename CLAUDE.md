@@ -232,7 +232,7 @@ amends that commit.
 **Never write or commit `src/ui/changelogData.js`.** `build-changelog.js` writes it.
 
 **Pipeline rules:**
-- **Upload with `softprops/action-gh-release@v2`, NOT `electron-builder --publish`.**
+- **Upload with `softprops/action-gh-release@v3`, NOT `electron-builder --publish`.**
   electron-builder only uploads to *draft* releases and silently skips otherwise.
 - **The action creates a DRAFT and carries no `files:`.** Files go up one at a time with retries,
   and the draft turns public only once every size matches. `uploads.github.com` 500s on the

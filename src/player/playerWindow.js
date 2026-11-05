@@ -200,8 +200,9 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
   const viewHeld = tvWait.view;
   tvWait.scene = tvWait.view = tvWait.turn = false;
 
-  // Fog sent at 1/4 scale (native fogDataCanvas size) — much smaller than upscaling.
-  const fogDataUrl = fogDataCanvas.toDataURL('image/png');
+  // The fog's own pixels at 1/4 scale (native fogDataCanvas size). ⚠ NEVER ENCODED: a PNG encode of a
+  // big map's fog ran 60+ ms on this thread, on the click's own path, and the Player decoded it again.
+  const fogImage = fogDataCtx.getImageData(0, 0, fogDataCanvas.width, fogDataCanvas.height);
 
   // fogOnly=true (Auto-sync): omit view so player keeps its pan/zoom.
   // fogOnly=false (manual Send/Sync): include view so player follows DM viewport.
@@ -217,7 +218,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
     const sendMap = (mapUrl, mapType) => {
       playerWindow.postMessage({
         type: 'fog-update',
-        mapUrl, mapType, mapWidth, mapHeight, fogDataUrl, view, isShroud, sceneChange, fogChanged,
+        mapUrl, mapType, mapWidth, mapHeight, fogImage, view, isShroud, sceneChange, fogChanged,
         mapSceneId: currentScene ? currentScene.id : null,
         effects,
         lights: lightPolys,
@@ -252,7 +253,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
     // paints the material itself from the same seeded masks.
     playerWindow.postMessage({
       type: 'fog-update',
-      mapWidth, mapHeight, fogDataUrl, view, isShroud, sceneChange, fogChanged, effects,
+      mapWidth, mapHeight, fogImage, view, isShroud, sceneChange, fogChanged, effects,
       lights: lightPolys,
       gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
     }, '*');
@@ -294,10 +295,12 @@ function pingAt(mx, my) {
 }
 
 // ─── Auto-Sync helper ─────────────────────────────────────────────────────────
-// Debounces an auto-save + Player fog push after every fog-changing operation.
-function scheduleAutoSync() {
+// Debounces an auto-save + Player fog push after every fog-changing operation. A discrete change
+// (a room's fog, Reveal/Hide all, a door, an undo) passes true and goes out on the next tick, so the
+// TV starts moving at once; a continuous one keeps the debounce. Manual still holds either way.
+function scheduleAutoSync(now) {
   scheduleAutoSave();
   if (!autoSync) { playerUnsent = true; return; }
   clearTimeout(autoSyncTimer);
-  autoSyncTimer = setTimeout(() => sendToPlayer(true), 300);
+  autoSyncTimer = setTimeout(() => sendToPlayer(true), now ? 0 : 300);
 }

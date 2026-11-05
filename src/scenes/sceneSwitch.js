@@ -3,6 +3,13 @@
 // ⚠ EVERY PATH INTO A LOADED MAP COMES THROUGH HERE. A direct load leaves the PixiJS fog and the
 // video uninitialised, so the map renders fully revealed and shroud does nothing.
 
+// The DM's map dims at the click and lifts once the new map has drawn. Opacity only, so the
+// compositor animates it while the main thread is busy loading.
+function dmSwitchVeil(on) {
+  const el = document.getElementById('dm-switch-veil');
+  if (el) el.classList.toggle('up', on);
+}
+
 async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   // Opening the scene the DM already has is how a held TV gets it after the open scene was deleted.
   if (currentScene && currentScene.id === id) { if (tvHeld && !keepTvClear) sendToPlayerNow(); return; }
@@ -15,8 +22,16 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   if (!keepTvClear) tvHeld = false;   // the DM opening a scene is what lifts the hold
   if (typeof notesPanelFlush === 'function') notesPanelFlush();
   if (typeof roomCardLeaveScene === 'function') roomCardLeaveScene();
+  // ⚠ The TV is live and follows: its fog closes over the old map, and the DM window must start
+  // nothing heavy until then, since the Player shares this renderer thread. A first map (nothing
+  // to close over), a recovery and a column keep the plain path.
+  const tvFollows = () => !isPlayer && autoSync && !tvHeld && playerWindow && !playerWindow.closed;
+  const deferLoad = !!currentScene && !_isRecovery && !isPane && tvFollows();
+  dmSwitchVeil(deferLoad);
   // ⚠ AWAITED, or a switch BACK reads the store before these edits land. DECISIONS.md
-  if (currentScene) await doAutoSave();
+  if (currentScene) {
+    try { await doAutoSave(); } catch (e) { dmSwitchVeil(false); throw e; }
+  }
   const prevId = currentScene ? currentScene.id : null;
   currentScene = null;
   hintsRoomsDone();
@@ -34,9 +49,11 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
     tvWait.scene = !backToTv;
     if (!backToTv) playerUnsent = true;
   }
-  if (!isPlayer && autoSync && !tvHeld && playerWindow && !playerWindow.closed) {
+  let outPosted = false;
+  if (tvFollows()) {
     playerWindow.postMessage({ type: 'scene-transition', phase: 'out' }, '*');
     _sceneOutPostedAt = Date.now();
+    outPosted = true;
   }
   try {
   const scene = await sceneStore.loadScene(id);
@@ -46,8 +63,15 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
 
   // The destination fog colour, AS SOON AS IT IS KNOWN, so the Player reaches it while the fog is
   // still closing. ⚠ Must beat applyFogSettingsFromScene, which would land it a frame later.
-  if (!isPlayer && autoSync && !tvHeld && playerWindow && !playerWindow.closed) {
+  if (tvFollows()) {
     playerWindow.postMessage({ type: 'scene-transition', phase: 'tint', theme: fogThemeNormalize(scene.fogTheme) }, '*');
+  }
+
+  // Decoding and drawing the new map would freeze the TV's closing fog, so wait for it to close.
+  if (deferLoad && outPosted) {
+    const wait = FOG_SCENE_COVER_MS - (Date.now() - _sceneOutPostedAt);
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    if (myGen !== switchGeneration) return;
   }
 
   if (mapBitmap) { mapBitmap.close(); mapBitmap = null; }
@@ -136,11 +160,11 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
     fogDataCanvas = document.createElement('canvas');
     fogDataCanvas.width  = Math.ceil(mapWidth  / FOG_SCALE);
     fogDataCanvas.height = Math.ceil(mapHeight / FOG_SCALE);
-    fogDataCtx = fogDataCanvas.getContext('2d');
+    fogDataCtx = fogDataCanvas.getContext('2d', FOG_CTX_OPTS);
     baseFogCanvas = document.createElement('canvas');
     baseFogCanvas.width  = fogDataCanvas.width;
     baseFogCanvas.height = fogDataCanvas.height;
-    baseFogCtx = baseFogCanvas.getContext('2d');
+    baseFogCtx = baseFogCanvas.getContext('2d', FOG_CTX_OPTS);
 
     await loadFogFromScene(scene);
     if (myGen !== switchGeneration) return;
@@ -149,11 +173,11 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
     fogDataCanvas = document.createElement('canvas');
     fogDataCanvas.width  = Math.ceil(mapWidth  / FOG_SCALE);
     fogDataCanvas.height = Math.ceil(mapHeight / FOG_SCALE);
-    fogDataCtx = fogDataCanvas.getContext('2d');
+    fogDataCtx = fogDataCanvas.getContext('2d', FOG_CTX_OPTS);
     baseFogCanvas = document.createElement('canvas');
     baseFogCanvas.width  = fogDataCanvas.width;
     baseFogCanvas.height = fogDataCanvas.height;
-    baseFogCtx = baseFogCanvas.getContext('2d');
+    baseFogCtx = baseFogCanvas.getContext('2d', FOG_CTX_OPTS);
 
     // Decode map bitmap and fog simultaneously
     const [bitmap] = await Promise.all([
@@ -240,6 +264,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
       : 0;
     scenePushTimer = setTimeout(() => { scenePushTimer = 0; sendToPlayer(false, true); }, Math.max(150, closedIn));
   }
+  if (deferLoad) requestAnimationFrame(() => requestAnimationFrame(() => { if (myGen === switchGeneration) dmSwitchVeil(false); }));
   hintsMapOpened();      // hintsCues.js
   onSceneLoaded(); // viewport.js: flush pending player resync if Player asked while loading
   reportPaneMapSize();   // panes.js: the parent sizes the columns from the two maps' shapes
@@ -250,6 +275,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
     fogDataCanvas = null; fogDataCtx = null;
     baseFogCanvas = null; baseFogCtx = null;
     cleanupVideo();
+    dmSwitchVeil(false);
     onSwitchSceneError(prevId, _isRecovery, err); // scenes.js
   }
 }

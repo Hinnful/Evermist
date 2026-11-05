@@ -30,6 +30,7 @@ function syncSize() {
 // ⚠ The cap lives on the ticker (APP_MAX_FPS). Never add a second gate here: a throttle on top of
 // a throttle is the phase problem this replaced.
 let _lastRenderTs   = -Infinity;
+let _playerFast     = false;   // the Player's ticker is at APP_TRANSITION_FPS
 let _rafFallbackId  = null;
 
 function scheduleRender() {
@@ -67,6 +68,14 @@ function pumpDirtyRender() {
   pumpEffects();
   pumpWeather();
   pumpLights();
+  // ⚠ The TV's fog pass is drawn every frame, so its uniforms must be too: fogAnimTick dirties the fog at
+  // ~15 fps on an animated map, and a reveal, the cover and the theme effects then step at that rate.
+  if (isPlayer && pixiPlayerFogReady()) { fogDirty = true; renderScheduled = true; }
+  // The TV runs at 60 only while a fog change or the cover moves, and drops back when the last ends.
+  if (isPlayer && pixiApp) {
+    const fast = pixiPlayerFogChanging() || fogCoverRafId !== null;
+    if (fast !== _playerFast) { _playerFast = fast; pixiApp.ticker.maxFPS = fast ? APP_TRANSITION_FPS : APP_MAX_FPS; }
+  }
   if (renderScheduled) doRender(); // doRender clears renderScheduled
 }
 

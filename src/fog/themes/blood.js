@@ -42,4 +42,21 @@ float heart2(float s) { float ph = mod(s, 4.2); return exp(-pow((ph - .15) / .06
     col *= 1. - .06 * (hv - beat) * hd;
     col = mix(col, vec3(.06, 0., .01), edgeZ * smoothstep(.45, .7, a) * smoothstep(1., .85, a) * .9);
   `,
+  trans: {
+    dur: [3200, 3200],
+    front: [0.16, 0, 0.015],
+    tint: 1,
+    rank: (u, v, n, f, dir, w, vn) => .5 * v + .3 * vn(u * 11, v * 2.2 + 7) + .1 * vn(u * 31, v * 5 + 2) + .2 * n,
+    glsl: `
+float screenRank(vec2 sp, float n, float dir) { vec2 q = sp / uRes; return clamp((.5 * q.y + .3 * noise(vec2(q.x * 11., q.y * 2.2 + 7.)) + .1 * noise(vec2(q.x * 31., q.y * 5. + 2.)) + .2 * n) / 1.05, 0., 1.); }
+// Runs like liquid: the fog drips down in long drops and blots and soaks away, drying dark at the edge.
+float fogStep(float rk, float e, vec2 sp, float dir) {
+  vec2 p0 = sp * uPatM - uPatO;
+  float blot = (fbm3(vec2(p0.x * 24., p0.y * 9.) + 4.) - .5) * .26;
+  float r = clamp(rk + blot + rag(p0, 40., .08), 0., 1.);
+  float x = e * 1.34 - .17; float g = smoothstep(r - .035, r + .035, x);
+  gFront = max(gFront, (1. - smoothstep(0., .07, abs(x - r))) * .8);
+  return g; }
+`,
+  },
 });

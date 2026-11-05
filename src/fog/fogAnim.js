@@ -4,8 +4,6 @@
 // and the colour ease across it. fog.js owns the canvases they paint; the RAF handles are state.js's.
 
 // ─── Durations and state ──────────────────────────────────────────────────────
-const FOG_REVEAL_MS      = 2500; // player view: dramatic reveal
-const FOG_SHROUD_MS      = 1200; // player view: ~half of reveal — curtain closes noticeably faster
 const FOG_DM_REVEAL_MS   =  800; // DM view: very quick either direction
 
 let fogAnimOffsets = CLOUD_PASSES.map(() => ({ x: 0, y: 0 }));
@@ -13,10 +11,9 @@ let fogAnimAlphas  = CLOUD_PASSES.map(p => p.alpha);
 let fogAnimTime    = 0;
 let fogAnimLastTs  = 0;
 
-// Cross-fades fogEffectCanvas / fogBlurCanvas before and after any fog operation. 'lighter'
-// blend, so prev*(1-t) + new*t is a true lerp with no alpha bleed in always-fogged regions.
+// The DM's crossfade of the fog before and after an operation. The Player's change runs on the GPU
+// (playerFogTrans.js), not here.
 let fogTransPrev        = null; // clone of fogEffectCanvas before op (DM)
-let fogTransBlurPrev    = null; // clone of fogBlurCanvas before op (player)
 let fogTransT           = 0;   // 0→1 during transition
 let fogTransStart       = 0;
 // fogTransRafId lives in state.js (fog RAF lifecycle handle)
@@ -150,54 +147,38 @@ function stopFogAnim() {
 function startFogTransition(isShroud = false) {
   fogTransIsShroud = isShroud;
 
+  // The Player keeps the outgoing mask and finds the change itself once the new mask lands, so
+  // changes in a row each run their own clock. The direction is read per pixel, not from isShroud.
+  if (isPlayer) {
+    if (fogBlurCanvas) pixiPlayerFogChangeBegin(fogBlurCanvas);
+    return;
+  }
+
   // A transition already running is LEFT going: the caller's rebuildFogEffect() updates
   // fogBlurCanvas and the live RAF picks that up as its new target. Snapshotting here instead
   // makes the first reveal jump to completion.
   if (fogTransRafId !== null) return;
 
-  if (!isPlayer) {
-    // DM GPU path: snapshot the blur canvas for the sprite crossfade.
-    fogTransPrev = fogBlurCanvas ? cloneCanvas(fogBlurCanvas) : null;
-    pixiSetFogTransition(fogTransPrev, 0);
-  } else if (fogBlurCanvas) {
-    // Player: the full-screen pass crossfades the two reveal masks in the shader, so the only
-    // thing to keep is the outgoing mask itself.
-    fogTransBlurPrev = cloneCanvas(fogBlurCanvas);
-  }
+  // DM GPU path: snapshot the blur canvas for the sprite crossfade.
+  fogTransPrev = fogBlurCanvas ? cloneCanvas(fogBlurCanvas) : null;
+  pixiSetFogTransition(fogTransPrev, 0);
   fogTransT     = 0;
   fogTransStart = performance.now();
   if (!fogTransRafId) fogTransRafId = requestAnimationFrame(fogTransTick);
 }
 
 function fogTransTick(ts) {
-  const duration = isPlayer
-    ? (fogTransIsShroud ? FOG_SHROUD_MS : FOG_REVEAL_MS)
-    : FOG_DM_REVEAL_MS;
-  const t = Math.min((ts - fogTransStart) / duration, 1);
+  const t = Math.min((ts - fogTransStart) / FOG_DM_REVEAL_MS, 1);
   fogTransT = t * t * (3 - 2 * t); // smoothstep 0→1
-
-  if (!isPlayer) {
-    pixiSetFogTransition(null, fogTransT);
-  } else {
-    // Player: the shader crossfades the two masks, so only the flag is needed here.
-    fogDirty = true;
-    scheduleRender();
-  }
+  pixiSetFogTransition(null, fogTransT);
 
   if (t < 1) {
     fogTransRafId = requestAnimationFrame(fogTransTick);
   } else {
-    fogTransRafId    = null;
-    fogTransPrev     = null;
-    fogTransBlurPrev = null;
-    fogTransT        = 0;
-    if (isPlayer) pixiSetPlayerFogPrevMask(null);   // releases that snapshot's GPU texture
-    if (!isPlayer) {
-      pixiEndFogTransition();
-    } else {
-      fogDirty = true;
-      scheduleRender();
-    }
+    fogTransRafId = null;
+    fogTransPrev  = null;
+    fogTransT     = 0;
+    pixiEndFogTransition();
   }
 }
 
@@ -207,9 +188,9 @@ function fogTransTick(ts) {
 function stopFogTransition() {
   if (fogTransRafId) { cancelAnimationFrame(fogTransRafId); fogTransRafId = null; }
   fogTransPrev     = null;
-  fogTransBlurPrev = null;
   fogTransT        = 0;
-  if (!isPlayer) pixiEndFogTransition();
+  if (isPlayer) pixiPlayerFogTransReset();
+  else pixiEndFogTransition();
 }
 
 // ─── Scene-switch cover ───────────────────────────────────────────────────────
@@ -223,8 +204,8 @@ function stopFogTransition() {
 
 // Close + name hold + clear is the whole switch. Slow on purpose: this is the one beat the
 // players watch instead of a map.
-const FOG_SCENE_COVER_MS   = 2250; // fog closes over the outgoing map
-const FOG_SCENE_UNCOVER_MS = 3350; // fog clears off the incoming one
+const FOG_SCENE_COVER_MS   = 3000; // fog closes over the outgoing map
+const FOG_SCENE_UNCOVER_MS = 4000; // fog clears off the incoming one
 
 // THE CLOUD TEXTURE IS ANCHORED TO THE MAP — scale and origin come from mapWidth, zoom and pan.
 // A scene swap changes all of those in one frame, and under an opaque cover that jump is the only
@@ -252,6 +233,10 @@ function rebaseCloudTransform() {
     dy: held.cy - (mapHeight / 2 * zoom + panY),
     hw: held.hw,
     hh: held.hh,
+    // The theme patterns' own pin, re-anchored the same way (renderFog).
+    pk:  held.pm * zoom * FOG_PATTERN_UNIT,
+    pdx: held.px - panX,
+    pdy: held.py - panY,
   };
   fogDirty = true;
   scheduleRender();

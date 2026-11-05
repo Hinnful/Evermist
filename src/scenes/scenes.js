@@ -46,9 +46,14 @@ function loadFogFromScene(scene) {
 // Defers one RAF frame so PixiJS has rendered the fogged scene before anything clears.
 // What the players watch is openFogFromCover(), mirroring the close. The class removals are
 // bookkeeping: .dark marks a switch in progress and .blind the first-map fill.
+// ⚠ A swap of the fog's theme under the cover runs its course first, so the hold lasts at least that
+// long; the wait gives up after a few seconds rather than keep the TV shut.
 function revealPlayer() {
   const holdMs = Math.max(0, SCENE_FADE_MIN_MS - (Date.now() - _sceneFadeStart));
-  setTimeout(() => {
+  const giveUp = Date.now() + holdMs + 4000;
+  const open = () => {
+    const swapping = pixiPlayerFogSwapping() || (fogThemePending && fogThemePending !== fogTheme);
+    if (swapping && Date.now() < giveUp) { setTimeout(open, 50); return; }
     if (typeof onPlayerMapShown === 'function') onPlayerMapShown();
     requestAnimationFrame(() => {
       const fade = document.getElementById('scene-fade');
@@ -56,7 +61,8 @@ function revealPlayer() {
       fade.classList.remove('blind');
       openFogFromCover();
     });
-  }, holdMs);
+  };
+  setTimeout(open, holdMs);
 }
 
 // Called from the switchScene catch block: shows the error, then reloads the previously-active
