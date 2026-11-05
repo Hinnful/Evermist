@@ -53,6 +53,44 @@ function plGroupLines(items, tol) {
   }).filter(l => l.text);
 }
 
+// Runs closer than this on one baseline belong to one stretch of text. A column gutter is wider; a
+// space or a font change inside a line is not.
+const PL_RUN_GAP = 6;
+
+// The runs of a full-width line that classify as 'left' or 'right' only because a bold or italic
+// word split the line into runs. Judged per run, a word past the midline reads as the right column
+// and the line comes out scrambled; judged per STRETCH of touching runs, the whole line spans.
+function _plSpanningRuns(items, pageWidth, o) {
+  const m = o.spanMargin == null ? PL_SPAN_MARGIN : o.spanMargin;
+  const t = o.lineTol == null ? PL_LINE_TOL : o.lineTol;
+  const mid = pageWidth / 2;
+  const out = new Set();
+  const flush = run => {
+    if (run.length < 2) return;
+    const x0 = Math.min(...run.map(i => i.x)), x1 = Math.max(...run.map(i => i.x + (i.w || 0)));
+    if (x0 < mid - m && x1 > mid + m) run.forEach(i => out.add(i));
+  };
+  const sorted = items.filter(it => String(it.str).length).slice().sort((a, b) => (b.y - a.y) || (a.x - b.x));
+  let row = [], rowY = null;
+  const endRow = () => {
+    row.sort((a, b) => a.x - b.x);
+    let run = [], edge = -Infinity;
+    for (const it of row) {
+      if (run.length && it.x - edge > PL_RUN_GAP) { flush(run); run = []; }
+      run.push(it);
+      edge = Math.max(edge, it.x + (it.w || 0));
+    }
+    flush(run);
+  };
+  for (const it of sorted) {
+    if (row.length && Math.abs(rowY - it.y) > t) { endRow(); row = []; }
+    if (!row.length) rowY = it.y;
+    row.push(it);
+  }
+  endRow();
+  return out;
+}
+
 // Left column, right column, or spanning both.
 function plClassify(item, pageWidth, spanMargin) {
   const m = spanMargin == null ? PL_SPAN_MARGIN : spanMargin;
@@ -104,7 +142,8 @@ function _plPageLineObjs(page, opts) {
   if (three) return three.flat();
 
   const buckets = { left: [], right: [], span: [] };
-  for (const it of items) buckets[plClassify(it, width, o.spanMargin)].push(it);
+  const whole = _plSpanningRuns(items, width, o);
+  for (const it of items) buckets[whole.has(it) ? 'span' : plClassify(it, width, o.spanMargin)].push(it);
 
   const left  = plGroupLines(buckets.left,  o.lineTol);
   const right = plGroupLines(buckets.right, o.lineTol);

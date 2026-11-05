@@ -6,15 +6,28 @@
 
 const WPT_HIT_PX = 6;            // how far outside a card, in screen px, a release still lands on it
 
+var wmUnknownFields;
+if (typeof module !== 'undefined' && module.exports) ({ wmUnknownFields } = require('./worldMapPlan'));
+
 const _wptNum = n => typeof n === 'number' && Number.isFinite(n);
 
-// What is kept of a stored or imported marker: a spot, and the map it rides on when that is a string. Null for anything else.
+// What is kept of a stored or imported marker: a spot, the map it rides on when that is a string, and any field a later release added. Null for anything else.
 function wptClean(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   if (!_wptNum(raw.x) || !_wptNum(raw.y) || Math.abs(raw.x) > 1e7 || Math.abs(raw.y) > 1e7) return null;
-  const out = { x: Math.round(raw.x * 10) / 10, y: Math.round(raw.y * 10) / 10 };
+  // The marker is stored as it is, so its extra fields stay beside the known ones.
+  const out = { ...wmUnknownFields(raw, ['x', 'y', 'scene', 'at']), x: Math.round(raw.x * 10) / 10, y: Math.round(raw.y * 10) / 10 };
   if (typeof raw.scene === 'string' && raw.scene && raw.scene.length <= 200) out.scene = raw.scene;
   if (_wptNum(raw.at) && raw.at > 0) out.at = raw.at;   // when the DM last put it down
+  return out;
+}
+
+// The marker put down at `spot` ({ x, y }), on map `scene` or on bare ground, at time `now`. The one marker moves, so
+// it keeps what a later release added to it.
+function wptMoved(prev, spot, scene, now) {
+  const out = { ...(prev ? wmUnknownFields(prev, ['x', 'y', 'scene', 'at']) : null), x: spot.x, y: spot.y };
+  if (scene) out.scene = scene;
+  out.at = now;
   return out;
 }
 
@@ -52,4 +65,4 @@ function wptParse(raw) {
   return obj && typeof obj === 'object' ? wptClean(obj.party) : null;
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { WPT_HIT_PX, wptClean, wptTake, wptAnchor, wptSceneAt, wptParse };
+if (typeof module !== 'undefined' && module.exports) module.exports = { WPT_HIT_PX, wptClean, wptMoved, wptTake, wptAnchor, wptSceneAt, wptParse };

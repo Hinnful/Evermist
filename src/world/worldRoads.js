@@ -4,6 +4,7 @@
 // by a stored id, so names need not be unique. A scene record gains no field: the road holds its own list.
 
 const WR_KEY = 'evermist.worldRoads';
+const WR_GONE_KEY = 'evermist.goneRoads';   // uid → when the road was deleted, for a backup (editStamps.js). An older build never reads it.
 let _wrRecs = null;              // uid → record: the live truth, edited in place by the room code
 const _wrIds = Object.create(null);
 let _wrNextId = WR_ID0;
@@ -45,7 +46,7 @@ function _wrMarkSeen() {
 
 // Only what a road needs to come back, never the runtime id and look.
 function _wrStrip(rec) {
-  const out = _wrShape(rec);
+  const out = { ...rec.unknown, ..._wrShape(rec) };   // a later release's fields ride along (wmUnknownFields)
   if (rec.edits && Object.keys(rec.edits).length) out.edits = rec.edits;
   return out;
 }
@@ -56,7 +57,7 @@ function _wrShape(rec) {
     name: rec.name,
     vertices: rec.vertices.map(v => ({ x: r1(v.x), y: r1(v.y) })),
     ends: rec.ends.map(e => ({ ...e })),
-    scenes: rec.scenes.map(s => ({ id: s.id, t: Math.round(s.t * 10000) / 10000 })),
+    scenes: rec.scenes.map(s => ({ ...s, t: Math.round(s.t * 10000) / 10000 })),
   };
   if (rec.handles && rec.handles.some(Boolean)) out.handles = rec.handles;
   if (rec.cornerRadius > 0) out.cornerRadius = rec.cornerRadius;
@@ -75,8 +76,23 @@ function worldRoadsExport() {
 }
 
 // The notes writer calls this too: a road's notes live apart from its record.
+function worldRoadsGone() {
+  try { return esGoneClean(JSON.parse(localStorage.getItem(WR_GONE_KEY) || 'null')); } catch (_) { return esGoneClean(null); }
+}
+
+function _wrGoneWrite(gone) {
+  try {
+    if (Object.keys(gone).length) localStorage.setItem(WR_GONE_KEY, JSON.stringify(gone)); else localStorage.removeItem(WR_GONE_KEY);
+  } catch (_) { /* the road is gone either way; only its record is not kept */ }
+}
+
 function worldRoadsSave() {
-  if (!_wrQuiet && _wrRecs) { const notes = notesRoadsAll(); esStampRecords(worldRoadRecords(), _wrSeen, r => _wrParts(r, notes), Date.now()); }
+  if (!_wrQuiet && _wrRecs) {
+    const notes = notesRoadsAll(), recs = worldRoadRecords(), now = Date.now();
+    // A road the last save held and this one does not was deleted (or an undo took it away); one back is an edit now.
+    _wrGoneWrite(esGoneNote(worldRoadsGone(), Object.keys(_wrSeen), recs.map(r => r.uid), now));
+    esStampRecords(recs, _wrSeen, r => _wrParts(r, notes), now);
+  }
   try { localStorage.setItem(WR_KEY, JSON.stringify(worldRoadsExport())); } catch (err) { notesSaveFailed('roads', err); }
 }
 
@@ -256,6 +272,12 @@ function worldRoadsImport(plan, sceneMap, places, dx, dy) {
   const m = _wrLoad();
   _wrQuiet = true;
   try {
+    // A road the file deleted after it was last edited here goes, notes with it.
+    for (const key of plan.remove || []) {
+      if (!_wrOwn(m, key)) continue;
+      worldRoadDelete(key);
+      notesRoadSet(key, '');
+    }
     for (const r of plan.add) {
       const rec = wrRemap(r.rec, sceneMap, places, dx, dy);
       rec.edits = r.rec.edits;
@@ -274,5 +296,6 @@ function worldRoadsImport(plan, sceneMap, places, dx, dy) {
     }
     _wrMarkSeen();
     worldRoadsSave();
+    if (plan.gone) _wrGoneWrite(plan.gone);
   } finally { _wrQuiet = false; }
 }

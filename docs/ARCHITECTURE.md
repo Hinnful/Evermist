@@ -288,7 +288,7 @@ revealed ground only. `weatherPlan.js` holds the numbers.
   Send.
 - **Saved** as the scene field `weather`; absent means none. It is its own edit-stamp part and rides in
   the backup manifest. For Claude's map edits and undo it joins the fog look's part. The previous release
-  ignores the field, so a backup made on it drops the weather.
+  ignores the field, so a backup made on it drops the weather. Claude's `weather` and `fogTheme` map parts each undo alone.
 
 ## First-use hints
 
@@ -516,7 +516,7 @@ different map, and one Player window on the TV showing both.
   a column both selects it and does whatever the click was for, in the one press. The selected
   column wears a blue frame.
 - **The selected room is edited in the DM window.** A column reports the room selected in it,
-  and the Notes window shows the selected column's room. Every edit goes back to that column alone.
+  and the Notes window shows the selected column's room, and a map's notes from the column that holds it (`paneView.sceneNotes`). Every edit goes back to that column alone.
 - **Every button sends a message.** The toolbar, Scene control and the minimap all
   reach a column the same way the DM window reaches the Player window: by `postMessage`. A
   column then presses the control it already has, so nothing is implemented twice.
@@ -743,6 +743,10 @@ between PCs.
   existing layout. A monster or fight matches by id and the newer copy replaces the old, so no "Goblin 2".
   Factions, lore, picture names, the party marker and a map's group and Campaign spot follow the same
   newer-wins rule. The newer campaign note replaces the old one, and is never appended under it.
+  A deletion is an edit with a time: `{id: time}` records per kind (monsters, fights, factions, lore, pictures, groups,
+  roads) sit in `edits.gone*` in the combat data, `gone` beside Notes entries, localStorage `evermist.gonePictures`,
+  `evermist.gonePlaces` and `evermist.goneRoads`, and `gone` in `campaign.json`. The later of edit and deletion wins, a
+  record with no edit time loses, and the newest 300 per kind are kept. Whole maps and music are not covered.
   Where neither copy has an edit time, a differing monster still arrives as a copy once. Stopping an
   import puts the Campaign cards' names, thumbnails, groups and spots back.
   Afterwards the world map opens on what came in and a report names what was added,

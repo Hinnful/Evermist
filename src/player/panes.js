@@ -67,6 +67,7 @@ window.paneView = {
   get gridConfig()        { return captureGridConfig(); },
   get weather()           { return weatherId; },
   get fogTheme()          { return fogTheme; },
+  get sceneNotes()        { return currentScene ? currentScene.notes || '' : null; },
 };
 
 // ⚠ THE CHROME MUST SHOW THE SELECTED COLUMN'S OWN SETTINGS. The grid and the animation set

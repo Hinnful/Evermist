@@ -292,7 +292,8 @@ describe('notesPickCampaign', () => {
   });
   it('fills an empty note, keeps one when the file has none, and caps a time past the import', () => {
     assert.deepEqual(N.notesPickCampaign('', 0, 'theirs', 0, 1000), { text: 'theirs', at: 0, replaced: false, tooLong: false });
-    assert.equal(N.notesPickCampaign('mine', 0, '', 500, 1000).text, 'mine');
+    assert.equal(N.notesPickCampaign('mine', 0, '', 0, 1000).text, 'mine');
+    assert.equal(N.notesPickCampaign('mine', 600, '', 500, 1000).text, 'mine', 'a clear older than the note here');
     assert.equal(N.notesPickCampaign('mine', 0, 'theirs', 5000, 1000).at, 1000);
   });
   it('carries the time in the file, and an older file reads as untimed', () => {

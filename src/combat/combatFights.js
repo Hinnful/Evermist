@@ -6,7 +6,7 @@ let _cfMenu = null;
 function _cfOpen() { return cbState.fights.find(f => f.id === cbState.openId); }
 
 // The names fightPlan.js gives a fight nobody has named yet are the app's words, not the DM's.
-const _cfName = f => f.name === 'Fight' || f.name === 'Imported fight' ? t(f.name) : f.name;
+const _cfName = f => combatFightLabel(f.name, t);
 
 function _cfCount(f) {
   const rows = combatFightRows(cbState, f), en = rows.filter(r => r.side === 'enemy').length, al = rows.length - en;
@@ -113,7 +113,7 @@ function _cfRename(el, f) {
     el.contentEditable = 'false';
     el.classList.remove('editing');
     if (keep) { combatRenameFight(cbState, f.id, el.textContent); cbSave(); }
-    el.textContent = f.name;
+    el.textContent = _cfName(f);
     cbFightsTitle();
   };
   const key = e => {

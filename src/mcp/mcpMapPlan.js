@@ -5,7 +5,7 @@
 const MM = (typeof module !== 'undefined' && module.exports)
   ? (require('../fog/themes/default.js'), require('../fog/themes/blood.js'), require('../fog/themes/toxic.js'), require('../fog/themes/ice.js'), require('../fog/themes/fire.js'),
      Object.assign({}, require('../fog/fogGeometry.js'), require('../scenes/editStamps.js'), require('../render/weatherPlan.js'), require('../fog/themes/fogThemes.js')))
-  : { copyShapeRings, decodeShapeFromSave, encodeShapeForSave, esAssignUids, weatherNormalize, fogThemeNormalize };
+  : { copyShapeRings, decodeShapeFromSave, encodeShapeForSave, esAssignUids, esWithUids, weatherNormalize, fogThemeNormalize };
 
 // The fields a change may touch, per part. Lights share their id space with effects, so both carry nextEffectId.
 const MCP_MAP_PARTS = {
@@ -13,7 +13,8 @@ const MCP_MAP_PARTS = {
   effects: ['effects', 'nextEffectId'],
   lights: ['lightShapes', 'lightsHidden', 'nextEffectId'],
   grid: ['gridConfig'],
-  fogSettings: ['fogTheme', 'weather'],
+  fogTheme: ['fogTheme'],
+  weather: ['weather'],
   fog: ['fog'],
   plan: ['floorPlan'],
 };
@@ -59,9 +60,13 @@ function mcpMapRecordWrite(rec, data, keys) {
   for (const k of keys) {
     if (k === 'fog') continue;
     const v = data[k];
-    // Absent is none, the way a save writes it.
-    if (v === undefined || (k === 'weather' && v === 'none') || (k === 'fogTheme' && v === 'default')) { delete rec[k]; continue; }
-    if (k === 'polygons') rec.polygons = MM.esAssignUids(v.map(p => MM.copyShapeRings(structuredClone(p)))).map(MM.encodeShapeForSave);
+    // Absent is Default (or none), the way a save writes it. An id this build does not know (a newer release's,
+    // after /rollback) reads as that default, so writing it back would erase it: it stays until one is picked.
+    const none = k === 'fogTheme' ? 'default' : k === 'weather' ? 'none' : null;
+    if (none && v === none && typeof rec[k] === 'string' && rec[k] !== none && (k === 'fogTheme' ? MM.fogThemeNormalize : MM.weatherNormalize)(rec[k]) === none) continue;
+    if (v === undefined || (none && v === none)) { delete rec[k]; continue; }
+    // A room from before uids gets the uid every machine derives, or the other laptop's copy no longer matches on import.
+    if (k === 'polygons') rec.polygons = MM.esAssignUids(MM.esWithUids(v.map(p => MM.copyShapeRings(structuredClone(p))))).map(MM.encodeShapeForSave);
     else rec[k] = structuredClone(v);
   }
   return rec;

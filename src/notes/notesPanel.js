@@ -140,6 +140,11 @@ function _npMapNotes(id) {
     if (_npMap && _npMap.key === id) _npMap = null;
     return currentScene.notes || '';
   }
+  // ⚠ A column's live copy is the truth: its typing never reaches the cache below, so asking it beats a stored read.
+  const live = panesActive ? paneColumnOf(id) : null;
+  const view = live && panes[live].frame && panes[live].frame.contentWindow && panes[live].frame.contentWindow.paneView;
+  const heldNotes = view ? view.sceneNotes : null;
+  if (typeof heldNotes === 'string') return heldNotes;
   if (_npMap && _npMap.key === id) return _npMap.notes;
   if (_npMapLoading === id) return null;
   _npMapLoading = id;

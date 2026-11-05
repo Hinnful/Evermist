@@ -22,6 +22,11 @@ function notesCrumbs(names) {
   return out;
 }
 
+// editStamps.js, which loads before this file in the app and is required by path in a test.
+function _notesEs() {
+  return typeof esGoneClean === 'function' ? { esGoneClean } : require('../scenes/editStamps.js');
+}
+
 // Missing is a normal empty note. Any other non-string is dropped and reported, so the caller can
 // name the scene it came from.
 function notesSanitize(raw) {
@@ -43,13 +48,15 @@ function notesMergeCampaign(existing, incoming) {
 }
 
 // An import's campaign note against the one here. `at` is when each was last edited, 0 for none. The note edited later
-// wins whole. With no time on either side the old rule holds: the file's text joins below, once, when it fits.
+// wins whole, and clearing the note is an edit: a file whose note was cleared after the text here was last edited
+// empties it. With no time on either side the old rule holds: the file's text joins below, once, when it fits.
 // `replaced` says text written here was given up, `tooLong` that a join did not fit.
 function notesPickCampaign(cur, curAt, inc, incAt, moment) {
   const at = v => (Number.isFinite(v) && v > 0 ? Math.min(v, moment) : 0);
   const tl = at(curAt), ti = at(incAt), text = typeof cur === 'string' ? cur : '';
   const add = notesSanitize(inc).text;
   const keep = { text, at: Math.max(tl, ti), replaced: false, tooLong: false };
+  if (!add && ti > 0 && ti >= tl && text.trim()) return { text: '', at: ti, replaced: true, tooLong: false };
   if (!add || add === text) return keep;
   if (!text.trim()) return tl > ti ? keep : { text: add, at: ti, replaced: false, tooLong: false };
   if (ti > 0 && ti >= tl) return { text: add, at: ti, replaced: true, tooLong: false };
@@ -87,7 +94,9 @@ function notesPlacesClean(raw) {
 
 // The campaign.json at a backup's root. Null when there is nothing to carry, so the zip looks as it
 // always did.
-function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, entries, groupUids, textAt) {
+// `gone` is { entries, pictures, places, roads }: { id: time } of what was deleted, so an import deletes it too. A note cleared
+// after it was written is carried by its time alone.
+function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, entries, groupUids, textAt, gone) {
   const hasText = typeof text === 'string' && !!text.trim();
   const named = notesPlacesNew();
   for (const k of Object.keys(places || {})) if (typeof places[k] === 'string' && places[k].trim()) named[k] = places[k];
@@ -97,10 +106,15 @@ function notesCampaignPayload(text, places, shapes, roads, roadNotes, party, ent
   const marked = !!party && typeof party === 'object' && Number.isFinite(party.x) && Number.isFinite(party.y);
   const listed = Array.isArray(entries) && entries.length > 0;
   const uided = !!groupUids && Object.keys(groupUids).length > 0;
-  if (!hasText && !hasPlaces && !drawn && !laid && !marked && !listed && !uided) return null;
+  const cleared = !hasText && textAt > 0;
+  const deleted = {};
+  for (const k of ['entries', 'pictures', 'places', 'roads']) if (gone && gone[k] && Object.keys(gone[k]).length) deleted[k] = gone[k];
+  const hasGone = Object.keys(deleted).length > 0;
+  if (!hasText && !cleared && !hasPlaces && !drawn && !laid && !marked && !listed && !uided && !hasGone) return null;
   const out = {};
   if (hasText) out.notes = text;
-  if (hasText && textAt > 0) out.notesAt = textAt;
+  if (textAt > 0 && (hasText || cleared)) out.notesAt = textAt;
+  if (hasGone) out.gone = deleted;
   if (hasPlaces) out.places = named;
   if (drawn) out.placeShapes = shapes;
   if (marked) out.party = party;
@@ -181,6 +195,19 @@ function notesParseEntries(raw) {
   return { entries: Array.isArray(obj.entries) ? obj.entries : [], broken: !Array.isArray(obj.entries) };
 }
 
+// The deletion records of a campaign.json: { entries, pictures, places, roads }, each { id: time }. A file without them, or with
+// ones that are not, has none.
+function notesParseGone(raw) {
+  const kinds = ['entries', 'pictures', 'places', 'roads'];
+  const none = () => Object.fromEntries(kinds.map(k => [k, _notesEs().esGoneClean(null)]));
+  if (raw == null) return none();
+  let obj = null;
+  try { obj = JSON.parse(raw); } catch (_) { return none(); }
+  const g = obj && typeof obj === 'object' && _notesOwn(obj, 'gone') ? obj.gone : null;
+  if (!g || typeof g !== 'object') return none();
+  return Object.fromEntries(kinds.map(k => [k, _notesEs().esGoneClean(g[k])]));
+}
+
 // A failed save of one kind of campaign data is reported once per launch: `reported` is the set of kinds already told.
 function notesSaveReportDue(kind, reported) { return !reported.has(kind); }
 
@@ -193,13 +220,14 @@ function notesParseCampaign(raw) {
   if (!obj || typeof obj !== 'object') return { text: '', broken: true };
   const s = notesSanitize(obj.notes);
   // `at`, when the file says when its note was last edited.
-  return Number.isFinite(obj.notesAt) && obj.notesAt > 0 ? { text: s.text, broken: s.dropped, at: obj.notesAt } : { text: s.text, broken: s.dropped };
+  // ⚠ Never for a note that did not read: an unreadable note is not a cleared one.
+  return !s.dropped && Number.isFinite(obj.notesAt) && obj.notesAt > 0 ? { text: s.text, broken: s.dropped, at: obj.notesAt } : { text: s.text, broken: s.dropped };
 }
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     NOTES_SEPARATOR, notesCrumbs, notesSanitize, notesMergeCampaign, notesPickCampaign, notesCampaignPayload, notesParseCampaign,
     notesPlacesNew, notesPlacesCopy, notesPlacesClean, notesParsePlaces, notesMergePlaces, notesRenamePlace,
-    notesParseRoadNotes, notesParseEntries, notesRekey, notesSaveReportDue,
+    notesParseRoadNotes, notesParseEntries, notesParseGone, notesRekey, notesSaveReportDue,
   };
 }

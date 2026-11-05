@@ -1140,7 +1140,7 @@ included. A stopped import puts matched scenes back and removes only what it cre
 in, with a report. Replace-everything was left out, and copies the laptop already holds stay unlinked: one clean start.
 **Extended 2026-11-05:** the rule also covers monsters and fights (matched by id, the newer copy replaces the old, so no
 "Goblin 2"), factions, lore, picture names, the party marker and a map's group and Campaign spot. The newer campaign note
-replaces the old one instead of being appended. Deletions of these still do not sync.
+replaces the old one instead of being appended. Deletions of these now sync: see "A deletion is an edit with a time".
 **Reverses** the Restore that "merges and never replaces", "a restore adopts it only when the DM has none", and a picked
 export leaving the backdrop out.
 
@@ -1374,3 +1374,22 @@ In Manual the first map opened while the TV shows none waits on fog until Send, 
 rule that Manual holds everything. Show on TV with nothing waiting still shows it. Turning Two maps on or off is not a
 Send: each TV half waits for its own, and the single TV after leaving waits too. In Effects, a Ring with Cut out, Merge
 or Split armed acts only on the band its preview shows, not the full circle.
+
+### A deletion is an edit with a time · `SETTLED` (2026-11-05)
+Import left deleted records alive on the other machine. Each kind (monsters, fights, factions, lore, pictures, groups, roads)
+keeps `{id: time}` deletion records, the campaign note's clear counts as an edit, and the records ride in the backup. The
+later of edit and deletion wins; a record with no edit time loses to a deletion. The newest 300 per kind are kept
+(`ES_GONE_MAX`). Whole maps are not covered (deleting a map on Import is left to BACKLOG 271) and music is not in a backup.
+The previous release ignores the new keys, so rollback is safe.
+
+### Review leftovers closed in one pass · `SETTLED` (2026-11-05)
+Russian default fight names are translated at display and stored names stay English. Undoing the AI's fog-theme edit restores
+only the theme. AI weather is its own part. AI edits give old rooms the shared `legacy-<id>` uid. Unknown fields on groups,
+roads, road ends, part times, the party marker, Notes entries and imported scene records survive a round trip, so rollback
+loses nothing. `set_fog_look` takes weather too, one undo step per call covering only what it set.
+
+### Effect names are not translated · `WON'T FIX` (2026-11-05)
+Effect names are never shown to the DM, only the AI assistant reads them, so no translation helper was built.
+
+### In two maps, the Notes window reads the column that holds the map · `SETTLED` (2026-11-05)
+A map's notes come from the column showing it, not from the selected one (was BACKLOG 262).

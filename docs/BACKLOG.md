@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 14 open items; IDs run to 269."
+description: "Open work only. 5 open items; IDs run to 271."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.0.0**. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.3.1**. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -76,35 +76,13 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 # EVERYTHING ELSE
 
-### 249. Open the Notes window when a room is picked
-Filed 2026-10-30. Today a room picked with the Notes window shut leaves it shut and marks nothing on the rail, as the
-Bestiary and the fight table do. Opening the window on a pick is the other option. Decide after watching how the DM and
-testers use the window.
-**Polish · DM only**
-
-### 236. Move to Electron 45
-Filed 2026-10-27. Evermist runs on Electron 43, which stops getting security fixes when Electron 46 ships, about
-two months out. Move to 45, then run the full rig set and a packaged build before it ships.
-**Upkeep · DM and Player**
-
-### 144. A phone remote for the DM
-Filed 2026-09-29 as a DESIGN DISCUSSION. The DM stands up, walks and gestures, with a remote in
-hand for a few controls: sounds, reveals, a scene change. **Open:** which controls, and how a phone
-reaches an offline desktop app. Nothing on the phone reaches the TV except through the app.
-**Play · Phone**
-
 ### 265. Heat shimmer for the Fire fog theme
-Filed 2026-11-04. The prototype's Fire made the map just outside the fog waver; it did not ship in 5.3.0 because the
-Player's fog pass draws over the weather, effects and grid and cannot read the map under it. Find a way to distort
-the map beside fogged rooms (a pass that can read the map, or a displacement of the map layer itself), video maps
-included. Reference: `.claude/private/design/item-254/fog-themes.html`, Fire's heat shimmer.
+Filed 2026-11-04, reshaped 2026-11-05. The prototype's Fire made the map just outside the fog waver; that did not ship
+in 5.3.0 because the Player's fog pass cannot read the map under it. The DM chose (2026-11-05) the shimmer inside the
+fog instead: the Fire fog itself wavers like hot air, and nothing outside the fog moves, revealed rooms least of all.
+The fog pass distorts its own output, so no map read is needed. Reference:
+`.claude/private/design/item-254/fog-themes.html`, Fire's heat shimmer.
 **Polish · Player**
-
-### 264. Mist that drifts into revealed rooms
-Filed 2026-11-04. A light mist over revealed rooms as atmosphere, unlike a fog theme, which stays inside fogged rooms.
-Mist left the weather presets for this and was not made a fog theme. Nothing about it is designed yet.
-**Needs a design round.**
-**Play · Player**
 
 ### 255. Map settings a DM can read
 Filed 2026-11-04. The Map settings pane follows Figma's right panel: numbers scrubbed by an unlabelled icon, eyes,
@@ -114,50 +92,35 @@ section turned Weather, and moves with the redo.
 **Needs a design round.**
 **First use · Polish · DM only**
 
-### 258. The AI assistant sets a map's weather
-Filed 2026-11-04. The AI assistant preps maps but cannot pick a map's weather preset. Add it beside the fog look, for a
-map that is not on the TV, the same way the fog's drift preset is set. Small.
-**Prep · DM only**
-
 ### 259. Time of day
 Filed 2026-11-04. A list of its own beside Weather (day, dusk, night), so a sunny preset on a night map stops being a
 mismatch the DM has to avoid. Floated by the DM while weather was settled; nothing about it is designed yet.
 **Needs a design round.**
 **Play · Player**
 
-### 262. Two maps: the Notes window shows a column's older map notes
-Filed 2026-11-04. In two-map mode the Notes window answers a map's notes from its cached read before asking the column
-that holds the map, so notes typed in that column can show as the older text there. Single-map mode is fixed in 5.2.1.
-**Prep · DM only**
-
-
-### 266. Backups move every still map in one go
-Filed 2026-11-05. Backup export and import move every still map in one message, so a large library can run out of
-memory partway. Moving maps one at a time needs a rework of the backup pipeline and a rig run on a big library.
-**Data · DM only**
-
-### 267. Two module-text rules need a real book
-Filed 2026-11-05. Two PDF parsing rules from the 2026-11-04 review (findings 11#2 and 11#3) can only be tuned against a
-real published module PDF. Small once a book is at hand.
-**Prep · DM only**
-
-### 268. Finish the review's last pieces
-Filed 2026-11-05. Seven review fixes shipped in part in 5.3.1 because they needed files 5.3.0 held: Russian texts for
-the light-split refusal and new fights (03#11, 06#8, 11#7, 11#8), the AI assistant's fog-look edit erasing a newer
-theme (08#14, 05#10), stable room ids for its edits (14#5), and edit times for more records after a rollback (14#12).
-Details in `.claude/private/reviews/2026-11-04/status/`. Small each.
-**Upkeep · Both**
-
-### 269. Deletions don't sync between laptops
-Filed 2026-11-05. A monster, fight, faction, lore entry or picture deleted on one laptop comes back on Import from the
-other, and clearing the campaign note on one does not clear it on the other. Import has no record of a deletion yet.
-**Data · DM only**
-### 189. Doors follow a hex grid
-Filed 2026-10-17, low priority. On a square grid a door snaps to the map's own grid cells. On a hex grid, and on any
-diagonal wall, the Door tool cuts the wall into cell-sized steps from the room's corner instead, so a door can sit
-across two hexes. Decide what a door one hex wide means on a hex wall, then make the preview and the click follow it.
+### 271. The library lives in a cloud folder
+Filed 2026-11-05. The DM keeps one campaign on two laptops and moves it by hand with Export and Import; once a forgotten
+transfer left a game with no maps, and twice the two laptops held different edits of one map. Backup exists only to
+sync machines (DM, 2026-11-05). The DM picks a library folder inside OneDrive, Google Drive or Dropbox on each laptop,
+Evermist keeps the library there as plain files, one per map plus one per campaign record kind, and the cloud client
+moves them. Evermist runs no server. Open: whether the folder replaces Export and Import or sits beside them as an
+option. It must cover a map that is only in the cloud when the laptop is offline at the table, a laptop closed
+before its upload finished, the cloud client's conflict copies, the library open on both laptops at once, a migration
+that copies and never deletes, and `/rollback` after the move. Storing the library as plain files was rejected once as
+a large change with risk to saved data (DECISIONS, Claude reaching a closed Evermist); the DM reopens it here.
+If Export and Import stay, the rig's backup scenarios found these to fix there: a library past about 500 MB never
+finishes exporting (380 MB takes 7 s), music is not in a backup at all, a whole deleted map does not travel, a second
+Import of the same file renames "Name (2)" back to "Name", and it renumbers the fight table's rows.
 **Needs /spec.**
-**Polish · DM + Player**
+**Campaign · Bug**
+
+### 189. Review how doors look, hex grids included
+Filed 2026-10-17, widened 2026-11-05. The DM sees doors looking broken, more so with the fog themes. Review doors on
+both screens across the themes and fix what is off. Also on a hex grid, and on any diagonal wall, the Door tool cuts
+the wall into cell-sized steps from the room's corner, so a door can sit across two hexes. Decide what a door one hex
+wide means on a hex wall, then make the preview and the click follow it.
+**Needs a review round.**
+**Bug · Polish**
 
 ---
 

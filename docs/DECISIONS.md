@@ -1059,6 +1059,7 @@ DM's Ctrl+Z stack so neither undo drops or resurrects the other.
 Claude reaching the campaign with Evermist closed would have needed it in plain files. Rejected as
 a large change with risk to saved data. A closed Evermist starts unseen for the call instead, one
 copy per library, and quits after fifteen idle minutes.
+**Reopened 2026-11-05** for sync only: a library in a cloud folder as plain files (BACKLOG 271); whether it replaces Export/Import is open.
 
 ### Notes as Markdown files on disk · `REJECTED` (2026-10-30)
 Proposed as BACKLOG 195. Editing notes in another tool helps no DM, and files bring two writers,
@@ -1134,7 +1135,7 @@ Claude gets everything the Notes window offers: create, rename, nest, reorder an
 The sentence "After an update, press Connect to Claude again." is permanent under Connect to Claude, because the installed extension holds its own copy of the tools. **Rejected:** showing it only after pressing Connect, or only after an update.
 
 ### One review and one undo for a whole assistant prep run · `REJECTED` (2026-10-31)
-Closed unbuilt (was BACKLOG 243). No real prep run has shown the need. The official MCP servers of Notion, Figma, Linear and GitHub have no run-level undo and lean on the host app's own history. The assistant can delete what it made (each delete asks), and a backup before a big run restores everything. **Gap left:** notes the assistant rewrites while Evermist is closed are recoverable only from a backup, and an Evermist started unseen for an AI call loses its undo history when it idle-quits or the DM opens the app, because the page reloads. Revisit only if a real prep run shows the problem. Summary-UI prototypes sit in `.claude/private/design/item-243/review.html`.
+Closed unbuilt (was BACKLOG 243). No real prep run has shown the need. The official MCP servers of Notion, Figma, Linear and GitHub have no run-level undo and lean on the host app's own history. The assistant can delete what it made (each delete asks), and a backup before a big run restores everything. **Gap left:** notes the assistant rewrites while Evermist is closed are recoverable only from a backup, and an Evermist started unseen for an AI call loses its undo history when it idle-quits or the DM opens the app, because the page reloads. Revisit only if a real prep run shows the problem. **Note 2026-11-05:** a backup is no longer a stated purpose for recovery (PRODUCT.md, "Backup exists to sync the DM's machines"), so that net is not promised. Summary-UI prototypes sit in `.claude/private/design/item-243/review.html`.
 
 ### A fight is a mention kind · `SHIPPED` (5.1.0, 2026-11-02)
 The @ picker lists fights and a link is `@[Name](fight:<fight id>)`, reusing the fight's existing id, so no persisted field is new and an older release shows the link as plain text. A click opens the fight table on that fight, hover shows the kind and "N enemies · N allies", a rename follows by id, and a deleted fight's link turns red and keeps its words. The fight table ends with "Appears in", the notes that mention the open fight, hidden when none. Claude writes `@{fight: Name}`; a bare `@{Name}` matching a fight and another entry stays plain and is reported ambiguous. **Rejected:** a new fight uid (the id already never repeats).
@@ -1386,3 +1387,11 @@ so there are no pins and no search.
 A second press of a playing sound starts another copy over it, for a second thunderclap or a
 longer laugh. There is no stop-all control: the sounds last seconds. A prototype where a second
 press stopped the sound was rejected on product grounds.
+
+### Notes opening on a room pick, and a phone remote · `REJECTED` (2026-11-05)
+Opening the Notes window when a room is picked (was BACKLOG 249) and a phone remote for the DM (was BACKLOG 144) were dropped
+as not needed now. Closed unbuilt.
+
+### Module text furniture filter reads climbing page numbers · `SETTLED` (2026-11-05)
+A line is a running header only when its page numbers climb, the stat-block finder's rule; a one-column line split by a
+bold or italic run stays whole. Tuned against Curse of Strahd and five other books.

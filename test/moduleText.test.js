@@ -595,6 +595,38 @@ describe('mtDropFurniture', () => {
     assert.equal(mtDropFurniture([long, '2 ' + 'Э'.repeat(120)]).length, 2);
   });
 
+  test('keeps a stat line whose number differs room to room', () => {
+    // "Класс Доспеха 12" and "Класс Доспеха 10" are two rooms' stat lines, not a running head: the
+    // numbers do not climb, and a two-sighting spaced tail is how a stat line reads.
+    const lines = ['Класс Доспеха 12', 'текст', 'Класс Доспеха 10', 'ещё'];
+    assert.deepEqual(mtDropFurniture(lines), lines);
+  });
+
+  test('keeps a climbing stat line seen only twice', () => {
+    const lines = ['Gold coins 120', 'a', 'Gold coins 121', 'b'];
+    assert.deepEqual(mtDropFurniture(lines), lines);
+  });
+
+  test('keeps the line above a heading, so the colon list test still sees it', () => {
+    const lines = ['1. Склад', 'Сундук обёрнут тканью:', 'Gold coins 120', '2. Контора', 'Стол.', 'Gold coins 35'];
+    assert.deepEqual(mtDropFurniture(lines), lines);
+  });
+
+  test('keeps a sub-location line that opens "7В)" — a lone capital is not a fused header', () => {
+    const lines = ['7В) аккуратно висит униформа слуг.', 'текст'];
+    assert.deepEqual(mtDropFurniture(lines), lines);
+  });
+
+  test('still drops a spaced-tail header once its numbers climb through three pages', () => {
+    const lines = ['текст', CH + ' 40', 'текст', CH + ' 41', 'текст', CH + ' 42'];
+    assert.deepEqual(mtDropFurniture(lines), ['текст', 'текст', 'текст']);
+  });
+
+  test('drops a header whose numbers climb on alternating pages', () => {
+    const lines = [CH + '9', 'a', '10 ' + CH, 'b', CH + '11'];
+    assert.deepEqual(mtDropFurniture(lines), ['a', 'b']);
+  });
+
   test('keeps every content line of the sample', () => {
     const out = mtDropFurniture(mtSplitLines(SAMPLE));
     assert.ok(out.includes('1. Вход'));

@@ -7,6 +7,7 @@
 const _TP_ES = typeof esCanon === 'function'
   ? { esCanon, esRoomParts, esEffectPart, esSceneParts, esWithUids, ES_SCENE_PARTS, ES_ROOM_OWN }
   : require('./editStamps.js');
+const _TP_GONE = typeof esGoneWins === 'function' ? { esGoneClean, esGoneWins, esGoneMerge, esGoneLift } : require('./editStamps.js');
 const _TP_FG = typeof decodeShapeFromSave === 'function'
   ? { decodeShapeFromSave, encodeShapeForSave }
   : require('../fog/fogGeometry.js');
@@ -206,6 +207,21 @@ function tpMergeScene(local, incoming, moment, opts) {
   return { record, take, report: rep, touched };
 }
 
+// The fields a backup's scene entry holds that this release reads by name (sceneBackupMeta), and the record's own
+// storage fields, which a file never sets.
+const _TP_KNOWN = new Set(['id', 'name', 'group', 'worldPos', 'mapType', 'mapWidth', 'mapHeight', 'mapMimeType', 'mapExt', 'polygons',
+  'nextPolygonId', 'notes', 'pictures', 'effects', 'nextEffectId', 'lightsHidden', 'lightShapes', 'floorPlan', 'gridConfig', 'fogSettings',
+  'fogTheme', 'weather', 'tvFit', 'createdAt', 'sortOrder', 'edits', 'pictureBlobs', 'mapBlob', 'mapPath', 'baseFogBlob', 'baseFogPNG', 'thumbnail']);
+
+// ⚠ NEVER A FIXED LIST OF WHAT TO KEEP: a field a later release added to a map rides along, so a map that travels
+// through Import after a /rollback keeps it. Answers the entry's fields this release does not know.
+function tpExtraFields(entry) {
+  const out = {};
+  if (!entry || typeof entry !== 'object') return out;
+  for (const k of Object.keys(entry)) if (!_TP_KNOWN.has(k)) out[k] = entry[k];
+  return out;
+}
+
 // ─── Places, roads and the backdrop ──────────────────────────────────────────
 
 function tpPlaceUid(rec, name) { return (rec && rec.uid) || 'legacy-' + name; }
@@ -231,15 +247,36 @@ function _tpNoteRep(rep, label, pick) {
   for (let i = 0; i < pick.keep.length; i++) rep.kept.push(label);
 }
 
+// What the deletion records do to records both machines may hold, keyed by `keyOf`: the local keys the file deleted
+// after their last edit (`remove`), the incoming ones this side deleted after theirs (`skip`), and the records to
+// keep. `gone` is { here, file }; without it nothing is removed or skipped.
+function _tpGone(gone, localKeys, incomingKeys, moment) {
+  const g = _TP_GONE, here = g.esGoneClean(gone && gone.here), file = g.esGoneClean(gone && gone.file);
+  const remove = new Set(), skip = new Set();
+  if (gone) {
+    for (const [k, times] of localKeys) if (g.esGoneWins(file, k, _tpLatest(times, moment), moment)) remove.add(k);
+    for (const [k, times] of incomingKeys) if (!remove.has(k) && g.esGoneWins(here, k, _tpLatest(times, moment), moment)) skip.add(k);
+  }
+  const keep = (list, drop) => { const alive = {}; for (const [k, times] of list) if (!drop.has(k)) alive[k] = Math.max(alive[k] || 0, _tpLatest(times, moment)); return alive; };
+  const alive = Object.assign(keep(incomingKeys, skip), keep(localKeys, remove));
+  return { remove, skip, gone: g.esGoneLift(gone ? g.esGoneMerge(here, file) : here, alive) };
+}
+
 // `local` and `incoming` are lists of { name, rec, note }: a place's record with its `uid` and `edits`, and
-// its note text. Answers what to add and what to update on a place both machines hold.
-function tpMergePlaces(local, incoming, moment) {
+// its note text. Answers what to add and what to update on a place both machines hold, and the names of the places
+// the file deleted (`remove`) with the deletion records to keep (`gone`). `gone` is { here, file }, keyed by uid.
+function tpMergePlaces(local, incoming, moment, gone) {
   const byUid = Object.create(null), byName = Object.create(null);
   for (const p of local) { byUid[tpPlaceUid(p.rec, p.name)] = p; byName[p.name] = p; }
+  const dead = _tpGone(gone, local.map(p => [tpPlaceUid(p.rec, p.name), p.rec.edits]), incoming.map(p => [tpPlaceUid(p.rec, p.name), p.rec.edits]), moment);
+  const remove = local.filter(p => dead.remove.has(tpPlaceUid(p.rec, p.name))).map(p => p.name);
   const add = [], update = [];
-  const rep = { added: [], updated: [], kept: [], overwritten: [] };
+  const rep = { added: [], updated: [], kept: [], overwritten: [], removed: remove };
   for (const inc of incoming) {
-    const l = byUid[tpPlaceUid(inc.rec, inc.name)] || byName[inc.name];
+    const uid = tpPlaceUid(inc.rec, inc.name);
+    if (dead.skip.has(uid)) continue;
+    const l = byUid[uid] || byName[inc.name];
+    if (l && remove.includes(l.name)) continue;
     if (!l) { add.push(inc); rep.added.push(inc.name); continue; }
     const pick = _tpPick(l.rec.edits, inc.rec.edits, [
       ['shape', _tpShapeKey(l.rec) !== _tpShapeKey(inc.rec)],
@@ -254,16 +291,20 @@ function tpMergePlaces(local, incoming, moment) {
     if (pick.take.length) rep.updated.push(l.name);
     _tpNoteRep(rep, l.name, pick);
   }
-  return { add, update, report: rep, matched: update.length > 0 };
+  return { add, update, remove, gone: dead.gone, report: rep, matched: update.length > 0 };
 }
 
 // `local` and `incoming` are { key: { rec, note } }. A road is `shape` (its line, ends and scenes) and
-// `text` (its name and note).
-function tpMergeRoads(local, incoming, moment) {
+// `text` (its name and note). `gone` is as for places, keyed by the road's key; `remove` answers keys.
+function tpMergeRoads(local, incoming, moment, gone) {
+  const own = (m, k) => Object.prototype.hasOwnProperty.call(m, k);
+  const dead = _tpGone(gone, Object.keys(local).map(k => [k, local[k].rec.edits]), Object.keys(incoming).map(k => [k, incoming[k].rec.edits]), moment);
+  const remove = [...dead.remove];
   const add = [], update = [];
-  const rep = { added: [], updated: [], kept: [], overwritten: [] };
+  const rep = { added: [], updated: [], kept: [], overwritten: [], removed: remove };
   for (const key of Object.keys(incoming)) {
-    const inc = incoming[key], l = Object.prototype.hasOwnProperty.call(local, key) ? local[key] : null;
+    if (dead.skip.has(key) || dead.remove.has(key)) continue;
+    const inc = incoming[key], l = own(local, key) ? local[key] : null;
     if (!l) { add.push({ key, ...inc }); rep.added.push(inc.rec.name); continue; }
     const label = l.rec.name || 'road';
     const pick = _tpPick(l.rec.edits, inc.rec.edits, [
@@ -277,7 +318,7 @@ function tpMergeRoads(local, incoming, moment) {
     if (pick.take.length) rep.updated.push(label);
     _tpNoteRep(rep, label, pick);
   }
-  return { add, update, report: rep, matched: update.length > 0 };
+  return { add, update, remove, gone: dead.gone, report: rep, matched: update.length > 0 };
 }
 
 // 'none' with nothing incoming, 'take' when the incoming backdrop wins or fills an empty spot, else 'keep'.
@@ -290,6 +331,6 @@ function tpMergeBackground(local, incoming, moment) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-    tpTime, tpSceneIds, tpMergeScene, tpPlaceUid, tpMergePlaces, tpMergeRoads, tpMergeBackground, TP_PART_LABEL,
+    tpTime, tpSceneIds, tpMergeScene, tpPlaceUid, tpMergePlaces, tpMergeRoads, tpExtraFields, tpMergeBackground, TP_PART_LABEL,
   };
 }

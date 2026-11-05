@@ -12,6 +12,8 @@ let _wpUndo = [], _wpRedo = [];
 let _wpSeen = Object.create(null);   // uid → the parts as last saved, which a save compares against
 let _wpQuiet = false;                // an import keeps the times that arrive, so its writes stamp nothing
 
+const WM_GONE_KEY = 'evermist.gonePlaces';   // uid → when the place was deleted, for a backup (editStamps.js). An older build never reads it.
+
 const _wsOwn = (map, k) => Object.prototype.hasOwnProperty.call(map, k);
 
 function _wpAdopt(name, rec) {
@@ -47,7 +49,7 @@ function _wpShape(rec) {
 
 // Only what a place needs to come back, never the runtime id and look.
 function _wpStrip(rec) {
-  const out = _wpShape(rec);
+  const out = { ...rec.unknown, ..._wpShape(rec) };   // a later release's fields ride along (wmUnknownFields)
   out.uid = rec.uid;
   if (rec.edits && Object.keys(rec.edits).length) out.edits = rec.edits;
   return out;
@@ -75,8 +77,23 @@ function worldPlacesExport() {
   return out;
 }
 
+function worldPlacesGone() {
+  try { return esGoneClean(JSON.parse(localStorage.getItem(WM_GONE_KEY) || 'null')); } catch (_) { return esGoneClean(null); }
+}
+
+function _wpGoneWrite(gone) {
+  try {
+    if (Object.keys(gone).length) localStorage.setItem(WM_GONE_KEY, JSON.stringify(gone)); else localStorage.removeItem(WM_GONE_KEY);
+  } catch (_) { /* the place is gone either way; only its record is not kept */ }
+}
+
 function worldPlacesSave() {
-  if (!_wpQuiet) { const notes = notesPlacesAll(); esStampRecords(worldPlaceRecords(), _wpSeen, r => _wpParts(r, notes), Date.now()); }
+  if (!_wpQuiet) {
+    const notes = notesPlacesAll(), recs = worldPlaceRecords(), now = Date.now();
+    // A place the last save held and this one does not was deleted (or an undo took it away); one back is an edit now.
+    _wpGoneWrite(esGoneNote(worldPlacesGone(), Object.keys(_wpSeen), recs.map(r => r.uid), now));
+    esStampRecords(recs, _wpSeen, r => _wpParts(r, notes), now);
+  }
   try { localStorage.setItem(WM_SHAPES_KEY, JSON.stringify(worldPlacesExport())); } catch (err) { notesSaveFailed('places', err); }
 }
 
@@ -85,6 +102,7 @@ function worldPlaceSet(name, rec) {
   const m = _wpLoad();
   const c = wmCleanPlace(rec) || { vertices: rec.vertices || rec };
   if (!c.uid) c.uid = _wsOwn(m, name) ? m[name].uid : 'pl' + esRandomUid();
+  if (!c.unknown && _wsOwn(m, name) && m[name].unknown) c.unknown = m[name].unknown;
   _wpAdopt(name, c);
   worldPlacesSave();
 }
@@ -125,6 +143,15 @@ function worldPlacesImport(plan, dx, dy) {
   const m = _wpLoad();
   _wpQuiet = true;
   try {
+    // A place the file deleted after it was last edited here goes as a delete does: its notes, its roads' ends, its
+    // group name, and the maps that wore it fall back to no group.
+    for (const name of plan.remove || []) {
+      if (!_wsOwn(m, name)) continue;
+      forgetGroup(name);
+      worldShapeDelete(name);
+      notesPlaceSet(name, '');
+      for (const s of allScenes.filter(x => _wsGroup(x) === name)) worldSceneSet(s.id, { group: '' });
+    }
     for (const p of plan.add) {
       const c = wmCleanPlace(p.rec);
       c.vertices = c.vertices.map(v => ({ x: v.x + dx, y: v.y + dy }));
@@ -145,6 +172,7 @@ function worldPlacesImport(plan, dx, dy) {
     }
     _wpMarkSeen();
     worldPlacesSave();
+    if (plan.gone) _wpGoneWrite(plan.gone);
   } finally { _wpQuiet = false; }
 }
 

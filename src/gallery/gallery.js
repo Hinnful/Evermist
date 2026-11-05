@@ -73,6 +73,22 @@ function galleryTakeDown() {
 // ─── Adding, renaming, removing ──────────────────────────────────────────────
 
 // A file kept as a picture, or null when it will not read as one. The caller redraws the grid.
+// The pictures deleted here and when (editStamps.js), so a backup deletes them on the other laptop too. An older
+// build never reads this key.
+const GA_GONE_KEY = 'evermist.gonePictures';
+
+function _gaGoneRead() {
+  try { return esGoneClean(JSON.parse(localStorage.getItem(GA_GONE_KEY) || 'null')); } catch (_) { return esGoneClean(null); }
+}
+
+function _gaGoneWrite(gone) {
+  try {
+    if (Object.keys(gone).length) localStorage.setItem(GA_GONE_KEY, JSON.stringify(gone)); else localStorage.removeItem(GA_GONE_KEY);
+  } catch (_) { /* the picture is gone either way; only its record is not kept */ }
+}
+
+function galleryGone() { return _gaGoneRead(); }
+
 async function _gaAddOne(f) {
   const blob = await decodePicture(f);
   if (!blob) return null;
@@ -109,6 +125,7 @@ function _gaRemove(p) {
     onConfirm: async () => {
       if (_gaLive === p.id) galleryTakeDown();
       await galleryStore.remove(p.id);
+      _gaGoneWrite(esGoneNote(_gaGoneRead(), [p.id], [], Date.now()));
       _gaPics = _gaPics.filter(x => x.id !== p.id);
       if (_gaUrls[p.id]) { URL.revokeObjectURL(_gaUrls[p.id]); delete _gaUrls[p.id]; }
       delete _gaTiles[p.id];
@@ -153,6 +170,7 @@ async function galleryDrop(id) {
   const p = _gaPics.find(x => x.id === id);
   if (!p) return null;
   await galleryStore.remove(id);
+  _gaGoneWrite(esGoneNote(_gaGoneRead(), [id], [], Date.now()));
   _gaPics = _gaPics.filter(x => x !== p);
   if (_gaUrls[id]) { URL.revokeObjectURL(_gaUrls[id]); delete _gaUrls[id]; }
   delete _gaTiles[id];
@@ -160,7 +178,10 @@ async function galleryDrop(id) {
   return p;
 }
 
+// A restored picture is an edit now, so a deletion made earlier does not take it out again.
 async function galleryRestore(p) {
+  p.named = Date.now();
+  _gaGoneWrite(esGoneNote(_gaGoneRead(), [], [p.id], Date.now()));
   await galleryStore.put(p);
   _gaPics = [..._gaPics.filter(x => x.id !== p.id), p].sort((a, b) => b.added - a.added);
   _gaRender();
@@ -188,26 +209,37 @@ async function galleryBackupPayload() {
   return meta.length ? { meta: JSON.stringify(meta), files } : null;
 }
 
-// Adds the backup's pictures the gallery does not hold, and takes a name renamed later in the file. Never removes one.
-async function galleryAdoptBackup(zipPath) {
+// Adds the backup's pictures the gallery does not hold, and takes a name renamed later in the file. `goneFile` is the
+// file's deletion records: a picture deleted there after its last edit here goes, and one deleted here after the
+// file's last edit stays out. A backup with no gallery can still delete.
+async function galleryAdoptBackup(zipPath, goneFile) {
   const got = await window.electronAPI.readBackupGallery(zipPath);
-  if (!got) return 0;
-  const list = [], meta = galleryParseMeta(got.meta);
+  const meta = got ? galleryParseMeta(got.meta) : [], now = Date.now();
+  const have = await galleryStore.all();
+  const plan = galleryGoneApply(have, meta, _gaGoneRead(), goneFile, now);
+  const list = [];
   for (const m of meta) {
     const buf = got.files[pictureZipName(m.id, m.type)];
-    if (buf) list.push({ id: m.id, name: m.name, added: m.added || Date.now(), named: m.named, blob: new Blob([buf], { type: m.type }) });
+    if (buf && !plan.skip.includes(m.id)) list.push({ id: m.id, name: m.name, added: m.added || now, named: m.named, blob: new Blob([buf], { type: m.type }) });
   }
-  const have = await galleryStore.all();
   const added = await galleryStore.addMissing(list);
-  const renamed = galleryRenames(have, meta, Date.now());
+  const renamed = galleryRenames(have, meta, now).filter(r => !plan.remove.includes(r.id));
   for (const r of renamed) await galleryStore.put(Object.assign(have.find(p => p.id === r.id), { name: r.name, named: r.named }));
-  if (added.length || renamed.length) await galleryReload();
+  for (const id of plan.remove) {
+    if (_gaLive === id) galleryTakeDown();
+    await galleryStore.remove(id);
+    if (_gaUrls[id]) { URL.revokeObjectURL(_gaUrls[id]); delete _gaUrls[id]; }
+  }
+  _gaGoneWrite(plan.gone);
+  if (added.length || renamed.length || plan.remove.length) await galleryReload();
   return added.length;
 }
 
 // A restored scene's room pictures join the gallery too: an older backup holds no other copy.
 async function galleryAdoptScenes(scenes) {
-  const added = await galleryStore.addMissing(galleryFromScenes(scenes));
+  // A picture deleted from Pictures stays out, though a room still holds its bytes.
+  const gone = _gaGoneRead();
+  const added = await galleryStore.addMissing(galleryFromScenes(scenes).filter(p => !(p.id in gone)));
   if (added.length) await galleryReload();
 }
 

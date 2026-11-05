@@ -4,7 +4,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { combatBlankBlock } = require('../src/combat/combatPlan.js');
 const {
-  combatFightId, combatFightsFrom, combatFightRows, combatOpenFight, combatAddFight, combatDuplicateFight,
+  combatFightId, combatFightsFrom, combatFightRows, combatOpenFight, combatAddFight, combatDuplicateFight, combatFightLabel,
   combatRenameFight, combatDeleteFight, combatMerge, combatSavedParts, combatBackupData, combatStampEdits,
 } = require('../src/combat/fightPlan.js');
 
@@ -224,5 +224,20 @@ describe('a malformed backup merged in', () => {
     assert.deepEqual(Object.values(m.blocks).map(b => b.abil.length), [6]);
     assert.deepEqual(m.fights.map(f => f.name), ['Here', 'A', 'B']);
     assert.deepEqual(m.fights[2].rows.map(r => r.conds), [[]]);
+  });
+});
+
+describe('the names the app gives a fight', () => {
+  const ru = (k, v) => ({ 'Fight': 'Бой', 'New fight': 'Новый бой', 'Imported fight': 'Импортированный бой', '{name} copy': '{name} - копия' }[k]
+    .replace('{name}', v && v.name));
+  it('reads each default name, and a copy of one, through the translator', () => {
+    assert.equal(combatFightLabel('Fight', ru), 'Бой');
+    assert.equal(combatFightLabel('New fight', ru), 'Новый бой');
+    assert.equal(combatFightLabel('Imported fight', ru), 'Импортированный бой');
+    assert.equal(combatFightLabel('New fight copy', ru), 'Новый бой - копия');
+    assert.equal(combatFightLabel('Fight copy copy', ru), 'Бой - копия - копия');
+  });
+  it('leaves a name the DM typed alone', () => {
+    assert.equal(combatFightLabel('Goblin ambush', ru), 'Goblin ambush');
   });
 });

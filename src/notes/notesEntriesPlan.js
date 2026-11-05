@@ -7,6 +7,10 @@
 const NE_KINDS = ['faction', 'lore'];
 const NE_NAME_MAX = 60;
 
+// The deletion records (editStamps.js), read lazily: that file loads before this one in the app and by path in a test.
+const _NE_ES = typeof esGoneClean === 'function' ? { esGoneClean, esGoneNote, esGoneMerge, esGoneWins, esGoneLift }
+  : require('../scenes/editStamps.js');
+
 function _neSanitize(raw) {
   return (typeof notesSanitize === 'function' ? notesSanitize : require('./notesPlan.js').notesSanitize)(raw);
 }
@@ -115,19 +119,31 @@ function neStamp(before, after, now) {
 
 function _neTime(e, moment) { return Number.isFinite(e.edited) && e.edited > 0 ? Math.min(e.edited, moment) : 0; }
 
+// `gone` is { id: time } of the entries deleted: the ones after a write (before and after being the lists around
+// it), the entries that are back dropped from it.
+function neGone(gone, before, after, now) {
+  return _NE_ES.esGoneNote(gone, before.map(e => e.id), after.map(e => e.id), now);
+}
+
 // A restore adds the entries the library lacks, and an entry both hold takes the copy edited later; with no time on
 // either side the one here stays. An added entry whose parent did not come along goes under its section, and so does
 // a taken one whose parent is not here or sits inside it.
-function neMerge(existing, incoming, now) {
+// `gone` is { here, file }: the deletion records of each side. A deletion at or after an entry's last edit removes it
+// (an entry with no time is the oldest), and an entry the other side deleted after its last edit stays out. Without
+// `gone` (an undo putting entries back) nothing is removed, and an entry that was deleted is back as an edit now.
+// Answers `gone` merged, for the library to keep.
+function neMerge(existing, incoming, now, gone) {
   const moment = now || Date.now();
+  const here = _NE_ES.esGoneClean(gone && gone.here), file = _NE_ES.esGoneClean(gone && gone.file);
   const have = new Map(existing.map(e => [e.id, e]));
   const inc = neClean(incoming).entries;
-  const fresh = inc.filter(e => !have.has(e.id));
+  const fresh = inc.filter(e => !have.has(e.id) && !(gone && _NE_ES.esGoneWins(here, e.id, _neTime(e, moment), moment)))
+    .map(e => (!gone && e.id in here ? { ...e, edited: moment } : e));
   const ids = new Set(existing.concat(fresh).map(e => e.id));
   const added = fresh.map(e => {
     return ids.has(e.parent) || e.parent === e.kind ? e : { ...e, parent: e.kind };
   });
-  let entries = existing.concat(added), updated = 0;
+  let entries = existing.concat(added), updated = 0, removed = 0;
   for (const e of inc) {
     const mine = have.get(e.id);
     if (!mine || mine.kind !== e.kind || _neContent(mine) === _neContent(e)) continue;
@@ -140,9 +156,21 @@ function neMerge(existing, incoming, now) {
     entries = entries.map(x => (x.id === e.id ? { ...x, name: e.name, note: e.note, parent, order, edited: ti } : x));
     updated++;
   }
-  return { entries, added: added.length, updated };
+  // A deletion in the file, applied last so an entry the file also carries edited after it comes out right.
+  const doomed = new Set(entries.filter(e => gone && _NE_ES.esGoneWins(file, e.id, _neTime(e, moment), moment)).map(e => e.id));
+  if (doomed.size) {
+    removed = doomed.size;
+    entries = entries.filter(e => !doomed.has(e.id));
+    const ids = new Set(entries.map(e => e.id));
+    // An entry edited after its parent was deleted stays, under its section.
+    entries = entries.map(e => (e.parent === e.kind || ids.has(e.parent) ? e : { ...e, parent: e.kind }));
+  }
+  const alive = {};
+  for (const e of entries) alive[e.id] = _neTime(e, moment);
+  const merged = _NE_ES.esGoneLift(gone ? _NE_ES.esGoneMerge(here, file) : here, alive);
+  return { entries, added: added.length, updated, removed, gone: merged };
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { NE_KINDS, neCleanName, neClean, neChildren, neById, neDescendants, neAdd, neRename, neSetNote, neMove, neDelete, neFallback, neStamp, neMerge };
+  module.exports = { NE_KINDS, neCleanName, neClean, neChildren, neById, neDescendants, neAdd, neRename, neSetNote, neMove, neDelete, neFallback, neStamp, neMerge, neGone };
 }

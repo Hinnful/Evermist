@@ -141,9 +141,65 @@ function esStampRecords(recs, seen, partsOf, now) {
   }
 }
 
+// ─── Deletions outside a scene ───────────────────────────────────────────────
+// A kept record that has an id and an edit time (a monster, fight, faction, lore entry, picture) leaves a
+// deletion record, `gone`: { id: time }. An import applies the later of the two times: a deletion at or after a
+// record's last edit removes it, an edit after the deletion brings it back, and a record with no time is the oldest.
+// Kept to the newest ES_GONE_MAX per kind. A record that is back is dropped from `gone`. An older build never reads it.
+
+function _esGoneTrim(gone) {
+  const keys = Object.keys(gone);
+  if (keys.length <= ES_GONE_MAX) return gone;
+  const out = Object.create(null);
+  keys.sort((a, b) => gone[b] - gone[a]).slice(0, ES_GONE_MAX).forEach(k => { out[k] = gone[k]; });
+  return out;
+}
+
+// A parsed `gone` read safely: own keys only, a positive finite time each. Anything else reads as empty.
+function esGoneClean(raw) {
+  const out = Object.create(null);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const k of Object.keys(raw)) if (k && k.length <= 200 && Number.isFinite(raw[k]) && raw[k] > 0) out[k] = raw[k];
+  return _esGoneTrim(out);
+}
+
+// The deletions after a save: what was in `before` and is not in `after` goes in at `now`, and what is in `after` comes out.
+function esGoneNote(gone, before, after, now) {
+  const out = esGoneClean(gone), here = new Set(after);
+  for (const id of before) if (!here.has(id)) out[id] = now;
+  for (const id of here) delete out[id];
+  return _esGoneTrim(out);
+}
+
+function esGoneMerge(a, b) {
+  const out = esGoneClean(a), inc = esGoneClean(b);
+  for (const k of Object.keys(inc)) if (!(out[k] >= inc[k])) out[k] = inc[k];
+  return _esGoneTrim(out);
+}
+
+// When `id` was deleted, a time past `moment` counting as `moment`; 0 for never.
+function esGoneTime(gone, id, moment) {
+  const t = gone && Object.prototype.hasOwnProperty.call(gone, id) ? gone[id] : 0;
+  return Number.isFinite(t) && t > 0 ? Math.min(t, moment) : 0;
+}
+
+// True when the deletion is at or after the record's last edit `own` (0 for none).
+function esGoneWins(gone, id, own, moment) {
+  const g = esGoneTime(gone, id, moment);
+  return g > 0 && g >= own;
+}
+
+// `alive` is { id: time } of what is kept: a record edited after its deletion is no longer deleted.
+function esGoneLift(gone, alive) {
+  const out = esGoneClean(gone);
+  for (const id of Object.keys(alive)) if (id in out && alive[id] > out[id]) delete out[id];
+  return out;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     ES_SCENE_PARTS, ES_ROOM_OWN, esCanon, esRoomParts, esEffectPart, esSceneParts, esLegacyUid, esWithUids,
     esRandomUid, esAssignUids, esSnapshot, esDiff, esStamp, esSeen, esStampRecords,
+    ES_GONE_MAX, esGoneClean, esGoneNote, esGoneMerge, esGoneTime, esGoneWins, esGoneLift,
   };
 }

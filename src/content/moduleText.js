@@ -229,7 +229,7 @@ function mtFurniturePart(line) {
   const lead = /^(\d+)[ ]*/.exec(rest);
   if (lead) {
     num = lead[1];
-    fused = /^\p{Lu}/u.test(s.slice(lead[1].length));
+    fused = /^\p{Lu}\p{L}/u.test(s.slice(lead[1].length));
     rest = rest.slice(lead[0].length);
   }
   const tail = /[ ]*(\d+)$/.exec(rest);
@@ -240,25 +240,42 @@ function mtFurniturePart(line) {
   return { num, fused, key: rest.trim().toLowerCase() };
 }
 
+// A running head's page numbers CLIMB through the document, one or two a sighting on facing pages.
+// "Armor Class 16" under one room and "Armor Class 17" under the next is a stat line, not a head.
+// Judged in document order, like the stat block finder's own head rule (docs/DECISIONS.md).
+const MT_FURNITURE_STEP = 30;
+function mtClimbs(nums) {
+  if (nums.length === 2) return nums[1] - nums[0] >= 1 && nums[1] - nums[0] <= 2;
+  let up = 0;
+  for (let i = 1; i < nums.length; i++) if (nums[i] > nums[i - 1] && nums[i] - nums[i - 1] <= MT_FURNITURE_STEP) up++;
+  return nums.length > 2 && up >= 0.8 * (nums.length - 1);
+}
+
 // Drop page furniture: bare page numbers and running headers.
 //
-// ⚠ THE RULE IS "the same text with a DIFFERENT number attached", never "seen three times". A count
-// deletes a sub-heading three rooms legitimately share, and keeps a header a short excerpt sees
-// twice. A key with no number attached is untouchable however often it recurs.
+// ⚠ THE RULE IS "the same text with a number that CLIMBS", never "seen three times" and never "any
+// two different numbers": that deleted every "Класс Доспеха 12 / 13" and "Gold coins 120 / 35" line
+// of a real book, and with a colon line left above a heading it glued two rooms together. A key
+// with no number attached is untouchable however often it recurs.
+//
+// A number spaced off the END of a line with none at its start ("Чувства … Восприятие 12") is how a
+// stat line reads, so it takes three climbing sightings, not two. A running head's number sits at
+// the line's start or fused to its last word.
 //
 // KNOWN GAP: a ONE-WORD running header separated from its page number by a space survives as
 // visible noise, and a lower bar starts eating real one-word sub-headings.
 function mtDropFurniture(lines) {
-  const seen = new Map();   // key → { nums: Set, fused: boolean }
+  const seen = new Map();   // key → { nums: [page numbers in order], fused: boolean, spaced: boolean }
   const parts = lines.map(l => {
     if (!l || l.length > MT_FURNITURE_MAX_LEN || mtHeadingCandidate(l)) return null;
     const p = mtFurniturePart(l);
     if (!p.key || p.num == null) return p;
     if (p.key.split(' ').filter(Boolean).length < MT_FURNITURE_MIN_WORDS) return p;
     let e = seen.get(p.key);
-    if (!e) { e = { nums: new Set(), fused: false }; seen.set(p.key, e); }
-    e.nums.add(p.num);
+    if (!e) { e = { nums: [], fused: false, spaced: true }; seen.set(p.key, e); }
+    e.nums.push(+p.num);
     if (p.fused) e.fused = true;
+    if (/^\d/.test(l) || /[^\s\d]\d+$/.test(l)) e.spaced = false;
     return p;
   });
   return lines.filter((l, i) => {
@@ -267,7 +284,7 @@ function mtDropFurniture(lines) {
     if (!p || !p.key || p.num == null) return true;
     const e = seen.get(p.key);
     // e.fused condemns every sighting of the key, so the spaced siblings go with it.
-    return !(e && (e.fused || e.nums.size >= 2));
+    return !(e && (e.fused || mtClimbs(e.nums) && !(e.spaced && e.nums.length < 3)));
   });
 }
 

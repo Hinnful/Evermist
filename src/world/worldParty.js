@@ -96,11 +96,10 @@ function worldPartyPlace(where) {
   if (where.scene) {
     const s = allScenes.find(x => x.id === where.scene), pos = s && wmCleanPos(_wmPos(s));
     if (!pos) return;
-    _wpt = { ...wptAnchor(pos, WM_CARD_H), scene: where.scene };
+    _wpt = wptMoved(_wpt, wptAnchor(pos, WM_CARD_H), where.scene, Date.now());
   } else {
-    _wpt = wptClean({ x: where.x, y: where.y });
+    _wpt = wptMoved(_wpt, wptClean({ x: where.x, y: where.y }), null, Date.now());
   }
-  _wpt.at = Date.now();
   _wptSave();
   worldPartyDraw();
 }
@@ -188,8 +187,7 @@ function _wptUp() {
   _wm.classList.remove('moving');
   _wptEl.classList.remove('drag');
   const s = id && allScenes.find(x => x.id === id), pos = s && wmCleanPos(_wmPos(s));
-  _wpt = pos ? { ...wptAnchor(pos, WM_CARD_H), scene: id } : wptClean({ x: d.at.x, y: d.at.y });
-  _wpt.at = Date.now();
+  _wpt = pos ? wptMoved(_wpt, wptAnchor(pos, WM_CARD_H), id, Date.now()) : wptMoved(_wpt, wptClean({ x: d.at.x, y: d.at.y }), null, Date.now());
   _wptSave();
   worldPartyDraw();
 }
@@ -201,7 +199,8 @@ function _wptUp() {
 function worldPartyImport(rec, sceneMap, dx, dy) {
   _wptLoad();
   if (!wptTake(_wpt, rec, Date.now())) return;
-  const out = { x: rec.x + dx, y: rec.y + dy, at: rec.at };
+  const out = { ...rec, x: rec.x + dx, y: rec.y + dy };
+  delete out.scene;
   if (rec.scene && sceneMap[rec.scene]) out.scene = sceneMap[rec.scene];
   _wpt = wptClean(out);
   _wptSave();

@@ -213,6 +213,10 @@ The scope line above argues against mid-session *authoring*. Picking a track is 
 music, so the app wins that one outright. This is the same reasoning that licensed map effects,
 which are placed during play. Do not read the prep-time line as a ban on in-play controls.
 
+### Backup exists to sync the DM's machines · `SETTLED` (2026-11-05, scope call)
+Export and Import move data between the DM's own machines. They are not a way to survive an update or to recover from an
+accidental delete, and no feature may lean on them as that safety net.
+
 ### Music never enters the backup zip · `SETTLED` (scope call)
 A hundred hour-long tracks is about 5.5GB, and a backup is meant to be portable. The music
 folder sits outside the scene store, so a restore on a fresh machine brings scenes and no music.

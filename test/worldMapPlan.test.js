@@ -295,10 +295,11 @@ describe('polygon helpers', () => {
 describe('a place built like a room', () => {
   const sq = W.wmRectShape(0, 0, 400, 400);
 
-  it('keeps the rounding and the curves a room carries, and drops what is malformed', () => {
+  it('keeps the rounding and the curves a room carries, and drops what is malformed, and sets a stray field apart', () => {
     const ok = W.wmCleanPlace({ vertices: sq, cornerRadius: 30, cornerRadii: [null, 10, null, 0],
                                 handles: [null, { ix: 1, iy: 2, ox: 3, oy: 4 }, null, null], junk: 1 });
-    assert.deepEqual(Object.keys(ok).sort(), ['cornerRadii', 'cornerRadius', 'handles', 'vertices']);
+    assert.deepEqual(Object.keys(ok).sort(), ['cornerRadii', 'cornerRadius', 'handles', 'unknown', 'vertices']);
+    assert.deepEqual(ok.unknown, { junk: 1 });
     assert.equal(W.wmCleanPlace(sq).vertices.length, 4, 'a bare array is a place from before rounding');
     assert.equal(W.wmCleanPlace({ vertices: sq, cornerRadii: [1, 2] }).cornerRadii, undefined, 'radii for the wrong count are dropped');
     assert.equal(W.wmCleanPlace({ vertices: sq, handles: [null, { ix: 'a' }, null, null] }).handles, undefined);
@@ -484,11 +485,14 @@ describe('how far the map reaches', () => {
 
 describe('wmCleanPlace: the id and times a merge matches by', () => {
   const sq = [{ x: 0, y: 0 }, { x: 9, y: 0 }, { x: 9, y: 9 }];
-  it('keeps the uid and the part times, and nothing else a file might carry', () => {
+  it('keeps the uid and the part times, and a field a later release added apart in `unknown`', () => {
     const c = W.wmCleanPlace({ vertices: sq, uid: 'p1', edits: { shape: 5, name: 7, notes: 0, junk: 9 }, extra: 1 });
     assert.equal(c.uid, 'p1');
-    assert.deepEqual(c.edits, { shape: 5, name: 7 });
+    assert.deepEqual(c.edits, { shape: 5, name: 7, junk: 9 }, 'a later release part time rides along; a zero does not');
     assert.equal(c.extra, undefined);
+    assert.deepEqual(c.unknown, { extra: 1 });
+    assert.deepEqual(W.wmCleanPlace(c).unknown, { extra: 1 }, 'a live record keeps its own');
+    assert.equal(W.wmCleanPlace({ vertices: sq, name: 'Town', id: 7, mode: 'place' }).unknown, undefined, 'runtime fields are not extras');
   });
   it('drops a uid that is not text and times that are not numbers', () => {
     const c = W.wmCleanPlace({ vertices: sq, uid: 4, edits: { shape: 'x', name: -2 } });

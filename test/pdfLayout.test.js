@@ -191,6 +191,25 @@ describe('plDocumentText', () => {
   });
 });
 
+describe('a full-width line split into runs by a style change', () => {
+  test('a bold word past the midline stays in its line', () => {
+    // One-column text: the regular run ends before the midline, the bold word sits across it and
+    // the rest follows. Classified run by run, the tail reads as the right column.
+    const page = { width: W, items: [
+      run('Слабый свет факела ',    50, 700, 250),
+      run('дрожит',                300, 700, 50),
+      run(' на стене и гаснет.',   350, 700, 190),
+      run('Следующая строка идёт ниже.', 50, 688, 300),
+    ] };
+    assert.deepEqual(plPageLines(page), ['Слабый свет факела дрожит на стене и гаснет.', 'Следующая строка идёт ниже.']);
+  });
+
+  test('two columns a gutter apart still read column by column', () => {
+    assert.deepEqual(plPageLines(twoColumns).slice(0, 3),
+      ['Левая строка один', 'Левая строка два', 'Левая строка три']);
+  });
+});
+
 // ─── The two layers together ──────────────────────────────────────────────────
 
 describe('pdfLayout feeding moduleText', () => {

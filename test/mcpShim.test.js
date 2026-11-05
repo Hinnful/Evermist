@@ -45,6 +45,18 @@ describe('mcpShim', () => {
       ['add_door', 'add_monster', 'add_music', 'add_music_from_youtube', 'add_notes', 'add_picture', 'appears_in', 'create_effect', 'create_entry', 'create_fight', 'create_light', 'create_music_group', 'create_place', 'create_road', 'create_room', 'create_scene', 'cut_room', 'delete_effect', 'delete_entry', 'delete_fight', 'delete_light', 'delete_monster', 'delete_music', 'delete_music_group', 'delete_picture', 'delete_place', 'delete_road', 'delete_room', 'delete_scene', 'duplicate_fight', 'duplicate_monster', 'edit_effect', 'edit_entry', 'edit_fight', 'edit_monster', 'edit_road', 'edit_room', 'find_map_files', 'guide', 'import_maps_zip', 'import_monsters', 'lights_from_floor_plan', 'link_room', 'list_bestiary', 'list_campaign', 'list_entries', 'list_gallery', 'list_module_entries', 'list_music', 'load_floor_plan', 'load_module_text', 'merge_rooms', 'move_scene', 'read_fight', 'read_notes', 'read_scene', 'read_stat_block', 'remove_door', 'rename_music_group', 'rename_picture', 'rename_place', 'rename_scene', 'reshape_place', 'set_backdrop', 'set_fog_all', 'set_fog_area', 'set_fog_look', 'set_grid', 'set_lights', 'set_music_group', 'set_notes', 'set_road_maps', 'set_room_fog', 'set_scene', 'split_room', 'undo_last_change', 'view_scene']);
   });
 
+  it('offers set_fog_look a weather beside the theme, either one enough', async () => {
+    const { WEATHER_IDS } = require('../src/render/weatherPlan.js');
+    const [, list] = await talk(path.join(dir, 'none.json'), [
+      { id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } } },
+      { method: 'notifications/initialized' },
+      { id: 2, method: 'tools/list' },
+    ]);
+    const tool = list.result.tools.find(t => t.name === 'set_fog_look');
+    assert.deepEqual(tool.inputSchema.properties.weather.enum, WEATHER_IDS);
+    assert.deepEqual(tool.inputSchema.required, ['name']);
+    assert.match(tool.description, /weather/i);
+  });
   it('explains what Evermist holds and that Claude only preps', async () => {
     const [init] = await talk(path.join(dir, 'none.json'), [{ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }]);
     const text = init.result.instructions;

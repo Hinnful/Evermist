@@ -93,12 +93,18 @@ async function _mcpSetFogLook(args) {
   // An extension still on the old tool list sends preset and tint, which no longer exist.
   if (args.preset !== undefined || args.tint !== undefined) return _mcpNo(MCP_OLD_TOOLS);
   const id = args.theme === undefined ? undefined : mcpFogThemeId(args.theme);
-  if (id === undefined) return _mcpNo('Nothing to change: give theme.');
+  const wx = args.weather === undefined ? undefined : mcpWeatherId(args.weather);
+  if (id === undefined && wx === undefined) return _mcpNo('Nothing to change: give theme, weather or both.');
   if (id === null) return _mcpNo('theme must be one of: ' + FOG_THEMES.map(t => t.id).join(', ') + '.');
-  const edit = await mcpEditMap(s, 'changing its fog look', ['fogSettings'], d => { d.fogTheme = id; });
+  if (wx === null) return _mcpNo('weather must be one of: ' + WEATHER_IDS.join(', ') + '.');
+  // Each part is named only when asked for, so the one undo step writes back just what the call changed.
+  const parts = [id !== undefined && 'fogTheme', wx !== undefined && 'weather'].filter(Boolean);
+  const edit = await mcpEditMap(s, 'changing its fog look', parts, d => { if (id !== undefined) d.fogTheme = id; if (wx !== undefined) d.weather = wx; });
   if (edit.no) return edit.no;
-  return mcpDone('set the fog theme of the map "' + s.name + '"', edit.undo,
-    'Set the fog of the map "' + s.name + '" to the ' + fogThemeRecord(id).label + ' theme.' + _mcpFogSay(s));
+  const did = [id !== undefined && 'fog theme', wx !== undefined && 'weather'].filter(Boolean).join(' and ');
+  const said = [id !== undefined && 'the fog to the ' + fogThemeRecord(id).label + ' theme', wx !== undefined && 'the weather to ' + WEATHER_PRESETS[wx].label].filter(Boolean).join(' and ');
+  return mcpDone('set the ' + did + ' of the map "' + s.name + '"', edit.undo,
+    'Set ' + said + ' on the map "' + s.name + '".' + _mcpFogSay(s));
 }
 
 const MCP_FOG_TOOLS = { set_room_fog: _mcpSetRoomFog, set_fog_area: _mcpSetFogArea, set_fog_all: _mcpSetFogAll, set_fog_look: _mcpSetFogLook };

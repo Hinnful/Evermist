@@ -134,8 +134,30 @@ function galleryRenames(have, incoming, moment) {
   return out;
 }
 
+// ─── Deletions ───────────────────────────────────────────────────────────────
+
+const _GP_ES = typeof esGoneWins === 'function' ? { esGoneWins, esGoneMerge, esGoneLift } : require('../scenes/editStamps.js');
+
+// When a picture was last edited: its adding or its latest rename, none the oldest.
+function galleryTime(p, moment) {
+  const at = v => (Number.isFinite(v) && v > 0 ? Math.min(v, moment) : 0);
+  return Math.max(at(p && p.added), at(p && p.named));
+}
+
+// What a file's deletion records do to the pictures: the ids here they remove (deleted at or after the picture's last
+// edit), the file's pictures to leave out (deleted here at or after theirs), and the records to keep. A picture with
+// no time is the oldest. `have` and `incoming` are lists of { id, added, named }; `goneHere` and `goneFile` are { id: time }.
+function galleryGoneApply(have, incoming, goneHere, goneFile, moment) {
+  const here = new Set((have || []).map(p => p.id));
+  const remove = (have || []).filter(p => _GP_ES.esGoneWins(goneFile, p.id, galleryTime(p, moment), moment)).map(p => p.id);
+  const skip = (incoming || []).filter(p => !here.has(p.id) && _GP_ES.esGoneWins(goneHere, p.id, galleryTime(p, moment), moment)).map(p => p.id);
+  const gone = _GP_ES.esGoneMerge(goneHere, goneFile), alive = {};
+  for (const p of (have || []).concat(incoming || [])) if (!remove.includes(p.id) && !skip.includes(p.id)) alive[p.id] = Math.max(alive[p.id] || 0, galleryTime(p, moment));
+  return { remove, skip, gone: _GP_ES.esGoneLift(gone, alive) };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { PICTURE_MAX_BOX, pictureBox, pictureFit, pictureType, pictureZipName,
+  module.exports = { galleryTime, galleryGoneApply, PICTURE_MAX_BOX, pictureBox, pictureFit, pictureType, pictureZipName,
     galleryNameFromFile, roomPictureRefs, picturesReferenced, pictureBackupList,
     galleryFromScenes, galleryMissing, galleryBackupMeta, galleryParseMeta, galleryRenames };
 }

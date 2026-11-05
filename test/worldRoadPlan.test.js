@@ -340,9 +340,22 @@ describe('a road with a rounded corner', () => {
 });
 
 describe('wrCleanRoad: part times', () => {
-  it('keeps the times of the parts a merge compares, and drops the rest', () => {
-    const c = R.wrCleanRoad(road({ edits: { shape: 3, text: 8, junk: 1 } }));
-    assert.deepEqual(c.edits, { shape: 3, text: 8 });
+  it('keeps a field a later release added apart in `unknown`, and not its own runtime fields', () => {
+    const c = R.wrCleanRoad(road({ surface: 'cobble', uid: 'rd1', id: 2000001, mode: 'road', open: true }));
+    assert.deepEqual(c.unknown, { surface: 'cobble' });
+    assert.deepEqual(R.wrCleanRoad(c).unknown, { surface: 'cobble' });
+    assert.equal(R.wrCleanRoad(road()).unknown, undefined);
+  });
+  it('keeps the times of the parts a merge compares, and a later release part, but no time that is not a number', () => {
+    const c = R.wrCleanRoad(road({ edits: { shape: 3, text: 8, colour: 1, bad: 'x' } }));
+    assert.deepEqual(c.edits, { shape: 3, text: 8, colour: 1 });
     assert.equal(R.wrCleanRoad(road({ edits: { shape: 'x' } })).edits, undefined);
+  });
+  it('keeps a field a later release added to an end and to a scene on the road', () => {
+    const c = R.wrCleanRoad(road({ ends: [{ kind: 'scene', ref: 'a', gate: 2 }, { kind: 'place', ref: 'V', dx: 1, dy: 2, gate: 3 }], scenes: [{ id: 'a', t: 0.5, stop: true }] }));
+    assert.deepEqual(c.ends[0], { kind: 'scene', ref: 'a', gate: 2 });
+    assert.equal(c.ends[1].gate, 3);
+    assert.deepEqual(c.scenes, [{ id: 'a', t: 0.5, stop: true }]);
+    assert.deepEqual(R.wrCleanRoad(c), c, 'a second read changes nothing');
   });
 });

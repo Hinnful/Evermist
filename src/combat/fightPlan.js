@@ -4,7 +4,7 @@
 // backup merged in. No DOM. Unit-tested; see test/fightPlan.test.js.
 
 const FP = (typeof module !== 'undefined' && module.exports) ? Object.assign({}, require('./combatPlan.js'), require('../scenes/editStamps.js'))
-  : { combatAddEntry, combatSnapshot, combatCleanBlock, combatCleanRow, esCanon };
+  : { combatAddEntry, combatSnapshot, combatCleanBlock, combatCleanRow, esCanon, esGoneClean, esGoneNote, esGoneMerge, esGoneTime, esGoneWins, esGoneLift };
 
 // ── The list of fights ───────────────────────────────────────────────────────
 // The open fight's rows are `rows` beside the bestiary, the shape saved before there was a list,
@@ -53,6 +53,14 @@ function combatDuplicateFight(st, id, newId) {
   return st;
 }
 
+// The names this file gives a fight stay English in the save; the screen asks for them through `tr` (t()).
+// A copy's name is its original's plus a suffix, so each part is translated on its own.
+function combatFightLabel(name, tr) {
+  if (name === 'Fight' || name === 'New fight' || name === 'Imported fight') return tr(name);
+  const copy = /^([\s\S]*) copy$/.exec(name);
+  return copy ? tr('{name} copy', { name: combatFightLabel(copy[1], tr) }) : name;
+}
+
 function combatRenameFight(st, id, name) {
   const f = st.fights.find(x => x.id === id), n = String(name || '').trim();
   if (f && n) f.name = n;
@@ -73,7 +81,9 @@ function combatDeleteFight(st, id, newId) {
 // ── Edit times ───────────────────────────────────────────────────────────────
 // `edits` is { blocks: { uid: { k, t } }, fights: { id: { k, t } } }: a hash of what was last saved and when it
 // changed. One seen for the first time has t 0, the oldest: it came from before times or is new here, and a new
-// one has no copy elsewhere to lose to. An older build never reads or writes it.
+// one has no copy elsewhere to lose to. `goneBlocks` and `goneFights` are { id: time } of what was deleted
+// (esGoneNote), so a backup carries a deletion; a record that comes back after one is an edit at that moment.
+// An older build never reads or writes any of it.
 
 function _fpHash(text) {
   let h = 0x811c9dc5;
@@ -94,10 +104,19 @@ function combatFightKey(name, rows) {
 // Run before every save: a monster or fight whose hash moved takes `now`.
 function combatStampEdits(st, now) {
   const prev = st.edits || {}, out = { blocks: {}, fights: {} };
-  const stamp = (kind, id, k) => { const p = (prev[kind] || {})[id]; out[kind][id] = { k, t: !p ? 0 : p.k === k ? p.t : now }; };
+  const gone = { blocks: FP.esGoneClean(prev.goneBlocks), fights: FP.esGoneClean(prev.goneFights) };
+  const stamp = (kind, id, k) => {
+    const p = (prev[kind] || {})[id];
+    out[kind][id] = { k, t: !p ? (id in gone[kind] ? now : 0) : p.k === k ? p.t : now };
+  };
   for (const b of Object.values(st.blocks)) if (b && b.uid) stamp('blocks', b.uid, combatBlockKey(b));
   for (const f of st.fights) stamp('fights', f.id, combatFightKey(f.name, combatFightRows(st, f)));
-  st.edits = out;
+  const next = Object.assign({}, prev, out);
+  for (const [kind, key] of [['blocks', 'goneBlocks'], ['fights', 'goneFights']]) {
+    const g = FP.esGoneNote(gone[kind], Object.keys(prev[kind] || {}), Object.keys(out[kind]), now);
+    if (Object.keys(g).length) next[key] = g; else delete next[key];
+  }
+  st.edits = next;
   return st;
 }
 
@@ -107,6 +126,9 @@ function combatStampEdits(st, now) {
 // differing fight stays as it is here.
 function combatMerge(cur, incoming, newId, now) {
   const moment = now || Date.now();
+  // A deletion in the file removes what here was last edited before it; one made here keeps the file's older copy out.
+  const goneHere = { blocks: FP.esGoneClean(cur.edits && cur.edits.goneBlocks), fights: FP.esGoneClean(cur.edits && cur.edits.goneFights) };
+  const goneIn = { blocks: FP.esGoneClean(incoming.edits && incoming.edits.goneBlocks), fights: FP.esGoneClean(incoming.edits && incoming.edits.goneFights) };
   const time = (kind, src, id) => { const e = src && src[kind] && src[kind][id], t = e && e.t; return Number.isFinite(t) && t > 0 ? Math.min(t, moment) : 0; };
   const edits = { blocks: Object.assign({}, cur.edits && cur.edits.blocks), fights: Object.assign({}, cur.edits && cur.edits.fights) };
   const blocks = Object.assign({}, cur.blocks);
@@ -121,6 +143,7 @@ function combatMerge(cur, incoming, newId, now) {
     const mine = b.uid && byUid.get(b.uid);
     if (mine ? same(mine) === same(b) : (seen.get(key(b)) || new Set()).has(same(b))) continue;
     const ti = time('blocks', incoming.edits, b.uid);
+    if (!mine && b.uid && FP.esGoneWins(goneHere.blocks, b.uid, ti, moment)) continue;
     if (mine) {
       const tl = time('blocks', cur.edits, b.uid);
       if (ti > 0 && ti >= tl) {
@@ -140,6 +163,12 @@ function combatMerge(cur, incoming, newId, now) {
     }
     note(added);
   }
+  for (const uid of Object.keys(goneIn.blocks)) {
+    const mine = byUid.get(uid);
+    if (!mine || !blocks[mine.id] || blocks[mine.id].uid !== uid || !FP.esGoneWins(goneIn.blocks, uid, time('blocks', edits, uid), moment)) continue;
+    delete blocks[mine.id];
+    delete edits.blocks[uid];
+  }
   let nextId = cur.nextId;
   const renumber = rs => (Array.isArray(rs) ? rs : []).map(FP.combatCleanRow).filter(Boolean).map(r => Object.assign(r, { id: nextId++ }));
   const inFights = Array.isArray(incoming.fights) && incoming.fights.length
@@ -156,7 +185,12 @@ function combatMerge(cur, incoming, newId, now) {
     if (mine.id === st.openId) st.rows = taken; else mine.rows = taken;
     edits.fights[f.id] = { k: combatFightKey(mine.name, taken), t: ti };
   }
-  const added = inFights.filter(f => !have.has(f.id)).map(f => ({ id: f.id, name: f.name, rows: renumber(f.rows) }));
+  for (const f of cur.fights) {
+    if (!FP.esGoneWins(goneIn.fights, f.id, time('fights', edits, f.id), moment)) continue;
+    combatDeleteFight(st, f.id, newId);
+    delete edits.fights[f.id];
+  }
+  const added = inFights.filter(f => !have.has(f.id) && !FP.esGoneWins(goneHere.fights, f.id, time('fights', incoming.edits, f.id), moment)).map(f => ({ id: f.id, name: f.name, rows: renumber(f.rows) }));
   for (const f of added) { const ti = time('fights', incoming.edits, f.id); if (ti > 0) edits.fights[f.id] = { k: combatFightKey(f.name, f.rows), t: ti }; }
   // On a fresh install the one empty fight gives way, so the restore opens on a real fight.
   const lone = st.fights.length === 1 && !st.rows.length && st.fights[0].name === 'Fight';
@@ -166,6 +200,12 @@ function combatMerge(cur, incoming, newId, now) {
     const empty = st.fights[0].id;
     combatOpenFight(st, (added.find(f => f.id === incoming.openId) || added[0]).id);
     st.fights = st.fights.filter(f => f.id !== empty);
+  }
+  for (const [kind, key] of [['blocks', 'goneBlocks'], ['fights', 'goneFights']]) {
+    const alive = {};
+    for (const id of Object.keys(edits[kind])) alive[id] = edits[kind][id].t;
+    const g = FP.esGoneLift(FP.esGoneMerge(goneHere[kind], goneIn[kind]), alive);
+    if (Object.keys(g).length) edits[key] = g; else delete edits[key];
   }
   return st;
 }
@@ -188,6 +228,6 @@ function combatBackupData(st) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { combatFightId, combatFightsFrom, combatFightRows, combatOpenFight, combatAddFight,
-    combatDuplicateFight, combatRenameFight, combatDeleteFight, combatBlockKey, combatFightKey, combatStampEdits, combatMerge,
+    combatDuplicateFight, combatFightLabel, combatRenameFight, combatDeleteFight, combatBlockKey, combatFightKey, combatStampEdits, combatMerge,
     combatSavedParts, combatBackupData };
 }

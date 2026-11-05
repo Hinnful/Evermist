@@ -30,6 +30,14 @@ describe('neClean', () => {
   });
 });
 
+describe('neClean and a later release', () => {
+  it('keeps a field the entry was written with', () => {
+    const out = N.neClean([E('a', 'faction', 'faction', 1, { colour: 'red' })]).entries;
+    assert.equal(out[0].colour, 'red');
+    assert.equal(N.neClean(out).entries[0].colour, 'red');
+  });
+});
+
 describe('add, rename, note', () => {
   it('adds last among its siblings, under the section or an entry of its kind', () => {
     let l = [E('a', 'faction', null, 4)];

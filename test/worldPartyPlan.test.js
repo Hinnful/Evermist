@@ -4,6 +4,17 @@ const assert = require('node:assert/strict');
 const P = require('../src/world/worldPartyPlan.js');
 const N = require('../src/notes/notesPlan.js');
 
+describe('wptMoved', () => {
+  it('puts the one marker down at the spot, with the time, and keeps what a later release added', () => {
+    const prev = P.wptClean({ x: 1, y: 2, scene: 'a', at: 5, label: 'camp' });
+    assert.deepEqual(P.wptMoved(prev, { x: 9, y: 8 }, null, 70), { label: 'camp', x: 9, y: 8, at: 70 });
+    assert.deepEqual(P.wptMoved(prev, { x: 9, y: 8 }, 'b', 70), { label: 'camp', x: 9, y: 8, scene: 'b', at: 70 });
+  });
+  it('starts a plain record when there was no marker', () => {
+    assert.deepEqual(P.wptMoved(null, { x: 3, y: 4 }, null, 7), { x: 3, y: 4, at: 7 });
+  });
+});
+
 describe('wptClean', () => {
   it('keeps a spot and the map it rides on', () => {
     assert.deepEqual(P.wptClean({ x: 10.04, y: -5, scene: 'a1' }), { x: 10, y: -5, scene: 'a1' });
@@ -16,8 +27,9 @@ describe('wptClean', () => {
     assert.deepEqual(P.wptClean({ x: 1, y: 2, scene: 5 }), { x: 1, y: 2 });
     assert.deepEqual(P.wptClean({ x: 1, y: 2, scene: '' }), { x: 1, y: 2 });
   });
-  it('carries no other field', () => {
-    assert.deepEqual(P.wptClean({ x: 1, y: 2, junk: true }), { x: 1, y: 2 });
+  it('keeps a field a later release added, so a rollback does not erase it', () => {
+    assert.deepEqual(P.wptClean({ x: 1, y: 2, junk: true }), { x: 1, y: 2, junk: true });
+    assert.deepEqual(P.wptClean(P.wptClean({ x: 1, y: 2, label: 'camp', scene: 'a1' })), { x: 1, y: 2, label: 'camp', scene: 'a1' });
   });
 });
 

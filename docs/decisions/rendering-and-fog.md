@@ -370,3 +370,7 @@ the app's own `index.html` or `stage.html` (`keepOnAppPages`), so a file dropped
 ### Room clears are clipped to the true outline · `SETTLED` (2026-11-04)
 A revealed or half room's interior clear is clipped to the room's outline first, and the inset keeps each corner's own radius
 less the feather. An arm thinner than the feather or a steep curve inverted the inset and cleared outside the room.
+
+### Fire's heat shimmer stays inside the fog · `SETTLED` (2026-11-05)
+The Fire fog itself wavers; nothing outside the fog moves and revealed rooms never shimmer, because the Player's fog pass
+cannot read the map under it. Mist drifting into revealed rooms was dropped (was BACKLOG 264).

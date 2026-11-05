@@ -4,10 +4,10 @@
 // scenes that sit on it. Positions are world units, as in worldMapPlan.js.
 
 // fogGeometry.js and worldMapPlan.js load first in the browser; here they are required.
-var edgeCubic, edgeIsCurved, handleAt, sampleCubic, subCubic, computeFillet, wmPolyCentre, wmPointInPoly;
+var edgeCubic, edgeIsCurved, handleAt, sampleCubic, subCubic, computeFillet, wmPolyCentre, wmPointInPoly, wmUnknownFields, wmCleanEdits;
 if (typeof module !== 'undefined' && module.exports) {
   ({ edgeCubic, edgeIsCurved, handleAt, sampleCubic, subCubic, computeFillet } = require('../fog/fogGeometry'));
-  ({ wmPolyCentre, wmPointInPoly } = require('./worldMapPlan'));
+  ({ wmPolyCentre, wmPointInPoly, wmUnknownFields, wmCleanEdits } = require('./worldMapPlan'));
 }
 
 const WR_ID0 = 2000000;          // clear of every room id and every place id
@@ -24,9 +24,13 @@ const _wrOwn = (map, k) => !!map && Object.prototype.hasOwnProperty.call(map, k)
 // relative to the place's centre).
 function wrCleanEnd(raw) {
   if (!raw || typeof raw !== 'object') return { kind: null };
-  if (raw.kind === 'scene' && typeof raw.ref === 'string' && raw.ref) return { kind: 'scene', ref: raw.ref };
+  // A field a later release added to an end rides along, beside the known ones. An end of a kind this build does not
+  // know is an open one: its own shape cannot be drawn.
+  const extra = {};
+  for (const k of Object.keys(raw)) if (!['kind', 'ref', 'dx', 'dy'].includes(k)) extra[k] = raw[k];
+  if (raw.kind === 'scene' && typeof raw.ref === 'string' && raw.ref) return { ...extra, kind: 'scene', ref: raw.ref };
   if (raw.kind === 'place' && typeof raw.ref === 'string' && raw.ref && _wrNum(raw.dx) && _wrNum(raw.dy)) {
-    return { kind: 'place', ref: raw.ref, dx: raw.dx, dy: raw.dy };
+    return { ...extra, kind: 'place', ref: raw.ref, dx: raw.dx, dy: raw.dy };
   }
   return { kind: null };
 }
@@ -55,21 +59,20 @@ function wrCleanRoad(raw) {
     ends: [wrCleanEnd(raw.ends && raw.ends[0]), wrCleanEnd(raw.ends && raw.ends[1])],
     scenes: [],
   };
+  const unknown = wmUnknownFields(raw, ['name', 'vertices', 'ends', 'scenes', 'handles', 'cornerRadius', 'cornerRadii', 'edits', 'uid', 'id', 'mode', 'open']);
+  if (unknown) out.unknown = unknown;
   const handles = _wrCleanHandles(raw.handles, vertices.length);
   if (handles) out.handles = handles;
   if (_wrNum(raw.cornerRadius) && raw.cornerRadius > 0) out.cornerRadius = raw.cornerRadius;
   if (Array.isArray(raw.cornerRadii) && raw.cornerRadii.length === vertices.length &&
       raw.cornerRadii.every(r => r === null || (_wrNum(r) && r >= 0)) && raw.cornerRadii.some(r => r !== null)) out.cornerRadii = raw.cornerRadii.slice();
-  if (raw.edits && typeof raw.edits === 'object') {
-    const edits = {};
-    for (const k of ['shape', 'text']) if (_wrNum(raw.edits[k]) && raw.edits[k] > 0) edits[k] = raw.edits[k];
-    if (Object.keys(edits).length) out.edits = edits;
-  }
+  const edits = wmCleanEdits(raw.edits);
+  if (edits) out.edits = edits;
   const seen = Object.create(null);
   for (const s of Array.isArray(raw.scenes) ? raw.scenes : []) {
     if (!s || typeof s.id !== 'string' || !s.id || !_wrNum(s.t) || seen[s.id]) continue;
     seen[s.id] = true;
-    out.scenes.push({ id: s.id, t: Math.max(0, Math.min(1, s.t)) });
+    out.scenes.push({ ...s, id: s.id, t: Math.max(0, Math.min(1, s.t)) });
   }
   return out;
 }
@@ -353,7 +356,7 @@ function wrReverse(road) {
   const out = _wrCopy(road), swap = h => (h ? { ix: h.ox, iy: h.oy, ox: h.ix, oy: h.iy } : null);
   out.vertices.reverse();
   out.ends.reverse();
-  out.scenes = out.scenes.map(s => ({ id: s.id, t: 1 - s.t }));
+  out.scenes = out.scenes.map(s => ({ ...s, t: 1 - s.t }));
   if (road.handles) out.handles = road.handles.map(swap).reverse();
   if (road.cornerRadii) out.cornerRadii.reverse();
   return out;
@@ -392,11 +395,11 @@ function wrRemap(road, scenes, places, dx, dy) {
   const out = _wrCopy(road);
   out.vertices = out.vertices.map(v => ({ x: v.x + dx, y: v.y + dy }));
   out.ends = out.ends.map(e => {
-    if (e.kind === 'scene') return _wrOwn(scenes, e.ref) ? { kind: 'scene', ref: scenes[e.ref] } : { kind: null };
+    if (e.kind === 'scene') return _wrOwn(scenes, e.ref) ? { ...e, ref: scenes[e.ref] } : { kind: null };
     if (e.kind === 'place') return _wrOwn(places, e.ref) ? e : { kind: null };
     return e;
   });
-  out.scenes = out.scenes.filter(s => _wrOwn(scenes, s.id)).map(s => ({ id: scenes[s.id], t: s.t }));
+  out.scenes = out.scenes.filter(s => _wrOwn(scenes, s.id)).map(s => ({ ...s, id: scenes[s.id] }));
   return out;
 }
 

@@ -64,7 +64,7 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, s
   worldRoadsImport(plans.roads, sceneMap, placeSet, shift.dx, shift.dy);
   worldPartyImport(wptParse(raw), sceneMap, shift.dx, shift.dy);
   const entries = notesParseEntries(raw);
-  notesEntriesAdopt(entries.entries.map(e => (e && typeof e.note === 'string' ? { ...e, note: mentions.remap(e.note) } : e)));
+  notesEntriesAdopt(entries.entries.map(e => (e && typeof e.note === 'string' ? { ...e, note: mentions.remap(e.note) } : e)), notesParseGone(raw).entries);
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
 
   const nl = String.fromCharCode(10), b = plans.broken, parts = [];
@@ -124,7 +124,7 @@ async function _tiPlan(zipPath, manifest) {
     console.error('Reading the campaign notes from the file failed:', err);
     readFailed = true;
   }
-  const incoming = _tiRead(raw);
+  const incoming = _tiRead(raw), gone = notesParseGone(raw);
   const existing = allScenes, noNotes = [];
   const items = tpSceneIds(manifest, new Set(existing.map(s => s.id)), id => TI_SAFE_ID.test(id), _tiMint);
   const mentions = _tiMentions(raw, items, incoming, moment);
@@ -141,8 +141,8 @@ async function _tiPlan(zipPath, manifest) {
     x.plan = tpMergeScene(local, x.entry, moment, { localMapMissing: missing });
   }
   const plans = {
-    places: tpMergePlaces(_tiLocalPlaces(), incoming.places, moment),
-    roads: tpMergeRoads(_tiRoadMap(worldRoadsExport(), notesRoadsAll()), incoming.roads, moment),
+    places: tpMergePlaces(_tiLocalPlaces(), incoming.places, moment, { here: worldPlacesGone(), file: gone.places }),
+    roads: tpMergeRoads(_tiRoadMap(worldRoadsExport(), notesRoadsAll()), incoming.roads, moment, { here: worldRoadsGone(), file: gone.roads }),
     broken: incoming.broken,
   };
   // ⚠ BESIDE ONLY WHEN NOTHING MATCHED: a matched layout is the same layout, and moving it would split it.
@@ -173,7 +173,7 @@ async function _tiExtract(zipPath, items) {
 function _tiMatchedRecord(x, got, run) {
   const e = x.entry, take = x.plan.take;
   const pictures = _tiPictures(e.pictures, got.pictures);
-  const rec = { ...x.local, ...x.plan.record, pictureBlobs: { ...pictures, ...(x.local.pictureBlobs || {}) } };
+  const rec = { ...tpExtraFields(e), ...x.local, ...x.plan.record, pictureBlobs: { ...pictures, ...(x.local.pictureBlobs || {}) } };
   if (take.fog && got.fogBuffer) { rec.baseFogBlob = new Blob([got.fogBuffer], { type: 'image/png' }); delete rec.baseFogPNG; }
   if (got.thumbBuffer && (take.map || take.fog)) rec.thumbnail = new Blob([got.thumbBuffer], { type: 'image/jpeg' });
   if (take.map) {
@@ -195,6 +195,7 @@ function _tiNewRecord(x, got, name, order, shift) {
   const e = x.entry;
   const mapPath = e.mapType === 'video' && got.mapWritten !== false ? `maps/${x.id}${e.mapExt || '.webm'}` : undefined;
   return {
+    ...tpExtraFields(e),
     id: x.id, name, group: e.group || '', worldPos: _tiRestoredPos(e.worldPos, shift),
     mapType: e.mapType || 'image', mapWidth: e.mapWidth || 0, mapHeight: e.mapHeight || 0,
     mapBlob: e.mapType !== 'video' && got.mapBuffer ? new Blob([got.mapBuffer], { type: e.mapMimeType || 'image/jpeg' }) : undefined, mapPath,
@@ -259,7 +260,7 @@ async function _tiFinish(zipPath, plan, done, say, claude) {
   await _tiAdoptCampaign(plan.raw, plan.readFailed, { ...plan.plans, moment: plan.moment }, plan.shift, plan.items, plan.noNotes, say, plan.mentions, done.overwritten);
   await worldBackgroundImport(zipPath, plan.shift, plan.moment, say);
   try {
-    await galleryAdoptBackup(zipPath);
+    await galleryAdoptBackup(zipPath, notesParseGone(plan.raw).pictures);
     await galleryAdoptScenes(done.pictured);
   } catch (err) { console.error('Importing the gallery failed:', err); }
   if (done.reopen) await switchScene(done.reopen);

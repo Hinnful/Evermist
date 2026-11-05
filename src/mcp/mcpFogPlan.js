@@ -1,11 +1,11 @@
 'use strict';
 // mcpFogPlan.js — pure rules behind Claude setting a map's fog: a room's fog word, rooms found by name, a rectangle
-// or circle in percent turned into fog-canvas pixels and clipped at the map's edge, and a fog theme by the name the
+// or circle in percent turned into fog-canvas pixels and clipped at the map's edge, a fog theme and a weather by the name the
 // dropdown shows. No DOM. Tested.
 
 const MFP = (typeof module !== 'undefined' && module.exports)
-  ? (require('../fog/themes/default.js'), require('../fog/themes/blood.js'), require('../fog/themes/toxic.js'), require('../fog/themes/ice.js'), require('../fog/themes/fire.js'), require('../fog/themes/fogThemes.js'))
-  : { FOG_THEMES };
+  ? (require('../fog/themes/default.js'), require('../fog/themes/blood.js'), require('../fog/themes/toxic.js'), require('../fog/themes/ice.js'), require('../fog/themes/fire.js'), Object.assign({}, require('../fog/themes/fogThemes.js'), require('../render/weatherPlan.js')))
+  : { FOG_THEMES, WEATHER_PRESETS };
 
 // The words a call uses for a room's fog, as the app stores them (shroud, half, reveal).
 const MCP_FOG_ROOM_MODE = { hidden: 'shroud', half: 'half', revealed: 'reveal' };
@@ -25,6 +25,13 @@ function mcpFogThemeId(raw) {
 
 // Rooms by name, case and edge spaces ignored. { index: [...polygon indexes], error } where an error says which name
 // no room has, or which two rooms share.
+// The id of the weather a name such as "snowfall" or "Fair weather" names, else null.
+function mcpWeatherId(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  const hit = Object.values(MFP.WEATHER_PRESETS).find(w => w.id === s || w.label.toLowerCase() === s);
+  return hit ? hit.id : null;
+}
+
 function mcpFogFindRooms(polys, names) {
   if (!Array.isArray(names) || !names.length) return { error: 'Give the names of the rooms in rooms.' };
   const key = n => String(n || '').trim().toLowerCase();
@@ -99,6 +106,6 @@ function mcpFogBox(shape, mapW, mapH) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { MCP_FOG_ROOM_MODE, mcpFogRoomMode, mcpFogThemeId, mcpFogFindRooms,
+  module.exports = { MCP_FOG_ROOM_MODE, mcpFogRoomMode, mcpFogThemeId, mcpWeatherId, mcpFogFindRooms,
     mcpFogArea, mcpFogPixels, mcpFogRoomsOverriding, mcpFogBox };
 }

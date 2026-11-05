@@ -475,3 +475,7 @@ DM never runs a command for it. `stop-checklist.js` reminds once per push, then 
 ### The `scout` subagent moved from Haiku to Sonnet · `SETTLED` (2026-11-04)
 `scout` now runs on Sonnet instead of Haiku. **Reverses** the `scout` on Haiku part of "Subagents carry
 their own model and thinking level"; `builder` and `filer` keep the models that entry gave them.
+
+### Backup is tested by rig scenarios, not by hand · `SETTLED` (2026-11-05)
+Three non-blocker scenarios (`backup-large-library`, `backup-two-laptops`, `backup-every-record`) and `tools/rig/backupKit.js`
+test backups without a second laptop, so the manual backup hand test was waived for 5.3.2. Findings sit in BACKLOG 271.

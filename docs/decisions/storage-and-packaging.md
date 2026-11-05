@@ -386,3 +386,7 @@ unprivileged user namespaces), and a control run without the switch still opened
 `tools/linux-first-launch.js` runs in the Linux job of `update-proofs.yml` before the step that sets the sysctl and
 installs `libfuse2t64`, and passes when the DM window loads `index.html`. The earlier legs changed that kernel setting
 first, which hid the failure.
+
+### Electron 45 shipped, and macOS 13 became the floor · `SETTLED` (2026-11-05)
+The move was not urgent (nothing waited on it) and was done in 5.3.2. Electron 44+ needs macOS 13 (Ventura) or newer;
+Evermist has no Mac users today, so the floor was accepted. Supersedes "Electron 45 waits" above.

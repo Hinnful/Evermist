@@ -213,15 +213,26 @@ function wmCleanShape(raw) {
 
 const _wmNum = v => typeof v === 'number' && Number.isFinite(v);
 
-// The times an edit stamped on a record's parts: only the listed keys, each a positive finite number.
-function wmCleanEdits(raw, keys) {
+// The times an edit stamped on a record's parts, each a positive finite number. A time under a part this build
+// does not know is a later release's, and rides along.
+function wmCleanEdits(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const out = {};
-  for (const k of keys) if (_wmNum(raw[k]) && raw[k] > 0) out[k] = raw[k];
+  for (const k of Object.keys(raw)) if (_wmNum(raw[k]) && raw[k] > 0) out[k] = raw[k];
   return Object.keys(out).length ? out : null;
 }
 
-// A stored place as a clean record { vertices, cornerRadius?, cornerRadii?, handles?, uid?, edits? }, the fields a
+// ⚠ A RECORD IS NEVER NORMALISED FROM A FIXED KEY LIST: the fields a reader does not know are kept apart, in
+// `unknown`, which the writer spreads back, so a later release's extra field survives a round trip through this
+// one. A live record already carries its `unknown`, and its runtime fields are listed in `known`. Null for none.
+function wmUnknownFields(raw, known) {
+  if (Object.prototype.hasOwnProperty.call(raw, 'unknown')) return raw.unknown && typeof raw.unknown === 'object' ? { ...raw.unknown } : null;
+  const out = {};
+  for (const k of Object.keys(raw)) if (!known.includes(k)) out[k] = raw[k];
+  return Object.keys(out).length ? out : null;
+}
+
+// A stored place as a clean record { vertices, cornerRadius?, cornerRadii?, handles?, uid?, edits?, unknown? }, the fields a
 // room carries for its outline plus the id and part times that match it across machines, or null. A bare
 // array of points is a place from before rounding.
 function wmCleanPlace(raw) {
@@ -230,6 +241,8 @@ function wmCleanPlace(raw) {
   const vertices = wmCleanShape(raw.vertices);
   if (!vertices) return null;
   const out = { vertices };
+  const unknown = wmUnknownFields(raw, ['vertices', 'cornerRadius', 'cornerRadii', 'handles', 'uid', 'edits', 'name', 'id', 'mode']);
+  if (unknown) out.unknown = unknown;
   if (_wmNum(raw.cornerRadius) && raw.cornerRadius > 0) out.cornerRadius = raw.cornerRadius;
   if (Array.isArray(raw.cornerRadii) && raw.cornerRadii.length === vertices.length &&
       raw.cornerRadii.every(r => r === null || (_wmNum(r) && r >= 0))) out.cornerRadii = raw.cornerRadii.slice();
@@ -238,7 +251,7 @@ function wmCleanPlace(raw) {
     out.handles = raw.handles.map(h => (h ? { ix: h.ix, iy: h.iy, ox: h.ox, oy: h.oy } : null));
   }
   if (typeof raw.uid === 'string' && raw.uid && raw.uid.length <= 80) out.uid = raw.uid;
-  const edits = wmCleanEdits(raw.edits, ['shape', 'name', 'notes']);
+  const edits = wmCleanEdits(raw.edits);
   if (edits) out.edits = edits;
   return out;
 }
@@ -490,7 +503,7 @@ if (typeof module !== 'undefined' && module.exports) {
     WM_CARD_W, WM_CARD_H, WM_PAD, WM_LABEL, WM_SPLIT, WM_FRAME_FILL, WM_FRAME_MAX, WM_STEP_X, WM_STEP_Y,
     wmCleanPos, wmBesideOffset, wmPlanPositions, wmHullRect, wmRectCentre, wmFillZoom,
     wmCardRect, wmGroupRectAt, wmPointInPoly, wmRectInPoly, wmPolyArea, wmPolyBounds, wmPolyCentre, wmRectShape, wmCircleShape,
-    wmCleanShape, wmCleanEdits, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmSpotInOutline, wmLabelSpot,
+    wmCleanShape, wmCleanEdits, wmUnknownFields, wmCleanPlace, wmOutline, wmPlaceOf, wmParseShapes, wmSlotInPoly, wmSpotInOutline, wmLabelSpot,
     wmPlateSpot, WM_PILL, wmPillWidth, WM_FAN, WM_FAN_SCALES, wmFanCards, wmFanSize, wmFanSpot, wmExtent, wmZoomFloor, wmClampCamera,
     wmContentBox, wmFrameCamera, wmPlaceCamera, wmLevelFor, wmZoomAround, wmSideBySide, wmFreeSpot, wmMatches,
   };
