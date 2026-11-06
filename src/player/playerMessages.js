@@ -7,7 +7,7 @@ function initPlayerMessages() {
     if (!msg) return;
     startPlayerMapRetryOnce();   // anything from the DM means it is holding this window
 
-    if (msg.type === 'fog-theme') { applyPlayerFogTheme(msg.theme); return; }
+    if (msg.type === 'fog-theme') { receivePlayerFogTheme(msg.theme, false); return; }
     if (msg.type === 'scene-clear') { applyPlayerSceneClear(); return; }
     if (msg.type === 'scene-transition') { applyPlayerSceneTransition(msg); return; }
     // ⚠ A pre-warmed window's PLAYER_READY was dropped — the DM was not holding it yet.

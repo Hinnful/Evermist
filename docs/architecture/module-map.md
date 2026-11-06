@@ -12,7 +12,7 @@ language, present tense. The terse version every session carries is in
 | `playerFogPass.js` | The Player's fog drawn as one pass over the whole window, shaders and all. Covering the window rather than the map is what leaves no edge for a seam to sit on. |
 | `playerFogShader.js` | The Player's fog shaders, as source. Data only. |
 | `playerFogTrans.js` | A fog change on the TV: the order texture the shader reads, changes that overlap in time each on their own clock, and the outgoing mask until the last has run. |
-| `fogTransitionPlan.js` | The pure order maths of a TV fog change: the changed pixels, their noise ranked over the region, the progress the shader reaches at each, and the exact bake of a pixel another change is still moving. Unit-tested. |
+| `fogTransitionPlan.js` | The pure order maths of a TV fog change: the changed pixels, their noise ranked over the region, and which pixels a new change takes from one still moving: every changed pixel, never a pixel only in its ring. Unit-tested. |
 | `dmFogLayer.js` | The DM's fog, which is a different thing entirely: map-sized sprites, the crossfade between the fog before an edit and after it, and the drifting cloud texture masked to wherever fog is opaque. |
 | `render.js` | The render loop. Each frame it decides which layers actually changed and redraws only those, keeps the canvases sized to the window, and paints the cursor and polygon-selection overlay. |
 | `state.js` | Shared values that several files need. Loaded first so they exist before anything reads them. |

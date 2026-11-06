@@ -394,3 +394,24 @@ Declined: a separate process for the TV (a big rework) and preloading (only move
 a GPU readback stalled the shared thread. Discrete edits send at once; brush strokes keep the debounce. The first-map
 hint scan runs only while a hint reading it can show (it stalled each switch 35-140 ms); dropping `willReadFrequently`
 there did not help and was reverted.
+
+### A fog change over a moving one starts from what the TV shows · `SETTLED` (2026-11-06)
+The start state is a GPU bake through the theme's own `fogStep` (`PLAYER_FOG_BAKE_MAIN`, shared `fogClock`), read back on a
+capped grid only when two changes overlap (`fogChangeOverlaps`); the CPU bake (`fogBakePrev`, `fogLocalProgress`,
+`fogChangeEase`) is gone. The read-back costs 1.5-5 ms and a GPU read-back once stalled the TV, so that is the known risk.
+Rejected: a grid-sized outgoing mask (a second, stepped edge beside hidden neighbours' fog edges), so it stays full size
+(`ptFull`). The moving front's glow draws only where fog really comes or goes (smoothstep .25-.6 on the mask difference), since
+a neighbour's feather thickening drew a front (Blood smeared into the room below). A new change takes a running change's
+ring pixels but never its own changed pixels (`fogTakePixels`): taking the ring flashed an outline round a room on a reversed
+hide, taking a still-animating neighbour's strip was the earlier bug. The near copies blend on `gN` (hard clock where the mask
+changes, else a soft clock on the rank), because on the hard clock alone neighbours' wall darkening and Ice's band traced the
+spiky front inside the fog; a wider ring (3 sigma) proved unnecessary. Ice's veins thaw on the change clock.
+
+### A fog theme pick blends the two looks, never stacks them · `SETTLED` (2026-11-06)
+Picking a theme on the open map switches shader and colour at once and blends 1.5 s: both meshes add into one container with an
+AlphaFilter, giving new*e + old*(1-e) in colour and alpha, composited once; the outgoing look keeps its frozen colours and the
+cloud motion eases old to new. The extra pass exists only during the fade. Rejected: the 0.5 s fade over the new fog after a
+700 ms colour ease (stacked alphas thickened soft edges, both glows showed, old clouds took the new speed at once). The theme
+covering the old one in its own hide and today's fade were prototyped; the slow blend won on product grounds. On a map switch
+between themes the incoming theme waits under the closed cover until the new map lands, the cloud drift follows the shader on
+screen, and a map of another size landing keeps a fade or swap in flight.

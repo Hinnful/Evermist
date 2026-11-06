@@ -21,15 +21,19 @@ let pixiPFogGeom     = null;
 let pixiPFogShader   = null;   // the theme in use
 let pixiPFogShaders  = null;   // theme id -> its shader, all sharing one uniform group
 let pixiPFogShadersOut = null; // the same programs with their own uFade, for the fading-out pass
+let pixiPFogBakeShaders = null; // theme id -> its bake (playerFogTrans.js), what a change shows right now
 let pixiPFogOutMesh  = null;   // the outgoing theme, drawn above the main mesh while it fades
+let pixiPFogBlend    = null;   // a pick's crossfade: both meshes added into this container, which renders them to one texture
+let pixiPFogMotionFrom = null; // the old theme's drift numbers, eased to the new one's through a pick's crossfade
 let pixiPFogOutId    = null;
 let pixiPFogFadeAt   = 0;
 let pixiPFogDrawn    = false;  // a frame has been drawn since init: only then does a theme change fade
-const PLAYER_FOG_THEME_FADE_MS = 500;
+const PLAYER_FOG_THEME_FADE_MS = 1500;
 // A map switch swaps the theme under the closed cover instead: the incoming theme washes over the
 // outgoing one in its own hide (uSwap), above it in the stack.
 const PLAYER_FOG_THEME_SWAP_MS = 1800;
 let pixiPFogSwapAt   = 0;      // when the swap began; 0 = none
+let pixiPFogMotionId = null;   // the theme whose motion the drift runs
 let pixiPFogDeriv    = null;   // a WebGL1 context has fwidth (a theme's constant-width lines), probed once
 let pixiPFogUniforms = null;
 // The fog's colours, in groups of their own so the outgoing mesh can keep the old theme's through a
@@ -203,12 +207,13 @@ function pixiProbePlayerFogDerivatives() {
 // ⚠ WebGL2 compiles the sources as ESSL 3.00, which has fwidth built in. On WebGL1 the #extension line
 // goes on AFTER Pixi has prefixed its own precision and #define lines, or it is no longer first in
 // the source and the driver rejects it.
-function pixiPlayerFogProgram(rec, index) {
+// fragOf(deriv) builds the fragment source.
+function pixiPlayerFogProgram(fragOf) {
   if (pixiApp.renderer.context.webGLVersion === 2) {
-    return PIXI.Program.from(PLAYER_FOG_ES3_VERT + PLAYER_FOG_VERT, PLAYER_FOG_ES3_FRAG + playerFogFrag(rec, index, true));
+    return PIXI.Program.from(PLAYER_FOG_ES3_VERT + PLAYER_FOG_VERT, PLAYER_FOG_ES3_FRAG + fragOf(true));
   }
   const deriv = pixiProbePlayerFogDerivatives();
-  const prog = PIXI.Program.from(PLAYER_FOG_VERT, playerFogFrag(rec, index, deriv));
+  const prog = PIXI.Program.from(PLAYER_FOG_VERT, fragOf(deriv));
   if (deriv) prog.fragmentSrc = '#extension GL_OES_standard_derivatives : enable\n' + prog.fragmentSrc;
   return prog;
 }
@@ -220,8 +225,8 @@ function pixiWarmPlayerFogThemes() {
   const rt = PIXI.RenderTexture.create({ width: 16, height: 16 });
   const active = pixiPFogMesh.shader;
   try {
-    for (const id of Object.keys(pixiPFogShaders)) {
-      pixiPFogMesh.shader = pixiPFogShaders[id];
+    for (const sh of Object.values(pixiPFogShaders).concat(Object.values(pixiPFogBakeShaders))) {
+      pixiPFogMesh.shader = sh;
       pixiApp.renderer.render(pixiPFogMesh, { renderTexture: rt, clear: true });
     }
   } catch (e) { console.error('[fog theme warm-up]', e); }
@@ -230,8 +235,12 @@ function pixiWarmPlayerFogThemes() {
 }
 
 // blurCvs is the reveal mask (alpha = how fogged); cloudCvs is the 512² cross-faded cloud frame.
+// ⚠ A REBUILD KEEPS THE THEME ON SCREEN AND ANY FADE OR SWAP IN FLIGHT: a map of another size lands
+// mid-switch, and starting over from the new theme turned the swap under the cover into a cut.
 function pixiInitPlayerFog(blurCvs, cloudCvs) {
   if (!pixiApp || !pixiScreenLayer || !blurCvs || !cloudCvs) return;
+  const keep = pixiPFogMesh ? { themeId: pixiPFogThemeId, drawn: pixiPFogDrawn, outId: pixiPFogOutId, fadeAt: pixiPFogFadeAt,
+    swapAt: pixiPFogSwapAt, colors: pixiPFogColors, outColors: pixiPFogOutColors, motionFrom: pixiPFogMotionFrom } : null;
   pixiDestroyPlayerFog();
 
   pixiPFogCloudSrc = cloudCvs;
@@ -280,21 +289,36 @@ function pixiInitPlayerFog(blurCvs, cloudCvs) {
   pixiPFogColors = pixiNewFogColors();
   pixiPFogOutColors = pixiNewFogColors();
 
-  pixiPFogShaders = {}; pixiPFogShadersOut = {};
+  pixiPFogShaders = {}; pixiPFogShadersOut = {}; pixiPFogBakeShaders = {};
   pixiPFogDrawn = false;
   FOG_THEMES.forEach((rec, i) => {
     // Nested group: the per-frame uniforms stay shared, each shader owns its uFade.
-    const prog = pixiPlayerFogProgram(rec, i);
+    const prog = pixiPlayerFogProgram(d => playerFogFrag(rec, i, d));
     pixiPFogShaders[rec.id]    = new PIXI.Shader(prog, { uFade: 1, uSwap: -1, uShared: pixiPFogUniforms, uColors: pixiPFogColors });
     pixiPFogShadersOut[rec.id] = new PIXI.Shader(prog, { uFade: 1, uSwap: -1, uShared: pixiPFogUniforms, uColors: pixiPFogOutColors });
+    pixiPFogBakeShaders[rec.id] = new PIXI.Shader(pixiPlayerFogProgram(d => playerFogBakeFrag(rec, d)),
+      { uShared: pixiPFogUniforms, uOldCur: PIXI.Texture.WHITE, uTake: PIXI.Texture.WHITE, uGrid: new Float32Array([1, 1]), uBakeNow: 0, uFull: 0 });
   });
-  pixiPFogThemeId = fogThemeNormalize(fogTheme);
+  pixiPFogThemeId = keep ? keep.themeId : fogThemeNormalize(fogTheme);
   pixiPFogShader = pixiPFogShaders[pixiPFogThemeId];
+  if (keep) {
+    pixiPFogDrawn = keep.drawn;
+    pixiCopyFogColors(keep.colors.uniforms, pixiPFogColors.uniforms);
+    pixiCopyFogColors(keep.outColors.uniforms, pixiPFogOutColors.uniforms);
+  }
 
   pixiPFogMesh = new PIXI.Mesh(pixiPFogGeom, pixiPFogShader);
   // screen, not renderer.width: the quad uses the same CSS pixels as panX/panY/zoom.
   pixiSizePlayerFogQuad(pixiApp.renderer.screen.width, pixiApp.renderer.screen.height);
   pixiScreenLayer.addChild(pixiPFogMesh);   // appended: always above the grid sprite
+  if (keep && keep.outId) {
+    pixiPFogOutId = keep.outId; pixiPFogFadeAt = keep.fadeAt; pixiPFogSwapAt = keep.swapAt;
+    pixiPFogOutMesh = new PIXI.Mesh(pixiPFogGeom, pixiPFogShadersOut[keep.outId]);
+    pixiPFogMotionFrom = keep.motionFrom;
+    if (pixiPFogSwapAt) { pixiScreenLayer.addChild(pixiPFogOutMesh); pixiScreenLayer.addChild(pixiPFogMesh); }
+    else pixiBlendPlayerFogMeshes();
+    pixiStepPlayerFogThemeFade();
+  }
   pixiWarmPlayerFogThemes();
 }
 
@@ -336,6 +360,11 @@ function pixiUpdatePlayerFog(u) {
     pixiPFogShader = pixiPFogShaders[id];
     pixiPFogMesh.shader = pixiPFogShader;
   }
+  // The drift is the theme on screen's, and through a swap the outgoing one's (fogTheme.js).
+  if (!pixiPFogSwapAt && pixiPFogMotionId !== pixiPFogThemeId) {
+    pixiPFogMotionId = pixiPFogThemeId;
+    applyFogThemeMotion(fogThemeRecord(pixiPFogThemeId));
+  }
   pixiStepPlayerFogThemeFade();
   const q = pixiPFogUniforms.uniforms;
   q.uCloudM.set(u.cloudM);
@@ -356,8 +385,6 @@ function pixiUpdatePlayerFog(u) {
   q.uTime    = u.time;
   const c = pixiPFogColors.uniforms;
   c.uCloudC.set(u.cloudC); c.uBase.set(u.base); c.uTint.set(u.tint); c.uRim.set(u.rim); c.uTintA = u.tintA;
-  // A crossfade's outgoing look takes the new colours with it; a swap's keeps the ones it froze.
-  if (pixiPFogOutMesh && !pixiPFogSwapAt) pixiCopyFogColors(c, pixiPFogOutColors.uniforms);
   pixiPFogDrawn = true;
 }
 
@@ -369,11 +396,46 @@ function pixiStartPlayerFogThemeFade(fromId, swap) {
   if (!pixiPFogOutMesh) pixiPFogOutMesh = new PIXI.Mesh(pixiPFogGeom, pixiPFogShadersOut[fromId]);
   else pixiPFogOutMesh.shader = pixiPFogShadersOut[fromId];
   pixiPFogOutMesh.shader.uniforms.uFade = 1;
-  // The live colours are still last frame's here: the outgoing theme keeps its own through the swap.
-  if (swap) pixiCopyFogColors(pixiPFogColors.uniforms, pixiPFogOutColors.uniforms);
-  // Appended last is drawn on top: the fading-out look over the new one, or under it for a swap.
-  pixiScreenLayer.addChild(pixiPFogOutMesh);
-  if (swap) pixiScreenLayer.addChild(pixiPFogMesh);
+  // The live colours are still last frame's here: the outgoing theme keeps its own, frozen.
+  pixiCopyFogColors(pixiPFogColors.uniforms, pixiPFogOutColors.uniforms);
+  if (swap) {
+    // Appended last is drawn on top; the swap washes the new look over the old one.
+    pixiUnblendPlayerFogMeshes();
+    pixiPFogMotionFrom = null;
+    pixiScreenLayer.addChild(pixiPFogOutMesh);
+    pixiScreenLayer.addChild(pixiPFogMesh);
+    return;
+  }
+  pixiPFogMotionFrom = { speed: fogAnimSpeed, drift: driftScale, morph: cloudFrameSpeed, pulse: alphaPulseAmp };
+  pixiBlendPlayerFogMeshes();
+}
+
+// ⚠ A pick's crossfade BLENDS the two looks, never stacks them: both meshes add into one container
+// that renders to its own texture, so the screen gets new*e + old*(1-e) in colour AND alpha, once.
+// Drawn over each other, half fog and soft edges thickened and both edge glows showed.
+function pixiBlendPlayerFogMeshes() {
+  if (pixiPFogBlend || !pixiPFogMesh || !pixiPFogOutMesh) return;
+  const at = pixiScreenLayer.getChildIndex(pixiPFogMesh);
+  const box = new PIXI.Container();
+  box.filters = [new PIXI.AlphaFilter(1)];
+  box.filterArea = pixiApp.renderer.screen;
+  pixiScreenLayer.addChildAt(box, at);
+  box.addChild(pixiPFogMesh, pixiPFogOutMesh);
+  pixiPFogMesh.blendMode = pixiPFogOutMesh.blendMode = PIXI.BLEND_MODES.ADD;
+  pixiPFogBlend = box;
+}
+
+function pixiUnblendPlayerFogMeshes() {
+  if (!pixiPFogBlend) return;
+  const box = pixiPFogBlend;
+  pixiPFogBlend = null;
+  if (pixiPFogMesh) {
+    pixiPFogMesh.blendMode = PIXI.BLEND_MODES.NORMAL;
+    pixiScreenLayer.addChildAt(pixiPFogMesh, pixiScreenLayer.getChildIndex(box));
+  }
+  pixiScreenLayer.removeChild(box);
+  box.filters[0].destroy();
+  box.destroy();
 }
 
 function pixiResetPlayerFogSwap() {
@@ -388,6 +450,8 @@ function pixiPlayerFogSwapping() {
 function pixiStopPlayerFogThemeFade() {
   pixiPFogSwapAt = 0;
   pixiResetPlayerFogSwap();
+  pixiUnblendPlayerFogMeshes();
+  if (pixiPFogShaders) for (const id of Object.keys(pixiPFogShaders)) pixiPFogShaders[id].uniforms.uFade = 1;
   if (!pixiPFogOutMesh) return;
   if (pixiScreenLayer) pixiScreenLayer.removeChild(pixiPFogOutMesh);
   pixiPFogOutMesh.destroy();
@@ -404,8 +468,22 @@ function pixiStepPlayerFogThemeFade() {
     return;
   }
   const k = (performance.now() - pixiPFogFadeAt) / PLAYER_FOG_THEME_FADE_MS;
-  if (k >= 1) { pixiStopPlayerFogThemeFade(); return; }
-  pixiPFogOutMesh.shader.uniforms.uFade = 1 - k * k * (3 - 2 * k);
+  const e = k >= 1 ? 1 : k * k * (3 - 2 * k);
+  pixiEasePlayerFogMotion(e);
+  if (k >= 1) { pixiPFogMotionFrom = null; pixiStopPlayerFogThemeFade(); return; }
+  pixiPFogShader.uniforms.uFade = e;
+  pixiPFogOutMesh.shader.uniforms.uFade = 1 - e;
+}
+
+// The cloud motion rides the crossfade's curve, from the old theme's numbers to the new one's.
+function pixiEasePlayerFogMotion(e) {
+  const f = pixiPFogMotionFrom;
+  if (!f) return;
+  const to = fogThemeRecord(pixiPFogThemeId).anim;
+  fogAnimSpeed    = f.speed + (to.speed - f.speed) * e;
+  driftScale      = f.drift + (to.drift - f.drift) * e;
+  cloudFrameSpeed = f.morph + (to.morph - f.morph) * e;
+  alphaPulseAmp   = f.pulse + (to.pulse - f.pulse) * e;
 }
 
 // The Player's grid, still drawn in Canvas-2D but shown INSIDE the Pixi canvas beneath the fog
@@ -469,7 +547,7 @@ function pixiDestroyPlayerFog() {
   if (pixiPFogCloudBT) pixiPFogCloudBT.destroy();
   if (pixiPFogNearBT) { pixiPFogNearBT.destroy(); pixiPFogNearBT = null; }
   if (pixiPFogNearPrevBT) { pixiPFogNearPrevBT.destroy(); pixiPFogNearPrevBT = null; }
-  pixiPFogGeom = null; pixiPFogShader = null; pixiPFogShaders = null; pixiPFogShadersOut = null;
+  pixiPFogGeom = null; pixiPFogShader = null; pixiPFogShaders = null; pixiPFogShadersOut = null; pixiPFogBakeShaders = null;
   pixiPFogCloudBT = null; pixiPFogCloudSrc = null;
   pixiPFogMaskBT = null;
   pixiPFogMaskCvs = null; pixiPFogMaskSrc = null;

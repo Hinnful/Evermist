@@ -51,8 +51,10 @@ function loadFogFromScene(scene) {
 function revealPlayer() {
   const holdMs = Math.max(0, SCENE_FADE_MIN_MS - (Date.now() - _sceneFadeStart));
   const giveUp = Date.now() + holdMs + 4000;
+  // The held theme swaps in two frames on, once the new map's upload is behind it.
+  requestAnimationFrame(() => requestAnimationFrame(releasePlayerFogTheme));
   const open = () => {
-    const swapping = pixiPlayerFogSwapping() || (fogThemePending && fogThemePending !== fogTheme);
+    const swapping = playerFogThemeHeld() || pixiPlayerFogSwapping() || (fogThemePending && fogThemePending !== fogTheme);
     if (swapping && Date.now() < giveUp) { setTimeout(open, 50); return; }
     if (typeof onPlayerMapShown === 'function') onPlayerMapShown();
     requestAnimationFrame(() => {

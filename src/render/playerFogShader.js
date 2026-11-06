@@ -63,8 +63,11 @@ uniform float uSwap;       // a map switch's theme swap, 0..1 under the closed c
 
 // Local progress, set per pixel at the top of main(): gT of a fog change (1 = the new fog shows),
 // gC of the scene-switch cover (1 = closed). gFront is the glow of the moving front (a theme's
-// fogStep raises it).
+// fogStep raises it). gN blends the near copies: gT where the mask itself changes, else gS, the change's
+// clock with no front shape, so a neighbour's edge effects never trace the front's outline.
 float gT;
+float gS;
+float gN;
 float gC;
 float gFront;
 
@@ -86,7 +89,7 @@ float maskRaw(vec2 m) {
 // The three blurred copies (r small, g medium, b wide; white = clear), blended like the mask.
 vec3 nearRaw(vec2 m) {
   vec3 cur = texture2D(uNear, m).rgb;
-  return mix(cur, mix(texture2D(uNearPrev, m).rgb, cur, gT), uHasPrev);
+  return mix(cur, mix(texture2D(uNearPrev, m).rgb, cur, gN), uHasPrev);
 }
 // The cover must reach every mask read, uNear included, or rooms show through a closed cover.
 float maskAt(vec2 m) { return min(1.0, maskRaw(m) + gC); }
@@ -123,15 +126,12 @@ void main() {
   // A fog change travels on a clock of its own per pixel: uOrder (NEAREST) holds its start in ms on a
   // 16-bit clock (g, b) and its direction (a: 255 reveal, 128 hide, 0 none); uRank (LINEAR, so the
   // holes' edges are smooth) holds its rank. No change here shows the new fog.
-  gT = 1.0;
+  gT = 1.0; gN = 1.0;
+  float dMask = 0.;
   if (inMap && uHasPrev > .5) {
-    vec4 od = texture2D(uOrder, muv);
-    float rk = texture2D(uRank, muv).r;
-    float st = floor(od.g * 255. + .5) * 256. + floor(od.b * 255. + .5);
-    bool rv = od.a > .75;
-    float kk = clamp(mod(uNow - st + 65536., 65536.) / (rv ? uDur.x : uDur.y), 0., 1.);
-    float ee = 1. - pow(1. - kk, rv ? 2.2 : 1.6);
-    gT = od.a < .25 ? 1. : fogStep(rk, ee, sp, rv ? 1. : -1.);
+    fogClock(muv, sp, uNow);
+    dMask = abs(texture2D(uMask, muv).a - texture2D(uMaskPrev, muv).a);
+    gN = mix(gS, gT, smoothstep(.15, .5, dMask));
   }
   // The cover closes and opens in the theme's own hide and reveal, anchored to the SCREEN so the map swap under it moves nothing.
   gC = 0.;
@@ -209,7 +209,8 @@ const PLAYER_FOG_TAIL = `
   if (gFront > .001) {
     float chg = 1.;
     if (uCover > .001) chg = 1. - fgRaw;
-    if (uHasPrev > .5 && inMap) chg = smoothstep(.04, .3, abs(texture2D(uMask, muv).a - texture2D(uMaskPrev, muv).a));
+    // Only where the fog really comes or goes: a neighbour's feather thickening a little draws no front.
+    if (uHasPrev > .5 && inMap) chg = smoothstep(.25, .6, dMask);
     gFront *= chg;
   }
   float swF = 1.;
@@ -237,15 +238,63 @@ const PLAYER_FOG_LINE_FIXED = `
 float lineAt(float d, float px) { return 1. - smoothstep(px * .45, px, abs(d) / .004); }
 `;
 
+// The per-pixel clock of a fog change, shared by the fog pass and the bake below so the two never differ.
+// Sets gT; needs muv inside the map and a change in flight.
+const PLAYER_FOG_CLOCK = `
+void fogClock(vec2 muv, vec2 sp, float now) {
+  vec4 od = texture2D(uOrder, muv);
+  float rk = texture2D(uRank, muv).r;
+  float st = floor(od.g * 255. + .5) * 256. + floor(od.b * 255. + .5);
+  bool rv = od.a > .75;
+  float kk = clamp(mod(now - st + 65536., 65536.) / (rv ? uDur.x : uDur.y), 0., 1.);
+  float ee = 1. - pow(1. - kk, rv ? 2.2 : 1.6);
+  gT = od.a < .25 ? 1. : fogStep(rk, ee, sp, rv ? 1. : -1.);
+  // Every theme's front passes a pixel near ee = rk; gS reaches 1 as the clock ends, so dropping the change pops nothing.
+  gS = od.a < .25 ? 1. : smoothstep(rk - .25, min(rk + .25, 1.), ee);
+  // A front fades out as its clock ends, so dropping the change pops nothing.
+  gFront *= 1. - smoothstep(.85, 1., kk);
+}
+`;
+
+// The bake: what the TV shows right now, from the theme's own fogStep, so a change starting over one still
+// moving takes over from exactly that. uOldCur is the mask before the new one; a pixel a running change keeps
+// (uTake clear) stays its outgoing self. uFull 0 bakes the grid for a read-back (r), 1 the outgoing mask the
+// fog pass reads (a, premultiplied).
+const PLAYER_FOG_BAKE_MAIN = `
+uniform sampler2D uOldCur;
+uniform sampler2D uTake;
+uniform vec2 uGrid;
+uniform float uBakeNow;
+uniform float uFull;
+void main() {
+  vec2 muv = vScreen / uGrid;
+  float prev = texture2D(uMaskPrev, muv).a, v = texture2D(uOldCur, muv).a;
+  if (texture2D(uOrder, muv).a > .25) {
+    gFront = 0.;
+    fogClock(muv, (muv + uMaskO) / uMaskM, uBakeNow);
+    v = texture2D(uTake, muv).a > .5 ? mix(prev, v, gT) : prev;
+  }
+  gl_FragColor = vec4(v, v, v, uFull > .5 ? v : 1.);
+}
+`;
+
+function playerFogTransSrc(rec, deriv) {
+  const tr = rec.trans;
+  return (rec.shaderFns || '')
+    + 'const vec3 FRONT_COL = vec3(' + tr.front.map(c => c.toFixed(3)).join(', ') + ');\nconst float FRONT_TINT = ' + tr.tint + '.;\n'
+    + PLAYER_FOG_TRANS_LIB + (deriv ? PLAYER_FOG_LINE_DERIV : PLAYER_FOG_LINE_FIXED) + tr.glsl + PLAYER_FOG_CLOCK;
+}
+
 // One fragment source per theme: the shared base, the theme's helpers, its transition and its own
 // branch. deriv: the context has derivatives (playerFogPass.js adds the #extension line on top).
 function playerFogFrag(rec, index, deriv) {
-  const tr = rec.trans;
   return PLAYER_FOG_HEAD.replace('precision highp float;', 'precision highp float;\nconst int uTheme = ' + index + ';')
-    + (rec.shaderFns || '')
-    + 'const vec3 FRONT_COL = vec3(' + tr.front.map(c => c.toFixed(3)).join(', ') + ');\nconst float FRONT_TINT = ' + tr.tint + '.;\n'
-    + PLAYER_FOG_TRANS_LIB + (deriv ? PLAYER_FOG_LINE_DERIV : PLAYER_FOG_LINE_FIXED) + tr.glsl
+    + playerFogTransSrc(rec, deriv)
     + PLAYER_FOG_MAIN.replace('THEME_INDEX', String(index)).replace('SHIM_WARP', rec.shaderWarp || '')
     + rec.shader
     + PLAYER_FOG_TAIL;
+}
+
+function playerFogBakeFrag(rec, deriv) {
+  return PLAYER_FOG_HEAD + playerFogTransSrc(rec, deriv) + PLAYER_FOG_BAKE_MAIN;
 }

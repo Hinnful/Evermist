@@ -4,7 +4,7 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const {
   FOG_ORDER_REVEAL, FOG_ORDER_HIDE,
-  fogValueNoise, fogOrderNoise, fogChangedRegion, fogOrderField, fogEdgeDistance, fogShapeRank, fogNearestRegion, fogRankNormalise, fogChangeEase, fogLocalProgress, fogBakePrev,
+  fogValueNoise, fogOrderNoise, fogChangedRegion, fogOrderField, fogEdgeDistance, fogShapeRank, fogNearestRegion, fogRankNormalise, fogChangeOverlaps, fogTakePixels,
 } = require('../src/fog/fogTransitionPlan.js');
 
 describe('fogOrderNoise', () => {
@@ -69,30 +69,6 @@ describe('fogRankNormalise', () => {
     const vals = new Float32Array(5).fill(.5), region = new Uint8Array(5).fill(1);
     fogRankNormalise(vals, region, 5);
     assert.deepEqual(Array.from(vals), [0, 0, 0, 0, 0]);
-  });
-});
-
-describe('fogLocalProgress', () => {
-  it('runs from nothing to everything for any rank', () => {
-    for (const code of [FOG_ORDER_REVEAL, FOG_ORDER_HIDE]) {
-      for (const rank of [0, .4, 1]) {
-        assert.equal(fogLocalProgress(code, 5000, 5000, rank), 1);
-        assert.equal(fogLocalProgress(code, 9000, 5000, rank), 1);
-      }
-      assert.equal(fogLocalProgress(code, 0, 5000, 0), 0);
-    }
-  });
-
-  it('starts the lowest rank at once and a higher rank later', () => {
-    assert.ok(fogLocalProgress(FOG_ORDER_REVEAL, 100, 5000, 0) > 0);
-    assert.ok(fogLocalProgress(FOG_ORDER_HIDE, 100, 5000, 0) > 0);
-    assert.ok(fogLocalProgress(FOG_ORDER_HIDE, 400, 5000, .9) < fogLocalProgress(FOG_ORDER_HIDE, 400, 5000, .1));
-  });
-
-  it('both curves move at once', () => {
-    assert.ok(fogChangeEase(FOG_ORDER_REVEAL, .1) > .15);
-    assert.ok(fogChangeEase(FOG_ORDER_HIDE, .1) > .15);
-    assert.ok(fogChangeEase(FOG_ORDER_REVEAL, .9) < 1);
   });
 });
 
@@ -180,24 +156,43 @@ describe('fogNearestRegion', () => {
   });
 });
 
-describe('fogBakePrev', () => {
-  it('leaves the outgoing mask in a region no change owns', () => {
-    const prev = Uint8Array.from([10, 10, 10]), old = Uint8Array.from([200, 100, 50]);
-    const region = Uint8Array.from([255, 0, 255]), owner = new Uint8Array(3), data = new Uint8Array(12);
-    const mid = fogBakePrev(prev, old, region, owner, data, new Float64Array(256), 5000, 5000);
-    assert.equal(mid, 0);
-    assert.deepEqual(Array.from(prev), [200, 10, 50]);
+describe('fogTakePixels', () => {
+  it('takes every pixel of a change no other change is moving, from the outgoing mask', () => {
+    const prev = Uint8Array.from([10, 10, 10]), old = Uint8Array.from([200, 100, 50]), take = new Uint8Array(3);
+    const region = Uint8Array.from([255, 0, 0]), ext = Uint8Array.from([255, 255, 0]);
+    assert.equal(fogTakePixels(prev, old, region, ext, new Uint8Array(3), new Uint8Array(3), null, take), 0);
+    assert.deepEqual(Array.from(prev), [200, 100, 10]);
+    assert.deepEqual(Array.from(take), [1, 1, 0]);
   });
 
-  it('shows a pixel another change is moving exactly where that change has got to', () => {
-    const rank = .5, age = 1500;
-    const prev = Uint8Array.from([255]), old = Uint8Array.from([0]);
-    const data = Uint8Array.from([Math.round(rank * 255), 0, 0, FOG_ORDER_HIDE]);
-    const ages = new Float64Array(256); ages[3] = age;
-    const mid = fogBakePrev(prev, old, Uint8Array.from([255]), Uint8Array.from([3]), data, ages, 5000, 5000);
-    const g = fogLocalProgress(FOG_ORDER_HIDE, age, 5000, Math.round(rank * 255) / 255);
-    assert.equal(mid, 1);
-    assert.equal(prev[0], Math.round(255 * (1 - g)));
-    assert.ok(prev[0] > 0 && prev[0] < 255);
+  it('starts a changed pixel another change is moving from what the TV shows there now', () => {
+    const prev = Uint8Array.from([255]), take = new Uint8Array(1);
+    assert.equal(fogTakePixels(prev, Uint8Array.from([0]), Uint8Array.from([FOG_ORDER_HIDE]), Uint8Array.from([FOG_ORDER_HIDE]),
+      Uint8Array.from([3]), Uint8Array.from([1]), Uint8Array.from([90]), take), 1);
+    assert.equal(prev[0], 90);
+    assert.equal(take[0], 1);
+  });
+
+  it('leaves a ring pixel to a change still moving it as its own changed pixel', () => {
+    const prev = Uint8Array.from([255]), take = Uint8Array.from([1]);
+    assert.equal(fogTakePixels(prev, Uint8Array.from([0]), new Uint8Array(1), Uint8Array.from([FOG_ORDER_REVEAL]),
+      Uint8Array.from([3]), Uint8Array.from([1]), Uint8Array.from([90]), take), 0);
+    assert.equal(prev[0], 255);
+    assert.equal(take[0], 0);
+  });
+
+  it('takes a ring pixel that is only in the ring of a running change, from the outgoing mask', () => {
+    const prev = Uint8Array.from([255]), take = new Uint8Array(1);
+    assert.equal(fogTakePixels(prev, Uint8Array.from([40]), new Uint8Array(1), Uint8Array.from([FOG_ORDER_REVEAL]),
+      Uint8Array.from([3]), new Uint8Array(1), null, take), 0);
+    assert.equal(prev[0], 40);
+    assert.equal(take[0], 1);
+  });
+});
+
+describe('fogChangeOverlaps', () => {
+  it('is true only where a changed pixel is still moving', () => {
+    assert.equal(fogChangeOverlaps(Uint8Array.from([255, 0]), Uint8Array.from([0, 2])), false);
+    assert.equal(fogChangeOverlaps(Uint8Array.from([255, 128]), Uint8Array.from([0, 2])), true);
   });
 });

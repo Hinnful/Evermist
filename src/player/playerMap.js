@@ -82,7 +82,7 @@ function _playerMapFailed() {
 }
 
 function applyFogUpdate(msg) {
-  if (msg.fogTheme !== undefined) applyPlayerFogTheme(msg.fogTheme, true);
+  if (msg.fogTheme !== undefined) receivePlayerFogTheme(msg.fogTheme, !!msg.mapUrl, true);
   // (retry loop in initPlayerMapRetry stops itself when mapOffscreen is set — no timer to clear)
 
   // Stay dark until map and fog are decoded and a render is queued, or the players see the old

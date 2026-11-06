@@ -178,6 +178,28 @@ function assertOutputCannotBeCommitted(outDir) {
   }
 }
 
+// Every run leaves its own folder under TEMP_ROOT and nothing else deletes them, so the temp dir
+// grew by gigabytes a day. Only stamp-named folders go, and only past the age no run can still be
+// alive at (the watchdog ends the longest set well inside it), so a parallel run keeps its output.
+const RUN_DIR_RE = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/;
+const KEEP_NEWEST_RUNS = 10;
+const PRUNE_AFTER_MS = 6 * 60 * 60 * 1000;
+
+function pruneOldRuns(now) {
+  let names;
+  try { names = fs.readdirSync(TEMP_ROOT); } catch (_) { return; }
+  const runs = [];
+  for (const name of names) {
+    const m = RUN_DIR_RE.exec(name);
+    if (m) runs.push({ name, at: Date.parse(m[1] + 'T' + m[2] + ':' + m[3] + ':' + m[4] + '.' + m[5] + 'Z') });
+  }
+  runs.sort((a, b) => b.at - a.at);
+  for (const run of runs.slice(KEEP_NEWEST_RUNS)) {
+    if (now - run.at < PRUNE_AFTER_MS) continue;
+    try { fs.rmSync(path.join(TEMP_ROOT, run.name), { recursive: true, force: true }); } catch (_) {}
+  }
+}
+
 // ─── Launching the app ───────────────────────────────────────────────────────
 
 function freePort() {
@@ -822,6 +844,7 @@ async function main() {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const outDir = args.out ? path.resolve(args.out) : path.join(TEMP_ROOT, stamp);
   assertOutputCannotBeCommitted(outDir);
+  if (!args.out) pruneOldRuns(Date.now());
 
   const fixtureDir = path.join(outDir, 'fixtures');
   fs.mkdirSync(fixtureDir, { recursive: true });

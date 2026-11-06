@@ -40,17 +40,39 @@ function applyFogThemeLook(id) {
 // The Player takes a theme from the DM. The colour eases (fogAnim.js) and the theme's own effects
 // switch on when it lands, so a pick or a map switch changes the fog while it is closing. `now`
 // is a map payload's own theme, which has nothing to ease from.
+// The motion is not set here: it follows the shader on screen (pixiUpdatePlayerFog), so a swap's outgoing
+// theme keeps its own drift until the swap ends.
 function applyPlayerFogTheme(id, now) {
   const rec = fogThemeRecord(id);
-  applyFogThemeMotion(rec);
   FOG_TINT_ALPHA = rec.tint;
   // ⚠ A switch's colour ease OWNS the colour until it lands. Retarget rather than ignore, so a
   // theme picked DURING a switch still arrives.
   if (fogColorToHex) { fogColorToHex = rec.hex; fogThemePending = rec.id; return; }
   if (now) { fogTheme = rec.id; fogThemePending = null; applyFogColor(rec.hex); return; }
+  // A pick on an open map: the shader and colour switch at once and the pass crossfades the two
+  // looks (playerFogPass.js), so the colour needs no ease of its own.
+  if (fogCoverT <= .001) {
+    fogTheme = rec.id; fogThemePending = null; applyFogColor(rec.hex); fogDirty = true; scheduleRender();
+    return;
+  }
   fogThemePending = rec.id;
   startFogColorEase(rec.hex);
   if (!fogColorRafId) { fogTheme = rec.id; fogThemePending = null; fogDirty = true; scheduleRender(); }
+}
+
+// A map switch's theme waits under the closed cover until the new map has landed (revealPlayer), so the
+// swap never shares its frames with the map's decode. A theme sent during the wait replaces the held one.
+let fogThemeHeld = null;
+function receivePlayerFogTheme(id, withMap, now) {
+  if (fogThemeHeld !== null || (withMap && pixiPFogDrawn && fogCoverT > 0)) { fogThemeHeld = id; return; }
+  applyPlayerFogTheme(id, now);
+}
+function playerFogThemeHeld() { return fogThemeHeld !== null; }
+function releasePlayerFogTheme() {
+  if (fogThemeHeld === null) return;
+  const id = fogThemeHeld;
+  fogThemeHeld = null;
+  applyPlayerFogTheme(id, true);
 }
 
 // A theme picked on the DM's screen. ⚠ Two maps: the selected column owns its map, so the pick

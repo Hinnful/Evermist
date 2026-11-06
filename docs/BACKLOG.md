@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 5 open items; IDs run to 272."
+description: "Open work only. 5 open items; IDs run to 273."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.4.0**. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.4.1**. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -76,12 +76,9 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 # EVERYTHING ELSE
 
-### 272. Small bugs in the TV fog animations
-Filed 2026-11-05, after 5.4.0 shipped per-theme fog transitions. Fix the small visual glitches the DM still sees in
-revealing and hiding a room on the TV, and in switching between two maps with different fog themes. Known so far: with
-Ice, Toxic and Blood, a room revealed and hidden again before the first change finishes can jump, because the bake of
-an overlapping change still uses the plain shared curve instead of the theme's own; and Fire's edge line appears a
-little ahead of the fog beside it. The DM will list the rest when picked.
+### 273. Two small glitches in the TV fog's room transitions
+Filed 2026-11-06, after 5.4.1. Fire's edge line appears a little ahead of the fog beside it as a room is revealed or
+hidden. With Blood, a room darkens a little as it is hidden, before the fog covers it; other themes may do the same.
 **Bug · Polish · Player**
 
 ### 255. Map settings a DM can read

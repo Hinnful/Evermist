@@ -243,8 +243,7 @@ The fog is the heart of the app, so it's worth understanding.
    **A fog change on the TV is not a uniform crossfade.** Room reveal/hide, brush and Reveal/Hide
    all give each pixel its own progress: a CPU rank (noise shaped per theme, rank-normalised over the
    changed region plus a ring round it so edge effects follow) and a start time per change, so
-   overlapping changes run independently, and a change landing on pixels still moving bakes their
-   state first. `fogTransitionPlan.js` is the pure kernel, `playerFogTrans.js` holds the order
+   overlapping changes run independently, and a change landing on pixels still moving starts from a GPU bake of what the TV shows. `fogTransitionPlan.js` is the pure kernel, `playerFogTrans.js` holds the order
    texture, the overlapping changes and the outgoing mask, and `playerFogShader.js` the shader
    source. Each theme's `trans` record carries `dur` (about 1.5-3.2 s), `front`, `tint`, the GLSL
    `fogStep`/`screenRank` and its CPU rank. Default parts like clouds with fuzzy edges and a soft
@@ -272,7 +271,7 @@ The fog is the heart of the app, so it's worth understanding.
    size, shape and camera without anything showing; the cover reaches every mask read, the blurred
    near copies included. Between two themes the incoming one washes over the outgoing in its own
    hide style under the closed cover (1.8 s), the outgoing keeping its colours; a live theme pick
-   on one map still eases the colour and crossfades over 500 ms. The cloud texture and theme
+   on one map switches at once and blends the two looks over 1.5 s in one composited pass. The cloud texture and theme
    patterns hold their size and position across the swap instead of resizing to the new map, and
    theme effects fade with the fog. The Player shares the DM window's thread, so the DM window
    defers loading the new map until the TV's cover has closed and dims its own map area at the

@@ -61,7 +61,8 @@ float fogStep(float rk, float e, vec2 sp, float dir) {
   gFront = max(gFront, lineAt(x - r, 2.) * .85);
   float behind = dir > 0. ? r - x : x - r;
   float veins = pow(ridge(p0 * 52. + wq * 12.), 9.);
-  gFront = max(gFront, veins * step(0., behind) * (1. - smoothstep(0., .24, behind)) * .45);
+  // The last pixels to freeze never get .24 behind the front, so the veins also thaw on the clock.
+  gFront = max(gFront, veins * step(0., behind) * (1. - smoothstep(0., .24, behind)) * (1. - smoothstep(.55, .9, e)) * .45);
   return g; }
 `,
   },

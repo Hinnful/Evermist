@@ -1,6 +1,6 @@
 'use strict';
 // fogTransitionPlan.js - pure kernel for how a fog change travels on the TV: which pixels changed,
-// the order they change in, and the progress the shader reaches at each. No canvas, no GL.
+// the order they change in, and which pixels a change takes over from one still running. No canvas, no GL.
 
 const FOG_ORDER_DIFF_MIN = 6;     // alpha steps (of 255) under which a pixel counts as unchanged
 const FOG_ORDER_REVEAL   = 255;   // a region pixel's direction code: the fog thins here
@@ -173,35 +173,27 @@ function fogRankNormalise(vals, region, count) {
   }
 }
 
-// The two clocks of the shader, shared by every theme: both move at once, a reveal lingers at the end.
-function fogChangeEase(code, k) {
-  const c = Math.min(1, Math.max(0, k));
-  return 1 - Math.pow(1 - c, code === FOG_ORDER_REVEAL ? 2.2 : 1.6);
+// Whether a new change lands on pixels another change is still moving, which is when it needs the bake.
+function fogChangeOverlaps(region, owner) {
+  for (let i = 0; i < region.length; i++) if (region[i] && owner[i]) return true;
+  return false;
 }
 
-// A theme's fogStep shapes the curve its own way; this is the plain one, which the bake of a change
-// over a change still moving uses as the stand-in for all of them.
-// The local progress for one pixel: its rank (0..1) against the eased clock.
-function fogLocalProgress(code, elapsedMs, durMs, rank) {
-  const e = fogChangeEase(code, durMs > 0 ? elapsedMs / durMs : 1) * 1.2 - .1;
-  const t = Math.min(1, Math.max(0, (e - (rank - .1)) / .2));
-  return t * t * (3 - 2 * t);
-}
-
-// A new change over pixels another is still moving: prevA there becomes what the TV shows right now
-// (prev mixed into oldA by that pixel's own progress, exactly as the shader does), so the new change
-// starts from the last frame of the old one. Elsewhere in the region prevA is the outgoing mask.
-// data is the order texture's RGBA (r rank, a direction), ageById the running changes' ages in ms.
-// Returns how many pixels were mid-travel.
-function fogBakePrev(prevA, oldA, region, owner, data, ageById, durReveal, durHide) {
+// Which pixels a new change takes (take[i] = 1) and what the TV shows there as it starts (prevA). A
+// changed pixel is always taken: where another change still moves it, from what the TV shows right now
+// (shown, the bake), else from the outgoing mask. A pixel only in the ring round the change stays with a
+// change whose own changed pixel it is (core), or that change's room would finish on the new one's clock;
+// a pixel only in that change's ring is taken, or its edge would show the new mask at once.
+// Returns how many taken pixels were mid-travel.
+function fogTakePixels(prevA, oldA, region, ext, owner, core, shown, take) {
   let mid = 0;
-  for (let i = 0; i < region.length; i++) {
-    if (!region[i]) continue;
-    const code = owner[i] ? data[i * 4 + 3] : 0;
-    if (!code) { prevA[i] = oldA[i]; continue; }
-    const g = fogLocalProgress(code, ageById[owner[i]], code === FOG_ORDER_REVEAL ? durReveal : durHide, data[i * 4] / 255);
-    prevA[i] = Math.round(prevA[i] * (1 - g) + oldA[i] * g);
-    mid++;
+  for (let i = 0; i < ext.length; i++) {
+    take[i] = 0;
+    if (!ext[i]) continue;
+    if (owner[i] && region[i]) { prevA[i] = shown[i]; mid++; }
+    else if (owner[i] && core[i]) continue;
+    else prevA[i] = oldA[i];
+    take[i] = 1;
   }
   return mid;
 }
@@ -210,6 +202,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     FOG_ORDER_DIFF_MIN, FOG_ORDER_REVEAL, FOG_ORDER_HIDE,
     fogOrderHash, fogValueNoise, fogOrderNoise, fogChangedRegion, fogOrderField, fogEdgeDistance, fogShapeRank, fogNearestRegion, fogRankNormalise,
-    fogChangeEase, fogLocalProgress, fogBakePrev,
+    fogChangeOverlaps, fogTakePixels,
   };
 }
