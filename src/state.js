@@ -215,8 +215,10 @@ let showRoomLabels = true;   // roomPanel.js drawRoomLabels, toggled with L
 // Door size, as a percent of one grid cell. Global, never per door: a doorway is one square almost
 // everywhere, and the few that differ are worth a second click rather than a second control.
 let doorWidthPct = 100;
-let doorDepthPct = 10;
+let doorDepthPct = 25;
 const DOOR_SIZE_KEY = 'evermist.doorSize';
+// The Player's copy of every door the fog carves, as toolDoor.js doorLightQuads sends them.
+let doorLights = [];
 
 // ─── Map effects ─────────────────────────────────────────────────────────────
 // {id, vertices, material, cornerRadius, cornerRadii, name} — the SAME record a room has, with a

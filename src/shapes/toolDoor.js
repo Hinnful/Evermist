@@ -7,7 +7,7 @@
 
 const DOOR_HIT_PX = 8;
 
-function doorCellSize() { return gridSize > 0 ? gridSize : 0; }
+function doorCellSize() { return gridSize > 0 ? doorCellForGrid(gridSize, gridMode) : 0; }
 
 // The one decision both the click and the hover ghost read; see doorClickPlan.
 function doorPlanAt(mapX, mapY) {
@@ -39,7 +39,7 @@ function drawDoorGhost(screenX, screenY) {
   if (screenX == null || isPlayer || shape !== 'door' || placeMode !== 'rooms') return;
   const plan = doorPlanAt((screenX - panX) / zoom, (screenY - panY) / zoom);
   if (!plan || plan.action !== 'add') return;
-  const size = doorSizeForCell(gridSize, doorWidthPct, doorDepthPct);
+  const size = doorSizeForCell(doorCellSize(), doorWidthPct, doorDepthPct);
   const c = doorNotchCorners(plan.poly, plan.door, size.width, size.depth, size.depth);
   if (!c) return;
   cursorCtx.save();
@@ -56,6 +56,27 @@ function drawDoorGhost(screenX, screenY) {
   cursorCtx.fill();
   cursorCtx.stroke();
   cursorCtx.restore();
+}
+
+// Every door the fog carves, for the TV's light: its notch's four corners in map px and its width.
+// Rooms never reach the Player, so the notches go instead. Shrouded doors carve nothing and light nothing.
+function doorLightQuads() {
+  const size = doorSizeForCell(doorCellSize(), doorWidthPct, doorDepthPct);
+  if (!(size.width > 0) || !(size.depth > 0)) return [];
+  const tol = gridSize * DOOR_SHARED_WALL_TOL, r = v => Math.round(v * 10) / 10;
+  const out = [];
+  for (const poly of polygons) {
+    if (!poly.doors || poly.vertices.length < 3) continue;
+    for (const d of poly.doors) {
+      if (doorResolvedMode(doorPoint(poly, d), polygons, tol) === 'shroud') continue;
+      const c = doorNotchCorners(poly, d, size.width, size.depth, size.depth);
+      if (!c) continue;
+      const pts = [c.innerL, c.outerL, c.outerR, c.innerR];
+      out.push({ w: r(Math.hypot(c.outerR.x - c.outerL.x, c.outerR.y - c.outerL.y)),
+                 pts: pts.flatMap(p => [r(p.x), r(p.y)]) });
+    }
+  }
+  return out;
 }
 
 function commitDoorChange() {

@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 6 open items; IDs run to 278."
+description: "Open work only. 5 open items; IDs run to 279."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.5.1**, which fixes Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.5.2**: doors are a quarter cell deep and glow on the TV, and a map picture a sync replaced can be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -103,18 +103,10 @@ brand; that review needs the privacy policy on a domain the project owner proves
 github.com). Every DM who connects sees the warning first.
 **First use · Polish · DM only**
 
-### 277. Bring back a map picture a sync replaced
-Filed 2026-11-07, with 5.5.0. When a sync replaces a map's picture or video, the old file is kept 30 days in the sync
-folder on that computer, but nothing in the app lists it or puts it back. A small list beside Recently deleted would.
-**Campaign · DM only**
-
-### 189. Review how doors look, hex grids included
-Filed 2026-10-17, widened 2026-11-05. The DM sees doors looking broken, more so with the fog themes. Review doors on
-both screens across the themes and fix what is off. Also on a hex grid, and on any diagonal wall, the Door tool cuts
-the wall into cell-sized steps from the room's corner, so a door can sit across two hexes. Decide what a door one hex
-wide means on a hex wall, then make the preview and the click follow it.
-**Needs a review round.**
-**Bug · Polish**
+### 279. A new door's light fades in
+Filed 2026-11-07, with 5.5.2. A door's light on the TV fades in and out with the fog when a room is revealed or
+hidden, but a door the DM places with the Door tool lights up at once. It should come in with the same fade.
+**Polish · Player**
 
 ---
 

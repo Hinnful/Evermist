@@ -23,6 +23,10 @@
 //   K. A map picture a sync replaced is kept 30 days in the sync data folder (`sync/kept/<map>.<time>.<ext>`): on A
 //      its own picture of Мост, which B's newer one replaced; on B its picture of Склеп, replaced by A's after the
 //      first sync. A kept file past 30 days is purged at start, a younger one stays.
+//   R. Settings' "Replaced map pictures" on A lists its kept picture of Мост under the map's name, and no kept file of
+//      a map the library does not hold. Restore on Мост while it is open shows "Close this map first" and changes
+//      nothing. Closed, Restore puts A's own picture back, the picture it replaced becomes a kept file and a row of its
+//      own, and after a sync B's Мост carries the restored picture.
 
 const fs = require('fs');
 const path = require('path');
@@ -165,4 +169,42 @@ module.exports = async function syncFirst(rig) {
   rig.check(kept(b.profileDir, m['Склеп']).includes(beforeB[m['Склеп']]), 'K: B did not keep its own picture of Склеп in sync/kept: ' + q(kept(b.profileDir, m['Склеп'])) + ' want ' + beforeB[m['Склеп']]);
   rig.check(!fs.existsSync(path.join(keptA, old)) && fs.existsSync(path.join(keptA, young)), 'K: the kept file past 30 days was not purged at start, or the younger one went too: ' + q(fs.readdirSync(keptA)));
   rig.check(end[m['Склеп']] === beforeA[m['Склеп']] && end[m['Мост']] === beforeB[m['Мост']], 'C: the newer pictures did not win: Склеп ' + end[m['Склеп']] + ' (A\'s ' + beforeA[m['Склеп']] + '), Мост ' + end[m['Мост']] + ' (B\'s ' + beforeB[m['Мост']] + ')');
+
+  // R
+  const mo = m['Мост'];
+  const keptHere = () => fs.readdirSync(keptA).filter(n => n.startsWith(mo + '.'));
+  const own = keptHere().find(n => hashOf(fs.readFileSync(path.join(keptA, n))) === beforeA[mo]);
+  if (!own) return;
+  const rows = () => dmA.evaluate(`Array.from(document.querySelectorAll('#sy-kept [data-kept]')).map(b => ({ kept: b.dataset.kept, name: b.parentElement.querySelector('.nm').textContent }))`);
+  const line = () => dmA.evaluate(`(document.getElementById('sy-kept-line') || {}).textContent`);
+  const mapHash = dm => dm.evaluate(`sceneStore.loadScene(${q(mo)}).then(r => r && r.mapBlob ? __bk.hash(r.mapBlob) : null)`, 20000);
+  const click = name => dmA.evaluate(`(() => { const b = Array.from(document.querySelectorAll('#sy-kept [data-kept]')).find(x => x.dataset.kept === ${q(name)}); if (b) b.click(); return !!b; })()`);
+  const shownA = id => dmA.evaluate(`(() => { const el = document.getElementById(${q(id)}); return !!el && el.offsetParent !== null && el.offsetHeight > 0; })()`);
+  await dmA.evaluate(`(() => { if (document.getElementById('dock-pane-settings').hidden) document.getElementById('dock-tab-settings').click(); })()`);
+  const listed = await lib.poll(async () => { const r = await rows(); return r.some(x => x.kept === own && x.name === 'Мост') ? r : null; }, 20000, 200);
+  rig.check(!!listed, 'R: Settings does not list A\'s replaced picture of Мост: ' + q(await rows()));
+  if (!listed) return;
+  rig.check(listed.every(x => !x.kept.startsWith('zz.')), 'R: Settings lists a kept file of a map the library does not hold: ' + q(listed));
+  rig.check(await line() === 'A map picture a sync replaced stays here for 30 days.', 'R: the hint under the list is wrong: ' + q(await line()));
+
+  await dmA.evaluate(`switchScene(${q(mo)})`, 30000);
+  const filesBefore = q(keptHere().sort());
+  await click(own);
+  const told = await lib.poll(async () => (await shownA('cd-ok')) && dmA.evaluate(`document.getElementById('cd-title').textContent`), 20000, 200);
+  rig.check(told === 'Close this map first', 'R: Restore on the open Мост did not say to close it first: ' + q(told));
+  rig.check(await mapHash(dmA) === beforeB[mo] && q(keptHere().sort()) === filesBefore, 'R: Restore on the open Мост changed its picture or the kept files');
+  if (told) await dmA.evaluate(`document.getElementById('cd-ok').click(); 0`);
+  await dmA.evaluate(`switchScene(${q(m['Река'])})`, 30000);
+
+  await lib.poll(async () => !(await dmA.evaluate('_ssBusy')), 20000, 200);
+  await click(own);
+  const back = await lib.poll(async () => (await mapHash(dmA)) === beforeA[mo], 30000, 300);
+  rig.check(!!back, 'R: Restore did not put A\'s own picture of Мост back: ' + await mapHash(dmA) + ' want ' + beforeA[mo]);
+  const theirs = keptHere().find(n => n !== own && hashOf(fs.readFileSync(path.join(keptA, n))) === beforeB[mo]);
+  rig.check(!!theirs, 'R: the picture Restore replaced was not kept: ' + q(keptHere().map(n => n + ' ' + hashOf(fs.readFileSync(path.join(keptA, n))))));
+  const newRow = await lib.poll(async () => (await rows()).some(x => x.kept === theirs), 20000, 200);
+  rig.check(!!newRow, 'R: the picture Restore replaced has no row of its own: ' + q(await rows()));
+  const onB = await lib.poll(async () => { await tick(dmA); await tick(dmB); return (await mapHash(dmB)) === beforeA[mo]; }, 120000, 300);
+  rig.check(!!onB, 'R: after a sync B\'s Мост does not carry the restored picture: ' + await mapHash(dmB) + ' want ' + beforeA[mo] + ' ' + await status());
+  rig.check(await mapHash(dmA) === beforeA[mo], 'R: the sync took the restored picture back off A: ' + await mapHash(dmA));
 };

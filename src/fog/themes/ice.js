@@ -12,6 +12,7 @@
   anim: { speed: 0.08, drift: 0.03, morph: 0.02, warpStr: 0.10, warpRad: 0.06, pulse: 0.05 },
   passCol: [[1, 1, 1], [1.35, 1.45, 1.6], [0.85, 0.95, 1.1]],
   rim: [0.75, 0.9, 1],
+  doorLight: [0.843, 0.941, 1],
   shaderFns: `
 vec3 hexVor(vec2 x) { vec2 n = floor(x), f = fract(x); float d1 = 8., d2 = 8.; vec2 id = vec2(0.);
   for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) { vec2 g = vec2(float(i), float(j));

@@ -253,6 +253,18 @@ The fog is the heart of the app, so it's worth understanding.
    fixed-width fallback. Fire's fog also wavers (heat shimmer), strongest deep inside, zero at the
    edges.
 
+   **Doors glow on the TV.** The DM sends the lit notches (`doorLightQuads()` in `toolDoor.js`: four
+   corners and width of each notch the fog carves, shrouded doors skipped) on both `fog-update`
+   messages as `doors`, since rooms never reach the Player; the Player keeps them in the
+   non-persisted `doorLights` global. `playerFogPass.js` builds a door-light texture beside the mask
+   at its UV (red = the notch blurred by a sixth of its width, green = the notch), rebuilt only when
+   the list or size changes, and `playerFogShader.js` samples it once (`uDoor`, `uDoorCol`, the colour
+   crossfading with the theme). A glow in the theme's `doorLight` colour spreads from a lit notch into
+   fog that stays fogged, fading over about a third of the door's width, and the map in the notch is
+   lifted about 25% (additive). It never thins the fog, so nothing past the door shows. It follows the
+   fog's own reveal/hide change and is gone where both sides are revealed. The DM view draws none. A
+   newly placed door's light appears at once rather than fading in.
+
 5. **The DM sees through it, players don't.** On the DM screen the fog is semi-transparent
    so you can plan. On the Player screen it's fully opaque. This matters when judging any
    fog setting by eye: the DM window shows roughly half the density the TV does. It shows the
@@ -852,8 +864,14 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   keeps a copy of every record it changes for 30 days. The status line shows its progress.
 - **A map file a sync replaces is kept 30 days.** When a later sync takes another computer's
   picture or video for a map, the one it replaces moves to `sync/kept/<map id>.<time>.<ext>` in
-  the data folder, and is purged at the first start or replacement after its 30 days. Nothing in
-  the app restores it yet.
+  the data folder, and is purged at the first start or replacement after its 30 days.
+- **Replaced map pictures:** Settings' Sync section lists, beside Recently deleted, each kept
+  picture or video with its map's name and date and a **Restore** per file. The list reads this
+  computer's own kept files, so it shows offline and signed out. Restore on a picture makes it the
+  map's picture; on a video it swaps with the map's current file, which goes into the kept list in
+  its place, so a restore is undoable. A restored picture counts as the map's newest edit and syncs
+  to the other computers. If the map is open, on the TV, in a column or in the Notes window, Restore
+  does nothing and a "Close this map first" dialog says why.
 - **The status line** says when the last sync ran, or that it is syncing, offline, signed out,
   that the Drive is full, that the other computer runs a newer Evermist, or that a sync failed
   and is tried again in 30 seconds. Offline, the app works as before and edits go up later.

@@ -12,6 +12,7 @@
   passCol: [[0.7, 0.5, 0.5], [0.45, 0.2, 0.2], [0.9, 0.5, 0.5]],
   // Black: the dark edge is the whole edge, and a pale rim beside it read as a doubled one.
   rim: [0, 0, 0],
+  doorLight: [0.902, 0.157, 0.118],
   shaderFns: `
 float vline(vec2 x, float w) { float e = .03; float n = noise(x);
   vec2 g = vec2(noise(x + vec2(e, 0.)) - noise(x - vec2(e, 0.)), noise(x + vec2(0., e)) - noise(x - vec2(0., e))) / (2. * e);

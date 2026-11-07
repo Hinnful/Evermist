@@ -14,6 +14,7 @@
   rise: true,
   passCol: [[0.7, 0.62, 0.58], [0.45, 0.38, 0.35], [1.0, 0.65, 0.4]],
   rim: [1, 0.5, 0.15],
+  doorLight: [1, 0.588, 0.157],
   shaderFns: `
 vec3 ramp(float t, vec3 r0, vec3 r1, vec3 r2, vec3 r3, vec3 r4, vec3 r5, float warm) { t = clamp(t, 0., 1.);
   vec3 c = mix(r0, r1, smoothstep(0., .22, t)); c = mix(c, r2, smoothstep(.18, .5, t)); c = mix(c, r3, smoothstep(.5, .78, t));

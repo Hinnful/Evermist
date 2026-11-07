@@ -77,7 +77,7 @@ function _planDoorsOn(derived, mapW, grid) {
   if (!derived || !derived.rooms.length || !(grid.cellSize > 0)) return [];
   const rooms = vttScaleRooms(derived.rooms, mapW, derived.srcW);
   const portals = vttScaleRooms([derived.portals || []], mapW, derived.srcW)[0];
-  return planDoorPlacements(rooms, portals, grid.cellSize, grid.offsetX, grid.offsetY,
+  return planDoorPlacements(rooms, portals, doorCellForGrid(grid.cellSize, grid.mode), grid.offsetX, grid.offsetY,
                             grid.mode === 'square');
 }
 

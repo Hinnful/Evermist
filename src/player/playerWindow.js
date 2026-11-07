@@ -221,7 +221,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
         mapUrl, mapType, mapWidth, mapHeight, fogImage, view, isShroud, sceneChange, fogChanged,
         mapSceneId: currentScene ? currentScene.id : null,
         effects,
-        lights: lightPolys,
+        lights: lightPolys, doors: doorLightQuads(),
         gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
         fogTheme,
         tvTurn: tvFit.turn,
@@ -254,7 +254,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
     playerWindow.postMessage({
       type: 'fog-update',
       mapWidth, mapHeight, fogImage, view, isShroud, sceneChange, fogChanged, effects,
-      lights: lightPolys,
+      lights: lightPolys, doors: doorLightQuads(),
       gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
     }, '*');
   }

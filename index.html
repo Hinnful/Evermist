@@ -101,7 +101,7 @@
          whose grid was never calibrated reads 70 px and gives itself away. -->
     <div class="tb-group" id="ctx-door">
       <div class="cp-chip cp-chip-pre" title="Door width, as a percent of one grid square"><span class="cp-chip-prefix">W</span><input type="text" id="door-width-num" inputmode="numeric" value="100"><span class="cp-chip-prefix">%</span></div>
-      <div class="cp-chip cp-chip-pre" title="How far a door reaches either side of the wall, as a percent of one grid square"><span class="cp-chip-prefix">D</span><input type="text" id="door-depth-num" inputmode="numeric" value="10"><span class="cp-chip-prefix">%</span></div>
+      <div class="cp-chip cp-chip-pre" title="How far a door reaches either side of the wall, as a percent of one grid square"><span class="cp-chip-prefix">D</span><input type="text" id="door-depth-num" inputmode="numeric" value="25"><span class="cp-chip-prefix">%</span></div>
       <span class="tb-hint">of <span id="door-cell-label">70</span> px cell</span>
     </div>
 
@@ -641,6 +641,10 @@
             <div class="cp-btnrow">
               <button id="sy-empty" class="cp-btn" title="Delete these maps for good, on every computer.">Empty now</button>
             </div>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">Replaced map pictures</span>
+            <div id="sy-kept" class="dk-secbody"></div>
+            <span id="sy-kept-line" class="cp-hint"></span>
           </div>
         </div>
         <!-- The Claude connection's install (mcpConnect.js). -->

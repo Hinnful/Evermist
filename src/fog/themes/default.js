@@ -12,6 +12,7 @@
   anim: { speed: 0.60, drift: 0.5, morph: 0.20, warpStr: 0.10, warpRad: 0.06, pulse: 0.15 },
   passCol: [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
   rim: [0.6, 0.64, 0.85],
+  doorLight: [0.804, 0.824, 0.961],
   shaderFns: '',
   shader: `
     float wv = .5 + .5 * sin(t * .35 + fbm3(p * 1.5 + t * .02) * 6.);

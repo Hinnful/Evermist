@@ -5,7 +5,7 @@
 
 // A record: id, label, swatch and hex (the picked colour), tint (colour strength, 0..1), anim (the
 // motion: speed, drift, morph, warpStr, warpRad, pulse), passCol (a colour multiplier on each of the
-// three cloud passes), rise (optional: the clouds climb instead of drifting sideways), rim (the living edge's colour), shaderFns (GLSL helpers the theme needs) and
+// three cloud passes), rise (optional: the clouds climb instead of drifting sideways), rim (the living edge's colour), doorLight (the colour a lit door glows in), shaderFns (GLSL helpers the theme needs) and
 // shader (the theme's own fragment code, run in its own branch) and trans, how the fog opens and closes:
 // dur [reveal, hide] ms; front (r, g, b) and tint, the moving front's colour and how far it tints the fog instead of
 // glowing; glsl, its fogStep (local progress, 1 = the new fog) and screenRank; rank(u, v, n, f, dir, w, vn),

@@ -163,7 +163,8 @@ function doRender() {
 const DOOR_TICK_MIN_PX = 8;   // screen px per grid cell, below which the wall ticks are dropped
 
 function drawDoorHandles(active) {
-  const size = doorSizeForCell(gridSize, doorWidthPct, doorDepthPct);
+  const cell = doorCellForGrid(gridSize, gridMode);
+  const size = doorSizeForCell(cell, doorWidthPct, doorDepthPct);
   if (!(size.width > 0)) return;
   const sx = x => x * zoom + panX, sy = y => y * zoom + panY;
   const square = gridMode === 'square';
@@ -179,7 +180,7 @@ function drawDoorHandles(active) {
     for (const poly of polygons) {
       if (poly.vertices.length < 3) continue;
       for (let e = 0, edges = flatVertexCount(poly); e < edges; e++) {
-        const b = doorCellBounds(poly, e, gridSize, gridOffsetX, gridOffsetY, square);
+        const b = doorCellBounds(poly, e, cell, gridOffsetX, gridOffsetY, square);
         if (!b) continue;
         const f = b.frame, tick = 6 / zoom;
         for (const a of b.at) {

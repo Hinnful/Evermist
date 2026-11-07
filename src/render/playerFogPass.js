@@ -47,12 +47,14 @@ function pixiNewFogColors() {
     uBase:   new Float32Array([0, 0, 0]),
     uTint:   new Float32Array([0, 0, 0]),
     uRim:    new Float32Array([0, 0, 0]),
+    uDoorCol: new Float32Array([0, 0, 0]),
     uTintA:  0,
   });
 }
 
 function pixiCopyFogColors(from, to) {
   to.uCloudC.set(from.uCloudC); to.uBase.set(from.uBase); to.uTint.set(from.uTint); to.uRim.set(from.uRim);
+  to.uDoorCol.set(from.uDoorCol);
   to.uTintA = from.uTintA;
 }
 let pixiPFogThemeId  = null;
@@ -67,6 +69,10 @@ let pixiPFogNearBT   = null;
 let pixiPFogNearPrevCvs = null;
 let pixiPFogNearPrevBT = null; // the outgoing set while a change runs; null = none
 let pixiPFogNearTmp  = null;   // the mask as black with its alpha, padded with fog
+let pixiPFogDoorCvs  = null;   // the doors' light: r the glow round each lit notch, g the notch itself
+let pixiPFogDoorBT   = null;
+let pixiPFogDoorKey  = null;   // what it was last built from, so an unchanged list costs no upload
+const PLAYER_FOG_DOOR_MAX = 2048;   // px on its long side; the mask's UV, so any size lines up
 
 function pixiPlayerFogReady() { return !!pixiPFogMesh; }
 
@@ -135,6 +141,38 @@ function pixiPackPlayerFogNear(blurCvs, out) {
   });
   oc.globalCompositeOperation = 'source-over';
   return resized;
+}
+
+// Drawn beside the mask at its UV whenever the mask lands. The glow is the notch blurred by a sixth of
+// its width, so it has faded out a third of a door past it; the shader keeps it to the fog.
+function pixiBuildPlayerDoorLight(blurCvs) {
+  const k = Math.min(1, PLAYER_FOG_DOOR_MAX / Math.max(blurCvs.width, blurCvs.height));
+  const w = Math.max(1, Math.round(blurCvs.width * k)), h = Math.max(1, Math.round(blurCvs.height * k));
+  const key = w + 'x' + h + JSON.stringify(doorLights);
+  if (key === pixiPFogDoorKey && pixiPFogDoorBT) return;
+  pixiPFogDoorKey = key;
+  if (!pixiPFogDoorCvs) pixiPFogDoorCvs = document.createElement('canvas');
+  const cvs = pixiPFogDoorCvs;
+  const resized = cvs.width !== w || cvs.height !== h;
+  if (resized) { cvs.width = w; cvs.height = h; }
+  const c = cvs.getContext('2d');
+  c.globalCompositeOperation = 'source-over'; c.filter = 'none';
+  c.fillStyle = '#000'; c.fillRect(0, 0, w, h);
+  c.globalCompositeOperation = 'lighter';
+  const s = k / FOG_SCALE;
+  for (const d of doorLights) {
+    c.beginPath();
+    for (let i = 0; i < 8; i += 2) c.lineTo(d.pts[i] * s, d.pts[i + 1] * s);
+    c.closePath();
+    c.filter = 'blur(' + Math.max(0.5, d.w * s / 6) + 'px)'; c.fillStyle = '#f00'; c.fill();
+    c.filter = 'none'; c.fillStyle = '#0f0'; c.fill();
+  }
+  c.globalCompositeOperation = 'source-over';
+  if (resized && pixiPFogDoorBT) { pixiPFogDoorBT.destroy(); pixiPFogDoorBT = null; }
+  if (!pixiPFogDoorBT) {
+    pixiPFogDoorBT = PIXI.BaseTexture.from(cvs, { scaleMode: PIXI.SCALE_MODES.LINEAR });
+    if (pixiPFogUniforms) pixiPFogUniforms.uniforms.uDoor = new PIXI.Texture(pixiPFogDoorBT);
+  } else pixiPFogDoorBT.update();
 }
 
 function pixiBuildPlayerFogNear(blurCvs) {
@@ -268,6 +306,7 @@ function pixiInitPlayerFog(blurCvs, cloudCvs) {
     uNearPrev: PIXI.Texture.WHITE,
     uOrder:    PIXI.Texture.WHITE,
     uRank:     PIXI.Texture.WHITE,
+    uDoor:     PIXI.Texture.WHITE,   // replaced below, before any draw
     uCloudM:   new Float32Array(12),
     uCloudO:   new Float32Array(6),
     uCloudA:   new Float32Array(3),
@@ -286,6 +325,8 @@ function pixiInitPlayerFog(blurCvs, cloudCvs) {
     uTime:     0,
   });
   pixiBuildPlayerFogNear(blurCvs);
+  pixiPFogDoorKey = null;
+  pixiBuildPlayerDoorLight(blurCvs);
   pixiPFogColors = pixiNewFogColors();
   pixiPFogOutColors = pixiNewFogColors();
 
@@ -333,6 +374,7 @@ function pixiSyncPlayerFog(blurCvs, cloudCvs) {
   if (pixiPFogMaskCvs !== pixiPFogMaskSrc) pixiRefreshProxy(pixiPFogMaskCvs, pixiPFogMaskSrc);
   pixiPFogMaskBT.update();
   pixiBuildPlayerFogNear(blurCvs);
+  pixiBuildPlayerDoorLight(blurCvs);
   pixiPlayerFogChangeLand(blurCvs);   // playerFogTrans.js: a change begun before this mask landed
 }
 
@@ -385,6 +427,7 @@ function pixiUpdatePlayerFog(u) {
   q.uTime    = u.time;
   const c = pixiPFogColors.uniforms;
   c.uCloudC.set(u.cloudC); c.uBase.set(u.base); c.uTint.set(u.tint); c.uRim.set(u.rim); c.uTintA = u.tintA;
+  c.uDoorCol.set(u.doorCol);
   pixiPFogDrawn = true;
 }
 
@@ -547,6 +590,7 @@ function pixiDestroyPlayerFog() {
   if (pixiPFogCloudBT) pixiPFogCloudBT.destroy();
   if (pixiPFogNearBT) { pixiPFogNearBT.destroy(); pixiPFogNearBT = null; }
   if (pixiPFogNearPrevBT) { pixiPFogNearPrevBT.destroy(); pixiPFogNearPrevBT = null; }
+  if (pixiPFogDoorBT) { pixiPFogDoorBT.destroy(); pixiPFogDoorBT = null; }
   pixiPFogGeom = null; pixiPFogShader = null; pixiPFogShaders = null; pixiPFogShadersOut = null; pixiPFogBakeShaders = null;
   pixiPFogCloudBT = null; pixiPFogCloudSrc = null;
   pixiPFogMaskBT = null;

@@ -126,7 +126,7 @@ rectangles alone.
 
 A revealed room reads as a sealed box: its outline is what the players see from across the table,
 and a rectangle with no break in it says there is no way out. A door fixes that by changing the
-outline. It is a notch of cleared fog one grid square wide, straddling the wall so it reads as a
+outline. It is a notch of cleared fog one cell wide and a quarter cell deep, straddling the wall so it reads as a
 gap punched through it rather than a bump on the room.
 
 Pick the **Door** tool and click a wall. The click snaps to the grid cell it landed in, so every
@@ -141,7 +141,15 @@ sits on.
 
 A door stores nothing but which wall it is on and where along it. Width and depth come from the
 scene's grid cell when it is drawn, so correcting a grid resizes every door already placed instead
-of forcing a redraw. Two percentages under the tool set them, at 100% and 10% of a cell by default.
+of forcing a redraw. Two percentages under the tool set them, at 100% and 25% of a cell by default; a depth typed earlier
+(`evermist.doorSize`) still wins. On a hex grid a door measures on the hex's width, flat side to flat
+side (`doorCellForGrid`), so one hex wide and a quarter hex deep at the defaults.
+
+On a hex grid and on a diagonal wall of a square grid, a door centres on the cell holding the wall
+point nearest the pointer, at that cell's centre projected onto the wall; straight walls on a square
+grid keep the world-grid snap. The wall ticks mark where a wall passes into the next cell, so they
+match where a door lands. Stored doors are not moved. On the TV a door also glows; see the fog
+section of ARCHITECTURE.
 
 Reshaping the room keeps its doors where they are. Add a vertex to a wall carrying a door and the
 door holds the same point of the map, moving onto whichever half of the split wall now carries it.

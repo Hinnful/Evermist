@@ -239,9 +239,19 @@ function syDriveCounts(records, own, gone, now) {
 }
 
 // A map file a sync replaced is kept as `<scene id>.<time kept>.<ext>`; these are the names past their 30 days.
-const SY_KEPT_RE = /^[0-9a-zA-Z_-]{1,80}\.(\d{1,15})\.[a-z0-9]{1,5}$/;
+const SY_KEPT_RE = /^([0-9a-zA-Z_-]{1,80})\.(\d{1,15})\.([a-z0-9]{1,5})$/;
 const syKeptName = (id, at, ext) => id + '.' + at + '.' + ext;
-const syKeptDue = (names, now) => (names || []).filter(n => { const m = SY_KEPT_RE.exec(n); return !!m && now - Number(m[1]) > SY_TRASH_MS; });
+const syKeptDue = (names, now) => (names || []).filter(n => { const m = SY_KEPT_RE.exec(n); return !!m && now - Number(m[2]) > SY_TRASH_MS; });
+
+// The types a kept file may carry; `bin` is a picture whose type keepMap did not know.
+const SY_KEPT_MIME = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif', bin: '', webm: 'video/webm', mp4: 'video/mp4' };
+function syKeptParse(name) {
+  const m = typeof name === 'string' ? SY_KEPT_RE.exec(name) : null;
+  if (!m || !Object.prototype.hasOwnProperty.call(SY_KEPT_MIME, m[3])) return null;
+  return { name, sceneId: m[1], at: Number(m[2]), ext: m[3], video: m[3] === 'webm' || m[3] === 'mp4', mime: SY_KEPT_MIME[m[3]] };
+}
+// Settings' "Replaced map pictures": the well-formed names, newest first.
+const syKeptList = names => (names || []).map(syKeptParse).filter(Boolean).sort((a, b) => b.at - a.at);
 
 // Settings' status line for the engine's state: the English text t() looks up, its {names}, and `when`, the last sync's
 // time, which the page writes as {time}. A failure outranks "update needed", and that outranks the last sync.
@@ -270,5 +280,6 @@ if (typeof module !== 'undefined' && module.exports) {
     syBlobsToUpload, syBlobsUnreferenced, syHeld, sySceneEditedAt, syGoneWins, syGoneNote, syRestore, syGoneMerge,
     syTrashIds, syTrashDue, syPurge, syMissingScenes, syGoneClean, syGoneText, syGoneParse, syRestored, syNewestRecord,
     syPurgeFiles, syPicFilesGone, syCampaignText, syBackdropMetaText, syStatusLine, syDriveCounts, syKeptName, syKeptDue,
+    syKeptParse, syKeptList,
   };
 }

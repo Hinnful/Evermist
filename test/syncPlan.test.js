@@ -235,4 +235,15 @@ describe('a map file a sync replaced', () => {
     const names = [S.syKeptName('a', now - 31 * DAY, 'jpg'), S.syKeptName('b', now - 29 * DAY, 'webm'), S.syKeptName('c', now - 30 * DAY - 1, 'png'), 'notes.txt', 'x.y.z.jpg', '../a.1.jpg'];
     assert.deepEqual(S.syKeptDue(names, now), [names[0], names[2]]);
   });
+  it('reads back its map, time and type, and refuses any other name', () => {
+    assert.deepEqual(S.syKeptParse('abc.1234.jpg'), { name: 'abc.1234.jpg', sceneId: 'abc', at: 1234, ext: 'jpg', video: false, mime: 'image/jpeg' });
+    assert.equal(S.syKeptParse('abc.1234.mp4').video, true);
+    assert.equal(S.syKeptParse('abc.1234.bin').mime, '');
+    for (const bad of ['../a.1.jpg', 'a/b.1.jpg', 'a.b.c.jpg', 'a.1.exe', 'a.x.jpg', 'a.1.jpg/', '', null, 5]) assert.equal(S.syKeptParse(bad), null, String(bad));
+  });
+  it('lists the well-formed names newest first', () => {
+    const l = S.syKeptList(['a.100.jpg', 'notes.txt', 'b.300.webm', 'c.200.png', '../d.400.jpg']);
+    assert.deepEqual(l.map(x => x.name), ['b.300.webm', 'c.200.png', 'a.100.jpg']);
+    assert.deepEqual(S.syKeptList(null), []);
+  });
 });

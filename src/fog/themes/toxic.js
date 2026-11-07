@@ -11,6 +11,7 @@
   anim: { speed: 0.75, drift: 0.7, morph: 0.32, warpStr: 0.10, warpRad: 0.06, pulse: 0.22 },
   passCol: [[0.75, 0.85, 0.7], [1.1, 1.05, 0.5], [0.6, 0.85, 0.5]],
   rim: [0.5, 0.85, 0.2],
+  doorLight: [0.549, 1, 0.275],
   shaderFns: `
 vec3 ramp(float t, vec3 r0, vec3 r1, vec3 r2, vec3 r3, vec3 r4, vec3 r5, float warm) { t = clamp(t, 0., 1.);
   vec3 c = mix(r0, r1, smoothstep(0., .22, t)); c = mix(c, r2, smoothstep(.18, .5, t)); c = mix(c, r3, smoothstep(.5, .78, t));

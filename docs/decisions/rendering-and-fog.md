@@ -63,6 +63,21 @@ second click on the neighbouring cell makes a ten-foot doorway, and a third clic
 it again. Toggling is decided by CELL, never by whether the click landed inside a door's rectangle
 - a boundary click belongs to two rectangles and to neither, and the tool draws its ticks exactly
 there. Width and depth survive as two global percentages of a cell, not as per-door fields.
+Depth is no longer a tenth: see "A door is a quarter cell deep and glows on the TV".
+
+### A door is a quarter cell deep and glows on the TV · `SETTLED` (2026-11-07, supersedes the depth in "Doors are one grid cell")
+A door a tenth of a cell deep cut the door art in half and was near-invisible on the TV at table
+zoom. Rejected on product grounds: a wider look where the door clears far into the next room, since
+it shows what lies past the door (a trap in the first square). The same notch, deeper, won: with a
+trap mark in the first square past the door, a quarter shows the whole door and keeps that square
+hidden, a third shows the trap's edge, a half shows it. Default is W 100 / D 25; a typed depth still
+wins, with no migration. On hex grids a door measures on the hex's width, flat side to flat side;
+on the circumradius it was about 58% of a hex, narrower than the doorway in the art. Hex grids and
+diagonal walls snap to the cell holding the nearest wall point. Marking was chosen from three
+mockups in all five themes: light from the door (most visible, works as yellow paint at the table),
+over a stronger theme edge (subtle on light maps) and a shadow round the door (vanishes in dark
+themes). Each theme carries its own `doorLight` colour apart from `rim`, since Blood's rim is black
+and its light red. The glow is TV-only and never thins the fog.
 
 ### The reveal's feather is flattened along walls two rooms share · `SETTLED` (2026-08-30)
 Two revealed rooms sharing a wall each feather inward from it, so neither reaches a full erase on

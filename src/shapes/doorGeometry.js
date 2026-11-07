@@ -23,10 +23,38 @@ if (typeof module !== 'undefined' && module.exports) {
 // distance either side, which frees it from the outline's winding and from which side was traced.
 
 const DOOR_AXIS_EPS = 0.999;   // above this a wall counts as straight, so it snaps to the world grid
+const DOOR_CROSS_SAMPLES = 8;  // samples per cell when finding where a wall crosses into the next cell
 
 function doorSizeForCell(cell, widthPct, depthPct) {
   const c = cell > 0 ? cell : 0;
   return { width: c * (widthPct / 100), depth: c * (depthPct / 100) };
+}
+
+// The cell a door measures on. A hex grid's size is the circumradius, and a door measured on it is
+// barely half the doorway, so a hex door takes the hex's width, flat side to flat side.
+function doorCellForGrid(size, mode) {
+  return mode === 'hex-pointy' ? size * Math.sqrt(3) : size;
+}
+
+// The grid cell holding (x, y), as its centre. `cell` is doorCellForGrid's: a square's side, or a
+// hex's width, whose lattice grid.js draws. Nearest centre is exact for a hex lattice.
+function doorGridCell(x, y, cell, offsetX, offsetY, squareGrid) {
+  const ox = offsetX || 0, oy = offsetY || 0;
+  if (squareGrid) {
+    const i = Math.floor((x - ox) / cell), j = Math.floor((y - oy) / cell);
+    return { i, j, x: ox + (i + 0.5) * cell, y: oy + (j + 0.5) * cell };
+  }
+  const rowStep = cell * Math.sqrt(3) / 2;
+  const r0 = Math.round((y - oy) / rowStep);
+  let best = null;
+  for (let j = r0 - 1; j <= r0 + 1; j++) {
+    const shift = (j & 1) * cell / 2;
+    const i = Math.round((x - ox - shift) / cell);
+    const cx = ox + i * cell + shift, cy = oy + j * rowStep;
+    const d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+    if (!best || d < best.d) best = { i, j, x: cx, y: cy, d };
+  }
+  return { i: best.i, j: best.j, x: best.x, y: best.y };
 }
 
 
@@ -131,13 +159,13 @@ function doorFrameAlong(f, mx, my) {
 // Where a wall's cell boundaries fall, as distances along it from its start vertex. ONE source for
 // both the snap and the ticks the DM sees, so what is drawn is where a door lands.
 // A straight wall on a square grid reads the WORLD grid, offsets included, or a room whose corner
-// sits off a grid line carries every door off with it. Diagonal and hex walls subdivide themselves.
+// sits off a grid line carries every door off with it. Diagonal and hex walls tick where they pass
+// from one cell into the next.
 function doorCellBounds(verts, edge, cell, offsetX, offsetY, squareGrid) {
   const f = doorEdgeFrame(verts, edge);
   if (!f || !(cell > 0)) return null;
-  const axis = Math.abs(f.ux) > DOOR_AXIS_EPS || Math.abs(f.uy) > DOOR_AXIS_EPS;
   const at = [0];
-  if (squareGrid && axis) {
+  if (doorWallOnGrid(f, squareGrid)) {
     // Projecting the grid's origin onto the wall keeps whichever axis the wall runs along and
     // discards the other, so one expression covers horizontal and vertical alike.
     const base = ((offsetX || 0) - f.a.x) * f.ux + ((offsetY || 0) - f.a.y) * f.uy;
@@ -146,22 +174,52 @@ function doorCellBounds(verts, edge, cell, offsetX, offsetY, squareGrid) {
       if (a > 0) at.push(a);
     }
   } else {
-    for (let a = cell; a < f.len; a += cell) at.push(a);
+    const cellAt = a => {
+      const q = doorFramePoint(f, a / f.len);
+      const c = doorGridCell(q.x, q.y, cell, offsetX, offsetY, squareGrid);
+      return c.i + ',' + c.j;
+    };
+    const step = cell / DOOR_CROSS_SAMPLES;
+    let prev = 0, key = cellAt(0);
+    for (let s = 1; prev < f.len; s++) {
+      const a = Math.min(s * step, f.len), k = cellAt(a);
+      if (k !== key) {
+        let lo = prev, hi = a;
+        for (let n = 0; n < 12; n++) { const mid = (lo + hi) / 2; if (cellAt(mid) === key) lo = mid; else hi = mid; }
+        if (hi > 1e-9 && hi < f.len - 1e-9) at.push(hi);
+        key = k;
+      }
+      prev = a;
+    }
   }
   at.push(f.len);
   return { frame: f, at };
 }
 
-// Snaps a click to the cell it landed in, so a door fills that cell.
+// A straight wall on a square grid, the one case that snaps to the world grid's lines.
+function doorWallOnGrid(f, squareGrid) {
+  return !!squareGrid && (Math.abs(f.ux) > DOOR_AXIS_EPS || Math.abs(f.uy) > DOOR_AXIS_EPS);
+}
+
+// Snaps a click to the cell it landed in, so a door fills that cell. Off the world grid's lines the
+// door centres on the cell holding the wall point nearest the click, at that cell's centre projected
+// onto the wall: stepping from the wall's start vertex put a door across two cells.
 function doorCellSnap(verts, edge, mx, my, cell, offsetX, offsetY, squareGrid) {
-  const b = doorCellBounds(verts, edge, cell, offsetX, offsetY, squareGrid);
-  if (!b) return null;
-  const f = b.frame;
+  const f = doorEdgeFrame(verts, edge);
+  if (!f || !(cell > 0)) return null;
   const along = Math.max(0, Math.min(f.len, doorFrameAlong(f, mx, my)));
-  let i = 0;
-  while (i < b.at.length - 2 && along >= b.at[i + 1]) i++;
-  const centre = (b.at[i] + b.at[i + 1]) / 2;
   const half = Math.min(cell, f.len) / 2;
+  let centre;
+  if (doorWallOnGrid(f, squareGrid)) {
+    const b = doorCellBounds(verts, edge, cell, offsetX, offsetY, squareGrid);
+    let i = 0;
+    while (i < b.at.length - 2 && along >= b.at[i + 1]) i++;
+    centre = (b.at[i] + b.at[i + 1]) / 2;
+  } else {
+    const q = doorFramePoint(f, along / f.len);
+    const c = doorGridCell(q.x, q.y, cell, offsetX, offsetY, squareGrid);
+    centre = doorFrameAlong(f, c.x, c.y);
+  }
   return { edge: f.ei, t: Math.max(half, Math.min(f.len - half, centre)) / f.len };
 }
 
@@ -433,12 +491,14 @@ function remapDoorsForVertexChange(doors, at, delta, splitT, ringStart, ringLen)
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
-      edgeOutwardNormal,
+    edgeOutwardNormal,
     edgeRingRef,
     doorEdgeFrame,
     doorFramePoint,
     doorFrameAlong,
     doorSizeForCell,
+    doorCellForGrid,
+    doorGridCell,
     doorCellBounds,
     doorCellSnap,
     doorNotchCorners,

@@ -391,6 +391,26 @@ function register(ctx) {
       purgeKept();
       return true;
     },
+    listKept: async () => {
+      let names = [];
+      try { names = await fs.promises.readdir(keptDir); } catch (_) { return []; }
+      return sp.syKeptList(names).map(k => ({ name: k.name, sceneId: k.sceneId, at: k.at, ext: k.ext }));
+    },
+    // A video swaps places with the map's own file, which is kept in turn; a picture's bytes go back to the page,
+    // which keeps the current one through keepMap.
+    restoreKept: async a => {
+      const k = sp.syKeptParse(a.name);
+      if (!k || k.name !== path.basename(k.name)) throw new SyncError('error', 'a bad kept name');
+      const id = safe(k.sceneId), from = path.join(keptDir, k.name);
+      if (!k.video) return new Uint8Array(await fs.promises.readFile(from));
+      await fs.promises.access(from);
+      for (const e of ['.webm', '.mp4']) {
+        const f = path.join(ctx.mapsDir, id + e);
+        if (fs.existsSync(f)) await fs.promises.rename(f, path.join(keptDir, sp.syKeptName(id, Date.now(), e.slice(1))));
+      }
+      await fs.promises.rename(from, path.join(ctx.mapsDir, id + '.' + k.ext));
+      return true;
+    },
     dropVideoPart: async a => { await fs.promises.unlink(part(safe(a.sceneId))).catch(() => {}); return true; },
     remove: a => remote.remove(a.fileId),
     about: () => remote.about(),

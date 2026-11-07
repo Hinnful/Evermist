@@ -177,7 +177,8 @@ async function _mcpDoorAt(d, s, raw) {
   if (!p) return 'Not done: at must be [x, y] with both from 0 to 100 (percent of the map).';
   const g = await _mcpRoomsGrid(s), cell = Number(g.cellSize) || 0;
   if (!(cell > 0)) return 'Not done: the map has no grid size, and a door is one grid square wide. Set one with set_scene first.';
-  const plan = doorClickPlan(d.polygons, p.x, p.y, { cell, slack: cell / 4, size: doorSizeForCell(cell, doorWidthPct, doorDepthPct),
+  const dc = doorCellForGrid(cell, g.mode);
+  const plan = doorClickPlan(d.polygons, p.x, p.y, { cell: dc, slack: cell / 4, size: doorSizeForCell(dc, doorWidthPct, doorDepthPct),
     offsetX: g.offsetX || 0, offsetY: g.offsetY || 0, square: !String(g.mode || '').startsWith('hex') });
   if (plan) return plan;
   let best = Infinity;

@@ -15,6 +15,7 @@ const {
   edgeRingRef,
   doorEdgeFrame,
   doorSizeForCell,
+  doorCellForGrid,
   doorCellBounds,
   doorCellSnap,
   doorNotchCorners,
@@ -57,6 +58,22 @@ describe('edgeOutwardNormal', () => {
   });
 });
 
+describe('doorCellForGrid', () => {
+  it('measures a hex door on the hex width, flat side to flat side', () => {
+    assert.ok(Math.abs(doorCellForGrid(10, 'hex-pointy') - 10 * Math.sqrt(3)) < 1e-9);
+  });
+
+  it('leaves a square cell as it is', () => {
+    assert.equal(doorCellForGrid(10, 'square'), 10);
+  });
+
+  it('makes 100 / 25 one hex wide and a quarter hex deep', () => {
+    const w = 10 * Math.sqrt(3);
+    const s = doorSizeForCell(doorCellForGrid(10, 'hex-pointy'), 100, 25);
+    assert.ok(Math.abs(s.width - w) < 1e-9 && Math.abs(s.depth - w / 4) < 1e-9);
+  });
+});
+
 describe('doorSizeForCell', () => {
   it('reads both dials as a percent of the cell', () => {
     assert.deepEqual(doorSizeForCell(4, 100, 25), { width: 4, depth: 1 });
@@ -77,13 +94,17 @@ describe('doorCellBounds', () => {
     assert.deepEqual(doorCellBounds(SQUARE_CW, 0, CELL, 1, 0, true).at, [0, 1, 5, 9, 12]);
   });
 
-  it('subdivides the wall itself on a diagonal, which crosses no whole cell', () => {
+  it('ticks a diagonal where it passes into the next square', () => {
     const diag = [{ x: 0, y: 0 }, { x: 6, y: 8 }, { x: 0, y: 16 }];   // first wall is 10 long
-    assert.deepEqual(doorCellBounds(diag, 0, CELL, 0, 0, true).at, [0, 4, 8, 10]);
+    const at = doorCellBounds(diag, 0, CELL, 0, 0, true).at;
+    // y = 4 at 5 along, x = 4 at 20/3 along.
+    assert.deepEqual(at.map(a => Math.round(a * 100) / 100), [0, 5, 6.67, 10]);
   });
 
-  it('subdivides the wall on a hex grid, which has no cell a rectangle fills', () => {
-    assert.deepEqual(doorCellBounds(SQUARE_CW, 0, CELL, 1, 0, false).at, [0, 4, 8, 12]);
+  it('ticks a hex wall where it passes into the next hex', () => {
+    // Hexes 4 wide on the y = 0 row centre at x = 1, 5, 9: their sides fall at 3, 7, 11.
+    const at = doorCellBounds(SQUARE_CW, 0, CELL, 1, 0, false).at;
+    assert.deepEqual(at.map(a => Math.round(a * 100) / 100), [0, 3, 7, 11, 12]);
   });
 
   it('always starts at one end of the wall and finishes at the other', () => {
@@ -125,10 +146,35 @@ describe('doorCellSnap', () => {
     assert.deepEqual(SNAP(SQUARE_CW, 0, 8, 0), SNAP(SQUARE_CW, 0, 9, 0));
   });
 
-  it('lands where the ticks say on a diagonal wall', () => {
+  it("centres a diagonal wall's door on the square the wall passes through", () => {
     const diag = [{ x: 0, y: 0 }, { x: 6, y: 8 }, { x: 0, y: 16 }];
-    assert.equal(SNAP(diag, 0, 3, 4).t, 6 / 10);      // between the 4 and 8 ticks
-    assert.equal(SNAP(diag, 0, 0.6, 0.8).t, 2 / 10);  // between the 0 and 4 ticks
+    // (0.6, 0.8) sits in the square centred (2, 2), which projects 2.8 along the wall.
+    assert.ok(Math.abs(SNAP(diag, 0, 0.6, 0.8).t - 0.28) < 1e-9);
+    // (3, 4) sits in the square centred (2, 6), which projects 6 along.
+    assert.ok(Math.abs(SNAP(diag, 0, 3, 4).t - 0.6) < 1e-9);
+  });
+
+  it("keeps one door anywhere along a diagonal's run through one square", () => {
+    const diag = [{ x: 0, y: 0 }, { x: 6, y: 8 }, { x: 0, y: 16 }];
+    assert.deepEqual(SNAP(diag, 0, 1.2, 1.6), SNAP(diag, 0, 2.7, 3.6));
+  });
+
+  it("centres a hex wall's door on the hex the wall passes through", () => {
+    // Hexes 4 wide, offset 0: the y = 0 row centres at x = 0, 4, 8, the next row at 2, 6, 10.
+    const wall = [{ x: 0, y: 1 }, { x: 20, y: 1 }, { x: 20, y: 9 }, { x: 0, y: 9 }];
+    const at = (mx, my) => doorCellSnap(wall, 0, mx, my, CELL, 0, 0, false);
+    assert.equal(at(6.2, 1).t, 8 / 20);   // the hex centred (8, 0), not the 4..8 step from the corner
+    assert.equal(at(9.9, 1.5).t, 8 / 20);
+    assert.equal(at(3.9, 1).t, 4 / 20);
+  });
+
+  it('keeps a hex door on its wall at the ends', () => {
+    const wall = [{ x: 0, y: 1 }, { x: 20, y: 1 }, { x: 20, y: 9 }, { x: 0, y: 9 }];
+    assert.equal(doorCellSnap(wall, 0, 0.5, 1, CELL, 0, 0, false).t, 2 / 20);
+  });
+
+  it('keeps the world-grid snap on a straight wall of a square grid', () => {
+    assert.equal(SNAP(SQUARE_CW, 0, 6.5, 0, 1, 0).t, 7 / 12);
   });
 
   it('ignores the world grid on a hex grid', () => {

@@ -219,5 +219,5 @@ const syncMerge = (() => {
     return slice('local', () => _local(r, ctx || {}));
   }
 
-  return { apply, drop, held, deferred, context, idle, slice, supported };
+  return { apply, drop, held, deferred, context, idle, slice, supported, cardUpdated: _cardUpdated };
 })();

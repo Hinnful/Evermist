@@ -229,7 +229,7 @@ function applyDoorsToFog(poly) {
   if (!fogDataCtx) return;
   const doors = poly.doors;
   if (!doors || !doors.length || poly.vertices.length < 3) return;
-  const size = doorSizeForCell(gridSize / FOG_SCALE, doorWidthPct, doorDepthPct);
+  const size = doorSizeForCell(doorCellForGrid(gridSize, gridMode) / FOG_SCALE, doorWidthPct, doorDepthPct);
   if (!(size.width > 0) || !(size.depth > 0)) return;
 
   const tol = gridSize * DOOR_SHARED_WALL_TOL;
@@ -646,7 +646,7 @@ function renderFog(vp) {
   pixiUpdatePlayerFog({
     theme: rec.id,
     cloudM: _pfogM, cloudO: _pfogO, cloudA: _pfogA, cloudC: _pfogC,
-    res: _pfogRes, patM: _pfogPatM, patO: _pfogPatO, dur: _pfogDur, rim: _pfogRim,
+    res: _pfogRes, patM: _pfogPatM, patO: _pfogPatO, dur: _pfogDur, rim: _pfogRim, doorCol: rec.doorLight,
     tile: s * tile * PLAYER_FOG_CLOUD_SIZE, time: performance.now() / 1000,
     maskM: _pfogMaskM, maskO: _pfogMaskO, maskLim: _pfogMaskLim,
     base: hexToRGBFloat(fogBaseColor, _pfogRGB),

@@ -37,6 +37,7 @@ uniform sampler2D uNear;
 uniform sampler2D uNearPrev;
 uniform sampler2D uOrder;
 uniform sampler2D uRank;
+uniform sampler2D uDoor;
 uniform vec4  uCloudM[3];
 uniform vec2  uCloudO[3];
 uniform float uCloudA[3];
@@ -47,6 +48,7 @@ uniform vec2  uMaskLim;
 uniform vec3  uBase;
 uniform vec3  uTint;
 uniform vec3  uRim;
+uniform vec3  uDoorCol;
 uniform float uTintA;
 uniform float uCover;
 uniform float uFade;
@@ -143,7 +145,9 @@ void main() {
   float fg0 = 1.0;
   float fgRaw = 1.0;   // the fog with no cover over it
   float m = 1.0; float m2 = 1.0; float m3 = 1.0;
+  vec2 dl = vec2(0.);
   if (inMap) {
+    dl = texture2D(uDoor, muv).rg;
     fgRaw = maskRaw(muv);
     fg0 = min(1.0, fgRaw + gC);
     vec3 nr = nearRaw(muv);
@@ -206,6 +210,12 @@ void main() {
 // A map switch's swap then washes the incoming theme over the outgoing one (uSwap), in its own hide.
 const PLAYER_FOG_TAIL = `
   }
+  // Light from a door (uDoor: r the glow, g the notch). It tints and lifts the fog past a lit notch and
+  // never thins it, so nothing past the door shows. Each half needs clear ground and fog together,
+  // read from the near copies, so it comes and goes with the fog's own change.
+  float dG = min(1., dl.r * 2.4) * smoothstep(0., .2, 1. - m) * (1. - gC);
+  col = mix(col, uDoorCol, dG * .5) + uDoorCol * dG * .2;
+  float dB = dl.g * smoothstep(.03, .2, m) * (1. - aF) * (1. - gC);
   if (gFront > .001) {
     float chg = 1.;
     if (uCover > .001) chg = 1. - fgRaw;
@@ -221,7 +231,8 @@ const PLAYER_FOG_TAIL = `
     swF = fogStep(screenRank(sp, nS, -1.), uSwap, sp, -1.);
   }
   col = mix(col, FRONT_COL, gFront * FRONT_TINT);
-  gl_FragColor = vec4(col * aF + uRim * rim * .22 + edgeCol * edgeGlow * (1. - gC) + FRONT_COL * gFront * (1. - FRONT_TINT), aF) * uFade * swF;
+  gl_FragColor = vec4(col * aF + uRim * rim * .22 + edgeCol * edgeGlow * (1. - gC) + FRONT_COL * gFront * (1. - FRONT_TINT)
+    + uDoorCol * dB * .22, aF) * uFade * swF;
 }
 `;
 

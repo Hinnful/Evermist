@@ -166,7 +166,7 @@ and a lit interior grid - see DECISIONS.
 ### Doorways between rooms are derived, everything else is marked by hand · `SETTLED` (2026-09-01, reverses "never derived")
 Players reading a revealed room across the table see its outline before they see anything inside
 it, and a rectangle with no break in it says the room is sealed. A door is a notch of cleared fog
-one grid square wide, which changes that outline.
+one cell wide and a quarter cell deep, lit on the TV in the theme's colour, which changes that outline.
 
 Draw Rooms now marks every portal sitting on a wall two derived rooms share. A portal near only
 one room is a window or an outside entrance and produces nothing. That filter is what answers the

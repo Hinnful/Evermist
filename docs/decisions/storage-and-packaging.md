@@ -420,6 +420,12 @@ Drive whose deletion record outlives the purge. The first sync on a computer ask
 no map file and keeps a copy of every record it changes for 30 days; a map picture or video a later sync replaces is kept on
 that computer 30 days.
 
+### A map picture a sync replaced can be restored from Settings · `SETTLED` (2026-11-07)
+The list sits beside Recently deleted, one Restore per file, read from this computer's kept files so
+it works offline. A video restore swaps with the current file, so a restore is itself undoable. A
+map in use (open, on the TV, in a column or the Notes window) is held, not changed under the DM: the
+click does nothing and a dialog says to close the map first.
+
 ### A second Import and the fight table stop drifting · `SETTLED` (2026-11-07)
 A second Import no longer renames "Name (2)" back: a trailing " (n)" counts as a collision suffix when name edit times tie.
 The fight table's rows are no longer renumbered: the fight key ignores the stat block copy that rows carry.

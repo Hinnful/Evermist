@@ -46,6 +46,12 @@ describe('the fog theme records', () => {
     assert.ok(ice(.5, .5, .5, .5, 1, 0) > ice(.5, .5, .5, .5, 1, 1));
     assert.ok(blood(.5, 0, .5, .5, 1, .5, vn) < blood(.5, 1, .5, .5, 1, .5, vn));
   });
+  it('give each theme its own door light, in 0..1 RGB, Blood red though its rim is black', () => {
+    const want = { default: [205, 210, 245], fire: [255, 150, 40], ice: [215, 240, 255], blood: [230, 40, 30], toxic: [140, 255, 70] };
+    for (const t of T.FOG_THEMES) {
+      assert.deepEqual(t.doorLight.map(c => Math.round(c * 255)), want[t.id], t.id);
+    }
+  });
   it('let only Fire rise, and only Blood draw no rim', () => {
     assert.deepEqual(T.FOG_THEMES.filter(t => t.rise).map(t => t.id), ['fire']);
     assert.deepEqual(T.fogThemeRecord('blood').rim, [0, 0, 0]);

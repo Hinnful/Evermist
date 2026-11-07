@@ -113,7 +113,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/syncIndex.js` | `evermist-sync`: each record's content hash as saved here, hashed at save and reconciled at start, the deletion records. Does nothing without a Google client |
 | `scenes/syncMerge.js` | The silent merge entry: a record pulled from another computer (a map, a picture, the Campaign, the backdrop, a stored text) applied with Import's plan rules, nothing on screen touched, held while its map, the TV, a column, the fight table or its note is shown, one record per idle slice and each timed |
 | `scenes/sync.js` | Sync's outbox and inbox on the page: the triggers, records and map files up, other computers' changes down, the first-sync rules and its hold until the DM answers, the status line's state |
-| `scenes/syncSettings.js` | Settings' Sync section: Connect and Disconnect, Sync now, the status line, Recently deleted with Restore and Empty now. The question before a first sync. Shown only with a Google client |
+| `scenes/syncSettings.js` | Settings' Sync section: Connect and Disconnect, Sync now, the status line, Recently deleted with Restore and Empty now, Replaced map pictures with Restore. The question before a first sync. Shown only with a Google client |
 | `scenes/dragDrop.js` | What a file dropped on the DM window becomes |
 | `ui/toolbar.js` | DM UI wiring. Calls `initRoomPanel` and `initControlPanel` last |
 | `ui/colorPicker.js` | The grid colour picker: square, hue strip, hex field, HSV maths |
@@ -263,7 +263,7 @@ the windows, the display push and the app lifecycle, and hands every module its 
 | `electron/mapFiles.js` | The IPC behind Claude's map tools: the folder search and the map bytes |
 | `electron/fileHash.js` | Pure: a file's SHA-256, streamed. Tested |
 | `electron/syncConfig.js` | The Google client sync signs in with: built in, from the environment, or the `userData/sync/config.json` override; and whether there is one. Tested |
-| `electron/syncRemote.js` | Sync's Drive remote over Node http: resumable uploads, paged listings, a 401 refreshed, a full Drive, names and hashes checked on the way back; a map file a sync replaces kept 30 days in `userData/sync/kept`. Tested against the rig's fake Drive |
+| `electron/syncRemote.js` | Sync's Drive remote over Node http: resumable uploads, paged listings, a 401 refreshed, a full Drive, names and hashes checked on the way back; a map file a sync replaces kept 30 days in `userData/sync/kept`, listed and swapped back on Restore. Tested against the rig's fake Drive |
 | `electron/syncAuth.js` | Signing in to sync: Google's desktop OAuth (system browser, loopback, PKCE, state), the refresh token sealed by `safeStorage` or kept in memory, Connect and Disconnect. Tested |
 | `electron/mcpBridge.js` | The Claude connection's localhost door, its key, and the extension Connect to Claude builds |
 | `electron/mcpConfig.js` | Pure: the Claude extension's manifest. Tested |

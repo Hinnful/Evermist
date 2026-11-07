@@ -1,6 +1,7 @@
 'use strict';
-// syncSettings.js — Settings' Sync section: Connect to Google and Disconnect, Sync now, the status line, and Recently
-// deleted with Restore per map and Empty now, and the question before a computer's first sync. syncSettingsInit runs
+// syncSettings.js — Settings' Sync section: Connect to Google and Disconnect, Sync now, the status line, Recently
+// deleted with Restore per map and Empty now, Replaced map pictures with Restore per file, and the question before a
+// computer's first sync. syncSettingsInit runs
 // only where sync has a Google client, so without one the section stays hidden. The engine is sync.js; this only shows
 // it and calls it.
 
@@ -29,10 +30,10 @@ function _ssStatus() {
   _ssEl('sy-connect').hidden = signed;
   _ssEl('sy-disconnect').hidden = !signed;
   _ssEl('sy-now').disabled = !signed || st.state === 'syncing' || _ssBusy;
-  if (st.state !== 'syncing' && st.last !== _ssTrashAt) { _ssTrashAt = st.last; _ssTrash(); }
+  if (st.state !== 'syncing' && st.last !== _ssTrashAt) { _ssTrashAt = st.last; _ssTrash(); _ssKeptList(); }
 }
 
-function _ssRow(item) {
+function _ssRow(item, key, val, onBack) {
   const row = document.createElement('div');
   row.className = 'dk-r';
   const src = document.createElement('button');
@@ -47,9 +48,9 @@ function _ssRow(item) {
   const back = document.createElement('button');
   back.className = 'cp-adv-close';
   back.title = t('Restore');
-  back.dataset.restore = item.id;
+  back.dataset[key] = val;
   back.innerHTML = uiIcon('undo', 13, 1.5);
-  back.addEventListener('click', () => _ssRun(() => syncEngine.restore(item.id)));
+  back.addEventListener('click', () => _ssRun(onBack));
   row.append(src, back);
   return row;
 }
@@ -58,10 +59,23 @@ async function _ssTrash() {
   let list = null;
   try { list = await syncEngine.trash(); } catch (_) { list = null; }
   const box = _ssEl('sy-trash');
-  box.replaceChildren(...(list || []).map(_ssRow));
+  box.replaceChildren(...(list || []).map(x => _ssRow(x, 'restore', x.id, () => syncEngine.restore(x.id))));
   _ssEl('sy-trash-line').textContent = !list ? t('Shown when this computer is online and signed in.')
     : list.length ? t('Maps deleted on any computer stay here for 30 days.') : t('No map deleted in the last 30 days.');
   _ssEl('sy-empty').disabled = !list || !list.length;
+}
+
+// Read from this computer's own files, so it shows offline and signed out too.
+async function _ssKeptList() {
+  let list = [];
+  try { list = await syncEngine.kept(); } catch (err) { console.error('[sync]', err); }
+  _ssEl('sy-kept').replaceChildren(...list.map(k => _ssRow({ name: k.mapName, at: k.at }, 'kept', k.name, () => _ssRestoreKept(k.name))));
+  _ssEl('sy-kept-line').textContent = list.length ? t('A map picture a sync replaced stays here for 30 days.') : t('No map picture replaced in the last 30 days.');
+}
+
+async function _ssRestoreKept(name) {
+  if (await syncEngine.restoreKept(name) !== 'held') return;
+  messageDialog({ title: 'Close this map first', message: t('This map is open, on the TV, in a column or in the Notes window, so its picture cannot change now.') });
 }
 
 // One button's call at a time; the list and the line catch up after it.

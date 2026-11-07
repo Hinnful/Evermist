@@ -314,9 +314,9 @@ async function _addMaps(list, at, quiet) {
   });
 }
 
-// Size and a first frame, read off screen. The element is never put in the page.
+// Size and a first frame, read off screen. The element is never put in the page. `file` is a Blob or a URL.
 async function _decodeOffscreen(file, isVid) {
-  const url = URL.createObjectURL(file);
+  const url = typeof file === 'string' ? file : URL.createObjectURL(file);
   const el = document.createElement(isVid ? 'video' : 'img');
   try {
     await new Promise((resolve, reject) => {
@@ -335,7 +335,7 @@ async function _decodeOffscreen(file, isVid) {
     if (!w || !h) throw new Error('no size');
     return { w, h, thumb: await generateThumbnail(el, w, h) };
   } finally {
-    URL.revokeObjectURL(url);
+    if (url !== file) URL.revokeObjectURL(url);
     if (isVid) { el.removeAttribute('src'); el.load(); }
   }
 }

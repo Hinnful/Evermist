@@ -281,6 +281,49 @@ const syncEngine = (() => {
     return ids.length;
   }
 
+  // ─── Replaced map pictures ──────────────────────────────────────────────────
+
+  // The map files a sync replaced, kept on this computer: [{ name, sceneId, at, ext, mapName }] of maps still in the
+  // library, newest first. Local files only, so it needs no sign-in.
+  async function kept() {
+    const out = [];
+    for (const k of await _drive('listKept')) {
+      const s = allScenes.find(x => x.id === k.sceneId);
+      if (s) out.push({ ...k, mapName: s.name });
+    }
+    return out;
+  }
+
+  // The kept file back as the map, and the map it replaces kept in turn. The map is stamped as edited now, so the
+  // next sync carries it to every computer. Answers 'held' for a map on screen, which it leaves alone.
+  async function restoreKept(name) {
+    const k = syKeptParse(name), local = k && allScenes.some(s => s.id === k.sceneId) ? await sceneStore.loadScene(k.sceneId) : null;
+    if (!local) return 'gone';
+    const id = k.sceneId;
+    if (syncMerge.held('scene:' + id)) return 'held';
+    const rec = { ...local };
+    let blob = null, d = null;
+    if (k.video) {
+      await _drive('restoreKept', { name });
+      Object.assign(rec, { mapType: 'video', mapPath: `maps/${id}.${k.ext}` });
+      delete rec.mapBlob;
+      const abs = await window.electronAPI.getVideoFilePath(id);
+      try { d = await _decodeOffscreen('file:///' + abs.replace(/\\/g, '/'), true); } catch (err) { console.error('[sync] the restored video did not decode', err); }
+    } else {
+      blob = new Blob([await _drive('restoreKept', { name })], { type: k.mime });
+      d = await _decodeOffscreen(blob, false);
+      Object.assign(rec, { mapType: 'image', mapBlob: blob });
+      delete rec.mapPath;
+    }
+    if (local.mapBlob) await _drive('keepMap', { sceneId: id, data: await local.mapBlob.arrayBuffer(), mime: local.mapBlob.type });
+    if (d) Object.assign(rec, { mapWidth: d.w, mapHeight: d.h, thumbnail: d.thumb });
+    const edits = local.edits || {};
+    rec.edits = { ...edits, scene: { ...(edits.scene || {}), map: Date.now() } };
+    await sceneStore.putScene(rec);
+    syncMerge.cardUpdated(rec);
+    return 'restored';
+  }
+
   // ─── Signing in ─────────────────────────────────────────────────────────────
 
   // The token lives in the main process (syncAuth.js); a sync follows either way, so the status line catches up.
@@ -461,7 +504,7 @@ const syncEngine = (() => {
     schedule(1500);
   }
 
-  return { start, now, trash, restore, emptyNow, signedIn, remembered, connect, confirmFirst, cancelFirst, disconnect, status: () => ({ ...status, machine, pending: pending.size }), pending: () => Array.from(pending.keys()) };
+  return { start, now, trash, restore, kept, restoreKept, emptyNow, signedIn, remembered, connect, confirmFirst, cancelFirst, disconnect, status: () => ({ ...status, machine, pending: pending.size }), pending: () => Array.from(pending.keys()) };
 })();
 
 // Sync's start after the scenes are up. The section shows wherever there is a Google client; the index and the
