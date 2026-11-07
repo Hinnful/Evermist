@@ -35,8 +35,7 @@ One dock on the right edge holds every control that is not on the map or the too
   through `_rpScreenToStyle()`, never a bare `/ uiZoom`.
 - **Hidden in `body.player-mode` and `body.pane-mode`.** A column window shows no dock.
 - **Pop-outs** (a colour picker, Custom movement) open to the dock's LEFT, level with the row that
-  opened them, in the `.dk-pop` shell. **A dropdown's list (`.dk-drop`, the movement presets)
-  opens under the dropdown, Figma's way**, the check on the left.
+  opened them, in the `.dk-pop` shell.
 
 ## The dock's skin
 
@@ -56,21 +55,29 @@ One dock on the right edge holds every control that is not on the map or the too
   red, Split yellow.
 - **Two levels of type**: a 12px bold section title, and an 11px dim sub-header over a group.
 
-## Scene control pane
+## Map settings pane (`#dock-pane-scene`, `controlPanel.js`)
 
-Rules from Figma's right panel, and they bind every section:
+Three sections in this order: Grid, Weather and Fog (capital F, deliberate), Rooms and lights. The DM designed it
+(BACKLOG 255) so a first-time DM reads it without learning icons; these rules bind every section:
 
-1. A section title carries at most two icons, each acting on the whole section.
-2. **The eye means shown/hidden and ends its row.** A hidden row dims, and its closed eye turns
-   blue. The room-names eye sits on the Rooms title (the one exception); the grid's eye sits on
-   the Grid title and dims the whole section.
-3. **Numbers are fields with a leading icon you drag to scrub.** No sliders and no labels in
-   this pane. The scrub icon writes the same `<input>` the old slider row drove, so the app's
-   own `input`/`change` handlers do the work.
-4. Movement is an effect row: a preset dropdown, then the eye. Custom… opens the dials.
-5. A sub-header leads straight to its controls. A control never carries a second label.
-6. **A Sources row is the button.** The icon beside it does the next thing (Draw Rooms, remove the
-   module text), never the row's own action again.
+1. **A section title carries words, not icons**: at most a frameless "Reset" and a knob switch. The switch is the
+   section's on/off (the grid, `#btn-grid`); off dims the body (`dk-dim`). There are no eyes in this pane.
+2. **Every group has an 11px dim sub-header**, and a value it shows sits at the sub-header's right in `--g-dim`
+   ("31 × 22 squares", "25%"). Kinds (weather, fog theme) show no value.
+3. **A pick-one is an icon segment (`cp-seg`) with the names as tooltips**: grid type, line style, thickness 1/2/4,
+   the six weathers, the five fog themes (each in its theme's `doorLight` colour, inactive at 75%). A stored value
+   no segment holds (a line width of 7) lights nothing and keeps rendering.
+4. **A number is a stepper or a slider, never a scrub field here**: cell size is − value px + beside a grey "Fit
+   to map"; opacity is `.cp-slider`. Each writes the `<input>` the old control drove and fires its event, so the
+   app's own handler takes the value.
+5. **Colour is five fixed presets and a multicolour square**, 24px, 8px apart, left-aligned; the pick wears the
+   blue ring, a colour matching no preset puts it on the multicolour square, which opens `#cp-pop-grid`.
+6. **A loaded file is a file card** (`.dk-card`): icon, title, what it holds, a trash that asks through
+   `confirmDialog`, and its actions under a divider (Draw rooms keeps `#btn-floorplan`). Clicking the head picks
+   another file. With no file the card is the `.dk-src` load row. Module text is campaign storage, so its card
+   lives in Settings' Campaign group, never here.
+7. **The shared parts are defined once in `dock.css`**: the knob switch (`.dk-switch`, a `<button role="switch"
+   aria-checked>`), the frameless button (`.dk-bare`, Two maps wears it with its word), the file card.
 
 `#cp-legacy` stays as the back end the pane drives: behaviour code clicks and reads those
 elements, and the pane mirrors their state. Keep the colour picker's zoom-safe box reads and

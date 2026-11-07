@@ -272,7 +272,17 @@ async function attachPlanText(planText) {
   return true;
 }
 
-// The Sources row: a plan picked by hand, offered the way a dropped one is.
+// The card's trash, after it asked: the plan leaves the scene, and the rooms and lights it drew stay.
+// Null, never a deleted key, so the save overwrites the stored plan.
+function removeFloorPlan() {
+  if (!currentScene) return;
+  currentScene.floorPlan = null;
+  currentScene.planOfferPending = false;
+  doAutoSave();
+  refreshFloorPlanUI();
+}
+
+// The load row: a plan picked by hand, offered the way a dropped one is.
 async function loadPlanFile(file) {
   if (!currentScene || !file) return;
   if (await file.text().then(attachPlanText, () => false)) { offerStoredFloorPlan(); return; }

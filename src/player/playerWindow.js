@@ -222,7 +222,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
         mapSceneId: currentScene ? currentScene.id : null,
         effects,
         lights: lightPolys, doors: doorLightQuads(),
-        gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
+        gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth, gridLineStyle,
         fogTheme,
         tvTurn: tvFit.turn,
         ...weatherPayload(),
@@ -255,7 +255,7 @@ function sendToPlayer(fogOnly = false, sceneChange = false) {
       type: 'fog-update',
       mapWidth, mapHeight, fogImage, view, isShroud, sceneChange, fogChanged, effects,
       lights: lightPolys, doors: doorLightQuads(),
-      gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth,
+      gridEnabled, gridSize, gridOffsetX, gridOffsetY, gridColor, gridOpacity, gridMode, gridLineWidth, gridLineStyle,
     }, '*');
   }
 }

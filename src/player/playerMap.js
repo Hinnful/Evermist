@@ -131,6 +131,7 @@ function applyFogUpdate(msg) {
     gridOpacity   = msg.gridOpacity   ?? gridOpacity;
     gridMode      = msg.gridMode      || gridMode;
     gridLineWidth = msg.gridLineWidth ?? gridLineWidth;
+    gridLineStyle = normalizeGridLineStyle(msg.gridLineStyle);
     gridDirty   = true;
   }
 

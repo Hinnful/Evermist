@@ -373,17 +373,17 @@
     <section class="dk-sec" id="dock-pane-scene" data-pane="scene" hidden>
       <div class="dk-head">
         <span class="dk-scene"><span id="scene-dd-name" class="cp-adv-title" data-no-i18n>No map</span></span>
-        <button id="btn-two-maps" class="cp-adv-close" title="Two maps: show a second map beside this one">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg>
+        <button id="btn-two-maps" class="dk-bare" title="Two maps: show a second map beside this one">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/></svg><span>Two maps</span>
         </button>
       </div>
       <div class="dk-scroll">
 
         <div class="cp-group" id="cp-sec-grid">
           <div class="dk-sh"><span class="cp-label">Grid</span>
-            <div class="cp-row">
-              <button class="dk-eye" id="cp-grid-eye" title="Grid (G)"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
-              <button id="cp-grid-reset" class="cp-adv-close" title="Reset grid settings"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
+            <div class="dk-hr">
+              <button id="cp-grid-reset" class="dk-bare" title="Reset grid settings">Reset</button>
+              <button id="cp-grid-switch" class="dk-switch" role="switch" aria-checked="false" title="Grid (G)"></button>
             </div>
           </div>
           <div class="dk-secbody" id="cp-grid-body">
@@ -393,67 +393,104 @@
                 <button class="cp-iconbtn" data-gtype="hex-pointy" title="Hex"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><polygon points="7,1 12,4 12,10 7,13 2,10 2,4"/></svg></button>
               </div>
             </div>
-            <div class="dk-blk"><span class="dk-sub">Cells</span>
-              <div class="dk-r">
-                <label class="dk-num" title="Cell size. Drag the icon to change it."><span class="pre" data-scrub="grid-size-num" data-min="10" data-max="400" data-per="2"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05"><rect x="2.5" y="2.5" width="9" height="9" rx="1"/></svg></span><input type="text" id="grid-size-num" inputmode="numeric" value="70"><span class="u">px</span></label>
-                <label class="dk-num" title="Line width. Drag the icon to change it."><span class="pre" data-scrub="grid-thickness-num" data-min="1" data-max="10" data-per="12"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M2 4h10" stroke-width="0.9"/><path d="M2 7h10" stroke-width="1.6"/><path d="M2 10.5h10" stroke-width="2.4"/></svg></span><input type="text" id="grid-thickness-num" inputmode="numeric" value="1"><span class="u">px</span></label>
-                <button id="cp-grid-calibrate" class="cp-adv-close" title="Fit the grid to the map: drag a square across the map's own cells"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5v-3h3"/><path d="M9.5 1.5h3v3"/><path d="M12.5 9.5v3h-3"/><path d="M4.5 12.5h-3v-3"/><line x1="7" y1="4.2" x2="7" y2="9.8"/><line x1="4.2" y1="7" x2="9.8" y2="7"/></svg></button>
+            <div class="dk-blk"><div class="dk-subrow"><span class="dk-sub">Cell size</span><span class="dk-subval" id="cp-grid-count" data-no-i18n></span></div>
+              <div class="dk-cellrow">
+                <div class="dk-stepper">
+                  <button class="cp-stepbtn" id="cp-grid-dec" title="Smaller cells"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="3" y1="7" x2="11" y2="7"/></svg></button>
+                  <span class="cp-stepval"><input type="text" id="grid-size-num" inputmode="numeric" value="70" title="Cell size"><span class="u">px</span></span>
+                  <button class="cp-stepbtn" id="cp-grid-inc" title="Bigger cells"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><line x1="7" y1="3" x2="7" y2="11"/><line x1="3" y1="7" x2="11" y2="7"/></svg></button>
+                </div>
+                <button id="cp-grid-calibrate" class="dk-fit" title="Fit the grid to the map: drag a square across the map's own cells"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 4.5v-3h3"/><path d="M9.5 1.5h3v3"/><path d="M12.5 9.5v3h-3"/><path d="M4.5 12.5h-3v-3"/><line x1="7" y1="4.2" x2="7" y2="9.8"/><line x1="4.2" y1="7" x2="9.8" y2="7"/></svg><span>Fit to map</span></button>
               </div>
             </div>
-            <div class="dk-blk"><span class="dk-sub">Lines</span>
-              <div class="cp-field dk-colour" id="cp-grid-field" data-dock-pop="cp-pop-grid" title="Grid colour and opacity">
-                <span class="cp-swatch"></span><span class="cp-hash">#</span><span class="cp-hex"></span><span class="cp-fdiv"></span><span class="cp-alphanum"></span><span class="cp-pct">%</span>
+            <div class="dk-blk"><span class="dk-sub">Line style</span>
+              <div class="cp-iconrow cp-seg" id="cp-gridline-row">
+                <button class="cp-iconbtn" data-lstyle="solid" title="Solid"><svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4"><line x1="2" y1="7" x2="18" y2="7"/></svg></button>
+                <button class="cp-iconbtn" data-lstyle="dashed" title="Dashed"><svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4" stroke-dasharray="4 3"><line x1="2" y1="7" x2="18" y2="7"/></svg></button>
+                <button class="cp-iconbtn" data-lstyle="dotted" title="Dotted"><svg width="20" height="14" viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" stroke-dasharray="0.01 3.2"><line x1="2" y1="7" x2="18" y2="7"/></svg></button>
+              </div>
+            </div>
+            <div class="dk-blk"><span class="dk-sub">Thickness</span>
+              <div class="cp-iconrow cp-seg" id="cp-gridwidth-row">
+                <button class="cp-iconbtn" data-lw="1" title="Thin"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1"><line x1="3" y1="7" x2="11" y2="7"/></svg></button>
+                <button class="cp-iconbtn" data-lw="2" title="Medium"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="3" y1="7" x2="11" y2="7"/></svg></button>
+                <button class="cp-iconbtn" data-lw="4" title="Thick"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="4.6"><line x1="3" y1="7" x2="11" y2="7"/></svg></button>
+              </div>
+            </div>
+            <div class="dk-blk"><span class="dk-sub">Colour</span>
+              <div class="dk-swatches" id="cp-grid-swatches">
+                <button class="dk-swatch" data-color="#ffffff" style="background:#ffffff" title="White"></button>
+                <button class="dk-swatch dk-swatch-dark" data-color="#000000" style="background:#000000" title="Black"></button>
+                <button class="dk-swatch" data-color="#8a8f98" style="background:#8a8f98" title="Grey"></button>
+                <button class="dk-swatch" data-color="#e8b23a" style="background:#e8b23a" title="Gold"></button>
+                <button class="dk-swatch" data-color="#d9574a" style="background:#d9574a" title="Red"></button>
+                <button class="dk-swatch dk-swatch-any" id="cp-grid-custom" data-dock-pop="cp-pop-grid" title="Any colour"></button>
+              </div>
+            </div>
+            <div class="dk-blk"><div class="dk-subrow"><span class="dk-sub">Opacity</span><span class="dk-subval" id="cp-grid-opacity-val" data-no-i18n></span></div>
+              <div class="cp-slider">
+                <div class="cp-slider-track"></div><div class="cp-slider-fill"></div><div class="cp-slider-knob"></div>
+                <input id="cp-grid-opacity" type="range" min="0" max="100" step="1" value="25" title="Grid opacity">
               </div>
             </div>
           </div>
         </div>
 
         <div class="cp-group" id="cp-sec-fog">
-          <div class="dk-sh"><span class="cp-label">Weather</span>
-            <button id="cp-fog-reset" class="cp-adv-close" title="Reset weather and the fog theme"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 4.6A5 5 0 1 0 12 7.4"/><path d="M8.8 4.4h3v-3"/></svg></button>
+          <div class="dk-sh"><span class="cp-label">Weather and Fog</span>
+            <button id="cp-fog-reset" class="dk-bare" title="Reset weather and the fog theme">Reset</button>
           </div>
-          <div class="dk-r" id="cp-wx-row">
-            <button class="dk-dd" id="cp-wx-dd" data-dock-pop="cp-pop-wx" title="Weather on this map"><span class="dk-cur"><span class="ic" id="cp-wx-ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg></span><span id="cp-wx-lbl">No weather</span></span><span class="car">▼</span></button>
-          </div>
-          <div class="dk-blk tb-backend"><span class="dk-sub">Whole map</span>
-            <div class="cp-btnrow">
-              <button id="btn-clear-fog" class="cp-btn" title="Show the players the whole map, every room included">Reveal all</button>
-              <button id="btn-fill-fog" class="cp-btn" title="Hide the whole map from the players, every room included">Hide all</button>
+          <div class="dk-secbody">
+            <div class="dk-blk"><span class="dk-sub">Weather</span>
+              <div class="cp-iconrow cp-seg" id="cp-wx-row">
+                <button class="cp-iconbtn" data-wx="none" title="No weather"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><line x1="3.5" y1="10.5" x2="10.5" y2="3.5"/></svg></button>
+                <button class="cp-iconbtn" data-wx="rain" title="Rain"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M4.5 9.5h7a2.7 2.7 0 0 0 .3-5.4 3.6 3.6 0 0 0-6.9.9A2.3 2.3 0 0 0 4.5 9.5z"/><path d="M5.5 11.5l-.8 2M8.5 11.5l-.8 2M11.5 11.5l-.8 2"/></svg></button>
+                <button class="cp-iconbtn" data-wx="storm" title="Storm"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5h7a2.7 2.7 0 0 0 .3-5.4 3.6 3.6 0 0 0-6.9.9A2.3 2.3 0 0 0 4.5 9.5z"/><path d="M8.5 10.5l-1.5 2.5h2l-1.5 2.5"/></svg></button>
+                <button class="cp-iconbtn" data-wx="snowfall" title="Snowfall"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M8 1.5v13M2.4 4.75l11.2 6.5M2.4 11.25l11.2-6.5"/></svg></button>
+                <button class="cp-iconbtn" data-wx="blizzard" title="Blizzard"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1.5v9M2.1 3.75l7.8 4.5M2.1 8.25l7.8-4.5"/><path d="M8.5 12h6M10.5 14.5h4"/></svg></button>
+                <button class="cp-iconbtn" data-wx="fair" title="Fair weather"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5.5" r="2.3"/><path d="M5.5 1v1M1 5.5h1M2.3 2.3l.7.7M8.7 2.3l-.7.7"/><path d="M6 13.5h6.5a2.3 2.3 0 0 0 .2-4.6 3 3 0 0 0-5.7.7A2 2 0 0 0 6 13.5z"/></svg></button>
+              </div>
             </div>
-          </div>
-          <div class="dk-blk"><span class="dk-sub">Fog</span>
-            <div class="dk-r" id="cp-fogtheme-row">
-              <button class="dk-dd" id="cp-fogtheme-dd" data-dock-pop="cp-pop-fogtheme" title="Fog theme for this map"><span class="dk-cur"><span class="ic"><i class="dk-sw" id="cp-fogtheme-sw"></i></span><span id="cp-fogtheme-lbl">Default</span></span><span class="car">▼</span></button>
+            <div class="dk-blk tb-backend"><span class="dk-sub">Whole map</span>
+              <div class="cp-btnrow">
+                <button id="btn-clear-fog" class="cp-btn" title="Show the players the whole map, every room included">Reveal all</button>
+                <button id="btn-fill-fog" class="cp-btn" title="Hide the whole map from the players, every room included">Hide all</button>
+              </div>
+            </div>
+            <!-- Each icon wears its theme's door-light colour, set from the theme record (controlPanel.js). -->
+            <div class="dk-blk"><span class="dk-sub">Fog</span>
+              <div class="cp-iconrow cp-seg dk-fogthemes" id="cp-fogtheme-row">
+                <button class="cp-iconbtn" data-fogtheme="default" title="Default"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" fill-opacity="0.28" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.2 4.2 0 0 0 7 18z"/></svg></button>
+                <button class="cp-iconbtn" data-fogtheme="blood" title="Blood"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" fill-opacity="0.28" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6.04C10.29 9.48 13.3 12.49 13.3 15.5A4.3 4.3 0 0 1 4.7 15.5C4.7 12.49 7.71 9.48 9 6.04z"/><path d="M17.2 5C17.95 7 19.7 8.75 19.7 10.5A2.5 2.5 0 0 1 14.7 10.5C14.7 8.75 16.45 7 17.2 5z"/><path d="M17 15.9C17.45 17.1 18.5 18.15 18.5 19.2A1.5 1.5 0 0 1 15.5 19.2C15.5 18.15 16.55 17.1 17 15.9z"/></svg></button>
+                <button class="cp-iconbtn" data-fogtheme="toxic" title="Toxic"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" fill-opacity="0.28" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.8 3h4.4" fill="none"/><path d="M10.6 3v5.8a6.5 6.5 0 1 0 2.8 0V3"/><path d="M6.4 14.5h11.2" fill="none"/><circle cx="10" cy="17.5" r="0.9"/><circle cx="14" cy="16.6" r="0.7"/></svg></button>
+                <button class="cp-iconbtn" data-fogtheme="ice" title="Ice"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" fill-opacity="0.28" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h18" fill="none"/><path d="M4.5 4.5l1.9 8.5 1.9-8.5M9.6 4.5l2.4 15 2.4-15M15.8 4.5l1.8 6.5 1.8-6.5"/></svg></button>
+                <button class="cp-iconbtn" data-fogtheme="fire" title="Fire"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" fill="currentColor" fill-opacity="0.28" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1.2 3.6 5.5 5.6 5.5 10.3a5.5 5.5 0 0 1-11 0c0-2.6 1.5-4.2 2.6-5.2.3 1.7 1.3 2.7 2.6 3.1-.1-3.1-1-5.6.3-8.2z"/></svg></button>
+              </div>
             </div>
           </div>
         </div>
 
         <div class="cp-group" id="cp-sec-rooms">
-          <div class="dk-sh"><span class="cp-label">Rooms</span>
-            <button class="dk-eye" id="cp-labels-eye" title="Room names on my map (L)"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
-          </div>
-          <div class="dk-blk"><span class="dk-sub">Sources</span>
-            <div class="dk-r">
-              <button class="dk-src" id="cp-src-plan" disabled title="Load a floor plan (.dd2vtt) for this map"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"><path d="M3 1.5h5.5L11 4v8.5H3z"/><path d="M8.5 1.5V4H11"/></svg></span><span class="nm">Floor plan</span></button>
+          <div class="dk-sh"><span class="cp-label">Rooms and lights</span></div>
+          <div class="dk-secbody">
+            <div class="dk-swlist">
+              <div class="dk-swrow" id="cp-labels-row" title="Room names on your screen only. The TV never shows them. (L)"><span>Room names</span><button id="cp-labels-switch" class="dk-switch" role="switch" aria-checked="true" aria-label="Room names"></button></div>
+              <div class="dk-swrow" id="cp-lights-row" title="Lights"><span>Lights</span><button id="cp-lights-switch" class="dk-switch" role="switch" aria-checked="true" aria-label="Lights"></button></div>
+            </div>
+            <div class="dk-blk"><span class="dk-sub">Floor plan</span>
+              <button class="dk-src none" id="cp-src-plan" disabled title="Load a floor plan (.dd2vtt) for this map"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"><path d="M3 1.5h5.5L11 4v8.5H3z"/><path d="M8.5 1.5V4H11"/></svg></span><span class="nm">Load floor plan…</span></button>
               <input type="file" id="cp-plan-input" accept=".dd2vtt" hidden>
-              <button id="btn-floorplan" class="cp-adv-close" title="Draw Rooms from the floor plan" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></button>
-            </div>
-            <div class="dk-r">
-              <button class="dk-src" id="cp-src-module" title="Load or replace the module text"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg></span><span class="nm" data-no-i18n></span><span class="mt"></span></button>
-              <button id="cp-module-clear" class="cp-adv-close" title="Remove the module text" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
-            </div>
-          </div>
-        </div>
-
-        <div class="cp-group" id="cp-sec-lights">
-          <div class="dk-sh"><span class="cp-label">Lights</span>
-            <button class="dk-eye" id="cp-lights-eye" title="Lights"><svg class="ico-on" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><circle cx="7" cy="7" r="1.8"/></svg><svg class="ico-off" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M1.2 7s2.2-4 5.8-4 5.8 4 5.8 4-2.2 4-5.8 4-5.8-4-5.8-4z"/><line x1="2" y1="2" x2="12" y2="12"/></svg></button>
-          </div>
-          <div class="dk-blk"><span class="dk-sub">Sources</span>
-            <div class="dk-r">
-              <button class="dk-src" id="cp-src-lights" disabled title="Load a floor plan (.dd2vtt) and draw its lights"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"><path d="M3 1.5h5.5L11 4v8.5H3z"/><path d="M8.5 1.5V4H11"/></svg></span><span class="nm">Floor plan</span></button>
-              <input type="file" id="cp-lights-plan-input" accept=".dd2vtt" hidden>
-              <button id="btn-lights-redraw" class="cp-adv-close" title="Redraw the lights from the floor plan" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg></button>
+              <div class="dk-card" id="cp-plan-card" hidden>
+                <div class="dk-card-head" id="cp-plan-head" role="button" tabindex="0" title="Load another floor plan (.dd2vtt)">
+                  <span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"><path d="M3 1.5h5.5L11 4v8.5H3z"/><path d="M8.5 1.5V4H11"/></svg></span>
+                  <span class="dk-card-txt"><span class="nm">Floor plan</span><span class="mt" id="cp-plan-meta"></span></span>
+                  <button id="cp-plan-remove" class="cp-adv-close" title="Remove the floor plan"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+                </div>
+                <div class="dk-card-acts">
+                  <button id="btn-floorplan" title="Draw Rooms from the floor plan" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg><span>Draw rooms</span></button>
+                  <button id="btn-lights-redraw" title="Redraw the lights from the floor plan" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l8 5.8-3.05 9.4H7.05L4 9.4z"/><circle cx="12" cy="3.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="20" cy="9.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="16.95" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="7.05" cy="18.8" r="1.5" fill="currentColor" stroke="none"/><circle cx="4" cy="9.4" r="1.5" fill="currentColor" stroke="none"/></svg><span>Draw lights</span></button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -594,6 +631,17 @@
         <!-- The world map's settings: the backdrop (worldBackground.js) and the backup (worldBackup.js). Never on the TV. -->
         <div class="cp-group" id="wm-bg-group">
           <div class="dk-sh"><span class="cp-label">Campaign</span></div>
+          <!-- One book for every map (moduleText.js); the card opens the import panel. -->
+          <div class="dk-blk"><span class="dk-sub">Module text</span>
+            <button class="dk-src none" id="cp-src-module" title="Load the module text"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg></span><span class="nm">Load module text…</span></button>
+            <div class="dk-card" id="cp-module-card" hidden>
+              <div class="dk-card-head" id="cp-module-head" role="button" tabindex="0" title="Open the module text">
+                <span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg></span>
+                <span class="dk-card-txt"><span class="nm" id="cp-module-name" data-no-i18n></span><span class="mt" id="cp-module-meta"></span></span>
+                <button id="cp-module-clear" class="cp-adv-close" title="Remove the module text"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+              </div>
+            </div>
+          </div>
           <div class="dk-blk"><span class="dk-sub">Background</span>
             <div class="dk-r">
               <button class="dk-src none" id="wm-bg-pick" title="Choose a picture for behind the groups. The TV never shows it."><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="9" rx="1.2"/><circle cx="5" cy="6" r="1"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 2.5 2.5"/></svg></span><span class="nm" data-no-i18n>Choose image…</span></button>
@@ -685,26 +733,6 @@
           <span class="cp-pct">%</span>
         </div>
       </div>
-  </div>
-</div>
-<div class="dk-pop dk-drop" id="cp-pop-wx" hidden>
-  <div class="dk-menu">
-    <button data-wx="none"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg></span>No weather</button>
-    <div class="sep"></div>
-    <button data-wx="rain"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M4.5 9.5h7a2.7 2.7 0 0 0 .3-5.4 3.6 3.6 0 0 0-6.9.9A2.3 2.3 0 0 0 4.5 9.5z"/><path d="M5.5 11.5l-.8 2M8.5 11.5l-.8 2M11.5 11.5l-.8 2"/></svg></span>Rain</button>
-    <button data-wx="storm"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5h7a2.7 2.7 0 0 0 .3-5.4 3.6 3.6 0 0 0-6.9.9A2.3 2.3 0 0 0 4.5 9.5z"/><path d="M8.5 10.5l-1.5 2.5h2l-1.5 2.5"/></svg></span>Storm</button>
-    <button data-wx="snowfall"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M8 1.5v13M2.4 4.75l11.2 6.5M2.4 11.25l11.2-6.5"/></svg></span>Snowfall</button>
-    <button data-wx="blizzard"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1.5v9M2.1 3.75l7.8 4.5M2.1 8.25l7.8-4.5"/><path d="M8.5 12h6M10.5 14.5h4"/></svg></span>Blizzard</button>
-    <button data-wx="fair"><span class="ic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="5.5" r="2.3"/><path d="M5.5 1v1M1 5.5h1M2.3 2.3l.7.7M8.7 2.3l-.7.7"/><path d="M6 13.5h6.5a2.3 2.3 0 0 0 .2-4.6 3 3 0 0 0-5.7.7A2 2 0 0 0 6 13.5z"/></svg></span>Fair weather</button>
-  </div>
-</div>
-<div class="dk-pop dk-drop" id="cp-pop-fogtheme" hidden>
-  <div class="dk-menu">
-    <button data-fogtheme="default"><span class="ic"><i class="dk-sw" style="background:#1a1a2e"></i></span>Default</button>
-    <button data-fogtheme="blood"><span class="ic"><i class="dk-sw" style="background:#2a0c10"></i></span>Blood</button>
-    <button data-fogtheme="toxic"><span class="ic"><i class="dk-sw" style="background:#22361a"></i></span>Toxic</button>
-    <button data-fogtheme="ice"><span class="ic"><i class="dk-sw" style="background:#22344a"></i></span>Ice</button>
-    <button data-fogtheme="fire"><span class="ic"><i class="dk-sw" style="background:#33190f"></i></span>Fire</button>
   </div>
 </div>
 

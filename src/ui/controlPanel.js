@@ -1,5 +1,6 @@
 'use strict';
-// controlPanel.js — the dock's Scene control pane: Weather and fog, Rooms, Grid and Player.
+// controlPanel.js — the dock's Map settings pane: Grid, Weather and Fog, Rooms and lights, and
+// Settings' module text card.
 //
 // ⚠ A UI LAYER over the existing fog and grid wiring, never new logic. Every control drives the
 // hidden input or button in #cp-legacy, so state mutation, scene persistence and player sync
@@ -16,6 +17,7 @@ function initControlPanel() {
   _cpInitGrid();
   _cpInitRooms();
   _cpInitLights();
+  _cpInitCards();
   _cpInitScrubs();
   _cpInitCompress();
   _cpGridPicker = _cpMakePicker('grid', 'grid-color');
@@ -34,12 +36,15 @@ function initControlPanel() {
 
 const _cpEl = id => document.getElementById(id);
 const _cpOn = id => { const el = _cpEl(id); return !!el && el.classList.contains('active'); };
+const _cpSwitch = (id, on) => { const el = _cpEl(id); if (el) el.setAttribute('aria-checked', on ? 'true' : 'false'); };
+const _cpPick = (rowId, attr, val) => document.querySelectorAll('#' + rowId + ' [' + attr + ']')
+  .forEach(b => b.classList.toggle('active', b.getAttribute(attr) === String(val)));
 
-function _cpSetEye(id, shown, what) {
-  const eye = _cpEl(id);
-  if (!eye) return;
-  eye.classList.toggle('off', !shown);
-  eye.title = t(shown ? '{what}: shown, click to hide' : '{what}: hidden, click to show', { what: t(what) });
+// Writes a legacy input and fires its own event, so the app's handler is the one that takes the value.
+function _cpFire(id, value) {
+  const el = _cpEl(id);
+  el.value = value;
+  el.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 function _cpInitCalibrate() {
@@ -59,44 +64,35 @@ function _cpInitCalibrate() {
   initGridCalibrate();
 }
 
-// ─── Fog theme: one dropdown, built like Weather's ───────────────────────────
+// ─── Fog theme: one icon per theme, in its door-light colour ─────────────────
 function _cpInitFogTheme() {
-  document.querySelectorAll('#cp-pop-fogtheme [data-fogtheme]').forEach(btn => {
-    btn.addEventListener('click', () => { dockClosePop(); setFogTheme(btn.dataset.fogtheme); });
+  document.querySelectorAll('#cp-fogtheme-row [data-fogtheme]').forEach(btn => {
+    const c = fogThemeRecord(btn.dataset.fogtheme).doorLight.map(v => Math.round(v * 255));
+    btn.querySelector('svg').style.color = 'rgb(' + c.join(',') + ')';
+    btn.addEventListener('click', () => setFogTheme(btn.dataset.fogtheme));
   });
 }
 
 // `id` is the selected column's theme in two-map mode, where the shell holds none of its own.
 function refreshFogThemeUI(id) {
-  const lbl = _cpEl('cp-fogtheme-lbl');
-  if (!lbl) return;
-  const rec = fogThemeRecord(id === undefined ? fogTheme : id);
-  lbl.textContent = t(rec.label);
-  _cpEl('cp-fogtheme-sw').style.background = rec.swatch;
-  document.querySelectorAll('#cp-pop-fogtheme [data-fogtheme]').forEach(b => b.classList.toggle('on', b.dataset.fogtheme === rec.id));
+  _cpPick('cp-fogtheme-row', 'data-fogtheme', fogThemeRecord(id === undefined ? fogTheme : id).id);
 }
 
-// ─── Weather: a preset dropdown under the title ──────────────────────────────
-const _CP_WX_LABEL = { none: 'No weather', rain: 'Rain', storm: 'Storm', snowfall: 'Snowfall', blizzard: 'Blizzard', fair: 'Fair weather' };
-
+// ─── Weather: one icon per preset ────────────────────────────────────────────
 function _cpInitWeather() {
-  document.querySelectorAll('#cp-pop-wx [data-wx]').forEach(btn => {
-    btn.addEventListener('click', () => { dockClosePop(); chooseWeather(btn.dataset.wx); });
+  document.querySelectorAll('#cp-wx-row [data-wx]').forEach(btn => {
+    btn.addEventListener('click', () => chooseWeather(btn.dataset.wx));
   });
 }
 
 // `id` is the selected column's preset in two-map mode, where the shell holds none of its own.
 function refreshWeatherUI(id) {
-  const lbl = _cpEl('cp-wx-lbl');
-  if (!lbl) return;
-  const w = weatherNormalize(id === undefined ? weatherId : id);
-  lbl.textContent = t(_CP_WX_LABEL[w]);
-  const src = document.querySelector('#cp-pop-wx [data-wx="' + w + '"] .ic');
-  if (src) _cpEl('cp-wx-ic').innerHTML = src.innerHTML;
-  document.querySelectorAll('#cp-pop-wx [data-wx]').forEach(b => b.classList.toggle('on', b.dataset.wx === w));
+  _cpPick('cp-wx-row', 'data-wx', weatherNormalize(id === undefined ? weatherId : id));
 }
 
-// ─── Grid: the eye on the title, the type, the cells ─────────────────────────
+// ─── Grid: the switch on the title, type, cells, line, colour, opacity ───────
+const _CP_GRID_SIZE = { min: 10, max: 400 };
+
 function _cpInitGrid() {
   const TYPE_TO_BTN = { square: 'btn-grid-sq', 'hex-pointy': 'btn-grid-hptop' };
   document.querySelectorAll('#cp-gridtype-row [data-gtype]').forEach(btn => {
@@ -106,8 +102,39 @@ function _cpInitGrid() {
       setGridTypeUI();
     });
   });
-  _cpEl('cp-grid-eye').addEventListener('click', () => _cpEl('btn-grid').click());
+  _cpEl('cp-grid-switch').addEventListener('click', () => _cpEl('btn-grid').click());
   _cpEl('btn-grid').addEventListener('click', setGridTypeUI);
+
+  const size = _cpEl('grid-size-num');
+  const step = d => {
+    const v = Math.max(_CP_GRID_SIZE.min, Math.min(_CP_GRID_SIZE.max, (parseInt(size.value) || Math.round(gridSize)) + d));
+    _cpFire('grid-size-num', v);
+  };
+  _cpEl('cp-grid-dec').addEventListener('click', () => step(-1));
+  _cpEl('cp-grid-inc').addEventListener('click', () => step(1));
+
+  document.querySelectorAll('#cp-gridline-row [data-lstyle]').forEach(btn => {
+    btn.addEventListener('click', () => setGridLineStyle(btn.dataset.lstyle));
+  });
+  document.querySelectorAll('#cp-gridwidth-row [data-lw]').forEach(btn => {
+    btn.addEventListener('click', () => _cpFire('grid-thickness', btn.dataset.lw));
+  });
+  document.querySelectorAll('#cp-grid-swatches [data-color]').forEach(btn => {
+    btn.addEventListener('click', () => { _cpFire('grid-color', btn.dataset.color); refreshGridControlUI(); });
+  });
+  _cpEl('cp-grid-opacity').addEventListener('input', e => _cpFire('grid-opacity', e.target.value));
+}
+
+// "31 × 22 squares", from the open map (the selected column's in two-map mode). Hidden with no map.
+function _cpPaintGridCount() {
+  const el = _cpEl('cp-grid-count');
+  if (!el) return;
+  const s = paneScope(), w = s.mapWidth, h = s.mapHeight;
+  el.hidden = !(w > 0 && h > 0 && gridSize > 0);
+  if (el.hidden) return;
+  el.textContent = gridMode === 'square'
+    ? t('{c} × {r} squares', { c: Math.round(w / gridSize), r: Math.round(h / gridSize) })
+    : t('{c} × {r} hexes', { c: Math.round(w / (gridSize * Math.sqrt(3))), r: Math.round(h / (1.5 * gridSize)) });
 }
 
 function setGridTypeUI() {
@@ -118,7 +145,8 @@ function setGridTypeUI() {
   row.querySelectorAll('[data-gtype]').forEach(b => b.classList.toggle('active', b.dataset.gtype === type));
   const on = _cpOn('btn-grid');
   _cpEl('cp-grid-body').classList.toggle('dk-dim', !on);
-  _cpSetEye('cp-grid-eye', on, 'Grid (G)');
+  _cpSwitch('cp-grid-switch', on);
+  _cpPaintGridCount();
 }
 
 // ─── Settings: shrink big maps ────────────────────────────────────────────────
@@ -139,22 +167,13 @@ function _cpInitCompress() {
   paint();
 }
 
-// ─── Rooms: the names eye and the two sources ─────────────────────────────────
+// ─── Rooms and lights: two switches and the floor plan card ──────────────────
 function _cpInitRooms() {
-  _cpEl('cp-labels-eye').addEventListener('click', () => toggleRoomLabels());
-  _cpEl('cp-src-module').addEventListener('click', () => openModuleTextModal());
-  _cpEl('cp-module-clear').addEventListener('click', () => confirmDialog({
-    title: 'Remove the module text?',
-    message: t('The room names stop dropping down from “{name}”. Names already on rooms stay. Load it again any time.',
-               { name: mtLoadedSourceName() }),
-    confirmLabel: 'Remove',
-    onConfirm: mtClearStored,
-  }));
+  _cpEl('cp-labels-row').addEventListener('click', () => toggleRoomLabels());
 }
 
-// ─── Lights: one eye for every light in the scene ────────────────────────────
 function _cpInitLights() {
-  _cpEl('cp-lights-eye').addEventListener('click', () => {
+  _cpEl('cp-lights-row').addEventListener('click', () => {
     if (paneForward('lights-toggle')) { setTimeout(refreshLightsControlUI, 120); return; }
     toggleLightsHidden();
   });
@@ -163,31 +182,69 @@ function _cpInitLights() {
   });
 }
 
+// The two file cards: a trash that asks, and a head that acts as a button from the keyboard too.
+function _cpInitCards() {
+  document.querySelectorAll('#dock .dk-card-head').forEach(head => head.addEventListener('keydown', e => {
+    if (e.target === head && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); head.click(); }
+  }));
+  _cpEl('cp-plan-remove').addEventListener('click', e => {
+    e.stopPropagation();
+    confirmDialog({
+      title: 'Remove the floor plan?',
+      message: 'Rooms and lights already drawn stay. Load it again any time.',
+      confirmLabel: 'Remove',
+      onConfirm: () => {
+        if (paneForward('plan-remove')) { setTimeout(refreshFloorPlanUI, 300); return; }
+        removeFloorPlan();
+      },
+    });
+  });
+  _cpEl('cp-src-module').addEventListener('click', () => openModuleTextModal());
+  _cpEl('cp-module-head').addEventListener('click', () => openModuleTextModal());
+  _cpEl('cp-module-clear').addEventListener('click', e => {
+    e.stopPropagation();
+    confirmDialog({
+      title: 'Remove the module text?',
+      message: t('The room names stop dropping down from “{name}”. Names already on rooms stay. Load it again any time.',
+                 { name: mtLoadedSourceName() }),
+      confirmLabel: 'Remove',
+      onConfirm: mtClearStored,
+    });
+  });
+}
+
 function refreshLightsControlUI() {
-  if (!_cpEl('cp-lights-eye')) return;
-  _cpSetEye('cp-lights-eye', !paneScope().lightsHidden, 'Lights');
-  const n = typeof planLightCount === 'function' ? paneScope().planLights : 0;
-  const src = _cpEl('cp-src-lights');
+  if (!_cpEl('cp-lights-switch')) return;
+  _cpSwitch('cp-lights-switch', !paneScope().lightsHidden);
+  _cpPaintPlan();
+}
+
+// The load row with no plan, the card with one; read from the selected column in two-map mode.
+function _cpPaintPlan() {
+  const s = paneScope(), rooms = s.planRooms, lights = s.planLights;
+  const src = _cpEl('cp-src-plan');
+  src.hidden = !!s.hasPlan;
   src.disabled = !(panesActive || currentScene);
-  src.classList.toggle('none', !n);
-  src.querySelector('.nm').textContent = n ? t.plural(n, 'Floor plan · {n} light', 'Floor plan · {n} lights') : t('Load floor plan…');
-  _cpEl('btn-lights-redraw').disabled = !n;
+  _cpEl('cp-plan-card').hidden = !s.hasPlan;
+  _cpEl('cp-plan-meta').textContent = t('{rooms} · {lights}', {
+    rooms: t.plural(rooms, '{n} room', '{n} rooms'),
+    lights: lights ? t.plural(lights, '{n} light', '{n} lights') : t('no lights'),
+  });
+  _cpEl('btn-floorplan').disabled = !rooms;
+  _cpEl('btn-lights-redraw').disabled = !lights;
 }
 
 // From toggleRoomLabels, refreshFloorPlanUI and every module-text load or removal.
 function refreshRoomsControlUI() {
-  if (!_cpEl('cp-labels-eye')) return;
-  _cpSetEye('cp-labels-eye', showRoomLabels, 'Room names on my map (L)');
-  const rooms = typeof floorPlanRoomCount === 'function' ? floorPlanRoomCount() : 0;
-  _cpEl('cp-src-plan').classList.toggle('none', !rooms);
-  _cpEl('cp-src-plan').querySelector('.nm').textContent =
-    rooms ? t.plural(rooms, 'Floor plan · {n} room', 'Floor plan · {n} rooms') : t('Load floor plan…');
+  if (!_cpEl('cp-labels-switch')) return;
+  _cpSwitch('cp-labels-switch', showRoomLabels);
+  _cpPaintPlan();
+  _cpPaintGridCount();
   const name = typeof mtLoadedSourceName === 'function' ? mtLoadedSourceName() : null;
-  const mod = _cpEl('cp-src-module');
-  mod.classList.toggle('none', !name);
-  mod.querySelector('.nm').textContent = name || t('Load module text…');
-  _cpEl('cp-module-clear').hidden = !name;
-  mod.querySelector('.mt').textContent = name ? String(mtEntries.length) : '';
+  _cpEl('cp-src-module').hidden = !!name;
+  _cpEl('cp-module-card').hidden = !name;
+  _cpEl('cp-module-name').textContent = name || '';
+  _cpEl('cp-module-meta').textContent = name ? t.plural(mtEntries.length, '{n} room', '{n} rooms') : '';
 }
 
 // ─── Scrub fields ─────────────────────────────────────────────────────────────
@@ -214,30 +271,38 @@ function _cpInitScrubs() {
     });
   });
   // A typed value is clamped on the way out, as the handler clamped what it took.
-  [['grid-size-num', 10, 400], ['grid-thickness-num', 1, 10], ['fog-half-alpha-num', 0, 100], ['fog-feather-num', 0, 24]].forEach(([id, lo, hi]) => {
+  [['grid-size-num', _CP_GRID_SIZE.min, _CP_GRID_SIZE.max], ['fog-half-alpha-num', 0, 100], ['fog-feather-num', 0, 24]].forEach(([id, lo, hi]) => {
     const el = _cpEl(id);
     el.addEventListener('change', () => { el.value = Math.max(lo, Math.min(hi, parseInt(el.value) || lo)); });
     el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') el.blur(); });
   });
 }
 
-// ─── Colour fields: what the picker holds, shown in the pane ─────────────────
-function _cpPaintField(fieldId, colorId, alphaId) {
-  const f = _cpEl(fieldId);
-  if (!f) return;
-  const hex = (_cpEl(colorId).value || '#000000').toUpperCase();
-  f.querySelector('.cp-swatch').style.background = hex;
-  f.querySelector('.cp-hex').textContent = hex.slice(1);
-  f.querySelector('.cp-alphanum').textContent = _cpEl(alphaId).value;
-}
-
+// ─── The grid's look, painted from the legacy inputs the picker and handlers write ─
 function _cpPaintFields() {
-  _cpPaintField('cp-grid-field', 'grid-color', 'grid-opacity');
+  if (!_cpEl('cp-grid-swatches')) return;
+  const hex = (_cpEl('grid-color').value || '').toLowerCase();
+  let matched = false;
+  document.querySelectorAll('#cp-grid-swatches [data-color]').forEach(b => {
+    const on = b.dataset.color === hex;
+    matched = matched || on;
+    b.classList.toggle('on', on);
+  });
+  _cpEl('cp-grid-custom').classList.toggle('on', !matched);
+  const pct = Math.max(0, Math.min(100, parseInt(_cpEl('grid-opacity').value) || 0));
+  const slider = _cpEl('cp-grid-opacity');
+  slider.value = pct;
+  slider.parentNode.querySelector('.cp-slider-fill').style.width = pct + '%';
+  slider.parentNode.querySelector('.cp-slider-knob').style.left = pct + '%';
+  _cpEl('cp-grid-opacity-val').textContent = pct + '%';
+  _cpPick('cp-gridline-row', 'data-lstyle', gridLineStyle);
+  _cpPick('cp-gridwidth-row', 'data-lw', gridLineWidth);   // a width that is none of 1/2/4 lights nothing
+  _cpPaintGridCount();
 }
 
 function _cpInitFields() {
-  // The picker writes the hidden inputs in #cp-legacy, so the field listens for them by id.
-  const FEEDS = ['grid-color', 'grid-opacity', 'grid-opacity-num'];
+  // The picker and the handlers write the hidden inputs, so the pane listens for them by id.
+  const FEEDS = ['grid-color', 'grid-opacity', 'grid-opacity-num', 'grid-thickness', 'grid-size', 'grid-size-num'];
   ['input', 'change'].forEach(ev => document.addEventListener(ev, e => {
     if (FEEDS.includes(e.target.id)) _cpPaintFields();
   }));
@@ -247,7 +312,7 @@ function _cpInitFields() {
 }
 
 // ─── Reset buttons ────────────────────────────────────────────────────────────
-// ⚠ Both ASK FIRST: the reset is an icon on the section title, so the question is the only
+// ⚠ Both ASK FIRST: the reset is a word on the section title, so the question is the only
 // warning there is. confirmDialog answers asynchronously.
 function _cpInitResets() {
   const ask = (message, run) => confirmDialog({
@@ -259,7 +324,7 @@ function _cpInitResets() {
   });
 
   _cpEl('cp-grid-reset').addEventListener('click', () => {
-    ask('Grid type, size, colour and opacity go back to their defaults.', () => {
+    ask('Grid type, size, line style, thickness, colour and opacity go back to their defaults.', () => {
       _cpEl('btn-grid-reset').click(); // resets grid globals + legacy DOM
       refreshGridControlUI();
     });

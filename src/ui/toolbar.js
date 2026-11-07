@@ -244,15 +244,15 @@ function initToolbar() {
     if (paneForward('floorplan')) return;
     drawStoredFloorPlan();
   };
+  // The load row and the card's head pick a plan the same way; in two-map mode it goes to the column.
   const planInput = document.getElementById('cp-plan-input');
   document.getElementById('cp-src-plan').onclick = () => planInput.click();
-  planInput.onchange = () => { loadPlanFile(planInput.files[0]); planInput.value = ''; };
-  const lightsInput = document.getElementById('cp-lights-plan-input');
-  document.getElementById('cp-src-lights').onclick = () => lightsInput.click();
-  lightsInput.onchange = () => {
-    const f = lightsInput.files[0];
-    lightsInput.value = '';
-    if (!paneForward('lights-file', { file: f })) loadPlanLights(f);
+  document.getElementById('cp-plan-head').onclick = () => planInput.click();
+  planInput.onchange = () => {
+    const f = planInput.files[0];
+    planInput.value = '';
+    if (paneForward('plan-file', { file: f })) { setTimeout(refreshFloorPlanUI, 400); return; }
+    loadPlanFile(f);
   };
 
   const gridBtn       = document.getElementById('btn-grid');
@@ -313,12 +313,6 @@ function initToolbar() {
   };
   document.getElementById('grid-thickness').oninput = e => {
     gridLineWidth = parseInt(e.target.value);
-    document.getElementById('grid-thickness-num').value = gridLineWidth;
-    commitGridChange();
-  };
-  document.getElementById('grid-thickness-num').oninput = e => {
-    const v = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
-    gridLineWidth = v; document.getElementById('grid-thickness').value = v;
     commitGridChange();
   };
   document.getElementById('btn-grid-reset').onclick = () => {
@@ -329,6 +323,7 @@ function initToolbar() {
     gridOpacity   = 0.25;
     gridMode      = 'square';
     gridLineWidth = 1;
+    gridLineStyle = 'solid';
     document.getElementById('grid-size').value          = GRID_DEFAULT_SIZE;
     document.getElementById('grid-size-num').value      = GRID_DEFAULT_SIZE;
     document.getElementById('grid-offset-x').value      = 0;
@@ -337,7 +332,6 @@ function initToolbar() {
     document.getElementById('grid-opacity').value       = 25;
     document.getElementById('grid-opacity-num').value   = 25;
     document.getElementById('grid-thickness').value     = 1;
-    document.getElementById('grid-thickness-num').value = 1;
     document.querySelectorAll('.grid-mode-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('btn-grid-sq').classList.add('active');
     commitGridChange();

@@ -41,3 +41,46 @@ describe('normalizeGridMode', () => {
     assert.equal(normalizeGridMode('triangle', 'square'), 'square');
   });
 });
+
+const { gridDashPattern, normalizeGridLineStyle } = require('../src/render/grid.js');
+
+describe('gridDashPattern', () => {
+  it('draws solid lines with no dash', () => {
+    assert.deepEqual(gridDashPattern('solid', 2, 1), []);
+  });
+
+  it('dashes four units on, three off, a unit being the line width on screen', () => {
+    assert.deepEqual(gridDashPattern('dashed', 2, 1), [8, 6]);
+    assert.deepEqual(gridDashPattern('dashed', 4, 0.5), [8, 6]);
+  });
+
+  it('dots with a near-zero dash, three units apart', () => {
+    const [dot, gap] = gridDashPattern('dotted', 2, 2);
+    assert.ok(dot > 0 && dot < 0.01);
+    assert.equal(gap, 12);
+  });
+
+  it('grows with the zoom, so the pattern holds its shape on the map', () => {
+    const near = gridDashPattern('dashed', 2, 3), far = gridDashPattern('dashed', 2, 1);
+    assert.deepEqual(near, far.map(v => v * 3));
+  });
+
+  it('keeps a thin line from collapsing into a solid one', () => {
+    assert.deepEqual(gridDashPattern('dashed', 1, 1), [6, 4.5]);
+  });
+
+  it('reads an unknown style as solid', () => {
+    assert.deepEqual(gridDashPattern('wavy', 2, 1), []);
+  });
+});
+
+describe('normalizeGridLineStyle', () => {
+  it('reads a scene saved before line styles as solid', () => {
+    assert.equal(normalizeGridLineStyle(undefined), 'solid');
+    assert.equal(normalizeGridLineStyle('wavy'), 'solid');
+  });
+
+  it('keeps every style the pane offers', () => {
+    for (const s of ['solid', 'dashed', 'dotted']) assert.equal(normalizeGridLineStyle(s), s);
+  });
+});

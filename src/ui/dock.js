@@ -112,7 +112,7 @@ function _dockInitPops(dock) {
     _dockPopFrom = from;
     _dockPopEl.hidden = false;
     from.classList.add('open');
-    dockPlacePop(_dockPopEl, _dockPopEl.classList.contains('dk-drop') ? from : from.closest('.dk-r, .dk-blk') || from);
+    dockPlacePop(_dockPopEl, from.closest('.dk-r, .dk-blk') || from);
     document.dispatchEvent(new CustomEvent('dockpop', { detail: id }));
   });
   document.querySelectorAll('.dk-pop').forEach(p => {
@@ -134,19 +134,10 @@ function dockClosePop() {
   _dockPopEl = _dockPopFrom = null;
 }
 
-// Its right edge 8px off the dock, its top level with `row`, kept inside the window. A dropdown's
-// list (.dk-drop) opens under the dropdown instead, Figma's way, and above it where there is no room.
+// Its right edge 8px off the dock, its top level with `row`, kept inside the window.
 function dockPlacePop(el, row) {
   const dock = _dockEl();
   if (!dock || !row) return;
-  if (el.classList.contains('dk-drop')) {
-    el.style.minWidth = row.offsetWidth + 'px';
-    const b = row.getBoundingClientRect(), h = el.getBoundingClientRect().height;
-    const st = _rpScreenToStyle(el, b.left, b.bottom + 4 + h > window.innerHeight - 8 ? b.top - 4 - h : b.bottom + 4);
-    el.style.left = st.left + 'px';
-    el.style.top = st.top + 'px';
-    return;
-  }
   const r = el.getBoundingClientRect(), d = dock.getBoundingClientRect(), a = row.getBoundingClientRect();
   const top = Math.max(8, Math.min(window.innerHeight - r.height - 8, a.top));
   const st = _rpScreenToStyle(el, d.left - 8 - r.width, top);

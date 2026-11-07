@@ -30,7 +30,7 @@ function doorMouseDown(mapX, mapY) {
   } else {
     plan.poly.doors = (plan.poly.doors || []).concat([plan.door]);
   }
-  commitDoorChange();
+  commitDoorChange(plan.action === 'remove');
 }
 
 // Hover ghost: the door a click here would place, half-strength, in the outline style of a placed
@@ -79,7 +79,9 @@ function doorLightQuads() {
   return out;
 }
 
-function commitDoorChange() {
+// The fade snapshots the old fog, so it starts before the rebuild. Removing a door closes fog.
+function commitDoorChange(closes) {
+  startFogTransition(closes);
   rebuildFogFromPolygons();
   rebuildFogEffect();
   fogDirty = true;

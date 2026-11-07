@@ -219,7 +219,7 @@ The fog is the heart of the app, so it's worth understanding.
    across the screen, it also slowly changes shape, which is what stops the fog reading as one
    repeating pattern on a conveyor belt.
 
-4. **A fog theme, picked by name.** Map settings' Fog row is one dropdown of fixed themes
+4. **A fog theme, picked by name.** Map settings' Fog row is a five-icon pill of fixed themes
    (Default, Blood, Toxic, Ice, Fire). There is no custom colour, tint, movement
    preset or movement switch; each theme carries its own colour, tint and motion. Every theme shares
    one base: cloud volume lit from the top left, a living edge, depth layers, clouds at room size
@@ -507,11 +507,10 @@ fire lands on it and not on the large lit area beneath. Both take their ids from
 Every tool a room has works on a light: draw, select, move, reshape, round corners, rotate, scale,
 Merge, Cut out, Split, copy and paste. Light is an effect type, a material beside Fire: pick a shape, pick the Light material, place it,
 by hand or with the size presets. A repair acts on the kind being drawn,
-fires or lights, never both. With Cut out, Merge or Split armed, a Ring acts only on the band its preview shows. The Lights eye in Scene control hides them all; a single light is
+fires or lights, never both. With Cut out, Merge or Split armed, a Ring acts only on the band its preview shows. The Lights switch in Map settings hides them all; a single light is
 deleted, not switched off.
 
-A floor plan seeds lights once. The Lights row in Scene control loads a .dd2vtt as the Rooms row
-does, and the icon beside it redraws the lights from the file. Each light in the file becomes one
+A floor plan seeds lights once. Map settings' Rooms and lights section loads one .dd2vtt as a file card, whose Draw rooms and Draw lights act on the file and whose trash removes the plan (`removeFloorPlan`) while the drawn rooms and lights stay. Each light in the file becomes one
 polygon, by where it sits. A light inside a room fills the room up to the walls or its radius: the whole room when the radius reaches every corner, the part the radius
 covers when it does not. The lights of one room become one polygon when they share 30% of the
 smaller one, or fill 90% of the room together, so a table of candles is not fifty polygons. A light

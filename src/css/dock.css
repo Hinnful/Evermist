@@ -108,8 +108,7 @@
   #dock .cp-seg .cp-iconbtn.active { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
 
   #dock .cp-field, .dk-pop .cp-field { height: 26px; border: 0; border-radius: 5px; background: var(--g-field); padding: 0 8px; gap: 7px; }
-  #dock .dk-colour { cursor: pointer; }
-  #dock .cp-field:hover, #dock .dk-colour.open { background: var(--g-hover); }
+  #dock .cp-field:hover { background: var(--g-hover); }
   #dock .cp-swatch, .dk-pop .cp-swatch { width: 14px; height: 14px; border-radius: 3px; }
   #dock .cp-hex, #dock .cp-alphanum, #dock .cp-hash { font: 500 11px/1 system-ui, -apple-system, sans-serif; }
   #dock .cp-hex { flex: 1; }
@@ -126,16 +125,7 @@
 
   /* A row of fields side by side; the row's own action is a 24px icon at its right end. */
   .dk-r { display: flex; align-items: center; gap: 6px; }
-  .dk-r > :not(.cp-adv-close):not(.dk-eye) { flex: 1; min-width: 0; }
-  .dk-r.hidden > :not(.dk-eye) { opacity: 0.4; }
-
-  /* The eye means shown/hidden. A closed one is a switch that is on, so it wears the tint. */
-  .dk-eye { width: 24px; height: 24px; flex: none; padding: 0; display: flex; align-items: center; justify-content: center;
-            border: 0; border-radius: 5px; background: transparent; color: #9aa0aa; cursor: pointer; }
-  .dk-eye:hover { background: var(--g-field); color: var(--g-text); }
-  .dk-eye .ico-off, .dk-eye.off .ico-on { display: none; }
-  .dk-eye.off .ico-off { display: block; }
-  .dk-eye.off, .dk-eye.off:hover { background: var(--b-tint); color: var(--b-icon); }
+  .dk-r > :not(.cp-adv-close) { flex: 1; min-width: 0; }
 
   /* A number you scrub by dragging its icon, Figma's X / Y / W / H. */
   .dk-num { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px 0 0; border-radius: 5px; background: var(--g-field); }
@@ -147,19 +137,6 @@
                   font: 500 11.5px/1 system-ui, sans-serif; }
   .dk-num .u { color: var(--g-dim); font: 400 11px/1 system-ui, sans-serif; }
 
-  /* A dropdown field: the movement preset. */
-  .dk-dd { display: flex; align-items: center; justify-content: space-between; height: 26px; padding: 0 8px;
-           border: 0; border-radius: 5px; background: var(--g-field); color: #d5d8dd;
-           font: 500 11.5px/1 system-ui, sans-serif; cursor: pointer; text-align: left; }
-  .dk-dd:hover, .dk-dd.open { background: var(--g-hover); }
-  .dk-dd .car { font-size: 8px; color: var(--g-dim); }
-  /* The weather list: a glyph before each name, in the dropdown and in its menu. */
-  .dk-dd .dk-cur { display: flex; align-items: center; gap: 7px; }
-  .dk-dd .ic, .dk-menu .ic { display: grid; color: var(--g-dim); }
-  .dk-menu button:hover .ic { color: inherit; }
-  /* A fog theme's swatch, in the dropdown and its menu. */
-  .dk-sw { display: block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.16); }
-
   /* A source: what is loaded, in a field, with its one action at the right. */
   .dk-src { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px; border-radius: 5px;
             background: var(--g-field); min-width: 0; border: 0; text-align: left; font: inherit; cursor: pointer; }
@@ -169,6 +146,76 @@
   .dk-src .nm { color: #d5d8dd; font: 500 11.5px/1 system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .dk-src .mt { margin-left: auto; color: var(--g-dim); font: 400 11px/1 system-ui, sans-serif; white-space: nowrap; flex: none; }
   .dk-src.none .nm { color: var(--g-dim); font-weight: 400; }
+  .dk-src[hidden], .dk-card[hidden], .dk-subval[hidden] { display: none; }
+
+  /* ===== SHARED PARTS: the knob switch, the frameless button, the file card ===== */
+  /* A switch: a <button role="switch">, on = tinted track with the blue knob at the right. */
+  .dk-switch { position: relative; width: 26px; height: 14px; flex: none; padding: 0; margin-right: 5px;
+               border: 0; border-radius: 7px; background: var(--g-field); cursor: pointer; }
+  .dk-switch::after { content: ''; position: absolute; left: 2px; top: 2px; width: 10px; height: 10px;
+                      border-radius: 50%; background: var(--g-dim); transition: left .12s; }
+  .dk-switch[aria-checked="true"] { background: var(--b-tint); }
+  .dk-switch[aria-checked="true"]::after { left: 14px; background: var(--b-icon); }
+
+  /* A frameless button: dim words, a grey fill only under the pointer; a leading icon optional. */
+  #dock .dk-bare { height: 22px; padding: 0 6px; flex: none; display: flex; align-items: center; gap: 6px;
+                   border: 0; border-radius: 5px; background: transparent; box-shadow: none; color: var(--g-dim);
+                   font: 500 11px/1 system-ui, -apple-system, sans-serif; cursor: pointer; white-space: nowrap; }
+  #dock .dk-bare svg { flex: none; color: inherit; }
+  #dock .dk-bare:hover { background: var(--g-field); color: var(--g-text); }
+  #dock .dk-bare.active, #dock .dk-bare.active:hover { background: var(--b-tint); color: var(--b-icon); }
+
+  /* A file card: the loaded file's name and what it holds, its trash, and actions under a divider. */
+  .dk-card { border-radius: 6px; background: var(--g-field); }
+  .dk-card-head { display: flex; align-items: center; gap: 9px; padding: 7px 4px 7px 9px; border-radius: 6px; cursor: pointer; }
+  .dk-card-head:hover { background: var(--g-hover); }
+  .dk-card:has(.dk-card-acts) .dk-card-head { border-radius: 6px 6px 0 0; }
+  .dk-card-head .ic { color: var(--g-dim); display: flex; flex: none; }
+  .dk-card-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+  .dk-card-txt .nm { font: 500 11.5px/1 system-ui, sans-serif; color: var(--g-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dk-card-txt .mt { font: 400 11px/1 system-ui, sans-serif; color: var(--g-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #dock .dk-card .cp-adv-close { display: flex; align-items: center; justify-content: center; flex: none; }
+  .dk-card-acts { display: flex; border-top: 1px solid var(--g-divider); }
+  .dk-card-acts button { flex: 1; min-width: 0; height: 28px; padding: 0 6px; border: 0; background: transparent; color: var(--g-text);
+                         font: 500 11.5px/1 system-ui, sans-serif; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+  .dk-card-acts button + button { border-left: 1px solid var(--g-divider); }
+  .dk-card-acts button:first-child { border-bottom-left-radius: 6px; }
+  .dk-card-acts button:last-child { border-bottom-right-radius: 6px; }
+  .dk-card-acts button:hover:not(:disabled) { background: var(--g-hover); }
+  .dk-card-acts button svg { flex: none; color: var(--g-dim); }
+  .dk-card-acts button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dk-card-acts button:disabled { color: #5b5f66; cursor: default; }
+  .dk-card-acts button:disabled svg { color: #5b5f66; }
+
+  /* ===== MAP SETTINGS ===== */
+  #dock-pane-scene .dk-secbody { gap: 16px; }
+  .dk-hr { display: flex; align-items: center; gap: 6px; }
+  /* A sub-header with its value at the right, always in the dim colour. */
+  .dk-subrow { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .dk-subval { font: 500 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); white-space: nowrap; }
+  .dk-cellrow { display: flex; gap: 6px; }
+  .dk-stepper { flex: 1; min-width: 0; height: 26px; display: flex; align-items: center; padding: 0 1px;
+                border-radius: 5px; background: var(--g-field); }
+  .dk-stepper .cp-stepbtn { height: 24px; }
+  .dk-stepper .cp-stepval input { font: 500 11.5px/1 system-ui, sans-serif; color: var(--g-text); text-align: right; }
+  .dk-stepper .cp-stepval .u { flex: 1; margin-left: 2px; color: var(--g-dim); font: 500 11.5px/1 system-ui, sans-serif; }
+  #dock .dk-fit { height: 26px; padding: 0 10px 0 8px; flex: none; display: flex; align-items: center; justify-content: center; gap: 6px;
+                  border: 0; border-radius: 5px; background: var(--g-field); color: var(--g-text);
+                  font: 500 11.5px/1 system-ui, sans-serif; white-space: nowrap; cursor: pointer; }
+  #dock .dk-fit:hover { background: var(--g-hover); }
+  #dock .dk-fit svg { flex: none; color: var(--g-dim); }
+  #dock .dk-fit.active { background: var(--b-tint); color: var(--b-icon); }
+  /* Colour presets: fixed squares, a fixed gap, never stretched; the pick wears a blue ring. */
+  .dk-swatches { display: flex; gap: 8px; padding: 2px 0 2px 2px; }
+  .dk-swatch { width: 24px; height: 24px; flex: none; padding: 0; border: 0; border-radius: 5px; cursor: pointer; box-sizing: border-box; }
+  .dk-swatch-dark { box-shadow: inset 0 0 0 1px #444; }
+  .dk-swatch-any { background: conic-gradient(#f55, #fd5, #5e6, #5df, #56f, #e5f, #f55); }
+  .dk-swatch.on { outline: 2px solid var(--b-icon); outline-offset: 2px; }
+  .dk-fogthemes .cp-iconbtn svg { display: block; opacity: 0.75; }
+  .dk-fogthemes .cp-iconbtn.active svg { opacity: 1; }
+  .dk-swlist { display: flex; flex-direction: column; gap: 10px; }
+  .dk-swrow { display: flex; align-items: center; justify-content: space-between; min-height: 22px; cursor: pointer; }
+  .dk-swrow > span { font: 500 11.5px/1 system-ui, sans-serif; color: var(--g-text); }
 
   /* ===== POP-OUTS: beside the dock, level with their row ===== */
   .dk-pop, #anim-advanced-panel {
@@ -180,15 +227,6 @@
   .dk-pop .cp-adv-title, #anim-advanced-panel .cp-adv-title { font: 600 12px/1 system-ui, sans-serif; color: var(--g-text); }
   .dk-pop .cp-sv-canvas { height: 130px; }
   .dk-pop.dk-small { width: 190px; }
-  .dk-menu { padding: 4px; }
-  .dk-menu button { display: flex; align-items: center; gap: 8px; width: 100%; height: 26px; padding: 0 8px; border: 0;
-                    border-radius: 4px; background: none; color: #d5d8dd; font: 500 11.5px/1 system-ui, sans-serif;
-                    cursor: pointer; text-align: left; }
-  .dk-menu button:hover { background: var(--b-tint); color: var(--b-icon); }
-  .dk-menu button::before { content: ''; width: 12px; flex: none; text-align: center; }
-  .dk-menu button.on::before { content: '\2713'; }
-  .dk-menu .sep { height: 1px; background: var(--g-divider); margin: 4px -4px; }
-  .dk-pop.dk-drop { width: auto; }
 
   /* ===== THE MINIMAP: bottom left, the TV's shape; minimap.js sets its width and height ===== */
   #minimap-panel {

@@ -33,7 +33,7 @@ The dock is not the fight table's model. A dock pane was too narrow for the figh
 the Bestiary's stat blocks, so the fight table stays a free window and the Bestiary and the scene
 library open from the rail as centred windows. All three wear the dock's grey.
 
-### Scene control follows Figma's right panel · `SETTLED` (2026-10-02)
+### Scene control follows Figma's right panel · `SETTLED` (2026-10-02, **superseded 2026-11-07** by "Map settings is words, pills and switches")
 Fog, Rooms, Grid, Player and My seat, one section each. An eye means shown or hidden and ends its
 row; a closed eye wears the blue tint. **Reversed in part by** "The fog and the toolbar are rebuilt for a first-time DM": on the bar an eye
 acts at once (Reveal all, Hide all), Scene control's layer eyes keep this meaning, and the minimap's
@@ -41,6 +41,15 @@ players' view button wears a TV icon so an eye never means "view" (**the minimap
 with no slider and no label. Movement was a preset dropdown and an eye (**superseded 2026-11-04** by "Fog themes replace the fog's look controls"). Reverses "The Animation and Grid Type rows carry no pill": both rows are gone,
 into the dropdown and a two-way segment. Reverses PRODUCT.md's "Cell size keeps its slider": the
 cell size is a scrub field. The pane drives `#cp-legacy`, so no behaviour code changed.
+
+### Map settings is words, pills and switches · `SETTLED` (2026-11-07)
+BACKLOG 255. The pane stopped following Figma's right panel (unlabelled scrub fields, eyes ending rows, no labels, "Sources" rows). Every control has a small sub-header; a pick-one is the app's own grey segment pill with icons, names in tooltips; a section that can be turned off has a knob switch on its title; Reset is a frameless word on the title and asks first; actions are grey labelled buttons, no bare icons beside rows. Rejected: Excalidraw-style separate buttons (a second look beside the segment pill used in Type, Hints, Shrink big maps and the toolbar wells); a two-column layout (halves the opacity slider, pairs unrelated controls); the line look in a pop-out (opacity must take one drag); picture tiles for weather and fog (about three times as tall); full-width pickers and colour squares (gaps grow with the dock); a revert arrow per sub-header (Reset covers the grid); Fit to map as a blue word on the heading or inside the stepper. Weather and fog themes are icon pills with no heading value, since they are kinds, not amounts; "No weather" has a crossed circle so it is not a sun. Fog themes are cloud, three drops, round flask, icicles and flame, each in its doorLight colour; rejected icons: crystal, ice cube, thermometer, test tube, splatter, dripping blood, one cloud in five colours (Default and Ice look alike). The title keeps a capital F, a deliberate exception to sentence case, because Fog is the signature feature. This supersedes the dropdowns for Weather presets and fog themes.
+
+### Map settings stays one rail pane · `SETTLED` (2026-11-07)
+Splitting it into rail tabs was rejected: a newcomer must guess which tab holds a setting, the rail would overflow a 768px screen, and the Fog/Grid/Player tab bar was already replaced by one pane on 2026-10-02. If height becomes a problem, sections fold; they do not become tabs.
+
+### Grid line style, steps and colour presets; Rooms and lights as one section · `SETTLED` (2026-11-07)
+Grid: a knob switch on the title; cell size a -/+ stepper in px (1 px steps, typeable, 10-400) with "Fit to map" and a dim "N x M squares" readout; line style Solid/Dashed/Dotted; thickness Thin/Medium/Thick = 1/2/4 px (an old odd width lights none and still renders); colour five presets plus a multicolour square for the picker, since DMs do not use a picker's full range. Typing the square count instead of pixels is `PARKED` until the pane has been used (doubt about hex grids). Rooms and lights is one section: "Room names" and "Lights" switches, and the floor plan is a file card (Draw rooms, Draw lights, a trash that removes the plan after asking; drawn rooms and lights stay). One loader serves both. The card says "Floor plan", not a file name: storing a name is a new field that sync, backup and import would carry, so it is `PARKED`. Module text moved to Settings' Campaign section as the same card, being stored once per campaign. The knob switch coexists with Settings' Hints On/Off pill for now.
 
 ### The TV zoom stepper is gone · `REVERTED` (2026-10-02)
 The − / % / + stepper in the Player tab duplicated the minimap's wheel, which stays. The minimap

@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 5 open items; IDs run to 279."
+description: "Open work only. 6 open items; IDs run to 282."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.5.2**: doors are a quarter cell deep and glow on the TV, and a map picture a sync replaced can be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.6.0**: Map settings is rebuilt in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -76,14 +76,6 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 # EVERYTHING ELSE
 
-### 255. Map settings a DM can read
-Filed 2026-11-04. The Map settings pane follows Figma's right panel: numbers scrubbed by an unlabelled icon, eyes,
-small sub-headers. A DM is not a UI designer and has to learn all of it. Redo the pane in plain words and plain
-controls; this reopens the pane's rules in the `dm-ui` skill. Weather shipped in 5.2.0 in today's pane, as the Fog
-section turned Weather, and moves with the redo.
-**Needs a design round.**
-**First use · Polish · DM only**
-
 ### 259. Time of day
 Filed 2026-11-04. A list of its own beside Weather (day, dusk, night), so a sunny preset on a night map stops being a
 mismatch the DM has to avoid. Floated by the DM while weather was settled; nothing about it is designed yet.
@@ -103,10 +95,25 @@ brand; that review needs the privacy policy on a domain the project owner proves
 github.com). Every DM who connects sees the warning first.
 **First use · Polish · DM only**
 
-### 279. A new door's light fades in
-Filed 2026-11-07, with 5.5.2. A door's light on the TV fades in and out with the fog when a room is revealed or
-hidden, but a door the DM places with the Door tool lights up at once. It should come in with the same fade.
-**Polish · Player**
+### 280. The mouse wheel pans instead of zooming while the TV is showing
+Filed 2026-11-08 by the DM, on Linux (KDE Wayland). With the TV window open, a mouse wheel notch moves the map
+instead of zooming it; without the TV it zooms. Ctrl+scroll still zooms. Measured in Evermist's own window: with the TV
+open each notch arrives as deltaY 119.99999821186069, not 120, so `classifyWheel` (`src/ui/wheelPlan.js`) reads the
+fraction as a touchpad and pans. The fix is a tolerance on "whole number" there, proven with a unit test on that value.
+**Bug · DM only**
+
+### 281. The floor plan card shows the file's name
+Filed 2026-11-08, with 5.6.0. The floor plan card in Map settings says "Floor plan" because the app keeps no file name
+for a plan. Showing the name means a new saved field on the scene, which sync, backup and import must all carry and the
+previous release must load safely.
+**Polish · DM only**
+
+### 282. Settings follows the new Map settings style
+Filed 2026-11-08, with 5.6.0. Map settings now uses sub-headers, icon pills, knob switches and labelled buttons. Settings
+still shows Half shroud and Feather as unlabelled scrub fields, and Hints as an On/Off pill where Map settings uses the
+knob switch. Bring Settings in line; the rules are in the `dm-ui` skill and the 2026-11-07 Map settings entries in
+`docs/decisions/ui-and-control-panel.md`.
+**First use · Polish · DM only**
 
 ---
 

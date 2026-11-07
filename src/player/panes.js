@@ -64,6 +64,8 @@ window.paneView = {
   get gridCalArmed()      { return gridCalArmed; },
   get lightsHidden()      { return lightsHidden; },
   get planLights()        { return planLightCount(); },
+  get planRooms()         { return floorPlanRoomCount(); },
+  get hasPlan()           { return !!(currentScene && currentScene.floorPlan); },
   get gridConfig()        { return captureGridConfig(); },
   get weather()           { return weatherId; },
   get fogTheme()          { return fogTheme; },
@@ -76,6 +78,7 @@ function paneAdoptSelectedSettings() {
   const s = paneScope();
   if (s.gridConfig) applyGridConfig(s.gridConfig);
   refreshLightsControlUI();
+  refreshRoomsControlUI();
   if (s.weather !== undefined) refreshWeatherUI(s.weather);
   // The dropdown shows the selected column's own theme.
   if (s.fogTheme !== undefined) refreshFogThemeUI(s.fogTheme);

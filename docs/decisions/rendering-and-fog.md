@@ -436,3 +436,6 @@ BACKLOG 273. Fire's edge line was a fixed width against a noisy progress value a
 inside the fog's mid-change band. Blood's dark front darkened arriving fog when hiding; it now draws on reveal only. Toxic, Ice
 and Default had the same spill, so their line is weighted by how much fog is at the pixel. A suspected single-frame full-alpha
 flash was a measurement artefact of reading the fog mesh mid-update, not on screen (20 screencast runs clean).
+
+### A door placed or removed fades on the TV like a revealed room · `SHIPPED` (5.6.0)
+BACKLOG 279. `commitDoorChange` rebuilt the fog without `startFogTransition`, so the TV got `fogChanged: false` and snapped. The transition now starts before the rebuild (`toolDoor.js`). Claude's door tools need nothing: they cannot edit a map the TV shows.

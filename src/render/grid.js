@@ -10,6 +10,22 @@ function lineWidthForZoom(base, zoom) {
   return Math.max(MIN_SCREEN_PX, base * zoom);
 }
 
+// The setLineDash pattern for a line style, in screen px. Dashes and gaps grow with the line
+// width and the zoom, so the pattern holds its shape on the map at every zoom; a dot is a near-zero
+// dash that the round cap draws as a circle.
+const GRID_LINE_STYLES = ['solid', 'dashed', 'dotted'];
+function gridDashPattern(style, width, scale) {
+  const u = Math.max(width, 1.5) * scale;
+  if (style === 'dashed') return [u * 4, u * 3];
+  if (style === 'dotted') return [0.001, u * 3];
+  return [];
+}
+
+// A saved grid with no style, or one this release does not know, reads as solid.
+function normalizeGridLineStyle(style) {
+  return GRID_LINE_STYLES.includes(style) ? style : 'solid';
+}
+
 // ─── Rendering ───────────────────────────────────────────────────────────────
 // The shared primitive behind renderGrid (DM) and renderMap (Player). `style` overrides colour,
 // alpha and width for the ember relight inside effect zones.
@@ -24,6 +40,8 @@ function drawGridLines(ctx, vp, style) {
   ctx.strokeStyle = (style && style.color) || gridColor;
   ctx.globalAlpha = style && style.alpha != null ? style.alpha : gridOpacity;
   ctx.lineWidth = lineWidthForZoom(gridLineWidth, scale) * (style && style.widthMul || 1);
+  ctx.setLineDash(gridDashPattern(gridLineStyle, gridLineWidth * (style && style.widthMul || 1), scale));
+  ctx.lineCap = gridLineStyle === 'dotted' ? 'round' : 'butt';
 
   if (gridMode === 'square') {
     ctx.beginPath();
@@ -31,13 +49,15 @@ function drawGridLines(ctx, vp, style) {
     const c1 = Math.ceil( (vp.srcX - gridOffsetX + vp.srcW) / gridSize);
     const r0 = Math.floor((vp.srcY - gridOffsetY) / gridSize);
     const r1 = Math.ceil( (vp.srcY - gridOffsetY + vp.srcH) / gridSize);
+    // Each line starts on a grid crossing, never the viewport's edge: the dash pattern restarts at
+    // every subpath, and an edge start would make the dashes crawl as the view pans.
+    const sxAt = c => vp.dstX + (gridOffsetX + c * gridSize - vp.srcX) * scale;
+    const syAt = r => vp.dstY + (gridOffsetY + r * gridSize - vp.srcY) * scale;
     for (let c = c0; c <= c1; c++) {
-      const sx = vp.dstX + (gridOffsetX + c * gridSize - vp.srcX) * scale;
-      ctx.moveTo(sx, vp.dstY); ctx.lineTo(sx, vp.dstY + vp.dstH);
+      ctx.moveTo(sxAt(c), syAt(r0)); ctx.lineTo(sxAt(c), syAt(r1));
     }
     for (let r = r0; r <= r1; r++) {
-      const sy = vp.dstY + (gridOffsetY + r * gridSize - vp.srcY) * scale;
-      ctx.moveTo(vp.dstX, sy); ctx.lineTo(vp.dstX + vp.dstW, sy);
+      ctx.moveTo(sxAt(c0), syAt(r)); ctx.lineTo(sxAt(c1), syAt(r));
     }
     ctx.stroke();
 
@@ -162,6 +182,14 @@ function commitGridChange() {
   scheduleAutoSync();
 }
 
+// The Line style segment. Through commitGridChange like every grid control, so it saves, reaches
+// the Player and the columns, and undoes.
+function setGridLineStyle(style) {
+  gridLineStyle = normalizeGridLineStyle(style);
+  commitGridChange();
+  if (typeof refreshGridControlUI === 'function') refreshGridControlUI();
+}
+
 // The grid a freshly imported map starts with. The DM's LOOK carries over — colour, opacity,
 // thickness, grid type, on/off — because that is a preference, not a property of the map. The
 // FIT does not: cell size and offset describe whatever map was on screen a moment ago, and
@@ -180,7 +208,7 @@ function normalizeGridMode(mode, current) {
 }
 
 function captureGridConfig() {
-  return { enabled: gridEnabled, cellSize: gridSize, offsetX: gridOffsetX, offsetY: gridOffsetY, color: gridColor, opacity: gridOpacity, mode: gridMode, lineWidth: gridLineWidth };
+  return { enabled: gridEnabled, cellSize: gridSize, offsetX: gridOffsetX, offsetY: gridOffsetY, color: gridColor, opacity: gridOpacity, mode: gridMode, lineWidth: gridLineWidth, lineStyle: gridLineStyle };
 }
 
 function applyGridConfig(cfg) {
@@ -193,6 +221,7 @@ function applyGridConfig(cfg) {
   gridOpacity   = cfg.opacity   ?? gridOpacity;
   gridMode      = normalizeGridMode(cfg.mode, gridMode);
   gridLineWidth = cfg.lineWidth ?? gridLineWidth;
+  gridLineStyle = normalizeGridLineStyle(cfg.lineStyle);
   if (!isPlayer) {
     document.getElementById('btn-grid').classList.toggle('active', gridEnabled);
     document.getElementById('grid-size').value                = gridSize;
@@ -203,7 +232,6 @@ function applyGridConfig(cfg) {
     document.getElementById('grid-opacity').value             = Math.round(gridOpacity * 100);
     document.getElementById('grid-opacity-num').value         = Math.round(gridOpacity * 100);
     document.getElementById('grid-thickness').value           = gridLineWidth;
-    document.getElementById('grid-thickness-num').value       = gridLineWidth;
     document.querySelectorAll('.grid-mode-btn').forEach(b => b.classList.remove('active'));
     const mk = gridMode === 'square' ? 'sq' : 'hptop';
     document.getElementById('btn-grid-' + mk).classList.add('active');
@@ -215,5 +243,5 @@ function applyGridConfig(cfg) {
 
 // ─── Node.js export guard (unit tests only) ──────────────────────────────────
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { lineWidthForZoom, normalizeGridMode };
+  module.exports = { lineWidthForZoom, normalizeGridMode, gridDashPattern, normalizeGridLineStyle };
 }

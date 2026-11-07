@@ -143,22 +143,6 @@ function planLightShapes(planText, mapW, firstId) {
   }));
 }
 
-// A .dd2vtt picked in the Lights row: it becomes the scene's plan, as in the Rooms row, and its
-// lights are drawn at once.
-async function loadPlanLights(file) {
-  if (!currentScene || !file) return;
-  const text = await file.text().catch(() => '');
-  if (!planLights(text, mapWidth).length) {
-    messageDialog({ title: 'No lights in that file',
-                    message: 'Evermist reads the lights in the .dd2vtt file Dungeon Alchemist exports beside a map. Nothing was changed.' });
-    return;
-  }
-  currentScene.floorPlan = text;
-  doAutoSave();
-  refreshFloorPlanUI();
-  drawPlanLights();
-}
-
 function drawPlanLights() {
   if (!planLightCount()) return;
   if (!lightShapes.length) { applyPlanLights(); return; }
