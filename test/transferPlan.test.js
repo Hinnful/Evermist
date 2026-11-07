@@ -303,3 +303,25 @@ describe('places, roads, background', () => {
     assert.equal(T.tpMergeBackground({ at: 5 }, null, NOW).act, 'none');
   });
 });
+
+describe('tpMergeScene: a collision suffix is not a rename', () => {
+  const at = t => ({ scene: { name: t } });
+  it('keeps "Cave (2)" when the same map comes in again as "Cave", times tied', () => {
+    const r = T.tpMergeScene(scene([], at(500), { name: 'Cave (2)' }), scene([], at(500), { name: 'Cave' }), NOW);
+    assert.equal(r.record.name, undefined);
+    assert.equal(r.take.name, false);
+    assert.equal(r.report.changed.some(c => c.part === 'name'), false);
+  });
+  it('keeps "Cave" when the file holds the same map as "Cave (2)", times tied', () => {
+    const r = T.tpMergeScene(scene([], at(500), { name: 'Cave' }), scene([], at(500), { name: 'Cave (2)' }), NOW);
+    assert.equal(r.record.name, undefined);
+  });
+  it('still takes a real rename, which has a later time', () => {
+    const r = T.tpMergeScene(scene([], at(500), { name: 'Cave (2)' }), scene([], at(900), { name: 'Cave' }), NOW);
+    assert.equal(r.record.name, 'Cave');
+  });
+  it('still takes a different name on a tie', () => {
+    const r = T.tpMergeScene(scene([], at(500), { name: 'Cave (2)' }), scene([], at(500), { name: 'Vault' }), NOW);
+    assert.equal(r.record.name, 'Vault');
+  });
+});

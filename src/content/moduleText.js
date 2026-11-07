@@ -485,6 +485,7 @@ function mtStore(entries, sourceName) {
   }
   try {
     localStorage.setItem(MT_KEY, json);
+    syncNoteLocal(MT_KEY);
   } catch (err) {
     return { ok: false, error: t('Browser storage is full, so nothing was saved. Free some space ' +
       'or import a smaller chapter.') + ' (' + (err && err.name ? err.name : 'error') + ')' };

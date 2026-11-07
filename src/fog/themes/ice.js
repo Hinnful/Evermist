@@ -58,7 +58,8 @@ float fogStep(float rk, float e, vec2 sp, float dir) {
   float spikes = pow(ridge(p0 * 14. + wq * 6.), 4.) * .24 + pow(ridge(p0 * 33. + wq * 9. + 3.), 4.) * .12;
   float r = .36 + rk * .64 - spikes;
   float x = e * 1.02 - .01; float g = smoothstep(r - .006, r + .006, x);
-  gFront = max(gFront, lineAt(x - r, 2.) * .85);
+  // Only where fog is: the line is px wide, so beside a sharp edge it spills onto clear ground.
+  gFront = max(gFront, lineAt(x - r, 2.) * .85 * smoothstep(0., .5, dir > 0. ? 1. - g : g));
   float behind = dir > 0. ? r - x : x - r;
   float veins = pow(ridge(p0 * 52. + wq * 12.), 9.);
   // The last pixels to freeze never get .24 behind the front, so the veins also thaw on the clock.

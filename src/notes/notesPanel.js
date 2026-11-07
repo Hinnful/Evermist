@@ -62,6 +62,7 @@ function notesCampaignSet(text, at) {
   try { localStorage.setItem(NOTES_CAMPAIGN_KEY, text); } catch (err) { _npPending.campaign = text; return notesSaveFailed('campaignNotes', err); }
   _npPending.campaign = null;
   try { localStorage.setItem(NOTES_CAMPAIGN_AT_KEY, String(at === undefined ? Date.now() : at)); } catch (_) { /* the text is saved; only its time is not */ }
+  syncNoteLocal(NOTES_CAMPAIGN_KEY); syncNoteLocal(NOTES_CAMPAIGN_AT_KEY);
   return true;
 }
 
@@ -80,6 +81,7 @@ function notesPlacesAll() {
 function notesPlacesWrite(map) {
   try { localStorage.setItem(NOTES_PLACES_KEY, JSON.stringify(map)); } catch (err) { _npPending.places = map; return notesSaveFailed('placeNotes', err); }
   _npPending.places = null;
+  syncNoteLocal(NOTES_PLACES_KEY);
   if (typeof worldPlacesSave === 'function') worldPlacesSave();
   return true;
 }
@@ -107,6 +109,7 @@ function notesRoadsAll() {
 function notesRoadsWrite(map) {
   try { localStorage.setItem(NOTES_ROADS_KEY, JSON.stringify(map)); } catch (err) { _npPending.roads = map; return notesSaveFailed('roadNotes', err); }
   _npPending.roads = null;
+  syncNoteLocal(NOTES_ROADS_KEY);
   if (typeof worldRoadsSave === 'function') worldRoadsSave();
   return true;
 }

@@ -56,7 +56,8 @@ float fogStep(float rk, float e, vec2 sp, float dir) {
   vec2 p0 = sp * uPatM - uPatO;
   float r = clamp(rk + rag(p0, 26., .5) + (noise(p0 * 90.) - .5) * .12, 0., 1.);
   float x = e * 1.5 - .25; float g = smoothstep(r - .02, r + .02, x);
-  gFront = max(gFront, lineAt(x - r, 2.2) * .9);
+  // Only where fog is: the line is px wide, so beside a sharp edge it spills onto clear ground.
+  gFront = max(gFront, lineAt(x - r, 2.2) * .9 * smoothstep(0., .5, dir > 0. ? 1. - g : g));
   return g; }
 `,
   },

@@ -217,6 +217,11 @@ which are placed during play. Do not read the prep-time line as a ban on in-play
 Export and Import move data between the DM's own machines. They are not a way to survive an update or to recover from an
 accidental delete, and no feature may lean on them as that safety net.
 
+### Evermist syncs a DM's campaign through their own Google Drive · `SETTLED` (2026-11-07)
+Sync moves a DM's campaign between their own computers through their own Google Drive. Evermist never runs a server and the
+developer never receives anyone's data; `PRIVACY.md` at the repo root states it. Music is not synced (BACKLOG 274). Export and
+Import remain.
+
 ### Music never enters the backup zip · `SETTLED` (scope call)
 A hundred hour-long tracks is about 5.5GB, and a backup is meant to be portable. The music
 folder sits outside the scene store, so a restore on a fresh machine brings scenes and no music.

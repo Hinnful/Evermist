@@ -22,7 +22,7 @@
 //      they are one map. That duplication is the design; the check pins it.
 //   E. The module text already loaded stays and the import says so.
 //   F. The DM is told what the file replaced, by name.
-//   G. Importing the same file again changes nothing and adds nothing.
+//   G. Importing the same file again changes nothing and adds nothing: no map renamed to or from "(2)", no fight row renumbered.
 //
 // KNOWN AND NOT FAILED: item 269, a deletion made on laptop A (a room, a faction, a monster, a fight, a picture) comes
 // back on B. Each is noted, and says when it starts to hold.
@@ -260,9 +260,9 @@ module.exports = async function backupTwoLaptops(rig) {
   const rowIds = x => ({ ...x, world: { ...x.world, combat: x.world.combat.replace(/"nextId":\d+/, '').replace(/"id":\d+/g, '') } });
   const redo = kit.diffDigests(rowIds(after), rowIds(after2), ['stamps']).filter(d => d.where !== 'music' && !/^map Колодец/.test(d.where));
   const nextBefore = (after.world.combat.match(/"nextId":(\d+)/) || [])[1], nextAfter = (after2.world.combat.match(/"nextId":(\d+)/) || [])[1];
-  kit.known(rig, 'unfiled: a second import moves the fight rows', nextBefore === nextAfter, 'importing the same file twice renumbers the rows of the fight table (next row id ' + nextBefore + ' -> ' + nextAfter + ')');
+  rig.check(nextBefore === nextAfter, 'G: importing the same file twice renumbers the rows of the fight table (next row id ' + nextBefore + ' -> ' + nextAfter + ')');
   const wellsAgain = Object.values(after2.scenes).filter(s => /^Колодец/.test(s.name)).map(s => s.name).sort();
-  kit.known(rig, 'unfiled: a second import undoes the (2)', wellsAgain.join('|') === 'Колодец|Колодец (2)', 'importing the same file twice renamed the map that came in as "Колодец (2)" back to "Колодец": the library now holds ' + JSON.stringify(wellsAgain));
+  rig.check(wellsAgain.join('|') === 'Колодец|Колодец (2)', 'G: importing the same file twice renamed the map that came in as "Колодец (2)" back to "Колодец": the library now holds ' + JSON.stringify(wellsAgain));
   rig.check(redo.length === 0, 'G: the second import changed ' + redo.length + ' things: ' + redo.slice(0, 5).map(kit.describe).join(' ; '));
   rig.note('second import said: ' + again.said.join(' // ').replace(/\n/g, ' / '));
   rig.note('laptop B before the import held ' + Object.keys(before0.scenes).length + ' maps from the old copy');

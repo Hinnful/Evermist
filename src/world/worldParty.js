@@ -26,6 +26,7 @@ function _wptSave() {
   try {
     if (_wpt) localStorage.setItem(WPT_KEY, JSON.stringify(_wpt)); else localStorage.removeItem(WPT_KEY);
   } catch (err) { notesSaveFailed('party', err); }
+  syncNoteLocal(WPT_KEY);
 }
 
 // The marker as a backup carries it, or null.

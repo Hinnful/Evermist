@@ -1059,7 +1059,7 @@ DM's Ctrl+Z stack so neither undo drops or resurrects the other.
 Claude reaching the campaign with Evermist closed would have needed it in plain files. Rejected as
 a large change with risk to saved data. A closed Evermist starts unseen for the call instead, one
 copy per library, and quits after fifteen idle minutes.
-**Reopened 2026-11-05** for sync only: a library in a cloud folder as plain files (BACKLOG 271); whether it replaces Export/Import is open.
+**Reopened 2026-11-05** for sync only: a library in a cloud folder as plain files (BACKLOG 271); it does not replace Export/Import, resolved in `docs/decisions/storage-and-packaging.md`, "Sync runs through Google Drive, beside Export and Import".
 
 ### Notes as Markdown files on disk · `REJECTED` (2026-10-30)
 Proposed as BACKLOG 195. Editing notes in another tool helps no DM, and files bring two writers,

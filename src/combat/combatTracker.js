@@ -32,7 +32,7 @@ function cbSave(quiet) {
   try {
     const p = combatSavedParts(combatStampEdits(cbState, Date.now()));
     localStorage.setItem(CB_KEY, JSON.stringify(p.combat));
-    localStorage.setItem(CB_FIGHTS_KEY, JSON.stringify(p.fights));
+    localStorage.setItem(CB_FIGHTS_KEY, JSON.stringify(p.fights)); syncNoteLocal(CB_KEY); syncNoteLocal(CB_FIGHTS_KEY);
     return true;
   } catch (err) {
     if (quiet) return false;

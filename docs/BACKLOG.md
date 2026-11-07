@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 5 open items; IDs run to 273."
+description: "Open work only. 8 open items; IDs run to 278."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.4.1**. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.5.0**, which adds Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -76,11 +76,6 @@ categories. Effort and risk are judged once an item is picked, not here.
 
 # EVERYTHING ELSE
 
-### 273. Two small glitches in the TV fog's room transitions
-Filed 2026-11-06, after 5.4.1. Fire's edge line appears a little ahead of the fog beside it as a room is revealed or
-hidden. With Blood, a room darkens a little as it is hidden, before the fog covers it; other themes may do the same.
-**Bug · Polish · Player**
-
 ### 255. Map settings a DM can read
 Filed 2026-11-04. The Map settings pane follows Figma's right panel: numbers scrubbed by an unlabelled icon, eyes,
 small sub-headers. A DM is not a UI designer and has to learn all of it. Redo the pane in plain words and plain
@@ -95,21 +90,33 @@ mismatch the DM has to avoid. Floated by the DM while weather was settled; nothi
 **Needs a design round.**
 **Play · Player**
 
-### 271. The library lives in a cloud folder
-Filed 2026-11-05. The DM keeps one campaign on two laptops and moves it by hand with Export and Import; once a forgotten
-transfer left a game with no maps, and twice the two laptops held different edits of one map. Backup exists only to
-sync machines (DM, 2026-11-05). The DM picks a library folder inside OneDrive, Google Drive or Dropbox on each laptop,
-Evermist keeps the library there as plain files, one per map plus one per campaign record kind, and the cloud client
-moves them. Evermist runs no server. Open: whether the folder replaces Export and Import or sits beside them as an
-option. It must cover a map that is only in the cloud when the laptop is offline at the table, a laptop closed
-before its upload finished, the cloud client's conflict copies, the library open on both laptops at once, a migration
-that copies and never deletes, and `/rollback` after the move. Storing the library as plain files was rejected once as
-a large change with risk to saved data (DECISIONS, Claude reaching a closed Evermist); the DM reopens it here.
-If Export and Import stay, the rig's backup scenarios found these to fix there: a library past about 500 MB never
-finishes exporting (380 MB takes 7 s), music is not in a backup at all, a whole deleted map does not travel, a second
-Import of the same file renames "Name (2)" back to "Name", and it renumbers the fight table's rows.
+### 274. Music syncs between computers
+Filed 2026-11-06 by the DM. Music is not in a backup and will not ride the Drive sync (271), so a track added on one
+computer is missing on the other. "Music never enters the backup zip" (PRODUCT.md) stands for the zip; this item is
+about the sync only, and must weigh the DM's Drive space against a music folder that can grow to gigabytes.
 **Needs /spec.**
-**Campaign · Bug**
+**Campaign · Both**
+
+### 275. Export of a library past about 500 MB never finishes
+Filed 2026-11-06, found by the rig's backup scenarios. A library past about 500 MB never finishes exporting; 380 MB
+takes 7 s. The DM's library is about 4.5 GB, so Export of everything cannot finish today.
+**Bug · DM only**
+
+### 276. Google's sign-in calls Evermist an unverified app
+Filed 2026-11-07, with 5.5.0. Connect to Google shows Google's "unverified app" warning until Google reviews the app's
+brand; that review needs the privacy policy on a domain the project owner proves to own (today `PRIVACY.md` sits on
+github.com). Every DM who connects sees the warning first.
+**First use · Polish · DM only**
+
+### 277. Bring back a map picture a sync replaced
+Filed 2026-11-07, with 5.5.0. When a sync replaces a map's picture or video, the old file is kept 30 days in the sync
+folder on that computer, but nothing in the app lists it or puts it back. A small list beside Recently deleted would.
+**Campaign · DM only**
+
+### 278. A deleted gallery picture stays on the Drive
+Filed 2026-11-07, with 5.5.0. A picture deleted from the Gallery no longer comes back on the other computer, but its
+record and file stay on the Drive and keep using the DM's space.
+**Bug · DM only**
 
 ### 189. Review how doors look, hex grids included
 Filed 2026-10-17, widened 2026-11-05. The DM sees doors looking broken, more so with the fog themes. Review doors on

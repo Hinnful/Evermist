@@ -40,6 +40,13 @@ jobs:
       - run: npm ci
       - run: node tools/build-changelog.js
 
+      # The Google client, as gate.yml writes it, so the rig drives the build users get.
+      - name: Write the Google client
+        run: node tools/write-google-client.js
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
       # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs, and the app then exits
       # at launch.
       - name: Let Chromium sandbox itself

@@ -162,6 +162,8 @@ function _tpMergeEffects(localList, incList, le, ie, moment, rep) {
   return { list: out, times, gone, next };
 }
 
+const _tpBaseName = n => String(n == null ? '' : n).replace(/ \(\d+\)$/, '');
+
 // A scene both machines hold. `local` and `incoming` are scene records (the incoming one without blobs).
 // Answers the fields to write over the local record, which parts take their file from the zip, and what
 // to tell the DM. `opts.localMapMissing` lets the incoming map in, whatever the times say.
@@ -178,6 +180,8 @@ function tpMergeScene(local, incoming, moment, opts) {
     // would hand every card the file's group.
     take[part] = part === 'map' ? ti > tl || !!o.localMapMissing : part === 'place' ? ti > tl : ti >= tl;
     const blob = part === 'map' || part === 'fog';
+    // A name's " (n)" is the library's own collision suffix, not an edit: the same map at one name time keeps its name.
+    if (part === 'name' && tl === ti && _tpBaseName(local.name) === _tpBaseName(incoming.name)) { take.name = false; continue; }
     const differs = blob ? ti !== tl : lp[part] !== ip[part];
     if (!differs) continue;
     if (take[part]) {

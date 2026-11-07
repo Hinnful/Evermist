@@ -299,6 +299,8 @@ const IPC = [
   require('./electron/sounds.js'),
   require('./electron/displays.js'),
   require('./electron/screenLog.js'),
+  require('./electron/syncConfig.js'),
+  require('./electron/syncRemote.js'),
   ipcMcp,
 ];
 const [, ipcMusic, , , ipcDiagLog, ipcUpdates] = IPC;   // the three with a call of their own
@@ -339,7 +341,7 @@ app.whenReady().then(() => {
   // ⚠ AFTER THE FOLDERS EXIST AND BEFORE ANY WINDOW OPENS. A handler registered on require
   // reads its path from here, so one that fires before this line has nowhere to write.
   const ctx = {
-    mapsDir, musicDir, logsDir, sendTo, isSafeId, offscreen,
+    mapsDir, musicDir, logsDir, userData, sendTo, isSafeId, offscreen,
     getDmWin: () => dmWin,
     getPlayerWin: (key) => playerWins.get(key || 'evermist-player'),
   };

@@ -84,6 +84,7 @@ function _wrGoneWrite(gone) {
   try {
     if (Object.keys(gone).length) localStorage.setItem(WR_GONE_KEY, JSON.stringify(gone)); else localStorage.removeItem(WR_GONE_KEY);
   } catch (_) { /* the road is gone either way; only its record is not kept */ }
+  syncNoteLocal(WR_GONE_KEY);
 }
 
 function worldRoadsSave() {
@@ -94,6 +95,7 @@ function worldRoadsSave() {
     esStampRecords(recs, _wrSeen, r => _wrParts(r, notes), now);
   }
   try { localStorage.setItem(WR_KEY, JSON.stringify(worldRoadsExport())); } catch (err) { notesSaveFailed('roads', err); }
+  syncNoteLocal(WR_KEY);
 }
 
 // A new road from drawn points, with the curve each was dragged out to. Its ends stick to what they were drawn on.

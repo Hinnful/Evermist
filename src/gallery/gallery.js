@@ -85,6 +85,7 @@ function _gaGoneWrite(gone) {
   try {
     if (Object.keys(gone).length) localStorage.setItem(GA_GONE_KEY, JSON.stringify(gone)); else localStorage.removeItem(GA_GONE_KEY);
   } catch (_) { /* the picture is gone either way; only its record is not kept */ }
+  syncNoteLocal(GA_GONE_KEY);
 }
 
 function galleryGone() { return _gaGoneRead(); }
@@ -225,14 +226,27 @@ async function galleryAdoptBackup(zipPath, goneFile) {
   const added = await galleryStore.addMissing(list);
   const renamed = galleryRenames(have, meta, now).filter(r => !plan.remove.includes(r.id));
   for (const r of renamed) await galleryStore.put(Object.assign(have.find(p => p.id === r.id), { name: r.name, named: r.named }));
+  await _gaDropGone(plan);
+  if (added.length || renamed.length || plan.remove.length) await galleryReload();
+  return added.length;
+}
+
+async function _gaDropGone(plan) {
   for (const id of plan.remove) {
     if (_gaLive === id) galleryTakeDown();
     await galleryStore.remove(id);
     if (_gaUrls[id]) { URL.revokeObjectURL(_gaUrls[id]); delete _gaUrls[id]; }
   }
   _gaGoneWrite(plan.gone);
-  if (added.length || renamed.length || plan.remove.length) await galleryReload();
-  return added.length;
+}
+
+// Another computer's deletion records, which sync carries apart from the pictures: the same rule as a backup's.
+async function galleryAdoptGone(goneFile) {
+  const plan = galleryGoneApply(await galleryStore.all(), [], _gaGoneRead(), goneFile, Date.now());
+  if (!plan.remove.length && esCanon(plan.gone) === esCanon(_gaGoneRead())) return 0;
+  await _gaDropGone(plan);
+  if (plan.remove.length) await galleryReload();
+  return plan.remove.length;
 }
 
 // A restored scene's room pictures join the gallery too: an older backup holds no other copy.

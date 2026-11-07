@@ -46,5 +46,9 @@ desktop.ini
 # Fire look prototype (throwaway harness + recovered/downloaded assets)
 tools/fire-proto/
 
+# The Google client sync signs in with, written from CI secrets by tools/write-google-client.js. The repo is
+# public, and GitHub push protection rejects a Google OAuth secret.
+electron/googleClient.json
+
 # The What's new list, regenerated from the release commits before every test, start, rig and build
 src/ui/changelogData.js

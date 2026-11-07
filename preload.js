@@ -54,6 +54,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('get-video-file-path', sceneId),
   readVideoFile: (sceneId) =>
     ipcRenderer.invoke('read-video-file', sceneId),
+  syncAvailable: () => ipcRenderer.invoke('sync-available'),
+  syncDrive: (op, arg) => ipcRenderer.invoke('sync-drive', op, arg),
+  hashVideoFile: (sceneId) =>
+    ipcRenderer.invoke('hash-video-file', sceneId),
   deleteVideoFile: (sceneId) =>
     ipcRenderer.invoke('delete-video-file', sceneId),
   onVideoSaveProgress: (callback) => {

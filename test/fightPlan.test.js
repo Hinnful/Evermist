@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { combatBlankBlock } = require('../src/combat/combatPlan.js');
 const {
   combatFightId, combatFightsFrom, combatFightRows, combatOpenFight, combatAddFight, combatDuplicateFight, combatFightLabel,
-  combatRenameFight, combatDeleteFight, combatMerge, combatSavedParts, combatBackupData, combatStampEdits,
+  combatRenameFight, combatDeleteFight, combatMerge, combatSavedParts, combatBackupData, combatStampEdits, combatFightKey,
 } = require('../src/combat/fightPlan.js');
 
 const ids = () => { let n = 0; return () => 'id' + (++n); };
@@ -239,5 +239,28 @@ describe('the names the app gives a fight', () => {
   });
   it('leaves a name the DM typed alone', () => {
     assert.equal(combatFightLabel('Goblin ambush', ru), 'Goblin ambush');
+  });
+});
+
+describe('a backup merged in twice', () => {
+  // The table attaches a stat block copy (`sb`) to a row once it draws it; the file's rows have none.
+  const sb = { name: 'Wolf' };
+  const cur = () => ({ rows: [{ id: 4, init: '', name: 'Wolf', hp: '', ac: '', conds: [], sb }], blocks: {}, nextId: 6, openId: 'fA', fights: [{ id: 'fA', name: 'Ambush' }] });
+  const file = rows => ({ rows, blocks: {}, nextId: 2, openId: 'fA', fights: [{ id: 'fA', name: 'Ambush' }],
+    edits: { fights: { fA: { k: 'x', t: 5000 } } } });
+  it('leaves the rows of a fight that differs only by that copy, so its row numbers do not move', () => {
+    const m = combatMerge(cur(), file([{ id: 1, name: 'Wolf', hp: '' }]), ids(), 9000);
+    assert.equal(m.nextId, 6);
+    assert.deepEqual(m.rows.map(r => r.id), [4]);
+  });
+  it('does not time a row for the copy alone, and does for a copy the DM changed', () => {
+    const k = r => combatFightKey('Ambush', [r]);
+    assert.equal(k({ id: 1, name: 'Wolf', sb }), k({ id: 2, name: 'Wolf' }));
+    assert.notEqual(k({ id: 1, name: 'Wolf', sb, sbChanged: true }), k({ id: 2, name: 'Wolf', sbChanged: true }));
+  });
+  it('still takes a fight whose rows differ and are newer', () => {
+    const m = combatMerge(cur(), file([{ id: 1, name: 'Orc', hp: '' }]), ids(), 9000);
+    assert.deepEqual(m.rows.map(r => r.name), ['Orc']);
+    assert.equal(m.nextId, 7);
   });
 });

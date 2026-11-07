@@ -27,7 +27,7 @@ async function _wbStore(mode, fn) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('bg', mode);
     const req = fn(tx.objectStore('bg'));
-    tx.oncomplete = () => { db.close(); resolve(req ? req.result : undefined); };
+    tx.oncomplete = () => { db.close(); if (mode === 'readwrite' && typeof syncIndex !== 'undefined') syncIndex.backdropChanged(true); resolve(req ? req.result : undefined); };
     tx.onerror = () => { db.close(); reject(tx.error); };
   });
 }
@@ -36,6 +36,7 @@ async function _wbStore(mode, fn) {
 function _wbMetaSave(keepAt) {
   if (_wbMeta && !keepAt) _wbMeta.at = Date.now();
   try { localStorage.setItem(WB_META_KEY, JSON.stringify(_wbMeta)); } catch (_) { /* full or blocked */ }
+  if (typeof syncIndex !== 'undefined') syncIndex.backdropChanged(false);
 }
 
 function _wbMetaLoad() {
@@ -94,13 +95,19 @@ async function worldBackgroundImport(zipPath, shift, moment, say = messageDialog
     return '';
   }
   if (!got) return '';
+  return worldBackgroundAdopt(got.meta, async () => got.buffer, shift, moment, say);
+}
+
+// A backdrop from elsewhere, an export's or another computer's: `meta` its text, `load()` its picture's bytes, read
+// only when it wins. Answers as worldBackgroundImport does.
+async function worldBackgroundAdopt(meta, load, shift, moment, say) {
   let m = null;
-  try { m = JSON.parse(got.meta); } catch (_) { m = null; }
+  try { m = JSON.parse(meta); } catch (_) { m = null; }
   const ok = k => m && typeof m[k] === 'number' && isFinite(m[k]);
   if (!(ok('x') && ok('y') && ok('scale') && ok('alpha') && ok('w') && ok('h') && m.w > 0 && m.h > 0)) return '';
   const plan = tpMergeBackground(_wbMeta, m, moment);
   if (plan.act !== 'take') return 'kept';
-  const blob = new Blob([got.buffer], { type: typeof m.type === 'string' ? m.type : '' });
+  const blob = new Blob([await load()], { type: typeof m.type === 'string' ? m.type : '' });
   if (blob.size > WB_MAX_BYTES) return '';
   try { await _wbStore('readwrite', s => s.put(blob, 'image')); } catch (_) {
     say({ title: 'Nothing changed', message: t('The image could not be saved.') });

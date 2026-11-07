@@ -39,6 +39,7 @@ function _neWrite(list, stamped, gone) {
   if (Object.keys(_neGone).length) saved.gone = _neGone;
   try { localStorage.setItem(NOTES_ENTRIES_KEY, JSON.stringify(saved)); } catch (err) { _nePending = true; return notesSaveFailed('entries', err); }
   _nePending = false;
+  syncNoteLocal(NOTES_ENTRIES_KEY);
   return true;
 }
 

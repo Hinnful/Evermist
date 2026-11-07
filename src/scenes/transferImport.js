@@ -51,18 +51,11 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, s
   parsed.text = mentions.remap(parsed.text);
   const merged = notesPickCampaign(notesCampaignGet(), notesCampaignAt(), parsed.text, parsed.at, plans.moment);
   if (merged.replaced) over.push({ scene: t('Campaign'), room: '', part: 'notes' });
-  // Before the places come in: a rename there moves the uid with its group.
-  mxGroupUidsWrite(mentions.groupUids);
   if (merged.text !== notesCampaignGet()) notesCampaignSet(merged.text, merged.at);
-  worldPlacesImport(plans.places, shift.dx, shift.dy);
-  const names = new Set(worldPlaceRecords().map(r => r.name));
-  const placeSet = Object.create(null);
-  for (const n of names) placeSet[n] = true;
   const sceneMap = Object.create(null);
   for (const s of allScenes) sceneMap[s.id] = s.id;
   for (const x of items) sceneMap[x.entry.id] = x.id;
-  worldRoadsImport(plans.roads, sceneMap, placeSet, shift.dx, shift.dy);
-  worldPartyImport(wptParse(raw), sceneMap, shift.dx, shift.dy);
+  tiAdoptWorld(raw, plans, shift, sceneMap, mentions.groupUids);
   const entries = notesParseEntries(raw);
   notesEntriesAdopt(entries.entries.map(e => (e && typeof e.note === 'string' ? { ...e, note: mentions.remap(e.note) } : e)), notesParseGone(raw).entries);
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
@@ -78,6 +71,18 @@ async function _tiAdoptCampaign(raw, readFailed, plans, shift, items, noNotes, s
   if (b.placeNotes) parts.push(t('Some group notes in this file could not be read, so those groups came without them.'));
   if (mentions.skipped()) parts.push(t.plural(mentions.skipped(), '{n} link in the imported notes still points at the old map or group, because its note is full.', '{n} links in the imported notes still point at the old map or group, because their notes are full.'));
   if (parts.length) say({ title: 'Some notes were not imported', message: parts.join(nl + nl) });
+}
+
+// The places, roads and party marker of a campaign.json, as Import and sync both take them in. `sceneMap` is { id: id }
+// for the maps a road's end or the marker may keep.
+function tiAdoptWorld(raw, plans, shift, sceneMap, groupUids) {
+  // Before the places come in: a rename there moves the uid with its group.
+  mxGroupUidsWrite(groupUids);
+  worldPlacesImport(plans.places, shift.dx, shift.dy);
+  const placeSet = Object.create(null);
+  for (const r of worldPlaceRecords()) placeSet[r.name] = true;
+  worldRoadsImport(plans.roads, sceneMap, placeSet, shift.dx, shift.dy);
+  worldPartyImport(wptParse(raw), sceneMap, shift.dx, shift.dy);
 }
 
 // What the DM is told: counts first, then each edit the file overwrote, by scene and room.
@@ -115,6 +120,18 @@ function _tiMentions(raw, items, incoming, moment) {
   return { remap, skipped: () => skipped, groupUids: merged.keep };
 }
 
+// A campaign.json's places and roads against the library's, nothing written: the mentions remapped first, then the plan.
+function tiWorldPlan(raw, items, moment) {
+  const incoming = _tiRead(raw), gone = notesParseGone(raw);
+  const mentions = _tiMentions(raw, items, incoming, moment);
+  const plans = {
+    places: tpMergePlaces(_tiLocalPlaces(), incoming.places, moment, { here: worldPlacesGone(), file: gone.places }),
+    roads: tpMergeRoads(_tiRoadMap(worldRoadsExport(), notesRoadsAll()), incoming.roads, moment, { here: worldRoadsGone(), file: gone.roads }),
+    broken: incoming.broken,
+  };
+  return { mentions, plans, gone };
+}
+
 // Everything read and decided before anything is written: the file's scenes against the library, the places
 // and roads, and where new things land.
 async function _tiPlan(zipPath, manifest) {
@@ -124,10 +141,9 @@ async function _tiPlan(zipPath, manifest) {
     console.error('Reading the campaign notes from the file failed:', err);
     readFailed = true;
   }
-  const incoming = _tiRead(raw), gone = notesParseGone(raw);
   const existing = allScenes, noNotes = [];
   const items = tpSceneIds(manifest, new Set(existing.map(s => s.id)), id => TI_SAFE_ID.test(id), _tiMint);
-  const mentions = _tiMentions(raw, items, incoming, moment);
+  const { mentions, plans } = tiWorldPlan(raw, items, moment);
   for (const x of items) {
     const local = x.matched ? await sceneStore.loadScene(x.id) : null;
     if (x.matched && !local) x.matched = false;
@@ -140,11 +156,6 @@ async function _tiPlan(zipPath, manifest) {
     x.local = local;
     x.plan = tpMergeScene(local, x.entry, moment, { localMapMissing: missing });
   }
-  const plans = {
-    places: tpMergePlaces(_tiLocalPlaces(), incoming.places, moment, { here: worldPlacesGone(), file: gone.places }),
-    roads: tpMergeRoads(_tiRoadMap(worldRoadsExport(), notesRoadsAll()), incoming.roads, moment, { here: worldRoadsGone(), file: gone.roads }),
-    broken: incoming.broken,
-  };
   // ⚠ BESIDE ONLY WHEN NOTHING MATCHED: a matched layout is the same layout, and moving it would split it.
   const matchedAny = items.some(x => x.matched) || plans.places.matched || plans.roads.matched;
   const shift = matchedAny ? { dx: 0, dy: 0 }

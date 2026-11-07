@@ -5,6 +5,7 @@
 const { ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { hashFile } = require('./fileHash.js');
 
 let mapsDir, sendTo, isSafeId;
 
@@ -106,6 +107,19 @@ ipcMain.handle('list-map-files', async () => {
     }
     return out;
   } catch { return []; }
+});
+
+// The content hash of a scene's video file, streamed, for sync to tell a replaced file from an untouched one.
+ipcMain.handle('hash-video-file', async (_event, sceneId) => {
+  if (!isSafeId(sceneId)) return null;
+  for (const ext of ['.webm', '.mp4']) {
+    const filePath = path.join(mapsDir, sceneId + ext);
+    try {
+      const size = (await fs.promises.stat(filePath)).size;
+      return { hash: await hashFile(filePath), size };
+    } catch {}
+  }
+  return null;
 });
 
 ipcMain.handle('delete-video-file', async (_event, sceneId) => {

@@ -29,6 +29,7 @@ function mxGroupUids() {
 
 function mxGroupUidsWrite(map) {
   try { localStorage.setItem(MX_GROUP_UIDS_KEY, JSON.stringify(map)); } catch (err) { notesSaveFailed('groupUids', err); }
+  syncNoteLocal(MX_GROUP_UIDS_KEY);
 }
 
 // A group's uid, minted the first time it is mentioned, whether or not it has a place record.

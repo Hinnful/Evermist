@@ -415,3 +415,9 @@ cloud motion eases old to new. The extra pass exists only during the fade. Rejec
 covering the old one in its own hide and today's fade were prototyped; the slow blend won on product grounds. On a map switch
 between themes the incoming theme waits under the closed cover until the new map lands, the cloud drift follows the shader on
 screen, and a map of another size landing keeps a fade or swap in flight.
+
+### The TV fog's edge lines draw only where fog is · `SETTLED` (2026-11-07)
+BACKLOG 273. Fire's edge line was a fixed width against a noisy progress value and showed on clear ground; it now draws only
+inside the fog's mid-change band. Blood's dark front darkened arriving fog when hiding; it now draws on reveal only. Toxic, Ice
+and Default had the same spill, so their line is weighted by how much fog is at the pixel. A suspected single-frame full-alpha
+flash was a measurement artefact of reading the fog mesh mid-update, not on screen (20 screencast runs clean).

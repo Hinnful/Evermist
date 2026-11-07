@@ -15,7 +15,9 @@ jobs:
   gate:
     name: Gate
     uses: ./.github/workflows/gate.yml
+    secrets: inherit
 
   rig:
     name: Gate
     uses: ./.github/workflows/rig.yml
+    secrets: inherit

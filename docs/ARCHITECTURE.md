@@ -791,6 +791,78 @@ The zip reading and writing happens in the Electron shell, driven by `backup.js`
 `moduleText.js` owns the module-text format at both ends: `backup.js` asks it for a payload
 and hands one back, and never touches storage itself.
 
+## Syncing through Google Drive
+
+Two computers can share one library through the DM's Google Drive, with Evermist open on both.
+Every user sees it: each signs in to their own Google account, and the data goes to their own
+Drive. Sync stays off until **Connect to Google** in Settings.
+
+- **The Google client is built into the release.** The workflow writes `electron/googleClient.json`
+  from the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` repository secrets
+  (`tools/write-google-client.js`, which fails the build when either is missing) before
+  electron-builder packs it. The file is gitignored and never committed. A dev run without it
+  reads the same two environment variables; with neither, Settings shows nothing new and the app
+  keeps no sync data at all.
+- **`sync/config.json` in the data folder overrides the built-in client** when it holds a usable
+  one: the rig points it at its fake Drive with a test client. Nothing else needs it.
+- **Nothing runs until the first Connect.** The section shows wherever there is a client, but the
+  hashes and the engine start only on a computer that has connected (signed in, or its sync
+  database already made), so a DM who never connects pays nothing on a save.
+
+- **Connect** opens Google's consent page in the system browser, asking only for the app's own
+  hidden Drive folder. Google sends the answer back to a one-shot listener on 127.0.0.1, which
+  checks it belongs to this sign-in, shows a short page saying to return to Evermist, and closes.
+  The refresh token is kept encrypted by the operating system's store (`safeStorage`: DPAPI on
+  Windows, the Keychain on a Mac, KWallet or the Secret Service on Linux). Where Linux has no such
+  store, the token lives in memory only, the status line says the sign-in is not remembered on
+  this computer, and Connect is needed again after each start. **Disconnect** forgets the token.
+- **What syncs:** every map with its rooms, fog, effects, notes and map file; the gallery; the
+  monsters, fights and bestiary; factions and lore; the campaign note; the module text; and the
+  Campaign's places, roads, party marker and backdrop. Each part merges by Import's rules (see
+  above): the part edited later wins. Module text takes the newer copy and asks nothing.
+- **When:** about four seconds after a change is saved, every 30 seconds while the app is open,
+  at start, when the network comes back, and on **Sync now**. A tick compares content hashes kept
+  in the `evermist-sync` database and moves only what changed. A map's picture or video goes up
+  once; a fog or room edit sends only the small record; a change pulled from the other computer
+  is not sent back.
+- **Where on the Drive:** in the app's hidden `appDataFolder`, which the Drive's own file list
+  does not show and cleaning the Drive does not touch. Each computer writes its records into a
+  `rec-<computer>` folder of its own, and map files sit in one shared `blobs` folder named by
+  their owner and content hash. A file exists only once its upload has finished, so a cut upload
+  resumes and is never read as complete. A map file no computer uses any more is removed.
+- **Holds:** a change never lands under the DM's hands. Changes for the open map, the map on the
+  TV and both maps in Two maps wait until that map is closed or changed; fight and bestiary
+  changes wait while the fight table is shown; a note's change waits while that note is open; a
+  delete in its undo window defers everything. Nothing on screen reloads, and each pulled record
+  is applied in its own short slice between frames.
+- **Recently deleted:** a map deleted on one computer leaves the other and appears in Settings'
+  "Recently deleted" with its name and date, with **Restore** per map and **Empty now**. After 30
+  days it is purged from the Drive. Its deletion is remembered for good, so a computer that was
+  offline longer than that cannot bring it back. Deleting a whole map travels by sync only; Export
+  and Import keep their own rules.
+- **Before a computer's first sync**, a successful Connect asks first: how many maps this
+  computer holds, how many the Drive holds and from how many other computers, and that they will
+  be merged with nothing deleted. Nothing syncs while the question is open. **Start syncing**
+  starts the first sync; **Cancel**, or closing the app on the question, signs out again and
+  leaves everything as it was. A computer that has synced before is not asked again.
+- **The first sync** merges two filled libraries: it deletes nothing, replaces no map file, and
+  keeps a copy of every record it changes for 30 days. The status line shows its progress.
+- **A map file a sync replaces is kept 30 days.** When a later sync takes another computer's
+  picture or video for a map, the one it replaces moves to `sync/kept/<map id>.<time>.<ext>` in
+  the data folder, and is purged at the first start or replacement after its 30 days. Nothing in
+  the app restores it yet.
+- **The status line** says when the last sync ran, or that it is syncing, offline, signed out,
+  that the Drive is full, that the other computer runs a newer Evermist, or that a sync failed
+  and is tried again in 30 seconds. Offline, the app works as before and edits go up later.
+- **What stays per computer:** the TV screen, seat alignment and the other Settings, music and
+  sounds, and the sign-in itself.
+
+The page side is `sync.js` (the triggers, the outbox and inbox), `syncIndex.js` (the hashes),
+`syncMerge.js` (applying a pulled record silently) and `syncSettings.js` (the Settings section);
+`syncPlan.js` decides what moves and is pure and tested. In the Electron shell, `syncRemote.js`
+talks to the Drive and keeps replaced map files, `syncAuth.js` signs in and keeps the token, and
+`syncConfig.js` picks the Google client.
+
 ## How the app tests itself
 
 Two things, answering different questions.
@@ -807,6 +879,7 @@ outside over the Chrome DevTools Protocol: import a map, flip a switch, open the
 reveal an area. Then it reads back what actually happened. Each scenario reports as it finishes,
 so a long run shows where it is, and the last line is the verdict: PASS or FAIL.
 About ten seconds start to finish.
+On a Linux desktop session the rig runs every app on one virtual KWin screen of its own, and stops if there is none; elsewhere it uses the screen it is given.
 
 The whole suite also runs on every release, against the installed application rather than the
 source - see "How a version reaches you" below.

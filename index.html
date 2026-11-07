@@ -624,6 +624,25 @@
             <span id="wm-bk-line" class="cp-hint"></span>
           </div>
         </div>
+        <!-- Sync through Google Drive (syncSettings.js), shown only where sync has a Google client. -->
+        <div class="cp-group" id="sy-group" hidden>
+          <div class="dk-sh"><span class="cp-label">Sync between computers</span></div>
+          <div class="dk-blk">
+            <div class="cp-btnrow">
+              <button id="sy-connect" class="cp-btn" title="Sign in to Google so this computer keeps your campaign in step with your other one.">Connect to Google</button>
+              <button id="sy-disconnect" class="cp-btn" title="Stop syncing on this computer. Your maps stay here.">Disconnect</button>
+              <button id="sy-now" class="cp-btn" title="Send your changes and fetch the other computer's now.">Sync now</button>
+            </div>
+            <span id="sy-line" class="cp-hint"></span>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">Recently deleted</span>
+            <div id="sy-trash" class="dk-secbody"></div>
+            <span id="sy-trash-line" class="cp-hint"></span>
+            <div class="cp-btnrow">
+              <button id="sy-empty" class="cp-btn" title="Delete these maps for good, on every computer.">Empty now</button>
+            </div>
+          </div>
+        </div>
         <!-- The Claude connection's install (mcpConnect.js). -->
         <div class="cp-group" id="mcp-group">
           <div class="dk-sh"><span class="cp-label">AI assistants</span></div>
@@ -994,6 +1013,11 @@
 <script src="src/scenes/transferPlan.js"></script>
 <script src="src/scenes/backup.js"></script>
 <script src="src/scenes/transferImport.js"></script>
+<script src="src/scenes/syncPlan.js"></script>
+<script src="src/scenes/syncIndex.js"></script>
+<script src="src/scenes/syncMerge.js"></script>
+<script src="src/scenes/sync.js"></script>
+<script src="src/scenes/syncSettings.js"></script>
 <script src="src/render/grid.js"></script>
 <script src="src/render/effectMaterials.js"></script>
 <script src="src/render/effectShader.js"></script>
@@ -1276,7 +1300,7 @@ if (window.electronAPI && window.electronAPI.onWindowVisibility) {
 // ⚠ THE PLAYER RUNS BOTH TOO. Each carries its own `if (isPlayer)` branch - the stall detector
 // and the memory sampler - and the second video decoder lives in that window.
 if (isPlayer) Promise.resolve().then(() => { initStress(); initMemProbe(); }).catch(console.error);
-else initScenes().then(() => { initStress(); initMemProbe(); }).catch(console.error);
+else initScenes().then(() => { initStress(); initMemProbe(); syncBoot(); }).catch(console.error);
 initDisplayDetection();
 </script>
 </body>

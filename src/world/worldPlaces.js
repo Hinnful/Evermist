@@ -85,6 +85,7 @@ function _wpGoneWrite(gone) {
   try {
     if (Object.keys(gone).length) localStorage.setItem(WM_GONE_KEY, JSON.stringify(gone)); else localStorage.removeItem(WM_GONE_KEY);
   } catch (_) { /* the place is gone either way; only its record is not kept */ }
+  syncNoteLocal(WM_GONE_KEY);
 }
 
 function worldPlacesSave() {
@@ -95,6 +96,7 @@ function worldPlacesSave() {
     esStampRecords(recs, _wpSeen, r => _wpParts(r, notes), now);
   }
   try { localStorage.setItem(WM_SHAPES_KEY, JSON.stringify(worldPlacesExport())); } catch (err) { notesSaveFailed('places', err); }
+  syncNoteLocal(WM_SHAPES_KEY);
 }
 
 // A record, or bare vertices, kept under `name`.

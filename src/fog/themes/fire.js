@@ -63,7 +63,8 @@ float fogStep(float rk, float e, vec2 sp, float dir) {
   vec2 p0 = sp * uPatM - uPatO;
   float r = clamp(rk + rag(p0, 34., .22) + (noise(p0 * 120.) - .5) * .05, 0., 1.);
   float w = .025; float x = e * (1. + 2. * w + .14) - w - .07; float g = smoothstep(r - w, r + w, x);
-  gFront = max(gFront, lineAt(x - r, 2.4) * .9);
+  // Only where the fog is mid-change: the line is px wide and a noisy r stretches it past the fog's own edge.
+  gFront = max(gFront, lineAt(x - r, 2.4) * .9 * smoothstep(.04, .25, g) * (1. - smoothstep(.75, .96, g)));
   return g; }
 `,
   },

@@ -323,6 +323,66 @@ async function startParker(args, outDir, budgetMs) {
   return ps;
 }
 
+// ─── Getting the run off a Linux desktop ─────────────────────────────────────
+// Wayland lets no app place its own window, so `--offscreen` does nothing on a Linux desktop and
+// there is no parker. The run gets a screen of its own instead: a virtual KWin that draws to no
+// monitor, and every app of the run opens on it.
+//
+// ⚠ ONLY WHEN A DESKTOP IS THERE. CI and cloud sessions already run under xvfb-run, which sets
+// DISPLAY and no session type, and nobody watches that screen.
+//
+// ⚠ NO KWIN, NO RUN. Falling back to the real screen is the one thing this must never do.
+//
+// The socket's folder is short on purpose: a Wayland socket path is capped at 108 bytes. KWin
+// exits on its own once the run's budget has passed, so a killed rig cannot leave it behind.
+const HIDDEN_DISPLAY_READY_MS = 15000;
+let hiddenDisplay = null;
+
+function onLinuxDesktop() {
+  return process.platform === 'linux' &&
+    (!!process.env.WAYLAND_DISPLAY || /^(?:wayland|x11)$/.test(process.env.XDG_SESSION_TYPE || ''));
+}
+
+async function startHiddenDisplay(args, budgetMs) {
+  if (args.visible || !onLinuxDesktop()) return null;
+  if (spawnSync('which', ['kwin_wayland']).status !== 0) {
+    throw new Error('this Linux desktop has no kwin_wayland, so the rig has no hidden screen to ' +
+      'open the app on, and it stops rather than put every window on yours.');
+  }
+  const runtimeDir = fs.mkdtempSync('/tmp/evm-');
+  const env = Object.assign({}, process.env, { XDG_RUNTIME_DIR: runtimeDir });
+  delete env.WAYLAND_DISPLAY;
+  delete env.DISPLAY;
+  const kwin = spawn('kwin_wayland', ['--virtual', '--no-lockscreen', '--no-global-shortcuts',
+    '--socket', 'w', '--width', '1024', '--height', '768',
+    '--exit-with-session', 'sleep ' + Math.ceil(budgetMs / 1000)], { env, stdio: 'ignore' });
+  kwin.on('error', () => {});
+  process.once('exit', () => {
+    try { kwin.kill('SIGKILL'); } catch (_) {}
+    try { fs.rmSync(runtimeDir, { recursive: true, force: true }); } catch (_) {}
+  });
+
+  const socket = path.join(runtimeDir, 'w');
+  const deadline = Date.now() + HIDDEN_DISPLAY_READY_MS;
+  while (Date.now() < deadline) {
+    if (fs.existsSync(socket)) return socket;
+    if (kwin.exitCode !== null) break;
+    await new Promise(r => setTimeout(r, 50));
+  }
+  throw new Error('the hidden KWin screen never came up, so the run stopped before any window opened');
+}
+
+// ⚠ NO GOOGLE CLIENT FROM THE SHELL. A dev run reads GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, so an app the
+// rig starts gets a client only from the build or from `extra`, the scenario's own; a null there removes a variable.
+function appEnv(extra) {
+  const env = Object.assign({}, process.env);
+  delete env.GOOGLE_CLIENT_ID;
+  delete env.GOOGLE_CLIENT_SECRET;
+  if (hiddenDisplay) { env.WAYLAND_DISPLAY = hiddenDisplay; delete env.DISPLAY; }
+  for (const [k, v] of Object.entries(extra || {})) { if (v === null) delete env[k]; else env[k] = v; }
+  return env;
+}
+
 // ─── Keeping both windows painting while they are not in front ───────────────
 // Windows tells Chromium when a window is covered, and Chromium then stops painting it. That is
 // correct for a real app and wrong for a test: the rig reads pixels, so a covered window makes
@@ -360,6 +420,11 @@ const PIN_LANGUAGE = ['--lang=en-US'];
 // A Linux runner has no GPU, and Chromium no longer falls back to software WebGL on its own, so
 // PixiJS would get no context under xvfb.
 const SOFTWARE_GL = process.platform === 'linux' ? ['--enable-unsafe-swiftshader'] : [];
+
+// ⚠ A sync scenario's safeStorage would ask the desktop's KWallet, whose access prompt opens on the DM's own screen.
+// The basic store keeps every run away from it; sync then keeps the sign-in in memory and reads the rig's plain
+// token file (syncAuth.js).
+const NO_KEYRING = process.platform === 'linux' ? ['--password-store=basic'] : [];
 
 // ⚠ THIS IS WHAT MAKES THE SANDBOXED-RENDERER FILTER SAFE (cdp.js NOISE). That filter swallows
 // two messages that Electron logs when a renderer's bootstrap is cut short, because the splash
@@ -447,22 +512,29 @@ async function sizePlayerToScreen(session, exact, screen) {
 // scenario asked for — see rig.restart. The empty-library guard is how isolation is PROVEN, so
 // it runs on every first boot and is never weakened; a second boot on the same profile is
 // meant to find the maps the first one put there.
-async function startInstance(args, profileDir, expectEmptyLibrary = true) {
+//
+// `swap` is `{ exe }` for a restart that changes the binary on the same profile: a path runs that
+// build, null the run's own. Without it the run's own binary is used. `env` adds to the app's environment.
+async function startInstance(args, profileDir, expectEmptyLibrary = true, swap = null, env = null) {
   fs.mkdirSync(profileDir, { recursive: true });
   const port = await freePort();
 
   // --exe drives a built installer, for the packaging bug class `npm start` cannot see. It is
   // NOT the default: a build per run is minutes, and a rig that slow stops being used.
-  const bin = args.exe ? path.resolve(args.exe) : require(path.join(ROOT, 'node_modules', 'electron'));
-  const argv = (args.exe ? [] : ['.'])
+  const exe = swap ? swap.exe : args.exe;
+  const bin = exe ? path.resolve(exe) : require(path.join(ROOT, 'node_modules', 'electron'));
+  const argv = (exe ? [] : ['.'])
     .concat(KEEP_PAINTING)
     .concat(STAY_SILENT)
     .concat(PIN_LANGUAGE)
     .concat(SOFTWARE_GL)
+    .concat(NO_KEYRING)
     .concat(args.visible ? [] : ['--offscreen'])
+    .concat(hiddenDisplay ? ['--ozone-platform=wayland'] : [])
     .concat(['--remote-debugging-port=' + port, '--user-data-dir=' + profileDir]);
   const proc = spawn(bin, argv, {
     cwd: ROOT,
+    env: appEnv(env),
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: process.platform !== 'win32',   // so the whole group can be killed at once
   });
@@ -523,7 +595,7 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true) {
 
     // One Player per column in two-column mode, so the sessions are keyed rather than held one
     // at a time. '' is the single-map window.
-    return { proc, port, browser, dm, dmTargetId: dmTarget.id, players: new Map(), stage: null,
+    return { proc, port, browser, dm, dmTargetId: dmTarget.id, players: new Map(), stage: null, peers: [], drives: [],
              playerSize: args.playerSize, screenSize: args.screenSize };
   } catch (err) {
     killApp(proc);
@@ -599,7 +671,11 @@ function makeRig(inst, dirs, tally, args) {
     // ⚠ THE CALLER MUST TAKE THE SESSION THIS RETURNS. The old `rig.dm` is closed, so a scenario
     // holding `const dm = rig.dm` from the top of the file is talking to a dead socket, and every
     // evaluate on it throws rather than reporting anything.
-    async restart() {
+    //
+    // `restart({ exe })` swaps the binary on the same profile: a path starts that build (the
+    // previous release's, for the rollback trip), `exe: null` the run's own. The profile is never
+    // touched, which is the point. `env` adds to the new app's environment, as appEnv says.
+    async restart(swap) {
       const old = [inst.dm].concat(inst.stage ? [inst.stage] : [])
         .concat(Array.from(inst.players.values()).filter(s => s !== inst.stage));
       // The console errors of the outgoing windows belong to this scenario, not to nothing.
@@ -607,7 +683,7 @@ function makeRig(inst, dirs, tally, args) {
       await quitApp(inst);
       for (const s of old) s.close();
 
-      const next = await startInstance(args, dirs.profile, false);
+      const next = await startInstance(args, dirs.profile, false, swap && 'exe' in swap ? swap : null, swap && swap.env);
       inst.proc = next.proc;
       inst.port = next.port;
       inst.browser = next.browser;
@@ -617,6 +693,62 @@ function makeRig(inst, dirs, tally, args) {
       inst.stage = next.stage;
       rig.dm = next.dm;
       return next.dm;
+    },
+
+    // ⚠ A SECOND APP RUNNING AT THE SAME TIME, on a profile of its own, for what one app cannot
+    // show: a change on one computer arriving on another. It is the same rig a scenario gets
+    // (dm, player, restart), already booted on an empty library, and the run tears it down. Both
+    // apps open off-screen on the run's hidden display like any other.
+    async second(name) {
+      // The attempt's own folder name, so a rerun's second app starts on an empty profile too.
+      const profile = path.join(dirs.scenario, 'peer-' + name, path.basename(dirs.profile));
+      return rig.secondOn(profile, name);
+    },
+    // The same, but the profile is the caller's: it may already hold a library, as after a
+    // restart. The empty-library guard still runs unless the folder is known to be used.
+    async secondOn(profile, name) {
+      const peer = await startInstance(args, profile, !fs.existsSync(path.join(profile, 'Local Storage')));
+      inst.peers.push(peer);
+      return makeRig(peer, { fixtures: dirs.fixtures, scenario: path.join(dirs.scenario, 'peer-' + name), profile }, tally, args);
+    },
+
+    // A local fake Drive (fakeDrive.js), stopped with the scenario. Nothing in the app's own code
+    // is switched for it: the profile's sync config names its address, as for Google.
+    async fakeDrive() {
+      const drive = require('./fakeDrive').createFakeDrive();
+      await drive.start();
+      inst.drives.push(drive);
+      return drive;
+    },
+    // Writes the sync config file the app reads, pointing a profile at a fake Drive, and signs the
+    // profile in with a plain token file, which the app seals where it has a secure store. Call it
+    // before the app first reads it, or restart afterwards.
+    writeSyncConfig(profile, drive, extra) {
+      const dir = path.join(profile, 'sync');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'config.json'), JSON.stringify(Object.assign({
+        clientId: 'rig-client', clientSecret: 'rig-secret',
+        apiBase: drive.url, tokenUrl: drive.url + '/token',
+      }, extra || {}), null, 2));
+      fs.writeFileSync(path.join(dir, 'token.json'), JSON.stringify({ refreshToken: 'rt-rig' }));
+    },
+
+    // ⚠ THE SYSTEM BROWSER, CAUGHT. Connect hands Google's consent page to `shell.openExternal`, which on Linux
+    // runs `xdg-open` by PATH: an app restarted with `env` finds a stand-in first that writes the address to a file,
+    // and `opened()` reads them back. The dead session bus keeps a real browser from being reached any other way.
+    // Null elsewhere: Windows and the Mac open the browser in the OS, beyond any reach of the rig.
+    catchBrowser() {
+      if (process.platform !== 'linux') return null;
+      const dir = path.join(dirs.scenario, 'browser');
+      const log = path.join(dir, 'opened.txt');
+      const bin = path.join(dir, 'xdg-open');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(bin, '#!/bin/sh\nprintf \'%s\\n\' "$1" >> ' + JSON.stringify(log) + '\n');
+      fs.chmodSync(bin, 0o755);
+      return {
+        env: { PATH: dir + path.delimiter + process.env.PATH, BROWSER: bin, DBUS_SESSION_BUS_ADDRESS: 'unix:path=' + path.join(dir, 'no-bus') },
+        opened: () => { try { return fs.readFileSync(log, 'utf8').split('\n').filter(Boolean); } catch (_) { return []; } },
+      };
     },
 
     fixtures: require('./fixtures'),
@@ -861,6 +993,7 @@ async function main() {
   // A rerun is a whole second scenario, so the budget carries room for the capped number of them.
   const budgetMs = armWatchdog(plan.length + MAX_RERUNS);
   const parker = await startParker(args, outDir, budgetMs);
+  hiddenDisplay = await startHiddenDisplay(args, budgetMs);
   const stopParker = () => { if (parker) try { parker.kill(); } catch (_) {} };
   process.once('exit', stopParker);
 
@@ -910,10 +1043,16 @@ async function main() {
       // closes nothing and its console errors are the shell's.
       const sessions = [inst.dm].concat(inst.stage ? [inst.stage] : [])
         .concat(Array.from(inst.players.values()).filter(s => s !== inst.stage));
+      for (const peer of inst.peers) {
+        sessions.push(peer.dm, ...(peer.stage ? [peer.stage] : []),
+          ...Array.from(peer.players.values()).filter(s => s !== peer.stage));
+      }
       for (const s of sessions) tally.consoleErrors.push(...(s.errors || []));
       for (const s of sessions) warnings.push(...(s.warnings || []));
       for (const s of sessions) s.close();
       killApp(inst.proc);
+      for (const peer of inst.peers) killApp(peer.proc);
+      for (const d of inst.drives) { try { await d.stop(); } catch (_) {} }
       // The DM works on this machine while the rig runs, so a window reaching the screen fails the
       // scenario. The parker writes within its 40ms pump; the wait lets the last events land.
       if (parker) {

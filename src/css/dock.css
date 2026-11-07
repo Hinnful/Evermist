@@ -114,6 +114,8 @@
   #dock .cp-hex, #dock .cp-alphanum, #dock .cp-hash { font: 500 11px/1 system-ui, -apple-system, sans-serif; }
   #dock .cp-hex { flex: 1; }
   #dock .cp-hint { color: var(--g-dim); }
+  /* Settings' Sync section and the rows it hides; a hidden one must really hide. */
+  #sy-group[hidden], #sy-group [hidden] { display: none !important; }
 
   #dock .cp-slider-fill, .dk-pop .cp-slider-fill, #anim-advanced-panel .cp-slider-fill { background: var(--g-text); }
   #dock .cp-slider-track, .dk-pop .cp-slider-track, #anim-advanced-panel .cp-slider-track { background: #3a3c42; }

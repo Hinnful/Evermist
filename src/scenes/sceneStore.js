@@ -79,15 +79,23 @@ const sceneStore = (() => {
         scene.edits = esStamp(stored ? esSnapshot(stored) : null, scene, Date.now(), fogEdited);
         store.put(scene);
       };
-      tx.oncomplete = () => { searchStale(scene.id); resolve(); };
+      tx.oncomplete = () => { searchStale(scene.id); _syncNote(scene); resolve(); };
       tx.onabort    = e => reject(_writeFailed(e.target.error));
     });
+  }
+
+  // Sync's index hears of every write after it commits. updateScene holds no record, so it reads the stored one back.
+  function _syncNote(rec) { if (typeof syncIndex !== 'undefined' && syncIndex.isOn()) syncIndex.sceneSaved(rec); }
+  function _syncNoteId(id) {
+    if (typeof syncIndex === 'undefined' || !syncIndex.isOn()) return;
+    idbRead(getTx('readonly').store.get(id)).then(rec => { if (rec) syncIndex.sceneSaved(rec); }).catch(() => {});
   }
 
   async function putScene(scene) {
     const { store } = getTx('readwrite');
     try { await idbWrite(store.put(scene)); } catch (err) { throw _writeFailed(err); }
     searchStale(scene.id);
+    _syncNote(scene);
   }
 
   async function loadScene(id) {
@@ -117,7 +125,7 @@ const sceneStore = (() => {
         rec.edits = esStamp(before, rec, Date.now(), rec.baseFogBlob !== fogBefore);
         store.put(rec);
       };
-      tx.oncomplete = () => { searchStale(id); resolve(); };
+      tx.oncomplete = () => { searchStale(id); _syncNoteId(id); resolve(); };
       tx.onabort    = e => reject(_writeFailed(e.target.error));
     });
   }
@@ -126,6 +134,7 @@ const sceneStore = (() => {
     const { store } = getTx('readwrite');
     await idbWrite(store.delete(id));
     searchStale(id);
+    if (typeof syncIndex !== 'undefined') syncIndex.sceneDeleted(id);
   }
 
   // Returns only lightweight metadata — never the map blob or full fog PNG.
@@ -146,5 +155,19 @@ const sceneStore = (() => {
     });
   }
 
-  return { initSceneDB, saveScene, putScene, updateScene, loadScene, deleteScene, listScenes };
+  // Every stored record, one at a time, for the start-up reconcile. Blobs stay lazy until read.
+  function eachRecord(fn) {
+    return new Promise((resolve, reject) => {
+      const req = getTx('readonly').store.openCursor();
+      req.onsuccess = e => {
+        const cursor = e.target.result;
+        if (!cursor) { resolve(); return; }
+        fn(cursor.value);
+        cursor.continue();
+      };
+      req.onerror = e => reject(e.target.error);
+    });
+  }
+
+  return { initSceneDB, saveScene, putScene, updateScene, loadScene, deleteScene, listScenes, eachRecord };
 })();

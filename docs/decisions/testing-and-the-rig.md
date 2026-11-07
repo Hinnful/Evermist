@@ -523,3 +523,9 @@ or a wider tolerance. **Reverses** advisory Linux, the coverage-map pick, the fl
 sharding (each marked above); `rig-ci.js`, `rig-deal.js`, `soak.yml`, `probe.yml` and `rig-report.yml` went with
 them. Release notes now come from the newest commit titled "<version> - ", since a version set early and re-worded
 later would otherwise publish the stale notes.
+
+### On a Linux desktop the rig runs on its own virtual screen, with no fallback · `SETTLED` (2026-11-06)
+Wayland ignores the app's `--offscreen` window position and `offscreen.ps1` is Windows-only, so the Linux rig put every window on the DM's screen. On a desktop session (WAYLAND_DISPLAY set, or XDG_SESSION_TYPE wayland or x11) without `--visible`, it now starts one `kwin_wayland --virtual` per run and launches every app on that socket with DISPLAY removed and `--ozone-platform=wayland`. With no `kwin_wayland` the run stops before any window opens and never falls back to the real screen. Xvfb was not added: no such machine exists yet, and `xvfb-run` on a Wayland desktop leaves WAYLAND_DISPLAY set, so Electron would still open on the real screen. CI and cloud sessions have no desktop session (`xvfb-run` sets only DISPLAY) and are unchanged. Checked by counting connections on the desktop's wayland-0 socket during a `launch` run: none new, and they appear on the hidden socket. The old behaviour was not rerun, since it would put a window on the screen.
+
+### The rig grew to drive sync: two instances, a fake Drive, a binary swap · `SETTLED` (2026-11-07)
+Sync needs two computers, so the rig runs two concurrent app instances against `tools/rig/fakeDrive.js`: resumable uploads, quota, 401 and refresh, paging, down/up and cuts. The rollback trip swaps the binary on one profile, using the previous release's AppImage extracted since it needs FUSE. On Linux a stand-in browser answers Connect. The sync scenarios are probes, not blockers.

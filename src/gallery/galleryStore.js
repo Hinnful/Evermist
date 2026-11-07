@@ -27,13 +27,15 @@ const galleryStore = (() => {
   }
 
   const all = async () => (await run('readonly', s => s.getAll())) || [];
-  const put = pic => run('readwrite', s => s.put(pic));
-  const remove = id => run('readwrite', s => s.delete(id));
+  // Sync's index hears of a write after it commits.
+  const put = async pic => { await run('readwrite', s => s.put(pic)); if (typeof syncIndex !== 'undefined') syncIndex.picSaved(pic); };
+  const remove = async id => { await run('readwrite', s => s.delete(id)); if (typeof syncIndex !== 'undefined') syncIndex.picDeleted(id); };
 
   // Adds the pictures whose id is not held yet, in one transaction. Resolves the ones it added.
   async function addMissing(list) {
     const added = galleryMissing((await all()).map(p => p.id), list);
     if (added.length) await run('readwrite', s => { added.forEach(p => s.put(p)); });
+    if (typeof syncIndex !== 'undefined') added.forEach(p => syncIndex.picSaved(p));
     return added;
   }
 

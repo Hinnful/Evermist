@@ -98,7 +98,8 @@ function combatBlockKey(b) {
 }
 
 function combatFightKey(name, rows) {
-  return _fpHash(FP.esCanon({ name, rows: (rows || []).map(r => Object.assign({}, r, { id: undefined })) }));
+  // A row's stat block copy is attached by the table once it is drawn, so it counts only once the DM has changed it.
+  return _fpHash(FP.esCanon({ name, rows: (rows || []).map(r => Object.assign({}, r, { id: undefined }, r.sbChanged ? {} : { sb: undefined })) }));
 }
 
 // Run before every save: a monster or fight whose hash moved takes `now`.

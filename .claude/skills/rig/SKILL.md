@@ -117,6 +117,11 @@ shown inside the screen bounds, or taking focus, is a line in `.window-offences.
 run's output folder, and `run.js` fails the scenario it landed in as `a window "…" showed on
 screen`. Windows only.
 
+**On a Linux desktop the run gets a screen of its own.** Wayland ignores `--offscreen` and there is
+no parker, so `startHiddenDisplay` starts a virtual KWin and every app of the run opens on it.
+Without `kwin_wayland` the run stops before the first window. CI and cloud sessions have no
+desktop session, so xvfb-run's screen is used as it is.
+
 **`--visible` is the DM's flag, not yours.** Do not pass it, and do not reach for `npm start`,
 `npm run stress` or `npm run memprobe` either - all three take the screen and all three are the
 DM's to run. `tools/window-state.ps1` reads the real OS window state from outside when a window
@@ -203,6 +208,29 @@ A file exports one async function taking `rig`:
   **It returns the new DM session and closes the old one**, so a `const dm = rig.dm` taken at
   the top of the file is a dead socket afterwards. The helpers go back in with
   `lib.installHelpers`, because the page is new. `scenarios/blockers/keeps-work.js` uses it.
+- `await rig.restart({ exe })` — the same, with the binary swapped on the SAME profile: a path starts that build
+  (the previous release's packaged app, for the rollback trip), `exe: null` the run's own. The new build reads
+  the library the old one left.
+- `await rig.restart({ env })` — the same app with variables added to its environment (`null` removes one). **The
+  rig never passes the shell's `GOOGLE_CLIENT_ID` or `GOOGLE_CLIENT_SECRET` to an app**, so a dev run has a Google
+  client only when a scenario hands it one here, and a build only when it was built with one (`sync-client`).
+- `rig.catchBrowser()` — Linux only, null elsewhere: `{ env, opened() }`. Restart with that `env` and the app's
+  `shell.openExternal` reaches a stand-in `xdg-open` that only writes the address down, with the session bus dead
+  so no real browser is reached; `opened()` lists the addresses. `lib.connectOpens` and `lib.consentFaults` click
+  Connect to Google and check the consent page it built, without contacting Google. **Never click Connect on a
+  Google client without it**: the consent page would open in the DM's own browser.
+- `await rig.second(name)` — a SECOND app running at the same time on a profile of its own, for a change on one
+  computer arriving on another. It is a full rig (`dm`, `player()`, `restart()`), booted on an empty library and
+  torn down with the scenario. Electron's single-instance lock is per profile, so two profiles run side by side
+  and two apps on one profile do not (the second quits at once). Both open on the run's hidden screen.
+- `await rig.fakeDrive()` — a local stand-in for Drive (`tools/rig/fakeDrive.js`): resumable uploads that make a
+  file only when they finish, paged listings (`pageSize`), `quotaFull`, `expireToken()` (a 401 only the refresh
+  endpoint clears), `cutNext = { bytes, down }` (`down` leaves the Drive unreachable after the cut, as a closed
+  lid), and `down()` / `up()` on the same address. `stats` (uploads, `sessions` opened, `puts` with their start
+  byte) and `files()` are what a scenario asserts. `rig.writeSyncConfig(profile, drive)` points a profile at it by
+  writing the sync config file and a sign-in token, as Connect leaves it; restart the app afterwards, it reads both
+  at start. **`syncEngine.now()` before the engine has started does nothing and resolves at once**, so a first tick
+  after a restart waits for `syncEngine.status().state !== 'off'`.
 - `rig.fixtures` — maps generated at runtime, cached on disk, never committed.
   **`tableMap` is the map a scenario imports, and it is ANIMATED.** Animated is
   the only kind the DM ever uses, so a suite on still PNGs proved the app worked in a case

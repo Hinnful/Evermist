@@ -140,6 +140,7 @@ jobs:
     needs: [decide, verify]
     if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
     uses: ./.github/workflows/gate.yml
+    secrets: inherit
 
   # The rig's blocker set against the packaged app: Windows and Mac the full set, Linux launch only.
   gate-rig:
@@ -147,6 +148,7 @@ jobs:
     needs: [decide, verify]
     if: needs.decide.outputs.release == 'true' || needs.decide.outputs.rig == 'true'
     uses: ./.github/workflows/rig.yml
+    secrets: inherit
 
   # Every platform walks back and forward through its own update path, which the rig never touches.
   update:

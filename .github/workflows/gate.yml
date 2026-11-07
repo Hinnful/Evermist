@@ -44,6 +44,15 @@ jobs:
       - name: Write the What's new list
         run: node tools/build-changelog.js
 
+      # The Google client sync signs in with, from the repository secrets (callers pass them with
+      # `secrets: inherit`). It fails when either is missing, so no build goes out without sync.
+      # ⚠ NEVER ECHO THEM. GitHub masks a secret only as long as nothing transforms it first.
+      - name: Write the Google client
+        run: node tools/write-google-client.js
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
       - name: Build the installer
         run: npx electron-builder ${{ matrix.flag }} --publish never
         env:

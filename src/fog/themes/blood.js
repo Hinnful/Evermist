@@ -55,7 +55,8 @@ float fogStep(float rk, float e, vec2 sp, float dir) {
   float blot = (fbm3(vec2(p0.x * 24., p0.y * 9.) + 4.) - .5) * .26;
   float r = clamp(rk + blot + rag(p0, 40., .08), 0., 1.);
   float x = e * 1.34 - .17; float g = smoothstep(r - .035, r + .035, x);
-  gFront = max(gFront, (1. - smoothstep(0., .07, abs(x - r))) * .8);
+  // Reveal only: hiding, the dark front dims the arriving fog below its own colour before it has covered.
+  gFront = max(gFront, (1. - smoothstep(0., .07, abs(x - r))) * .8 * step(0., dir));
   return g; }
 `,
   },

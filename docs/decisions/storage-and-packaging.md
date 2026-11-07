@@ -390,3 +390,36 @@ first, which hid the failure.
 ### Electron 45 shipped, and macOS 13 became the floor · `SETTLED` (2026-11-05)
 The move was not urgent (nothing waited on it) and was done in 5.3.2. Electron 44+ needs macOS 13 (Ventura) or newer;
 Evermist has no Mac users today, so the floor was accepted. Supersedes "Electron 45 waits" above.
+
+### Sync runs through Google Drive, beside Export and Import · `SETTLED` (2026-11-07)
+BACKLOG 271. Evermist talks to Drive's REST API itself, in the app's hidden `appDataFolder` (scope `drive.appdata` only), so no
+sync client is needed on either OS. Export and Import stay: sync does not replace them. Shown to every user; each signs in to
+their own Google account and syncs to their own Drive, and nothing runs (no hashing, no engine) until a computer's first
+Connect. The OAuth client is built into the release from repository secrets by `tools/write-google-client.js` in gate.yml and
+rig.yml and is never committed (the repo is public, and push protection refuses OAuth secrets); `userData/sync/config.json`
+is only a rig and dev override. Desktop OAuth: system browser, loopback, PKCE and state. The refresh token is sealed by
+`safeStorage`, or kept in memory only where the OS has no secure store. On Linux the rig passes `--password-store=basic` so a
+KWallet prompt never reaches the screen; the encrypted path is unit-tested.
+
+### What sync rejected, and why · `REJECTED` (2026-11-07)
+The library as plain files inside a cloud folder: a map only in the cloud is missing offline at the table, the cloud makes
+conflict copies, and the storage rewrite was rejected before for data risk. Dropbox: 2 GB free against a ~4.5 GB library.
+OneDrive: 5 GB, and no Linux client. Google Drive through a sync client: none official on Linux. Supabase: a free project
+pauses after a week idle. Firebase: Storage needs billing since Feb 2026. Cloudflare R2: works, but the app would own the
+retries and the offline queue, and it needs a card. A server of our own: out on cost.
+
+### Sync's shape: own records, hashed files, silent merges · `SETTLED` (2026-11-07)
+Each computer writes only its own subfolder of records. Map files go up once, named by owner id and content hash; a record
+leaves Blobs out and carries their hashes. Hashes are made at save, never per tick, and reconciled at start so edits made on a
+previous release still go up. A Drive file is removed only when its owner's record is on the Drive and no record references
+it, so another computer's upload in flight is never deleted (a loop of deletes and re-uploads was found and fixed this way).
+Pulled changes merge by Import's plan rules through a silent entry that touches nothing on screen; they wait while their map
+is open, on the TV or in Two maps, while the fight table is shown, or while their note is open, and nothing lands during a
+pending delete's undo. Whole-map deletion travels by sync only (Import unchanged), through a 30-day Recently deleted on the
+Drive whose deletion record outlives the purge. The first sync on a computer asks first with counts, deletes nothing, replaces
+no map file and keeps a copy of every record it changes for 30 days; a map picture or video a later sync replaces is kept on
+that computer 30 days.
+
+### A second Import and the fight table stop drifting · `SETTLED` (2026-11-07)
+A second Import no longer renames "Name (2)" back: a trailing " (n)" counts as a collision suffix when name edit times tie.
+The fight table's rows are no longer renumbered: the fight key ignores the stat block copy that rows carry.

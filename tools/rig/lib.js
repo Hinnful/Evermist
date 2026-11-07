@@ -211,4 +211,26 @@ async function step(rig, label, fn) {
 // The Player's fog data at a map point: 255 is hidden ground, 0 is clear.
 const tvFog = (player, x, y) => player.evaluate('(' + TV_FOG + ')(' + Math.round(x) + ',' + Math.round(y) + ')');
 
-module.exports = { DM_MAP, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog };
+// Settings' Connect to Google clicked in an app started with `rig.catchBrowser()`'s env: the address handed to the
+// system browser, as a URL, or null when none came. Settings must be open.
+async function connectOpens(dm, browser) {
+  const before = browser.opened().length;
+  await dm.evaluate(`document.getElementById('sy-connect').click(); 0`);
+  const got = await poll(() => browser.opened()[before] || null, 20000, 200);
+  return got ? new URL(got) : null;
+}
+
+// What a consent address must carry for `clientId`, as failure messages; none when it is right.
+function consentFaults(url, clientId) {
+  if (!url) return ['the system browser was handed nothing'];
+  const p = url.searchParams, out = [];
+  if (url.origin + url.pathname !== 'https://accounts.google.com/o/oauth2/v2/auth') out.push('not Google\'s consent page: ' + url.origin + url.pathname);
+  if (p.get('client_id') !== clientId) out.push('client_id is ' + JSON.stringify(p.get('client_id')));
+  if (p.get('scope') !== 'https://www.googleapis.com/auth/drive.appdata') out.push('scope is ' + JSON.stringify(p.get('scope')));
+  if (!/^http:\/\/127\.0\.0\.1:\d+\/oauth2callback$/.test(p.get('redirect_uri') || '')) out.push('redirect_uri is ' + JSON.stringify(p.get('redirect_uri')));
+  if (p.get('code_challenge_method') !== 'S256' || !p.get('code_challenge') || !p.get('state')) out.push('no PKCE challenge or state');
+  if (/secret/i.test(url.search)) out.push('the address carries a secret');
+  return out;
+}
+
+module.exports = { DM_MAP, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults };
