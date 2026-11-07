@@ -402,6 +402,7 @@ const syncEngine = (() => {
       }
 
       await _goneSend(now);
+      if (!first) for (const fileId of syPicFilesGone(snap.records, snap.blobs, galleryGone())) await _drive('remove', { fileId });
 
       // Tidying. Nothing is removed on the first sync.
       if (!first) {

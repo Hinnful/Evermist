@@ -74,7 +74,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   fetchStatPage: (url) => ipcRenderer.invoke('fetch-stat-page', url),
 
   showSaveDialog: (opts) => ipcRenderer.invoke('show-save-dialog', opts),
-  createBackupZip: (destPath, scenesData, moduleText, combat, campaign, worldBg, gallery) => ipcRenderer.invoke('create-backup-zip', destPath, scenesData, moduleText, combat, campaign, worldBg, gallery),
+  backupZipOpen: (destPath) => ipcRenderer.invoke('backup-zip-open', destPath),
+  backupZipAddScene: (scene, done, total) => ipcRenderer.invoke('backup-zip-add-scene', scene, done, total),
+  backupZipFinish: (rest) => ipcRenderer.invoke('backup-zip-finish', rest),
   readBackupManifest: (zipPath) => ipcRenderer.invoke('read-backup-manifest', zipPath),
   // Resolves null when the zip carries no module text, which is every backup written before it shipped.
   readBackupModuleText: (zipPath) => ipcRenderer.invoke('read-backup-module-text', zipPath),
@@ -83,7 +85,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readBackupWorldBackground: (zipPath) => ipcRenderer.invoke('read-backup-world-background', zipPath),
   // Resolves null when the zip carries no gallery, which is every backup written before it shipped.
   readBackupGallery: (zipPath) => ipcRenderer.invoke('read-backup-gallery', zipPath),
-  extractBackupScenes: (zipPath, assignments) => ipcRenderer.invoke('extract-backup-scenes', zipPath, assignments),
+  extractBackupScene: (zipPath, assignment) => ipcRenderer.invoke('extract-backup-scene', zipPath, assignment),
   settleImportVideo: (id, ext, keep) => ipcRenderer.invoke('settle-import-video', id, ext, keep),
   cancelBackup: () => ipcRenderer.invoke('cancel-backup'),
   onBackupProgress: (callback) => {

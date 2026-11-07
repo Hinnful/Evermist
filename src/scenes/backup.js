@@ -74,6 +74,42 @@ async function dataURLToArrayBuffer(dataURL) {
 
 // ── Export logic ──────────────────────────────────────────────────────────────
 
+// One scene's files as the export sends them to main.
+async function sceneExportData(scene) {
+  const mapExt = mapExtFromScene(scene);
+  const mapBuffer = scene.mapType !== 'video' ? await blobToArrayBuffer(scene.mapBlob) : null;
+
+  let fogBuffer = null;
+  if (scene.baseFogBlob) {
+    fogBuffer = await blobToArrayBuffer(scene.baseFogBlob);
+  } else if (scene.baseFogPNG) {
+    fogBuffer = await dataURLToArrayBuffer(scene.baseFogPNG);
+  }
+
+  const thumbBuffer = await blobToArrayBuffer(scene.thumbnail);
+
+  const picList = pictureBackupList(scene.polygons, scene.pictureBlobs || {});
+  const pictures = [];
+  for (const p of picList) {
+    pictures.push({ name: pictureZipName(p.id, p.type), buffer: await blobToArrayBuffer(scene.pictureBlobs[p.id]) });
+  }
+
+  const mapMimeType = scene.mapBlob
+    ? (scene.mapBlob.type || 'image/jpeg')
+    : (mapExt === '.mp4' ? 'video/mp4' : 'video/webm');
+
+  return {
+    id: scene.id,
+    mapType: scene.mapType || 'image',
+    mapExt,
+    metadata:      sceneBackupMeta(scene, mapExt, mapMimeType, picList),
+    mapBuffer,
+    fogBuffer,
+    thumbBuffer,
+    pictures,
+  };
+}
+
 // Scene SELECTION is the caller's job: it passes the ids straight in. `opts.partial` keeps only the places,
 // roads and notes that belong to those scenes (worldPickPlan.js), and leaves the campaign note and the party marker out.
 // `opts.destPath` skips the save dialog, which no test can drive.
@@ -97,50 +133,25 @@ async function doExport(selectedIds, opts) {
   const job = mapJobStart({ title: 'Stop the export?', message: 'The unfinished export file is deleted.' },
     () => window.electronAPI.cancelBackup());
   showMapProgress('Creating export…');
+  let opened = false, added = 0, finishing = false;
   try {
     // ⚠ The open scene saves 5s after its last edit, and the zip is read from the store.
     if (currentScene && selectedIds.includes(currentScene.id)) await doAutoSave();
-    const scenesData = [];
-    for (const id of selectedIds) {
+    // ⚠ ONE SCENE AT A TIME: the whole library in one message stalls the renderer once it outgrows its memory.
+    for (let i = 0; i < selectedIds.length; i++) {
       if (job.stopped) break;
-      const scene = await sceneStore.loadScene(id);
+      const scene = await sceneStore.loadScene(selectedIds[i]);
       if (!scene) continue;
-
-      const mapExt = mapExtFromScene(scene);
-      const mapBuffer = scene.mapType !== 'video' ? await blobToArrayBuffer(scene.mapBlob) : null;
-
-      let fogBuffer = null;
-      if (scene.baseFogBlob) {
-        fogBuffer = await blobToArrayBuffer(scene.baseFogBlob);
-      } else if (scene.baseFogPNG) {
-        fogBuffer = await dataURLToArrayBuffer(scene.baseFogPNG);
-      }
-
-      const thumbBuffer = await blobToArrayBuffer(scene.thumbnail);
-
-      const picList = pictureBackupList(scene.polygons, scene.pictureBlobs || {});
-      const pictures = [];
-      for (const p of picList) {
-        pictures.push({ name: pictureZipName(p.id, p.type), buffer: await blobToArrayBuffer(scene.pictureBlobs[p.id]) });
-      }
-
-      const mapMimeType = scene.mapBlob
-        ? (scene.mapBlob.type || 'image/jpeg')
-        : (mapExt === '.mp4' ? 'video/mp4' : 'video/webm');
-
-      scenesData.push({
-        id: scene.id,
-        mapType: scene.mapType || 'image',
-        mapExt,
-        metadata:      sceneBackupMeta(scene, mapExt, mapMimeType, picList),
-        mapBuffer,
-        fogBuffer,
-        thumbBuffer,
-        pictures,
-      });
+      const data = await sceneExportData(scene);
+      if (job.stopped) break;
+      // Opened on the first scene found, so an export with none never touches a file already at destPath.
+      if (!opened) { await window.electronAPI.backupZipOpen(destPath); opened = true; }
+      const r = await window.electronAPI.backupZipAddScene(data, i + 1, selectedIds.length);
+      if (r && r.cancelled) break;
+      added++;
     }
 
-    if (!scenesData.length || job.stopped) { hideMapProgress(); return; }
+    if (!added || job.stopped) { hideMapProgress(); return; }
 
     // The module text is CAMPAIGN-level, so it goes in once at the zip root, not per scene. Null
     // when nothing is loaded, and the zip then looks exactly as it always did.
@@ -157,7 +168,8 @@ async function doExport(selectedIds, opts) {
     const worldBg = await worldBackgroundBackupPayload();
     // The gallery belongs to no scene, so an export of picked scenes leaves it out.
     const gallery = opts && opts.partial ? null : await galleryBackupPayload();
-    const wrote = await window.electronAPI.createBackupZip(destPath, scenesData, moduleTextJson, combatJson, campaignJson, worldBg, gallery);
+    finishing = true;
+    const wrote = await window.electronAPI.backupZipFinish({ moduleText: moduleTextJson, combat: combatJson, campaign: campaignJson, worldBg, gallery });
     hideMapProgress();
     if (wrote && wrote.cancelled) return;
     // ⚠ REPORTED, NEVER DROPPED: the record still exports, so the backup looks complete.
@@ -176,6 +188,8 @@ async function doExport(selectedIds, opts) {
       message: t('The export file is incomplete, so delete it and try again.') + '\n\n' + (err.message || err),
     });
   } finally {
+    // A stopped or failed export is abandoned, and main deletes the unfinished file.
+    if (opened && !finishing) await window.electronAPI.backupZipFinish(null).catch(() => {});
     mapJobEnd(job);
     setMapProgressRun('');
     unsubProgress();

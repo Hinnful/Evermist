@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 8 open items; IDs run to 278."
+description: "Open work only. 6 open items; IDs run to 278."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.5.0**, which adds Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.5.1**, which fixes Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -97,11 +97,6 @@ about the sync only, and must weigh the DM's Drive space against a music folder 
 **Needs /spec.**
 **Campaign · Both**
 
-### 275. Export of a library past about 500 MB never finishes
-Filed 2026-11-06, found by the rig's backup scenarios. A library past about 500 MB never finishes exporting; 380 MB
-takes 7 s. The DM's library is about 4.5 GB, so Export of everything cannot finish today.
-**Bug · DM only**
-
 ### 276. Google's sign-in calls Evermist an unverified app
 Filed 2026-11-07, with 5.5.0. Connect to Google shows Google's "unverified app" warning until Google reviews the app's
 brand; that review needs the privacy policy on a domain the project owner proves to own (today `PRIVACY.md` sits on
@@ -112,11 +107,6 @@ github.com). Every DM who connects sees the warning first.
 Filed 2026-11-07, with 5.5.0. When a sync replaces a map's picture or video, the old file is kept 30 days in the sync
 folder on that computer, but nothing in the app lists it or puts it back. A small list beside Recently deleted would.
 **Campaign · DM only**
-
-### 278. A deleted gallery picture stays on the Drive
-Filed 2026-11-07, with 5.5.0. A picture deleted from the Gallery no longer comes back on the other computer, but its
-record and file stay on the Drive and keep using the DM's space.
-**Bug · DM only**
 
 ### 189. Review how doors look, hex grids included
 Filed 2026-10-17, widened 2026-11-05. The DM sees doors looking broken, more so with the fog themes. Review doors on

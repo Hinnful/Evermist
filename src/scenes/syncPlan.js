@@ -205,6 +205,20 @@ function syPurgeFiles(records, blobs, ids) {
     .concat((blobs || []).filter(b => owners.has(b.name.slice(0, b.name.lastIndexOf('.')))).map(b => b.id));
 }
 
+// The Drive files a deleted picture leaves behind: every computer's record of it, unless edited since the deletion,
+// and its file. `gone` is galleryGone(): { picture id: when deleted }.
+function syPicFilesGone(records, blobs, gone) {
+  const ids = new Set();
+  const out = (records || []).filter(r => {
+    if (!r.key.startsWith('pic:')) return false;
+    const id = r.key.slice(4), at = Object.prototype.hasOwnProperty.call(gone || {}, id) ? gone[id] : 0;
+    if (!(at > 0 && at >= r.edited)) return false;
+    ids.add(id);
+    return true;
+  }).map(r => r.fileId);
+  return out.concat((blobs || []).filter(b => ids.has(b.name.slice(0, b.name.lastIndexOf('.')))).map(b => b.id));
+}
+
 // Maps this computer synced before that are no longer here and have no deletion record: deleted, at `now`.
 function syMissingScenes(synced, localIds, gone) {
   const here = new Set(localIds);
@@ -255,6 +269,6 @@ if (typeof module !== 'undefined' && module.exports) {
     SY_FORMAT, SY_TRASH_MS, SY_SCENE_BLOBS, syRecordBody, syBlobName, syBlobNameOk, syKeyOk, syToUpload, syNewRemote,
     syBlobsToUpload, syBlobsUnreferenced, syHeld, sySceneEditedAt, syGoneWins, syGoneNote, syRestore, syGoneMerge,
     syTrashIds, syTrashDue, syPurge, syMissingScenes, syGoneClean, syGoneText, syGoneParse, syRestored, syNewestRecord,
-    syPurgeFiles, syCampaignText, syBackdropMetaText, syStatusLine, syDriveCounts, syKeptName, syKeptDue,
+    syPurgeFiles, syPicFilesGone, syCampaignText, syBackdropMetaText, syStatusLine, syDriveCounts, syKeptName, syKeptDue,
   };
 }

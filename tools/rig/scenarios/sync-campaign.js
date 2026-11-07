@@ -11,6 +11,8 @@
 //   C. The party marker put down on A stands on the same spot on B.
 //   D. The backdrop chosen on A reaches B, the same picture where A put it.
 //   E. A picture deleted on A leaves B's gallery, and the other picture stays.
+//   E2. The deleted picture leaves the Drive: no computer's folder holds its record and the blobs folder holds no file
+//       of it, while the other picture's record and file stay.
 //   F. What B pulled is not sent back: B's folder on the Drive holds no Campaign or backdrop record.
 //   G. A place drawn on B reaches A, and A keeps its own.
 
@@ -81,6 +83,22 @@ module.exports = async function syncCampaign(rig) {
   rig.check(!!seen.bg && seen.bg.size === made.bgSize && seen.bg.x === made.bgX, 'D: the backdrop on B is ' + q(seen.bg) + ', A has ' + q({ size: made.bgSize, x: made.bgX }));
   // E
   rig.check(!seen.pics.includes(pics[0]) && seen.pics.includes(pics[1]), 'E: B\'s gallery holds ' + q(seen.pics) + ' after A deleted ' + pics[0]);
+  // E2
+  const picFiles = id => {
+    const all = drive.files(), recs = new Set(all.filter(f => f.name.startsWith('rec-')).map(f => f.id));
+    const blobsDir = all.find(f => f.name === 'blobs');
+    return {
+      rec: all.filter(f => f.name === 'pic~' + id + '.json' && f.parents.some(p => recs.has(p))).length,
+      blob: blobsDir ? all.filter(f => f.parents.includes(blobsDir.id) && f.name.startsWith(id + '.')).length : 0,
+    };
+  };
+  const cleared = await lib.poll(async () => {
+    await tick(dmA); await tick(dmB);
+    const g = picFiles(pics[0]);
+    return !g.rec && !g.blob ? g : null;
+  }, 60000, 300);
+  const kept = picFiles(pics[1]);
+  rig.check(!!cleared && kept.rec >= 1 && kept.blob === 1, 'E2: on the Drive, deleted ' + q(picFiles(pics[0])) + ', kept ' + q(kept));
 
   // F
   await tick(dmB);

@@ -752,6 +752,8 @@ between PCs.
   removes none. A backup of picked scenes leaves the gallery out. The pictures a scene's rooms
   still hold travel beside the scene, so a backup restores in the previous release; they join the
   gallery on restore. File names come from a picture's own id, never from anything the zip claims.
+  The page and the shell exchange one map per call in both directions, so a library of any size
+  exports and restores; the zip's root entries are written after the maps and read by name.
   The world map's background image goes in with every export, a picked one included. Every scene,
   room, effect, place and road also carries the time each of its parts last changed, and the uid
   that identifies a room or effect on every machine.
@@ -830,6 +832,7 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   `rec-<computer>` folder of its own, and map files sit in one shared `blobs` folder named by
   their owner and content hash. A file exists only once its upload has finished, so a cut upload
   resumes and is never read as complete. A map file no computer uses any more is removed.
+  A gallery picture deleted on any computer loses every computer's record and its file on the Drive.
 - **Holds:** a change never lands under the DM's hands. Changes for the open map, the map on the
   TV and both maps in Two maps wait until that map is closed or changed; fight and bestiary
   changes wait while the fight table is shown; a note's change waits while that note is open; a

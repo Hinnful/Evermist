@@ -145,6 +145,18 @@ describe('the 30-day trash', () => {
     const blobs = [{ name: 'm.' + 'a'.repeat(64), id: 5 }, { name: 'f_m.' + 'b'.repeat(64), id: 6 }, { name: 'k.' + 'a'.repeat(64), id: 7 }, { name: 'mm.' + 'a'.repeat(64), id: 8 }];
     assert.deepEqual(S.syPurgeFiles(recs, blobs, ['m']), [1, 2, 5, 6]);
   });
+  it('a deleted picture leaves the Drive: every computer\'s record of it and its file, nothing else', () => {
+    const recs = [
+      { key: 'pic:d', edited: 5, fileId: 1, machine: 'a' }, { key: 'pic:d', edited: 5, fileId: 2, machine: 'b' },
+      { key: 'pic:later', edited: 9, fileId: 3 }, { key: 'pic:k', edited: 1, fileId: 4 },
+      { key: 'scene:d', edited: 1, fileId: 5 }, { key: 'backdrop', edited: 1, fileId: 6 }, { key: 'local:evermist.gonePictures', edited: 1, fileId: 7 },
+    ];
+    const blobs = [{ name: 'd.' + H('a'), id: 8 }, { name: 'k.' + H('a'), id: 9 }, { name: 'later.' + H('b'), id: 10 },
+      { name: 'f_d.' + H('c'), id: 11 }, { name: 'backdrop.' + H('d'), id: 12 }];
+    assert.deepEqual(S.syPicFilesGone(recs, blobs, { d: 6, later: 7 }), [1, 2, 8]);
+    assert.deepEqual(S.syPicFilesGone(recs, blobs, { d: 5 }), [1, 2, 8]);
+    assert.deepEqual(S.syPicFilesGone(recs, blobs, {}), []);
+  });
   it('the deletion records and the Campaign travel under keys of their own', () => {
     for (const k of ['gone', 'campaign', 'backdrop', 'scene:a1', 'local:evermist.combat']) assert.ok(S.syKeyOk(k), k);
     for (const k of ['gone:x', 'campaigns', 'scene:a/b']) assert.equal(S.syKeyOk(k), false, k);

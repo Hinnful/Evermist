@@ -423,3 +423,14 @@ that computer 30 days.
 ### A second Import and the fight table stop drifting · `SETTLED` (2026-11-07)
 A second Import no longer renames "Name (2)" back: a trailing " (n)" counts as a collision suffix when name edit times tie.
 The fight table's rows are no longer renumbered: the fight key ignores the stat block copy that rows carry.
+
+### Export and Import cross to the shell one map per call · `SETTLED` (2026-11-07)
+The old shape sent the whole library in one message each way. Past about 500 MB the page froze near 2 GB of memory and died: a
+535 MB export never finished and its import died partway. A probe with 600 MB of zero-filled buffers passed and misled the first
+diagnosis, because untouched zero pages cost no real memory. The zip's root entries (`manifest.json`, the campaign files) are
+now written after the maps; every reader looks entries up by name, so order does not matter. Zips past 4 GiB are written and
+read as zip64 by the installed archiver and yauzl.
+
+### A deleted gallery picture leaves the Drive in the sync tick · `SETTLED` (2026-11-07)
+`syPicFilesGone`, beside `syPurgeFiles` for maps, removes every computer's `pic:` record and the file. The tidy step cannot: it
+frees only files whose owner still has a record, which protects another computer's upload in flight.

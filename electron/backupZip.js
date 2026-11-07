@@ -28,79 +28,126 @@ ipcMain.handle('show-save-dialog', async (event, opts) => {
   return canceled ? null : filePath;
 });
 
-// Video maps are read from mapsDir by id; image, fog and thumb arrive as ArrayBuffers.
-// moduleText, combat and campaign are campaign-level, so they land at the zip root beside manifest.json.
-// worldBg is the world map's backdrop, { meta, buffer }, or null. gallery is { meta, files: [{ name, buffer }] }, or null.
-ipcMain.handle('create-backup-zip', async (event, destPath, scenesData, moduleText, combat, campaign, worldBg, gallery) => {
-  let cancelled = false;
-  stopZip = () => { cancelled = true; };
-  for (const s of scenesData) {
-    if (s.mapType === 'video') {
-      try { await fs.promises.access(path.join(mapsDir, s.id + s.mapExt)); s._videoExists = true; }
-      catch { s._videoExists = false; }
-    }
+// The export crosses one scene per call (open, add-scene, finish): a library past the renderer's memory cannot
+// cross in one message. Video maps are read from mapsDir by id; image, fog and thumb arrive as ArrayBuffers.
+let exp = null;
+
+function wake(job) { const w = job.wake; job.wake = null; if (w) w(); }
+
+// ⚠ Resolves only once archiver has written every entry appended so far, or main's queue grows without limit.
+function drained(job) {
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      if (job.failed) return reject(job.failed);
+      if (job.cancelled || job.closed || job.written >= job.appended) return resolve();
+      job.wake = check;
+    };
+    check();
+  });
+}
+
+function openExport(destPath) {
+  const job = { appended: 0, written: 0, metas: [], missingVideos: [], opened: false, failed: null, cancelled: false, closed: false, wake: null };
+  const out = fs.createWriteStream(destPath);
+  const archive = archiver('zip', { zlib: { level: 6 } });
+  job.archive = archive;
+  // A failed or cancelled export leaves no half-written zip under the DM's name, but never deletes a file it could not open.
+  job.ended = new Promise(resolve => out.on('close', resolve)).then(async () => {
+    if ((job.failed || job.cancelled) && job.opened) await fs.promises.unlink(destPath).catch(() => {});
+    job.closed = true;
+    wake(job);
+  });
+  out.on('open', () => { job.opened = true; });
+  const fail = (err) => {
+    if (job.cancelled) return;
+    job.failed = job.failed || err; archive.abort(); out.destroy(); wake(job);
+  };
+  out.on('error', fail);
+  archive.on('error', fail);
+  archive.on('entry', () => { job.written++; wake(job); });
+  archive.pipe(out);
+  job.stop = () => { job.cancelled = true; archive.abort(); out.destroy(); wake(job); };
+  return job;
+}
+
+function appendTo(job, source, name) {
+  job.appended++;
+  if (typeof source === 'string') job.archive.file(source, { name });
+  else job.archive.append(Buffer.from(source), { name });
+}
+
+ipcMain.handle('backup-zip-open', (_event, destPath) => {
+  if (exp && !exp.closed) exp.stop();
+  const job = openExport(destPath);
+  exp = job;
+  stopZip = () => job.stop();
+});
+
+// s is one scene: { id, mapType, mapExt, metadata, mapBuffer, fogBuffer, thumbBuffer, pictures: [{ name, buffer }] }.
+ipcMain.handle('backup-zip-add-scene', async (event, s, done, total) => {
+  const job = exp;
+  if (!job || job.cancelled) return { cancelled: true };
+  if (job.failed) throw job.failed;
+  const base = `scenes/${s.id}`;
+  let videoFile = null;
+  if (s.mapType === 'video') {
+    videoFile = path.join(mapsDir, s.id + s.mapExt);
+    try { await fs.promises.access(videoFile); } catch { videoFile = null; }
+    if (job.cancelled) return { cancelled: true };
   }
-
-  // A scene whose file has gone leaves the zip with no map, and only the renderer can say so.
-  const missingVideos = scenesData.filter(s2 => s2.mapType === 'video' && !s2._videoExists)
-                                  .map(s2 => (s2.metadata && s2.metadata.name) || s2.id);
-
-  // A failed export leaves no half-written zip under the DM's name, but never deletes a file it could not open.
-  let opened = false, failed = null;
-  await new Promise((resolve, reject) => {
-    if (cancelled) return resolve();
-    const out = fs.createWriteStream(destPath);
-    const archive = archiver('zip', { zlib: { level: 6 } });
-    stopZip = () => { cancelled = true; archive.abort(); out.destroy(); };
-    // 'close' settles a cancel or a failure too, after the file exists; settling early lets the unlink below miss it.
-    out.on('open', () => { opened = true; });
-    out.on('close', () => (failed ? reject(failed) : resolve()));
-    const fail = (err) => { failed = failed || err; archive.abort(); out.destroy(); };
-    out.on('error', fail);
-    archive.on('error', fail);
-    archive.pipe(out);
-
-    archive.append(JSON.stringify(scenesData.map(s => s.metadata), null, 2), { name: 'manifest.json' });
-    if (moduleText) archive.append(moduleText, { name: 'moduleText.json' });
-    if (combat) archive.append(combat, { name: 'combat.json' });
-    if (campaign) archive.append(campaign, { name: 'campaign.json' });
-    if (worldBg && worldBg.meta && worldBg.buffer) {
-      archive.append(worldBg.meta, { name: 'world-background.json' });
-      archive.append(Buffer.from(worldBg.buffer), { name: 'world-background.img' });
-    }
-    if (gallery && gallery.meta) {
-      archive.append(gallery.meta, { name: 'gallery.json' });
-      for (const p of gallery.files || []) {
-        if (p && PICTURE_NAME_RE.test(p.name) && p.buffer) archive.append(Buffer.from(p.buffer), { name: `gallery/${p.name}` });
-      }
-    }
-
-    scenesData.forEach((s, idx) => {
-      const base = `scenes/${s.id}`;
-      if (s.mapType === 'video') {
-        if (s._videoExists) archive.file(path.join(mapsDir, s.id + s.mapExt), { name: `${base}/map${s.mapExt}` });
-      } else if (s.mapBuffer) {
-        archive.append(Buffer.from(s.mapBuffer), { name: `${base}/map${s.mapExt}` });
-      }
-      if (s.fogBuffer)   archive.append(Buffer.from(s.fogBuffer),   { name: `${base}/fog.png` });
-      if (s.thumbBuffer) archive.append(Buffer.from(s.thumbBuffer), { name: `${base}/thumb.jpg` });
-      for (const p of s.pictures || []) {
-        if (p && PICTURE_NAME_RE.test(p.name) && p.buffer) archive.append(Buffer.from(p.buffer), { name: `${base}/${p.name}` });
-      }
-      sendTo(event.sender, 'backup-progress', { done: idx + 1, total: scenesData.length, phase: 'export' });
-    });
-
-    archive.finalize();
-  }).catch(async (err) => {
-    if (opened) await fs.promises.unlink(destPath).catch(() => {});
-    throw err;
-  }).finally(() => { stopZip = null; });
-
-  if (cancelled) {
-    await fs.promises.unlink(destPath).catch(() => {});
-    return { cancelled: true, missingVideos: [] };
+  job.metas.push(s.metadata);
+  if (s.mapType === 'video') {
+    // A scene whose file has gone leaves the zip with no map, and only the renderer can say so.
+    if (videoFile) appendTo(job, videoFile, `${base}/map${s.mapExt}`);
+    else job.missingVideos.push((s.metadata && s.metadata.name) || s.id);
+  } else if (s.mapBuffer) {
+    appendTo(job, s.mapBuffer, `${base}/map${s.mapExt}`);
   }
-  return { missingVideos };
+  if (s.fogBuffer)   appendTo(job, s.fogBuffer,   `${base}/fog.png`);
+  if (s.thumbBuffer) appendTo(job, s.thumbBuffer, `${base}/thumb.jpg`);
+  for (const p of s.pictures || []) {
+    if (p && PICTURE_NAME_RE.test(p.name) && p.buffer) appendTo(job, p.buffer, `${base}/${p.name}`);
+  }
+  await drained(job);
+  if (job.cancelled) return { cancelled: true };
+  sendTo(event.sender, 'backup-progress', { done, total, phase: 'export' });
+  return {};
+});
+
+// rest is null to abandon the export, or the campaign-level entries that land at the zip root beside manifest.json:
+// moduleText, combat and campaign as JSON text, worldBg as { meta, buffer } or null, gallery as { meta, files: [{ name, buffer }] } or null.
+ipcMain.handle('backup-zip-finish', async (_event, rest) => {
+  const job = exp;
+  if (!job) return { cancelled: true };
+  try {
+    if (!rest) { if (!job.closed) job.stop(); }
+    else if (!job.cancelled && !job.failed) {
+      const { archive } = job;
+      archive.append(JSON.stringify(job.metas, null, 2), { name: 'manifest.json' });
+      if (rest.moduleText) archive.append(rest.moduleText, { name: 'moduleText.json' });
+      if (rest.combat) archive.append(rest.combat, { name: 'combat.json' });
+      if (rest.campaign) archive.append(rest.campaign, { name: 'campaign.json' });
+      const { worldBg, gallery } = rest;
+      if (worldBg && worldBg.meta && worldBg.buffer) {
+        archive.append(worldBg.meta, { name: 'world-background.json' });
+        archive.append(Buffer.from(worldBg.buffer), { name: 'world-background.img' });
+      }
+      if (gallery && gallery.meta) {
+        archive.append(gallery.meta, { name: 'gallery.json' });
+        for (const p of gallery.files || []) {
+          if (p && PICTURE_NAME_RE.test(p.name) && p.buffer) archive.append(Buffer.from(p.buffer), { name: `gallery/${p.name}` });
+        }
+      }
+      // Its failures arrive on 'error' too.
+      archive.finalize().catch(() => {});
+    }
+    await job.ended;
+  } finally {
+    if (exp === job) { exp = null; stopZip = null; }
+  }
+  if (job.cancelled || !rest) return { cancelled: true };
+  if (job.failed) throw job.failed;
+  return { missingVideos: job.missingVideos };
 });
 
 // Returns parsed manifest.json array from the zip.
@@ -197,73 +244,58 @@ ipcMain.handle('read-backup-gallery', (_event, zipPath) => new Promise((resolve,
 
 const MAP_EXT_RE = /^\.[a-z0-9]{1,5}$/;
 
-// assignments: [{newId, originalId, mapType, mapExt, want?, temp?}]. `want` says which of map, fog and thumb to
-// read (all when absent). Video maps are written to mapsDir/{newId}.ext, or with `temp` to {newId}.ext.import, which
-// settle-import-video renames into place once the scene's record is saved. All others return as ArrayBuffers.
-ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
-  for (const a of assignments) {
-    if (!isSafeId(a.newId))      throw new Error(`Invalid newId: ${a.newId}`);
-    // The original id only names zip entries, never a file on disk, so any text will do.
-    if (typeof a.originalId !== 'string' || !a.originalId || a.originalId.length > 200) throw new Error(`Invalid originalId: ${a.originalId}`);
-    if (!MAP_EXT_RE.test(a.mapExt)) throw new Error(`Invalid mapExt: ${a.mapExt}`);
-  }
+// A Buffer's bytes as an ArrayBuffer, copied only when the Buffer is a view into a larger one.
+function toArrayBuffer(buf) {
+  return buf.byteOffset === 0 && buf.byteLength === buf.buffer.byteLength
+    ? buf.buffer : buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+}
 
-  // Map zip entry path → assignment role
-  const pics = a => (Array.isArray(a.pictures) ? a.pictures : []).filter(n => PICTURE_NAME_RE.test(n));
-  const wants = a => ['map', 'fog', 'thumb'].filter(k => !a.want || a.want[k]);
+// One scene per call, so neither process holds more than one scene's files: a library past the renderer's memory
+// cannot come back in one reply. a is {newId, originalId, mapType, mapExt, pictures?, want?, temp?}. `want` says which
+// of map, fog and thumb to read (all when absent). A video map is written to mapsDir/{newId}.ext, or with `temp` to
+// {newId}.ext.import, which settle-import-video renames into place once the scene's record is saved. All else
+// returns as ArrayBuffers.
+ipcMain.handle('extract-backup-scene', async (_event, zipPath, a) => {
+  if (!isSafeId(a.newId))      throw new Error(`Invalid newId: ${a.newId}`);
+  // The original id only names zip entries, never a file on disk, so any text will do.
+  if (typeof a.originalId !== 'string' || !a.originalId || a.originalId.length > 200) throw new Error(`Invalid originalId: ${a.originalId}`);
+  if (!MAP_EXT_RE.test(a.mapExt)) throw new Error(`Invalid mapExt: ${a.mapExt}`);
+
+  const base = `scenes/${a.originalId}`;
+  const parts = { map: `${base}/map${a.mapExt}`, fog: `${base}/fog.png`, thumb: `${base}/thumb.jpg` };
   const pathMap = {};
-  assignments.forEach(a => {
-    const base = `scenes/${a.originalId}`;
-    const entry = { map: `${base}/map${a.mapExt}`, fog: `${base}/fog.png`, thumb: `${base}/thumb.jpg` };
-    for (const k of wants(a)) pathMap[entry[k]] = { newId: a.newId, type: k, a };
-    for (const name of pics(a)) pathMap[`${base}/${name}`] = { newId: a.newId, type: 'pic:' + name, a };
-  });
+  for (const k of ['map', 'fog', 'thumb']) if (!a.want || a.want[k]) pathMap[parts[k]] = k;
+  for (const name of (Array.isArray(a.pictures) ? a.pictures : []).filter(n => PICTURE_NAME_RE.test(n))) pathMap[`${base}/${name}`] = 'pic:' + name;
+  let left = Object.keys(pathMap).length;
 
-  const results = {};
-  const pending = {};
-  assignments.forEach(a => {
-    results[a.newId] = { newId: a.newId, mapBuffer: null, fogBuffer: null, thumbBuffer: null,
-                         // false until an entry turns up; a zip can carry none for a video.
-                         mapWritten: a.mapType !== 'video' || !wants(a).includes('map'), pictures: {} };
-    pending[a.newId] = wants(a).concat(pics(a).map(n => 'pic:' + n));
-  });
-  let doneScenes = 0;
-
-  const markDone = (newId, type) => {
-    const p = pending[newId];
-    const i = p.indexOf(type);
-    if (i !== -1) p.splice(i, 1);
-    if (p.length === 0) {
-      doneScenes++;
-      sendTo(event.sender, 'backup-progress', { done: doneScenes, total: assignments.length, phase: 'restore' });
-    }
-  };
+  const result = { newId: a.newId, mapBuffer: null, fogBuffer: null, thumbBuffer: null,
+                   // false until an entry turns up; a zip can carry none for a video.
+                   mapWritten: a.mapType !== 'video' || !pathMap[parts.map], pictures: {} };
 
   let writing = null, cancelled = false;
   stopZip = () => { cancelled = true; };
   await new Promise((resolve, reject) => {
     yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
       if (err) return reject(err);
-      if (cancelled) { zipfile.close(); return resolve(); }
+      if (cancelled || !left) { zipfile.close(); return resolve(); }
       // The renderer deletes whatever already landed in mapsDir; this only stops the reading.
       stopZip = () => { if (writing) writing.destroy(); zipfile.close(); resolve(); };
+      const next = () => { if (--left === 0) { zipfile.close(); resolve(); } else zipfile.readEntry(); };
       zipfile.readEntry();
 
       zipfile.on('entry', entry => {
-        if (/\/$/.test(entry.fileName)) { zipfile.readEntry(); return; }
-        const info = pathMap[entry.fileName];
-        if (!info) { zipfile.readEntry(); return; }
-
-        const { newId, type, a } = info;
+        const type = pathMap[entry.fileName];
+        if (!type) { zipfile.readEntry(); return; }
+        delete pathMap[entry.fileName];
         zipfile.openReadStream(entry, (err2, rs) => {
           if (err2) { zipfile.close(); return reject(err2); }
 
           if (type === 'map' && a.mapType === 'video') {
-            const dest = path.join(mapsDir, newId + a.mapExt + (a.temp ? '.import' : ''));
+            const dest = path.join(mapsDir, a.newId + a.mapExt + (a.temp ? '.import' : ''));
             const ws = fs.createWriteStream(dest);
             writing = ws;
             rs.pipe(ws);
-            ws.on('finish', () => { results[newId].mapWritten = true; markDone(newId, type); zipfile.readEntry(); });
+            ws.on('finish', () => { writing = null; result.mapWritten = true; next(); });
             ws.on('error', e => { zipfile.close(); reject(e); });
             // ⚠ pipe() forwards no error: without this a damaged entry hangs the whole restore.
             rs.on('error', e => { ws.destroy(); zipfile.close(); reject(e); });
@@ -271,36 +303,24 @@ ipcMain.handle('extract-backup-scenes', async (event, zipPath, assignments) => {
             const chunks = [];
             rs.on('data', c => chunks.push(c));
             rs.on('end', () => {
-              const buf = Buffer.concat(chunks);
-              const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-              if (type === 'map')        results[newId].mapBuffer   = ab;
-              else if (type === 'fog')   results[newId].fogBuffer   = ab;
-              else if (type === 'thumb') results[newId].thumbBuffer = ab;
-              else results[newId].pictures[type.slice(4)] = ab;
-              markDone(newId, type);
-              zipfile.readEntry();
+              const ab = toArrayBuffer(Buffer.concat(chunks));
+              if (type === 'map')        result.mapBuffer   = ab;
+              else if (type === 'fog')   result.fogBuffer   = ab;
+              else if (type === 'thumb') result.thumbBuffer = ab;
+              else result.pictures[type.slice(4)] = ab;
+              next();
             });
             rs.on('error', e => { zipfile.close(); reject(e); });
           }
         });
       });
 
-      // A FINAL 100%. pending[] is seeded with all three parts, but a zip need not carry every
-      // one, and such a scene never empties its list — so the bar stops short of a finished
-      // restore without this.
-      zipfile.on('end', () => {
-        zipfile.close();
-        if (doneScenes < assignments.length) {
-          sendTo(event.sender, 'backup-progress',
-            { done: assignments.length, total: assignments.length, phase: 'restore' });
-        }
-        resolve();
-      });
+      zipfile.on('end', () => { zipfile.close(); resolve(); });
       zipfile.on('error', reject);
     });
   }).finally(() => { stopZip = null; });
 
-  return Object.values(results);
+  return result;
 });
 
 // An imported video written under a temporary name: moved over the old file, or deleted.

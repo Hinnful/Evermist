@@ -98,10 +98,15 @@ A bug report is an ordinary message and needs no command.
 - **Read the owning skill before editing its files.** `guard-skill-hint.js` names it.
 - **The main session keeps diagnosis, design and release notes, and hands the rest to a
   subagent.** `scout` (Sonnet) searches the code and reads CI logs and long test output. `builder`
-  (Sonnet) builds a spec or a fully stated change. `filer` (Sonnet) runs `/commit`'s Step 4.
-- **Plan on the main model, build on a lower one.** A subagent never runs on a model above its
-  definition's without the DM's yes. A build too hard for Sonnet gets a more detailed plan,
-  not a stronger builder.
+  (Opus) builds a spec or a fix whose cause is known. `filer` (Sonnet) runs `/commit`'s Step 4.
+- **A builder starts from a brief with `Cause:`, `Change:` and `Done-check:`.** A failing check
+  with no known cause is diagnosed in the main session first. `guard-builder.js` refuses a brief
+  missing a field, and a builder below Opus unless a `Mechanical:` field says why the change
+  needs no judgment; then Sonnet may build it.
+- **A builder gets two rig runs.** Past them it stops and reports, and the main session diagnoses;
+  `guard-rig.js` counts them.
+- **One rig run at a time.** `guard-rig.js` refuses a run while another is going, because two share
+  the hidden screen. It reads `ps`, so on Windows it lets the run through.
 - **Before look-and-feel work starts,** state what the result should look like and get the DM's
   agreement. The prototype rule is in CLAUDE.md.
 - **A prototype of a window that already exists loads the app's stylesheets and renders it with

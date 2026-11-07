@@ -479,3 +479,19 @@ their own model and thinking level"; `builder` and `filer` keep the models that 
 ### Backup is tested by rig scenarios, not by hand · `SETTLED` (2026-11-05)
 Three non-blocker scenarios (`backup-large-library`, `backup-two-laptops`, `backup-every-record`) and `tools/rig/backupKit.js`
 test backups without a second laptop, so the manual backup hand test was waived for 5.3.2. Findings sit in BACKLOG 271.
+
+### The `builder` subagent moved from Sonnet to Opus, and its brief is checked · `SETTLED` (2026-11-07)
+**Reverses** the `builder` half of "Subagents carry their own model and thinking level" and the old line that a hard build gets a
+more detailed plan, not a stronger builder. A Sonnet builder given a failing check with no known cause spent 80 minutes and
+about ten rig runs on the wrong cause; the main session found it in 25. A Sonnet build of the Drive sync also shipped a bug its
+own check missed: computers deleted each other's fresh uploads. Opus builds after that had no such faults. Sonnet stays allowed
+under a `Mechanical:` brief field saying why no judgment is needed. `scout` and `filer` stay on Sonnet.
+
+### Diagnosis stays in the main session; a hook checks the hand-off · `SETTLED` (2026-11-07)
+`guard-builder.js` refuses a builder launch whose brief lacks `Cause:`, `Change:` and `Done-check:`, and one below Opus without
+`Mechanical:`. It cannot judge whether the stated cause is true; the builder stops and reports when it does not hold.
+
+### A builder gets two rig runs, and rig runs never overlap · `SETTLED` (2026-11-07)
+`guard-rig.js` counts two rig runs per builder, then it stops and reports. This replaces builder.md's "never run the rig on this
+machine", which builders did not follow. It also refuses a run while another is going, since two share the hidden screen and
+break each other; it reads `ps`, so on Windows it lets the run through.

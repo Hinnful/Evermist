@@ -19,8 +19,7 @@
 //   E. The campaign records come back: groups, roads, notes, entries, fights, bestiary, module text, pictures.
 //   F. A restored map opens, and its fog layer is still clear where it was cleared.
 //
-// KNOWN AND NOT FAILED HERE: item 266 (every still map goes to main in one message; noted with its size), and music,
-// which a backup does not carry at all (noted, no item yet).
+// KNOWN AND NOT FAILED HERE: music, which a backup does not carry at all (noted, no item yet).
 //
 // ⚠ THE SAVE DIALOG IS THE ONE SEAM THE RIG CANNOT CROSS: doExport takes a destPath that goes round it. The DM's own
 // hand test of Export and Import stays.
@@ -31,8 +30,8 @@ const path = require('path');
 const lib = require('../lib');
 const kit = require('../backupKit');
 
-// The sizes the run uses by default finish in about a minute (379 MB of still maps). RIG_BACKUP_SMALL=60 RIG_BACKUP_HUGE=8 (535 MB) raises them, to show
-// an export that stops answering (item 266).
+// The sizes the run uses by default finish in about a minute (379 MB of still maps). RIG_BACKUP_SMALL=60 RIG_BACKUP_HUGE=8 (535 MB) raises them
+// past the size a one-message export stalled at.
 const SMALL = { count: Number(process.env.RIG_BACKUP_SMALL) || 40, w: 3200, h: 2133 };
 const HUGE = { count: Number(process.env.RIG_BACKUP_HUGE) || 6, w: 8000, h: 5000 };
 const VIDEOS = [{ name: 'Видео зал', w: 3110, h: 2160 }, { name: 'Видео склеп', w: 3840, h: 2160, big: true }];
@@ -103,19 +102,17 @@ module.exports = async function backupLargeLibrary(rig) {
   fs.mkdirSync(dir, { recursive: true });
   const zip = path.join(dir, 'библиотека.zip');
   const h0 = await heap(dm), tExp = Date.now();
-  // ⚠ BOUNDED: an export that never answers is the finding (item 266), and must end this run with a name, not a timeout.
+  // ⚠ BOUNDED: an export that never answers must end this run with a name, not a timeout.
   try {
     await dm.evaluate(`doExport(allScenes.map(s => s.id), { destPath: ${JSON.stringify(zip)} })`, 240000);
   } catch (err) {
-    rig.check(false, 'A: the export of ' + total + ' maps (' + Math.round(stillBytes / 1048576) + ' MB of still maps) did not finish in 4 minutes (item 266): ' + (err && err.message ? err.message : err));
+    rig.check(false, 'A: the export of ' + total + ' maps (' + Math.round(stillBytes / 1048576) + ' MB of still maps) did not finish in 4 minutes: ' + (err && err.message ? err.message : err));
     return;
   }
   rig.note('export: ' + Math.round((Date.now() - tExp) / 1000) + 's, heap ' + h0 + ' -> ' + await heap(dm) + ' MB');
   rig.check(fs.existsSync(zip) && fs.statSync(zip).size > 0 && kit.zipEntries(zip).reduce((n, e) => n + e.size, 0) >= stillBytes,
             'A: the export wrote no usable zip: ' + (fs.existsSync(zip) ? kit.zipEntries(zip).reduce((n, e) => n + e.size, 0) + ' bytes inside for ' + stillBytes + ' of maps' : 'no file'));
   rig.check(!(await dm.evaluate('!!document.getElementById("cd-modal")')), 'A: a dialog was left on screen after the export');
-  // ⚠ ITEM 266: every still map is read into memory and handed to main in one message.
-  kit.known(rig, '266', false, 'the export sent ' + Math.round(stillBytes / 1048576) + ' MB of still maps to main in one message');
 
   // ── B. What the zip holds ──────────────────────────────────────────────────
   const names = fs.existsSync(zip) ? kit.zipEntries(zip).map(e => e.name) : [];

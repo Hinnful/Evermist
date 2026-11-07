@@ -164,20 +164,15 @@ async function _tiPlan(zipPath, manifest) {
 }
 
 // The scene's own map, fog and thumbnail come out of the zip only where the plan takes them.
-async function _tiExtract(zipPath, items) {
-  const got = await window.electronAPI.extractBackupScenes(zipPath, items.map(x => {
-    const take = x.matched ? x.plan.take : null;
-    return {
-      newId: x.id, originalId: x.entry.id,
-      mapType: x.entry.mapType || 'image', mapExt: x.entry.mapExt || '.jpg',
-      pictures: (Array.isArray(x.entry.pictures) ? x.entry.pictures : []).map(p => p && pictureZipName(p.id, p.type)).filter(Boolean),
-      want: take ? { map: take.map, fog: take.fog, thumb: take.map || take.fog } : undefined,
-      temp: !!take && x.entry.mapType === 'video',
-    };
-  }));
-  const ex = {};
-  got.forEach(e => { ex[e.newId] = e; });
-  return ex;
+function _tiExtract(zipPath, x) {
+  const take = x.matched ? x.plan.take : null;
+  return window.electronAPI.extractBackupScene(zipPath, {
+    newId: x.id, originalId: x.entry.id,
+    mapType: x.entry.mapType || 'image', mapExt: x.entry.mapExt || '.jpg',
+    pictures: (Array.isArray(x.entry.pictures) ? x.entry.pictures : []).map(p => p && pictureZipName(p.id, p.type)).filter(Boolean),
+    want: take ? { map: take.map, fog: take.fog, thumb: take.map || take.fog } : undefined,
+    temp: !!take && x.entry.mapType === 'video',
+  });
 }
 
 // A matched scene: the local record with what the plan takes written over it.
@@ -219,16 +214,16 @@ function _tiNewRecord(x, got, name, order, shift) {
   };
 }
 
-// Every scene written, in the file's order. Answers what happened to each, or null once the DM stopped it.
-async function _tiWrite(plan, ex, run, job) {
+// Every scene extracted and written, in the file's order. Answers what happened to each, or null once the DM stopped it.
+// ⚠ ONE SCENE AT A TIME, its buffers dropped once saved: the whole library at once kills the renderer.
+async function _tiWrite(zipPath, plan, run, job) {
   const existing = allScenes, usedNames = new Set(existing.map(s => s.name));
   let order = existing.length ? Math.max(...existing.map(s => s.sortOrder ?? 0)) : -1;
   const out = { noMap: [], newMeta: [], pictured: [], added: [], updated: [], kept: [], overwritten: [] };
-  showMapProgress('Saving maps…');
-  updateMapProgress(0);
   for (let i = 0; i < plan.items.length; i++) {
     if (job.stopped) return null;
-    const x = plan.items[i], got = ex[x.id] || {};
+    const x = plan.items[i], got = await _tiExtract(zipPath, x);
+    if (job.stopped) return null;
     if (x.matched) {
       run.snapshots.set(x.id, x.local);
       const rec = _tiMatchedRecord(x, got, run);
@@ -316,7 +311,6 @@ async function restoreFromZipPath(zipPath, say) {
   commitPendingDelete();
   await doAutoSave();
 
-  const unsubProgress = window.electronAPI.onBackupProgress(({ done, total }) => updateMapProgress(Math.round((done / total) * 100)));
   setMapProgressRun('', zipPath.split(/[\\/]/).pop());
   const job = mapJobStart({ title: 'Stop importing?', message: 'Your maps stay as they were before the import.' },
     () => window.electronAPI.cancelBackup());
@@ -359,9 +353,7 @@ async function restoreFromZipPath(zipPath, say) {
     for (const x of plan.items) if (x.matched && x.entry.mapType === 'video' && x.plan.take.map) run.temps.push({ id: x.id, ext: x.entry.mapExt || '.webm' });
     // Before extraction writes them, so a stop or a failure partway deletes every new animated map's file.
     for (const x of plan.items) if (!x.matched && x.entry.mapType === 'video') run.createdVideos.push(x.id);
-    const ex = await _tiExtract(zipPath, plan.items);
-    if (job.stopped) return undo();
-    const done = await _tiWrite(plan, ex, run, job);
+    const done = await _tiWrite(zipPath, plan, run, job);
     if (!done || job.stopped) return undo();
     committed = true;
     // A rename that fails (a video being played) puts that scene's whole record back, so record and file agree
@@ -401,6 +393,5 @@ async function restoreFromZipPath(zipPath, say) {
   } finally {
     mapJobEnd(job);
     setMapProgressRun('');
-    unsubProgress();
   }
 }

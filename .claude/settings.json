@@ -40,6 +40,15 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-main.js\""
           }
         ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-builder.js\""
+          }
+        ]
       }
     ],
     "PostToolUse": [
