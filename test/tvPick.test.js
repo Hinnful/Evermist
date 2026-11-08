@@ -35,6 +35,19 @@ describe('pickTv', () => {
     assert.equal(r.display.id, 2);
   });
 
+  it('offers no screen where the app cannot place windows', () => {
+    const remembered = tvRemember(disp(2, 'LG TV', { x: 1920 }));
+    const r = pickTv([disp(1, 'Laptop', { internal: true }), disp(2, 'LG TV', { x: 1920 })], 1, remembered, false);
+    assert.equal(r.kind, 'window');
+    assert.deepEqual(r.candidates, []);
+  });
+
+  it('places as before when the answer says it can', () => {
+    const r = pickTv([disp(1, 'Laptop', { internal: true }), disp(2, 'LG TV', { x: 1920 })], 1, null, true);
+    assert.equal(r.kind, 'one');
+    assert.equal(r.display.id, 2);
+  });
+
   it('asks when several screens and none is remembered', () => {
     const r = pickTv([disp(1, 'Laptop'), disp(2, 'TV A', { x: 1920 }), disp(3, 'TV B', { x: 3840 })], 1, null);
     assert.equal(r.kind, 'ask');

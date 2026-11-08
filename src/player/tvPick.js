@@ -34,7 +34,9 @@ function _rememberedMatch(candidates, remembered) {
 }
 
 // kind 'one': use `display`. 'ask': several, none remembered. 'none': no second screen.
-function pickTv(displays, dmDisplayId, remembered) {
+// 'window': the app cannot place windows here, so no screen is offered at all.
+function pickTv(displays, dmDisplayId, remembered, canPlace) {
+  if (canPlace === false) return { kind: 'window', candidates: [] };
   const named = (displays || []).map((d, i) => ({ ...d, name: screenName(d, i), number: i + 1 }));
   const others = named.filter(d => d.id !== dmDisplayId);
   const external = others.filter(d => !d.internal);

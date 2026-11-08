@@ -35,6 +35,35 @@ Effects is now a separate mode next to Room
 joined by a full stop, never chained by commas and dashes. The article can go: "Toolbar border
 glows" reads fine.
 
+**One change per line, and the thing that changed opens it.** "Show on TV now opens a window on
+Linux", never "On Linux desktops that ..., Show on TV now ...". A Summary or Intro that joins two
+changes with ", and" reads as generated: the Summary carries the one change that matters most, and
+every other change is its own point. `check-notes.js` refuses ", and" and a sentence that opens with
+a word from this block - a condition or an instruction:
+
+```never-open-with
+on
+in
+when
+if
+with
+after
+before
+while
+once
+whenever
+drag
+press
+click
+open
+use
+select
+choose
+turn
+hold
+go
+```
+
 **Say what changed, not how to operate it.** "Effects button is now blue" is the news. "Press E or
 click Effects - it turns blue" is a manual. Name a key or a click only when the key IS the news.
 

@@ -25,6 +25,7 @@ const TV_ICON = {
 let _tvInited = false;
 let _tvDisplays = [];        // every screen, as main reports them
 let _tvDmId = null;          // the screen holding this window
+let _tvCanPlace = true;      // false on Wayland: no screen is offered, and nothing fullscreens, which would fill the DM's screen
 let _tvRoute = null;         // how the open Player was started: 'tv' (placed) or 'window'
 let _tvScreenId = null;      // the screen the Player was placed on
 let _tvWaitSince = 0;        // nonzero while waiting for a second screen to appear
@@ -75,7 +76,7 @@ function _tvRemembered() {
   try { return JSON.parse(localStorage.getItem(TV_SCREEN_KEY)); } catch (_) { return null; }
 }
 
-function _tvPickNow() { return pickTv(_tvDisplays, _tvDmId, _tvRemembered()); }
+function _tvPickNow() { return pickTv(_tvDisplays, _tvDmId, _tvRemembered(), _tvCanPlace); }
 
 function _tvRes(d) { return d.size.width + '×' + d.size.height; }
 
@@ -91,6 +92,7 @@ async function _tvLoadDisplays() {
     const r = await api.listDisplays();
     _tvDisplays = (r && r.displays) || [];
     _tvDmId = r ? r.dmDisplayId : null;
+    _tvCanPlace = !r || r.canPlace !== false;
   } catch (_) {}
 }
 
@@ -116,7 +118,7 @@ function _tvGoLive(display) {
   if (!wasOpen) _tvLegacy('btn-player');
   const api = window.electronAPI;
   const place = !!display && !!api && !!api.placePlayer;
-  if (!place && !wasOpen && _tvWantFull) _tvFullAsk = true;
+  if (!place && !wasOpen && _tvWantFull && _tvCanPlace) _tvFullAsk = true;
   _tvRoute = place ? 'tv' : 'window';
   _tvScreenId = place ? display.id : null;
   if (place) {
@@ -144,7 +146,7 @@ function _tvSelected() {
     const d = _tvDisplays.find(x => x.id === _tvScreenId);
     return d ? { kind: 'display', display: d } : { kind: 'none', pick };
   }
-  if (_tvScreenPick === 'window') return { kind: 'win' };
+  if (_tvScreenPick === 'window' || pick.kind === 'window') return { kind: 'win' };
   const chosen = pick.candidates.find(d => d.id === _tvScreenPick);
   if (chosen) return { kind: 'display', display: chosen };
   if (pick.kind === 'one') return { kind: 'display', display: pick.display };
@@ -196,7 +198,7 @@ async function _tvOnDisplays(e) {
 // candidate that shows up takes the map.
 async function _tvTick() {
   if (_tvWaitSince || !_tvLive()) await _tvLoadDisplays();
-  if (_tvWaitSince) {
+  if (_tvWaitSince && _tvCanPlace) {
     const pick = _tvPickNow();
     if (pick.kind === 'one') _tvGoLive(pick.display);
     else if (pick.kind === 'ask') { _tvWaitSince = 0; _tvOpen('ask'); }
@@ -408,9 +410,9 @@ function _tvSetupRender() {
     item(sel.kind === 'win', _tvText('nm', t('A window')), '', () => (live ? _tvGoLive(null) : (_tvScreenPick = 'window')));
     ddw.append(list);
   }
-  body.append(ddw);
+  body.append(_tvCanPlace ? ddw : _tvText('sm-dim', t('Drag the TV window to your TV, then press Fullscreen.')));
 
-  if (sel.kind === 'win') {
+  if (sel.kind === 'win' && (live || _tvCanPlace)) {
     body.append(sub(t('Fullscreen')));
     const on = live ? !!paneScope().playerIsFullscreen : _tvWantFull;
     body.append(_tvSeg(t('Off'), t('On'), on, v => {

@@ -3,7 +3,7 @@
 // in fullscreen, and switching a mirrored TV to a second screen. src/player/tvPick.js decides which
 // screen is the TV; this only gathers the list and acts.
 
-const { ipcMain, screen, shell } = require('electron');
+const { app, ipcMain, screen, shell } = require('electron');
 const { execFile } = require('child_process');
 
 let ctx = null;
@@ -22,9 +22,17 @@ function displayHolding(win) {
   return screen.getDisplayNearestPoint({ x: b.x + Math.floor(b.width / 2), y: b.y + Math.floor(b.height / 2) });
 }
 
+// Wayland lets no app place its own window, nor tells it where one is: there the TV is a plain
+// window the DM drags. Electron runs on Wayland natively unless X11 is forced.
+function canPlaceWindows() {
+  if (process.platform !== 'linux' || !process.env.WAYLAND_DISPLAY) return true;
+  return app.commandLine.getSwitchValue('ozone-platform') === 'x11' ||
+    process.env.ELECTRON_OZONE_PLATFORM_HINT === 'x11';
+}
+
 ipcMain.handle('displays-list', () => {
   const dm = ctx && displayHolding(ctx.getDmWin());
-  return { displays: screen.getAllDisplays().map(describe), dmDisplayId: dm ? dm.id : null };
+  return { displays: screen.getAllDisplays().map(describe), dmDisplayId: dm ? dm.id : null, canPlace: canPlaceWindows() };
 });
 
 // ⚠ A fullscreen window does not move: leave it first, then place it. The wait is bounded because

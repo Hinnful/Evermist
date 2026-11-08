@@ -93,6 +93,20 @@ describe('check-notes privacy', () => {
   });
 });
 
+describe('check-notes sentence shape', () => {
+  const w = { filler: [], openers: ['on', 'drag'] };
+  it('refuses two changes joined by ", and"', () => {
+    assert.equal(notesFaults('1.0.0 - The wheel zooms again, and the TV works\nIntro\n', w).length, 1);
+  });
+  it('refuses a sentence that opens with a condition or an instruction', () => {
+    assert.equal(notesFaults('1.0.0 - A\nIntro\n* On Linux, the TV opens a window\n', w).length, 1);
+    assert.equal(notesFaults('1.0.0 - A\nIntro\n* The TV opens a window. Drag it over\n', w).length, 1);
+  });
+  it('passes a plain subject-first line', () => {
+    assert.deepEqual(notesFaults('1.0.0 - A\nIntro\n* Show on TV now opens a window on Linux\n* Half shroud and Feather now use their defaults\n', w), []);
+  });
+});
+
 describe('guard-ship', () => {
   const run = (command) => verdict({ tool_input: { command } });
 

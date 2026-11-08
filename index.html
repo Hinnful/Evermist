@@ -610,24 +610,6 @@
           <div class="dk-blk" id="settings-hints"></div>   <!-- Filled by hints.js -->
         </div>
         <div class="cp-group" id="cp-sec-seat-align"></div>   <!-- Filled by seatAlignment.js -->
-        <!-- One value for every scene, never stored in one. Judge Half on the PLAYER window: the
-             DM view draws fog at FOG_OPACITY_DM, so 50 reads as ~27% here and 50% on the TV. The two
-             ranges are the back end fogControls.js drives; the fields above them are what the DM sees. -->
-        <div class="cp-group">
-          <div class="dk-sh"><span class="cp-label">Fog in every map</span></div>
-          <div class="dk-r">
-            <div class="dk-blk"><span class="dk-sub">Fog in a half room</span>
-              <label class="dk-num" title="How much fog remains in a half room. Drag the icon to change it."><span class="pre" data-scrub="fog-half-alpha-num" data-min="0" data-max="100" data-per="2" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"/><path d="M7 2a5 5 0 010 10z" fill="currentColor"/></svg></span><input type="text" id="fog-half-alpha-num" inputmode="numeric" value="50"><span class="u">%</span></label>
-            </div>
-            <div class="dk-blk"><span class="dk-sub">Feather</span>
-              <label class="dk-num" title="How soft the edge of a revealed area is. Drag the icon to change it."><span class="pre" data-scrub="fog-feather-num" data-min="0" data-max="24" data-per="8" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="3"/><circle cx="7" cy="7" r="5.5" stroke-dasharray="1.2 1.6"/></svg></span><input type="text" id="fog-feather-num" inputmode="numeric" value="12"><span class="u">px</span></label>
-            </div>
-          </div>
-          <div hidden>
-            <input type="range" id="fog-half-alpha" min="0" max="100" value="50" step="1">
-            <input type="range" id="fog-feather" min="0" max="24" value="12" step="1">
-          </div>
-        </div>
         <!-- The world map's settings: the backdrop (worldBackground.js) and the backup (worldBackup.js). Never on the TV. -->
         <div class="cp-group" id="wm-bg-group">
           <div class="dk-sh"><span class="cp-label">Campaign</span></div>

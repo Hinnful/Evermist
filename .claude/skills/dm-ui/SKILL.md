@@ -173,10 +173,10 @@ One level of name shows at a time: zoomed out only the place plates, zoomed in o
   rectangle on first open, and a scene filed under a place is moved inside it.
 - **Scenes are picked together with Shift** (`worldMapPick.js`, rules in `worldPickPlan.js`): Shift-click toggles, a
   Shift-dragged box adds, a plain click drops the pick, Esc clears it. A pick is scenes only and moves as one.
-- **Settings wears Scene control's parts**: three sections (Interface, Fog in every scene, World map), each a 12px title
-  over 11px sub-headers and 26px fields. The backdrop is a Sources row (the picture's name in a `.dk-src`, a trash
-  icon at its right to remove it, which asks first); Half shroud, Feather, Size and Opacity are scrub fields with no
-  slider. The long hint lives in a tooltip.
+- **Settings wears Scene control's parts**: its sections (Interface, Seat alignment, Campaign, Sync between computers, AI assistants), each a 12px title
+  over 11px sub-headers and 26px fields. There is no fog section: the fog's look is the Map settings themes alone. The
+  backdrop is a Sources row (the picture's name in a `.dk-src`, a trash icon at its right to remove it, which asks
+  first); Size and Opacity are scrub fields with no slider. The long hint lives in a tooltip.
 - **Settings' World map section holds the backdrop and the backup.** Export wears the pick ("Export 3 scenes"),
   and with none picked saves everything; Restore is a picker or a .zip dropped on the layer (`worldBackup.js`).
 - **The right-click menu is the `.sm-menu` look** (`sceneManager.css`). Delete works on any scene: deleting the open
@@ -192,9 +192,9 @@ partial erase can't re-fog ground already clear, i.e. the room the party just le
   residue with a hard `clearRect`; the repaint can't, and residue in the mask reads as blotchy
   density. Flattening the inset region to white on `_fogScratch` fixes it and keeps the
   feathered edge band.
-- `fogHalfAlpha` is ONE global `localStorage` value (`FOG_HALF_ALPHA_KEY`), never per-room,
-  never in a scene or backup, and deliberately absent from Fog Reset. Feather is the same kind
-  of value under `evermist.fogFeather`, except Fog Reset does set it back.
+- `fogHalfAlpha` is a constant 0.5 and the feather is `FOG_FEATHER_RADIUS`, never per-room, never
+  in a scene or backup, with no control. The previous release still reads `evermist.fogHalfAlpha` and
+  `evermist.fogFeather`, so never write or clear them.
 - The Player needs nothing new: the stencil crosses as a PNG and partial alpha propagates.
 - **Half is a shape-tools-only paint direction.** The brush paints into a cleared-or-opaque
   fog canvas with no third value, so the row's Half cloud (and `#btn-half`) is absent while the

@@ -110,7 +110,7 @@ reverted, saved half rooms fall into the reveal `else` and render as **full reve
 most permissive possible failure for a fog tool. A revert must also sweep saved polygons
 `'half'` → `'shroud'`. Fail closed.
 
-### `fogHalfAlpha` is absent from Fog Reset · `SETTLED`
+### `fogHalfAlpha` is absent from Fog Reset · `SETTLED` (superseded, the setting is gone, see "Fog in every map is gone" in ui-and-control-panel.md)
 It is the only dial in that panel that persists across sessions, so resetting it would
 discard a value dialled in over a session.
 

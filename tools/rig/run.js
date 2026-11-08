@@ -104,7 +104,7 @@ const PROFILE_DIR = 'профиль';
 
 function parseArgs(argv) {
   const a = { scenarios: [], exe: null, out: null, shot: null, shotSetup: '', visible: false,
-              lowPriority: false,
+              lowPriority: false, screens: 1,
               dmSize: RUNNER_DM, playerSize: RUNNER_SCREEN, screenSize: RUNNER_SCREEN };
   for (let i = 0; i < argv.length; i++) {
     const t = argv[i];
@@ -120,6 +120,10 @@ function parseArgs(argv) {
       // The Player fills the screen, so its size IS the screen the app reads. Setting the two
       // apart would give the app a display smaller than the window standing on it.
       else { a.playerSize = size; a.screenSize = size; }
+    }
+    else if (t.startsWith('--screens=')) {
+      a.screens = parseInt(t.slice(10), 10);
+      if (!(a.screens >= 1 && a.screens <= 4)) throw new Error('--screens wants a count from 1 to 4');
     }
     else if (t === '--visible') a.visible = true;
     else if (t === '--low-priority') a.lowPriority = true;
@@ -354,7 +358,7 @@ async function startHiddenDisplay(args, budgetMs) {
   delete env.WAYLAND_DISPLAY;
   delete env.DISPLAY;
   const kwin = spawn('kwin_wayland', ['--virtual', '--no-lockscreen', '--no-global-shortcuts',
-    '--socket', 'w', '--width', '1024', '--height', '768',
+    '--socket', 'w', '--width', '1024', '--height', '768', '--output-count', String(args.screens),
     '--exit-with-session', 'sleep ' + Math.ceil(budgetMs / 1000)], { env, stdio: 'ignore' });
   kwin.on('error', () => {});
   process.once('exit', () => {
@@ -529,7 +533,8 @@ async function startInstance(args, profileDir, expectEmptyLibrary = true, swap =
     .concat(PIN_LANGUAGE)
     .concat(SOFTWARE_GL)
     .concat(NO_KEYRING)
-    .concat(args.visible ? [] : ['--offscreen'])
+    // ⚠ --screens drops --offscreen, which would skip placing the Player; only the hidden KWin may take that.
+    .concat(args.visible || (hiddenDisplay && args.screens > 1) ? [] : ['--offscreen'])
     .concat(hiddenDisplay ? ['--ozone-platform=wayland'] : [])
     .concat(['--remote-debugging-port=' + port, '--user-data-dir=' + profileDir]);
   const proc = spawn(bin, argv, {

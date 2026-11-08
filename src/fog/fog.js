@@ -52,12 +52,11 @@ function getFogSizeScale() {
   if (!fogDataCanvas) return 1;
   return fogSizeScale(Math.max(fogDataCanvas.width, fogDataCanvas.height), FOG_SIZE_REF);
 }
-let fogFeatherRadius = FOG_FEATHER_RADIUS; // overridable at runtime via UI slider
+const fogFeatherRadius = FOG_FEATHER_RADIUS;
 // How much fog REMAINS in a half-shrouded room, 0 = revealed, 1 = shrouded. One global value,
 // never per-room or per-scene: "half" is one state with one density.
-let fogHalfAlpha = 0.5;
-const FOG_HALF_ALPHA_KEY = 'evermist.fogHalfAlpha';
-const FOG_FEATHER_KEY = 'evermist.fogFeather';
+// ⚠ The previous release still reads evermist.fogHalfAlpha and evermist.fogFeather: never write or clear them.
+const fogHalfAlpha = 0.5;
 function getScaledBlurRadius()    { return scaledRadius(FOG_BLUR_RADIUS,  getFogSizeScale()); }
 function getScaledFeatherRadius() { return scaledRadius(fogFeatherRadius, getFogSizeScale()); }
 

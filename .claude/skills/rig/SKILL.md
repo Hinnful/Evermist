@@ -120,7 +120,7 @@ screen`. Windows only.
 **On a Linux desktop the run gets a screen of its own.** Wayland ignores `--offscreen` and there is
 no parker, so `startHiddenDisplay` starts a virtual KWin and every app of the run opens on it.
 Without `kwin_wayland` the run stops before the first window. CI and cloud sessions have no
-desktop session, so xvfb-run's screen is used as it is.
+desktop session, so xvfb-run's screen is used as it is. `--screens=N` (1-4, the = form, since a bare number reads as a scenario name) adds `--output-count N` and drops `--offscreen`, so the Player is placed; `tv-wayland` checks Show on TV with it.
 
 **`--visible` is the DM's flag, not yours.** Do not pass it, and do not reach for `npm start`,
 `npm run stress` or `npm run memprobe` either - all three take the screen and all three are the

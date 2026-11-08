@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 6 open items; IDs run to 282."
+description: "Open work only. 5 open items; IDs run to 282."
 metadata: 
   node_type: memory
   type: project
@@ -95,13 +95,6 @@ brand; that review needs the privacy policy on a domain the project owner proves
 github.com). Every DM who connects sees the warning first.
 **First use · Polish · DM only**
 
-### 280. The mouse wheel pans instead of zooming while the TV is showing
-Filed 2026-11-08 by the DM, on Linux (KDE Wayland). With the TV window open, a mouse wheel notch moves the map
-instead of zooming it; without the TV it zooms. Ctrl+scroll still zooms. Measured in Evermist's own window: with the TV
-open each notch arrives as deltaY 119.99999821186069, not 120, so `classifyWheel` (`src/ui/wheelPlan.js`) reads the
-fraction as a touchpad and pans. The fix is a tolerance on "whole number" there, proven with a unit test on that value.
-**Bug · DM only**
-
 ### 281. The floor plan card shows the file's name
 Filed 2026-11-08, with 5.6.0. The floor plan card in Map settings says "Floor plan" because the app keeps no file name
 for a plan. Showing the name means a new saved field on the scene, which sync, backup and import must all carry and the
@@ -110,8 +103,7 @@ previous release must load safely.
 
 ### 282. Settings follows the new Map settings style
 Filed 2026-11-08, with 5.6.0. Map settings now uses sub-headers, icon pills, knob switches and labelled buttons. Settings
-still shows Half shroud and Feather as unlabelled scrub fields, and Hints as an On/Off pill where Map settings uses the
-knob switch. Bring Settings in line; the rules are in the `dm-ui` skill and the 2026-11-07 Map settings entries in
+still shows Hints as an On/Off pill where Map settings uses the knob switch. Bring Settings in line; the rules are in the `dm-ui` skill and the 2026-11-07 Map settings entries in
 `docs/decisions/ui-and-control-panel.md`.
 **First use · Polish · DM only**
 

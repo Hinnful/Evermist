@@ -13,6 +13,11 @@ describe('classifyWheel', () => {
   it('reads a whole 100px deltaY as a mouse', () => {
     assert.equal(classifyWheel(ev({ deltaY: -100 }), wheelState(), 0), 'mouse');
   });
+  it('reads a notch with scale-conversion float noise as a mouse', () => {
+    assert.equal(classifyWheel(ev({ deltaY: 119.99999821186069 }), wheelState(), 0), 'mouse');
+    assert.equal(classifyWheel(ev({ deltaY: -119.99999821186069 }), wheelState(), 0), 'mouse');
+    assert.equal(classifyWheel(ev({ deltaY: 80.5 }), wheelState(), 0), 'touchpad');
+  });
   it('reads a line-mode wheel as a mouse', () => {
     assert.equal(classifyWheel(ev({ deltaY: 3, deltaMode: 1 }), wheelState(), 0), 'mouse');
   });

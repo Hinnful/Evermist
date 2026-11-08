@@ -167,15 +167,12 @@ function dockHoldForCalibration(on) {
 function _dockForgetCal() { _dockBeforeCal = null; }
 
 // ─── The world map ────────────────────────────────────────────────────────────
-// The TV never changes while it is open, so Scene control and the fog that every scene shares go
-// dark; the pane comes back on closing unless a tab was picked meanwhile. Notes stays: place and road notes live there.
+// The TV never changes while it is open, so Scene control goes dark; the pane comes back on closing unless a tab was picked meanwhile. Notes stays: place and road notes live there.
 let _dockBeforeWorld = null;
 
 function dockHoldForWorld(on) {
   const tab = document.getElementById('dock-tab-scene');
-  const fog = document.getElementById('fog-half-alpha-num');
   if (tab) tab.disabled = on;
-  if (fog) fog.closest('.cp-group').inert = on;
   if (on) {
     _dockBeforeWorld = _dockPane === 'scene' ? 'scene' : null;
     if (_dockBeforeWorld) dockOpen(null, true);

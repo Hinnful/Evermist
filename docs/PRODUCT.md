@@ -385,7 +385,7 @@ A delete call deletes nothing until it carries `confirmed: true`; without it the
 the yes is enforced by the app and not only asked for in a tool description. The line under Connect to Claude in Settings and the
 `claude` guide topic both say that the assistant can delete, asks first, and that undo lasts until Evermist closes. On the
 fight open at the table Claude may only add monsters or raise a count. Three calls the epic left open: map-look
-settings (shrink on import, half-room fog, feather) are prep; the DM's machine settings, backup, restore and export
+settings (shrink on import) are prep; the DM's machine settings, backup, restore and export
 stay out; a map open on the DM's screen but not on the TV is prep, and Claude may change it.
 
 ### Claude's edges on the map, fog, effects and music · `SETTLED` (2026-10-28)

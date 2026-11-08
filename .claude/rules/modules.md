@@ -28,7 +28,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `fog/fogClouds.js` | The drifting noise texture, built once and shared |
 | `fog/fog.js` | Fog canvases, the blur + cloud pipeline, reveal/hide |
 | `fog/fogAnim.js` | Fog on a clock: the drift, the reveal crossfade, the scene cover, the colour ease |
-| `fog/fogControls.js` | The fog's controls: feather, half-shroud, doors |
+| `fog/fogControls.js` | The fog's door-size fields |
 | `fog/fogGeometry.js` | Pure fog geometry kernel. Tested |
 | `fog/fogTransitionPlan.js` | Pure kernel: which pixels a TV fog change touches, their order, which pixels a change takes from one still running. Tested |
 | `fog/fogTheme.js` | The fog theme on a live window: the DM's pick, a map's restore, and the Player taking the theme it is sent |

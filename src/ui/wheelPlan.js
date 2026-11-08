@@ -13,10 +13,12 @@ function wheelState() { return { touchpad: false, last: -Infinity }; }
 
 // 'pinch' (ctrlKey), 'touchpad' or 'mouse'. A touchpad event carries a deltaX or a fractional or
 // small deltaY, and once one does the gesture stays touchpad until a gap. The caller owns `state`.
+// A deltaY within 1e-3 of a whole number counts as whole: mixed-scale monitors send 119.9999982.
 function classifyWheel(e, state, now) {
   if (e.ctrlKey) return 'pinch';
+  const fractional = Math.abs(e.deltaY - Math.round(e.deltaY)) >= 1e-3;
   const reads = e.deltaMode === 0 &&
-    (e.deltaX !== 0 || !Number.isInteger(e.deltaY) || Math.abs(e.deltaY) < 50);
+    (e.deltaX !== 0 || fractional || Math.abs(e.deltaY) < 50);
   const live = state.touchpad && now - state.last < WHEEL_GAP_MS;
   state.touchpad = live || reads;
   state.last = now;

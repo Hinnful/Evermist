@@ -52,8 +52,6 @@ const PANE_CONTROLS = {
   'pane-fog-theme':   m => setFogTheme(m.id),
   'pane-undo':        () => undo(),
   'pane-redo':        () => redo(),
-  'pane-fog-feather': m => _paneField('fog-feather-num', m.radius, 'change'),
-  'pane-fog-half':    m => _paneField('fog-half-alpha-num', m.pct, 'change'),
   'pane-weather':     m => applyWeatherChoice(m.id),
 
   'pane-grid':      m => { applyGridConfig(m.config); commitGridChange(); },

@@ -271,7 +271,7 @@ function _cpInitScrubs() {
     });
   });
   // A typed value is clamped on the way out, as the handler clamped what it took.
-  [['grid-size-num', _CP_GRID_SIZE.min, _CP_GRID_SIZE.max], ['fog-half-alpha-num', 0, 100], ['fog-feather-num', 0, 24]].forEach(([id, lo, hi]) => {
+  [['grid-size-num', _CP_GRID_SIZE.min, _CP_GRID_SIZE.max]].forEach(([id, lo, hi]) => {
     const el = _cpEl(id);
     el.addEventListener('change', () => { el.value = Math.max(lo, Math.min(hi, parseInt(el.value) || lo)); });
     el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') el.blur(); });
@@ -330,13 +330,8 @@ function _cpInitResets() {
     });
   });
 
-  // Weather, fog theme and feather go back together. Fog's half-shroud is not reset: it persists.
   _cpEl('cp-fog-reset').addEventListener('click', () => {
-    ask('Weather goes back to No weather, and the fog theme and feather go back to Default and 12.', () => {
-      const fire = (id, val) => { const el = _cpEl(id); if (el) { el.value = val; el.dispatchEvent(new Event('input', { bubbles: true })); } };
-      fire('fog-feather', 12);
-      // ⚠ fog-half-alpha is NOT reset here: it persists, and a reset would overwrite a value
-      // dialled in across sittings.
+    ask('Weather goes back to No weather, and the fog theme goes back to Default.', () => {
       setFogTheme('default');
       chooseWeather('none');
     });

@@ -75,7 +75,7 @@ function campaignNames() {
 }
 
 // Every fault a notes text carries. `names` and the word lists arrive ready, so this stays pure.
-function notesFaults(text, { filler, privateWords = [], names = [], allowed = [] }) {
+function notesFaults(text, { filler, privateWords = [], names = [], allowed = [], openers = [] }) {
   const lines = text.replace(/\r/g, '').trim().split('\n');
   const summary = lines[0] || '';
   const description = lines.slice(1).filter((l) => l.trim());
@@ -91,6 +91,15 @@ function notesFaults(text, { filler, privateWords = [], names = [], allowed = []
     if (/[—–]/.test(l)) faults.push(`line ${i + 1}: em-dash or en-dash, use " - ": ${l}`);
     if (/\bClaude\b/i.test(l)) faults.push(`line ${i + 1}: "Claude", say "AI assistant": ${l}`);
   });
+  lines.forEach((l, i) => {
+    if (/,\s+and\s/i.test(l)) faults.push(`line ${i + 1}: ", and" joins two changes, give each its own line: ${l}`);
+    for (const s of l.replace(/^\* /, '').split(/(?<=\.)\s+/)) {
+      const w = (s.match(/^["']?([A-Za-z]+)/) || [])[1];
+      if (w && openers.some((o) => o.toLowerCase() === w.toLowerCase())) {
+        faults.push(`line ${i + 1}: a sentence opens with "${w}", put the thing that changed first and give no instruction: ${s}`);
+      }
+    }
+  });
   faults.push(...wordFaults(lines, filler, 'filler', false));
   faults.push(...wordFaults(lines, privateWords, 'private word', false));
   faults.push(...wordFaults(lines, names.filter((n) => n.length >= 4 && !allowed.includes(n)), 'the DM\'s own name', true));
@@ -105,12 +114,13 @@ async function main() {
   const filler = wordList(rulesText, 'filler-words');
   const privateWords = wordList(rulesText, 'private-words');
   const allowed = wordList(rulesText, 'allowed-names');
-  if (!filler || !privateWords || !allowed) {
-    console.error(`check-notes: ${RULES} needs filler-words, private-words and allowed-names blocks`);
+  const openers = wordList(rulesText, 'never-open-with');
+  if (!filler || !privateWords || !allowed || !openers) {
+    console.error(`check-notes: ${RULES} needs filler-words, private-words, allowed-names and never-open-with blocks`);
     process.exit(2);
   }
   const text = fs.readFileSync(file, 'utf8');
-  const faults = notesFaults(text, { filler, privateWords, names: await campaignNames(), allowed });
+  const faults = notesFaults(text, { filler, privateWords, names: await campaignNames(), allowed, openers });
   if (faults.length) {
     console.error(`check-notes: ${faults.length} fault(s) in ${file}\n  ` + faults.join('\n  '));
     process.exit(1);

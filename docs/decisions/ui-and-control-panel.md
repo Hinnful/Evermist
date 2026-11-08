@@ -93,7 +93,7 @@ The toolbar centres between the minimap and the dock. On a window too narrow for
 rig's 1008px, it slides over the minimap's right edge and never under the dock. Reversed by "The
 toolbar is centred on the window, always" below.
 
-### Settings gathers what applies to every scene · `SETTLED` (2026-10-02)
+### Settings gathers what applies to every scene · `SETTLED` (Half and Feather superseded by "Fog in every map is gone", 2026-11-08)
 Language, Shrink big maps, Half and Feather, and the About block with the version and What's new.
 Reverses "About moved into the legend" and the compression pill in the library header. Feather now
 persists under `evermist.fogFeather`, like Half; Fog Reset still sets it back. Backup stayed in
@@ -1016,7 +1016,7 @@ stays out of a partial backup. Restore is a file picker, or a .zip dropped on th
 own restore, which merges and never replaces. A preview window before the merge was prototyped and not built.
 **Reversed by** "Export and Import merge scene by scene, and the newer edit wins": the buttons are Export and Import, and an import updates what it matches.
 
-### Settings is three sections in Scene control's own parts · `SETTLED` (2026-10-09)
+### Settings is three sections in Scene control's own parts · `SETTLED` (the fog section superseded by "Fog in every map is gone", 2026-11-08)
 Settings was five stacked headers with a sub-header inside World map and a header over a single switch. It is now
 Interface (language, shrink big maps), Fog in every scene (Half shroud and Feather) and World map (background, position,
 backup), each a section title over small sub-headers, in the parts Scene control uses. The background is the Sources
@@ -1239,7 +1239,9 @@ repainting on any machine, so opening the world map sets the clock to its own ti
 ### A touchpad scroll pans, a pinch zooms, a mouse wheel still zooms · `SETTLED` (2026-10-19)
 Each wheel event is read as a mouse, a touchpad or a pinch (`wheelPlan.js`): a touchpad event
 carries a deltaX or a small or fractional deltaY, and the gesture stays touchpad until a 150ms
-gap. A Settings switch between touchpad and mouse was rejected until a real device is misread.
+gap. A deltaY within 1e-3 of a whole number counts as whole: Chromium's monitor scale
+conversion turned a wheel notch's 120 into 119.99999821 (noise near 2e-6, a real touchpad
+fraction near 0.5), and a strict integer test panned instead of zooming. A Settings switch between touchpad and mouse was rejected until a real device is misread.
 A Magic Mouse reads as a touchpad and pans; accepted. On the minimap a two-finger scroll does
 nothing, so a scroll cannot zoom the TV by accident; a pinch zooms it. A ping without a middle
 button is deferred.
@@ -1402,3 +1404,15 @@ Effect names are never shown to the DM, only the AI assistant reads them, so no 
 
 ### In two maps, the Notes window reads the column that holds the map · `SETTLED` (2026-11-05)
 A map's notes come from the column showing it, not from the selected one (was BACKLOG 262).
+
+### Fog in every map is gone: Half shroud and Feather are constants · `SETTLED` (2026-11-08)
+Settings had a "Fog in every map" group with Half shroud (`fogHalfAlpha`) and Feather. Rejected on product grounds: the fog's look
+is the Map settings fog themes alone. Half shroud is a constant 0.5 and the feather is `FOG_FEATHER_RADIUS` (`fog.js`). The previous
+release still reads `evermist.fogHalfAlpha` and `evermist.fogFeather`, so the app neither writes nor clears them, for `/rollback`.
+Fog Reset no longer touches a feather: Weather goes back to No weather and the fog theme to Default.
+
+### Show on TV under Linux Wayland only asks the DM to drag the window · `SETTLED` (2026-11-08)
+Wayland lets no app place or read its own window, so `setBounds`, `getBounds` and `requestFullscreen({screen})` cannot move the Player.
+With `WAYLAND_DISPLAY` set and no x11 ozone switch, `canPlaceWindows()` is false, the window route offers no candidates and TV setup
+says to drag the window to the TV and press Fullscreen. Rejected: placing it through a KWin script (`sendClientToScreen` works), as
+it is desktop-specific, and special handling for any other desktop. Windows, Mac and Linux X11 are unchanged.
