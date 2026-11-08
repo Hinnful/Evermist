@@ -66,6 +66,7 @@ window.paneView = {
   get planLights()        { return planLightCount(); },
   get planRooms()         { return floorPlanRoomCount(); },
   get hasPlan()           { return !!(currentScene && currentScene.floorPlan); },
+  get planName()          { return (currentScene && currentScene.floorPlanName) || null; },
   get gridConfig()        { return captureGridConfig(); },
   get weather()           { return weatherId; },
   get fogTheme()          { return fogTheme; },

@@ -191,7 +191,7 @@ function _tiMatchedRecord(x, got, run) {
       Object.assign(rec, size, { mapType: 'image', mapPath: undefined, mapBlob: new Blob([got.mapBuffer], { type: e.mapMimeType || 'image/jpeg' }) });
     }
   }
-  if (rec.floorPlan === undefined) rec.floorPlan = e.floorPlan;
+  if (rec.floorPlan === undefined) { rec.floorPlan = e.floorPlan; rec.floorPlanName = e.floorPlanName; }
   if (take.place) { rec.group = sanitizeGroupName(rec.group); rec.worldPos = _tiRestoredPos(rec.worldPos, { dx: 0, dy: 0 }); }
   return rec;
 }
@@ -207,7 +207,7 @@ function _tiNewRecord(x, got, name, order, shift) {
     mapBlob: e.mapType !== 'video' && got.mapBuffer ? new Blob([got.mapBuffer], { type: e.mapMimeType || 'image/jpeg' }) : undefined, mapPath,
     polygons: esWithUids(e.polygons), nextPolygonId: e.nextPolygonId || 1, notes: e.notes, pictureBlobs: _tiPictures(e.pictures, got.pictures),
     effects: esWithUids(e.effects), nextEffectId: e.nextEffectId || 1,
-    lightsHidden: !!e.lightsHidden, lightShapes: e.lightShapes || [], floorPlan: e.floorPlan,
+    lightsHidden: !!e.lightsHidden, lightShapes: e.lightShapes || [], floorPlan: e.floorPlan, floorPlanName: e.floorPlanName,
     baseFogBlob: got.fogBuffer ? new Blob([got.fogBuffer], { type: 'image/png' }) : null, gridConfig: e.gridConfig || {}, fogSettings: e.fogSettings, fogTheme: e.fogTheme, weather: e.weather, tvFit: e.tvFit,
     thumbnail: got.thumbBuffer ? new Blob([got.thumbBuffer], { type: 'image/jpeg' }) : null,
     createdAt: e.createdAt || Date.now(), sortOrder: order, edits: e.edits && typeof e.edits === 'object' ? e.edits : undefined,

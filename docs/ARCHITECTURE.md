@@ -509,7 +509,7 @@ by hand or with the size presets. A repair acts on the kind being drawn,
 fires or lights, never both. With Cut out, Merge or Split armed, a Ring acts only on the band its preview shows. The Lights switch in Map settings hides them all; a single light is
 deleted, not switched off.
 
-A floor plan seeds lights once. Map settings' Rooms and lights section loads one .dd2vtt as a file card, whose Draw rooms and Draw lights act on the file and whose trash removes the plan (`removeFloorPlan`) while the drawn rooms and lights stay. Each light in the file becomes one
+A floor plan seeds lights once. Map settings' Rooms and lights section loads one .dd2vtt as a file card showing the plan's file name without `.dd2vtt` (ellipsis when long, full name in the tooltip; a scene stored before the name was kept reads "Floor plan"; the scene field `floorPlanName` travels with `floorPlan` and clears on remove), whose Draw rooms and Draw lights act on the file and whose trash removes the plan (`removeFloorPlan`) while the drawn rooms and lights stay. Each light in the file becomes one
 polygon, by where it sits. A light inside a room fills the room up to the walls or its radius: the whole room when the radius reaches every corner, the part the radius
 covers when it does not. The lights of one room become one polygon when they share 30% of the
 smaller one, or fill 90% of the room together, so a table of candles is not fifty polygons. A light
@@ -831,7 +831,7 @@ Drive. Sync stays off until **Connect to Google** in Settings.
 - **What syncs:** every map with its rooms, fog, effects, notes and map file; the gallery; the
   monsters, fights and bestiary; factions and lore; the campaign note; the module text; and the
   Campaign's places, roads, party marker and backdrop. Each part merges by Import's rules (see
-  above): the part edited later wins. Module text takes the newer copy and asks nothing.
+  above): the part edited later wins. Module text takes the newer copy and asks nothing. Music syncs too: every track, the music groups and their order (the later edit wins). A map's floor plan travels with its file name.
 - **When:** about four seconds after a change is saved, every 30 seconds while the app is open,
   at start, when the network comes back, and on **Sync now**. A tick compares content hashes kept
   in the `evermist-sync` database and moves only what changed. A map's picture or video goes up
@@ -842,6 +842,7 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   `rec-<computer>` folder of its own, and map files sit in one shared `blobs` folder named by
   their owner and content hash. A file exists only once its upload has finished, so a cut upload
   resumes and is never read as complete. A map file no computer uses any more is removed.
+  Music: each computer's music record is `rec-<computer>/music.json`, and track files sit in a `music/<computer>.<sha256>` folder of their own, never in `blobs`, which the previous release's cleanup empties of anything it does not know. Local music sync state sits under `$music` in the `synced` store.
   A gallery picture deleted on any computer loses every computer's record and its file on the Drive.
 - **Holds:** a change never lands under the DM's hands. Changes for the open map, the map on the
   TV and both maps in Two maps wait until that map is closed or changed; fight and bestiary
@@ -853,6 +854,7 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   days it is purged from the Drive. Its deletion is remembered for good, so a computer that was
   offline longer than that cannot bring it back. Deleting a whole map travels by sync only; Export
   and Import keep their own rules.
+- **Music deletes:** a deleted track leaves the other computer and shows in "Recently deleted" beside maps, with the same 30 days, Restore and Empty now. A track that is playing is held until it stops; an incoming track whose name is taken gets the music folder's " (2)" name. Within a tick, maps, records and notes move before music (a track already uploading finishes first). A Claude music delete goes out only after its `.removed` undo window clears, at the next start.
 - **Before a computer's first sync**, a successful Connect asks first: how many maps this
   computer holds, how many the Drive holds and from how many other computers, and that they will
   be merged with nothing deleted. Nothing syncs while the question is open. **Start syncing**
@@ -871,15 +873,14 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   to the other computers. If the map is open, on the TV, in a column or in the Notes window, Restore
   does nothing and a "Close this map first" dialog says why.
 - **The status line** says when the last sync ran, or that it is syncing, offline, signed out,
-  that the Drive is full, that the other computer runs a newer Evermist, or that a sync failed
+  that the Drive is full, how full it is (" · N% full", hidden under 70%, amber from 70%, red from 90%; read through Drive's about() at most once per tick and after a quota error), that the other computer runs a newer Evermist, or that a sync failed
   and is tried again in 30 seconds. Offline, the app works as before and edits go up later.
-- **What stays per computer:** the TV screen, seat alignment and the other Settings, music and
-  sounds, and the sign-in itself.
+- **What stays per computer:** the TV screen, seat alignment and the other Settings, the music folded-shut state and volume, and the sign-in itself. Sounds ship inside the app and need no sync.
 
 The page side is `sync.js` (the triggers, the outbox and inbox), `syncIndex.js` (the hashes),
 `syncMerge.js` (applying a pulled record silently) and `syncSettings.js` (the Settings section);
-`syncPlan.js` decides what moves and is pure and tested. In the Electron shell, `syncRemote.js`
-talks to the Drive and keeps replaced map files, `syncAuth.js` signs in and keeps the token, and
+`syncMusic.js` and `syncMusicPlan.js` carry music (the plan is pure and tested); `syncPlan.js` decides what moves and is pure and tested. In the Electron shell, `syncRemote.js`
+talks to the Drive and keeps replaced map files, `musicHashes.js` hashes tracks, `syncAuth.js` signs in and keeps the token, and
 `syncConfig.js` picks the Google client.
 
 ## How the app tests itself

@@ -11,7 +11,7 @@ function initDragDrop() {
     const plans = dropped.filter(f => /\.dd2vtt$/i.test(f.name));
     // Only a plan ON ITS OWN: it got separated from its map. Nothing open means nothing happens.
     if (!plans.length || plans.length !== dropped.length) return;
-    plans[0].text().then(text => attachPlanText(text).then(ok => { if (ok) offerStoredFloorPlan(); }))
+    plans[0].text().then(text => attachPlanText(text, plans[0].name).then(ok => { if (ok) offerStoredFloorPlan(); }))
       .catch(() => {});
   });
 }

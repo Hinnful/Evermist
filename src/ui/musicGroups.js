@@ -1,7 +1,8 @@
 'use strict';
 // musicGroups.js — the Music pane's groups. A group is a name a track carries, kept in the app's
 // settings by file name; the files never move, so a release without groups still lists every
-// track. The pure half is sceneGroups.js's, shared with the world map's groups.
+// track. The pure half is sceneGroups.js's, shared with the world map's groups. `at` is the last edit's time, which
+// sync compares; the folded-shut state stays on this computer.
 
 const MU_GROUPS_KEY = 'evermist.musicGroups';
 
@@ -9,6 +10,7 @@ let _mgOf = {};      // file name → group name
 let _mgOrder = [];   // group names in display order; Ungrouped is not one of them
 let _mgShut = {};    // group name, '' for Ungrouped → folded shut
 let _mgDrag = null;  // the file name of the row being dragged
+let _mgAt = 0;       // when a track's group, a name or the order last changed here
 
 function loadMusicGroups() {
   try {
@@ -16,11 +18,31 @@ function loadMusicGroups() {
     _mgOf = s.of && typeof s.of === 'object' ? s.of : {};
     _mgOrder = Array.isArray(s.order) ? s.order.map(sanitizeGroupName).filter(Boolean) : [];
     _mgShut = s.shut && typeof s.shut === 'object' ? s.shut : {};
+    _mgAt = Number.isFinite(s.at) ? s.at : 0;
   } catch (_) {}
 }
 
-function _mgSave() {
-  try { localStorage.setItem(MU_GROUPS_KEY, JSON.stringify({ order: _mgOrder, shut: _mgShut, of: _mgOf })); } catch (_) {}
+// `edited`: the groups changed, not only what is folded shut.
+function _mgSave(edited) {
+  if (edited) _mgAt = Date.now();
+  try { localStorage.setItem(MU_GROUPS_KEY, JSON.stringify({ order: _mgOrder, shut: _mgShut, of: _mgOf, at: _mgAt })); } catch (_) {}
+  if (edited) syncNoteMusic();
+}
+
+// The part sync carries, as stored.
+function musicGroupsSynced() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(MU_GROUPS_KEY) || '{}') || {}; } catch (_) {}
+  return { of: s.of && typeof s.of === 'object' ? s.of : {}, order: Array.isArray(s.order) ? s.order : [], at: Number.isFinite(s.at) ? s.at : 0 };
+}
+
+// Another computer's later edit, taken as it is: the time stays theirs.
+function musicGroupsAdopt(g) {
+  _mgOf = g.of;
+  _mgOrder = g.order.map(sanitizeGroupName).filter(Boolean);
+  _mgAt = g.at;
+  _mgSave();
+  _muRenderList();
 }
 
 function musicGroupOf(name) { return sanitizeGroupName(_mgOf[name]); }
@@ -28,7 +50,7 @@ function musicGroupOf(name) { return sanitizeGroupName(_mgOf[name]); }
 function forgetMusicTrack(name) {
   if (!(name in _mgOf)) return;
   delete _mgOf[name];
-  _mgSave();
+  _mgSave(true);
 }
 
 function musicGroupNames() { return _mgOrder.slice(); }
@@ -36,7 +58,7 @@ function musicGroupNames() { return _mgOrder.slice(); }
 // Puts tracks in a group, or in none when `group` is ''. The drag-and-drop and Claude both come here.
 function setMusicGroup(names, group) {
   for (const n of names) if (group) _mgOf[n] = group; else delete _mgOf[n];
-  _mgSave();
+  _mgSave(true);
   _muRenderList();
 }
 
@@ -45,7 +67,7 @@ function putMusicGroup(name, index, members) {
   _mgOrder = _mgOrder.filter(n => n !== name);
   _mgOrder.splice(Math.min(index, _mgOrder.length), 0, name);
   for (const n of members) _mgOf[n] = name;
-  _mgSave();
+  _mgSave(true);
   _muRenderList();
 }
 
@@ -55,7 +77,7 @@ function deleteMusicGroup(name) { _mgDelete(name); }
 function newMusicGroup() {
   const n = uniqueGroupName(t('New group'), _mgOrder);
   _mgOrder.push(n);
-  _mgSave();
+  _mgSave(true);
   _muRenderList();
   const field = [...document.querySelectorAll('#mu-list input.mu-grp-name')].find(i => i.value === n);
   if (field) { field.focus(); field.select(); }
@@ -81,7 +103,7 @@ function _mgRename(from, to) {
   _mgOrder = _mgOrder.map(n => (n === from ? to : n)).filter((n, i, arr) => arr.indexOf(n) === i);
   for (const k in _mgOf) if (_mgOf[k] === from) _mgOf[k] = to;
   if (_mgShut[from]) { _mgShut[to] = true; delete _mgShut[from]; }
-  _mgSave();
+  _mgSave(true);
   _muRenderList();
 }
 
@@ -89,7 +111,7 @@ function _mgDelete(name) {
   _mgOrder = _mgOrder.filter(n => n !== name);
   for (const k in _mgOf) if (_mgOf[k] === name) delete _mgOf[k];
   delete _mgShut[name];
-  _mgSave();
+  _mgSave(true);
   _muRenderList();
 }
 

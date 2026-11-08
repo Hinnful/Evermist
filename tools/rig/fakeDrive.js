@@ -27,6 +27,7 @@ function createFakeDrive() {
     pageSize: 0,                // > 0 caps every listing page, whatever the client asks for
     quotaFull: false,           // creating a file fails with storageQuotaExceeded
     quotaLimit: 15 * 1024 * 1024 * 1024,
+    quotaUsed: null,            // a number stands in for the bytes the files hold, so a scenario sets how full it reads
     cutNext: null,              // { bytes, down }: the next upload PUT dies after this many bytes; `down` keeps the Drive
                                 // unreachable afterwards, as a lid closed mid-upload
     stats: { uploads: [], requests: [], consents: 0, refreshes: 0, unauthorized: 0, deletes: [], sessions: [], puts: [] },
@@ -119,7 +120,8 @@ function createFakeDrive() {
     }
 
     if (u.pathname === '/drive/v3/about') {
-      return send(res, 200, { storageQuota: { limit: String(drive.quotaLimit), usage: String(usage()) } });
+      const used = drive.quotaUsed === null ? usage() : drive.quotaUsed;
+      return send(res, 200, { storageQuota: { limit: String(drive.quotaLimit), usage: String(used) } });
     }
 
     if (u.pathname === '/drive/v3/files' && req.method === 'GET') {

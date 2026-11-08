@@ -89,6 +89,7 @@ describe('sceneBackupMeta', () => {
     nextPolygonId: 7, notes: 'DM notes',
     effects: [{ id: 1, uid: 'e1', material: 'water', vertices: [{ x: 1, y: 1 }] }], nextEffectId: 4,
     lightsHidden: true, lightShapes: [{ id: 1, vertices: [{ x: 5, y: 5 }] }], floorPlan: { format: 0.3, walls: [] },
+    floorPlanName: 'Crypt level 1.dd2vtt',
     gridConfig: { size: 70, offsetX: 3 }, fogSettings: { blur: 5 }, fogTheme: 'ice', weather: 'rain',
     tvFit: { step: 1, turn: 90 }, createdAt: 123, sortOrder: 5, edits: { scene: { fog: 100 } },
   };

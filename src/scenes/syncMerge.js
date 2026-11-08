@@ -117,7 +117,7 @@ const syncMerge = (() => {
       if (video) { staged = await io.video(mb.name, id); if (staged) Object.assign(rec, size, { mapType: 'video', mapPath, mapBlob: undefined }); }
       else Object.assign(rec, size, { mapType: 'image', mapPath: undefined, mapBlob: await io.blob(mb.name, mb.mime || 'image/jpeg') });
     }
-    if (rec.floorPlan === undefined) rec.floorPlan = e.floorPlan;
+    if (rec.floorPlan === undefined) { rec.floorPlan = e.floorPlan; rec.floorPlanName = e.floorPlanName; }
     if (take.place) { rec.group = sanitizeGroupName(rec.group); rec.worldPos = _tiRestoredPos(rec.worldPos, { dx: 0, dy: 0 }); }
     const changed = slice('compare', () => syRecordBody(rec) !== syRecordBody(local)) || take.fog && fb || take.map && mb;
     if (!changed) { if (staged) await io.dropPart(id); return { applied: false, same: true }; }

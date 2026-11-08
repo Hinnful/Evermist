@@ -11,7 +11,7 @@
 
 // ─── Finding the plan ─────────────────────────────────────────────────────────
 
-// The dropped map's own path, then its sibling. getPathForFile must be called in the
+// The dropped map's own path, then its sibling, as { name, text }. getPathForFile must be called in the
 // preload — Electron 32 removed File.path, and the renderer cannot reach webUtils.
 async function findPlanForFile(file) {
   try {
@@ -20,7 +20,7 @@ async function findPlanForFile(file) {
     const mapPath = api.getPathForFile(file);
     if (!mapPath) return null;
     const found = await api.findFloorPlan(mapPath);
-    return found && found.text ? found.text : null;
+    return found && found.text ? { name: found.name || null, text: found.text } : null;
   } catch (_) {
     return null;
   }
@@ -262,11 +262,12 @@ function drawStoredFloorPlan() {
 }
 
 // Stores a plan dropped on its own against the open scene, for the case where the two
-// files got separated. Returns true if it was kept.
-async function attachPlanText(planText) {
+// files got separated. `name` is its file's, for the card. Returns true if it was kept.
+async function attachPlanText(planText, name) {
   if (!currentScene) return false;
   if (!describePlan(planText)) return false;
   currentScene.floorPlan = planText;
+  currentScene.floorPlanName = name || null;
   doAutoSave();
   refreshFloorPlanUI();
   return true;
@@ -277,6 +278,7 @@ async function attachPlanText(planText) {
 function removeFloorPlan() {
   if (!currentScene) return;
   currentScene.floorPlan = null;
+  currentScene.floorPlanName = null;
   currentScene.planOfferPending = false;
   doAutoSave();
   refreshFloorPlanUI();
@@ -285,7 +287,7 @@ function removeFloorPlan() {
 // The load row: a plan picked by hand, offered the way a dropped one is.
 async function loadPlanFile(file) {
   if (!currentScene || !file) return;
-  if (await file.text().then(attachPlanText, () => false)) { offerStoredFloorPlan(); return; }
+  if (await file.text().then(text => attachPlanText(text, file.name), () => false)) { offerStoredFloorPlan(); return; }
   messageDialog({ title: 'That file is not a floor plan',
                   message: 'Evermist reads the .dd2vtt file Dungeon Alchemist exports beside a map. Nothing was changed.' });
 }

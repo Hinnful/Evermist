@@ -11,7 +11,7 @@
 //
 //   per map     the image or the animated map's file, the thumbnail, the rooms (with doors from a real floor plan), the
 //               effects, the lights, the notes, the fog layer, the grid, the fog look and weather, the TV fit, the room
-//               pictures, the floor plan, where the map sits on the Campaign and its group
+//               pictures, the floor plan and its file name, where the map sits on the Campaign and its group
 //   campaign    groups and their notes, roads and their notes, the party marker, factions and lore, the campaign note,
 //               the group uids that mentions point at, the world map's backdrop
 //   other       fights and the bestiary, module text, Pictures

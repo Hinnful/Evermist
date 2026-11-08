@@ -1025,6 +1025,7 @@ const RU = {
   'Sync failed. It tries again in 30 seconds.': 'Синхронизация не удалась. Новая попытка через 30 секунд.',
   'The other computer runs a newer Evermist. Update this one to sync everything.': 'На другом компьютере более новый Evermist. Обновите этот, чтобы синхронизировалось всё.',
   'Last synced {time}': 'Синхронизировано {time}',
+  '{n}% full': 'занято {n}%',
   'Not synced yet.': 'Ещё не синхронизировано.',
   'This computer holds no maps yet.': 'На этом компьютере пока нет карт.',
   'Your Google Drive holds no Evermist maps yet.': 'На вашем Google Диске пока нет карт Evermist.',

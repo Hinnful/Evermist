@@ -9,12 +9,15 @@ const fs = require('fs');
 const https = require('https');
 const { spawn, execFileSync } = require('child_process');
 const { uniqueMusicName } = require('../src/ui/musicPlan.js');
+const { createMusicHashes } = require('./musicHashes.js');
 
 let sendTo;
+let hashes = null;
 
 function register(ctx) {
   ({ sendTo } = ctx);
   musicDir = ctx.musicDir;
+  hashes = createMusicHashes(musicDir, path.join(ctx.userData, 'sync', 'music-hashes.json'));
   // ⚠ Claude's deleted tracks wait in `.removed` for its undo and go for good when Evermist quits;
   // a crash leaves them, so the start clears them too.
   const purge = () => { try { fs.rmSync(path.join(musicDir, '.removed'), { recursive: true, force: true }); } catch {} };
@@ -132,6 +135,7 @@ ipcMain.handle('music-stash', async (_event, name) => {
   await fs.promises.mkdir(dir, { recursive: true });
   const token = Date.now() + '-' + Math.random().toString(36).slice(2, 8) + path.extname(name);
   await fs.promises.rename(full, path.join(dir, token));
+  await hashes.stashed(name, token).catch(() => {});
   return token;
 });
 
@@ -141,6 +145,7 @@ ipcMain.handle('music-unstash', async (_event, token, name) => {
   try { taken = await fs.promises.readdir(musicDir); } catch {}
   const back = uniqueMusicName(name, taken);
   await fs.promises.rename(path.join(musicDir, '.removed', token), path.join(musicDir, back));
+  await hashes.unstashed(token, back).catch(() => {});
   return back;
 });
 
@@ -336,4 +341,4 @@ ipcMain.handle('music-ytdlp-update', async () => {
   return String(out).trim().split(/\r?\n/).slice(-2).join(' ').slice(0, 200);
 });
 
-module.exports = { register, ensureYtdlp, musicActiveAt };
+module.exports = { register, ensureYtdlp, musicActiveAt, musicHashes: () => hashes };

@@ -1,7 +1,7 @@
 'use strict';
 // syncRemote.js — the Drive side of sync, over Node http(s) so the rig's fake Drive and Google run the same code.
 // Layout in the app's hidden `appDataFolder`: one `rec-<machine>` folder per computer for its records, one `blobs`
-// folder for map files named `<owner>.<sha256>`. A file exists only once its resumable upload finishes, so a cut
+// folder for map files named `<owner>.<sha256>`, and one `music` folder for tracks named `<machine>.<sha256>`. A file exists only once its resumable upload finishes, so a cut
 // upload never reads as present. Every name read back is checked before it is used. Tested against the fake Drive.
 
 const fs = require('fs');
@@ -18,7 +18,7 @@ const GOOGLE_API = 'https://www.googleapis.com';
 const FOLDER = 'application/vnd.google-apps.folder';
 const CHUNK = 8 * 1024 * 1024;
 const MACHINE_RE = /^[0-9a-zA-Z_-]{1,64}$/;
-const NAME_TO_KEY = /^(?:(scene|pic|local)~(.+)|(backdrop|campaign|gone))\.json$/;
+const NAME_TO_KEY = /^(?:(scene|pic|local)~(.+)|(backdrop|campaign|gone|music))\.json$/;
 
 class SyncError extends Error {
   constructor(code, message) { super(message || code); this.syncCode = code; }
@@ -250,12 +250,12 @@ function createRemote(cfg, opts) {
           records.push({ machine, key, fileId: r.id, hash: p.hash || '', format: parseInt(p.format || '0', 10), at: Number(p.at) || 0, edited: Number(p.edited) || 0, blobs });
         }
       }
-      const blobs = [];
-      const bf = await folder('blobs');
-      for (const b of await list(`'${bf}' in parents and trashed = false`)) {
-        if (sp.syBlobNameOk(b.name)) blobs.push({ name: b.name, id: b.id, size: Number(b.size) || 0 });
-      }
-      return { records, blobs, dupes };
+      const files = async dir => {
+        const out = [], id = await folder(dir);
+        for (const b of await list(`'${id}' in parents and trashed = false`)) if (sp.syBlobNameOk(b.name)) out.push({ name: b.name, id: b.id, size: Number(b.size) || 0 });
+        return out;
+      };
+      return { records, blobs: await files('blobs'), music: await files('music'), dupes };
     },
 
     async putRecord(machine, key, text, p) {
@@ -272,14 +272,16 @@ function createRemote(cfg, opts) {
       return check(await call('GET', base + '/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media')).body.toString();
     },
 
-    async putBlob(name, src, resumeKey) {
+    // ⚠ A track goes to `music`, never `blobs`: the previous release removes any file in `blobs` its records do not name.
+    async putBlob(name, src, resumeKey, dir) {
       if (!sp.syBlobNameOk(name)) { src.close(); throw new SyncError('error', 'a file name Drive would not take'); }
-      const parent = await folder('blobs');
+      const parent = await folder(dir || 'blobs');
       if ((await list(`name = '${esc(name)}' and '${parent}' in parents and trashed = false`)).length) { src.close(); return null; }
       return (await upload({ name, parents: [parent], mimeType: 'application/octet-stream' }, src, resumeKey || name)).id;
     },
     putBlobBuffer: (name, buf) => api.putBlob(name, bufSource(buf)),
     putBlobFile: (name, filePath) => api.putBlob(name, fileSource(filePath)),
+    putMusicFile: (name, filePath) => api.putBlob(name, fileSource(filePath), 'music|' + name, 'music'),
 
     // The file's bytes, checked against the hash its name carries: a short or damaged copy is never taken.
     async getBlob(fileId, name) {
@@ -342,6 +344,7 @@ function register(ctx) {
     },
   }) : null;
   const remote = cfg ? createRemote(cfg, { refreshToken: auth.refreshToken }) : null;
+  const tracks = cfg ? require('./music.js').musicHashes() : null;
   const machine = cfg ? machineId(ctx.userData) : null;
   const part = id => path.join(ctx.mapsDir, id + '.sync-part');
   const ext = e => (e === '.mp4' ? '.mp4' : '.webm');
@@ -414,6 +417,20 @@ function register(ctx) {
     dropVideoPart: async a => { await fs.promises.unlink(part(safe(a.sceneId))).catch(() => {}); return true; },
     remove: a => remote.remove(a.fileId),
     about: () => remote.about(),
+    // The music folder: its tracks with their hashes, hashed here only when asked (at start and as a track lands).
+    musicTracks: a => tracks.list(!!a.hash),
+    putMusic: async a => {
+      const f = tracks.trackPath(a.name);
+      if (!f || !fs.existsSync(f)) throw new SyncError('error', 'the track is missing');
+      return remote.putMusicFile(machine + '.' + a.hash, f);
+    },
+    getMusic: async a => {
+      const part = tracks.partPath(a.hash);
+      if (a.fileName.split('.')[1] !== a.hash) throw new SyncError('error', 'a bad track file');
+      await remote.getBlobToFile(a.fileId, a.fileName, part);
+      try { return await tracks.place(part, a.name, a.hash); } catch (err) { await fs.promises.unlink(part).catch(() => {}); throw err; }
+    },
+    removeMusic: a => tracks.remove(a.name, a.hash),
     signedIn: async () => auth.signedIn(),
     remembered: async () => auth.remembered(),
     connect: a => auth.connect(a.lang),

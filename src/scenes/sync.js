@@ -27,6 +27,7 @@ const syncEngine = (() => {
   let queued = null;
   let started = false;
   let asking = false;
+  let changes = 0;                // moves with every change to the library, so the music part can step aside
   const pending = new Map();      // machine/key -> a pulled record waiting for the map or table on screen
   const unrefSince = new Map();   // a Drive file name -> when it was first seen unreferenced
 
@@ -252,7 +253,8 @@ const syncEngine = (() => {
     await syncIndex.raw.put('synced', { key: 'gone', hash });
   }
 
-  // "Recently deleted": [{ id, name, at }], newest first. The name is read from the map's newest record on the Drive.
+  // "Recently deleted": [{ id, name, at }] of maps and tracks, newest first. A map's name is read from its newest record
+  // on the Drive; a track's id is `music:<hash>`.
   async function trash() {
     const gone = await _goneMap(), snap = await _drive('snapshot'), out = [];
     for (const id of syTrashIds(gone)) {
@@ -262,11 +264,16 @@ const syncEngine = (() => {
       if (item) try { const r = JSON.parse(await _drive('getRecord', { fileId: item.fileId })); name = (r.rec && r.rec.name) || ''; } catch (_) { /* listed without a name */ }
       out.push({ id, name, at: gone[id].at });
     }
-    return out.sort((a, b) => b.at - a.at);
+    return out.concat(await syncMusic.trash()).sort((a, b) => b.at - a.at);
   }
 
   // Restore brings the map back here at once and on every other computer at its next sync.
   async function restore(id) {
+    if (id.startsWith('music:')) {
+      await syncMusic.restore(id.slice(6));
+      await now();
+      return syncMusic.has(id.slice(6));
+    }
     const g = await _goneMap(), next = syRestore(g, id, Date.now());
     if (next === g) return false;
     await _goneSave(g, next);
@@ -277,8 +284,9 @@ const syncEngine = (() => {
   async function emptyNow() {
     const g = await _goneMap(), ids = syTrashIds(g).filter(id => !allScenes.some(s => s.id === id));
     await _goneSave(g, syPurge(g, ids));
+    const tracks = await syncMusic.emptyNow();
     await now();
-    return ids.length;
+    return ids.length + tracks;
   }
 
   // ─── Replaced map pictures ──────────────────────────────────────────────────
@@ -463,10 +471,15 @@ const syncEngine = (() => {
         }
         for (const id of after.dupes) await _drive('remove', { fileId: id }).catch(() => {});
       }
+      // Music last, after every map, record and note.
+      const mu = await syncMusic.tick(snap, { machine, first, now, changes: () => changes });
+      status.held += mu.held;
       await _purgeCopies(Date.now());
+      try { status.space = await _drive('about'); } catch (_) { /* the line keeps the last reading */ }
       if (first && !failed && !pending.size) await syncIndex.raw.put('synced', { key: FIRST_KEY, hash: 'done' });
       _set('idle', { last: Date.now(), held: status.held, message: status.message });
     } catch (err) {
+      if (err.code === 'quota') try { status.space = await _drive('about'); } catch (_) { /* no reading */ }
       const map = { offline: 'offline', auth: 'signedOut', quota: 'full' };
       _set(map[err.code] || 'error', { last: status.last, held: status.held, message: String(err.message || err) });
       if (!map[err.code]) console.error('[sync]', err);
@@ -496,7 +509,7 @@ const syncEngine = (() => {
     }
     started = true;
     _set('idle');
-    syncIndex.onChange(() => schedule(TICK_AFTER_CHANGE_MS));
+    syncIndex.onChange(() => { changes++; schedule(TICK_AFTER_CHANGE_MS); });
     setInterval(now, TICK_EVERY_MS);
     window.addEventListener('online', now);
     // A map held back is tried again as soon as the screen lets go of it.
@@ -504,7 +517,9 @@ const syncEngine = (() => {
     schedule(1500);
   }
 
-  return { start, now, trash, restore, kept, restoreKept, emptyNow, signedIn, remembered, connect, confirmFirst, cancelFirst, disconnect, status: () => ({ ...status, machine, pending: pending.size }), pending: () => Array.from(pending.keys()) };
+  const soon = () => schedule(TICK_AFTER_CHANGE_MS);
+
+  return { start, now, soon, trash, restore, kept, restoreKept, emptyNow, signedIn, remembered, connect, confirmFirst, cancelFirst, disconnect, status: () => ({ ...status, machine, pending: pending.size }), pending: () => Array.from(pending.keys()) };
 })();
 
 // Sync's start after the scenes are up. The section shows wherever there is a Google client; the index and the
@@ -524,5 +539,6 @@ async function syncActivate() {
   if (syncIndex.isOn()) return;
   if (!(await syncIndex.init())) return;
   await syncIndex.reconcile();
+  syncMusic.reconcile();
   await syncEngine.start();
 }

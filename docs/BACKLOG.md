@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 5 open items; IDs run to 283."
+description: "Open work only. 3 open items; IDs run to 283."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.6.0**: Map settings is rebuilt in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -82,12 +82,6 @@ mismatch the DM has to avoid. Floated by the DM while weather was settled; nothi
 **Needs a design round.**
 **Play · Player**
 
-### 274. Music syncs between computers
-Filed 2026-11-06 by the DM. Music is not in a backup and will not ride the Drive sync (271), so a track added on one
-computer is missing on the other. "Music never enters the backup zip" (PRODUCT.md) stands for the zip; this item is
-about the sync only, and must weigh the DM's Drive space against a music folder that can grow to gigabytes.
-**Needs /spec.**
-**Campaign · Both**
 
 ### 276. Google's sign-in calls Evermist an unverified app
 Filed 2026-11-07, with 5.5.0. Connect to Google shows Google's "unverified app" warning until Google reviews the app's
@@ -95,11 +89,6 @@ brand; that review needs the privacy policy on a domain the project owner proves
 github.com). Every DM who connects sees the warning first.
 **First use · Polish · DM only**
 
-### 281. The floor plan card shows the file's name
-Filed 2026-11-08, with 5.6.0. The floor plan card in Map settings says "Floor plan" because the app keeps no file name
-for a plan. Showing the name means a new saved field on the scene, which sync, backup and import must all carry and the
-previous release must load safely.
-**Polish · DM only**
 
 ### 283. A trash that works without Google Drive
 Filed 2026-11-08, with 5.6.2. Without sync, a deleted map is gone after the next delete or a restart; only the toast's

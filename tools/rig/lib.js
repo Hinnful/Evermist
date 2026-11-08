@@ -179,8 +179,8 @@ async function importWithPlan(rig, name, plan) {
   const dm = rig.dm;
   const base = await rig.fixtures.tableMap(dm, rig.fixtureDir, { w: DM_MAP.w, h: DM_MAP.h });
   const file = await rig.fixtures.asFileExpr(dm, Object.assign({}, base, { name: name + '.mp4' }));
-  await dm.evaluate('globalThis.__rigPlanText = ' + JSON.stringify(plan || HALLS_PLAN) +
-    '; window.findPlanForFile = async () => globalThis.__rigPlanText; findPlanForFile = window.findPlanForFile; 0');
+  await dm.evaluate('globalThis.__rigPlan = ' + JSON.stringify({ name: name + '.dd2vtt', text: plan || HALLS_PLAN }) +
+    '; window.findPlanForFile = async () => globalThis.__rigPlan; findPlanForFile = window.findPlanForFile; 0');
   await dm.evaluate('createNewScene(' + file + ')', 240000);
   await dm.waitFor('currentScene && currentScene.name === ' + JSON.stringify(name) + ' && mapWidth === ' + DM_MAP.w,
                    240000, 'the import of ' + name);

@@ -106,10 +106,14 @@ describe('the floor plan as a part of a map', () => {
   const M = require('../src/mcp/mcpMapPlan.js');
   it('reads, writes and takes away a stored plan', () => {
     const keys = M.mcpMapKeys(['plan']);
-    assert.deepEqual(keys, ['floorPlan']);
-    assert.deepEqual(M.mcpMapRecordRead({ floorPlan: '{"a":1}' }, keys, {}), { floorPlan: '{"a":1}' });
-    const rec = { floorPlan: 'old' };
-    assert.equal(M.mcpMapRecordWrite(rec, { floorPlan: 'new' }, keys).floorPlan, 'new');
-    assert.ok(!('floorPlan' in M.mcpMapRecordWrite(rec, { floorPlan: undefined }, keys)));
+    assert.deepEqual(keys, ['floorPlan', 'floorPlanName']);
+    assert.deepEqual(M.mcpMapRecordRead({ floorPlan: '{"a":1}', floorPlanName: 'Hall.dd2vtt' }, keys, {}),
+      { floorPlan: '{"a":1}', floorPlanName: 'Hall.dd2vtt' });
+    const rec = { floorPlan: 'old', floorPlanName: 'Old.dd2vtt' };
+    const wrote = M.mcpMapRecordWrite(rec, { floorPlan: 'new', floorPlanName: 'New.dd2vtt' }, keys);
+    assert.equal(wrote.floorPlan, 'new');
+    assert.equal(wrote.floorPlanName, 'New.dd2vtt');
+    const gone = M.mcpMapRecordWrite(rec, { floorPlan: undefined, floorPlanName: undefined }, keys);
+    assert.ok(!('floorPlan' in gone) && !('floorPlanName' in gone));
   });
 });

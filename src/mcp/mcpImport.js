@@ -37,6 +37,7 @@ async function _mcpLoadFloorPlan(args) {
       doors: rooms.reduce((n, p) => n + (p.doors || []).length, 0), lights: lights.length };
     if ((c.roomsNow || (c.lights && c.lightsNow)) && args.confirmed !== true) { would = mcpPlanWould(c); return would; }
     d.floorPlan = plan;
+    if (text) d.floorPlanName = _mcpFileName(args.path);
     d.gridConfig = grid;
     d.polygons = rooms;
     d.nextPolygonId = rooms.length + 1;

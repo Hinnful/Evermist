@@ -16,7 +16,7 @@ const MCP_MAP_PARTS = {
   fogTheme: ['fogTheme'],
   weather: ['weather'],
   fog: ['fog'],
-  plan: ['floorPlan'],
+  plan: ['floorPlan', 'floorPlanName'],
 };
 
 // The fields a list of parts names, each once. An unknown part is a builder's mistake, so it throws.
@@ -48,6 +48,7 @@ function mcpMapRecordRead(rec, keys, defaults) {
   if (has('lightShapes')) out.lightShapes = structuredClone((rec.lightShapes || []).filter(l => l && Array.isArray(l.vertices)));
   if (has('lightsHidden')) out.lightsHidden = !!rec.lightsHidden;
   if (has('floorPlan')) out.floorPlan = rec.floorPlan;
+  if (has('floorPlanName')) out.floorPlanName = rec.floorPlanName;
   if (has('gridConfig')) out.gridConfig = structuredClone(rec.gridConfig || defaults.grid);
   if (has('fogTheme')) out.fogTheme = MM.fogThemeNormalize(rec.fogTheme);
   if (has('weather')) out.weather = MM.weatherNormalize(rec.weather);

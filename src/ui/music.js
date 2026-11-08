@@ -87,6 +87,7 @@ async function _muRefreshTracks() {
   _muRenderList();
   _muScanDurations();
   hintsMusicSync(_muTracks.length);
+  syncNoteMusic();
 }
 
 // The picker is native, so the copy is its own function, handed paths.
@@ -371,6 +372,13 @@ function _muAskDelete(track) {
       _muRefreshTracks();
     },
   });
+}
+
+// A track a deck still holds, playing, paused or fading out: sync neither removes nor replaces it.
+function musicTrackBusy(name) {
+  if (name === _muPlaying) return true;
+  const track = _muTracks.find(x => x.name === name);
+  return !!(track && _muDecks && _muDecks.some(d => d.el.getAttribute('src') === track.url));
 }
 
 // How far the download queue has got, under the player. `null` takes the bar away.

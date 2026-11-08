@@ -112,6 +112,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/syncPlan.js` | Pure sync kernel: what goes up, what is new from another computer, which map files the Drive holds or no longer needs, which pulled changes wait for a map or table on screen, the 30-day trash, the first-sync question's counts, the kept map files due. Tested |
 | `scenes/syncIndex.js` | `evermist-sync`: each record's content hash as saved here, hashed at save and reconciled at start, the deletion records. Does nothing without a Google client |
 | `scenes/syncMerge.js` | The silent merge entry: a record pulled from another computer (a map, a picture, the Campaign, the backdrop, a stored text) applied with Import's plan rules, nothing on screen touched, held while its map, the TV, a column, the fight table or its note is shown, one record per idle slice and each timed |
+| `scenes/syncMusicPlan.js` | Pure music-sync kernel: what the folder gained or lost since the last tick, which tracks to fetch, send or remove, the deletions and their 30-day trash, the groups the later edit keeps, the `music` record. Tested |
+| `scenes/syncMusic.js` | The music folder through sync: the tick's music part after every map, record and note, the `music` record, tracks in Recently deleted, a track's hash as it lands |
 | `scenes/sync.js` | Sync's outbox and inbox on the page: the triggers, records and map files up, other computers' changes down, the first-sync rules and its hold until the DM answers, the status line's state |
 | `scenes/syncSettings.js` | Settings' Google Drive line: the status line and Connect or Disconnect. Campaign's Recently deleted line and its pop-out with Restore and Empty now. The question before a first sync. Shown only with a Google client |
 | `scenes/dragDrop.js` | What a file dropped on the DM window becomes |
@@ -262,6 +264,7 @@ the windows, the display push and the app lifecycle, and hands every module its 
 | `electron/mapScan.js` | Pure: map files found in a folder or the DM's usual folders, and the bytes of a map or a folder's maps. Tested |
 | `electron/mapFiles.js` | The IPC behind Claude's map tools: the folder search and the map bytes |
 | `electron/fileHash.js` | Pure: a file's SHA-256, streamed. Tested |
+| `electron/musicHashes.js` | Pure: each track's content hash kept in `userData/sync/music-hashes.json`, a track in Claude's undo folder, a downloaded track placed under a free name, a deleted one removed only while it is that content. Tested |
 | `electron/syncConfig.js` | The Google client sync signs in with: built in, from the environment, or the `userData/sync/config.json` override; and whether there is one. Tested |
 | `electron/syncRemote.js` | Sync's Drive remote over Node http: resumable uploads, paged listings, a 401 refreshed, a full Drive, names and hashes checked on the way back; a map file a sync replaces kept 30 days in `userData/sync/kept`, listed and swapped back on Restore. Tested against the rig's fake Drive |
 | `electron/syncAuth.js` | Signing in to sync: Google's desktop OAuth (system browser, loopback, PKCE, state), the refresh token sealed by `safeStorage` or kept in memory, Connect and Disconnect. Tested |
@@ -287,7 +290,7 @@ shapes/shapeClipboard.js → scenes/mapLoader.js → scenes/mapConvert.js → un
 scenes/sceneGroups.js → scenes/editStamps.js → scenes/sceneStore.js → scenes/scenes.js → scenes/sceneList.js →
 scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
 render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/twoMaps.js → player/stageWindow.js →
-scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → scenes/syncPlan.js → scenes/syncIndex.js → scenes/syncMerge.js → scenes/sync.js → scenes/syncSettings.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
+scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → scenes/syncPlan.js → scenes/syncMusicPlan.js → scenes/syncIndex.js → scenes/syncMerge.js → scenes/syncMusic.js → scenes/sync.js → scenes/syncSettings.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
 render/effects.js → render/weatherShader.js → render/weather.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → render/fogPreview.js → ui/repairBar.js → ui/wheelPlan.js → ui/effectsRow.js → ui/effectsTool.js → ui/effectsBarFire.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvControl.js →

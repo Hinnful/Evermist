@@ -247,3 +247,15 @@ describe('a map file a sync replaced', () => {
     assert.deepEqual(S.syKeptList(null), []);
   });
 });
+
+describe('how full the Drive reads', () => {
+  it('says nothing under 70%, amber from 70%, red from 90%, and nothing with no limit', () => {
+    const G = 1e9;
+    assert.equal(S.syDriveSpace({ limit: 100 * G, usage: 69.9 * G }), null);
+    assert.deepEqual(S.syDriveSpace({ limit: 100 * G, usage: 74 * G }), { pct: 74, level: 'y' });
+    assert.deepEqual(S.syDriveSpace({ limit: 100 * G, usage: 90 * G }), { pct: 90, level: 'r' });
+    assert.deepEqual(S.syDriveSpace({ limit: 100 * G, usage: 120 * G }), { pct: 100, level: 'r' });
+    assert.equal(S.syDriveSpace({ limit: 0, usage: 5 }), null);
+    assert.equal(S.syDriveSpace(undefined), null);
+  });
+});

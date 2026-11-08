@@ -219,7 +219,7 @@ accidental delete, and no feature may lean on them as that safety net.
 
 ### Evermist syncs a DM's campaign through their own Google Drive · `SETTLED` (2026-11-07)
 Sync moves a DM's campaign between their own computers through their own Google Drive. Evermist never runs a server and the
-developer never receives anyone's data; `PRIVACY.md` at the repo root states it. Music is not synced (BACKLOG 274). Export and
+developer never receives anyone's data; `PRIVACY.md` at the repo root states it. Music syncs with everything else, with no separate switch. Export and
 Import remain.
 
 ### Music never enters the backup zip · `SETTLED` (scope call)

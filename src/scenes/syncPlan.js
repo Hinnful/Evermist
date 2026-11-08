@@ -3,7 +3,7 @@
 // map files the Drive already holds or no longer needs, which pulled changes wait for a map or table on screen,
 // and the 30-day trash a deleted map goes to. No DOM, no network. Tested.
 //
-// A record is named by a key: `scene:<id>`, `pic:<id>`, `backdrop`, `campaign`, `gone`, or `local:<storage key>`. The index holds each
+// A record is named by a key: `scene:<id>`, `pic:<id>`, `backdrop`, `campaign`, `gone`, `music`, or `local:<storage key>`. The index holds each
 // record's content hash as last saved here; `synced` holds the hash last uploaded under that key, and `pulled` the
 // hash last taken from another computer, keyed `machine/key`. A map file is named by its owner and content hash.
 
@@ -14,7 +14,7 @@ const SY_TRASH_MS = 30 * 24 * 3600 * 1000;
 // The Blobs a scene record carries. They travel apart, so the record that goes up leaves them out.
 const SY_SCENE_BLOBS = ['mapBlob', 'baseFogBlob', 'thumbnail', 'pictureBlobs'];
 const SY_BLOB_NAME_RE = /^[0-9a-zA-Z_-]{1,80}\.[0-9a-f]{64}$/;
-const SY_KEY_RE = /^(scene|pic):[0-9a-zA-Z_-]{1,80}$|^(backdrop|campaign|gone)$|^local:evermist[.\w-]{1,80}$/;
+const SY_KEY_RE = /^(scene|pic):[0-9a-zA-Z_-]{1,80}$|^(backdrop|campaign|gone|music)$|^local:evermist[.\w-]{1,80}$/;
 const SY_ID_RE = /^[0-9a-zA-Z_-]{1,80}$/;
 
 // What a scene record's hash is made of: the record without its Blobs, in a stable text.
@@ -274,12 +274,21 @@ function syStatusLine(st) {
   return { text: 'Not synced yet.' };
 }
 
+// Settings' "N% full" after the status: shown from 70%, amber, and red from 90%. Null below that or with no limit.
+function syDriveSpace(space) {
+  const s = space || {};
+  if (!(s.limit > 0) || !(s.usage >= 0)) return null;
+  const pct = Math.min(100, Math.floor(s.usage / s.limit * 100));
+  if (pct < 70) return null;
+  return { pct, level: pct >= 90 ? 'r' : 'y' };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     SY_FORMAT, SY_TRASH_MS, SY_SCENE_BLOBS, syRecordBody, syBlobName, syBlobNameOk, syKeyOk, syToUpload, syNewRemote,
     syBlobsToUpload, syBlobsUnreferenced, syHeld, sySceneEditedAt, syGoneWins, syGoneNote, syRestore, syGoneMerge,
     syTrashIds, syTrashDue, syPurge, syMissingScenes, syGoneClean, syGoneText, syGoneParse, syRestored, syNewestRecord,
     syPurgeFiles, syPicFilesGone, syCampaignText, syBackdropMetaText, syStatusLine, syDriveCounts, syKeptName, syKeptDue,
-    syKeptParse, syKeptList,
+    syKeptParse, syKeptList, syDriveSpace,
   };
 }

@@ -207,6 +207,10 @@
   .dk-int-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .dk-int-tx .nm { font: 500 11.5px/1 system-ui, sans-serif; color: var(--g-text); }
   .dk-int-tx .mt { font: 400 11px/1.2 system-ui, sans-serif; color: var(--g-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* How full the Drive is, after the status: amber from 70%, red from 90%. */
+  .dk-int-tx .mt .dim { color: var(--g-dim); }
+  .dk-int-tx .mt .sp.y { color: var(--y-text); }
+  .dk-int-tx .mt .sp.r { color: var(--r-text); }
   .dk-int-tx .mt.on::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%;
                               background: #3fb950; vertical-align: 1px; }
   #dock .dk-intbtn { height: 24px; padding: 0 10px; flex: none; border: 0; border-radius: 5px; background: var(--g-field);

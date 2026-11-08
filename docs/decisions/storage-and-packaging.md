@@ -440,3 +440,9 @@ read as zip64 by the installed archiver and yauzl.
 ### A deleted gallery picture leaves the Drive in the sync tick · `SETTLED` (2026-11-07)
 `syPicFilesGone`, beside `syPurgeFiles` for maps, removes every computer's `pic:` record and the file. The tidy step cannot: it
 frees only files whose owner still has a record, which protects another computer's upload in flight.
+
+### Music syncs through the Drive, with no switch of its own · `SETTLED` (2026-11-08)
+A one-hour track is about 57 MB, so 50 tracks are about 2.9 GB; beside a ~4.3 GB map library both fit a 15 GB free Drive. A separate music on/off switch was offered and declined on product grounds. Track files live in `music/<computer>.<sha256>`, never `blobs`, because the previous release deletes unreferenced `blobs` files (a control check proved it). Drive fullness shows as " · N% full" in the status line; a usage bar and a dock dot were rejected as heavier than needed.
+
+### Syncing only YouTube links was rejected · `REJECTED` (2026-11-08)
+Re-downloading tracks on the other computer fails when a video vanishes or the downloader breaks, and tracks added from disk have no link.

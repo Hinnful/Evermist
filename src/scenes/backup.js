@@ -48,6 +48,7 @@ function sceneBackupMeta(scene, mapExt, mapMimeType, picList) {
     lightsHidden:  !!scene.lightsHidden,
     lightShapes:   scene.lightShapes || [],
     floorPlan:     scene.floorPlan,
+    floorPlanName: scene.floorPlanName,
     gridConfig:    scene.gridConfig || {},
     fogSettings:   scene.fogSettings,
     fogTheme:      scene.fogTheme,

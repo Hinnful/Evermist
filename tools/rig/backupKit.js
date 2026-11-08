@@ -91,6 +91,7 @@ B.decorate = async (id, k, opts) => {
   sc.lightsHidden = false;
   sc.nextEffectId = 4;
   sc.notes = 'Заметки к карте ' + k + ': ' + sc.name;
+  sc.floorPlanName = 'План ' + k + '.dd2vtt';
   sc.fogSettings = sc.fogSettings || undefined;
   sc.weather = ['rain', 'snow', 'none'][k % 3];
   sc.fogTheme = k % 2 ? 'fire' : 'ice';
@@ -199,6 +200,7 @@ B.sceneDigest = async (id) => {
     notes: sc.notes || '', grid: esCanon(sc.gridConfig || {}), fogLook: esCanon([sc.fogSettings, sc.fogTheme]),
     weather: String(sc.weather || ''), tvFit: esCanon(sc.tvFit || null),
     floorPlan: sc.floorPlan ? String(sc.floorPlan.length || JSON.stringify(sc.floorPlan).length) : '',
+    floorPlanName: sc.floorPlanName || '',
     fog: await B.hash(sc.baseFogBlob), thumb: sc.thumbnail ? 'yes' : 'no', pictures: JSON.stringify(pics),
     stamps: esCanon(sc.edits || null),
   };

@@ -109,7 +109,7 @@ function sceneNameForFile(file) {
 // on exactly the oversized exports that ship a .dd2vtt.
 async function _importFront(file, quiet) {
   const isVid = isVideoFile(file);
-  const floorPlan = typeof findPlanForFile === 'function' ? await findPlanForFile(file) : null;
+  const plan = typeof findPlanForFile === 'function' ? await findPlanForFile(file) : null;
 
   // Then shrink it, if the library's Compression setting names a size. No confirmation — it is a setting.
   // The overlay is raised from onStart, so a map that already fits never flashes a progress bar.
@@ -130,7 +130,7 @@ async function _importFront(file, quiet) {
     if (shrunk.converted) file = shrunk.file;
     else shrunk = null;
   }
-  return { file, floorPlan, shrunk };
+  return { file, floorPlan: plan ? plan.text : null, floorPlanName: plan ? plan.name : null, shrunk };
 }
 
 // Resolves { ok, id, name, reason } once the map is on screen or refused — NEVER BEFORE, and never
@@ -148,7 +148,7 @@ async function createNewScene(file, opts) {
   const front = await _importFront(file, o.quiet);
   if (front.stopped) return { ok: false, stopped: true, name };
   file = front.file;
-  const { floorPlan, shrunk } = front;
+  const { floorPlan, floorPlanName, shrunk } = front;
 
   if (!isVid) showMapProgress('Loading map…');
   // ⚠ AWAITED: the save is dropped once the new scene is current, which a slow decode wins.
@@ -219,6 +219,7 @@ async function createNewScene(file, opts) {
       mapType:       isVid ? 'video' : 'image',
       mapWidth, mapHeight,
       floorPlan,
+      floorPlanName,
       polygons:      [],
       nextPolygonId: 1,
       baseFogBlob:   await fogToBlob(),
@@ -366,7 +367,7 @@ async function _addOneMap(file, at, quiet) {
     id, name: sceneNameForFile(file), group: '', worldPos: at,
     mapBlob, mapPath, mapType: isVid ? 'video' : 'image',
     mapWidth: decoded.w, mapHeight: decoded.h,
-    floorPlan: front.floorPlan, planOfferPending: !!front.floorPlan,
+    floorPlan: front.floorPlan, floorPlanName: front.floorPlanName, planOfferPending: !!front.floorPlan,
     polygons: [], nextPolygonId: 1,
     gridConfig: freshGridConfig(), thumbnail: decoded.thumb,
     createdAt: Date.now(), sortOrder: maxOrder + 1,

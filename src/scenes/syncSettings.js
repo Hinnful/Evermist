@@ -1,8 +1,8 @@
 'use strict';
-// syncSettings.js — Settings' Google Drive line: the status under the name and one button, Connect or Disconnect;
-// Campaign's Recently deleted line and its pop-out, with Restore per map and Empty now; and the question before a
-// computer's first sync. syncSettingsInit runs only where sync has a Google client, so without one both lines stay
-// hidden. The engine is sync.js; this only shows it and calls it.
+// syncSettings.js — Settings' Google Drive line: the status and how full the Drive is under the name, and one button,
+// Connect or Disconnect; Campaign's Recently deleted line and its pop-out, with Restore per map or track and Empty
+// now; and the question before a computer's first sync. syncSettingsInit runs only where sync has a Google client, so
+// without one both lines stay hidden. The engine is sync.js; this only shows it and calls it.
 
 let _ssSigned = null;     // signed in here, as the main process last said
 let _ssKept = null;       // false where the sign-in is not remembered across restarts (no secure store)
@@ -26,6 +26,16 @@ function _ssStatus() {
   const note = _ssKept === false && st.state !== 'syncing' ? ' ' + t('Sign-in is not remembered on this computer.') : '';
   const line = _ssEl('sy-line');
   line.textContent = t(s.text, Object.assign({}, s.vars, s.when ? { time: _ssWhen(s.when, true) } : {})) + note;
+  // How full the Drive is, from 70%; the full Drive's own message says it already.
+  const space = ['full', 'off', 'signedOut'].includes(st.state) ? null : syDriveSpace(st.space);
+  if (space) {
+    const dot = document.createElement('span'), pct = document.createElement('span');
+    dot.className = 'dim';
+    dot.textContent = ' · ';
+    pct.className = 'sp ' + space.level;
+    pct.textContent = t('{n}% full', { n: space.pct });
+    line.append(dot, pct);
+  }
   line.title = st.state === 'error' ? st.message : line.textContent;
   line.classList.toggle('on', st.state === 'idle' && !!st.last);
   const signed = _ssSigned !== false;

@@ -114,6 +114,26 @@ describe('the Drive remote', () => {
     assert.equal(nameToKey('local~evermist.combat.json'), 'local:evermist.combat');
     assert.equal(nameToKey('scene~a b.json'), null);
     assert.equal(nameToKey('x.json'), null);
-    for (const k of ['gone', 'campaign', 'backdrop']) assert.equal(nameToKey(keyToName(k)), k);
+    for (const k of ['gone', 'campaign', 'backdrop', 'music']) assert.equal(nameToKey(keyToName(k)), k);
+  });
+
+  test('the Drive space reads as the quota says, a set usage included', async () => {
+    drive.quotaUsed = 74;
+    drive.quotaLimit = 100;
+    try { assert.deepEqual(await remote.about(), { limit: 100, usage: 74 }); } finally { drive.quotaUsed = null; drive.quotaLimit = 15 * 1024 ** 3; }
+  });
+
+  test('a track goes to the music folder, never to blobs, and the listing keeps the two apart', async () => {
+    const data = Buffer.from('a track');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'evsync-'));
+    fs.writeFileSync(path.join(dir, 'Theme.mp3'), data);
+    const name = 'm1.' + sha(data);
+    await remote.putMusicFile(name, path.join(dir, 'Theme.mp3'));
+    assert.equal(await remote.putMusicFile(name, path.join(dir, 'Theme.mp3')), null, 'a track already there is not sent twice');
+    const snap = await remote.snapshot();
+    assert.deepEqual(snap.music.map(f => f.name), [name]);
+    assert.equal(snap.blobs.some(b => b.name === name), false);
+    const folder = drive.files().find(f => f.name === 'music');
+    assert.ok(drive.files().find(f => f.name === name).parents.includes(folder.id));
   });
 });

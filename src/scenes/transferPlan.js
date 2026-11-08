@@ -214,7 +214,7 @@ function tpMergeScene(local, incoming, moment, opts) {
 // The fields a backup's scene entry holds that this release reads by name (sceneBackupMeta), and the record's own
 // storage fields, which a file never sets.
 const _TP_KNOWN = new Set(['id', 'name', 'group', 'worldPos', 'mapType', 'mapWidth', 'mapHeight', 'mapMimeType', 'mapExt', 'polygons',
-  'nextPolygonId', 'notes', 'pictures', 'effects', 'nextEffectId', 'lightsHidden', 'lightShapes', 'floorPlan', 'gridConfig', 'fogSettings',
+  'nextPolygonId', 'notes', 'pictures', 'effects', 'nextEffectId', 'lightsHidden', 'lightShapes', 'floorPlan', 'floorPlanName', 'gridConfig', 'fogSettings',
   'fogTheme', 'weather', 'tvFit', 'createdAt', 'sortOrder', 'edits', 'pictureBlobs', 'mapBlob', 'mapPath', 'baseFogBlob', 'baseFogPNG', 'thumbnail']);
 
 // ⚠ NEVER A FIXED LIST OF WHAT TO KEEP: a field a later release added to a map rides along, so a map that travels
