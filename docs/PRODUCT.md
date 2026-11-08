@@ -359,7 +359,7 @@ Supersedes the MCP half of the entry above. The DM brainstorms in the Claude des
 "write that down in Evermist". The first cut lists the campaign, reads and adds notes at the
 campaign, place and scene levels, creates places and creates fights from the bestiary. Claude only
 adds, never replaces. It works whenever the PC is on: a closed Evermist starts unseen for the call.
-The DM installs it once from Settings' Connect to Claude. Undo covers new places alone. Without
+The DM installs it once from Settings' Connect (Integrations). Undo covers new places alone. Without
 Claude the app is unchanged, which keeps the "LLM in the loop" test in DECISIONS.md.
 
 ### Claude preps, and never plays · `SETTLED` (2026-10-19)
@@ -382,7 +382,7 @@ changes were rejected as overengineering for the MCP server.
 
 ### Claude's ground rules · `SETTLED` (2026-10-25)
 A delete call deletes nothing until it carries `confirmed: true`; without it the call answers with what would go, so
-the yes is enforced by the app and not only asked for in a tool description. The line under Connect to Claude in Settings and the
+the yes is enforced by the app and not only asked for in a tool description. The line under Claude's Connect in Settings and the
 `claude` guide topic both say that the assistant can delete, asks first, and that undo lasts until Evermist closes. On the
 fight open at the table Claude may only add monsters or raise a count. Three calls the epic left open: map-look
 settings (shrink on import) are prep; the DM's machine settings, backup, restore and export

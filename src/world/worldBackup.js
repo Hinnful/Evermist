@@ -1,25 +1,17 @@
 'use strict';
-// worldBackup.js — Export and Import in Settings' World map section. Export saves the scenes picked on
+// worldBackup.js — Export and Import in Settings' Campaign section. Export saves the scenes picked on
 // the map, or everything when none is picked, to a .zip (backup.js); Import takes a .zip from a picker,
 // or dropped on the world map (transferImport.js).
 
 function _wbkIds() { return worldMapOpen ? worldMapPicked() : []; }
 
-function _wbkScenes() { return allScenes.map(s => ({ id: s.id, group: sanitizeGroupName(s.group) })); }
-
-// The button wears what a click saves, and the line says what that holds.
+// The button wears what a click saves: the pick, or everything with none.
 function worldBackupSync() {
-  const btn = document.getElementById('wm-bk-export'), line = document.getElementById('wm-bk-line');
-  if (!btn || !line) return;
-  const ids = _wbkIds(), c = wpCounts(ids, _wbkScenes(), worldPlacesExport(), worldRoadsExport());
-  btn.textContent = ids.length ? t.plural(ids.length, 'Export {n} map', 'Export {n} maps') : t('Back up everything');
+  const btn = document.getElementById('wm-bk-export');
+  if (!btn) return;
+  const ids = _wbkIds();
+  document.getElementById('wm-bk-export-label').textContent = ids.length ? t.plural(ids.length, 'Export {n} map', 'Export {n} maps') : t('Export');
   btn.disabled = !allScenes.length;
-  const parts = [t.plural(c.scenes, '{n} map', '{n} maps')];
-  if (c.places) parts.push(t.plural(c.places, '{n} group', '{n} groups'));
-  if (c.roads) parts.push(t.plural(c.roads, '{n} road', '{n} roads'));
-  line.textContent = allScenes.length
-    ? t('An export would hold {what}, with their notes.', { what: parts.join(', ') })
-    : t('Nothing to export yet.');
 }
 
 // `ids` is a pick, or empty for the whole world. A pick that is every scene is the whole world too.

@@ -1,7 +1,7 @@
 'use strict';
 // sync.js — the outbox and inbox on the page: records and map files go up, other computers' changes come down through
 // syncMerge.js, and nothing runs without a Google client. A tick runs a few seconds after a change, every 30 s, at
-// start, when the network returns and on "Sync now", and reads only `evermist-sync` until a record has to move. The
+// start and when the network returns, and reads only `evermist-sync` until a record has to move. The
 // first sync merges two filled libraries: no deletes, no map file replaced, a copy of each record it changes kept 30 days.
 // A copy is kept too for the first hour of another computer's records arriving: on the computer that synced first, that
 // is when the two libraries meet, and the other's first sync may take that long to send them all.

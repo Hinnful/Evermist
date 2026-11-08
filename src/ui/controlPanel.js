@@ -18,7 +18,7 @@ function initControlPanel() {
   _cpInitRooms();
   _cpInitLights();
   _cpInitCards();
-  _cpInitScrubs();
+  _cpInitClamps();
   _cpInitCompress();
   _cpGridPicker = _cpMakePicker('grid', 'grid-color');
   _cpInitFields();
@@ -182,9 +182,9 @@ function _cpInitLights() {
   });
 }
 
-// The two file cards: a trash that asks, and a head that acts as a button from the keyboard too.
+// The file cards and lines: a trash that asks, and a head or line that acts as a button from the keyboard too.
 function _cpInitCards() {
-  document.querySelectorAll('#dock .dk-card-head').forEach(head => head.addEventListener('keydown', e => {
+  document.querySelectorAll('#dock .dk-card-head, #dock .dk-file').forEach(head => head.addEventListener('keydown', e => {
     if (e.target === head && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); head.click(); }
   }));
   _cpEl('cp-plan-remove').addEventListener('click', e => {
@@ -200,7 +200,7 @@ function _cpInitCards() {
     });
   });
   _cpEl('cp-src-module').addEventListener('click', () => openModuleTextModal());
-  _cpEl('cp-module-head').addEventListener('click', () => openModuleTextModal());
+  _cpEl('cp-module-card').addEventListener('click', () => openModuleTextModal());
   _cpEl('cp-module-clear').addEventListener('click', e => {
     e.stopPropagation();
     confirmDialog({
@@ -244,33 +244,11 @@ function refreshRoomsControlUI() {
   _cpEl('cp-src-module').hidden = !!name;
   _cpEl('cp-module-card').hidden = !name;
   _cpEl('cp-module-name').textContent = name || '';
-  _cpEl('cp-module-meta').textContent = name ? t.plural(mtEntries.length, '{n} room', '{n} rooms') : '';
 }
 
-// ─── Scrub fields ─────────────────────────────────────────────────────────────
-// A number you drag by its leading icon, Figma's way. It writes the field and fires the field's
-// own input event (or `data-fire`'s, for a field that takes its value on change), so the app's
-// handler is the one that takes the value.
-function _cpInitScrubs() {
-  document.querySelectorAll('#dock [data-scrub]').forEach(pre => {
-    const input = _cpEl(pre.dataset.scrub);
-    const min = +pre.dataset.min, max = +pre.dataset.max, per = +pre.dataset.per || 2;
-    pre.addEventListener('mousedown', e => {
-      if (e.button !== 0) return;
-      e.preventDefault();
-      const x0 = e.clientX, v0 = parseFloat(input.value) || min;
-      const move = m => {
-        const v = Math.max(min, Math.min(max, Math.round(v0 + (m.clientX - x0) / per)));
-        if (String(v) === input.value) return;
-        input.value = v;
-        input.dispatchEvent(new Event(pre.dataset.fire || 'input', { bubbles: true }));
-      };
-      const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
-      window.addEventListener('mousemove', move);
-      window.addEventListener('mouseup', up);
-    });
-  });
-  // A typed value is clamped on the way out, as the handler clamped what it took.
+// ─── The cell size field ──────────────────────────────────────────────────────
+// A typed value is clamped on the way out, as the handler clamped what it took.
+function _cpInitClamps() {
   [['grid-size-num', _CP_GRID_SIZE.min, _CP_GRID_SIZE.max]].forEach(([id, lo, hi]) => {
     const el = _cpEl(id);
     el.addEventListener('change', () => { el.value = Math.max(lo, Math.min(hi, parseInt(el.value) || lo)); });

@@ -212,14 +212,3 @@
      the gradient grid-mode buttons) were the app's last purple and are gone. */
 
 
-  /* Seat alignment (seatAlignment.js): the TV from above, a chair on each side, the DM's solid blue. */
-  #cp-sec-seat-align svg { display: block; width: 100%; height: auto; margin: 8px auto 0; overflow: visible; }
-  .sa-tv { fill: #08090b; stroke: #4a4c53; stroke-width: 1.5; }
-  .sa-pic { opacity: .35; }
-  .sa-cap { fill: #c9cbd1; font: 700 10px system-ui; letter-spacing: .12em; opacity: .8; pointer-events: none; }
-  .sa-chair .sa-seat, .sa-chair .sa-back { fill: var(--g-field); stroke: #4a4c53; stroke-width: 1; transition: fill .12s, stroke .12s; }
-  .sa-chair.hov .sa-seat, .sa-chair.hov .sa-back { fill: #3a3c43; stroke: #8a8c94; }
-  .sa-chair.on .sa-seat { fill: var(--b-solid); stroke: var(--b-solid); }
-  .sa-chair.on .sa-back { fill: var(--b-solid); stroke: var(--b-solid); }
-  .sa-you { fill: var(--b-icon); font: 600 9px system-ui; pointer-events: none; }
-  .sa-hit { fill: transparent; cursor: pointer; }

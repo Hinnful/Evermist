@@ -473,6 +473,7 @@ function worldMapShow(cam) {
   dockHoldForWorld(true);
   if (open) _wmFly(_wmOverview(), 1100);
   worldMapFollow();
+  worldMapKeptRefresh();
 }
 
 // The map opens on these scenes, framed and picked: where an import's report points.
@@ -493,7 +494,6 @@ function worldMapHide() {
   worldMapEmptySync();
   searchClose();
   worldMapMenuClose();
-  worldBackgroundMoveSet(false);
   _wmReturnTools();
   _wmRestoreSelection();
   document.body.classList.remove('world');

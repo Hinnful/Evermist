@@ -2,7 +2,8 @@
 // mcpBridge.js — the Claude connection's door into the running app. A server on 127.0.0.1 takes each
 // tool call from electron/mcpShim.js, asks the DM window (src/mcp/mcpTools.js) and hands back its answer.
 // Its port and a per-launch key sit in userData/mcp.json, which only this user can read. It also builds
-// the Claude desktop extension Settings' Connect to Claude opens.
+// the Claude desktop extension Settings' Connect opens, and keeps Settings' Disconnect in userData/claude.json:
+// { off, seen }, read by no earlier release, so a rollback leaves Claude answering.
 
 const { app, ipcMain, shell } = require('electron');
 const crypto = require('crypto');
@@ -26,6 +27,24 @@ let sendTo = () => {};
 let ready = false;
 let lastCall = Date.now();
 let nextId = 1;
+let stateFile = '';
+let state = { off: false, seen: false };
+
+const OFF_TEXT = 'The Claude connection is turned off in Evermist\'s Settings. Press Connect there to turn it back on.';
+
+function readState(file) {
+  try {
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return { off: j.off === true, seen: j.seen === true };
+  } catch (_) { return { off: false, seen: false }; }
+}
+
+function setState(patch) {
+  const next = { ...state, ...patch };
+  if (next.off === state.off && next.seen === state.seen) return;
+  state = next;
+  try { fs.writeFileSync(stateFile, JSON.stringify(state)); } catch (err) { console.error('[mcp] the Claude connection state could not be written down:', err); }
+}
 
 // The DM window says so once its handler is listening; a call before that is told to wait.
 ipcMain.on('mcp-ready', (event) => {
@@ -72,6 +91,8 @@ function serve(token) {
       let call;
       try { call = JSON.parse(body); } catch { reply(400, { text: 'Unreadable request.', isError: true }); return; }
       lastCall = Date.now();
+      if (state.off) { reply(200, { text: OFF_TEXT, isError: true }); return; }
+      setState({ seen: true });
       reply(200, await askDmWindow(String(call.tool || ''), call.args && typeof call.args === 'object' ? call.args : {}));
     });
   });
@@ -114,6 +135,8 @@ function register(ctx) {
   getDmWin = ctx.getDmWin;
   sendTo = ctx.sendTo;
   const addressFile = path.join(app.getPath('userData'), 'mcp.json');
+  stateFile = path.join(app.getPath('userData'), 'claude.json');
+  state = readState(stateFile);
   const token = crypto.randomBytes(24).toString('hex');
   const server = serve(token);
   server.on('error', err => console.error('[mcp] the Claude connection could not open:', err));
@@ -125,11 +148,14 @@ function register(ctx) {
     server.close();
     try { fs.unlinkSync(addressFile); } catch (_) {}
   });
-  // Answers '' once the OS has handed the file to Claude, else the reason it could not.
+  // Answers '' once the OS has handed the file to Claude, else the reason it could not. Either way the refusal ends.
   ipcMain.handle('mcp-connect-claude', async () => {
+    setState({ off: false, seen: true });
     try { return await shell.openPath(await buildExtension(addressFile)); }
     catch (err) { return (err && err.message) || String(err); }
   });
+  ipcMain.handle('mcp-claude-state', () => ({ ...state }));
+  ipcMain.handle('mcp-disconnect-claude', () => { setState({ off: true }); return { ...state }; });
 }
 
 // The page Claude was talking to is going, so a call still waiting on it is answered now, not after its timer.

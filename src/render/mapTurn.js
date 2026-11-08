@@ -165,7 +165,7 @@ function setPlayerTurn(deg) {
 
 function initSeatTurn() {
   if (isPlayer) return;
-  // Settings' Seat alignment is this setting's control; a column has no Settings of its own.
+  // Settings' "Your seat at the TV" is this setting's control; a column has no Settings of its own.
   if (!isPane) initSeatAlignment();
   let saved = 0;
   try { saved = parseInt(localStorage.getItem(SEAT_TURN_KEY), 10) || 0; } catch (e) {}

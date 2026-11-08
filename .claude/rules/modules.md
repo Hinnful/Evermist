@@ -113,13 +113,13 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/syncIndex.js` | `evermist-sync`: each record's content hash as saved here, hashed at save and reconciled at start, the deletion records. Does nothing without a Google client |
 | `scenes/syncMerge.js` | The silent merge entry: a record pulled from another computer (a map, a picture, the Campaign, the backdrop, a stored text) applied with Import's plan rules, nothing on screen touched, held while its map, the TV, a column, the fight table or its note is shown, one record per idle slice and each timed |
 | `scenes/sync.js` | Sync's outbox and inbox on the page: the triggers, records and map files up, other computers' changes down, the first-sync rules and its hold until the DM answers, the status line's state |
-| `scenes/syncSettings.js` | Settings' Sync section: Connect and Disconnect, Sync now, the status line, Recently deleted with Restore and Empty now, Replaced map pictures with Restore. The question before a first sync. Shown only with a Google client |
+| `scenes/syncSettings.js` | Settings' Google Drive line: the status line and Connect or Disconnect. Campaign's Recently deleted line and its pop-out with Restore and Empty now. The question before a first sync. Shown only with a Google client |
 | `scenes/dragDrop.js` | What a file dropped on the DM window becomes |
 | `ui/toolbar.js` | DM UI wiring. Calls `initRoomPanel` and `initControlPanel` last |
 | `ui/colorPicker.js` | The grid colour picker: square, hue strip, hex field, HSV maths |
 | `ui/controlPanel.js` | The dock's Scene control pane over the hidden legacy controls |
 | `ui/dock.js` | The dock: the icon rail, the one open pane, its width |
-| `ui/seatAlignment.js` | Settings' Seat alignment: the TV from above, four chairs, the laptop map's turn |
+| `ui/seatAlignment.js` | Settings' "Your seat at the TV": a segment of four icons, the laptop map's turn |
 | `ui/hints.js` | First-time hints: the callout toast, shown once ever and once per run, and Settings' Hints switch |
 | `ui/hintsPlan.js` | Pure hint kernel: when each first-use cue is due, and the count of maps opened. Tested |
 | `ui/hintsFirstMap.js` | The first-map hints: reveal, room-reveal, room-edit and repair-keys, each shown from what the DM holds |
@@ -143,7 +143,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `world/worldRoads.js` | The roads: open-line records kept by a stored id, undo for them, the ends that follow their scene or place, and the scenes a road holds |
 | `world/worldParty.js` | The party marker on the Campaign: its record, its drag onto a map, undo, backup and import |
 | `world/worldMist.js` | The world map's mist: veil, drifting wisps, masks cut by the places, the backdrop's colour inside them |
-| `world/worldBackground.js` | The world map's backdrop: one image from Settings, its place, size and opacity |
+| `world/worldBackground.js` | The world map's backdrop: one image from Settings, its place, size and opacity set when it is chosen |
 | `world/worldMap.js` | The world map: its layer, camera, opening and closing, and the keys it keeps from the hidden scene |
 | `world/worldMapEdit.js` | What the DM does on the world map: pick, drag, drop, rename, find, add |
 | `world/worldMapShapes.js` | Drawing a place with the toolbar's tools, and Merge, Cut out and Split on places |
@@ -158,8 +158,8 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `world/worldMapFan.js` | The hand of cards a place shows zoomed out: its first three maps and a "+N", placed clear of the walls and the plate |
 | `world/worldPickPlan.js` | Pure pick kernel: a Shift-click toggled, what a Shift-dragged box touches, what a backup of picked scenes carries. Tested |
 | `world/worldMapPick.js` | More than one scene picked on the world map: Shift-click and the Shift-dragged box |
-| `world/worldBackup.js` | Settings' World map backup: Export the pick or everything, Restore from a picker or a dropped .zip |
-| `world/worldMapMenu.js` | The right-click menu on the world map: a scene, a place, or the ground |
+| `world/worldBackup.js` | Settings' Campaign backup: Export the pick or everything, Import from a picker or a dropped .zip |
+| `world/worldMapMenu.js` | The right-click menu on the world map: a scene (with Restore previous picture while sync keeps one), a place, or the ground |
 | `rooms/roomPanel.js` | Map room labels and the pure geometry that places them |
 | `rooms/roomCard.js` | The selected room's fields, in the Notes window |
 | `rooms/roomSwitcher.js` | The selected room's clouds and door button, on the map above it |
@@ -206,7 +206,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `player/playerMessages.js` | The Player's inbox: one handler per message the DM sends |
 | `player/paneRuntime.js` | A column's inbox from the shell |
 | `mcp/mcpPlan.js` | Pure Claude-connection kernel: a note appended, a free spot for a place, a fight from the bestiary. Tested |
-| `mcp/mcpConnect.js` | Settings' Connect to Claude: the extension handed to Claude to install |
+| `mcp/mcpConnect.js` | Settings' Claude line: Connect hands Claude the extension to install, Disconnect turns the connection off |
 | `mcp/mcpGuideText.js` | Plain-language how-to text per topic, as data. Tested |
 | `mcp/mcpShared.js` | What every Claude tool group reads: reply shapes, name lookups, a scene's record |
 | `mcp/mcpHistory.js` | Claude's own undo: the last 30 steps, and the toast naming each |
@@ -265,7 +265,7 @@ the windows, the display push and the app lifecycle, and hands every module its 
 | `electron/syncConfig.js` | The Google client sync signs in with: built in, from the environment, or the `userData/sync/config.json` override; and whether there is one. Tested |
 | `electron/syncRemote.js` | Sync's Drive remote over Node http: resumable uploads, paged listings, a 401 refreshed, a full Drive, names and hashes checked on the way back; a map file a sync replaces kept 30 days in `userData/sync/kept`, listed and swapped back on Restore. Tested against the rig's fake Drive |
 | `electron/syncAuth.js` | Signing in to sync: Google's desktop OAuth (system browser, loopback, PKCE, state), the refresh token sealed by `safeStorage` or kept in memory, Connect and Disconnect. Tested |
-| `electron/mcpBridge.js` | The Claude connection's localhost door, its key, and the extension Connect to Claude builds |
+| `electron/mcpBridge.js` | The Claude connection's localhost door, its key, the extension Connect builds, and Disconnect's refusal kept in `userData/claude.json` |
 | `electron/mcpConfig.js` | Pure: the Claude extension's manifest. Tested |
 | `electron/mcpShim.js` | The stdio MCP server inside the extension: the tool list, each call relayed to the app, which it starts unseen when closed. Run by its test as Claude runs it |
 

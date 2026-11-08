@@ -1,28 +1,30 @@
 'use strict';
 
-// sync-settings.js - SETTINGS' SYNC SECTION: SHOWN ONLY WITH A GOOGLE CLIENT, AND EVERY BUTTON IN IT WORKS.
+// sync-settings.js - SETTINGS' GOOGLE DRIVE LINE AND RECENTLY DELETED: SHOWN ONLY WITH A GOOGLE CLIENT, AND EVERY BUTTON WORKS.
 //
 // One app with no Google client, then the same app with one from the environment as a dev run reads it, then two apps
-// on one fake Drive through the sync config file. Every action goes through the section's own buttons. Run from the
+// on one fake Drive through the sync config file. Every action goes through the line's own button and the Recently
+// deleted pop-out's. Run from the
 // repo: a build that carries a client is sync-client.js's.
 //
 // THE CRITERIA ARE THIS HEADER. Each line has its check beneath it.
 //
-//   A. Without a Google client (no built-in file, no environment, no sync config file) Settings shows nothing new, and
-//      sync keeps no index.
-//   A2. With a client in GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and no sync config file, Settings shows the section
-//      signed out: Connect, no Disconnect, and no index until this computer connects, so a DM who never connects pays
+//   A. Without a Google client (no built-in file, no environment, no sync config file) Settings shows no Google Drive
+//      line and no Recently deleted, and sync keeps no index.
+//   A2. With a client in GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and no sync config file, Settings shows the line
+//      signed out: Connect, no Disconnect, no Recently deleted, and no index until this computer connects, so a DM who never connects pays
 //      nothing on a save. Connect hands the system browser Google's consent
 //      page for that client, the hidden Drive folder its only scope, answered on the loopback. (The browser is caught on
 //      Linux only.)
-//   B. With the sync config file, Settings shows the Sync section, signed in: Disconnect and Sync now, no Connect.
-//   C. Sync now runs a sync: the button calls the engine's own sync (the 30 s tick does not count), and the status
-//      line moves to the new sync's time.
-//   D. Disconnect signs this computer out: the line says so, Connect comes back, Sync now greys and the token is gone.
+//   B. With the sync config file, Settings shows the Google Drive line signed in: Disconnect, no Connect, no Sync now.
+//   C. The status line under the name moves to a new sync's time.
+//   D. Disconnect signs this computer out: the line says so, Connect comes back, Recently deleted hides and the token
+//      is gone.
 //      Connect signs it in again through the consent page and the loopback, PKCE checked, and sync resumes.
-//   E. A map deleted on A shows in B's Recently deleted with its name and date; Restore there brings it back on B.
+//   E. A map deleted on A shows in B's Recently deleted pop-out with its name and date, the line counting it; Restore
+//      there brings it back on B.
 //   F. Empty now asks first, and on yes removes the map from the list for good, and its files from the Drive.
-//   G. The section ends with one deleted map listed on A, for the screenshot (--shot "#sy-group").
+//   G. Campaign ends with one deleted map listed on A, for the screenshot (--shot "#wm-bg-group").
 
 const fs = require('fs');
 const path = require('path');
@@ -35,12 +37,13 @@ module.exports = async function syncSettings(rig) {
   const shown = (dm, id) => dm.evaluate(`(() => { const el = document.getElementById(${q(id)}); return !!el && el.offsetParent !== null && el.offsetHeight > 0; })()`);
   const line = dm => dm.evaluate(`document.getElementById('sy-line').textContent`);
   const click = (dm, sel) => dm.evaluate(`document.querySelector(${q(sel)}).click(); 0`);
-  const rows = dm => dm.evaluate(`Array.from(document.querySelectorAll('#sy-trash .dk-r')).map(r => ({ name: r.querySelector('.nm').textContent, date: r.querySelector('.mt').textContent, id: r.querySelector('[data-restore]').dataset.restore }))`);
+  const rows = dm => dm.evaluate(`Array.from(document.querySelectorAll('#sy-trash .dk-trash-row')).map(r => ({ name: r.querySelector('.nm').textContent, date: r.querySelector('.mt').textContent, id: r.querySelector('[data-restore]').dataset.restore }))`);
 
   // A
   let dmA = rig.dm;
   rig.check(await openSettings(dmA), 'A: Settings did not open');
-  rig.check(!(await shown(dmA, 'sy-group')) && await dmA.evaluate(`document.getElementById('sy-group').hidden`), 'A: Settings shows the Sync section without the sync config file');
+  rig.check(!(await shown(dmA, 'sy-group')) && await dmA.evaluate(`document.getElementById('sy-group').hidden`), 'A: Settings shows the Google Drive line without a Google client');
+  rig.check(!(await shown(dmA, 'sy-trash-open')), 'A: Settings shows Recently deleted without a Google client');
   rig.check(await dmA.evaluate('!syncIndex.isOn()'), 'A: sync keeps an index without a Google client');
 
   // A2
@@ -49,8 +52,9 @@ module.exports = async function syncSettings(rig) {
   dmA = await rig.restart({ env: Object.assign({ GOOGLE_CLIENT_ID: ENV_ID, GOOGLE_CLIENT_SECRET: 'rig-env-secret' }, browser ? browser.env : {}) });
   await openSettings(dmA);
   const envUp = await lib.poll(async () => await shown(dmA, 'sy-group') && await shown(dmA, 'sy-connect'), 20000, 200);
-  rig.check(!!envUp, 'A2: with a client in the environment, Settings does not show the Sync section with Connect');
+  rig.check(!!envUp, 'A2: with a client in the environment, Settings does not show the Google Drive line with Connect');
   rig.check(!(await shown(dmA, 'sy-disconnect')) && !(await dmA.evaluate('syncIndex.isOn()')), 'A2: signed out, Disconnect shows or sync keeps an index before any Connect');
+  rig.check(!(await shown(dmA, 'sy-trash-open')), 'A2: signed out, Settings shows Recently deleted');
   if (!browser) rig.byEye('A2: Connect opens Google\'s consent page for the client in the environment (the browser is caught on Linux only)');
   else if (envUp) {
     const faults = lib.consentFaults(await lib.connectOpens(dmA, browser), ENV_ID);
@@ -70,8 +74,8 @@ module.exports = async function syncSettings(rig) {
   // B
   for (const dm of [dmA, dmB]) await openSettings(dm);
   const up = await lib.poll(async () => await shown(dmB, 'sy-group') && await shown(dmA, 'sy-group'), 20000, 200);
-  rig.check(!!up, 'B: the Sync section did not show with the sync config file');
-  rig.check(await shown(dmB, 'sy-disconnect') && await shown(dmB, 'sy-now') && !(await shown(dmB, 'sy-connect')), 'B: a signed-in computer does not show Disconnect and Sync now without Connect');
+  rig.check(!!up, 'B: the Google Drive line did not show with the sync config file');
+  rig.check(await shown(dmB, 'sy-disconnect') && !(await shown(dmB, 'sy-connect')) && !(await dmB.evaluate(`!!document.getElementById('sy-now')`)), 'B: a signed-in computer does not show Disconnect alone, without Connect and Sync now');
 
   // C
   await kit.install(dmA);
@@ -85,22 +89,18 @@ module.exports = async function syncSettings(rig) {
   })()`, 120000);
   await lib.poll(async () => (await dmB.evaluate('syncEngine.status().state')) !== 'syncing', 60000, 200);
   const before = await dmB.evaluate('syncEngine.status().last');
-  // The timers call the engine from inside it; only a caller outside goes through the property.
-  await dmB.evaluate(`window.__syNow = syncEngine.now; window.__syCalls = []; syncEngine.now = () => { const p = __syNow(); __syCalls.push(p); return p; }; 0`);
-  await click(dmB, '#sy-now');
+  await tick(dmB);
   const moved = await lib.poll(async () => {
     const st = await dmB.evaluate('syncEngine.status()');
     return st.state === 'idle' && st.last > before && /^Last synced /.test(await line(dmB));
   }, 60000, 200);
-  const called = await dmB.evaluate(`(async () => { const n = __syCalls.length; if (n) await __syCalls[0]; syncEngine.now = __syNow; return n; })()`, 120000);
-  rig.check(called === 1, 'C: Sync now did not call the engine\'s sync once: ' + called);
-  rig.check(!!moved, 'C: Sync now did not move the status line to a new sync: ' + q(await line(dmB)) + ' ' + await status());
+  rig.check(!!moved, 'C: a sync did not move the status line to its time: ' + q(await line(dmB)) + ' ' + await status());
 
   // D
   await click(dmB, '#sy-disconnect');
   const out = await lib.poll(async () => /^Signed out/.test(await line(dmB)) && await shown(dmB, 'sy-connect'), 30000, 200);
   rig.check(!!out, 'D: Disconnect did not sign B out: ' + q(await line(dmB)) + ' ' + await status());
-  rig.check(!(await shown(dmB, 'sy-disconnect')) && await dmB.evaluate(`document.getElementById('sy-now').disabled`), 'D: signed out, Disconnect still shows or Sync now is not greyed');
+  rig.check(!(await shown(dmB, 'sy-disconnect')) && !(await shown(dmB, 'sy-trash-open')), 'D: signed out, Disconnect or Recently deleted still shows');
   rig.check(['token.json', 'token.enc'].every(f => !fs.existsSync(path.join(b.profileDir, 'sync', f))), 'D: Disconnect left the token on disk');
   const consents = drive.stats.consents;
   await click(dmB, '#sy-connect');
@@ -126,6 +126,10 @@ module.exports = async function syncSettings(rig) {
   rig.check(!!(await deleteOnA(ids[0])), 'E: a map deleted on A is still on B: ' + await status());
   const listed = await lib.poll(async () => { const r = await rows(dmB); return r.length === 1 && r[0].id === ids[0] && r; }, 30000, 200);
   rig.check(!!listed && listed[0].name === 'Склеп' && /\d/.test(listed[0].date), 'E: B\'s Recently deleted does not list the map with its name and date: ' + q(await rows(dmB)));
+  const counted = await lib.poll(async () => (await dmB.evaluate(`(() => { const b = document.getElementById('sy-trash-open'); return !b.disabled && document.getElementById('sy-trash-count').textContent === '1'; })()`)), 10000, 200);
+  rig.check(!!counted, 'E: B\'s Recently deleted line does not count one map: ' + q(await dmB.evaluate(`document.getElementById('sy-trash-count').textContent`)));
+  await click(dmB, '#sy-trash-open');
+  rig.check(await shown(dmB, 'sy-trash-pop'), 'E: clicking Recently deleted did not open its pop-out');
   await click(dmB, `#sy-trash [data-restore="${ids[0]}"]`);
   const restored = await lib.poll(async () => await has(dmB, ids[0]) && (await rows(dmB)).length === 0, 60000, 200);
   rig.check(!!restored, 'E: Restore in B\'s Recently deleted did not bring the map back on B: ' + q(await rows(dmB)) + ' ' + await status());
@@ -149,5 +153,5 @@ module.exports = async function syncSettings(rig) {
   await openSettings(dmA);
   const one = await lib.poll(async () => { const r = await rows(dmA); return r.length === 1 && r[0].id === ids[2]; }, 30000, 200);
   rig.check(!!one, 'G: A\'s Recently deleted does not list just the map deleted last: ' + q(await rows(dmA)) + ' trash() ' + q(await dmA.evaluate('syncEngine.trash()', 30000)) + ' gone ' + q(await dmA.evaluate('syncIndex.raw.all("gone")', 20000)) + ' ids ' + q(ids));
-  await dmA.evaluate(`document.getElementById('sy-group').scrollIntoView(); 0`);
+  await dmA.evaluate(`document.getElementById('wm-bg-group').scrollIntoView(); 0`);
 };

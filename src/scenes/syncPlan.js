@@ -250,7 +250,7 @@ function syKeptParse(name) {
   if (!m || !Object.prototype.hasOwnProperty.call(SY_KEPT_MIME, m[3])) return null;
   return { name, sceneId: m[1], at: Number(m[2]), ext: m[3], video: m[3] === 'webm' || m[3] === 'mp4', mime: SY_KEPT_MIME[m[3]] };
 }
-// Settings' "Replaced map pictures": the well-formed names, newest first.
+// The kept map files behind the Campaign map's "Restore previous picture": the well-formed names, newest first.
 const syKeptList = names => (names || []).map(syKeptParse).filter(Boolean).sort((a, b) => b.at - a.at);
 
 // Settings' status line for the engine's state: the English text t() looks up, its {names}, and `when`, the last sync's

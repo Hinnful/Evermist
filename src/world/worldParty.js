@@ -156,7 +156,7 @@ function _wptLight(id) {
 }
 
 function _wptDown(e) {
-  if (e.button !== 0 || _wmTool !== 'select' || worldBackgroundMoving()) return;
+  if (e.button !== 0 || _wmTool !== 'select') return;
   e.stopPropagation();
   e.preventDefault();
   if (_wmAnim) return;

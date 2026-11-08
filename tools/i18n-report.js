@@ -32,7 +32,7 @@ const PROSE = s => /[A-Za-z]{2}/.test(s) && !/[{}=;<>\\#"]|^\W|\.(js|css|html|pn
 const QUIET = /document\.title|giveUp\(|new Error\(|console\.|_diag|diagLog|_mpLog|stressLog|throw new|require\(|querySelector|getElementById|closest\(|classList|addEventListener|dataset\.|\.code ===|\.key ===|postMessage|localStorage|sessionStorage|type: '|new RegExp|\.test\(|\.match\(|\.replace\(|\bmode: '|kind: '|mimeType|extensions: \[/;
 
 // Keys, units and names that read the same in Russian.
-const SAME = /^(English|[A-Z]|(Ctrl|Shift) [A-Z]|Ctrl\+D|Del|Esc|px|1080p|2K|4K|Evermist|EVERMIST|github\.com\/\S+)$/;
+const SAME = /^(English|[A-Z]|(Ctrl|Shift) [A-Z]|Ctrl\+D|Del|Esc|px|1080p|2K|4K|Evermist|EVERMIST|Claude|github\.com\/\S+)$/;
 
 const found = new Map();                 // key → first place it was seen
 const plural = new Map();

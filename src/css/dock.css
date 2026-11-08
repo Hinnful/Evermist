@@ -113,8 +113,6 @@
   #dock .cp-hex, #dock .cp-alphanum, #dock .cp-hash { font: 500 11px/1 system-ui, -apple-system, sans-serif; }
   #dock .cp-hex { flex: 1; }
   #dock .cp-hint { color: var(--g-dim); }
-  /* Settings' Sync section and the rows it hides; a hidden one must really hide. */
-  #sy-group[hidden], #sy-group [hidden] { display: none !important; }
 
   #dock .cp-slider-fill, .dk-pop .cp-slider-fill, #anim-advanced-panel .cp-slider-fill { background: var(--g-text); }
   #dock .cp-slider-track, .dk-pop .cp-slider-track, #anim-advanced-panel .cp-slider-track { background: #3a3c42; }
@@ -126,16 +124,6 @@
   /* A row of fields side by side; the row's own action is a 24px icon at its right end. */
   .dk-r { display: flex; align-items: center; gap: 6px; }
   .dk-r > :not(.cp-adv-close) { flex: 1; min-width: 0; }
-
-  /* A number you scrub by dragging its icon, Figma's X / Y / W / H. */
-  .dk-num { display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px 0 0; border-radius: 5px; background: var(--g-field); }
-  .dk-num:hover, .dk-num:focus-within { background: var(--g-hover); }
-  .dk-num .pre { width: 24px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center;
-                 color: var(--g-dim); cursor: ew-resize; }
-  /* ⚠ width: 0, or the input's intrinsic width overflows the field (see .cp-chip-pre input). */
-  .dk-num input { flex: 1; width: 0; min-width: 0; border: 0; outline: none; background: none; color: #d5d8dd;
-                  font: 500 11.5px/1 system-ui, sans-serif; }
-  .dk-num .u { color: var(--g-dim); font: 400 11px/1 system-ui, sans-serif; }
 
   /* A source: what is loaded, in a field, with its one action at the right. */
   .dk-src { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 8px; border-radius: 5px;
@@ -186,6 +174,56 @@
   .dk-card-acts button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dk-card-acts button:disabled { color: #5b5f66; cursor: default; }
   .dk-card-acts button:disabled svg { color: #5b5f66; }
+
+  /* ===== SETTINGS ===== */
+  #dock-pane-settings [hidden] { display: none !important; }
+  /* A file to load, and Export and Import: a grey button with an icon and a verb, never dim (dim reads as disabled). */
+  #dock .dk-load { height: 26px; min-width: 0; padding: 0 8px; display: flex; align-items: center; justify-content: center; gap: 6px;
+                   border: 0; border-radius: 5px; background: var(--g-field); color: var(--g-text);
+                   font: 500 11.5px/1 system-ui, sans-serif; white-space: nowrap; cursor: pointer; }
+  #dock .dk-load:hover:not(:disabled) { background: var(--g-hover); }
+  #dock .dk-load:disabled { opacity: 0.4; cursor: default; }
+  #dock .dk-load svg { flex: none; color: var(--g-dim); }
+  #dock .dk-load span { overflow: hidden; text-overflow: ellipsis; }
+  /* A loaded file: a grey line with its icon, its name and a trash that asks first. */
+  .dk-file { height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 2px 0 8px; border-radius: 5px;
+             background: var(--g-field); cursor: pointer; }
+  .dk-file:hover { background: var(--g-hover); }
+  .dk-file .ic { color: var(--g-dim); display: flex; flex: none; }
+  .dk-file .nm { flex: 1; min-width: 0; color: var(--g-text); font: 500 11.5px/1 system-ui, sans-serif;
+                 white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #dock .dk-file .cp-adv-close { display: flex; align-items: center; justify-content: center; flex: none; }
+  #dock .dk-file .cp-adv-close:hover { background: var(--g-pick); }
+  /* A line that opens a pop-out: its name, then its state and a chevron. */
+  #dock .dk-link { height: 26px; padding: 0; display: flex; align-items: center; justify-content: space-between; border: 0;
+                   background: transparent; color: var(--g-text); font: 400 11.5px/1 system-ui, sans-serif; cursor: pointer; }
+  #dock .dk-link .r { display: flex; align-items: center; gap: 6px; color: var(--g-dim); }
+  #dock .dk-link:hover:not(:disabled) .r, #dock .dk-link.open .r { color: var(--g-text); }
+  #dock .dk-link:disabled { color: var(--g-dim); opacity: 0.6; cursor: default; }
+  /* An integration: logo, name, status under it, one button at the right. */
+  .dk-int { display: flex; align-items: center; gap: 9px; min-height: 30px; }
+  .dk-logo { width: 22px; height: 22px; flex: none; border-radius: 6px; background: var(--g-field);
+             display: flex; align-items: center; justify-content: center; }
+  .dk-int-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .dk-int-tx .nm { font: 500 11.5px/1 system-ui, sans-serif; color: var(--g-text); }
+  .dk-int-tx .mt { font: 400 11px/1.2 system-ui, sans-serif; color: var(--g-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dk-int-tx .mt.on::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%;
+                              background: #3fb950; vertical-align: 1px; }
+  #dock .dk-intbtn { height: 24px; padding: 0 10px; flex: none; border: 0; border-radius: 5px; background: var(--g-field);
+                     color: var(--g-text); font: 500 11px/1 system-ui, sans-serif; cursor: pointer; }
+  #dock .dk-intbtn:hover:not(:disabled) { background: var(--g-hover); }
+  #dock .dk-intbtn:disabled { opacity: 0.4; cursor: default; }
+  /* Recently deleted's pop-out: each map with its date and Restore, then the 30 days and Empty now. */
+  .dk-trash-list { padding: 6px; max-height: 320px; overflow-y: auto; }
+  .dk-trash-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; }
+  .dk-trash-row:hover { background: var(--g-field); }
+  .dk-trash-row .dk-int-tx .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dk-trash-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 10px 14px;
+                   border-top: 1px solid var(--g-divider); }
+  .dk-pop .dk-danger { height: 26px; padding: 0 9px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 5px;
+                       background: transparent; color: #c9cdd4; font: 500 11px/1 system-ui, sans-serif; cursor: pointer; }
+  .dk-pop .dk-danger:hover:not(:disabled) { background: #c0392b; color: #fff; }
+  .dk-pop .dk-danger:disabled { opacity: 0.4; cursor: default; }
 
   /* ===== MAP SETTINGS ===== */
   #dock-pane-scene .dk-secbody { gap: 16px; }

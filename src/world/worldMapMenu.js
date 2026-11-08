@@ -5,6 +5,7 @@
 let _wmMenu = null;
 let _wmAddAt = null;             // where Add a scene puts the next scene, once, when the menu chose it
 let _wmAddIn = '';               // the group the next maps are added into, once, when its menu chose it
+let _wmKeptPics = new Map();         // scene id → its newest kept picture's file name
 
 function worldMapMenuClose() {
   if (_wmMenu) { _wmMenu.remove(); _wmMenu = null; }
@@ -32,8 +33,26 @@ function _wmSceneRows(id) {
      { label: 'Rename', off: far && placed, run: () => _wmRenameStart(el, 'scene', id) },
      { label: 'Show notes', run: () => _wmOpenNotes('scene') }],
     organise,
-    [{ label: 'Export map…', run: () => worldBackupExport([id]) }],
+    [{ label: 'Export map…', run: () => worldBackupExport([id]) }].concat(
+      _wmKeptPics.has(id) ? [{ label: 'Restore previous picture', run: () => _wmRestoreKept(_wmKeptPics.get(id)) }] : []),
     [{ label: 'Delete map', danger: true, run: () => _wmDeletePicked([id]) }]);
+}
+
+// The newest map picture a sync replaced, per map, read ahead because the menu builds at once (sync.js keeps them).
+async function worldMapKeptRefresh() {
+  let list = [];
+  // Without a Google client there is no sync and nothing kept: the remote answers 'off'.
+  try { list = await syncEngine.kept(); } catch (err) { if (err.code !== 'off') console.error('[sync]', err); }
+  _wmKeptPics = new Map();
+  for (const k of list) if (!_wmKeptPics.has(k.sceneId)) _wmKeptPics.set(k.sceneId, k.name);
+}
+
+async function _wmRestoreKept(name) {
+  let r = '';
+  try { r = await syncEngine.restoreKept(name); } catch (err) { console.error('[sync]', err); }
+  if (r === 'held') messageDialog({ title: 'Close this map first', message: t('This map is open, on the TV, in a column or in the Notes window, so its picture cannot change now.') });
+  else if (r === 'restored') worldMapRefresh();
+  worldMapKeptRefresh();
 }
 
 // Out of its place: moved just past the outline's right edge, which is what leaving a place is.

@@ -599,6 +599,12 @@
           <div class="dk-sh"><span class="cp-label">Interface</span></div>
           <!-- Filled by about.js's language switch. -->
           <div class="dk-blk" id="settings-lang"><span class="dk-sub">Language</span></div>
+          <div class="dk-blk" id="settings-hints"></div>   <!-- Filled by hints.js -->
+          <div class="dk-blk" id="cp-sec-seat-align"></div>   <!-- Filled by seatAlignment.js -->
+        </div>
+        <!-- The campaign's own storage: the backdrop (worldBackground.js), the backup (worldBackup.js), Recently deleted (syncSettings.js). -->
+        <div class="cp-group" id="wm-bg-group">
+          <div class="dk-sh"><span class="cp-label">Campaign</span></div>
           <div class="dk-blk"><span class="dk-sub">Shrink big maps</span>
             <div id="sm-compress" class="cp-tabs" title="Animated maps bigger than the size picked here are re-encoded to fit it on import, and your pictures are shrunk to it. Improves performance on low-end machines.">
               <button class="cp-segtab" data-size="0">Off</button>
@@ -607,86 +613,49 @@
               <button class="cp-segtab" data-size="1">4K</button>
             </div>
           </div>
-          <div class="dk-blk" id="settings-hints"></div>   <!-- Filled by hints.js -->
-        </div>
-        <div class="cp-group" id="cp-sec-seat-align"></div>   <!-- Filled by seatAlignment.js -->
-        <!-- The world map's settings: the backdrop (worldBackground.js) and the backup (worldBackup.js). Never on the TV. -->
-        <div class="cp-group" id="wm-bg-group">
-          <div class="dk-sh"><span class="cp-label">Campaign</span></div>
-          <!-- One book for every map (moduleText.js); the card opens the import panel. -->
+          <!-- One book for every map (moduleText.js); the line opens the import panel. -->
           <div class="dk-blk"><span class="dk-sub">Module text</span>
-            <button class="dk-src none" id="cp-src-module" title="Load the module text"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg></span><span class="nm">Load module text…</span></button>
-            <div class="dk-card" id="cp-module-card" hidden>
-              <div class="dk-card-head" id="cp-module-head" role="button" tabindex="0" title="Open the module text">
-                <span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg></span>
-                <span class="dk-card-txt"><span class="nm" id="cp-module-name" data-no-i18n></span><span class="mt" id="cp-module-meta"></span></span>
-                <button id="cp-module-clear" class="cp-adv-close" title="Remove the module text"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
-              </div>
+            <button class="dk-load" id="cp-src-module" title="Load the module text"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg><span>Load module text…</span></button>
+            <div class="dk-file" id="cp-module-card" role="button" tabindex="0" title="Open the module text" hidden>
+              <span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"><path d="M2 2.5h3.5A1.5 1.5 0 0 1 7 4v8a1 1 0 0 0-1-1H2z"/><path d="M12 2.5H8.5A1.5 1.5 0 0 0 7 4v8a1 1 0 0 1 1-1h4z"/></svg></span><span class="nm" id="cp-module-name" data-no-i18n></span>
+              <button id="cp-module-clear" class="cp-adv-close" title="Remove the module text"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
             </div>
           </div>
-          <div class="dk-blk"><span class="dk-sub">Background</span>
+          <div class="dk-blk"><span class="dk-sub">Background picture</span>
+            <button class="dk-load" id="wm-bg-pick" title="Choose a picture for behind the groups. The TV never shows it."><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="9" rx="1.2"/><circle cx="5" cy="6" r="1"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 2.5 2.5"/></svg><span>Choose a picture…</span></button>
+            <div class="dk-file" id="wm-bg-line" role="button" tabindex="0" title="Replace the image" hidden>
+              <span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="9" rx="1.2"/><circle cx="5" cy="6" r="1"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 2.5 2.5"/></svg></span><span class="nm" id="wm-bg-name" data-no-i18n></span>
+              <button id="wm-bg-clear" class="cp-adv-close" title="Remove the image"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+            </div>
+            <input type="file" id="wm-bg-file" accept="image/*" hidden>
+          </div>
+          <div class="dk-blk"><span class="dk-sub">Backup</span>
             <div class="dk-r">
-              <button class="dk-src none" id="wm-bg-pick" title="Choose a picture for behind the groups. The TV never shows it."><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><rect x="1.5" y="2.5" width="11" height="9" rx="1.2"/><circle cx="5" cy="6" r="1"/><path d="M2 11l3.5-3.5 2.5 2.5 1.5-1.5 2.5 2.5"/></svg></span><span class="nm" data-no-i18n>Choose image…</span></button>
-              <input type="file" id="wm-bg-file" accept="image/*" hidden>
-              <button id="wm-bg-clear" class="cp-adv-close" title="Remove the image" hidden><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
-            </div>
-          </div>
-          <div id="wm-bg-controls" class="dk-secbody" hidden>
-            <div class="dk-r">
-              <div class="dk-blk"><span class="dk-sub">Size</span>
-                <label class="dk-num" title="Size of the image in the Campaign. Drag the icon to change it."><span class="pre" data-scrub="wm-bg-scale-num" data-min="5" data-max="400" data-per="1.5" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l8-8M7 3h4v4"/></svg></span><input type="text" id="wm-bg-scale-num" inputmode="numeric" value="100"><span class="u">%</span></label>
-              </div>
-              <div class="dk-blk"><span class="dk-sub">Opacity</span>
-                <label class="dk-num" title="How strongly the image shows. Drag the icon to change it."><span class="pre" data-scrub="wm-bg-alpha-num" data-min="5" data-max="100" data-per="2" data-fire="change"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.8s4 4.2 4 6.6a4 4 0 01-8 0c0-2.4 4-6.6 4-6.6z"/></svg></span><input type="text" id="wm-bg-alpha-num" inputmode="numeric" value="60"><span class="u">%</span></label>
-              </div>
-            </div>
-            <div class="dk-blk"><span class="dk-sub">Position</span>
-              <button id="wm-bg-move" class="cp-btn cp-btn-live" aria-pressed="false" title="Open the Campaign, then drag the empty ground to move the image"><span id="wm-bg-move-label">Move on the map</span></button>
-              <span id="wm-bg-hint" class="cp-hint" hidden>Drag the empty ground on the Campaign screen.</span>
-            </div>
-          </div>
-          <div class="dk-blk"><span class="dk-sub">Export / Import</span>
-            <div class="cp-btnrow">
-              <button id="wm-bk-export" class="cp-btn" title="Shift-click maps in the Campaign, or Shift-drag a box around them, to export only those.">Back up everything</button>
-              <button id="wm-bk-restore" class="cp-btn" title="Pick an export .zip, or drop one on the Campaign screen.">Import a backup</button>
+              <button id="wm-bk-export" class="dk-load" title="Shift-click maps in the Campaign, or Shift-drag a box around them, to export only those."><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10V2.5M5 5.5l3-3 3 3"/><path d="M2.5 9.5v3a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3"/></svg><span id="wm-bk-export-label">Export</span></button>
+              <button id="wm-bk-restore" class="dk-load" title="Pick an export .zip, or drop one on the Campaign screen."><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5V10M5 7l3 3 3-3"/><path d="M2.5 9.5v3a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-3"/></svg><span>Import</span></button>
             </div>
             <input type="file" id="wm-bk-file" accept=".zip,application/zip" hidden>
-            <span id="wm-bk-line" class="cp-hint"></span>
           </div>
+          <!-- Recently deleted lives on the Drive, so syncSettings.js shows it only while sync is signed in. -->
+          <button class="dk-link" id="sy-trash-open" data-dock-pop="sy-trash-pop" hidden><span>Recently deleted</span><span class="r"><span id="sy-trash-count" data-no-i18n></span><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></span></button>
         </div>
-        <!-- Sync through Google Drive (syncSettings.js), shown only where sync has a Google client. -->
-        <div class="cp-group" id="sy-group" hidden>
-          <div class="dk-sh"><span class="cp-label">Sync between computers</span></div>
-          <div class="dk-blk">
-            <div class="cp-btnrow">
-              <button id="sy-connect" class="cp-btn" title="Sign in to Google so this computer keeps your campaign in step with your other one.">Connect to Google</button>
-              <button id="sy-disconnect" class="cp-btn" title="Stop syncing on this computer. Your maps stay here.">Disconnect</button>
-              <button id="sy-now" class="cp-btn" title="Send your changes and fetch the other computer's now.">Sync now</button>
-            </div>
-            <span id="sy-line" class="cp-hint"></span>
+        <div class="cp-group" id="cp-sec-integrations">
+          <div class="dk-sh"><span class="cp-label">Integrations</span></div>
+          <!-- Sync through Google Drive (syncSettings.js), shown only where sync has a Google client. -->
+          <div class="dk-int" id="sy-group" hidden>
+            <span class="dk-logo"><svg width="14" height="13" viewBox="0 0 87.3 78"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg></span>
+            <span class="dk-int-tx"><span class="nm">Google Drive</span><span class="mt" id="sy-line"></span></span>
+            <button id="sy-connect" class="dk-intbtn" title="Sign in to Google so this computer keeps your campaign in step with your other one.">Connect</button>
+            <button id="sy-disconnect" class="dk-intbtn" title="Stop syncing on this computer. Your maps stay here." hidden>Disconnect</button>
           </div>
-          <div class="dk-blk"><span class="dk-sub">Recently deleted</span>
-            <div id="sy-trash" class="dk-secbody"></div>
-            <span id="sy-trash-line" class="cp-hint"></span>
-            <div class="cp-btnrow">
-              <button id="sy-empty" class="cp-btn" title="Delete these maps for good, on every computer.">Empty now</button>
-            </div>
+          <!-- The Claude connection (mcpConnect.js). -->
+          <div class="dk-int" id="mcp-group">
+            <span class="dk-logo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d97757" stroke-width="2.6" stroke-linecap="round"><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5.6 5.6l4.2 4.2M14.2 14.2l4.2 4.2M5.6 18.4l4.2-4.2M14.2 9.8l4.2-4.2"/></svg></span>
+            <span class="dk-int-tx"><span class="nm" data-no-i18n>Claude</span><span class="mt" id="mcp-line">Not connected</span></span>
+            <button id="mcp-connect" class="dk-intbtn" title="Lets the Claude desktop app read your campaign and write prep into it. Claude asks before it installs anything.">Connect</button>
+            <button id="mcp-disconnect" class="dk-intbtn" title="Evermist refuses every Claude call on this computer until you press Connect." hidden>Disconnect</button>
           </div>
-          <div class="dk-blk"><span class="dk-sub">Replaced map pictures</span>
-            <div id="sy-kept" class="dk-secbody"></div>
-            <span id="sy-kept-line" class="cp-hint"></span>
-          </div>
-        </div>
-        <!-- The Claude connection's install (mcpConnect.js). -->
-        <div class="cp-group" id="mcp-group">
-          <div class="dk-sh"><span class="cp-label">AI assistants</span></div>
-          <div class="dk-blk">
-            <div class="cp-btnrow">
-              <button id="mcp-connect" class="cp-btn" title="Lets the Claude desktop app read your campaign and write prep into it. Claude asks before it installs anything.">Connect to Claude</button>
-            </div>
-            <span class="cp-hint" id="mcp-rules">The AI assistant can change and delete your prep. It asks before each delete. Undo works until you close Evermist. After an update, press Connect to Claude again.</span>
-            <span id="mcp-line" class="cp-hint"></span>
-          </div>
+          <span class="cp-hint" id="mcp-rules">The AI assistant can change and delete your prep. It asks before each delete. Undo works until you close Evermist. After an update, press Connect to Claude again.</span>
         </div>
         <!-- Filled by about.js: mark, wordmark, version, repo, What's new, the update line. -->
         <div class="cp-group legend-about" id="legend-about"></div>
@@ -696,6 +665,11 @@
 </div>
 
 <!-- The dock's pop-outs, placed to its left level with the row that opened them (dock.js). -->
+<div class="dk-pop dk-trash" id="sy-trash-pop" hidden>
+  <div class="cp-adv-head"><span class="cp-adv-title">Recently deleted</span><button class="sm-x" data-pop-close title="Close"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="dk-trash-list" id="sy-trash"></div>
+  <div class="dk-trash-foot"><span class="cp-hint">Kept for 30 days</span><button id="sy-empty" class="dk-danger" title="Delete these maps for good, on every computer."><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg><span>Empty now</span></button></div>
+</div>
 <div class="dk-pop" id="cp-pop-grid" hidden>
   <div class="cp-adv-head"><span class="cp-adv-title">Grid colour</span><button class="sm-x" data-pop-close title="Close"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="cp-adv-body">

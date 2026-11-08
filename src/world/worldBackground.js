@@ -1,7 +1,8 @@
 'use strict';
 // worldBackground.js — the world map's backdrop: one image behind the places, chosen in Settings. The
 // picture lives in its own IndexedDB (up to 30MB cannot sit in localStorage); where it sits, its size
-// and its opacity live in localStorage. The TV never sees it. Every export carries it.
+// and its opacity live in localStorage, set when it is chosen and only by Claude after. The TV never sees it.
+// Every export carries it.
 //
 // ⚠ A SEPARATE DATABASE, never the scenes' store: that store lists every record as a scene.
 
@@ -11,7 +12,6 @@ const WB_MAX_BYTES = 30 * 1024 * 1024;
 
 let _wbMeta = null;              // { x, y, scale, alpha, w, h, name }: x and y are the image's centre
 let _wbUrl = null;
-let _wbMoving = false;
 
 function _wbDb() {
   return new Promise((resolve, reject) => {
@@ -62,16 +62,9 @@ function _wbApply() {
   }
   worldMapExtentReset();
   worldMistPicture();
-  document.getElementById('wm-bg-clear').hidden = !have;
-  document.getElementById('wm-bg-controls').hidden = !have;
-  const pick = document.getElementById('wm-bg-pick');
-  pick.classList.toggle('none', !have);
-  pick.querySelector('.nm').textContent = have ? (typeof _wbMeta.name === 'string' && _wbMeta.name ? _wbMeta.name : t('Background image')) : t('Choose image…');
-  pick.title = t(have ? 'Replace the image' : 'Choose a picture for behind the groups. The TV never shows it.');
-  if (have) {
-    document.getElementById('wm-bg-scale-num').value = Math.round(_wbMeta.scale * 100);
-    document.getElementById('wm-bg-alpha-num').value = Math.round(_wbMeta.alpha * 100);
-  }
+  document.getElementById('wm-bg-pick').hidden = have;
+  document.getElementById('wm-bg-line').hidden = !have;
+  document.getElementById('wm-bg-name').textContent = have ? (typeof _wbMeta.name === 'string' && _wbMeta.name ? _wbMeta.name : t('Background picture')) : '';
 }
 
 // ─── In a backup ─────────────────────────────────────────────────────────────
@@ -131,29 +124,6 @@ function worldBackgroundPicture() {
   return { url: _wbUrl, x: m.x - w / 2, y: m.y - h / 2, w, h, alpha: m.alpha };
 }
 
-function worldBackgroundMoving() { return _wbMoving && !!_wbMeta; }
-
-function worldBackgroundMoveSet(on) {
-  _wbMoving = on && !!_wbMeta;
-  const btn = document.getElementById('wm-bg-move');
-  btn.classList.toggle('live', _wbMoving);
-  btn.setAttribute('aria-pressed', _wbMoving ? 'true' : 'false');
-  document.getElementById('wm-bg-move-label').textContent = t(_wbMoving ? 'Done moving' : 'Move on the map');
-  document.getElementById('wm-bg-hint').hidden = !_wbMoving;
-  if (typeof _wm !== 'undefined' && _wm) _wm.classList.toggle('bgmove', _wbMoving);
-}
-
-// The picture as it was when a drag began, moved by a distance in world units.
-function worldBackgroundDragTo(from, dx, dy) {
-  if (!_wbMeta) return;
-  _wbMeta.x = from.x + dx;
-  _wbMeta.y = from.y + dy;
-  _wbApply();
-}
-
-function worldBackgroundDragEnd() { _wbMetaSave(); }
-function worldBackgroundMeta() { return _wbMeta ? { x: _wbMeta.x, y: _wbMeta.y } : null; }
-
 function _wbRead(blob) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(blob), img = new Image();
@@ -195,7 +165,6 @@ async function _wbChoose(file) {
 }
 
 async function _wbClear() {
-  worldBackgroundMoveSet(false);
   if (_wbUrl) URL.revokeObjectURL(_wbUrl);
   _wbUrl = null;
   _wbMeta = null;
@@ -237,33 +206,19 @@ function worldBackgroundNumbersSet(patch) {
   return true;
 }
 
-// A typed or scrubbed number, clamped to its range.
-function _wbBind(numId, key, min, max, toValue) {
-  const num = document.getElementById(numId);
-  num.addEventListener('change', () => {
-    if (!_wbMeta) return;
-    _wbMeta[key] = toValue(Math.max(min, Math.min(max, parseInt(num.value, 10) || min)));
-    _wbMetaSave();
-    _wbApply();
-  });
-  num.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') num.blur(); });
-}
-
 async function worldBackgroundInit() {
   const file = document.getElementById('wm-bg-file');
   document.getElementById('wm-bg-pick').addEventListener('click', () => file.click());
-  file.addEventListener('change', () => { const f = file.files && file.files[0]; file.value = ''; _wbChoose(f); });
-  document.getElementById('wm-bg-clear').addEventListener('click', () => confirmDialog({
-    title: 'Remove the background image?',
-    message: t('The picture is deleted from Evermist and cannot be brought back. Your groups, maps and roads stay as they are.'),
-    confirmLabel: 'Remove', danger: true, onConfirm: _wbClear,
-  }));
-  document.getElementById('wm-bg-move').addEventListener('click', () => {
-    if (!_wbMeta) return;
-    if (!_wbMoving && !worldMapOpen) worldMapShow();    worldBackgroundMoveSet(!_wbMoving);
+  document.getElementById('wm-bg-line').addEventListener('click', () => file.click());
+  document.getElementById('wm-bg-clear').addEventListener('click', e => {
+    e.stopPropagation();
+    confirmDialog({
+      title: 'Remove the background image?',
+      message: t('The picture is deleted from Evermist and cannot be brought back. Your groups, maps and roads stay as they are.'),
+      confirmLabel: 'Remove', danger: true, onConfirm: _wbClear,
+    });
   });
-  _wbBind('wm-bg-scale-num', 'scale', 5, 400, v => v / 100);
-  _wbBind('wm-bg-alpha-num', 'alpha', 5, 100, v => v / 100);
+  file.addEventListener('change', () => { const f = file.files && file.files[0]; file.value = ''; _wbChoose(f); });
   _wbMeta = _wbMetaLoad();
   _wbApply();
   if (!_wbMeta) return;

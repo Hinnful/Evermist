@@ -1,13 +1,13 @@
 'use strict';
-// syncSettings.js — Settings' Sync section: Connect to Google and Disconnect, Sync now, the status line, Recently
-// deleted with Restore per map and Empty now, Replaced map pictures with Restore per file, and the question before a
-// computer's first sync. syncSettingsInit runs
-// only where sync has a Google client, so without one the section stays hidden. The engine is sync.js; this only shows
-// it and calls it.
+// syncSettings.js — Settings' Google Drive line: the status under the name and one button, Connect or Disconnect;
+// Campaign's Recently deleted line and its pop-out, with Restore per map and Empty now; and the question before a
+// computer's first sync. syncSettingsInit runs only where sync has a Google client, so without one both lines stay
+// hidden. The engine is sync.js; this only shows it and calls it.
 
 let _ssSigned = null;     // signed in here, as the main process last said
 let _ssKept = null;       // false where the sign-in is not remembered across restarts (no secure store)
 let _ssTrashAt = -1;      // the last sync the Recently deleted list was read after
+let _ssSyncAt = -1;       // the last sync the Campaign map's kept pictures were read after
 let _ssBusy = false;      // a button's call is running
 
 const _ssEl = id => document.getElementById(id);
@@ -24,58 +24,42 @@ function _ssStatus() {
   if (st.state === 'signedOut') _ssSigned = false;
   const s = syStatusLine(st);
   const note = _ssKept === false && st.state !== 'syncing' ? ' ' + t('Sign-in is not remembered on this computer.') : '';
-  _ssEl('sy-line').textContent = t(s.text, Object.assign({}, s.vars, s.when ? { time: _ssWhen(s.when, true) } : {})) + note;
-  _ssEl('sy-line').title = st.state === 'error' ? st.message : '';
+  const line = _ssEl('sy-line');
+  line.textContent = t(s.text, Object.assign({}, s.vars, s.when ? { time: _ssWhen(s.when, true) } : {})) + note;
+  line.title = st.state === 'error' ? st.message : line.textContent;
+  line.classList.toggle('on', st.state === 'idle' && !!st.last);
   const signed = _ssSigned !== false;
   _ssEl('sy-connect').hidden = signed;
   _ssEl('sy-disconnect').hidden = !signed;
-  _ssEl('sy-now').disabled = !signed || st.state === 'syncing' || _ssBusy;
-  if (st.state !== 'syncing' && st.last !== _ssTrashAt) { _ssTrashAt = st.last; _ssTrash(); _ssKeptList(); }
+  _ssEl('sy-connect').disabled = _ssEl('sy-disconnect').disabled = _ssBusy;
+  _ssEl('sy-trash-open').hidden = !signed;
+  if (!signed && _ssEl('sy-trash-open').classList.contains('open')) dockClosePop();
+  if (signed && st.state !== 'syncing' && st.last !== _ssTrashAt) { _ssTrashAt = st.last; _ssTrash(); }
 }
 
-function _ssRow(item, key, val, onBack) {
+function _ssRow(item) {
   const row = document.createElement('div');
-  row.className = 'dk-r';
-  const src = document.createElement('button');
-  src.className = 'dk-src';
-  src.disabled = true;
-  const nm = document.createElement('span'), mt = document.createElement('span');
-  nm.className = 'nm';
-  nm.textContent = item.name || t('Unnamed map');
-  mt.className = 'mt';
-  mt.textContent = _ssWhen(item.at, false);
-  src.append(nm, mt);
-  const back = document.createElement('button');
-  back.className = 'cp-adv-close';
-  back.title = t('Restore');
-  back.dataset[key] = val;
-  back.innerHTML = uiIcon('undo', 13, 1.5);
-  back.addEventListener('click', () => _ssRun(onBack));
-  row.append(src, back);
+  row.className = 'dk-trash-row';
+  row.innerHTML = '<span class="dk-int-tx"><span class="nm"></span><span class="mt"></span></span><button class="dk-intbtn"></button>';
+  row.querySelector('.nm').textContent = item.name || t('Unnamed map');
+  row.querySelector('.mt').textContent = _ssWhen(item.at, false);
+  const back = row.querySelector('button');
+  back.textContent = t('Restore');
+  back.dataset.restore = item.id;
+  back.addEventListener('click', () => _ssRun(() => syncEngine.restore(item.id)));
   return row;
 }
 
+// Signed in, the line reads the count, "Empty", or "Offline" while the Drive cannot be read; only a count opens it.
 async function _ssTrash() {
   let list = null;
   try { list = await syncEngine.trash(); } catch (_) { list = null; }
-  const box = _ssEl('sy-trash');
-  box.replaceChildren(...(list || []).map(x => _ssRow(x, 'restore', x.id, () => syncEngine.restore(x.id))));
-  _ssEl('sy-trash-line').textContent = !list ? t('Shown when this computer is online and signed in.')
-    : list.length ? t('Maps deleted on any computer stay here for 30 days.') : t('No map deleted in the last 30 days.');
+  _ssEl('sy-trash').replaceChildren(...(list || []).map(_ssRow));
   _ssEl('sy-empty').disabled = !list || !list.length;
-}
-
-// Read from this computer's own files, so it shows offline and signed out too.
-async function _ssKeptList() {
-  let list = [];
-  try { list = await syncEngine.kept(); } catch (err) { console.error('[sync]', err); }
-  _ssEl('sy-kept').replaceChildren(...list.map(k => _ssRow({ name: k.mapName, at: k.at }, 'kept', k.name, () => _ssRestoreKept(k.name))));
-  _ssEl('sy-kept-line').textContent = list.length ? t('A map picture a sync replaced stays here for 30 days.') : t('No map picture replaced in the last 30 days.');
-}
-
-async function _ssRestoreKept(name) {
-  if (await syncEngine.restoreKept(name) !== 'held') return;
-  messageDialog({ title: 'Close this map first', message: t('This map is open, on the TV, in a column or in the Notes window, so its picture cannot change now.') });
+  const open = _ssEl('sy-trash-open');
+  open.disabled = !list || !list.length;
+  _ssEl('sy-trash-count').textContent = !list ? t('Offline') : list.length ? String(list.length) : t('Empty');
+  if (open.disabled && open.classList.contains('open')) dockClosePop();
 }
 
 // One button's call at a time; the list and the line catch up after it.
@@ -123,15 +107,22 @@ function _ssEmpty() {
   });
 }
 
+// After every sync, whatever is open: a sync may have replaced a map picture the Campaign map's menu offers back.
+function _ssAfterSync() {
+  const st = syncEngine.status();
+  if (st.state === 'syncing' || st.last === _ssSyncAt) return;
+  _ssSyncAt = st.last;
+  worldMapKeptRefresh();
+}
+
 async function syncSettingsInit() {
   _ssEl('sy-group').hidden = false;
   try { _ssSigned = await syncEngine.signedIn(); } catch (_) { _ssSigned = null; }
   try { _ssKept = await syncEngine.remembered(); } catch (_) { _ssKept = null; }
   _ssEl('sy-connect').addEventListener('click', () => _ssRun(_ssConnect));
   _ssEl('sy-disconnect').addEventListener('click', () => _ssRun(async () => { await syncEngine.disconnect(); _ssSigned = false; }));
-  _ssEl('sy-now').addEventListener('click', () => _ssRun(() => syncEngine.now()));
   _ssEl('sy-empty').addEventListener('click', _ssEmpty);
   document.addEventListener('dockpane', e => { if (e.detail === 'settings') { _ssTrashAt = -1; _ssStatus(); } });
-  setInterval(() => { if (_ssPaneOpen()) _ssStatus(); }, 1000);
+  setInterval(() => { _ssAfterSync(); if (_ssPaneOpen()) _ssStatus(); }, 1000);
   if (_ssPaneOpen()) _ssStatus();
 }

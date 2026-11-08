@@ -114,7 +114,7 @@ function hintsRoomsAsk() {
 // A drawn shape became a room (commitDrawnShape), or the screen changed under the toast (world map, scene switch).
 function hintsRoomsDone() { hintClose('rooms'); }
 
-// ─── Seat alignment: Settings opened ─────────────────────────────────────────
+// ─── Your seat at the TV: Settings opened ────────────────────────────────────
 
 // Left of the dock, or of the element itself when it is on the rail (an open pane lies between), level with it,
 // the pointer on its right edge.
@@ -136,7 +136,7 @@ const _hintPlaceSeat = _hintPlaceBeside('cp-sec-seat-align');
 
 function _hintSeat() {
   _hintShow('seat', 'Sitting at the side of the TV?',
-    'Seat alignment turns your map to face your chair. The TV never turns.', null, _hintPlaceSeat);
+    'Your seat at the TV turns your map to face your chair. The TV never turns.', null, _hintPlaceSeat);
 }
 
 // ─── Settings' switch ────────────────────────────────────────────────────────
@@ -166,5 +166,5 @@ function initHints() {
   hintsNextMapInit();
   hintsCuesInit();
   const seat = document.getElementById('cp-sec-seat-align');
-  if (seat) seat.addEventListener('click', e => { if (e.target.closest('.sa-hit')) hintClose('seat'); });
+  if (seat) seat.addEventListener('click', e => { if (e.target.closest('[data-seat]')) hintClose('seat'); });
 }

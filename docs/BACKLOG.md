@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 5 open items; IDs run to 282."
+description: "Open work only. 5 open items; IDs run to 283."
 metadata: 
   node_type: memory
   type: project
@@ -101,11 +101,14 @@ for a plan. Showing the name means a new saved field on the scene, which sync, b
 previous release must load safely.
 **Polish · DM only**
 
-### 282. Settings follows the new Map settings style
-Filed 2026-11-08, with 5.6.0. Map settings now uses sub-headers, icon pills, knob switches and labelled buttons. Settings
-still shows Hints as an On/Off pill where Map settings uses the knob switch. Bring Settings in line; the rules are in the `dm-ui` skill and the 2026-11-07 Map settings entries in
-`docs/decisions/ui-and-control-panel.md`.
-**First use · Polish · DM only**
+### 283. A trash that works without Google Drive
+Filed 2026-11-08, with 5.6.2. Without sync, a deleted map is gone after the next delete or a restart; only the toast's
+Undo brings it back. The DM wants Recently deleted on every computer, with or without Google Drive: a deleted map stays
+30 days with Restore and Empty now, and with sync on a delete or restore reaches the other computer. Settings' Recently
+deleted line in Campaign already exists; today it shows only with sync. Care points: a deleted map keeps its picture or
+video on disk for 30 days, and after a `/rollback` the previous release must neither show a trashed map as a normal one
+nor lose it. Needs `/spec` before building.
+**Campaign · DM only**
 
 ---
 

@@ -155,6 +155,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   mcpReady: () => ipcRenderer.send('mcp-ready'),
   // Resolves '' once Claude has been handed its extension to install, else the reason it was not.
   connectClaude: () => ipcRenderer.invoke('mcp-connect-claude'),
+  // { off, seen }: off while Settings' Disconnect makes Evermist refuse every Claude call; seen once Connect or a call came.
+  claudeState: () => ipcRenderer.invoke('mcp-claude-state'),
+  disconnectClaude: () => ipcRenderer.invoke('mcp-disconnect-claude'),
   onMusicProgress: (callback) => {
     const handler = (_event, data) => callback(data);
     ipcRenderer.on('music-progress', handler);

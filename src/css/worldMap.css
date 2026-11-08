@@ -95,7 +95,6 @@
   #wm-mist { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
   .wmist-veil { fill: rgba(12, 15, 22, 0.5); }
   #wm-bgimg { background: center / 100% 100% no-repeat; transform-origin: 0 0; pointer-events: none; filter: saturate(.5) brightness(.78); }
-  #wm.bgmove { cursor: move; }
   #wm.drawing { cursor: crosshair; }
 
   .wm-lm {
@@ -201,9 +200,6 @@
   .wm-menu .sm-mi:hover .ky { color: var(--b-icon); }
   .wm-menu .sm-mi.danger:hover { background: #c0392b; }
 
-  /* Settings' World map section wears Scene control's parts (dock.css). A hidden row must really hide. */
-  #wm-bg-group [hidden] { display: none !important; }
-  #wm-bg-hint, #wm-bk-line { font: 400 11px/1.4 system-ui, -apple-system, sans-serif; }
 
   /* Shift-drag on the ground draws the pick's box, and a backup dragged over the layer says where it lands. */
   #wm-marquee { position: absolute; display: none; pointer-events: none; z-index: 3; border: 1px solid var(--b-icon, #8fb6ff); background: rgba(92, 177, 255, 0.12); }

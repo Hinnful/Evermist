@@ -88,7 +88,6 @@ function _wmDown(e) {
   if (e.button !== 0) return;
   if (_wmTool !== 'select') { worldMapDrawDown(e, base); return; }
   const d = { ...base, ..._wmGrab(e) };
-  if (d.kind === 'none' && worldBackgroundMoving()) { _wmDrag = { ...d, kind: 'bgmove', m0: worldBackgroundMeta() }; return; }
   if (d.kind === 'none' && e.shiftKey) { worldMapMarqueeStart(d); _wmDrag = d; return; }
   if (d.kind === 'none') { _wmGroundDown(e, d); return; }
   if (d.kind === 'road') { _wmRoadDown(e, d); return; }
@@ -165,7 +164,6 @@ function _wmMove(e) {
     _wmApplyCam();
     return;
   }
-  if (d.kind === 'bgmove') { worldBackgroundDragTo(d.m0, dx / _wmCam.z, dy / _wmCam.z); return; }
   if (d.kind === 'draw') { worldMapDrawMove(e, d); return; }
   _wm.classList.add('moving');
   if (d.kind === 'shapes') {
@@ -211,7 +209,6 @@ function _wmUp(e) {
   _wmDropEl = null;
   if (target) target.classList.remove('drop');
   if (d.kind === 'draw') { worldMapDrawUp(e, d); return; }
-  if (d.kind === 'bgmove') { if (d.moved) worldBackgroundDragEnd(); return; }
   if (d.kind === 'marquee') { worldMapMarqueeEnd(); return; }
   if (d.kind === 'shapes') {
     // ⚠ THE SCENES LAND FIRST: the room code's release re-files every scene against the new outline.

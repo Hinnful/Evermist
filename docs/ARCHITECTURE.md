@@ -142,7 +142,7 @@ proposition: it costs a video decoder in every window that shows it, for as long
 open, and that is comfortably the heaviest thing the app does. A Dungeon Alchemist export runs
 13 to 20 megapixels, several times what any table television can show.
 
-So Settings carries a **Shrink big maps** size: Off, 1080p, 2K (2560×1440) or 4K
+So Settings' Campaign section carries a **Shrink big maps** size: Off, 1080p, 2K (2560×1440) or 4K
 (3840×2160). With a size picked, any animated map larger than it is re-encoded on import to fit
 that box. 4K is the largest because it sits under the 4096-pixel ceiling where a laptop's built-in
 graphics stop decoding video in hardware and fall back to the processor. A map already inside the
@@ -334,7 +334,7 @@ one-minute quiet gap (`_hintQuietMs`) for screen-read hints; own-action hints ig
 The effects hint shows on the second map open, counted across launches in localStorage `evermist.mapOpens`
 (restoring at launch counts). `electron/screenLog.js` writes `screens.log` for the first 10 s after launch,
 on change only, replaced each launch. On the Campaign, right-click menus offer New group here, Add maps
-here..., Background picture... (presses Settings' Choose image... picker directly, no pane opens) and Notes for a group or map, and picking a map offers its own Notes level without opening it.
+here..., Background picture... (presses the picker directly, no pane opens) and Notes for a group or map, and picking a map offers its own Notes level without opening it.
 On launch with no last map to open (none remembered, or it is gone) the Campaign opens, empty library or not; a hidden
 background window (`?background=1`) never opens it, so first-use hints cannot fire unseen. The Open button over a picked map reads "Open"; the Help sheet lists "Pan with a mouse".
 
@@ -462,9 +462,8 @@ map off it. Under the rig's `--offscreen` no window is moved and the window rout
 
 ### Seat alignment
 
-Settings' Seat alignment (`seatAlignment.js`) draws the TV from above, holding the open scene's
-map dimmed, with a chair on each side. The DM's chair is solid blue and says "You". A click on a
-chair turns the DM's map 0°, 90°, 180° or 270°, so the laptop shows
+Settings' "Your seat at the TV" (`seatAlignment.js`) is four icons: a TV with a chair below,
+above, left or right. A click on one turns the DM's map 0°, 90°, 180° or 270°, so the laptop shows
 the map the way the table shows it from the DM's chair. It is a setting of the laptop, kept in
 local storage, never in a scene or a backup, and the TV never sees it.
 
@@ -685,12 +684,12 @@ the queue and the book import, `combatPlan.js` the arithmetic and a row's copy.
 ## The Claude connection
 
 The DM brainstorms in the Claude desktop app and asks it to write the prep into Evermist. Settings'
-Connect to Claude hands Claude a desktop extension (`Evermist.mcpb`), which Claude asks to install.
+Connect (Integrations) hands Claude a desktop extension (`Evermist.mcpb`), which Claude asks to install.
 Inside it is a small MCP server over stdio (`electron/mcpShim.js`) that runs on Claude's own Node,
 holds the tool list and relays each call to the app. Evermist never writes Claude's files.
 
 The app side is a server on 127.0.0.1 (`electron/mcpBridge.js`) behind a key made at each launch.
-Its port and key sit in `mcp.json` in the data folder, which is gone once the app quits. Main
+Its port and key sit in `mcp.json` in the data folder, which is gone once the app quits. Settings' Disconnect makes the server refuse every call with a plain reason until Connect; the state is `claude.json` (`{off, seen}`), which the previous release never reads, so a rollback leaves Claude answering. Main
 hands each call to the DM window, and `mcpTools.js` answers it there, because the campaign lives in
 that window's storage.
 
@@ -729,7 +728,7 @@ step, so undo restores it. Delete tools carry MCP's destructive hint, so Claude'
 each one runs, and the shim's instructions tell Claude to name what goes in chat first. The app enforces
 the yes too: delete_scene, delete_place, delete_fight and delete_picture delete nothing unless called with
 `confirmed: true`, and without it answer with what would go (`mcpWouldDelete` in `mcpPlan.js`). Settings
-shows these rules under Connect to Claude, and the guide's `claude` topic states them.
+shows these rules under Claude's Connect, and the guide's `claude` topic states them.
 
 Claude's map tools draw, edit, delete, merge, cut and split rooms and add or remove doors; set room fog,
 reveal or hide a rectangle or circle or the whole map, and set the fog theme by name (an old extension still sending preset, tint or fogColor is told to press Connect to Claude again); load a .dd2vtt floor
@@ -850,7 +849,7 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   delete in its undo window defers everything. Nothing on screen reloads, and each pulled record
   is applied in its own short slice between frames.
 - **Recently deleted:** a map deleted on one computer leaves the other and appears in Settings'
-  "Recently deleted" with its name and date, with **Restore** per map and **Empty now**. After 30
+  "Recently deleted" (one line in Campaign opening a pop-out) with its name and date, with **Restore** per map and **Empty now**. After 30
   days it is purged from the Drive. Its deletion is remembered for good, so a computer that was
   offline longer than that cannot bring it back. Deleting a whole map travels by sync only; Export
   and Import keep their own rules.
@@ -864,8 +863,8 @@ Drive. Sync stays off until **Connect to Google** in Settings.
 - **A map file a sync replaces is kept 30 days.** When a later sync takes another computer's
   picture or video for a map, the one it replaces moves to `sync/kept/<map id>.<time>.<ext>` in
   the data folder, and is purged at the first start or replacement after its 30 days.
-- **Replaced map pictures:** Settings' Sync section lists, beside Recently deleted, each kept
-  picture or video with its map's name and date and a **Restore** per file. The list reads this
+- **Replaced map pictures:** a map's right-click menu offers "Restore previous picture" while it has a
+  kept file (the list left Settings). Each kept picture or video has its map's name and date. The list reads this
   computer's own kept files, so it shows offline and signed out. Restore on a picture makes it the
   map's picture; on a video it swaps with the map's current file, which goes into the kept list in
   its place, so a restore is undoable. A restored picture counts as the map's newest edit and syncs

@@ -74,8 +74,8 @@ Three sections in this order: Grid, Weather and Fog (capital F, deliberate), Roo
    blue ring, a colour matching no preset puts it on the multicolour square, which opens `#cp-pop-grid`.
 6. **A loaded file is a file card** (`.dk-card`): icon, title, what it holds, a trash that asks through
    `confirmDialog`, and its actions under a divider (Draw rooms keeps `#btn-floorplan`). Clicking the head picks
-   another file. With no file the card is the `.dk-src` load row. Module text is campaign storage, so its card
-   lives in Settings' Campaign group, never here.
+   another file. With no file the card is the `.dk-src` load row. Module text is campaign storage, so it lives in
+   Settings' Campaign group, never here, as a file line (below).
 7. **The shared parts are defined once in `dock.css`**: the knob switch (`.dk-switch`, a `<button role="switch"
    aria-checked>`), the frameless button (`.dk-bare`, Two maps wears it with its word), the file card.
 
@@ -173,12 +173,23 @@ One level of name shows at a time: zoomed out only the place plates, zoomed in o
   rectangle on first open, and a scene filed under a place is moved inside it.
 - **Scenes are picked together with Shift** (`worldMapPick.js`, rules in `worldPickPlan.js`): Shift-click toggles, a
   Shift-dragged box adds, a plain click drops the pick, Esc clears it. A pick is scenes only and moves as one.
-- **Settings wears Scene control's parts**: its sections (Interface, Seat alignment, Campaign, Sync between computers, AI assistants), each a 12px title
-  over 11px sub-headers and 26px fields. There is no fog section: the fog's look is the Map settings themes alone. The
-  backdrop is a Sources row (the picture's name in a `.dk-src`, a trash icon at its right to remove it, which asks
-  first); Size and Opacity are scrub fields with no slider. The long hint lives in a tooltip.
-- **Settings' World map section holds the backdrop and the backup.** Export wears the pick ("Export 3 scenes"),
-  and with none picked saves everything; Restore is a picker or a .zip dropped on the layer (`worldBackup.js`).
+- **Settings wears Map settings' parts** (BACKLOG 282): Interface, Campaign, Integrations, About, each a 12px title
+  over 11px sub-headers. Interface is three full-width segments: Language, Hints, "Your seat at the TV" (four icons,
+  a TV with a chair below, above, left, right, never angles or a drawing). There is no fog section.
+- **Campaign holds the campaign's storage**: Shrink big maps, Module text, Background picture, Backup, Recently
+  deleted. A file with nothing loaded is a grey `.dk-load` button with an icon and a verb in full-colour text, the
+  same as Export and Import; never dim text, which reads as disabled. A loaded file is a `.dk-file` line: icon,
+  name, a trash that asks first and turns it back into the button; clicking the line picks another file. The
+  backdrop has no Size, Opacity or Position: it lands fitted when chosen (`_wbStart`) and keeps what is stored.
+  Export wears the pick ("Export 3 maps") and with none picked saves everything; Import is a picker or a .zip
+  dropped on the layer (`worldBackup.js`).
+- **Recently deleted is one `.dk-link` line**: name, then the count and a chevron, opening a `.dk-pop` beside the
+  dock with each map, its date and Restore, "Kept for 30 days" and Empty now. It reads "Empty" or "Offline" greyed,
+  and hides with sync signed out or no Google client. A replaced map picture comes back from the map's own
+  right-click menu on the Campaign map ("Restore previous picture"), never from Settings.
+- **Integrations is two `.dk-int` lines, no box**: logo, name, status under the name, one button on the right
+  (Connect or Disconnect). Google Drive has no Sync now. Claude's Disconnect makes Evermist refuse its calls until
+  Connect; the rules line under it stays word for word.
 - **The right-click menu is the `.sm-menu` look** (`sceneManager.css`). Delete works on any scene: deleting the open
   one switches the window to the first scene, as it always did. Delete has no red until the pointer is on it.
 
@@ -353,7 +364,7 @@ slider** (`.cp-slider`'s markup, never a styled native range).
 ## Windows
 
 The Bestiary opens from the rail as a centred window over a veil; the
-fight table stays a free window. Backup Export and Restore are in Settings' World map section.
+fight table stays a free window. Backup Export and Import are in Settings' Campaign section.
 
 - **Every window is built from the parts in `sceneManager.css`**: `.sm-win` with `.w-s`
   (360, a question or progress), `.w-m` (480, a list) or `.w-l` (720, a reference);

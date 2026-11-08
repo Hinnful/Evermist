@@ -185,6 +185,7 @@ open map dimmed, with a chair on each side; the DM's chair turns the laptop map 
 the same `evermist.seatTurn`. Two pictures were prototyped and dropped: the map on a laptop at the
 chair, and a DM screen on the TV's edge. Explaining what the setting does is left to a later
 first-time hint, since it is an advanced setting.
+**Amended 2026-11-08:** the drawing became four icons (a TV with a chair below, above, left, right), same `evermist.seatTurn`; see "Settings is Interface, Campaign and Integrations". The reason stands: chairs around a TV, never angles.
 
 ### The shut panel is a floating icon, not a rail · `REJECTED` (2026-10-08)
 A 44px rail with one button was built first and read as an empty strip. The panel now shuts to a
@@ -868,7 +869,7 @@ and a merged-away place hands its notes to it. A result with a hole in it is ref
 no holes. Picking a drawing tool no longer zooms the map in. A place's name uses the room label's plate,
 size rule and top-left placement, and stays visible when the place is picked, because it is how a place is
 renamed. The background image is one picture chosen in Settings, behind the places, with a size, an
-opacity and a Move switch; its file sits in a database of its own and a backup does not carry it yet.
+opacity and a Move switch (Size, Opacity and Move left Settings 2026-11-08); its file sits in a database of its own and a backup does not carry it yet.
 Roads wait for a spec.
 **Later entries replace parts of this one:** a backup of everything carries the background ("With two maps on, the world map fills columns"), roads are built ("Roads are open lines"), the bar's order is "The world map's toolbar reads in three clusters", and a place's name is the room's label ("Zoomed out, the world map shows no scenes").
 
@@ -1007,7 +1008,7 @@ A picked scene is dragged with the whole pick, and the right-click menu on a pic
 or a road is always picked alone. The last scene clicked is the one the notes panel follows. The pick is a list in
 `state.js` that counts only while that scene is in it, so a stale list can never act on scenes the DM is not looking at.
 
-### The backup lives in Settings' World map section, and the pick is its scope · `SETTLED` (2026-10-09)
+### The backup lives in Settings' World map section, and the pick is its scope · `SETTLED` (2026-10-09, section renamed: it is now Backup in Campaign, see "Settings is Interface, Campaign and Integrations")
 Settings' "World map" section holds the Background and, below it, the Backup: one line saying what a backup would hold,
 Export and Restore. Export wears the pick ("Export 3 scenes") and, with nothing picked, saves everything. There is no
 scope window. A backup of picked scenes carries the places that hold them, and a road only when it holds one of them,
@@ -1016,7 +1017,7 @@ stays out of a partial backup. Restore is a file picker, or a .zip dropped on th
 own restore, which merges and never replaces. A preview window before the merge was prototyped and not built.
 **Reversed by** "Export and Import merge scene by scene, and the newer edit wins": the buttons are Export and Import, and an import updates what it matches.
 
-### Settings is three sections in Scene control's own parts · `SETTLED` (the fog section superseded by "Fog in every map is gone", 2026-11-08)
+### Settings is three sections in Scene control's own parts · `SETTLED` (superseded 2026-11-08 by "Settings is Interface, Campaign and Integrations"; the fog section superseded by "Fog in every map is gone", 2026-11-08)
 Settings was five stacked headers with a sub-header inside World map and a header over a single switch. It is now
 Interface (language, shrink big maps), Fog in every scene (Half shroud and Feather) and World map (background, position,
 backup), each a section title over small sub-headers, in the parts Scene control uses. The background is the Sources
@@ -1024,6 +1025,12 @@ pattern: the picture's name in a field and a trash icon at its right that asks f
 back. Half shroud, Feather, Size and Opacity are scrub fields, dragged by their icon, with no slider. Three layouts were
 built in a lab (rows, an accordion, a drill-in page) and the rows won. The accordion stays the first thing to try if
 Settings grows long.
+
+### Settings is Interface, Campaign and Integrations · `SETTLED` (2026-11-08)
+Supersedes "Settings is three sections in Scene control's own parts" and its "World map", "Sync between computers" and "AI assistants" sections. **Interface:** Language, Hints, "Your seat at the TV". **Campaign:** Shrink big maps (it concerns maps, not the app), Module text, Background picture, Backup (Export, Import; Export still wears the pick), Recently deleted. **Integrations:** Google Drive, Claude. About stays last. Interface uses one control, a full-width segment under a sub-header; Hints stays On/Off because the knob switch is for a whole section in Map settings. Rejected: a name-left, control-right line per setting, and a Language dropdown (the dock has neither). An empty file is a grey button with an icon and a verb in full-colour text (dim text reads as disabled; dashed outlines are not the dock's style); a loaded file is a grey line with its name and a trash. The background picture lost Size, Opacity, Position and Move: a new picture lands centred and sized to cover the maps, choosing again refits it, a stored placement still applies; rejected: an "Adjust on the map" mode and a Strength slider, since a picture set once is not adjusted.
+Integrations is one line per service, no box: logo, name, status under it, one button (Connect or Disconnect). Sync now is gone: a change goes up within seconds and the other computer checks every 30 s. Rejected: a Drive card with Export, Import and Deleted cells; Disconnect on the sub-header.
+Recently deleted is one line in Campaign with a count and chevron opening a pop-out (Restore per map, Kept for 30 days, Empty now); "Offline" when unreadable, hidden with sync off. Rejected places: a trash button on the Campaign bar, the empty-ground right-click menu, the Notes window. **Parked:** a local trash that works without Google Drive, its own backlog item. The delete toast keeps Undo.
+**Claude:** Disconnect makes Evermist refuse Claude's calls on this computer with a plain reason until Connect; the state is `userData/claude.json` `{off, seen}`, which the previous release never reads, so a rollback leaves Claude answering. The line reads Connected once Connect is pressed or a call is served. Connect's install message is a short notice; the rules line under it is unchanged ("The Settings line says to press Connect again after an update").
 
 ### With two maps on, the world map fills columns; the app launches on the world map · `SETTLED` (2026-10-09)
 Two maps opens the world map with a Left and a Right chip, the active one blue, each naming the scene its column holds.
