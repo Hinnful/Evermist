@@ -140,6 +140,16 @@ describe('the 30-day trash', () => {
     assert.equal(S.syNewestRecord(recs, 'scene:r').machine, 'b');
     assert.equal(S.syNewestRecord(recs, 'scene:q'), null);
   });
+  it('a restored map comes back from this computer\'s trash when it holds it, from the Drive otherwise', () => {
+    const g = { t: { at: 5, restoredAt: 6 }, d: { at: 5, restoredAt: 6 }, still: { at: 5 }, here: { at: 5, restoredAt: 6 } };
+    assert.deepEqual(S.syRestoreFrom(g, ['here'], ['t', 'still', 'here']), { trash: ['t'], drive: ['d'] });
+    assert.deepEqual(S.syRestoreFrom(g, [], undefined), { trash: [], drive: ['t', 'd', 'here'] });
+  });
+  it('a purge on any computer empties the same map from this computer\'s trash, and nothing else', () => {
+    const g = { p: { at: 5, purged: true }, t: { at: 5 }, r: { at: 5, restoredAt: 6 } };
+    assert.deepEqual(S.syPurgedHeld(g, ['p', 't', 'r', 'local-only']), ['p']);
+    assert.deepEqual(S.syPurgedHeld({}, ['p']), []);
+  });
   it('a purge removes every computer\'s record of the map and its map and fog files, nothing else', () => {
     const recs = [{ key: 'scene:m', fileId: 1 }, { key: 'scene:m', fileId: 2 }, { key: 'scene:k', fileId: 3 }, { key: 'gone', fileId: 4 }];
     const blobs = [{ name: 'm.' + 'a'.repeat(64), id: 5 }, { name: 'f_m.' + 'b'.repeat(64), id: 6 }, { name: 'k.' + 'a'.repeat(64), id: 7 }, { name: 'mm.' + 'a'.repeat(64), id: 8 }];

@@ -1,7 +1,8 @@
 'use strict';
 // syncMusic.js — the music folder through sync: the tick's music part, which sync.js runs after every map, record and
-// note; this computer's `music` record; its rows in Recently deleted; and the hash a track gets as it lands. The rules
-// are syncMusicPlan.js; files move in the main process (syncRemote.js, musicHashes.js). Volume stays per computer.
+// note; this computer's `music` record; its rows in Recently deleted, and the tracks it moves into and out of this
+// computer's own (sceneTrash.js); and the hash a track gets as it lands. The rules are syncMusicPlan.js; files move in
+// the main process (syncRemote.js, musicHashes.js). Volume stays per computer.
 
 const syncMusic = (() => {
   const KEY = '$music';             // this computer's music state, in `evermist-sync`'s `synced` store
@@ -93,11 +94,25 @@ const syncMusic = (() => {
       _groups(st, local, folder.tracks, rems, ctx.machine);
       const busy = Object.keys(local).filter(h => musicTrackBusy(local[h].name));
       const plan = syMuPlan({ st, list: folder.tracks, remotes: rems, files: snap.music, first: ctx.first, busy, stashed: folder.stashed });
+      // This computer's Recently deleted: a purge from any computer empties it, and a track it holds comes back from it
+      // rather than the Drive.
+      const held = await sceneTrash.trackHashes();
+      const purged = new Set(syPurgedHeld(st.gone, held.map(x => x.hash)));
+      for (const x of held) if (purged.has(x.hash)) await sceneTrash.purgeTrack(x.id);
+      const back = syMuFromTrash(st.gone, local, held.filter(x => !purged.has(x.hash)).map(x => x.hash), plan.download.map(d => d.hash));
+      for (const h of back) {
+        const name = await sceneTrash.restoreTrack(held.find(x => x.hash === h).id);
+        if (name) st.tracks[h] = { name, size: 0, at: now };
+      }
+      plan.download = plan.download.filter(d => !back.includes(d.hash));
       let removed = false;
       for (const r of plan.remove) {
         // A track picked while this tick ran waits too.
         if (musicTrackBusy(r.name)) { plan.held++; continue; }
-        if (await _drive('removeMusic', { name: r.name, hash: r.hash })) { delete st.tracks[r.hash]; removed = true; }
+        // Into this computer's Recently deleted, its time the deletion record's so both computers count the same days.
+        const id = await sceneTrash.putTrack(r.name, st.gone[r.hash].at, r.hash,
+          token => _drive('removeMusic', { name: r.name, hash: r.hash, token }).then(ok => ok && r.hash));
+        if (id) { delete st.tracks[r.hash]; removed = true; }
       }
       if (removed) _muRefreshTracks();
       for (const fileId of plan.purge) await _drive('remove', { fileId });
@@ -131,6 +146,13 @@ const syncMusic = (() => {
     return syMuTrash(st.gone, st.tracks).map(x => ({ id: 'music:' + x.hash, name: displayName(x.name), at: x.at }));
   }
 
+  // A track restored from this computer's Recently deleted. ⚠ ITS DELETION IS MARKED RESTORED BEFORE THE FILE
+  // RETURNS, under the lock, so no tick reads it as deleted again or as a new track. Works offline.
+  const restoreHere = (hash, fn) => _locked(async () => {
+    if (hash) { const st = await _load(); st.gone = syMuRestore(st.gone, hash, Date.now()); await _save(st); }
+    return fn();
+  });
+
   // Restore and Empty now change only the state here; the next tick carries them to every computer.
   const restore = hash => _locked(async () => { const st = await _load(); st.gone = syMuRestore(st.gone, hash, Date.now()); await _save(st); });
   const has = async hash => !!(await _load()).tracks[hash];
@@ -150,7 +172,7 @@ const syncMusic = (() => {
     _drive('musicTracks', { hash: true }).catch(() => {}).then(() => syncEngine.soon());
   }
 
-  return { tick, trash, restore, has, emptyNow, reconcile, landed };
+  return { tick, trash, restore, restoreHere, has, emptyNow, reconcile, landed };
 })();
 
 // The music pane calls this after the folder or the groups changed; it does nothing unless sync is on here.

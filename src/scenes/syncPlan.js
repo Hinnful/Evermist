@@ -188,6 +188,16 @@ const syRestored = (gone, localIds) => {
   return Object.keys(gone || {}).filter(id => !here.has(id) && !gone[id].purged && (gone[id].restoredAt || 0) >= (gone[id].at || 0));
 };
 
+// The restored maps not here, split by where they come back from: this computer's trash when it holds them
+// (`trashIds`), else the Drive.
+function syRestoreFrom(gone, localIds, trashIds) {
+  const held = new Set(trashIds || []), ids = syRestored(gone, localIds);
+  return { trash: ids.filter(id => held.has(id)), drive: ids.filter(id => !held.has(id)) };
+}
+
+// The maps in this computer's trash that a purge on any computer has emptied.
+const syPurgedHeld = (gone, trashIds) => (trashIds || []).filter(id => !!(gone && gone[id] && gone[id].purged));
+
 // The newest copy of a record any computer holds, own included: the latest edit, then the latest upload.
 function syNewestRecord(records, key) {
   let best = null;
@@ -287,7 +297,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     SY_FORMAT, SY_TRASH_MS, SY_SCENE_BLOBS, syRecordBody, syBlobName, syBlobNameOk, syKeyOk, syToUpload, syNewRemote,
     syBlobsToUpload, syBlobsUnreferenced, syHeld, sySceneEditedAt, syGoneWins, syGoneNote, syRestore, syGoneMerge,
-    syTrashIds, syTrashDue, syPurge, syMissingScenes, syGoneClean, syGoneText, syGoneParse, syRestored, syNewestRecord,
+    syTrashIds, syTrashDue, syPurge, syMissingScenes, syGoneClean, syGoneText, syGoneParse, syRestored, syRestoreFrom, syPurgedHeld, syNewestRecord,
     syPurgeFiles, syPicFilesGone, syCampaignText, syBackdropMetaText, syStatusLine, syDriveCounts, syKeptName, syKeptDue,
     syKeptParse, syKeptList, syDriveSpace,
   };

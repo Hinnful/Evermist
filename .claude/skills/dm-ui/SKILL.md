@@ -127,7 +127,7 @@ The room card's module renders into the Notes window's room level; there is no f
   (`pane-scene-notes`, `pane-room-patch`), never `paneForward`. A map nobody holds: `sceneStore.updateScene`, a
   room patched by id and `polygons` never reordered. A tree click on a room of a held map selects that column and picks
   the room; on any other map it only shows the note.
-- **Every name and note reaches the DOM through `textContent`** and every Delete asks with `confirmDialog`. A monster's
+- **Every name and note reaches the DOM through `textContent`** and every Delete asks with `confirmDialog`, except a map's, which goes to the Trash with the undo toast. A monster's
   note is its DM `notes` (one field with the Bestiary page), the book's `lore` folded below read-only, and a Stat
   block button. Factions and lore live under `evermist.notesEntries`, which the previous release never reads.
 - **`#rp-desc` renders inside it**, but its logic stays in `roomCard.js`. Other levels share the title and
@@ -183,9 +183,9 @@ One level of name shows at a time: zoomed out only the place plates, zoomed in o
   backdrop has no Size, Opacity or Position: it lands fitted when chosen (`_wbStart`) and keeps what is stored.
   Export wears the pick ("Export 3 maps") and with none picked saves everything; Import is a picker or a .zip
   dropped on the layer (`worldBackup.js`).
-- **Recently deleted is one `.dk-link` line**: name, then the count and a chevron, opening a `.dk-pop` beside the
-  dock with each map, its date and Restore, "Kept for 30 days" and Empty now. It reads "Empty" or "Offline" greyed,
-  and hides with sync signed out or no Google client. A replaced map picture comes back from the map's own
+- **The Trash is one `.dk-link` line**: name, then the count and a chevron, opening a `.dk-pop` beside the
+  dock with each map or track, "N days left" and Restore, "Kept for 30 days" and Empty now. It shows with or without
+  sync, reads "Empty" greyed, and "Offline" only while signed in with nothing held here and the Drive unreadable. A replaced map picture comes back from the map's own
   right-click menu on the Campaign map ("Restore previous picture"), never from Settings.
 - **Integrations is two `.dk-int` lines, no box**: logo, name, status under the name, one button on the right
   (Connect or Disconnect). Google Drive has no Sync now. Claude's Disconnect makes Evermist refuse its calls until
@@ -355,8 +355,8 @@ slider** (`.cp-slider`'s markup, never a styled native range).
   and never wraps a field the DM types into.
 - **Add from YouTube selects as the Bestiary does** (Windows, below), and a track already
   on disk wears `.sm-tick.done` and an In library chip.
-- **A per-row delete is an icon with the app's trash SVG**, hidden until the row hovers, and it
-  asks through `confirmDialog`.
+- **A per-row delete is an icon with the app's trash SVG**, hidden until the row hovers. A
+  track's delete asks nothing: it goes to the Trash with the undo toast.
 - **Music groups** (`musicGroups.js`): New group in the header,
   a row dragged onto a heading, Ungrouped first. **A group is renamed by its name, never a pencil.**
   A track's file never moves.
@@ -388,7 +388,7 @@ fight table stays a free window. Backup Export and Import are in Settings' Campa
 ## Destructive actions
 
 - **A destructive action is a header icon or sits beside the control it belongs to**, wears no
-  red at rest, and asks through `confirmDialog` where the loss is not undoable. Room Delete is
+  red at rest, and asks through `confirmDialog` where the loss is not undoable. A delete into the Trash never asks. Room Delete is
   undoable and does not ask; Fog and Grid Reset ask.
 - **A destructive button has no fill and carries the trash**, red only under the pointer, and
   sits on the right of every footer, dialog and list toolbar. A dialog that loses data ends on it,

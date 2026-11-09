@@ -17,9 +17,8 @@ let hashes = null;
 function register(ctx) {
   ({ sendTo } = ctx);
   musicDir = ctx.musicDir;
-  hashes = createMusicHashes(musicDir, path.join(ctx.userData, 'sync', 'music-hashes.json'));
-  // ⚠ Claude's deleted tracks wait in `.removed` for its undo and go for good when Evermist quits;
-  // a crash leaves them, so the start clears them too.
+  hashes = createMusicHashes(musicDir, path.join(ctx.userData, 'sync', 'music-hashes.json'), path.join(ctx.userData, 'trash', 'music'));
+  // `.removed` held Claude's deleted tracks in an older version; a leftover goes at start and at quit.
   const purge = () => { try { fs.rmSync(path.join(musicDir, '.removed'), { recursive: true, force: true }); } catch {} };
   purge();
   app.on('will-quit', purge);
@@ -127,27 +126,18 @@ ipcMain.handle('music-delete', async (_event, name) => {
   return true;
 });
 
-// A delete that can be taken back: the file moves aside and `music-unstash` returns it.
-ipcMain.handle('music-stash', async (_event, name) => {
-  const full = musicPath(name);
-  if (!full) throw new Error('Not a track in the music folder.');
-  const dir = path.join(musicDir, '.removed');
-  await fs.promises.mkdir(dir, { recursive: true });
-  const token = Date.now() + '-' + Math.random().toString(36).slice(2, 8) + path.extname(name);
-  await fs.promises.rename(full, path.join(dir, token));
-  await hashes.stashed(name, token).catch(() => {});
-  return token;
+// Recently deleted: the track moves to `userData/trash/music/<token>`, never unlinked. Answers its hash.
+ipcMain.handle('music-trash', async (_event, name, token) => {
+  if (!musicPath(name)) throw new Error('Not a track in the music folder.');
+  return hashes.trash(name, token);
 });
 
-ipcMain.handle('music-unstash', async (_event, token, name) => {
-  if (typeof token !== 'string' || !/^[\w.-]+$/.test(token) || !musicPath(name)) throw new Error('Not a track Claude removed.');
-  let taken = [];
-  try { taken = await fs.promises.readdir(musicDir); } catch {}
-  const back = uniqueMusicName(name, taken);
-  await fs.promises.rename(path.join(musicDir, '.removed', token), path.join(musicDir, back));
-  await hashes.unstashed(token, back).catch(() => {});
-  return back;
+ipcMain.handle('music-untrash', async (_event, token, name) => {
+  if (!musicPath(name)) throw new Error('Not a track in the Trash.');
+  return hashes.untrash(token, name);
 });
+
+ipcMain.handle('music-purge-trash', async (_event, token) => hashes.purgeTrash(token));
 
 function ytdlpBundled() {
   return app.isPackaged

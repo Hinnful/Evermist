@@ -117,6 +117,17 @@ function syMuRestore(gone, h, now) {
   return { ...gone, [h]: { ...g, restoredAt: now } };
 }
 
+// The tracks this computer's Recently deleted holds (`held`, hashes) that come back here from it rather than the Drive:
+// one restored on any computer, or one this tick would fetch (`fetch`). Never one in the folder or purged.
+function syMuFromTrash(gone, local, held, fetch) {
+  const want = new Set(fetch || []);
+  return [...new Set(held || [])].filter(h => {
+    const g = (gone || {})[h];
+    if ((local || {})[h] || (g && g.purged)) return false;
+    return want.has(h) || (!!g && (g.restoredAt || 0) >= g.at);
+  });
+}
+
 // ─── Groups ──────────────────────────────────────────────────────────────────
 
 function syMuGroupsClean(g) {
@@ -238,7 +249,7 @@ function syMuLoose(files, records, gone) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     syMuNameOk, syMuLocal, syMuEmpty, syMuGoneWins, syMuObserve, syMuGoneClean, syMuGoneMerge, syMuTrash, syMuTrashDue,
-    syMuPurge, syMuRestore, syMuGroupsClean, syMuGroupsFromLocal, syMuGroupsPick, syMuGroupsToLocal, syMuRecordText,
+    syMuPurge, syMuRestore, syMuFromTrash, syMuGroupsClean, syMuGroupsFromLocal, syMuGroupsPick, syMuGroupsToLocal, syMuRecordText,
     syMuRecordParse, syMuPlan, syMuLoose,
   };
 }

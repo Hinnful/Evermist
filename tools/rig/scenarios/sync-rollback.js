@@ -13,7 +13,7 @@
 //   B. Back on this build, the edit made on the previous release goes up: A's record of that map on the Drive carries
 //      it, and B takes it.
 //   C. The map deleted on the previous release is recorded as deleted: A keeps a deletion record for it, and it leaves
-//      B and shows in B's Recently deleted.
+//      B and shows in B's Trash.
 //   D. Both computers agree: the same maps, with the same notes.
 
 const fs = require('fs');
@@ -110,7 +110,7 @@ module.exports = async function syncRollback(rig) {
   const left = await lib.poll(async () => { await tick(dmB); return !(await has(dmB, mGone)); }, 60000, 300);
   rig.check(!!left, 'C: the map deleted on the previous release is still on B: ' + await status());
   const trash = await dmB.evaluate('syncEngine.trash()', 30000);
-  rig.check(trash.length === 1 && trash[0].id === mGone, 'C: B\'s Recently deleted does not list it: ' + q(trash));
+  rig.check(trash.length === 1 && trash[0].id === mGone, 'C: B\'s Trash does not list it: ' + q(trash));
 
   // D
   await tick(dmA);

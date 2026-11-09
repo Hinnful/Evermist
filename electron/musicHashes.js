@@ -1,7 +1,8 @@
 'use strict';
 // musicHashes.js — each track's content hash, kept in `userData/sync/music-hashes.json` so a sync tick reads the music
 // folder without rehashing it. A track is hashed when it lands (copy, download, Claude's undo, a sync) and at start;
-// a cached hash holds while the file keeps its size and time. Pure Node, no Electron. Tested.
+// a cached hash holds while the file keeps its size and time. Also moves a track into Recently deleted's folder and
+// back with its hash. Pure Node, no Electron. Tested.
 
 const fs = require('fs');
 const path = require('path');
@@ -11,8 +12,11 @@ const { syMuNameOk } = require('../src/scenes/syncMusicPlan.js');
 
 const HASH_RE = /^[0-9a-f]{64}$/;
 
-function createMusicHashes(musicDir, cacheFile) {
-  // files: name -> { size, mtime, hash }; stashed: a track in `.removed` under its token -> hash.
+const TOKEN_RE = /^[\w-][\w.-]{0,80}$/;
+
+function createMusicHashes(musicDir, cacheFile, trashDir) {
+  // files: name -> { size, mtime, hash }; stashed: a track in `.removed` under its token -> hash; trashed: a track in
+  // `trashDir` under its token -> hash.
   let cache = null;
   const removedDir = path.join(musicDir, '.removed');
 
@@ -20,12 +24,15 @@ function createMusicHashes(musicDir, cacheFile) {
     if (cache) return cache;
     try { cache = JSON.parse(fs.readFileSync(cacheFile, 'utf8')); } catch (_) { cache = null; }
     if (!cache || typeof cache.files !== 'object' || typeof cache.stashed !== 'object') cache = { files: {}, stashed: {} };
+    if (!cache.trashed || typeof cache.trashed !== 'object') cache.trashed = {};
     return cache;
   }
   async function save() {
     await fs.promises.mkdir(path.dirname(cacheFile), { recursive: true });
     await fs.promises.writeFile(cacheFile, JSON.stringify(cache));
   }
+  const partPath = hash => path.join(musicDir, '.sync-' + hash + '.part');
+  const trackPath = name => (syMuNameOk(name) ? path.join(musicDir, name) : null);
   const fresh = (c, st) => !!c && c.size === st.size && c.mtime === st.mtimeMs && HASH_RE.test(c.hash);
 
   // The folder's tracks as [{ name, size, hash }], `hash` null for a file not hashed yet unless `withHash`, and the
@@ -57,20 +64,6 @@ function createMusicHashes(musicDir, cacheFile) {
     return { tracks, stashed: tokens.map(t => c.stashed[t]).filter(h => HASH_RE.test(h || '')) };
   }
 
-  // Claude's delete moved a track into the undo folder, and its undo moved it back under `back`.
-  async function stashed(name, token) {
-    const c = load();
-    if (c.files[name]) { c.stashed[token] = c.files[name].hash; delete c.files[name]; await save(); }
-  }
-  async function unstashed(token, back) {
-    const c = load(), h = c.stashed[token];
-    delete c.stashed[token];
-    if (h) {
-      try { const st = await fs.promises.stat(path.join(musicDir, back)); c.files[back] = { size: st.size, mtime: st.mtimeMs, hash: h }; } catch (_) { /* hashed at the next list */ }
-    }
-    await save();
-  }
-
   // A downloaded track into the folder under its own name, or "Name (2).ext" when that is taken. Answers the name.
   async function place(partPath, name, hash) {
     if (!syMuNameOk(name) || !HASH_RE.test(hash)) throw new Error('a track name the music folder would not take');
@@ -91,25 +84,54 @@ function createMusicHashes(musicDir, cacheFile) {
     }
   }
 
-  // A track another computer deleted leaves the folder, only while the file under that name is still that content.
-  async function remove(name, hash) {
-    if (!syMuNameOk(name)) return false;
-    const full = path.join(musicDir, name);
-    let st;
-    try { st = await fs.promises.stat(full); } catch (_) { return false; }
-    const c = load();
-    const now = fresh(c.files[name], st) ? c.files[name].hash : await hashFile(full);
-    if (now !== hash) return false;
-    await fs.promises.unlink(full);
+  const trashPath = token => {
+    if (typeof token !== 'string' || !TOKEN_RE.test(token)) throw new Error('not a track in the Trash');
+    return path.join(trashDir, token);
+  };
+  const hashOf = async (c, name, full, st) => (fresh(c.files[name], st) ? c.files[name].hash : hashFile(full));
+
+  // ⚠ MOVED, NEVER UNLINKED: a deleted track leaves the folder for `trashDir` under `token`. Answers its hash.
+  async function trash(name, token) {
+    const dest = trashPath(token), full = trackPath(name);
+    if (!full) throw new Error('not a track in the music folder');
+    const st = await fs.promises.stat(full), c = load(), hash = await hashOf(c, name, full, st);
+    await fs.promises.mkdir(trashDir, { recursive: true });
+    await fs.promises.rename(full, dest);
     delete c.files[name];
+    c.trashed[token] = hash;
     await save();
-    return true;
+    return hash;
   }
 
-  const partPath = hash => path.join(musicDir, '.sync-' + hash + '.part');
-  const trackPath = name => (syMuNameOk(name) ? path.join(musicDir, name) : null);
+  // A track another computer deleted moves into `trashDir` under `token`, only while the file under that name is still
+  // that content.
+  async function remove(name, hash, token) {
+    const full = trackPath(name);
+    if (!full) return false;
+    let st;
+    try { st = await fs.promises.stat(full); } catch (_) { return false; }
+    if (await hashOf(load(), name, full, st) !== hash) return false;
+    return (await trash(name, token)) === hash;
+  }
 
-  return { list, stashed, unstashed, place, remove, partPath, trackPath };
+  // A trashed track back into the folder under its name, or "Name (2).ext" when that is taken. Answers the name.
+  async function untrash(token, name) {
+    const src = trashPath(token), c = load();
+    const hash = HASH_RE.test(c.trashed[token] || '') ? c.trashed[token] : await hashFile(src);
+    const back = await place(src, name, hash);
+    delete c.trashed[token];
+    await save();
+    return back;
+  }
+
+  // The only unlink of a trashed track, and only inside `trashDir`.
+  async function purgeTrash(token) {
+    await fs.promises.unlink(trashPath(token)).catch(() => {});
+    const c = load();
+    if (token in c.trashed) { delete c.trashed[token]; await save(); }
+  }
+
+  return { list, place, trash, remove, untrash, purgeTrash, partPath, trackPath };
 }
 
 module.exports = { createMusicHashes };

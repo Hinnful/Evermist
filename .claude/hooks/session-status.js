@@ -39,9 +39,16 @@ function main() {
   const stashes = lines(git(['stash', 'list']));
   if (stashes.length) found.push(stashes.length + ' stash(es): ' + stashes.join('; '));
 
+  // CI's land job moves origin's main after /commit pushes, so the local origin/main is stale until a fetch.
+  let fetched = true;
+  try {
+    execFileSync('git', ['fetch', '--quiet', 'origin', 'main'], {
+      cwd: ROOT, stdio: 'ignore', timeout: 10000, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+    });
+  } catch { fetched = false; }
   let unlanded = '0';
   try { unlanded = git(['rev-list', '--count', 'origin/main..main']); } catch { /* no origin yet */ }
-  if (unlanded !== '0') found.push('main holds ' + unlanded + ' commit(s) origin/main has not landed.');
+  if (unlanded !== '0') found.push('main holds ' + unlanded + ' commit(s) origin/main has not landed' + (fetched ? '.' : ' (could not fetch origin; the count may be stale).'));
 
   // A run folder still holding notes.txt is a release that stopped before its push finished.
   const runs = path.join(ROOT, '.claude', 'commit', 'runs');

@@ -1,12 +1,12 @@
 'use strict';
-// sceneDelete.js — the trash and its undo.
+// sceneDelete.js — the DM's delete and its undo toast; once the toast closes the map goes to sceneTrash.js.
 
 let smPending = null;            // deferred delete: { items:[{id,index,meta}], ids:[…] }
 let smUndoTimer = null;
-let smToastUndo = null;          // the undo a toast not from the trash runs (Claude's changes, mcpHistory.js)
+let smToastUndo = null;          // the undo a toast not from a delete runs (Claude's changes, mcpHistory.js)
 
 // ── Delete with undo ──────────────────────────────────────────────────────────
-// The trash removes scenes from the list at once but DEFERS the real IndexedDB deletion so Undo
+// A delete removes scenes from the list at once but DEFERS the move into the Trash so Undo
 // can cancel it. A new delete finalises the previous one, as does beforeunload.
 function deleteScenesWithUndo(ids) {
   // ⚠ REFUSED, NOT EMPTIED: a column keeps autosaving the scene it shows, which would write the record
@@ -37,7 +37,7 @@ function deleteScenesWithUndo(ids) {
   if (tvLost) holdTvClear();
 
   smPending = { items, ids: items.map(x => x.id) };
-  showUndoToast(items.length === 1 ? t('"{name}" removed', { name: items[0].meta.name }) : t.plural(items.length, '{n} map removed', '{n} maps removed'));
+  showUndoToast(items.length === 1 ? t('"{name}" moved to Trash', { name: items[0].meta.name }) : t.plural(items.length, '{n} map moved to Trash', '{n} maps moved to Trash'));
   clearTimeout(smUndoTimer);
   smUndoTimer = setTimeout(commitPendingDelete, 4200);
   sceneListChanged();
@@ -96,10 +96,11 @@ function commitPendingDelete() {
   smPending = null;
   clearTimeout(smUndoTimer);
   hideUndoToast();
-  worldRoadsSceneGone(ids);   // an end on a deleted scene opens only once the toast can no longer bring it back
+  // An end on a deleted scene opens only once the toast can no longer bring it back; Restore from the trash reattaches it.
+  const roads = sceneTrash.roadsOf(ids);
+  worldRoadsSceneGone(ids);
+  sceneTrash.put(ids, Date.now(), roads).catch(console.error);
   for (const id of ids) {
-    sceneStore.deleteScene(id).catch(() => {});
-    if (window.electronAPI) window.electronAPI.deleteVideoFile(id).catch(() => {});
     if (thumbURLs.has(id)) { URL.revokeObjectURL(thumbURLs.get(id)); thumbURLs.delete(id); }
   }
 }

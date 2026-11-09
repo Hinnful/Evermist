@@ -284,7 +284,6 @@ function _ntDoDelete(n) {
 
 function _ntDeleteWords(n) {
   const name = n.unnamed || !n.name ? t('Room') : n.name, v = { name };
-  if (n.kind === 'map') return [t('Delete “{name}”?', v), t('Its rooms and notes go with it. Right after, you can undo it.')];
   if (n.kind === 'place') return [t('Delete the group “{name}”?', v), t('The group and its notes go. Its maps stay.')];
   if (n.kind === 'road') return [t('Delete the road “{name}”?', v), t('The road and its notes go. Its maps stay where they are.')];
   if (n.kind === 'room') return [t('Delete “{name}”?', v), t('The room and its notes go from the map.')];
@@ -295,6 +294,8 @@ function _ntDeleteWords(n) {
 
 function ntDelete(n) {
   if (n.kind === 'campaign' || n.kind === 'section' || (n.kind === 'room' && (!_ntHeld(n.scene) || worldMapOpen))) return;
+  // A map goes to the Trash with the delete's undo toast, so it asks nothing.
+  if (n.kind === 'map') { _ntDoDelete(n); return; }
   const w = _ntDeleteWords(n);
   confirmDialog({ title: w[0], message: w[1], confirmLabel: 'Delete', danger: true, onConfirm: () => _ntDoDelete(n) });
 }

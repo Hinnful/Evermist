@@ -415,8 +415,8 @@ previous release still go up. A Drive file is removed only when its owner's reco
 it, so another computer's upload in flight is never deleted (a loop of deletes and re-uploads was found and fixed this way).
 Pulled changes merge by Import's plan rules through a silent entry that touches nothing on screen; they wait while their map
 is open, on the TV or in Two maps, while the fight table is shown, or while their note is open, and nothing lands during a
-pending delete's undo. Whole-map deletion travels by sync only (Import unchanged), through a 30-day Recently deleted on the
-Drive whose deletion record outlives the purge. The first sync on a computer asks first with counts, deletes nothing, replaces
+pending delete's undo. Whole-map deletion travels by sync only (Import unchanged), through a 30-day Trash on the
+Drive whose deletion record outlives the purge (refined 2026-11-09: see "Each computer keeps its own Trash"). The first sync on a computer asks first with counts, deletes nothing, replaces
 no map file and keeps a copy of every record it changes for 30 days; a map picture or video a later sync replaces is kept on
 that computer 30 days.
 
@@ -446,3 +446,6 @@ A one-hour track is about 57 MB, so 50 tracks are about 2.9 GB; beside a ~4.3 GB
 
 ### Syncing only YouTube links was rejected · `REJECTED` (2026-11-08)
 Re-downloading tracks on the other computer fails when a video vanishes or the downloader breaks, and tracks added from disk have no link.
+
+### Each computer keeps its own Trash, in a database of its own · `SETTLED` (2026-11-09)
+A deleted map's whole record waits 30 days in IndexedDB `evermist-trash`, its video file in `userData/trash/`; never a new store in `evermist`, since a version bump breaks the previous release's open on a rollback. The previous release never reads it, so after /rollback it neither shows a trashed map nor loses it. With sync on, a delete also goes to the Drive trash; a delete arriving from another computer moves that computer's copy into its own Trash (at = the deletion record's time) instead of erasing it. Restore uses this computer's copy first and works offline, marking the deletion record restored BEFORE the copy returns so a sync tick cannot drop it again; a computer with no copy restores from the Drive. Maps already in the Trash when sync is turned on stay local only. The `gone` record and the scene record keep their shapes. Music tracks get the same Trash (`userData/trash/music/`, store `tracks`); a track another computer deleted moves into this computer's Trash. The pure rules are in `trashPlan.js`. The trash rig scenarios (trash-local, trash-music, trash-sync) stay out of the blocker set: the first two need the previous release cached on the machine, and the blockers stay four journeys.

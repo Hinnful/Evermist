@@ -11,7 +11,7 @@
 //   2. A track's group and the group order show the same on both computers, and the later edit wins.
 //   5. Two different tracks with the same name are both kept; the incoming one gets " (2)".
 //   4. A track playing on B is not removed while it plays; it leaves once B plays another.
-//   3. A deleted track leaves B and shows in Recently deleted beside a deleted map; Restore brings it back on both
+//   3. A deleted track leaves B and shows in the Trash beside a deleted map; Restore brings it back on both
 //      computers; Empty now and the 30 days each remove its file from the Drive.
 //   6. A map goes up before a long track in the same tick, and comes down before it on the other computer.
 //   7. Settings' Google Drive line shows " · N% full" from 70% in amber, from 90% in red, nothing below 70%, and the
@@ -27,16 +27,7 @@ const DAY = 86400000;
 const q = JSON.stringify;
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 
-// 8-bit mono PCM at 8 kHz; `tone` makes two tracks of one length differ.
-function wav(seconds, tone) {
-  const rate = 8000, n = rate * seconds, buf = Buffer.alloc(44 + n);
-  buf.write('RIFF', 0); buf.writeUInt32LE(36 + n, 4); buf.write('WAVEfmt ', 8);
-  buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
-  buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate, 28); buf.writeUInt16LE(1, 32); buf.writeUInt16LE(8, 34);
-  buf.write('data', 36); buf.writeUInt32LE(n, 40);
-  for (let i = 0; i < n; i++) buf[44 + i] = 128 + Math.round(40 * Math.sin(i / (tone || 8)));
-  return buf;
-}
+const wav = lib.wav;
 
 const T1 = 'Битва в склепе [dQw4w9WgXcQ].wav';
 const T2 = 'Тихий зал.wav';
@@ -147,25 +138,25 @@ module.exports = async function syncMusic(rig) {
       const t = await dmB.evaluate('syncEngine.trash()', 30000);
       return t.some(r => r.id === ids[1]) && t.some(r => r.name === 'Битва в склепе') ? t : null;
     });
-    rig.check(!!listed, '3: B\'s Recently deleted does not list the track beside the map: ' + q(await dmB.evaluate('syncEngine.trash()', 30000)));
-    const rows = await dmB.evaluate(`_ssTrash().then(() => [...document.querySelectorAll('#sy-trash .nm')].map(e => e.textContent))`, 30000);
-    rig.check(rows.includes('Битва в склепе') && rows.includes('Башня'), '3: Settings\' Recently deleted does not show the track and the map: ' + q(rows));
+    rig.check(!!listed, '3: B\'s Trash does not list the track beside the map: ' + q(await dmB.evaluate('syncEngine.trash()', 30000)));
+    const rows = await dmB.evaluate(`trashPanelRefresh().then(() => [...document.querySelectorAll('#sy-trash .nm')].map(e => e.textContent))`, 30000);
+    rig.check(rows.includes('Битва в склепе') && rows.includes('Башня'), '3: Settings\' Trash does not show the track and the map: ' + q(rows));
     const onA = (await dmA.evaluate('syncEngine.trash()', 30000)).find(r => r.name === 'Битва в склепе');
-    rig.check(!!onA && onA.at > Date.now() - 10 * 60000, '3: A\'s Recently deleted does not list the track with its time: ' + q(onA));
+    rig.check(!!onA && onA.at > Date.now() - 10 * 60000, '3: A\'s Trash does not list the track with its time: ' + q(onA));
     rig.check(drive.files().some(f => f.name.endsWith('.' + h1)), '3: the deleted track\'s file left the Drive before its 30 days');
 
     const id = onA ? onA.id : 'music:' + h1;
     await dmB.evaluate(`syncEngine.restore(${q(id)})`, 120000);
     const back = await until(() => nameOf(dirA, h1) && nameOf(dirB, h1));
     rig.check(!!back, '3: Restore on B did not bring the track back on both: A ' + q(nameOf(dirA, h1)) + ' B ' + q(nameOf(dirB, h1)));
-    rig.check((await dmB.evaluate('syncEngine.trash()', 30000)).every(r => r.id !== id), '3: the restored track is still in Recently deleted');
+    rig.check((await dmB.evaluate('syncEngine.trash()', 30000)).every(r => r.id !== id), '3: the restored track is still in the Trash');
 
     await drop(dmA, nameOf(dirA, h1));
     const gone = await until(async () => !nameOf(dirB, h1) && (await dmB.evaluate('syncEngine.trash()', 30000)).some(r => r.id === id));
     rig.check(!!gone, '3: the track deleted again did not leave B: ' + q(folder(dirB).map(t => t.name)));
     await dmB.evaluate('syncEngine.emptyNow()', 120000);
     rig.check(!drive.files().some(f => f.name.endsWith('.' + h1)), '3: Empty now left the track\'s file on the Drive');
-    rig.check((await dmB.evaluate('syncEngine.trash()', 30000)).every(r => r.id !== id), '3: Empty now left the track in Recently deleted');
+    rig.check((await dmB.evaluate('syncEngine.trash()', 30000)).every(r => r.id !== id), '3: Empty now left the track in the Trash');
 
     // Past 30 days: A's own "Тема.wav" deleted, then A's clock moved on.
     await drop(dmA, THEME);

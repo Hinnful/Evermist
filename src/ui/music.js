@@ -220,7 +220,7 @@ function _muRenderRow(list, track) {
   del.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
     'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/>' +
     '<path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>';
-  del.addEventListener('click', (e) => { e.stopPropagation(); _muAskDelete(track); });
+  del.addEventListener('click', (e) => { e.stopPropagation(); _muDelete(track); });
   row.appendChild(del);
 
   // ⚠ The row IS the play control, and a click on the row already playing does NOTHING.
@@ -348,30 +348,38 @@ function _muSetVolume(v) {
   if (_muDecks) for (const d of _muDecks) d.el.volume = fadeLevel(d.phase) * _muVolume;
 }
 
-function _muAskDelete(track) {
-  confirmDialog({
-    title: 'Delete this track?',
-    message: displayName(track.name) + '\n\n' + t('The file leaves the music folder. There is no undo, ' +
-             'and downloading it again is one paste.'),
-    confirmLabel: 'Delete',
-    danger: true,
-    onConfirm: async () => {
-      if (track.name === _muPlaying) {
-        _muPlaying = null;
-        _muPaused = false;
-        if (_muDecks) _muRampTo(_muDecks[_muActive], 0, false);
-        _muRenderPill();
-      }
-      try {
-        await window.electronAPI.deleteMusicFile(track.name);
-      } catch (err) {
-        messageDialog({ title: 'Could not delete that track', message: (err && err.message) || String(err) });
-      }
-      delete _muDurations[track.name];
-      forgetMusicTrack(track.name);
-      _muRefreshTracks();
-    },
-  });
+// No question: the track goes to the Trash, and the toast's Undo brings it back with its group.
+async function _muDelete(track) {
+  if (track.name === _muPlaying) {
+    _muPlaying = null;
+    _muPaused = false;
+    if (_muDecks) _muRampTo(_muDecks[_muActive], 0, false);
+    _muRenderPill();
+  }
+  const group = musicGroupOf(track.name);
+  let id = null;
+  try {
+    id = await sceneTrash.trashTrack(track.name);
+  } catch (err) {
+    messageDialog({ title: 'Could not delete that track', message: (err && err.message) || String(err) });
+  }
+  delete _muDurations[track.name];
+  forgetMusicTrack(track.name);
+  _muRefreshTracks();
+  if (!id) return;
+  const { hash } = (await sceneTrash.trackHashes()).find(x => x.id === id) || {};
+  // A map delete still pending is finalised first, so its Undo is not replaced silently.
+  commitPendingDelete();
+  const undo = async () => {
+    hideUndoToast();
+    // With sync on the deletion is marked restored before the file returns (syncMusic.restoreHere).
+    const back = syncIndex.isOn() ? await syncMusic.restoreHere(hash, () => sceneTrash.restoreTrack(id)) : await sceneTrash.restoreTrack(id);
+    if (back && group) setMusicGroup([back], group);
+    if (syncIndex.isOn()) syncEngine.now().catch(() => {});
+  };
+  showUndoToast(t('"{name}" moved to Trash', { name: displayName(track.name) }), undo);
+  clearTimeout(smUndoTimer);
+  smUndoTimer = setTimeout(() => { if (smToastUndo === undo) hideUndoToast(); }, 4200);
 }
 
 // A track a deck still holds, playing, paused or fading out: sync neither removes nor replaces it.

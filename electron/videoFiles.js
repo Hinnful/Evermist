@@ -1,16 +1,17 @@
 'use strict';
 // videoFiles.js — an animated map's own file on disk: written on import, read back for the
-// Player, listed for the memory probe, removed with its scene.
+// Player, listed for the memory probe, moved to `userData/trash` and back with its scene, removed for good.
 
 const { ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { hashFile } = require('./fileHash.js');
 
-let mapsDir, sendTo, isSafeId;
+let mapsDir, trashDir, sendTo, isSafeId;
 
 function register(ctx) {
   ({ mapsDir, sendTo, isSafeId } = ctx);
+  trashDir = path.join(ctx.userData, 'trash');
 }
 
 // --- Video file storage IPC ---
@@ -126,6 +127,33 @@ ipcMain.handle('delete-video-file', async (_event, sceneId) => {
   if (!isSafeId(sceneId)) return;
   for (const ext of ['.webm', '.mp4']) {
     try { await fs.promises.unlink(path.join(mapsDir, sceneId + ext)); } catch {}
+  }
+});
+
+// Recently deleted: the file is MOVED, never unlinked, so a crash between the scene and its file leaves both copies.
+// An image map has no file, which is not an error. Restore never writes over a file already in mapsDir.
+ipcMain.handle('trash-map-file', async (_event, sceneId) => {
+  if (!isSafeId(sceneId)) return;
+  await fs.promises.mkdir(trashDir, { recursive: true });
+  for (const ext of ['.webm', '.mp4']) {
+    try { await fs.promises.rename(path.join(mapsDir, sceneId + ext), path.join(trashDir, sceneId + ext)); } catch {}
+  }
+});
+
+ipcMain.handle('untrash-map-file', async (_event, sceneId) => {
+  if (!isSafeId(sceneId)) return;
+  for (const ext of ['.webm', '.mp4']) {
+    const dest = path.join(mapsDir, sceneId + ext);
+    try { await fs.promises.access(dest); continue; } catch {}
+    try { await fs.promises.rename(path.join(trashDir, sceneId + ext), dest); } catch {}
+  }
+});
+
+// The only unlink of a trashed map, and only inside userData/trash.
+ipcMain.handle('purge-trash-file', async (_event, sceneId) => {
+  if (!isSafeId(sceneId)) return;
+  for (const ext of ['.webm', '.mp4']) {
+    try { await fs.promises.unlink(path.join(trashDir, sceneId + ext)); } catch {}
   }
 });
 

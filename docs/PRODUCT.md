@@ -94,6 +94,15 @@ does not read clean is left out and named; one printed with no actions reads in 
 Evermist never corrects a book or a site. Notes for a scene with no rooms
 are a separate piece of work, not part of the combat helper.
 
+### Turn order on the TV · `REOPENED` (2026-11-09, narrows "The VTT line" and "A combat helper on the DM's screen", BACKLOG 290)
+While a fight is open, a thin strip on one TV edge shows names in initiative order with the current
+one lit. A monster stays off it until revealed; no HP and no AC. A current-turn marker in the fight
+table is the first step. It is the one exception to both entries above, so "no turn marker" no longer
+holds. Reason: the strongest demand found that crosses the line (seven request boards, a +25 Roll20
+request for a TV turn tracker, four DM forum sources, 8+ rival products ship it), and the physical
+rival, tent cards, loses because the fight table fills the strip with no extra work. Tokens and dice
+stay refused.
+
 ### Map effects are areas, not creatures · `SETTLED` (scope call)
 Difficult terrain, persistent damage zones, light radius, Wall of Fire. No identity, no turn
 order, no mini that moves each round, so this does **not** cross the VTT line. It reuses the
@@ -115,6 +124,12 @@ outline is edge-accurate, so two cuts across the narrow necks give geometry that
 right. That promotes split over merge in the polygon-editing work.
 
 ---
+
+### Dice moments on the TV · `REJECTED` (2026-11-09)
+A DM-triggered celebration on the TV after a real nat 20 or nat 1 was evaluated and refused. Every
+crit effect found in rival products fires on a digital roll, none celebrates a physical roll on a
+shared screen, and no demand was found. In an EN World poll 79% called physical dice fundamental in
+person, and the table's own reaction around the dice already does the job.
 
 ### Blanking the Player screen · `REJECTED` (2026-09-07)
 Proposed as one toggle covering the Player view in black. The app already answers it twice: the
@@ -376,9 +391,9 @@ wait until Claude can see the map. Without Claude the app is unchanged.
 Supersedes the play list in "Claude preps, and never plays": music and sounds' library, settings and backup are now
 case by case. Play is what changes the TV now or acts at the table: opening or sending a map, two maps, showing a
 picture, playing music or sounds, TV setup, sync, ping, the open fight's HP, conditions and initiative. A doubtful
-case is settled from that logic. Building a fight is prep (placing monsters is prep, taking away is play). Deletes are
-allowed with no trash: the DM is told plainly and each delete waits for a yes. A trash and a saved history of Claude's
-changes were rejected as overengineering for the MCP server.
+case is settled from that logic. Building a fight is prep (placing monsters is prep, taking away is play). Deletes
+wait for a yes in the chat. Maps and music tracks go to the Trash (**amended 2026-11-09**: an animated map too);
+other deletes have no trash. A saved history of Claude's changes was rejected as overengineering for the MCP server.
 
 ### Claude's ground rules · `SETTLED` (2026-10-25)
 A delete call deletes nothing until it carries `confirmed: true`; without it the call answers with what would go, so

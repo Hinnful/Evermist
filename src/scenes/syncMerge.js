@@ -71,15 +71,15 @@ const syncMerge = (() => {
     sceneListChanged();
   }
 
-  // A map another computer deleted leaves the library here. ⚠ NOT deleteScenesWithUndo or commitPendingDelete: no toast,
-  // no undo, no switch, and the DM's own pending delete untouched. The caller holds a map on screen and defers while
-  // a delete is pending.
-  async function drop(id) {
+  // A map another computer deleted moves into this computer's Recently deleted, `at` the deletion record's time so both
+  // count the same days. ⚠ NOT deleteScenesWithUndo or commitPendingDelete: no toast, no undo, no switch, and the DM's
+  // own pending delete untouched. The caller holds a map on screen and defers while a delete is pending.
+  async function drop(id, at) {
     const i = allScenes.findIndex(s => s.id === id);
     if (i !== -1) allScenes.splice(i, 1);
+    const roads = sceneTrash.roadsOf([id]);
     worldRoadsSceneGone([id]);
-    await sceneStore.deleteScene(id);
-    if (window.electronAPI) await window.electronAPI.deleteVideoFile(id).catch(() => {});
+    await sceneTrash.put([id], at, roads);
     sceneListChanged();
   }
 

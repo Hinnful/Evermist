@@ -60,6 +60,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('hash-video-file', sceneId),
   deleteVideoFile: (sceneId) =>
     ipcRenderer.invoke('delete-video-file', sceneId),
+  trashMapFile: (sceneId) => ipcRenderer.invoke('trash-map-file', sceneId),
+  untrashMapFile: (sceneId) => ipcRenderer.invoke('untrash-map-file', sceneId),
+  purgeTrashFile: (sceneId) => ipcRenderer.invoke('purge-trash-file', sceneId),
   onVideoSaveProgress: (callback) => {
     const handler = (_event, data) => callback(data);
     ipcRenderer.on('video-save-progress', handler);
@@ -136,8 +139,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pickMusicFiles: () => ipcRenderer.invoke('music-pick-files'),
   copyMusicFiles: (paths) => ipcRenderer.invoke('music-copy-files', paths),
   deleteMusicFile: (name) => ipcRenderer.invoke('music-delete', name),
-  stashMusicFile: (name) => ipcRenderer.invoke('music-stash', name),
-  unstashMusicFile: (token, name) => ipcRenderer.invoke('music-unstash', token, name),
+  trashMusicFile: (name, token) => ipcRenderer.invoke('music-trash', name, token),
+  untrashMusicFile: (token, name) => ipcRenderer.invoke('music-untrash', token, name),
+  purgeTrashedMusic: (token) => ipcRenderer.invoke('music-purge-trash', token),
 
   // ⚠ Main rebuilds the address and never trusts `raw` as a bare argument — see ytdlpTarget.
   musicLookup: (kind, id, raw) => ipcRenderer.invoke('music-lookup', { kind, id, raw }),

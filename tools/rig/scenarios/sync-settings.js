@@ -1,6 +1,6 @@
 'use strict';
 
-// sync-settings.js - SETTINGS' GOOGLE DRIVE LINE AND RECENTLY DELETED: SHOWN ONLY WITH A GOOGLE CLIENT, AND EVERY BUTTON WORKS.
+// sync-settings.js - SETTINGS' GOOGLE DRIVE LINE, SHOWN ONLY WITH A GOOGLE CLIENT, AND RECENTLY DELETED WITH SYNC: EVERY BUTTON WORKS.
 //
 // One app with no Google client, then the same app with one from the environment as a dev run reads it, then two apps
 // on one fake Drive through the sync config file. Every action goes through the line's own button and the Recently
@@ -10,20 +10,22 @@
 // THE CRITERIA ARE THIS HEADER. Each line has its check beneath it.
 //
 //   A. Without a Google client (no built-in file, no environment, no sync config file) Settings shows no Google Drive
-//      line and no Recently deleted, and sync keeps no index.
+//      line, and sync keeps no index. The Trash shows all the same: it is this computer's trash too.
 //   A2. With a client in GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET and no sync config file, Settings shows the line
-//      signed out: Connect, no Disconnect, no Recently deleted, and no index until this computer connects, so a DM who never connects pays
+//      signed out: Connect, no Disconnect, and no index until this computer connects, so a DM who never connects pays
 //      nothing on a save. Connect hands the system browser Google's consent
 //      page for that client, the hidden Drive folder its only scope, answered on the loopback. (The browser is caught on
 //      Linux only.)
 //   B. With the sync config file, Settings shows the Google Drive line signed in: Disconnect, no Connect, no Sync now.
 //   C. The status line under the name moves to a new sync's time.
-//   D. Disconnect signs this computer out: the line says so, Connect comes back, Recently deleted hides and the token
+//   D. Disconnect signs this computer out: the line says so, Connect comes back, the Trash stays and the token
 //      is gone.
 //      Connect signs it in again through the consent page and the loopback, PKCE checked, and sync resumes.
-//   E. A map deleted on A shows in B's Recently deleted pop-out with its name and date, the line counting it; Restore
+//   E. A map deleted on A shows in B's Trash pop-out with its name and date, the line counting it; Restore
 //      there brings it back on B.
-//   F. Empty now asks first, and on yes removes the map from the list for good, and its files from the Drive.
+//   F. Empty now asks first, "Everything in the Trash is deleted for good, on every computer. This cannot be undone.",
+//      its button's title saying "on every computer" too, and on yes removes the map from the list for good, and its
+//      files from the Drive.
 //   G. Campaign ends with one deleted map listed on A, for the screenshot (--shot "#wm-bg-group").
 
 const fs = require('fs');
@@ -43,7 +45,7 @@ module.exports = async function syncSettings(rig) {
   let dmA = rig.dm;
   rig.check(await openSettings(dmA), 'A: Settings did not open');
   rig.check(!(await shown(dmA, 'sy-group')) && await dmA.evaluate(`document.getElementById('sy-group').hidden`), 'A: Settings shows the Google Drive line without a Google client');
-  rig.check(!(await shown(dmA, 'sy-trash-open')), 'A: Settings shows Recently deleted without a Google client');
+  rig.check(await shown(dmA, 'sy-trash-open'), 'A: Settings hides the Trash without a Google client');
   rig.check(await dmA.evaluate('!syncIndex.isOn()'), 'A: sync keeps an index without a Google client');
 
   // A2
@@ -54,7 +56,6 @@ module.exports = async function syncSettings(rig) {
   const envUp = await lib.poll(async () => await shown(dmA, 'sy-group') && await shown(dmA, 'sy-connect'), 20000, 200);
   rig.check(!!envUp, 'A2: with a client in the environment, Settings does not show the Google Drive line with Connect');
   rig.check(!(await shown(dmA, 'sy-disconnect')) && !(await dmA.evaluate('syncIndex.isOn()')), 'A2: signed out, Disconnect shows or sync keeps an index before any Connect');
-  rig.check(!(await shown(dmA, 'sy-trash-open')), 'A2: signed out, Settings shows Recently deleted');
   if (!browser) rig.byEye('A2: Connect opens Google\'s consent page for the client in the environment (the browser is caught on Linux only)');
   else if (envUp) {
     const faults = lib.consentFaults(await lib.connectOpens(dmA, browser), ENV_ID);
@@ -100,7 +101,7 @@ module.exports = async function syncSettings(rig) {
   await click(dmB, '#sy-disconnect');
   const out = await lib.poll(async () => /^Signed out/.test(await line(dmB)) && await shown(dmB, 'sy-connect'), 30000, 200);
   rig.check(!!out, 'D: Disconnect did not sign B out: ' + q(await line(dmB)) + ' ' + await status());
-  rig.check(!(await shown(dmB, 'sy-disconnect')) && !(await shown(dmB, 'sy-trash-open')), 'D: signed out, Disconnect or Recently deleted still shows');
+  rig.check(!(await shown(dmB, 'sy-disconnect')) && await shown(dmB, 'sy-trash-open'), 'D: signed out, Disconnect still shows or the Trash hides');
   rig.check(['token.json', 'token.enc'].every(f => !fs.existsSync(path.join(b.profileDir, 'sync', f))), 'D: Disconnect left the token on disk');
   const consents = drive.stats.consents;
   await click(dmB, '#sy-connect');
@@ -125,14 +126,14 @@ module.exports = async function syncSettings(rig) {
   // E
   rig.check(!!(await deleteOnA(ids[0])), 'E: a map deleted on A is still on B: ' + await status());
   const listed = await lib.poll(async () => { const r = await rows(dmB); return r.length === 1 && r[0].id === ids[0] && r; }, 30000, 200);
-  rig.check(!!listed && listed[0].name === 'Склеп' && /\d/.test(listed[0].date), 'E: B\'s Recently deleted does not list the map with its name and date: ' + q(await rows(dmB)));
+  rig.check(!!listed && listed[0].name === 'Склеп' && /\d/.test(listed[0].date), 'E: B\'s Trash does not list the map with its name and date: ' + q(await rows(dmB)));
   const counted = await lib.poll(async () => (await dmB.evaluate(`(() => { const b = document.getElementById('sy-trash-open'); return !b.disabled && document.getElementById('sy-trash-count').textContent === '1'; })()`)), 10000, 200);
-  rig.check(!!counted, 'E: B\'s Recently deleted line does not count one map: ' + q(await dmB.evaluate(`document.getElementById('sy-trash-count').textContent`)));
+  rig.check(!!counted, 'E: B\'s Trash line does not count one map: ' + q(await dmB.evaluate(`document.getElementById('sy-trash-count').textContent`)));
   await click(dmB, '#sy-trash-open');
-  rig.check(await shown(dmB, 'sy-trash-pop'), 'E: clicking Recently deleted did not open its pop-out');
+  rig.check(await shown(dmB, 'sy-trash-pop'), 'E: clicking the Trash line did not open its pop-out');
   await click(dmB, `#sy-trash [data-restore="${ids[0]}"]`);
   const restored = await lib.poll(async () => await has(dmB, ids[0]) && (await rows(dmB)).length === 0, 60000, 200);
-  rig.check(!!restored, 'E: Restore in B\'s Recently deleted did not bring the map back on B: ' + q(await rows(dmB)) + ' ' + await status());
+  rig.check(!!restored, 'E: Restore in B\'s Trash did not bring the map back on B: ' + q(await rows(dmB)) + ' ' + await status());
 
   // F
   rig.check(!!(await deleteOnA(ids[1])), 'F: the second map deleted on A is still on B: ' + await status());
@@ -140,6 +141,10 @@ module.exports = async function syncSettings(rig) {
   await click(dmB, '#sy-empty');
   const asked = await lib.poll(async () => dmB.evaluate(`!!document.getElementById('cd-ok') && document.getElementById('cd-ok').offsetParent !== null`), 10000, 100);
   rig.check(!!asked, 'F: Empty now did not ask first');
+  const emptyQ = await dmB.evaluate(`document.getElementById('cd-msg').textContent`);
+  rig.check(emptyQ === 'Everything in the Trash is deleted for good, on every computer. This cannot be undone.', 'F: signed in, Empty now\'s question reads ' + q(emptyQ));
+  const emptyTitle = await dmB.evaluate(`document.getElementById('sy-empty').title`);
+  rig.check(emptyTitle === 'Delete everything in the Trash for good, on every computer.', 'F: signed in, Empty now\'s title reads ' + q(emptyTitle));
   rig.check((await rows(dmB)).length === 1, 'F: Empty now emptied the list before the DM answered');
   if (asked) await click(dmB, '#cd-ok');
   const emptied = await lib.poll(async () => (await rows(dmB)).length === 0 && !!(await dmB.evaluate(`syncIndex.raw.get('gone', ${q(ids[1])}).then(g => !!(g && g.purged))`, 20000)), 60000, 200);
@@ -152,6 +157,6 @@ module.exports = async function syncSettings(rig) {
   await deleteOnA(ids[2]);
   await openSettings(dmA);
   const one = await lib.poll(async () => { const r = await rows(dmA); return r.length === 1 && r[0].id === ids[2]; }, 30000, 200);
-  rig.check(!!one, 'G: A\'s Recently deleted does not list just the map deleted last: ' + q(await rows(dmA)) + ' trash() ' + q(await dmA.evaluate('syncEngine.trash()', 30000)) + ' gone ' + q(await dmA.evaluate('syncIndex.raw.all("gone")', 20000)) + ' ids ' + q(ids));
+  rig.check(!!one, 'G: A\'s Trash does not list just the map deleted last: ' + q(await rows(dmA)) + ' trash() ' + q(await dmA.evaluate('syncEngine.trash()', 30000)) + ' gone ' + q(await dmA.evaluate('syncIndex.raw.all("gone")', 20000)) + ' ids ' + q(ids));
   await dmA.evaluate(`document.getElementById('wm-bg-group').scrollIntoView(); 0`);
 };

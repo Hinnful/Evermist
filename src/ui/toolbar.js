@@ -185,9 +185,10 @@ function hideAllMap() {
 }
 
 function initToolbar() {
-  // The scene list, the delete's undo and Two maps wire themselves.
+  // The scene list, the delete's undo, Recently deleted and Two maps wire themselves.
   sceneListInit();
   sceneDeleteInit();
+  trashPanelInit();
   twoMapsInit();
 
   initDragDrop();

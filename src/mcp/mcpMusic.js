@@ -107,14 +107,17 @@ async function _mcpDeleteMusic(args) {
   const { name, display, group } = found.track;
   if (name === _muPlaying) return _mcpNo('Not deleted: "' + display + '" is playing now. Ask the DM to play another track first.');
   if (args.confirmed !== true) return _mcpOk(mcpMusicWouldDelete(display));
-  const token = await window.electronAPI.stashMusicFile(name);
+  const id = await sceneTrash.trashTrack(name);
+  if (!id) return _mcpNo('Not deleted: "' + display + '" could not be moved out of the music folder.');
+  const { hash } = (await sceneTrash.trackHashes()).find(x => x.id === id) || {};
   forgetMusicTrack(name);
   await _muRefreshTracks();
   return mcpDone('deleted the track "' + display + '"', async () => {
-    const back = await window.electronAPI.unstashMusicFile(token, name);
-    await _muRefreshTracks();
+    // With sync on the deletion is marked restored before the file returns (syncMusic.restoreHere).
+    const back = syncIndex.isOn() ? await syncMusic.restoreHere(hash, () => sceneTrash.restoreTrack(id)) : await sceneTrash.restoreTrack(id);
+    if (!back) throw new Error('"' + display + '" is no longer in the Trash.');
     if (group) setMusicGroup([back], group);
-  }, 'Deleted the track "' + display + '". The file is kept until Evermist closes, so undo_last_change brings it back.');
+  }, 'Moved the track "' + display + '" to the Trash in Settings, where the DM can restore it for 30 days.');
 }
 
 async function _mcpCreateMusicGroup(args) {

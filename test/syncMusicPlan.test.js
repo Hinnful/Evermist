@@ -159,3 +159,25 @@ describe('the record', () => {
     assert.equal(M.syMuRecordText(a), M.syMuRecordText(b));
   });
 });
+
+describe('a track in this computer\'s Recently deleted', () => {
+  const g = (o) => ({ at: NOW - DAY, name: 'A.mp3', ...o });
+  it('comes back from it once restored on any computer, or when this tick would fetch it', () => {
+    const gone = { [H('a')]: g({ restoredAt: NOW }), [H('b')]: g(), [H('c')]: g() };
+    assert.deepEqual(M.syMuFromTrash(gone, {}, [H('a'), H('b'), H('c'), H('d')], [H('c'), H('d')]), [H('a'), H('c'), H('d')]);
+  });
+  it('never comes back when purged, or when the folder holds it', () => {
+    const gone = { [H('a')]: g({ restoredAt: NOW, purged: true }), [H('b')]: g({ restoredAt: NOW }) };
+    assert.deepEqual(M.syMuFromTrash(gone, { [H('b')]: { name: 'B.mp3' } }, [H('a'), H('b')], [H('a')]), []);
+  });
+  it('marked restored before its file returns, reads as restored: kept, not deleted again, not counted new', () => {
+    const before = { init: true, tracks: {}, gone: { [H('a')]: g() } };
+    const marked = { ...before, gone: M.syMuRestore(before.gone, H('a'), NOW) };
+    const list = [{ name: 'A.mp3', size: 3, hash: H('a') }];
+    const st = M.syMuObserve(marked, list, [], NOW + 1);
+    assert.equal(st.gone[H('a')].restoredAt, NOW, 'the deletion keeps its restore');
+    const p = M.syMuPlan({ st, list, remotes: [], files: [], first: false, busy: [], stashed: [] });
+    assert.deepEqual(p.remove, []);
+    assert.deepEqual(p.upload.map(u => u.hash), [H('a')]);
+  });
+});

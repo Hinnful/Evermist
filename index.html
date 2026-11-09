@@ -602,7 +602,7 @@
           <div class="dk-blk" id="settings-hints"></div>   <!-- Filled by hints.js -->
           <div class="dk-blk" id="cp-sec-seat-align"></div>   <!-- Filled by seatAlignment.js -->
         </div>
-        <!-- The campaign's own storage: the backdrop (worldBackground.js), the backup (worldBackup.js), Recently deleted (syncSettings.js). -->
+        <!-- The campaign's own storage: the backdrop (worldBackground.js), the backup (worldBackup.js), the Trash (trashPanel.js). -->
         <div class="cp-group" id="wm-bg-group">
           <div class="dk-sh"><span class="cp-label">Campaign</span></div>
           <div class="dk-blk"><span class="dk-sub">Shrink big maps</span>
@@ -636,8 +636,8 @@
             </div>
             <input type="file" id="wm-bk-file" accept=".zip,application/zip" hidden>
           </div>
-          <!-- Recently deleted lives on the Drive, so syncSettings.js shows it only while sync is signed in. -->
-          <button class="dk-link" id="sy-trash-open" data-dock-pop="sy-trash-pop" hidden><span>Recently deleted</span><span class="r"><span id="sy-trash-count" data-no-i18n></span><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></span></button>
+          <!-- The Trash: this computer's trash, plus the Drive's while sync is signed in (trashPanel.js). -->
+          <button class="dk-link" id="sy-trash-open" data-dock-pop="sy-trash-pop" hidden><span>Trash</span><span class="r"><span id="sy-trash-count" data-no-i18n></span><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></span></button>
         </div>
         <div class="cp-group" id="cp-sec-integrations">
           <div class="dk-sh"><span class="cp-label">Integrations</span></div>
@@ -666,9 +666,9 @@
 
 <!-- The dock's pop-outs, placed to its left level with the row that opened them (dock.js). -->
 <div class="dk-pop dk-trash" id="sy-trash-pop" hidden>
-  <div class="cp-adv-head"><span class="cp-adv-title">Recently deleted</span><button class="sm-x" data-pop-close title="Close"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="cp-adv-head"><span class="cp-adv-title">Trash</span><button class="sm-x" data-pop-close title="Close"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <div class="dk-trash-list" id="sy-trash"></div>
-  <div class="dk-trash-foot"><span class="cp-hint">Kept for 30 days</span><button id="sy-empty" class="dk-danger" title="Delete these maps for good, on every computer."><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg><span>Empty now</span></button></div>
+  <div class="dk-trash-foot"><span class="cp-hint">Kept for 30 days</span><button id="sy-empty" class="dk-danger" title="Delete everything in the Trash for good."><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg><span>Empty now</span></button></div>
 </div>
 <div class="dk-pop" id="cp-pop-grid" hidden>
   <div class="cp-adv-head"><span class="cp-adv-title">Grid colour</span><button class="sm-x" data-pop-close title="Close"><svg class="i-x" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
@@ -988,6 +988,8 @@
 <script src="src/scenes/sceneStore.js"></script>
 <script src="src/scenes/scenes.js"></script>
 <script src="src/scenes/sceneList.js"></script>
+<script src="src/scenes/trashPlan.js"></script>
+<script src="src/scenes/sceneTrash.js"></script>
 <script src="src/scenes/sceneDelete.js"></script>
 <script src="src/scenes/mapImport.js"></script>
 <script src="src/scenes/sceneSwitch.js"></script>
@@ -1008,6 +1010,7 @@
 <script src="src/scenes/syncMusic.js"></script>
 <script src="src/scenes/sync.js"></script>
 <script src="src/scenes/syncSettings.js"></script>
+<script src="src/scenes/trashPanel.js"></script>
 <script src="src/render/grid.js"></script>
 <script src="src/render/effectMaterials.js"></script>
 <script src="src/render/effectShader.js"></script>

@@ -233,4 +233,15 @@ function consentFaults(url, clientId) {
   return out;
 }
 
-module.exports = { DM_MAP, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults };
+// A WAV track written by Node: 8-bit mono PCM at 8 kHz; `tone` makes two tracks of one length differ.
+function wav(seconds, tone) {
+  const rate = 8000, n = rate * seconds, buf = Buffer.alloc(44 + n);
+  buf.write('RIFF', 0); buf.writeUInt32LE(36 + n, 4); buf.write('WAVEfmt ', 8);
+  buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+  buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate, 28); buf.writeUInt16LE(1, 32); buf.writeUInt16LE(8, 34);
+  buf.write('data', 36); buf.writeUInt32LE(n, 40);
+  for (let i = 0; i < n; i++) buf[44 + i] = 128 + Math.round(40 * Math.sin(i / (tone || 8)));
+  return buf;
+}
+
+module.exports = { DM_MAP, wav, installHelpers, settle, poll, hold, inRussian, importWithPlan, drawRooms, step, tvFog, connectOpens, consentFaults };

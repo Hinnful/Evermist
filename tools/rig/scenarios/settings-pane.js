@@ -12,9 +12,10 @@
 //   5. Settings has no Size, Opacity or Position field and no Move on the map. A backdrop's stored place, size and
 //      opacity still apply after a restart; choosing a picture again fits it again.
 //   6. Export reads "Export" with nothing picked on the Campaign map and "Export 2 maps" with two picked.
-//   8. Without a Google client Recently deleted is hidden. Signed in to a Drive it reads "Empty", greyed; a map deleted
-//      and synced makes it read 1, and a click opens the pop-out beside the dock with the map's name, date and Restore,
-//      "Kept for 30 days" and Empty now. With the Drive unreachable it reads "Offline", greyed. Signed out it hides.
+//   8. Without a Google client the Trash shows, reading "Empty", greyed, and the Google Drive line is hidden. Signed in
+//      to a Drive it reads "Empty", greyed; a map deleted and synced makes it read 1, and a click opens the pop-out
+//      beside the dock with the map's name, "30 days left" and Restore, "Kept for 30 days" and Empty now. With the
+//      Drive unreachable, and signed out, it still reads 1: this computer holds the map.
 //   10. Claude starts "Not connected"; a call served marks it "Connected" with Disconnect. Disconnect makes the bridge
 //      refuse every call with the plain reason, and the refusal survives a restart. Connect hands Claude the extension,
 //      ends the refusal, reads "Connected", and that survives a restart too.
@@ -80,7 +81,9 @@ module.exports = async function settingsPane(rig) {
   rig.check(!!refused && refused.text === OFF_TEXT && refused.isError === true, '10: after Disconnect the bridge did not refuse with the plain reason: ' + q(refused));
 
   // 8, without a client
-  rig.check(!(await shown('sy-trash-open')) && !(await shown('sy-group')), '8: without a Google client Recently deleted or the Google Drive line shows');
+  const bare = await dm.evaluate(`(() => { const b = document.getElementById('sy-trash-open'); return { disabled: b.disabled, count: document.getElementById('sy-trash-count').textContent }; })()`);
+  rig.check(await shown('sy-trash-open') && bare.count === 'Empty' && bare.disabled, '8: without a Google client the Trash does not show, reading Empty, greyed: ' + q(bare));
+  rig.check(!(await shown('sy-group')), '8: without a Google client the Google Drive line shows');
 
   // 6
   await kit.install(dm);
@@ -151,30 +154,33 @@ module.exports = async function settingsPane(rig) {
   await dm.evaluate('syncEngine.now()', 120000);
   const trashLine = () => dm.evaluate(`(() => { const b = document.getElementById('sy-trash-open'); return { shown: !!b.offsetParent, disabled: b.disabled, count: document.getElementById('sy-trash-count').textContent }; })()`);
   const empty = await lib.poll(async () => { const l = await trashLine(); return l.shown && l.count === 'Empty' ? l : null; }, 30000, 200);
-  rig.check(!!empty && empty.disabled, '8: signed in with nothing deleted, Recently deleted does not read Empty, greyed: ' + q(await trashLine()));
+  rig.check(!!empty && empty.disabled, '8: signed in with nothing deleted, the Trash does not read Empty, greyed: ' + q(await trashLine()));
   await dm.evaluate(`deleteScenesWithUndo([${q(ids[0])}]); commitPendingDelete(); 0`);
   await lib.poll(async () => !(await dm.evaluate(`sceneStore.loadScene(${q(ids[0])}).then(r => !!r)`, 20000)), 20000);
   await dm.evaluate('syncEngine.now()', 120000);
   const one = await lib.poll(async () => { const l = await trashLine(); return l.count === '1' && !l.disabled ? l : null; }, 30000, 200);
-  rig.check(!!one, '8: a deleted and synced map does not make Recently deleted read 1: ' + q(await trashLine()));
+  rig.check(!!one, '8: a deleted and synced map does not make the Trash read 1: ' + q(await trashLine()));
   await dm.evaluate(`document.getElementById('sy-trash-open').click(); 0`);
   const pop = await dm.evaluate(`(() => {
     const p = document.getElementById('sy-trash-pop'), r = p.getBoundingClientRect(), d = document.getElementById('dock').getBoundingClientRect();
     const rows = Array.from(p.querySelectorAll('.dk-trash-row')).map(x => ({ name: x.querySelector('.nm').textContent, date: x.querySelector('.mt').textContent, restore: x.querySelector('[data-restore]').textContent }));
     return { shown: !p.hidden && r.width > 0, left: r.right <= d.left, rows, foot: p.querySelector('.dk-trash-foot .cp-hint').textContent, empty: document.getElementById('sy-empty').textContent.trim(), emptyOn: !document.getElementById('sy-empty').disabled };
   })()`);
-  rig.check(pop.shown && pop.left, '8: Recently deleted did not open its pop-out beside the dock: ' + q(pop));
-  rig.check(pop.rows.length === 1 && pop.rows[0].name === 'Склеп' && /\d/.test(pop.rows[0].date) && pop.rows[0].restore === 'Restore', '8: the pop-out does not list the map with its date and Restore: ' + q(pop.rows));
+  rig.check(pop.shown && pop.left, '8: the Trash did not open its pop-out beside the dock: ' + q(pop));
+  rig.check(pop.rows.length === 1 && pop.rows[0].name === 'Склеп' && pop.rows[0].date === '30 days left' && pop.rows[0].restore === 'Restore', '8: the pop-out does not list the map with "30 days left" and Restore: ' + q(pop.rows));
   rig.check(pop.foot === 'Kept for 30 days' && pop.empty === 'Empty now' && pop.emptyOn, '8: the pop-out does not end with Kept for 30 days and Empty now: ' + q(pop));
   await dm.evaluate(`dockClosePop(); 0`);
   drive.down();
   await reopenSettings();
-  const offline = await lib.poll(async () => { const l = await trashLine(); return l.count === 'Offline' ? l : null; }, 30000, 200);
-  rig.check(!!offline && offline.disabled, '8: with the Drive unreachable Recently deleted does not read Offline, greyed: ' + q(await trashLine()));
+  await dm.evaluate('trashPanelRefresh()', 60000);
+  const offline = await trashLine();
+  rig.check(offline.shown && offline.count === '1' && !offline.disabled, '8: with the Drive unreachable the Trash does not still read 1: ' + q(offline));
   drive.up();
   await dm.evaluate(`document.getElementById('sy-disconnect').click(); 0`);
-  const gone = await lib.poll(async () => !(await trashLine()).shown && await shown('sy-connect'), 30000, 200);
-  rig.check(!!gone, '8: signed out, Recently deleted still shows: ' + q(await trashLine()));
+  await lib.poll(async () => await shown('sy-connect'), 30000, 200);
+  await dm.evaluate('trashPanelRefresh()', 60000);
+  const out = await trashLine();
+  rig.check(out.shown && out.count === '1' && !out.disabled, '8: signed out, the Trash does not still read 1: ' + q(out));
 
   // 10, Connect survives a restart
   if (browser) {

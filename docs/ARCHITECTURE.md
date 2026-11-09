@@ -849,12 +849,15 @@ Drive. Sync stays off until **Connect to Google** in Settings.
   changes wait while the fight table is shown; a note's change waits while that note is open; a
   delete in its undo window defers everything. Nothing on screen reloads, and each pulled record
   is applied in its own short slice between frames.
-- **Recently deleted:** a map deleted on one computer leaves the other and appears in Settings'
-  "Recently deleted" (one line in Campaign opening a pop-out) with its name and date, with **Restore** per map and **Empty now**. After 30
-  days it is purged from the Drive. Its deletion is remembered for good, so a computer that was
+- **Trash:** every delete goes to this computer's own Trash (`sceneTrash.js`), with or without sync: the map record in IndexedDB
+  `evermist-trash`, an animated map's file in `userData/trash/`, for 30 days. A map deleted on another computer moves this
+  computer's copy into its Trash (`syncMerge.drop`). Settings' "Trash" (one line in Campaign opening a pop-out, `trashPanel.js`)
+  shows each name with "N days left", **Restore** and **Empty now**. Restore uses this computer's copy first, offline too, and
+  marks the deletion record restored before the copy returns; a computer with no copy restores from the Drive. After 30
+  days the Drive's copy is purged. Its deletion is remembered for good, so a computer that was
   offline longer than that cannot bring it back. Deleting a whole map travels by sync only; Export
   and Import keep their own rules.
-- **Music deletes:** a deleted track leaves the other computer and shows in "Recently deleted" beside maps, with the same 30 days, Restore and Empty now. A track that is playing is held until it stops; an incoming track whose name is taken gets the music folder's " (2)" name. Within a tick, maps, records and notes move before music (a track already uploading finishes first). A Claude music delete goes out only after its `.removed` undo window clears, at the next start.
+- **Music deletes:** a deleted track moves into this computer's Trash (`userData/trash/music/`, store `tracks`) beside maps, on this computer and on the other, with the same 30 days, Restore and Empty now. A track that is playing is held until it stops; an incoming track whose name is taken gets the music folder's " (2)" name. Within a tick, maps, records and notes move before music (a track already uploading finishes first). A Claude map or music delete goes to the Trash like the DM's.
 - **Before a computer's first sync**, a successful Connect asks first: how many maps this
   computer holds, how many the Drive holds and from how many other computers, and that they will
   be merged with nothing deleted. Nothing syncs while the question is open. **Start syncing**

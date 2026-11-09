@@ -38,7 +38,9 @@ Reddit is a source AI search quotes often, but the large D&D subreddits refuse s
 their communities react badly to AI-made work. A real user's mention does the same job and needs
 no post.
 
-### A landing page · `PARKED` (2026-10-26)
+### A landing page · `REOPENED` (2026-11-09, was PARKED 2026-10-26; BACKLOG 289)
 A one-page site on GitHub Pages would give Evermist a home Google trusts more, and it would open
 Google Search Console to show which searches find it. Parked until GitHub and the listings have
 had a few weeks to show how far they reach on their own.
+Unparked on 2026-11-09 as a one-page home on a domain the project owns, carrying the privacy policy.
+BACKLOG 276 (Google's unverified-app warning) can only close with a privacy policy on a proven domain.

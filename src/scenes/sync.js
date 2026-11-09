@@ -222,8 +222,9 @@ const syncEngine = (() => {
     return gone;
   }
 
-  // A purged map leaves the Drive; a map deleted elsewhere leaves here unless edited here since, and waits while it is
-  // on screen; a restored map comes back from the newest copy on the Drive. Answers how many wait.
+  // A purged map leaves the Drive; a map deleted elsewhere moves into this computer's trash unless edited here since, and
+  // waits while it is on screen; a restored map comes back from this computer's trash, else from the newest copy on the
+  // Drive; a purged map leaves this computer's trash. Answers how many wait.
   async function _goneApply(gone, snap, now) {
     const purged = Object.keys(gone).filter(id => gone[id].purged);
     for (const fileId of syPurgeFiles(snap.records, snap.blobs, purged)) await _drive('remove', { fileId });
@@ -234,13 +235,17 @@ const syncEngine = (() => {
       if (!rec || !syGoneWins(gone[id], sySceneEditedAt(rec, now), now)) continue;
       if (syncMerge.deferred() || syncMerge.held('scene:' + id)) { held++; continue; }
       await syncMerge.idle();
-      await syncMerge.drop(id);
+      await syncMerge.drop(id, gone[id].at);
     }
-    for (const id of syRestored(gone, allScenes.map(s => s.id))) {
+    const back = syRestoreFrom(gone, allScenes.map(s => s.id), await sceneTrash.ids());
+    for (const id of back.trash) if (!syncMerge.deferred()) await sceneTrash.restore(id);
+    for (const id of back.drive) {
       const item = syNewestRecord(snap.records, 'scene:' + id);
       if (!item || syncMerge.deferred()) continue;
       try { await _applyItem(item, snap, false); } catch (err) { if (err.code !== 'missingBlob') throw err; }
     }
+    // After the drops, so a purged map that just moved into the trash leaves it too.
+    for (const id of syPurgedHeld(gone, await sceneTrash.ids())) await sceneTrash.purge(id);
     return held;
   }
 
@@ -274,11 +279,18 @@ const syncEngine = (() => {
       await now();
       return syncMusic.has(id.slice(6));
     }
+    if (!(await markRestored(id))) return false;
+    await now();
+    return allScenes.some(s => s.id === id);
+  }
+
+  // The deletion record marked restored, with no tick: a map restored from this computer's trash is marked before it
+  // comes back, so a tick in between cannot drop it again.
+  async function markRestored(id) {
     const g = await _goneMap(), next = syRestore(g, id, Date.now());
     if (next === g) return false;
     await _goneSave(g, next);
-    await now();
-    return allScenes.some(s => s.id === id);
+    return true;
   }
 
   async function emptyNow() {
@@ -519,7 +531,7 @@ const syncEngine = (() => {
 
   const soon = () => schedule(TICK_AFTER_CHANGE_MS);
 
-  return { start, now, soon, trash, restore, kept, restoreKept, emptyNow, signedIn, remembered, connect, confirmFirst, cancelFirst, disconnect, status: () => ({ ...status, machine, pending: pending.size }), pending: () => Array.from(pending.keys()) };
+  return { start, now, soon, trash, restore, markRestored, kept, restoreKept, emptyNow, signedIn, remembered, connect, confirmFirst, cancelFirst, disconnect, status: () => ({ ...status, machine, pending: pending.size }), pending: () => Array.from(pending.keys()) };
 })();
 
 // Sync's start after the scenes are up. The section shows wherever there is a Google client; the index and the

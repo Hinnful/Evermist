@@ -69,6 +69,8 @@ async function initScenes() {
   allScenes = await sceneStore.listScenes();
   allScenes.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   sceneListChanged();
+  // Not awaited: a map imported back or one a crash left in both places leaves the trash, and what is due goes.
+  if (!isPane) sceneTrash.reconcile().then(trashPanelRefresh).catch(console.error);
   // Not awaited: it only reads the scenes, and the last map should not wait on it.
   if (!isPane) galleryMigrate().then(n => { if (n > 0) galleryReload(); }).catch(console.error);
   const lastId = isPane

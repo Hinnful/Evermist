@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 3 open items; IDs run to 283."
+description: "Open work only. 9 open items; IDs run to 290."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -79,6 +79,11 @@ categories. Effort and risk are judged once an item is picked, not here.
 ### 259. Time of day
 Filed 2026-11-04. A list of its own beside Weather (day, dusk, night), so a sunny preset on a night map stops being a
 mismatch the DM has to avoid. Floated by the DM while weather was settled; nothing about it is designed yet.
+Rivals, found 2026-11-09: Arkenforge's Time of Day widget fades between hours at a set speed, shadows follow the sun,
+and the TV takes filters (Greyscale, Sepia, Underwater, Night Vision); Table Slayer makes time of day a headline feature
+with colour grading; MythLayer has day, dim and night; Mappadux puts mood filters on the TV only. Dungeon Alchemist's
+"Ambient Lighting" request has 169 votes. The research favours a list of looks, the way Weather works, with no fade-speed
+dial. Day and night versions of one map (Cze & Peku publish both) are decided here too.
 **Needs a design round.**
 **Play · Player**
 
@@ -90,14 +95,85 @@ github.com). Every DM who connects sees the warning first.
 **First use · Polish · DM only**
 
 
-### 283. A trash that works without Google Drive
-Filed 2026-11-08, with 5.6.2. Without sync, a deleted map is gone after the next delete or a restart; only the toast's
-Undo brings it back. The DM wants Recently deleted on every computer, with or without Google Drive: a deleted map stays
-30 days with Restore and Empty now, and with sync on a delete or restore reaches the other computer. Settings' Recently
-deleted line in Campaign already exists; today it shows only with sync. Care points: a deleted map keeps its picture or
-video on disk for 30 days, and after a `/rollback` the previous release must neither show a trashed map as a normal one
-nor lose it. Needs `/spec` before building.
-**Campaign · DM only**
+### 284. One grid cell is one inch on the TV
+Filed 2026-11-09, from the competitor research. The DM types the TV's visible width once, and the TV draws the map so a
+grid cell measures one inch, a mini's base; the TV's zoom locks at that scale and the minimap still pans. The best-proven
+gap found: DMs on D&D Beyond, Paizo and itch.io size maps to their minis by hand, Atlas VTT issue #363 asks for it, and
+at least nine tools ship it. Model: Encounter+ TableTop Mode (docs.encounter.plus/settings/external-screen) takes the width
+of the visible picture, not the bezel, plus pixel margins and overscan for a bezel or a table cut-out. Also DMHelper's
+Auto-Fit, Arkenforge, Digital TableTops, Mappadux, Foundry's Lock View and Fantasy Grounds' `/tvsize`. Care points: Fit to
+TV's quarter turns, two maps where each half is half as wide, and Windows display scaling, which broke Digital TableTops'
+grid. Needs `/spec` before building.
+**Play · Player**
+
+
+### 285. Read .uvtt and .df2vtt floor plans
+Filed 2026-11-09. Evermist finds only a `.dd2vtt` beside a map (`electron/floorPlan.js`, `scenes/dragDrop.js`), and
+ignores `.uvtt` and `.df2vtt`, which hold the same Universal VTT format. Dungeon Scrawl (Roll20) writes `.uvtt` since
+2026-09-09 and DungeonFog writes `.df2vtt`; Roll20 reads all three, Encounter+ and Digital TableTops read `.uvtt`. A
+`.uvtt` dropped alone carries its own picture and could open as a map. The floor-plan rule that only the file beside the
+map is read still holds.
+**Prep**
+
+
+### 286. Cloud, ice, web and grease effects
+Filed 2026-11-09. Four materials ship (Fire, Acid, Area, Difficult terrain) against the dozen the effects scope expects.
+First the cloud look `docs/decisions/map-effects.md` already names ("three clouds (Darkness, poison, fog) are one future
+look with three materials"), then Ice, Web and Grease. Table Slayer shipped grease, water, ice and fire in January 2026 and
+Entangle and Web in June; Dungeon Alchemist's "Poison clouds" request has 24 votes. Each joins the one toon look; asset
+packs stay refused for their licences. **Needs prototype looks for the DM to pick from.**
+**Play · Player**
+
+
+### 287. Mist, ash and dust-storm weather
+Filed 2026-11-09. Three presets beside Rain, Storm, Snowfall, Blizzard and Fair weather: low Mist, falling Ash or
+Embers, and a Dust storm. Dungeon Alchemist's "Weather effects" request has 1,000 votes and is Planned; Table Slayer
+added Blizzard, Dust Storm, Embers and Fireflies in June 2026; TableLair has mist, ash and spores. None is among the
+weather shapes already refused. They must be shader work like the current presets, since a second video layer stays
+refused. **Needs a design round.**
+**Play · Player**
+
+
+### 288. A sample adventure in the box
+Filed 2026-11-09. A fresh install offers one free sample: a small dungeon map with its `.dd2vtt` and a page of keyed
+module text, so one click shows rooms, doors, lights and fog before the DM brings a map. Today the floor plan and the
+module import show only once a DM brings both files. Rivals: Mappadux's Getting Started pack (numbered maps, each naming
+the control to try next), Digital TableTops' 554 free maps behind a Free Maps button, Shieldmaiden's demo encounter,
+D&D Beyond's Quickplay maps, Table Slayer's Learn checklist. No well-known free adventure can ship: Death House, Dragons
+of Stormwreck Isle and the Delian Tomb are free to download, not to redistribute. One Page Dungeon Contest entries (CC
+BY-SA) and Dyson Logos maps (free with credit) can ship, but have no floor plan and, for Dyson, no text. The chosen route
+is a sample built for Evermist: one small Dungeon Alchemist map exported as video with its `.dd2vtt`, plus a short keyed
+text of about six rooms written for it, so the sample shows the animated map, the drawn rooms and doors, and the module
+text at once. Dungeon Alchemist's terms allow content for "limited commercial purposes" but do not mention redistributing
+exports; one question to their support settles it before shipping. Care point: the installer's size. Needs `/spec`
+before building.
+**First use · DM only**
+
+
+### 289. A home page on Evermist's own domain
+Filed 2026-11-09. One page: what Evermist is, a laptop-to-TV setup picture, the download and the privacy policy, on a
+domain the project owns. It is the only route to closing 276, since Google reviews the app's brand only with a privacy
+policy on a proven domain. Unparks "A landing page" (`docs/decisions/discoverability.md`). Model: tableslayer.com's
+laptop-plus-HDMI setup picture. No paid domain: the page is hosted on GitHub Pages under `evermist.is-a.dev`, a free
+subdomain requested by pull request to is-a.dev, which sits on the Public Suffix List (since 2024-04-10) so Google can
+treat it as a domain the project owns; it is verified in Search Console, then brand verification is submitted. A plain
+`github.io` address is likely refused, since its owner cannot be proven. Whether Google accepts is-a.dev is unconfirmed;
+if it refuses, the page still serves as the home page, and 276 needs a paid domain (about $10 a year) or stays open.
+Sync asks only for `drive.appdata`, which Google lists as non-sensitive, so why the warning shows at all is worth
+confirming before the review.
+**First use · Upkeep**
+
+
+### 290. Turn order on the TV
+Filed 2026-11-09. Reopens "The VTT line" and the combat helper's "no turn marker" in `docs/PRODUCT.md`, on the DM's call.
+While a fight is open, a thin strip on one edge of the TV shows names in initiative order with the current one lit;
+monsters stay off it until the DM reveals them; no HP and no AC. Its first step is a current-turn marker in the fight
+table. The strongest demand found that crosses a line: seven request boards, a +25 Roll20 request for a TV turn tracker
+(February-August 2026), four DM forum sources. Models: Encounter+ (order along one edge; labels for all, monsters only,
+players only or none), DMHelper (the active creature, the next two, an optional timer), D&D Beyond Maps (hidden monsters
+left off). The physical rival is tent cards; the strip wins only because the fight table fills it. **Needs a design
+round, then `/spec`.**
+**Play · Player**
 
 ---
 

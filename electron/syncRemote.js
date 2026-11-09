@@ -430,7 +430,7 @@ function register(ctx) {
       await remote.getBlobToFile(a.fileId, a.fileName, part);
       try { return await tracks.place(part, a.name, a.hash); } catch (err) { await fs.promises.unlink(part).catch(() => {}); throw err; }
     },
-    removeMusic: a => tracks.remove(a.name, a.hash),
+    removeMusic: a => tracks.remove(a.name, a.hash, a.token),
     signedIn: async () => auth.signedIn(),
     remembered: async () => auth.remembered(),
     connect: a => auth.connect(a.lang),

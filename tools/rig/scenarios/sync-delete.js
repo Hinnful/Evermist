@@ -8,7 +8,7 @@
 // THE CRITERIA ARE THIS HEADER. Each line has its check beneath it.
 //
 //   A. A map deleted on A leaves B at B's next sync, with no undo toast on B and nothing of B's own touched.
-//   B. Its record and map file stay on the Drive, and both computers list it in Recently deleted with its time.
+//   B. Its record and map file stay on the Drive, and both computers list it in the Trash with its time.
 //   C. Restore on B brings it back on B at once and on A at A's next sync, and the trash is empty again.
 //   D. Empty now removes its records and map files from the Drive, and keeps the deletion record, marked purged.
 //   E. Past 30 days the purge does the same by itself, and a computer that was offline the whole time does not bring
@@ -70,7 +70,7 @@ module.exports = async function syncDelete(rig) {
   rig.check(onDrive(m1).some(n => n.startsWith('scene~')) && onDrive(m1).some(n => n.startsWith(m1 + '.')), 'B: the deleted map\'s record or map file left the Drive: ' + q(onDrive(m1)));
   for (const [who, dm] of [['A', dmA], ['B', dmB]]) {
     const t = await dm.evaluate('syncEngine.trash()', 30000);
-    rig.check(t.length === 1 && t[0].id === m1 && t[0].name === 'Склеп' && t[0].at > Date.now() - 10 * 60000, 'B: ' + who + '\'s Recently deleted does not list the map with its time: ' + q(t));
+    rig.check(t.length === 1 && t[0].id === m1 && t[0].name === 'Склеп' && t[0].at > Date.now() - 10 * 60000, 'B: ' + who + '\'s Trash does not list the map with its time: ' + q(t));
   }
 
   // C
