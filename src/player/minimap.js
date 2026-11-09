@@ -4,7 +4,7 @@
 // Owns minimapView {mapCX, mapCY, zoom} — the triple that IS the Player's intended view — and a
 // <canvas> of map and fog that IS the TV: the box has the TV's shape and the picture fills it
 // edge to edge. Drag and wheel update the triple and post view-snap to playerWindow
-// live; the lock gates pointer input. tvControl.js owns what sits over the picture. Called once
+// live. tvControl.js owns what sits over the picture. Called once
 // from index.html; toolbar.js and mapTurn.js call minimapSetView, ...SyncFromPlayer, ...Layout.
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -164,7 +164,6 @@ function minimapSetView(v) {
 }
 
 function minimapSyncFromPlayer(v) {
-  if (minimapLocked) return;
   if (v.mapCX == null || v.mapCY == null || v.zoom == null) return;
   minimapView = { mapCX: v.mapCX, mapCY: v.mapCY, zoom: v.zoom };
   _markDirty();
@@ -211,8 +210,7 @@ function minimapLayout() {
 }
 
 // ─── Zoom ─────────────────────────────────────────────────────────────────────
-// The wheel's path, pivoting about the view centre. ⚠ Never gate this on minimapLocked: the
-// Player honours view-snap while locked either way.
+// The wheel's path, pivoting about the view centre.
 function minimapSetZoom(z) {
   if (!isFinite(z)) return;
   const nz = Math.max(MINIMAP_ZOOM_MIN, Math.min(MINIMAP_ZOOM_MAX, z));
@@ -315,7 +313,7 @@ function drawMinimap() {
 // ─── Input ────────────────────────────────────────────────────────────────────
 
 function _onPointerDown(e) {
-  if (minimapLocked || !paneScope().mapOffscreen) return;
+  if (!paneScope().mapOffscreen) return;
   e.preventDefault();
   // With two maps a press on a half selects its column, so the drag below drives that one.
   const half = _halfAt(_mmGeom(), e);
@@ -368,7 +366,7 @@ function _onPointerUp(e) {
 const _wheelSt = wheelState();
 function _onWheel(e) {
   e.preventDefault();
-  if (minimapLocked || !paneScope().mapOffscreen) return;
+  if (!paneScope().mapOffscreen) return;
   const half = _halfAt(_mmGeom(), e);
   if (half.id && half.id !== panesSelected) selectPane(half.id);
   const kind = classifyWheel(e, _wheelSt, e.timeStamp);
@@ -389,17 +387,6 @@ function initMinimap() {
   if (mapWidth && mapHeight) {
     _seedView();
   }
-
-  document.getElementById('btn-minimap-lock').addEventListener('click', () => {
-    minimapLocked = !minimapLocked;
-    document.getElementById('btn-minimap-lock').classList.toggle('active', minimapLocked);
-    document.getElementById('btn-minimap-lock').textContent = minimapLocked ? 'Locked' : 'Lock';
-    // Both columns' Players, so the lock holds whichever half the DM drags.
-    if (paneBroadcast('player-lock', { locked: minimapLocked })) return;
-    if (playerWindow && !playerWindow.closed) {
-      playerWindow.postMessage({ type: 'player-lock', locked: minimapLocked }, '*');
-    }
-  });
 
   // Pointer events for drag-to-pan
   _canvas.addEventListener('pointerdown', _onPointerDown);

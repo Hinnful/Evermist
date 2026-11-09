@@ -297,7 +297,6 @@ let autoSaveTimer   = null;
 // ─── Player sync state ───────────────────────────────────────────────────────
 let playerFollowMode   = true;  // DM side: last known player mode
 let playerFollowDM     = true;  // Player side: whether to mirror DM viewport
-let playerInputLocked  = false; // Player side: lock flag pushed from DM minimap Lock
 let lastDMView       = null;    // Player side: most recent view received from DM
 let viewLerpActive   = false;
 let viewLerpFrom     = null, viewLerpTo = null, viewLerpStart = 0;
@@ -324,6 +323,8 @@ let playerMapTexCtx    = null;
 // 16:9 fallback until the first report arrives.
 let playerScreenW = 1920;
 let playerScreenH = 1080;
+// The screen the Player says it is on, { w, h, dpr }, or null before its first report.
+let playerScreenInfo = null;
 
 // Whether the Player window is natively fullscreen. Reported by the Player, which gets it
 // from main.js — native fullscreen fires no DOM event, so nothing else can tell.
@@ -339,5 +340,4 @@ let pictureBlobs = {};
 // minimapView IS the intended Player camera: seeded on map load, updated by drag on the
 // minimap, by Sync View, and by Player freelook reports.
 let minimapView   = { mapCX: 0, mapCY: 0, zoom: 1 };
-let minimapLocked = false;
 let minimapDirty  = false;

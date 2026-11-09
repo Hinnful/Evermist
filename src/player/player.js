@@ -44,6 +44,22 @@ function onPlayerMapShown() {
 // ⚠ A LOST WEBGL CONTEXT TAKES THE FOG WITH IT, and an animated map's <video> under the clear canvas
 // shows whole. The card's own 2D fog covers until the context is back and has drawn a frame.
 var _playerGlLost = false;
+// The window's size, and the screen it is on as this window sees it. ⚠ On Wayland main cannot tell
+// which screen holds a window, so 1 inch (tvOneInch.js) finds the TV's screen from this.
+function playerScreenReport() {
+  return { screenW: window.innerWidth, screenH: window.innerHeight,
+    scr: { w: screen.width, h: screen.height, dpr: window.devicePixelRatio || 1 } };
+}
+
+// A move to a screen of another scale may resize nothing, so the scale is watched on its own.
+function watchPlayerScreenScale() {
+  const mq = matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)');
+  mq.addEventListener('change', () => {
+    if (playerReplyTarget()) playerReplyTarget().postMessage({ type: 'PLAYER_SCREEN', ...playerScreenReport() }, '*');
+    watchPlayerScreenScale();
+  }, { once: true });
+}
+
 function initPlayerContextLoss() {
   const cv = pixiApp && pixiApp.view;
   if (!cv) return;
@@ -89,9 +105,8 @@ function initPlayer() {
   // the players a fully-revealed map until it finishes.
   generateCloudFrames(512, CLOUD_FRAME_COUNT);
 
-  if (playerReplyTarget()) playerReplyTarget().postMessage({
-    type: 'PLAYER_READY', screenW: window.innerWidth, screenH: window.innerHeight,
-  }, '*');
+  if (playerReplyTarget()) playerReplyTarget().postMessage({ type: 'PLAYER_READY', ...playerScreenReport() }, '*');
+  watchPlayerScreenScale();
 
   // Relay this window's fullscreen state to the DM. It is native window fullscreen, driven
   // from main.js, so this window has nothing to read it from either — main pushes it here.
@@ -107,9 +122,7 @@ function initPlayer() {
 
   window.addEventListener('resize', () => {
     syncSize();
-    if (playerReplyTarget()) playerReplyTarget().postMessage({
-      type: 'PLAYER_SCREEN', screenW: window.innerWidth, screenH: window.innerHeight,
-    }, '*');
+    if (playerReplyTarget()) playerReplyTarget().postMessage({ type: 'PLAYER_SCREEN', ...playerScreenReport() }, '*');
     if (mapBitmap || mapOffscreen) {
       if (playerFollowDM && lastDMView) applyView(lastDMView);
       else fitToScreen();
@@ -138,7 +151,6 @@ function initPlayer() {
   }
 
   container.addEventListener('mousedown', e => {
-    if (playerInputLocked) return;
     if (!mapOffscreen) return;
     playerIsPanning = true;
     playerPanStartX = e.clientX; playerPanStartY = e.clientY;
@@ -147,7 +159,6 @@ function initPlayer() {
   });
 
   container.addEventListener('mousemove', e => {
-    if (playerInputLocked) return;
     if (!playerIsPanning || !mapOffscreen) return;
     const { x: dx, y: dy } = turnDelta(e.clientX - playerPanStartX, e.clientY - playerPanStartY);
     if (playerFollowDM && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
@@ -169,7 +180,6 @@ function initPlayer() {
 
   container.addEventListener('wheel', e => {
     e.preventDefault();
-    if (playerInputLocked) return;
     if (!mapOffscreen) return;
     const factor  = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
     const newZoom = Math.max(0.02, Math.min(20, zoom * factor));

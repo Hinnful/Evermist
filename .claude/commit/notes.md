@@ -158,6 +158,9 @@ duplicate an entry. Nothing is written yet; Step 6 writes it on the yes, so it r
 
 - **Close what shipped.** Delete every item this change built and update the open count in the
   header. A dead end the work paid for goes to the decisions ledger, never to the backlog.
+- **Close a gap before filing it.** A gap the build or a builder's report named that fits this session (a missed
+  check, a field a test does not watch, a line of wording) is done now and rides in this commit; it never reaches
+  the proposal. Only work too big for this session, or waiting on the DM's call, is filed.
 - **File what was deferred.** Anything discovered, skipped, or left as a follow-up. Use the
   backlog's own fields - plain-language *what it is*, *where it shows* (DM/Player/both), rough
   effort, risk, any blocker. This is the shape `/brief` reads back.

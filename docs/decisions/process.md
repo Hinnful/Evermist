@@ -495,3 +495,8 @@ under a `Mechanical:` brief field saying why no judgment is needed. `scout` and 
 `guard-rig.js` counts two rig runs per builder, then it stops and reports. This replaces builder.md's "never run the rig on this
 machine", which builders did not follow. It also refuses a run while another is going, since two share the hidden screen and
 break each other; it reads `ps`, so on Windows it lets the run through.
+
+### A gap a build names is closed in the same commit · `SETTLED` (2026-11-09)
+A gap a build or builder report names that fits the session (a missed check, a field a test does not watch, a line of wording)
+is done in the commit, never filed. Only work too big for the session, or waiting on a call, reaches the backlog. The rule sits
+in `.claude/commit/notes.md`.

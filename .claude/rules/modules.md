@@ -105,7 +105,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `player/minimap.js` | Minimap render, drag/zoom remote, two-way view sync |
 | `player/tvPick.js` | Pure kernel: which screen is the TV, from the display list and the remembered pick. Tested |
 | `player/tvFit.js` | Pure kernel: Turn, a scene's turn of the TV picture: the three tiles and the saved form each reads as. Tested |
+| `player/tvInch.js` | Pure kernel: 1 inch, the zoom for 1.1-inch squares on a TV of a given size, the sizes TV setup offers, which reported sizes are believable, the per-TV store's key and read. Tested |
 | `player/tvControl.js` | Show on TV: the minimap's off, waiting and live states, the pill, TV setup, the help box |
+| `player/tvOneInch.js` | 1 inch: the minimap button's press, TV setup's TV size row, the size kept per TV in `evermist.tvSizes` |
 | `render/video.js` | Animated-map handling |
 | `render/videoDiag.js` | Video diagnostics overlay and disk log |
 | `render/display.js` | Display detection |
@@ -256,8 +258,9 @@ the windows, the display push and the app lifecycle, and hands every module its 
 | `electron/music.js` | The music folder as the library, and the downloader that fills it |
 | `electron/sounds.js` | The built-in sound files, read for the soundboard |
 | `electron/displays.js` | The display list, placing the Player on a screen, switching the TV to a second screen |
+| `electron/tvSize.js` | The size a screen reports in its EDID (registry, `/sys/class/drm`, `ioreg`), matched to a display by name and resolution. Tested |
 | `electron/screenLog.js` | `screens.log`: the screen lists read in the first ten seconds, one line per change. Tested |
-| `electron/floorPlan.js` | The `.dd2vtt` sitting beside a map on disk |
+| `electron/floorPlan.js` | The floor plan (`.dd2vtt`, `.uvtt` or `.df2vtt`) sitting beside a map on disk |
 | `electron/diagLog.js` | The playback log every window writes to, and its rotation |
 | `electron/updates.js` | The update check, download, About's state |
 | `electron/macUpdate.js` | The Mac's swap and relaunch |
@@ -296,7 +299,7 @@ render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWin
 scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → scenes/syncPlan.js → scenes/syncMusicPlan.js → scenes/syncIndex.js → scenes/syncMerge.js → scenes/syncMusic.js → scenes/sync.js → scenes/syncSettings.js → scenes/trashPanel.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
 render/effects.js → render/weatherShader.js → render/weather.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → render/fogPreview.js → ui/repairBar.js → ui/wheelPlan.js → ui/effectsRow.js → ui/effectsTool.js → ui/effectsBarFire.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
-dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvControl.js →
+dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvInch.js → player/tvControl.js → player/tvOneInch.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hintsPlan.js → ui/hints.js → ui/hintsFirstMap.js → ui/hintsCues.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → notes/mentionPlan.js → notes/notesEntriesPlan.js → notes/notesTreePlan.js → rooms/roomPanel.js → rooms/roomCard.js →
 gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js → notes/notesEntries.js → notes/mentionIndex.js → notes/notesEditor.js → notes/notesAppears.js → notes/notesTree.js → notes/notesWindow.js →

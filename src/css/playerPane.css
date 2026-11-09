@@ -11,7 +11,6 @@
   }
   /* minimap.js sizes the canvas and turns it with My seat; the buttons over it never turn. */
   #minimap-canvas { position: absolute; left: 50%; top: 50%; translate: -50% -50%; display: block; background: transparent; cursor: grab; transition: filter .25s; }
-  #minimap-panel.minimap-locked #minimap-canvas,
   #minimap-panel.minimap-no-map #minimap-canvas { cursor: default; }
   #minimap-panel.minimap-no-map #minimap-canvas { opacity: 0.3; }
   #minimap-panel.tv-off #minimap-canvas { filter: brightness(0.8) saturate(0.7); }
@@ -24,8 +23,7 @@
   .tv-row.tr { top: 7px; right: 7px; }
   .tv-row.bl { bottom: 7px; left: 7px; right: 7px; }
 
-  /* The picture's tools: faint at rest, full under the pointer. A Lock that is on stays, because it
-     changes what a drag does. */
+  /* The picture's tools: faint at rest, full under the pointer. */
   .tv-ov {
     pointer-events: auto; position: relative; height: 28px; min-width: 28px; padding: 0; border-radius: 7px;
     border: 1px solid var(--g-pick); background: var(--g-hover); color: var(--g-text);
@@ -34,7 +32,7 @@
   }
   #minimap-panel:hover .tv-ov, .tv-ov.active { opacity: 1; }
   .tv-ov:hover { background: var(--g-pick); }
-  /* Sync carries its word, at the buttons' height. */
+  /* 1 inch and Sync carry their words, at the buttons' height. */
   .tv-ov.wd { padding: 0 9px 0 8px; gap: 6px; font: 500 12px/1 system-ui, -apple-system, sans-serif; }
   /* The ··· button glows for a moment when TV setup has flown into it. */
   .tv-ov.hot { opacity: 1; box-shadow: 0 0 0 2px var(--b-icon), 0 0 14px 3px rgba(92, 177, 255, 0.6); }
@@ -145,6 +143,17 @@
   .tv-turn.side button { width: 60px; height: 107px; }
   .tv-turn .tvp { position: absolute; left: 50%; top: 50%; width: 102px; height: 57px; translate: -50% -50%; }
   .tv-turn.side .tvp { width: 107px; height: 60px; }
+  /* TV size (tvOneInch.js): the picker, Other's field under it on the right, the line saying where the size came from.
+     With no size and 1 inch pressed, the label and the picker are marked blue. */
+  .tvs-size { display: flex; flex-direction: column; }
+  .tvs-size .cp-segtab { flex: 1; }
+  .tvs-size > .sm-dim { margin-top: 6px; }
+  .tvs-size.need > .sm-sub { color: var(--b-icon); }
+  .tvs-size.need > .cp-tabs { box-shadow: 0 0 0 1.5px var(--b-icon); }
+  .tvs-other { display: flex; justify-content: flex-end; align-items: center; gap: 6px; margin-top: 6px; }
+  .tvs-field { width: 64px; height: 26px; box-sizing: border-box; padding: 0 8px; border: 1px solid var(--g-pick); border-radius: 6px;
+               background: var(--g-field); color: var(--g-text); text-align: right; font: 500 12px/1 system-ui, -apple-system, sans-serif; outline: none; }
+  .tvs-field.empty { box-shadow: 0 0 0 2px var(--b-icon); }
   .tvs .sm-win.fly { transition: transform .45s cubic-bezier(.5, 0, .3, 1), opacity .45s; opacity: 0; }
   .tvs-note { margin-top: 16px; color: var(--g-dim); font: 400 11px/1.4 system-ui, -apple-system, sans-serif; }
   .tvs-note .kmore { display: inline-grid; place-items: center; width: 18px; height: 16px; margin: 0 1px; border-radius: 4px;

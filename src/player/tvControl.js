@@ -14,7 +14,7 @@ const TV_NOTE_MS    = 4000;
 const TV_ICON = {
   tv:   '<svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><rect x="1.6" y="3" width="10.8" height="7.4" rx="1.2"/><line x1="7" y1="10.4" x2="7" y2="12"/><line x1="4.6" y1="12" x2="9.4" y2="12"/></svg>',
   sync: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><path d="M2.2 7a4.8 4.8 0 0 1 8.1-3.5L11.8 5"/><polyline points="11.8,1.6 11.8,5 8.4,5"/><path d="M11.8 7a4.8 4.8 0 0 1-8.1 3.5L2.2 9"/><polyline points="2.2,12.4 2.2,9 5.6,9"/></svg>',
-  lock: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.3" width="8" height="5.4" rx="1"/><path d="M4.7 6.3V4.6a2.3 2.3 0 0 1 4.6 0"/></svg>',
+  inch: '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><rect x="1.3" y="4.3" width="11.4" height="5.4" rx="1"/><line x1="3.8" y1="4.3" x2="3.8" y2="6.4"/><line x1="6.1" y1="4.3" x2="6.1" y2="7.4"/><line x1="8.4" y1="4.3" x2="8.4" y2="6.4"/><line x1="10.6" y1="4.3" x2="10.6" y2="7.4"/></svg>',
   more: '<svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><circle cx="3" cy="7" r="1.15"/><circle cx="7" cy="7" r="1.15"/><circle cx="11" cy="7" r="1.15"/></svg>',
   send: '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"><polygon points="3.5,2.3 11.8,7 3.5,11.7"/></svg>',
   stop: '<svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="8" height="8" rx="1.4"/></svg>',
@@ -292,6 +292,7 @@ function _tvSetupClose(then) {
     _tvSetup = false;
     _tvSetupBusy = false;
     if (then) then();
+    tvOneInchClosed();
     _tvHot = true;
     tvRefresh();
     setTimeout(() => { _tvHot = false; tvRefresh(); }, 900);
@@ -428,7 +429,7 @@ function _tvSetupRender() {
   }));
   body.append(_tvText('sm-dim', t(autoSync ? 'Every change reaches the TV at once.' : 'Changes wait until you press Send.')));
 
-  body.append(sub(t('Turn')), _tvTurnRow());
+  body.append(sub(t('Turn')), _tvTurnRow(), ...tvSizeRowEls());
   const note = _tvMake('p', 'tvs-note');
   const parts = t('You can open this again with {more} on the minimap.').split('{more}');
   const more = _tvMake('span', 'kmore');
@@ -438,7 +439,7 @@ function _tvSetupRender() {
   win.append(body);
 
   const foot = _tvMake('div', 'sm-wfoot');
-  if (live) foot.append(_tvBtn('sm-hbtn primary', '', [document.createTextNode(t('Done'))], () => _tvSetupClose()));
+  if (live) foot.append(_tvBtn('sm-hbtn primary', '', [document.createTextNode(t('Done'))], () => _tvSetupClose(tvOneInchDone)));
   else {
     foot.append(_tvBtn('sm-hbtn', '', [document.createTextNode(t('Cancel'))], () => _tvSetupClose()),
       _tvBtn('sm-hbtn primary', '', [_tvIcon(TV_ICON.tv), document.createTextNode(t('Show on TV'))], _tvSetupGo));
@@ -453,15 +454,14 @@ function _tvSetupRender() {
 
 function _tvTools(live) {
   const tl = _tvMake('div', 'tv-row tl tv-tools');
-  tl.append(_tvBtn('tv-ov sq' + (minimapLocked ? ' active' : ''),
-    minimapLocked ? t('Minimap locked. Click to unlock') : t("Lock the minimap so a stray drag can't move the view"),
-    [_tvIcon(TV_ICON.lock)], () => _tvLegacy('btn-minimap-lock')));
-  const tr = _tvMake('div', 'tv-row tr tv-tools');
   if (live) {
-    const word = _tvSyncIcon ? [] : [document.createTextNode(t('Sync'))];
-    tr.append(_tvBtn(_tvSyncIcon ? 'tv-ov sq' : 'tv-ov wd', t('Match the TV to my view'), [_tvIcon(TV_ICON.sync)].concat(word),
-      () => _tvLegacy('btn-sync-view')));
+    const tool = (icon, word, title, go) => _tvBtn(_tvSyncIcon ? 'tv-ov sq' : 'tv-ov wd', title,
+      [_tvIcon(icon)].concat(_tvSyncIcon ? [] : [document.createTextNode(word)]), go);
+    const inch = tool(TV_ICON.inch, t('1 inch'), t('Zoom the TV so each square is 1.1 inches, for minis'), tvOneInchPress);
+    inch.setAttribute('data-tv-inch', '');
+    tl.append(inch, tool(TV_ICON.sync, t('Sync'), t('Match the TV to my view'), () => _tvLegacy('btn-sync-view')));
   }
+  const tr = _tvMake('div', 'tv-row tr tv-tools');
   const more = _tvBtn('tv-ov sq' + (_tvHot ? ' hot' : '') + (_tvSetup ? ' active' : ''), t('TV setup'), [_tvIcon(TV_ICON.more)], _tvSetupOpen);
   more.setAttribute('data-tv-more', '');
   tr.append(more);
@@ -535,8 +535,8 @@ function _tvTooWide() {
 }
 
 // Rebuilds only when something it shows has changed, so a button is never replaced between the
-// press and the release of a click. The words drop in steps until each row fits: Sync before it
-// touches Lock, the pill's words, then Show on TV's icon, its long label, its size.
+// press and the release of a click. The words drop in steps until each row fits: 1 inch's and Sync's
+// before they touch ···, the pill's words, then Show on TV's icon, its long label, its size.
 function tvRefresh() {
   if (!_tvInited) return;
   const panel = _tvEl('minimap-panel');
@@ -547,8 +547,7 @@ function tvRefresh() {
   if (live) hintClose('show-on-tv');
   panel.classList.toggle('tv-live', live);
   panel.classList.toggle('tv-off', !live);
-  panel.classList.toggle('minimap-locked', minimapLocked);
-  const base = [live, !!_tvWaitSince, _tvRoute, live ? '' : _tvCaption(pick), autoSync, paneScope().playerUnsent, minimapLocked,
+  const base = [live, !!_tvWaitSince, _tvRoute, live ? '' : _tvCaption(pick), autoSync, paneScope().playerUnsent,
     live && !!paneScope().playerIsFullscreen, _tvNote, _tvMenu, panel.offsetWidth, _tvScreenId, _tvDisplays.map(d => d.id).join(','),
     pick.kind, _tvSetup, _tvHot, I18N_LANG, seatTurn].join('|');
   if (base === _tvKey) return;

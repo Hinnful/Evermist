@@ -450,12 +450,22 @@ decided by `tvPick.js` from the list `electron/displays.js` reports: one candida
 ask once and are remembered, none opens a help box. While none is found the button is grey but still opens that box, and the list is re-read every second until the Player is live. Pressing it opens the Player and moves it onto
 that screen in fullscreen. Live, the minimap's edge breathes blue and a pill reads "Live on TV" or
 "Live in a window", turning to "Stop showing" under the pointer; one blue outline runs round the pill and Send.
-The minimap keeps only what play uses many times: Lock, Sync (with its word), "…", and Show on TV or the live pill
-with Send. On a narrow minimap Sync drops its word first, Show on TV drops its icon, then shortens, then goes
+The minimap keeps only what play uses many times: 1 inch and Sync side by side at its top left (each with its icon and
+word, shown only while live), "…", and Show on TV or the live pill with Send. 1 inch (`tvOneInch.js`) is one press, not a
+mode: it zooms the TV about its centre so a map square (the scene's cell size, grid lines shown or not) is 1.1 inches
+wide, sent by the wheel's own path, so Manual waits for Send and two maps scale the selected half. `tvInch.js` does the
+sum from the TV's diagonal and its full pixel width, never the work area a taskbar shrinks. With no size for this TV it
+opens TV setup with the size row marked blue, and Done zooms. On a narrow minimap 1 inch and Sync drop their words first,
+Show on TV drops its icon, then shortens, then goes
 small; the pill's last step leaves Stop as its icon. In two-map mode Send acts on the selected column only.
 
 **TV setup** is one centred window: the screen, Fullscreen when the screen is a window, Updates Auto/Manual,
-and Turn as three pictures, with a note that "…" reopens it. It opens on the first Show on TV of each launch and on
+Turn as three pictures, and TV size (43, 50, 55, 65, 75, Other with a field for 10 to 120 inches), with a note that "…"
+reopens it. The size is kept per TV, by name and resolution, in `evermist.tvSizes` on this computer only. On the first
+look at a TV each launch `electron/tvSize.js` reads the size the TV reports in its EDID (the registry on Windows,
+`/sys/class/drm` on Linux, `ioreg` on a Mac); a believable one starts picked when nothing is stored, and a line under the
+picker says whether the TV gave it. Zero, an aspect ratio standing in for a size (16 x 9, 160 x 90 cm) and anything outside
+10 to 120 inches are ignored. It opens on the first Show on TV of each launch and on
 every "…" click or click on the screen name. The TV menu (`#tv-pop`) carries only the "which screen is the TV?"
 question and the no-TV help box. The Players' view has no minimap button; hold H is its only way in. Unplugging the TV takes the
 map off it. Under the rig's `--offscreen` no window is moved and the window route is taken. On Linux Wayland no app can place its window, so `displays.js` answers `canPlace:false`, `pickTv` offers no candidates and setup says to drag the window to the TV and press Fullscreen. A window the DM wanted fullscreen is asked once, when the Player reports loaded.
@@ -509,7 +519,7 @@ by hand or with the size presets. A repair acts on the kind being drawn,
 fires or lights, never both. With Cut out, Merge or Split armed, a Ring acts only on the band its preview shows. The Lights switch in Map settings hides them all; a single light is
 deleted, not switched off.
 
-A floor plan seeds lights once. Map settings' Rooms and lights section loads one .dd2vtt as a file card showing the plan's file name without `.dd2vtt` (ellipsis when long, full name in the tooltip; a scene stored before the name was kept reads "Floor plan"; the scene field `floorPlanName` travels with `floorPlan` and clears on remove), whose Draw rooms and Draw lights act on the file and whose trash removes the plan (`removeFloorPlan`) while the drawn rooms and lights stay. Each light in the file becomes one
+A floor plan seeds lights once. Map settings' Rooms and lights section loads one floor plan (`.dd2vtt`, `.uvtt` or `.df2vtt`, the same Universal VTT JSON; beside a map they are tried in that order and the first that reads wins) as a file card showing the plan's file name without its ending (ellipsis when long, full name in the tooltip; a scene stored before the name was kept reads "Floor plan"; the scene field `floorPlanName` travels with `floorPlan` and clears on remove), whose Draw rooms and Draw lights act on the file and whose trash removes the plan (`removeFloorPlan`) while the drawn rooms and lights stay. Each light in the file becomes one
 polygon, by where it sits. A light inside a room fills the room up to the walls or its radius: the whole room when the radius reaches every corner, the part the radius
 covers when it does not. The lights of one room become one polygon when they share 30% of the
 smaller one, or fill 90% of the room together, so a table of candles is not fifty polygons. A light

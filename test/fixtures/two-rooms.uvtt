@@ -1,0 +1,129 @@
+{
+ "format": 0.3,
+ "resolution": {
+  "map_size": {
+   "x": 12,
+   "y": 8
+  },
+  "pixels_per_grid": 70
+ },
+ "line_of_sight": [
+  [
+   {
+    "x": 4.5,
+    "y": 6
+   },
+   {
+    "x": 10,
+    "y": 6
+   },
+   {
+    "x": 10,
+    "y": 2
+   },
+   {
+    "x": 2,
+    "y": 2
+   },
+   {
+    "x": 2,
+    "y": 6
+   },
+   {
+    "x": 3.5,
+    "y": 6
+   }
+  ],
+  [
+   {
+    "x": 6,
+    "y": 2
+   },
+   {
+    "x": 6,
+    "y": 3.5
+   }
+  ],
+  [
+   {
+    "x": 6,
+    "y": 4.5
+   },
+   {
+    "x": 6,
+    "y": 6
+   }
+  ]
+ ],
+ "objects_line_of_sight": [
+  [
+   {
+    "x": 3,
+    "y": 3
+   },
+   {
+    "x": 3.5,
+    "y": 3
+   },
+   {
+    "x": 3.5,
+    "y": 3.5
+   },
+   {
+    "x": 3,
+    "y": 3.5
+   },
+   {
+    "x": 3,
+    "y": 3
+   }
+  ]
+ ],
+ "portals": [
+  {
+   "position": {
+    "x": 4,
+    "y": 6
+   },
+   "bounds": [
+    {
+     "x": 3.5,
+     "y": 6
+    },
+    {
+     "x": 4.5,
+     "y": 6
+    }
+   ],
+   "rotation": 0.0,
+   "closed": true,
+   "freestanding": false
+  },
+  {
+   "position": {
+    "x": 6,
+    "y": 4
+   },
+   "bounds": [
+    {
+     "x": 6,
+     "y": 3.5
+    },
+    {
+     "x": 6,
+     "y": 4.5
+    }
+   ],
+   "rotation": 1.5707964,
+   "closed": true,
+   "freestanding": false
+  }
+ ],
+ "environment": {
+  "baked_lighting": false,
+  "ambient_light": "ffffffff"
+ },
+ "lights": [],
+ "software": "spec fixture",
+ "creator": "Evermist tests"
+}

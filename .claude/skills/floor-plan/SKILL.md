@@ -89,7 +89,7 @@ the app produces rooms, they are just wrong.
 - **Electron only.** Finding the sibling file needs the preload bridge, so under `npx serve`
   or bare `file://` no plan is ever found. Degrade to silence, not to an error.
 - **Main resolves the sibling path itself.** `find-floor-plan` takes the map's path and reads
-  `<same dir>/<basename>.dd2vtt`; it must never accept an arbitrary path to read. A floor
+  `<same dir>/<basename>` + `.dd2vtt`, `.uvtt` or `.df2vtt`, first found wins; it must never accept an arbitrary path to read. A floor
   plan is untrusted input.
 - **Store the plan on the scene in the pass that creates it.** `persistVideoMap` copies the
   map into `userData/maps`, so afterwards it no longer sits beside its `.dd2vtt` and a later

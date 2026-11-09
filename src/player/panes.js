@@ -56,6 +56,7 @@ window.paneView = {
   get fogTintColor()      { return fogTintColor; },
   get playerScreenW()     { return playerScreenW; },
   get playerScreenH()     { return playerScreenH; },
+  get playerScreenInfo()  { return playerScreenInfo; },
   get playerWindow()      { return playerWindow; },
   get playerIsFullscreen() { return playerIsFullscreen; },
   get minimapView()       { return minimapView; },

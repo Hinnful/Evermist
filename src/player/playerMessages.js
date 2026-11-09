@@ -12,13 +12,10 @@ function initPlayerMessages() {
     if (msg.type === 'scene-transition') { applyPlayerSceneTransition(msg); return; }
     // ⚠ A pre-warmed window's PLAYER_READY was dropped — the DM was not holding it yet.
     if (msg.type === 'player-hello') {
-      if (playerReplyTarget()) playerReplyTarget().postMessage({
-        type: 'PLAYER_READY', screenW: window.innerWidth, screenH: window.innerHeight,
-      }, '*');
+      if (playerReplyTarget()) playerReplyTarget().postMessage({ type: 'PLAYER_READY', ...playerScreenReport() }, '*');
       return;
     }
 
-    if (msg.type === 'player-lock') { playerInputLocked = msg.locked; return; }
     if (msg.type === 'ping') { showPing(msg.x, msg.y); return; }
     if (msg.type === 'tv-fit') { setPlayerTurn(msg.turn); return; }
     if (msg.type === 'weather') { applyWeatherMessage(msg); return; }

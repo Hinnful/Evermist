@@ -301,6 +301,7 @@ const IPC = [
   require('./electron/screenLog.js'),
   require('./electron/syncConfig.js'),
   require('./electron/syncRemote.js'),
+  require('./electron/tvSize.js'),
   ipcMcp,
 ];
 const [, ipcMusic, , , ipcDiagLog, ipcUpdates] = IPC;   // the three with a call of their own

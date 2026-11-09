@@ -64,12 +64,6 @@ const PANE_CONTROLS = {
   'pane-send':              () => sendToPlayerNow(),
   'pane-gallery-live':      m => galleryPaneLive(m.on),
   'pane-auto-sync':         m => { if (autoSync !== m.on) _paneClick('btn-auto-sync'); },
-  'pane-player-lock':       m => {
-    minimapLocked = m.locked;
-    if (playerWindow && !playerWindow.closed) {
-      playerWindow.postMessage({ type: 'player-lock', locked: minimapLocked }, '*');
-    }
-  },
   'pane-player-view': m => {
     // Not minimapSetView, whose report back is this view again: landing after the parent's next wheel
     // step or drag move, it would undo that step.

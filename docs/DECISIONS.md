@@ -547,6 +547,25 @@ down plus the bonus. Without it the reader took the next number in the text, a d
 
 ## Player sync and the minimap
 
+### 1 inch is a one-press action beside Sync, not a mode · `SETTLED` (2026-11-09, BACKLOG 284)
+Zooms the TV about its centre so a square is 1.1 inches (a 25 mm base fits), nothing stays on, a second press re-scales. On hex
+grids the hex's width flat to flat is 1.1 inches. Sync is unchanged and copies the view completely. Rejected: a held mode or
+switch, a Free/1-inch pill, Sync turning 1 inch off, Sync moving position only, a tag in the live pill, Arkenforge-style split
+Sync keys. A mode and a one-press action side by side conflict with nothing to show how; two one-press actions never touch.
+Rivals checked (Encounter+, Foundry modules, Fantasy Grounds, Arkenforge, DMHelper, Table Slayer, Owlbear, Roll20): none has a
+separate minimap, most outline the TV on the DM's map; the minimap stays so the DM works anywhere without moving the TV.
+
+### TV size is picked, kept per TV on this computer, and read from the TV when believable · `SETTLED` (2026-11-09)
+Picker in TV setup (43, 50, 55, 65, 75, Other 10-120 whole inches), kept per TV (`label|WxH`) in local storage only, never in a
+scene, backup or sync. 1 inch with no size opens TV setup, and Done zooms. The size the TV reports (EDID, Windows, Linux, Mac)
+pre-picks when believable; fakes (LG's 160x90 cm, 0x0, an aspect ratio in cm) and sizes outside 10-120 inches are refused.
+Electron exposes no physical size. Windows and Mac reads are untested on hardware; the parser is tested on recorded data.
+
+### The Player reports its own screen for 1 inch · `SETTLED` (2026-11-09)
+On Wayland the main process cannot see which screen holds a window and took the primary for the DM's, so squares came out half
+size. The Player reports its screen (size, device pixel ratio) on load, resize and scale change; the old guess is only the
+fallback before it opens. Not covered: a move between two screens of the same scale with no resize.
+
 ### Reveal all asks first, in Auto sync only · `SETTLED` (2026-10-16)
 In Auto sync one click on the eye shows every room on the TV at once, and nothing takes it back from
 the TV. So Reveal all asks through `confirmDialog`. In Manual sync the TV does not change until the DM
@@ -617,7 +636,7 @@ long side, rather than cover the centred toolbar.
 Reverses the margin and the dotted frame in the three entries above. The box keeps the TV's shape and
 turns with Seat alignment, and the picture fills it edge to edge with exactly what the TV shows. The
 margin spent 40% of each axis on what was about to come into view, which the DM's own map already
-shows, and left the TV's real picture the cramped part. Drag, wheel, Lock and Sync are unchanged, so a
+shows, and left the TV's real picture the cramped part. Drag, wheel and Sync are unchanged, so a
 drag across the box now moves the TV one screen rather than about 1.7. A band that appears only while
 dragging was prototyped and dropped for the same reason.
 
@@ -633,9 +652,10 @@ preview's height. So the preview is the wrong instrument for judging sync fideli
 Player's own viewport for numbers, or judge it on the TV itself. The square-plus-dotted-frame
 shape was a deliberate reversal; "The minimap takes the TV's shape" supersedes it.
 
-### Lock blocks accidental movement, not deliberate driving · `SETTLED`
-Sync View intentionally still moves a locked Player. Lock only disables the Player's own
-input and the DM's own minimap drag/wheel.
+### Lock blocks accidental movement, not deliberate driving · `REVERTED` (2026-11-09, Lock removed)
+Sync View intentionally still moved a locked Player; Lock only disabled the Player's own input and the DM's minimap
+drag/wheel. Lock is gone from the minimap: it was used once or twice, guarded only against stray nudges and conflicted with
+1 inch. The TV window keeps its own mouse pan and zoom for when something goes wrong and for window mode.
 
 ### Minimap fog is a cheap approximation · `SETTLED`
 Blur plus tint so fog reads like fog. Do not replicate the cloud pipeline. Video maps mirror
@@ -818,6 +838,12 @@ resurrect `drawGridLines(mapCtx)`.
 ---
 
 ## Floor-plan derivation
+
+### A floor plan beside a map is `.dd2vtt`, `.uvtt` or `.df2vtt` · `SETTLED` (2026-11-09, BACKLOG 285)
+Tried in that order, first that reads wins; drag-and-drop and the plan picker take all three. The parser needed no change.
+Only the file beside the map is read, as before. Fixtures are built from the published format, since no real DungeonFog or
+Dungeon Scrawl export could be found. The texts naming only ".dd2vtt" (card tooltips, the bad-file message, AI tool
+descriptions) are unchanged and open for wording.
 
 ### Auto-polygons read the map's own floor plan, not pixels · `SETTLED` (design)
 Dungeon Alchemist exports Universal VTT (`.dd2vtt`) beside the map: wall segments, doors and

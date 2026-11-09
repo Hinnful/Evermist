@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listDisplays: () => ipcRenderer.invoke('displays-list'),
   placePlayer: (name, displayId) => ipcRenderer.invoke('player-place', name, displayId),
   extendDisplay: () => ipcRenderer.invoke('display-extend'),
+  tvReportedSize: (displayId) => ipcRenderer.invoke('tv-reported-size', displayId),
   onDisplaysChanged: (callback) => {
     const handler = (_event, data) => callback(data);
     ipcRenderer.on('displays-changed', handler);

@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 9 open items; IDs run to 290."
+description: "Open work only. 8 open items; IDs run to 291."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -93,27 +93,6 @@ Filed 2026-11-07, with 5.5.0. Connect to Google shows Google's "unverified app" 
 brand; that review needs the privacy policy on a domain the project owner proves to own (today `PRIVACY.md` sits on
 github.com). Every DM who connects sees the warning first.
 **First use · Polish · DM only**
-
-
-### 284. One grid cell is one inch on the TV
-Filed 2026-11-09, from the competitor research. The DM types the TV's visible width once, and the TV draws the map so a
-grid cell measures one inch, a mini's base; the TV's zoom locks at that scale and the minimap still pans. The best-proven
-gap found: DMs on D&D Beyond, Paizo and itch.io size maps to their minis by hand, Atlas VTT issue #363 asks for it, and
-at least nine tools ship it. Model: Encounter+ TableTop Mode (docs.encounter.plus/settings/external-screen) takes the width
-of the visible picture, not the bezel, plus pixel margins and overscan for a bezel or a table cut-out. Also DMHelper's
-Auto-Fit, Arkenforge, Digital TableTops, Mappadux, Foundry's Lock View and Fantasy Grounds' `/tvsize`. Care points: Fit to
-TV's quarter turns, two maps where each half is half as wide, and Windows display scaling, which broke Digital TableTops'
-grid. Needs `/spec` before building.
-**Play · Player**
-
-
-### 285. Read .uvtt and .df2vtt floor plans
-Filed 2026-11-09. Evermist finds only a `.dd2vtt` beside a map (`electron/floorPlan.js`, `scenes/dragDrop.js`), and
-ignores `.uvtt` and `.df2vtt`, which hold the same Universal VTT format. Dungeon Scrawl (Roll20) writes `.uvtt` since
-2026-09-09 and DungeonFog writes `.df2vtt`; Roll20 reads all three, Encounter+ and Digital TableTops read `.uvtt`. A
-`.uvtt` dropped alone carries its own picture and could open as a map. The floor-plan rule that only the file beside the
-map is read still holds.
-**Prep**
 
 
 ### 286. Cloud, ice, web and grease effects
@@ -174,6 +153,13 @@ players only or none), DMHelper (the active creature, the next two, an optional 
 left off). The physical rival is tent cards; the strip wins only because the fight table fills it. **Needs a design
 round, then `/spec`.**
 **Play · Player**
+
+### 291. Floor plan texts name only .dd2vtt
+Filed 2026-11-09, with 5.9.0. Evermist reads `.uvtt` and `.df2vtt` floor plans too, but the floor plan card's two tooltips,
+the bad-file message (which also names only Dungeon Alchemist) and the AI assistant's floor-plan tool descriptions still say
+".dd2vtt". Recommended wording: "floor plan" alone, since the file picker already filters to the right files. Waits on the
+DM's wording call; a rename the DM sees needs the DM's yes.
+**Polish · DM only**
 
 ---
 

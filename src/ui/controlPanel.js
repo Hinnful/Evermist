@@ -228,7 +228,7 @@ function _cpPaintPlan() {
   _cpEl('cp-plan-card').hidden = !s.hasPlan;
   // A plan stored before its file name was kept reads "Floor plan".
   const nm = _cpEl('cp-plan-name'), file = s.planName;
-  nm.textContent = file ? file.replace(/\.dd2vtt$/i, '') : t('Floor plan');
+  nm.textContent = file ? file.replace(/\.(dd2vtt|uvtt|df2vtt)$/i, '') : t('Floor plan');
   nm.title = file || '';
   _cpEl('cp-plan-meta').textContent = t('{rooms} · {lights}', {
     rooms: t.plural(rooms, '{n} room', '{n} rooms'),

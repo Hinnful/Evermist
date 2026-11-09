@@ -389,13 +389,11 @@ function initToolbar() {
         playerScreenH = msg.screenH;
         minimapRefreshAspect();
       }
+      if (msg.scr) playerScreenInfo = msg.scr;
       if (typeof tvPlayerLoaded === 'function') tvPlayerLoaded();
       onPlayerResyncRequest();
       syncFogThemeToPlayer(true);
       galleryResend();
-      if (playerWindow && !playerWindow.closed) {
-        playerWindow.postMessage({ type: 'player-lock', locked: minimapLocked }, '*');
-      }
       return;
     }
     if (msg.type === 'PLAYER_SCREEN') {
@@ -404,6 +402,7 @@ function initToolbar() {
         playerScreenH = msg.screenH;
         minimapRefreshAspect();
       }
+      if (msg.scr) playerScreenInfo = msg.scr;
       return;
     }
     if (msg.type === 'PLAYER_MODE') {

@@ -94,6 +94,11 @@ does not read clean is left out and named; one printed with no actions reads in 
 Evermist never corrects a book or a site. Notes for a scene with no rooms
 are a separate piece of work, not part of the combat helper.
 
+### One-inch squares on the TV, no ruler · `SETTLED` (2026-11-09, BACKLOG 284)
+The TV can be scaled so a map square is 1.1 inches, for miniatures on the screen, from a TV size kept on this computer only.
+A ruler on the TV is rejected: one-inch squares let players count or lay a tape, which wins the physical-object test, and an
+overlay breaks the Player's zero-UI rule. A ruler on the DM's own screen is dropped for now.
+
 ### Turn order on the TV · `REOPENED` (2026-11-09, narrows "The VTT line" and "A combat helper on the DM's screen", BACKLOG 290)
 While a fight is open, a thin strip on one TV edge shows names in initiative order with the current
 one lit. A monster stays off it until revealed; no HP and no AC. A current-turn marker in the fight
