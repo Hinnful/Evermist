@@ -45,7 +45,7 @@ async function _mcpFogCanvas(src, w, h) {
 async function _mcpMapRead(scene, keys) {
   if (_mcpHolder(scene.id) === 'here') {
     const d = mcpMapSnapshot({ polygons, nextPolygonId, effects, nextEffectId, ...lightsSceneFields(),
-      gridConfig: captureGridConfig(), fogTheme, weather: weatherId, floorPlan: currentScene.floorPlan, floorPlanName: currentScene.floorPlanName }, keys);
+      gridConfig: captureGridConfig(), fogTheme, weather: weatherId, timeOfDay: timeOfDayId, floorPlan: currentScene.floorPlan, floorPlanName: currentScene.floorPlanName }, keys);
     if (keys.includes('fog')) d.fog = cloneCanvas(baseFogCanvas);
     return Object.assign(d, { mapWidth, mapHeight });
   }
@@ -78,6 +78,7 @@ function _mcpLiveWrite(keys, d) {
     if (has('gridConfig')) { applyGridConfig(d.gridConfig); commitGridChange(); }
     if (has('fogTheme')) restoreSceneFogSettings({ fogTheme: d.fogTheme, fogSettings: fogSettingsKept });
     if (has('weather')) applyWeatherChoice(d.weather);
+    if (has('timeOfDay')) applyTimeOfDayChoice(d.timeOfDay);
   });
   if (has('floorPlan')) { currentScene.floorPlan = d.floorPlan; currentScene.floorPlanName = d.floorPlanName; refreshFloorPlanUI(); }
   scheduleAutoSave();

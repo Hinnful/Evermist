@@ -28,7 +28,7 @@ async function readBestiaryFile(p) {
 
 // The files Claude's import tools read by path. A .dd2vtt carries its map's image inside, so its cap is the larger.
 const PREP_FILES = {
-  plan: { re: /\.(dd2vtt|uvtt|df2vtt)$/i, max: 150, what: 'a floor plan (.dd2vtt)' },
+  plan: { re: /\.(dd2vtt|uvtt|df2vtt)$/i, max: 150, what: 'a floor plan (.dd2vtt, .uvtt or .df2vtt)' },
   module: { re: /\.(txt|md|pdf)$/i, max: 20, what: 'module text (.txt, .md or .pdf)' },
 };
 

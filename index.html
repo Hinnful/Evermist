@@ -438,9 +438,17 @@
 
         <div class="cp-group" id="cp-sec-fog">
           <div class="dk-sh"><span class="cp-label">Weather and Fog</span>
-            <button id="cp-fog-reset" class="dk-bare" title="Reset weather and the fog theme">Reset</button>
+            <button id="cp-fog-reset" class="dk-bare" title="Reset weather, time of day and the fog theme">Reset</button>
           </div>
           <div class="dk-secbody">
+            <div class="dk-blk"><span class="dk-sub">Time of day</span>
+              <div class="cp-iconrow cp-seg" id="cp-tod-row">
+                <button class="cp-iconbtn" data-tod="none" title="None"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><line x1="3.5" y1="10.5" x2="10.5" y2="3.5"/></svg></button>
+                <button class="cp-iconbtn" data-tod="day" title="Day"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="8" cy="8" r="2.8"/><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></svg></button>
+                <button class="cp-iconbtn" data-tod="dusk" title="Dusk"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 11.5h13"/><path d="M4.6 11.5a3.4 3.4 0 0 1 6.8 0"/><path d="M8 4.2v1.6M3.3 6.4l1.1 1.1M12.7 6.4l-1.1 1.1"/><path d="M5 14h6"/></svg></button>
+                <button class="cp-iconbtn" data-tod="night" title="Night"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.8 10.3A5.3 5.3 0 0 1 5.7 3.2a5.3 5.3 0 1 0 7.1 7.1z"/></svg></button>
+              </div>
+            </div>
             <div class="dk-blk"><span class="dk-sub">Weather</span>
               <div class="cp-iconrow cp-seg" id="cp-wx-row">
                 <button class="cp-iconbtn" data-wx="none" title="No weather"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><line x1="3.5" y1="10.5" x2="10.5" y2="3.5"/></svg></button>
@@ -478,10 +486,10 @@
               <div class="dk-swrow" id="cp-lights-row" title="Lights"><span>Lights</span><button id="cp-lights-switch" class="dk-switch" role="switch" aria-checked="true" aria-label="Lights"></button></div>
             </div>
             <div class="dk-blk"><span class="dk-sub">Floor plan</span>
-              <button class="dk-src none" id="cp-src-plan" disabled title="Load a floor plan (.dd2vtt) for this map"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"><path d="M3 1.5h5.5L11 4v8.5H3z"/><path d="M8.5 1.5V4H11"/></svg></span><span class="nm">Load floor plan…</span></button>
+              <button class="dk-src none" id="cp-src-plan" disabled title="Load a floor plan for this map"><span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"><path d="M3 1.5h5.5L11 4v8.5H3z"/><path d="M8.5 1.5V4H11"/></svg></span><span class="nm">Load floor plan…</span></button>
               <input type="file" id="cp-plan-input" accept=".dd2vtt,.uvtt,.df2vtt" hidden>
               <div class="dk-card" id="cp-plan-card" hidden>
-                <div class="dk-card-head" id="cp-plan-head" role="button" tabindex="0" title="Load another floor plan (.dd2vtt)">
+                <div class="dk-card-head" id="cp-plan-head" role="button" tabindex="0" title="Load another floor plan">
                   <span class="ic"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linejoin="round"><path d="M3 1.5h5.5L11 4v8.5H3z"/><path d="M8.5 1.5V4H11"/></svg></span>
                   <span class="dk-card-txt"><span class="nm" id="cp-plan-name" data-no-i18n>Floor plan</span><span class="mt" id="cp-plan-meta"></span></span>
                   <button id="cp-plan-remove" class="cp-adv-close" title="Remove the floor plan"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
@@ -949,6 +957,7 @@
 <script src="src/fog/themes/ice.js"></script>
 <script src="src/fog/themes/fire.js"></script>
 <script src="src/render/weatherPlan.js"></script>
+<script src="src/render/timeOfDayPlan.js"></script>
 <script src="src/shapes/doorGeometry.js"></script>
 <script src="src/shapes/presetGeometry.js"></script>
 <script src="src/rooms/vttPlan.js"></script>
@@ -1016,6 +1025,7 @@
 <script src="src/render/effectShaderKinds.js"></script>
 <script src="src/render/effects.js"></script>
 <script src="src/render/weatherShader.js"></script>
+<script src="src/render/timeOfDay.js"></script>
 <script src="src/render/weather.js"></script>
 <script src="src/render/lights.js"></script>
 <script src="src/scenes/dragDrop.js"></script>

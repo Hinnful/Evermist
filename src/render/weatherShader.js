@@ -17,10 +17,65 @@ void main() {
 }
 `;
 
+// Time of day's numbers, written into the source from timeOfDayPlan.js so the two never drift.
+const _wf = n => (Number.isInteger(n) ? n.toFixed(1) : String(n));
+const _wv = a => 'vec3(' + a.map(_wf).join(',') + ')';
+
+// Time of day: the map pixel graded before any weather runs on it, in linear light. uTod weighs Day,
+// Dusk and Night (a fade blends them); a room keeps a dark interior and dims bright ground.
+const WEATHER_TOD = `
+uniform sampler2D uRoomGlow, uLamp;
+uniform vec3 uTod;
+float tLum(vec3 c){ return dot(c, vec3(.2126,.7152,.0722)); }
+vec3 toLin(vec3 s){ return mix(s/12.92, pow((s+.055)/1.055, vec3(2.4)), step(.04045, s)); }
+vec3 toSrgb(vec3 l){ l=clamp(l,0.,1.); return mix(l*12.92, 1.055*pow(l, vec3(1./2.4))-.055, step(.0031308, l)); }
+vec3 tShoulder(vec3 x){ float k=${_wf(TOD.shoulder[0])}, r=${_wf(TOD.shoulder[1])}; return mix(x, k+r*(1.-exp(-(x-k)/r)), step(k, x)); }
+vec3 tContrast(vec3 c, float p){ float L=tLum(c); float Lc=${_wf(TOD.pivot)}*pow((L+1e-4)/${_wf(TOD.pivot)}, p); return c*(Lc/(L+1e-4)); }
+vec3 tResat(vec3 c, float k){ float L=tLum(c); return L+(c-L)*k; }
+vec3 tNight(vec3 a){
+  vec3 t=${_wv(TOD.night.tint)}; t/=tLum(t); float L=tLum(a);
+  return tContrast((a+(L-a)*${_wf(TOD.night.desat)})*t, ${_wf(TOD.night.contrast)})*${_wf(TOD.night.gain)}+${_wv(TOD.night.floor)};
+}
+vec3 tDusk(vec3 a, vec2 uv){
+  float L=tLum(a);
+  float sun=${_wf(TOD.dusk.sun[0])}-${_wf(TOD.dusk.sun[1])}*smoothstep(0.,1., uv.x*${_wf(TOD.dusk.sunDir[0])}+uv.y*${_wf(TOD.dusk.sunDir[1])});
+  float rel=smoothstep(0., ${_wf(TOD.dusk.relTop)}, L);
+  float mx=max(a.r,max(a.g,a.b)), mn=min(a.r,min(a.g,a.b));
+  float k=smoothstep(${_wf(TOD.dusk.satEdge[0])}, ${_wf(TOD.dusk.satEdge[1])}, (mx-mn)/(mx+1e-4));
+  vec3 hf=${_wv(TOD.dusk.hiFull)}, hs=${_wv(TOD.dusk.hiSoft)}, lo=${_wv(TOD.dusk.lo)};
+  hf/=tLum(hf); hs/=tLum(hs); lo/=tLum(lo);
+  vec3 c=tResat(a*(lo+(hs+(hf-hs)*k-lo)*rel), ${_wf(TOD.dusk.sat)});
+  return tContrast(c, ${_wf(TOD.dusk.contrast)})*(${_wf(TOD.dusk.gain)}+${_wf(TOD.dusk.bright)}*smoothstep(${_wf(TOD.dusk.brightEdge[0])}, ${_wf(TOD.dusk.brightEdge[1])}, L))*sun;
+}
+vec3 tDay(vec3 a, float lamp){
+  vec3 b=a*${_wv(TOD.day.sun)}; float Lb=tLum(b);
+  b=b+(Lb*${_wf(TOD.day.lampGrey)}-b)*lamp*${_wf(TOD.day.lampPull)};
+  float E=${_wf(TOD.day.lift)};
+  return tShoulder(tResat(E*b/(1.+(E-1.)*b/${_wf(TOD.day.white)}), ${_wf(TOD.day.sat)}));
+}
+vec3 tRooms(vec3 a, vec3 o, float inside, float glow, float spill, float cap){
+  float L=tLum(a); float dim=1.-cap*smoothstep(.05,.5,L); float cst=1.-smoothstep(.12,.35,L);
+  vec3 lit=o+a*${_wv(TOD.warm)}*glow*spill;
+  vec3 room=a*dim*(1.+(${_wv(TOD.roomWarm)}-1.)*cst);
+  return tShoulder(lit*(1.-inside)+room*inside);
+}
+vec3 todGrade(vec3 s, vec2 uv, float inside, vec3 w, float str){
+  float sum=w.x+w.y+w.z;
+  if(sum<.001) return s;
+  vec3 a=toLin(s); float glow=clamp(texture2D(uRoomGlow, uv).a-inside, 0., 1.);
+  vec3 o=a*(1.-sum);
+  if(w.x>0.) o+=w.x*tDay(a, texture2D(uLamp, uv).r);
+  if(w.y>0.) o+=w.y*tRooms(a, tDusk(a, uv), inside, glow, ${_wf(TOD.dusk.spill)}, ${_wf(TOD.dusk.cap)});
+  if(w.z>0.) o+=w.z*tRooms(a, tNight(a), inside, glow, ${_wf(TOD.night.spill)}, ${_wf(TOD.night.cap)});
+  return mix(s, toSrgb(o), str);
+}
+`;
+
 // The map is read through uRect (the map-space rectangle uMap covers: the whole map, or the region
 // an animated map's texture carries). With uOverlay on there is no map texture to read - a DM
 // animated map is a video under the canvas - so a mid grey stands in and only what the weather
-// changes is drawn, as coverage.
+// changes is drawn, as coverage. Time of day there is a tint fitted on that grey, rooms cut out.
+// uFloor: the main mesh draws the graded map opaque under its weather, since the grade changes every pixel.
 const WEATHER_FRAG = `
 precision highp float;
 uniform sampler2D uMap;
@@ -29,17 +84,17 @@ uniform float uT, uSim, uWind, uAspect, uInt, uCell, uLines, uBeams, uAlpha, uGu
 uniform vec2 uGustC, uMapSize;
 uniform vec4 uRect, uP1, uP2;
 uniform int uW;
+uniform float uFloor;
 varying vec2 vUv;
+${WEATHER_TOD}
 
 float h21(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
 float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
   return mix(mix(h21(i),h21(i+vec2(1,0)),f.x), mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x), f.y); }
 float fbm(vec2 p){ float s=0., a=.5; mat2 m=mat2(1.6,1.2,-1.2,1.6); for(int i=0;i<5;i++){ s+=a*vn(p); p=m*p; a*=.5; } return s; }
 float an(vec2 p){ return vn(p)*.55+vn(p*2.03+3.1)*.28+vn(p*4.07+7.3)*.17; }
-vec3 mapAt(vec2 uv){
-  vec2 t = (uv*uMapSize - uRect.xy) / uRect.zw;
-  return mix(texture2D(uMap, t).rgb, vec3(.5), uOverlay);
-}
+vec4 mapTex(vec2 uv){ return texture2D(uMap, (uv*uMapSize - uRect.xy) / uRect.zw); }
+vec3 mapAt(vec2 uv){ return mix(mapTex(uv).rgb, vec3(.5), uOverlay); }
 const vec2 WD=vec2(.9578,.2873);
 float cellAt(vec2 q, float t){ return smoothstep(.4,.66, fbm(q*1.3 - WD*t*.025 + vec2(0.,t*.006))); }
 float rain(vec2 q, vec2 dir, float N, float v, float len, float dens, float seed){
@@ -61,7 +116,8 @@ float flake(vec2 q, float N, vec2 vel, float seed, float size, float dens, float
 void main(){
   vec2 uv=vUv; vec2 q=vec2(uv.x*uAspect, uv.y); vec2 dir=vec2(sin(uWind), cos(uWind)); vec2 ac=vec2(-dir.y,dir.x);
   vec2 wp=vec2(-WD.y,WD.x); float inRoom=texture2D(uRoom, uv).a;
-  vec3 base=mapAt(uv); float lum0=dot(base,vec3(.3,.59,.11));
+  vec3 base=uOverlay>.5 ? mix(todGrade(vec3(.5), uv, 0., vec3(0.,uTod.yz), uStr), vec3(.5), inRoom) : todGrade(mapAt(uv), uv, inRoom, uTod, uStr);
+  float lum0=dot(base,vec3(.3,.59,.11));
   vec3 col=base;
   float C=uCell*cellAt(q,uSim);
   float I=uInt*(.55+.7*C);
@@ -116,6 +172,11 @@ void main(){
   col=mix(base, col, uStr);
   float cov=uOverlay>.5 ? clamp(max(abs(col.r-base.r),max(abs(col.g-base.g),abs(col.b-base.b)))*3.,0.,1.) : 1.;
   float a=uAlpha*cov;
-  gl_FragColor=vec4(col*a, a);
+  if(uOverlay>.5){
+    vec3 m=base/.5; float mn=min(min(min(m.r,m.g),m.b),1.);
+    float at=(1.-mn)*uFloor; vec3 pt=.5*(m-mn)*uFloor;
+    gl_FragColor=vec4(pt*(1.-a)+col*a, 1.-(1.-at)*(1.-a));
+  } else if(uFloor>.5) gl_FragColor=vec4(mix(base, col, a), mapTex(uv).a);
+  else gl_FragColor=vec4(col*a, a);
 }
 `;

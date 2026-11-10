@@ -268,6 +268,8 @@ let playersViewOn = false;
 
 // The open map's weather preset id (render/weather.js, weatherPlan.js). Saved on the scene; absent means 'none'.
 let weatherId = 'none';
+// The open map's time of day (render/timeOfDay.js, timeOfDayPlan.js). Saved on the scene; absent means 'none'.
+let timeOfDayId = 'none';
 
 // ─── Lights (render/lights.js) ───────────────────────────────────────────────
 // A light is a polygon like a room or an effect, in a list of its own: {id, vertices, light: true,

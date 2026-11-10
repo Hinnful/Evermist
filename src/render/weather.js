@@ -5,8 +5,8 @@
 //
 // ⚠ UNDER THE FOG ON BOTH SCREENS, which is what keeps weather off ground nobody has revealed. The
 // layer sits above the map and below the effects, because the pass REPLACES map pixels.
-// ⚠ NO WEATHER MEANS NO DRAW: the meshes are hidden and the pump returns on its first test, once the
-// puddles and settled snow of the last preset have dried.
+// ⚠ NO WEATHER AND NO TIME OF DAY MEANS NO DRAW: the meshes hide once the last puddles and snow dry.
+// Time of day (timeOfDay.js) grades the map inside this pass, so weather runs on the graded pixel.
 
 const WEATHER_DM_STRENGTH = 1 / 3;
 const WEATHER_MASK_CHECK_MS = 500;
@@ -24,8 +24,11 @@ let _wxMaskCvs = null, _wxMaskTex = null, _wxMaskKey = '', _wxMaskCheckAt = 0;
 let _wxMaskUrl = null, _wxMaskDirty = false, _wxMaskSent = false, _wxSendPending = false;
 
 function _wxActive() {
-  return weatherId !== 'none' || !!_wxPrev || _wxLevels.wet > 0.001 || _wxLevels.snow > 0.001;
+  return weatherId !== 'none' || !!_wxPrev || _wxLevels.wet > 0.001 || _wxLevels.snow > 0.001 || todActive();
 }
+
+// A Time of day change rides the weather's push to the TV.
+function weatherMarkSend() { _wxSendPending = true; }
 
 // instant: a map opening, which starts at the preset's settled levels with no fade. Otherwise the
 // old preset stays on screen and fades out over the new one. Answers whether anything changed.
@@ -69,6 +72,7 @@ function _wxSetMask(cvs) {
   _wxMaskTex = new PIXI.Texture(PIXI.BaseTexture.from(cvs, { scaleMode: PIXI.SCALE_MODES.LINEAR }));
   for (const m of [_wxMain, _wxOld]) if (m) m.shader.uniforms.uRoom = _wxMaskTex;
   if (old) old.baseTexture.destroy();
+  todRoomGlow(cvs);
 }
 
 function _wxEmptyMask() {
@@ -100,7 +104,7 @@ function _wxRefreshMask(now) {
     buildRoundedPolyPath(ctx, scale(p.vertices), cr, pv, polyHoleRings(p).map(scale), scaleHandles(p.handles, 1 / FOG_SCALE));
     ctx.fill();
   }
-  if (fresh) _wxSetMask(cvs); else _wxMaskTex.baseTexture.update();
+  if (fresh) _wxSetMask(cvs); else { _wxMaskTex.baseTexture.update(); todRoomGlow(cvs); }
   _wxMaskUrl = null;
   _wxMaskDirty = true;
 }
@@ -128,12 +132,12 @@ function _wxLoadMaskUrl(url) {
 // Riding a map's first delivery (playerWindow.js): the preset and, when something falls, the mask.
 function weatherPayload() {
   _wxSendPending = false;
-  if (!_wxActive()) { _wxMaskSent = false; return { weather: weatherId, weatherMask: null }; }
+  if (!_wxActive()) { _wxMaskSent = false; return { weather: weatherId, timeOfDay: timeOfDayId, weatherMask: null }; }
   _wxMaskCheckAt = 0;
   _wxRefreshMask(performance.now());
   _wxMaskDirty = false;
   _wxMaskSent = true;
-  return { weather: weatherId, weatherMask: _wxMaskDataUrl() };
+  return { weather: weatherId, timeOfDay: timeOfDayId, weatherMask: _wxMaskDataUrl() };
 }
 
 // A preset change reaches the TV at once, never held for Send. ⚠ AN EDITED MASK IS HELD IN MANUAL like
@@ -143,7 +147,7 @@ function _wxFlushToPlayer(send) {
   if (!playerWindow || playerWindow.closed || !playerMapSent || tvShowsOtherMap()) { _wxSendPending = false; return; }
   const hasMask = _wxActive() && (!_wxMaskSent || (_wxMaskDirty && (autoSync || send)));
   if (!_wxSendPending && !hasMask) return;
-  const msg = { type: 'weather', weather: weatherId };
+  const msg = { type: 'weather', weather: weatherId, timeOfDay: timeOfDayId };
   if (hasMask) msg.mask = _wxMaskDataUrl();
   _wxSendPending = false;
   playerWindow.postMessage(msg, '*');
@@ -156,6 +160,7 @@ function weatherSendHeld() { _wxFlushToPlayer(true); }
 // Both ends of the push: the Player's inbox and the first delivery.
 function applyWeatherMessage(msg) {
   if (msg.weather !== undefined) setWeather(msg.weather, !!msg.instant);
+  if (msg.timeOfDay !== undefined) setTimeOfDay(msg.timeOfDay, !!msg.instant);
   if (msg.mask !== undefined) _wxLoadMaskUrl(msg.mask);
 }
 
@@ -165,7 +170,8 @@ function _wxMakeMesh() {
   const shader = PIXI.Shader.from(WEATHER_VERT, WEATHER_FRAG, {
     uMap: PIXI.Texture.WHITE, uRoom: _wxMaskTex,
     uT: 0, uSim: 0, uWind: 0, uAspect: 1, uInt: 0, uCell: 0, uLines: 0, uBeams: 0, uAlpha: 1, uGustA: 0,
-    uDark: 0, uFlash: 0, uWet: 0, uSnowC: 0, uStr: 1, uOverlay: 0,
+    uDark: 0, uFlash: 0, uWet: 0, uSnowC: 0, uStr: 1, uOverlay: 0, uFloor: 0,
+    uRoomGlow: PIXI.Texture.EMPTY, uLamp: PIXI.Texture.EMPTY, uTod: new Float32Array(3),
     uGustC: new Float32Array(2), uMapSize: new Float32Array(2),
     uRect: new Float32Array(4), uP1: new Float32Array(4), uP2: new Float32Array(4), uW: 3,
   });
@@ -189,12 +195,14 @@ function _wxBuild() {
 function _wxDrop() {
   _wxMain = _wxOld = _wxGeom = null;
   _wxMaskTex = null; _wxMaskCvs = null; _wxMaskKey = '';
+  todDrop();
 }
 
-// One draw of one preset. `alpha` is what the fade lets through.
-function _wxDraw(mesh, p, I, flash, alpha, f) {
+// One draw of one preset. `alpha` is what the fade lets through; `floor` draws the graded map under it.
+function _wxDraw(mesh, p, I, flash, alpha, f, floor) {
   const u = mesh.shader.uniforms;
   u.uMap = f.tex; u.uOverlay = f.overlay;
+  u.uFloor = floor ? 1 : 0; u.uTod.set(f.tod); u.uRoomGlow = todGlowTexture(); u.uLamp = f.lamp;
   u.uRect.set(f.rect); u.uMapSize[0] = mapWidth; u.uMapSize[1] = mapHeight;
   u.uAspect = mapWidth / mapHeight;
   u.uT = f.t; u.uSim = _wxSim; u.uWind = p.wind * Math.PI / 180;
@@ -222,6 +230,7 @@ function pumpWeather() {
   if (!_wxActive() || !mapWidth || !mapHeight) {
     if (_wxMain) _wxMain.visible = _wxOld.visible = false;
     if (!_wxActive()) _wxMaskKey = '';
+    if (!isPlayer) todSyncVideoFilter([0, 0, 0], 0);
     return;
   }
   if (!_wxMain) _wxBuild();
@@ -253,14 +262,18 @@ function pumpWeather() {
     rect: tex ? [pixiMapSprite.x, pixiMapSprite.y, Math.max(1, pixiMapSprite.width), Math.max(1, pixiMapSprite.height)] : [0, 0, mapWidth, mapHeight],
     str: isPlayer || playersViewOn ? 1 : WEATHER_DM_STRENGTH,
     gust: weatherGustAt(_wxGust, (now - _wxGustAt) / 4500),
+    tod: todWeightsNow(now),
   };
+  f.lamp = tex ? todLampTexture(f.tod) : PIXI.Texture.EMPTY;
+  if (!isPlayer) todSyncVideoFilter(f.tod, f.str);
 
   // The new preset lies under; fading in from nothing it is let through by the curve instead.
-  const idle = weatherId === 'none' && _wxLevels.wet <= 0.001 && _wxLevels.snow <= 0.001;
+  const tod = todActive();
+  const idle = weatherId === 'none' && _wxLevels.wet <= 0.001 && _wxLevels.snow <= 0.001 && !tod;
   if (idle) _wxMain.visible = false;
-  else _wxDraw(_wxMain, p, I, flash, weatherInAlpha(_wxPrevLevel, e), f);
+  else _wxDraw(_wxMain, p, I, flash, weatherInAlpha(_wxPrevLevel, e), f, tod);
   if (_wxPrev && _wxPrev !== 'none') {
     const pp = WEATHER_PRESETS[_wxPrev];
-    _wxDraw(_wxOld, pp, weatherStrength(pp, _wxSim), 0, _wxPrevLevel * (1 - e), f);
+    _wxDraw(_wxOld, pp, weatherStrength(pp, _wxSim), 0, _wxPrevLevel * (1 - e), f, false);
   } else _wxOld.visible = false;
 }

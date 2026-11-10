@@ -59,7 +59,7 @@ function drawDoorGhost(screenX, screenY) {
 }
 
 // Every door the fog carves, for the TV's light: its notch's four corners in map px and its width.
-// Rooms never reach the Player, so the notches go instead. Shrouded doors carve nothing and light nothing.
+// Rooms never reach the Player, so the notches go instead. Only a door doorGlows passes is sent.
 function doorLightQuads() {
   const size = doorSizeForCell(doorCellSize(), doorWidthPct, doorDepthPct);
   if (!(size.width > 0) || !(size.depth > 0)) return [];
@@ -68,7 +68,7 @@ function doorLightQuads() {
   for (const poly of polygons) {
     if (!poly.doors || poly.vertices.length < 3) continue;
     for (const d of poly.doors) {
-      if (doorResolvedMode(doorPoint(poly, d), polygons, tol) === 'shroud') continue;
+      if (!doorGlows(doorPoint(poly, d), polygons, tol)) continue;
       const c = doorNotchCorners(poly, d, size.width, size.depth, size.depth);
       if (!c) continue;
       const pts = [c.innerL, c.outerL, c.outerR, c.innerR];

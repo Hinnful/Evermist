@@ -174,3 +174,36 @@ describe('weather in a Claude edit', () => {
     assert.equal('weather' in rec, false);
   });
 });
+
+describe('time of day in a Claude edit', () => {
+  const edit = (rec, parts, set) => {
+    const keys = mcpMapKeys(parts);
+    const before = mcpMapSnapshot(mcpMapRecordRead(rec, keys, DEFAULTS), keys);
+    const d = mcpMapRecordRead(rec, keys, DEFAULTS);
+    Object.assign(d, set);
+    mcpMapRecordWrite(rec, d, keys);
+    return () => mcpMapRecordWrite(rec, before, keys);
+  };
+  it('is its own part, and reads an absent field as none', () => {
+    assert.deepEqual(mcpMapKeys(['timeOfDay']), ['timeOfDay']);
+    assert.deepEqual(mcpMapRecordRead({ id: 's' }, ['timeOfDay'], DEFAULTS), { timeOfDay: 'none' });
+    assert.deepEqual(mcpMapRecordRead({ id: 's', timeOfDay: 'dusk' }, ['timeOfDay'], DEFAULTS), { timeOfDay: 'dusk' });
+  });
+  it('undoes alone, leaving the weather the DM picked since', () => {
+    const rec = { id: 's', weather: 'rain', timeOfDay: 'day' };
+    const undo = edit(rec, ['timeOfDay'], { timeOfDay: 'night' });
+    assert.equal(rec.timeOfDay, 'night');
+    rec.weather = 'storm';
+    undo();
+    assert.equal(rec.timeOfDay, 'day');
+    assert.equal(rec.weather, 'storm');
+  });
+  it('writes None as no field, and keeps an id a newer release wrote until one is picked', () => {
+    const rec = { id: 's', timeOfDay: 'night' };
+    mcpMapRecordWrite(rec, { timeOfDay: 'none' }, ['timeOfDay']);
+    assert.equal('timeOfDay' in rec, false);
+    rec.timeOfDay = 'eclipse';
+    mcpMapRecordWrite(rec, mcpMapRecordRead(rec, ['timeOfDay'], DEFAULTS), ['timeOfDay']);
+    assert.equal(rec.timeOfDay, 'eclipse');
+  });
+});

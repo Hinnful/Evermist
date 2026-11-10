@@ -94,6 +94,7 @@ B.decorate = async (id, k, opts) => {
   sc.floorPlanName = 'План ' + k + '.dd2vtt';
   sc.fogSettings = sc.fogSettings || undefined;
   sc.weather = ['rain', 'snow', 'none'][k % 3];
+  sc.timeOfDay = ['night', 'dusk', 'none', 'day'][k % 4];
   sc.fogTheme = k % 2 ? 'fire' : 'ice';
   if (k % 2 === 0) sc.tvFit = { step: 1, turn: 1 };
   sc.gridConfig = Object.assign({}, sc.gridConfig, { opacity: 0.2 + (k % 5) * 0.05 });
@@ -198,7 +199,7 @@ B.sceneDigest = async (id) => {
     lights: JSON.stringify([sc.lightsHidden, sc.lightShapes || []]),
     nextIds: sc.nextPolygonId + ',' + sc.nextEffectId,
     notes: sc.notes || '', grid: esCanon(sc.gridConfig || {}), fogLook: esCanon([sc.fogSettings, sc.fogTheme]),
-    weather: String(sc.weather || ''), tvFit: esCanon(sc.tvFit || null),
+    weather: String(sc.weather || ''), timeOfDay: String(sc.timeOfDay || ''), tvFit: esCanon(sc.tvFit || null),
     floorPlan: sc.floorPlan ? String(sc.floorPlan.length || JSON.stringify(sc.floorPlan).length) : '',
     floorPlanName: sc.floorPlanName || '',
     fog: await B.hash(sc.baseFogBlob), thumb: sc.thumbnail ? 'yes' : 'no', pictures: JSON.stringify(pics),

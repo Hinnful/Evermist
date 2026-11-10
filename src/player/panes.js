@@ -70,6 +70,7 @@ window.paneView = {
   get planName()          { return (currentScene && currentScene.floorPlanName) || null; },
   get gridConfig()        { return captureGridConfig(); },
   get weather()           { return weatherId; },
+  get timeOfDay()         { return timeOfDayId; },
   get fogTheme()          { return fogTheme; },
   get sceneNotes()        { return currentScene ? currentScene.notes || '' : null; },
 };
@@ -82,6 +83,7 @@ function paneAdoptSelectedSettings() {
   refreshLightsControlUI();
   refreshRoomsControlUI();
   if (s.weather !== undefined) refreshWeatherUI(s.weather);
+  if (s.timeOfDay !== undefined) refreshTimeOfDayUI(s.timeOfDay);
   // The dropdown shows the selected column's own theme.
   if (s.fogTheme !== undefined) refreshFogThemeUI(s.fogTheme);
 }
@@ -320,6 +322,7 @@ function teardownParentMap() {
   polygons = [];
   setEffects([]);
   setWeather('none', true);   // or the hidden canvas keeps drawing it every frame
+  setTimeOfDay('none', true);
   clearUndo();
   currentScene = null;
   playerMapSent = false;

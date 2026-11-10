@@ -136,6 +136,7 @@ function doAutoSave() {
     tvFit:         tvFit.step ? { step: tvFit.step, turn: tvFit.turn } : undefined,
     fogSettings:   captureFogSettings(),
     weather:       weatherId,
+    timeOfDay:     timeOfDayId,
     fogTheme,
   };
   const run = new Promise(resolve => {
@@ -157,6 +158,7 @@ function doAutoSave() {
       // Absent means none, so a map without weather keeps the record the previous release wrote. A value
       // this build cannot read (a newer release's, after /rollback) stays until the DM picks another.
       if (snap.weather !== weatherNormalize(scene.weather)) { if (snap.weather !== 'none') scene.weather = snap.weather; else delete scene.weather; }
+      timeOfDayWrite(scene, snap.timeOfDay);
       // The same for the fog theme: absent is Default, which the previous release never reads.
       if (snap.fogTheme !== fogThemeNormalize(scene.fogTheme)) { if (snap.fogTheme !== 'default') scene.fogTheme = snap.fogTheme; else delete scene.fogTheme; }
       if (snap.tvFit) scene.tvFit = snap.tvFit; else delete scene.tvFit;

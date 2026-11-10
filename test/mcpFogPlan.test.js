@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { mcpFogRoomMode, mcpFogThemeId, mcpWeatherId, mcpFogFindRooms, mcpFogArea, mcpFogPixels, mcpFogRoomsOverriding, mcpFogBox } = require('../src/mcp/mcpFogPlan.js');
+const { mcpFogRoomMode, mcpFogThemeId, mcpWeatherId, mcpTimeOfDayId, mcpFogFindRooms, mcpFogArea, mcpFogPixels, mcpFogRoomsOverriding, mcpFogBox } = require('../src/mcp/mcpFogPlan.js');
 
 const sq = (x, y, w) => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + w }, { x, y: y + w }];
 
@@ -23,6 +23,16 @@ describe('mcpFogThemeId', () => {
     assert.equal(mcpFogThemeId('DEFAULT'), 'default');
     assert.equal(mcpFogThemeId('slow'), null);
     assert.equal(mcpFogThemeId(undefined), null);
+  });
+});
+
+describe('mcpTimeOfDayId', () => {
+  it('finds a time of day by its id or the name the control shows', () => {
+    assert.equal(mcpTimeOfDayId('night'), 'night');
+    assert.equal(mcpTimeOfDayId(' Dusk '), 'dusk');
+    assert.equal(mcpTimeOfDayId('None'), 'none');
+    assert.equal(mcpTimeOfDayId('noon'), null);
+    assert.equal(mcpTimeOfDayId(undefined), null);
   });
 });
 

@@ -57,6 +57,14 @@ describe('mcpShim', () => {
     assert.deepEqual(tool.inputSchema.required, ['name']);
     assert.match(tool.description, /weather/i);
   });
+  it('offers set_fog_look a time of day with the four ids', async () => {
+    const { TIME_OF_DAY_IDS } = require('../src/render/timeOfDayPlan.js');
+    const [, list] = await talk(path.join(dir, 'none.json'), [{ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }, { id: 2, method: 'tools/list' }]);
+    const tool = list.result.tools.find(t => t.name === 'set_fog_look');
+    assert.deepEqual(tool.inputSchema.properties.timeOfDay.enum, TIME_OF_DAY_IDS);
+    assert.match(tool.inputSchema.properties.timeOfDay.description, /none shows it as drawn/);
+    assert.match(tool.description, /time of day/i);
+  });
   it('explains what Evermist holds and that Claude only preps', async () => {
     const [init] = await talk(path.join(dir, 'none.json'), [{ id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }]);
     const text = init.result.instructions;

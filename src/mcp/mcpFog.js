@@ -94,15 +94,22 @@ async function _mcpSetFogLook(args) {
   if (args.preset !== undefined || args.tint !== undefined) return _mcpNo(MCP_OLD_TOOLS);
   const id = args.theme === undefined ? undefined : mcpFogThemeId(args.theme);
   const wx = args.weather === undefined ? undefined : mcpWeatherId(args.weather);
-  if (id === undefined && wx === undefined) return _mcpNo('Nothing to change: give theme, weather or both.');
+  const tod = args.timeOfDay === undefined ? undefined : mcpTimeOfDayId(args.timeOfDay);
+  if (id === undefined && wx === undefined && tod === undefined) return _mcpNo('Nothing to change: give theme, weather, timeOfDay or several.');
   if (id === null) return _mcpNo('theme must be one of: ' + FOG_THEMES.map(t => t.id).join(', ') + '.');
   if (wx === null) return _mcpNo('weather must be one of: ' + WEATHER_IDS.join(', ') + '.');
+  if (tod === null) return _mcpNo('timeOfDay must be one of: ' + TIME_OF_DAY_IDS.join(', ') + '.');
   // Each part is named only when asked for, so the one undo step writes back just what the call changed.
-  const parts = [id !== undefined && 'fogTheme', wx !== undefined && 'weather'].filter(Boolean);
-  const edit = await mcpEditMap(s, 'changing its fog look', parts, d => { if (id !== undefined) d.fogTheme = id; if (wx !== undefined) d.weather = wx; });
+  const parts = [id !== undefined && 'fogTheme', wx !== undefined && 'weather', tod !== undefined && 'timeOfDay'].filter(Boolean);
+  const edit = await mcpEditMap(s, 'changing its fog look', parts, d => {
+    if (id !== undefined) d.fogTheme = id;
+    if (wx !== undefined) d.weather = wx;
+    if (tod !== undefined) d.timeOfDay = tod;
+  });
   if (edit.no) return edit.no;
-  const did = [id !== undefined && 'fog theme', wx !== undefined && 'weather'].filter(Boolean).join(' and ');
-  const said = [id !== undefined && 'the fog to the ' + fogThemeRecord(id).label + ' theme', wx !== undefined && 'the weather to ' + WEATHER_PRESETS[wx].label].filter(Boolean).join(' and ');
+  const did = [id !== undefined && 'fog theme', wx !== undefined && 'weather', tod !== undefined && 'time of day'].filter(Boolean).join(' and ');
+  const said = [id !== undefined && 'the fog to the ' + fogThemeRecord(id).label + ' theme', wx !== undefined && 'the weather to ' + WEATHER_PRESETS[wx].label,
+    tod !== undefined && 'the time of day to ' + TIME_OF_DAY_LABELS[tod]].filter(Boolean).join(' and ');
   return mcpDone('set the ' + did + ' of the map "' + s.name + '"', edit.undo,
     'Set ' + said + ' on the map "' + s.name + '".' + _mcpFogSay(s));
 }

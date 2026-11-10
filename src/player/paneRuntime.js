@@ -53,6 +53,7 @@ const PANE_CONTROLS = {
   'pane-undo':        () => undo(),
   'pane-redo':        () => redo(),
   'pane-weather':     m => applyWeatherChoice(m.id),
+  'pane-time-of-day': m => applyTimeOfDayChoice(m.id),
 
   'pane-grid':      m => { applyGridConfig(m.config); commitGridChange(); },
   'pane-calibrate': m => armGridCalibration(!!m.on),

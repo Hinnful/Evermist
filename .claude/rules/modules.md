@@ -71,7 +71,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `undo.js` | Undo/redo for fog edits |
 | `render/effects.js` | Map effects: the `effects` array's model and its meshes |
 | `render/weatherPlan.js` | Pure weather kernel: the six presets, strength over time, puddle and snow levels, the fade, a saved id read back. Tested |
-| `render/weatherShader.js` | The weather pass's vertex and fragment shaders. Data only |
+| `render/timeOfDayPlan.js` | Pure time-of-day kernel: the four ids, a saved id read back and written, each filter per pixel, the lamp mask, the fade's weights. Tested |
+| `render/weatherShader.js` | The weather pass's vertex and fragment shaders, Time of day's grade first. Data only |
+| `render/timeOfDay.js` | Time of day on a live window: the pick, its fade, the rooms' glow and lamp textures, the DM's animated map |
 | `render/weather.js` | Weather on a map: the meshes under the fog, the fade, the room mask, the push to the TV |
 | `render/effectMaterials.js` | One record per material: ramp, warmth, grid colour, look |
 | `render/effectShader.js` | An effect's two fragment passes and their vertex cap |
@@ -286,7 +288,7 @@ repo root:
 ```
 i18n/i18nPlan.js → i18n/ru.js → i18n/i18n.js → ui/icons.js → lib/pixi.min.js → lib/polygon-clipping.umd.js → render/renderer.js → render/playerFogShader.js → render/playerFogPass.js → render/playerFogTrans.js →
 render/dmFogLayer.js → state.js → render/display.js → render/video.js → render/videoDiag.js →
-fog/fogGeometry.js → fog/fogTransitionPlan.js → fog/fogColor.js → fog/themes/fogThemes.js → fog/themes/default.js → fog/themes/blood.js → fog/themes/toxic.js → fog/themes/ice.js → fog/themes/fire.js → render/weatherPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → rooms/vttHoles.js → fog/lightGeometry.js →
+fog/fogGeometry.js → fog/fogTransitionPlan.js → fog/fogColor.js → fog/themes/fogThemes.js → fog/themes/default.js → fog/themes/blood.js → fog/themes/toxic.js → fog/themes/ice.js → fog/themes/fire.js → render/weatherPlan.js → render/timeOfDayPlan.js → shapes/doorGeometry.js → shapes/presetGeometry.js → rooms/vttPlan.js → rooms/vttHoles.js → fog/lightGeometry.js →
 fog/fogClouds.js → fog/fog.js → fog/fogAnim.js → fog/fogTheme.js → fog/fogControls.js → shapes/roomOps.js →
 shapes/shapeDetail.js → shapes/shapeCommit.js → shapes/toolPoly.js → shapes/repairKeys.js → shapes/toolShapes.js →
 shapes/toolPreset.js → shapes/toolBrush.js → shapes/toolDoor.js → shapes/toolCut.js → shapes/shapeMarkers.js →
@@ -297,7 +299,7 @@ scenes/sceneGroups.js → scenes/editStamps.js → scenes/sceneStore.js → scen
 scenes/trashPlan.js → scenes/sceneTrash.js → scenes/sceneDelete.js → scenes/mapImport.js → scenes/sceneSwitch.js →
 render/viewport.js → render/mapTurn.js → render/ping.js → player/playerWindow.js → player/panes.js → player/twoMaps.js → player/stageWindow.js →
 scenes/transferPlan.js → scenes/backup.js → scenes/transferImport.js → scenes/syncPlan.js → scenes/syncMusicPlan.js → scenes/syncIndex.js → scenes/syncMerge.js → scenes/syncMusic.js → scenes/sync.js → scenes/syncSettings.js → scenes/trashPanel.js → render/grid.js → render/effectMaterials.js → render/effectShader.js →
-render/effects.js → render/weatherShader.js → render/weather.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → render/fogPreview.js → ui/repairBar.js → ui/wheelPlan.js → ui/effectsRow.js → ui/effectsTool.js → ui/effectsBarFire.js → player/player.js →
+render/effects.js → render/weatherShader.js → render/timeOfDay.js → render/weather.js → render/lights.js → scenes/dragDrop.js → ui/toolbar.js → shapes/shapeMenu.js → ui/fogBar.js → render/fogPreview.js → ui/repairBar.js → ui/wheelPlan.js → ui/effectsRow.js → ui/effectsTool.js → ui/effectsBarFire.js → player/player.js →
 player/playerMap.js → player/playerMessages.js → player/paneRuntime.js → ui/input.js →
 dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js → render/gridCalibrate.js → player/minimap.js → player/tvPick.js → player/tvFit.js → player/tvInch.js → player/tvControl.js → player/tvOneInch.js →
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hintsPlan.js → ui/hints.js → ui/hintsFirstMap.js → ui/hintsCues.js → ui/confirmDialog.js → rooms/floorPlan.js →

@@ -20,13 +20,13 @@ async function _mcpLoadFloorPlan(args) {
   if (args.path) {
     const read = await _mcpPlanFile(args.path);
     if (read.error) return _mcpNo(read.error);
-    if (!describePlan(read.text)) return _mcpNo('Not done: "' + _mcpFileName(args.path) + '" is not a floor plan Evermist can draw rooms from. It reads the .dd2vtt file Dungeon Alchemist exports beside a map.');
+    if (!describePlan(read.text)) return _mcpNo('Not done: "' + _mcpFileName(args.path) + '" is not a floor plan Evermist can draw rooms from. It reads a floor plan (.dd2vtt, .uvtt or .df2vtt).');
     text = read.text;
   }
   let would = null, c = null, derived = null, size = null;
   const edit = await mcpEditMap(s, 'loading a floor plan onto it', ['plan', 'rooms', 'lights', 'grid'], d => {
     const plan = text || d.floorPlan;
-    if (!plan) return 'Not done: "' + s.name + '" has no floor plan stored with it. Give path: the full path of its .dd2vtt file.';
+    if (!plan) return 'Not done: "' + s.name + '" has no floor plan stored with it. Give path: the full path of its floor plan (.dd2vtt, .uvtt or .df2vtt) file.';
     derived = describePlan(plan);
     if (!derived) return 'Not done: the floor plan stored with "' + s.name + '" draws no rooms.';
     size = planGridSize(plan, d.mapWidth);

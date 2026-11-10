@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 8 open items; IDs run to 291."
+description: "Open work only. 6 open items; IDs run to 291."
 metadata: 
   node_type: memory
   type: project
@@ -36,7 +36,7 @@ on it, it goes to DECISIONS.md or nowhere.
 
 ## ⚑ Where the versions are
 
-`package.json` is at **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
+`package.json` is at **5.10.0**: Time of day (None, Day, Dusk, Night) joins Weather, doors glow and notch only from a revealed room into hidden fog, and floor plan texts name no file format. **5.9.0**: a 1 inch button beside Sync scales the TV so a square is 1.1 inches, TV setup picks the TV's size, Lock is gone, and `.uvtt` and `.df2vtt` floor plans load. **5.8.0**: deleted maps and music tracks wait 30 days in the Trash on every computer, with or without Google Drive, and a delete into the Trash asks nothing. **5.7.0**: music syncs through Google Drive, Settings shows how full the Drive is, and the floor plan card shows the plan's file name. **5.6.0** rebuilt Map settings in plain words with dashed and dotted grid lines, and a door placed with the Door tool fades in on the TV. **5.5.2** made doors a quarter cell deep and glowing on the TV, and lets a map picture a sync replaced be restored. **5.5.1** fixed Export and Import of a large library. **5.5.0** added Google Drive sync. **The 5.0 epic, the prep pipeline, closed on 2026-10-31 with 5.0.0**: search,
 the Notes window, links, the AI assistant filling notes, the new logo and the README. No item carries a release tag.
 **The MCP epic closed on 2026-10-28 with 4.13.0.** The First User Experience
 epic closed on 2026-10-25 with its done test still unrun. 2.12.0 to 2.15.3 are the vector editing epic, now closed: two selection
@@ -75,18 +75,6 @@ categories. Effort and risk are judged once an item is picked, not here.
 ---
 
 # EVERYTHING ELSE
-
-### 259. Time of day
-Filed 2026-11-04. A list of its own beside Weather (day, dusk, night), so a sunny preset on a night map stops being a
-mismatch the DM has to avoid. Floated by the DM while weather was settled; nothing about it is designed yet.
-Rivals, found 2026-11-09: Arkenforge's Time of Day widget fades between hours at a set speed, shadows follow the sun,
-and the TV takes filters (Greyscale, Sepia, Underwater, Night Vision); Table Slayer makes time of day a headline feature
-with colour grading; MythLayer has day, dim and night; Mappadux puts mood filters on the TV only. Dungeon Alchemist's
-"Ambient Lighting" request has 169 votes. The research favours a list of looks, the way Weather works, with no fade-speed
-dial. Day and night versions of one map (Cze & Peku publish both) are decided here too.
-**Needs a design round.**
-**Play · Player**
-
 
 ### 276. Google's sign-in calls Evermist an unverified app
 Filed 2026-11-07, with 5.5.0. Connect to Google shows Google's "unverified app" warning until Google reviews the app's
@@ -153,13 +141,6 @@ players only or none), DMHelper (the active creature, the next two, an optional 
 left off). The physical rival is tent cards; the strip wins only because the fight table fills it. **Needs a design
 round, then `/spec`.**
 **Play · Player**
-
-### 291. Floor plan texts name only .dd2vtt
-Filed 2026-11-09, with 5.9.0. Evermist reads `.uvtt` and `.df2vtt` floor plans too, but the floor plan card's two tooltips,
-the bad-file message (which also names only Dungeon Alchemist) and the AI assistant's floor-plan tool descriptions still say
-".dd2vtt". Recommended wording: "floor plan" alone, since the file picker already filters to the right files. Waits on the
-DM's wording call; a rename the DM sees needs the DM's yes.
-**Polish · DM only**
 
 ---
 

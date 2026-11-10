@@ -227,6 +227,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
 
   if (!isPlayer) restoreSceneFogSettings(scene); // fog.js
   if (!isPlayer) { setWeather(weatherNormalize(scene.weather), true); if (typeof refreshWeatherUI === 'function') refreshWeatherUI(); }
+  if (!isPlayer) { setTimeOfDay(scene.timeOfDay, true); if (typeof refreshTimeOfDayUI === 'function') refreshTimeOfDayUI(); }
 
   clearUndo();
   fogEditedSinceSave = false;

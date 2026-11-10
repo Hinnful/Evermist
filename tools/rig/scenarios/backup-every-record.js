@@ -10,7 +10,7 @@
 // THE KINDS, read off src/scenes/backup.js, electron/backupZip.js and src/scenes/transferImport.js:
 //
 //   per map     the image or the animated map's file, the thumbnail, the rooms (with doors from a real floor plan), the
-//               effects, the lights, the notes, the fog layer, the grid, the fog look and weather, the TV fit, the room
+//               effects, the lights, the notes, the fog layer, the grid, the fog look, weather and time of day, the TV fit, the room
 //               pictures, the floor plan and its file name, where the map sits on the Campaign and its group
 //   campaign    groups and their notes, roads and their notes, the party marker, factions and lore, the campaign note,
 //               the group uids that mentions point at, the world map's backdrop
@@ -32,7 +32,7 @@ const kit = require('../backupKit');
 const MAP_KINDS = {
   'the map file': ['map', 'videoFile', 'size', 'type'], 'the thumbnail': ['thumb'], 'the rooms': ['rooms', 'nextIds'],
   'the effects': ['effects'], 'the lights': ['lights'], 'the map notes': ['notes'], 'the fog layer': ['fog'],
-  'the grid': ['grid'], 'the fog look': ['fogLook'], 'the weather': ['weather'], 'the TV fit': ['tvFit'],
+  'the grid': ['grid'], 'the fog look': ['fogLook'], 'the weather': ['weather'], 'the time of day': ['timeOfDay'], 'the TV fit': ['tvFit'],
   'the room pictures': ['pictures'], 'the floor plan': ['floorPlan'], 'the map name': ['name'],
   'where the map sits on the Campaign': ['group', 'worldPos'],
 };

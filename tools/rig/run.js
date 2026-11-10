@@ -4,7 +4,7 @@
 // run scenarios against them, print one verdict.
 //
 //   npm run rig                        the blockers set (what CI gates a release on)
-//   npm run rig -- blockers            launch, prep, table-session, keeps-work, in that order
+//   npm run rig -- blockers            launch, prep, table-session, keeps-work, time-of-day, in that order
 //   npm run rig -- launch              one scenario by name
 //   npm run rig -- --exe "dist/Evermist.exe"          drive a built installer instead
 //   npm run rig -- --shot "#world-map" --shot-setup "worldMapShow()"
@@ -139,8 +139,8 @@ const SCEN_DIR = path.join(__dirname, 'scenarios');
 const BLOCKERS_DIR = path.join(SCEN_DIR, 'blockers');
 
 // The release blockers, in the order they run: the app starts, a map can be prepared, a table
-// session works, and the DM's work survives a restart and a backup.
-const BLOCKERS = ['launch', 'prep', 'table-session', 'keeps-work'];
+// session works, the DM's work survives a restart and a backup, and a time of day shows on both screens.
+const BLOCKERS = ['launch', 'prep', 'table-session', 'keeps-work', 'time-of-day'];
 const blockerFiles = () => BLOCKERS.map(b => path.join(BLOCKERS_DIR, b + '.js'));
 
 function resolveScenarios(names) {

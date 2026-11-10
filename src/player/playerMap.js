@@ -121,7 +121,7 @@ function applyFogUpdate(msg) {
   if (msg.effects !== undefined) setEffects(msg.effects);
   if (msg.lights !== undefined) setLightPolys(msg.lights);
   if (msg.doors !== undefined) doorLights = msg.doors;   // lit with the mask they arrived with (playerFogPass.js)
-  if (msg.mapUrl && msg.weather !== undefined) applyWeatherMessage({ weather: msg.weather, mask: msg.weatherMask, instant: true });
+  if (msg.mapUrl && msg.weather !== undefined) applyWeatherMessage({ weather: msg.weather, timeOfDay: msg.timeOfDay, mask: msg.weatherMask, instant: true });
   if (msg.gridEnabled !== undefined) {
     gridEnabled   = msg.gridEnabled;
     gridSize      = msg.gridSize      || gridSize;

@@ -75,6 +75,12 @@ describe('esStamp', () => {
     assert.deepEqual(E.esStamp(snap, scene([], { weather: 'none' }), 72, false).scene, {});
   });
 
+  it('stamps the time of day when it changes, and reads absent and None as the same', () => {
+    const snap = E.esSnapshot(scene([]));
+    assert.deepEqual(E.esStamp(snap, scene([], { timeOfDay: 'night' }), 73, false).scene, { timeOfDay: 73 });
+    assert.deepEqual(E.esStamp(snap, scene([], { timeOfDay: 'none' }), 74, false).scene, {});
+  });
+
   it('gives an effect one time, and a deletion record when it goes', () => {
     const fx = { id: 1, material: 'fire', vertices: [] };
     const prev = E.esSnapshot(scene([], { effects: [fx] }));

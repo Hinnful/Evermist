@@ -14,6 +14,7 @@ function initControlPanel() {
 
   _cpInitFogTheme();
   _cpInitWeather();
+  _cpInitTimeOfDay();
   _cpInitGrid();
   _cpInitRooms();
   _cpInitLights();
@@ -28,6 +29,7 @@ function initControlPanel() {
 
   refreshFogThemeUI();
   refreshWeatherUI();
+  refreshTimeOfDayUI();
   refreshGridControlUI();
   refreshPlayerControlUI();
   refreshRoomsControlUI();
@@ -88,6 +90,18 @@ function _cpInitWeather() {
 // `id` is the selected column's preset in two-map mode, where the shell holds none of its own.
 function refreshWeatherUI(id) {
   _cpPick('cp-wx-row', 'data-wx', weatherNormalize(id === undefined ? weatherId : id));
+}
+
+// ─── Time of day: one icon per pick ──────────────────────────────────────────
+function _cpInitTimeOfDay() {
+  document.querySelectorAll('#cp-tod-row [data-tod]').forEach(btn => {
+    btn.addEventListener('click', () => chooseTimeOfDay(btn.dataset.tod));
+  });
+}
+
+// `id` is the selected column's pick in two-map mode, where the shell holds none of its own.
+function refreshTimeOfDayUI(id) {
+  _cpPick('cp-tod-row', 'data-tod', timeOfDayNormalize(id === undefined ? timeOfDayId : id));
 }
 
 // ─── Grid: the switch on the title, type, cells, line, colour, opacity ───────
@@ -313,9 +327,10 @@ function _cpInitResets() {
   });
 
   _cpEl('cp-fog-reset').addEventListener('click', () => {
-    ask('Weather goes back to No weather, and the fog theme goes back to Default.', () => {
+    ask('Weather goes back to No weather, time of day to None, and the fog theme to Default.', () => {
       setFogTheme('default');
       chooseWeather('none');
+      chooseTimeOfDay('none');
     });
   });
 }

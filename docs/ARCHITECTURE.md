@@ -254,13 +254,15 @@ The fog is the heart of the app, so it's worth understanding.
    edges.
 
    **Doors glow on the TV.** The DM sends the lit notches (`doorLightQuads()` in `toolDoor.js`: four
-   corners and width of each notch the fog carves, shrouded doors skipped) on both `fog-update`
+   corners and width of each notch the fog carves, only doors `doorGlows` passes) on both `fog-update`
    messages as `doors`, since rooms never reach the Player; the Player keeps them in the
    non-persisted `doorLights` global. `playerFogPass.js` builds a door-light texture beside the mask
    at its UV (red = the notch blurred by a sixth of its width, green = the notch), rebuilt only when
    the list or size changes, and `playerFogShader.js` samples it once (`uDoor`, `uDoorCol`, the colour
-   crossfading with the theme). A glow in the theme's `doorLight` colour spreads from a lit notch into
-   fog that stays fogged, fading over about a third of the door's width, and the map in the notch is
+   crossfading with the theme). A door glows only where it leads from a revealed room into fully hidden
+   fog (`doorGlows` in `doorGeometry.js`, decided on the DM side; a wall only one room runs through has
+   hidden fog beyond it). The glow, in the theme's `doorLight` colour, spreads from a lit notch into fog that
+   stays fogged, fading over about a third of the door's width, and the map in the notch is
    lifted about 25% (additive). It never thins the fog, so nothing past the door shows. It follows the
    fog's own reveal/hide change and is gone where both sides are revealed. The DM view draws none. A
    newly placed door's light appears at once rather than fading in.
@@ -319,6 +321,19 @@ revealed ground only. `weatherPlan.js` holds the numbers.
 - **Saved** as the scene field `weather`; absent means none. It is its own edit-stamp part and rides in
   the backup manifest. For Claude's map edits and undo it joins the fog look's part. The previous release
   ignores the field, so a backup made on it drops the weather. Claude's `weather` and `fogTheme` map parts each undo alone.
+
+**Time of day** gives every map four picks, None, Day, Dusk and Night, each one fixed filter with the same
+numbers on every map (`timeOfDayPlan.js`, in linear light, its contrast turning about a fixed luminance rather than
+the map's own). It is the first stage of the weather pass: the map pixel is graded, then the weather runs on it, so
+weather and fog draw on top and lights and effects, drawn above the pass, are untouched. The pass draws whenever
+Time of day is not None, even with No weather. Day lifts the dark parts everywhere, rooms included, and takes the
+map's own lamp orange off the ground through a lamp mask built from one downscaled still. Dusk and Night change
+everything outside rooms and add a warm glow just outside each one, from the room mask blurred; inside a room a dark
+interior stays as drawn and bright ground dims a little. Both textures are built once per map or room change
+(`timeOfDay.js`). Strength, the 8-second fade (old and new grades blended), the push to the TV without Send, the
+saved field `timeOfDay` (absent is None, its own edit-stamp part, in the backup manifest) and Claude's own part
+that undoes alone all follow Weather. On the DM's animated map, a video under the canvas, Day is a CSS filter on the
+video and Dusk and Night a tint fitted on mid grey with the rooms cut out; the TV gets the exact filter.
 
 ## First-use hints
 

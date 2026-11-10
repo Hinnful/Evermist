@@ -411,20 +411,38 @@ function doorModeRank(mode) {
   return i < 0 ? DOOR_MODE_ORDER.length - 1 : i;
 }
 
-// The state a door shows in: the most revealed of EVERY room whose wall runs through it, never the
-// state of the one room that stores it. Two rooms share a doorway's wall and a click attaches to
-// only one, which the DM cannot aim at. It also settles half-shroud, which has no answer while a
-// door belongs to one room: half beside shrouded is half, revealed beside anything is revealed.
-function doorResolvedMode(centre, rooms, tol) {
-  if (!centre || !rooms) return 'shroud';
-  let best = 0;
+// Both rules below read EVERY room whose wall runs through the door, never only the room that stores
+// it: two rooms share a doorway's wall and a click attaches to one, which the DM cannot aim at.
+
+// Whether a door lights the TV: it leads from a revealed room into fully hidden fog. A wall only one
+// room runs through has hidden fog beyond it. Decided here, not in the shader: a fog value at a pixel
+// cannot tell a hidden room's feather from a half room's, and gating there dims the glow's rim.
+function doorGlows(centre, rooms, tol) {
+  if (!centre || !rooms) return false;
+  const ranks = [];
+  for (const r of rooms) {
+    if (!r || !r.vertices || r.vertices.length < 3) continue;
+    if (nearestOutlinePoint(r, centre.x, centre.y, tol)) ranks.push(doorModeRank(r.mode));
+  }
+  if (!ranks.length) return false;
+  if (ranks.length === 1) ranks.push(0);
+  return Math.max(...ranks) === DOOR_MODE_ORDER.length - 1 && Math.min(...ranks) === 0;
+}
+
+// Whether a door cuts a notch in the fog: only from a revealed room, and only where no half room
+// shares its wall. Half fog already shows the door art, and a notch cut into it reads as a hole.
+function doorCarves(centre, rooms, tol) {
+  if (!centre || !rooms) return false;
+  const half = doorModeRank('half');
+  let best = -1, anyHalf = false;
   for (const r of rooms) {
     if (!r || !r.vertices || r.vertices.length < 3) continue;
     if (!nearestOutlinePoint(r, centre.x, centre.y, tol)) continue;
     const rank = doorModeRank(r.mode);
+    if (rank === half) anyHalf = true;
     if (rank > best) best = rank;
   }
-  return DOOR_MODE_ORDER[best];
+  return best === DOOR_MODE_ORDER.length - 1 && !anyHalf;
 }
 
 // Which of a floor plan's openings are doorways, and where each notch goes. `rooms` is one vertex
@@ -507,7 +525,8 @@ if (typeof module !== 'undefined' && module.exports) {
     pointInDoorNotch,
     doorClickPlan,
     doorModeRank,
-    doorResolvedMode,
+    doorGlows,
+    doorCarves,
     sharedWallSpans,
     DOOR_MODE_ORDER,
     remapDoorsForVertexChange,

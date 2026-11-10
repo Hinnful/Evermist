@@ -156,10 +156,11 @@ door holds the same point of the map, moving onto whichever half of the split wa
 Delete a vertex and the doors on the two walls it joined go with them, having no wall left to sit
 on.
 
-A door belongs to a room, so it appears only when that room does. Its density, though, is the most
-revealed of every room whose wall runs through it - which stops the choice of owner mattering on a
-wall two rooms share, and gives half-shroud an answer. Doors reach the Player for free: they are
-cut into the same fog stencil that crosses to the TV.
+A door belongs to a room, but whether it cuts a notch is read off every room whose wall runs through
+it, so the choice of owner does not matter on a wall two rooms share: it cuts a cleared notch only
+from a revealed room, and never where a half room shares the wall (`doorCarves`). A door touching a
+half room cuts nothing, since half fog already shows the door art. Doors reach the Player for free:
+they are cut into the same fog stencil that crosses to the TV.
 
 ## The room in the Notes pane
 

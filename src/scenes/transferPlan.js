@@ -14,7 +14,7 @@ const _TP_FG = typeof decodeShapeFromSave === 'function'
 
 const TP_ROOM_PARTS = ['shape', 'notes', 'mode'];
 const TP_PART_LABEL = {
-  name: 'name', grid: 'grid', map: 'map', fog: 'fog', notes: 'notes', fogSettings: 'fog settings', weather: 'weather', lights: 'lights', tvFit: 'TV fit',
+  name: 'name', grid: 'grid', map: 'map', fog: 'fog', notes: 'notes', fogSettings: 'fog settings', weather: 'weather', timeOfDay: 'time of day', lights: 'lights', tvFit: 'TV fit',
   place: 'Group', shape: 'shape', mode: 'revealed state', text: 'name and notes', effect: 'effect', deleted: 'room deleted',
 };
 
@@ -203,6 +203,7 @@ function tpMergeScene(local, incoming, moment, opts) {
   if (take.notes) record.notes = incoming.notes;
   if (take.fogSettings) { record.fogSettings = incoming.fogSettings; record.fogTheme = incoming.fogTheme; }
   if (take.weather) record.weather = incoming.weather;
+  if (take.timeOfDay) record.timeOfDay = incoming.timeOfDay;
   if (take.tvFit) record.tvFit = incoming.tvFit;
   if (take.place) { record.group = incoming.group || ''; record.worldPos = incoming.worldPos; }
   if (take.lights) { record.lightsHidden = !!incoming.lightsHidden; record.lightShapes = incoming.lightShapes || []; }
@@ -215,7 +216,7 @@ function tpMergeScene(local, incoming, moment, opts) {
 // storage fields, which a file never sets.
 const _TP_KNOWN = new Set(['id', 'name', 'group', 'worldPos', 'mapType', 'mapWidth', 'mapHeight', 'mapMimeType', 'mapExt', 'polygons',
   'nextPolygonId', 'notes', 'pictures', 'effects', 'nextEffectId', 'lightsHidden', 'lightShapes', 'floorPlan', 'floorPlanName', 'gridConfig', 'fogSettings',
-  'fogTheme', 'weather', 'tvFit', 'createdAt', 'sortOrder', 'edits', 'pictureBlobs', 'mapBlob', 'mapPath', 'baseFogBlob', 'baseFogPNG', 'thumbnail']);
+  'fogTheme', 'weather', 'timeOfDay', 'tvFit', 'createdAt', 'sortOrder', 'edits', 'pictureBlobs', 'mapBlob', 'mapPath', 'baseFogBlob', 'baseFogPNG', 'thumbnail']);
 
 // ⚠ NEVER A FIXED LIST OF WHAT TO KEEP: a field a later release added to a map rides along, so a map that travels
 // through Import after a /rollback keeps it. Answers the entry's fields this release does not know.

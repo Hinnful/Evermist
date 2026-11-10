@@ -24,7 +24,8 @@ const {
   pointInDoorNotch,
   doorClickPlan,
   doorModeRank,
-  doorResolvedMode,
+  doorGlows,
+  doorCarves,
   sharedWallSpans,
   remapDoorsForVertexChange,
 } = require('../src/shapes/doorGeometry.js');
@@ -312,49 +313,72 @@ describe('remapDoorsForVertexChange', () => {
   });
 });
 
-describe('doorResolvedMode', () => {
-  // Two rooms sharing the wall y=12: A above it, B below it.
-  const A = { vertices: [{ x: 0, y: 0 }, { x: 12, y: 0 }, { x: 12, y: 12 }, { x: 0, y: 12 }] };
-  const B = { vertices: [{ x: 0, y: 12 }, { x: 12, y: 12 }, { x: 12, y: 24 }, { x: 0, y: 24 }] };
-  const ON_SHARED = { x: 6, y: 12 };
-  const TOL = 1;
-
+describe('doorModeRank', () => {
   it('ranks least to most revealed, and treats an unset mode as revealed', () => {
     assert.ok(doorModeRank('reveal') > doorModeRank('half'));
     assert.ok(doorModeRank('half') > doorModeRank('shroud'));
     assert.equal(doorModeRank(undefined), doorModeRank('reveal'));
   });
+});
 
-  it('shows the door when EITHER room is revealed, whichever one stores it', () => {
-    assert.equal(doorResolvedMode(ON_SHARED,
-      [{ ...A, mode: 'shroud' }, { ...B, mode: 'reveal' }], TOL), 'reveal');
-    assert.equal(doorResolvedMode(ON_SHARED,
-      [{ ...A, mode: 'reveal' }, { ...B, mode: 'shroud' }], TOL), 'reveal');
+describe('doorGlows', () => {
+  // Two rooms sharing the wall y=12: A above it, B below it. A's top wall y=0 is an outer wall.
+  const A = { vertices: [{ x: 0, y: 0 }, { x: 12, y: 0 }, { x: 12, y: 12 }, { x: 0, y: 12 }] };
+  const B = { vertices: [{ x: 0, y: 12 }, { x: 12, y: 12 }, { x: 12, y: 24 }, { x: 0, y: 24 }] };
+  const ON_SHARED = { x: 6, y: 12 }, ON_OUTER = { x: 6, y: 0 };
+  const TOL = 1;
+  const pair = (a, b) => doorGlows(ON_SHARED, [{ ...A, mode: a }, { ...B, mode: b }], TOL);
+
+  it('glows from revealed into hidden, whichever room stores it', () => {
+    assert.equal(pair('reveal', 'shroud'), true);
+    assert.equal(pair('shroud', 'reveal'), true);
   });
 
-  it('settles half beside shrouded as half', () => {
-    assert.equal(doorResolvedMode(ON_SHARED,
-      [{ ...A, mode: 'half' }, { ...B, mode: 'shroud' }], TOL), 'half');
+  it('does not glow from revealed into half', () => assert.equal(pair('reveal', 'half'), false));
+  it('does not glow between two half rooms', () => assert.equal(pair('half', 'half'), false));
+  it('does not glow from half into hidden', () => assert.equal(pair('half', 'shroud'), false));
+  it('does not glow between two revealed rooms', () => assert.equal(pair('reveal', 'reveal'), false));
+
+  it('glows on a revealed room\'s outer wall, an unset mode counting as revealed', () => {
+    assert.equal(doorGlows(ON_OUTER, [{ ...A, mode: 'reveal' }, { ...B, mode: 'shroud' }], TOL), true);
+    assert.equal(doorGlows(ON_OUTER, [{ ...A }], TOL), true);
   });
 
-  it('lets revealed win over half', () => {
-    assert.equal(doorResolvedMode(ON_SHARED,
-      [{ ...A, mode: 'half' }, { ...B, mode: 'reveal' }], TOL), 'reveal');
+  it('does not glow on a hidden room\'s outer wall, or on no wall', () => {
+    assert.equal(doorGlows(ON_OUTER, [{ ...A, mode: 'shroud' }], TOL), false);
+    assert.equal(doorGlows(null, [{ ...A, mode: 'reveal' }], TOL), false);
+  });
+});
+
+describe('doorCarves', () => {
+  // Two rooms sharing the wall y=12: A above it, B below it. A's top wall y=0 is an outer wall.
+  const A = { vertices: [{ x: 0, y: 0 }, { x: 12, y: 0 }, { x: 12, y: 12 }, { x: 0, y: 12 }] };
+  const B = { vertices: [{ x: 0, y: 12 }, { x: 12, y: 12 }, { x: 12, y: 24 }, { x: 0, y: 24 }] };
+  const ON_SHARED = { x: 6, y: 12 }, ON_OUTER = { x: 6, y: 0 };
+  const TOL = 1;
+  const pair = (a, b) => doorCarves(ON_SHARED, [{ ...A, mode: a }, { ...B, mode: b }], TOL);
+
+  it('carves from revealed into hidden, whichever room stores it', () => {
+    assert.equal(pair('reveal', 'shroud'), true);
+    assert.equal(pair('shroud', 'reveal'), true);
+  });
+  it('carves between two revealed rooms', () => assert.equal(pair('reveal', 'reveal'), true));
+
+  it('carves on a revealed room\'s outer wall, an unset mode counting as revealed', () => {
+    assert.equal(doorCarves(ON_OUTER, [{ ...A, mode: 'reveal' }, { ...B, mode: 'shroud' }], TOL), true);
+    assert.equal(doorCarves(ON_OUTER, [{ ...A }], TOL), true);
   });
 
-  it('hides the door when both rooms are shrouded', () => {
-    assert.equal(doorResolvedMode(ON_SHARED,
-      [{ ...A, mode: 'shroud' }, { ...B, mode: 'shroud' }], TOL), 'shroud');
+  it('does not carve where a half room shares the wall', () => {
+    assert.equal(pair('reveal', 'half'), false);
+    assert.equal(pair('half', 'reveal'), false);
+    assert.equal(pair('half', 'half'), false);
+    assert.equal(pair('half', 'shroud'), false);
   });
 
-  it('ignores a revealed room that does not reach the door', () => {
-    const far = { vertices: [{ x: 0, y: 40 }, { x: 12, y: 40 }, { x: 12, y: 52 }, { x: 0, y: 52 }],
-                  mode: 'reveal' };
-    assert.equal(doorResolvedMode(ON_SHARED, [{ ...A, mode: 'shroud' }, far], TOL), 'shroud');
-  });
-
-  it('returns shroud rather than throwing on a door with no wall', () => {
-    assert.equal(doorResolvedMode(null, [{ ...A, mode: 'reveal' }], TOL), 'shroud');
+  it('does not carve on a hidden room alone, or on no wall', () => {
+    assert.equal(doorCarves(ON_OUTER, [{ ...A, mode: 'shroud' }], TOL), false);
+    assert.equal(doorCarves(null, [{ ...A, mode: 'reveal' }], TOL), false);
   });
 });
 

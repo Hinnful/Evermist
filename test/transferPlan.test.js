@@ -43,6 +43,21 @@ describe('tpMergeScene: TV fit', () => {
   it('has a label for the part', () => assert.equal(T.TP_PART_LABEL.tvFit, 'TV fit'));
 });
 
+describe('tpMergeScene: time of day', () => {
+  it('takes an incoming time of day edited later and keeps a local one edited later', () => {
+    const take = T.tpMergeScene(scene([], { scene: { timeOfDay: 100 } }, { timeOfDay: 'day' }), scene([], { scene: { timeOfDay: 300 } }, { timeOfDay: 'night' }), NOW);
+    assert.equal(take.record.timeOfDay, 'night');
+    assert.deepEqual(take.report.changed, [{ room: '', part: 'timeOfDay' }]);
+    const keep = T.tpMergeScene(scene([], { scene: { timeOfDay: 500 } }, { timeOfDay: 'day' }), scene([], { scene: { timeOfDay: 300 } }, { timeOfDay: 'night' }), NOW);
+    assert.equal(keep.take.timeOfDay, false);
+  });
+  it('reads a map with no time of day and one set back to None as the same, and labels the part', () => {
+    const m = T.tpMergeScene(scene([], undefined), scene([], undefined, { timeOfDay: 'none' }), NOW);
+    assert.equal(m.touched, false);
+    assert.equal(T.TP_PART_LABEL.timeOfDay, 'time of day');
+  });
+});
+
 describe('tpMergeScene: weather', () => {
   it('takes an incoming weather edited later and keeps a local one edited later', () => {
     const take = T.tpMergeScene(scene([], { scene: { weather: 100 } }, { weather: 'rain' }), scene([], { scene: { weather: 300 } }, { weather: 'storm' }), NOW);
@@ -129,10 +144,10 @@ describe('tpMergeScene: fog, grid, fog look and lights', () => {
   });
 
   it('labels every scene part and writes each one it takes onto the record', () => {
-    const mine = { name: 'Local', gridConfig: { size: 50 }, notes: 'local', fogSettings: { blur: 1 }, weather: 'rain',
+    const mine = { name: 'Local', gridConfig: { size: 50 }, notes: 'local', fogSettings: { blur: 1 }, weather: 'rain', timeOfDay: 'day',
       lightsHidden: false, lightShapes: [], tvFit: { step: 1, turn: 0 }, group: 'Town', worldPos: { x: 1, y: 2 } };
     const home = { name: 'Home', gridConfig: { size: 70 }, notes: 'home', fogSettings: { blur: 5 }, fogTheme: 'ice',
-      weather: 'storm', lightsHidden: true, lightShapes: [{ id: 1 }], tvFit: { step: 2, turn: 90 }, group: 'Keep', worldPos: { x: 5, y: 6 } };
+      weather: 'storm', timeOfDay: 'night', lightsHidden: true, lightShapes: [{ id: 1 }], tvFit: { step: 2, turn: 90 }, group: 'Keep', worldPos: { x: 5, y: 6 } };
     for (const part of ES.ES_SCENE_PARTS) {
       assert.ok(T.TP_PART_LABEL[part], part + ' has a label');
       const local = scene([], { scene: Object.fromEntries(ES.ES_SCENE_PARTS.map(p => [p, p === part ? 100 : 500])) }, mine);

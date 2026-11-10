@@ -289,7 +289,7 @@ async function loadPlanFile(file) {
   if (!currentScene || !file) return;
   if (await file.text().then(text => attachPlanText(text, file.name), () => false)) { offerStoredFloorPlan(); return; }
   messageDialog({ title: 'That file is not a floor plan',
-                  message: 'Evermist reads the .dd2vtt file Dungeon Alchemist exports beside a map. Nothing was changed.' });
+                  message: 'This file is not a floor plan Evermist can read. Nothing was changed.' });
 }
 
 // ─── The Fog tab button ───────────────────────────────────────────────────────

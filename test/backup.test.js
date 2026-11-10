@@ -90,7 +90,7 @@ describe('sceneBackupMeta', () => {
     effects: [{ id: 1, uid: 'e1', material: 'water', vertices: [{ x: 1, y: 1 }] }], nextEffectId: 4,
     lightsHidden: true, lightShapes: [{ id: 1, vertices: [{ x: 5, y: 5 }] }], floorPlan: { format: 0.3, walls: [] },
     floorPlanName: 'Crypt level 1.dd2vtt',
-    gridConfig: { size: 70, offsetX: 3 }, fogSettings: { blur: 5 }, fogTheme: 'ice', weather: 'rain',
+    gridConfig: { size: 70, offsetX: 3 }, fogSettings: { blur: 5 }, fogTheme: 'ice', weather: 'rain', timeOfDay: 'night',
     tvFit: { step: 1, turn: 90 }, createdAt: 123, sortOrder: 5, edits: { scene: { fog: 100 } },
   };
   const FILES = ['mapBlob', 'mapPath', 'baseFogBlob', 'thumbnail', 'pictureBlobs'];
@@ -105,6 +105,10 @@ describe('sceneBackupMeta', () => {
     assert.deepEqual(Object.keys(meta).filter(k => !(k in FULL)).sort(), ['mapExt', 'mapMimeType', 'pictures']);
   });
 
+  test('carries the time of day of each map into the zip, and leaves a map without one as it was', () => {
+    assert.equal(sceneBackupMeta({ id: 'a', timeOfDay: 'dusk' }, '.jpg', 'image/jpeg', []).timeOfDay, 'dusk');
+    assert.equal(sceneBackupMeta({ id: 'b' }, '.jpg', 'image/jpeg', []).timeOfDay, undefined);
+  });
   test('carries the weather of each map into the zip, and leaves a dry map without one', () => {
     assert.equal(sceneBackupMeta({ id: 'a', weather: 'storm' }, '.jpg', 'image/jpeg', []).weather, 'storm');
     assert.equal(sceneBackupMeta({ id: 'b' }, '.jpg', 'image/jpeg', []).weather, undefined);

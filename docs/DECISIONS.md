@@ -842,8 +842,8 @@ resurrect `drawGridLines(mapCtx)`.
 ### A floor plan beside a map is `.dd2vtt`, `.uvtt` or `.df2vtt` · `SETTLED` (2026-11-09, BACKLOG 285)
 Tried in that order, first that reads wins; drag-and-drop and the plan picker take all three. The parser needed no change.
 Only the file beside the map is read, as before. Fixtures are built from the published format, since no real DungeonFog or
-Dungeon Scrawl export could be found. The texts naming only ".dd2vtt" (card tooltips, the bad-file message, AI tool
-descriptions) are unchanged and open for wording.
+Dungeon Scrawl export could be found. Texts the DM sees say "floor plan" with no file format (BACKLOG 291); the AI
+assistant's texts name all three.
 
 ### Auto-polygons read the map's own floor plan, not pixels · `SETTLED` (design)
 Dungeon Alchemist exports Universal VTT (`.dd2vtt`) beside the map: wall segments, doors and

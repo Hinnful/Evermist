@@ -222,8 +222,8 @@ function applyPolygonToFog(poly) {
 // A fraction of a cell: two rooms sharing a doorway count, one across a corridor does not.
 const DOOR_SHARED_WALL_TOL = 0.35;
 
-// Carves a room's doors, each in the state the rooms around it resolve to. No cloud erosion: it is
-// a texture for a long boundary and only makes a tab this small look patchy.
+// Carves a room's doors that doorCarves passes, all as a reveal. No cloud erosion: it is a texture
+// for a long boundary and only makes a tab this small look patchy.
 function applyDoorsToFog(poly) {
   if (!fogDataCtx) return;
   const doors = poly.doors;
@@ -232,13 +232,8 @@ function applyDoorsToFog(poly) {
   if (!(size.width > 0) || !(size.depth > 0)) return;
 
   const tol = gridSize * DOOR_SHARED_WALL_TOL;
-  const open = [], dim = [];
-  for (const d of doors) {
-    const mode = doorResolvedMode(doorPoint(poly, d), polygons, tol);
-    if (mode === 'reveal') open.push(d);
-    else if (mode === 'half') dim.push(d);
-  }
-  if (!open.length && !dim.length) return;
+  const open = doors.filter(d => doorCarves(doorPoint(poly, d), polygons, tol));
+  if (!open.length) return;
 
   // Holes included, so a door on an inner wall carves its notch there.
   const scaleRing = ring => ring.map(v => ({ x: v.x / FOG_SCALE, y: v.y / FOG_SCALE }));
@@ -253,15 +248,12 @@ function applyDoorsToFog(poly) {
   // it cannot be seen. It exists so the notch meets the reveal's ragged edge rather than leaving a
   // faint band. Applied to both sides it pinned the visible depth of every door whose owner is the
   // shrouded room of a shared wall — and which room owns a door is not something the DM aims at.
-  const ownerCleared = poly.mode !== 'shroud' && poly.mode !== 'half';
-  const inward = ownerCleared ? Math.max(size.depth, getScaledFeatherRadius() * 1.5 + 3)
-                              : size.depth;
-  if (open.length) carveDoorNotches(fogVerts, open, size, inward, feather, false);
-  if (dim.length)  carveDoorNotches(fogVerts, dim,  size, inward, feather, true);
+  const inward = poly.mode !== 'shroud' ? Math.max(size.depth, getScaledFeatherRadius() * 1.5 + 3)
+                                         : size.depth;
+  carveDoorNotches(fogVerts, open, size, inward, feather);
 }
 
-// Erase-then-repaint for half, for the reason applyPolygonToFog gives where it does the same.
-function carveDoorNotches(fogVerts, doors, size, inward, feather, half) {
+function carveDoorNotches(fogVerts, doors, size, inward, feather) {
   const shapes = [];
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const d of doors) {
@@ -300,17 +292,6 @@ function carveDoorNotches(fogVerts, doors, size, inward, feather, half) {
   fogDataCtx.save();
   fogDataCtx.globalCompositeOperation = 'destination-out';
   fogDataCtx.globalAlpha = 1;
-  fogDataCtx.drawImage(scratch, bx, by);
-  fogDataCtx.restore();
-
-  if (!half) return;
-  sCtx.save();
-  sCtx.globalCompositeOperation = 'source-in';   // recolour the mask, keep its alpha
-  sCtx.fillStyle = '#1a1a2e';
-  sCtx.fillRect(0, 0, scratch.width, scratch.height);
-  sCtx.restore();
-  fogDataCtx.save();
-  fogDataCtx.globalAlpha = Math.max(0, Math.min(1, fogHalfAlpha));
   fogDataCtx.drawImage(scratch, bx, by);
   fogDataCtx.restore();
 }

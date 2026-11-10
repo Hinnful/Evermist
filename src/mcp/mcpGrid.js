@@ -135,7 +135,7 @@ async function _mcpLightsFromPlan(args) {
   let made = 0, would = null, hidden = false;
   const edit = await mcpEditMap(s, 'changing its lights', ['lights'], d => {
     const lights = planLights(plan, d.mapWidth);
-    if (!lights.length) return 'The map "' + s.name + '" has no floor plan with lights. The DM loads a .dd2vtt in the Lights row.';
+    if (!lights.length) return 'The map "' + s.name + '" has no floor plan with lights. The DM loads a floor plan (.dd2vtt, .uvtt or .df2vtt) in the Lights row.';
     if (d.lightShapes.length && args.confirmed !== true) {
       would = mcpFxWouldDelete('its ' + d.lightShapes.length + ' drawn light' + (d.lightShapes.length === 1 ? '' : 's')
         + ', replaced by the floor plan\'s ' + lights.length, s.name);

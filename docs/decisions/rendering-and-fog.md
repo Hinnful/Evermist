@@ -50,9 +50,8 @@ A door marks an exit as a notch in the fog. It is stored on a room, so it appear
 room does and an unexplored map is never handed a diagram of its own exits. Its STATE, though, is
 the most revealed of every room whose outline passes within a third of a cell of it. Asking the
 owning room alone left a door invisible whenever the click had attached it to the shrouded side of
-a shared wall, which is not something the DM can aim at. It also settles half-shroud, which has no
-answer while a door belongs to one room: half beside shrouded is half, revealed beside anything is
-revealed. Free-standing doors were considered and rejected - a door owned by nothing still has to
+a shared wall, which is not something the DM can aim at. Revealed beside anything is revealed.
+A door touching a half room carves no notch (see "Door glow and notch follow the rooms they touch"). Free-standing doors were considered and rejected - a door owned by nothing still has to
 know which rooms touch it, and it shows before the party arrives.
 
 ### Doors are one grid cell, not a size that gets drawn · `SETTLED` (2026-08-30, replaced a drag)
@@ -77,7 +76,7 @@ diagonal walls snap to the cell holding the nearest wall point. Marking was chos
 mockups in all five themes: light from the door (most visible, works as yellow paint at the table),
 over a stronger theme edge (subtle on light maps) and a shadow round the door (vanishes in dark
 themes). Each theme carries its own `doorLight` colour apart from `rim`, since Blood's rim is black
-and its light red. The glow is TV-only and never thins the fog.
+and its light red. The glow is TV-only and never thins the fog. Which doors glow was narrowed later, see "Door glow and notch follow the rooms they touch".
 
 ### The reveal's feather is flattened along walls two rooms share · `SETTLED` (2026-08-30)
 Two revealed rooms sharing a wall each feather inward from it, so neither reaches a full erase on
@@ -366,7 +365,7 @@ under the fog on both screens and never inside a room, so rooms carry no Indoors
 geometry-only room mask instead of room records. Darkness from Storm and Blizzard still dims a room. The DM
 screen shows a third of the strength. The Map settings Fog section was retitled Weather, with the preset
 first. A wrong preset for a map (Fair weather on a night map, snow in a cave) is the DM's call, not the
-app's to prevent; a separate Time of day was floated and not taken up. Mist left the presets and is not one
+app's to prevent; Time of day came later as its own control, see "Time of day is four fixed filters". Mist left the presets and is not one
 of the fog themes either; a mist drifting into revealed rooms is a separate idea, not built.
 
 ### Weather shapes tried and dropped · `REJECTED` (2026-11-04)
@@ -439,3 +438,12 @@ flash was a measurement artefact of reading the fog mesh mid-update, not on scre
 
 ### A door placed or removed fades on the TV like a revealed room · `SHIPPED` (5.6.0)
 BACKLOG 279. `commitDoorChange` rebuilt the fog without `startFogTransition`, so the TV got `fogChanged: false` and snapped. The transition now starts before the rebuild (`toolDoor.js`). Claude's door tools need nothing: they cannot edit a map the TV shows.
+
+### Door glow and notch follow the rooms they touch · `SETTLED` (2026-11-10, amends the glow rule in "A door is a quarter cell deep" and the half-shroud part of "A door is stored on one room")
+Only a door from a revealed room into fully hidden fog glows on the TV; a revealed room's outer wall counts as hidden beyond. Doors between half rooms, half and hidden, and revealed and half no longer glow. It is decided on the DM side (`doorGlows`, `doorGeometry.js`). A gate in the TV fog shader was built and rejected: a fog value at a pixel cannot tell a hidden room's feather from half fog, and it dimmed the glow's rim on the doors that keep it. A door touching a half room also carves no notch (`doorCarves`), since half fog already shows the door art and a notch cut into it read as a hole. `doorResolvedMode` was deleted as dead. A revealed door still reads every room on its wall.
+
+### Time of day is four fixed filters · `SETTLED` (2026-11-10)
+BACKLOG 259. None, Day, Dusk and Night, each one fixed filter, the same on every map, like Weather; None covers a map already right. Measuring each map (so a pick does nothing when the map already is that time) was prototyped and rejected on product grounds: a control that means something different per map confuses, and the app cannot know a dungeon's time of day. Dusk and Night leave rooms alone (the Weather rule): a dark interior keeps its look, bright ground inside dims a little, window light spills onto the ground outside. Day covers rooms too, since skipping them left dark room-shaped patches on bright maps; it was halved (dark parts lift up to 1.9x, 3.4x washed sunny and snowy maps out) and does not smooth dark areas, which blurred detail. Dusk gives white and grey surfaces a lavender twilight and coloured ones the warm low sun (orange on snow was rejected). Contrast pivots on a fixed value, not the map's mean. An animated map on the DM screen gets an imitation (CSS filter for Day, a multiply tint with rooms cut out for Dusk and Night) since the video plays under the canvas; the TV gets the exact filter. It is the first group of Weather and Fog (above Weather; below it and a separate section were rejected). The DM screen shows a third of the strength, H shows full, the fade is 8 seconds and reaches the TV without Send; lights and effects are untouched, Claude can set it, and the section's Reset clears it.
+
+### Time of day methods tried and dropped · `REJECTED` (2026-11-10)
+A measured method that used drawn lights to light rooms at night (a daytime Dungeon Alchemist plan carries none). Colour-statistics transfer and a light/surface split (retinex-style) for night to day: small gain on evening maps, flattened day maps, nothing on the darkest map, whose dark ground holds no detail. AI relighting models (need a large GPU; Evermist has no server). Wall shadows from the floor plan (not every map has a plan; the feature must be universal like Weather). Deferred, not rejected: a colour table learned from Dungeon Alchemist's Day, Night and Dawn-Dusk exports (not needed once fixed filters were chosen), and a second export per time of day (too costly).

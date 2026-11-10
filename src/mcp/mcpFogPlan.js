@@ -4,8 +4,8 @@
 // dropdown shows. No DOM. Tested.
 
 const MFP = (typeof module !== 'undefined' && module.exports)
-  ? (require('../fog/themes/default.js'), require('../fog/themes/blood.js'), require('../fog/themes/toxic.js'), require('../fog/themes/ice.js'), require('../fog/themes/fire.js'), Object.assign({}, require('../fog/themes/fogThemes.js'), require('../render/weatherPlan.js')))
-  : { FOG_THEMES, WEATHER_PRESETS };
+  ? (require('../fog/themes/default.js'), require('../fog/themes/blood.js'), require('../fog/themes/toxic.js'), require('../fog/themes/ice.js'), require('../fog/themes/fire.js'), Object.assign({}, require('../fog/themes/fogThemes.js'), require('../render/weatherPlan.js'), require('../render/timeOfDayPlan.js')))
+  : { FOG_THEMES, WEATHER_PRESETS, TIME_OF_DAY_LABELS };
 
 // The words a call uses for a room's fog, as the app stores them (shroud, half, reveal).
 const MCP_FOG_ROOM_MODE = { hidden: 'shroud', half: 'half', revealed: 'reveal' };
@@ -30,6 +30,13 @@ function mcpWeatherId(raw) {
   const s = String(raw || '').trim().toLowerCase();
   const hit = Object.values(MFP.WEATHER_PRESETS).find(w => w.id === s || w.label.toLowerCase() === s);
   return hit ? hit.id : null;
+}
+
+// The id of the time of day a name such as "night" or "None" names, else null.
+function mcpTimeOfDayId(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  const hit = Object.keys(MFP.TIME_OF_DAY_LABELS).find(id => id === s || MFP.TIME_OF_DAY_LABELS[id].toLowerCase() === s);
+  return hit || null;
 }
 
 function mcpFogFindRooms(polys, names) {
@@ -106,6 +113,6 @@ function mcpFogBox(shape, mapW, mapH) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { MCP_FOG_ROOM_MODE, mcpFogRoomMode, mcpFogThemeId, mcpWeatherId, mcpFogFindRooms,
+  module.exports = { MCP_FOG_ROOM_MODE, mcpFogRoomMode, mcpFogThemeId, mcpWeatherId, mcpTimeOfDayId, mcpFogFindRooms,
     mcpFogArea, mcpFogPixels, mcpFogRoomsOverriding, mcpFogBox };
 }
