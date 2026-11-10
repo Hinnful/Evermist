@@ -262,8 +262,8 @@ function endBoxDrag() {
 function boxHoverCursor(poly, pos) {
   const hit = findBoxHandleAt(poly, pos.x, pos.y);
   if (!hit) return null;
-  if (hit.rotate) return 'grab';
-  return (hit.name === 'nw' || hit.name === 'se') ? 'nwse-resize' : 'nesw-resize';
+  if (hit.rotate) return 'rotate';
+  return (hit.name === 'nw' || hit.name === 'se') ? 'nwse' : 'nesw';
 }
 
 // ─── Drawing ──────────────────────────────────────────────────────────────────

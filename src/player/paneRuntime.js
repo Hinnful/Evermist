@@ -64,6 +64,7 @@ const PANE_CONTROLS = {
   'pane-sync-view':         () => _paneClick('btn-sync-view'),
   'pane-send':              () => sendToPlayerNow(),
   'pane-gallery-live':      m => galleryPaneLive(m.on),
+  'pane-companion':         m => companionSetOn(m.on),
   'pane-auto-sync':         m => { if (autoSync !== m.on) _paneClick('btn-auto-sync'); },
   'pane-player-view': m => {
     // Not minimapSetView, whose report back is this view again: landing after the parent's next wheel

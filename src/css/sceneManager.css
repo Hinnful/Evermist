@@ -13,7 +13,7 @@
     border: 0; border-radius: 6px;
     background: var(--g-field); color: var(--g-text);
     font: 500 12px/16px system-ui, -apple-system, sans-serif;
-    cursor: pointer; white-space: nowrap;
+    cursor: var(--cur-pointer); white-space: nowrap;
     transition: background .12s, color .12s;
   }
   /* A flex container is no block container, so text-box trims only the span the text sits in: the word centres on its capitals. */
@@ -25,7 +25,7 @@
   .sm-hbtn svg.i-trash { transform: translateY(-0.64px); }
   .sm-hbtn.primary { background: var(--b-solid); color: #fff; }
   .sm-hbtn.primary:hover { background: var(--b-solid-h); color: #fff; }
-  .sm-hbtn:disabled { opacity: 0.4; cursor: default; }
+  .sm-hbtn:disabled { opacity: 0.4; cursor: var(--cur-arrow); }
   .sm-hbtn:disabled:hover { background: var(--g-field); }
   /* Destructive: no fill and the trash at rest; red only under the pointer. */
   .sm-hbtn.danger { background: transparent; color: var(--g-text); }
@@ -36,7 +36,7 @@
     width: 28px; height: 28px; flex: none; padding: 0;
     display: inline-flex; align-items: center; justify-content: center;
     border: 0; border-radius: 6px;
-    background: transparent; color: #9aa0aa; cursor: pointer;
+    background: transparent; color: #9aa0aa; cursor: var(--cur-pointer);
     transition: background .12s, color .12s;
   }
   .sm-bare svg, .sm-x svg { width: 14px; height: 14px; }
@@ -73,7 +73,7 @@
   .sm-tick {
     width: 16px; height: 16px; flex: none; border: 0; border-radius: 4px;
     display: inline-grid; place-items: center;
-    background: var(--g-pick); cursor: pointer;
+    background: var(--g-pick); cursor: var(--cur-pointer);
   }
   .sm-tick.on, .sm-tick.part { background: var(--b-tint); }
   .sm-tick.on::after, .sm-tick.done::after {
@@ -81,7 +81,7 @@
     transform: translateY(-1px) rotate(-45deg);
   }
   .sm-tick.part::after { content: ''; width: 8px; height: 2px; border-radius: 1px; background: var(--b-icon); }
-  .sm-tick.done { background: var(--g-field); cursor: default; }
+  .sm-tick.done { background: var(--g-field); cursor: var(--cur-arrow); }
   .sm-tick.done::after { border-color: var(--g-dim); }
 
   .sm-chip {
@@ -161,7 +161,7 @@
   .sm-mi {
     min-height: 28px; width: 100%; display: flex; align-items: center; gap: 8px;
     padding: 6px 10px 6px 6px; border: 0; border-radius: 5px;
-    background: none; color: var(--g-text); text-align: left; cursor: pointer;
+    background: none; color: var(--g-text); text-align: left; cursor: var(--cur-pointer);
     font: 400 12px/16px system-ui, -apple-system, sans-serif;
   }
   .sm-mi::before { content: ''; width: 14px; flex: none; text-align: center; font-size: 11px; }

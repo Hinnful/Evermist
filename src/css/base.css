@@ -3,6 +3,11 @@
   html, body {
     width: 100%; height: 100%;
   }
+  /* Every pointer is the pack's (cursorPack.js); an element with no rule of its own shows the arrow. */
+  html { cursor: var(--cur-arrow); }
+  /* :where keeps it at zero specificity, so a field's own cursor rule still wins. */
+  :where(input:not([type=range], [type=color], [type=checkbox], [type=radio], [type=button], [type=file]),
+    textarea, [contenteditable]:not([contenteditable=false])) { cursor: var(--cur-text); }
   body {
     background: #1a1a1a;
     color: #e0e0e0;
@@ -130,5 +135,5 @@
   /* ===== PLAYER MODE ===== */
   body.player-mode #tools-wrapper,
   body.player-mode #minimap-panel { display: none !important; }
-  body.player-mode #canvas-container { cursor: default; }
+  body.player-mode #canvas-container { cursor: var(--cur-arrow); }
 

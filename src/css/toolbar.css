@@ -43,7 +43,7 @@
     border: 0;
     background: transparent;
     color: #a3a8b0;
-    cursor: pointer;
+    cursor: var(--cur-pointer);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -55,7 +55,7 @@
   .tool-btn.active, .tool-btn.active:hover { background: var(--b-tint); color: var(--b-icon); }
   /* Unavailable tool — the Brush in Effects mode, which paints fog and an effect has none.
      Same grey as a disabled .mode-btn, so "can't do that here" reads the same on both rows. */
-  .tool-btn:disabled { color: #565b62; cursor: default; }
+  .tool-btn:disabled { color: #565b62; cursor: var(--cur-arrow); }
   .tool-btn:disabled:hover { background: transparent; color: #565b62; }
 
   /* ===== CONTEXT ROW (above the toolbar) ===== */
@@ -119,7 +119,7 @@
   .fx-track .mode-btn { width: 26px; height: 26px; border-radius: 6px; color: #8b9099; }
   .fx-track .mode-btn:hover { background: none; color: var(--g-text); }
   .fx-track .mode-btn.active, .fx-track .mode-btn.active:hover { background: var(--g-pick); color: var(--g-text); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
-  .fx-track .mode-btn:disabled, .fx-track .mode-btn:disabled:hover { color: #4d5158; background: none; box-shadow: none; cursor: default; }
+  .fx-track .mode-btn:disabled, .fx-track .mode-btn:disabled:hover { color: #4d5158; background: none; box-shadow: none; cursor: var(--cur-arrow); }
   .fx-track .mode-btn svg { width: 18px; height: 18px; }
   /* The lit cloud wears the colour of the room outline it will draw: green, teal, purple. */
   .fx-track .fx-dir[data-dir="reveal"].active, .fx-track .fx-dir[data-dir="reveal"].active:hover { background: rgba(50, 220, 110, 0.2); color: #5fe39a; box-shadow: none; }
@@ -131,7 +131,7 @@
      repair's own glyph and colour otherwise (repairBar.js). */
   #op-sw { display: none; align-items: center; }
   #op-sw .op-wrap { display: inline-flex; align-items: center; height: 30px; border-radius: 6px; color: #a3a8b0; }
-  #op-sw .op-ic, #op-sw .op-chev { display: inline-flex; align-items: center; justify-content: center; height: 30px; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+  #op-sw .op-ic, #op-sw .op-chev { display: inline-flex; align-items: center; justify-content: center; height: 30px; padding: 0; border: 0; background: none; color: inherit; cursor: var(--cur-pointer); }
   #op-sw .op-ic { width: 28px; border-radius: 6px 0 0 6px; }
   #op-sw .op-chev { width: 16px; border-radius: 0 6px 6px 0; }
   #op-sw .op-ic:hover, #op-sw .op-chev:hover, #op-sw .op-chev.open { background: var(--g-field); color: var(--g-text); }
@@ -144,10 +144,10 @@
 
   /* The material button and its size field are one control in two halves: 2px apart, no divider. */
   /* The material button is a grey field with its arrow inside, like the size field beside it, so it reads as a pick. */
-  #mat-pick { display: inline-flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 4px 0 2px; border-radius: 8px; background: var(--g-field); cursor: pointer; }
+  #mat-pick { display: inline-flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 4px 0 2px; border-radius: 8px; background: var(--g-field); cursor: var(--cur-pointer); }
   #mat-pick:hover { background: var(--g-hover); }
   #mat-pick .mt-chev, #mat-pick .mt-chev:hover { color: var(--g-dim); background: none; }
-  #mat-pick .mt-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: none; cursor: pointer; }
+  #mat-pick .mt-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: none; cursor: var(--cur-pointer); }
   #mat-pick .mt-btn:hover { background: none; }
   /* The picked effect shape wears the material's colour, as a lit fog cloud wears its own (effectsTool.js sets it). */
   #fx-shapes .fx-track .mode-btn.active, #fx-shapes .fx-track .mode-btn.active:hover {
@@ -158,7 +158,7 @@
   #mat-pick .mt-btn.mt-named span { font: 400 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); text-box: trim-both cap alphabetic; }
   #fx-sizes { display: flex; align-items: center; }
   #fx-sizes .sz-field { display: inline-flex; align-items: center; height: 30px; box-sizing: border-box; padding: 0 2px 0 8px; border-radius: 8px; background: var(--g-field); }
-  #fx-sizes .sz-scrub { display: inline-flex; color: #8b9099; cursor: ew-resize; padding-right: 6px; }
+  #fx-sizes .sz-scrub { display: inline-flex; color: #8b9099; cursor: var(--cur-ew); padding-right: 6px; }
   #fx-sizes .sz-scrub svg { width: 14px; height: 14px; }
   #fx-sizes .sz-in { width: 38px; height: 28px; padding: 0; border: 0; background: none; color: var(--g-text); font: 600 13px/1 system-ui, -apple-system, sans-serif; outline: none; }
   #fx-sizes .sz-handv { display: inline-flex; align-items: center; width: 38px; height: 28px; color: var(--g-text); }
@@ -174,7 +174,7 @@
     font: 500 12.5px/1 system-ui, -apple-system, sans-serif; outline: none; margin-bottom: 6px; }
   #mat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; max-height: 300px; overflow-y: auto; }
   #mat-grid .mt-tile { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 8px; border: 0; border-radius: 6px; background: none; color: var(--g-text);
-    font: 500 12px/1 system-ui, -apple-system, sans-serif; text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; }
+    font: 500 12px/1 system-ui, -apple-system, sans-serif; text-align: left; cursor: var(--cur-pointer); white-space: nowrap; overflow: hidden; }
   #mat-grid .mt-tile svg { width: 18px; height: 18px; flex: none; }
   #mat-grid .mt-tile:hover { background: var(--g-field); }
   #mat-grid .mt-tile.on { background: var(--g-pick); }
@@ -264,7 +264,7 @@
 
   /* A tool the mode cannot use greys in place and does nothing, so nothing on the bar moves: Brush and Room in Effects. */
   #toolbar-bottom .tool-btn.tb-off, #toolbar-bottom .tool-btn.tb-off:hover,
-  #toolbar-bottom .tb-chev.tb-off, #toolbar-bottom .tb-chev.tb-off:hover { color: #4d5158; background: none; cursor: default; }
+  #toolbar-bottom .tb-chev.tb-off, #toolbar-bottom .tb-chev.tb-off:hover { color: #4d5158; background: none; cursor: var(--cur-arrow); }
   #toolbar-bottom .tb-off svg { opacity: 0.55; }
 
   /* Reveal all and Hide all: bare eyes after a divider, tools like any other. */
@@ -303,7 +303,7 @@
     border: 0;
     background: transparent;
     color: #a3a8b0;
-    cursor: pointer;
+    cursor: var(--cur-pointer);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -329,7 +329,7 @@
   .tb-chev {
     width: 13px; height: 30px; flex: none; padding: 0; border: 0; border-radius: 4px;
     display: flex; align-items: center; justify-content: center;
-    background: none; color: var(--g-dim); cursor: pointer;
+    background: none; color: var(--g-dim); cursor: var(--cur-pointer);
   }
   .tb-chev:hover, .tb-chev.open { background: var(--g-field); color: var(--g-text); }
   #toolbar-bottom .tb-chev > svg { width: 8px; height: 8px; }
@@ -344,7 +344,7 @@
   }
   .dd-it {
     display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px 0 6px;
-    border: 0; border-radius: 6px; background: none; cursor: pointer; text-align: left;
+    border: 0; border-radius: 6px; background: none; cursor: var(--cur-pointer); text-align: left;
     color: var(--g-text); font: 600 12px/1 system-ui, -apple-system, sans-serif;
   }
   .dd-it .ck { width: 14px; flex: none; text-align: center; }
@@ -358,7 +358,7 @@
   #tb-dd.nock .ck { display: none; }
   #tb-dd.nock .dd-lbl { padding-left: 10px; }
   #tb-dd .dd-sep { height: 1px; margin: 4px -6px; background: var(--g-divider); }
-  .dd-it.off { color: #5d626a; cursor: default; }
+  .dd-it.off { color: #5d626a; cursor: var(--cur-arrow); }
   .dd-it.off .ky { color: #5d626a; font-weight: 400; }
   body.player-mode #tb-dd { display: none !important; }
 
@@ -370,7 +370,7 @@
     border-radius: 7px;
     background: transparent;
     color: #7f858e;
-    cursor: pointer;
+    cursor: var(--cur-pointer);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -381,7 +381,7 @@
   .mode-btn:hover { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
   .mode-btn.active { color: var(--b-icon); }
   /* Unavailable fog mode — Half-shrouded while the brush is picked, which can't paint it */
-  .mode-btn:disabled { color: #565b62; cursor: default; }
+  .mode-btn:disabled { color: #565b62; cursor: var(--cur-arrow); }
   .mode-btn:disabled:hover { background: transparent; color: #565b62; }
 
   /* Brush size — a group inside #context-row, shown when the Brush is picked. Its surface,
@@ -392,7 +392,7 @@
     width: 120px;
     height: 16px;
     background: transparent;
-    cursor: pointer;
+    cursor: var(--cur-pointer);
   }
   #panel-brush-bottom input[type="range"]::-webkit-slider-runnable-track {
     height: 3px;

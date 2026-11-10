@@ -203,7 +203,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
     viewportDirty = true; gridDirty = true; fogDirty = true;
     scheduleRender();
     landing.style.display = 'none';
-    container.style.cursor = 'crosshair';
+    container.style.cursor = cursorFor('crosshair');
   }
 
   // normalizeRoomFields backfills `name` on scenes saved before rooms had names (roomPanel.js),
@@ -239,7 +239,7 @@ async function switchScene(id, _isRecovery = false, keepTvClear = false) {
   // would be the one that came back.
   if (!isPane) localStorage.setItem('evermist-current-scene-id', id);
   landing.style.display = 'none';
-  if (!isPlayer) container.style.cursor = 'crosshair';
+  if (!isPlayer) container.style.cursor = cursorFor('crosshair');
   fitToScreen();
   // ⚠ cursorDirty TOO: the room outlines and labels live on the overlay canvas, and nothing else
   // marks it. Without it the new scene's rooms stay unpainted until the first mouse move.

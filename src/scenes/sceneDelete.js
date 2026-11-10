@@ -54,7 +54,7 @@ function handleCurrentDeleted() {
   if (typeof resetRoomLabelCache === 'function') resetRoomLabelCache();
   if (typeof refreshRoomPanel === 'function') refreshRoomPanel();
   landing.style.display = '';
-  if (!isPlayer) container.style.cursor = 'default';
+  if (!isPlayer) container.style.cursor = cursorFor('arrow');
   localStorage.removeItem('evermist-current-scene-id');
   // The fallback is for the DM's eyes: the TV must not show a scene the DM did not open. A TV on
   // another map (Manual) keeps it.

@@ -22,9 +22,9 @@
   /* The divider between groups is the menus' rule: full width, 1px, --g-divider. */
   .sr-sep { height: 1px; background: var(--g-divider); margin: 4px -4px; }
   .sr-gh { display: flex; align-items: center; padding: 10px 8px 6px; font: 600 11px/1 system-ui, -apple-system, sans-serif; color: #c8ccd3; }
-  .sr-more { margin-left: auto; font-weight: 500; color: var(--g-dim); cursor: pointer; }
+  .sr-more { margin-left: auto; font-weight: 500; color: var(--g-dim); cursor: var(--cur-pointer); }
   .sr-more:hover { color: var(--g-text); }
-  .sr-row { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px; cursor: pointer; font-size: 12px; color: var(--g-text); }
+  .sr-row { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px; cursor: var(--cur-pointer); font-size: 12px; color: var(--g-text); }
   .sr-row.two { height: 44px; }
   .sr-row.on { background: var(--b-tint); }
   .sr-ti, .sr-thumb { width: 30px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--g-dim); }
@@ -48,7 +48,7 @@
   .sr-wi { display: flex; flex: none; transform: translateY(var(--icon-nudge)); }
   .sr-warn.y { background: var(--y-tint); color: var(--y-text); }
   .sr-warn.b { color: var(--g-dim); }
-  .sr-lnk { margin-left: auto; color: var(--g-text); cursor: pointer; font-weight: 500; }
+  .sr-lnk { margin-left: auto; color: var(--g-text); cursor: var(--cur-pointer); font-weight: 500; }
   .sr-lnk:hover { text-decoration: underline; }
   .sr-keys { flex: none; display: flex; gap: 14px; align-items: center; padding: 8px 16px 10px; border-top: 1px solid var(--g-line); color: var(--g-dim); font: 400 11px/1 system-ui, -apple-system, sans-serif; }
   .sr-keys kbd { font: 600 10px/1 system-ui, sans-serif; color: var(--g-text); background: var(--g-field); border-radius: 4px; padding: 3px 5px; margin-right: 4px; }

@@ -92,9 +92,9 @@ describe('turnShape', () => {
 
 describe('turnCursor', () => {
   it('swaps the diagonals only when sideways', () => {
-    assert.equal(turnCursor('nwse-resize', 90), 'nesw-resize');
-    assert.equal(turnCursor('nesw-resize', 270), 'nwse-resize');
-    assert.equal(turnCursor('nwse-resize', 180), 'nwse-resize');
+    assert.equal(turnCursor('nwse', 90), 'nesw');
+    assert.equal(turnCursor('nesw', 270), 'nwse');
+    assert.equal(turnCursor('nwse', 180), 'nwse');
     assert.equal(turnCursor('move', 90), 'move');
   });
 });

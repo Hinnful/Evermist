@@ -62,7 +62,7 @@ log was rejected on this ground.
 Evermist serves offline DMs. No timelines, calendars or family trees; the relationship graph was
 already rejected (2026-10-04, DECISIONS.md).
 
-### The VTT line · `SETTLED` (2026-09-24, narrowed to what reaches the TV)
+### The VTT line · `SETTLED` (2026-09-24, narrowed to what reaches the TV; narrowed again 2026-11-10: the pointer's crystal companion also reaches the TV)
 **Nothing but the map, its effects and a picture the DM shows reaches the Player screen.** Map,
 fog, grid, effects, the DM's ping and a room's picture go to the TV. Rooms, notes, controls and
 anything else the DM reads stay on the DM's side. The picture passed the test below on
@@ -291,7 +291,8 @@ stray by design, so the drop carries no hint, glow or nudge to pull it inside.
 The marker is a four-point compass star with a ring and a slow bob, in the app's blue, which already marks what is
 active; gold was rejected for that reason, and the first gold ring borrowed from the Ping bezel is superseded. Shaded 3D
 looks (dice, shield, crystal) were rejected as off the app's flat style, and a plain crystal as too close to a
-well-known game's marker. Tracking visited maps was rejected: a chore with no practical benefit. The mist lifting
+well-known game's marker. That rejection is about the party marker only; the pointer's faceted,
+morphing crystal companion (2026-11-10) is a separate call and stays a crystal. Tracking visited maps was rejected: a chore with no practical benefit. The mist lifting
 around the marker stays. A toolbar button to place it was refused until the Campaign toolbar had its redesign; the
 "Marker" button now exists (2026-10-30, see "The Campaign bar names Group, Road and Marker" in docs/decisions/ui-and-control-panel.md).
 

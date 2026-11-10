@@ -549,7 +549,7 @@ function loadVideoFromFile(file, onVideoLoaded, onFail) {
       if (!isPlayer) { pixiInitFog(fogDataCanvas, fogBlurCanvas, cloudBlendCanvas, mapWidth, mapHeight); pixiFlushTexturePool(); pixiUpdateFogBlurTexture(); }
 
       fitToScreen();
-      if (!isPlayer) container.style.cursor = 'crosshair';
+      if (!isPlayer) container.style.cursor = cursorFor('crosshair');
       landing.style.display = 'none';
       viewportDirty = true;
       scheduleRender();

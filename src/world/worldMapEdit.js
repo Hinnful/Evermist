@@ -141,7 +141,7 @@ function _wmGroundDown(e, d) {
 function worldMapHover(e) {
   if (_wmTool !== 'select' || _wmAnim || !e.target.closest) return;
   const ground = e.target === _wm || e.target === _wmWorld || !e.target.closest('.wm-card, .wm-hl, .wm-lm, .wm-fan, .sm-menu, .roadhit, .wm-rn');
-  _wm.style.cursor = ground && _wm.contains(e.target) ? _wmWithCamera(() => selectHoverCursor(_wmToWorld(e.clientX, e.clientY), e)) : '';
+  _wm.style.cursor = ground && _wm.contains(e.target) ? cursorFor(_wmWithCamera(() => selectHoverCursor(_wmToWorld(e.clientX, e.clientY), e))) : '';
 }
 
 // While a place is carried, the scenes filed under it go with it.

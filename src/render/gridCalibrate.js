@@ -53,10 +53,10 @@ function armGridCalibration(on) {
   gridCalRefine = null;
   if (on) {
     gridCalSpan = null;
-    container.style.cursor = 'crosshair';   // Select leaves it 'default', which reads as no tool
+    container.style.cursor = cursorFor('crosshair');   // Select leaves it the arrow, which reads as no tool
     gridCalHoldMap();
   } else {
-    container.style.cursor = shape === 'select' ? 'default' : (shape === 'door' ? 'pointer' : 'crosshair');
+    container.style.cursor = cursorFor(shape === 'select' ? 'arrow' : (shape === 'door' ? 'pointer' : 'crosshair'));
     gridCalReleaseMap();
   }
   const btn = document.getElementById('cp-grid-calibrate');
@@ -317,7 +317,7 @@ function gridCalPartCursor(part) {
   if (part !== 'resize') return 'crosshair';
   if (gridCalIsHex()) return 'grab';   // a corner snapped to six directions, no box diagonal to point along
   const s = gridCalSpan;
-  return ((s.bx - s.ax < 0) !== (s.by - s.ay < 0)) ? 'nesw-resize' : 'nwse-resize';
+  return ((s.bx - s.ax < 0) !== (s.by - s.ay < 0)) ? 'nesw' : 'nwse';
 }
 
 // The window mouseup carries no coordinates, and the hover magnifier runs before any drag.
@@ -340,14 +340,14 @@ function gridCalMouseDown(raw) {
     gridCalDrag = { which: 'span', ax: raw.x, ay: raw.y, bx: raw.x, by: raw.y };
   }
   // The magnifier's dot is the aim for a drag setting one point; a move aims with the whole span.
-  container.style.cursor = part === 'move' ? 'grabbing' : 'none';
+  container.style.cursor = part === 'move' ? cursorFor('grabbing') : 'none';
   drawCursor(lastScreenX, lastScreenY);
 }
 
 function gridCalMouseMove(pos) {
   if (!gridCalDrag) {
     gridCalRefine = gridCalFindRefine(pos);
-    container.style.cursor = gridCalRefine ? 'grab' : turnCursor(gridCalPartCursor(gridCalHitPart(pos)), seatTurn);
+    container.style.cursor = cursorFor(gridCalRefine ? 'grab' : turnCursor(gridCalPartCursor(gridCalHitPart(pos)), seatTurn));
   } else if (gridCalDrag.which === 'span') {
     const sq = gridCalIsHex() ? gridCalHexEnd(gridCalDrag.ax, gridCalDrag.ay, pos.x, pos.y)
                               : gridCalSquareEnd(gridCalDrag.ax, gridCalDrag.ay, pos.x, pos.y);
@@ -381,7 +381,7 @@ function gridCalMouseUp() {
   gridCalDrag = null;
   if (d.which === 'span') gridCalCommitSpan(d.ax, d.ay, d.bx, d.by);
   else gridCalCommit();
-  container.style.cursor = turnCursor(gridCalPartCursor(gridCalHitPart(gridCalLastMapPos())), seatTurn);
+  container.style.cursor = cursorFor(turnCursor(gridCalPartCursor(gridCalHitPart(gridCalLastMapPos())), seatTurn));
   drawCursor(lastScreenX, lastScreenY);
 }
 

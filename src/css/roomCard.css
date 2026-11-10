@@ -53,7 +53,7 @@
   .rp-mt-opt {
     display: flex; align-items: center; gap: 8px; width: 100%;
     padding: 6px 8px; border: none; border-radius: 6px;
-    background: none; color: #d5d8dd; cursor: pointer; text-align: left;
+    background: none; color: #d5d8dd; cursor: var(--cur-pointer); text-align: left;
     font: 500 12px/1.25 system-ui, -apple-system, sans-serif;
   }
   .rp-mt-opt:hover, .rp-mt-opt.active { background: rgba(90,140,235,0.22); }
@@ -89,7 +89,7 @@
   .rp-mt-foot button {
     width: 100%; padding: 6px 8px;
     border: none; border-radius: 6px; background: none;
-    color: #6ea8ff; cursor: pointer; text-align: left;
+    color: #6ea8ff; cursor: var(--cur-pointer); text-align: left;
     font: 500 11px/1.25 system-ui, -apple-system, sans-serif;
   }
   .rp-mt-foot button:hover { background: rgba(90,140,235,0.16); }

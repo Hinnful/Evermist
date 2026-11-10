@@ -71,7 +71,7 @@ function loadMapFromFile(file, onMapLoaded, onFail) {
 
     URL.revokeObjectURL(url);
     fitToScreen();
-    if (!isPlayer) container.style.cursor = 'crosshair';
+    if (!isPlayer) container.style.cursor = cursorFor('crosshair');
     landing.style.display = 'none';
     viewportDirty = true;
     scheduleRender();
@@ -134,6 +134,7 @@ function showMapProgress(label) {
   document.getElementById('map-progress-bar').style.width = '0%';
   _mapProgressUp = true;
   _mapProgressPaint();
+  companionBusy('map', true);
 }
 function updateMapProgress(pct) {
   document.getElementById('map-progress-bar').style.width = Math.min(100, pct) + '%';
@@ -141,6 +142,7 @@ function updateMapProgress(pct) {
 function hideMapProgress() {
   _mapProgressUp = false;
   _mapProgressPaint();
+  companionBusy('map', false);
 }
 
 document.getElementById('map-progress-stop').addEventListener('click', _mapProgressAsk);

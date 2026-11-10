@@ -276,6 +276,7 @@ const RU = {
   'Sync View': 'Синхронизировать вид',
   'Match the TV to my view': 'Подогнать телевизор под мой вид',
   'Hints': 'Подсказки',
+  'Crystal companion': 'Кристалл-спутник',
   'On': 'Вкл.',
   'Show one room at a time': 'Показывайте по одной комнате',
   'Draw a room with the Room button, then use its clouds to reveal just that room.': 'Нарисуйте комнату кнопкой «Комната», затем откройте только её облаками.',

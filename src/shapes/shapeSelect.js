@@ -354,7 +354,7 @@ function selectHoverCursor(pos, e) {
     if (findEdgeAt(selPoly, pos.x, pos.y) >= 0) return 'grab';
     if (!holeEditMode && findHoleAt(selPoly, pos.x, pos.y) >= 0) return 'move';
   }
-  return findPolygonAt(pos.x, pos.y) ? 'move' : 'default';
+  return findPolygonAt(pos.x, pos.y) ? 'move' : 'arrow';
 }
 
 function selectMouseMove(pos, screenX, screenY, e) {

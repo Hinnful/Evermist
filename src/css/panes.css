@@ -17,7 +17,7 @@
   /* ===== THE PLAYER SHELL (stage.html) ===== */
   /* Zero UI, as the Player view always is. The gap between the halves is REAL, so each map
      renders to its own edge and the chasm is painted into the space rather than over a map. */
-  body.stage-mode { background: #000; cursor: default; }
+  body.stage-mode { background: #000; cursor: var(--cur-arrow); }
 
   #stage-row {
     position: fixed; inset: 0;
@@ -77,7 +77,7 @@
   #panes-divider {
     flex: none;
     width: 8px;
-    cursor: col-resize;
+    cursor: var(--cur-col);
     background: rgba(255, 255, 255, 0.06);
     border-left: 1px solid rgba(0, 0, 0, 0.5);
     border-right: 1px solid rgba(0, 0, 0, 0.5);
@@ -87,7 +87,7 @@
   /* ⚠ A mousemove over an <iframe> belongs to that frame, so the drag needs the frames covered
      for its length. panes.js adds the class on mousedown. */
   .panes-dragging .pane-frame { pointer-events: none; }
-  .panes-dragging { cursor: col-resize; }
+  .panes-dragging { cursor: var(--cur-col); }
 
   /* The windows' close, on the window grey so it reads over any map. Shown on hover. */
   .pane-close {

@@ -9,10 +9,10 @@
   .pl-play {
     width: 40px; height: 40px; flex: none; padding: 0; border: 0; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    background: var(--g-text); color: #18181a; cursor: pointer; transition: transform .1s, background .12s;
+    background: var(--g-text); color: #18181a; cursor: var(--cur-pointer); transition: transform .1s, background .12s;
   }
   .pl-play:hover { background: #fff; transform: scale(1.04); }
-  .mu-resting .pl-play { opacity: 0.35; cursor: default; transform: none; }
+  .mu-resting .pl-play { opacity: 0.35; cursor: var(--cur-arrow); transform: none; }
   .pl-meta { min-width: 0; flex: 1; }
   .pl-title { font: 600 14px/1.25 system-ui, -apple-system, sans-serif; color: var(--g-text);
               white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -60,20 +60,20 @@
     display: flex; align-items: center; gap: 8px;
     height: 30px; padding: 0 10px 0 14px;
     font: 500 12px/1 system-ui, -apple-system, sans-serif; color: #d5d8dd;
-    cursor: pointer;
+    cursor: var(--cur-pointer);
   }
   .mu-row:hover { background: rgba(255, 255, 255, 0.04); }
   .mu-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mu-row-meta { flex: none; font: 400 11px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim);
                  font-variant-numeric: tabular-nums; }
-  .mu-row-on { background: var(--g-field); cursor: default; }
+  .mu-row-on { background: var(--g-field); cursor: var(--cur-arrow); }
   .mu-row-pick { background: var(--b-tint); }
   .mu-row-on .mu-row-name { color: var(--g-text); font-weight: 600; }
 
   /* Destructive, belongs to one row, wears no red, and asks through confirmDialog. Hidden
      until the row is hovered so a list of a hundred is not a wall of bins. */
   .mu-row-del { width: 24px; height: 24px; flex: none; padding: 0; border: 0; border-radius: 5px; display: none;
-                align-items: center; justify-content: center; background: transparent; color: var(--g-dim); cursor: pointer; }
+                align-items: center; justify-content: center; background: transparent; color: var(--g-dim); cursor: var(--cur-pointer); }
   .mu-row-del:hover { background: var(--g-hover); color: var(--g-text); }
   .mu-row:hover .mu-row-del { display: inline-flex; }
   .mu-empty { padding: 14px; }
@@ -81,20 +81,20 @@
   /* Groups, the scene library's way: the heading folds, its name is the rename field, and a row
      dragged onto a group files it there. */
   .mu-grp-h { display: flex; align-items: center; gap: 6px; height: 30px; margin-top: 6px; padding: 0 8px 0 12px;
-              color: var(--g-dim); font: 600 11px/1 system-ui, -apple-system, sans-serif; cursor: pointer; }
+              color: var(--g-dim); font: 600 11px/1 system-ui, -apple-system, sans-serif; cursor: var(--cur-pointer); }
   .mu-grp-h:hover { color: var(--g-text); }
   .mu-grp-h .car { flex: none; transition: transform .12s; }
   .mu-grp.shut .car { transform: rotate(-90deg); }
   .mu-grp-name { min-width: 0; max-width: 60%; padding: 3px 4px; border: 0; border-radius: 4px; background: none;
                  color: inherit; font: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  input.mu-grp-name { cursor: text; field-sizing: content; }
+  input.mu-grp-name { cursor: var(--cur-text); field-sizing: content; }
   input.mu-grp-name:hover { background: rgba(255, 255, 255, 0.05); }
   input.mu-grp-name:focus { outline: none; background: var(--g-field); color: var(--g-text); }
   .mu-grp-h .c { font-weight: 400; }
   .mu-grp-h .sp { flex: 1; }
   .mu-grp-btn { width: 22px; height: 22px; flex: none; padding: 0; border: 0; border-radius: 5px; display: inline-flex;
                 align-items: center; justify-content: center; background: transparent; color: var(--g-dim);
-                cursor: pointer; opacity: 0; }
+                cursor: var(--cur-pointer); opacity: 0; }
   .mu-grp-h:hover .mu-grp-btn { opacity: 1; }
   .mu-grp-btn:hover { background: var(--g-hover); color: var(--g-text); }
   .mu-grp.drop .mu-grp-h { background: var(--b-tint); color: var(--b-icon); border-radius: 5px; }
@@ -109,7 +109,7 @@
     position: relative; overflow: hidden;
     display: flex; align-items: center; gap: 6px; min-width: 0;
     height: 34px; padding: 0 10px; border: 0; border-radius: 6px;
-    background: var(--g-field); color: #d5d8dd; cursor: pointer; text-align: left; user-select: none;
+    background: var(--g-field); color: #d5d8dd; cursor: var(--cur-pointer); text-align: left; user-select: none;
     font: 500 12px/1 system-ui, -apple-system, sans-serif; transition: background .12s;
   }
   .dk-tile svg { flex: none; color: var(--g-dim); }
@@ -146,13 +146,13 @@
   @keyframes muSpin { to { transform: rotate(360deg); } }
 
   .mu-picklist { flex: 1; }
-  .mu-pick { cursor: pointer; }
+  .mu-pick { cursor: var(--cur-pointer); }
   .mu-pick:hover { background: var(--g-hover); }
   .mu-pick-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mu-pick-meta { flex: none; }
   /* A track already on disk is shown rather than hidden: pasting the same playlist before the
      next session is how the next ten get picked, so which ten are left has to be obvious. */
-  .mu-pick-have { color: var(--g-dim); cursor: default; }
+  .mu-pick-have { color: var(--g-dim); cursor: var(--cur-arrow); }
   .mu-pick-have:hover { background: transparent; }
 
   /* The Player window is served from this same file, so the bubble has to be taken out there.

@@ -607,6 +607,7 @@
           <!-- Filled by about.js's language switch. -->
           <div class="dk-blk" id="settings-lang"><span class="dk-sub">Language</span></div>
           <div class="dk-blk" id="settings-hints"></div>   <!-- Filled by hints.js -->
+          <div class="dk-blk" id="settings-companion"></div>   <!-- Filled by companionSwitch.js -->
           <div class="dk-blk" id="cp-sec-seat-align"></div>   <!-- Filled by seatAlignment.js -->
         </div>
         <!-- The campaign's own storage: the backdrop (worldBackground.js), the backup (worldBackup.js), the Trash (trashPanel.js). -->
@@ -932,6 +933,10 @@
 <input type="file" id="wm-file-input" multiple accept="image/*,video/mp4,video/webm" style="display:none">
 
 
+<script src="src/cursor/cursorPack.js"></script>
+<script src="src/cursor/companionLogic.js"></script>
+<script src="src/cursor/companionSwitch.js"></script>
+<script src="src/cursor/companion.js"></script>
 <script src="src/i18n/i18nPlan.js"></script>
 <script src="src/i18n/ru.js"></script>
 <script src="src/i18n/i18n.js"></script>
@@ -1262,6 +1267,7 @@ if (!isPlayer && !isPane) worldMapInit();      // The world map → worldMap.js
 if (!isPlayer && !isPane) searchInit();        // The search box → search.js
 if (!isPlayer && !isPane) initHints();         // First-time hints → hints.js
 if (!isPlayer && !isPane) initMcp();           // The Claude connection → mcpTools.js
+initCompanion();                               // The crystal companion → companion.js
 
 window.addEventListener('resize', () => {
   resizeViewport();   // viewport.js

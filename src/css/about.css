@@ -48,7 +48,7 @@
     border: 0;
     border-radius: 5px;
     padding: 4px 8px;
-    cursor: pointer;
+    cursor: var(--cur-pointer);
   }
   #dock .about-update-btn:hover {
     background: var(--b-tint-h);
@@ -62,7 +62,7 @@
     background: none;
     font: 500 11px/1 system-ui, -apple-system, sans-serif;
     color: var(--g-dim);
-    cursor: pointer;
+    cursor: var(--cur-pointer);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -88,9 +88,9 @@
   .cl-row {
     width: 100%; height: 32px; display: flex; align-items: center; gap: 10px;
     padding: 0 8px; border: 0; border-radius: 6px; background: none; text-align: left;
-    color: var(--g-text); font: inherit; cursor: pointer;
+    color: var(--g-text); font: inherit; cursor: var(--cur-pointer);
   }
-  .cl-row.bare { cursor: default; }
+  .cl-row.bare { cursor: var(--cur-arrow); }
   .cl-row:hover { background: var(--g-hover); }
   .cl-row .v { flex: none; width: 44px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .cl-row .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #c8ccd3; }

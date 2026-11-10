@@ -9,19 +9,19 @@
   }
   .nw[hidden] { display: none; }
   .nw input, .nw textarea { user-select: text; }
-  .nw-head { height: 38px; flex: none; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--g-line); cursor: move; }
+  .nw-head { height: 38px; flex: none; display: flex; align-items: center; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--g-line); cursor: var(--cur-move); }
   .nw-ib {
     width: 24px; height: 24px; flex: none; padding: 0; display: flex; align-items: center; justify-content: center;
-    border: 0; background: transparent; color: #7f858e; border-radius: 6px; cursor: pointer;
+    border: 0; background: transparent; color: #7f858e; border-radius: 6px; cursor: var(--cur-pointer);
   }
   .nw-ib:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: #d5d8dd; }
-  .nw-ib:disabled { opacity: 0.3; cursor: default; }
+  .nw-ib:disabled { opacity: 0.3; cursor: var(--cur-arrow); }
   .nw-ib.on { color: var(--b-icon); }
   .nw-ib svg { width: 15px; height: 15px; }
 
   .nw-crumbs { flex: 1; min-width: 0; display: flex; align-items: center; margin-left: 6px; overflow: hidden; white-space: nowrap; font: 500 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-dim); }
   .nw-crumb { flex: 0 0 auto; padding: 4px; border-radius: 5px; overflow: hidden; text-overflow: ellipsis; }
-  .nw-crumb[data-go], .nw-crumb.more { cursor: pointer; }
+  .nw-crumb[data-go], .nw-crumb.more { cursor: var(--cur-pointer); }
   .nw-crumb[data-go]:hover, .nw-crumb.more:hover { color: var(--g-text); background: rgba(255, 255, 255, 0.06); }
   .nw-crumb.last { flex: 0 1 auto; min-width: 40px; font-weight: 600; color: var(--g-text); }
   .nw-sep { flex: none; padding: 0 1px; color: #5b5f66; }
@@ -29,14 +29,14 @@
   .nw-body { display: flex; flex: 1; min-height: 0; }
   .nw-tree { position: relative; width: 200px; flex: none; border-right: 1px solid var(--g-line); display: flex; flex-direction: column; min-height: 0; }
   .nw-tree.hide { display: none; }
-  .nw-tedge { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: ew-resize; z-index: 2; }
+  .nw-tedge { position: absolute; right: -3px; top: 0; bottom: 0; width: 6px; cursor: var(--cur-ew); z-index: 2; }
   .nw-tedge:hover, .nw-tedge.drag { background: var(--b-tint); }
   .nw-tl { flex: 1; overflow: auto; padding: 6px 4px; outline: none; }
-  .nw-row { display: flex; align-items: center; height: 24px; border-radius: 6px; cursor: pointer; color: #c3c8cf; padding-right: 4px; white-space: nowrap; font-size: 12px; }
+  .nw-row { display: flex; align-items: center; height: 24px; border-radius: 6px; cursor: var(--cur-pointer); color: #c3c8cf; padding-right: 4px; white-space: nowrap; font-size: 12px; }
   .nw-row:hover, .nw-row.cur { background: var(--g-hover); }
   .nw-row.sel { background: var(--plate-sel-bg); color: var(--b-icon); }
   .nw-row.sel .nw-ti { color: var(--b-icon); }
-  .nw-row.sec { margin-top: 10px; cursor: default; font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .nw-row.sec { margin-top: 10px; cursor: var(--cur-arrow); font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); }
   .nw-row.sec:hover { background: none; }
   .nw-tw { width: 18px; height: 18px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--g-dim); border-radius: 4px; }
   .nw-tw[data-tog]:hover { color: var(--g-text); background: var(--g-pick); }
@@ -58,7 +58,7 @@
   .nw-row.over-before { box-shadow: inset 0 2px 0 var(--b-solid); }
   .nw-row.over-after { box-shadow: inset 0 -2px 0 var(--b-solid); }
   .nw-row.off { opacity: 0.4; }
-  .nw-newb { flex: none; margin: 6px; height: 28px; border: 1px dashed var(--g-line); border-radius: 6px; background: none; color: var(--g-dim); cursor: pointer; font: inherit; font-size: 12px; }
+  .nw-newb { flex: none; margin: 6px; height: 28px; border: 1px dashed var(--g-line); border-radius: 6px; background: none; color: var(--g-dim); cursor: var(--cur-pointer); font: inherit; font-size: 12px; }
   .nw-newb:hover { color: var(--g-text); border-color: var(--g-pick); }
 
   .nw-note { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding: 12px 16px 12px; }
@@ -79,7 +79,7 @@
   #np-field { flex: 1 1 auto; min-height: 90px; overflow-y: auto; padding: 4px 0 12px; margin: 0; }
   .nw-monster { flex: none; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
   .nw-lore { width: 100%; color: #b4b9c1; }
-  .nw-lore summary { list-style: none; display: flex; align-items: center; gap: 4px; margin-left: -4px; cursor: pointer; font: 600 12px/1.6 system-ui, -apple-system, sans-serif; color: var(--g-text); }
+  .nw-lore summary { list-style: none; display: flex; align-items: center; gap: 4px; margin-left: -4px; cursor: var(--cur-pointer); font: 600 12px/1.6 system-ui, -apple-system, sans-serif; color: var(--g-text); }
   .nw-lore summary::-webkit-details-marker { display: none; }
   .nw-lore-chev { display: flex; color: var(--g-dim); }
   .nw-lore-body { white-space: pre-wrap; user-select: text; padding: 4px 0 0; font-size: 12.5px; line-height: 1.55; }
@@ -90,10 +90,10 @@
   .nw-tl::-webkit-scrollbar-button, .nw-note::-webkit-scrollbar-button, #np-field::-webkit-scrollbar-button { display: none; }
 
   /* ===== The editor: labels for mentions, the @ picker, the hover preview, "Appears in" ===== */
-  .nw .ne, .bp-notes.ne { user-select: text; cursor: text; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; }
+  .nw .ne, .bp-notes.ne { user-select: text; cursor: var(--cur-text); white-space: pre-wrap; overflow-wrap: anywhere; outline: none; }
   .ne:empty::before { content: attr(placeholder); color: #5d626a; pointer-events: none; }
   .ne[contenteditable="false"] { opacity: 0.5; }
-  .ne .mn { color: var(--b-icon); background: var(--b-tint); border-radius: 4px; padding: 0 4px; cursor: pointer; }
+  .ne .mn { color: var(--b-icon); background: var(--b-tint); border-radius: 4px; padding: 0 4px; cursor: var(--cur-pointer); }
   .ne .mn:hover { background: var(--b-tint-h); }
   .ne .mn.miss { color: var(--r-text); background: var(--r-tint); }
   .ne-pop, .ne-tip {
@@ -101,19 +101,19 @@
     border-radius: 8px; box-shadow: var(--pop-shadow); font: 400 12px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--g-text); user-select: none;
   }
   .ne-pop { padding: 4px; min-width: 200px; max-width: 320px; }
-  .ne-pop > div { padding: 4px 8px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
+  .ne-pop > div { padding: 4px 8px; border-radius: 5px; cursor: var(--cur-pointer); display: flex; justify-content: space-between; gap: 12px; }
   .ne-pop > div.on, .ne-pop > div:hover { background: var(--b-tint); }
   .ne-pop small { color: var(--g-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ne-pop .hd { font-weight: 500; font-size: 11px; color: var(--g-dim); cursor: default; background: none !important; }
+  .ne-pop .hd { font-weight: 500; font-size: 11px; color: var(--g-dim); cursor: var(--cur-arrow); background: none !important; }
   .ne-tip { padding: 8px 10px; width: 230px; display: none; pointer-events: none; }
   .ne-tip p { margin: 4px 0 0; color: var(--g-dim); white-space: pre-wrap; overflow-wrap: anywhere; }
   .ne-kind { font-size: 11px; color: var(--g-dim); background: var(--g-field); border-radius: 4px; padding: 1px 6px; }
   .nw-appears { flex: none; }
   .nw-appears[hidden] { display: none; }
-  .nw-appears .aph { margin: 18px 0 4px; display: flex; align-items: center; gap: 6px; font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); cursor: pointer; }
+  .nw-appears .aph { margin: 18px 0 4px; display: flex; align-items: center; gap: 6px; font: 600 12px/1 system-ui, -apple-system, sans-serif; color: var(--g-text); cursor: var(--cur-pointer); }
   .nw-appears .aph .n { font-weight: 500; color: var(--g-dim); }
   .nw-appears .aph .car { color: var(--g-dim); font-size: 9px; width: 10px; }
-  .nw-appears .ap { padding: 3px 6px; margin: 0 -6px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; color: #c3c8cf; font-size: 12px; }
+  .nw-appears .ap { padding: 3px 6px; margin: 0 -6px; border-radius: 5px; cursor: var(--cur-pointer); display: flex; justify-content: space-between; gap: 12px; color: #c3c8cf; font-size: 12px; }
   .nw-appears .ap:hover { background: var(--g-hover); }
   .nw-appears .ap small { color: var(--g-dim); }
   .nw-appears .hint { color: var(--g-dim); font-size: 11.5px; }

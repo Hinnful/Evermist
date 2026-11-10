@@ -13,7 +13,7 @@
     border: 1.5px solid transparent; border-radius: 7px;
     background: transparent; color: #7f858e;
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+    cursor: var(--cur-pointer); transition: background .12s, color .12s, border-color .12s;
   }
   .cp-segtab:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
   .cp-segtab.active {
@@ -37,7 +37,7 @@
     flex: 1; aspect-ratio: 1; padding: 0;
     display: flex; align-items: center; justify-content: center;
     border: 1.5px solid transparent; border-radius: 6px;
-    background: transparent; color: #9aa0aa; cursor: pointer;
+    background: transparent; color: #9aa0aa; cursor: var(--cur-pointer);
     transition: background .12s, color .12s, border-color .12s;
   }
   .cp-iconbtn:hover:not(.active) { background: rgba(255, 255, 255, 0.05); color: #cdd2da; }
@@ -69,7 +69,7 @@
   /* HSV colour picker */
   .cp-picker { display: flex; flex-direction: column; gap: 8px; }
   .cp-sv { position: relative; border-radius: 6px; overflow: hidden; }
-  .cp-sv-canvas { display: block; width: 100%; height: 130px; cursor: crosshair; }
+  .cp-sv-canvas { display: block; width: 100%; height: 130px; cursor: var(--cur-crosshair); }
   .cp-sv-cursor {
     position: absolute; left: 0; top: 0;
     width: 11px; height: 11px; border-radius: 50%;
@@ -84,12 +84,12 @@
     -webkit-appearance: none; appearance: none;
     width: 100%; height: 10px; border-radius: 5px;
     background-origin: border-box;
-    outline: none; cursor: pointer; display: block;
+    outline: none; cursor: var(--cur-pointer); display: block;
   }
   input[type=range].ev-slider::-webkit-slider-runnable-track { background: transparent; height: 10px; border-radius: 5px; }
   input[type=range].ev-slider::-webkit-slider-thumb {
     -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
-    background: #e6e7e9; box-shadow: 0 1px 3px rgba(0,0,0,0.6); cursor: grab; margin-top: -2px;
+    background: #e6e7e9; box-shadow: 0 1px 3px rgba(0,0,0,0.6); cursor: var(--cur-grab); margin-top: -2px;
   }
   .cp-hue { background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
   /* Opacity/strength track: checkerboard base (the light square) + 1px frame here; the
@@ -130,7 +130,7 @@
     display: inline-flex; align-items: center; justify-content: center;
     width: 100%; height: 30px; padding: 0 12px; border-radius: 7px;
     font: 500 12px/1 system-ui, -apple-system, sans-serif;
-    cursor: pointer; white-space: nowrap;
+    cursor: var(--cur-pointer); white-space: nowrap;
     transition: background .12s, border-color .12s, color .12s;
   }
   .cp-btn-outline { border: 1.5px solid rgba(255,255,255,0.1); background: transparent; color: #d5d8dd; }
@@ -145,7 +145,7 @@
   }
   /* A .cp-btn can be genuinely unavailable, so it has to LOOK unavailable — an ordinary-looking
      button that does nothing on click reads as a broken button. Hover is suppressed too. */
-  .cp-btn:disabled { opacity: 0.45; cursor: default; }
+  .cp-btn:disabled { opacity: 0.45; cursor: var(--cur-arrow); }
   .cp-btn:disabled:hover { border-color: rgba(255,255,255,0.1); background: transparent; }
   .cp-row { display: flex; align-items: center; gap: 6px; }
   .cp-btn-icon { width: 30px; flex: none; padding: 0; }
@@ -164,7 +164,7 @@
   }
   .cp-slider input[type=range] {
     position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
-    -webkit-appearance: none; appearance: none; background: transparent; opacity: 0; cursor: pointer;
+    -webkit-appearance: none; appearance: none; background: transparent; opacity: 0; cursor: var(--cur-pointer);
   }
 
   /* Number chips */
@@ -196,7 +196,7 @@
   .cp-adv-close {
     width: 22px; height: 22px; flex: none; padding: 0;
     display: flex; align-items: center; justify-content: center;
-    border: none; background: transparent; color: #9aa0aa; border-radius: 6px; cursor: pointer;
+    border: none; background: transparent; color: #9aa0aa; border-radius: 6px; cursor: var(--cur-pointer);
     transition: background .12s, color .12s;
   }
   .cp-adv-close:hover { background: rgba(255,255,255,0.05); color: #d5d8dd; }

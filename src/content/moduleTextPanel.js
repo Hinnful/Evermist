@@ -189,8 +189,10 @@ function _mtInitModal() {
         }
         _mtRenderModal('Reading the PDF…');
         let res = null;
+        companionBusy('pdf', true);
         try { res = await window.electronAPI.extractPdfText(buf); }
         catch (err) { res = { ok: false, error: String((err && err.message) || err) }; }
+        companionBusy('pdf', false);
         if (!res || !res.ok) {
           _mtRenderModal(t('Could not read that PDF') + (res && res.error ? ': ' + t(res.error) : '.'), true);
           return;
@@ -404,4 +406,4 @@ function initModuleText(nameEl) {
   _mtNameEl.addEventListener('blur', () => setTimeout(mtCloseDropdown, 0));
 }
 
-
+

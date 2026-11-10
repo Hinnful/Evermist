@@ -78,7 +78,7 @@ function setShape(s) {
 
   circleCenter = null;
   coneApex = null;
-  container.style.cursor = s === 'select' ? 'default' : (s === 'door' ? 'pointer' : 'crosshair');
+  container.style.cursor = cursorFor(s === 'select' ? 'arrow' : (s === 'door' ? 'pointer' : 'crosshair'));
   // The Door tool shows the grid on its own (renderGrid), so picking or dropping it has to
   // repaint that layer. The cursor canvas below is a different one and would not carry it.
   gridDirty = true;

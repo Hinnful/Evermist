@@ -50,7 +50,7 @@ function turnShape(poly, deg) {
   return out;
 }
 
-const _SEAT_CURSOR_SWAP = { 'nwse-resize': 'nesw-resize', 'nesw-resize': 'nwse-resize' };
+const _SEAT_CURSOR_SWAP = { nwse: 'nesw', nesw: 'nwse' };
 function turnCursor(c, deg) { return (seatSideways(deg) && _SEAT_CURSOR_SWAP[c]) || c; }
 
 // ─── The DM window ────────────────────────────────────────────────────────────

@@ -553,6 +553,9 @@ three surfaces reach the TV: the scene transition fade plus scene name, the map 
 and the landing/empty state. Keep them precisely because they are the only part of the app
 the players ever see.
 
+**Narrowed 2026-11-10:** the crystal companion of the pointer is a fourth surface on the TV. It is
+part of the cursor, not interface; see "The pointer is one dart and a crystal companion".
+
 ### A dark toolbar pill means pick exactly one · `SETTLED` (2026-08-06)
 Snap-to-grid shipped alone inside a `.tb-seg` pill, which read as harmless because a group of
 one has nothing to be picked between. Adding a second independent toggle beside it made the
@@ -1426,3 +1429,11 @@ it is desktop-specific, and special handling for any other desktop. Windows, Mac
 
 ### Every computer keeps its own Trash · `SETTLED` (2026-11-09)
 Reverses the parked "local trash that works without Google Drive" and "hidden with sync off" above. The line is always shown, with or without Drive. A delete that goes to the Trash never asks; a delete for good keeps its question (Empty now, groups, roads, rooms, factions, lore), so a track delete and a map delete from the Notes window lost theirs. Every Trash delete shows the undo toast `"<name>" moved to Trash` with Undo. Rejected: swapping Undo for a one-time "items stay in the Trash for 30 days" toast (Undo is one click against four steps through Settings; Gmail, Google Drive and Figma keep Undo beside their trash). The name "Recently deleted" became "Trash" («Корзина»), checked against Google Drive, Figma, Notion ("Moved to Trash"), Apple and Dropbox ("Deleted"); rejected: "moved to Recently deleted" (reads as if nothing was deleted) and keeping the old name with a bare "deleted" toast (it no longer says where the item went). A row shows the name and "N days left"; disk size per row rejected. Empty now asks "Everything in the Trash is deleted for good. This cannot be undone.", plus "on every computer" while sync is signed in. Restore reconnects the road ends a map held when the end is still open. Known limit: closing Evermist inside the 4 s undo window can leave the deleted map in the library at the next start; nothing is lost.
+
+### The pointer is one dart and a crystal companion · `SETTLED` (2026-11-10)
+One simple symmetric white dart with a thin navy edge turns Evermist blue over anything clickable. Mode badges are smooth glove shapes (grab, holding), and a new rotate cursor serves the rotate handle. Text, draw, move, the four resize arrows and the column divider come from the same pack, drawn at runtime at 1x and 2x as `--cur-*` custom properties. Every CSS cursor is `var(--cur-*)` or `none` and JS goes through `cursorFor()`; `test/cursorRules.test.js` holds it. Dropdowns, sliders and colour pickers keep the arrow, text fields get the text cursor.
+The companion is a morphing glow-core crystal with an Orb eye that follows close and snappy, on the DM screen, the Player TV and every two-map column or half, one per screen. It is the cursor's companion, so it narrows CLAUDE.md's Player zero-UI rule ("Keep the cursor" now covers it), "Player view has essentially no interface" and "The VTT line" without being UI. The party marker's rejection of crystals does not apply to it. Settings has "Crystal companion", on by default and stored only when off, so the previous release ignores it safely; OS reduce-motion keeps it still. It never draws on the map and never reaches a scene or backup.
+**Out of scope for now:** a drop-a-file catch, glances at revealed rooms, extra idle habits, a size setting, sounds, hiding it while H is held.
+
+### Pointer and companion designs that were rejected · `REJECTED` (2026-11-10)
+Recoloured system arrows; pointers that read as too magical (a d20, a sigil, fireflies); trails or rings drawn on the map; bulky crystal pointers (a crystal-shard arrow cluster); off-centre Windows-style arrows; a custom window header bar. Faces with anime-style eyes or eyelashes and detailed faces in general were rejected: eyes are 3-5 px at real size, so mood shows through outline, colour and glow. Over-the-top animation and a laggy follow were rejected. Of five companion bodies only the Morphing glow-core shipped; Shape-shifter, Brilliant, One eye and the plain Glow core lost, as did the Lens, Slit and Visor eyes.
