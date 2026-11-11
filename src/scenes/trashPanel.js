@@ -37,7 +37,8 @@ async function _tpRestore(item) {
   const synced = syncIndex.isOn();
   if (item.id.startsWith('track:')) {
     const back = () => sceneTrash.restoreTrack(item.id);
-    if (synced) { await syncMusic.restoreHere(item.hash, back); syncEngine.now().catch(() => {}); } else await back();
+    const folder = item.kind === 'sounds' ? syncSounds : syncMusic;
+    if (synced) { await folder.restoreHere(item.hash, back); syncEngine.now().catch(() => {}); } else await back();
     return;
   }
   if (synced) await syncEngine.markRestored(item.id);

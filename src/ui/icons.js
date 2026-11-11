@@ -33,6 +33,8 @@ const UI_ICON_PATHS = {
   // An arrow: Open, on the world map's bar over a picked scene (a box around it read as a download). More is three dots.
   open: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   more: '<circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
+  play: '<path d="M7.5 5.2l11 6.8-11 6.8z" fill="currentColor"/>',
+  stop: '<rect x="6.2" y="6.2" width="11.6" height="11.6" rx="1.6" fill="currentColor"/>',
   tv: '<rect x="2.8" y="5.2" width="18.4" height="12.6" rx="2"/><path d="M12 17.8v3M8 20.8h8"/>',
 };
 

@@ -21,6 +21,7 @@ function initPlayerMessages() {
     if (msg.type === 'weather') { applyWeatherMessage(msg); return; }
     if (msg.type === 'tv-picture') { applyTvPicture(msg.blob); return; }
     if (msg.type === 'companion') { companionSetOn(msg.on); return; }
+    if (msg.type === 'initiative') { initiativePanelShow(msg.slots); return; }
 
     if (msg.type === 'view-snap') {
       playerFollowDM = true;

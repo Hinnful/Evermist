@@ -19,7 +19,7 @@ function trashDue(entries, now) { return entries.filter(e => trashIsDue(e.at, no
 // The one list, newest first: this computer's entries (a track's carrying its `hash`), then the Drive's rows not held
 // here - a map by its id, a track (`music:<hash>`) by its hash.
 function trashRows(local, drive) {
-  const mine = new Set(local.map(e => (e.hash ? 'music:' + e.hash : e.id)));
+  const mine = new Set(local.map(e => (e.hash ? (e.kind || 'music') + ':' + e.hash : e.id)));
   const onDrive = new Set((drive || []).map(e => e.id));
   return local.map(e => ({ ...e, local: true, drive: onDrive.has(e.id) }))
     .concat((drive || []).filter(e => !mine.has(e.id)).map(e => ({ ...e, local: false, drive: true })))

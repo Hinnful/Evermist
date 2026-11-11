@@ -579,7 +579,7 @@ function initCombatTracker() {
 
   initCombatStatBlock();
   initBestiary();
-  initCombatFights();
+  initCombatFights(); initInitiativeTv();
 }
 
 // ── The name field's suggestions from the bestiary ───────────────────────────

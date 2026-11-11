@@ -84,6 +84,20 @@ function createMusicHashes(musicDir, cacheFile, trashDir) {
     }
   }
 
+  // A file under a new name, or "Name (2).ext" when that is taken. ⚠ ITS HASH MOVES WITH IT: a renamed file read as
+  // unhashed would leave a sync tick reading the old name as deleted. Answers the name.
+  async function rename(from, to) {
+    const src = trackPath(from);
+    if (!src || !syMuNameOk(to)) throw new Error('a track name the music folder would not take');
+    const taken = (await fs.promises.readdir(musicDir).catch(() => [])).filter(n => n !== from);
+    const final = uniqueMusicName(to, taken);
+    if (final === from) return from;
+    await fs.promises.rename(src, path.join(musicDir, final));
+    const c = load();
+    if (c.files[from]) { c.files[final] = c.files[from]; delete c.files[from]; await save(); }
+    return final;
+  }
+
   const trashPath = token => {
     if (typeof token !== 'string' || !TOKEN_RE.test(token)) throw new Error('not a track in the Trash');
     return path.join(trashDir, token);
@@ -131,7 +145,7 @@ function createMusicHashes(musicDir, cacheFile, trashDir) {
     if (token in c.trashed) { delete c.trashed[token]; await save(); }
   }
 
-  return { list, place, trash, remove, untrash, purgeTrash, partPath, trackPath };
+  return { list, place, rename, trash, remove, untrash, purgeTrash, partPath, trackPath };
 }
 
 module.exports = { createMusicHashes };

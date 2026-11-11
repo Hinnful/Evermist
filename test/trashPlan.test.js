@@ -47,6 +47,11 @@ describe('trashRows', () => {
       ['track:t1.mp3', true, false], ['m2', false, true], ['m1', true, true], ['music:' + 'b'.repeat(64), false, true],
     ]);
   });
+  it('matches a sound held here to its own Drive row, never to a music row of the same file', () => {
+    const local = [{ id: 'track:t2.wav', at: 5, name: 'Колокол', hash: H, kind: 'sounds' }];
+    const drive = [{ id: 'sounds:' + H, at: 5, name: 'Колокол' }, { id: 'music:' + H, at: 4, name: 'Колокол' }];
+    assert.deepEqual(P.trashRows(local, drive).map(r => r.id), ['track:t2.wav', 'music:' + H]);
+  });
   it('lists this computer\'s entries alone when the Drive cannot be read', () => {
     assert.deepEqual(P.trashRows([{ id: 'm1', at: 1 }], null).map(r => r.id), ['m1']);
   });

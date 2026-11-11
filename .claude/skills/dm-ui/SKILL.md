@@ -355,7 +355,7 @@ slider** (`.cp-slider`'s markup, never a styled native range).
   and never wraps a field the DM types into.
 - **Add from YouTube selects as the Bestiary does** (Windows, below), and a track already
   on disk wears `.sm-tick.done` and an In library chip.
-- **A per-row delete is an icon with the app's trash SVG**, hidden until the row hovers. A
+- **A per-row delete is an icon with the app's trash SVG**, hidden until the row hovers (a sound's is a ×, by the DM's call). A
   track's delete asks nothing: it goes to the Trash with the undo toast.
 - **Music groups** (`musicGroups.js`): New group in the header,
   a row dragged onto a heading, Ungrouped first. **A group is renamed by its name, never a pencil.**

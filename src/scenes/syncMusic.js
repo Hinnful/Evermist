@@ -1,19 +1,65 @@
 'use strict';
 // syncMusic.js — the music folder through sync: the tick's music part, which sync.js runs after every map, record and
 // note; this computer's `music` record; its rows in Recently deleted, and the tracks it moves into and out of this
-// computer's own (sceneTrash.js); and the hash a track gets as it lands. The rules are syncMusicPlan.js; files move in
-// the main process (syncRemote.js, musicHashes.js). Volume stays per computer.
+// computer's own (sceneTrash.js); and the hash a track gets as it lands. The DM's own sounds sync the same way as a
+// second folder, `syncSounds`, with no groups. The rules are syncMusicPlan.js; files move in the main process
+// (syncRemote.js, musicHashes.js). Volume stays per computer.
 
-const syncMusic = (() => {
-  const KEY = '$music';             // this computer's music state, in `evermist-sync`'s `synced` store
-  const LOOSE_GRACE_MS = 15000;
+const SY_LOOSE_GRACE_MS = 15000;
+
+// The other computers' records of this folder, each read again only when its hash moved. `cache`: machine -> { hash, rec }.
+async function _syFolderRemotes(drive, key, cache, snap, machine) {
+  const out = [];
+  for (const r of snap.records) {
+    if (r.key !== key || r.machine === machine || !(r.format <= SY_FORMAT)) continue;
+    let c = cache.get(r.machine);
+    if (!c || !r.hash || c.hash !== r.hash) {
+      let text;
+      try { text = await drive('getRecord', { fileId: r.fileId }); } catch (err) { if (err.code === 'notFound') continue; throw err; }
+      const rec = syMuRecordParse(text, key);
+      if (!rec) continue;
+      c = { hash: r.hash, rec };
+      cache.set(r.machine, c);
+    }
+    out.push({ machine: r.machine, rec: c.rec });
+  }
+  return out;
+}
+
+// The later groups edit, here or on another computer, becomes what the Music pane shows.
+function _syMusicGroups(st, local, list, rems, machine) {
+  const ls = musicGroupsSynced();
+  if (!st.groups || ls.at > st.groups.at) st.groups = syMuGroupsFromLocal(ls, local, st.groups);
+  st.groups = syMuGroupsPick([{ machine, groups: st.groups }].concat(rems.map(r => ({ machine: r.machine, groups: r.rec.groups }))));
+  const want = syMuGroupsToLocal(st.groups, local, ls, list);
+  if (esCanon(want.of) !== esCanon(ls.of) || esCanon(want.order) !== esCanon(ls.order) || want.at !== ls.at) musicGroupsAdopt(want);
+}
+
+// The Drive's files of this folder no computer lists, removed once unreferenced for the grace. `unrefSince`: file -> when
+// first seen so.
+async function _syFolderTidy(drive, files, unrefSince, rems, st, machine) {
+  const loose = syMuLoose(files, rems.concat([{ machine, rec: { tracks: st.tracks } }]), st.gone);
+  const seen = new Set(loose), now = Date.now();
+  for (const n of Array.from(unrefSince.keys())) if (!seen.has(n)) unrefSince.delete(n);
+  for (const n of loose) {
+    if (!unrefSince.has(n)) { unrefSince.set(n, now); continue; }
+    if (now - unrefSince.get(n) < SY_LOOSE_GRACE_MS) continue;
+    await drive('remove', { fileId: files.find(f => f.name === n).id });
+    unrefSince.delete(n);
+  }
+}
+
+// `o`: key ('music' or 'sounds': the record, the Drive folder, the snapshot's list), groups (music only), busy(name),
+// refresh() after the folder changed, and trash, this kind's calls into sceneTrash.js.
+function _syncFolder(o) {
+  const KEY = '$' + o.key;           // this computer's state of the folder, in `evermist-sync`'s `synced` store
   const remotes = new Map();         // machine -> { hash, rec }, the last record read
   const unrefSince = new Map();      // a Drive track file -> when it was first seen unreferenced
   let lock = Promise.resolve();
   let hashed = false;                // the start's hashing of the folder has finished
 
   async function _drive(op, arg) {
-    const r = await window.electronAPI.syncDrive(op, arg);
+    const r = await window.electronAPI.syncDrive(op, { ...arg, kind: o.key });
     if (!r.ok) { const e = new Error(r.message); e.code = r.code; throw e; }
     return r.v;
   }
@@ -28,54 +74,15 @@ const syncMusic = (() => {
   const _load = async () => { const x = await syncIndex.raw.get('synced', KEY); return x && x.st ? x.st : syMuEmpty(); };
   const _save = st => syncIndex.raw.put('synced', { key: KEY, hash: '', st });
 
-  async function _remotes(snap, machine) {
-    const out = [];
-    for (const r of snap.records) {
-      if (r.key !== 'music' || r.machine === machine || !(r.format <= SY_FORMAT)) continue;
-      let c = remotes.get(r.machine);
-      if (!c || !r.hash || c.hash !== r.hash) {
-        let text;
-        try { text = await _drive('getRecord', { fileId: r.fileId }); } catch (err) { if (err.code === 'notFound') continue; throw err; }
-        const rec = syMuRecordParse(text);
-        if (!rec) continue;
-        c = { hash: r.hash, rec };
-        remotes.set(r.machine, c);
-      }
-      out.push({ machine: r.machine, rec: c.rec });
-    }
-    return out;
-  }
-
   // A computer with no music, no deletions and no groups sends nothing until it has some.
   async function _send(st, now) {
-    const text = syMuRecordText(st), hash = await syncIndex.sha(text);
-    const sent = (await syncIndex.raw.get('synced', 'music') || {}).hash;
+    const text = syMuRecordText(st, o.key), hash = await syncIndex.sha(text);
+    const sent = (await syncIndex.raw.get('synced', o.key) || {}).hash;
     if (sent === hash) return;
     const g = st.groups || { of: {}, order: [], at: 0 };
     if (!sent && !Object.keys(st.tracks).length && !Object.keys(st.gone).length && !Object.keys(g.of).length && !g.order.length && !g.at) return;
-    await _drive('putRecord', { key: 'music', text, props: { hash, format: SY_FORMAT, at: now, edited: now } });
-    await syncIndex.raw.put('synced', { key: 'music', hash });
-  }
-
-  // The later groups edit, here or on another computer, becomes what the Music pane shows.
-  function _groups(st, local, list, rems, machine) {
-    const ls = musicGroupsSynced();
-    if (!st.groups || ls.at > st.groups.at) st.groups = syMuGroupsFromLocal(ls, local, st.groups);
-    st.groups = syMuGroupsPick([{ machine, groups: st.groups }].concat(rems.map(r => ({ machine: r.machine, groups: r.rec.groups }))));
-    const want = syMuGroupsToLocal(st.groups, local, ls, list);
-    if (esCanon(want.of) !== esCanon(ls.of) || esCanon(want.order) !== esCanon(ls.order) || want.at !== ls.at) musicGroupsAdopt(want);
-  }
-
-  async function _tidy(snap, rems, st, machine) {
-    const loose = syMuLoose(snap.music, rems.concat([{ machine, rec: { tracks: st.tracks } }]), st.gone);
-    const seen = new Set(loose), now = Date.now();
-    for (const n of Array.from(unrefSince.keys())) if (!seen.has(n)) unrefSince.delete(n);
-    for (const n of loose) {
-      if (!unrefSince.has(n)) { unrefSince.set(n, now); continue; }
-      if (now - unrefSince.get(n) < LOOSE_GRACE_MS) continue;
-      await _drive('remove', { fileId: snap.music.find(f => f.name === n).id });
-      unrefSince.delete(n);
-    }
+    await _drive('putRecord', { key: o.key, text, props: { hash, format: SY_FORMAT, at: now, edited: now } });
+    await syncIndex.raw.put('synced', { key: o.key, hash });
   }
 
   // The music part of one tick. `ctx`: machine, first, now, changes() (a count that moves when the library changes;
@@ -87,34 +94,34 @@ const syncMusic = (() => {
     const b = await _locked(async () => {
       const folder = await _drive('musicTracks', { hash: false });
       const st = syMuObserve(await _load(), folder.tracks, folder.stashed, now);
-      const rems = await _remotes(snap, ctx.machine);
+      const rems = await _syFolderRemotes(_drive, o.key, remotes, snap, ctx.machine);
       for (const r of rems) st.gone = syMuGoneMerge(st.gone, r.rec.gone);
       st.gone = syMuPurge(st.gone, syMuTrashDue(st.gone, now));
       const local = syMuLocal(folder.tracks);
-      _groups(st, local, folder.tracks, rems, ctx.machine);
-      const busy = Object.keys(local).filter(h => musicTrackBusy(local[h].name));
-      const plan = syMuPlan({ st, list: folder.tracks, remotes: rems, files: snap.music, first: ctx.first, busy, stashed: folder.stashed });
+      if (o.groups) o.groups(st, local, folder.tracks, rems, ctx.machine);
+      const busy = Object.keys(local).filter(h => o.busy(local[h].name));
+      const plan = syMuPlan({ st, list: folder.tracks, remotes: rems, files: snap[o.key], first: ctx.first, busy, stashed: folder.stashed });
       // This computer's Recently deleted: a purge from any computer empties it, and a track it holds comes back from it
       // rather than the Drive.
-      const held = await sceneTrash.trackHashes();
+      const held = await o.trash.held();
       const purged = new Set(syPurgedHeld(st.gone, held.map(x => x.hash)));
-      for (const x of held) if (purged.has(x.hash)) await sceneTrash.purgeTrack(x.id);
+      for (const x of held) if (purged.has(x.hash)) await o.trash.purge(x.id);
       const back = syMuFromTrash(st.gone, local, held.filter(x => !purged.has(x.hash)).map(x => x.hash), plan.download.map(d => d.hash));
       for (const h of back) {
-        const name = await sceneTrash.restoreTrack(held.find(x => x.hash === h).id);
+        const name = await o.trash.restore(held.find(x => x.hash === h).id);
         if (name) st.tracks[h] = { name, size: 0, at: now };
       }
       plan.download = plan.download.filter(d => !back.includes(d.hash));
       let removed = false;
       for (const r of plan.remove) {
         // A track picked while this tick ran waits too.
-        if (musicTrackBusy(r.name)) { plan.held++; continue; }
+        if (o.busy(r.name)) { plan.held++; continue; }
         // Into this computer's Recently deleted, its time the deletion record's so both computers count the same days.
-        const id = await sceneTrash.putTrack(r.name, st.gone[r.hash].at, r.hash,
+        const id = await o.trash.put(r.name, st.gone[r.hash].at, r.hash,
           token => _drive('removeMusic', { name: r.name, hash: r.hash, token }).then(ok => ok && r.hash));
         if (id) { delete st.tracks[r.hash]; removed = true; }
       }
-      if (removed) _muRefreshTracks();
+      if (removed) o.refresh();
       for (const fileId of plan.purge) await _drive('remove', { fileId });
       await _save(st);
       await _send(st, now);
@@ -135,15 +142,15 @@ const syncMusic = (() => {
       await _locked(async () => { const st = await _load(); st.tracks[d.hash] = { name, size: 0, at: Date.now() }; await _save(st); });
       landed = true;
     }
-    if (landed) _muRefreshTracks();
-    if (!ctx.first) await _tidy(snap, b.rems, b.st, ctx.machine);
+    if (landed) o.refresh();
+    if (!ctx.first) await _syFolderTidy(_drive, snap[o.key], unrefSince, b.rems, b.st, ctx.machine);
     return { held: b.plan.held };
   }
 
-  // "Recently deleted" rows for tracks: { id: 'music:<hash>', name, at }.
+  // "Recently deleted" rows for tracks: { id: 'music:<hash>' (or 'sounds:<hash>'), name, at }.
   async function trash() {
     const st = await _load();
-    return syMuTrash(st.gone, st.tracks).map(x => ({ id: 'music:' + x.hash, name: displayName(x.name), at: x.at }));
+    return syMuTrash(st.gone, st.tracks).map(x => ({ id: o.key + ':' + x.hash, name: displayName(x.name), at: x.at }));
   }
 
   // A track restored from this computer's Recently deleted. ⚠ ITS DELETION IS MARKED RESTORED BEFORE THE FILE
@@ -173,7 +180,21 @@ const syncMusic = (() => {
   }
 
   return { tick, trash, restore, restoreHere, has, emptyNow, reconcile, landed };
-})();
+}
+
+const syncMusic = _syncFolder({
+  key: 'music', groups: _syMusicGroups, busy: name => musicTrackBusy(name), refresh: () => _muRefreshTracks(),
+  trash: { held: () => sceneTrash.trackHashes(), put: sceneTrash.putTrack, restore: sceneTrash.restoreTrack, purge: sceneTrash.purgeTrack },
+});
+const syncSounds = _syncFolder({
+  key: 'sounds', groups: null, busy: () => false, refresh: () => soundboardRefreshOwn(),
+  trash: {
+    held: () => sceneTrash.trackHashes('sounds'),
+    put: (name, at, hash, move) => sceneTrash.putTrack(name, at, hash, move, 'sounds'),
+    restore: sceneTrash.restoreTrack, purge: sceneTrash.purgeTrack,
+  },
+});
 
 // The music pane calls this after the folder or the groups changed; it does nothing unless sync is on here.
 function syncNoteMusic() { if (syncIndex.isOn()) syncMusic.landed(); }
+function syncNoteSounds() { if (syncIndex.isOn()) syncSounds.landed(); }

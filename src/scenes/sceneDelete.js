@@ -108,20 +108,42 @@ function commitPendingDelete() {
 // The undo toast's two buttons, and the delete that is still pending when the window goes.
 function sceneDeleteInit() {
   document.querySelector('#scene-undo-toast .undo-btn').onclick = () => (smToastUndo ? smToastUndo() : undoDelete());
-  document.querySelector('#scene-undo-toast .undo-x').onclick = commitPendingDelete;
+  // The toast also carries undos with no map delete behind them, so × closes it whether or not one is pending.
+  document.querySelector('#scene-undo-toast .undo-x').onclick = () => { commitPendingDelete(); hideUndoToast(); };
   window.addEventListener('beforeunload', commitPendingDelete);
 }
 
-function showUndoToast(msg, onUndo) {
+// noTrash: a message where nothing was deleted shows no trash.
+function showUndoToast(msg, onUndo, noTrash) {
   const t = document.getElementById('scene-undo-toast');
   if (!t) return;
   smToastUndo = onUndo || null;
   t.querySelector('.undo-msg').textContent = msg;
+  t.querySelector('.i-trash').style.display = noTrash ? 'none' : '';
   showToast(t);
   const bar = t.querySelector('.undo-bar');
   bar.style.animation = 'none';
   void bar.offsetWidth; // reflow so the 4s timer bar restarts on each delete
   bar.style.animation = 'smUndoTimer 4s linear forwards';
+}
+
+// A music track or one of the DM's own sounds just put in the Trash: the toast whose Undo brings it back, and
+// `onBack(name)` with the name it came back under. A map delete still pending is finalised first, so its Undo is not
+// replaced silently.
+async function showTrackUndo(id, kind, label, onBack) {
+  const { hash } = (await sceneTrash.trackHashes(kind)).find(x => x.id === id) || {};
+  const folder = kind === 'sounds' ? syncSounds : syncMusic;
+  commitPendingDelete();
+  const undo = async () => {
+    hideUndoToast();
+    // With sync on the deletion is marked restored before the file returns (syncMusic.restoreHere).
+    const back = syncIndex.isOn() ? await folder.restoreHere(hash, () => sceneTrash.restoreTrack(id)) : await sceneTrash.restoreTrack(id);
+    if (back && onBack) onBack(back);
+    if (syncIndex.isOn()) syncEngine.now().catch(() => {});
+  };
+  showUndoToast(t('"{name}" moved to Trash', { name: label }), undo);
+  clearTimeout(smUndoTimer);
+  smUndoTimer = setTimeout(() => { if (smToastUndo === undo) hideUndoToast(); }, 4200);
 }
 
 function hideUndoToast() {

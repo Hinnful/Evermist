@@ -259,7 +259,7 @@ const syncEngine = (() => {
   }
 
   // "Recently deleted": [{ id, name, at }] of maps and tracks, newest first. A map's name is read from its newest record
-  // on the Drive; a track's id is `music:<hash>`.
+  // on the Drive; a track's id is `music:<hash>`, one of the DM's own sounds `sounds:<hash>`.
   async function trash() {
     const gone = await _goneMap(), snap = await _drive('snapshot'), out = [];
     for (const id of syTrashIds(gone)) {
@@ -269,15 +269,17 @@ const syncEngine = (() => {
       if (item) try { const r = JSON.parse(await _drive('getRecord', { fileId: item.fileId })); name = (r.rec && r.rec.name) || ''; } catch (_) { /* listed without a name */ }
       out.push({ id, name, at: gone[id].at });
     }
-    return out.concat(await syncMusic.trash()).sort((a, b) => b.at - a.at);
+    return out.concat(await syncMusic.trash(), await syncSounds.trash()).sort((a, b) => b.at - a.at);
   }
 
   // Restore brings the map back here at once and on every other computer at its next sync.
   async function restore(id) {
-    if (id.startsWith('music:')) {
-      await syncMusic.restore(id.slice(6));
+    const folder = id.startsWith('music:') ? syncMusic : id.startsWith('sounds:') ? syncSounds : null;
+    if (folder) {
+      const hash = id.slice(id.indexOf(':') + 1);
+      await folder.restore(hash);
       await now();
-      return syncMusic.has(id.slice(6));
+      return folder.has(hash);
     }
     if (!(await markRestored(id))) return false;
     await now();
@@ -296,7 +298,7 @@ const syncEngine = (() => {
   async function emptyNow() {
     const g = await _goneMap(), ids = syTrashIds(g).filter(id => !allScenes.some(s => s.id === id));
     await _goneSave(g, syPurge(g, ids));
-    const tracks = await syncMusic.emptyNow();
+    const tracks = await syncMusic.emptyNow() + await syncSounds.emptyNow();
     await now();
     return ids.length + tracks;
   }
@@ -486,6 +488,7 @@ const syncEngine = (() => {
       // Music last, after every map, record and note.
       const mu = await syncMusic.tick(snap, { machine, first, now, changes: () => changes });
       status.held += mu.held;
+      status.held += (await syncSounds.tick(snap, { machine, first, now, changes: () => changes })).held;
       await _purgeCopies(Date.now());
       try { status.space = await _drive('about'); } catch (_) { /* the line keeps the last reading */ }
       if (first && !failed && !pending.size) await syncIndex.raw.put('synced', { key: FIRST_KEY, hash: 'done' });
@@ -552,5 +555,6 @@ async function syncActivate() {
   if (!(await syncIndex.init())) return;
   await syncIndex.reconcile();
   syncMusic.reconcile();
+  syncSounds.reconcile();
   await syncEngine.start();
 }

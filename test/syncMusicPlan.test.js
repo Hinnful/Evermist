@@ -153,6 +153,13 @@ describe('the record', () => {
     const bad = M.syMuRecordParse(JSON.stringify({ key: 'music', format: 1, tracks: { xyz: { name: 'a.mp3' }, [H('c')]: { name: '../a.mp3' } } }));
     assert.deepEqual(bad.tracks, {});
   });
+  it('keeps the sounds record apart from the music record', () => {
+    const st = { tracks: { [H('a')]: { name: 'Bell.wav', at: 3, size: 9 } }, gone: {}, groups: null };
+    const text = M.syMuRecordText(st, 'sounds');
+    assert.deepEqual(M.syMuRecordParse(text, 'sounds').tracks, st.tracks);
+    assert.equal(M.syMuRecordParse(text), null, 'a sounds record is never read as music');
+    assert.equal(M.syMuRecordParse(M.syMuRecordText(st), 'sounds'), null, 'nor music as sounds');
+  });
   it('writes the same text for the same state whatever the key order', () => {
     const a = { tracks: { [H('a')]: { name: 'A.mp3', at: 1, size: 1 }, [H('b')]: { name: 'B.mp3', at: 1, size: 1 } }, gone: {}, groups: null };
     const b = { tracks: { [H('b')]: { size: 1, at: 1, name: 'B.mp3' }, [H('a')]: { name: 'A.mp3', size: 1, at: 1 } }, gone: {}, groups: null };

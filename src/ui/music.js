@@ -366,20 +366,7 @@ async function _muDelete(track) {
   delete _muDurations[track.name];
   forgetMusicTrack(track.name);
   _muRefreshTracks();
-  if (!id) return;
-  const { hash } = (await sceneTrash.trackHashes()).find(x => x.id === id) || {};
-  // A map delete still pending is finalised first, so its Undo is not replaced silently.
-  commitPendingDelete();
-  const undo = async () => {
-    hideUndoToast();
-    // With sync on the deletion is marked restored before the file returns (syncMusic.restoreHere).
-    const back = syncIndex.isOn() ? await syncMusic.restoreHere(hash, () => sceneTrash.restoreTrack(id)) : await sceneTrash.restoreTrack(id);
-    if (back && group) setMusicGroup([back], group);
-    if (syncIndex.isOn()) syncEngine.now().catch(() => {});
-  };
-  showUndoToast(t('"{name}" moved to Trash', { name: displayName(track.name) }), undo);
-  clearTimeout(smUndoTimer);
-  smUndoTimer = setTimeout(() => { if (smToastUndo === undo) hideUndoToast(); }, 4200);
+  if (id) await showTrackUndo(id, 'music', displayName(track.name), back => { if (group) setMusicGroup([back], group); });
 }
 
 // A track a deck still holds, playing, paused or fading out: sync neither removes nor replaces it.

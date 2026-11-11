@@ -40,6 +40,8 @@ dock sits over the map rather than beside it, so opening a pane never moves the 
 what the TV is sent. Its inner edge drags to resize it, and it gives way so the toolbar stays
 clear. The toolbar stays centred on the window whatever either side does.
 
+**Sounds** hold the thirty built-ins plus the DM's own: Add sound in the pane header uses Music's native picker and copies the file into `userData/sounds` (`soundFiles.js`); over 10 MB is refused with a message pointing to the Music pane. Own sounds sit in one group, "My sounds", at the top, shown only while it holds one. The name is the file name without extension; clicking it renames the file (no persisted field). × on hover sends a sound to the Trash with Undo; right-click still stops the newest copy. Built-ins cannot be hidden, renamed or deleted, and sounds stay out of the backup zip. The undo toast's × closes it whatever it undoes.
+
 **Pictures** (`gallery.js`) is the only place pictures live: portraits, monsters, letters, kept
 under a name with no scene or room attached, in a database of their own (`galleryStore.js`). A
 find field narrows the grid by name, `+` or a drop adds, a double-click renames, the trash asks
@@ -647,6 +649,8 @@ test suite: synthetic fixtures validated the wrong parser twice.
 
 ## The fight table
 
+**Turn order on the TV.** Start fight on the table shows the open fight's rows on the TV, End fight hides them, and the fight ends by itself with an Undo toast when the open fight goes from a living monster to none (Undo restarts it; it ends again only after a monster lives and goes down). Opening another fight does not end it; the started state is never saved. Every row shows in the table's own order, initiative typed or not (`initiativePlan.js`, `initiativeTv.js`, Player side `initiativePanel.js`): two sheets, bottom-left upright and top-right turned 180°, each in a pool of haze in the map's fog theme (a darker extra pool behind the sheet). Names are 2.7% of the Player window's height, never map zoom, one column to 10 slots, then balanced columns, in Alegreya, Georgia, "Times New Roman", serif (not bundled). Monsters read "Monster" (Russian "Монстр"), always red, back-to-back ones merged as "Monster ×N". In two-map mode the shell shows the panel once: the bottom-left sheet takes column A's fog theme, the top-right column B's. There is no current-turn marker.
+
 The Combat button opens a table for the fight in progress: a row per creature with initiative,
 name, HP, AC, conditions and attacks. The title is a picker over a list of fights (combatFights.js),
 none tied to a scene, and the open one stays put through a scene switch, two maps at once and a
@@ -903,7 +907,7 @@ Drive. Sync stays off until **Connect to Google** in Settings.
 - **The status line** says when the last sync ran, or that it is syncing, offline, signed out,
   that the Drive is full, how full it is (" · N% full", hidden under 70%, amber from 70%, red from 90%; read through Drive's about() at most once per tick and after a quota error), that the other computer runs a newer Evermist, or that a sync failed
   and is tried again in 30 seconds. Offline, the app works as before and edits go up later.
-- **What stays per computer:** the TV screen, seat alignment and the other Settings, the music folded-shut state and volume, and the sign-in itself. Sounds ship inside the app and need no sync.
+- **What stays per computer:** the TV screen, seat alignment and the other Settings, the music folded-shut state and volume, and the sign-in itself. The thirty built-in sounds ship inside the app; the DM's own sounds sync like music (own Drive folder and record, own "Recently deleted" rows), and a rename after the other computer has the sound does not reach it.
 
 The page side is `sync.js` (the triggers, the outbox and inbox), `syncIndex.js` (the hashes),
 `syncMerge.js` (applying a pulled record silently) and `syncSettings.js` (the Settings section);

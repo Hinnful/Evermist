@@ -105,6 +105,7 @@ function bindStageHalves() {
   if (_stagePictureShell !== _stageWindow.stageFrameWindow) {
     _stagePictureShell = _stageWindow.stageFrameWindow;
     galleryResend();
+    initiativeTvResend();
   }
   if (typeof refreshPlayerControlUI === 'function') refreshPlayerControlUI();
 }

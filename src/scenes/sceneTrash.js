@@ -1,7 +1,7 @@
 'use strict';
 // sceneTrash.js — Recently deleted on this computer: a deleted map's whole record kept 30 days in its own database,
 // its animated file in userData/trash, and Restore putting both back with the road ends it held; a deleted music track
-// the same way, its file in userData/trash/music. The rules are trashPlan.js; the list in Settings is trashPanel.js.
+// the same way, its file in userData/trash/music, and one of the DM's own sounds in userData/trash/sounds. The rules are trashPlan.js; the list in Settings is trashPanel.js.
 
 const sceneTrash = (() => {
   // ⚠ A DATABASE OF ITS OWN, never a store in `evermist`: a new store means a version bump, and the previous release's
@@ -60,7 +60,8 @@ const sceneTrash = (() => {
     });
   }
 
-  // The track entries [{ id, at, name, token, hash }], newest first.
+  // The track entries [{ id, at, name, token, hash, kind? }], newest first. `kind` 'sounds' marks one of the DM's own
+  // sounds; a music track carries none, as the previous release wrote it.
   const _tracks = async () => ((await _tx('readonly', s => s.getAll(), TRACKS)) || []).sort((a, b) => b.at - a.at);
   const _delTrack = id => _tx('readwrite', s => s.delete(id), TRACKS);
 
@@ -124,23 +125,32 @@ const sceneTrash = (() => {
     if (_api()) await _api().purgeTrashFile(id).catch(() => {});
   }
 
+  const _kindOf = e => e.kind || 'music';
+  const _sounds = e => _kindOf(e) === 'sounds';
+  const _file = {
+    untrash: (e, token, name) => (_sounds(e) ? _api().untrashSoundFile(token, name) : _api().untrashMusicFile(token, name)),
+    purge: (e, token) => (_sounds(e) ? _api().purgeTrashedSound(token) : _api().purgeTrashedMusic(token)),
+  };
+
   // ⚠ THE ENTRY FIRST, then the move: a crash in between leaves an entry with no file, which Restore drops, never a
-  // file nobody lists. `move(token)` takes the file out of the music folder and answers its hash, or false when it
-  // did not. Answers the entry's id, or null.
-  async function putTrack(name, at, hash, move) {
+  // file nobody lists. `move(token)` takes the file out of its folder and answers its hash, or false when it did not.
+  // Answers the entry's id, or null.
+  async function putTrack(name, at, hash, move, kind) {
     const token = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8) + (/\.\w+$/.exec(name) || [''])[0].toLowerCase();
     const id = 'track:' + token;
-    await _tx('readwrite', s => s.put({ id, at, name, token, hash }), TRACKS);
+    const entry = kind === 'sounds' ? { id, at, name, token, hash, kind } : { id, at, name, token, hash };
+    await _tx('readwrite', s => s.put(entry), TRACKS);
     let h;
     try { h = await move(token); } catch (err) { await _delTrack(id); throw err; }
     if (!h) { await _delTrack(id); return null; }
-    if (h !== hash) await _tx('readwrite', s => s.put({ id, at, name, token, hash: h }), TRACKS);
+    if (h !== hash) await _tx('readwrite', s => s.put({ ...entry, hash: h }), TRACKS);
     trashPanelRefresh();
     return id;
   }
 
   // The DM's or Claude's delete of a track.
   const trashTrack = name => putTrack(name, Date.now(), '', token => _api().trashMusicFile(name, token));
+  const trashSound = name => putTrack(name, Date.now(), '', token => _api().trashSoundFile(name, token), 'sounds');
 
   // The track back in the music folder under its name, or " (2)" when that is taken. Answers that name, or null when it
   // is not here or its file did not move (the entry then stays, and goes at its 30 days). ⚠ With sync on the caller marks its deletion restored first (syncMusic.restoreHere).
@@ -153,9 +163,9 @@ const sceneTrash = (() => {
     const e = await _tx('readonly', s => s.get(id), TRACKS);
     if (!e) return null;
     let back;
-    try { back = await _api().untrashMusicFile(e.token, e.name); } catch (err) { console.error('[trash]', err); return null; }
+    try { back = await _file.untrash(e, e.token, e.name); } catch (err) { console.error('[trash]', err); return null; }
     await _delTrack(id);
-    await _muRefreshTracks();
+    await (_sounds(e) ? soundboardRefreshOwn() : _muRefreshTracks());
     trashPanelRefresh();
     return back;
   }
@@ -163,11 +173,11 @@ const sceneTrash = (() => {
   async function purgeTrack(id) {
     const e = await _tx('readonly', s => s.get(id), TRACKS);
     await _delTrack(id);
-    if (e && _api()) await _api().purgeTrashedMusic(e.token).catch(() => {});
+    if (e && _api()) await _file.purge(e, e.token).catch(() => {});
   }
 
-  // [{ id, hash }] of the tracks held, for sync.
-  const trackHashes = async () => (await _tracks()).map(e => ({ id: e.id, hash: e.hash }));
+  // [{ id, hash }] of the music tracks held, or of the sounds with `kind` 'sounds', for sync.
+  const trackHashes = async (kind = 'music') => (await _tracks()).filter(e => _kindOf(e) === kind).map(e => ({ id: e.id, hash: e.hash }));
 
   // The entries, minus any whose map is in the library again (an import of it, or a crash mid-put), which go.
   async function list() {
@@ -176,7 +186,7 @@ const sceneTrash = (() => {
       if (allScenes.some(s => s.id === e.id)) await purge(e.id);
       else out.push(e);
     }
-    for (const e of await _tracks()) out.push({ id: e.id, at: e.at, name: displayName(e.name), hash: e.hash });
+    for (const e of await _tracks()) out.push({ id: e.id, at: e.at, name: displayName(e.name), hash: e.hash, kind: _kindOf(e) });
     return out.sort((a, b) => b.at - a.at);
   }
 
@@ -199,5 +209,5 @@ const sceneTrash = (() => {
     await purgeDue(Date.now());
   }
 
-  return { roadsOf, put, restore, purge, putTrack, trashTrack, restoreTrack, purgeTrack, trackHashes, list, ids, purgeDue, emptyAll, reconcile };
+  return { roadsOf, put, restore, purge, putTrack, trashTrack, trashSound, restoreTrack, purgeTrack, trackHashes, list, ids, purgeDue, emptyAll, reconcile };
 })();

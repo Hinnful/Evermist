@@ -123,6 +123,18 @@
   .sb-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--g-text); }
   .sb-row-on { background: var(--g-pick); color: var(--g-text); }
   .sb-row-on svg { color: var(--g-text); }
+  /* An own sound's name is its rename field, only as wide as its text, so the rest of the tile still plays. */
+  .sb-rename { display: block; flex: 0 1 auto; max-width: 100%; margin-left: -4px; padding: 3px 4px; border: 0; border-radius: 4px;
+               background: none; color: inherit; font: inherit; field-sizing: content; cursor: var(--cur-text);
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sb-rename:hover { background: rgba(255, 255, 255, 0.05); }
+  .sb-rename:focus { outline: none; background: var(--g-field); color: var(--g-text); }
+  .sb-own .sb-count { margin-left: auto; }
+  .sb-del { width: 18px; height: 18px; flex: none; padding: 0; border: 0; border-radius: 4px; display: none;
+            align-items: center; justify-content: center; background: transparent; color: var(--g-dim); cursor: var(--cur-pointer); }
+  .sb-del svg { width: 12px; height: 12px; }
+  .sb-del:hover { background: var(--g-pick); color: var(--g-text); }
+  .sb-own:hover .sb-del { display: inline-flex; }
 
   /* ===== ADD FROM YOUTUBE (musicDownload.js): the .sm-win shell at the list width ===== */
   #mu-backdrop { position: fixed; inset: 0; background: var(--veil); z-index: 502; }

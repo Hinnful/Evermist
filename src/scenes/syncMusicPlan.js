@@ -3,7 +3,7 @@
 // which tracks to fetch, send or remove, the deletion records and their 30-day trash, and the groups the later edit
 // keeps. No DOM, no network. Tested.
 //
-// A track is its content hash. Each computer sends one `music` record: its tracks { hash: { name, at, size } }, the
+// A track is its content hash. Each computer sends one `music` record (and one `sounds` record, the same shape): its tracks { hash: { name, at, size } }, the
 // deletions { hash: { at, name, restoredAt?, purged? } } and the groups { of: { hash: group }, order, at }. ⚠ Track
 // files sit in the Drive's own `music` folder as `<machine>.<hash>`, never in `blobs`, which the previous release
 // tidies by the records it understands.
@@ -180,17 +180,18 @@ function syMuGroupsToLocal(groups, local, ls, list) {
 
 // ─── The record ──────────────────────────────────────────────────────────────
 
-function syMuRecordText(st) {
+// `key` is 'music', or 'sounds' for the DM's own soundboard files, which sync the same way with no groups.
+function syMuRecordText(st, key = 'music') {
   const tracks = {};
   for (const h of Object.keys(st.tracks || {})) tracks[h] = { name: st.tracks[h].name, at: _symNum(st.tracks[h].at), size: _symNum(st.tracks[h].size) };
-  return _SYM_ES.esCanon({ format: _SYM.SY_FORMAT, key: 'music', tracks, gone: syMuGoneClean(st.gone), groups: syMuGroupsClean(st.groups) });
+  return _SYM_ES.esCanon({ format: _SYM.SY_FORMAT, key, tracks, gone: syMuGoneClean(st.gone), groups: syMuGroupsClean(st.groups) });
 }
 
 // Another computer's record, read back checked: null for anything unreadable or from a newer format.
-function syMuRecordParse(text) {
+function syMuRecordParse(text, key = 'music') {
   let r;
   try { r = JSON.parse(text); } catch (_) { return null; }
-  if (!r || r.key !== 'music' || !(r.format <= _SYM.SY_FORMAT)) return null;
+  if (!r || r.key !== key || !(r.format <= _SYM.SY_FORMAT)) return null;
   const tracks = {};
   for (const h of Object.keys(r.tracks || {})) {
     const t = r.tracks[h];

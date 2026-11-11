@@ -100,13 +100,19 @@ A ruler on the TV is rejected: one-inch squares let players count or lay a tape,
 overlay breaks the Player's zero-UI rule. A ruler on the DM's own screen is dropped for now.
 
 ### Turn order on the TV · `REOPENED` (2026-11-09, narrows "The VTT line" and "A combat helper on the DM's screen", BACKLOG 290)
-While a fight is open, a thin strip on one TV edge shows names in initiative order with the current
-one lit. A monster stays off it until revealed; no HP and no AC. A current-turn marker in the fight
-table is the first step. It is the one exception to both entries above, so "no turn marker" no longer
-holds. Reason: the strongest demand found that crosses the line (seven request boards, a +25 Roll20
-request for a TV turn tracker, four DM forum sources, 8+ rival products ship it), and the physical
-rival, tent cards, loses because the fight table fills the strip with no extra work. Tokens and dice
-stay refused.
+Start fight on the fight table puts the open fight's initiative order on the TV as two sheets, one in the
+bottom-left corner and one in the top-right turned for the far side, each in a pool of haze drawn in the
+map's fog theme. End fight takes it off, and so does the last monster going down, with an Undo; the DM
+has nothing to remember after a fight. Nothing about it is saved, so every start begins with no fight. The order is static: no current-turn marker and no Next turn button, so the DM has
+nothing more to keep up during a fight. Players are named. A monster reads "Monster", in red in every
+fog theme, and monsters that act back to back share one slot with a count ("Monster ×3"). The rest of
+the panel takes the map's fog theme. A monster added to or deleted from the fight shows on the TV at
+once. Every row shows in the fight table's own order, initiative typed or not and monsters at 0 HP
+included, by the DM's call (2026-11-11). The names are 2.7% of the TV's height, never tied to map zoom. It is the one exception
+to both entries above. Reason: the strongest demand found that crosses the line (seven request boards, a
++25 Roll20 request for a TV turn tracker, four DM forum sources, 8+ rival products ship it), and the
+physical rival, tent cards, loses because the fight table fills the sheets with no extra work. Tokens and
+dice stay refused.
 
 ### Map effects are areas, not creatures · `SETTLED` (scope call)
 Difficult terrain, persistent damage zones, light radius, Wall of Fire. No identity, no turn

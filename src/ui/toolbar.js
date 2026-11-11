@@ -394,6 +394,7 @@ function initToolbar() {
       onPlayerResyncRequest();
       syncFogThemeToPlayer(true);
       galleryResend();
+      initiativeTvResend();
       return;
     }
     if (msg.type === 'PLAYER_SCREEN') {

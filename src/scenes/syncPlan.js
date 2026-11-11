@@ -14,7 +14,7 @@ const SY_TRASH_MS = 30 * 24 * 3600 * 1000;
 // The Blobs a scene record carries. They travel apart, so the record that goes up leaves them out.
 const SY_SCENE_BLOBS = ['mapBlob', 'baseFogBlob', 'thumbnail', 'pictureBlobs'];
 const SY_BLOB_NAME_RE = /^[0-9a-zA-Z_-]{1,80}\.[0-9a-f]{64}$/;
-const SY_KEY_RE = /^(scene|pic):[0-9a-zA-Z_-]{1,80}$|^(backdrop|campaign|gone|music)$|^local:evermist[.\w-]{1,80}$/;
+const SY_KEY_RE = /^(scene|pic):[0-9a-zA-Z_-]{1,80}$|^(backdrop|campaign|gone|music|sounds)$|^local:evermist[.\w-]{1,80}$/;
 const SY_ID_RE = /^[0-9a-zA-Z_-]{1,80}$/;
 
 // What a scene record's hash is made of: the record without its Blobs, in a stable text.

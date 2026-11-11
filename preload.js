@@ -148,6 +148,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   musicLookup: (kind, id, raw) => ipcRenderer.invoke('music-lookup', { kind, id, raw }),
   musicDownload: (id, url) => ipcRenderer.invoke('music-download', { id, url }),
   readSound: (name) => ipcRenderer.invoke('sound-read', name),   // src/ui/soundboard.js
+  // The DM's own sounds in userData/sounds, by bare file name (src/ui/soundboard.js).
+  listOwnSounds: () => ipcRenderer.invoke('sound-own-list'),
+  readOwnSound: (name) => ipcRenderer.invoke('sound-own-read', name),
+  copyOwnSounds: (paths) => ipcRenderer.invoke('sound-own-copy', paths),
+  renameOwnSound: (from, typed) => ipcRenderer.invoke('sound-own-rename', from, typed),
+  trashSoundFile: (name, token) => ipcRenderer.invoke('sound-own-trash', name, token),
+  untrashSoundFile: (token, name) => ipcRenderer.invoke('sound-own-untrash', token, name),
+  purgeTrashedSound: (token) => ipcRenderer.invoke('sound-own-purge-trash', token),
   musicYtdlpLatest: () => ipcRenderer.invoke('music-ytdlp-latest'),
   musicYtdlpUpdate: () => ipcRenderer.invoke('music-ytdlp-update'),
   // The Claude connection (src/mcp/mcpTools.js): main asks, the DM window answers by the request's id.

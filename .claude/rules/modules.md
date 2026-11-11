@@ -123,7 +123,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `scenes/syncIndex.js` | `evermist-sync`: each record's content hash as saved here, hashed at save and reconciled at start, the deletion records. Does nothing without a Google client |
 | `scenes/syncMerge.js` | The silent merge entry: a record pulled from another computer (a map, a picture, the Campaign, the backdrop, a stored text) applied with Import's plan rules, nothing on screen touched, held while its map, the TV, a column, the fight table or its note is shown, one record per idle slice and each timed |
 | `scenes/syncMusicPlan.js` | Pure music-sync kernel: what the folder gained or lost since the last tick, which tracks to fetch, send or remove, the deletions and their 30-day trash, the groups the later edit keeps, the `music` record. Tested |
-| `scenes/syncMusic.js` | The music folder through sync: the tick's music part after every map, record and note, the `music` record, tracks in Recently deleted, a track's hash as it lands |
+| `scenes/syncMusic.js` | The music folder through sync: the tick's music part after every map, record and note, the `music` record, tracks in Recently deleted, a track's hash as it lands; the DM's own sounds the same way as `syncSounds` |
 | `scenes/sync.js` | Sync's outbox and inbox on the page: the triggers, records and map files up, other computers' changes down, the first-sync rules and its hold until the DM answers, the status line's state |
 | `scenes/syncSettings.js` | Settings' Google Drive line: the status line and Connect or Disconnect. The question before a first sync. Shown only with a Google client |
 | `scenes/trashPanel.js` | Campaign's Recently deleted line and its pop-out: this computer's maps and tracks plus the Drive's while signed in, days left, Restore and Empty now |
@@ -183,6 +183,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `gallery/galleryMigrate.js` | The pictures rooms used to hold, copied into the gallery once |
 | `gallery/gallery.js` | The Gallery pane: the grid, adding, renaming, removing, the backup payload, and the picture on the TV |
 | `player/tvPicture.js` | A gallery picture drawn on the TV, Player and two-map shell |
+| `player/initiativePanel.js` | The turn order on the TV: twin sheets in the map's fog theme, on a canvas of its own |
 | `content/moduleText.js` | Module parsing, storage, name-field dropdown |
 | `content/moduleTextPanel.js` | The import panel and the name-field dropdown. Parses nothing |
 | `content/pdfLayout.js` | Pure PDF reading-order kernel. Tested, dependency-free |
@@ -198,8 +199,9 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `ui/musicGroups.js` | The Music pane's groups: names, order, folding, and a track dragged into one |
 | `ui/musicDownload.js` | Add music panel |
 | `ui/soundList.js` | The built-in sounds: groups, files, names. Data only |
-| `ui/soundboard.js` | The Sounds pane: one-shot sounds over the music, as tiles |
+| `ui/soundboard.js` | The Sounds pane: one-shot sounds over the music, as tiles; My sounds: Add sound, rename, × to the Trash |
 | `combat/combatPlan.js` | Pure fight kernel: HP sum, order, a row's copy. Tested |
+| `combat/initiativePlan.js` | Pure turn-order kernel: the open fight's rows as the TV's slots, and the last living monster going down. Tested |
 | `combat/fightPlan.js` | Pure: the fight list, its save shape, a backup merge. Tested |
 | `combat/attackLine.js` | Pure: attacks read from a stat block. Tested |
 | `combat/multiattack.js` | Pure: Multiattack reading. Tested |
@@ -208,6 +210,7 @@ Loaded when you work on app code. A new module gets a row here and a line in `do
 | `combat/combatTracker.js` | The fight table: rows, name search, saving |
 | `combat/combatStatBlock.js` | The stat block popup |
 | `combat/combatFights.js` | The fight picker and its list |
+| `combat/initiativeTv.js` | The fight table's Start fight / End fight, the slots sent to the TV, the automatic end and its undo toast |
 | `combat/statBlockParse.js` | Pure stat block parser. Tested |
 | `combat/statBlockBook.js` | Pure: a book into stat blocks, and the clean-read gate. Tested |
 | `combat/statBlockImport.js` | The link queue and the book import |
@@ -262,7 +265,8 @@ the windows, the display push and the app lifecycle, and hands every module its 
 |---|---|
 | `electron/videoFiles.js` | An animated map's file on disk, and its move to `userData/trash` and back |
 | `electron/music.js` | The music folder as the library, and the downloader that fills it |
-| `electron/sounds.js` | The built-in sound files, read for the soundboard |
+| `electron/sounds.js` | The built-in sound files, read for the soundboard, and the IPC for the DM's own in `userData/sounds` |
+| `electron/soundFiles.js` | Pure: the DM's own sounds folder, files copied in under the 10 MB limit, a typed name made a file name, the read only a bare name passes. Tested |
 | `electron/displays.js` | The display list, placing the Player on a screen, switching the TV to a second screen |
 | `electron/tvSize.js` | The size a screen reports in its EDID (registry, `/sys/class/drm`, `ioreg`), matched to a display by name and resolution. Tested |
 | `electron/screenLog.js` | `screens.log`: the screen lists read in the first ten seconds, one line per change. Tested |
@@ -309,12 +313,12 @@ dev/stress.js → dev/memProbe.js → render/render.js → render/playersView.js
 ui/colorPicker.js → ui/controlPanel.js → ui/dock.js → ui/seatAlignment.js → ui/hintsPlan.js → ui/hints.js → ui/hintsFirstMap.js → ui/hintsCues.js → ui/confirmDialog.js → rooms/floorPlan.js →
 content/moduleText.js → content/moduleTextPanel.js → notes/notesPlan.js → notes/mentionPlan.js → notes/notesEntriesPlan.js → notes/notesTreePlan.js → rooms/roomPanel.js → rooms/roomCard.js →
 gallery/galleryPlan.js → gallery/pictureDecode.js → gallery/galleryStore.js → gallery/galleryMigrate.js → gallery/gallery.js → rooms/roomLink.js → rooms/roomSwitcher.js → notes/notesPanel.js → notes/notesEntries.js → notes/mentionIndex.js → notes/notesEditor.js → notes/notesAppears.js → notes/notesTree.js → notes/notesWindow.js →
-world/worldMapPlan.js → world/worldRoadPlan.js → world/worldPartyPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldParty.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → search/searchPlan.js → search/searchIndex.js → search/searchPick.js → search/search.js → world/worldMapColumns.js → world/worldMapEmpty.js → world/worldMapOpenBar.js → world/worldMapFan.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js →
+world/worldMapPlan.js → world/worldRoadPlan.js → world/worldPartyPlan.js → world/worldMapStore.js → world/worldPlaces.js → world/worldRoads.js → world/worldParty.js → world/worldMist.js → world/worldBackground.js → world/worldMap.js → world/worldMapEdit.js → world/worldMapMenu.js → world/worldMapShapes.js → world/worldMapRoads.js → search/searchPlan.js → search/searchIndex.js → search/searchPick.js → search/search.js → world/worldMapColumns.js → world/worldMapEmpty.js → world/worldMapOpenBar.js → world/worldMapFan.js → world/worldPickPlan.js → world/worldMapPick.js → world/worldBackup.js → player/tvPicture.js → player/initiativePanel.js →
 ui/changelogData.js → ui/changelog.js → ui/about.js → ui/updater.js → ui/musicPlan.js →
-ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/fightPlan.js →
+ui/music.js → ui/musicGroups.js → ui/musicDownload.js → ui/soundList.js → ui/soundboard.js → combat/combatPlan.js → combat/initiativePlan.js → combat/fightPlan.js →
 combat/multiattack.js → combat/attackLine.js → combat/attackPills.js → combat/bestiaryPlan.js →
 combat/combatStatBlock.js → combat/statBlockParse.js → combat/statBlockBook.js →
 combat/statBlockImport.js →
-combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js →
+combat/bestiaryPage.js → combat/bestiary.js → combat/combatTracker.js → combat/combatFights.js → combat/initiativeTv.js →
 mcp/mcpPlan.js → mcp/mcpCombatPlan.js → mcp/mcpWorldPlan.js → mcp/mcpEntriesPlan.js → mcp/mcpConnect.js → mcp/mcpGuideText.js → mcp/mcpShared.js → mcp/mcpHistory.js → mcp/mcpMapPlan.js → mcp/mcpMapEdit.js → mcp/mcpFogPlan.js → mcp/mcpFog.js → mcp/mcpMeta.js → mcp/mcpScenes.js → mcp/mcpNotes.js → mcp/mcpEntries.js → mcp/mcpWorld.js → mcp/mcpWorldMap.js → mcp/mcpFights.js → mcp/mcpGallery.js → mcp/mcpBestiary.js → mcp/mcpSeePlan.js → mcp/mcpSee.js → mcp/mcpMusicPlan.js → mcp/mcpMusic.js → mcp/mcpRoomsPlan.js → mcp/mcpRooms.js → mcp/mcpGridPlan.js → mcp/mcpGrid.js → mcp/mcpImportPlan.js → mcp/mcpImport.js → mcp/mcpTools.js → inline <script>
 ```

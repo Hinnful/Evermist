@@ -70,6 +70,7 @@ function initStage() {
       return;
     }
     if (msg.type === 'tv-picture') { applyTvPicture(msg.blob); return; }
+    if (msg.type === 'initiative') { initiativePanelShow(msg.slots); return; }
     // Native window fullscreen has no DOM event, so the shell relays main's push the way a
     // single Player window does.
     if (msg.type === 'fullscreen' && window.electronAPI) window.electronAPI.toggleFullscreen();

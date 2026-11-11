@@ -568,7 +568,11 @@
       <div class="dk-scroll"><div id="mu-list" class="mu-list" data-no-i18n></div></div>
     </section>
     <section class="dk-sec" id="dock-pane-sounds" data-pane="sounds" hidden>
-      <div class="dk-head"><span class="cp-adv-title">Sounds</span></div>
+      <div class="dk-head"><span class="cp-adv-title">Sounds</span><div class="cp-row">
+        <button id="btn-sb-add" class="cp-adv-close" title="Add sound">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9.5v-8M4 4.5l3-3 3 3"/><path d="M1.5 9v3h11V9"/></svg>
+        </button></div>
+      </div>
       <div class="dk-player">
         <div class="pl-vol">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/></svg>
@@ -1117,6 +1121,7 @@
 <script src="src/world/worldMapPick.js"></script>
 <script src="src/world/worldBackup.js"></script>
 <script src="src/player/tvPicture.js"></script>
+<script src="src/player/initiativePanel.js"></script>
 <script src="src/ui/changelogData.js"></script>
 <script src="src/ui/changelog.js"></script>
 <script src="src/ui/about.js"></script>
@@ -1128,6 +1133,7 @@
 <script src="src/ui/soundList.js"></script>
 <script src="src/ui/soundboard.js"></script>
 <script src="src/combat/combatPlan.js"></script>
+<script src="src/combat/initiativePlan.js"></script>
 <script src="src/combat/fightPlan.js"></script>
 <script src="src/combat/multiattack.js"></script>
 <script src="src/combat/attackLine.js"></script>
@@ -1141,6 +1147,7 @@
 <script src="src/combat/bestiary.js"></script>
 <script src="src/combat/combatTracker.js"></script>
 <script src="src/combat/combatFights.js"></script>
+<script src="src/combat/initiativeTv.js"></script>
 <script src="src/mcp/mcpPlan.js"></script>
 <script src="src/mcp/mcpCombatPlan.js"></script>
 <script src="src/mcp/mcpWorldPlan.js"></script>

@@ -1403,16 +1403,32 @@ Chromium's media pipeline. So the main process reads each file's bytes over IPC 
 decodes them into an `AudioBuffer` once. That leaves no `file://` source for Web Audio to taint,
 which was the reason music rejected it, and any number of copies can play at once.
 
-### Thirty built-in CC0 sounds, and the DM adds none · `SETTLED` (2026-10-01)
+### Thirty built-in CC0 sounds, and the DM adds none · `REOPENED` (2026-11-11, superseded by "The DM adds their own sounds")
 A curated set in six groups of five ships inside the app, as Freesound HQ previews of sounds
 each page licenses CC0; `assets/sounds/SOURCES.md` lists them. Uploading the DM's own files
 waits for a later version. The groups and their place in the panel are how a sound is found,
 so there are no pins and no search.
 
+### The DM adds their own sounds · `SHIPPED` (5.12.0, 2026-11-11)
+Asked for crystal, jingle-bell and gear sounds, the answer was an Add sound button rather than more built-ins, too small
+for a backlog item. Files copy into `userData/sounds`, sit in one "My sounds" group (no DM-made groups), are named by file
+name, and rename by renaming the file, so no new persisted field. × on hover trashes with Undo (an exception to the trash
+icon). Sync follows music; sounds stay out of the backup zip; over 10 MB is refused. The built-ins cannot be hidden,
+renamed or deleted. Rolling back to 5.11.0 leaves a trashed sound as a track that will not restore and its purge leaves the
+file behind, accepted.
+
 ### A left click adds a copy, a right click stops the newest · `SETTLED` (2026-10-01)
 A second press of a playing sound starts another copy over it, for a second thunderclap or a
 longer laugh. There is no stop-all control: the sounds last seconds. A prototype where a second
 press stopped the sound was rejected on product grounds.
+
+### Turn order on the TV took design H1 · `SHIPPED` (5.12.0, 2026-11-11, BACKLOG 290)
+Two sheets in haze, names at 2.7% of window height. Rejected for monsters: glowing eyes (hard to read), a skull, an
+italic word, a blank nameplate, "???", and a dark band behind monster rows (a band behind one row reads as the current
+turn, a band behind every row too); a darker haze behind the sheet was kept. Rejected for showing: a plain TV toggle, a
+Turns button on the minimap, automatic showing while the table is open; Start fight / End fight on the table won. All
+rows show, as an earlier default of hiding rows with no initiative left the TV empty on first use. Alegreya is not
+bundled, since that needs a `build.files` entry.
 
 ### Notes opening on a room pick, and a phone remote · `REJECTED` (2026-11-05)
 Opening the Notes window when a room is picked (was BACKLOG 249) and a phone remote for the DM (was BACKLOG 144) were dropped

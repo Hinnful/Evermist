@@ -544,6 +544,8 @@
   #bs-panel.selecting .bs-acts { display: flex; }
   .bs-f { padding: 0 10px 0 12px; }
   .bs-f.on { background: var(--b-tint); color: var(--b-icon); }
+  /* Start fight / End fight on the fight table's title row (initiativeTv.js): tinted while the turn order is on the TV. */
+  #cb-tv.on, #cb-tv.on:hover { background: var(--b-tint); color: var(--b-icon); }
   .bs-f.on:hover { background: var(--b-tint-h); }
   .bs-f .v { color: var(--b-icon); font-weight: 600; }
   .bs-shown { color: var(--g-dim); font-size: 12px; }

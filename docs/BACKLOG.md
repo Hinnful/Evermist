@@ -1,6 +1,6 @@
 ---
 name: project-backlog
-description: "Open work only. 7 open items; IDs run to 292."
+description: "Open work only. 7 open items; IDs run to 293."
 metadata: 
   node_type: memory
   type: project
@@ -131,23 +131,18 @@ confirming before the review.
 **First use · Upkeep**
 
 
-### 290. Turn order on the TV
-Filed 2026-11-09. Reopens "The VTT line" and the combat helper's "no turn marker" in `docs/PRODUCT.md`, on the DM's call.
-While a fight is open, a thin strip on one edge of the TV shows names in initiative order with the current one lit;
-monsters stay off it until the DM reveals them; no HP and no AC. Its first step is a current-turn marker in the fight
-table. The strongest demand found that crosses a line: seven request boards, a +25 Roll20 request for a TV turn tracker
-(February-August 2026), four DM forum sources. Models: Encounter+ (order along one edge; labels for all, monsters only,
-players only or none), DMHelper (the active creature, the next two, an optional timer), D&D Beyond Maps (hidden monsters
-left off). The physical rival is tent cards; the strip wins only because the fight table fills it. **Needs a design
-round, then `/spec`.**
-**Play · Player**
-
 ### 292. Crystal companion extras
 Filed 2026-11-10, with 5.11.0. Habits held back until the DM has lived with the crystal at the table: it catches a file
 dropped on the window, glances at a room as it is revealed, and has more idle habits. A size setting comes only if the DM
 finds it too small or too big. The settled design is in `docs/decisions/ui-and-control-panel.md`
 ("The pointer is one dart and a crystal companion"). **Waits on the DM's call.**
 **Polish · DM and Player**
+
+### 293. Bundle the Alegreya font for the TV turn order
+Filed 2026-11-11, with 5.12.0. The turn order on the TV was designed in Alegreya, which covers Cyrillic, but the app does
+not ship it, so names fall back to Georgia on Windows and Mac and to the system serif on Linux. One font file goes in
+`build.files` and the panel's font list. Small; the risk is the packaged build missing the file, so verify on the `.exe`.
+**Polish · Player**
 
 ---
 
